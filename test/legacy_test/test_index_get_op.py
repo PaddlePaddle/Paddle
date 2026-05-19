@@ -881,5 +881,289 @@ class TestIndexGetOp_Stride(unittest.TestCase):
         np.testing.assert_allclose(ref_res, pd_res.numpy(), atol=1e-7)
 
 
+# === PIR mode symbolic shape inference tests ===
+# These exercise IndexGetOpInferSymbolicShape in binary_infer_sym.cc
+
+
+class TestIndexGetPIRSymbolicShape(unittest.TestCase):
+    """Exercise symbolic shape inference in PIR mode (binary_infer_sym.cc)."""
+
+    def _run_pir_static(self, x_np, indices_np, dtype, expected_shape):
+        with paddle.pir_utils.IrGuard():
+            program = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(program, startup):
+                x = paddle.static.data(name="x", shape=x_np.shape, dtype=dtype)
+                x.stop_gradient = False
+                feed = {"x": x_np}
+                indices = []
+                for i, idx_np in enumerate(indices_np):
+                    name = f"idx{i}"
+                    idx_dtype = str(idx_np.dtype)
+                    if "bool" in idx_dtype:
+                        idx_dtype = "bool"
+                    else:
+                        idx_dtype = "int64"
+                    idx = paddle.static.data(
+                        name=name, shape=idx_np.shape, dtype=idx_dtype
+                    )
+                    indices.append(idx)
+                    feed[name] = idx_np
+                out = paddle.index_get(x, tuple(indices))
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            result = exe.run(program, feed=feed, fetch_list=[out])
+            self.assertEqual(list(result[0].shape), list(expected_shape))
+
+    def test_pir_int_indices(self):
+        self._run_pir_static(
+            x_np=np.random.randn(10, 20).astype("float32"),
+            indices_np=[
+                np.array([0, 2, 4, 6, 8], dtype="int64"),
+                np.array([1, 3, 5, 7, 9], dtype="int64"),
+            ],
+            dtype="float32",
+            expected_shape=[5],
+        )
+
+    def test_pir_bool_indices(self):
+        self._run_pir_static(
+            x_np=np.random.randn(10, 20).astype("float32"),
+            indices_np=[
+                np.array(
+                    [
+                        True,
+                        False,
+                        True,
+                        False,
+                        True,
+                        False,
+                        True,
+                        False,
+                        True,
+                        False,
+                    ],
+                    dtype="bool",
+                ),
+            ],
+            dtype="float32",
+            expected_shape=[5, 20],
+        )
+
+    def test_pir_mixed_bool_int_indices(self):
+        self._run_pir_static(
+            x_np=np.random.randn(10, 20, 30).astype("float32"),
+            indices_np=[
+                np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], dtype="int64"),
+                np.array([True, False] * 10, dtype="bool"),
+            ],
+            dtype="float32",
+            expected_shape=[10, 30],
+        )
+
+    def test_pir_bool_2d_indices(self):
+        self._run_pir_static(
+            x_np=np.random.randn(10, 20).astype("float32"),
+            indices_np=[
+                np.eye(10, 20, dtype="bool"),
+            ],
+            dtype="float32",
+            expected_shape=[10],
+        )
+
+    def test_pir_trailing_dims(self):
+        self._run_pir_static(
+            x_np=np.random.randn(10, 20, 30).astype("float32"),
+            indices_np=[
+                np.array([0, 2, 4, 6, 8], dtype="int64"),
+            ],
+            dtype="float32",
+            expected_shape=[5, 20, 30],
+        )
+
+
+# === Additional backward tests for cpu/index_get_grad_kernel.cc coverage ===
+
+
+class TestIndexGetGradDtypeFloat32(unittest.TestCase):
+    def test_backward_float32(self):
+        paddle.disable_static()
+        for place in [paddle.CPUPlace()]:
+            paddle.device.set_device(place)
+            x = paddle.ones(shape=[16, 21], dtype="float32")
+            ix1 = paddle.to_tensor([0, 1, 2, 3], dtype="int64")
+            ix2 = paddle.to_tensor([0, 1, 2, 3], dtype="int64")
+            x.stop_gradient = False
+            out = paddle.index_get(x, (ix1, ix2))
+
+            dx = paddle.grad(outputs=[out], inputs=[x])[0]
+            ref_dx = np.zeros(shape=[16, 21], dtype=np.float32)
+            ref_dx[ix1.numpy(), ix2.numpy()] = 1.0
+
+            np.testing.assert_allclose(ref_dx, dx.numpy(), atol=1e-7)
+
+
+class TestIndexGetGradDtypeInt32(unittest.TestCase):
+    def test_backward_int32(self):
+        paddle.disable_static()
+        for place in [paddle.CPUPlace()]:
+            paddle.device.set_device(place)
+            x = paddle.to_tensor([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], dtype="int32")
+            ix = paddle.to_tensor([0, 2, 4, 6, 8], dtype="int64")
+            x.stop_gradient = False
+            out = paddle.index_get(x, (ix,))
+            dx = paddle.grad(outputs=[out], inputs=[x])[0]
+            ref_dx = np.zeros(shape=[10], dtype=np.int32)
+            ref_dx[ix.numpy()] = 1
+            np.testing.assert_allclose(ref_dx, dx.numpy())
+
+
+class TestIndexGetGradTrailingDims(unittest.TestCase):
+    def test_backward_trailing_dims(self):
+        paddle.disable_static()
+        for place in [paddle.CPUPlace()]:
+            paddle.device.set_device(place)
+            x = paddle.ones(shape=[10, 20, 30], dtype="float64")
+            ix = paddle.to_tensor([0, 2, 4, 6, 8], dtype="int64")
+            x.stop_gradient = False
+            out = paddle.index_get(x, (ix,))
+            dx = paddle.grad(outputs=[out], inputs=[x])[0]
+            ref_dx = np.zeros(shape=[10, 20, 30], dtype=np.float64)
+            ref_dx[ix.numpy()] = 1.0
+            np.testing.assert_allclose(ref_dx, dx.numpy(), atol=1e-7)
+
+
+class TestIndexGetGradBroadcastBool(unittest.TestCase):
+    def test_backward_bool_broadcast(self):
+        paddle.disable_static()
+        for place in [paddle.CPUPlace()]:
+            paddle.device.set_device(place)
+            x = paddle.ones(shape=[16, 21], dtype="float64")
+            ix = paddle.to_tensor([True, False] * 8, dtype="bool")
+            x.stop_gradient = False
+            out = paddle.index_get(x, (ix,))
+            dx = paddle.grad(outputs=[out], inputs=[x])[0]
+            ref_dx = np.zeros(shape=[16, 21], dtype=np.float64)
+            ref_dx[ix.numpy()] = 1.0
+            np.testing.assert_allclose(ref_dx, dx.numpy(), atol=1e-7)
+
+
+class TestIndexGetGradMixedIndices(unittest.TestCase):
+    def test_backward_mixed_bool_int(self):
+        paddle.disable_static()
+        for place in [paddle.CPUPlace()]:
+            paddle.device.set_device(place)
+            x = paddle.ones(shape=[10, 20, 30], dtype="float64")
+            ix1 = paddle.to_tensor(
+                [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], dtype="int64"
+            )
+            ix2 = paddle.to_tensor([True, False] * 10, dtype="bool")
+            x.stop_gradient = False
+            out = paddle.index_get(x, (ix1, ix2))
+            dx = paddle.grad(outputs=[out], inputs=[x])[0]
+            ref_dx = np.zeros(shape=[10, 20, 30], dtype=np.float64)
+            np.add.at(ref_dx, (ix1.numpy(), ix2.numpy()), 1.0)
+            np.testing.assert_allclose(ref_dx, dx.numpy(), atol=1e-7)
+
+
+# === Additional forward tests for cpu/index_get_kernel.cc coverage ===
+
+
+class TestIndexGetAllFalseBoolTrailing(unittest.TestCase):
+    """All-false bool with trailing dims → covers all-false early return path."""
+
+    def test_all_false_bool_trailing(self):
+        paddle.disable_static()
+        for place in [paddle.CPUPlace()]:
+            paddle.device.set_device(place)
+            x = paddle.randn(shape=[10, 20, 30], dtype="float32")
+            ix = paddle.zeros(shape=[10, 20], dtype="bool")
+            out = paddle.index_get(x, (ix,))
+            self.assertEqual(out.shape, [0, 30])
+            self.assertEqual(out.dtype, paddle.float32)
+
+
+class TestIndexGetTrailingDimsDtypes(unittest.TestCase):
+    """Fewer indices than x dims with different dtypes."""
+
+    def test_trailing_dims_int32(self):
+        paddle.disable_static()
+        for place in [paddle.CPUPlace()]:
+            paddle.device.set_device(place)
+            x_np = np.random.randn(8, 12, 16).astype("float32")
+            x = paddle.to_tensor(x_np)
+            ix = paddle.to_tensor([1, 3, 5, 7], dtype="int32")
+            out = paddle.index_get(x, (ix,))
+            ref = x_np[[1, 3, 5, 7]]
+            np.testing.assert_allclose(ref, out.numpy(), atol=1e-7)
+
+    def test_trailing_dims_bool_index(self):
+        paddle.disable_static()
+        for place in [paddle.CPUPlace()]:
+            paddle.device.set_device(place)
+            x_np = np.random.randn(8, 12, 16).astype("float64")
+            x = paddle.to_tensor(x_np)
+            ix_np = np.array(
+                [True, False, True, True, False, True, False, False],
+                dtype="bool",
+            )
+            ix = paddle.to_tensor(ix_np)
+            out = paddle.index_get(x, (ix,))
+            ref = x_np[ix_np]
+            np.testing.assert_allclose(ref, out.numpy(), atol=1e-7)
+
+
+class TestIndexGetComplexDtype(unittest.TestCase):
+    """Test complex64/complex128 dtype coverage in forward kernel."""
+
+    def test_complex64(self):
+        paddle.disable_static()
+        for place in [paddle.CPUPlace()]:
+            paddle.device.set_device(place)
+            x_np = np.random.randn(10, 20).astype(
+                "float32"
+            ) + 1j * np.random.randn(10, 20).astype("float32")
+            x = paddle.to_tensor(x_np)
+            ix1 = paddle.to_tensor([0, 2, 4, 6, 8], dtype="int64")
+            ix2 = paddle.to_tensor([1, 3, 5, 7, 9], dtype="int64")
+            out = paddle.index_get(x, (ix1, ix2))
+            ref = x_np[ix1.numpy(), ix2.numpy()]
+            np.testing.assert_allclose(ref, out.numpy(), atol=1e-7)
+
+    def test_complex128(self):
+        paddle.disable_static()
+        for place in [paddle.CPUPlace()]:
+            paddle.device.set_device(place)
+            x_np = np.random.randn(10, 20).astype(
+                "float64"
+            ) + 1j * np.random.randn(10, 20).astype("float64")
+            x = paddle.to_tensor(x_np)
+            ix1 = paddle.to_tensor([0, 2, 4, 6, 8], dtype="int64")
+            ix2 = paddle.to_tensor([1, 3, 5, 7, 9], dtype="int64")
+            out = paddle.index_get(x, (ix1, ix2))
+            ref = x_np[ix1.numpy(), ix2.numpy()]
+            np.testing.assert_allclose(ref, out.numpy(), atol=1e-7)
+
+
+class TestIndexGetZeroSizeGrad(unittest.TestCase):
+    """Test zero-size output gradient path in backward kernel."""
+
+    def test_zero_size_out_grad(self):
+        paddle.disable_static()
+        for place in [paddle.CPUPlace()]:
+            paddle.device.set_device(place)
+            x = paddle.randn(shape=[10, 20], dtype="float32")
+            # All-false bool produces zero-size output
+            ix = paddle.zeros(shape=[10, 20], dtype="bool")
+            x.stop_gradient = False
+            out = paddle.index_get(x, (ix,))
+            self.assertEqual(out.shape[0], 0)
+            dx = paddle.grad(outputs=[out], inputs=[x])[0]
+            # Gradient should be all zeros with correct shape
+            self.assertEqual(list(dx.shape), [10, 20])
+            np.testing.assert_allclose(
+                np.zeros([10, 20], dtype="float32"), dx.numpy(), atol=1e-7
+            )
+
+
 if __name__ == '__main__':
     unittest.main()
