@@ -369,12 +369,11 @@ void BlockMultiheadAttentionXPUKernel(
               for (int64_t key_idx = query_idx + 1;
                    key_idx < max_enc_len_this_time_data;
                    ++key_idx) {
-                int64_t offset =
-                    ((batch_idx * q_num_head + head_idx) *
-                         max_enc_len_this_time_data +
-                     query_idx) *
-                        max_enc_len_this_time_data +
-                    key_idx;
+                int64_t offset = ((batch_idx * q_num_head + head_idx) *
+                                      max_enc_len_this_time_data +
+                                  query_idx) *
+                                     max_enc_len_this_time_data +
+                                 key_idx;
                 attn_mask_cpu[offset] = -10000.0f;
               }
             }
@@ -385,9 +384,8 @@ void BlockMultiheadAttentionXPUKernel(
                                   attn_mask_cpu.data(),
                                   attn_mask_cpu.size() * sizeof(float),
                                   XPUMemcpyKind::XPU_HOST_TO_DEVICE);
-        PADDLE_ENFORCE_EQ(mask_ret,
-                          0,
-                          common::errors::Fatal("xpu_memcpy failed."));
+        PADDLE_ENFORCE_EQ(
+            mask_ret, 0, common::errors::Fatal("xpu_memcpy failed."));
       }
       xpu::QKVAttnParam qkv_attn_param(lods,
                                        q_num_head,

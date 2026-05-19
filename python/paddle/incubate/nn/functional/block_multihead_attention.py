@@ -65,7 +65,9 @@ def _block_multihead_attention_xpu_fallback(
     q_num_head = total_num_head - 2 * kv_num_head
     batch_size = token_num // max_seq_len
 
-    qkv_4d = qkv_compute.reshape([batch_size, max_seq_len, total_num_head, dim_head])
+    qkv_4d = qkv_compute.reshape(
+        [batch_size, max_seq_len, total_num_head, dim_head]
+    )
     q = qkv_4d[:, :, :q_num_head, :].transpose([0, 2, 1, 3])
     k = qkv_4d[:, :, q_num_head : q_num_head + kv_num_head, :].transpose(
         [0, 2, 1, 3]
@@ -77,9 +79,15 @@ def _block_multihead_attention_xpu_fallback(
         v = paddle.concat([pre_value_cache.astype(v.dtype), v], axis=2)
     elif attn_mask is not None and attn_mask.shape[-1] > k.shape[2]:
         cache_len = attn_mask.shape[-1] - k.shape[2]
-        cache_blocks = block_tables[:, : (cache_len + key_cache.shape[2] - 1) // key_cache.shape[2]]
-        gathered_k = paddle.gather(key_cache, cache_blocks.reshape([-1]), axis=0)
-        gathered_v = paddle.gather(value_cache, cache_blocks.reshape([-1]), axis=0)
+        cache_blocks = block_tables[
+            :, : (cache_len + key_cache.shape[2] - 1) // key_cache.shape[2]
+        ]
+        gathered_k = paddle.gather(
+            key_cache, cache_blocks.reshape([-1]), axis=0
+        )
+        gathered_v = paddle.gather(
+            value_cache, cache_blocks.reshape([-1]), axis=0
+        )
         gathered_k = gathered_k.reshape(
             [batch_size, -1, kv_num_head, key_cache.shape[2], dim_head]
         )
@@ -99,7 +107,9 @@ def _block_multihead_attention_xpu_fallback(
         k = k.repeat_interleave(repeat_times, axis=1)
         v = v.repeat_interleave(repeat_times, axis=1)
 
-    scores = paddle.matmul(q.astype("float32"), k.astype("float32"), transpose_y=True)
+    scores = paddle.matmul(
+        q.astype("float32"), k.astype("float32"), transpose_y=True
+    )
     scores = scores * (dim_head**-0.5)
     if attn_mask is not None:
         attn_mask = attn_mask.astype("float32")
@@ -111,20 +121,30 @@ def _block_multihead_attention_xpu_fallback(
     else:
         key_len = k.shape[2]
         causal_mask = paddle.triu(
-            paddle.ones([max_seq_len, key_len], dtype="float32"), key_len - max_seq_len + 1
+            paddle.ones([max_seq_len, key_len], dtype="float32"),
+            key_len - max_seq_len + 1,
         )
-        scores = scores + causal_mask.reshape([1, 1, max_seq_len, key_len]) * -10000.0
+        scores = (
+            scores
+            + causal_mask.reshape([1, 1, max_seq_len, key_len]) * -10000.0
+        )
     probs = paddle.nn.functional.softmax(scores, axis=-1)
     out = paddle.matmul(probs, v.astype("float32"))
-    out = out.transpose([0, 2, 1, 3]).reshape([token_num, q_num_head * dim_head])
-    out = out.astype("float16" if compute_dtype in ("default", "fp16") else compute_dtype)
+    out = out.transpose([0, 2, 1, 3]).reshape(
+        [token_num, q_num_head * dim_head]
+    )
+    out = out.astype(
+        "float16" if compute_dtype in ("default", "fp16") else compute_dtype
+    )
     if out_scale > 0:
         quant = out.astype("float32") * (quant_max_bound * out_scale)
         if quant_round_type == 0:
             quant = paddle.round(quant)
         else:
             quant = paddle.round(quant)
-        out = paddle.clip(quant, quant_min_bound, quant_max_bound).astype("int8")
+        out = paddle.clip(quant, quant_min_bound, quant_max_bound).astype(
+            "int8"
+        )
     return out, qkv, key_cache, value_cache
 
 
