@@ -53,36 +53,54 @@ __device__ __nv_bfloat16 WarpReduceMax(__nv_bfloat16 x) {
   constexpr unsigned mask = (uint64_t(1) << Width) - 1;
   for (int offset = Width / 2; offset > 0; offset /= 2) {
     __nv_bfloat16 t = __shfl_down_sync(mask, x, offset);
-    x = BF16_MAX(x, t);
+    x = __hmax(x, t);
   }
   return x;
 }
 
 template <typename OutT>
 __device__ float BlockReduceScale(__nv_bfloat16 x[8][4]) {
-  // [(8), 16, 32, (4)] => [16, 32]
-  __nv_bfloat16 local_max;
+  __nv_bfloat162 local_max2 = __float2bfloat162_rn(0.0f);
+
+#pragma unroll 8
   for (uint32_t i = 0; i < 8; i++) {
-    for (uint32_t j = 0; j < 4; j++) {
-      __nv_bfloat16 t = BF16_ABS(x[i][j]);
-      local_max = (i == 0 && j == 0) ? t : BF16_MAX(local_max, t);
-    }
+    __nv_bfloat162 v0 = *reinterpret_cast<__nv_bfloat162*>(&x[i][0]);
+    __nv_bfloat162 v1 = *reinterpret_cast<__nv_bfloat162*>(&x[i][2]);
+
+    v0 = __habs2(v0);
+    v1 = __habs2(v1);
+
+    local_max2 = __hmax2(local_max2, v0);
+    local_max2 = __hmax2(local_max2, v1);
   }
 
-  // [16, (32)] => [16]
-  __nv_bfloat16 warp_max = WarpReduceMax(local_max);
+  __nv_bfloat16 local_max = __hmax(local_max2.x, local_max2.y);
 
-  // [(16)] => [1]
-  __shared__ __nv_bfloat16 block_max[16];
+#pragma unroll 5
+  for (int offset = 16; offset > 0; offset >>= 1) {
+    __nv_bfloat16 other = __shfl_down_sync(0xffffffff, local_max, offset);
+    local_max = __hmax(local_max, other);
+  }
+
+  __shared__ __nv_bfloat16 block_max_shared[16];
   __shared__ float block_scale;
+
   if (threadIdx.x == 0) {
-    block_max[threadIdx.y] = warp_max;
+    block_max_shared[threadIdx.y] = local_max;
   }
   __syncthreads();
+
   if (threadIdx.y == 0 && threadIdx.x < 16) {
-    warp_max = WarpReduceMax<16>(block_max[threadIdx.x]);
+    __nv_bfloat16 warp_val = block_max_shared[threadIdx.x];
+
+#pragma unroll 4
+    for (int offset = 8; offset > 0; offset >>= 1) {
+      __nv_bfloat16 other = __shfl_down_sync(0xffff, warp_val, offset);
+      warp_val = __hmax(warp_val, other);
+    }
+
     if (threadIdx.x == 0) {
-      block_scale = ComputeScale<__nv_bfloat16, OutT>(warp_max, 0.0f);
+      block_scale = ComputeScale<__nv_bfloat16, OutT>(warp_val, 0.0f);
     }
   }
   __syncthreads();
@@ -91,7 +109,13 @@ __device__ float BlockReduceScale(__nv_bfloat16 x[8][4]) {
 }
 
 template <typename OutT, typename ArrayT>
+#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ > 900))
+// Force nvcc to squash register to avoid low occupancy
+// in architecture after Hopper
+__global__ void __launch_bounds__(512, 4)
+#else
 __global__ void __launch_bounds__(512)
+#endif
     FusedStackQuantGPUKernel(ArrayT input_array,
                              OutT* __restrict__ out,
                              float* __restrict__ scale,
@@ -136,7 +160,13 @@ __global__ void __launch_bounds__(512)
 }
 
 template <typename OutT, typename ArrayT>
+#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ > 900))
+// Force nvcc to squash register to avoid low occupancy
+// in architecture after Hopper
+__global__ void __launch_bounds__(512, 4)
+#else
 __global__ void __launch_bounds__(512)
+#endif
     FusedStackTransposeQuantGPUKernel(ArrayT input_array,
                                       OutT* __restrict__ out,
                                       float* __restrict__ scale,
