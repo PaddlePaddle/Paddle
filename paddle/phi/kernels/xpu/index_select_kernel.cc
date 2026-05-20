@@ -14,13 +14,13 @@
 
 #include "paddle/phi/kernels/index_select_kernel.h"
 
+#include <type_traits>
+#include <vector>
+
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
-
-#include <type_traits>
-#include <vector>
 
 namespace phi {
 

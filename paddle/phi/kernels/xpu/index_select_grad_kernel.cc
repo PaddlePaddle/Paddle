@@ -14,15 +14,16 @@
 
 #include "paddle/phi/kernels/index_select_grad_kernel.h"
 
+#include <algorithm>
+#include <type_traits>
+#include <vector>
+
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/full_kernel.h"
 
-#include <algorithm>
-#include <type_traits>
-#include <vector>
 namespace phi {
 
 template <typename Context, typename IndexT>
@@ -120,7 +121,8 @@ void IndexSelectGradFallback(const Context& dev_ctx,
         index_value += output_dim[dim];
       }
       const T* src = out_grad_cpu.data() + input_start_offset + j * slice_size;
-      T* dst = x_grad_cpu.data() + output_start_offset + index_value * slice_size;
+      T* dst =
+          x_grad_cpu.data() + output_start_offset + index_value * slice_size;
       for (int64_t k = 0; k < slice_size; ++k) {
         dst[k] = static_cast<T>(dst[k] + src[k]);
       }
@@ -196,8 +198,9 @@ void IndexSelectGradKernel(const Context& dev_ctx,
       // XDNN may crash on invalid indices, so match CPU validation first.
       ValidateIndexSelectGradIndex<Context, int>(
           dev_ctx, index, x_grad->dims()[dim]);
-      const int* index_data = index_ptr ? reinterpret_cast<const int*>(index_ptr)
-                                        : index.data<int>();
+      const int* index_data = index_ptr
+                                  ? reinterpret_cast<const int*>(index_ptr)
+                                  : index.data<int>();
       r = xpu::index_select_grad<XPUType, int>(dev_ctx.x_context(),
                                                nullptr,
                                                index_data,
