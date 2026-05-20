@@ -70,8 +70,10 @@ void FusedGemmEpilogueKernel(const Context& dev_ctx,
   fc_info.bias = bias_ptr;
   auto mat_x_dims =
       common::flatten_to_2d(x.dims(), trans_x ? 1 : x.dims().size() - 1);
-  auto mat_y_dims = y.dims();
-  phi::GetFCInfo(mat_x_dims, mat_y_dims, trans_x, trans_y, &fc_info);
+  int64_t m = trans_x ? mat_x_dims[1] : mat_x_dims[0];
+  int64_t n = trans_y ? y.dims()[0] : y.dims()[1];
+  int64_t k = trans_y ? y.dims()[1] : y.dims()[0];
+  fc_info.InitFcInfo(1, m, n, k, trans_x, trans_y, nullptr, nullptr, nullptr);
   int batch_size = fc_info.bs;
   PADDLE_ENFORCE_LE(
       batch_size,
