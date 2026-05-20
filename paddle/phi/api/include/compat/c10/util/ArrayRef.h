@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// #The file has been adapted from pytorch project
-// #Licensed under  BSD-style license -
+// The file has been adapted from pytorch project
+// Licensed under BSD-style license -
 // https://github.com/pytorch/pytorch/blob/main/LICENSE
 
 #pragma once
@@ -152,7 +152,8 @@ class ArrayRef {
   std::vector<T> vec() const { return std::vector<T>(Data, Data + Length); }
 
   const paddle::experimental::IntArray _PD_ToPaddleIntArray() const {
-    return paddle::experimental::IntArray(Data, Length);
+    return paddle::experimental::IntArray(
+        reinterpret_cast<const int64_t*>(Data), Length);
   }
 };
 

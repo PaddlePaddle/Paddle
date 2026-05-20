@@ -50,6 +50,10 @@ set(PHI_DEPS
     cblas
     utf8proc
     common)
+
+if(WITH_SLEEF)
+  list(APPEND PHI_DEPS sleef)
+endif()
 if(WITH_CINN)
   list(APPEND PHI_DEPS ap_phi)
 endif()
@@ -119,6 +123,10 @@ if(WITH_XPU)
   endif()
 endif()
 
+if(WITH_IPU)
+  list(APPEND PHI_DEPS popart-only)
+endif()
+
 if(WITH_DGC)
   list(APPEND PHI_DEPS dgc)
 endif()
@@ -131,6 +139,18 @@ set(PHI_CORE_SRCS
     ${kernels_srcs}
     ${infermeta_srcs}
     ${capi_srcs})
+
+set(CUSTOM_DEVICE_EXTRA_SRCS
+    ""
+    CACHE STRING "Extra custom device sources to compile into phi_core")
+
+if(WITH_CUSTOM_DEVICE_SUB_BUILD)
+  file(GLOB_RECURSE CUSTOM_DEVICE_REPO_SRCS
+       "${PADDLE_SOURCE_DIR}/../common/*.cu"
+       "${PADDLE_SOURCE_DIR}/../common/*.cc")
+  list(APPEND PHI_CORE_SRCS ${CUSTOM_DEVICE_REPO_SRCS}
+       ${CUSTOM_DEVICE_EXTRA_SRCS})
+endif()
 
 set(PHI_GPU_SRCS ${kernels_gpu_srcs})
 
@@ -217,7 +237,10 @@ else()
   endif()
 endif()
 
-set(NVTX3_PATH "${CUDA_INCLUDE_DIRS}/../targets/x86_64-linux/include/nvtx3/")
+include(${PROJECT_SOURCE_DIR}/cmake/architecture.cmake)
+paddle_detect_cuda_target_dir(CUDA_TARGET_DIR)
+set(NVTX3_PATH
+    "${CUDA_TOOLKIT_ROOT_DIR}/targets/${CUDA_TARGET_DIR}/include/nvtx3")
 get_filename_component(NVTX3_PATH "${NVTX3_PATH}" ABSOLUTE)
 
 if(EXISTS "${NVTX3_PATH}")
@@ -312,6 +335,12 @@ set(PHI_LIB
     "${CMAKE_CURRENT_BINARY_DIR}/${PHI_NAME}"
     CACHE FILEPATH "PHI Dummy Library" FORCE)
 
+if(WIN32)
+  set(PHI_LINK
+      "${CMAKE_CURRENT_BINARY_DIR}/phi.lib"
+      CACHE FILEPATH "PHI Import Library" FORCE)
+endif()
+
 string(REPLACE "phi" "phi_core" PHI_CORE_NAME ${PHI_NAME})
 set(PHI_CORE_NAME
     ${PHI_CORE_NAME}
@@ -331,7 +360,7 @@ if(WITH_GPU OR WITH_ROCM)
 endif()
 
 if(MKL_FOUND AND WITH_ONEMKL)
-  if(win32)
+  if(WIN32)
     target_include_directories(phi PRIVATE ${MKL_INCLUDE})
   else()
     target_include_directories(phi_core PRIVATE ${MKL_INCLUDE})
@@ -346,6 +375,25 @@ if(WITH_CUTLASS)
   add_definitions("-DPADDLE_WITH_MEMORY_EFFICIENT_ATTENTION"
   )# for memory_efficient_attention.h
 endif()
+# PADDLE_WARP_SIZE: warp size for the target GPU platform.
+# Default 32 (NVIDIA). ROCm (AMD/Hygon) wavefront size is 64.
+# Override via -DPADDLE_WARP_SIZE for other platforms.
+if(NOT DEFINED PADDLE_WARP_SIZE)
+  if(WITH_ROCM)
+    set(PADDLE_WARP_SIZE 64)
+  else()
+    set(PADDLE_WARP_SIZE 32)
+  endif()
+endif()
+math(EXPR PADDLE_WARP_MASK "${PADDLE_WARP_SIZE} - 1")
+if(PADDLE_WARP_SIZE EQUAL 64)
+  set(PADDLE_WARP_SHIFT 6)
+else()
+  set(PADDLE_WARP_SHIFT 5)
+endif()
+add_definitions(-DPADDLE_WARP_SIZE=${PADDLE_WARP_SIZE})
+add_definitions(-DPADDLE_WARP_MASK=${PADDLE_WARP_MASK})
+add_definitions(-DPADDLE_WARP_SHIFT=${PADDLE_WARP_SHIFT})
 if(WITH_FLASHATTN)
   add_dependencies(phi flashattn)
 endif()

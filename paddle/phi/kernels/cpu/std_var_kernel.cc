@@ -35,25 +35,21 @@ void VarKernel(const Context& dev_ctx,
                double correction,
                DenseTensor* out) {
   if (x.numel() == 0) {
-    phi::Full<T, Context>(dev_ctx,
-                          phi::IntArray(common::vectorize(out->dims())),
-                          static_cast<T>(NAN),
-                          out);
+    Full<T, Context>(dev_ctx, out->dims(), static_cast<T>(NAN), out);
     return;
   }
   // 1. Mean
   // Use keepdim=true for broadcasting in subtraction
-  DenseTensor mean_val = phi::Mean<T, Context>(dev_ctx, x, axis, true);
+  DenseTensor mean_val = Mean<T, Context>(dev_ctx, x, axis, true);
 
   // 2. Subtract: x - mean
-  DenseTensor sub_res = phi::Subtract<T, Context>(dev_ctx, x, mean_val);
+  DenseTensor sub_res = Subtract<T, Context>(dev_ctx, x, mean_val);
 
   // 3. Square: (x - mean)^2
-  DenseTensor sq_res = phi::Multiply<T, Context>(dev_ctx, sub_res, sub_res);
+  DenseTensor sq_res = Multiply<T, Context>(dev_ctx, sub_res, sub_res);
 
   // 4. Sum: Sum((x - mean)^2)
-  DenseTensor sum =
-      phi::Sum<T, Context>(dev_ctx, sq_res, axis, x.dtype(), keepdim);
+  DenseTensor sum = Sum<T, Context>(dev_ctx, sq_res, axis, x.dtype(), keepdim);
 
   // 5. Divide by (N - correction)
   double n = static_cast<double>(x.numel()) / static_cast<double>(out->numel());
@@ -63,8 +59,8 @@ void VarKernel(const Context& dev_ctx,
   }
 
   DenseTensor scale_val =
-      phi::FullLike<T, Context>(dev_ctx, *out, static_cast<T>(divisor));
-  phi::MultiplyKernel<T, Context>(dev_ctx, sum, scale_val, out);
+      FullLike<T, Context>(dev_ctx, *out, static_cast<T>(divisor));
+  MultiplyKernel<T, Context>(dev_ctx, sum, scale_val, out);
 }
 
 template <typename T, typename Context>
@@ -76,10 +72,7 @@ void StdKernel(const Context& dev_ctx,
                double correction,
                DenseTensor* out) {
   if (x.numel() == 0) {
-    phi::Full<T, Context>(dev_ctx,
-                          phi::IntArray(common::vectorize(out->dims())),
-                          static_cast<T>(NAN),
-                          out);
+    Full<T, Context>(dev_ctx, out->dims(), static_cast<T>(NAN), out);
     return;
   }
   VarKernel<T, Context>(dev_ctx, x, axis, keepdim, unbiased, correction, out);

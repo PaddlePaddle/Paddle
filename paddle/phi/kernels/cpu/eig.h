@@ -52,7 +52,7 @@ static DenseTensor Fill(const Context& dev_ctx,
                         std::vector<int64_t> shape,
                         T fill_value) {
   DenseTensor ret;
-  ret.Resize(common::make_ddim(shape));
+  ret.Resize(shape);
   dev_ctx.template Alloc<T>(&ret);
   funcs::SetConstant<Context, T>()(dev_ctx, &ret, fill_value);
   return ret;
@@ -135,7 +135,7 @@ void TransposeTwoAxis(const DenseTensor& input,
   dev_ctx.template Alloc<T>(transposed_input);
 
 #ifdef PADDLE_WITH_XPU
-  phi::TransposeKernel<T, Context>(dev_ctx, input, permute, transposed_input);
+  TransposeKernel<T, Context>(dev_ctx, input, permute, transposed_input);
 #else
   funcs::TransCompute<Context, T>(
       input.dims().size(), dev_ctx, input, transposed_input, permute);
@@ -171,7 +171,7 @@ void LapackEig(DenseTensor* input,
   DenseTensor rwork;
   phi::dtype::Real<T>* rwork_data = nullptr;
 
-  rwork.Resize(common::make_ddim({lda * 2}));
+  rwork.Resize({lda * 2});
   rwork_data = dev_ctx.template Alloc<phi::dtype::Real<T>>(&rwork);
 
   // call lapackEig once to compute the size of work;
@@ -194,7 +194,7 @@ void LapackEig(DenseTensor* input,
   lwork = std::max<int>(
       1, static_cast<int>(phi::dtype::Real<T>(computed_work_size)));
   DenseTensor work;
-  work.Resize(common::make_ddim({lwork}));
+  work.Resize({lwork});
   T* work_data = dev_ctx.template Alloc<T>(&work);
 
   for (auto i = 0; i < batch_count; ++i) {
@@ -273,10 +273,10 @@ void MagmaEig(const Context& dev_ctx,
   DenseTensor rwork;
   phi::dtype::Real<T>* rwork_data = nullptr;
 
-  rwork.Resize(common::make_ddim({lda * 2}));
+  rwork.Resize({lda * 2});
   auto cpu_place = CPUPlace();
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-  auto* cpu_ctx = static_cast<phi::CPUContext*>(pool.Get(cpu_place));
+  auto* cpu_ctx = static_cast<CPUContext*>(pool.Get(cpu_place));
   rwork_data = (*cpu_ctx).template Alloc<phi::dtype::Real<T>>(&rwork);
 
   T computed_work_size;
@@ -303,7 +303,7 @@ void MagmaEig(const Context& dev_ctx,
   lwork = std::max<magma_int_t>(
       1, static_cast<magma_int_t>(phi::dtype::Real<T>(computed_work_size)));
   DenseTensor work;
-  work.Resize(common::make_ddim({lwork}));
+  work.Resize({lwork});
   T* work_data = (*cpu_ctx).template Alloc<T>(&work);
 
   for (auto i = 0; i < batch_count; ++i) {
@@ -336,7 +336,7 @@ void ApplyEigKernelMagma(const Context& dev_ctx,
                          const DenseTensor& input,
                          DenseTensor* real_w_cpu,
                          DenseTensor* real_v_cpu) {
-  // transfer to column-major memory layout i.e. common::make_ddim from
+  // transfer to column-major memory layout i.e. make_ddim from
   // transposed_input: [*,row,col]->[*,col,row]
   DenseTensor input_column_major_gpu = TransposeLast2Dim<T>(dev_ctx, input);
   int num_dims = input.dims().size();
@@ -347,14 +347,14 @@ void ApplyEigKernelMagma(const Context& dev_ctx,
   vectors_row_major_cpu.Resize(input.dims());
   auto cpu_place = CPUPlace();
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-  auto* cpu_ctx = static_cast<phi::CPUContext*>(pool.Get(cpu_place));
+  auto* cpu_ctx = static_cast<CPUContext*>(pool.Get(cpu_place));
   (*cpu_ctx).template Alloc<T>(&vectors_row_major_cpu);
 
   MagmaEig<T, Context>(
       dev_ctx, input_column_major_gpu, real_w_cpu, &vectors_row_major_cpu);
 
   // transfer column-major layout back
-  TransposeTwoAxis<T, phi::CPUContext>(
+  TransposeTwoAxis<T, CPUContext>(
       vectors_row_major_cpu, real_v_cpu, num_dims - 1, num_dims - 2, *cpu_ctx);
 }
 
@@ -369,7 +369,7 @@ void ApplyEigKernel(const DenseTensor& input,
   DenseTensor vectors_row_major;
   int num_dims = input.dims().size();
 
-  // transfer to column-major memory layout i.e. common::make_ddim from
+  // transfer to column-major memory layout i.e. make_ddim from
   // transposed_input: [batch,row,col]->[batch,col,row]
   TransposeTwoAxis<T, Context>(
       input, &input_column_major, num_dims - 1, num_dims - 2, dev_ctx);

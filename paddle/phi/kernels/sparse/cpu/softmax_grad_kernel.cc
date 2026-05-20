@@ -99,7 +99,7 @@ void SoftmaxCooGradCPUKernel(const Context& dev_ctx,
   auto out_values = out.values();
   const auto out_dims = out.dims();
   auto sparse_dim = out.sparse_dim();
-  auto sizes = common::vectorize<IntT>(out_dims);
+  auto sizes = vectorize<IntT>(out_dims);
   auto grad_indices = dout.indices();
   auto grad_values = dout.values();
   auto grad_nnz = dout.nnz();
@@ -135,13 +135,13 @@ void SoftmaxCooGradCPUKernel(const Context& dev_ctx,
                                  std::multiplies<>());
 
   DenseTensor values_2(*values);
-  values_2.Resize(common::make_ddim({nnz, nvalues}));
+  values_2.Resize({nnz, nvalues});
 
   DenseTensor out_values_2(out_values);
-  out_values_2.Resize(common::make_ddim({nnz, nvalues}));
+  out_values_2.Resize({nnz, nvalues});
 
   DenseTensor grad_values_2(grad_values);
-  grad_values_2.Resize(common::make_ddim({nnz, nvalues}));
+  grad_values_2.Resize({nnz, nvalues});
   std::map<IntT, std::vector<IntT>> pools;
   funcs::sparse::GetPoolsSoftmax(out_indices, sizes, dim, &pools);
 

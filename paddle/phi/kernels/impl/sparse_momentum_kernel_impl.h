@@ -29,7 +29,7 @@
 namespace phi {
 
 template <typename T>
-using MultiPrecisionType = typename phi::dtype::MPTypeTrait<T>::Type;
+using MultiPrecisionType = typename MPTypeTrait<T>::Type;
 
 enum class RegularizationType {
   kNONE = 0,
@@ -354,7 +354,7 @@ void InnerCompute(const Context& dev_ctx,
         nullptr,
         static_cast<int>(num_index))));
     auto d_temp_storage =
-        phi::memory_utils::Alloc(dev_ctx.GetPlace(), temp_storage_bytes);
+        memory_utils::Alloc(dev_ctx.GetPlace(), temp_storage_bytes);
     PADDLE_ENFORCE_GPU_SUCCESS((cub::DeviceRadixSort::SortPairs<IndexT, IndexT>(
         d_temp_storage->ptr(),
         temp_storage_bytes,
@@ -436,7 +436,7 @@ void SparseMomentumOpKernel(const Context& dev_ctx,
   if (multi_precision) {
     if (use_nesterov) {
       auto update_method = UseNesterov<MPDType>();
-      if (index_type == phi::DataType::INT32) {
+      if (index_type == DataType::INT32) {
         InnerCompute<T, Context, MPDType, int, UseNesterov<MPDType>>(
             dev_ctx,
             param,
@@ -479,7 +479,7 @@ void SparseMomentumOpKernel(const Context& dev_ctx,
       }
     } else {
       auto update_method = NoNesterov<MPDType>();
-      if (index_type == phi::DataType::INT32) {
+      if (index_type == DataType::INT32) {
         InnerCompute<T, Context, MPDType, int, NoNesterov<MPDType>>(
             dev_ctx,
             param,
@@ -524,7 +524,7 @@ void SparseMomentumOpKernel(const Context& dev_ctx,
   } else {
     if (use_nesterov) {
       auto update_method = UseNesterov<T>();
-      if (index_type == phi::DataType::INT32) {
+      if (index_type == DataType::INT32) {
         InnerCompute<T, Context, T, int, UseNesterov<T>>(dev_ctx,
                                                          param,
                                                          grad,
@@ -566,7 +566,7 @@ void SparseMomentumOpKernel(const Context& dev_ctx,
       }
     } else {
       auto update_method = NoNesterov<T>();
-      if (index_type == phi::DataType::INT32) {
+      if (index_type == DataType::INT32) {
         InnerCompute<T, Context, T, int, NoNesterov<T>>(dev_ctx,
                                                         param,
                                                         grad,

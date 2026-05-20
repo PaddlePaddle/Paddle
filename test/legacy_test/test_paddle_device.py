@@ -104,6 +104,24 @@ class TestDevice(unittest.TestCase):
         with self.assertRaises(ValueError):
             Device("abc:0")
 
+    def test_getattr_forward_to_place(self):
+        # Test that unknown attributes are forwarded to paddle.Place
+        d_cpu = Device("cpu")
+        self.assertTrue(d_cpu.is_cpu_place())
+        self.assertFalse(d_cpu.is_gpu_place())
+        self.assertFalse(d_cpu.is_xpu_place())
+
+        # Test CUDA device methods
+        if paddle.device.is_available() and paddle.is_compiled_with_cuda():
+            d_cuda = Device("cuda:0")
+            self.assertFalse(d_cuda.is_cpu_place())
+            self.assertTrue(d_cuda.is_gpu_place())
+            self.assertEqual(d_cuda.gpu_device_id(), 0)
+
+            d_gpu = Device("gpu:0")
+            self.assertTrue(d_gpu.is_gpu_place())
+            self.assertEqual(d_gpu.gpu_device_id(), 0)
+
 
 if __name__ == "__main__":
     unittest.main()

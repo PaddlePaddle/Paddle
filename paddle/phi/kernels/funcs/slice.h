@@ -45,19 +45,15 @@ void EigenSliceWrapper(const Context& dev_ctx,
                         "argument must have the same length as input rank."));
   auto eigen_place_ptr = dev_ctx.eigen_device();
   auto eigen_place = *eigen_place_ptr;
-  auto out_t = phi::EigenTensor<T, D>::From(*out, out->dims());
-  auto in_t = phi::EigenTensor<T, D>::From(*in, in->dims());
-  Eigen::DSizes<int, D> offsets_32bit, extents_32bit;
+  auto out_t = EigenTensor<T, D>::From(*out, out->dims());
+  auto in_t = EigenTensor<T, D>::From(*in, in->dims());
+  Eigen::DSizes<int64_t, D> offsets_64bit, extents_64bit;
   for (size_t i = 0; i < D; i++) {
-    offsets_32bit[i] = start[i];
-    extents_32bit[i] = end[i];
+    offsets_64bit[i] = start[i];
+    extents_64bit[i] = end[i];
   }
   EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
-      eigen_place,
-      phi::To32BitIndex(out_t),
-      phi::To32BitIndex(in_t),
-      offsets_32bit,
-      extents_32bit);
+      eigen_place, out_t, in_t, offsets_64bit, extents_64bit);
 }
 
 #define SLICE_RANK_CASE(N)                                                \
@@ -74,7 +70,7 @@ DenseTensor Slice(const Context& dev_ctx,
                   std::vector<int> ends) {
   DenseTensor ret;
   std::vector<int> new_axes = axes;
-  std::vector<int> out_shape = common::vectorize<int>(x.dims());
+  std::vector<int> out_shape = vectorize<int>(x.dims());
   size_t rank = out_shape.size();
   PADDLE_ENFORCE_EQ(
       axes.size(),
@@ -105,7 +101,7 @@ DenseTensor Slice(const Context& dev_ctx,
     offset[new_axes[i]] = starts[i];
     extends[new_axes[i]] = ends[i] - starts[i];
   }
-  ret.Resize(common::make_ddim(out_shape));
+  ret.Resize(out_shape);
   dev_ctx.template Alloc<T>(&ret);
   switch (rank) {
     SLICE_RANK_CASE(1);
@@ -133,28 +129,26 @@ static void Slice(const Context& dev_ctx,
                   const std::vector<int64_t>& axes_vec) {
   auto& place = *dev_ctx.eigen_device();
   auto in_dims = input->dims();
-  auto offsets = Eigen::DSizes<Eigen::DenseIndex, D>();
-  auto extents = Eigen::DSizes<Eigen::DenseIndex, D>();
+  auto offsets = Eigen::DSizes<int64_t, D>();
+  auto extents = Eigen::DSizes<int64_t, D>();
   for (size_t i = 0; i < D; ++i) {
     offsets[i] = 0;
     extents[i] = in_dims[i];
   }
 
-  std::vector<int64_t> out_shape_vec = common::vectorize(in_dims);
+  std::vector<int64_t> out_shape_vec = vectorize(in_dims);
   for (size_t i = 0; i < axes_vec.size(); ++i) {
     offsets[axes_vec[i]] = begin_vec[i];
     extents[axes_vec[i]] = end_vec[i] - begin_vec[i];
     out_shape_vec[axes_vec[i]] = end_vec[i] - begin_vec[i];
   }
 
-  DDim out_dims(common::make_ddim(out_shape_vec));
+  DDim out_dims(make_ddim(out_shape_vec));
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
 
-  auto in_t =
-      EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(*input);
-  auto out_t = EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-      *out, out_dims);
+  auto in_t = EigenTensor<T, D, Eigen::RowMajor>::From(*input);
+  auto out_t = EigenTensor<T, D, Eigen::RowMajor>::From(*out, out_dims);
 
   funcs::EigenSlice<std::decay_t<decltype(place)>, T, D>::Eval(
       place, out_t, in_t, offsets, extents);

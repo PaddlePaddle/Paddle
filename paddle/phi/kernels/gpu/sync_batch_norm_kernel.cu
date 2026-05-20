@@ -76,14 +76,14 @@ void SyncBatchNormKernel(const Context& dev_ctx,
   const int block = 512;
   int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
 
-  phi::Allocator::AllocationPtr alloc_ptr{nullptr};
+  Allocator::AllocationPtr alloc_ptr{nullptr};
 
   if (test_mode) {
     mean_data = mean.template data<BatchNormParamType<T>>();
     var_data = variance.template data<BatchNormParamType<T>>();
   } else {
     // x, x^2, 1, here 1 is used to calc device num
-    // device num also can be got from phi::DeviceContextPool
+    // device num also can be got from DeviceContextPool
     const int bytes = (C * 2 + 1) * sizeof(BatchNormParamType<T>);
     DenseTensor stats_tensor;
     stats_tensor.Resize({static_cast<int64_t>(bytes)});

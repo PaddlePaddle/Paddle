@@ -402,9 +402,9 @@ static inline int GetNumUsedThreads(const int max_threads_per_seq,
 }
 
 template <typename T>
-class BeamSearchFunctor<phi::GPUContext, T> {
+class BeamSearchFunctor<GPUContext, T> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor* pre_ids,
                   const DenseTensor* pre_scores,
                   const DenseTensor* ids,
@@ -416,7 +416,7 @@ class BeamSearchFunctor<phi::GPUContext, T> {
                   size_t beam_size,
                   int end_id,
                   bool is_accumulated) {
-    auto abs_lod = phi::ToAbsOffset(scores->lod());
+    auto abs_lod = ToAbsOffset(scores->lod());
 
     const int64_t* pre_ids_data = pre_ids->data<int64_t>();
     const float* pre_scores_data = pre_scores->data<float>();
@@ -431,7 +431,7 @@ class BeamSearchFunctor<phi::GPUContext, T> {
 
     // Reserve a big enough memory.
     auto selected_dims =
-        common::make_ddim({static_cast<int64_t>(num_seqs * beam_size), 1});
+        make_ddim({static_cast<int64_t>(num_seqs * beam_size), 1});
     selected_ids->Resize(selected_dims);
     int64_t* selected_ids_data = dev_ctx.template Alloc<int64_t>(selected_ids);
     selected_scores->Resize(selected_dims);
@@ -443,7 +443,7 @@ class BeamSearchFunctor<phi::GPUContext, T> {
     int* parent_idx_data =
         parent_idx ? dev_ctx.template Alloc<int>(parent_idx) : nullptr;
 
-    phi::LegacyLoD selected_lod(2);
+    LegacyLoD selected_lod(2);
     selected_lod[0].assign(abs_lod[level].begin(), abs_lod[level].end());
     selected_lod[1].resize(scores->dims()[0] + 1);
     phi::MixVector<size_t> mix_vector(&selected_lod[1]);
@@ -522,7 +522,7 @@ class BeamSearchFunctor<phi::GPUContext, T> {
     selected_scores->set_lod(selected_lod);
     if (selected_lod[1].back() < num_seqs * beam_size) {
       auto final_selected_dims =
-          common::make_ddim({static_cast<int64_t>(selected_lod[1].back()), 1});
+          make_ddim({static_cast<int64_t>(selected_lod[1].back()), 1});
       selected_ids->Resize(final_selected_dims);
       selected_scores->Resize(final_selected_dims);
       if (parent_idx) {
@@ -532,10 +532,10 @@ class BeamSearchFunctor<phi::GPUContext, T> {
   }
 };
 
-template class BeamSearchFunctor<phi::GPUContext, int>;
-template class BeamSearchFunctor<phi::GPUContext, int64_t>;
-template class PADDLE_API BeamSearchFunctor<phi::GPUContext, float>;
-template class BeamSearchFunctor<phi::GPUContext, double>;
+template class BeamSearchFunctor<GPUContext, int>;
+template class BeamSearchFunctor<GPUContext, int64_t>;
+template class PADDLE_API BeamSearchFunctor<GPUContext, float>;
+template class BeamSearchFunctor<GPUContext, double>;
 
 }  // namespace math
 }  // namespace phi

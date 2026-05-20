@@ -53,6 +53,9 @@ build_doc/
 *.log
 
 .vscode
+.comate
+.claude/*
+!.claude/skills
 .idea
 .project
 .cproject
@@ -66,7 +69,9 @@ Makefile
 third_party/
 *~
 bazel-*
-
+.humanize
+.codex
+.paddle-agent
 
 build_*
 # clion workspace.
@@ -121,3 +126,6 @@ python/paddle/base/dygraph/generated_tensor_methods_patch.py
 #fp8
 paddle/fluid/fp8/deep_gemm/include/cute/*
 paddle/fluid/fp8/deep_gemm/include/cutlass/*
+paddle/cinn/runtime/custom_device/float16.h
+paddle/cinn/runtime/custom_device/bfloat16.h
+paddle/cinn/runtime/custom_device/float8e4m3.h

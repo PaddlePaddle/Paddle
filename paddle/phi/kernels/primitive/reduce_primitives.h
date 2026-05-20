@@ -14,13 +14,17 @@ limitations under the License. */
 
 #pragma once
 
+// CUDA and HIP use ReduceGpuKernel API
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
 #include <complex>
+#include <cstring>
 #include <type_traits>
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
-// #include "paddle/phi/kernels/primitive/compute_primitives.h"
+#include "paddle/phi/kernels/funcs/p_norm_utils.h"
 
 namespace phi {
 namespace kps {
@@ -37,13 +41,51 @@ struct SumOps {
     return static_cast<OutT>(a);
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   inline DEVICE MPType shfl_sync(unsigned mask, MPType data, int offset) const {
     return phi::backends::gpu::CudaShuffleDownSync(mask, data, offset);
   }
-#endif
 
   SumOps() {}
+};
+
+namespace detail {
+
+template <typename T>
+HOSTDEVICE inline bool IsNan(T val) {
+  if constexpr (std::is_same_v<T, float> || std::is_same_v<T, double>) {
+    return isnan(val);
+  }
+  if constexpr (std::is_same_v<T, phi::dtype::float16> ||
+                std::is_same_v<T, phi::dtype::bfloat16> ||
+                std::is_same_v<T, phi::dtype::complex<float>> ||
+                std::is_same_v<T, phi::dtype::complex<double>>) {
+    return phi::dtype::isnan(val);
+  }
+  return false;  // int or bool
+}
+
+}  // namespace detail
+
+template <typename InT, typename MPType = InT, typename OutT = MPType>
+struct NansumOps {
+  inline DEVICE MPType compute(MPType a, InT b) const {
+    return reduce(a, static_cast<MPType>(b));
+  }
+
+  inline DEVICE MPType reduce(MPType a, MPType b) const {
+    if (detail::IsNan(b)) return a;
+    return a + b;
+  }
+
+  inline DEVICE OutT post_process(MPType a) const {
+    return static_cast<OutT>(a);
+  }
+
+  inline DEVICE MPType shfl_sync(unsigned mask, MPType data, int offset) const {
+    return phi::backends::gpu::CudaShuffleDownSync(mask, data, offset);
+  }
+
+  NansumOps() {}
 };
 
 template <typename InT, typename MPType = InT, typename OutT = MPType>
@@ -58,11 +100,9 @@ struct ProdOps {
     return static_cast<OutT>(a);
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   inline DEVICE MPType shfl_sync(unsigned mask, MPType data, int offset) const {
     return phi::backends::gpu::CudaShuffleDownSync(mask, data, offset);
   }
-#endif
 
   ProdOps() {}
 };
@@ -81,11 +121,9 @@ struct MeanOps {
     return static_cast<OutT>(a * factor);
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   inline DEVICE MPType shfl_sync(unsigned mask, MPType data, int offset) const {
     return phi::backends::gpu::CudaShuffleDownSync(mask, data, offset);
   }
-#endif
 
   explicit MeanOps(MPType factor) : factor(factor) {}
 };
@@ -97,9 +135,7 @@ struct MinOps {
   }
 
   inline DEVICE MPType reduce(MPType a, MPType b) const {
-    if constexpr ((std::is_floating_point<InT>::value) &&
-                  (!(std::is_same<InT, int32_t>::value ||
-                     (std::is_same<InT, int64_t>::value)))) {
+    if constexpr (std::is_floating_point<InT>::value) {
       if (isnan(a)) {
         return a;
       }
@@ -114,11 +150,9 @@ struct MinOps {
     return static_cast<OutT>(a);
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   inline DEVICE MPType shfl_sync(unsigned mask, MPType data, int offset) const {
     return phi::backends::gpu::CudaShuffleDownSync(mask, data, offset);
   }
-#endif
 
   MinOps() {}
 };
@@ -149,9 +183,7 @@ struct MaxOps {
   }
 
   inline DEVICE MPType reduce(MPType a, MPType b) const {
-    if constexpr ((std::is_floating_point<InT>::value) &&
-                  (!(std::is_same<InT, int32_t>::value ||
-                     (std::is_same<InT, int64_t>::value)))) {
+    if constexpr (std::is_floating_point<InT>::value) {
       if (isnan(a)) {
         return a;
       }
@@ -166,11 +198,9 @@ struct MaxOps {
     return static_cast<OutT>(a);
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   inline DEVICE MPType shfl_sync(unsigned mask, MPType data, int offset) const {
     return phi::backends::gpu::CudaShuffleDownSync(mask, data, offset);
   }
-#endif
 
   MaxOps() {}
 };
@@ -193,6 +223,66 @@ struct MaxOps<bool, bool, bool> {
 };
 
 template <typename InT, typename MPType = InT, typename OutT = MPType>
+struct AbsMaxOps {
+  inline DEVICE MPType compute(MPType a, InT b) const {
+    MPType b_ = static_cast<MPType>(inline_abs(b));
+    return reduce(a, b_);
+  }
+
+  inline DEVICE MPType reduce(MPType a, MPType b) const {
+    if constexpr (std::is_floating_point<InT>::value) {
+      if (isnan(a)) {
+        return a;
+      }
+      if (isnan(b)) {
+        return b;
+      }
+    }
+    return (a > b ? a : b);
+  }
+
+  inline DEVICE OutT post_process(MPType a) const {
+    return static_cast<OutT>(a);
+  }
+
+  inline DEVICE MPType shfl_sync(unsigned mask, MPType data, int offset) const {
+    return phi::backends::gpu::CudaShuffleDownSync(mask, data, offset);
+  }
+
+  AbsMaxOps() {}
+};
+
+template <typename InT, typename MPType = InT, typename OutT = MPType>
+struct AbsMinOps {
+  inline DEVICE MPType compute(MPType a, InT b) const {
+    MPType b_ = static_cast<MPType>(inline_abs(b));
+    return reduce(a, b_);
+  }
+
+  inline DEVICE MPType reduce(MPType a, MPType b) const {
+    if constexpr (std::is_floating_point<InT>::value) {
+      if (isnan(a)) {
+        return a;
+      }
+      if (isnan(b)) {
+        return b;
+      }
+    }
+    return (a < b ? a : b);
+  }
+
+  inline DEVICE OutT post_process(MPType a) const {
+    return static_cast<OutT>(a);
+  }
+
+  inline DEVICE MPType shfl_sync(unsigned mask, MPType data, int offset) const {
+    return phi::backends::gpu::CudaShuffleDownSync(mask, data, offset);
+  }
+
+  AbsMinOps() {}
+};
+
+template <typename InT, typename MPType = InT, typename OutT = MPType>
 struct LogicalAndOps {
   inline DEVICE MPType compute(MPType a, InT b) const {
     return reduce(a, static_cast<MPType>(b));
@@ -204,11 +294,9 @@ struct LogicalAndOps {
     return static_cast<OutT>(a);
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   inline DEVICE MPType shfl_sync(unsigned mask, MPType data, int offset) const {
     return phi::backends::gpu::CudaShuffleDownSync(mask, data, offset);
   }
-#endif
 
   LogicalAndOps() {}
 };
@@ -225,13 +313,97 @@ struct LogicalOrOps {
     return static_cast<OutT>(a);
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   inline DEVICE MPType shfl_sync(unsigned mask, MPType data, int offset) const {
     return phi::backends::gpu::CudaShuffleDownSync(mask, data, offset);
   }
-#endif
 
   LogicalOrOps() {}
 };
+
+template <typename InT, typename MPType = InT, typename OutT = MPType>
+struct L0NormOps {
+  inline DEVICE MPType compute(MPType a, InT b) const {
+    MPType b_ = (b == static_cast<InT>(0)) ? static_cast<MPType>(0)
+                                           : static_cast<MPType>(1);
+    return reduce(a, b_);
+  }
+
+  inline DEVICE MPType reduce(MPType a, MPType b) const { return (a + b); }
+
+  inline DEVICE OutT post_process(MPType a) const {
+    return static_cast<OutT>(a);
+  }
+
+  inline DEVICE MPType shfl_sync(unsigned mask, MPType data, int offset) const {
+    return phi::backends::gpu::CudaShuffleDownSync(mask, data, offset);
+  }
+
+  L0NormOps() {}
+};
+
+template <typename InT, typename MPType = InT, typename OutT = MPType>
+struct L1NormOps {
+  inline DEVICE MPType compute(MPType a, InT b) const {
+    MPType b_ = static_cast<MPType>(inline_abs(b));
+    return reduce(a, b_);
+  }
+
+  inline DEVICE MPType reduce(MPType a, MPType b) const { return (a + b); }
+
+  inline DEVICE OutT post_process(MPType a) const {
+    return static_cast<OutT>(a);
+  }
+
+  inline DEVICE MPType shfl_sync(unsigned mask, MPType data, int offset) const {
+    return phi::backends::gpu::CudaShuffleDownSync(mask, data, offset);
+  }
+
+  L1NormOps() {}
+};
+
+template <typename InT, typename MPType = InT, typename OutT = MPType>
+struct L2NormOps {
+  inline DEVICE MPType compute(MPType a, InT b) const {
+    MPType b_ = static_cast<MPType>(b) * static_cast<MPType>(b);
+    return reduce(a, b_);
+  }
+
+  inline DEVICE MPType reduce(MPType a, MPType b) const { return (a + b); }
+
+  inline DEVICE OutT post_process(MPType a) const {
+    return static_cast<OutT>(std::sqrt(a));
+  }
+
+  inline DEVICE MPType shfl_sync(unsigned mask, MPType data, int offset) const {
+    return phi::backends::gpu::CudaShuffleDownSync(mask, data, offset);
+  }
+
+  L2NormOps() {}
+};
+
+template <typename InT, typename MPType = InT, typename OutT = MPType>
+struct GenericPNormOps {
+  MPType norm_;
+
+  inline DEVICE MPType compute(MPType a, InT b) const {
+    MPType b_ = std::pow(static_cast<MPType>(inline_abs(b)), norm_);
+    return reduce(a, b_);
+  }
+
+  inline DEVICE MPType reduce(MPType a, MPType b) const { return (a + b); }
+
+  inline DEVICE OutT post_process(MPType a) const {
+    return static_cast<OutT>(std::pow(a, static_cast<MPType>(1.0) / norm_));
+  }
+
+  inline DEVICE MPType shfl_sync(unsigned mask, MPType data, int offset) const {
+    return phi::backends::gpu::CudaShuffleDownSync(mask, data, offset);
+  }
+
+  explicit GenericPNormOps(MPType p_norm) : norm_(p_norm) {}
+};
+
 }  // namespace kps
 }  // namespace phi
+
+#endif

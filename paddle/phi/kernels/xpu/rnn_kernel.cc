@@ -46,7 +46,7 @@ void RnnKernel(const Context& dev_ctx,
   dropout_state->Resize(out->dims());
   dev_ctx.template Alloc<uint8_t>(dropout_state);
 
-  funcs::SetConstant<phi::XPUContext, uint8_t> ones;
+  funcs::SetConstant<XPUContext, uint8_t> ones;
   ones(dev_ctx, dropout_state, static_cast<uint8_t>(1));
 
   PADDLE_ENFORCE_EQ(
@@ -119,12 +119,12 @@ void RnnKernel(const Context& dev_ctx,
   bool has_seq_length = sequence_length.is_initialized();
 
   if (has_seq_length) {
-    if (sequence_length->dtype() == phi::DataType::INT32) {
+    if (sequence_length->dtype() == DataType::INT32) {
       std::vector<int> tensor_int32 =
           phi::GetVectorFromTensor<int>(sequence_length.get_ptr());
       seq_len_tensor =
           std::vector<int64_t>(tensor_int32.begin(), tensor_int32.end());
-    } else {  // phi::DataType::INT64
+    } else {  // DataType::INT64
       seq_len_tensor =
           phi::GetVectorFromTensor<int64_t>(sequence_length.get_ptr());
     }

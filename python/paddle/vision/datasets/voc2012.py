@@ -71,7 +71,7 @@ class VOC2012(Dataset[tuple["_ImageDataType", "npt.NDArray[Any]"]]):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +TIMEOUT(120)
             >>> import itertools
@@ -113,7 +113,7 @@ class VOC2012(Dataset[tuple["_ImageDataType", "npt.NDArray[Any]"]]):
 
             >>> for img, label in itertools.islice(iter(voc2012_test), 5):  # only show first 5 images
             ...     # do something with img and label
-            ...     print(type(img), img.shape) # type: ignore
+            ...     print(type(img), img.shape)  # type: ignore
             ...     # <class 'paddle.Tensor'> [3, 281, 500]
             ...     print(type(label), label.shape)
             ...     # <class 'numpy.ndarray'> (281, 500)

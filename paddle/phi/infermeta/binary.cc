@@ -191,32 +191,9 @@ void ArrayReadInferMeta(const MetaTensor& array,
 }
 
 void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
-  const auto& x_dims = x.dims();
-  const auto& y_dims = y.dims();
-
-  PADDLE_ENFORCE_EQ(
-      x_dims.size(),
-      y_dims.size(),
-      common::errors::InvalidArgument("The rank (%d) of X shall be same as "
-                                      "rank (%d) of Y.",
-                                      x_dims.size(),
-                                      y_dims.size()));
-
-  if (x_dims.size() > 0)
-    PADDLE_ENFORCE_LE(x_dims[0],
-                      y_dims[0],
-                      common::errors::InvalidArgument(
-                          "The count (%d) of elements of X shall not "
-                          "greater than count (%d) of elements of Y.",
-                          x_dims[0],
-                          y_dims[0]));
-
-  out->share_meta(x);
-  if (x.dtype() == DataType::INT32 || x.dtype() == DataType::INT64 ||
-      y.dtype() == DataType::INT32 || y.dtype() == DataType::INT64) {
+  ElementwiseInferMeta(x, y, out);
+  if (out->dtype() == DataType::INT32 || out->dtype() == DataType::INT64) {
     out->set_dtype(DataType::FLOAT64);
-  } else {
-    out->set_dtype(x.dtype());
   }
 }
 
@@ -555,15 +532,15 @@ void ComplexInferMeta(const MetaTensor& x,
 void ConvInferMeta(const MetaTensor& input,
                    const MetaTensor& filter,
                    const std::vector<int>& strides,
-                   const std::vector<int>& paddings_t,
+                   const std::vector<int>& paddings,
                    const std::string& padding_algorithm,
-                   const std::vector<int>& dilations_t,
+                   const std::vector<int>& dilations,
                    int groups,
                    const std::string& data_format,
                    MetaTensor* out,
                    MetaConfig config) {
-  std::vector<int> paddings = paddings_t;
-  std::vector<int> dilations = dilations_t;
+  std::vector<int> paddings_ = paddings;
+  std::vector<int> dilations_ = dilations;
   auto in_dims = input.dims();
   auto filter_dims = filter.dims();
   int dilation_size = static_cast<int>(dilations.size());
@@ -667,6 +644,18 @@ void ConvInferMeta(const MetaTensor& input,
         0,
         common::errors::InvalidArgument(
             "the size of filter at axis 0 should be greater than 0"));
+    for (int i = 2; i < filter_dims.size(); ++i) {
+      PADDLE_ENFORCE_GT(
+          filter_dims[i],
+          0,
+          common::errors::InvalidArgument(
+              "The kernel size of Op(Conv) should be greater than 0, but "
+              "received kernel size at dimension %d is %d. The filter's shape "
+              "is [%s].",
+              i,
+              filter_dims[i],
+              filter_dims));
+    }
   }
 
   DDim in_data_dims;
@@ -685,7 +674,7 @@ void ConvInferMeta(const MetaTensor& input,
 
   std::vector<int> ksize = vectorize<int>(filter_data_dims);
   phi::UpdatePaddingAndDilation(
-      &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
+      &paddings_, &dilations_, padding_algorithm, in_data_dims, strides, ksize);
 
   std::vector<int64_t> output_shape({in_dims[0]});
   if (!channel_last) {
@@ -700,11 +689,11 @@ void ConvInferMeta(const MetaTensor& input,
         (in_data_dims[i] < 0 || filter_dims[i + 2] < 0)) {
       output_shape.push_back(-1);
     } else {
-      const int64_t dkernel = dilations[i] * (filter_data_dims[i] - 1) + 1;
-      int64_t output_size =
-          (in_data_dims[i] + paddings[2 * i] + paddings[2 * i + 1] - dkernel) /
-              strides[i] +
-          1;
+      const int64_t dkernel = dilations_[i] * (filter_data_dims[i] - 1) + 1;
+      int64_t output_size = (in_data_dims[i] + paddings_[2 * i] +
+                             paddings_[2 * i + 1] - dkernel) /
+                                strides[i] +
+                            1;
       output_shape.push_back(output_size);
     }
   }
@@ -1943,7 +1932,7 @@ void FastRMSNormInfermeta(const MetaTensor& x,
 
   auto row_shape = slice_ddim(x_dim, 0, x_dim.size() - 1);
   invvar->set_dims({row_shape});
-  invvar->set_dtype(paddle::DataType::FLOAT32);
+  invvar->set_dtype(DataType::FLOAT32);
 }
 
 void FakeDequantizeMaxAbsInferMeta(const MetaTensor& x,
@@ -3080,11 +3069,33 @@ void MatmulInferMeta(const MetaTensor& x,
                      const MetaTensor& y,
                      bool trans_x,
                      bool trans_y,
-                     MetaTensor* out) {
+                     MetaTensor* out,
+                     MetaConfig config) {
   std::vector<int64_t> dims_x = vectorize(x.dims());
   std::vector<int64_t> dims_y = vectorize(y.dims());
   auto ndims_x = dims_x.size();
   auto ndims_y = dims_y.size();
+  const int64_t lhs_reduce_dim = (ndims_x == 1) ? 0 : ndims_x - 1 - trans_x;
+  const int64_t rhs_reduce_dim = (ndims_y == 1) ? 0 : ndims_y - 2 + trans_y;
+  const int64_t K_lhs = dims_x[lhs_reduce_dim];
+  const int64_t K_rhs = dims_y[rhs_reduce_dim];
+  if (config.is_runtime || (K_rhs != -1 && K_lhs != -1)) {
+    PADDLE_ENFORCE_EQ(
+        K_lhs,
+        K_rhs,
+        common::errors::InvalidArgument(
+            "In operator matmul, the [%d] dimension of Input(X) must be equal "
+            "to "
+            "the [%d] dimension of Input(Y). But receiving the [%d]"
+            "dimension of Input(X) is [%d], and the [%d] dimension of "
+            "Input(Y) is [%d].",
+            lhs_reduce_dim,
+            rhs_reduce_dim,
+            lhs_reduce_dim,
+            K_lhs,
+            rhs_reduce_dim,
+            K_rhs));
+  }
   PADDLE_ENFORCE_GT(ndims_x,
                     0UL,
                     common::errors::InvalidArgument(
@@ -4116,6 +4127,52 @@ void ShuffleBatchInferMeta(const MetaTensor& x,
   shuffle_idx->set_dims(make_ddim({-1}));
 }
 
+void SlowConvDilatedInferMeta(const MetaTensor& input,
+                              const MetaTensor& filter,
+                              const MetaTensor& bias,
+                              const std::vector<int>& strides,
+                              const std::vector<int>& paddings,
+                              const std::string& padding_algorithm,
+                              const std::vector<int>& dilations,
+                              int groups,
+                              const std::string& data_format,
+                              MetaTensor* out,
+                              MetaConfig config) {
+  ConvInferMeta(input,
+                filter,
+                strides,
+                paddings,
+                padding_algorithm,
+                dilations,
+                groups,
+                data_format,
+                out,
+                config);
+}
+
+void SlowConv3DDilatedInferMeta(const MetaTensor& input,
+                                const MetaTensor& filter,
+                                const MetaTensor& bias,
+                                const std::vector<int>& strides,
+                                const std::vector<int>& paddings,
+                                const std::string& padding_algorithm,
+                                int groups,
+                                const std::vector<int>& dilations,
+                                const std::string& data_format,
+                                MetaTensor* out,
+                                MetaConfig config) {
+  ConvInferMeta(input,
+                filter,
+                strides,
+                paddings,
+                padding_algorithm,
+                dilations,
+                groups,
+                data_format,
+                out,
+                config);
+}
+
 void SequenceMaskInferMeta(const MetaTensor& x,
                            const MetaTensor& max_len_tensor,
                            int maxlen,
@@ -4175,7 +4232,10 @@ void SegmentPoolInferMeta(const MetaTensor& x,
                           MetaTensor* out,
                           MetaTensor* summed_ids,
                           MetaConfig config) {
-  auto dims = x.dims();
+  auto x_dims = x.dims();
+  auto seg_dims = segment_ids.dims();
+
+  auto dims = x_dims;
   dims[0] = -1;
   out->set_dims(dims);
   out->set_dtype(x.dtype());
@@ -4185,6 +4245,28 @@ void SegmentPoolInferMeta(const MetaTensor& x,
     summed_ids->set_dims({-1, 1});
     summed_ids->set_dtype(x.dtype());
     summed_ids->set_layout(x.layout());
+  }
+
+  // Dimension validation: check only at runtime or when dimensions are known
+  // Runtime: config.is_runtime = true (dynamic graph/PIR)
+  // Compile time: config.is_runtime = false (static graph building)
+  bool contain_unknown_dim = common::contain_unknown_dim(x_dims) ||
+                             common::contain_unknown_dim(seg_dims);
+  bool check = config.is_runtime || !contain_unknown_dim;
+
+  if (check) {
+    PADDLE_ENFORCE_EQ(
+        seg_dims[0],
+        x_dims[0],
+        common::errors::InvalidArgument(
+            "Segment_ids should be the same size as dimension 0 of input X."));
+
+    PADDLE_ENFORCE_EQ(seg_dims.size(),
+                      1UL,
+                      common::errors::InvalidArgument(
+                          "Segment_ids should be 1-D tensor, or it's other "
+                          "dimension size is 1. Segment_ids's shape is: [%s].",
+                          seg_dims));
   }
 }
 

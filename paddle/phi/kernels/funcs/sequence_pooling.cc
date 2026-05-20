@@ -23,19 +23,15 @@ limitations under the License. */
 
 namespace phi::funcs {
 
-template <typename T,
-          int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = EigenVector<T, MajorType, IndexType>;
-template <typename T,
-          int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = phi::EigenMatrix<T, MajorType, IndexType>;
+template <typename T, int MajorType = Eigen::RowMajor>
+using EigenVector = EigenVector<T, MajorType>;
+template <typename T, int MajorType = Eigen::RowMajor>
+using EigenMatrix = EigenMatrix<T, MajorType>;
 
 template <typename T, bool is_test>
 class MaxSeqPoolFunctor {
  public:
-  void operator()(const phi::CPUContext& dev_ctx UNUSED,
+  void operator()(const CPUContext& dev_ctx UNUSED,
                   const DenseTensor& input,
                   T pad_value,
                   DenseTensor* output,
@@ -114,7 +110,7 @@ class MaxSeqPoolFunctor {
 template <typename T>
 class MaxSeqPoolFunctor<T, true> {
  public:
-  void operator()(const phi::CPUContext& dev_ctx UNUSED,
+  void operator()(const CPUContext& dev_ctx UNUSED,
                   const DenseTensor& input,
                   T pad_value,
                   DenseTensor* output,
@@ -175,7 +171,7 @@ class MaxSeqPoolFunctor<T, true> {
 template <typename T>
 class MaxSeqPoolGradFunctor {
  public:
-  void operator()(const phi::CPUContext& dev_ctx,
+  void operator()(const CPUContext& dev_ctx,
                   const DenseTensor& out_grad,
                   const DenseTensor& index,
                   DenseTensor* in_grad) {
@@ -221,7 +217,7 @@ class MaxSeqPoolGradFunctor {
     const int* max_index = index.data<int>();
     T* ig_data = in_grad->data<T>();
 
-    funcs::SetConstant<phi::CPUContext, T> set_zero;
+    funcs::SetConstant<CPUContext, T> set_zero;
     set_zero(dev_ctx, in_grad, static_cast<T>(0.0));
     int64_t num_seq = og_dims[0];
     int64_t dim = out_grad.numel() / num_seq;
@@ -238,7 +234,7 @@ class MaxSeqPoolGradFunctor {
 template <typename T>
 class LastSeqPoolFunctor {
  public:
-  void operator()(const phi::CPUContext& dev_ctx UNUSED,
+  void operator()(const CPUContext& dev_ctx UNUSED,
                   const DenseTensor& input,
                   T pad_value,
                   DenseTensor* output) {
@@ -272,7 +268,7 @@ class LastSeqPoolFunctor {
 template <typename T>
 class FirstSeqPoolFunctor {
  public:
-  void operator()(const phi::CPUContext& dev_ctx UNUSED,
+  void operator()(const CPUContext& dev_ctx UNUSED,
                   const DenseTensor& input,
                   T pad_value,
                   DenseTensor* output) {
@@ -306,7 +302,7 @@ class FirstSeqPoolFunctor {
 template <typename T>
 class SumSeqPoolGradFunctor {
  public:
-  void operator()(const phi::CPUContext& dev_ctx,
+  void operator()(const CPUContext& dev_ctx,
                   const DenseTensor& out_grad,
                   DenseTensor* in_grad) {
     auto lod_level = in_grad->lod().size();
@@ -325,7 +321,7 @@ class SumSeqPoolGradFunctor {
                           out_w));
     const T* out_g_data = out_grad.data<T>();
     T* in_g_data = dev_ctx.template Alloc<T>(in_grad);
-    auto blas = funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
+    auto blas = funcs::GetBlas<CPUContext, T>(dev_ctx);
     for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
       int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
       if (h == 0) continue;
@@ -340,10 +336,10 @@ class SumSeqPoolGradFunctor {
 };
 
 template <typename T>
-class SequencePoolFunctor<phi::CPUContext, T> {
+class SequencePoolFunctor<CPUContext, T> {
  public:
   /* max pool has index output */
-  void operator()(const phi::CPUContext& dev_ctx,
+  void operator()(const CPUContext& dev_ctx,
                   const std::string pooltype,
                   T pad_value,
                   const DenseTensor& input,
@@ -414,7 +410,7 @@ class SequencePoolFunctor<phi::CPUContext, T> {
       DenseTensor in_t =
           input.Slice(static_cast<int>(lod[i]), static_cast<int>(lod[i + 1]));
       int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
-      auto in_e = EigenMatrix<T>::From(in_t, common::make_ddim({h, w}));
+      auto in_e = EigenMatrix<T>::From(in_t, make_ddim({h, w}));
       auto out_e = EigenVector<T>::Flatten(out_t);
       if (pooltype == "AVERAGE") {  // NOLINT
         out_e.device(place) = in_e.mean(Eigen::array<int, 1>({{0}}));
@@ -432,9 +428,9 @@ class SequencePoolFunctor<phi::CPUContext, T> {
 };
 
 template <typename T>
-class SequencePoolGradFunctor<phi::CPUContext, T> {
+class SequencePoolGradFunctor<CPUContext, T> {
  public:
-  void operator()(const phi::CPUContext& dev_ctx,
+  void operator()(const CPUContext& dev_ctx,
                   const std::string pooltype,
                   const DenseTensor& out_grad,
                   DenseTensor* in_grad,
@@ -448,7 +444,7 @@ class SequencePoolGradFunctor<phi::CPUContext, T> {
 
     if (pooltype == "LAST" || pooltype == "FIRST") {
       // set X@GRAD be zero at first when pooltype is LAST/FIRST
-      funcs::SetConstant<phi::CPUContext, T> functor;
+      funcs::SetConstant<CPUContext, T> functor;
       functor(dev_ctx, in_grad, 0);
     }
 
@@ -492,9 +488,9 @@ class SequencePoolGradFunctor<phi::CPUContext, T> {
   }
 };
 
-template class PADDLE_API SequencePoolFunctor<phi::CPUContext, float>;
-template class PADDLE_API SequencePoolFunctor<phi::CPUContext, double>;
-template class PADDLE_API SequencePoolGradFunctor<phi::CPUContext, float>;
-template class PADDLE_API SequencePoolGradFunctor<phi::CPUContext, double>;
+template class PADDLE_API SequencePoolFunctor<CPUContext, float>;
+template class PADDLE_API SequencePoolFunctor<CPUContext, double>;
+template class PADDLE_API SequencePoolGradFunctor<CPUContext, float>;
+template class PADDLE_API SequencePoolGradFunctor<CPUContext, double>;
 
 }  // namespace phi::funcs

@@ -27,6 +27,7 @@ from typing_extensions import Self, overload
 
 import paddle
 from paddle import Tensor, dtype, nn, profiler
+from paddle.autograd import PyLayer
 from paddle.autograd.backward_utils import ValueSet
 from paddle.base import core, framework, unique_name
 from paddle.base.core import VarDesc
@@ -128,6 +129,65 @@ def set_op_customized_attrs_post_hook(layer, inputs, outputs):
             hook_helper.remove()
 
 
+class _LayerBackwardInputHook(PyLayer):
+    @staticmethod
+    def forward(ctx, layer, *flat_inputs):
+        ctx.layer = layer
+        return tuple(inp.clone() for inp in flat_inputs)
+
+    @staticmethod
+    def backward(ctx, *grad_inputs):
+        layer = ctx.layer
+        grad_inputs = tuple(grad_inputs)
+        grad_outputs = getattr(layer, "_current_grad_outputs", ())
+
+        for hook in layer._get_backward_hooks():
+            hook_result = hook(layer, grad_inputs, grad_outputs)
+            if hook_result is not None:
+                if not isinstance(hook_result, tuple):
+                    hook_result = (hook_result,)
+                grad_inputs = hook_result
+
+        if hasattr(layer, "_current_grad_outputs"):
+            delattr(layer, "_current_grad_outputs")
+        if hasattr(layer, "_has_backward_input_hook"):
+            delattr(layer, "_has_backward_input_hook")
+        return grad_inputs
+
+
+class _LayerBackwardOutputHook(PyLayer):
+    @staticmethod
+    def forward(ctx, layer, *flat_outputs):
+        ctx.layer = layer
+        return tuple(out.clone() for out in flat_outputs)
+
+    @staticmethod
+    def backward(ctx, *grad_outputs):
+        layer = ctx.layer
+        grad_outputs = tuple(grad_outputs)
+
+        for hook in layer._get_backward_pre_hooks():
+            hook_result = hook(layer, grad_outputs)
+            if hook_result is not None:
+                if not isinstance(hook_result, tuple):
+                    hook_result = (hook_result,)
+                grad_outputs = hook_result
+
+        if not getattr(layer, "_has_backward_input_hook", False):
+            grad_inputs = ()
+            for hook in layer._get_backward_hooks():
+                hook_result = hook(layer, grad_inputs, grad_outputs)
+                if hook_result is not None:
+                    if not isinstance(hook_result, tuple):
+                        hook_result = (hook_result,)
+                    grad_inputs = hook_result
+            if hasattr(layer, "_has_backward_input_hook"):
+                delattr(layer, "_has_backward_input_hook")
+
+        layer._current_grad_outputs = grad_outputs
+        return grad_outputs
+
+
 def _scope_dist2single(dist_scope):
     mapping = {
         "row_parallel_linear": "linear",
@@ -153,6 +213,133 @@ def _addindent(string, indent):
         if idx > 0:
             s2.append(str((indent * ' ') + line))
     return s1[0] + '\n' + '\n'.join(s2)
+
+
+def _parse_to_args(*args, **kwargs):
+    """Parse arguments for .to(), shared by Tensor.to and Layer.to.
+
+    Calling conventions::
+
+        to(device=None, dtype=None, blocking=True, copy=False, *, non_blocking=False)
+        to(dtype, blocking=True, copy=False, *, non_blocking=False)
+        to(tensor, blocking=True, copy=False, *, non_blocking=False)
+
+    Returns:
+        tuple: (device, dtype, blocking, copy)
+    """
+    valid_dtypes = {
+        'bfloat16',
+        'float16',
+        'float32',
+        'float64',
+        'int8',
+        'int16',
+        'int32',
+        'int64',
+        'uint8',
+        'complex64',
+        'complex128',
+        'bool',
+    }
+
+    valid_keys = {
+        'device',
+        'dtype',
+        'blocking',
+        'copy',
+        'non_blocking',
+        'other',
+        'tensor',
+    }
+    invalid_keys = set(kwargs.keys()) - valid_keys
+    if invalid_keys:
+        raise TypeError(
+            "to() got an unexpected keyword argument '"
+            + next(iter(invalid_keys))
+            + "'"
+        )
+
+    device = kwargs.get('device', None)
+    dtype = kwargs.get('dtype', None)
+    blocking = kwargs.get('blocking', None)
+    copy = kwargs.get('copy', False)
+    non_blocking = kwargs.pop('non_blocking', None)
+
+    size_args = len(args)
+    size_kwargs = len(kwargs)
+
+    if size_args + size_kwargs > 4:
+        raise TypeError(
+            "to() received too many arguments - expected one of:\n"
+            "  to(device=None, dtype=None, blocking=True, *, non_blocking=False)\n"
+            "  to(dtype, blocking=True, *, non_blocking=False)\n"
+            "  to(tensor, blocking=True, copy=False, *, non_blocking=False)"
+        )
+
+    if size_args > 0:
+        first = args[0]
+        if isinstance(first, paddle.Tensor):
+            # to(tensor, blocking=True, copy=False)
+            device = first.place
+            dtype = first.dtype
+            if size_args >= 2:
+                blocking = args[1]
+            if size_args >= 3:
+                copy = args[2]
+        elif isinstance(first, (core.DataType, VarDesc.VarType, np.dtype)) or (
+            isinstance(first, str) and first.lower() in valid_dtypes
+        ):
+            # to(dtype, blocking=True, copy=False)
+            dtype = first
+            if size_args >= 2:
+                blocking = args[1]
+            if size_args >= 3:
+                copy = args[2]
+        elif first is None or isinstance(first, (str, core.Place)):
+            # to(device, dtype=None, blocking=True, copy=False)
+            device = first
+            if size_args >= 2:
+                dtype = args[1]
+            if size_args >= 3:
+                blocking = args[2]
+            if size_args >= 4:
+                copy = args[3]
+        else:
+            raise ValueError(
+                f"device should be type of str, paddle.CPUPlace, paddle.CUDAPlace, "
+                f"paddle.CUDAPinnedPlace, paddle.XPUPlace, or paddle.base.libpaddle.Place, "
+                f"but got {type(first).__name__}"
+            )
+    else:
+        tensor_arg = kwargs.get('other')
+        if tensor_arg is None:
+            tensor_arg = kwargs.get('tensor')
+        if tensor_arg is not None:
+            device = tensor_arg.place
+            dtype = tensor_arg.dtype
+
+    # Validate and resolve blocking / non_blocking
+    if blocking is not None and non_blocking is not None:
+        raise TypeError(
+            "to() received both 'blocking' and 'non_blocking' arguments. "
+            "These are mutually exclusive, please use only one of them."
+        )
+    if non_blocking is not None:
+        if not isinstance(non_blocking, bool):
+            raise TypeError("non_blocking value error, must be True or False")
+        blocking = not non_blocking
+    elif blocking is not None:
+        if not isinstance(blocking, bool):
+            raise TypeError("blocking value error, must be True, False or None")
+    else:
+        blocking = True
+
+    if copy is None:
+        copy = False
+    elif not isinstance(copy, bool):
+        raise TypeError("copy value error, must be True or False")
+
+    return device, dtype, blocking, copy
 
 
 def _layer_trans_dtype(layer, dtype, excluded_layers):
@@ -410,7 +597,7 @@ class Layer:
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(100)
@@ -425,7 +612,6 @@ class Layer:
             ...         temp = self._linear(input)
             ...         temp = self._dropout(temp)
             ...         return temp
-            ...
             >>> x = paddle.randn([10, 1], 'float32')
             >>> mylayer = MyLayer()
             >>> mylayer.eval()  # set mylayer._dropout to eval mode
@@ -475,18 +661,20 @@ class Layer:
         self._forward_pre_hooks: typing.OrderedDict[int, _ForwardPreHook] = (
             OrderedDict()
         )
-        self._forward_post_hooks: typing.OrderedDict[int, _ForwardPostHook] = (
+        self._forward_hooks: typing.OrderedDict[int, _ForwardPostHook] = (
             OrderedDict()
         )
-        self._forward_pre_hooks_with_kwargs_flag: typing.OrderedDict[
-            int, bool
-        ] = OrderedDict()
-        self._forward_post_hooks_with_kwargs_flag: typing.OrderedDict[
-            int, bool
-        ] = OrderedDict()
-        self._forward_post_hooks_always_called: typing.OrderedDict[
-            int, bool
-        ] = OrderedDict()
+        self._forward_pre_hooks_with_kwargs: typing.OrderedDict[int, bool] = (
+            OrderedDict()
+        )
+        self._forward_hooks_with_kwargs: typing.OrderedDict[int, bool] = (
+            OrderedDict()
+        )
+        self._forward_hooks_always_called: typing.OrderedDict[int, bool] = (
+            OrderedDict()
+        )
+        self._backward_pre_hooks = OrderedDict()
+        self._backward_hooks = OrderedDict()
 
         # only used in AMP Training
         self._cast_to_low_precision = True
@@ -494,6 +682,9 @@ class Layer:
         self._state_dict_hooks: typing.OrderedDict[int, _StateDictHook] = (
             OrderedDict()
         )
+        self._state_dict_pre_hooks = OrderedDict()
+        self._load_state_dict_pre_hooks = OrderedDict()
+        self._load_state_dict_post_hooks = OrderedDict()
         # Records original functions after @to_static to support to rollback
         self._original_funcs = OrderedDict()
 
@@ -507,6 +698,38 @@ class Layer:
             raise TypeError(f"_modules must be dict-like, got {type(value)}")
         self._sub_layers.clear()
         self._sub_layers.update(value)
+
+    @property
+    def _forward_post_hooks(self):
+        return self._forward_hooks
+
+    @_forward_post_hooks.setter
+    def _forward_post_hooks(self, value):
+        self._forward_hooks = value
+
+    @property
+    def _forward_post_hooks_with_kwargs_flag(self):
+        return self._forward_hooks_with_kwargs
+
+    @_forward_post_hooks_with_kwargs_flag.setter
+    def _forward_post_hooks_with_kwargs_flag(self, value):
+        self._forward_hooks_with_kwargs = value
+
+    @property
+    def _forward_post_hooks_always_called(self):
+        return self._forward_hooks_always_called
+
+    @_forward_post_hooks_always_called.setter
+    def _forward_post_hooks_always_called(self, value):
+        self._forward_hooks_always_called = value
+
+    @property
+    def _forward_pre_hooks_with_kwargs_flag(self):
+        return self._forward_pre_hooks_with_kwargs
+
+    @_forward_pre_hooks_with_kwargs_flag.setter
+    def _forward_pre_hooks_with_kwargs_flag(self, value):
+        self._forward_pre_hooks_with_kwargs = value
 
     @property
     def _non_persistent_buffers_set(self):
@@ -531,7 +754,7 @@ class Layer:
             Layer: self
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.seed(100)
@@ -546,7 +769,6 @@ class Layer:
                 ...         temp = self._linear(input)
                 ...         temp = self._dropout(temp)
                 ...         return temp
-                ...
                 >>> x = paddle.randn([10, 1], 'float32')
                 >>> mylayer = MyLayer()
                 >>> mylayer.eval()  # set mylayer._dropout to eval mode
@@ -594,7 +816,7 @@ class Layer:
             Layer: self
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.seed(100)
@@ -608,7 +830,6 @@ class Layer:
                 ...         temp = self._linear(input)
                 ...         temp = self._dropout(temp)
                 ...         return temp
-                ...
                 >>> x = paddle.randn([10, 1], 'float32')
                 >>> mylayer = MyLayer()
                 >>> mylayer.eval()  # set mylayer._dropout to eval mode
@@ -652,7 +873,7 @@ class Layer:
             Layer, self
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.nn as nn
@@ -666,7 +887,6 @@ class Layer:
                 ...         new_weight = paddle.full(shape=layer.weight.shape, dtype=layer.weight.dtype, fill_value=0.9)
                 ...         layer.weight.set_value(new_weight)
                 ...         print('after init weight:', layer.weight.numpy())
-                ...
                 >>> net.apply(init_weights)
 
                 >>> print(net.state_dict())
@@ -706,18 +926,17 @@ class Layer:
             str, full name of this layer.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
                 >>> class LinearNet(paddle.nn.Layer):
                 ...     def __init__(self):
-                ...         super().__init__(name_scope = "demo_linear_net")
+                ...         super().__init__(name_scope="demo_linear_net")
                 ...         self._linear = paddle.nn.Linear(1, 1)
                 ...
                 ...     def forward(self, x):
                 ...         return self._linear(x)
-                ...
                 >>> linear_net = LinearNet()
                 >>> print(linear_net.full_name())
                 demo_linear_net_0
@@ -759,7 +978,7 @@ class Layer:
             HookRemoveHelper, a HookRemoveHelper object that can be used to remove the added hook by calling `hook_remove_helper.remove()` .
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import numpy as np
@@ -770,7 +989,6 @@ class Layer:
                 ...
                 ...     # change the output
                 ...     return output * 2
-                ...
                 >>> linear = paddle.nn.Linear(13, 5)
 
                 >>> # register the hook
@@ -847,7 +1065,7 @@ class Layer:
             HookRemoveHelper, a HookRemoveHelper object that can be used to remove the added hook by calling `hook_remove_helper.remove()` .
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import numpy as np
@@ -857,9 +1075,8 @@ class Layer:
                 ...     # user can use layer and input for information statistics tasks
                 ...
                 ...     # change the input
-                ...     input_return = (input[0] * 2)
+                ...     input_return = input[0] * 2
                 ...     return input_return
-                ...
                 >>> linear = paddle.nn.Linear(13, 5)
 
                 >>> # register the hook
@@ -895,6 +1112,42 @@ class Layer:
             )
         return hook_remove_helper
 
+    def register_full_backward_pre_hook(
+        self, hook: Callable[..., Any], prepend: bool = False
+    ) -> HookRemoveHelper:
+        hook_remove_helper = HookRemoveHelper(self._backward_pre_hooks)
+        self._backward_pre_hooks[hook_remove_helper._hook_id] = hook
+        if prepend:
+            self._backward_pre_hooks.move_to_end(
+                hook_remove_helper._hook_id, last=False
+            )
+        return hook_remove_helper
+
+    def register_backward_hook(
+        self, hook: Callable[..., Any]
+    ) -> HookRemoveHelper:
+        raise NotImplementedError(
+            "register_backward_hook is not supported. "
+            "Please use register_full_backward_hook instead."
+        )
+
+    def register_full_backward_hook(
+        self, hook: Callable[..., Any], prepend: bool = False
+    ) -> HookRemoveHelper:
+        hook_remove_helper = HookRemoveHelper(self._backward_hooks)
+        self._backward_hooks[hook_remove_helper._hook_id] = hook
+        if prepend:
+            self._backward_hooks.move_to_end(
+                hook_remove_helper._hook_id, last=False
+            )
+        return hook_remove_helper
+
+    def _get_backward_hooks(self):
+        return list(self._backward_hooks.values())
+
+    def _get_backward_pre_hooks(self):
+        return list(self._backward_pre_hooks.values())
+
     def create_parameter(
         self,
         shape: ShapeLike,
@@ -922,7 +1175,7 @@ class Layer:
             :Tensor, created parameter.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.seed(2023)
@@ -931,15 +1184,14 @@ class Layer:
                 ...     def __init__(self):
                 ...         super().__init__()
                 ...         self._linear = paddle.nn.Linear(1, 1)
-                ...         w_tmp = self.create_parameter([1,1])
+                ...         w_tmp = self.create_parameter([1, 1])
                 ...         self.add_parameter("w_tmp", w_tmp)
                 ...
                 ...     def forward(self, input):
                 ...         return self._linear(input)
-                ...
                 >>> mylayer = MyLayer()
                 >>> for name, param in mylayer.named_parameters():
-                ...     print(name, param)      # will print w_tmp,_linear.weight,_linear.bias
+                ...     print(name, param)  # will print w_tmp,_linear.weight,_linear.bias
                 w_tmp Parameter containing:
                 Tensor(shape=[1, 1], dtype=float32, place=Place(cpu), stop_gradient=False,
                 [[0.06979191]])
@@ -1008,22 +1260,20 @@ class Layer:
             Tensor, created Tensor.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
                 >>> class MyLinear(paddle.nn.Layer):
-                ...     def __init__(self,
-                ...                 in_features,
-                ...                 out_features):
+                ...     def __init__(self, in_features, out_features):
                 ...         super().__init__()
-                ...         self.linear = paddle.nn.Linear( 10, 10)
+                ...         self.linear = paddle.nn.Linear(10, 10)
                 ...
-                ...         self.back_var = self.create_variable(name = "linear_tmp_0", dtype=self._dtype)
+                ...         self.back_var = self.create_variable(name="linear_tmp_0", dtype=self._dtype)
                 ...
                 ...     def forward(self, input):
                 ...         out = self.linear(input)
-                ...         paddle.assign( out, self.back_var)
+                ...         paddle.assign(out, self.back_var)
                 ...
                 ...         return out
 
@@ -1065,18 +1315,16 @@ class Layer:
             Tensor, created Tensor.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
                 >>> class MyLinear(paddle.nn.Layer):
-                ...     def __init__(self,
-                ...                  in_features,
-                ...                  out_features):
+                ...     def __init__(self, in_features, out_features):
                 ...         super().__init__()
                 ...         self.linear = paddle.nn.Linear(10, 10)
                 ...
-                ...         self.back_var = self.create_tensor(name = "linear_tmp_0", dtype=self._dtype)
+                ...         self.back_var = self.create_tensor(name="linear_tmp_0", dtype=self._dtype)
                 ...
                 ...     def forward(self, input):
                 ...         out = self.linear(input)
@@ -1114,7 +1362,7 @@ class Layer:
             list, list of Tensor, a list of Parameters.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.seed(100)
@@ -1151,14 +1399,14 @@ class Layer:
             Layer, self
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.nn as nn
-                >>> weight_attr = paddle.ParamAttr(name="weight",initializer=paddle.nn.initializer.Constant(value=1.5))
-                >>> bias_attr = paddle.ParamAttr(name="bias",initializer=paddle.nn.initializer.Constant(value=2.5))
+                >>> weight_attr = paddle.ParamAttr(name="weight", initializer=paddle.nn.initializer.Constant(value=1.5))
+                >>> bias_attr = paddle.ParamAttr(name="bias", initializer=paddle.nn.initializer.Constant(value=2.5))
 
-                >>> linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr).to(device="cpu",dtype="float32")
+                >>> linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr).to(device="cpu", dtype="float32")
                 >>> print(linear)
                 Linear(in_features=2, out_features=2, dtype=float32)
                 >>> print(linear.parameters())
@@ -1169,7 +1417,7 @@ class Layer:
                 Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=False,
                     [2.50000000, 2.50000000])]
 
-                >>> linear=linear.astype("int8")
+                >>> linear = linear.astype("int8")
                 >>> print(linear)
                 Linear(in_features=2, out_features=2, dtype=paddle.int8)
                 >>> print(linear.parameters())
@@ -1227,7 +1475,7 @@ class Layer:
             Layer: a child layer
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -1252,7 +1500,7 @@ class Layer:
             (string, Layer): Tuple containing a name and child layer
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -1328,7 +1576,7 @@ class Layer:
             (string, Parameter): Tuple of name and Parameter
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.seed(100)
@@ -1406,7 +1654,7 @@ class Layer:
             (string, Layer): Tuple of name and Layer
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -1522,7 +1770,7 @@ class Layer:
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import numpy as np
                 >>> import paddle
@@ -1579,7 +1827,7 @@ class Layer:
             list of Tensor, a list of buffers.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import numpy as np
                 >>> import paddle
@@ -1653,7 +1901,7 @@ class Layer:
             (string, Tensor): Tuple of name and tensor
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import numpy as np
                 >>> import paddle
@@ -1711,7 +1959,7 @@ class Layer:
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import numpy as np
@@ -1719,8 +1967,10 @@ class Layer:
                 >>> value = np.arange(26).reshape(2, 13).astype("float32")
                 >>> a = paddle.to_tensor(value)
                 >>> linear = paddle.nn.Linear(13, 5)
-                >>> adam = paddle.optimizer.Adam(learning_rate=0.01,
-                ...                              parameters=linear.parameters())
+                >>> adam = paddle.optimizer.Adam(
+                ...     learning_rate=0.01,
+                ...     parameters=linear.parameters(),
+                ... )
                 >>> out = linear(a)
                 >>> out.backward()
                 >>> adam.step()
@@ -1740,6 +1990,13 @@ class Layer:
 
         def inner():
             nonlocal outputs, inputs, kwargs
+
+            backward_hooks = []
+            backward_pre_hooks = []
+            if self._backward_pre_hooks:
+                backward_pre_hooks = self._get_backward_pre_hooks()
+            if self._backward_hooks:
+                backward_hooks = self._get_backward_hooks()
 
             for hook_id, forward_pre_hook in self._forward_pre_hooks.items():
                 if hook_id in self._forward_pre_hooks_with_kwargs_flag:
@@ -1761,6 +2018,29 @@ class Layer:
                         if not isinstance(hook_result, tuple):
                             hook_result = (hook_result,)
                         inputs = hook_result
+
+            if in_dygraph_mode() and (backward_hooks or backward_pre_hooks):
+                flat_inputs = paddle.utils.flatten(inputs)
+                tensor_inputs = [
+                    inp
+                    for inp in flat_inputs
+                    if isinstance(inp, Tensor) and not inp.stop_gradient
+                ]
+                if tensor_inputs:
+                    self._has_backward_input_hook = True
+                    hooked_inputs = _LayerBackwardInputHook.apply(
+                        self, *tensor_inputs
+                    )
+                    if isinstance(hooked_inputs, Tensor):
+                        hooked_inputs = (hooked_inputs,)
+                    hooked_inputs = list(hooked_inputs)
+
+                    def replace_input(inp):
+                        if isinstance(inp, Tensor) and not inp.stop_gradient:
+                            return hooked_inputs.pop(0)
+                        return inp
+
+                    inputs = paddle.utils.map_structure(replace_input, inputs)
 
             if not self._built:
                 self._build_once(*inputs, **kwargs)
@@ -1790,6 +2070,30 @@ class Layer:
 
                 if hook_result is not None:
                     outputs = hook_result
+
+            if in_dygraph_mode() and (backward_hooks or backward_pre_hooks):
+                flat_outputs = paddle.utils.flatten(outputs)
+                tensor_outputs = [
+                    out
+                    for out in flat_outputs
+                    if isinstance(out, Tensor) and not out.stop_gradient
+                ]
+                if tensor_outputs:
+                    hooked_outputs = _LayerBackwardOutputHook.apply(
+                        self, *tensor_outputs
+                    )
+                    if isinstance(hooked_outputs, Tensor):
+                        hooked_outputs = (hooked_outputs,)
+                    hooked_outputs = list(hooked_outputs)
+
+                    def replace_output(out):
+                        if isinstance(out, Tensor) and not out.stop_gradient:
+                            return hooked_outputs.pop(0)
+                        return out
+
+                    outputs = paddle.utils.map_structure(
+                        replace_output, outputs
+                    )
 
             return outputs
 
@@ -1826,6 +2130,8 @@ class Layer:
             (not in_to_static_mode())
             and (not self._forward_pre_hooks)
             and (not self._forward_post_hooks)
+            and (not self._backward_pre_hooks)
+            and (not self._backward_hooks)
             and (self.__class__._build_once is Layer._build_once or self._built)
             and in_dygraph_mode()
             and (not in_profiler_mode() or in_sot_simulation_mode())
@@ -1862,7 +2168,7 @@ class Layer:
             Layer, the sublayer passed in.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -1880,7 +2186,6 @@ class Layer:
                 ...         for layer in self._sub_layers.values():
                 ...             input = layer(input)
                 ...         return input
-                ...
                 >>> fc1 = paddle.nn.Linear(10, 3)
                 >>> fc2 = paddle.nn.Linear(3, 10, bias_attr=False)
                 >>> model = MySequential(fc1, fc2)
@@ -1990,7 +2295,7 @@ class Layer:
         Returns:
             Parameter, the parameter passed in.
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.seed(100)
@@ -1999,12 +2304,11 @@ class Layer:
                 ...     def __init__(self):
                 ...         super().__init__()
                 ...         self._linear = paddle.nn.Linear(1, 1)
-                ...         w_tmp = self.create_parameter([1,1])
+                ...         w_tmp = self.create_parameter([1, 1])
                 ...         self.add_parameter("w_tmp", w_tmp)
                 ...
                 ...     def forward(self, input):
                 ...         return self._linear(input)
-                ...
                 >>> mylayer = MyLayer()
                 >>> for name, param in mylayer.named_parameters():
                 ...     print(name, param)
@@ -2340,6 +2644,26 @@ class Layer:
         self._state_dict_hooks[hook_remove_helper._hook_id] = hook
         return hook_remove_helper
 
+    def register_state_dict_post_hook(
+        self, hook: _StateDictHook
+    ) -> HookRemoveHelper:
+        return self.register_state_dict_hook(hook)
+
+    def register_state_dict_pre_hook(self, hook: Callable[..., None]):
+        hook_remove_helper = HookRemoveHelper(self._state_dict_pre_hooks)
+        self._state_dict_pre_hooks[hook_remove_helper._hook_id] = hook
+        return hook_remove_helper
+
+    def register_load_state_dict_pre_hook(self, hook: Callable[..., None]):
+        hook_remove_helper = HookRemoveHelper(self._load_state_dict_pre_hooks)
+        self._load_state_dict_pre_hooks[hook_remove_helper._hook_id] = hook
+        return hook_remove_helper
+
+    def register_load_state_dict_post_hook(self, hook: Callable[..., None]):
+        hook_remove_helper = HookRemoveHelper(self._load_state_dict_post_hooks)
+        self._load_state_dict_post_hooks[hook_remove_helper._hook_id] = hook
+        return hook_remove_helper
+
     def _obtain_parameters_buffers(
         self,
         destination: _StateDict | None = None,
@@ -2395,6 +2719,9 @@ class Layer:
 
         if destination is None:
             destination = OrderedDict()
+        if use_hook:
+            for state_dict_pre_hook in self._state_dict_pre_hooks.values():
+                state_dict_pre_hook(self, structured_name_prefix, keep_vars)
         for name, data in self._parameters.items():
             if data is not None:
                 destination[structured_name_prefix + name] = (
@@ -2457,14 +2784,14 @@ class Layer:
             dict, a dict contains all the parameters and persistable buffers.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
                 >>> emb = paddle.nn.Embedding(10, 10)
 
                 >>> state_dict = emb.to_static_state_dict()
-                >>> paddle.save( state_dict, "paddle_dy.pdparams")
+                >>> paddle.save(state_dict, "paddle_dy.pdparams")
 
         '''
         return self._state_dict_impl(
@@ -2522,7 +2849,7 @@ class Layer:
             dict: a dict contains all the parameters and persistable buffers.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -2650,7 +2977,7 @@ class Layer:
             unexpected_keys(list):A list of str containing the unexpected keys
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -2800,10 +3127,52 @@ class Layer:
                     expected by this module but present in the provided ``state_dict``.
         """
         error_msgs: list[str] = []
+        missing_keys: list[str] = []
+        unexpected_keys: list[str] = []
 
-        missing_keys, unexpected_keys = self.set_state_dict(
+        def visit_load_state_dict_hooks(layer, prefix, is_post_hook=False):
+            if is_post_hook:
+                incompatible_keys = _IncompatibleKeys(
+                    missing_keys, unexpected_keys
+                )
+                for hook in layer._load_state_dict_post_hooks.values():
+                    hook_result = hook(layer, incompatible_keys)
+                    if hook_result is not None:
+                        raise AssertionError(
+                            "Hooks registered with ``register_load_state_dict_post_hook`` are not"
+                            "expected to return new values, if incompatible_keys need to be modified,"
+                            "it should be done inplace."
+                        )
+            else:
+                local_metadata: dict[str, Any] = {}
+                for hook in layer._load_state_dict_pre_hooks.values():
+                    hook(
+                        layer,
+                        state_dict,
+                        prefix,
+                        local_metadata,
+                        strict,
+                        missing_keys,
+                        unexpected_keys,
+                        error_msgs,
+                    )
+            for layer_name, layer_item in layer._sub_layers.items():
+                if layer_item is not None:
+                    visit_load_state_dict_hooks(
+                        layer_item,
+                        prefix + layer_name + ".",
+                        is_post_hook,
+                    )
+
+        visit_load_state_dict_hooks(self, "")
+
+        load_missing_keys, load_unexpected_keys = self.set_state_dict(
             state_dict, use_structured_name=True
         )
+        missing_keys.extend(load_missing_keys)
+        unexpected_keys.extend(load_unexpected_keys)
+
+        visit_load_state_dict_hooks(self, "", is_post_hook=True)
 
         if strict:
             if len(unexpected_keys) > 0:
@@ -2829,39 +3198,83 @@ class Layer:
             )
         return _IncompatibleKeys(missing_keys, unexpected_keys)
 
+    @overload
     def to(
         self,
-        device: PlaceLike | None = None,
-        dtype: DTypeLike | None = None,
-        blocking: bool | None = None,
-        non_blocking: bool | None = None,
-    ) -> Self:
+        device: PlaceLike | None = ...,
+        dtype: DTypeLike | None = ...,
+        blocking: bool = ...,
+        *,
+        non_blocking: bool = ...,
+    ) -> Self: ...
+
+    @overload
+    def to(
+        self,
+        dtype: DTypeLike,
+        blocking: bool = ...,
+        *,
+        non_blocking: bool = ...,
+    ) -> Self: ...
+
+    @overload
+    def to(
+        self,
+        tensor: Tensor,
+        blocking: bool = ...,
+        *,
+        non_blocking: bool = ...,
+    ) -> Self: ...
+
+    def to(self, *args, **kwargs) -> Self:
         '''
-        Cast the parameters and buffers of Layer by the give device, dtype and blocking.
+        Move and/or cast the parameters and buffers.
 
-        Parameters:
-            device(str|paddle.CPUPlace()|paddle.CUDAPlace()|paddle.CUDAPinnedPlace()|paddle.XPUPlace()|None, optional): The device of the Layer which want to be stored.
-            If None, the device is the same with the original Tensor. If device is string, it can be ``cpu``, ``gpu:x`` and ``xpu:x``, where ``x`` is the
-            index of the GPUs or XPUs. Default: None.
+        This API has three calling conventions:
 
-            dtype(str|numpy.dtype|paddle.dtype|None, optional): The type of the data. If None, the dtype is the same with the original Tensor. Default: None.
+        1. ``to(device=None, dtype=None, blocking=True, *, non_blocking=False)``:
+            Moves and/or casts the parameters and buffers.
 
-            blocking(bool|None, optional): If False and the source is in pinned memory, the copy will be
-              asynchronous with respect to the host. Otherwise, the argument has no effect. If None, the blocking is set True. Default: None.
+        2. ``to(dtype, blocking=True, *, non_blocking=False)``:
+            Equivalent to ``self.to(device=None, dtype=dtype, ...)``.
 
-            non_blocking(bool|None, optional): If True and the source is in pinned memory, the copy will be
-              asynchronous with respect to the host. Otherwise, the argument has no effect. If None, the non_blocking is set False. Default: None.
+        3. ``to(tensor, blocking=True, *, non_blocking=False)``:
+            Equivalent to ``self.to(device=tensor.place, dtype=tensor.dtype, ...)``.
+
+        .. note::
+            This method modifies the layer in-place.
+
+        Args:
+            device (str|paddle.CPUPlace()|paddle.CUDAPlace()|paddle.CUDAPinnedPlace()|paddle.XPUPlace()|None, optional):
+                The device of the Layer which want to be stored.
+                If None, the device is the same with the original Tensor.
+                If device is string, it can be ``cpu``, ``gpu:x`` and ``xpu:x``,
+                where ``x`` is the index of the GPUs or XPUs. Default: ``None``.
+            dtype (str|numpy.dtype|paddle.dtype|None, optional):
+                The type of the data. If None, the dtype is the same with the
+                original Tensor. Default: ``None``.
+            blocking (bool, optional):
+                If ``False`` and the source is in pinned memory, the copy will be
+                asynchronous with respect to the host. Otherwise, the argument
+                has no effect. Default: ``True``.
+
+        Keyword args:
+            non_blocking (bool, optional):
+                If ``True`` and the source is in pinned memory, the copy will be
+                asynchronous with respect to the host. Default: ``False``.
+                ``non_blocking`` and ``blocking`` are mutually exclusive
+                and cannot both be set at the same time.
 
         Returns:
             self
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.seed(2023)
 
-                >>> linear=paddle.nn.Linear(2, 2)
+                >>> linear = paddle.nn.Linear(2, 2)
                 >>> linear.weight
                 >>> print(linear.weight)
                 Parameter containing:
@@ -2895,13 +3308,13 @@ class Layer:
                  [-0.58883440,  0.99266374]])
 
         '''
+        device, dtype, blocking, _ = _parse_to_args(*args, **kwargs)
         return self._to_impl(
             device=device,
             dtype=dtype,
             blocking=blocking,
-            non_blocking=non_blocking,
             include_sublayers=True,
-            floating_only=False,
+            floating_only=True,
         )
 
     def _apply(
@@ -3006,7 +3419,6 @@ class Layer:
         device: PlaceLike | None = None,
         dtype: DTypeLike | None = None,
         blocking: bool | None = None,
-        non_blocking: bool | None = None,
         include_sublayers: bool = True,
         floating_only: bool = False,
     ):
@@ -3014,33 +3426,25 @@ class Layer:
         Cast the parameters and buffers of Layer by the give device, dtype and blocking.
 
         Parameters:
-            device(str|paddle.CPUPlace()|paddle.CUDAPlace()|paddle.CUDAPinnedPlace()|paddle.XPUPlace()|None, optional): The device of the Layer which want to be stored.
-            If None, the device is the same with the original Tensor. If device is string, it can be ``cpu``, ``gpu:x`` and ``xpu:x``, where ``x`` is the
-            index of the GPUs or XPUs. Default: None.
-
-            dtype(str|numpy.dtype|paddle.dtype|None, optional): The type of the data. If None, the dtype is the same with the original Tensor. Default: None.
-
-            blocking(bool|None, optional): If False and the source is in pinned memory, the copy will be
-              asynchronous with respect to the host. Otherwise, the argument has no effect. If None, the blocking is set True. Default: None.
-
-            non_blocking(bool|None, optional): If True and the source is in pinned memory, the copy will be
-              asynchronous with respect to the host. Otherwise, the argument has no effect. If None, the non_blocking is set False. Default: None.
-
-            include_sublayers(bool, optional): If True, deal with self and all sublayers parameters and buffers, if not only deal with self parameters and buffers. Default: True.
-
-            floating_only(bool, optional): If True, only cast all floating point parameters and buffers of Layer by the give device, dtype and blocking.
+            device(str|paddle.CPUPlace()|paddle.CUDAPlace()|paddle.CUDAPinnedPlace()|paddle.XPUPlace()|None, optional):
+                The device of the Layer which want to be stored. Default: None.
+            dtype(str|numpy.dtype|paddle.dtype|None, optional):
+                The type of the data. Default: None.
+            blocking(bool|None, optional):
+                If False and the source is in pinned memory, the copy will be
+                asynchronous with respect to the host. Default: None.
+            include_sublayers(bool, optional):
+                If True, deal with self and all sublayers parameters and
+                buffers. Default: True.
+            floating_only(bool, optional):
+                If True, only cast floating point parameters and buffers.
 
         Returns:
             self
 
         '''
 
-        if (
-            device is None
-            and dtype is None
-            and blocking is None
-            and non_blocking is None
-        ):
+        if device is None and dtype is None and blocking is None:
             return self
 
         if device is not None:
@@ -3063,17 +3467,11 @@ class Layer:
                 "blocking value error, must be the True, False or None"
             )
 
-        if non_blocking is None:
-            non_blocking = False
-        else:
-            assert isinstance(non_blocking, bool), (
-                "non_blocking value error, must be the True, False or None"
-            )
-        blocking = False if not blocking or non_blocking else True
-
         def transform(t, device, dtype, blocking):
-            if floating_only and (not paddle.is_floating_point(t)):
-                return t
+            if floating_only and paddle.is_integer(t):
+                if device is None:
+                    return t
+                return self._transform(t, device, None, blocking)
             return self._transform(t, device, dtype, blocking)
 
         with warnings.catch_warnings():
@@ -3237,7 +3635,7 @@ class Layer:
             Layer: self
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('Paddle compiled by the user does not support float16, so keep original data type.')
                 >>> import paddle
@@ -3252,7 +3650,6 @@ class Layer:
                 ...         out = self.linear(input)
                 ...         out = self.dropout(out)
                 ...         return out
-                ...
                 >>> model = Model()
                 >>> model.float16()
                 Model(
@@ -3303,7 +3700,7 @@ class Layer:
             Layer: self
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('bfloat need V100 compile')
                 >>> import paddle
@@ -3318,10 +3715,9 @@ class Layer:
                 ...         out = self.linear(input)
                 ...         out = self.dropout(out)
                 ...         return out
-                ...
                 >>> model = Model()
                 >>> model.bfloat16()
-                >>> #UserWarning: Paddle compiled by the user does not support bfloat16, so keep original data type.
+                >>> # UserWarning: Paddle compiled by the user does not support bfloat16, so keep original data type.
                 Model(
                     (linear): Linear(in_features=1, out_features=1, dtype=float32)
                     (dropout): Dropout(p=0.5, axis=None, mode=upscale_in_train)

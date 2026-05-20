@@ -55,7 +55,7 @@ void LodResetKernel(const Context& dev_ctx,
     } else {
       auto* lod = lod_t->data<int>();
       DenseTensor lod_cpu;
-      if (lod_t->place().GetType() == phi::AllocationType::GPU) {
+      if (lod_t->place().GetType() == AllocationType::GPU) {
         Copy(dev_ctx, *lod_t, CPUPlace(), true, &lod_cpu);
         lod = lod_cpu.data<int>();
       }
@@ -85,7 +85,7 @@ void LodResetKernel(const Context& dev_ctx,
           "The last value of 'Target LoD''s last level LoD should be equal "
           "to the first dimension of Input(X). But received the 'Target LoD' "
           "is %s, Input(X)'s shape is %s.",
-          common::make_ddim(level0),
+          make_ddim(level0),
           in->dims()));
   for (size_t i = 0; i < level0.size() - 1; ++i) {
     PADDLE_ENFORCE_GE(level0[i + 1],
@@ -93,7 +93,7 @@ void LodResetKernel(const Context& dev_ctx,
                       common::errors::InvalidArgument(
                           "'Target LoD' should be an ascending "
                           "vector. But received the Target LoD is %s.",
-                          common::make_ddim(level0)));
+                          make_ddim(level0)));
   }
 
   // cast level0 to size_t
@@ -105,7 +105,7 @@ void LodResetKernel(const Context& dev_ctx,
     auto* out_lod = out->mutable_lod();
     out_lod->push_back(ulevel0);
   } else {
-    phi::LegacyLoD target_lod;
+    LegacyLoD target_lod;
     target_lod.push_back(ulevel0);
     out->set_lod(target_lod);
   }

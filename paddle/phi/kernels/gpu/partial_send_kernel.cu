@@ -62,12 +62,12 @@ void PartialSendKernel(const Context& dev_ctx,
 
   gpuStream_t stream = nullptr;
 
-  phi::distributed::NCCLCommContext* comm_ctx = nullptr;
+  distributed::NCCLCommContext* comm_ctx = nullptr;
   int nranks = 0;
   int rank = 0;
 
   comm_ctx =
-      static_cast<phi::distributed::NCCLCommContext*>(dev_ctx.GetCommContext());
+      static_cast<distributed::NCCLCommContext*>(dev_ctx.GetCommContext());
   PADDLE_ENFORCE_NE(comm_ctx,
                     nullptr,
                     common::errors::Unavailable(

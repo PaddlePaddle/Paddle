@@ -173,7 +173,7 @@ __global__ void RowConvGradFilterImproved(const T *in,
 
         for (int offset = 16; offset > 0;
              offset = offset / 2) {  // blockDim.x is 32.
-          val += phi::backends::gpu::CudaShuffleDownSync(mask, val, offset);
+          val += backends::gpu::CudaShuffleDownSync(mask, val, offset);
         }
         __syncthreads();
 
@@ -239,7 +239,7 @@ __global__ void RowConvGradFilter(const T *in,
 
         for (int offset = 16; offset > 0;
              offset = offset / 2) {  // blockDim.x is 32.
-          val += phi::backends::gpu::CudaShuffleDownSync(mask, val, offset);
+          val += backends::gpu::CudaShuffleDownSync(mask, val, offset);
         }
         __syncthreads();
 
@@ -278,7 +278,7 @@ void RowConvGradKernel(const Context &dev_ctx,
   }
 
   int input_dim = 0;
-  phi::Vector<size_t> batch_indices(batch_size + 1);
+  Vector<size_t> batch_indices(batch_size + 1);
   int64_t timesteps = X->dims()[1];
 
   if (is_tensor) {
@@ -297,10 +297,10 @@ void RowConvGradKernel(const Context &dev_ctx,
   PADDLE_ENFORCE_LE_INT_MAX(future_context, "future_context");
   int future_context_int = static_cast<int>(future_context);
 
-  phi::MixVector<size_t> mixv_batch_indices(&batch_indices);
+  MixVector<size_t> mixv_batch_indices(&batch_indices);
   size_t *idx = mixv_batch_indices.CUDAMutableData(dev_ctx.GetPlace());
 
-  funcs::SetConstant<phi::GPUContext, T> zero;
+  funcs::SetConstant<GPUContext, T> zero;
 
   if (dFilter) {
     T *dfilter = dev_ctx.template Alloc<T>(dFilter);

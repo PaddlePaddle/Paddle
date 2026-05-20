@@ -33,13 +33,13 @@ namespace funcs {
  */
 template <typename T, typename IndexT = int>
 typename std::enable_if<std::is_floating_point<T>::value>::type
-elementwise_inner_add(const phi::CPUContext& dev_ctx,
+elementwise_inner_add(const CPUContext& dev_ctx,
                       const T* src_pointer,
                       T* dst_pointer,
                       size_t src_index,
                       IndexT dst_index,
                       size_t slice_size) {
-  auto blas = funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
+  auto blas = funcs::GetBlas<CPUContext, T>(dev_ctx);
   blas.VADD(slice_size,
             src_pointer + src_index * slice_size,
             dst_pointer + dst_index * slice_size,
@@ -48,16 +48,16 @@ elementwise_inner_add(const phi::CPUContext& dev_ctx,
 
 template <typename T, typename IndexT = int>
 typename std::enable_if<!std::is_floating_point<T>::value>::type
-elementwise_inner_add(const phi::CPUContext& dev_ctx UNUSED,
+elementwise_inner_add(const CPUContext& dev_ctx UNUSED,
                       const T* src_pointer,
                       T* dst_pointer,
                       size_t src_index,
                       IndexT dst_index,
                       size_t slice_size) {
-  using EigenVector = typename phi::EigenTensor<T, 1>::Type;
-  using ConstEigenVector = typename phi::EigenTensor<T, 1>::ConstType;
+  using EigenVector = typename EigenTensor<T, 1>::Type;
+  using ConstEigenVector = typename EigenTensor<T, 1>::ConstType;
 
-  phi::EigenDim<1>::Type dim;
+  EigenDim<1>::Type dim;
   dim[0] = slice_size;
 
   ConstEigenVector eigen_src(src_pointer + src_index * slice_size, dim);
@@ -73,7 +73,7 @@ elementwise_inner_add(const phi::CPUContext& dev_ctx UNUSED,
  * return: output tensor
  */
 template <typename T, typename IndexT = int>
-void ScatterAssign(const phi::CPUContext& dev_ctx UNUSED,
+void ScatterAssign(const CPUContext& dev_ctx UNUSED,
                    const DenseTensor& src,
                    const DenseTensor& index,
                    DenseTensor* output) {
@@ -165,7 +165,7 @@ void ScatterAssign(const phi::CPUContext& dev_ctx UNUSED,
 }
 
 template <typename T, typename IndexT = int>
-void ScatterAssignAdd(const phi::CPUContext& dev_ctx,
+void ScatterAssignAdd(const CPUContext& dev_ctx,
                       const DenseTensor& src,
                       const DenseTensor& index,
                       DenseTensor* output) {
@@ -258,7 +258,7 @@ void ScatterAssignAdd(const phi::CPUContext& dev_ctx,
 // The function is only for scatter grad x,
 // however update grad use gather
 template <typename T, typename IndexT = int>
-void CPUScatterGradForX(const phi::CPUContext& dev_ctx UNUSED,
+void CPUScatterGradForX(const CPUContext& dev_ctx UNUSED,
                         const DenseTensor& index,
                         DenseTensor* output) {
   if (index.numel() == 0) {
@@ -282,7 +282,7 @@ void CPUScatterGradForX(const phi::CPUContext& dev_ctx UNUSED,
 }
 
 template <typename T, typename IndexT = int>
-void ScatterNdAdd(const phi::CPUContext& dev_ctx,
+void ScatterNdAdd(const CPUContext& dev_ctx,
                   const DenseTensor& update,
                   const DenseTensor& index,
                   DenseTensor* output) {
@@ -300,7 +300,7 @@ void ScatterNdAdd(const phi::CPUContext& dev_ctx,
   // final dim
   int64_t end_size = index_dims[index_dims_size - 1];
   // remain dim
-  auto remain_ddim = common::slice_ddim(index_dims, 0, index_dims_size - 1);
+  auto remain_ddim = slice_ddim(index_dims, 0, index_dims_size - 1);
   int64_t remain_numel = common::product(remain_ddim);
   // slice size
   int64_t slice_size = 1;

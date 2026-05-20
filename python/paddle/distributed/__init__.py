@@ -118,7 +118,6 @@ from .entry_attr import (
     ProbabilityEntry,
     ShowClickEntry,
 )
-from .fleet import BoxPSDataset  # noqa: F401
 from .flex_checkpoint.dcp.load_state_dict import (
     load_merged_state_dict,
     load_state_dict,

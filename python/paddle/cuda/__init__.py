@@ -25,7 +25,7 @@ from paddle.device import (
     Stream,
     StreamContext,
     _device_to_paddle as _device_to_paddle,
-    amp,  # noqa: F401
+    amp,
     current_device,
     device,
     ipc_collect,
@@ -71,7 +71,7 @@ def is_available() -> bool:
         False otherwise.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -103,7 +103,7 @@ def synchronize(device: DeviceLike = None) -> None:
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
             >>> import paddle
@@ -132,7 +132,7 @@ def current_stream(device: DeviceLike = None) -> Stream:
         core.CUDAStream: The current CUDA stream associated with the given device.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
             >>> import paddle
@@ -157,7 +157,7 @@ def is_current_stream_capturing() -> bool:
         bool: True if the current stream is capturing, False otherwise.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> if paddle.device.is_available():
@@ -281,7 +281,7 @@ def manual_seed_all(seed: int) -> None:
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.cuda.manual_seed_all(102)
@@ -303,7 +303,7 @@ def get_rng_state(device: DeviceLike | None = None) -> core.GeneratorState:
         core.GeneratorState: The current RNG state of the specified device.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.cuda.get_rng_state()
@@ -329,7 +329,7 @@ def set_rng_state(
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> # Save RNG state
@@ -394,7 +394,7 @@ def cudart():
         module: The CUDA runtime API module (_cudart).
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
             >>> import paddle
@@ -433,6 +433,13 @@ class CudaError(RuntimeError):
         super().__init__(f"{msg} ({code})")
 
 
+class OutOfMemoryError(RuntimeError):
+    """Exception raised when a CUDA operation fails due to running out of GPU memory."""
+
+    def __init__(self, msg: str) -> None:
+        super().__init__(msg)
+
+
 def check_error(res: int) -> None:
     r"""Check the return code of a CUDA runtime API call.
 
@@ -445,11 +452,11 @@ def check_error(res: int) -> None:
         res (int): The CUDA runtime return code.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
             >>> from paddle.cuda import check_error
-            >>> check_error(0) # check for cuda success code # will not raise Error
+            >>> check_error(0)  # check for cuda success code # will not raise Error
             >>> # check_error(1) # check for cuda error code 1(invalid argument), will raise Error
             >>> # check_error(2) # check for cuda error code 2(out of memory), will raise Error
     """
@@ -474,7 +481,7 @@ def mem_get_info(device: DeviceLike = None) -> tuple[int, int]:
             - ``total`` (int): The total number of bytes of GPU memory.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
             >>> from paddle.cuda import mem_get_info
@@ -510,7 +517,7 @@ def device_count() -> int:
         int: The number of devices available.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -530,7 +537,7 @@ def empty_cache() -> None:
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -554,7 +561,7 @@ def is_initialized() -> bool:
         bool: True if any device (CUDA, XPU, or Custom) has been initialized, False otherwise.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -594,7 +601,7 @@ def memory_allocated(device: DeviceLike = None) -> int:
         int: The current memory occupied by tensors in bytes.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -628,7 +635,7 @@ def max_memory_allocated(device: DeviceLike = None) -> int:
         int: The peak size of memory that is allocated to tensor of the given device, in bytes.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -654,7 +661,7 @@ def max_memory_reserved(device: DeviceLike = None) -> int:
         int: The peak size of memory that is held by the allocator of the given device, in bytes.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -677,7 +684,7 @@ def reset_max_memory_allocated(device: DeviceLike | None = None) -> None:
             Default: None.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -701,7 +708,7 @@ def reset_max_memory_reserved(device: DeviceLike | None = None) -> None:
             Default: None.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -726,7 +733,7 @@ def memory_reserved(device: DeviceLike = None) -> int:
         int: The current memory managed by the caching allocator in bytes.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -756,7 +763,7 @@ def set_device(device: DeviceLike) -> None:
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
             >>> import paddle
@@ -847,6 +854,8 @@ def get_stream_from_external(
 
 
 __all__ = [
+    "CudaError",
+    "OutOfMemoryError",
     "cudart",
     "check_error",
     "is_available",
@@ -889,4 +898,5 @@ __all__ = [
     "Event",
     "ipc_collect",
     "StreamContext",
+    "amp",
 ]

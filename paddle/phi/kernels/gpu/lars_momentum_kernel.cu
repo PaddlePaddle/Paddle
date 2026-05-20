@@ -32,7 +32,7 @@
 namespace phi {
 
 template <typename T>
-using MultiPrecisionType = typename phi::dtype::MPTypeTrait<T>::Type;
+using MultiPrecisionType = typename MPTypeTrait<T>::Type;
 
 __device__ __forceinline__ float Sqrt(float x) { return sqrtf(x); }
 __device__ __forceinline__ double Sqrt(double x) { return sqrt(x); }
@@ -94,8 +94,8 @@ __device__ inline void VectorizeLarsUpdate(const T* __restrict__ grad,
                                            const int grid_stride,
                                            const int64_t numel,
                                            MT* master_param_out = nullptr) {
-  using VecType = phi::AlignedVector<T, VecSize>;
-  using VecMType = phi::AlignedVector<MT, VecSize>;
+  using VecType = AlignedVector<T, VecSize>;
+  using VecMType = AlignedVector<MT, VecSize>;
   int main = numel >> (VecSize >> 1);
   int tail_offset = main * VecSize;
 
@@ -497,7 +497,7 @@ void LarsMomentumKernel(
   int num_blocks_per_sm = 0;
   int sm_num = dev_ctx.GetSMCount();
   // DenseTensor tmp_buffer_t = dev_ctx.AllocateTmpTensor<MT,
-  // phi::GPUContext>(
+  // GPUContext>(
   //     {LARS_BLOCK_SIZE << 1}, cuda_ctx);
   DenseTensor tmp_buffer_t;
   tmp_buffer_t.Resize({LARS_BLOCK_SIZE << 1});

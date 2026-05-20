@@ -57,7 +57,7 @@ void DeQuantizeLinearImpl(const Context& dev_ctx,
                           DenseTensor* out) {
   auto* in = &x;
 
-  auto in_tmp = phi::Cast<T>(dev_ctx, *in, phi::CppTypeToDataType<D>::Type());
+  auto in_tmp = Cast<T>(dev_ctx, *in, CppTypeToDataType<D>::Type());
 
   dev_ctx.template Alloc<D>(out, out->numel() * sizeof(D));
 
@@ -87,8 +87,6 @@ void DeQuantizeLinearImpl(const Context& dev_ctx,
   }
 }
 
-// Note: We should re-design this kernel's args when we abandon fluid op
-// definition
 template <typename T, typename Context>
 void DeQuantizeLinearKernel(const Context& dev_ctx,
                             const DenseTensor& x,
@@ -113,15 +111,15 @@ void DeQuantizeLinearKernel(const Context& dev_ctx,
                         "in_scale can't be nullptr in DeQuantizeLinearKernel"));
   auto scale = in_scale.get();
   switch (scale.dtype()) {
-    case phi::DataType::FLOAT64:
+    case DataType::FLOAT64:
       DeQuantizeLinearImpl<T, Context, double>(
           dev_ctx, x, scale, quant_axis, qmax, only_observer, out);
       break;
-    case phi::DataType::FLOAT32:
+    case DataType::FLOAT32:
       DeQuantizeLinearImpl<T, Context, float>(
           dev_ctx, x, scale, quant_axis, qmax, only_observer, out);
       break;
-    case phi::DataType::FLOAT16:
+    case DataType::FLOAT16:
       DeQuantizeLinearImpl<T, Context, float16>(
           dev_ctx, x, scale, quant_axis, qmax, only_observer, out);
       break;
@@ -235,8 +233,6 @@ void QuantizeLinearInferKernel(const Context& dev_ctx,
   }
 }
 
-// Note: We should re-design this kernel's args when we abandon fluid op
-// definition
 template <typename T, typename Context>
 void QuantizeLinearKernel(const Context& dev_ctx,
                           const DenseTensor& x,

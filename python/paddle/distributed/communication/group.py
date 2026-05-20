@@ -142,9 +142,6 @@ def _is_global_group(group):
 def _warn_cur_rank_not_in_group(group):
     global_rank = dist.get_rank()
     if group and not group.is_member():
-        warnings.warn(
-            f"Current global rank {global_rank} is not in group {group.name}"
-        )
         return True
     return False
 
@@ -169,7 +166,7 @@ def is_initialized() -> bool:
         This API only supports the dygraph mode.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
@@ -200,7 +197,7 @@ def destroy_process_group(group: Group | None = None) -> None:
         This API only supports the dygraph mode.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
@@ -239,14 +236,14 @@ def get_group(id: int = 0) -> Group:
         Group: the group instance.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
             >>> import paddle.distributed as dist
 
             >>> dist.init_parallel_env()
-            >>> gid = paddle.distributed.new_group([2,4,6])
+            >>> gid = paddle.distributed.new_group([2, 4, 6])
             >>> paddle.distributed.get_group(gid.id)
 
     """
@@ -301,7 +298,7 @@ def wait(
         None.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
@@ -334,7 +331,7 @@ def barrier(group: Group | None = None) -> None:
         None.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
@@ -391,7 +388,7 @@ def get_backend(group: Group | None = None) -> str:
         Returns the name of the given group backend.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle

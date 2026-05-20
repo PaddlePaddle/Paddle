@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/gpu/seed_kernel.h"
 #include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -32,18 +33,24 @@ void GPUSeedKernel(const Context &dev_ctx,
 
   bool cpu_place = force_cpu || dev_ctx.GetPlace() == CPUPlace();
   if (cpu_place) {
-    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
+    DeviceContextPool &pool = DeviceContextPool::Instance();
     auto &dev_ctx_cpu = *pool.Get(CPUPlace());
     dev_ctx_cpu.Alloc<T>(out);
-    funcs::SetConstant<phi::CPUContext, T> functor;
-    functor(reinterpret_cast<const phi::CPUContext &>(dev_ctx_cpu),
+    funcs::SetConstant<CPUContext, T> functor;
+    functor(reinterpret_cast<const CPUContext &>(dev_ctx_cpu),
             out,
             static_cast<T>(seed));
   } else {
     auto *out_data = dev_ctx.template Alloc<T>(out);
     auto stream = dev_ctx.stream();
-    phi::memory_utils::Copy(
-        dev_ctx.GetPlace(), out_data, CPUPlace(), &seed, sizeof(int), stream);
+    const int *stable_seed =
+        backends::gpu::RestoreHostMemIfCapturingCUDAGraph(&seed, 1);
+    phi::memory_utils::Copy(dev_ctx.GetPlace(),
+                            out_data,
+                            CPUPlace(),
+                            stable_seed,
+                            sizeof(int),
+                            stream);
   }
 }
 }  // namespace phi

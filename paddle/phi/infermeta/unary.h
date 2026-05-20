@@ -69,6 +69,12 @@ PADDLE_API void ArgMinMaxInferMeta(const MetaTensor& x,
                                    MetaTensor* out,
                                    MetaConfig config = MetaConfig());
 
+PADDLE_API void AMinMaxInferMeta(const MetaTensor& x,
+                                 const std::vector<int64_t>& axis,
+                                 bool keep_dim,
+                                 MetaTensor* min,
+                                 MetaTensor* max);
+
 PADDLE_API void MinMaxWithIndexInferMeta(const MetaTensor& x,
                                          const Scalar& axis,
                                          bool keepdims,
@@ -341,6 +347,9 @@ PADDLE_API void FFTR2CInferMeta(const MetaTensor& x,
                                 MetaTensor* out,
                                 MetaConfig = MetaConfig());
 
+PADDLE_API void FlashMaskGetUniqueIdInferMeta(const MetaTensor& x,
+                                              MetaTensor* out);
+
 PADDLE_API void FlattenInferMeta(const MetaTensor& x,
                                  int start_axis,
                                  int stop_axis,
@@ -476,6 +485,7 @@ PADDLE_API void MaxPoolWithIndexInferMeta(const MetaTensor& x,
                                           const std::vector<int>& kernel_size,
                                           const std::vector<int>& strides,
                                           const std::vector<int>& paddings,
+                                          const std::vector<int>& dilations,
                                           bool global_pooling,
                                           bool adaptive,
                                           bool ceil_mode,
@@ -591,7 +601,7 @@ PADDLE_API void PixelUnshuffleInferMeta(const MetaTensor& x,
                                         MetaTensor* out);
 
 PADDLE_API void PNormInferMeta(const MetaTensor& x,
-                               float porder,
+                               double porder,
                                int axis,
                                float epsilon,
                                bool keepdim,

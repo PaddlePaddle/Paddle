@@ -362,7 +362,7 @@ using ComputeReturnType = std::variant<float,
                                        std::vector<int32_t>,
                                        std::vector<int64_t>,
                                        std::vector<float>,
-                                       phi::DataType,
+                                       DataType,
                                        Place>;
 ComputeReturnType CastPyObjectToAny(const pybind11::object &obj,
                                     const std::string &type_name) {
@@ -395,9 +395,7 @@ ComputeReturnType CastPyObjectToAny(const pybind11::object &obj,
              return obj.cast<std::vector<float>>();
            }},
           {"datatype",
-           [](const pybind11::object &obj) {
-             return obj.cast<phi::DataType>();
-           }},
+           [](const pybind11::object &obj) { return obj.cast<DataType>(); }},
           {"place",
            [](const pybind11::object &obj) { return obj.cast<Place>(); }}};
 
@@ -435,7 +433,7 @@ void BindProgram(py::module *m) {
         Program: An empty Program.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.static as static
@@ -445,9 +443,9 @@ void BindProgram(py::module *m) {
             >>> main_program = static.Program()
             >>> startup_program = static.Program()
             >>> with static.program_guard(main_program=main_program, startup_program=startup_program):
-            ...    x = static.data(name="x", shape=[-1, 784], dtype='float32')
-            ...    y = static.data(name="y", shape=[-1, 1], dtype='int32')
-            ...    z = static.nn.fc(name="fc", x=x, size=10, activation="relu")
+            ...     x = static.data(name="x", shape=[-1, 784], dtype='float32')
+            ...     y = static.data(name="y", shape=[-1, 1], dtype='int32')
+            ...     z = static.nn.fc(name="fc", x=x, size=10, activation="relu")
             >>> print("main program is: {}".format(main_program))
             >>> print("start up program is: {}".format(startup_program))
   )DOC");
@@ -1468,7 +1466,7 @@ void BindValue(py::module *m) {
       .def_property(
           "dtype",
           [](Value self) { return pir::GetValueDtype(self); },
-          [](Value self, phi::DataType dtype) {
+          [](Value self, DataType dtype) {
             PADDLE_THROW(common::errors::InvalidArgument(
                 "can't set dtype when building static graph"));
           })
@@ -1827,7 +1825,7 @@ void BindType(py::module *m) {
       .def_property(
           "dtype",
           [](Type self) { return GetTensorDtype(self); },
-          [](Type self, phi::DataType dtype) {
+          [](Type self, DataType dtype) {
             PADDLE_THROW(common::errors::InvalidArgument(
                 "can't set dtype when building static graph"));
           })
@@ -2637,7 +2635,7 @@ void BindUtils(pybind11::module *m) {
             PreconditionNotMet: If legacy_program has multi block will raise error.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import os
                 >>> # Paddle will remove this flag in the next version
@@ -2650,16 +2648,16 @@ void BindUtils(pybind11::module *m) {
 
                 >>> x = paddle.randn([4, 4])
                 >>> main_program, start_program = (
-                ...    paddle.static.Program(),
-                ...    paddle.static.Program(),
-                ...)
+                ...     paddle.static.Program(),
+                ...     paddle.static.Program(),
+                ... )
 
                 >>> with paddle.static.program_guard(main_program, start_program):
-                ...    x_s = paddle.static.data('x', [4, 4], x.dtype)
-                ...    x_s.stop_gradient = False
-                ...    y_s = paddle.matmul(x_s, x_s)
-                ...    z_s = paddle.add(y_s, y_s)
-                ...    k_s = paddle.tanh(z_s)
+                ...     x_s = paddle.static.data('x', [4, 4], x.dtype)
+                ...     x_s.stop_gradient = False
+                ...     y_s = paddle.matmul(x_s, x_s)
+                ...     z_s = paddle.add(y_s, y_s)
+                ...     k_s = paddle.tanh(z_s)
                 >>> pir_program = pir.translate_to_pir(main_program.desc)
 
                 >>> print(pir_program)
@@ -2712,7 +2710,7 @@ void BindUtils(pybind11::module *m) {
             PreconditionNotMet: If legacy_program has multi block will raise error.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import os
                 >>> # Paddle will remove this flag in the next version
@@ -3200,7 +3198,7 @@ void BindDrrPatternContext(pybind11::module *m) {
       .def(
           "DataTypeAttr",
           [](drr::MatchContext &self, const std::string &value_name) {
-            return self.Attr<phi::DataType>(value_name);
+            return self.Attr<DataType>(value_name);
           },
           pybind11::arg("value_name"))
       .def(

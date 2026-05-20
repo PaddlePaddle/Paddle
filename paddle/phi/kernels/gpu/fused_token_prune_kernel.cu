@@ -144,12 +144,12 @@ void FusedTokenPruneOpCUDAKernel(const Context& dev_ctx,
 
   // 2. Reduce sum
   const std::vector<int64_t> reduce_dims{1, 2};
-  phi::Reduce<T, kps::SumOps>(
+  Reduce<T, kps::SumOps>(
       dev_ctx, attn_tmp, false, reduce_dims, attn_accu.dtype(), &attn_accu);
 
   // 3. Prepare token indices
-  phi::backends::gpu::GpuLaunchConfig config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, bsz * max_seq_len);
+  backends::gpu::GpuLaunchConfig config =
+      backends::gpu::GetGpuLaunchConfig1D(dev_ctx, bsz * max_seq_len);
   FillIndex<<<config.block_per_grid,
               config.thread_per_block,
               0,
@@ -158,7 +158,7 @@ void FusedTokenPruneOpCUDAKernel(const Context& dev_ctx,
   // 4. Sort token indices by attn
   if (keep_first_token) {
     T max = std::numeric_limits<T>::max();
-    config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, bsz);
+    config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, bsz);
     MaximumFirst<T>
         <<<config.block_per_grid,
            config.thread_per_block,
@@ -258,8 +258,7 @@ void FusedTokenPruneOpCUDAKernel(const Context& dev_ctx,
          slimmed_indices);
   }
   // 7. Get slimmed X by indices
-  config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, bsz * slimmed_x_len);
+  config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, bsz * slimmed_x_len);
   TakeAlongAxis<T>
       <<<config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
           x.data<T>(),

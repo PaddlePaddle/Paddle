@@ -41,7 +41,7 @@ void dispatch_tokens_unzip_stable(const Context &dev_ctx,
                                   const int num_experts,
                                   const int scale_length,
                                   const bool do_gather) {
-#define DTYPE_CASE(dtype, type) dtype == phi::DataType::type
+#define DTYPE_CASE(dtype, type) dtype == DataType::type
 #define GET_DATA(tensor, type) tensor.data<type>()
 #define GET_XPU_DATA(tensor, type, xpu_type) \
   reinterpret_cast<const xpu_type *>(tensor.data<type>())
@@ -133,10 +133,23 @@ void MoePermuteKernel(const Context &dev_ctx,
                       const int padding_multiplex,
                       const bool do_gather,
                       const bool using_ue8m0_scale,
+                      const bool return_expert_indices,
+                      const int override_buffer_size,
                       DenseTensor *X_unzipped,
                       DenseTensor *zipped_expertwise_rowmap,
                       DenseTensor *token_prob_unzipped,
-                      DenseTensor *XScale_unzipped) {
+                      DenseTensor *XScale_unzipped,
+                      DenseTensor *expert_indices) {
+  PADDLE_ENFORCE_EQ(
+      return_expert_indices,
+      false,
+      common::errors::Unimplemented("moe_permute on XPU does not support "
+                                    "return_expert_indices=true yet."));
+  PADDLE_ENFORCE_EQ(
+      override_buffer_size,
+      -1,
+      common::errors::Unimplemented(
+          "moe_permute on XPU does not support override_buffer_size yet."));
   const int64_t rows = X.dims()[0];
   const int64_t cols = X.dims()[1];
   PADDLE_ENFORCE_LE(
@@ -198,14 +211,7 @@ void MoePermuteKernel(const Context &dev_ctx,
       std::numeric_limits<int32_t>::max(),
       common::errors::InvalidArgument(
           "topk should be less than INT_MAX, received topk: (%ld)", topk));
-  token_prob_unzipped->Resize({output_rows});
-  if (do_gather) {  // no gather, no resize.
-    X_unzipped->Resize({output_rows, cols});
-    if (XScale) {
-      const int quanted_cols = XScale.get_ptr()->dims()[1];
-      XScale_unzipped->Resize({output_rows, quanted_cols});
-    }
-  }
+
   dev_ctx.template Alloc<T>(X_unzipped);
   dev_ctx.template Alloc<float>(XScale_unzipped);
   dev_ctx.template Alloc<int>(zipped_expertwise_rowmap);

@@ -31,8 +31,8 @@ void WeightOnlyLinearXpuKernel(const Context& dev_ctx,
       "int8",
       common::errors::Fatal(
           "WeightOnlyLinearXpuKernel xpu just support int8 weight only"));
-  phi::XPUPlace place(phi::backends::xpu::GetXPUCurrentDeviceId());
-  auto xpu_ctx = static_cast<const phi::XPUContext*>(&dev_ctx);
+  XPUPlace place(backends::xpu::GetXPUCurrentDeviceId());
+  auto xpu_ctx = static_cast<const XPUContext*>(&dev_ctx);
   dev_ctx.template Alloc<T>(out);
   int r = 0;
   switch (x.dtype()) {

@@ -312,7 +312,7 @@ bool ExecutionEngine::linkSharedLibrary(
   return true;
 #else
   CINN_NOT_IMPLEMENTED;
-#endif
+#endif  // CINN_WITH_CUDA
 }
 
 bool ExecutionEngine::AddModule(

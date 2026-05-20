@@ -47,8 +47,8 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fast_ln_v1_fwd_kernel(
     U *__restrict__ var_out_ptr,
     T *__restrict__ y_ptr) {
   __shared__ U smem[WARPS_M * WARPS_N];
-  using Vec = phi::AlignedVector<T, VecSize>;
-  using Vec_scale = phi::AlignedVector<ScaleT, VecSize>;
+  using Vec = AlignedVector<T, VecSize>;
+  using Vec_scale = AlignedVector<ScaleT, VecSize>;
 
   const int tidx = threadIdx.x;
   const int bidx = blockIdx.x;
@@ -65,8 +65,8 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fast_ln_v1_fwd_kernel(
 #pragma unroll
   for (int it = 0, col = c; it < LDGS; it++) {
     if (col < cols) {
-      phi::Load<ScaleT, VecSize>(gamma_ptr + col * VecSize, &gamma[it]);
-      phi::Load<ScaleT, VecSize>(beta_ptr + col * VecSize, &beta[it]);
+      Load<ScaleT, VecSize>(gamma_ptr + col * VecSize, &gamma[it]);
+      Load<ScaleT, VecSize>(beta_ptr + col * VecSize, &beta[it]);
     } else {
       gamma[it] = Vec_scale{};
       beta[it] = Vec_scale{};
@@ -80,7 +80,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fast_ln_v1_fwd_kernel(
 #pragma unroll
     for (int it = 0, col = c; it < LDGS; it++) {
       if (col < cols) {
-        phi::Load<T, VecSize>(
+        Load<T, VecSize>(
             x_ptr + static_cast<int64_t>(row) * ELTS_PER_ROW + col * VecSize,
             &x[it]);
       } else {

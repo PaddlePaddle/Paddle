@@ -23,6 +23,8 @@ from op_test import get_device, is_custom_device
 
 import paddle
 from paddle.cuda import (
+    CudaError,
+    OutOfMemoryError,
     Stream,
     StreamContext,
     _device_to_paddle,
@@ -356,11 +358,22 @@ class TestCudaCompat(unittest.TestCase):
     def test_check_error(self):
         check_error(0)
 
-        with self.assertRaisesRegex(RuntimeError, "invalid argument"):
+        with self.assertRaisesRegex(CudaError, "invalid argument"):
             check_error(1)
 
-        with self.assertRaisesRegex(RuntimeError, "out of memory"):
+        with self.assertRaisesRegex(CudaError, "out of memory"):
             check_error(2)
+
+    def test_out_of_memory_error(self):
+        # OutOfMemoryError is a RuntimeError, not a CudaError
+        self.assertTrue(issubclass(OutOfMemoryError, RuntimeError))
+        self.assertFalse(issubclass(OutOfMemoryError, CudaError))
+        self.assertTrue(issubclass(CudaError, RuntimeError))
+
+        # Direct construction
+        oom = OutOfMemoryError("test message")
+        self.assertIsInstance(oom, RuntimeError)
+        self.assertEqual(str(oom), "test message")
 
 
 def can_use_cuda_graph():
@@ -468,6 +481,31 @@ class TestDeviceDvice(unittest.TestCase):
         with paddle.device.device("cpu"):
             self.assertEqual(paddle.device.get_device(), 'cpu')
         self.assertEqual(paddle.device.get_device(), current)
+
+        paddle.disable_static()
+        current = paddle.device.get_device()
+
+        # Test: passing cpu tensor.place to device context manager
+        cpu_tensor = paddle.empty(1, dtype="float32", device='cpu')
+        with paddle.device.device(cpu_tensor.place):
+            self.assertEqual(paddle.device.get_device(), 'cpu')
+        self.assertEqual(paddle.device.get_device(), current)
+
+        if paddle.is_compiled_with_cuda() and paddle.cuda.is_available():
+            device_count = paddle.device.cuda.device_count()
+
+            # Test: passing gpu:0 tensor.place to cuda.device context manager
+            gpu_tensor_0 = paddle.empty(1, dtype="float32", device='cuda:0')
+            with paddle.cuda.device(gpu_tensor_0.place):
+                self.assertEqual(paddle.device.get_device(), 'gpu:0')
+            self.assertEqual(paddle.device.get_device(), current)
+
+            # Test: passing gpu tensor.place with non-zero device id
+            if device_count > 1:
+                gpu_tensor_1 = paddle.empty(1, dtype="float32", device='cuda:1')
+                with paddle.device.device(gpu_tensor_1.place):
+                    self.assertEqual(paddle.device.get_device(), 'gpu:1')
+                self.assertEqual(paddle.device.get_device(), current)
 
 
 class TestCudaDvice(unittest.TestCase):

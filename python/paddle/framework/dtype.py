@@ -25,6 +25,7 @@ from ..base.core import (
     VarDesc,
     finfo as core_finfo,
     iinfo as core_iinfo,
+    size_of_dtype,
 )
 
 if TYPE_CHECKING:
@@ -64,6 +65,10 @@ def bind_vartype():
     dtype = VarDesc.VarType
     dtype.__qualname__ = "dtype"
     dtype.__module__ = "paddle"
+    dtype.itemsize = property(
+        lambda self: size_of_dtype(self),
+        doc="The size in bytes of a single scalar value of this dtype.",
+    )
 
     uint8 = VarDesc.VarType.UINT8
     uint16 = VarDesc.VarType.UINT16
@@ -161,6 +166,10 @@ def bind_datatype():
     dtype = DataType
     dtype.__qualname__ = "dtype"
     dtype.__module__ = "paddle"
+    dtype.itemsize = property(
+        lambda self: size_of_dtype(self),
+        doc="The size in bytes of a single scalar value of this dtype.",
+    )
 
     uint8 = DataType.UINT8
     uint16 = DataType.UINT16
@@ -236,6 +245,7 @@ else:
     bind_vartype()
 
 
+@param_one_alias(["dtype", "type"])
 def iinfo(dtype: DTypeLike) -> core_iinfo:
     """
 
@@ -244,7 +254,7 @@ def iinfo(dtype: DTypeLike) -> core_iinfo:
     This is similar to `numpy.iinfo <https://numpy.org/doc/stable/reference/generated/numpy.iinfo.html#numpy-iinfo>`_.
 
     Args:
-        dtype(str|paddle.dtype|np.dtype):  One of paddle.uint8, paddle.int8, paddle.int16, paddle.int32, and paddle.int64.
+        dtype(str|paddle.dtype|np.dtype):  One of paddle.uint8, paddle.int8, paddle.int16, paddle.int32, and paddle.int64. Alias: ``type``.
 
     Returns:
         An iinfo object, which has the following 4 attributes:
@@ -255,7 +265,7 @@ def iinfo(dtype: DTypeLike) -> core_iinfo:
             - dtype: str, The string name of the argument dtype.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 

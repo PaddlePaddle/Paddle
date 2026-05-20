@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/infermeta/nullary.h"
+#include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 
@@ -346,8 +347,8 @@ void AdamwInferMeta(const MetaTensor& param,
                     const Scalar& beta1,
                     const Scalar& beta2,
                     const Scalar& epsilon,
-                    float lr_ratio,
-                    float coeff,
+                    double lr_ratio,
+                    double coeff,
                     bool with_decay,
                     bool lazy_mode,
                     int64_t min_row_size_to_use_multithread,
@@ -2322,7 +2323,7 @@ void Fp8GemmBlockwiseInferMeta(const MetaTensor& A,
       2,
       errors::InvalidArgument("Input B should have 2 dimensions"));
 
-  const auto IsFp8Dtype = [](const paddle::DataType dtype) {
+  const auto IsFp8Dtype = [](const DataType dtype) {
     return dtype == DataType::FLOAT8_E4M3FN || dtype == DataType::FLOAT8_E5M2;
   };
 
@@ -2848,11 +2849,12 @@ void FusionGroupInferMeta(const std::vector<const MetaTensor*>& ins,
   }
 
   for (size_t j = 0; j < num_outs; ++j) {
-    if (outs_dtype[j] == phi::TransToProtoVarType(DataType::FLOAT16)) {
+    DataType out_dtype = TransToPhiDataType(outs_dtype[j]);
+    if (out_dtype == DataType::FLOAT16) {
       outs[j]->set_dtype(DataType::FLOAT16);
-    } else if (outs_dtype[j] == phi::TransToProtoVarType(DataType::FLOAT32)) {
+    } else if (out_dtype == DataType::FLOAT32) {
       outs[j]->set_dtype(DataType::FLOAT32);
-    } else if (outs_dtype[j] == phi::TransToProtoVarType(DataType::FLOAT64)) {
+    } else if (out_dtype == DataType::FLOAT64) {
       outs[j]->set_dtype(DataType::FLOAT64);
     }
   }
@@ -3811,6 +3813,50 @@ void LegacyInterpolateInferMeta(
                        align_mode,
                        output,
                        config);
+}
+
+void IndexFillInferMeta(const MetaTensor& x,
+                        const MetaTensor& index,
+                        int dim,
+                        const Scalar& value,
+                        MetaTensor* out) {
+  auto in_dims = x.dims();
+  auto index_dims = index.dims();
+  int rank = in_dims.size();
+
+  PADDLE_ENFORCE_LT(
+      rank,
+      7,
+      common::errors::InvalidArgument(
+          "The rank of Input(X) should be less than 7, but received %d.",
+          rank));
+
+  if (dim < 0) {
+    dim += rank;
+  }
+
+  PADDLE_ENFORCE_GE(dim,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The dim must be >= -%d and < %d, but received %d.",
+                        rank,
+                        rank,
+                        dim));
+  PADDLE_ENFORCE_LT(dim,
+                    rank,
+                    common::errors::InvalidArgument(
+                        "The dim must be >= -%d and < %d, but received %d.",
+                        rank,
+                        rank,
+                        dim));
+
+  PADDLE_ENFORCE_EQ(index_dims.size(),
+                    1,
+                    common::errors::InvalidArgument(
+                        "The index tensor must be 1-D, but received %d-D.",
+                        index_dims.size()));
+
+  out->share_meta(x);
 }
 
 void IndexPutInferMeta(const MetaTensor& x,
@@ -5697,6 +5743,34 @@ void WarpctcInferMeta(const MetaTensor& logits,
     max_sequence_length = logits_dims[0];
     num_sequences = logits_dims[1];
     sequence_width = logits_dims[2];
+
+    int64_t labels_batch_size = label.dims()[0];
+    int64_t logits_length_batch_size = logits_length.dims()[0];
+    int64_t labels_length_batch_size = labels_length.dims()[0];
+
+    PADDLE_ENFORCE_EQ(
+        labels_batch_size,
+        num_sequences,
+        common::errors::InvalidArgument(
+            "Expected label to have size %lld at dimension 0, but got size %d",
+            num_sequences,
+            labels_batch_size));
+
+    PADDLE_ENFORCE_EQ(
+        logits_length_batch_size,
+        num_sequences,
+        common::errors::InvalidArgument("Expected logits_length to have size "
+                                        "%lld at dimension 0, but got size %d",
+                                        num_sequences,
+                                        logits_length_batch_size));
+
+    PADDLE_ENFORCE_EQ(
+        labels_length_batch_size,
+        num_sequences,
+        common::errors::InvalidArgument("Expected labels_length to have size "
+                                        "%lld at dimension 0, but got size %d",
+                                        num_sequences,
+                                        labels_length_batch_size));
   } else {
     max_sequence_length = -1;
     num_sequences = -1;
@@ -6164,10 +6238,13 @@ void MoePermuteInferMeta(const MetaTensor& X,
                          const int padding_alignment,
                          const bool do_gather,
                          const bool using_ue8m0_scale,
+                         const bool return_expert_indices,
+                         const int override_buffer_size,
                          MetaTensor* X_unzipped,
                          MetaTensor* zipped_expertwise_rowmap,
                          MetaTensor* token_prob_unzipped,
-                         MetaTensor* XScale_unzipped) {
+                         MetaTensor* XScale_unzipped,
+                         MetaTensor* expert_indices) {
   PADDLE_ENFORCE_EQ(
       X.dims().size(),
       2,
@@ -6186,6 +6263,22 @@ void MoePermuteInferMeta(const MetaTensor& X,
                     true,
                     common::errors::InvalidArgument(
                         "Input expert_prob_topk's dtype should be FLOAT32"));
+  const int64_t rows = X.dims()[0];
+  const int64_t cols = X.dims()[1];
+  int64_t output_rows = 0;
+
+  // Using -1 as default value for not overriding buffer size,
+  // which also means that tokens_per_expert(CPU) is valid
+  // and will be used to calculate the output_rows.
+  if (override_buffer_size != -1) {
+    output_rows = override_buffer_size;
+  } else {
+    for (int i = 0; i < num_experts; ++i) {
+      const int64_t tokens = tokens_per_expert[i];
+      output_rows += ((tokens + padding_alignment - 1) / padding_alignment) *
+                     padding_alignment;
+    }
+  }
   if (XScale && do_gather) {
     if (using_ue8m0_scale) {
       PADDLE_ENFORCE_EQ(XScale.dtype(),
@@ -6200,27 +6293,33 @@ void MoePermuteInferMeta(const MetaTensor& X,
                             "Input XScale's dtype should be FLOAT32"));
     }
     const int64_t quanted_cols = XScale.dims()[1];
-    XScale_unzipped->set_dims({-1, quanted_cols});
+    XScale_unzipped->set_dims({output_rows, quanted_cols});
     XScale_unzipped->set_dtype(XScale.dtype());
   } else {
     XScale_unzipped->set_dims({0});
     XScale_unzipped->set_dtype(DataType::FLOAT32);
   }
-  const int64_t rows = X.dims()[0];
-  const int64_t cols = X.dims()[1];
 
   if (do_gather) {
-    X_unzipped->set_dims({-1, cols});
+    X_unzipped->set_dims({output_rows, cols});
     X_unzipped->set_dtype(X.dtype());
   } else {
     // Meta only, not
     X_unzipped->set_dims({0, cols});
     X_unzipped->set_dtype(X.dtype());
   }
+  if (return_expert_indices) {
+    // This size is determined in runtime, so no shape inference available.
+    expert_indices->set_dims({output_rows});
+    expert_indices->set_dtype(expert_routemap_topk.dtype());
+  } else {
+    expert_indices->set_dims({0});
+    expert_indices->set_dtype(expert_routemap_topk.dtype());
+  }
 
   zipped_expertwise_rowmap->set_dims({rows, num_experts});
   zipped_expertwise_rowmap->set_dtype(DataType::INT32);
-  token_prob_unzipped->set_dims({-1});
+  token_prob_unzipped->set_dims({output_rows});
   token_prob_unzipped->set_dtype(expert_prob_topk.dtype());
 }
 
@@ -6231,6 +6330,7 @@ void MoeUnpermuteInferMeta(const MetaTensor& unzipped_tokens,
                            const int total_zipped_tokens_num,
                            const int num_experts,
                            const bool MP,
+                           const bool using_weighted_combine,
                            MetaTensor* zipped_tokens,
                            MetaTensor* zipped_probs_topk) {
   PADDLE_ENFORCE_EQ(unzipped_tokens.dtype() == DataType::BFLOAT16,
@@ -6367,6 +6467,17 @@ void MultiheadMatmulInferMeta(const MetaTensor& input,
   out->set_dims(input.dims());
   out->set_dtype(input.dtype());
   out->share_lod(input);
+}
+
+void MaskedScatterInferMeta(const MetaTensor& x,
+                            const MetaTensor& mask,
+                            const MetaTensor& value,
+                            MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto mask_dims = mask.dims();
+  auto expanded_dims = funcs::BroadcastTwoDims(x_dims, mask_dims, -1);
+  out->set_dims(expanded_dims);
+  out->set_dtype(x.dtype());
 }
 
 void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,

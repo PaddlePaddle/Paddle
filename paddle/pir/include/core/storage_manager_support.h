@@ -83,7 +83,7 @@ class StorageHelperBase : public BaseT {
   ///
   /// \brief Get the identifier for the concrete type.
   ///
-  static pir::TypeId type_id() { return pir::TypeId::get<ConcreteT>(); }
+  static TypeId type_id() { return TypeId::get<ConcreteT>(); }
 
   ///
   /// \brief Implementation of 'classof' that compares the type id of
@@ -99,14 +99,14 @@ class StorageHelperBase : public BaseT {
   /// storage user.
   ///
   static std::set<InterfaceValue> interface_set() {
-    return pir::detail::GetInterfaceSet<ConcreteT, InterfaceList>();
+    return GetInterfaceSet<ConcreteT, InterfaceList>();
   }
 
   ///
   /// \brief Get or create a new ConcreteT instance within the ctx.
   ///
   template <typename... Args>
-  static ConcreteT get(pir::IrContext *ctx, Args &&...args) {
+  static ConcreteT get(IrContext *ctx, Args &&...args) {
     return ManagerT::template get<ConcreteT>(ctx, std::forward<Args>(args)...);
   }
 

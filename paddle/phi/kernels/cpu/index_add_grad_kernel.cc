@@ -42,15 +42,15 @@ void IndexAddGradKernel(const Context& dev_ctx,
   const auto& index_type = index.dtype();
 
   bool index_type_match =
-      index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;
+      index_type == DataType::INT32 || index_type == DataType::INT64;
   PADDLE_ENFORCE_EQ(index_type_match,
                     true,
                     common::errors::InvalidArgument(
                         "Input(Index) holds the wrong type, it holds %s, but "
                         "desires to be %s or %s",
                         index_type,
-                        phi::DataType::INT32,
-                        phi::DataType::INT64));
+                        DataType::INT32,
+                        DataType::INT64));
 
   // get x_grad: copy out_grad to x_grad.
   if (x_grad) {
@@ -61,10 +61,10 @@ void IndexAddGradKernel(const Context& dev_ctx,
   if (add_value_grad) {
     auto inputs = out_grad;
     // get add_value_grad by using index_select(out_grad, index, axis)
-    if (index_type == phi::DataType::INT32) {
+    if (index_type == DataType::INT32) {
       IndexSelectInner<Context, T, int>(
           dev_ctx, &inputs, index, add_value_grad, axis);
-    } else if (index_type == phi::DataType::INT64) {
+    } else if (index_type == DataType::INT64) {
       IndexSelectInner<Context, T, int64_t>(
           dev_ctx, &inputs, index, add_value_grad, axis);
     }

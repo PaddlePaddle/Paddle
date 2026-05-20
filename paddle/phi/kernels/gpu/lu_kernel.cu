@@ -258,10 +258,10 @@ void lu_decomposed_kernel(const Context& dev_ctx,
   int lwork;
   cusolver_bufferSize(cusolverH, m, n, d_A, lda, &lwork);
 
-  auto work_buff = phi::memory_utils::Alloc(
-      dev_ctx.GetPlace(),
-      lwork * sizeof(T),
-      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  auto work_buff =
+      memory_utils::Alloc(dev_ctx.GetPlace(),
+                          lwork * sizeof(T),
+                          Stream(reinterpret_cast<StreamId>(dev_ctx.stream())));
   T* d_work = reinterpret_cast<T*>(work_buff->ptr());
 
   /* step 3: LU factorization */
@@ -315,14 +315,14 @@ void LUKernel(const Context& dev_ctx,
   int n = static_cast<int>(outdims[outrank - 2]);
   int lda = std::max(1, m);
   if (pivot) {
-    auto ipiv_dims = common::slice_ddim(outdims, 0, outrank - 1);
+    auto ipiv_dims = slice_ddim(outdims, 0, outrank - 1);
     ipiv_dims[outrank - 2] = std::min(m, n);
     pivots->Resize(ipiv_dims);
   }
   dev_ctx.template Alloc<int>(pivots);
   auto ipiv_data = pivots->data<int>();
 
-  auto info_dims = common::slice_ddim(outdims, 0, outrank - 2);
+  auto info_dims = slice_ddim(outdims, 0, outrank - 2);
   infos->Resize(info_dims);
   dev_ctx.template Alloc<int>(infos);
   auto info_data = infos->data<int>();

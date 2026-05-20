@@ -29,7 +29,7 @@ class ValueExecutionInfo;
 class OneDNNLegacyKernelInstruction : public InstructionBase {
  public:
   OneDNNLegacyKernelInstruction(size_t id,
-                                const phi::Place& place,
+                                const Place& place,
                                 pir::Operation* op,
                                 const ValueExecutionInfo* value_exec_info);
 
@@ -70,7 +70,7 @@ class OneDNNLegacyKernelInstruction : public InstructionBase {
 
   std::set<std::string> data_format_tensors_{};
   std::set<std::string> skip_format_tensors_{};
-  phi::DataLayout input_layout_{phi::DataLayout::kAnyLayout};
+  DataLayout input_layout_{DataLayout::kAnyLayout};
 };
 
 }  // namespace framework

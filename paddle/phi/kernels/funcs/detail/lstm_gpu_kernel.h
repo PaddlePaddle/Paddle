@@ -202,12 +202,12 @@ __global__ void KeLstmBackward(Op op,
   if (is_batch) {
     if (value.prev_state_value) {
       if (grad.check_ig_grad)
-        phi::CudaAtomicAdd(grad.check_ig_grad + frame_idx, r_checkIGrad);
+        CudaAtomicAdd(grad.check_ig_grad + frame_idx, r_checkIGrad);
       if (grad.check_fg_grad)
-        phi::CudaAtomicAdd(grad.check_fg_grad + frame_idx, r_checkFGrad);
+        CudaAtomicAdd(grad.check_fg_grad + frame_idx, r_checkFGrad);
     }
     if (grad.check_og_grad)
-      phi::CudaAtomicAdd(grad.check_og_grad + frame_idx, r_checkOGrad);
+      CudaAtomicAdd(grad.check_og_grad + frame_idx, r_checkOGrad);
   } else {
     if (value.prev_state_value) {
       if (grad.check_ig_grad) grad.check_ig_grad[frame_idx] += r_checkIGrad;
@@ -218,7 +218,7 @@ __global__ void KeLstmBackward(Op op,
 }
 
 template <class T, class Op>
-void gpu_lstm_forward(const phi::DeviceContext& dev_ctx,
+void gpu_lstm_forward(const DeviceContext& dev_ctx,
                       Op op,
                       phi::funcs::LstmMetaValue<T> value,
                       int frame_size,
@@ -240,7 +240,7 @@ void gpu_lstm_forward(const phi::DeviceContext& dev_ctx,
     grid = dim3((frame_size + 32 - 1) / 32, (batch_size + 16 - 1) / 16);
   }
 
-  auto stream = reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+  auto stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
   if (batch_size == 1) {
     KeLstmForward<T,
                   Op,
@@ -269,7 +269,7 @@ void gpu_lstm_forward(const phi::DeviceContext& dev_ctx,
 }
 
 template <class T, class Op>
-void gpu_lstm_backward(const phi::DeviceContext& dev_ctx,
+void gpu_lstm_backward(const DeviceContext& dev_ctx,
                        Op op,
                        phi::funcs::LstmMetaValue<T> value,
                        phi::funcs::LstmMetaGrad<T> grad,
@@ -292,7 +292,7 @@ void gpu_lstm_backward(const phi::DeviceContext& dev_ctx,
     grid = dim3((frame_size + 32 - 1) / 32, (batch_size + 16 - 1) / 16);
   }
 
-  auto stream = reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+  auto stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
   if (batch_size == 1) {
     KeLstmBackward<T,
                    Op,

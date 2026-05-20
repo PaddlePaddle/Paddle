@@ -65,10 +65,10 @@ constexpr int NPY_FLOAT16_ = 23;
 constexpr int NPY_UINT16_ = 4;
 
 // Note: Since float16 is not a builtin type in C++, we register
-// phi::dtype::float16 as numpy.float16.
+// phi::float16 as numpy.float16.
 // Ref: https://github.com/pybind/pybind11/issues/1776
 template <>
-struct npy_format_descriptor<phi::dtype::float16> {
+struct npy_format_descriptor<phi::float16> {
   static py::dtype dtype() {
     handle ptr = npy_api::get().PyArray_DescrFromType_(NPY_FLOAT16_);
     return reinterpret_borrow<py::dtype>(ptr);
@@ -179,10 +179,10 @@ py::dtype PaddleDTypeToNumpyDType(PaddleDType dtype) {
       dt = py::dtype::of<float>();
       break;
     case PaddleDType::FLOAT16:
-      dt = py::dtype::of<phi::dtype::float16>();
+      dt = py::dtype::of<phi::float16>();
       break;
     case PaddleDType::BFLOAT16:
-      dt = py::dtype::of<phi::dtype::bfloat16>();
+      dt = py::dtype::of<phi::bfloat16>();
       break;
     case PaddleDType::UINT8:
       dt = py::dtype::of<uint8_t>();
@@ -276,15 +276,13 @@ void PaddleInferShareExternalDataByPtrName(
 
   // NOTE(Zhenyu Li): Unable to enter the correct branch when using enum
   if (dtype == 22) {
-    phi::dtype::bfloat16 *data_ptr =
-        reinterpret_cast<phi::dtype::bfloat16 *>(ptr);
+    phi::bfloat16 *data_ptr = reinterpret_cast<phi::bfloat16 *>(ptr);
     tensor.ShareExternalData(data_ptr, shape, place_type);
   } else if (dtype == 10) {
     float *data_ptr = reinterpret_cast<float *>(ptr);
     tensor.ShareExternalData(data_ptr, shape, place_type);
   } else if (dtype == 15) {
-    phi::dtype::float16 *data_ptr =
-        reinterpret_cast<phi::dtype::float16 *>(ptr);
+    phi::float16 *data_ptr = reinterpret_cast<phi::float16 *>(ptr);
     tensor.ShareExternalData(data_ptr, shape, place_type);
   } else if (dtype == 3) {
     int8_t *data_ptr = reinterpret_cast<int8_t *>(ptr);
@@ -311,37 +309,37 @@ void PaddleInferShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
   for (int i = 0; i < input_tensor.dims().size(); ++i) {
     shape.push_back(input_tensor.dims()[i]);  // NOLINT
   }
-  if (input_tensor.dtype() == phi::DataType::FLOAT64) {
+  if (input_tensor.dtype() == DataType::FLOAT64) {
     tensor.ShareExternalData(
         static_cast<double *>(input_tensor.data()),
         shape,
         ToPaddleInferPlace(input_tensor.place().GetType()));
-  } else if (input_tensor.dtype() == phi::DataType::FLOAT32) {
+  } else if (input_tensor.dtype() == DataType::FLOAT32) {
     tensor.ShareExternalData(
         static_cast<float *>(input_tensor.data()),
         shape,
         ToPaddleInferPlace(input_tensor.place().GetType()));
-  } else if (input_tensor.dtype() == phi::DataType::FLOAT16) {
+  } else if (input_tensor.dtype() == DataType::FLOAT16) {
     tensor.ShareExternalData(
-        static_cast<phi::dtype::float16 *>(input_tensor.data()),
+        static_cast<phi::float16 *>(input_tensor.data()),
         shape,
         ToPaddleInferPlace(input_tensor.place().GetType()));
-  } else if (input_tensor.dtype() == phi::DataType::BFLOAT16) {
+  } else if (input_tensor.dtype() == DataType::BFLOAT16) {
     tensor.ShareExternalData(
         static_cast<bfloat16 *>(input_tensor.data()),
         shape,
         ToPaddleInferPlace(input_tensor.place().GetType()));
-  } else if (input_tensor.dtype() == phi::DataType::BOOL) {
+  } else if (input_tensor.dtype() == DataType::BOOL) {
     tensor.ShareExternalData(
         static_cast<bool *>(input_tensor.data()),
         shape,
         ToPaddleInferPlace(input_tensor.place().GetType()));
-  } else if (input_tensor.dtype() == phi::DataType::INT32) {
+  } else if (input_tensor.dtype() == DataType::INT32) {
     tensor.ShareExternalData(
         static_cast<int32_t *>(input_tensor.data()),
         shape,
         ToPaddleInferPlace(input_tensor.place().GetType()));
-  } else if (input_tensor.dtype() == phi::DataType::INT64) {
+  } else if (input_tensor.dtype() == DataType::INT64) {
     tensor.ShareExternalData(
         static_cast<int64_t *>(input_tensor.data()),
         shape,
@@ -360,48 +358,47 @@ void PaddleTensorShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
     shape.push_back(paddle_tensor.dims()[i]);  // NOLINT
   }
 
-  if (paddle_tensor.dtype() == phi::DataType::FLOAT64) {
+  if (paddle_tensor.dtype() == DataType::FLOAT64) {
     tensor.ShareExternalData(
         static_cast<double *>(paddle_tensor.data<double>()),
         shape,
         ToPaddleInferPlace(paddle_tensor.place().GetType()));
-  } else if (paddle_tensor.dtype() == phi::DataType::FLOAT32) {
+  } else if (paddle_tensor.dtype() == DataType::FLOAT32) {
     tensor.ShareExternalData(
         static_cast<float *>(paddle_tensor.data<float>()),
         shape,
         ToPaddleInferPlace(paddle_tensor.place().GetType()));
-  } else if (paddle_tensor.dtype() == phi::DataType::FLOAT16) {
+  } else if (paddle_tensor.dtype() == DataType::FLOAT16) {
     tensor.ShareExternalData(
-        static_cast<phi::dtype::float16 *>(
-            paddle_tensor.data<phi::dtype::float16>()),
+        static_cast<phi::float16 *>(paddle_tensor.data<phi::float16>()),
         shape,
         ToPaddleInferPlace(paddle_tensor.place().GetType()));
-  } else if (paddle_tensor.dtype() == phi::DataType::BFLOAT16) {
+  } else if (paddle_tensor.dtype() == DataType::BFLOAT16) {
     tensor.ShareExternalData(
         static_cast<bfloat16 *>(paddle_tensor.data<bfloat16>()),
         shape,
         ToPaddleInferPlace(paddle_tensor.place().GetType()));
-  } else if (paddle_tensor.dtype() == phi::DataType::BOOL) {
+  } else if (paddle_tensor.dtype() == DataType::BOOL) {
     tensor.ShareExternalData(
         static_cast<bool *>(paddle_tensor.data<bool>()),
         shape,
         ToPaddleInferPlace(paddle_tensor.place().GetType()));
-  } else if (paddle_tensor.dtype() == phi::DataType::INT32) {
+  } else if (paddle_tensor.dtype() == DataType::INT32) {
     tensor.ShareExternalData(
         static_cast<int32_t *>(paddle_tensor.data<int32_t>()),
         shape,
         ToPaddleInferPlace(paddle_tensor.place().GetType()));
-  } else if (paddle_tensor.dtype() == phi::DataType::INT64) {
+  } else if (paddle_tensor.dtype() == DataType::INT64) {
     tensor.ShareExternalData(
         static_cast<int64_t *>(paddle_tensor.data<int64_t>()),
         shape,
         ToPaddleInferPlace(paddle_tensor.place().GetType()));
-  } else if (paddle_tensor.dtype() == phi::DataType::UINT8) {
+  } else if (paddle_tensor.dtype() == DataType::UINT8) {
     tensor.ShareExternalData(
         static_cast<uint8_t *>(paddle_tensor.data()),
         shape,
         ToPaddleInferPlace(paddle_tensor.place().GetType()));
-  } else if (paddle_tensor.dtype() == phi::DataType::INT8) {
+  } else if (paddle_tensor.dtype() == DataType::INT8) {
     tensor.ShareExternalData(
         static_cast<int8_t *>(paddle_tensor.data()),
         shape,
@@ -442,10 +439,10 @@ size_t PaddleGetDTypeSize(PaddleDType dt) {
       size = sizeof(float);
       break;
     case PaddleDType::FLOAT16:
-      size = sizeof(phi::dtype::float16);
+      size = sizeof(phi::float16);
       break;
     case PaddleDType::BFLOAT16:
-      size = sizeof(phi::dtype::bfloat16);
+      size = sizeof(phi::bfloat16);
       break;
     case PaddleDType::INT8:
       size = sizeof(int8_t);
@@ -484,12 +481,12 @@ py::array ZeroCopyTensorToNumpy(ZeroCopyTensor &tensor) {  // NOLINT
       tensor.copy_to_cpu<float>(static_cast<float *>(array.mutable_data()));
       break;
     case PaddleDType::FLOAT16:
-      tensor.copy_to_cpu<phi::dtype::float16>(
-          static_cast<phi::dtype::float16 *>(array.mutable_data()));
+      tensor.copy_to_cpu<phi::float16>(
+          static_cast<phi::float16 *>(array.mutable_data()));
       break;
     case PaddleDType::BFLOAT16:
-      tensor.copy_to_cpu<phi::dtype::bfloat16>(
-          static_cast<phi::dtype::bfloat16 *>(array.mutable_data()));
+      tensor.copy_to_cpu<phi::bfloat16>(
+          static_cast<phi::bfloat16 *>(array.mutable_data()));
       break;
     case PaddleDType::UINT8:
       tensor.copy_to_cpu<uint8_t>(static_cast<uint8_t *>(array.mutable_data()));
@@ -528,12 +525,12 @@ py::array PaddleInferTensorToNumpy(paddle_infer::Tensor &tensor) {  // NOLINT
       tensor.CopyToCpu<float>(static_cast<float *>(array.mutable_data()));
       break;
     case PaddleDType::FLOAT16:
-      tensor.CopyToCpu<phi::dtype::float16>(
-          static_cast<phi::dtype::float16 *>(array.mutable_data()));
+      tensor.CopyToCpu<phi::float16>(
+          static_cast<phi::float16 *>(array.mutable_data()));
       break;
     case PaddleDType::BFLOAT16:
-      tensor.CopyToCpu<phi::dtype::bfloat16>(
-          static_cast<phi::dtype::bfloat16 *>(array.mutable_data()));
+      tensor.CopyToCpu<phi::bfloat16>(
+          static_cast<phi::bfloat16 *>(array.mutable_data()));
       break;
     case PaddleDType::UINT8:
       tensor.CopyToCpu(static_cast<uint8_t *>(array.mutable_data()));
@@ -1115,7 +1112,7 @@ void BindAnalysisConfig(py::module *m) {
                 None.
 
             Examples:
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> from paddle.inference import Config
 
@@ -1136,7 +1133,7 @@ void BindAnalysisConfig(py::module *m) {
                 None.
 
             Examples:
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> from paddle.inference import Config
 
@@ -1336,7 +1333,7 @@ void BindZeroCopyTensor(py::module *m) {
       .def("copy_from_cpu", &ZeroCopyTensorCreate<int32_t>)
       .def("copy_from_cpu", &ZeroCopyTensorCreate<int64_t>)
       .def("copy_from_cpu", &ZeroCopyTensorCreate<float>)
-      .def("copy_from_cpu", &ZeroCopyTensorCreate<phi::dtype::float16>)
+      .def("copy_from_cpu", &ZeroCopyTensorCreate<phi::float16>)
       // NOTE(liuyuanle): double must be bound after float.
       .def("copy_from_cpu", &ZeroCopyTensorCreate<double>)
       .def("copy_from_cpu", &ZeroCopyTensorCreate<bool>)
@@ -1361,7 +1358,7 @@ void BindPaddleInferTensor(py::module *m) {
       .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<int32_t>)
       .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<int64_t>)
       .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<float>)
-      .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<phi::dtype::float16>)
+      .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<phi::float16>)
       // NOTE(liuyuanle): double must be bound after float.
       .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<double>)
       .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<bool>)

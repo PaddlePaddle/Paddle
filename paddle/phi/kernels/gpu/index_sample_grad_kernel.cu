@@ -52,8 +52,8 @@ __global__ void IndexSampleGrad(const SampleIndexT* index,
       ElementIndexT in_idx = index_j * input_length + index_i;
       SampleIndexT sample_idx = index[index_idx];
       if (same_data_in_row) {
-        phi::CudaAtomicAdd(&(in_grad[in_idx - index_i + sample_idx]),
-                           out_grad[sample_idx]);
+        CudaAtomicAdd(&(in_grad[in_idx - index_i + sample_idx]),
+                      out_grad[sample_idx]);
       } else {
         in_grad[in_idx - index_i + sample_idx] = out_grad[index_idx];
       }
@@ -81,7 +81,7 @@ void IndexSampleGradKernel(const Context& dev_ctx,
                         DataTypeToString(DataType::INT32),
                         DataTypeToString(DataType::INT64)));
 
-  auto stream = reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+  auto stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
   auto input_num = x.numel();
   auto input_dim = x.dims();
   auto index_dim = index.dims();
@@ -96,16 +96,15 @@ void IndexSampleGradKernel(const Context& dev_ctx,
   }
   bool same_data_in_index_row = index_length == 1 ? false : true;
 
-  auto block_width = phi::backends::gpu::RoundToPowerOfTwo(index_length);
+  auto block_width = backends::gpu::RoundToPowerOfTwo(index_length);
   block_width = MIN(block_width, PREDEFINED_BLOCK_SIZE_X);
   auto block_height =
-      phi::backends::gpu::RoundToPowerOfTwo(index_length * batch_size) /
-      block_width;
+      backends::gpu::RoundToPowerOfTwo(index_length * batch_size) / block_width;
   block_height = MIN(block_height, PREDEFINED_BLOCK_SIZE / block_width);
   dim3 block_dim(block_width, block_height);
   dim3 grid_dim((index_length + block_dim.x - 1) / block_dim.x,
                 (batch_size + block_dim.y - 1) / block_dim.y);
-  phi::backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
+  backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
 
   bool use_int32 = true;
   if (out_grad.numel() > UINT32_MAX || x_grad->numel() > UINT32_MAX) {

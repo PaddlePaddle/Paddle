@@ -53,7 +53,7 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
   const int64_t width = w.dims()[1];
 
   const auto& index_type = ids.dtype();
-  if (index_type == phi::DataType::INT32) {
+  if (index_type == DataType::INT32) {
     r = xpu::embedding_grad(dev_ctx.x_context(),
                             reinterpret_cast<const XPUType*>(d_output_data),
                             ids.data<int32_t>(),
@@ -63,7 +63,7 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
                             ids.numel(),
                             -1,
                             static_cast<int32_t>(start_index));
-  } else if (index_type == phi::DataType::INT64) {
+  } else if (index_type == DataType::INT64) {
     r = xpu::embedding_grad(dev_ctx.x_context(),
                             reinterpret_cast<const XPUType*>(d_output_data),
                             ids.data<int64_t>(),

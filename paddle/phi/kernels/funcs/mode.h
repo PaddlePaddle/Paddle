@@ -25,6 +25,27 @@
 #include <thrust/sort.h>
 #endif
 
+#ifdef __HIPCC__
+#include <rocprim/config.hpp>
+#if defined(ROCPRIM_VERSION) && ROCPRIM_VERSION >= 400000
+#include "paddle/phi/common/data_type.h"
+namespace rocprim {
+namespace traits {
+template <>
+struct define<phi::float16> {
+  using float_bit_mask =
+      float_bit_mask::values<uint16_t, 0x8000, 0x7C00, 0x03FF>;
+};
+template <>
+struct define<phi::bfloat16> {
+  using float_bit_mask =
+      float_bit_mask::values<uint16_t, 0x8000, 0x7F80, 0x007F>;
+};
+}  // namespace traits
+}  // namespace rocprim
+#endif  // ROCPRIM_VERSION
+#endif  // __HIPCC__
+
 #include <algorithm>
 #include <cmath>
 #include <utility>
@@ -145,14 +166,14 @@ static void ModeAssign(const Type& input_height,
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 template <typename T>
-static void GetModebySort(const phi::GPUContext& dev_ctx,
+static void GetModebySort(const GPUContext& dev_ctx,
                           const DenseTensor* input_tensor,
                           const int64_t num_cols,
                           const int64_t num_rows,
                           T* out_tensor,
                           int64_t* indices_tensor) {
   DenseTensor input_tmp;
-  input_tmp.Resize(common::make_ddim({num_rows, num_cols}));
+  input_tmp.Resize({num_rows, num_cols});
   T* input_tmp_data = dev_ctx.Alloc<T>(&input_tmp);
   phi::Copy(dev_ctx, *input_tensor, dev_ctx.GetPlace(), false, &input_tmp);
 

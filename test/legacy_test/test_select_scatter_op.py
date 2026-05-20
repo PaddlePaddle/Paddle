@@ -145,6 +145,22 @@ class TestSelectScatterAPIError(unittest.TestCase):
             value_tensor = paddle.to_tensor(self.value_np).reshape((2, 2, 2))
             res = paddle.select_scatter(x_tensor, value_tensor, 1, 1)
 
+    def test_axis_alias_conflict_error(self):
+        x_tensor = paddle.to_tensor(self.x_np)
+        value_tensor = paddle.to_tensor(self.value_np)
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "Cannot specify both 'axis' and its alias 'dim'",
+        ):
+            paddle.select_scatter(
+                x_tensor,
+                value_tensor,
+                axis=self.axis,
+                dim=self.axis,
+                index=self.index,
+            )
+
     def test_one_of_size_not_equal_error(self):
         with self.assertRaises(RuntimeError):
             x_tensor = paddle.to_tensor(self.x_np)

@@ -40,7 +40,7 @@
 namespace phi {
 
 template <typename T>
-static void GesvdjBatched(const phi::GPUContext& dev_ctx,
+static void GesvdjBatched(const GPUContext& dev_ctx,
                           int batchSize,
                           int m,
                           int n,
@@ -53,7 +53,7 @@ static void GesvdjBatched(const phi::GPUContext& dev_ctx,
                           int thin_UV = 1);
 
 template <typename T>
-void SyevjBatched(const phi::GPUContext& dev_ctx,
+void SyevjBatched(const GPUContext& dev_ctx,
                   int batchSize,
                   int n,
                   T* A,
@@ -61,7 +61,7 @@ void SyevjBatched(const phi::GPUContext& dev_ctx,
                   int* info);
 
 template <>
-void GesvdjBatched<float>(const phi::GPUContext& dev_ctx,
+void GesvdjBatched<float>(const GPUContext& dev_ctx,
                           int batchSize,
                           int m,
                           int n,
@@ -140,7 +140,7 @@ void GesvdjBatched<float>(const phi::GPUContext& dev_ctx,
 }
 
 template <>
-void GesvdjBatched<double>(const phi::GPUContext& dev_ctx,
+void GesvdjBatched<double>(const GPUContext& dev_ctx,
                            int batchSize,
                            int m,
                            int n,
@@ -220,7 +220,7 @@ void GesvdjBatched<double>(const phi::GPUContext& dev_ctx,
 }
 
 template <>
-void GesvdjBatched<phi::complex64>(const phi::GPUContext& dev_ctx,
+void GesvdjBatched<phi::complex64>(const GPUContext& dev_ctx,
                                    int batchSize,
                                    int m,
                                    int n,
@@ -300,7 +300,7 @@ void GesvdjBatched<phi::complex64>(const phi::GPUContext& dev_ctx,
 }
 
 template <>
-void GesvdjBatched<phi::complex128>(const phi::GPUContext& dev_ctx,
+void GesvdjBatched<phi::complex128>(const GPUContext& dev_ctx,
                                     int batchSize,
                                     int m,
                                     int n,
@@ -381,7 +381,7 @@ void GesvdjBatched<phi::complex128>(const phi::GPUContext& dev_ctx,
 }
 
 template <>
-void SyevjBatched<float>(const phi::GPUContext& dev_ctx,
+void SyevjBatched<float>(const GPUContext& dev_ctx,
                          int batchSize,
                          int n,
                          float* A,
@@ -438,7 +438,7 @@ void SyevjBatched<float>(const phi::GPUContext& dev_ctx,
 }
 
 template <>
-void SyevjBatched<double>(const phi::GPUContext& dev_ctx,
+void SyevjBatched<double>(const GPUContext& dev_ctx,
                           int batchSize,
                           int n,
                           double* A,
@@ -493,7 +493,7 @@ void SyevjBatched<double>(const phi::GPUContext& dev_ctx,
 }
 
 template <>
-void SyevjBatched<phi::complex64>(const phi::GPUContext& dev_ctx,
+void SyevjBatched<phi::complex64>(const GPUContext& dev_ctx,
                                   int batchSize,
                                   int n,
                                   phi::complex64* A,
@@ -557,7 +557,7 @@ void SyevjBatched<phi::complex64>(const phi::GPUContext& dev_ctx,
 }
 
 template <>
-void SyevjBatched<phi::complex128>(const phi::GPUContext& dev_ctx,
+void SyevjBatched<phi::complex128>(const GPUContext& dev_ctx,
                                    int batchSize,
                                    int n,
                                    phi::complex128* A,
@@ -715,8 +715,8 @@ void MatrixRankTolKernel(const Context& dev_ctx,
       dev_ctx, max_eigenvalue_tensor, rtol_T, 0.0f, false);
 
   DenseTensor atol_tensor_real;
-  if (atol_tensor.dtype() == phi::DataType::COMPLEX64 ||
-      atol_tensor.dtype() == phi::DataType::COMPLEX128) {
+  if (atol_tensor.dtype() == DataType::COMPLEX64 ||
+      atol_tensor.dtype() == DataType::COMPLEX128) {
     atol_tensor_real = phi::Real<T, Context>(dev_ctx, atol_tensor);
   } else {
     atol_tensor_real = atol_tensor;
@@ -831,8 +831,8 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
                                     &max_eigenvalue_tensor);
 
   DenseTensor atol_tensor;
-  if (atol.dtype() == phi::DataType::COMPLEX64 ||
-      atol.dtype() == phi::DataType::COMPLEX128) {
+  if (atol.dtype() == DataType::COMPLEX64 ||
+      atol.dtype() == DataType::COMPLEX128) {
     atol_tensor = phi::Real<T, Context>(dev_ctx, atol);
   } else {
     atol_tensor = atol;
@@ -843,8 +843,8 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
 
   if (rtol) {
     DenseTensor rtol_tensor = *rtol;
-    if (rtol_tensor.dtype() == phi::DataType::COMPLEX64 ||
-        rtol_tensor.dtype() == phi::DataType::COMPLEX128) {
+    if (rtol_tensor.dtype() == DataType::COMPLEX64 ||
+        rtol_tensor.dtype() == DataType::COMPLEX128) {
       rtol_tensor = phi::Real<T, Context>(dev_ctx, *rtol);
     }
     DenseTensor tmp_rtol_tensor;

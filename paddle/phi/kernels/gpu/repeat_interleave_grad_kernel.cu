@@ -27,7 +27,6 @@
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 namespace phi {
-using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T, typename IndexT>
 __global__ void index_select_grad_cuda_kernel(const T* output_grad,
@@ -48,7 +47,7 @@ __global__ void index_select_grad_cuda_kernel(const T* output_grad,
   int64_t dim_idx = idx % (stride * size) / stride;
   IndexT src_dim_idx = index[dim_idx];
   int64_t input_idx = idx + (delta * pre_idx + src_dim_idx - dim_idx) * stride;
-  phi::CudaAtomicAdd(&input_grad[input_idx], output_grad[idx]);
+  CudaAtomicAdd(&input_grad[input_idx], output_grad[idx]);
 }
 
 template <typename T, int VecSize>
@@ -143,9 +142,8 @@ void RepeatInterleaveWithTensorIndexGradKernel(
   auto* in_grad_data = x_grad->data<T>();
   auto stream = dev_ctx.stream();
   int vec_size = 8;
-  vec_size = std::min(phi::GetVectorizedSize(in_grad_data), vec_size);
-  auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, vec_size);
+  vec_size = std::min(GetVectorizedSize(in_grad_data), vec_size);
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, vec_size);
 
   switch (vec_size) {
 #define CASE_VEC_SIZE(__Sz)                                              \
@@ -226,11 +224,11 @@ void RepeatInterleaveGradKernel(const Context& dev_ctx,
   out_grad_copy.set_meta(out_grad.meta());
   out_grad_copy.ShareBufferWith(out_grad, true);
 
-  out_grad_copy.Resize(make_ddim(reshape_shape));
+  out_grad_copy.Resize(reshape_shape);
 
   SumKernel<T, Context>(dev_ctx,
                         out_grad_copy,
-                        phi::IntArray({dim + 1}),
+                        IntArray({dim + 1}),
                         x_grad->dtype(),
                         false,
                         x_grad);
@@ -245,7 +243,9 @@ PD_REGISTER_KERNEL(repeat_interleave_with_tensor_index_grad,
                    double,
                    int,
                    int64_t,
+                   phi::float16,
                    phi::bfloat16) {}
+
 PD_REGISTER_KERNEL(repeat_interleave_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -254,4 +254,5 @@ PD_REGISTER_KERNEL(repeat_interleave_grad,
                    double,
                    int,
                    int64_t,
+                   phi::float16,
                    phi::bfloat16) {}

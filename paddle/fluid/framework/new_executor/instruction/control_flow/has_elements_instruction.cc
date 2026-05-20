@@ -23,7 +23,7 @@ namespace paddle {
 namespace framework {
 HasElementsInstruction::HasElementsInstruction(
     size_t id,
-    const phi::Place& place,
+    const Place& place,
     pir::Operation* op,
     ValueExecutionInfo* value_exe_info)
     : InstructionBase(id, place), op_(op), value_exe_info_(value_exe_info) {
@@ -46,7 +46,7 @@ HasElementsInstruction::HasElementsInstruction(
 
   bool_tensor_ =
       value_exe_info_->GetVarByValue(op_->result(0))->GetMutable<DenseTensor>();
-  bool_tensor_->Resize(phi::make_ddim({1}));
+  bool_tensor_->Resize({1});
 
   auto stack_value =
       op_->dyn_cast<paddle::dialect::HasElementsOp>().operand_source(0);

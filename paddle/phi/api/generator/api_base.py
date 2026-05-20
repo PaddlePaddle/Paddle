@@ -610,7 +610,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                     self.attrs['attr_info'][vars_list[0].strip()][0]
                     == 'const Place&'
                 ), (
-                    f"{self.api} api: When use '>' to set kernel backend, the first param should be a attribute with Place type."
+                    f"{self.api} api: When use '>' to set kernel backend, the first param should be an attribute with Place type."
                 )
                 backend_select_code = f"""
   kernel_backend = ParseBackendWithInputOrder({vars_list[0].strip()}, {vars_list[1].strip()});
@@ -672,7 +672,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                     and attrs['attr_info'][vars_list[0].strip()][0]
                     == 'DataLayout'
                 ), (
-                    f"{api} api: When use '>' to set kernel layout, the first param should be a attribute with DataLayout type."
+                    f"{api} api: When use '>' to set kernel layout, the first param should be an attribute with DataLayout type."
                 )
                 kernel_select_code = (
                     kernel_select_code
@@ -715,7 +715,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                     and attrs['attr_info'][vars_list[0].strip()][0]
                     == 'DataType'
                 ), (
-                    f"{api} api: When use '>' to set kernel data_type, the first param should be a attribute with DataType type."
+                    f"{api} api: When use '>' to set kernel data_type, the first param should be an attribute with DataType type."
                 )
                 kernel_select_code = (
                     kernel_select_code

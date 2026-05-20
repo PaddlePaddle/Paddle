@@ -39,7 +39,7 @@ __global__ void Normalize(const T* x,
                           const float eps,
                           T* y,
                           T* out_norm) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   typedef cub::BlockReduce<MT, BlockDim> BlockReduce;
   __shared__ typename BlockReduce::TempStorage temp_storage;
   int64_t num = pre * post;
@@ -100,6 +100,11 @@ void NormKernel(const Context& dev_ctx,
 
   int64_t pre, n, post;
   funcs::GetPrePostNumel(xdim, axis, &pre, &n, &post);
+
+  // Handle zero-size tensor: skip kernel launch to avoid invalid CUDA config
+  if (pre * post == 0) {
+    return;
+  }
 
   const int block = 512;
   int max_threads = dev_ctx.GetMaxPhysicalThreadCount();

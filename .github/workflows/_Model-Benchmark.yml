@@ -9,6 +9,11 @@ on:
       can-skip:
         type: string
         required: false
+        default: "false"
+      build-can-skip:
+        type: string
+        required: false
+        default: 'false'
 
 env:
   PR_ID: ${{ github.event.pull_request.number }}
@@ -26,19 +31,20 @@ defaults:
 jobs:
   check-bypass:
     name: Check bypass
-    if: ${{ inputs.can-skip != 'true' }}
+    if: ${{ github.repository_owner == 'PaddlePaddle' && inputs.build-can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
-      workflow-name: 'model-benchmark'
+      workflow-name: "model-benchmark"
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
   model-benchmark:
     name: Benchmark test
-    needs: check-bypass
-    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
+    needs: [check-bypass]
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' && inputs.can-skip != 'true' }}
     runs-on:
       group: model-benchmark
+    timeout-minutes: 120
     steps:
       - name: Check docker image and run container
         env:
@@ -87,6 +93,7 @@ jobs:
             -w /workspace --network host ${docker_image}
 
       - name: Prepare environment and download paddle
+        timeout-minutes: 30
         run: |
           docker exec ${container_name} bash -c '
           rm -rf * .[^.]*
@@ -115,6 +122,7 @@ jobs:
           '
 
       - name: Download paddlescope
+        timeout-minutes: 30
         if: ${{ env.can-skip != 'true' }}
         run: |
           docker exec ${container_name} bash -c '

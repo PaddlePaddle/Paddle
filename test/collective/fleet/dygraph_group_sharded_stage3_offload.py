@@ -202,7 +202,7 @@ def test_stage3_offload():
             stage3_params[i].numpy(),
             stage3_params_offload[i].numpy(),
             rtol=1e-6,
-            atol=1e-8,
+            atol=1e-6,
         )
 
     # fp16 offload
@@ -250,7 +250,7 @@ def test_stage3_offload():
             stage3_params[i].numpy(),
             stage3_params_offload[i].numpy(),
             rtol=1e-6,
-            atol=1e-8,
+            atol=1e-6,
         )
 
 

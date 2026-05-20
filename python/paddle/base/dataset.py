@@ -33,7 +33,7 @@ class DatasetFactory:
     the default is "QueueDataset".
 
     Example:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle.base as base
             >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
@@ -53,7 +53,7 @@ class DatasetFactory:
                                  Default is QueueDataset.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> dataset = base.DatasetFactory().create_dataset()
@@ -86,7 +86,7 @@ class DatasetBase:
         A pipe command is a UNIX pipeline command that can be used only
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> dataset = base.DatasetFactory().create_dataset()
@@ -103,7 +103,7 @@ class DatasetBase:
         Set so parser name of current dataset
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> dataset = base.DatasetFactory().create_dataset()
@@ -120,7 +120,7 @@ class DatasetBase:
         Set rank_offset for merge_pv. It set the message of Pv.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> dataset = base.DatasetFactory().create_dataset()
@@ -144,7 +144,7 @@ class DatasetBase:
                             default is True.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
@@ -182,7 +182,7 @@ class DatasetBase:
         Set batch size. Will be effective during training
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> dataset = base.DatasetFactory().create_dataset()
@@ -199,7 +199,7 @@ class DatasetBase:
         Set pv batch size. It will be effective during enable_pv_merge
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> dataset = base.DatasetFactory().create_dataset()
@@ -215,7 +215,7 @@ class DatasetBase:
         Set thread num, it is the num of readers.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> dataset = base.DatasetFactory().create_dataset()
@@ -232,7 +232,7 @@ class DatasetBase:
         Set file list in current worker.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> dataset = base.DatasetFactory().create_dataset()
@@ -252,7 +252,7 @@ class DatasetBase:
         Set Variables which you will use.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> paddle.enable_static()
@@ -289,7 +289,7 @@ class DatasetBase:
         Set hdfs config: fs name ad ugi
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> dataset = base.DatasetFactory().create_dataset()
@@ -306,7 +306,7 @@ class DatasetBase:
         Set customized download cmd: download_cmd
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> dataset = base.DatasetFactory().create_dataset()
@@ -350,7 +350,7 @@ class DatasetBase:
         Returns a protobuf message for this DataFeedDesc
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> dataset = base.DatasetFactory().create_dataset()
@@ -468,7 +468,7 @@ class InMemoryDataset(DatasetBase):
             queue_num(int): dataset output queue num
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
@@ -490,7 +490,7 @@ class InMemoryDataset(DatasetBase):
             parse_ins_id(bool): if parse ins_id or not
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
@@ -511,7 +511,7 @@ class InMemoryDataset(DatasetBase):
             parse_content(bool): if parse content or not
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
@@ -528,7 +528,7 @@ class InMemoryDataset(DatasetBase):
             parse_content(bool): if parse logkey or not
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
@@ -545,7 +545,7 @@ class InMemoryDataset(DatasetBase):
             trainer_num(int): trainer num
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
@@ -566,7 +566,7 @@ class InMemoryDataset(DatasetBase):
             merge_by_sid(bool): if merge sid or not
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
@@ -583,7 +583,7 @@ class InMemoryDataset(DatasetBase):
             enable_pv_merge(bool): if enable_pv_merge or not
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
@@ -598,7 +598,7 @@ class InMemoryDataset(DatasetBase):
         It will be effective when enable_pv_merge_ is True.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('Depends on external files.')
                 >>> import paddle.base as base
@@ -617,7 +617,7 @@ class InMemoryDataset(DatasetBase):
         current_phase : 1 for join, 0 for update.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('Depends on external files.')
                 >>> import paddle.base as base
@@ -635,7 +635,7 @@ class InMemoryDataset(DatasetBase):
         Divide pv instance and convey it to input_channel.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('Depends on external files.')
                 >>> import paddle.base as base
@@ -662,7 +662,7 @@ class InMemoryDataset(DatasetBase):
             fleet_send_batch_size(int): fleet send batch size
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
@@ -683,7 +683,7 @@ class InMemoryDataset(DatasetBase):
             fleet_send_sleep_seconds(int): fleet send sleep time
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
@@ -705,7 +705,7 @@ class InMemoryDataset(DatasetBase):
             merge_size(int): ins size to merge. default is 2.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
@@ -746,7 +746,7 @@ class InMemoryDataset(DatasetBase):
             date(str): training date(format : YYMMDD). eg.20211111
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
 
@@ -771,7 +771,7 @@ class InMemoryDataset(DatasetBase):
             is_shuffle(bool): whether to use local shuffle, default is False
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('Depends on external files.')
                 >>> import paddle.base as base
@@ -799,7 +799,7 @@ class InMemoryDataset(DatasetBase):
             thread_num(int): preload thread num
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('Depends on external files.')
                 >>> import paddle.base as base
@@ -825,7 +825,7 @@ class InMemoryDataset(DatasetBase):
         Wait preload_into_memory done
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('Depends on external files.')
                 >>> import paddle.base as base
@@ -847,7 +847,7 @@ class InMemoryDataset(DatasetBase):
         Local shuffle
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('Depends on external files.')
                 >>> import paddle.base as base
@@ -871,7 +871,7 @@ class InMemoryDataset(DatasetBase):
         If you run in distributed mode, you should pass fleet instead of None.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('Depends on external files.')
                 >>> import paddle.base as base
@@ -933,7 +933,7 @@ class InMemoryDataset(DatasetBase):
         Release InMemoryDataset memory data, when data will not be used again.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('Depends on external files.')
                 >>> import paddle.base as base
@@ -963,7 +963,7 @@ class InMemoryDataset(DatasetBase):
             The size of memory pv data.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('Depends on external files.')
                 >>> import paddle.base as base
@@ -1001,7 +1001,7 @@ class InMemoryDataset(DatasetBase):
             The size of memory data.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('Depends on external files.')
                 >>> import paddle.base as base
@@ -1045,7 +1045,7 @@ class InMemoryDataset(DatasetBase):
             The size of shuffle data.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('Depends on external files.')
                 >>> import paddle.base as base
@@ -1092,12 +1092,13 @@ class InMemoryDataset(DatasetBase):
             The size of shuffle data.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> from paddle.incubate.distributed.fleet.parameter_server.pslib import fleet
                 >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
-                >>> graph_config = {"walk_len": 24,
+                >>> graph_config = {
+                ...     "walk_len": 24,
                 ...     "walk_degree": 10,
                 ...     "once_sample_startid_len": 80000,
                 ...     "sample_times_one_chunk": 5,
@@ -1105,7 +1106,8 @@ class InMemoryDataset(DatasetBase):
                 ...     "debug_mode": 0,
                 ...     "batch_size": 800,
                 ...     "meta_path": "cuid2clk-clk2cuid;cuid2conv-conv2cuid;clk2cuid-cuid2clk;clk2cuid-cuid2conv",
-                ...     "gpu_graph_training": 1}
+                ...     "gpu_graph_training": 1,
+                ... }
                 >>> dataset.set_graph_config(graph_config)
 
         """
@@ -1164,7 +1166,7 @@ class InMemoryDataset(DatasetBase):
             pass_id: pass id.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> pass_id = 0
@@ -1182,7 +1184,7 @@ class InMemoryDataset(DatasetBase):
             The pass id.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
@@ -1208,7 +1210,7 @@ class QueueDataset(DatasetBase):
     QueueDataset, it will process data streamly.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle.base as base
             >>> dataset = base.DatasetFactory().create_dataset("QueueDataset")
@@ -1249,7 +1251,7 @@ class QueueDataset(DatasetBase):
         NotImplementedError will be raised
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('NotImplementedError will be raised.')
                 >>> import paddle.base as base
@@ -1276,12 +1278,12 @@ class QueueDataset(DatasetBase):
             fleet(Fleet): fleet singleton. Default None.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> from paddle.incubate.distributed.fleet.parameter_server.pslib import fleet
                 >>> dataset = base.DatasetFactory().create_dataset("QueueDataset")
-                >>> #dataset.global_shuffle(fleet)
+                >>> # dataset.global_shuffle(fleet)
 
         Raises:
             NotImplementedError: QueueDataset does not support global shuffle
@@ -1298,7 +1300,7 @@ class FileInstantDataset(DatasetBase):
     FileInstantDataset, it will process data streamly.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle.base as base
             >>> dataset = base.DatasetFactory.create_dataset("FileInstantDataset")
@@ -1331,140 +1333,3 @@ class FileInstantDataset(DatasetBase):
             "FileInstantDataset does not support global shuffle, "
             "please use InMemoryDataset for global_shuffle"
         )
-
-
-class BoxPSDataset(InMemoryDataset):
-    """
-    BoxPSDataset: derived from InMemoryDataset.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle.base as base
-            >>> dataset = base.DatasetFactory().create_dataset("BoxPSDataset")
-    """
-
-    def __init__(self):
-        """
-        Initialize BoxPSDataset
-        This class should be created by DatasetFactory
-        """
-        super().__init__()
-        self.boxps = core.BoxPS(self.dataset)
-        self.proto_desc.name = "PaddleBoxDataFeed"
-
-    def set_date(self, date):
-        """
-        Workaround for date
-        """
-        year = int(date[:4])
-        month = int(date[4:6])
-        day = int(date[6:])
-        self.boxps.set_date(year, month, day)
-
-    def begin_pass(self):
-        """
-        Begin Pass
-        Notify BoxPS to load sparse parameters of next pass to GPU Memory
-
-        Examples:
-            .. code-block:: python
-
-                >>> import paddle.base as base
-                >>> dataset = base.DatasetFactory().create_dataset("BoxPSDataset")
-                >>> dataset.begin_pass()
-        """
-        self.boxps.begin_pass()
-
-    def end_pass(self, need_save_delta):
-        """
-        End Pass
-        Notify BoxPS that current pass ended
-        Examples:
-            .. code-block:: python
-
-                >>> import paddle.base as base
-                >>> dataset = base.DatasetFactory().create_dataset("BoxPSDataset")
-                >>> dataset.end_pass(True)
-        """
-        self.boxps.end_pass(need_save_delta)
-
-    def wait_preload_done(self):
-        """
-        Wait async preload done
-        Wait Until Feed Pass Done
-        Examples:
-            .. code-block:: python
-
-                >>> # doctest: +SKIP('Depends on external files.')
-                >>> import paddle.base as base
-                >>> dataset = base.DatasetFactory().create_dataset("BoxPSDataset")
-                >>> filelist = ["a.txt", "b.txt"]
-                >>> dataset.set_filelist(filelist)
-                >>> dataset.preload_into_memory()
-                >>> dataset.wait_preload_done()
-        """
-        self.boxps.wait_feed_pass_done()
-
-    def load_into_memory(self):
-        """
-        Load next pass into memory and notify boxps to fetch its emb from SSD
-        Examples:
-            .. code-block:: python
-
-                >>> # doctest: +SKIP('Depends on external files.')
-                >>> import paddle.base as base
-                >>> dataset = base.DatasetFactory().create_dataset("BoxPSDataset")
-                >>> filelist = ["a.txt", "b.txt"]
-                >>> dataset.set_filelist(filelist)
-                >>> dataset.load_into_memory()
-        """
-        self._prepare_to_run()
-        self.boxps.load_into_memory()
-
-    def preload_into_memory(self):
-        """
-        Begin async preload next pass while current pass may be training
-        Examples:
-            .. code-block:: python
-
-                >>> # doctest: +SKIP('Depends on external files.')
-                >>> import paddle.base as base
-                >>> dataset = base.DatasetFactory().create_dataset("BoxPSDataset")
-                >>> filelist = ["a.txt", "b.txt"]
-                >>> dataset.set_filelist(filelist)
-                >>> dataset.preload_into_memory()
-        """
-        self._prepare_to_run()
-        self.boxps.preload_into_memory()
-
-    def _dynamic_adjust_before_train(self, thread_num):
-        if not self.is_user_set_queue_num:
-            self.dataset.dynamic_adjust_channel_num(thread_num, True)
-        self.dataset.dynamic_adjust_readers_num(thread_num)
-
-    def _dynamic_adjust_after_train(self):
-        pass
-
-    def slots_shuffle(self, slots):
-        """
-        Slots Shuffle
-        Slots Shuffle is a shuffle method in slots level, which is usually used
-        in sparse feature with large scale of instances. To compare the metric, i.e.
-        auc while doing slots shuffle on one or several slots with baseline to
-        evaluate the importance level of slots(features).
-
-        Args:
-            slots(list[string]): the set of slots(string) to do slots shuffle.
-
-        Examples:
-            .. code-block:: python
-
-                >>> import paddle.base as base
-                >>> dataset = base.DatasetFactory().create_dataset("BoxPSDataset")
-                >>> dataset.set_merge_by_lineid()
-                >>> #suppose there is a slot 0
-                >>> dataset.slots_shuffle(['0'])
-        """
-        slots_set = set(slots)
-        self.boxps.slots_shuffle(slots_set)

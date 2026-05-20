@@ -238,6 +238,66 @@ class TestBCELoss(unittest.TestCase):
         )
         paddle.enable_static()
 
+    def test_BCELoss_target_alias(self):
+        paddle.disable_static()
+        self.addCleanup(paddle.enable_static)
+
+        input_np = np.random.uniform(0.1, 0.8, size=(4, 5)).astype(np.float32)
+        label_np = np.random.randint(0, 2, size=(4, 5)).astype(np.float32)
+        input = paddle.to_tensor(input_np)
+        label = paddle.to_tensor(label_np)
+
+        for reduction in ["none", "mean", "sum"]:
+            out = paddle.nn.functional.binary_cross_entropy(
+                input=input, label=label, reduction=reduction
+            )
+            out_alias = paddle.nn.functional.binary_cross_entropy(
+                input=input, target=label, reduction=reduction
+            )
+            np.testing.assert_allclose(
+                out.numpy(), out_alias.numpy(), rtol=1e-6, atol=1e-6
+            )
+
+        with self.assertRaises(ValueError):
+            paddle.nn.functional.binary_cross_entropy(
+                input=input, label=label, target=label, reduction="none"
+            )
+
+    def test_BCELoss_target_alias_static(self):
+        paddle.enable_static()
+        input_np = np.random.uniform(0.1, 0.8, size=(4, 5)).astype(np.float32)
+        label_np = np.random.randint(0, 2, size=(4, 5)).astype(np.float32)
+
+        prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(prog, startup_prog):
+            input = paddle.static.data(
+                name='input', shape=input_np.shape, dtype='float32'
+            )
+            label = paddle.static.data(
+                name='label', shape=label_np.shape, dtype='float32'
+            )
+            out = paddle.nn.functional.binary_cross_entropy(
+                input=input, label=label, reduction="sum"
+            )
+            out_alias = paddle.nn.functional.binary_cross_entropy(
+                input=input, target=label, reduction="sum"
+            )
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            exe.run(startup_prog)
+            static_result, static_alias_result = exe.run(
+                prog,
+                feed={"input": input_np, "label": label_np},
+                fetch_list=[out, out_alias],
+            )
+
+        np.testing.assert_allclose(
+            static_result,
+            static_alias_result,
+            rtol=1e-6,
+            atol=1e-6,
+        )
+
 
 def bce_loss(input, label):
     return -1 * (label * np.log(input) + (1.0 - label) * np.log(1.0 - input))
@@ -328,6 +388,22 @@ class TestBceLossOp_ZeroSize(TestBceLossOp):
 class TestBceLossOp_ZeroSize2(TestBceLossOp):
     def init_test_cast(self):
         self.shape = [0]
+
+
+class TestBCELossWithZeroSizeTensor(unittest.TestCase):
+    def test_bce_loss_with_zero_size_tensor(self):
+        paddle.disable_static()
+        input = paddle.to_tensor([], dtype='float32').reshape([0, 13125, 1])
+        label = paddle.to_tensor([], dtype='float32').reshape([0, 13125, 1])
+        input.stop_gradient = False
+        out = paddle.nn.functional.binary_cross_entropy(
+            input, label, reduction='sum'
+        )
+        loss = out.sum()
+        loss.backward()
+        self.assertEqual(loss.shape, [])
+        self.assertEqual(float(loss), 0.0)
+        paddle.enable_static()
 
 
 if __name__ == "__main__":

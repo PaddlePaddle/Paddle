@@ -22,8 +22,6 @@
 #include "paddle/phi/kernels/funcs/math_function.h"
 namespace phi {
 
-using phi::PADDLE_CUDA_NUM_THREADS;
-
 inline int64_t GET_BLOCKS(const int64_t N) {
   return (N + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS;
 }
@@ -62,8 +60,8 @@ __global__ void KernelReduceMinMax(const T* input,
   }
 
   if (tid == 0) {
-    phi::CudaAtomicMin(min_out, smin[0]);
-    phi::CudaAtomicMax(max_out, smax[0]);
+    CudaAtomicMin(min_out, smin[0]);
+    CudaAtomicMax(max_out, smax[0]);
   }
 }
 
@@ -79,9 +77,9 @@ __global__ void KernelBincount(const InputT* input,
   for (int64_t i = global_tid; i < total_elements; i += stride) {
     InputT index = input[i];
     if (!has_weights) {
-      phi::CudaAtomicAdd(&output[index], 1L);
+      CudaAtomicAdd(&output[index], 1L);
     } else {
-      phi::CudaAtomicAdd(&output[index], static_cast<OutT>(weights[i]));
+      CudaAtomicAdd(&output[index], static_cast<OutT>(weights[i]));
     }
   }
 }

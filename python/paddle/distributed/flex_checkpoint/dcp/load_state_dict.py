@@ -57,6 +57,7 @@ from .utils import (
     is_sharded_state_dict,
     merge_state_dict_metadata,
     minimal_nd_slice,
+    need_transpose,
     ravel_index,
 )
 
@@ -68,7 +69,7 @@ PATH_TO_CHECKPOINT_FILES: dict[str, tuple[list, list]] = {}
 
 # When using the communication mode described below, newly created tensors will not be allocated GPU memory.
 # The allocation of GPU memory for these tensors will occur only when meaningful values are written to them.
-_UNINIT_TENSOR_MODES = ["send_recv", "grouped_send_recv", "parallel_broadcast"]
+_UNINIT_TENSOR_MODES = ["send_recv", "grouped_send_recv"]
 
 _metadata_manager = MetadataManager()
 
@@ -84,6 +85,8 @@ def get_checkpoint_files(
     # if unique_id is None, all file ends with .metadata and .distcp is returned
     if unique_id is None:
         unique_id = ''
+    if use_dist is None:
+        use_dist = paddle.distributed.get_world_size() > 1
     global PATH_TO_CHECKPOINT_FILES
     if use_cache and path in PATH_TO_CHECKPOINT_FILES:
         return PATH_TO_CHECKPOINT_FILES[path]
@@ -105,26 +108,44 @@ def get_checkpoint_files(
             with open(index_file_path, "r") as f:
                 index_data = json.load(f)
             if "weight_map" in index_data:
-                from safetensors.numpy import safe_open
-
                 mapping_key_to_safetensors_file = index_data["weight_map"]
-                global_safetensors_files = []
+                # All files referenced in the index
+                expected_files_in_index = set(
+                    mapping_key_to_safetensors_file.values()
+                )
+
+                # Gather safetensors files visible on each rank, then take union
+                global_safetensors_files_list = []
                 if use_dist:
                     paddle.distributed.all_gather_object(
-                        global_safetensors_files,
+                        global_safetensors_files_list,
                         safetensors_files,
                         process_group,
                     )
-                    global_safetensors_files = list(
-                        {
-                            file
-                            for files in global_safetensors_files
-                            for file in files
-                        }
-                    )
+                    global_safetensors_files = {
+                        file
+                        for files in global_safetensors_files_list
+                        for file in files
+                    }
                 else:
-                    global_safetensors_files = safetensors_files
-                for file in global_safetensors_files:
+                    global_safetensors_files = set(safetensors_files)
+
+                # Check that every file referenced in the index is visible on at least one rank
+                missing_files = (
+                    expected_files_in_index - global_safetensors_files
+                )
+                assert len(missing_files) == 0, (
+                    f"The following safetensors files are referenced in '{index_file_name}' "
+                    f"but not found on any rank: {sorted(missing_files)}"
+                )
+
+                # Check local files: every key in a locally accessible file must be
+                # consistent with the index mapping (only open files this rank can see).
+                # Meanwhile, collect actual keys present locally for the reverse check below.
+                from safetensors.numpy import safe_open
+
+                local_actual_keys = set()
+                for file in safetensors_files:
                     if file.endswith(".safetensors"):
                         file_path = os.path.join(path, file)
                         with safe_open(file_path, framework="np") as f:
@@ -138,6 +159,30 @@ def get_checkpoint_files(
                                 assert expected_file == file, (
                                     f"Key '{key}' is mapped to file '{expected_file}' in index, but found in file '{file}'"
                                 )
+                                local_actual_keys.add(key)
+
+                # Reverse check: every key declared in index must actually exist in
+                # some safetensors file across the cluster.
+                expected_keys_in_index = set(
+                    mapping_key_to_safetensors_file.keys()
+                )
+                global_actual_keys_list = []
+                if use_dist:
+                    paddle.distributed.all_gather_object(
+                        global_actual_keys_list,
+                        local_actual_keys,
+                        process_group,
+                    )
+                    global_actual_keys = set().union(*global_actual_keys_list)
+                else:
+                    global_actual_keys = local_actual_keys
+                missing_keys_in_files = (
+                    expected_keys_in_index - global_actual_keys
+                )
+                assert len(missing_keys_in_files) == 0, (
+                    f"The following keys are declared in '{index_file_name}' weight_map "
+                    f"but not found in any safetensors file: {sorted(missing_keys_in_files)}"
+                )
 
         if len(metadata_files) == 0:
             logger.info(
@@ -613,7 +658,9 @@ def _handle_aoa(
                 src_desc_to_postprocess_list[src_desc] = (
                     mapping.postprocess_list
                 )
-            if len(shard_mappings) == 1 and mapping.postprocess_list is None:
+            if len(shard_mappings) == 1 and not need_transpose(
+                mapping.postprocess_list
+            ):
                 if src_desc.global_shape != dst_desc.global_shape:
                     logger.warning(
                         f"Shape mismatch for parameter '{param_name}': "
@@ -758,7 +805,7 @@ def load_state_dict(
         worker_groups (list[paddle.distributed.collective.Group]): Communication groups used for tensor communications; if multiple are provided, an appropriate group is chosen; if None, the process_group group is used.
         comm_method (str): Communication method for resharding. Choices are "send_recv", "broadcast", "multi_group_broadcast", and "grouped_send_recv". Default is "broadcast".
     Example:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('run in distributed mode.')
             >>> import paddle
@@ -822,6 +869,8 @@ def load_state_dict(
                 use_dist=use_dist,
             )
             logger.info("Checkpoint successfully loaded locally!")
+            _metadata_manager.clear()
+            gc.collect()
             return
 
     if not is_sharded_state_dict(state_dict, use_dist, process_group):
@@ -837,6 +886,8 @@ def load_state_dict(
             worker_groups=worker_groups,
             comm_method=comm_method,
         )
+        _metadata_manager.clear()
+        gc.collect()
         return
 
     if not use_dist:
@@ -948,12 +999,26 @@ def restore_unflattened_state_dict(
                 unflattened_local_shape
             )
             direct_reshape_metas[key] = unflattened_meta
+            if (
+                len(unflattened_local_shape) >= 2
+                and unflattened_local_shape[-1] == numel_in_slice
+            ):
+                reshard_needed_tensors[key] = local_tensor.reshape(
+                    (numel_in_slice,)
+                )
+                reshard_target_infos[key] = (
+                    numel_in_slice,
+                    slices,
+                    unflattened_meta,
+                    False,
+                )
         else:
             reshard_needed_tensors[key] = local_tensor
             reshard_target_infos[key] = (
                 numel_in_slice,
                 slices,
                 unflattened_meta,
+                True,
             )
 
     resharded_tensors = {}
@@ -968,7 +1033,9 @@ def restore_unflattened_state_dict(
     for key, local_tensor in reshard_needed_tensors.items():
         tensor_name, file_name = key
         meta = _metadata_manager.local_tensor_metadata[key]
-        numel, slices, unflattened_meta = reshard_target_infos[key]
+        numel, slices, unflattened_meta, need_resharding = reshard_target_infos[
+            key
+        ]
         tensor_name_expand = f"{tensor_name}.global_offset.{meta.global_offset}"
 
         flat_start, flat_end = meta.flattened_range
@@ -1000,18 +1067,18 @@ def restore_unflattened_state_dict(
         global_offset_1d = (
             ravel_index(tuple(s[0] for s in slices), meta.local_shape),
         )
-
-        destination_sharded_state_dict[
-            (tensor_name_expand, global_offset_1d)
-        ] = ShardedWeight(
-            key=tensor_name_expand,
-            local_tensor=tmp_target_tensor,
-            local_shape=(numel,),
-            global_shape=(math.prod(meta.local_shape),),
-            global_offset=global_offset_1d,
-        )
-        name_mapping[key] = (tensor_name_expand, global_offset_1d)
-        force_gc.append(local_tensor)
+        if need_resharding:
+            destination_sharded_state_dict[
+                (tensor_name_expand, global_offset_1d)
+            ] = ShardedWeight(
+                key=tensor_name_expand,
+                local_tensor=tmp_target_tensor,
+                local_shape=(numel,),
+                global_shape=(math.prod(meta.local_shape),),
+                global_offset=global_offset_1d,
+            )
+            name_mapping[key] = (tensor_name_expand, global_offset_1d)
+            force_gc.append(local_tensor)
 
     global_state_dict_metadata, global_storage_metadata = [], []
     if use_dist:
@@ -1032,6 +1099,7 @@ def restore_unflattened_state_dict(
     tmp_metadata.storage_metadata = {
         k: v for d in global_storage_metadata for k, v in d.items()
     }
+
     _load_state_dict(
         target_state_dict=destination_sharded_state_dict,
         source_state_dict=source_state_dict_for_reshard,
@@ -1042,12 +1110,15 @@ def restore_unflattened_state_dict(
     )
 
     for key in reshard_needed_tensors:
-        target_key = name_mapping[key]
-        unflattened_meta = reshard_target_infos[key][2]
-
-        final_tensor = destination_sharded_state_dict[target_key].local_tensor
-        final_tensor.reshape_(unflattened_meta.local_shape)
-        resharded_tensors[key] = final_tensor
+        need_resharding = reshard_target_infos[key][3]
+        if need_resharding:
+            target_key = name_mapping[key]
+            unflattened_meta = reshard_target_infos[key][2]
+            final_tensor = destination_sharded_state_dict[
+                target_key
+            ].local_tensor
+            final_tensor.reshape_(unflattened_meta.local_shape)
+            resharded_tensors[key] = final_tensor
 
     final_unflattened_state_dict = defaultdict(dict)
     final_local_tensor_meta = defaultdict(list)
@@ -1391,7 +1462,7 @@ def load_merged_state_dict(
         dict: Merged state_dict.
 
     Example:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('run in distributed mode.')
             >>> import paddle
@@ -1401,7 +1472,7 @@ def load_merged_state_dict(
             >>> mesh = dist.ProcessMesh([0, 1])
             >>> sharded_w1 = dist.shard_tensor(w1, mesh, [dist.Shard(0)])
             >>> state_dict = {"w1": sharded_w1}
-            >>> dist.save_state_dict(state_dict, ckpt_path) # save sharded checkpoint
+            >>> dist.save_state_dict(state_dict, ckpt_path)  # save sharded checkpoint
 
             >>> # doctest: +SKIP('run in single-card mode.')
             >>> import paddle
@@ -1544,7 +1615,7 @@ def merge_sharded_state_dict(
         None.
 
     Example:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +SKIP('run in distributed mode.')
             >>> import paddle
@@ -1554,14 +1625,16 @@ def merge_sharded_state_dict(
             >>> mesh = dist.ProcessMesh([0, 1])
             >>> sharded_w1 = dist.shard_tensor(w1, mesh, [dist.Shard(0)])
             >>> state_dict = {"w1": sharded_w1}
-            >>> dist.save_state_dict(state_dict, ckpt_path) # save sharded checkpoint
+            >>> dist.save_state_dict(state_dict, ckpt_path)  # save sharded checkpoint
 
             >>> # doctest: +SKIP('run in single-card mode.')
             >>> import paddle
             >>> import paddle.distributed as dist
             >>> ckpt_path = "./checkpoint"
             >>> save_path = "./merged_checkpoint"
-            >>> dist.flex_checkpoint.dcp.load_state_dict.merge_sharded_state_dict(ckpt_path, save_path)  # load unsharded and save to safetensors
+            >>> dist.flex_checkpoint.dcp.load_state_dict.merge_sharded_state_dict(
+            ...     ckpt_path, save_path
+            ... )  # load unsharded and save to safetensors
             >>> # doctest: -SKIP
     """
     if unique_id is None:

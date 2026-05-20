@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/distribute_fpn_proposals_kernel.h"
 #include "paddle/common/enforce.h"
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/memory_utils.h"
@@ -71,7 +72,7 @@ __global__ void GPUDistFpnProposalsHelper(const int nthreads,
     tgt_lvl = min(max_level, max(tgt_lvl, min_level));
     target_lvls[i] = tgt_lvl;
     // compute number of rois in the same batch and same target level
-    phi::CudaAtomicAdd(
+    CudaAtomicAdd(
         sub_lod_list + (tgt_lvl - min_level) * lod_size + roi_batch_ind, 1);
   }
 }
@@ -145,7 +146,7 @@ void DistributeFpnProposalsKernel(
   DenseTensor sub_lod_list;
   sub_lod_list.Resize({num_level, lod_size});
   int* sub_lod_list_data = dev_ctx.template Alloc<int>(&sub_lod_list);
-  funcs::SetConstant<phi::GPUContext, int> set_zero;
+  funcs::SetConstant<GPUContext, int> set_zero;
   set_zero(dev_ctx, &sub_lod_list, static_cast<int>(0));
 
   DenseTensor target_lvls;
@@ -172,7 +173,7 @@ void DistributeFpnProposalsKernel(
   DenseTensor index_in_t;
   index_in_t.Resize({roi_num});
   int* idx_in = dev_ctx.template Alloc<int>(&index_in_t);
-  funcs::ForRange<phi::GPUContext> for_range(dev_ctx, roi_num);
+  funcs::ForRange<GPUContext> for_range(dev_ctx, roi_num);
   for_range(funcs::RangeInitFunctor{0, 1, idx_in});
 
   DenseTensor keys_out_t;
@@ -195,7 +196,7 @@ void DistributeFpnProposalsKernel(
                                             sizeof(int) * 8,
                                             dev_ctx.stream());
   // Allocate temporary storage
-  auto d_temp_storage = phi::memory_utils::Alloc(place, temp_storage_bytes);
+  auto d_temp_storage = memory_utils::Alloc(place, temp_storage_bytes);
 
   // Run sorting operation
   // sort target level to get corresponding index
@@ -226,6 +227,15 @@ void DistributeFpnProposalsKernel(
 
   size_t start = 0;
 
+  PADDLE_ENFORCE_EQ(
+      backends::gpu::IsCUDAGraphCapturing(),
+      false,
+      common::errors::InvalidArgument(
+          "DistributeFpnProposals does not support CUDA Graph capture: async "
+          "D2H copy to local vector 'sub_lod_list_cpu' will bake the "
+          "destination address into the graph; on replay the vector is "
+          "re-created at a different address, causing a dangling-pointer "
+          "write."));
   std::vector<int> sub_lod_list_cpu(lod_size * num_level);
   memory_utils::Copy(CPUPlace(),
                      sub_lod_list_cpu.data(),

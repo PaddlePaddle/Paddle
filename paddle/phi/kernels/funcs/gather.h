@@ -35,7 +35,7 @@ namespace funcs {
  * return: output tensor
  */
 template <typename T, typename IndexT = int>
-void CPUGather(const phi::CPUContext& dev_ctx UNUSED,
+void CPUGather(const CPUContext& dev_ctx UNUSED,
                const DenseTensor& src,
                const DenseTensor& index,
                DenseTensor* output) {
@@ -104,7 +104,7 @@ void CPUGather(const phi::CPUContext& dev_ctx UNUSED,
 }
 
 template <typename T, typename IndexT = int>
-void CPUGatherNd(const phi::CPUContext& dev_ctx UNUSED,
+void CPUGatherNd(const CPUContext& dev_ctx UNUSED,
                  const DenseTensor& input,
                  const DenseTensor& index,
                  DenseTensor* output) {
@@ -120,7 +120,7 @@ void CPUGatherNd(const phi::CPUContext& dev_ctx UNUSED,
   // final dim
   int64_t end_size = index_dims[index_dims_size - 1];
   // remain dim
-  auto remain_ddim = common::slice_ddim(index_dims, 0, index_dims_size - 1);
+  auto remain_ddim = slice_ddim(index_dims, 0, index_dims_size - 1);
   int64_t remain_numel = common::product(remain_ddim);
   // slice size
   int64_t slice_size = 1;
@@ -158,7 +158,7 @@ void CPUGatherNd(const phi::CPUContext& dev_ctx UNUSED,
 }
 
 template <typename T, typename U>
-void GatherV2Function(const phi::CPUContext& dev_ctx,
+void GatherV2Function(const CPUContext& dev_ctx,
                       const DenseTensor* input,
                       const DenseTensor* index,
                       int axis,
@@ -210,7 +210,7 @@ void GatherV2Function(const phi::CPUContext& dev_ctx,
     outer_dim_size *= input_dim[i];
     out_dim_vec.push_back(input_dim[i]);
   }
-  auto out_dim = common::make_ddim(out_dim_vec);
+  auto out_dim = make_ddim(out_dim_vec);
 
   out->Resize(out_dim);
   auto* out_data = dev_ctx.Alloc<T>(out);
@@ -232,7 +232,7 @@ void GatherV2Function(const phi::CPUContext& dev_ctx,
 }
 
 template <typename T, typename U>
-void GatherV2GradFunction(const phi::CPUContext& dev_ctx,
+void GatherV2GradFunction(const CPUContext& dev_ctx,
                           const DenseTensor* input,
                           const DenseTensor* index,
                           const int axis,

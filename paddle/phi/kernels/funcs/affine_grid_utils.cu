@@ -186,15 +186,15 @@ void CreateBaseGridKernel_5D(const Context& dev_ctx,
       base_grid_data, n, d, h, w, align_corners);
 }
 
-template void CreateBaseGridKernel_4D<float, phi::GPUContext>(
-    const phi::GPUContext&, float*, int64_t, int64_t, int64_t, bool);
-template void CreateBaseGridKernel_4D<double, phi::GPUContext>(
-    const phi::GPUContext&, double*, int64_t, int64_t, int64_t, bool);
+template void CreateBaseGridKernel_4D<float, GPUContext>(
+    const GPUContext&, float*, int64_t, int64_t, int64_t, bool);
+template void CreateBaseGridKernel_4D<double, GPUContext>(
+    const GPUContext&, double*, int64_t, int64_t, int64_t, bool);
 
-template void CreateBaseGridKernel_5D<float, phi::GPUContext>(
-    const phi::GPUContext&, float*, int64_t, int64_t, int64_t, int64_t, bool);
-template void CreateBaseGridKernel_5D<double, phi::GPUContext>(
-    const phi::GPUContext&, double*, int64_t, int64_t, int64_t, int64_t, bool);
+template void CreateBaseGridKernel_5D<float, GPUContext>(
+    const GPUContext&, float*, int64_t, int64_t, int64_t, int64_t, bool);
+template void CreateBaseGridKernel_5D<double, GPUContext>(
+    const GPUContext&, double*, int64_t, int64_t, int64_t, int64_t, bool);
 
 }  // namespace funcs
 }  // namespace phi

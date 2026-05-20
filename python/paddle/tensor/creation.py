@@ -17,9 +17,10 @@ from __future__ import annotations
 import builtins
 import math
 import numbers
+import os
 import re
 import warnings
-from typing import TYPE_CHECKING, overload
+from typing import TYPE_CHECKING, Any, overload
 
 import numpy as np
 
@@ -47,6 +48,7 @@ from ..framework import (
     _current_expected_place,
     _current_expected_place_,
     _get_paddle_place,
+    _to_pinned_place,
     convert_np_dtype_to_dtype_,
     core,
     dygraph_only,
@@ -129,12 +131,23 @@ def create_global_var(
         Variable: The created Variable
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +SKIP("paddle.static.create_global_var doesn't support PIR mode")
             >>> import paddle
             >>> paddle.enable_static()
-            >>> var = paddle.static.create_global_var(shape=[2,3], value=1.0, dtype='float32',
-            ...                                persistable=True, force_cpu=True, name='new_var')
+            >>> main_program = paddle.static.Program()
+            >>> startup_program = paddle.static.Program()
+            >>> with paddle.static.program_guard(main_program, startup_program):
+            ...     var = paddle.static.create_global_var(
+            ...         shape=[2, 3],
+            ...         value=1.0,
+            ...         dtype="float32",
+            ...         persistable=True,
+            ...         force_cpu=True,
+            ...     )
+            >>> var.shape
+            (2, 3)
     """
     check_type(shape, 'shape', (list, tuple, np.ndarray), 'create_global_var')
     for item in shape:
@@ -220,10 +233,9 @@ def create_parameter(
         The created parameter.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
-            >>> paddle.enable_static()
             >>> W = paddle.create_parameter(shape=[784, 200], dtype='float32')
     """
     check_type(shape, 'shape', (list, tuple, np.ndarray), 'create_parameter')
@@ -836,6 +848,25 @@ def _to_tensor_non_static(
             data = data.astype(convert_dtype(dtype))
 
     if isinstance(data, np.ndarray):
+        if core.is_compiled_with_custom_device(
+            "iluvatar_gpu"
+        ) and os.environ.get('FLAG_FORCE_FLOAT32', '').lower() in [
+            '1',
+            'true',
+            'on',
+        ]:
+            import logging
+
+            if data.dtype == np.float64:
+                logging.warning(
+                    "Input data type is float64 which is not supported on iluvatar gpu, we will forcibly set tensor dtype to float32!"
+                )
+                data = data.astype(np.float32)
+            elif data.dtype == np.complex128:
+                logging.warning(
+                    "Input data type is complex128 which is not supported on iluvatar gpu, we will forcibly set tensor dtype to complex64!"
+                )
+                data = data.astype(np.complex64)
         if (
             data.dtype
             in [
@@ -1028,15 +1059,8 @@ def tensor(
     place = _get_paddle_place(device)
     if place is None:
         place = _current_expected_place_()
-    if pin_memory and not isinstance(
-        place, (core.CUDAPinnedPlace, core.XPUPinnedPlace)
-    ):
-        if isinstance(place, core.CUDAPlace):
-            place = core.CUDAPinnedPlace()
-        elif isinstance(place, core.XPUPlace):
-            place = core.XPUPinnedPlace()
-        else:
-            raise RuntimeError(f"Pinning memory is not supported for {place}.")
+    if pin_memory:
+        place = _to_pinned_place(place)
 
     if in_dynamic_mode():
         is_tensor = paddle.is_tensor(data)
@@ -1395,26 +1419,8 @@ def full_like(
             if device is not None
             else _current_expected_place()
         )
-        if (
-            pin_memory
-            and in_dynamic_mode()
-            and device is not None
-            and not isinstance(
-                device, (core.CUDAPinnedPlace, core.XPUPinnedPlace)
-            )
-        ):
-            if isinstance(device, core.CUDAPlace) or (
-                isinstance(device, core.Place) and device.is_gpu_place()
-            ):
-                device = core.CUDAPinnedPlace()
-            elif isinstance(device, core.XPUPlace) or (
-                isinstance(device, core.Place) and device.is_xpu_place()
-            ):
-                device = core.XPUPinnedPlace()
-            else:
-                raise RuntimeError(
-                    f"Pinning memory is not supported for {device}"
-                )
+        if pin_memory and in_dynamic_mode() and device is not None:
+            device = _to_pinned_place(device)
 
         tensor = _C_ops.full_like(x, fill_value, dtype, device)
         if requires_grad is True:
@@ -1583,6 +1589,30 @@ def fill_constant(
         return out
 
 
+@overload
+def ones(
+    shape: ShapeLike,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+    *,
+    out: paddle.Tensor | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
+    pin_memory: bool = False,
+) -> paddle.Tensor: ...
+
+
+@overload
+def ones(
+    *size: int,
+    out: paddle.Tensor | None = None,
+    dtype: DTypeLike | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
+    pin_memory: bool = False,
+) -> paddle.Tensor: ...
+
+
 @size_args_decorator
 def ones(
     shape: ShapeLike,
@@ -1600,7 +1630,7 @@ def ones(
     Args:
         shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
             If ``shape`` is a list or tuple, the elements of it should be integers or 0-D Tensor with shape [].
-            If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
+            If ``shape`` is a Tensor, it should be a 1-D Tensor which represents a list.
         dtype (np.dtype|str, optional): Data type of output Tensor, it should be one of
             bool, float16, float32, float64, int32 and int64. If it is set to None, the data type will be float32.
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
@@ -1638,6 +1668,13 @@ def ones(
             >>> shape = [paddle.to_tensor(3), paddle.to_tensor(2)]
             >>> data3 = paddle.ones(shape=shape)
             >>> print(data3.numpy())
+            [[1. 1.]
+             [1. 1.]
+             [1. 1.]]
+
+            >>> # shape can be a variable number of arguments
+            >>> data4 = paddle.ones(3, 2)
+            >>> print(data4.numpy())
             [[1. 1.]
              [1. 1.]
              [1. 1.]]
@@ -1715,6 +1752,30 @@ def ones_like(
     )
 
 
+@overload
+def zeros(
+    shape: ShapeLike,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+    *,
+    out: paddle.Tensor | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
+    pin_memory: bool = False,
+) -> paddle.Tensor: ...
+
+
+@overload
+def zeros(
+    *size: int,
+    out: paddle.Tensor | None = None,
+    dtype: DTypeLike | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
+    pin_memory: bool = False,
+) -> paddle.Tensor: ...
+
+
 @size_args_decorator
 def zeros(
     shape: ShapeLike,
@@ -1740,7 +1801,7 @@ def zeros(
         shape (tuple|list|Tensor|variable number of arguments): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
             alias: ``size``.
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
-            If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
+            If ``shape`` is a Tensor, it should be a 1-D Tensor which represents a list.
         dtype(str|paddle.dtype|np.dtype, optional): Data type of output Tensor, it supports
             bool, float16, float32, float64, int32 and int64. Default: if None, the data type is float32.
             property.  For more information, please refer to :ref:`api_guide_Name`.
@@ -1779,6 +1840,13 @@ def zeros(
             >>> shape = [paddle.to_tensor(3), paddle.to_tensor(2)]
             >>> data3 = paddle.zeros(shape=shape)
             >>> print(data3.numpy())
+            [[0. 0.]
+             [0. 0.]
+             [0. 0.]]
+
+            >>> # shape can be a variable number of arguments
+            >>> data4 = paddle.zeros(3, 2)
+            >>> print(data4.numpy())
             [[0. 0.]
              [0. 0.]
              [0. 0.]]
@@ -1937,26 +2005,8 @@ def eye(
             if device is not None
             else _current_expected_place()
         )
-        if (
-            pin_memory
-            and in_dynamic_mode()
-            and device is not None
-            and not isinstance(
-                device, (core.CUDAPinnedPlace, core.XPUPinnedPlace)
-            )
-        ):
-            if isinstance(device, core.CUDAPlace) or (
-                isinstance(device, core.Place) and device.is_gpu_place()
-            ):
-                device = core.CUDAPinnedPlace()
-            elif isinstance(device, core.XPUPlace) or (
-                isinstance(device, core.Place) and device.is_xpu_place()
-            ):
-                device = core.XPUPinnedPlace()
-            else:
-                raise RuntimeError(
-                    f"Pinning memory is not supported for {device}"
-                )
+        if pin_memory and in_dynamic_mode() and device is not None:
+            device = _to_pinned_place(device)
         tensor = _C_ops.eye(
             num_rows,
             num_columns,
@@ -2105,26 +2155,8 @@ def full(
             if device is not None
             else _current_expected_place()
         )
-        if (
-            pin_memory
-            and in_dynamic_mode()
-            and device is not None
-            and not isinstance(
-                device, (core.CUDAPinnedPlace, core.XPUPinnedPlace)
-            )
-        ):
-            if isinstance(device, core.CUDAPlace) or (
-                isinstance(device, core.Place) and device.is_gpu_place()
-            ):
-                device = core.CUDAPinnedPlace()
-            elif isinstance(device, core.XPUPlace) or (
-                isinstance(device, core.Place) and device.is_xpu_place()
-            ):
-                device = core.XPUPinnedPlace()
-            else:
-                raise RuntimeError(
-                    f"Pinning memory is not supported for {device}"
-                )
+        if pin_memory and in_dynamic_mode() and device is not None:
+            device = _to_pinned_place(device)
 
     tensor = fill_constant(
         shape=shape,
@@ -2222,20 +2254,19 @@ def arange(
         end = start
         start = 0
 
+    is_all_integer = True
     if dtype is None:
+        # Check if start/end/step contain floating point values
         for val in [start, end, step]:
             if isinstance(val, (Variable, paddle.pir.Value)):
                 if not paddle.is_integer(val):
-                    dtype = paddle.get_default_dtype()
+                    is_all_integer = False
                     break
-                else:
-                    dtype = 'int64'
             else:
-                if not isinstance(val, np.integer) and not isinstance(val, int):
-                    dtype = paddle.get_default_dtype()
+                if isinstance(val, (float, np.floating)):
+                    is_all_integer = False
                     break
-                else:
-                    dtype = 'int64'
+        dtype = 'int64' if is_all_integer else paddle.get_default_dtype()
 
     out_shape = None
     is_value_input = (
@@ -2256,26 +2287,8 @@ def arange(
             if device is not None
             else _current_expected_place()
         )
-        if (
-            pin_memory
-            and in_dynamic_mode()
-            and device is not None
-            and not isinstance(
-                device, (core.CUDAPinnedPlace, core.XPUPinnedPlace)
-            )
-        ):
-            if isinstance(device, core.CUDAPlace) or (
-                isinstance(device, core.Place) and device.is_gpu_place()
-            ):
-                device = core.CUDAPinnedPlace()
-            elif isinstance(device, core.XPUPlace) or (
-                isinstance(device, core.Place) and device.is_xpu_place()
-            ):
-                device = core.XPUPinnedPlace()
-            else:
-                raise RuntimeError(
-                    f"Pinning memory is not supported for {device}"
-                )
+        if pin_memory and in_dynamic_mode() and device is not None:
+            device = _to_pinned_place(device)
 
     if is_value_input and in_pir_mode():
         tensor = _C_ops.arange(
@@ -2299,13 +2312,13 @@ def arange(
                 raise ValueError(
                     f"The value of start must be finite, but received: {start}."
                 )
-            start = fill_constant([1], dtype, start, force_cpu=True)
-    elif start.dtype != dtype:
+            start_dtype = np.array(start).dtype
+            start = fill_constant([1], start_dtype, start, force_cpu=True)
+    else:
         if in_dynamic_mode() and not paddle.isfinite(start):
             raise ValueError(
                 f"The value of start must be finite, but received: {start}."
             )
-        start = paddle.cast(start, dtype)
 
     if not isinstance(end, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
@@ -2313,19 +2326,23 @@ def arange(
                 raise ValueError(
                     f"The value of end must be finite, but received: {end}."
                 )
-            end = fill_constant([1], dtype, end, force_cpu=True)
-    elif end.dtype != dtype:
+            end_dtype = np.array(end).dtype
+            end = fill_constant([1], end_dtype, end, force_cpu=True)
+    else:
         if in_dynamic_mode() and not paddle.isfinite(end):
             raise ValueError(
                 f"The value of end must be finite, but received: {end}."
             )
-        end = paddle.cast(end, dtype)
 
     if not isinstance(step, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
-            step = fill_constant([1], dtype, step, force_cpu=True)
-    elif step.dtype != dtype:
-        step = paddle.cast(step, dtype)
+            step_dtype = np.array(step).dtype
+            step = fill_constant([1], step_dtype, step, force_cpu=True)
+    else:
+        if in_dynamic_mode() and not paddle.isfinite(step):
+            raise ValueError(
+                f"The value of step must be finite, but received: {step}."
+            )
 
     if in_dynamic_or_pir_mode():
         tensor = _C_ops.arange(
@@ -2487,21 +2504,18 @@ def range(
 
     if not isinstance(start, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
-            start = fill_constant([1], dtype, start, force_cpu=True)
-    elif start.dtype != dtype:
-        start = paddle.cast(start, dtype)
+            start_dtype = np.array(start).dtype
+            start = fill_constant([1], start_dtype, start, force_cpu=True)
 
     if not isinstance(end, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
-            end = fill_constant([1], dtype, end, force_cpu=True)
-    elif end.dtype != dtype:
-        end = paddle.cast(end, dtype)
+            end_dtype = np.array(end).dtype
+            end = fill_constant([1], end_dtype, end, force_cpu=True)
 
     if not isinstance(step, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
-            step = fill_constant([1], dtype, step, force_cpu=True)
-    elif step.dtype != dtype:
-        step = paddle.cast(step, dtype)
+            step_dtype = np.array(step).dtype
+            step = fill_constant([1], step_dtype, step, force_cpu=True)
 
     tensor = _C_ops.range_v2(
         start,
@@ -2632,8 +2646,8 @@ def meshgrid(*args, **kwargs):
 
             >>> import paddle
 
-            >>> x = paddle.randint(low=0, high=100, shape=[100])
-            >>> y = paddle.randint(low=0, high=100, shape=[200])
+            >>> x = paddle.randint(low=0, high=100, size=[100])
+            >>> y = paddle.randint(low=0, high=100, size=[200])
 
             >>> grid_x, grid_y = paddle.meshgrid(x, y)
 
@@ -2874,6 +2888,7 @@ def diag_embed(
     return out
 
 
+@param_one_alias(['x', 'input'])
 def diagflat(
     x: paddle.Tensor, offset: int = 0, name: str | None = None
 ) -> paddle.Tensor:
@@ -2893,6 +2908,7 @@ def diagflat(
 
     Args:
         x (Tensor): The input tensor. It can be any shape. Its data type should be float16, float32, float64, int32, int64.
+            Alias: ``input``.
         offset (int, optional): The diagonal offset. A positive value represents superdiagonal, 0 represents the main diagonal, and a negative value represents subdiagonal. Default: 0 (main diagonal).
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
@@ -3010,6 +3026,30 @@ def diagflat(
         return out2
 
 
+@overload
+def empty(
+    shape: ShapeLike,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+    *,
+    out: paddle.Tensor | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
+    pin_memory: bool = False,
+) -> paddle.Tensor: ...
+
+
+@overload
+def empty(
+    *size: int,
+    out: paddle.Tensor | None = None,
+    dtype: DTypeLike | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
+    pin_memory: bool = False,
+) -> paddle.Tensor: ...
+
+
 @size_args_decorator
 def empty(
     shape: ShapeLike,
@@ -3027,7 +3067,7 @@ def empty(
     Args:
         shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
-            If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
+            If ``shape`` is a Tensor, it should be a 1-D Tensor which represents a list.
         dtype(str|paddle.dtype|np.dtype, optional): Data type of the output Tensor
             which can be bool, float16, float32, float64, int32, int64, complex64, complex128 if dtype is `None`, the data
             type of created Tensor use global default dtype (see ``get_default_dtype``
@@ -3069,6 +3109,14 @@ def empty(
             >>> shape = [paddle.to_tensor(3), paddle.to_tensor(2)]
             >>> data3 = paddle.empty(shape=shape)
             >>> print(data3.numpy())
+            >>> # doctest: +SKIP('change everytime')
+            [[1. 1.]
+             [1. 1.]
+             [1. 1.]]
+
+            >>> # shape can be a variable number of arguments
+            >>> data4 = paddle.empty(3, 2)
+            >>> print(data4.numpy())
             >>> # doctest: +SKIP('change everytime')
             [[1. 1.]
              [1. 1.]
@@ -3120,26 +3168,8 @@ def empty(
             if device is not None
             else _current_expected_place()
         )
-        if (
-            pin_memory
-            and in_dynamic_mode()
-            and device is not None
-            and not isinstance(
-                device, (core.CUDAPinnedPlace, core.XPUPinnedPlace)
-            )
-        ):
-            if isinstance(device, core.CUDAPlace) or (
-                isinstance(device, core.Place) and device.is_gpu_place()
-            ):
-                device = core.CUDAPinnedPlace()
-            elif isinstance(device, core.XPUPlace) or (
-                isinstance(device, core.Place) and device.is_xpu_place()
-            ):
-                device = core.XPUPinnedPlace()
-            else:
-                raise RuntimeError(
-                    f"Pinning memory is not supported for {device}"
-                )
+        if pin_memory and in_dynamic_mode() and device is not None:
+            device = _to_pinned_place(device)
         tensor = _C_ops.empty(
             shape,
             convert_np_dtype_to_dtype_(dtype),
@@ -3258,26 +3288,8 @@ def empty_like(
             if device is not None
             else _current_expected_place()
         )
-        if (
-            pin_memory
-            and in_dynamic_mode()
-            and device is not None
-            and not isinstance(
-                device, (core.CUDAPinnedPlace, core.XPUPinnedPlace)
-            )
-        ):
-            if isinstance(device, core.CUDAPlace) or (
-                isinstance(device, core.Place) and device.is_gpu_place()
-            ):
-                device = core.CUDAPinnedPlace()
-            elif isinstance(device, core.XPUPlace) or (
-                isinstance(device, core.Place) and device.is_xpu_place()
-            ):
-                device = core.XPUPinnedPlace()
-            else:
-                raise RuntimeError(
-                    f"Pinning memory is not supported for {device}"
-                )
+        if pin_memory and in_dynamic_mode() and device is not None:
+            device = _to_pinned_place(device)
 
         if in_dynamic_mode():
             x_shape = x.shape
@@ -3562,6 +3574,7 @@ def assign(x: TensorLike, output: paddle.Tensor | None = None) -> paddle.Tensor:
     return output
 
 
+@param_one_alias(['x', 'input'])
 def clone(x: paddle.Tensor, name: str | None = None) -> paddle.Tensor:
     """
     Returns a copy of input Tensor. It will always have a Tensor copy.
@@ -3570,6 +3583,7 @@ def clone(x: paddle.Tensor, name: str | None = None) -> paddle.Tensor:
 
     Parameters:
         x (Tensor): The input Tensor.
+            Alias: ``input``.
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -4003,6 +4017,7 @@ def cauchy_(
 
 
 @dygraph_only
+@param_one_alias(['probs', 'p'])
 def geometric_(
     x: paddle.Tensor,
     probs: float | paddle.Tensor,
@@ -4014,6 +4029,7 @@ def geometric_(
         x (Tensor): the tensor will be filled, The data type is float32 or float64.
         probs (float|Tensor): Probability parameter.
             The value of probs must be positive. When the parameter is a tensor, probs is probability of success for each trial.
+            Alias: ``p``.
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -4126,7 +4142,7 @@ def set_(
         if source is None:
             source = paddle.empty([0], dtype=x.dtype)
             shape = [0]
-            stride = [0]
+            stride = source.strides
         else:
             if not isinstance(source, (Variable, core.eager.Tensor)):
                 raise ValueError(

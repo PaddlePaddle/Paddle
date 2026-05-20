@@ -34,8 +34,8 @@ void XPUCompareRawKernelImpl(
                       bool*,
                       const std::vector<int64_t>&,
                       const std::vector<int64_t>&)> func) {
-  auto x_shape = common::vectorize<int64_t>(x.dims());
-  auto y_shape = common::vectorize<int64_t>(y.dims());
+  auto x_shape = vectorize<int64_t>(x.dims());
+  auto y_shape = vectorize<int64_t>(y.dims());
 
   if (x.dims().size() == 0) {
     x_shape = std::vector<int64_t>({1});

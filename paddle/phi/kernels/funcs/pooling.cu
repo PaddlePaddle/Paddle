@@ -486,7 +486,7 @@ __global__ void KernelMaxPool2DGrad(const IndexT nthreads,
 
     if (maxIndex != -1) {
       // atomic add
-      phi::CudaAtomicAdd(input_grad + maxIndex, output_grad[index]);
+      CudaAtomicAdd(input_grad + maxIndex, output_grad[index]);
     }
   }
 }
@@ -511,7 +511,7 @@ __global__ void KernelMaxPool2DGradCompatible(
     T* input_grad,
     FastDivModForPooling<IndexT> divmods,
     bool channel_last = false) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
 
   CUDA_KERNEL_LOOP(index, input_height * input_width) {
     IndexT h = index / input_width;
@@ -523,19 +523,19 @@ __global__ void KernelMaxPool2DGradCompatible(
     T input_data_value = input_data[h * input_width + w];
     for (IndexT n = blockIdx.y; n < batch_size; n += gridDim.y) {
       for (IndexT c = blockIdx.z; c < channels; c += gridDim.z) {
-        MPType gradient = static_cast<MPType>(0.0f);
+        MT gradient = static_cast<MT>(0.0f);
         IndexT offset = (n * channels + c) * output_height * output_width;
         for (int ph = phstart; ph < phend; ++ph) {
           for (int pw = pwstart; pw < pwend; ++pw) {
             T output_data_value = output_data[ph * output_width + pw + offset];
             if (output_data_value == input_data_value) {
-              gradient += static_cast<MPType>(
-                  output_grad[ph * output_width + pw + offset]);
+              gradient +=
+                  static_cast<MT>(output_grad[ph * output_width + pw + offset]);
             }
           }
         }
         input_grad[(n * channels + c) * input_height * input_width + index] =
-            static_cast<MPType>(gradient);
+            static_cast<MT>(gradient);
       }
     }
   }
@@ -642,9 +642,9 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
  * height_down, width_left and width_right, respectively.
  */
 template <typename PoolProcess, typename T>
-class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
+class Pool2dFunctor<GPUContext, PoolProcess, T> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const std::vector<int64_t>& ksize,
                   const std::vector<int64_t>& strides,
@@ -809,9 +809,9 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
  * height_down, width_left and width_right, respectively.
  */
 template <typename PoolProcess, typename T>
-class Pool2dGradFunctor<phi::GPUContext, PoolProcess, T> {
+class Pool2dGradFunctor<GPUContext, PoolProcess, T> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& output,
                   const DenseTensor& output_grad,
@@ -934,9 +934,9 @@ class Pool2dGradFunctor<phi::GPUContext, PoolProcess, T> {
  * height_down, width_left and width_right, respectively.
  */
 template <typename T>
-class MaxPool2dGradFunctor<phi::GPUContext, T> {
+class MaxPool2dGradFunctor<GPUContext, T> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& output,
                   const DenseTensor& output_grad,
@@ -1094,58 +1094,58 @@ class MaxPool2dGradFunctor<phi::GPUContext, T> {
 template class PADDLE_API Pool2dDirectCUDAFunctor<MaxPool<float>, float>;
 template class PADDLE_API Pool2dDirectCUDAFunctor<AvgPool<float>, float>;
 
-template class MaxPool2dGradFunctor<phi::GPUContext, float>;
-template class MaxPool2dGradFunctor<phi::GPUContext, double>;
-template class MaxPool2dGradFunctor<phi::GPUContext, dtype::float16>;
-template class MaxPool2dGradFunctor<phi::GPUContext, dtype::bfloat16>;
+template class MaxPool2dGradFunctor<GPUContext, float>;
+template class MaxPool2dGradFunctor<GPUContext, double>;
+template class MaxPool2dGradFunctor<GPUContext, dtype::float16>;
+template class MaxPool2dGradFunctor<GPUContext, dtype::bfloat16>;
 
-template class Pool2dFunctor<phi::GPUContext, MaxPool<float>, float>;
-template class Pool2dFunctor<phi::GPUContext, AvgPool<float>, float>;
-template class Pool2dFunctor<phi::GPUContext, LPPool<float>, float>;
-template class Pool2dGradFunctor<phi::GPUContext, MaxPoolGrad<float>, float>;
-template class Pool2dGradFunctor<phi::GPUContext, AvgPoolGrad<float>, float>;
-template class Pool2dGradFunctor<phi::GPUContext, LPPoolGrad<float>, float>;
-template class Pool2dFunctor<phi::GPUContext, MaxPool<double>, double>;
-template class Pool2dFunctor<phi::GPUContext, AvgPool<double>, double>;
-template class Pool2dFunctor<phi::GPUContext, LPPool<double>, double>;
-template class Pool2dGradFunctor<phi::GPUContext, MaxPoolGrad<double>, double>;
-template class Pool2dGradFunctor<phi::GPUContext, AvgPoolGrad<double>, double>;
-template class Pool2dGradFunctor<phi::GPUContext, LPPoolGrad<double>, double>;
+template class Pool2dFunctor<GPUContext, MaxPool<float>, float>;
+template class Pool2dFunctor<GPUContext, AvgPool<float>, float>;
+template class Pool2dFunctor<GPUContext, LPPool<float>, float>;
+template class Pool2dGradFunctor<GPUContext, MaxPoolGrad<float>, float>;
+template class Pool2dGradFunctor<GPUContext, AvgPoolGrad<float>, float>;
+template class Pool2dGradFunctor<GPUContext, LPPoolGrad<float>, float>;
+template class Pool2dFunctor<GPUContext, MaxPool<double>, double>;
+template class Pool2dFunctor<GPUContext, AvgPool<double>, double>;
+template class Pool2dFunctor<GPUContext, LPPool<double>, double>;
+template class Pool2dGradFunctor<GPUContext, MaxPoolGrad<double>, double>;
+template class Pool2dGradFunctor<GPUContext, AvgPoolGrad<double>, double>;
+template class Pool2dGradFunctor<GPUContext, LPPoolGrad<double>, double>;
 
-template class Pool2dFunctor<phi::GPUContext,
+template class Pool2dFunctor<GPUContext,
                              MaxPool<dtype::float16>,
                              dtype::float16>;
-template class Pool2dFunctor<phi::GPUContext,
+template class Pool2dFunctor<GPUContext,
                              AvgPool<dtype::float16>,
                              dtype::float16>;
-template class Pool2dFunctor<phi::GPUContext,
+template class Pool2dFunctor<GPUContext,
                              LPPool<dtype::float16>,
                              dtype::float16>;
-template class Pool2dGradFunctor<phi::GPUContext,
+template class Pool2dGradFunctor<GPUContext,
                                  MaxPoolGrad<dtype::float16>,
                                  dtype::float16>;
-template class Pool2dGradFunctor<phi::GPUContext,
+template class Pool2dGradFunctor<GPUContext,
                                  AvgPoolGrad<dtype::float16>,
                                  dtype::float16>;
-template class Pool2dGradFunctor<phi::GPUContext,
+template class Pool2dGradFunctor<GPUContext,
                                  LPPoolGrad<dtype::float16>,
                                  dtype::float16>;
-template class Pool2dFunctor<phi::GPUContext,
+template class Pool2dFunctor<GPUContext,
                              MaxPool<dtype::bfloat16>,
                              dtype::bfloat16>;
-template class Pool2dFunctor<phi::GPUContext,
+template class Pool2dFunctor<GPUContext,
                              AvgPool<dtype::bfloat16>,
                              dtype::bfloat16>;
-template class Pool2dFunctor<phi::GPUContext,
+template class Pool2dFunctor<GPUContext,
                              LPPool<dtype::bfloat16>,
                              dtype::bfloat16>;
-template class Pool2dGradFunctor<phi::GPUContext,
+template class Pool2dGradFunctor<GPUContext,
                                  MaxPoolGrad<dtype::bfloat16>,
                                  dtype::bfloat16>;
-template class Pool2dGradFunctor<phi::GPUContext,
+template class Pool2dGradFunctor<GPUContext,
                                  AvgPoolGrad<dtype::bfloat16>,
                                  dtype::bfloat16>;
-template class Pool2dGradFunctor<phi::GPUContext,
+template class Pool2dGradFunctor<GPUContext,
                                  LPPoolGrad<dtype::bfloat16>,
                                  dtype::bfloat16>;
 
@@ -1480,7 +1480,7 @@ __global__ void KernelMaxPool3DGrad(const IndexT nthreads,
     }
     if (maxIdx != -1) {
       // atomic add
-      phi::CudaAtomicAdd(input_grad + maxIdx, output_grad[index]);
+      CudaAtomicAdd(input_grad + maxIdx, output_grad[index]);
     }
   }
 }
@@ -1561,9 +1561,9 @@ void Pool3dDirectCUDAFunctor<PoolProcess, T>::operator()(
  * height_up, height_down, width_left and width_right, respectively.
  */
 template <typename PoolProcess, class T>
-class Pool3dFunctor<phi::GPUContext, PoolProcess, T> {
+class Pool3dFunctor<GPUContext, PoolProcess, T> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const std::vector<int64_t>& ksize,
                   const std::vector<int64_t>& strides,
@@ -1689,9 +1689,9 @@ class Pool3dFunctor<phi::GPUContext, PoolProcess, T> {
  * height_up, height_down, width_left and width_right, respectively.
  */
 template <typename PoolProcess, class T>
-class Pool3dGradFunctor<phi::GPUContext, PoolProcess, T> {
+class Pool3dGradFunctor<GPUContext, PoolProcess, T> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& output,
                   const DenseTensor& output_grad,
@@ -1822,9 +1822,9 @@ class Pool3dGradFunctor<phi::GPUContext, PoolProcess, T> {
  * height_up, height_down, width_left and width_right, respectively.
  */
 template <class T>
-class MaxPool3dGradFunctor<phi::GPUContext, T> {
+class MaxPool3dGradFunctor<GPUContext, T> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& output,
                   const DenseTensor& output_grad,
@@ -1932,42 +1932,42 @@ class MaxPool3dGradFunctor<phi::GPUContext, T> {
 template class PADDLE_API Pool3dDirectCUDAFunctor<MaxPool<float>, float>;
 template class PADDLE_API Pool3dDirectCUDAFunctor<AvgPool<float>, float>;
 
-template class MaxPool3dGradFunctor<phi::GPUContext, float>;
-template class MaxPool3dGradFunctor<phi::GPUContext, double>;
-template class MaxPool3dGradFunctor<phi::GPUContext, dtype::float16>;
-template class MaxPool3dGradFunctor<phi::GPUContext, dtype::bfloat16>;
+template class MaxPool3dGradFunctor<GPUContext, float>;
+template class MaxPool3dGradFunctor<GPUContext, double>;
+template class MaxPool3dGradFunctor<GPUContext, dtype::float16>;
+template class MaxPool3dGradFunctor<GPUContext, dtype::bfloat16>;
 
-template class Pool3dFunctor<phi::GPUContext, MaxPool<float>, float>;
-template class Pool3dFunctor<phi::GPUContext, AvgPool<float>, float>;
-template class Pool3dGradFunctor<phi::GPUContext, MaxPoolGrad<float>, float>;
-template class Pool3dGradFunctor<phi::GPUContext, AvgPoolGrad<float>, float>;
-template class Pool3dFunctor<phi::GPUContext, MaxPool<double>, double>;
-template class Pool3dFunctor<phi::GPUContext, AvgPool<double>, double>;
-template class Pool3dGradFunctor<phi::GPUContext, MaxPoolGrad<double>, double>;
-template class Pool3dGradFunctor<phi::GPUContext, AvgPoolGrad<double>, double>;
+template class Pool3dFunctor<GPUContext, MaxPool<float>, float>;
+template class Pool3dFunctor<GPUContext, AvgPool<float>, float>;
+template class Pool3dGradFunctor<GPUContext, MaxPoolGrad<float>, float>;
+template class Pool3dGradFunctor<GPUContext, AvgPoolGrad<float>, float>;
+template class Pool3dFunctor<GPUContext, MaxPool<double>, double>;
+template class Pool3dFunctor<GPUContext, AvgPool<double>, double>;
+template class Pool3dGradFunctor<GPUContext, MaxPoolGrad<double>, double>;
+template class Pool3dGradFunctor<GPUContext, AvgPoolGrad<double>, double>;
 
-template class Pool3dFunctor<phi::GPUContext,
+template class Pool3dFunctor<GPUContext,
                              MaxPool<dtype::float16>,
                              dtype::float16>;
-template class Pool3dFunctor<phi::GPUContext,
+template class Pool3dFunctor<GPUContext,
                              AvgPool<dtype::float16>,
                              dtype::float16>;
-template class Pool3dFunctor<phi::GPUContext,
+template class Pool3dFunctor<GPUContext,
                              MaxPool<dtype::bfloat16>,
                              dtype::bfloat16>;
-template class Pool3dFunctor<phi::GPUContext,
+template class Pool3dFunctor<GPUContext,
                              AvgPool<dtype::bfloat16>,
                              dtype::bfloat16>;
-template class Pool3dGradFunctor<phi::GPUContext,
+template class Pool3dGradFunctor<GPUContext,
                                  MaxPoolGrad<dtype::float16>,
                                  dtype::float16>;
-template class Pool3dGradFunctor<phi::GPUContext,
+template class Pool3dGradFunctor<GPUContext,
                                  AvgPoolGrad<dtype::float16>,
                                  dtype::float16>;
-template class Pool3dGradFunctor<phi::GPUContext,
+template class Pool3dGradFunctor<GPUContext,
                                  MaxPoolGrad<dtype::bfloat16>,
                                  dtype::bfloat16>;
-template class Pool3dGradFunctor<phi::GPUContext,
+template class Pool3dGradFunctor<GPUContext,
                                  AvgPoolGrad<dtype::bfloat16>,
                                  dtype::bfloat16>;
 
@@ -1985,6 +1985,8 @@ __global__ void KernelMaxPool2dWithIdx(const IndexT nthreads,
                                        const IndexT stride_width,
                                        const IndexT padding_height,
                                        const IndexT padding_width,
+                                       const IndexT dilation_height,
+                                       const IndexT dilation_width,
                                        bool adaptive,
                                        T1* output_data,
                                        T2* mask_data,
@@ -2009,12 +2011,27 @@ __global__ void KernelMaxPool2dWithIdx(const IndexT nthreads,
         &input_offset);
     input_data += input_offset;
 
+    const bool dilation = (dilation_height != 1 || dilation_width != 1);
     if (adaptive) {
       hstart = AdaptStartIndex(h_offset, input_height, output_height);
       hend = AdaptEndIndex(h_offset, input_height, output_height);
 
       wstart = AdaptStartIndex(w_offset, input_width, output_width);
       wend = AdaptEndIndex(w_offset, input_width, output_width);
+    } else if (dilation) {
+      hstart = h_offset * stride_height - padding_height;
+      hend =
+          min(hstart + dilation_height * (ksize_height - 1) + 1, input_height);
+      if (hstart < 0) {
+        hstart =
+            ((-hstart - 1) / dilation_height + 1) * dilation_height + hstart;
+      }
+
+      wstart = w_offset * stride_width - padding_width;
+      wend = min(wstart + dilation_width * (ksize_width - 1) + 1, input_width);
+      if (wstart < 0) {
+        wstart = ((-wstart - 1) / dilation_width + 1) * dilation_width + wstart;
+      }
     } else {
       hstart = h_offset * stride_height - padding_height;
       hend = min(hstart + ksize_height, input_height);
@@ -2027,8 +2044,8 @@ __global__ void KernelMaxPool2dWithIdx(const IndexT nthreads,
 
     T1 ele = static_cast<T1>(-FLT_MAX);
     IndexT max_index = -1;
-    for (IndexT h = hstart; h < hend; ++h) {
-      for (IndexT w = wstart; w < wend; ++w) {
+    for (IndexT h = hstart; h < hend; h += dilation_height) {
+      for (IndexT w = wstart; w < wend; w += dilation_width) {
         IndexT input_index = h * input_width + w;
         if (ele < input_data[input_index]) {
           max_index = input_index;
@@ -2116,6 +2133,8 @@ __global__ void KernelMaxPool2DWithIdxGrad(
     const IndexT stride_width,
     const IndexT padding_height,
     const IndexT padding_width,
+    const IndexT dilation_height,
+    const IndexT dilation_width,
     bool adaptive,
     T1* input_grad,
     FastDivModForPooling<IndexT> divmods) {
@@ -2139,6 +2158,7 @@ __global__ void KernelMaxPool2DWithIdxGrad(
         &output_offset);
     mask_data += output_offset;
     output_grad += output_offset;
+    const bool dilation = (dilation_height != 1 || dilation_width != 1);
 
     if (adaptive) {
       phstart = h_offset * output_height / input_height;
@@ -2147,6 +2167,24 @@ __global__ void KernelMaxPool2DWithIdxGrad(
       pwstart = w_offset * output_width / input_width;
       pwend =
           min((w_offset + 1) * output_width / input_width + 1, output_width);
+    } else if (dilation) {
+      const IndexT effective_ksize_height =
+          (ksize_height - 1) * dilation_height + 1;
+      const IndexT effective_ksize_width =
+          (ksize_width - 1) * dilation_width + 1;
+      phstart = (h_offset + padding_height < effective_ksize_height)
+                    ? 0
+                    : (h_offset + padding_height - effective_ksize_height) /
+                              stride_height +
+                          1;
+      pwstart = (w_offset + padding_width < effective_ksize_width)
+                    ? 0
+                    : (w_offset + padding_width - effective_ksize_width) /
+                              stride_width +
+                          1;
+      phend =
+          min((h_offset + padding_height) / stride_height + 1, output_height);
+      pwend = min((w_offset + padding_width) / stride_width + 1, output_width);
     } else {
       phstart =
           (h_offset + padding_height < ksize_height)
@@ -2175,17 +2213,18 @@ __global__ void KernelMaxPool2DWithIdxGrad(
 
 /*
  * All tensors are in NCHW format.
- * Ksize, strides, paddings are two elements. These two elements represent
- * height and width, respectively.
+ * Ksize, strides, paddings, dilations are two elements. These two elements
+ * represent height and width, respectively.
  */
 template <typename T1, typename T2>
-class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
+class MaxPool2dWithIndexFunctor<GPUContext, T1, T2> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const std::vector<int64_t>& ksize,
                   const std::vector<int64_t>& strides,
                   const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
                   bool adaptive,
                   DenseTensor* output,
                   DenseTensor* mask) {
@@ -2202,10 +2241,23 @@ class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
     const int64_t stride_width = strides[1];
     const int64_t padding_height = paddings[0];
     const int64_t padding_width = paddings[1];
+    const int64_t dilation_height = dilations[0];
+    const int64_t dilation_width = dilations[1];
 
     const T1* input_data = input.data<T1>();
     T1* output_data = dev_ctx.template Alloc<T1>(output);
     T2* mask_data = dev_ctx.template Alloc<T2>(mask);
+
+    PADDLE_ENFORCE_GE(
+        dilation_height,
+        1,
+        phi::errors::InvalidArgument(
+            "dilation_height must be >= 1, but got [%d]", dilation_height));
+    PADDLE_ENFORCE_GE(
+        dilation_width,
+        1,
+        phi::errors::InvalidArgument(
+            "dilation_width must be >= 1, but got [%d]", dilation_width));
 
     int64_t nthreads = static_cast<int64_t>(batch_size) * output_channels *
                        output_height * output_width;
@@ -2291,6 +2343,8 @@ class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
                                                      stride_width,
                                                      padding_height,
                                                      padding_width,
+                                                     dilation_height,
+                                                     dilation_width,
                                                      adaptive,
                                                      output_data,
                                                      mask_data,
@@ -2312,6 +2366,8 @@ class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
                                                      stride_width,
                                                      padding_height,
                                                      padding_width,
+                                                     dilation_height,
+                                                     dilation_width,
                                                      adaptive,
                                                      output_data,
                                                      mask_data,
@@ -2323,18 +2379,19 @@ class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
 
 /*
  * All tensors are in NCHW format.
- * Ksize, strides, paddings are two elements. These two elements represent
- * height and width, respectively.
+ * Ksize, strides, paddings, dilations are two elements. These two elements
+ * represent height and width, respectively.
  */
 template <typename T1, typename T2>
-class MaxPool2dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
+class MaxPool2dWithIndexGradFunctor<GPUContext, T1, T2> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& output_grad,
                   const DenseTensor& mask,
                   const std::vector<int64_t>& ksize,
                   const std::vector<int64_t>& strides,
                   const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
                   bool adaptive,
                   DenseTensor* input_grad) {
     const int64_t batch_size = input_grad->dims()[0];
@@ -2349,6 +2406,19 @@ class MaxPool2dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
     const int64_t stride_width = strides[1];
     const int64_t padding_height = paddings[0];
     const int64_t padding_width = paddings[1];
+    const int64_t dilation_height = dilations[0];
+    const int64_t dilation_width = dilations[1];
+
+    PADDLE_ENFORCE_GE(
+        dilation_height,
+        1,
+        phi::errors::InvalidArgument(
+            "dilation_height must be >= 1, but got [%d]", dilation_height));
+    PADDLE_ENFORCE_GE(
+        dilation_width,
+        1,
+        phi::errors::InvalidArgument(
+            "dilation_width must be >= 1, but got [%d]", dilation_width));
 
     const T2* mask_data = mask.data<T2>();
     const T1* output_grad_data = output_grad.data<T1>();
@@ -2378,6 +2448,8 @@ class MaxPool2dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
                                                    stride_width,
                                                    padding_height,
                                                    padding_width,
+                                                   dilation_height,
+                                                   dilation_width,
                                                    adaptive,
                                                    input_grad_data,
                                                    pool_divmods);
@@ -2399,6 +2471,8 @@ class MaxPool2dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
                                                    stride_width,
                                                    padding_height,
                                                    padding_width,
+                                                   dilation_height,
+                                                   dilation_width,
                                                    adaptive,
                                                    input_grad_data,
                                                    pool_divmods);
@@ -2406,18 +2480,14 @@ class MaxPool2dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
   }
 };
 
-template class MaxPool2dWithIndexFunctor<phi::GPUContext, float, int>;
-template class MaxPool2dWithIndexGradFunctor<phi::GPUContext, float, int>;
-template class MaxPool2dWithIndexFunctor<phi::GPUContext, double, int>;
-template class MaxPool2dWithIndexGradFunctor<phi::GPUContext, double, int>;
-template class MaxPool2dWithIndexFunctor<phi::GPUContext, dtype::float16, int>;
-template class MaxPool2dWithIndexGradFunctor<phi::GPUContext,
-                                             dtype::float16,
-                                             int>;
-template class MaxPool2dWithIndexFunctor<phi::GPUContext, dtype::bfloat16, int>;
-template class MaxPool2dWithIndexGradFunctor<phi::GPUContext,
-                                             dtype::bfloat16,
-                                             int>;
+template class MaxPool2dWithIndexFunctor<GPUContext, float, int>;
+template class MaxPool2dWithIndexGradFunctor<GPUContext, float, int>;
+template class MaxPool2dWithIndexFunctor<GPUContext, double, int>;
+template class MaxPool2dWithIndexGradFunctor<GPUContext, double, int>;
+template class MaxPool2dWithIndexFunctor<GPUContext, dtype::float16, int>;
+template class MaxPool2dWithIndexGradFunctor<GPUContext, dtype::float16, int>;
+template class MaxPool2dWithIndexFunctor<GPUContext, dtype::bfloat16, int>;
+template class MaxPool2dWithIndexGradFunctor<GPUContext, dtype::bfloat16, int>;
 
 template <typename T1, typename T2, typename IndexT>
 __global__ void KernelMaxPool3DWithIdx(
@@ -2439,6 +2509,9 @@ __global__ void KernelMaxPool3DWithIdx(
     const IndexT padding_depth,
     const IndexT padding_height,
     const IndexT padding_width,
+    const IndexT dilation_depth,
+    const IndexT dilation_height,
+    const IndexT dilation_width,
     bool adaptive,
     T1* output_data,
     T2* mask_data,
@@ -2467,6 +2540,8 @@ __global__ void KernelMaxPool3DWithIdx(
             nc_offset * input_depth * input_height * input_width;
         input_data_cur = input_data + input_offset;
 
+        const bool dilation = (dilation_depth != 1 || dilation_height != 1 ||
+                               dilation_width != 1);
         if (adaptive) {
           dstart = AdaptStartIndex(d_offset, input_depth, output_depth);
           dend = AdaptEndIndex(d_offset, input_depth, output_depth);
@@ -2476,6 +2551,28 @@ __global__ void KernelMaxPool3DWithIdx(
 
           wstart = AdaptStartIndex(w_offset, input_width, output_width);
           wend = AdaptEndIndex(w_offset, input_width, output_width);
+        } else if (dilation) {
+          dstart = d_offset * stride_depth - padding_depth;
+          hstart = h_offset * stride_height - padding_height;
+          wstart = w_offset * stride_width - padding_width;
+          dend =
+              min(dstart + dilation_depth * (ksize_depth - 1) + 1, input_depth);
+          hend = min(hstart + dilation_height * (ksize_height - 1) + 1,
+                     input_height);
+          wend =
+              min(wstart + dilation_width * (ksize_width - 1) + 1, input_width);
+          if (dstart < 0) {
+            dstart =
+                ((-dstart - 1) / dilation_depth + 1) * dilation_depth + dstart;
+          }
+          if (hstart < 0) {
+            hstart = ((-hstart - 1) / dilation_height + 1) * dilation_height +
+                     hstart;
+          }
+          if (wstart < 0) {
+            wstart =
+                ((-wstart - 1) / dilation_width + 1) * dilation_width + wstart;
+          }
         } else {
           dstart = d_offset * stride_depth - padding_depth;
           hstart = h_offset * stride_height - padding_height;
@@ -2490,9 +2587,9 @@ __global__ void KernelMaxPool3DWithIdx(
 
         T1 ele = static_cast<T1>(-FLT_MAX);
         IndexT max_index = -1;
-        for (IndexT d = dstart; d < dend; ++d) {
-          for (IndexT h = hstart; h < hend; ++h) {
-            for (IndexT w = wstart; w < wend; ++w) {
+        for (IndexT d = dstart; d < dend; d += dilation_depth) {
+          for (IndexT h = hstart; h < hend; h += dilation_height) {
+            for (IndexT w = wstart; w < wend; w += dilation_width) {
               if (ele <
                   input_data_cur[(d * input_height + h) * input_width + w]) {
                 max_index = (d * input_height + h) * input_width + w;
@@ -2552,7 +2649,7 @@ __global__ void KernelMaxPool3DWithIdxGrad(
             w_offset;
         IndexT max_index = mask[output_index];
         if (max_index != -1) {
-          phi::CudaAtomicAdd(
+          CudaAtomicAdd(
               &input_grad[nc_offset * input_depth * input_height * input_width +
                           max_index],
               output_grad[output_index]);
@@ -2564,17 +2661,18 @@ __global__ void KernelMaxPool3DWithIdxGrad(
 
 /*
  * All tensors are in NCDHW format.
- * Ksize, strides, paddings are three elements. These three elements represent
- * depth, height and width, respectively.
+ * Ksize, strides, paddings, dilations are three elements. These three elements
+ * represent depth, height and width, respectively.
  */
 template <typename T1, typename T2>
-class MaxPool3dWithIndexFunctor<phi::GPUContext, T1, T2> {
+class MaxPool3dWithIndexFunctor<GPUContext, T1, T2> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const std::vector<int64_t>& ksize,
                   const std::vector<int64_t>& strides,
                   const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
                   bool adaptive,
                   DenseTensor* output,
                   DenseTensor* mask) {
@@ -2596,10 +2694,29 @@ class MaxPool3dWithIndexFunctor<phi::GPUContext, T1, T2> {
     const int64_t padding_depth = paddings[0];
     const int64_t padding_height = paddings[1];
     const int64_t padding_width = paddings[2];
+    const int64_t dilation_depth = dilations[0];
+    const int64_t dilation_height = dilations[1];
+    const int64_t dilation_width = dilations[2];
 
     const T1* input_data = input.data<T1>();
     T1* output_data = dev_ctx.template Alloc<T1>(output);
     T2* mask_data = dev_ctx.template Alloc<T2>(mask);
+
+    PADDLE_ENFORCE_GE(
+        dilation_depth,
+        1,
+        phi::errors::InvalidArgument(
+            "dilation_depth must be >= 1, but got [%d]", dilation_depth));
+    PADDLE_ENFORCE_GE(
+        dilation_height,
+        1,
+        phi::errors::InvalidArgument(
+            "dilation_height must be >= 1, but got [%d]", dilation_height));
+    PADDLE_ENFORCE_GE(
+        dilation_width,
+        1,
+        phi::errors::InvalidArgument(
+            "dilation_width must be >= 1, but got [%d]", dilation_width));
 
     int64_t ncd =
         static_cast<int64_t>(batch_size) * input_channels * output_depth;
@@ -2640,6 +2757,9 @@ class MaxPool3dWithIndexFunctor<phi::GPUContext, T1, T2> {
                                                    padding_depth,
                                                    padding_height,
                                                    padding_width,
+                                                   dilation_depth,
+                                                   dilation_height,
+                                                   dilation_width,
                                                    adaptive,
                                                    output_data,
                                                    mask_data,
@@ -2666,6 +2786,9 @@ class MaxPool3dWithIndexFunctor<phi::GPUContext, T1, T2> {
                                                    padding_depth,
                                                    padding_height,
                                                    padding_width,
+                                                   dilation_depth,
+                                                   dilation_height,
+                                                   dilation_width,
                                                    adaptive,
                                                    output_data,
                                                    mask_data,
@@ -2676,18 +2799,19 @@ class MaxPool3dWithIndexFunctor<phi::GPUContext, T1, T2> {
 
 /*
  * All tensors are in NCDHW format.
- * Ksize, strides, paddings are three elements. These three elements represent
- * depth, height and width, respectively.
+ * Ksize, strides, paddings, dilations are three elements. These three elements
+ * represent depth, height and width, respectively.
  */
 template <typename T1, typename T2>
-class MaxPool3dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
+class MaxPool3dWithIndexGradFunctor<GPUContext, T1, T2> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& output_grad,
                   const DenseTensor& mask,
                   const std::vector<int64_t>& ksize,
                   const std::vector<int64_t>& strides,
                   const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
                   bool adaptive,
                   DenseTensor* input_grad) {
     const int64_t batch_size = input_grad->dims()[0];
@@ -2784,18 +2908,14 @@ class MaxPool3dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
   }
 };
 
-template class MaxPool3dWithIndexFunctor<phi::GPUContext, float, int>;
-template class MaxPool3dWithIndexGradFunctor<phi::GPUContext, float, int>;
-template class MaxPool3dWithIndexFunctor<phi::GPUContext, double, int>;
-template class MaxPool3dWithIndexGradFunctor<phi::GPUContext, double, int>;
-template class MaxPool3dWithIndexFunctor<phi::GPUContext, dtype::float16, int>;
-template class MaxPool3dWithIndexGradFunctor<phi::GPUContext,
-                                             dtype::float16,
-                                             int>;
-template class MaxPool3dWithIndexFunctor<phi::GPUContext, dtype::bfloat16, int>;
-template class MaxPool3dWithIndexGradFunctor<phi::GPUContext,
-                                             dtype::bfloat16,
-                                             int>;
+template class MaxPool3dWithIndexFunctor<GPUContext, float, int>;
+template class MaxPool3dWithIndexGradFunctor<GPUContext, float, int>;
+template class MaxPool3dWithIndexFunctor<GPUContext, double, int>;
+template class MaxPool3dWithIndexGradFunctor<GPUContext, double, int>;
+template class MaxPool3dWithIndexFunctor<GPUContext, dtype::float16, int>;
+template class MaxPool3dWithIndexGradFunctor<GPUContext, dtype::float16, int>;
+template class MaxPool3dWithIndexFunctor<GPUContext, dtype::bfloat16, int>;
+template class MaxPool3dWithIndexGradFunctor<GPUContext, dtype::bfloat16, int>;
 // fractional max pool
 template <typename T1, typename T2, typename IndexT>
 __global__ void FractionalKernelMaxPool2d(
@@ -2928,7 +3048,7 @@ __global__ void FractionalKernelMaxPool2dGrad(
 
       IndexT max_index = mask_data[output_index];
       if (max_index != -1) {
-        phi::CudaAtomicAdd(
+        CudaAtomicAdd(
             &input_grad[nc_offset * input_height * input_width + max_index],
             output_grad[output_index]);
       }
@@ -2940,9 +3060,9 @@ __global__ void FractionalKernelMaxPool2dGrad(
  * All tensors are in NCHW format.
  */
 template <typename T1, typename T2>
-class FractionalMaxPool2dFunctor<phi::GPUContext, T1, T2> {
+class FractionalMaxPool2dFunctor<GPUContext, T1, T2> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const std::vector<int64_t>& output_size,
                   const std::vector<int64_t>& kernel_size,
@@ -3048,9 +3168,9 @@ class FractionalMaxPool2dFunctor<phi::GPUContext, T1, T2> {
  * All tensors are in NCHW format.
  */
 template <typename T1, typename T2>
-class FractionalMaxPool2dGradFunctor<phi::GPUContext, T1, T2> {
+class FractionalMaxPool2dGradFunctor<GPUContext, T1, T2> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& output_grad,
                   const DenseTensor& mask,
                   const std::vector<int64_t>& output_size,
@@ -3136,20 +3256,14 @@ class FractionalMaxPool2dGradFunctor<phi::GPUContext, T1, T2> {
   }
 };
 
-template class FractionalMaxPool2dFunctor<phi::GPUContext, float, int>;
-template class FractionalMaxPool2dGradFunctor<phi::GPUContext, float, int>;
-template class FractionalMaxPool2dFunctor<phi::GPUContext, double, int>;
-template class FractionalMaxPool2dGradFunctor<phi::GPUContext, double, int>;
-template class FractionalMaxPool2dFunctor<phi::GPUContext, dtype::float16, int>;
-template class FractionalMaxPool2dGradFunctor<phi::GPUContext,
-                                              dtype::float16,
-                                              int>;
-template class FractionalMaxPool2dFunctor<phi::GPUContext,
-                                          dtype::bfloat16,
-                                          int>;
-template class FractionalMaxPool2dGradFunctor<phi::GPUContext,
-                                              dtype::bfloat16,
-                                              int>;
+template class FractionalMaxPool2dFunctor<GPUContext, float, int>;
+template class FractionalMaxPool2dGradFunctor<GPUContext, float, int>;
+template class FractionalMaxPool2dFunctor<GPUContext, double, int>;
+template class FractionalMaxPool2dGradFunctor<GPUContext, double, int>;
+template class FractionalMaxPool2dFunctor<GPUContext, dtype::float16, int>;
+template class FractionalMaxPool2dGradFunctor<GPUContext, dtype::float16, int>;
+template class FractionalMaxPool2dFunctor<GPUContext, dtype::bfloat16, int>;
+template class FractionalMaxPool2dGradFunctor<GPUContext, dtype::bfloat16, int>;
 
 template <typename T1, typename T2, typename IndexT>
 __global__ void FractionalKernelMaxPool3d(
@@ -3306,7 +3420,7 @@ __global__ void FractionalKernelMaxPool3dGrad(
             w_offset;
         IndexT max_index = mask[output_index];
         if (max_index != -1) {
-          phi::CudaAtomicAdd(
+          CudaAtomicAdd(
               &input_grad[nc_offset * input_depth * input_height * input_width +
                           max_index],
               output_grad[output_index]);
@@ -3320,9 +3434,9 @@ __global__ void FractionalKernelMaxPool3dGrad(
  * All tensors are in NCDHW format.
  */
 template <typename T1, typename T2>
-class FractionalMaxPool3dFunctor<phi::GPUContext, T1, T2> {
+class FractionalMaxPool3dFunctor<GPUContext, T1, T2> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const std::vector<int64_t>& output_size,
                   const std::vector<int64_t>& kernel_size,
@@ -3446,9 +3560,9 @@ class FractionalMaxPool3dFunctor<phi::GPUContext, T1, T2> {
  * All tensors are in NCDHW format.
  */
 template <typename T1, typename T2>
-class FractionalMaxPool3dGradFunctor<phi::GPUContext, T1, T2> {
+class FractionalMaxPool3dGradFunctor<GPUContext, T1, T2> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& output_grad,
                   const DenseTensor& mask,
                   const std::vector<int64_t>& output_size,
@@ -3534,20 +3648,14 @@ class FractionalMaxPool3dGradFunctor<phi::GPUContext, T1, T2> {
   }
 };
 
-template class FractionalMaxPool3dFunctor<phi::GPUContext, float, int>;
-template class FractionalMaxPool3dGradFunctor<phi::GPUContext, float, int>;
-template class FractionalMaxPool3dFunctor<phi::GPUContext, double, int>;
-template class FractionalMaxPool3dGradFunctor<phi::GPUContext, double, int>;
-template class FractionalMaxPool3dFunctor<phi::GPUContext, dtype::float16, int>;
-template class FractionalMaxPool3dGradFunctor<phi::GPUContext,
-                                              dtype::float16,
-                                              int>;
-template class FractionalMaxPool3dFunctor<phi::GPUContext,
-                                          dtype::bfloat16,
-                                          int>;
-template class FractionalMaxPool3dGradFunctor<phi::GPUContext,
-                                              dtype::bfloat16,
-                                              int>;
+template class FractionalMaxPool3dFunctor<GPUContext, float, int>;
+template class FractionalMaxPool3dGradFunctor<GPUContext, float, int>;
+template class FractionalMaxPool3dFunctor<GPUContext, double, int>;
+template class FractionalMaxPool3dGradFunctor<GPUContext, double, int>;
+template class FractionalMaxPool3dFunctor<GPUContext, dtype::float16, int>;
+template class FractionalMaxPool3dGradFunctor<GPUContext, dtype::float16, int>;
+template class FractionalMaxPool3dFunctor<GPUContext, dtype::bfloat16, int>;
+template class FractionalMaxPool3dGradFunctor<GPUContext, dtype::bfloat16, int>;
 
 }  // namespace funcs
 }  // namespace phi

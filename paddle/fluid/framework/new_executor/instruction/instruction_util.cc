@@ -59,14 +59,12 @@
 #define DEVICE_CONTEXT phi::GPUContext
 #define CREATE_COMM_CONTEXT \
   phi::distributed::CommContextManager::CreateNCCLCommContext
-#define PLATFORM_COMM_CONTEXT platform::NCCLCommContext
 #define PROCESS_GROUP paddle::distributed::ProcessGroupNCCL
 #elif (defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL))
 #define COMM_CONTEXT phi::distributed::BKCLCommContext
 #define DEVICE_CONTEXT phi::XPUContext
 #define CREATE_COMM_CONTEXT \
   phi::distributed::CommContextManager::CreateBKCLCommContext
-#define PLATFORM_COMM_CONTEXT platform::BKCLCommContext
 #define PROCESS_GROUP paddle::distributed::ProcessGroupBKCL
 #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
 #define COMM_CONTEXT phi::distributed::XCCLCommContext
@@ -94,7 +92,7 @@ std::vector<int> GetValueIds(pir::Value value,
 
 phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
                                        phi::DeviceContext* origin_dev_ctx,
-                                       const phi::Place& place,
+                                       const Place& place,
                                        const std::string& execution_stream,
                                        const int stream_priority) {
   auto& op_attributes = op->attributes();
@@ -284,7 +282,7 @@ phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
   }
   return origin_dev_ctx;
 }
-OpFuncType AnalyseOpFuncType(pir::Operation* op, const phi::Place& place) {
+OpFuncType AnalyseOpFuncType(pir::Operation* op, const Place& place) {
   if (phi::is_cpu_place(place)) {
     return OpFuncType::kCpuSync;
   }
@@ -542,13 +540,13 @@ void InsertInplacedExternalInputsToOuts(
   }
 }
 
-bool GetCondData(const phi::DenseTensor& cond) {
+bool GetCondData(const DenseTensor& cond) {
   if (phi::is_cpu_place(cond.place())) {
     return cond.data<bool>()[0];
   }
   // when phi::is_gpu_place(cond.place()) or
   // phi::is_xpu_place(cond.place()) is true
-  std::unique_ptr<DenseTensor> cpu_cond{new phi::DenseTensor()};
+  std::unique_ptr<DenseTensor> cpu_cond{new DenseTensor()};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
   paddle::framework::TensorCopySync(cond, CPUPlace(), cpu_cond.get());

@@ -52,7 +52,7 @@ void Conv3dCooCPUKernel(const CPUContext& dev_ctx,
 
   int count_tmp = is2D ? 4 : 5;
   std::vector<int> out_dims_vec(count_tmp, 1);
-  DDim out_dims = common::make_ddim(out_dims_vec);
+  DDim out_dims = make_ddim(out_dims_vec);
 
   std::vector<int> kernel_sizes(kernel_dims.size());
   for (int i = 0; i < kernel_dims.size(); i++) {
@@ -208,7 +208,7 @@ void Conv3dCooKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL(
     conv3d_coo, CPU, ALL_LAYOUT, phi::sparse::Conv3dCooKernel, float, double) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
-  kernel->OutputAt(0).SetDataType(paddle::DataType::UNDEFINED);
-  kernel->OutputAt(1).SetDataType(paddle::DataType::INT32);
-  kernel->OutputAt(2).SetDataType(paddle::DataType::INT32);
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
+  kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
 }

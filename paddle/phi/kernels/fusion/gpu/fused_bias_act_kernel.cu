@@ -34,7 +34,7 @@ __global__ void ActFFNGlu(const T *bias,
                           const int64_t elem_num,
                           LoadFunc load_func,
                           StoreFunc store_func) {
-  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
   LoadT src_vec1;
   LoadT src_vec2;
   LoadT bias_vec1;
@@ -50,8 +50,8 @@ __global__ void ActFFNGlu(const T *bias,
     load_func.template load<VecSize>(&src_vec2, index + hid_dim);
 
     if (bias) {
-      phi::Load<T, VecSize>(&bias[idx], &bias_vec1);
-      phi::Load<T, VecSize>(&bias[idx + hid_dim], &bias_vec2);
+      Load<T, VecSize>(&bias[idx], &bias_vec1);
+      Load<T, VecSize>(&bias[idx + hid_dim], &bias_vec2);
     }
 #pragma unroll
     for (int j = 0; j < VecSize; j++) {
@@ -116,7 +116,7 @@ __global__ void BiasAct(const T *bias,
                         const int64_t elem_num,
                         LoadFunc load_func,
                         StoreFunc store_func) {
-  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
   LoadT src_vec;
   LoadT bias_vec;
 
@@ -134,7 +134,7 @@ __global__ void BiasAct(const T *bias,
     int64_t linear_idx = row_idx * cols + col_idx;
     load_func.template load<VecSize>(&src_vec, linear_idx);
     if (bias) {
-      phi::Load<T, VecSize>(&bias[col_idx], &bias_vec);
+      Load<T, VecSize>(&bias[col_idx], &bias_vec);
     }
 #pragma unroll
     for (int j = 0; j < VecSize; j++) {
@@ -245,7 +245,7 @@ void DispatchComputeImpl(const Context &dev_ctx,
                          const float quant_min_bound,
                          DenseTensor *out) {
   const T *bias_data = bias == nullptr ? nullptr : bias->data<T>();
-  Load<T> load_func(x.data<T>());
+  LoadFunc<T> load_func(x.data<T>());
   QuantStore<T, OutT> store_func(dev_ctx.template Alloc<OutT>(out),
                                  quant_round_type,
                                  quant_scale,
@@ -280,7 +280,7 @@ void DispatchComputeImpl(const Context &dev_ctx,
     ComputeImpl<T, Context, DequantLoad<T>, QuantStore<T, int8_t>, int32_t>(
         dev_ctx, bias_data, act_method, rows, cols, load_func, store_func);
   } else if (dequant_scales == nullptr && quant_scale > 0) {
-    Load<T> load_func(x.data<T>());
+    LoadFunc<T> load_func(x.data<T>());
     QuantStore<T, int8_t> store_func(dev_ctx.template Alloc<int8_t>(out),
                                      quant_round_type,
                                      quant_scale,
@@ -291,12 +291,12 @@ void DispatchComputeImpl(const Context &dev_ctx,
   } else if (dequant_scales != nullptr && quant_scale <= 0) {
     DequantLoad<T> load_func(
         x.data<int32_t>(), dequant_scales->data<float>(), cols);
-    Store<T> store_func(dev_ctx.template Alloc<T>(out));
-    ComputeImpl<T, Context, DequantLoad<T>, Store<T>, int32_t>(
+    StoreFunc<T> store_func(dev_ctx.template Alloc<T>(out));
+    ComputeImpl<T, Context, DequantLoad<T>, StoreFunc<T>, int32_t>(
         dev_ctx, bias_data, act_method, rows, cols, load_func, store_func);
   } else {
-    Load<T> load_func(x.data<T>());
-    Store<T> store_func(dev_ctx.template Alloc<T>(out));
+    LoadFunc<T> load_func(x.data<T>());
+    StoreFunc<T> store_func(dev_ctx.template Alloc<T>(out));
     ComputeImpl<T>(
         dev_ctx, bias_data, act_method, rows, cols, load_func, store_func);
   }
@@ -339,7 +339,7 @@ void DispatchComputeImpl(const Context &dev_ctx,
                 int32_t>(
         dev_ctx, bias_data, act_method, rows, cols, load_func, store_func);
   } else if (dequant_scales == nullptr && quant_scale > 0) {
-    Load<T> load_func(x.data<T>());
+    LoadFunc<T> load_func(x.data<T>());
     QuantStore<T, int8_t, true> store_func(dev_ctx.template Alloc<int8_t>(out),
                                            shift->data<T>(),
                                            smooth->data<T>(),
@@ -353,18 +353,18 @@ void DispatchComputeImpl(const Context &dev_ctx,
   } else if (dequant_scales != nullptr && quant_scale <= 0) {
     DequantLoad<T> load_func(
         x.data<int32_t>(), dequant_scales->data<float>(), cols);
-    Store<T, true> store_func(dev_ctx.template Alloc<T>(out),
-                              shift->data<T>(),
-                              smooth->data<T>(),
-                              use_glu ? cols / 2 : cols);
-    ComputeImpl<T, Context, DequantLoad<T>, Store<T, true>, int32_t>(
+    StoreFunc<T, true> store_func(dev_ctx.template Alloc<T>(out),
+                                  shift->data<T>(),
+                                  smooth->data<T>(),
+                                  use_glu ? cols / 2 : cols);
+    ComputeImpl<T, Context, DequantLoad<T>, StoreFunc<T, true>, int32_t>(
         dev_ctx, bias_data, act_method, rows, cols, load_func, store_func);
   } else {
-    Load<T> load_func(x.data<T>());
-    Store<T, true> store_func(dev_ctx.template Alloc<T>(out),
-                              shift->data<T>(),
-                              smooth->data<T>(),
-                              use_glu ? cols / 2 : cols);
+    LoadFunc<T> load_func(x.data<T>());
+    StoreFunc<T, true> store_func(dev_ctx.template Alloc<T>(out),
+                                  shift->data<T>(),
+                                  smooth->data<T>(),
+                                  use_glu ? cols / 2 : cols);
     ComputeImpl<T>(
         dev_ctx, bias_data, act_method, rows, cols, load_func, store_func);
   }

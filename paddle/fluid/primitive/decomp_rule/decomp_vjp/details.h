@@ -901,6 +901,18 @@ void scale_grad(const Tensor& out_grad, const Scalar& scale, Tensor* x_grad) {
 }
 
 template <typename T>
+void div_scale_grad(const Tensor& out_grad,
+                    const Scalar& scale,
+                    Tensor* x_grad) {
+  if (x_grad) {
+    auto scale_value = 1.0 / scale.to<double>();
+    auto dx_res = primitive::scale<T>(
+        out_grad, scale_value, /*bias=*/0.0f, /*bias_after_scale=*/true);
+    set_output<T>(dx_res, x_grad);
+  }
+}
+
+template <typename T>
 void stack_grad(const std::vector<Tensor>& x,
                 const Tensor& out_grad,
                 int axis,
@@ -960,7 +972,7 @@ void layer_norm_grad(const Tensor& x,
                      const Tensor& mean,
                      const Tensor& variance,
                      const Tensor& out_grad,
-                     float epsilon,
+                     double epsilon,
                      int begin_norm_axis,
                      Tensor* x_grad,
                      Tensor* scale_grad,

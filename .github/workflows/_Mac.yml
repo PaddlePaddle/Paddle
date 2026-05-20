@@ -45,11 +45,22 @@ defaults:
     shell: bash
 
 jobs:
+  check-bypass:
+    name: Check bypass
+    uses: ./.github/workflows/check-bypass.yml
+    with:
+      workflow-name: mac
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
+
   build-and-test:
     name: Build and test
-    if: ${{ inputs.clone-can-skip != 'true' }}
+    if: ${{ inputs.clone-can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' }}
+    needs: [check-bypass]
     runs-on:
       group: Mac-CI
+    timeout-minutes: 60
 
     steps:
       - name: Check environment
@@ -75,15 +86,7 @@ jobs:
           git merge --no-edit $BRANCH
           git submodule update
 
-      - name: Check bypass
-        id: check-bypass
-        uses: ./Paddle/.github/actions/check-bypass
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          workflow-name: mac
-
       - name: Build with mac python3.10
-        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           set -x
           cd ${work_dir}/Paddle
@@ -93,7 +96,6 @@ jobs:
           exit $EXCODE
 
       - name: Test with mac python3.10
-        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           set -ex
           cd ${work_dir}/Paddle

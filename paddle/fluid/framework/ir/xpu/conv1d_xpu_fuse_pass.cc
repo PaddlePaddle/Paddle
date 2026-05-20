@@ -478,7 +478,7 @@ int Conv1dXPUFusePass::ApplyImpl(ir::Graph* graph,
     filter_dims = original_f_dims;
     // conv_filter fp16 --> fp32
     auto tensor_type = filter_t->dtype();
-    if (tensor_type == phi::DataType::FLOAT16) {
+    if (tensor_type == DataType::FLOAT16) {
       CastToFp32(filter_t, nullptr);
     }
     bool has_bias = with_bn || with_conv_bias;

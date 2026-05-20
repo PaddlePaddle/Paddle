@@ -39,15 +39,15 @@ __global__ void SwiGLUCUDAKernel(const T *__restrict__ x,
       int64_t col_offset = idx % n_vec_piece * VecSize;
       int64_t z_offset = row_offset + col_offset;
       int64_t x_offset = z_offset + row_offset;
-      phi::AlignedVector<T, VecSize> x_vec;
-      phi::AlignedVector<T, VecSize> y_vec;
-      phi::Load<T, VecSize>(x + x_offset, &x_vec);
-      phi::Load<T, VecSize>(y + x_offset, &y_vec);
+      AlignedVector<T, VecSize> x_vec;
+      AlignedVector<T, VecSize> y_vec;
+      Load<T, VecSize>(x + x_offset, &x_vec);
+      Load<T, VecSize>(y + x_offset, &y_vec);
 #pragma unroll
       for (int i = 0; i < VecSize; ++i) {
         y_vec[i] = functor(x_vec[i], y_vec[i]);
       }
-      phi::Store<T, VecSize>(y_vec, z + z_offset);
+      Store<T, VecSize>(y_vec, z + z_offset);
       idx += stride;
     }
   } else {
@@ -58,15 +58,15 @@ __global__ void SwiGLUCUDAKernel(const T *__restrict__ x,
     int64_t limit = numel - VecSize;
 
     while (idx <= limit) {
-      phi::AlignedVector<T, VecSize> x_vec;
-      phi::AlignedVector<T, VecSize> y_vec;
-      phi::Load<T, VecSize>(x + idx, &x_vec);
-      phi::Load<T, VecSize>(y + idx, &y_vec);
+      AlignedVector<T, VecSize> x_vec;
+      AlignedVector<T, VecSize> y_vec;
+      Load<T, VecSize>(x + idx, &x_vec);
+      Load<T, VecSize>(y + idx, &y_vec);
 #pragma unroll
       for (int i = 0; i < VecSize; ++i) {
         y_vec[i] = functor(x_vec[i], y_vec[i]);
       }
-      phi::Store<T, VecSize>(y_vec, z + idx);
+      Store<T, VecSize>(y_vec, z + idx);
       idx += stride;
     }
 
@@ -84,8 +84,7 @@ void SwiGLUKernelImpl(const Context &dev_ctx,
                       T *z,
                       int64_t m,
                       int64_t n) {
-  int vec_size =
-      std::min(phi::GetVectorizedSize<T>(x), phi::GetVectorizedSize<T>(z));
+  int vec_size = std::min(GetVectorizedSize<T>(x), GetVectorizedSize<T>(z));
 
 #define PD_LAUNCH_SWIGLU_CUDA_KERNEL_BASE(__vec_size, __is_combine) \
   case __vec_size: {                                                \
@@ -112,9 +111,8 @@ void SwiGLUKernelImpl(const Context &dev_ctx,
   } while (0)
 
   if (y) {
-    vec_size = std::min(vec_size, phi::GetVectorizedSize<T>(y));
-    auto config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, m * n, vec_size);
+    vec_size = std::min(vec_size, GetVectorizedSize<T>(y));
+    auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, m * n, vec_size);
     PD_LAUNCH_SWIGLU_CUDA_KERNEL(false);
   } else {
     while (n % vec_size != 0) {
@@ -122,7 +120,7 @@ void SwiGLUKernelImpl(const Context &dev_ctx,
     }
     y = x + n;
     auto config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, m * n / vec_size, 1);
+        backends::gpu::GetGpuLaunchConfig1D(dev_ctx, m * n / vec_size, 1);
     PD_LAUNCH_SWIGLU_CUDA_KERNEL(true);
   }
 }

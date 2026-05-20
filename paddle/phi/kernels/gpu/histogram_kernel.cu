@@ -65,14 +65,14 @@ __global__ void KernelHistogram(const T* input,
     if (input_value >= *min_value && input_value <= *max_value) {
       const IndexType output_index =
           GetBin<T, IndexType>(input_value, *min_value, *max_value, nbins);
-      phi::CudaAtomicAdd(&buf_hist[output_index],
-                         weight ? static_cast<float>(weight[input_index]) : 1);
+      CudaAtomicAdd(&buf_hist[output_index],
+                    weight ? static_cast<float>(weight[input_index]) : 1);
     }
   }
   __syncthreads();
 
   for (int64_t i = threadIdx.x; i < nbins; i += blockDim.x) {
-    phi::CudaAtomicAdd(&output[i], buf_hist[i]);
+    CudaAtomicAdd(&output[i], buf_hist[i]);
   }
 }
 
@@ -247,7 +247,7 @@ void HistogramKernel(const Context& dev_ctx,
             out_data);
     if (density) {
       DenseTensor sum = phi::Sum<float, Context>(
-          dev_ctx, *output, phi::IntArray({0}), phi::DataType::FLOAT32, false);
+          dev_ctx, *output, phi::IntArray({0}), DataType::FLOAT32, false);
       float sum_cpu;
       phi::memory_utils::Copy(CPUPlace(),
                               &sum_cpu,

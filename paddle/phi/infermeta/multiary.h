@@ -121,8 +121,8 @@ PADDLE_API void AdamwInferMeta(const MetaTensor& param,
                                const Scalar& beta1,
                                const Scalar& beta2,
                                const Scalar& epsilon,
-                               float lr_ratio,
-                               float coeff,
+                               double lr_ratio,
+                               double coeff,
                                bool with_decay,
                                bool lazy_mode,
                                int64_t min_row_size_to_use_multithread,
@@ -570,10 +570,13 @@ PADDLE_API void MoePermuteInferMeta(const MetaTensor& X,
                                     const int padding_alignment,
                                     const bool do_gather,
                                     const bool using_ue8m0_scale,
+                                    const bool return_expert_indices,
+                                    const int override_buffer_size,
                                     MetaTensor* X_unzipped,
                                     MetaTensor* zipped_expertwise_rowmap,
                                     MetaTensor* token_prob_unzipped,
-                                    MetaTensor* XScale_unzipped);
+                                    MetaTensor* XScale_unzipped,
+                                    MetaTensor* expert_indices);
 
 PADDLE_API void MoeUnpermuteInferMeta(
     const MetaTensor& unzipped_tokens,
@@ -583,6 +586,7 @@ PADDLE_API void MoeUnpermuteInferMeta(
     const int total_zipped_tokens_num,
     const int num_experts,
     const bool MP,
+    const bool using_weighted_combine,
     MetaTensor* zipped_tokens,
     MetaTensor* zipped_probs_topk);
 
@@ -735,6 +739,12 @@ PADDLE_API void LegacyInterpolateInferMeta(
     MetaTensor* output,
     MetaConfig config = MetaConfig());
 
+PADDLE_API void IndexFillInferMeta(const MetaTensor& x,
+                                   const MetaTensor& index,
+                                   int dim,
+                                   const Scalar& value,
+                                   MetaTensor* out);
+
 PADDLE_API void IndexPutInferMeta(const MetaTensor& x,
                                   const std::vector<const MetaTensor*>& indices,
                                   const MetaTensor& value,
@@ -869,30 +879,6 @@ PADDLE_API void MomentumInferMeta(const MetaTensor& param,
                                   MetaTensor* param_out,
                                   MetaTensor* velocity_out,
                                   MetaTensor* master_param_out);
-PADDLE_API void MoePermuteInferMeta(const MetaTensor& X,
-                                    const MetaTensor& XScale,
-                                    const MetaTensor& expert_routemap_topk,
-                                    const MetaTensor& expert_prob_topk,
-                                    const int num_experts,
-                                    const std::vector<int>& tokens_per_expert,
-                                    const int padding_alignment,
-                                    const bool do_gather,
-                                    const bool using_ue8m0_scale,
-                                    MetaTensor* X_unzipped,
-                                    MetaTensor* zipped_expertwise_rowmap,
-                                    MetaTensor* token_prob_unzipped,
-                                    MetaTensor* XScale_unzipped);
-
-PADDLE_API void MoeUnpermuteInferMeta(
-    const MetaTensor& unzipped_tokens,
-    const MetaTensor& zipped_expertwise_rowmap,
-    const MetaTensor& expert_routemap_topk,
-    const MetaTensor& unzipped_token_probs,
-    const int total_zipped_tokens_num,
-    const int num_experts,
-    const bool MP,
-    MetaTensor* zipped_tokens,
-    MetaTensor* zipped_probs_topk);
 
 PADDLE_API void MultiDotInferMeta(const std::vector<const MetaTensor*>& x,
                                   MetaTensor* out);
@@ -1327,6 +1313,11 @@ PADDLE_API void MultiheadMatmulInferMeta(const MetaTensor& input,
                                          const float alpha,
                                          const int head_number,
                                          MetaTensor* out);
+
+PADDLE_API void MaskedScatterInferMeta(const MetaTensor& x,
+                                       const MetaTensor& mask,
+                                       const MetaTensor& value,
+                                       MetaTensor* out);
 
 PADDLE_API void MaskedMultiheadAttentionInferMeta(
     const MetaTensor& x,

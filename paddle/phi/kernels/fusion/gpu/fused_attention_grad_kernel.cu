@@ -27,7 +27,7 @@
 #include "paddle/phi/kernels/funcs/functors.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
-#include "paddle/phi/kernels/funcs/transpose_function.cu.h"
+#include "paddle/phi/kernels/funcs/transpose_function.cuh"
 #include "paddle/phi/kernels/fusion/gpu/attention_layer.norm.h"
 #include "paddle/phi/kernels/fusion/gpu/attn_gemm.h"
 #include "paddle/phi/kernels/fusion/gpu/fmha_ref.h"
@@ -109,126 +109,57 @@ void FusedAttentionGradKernel(
   using U = phi::fusion::LayerNormParamType<T>;
   if (x.numel() == 0) {
     if (qkv_bias_grad)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(qkv_bias_grad->dims())),
-          0,
-          qkv_bias_grad);
+      Full<T, Context>(dev_ctx, qkv_bias_grad->dims(), 0, qkv_bias_grad);
     if (qkv_bias_out_grad)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(qkv_bias_out_grad->dims())),
-          0,
-          qkv_bias_out_grad);
+      Full<T, Context>(
+          dev_ctx, qkv_bias_out_grad->dims(), 0, qkv_bias_out_grad);
     if (src_mask_out_grad)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(src_mask_out_grad->dims())),
-          0,
-          src_mask_out_grad);
+      Full<T, Context>(
+          dev_ctx, src_mask_out_grad->dims(), 0, src_mask_out_grad);
     if (out_linear_bias_grad)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(out_linear_bias_grad->dims())),
-          0,
-          out_linear_bias_grad);
+      Full<T, Context>(
+          dev_ctx, out_linear_bias_grad->dims(), 0, out_linear_bias_grad);
     if (ln_scale_grad)
-      phi::Full<U, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(ln_scale_grad->dims())),
-          0,
-          ln_scale_grad);
+      Full<U, Context>(dev_ctx, ln_scale_grad->dims(), 0, ln_scale_grad);
     if (ln_bias_grad)
-      phi::Full<U, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(ln_bias_grad->dims())),
-          0,
-          ln_bias_grad);
+      Full<U, Context>(dev_ctx, ln_bias_grad->dims(), 0, ln_bias_grad);
     if (ln_scale_2_grad)
-      phi::Full<U, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(ln_scale_2_grad->dims())),
-          0,
-          ln_scale_2_grad);
+      Full<U, Context>(dev_ctx, ln_scale_2_grad->dims(), 0, ln_scale_2_grad);
     if (ln_bias_2_grad)
-      phi::Full<U, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(ln_bias_2_grad->dims())),
-          0,
-          ln_bias_2_grad);
+      Full<U, Context>(dev_ctx, ln_bias_2_grad->dims(), 0, ln_bias_2_grad);
     if (x_grad) dev_ctx.template Alloc<T>(x_grad);
     if (qkv_weight_grad)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(qkv_weight_grad->dims())),
-          0,
-          qkv_weight_grad);
+      Full<T, Context>(dev_ctx, qkv_weight_grad->dims(), 0, qkv_weight_grad);
     if (out_linear_weight_grad)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(out_linear_weight_grad->dims())),
-          0,
-          out_linear_weight_grad);
+      Full<T, Context>(
+          dev_ctx, out_linear_weight_grad->dims(), 0, out_linear_weight_grad);
     if (ln_out_grad)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(ln_out_grad->dims())),
-          0,
-          ln_out_grad);
+      Full<T, Context>(dev_ctx, ln_out_grad->dims(), 0, ln_out_grad);
     if (bias_dropout_residual_out_grad)
-      phi::Full<T, Context>(dev_ctx,
-                            phi::IntArray(common::vectorize(
-                                bias_dropout_residual_out_grad->dims())),
-                            0,
-                            bias_dropout_residual_out_grad);
+      Full<T, Context>(dev_ctx,
+
+                       bias_dropout_residual_out_grad->dims(),
+                       0,
+                       bias_dropout_residual_out_grad);
     if (qkv_out_grad)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(qkv_out_grad->dims())),
-          0,
-          qkv_out_grad);
+      Full<T, Context>(dev_ctx, qkv_out_grad->dims(), 0, qkv_out_grad);
     if (qktv_out_grad)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(qktv_out_grad->dims())),
-          0,
-          qktv_out_grad);
+      Full<T, Context>(dev_ctx, qktv_out_grad->dims(), 0, qktv_out_grad);
     if (transpose_out_2_grad)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(transpose_out_2_grad->dims())),
-          0,
-          transpose_out_2_grad);
+      Full<T, Context>(
+          dev_ctx, transpose_out_2_grad->dims(), 0, transpose_out_2_grad);
     if (qk_out_grad)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(qk_out_grad->dims())),
-          0,
-          qk_out_grad);
+      Full<T, Context>(dev_ctx, qk_out_grad->dims(), 0, qk_out_grad);
     if (softmax_out_grad)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(softmax_out_grad->dims())),
-          0,
-          softmax_out_grad);
+      Full<T, Context>(dev_ctx, softmax_out_grad->dims(), 0, softmax_out_grad);
     if (attn_dropout_out_grad)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(attn_dropout_out_grad->dims())),
-          0,
-          attn_dropout_out_grad);
+      Full<T, Context>(
+          dev_ctx, attn_dropout_out_grad->dims(), 0, attn_dropout_out_grad);
     if (fmha_out_grad)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(fmha_out_grad->dims())),
-          0,
-          fmha_out_grad);
+      Full<T, Context>(dev_ctx, fmha_out_grad->dims(), 0, fmha_out_grad);
     if (out_linear_out_grad)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(out_linear_out_grad->dims())),
-          0,
-          out_linear_out_grad);
+      Full<T, Context>(
+          dev_ctx, out_linear_out_grad->dims(), 0, out_linear_out_grad);
     return;
   }
 
@@ -236,13 +167,13 @@ void FusedAttentionGradKernel(
 
   const bool is_upscale_in_train =
       (dropout_implementation == "upscale_in_train");
-  phi::fusion::DropoutParam dropout_param2(dropout_fix_seed,
-                                           0,
-                                           is_test,
-                                           is_upscale_in_train,
-                                           dropout_rate,
-                                           nullptr,
-                                           dropout_seed);
+  fusion::DropoutParam dropout_param2(dropout_fix_seed,
+                                      0,
+                                      is_test,
+                                      is_upscale_in_train,
+                                      dropout_rate,
+                                      nullptr,
+                                      dropout_seed);
   const bool has_dropout = (dropout_param2.dropout_prob != 0.0f);
 
   bool is_upscale_in_train_1 =
@@ -393,31 +324,31 @@ void FusedAttentionGradKernel(
   bool transB = transpose_qkv_wb ? false : true;
   bool compute_qkv_bias = qkv_bias_p ? true : false;
   auto layer_norm_compute =
-      phi::fusion::AttnLayerNorm<T>(dev_ctx, epsilon, bsz_seq, dim_embed);
-  auto qkv_compute = phi::fusion::AttnMatMul<T>(dev_ctx,
-                                                transA,
-                                                transB,
-                                                bsz_seq,
-                                                output_size,
-                                                input_size,
-                                                compute_qkv_bias);
-  phi::fusion::AttnDropoutParam attn_dropout_param(is_test,
-                                                   attn_dropout_implementation,
-                                                   attn_dropout_rate,
-                                                   is_upscale_in_train_1,
-                                                   attn_dropout_fix_seed,
-                                                   attn_dropout_seed,
-                                                   seed_1);
-  auto fmha_ref_compute = phi::fusion::FMHARef<T>(
+      fusion::AttnLayerNorm<T>(dev_ctx, epsilon, bsz_seq, dim_embed);
+  auto qkv_compute = fusion::AttnMatMul<T>(dev_ctx,
+                                           transA,
+                                           transB,
+                                           bsz_seq,
+                                           output_size,
+                                           input_size,
+                                           compute_qkv_bias);
+  fusion::AttnDropoutParam attn_dropout_param(is_test,
+                                              attn_dropout_implementation,
+                                              attn_dropout_rate,
+                                              is_upscale_in_train_1,
+                                              attn_dropout_fix_seed,
+                                              attn_dropout_seed,
+                                              seed_1);
+  auto fmha_ref_compute = fusion::FMHARef<T>(
       dev_ctx, batch_size, max_seq_len, num_head, dim_head, attn_dropout_param);
   output_size = hidden_size;
   transA = false;
   transB = false;
   bool compute_bias = false;
   // (b*s, num_head * dim_head) * (num_head * dim_head, dim_embed)
-  auto out_linear_compute = phi::fusion::AttnMatMul<T>(
+  auto out_linear_compute = fusion::AttnMatMul<T>(
       dev_ctx, transA, transB, bsz_seq, input_size, output_size, compute_bias);
-  phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t>
+  fusion::FusedDropoutLayerNormHelper<T, uint8_t>
       fused_dropout_layernorm_helper(
           dev_ctx, bsz_seq, dim_embed, dropout_param2, ln_epsilon);
 

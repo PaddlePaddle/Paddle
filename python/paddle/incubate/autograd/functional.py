@@ -71,13 +71,12 @@ def vjp(func, xs, v=None):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> def func(x):
             ...     return paddle.matmul(x, x)
-            ...
             >>> x = paddle.ones(shape=[2, 2], dtype='float32')
             >>> _, vjp_result = paddle.incubate.autograd.vjp(func, x)
             >>> print(vjp_result)
@@ -147,13 +146,12 @@ def jvp(func, xs, v=None):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> def func(x):
             ...     return paddle.matmul(x, x)
-            ...
             >>> x = paddle.ones(shape=[2, 2], dtype='float32')
             >>> _, jvp_result = paddle.incubate.autograd.jvp(func, x)
             >>> print(jvp_result)
@@ -257,14 +255,13 @@ class Jacobian:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> def func(x, y):
             ...     return paddle.matmul(x, y)
-            ...
-            >>> x = paddle.to_tensor([[1., 2.], [3., 4.]])
+            >>> x = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0]])
             >>> J = paddle.incubate.autograd.Jacobian(func, [x, x])
             >>> print(J[:, :])
             Tensor(shape=[4, 8], dtype=float32, place=Place(cpu), stop_gradient=False,
@@ -334,13 +331,12 @@ class Hessian:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> def reducer(x):
             ...     return paddle.sum(x * x)
-            ...
             >>> x = paddle.rand([2, 2])
             >>> h = paddle.incubate.autograd.Hessian(reducer, x)
             >>> print(h[:])
@@ -670,14 +666,13 @@ def _separate(xs):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.incubate.autograd.functional import _separate
 
             >>> def func(x, y):
             ...     return x * y
-            ...
             >>> x = paddle.ones((1,))
             >>> x.stop_gradient = False
 

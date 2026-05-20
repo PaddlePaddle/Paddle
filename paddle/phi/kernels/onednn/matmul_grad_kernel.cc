@@ -77,9 +77,9 @@ void CalculateGradMatrixDims(const OneDNNContext &dev_ctx,
     }
   }
 
-  dx_tmp->Resize(common::make_ddim(*dx_bd_dims));
+  dx_tmp->Resize(*dx_bd_dims);
   dev_ctx.template Alloc<T>(dx_tmp);
-  dy_tmp->Resize(common::make_ddim(*dy_bd_dims));
+  dy_tmp->Resize(*dy_bd_dims);
   dev_ctx.template Alloc<T>(dy_tmp);
 }
 
@@ -120,9 +120,9 @@ void MatmulGradKernel(const Context &dev_ctx,
                       bool transpose_y,
                       DenseTensor *dx,
                       DenseTensor *dy) {
-  auto x_dims = common::vectorize(x.dims());
-  auto y_dims = common::vectorize(y.dims());
-  auto dout_dims = common::vectorize(dout.dims());
+  auto x_dims = vectorize(x.dims());
+  auto y_dims = vectorize(y.dims());
+  auto dout_dims = vectorize(dout.dims());
 
   size_t ndims = std::max(x_dims.size(), y_dims.size());
   ndims = std::max<size_t>(ndims, 3);
@@ -199,8 +199,8 @@ void MatmulWithFlattenGradKernel(const Context &dev_ctx,
                                  int y_num_col_dims,
                                  DenseTensor *x_grad,
                                  DenseTensor *y_grad) {
-  const DenseTensor reshaped_y = phi::ReshapeToMatrix(y, y_num_col_dims);
-  const DenseTensor reshaped_x = phi::ReshapeToMatrix(x, x_num_col_dims);
+  const DenseTensor reshaped_y = ReshapeToMatrix(y, y_num_col_dims);
+  const DenseTensor reshaped_x = ReshapeToMatrix(x, x_num_col_dims);
   const DenseTensor x_matrix = x.dims().size() > 2 ? reshaped_x : x;
   const DenseTensor y_matrix = y.dims().size() > 2 ? reshaped_y : y;
 

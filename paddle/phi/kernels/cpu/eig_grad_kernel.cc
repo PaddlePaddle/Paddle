@@ -26,14 +26,14 @@ void EigGradKernel(const Context& dev_ctx,
                    const optional<DenseTensor>& dout_w,
                    const optional<DenseTensor>& dout_v,
                    DenseTensor* dx) {
-  auto* dx_data = dev_ctx.template Alloc<phi::dtype::Complex<T>>(dx);
+  auto* dx_data = dev_ctx.template Alloc<dtype::Complex<T>>(dx);
   if (dx->numel() == 0) {
     return;
   }
   int batch_count = BatchCount(out_v);
   const int order = static_cast<int>(out_v.dims(-1));
 
-  ComputeBackwardForComplexInput<phi::dtype::Complex<T>, Context>(
+  ComputeBackwardForComplexInput<dtype::Complex<T>, Context>(
       out_w, out_v, dout_w, dout_v, dx_data, batch_count, order, dev_ctx);
 }
 

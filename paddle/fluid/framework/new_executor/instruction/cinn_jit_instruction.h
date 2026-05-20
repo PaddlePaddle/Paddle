@@ -29,7 +29,7 @@ class Scope;
 class CinnJitInstruction : public InstructionBase {
  public:
   CinnJitInstruction(size_t id,
-                     const phi::Place& place,
+                     const Place& place,
                      pir::Operation* op,
                      const ValueExecutionInfo* value_exec_info);
 
@@ -46,7 +46,7 @@ class CinnJitInstruction : public InstructionBase {
 
   std::shared_ptr<FnPtrImpl> fn_ptr_impl_{nullptr};
 
-  phi::Place place_;
+  Place place_;
 
   phi::DeviceContext* dev_ctx_;
 
@@ -54,13 +54,13 @@ class CinnJitInstruction : public InstructionBase {
   int32_t output_tensor_size;
 
   bool need_update_shape{false};
-  std::vector<phi::DenseTensor*> tensor_args_;
-  std::vector<phi::DenseTensor*> alloc_tensors_;
-  std::vector<phi::DDim> ir_dims_;
+  std::vector<DenseTensor*> tensor_args_;
+  std::vector<DenseTensor*> alloc_tensors_;
+  std::vector<DDim> ir_dims_;
 
   // Tensors that hold the temporary spaces used by the kernel. These tensors
   // are managed by CinnJitInstruction, and not exposed to phi executor.
-  std::vector<phi::DenseTensor> temp_space_tensors_;
+  std::vector<DenseTensor> temp_space_tensors_;
 
   pir::Operation* op_{nullptr};  // not owned
 };

@@ -90,7 +90,7 @@ inline DDim TrimTrailingSingularDims(const DDim &dims) {
   if (trim_dims.size() == 0) {
     return DDim(make_dim());
   }
-  DDim actual_dims = common::make_ddim(trim_dims);
+  DDim actual_dims = make_ddim(trim_dims);
   return actual_dims;
 }
 

@@ -46,14 +46,14 @@ __global__ void CosSimDyKernel(const T* x_norm,
     for (size_t i = 0; i < cols; ++i) {
       T dy_data = dz_data * (x_data[i] * reciprocal_xy_norm_prod -
                              z_data * y[i] * reciprocal_y_norm_square);
-      phi::CudaAtomicAdd(dy + i, dy_data);
+      CudaAtomicAdd(dy + i, dy_data);
     }
   }
 }
 
 template <typename T>
-struct CosSimDyFunctor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& dev_ctx,
+struct CosSimDyFunctor<GPUContext, T> {
+  void operator()(const GPUContext& dev_ctx,
                   const T* x_norm,
                   const T* y_norm,
                   const T* x,
@@ -71,7 +71,7 @@ struct CosSimDyFunctor<phi::GPUContext, T> {
   }
 };
 
-template struct CosSimDyFunctor<phi::GPUContext, float>;
-template struct CosSimDyFunctor<phi::GPUContext, double>;
+template struct CosSimDyFunctor<GPUContext, float>;
+template struct CosSimDyFunctor<GPUContext, double>;
 }  // namespace math
 }  // namespace phi

@@ -2,6 +2,11 @@ name: Windows-GPU
 
 on:
   workflow_call:
+    inputs:
+      clone-can-skip:
+        type: string
+        required: false
+        default: "false"
 
 permissions: read-all
 
@@ -24,21 +29,23 @@ jobs:
     name: Check bypass
     uses: ./.github/workflows/check-bypass.yml
     with:
-      workflow-name: 'win-inference'
+      workflow-name: "win-inference"
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
+
   build-and-test:
     name: Build and test
-    needs: check-bypass
-    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
+    needs: [check-bypass]
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' && inputs.clone-can-skip != 'true' }}
     runs-on:
       group: win-infer
+    timeout-minutes: 240
     env:
       PADDLE_VERSION: 0.0.0
       NIGHTLY_MODE: "OFF"
       WITH_UNITY_BUILD: "ON"
-      WITH_TPCACHE: "ON"
+      WITH_TPCACHE: "OFF"
       WITH_SCCACHE: "ON"
       WITH_SHARED_PHI: "ON"
       GIT_PR_ID: ${{ github.event.pull_request.number }}
@@ -64,6 +71,7 @@ jobs:
     steps:
       - name: Download Paddle and clean env
         working-directory: ..
+        timeout-minutes: 30
         run: |
           whoami
           cd

@@ -105,6 +105,8 @@ struct Buffer {
   volatile int* moe_recv_rdma_counter = nullptr;
   int* moe_recv_rdma_counter_mapped = nullptr;
 
+  std::unique_ptr<DeepEPBuffer> ep_runtime;
+
  public:
   Buffer(int rank,
          int num_ranks,

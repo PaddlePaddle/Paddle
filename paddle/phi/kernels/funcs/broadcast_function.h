@@ -20,8 +20,6 @@ limitations under the License. */
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 #include "paddle/phi/kernels/funcs/dims_simplifier.h"
 
-namespace kps = phi::kps;
-
 #endif
 
 namespace phi {
@@ -597,7 +595,7 @@ static void SliceTensor(DenseTensor *x,
                         const DenseTensor *share,
                         const std::vector<int64_t> &out_compute_dims,
                         int64_t offset) {
-  auto new_dim = common::make_ddim(out_compute_dims);
+  auto new_dim = make_ddim(out_compute_dims);
   DenseTensorMeta meta(share->dtype(),
                        new_dim,
                        share->layout(),

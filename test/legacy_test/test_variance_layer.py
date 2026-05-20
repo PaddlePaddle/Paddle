@@ -622,5 +622,22 @@ class TestVarAPI_Backward2(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestVarAPI_Backward_ZeroSize1(unittest.TestCase):
+    def test_api(self):
+        paddle.disable_static()
+        self.shape = [1, 3, 0, 10]
+        self.axis = [1, 3]
+        self.x = np.random.uniform(-1, 1, self.shape).astype('float64')
+        paddle.set_device(paddle.CPUPlace())
+
+        out_ref = ref_var(self.x, self.axis, True, False)
+        x = paddle.to_tensor(self.x)
+        x.stop_gradient = False
+        out = paddle.var(x, self.axis, True, False)
+
+        out.sum().backward()
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
     unittest.main()

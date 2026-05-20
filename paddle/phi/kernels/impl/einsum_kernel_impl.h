@@ -427,7 +427,7 @@ DenseTensor PerformDiagonalAndReduction(
   int tot = equ.size();
   // tiling tensor for broadcast
   std::vector<int64_t> repeat_times;
-  auto tensor_origin_shape = common::vectorize(tensor.dims());
+  auto tensor_origin_shape = vectorize(tensor.dims());
   for (size_t i = 0; i < tensor_origin_shape.size(); ++i) {
     VLOG(4) << "broadcast shape is " << broadcast_shape[i]
             << ", tensor shape is " << tensor_origin_shape[i];
@@ -448,8 +448,8 @@ DenseTensor PerformDiagonalAndReduction(
     if (cur != label2perm[c]) {
       // do diagonal, followed by movedim().
       VLOG(5) << "Do diagonal with shape="
-              << paddle::string::join_strings(
-                     common::vectorize<int64_t>(res.dims()), ',')
+              << paddle::string::join_strings(vectorize<int64_t>(res.dims()),
+                                              ',')
               << ", axis1=" << cur << ", axis2=" << label2perm[c];
       res = Diagonal<T, Context>(dev_ctx, res, 0, cur, label2perm[c]);
       res = Transpose<T, Context>(
@@ -463,8 +463,7 @@ DenseTensor PerformDiagonalAndReduction(
   VLOG(5) << "call PerformDiagonalAndReduction: with axis: "
           << paddle::string::join_strings(indices, ",");
   if (indices.empty()) return res;
-  return Sum<T, Context>(
-      dev_ctx, res, phi::IntArray(indices), res.dtype(), true);
+  return Sum<T, Context>(dev_ctx, res, IntArray(indices), res.dtype(), true);
 }
 
 inline bool is_no_need_transpose(const std::vector<int>& axis) {
@@ -566,7 +565,7 @@ DenseTensor PerformContraction(
           return found;
         };
         if (!contraction_dim1(broadcast_shapes[operand_idx],
-                              common::vectorize<int64_t>(t.dims()))) {
+                              vectorize<int64_t>(t.dims()))) {
           cache[operand_idx]->ShareBufferWith(trans_t);
           cache[operand_idx]->Resize(trans_t.dims());
           VLOG(5) << "Set dims of cache[" << operand_idx
@@ -609,7 +608,7 @@ DenseTensor PerformContraction(
     }
     VLOG(5) << "PerformContraction: mul_dims: "
             << paddle::string::join_strings(mul_dims, ",");
-    trans_t.Resize(common::make_ddim(mul_dims));
+    trans_t.Resize(mul_dims);
     return trans_t;
   };
 
@@ -629,7 +628,7 @@ DenseTensor PerformContraction(
   if (recover_dim.empty()) recover_dim.push_back(1);
   VLOG(5) << "PerformContraction: recover_dim: "
           << paddle::string::join_strings(recover_dim, ",");
-  after_contraction.Resize(common::make_ddim(recover_dim));
+  after_contraction.Resize(recover_dim);
   return after_contraction;
 }
 
@@ -717,7 +716,7 @@ void EinsumKernelImpl(const Context& dev_ctx,
   *out = TransposeToOutput<T, Context>(
       dev_ctx, after_contraction, unique_labels(right), all_labels);
   *out = PerformUndiagonal<T, Context>(dev_ctx, *out, right);
-  out->Resize(common::make_ddim(output_dims));
+  out->Resize(output_dims);
 }
 
 template <typename T, typename Context>
@@ -731,9 +730,8 @@ void EinsumKernel(const Context& dev_ctx,
     if (input->numel() == 0) {
       dev_ctx.template Alloc<T>(out);
       if (out->numel() > 0) {
-        std::vector<int64_t> vec_dims = common::vectorize(out->dims());
-        phi::Full<T, Context>(
-            dev_ctx, phi::IntArray(vec_dims), static_cast<T>(0), out);
+        std::vector<int64_t> vec_dims = vectorize(out->dims());
+        Full<T, Context>(dev_ctx, IntArray(vec_dims), static_cast<T>(0), out);
       }
       return;
     }

@@ -35,12 +35,12 @@ void CScatterOpCUDAKernel(const Context& dev_ctx,
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   auto x = &input;
   int64_t numel = x->numel();
-  ncclDataType_t dtype = phi::ToNCCLDataType(x->dtype());
+  ncclDataType_t dtype = ToNCCLDataType(x->dtype());
 
   int root_id = root;
   auto place = dev_ctx.GetPlace();
   gpuStream_t stream = nullptr;
-  phi::distributed::NCCLCommContext* comm_ctx = nullptr;
+  distributed::NCCLCommContext* comm_ctx = nullptr;
   PADDLE_ENFORCE_GE(
       root_id,
       0,
@@ -53,7 +53,7 @@ void CScatterOpCUDAKernel(const Context& dev_ctx,
           "The ring_id (%d) for c_scatter_op must be non-negative.", ring_id));
 
   comm_ctx =
-      static_cast<phi::distributed::NCCLCommContext*>(dev_ctx.GetCommContext());
+      static_cast<distributed::NCCLCommContext*>(dev_ctx.GetCommContext());
   PADDLE_ENFORCE_NE(comm_ctx,
                     nullptr,
                     common::errors::Unavailable(

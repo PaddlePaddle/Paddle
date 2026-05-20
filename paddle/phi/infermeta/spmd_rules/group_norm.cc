@@ -23,7 +23,6 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
 // Tensor x support  "NCL", "NCHW", "NCDHW", "NLC", "NHWC", "NDHWC".
 // default:"NCHW"
 
@@ -31,9 +30,9 @@ SpmdInfo GroupNormInferSpmdBase(const DistMetaTensor& x,
                                 const DistMetaTensor& scale,
                                 const DistMetaTensor& bias) {
   // Step0: verify input args based on group_norm logic
-  auto x_shape = common::vectorize(x.dims());
-  auto scale_shape = common::vectorize(scale.dims());
-  auto bias_shape = common::vectorize(bias.dims());
+  auto x_shape = vectorize(x.dims());
+  auto scale_shape = vectorize(scale.dims());
+  auto bias_shape = vectorize(bias.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   int scale_ndim = static_cast<int>(scale_shape.size());
   int bias_ndim = static_cast<int>(bias_shape.size());
@@ -137,7 +136,7 @@ SpmdInfo GroupNormInferSpmdBase(const DistMetaTensor& x,
 SpmdInfo GroupNormInferSpmd(const DistMetaTensor& x,
                             const DistMetaTensor& scale,
                             const DistMetaTensor& bias,
-                            float epsilon,
+                            double epsilon,
                             int groups,
                             const std::string& data_format) {
   return GroupNormInferSpmdBase(x, scale, bias);
@@ -151,13 +150,13 @@ SpmdInfo GroupNormGradInferSpmdBase(const DistMetaTensor& x,
                                     const DistMetaTensor& variance,
                                     const DistMetaTensor y_grad) {
   // Step0: verify input args based on group_norm logic
-  auto x_shape = common::vectorize(x.dims());
-  auto scale_shape = common::vectorize(scale.dims());
-  auto bias_shape = common::vectorize(bias.dims());
-  auto y_shape = common::vectorize(y.dims());
-  auto mean_shape = common::vectorize(mean.dims());
-  auto variance_shape = common::vectorize(variance.dims());
-  auto y_grad_shape = common::vectorize(y_grad.dims());
+  auto x_shape = vectorize(x.dims());
+  auto scale_shape = vectorize(scale.dims());
+  auto bias_shape = vectorize(bias.dims());
+  auto y_shape = vectorize(y.dims());
+  auto mean_shape = vectorize(mean.dims());
+  auto variance_shape = vectorize(variance.dims());
+  auto y_grad_shape = vectorize(y_grad.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   int scale_ndim = static_cast<int>(scale_shape.size());
   int bias_ndim = static_cast<int>(bias_shape.size());
@@ -341,7 +340,7 @@ SpmdInfo GroupNormGradInferSpmd(const DistMetaTensor& x,
                                 const DistMetaTensor& mean,
                                 const DistMetaTensor& variance,
                                 const DistMetaTensor y_grad,
-                                float epsilon,
+                                double epsilon,
                                 int groups,
                                 const std::string& data_format) {
   return GroupNormGradInferSpmdBase(x, scale, bias, y, mean, variance, y_grad);

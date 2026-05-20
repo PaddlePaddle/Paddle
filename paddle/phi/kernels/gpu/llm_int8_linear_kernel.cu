@@ -35,7 +35,7 @@ void llm_int8_compute(const Context& dev_ctx,
                       DenseTensor* out) {
 #if defined(PADDLE_WITH_CUDA)
   DenseTensor cublaslt_workspace;
-  cublaslt_workspace.Resize({{3000000}});
+  cublaslt_workspace.Resize({3000000});
   dev_ctx.template Alloc<int8_t>(&cublaslt_workspace);
   const auto x_dims = x.dims();
   const auto w_dims = weight.dims();
@@ -55,7 +55,7 @@ void llm_int8_compute(const Context& dev_ctx,
                        k,
                        n);
   if (bias) {
-    phi::AddKernel<T, Context>(dev_ctx, *out, bias.get(), out);
+    AddKernel<T, Context>(dev_ctx, *out, bias.get(), out);
   }
 #else
   PADDLE_THROW(common::errors::Unimplemented(

@@ -41,7 +41,7 @@ namespace funcs {
 
 template <typename T>
 struct DstFunctor {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
 
   HOSTDEVICE inline DstFunctor(const float retain_prob,
                                const bool is_upscale_in_train,
@@ -91,7 +91,7 @@ struct MaskFunctor {
 
 template <typename T>
 struct DstMaskFunctor {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   HOSTDEVICE inline DstMaskFunctor(const float retain_prob,
                                    const bool is_upscale_in_train)
       : retain_prob_(retain_prob), is_upscale_in_train_(is_upscale_in_train) {
@@ -261,7 +261,7 @@ __global__ void VectorizedGeneratorMask(const size_t n,
 
 template <typename T>
 void DropoutFwGPUKernelDriver(
-    const phi::GPUContext& dev_ctx,
+    const GPUContext& dev_ctx,
     bool is_test,
     float dropout_prob,
     bool upscale_in_train,
@@ -301,19 +301,32 @@ void DropoutFwGPUKernelDriver(
     uint64_t increment;
     // VectorizedRandomGenerator use curand_uniform4, so kVecSize is 4;
     constexpr int kVecSize = funcs::uniform_distribution<float>::kReturnsCount;
-    auto gpu_config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_numel, kVecSize);
-    size_t grid_size = gpu_config.GetGridSize();
-    size_t block_size = gpu_config.GetBlockSize();
 
-    int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
-    const auto& prop = phi::backends::gpu::GetDeviceProperties(device_id);
-    size_t max_grid_size = prop.maxThreadsPerMultiProcessor *
-                           prop.multiProcessorCount / block_size;
-    grid_size = std::min(grid_size, max_grid_size);
+    size_t grid_size;
+    size_t block_size;
+    size_t offset;
 
-    auto offset =
-        ((x_numel - 1) / (grid_size * block_size * kVecSize) + 1) * kVecSize;
+    if (funcs::IsDeterministicRNG()) {
+      auto cfg = funcs::GetDeterministicRNGConfig(x_numel, kVecSize);
+      grid_size = cfg.grid_size;
+      block_size = cfg.block_size;
+      offset = cfg.increment;
+    } else {
+      auto gpu_config =
+          phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_numel, kVecSize);
+      grid_size = gpu_config.GetGridSize();
+      block_size = gpu_config.GetBlockSize();
+
+      int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
+      const auto& prop = phi::backends::gpu::GetDeviceProperties(device_id);
+      size_t max_grid_size = prop.maxThreadsPerMultiProcessor *
+                             prop.multiProcessorCount / block_size;
+      grid_size = std::min(grid_size, max_grid_size);
+
+      offset =
+          ((x_numel - 1) / (grid_size * block_size * kVecSize) + 1) * kVecSize;
+    }
+
     size_t main_offset =
         size / (block_size * kVecSize) * (block_size * kVecSize);
 
@@ -348,7 +361,7 @@ void DropoutFwGPUKernelDriver(
     } else {
       bool copy_in_kernel = GetSeedDataAndIncrement(
           dev_ctx, seed, is_fix_seed, seed_val, offset, &seed_data, &increment);
-      const phi::GPUContext* dev_ctx_p = &dev_ctx;
+      const GPUContext* dev_ctx_p = &dev_ctx;
       auto gen_cuda = dev_ctx.GetGenerator();
       auto state_index = gen_cuda->GetStateIndex();
 
@@ -412,17 +425,17 @@ void DropoutFwGPUKernelDriver(
       // y = x
       phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, y);
     } else {
-      using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+      using MT = typename MPTypeTrait<T>::Type;
       MT factor = static_cast<MT>(1.0f - dropout_prob);
       // y = factor * x
-      phi::ScaleKernel<T, phi::GPUContext>(dev_ctx, x, factor, 0.0f, false, y);
+      phi::ScaleKernel<T, GPUContext>(dev_ctx, x, factor, 0.0f, false, y);
     }
   }
 }
 
 template <typename T>
 struct CudaDropoutGradFunctor {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
 
   explicit CudaDropoutGradFunctor(const MT factor) : factor_(factor) {}
 
@@ -437,7 +450,7 @@ struct CudaDropoutGradFunctor {
 };
 
 template <typename T>
-void DropoutGradGPUKernelDriver(const phi::GPUContext& dev_ctx,
+void DropoutGradGPUKernelDriver(const GPUContext& dev_ctx,
                                 bool is_test,
                                 float dropout_prob,
                                 bool upscale_in_train,
@@ -445,13 +458,13 @@ void DropoutGradGPUKernelDriver(const phi::GPUContext& dev_ctx,
                                 const DenseTensor& mask,
                                 DenseTensor* grad_x,
                                 bool is_dropout_nd = false) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
 
   auto stream = dev_ctx.stream();
   if (is_test) {
     MT factor = static_cast<MT>(upscale_in_train ? 1.0f : 1.0f - dropout_prob);
     // y = factor * x
-    phi::ScaleKernel<T, phi::GPUContext>(
+    phi::ScaleKernel<T, GPUContext>(
         dev_ctx, grad_y, factor, 0.0f, false, grad_x);
   } else {
     if (upscale_in_train && dropout_prob == 1.0f) {

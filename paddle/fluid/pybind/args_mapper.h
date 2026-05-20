@@ -29,14 +29,14 @@ void ArgMaxMinMapper(PyObject* args,
                      paddle::experimental::Scalar* axis,
                      bool* keepdims,
                      bool* flatten,
-                     phi::DataType* dtype);
+                     DataType* dtype);
 void ArgMaxMinMapper(PyObject* args,
                      PyObject* kwargs,
                      pir::Value* x,
                      pir::Value* axis,
                      bool* keepdims,
                      bool* flatten,
-                     phi::DataType* dtype);
+                     DataType* dtype);
 
 void GeluMapper(PyObject* args,
                 PyObject* kwargs,
@@ -51,14 +51,28 @@ void ArgSumMapper(PyObject* args,
                   PyObject* kwargs,
                   Tensor** x_ptr_ptr,
                   paddle::experimental::IntArray* axis,
-                  phi::DataType* dtype,
+                  DataType* dtype,
                   bool* keepdim);
 void ArgSumMapper(PyObject* args,
                   PyObject* kwargs,
                   pir::Value* x,
                   pir::Value* axis,
-                  phi::DataType* dtype,
+                  DataType* dtype,
                   bool* keepdim);
+
+void KthvalueMapper(PyObject* args,
+                    PyObject* kwargs,
+                    Tensor** x_ptr_ptr,
+                    int64_t* k,
+                    int* axis,
+                    bool* keepdim);
+void KthvalueMapper(PyObject* args,
+                    PyObject* kwargs,
+                    pir::Value* x,
+                    int64_t* k,
+                    int* axis,
+                    bool* keepdim);
+
 }  // namespace pybind
 
 }  // namespace paddle

@@ -20,20 +20,19 @@
 namespace phi {
 namespace fusion {
 template <typename T>
-using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
+using CudnnDataType = backends::gpu::CudnnDataType<T>;
 namespace dynload = phi::dynload;
 template <typename T>
 using BatchNormParamType =
-    typename phi::backends::gpu::CudnnDataType<T>::BatchNormParamType;
+    typename backends::gpu::CudnnDataType<T>::BatchNormParamType;
 
 #if CUDNN_VERSION >= 8000
 
 template <typename T>
 struct ScaleBiasAddReluArgs {
   ScaleBiasAddReluArgs() {
-    dtype = phi::backends::gpu::CudnnDataType<T>::type;
-    param_dtype =
-        phi::backends::gpu::CudnnDataType<BatchNormParamType<T>>::type;
+    dtype = backends::gpu::CudnnDataType<T>::type;
+    param_dtype = backends::gpu::CudnnDataType<BatchNormParamType<T>>::type;
     format = CUDNN_TENSOR_NHWC;
   }
 
@@ -48,7 +47,7 @@ struct ScaleBiasAddReluArgs {
             "The size of data_shape is expected to 4. But received "
             "data_shape's size is %d, data_shape is [%s].",
             data_shape.size(),
-            common::make_ddim(data_shape)));
+            make_ddim(data_shape)));
     PADDLE_ENFORCE_EQ(
         param_shape.size(),
         4U,
@@ -56,7 +55,7 @@ struct ScaleBiasAddReluArgs {
             "The size of param_shape is expected to 4. But received "
             "param_shape's size is %d, param_shape is [%s].",
             param_shape.size(),
-            common::make_ddim(param_shape)));
+            make_ddim(param_shape)));
     PADDLE_ENFORCE_EQ(
         bitmask_shape.size(),
         3U,
@@ -64,7 +63,7 @@ struct ScaleBiasAddReluArgs {
             "The size of bitmask_shape is expected to 3. But received "
             "bitmask_shape's size is %d, bitmask_shape is [%s].",
             bitmask_shape.size(),
-            common::make_ddim(bitmask_shape)));
+            make_ddim(bitmask_shape)));
 
     in_desc.set(data_shape, format, dtype);
     out_desc.set(data_shape, format, dtype);
@@ -89,12 +88,12 @@ struct ScaleBiasAddReluArgs {
   cudnnDataType_t param_dtype;
   cudnnTensorFormat_t format;
 
-  phi::backends::gpu::TensorDescriptor in_desc;
-  phi::backends::gpu::TensorDescriptor out_desc;
-  phi::backends::gpu::TensorDescriptor equiv_scale_bias_desc;
-  phi::backends::gpu::TensorDescriptor scale_bias_mean_var_desc;
-  phi::backends::gpu::TensorDescriptor bitmask_desc;
-  phi::backends::gpu::ActivationDescriptor activation_desc;
+  backends::gpu::TensorDescriptor in_desc;
+  backends::gpu::TensorDescriptor out_desc;
+  backends::gpu::TensorDescriptor equiv_scale_bias_desc;
+  backends::gpu::TensorDescriptor scale_bias_mean_var_desc;
+  backends::gpu::TensorDescriptor bitmask_desc;
+  backends::gpu::ActivationDescriptor activation_desc;
 };
 
 template <typename T>

@@ -62,7 +62,7 @@ static T PyObjectCast(PyObject* obj) {
   }
 }
 
-int TensorDtype2NumpyDtype(phi::DataType dtype);
+int TensorDtype2NumpyDtype(DataType dtype);
 
 bool PyObject_CheckStr(PyObject* obj);
 bool PyObject_CheckIRValue(PyObject* obj);
@@ -81,7 +81,7 @@ std::vector<Tensor> CastPyArg2VectorOfTensor(
     PyObject* obj,
     ssize_t arg_pos,
     const phi::distributed::ProcessMesh* mesh = nullptr);
-phi::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos);
+Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos);
 DenseTensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos);
 std::vector<DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
                                                       ssize_t arg_pos);
@@ -157,7 +157,7 @@ PyObject* ToPyObject(const std::vector<Tensor>& value,
                      bool return_py_none_if_not_initialize = false);
 PyObject* ToPyObject(const std::vector<std::vector<Tensor>>& value,
                      bool return_py_none_if_not_initialize = false);
-PyObject* ToPyObject(const phi::Place& value);
+PyObject* ToPyObject(const Place& value);
 PyObject* ToPyObject(const phi::DenseTensor* value);
 PyObject* ToPyObject(const phi::distributed::DistTensor* value);
 PyObject* ToPyObject(const phi::distributed::TensorDistAttr* value);
@@ -166,7 +166,7 @@ PyObject* ToPyObject(const phi::distributed::Placements& value);
 PyObject* ToPyObject(const phi::SelectedRows* value);
 PyObject* ToPyObject(const paddle::framework::proto::VarType::Type& dtype);
 PyObject* ToPyObject(const paddle::framework::proto::VarType& type);
-PyObject* ToPyObject(const std::vector<phi::DataType>& dtypes);
+PyObject* ToPyObject(const std::vector<DataType>& dtypes);
 PyObject* ToPyObject(const void* value);
 PyObject* ToPyObject(const std::unordered_map<int, int>& value);
 PyObject* ToPyObject(
@@ -443,29 +443,29 @@ paddle::experimental::IntArray CastPyArg2IntArray(
     const std::string& op_type,
     ssize_t arg_pos,
     paddle::experimental::IntArray default_value);
-paddle::Place CastPyArg2Place(PyObject* obj,
-                              const std::string& op_type,
-                              ssize_t arg_pos);
-paddle::Place CastPyArg2Place(PyObject* obj,
-                              const std::string& op_type,
-                              ssize_t arg_pos,
-                              paddle::Place default_place);
+Place CastPyArg2Place(PyObject* obj,
+                      const std::string& op_type,
+                      ssize_t arg_pos);
+Place CastPyArg2Place(PyObject* obj,
+                      const std::string& op_type,
+                      ssize_t arg_pos,
+                      Place default_place);
 
-paddle::DataType CastPyArg2DataType(PyObject* obj,
+DataType CastPyArg2DataType(PyObject* obj,
+                            const std::string& op_type,
+                            ssize_t arg_pos);
+DataType CastPyArg2DataType(PyObject* obj,
+                            const std::string& op_type,
+                            ssize_t arg_pos,
+                            DataType default_value);
+
+DataType CastPyArg2DataTypeDirectly(PyObject* obj,
                                     const std::string& op_type,
                                     ssize_t arg_pos);
-paddle::DataType CastPyArg2DataType(PyObject* obj,
+DataType CastPyArg2DataTypeDirectly(PyObject* obj,
                                     const std::string& op_type,
                                     ssize_t arg_pos,
-                                    paddle::DataType default_value);
-
-paddle::DataType CastPyArg2DataTypeDirectly(PyObject* obj,
-                                            const std::string& op_type,
-                                            ssize_t arg_pos);
-paddle::DataType CastPyArg2DataTypeDirectly(PyObject* obj,
-                                            const std::string& op_type,
-                                            ssize_t arg_pos,
-                                            paddle::DataType default_value);
+                                    DataType default_value);
 
 phi::distributed::TensorDistAttr CastPyArg2DistAttr(PyObject* obj,
                                                     ssize_t arg_pos);

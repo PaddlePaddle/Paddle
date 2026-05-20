@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
+
 namespace phi {
 namespace funcs {
 namespace sparse {
@@ -40,13 +42,20 @@ inline DenseTensor GetOffsets(const Context& dev_ctx,
     }
   }
 
-  const IntArray strides_shape(common::vectorize<IntT>(indices.dims()));
+  const IntArray strides_shape(vectorize<IntT>(indices.dims()));
   DenseTensor strides = Empty<IntT>(dev_ctx, strides_shape);
   auto strides_ptr = strides.data<IntT>();
+#if defined(__NVCC__) || defined(__HIPCC__)
+  const IntT* stable_st =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          host_strides.data(), host_strides.size());
+#else
+  const IntT* stable_st = host_strides.data();
+#endif
   memory_utils::Copy(dev_ctx.GetPlace(),
                      strides_ptr,
                      CPUPlace(),
-                     host_strides.data(),
+                     stable_st,
                      sizeof(IntT) * host_strides.size(),
                      dev_ctx.stream());
 
@@ -125,10 +134,10 @@ std::tuple<DenseTensor, DenseTensor, DenseTensor, DenseTensor> ComputePoolMax(
                             });
   auto new_sz =
       thrust::distance(thrust_ptr(pool_sizes.data<IntT>()), new_end.second);
-  pool_sizes.Resize(common::make_ddim({new_sz}));
+  pool_sizes.Resize({new_sz});
 
   DenseTensor pool_offsets;
-  pool_offsets.Resize(common::make_ddim({new_sz}));
+  pool_offsets.Resize({new_sz});
   dev_ctx.template Alloc<T>(&pool_offsets);
   phi::Copy(dev_ctx, pool_sizes, dev_ctx.GetPlace(), false, &pool_offsets);
 

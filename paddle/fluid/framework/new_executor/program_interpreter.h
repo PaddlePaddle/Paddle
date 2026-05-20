@@ -38,7 +38,7 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
  public:
   ProgramInterpreter(
-      const phi::Place& place,
+      const Place& place,
       const BlockDesc& block,
       Scope* scope,
       const ExecutionConfig& execution_config = ExecutionConfig());
@@ -90,7 +90,7 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   const Scope* local_scope() const override;
 
-  const phi::Place& GetPlace() const override { return place_; }
+  const Place& GetPlace() const override { return place_; }
 
   void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) override {
     output_hookfuncs_ = hookfuncs;
@@ -188,7 +188,7 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   // op profiling status
   bool is_in_op_profiling_mode_{false};
 
-  const phi::Place place_;
+  const Place place_;
   const BlockDesc& block_;  // not owned
 
   interpreter::DependencyBuilder dependency_builder_;
@@ -253,22 +253,22 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   bool enable_job_schedule_profiler_;
 };
 
-static inline const phi::DenseTensor& GetTensorFromVar(const Variable* var) {
+static inline const DenseTensor& GetTensorFromVar(const Variable* var) {
   if (var->IsType<DenseTensor>()) {
     return var->Get<DenseTensor>();
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "Variable must be type of phi::DenseTensor, but received %s.",
+        "Variable must be type of DenseTensor, but received %s.",
         framework::ToTypeName(var->Type())));
   }
 }
 
-static inline phi::DenseTensor* GetMutableTensorFromVar(Variable* var) {
+static inline DenseTensor* GetMutableTensorFromVar(Variable* var) {
   if (var->IsType<DenseTensor>()) {
     return var->GetMutable<DenseTensor>();
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "Variable must be type of phi::DenseTensor, but received %s.",
+        "Variable must be type of DenseTensor, but received %s.",
         framework::ToTypeName(var->Type())));
   }
 }

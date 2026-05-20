@@ -34,7 +34,7 @@ static DDim GetDimsDebug(const Scope& scope,
   }
 
   if (var->IsType<DenseTensor>()) {
-    const phi::DenseTensor& tensor = var->Get<DenseTensor>();
+    const DenseTensor& tensor = var->Get<DenseTensor>();
     return tensor.dims();
   } else if (var->IsType<phi::SelectedRows>()) {
     if (get_actual_dim) {
@@ -62,7 +62,7 @@ static std::string GetDtype(const Scope& scope, const std::string& name) {
   }
 
   if (var->IsType<DenseTensor>()) {
-    const phi::DenseTensor& tensor = var->Get<DenseTensor>();
+    const DenseTensor& tensor = var->Get<DenseTensor>();
     if (UNLIKELY(!tensor.has_allocation())) {
       return "";
     }
@@ -86,14 +86,14 @@ static std::string GetPlace(const Scope& scope, const std::string& name) {
   if (var == nullptr) {
     return "";
   }
-  auto to_string = [](const phi::Place& p) {
+  auto to_string = [](const Place& p) {
     std::stringstream sstream;
     sstream << p;
     return sstream.str();
   };
 
   if (var->IsType<DenseTensor>()) {
-    const phi::DenseTensor& tensor = var->Get<DenseTensor>();
+    const DenseTensor& tensor = var->Get<DenseTensor>();
     if (UNLIKELY(!tensor.has_allocation())) {
       return "";
     }
@@ -136,7 +136,7 @@ static LegacyLoD GetLoDDebug(const Scope& scope, const std::string& name) {
   }
 
   if (var->IsType<DenseTensor>()) {
-    const phi::DenseTensor& tensor = var->Get<DenseTensor>();
+    const DenseTensor& tensor = var->Get<DenseTensor>();
     return tensor.lod();
   } else {
     return default_lod;
@@ -158,19 +158,19 @@ static double GetDenseTensorEleSum(const Scope& scope,
     dev_ctx.Wait();
     double sum = 0.0;
     for (int64_t i = 0; i < cpu_tensor.numel(); i++) {
-      if (cpu_tensor.dtype() == phi::DataType::FLOAT32) {
+      if (cpu_tensor.dtype() == DataType::FLOAT32) {
         sum += static_cast<double>(cpu_tensor.data<float>()[i]);
-      } else if (cpu_tensor.dtype() == phi::DataType::FLOAT64) {
+      } else if (cpu_tensor.dtype() == DataType::FLOAT64) {
         sum += static_cast<double>(cpu_tensor.data<double>()[i]);
-      } else if (cpu_tensor.dtype() == phi::DataType::INT32) {
+      } else if (cpu_tensor.dtype() == DataType::INT32) {
         sum += static_cast<double>(cpu_tensor.data<int32_t>()[i]);
-      } else if (cpu_tensor.dtype() == phi::DataType::INT64) {
+      } else if (cpu_tensor.dtype() == DataType::INT64) {
         sum += static_cast<double>(cpu_tensor.data<int64_t>()[i]);
-      } else if (cpu_tensor.dtype() == phi::DataType::FLOAT16) {
+      } else if (cpu_tensor.dtype() == DataType::FLOAT16) {
         const phi::dtype::float16* data =
             cpu_tensor.data<phi::dtype::float16>();
         sum += static_cast<double>(data[0]);
-      } else if (cpu_tensor.dtype() == phi::DataType::BOOL) {
+      } else if (cpu_tensor.dtype() == DataType::BOOL) {
         sum += static_cast<double>(cpu_tensor.data<bool>()[i]);
       } else {
         return std::numeric_limits<double>::quiet_NaN();
@@ -181,7 +181,7 @@ static double GetDenseTensorEleSum(const Scope& scope,
   return std::numeric_limits<double>::quiet_NaN();
 }
 
-InstructionBase::InstructionBase(size_t id, const phi::Place& place)
+InstructionBase::InstructionBase(size_t id, const Place& place)
     : next_instrs_in_different_thread_(),
       next_instrs_in_same_thread_(),
       events_to_wait_info_(),

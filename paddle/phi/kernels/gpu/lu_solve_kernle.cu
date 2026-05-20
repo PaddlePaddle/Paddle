@@ -212,7 +212,7 @@ void LuSolveKernel(const Context& dev_ctx,
                    DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
   // Copy x to out since cusolverDn*getrs overwrites the input
-  *out = phi::Transpose2DTo6D<Context, T>(dev_ctx, b);
+  *out = Transpose2DTo6D<Context, T>(dev_ctx, b);
   DenseTensor tem_lu = Transpose2DTo6D<Context, T>(dev_ctx, lu);
   // Validate input dimensions
   auto x_dims = b.dims();
@@ -255,7 +255,7 @@ void LuSolveKernel(const Context& dev_ctx,
 
   auto outdims = out->dims();
   auto outrank = outdims.size();
-  int batchsize = product(common::slice_ddim(outdims, 0, outrank - 2));
+  int batchsize = product(slice_ddim(outdims, 0, outrank - 2));
   auto out_data = out->data<T>();
   auto lu_data = reinterpret_cast<T*>(const_cast<T*>(tem_lu.data<T>()));
   auto pivots_data =
@@ -288,7 +288,7 @@ void LuSolveKernel(const Context& dev_ctx,
                       d_info);
 #endif
   }
-  *out = phi::Transpose2DTo6D<Context, T>(dev_ctx, *out);
+  *out = Transpose2DTo6D<Context, T>(dev_ctx, *out);
 }
 
 }  // namespace phi

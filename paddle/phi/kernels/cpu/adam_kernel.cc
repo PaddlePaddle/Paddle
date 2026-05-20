@@ -65,7 +65,7 @@ PADDLE_API void AdamDenseKernel(const Context& dev_ctx,
         errors::InvalidArgument("Input(SkipUpdate) size must be 1, but get %d",
                                 skip_update->numel()));
     std::vector<bool> skip_update_vec;
-    phi::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
+    TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
     skip_update_ = skip_update_vec[0];
   }
   // skip_update=true, just copy input to output, and TensorCopy will call
@@ -125,11 +125,11 @@ PADDLE_API void AdamDenseKernel(const Context& dev_ctx,
   T* mom2_max_out_ptr =
       amsgrad ? dev_ctx.template Alloc<T>(moment2_max_out) : nullptr;
 
-  T learning_rate_ =
-      learning_rate.data<T>()[0] * (sqrt(1 - beta2_p) / (1 - beta1_p));
+  T learning_rate_ = static_cast<T>(learning_rate.data<double>()[0]) *
+                     (sqrt(1 - beta2_p) / (1 - beta1_p));
   T eps = epsilon_ * sqrt(1 - beta2_p);
 
-  phi::jit::adam_attr_t attr(beta1_, beta2_, amsgrad);
+  jit::adam_attr_t attr(beta1_, beta2_, amsgrad);
   int64_t numel = param.numel();
 
   const T* param_ptr = param.data<T>();
@@ -138,8 +138,7 @@ PADDLE_API void AdamDenseKernel(const Context& dev_ctx,
   const T* mom2_max_ptr = amsgrad ? moment2_max.get().data<T>() : nullptr;
   const T* grad_ptr = grad.data<T>();
 
-  auto adam =
-      phi::jit::KernelFuncs<phi::jit::AdamTuple<T>, CPUPlace>::Cache().At(attr);
+  auto adam = jit::KernelFuncs<jit::AdamTuple<T>, CPUPlace>::Cache().At(attr);
 
   static constexpr int64_t chunk_size = 512;
 
@@ -277,6 +276,7 @@ void MergedAdamKernel(
     T* mom2_max_out_data =
         amsgrad ? dev_ctx.template Alloc<T>(moment2_max_out[idx]) : nullptr;
 
+    const T lr_val = static_cast<T>(learning_rate[idx]->data<double>()[0]);
     funcs::AdamFunctor<T, funcs::CPUAdam> functor(
         beta1_,
         beta2_,
@@ -289,7 +289,7 @@ void MergedAdamKernel(
         dev_ctx.template Alloc<T>(moment2_out[idx]),
         mom2_max_in_data,
         mom2_max_out_data,
-        learning_rate[idx]->data<T>(),
+        &lr_val,
         grad[idx]->data<T>(),
         param[idx]->data<T>(),
         dev_ctx.template Alloc<T>(param_out[idx]),
@@ -307,7 +307,10 @@ void MergedAdamKernel(
 }  // namespace phi
 
 PD_REGISTER_KERNEL(adam, CPU, ALL_LAYOUT, phi::AdamDenseKernel, float, double) {
+  kernel->InputAt(2).SetDataType(phi::DataType::FLOAT64);
 }
 
 PD_REGISTER_KERNEL(
-    merged_adam, CPU, ALL_LAYOUT, phi::MergedAdamKernel, float, double) {}
+    merged_adam, CPU, ALL_LAYOUT, phi::MergedAdamKernel, float, double) {
+  kernel->InputAt(2).SetDataType(phi::DataType::FLOAT64);
+}

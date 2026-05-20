@@ -1599,6 +1599,10 @@ void FFTR2CInferMeta(const MetaTensor& x,
   }
 }
 
+void FlashMaskGetUniqueIdInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->share_meta(x);
+}
+
 void FlattenWithXShapeInferMeta(const MetaTensor& x,
                                 int start_axis,
                                 int stop_axis,
@@ -2154,12 +2158,6 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
 
   const int64_t rows = x_dims[0];
   const int64_t cols = x_dims[1];
-  PADDLE_ENFORCE_LE(rows,
-                    65535 * 128,
-                    common::errors::InvalidArgument(
-                        "Currently only supports the first dim of "
-                        "Input(X) <= 65535 * 128, but got %d",
-                        rows));
 
   PADDLE_ENFORCE_EQ(
       cols % 4,
@@ -2254,42 +2252,14 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
     }
 
     if (output_scale_transpose) {
-      PADDLE_ENFORCE_EQ(
-          scale_outer_dim % 4,
-          0,
-          common::errors::InvalidArgument(
-              "When use_ue8m0 is true, the outer dimension of scale "
-              "must be divisible by 4, but got %d",
-              scale_outer_dim));
-      scale_outer_dim /= 4;
+      scale_outer_dim = (scale_outer_dim + 3) / 4;
       if (input_transpose) {
-        PADDLE_ENFORCE_EQ(scale_transposed_outer_dim % 4,
-                          0,
-                          common::errors::InvalidArgument(
-                              "When use_ue8m0 is true, the outer dimension of "
-                              "transposed scale "
-                              "must be divisible by 4, but got %d",
-                              scale_transposed_outer_dim));
-        scale_transposed_outer_dim /= 4;
+        scale_transposed_outer_dim = (scale_transposed_outer_dim + 3) / 4;
       }
     } else {
-      PADDLE_ENFORCE_EQ(
-          scale_inner_dim % 4,
-          0,
-          common::errors::InvalidArgument(
-              "When use_ue8m0 is true, the inner dimension of scale "
-              "must be divisible by 4, but got %d",
-              scale_inner_dim));
-      scale_inner_dim /= 4;
+      scale_inner_dim = (scale_inner_dim + 3) / 4;
       if (input_transpose) {
-        PADDLE_ENFORCE_EQ(scale_transposed_inner_dim % 4,
-                          0,
-                          common::errors::InvalidArgument(
-                              "When use_ue8m0 is true, the inner dimension of "
-                              "transposed scale "
-                              "must be divisible by 4, but got %d",
-                              scale_transposed_inner_dim));
-        scale_transposed_inner_dim /= 4;
+        scale_transposed_inner_dim = (scale_transposed_inner_dim + 3) / 4;
       }
     }
   }
@@ -2886,6 +2856,7 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
                                const std::vector<int>& kernel_size,
                                const std::vector<int>& strides,
                                const std::vector<int>& paddings,
+                               const std::vector<int>& dilations,
                                bool global_pooling,
                                bool adaptive,
                                bool ceil_mode,
@@ -2894,6 +2865,7 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
                                MetaConfig config) {
   std::vector<int> paddings_ = paddings;
   std::vector<int> kernel_size_ = kernel_size;
+  std::vector<int> dilations_ = dilations;
 
   auto x_dims = x.dims();
 
@@ -2933,6 +2905,13 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
           "Paddings size %d and pooling size %d should be the same.",
           paddings_.size(),
           kernel_size_.size()));
+  PADDLE_ENFORCE_EQ(
+      kernel_size_.size(),
+      dilations_.size(),
+      errors::InvalidArgument(
+          "Dilations size %d and pooling size %d should be the same.",
+          dilations_.size(),
+          kernel_size_.size()));
 
   std::vector<int64_t> output_shape({x_dims[0], x_dims[1]});
   if (adaptive) {
@@ -2945,8 +2924,9 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
       } else {
         output_shape.push_back(funcs::MaxPoolOutputSize(x_dims[i + 2],
                                                         kernel_size_[i],
-                                                        paddings_[i],
                                                         strides[i],
+                                                        paddings_[i],
+                                                        dilations_[i],
                                                         ceil_mode));
       }
     }
@@ -3808,7 +3788,7 @@ void PixelUnshuffleInferMeta(const MetaTensor& x,
 }
 
 void PNormInferMeta(const MetaTensor& x,
-                    float porder,
+                    double porder,
                     int axis,
                     float epsilon,
                     bool keepdim,
@@ -4303,6 +4283,24 @@ void ReduceInferMeta(const MetaTensor& x,
   }
 
   ReduceInferMetaBase(x, axis, keep_dim, reduce_all, out);
+}
+
+void AMinMaxInferMeta(const MetaTensor& x,
+                      const std::vector<int64_t>& axis,
+                      bool keep_dim,
+                      MetaTensor* min,
+                      MetaTensor* max) {
+  bool reduce_all = false;
+  if (axis.empty()) {
+    reduce_all = true;
+  }
+  DDim out_dim = ReduceInferDim(x, axis, keep_dim, reduce_all);
+  min->set_dims(out_dim);
+  min->set_dtype(x.dtype());
+  min->set_layout(x.layout());
+  max->set_dims(out_dim);
+  max->set_dtype(x.dtype());
+  max->set_layout(x.layout());
 }
 
 DDim ReduceInferDimForIntArrayAxis(const MetaTensor& x,
@@ -6063,6 +6061,16 @@ void UnchangedInferMetaIncludingTensorArray(const MetaTensor& x,
 
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->share_meta(x);
+
+  // When converting from sparse to dense tensor, we need to convert the layout
+  // from SPARSE_COO/SPARSE_CSR to appropriate dense layout (NCHW, NCDHW, etc.)
+  auto input_layout = x.layout();
+  if (input_layout == DataLayout::SPARSE_COO ||
+      input_layout == DataLayout::SPARSE_CSR) {
+    // Set to NCHW as default dense layout
+    // Individual kernels can override this if needed
+    out->set_layout(DataLayout::NCHW);
+  }
 }
 
 void UnchangedArrayInferMeta(const MetaTensor& x, MetaTensor* out) {
@@ -6428,6 +6436,7 @@ void UniqueRawInferMeta(const MetaTensor& x,
                         MetaTensor* indices,
                         MetaTensor* index,
                         MetaTensor* counts) {
+  out->set_dtype(x.dtype());
   if (!is_sorted) {
     PADDLE_ENFORCE_EQ(x.dims().size() == 1 || x.dims().size() == 0,
                       true,

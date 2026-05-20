@@ -64,7 +64,7 @@ std::string TensorFormatter::Format(const DenseTensor& print_tensor,
 
   if (print_tensor_lod_) {
     log_stream << "  - lod: {";
-    const phi::LegacyLoD& lod = print_tensor.lod();
+    const LegacyLoD& lod = print_tensor.lod();
     for (auto const& level : lod) {
       log_stream << "{";
       bool is_first = true;
@@ -96,27 +96,27 @@ std::string TensorFormatter::Format(const DenseTensor& print_tensor,
     log_stream << "  - dtype: " << dtype << std::endl;
   }
 
-  if (dtype == phi::DataType::FLOAT32) {
+  if (dtype == DataType::FLOAT32) {
     FormatData<float>(print_tensor, log_stream);
-  } else if (dtype == phi::DataType::FLOAT64) {
+  } else if (dtype == DataType::FLOAT64) {
     FormatData<double>(print_tensor, log_stream);
-  } else if (dtype == phi::DataType::INT32) {
+  } else if (dtype == DataType::INT32) {
     FormatData<int>(print_tensor, log_stream);
-  } else if (dtype == phi::DataType::INT64) {
+  } else if (dtype == DataType::INT64) {
     FormatData<int64_t>(print_tensor, log_stream);
-  } else if (dtype == phi::DataType::BOOL) {
+  } else if (dtype == DataType::BOOL) {
     FormatData<bool>(print_tensor, log_stream);
-  } else if (dtype == phi::DataType::FLOAT16) {
+  } else if (dtype == DataType::FLOAT16) {
     FormatData<phi::float16>(print_tensor, log_stream);
-  } else if (dtype == phi::DataType::BFLOAT16) {
+  } else if (dtype == DataType::BFLOAT16) {
     FormatData<phi::bfloat16>(print_tensor, log_stream);
-  } else if (dtype == phi::DataType::FLOAT8_E4M3FN) {
+  } else if (dtype == DataType::FLOAT8_E4M3FN) {
     FormatData<phi::float8_e4m3fn>(print_tensor, log_stream);
-  } else if (dtype == phi::DataType::FLOAT8_E5M2) {
+  } else if (dtype == DataType::FLOAT8_E5M2) {
     FormatData<phi::float8_e5m2>(print_tensor, log_stream);
-  } else if (dtype == phi::DataType::COMPLEX64) {
+  } else if (dtype == DataType::COMPLEX64) {
     FormatData<phi::complex64>(print_tensor, log_stream);
-  } else if (dtype == phi::DataType::COMPLEX128) {
+  } else if (dtype == DataType::COMPLEX128) {
     FormatData<phi::complex128>(print_tensor, log_stream);
   } else {
     log_stream << "  - data: unprintable type: " << dtype << std::endl;
@@ -138,7 +138,7 @@ void TensorFormatter::FormatData(const DenseTensor& print_tensor,
   } else {
     CPUPlace cpu_place;
 
-    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+    DeviceContextPool& pool = DeviceContextPool::Instance();
     auto dev_ctx = pool.Get(print_tensor.place());
 
     phi::Copy(*dev_ctx, print_tensor, cpu_place, true, &cpu_tensor);

@@ -429,13 +429,9 @@ def _get_cuda_arch_flags(cflags: list[str] | None = None) -> list[str]:
     For an added "+PTX", an additional
     ``-gencode=arch=compute_xx,code=compute_xx`` is added.
     """
-    # If cflags is given, there may already be user-provided arch flags in it
-    if cflags is not None:
-        for flag in cflags:
-            if any(x in flag for x in ['PADDLE_EXTENSION_NAME']):
-                continue
-            if 'arch' in flag:
-                return []
+    # ROCm uses get_rocm_arch_flags instead, not CUDA arch flags
+    if core.is_compiled_with_rocm():
+        return []
 
     named_arches = collections.OrderedDict(
         [
@@ -469,6 +465,7 @@ def _get_cuda_arch_flags(cflags: list[str] | None = None) -> list[str]:
         '10.0a',
         '10.1',
         '10.1a',
+        '10.3',
         '12.0',
         '12.0a',
     ]
@@ -479,6 +476,12 @@ def _get_cuda_arch_flags(cflags: list[str] | None = None) -> list[str]:
     _arch_list = os.environ.get("PADDLE_CUDA_ARCH_LIST")
 
     if not _arch_list:
+        if cflags is not None:
+            for flag in cflags:
+                if any(x in flag for x in ['PADDLE_EXTENSION_NAME']):
+                    continue
+                if 'arch' in flag:
+                    return []
         warnings.warn(
             "PADDLE_CUDA_ARCH_LIST are not set, all archs for visible cards are included for compilation. \n"
             "If this is not desired, please set os.environ['PADDLE_CUDA_ARCH_LIST']."
@@ -530,18 +533,98 @@ def _get_cuda_arch_flags(cflags: list[str] | None = None) -> list[str]:
     return sorted(set(flags))
 
 
+_ROCM_VERSION_70 = 70000000
+_ROCM_LEGACY_AMDGPU_TARGETS = [
+    'gfx906',
+    'gfx926',
+    'gfx928',
+    'gfx936',
+]
+_ROCM_70_AMDGPU_TARGETS = [
+    'gfx906',
+    'gfx908',
+    'gfx90a',
+    'gfx926',
+    'gfx928',
+    'gfx936',
+    'gfx942',
+    'gfx950',
+]
+
+
+def _get_rocm_version_from_header(rocm_home):
+    if not rocm_home:
+        return None
+
+    hip_version_files = [
+        os.path.join(rocm_home, 'include', 'hip', 'hip_version.h'),
+        os.path.join(rocm_home, 'hip', 'include', 'hip', 'hip_version.h'),
+    ]
+    for hip_version_file in hip_version_files:
+        if not os.path.exists(hip_version_file):
+            continue
+        try:
+            with open(hip_version_file, encoding='utf-8') as f:
+                content = f.read()
+        except OSError:
+            continue
+        major = re.search(r'define HIP_VERSION_MAJOR +([0-9]+)', content)
+        minor = re.search(r'define HIP_VERSION_MINOR +([0-9]+)', content)
+        patch = re.search(r'define HIP_VERSION_PATCH +([0-9]+)', content)
+        if major and minor and patch:
+            return (
+                int(major.group(1)) * 10000000
+                + int(minor.group(1)) * 100000
+                + int(patch.group(1))
+            )
+    return None
+
+
+def _get_default_rocm_arch_list():
+    rocm_home = os.environ.get('ROCM_HOME') or os.environ.get('ROCM_PATH')
+    if rocm_home is None:
+        rocm_home = '/opt/rocm'
+
+    rocm_version = _get_rocm_version_from_header(rocm_home)
+    if rocm_version is not None and rocm_version >= _ROCM_VERSION_70:
+        return _ROCM_70_AMDGPU_TARGETS
+    return _ROCM_LEGACY_AMDGPU_TARGETS
+
+
 def get_rocm_arch_flags(cflags):
     """
-    For ROCm platform, amdgpu target should be added for HIPCC.
+    For ROCm platform, offload arch flags should be added for HIPCC.
     """
-    cflags = [
-        *cflags,
-        '-fno-gpu-rdc',
-        '-amdgpu-target=gfx906',
-        '-amdgpu-target=gfx926',
-        '-amdgpu-target=gfx928',
-    ]
-    return cflags
+    if cflags is None:
+        cflags = []
+
+    has_rocm_arch_flag = any(
+        flag in ('--offload-arch', '-amdgpu-target')
+        or '--offload-arch=' in flag
+        or '-amdgpu-target=' in flag
+        for flag in cflags
+    )
+    has_no_gpu_rdc_flag = any('-fno-gpu-rdc' in flag for flag in cflags)
+
+    rocm_flags = []
+    if not has_no_gpu_rdc_flag:
+        rocm_flags.append('-fno-gpu-rdc')
+    if has_rocm_arch_flag:
+        return rocm_flags
+
+    rocm_arch_list = os.environ.get("PADDLE_ROCM_ARCH_LIST")
+    if rocm_arch_list:
+        rocm_arch_list = (
+            rocm_arch_list.replace(' ', ';').replace(',', ';').split(';')
+        )
+        rocm_arch_list = [arch for arch in rocm_arch_list if arch]
+    else:
+        rocm_arch_list = _get_default_rocm_arch_list()
+
+    rocm_flags.extend(
+        [f'--offload-arch={arch}' for arch in sorted(set(rocm_arch_list))]
+    )
+    return rocm_flags
 
 
 def _get_base_path():
@@ -664,9 +747,12 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
         extra_link_args = kwargs.get('extra_link_args', [])
         extra_link_args.extend(MSVC_LINK_FLAGS)
         lib_core_name = create_sym_link_if_not_exist()
-        extra_link_args.append(f'{lib_core_name}')
+        required_link_args = [f'{lib_core_name}', 'phi.lib']
         if use_cuda:
-            extra_link_args.extend(['cudadevrt.lib', 'cudart_static.lib'])
+            required_link_args.extend(['cudadevrt.lib', 'cudart_static.lib'])
+        for link_arg in required_link_args:
+            if link_arg not in extra_link_args:
+                extra_link_args.append(link_arg)
         kwargs['extra_link_args'] = extra_link_args
 
     else:
@@ -1091,7 +1177,7 @@ def get_build_directory(verbose: bool = False) -> str:
 
     Examples:
 
-    .. code-block:: python
+    .. code-block:: pycon
 
         >>> from paddle.utils.cpp_extension import get_build_directory
 

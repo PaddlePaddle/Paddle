@@ -317,7 +317,7 @@ void InstanceNormGradKernel(const Context &dev_ctx,
                             DenseTensor *d_x,
                             DenseTensor *d_scale,
                             DenseTensor *d_bias) {
-  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using AccT = typename MPTypeTrait<T>::Type;
   double epsilon = static_cast<double>(epsilon_f);
   const auto *scale_ptr = scale.get_ptr();
 
@@ -542,7 +542,7 @@ void InstanceNormDoubleGradKernel(const Context &dev_ctx,
                                   DenseTensor *dx,
                                   DenseTensor *dscale,
                                   DenseTensor *ddy) {
-  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using AccT = typename MPTypeTrait<T>::Type;
   const auto *Scale = scale.get_ptr();
   const auto *ddX = ddx.get_ptr();
   const auto *ddScale = ddscale.get_ptr();

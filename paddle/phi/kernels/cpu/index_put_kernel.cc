@@ -138,7 +138,7 @@ void IndexPutKernel(const Context& dev_ctx,
 
   auto bd_dim = funcs::BroadCastTensorsDims(int_indices_v);
 
-  std::vector<int64_t> res_dim_v(common::vectorize(bd_dim));
+  std::vector<int64_t> res_dim_v(vectorize(bd_dim));
   std::vector<const DenseTensor*> res_indices_v(x.dims().size(), nullptr);
   std::vector<DenseTensor> tmp_res_indices_v;
   std::vector<DenseTensor> tmp_value_v;
@@ -148,7 +148,7 @@ void IndexPutKernel(const Context& dev_ctx,
   for (int i = static_cast<int>(int_indices_v.size()); i < x.dims().size();
        ++i) {
     range_tensor_v.emplace_back(funcs::GetRangeTensor<int64_t, Context>(
-        dev_ctx, x.dims()[i], phi::DataType::INT64));
+        dev_ctx, x.dims()[i], DataType::INT64));
   }
 
   funcs::DealWithIndices<T, Context>(dev_ctx,
@@ -160,8 +160,7 @@ void IndexPutKernel(const Context& dev_ctx,
                                      bd_dim,
                                      &res_dim_v);
   if (value.numel() != 1) {
-    tmp_value_v.emplace_back(
-        DenseTensor(value.dtype()).Resize(common::make_ddim(res_dim_v)));
+    tmp_value_v.emplace_back(DenseTensor(value.dtype()).Resize(res_dim_v));
     ExpandKernel<T, Context>(
         dev_ctx, value, IntArray(res_dim_v), &tmp_value_v[0]);
     ptr_value = &tmp_value_v[0];

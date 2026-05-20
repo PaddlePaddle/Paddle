@@ -26,12 +26,12 @@ namespace phi {
 template <typename T, typename Context>
 void ConvGradKernel(const Context& dev_ctx,
                     const DenseTensor& input,
-                    const DenseTensor& filter_t,
+                    const DenseTensor& filter,
                     const DenseTensor& output_grad,
                     const std::vector<int>& strides,
-                    const std::vector<int>& paddings_t,
+                    const std::vector<int>& paddings,
                     const std::string& padding_algorithm,
-                    const std::vector<int>& dilations_t,
+                    const std::vector<int>& dilations,
                     int groups,
                     const std::string& data_format,
                     DenseTensor* input_grad,
@@ -41,12 +41,12 @@ void ConvGradKernel(const Context& dev_ctx,
   // that avoids modifying the variable in the Scope.
 
   if (!input_grad && !filter_grad) return;
-  std::vector<int> paddings = paddings_t;
-  std::vector<int> dilations = dilations_t;
+  std::vector<int> paddings_ = paddings;
+  std::vector<int> dilations_ = dilations;
 
-  DenseTensor filter = filter_t;
+  DenseTensor filter_ = filter;
   // 0-size
-  if (input.numel() == 0 || filter_t.numel() == 0) {
+  if (input.numel() == 0 || filter.numel() == 0) {
     if (input_grad) dev_ctx.template Alloc<T>(input_grad);
     if (filter_grad) {
       Full<T, Context>(dev_ctx, filter_grad->dims(), 0, filter_grad);
@@ -77,17 +77,17 @@ void ConvGradKernel(const Context& dev_ctx,
   auto filter_dims = filter.dims();
   DDim in_data_dims = slice_ddim(in_dims, 2, in_dims.size());
   DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation<int>(
-      &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
+      &paddings_, &dilations_, padding_algorithm, in_data_dims, strides, ksize);
 
   const int64_t batch_size = transformed_input.dims()[0];
 
   // filter_shape_vec: {k_o, k_i, k_h, k_w} or {k_o, k_i, k_d, k_h, k_w}
-  std::vector<int64_t> filter_shape_vec(common::vectorize(filter.dims()));
+  std::vector<int64_t> filter_shape_vec(vectorize(filter.dims()));
   // output_shape_vec: {o_n, o_c, o_h, o_w} or {o_n, o_c, o_d, o_h, o_w}
   std::vector<int64_t> output_shape_vec(
-      common::vectorize(transformed_output_grad.dims()));
+      vectorize(transformed_output_grad.dims()));
 
   // use col_shape in the im2col calculation
   // col_shape_vec: {i_c/g, k_h, k_w, o_h, o_w} or {i_c/g, k_d, k_h, k_w, o_d,
@@ -99,7 +99,7 @@ void ConvGradKernel(const Context& dev_ctx,
     col_shape_vec[j + 1] = filter_shape_vec[j + 2];
     col_shape_vec[j + 1 + data_dim] = output_shape_vec[j + 2];
   }
-  DDim col_shape(common::make_ddim(col_shape_vec));
+  DDim col_shape(make_ddim(col_shape_vec));
 
   // use col_matrix_shape in the gemm calculation
   // size: (i_c/g * k_h * k_w, o_h * o_w)
@@ -112,7 +112,7 @@ void ConvGradKernel(const Context& dev_ctx,
 
   DDim filter_matrix_shape = {filter.dims()[0],
                               filter.numel() / filter.dims()[0]};
-  filter.Resize(filter_matrix_shape);
+  filter_.Resize(filter_matrix_shape);
 
   DDim output_matrix_shape = {
       transformed_output_grad.dims()[1],
@@ -124,7 +124,7 @@ void ConvGradKernel(const Context& dev_ctx,
   int64_t in_step = transformed_input.dims()[1] / groups;
   int64_t out_step = transformed_output_grad.dims()[1] / groups;
 
-  bool is_expand = IsExpand(filter_shape_vec, strides, paddings, dilations);
+  bool is_expand = IsExpand(filter_shape_vec, strides, paddings_, dilations_);
 
   DenseTensor col;
   // col_matrix shares the same piece of data with col,
@@ -169,7 +169,7 @@ void ConvGradKernel(const Context& dev_ctx,
         DenseTensor out_grad_slice =
             out_grad_batch.Slice(g * out_step, (g + 1) * out_step);
         DenseTensor filter_slice =
-            filter.Slice(g * out_step, (g + 1) * out_step);
+            filter_.Slice(g * out_step, (g + 1) * out_step);
 
         DenseTensor in_grad_slice =
             in_grad_batch.Slice(g * in_step, (g + 1) * in_step);
@@ -189,13 +189,13 @@ void ConvGradKernel(const Context& dev_ctx,
         if (is_expand && data_dim == 2U) {
           col2im(dev_ctx,
                  col,
-                 dilations,
+                 dilations_,
                  strides,
                  std::vector<int>{
-                     paddings[0], paddings[2], paddings[1], paddings[3]},
+                     paddings_[0], paddings_[2], paddings_[1], paddings_[3]},
                  &in_grad_slice);
         } else if (is_expand && data_dim == 3U) {
-          col2vol(dev_ctx, col, dilations, strides, paddings, &in_grad_slice);
+          col2vol(dev_ctx, col, dilations_, strides, paddings_, &in_grad_slice);
         }
       }
     }
@@ -207,7 +207,7 @@ void ConvGradKernel(const Context& dev_ctx,
 
   if (filter_grad) {
     dev_ctx.template Alloc<T>(filter_grad);
-    Tensor filter_grad_ = *filter_grad;
+    DenseTensor filter_grad_ = *filter_grad;
     filter_grad_.Resize(filter_matrix_shape);
     set_zero(dev_ctx, filter_grad, static_cast<T>(0));
     funcs::Im2ColFunctor<funcs::ColFormat::CFO, Context, T> im2col;
@@ -230,14 +230,14 @@ void ConvGradKernel(const Context& dev_ctx,
         } else if (data_dim == 2U) {
           im2col(dev_ctx,
                  in_slice,
-                 dilations,
+                 dilations_,
                  strides,
                  std::vector<int>{
-                     paddings[0], paddings[2], paddings[1], paddings[3]},
+                     paddings_[0], paddings_[2], paddings_[1], paddings_[3]},
                  &col);
 
         } else if (data_dim == 3U) {
-          vol2col(dev_ctx, in_slice, dilations, strides, paddings, &col);
+          vol2col(dev_ctx, in_slice, dilations_, strides, paddings_, &col);
         }
 
         // gemm
@@ -262,10 +262,10 @@ void ConvGradGradKernel(const Context& dev_ctx,
                         const DenseTensor& out_grad,
                         const optional<DenseTensor>& input_grad_grad,
                         const optional<DenseTensor>& filter_grad_grad,
-                        const std::vector<int>& strides_t,
-                        const std::vector<int>& paddings_t,
+                        const std::vector<int>& strides,
+                        const std::vector<int>& paddings,
                         const std::string& padding_algorithm,
-                        const std::vector<int>& dilations_t,
+                        const std::vector<int>& dilations,
                         int groups,
                         const std::string& data_format,
                         DenseTensor* input_grad,
@@ -283,9 +283,8 @@ void ConvGradGradKernel(const Context& dev_ctx,
 
   if (!ddY && !dW && !dX) return;
 
-  const std::vector<int> strides = strides_t;
-  std::vector<int> paddings = paddings_t;
-  std::vector<int> dilations = dilations_t;
+  std::vector<int> paddings_ = paddings;
+  std::vector<int> dilations_ = dilations;
 
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
 
@@ -319,14 +318,13 @@ void ConvGradGradKernel(const Context& dev_ctx,
 
   DDim in_data_dims = slice_ddim(in_dims, 2, in_dims.size());
   DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
-      &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
+      &paddings_, &dilations_, padding_algorithm, in_data_dims, strides, ksize);
 
   const int64_t batch_size = transformed_X.dims()[0];
-  std::vector<int64_t> filter_shape_vec(common::vectorize(W.dims()));
-  std::vector<int64_t> output_shape_vec(
-      common::vectorize(transformed_dY.dims()));
+  std::vector<int64_t> filter_shape_vec(vectorize(W.dims()));
+  std::vector<int64_t> output_shape_vec(vectorize(transformed_dY.dims()));
 
   size_t data_dim = filter_shape_vec.size() - 2;
   std::vector<int64_t> col_shape_vec(1 + 2 * data_dim);
@@ -336,7 +334,7 @@ void ConvGradGradKernel(const Context& dev_ctx,
     col_shape_vec[j + 1] = filter_shape_vec[j + 2];
     col_shape_vec[j + data_dim + 1] = output_shape_vec[j + 2];
   }
-  DDim col_shape(common::make_ddim(col_shape_vec));
+  DDim col_shape(make_ddim(col_shape_vec));
   // col_matrix_shape [in_channel/group * kh * kw, oh * ow]
   DDim col_matrix_shape = flatten_to_2d(col_shape, data_dim + 1);
   // input_shape [Cin, H, W]
@@ -353,7 +351,7 @@ void ConvGradGradKernel(const Context& dev_ctx,
   int64_t in_step = transformed_X.dims()[1] / groups;
   int64_t out_step = transformed_dY.dims()[1] / groups;
 
-  bool is_expand = IsExpand(filter_shape_vec, strides, paddings, dilations);
+  bool is_expand = IsExpand(filter_shape_vec, strides, paddings_, dilations_);
   DenseTensor col;
   DenseTensor col_matrix;
   if (is_expand) {
@@ -370,7 +368,7 @@ void ConvGradGradKernel(const Context& dev_ctx,
   // dx = ddw * dy  ==> dx(N, Cin, H, W), ddw(Cout, Cin, kh, kw), dy(N, Cout,
   // oH, oW)
   if (dX && ddW_in) {
-    Tensor ddW;
+    DenseTensor ddW;
     ddW.ShareDataWith(*ddW_in).Resize(filter_matrix_shape);
     dev_ctx.template Alloc<T>(dX);
 
@@ -409,13 +407,13 @@ void ConvGradGradKernel(const Context& dev_ctx,
         if (is_expand && data_dim == 2U) {
           col2im(dev_ctx,
                  col,
-                 dilations,
+                 dilations_,
                  strides,
                  std::vector<int>{
-                     paddings[0], paddings[2], paddings[1], paddings[3]},
+                     paddings_[0], paddings_[2], paddings_[1], paddings_[3]},
                  &dx_slice);
         } else if (is_expand && data_dim == 3U) {
-          col2vol(dev_ctx, col, dilations, strides, paddings, &dx_slice);
+          col2vol(dev_ctx, col, dilations_, strides, paddings_, &dx_slice);
         }
       }
     }
@@ -437,7 +435,8 @@ void ConvGradGradKernel(const Context& dev_ctx,
     for (int i = 0; i < batch_size; ++i) {
       DenseTensor dy_batch =
           transformed_dY.Slice(i, i + 1).Resize(output_matrix_shape);
-      Tensor ddx_batch = transformed_ddX.Slice(i, i + 1).Resize(input_shape);
+      DenseTensor ddx_batch =
+          transformed_ddX.Slice(i, i + 1).Resize(input_shape);
       for (int g = 0; g < groups; ++g) {
         // im2col
         DenseTensor dy_slice = dy_batch.Slice(g * out_step, (g + 1) * out_step);
@@ -449,13 +448,13 @@ void ConvGradGradKernel(const Context& dev_ctx,
         } else if (data_dim == 2U) {
           im2col(dev_ctx,
                  ddx_slice,
-                 dilations,
+                 dilations_,
                  strides,
                  std::vector<int>{
-                     paddings[0], paddings[2], paddings[1], paddings[3]},
+                     paddings_[0], paddings_[2], paddings_[1], paddings_[3]},
                  &col);
         } else if (data_dim == 3U) {
-          vol2col(dev_ctx, ddx_slice, dilations, strides, paddings, &col);
+          vol2col(dev_ctx, ddx_slice, dilations_, strides, paddings_, &col);
         }
 
         DenseTensor dw_slice = dW_arr.Slice(g * out_step, (g + 1) * out_step);
@@ -501,13 +500,13 @@ void ConvGradGradKernel(const Context& dev_ctx,
           } else if (data_dim == 2U) {
             im2col(dev_ctx,
                    ddx_slice,
-                   dilations,
+                   dilations_,
                    strides,
                    std::vector<int>{
-                       paddings[0], paddings[2], paddings[1], paddings[3]},
+                       paddings_[0], paddings_[2], paddings_[1], paddings_[3]},
                    &col);
           } else if (data_dim == 3U) {
-            vol2col(dev_ctx, ddx_slice, dilations, strides, paddings, &col);
+            vol2col(dev_ctx, ddx_slice, dilations_, strides, paddings_, &col);
           }
           DenseTensor w_slice = W.Slice(g * out_step, (g + 1) * out_step);
           blas.MatMul(
@@ -528,13 +527,13 @@ void ConvGradGradKernel(const Context& dev_ctx,
           } else if (data_dim == 2U) {
             im2col(dev_ctx,
                    x_slice,
-                   dilations,
+                   dilations_,
                    strides,
                    std::vector<int>{
-                       paddings[0], paddings[2], paddings[1], paddings[3]},
+                       paddings_[0], paddings_[2], paddings_[1], paddings_[3]},
                    &col);
           } else if (data_dim == 3U) {
-            vol2col(dev_ctx, x_slice, dilations, strides, paddings, &col);
+            vol2col(dev_ctx, x_slice, dilations_, strides, paddings_, &col);
           }
 
           // gemm

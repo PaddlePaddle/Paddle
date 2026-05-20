@@ -113,6 +113,7 @@ def flatten_state_dict(state_dict):
     mapping = {}
 
     def _flatten(key, value):
+        nonlocal _flatten
         if isinstance(value, dict):
             for k, v in value.items():
                 assert isinstance(k, str), f"The key should be str, but is {k}"
@@ -127,6 +128,7 @@ def flatten_state_dict(state_dict):
             )
 
     _flatten((), state_dict)
+    del _flatten  # force python gc of recursive closure
 
     return flatten_state_dict, mapping
 
@@ -487,6 +489,7 @@ def create_hf_ckpt_metadata(
         'F32': 'float32',
         'F64': 'float64',
         'BF16': 'bfloat16',
+        'I64': 'int64',
     }
 
     use_dist = paddle.distributed.get_world_size() > 1
@@ -739,3 +742,14 @@ def check_resumable_locally(
         return all(global_local_loads)
     else:
         return local_load
+
+
+def need_transpose(postprocess_list):
+    if postprocess_list is None:
+        return False
+
+    for pp in postprocess_list:
+        if "[" in pp:
+            return True
+    else:
+        return False

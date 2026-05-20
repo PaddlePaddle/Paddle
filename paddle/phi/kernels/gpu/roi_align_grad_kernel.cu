@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/roi_align_grad_kernel.h"
 
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
@@ -155,11 +156,10 @@ __global__ void GPURoiAlignBackward(const IndexType nthreads,
         T diff3 = out_grad_this_bin * w3 / count;
         T diff4 = out_grad_this_bin * w4 / count;
         if (x_low >= 0 && x_high >= 0 && y_low >= 0 && y_high >= 0) {
-          phi::CudaAtomicAdd(offset_input_grad + y_low * width + x_low, diff1);
-          phi::CudaAtomicAdd(offset_input_grad + y_low * width + x_high, diff2);
-          phi::CudaAtomicAdd(offset_input_grad + y_high * width + x_low, diff3);
-          phi::CudaAtomicAdd(offset_input_grad + y_high * width + x_high,
-                             diff4);
+          CudaAtomicAdd(offset_input_grad + y_low * width + x_low, diff1);
+          CudaAtomicAdd(offset_input_grad + y_low * width + x_high, diff2);
+          CudaAtomicAdd(offset_input_grad + y_high * width + x_low, diff3);
+          CudaAtomicAdd(offset_input_grad + y_high * width + x_high, diff4);
         }
       }
     }
@@ -207,7 +207,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
   auto gplace = dev_ctx.GetPlace();
   if (boxes_num) {
     int64_t boxes_batch_size = boxes_num->numel();
-    if (boxes_num->dtype() == phi::DataType::INT64) {
+    if (boxes_num->dtype() == DataType::INT64) {
       std::vector<int64_t> boxes_num_list(boxes_batch_size);
       memory_utils::Copy(cplace,
                          boxes_num_list.data(),
@@ -222,7 +222,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
         }
         start += boxes_num_list[n];
       }
-    } else if (boxes_num->dtype() == phi::DataType::INT32) {
+    } else if (boxes_num->dtype() == DataType::INT32) {
       std::vector<int> boxes_num_list(boxes_batch_size);
       memory_utils::Copy(cplace,
                          boxes_num_list.data(),
@@ -247,14 +247,21 @@ void RoiAlignGradKernel(const Context& dev_ctx,
       }
     }
   }
-  auto roi_ptr = phi::memory_utils::Alloc(
-      dev_ctx.GetPlace(),
-      box_batch_id_list.numel() * sizeof(int),
-      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  auto roi_ptr =
+      memory_utils::Alloc(dev_ctx.GetPlace(),
+                          box_batch_id_list.numel() * sizeof(int),
+                          Stream(reinterpret_cast<StreamId>(dev_ctx.stream())));
   int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
   int64_t bytes = box_batch_id_list.numel() * sizeof(int);
-  memory_utils::Copy(
-      gplace, roi_id_data, cplace, box_batch_size, bytes, dev_ctx.stream());
+  const int* stable_box_batch_size =
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          box_batch_size, static_cast<size_t>(bytes / sizeof(int)));
+  memory_utils::Copy(gplace,
+                     roi_id_data,
+                     cplace,
+                     stable_box_batch_size,
+                     bytes,
+                     dev_ctx.stream());
   dev_ctx.template Alloc<T>(dx);
 
   funcs::SetConstant<Context, T> set_zero;

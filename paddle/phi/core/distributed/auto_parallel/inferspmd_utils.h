@@ -39,13 +39,13 @@ class PADDLE_API InferSpmdContext {
  public:
   InferSpmdContext() = default;
   InferSpmdContext(
-      paddle::small_vector<DistMetaTensor, phi::kInputSmallVectorSize> inputs,
-      paddle::small_vector<Attribute, phi::kAttrSmallVectorSize> attrs);
+      paddle::small_vector<DistMetaTensor, kInputSmallVectorSize> inputs,
+      paddle::small_vector<Attribute, kAttrSmallVectorSize> attrs);
 
   void EmplaceBackInput(DistMetaTensor input);
   void EmplaceBackAttr(Attribute attr);
   void EmplaceBackInputs(
-      paddle::small_vector<DistMetaTensor, phi::kInputSmallVectorSize> inputs);
+      paddle::small_vector<DistMetaTensor, kInputSmallVectorSize> inputs);
 
   const DistMetaTensor& InputAt(size_t idx) const;
 
@@ -60,13 +60,12 @@ class PADDLE_API InferSpmdContext {
 
  private:
   // Now we only need `inputs`, for backward, the `output` is passed as input
-  paddle::small_vector<DistMetaTensor, phi::kInputSmallVectorSize> inputs_;
+  paddle::small_vector<DistMetaTensor, kInputSmallVectorSize> inputs_;
   // Because the attribute arguments of dygraph do not have `attr name`,
   // so we use vector instead of map
-  paddle::small_vector<Attribute, phi::kAttrSmallVectorSize> attrs_;
+  paddle::small_vector<Attribute, kAttrSmallVectorSize> attrs_;
   // for vector arguments
-  paddle::small_vector<std::pair<int, int>, phi::kInputSmallVectorSize>
-      input_range_;
+  paddle::small_vector<std::pair<int, int>, kInputSmallVectorSize> input_range_;
 };
 
 using InferSpmdFn = SpmdInfo (*)(const InferSpmdContext&);
@@ -177,6 +176,7 @@ struct InferSpmdFnImpl<Return (*)(Args...), infer_spmd_fn> {
   PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_ATTRIBUTE(bool);
   PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_ATTRIBUTE(int);
   PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_ATTRIBUTE(float);
+  PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_ATTRIBUTE(double);
   PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_ATTRIBUTE(int64_t);
   PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_ATTRIBUTE(DataType);
   PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_CONST_ATTRIBUTE_REF(std::vector<int>);

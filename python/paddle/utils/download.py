@@ -83,7 +83,7 @@ def get_weights_path_from_url(url: str, md5sum: str | None = None) -> str:
         str: a local path to save downloaded weights.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> from paddle.utils.download import get_weights_path_from_url
 
@@ -360,7 +360,7 @@ def _safe_extract_zip(zip, path, members=None):
     for member in members_to_check:
         if not _safe_extract_member(member, path, 'zip'):
             raise ValueError(
-                f"Attempted path traversal in tar file: {member.name}"
+                f"Attempted path traversal in zip file: {member.filename}"
             )
     zip.extractall(path, members=members_to_check)
 

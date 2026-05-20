@@ -47,12 +47,12 @@ class CudnnConvDescManager {
   }
 
   struct CudnnCacheInfo {
-    phi::backends::gpu::TensorDescriptor* x_desc{nullptr};
-    phi::backends::gpu::FilterDescriptor* w_desc{nullptr};
-    phi::backends::gpu::TensorDescriptor* b_desc{nullptr};
-    phi::backends::gpu::TensorDescriptor* o_desc{nullptr};
-    phi::backends::gpu::ConvolutionDescriptor* conv_desc{nullptr};
-    phi::backends::gpu::ActivationDescriptor* act_desc{nullptr};
+    backends::gpu::TensorDescriptor* x_desc{nullptr};
+    backends::gpu::FilterDescriptor* w_desc{nullptr};
+    backends::gpu::TensorDescriptor* b_desc{nullptr};
+    backends::gpu::TensorDescriptor* o_desc{nullptr};
+    backends::gpu::ConvolutionDescriptor* conv_desc{nullptr};
+    backends::gpu::ActivationDescriptor* act_desc{nullptr};
     size_t workspace_size;
     cudnnConvolutionFwdAlgo_t algo;
 
@@ -63,12 +63,12 @@ class CudnnConvDescManager {
     bool is_sys_pad;
 
     // TODO(wilber): The destruction of cudnn descriptor depends on the
-    // phi::dynload::cudnn singleton, but when the process exits, the singleton
+    // dynload::cudnn singleton, but when the process exits, the singleton
     // destruction order cannot be determined.
-    // After testing, it is found that the phi::dynload::cudnn related singleton
+    // After testing, it is found that the dynload::cudnn related singleton
     // on Windows is destructed first, causing the descriptor to be destructed
     // and failed, while the descriptor on Linux is destructed first, and the
-    // phi::dynload::cudnn singleton is destructed later, so that it is correct.
+    // dynload::cudnn singleton is destructed later, so that it is correct.
     // To circumvent this problem, we rely entirely on freeing resources when
     // the process exits.
 
@@ -222,7 +222,7 @@ class CudnnConvDescManager {
       phi::UpdatePaddingAndDilation(&paddings,
                                     &dilations,
                                     padding_algorithm,
-                                    common::make_ddim(in_data_dims),
+                                    make_ddim(in_data_dims),
                                     strides,
                                     ksize);
 
@@ -283,42 +283,42 @@ class CudnnConvDescManager {
   }
 
  private:
-  phi::backends::gpu::TensorDescriptor* GetTensorDescInfo(
+  backends::gpu::TensorDescriptor* GetTensorDescInfo(
       const std::vector<int>& input_dims,
       phi::DataType input_dtype,
       cudnnTensorFormat_t input_format) {
-    auto* desc = new phi::backends::gpu::TensorDescriptor();
+    auto* desc = new backends::gpu::TensorDescriptor();
     desc->set(
         input_dims, input_format, backends::gpu::ToCudnnDataType(input_dtype));
     return desc;
   }
 
-  phi::backends::gpu::FilterDescriptor* GetFilterDescInfo(
+  backends::gpu::FilterDescriptor* GetFilterDescInfo(
       const std::vector<int>& input_dims,
       phi::DataType input_dtype,
       cudnnTensorFormat_t input_format) {
-    auto* desc = new phi::backends::gpu::FilterDescriptor();
+    auto* desc = new backends::gpu::FilterDescriptor();
     desc->set(
         input_dims, input_format, backends::gpu::ToCudnnDataType(input_dtype));
     return desc;
   }
 
-  phi::backends::gpu::ConvolutionDescriptor* GetConvDescInfo(
+  backends::gpu::ConvolutionDescriptor* GetConvDescInfo(
       const std::vector<int>& paddings,
       const std::vector<int>& strides,
       const std::vector<int>& dilations,
       int groups,
       cudnnDataType_t dtype) {
-    auto* desc = new phi::backends::gpu::ConvolutionDescriptor();
+    auto* desc = new backends::gpu::ConvolutionDescriptor();
     desc->set(
         dtype, paddings, strides, dilations, phi::AllowTF32Cudnn(), groups);
     return desc;
   }
 
-  phi::backends::gpu::ActivationDescriptor* GetActivationDescInfo(
+  backends::gpu::ActivationDescriptor* GetActivationDescInfo(
       const std::string& act,
       double value_max = std::numeric_limits<double>::max()) {
-    auto* desc = new phi::backends::gpu::ActivationDescriptor();
+    auto* desc = new backends::gpu::ActivationDescriptor();
     cudnnActivationMode_t mode;
     double relu_ceiling = 0.0;
     if (act == "identity") {
@@ -401,8 +401,8 @@ void FusedConv2dAddActKernel(const Context& dev_ctx,
       paddings_t,
       dilations_t,
       padding_algorithm,
-      common::vectorize<int>(input.dims()),
-      common::vectorize<int>(filter.dims()),
+      vectorize<int>(input.dims()),
+      vectorize<int>(filter.dims()),
       strides,
       compute_format);
 
@@ -410,7 +410,7 @@ void FusedConv2dAddActKernel(const Context& dev_ctx,
   const int input_rank = input.dims().size();
   auto unsys_pad_process = [&](const std::vector<int>& new_input_shape_vec,
                                const std::vector<int>& input_pad) {
-    DDim new_input_shape(common::make_ddim(new_input_shape_vec));
+    DDim new_input_shape(make_ddim(new_input_shape_vec));
     transformed_input.Resize(new_input_shape);
     dev_ctx.template Alloc<T>(&transformed_input);
 
@@ -470,7 +470,7 @@ void FusedConv2dAddActKernel(const Context& dev_ctx,
       std::unique_ptr<cudnnConvolutionFwdAlgoPerf_t[]> perf_results(
           new cudnnConvolutionFwdAlgoPerf_t[phi::kNUM_CUDNN_FWD_ALGS]);
       PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::cudnnGetConvolutionForwardAlgorithm_v7(
+          dynload::cudnnGetConvolutionForwardAlgorithm_v7(
               handle,
               x_desc,
               w_desc,
@@ -481,32 +481,31 @@ void FusedConv2dAddActKernel(const Context& dev_ctx,
               perf_results.get()));
       *cudnn_algo = (perf_results.get())[best_algo_idx].algo;
 #else
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::cudnnGetConvolutionForwardAlgorithm(
-              handle,
-              x_desc,
-              w_desc,
-              cudnn_conv_desc,
-              o_desc,
-              CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
-              workspace_size_limit,
-              cudnn_algo));
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnGetConvolutionForwardAlgorithm(
+          handle,
+          x_desc,
+          w_desc,
+          cudnn_conv_desc,
+          o_desc,
+          CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
+          workspace_size_limit,
+          cudnn_algo));
 #endif
       PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::cudnnGetConvolutionForwardWorkspaceSize(handle,
-                                                                x_desc,
-                                                                w_desc,
-                                                                cudnn_conv_desc,
-                                                                o_desc,
-                                                                *cudnn_algo,
-                                                                wks_bytes));
+          dynload::cudnnGetConvolutionForwardWorkspaceSize(handle,
+                                                           x_desc,
+                                                           w_desc,
+                                                           cudnn_conv_desc,
+                                                           o_desc,
+                                                           *cudnn_algo,
+                                                           wks_bytes));
     } else {
       std::array<cudnnConvolutionFwdAlgoPerf_t, phi::kNUM_CUDNN_FWD_ALGS>
           fwd_perf_stat;
       int returned_algo_count;
       auto cudnn_find_func = [&](void* cudnn_workspace) {
         PADDLE_ENFORCE_GPU_SUCCESS(
-            phi::dynload::cudnnFindConvolutionForwardAlgorithmEx(
+            dynload::cudnnFindConvolutionForwardAlgorithmEx(
                 handle,
                 x_desc,
                 transformed_input.data(),
@@ -525,7 +524,7 @@ void FusedConv2dAddActKernel(const Context& dev_ctx,
       *cudnn_algo = fwd_perf_stat[0].algo;
 
       PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::cudnnGetConvolutionForwardWorkspaceSize(
+          dynload::cudnnGetConvolutionForwardWorkspaceSize(
               handle,
               x_desc,
               w_desc,
@@ -537,16 +536,16 @@ void FusedConv2dAddActKernel(const Context& dev_ctx,
   };
 
   auto cudnn_cache_info = CudnnConvDescManager::Instance()->GetCudnnCacheInfo(
-      common::vectorize<int>(transformed_input.dims()),
-      common::vectorize<int>(filter.dims()),
+      vectorize<int>(transformed_input.dims()),
+      vectorize<int>(filter.dims()),
       b_dims,
-      common::vectorize<int>(output->dims()),
+      vectorize<int>(output->dims()),
       conv_attr_cache->paddings,
       strides,
       conv_attr_cache->dilations,
       transformed_input.dtype(),
       groups,
-      phi::backends::gpu::CudnnDataType<T>::type,
+      backends::gpu::CudnnDataType<T>::type,
       compute_format,
       search_func,
       activation);
@@ -569,22 +568,22 @@ void FusedConv2dAddActKernel(const Context& dev_ctx,
     ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
     auto cudnn_func = [&](void* cudnn_workspace) {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::cudnnConvolutionForward(handle,
-                                                &alpha,
-                                                x_desc,
-                                                transformed_input.data(),
-                                                w_desc,
-                                                filter.data(),
-                                                cudnn_conv_desc,
-                                                algo,
-                                                cudnn_workspace,
-                                                workspace_size,
-                                                &beta,
-                                                o_desc,
-                                                output->data()));
+          dynload::cudnnConvolutionForward(handle,
+                                           &alpha,
+                                           x_desc,
+                                           transformed_input.data(),
+                                           w_desc,
+                                           filter.data(),
+                                           cudnn_conv_desc,
+                                           algo,
+                                           cudnn_workspace,
+                                           workspace_size,
+                                           &beta,
+                                           o_desc,
+                                           output->data()));
     };
     workspace_handle.RunFunc(cudnn_func, workspace_size);
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnAddTensor(
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnAddTensor(
         handle, &alpha, b_desc, bias.data(), &alpha, o_desc, output->data()));
   } else {
     // Only the CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_​PRECOMP_GEMM algo is
@@ -596,26 +595,25 @@ void FusedConv2dAddActKernel(const Context& dev_ctx,
     ScalingParamType<T> alpha = 1.0f;
     ScalingParamType<T> beta = residual.get_ptr() ? 1.0f : 0.0f;
     auto cudnn_func = [&](void* cudnn_workspace) {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::cudnnConvolutionBiasActivationForward(
-              handle,
-              &alpha,
-              x_desc,
-              transformed_input.data(),
-              w_desc,
-              filter.data(),
-              cudnn_conv_desc,
-              algo,
-              cudnn_workspace,
-              workspace_size,
-              &beta,
-              o_desc,
-              residual.get_ptr() ? residual->data() : output->data(),
-              b_desc,
-              bias.data(),
-              act_desc,
-              o_desc,
-              output->data()));
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnConvolutionBiasActivationForward(
+          handle,
+          &alpha,
+          x_desc,
+          transformed_input.data(),
+          w_desc,
+          filter.data(),
+          cudnn_conv_desc,
+          algo,
+          cudnn_workspace,
+          workspace_size,
+          &beta,
+          o_desc,
+          residual.get_ptr() ? residual->data() : output->data(),
+          b_desc,
+          bias.data(),
+          act_desc,
+          o_desc,
+          output->data()));
     };
     workspace_handle.RunFunc(cudnn_func, workspace_size);
   }

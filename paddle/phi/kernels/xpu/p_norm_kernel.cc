@@ -42,7 +42,7 @@ inline void GetDims(const DDim& dim,
 template <typename T, typename Context>
 void PNormKernel(const Context& dev_ctx,
                  const DenseTensor& x,
-                 float porder,
+                 double porder,
                  int axis,
                  float epsilon,
                  bool keepdim,
@@ -133,11 +133,13 @@ void PNormKernel(const Context& dev_ctx,
 
   } else {
     DenseTensor porder_tensor;
-    DDim pdim = common::make_ddim({1});
+    DDim pdim = make_ddim({1});
     porder_tensor.Resize(pdim);
     dev_ctx.template Alloc<T>(&porder_tensor);
-    r = xpu::constant(
-        dev_ctx.x_context(), porder_tensor.data<float>(), 1, porder);
+    r = xpu::constant(dev_ctx.x_context(),
+                      porder_tensor.data<float>(),
+                      1,
+                      static_cast<float>(porder));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
     std::vector<int64_t> p_dim(1, 1);
 
@@ -162,8 +164,10 @@ void PNormKernel(const Context& dev_ctx,
                         r_dim);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
 
-    r = xpu::constant(
-        dev_ctx.x_context(), porder_tensor.data<float>(), 1, 1.0f / porder);
+    r = xpu::constant(dev_ctx.x_context(),
+                      porder_tensor.data<float>(),
+                      1,
+                      static_cast<float>(1.0 / porder));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
 
     r = xpu::broadcast_pow(

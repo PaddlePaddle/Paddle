@@ -9,6 +9,10 @@ on:
       can-skip:
         type: string
         required: false
+      build-can-skip:
+        type: string
+        required: false
+        default: 'false'
 
 env:
   PR_ID: ${{ github.event.pull_request.number }}
@@ -27,11 +31,40 @@ defaults:
     shell: bash
 
 jobs:
+  check-bypass-whl:
+    name: Check bypass (ce-whl)
+    if: ${{ inputs.build-can-skip != 'true' }}
+    uses: ./.github/workflows/check-bypass.yml
+    with:
+      workflow-name: ce-whl
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  check-bypass-infer:
+    name: Check bypass (ce-infer)
+    if: ${{ inputs.build-can-skip != 'true' }}
+    uses: ./.github/workflows/check-bypass.yml
+    with:
+      workflow-name: ce-infer
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  check-bypass-test:
+    name: Check bypass (ce-test)
+    if: ${{ inputs.build-can-skip != 'true' }}
+    uses: ./.github/workflows/check-bypass.yml
+    with:
+      workflow-name: ce-test
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
   whl:
     name: Whl
-    if: ${{ inputs.can-skip != 'true' }}
+    if: ${{ inputs.can-skip != 'true' && needs.check-bypass-whl.outputs.can-skip != 'true' }}
+    needs: [check-bypass-whl]
     runs-on:
       group: GZ_BD-CPU
+    timeout-minutes: 120
     env:
       TASK: paddle-CI-${{ github.event.pull_request.number }}-CE-Framework-whl
     steps:
@@ -63,6 +96,7 @@ jobs:
       - name: Download Paddle and PaddleTest
         env:
           work_dir: ${{ github.workspace }}
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
@@ -75,15 +109,7 @@ jobs:
           rm build.tar.gz
           '
 
-      - name: Check bypass
-        id: check-bypass
-        uses: ./.github/actions/check-bypass
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          workflow-name: ce-whl
-
       - name: Check whl size
-        if: steps.check-bypass.outputs.can-skip != 'true'
         env:
           PADDLE_ROOT: ${{ github.workspace }}
           GITHUB_TOKEN: ${{ github.token }}
@@ -101,9 +127,11 @@ jobs:
 
   infer:
     name: Infer
-    if: ${{ inputs.can-skip != 'true' }}
+    if: ${{ inputs.can-skip != 'true' && needs.check-bypass-infer.outputs.can-skip != 'true' }}
+    needs: [check-bypass-infer]
     runs-on:
       group: BD_BJ-V100
+    timeout-minutes: 120
     env:
       TASK: paddle-CI-${{ github.event.pull_request.number }}-CE-Framework-infer
     steps:
@@ -138,6 +166,7 @@ jobs:
       - name: Download Paddle and PaddleTest
         env:
           work_dir: ${{ github.workspace }}
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
@@ -156,15 +185,7 @@ jobs:
           tar -zvxf PaddleTest.tar.gz 1>/dev/null 2>&1
           '
 
-      - name: Check bypass
-        id: check-bypass
-        uses: ./.github/actions/check-bypass
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          workflow-name: ce-infer
-
       - name: Install paddle and dependencies
-        if: steps.check-bypass.outputs.can-skip != 'true'
         env:
           work_dir: ${{ github.workspace }}
         run: |
@@ -181,7 +202,6 @@ jobs:
           '
 
       - name: Check
-        if: steps.check-bypass.outputs.can-skip != 'true'
         env:
           work_dir: ${{ github.workspace }}
         run: |
@@ -200,9 +220,11 @@ jobs:
 
   test:
     name: Test
-    if: ${{ inputs.can-skip != 'true' }}
+    if: ${{ inputs.can-skip != 'true' && needs.check-bypass-test.outputs.can-skip != 'true' }}
+    needs: [check-bypass-test]
     runs-on:
       group: BD_BJ-V100
+    timeout-minutes: 120
     env:
       TASK: paddle-CI-${{ github.event.pull_request.number }}-CE-Framework-test
     steps:
@@ -237,6 +259,7 @@ jobs:
       - name: Download Paddle and PaddleTest
         env:
           work_dir: ${{ github.workspace }}
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
@@ -255,15 +278,7 @@ jobs:
           tar -zvxf PaddleTest.tar.gz 1>/dev/null 2>&1
           '
 
-      - name: Check bypass
-        id: check-bypass
-        uses: ./.github/actions/check-bypass
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          workflow-name: ce-test
-
       - name: Install paddle and dependencies
-        if: steps.check-bypass.outputs.can-skip != 'true'
         env:
           work_dir: ${{ github.workspace }}
         run: |
@@ -279,7 +294,6 @@ jobs:
           '
 
       - name: Check
-        if: steps.check-bypass.outputs.can-skip != 'true'
         env:
           work_dir: ${{ github.workspace }}
         run: |

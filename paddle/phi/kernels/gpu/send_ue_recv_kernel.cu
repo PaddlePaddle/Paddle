@@ -55,12 +55,21 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& dev_ctx,
   } else {
     dims_[0] = out_size;
   }
-  out->Resize(common::make_ddim(dims_));
+  out->Resize(dims_);
   for (size_t i = 0; i < dims_.size(); i++) {
     memset_size *= dims_[i];
   }
 
-  dev_ctx.template Alloc<T>(out);
+  // For float16/bfloat16 with reduce_op MIN/MAX, CudaAtomicMin/Max uses 4-byte
+  // atomicCAS on 2-byte values. When the total element count is odd, the last
+  // element's 4-byte CAS can read 2 bytes past the allocation boundary.
+  // Request extra padding to avoid this out-of-bounds access.
+  size_t requested_size = 0;
+  if (sizeof(T) == 2 && (memset_size % 2 != 0) &&
+      (reduce_op == "MAX" || reduce_op == "MIN")) {
+    requested_size = (memset_size + 1) * sizeof(T);
+  }
+  dev_ctx.template Alloc<T>(out, requested_size);
   T* out_data = out->data<T>();
   const size_t& memset_bytes = memset_size * sizeof(T);
   funcs::SetConstant<Context, T> constant_functor;
@@ -75,7 +84,7 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& dev_ctx,
 
   if (index_size == 0) return;
 
-  const auto& bcast_info = phi::CalcBCastInfo(x.dims(), e.dims());
+  const auto& bcast_info = CalcBCastInfo(x.dims(), e.dims());
 
   const T* x_data = x.data<T>();
   const T* e_data = e.data<T>();
@@ -300,13 +309,13 @@ void SendUERecvKernel(const Context& dev_ctx,
           out_size_data[0] <= 0 ? x.dims()[0] : out_size_data[0];
       dst_count->Resize({input_size});
     }
-    out->Resize(common::make_ddim(dims_));
+    out->Resize(dims_);
     Full<T, Context>(dev_ctx, out->dims(), 0, out);
     Full<int, Context>(dev_ctx, dst_count->dims(), 0, dst_count);
     return;
   }
 
-  if (index_type == phi::DataType::INT32) {
+  if (index_type == DataType::INT32) {
     GraphSendUERecvOpCUDAKernelLaunchHelper<Context, T, int32_t>(
         dev_ctx,
         x,
@@ -318,7 +327,7 @@ void SendUERecvKernel(const Context& dev_ctx,
         out_size_data[0],
         out,
         dst_count);
-  } else if (index_type == phi::DataType::INT64) {
+  } else if (index_type == DataType::INT64) {
     GraphSendUERecvOpCUDAKernelLaunchHelper<Context, T, int64_t>(
         dev_ctx,
         x,

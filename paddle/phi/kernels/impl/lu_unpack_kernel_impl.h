@@ -84,7 +84,7 @@ void LUUnpackKernel(const Context& dev_ctx,
 
     PADDLE_ENFORCE_EQ(
         pivots.dtype(),
-        phi::DataType::INT32,
+        DataType::INT32,
         common::errors::InvalidArgument(
             "The pivots of lu_unpack must be of type int32, but received [%s].",
             pivots.dtype()));

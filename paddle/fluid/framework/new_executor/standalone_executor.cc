@@ -35,7 +35,7 @@ COMMON_DECLARE_bool(pir_apply_inplace_pass);
 COMMON_DECLARE_string(enable_custom_engine);
 
 namespace paddle::framework {
-StandaloneExecutor::StandaloneExecutor(const phi::Place& place,
+StandaloneExecutor::StandaloneExecutor(const Place& place,
                                        const interpreter::Plan& plan,
                                        Scope* scope)
     : place_(place),
@@ -137,7 +137,7 @@ StandaloneExecutor::StandaloneExecutor(const phi::Place& place,
       }
 #endif
       auto kernel_program =
-          paddle::dialect::PdOpLowerToKernelPass(base_program.get(), place);
+          pir::PdOpLowerToKernelPass(base_program.get(), place);
       std::shared_ptr<pir::Program> shared_program = std::move(kernel_program);
       plan_.SetIrProgram("job_" + std::to_string(job_idx), shared_program);
 

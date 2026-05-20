@@ -22,13 +22,6 @@
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
 #include "paddle/utils/none.h"
 
-inline int getSMVersion() {
-  const int device = phi::backends::gpu::GetCurrentDeviceId();
-  const phi::gpuDeviceProp prop =
-      phi::backends::gpu::GetDeviceProperties(device);
-  return prop.major * 10 + prop.minor;
-}
-
 #if defined(__CUDACC__) && CUDA_VERSION >= 11000
 #define CUDA_BFLOAT16_AVAILABLE
 #include <cuda_bf16.h>
@@ -36,6 +29,12 @@ inline int getSMVersion() {
 
 namespace phi {
 namespace fusion {
+
+inline int getSMVersion() {
+  const int device = backends::gpu::GetCurrentDeviceId();
+  const phi::gpuDeviceProp prop = backends::gpu::GetDeviceProperties(device);
+  return prop.major * 10 + prop.minor;
+}
 
 int GetMaxLen(const GPUContext& dev_ctx,
               const DenseTensor& seq_lens_tensor,
@@ -276,13 +275,13 @@ __global__ void DequantKernel(T* output,
       VecSize;
   int64_t col_id = idx % n;
 
-  phi::AlignedVector<int32_t, VecSize> in_vec;
-  phi::AlignedVector<float, VecSize> out_scale_vec;
-  phi::AlignedVector<T, VecSize> out_vec;
+  AlignedVector<int32_t, VecSize> in_vec;
+  AlignedVector<float, VecSize> out_scale_vec;
+  AlignedVector<T, VecSize> out_vec;
 
   for (; idx < numel; idx += stride) {
-    phi::Load<int32_t, VecSize>(input + idx, &in_vec);
-    phi::Load<float, VecSize>(dequant_out_scale_data + col_id, &out_scale_vec);
+    Load<int32_t, VecSize>(input + idx, &in_vec);
+    Load<float, VecSize>(dequant_out_scale_data + col_id, &out_scale_vec);
 
 #pragma unroll
     for (int i = 0; i < VecSize; ++i) {
@@ -290,7 +289,7 @@ __global__ void DequantKernel(T* output,
           static_cast<T>(static_cast<float>(in_vec[i]) * out_scale_vec[i]);
     }
 
-    phi::Store<T, VecSize>(out_vec, output + idx);
+    Store<T, VecSize>(out_vec, output + idx);
   }
 }
 
@@ -391,7 +390,7 @@ void DispatchWithDtype(const Context& dev_ctx,
   int max_dec_len_this_time_data(0);
   if (!max_dec_len_this_time) {
     DenseTensor max_dec_len_tensor;
-    max_dec_len_tensor.Resize({{1}});
+    max_dec_len_tensor.Resize({1});
     auto* max_dec_len_data = dev_ctx.template Alloc<int>(
         &max_dec_len_tensor, max_dec_len_tensor.numel() * sizeof(int));
     max_dec_len_this_time_data =
@@ -409,7 +408,7 @@ void DispatchWithDtype(const Context& dev_ctx,
   int max_enc_len_this_time_data(0);
   if (!max_enc_len_this_time) {
     DenseTensor max_enc_len_tensor;
-    max_enc_len_tensor.Resize({{1}});
+    max_enc_len_tensor.Resize({1});
     auto* max_enc_len_data = dev_ctx.template Alloc<int>(
         &max_enc_len_tensor, max_enc_len_tensor.numel() * sizeof(int));
     max_enc_len_this_time_data =
@@ -427,9 +426,9 @@ void DispatchWithDtype(const Context& dev_ctx,
   DenseTensor qkv_out_decoder;
   if (max_dec_len_this_time_data > 0) {
     if (q_num_head == kv_num_head) {
-      qkv_out_decoder.Resize({{bsz, 3, q_num_head, dim_head}});
+      qkv_out_decoder.Resize({bsz, 3, q_num_head, dim_head});
     } else {
-      qkv_out_decoder.Resize({{bsz, q_num_head + 2 * kv_num_head, dim_head}});
+      qkv_out_decoder.Resize({bsz, q_num_head + 2 * kv_num_head, dim_head});
     }
     auto* qkv_out_decoder_data = dev_ctx.template Alloc<T>(
         &qkv_out_decoder, qkv_out_decoder.numel() * sizeof(T));
@@ -441,25 +440,24 @@ void DispatchWithDtype(const Context& dev_ctx,
   int sm = getSMVersion();
   if (max_enc_len_this_time_data > 0) {
     if (!use_pre_cache && sm >= 80) {
-      unpadding_q.Resize({{token_num, q_num_head, dim_head}});
-      unpadding_k.Resize({{token_num, kv_num_head, dim_head}});
-      unpadding_v.Resize({{token_num, kv_num_head, dim_head}});
+      unpadding_q.Resize({token_num, q_num_head, dim_head});
+      unpadding_k.Resize({token_num, kv_num_head, dim_head});
+      unpadding_v.Resize({token_num, kv_num_head, dim_head});
 
       dev_ctx.template Alloc<T>(&unpadding_q, unpadding_q.numel() * sizeof(T));
       dev_ctx.template Alloc<T>(&unpadding_k, unpadding_k.numel() * sizeof(T));
       dev_ctx.template Alloc<T>(&unpadding_v, unpadding_v.numel() * sizeof(T));
     } else {
-      q_trans.Resize({{bsz, q_num_head, max_enc_len_this_time_data, dim_head}});
-      k_trans.Resize({{bsz,
-                       kv_num_head,
-                       max_enc_len_this_time_data + pre_cache_length,
-                       dim_head}});
-      v_trans.Resize({{bsz,
-                       kv_num_head,
-                       max_enc_len_this_time_data + pre_cache_length,
-                       dim_head}});
-      qktv_out.Resize(
-          {{bsz, q_num_head, max_enc_len_this_time_data, dim_head}});
+      q_trans.Resize({bsz, q_num_head, max_enc_len_this_time_data, dim_head});
+      k_trans.Resize({bsz,
+                      kv_num_head,
+                      max_enc_len_this_time_data + pre_cache_length,
+                      dim_head});
+      v_trans.Resize({bsz,
+                      kv_num_head,
+                      max_enc_len_this_time_data + pre_cache_length,
+                      dim_head});
+      qktv_out.Resize({bsz, q_num_head, max_enc_len_this_time_data, dim_head});
 
       dev_ctx.template Alloc<T>(&q_trans, q_trans.numel() * sizeof(T));
       dev_ctx.template Alloc<T>(&k_trans, k_trans.numel() * sizeof(T));
@@ -648,16 +646,16 @@ void DispatchWithDtype(const Context& dev_ctx,
           &qktv_out);
 #elif defined(PADDLE_WITH_HIP)
       DenseTensor q, k, v, out;
-      q.Resize({{bsz, max_enc_len_this_time_data, q_num_head, dim_head}});
-      k.Resize({{bsz,
-                 max_enc_len_this_time_data + pre_cache_length,
-                 kv_num_head,
-                 dim_head}});
-      v.Resize({{bsz,
-                 max_enc_len_this_time_data + pre_cache_length,
-                 kv_num_head,
-                 dim_head}});
-      out.Resize({{bsz, max_enc_len_this_time_data, q_num_head, dim_head}});
+      q.Resize({bsz, max_enc_len_this_time_data, q_num_head, dim_head});
+      k.Resize({bsz,
+                max_enc_len_this_time_data + pre_cache_length,
+                kv_num_head,
+                dim_head});
+      v.Resize({bsz,
+                max_enc_len_this_time_data + pre_cache_length,
+                kv_num_head,
+                dim_head});
+      out.Resize({bsz, max_enc_len_this_time_data, q_num_head, dim_head});
       dev_ctx.template Alloc<T>(&q, q.numel() * sizeof(T));
       dev_ctx.template Alloc<T>(&k, k.numel() * sizeof(T));
       dev_ctx.template Alloc<T>(&v, v.numel() * sizeof(T));

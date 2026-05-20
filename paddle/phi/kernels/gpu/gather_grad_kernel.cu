@@ -61,7 +61,7 @@ void GatherGradKernel(const Context& dev_ctx,
   if (index.dims().size() != 0) {
     if (index_type == DataType::INT32) {
       DenseTensor index_int64 =
-          phi::Cast<int32_t, Context>(dev_ctx, index, DataType::INT64);
+          Cast<int32_t, Context>(dev_ctx, index, DataType::INT64);
       funcs::GPUScatterAdd<T, int64_t>(
           dev_ctx, out_grad, index_int64, x_grad, axis_v);
     } else if (index_type == DataType::INT64) {

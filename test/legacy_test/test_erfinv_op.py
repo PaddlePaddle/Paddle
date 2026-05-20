@@ -166,5 +166,55 @@ class TestErfinvBF16Op(OpTest):
         self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
 
 
+class TestErfinvOutOfDomainNaN(unittest.TestCase):
+    """|x| > 1 must return NaN to match PyTorch / scipy; +/-1 stays +/-inf.
+
+    Covers issues #78106 / #78107 / #78121.
+    """
+
+    def _run(self, place, dtype):
+        paddle.disable_static(place)
+        try:
+            values = [-1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, np.nan]
+            if dtype == 'bfloat16':
+                # NumPy does not support bfloat16; build with float32 first.
+                x_tensor = paddle.to_tensor(
+                    np.asarray(values, dtype='float32')
+                ).astype('bfloat16')
+                out = paddle.erfinv(x_tensor).astype('float32').numpy()
+            else:
+                x_np = np.asarray(values, dtype=dtype)
+                out = paddle.erfinv(paddle.to_tensor(x_np)).numpy()
+
+            # |x| > 1 -> NaN
+            self.assertTrue(np.isnan(out[0]))  # -1.5
+            self.assertTrue(np.isnan(out[6]))  # +1.5
+            # +/-1 -> +/-inf (not NaN)
+            self.assertTrue(np.isneginf(out[1]))
+            self.assertTrue(np.isposinf(out[5]))
+            # In-domain values stay finite
+            for idx in (2, 3, 4):
+                self.assertTrue(np.isfinite(out[idx]))
+            # NaN input propagates as NaN
+            self.assertTrue(np.isnan(out[7]))
+        finally:
+            paddle.enable_static()
+
+    def test_dygraph_cpu(self):
+        for dtype in ('float32', 'float64'):
+            self._run(paddle.CPUPlace(), dtype)
+
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(),
+        'core is not compiled with CUDA',
+    )
+    def test_dygraph_gpu(self):
+        place = paddle.CUDAPlace(0)
+        for dtype in ('float32', 'float64', 'float16'):
+            self._run(place, dtype)
+        if core.is_bfloat16_supported(place):
+            self._run(place, 'bfloat16')
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -30,8 +30,8 @@ namespace dialect {
 class LayoutTransformationInterface
     : public pir::OpInterfaceBase<LayoutTransformationInterface> {
  public:
-  using PreferLayoutFn = common::DataLayout (*)(pir::Operation*);
-  using RewriteByLayoutFn = void (*)(pir::Operation*, common::DataLayout);
+  using PreferLayoutFn = DataLayout (*)(pir::Operation*);
+  using RewriteByLayoutFn = void (*)(pir::Operation*, DataLayout);
   using RelevantInputsFn = std::vector<pir::Value> (*)(pir::Operation*);
   using RelevantOutputsFn = std::vector<pir::Value> (*)(pir::Operation*);
   using CanBeModifiedFn = bool (*)(pir::Operation*);
@@ -57,12 +57,12 @@ class LayoutTransformationInterface
 
   template <typename ConcreteOp>
   struct Model : public Concept {
-    static common::DataLayout PreferLayoutModel(pir::Operation* op) {
+    static DataLayout PreferLayoutModel(pir::Operation* op) {
       return PreferLayoutImpl<ConcreteOp>(op);
     }
 
     static void RewriteByLayoutModel(pir::Operation* op,
-                                     common::DataLayout new_layout) {
+                                     DataLayout new_layout) {
       RewriteByLayoutImpl<ConcreteOp>(op, new_layout);
     }
 
@@ -89,11 +89,11 @@ class LayoutTransformationInterface
   LayoutTransformationInterface(const pir::Operation* op, Concept* impl)
       : pir::OpInterfaceBase<LayoutTransformationInterface>(op), impl_(impl) {}
 
-  common::DataLayout PreferLayout(pir::Operation* op) {
+  DataLayout PreferLayout(pir::Operation* op) {
     return impl_->prefer_layout(op);
   }
 
-  void RewriteByLayout(pir::Operation* op, common::DataLayout new_layout) {
+  void RewriteByLayout(pir::Operation* op, DataLayout new_layout) {
     impl_->rewrite_by_layout(op, new_layout);
   }
 

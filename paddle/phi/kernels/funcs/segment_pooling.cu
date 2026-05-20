@@ -25,8 +25,6 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-using Tensor = DenseTensor;
-
 template <typename T, typename Index, int DimTileSize>
 __global__ void SegmentSumIdsKernel(const Index* segment_ids,
                                     T* summed_ids,
@@ -61,7 +59,7 @@ __global__ void SegmentSumIdsKernel(const Index* segment_ids,
         }
         if (j > 0) {
           if (last_segment_id == first_segment_id) {
-            phi::CudaAtomicAdd(summed_ids + last_segment_id, sum);
+            CudaAtomicAdd(summed_ids + last_segment_id, sum);
           } else {
             *(summed_ids + last_segment_id) = sum;
           }
@@ -71,7 +69,7 @@ __global__ void SegmentSumIdsKernel(const Index* segment_ids,
       sum += T(1);
       last_segment_id = current_segment_id;
     }
-    phi::CudaAtomicAdd(summed_ids + last_segment_id, sum);
+    CudaAtomicAdd(summed_ids + last_segment_id, sum);
   }
 }
 
@@ -112,8 +110,8 @@ __global__ void SegmentMeanKernel(const Index* segment_ids,
               last_segment_id * inner_dim_size + segment_offset;
 
           if (last_segment_id == first_segment_id) {
-            phi::CudaAtomicAdd(output + output_index,
-                               sum / *(summed_ids + last_segment_id));
+            CudaAtomicAdd(output + output_index,
+                          sum / *(summed_ids + last_segment_id));
           } else {
             *(output + output_index) = sum / *(summed_ids + last_segment_id);
           }
@@ -124,8 +122,7 @@ __global__ void SegmentMeanKernel(const Index* segment_ids,
       last_segment_id = current_segment_id;
     }
     Index output_index = last_segment_id * inner_dim_size + segment_offset;
-    phi::CudaAtomicAdd(output + output_index,
-                       sum / *(summed_ids + last_segment_id));
+    CudaAtomicAdd(output + output_index, sum / *(summed_ids + last_segment_id));
   }
 }
 
@@ -236,7 +233,7 @@ class SumPool {
   DEVICE inline T initial() { return static_cast<T>(0); }
   DEVICE inline void compute(const T& x, T* y) { *y = *y + x; }
   DEVICE inline T atomic(T* address, const T val) {
-    return phi::CudaAtomicAdd(address, val);
+    return CudaAtomicAdd(address, val);
   }
 };
 
@@ -269,7 +266,7 @@ class ArrangeHelper {
 };
 
 template <typename T, typename Index>
-void SegmentPoolCUDAGradFunctor(const phi::GPUContext& dev_ctx,
+void SegmentPoolCUDAGradFunctor(const GPUContext& dev_ctx,
                                 const DenseTensor& input,
                                 const DenseTensor& segment_ids,
                                 const DenseTensor& output,
@@ -318,9 +315,9 @@ __global__ void SimpleDiv(T* x,
 }
 
 template <typename T, typename IndexT>
-class SegmentPoolFunctor<phi::GPUContext, T, IndexT> {
+class SegmentPoolFunctor<GPUContext, T, IndexT> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& segment_ids,
                   DenseTensor* output,
@@ -404,9 +401,9 @@ class SegmentPoolFunctor<phi::GPUContext, T, IndexT> {
 };
 
 template <typename T, typename IndexT>
-class SegmentPoolGradFunctor<phi::GPUContext, T, IndexT> {
+class SegmentPoolGradFunctor<GPUContext, T, IndexT> {
  public:
-  void operator()(const phi::GPUContext& dev_ctx,
+  void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& output,
                   const DenseTensor& out_grad,
@@ -442,8 +439,7 @@ class SegmentPoolGradFunctor<phi::GPUContext, T, IndexT> {
   }
 };
 
-using GPU = phi::GPUContext;
-using float16 = phi::float16;
+using GPU = GPUContext;
 template class SegmentPoolFunctor<GPU, float, int>;
 template class SegmentPoolFunctor<GPU, float, int64_t>;
 template class SegmentPoolFunctor<GPU, double, int>;

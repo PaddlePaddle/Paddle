@@ -784,8 +784,7 @@ struct ReduceExecutor {
   DEVICE MPType InVectorizedThreadReduceImpl(const ScalarT* data) const {
     IndexType end = config.num_inputs;
     MPType value = ident;
-    constexpr int align_bytes =
-        alignof(phi::AlignedVector<ScalarT, kInputVecSize>);
+    constexpr int align_bytes = alignof(AlignedVector<ScalarT, kInputVecSize>);
 
     constexpr int align_elements = align_bytes / sizeof(ScalarT);
     int shift = ((uint64_t)data) % align_bytes / sizeof(ScalarT);
@@ -813,7 +812,7 @@ struct ReduceExecutor {
       value_list[i] = ident;
     }
 
-    using load_t = phi::AlignedVector<ScalarT, kInputVecSize>;
+    using load_t = AlignedVector<ScalarT, kInputVecSize>;
 
     while (idx * kInputVecSize + kInputVecSize - 1 < end) {
       const auto values_vec = LoadVector<ScalarT, kInputVecSize>(data, idx);
@@ -852,7 +851,7 @@ struct ReduceExecutor {
     const IndexType stride = config.step_input;
 
     using MPTypeVec = std::array<MPType, kOutputVecSize>;
-    using load_t = phi::AlignedVector<ScalarT, kOutputVecSize>;
+    using load_t = AlignedVector<ScalarT, kOutputVecSize>;
 
     std::array<MPTypeVec, kVecSize> value_list;
 
@@ -1352,7 +1351,8 @@ template <typename Tx,
 void ReduceGpuKernel(const KPDevice& dev_ctx,
                      const phi::DenseTensor& x,
                      phi::DenseTensor* y,
-                     const std::vector<int>& origin_reduce_dims) {
+                     const std::vector<int>& origin_reduce_dims,
+                     const float norm_p = 1.0f) {
   if (x.numel() == 0) {
     dev_ctx.Alloc<Ty>(y);
     return;
@@ -1365,7 +1365,7 @@ void ReduceGpuKernel(const KPDevice& dev_ctx,
   auto mask = MakeDimMask(positive_reduce_dims, ndim);
   auto viewed_result = ReviewReduceResult(x, *(y), ndim, mask);
 
-  auto x_dim = common::vectorize<int64_t>(x.dims());
+  auto x_dim = vectorize<int64_t>(x.dims());
 
   DenseTensorIteratorConfig dense_iter_config;
   dense_iter_config.is_reduction(true);
@@ -1376,15 +1376,23 @@ void ReduceGpuKernel(const KPDevice& dev_ctx,
   // TODO(baoqiwen): When ReduceOp is WelfordOps, kVecSize is 2.
   constexpr int kVecSize = 4;
   constexpr int kInputVecSize = kVecSize;
-  using MPType = typename phi::dtype::MPTypeTrait<Ty>::Type;
+  using MPType = typename MPTypeTrait<Ty>::Type;
 
   // Initialize reducer.
-  ReduceOp reducer = [&iter]() {
-    if constexpr (std::is_same_v<ReduceOp<Tx, MPType, Ty>,
-                                 kps::MeanOps<Tx, MPType, Ty>>) {
+  ReduceOp reducer = [&iter, &norm_p]() {
+    constexpr bool kIsMeanOp =
+        std::is_same_v<ReduceOp<Tx, MPType, Ty>, kps::MeanOps<Tx, MPType, Ty>>;
+
+    constexpr bool kIsPNormOp =
+        std::is_same_v<ReduceOp<Tx, MPType, Ty>,
+                       kps::GenericPNormOps<Tx, MPType, Ty>>;
+
+    if constexpr (kIsMeanOp) {
       MPType factor = static_cast<MPType>(iter.num_output_elements()) /
                       static_cast<MPType>(iter.numel());
       return ReduceOp<Tx, MPType, Ty>{factor};
+    } else if constexpr (kIsPNormOp) {
+      return ReduceOp<Tx, MPType, Ty>{norm_p};
     } else {
       return ReduceOp<Tx, MPType, Ty>{};
     }
@@ -1393,12 +1401,16 @@ void ReduceGpuKernel(const KPDevice& dev_ctx,
   // Initialize ident value.
   Tx ident = []() {
     if constexpr (std::is_same_v<ReduceOp<Tx, MPType, Ty>,
-                                 kps::MaxOps<Tx, MPType, Ty>>) {
+                                 kps::MaxOps<Tx, MPType, Ty>> ||
+                  std::is_same_v<ReduceOp<Tx, MPType, Ty>,
+                                 kps::AbsMaxOps<Tx, MPType, Ty>>) {
       return std::numeric_limits<Tx>::lowest();
     }
 
     if constexpr (std::is_same_v<ReduceOp<Tx, MPType, Ty>,
-                                 kps::MinOps<Tx, MPType, Ty>>) {
+                                 kps::MinOps<Tx, MPType, Ty>> ||
+                  std::is_same_v<ReduceOp<Tx, MPType, Ty>,
+                                 kps::AbsMinOps<Tx, MPType, Ty>>) {
       return std::numeric_limits<Tx>::max();
     }
 

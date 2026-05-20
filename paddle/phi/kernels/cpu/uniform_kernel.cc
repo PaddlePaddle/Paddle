@@ -29,7 +29,7 @@ void UniformKernel(const Context &dev_ctx,
                    const Scalar &max,
                    int seed,
                    DenseTensor *out) {
-  out->Resize(common::make_ddim(shape.GetData()));
+  out->Resize(shape.GetData());
   T *data = dev_ctx.template Alloc<T>(out);
   auto size = out->numel();
 
@@ -42,9 +42,9 @@ void UniformKernel(const Context &dev_ctx,
   }
 
   // Handle complex types separately
-  if constexpr (std::is_same_v<T, phi::dtype::complex<float>> ||
-                std::is_same_v<T, phi::dtype::complex<double>>) {
-    using RealType = phi::dtype::Real<T>;  // float or double
+  if constexpr (std::is_same_v<T, dtype::complex<float>> ||
+                std::is_same_v<T, dtype::complex<double>>) {
+    using RealType = dtype::Real<T>;  // float or double
     RealType min_val = min.to<RealType>();
     RealType max_val = max.to<RealType>();
 

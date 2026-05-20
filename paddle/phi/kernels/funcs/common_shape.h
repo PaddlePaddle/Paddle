@@ -28,7 +28,7 @@ inline void SetXShape(const DenseTensor &x, DenseTensor *xshape) {
   for (int i = 0; i < in_dims.size(); ++i) {
     xshape_dims[i + 1] = in_dims[i];
   }
-  xshape->ResizeAndAllocate(common::make_ddim(xshape_dims));
+  xshape->ResizeAndAllocate(make_ddim(xshape_dims));
   xshape->ResetLoD(x.meta().legacy_lod);
 }
 
@@ -117,7 +117,7 @@ static DDim ExtendDims2Rank(const DDim &in_dims, int rank) {
   for (int i = in_dims.size() - 1, j = rank - 1; i >= 0; --i, --j) {
     shapes[j] = in_dims[i];
   }
-  return common::make_ddim(shapes);
+  return make_ddim(shapes);
 }
 
 template <size_t D>
@@ -184,8 +184,8 @@ static inline std::vector<int64_t> MatrixGetBroadcastBatchPortion(
 // batch_size of matrix
 static inline std::tuple<std::vector<int64_t>, std::vector<int64_t>>
 MatrixGetBroadcastDims(const DenseTensor &x, const DenseTensor &y) {
-  std::vector<int64_t> x_dims_vec = common::vectorize(x.dims());
-  std::vector<int64_t> y_dims_vec = common::vectorize(y.dims());
+  std::vector<int64_t> x_dims_vec = vectorize(x.dims());
+  std::vector<int64_t> y_dims_vec = vectorize(y.dims());
 
   std::vector<int64_t>::const_iterator f1 = x_dims_vec.begin();
   std::vector<int64_t>::const_iterator l1 = x_dims_vec.end() - 2;
@@ -215,7 +215,7 @@ inline DDim GetOutputDims(const DDim &s_dims, const DDim &l_dims) {
   if (s_dims.size() > l_dims.size()) {
     return GetOutputDims(l_dims, s_dims);
   }
-  std::vector<int64_t> shapes = common::vectorize<int64_t>(l_dims);
+  std::vector<int64_t> shapes = vectorize<int64_t>(l_dims);
   for (int i = s_dims.size() - 1, j = l_dims.size() - 1; i >= 0; --i, --j) {
     int64_t s = s_dims[i];
     int64_t l = l_dims[j];
@@ -233,7 +233,7 @@ inline DDim GetOutputDims(const DDim &s_dims, const DDim &l_dims) {
       }
     }
   }
-  return common::make_ddim(shapes);
+  return make_ddim(shapes);
 }
 
 inline DDim GetOutputDimsForDynamicShape(const DDim &s_dims,
@@ -241,7 +241,7 @@ inline DDim GetOutputDimsForDynamicShape(const DDim &s_dims,
   if (s_dims.size() > l_dims.size()) {
     return GetOutputDimsForDynamicShape(l_dims, s_dims);
   }
-  std::vector<int64_t> shapes = common::vectorize<int64_t>(l_dims);
+  std::vector<int64_t> shapes = vectorize<int64_t>(l_dims);
 
   for (int i = s_dims.size() - 1, j = l_dims.size() - 1; i >= 0; --i, --j) {
     int64_t s = s_dims[i];
@@ -264,7 +264,7 @@ inline DDim GetOutputDimsForDynamicShape(const DDim &s_dims,
       }
     }
   }
-  return common::make_ddim(shapes);
+  return make_ddim(shapes);
 }
 
 inline int64_t CalStride(DDim dim) {
@@ -322,7 +322,7 @@ inline void FCOutputSize(const DDim &in_dims,
           in_mat_dims[1],
           in_mat_dims,
           w_dims0,
-          common::make_ddim({w_dims0, w_dims1})));
+          make_ddim({w_dims0, w_dims1})));
 
   out_dims.reserve(static_cast<size_t>(in_num_col_dims + 1));
   for (int i = 0; i < in_num_col_dims; ++i) {

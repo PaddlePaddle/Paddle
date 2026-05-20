@@ -25,19 +25,19 @@ class IrMetaTensor : public phi::MetaTensor {
 
   int64_t numel() const override;
 
-  phi::DDim dims() const override;
+  DDim dims() const override;
 
   phi::DataType dtype() const override;
 
-  phi::DataLayout layout() const override;
+  DataLayout layout() const override;
 
   const phi::LegacyLoD& lod() const;
 
-  void set_dims(const phi::DDim& dims) override;
+  void set_dims(const DDim& dims) override;
 
   void set_dtype(phi::DataType dtype) override;
 
-  void set_layout(phi::DataLayout layout) override;
+  void set_layout(DataLayout layout) override;
 
   void share_lod(const MetaTensor& meta_tensor) override;
 

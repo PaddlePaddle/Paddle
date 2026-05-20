@@ -22,7 +22,7 @@
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
-#include "paddle/phi/kernels/funcs/transpose_function.cu.h"
+#include "paddle/phi/kernels/funcs/transpose_function.cuh"
 #include "paddle/phi/kernels/gpu/reduce.h"
 #include "paddle/phi/kernels/reduce_max_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
@@ -35,12 +35,12 @@ struct ComputeType {
 };
 
 template <>
-struct ComputeType<phi::float16> {
+struct ComputeType<float16> {
   using type = float;
 };
 
 template <>
-struct ComputeType<phi::bfloat16> {
+struct ComputeType<bfloat16> {
   using type = float;
 };
 
@@ -49,15 +49,15 @@ void LogsumexpFallbackKernel(const Context& dev_ctx,
                              const DenseTensor& x,
                              const std::vector<int>& axis_vec,
                              const std::vector<int64_t>& outdim_vec,
-                             const std::vector<int64_t>& keeped_outdim_vec,
+                             const std::vector<int64_t>& keep_outdim_vec,
                              bool keepdim,
                              bool reduce_all,
                              DenseTensor* out) {
   auto* in_x = &x;
   auto* out_y = out;
 
-  auto outdim = common::make_ddim(outdim_vec);
-  auto keeped_outdim = common::make_ddim(keeped_outdim_vec);
+  auto outdim = make_ddim(outdim_vec);
+  auto keep_outdim = make_ddim(keep_outdim_vec);
   out->Resize(outdim);
   dev_ctx.template Alloc<T>(out_y);
 
@@ -65,9 +65,9 @@ void LogsumexpFallbackKernel(const Context& dev_ctx,
   max_x.Resize(outdim);
   dev_ctx.template Alloc<T>(&max_x);
 
-  phi::MaxKernel<T, Context>(dev_ctx, *in_x, axis_vec, false, &max_x);
+  MaxKernel<T, Context>(dev_ctx, *in_x, axis_vec, false, &max_x);
 
-  max_x.Resize(keeped_outdim);
+  max_x.Resize(keep_outdim);
   DenseTensor temp_x = Subtract<T, Context>(dev_ctx, *in_x, max_x);
   funcs::ReduceKernel<T, T, kps::AddFunctor, kps::ExpFunctor<T>>(
       dev_ctx, temp_x, out_y, kps::ExpFunctor<T>(), axis_vec);
@@ -75,10 +75,10 @@ void LogsumexpFallbackKernel(const Context& dev_ctx,
   DenseTensor log_out;
   log_out.Resize(outdim);
   dev_ctx.template Alloc<T>(&log_out);
-  phi::LogKernel<T, Context>(dev_ctx, *out_y, &log_out);
+  LogKernel<T, Context>(dev_ctx, *out_y, &log_out);
   log_out.Resize(outdim);
   out->Resize(outdim);
-  phi::AddKernel<T, Context>(dev_ctx, log_out, max_x, out);
+  AddKernel<T, Context>(dev_ctx, log_out, max_x, out);
 }
 
 template <typename T, typename Context>
@@ -105,7 +105,7 @@ void LogsumexpKernel(const Context& dev_ctx,
                           "The dims of Input(X) should be greater than 0."));
 
   reduce_all = recompute_reduce_all(x, axis, reduce_all);
-  std::vector<int64_t> outdim_vec, keeped_outdim_vec, transpose_shape;
+  std::vector<int64_t> outdim_vec, keep_outdim_vec, transpose_shape;
   std::vector<int> axis_vec, perm;
   int64_t compute_size = 1, other_size = 1;
   for (auto i : axis) {
@@ -128,18 +128,18 @@ void LogsumexpKernel(const Context& dev_ctx,
     }
     if (flag) {
       compute_size *= xdim[i];
-      keeped_outdim_vec.push_back(1);
+      keep_outdim_vec.push_back(1);
       if (keepdim) outdim_vec.push_back(1);
     } else {
       other_size *= xdim[i];
       transpose_shape.push_back(xdim[i]);
       perm.push_back(i);
       outdim_vec.push_back(xdim[i]);
-      keeped_outdim_vec.push_back(xdim[i]);
+      keep_outdim_vec.push_back(xdim[i]);
     }
   }
 
-  auto outdim = common::make_ddim(outdim_vec);
+  auto outdim = make_ddim(outdim_vec);
   if (compute_size <= 1024) {
     if (perm.size() != xdim.size())
       perm.insert(perm.end(), axis_vec.begin(), axis_vec.end());
@@ -149,7 +149,7 @@ void LogsumexpKernel(const Context& dev_ctx,
         (axis_vec.size() == 1 && axis_vec[0] == xdim.size())) {
       transpose_x = x;
     } else {
-      transpose_x.Resize(common::make_ddim(transpose_shape));
+      transpose_x.Resize(transpose_shape);
       dev_ctx.template Alloc<T>(&transpose_x);
       funcs::TransposeGPUKernelDriver<T>(dev_ctx, x, perm, &transpose_x);
     }
@@ -164,7 +164,7 @@ void LogsumexpKernel(const Context& dev_ctx,
                                         x,
                                         axis_vec,
                                         outdim_vec,
-                                        keeped_outdim_vec,
+                                        keep_outdim_vec,
                                         keepdim,
                                         reduce_all,
                                         out);

@@ -4,6 +4,7 @@ protobuf>=3.20.2
 Pillow
 opt_einsum==3.3.0
 networkx
+packaging
 typing_extensions
 safetensors>=0.6.0
 setuptools; python_version>="3.12"
