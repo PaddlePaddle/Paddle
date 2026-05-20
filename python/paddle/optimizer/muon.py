@@ -386,7 +386,8 @@ class Muon(Optimizer):
         """Approximate the matrix sign function via Newton-Schulz iteration.
 
         Args:
-            X: Input tensor to orthogonalize.
+            X: Input tensor to orthogonalize. Must be 2D (M, N) or
+                3D (B, M, N) for batched operation.
             steps: Number of Newton-Schulz iterations.
             eps: Small constant for numerical stability.
             ns_coeffs: List of (a, b, c) coefficient tuples for iteration.
@@ -394,6 +395,11 @@ class Muon(Optimizer):
             ns_matmul_dtype: Dtype for matmul iterations. Defaults to
                 bfloat16. Pass paddle.float32 for V100 compatibility.
         """
+        if X.ndim < 2 or X.ndim > 3:
+            raise ValueError(
+                f"Input tensor X must be 2D or 3D (batched), got {X.ndim}D"
+            )
+
         coeff_sets = (
             ns_coeffs
             if ns_coeffs is not None
@@ -401,7 +407,10 @@ class Muon(Optimizer):
         )
 
         if X.shape[-2] > X.shape[-1]:
-            X = X.T
+            X = paddle.transpose(
+                X,
+                perm=[1, 0] if X.ndim == 2 else [0, 2, 1],
+            )
             transpose = True
         else:
             transpose = False
@@ -413,19 +422,39 @@ class Muon(Optimizer):
         )
         X = X_flat.reshape(orig_shape).astype(ns_matmul_dtype)
 
-        # Iterate with cycling coefficients
+        if X.ndim == 3:
+            ns_step_fn = Muon._batched_newton_schulz_step
+        else:
+            ns_step_fn = Muon._newton_schulz_step
+
         for i in range(steps):
             a, b, c = coeff_sets[i % len(coeff_sets)]
-            A = paddle.matmul(X, X, transpose_y=True)
-            B = paddle.addmm(input=A, x=A, y=A, beta=b, alpha=c)
-            X = paddle.addmm(input=X, x=B, y=X, beta=a, alpha=1.0)
+            X = ns_step_fn(X, a, b, c)
 
-        return X.T if transpose else X
+        if transpose:
+            X = paddle.transpose(X, perm=[1, 0] if X.ndim == 2 else [0, 2, 1])
+        return X
+
+    @staticmethod
+    def _newton_schulz_step(X, a, b, c):
+        """Single Newton-Schulz iteration step for 2D input."""
+        A = paddle.matmul(X, X, transpose_y=True)
+        B = paddle.addmm(input=A, x=A, y=A, beta=b, alpha=c)
+        X = paddle.addmm(input=X, x=B, y=X, beta=a, alpha=1.0)
+        return X
+
+    @staticmethod
+    def _batched_newton_schulz_step(X, a, b, c):
+        """Single Newton-Schulz iteration step for 3D batched input."""
+        A = paddle.matmul(X, X, transpose_y=True)
+        B = paddle.baddbmm(A, A, A, beta=b, alpha=c)
+        X = paddle.baddbmm(X, B, X, beta=a, alpha=1.0)
+        return X
 
     @staticmethod
     def _scaling_fn(orthogonal_update, version, extra_scale_factor=1.0):
         """Apply dimension-dependent scaling to the orthogonal update."""
-        din, dout = orthogonal_update.shape[0], orthogonal_update.shape[1]
+        din, dout = orthogonal_update.shape[-2], orthogonal_update.shape[-1]
         if version == 1:
             scale = max(1, dout / din) ** 0.5
         elif version == 2:
