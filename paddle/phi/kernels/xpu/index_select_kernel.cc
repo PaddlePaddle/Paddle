@@ -19,7 +19,52 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 
+#include <type_traits>
+#include <vector>
+
 namespace phi {
+
+template <typename Context, typename IndexT>
+void ValidateIndexSelectIndex(const Context& dev_ctx,
+                              const DenseTensor& index,
+                              int64_t axis_dim) {
+  const IndexT* index_data = nullptr;
+  std::vector<IndexT> index_cpu_data;
+  if (index.place().GetType() == AllocationType::CPU) {
+    index_data = index.data<IndexT>();
+  } else {
+    index_cpu_data.resize(index.numel());
+    memory_utils::Copy(CPUPlace(),
+                       index_cpu_data.data(),
+                       dev_ctx.GetPlace(),
+                       index.data<IndexT>(),
+                       sizeof(IndexT) * index.numel());
+    index_data = index_cpu_data.data();
+  }
+
+  for (int64_t i = 0; i < index.numel(); ++i) {
+    PADDLE_ENFORCE_GE(
+        index_data[i],
+        -axis_dim,
+        common::errors::InvalidArgument(
+            "Variable value (index) of OP(index_select) "
+            "expected >= %ld and < %ld, but got %ld. Please check input "
+            "value.",
+            -axis_dim,
+            axis_dim,
+            static_cast<int64_t>(index_data[i])));
+    PADDLE_ENFORCE_LT(
+        index_data[i],
+        axis_dim,
+        common::errors::InvalidArgument(
+            "Variable value (index) of OP(index_select) "
+            "expected >= %ld and < %ld, but got %ld. Please check input "
+            "value.",
+            -axis_dim,
+            axis_dim,
+            static_cast<int64_t>(index_data[i])));
+  }
+}
 
 template <typename T, typename Context>
 void IndexSelectKernel(const Context& dev_ctx,
@@ -45,6 +90,15 @@ void IndexSelectKernel(const Context& dev_ctx,
                         index_type,
                         DataType::INT32,
                         DataType::INT64));
+  PADDLE_ENFORCE_EQ(
+      (std::is_same<T, float>::value || std::is_same<T, phi::float16>::value ||
+       std::is_same<T, phi::bfloat16>::value || std::is_same<T, int>::value ||
+       std::is_same<T, int64_t>::value),
+      true,
+      common::errors::Unimplemented(
+          "XPU index_select only supports float32, float16, bfloat16, int32 "
+          "and int64 input tensors for the XDNN kernel, but got %s.",
+          x.dtype()));
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto* in_data = x.data<T>();
   std::vector<int64_t> in_shape = vectorize<int64_t>(input_dim);
@@ -70,6 +124,8 @@ void IndexSelectKernel(const Context& dev_ctx,
                        byte_times * index.numel());
   }
   if (index_type == DataType::INT64) {
+    // XDNN may crash on invalid indices, so match CPU validation first.
+    ValidateIndexSelectIndex<Context, int64_t>(dev_ctx, index, input_dim[dim]);
     const int64_t* index_data =
         index_ptr ? reinterpret_cast<const int64_t*>(index_ptr)
                   : index.template data<int64_t>();
@@ -82,6 +138,8 @@ void IndexSelectKernel(const Context& dev_ctx,
         index_len,
         dim);
   } else {
+    // XDNN may crash on invalid indices, so match CPU validation first.
+    ValidateIndexSelectIndex<Context, int>(dev_ctx, index, input_dim[dim]);
     const int* index_data = index_ptr ? reinterpret_cast<const int*>(index_ptr)
                                       : index.template data<int>();
     r = xpu::index_select<XPUType, int>(
