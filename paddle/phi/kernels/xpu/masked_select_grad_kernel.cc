@@ -16,7 +16,9 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
+#include "paddle/phi/kernels/funcs/common_shape.h"
 
 namespace phi {
 
@@ -37,13 +39,26 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
     return;
   }
 
-  auto* mask_data = mask.data<bool>();
+  auto expanded_size = funcs::MatrixGetBroadcastBatchPortion(
+      vectorize(x_grad->dims()), vectorize(mask.dims()));
+  auto expanded_dims = make_ddim(expanded_size);
+
+  DenseTensor mask_expand;
+  // XDNN masked_select_grad requires x and mask to have matching shapes.
+  if (mask.dims() != expanded_dims) {
+    ExpandKernel<bool, Context>(
+        dev_ctx, mask, IntArray(expanded_size), &mask_expand);
+  } else {
+    mask_expand = mask;
+  }
+
+  auto* mask_data = mask_expand.data<bool>();
   auto* input_data = reinterpret_cast<const XPUType*>(out_grad.data<T>());
   auto* out_data = reinterpret_cast<XPUType*>(x_grad->data<T>());
 
-  auto mask_shape = vectorize<int64_t>(mask.dims());
+  auto mask_shape = vectorize<int64_t>(mask_expand.dims());
   auto xshape = vectorize<int64_t>(x_grad->dims());
-  if (mask.dims().size() == 0) {
+  if (mask_expand.dims().size() == 0) {
     mask_shape = std::vector<int64_t>({1});
   }
   if (x_grad->dims().size() == 0) {
