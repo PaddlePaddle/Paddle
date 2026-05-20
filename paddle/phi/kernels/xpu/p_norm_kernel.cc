@@ -16,6 +16,9 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
+
+#include <type_traits>
+
 namespace phi {
 
 inline void GetDims(const DDim& dim,
@@ -54,6 +57,38 @@ void PNormKernel(const Context& dev_ctx,
     Full<T, Context>(dev_ctx, out->dims(), 0, out);
     return;
   }
+  if constexpr (std::is_same<T, phi::bfloat16>::value) {
+    // XPU p_norm kernels operate in float for bfloat16 inputs to match GPU's
+    // promoted accumulation path, then cast the final result back to bfloat16.
+    xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+    DenseTensor x_float;
+    x_float.Resize(x.dims());
+    float* x_float_data = dev_ctx.template Alloc<float>(&x_float);
+    int r = xpu::cast<XPUType, float>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(x.data<T>()),
+        x_float_data,
+        x.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+
+    DenseTensor out_float;
+    out_float.Resize(out->dims());
+    PNormKernel<float, Context>(dev_ctx,
+                                x_float,
+                                porder,
+                                axis,
+                                epsilon,
+                                keepdim,
+                                asvector,
+                                &out_float);
+
+    r = xpu::cast<float, XPUType>(dev_ctx.x_context(),
+                                  out_float.data<float>(),
+                                  reinterpret_cast<XPUType*>(out->data<T>()),
+                                  out->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    return;
+  } else {
   auto xdim = x.dims();
   if (axis < 0) axis = xdim.size() + axis;
   std::vector<int64_t> r_dim;
@@ -180,6 +215,8 @@ void PNormKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_pow");
     dev_ctx.Wait();
   }
+  }
 }
 }  // namespace phi
-PD_REGISTER_KERNEL(p_norm, XPU, ALL_LAYOUT, phi::PNormKernel, float) {}
+PD_REGISTER_KERNEL(
+    p_norm, XPU, ALL_LAYOUT, phi::PNormKernel, float, phi::bfloat16) {}

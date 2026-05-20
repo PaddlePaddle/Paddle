@@ -16,6 +16,8 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 
+#include <type_traits>
+
 namespace phi {
 
 inline void GetDims(
@@ -48,6 +50,59 @@ void PNormGradKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(x_grad);
   if (x.numel() == 0) return;
+  if constexpr (std::is_same<T, phi::bfloat16>::value) {
+    // XDNN p_norm_grad only supports float math. Promote bfloat16 tensors to
+    // float, reuse the existing XPU float path, then cast dx back to bfloat16.
+    DenseTensor x_float;
+    x_float.Resize(x.dims());
+    float* x_float_data = dev_ctx.template Alloc<float>(&x_float);
+    DenseTensor out_float;
+    out_float.Resize(out.dims());
+    float* out_float_data = dev_ctx.template Alloc<float>(&out_float);
+    DenseTensor out_grad_float;
+    out_grad_float.Resize(out_grad.dims());
+    float* out_grad_float_data = dev_ctx.template Alloc<float>(&out_grad_float);
+
+    int r = xpu::cast<XPUType, float>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(x.data<T>()),
+        x_float_data,
+        x.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    r = xpu::cast<XPUType, float>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(out.data<T>()),
+        out_float_data,
+        out.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    r = xpu::cast<XPUType, float>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(out_grad.data<T>()),
+        out_grad_float_data,
+        out_grad.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+
+    DenseTensor x_grad_float;
+    x_grad_float.Resize(x_grad->dims());
+    PNormGradKernel<float, Context>(dev_ctx,
+                                    x_float,
+                                    out_float,
+                                    out_grad_float,
+                                    porder,
+                                    axis,
+                                    epsilon,
+                                    keepdim,
+                                    asvector,
+                                    &x_grad_float);
+
+    r = xpu::cast<float, XPUType>(
+        dev_ctx.x_context(),
+        x_grad_float.data<float>(),
+        reinterpret_cast<XPUType*>(x_grad->data<T>()),
+        x_grad->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    return;
+  } else {
   auto xdim = x.dims();
   axis = axis < 0 ? xdim.size() + axis : axis;
   int m, t, n;
@@ -200,6 +255,8 @@ void PNormGradKernel(const Context& dev_ctx,
                            x_dim);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_mul");
   }
+  }
 }
 }  // namespace phi
-PD_REGISTER_KERNEL(p_norm_grad, XPU, ALL_LAYOUT, phi::PNormGradKernel, float) {}
+PD_REGISTER_KERNEL(
+    p_norm_grad, XPU, ALL_LAYOUT, phi::PNormGradKernel, float, phi::bfloat16) {}

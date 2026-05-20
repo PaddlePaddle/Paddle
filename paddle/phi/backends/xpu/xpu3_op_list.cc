@@ -551,8 +551,8 @@ XPUOpMap& get_kl3_ops() {
       {"not_equal", XPUKernelSet({INT64, INT32, FLOAT16, BFLOAT16, FLOAT32})},
       {"one_hot", XPUKernelSet({INT32, INT64})},
       {"one_hot_v2", XPUKernelSet({INT32, INT64})},
-      {"p_norm", XPUKernelSet({FLOAT32})},
-      {"p_norm_grad", XPUKernelSet({FLOAT32})},
+      {"p_norm", XPUKernelSet({FLOAT32, BFLOAT16})},
+      {"p_norm_grad", XPUKernelSet({FLOAT32, BFLOAT16})},
       {"p_recv",
        XPUKernelSet({
            FLOAT32,
