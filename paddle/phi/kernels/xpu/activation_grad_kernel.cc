@@ -14,11 +14,11 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/activation_grad_kernel.h"
 
+#include <type_traits>
+
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
-
-#include <type_traits>
 
 namespace phi {
 
@@ -613,8 +613,11 @@ struct XPUSinGradFunctor : public funcs::BaseActivationFunctor<T> {
       PADDLE_ENFORCE_XDNN_NOT_NULL(dout_float);
       PADDLE_ENFORCE_XDNN_NOT_NULL(dx_float);
 
-      int r = xpu::cast<XPUType, float>(
-          dev_ctx.x_context(), reinterpret_cast<const XPUType*>(x_data), x_float, len);
+      int r =
+          xpu::cast<XPUType, float>(dev_ctx.x_context(),
+                                    reinterpret_cast<const XPUType*>(x_data),
+                                    x_float,
+                                    len);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
       r = xpu::cast<XPUType, float>(dev_ctx.x_context(),
                                     reinterpret_cast<const XPUType*>(dout_data),
@@ -630,11 +633,12 @@ struct XPUSinGradFunctor : public funcs::BaseActivationFunctor<T> {
                                     len);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
     } else {
-      int r = xpu::sin_grad<XPUType>(dev_ctx.x_context(),
-                                     reinterpret_cast<const XPUType*>(x_data),
-                                     reinterpret_cast<const XPUType*>(dout_data),
-                                     reinterpret_cast<XPUType*>(dx_data),
-                                     len);
+      int r =
+          xpu::sin_grad<XPUType>(dev_ctx.x_context(),
+                                 reinterpret_cast<const XPUType*>(x_data),
+                                 reinterpret_cast<const XPUType*>(dout_data),
+                                 reinterpret_cast<XPUType*>(dx_data),
+                                 len);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "sin_grad");
     }
   }
