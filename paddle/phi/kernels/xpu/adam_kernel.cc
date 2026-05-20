@@ -70,8 +70,20 @@ void AdamDenseKernel(const Context& dev_ctx,
       moment2, &mom2_ptr, dev_ctx, &RAII_GUARD);
 
   float* lr_ptr = nullptr;
-  funcs::GetDataPointer<Context, float>(
-      learning_rate, &lr_ptr, dev_ctx, &RAII_GUARD);
+  float* lr_cast_buf = nullptr;
+  if (learning_rate.dtype() == DataType::FLOAT64) {
+    lr_cast_buf = RAII_GUARD.alloc_l3_or_gm<float>(learning_rate.numel());
+    PADDLE_ENFORCE_XDNN_NOT_NULL(lr_cast_buf);
+    int r_lr = xpu::cast<double, float>(dev_ctx.x_context(),
+                                        learning_rate.template data<double>(),
+                                        lr_cast_buf,
+                                        learning_rate.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r_lr, "cast lr from float64 to float32");
+    lr_ptr = lr_cast_buf;
+  } else {
+    funcs::GetDataPointer<Context, float>(
+        learning_rate, &lr_ptr, dev_ctx, &RAII_GUARD);
+  }
 
   float* beta1_pow_ptr = nullptr;
   const float* beta1_const_pow_ptr = nullptr;
@@ -300,11 +312,20 @@ void MergedAdamKernel(
   int64_t bias_correction_ = 1;
   float weight_decay_ = 0.0;
 
-  DenseTensor lr_host;
-  lr_host.Resize(learning_rate[0]->dims());
-  dev_ctx.template HostAlloc<float>(&lr_host);
-  Copy(dev_ctx, *learning_rate[0], CPUPlace(), false, &lr_host);
-  float lr_ = *(lr_host.template data<float>());
+  float lr_;
+  {
+    DenseTensor lr_host;
+    lr_host.Resize(learning_rate[0]->dims());
+    if (learning_rate[0]->dtype() == DataType::FLOAT64) {
+      dev_ctx.template HostAlloc<double>(&lr_host);
+      Copy(dev_ctx, *learning_rate[0], CPUPlace(), false, &lr_host);
+      lr_ = static_cast<float>(*(lr_host.template data<double>()));
+    } else {
+      dev_ctx.template HostAlloc<float>(&lr_host);
+      Copy(dev_ctx, *learning_rate[0], CPUPlace(), false, &lr_host);
+      lr_ = *(lr_host.template data<float>());
+    }
+  }
 
   float beta1_pow_data;
   if (beta1_pow[0]->place() == CPUPlace()) {
@@ -494,6 +515,7 @@ void MergedAdamKernel(
 
 PD_REGISTER_KERNEL(
     adam, XPU, ALL_LAYOUT, phi::AdamDenseKernel, float, phi::float16) {
+  kernel->InputAt(2).SetDataType(phi::DataType::FLOAT64);
   // Skip beta1_pow, beta2_pow, skip_update data transform
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(7).SetBackend(phi::Backend::ALL_BACKEND);
@@ -504,6 +526,7 @@ PD_REGISTER_KERNEL(
 }
 
 PD_REGISTER_KERNEL(merged_adam, XPU, ALL_LAYOUT, phi::MergedAdamKernel, float) {
+  kernel->InputAt(2).SetDataType(phi::DataType::FLOAT64);
   // Skip beta1_pow, beta2_pow data transform
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(7).SetBackend(phi::Backend::ALL_BACKEND);
