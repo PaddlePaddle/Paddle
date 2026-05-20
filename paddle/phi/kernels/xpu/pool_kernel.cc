@@ -356,11 +356,6 @@ void MaxPool2dWithIndexKernel(const Context& dev_ctx,
                         "The Pool2d XPU OP only support 2 dimension pooling, "
                         "but received kernel_size with size %d",
                         kernel_size.size()));
-  PADDLE_ENFORCE_EQ(!adaptive || (kernel_size[0] * kernel_size[1] == 1),
-                    true,
-                    common::errors::InvalidArgument(
-                        "The Pool2d XPU OP does not support (adaptive == "
-                        "true && output_size != 1)"));
   global_pooling =
       global_pooling || (adaptive && (kernel_size[0] * kernel_size[1] == 1));
   if (global_pooling) {
@@ -377,18 +372,45 @@ void MaxPool2dWithIndexKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   auto output = reinterpret_cast<XPUType*>(out->data<T>());
   int r = 0;
-  r = xpu::max_pool2d<XPUType>(dev_ctx.x_context(),
-                               input,
-                               output,
-                               index_data,
-                               n,
-                               c,
-                               in_h,
-                               in_w,
-                               kernel_size,
-                               strides,
-                               paddings,
-                               true);
+  if (adaptive) {
+    // XDNN adaptive_max_pool2d rejects the H == out_h == 1 case.
+    if (in_h == 1 && out->dims()[2] == 1) {
+      r = xpu::adaptive_max_pool1d<XPUType>(dev_ctx.x_context(),
+                                            input,
+                                            output,
+                                            index_data,
+                                            n,
+                                            c,
+                                            in_w,
+                                            out->dims()[3],
+                                            true);
+    } else {
+      r = xpu::adaptive_max_pool2d<XPUType>(dev_ctx.x_context(),
+                                            input,
+                                            output,
+                                            index_data,
+                                            n,
+                                            c,
+                                            in_h,
+                                            in_w,
+                                            out->dims()[2],
+                                            out->dims()[3],
+                                            true);
+    }
+  } else {
+    r = xpu::max_pool2d<XPUType>(dev_ctx.x_context(),
+                                 input,
+                                 output,
+                                 index_data,
+                                 n,
+                                 c,
+                                 in_h,
+                                 in_w,
+                                 kernel_size,
+                                 strides,
+                                 paddings,
+                                 true);
+  }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "max_pool2d_with_index");
 }
 }  // namespace phi

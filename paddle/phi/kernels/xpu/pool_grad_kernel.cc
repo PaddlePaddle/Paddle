@@ -446,20 +446,55 @@ void MaxPool2dWithIndexGradKernel(const Context& dev_ctx,
 
   int r = 0;
   // pass a nullptr as input to XDNN is fine as long as index_data exists
-  r = xpu::max_pool2d_grad<XPUType>(dev_ctx.x_context(),
-                                    /*input*/ nullptr,
-                                    /*output*/ nullptr,
-                                    index_data,
-                                    output_grad,
-                                    input_grad,
-                                    n,
-                                    c,
-                                    in_h,
-                                    in_w,
-                                    kernel_size,
-                                    strides,
-                                    paddings,
-                                    true);
+  if (adaptive) {
+    // adaptive_max_pool1d masks store width indices, not 2D offsets.
+    if (in_h == 1 && dout.dims()[2] == 1) {
+      r = xpu::constant(dev_ctx.x_context(),
+                        input_grad,
+                        dx->numel(),
+                        static_cast<XPUType>(0));
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+      r = xpu::scatter_element(dev_ctx.x_context(),
+                               input_grad,
+                               output_grad,
+                               index_data,
+                               input_grad,
+                               vectorize<int64_t>(dx->dims()),
+                               vectorize<int64_t>(dout.dims()),
+                               vectorize<int64_t>(mask.dims()),
+                               3,
+                               1);
+    } else {
+      r = xpu::adaptive_max_pool2d_grad<XPUType>(dev_ctx.x_context(),
+                                                 /*input*/ nullptr,
+                                                 /*output*/ nullptr,
+                                                 index_data,
+                                                 output_grad,
+                                                 input_grad,
+                                                 n,
+                                                 c,
+                                                 in_h,
+                                                 in_w,
+                                                 dout.dims()[2],
+                                                 dout.dims()[3],
+                                                 true);
+    }
+  } else {
+    r = xpu::max_pool2d_grad<XPUType>(dev_ctx.x_context(),
+                                      /*input*/ nullptr,
+                                      /*output*/ nullptr,
+                                      index_data,
+                                      output_grad,
+                                      input_grad,
+                                      n,
+                                      c,
+                                      in_h,
+                                      in_w,
+                                      kernel_size,
+                                      strides,
+                                      paddings,
+                                      true);
+  }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "max_pool2d_with_index_grad");
 }
 }  // namespace phi
