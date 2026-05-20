@@ -80,7 +80,7 @@ static void XPUComplexTransDataType(
     const phi::DeviceContext* ctx) {
   auto* context = static_cast<const phi::XPUContext*>(ctx);
   if (dst_type == proto::VarType::FP32 || dst_type == proto::VarType::FP64) {
-    // Match generic complex-to-real cast semantics via existing XPU real extraction.
+    // Mirror complex-to-real casts using existing XPU real extraction.
     DenseTensor real = phi::Real<InType>(*context, in);
     TransDataType(real, dst_type, out);
   } else {
