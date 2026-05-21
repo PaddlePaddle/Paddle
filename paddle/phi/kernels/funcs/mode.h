@@ -25,6 +25,27 @@
 #include <thrust/sort.h>
 #endif
 
+#ifdef __HIPCC__
+#include <rocprim/config.hpp>
+#if defined(ROCPRIM_VERSION) && ROCPRIM_VERSION >= 400000
+#include "paddle/phi/common/data_type.h"
+namespace rocprim {
+namespace traits {
+template <>
+struct define<phi::float16> {
+  using float_bit_mask =
+      float_bit_mask::values<uint16_t, 0x8000, 0x7C00, 0x03FF>;
+};
+template <>
+struct define<phi::bfloat16> {
+  using float_bit_mask =
+      float_bit_mask::values<uint16_t, 0x8000, 0x7F80, 0x007F>;
+};
+}  // namespace traits
+}  // namespace rocprim
+#endif  // ROCPRIM_VERSION
+#endif  // __HIPCC__
+
 #include <algorithm>
 #include <cmath>
 #include <utility>

@@ -34,6 +34,8 @@ class TestDygraphAPIForDistTensorBranch(unittest.TestCase):
             local_t = paddle.to_tensor(np_array, dtype='float16')
         elif np_array.dtype == np.int32:
             local_t = paddle.to_tensor(np_array, dtype='int32')
+        elif np_array.dtype == np.float64:
+            local_t = paddle.to_tensor(np_array, dtype='float64')
         elif np_array.dtype == np.bool_:
             local_t = paddle.to_tensor(np_array, dtype='bool')
 
@@ -304,7 +306,7 @@ class TestDygraphAPIForDistTensorBranch(unittest.TestCase):
         beta2 = 0.99
         params = [np.random.random(s).astype(dtype) for s in shapes]
         grads = [np.random.random(s).astype(dtype) for s in shapes]
-        lrs = [np.random.random(s).astype(mp_dtype) for s in lr_shape]
+        lrs = [np.random.random(s).astype(np.float64) for s in lr_shape]
         moment1s = [np.random.random(s).astype(mp_dtype) for s in shapes]
         moment2s = [np.random.random(s).astype(mp_dtype) for s in shapes]
         moment2s_max = [np.zeros(s).astype(mp_dtype) for s in shapes]

@@ -323,7 +323,7 @@ static char* GetGpuHintStringPtr(const GPUContext& dev_ctx,
                                                 dev_ctx.stream()));
 #else
       const char* stable_str =
-          phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
               const_cast<char*>(iter->first.c_str()), op_var.length() + 1);
       PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(gpu_str_ptr,
                                                  stable_str,
@@ -435,7 +435,7 @@ void CheckNumericsKernel(const Context& dev_ctx,
       std::min(static_cast<size_t>(128),
                static_cast<size_t>((tensor.numel() + threads - 1) / threads));
 
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
 
   int64_t numel_max_min = blocks;
 

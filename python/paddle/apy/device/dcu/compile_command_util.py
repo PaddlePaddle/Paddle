@@ -31,7 +31,9 @@ class CompileCommandGenerator:
         hytlass_dir = f"{tpl_dirname}/matmul/hytlass"
         matmul_source_dir = f"{tpl_dirname}/matmul"
 
-        compile_cmd = "/opt/dtk-25.04.2/bin/hipcc -std=c++17 -O3 -fPIC --offload-arch=gfx928 -Wno-return-type"
+        compile_cmd = (
+            "hipcc -std=c++17 -O3 -fPIC --offload-arch=gfx928 -Wno-return-type"
+        )
         compile_cmd = compile_cmd + " -I " + hytlass_dir + "/include"
         compile_cmd = compile_cmd + " -I " + hytlass_dir + "/tools/util/include"
         compile_cmd = compile_cmd + " -I " + matmul_source_dir

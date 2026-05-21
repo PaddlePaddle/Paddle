@@ -54,10 +54,10 @@ class PaddleDeleterManager {
 template <typename T>
 DenseTensor from_blob(void *data,
                       T *src,
-                      const phi::DDim &shape,
-                      const phi::DDim &strides,
-                      phi::DataType dtype,
-                      const phi::Place &place,
+                      const DDim &shape,
+                      const DDim &strides,
+                      DataType dtype,
+                      const Place &place,
                       const Deleter &deleter) {
   auto meta = phi::DenseTensorMeta(dtype, shape, strides);
 
@@ -86,7 +86,7 @@ DenseTensor from_blob(void *data,
 
   auto alloc =
       std::make_shared<phi::Allocation>(data, size * SizeOf(dtype), f, place);
-  return phi::DenseTensor(alloc, meta);
+  return DenseTensor(alloc, meta);
 }
 
 template <typename T>
@@ -139,7 +139,7 @@ static std::unordered_map<int, ::DLDataType> CreateDLDataTypeMap() {
   return result;
 }
 
-static ::DLDataType GetDLDataTypeFromTypeIndex(phi::DataType type) {
+static ::DLDataType GetDLDataTypeFromTypeIndex(DataType type) {
   static auto type_to_dtype_map = CreateDLDataTypeMap();
   static auto type_to_dtype_map_end_it = type_to_dtype_map.end();
   auto it = type_to_dtype_map.find(static_cast<int>(type));
@@ -151,7 +151,7 @@ static ::DLDataType GetDLDataTypeFromTypeIndex(phi::DataType type) {
 }
 
 struct DLDeviceVisitor {
-  using argument_type = const phi::Place &;
+  using argument_type = const Place &;
   using result_type = ::DLDevice;
   inline ::DLDevice operator()(const CPUPlace &place) const {
     ::DLDevice device;
@@ -165,9 +165,8 @@ struct DLDeviceVisitor {
         common::errors::Unimplemented("phi::IPUPlace is not supported"));
   }
 
-  inline ::DLDevice operator()(const phi::XPUPlace &place) const {
-    PADDLE_THROW(
-        common::errors::Unimplemented("phi::XPUPlace is not supported"));
+  inline ::DLDevice operator()(const XPUPlace &place) const {
+    PADDLE_THROW(common::errors::Unimplemented("XPUPlace is not supported"));
   }
 
   inline ::DLDevice operator()(const phi::XPUPinnedPlace &place) const {
@@ -187,7 +186,7 @@ struct DLDeviceVisitor {
         common::errors::Unimplemented("phi::CustomPlace is not supported"));
   }
 
-  inline ::DLDevice operator()(const phi::GPUPlace &place) const {
+  inline ::DLDevice operator()(const GPUPlace &place) const {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     ::DLDevice device;
     device.device_type = kDLCUDA;
@@ -195,11 +194,11 @@ struct DLDeviceVisitor {
     return device;
 #else
     PADDLE_THROW(common::errors::Unavailable(
-        "phi::GPUPlace is not supported in CPU only version."));
+        "GPUPlace is not supported in CPU only version."));
 #endif
   }
 
-  inline ::DLDevice operator()(const phi::GPUPinnedPlace &place) const {
+  inline ::DLDevice operator()(const GPUPinnedPlace &place) const {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     ::DLDevice device;
     device.device_type = kDLCUDAHost;
@@ -207,13 +206,13 @@ struct DLDeviceVisitor {
     return device;
 #else
     PADDLE_THROW(common::errors::Unavailable(
-        "phi::GPUPinnedPlace is not supported in CPU only version."));
+        "GPUPinnedPlace is not supported in CPU only version."));
 #endif
   }
 };
 }  // namespace internal
 
-phi::DataType DLDataTypeToPhiDataType(::DLDataType type) {
+DataType DLDataTypeToPhiDataType(::DLDataType type) {
   // vector types not currently supported
   PADDLE_ENFORCE_LE(
       type.lanes,
@@ -222,43 +221,43 @@ phi::DataType DLDataTypeToPhiDataType(::DLDataType type) {
 
   switch (type.bits) {
     case 8:
-      if (type.code == kDLBool) return phi::DataType::BOOL;
-      if (type.code == kDLInt) return phi::DataType::INT8;
-      if (type.code == kDLUInt) return phi::DataType::UINT8;
-      if (type.code == kDLFloat8_e4m3fn) return phi::DataType::FLOAT8_E4M3FN;
-      if (type.code == kDLFloat8_e5m2) return phi::DataType::FLOAT8_E5M2;
+      if (type.code == kDLBool) return DataType::BOOL;
+      if (type.code == kDLInt) return DataType::INT8;
+      if (type.code == kDLUInt) return DataType::UINT8;
+      if (type.code == kDLFloat8_e4m3fn) return DataType::FLOAT8_E4M3FN;
+      if (type.code == kDLFloat8_e5m2) return DataType::FLOAT8_E5M2;
       PADDLE_THROW(common::errors::Unimplemented(
           "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
           type.code,
           type.bits));
     case 16:
-      if (type.code == kDLInt) return phi::DataType::INT16;
-      if (type.code == kDLUInt) return phi::DataType::UINT16;
-      if (type.code == kDLFloat) return phi::DataType::FLOAT16;
-      if (type.code == kDLBfloat) return phi::DataType::BFLOAT16;
+      if (type.code == kDLInt) return DataType::INT16;
+      if (type.code == kDLUInt) return DataType::UINT16;
+      if (type.code == kDLFloat) return DataType::FLOAT16;
+      if (type.code == kDLBfloat) return DataType::BFLOAT16;
       PADDLE_THROW(common::errors::Unimplemented(
           "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
           type.code,
           type.bits));
     case 32:
-      if (type.code == kDLInt) return phi::DataType::INT32;
-      if (type.code == kDLUInt) return phi::DataType::UINT32;
-      if (type.code == kDLFloat) return phi::DataType::FLOAT32;
+      if (type.code == kDLInt) return DataType::INT32;
+      if (type.code == kDLUInt) return DataType::UINT32;
+      if (type.code == kDLFloat) return DataType::FLOAT32;
       PADDLE_THROW(common::errors::Unimplemented(
           "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
           type.code,
           type.bits));
     case 64:
-      if (type.code == kDLInt) return phi::DataType::INT64;
-      if (type.code == kDLUInt) return phi::DataType::UINT64;
-      if (type.code == kDLFloat) return phi::DataType::FLOAT64;
-      if (type.code == kDLComplex) return phi::DataType::COMPLEX64;
+      if (type.code == kDLInt) return DataType::INT64;
+      if (type.code == kDLUInt) return DataType::UINT64;
+      if (type.code == kDLFloat) return DataType::FLOAT64;
+      if (type.code == kDLComplex) return DataType::COMPLEX64;
       PADDLE_THROW(common::errors::Unimplemented(
           "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
           type.code,
           type.bits));
     case 128:
-      if (type.code == kDLComplex) return phi::DataType::COMPLEX128;
+      if (type.code == kDLComplex) return DataType::COMPLEX128;
       PADDLE_THROW(common::errors::Unimplemented(
           "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
           type.code,
@@ -269,25 +268,25 @@ phi::DataType DLDataTypeToPhiDataType(::DLDataType type) {
   }
 }
 
-::DLDataType PhiDataTypeToDLDataType(phi::DataType dtype) {
+::DLDataType PhiDataTypeToDLDataType(DataType dtype) {
   return internal::GetDLDataTypeFromTypeIndex(dtype);
 }
 
-phi::Place DLDeviceToPlace(const ::DLDevice &dl_device) {
-  phi::Place place;
+Place DLDeviceToPlace(const ::DLDevice &dl_device) {
+  Place place;
   if (dl_device.device_type == kDLCPU) {
     place = CPUPlace();
   } else if (dl_device.device_type == kDLCUDA) {
-    place = phi::GPUPlace(dl_device.device_id);
+    place = GPUPlace(dl_device.device_id);
   } else if (dl_device.device_type == kDLCUDAHost) {
-    place = phi::GPUPinnedPlace();
+    place = GPUPinnedPlace();
   } else {
     PADDLE_THROW(common::errors::Unimplemented("Given Place is not supported"));
   }
   return place;
 }
 
-::DLDevice PlaceToDLDevice(const phi::Place &place) {
+::DLDevice PlaceToDLDevice(const Place &place) {
   return phi::VisitPlace(place, internal::DLDeviceVisitor());
 }
 
@@ -367,8 +366,8 @@ DenseTensor FromDLPackImpl(T *src, Deleter deleter) {
             src->dl_tensor.shape + src->dl_tensor.ndim,
             std::back_inserter(shape_vec));
 
-  phi::Place place = DLDeviceToPlace(src->dl_tensor.device);
-  phi::DataType dtype = DLDataTypeToPhiDataType(src->dl_tensor.dtype);
+  Place place = DLDeviceToPlace(src->dl_tensor.device);
+  DataType dtype = DLDataTypeToPhiDataType(src->dl_tensor.dtype);
 
   if (!src->dl_tensor.strides) {
     return internal::from_blob(

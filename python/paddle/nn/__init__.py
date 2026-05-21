@@ -207,6 +207,8 @@ AdaptiveAvgPool1d = AdaptiveAvgPool1D
 AdaptiveAvgPool2d = AdaptiveAvgPool2D
 AdaptiveAvgPool3d = AdaptiveAvgPool3D
 HuberLoss = SmoothL1Loss
+MultilabelMarginLoss = MultiLabelMarginLoss
+MultilabelSoftMarginLoss = MultiLabelSoftMarginLoss
 MaxUnpool1d = MaxUnPool1D
 MaxUnpool2d = MaxUnPool2D
 MaxUnpool3d = MaxUnPool3D
@@ -230,6 +232,9 @@ CircularPad3d = CircularPad3D
 Conv1d = Conv1D
 Conv2d = Conv2D
 Conv3d = Conv3D
+ConvTranspose1d = Conv1DTranspose
+ConvTranspose2d = Conv2DTranspose
+ConvTranspose3d = Conv3DTranspose
 AdaptiveMaxPool1d = AdaptiveMaxPool1D
 AdaptiveMaxPool2d = AdaptiveMaxPool2D
 AdaptiveMaxPool3d = AdaptiveMaxPool3D
@@ -336,6 +341,7 @@ __all__ = [
     'Sequential',
     'Hardswish',
     'Conv1DTranspose',
+    'ConvTranspose1d',
     'AdaptiveMaxPool1D',
     'TransformerEncoder',
     'Softmax',
@@ -354,6 +360,7 @@ __all__ = [
     'Silu',
     'SiLU',
     'Conv2DTranspose',
+    'ConvTranspose2d',
     'CTCLoss',
     'RNNTLoss',
     'ThresholdedReLU',
@@ -365,6 +372,7 @@ __all__ = [
     'Conv3d',
     'Tanh',
     'Conv3DTranspose',
+    'ConvTranspose3d',
     'Flatten',
     'AdaptiveAvgPool1D',
     'Tanhshrink',
@@ -394,12 +402,14 @@ __all__ = [
     'MaxUnPool2D',
     'MaxUnPool3D',
     'MultiLabelSoftMarginLoss',
+    'MultilabelSoftMarginLoss',
     'HingeEmbeddingLoss',
     'Identity',
     'CosineEmbeddingLoss',
     'RReLU',
     'MultiMarginLoss',
     'MultiLabelMarginLoss',
+    'MultilabelMarginLoss',
     'TripletMarginWithDistanceLoss',
     'TripletMarginLoss',
     'SoftMarginLoss',

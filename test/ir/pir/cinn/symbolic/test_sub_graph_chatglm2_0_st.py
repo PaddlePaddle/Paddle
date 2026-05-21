@@ -14,7 +14,7 @@
 
 # repo: llm_sub_graphs
 # model: chatglm2
-# method:astype||method:pow||method:mean||method:__add__||api:paddle.tensor.ops.rsqrt||method:__mul__||method:__mul__||method:astype||api:paddle.nn.functional.common.linear||method:split||method:reshape||method:reshape||method:reshape||method:__getitem__||method:__getitem__||method:__getitem__||method:reshape||method:reshape||method:__getitem__||method:__getitem__||method:__mul__||method:__getitem__||method:__getitem__||method:__mul__||method:__sub__||method:__getitem__||method:__getitem__||method:__mul__||method:__getitem__||method:__getitem__||method:__mul__||method:__add__||api:paddle.tensor.manipulation.stack||method:flatten||api:paddle.tensor.manipulation.concat||method:__getitem__||method:__getitem__||method:__getitem__||method:reshape||method:reshape||method:__getitem__||method:__getitem__||method:__mul__||method:__getitem__||method:__getitem__||method:__mul__||method:__sub__||method:__getitem__||method:__getitem__||method:__mul__||method:__getitem__||method:__getitem__||method:__mul__||method:__add__||api:paddle.tensor.manipulation.stack||method:flatten||api:paddle.tensor.manipulation.concat||method:unsqueeze||method:tile||method:reshape||method:unsqueeze||method:tile||method:reshape||method:reshape||method:reshape||method:transpose||method:transpose||api:paddle.tensor.linalg.bmm||method:__mul__||method:reshape||method:astype||method:__mul__||method:__add__||method:astype||api:paddle.nn.functional.activation.softmax||method:astype||api:paddle.nn.functional.common.dropout||method:reshape||method:reshape||method:transpose||api:paddle.tensor.linalg.bmm||method:reshape||method:transpose||method:reshape||api:paddle.nn.functional.common.linear||api:paddle.nn.functional.common.dropout||method:__add__||method:astype||method:pow||method:mean||method:__add__||api:paddle.tensor.ops.rsqrt||method:__mul__||method:__mul__||method:astype||api:paddle.nn.functional.common.linear||method:__getitem__||method:__getitem__||api:paddle.nn.functional.activation.silu||method:__mul__||api:paddle.nn.functional.common.linear||api:paddle.nn.functional.common.dropout||method:__add__
+# method:astype||method:pow||method:mean||method:__add__||api:paddle.rsqrt||method:__mul__||method:__mul__||method:astype||api:paddle.nn.functional.common.linear||method:split||method:reshape||method:reshape||method:reshape||method:__getitem__||method:__getitem__||method:__getitem__||method:reshape||method:reshape||method:__getitem__||method:__getitem__||method:__mul__||method:__getitem__||method:__getitem__||method:__mul__||method:__sub__||method:__getitem__||method:__getitem__||method:__mul__||method:__getitem__||method:__getitem__||method:__mul__||method:__add__||api:paddle.tensor.manipulation.stack||method:flatten||api:paddle.tensor.manipulation.concat||method:__getitem__||method:__getitem__||method:__getitem__||method:reshape||method:reshape||method:__getitem__||method:__getitem__||method:__mul__||method:__getitem__||method:__getitem__||method:__mul__||method:__sub__||method:__getitem__||method:__getitem__||method:__mul__||method:__getitem__||method:__getitem__||method:__mul__||method:__add__||api:paddle.tensor.manipulation.stack||method:flatten||api:paddle.tensor.manipulation.concat||method:unsqueeze||method:tile||method:reshape||method:unsqueeze||method:tile||method:reshape||method:reshape||method:reshape||method:transpose||method:transpose||api:paddle.tensor.linalg.bmm||method:__mul__||method:reshape||method:astype||method:__mul__||method:__add__||method:astype||api:paddle.nn.functional.activation.softmax||method:astype||api:paddle.nn.functional.common.dropout||method:reshape||method:reshape||method:transpose||api:paddle.tensor.linalg.bmm||method:reshape||method:transpose||method:reshape||api:paddle.nn.functional.common.linear||api:paddle.nn.functional.common.dropout||method:__add__||method:astype||method:pow||method:mean||method:__add__||api:paddle.rsqrt||method:__mul__||method:__mul__||method:astype||api:paddle.nn.functional.common.linear||method:__getitem__||method:__getitem__||api:paddle.nn.functional.activation.silu||method:__mul__||api:paddle.nn.functional.common.linear||api:paddle.nn.functional.common.dropout||method:__add__
 import unittest
 
 import numpy as np
@@ -64,7 +64,7 @@ class LayerCase(paddle.nn.Layer):
         var_4 = var_3.pow(2)
         var_5 = var_4.mean(-1, keepdim=True)
         var_6 = var_5 + 1e-05
-        var_7 = paddle.tensor.ops.rsqrt(var_6)
+        var_7 = paddle.rsqrt(var_6)
         var_8 = var_7 * var_0
         var_9 = var_8 * self.parameter_0
         var_10 = var_9.astype('float32')
@@ -175,7 +175,7 @@ class LayerCase(paddle.nn.Layer):
         var_93 = var_92.pow(2)
         var_94 = var_93.mean(-1, keepdim=True)
         var_95 = var_94 + 1e-05
-        var_96 = paddle.tensor.ops.rsqrt(var_95)
+        var_96 = paddle.rsqrt(var_95)
         var_97 = var_96 * var_91
         var_98 = var_97 * self.parameter_4
         var_99 = var_98.astype('float32')

@@ -2158,12 +2158,6 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
 
   const int64_t rows = x_dims[0];
   const int64_t cols = x_dims[1];
-  PADDLE_ENFORCE_LE(rows,
-                    65535 * 128,
-                    common::errors::InvalidArgument(
-                        "Currently only supports the first dim of "
-                        "Input(X) <= 65535 * 128, but got %d",
-                        rows));
 
   PADDLE_ENFORCE_EQ(
       cols % 4,
@@ -4289,6 +4283,24 @@ void ReduceInferMeta(const MetaTensor& x,
   }
 
   ReduceInferMetaBase(x, axis, keep_dim, reduce_all, out);
+}
+
+void AMinMaxInferMeta(const MetaTensor& x,
+                      const std::vector<int64_t>& axis,
+                      bool keep_dim,
+                      MetaTensor* min,
+                      MetaTensor* max) {
+  bool reduce_all = false;
+  if (axis.empty()) {
+    reduce_all = true;
+  }
+  DDim out_dim = ReduceInferDim(x, axis, keep_dim, reduce_all);
+  min->set_dims(out_dim);
+  min->set_dtype(x.dtype());
+  min->set_layout(x.layout());
+  max->set_dims(out_dim);
+  max->set_dtype(x.dtype());
+  max->set_layout(x.layout());
 }
 
 DDim ReduceInferDimForIntArrayAxis(const MetaTensor& x,
@@ -6424,6 +6436,7 @@ void UniqueRawInferMeta(const MetaTensor& x,
                         MetaTensor* indices,
                         MetaTensor* index,
                         MetaTensor* counts) {
+  out->set_dtype(x.dtype());
   if (!is_sorted) {
     PADDLE_ENFORCE_EQ(x.dims().size() == 1 || x.dims().size() == 0,
                       true,

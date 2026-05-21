@@ -1264,7 +1264,7 @@ static void Interpolate1DCUDABwd(
     return;
   }
 
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   MT ratio_w =
       funcs::AreaPixelComputeScale<MT>(in_w, out_w, align_corners, scale_w);
   int64_t in_cw = c * in_w;
@@ -1399,7 +1399,7 @@ static void Interpolate2DCUDABwd(
 
   using MT = typename std::conditional_t<std::is_integral<T>::value,
                                          float,
-                                         typename dtype::MPTypeTrait<T>::Type>;
+                                         typename MPTypeTrait<T>::Type>;
   MT ratio_h =
       funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h);
   MT ratio_w =
@@ -1672,7 +1672,7 @@ static void InterpolateAA2DCUDABwd(
 
   using MT = typename std::conditional_t<std::is_integral<T>::value,
                                          float,
-                                         typename dtype::MPTypeTrait<T>::Type>;
+                                         typename MPTypeTrait<T>::Type>;
   MT ratio_h =
       funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h);
   MT ratio_w =
@@ -1913,7 +1913,7 @@ static void Interpolate3DCUDABwd(
 
   using MT = typename std::conditional_t<std::is_integral<T>::value,
                                          float,
-                                         typename dtype::MPTypeTrait<T>::Type>;
+                                         typename MPTypeTrait<T>::Type>;
   MT ratio_d =
       funcs::AreaPixelComputeScale<MT>(in_d, out_d, align_corners, scale_d);
   MT ratio_h =

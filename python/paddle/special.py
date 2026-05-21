@@ -13,8 +13,7 @@
 # limitations under the License.
 
 from .tensor.compat_softmax import log_softmax, softmax
-from .tensor.math import i0, i0e, i1, i1e, log1p, logit, logsumexp
-from .tensor.ops import expm1
+from .tensor.math import expm1, i0, i0e, i1, i1e, log1p, logit, logsumexp
 
 __all__ = [
     "i0",

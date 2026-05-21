@@ -772,10 +772,6 @@ if(WITH_CPP_DIST)
   endif()
 endif()
 
-if(WITH_ROCM)
-  include_directories(${ROCM_PATH}/include)
-endif()
-
 add_subdirectory(paddle)
 if(WITH_CUSTOM_DEVICE_SUB_BUILD)
   add_subdirectory(${CUSTOM_DEVICE_SOURCE_DIR}

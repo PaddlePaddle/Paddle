@@ -14,28 +14,40 @@
 #
 # Validates Muon optimizer with MuonShardingOptimizer.
 # Muon requires whole 2D tensors for orthogonalization, so split_param is disabled.
-# Tests all combinations of QKV/FFN/ns_coeff_type modes.
+# Tests ns_coeff_type modes, custom color groups, and split_concat_func.
 # Topology: sharding_degree=2, mp_degree=1 (2 ranks total)
 
+import os
 import random
 import unittest
 from dataclasses import dataclass
+from functools import partial
 
 import numpy as np
 
 import paddle
 from paddle.distributed import fleet
+from paddle.distributed.fleet.meta_optimizers.muon_sharding_optimizer import (
+    MuonShardingOptimizer,
+)
 from paddle.distributed.fleet.utils import mix_precision_utils
 from paddle.optimizer.muon import (
     MuonParamInfo,
-    QKVInfo,
     _default_should_use_muon,
 )
 
+# Enable MUON_DEBUG to cover the debug logging branch (muon.py L532-539)
+os.environ["MUON_DEBUG"] = "1"
+
+# Test-controlled flags (set via need_envs from test_parallel_dygraph_muon.py)
+g_enable_fuse_optimizer_states = int(
+    os.environ.get("ENABLE_FUSE_OPTIMIZER_STATES", "0")
+)
+g_release_gradients = int(os.environ.get("RELEASE_GRADIENTS", "0"))
+g_multi_precision = int(os.environ.get("MULTI_PRECISION", "0"))
+
 # Parameter combinations
-QKV_UPDATE_MODES = ["split_head", "split_qkv", "fused_qkv"]
-FFN_SPLITS = [True, False]
-NS_COEFF_TYPES = ["simple", "quintic", "polar_express", "aol"]
+NS_COEFF_TYPES = ["simple", "quintic", "polar_express", "aol", "deepseekv4"]
 
 # Model config
 vocab_size = 20
@@ -45,11 +57,42 @@ kv_head_num = 2  # num_key_value_heads (GQA)
 head_dim = hidden_size // head_num
 intermediate_size = 128
 qkv_dim = (head_num + 2 * kv_head_num) * head_dim
+batched_proj_shape = (
+    2,
+    256,
+    128,
+)  # 3D: triggers batched NS + transpose (256 > 128)
 seq_length = 2
 batch_size = 4
 STEPS = 3
 
 sharding_degree = 2
+
+
+# ------------------------------------------------------------------
+# Slice functions (called as split_concat_func(matrix_2d_global, ortho_fn))
+# ------------------------------------------------------------------
+
+
+def _qkv_sep(matrix_2d, ortho_fn, kv_head_num=None, num_key_value_groups=None):
+    """Slice QKV into Q, K, V blocks, orthogonalise each as whole."""
+    head_dim_local = matrix_2d.shape[1] // (
+        num_key_value_groups * kv_head_num + 2 * kv_head_num
+    )
+    q_dim = num_key_value_groups * kv_head_num * head_dim_local
+    k_dim = kv_head_num * head_dim_local
+    v_dim = kv_head_num * head_dim_local
+
+    q, k, v = paddle.split(matrix_2d, [q_dim, k_dim, v_dim], axis=1)
+    return paddle.concat([ortho_fn(q), ortho_fn(k), ortho_fn(v)], axis=1)
+
+
+def _ffn_split(matrix_2d, ortho_fn, intermediate_size=None):
+    """Split gate_up into gate and up, orthogonalise each."""
+    gate, up = paddle.split(
+        matrix_2d, [intermediate_size, intermediate_size], axis=1
+    )
+    return paddle.concat([ortho_fn(gate), ortho_fn(up)], axis=1)
 
 
 @dataclass
@@ -82,6 +125,7 @@ class QKVFFNNet(paddle.nn.Layer):
         np_up_gate,
         np_down_proj,
         np_lm_head,
+        np_batched_proj,
     ):
         super().__init__()
         self.config = config
@@ -139,6 +183,12 @@ class QKVFFNNet(paddle.nn.Layer):
             ),
         )
 
+        self.batched_proj = paddle.create_parameter(
+            shape=list(batched_proj_shape),
+            dtype='float32',
+            default_initializer=paddle.nn.initializer.Assign(np_batched_proj),
+        )
+
     def forward(self, x):
         # Embedding
         h = self.embed_tokens(x)  # [batch, seq, hidden]
@@ -160,6 +210,10 @@ class QKVFFNNet(paddle.nn.Layer):
 
         # Down projection
         out = self.down_proj(out)  # [batch, seq, hidden]
+
+        # Batched projection (3D param: triggers batched NS + transpose path)
+        bp_scale = paddle.einsum('bsh,kmn->', out, self.batched_proj)
+        out = out + bp_scale * 1e-4
 
         # LM head
         logits = self.lm_head(out)  # [batch, seq, vocab]
@@ -184,6 +238,16 @@ class TestDistShardingMuonTraining(unittest.TestCase):
         }
         self.strategy.use_muon_sharding = True
 
+        # Configure sharding_configs from env vars
+        if g_enable_fuse_optimizer_states:
+            self.strategy.hybrid_configs[
+                "sharding_configs"
+            ].enable_fuse_optimizer_states = True
+        if g_release_gradients:
+            self.strategy.hybrid_configs[
+                "sharding_configs"
+            ].release_gradients = True
+
         fleet.init(is_collective=True, strategy=self.strategy)
         self.data = [
             np.random.randint(0, vocab_size, (batch_size, seq_length))
@@ -195,13 +259,68 @@ class TestDistShardingMuonTraining(unittest.TestCase):
             output = model(batch)
             loss = output.mean()
         loss.backward()
+        inner_opt = getattr(optimizer, '_inner_opt', optimizer)
+        if isinstance(inner_opt, MuonShardingOptimizer):
+            optimizer.clear_param_storage('test_color')
         optimizer.step()
         optimizer.clear_grad()
         return loss
 
-    def build_optimizer(self, model, qkv_mode, ffn_split, ns_coeff):
-        """Build Muon optimizer, ref: PaddleFormers trainer.py L3122-3173."""
+    def _init_weights(self):
+        """Create shared numpy weight arrays."""
+        return (
+            np.random.random_sample((vocab_size, hidden_size)),
+            np.random.random_sample((hidden_size, qkv_dim)),
+            np.random.random_sample((head_num * head_dim, hidden_size)),
+            np.random.random_sample((hidden_size, 2 * intermediate_size)),
+            np.random.random_sample((hidden_size, hidden_size)),
+            np.random.random_sample((hidden_size, vocab_size)),
+            np.random.random_sample(batched_proj_shape),
+        )
 
+    def _build_split_concat_func_map(self, model):
+        """Build split_concat_func_map with QKV sep and FFN split for applicable params."""
+        num_key_value_groups = head_num // kv_head_num
+        slice_map = {}
+        for name, param in model.named_parameters():
+            if "qkv_proj" in name:
+                slice_map[param.name] = partial(
+                    _qkv_sep,
+                    kv_head_num=kv_head_num,
+                    num_key_value_groups=num_key_value_groups,
+                )
+            elif "up_gate_proj" in name:
+                slice_map[param.name] = partial(
+                    _ffn_split,
+                    intermediate_size=intermediate_size,
+                )
+        return slice_map
+
+    def build_optimizer(
+        self,
+        model,
+        ns_coeff,
+        split_concat_func_map=None,
+        ns_matmul_dtype=None,
+        multi_precision=False,
+        apply_decay_param_fun=None,
+        ns_coeffs=None,
+    ):
+        """Build Muon optimizer.
+
+        Args:
+            model: The model to optimize.
+            ns_coeff: Newton-Schulz coefficient type.
+            split_concat_func_map: Optional dict {param.name: split_concat_func}.
+                Covers muon.py L529 (split_concat_func call) and L535 (debug log).
+            ns_matmul_dtype: Optional explicit dtype for NS matmul.
+                Covers muon.py L283 (explicit ns_matmul_dtype branch).
+            multi_precision: If True, enable FP32 master weights.
+                Covers muon.py L560-564, L574-575, L582-583.
+            apply_decay_param_fun: Optional callable(param_name) -> bool.
+                Covers muon.py L443-446, L568-572.
+            ns_coeffs: Optional custom NS coefficient list.
+        """
         muon_param_info_map = {}
         exclude_patterns = ["embed", "bias", "lm_head"]
 
@@ -209,53 +328,43 @@ class TestDistShardingMuonTraining(unittest.TestCase):
             use_muon = _default_should_use_muon(
                 name, param.shape, exclude_patterns
             )
-
-            # QKV params: set QKVInfo
-            if "qkv_proj.weight" in name and len(param.shape) == 2:
-                param_info = MuonParamInfo(
-                    use_muon=use_muon,
-                    qkv_info=QKVInfo(
-                        head_num=self.config.head_num,
-                        kv_head_num=self.config.kv_head_num,
-                        num_key_value_groups=self.config.head_num
-                        // self.config.kv_head_num,
-                    ),
-                )
-            # FFN gate_up params: set intermediate_size
-            elif "up_gate_proj.weight" in name and ffn_split:
-                param_info = MuonParamInfo(
-                    use_muon=use_muon,
-                    intermediate_size=self.config.intermediate_size,
-                )
-            else:
-                param_info = MuonParamInfo(use_muon=use_muon)
-
+            sf = None
+            if split_concat_func_map and param.name in split_concat_func_map:
+                sf = split_concat_func_map[param.name]
+            param_info = MuonParamInfo(use_muon=use_muon, split_concat_func=sf)
             muon_param_info_map[param.name] = param_info
+
+        kwargs = {}
+        if ns_matmul_dtype is not None:
+            kwargs['ns_matmul_dtype'] = ns_matmul_dtype
+        if ns_coeffs is not None:
+            kwargs['ns_coeffs'] = ns_coeffs
+
         return paddle.optimizer.Muon(
             parameters=model.parameters(),
             learning_rate=0.001,
             weight_decay=0.00001,
             grad_clip=paddle.nn.ClipGradByGlobalNorm(0.5),
             muon_param_info_map=muon_param_info_map,
-            muon_qkv_update_mode=qkv_mode,
-            muon_ffn_split=ffn_split,
+            ns_steps=10 if ns_coeff == "deepseekv4" else 5,
             ns_coeff_type=ns_coeff,
+            multi_precision=multi_precision,
+            apply_decay_param_fun=apply_decay_param_fun,
+            **kwargs,
         )
 
-    def _run_single_test(self, qkv_mode, ffn_split, ns_coeff):
-        """Run single test combination."""
-        # Init weights
-        np_embed = np.random.random_sample((vocab_size, hidden_size))
-        np_qkv = np.random.random_sample((hidden_size, qkv_dim))
-        np_o_proj = np.random.random_sample((head_num * head_dim, hidden_size))
-        np_up_gate = np.random.random_sample(
-            (hidden_size, 2 * intermediate_size)
-        )
-        np_down_proj = np.random.random_sample((hidden_size, hidden_size))
-        np_lm_head = np.random.random_sample((hidden_size, vocab_size))
-
-        # Distributed model
-        model_a = QKVFFNNet(
+    def _build_model(self, weights):
+        """Build a single model instance from weights."""
+        (
+            np_embed,
+            np_qkv,
+            np_o_proj,
+            np_up_gate,
+            np_down_proj,
+            np_lm_head,
+            np_batched_proj,
+        ) = weights
+        model = QKVFFNNet(
             self.config,
             np_embed,
             np_qkv,
@@ -263,35 +372,88 @@ class TestDistShardingMuonTraining(unittest.TestCase):
             np_up_gate,
             np_down_proj,
             np_lm_head,
+            np_batched_proj,
         )
-        model_a = mix_precision_utils.MixPrecisionLayer(
-            model_a, dtype="bfloat16"
+        model = mix_precision_utils.MixPrecisionLayer(model, dtype="bfloat16")
+        model = paddle.amp.decorate(models=model, level='O2', dtype='bfloat16')
+        return model
+
+    def _run_single_test(
+        self,
+        ns_coeff,
+        color_params=None,
+        use_slice=False,
+        explicit_dtype=False,
+        multi_precision=False,
+        apply_decay_param_fun=None,
+        ns_coeffs=None,
+    ):
+        """Run single test combination.
+
+        Args:
+            ns_coeff: Newton-Schulz coefficient type.
+            color_params: Optional list of param name substrings to assign
+                custom color group (covers muon_sharding_optimizer L388-394).
+            use_slice: If True, build split_concat_func_map for QKV/FFN params
+                (covers muon.py L529, L535).
+            explicit_dtype: If True, pass ns_matmul_dtype=paddle.float32 explicitly
+                (covers muon.py L283).
+            multi_precision: If True, enable FP32 master weights
+                (covers muon.py L560-564, L574-575, L582-583).
+            apply_decay_param_fun: Optional callable(param_name) -> bool
+                (covers muon.py L443-446, L568-572).
+            ns_coeffs: Optional custom NS coefficient list.
+        """
+        # Allow env var to force multi_precision on
+        if g_multi_precision:
+            multi_precision = True
+        weights = self._init_weights()
+
+        # --- Distributed model (model_a) ---
+        model_a = self._build_model(weights)
+
+        # Assign custom color before optimizer construction
+        if color_params:
+            hcg = fleet.get_hybrid_communicate_group()
+            sharding_group = hcg.get_sharding_parallel_group()
+            for name, p in model_a.named_parameters():
+                for pattern in color_params:
+                    if pattern in name:
+                        p.color = {
+                            'color': 'test_color',
+                            'group': sharding_group,
+                        }
+                        break
+
+        split_concat_func_map = (
+            self._build_split_concat_func_map(model_a) if use_slice else None
         )
-        model_a = paddle.amp.decorate(
-            models=model_a, level='O2', dtype='bfloat16'
-        )
+        ns_dtype = paddle.float32 if explicit_dtype else None
+
         optimizer_a = self.build_optimizer(
-            model_a, qkv_mode, ffn_split, ns_coeff
+            model_a,
+            ns_coeff,
+            split_concat_func_map=split_concat_func_map,
+            ns_matmul_dtype=ns_dtype,
+            multi_precision=multi_precision,
+            apply_decay_param_fun=apply_decay_param_fun,
+            ns_coeffs=ns_coeffs,
         )
 
-        # Single-GPU reference model (same MixPrecisionLayer pattern for consistency)
-        model_b = QKVFFNNet(
-            self.config,
-            np_embed,
-            np_qkv,
-            np_o_proj,
-            np_up_gate,
-            np_down_proj,
-            np_lm_head,
-        )
-        model_b = mix_precision_utils.MixPrecisionLayer(
-            model_b, dtype="bfloat16"
-        )
-        model_b = paddle.amp.decorate(
-            models=model_b, level='O2', dtype='bfloat16'
+        # --- Reference model (model_b, single-GPU) ---
+        model_b = self._build_model(weights)
+
+        split_concat_func_map_b = (
+            self._build_split_concat_func_map(model_b) if use_slice else None
         )
         optimizer_b = self.build_optimizer(
-            model_b, qkv_mode, ffn_split, ns_coeff
+            model_b,
+            ns_coeff,
+            split_concat_func_map=split_concat_func_map_b,
+            ns_matmul_dtype=ns_dtype,
+            multi_precision=multi_precision,
+            apply_decay_param_fun=apply_decay_param_fun,
+            ns_coeffs=ns_coeffs,
         )
         optimizer_b = mix_precision_utils.MixPrecisionOptimizer(optimizer_b)
 
@@ -326,39 +488,107 @@ class TestDistShardingMuonTraining(unittest.TestCase):
                     err_msg=f"Param {param_a.name} mismatch at step {idx}!",
                 )
 
-    @unittest.skipIf(
-        not paddle.is_compiled_with_cuda()
-        or paddle.device.cuda.get_device_capability()[0] < 8,
-        "BF16 matmul requires GPU compute capability >= 80 (Ampere+)",
-    )
     def test_sharding_muon(self):
-        """Test all 24 parameter combinations."""
-        total = len(QKV_UPDATE_MODES) * len(FFN_SPLITS) * len(NS_COEFF_TYPES)
+        """Test ns_coeff_type combinations + color/slice/dtype coverage.
+
+        Phase 1: iterate all ns_coeff_types (basic, no slice, no color).
+        Phase 2: custom ns_coeffs (user-provided coefficient list).
+        Phase 3: custom color group + split_concat_func + explicit fp32 dtype.
+        Phase 4: multi_precision=True (master weights for Muon 2D + AdamW 1D).
+        Phase 5: apply_decay_param_fun that excludes some params from decay.
+          Covers:
+          - muon_sharding_optimizer.py L388-394: custom color from param.color dict
+          - muon_sharding_optimizer.py L627-635, L665-667: fused gradient comm buffers
+          - muon.py L283: explicit ns_matmul_dtype=paddle.float32
+          - muon.py L443-446: apply_decay_param_fun with_decay=False (AdamW path)
+          - muon.py L529: split_concat_func call
+          - muon.py L535: MUON_DEBUG logging (via MUON_DEBUG=1 env)
+          - muon.py L560-564, L574-575, L582-583: find_master=True (Muon path)
+        """
+        total = (
+            len(NS_COEFF_TYPES) + 4
+        )  # +1 custom ns_coeffs, +1 color/slice/dtype, +1 multi_precision, +1 decay_fun
         passed = 0
         failed = []
 
-        for qkv_mode in QKV_UPDATE_MODES:
-            for ffn_split in FFN_SPLITS:
-                for ns_coeff in NS_COEFF_TYPES:
-                    print(
-                        f"\n[Muon Test] qkv_mode={qkv_mode}, ffn_split={ffn_split}, ns_coeff={ns_coeff}"
-                    )
-                    try:
-                        self._run_single_test(qkv_mode, ffn_split, ns_coeff)
-                        passed += 1
-                        print(f"[PASS] {qkv_mode}, {ffn_split}, {ns_coeff}")
-                    except Exception as e:
-                        failed.append((qkv_mode, ffn_split, ns_coeff, str(e)))
-                        print(
-                            f"[FAIL] {qkv_mode}, {ffn_split}, {ns_coeff}: {e}"
-                        )
+        # Phase 1: ns_coeff_type combinations
+        for ns_coeff in NS_COEFF_TYPES:
+            print(f"\n[Muon Test] ns_coeff={ns_coeff}")
+            try:
+                self._run_single_test(ns_coeff)
+                passed += 1
+                print(f"[PASS] {ns_coeff}")
+            except Exception as e:
+                failed.append((ns_coeff, str(e)))
+                print(f"[FAIL] {ns_coeff}: {e}")
+
+        # Phase 2: custom ns_coeffs (user-provided coefficient list)
+        print("\n[Muon Test] custom ns_coeffs")
+        try:
+            ns_coeff = "custom"
+            custom_coeffs = [(3.4445, -4.7750, 2.0315), (2.5, -2.0, 0.8)]
+            self._run_single_test(
+                ns_coeff,
+                ns_coeffs=custom_coeffs,
+            )
+            passed += 1
+            print("[PASS] custom ns_coeffs")
+        except Exception as e:
+            failed.append(("custom_ns_coeffs", str(e)))
+            print(f"[FAIL] custom ns_coeffs: {e}")
+
+        # Phase 3: color + split_concat_func + explicit fp32 dtype
+        print("\n[Muon Test] color + split_concat_func + explicit fp32 dtype")
+        try:
+            self._run_single_test(
+                "simple",
+                color_params=["down_proj"],
+                use_slice=True,
+                explicit_dtype=True,
+            )
+            passed += 1
+            print("[PASS] color + slice + dtype")
+        except Exception as e:
+            failed.append(("color+slice+dtype", str(e)))
+            print(f"[FAIL] color + slice + dtype: {e}")
+
+        # Phase 4: multi_precision=True — covers find_master branch in Muon
+        # muon.py L560-564 (find_master=True), L574-575 (master_weight.scale_),
+        # L582-583 (master_weight.subtract_ + assign)
+        print("\n[Muon Test] multi_precision (master weights)")
+        try:
+            self._run_single_test(
+                "simple",
+                multi_precision=True,
+            )
+            passed += 1
+            print("[PASS] multi_precision")
+        except Exception as e:
+            failed.append(("multi_precision", str(e)))
+            print(f"[FAIL] multi_precision: {e}")
+
+        # Phase 5: apply_decay_param_fun — covers with_decay=False branch
+        # muon.py L443-446 (AdamW path: with_decay=False)
+        # muon.py L568-572 (Muon path: with_decay=False)
+        print("\n[Muon Test] apply_decay_param_fun (selective decay)")
+        try:
+            # Exclude all params from decay — exercises both AdamW and Muon with_decay=False
+            self._run_single_test(
+                "simple",
+                apply_decay_param_fun=lambda name: False,
+            )
+            passed += 1
+            print("[PASS] apply_decay_param_fun")
+        except Exception as e:
+            failed.append(("apply_decay_param_fun", str(e)))
+            print(f"[FAIL] apply_decay_param_fun: {e}")
 
         print(f"\n{'=' * 60}")
         print(f"Muon Sharding Test Summary: {passed}/{total} passed")
         if failed:
             print("Failed combinations:")
-            for qkv, ffn, ns, err in failed:
-                print(f"  - {qkv}, {ffn}, {ns}: {err[:100]}...")
+            for ns, err in failed:
+                print(f"  - {ns}: {err[:100]}...")
         print(f"{'=' * 60}")
 
         if failed:

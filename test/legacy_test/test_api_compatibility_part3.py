@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
@@ -1336,30 +1337,30 @@ class TestLayerAndTensorToAPI(unittest.TestCase):
         self.assertIs(ret, linear)
         self.assertEqual(linear.weight.dtype, original_dtype)
 
-    # ---- Layer.to: all-dtype casting ----
+    # ---- Layer.to: floating-only dtype casting (PyTorch-aligned) ----
 
-    def test_layer_cast_all_with_positional_dtype(self):
-        """Layer.to(dtype) casts ALL params and buffers, including int buf."""
+    def test_layer_cast_floating_only_with_positional_dtype(self):
+        """Layer.to(dtype) casts only floating/complex params and buffers."""
         model = self._make_model()
         self.assertEqual(model.int_buf.dtype, paddle.int32)
         model.to(paddle.float64)
         self.assertEqual(model.linear.weight.dtype, paddle.float64)
-        self.assertEqual(model.int_buf.dtype, paddle.float64)
+        self.assertEqual(model.int_buf.dtype, paddle.int32)
 
-    def test_layer_cast_all_with_keyword_dtype(self):
-        """Layer.to(dtype='float64') casts ALL params and buffers."""
+    def test_layer_cast_floating_only_with_keyword_dtype(self):
+        """Layer.to(dtype='float64') casts only floating/complex tensors."""
         model = self._make_model()
         model.to(dtype='float64')
         self.assertEqual(model.linear.weight.dtype, paddle.float64)
-        self.assertEqual(model.int_buf.dtype, paddle.float64)
+        self.assertEqual(model.int_buf.dtype, paddle.int32)
 
-    def test_layer_cast_all_with_tensor(self):
-        """Layer.to(tensor) casts ALL params and buffers."""
+    def test_layer_cast_floating_only_with_tensor(self):
+        """Layer.to(tensor) casts only floating/complex tensors to tensor.dtype."""
         model = self._make_model()
         ref = paddle.to_tensor([1.0], dtype='float64')
         model.to(ref)
         self.assertEqual(model.linear.weight.dtype, paddle.float64)
-        self.assertEqual(model.int_buf.dtype, paddle.float64)
+        self.assertEqual(model.int_buf.dtype, paddle.int32)
 
     # ---- Layer.to: sublayers and chaining ----
 
@@ -1693,6 +1694,59 @@ class TestLayerAndTensorToAPI(unittest.TestCase):
             t.to('float64', copy='yes')
 
 
+# Test paddle.dtype.itemsize compatibility (mirrors torch.dtype.itemsize).
+class TestDtypeItemsizeAPI(unittest.TestCase):
+    EXPECTED = {
+        'float16': 2,
+        'bfloat16': 2,
+        'float32': 4,
+        'float64': 8,
+        'complex64': 8,
+        'complex128': 16,
+        'int8': 1,
+        'int16': 2,
+        'int32': 4,
+        'int64': 8,
+        'uint8': 1,
+        'uint16': 2,
+        'uint32': 4,
+        'uint64': 8,
+        'bool': 1,
+        'float8_e4m3fn': 1,
+        'float8_e5m2': 1,
+    }
+
+    def test_all_standard_dtypes(self):
+        for name, want in self.EXPECTED.items():
+            if not hasattr(paddle, name):
+                continue
+            with self.subTest(dtype=name):
+                self.assertEqual(getattr(paddle, name).itemsize, want)
+
+    def test_returns_int(self):
+        self.assertIsInstance(paddle.float32.itemsize, int)
+
+    def test_property_lives_on_class(self):
+        self.assertIsInstance(type(paddle.float32).itemsize, property)
+
+    def test_aliases_match(self):
+        self.assertEqual(paddle.float.itemsize, paddle.float32.itemsize)
+        self.assertEqual(paddle.double.itemsize, paddle.float64.itemsize)
+        self.assertEqual(paddle.half.itemsize, paddle.float16.itemsize)
+        self.assertEqual(paddle.short.itemsize, paddle.int16.itemsize)
+        self.assertEqual(paddle.long.itemsize, paddle.int64.itemsize)
+        self.assertEqual(paddle.cfloat.itemsize, paddle.complex64.itemsize)
+        self.assertEqual(paddle.cdouble.itemsize, paddle.complex128.itemsize)
+
+    def test_matches_tensor_element_size(self):
+        for name in ('float32', 'float64', 'int32', 'int64', 'bool'):
+            with self.subTest(dtype=name):
+                t = paddle.zeros([1], dtype=name)
+                self.assertEqual(
+                    getattr(paddle, name).itemsize, t.element_size()
+                )
+
+
 # Test select_scatter compatibility
 class TestSelectScatterAPICompatibility(unittest.TestCase):
     def setUp(self):
@@ -2005,7 +2059,180 @@ class TestLogitAPI(unittest.TestCase):
         )
 
 
+# Test conv1d_transpose / conv_transpose1d compatibility
+@unittest.skipIf(
+    sys.platform == 'win32',
+    "Conv transpose compatibility tests not supported on Windows-Inference",
+)
+class TestConv1dTransposeAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.dtype = 'float32'
+        self.np_x = np.random.rand(1, 2, 4).astype(self.dtype)
+        self.np_weight = np.random.rand(2, 2, 3).astype(self.dtype)
+        self.np_bias = np.random.rand(2).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        weight = paddle.to_tensor(self.np_weight)
+        bias = paddle.to_tensor(self.np_bias)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.nn.functional.conv1d_transpose(x, weight)
+        # 2. Paddle keyword arguments
+        out2 = paddle.nn.functional.conv1d_transpose(x=x, weight=weight)
+        # 3. PyTorch keyword arguments (alias: input)
+        out3 = paddle.nn.functional.conv1d_transpose(input=x, weight=weight)
+        # 4. PyTorch function name alias
+        out4 = paddle.nn.functional.conv_transpose1d(x, weight)
+        # 5. PyTorch function name alias + PyTorch keyword
+        out5 = paddle.nn.functional.conv_transpose1d(input=x, weight=weight)
+        # 6. Mixed arguments (positional + keyword)
+        out6 = paddle.nn.functional.conv1d_transpose(
+            x, weight, bias=bias, stride=1, padding=0
+        )
+        # 7. Positional arguments with bias
+        out7 = paddle.nn.functional.conv1d_transpose(x, weight, bias)
+        # 8. All positional arguments
+        out8 = paddle.nn.functional.conv1d_transpose(
+            x, weight, bias, 1, 0, 0, 1, 1, None, 'NCL', None
+        )
+        # 9. All keyword arguments
+        out9 = paddle.nn.functional.conv1d_transpose(
+            x=x,
+            weight=weight,
+            bias=bias,
+            stride=1,
+            padding=0,
+            output_padding=0,
+            groups=1,
+            dilation=1,
+            output_size=None,
+            data_format='NCL',
+            name=None,
+        )
+        # 10. PyTorch alias + all keyword arguments
+        out10 = paddle.nn.functional.conv_transpose1d(
+            input=x,
+            weight=weight,
+            bias=bias,
+            stride=1,
+            padding=0,
+            output_padding=0,
+            groups=1,
+            dilation=1,
+            output_size=None,
+            data_format='NCL',
+            name=None,
+        )
+
+        # Verify outputs without bias
+        ref = out1.numpy()
+        for out in [out2, out3, out4, out5]:
+            np.testing.assert_allclose(out.numpy(), ref, rtol=1e-5)
+
+        # Verify outputs with bias
+        ref_bias = out6.numpy()
+        for out in [out7, out8, out9, out10]:
+            np.testing.assert_allclose(out.numpy(), ref_bias, rtol=1e-5)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[1, 2, 4], dtype=self.dtype)
+            weight = paddle.static.data(
+                name="weight", shape=[2, 2, 3], dtype=self.dtype
+            )
+
+            # 1. Paddle Positional arguments
+            out1 = paddle.nn.functional.conv1d_transpose(x, weight)
+            # 2. Paddle keyword arguments
+            out2 = paddle.nn.functional.conv1d_transpose(x=x, weight=weight)
+            # 3. PyTorch keyword arguments (alias: input)
+            out3 = paddle.nn.functional.conv1d_transpose(input=x, weight=weight)
+            # 4. PyTorch function name alias
+            out4 = paddle.nn.functional.conv_transpose1d(x, weight)
+            # 5. PyTorch function name alias + PyTorch keyword
+            out5 = paddle.nn.functional.conv_transpose1d(input=x, weight=weight)
+            # 6. All positional arguments
+            out6 = paddle.nn.functional.conv1d_transpose(
+                x, weight, None, 1, 0, 0, 1, 1, None, 'NCL', None
+            )
+            # 7. All keyword arguments
+            out7 = paddle.nn.functional.conv1d_transpose(
+                x=x,
+                weight=weight,
+                bias=None,
+                stride=1,
+                padding=0,
+                output_padding=0,
+                groups=1,
+                dilation=1,
+                output_size=None,
+                data_format='NCL',
+                name=None,
+            )
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={
+                    "x": self.np_x,
+                    "weight": self.np_weight,
+                },
+                fetch_list=[out1, out2, out3, out4, out5, out6, out7],
+            )
+
+            # Verify all outputs
+            for i in range(1, len(fetches)):
+                np.testing.assert_allclose(fetches[0], fetches[i], rtol=1e-5)
+
+
+# Test Conv1DTranspose layer compatibility
+@unittest.skipIf(
+    sys.platform == 'win32',
+    "Conv transpose compatibility tests not supported on Windows-Inference",
+)
+class TestConv1DTransposeLayerAPI(unittest.TestCase):
+    def test_paddle_style_keyword_only(self):
+        paddle.disable_static()
+        layer = paddle.nn.Conv1DTranspose(2, 2, 3)
+        self.assertIsNotNone(layer.weight)
+        self.assertIsNotNone(layer.bias)
+
+    def test_bias_false_disables_bias_attr(self):
+        paddle.disable_static()
+        layer = paddle.nn.Conv1DTranspose(2, 2, 3, bias=False)
+        self.assertIsNone(layer.bias)
+
+    def test_pytorch_style_positional_bias_only(self):
+        paddle.disable_static()
+        layer = paddle.nn.Conv1DTranspose(2, 2, 3, 1, 0, 0, 1, True)
+        self.assertIsNotNone(layer.bias)
+
+    def test_pytorch_style_full_positional(self):
+        paddle.disable_static()
+        layer = paddle.nn.ConvTranspose1d(
+            2, 2, 3, 1, 0, 0, 1, False, 1, 'zeros', None, None
+        )
+        self.assertIsNone(layer.bias)
+
+    def test_pytorch_style_duplicate_bias_raises(self):
+        paddle.disable_static()
+        with self.assertRaises(TypeError):
+            paddle.nn.Conv1DTranspose(2, 2, 3, 1, 0, 0, 1, True, bias=True)
+
+
 # Test conv2d_transpose / conv_transpose2d compatibility
+@unittest.skipIf(
+    sys.platform == 'win32',
+    "Conv transpose compatibility tests not supported on Windows-Inference",
+)
 class TestConv2dTransposeAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -2014,7 +2241,7 @@ class TestConv2dTransposeAPI(unittest.TestCase):
         self.np_weight = np.random.rand(2, 2, 3, 3).astype(self.dtype)
         self.np_bias = np.random.rand(2).astype(self.dtype)
 
-    def _test_dygraph_Compatibility(self):
+    def test_dygraph_Compatibility(self):
         paddle.disable_static()
         x = paddle.to_tensor(self.np_x)
         weight = paddle.to_tensor(self.np_weight)
@@ -2036,6 +2263,38 @@ class TestConv2dTransposeAPI(unittest.TestCase):
         )
         # 7. Positional arguments with bias
         out7 = paddle.nn.functional.conv2d_transpose(x, weight, bias)
+        # 8. All positional arguments
+        out8 = paddle.nn.functional.conv2d_transpose(
+            x, weight, bias, 1, 0, 0, 1, 1, None, 'NCHW', None
+        )
+        # 9. All keyword arguments
+        out9 = paddle.nn.functional.conv2d_transpose(
+            x=x,
+            weight=weight,
+            bias=bias,
+            stride=1,
+            padding=0,
+            output_padding=0,
+            groups=1,
+            dilation=1,
+            output_size=None,
+            data_format='NCHW',
+            name=None,
+        )
+        # 10. PyTorch alias + all keyword arguments
+        out10 = paddle.nn.functional.conv_transpose2d(
+            input=x,
+            weight=weight,
+            bias=bias,
+            stride=1,
+            padding=0,
+            output_padding=0,
+            groups=1,
+            dilation=1,
+            output_size=None,
+            data_format='NCHW',
+            name=None,
+        )
 
         # Verify outputs without bias
         ref = out1.numpy()
@@ -2044,11 +2303,12 @@ class TestConv2dTransposeAPI(unittest.TestCase):
 
         # Verify outputs with bias
         ref_bias = out6.numpy()
-        np.testing.assert_allclose(out7.numpy(), ref_bias, rtol=1e-5)
+        for out in [out7, out8, out9, out10]:
+            np.testing.assert_allclose(out.numpy(), ref_bias, rtol=1e-5)
 
         paddle.enable_static()
 
-    def _test_static_Compatibility(self):
+    def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
         startup = paddle.static.Program()
@@ -2070,6 +2330,24 @@ class TestConv2dTransposeAPI(unittest.TestCase):
             out4 = paddle.nn.functional.conv_transpose2d(x, weight)
             # 5. PyTorch function name alias + PyTorch keyword
             out5 = paddle.nn.functional.conv_transpose2d(input=x, weight=weight)
+            # 6. All positional arguments
+            out6 = paddle.nn.functional.conv2d_transpose(
+                x, weight, None, 1, 0, 0, 1, 1, None, 'NCHW', None
+            )
+            # 7. All keyword arguments
+            out7 = paddle.nn.functional.conv2d_transpose(
+                x=x,
+                weight=weight,
+                bias=None,
+                stride=1,
+                padding=0,
+                output_padding=0,
+                groups=1,
+                dilation=1,
+                output_size=None,
+                data_format='NCHW',
+                name=None,
+            )
 
             exe = paddle.static.Executor()
             fetches = exe.run(
@@ -2078,12 +2356,1503 @@ class TestConv2dTransposeAPI(unittest.TestCase):
                     "x": self.np_x,
                     "weight": self.np_weight,
                 },
-                fetch_list=[out1, out2, out3, out4, out5],
+                fetch_list=[out1, out2, out3, out4, out5, out6, out7],
             )
 
             # Verify all outputs
             for i in range(1, len(fetches)):
                 np.testing.assert_allclose(fetches[0], fetches[i], rtol=1e-5)
+
+
+@unittest.skipIf(
+    sys.platform == 'win32',
+    "Conv transpose compatibility tests not supported on Windows-Inference",
+)
+class TestConv2DTransposeLayerAPI(unittest.TestCase):
+    def test_paddle_style_keyword_only(self):
+        paddle.disable_static()
+        layer = paddle.nn.Conv2DTranspose(2, 2, 3)
+        self.assertIsNotNone(layer.weight)
+        self.assertIsNotNone(layer.bias)
+
+    def test_bias_false_disables_bias_attr(self):
+        paddle.disable_static()
+        layer = paddle.nn.Conv2DTranspose(2, 2, 3, bias=False)
+        self.assertIsNone(layer.bias)
+
+    def test_pytorch_style_positional_bias_only(self):
+        paddle.disable_static()
+        layer = paddle.nn.Conv2DTranspose(2, 2, 3, 1, 0, 0, 1, True)
+        self.assertIsNotNone(layer.bias)
+
+    def test_pytorch_style_full_positional(self):
+        paddle.disable_static()
+        layer = paddle.nn.ConvTranspose2d(
+            2, 2, 3, 1, 0, 0, 1, False, 1, 'zeros', None, None
+        )
+        self.assertIsNone(layer.bias)
+
+    def test_pytorch_style_duplicate_bias_raises(self):
+        paddle.disable_static()
+        with self.assertRaises(TypeError):
+            paddle.nn.Conv2DTranspose(2, 2, 3, 1, 0, 0, 1, True, bias=True)
+
+
+# Test conv3d_transpose / conv_transpose3d compatibility
+@unittest.skipIf(
+    sys.platform == 'win32',
+    "Conv transpose compatibility tests not supported on Windows-Inference",
+)
+class TestConv3dTransposeAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.dtype = 'float32'
+        self.np_x = np.random.rand(1, 2, 4, 4, 4).astype(self.dtype)
+        self.np_weight = np.random.rand(2, 2, 3, 3, 3).astype(self.dtype)
+        self.np_bias = np.random.rand(2).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        weight = paddle.to_tensor(self.np_weight)
+        bias = paddle.to_tensor(self.np_bias)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.nn.functional.conv3d_transpose(x, weight)
+        # 2. Paddle keyword arguments
+        out2 = paddle.nn.functional.conv3d_transpose(x=x, weight=weight)
+        # 3. PyTorch keyword arguments (alias: input)
+        out3 = paddle.nn.functional.conv3d_transpose(input=x, weight=weight)
+        # 4. PyTorch function name alias
+        out4 = paddle.nn.functional.conv_transpose3d(x, weight)
+        # 5. PyTorch function name alias + PyTorch keyword
+        out5 = paddle.nn.functional.conv_transpose3d(input=x, weight=weight)
+        # 6. Mixed arguments (positional + keyword)
+        out6 = paddle.nn.functional.conv3d_transpose(
+            x, weight, bias=bias, stride=1, padding=0
+        )
+        # 7. Positional arguments with bias
+        out7 = paddle.nn.functional.conv3d_transpose(x, weight, bias)
+        # 8. All positional arguments
+        out8 = paddle.nn.functional.conv3d_transpose(
+            x, weight, bias, 1, 0, 0, 1, 1, None, 'NCDHW', None
+        )
+        # 9. All keyword arguments
+        out9 = paddle.nn.functional.conv3d_transpose(
+            x=x,
+            weight=weight,
+            bias=bias,
+            stride=1,
+            padding=0,
+            output_padding=0,
+            groups=1,
+            dilation=1,
+            output_size=None,
+            data_format='NCDHW',
+            name=None,
+        )
+        # 10. PyTorch alias + all keyword arguments
+        out10 = paddle.nn.functional.conv_transpose3d(
+            input=x,
+            weight=weight,
+            bias=bias,
+            stride=1,
+            padding=0,
+            output_padding=0,
+            groups=1,
+            dilation=1,
+            output_size=None,
+            data_format='NCDHW',
+            name=None,
+        )
+
+        # Verify outputs without bias
+        ref = out1.numpy()
+        for out in [out2, out3, out4, out5]:
+            np.testing.assert_allclose(out.numpy(), ref, rtol=1e-5)
+
+        # Verify outputs with bias
+        ref_bias = out6.numpy()
+        for out in [out7, out8, out9, out10]:
+            np.testing.assert_allclose(out.numpy(), ref_bias, rtol=1e-5)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=[1, 2, 4, 4, 4], dtype=self.dtype
+            )
+            weight = paddle.static.data(
+                name="weight", shape=[2, 2, 3, 3, 3], dtype=self.dtype
+            )
+
+            # 1. Paddle Positional arguments
+            out1 = paddle.nn.functional.conv3d_transpose(x, weight)
+            # 2. Paddle keyword arguments
+            out2 = paddle.nn.functional.conv3d_transpose(x=x, weight=weight)
+            # 3. PyTorch keyword arguments (alias: input)
+            out3 = paddle.nn.functional.conv3d_transpose(input=x, weight=weight)
+            # 4. PyTorch function name alias
+            out4 = paddle.nn.functional.conv_transpose3d(x, weight)
+            # 5. PyTorch function name alias + PyTorch keyword
+            out5 = paddle.nn.functional.conv_transpose3d(input=x, weight=weight)
+            # 6. All positional arguments
+            out6 = paddle.nn.functional.conv3d_transpose(
+                x, weight, None, 1, 0, 0, 1, 1, None, 'NCDHW', None
+            )
+            # 7. All keyword arguments
+            out7 = paddle.nn.functional.conv3d_transpose(
+                x=x,
+                weight=weight,
+                bias=None,
+                stride=1,
+                padding=0,
+                output_padding=0,
+                groups=1,
+                dilation=1,
+                output_size=None,
+                data_format='NCDHW',
+                name=None,
+            )
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={
+                    "x": self.np_x,
+                    "weight": self.np_weight,
+                },
+                fetch_list=[out1, out2, out3, out4, out5, out6, out7],
+            )
+
+            # Verify all outputs
+            for i in range(1, len(fetches)):
+                np.testing.assert_allclose(fetches[0], fetches[i], rtol=1e-5)
+
+
+# Test Conv3DTranspose layer compatibility
+@unittest.skipIf(
+    sys.platform == 'win32',
+    "Conv transpose compatibility tests not supported on Windows-Inference",
+)
+class TestConv3DTransposeLayerAPI(unittest.TestCase):
+    def test_paddle_style_keyword_only(self):
+        paddle.disable_static()
+        layer = paddle.nn.Conv3DTranspose(2, 2, 3)
+        self.assertIsNotNone(layer.weight)
+        self.assertIsNotNone(layer.bias)
+
+    def test_bias_false_disables_bias_attr(self):
+        paddle.disable_static()
+        layer = paddle.nn.Conv3DTranspose(2, 2, 3, bias=False)
+        self.assertIsNone(layer.bias)
+
+    def test_pytorch_style_positional_bias_only(self):
+        paddle.disable_static()
+        layer = paddle.nn.Conv3DTranspose(2, 2, 3, 1, 0, 0, 1, True)
+        self.assertIsNotNone(layer.bias)
+
+    def test_pytorch_style_full_positional(self):
+        paddle.disable_static()
+        layer = paddle.nn.ConvTranspose3d(
+            2, 2, 3, 1, 0, 0, 1, False, 1, 'zeros', None, None
+        )
+        self.assertIsNone(layer.bias)
+
+    def test_pytorch_style_duplicate_bias_raises(self):
+        paddle.disable_static()
+        with self.assertRaises(TypeError):
+            paddle.nn.Conv3DTranspose(2, 2, 3, 1, 0, 0, 1, True, bias=True)
+
+
+class TestL1LossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.rand(3, 4).astype("float32")
+        self.np_label = np.random.rand(3, 4).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        label = paddle.to_tensor(self.np_label)
+
+        # 1. Paddle positional arguments
+        out1 = paddle.nn.functional.l1_loss(input, label)
+        # 2. Paddle keyword arguments
+        out2 = paddle.nn.functional.l1_loss(input=input, label=label)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.nn.functional.l1_loss(input=input, target=label)
+        # 4. Mixed arguments
+        out4 = paddle.nn.functional.l1_loss(input, target=label)
+
+        ref_out = np.mean(np.abs(self.np_input - self.np_label))
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        # PyTorch deprecated args translate to reduction
+        ref_sum = np.sum(np.abs(self.np_input - self.np_label))
+        ref_none = np.abs(self.np_input - self.np_label)
+
+        # 5. size_average=False translates to reduction='sum'
+        out5 = paddle.nn.functional.l1_loss(input, label, size_average=False)
+        np.testing.assert_allclose(out5.numpy(), ref_sum, rtol=1e-6)
+        # 6. reduce=False translates to reduction='none'
+        out6 = paddle.nn.functional.l1_loss(input, label, reduce=False)
+        np.testing.assert_allclose(out6.numpy(), ref_none, rtol=1e-6)
+        # 7. reduce=True + size_average=True translates to reduction='mean'
+        out7 = paddle.nn.functional.l1_loss(
+            input, label, reduce=True, size_average=True
+        )
+        np.testing.assert_allclose(out7.numpy(), ref_out, rtol=1e-6)
+        # 8. reduce=True + size_average=False translates to reduction='sum'
+        out8 = paddle.nn.functional.l1_loss(
+            input, label, reduce=True, size_average=False
+        )
+        np.testing.assert_allclose(out8.numpy(), ref_sum, rtol=1e-6)
+        # 9. legacy args combined with target alias
+        out9 = paddle.nn.functional.l1_loss(
+            input=input, target=label, size_average=False
+        )
+        np.testing.assert_allclose(out9.numpy(), ref_sum, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            input = paddle.static.data(
+                name="input", shape=[3, 4], dtype='float32'
+            )
+            label = paddle.static.data(
+                name="label", shape=[3, 4], dtype='float32'
+            )
+
+            out1 = paddle.nn.functional.l1_loss(input, label)
+            out2 = paddle.nn.functional.l1_loss(input=input, label=label)
+            out3 = paddle.nn.functional.l1_loss(input=input, target=label)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"input": self.np_input, "label": self.np_label},
+                fetch_list=[out1, out2, out3],
+            )
+            ref_out = np.mean(np.abs(self.np_input - self.np_label))
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out, rtol=1e-6)
+
+
+class TestKLDivAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        # input is log-probability
+        x = np.log(np.random.rand(5, 6).astype("float32") + 1e-3)
+        self.np_input = x
+        self.np_label = np.random.rand(5, 6).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        label = paddle.to_tensor(self.np_label)
+
+        # 1. Paddle positional arguments
+        out1 = paddle.nn.functional.kl_div(input, label, 'mean')
+        # 2. Paddle keyword arguments
+        out2 = paddle.nn.functional.kl_div(input=input, label=label)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.nn.functional.kl_div(input=input, target=label)
+        # 4. Mixed arguments
+        out4 = paddle.nn.functional.kl_div(input, target=label)
+
+        for out in [out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestSmoothL1LossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.rand(3, 4).astype("float32")
+        self.np_label = np.random.rand(3, 4).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        label = paddle.to_tensor(self.np_label)
+
+        # 1. Paddle positional arguments
+        out1 = paddle.nn.functional.smooth_l1_loss(input, label)
+        # 2. Paddle keyword arguments
+        out2 = paddle.nn.functional.smooth_l1_loss(input=input, label=label)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.nn.functional.smooth_l1_loss(input=input, target=label)
+        # 4. Mixed arguments
+        out4 = paddle.nn.functional.smooth_l1_loss(input, target=label)
+
+        for out in [out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestHingeEmbeddingLossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.rand(3, 4).astype("float32")
+        self.np_label = np.random.choice([-1, 1], size=(3, 4)).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        label = paddle.to_tensor(self.np_label)
+
+        out1 = paddle.nn.functional.hinge_embedding_loss(input, label)
+        out2 = paddle.nn.functional.hinge_embedding_loss(
+            input=input, label=label
+        )
+        out3 = paddle.nn.functional.hinge_embedding_loss(
+            input=input, target=label
+        )
+        out4 = paddle.nn.functional.hinge_embedding_loss(input, target=label)
+
+        for out in [out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestCosineEmbeddingLossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input1 = np.random.rand(4, 5).astype("float32")
+        self.np_input2 = np.random.rand(4, 5).astype("float32")
+        self.np_label = np.array([1, -1, 1, -1], dtype="int64")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input1 = paddle.to_tensor(self.np_input1)
+        input2 = paddle.to_tensor(self.np_input2)
+        label = paddle.to_tensor(self.np_label)
+
+        out1 = paddle.nn.functional.cosine_embedding_loss(input1, input2, label)
+        out2 = paddle.nn.functional.cosine_embedding_loss(
+            input1=input1, input2=input2, label=label
+        )
+        out3 = paddle.nn.functional.cosine_embedding_loss(
+            input1=input1, input2=input2, target=label
+        )
+        out4 = paddle.nn.functional.cosine_embedding_loss(
+            input1, input2, target=label
+        )
+
+        for out in [out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestMultiLabelSoftMarginLossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.rand(3, 4).astype("float32")
+        self.np_label = np.random.choice([-1, 1], size=(3, 4)).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        label = paddle.to_tensor(self.np_label)
+
+        out1 = paddle.nn.functional.multi_label_soft_margin_loss(input, label)
+        out2 = paddle.nn.functional.multi_label_soft_margin_loss(
+            input=input, label=label
+        )
+        out3 = paddle.nn.functional.multi_label_soft_margin_loss(
+            input=input, target=label
+        )
+        out4 = paddle.nn.functional.multi_label_soft_margin_loss(
+            input, target=label
+        )
+
+        for out in [out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestMultiLabelMarginLossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.rand(2, 4).astype("float32")
+        self.np_label = np.array(
+            [[3, 0, -1, -1], [0, 2, -1, -1]], dtype="int64"
+        )
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        label = paddle.to_tensor(self.np_label)
+
+        out1 = paddle.nn.functional.multi_label_margin_loss(input, label)
+        out2 = paddle.nn.functional.multi_label_margin_loss(
+            input=input, label=label
+        )
+        out3 = paddle.nn.functional.multi_label_margin_loss(
+            input=input, target=label
+        )
+        out4 = paddle.nn.functional.multi_label_margin_loss(input, target=label)
+
+        for out in [out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestSoftMarginLossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.rand(3, 4).astype("float32")
+        self.np_label = np.random.choice([-1, 1], size=(3, 4)).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        label = paddle.to_tensor(self.np_label)
+
+        out1 = paddle.nn.functional.soft_margin_loss(input, label)
+        out2 = paddle.nn.functional.soft_margin_loss(input=input, label=label)
+        out3 = paddle.nn.functional.soft_margin_loss(input=input, target=label)
+        out4 = paddle.nn.functional.soft_margin_loss(input, target=label)
+
+        for out in [out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestTripletMarginWithDistanceLossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.rand(3, 4).astype("float32")
+        self.np_pos = np.random.rand(3, 4).astype("float32")
+        self.np_neg = np.random.rand(3, 4).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        pos = paddle.to_tensor(self.np_pos)
+        neg = paddle.to_tensor(self.np_neg)
+
+        out1 = paddle.nn.functional.triplet_margin_with_distance_loss(
+            input, pos, neg
+        )
+        out2 = paddle.nn.functional.triplet_margin_with_distance_loss(
+            input=input, positive=pos, negative=neg
+        )
+        # PyTorch alias: anchor instead of input
+        out3 = paddle.nn.functional.triplet_margin_with_distance_loss(
+            anchor=input, positive=pos, negative=neg
+        )
+
+        for out in [out2, out3]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestTripletMarginLossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.rand(3, 4).astype("float32")
+        self.np_pos = np.random.rand(3, 4).astype("float32")
+        self.np_neg = np.random.rand(3, 4).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        pos = paddle.to_tensor(self.np_pos)
+        neg = paddle.to_tensor(self.np_neg)
+
+        out1 = paddle.nn.functional.triplet_margin_loss(input, pos, neg)
+        out2 = paddle.nn.functional.triplet_margin_loss(
+            input=input, positive=pos, negative=neg
+        )
+        # PyTorch aliases: anchor instead of input, eps instead of epsilon
+        out3 = paddle.nn.functional.triplet_margin_loss(
+            anchor=input, positive=pos, negative=neg, eps=1e-06
+        )
+        out4 = paddle.nn.functional.triplet_margin_loss(
+            input, pos, neg, eps=1e-06
+        )
+
+        for out in [out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestGaussianNLLLossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.randn(5, 2).astype("float32")
+        self.np_label = np.random.randn(5, 2).astype("float32")
+        self.np_var = np.ones((5, 2)).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        label = paddle.to_tensor(self.np_label)
+        var = paddle.to_tensor(self.np_var)
+
+        # 1. Paddle positional arguments
+        out1 = paddle.nn.functional.gaussian_nll_loss(input, label, var)
+        # 2. Paddle keyword arguments
+        out2 = paddle.nn.functional.gaussian_nll_loss(
+            input=input, label=label, variance=var
+        )
+        # 3. PyTorch keyword arguments (aliases)
+        out3 = paddle.nn.functional.gaussian_nll_loss(
+            input=input, target=label, var=var
+        )
+        # 4. Mixed
+        out4 = paddle.nn.functional.gaussian_nll_loss(
+            input, target=label, var=var, eps=1e-06
+        )
+
+        for out in [out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestMarginRankingLossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.rand(4, 5).astype("float32")
+        self.np_other = np.random.rand(4, 5).astype("float32")
+        self.np_label = np.random.choice([-1, 1], size=(4, 5)).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        other = paddle.to_tensor(self.np_other)
+        label = paddle.to_tensor(self.np_label)
+
+        # 1. Paddle positional arguments
+        out1 = paddle.nn.functional.margin_ranking_loss(input, other, label)
+        # 2. Paddle keyword arguments
+        out2 = paddle.nn.functional.margin_ranking_loss(
+            input=input, other=other, label=label
+        )
+        # 3. PyTorch keyword arguments (aliases)
+        out3 = paddle.nn.functional.margin_ranking_loss(
+            input1=input, input2=other, target=label
+        )
+
+        for out in [out2, out3]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestGaussianNLLLossLayerAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.randn(5, 2).astype("float32")
+        self.np_label = np.random.randn(5, 2).astype("float32")
+        self.np_var = np.ones((5, 2)).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        label = paddle.to_tensor(self.np_label)
+        var = paddle.to_tensor(self.np_var)
+
+        # Paddle: epsilon
+        layer1 = paddle.nn.GaussianNLLLoss(epsilon=1e-06)
+        # PyTorch alias: eps
+        layer2 = paddle.nn.GaussianNLLLoss(eps=1e-06)
+
+        out1 = layer1(input, label, var)
+        out2 = layer2(input, label, var)
+        np.testing.assert_allclose(out1.numpy(), out2.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestPoissonNLLLossLayerAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.randn(5, 2).astype("float32")
+        self.np_label = np.random.randn(5, 2).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        label = paddle.to_tensor(self.np_label)
+
+        # Paddle: epsilon
+        layer1 = paddle.nn.PoissonNLLLoss(epsilon=1e-08)
+        # PyTorch alias: eps
+        layer2 = paddle.nn.PoissonNLLLoss(eps=1e-08)
+
+        out1 = layer1(input, label)
+        out2 = layer2(input, label)
+        np.testing.assert_allclose(out1.numpy(), out2.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestTripletMarginLossLayerAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.rand(3, 4).astype("float32")
+        self.np_pos = np.random.rand(3, 4).astype("float32")
+        self.np_neg = np.random.rand(3, 4).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        pos = paddle.to_tensor(self.np_pos)
+        neg = paddle.to_tensor(self.np_neg)
+
+        # Paddle: epsilon
+        layer1 = paddle.nn.TripletMarginLoss(epsilon=1e-06)
+        # PyTorch alias: eps
+        layer2 = paddle.nn.TripletMarginLoss(eps=1e-06)
+
+        out1 = layer1(input, pos, neg)
+        out2 = layer2(input, pos, neg)
+        np.testing.assert_allclose(out1.numpy(), out2.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+def _assert_unary_inplace_result(
+    testcase, x, out, ref_out, rtol=1e-6, atol=1e-6
+):
+    testcase.assertIs(out, x)
+    np.testing.assert_allclose(out.numpy(), ref_out, rtol=rtol, atol=atol)
+    np.testing.assert_allclose(x.numpy(), ref_out, rtol=rtol, atol=atol)
+
+
+class TestExpInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.7, -0.2, 0.3, 0.9], dtype="float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.exp_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.exp_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.exp_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().exp_()
+
+        # Verify all outputs
+        ref_out = np.exp(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.exp(self.np_x)
+
+        out = paddle.exp_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
+
+
+class TestSqrtInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([0.25, 1.5, 2.25, 4.0], dtype="float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.sqrt_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.sqrt_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.sqrt_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().sqrt_()
+
+        # Verify all outputs
+        ref_out = np.sqrt(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.sqrt(self.np_x)
+
+        out = paddle.sqrt_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
+
+
+class TestRsqrtInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([0.25, 1.5, 2.25, 4.0], dtype="float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.rsqrt_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.rsqrt_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.rsqrt_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().rsqrt_()
+
+        # Verify all outputs
+        ref_out = 1.0 / np.sqrt(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = 1.0 / np.sqrt(self.np_x)
+
+        out = paddle.rsqrt_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
+
+
+class TestCeilInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.7, -0.2, 0.3, 0.9], dtype="float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.ceil_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.ceil_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.ceil_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().ceil_()
+
+        # Verify all outputs
+        ref_out = np.ceil(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.ceil(self.np_x)
+
+        out = paddle.ceil_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
+
+
+class TestFloorInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.7, -0.2, 0.3, 0.9], dtype="float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.floor_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.floor_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.floor_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().floor_()
+
+        # Verify all outputs
+        ref_out = np.floor(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.floor(self.np_x)
+
+        out = paddle.floor_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
+
+
+class TestReciprocalInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-2.0, -0.5, 0.25, 4.0], dtype="float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.reciprocal_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.reciprocal_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.reciprocal_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().reciprocal_()
+
+        # Verify all outputs
+        ref_out = np.reciprocal(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.reciprocal(self.np_x)
+
+        out = paddle.reciprocal_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
+
+
+class TestSigmoidInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.7, -0.2, 0.3, 0.9], dtype="float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.sigmoid_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.sigmoid_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.sigmoid_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().sigmoid_()
+
+        # Verify all outputs
+        ref_out = 1.0 / (1.0 + np.exp(-self.np_x))
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = 1.0 / (1.0 + np.exp(-self.np_x))
+
+        out = paddle.sigmoid_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
+
+
+class TestSinInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.7, -0.2, 0.3, 0.9], dtype="float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.sin_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.sin_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.sin_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().sin_()
+
+        # Verify all outputs
+        ref_out = np.sin(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.sin(self.np_x)
+
+        out = paddle.sin_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
+
+
+class TestSinhInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.7, -0.2, 0.3, 0.9], dtype="float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.sinh_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.sinh_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.sinh_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().sinh_()
+
+        # Verify all outputs
+        ref_out = np.sinh(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.sinh(self.np_x)
+
+        out = paddle.sinh_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
+
+
+class TestAsinInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.9, -0.25, 0.25, 0.9], dtype="float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.asin_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.asin_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.asin_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().asin_()
+
+        # Verify all outputs
+        ref_out = np.arcsin(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.arcsin(self.np_x)
+
+        out = paddle.asin_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
+
+
+class TestAsinhInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.7, -0.2, 0.3, 0.9], dtype="float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.asinh_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.asinh_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.asinh_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().asinh_()
+
+        # Verify all outputs
+        ref_out = np.arcsinh(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.arcsinh(self.np_x)
+
+        out = paddle.asinh_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
+
+
+class TestCosInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.7, -0.2, 0.3, 0.9], dtype="float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.cos_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.cos_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.cos_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().cos_()
+
+        # Verify all outputs
+        ref_out = np.cos(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.cos(self.np_x)
+
+        out = paddle.cos_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
+
+
+class TestCoshInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.7, -0.2, 0.3, 0.9], dtype="float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.cosh_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.cosh_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.cosh_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().cosh_()
+
+        # Verify all outputs
+        ref_out = np.cosh(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.cosh(self.np_x)
+
+        out = paddle.cosh_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
+
+
+class TestAcosInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.9, -0.25, 0.25, 0.9], dtype="float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.acos_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.acos_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.acos_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().acos_()
+
+        # Verify all outputs
+        ref_out = np.arccos(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.arccos(self.np_x)
+
+        out = paddle.acos_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
+
+
+class TestAcoshInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([1.0, 1.5, 2.0, 3.5], dtype="float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.acosh_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.acosh_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.acosh_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().acosh_()
+
+        # Verify all outputs
+        ref_out = np.arccosh(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.arccosh(self.np_x)
+
+        out = paddle.acosh_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
+
+
+class TestTanInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.7, -0.2, 0.3, 0.9], dtype="float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.tan_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.tan_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.tan_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().tan_()
+
+        # Verify all outputs
+        ref_out = np.tan(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.tan(self.np_x)
+
+        out = paddle.tan_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
+
+
+class TestAtanInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.7, -0.2, 0.3, 0.9], dtype="float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.atan_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.atan_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.atan_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().atan_()
+
+        # Verify all outputs
+        ref_out = np.arctan(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.arctan(self.np_x)
+
+        out = paddle.atan_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
+
+
+class TestAtanhInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.9, -0.25, 0.25, 0.9], dtype="float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.atanh_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.atanh_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.atanh_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().atanh_()
+
+        # Verify all outputs
+        ref_out = np.arctanh(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.arctanh(self.np_x)
+
+        out = paddle.atanh_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
+
+
+class TestExpm1InplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.7, -0.2, 0.3, 0.9], dtype="float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.expm1_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.expm1_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.expm1_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().expm1_()
+
+        # Verify all outputs
+        ref_out = np.expm1(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.expm1(self.np_x)
+
+        out = paddle.expm1_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
+
+
+class TestSquareInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.7, -0.2, 0.3, 0.9], dtype="float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.square_(x.clone())
+        # 2. Paddle keyword arguments
+        out2 = paddle.square_(x=x.clone())
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.square_(input=x.clone())
+        # 4. Tensor method - args
+        out4 = x.clone().square_()
+
+        # Verify all outputs
+        ref_out = np.square(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_InplaceInput(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_out = np.square(self.np_x)
+
+        out = paddle.square_(x)
+
+        _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
+
+
+class TestInferenceModeAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([1.0, 2.0, 3.0], dtype="float32")
+        self.shape = self.np_x.shape
+        self.dtype = str(self.np_x.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x, stop_gradient=False)
+
+        # 1. Paddle Positional arguments
+        ctx = paddle.inference_mode()
+        self.assertTrue(paddle.is_grad_enabled())
+        with ctx:
+            out1 = x * 2
+            self.assertFalse(paddle.is_grad_enabled())
+        self.assertTrue(paddle.is_grad_enabled())
+        # 2. Paddle keyword arguments
+        with paddle.inference_mode(mode=True):
+            out2 = x * 2
+            self.assertFalse(paddle.is_grad_enabled())
+        # 3. PyTorch keyword arguments
+        with paddle.no_grad(), paddle.inference_mode(mode=False):
+            out3 = x * 2
+            self.assertTrue(paddle.is_grad_enabled())
+
+        # 4. Decorator without parentheses
+        @paddle.inference_mode
+        def no_grad_decorated(tensor):
+            out = tensor * 2
+            self.assertFalse(paddle.is_grad_enabled())
+            return out
+
+        out4 = no_grad_decorated(x)
+
+        # 5. Decorator with mode=False
+        @paddle.inference_mode(mode=False)
+        def enable_grad_decorated(tensor):
+            out = tensor * 2
+            self.assertTrue(paddle.is_grad_enabled())
+            return out
+
+        with paddle.no_grad():
+            out5 = enable_grad_decorated(x)
+
+        def mode_func(tensor):
+            return tensor * 2
+
+        out6 = paddle.inference_mode(mode=mode_func)(x)
+
+        # Verify all outputs
+        ref_out = self.np_x * 2
+        for out in [out1, out2, out3, out4, out5, out6]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+        for out in [out1, out2, out4, out6]:
+            self.assertTrue(out.stop_gradient)
+        for out in [out3, out5]:
+            self.assertFalse(out.stop_gradient)
+        self.assertTrue(paddle.is_grad_enabled())
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            x.stop_gradient = False
+
+            # 1. Paddle Positional arguments
+            with paddle.inference_mode():
+                out1 = x * 2
+            # 2. Paddle keyword arguments
+            with paddle.inference_mode(mode=True):
+                out2 = x * 2
+            # 3. PyTorch keyword arguments
+            with paddle.no_grad(), paddle.inference_mode(mode=False):
+                out3 = x * 2
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3],
+            )
+
+        # Verify all outputs
+        ref_out = self.np_x * 2
+        for out in fetches:
+            np.testing.assert_allclose(out, ref_out, rtol=1e-6)
 
 
 if __name__ == "__main__":

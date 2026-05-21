@@ -23,7 +23,7 @@ namespace phi {
 template <typename T>
 struct CudaLgammaFunctor {
   __device__ __forceinline__ T operator()(const T x) const {
-    using MT = typename dtype::MPTypeTrait<T>::Type;
+    using MT = typename MPTypeTrait<T>::Type;
     const MT mp_x = static_cast<MT>(x);
     return static_cast<T>(Eigen::numext::lgamma(mp_x));
   }

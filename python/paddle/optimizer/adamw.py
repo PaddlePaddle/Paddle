@@ -336,6 +336,9 @@ class AdamW(Optimizer):
         else:
             return None
 
+    def get_lr_dtype(self) -> paddle.dtype:
+        return paddle.float64
+
     def _add_param_group(self, param_group):
         """
         Add a param group to parameter_list.

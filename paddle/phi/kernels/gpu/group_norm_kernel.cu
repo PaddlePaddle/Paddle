@@ -734,7 +734,7 @@ void GroupNormNDHWCKernel(const Context& dev_ctx,
   if (data_layout != DataLayout::NHWC) {
     PD_THROW("data_layout only supports NHWC and NDHWC");
   }
-  using AccT = typename dtype::MPTypeTrait<T>::Type;
+  using AccT = typename MPTypeTrait<T>::Type;
   GroupNormNDHWCParams<T> params_;
   params_.withSilu = activation == "silu" ? true : false;
 
@@ -1554,7 +1554,7 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
                                 DenseTensor* y,
                                 DenseTensor* mean,
                                 DenseTensor* var) {
-  using AccT = typename dtype::MPTypeTrait<T>::Type;
+  using AccT = typename MPTypeTrait<T>::Type;
   const DataLayout data_layout = StringToDataLayout(data_layout_str);
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();

@@ -196,26 +196,26 @@ struct CompactSlot {
       : output_row(row), expert_id(eid), prob(p) {}
 };
 
-template <paddle::DataType DType>
+template <DataType DType>
 struct TypeMap;
 template <>
-struct TypeMap<paddle::DataType::BFLOAT16> {
+struct TypeMap<DataType::BFLOAT16> {
   using type = phi::bfloat16;
 };
 template <>
-struct TypeMap<paddle::DataType::FLOAT16> {
+struct TypeMap<DataType::FLOAT16> {
   using type = phi::float16;
 };
 template <>
-struct TypeMap<paddle::DataType::FLOAT32> {
+struct TypeMap<DataType::FLOAT32> {
   using type = float;
 };
 template <>
-struct TypeMap<paddle::DataType::INT32> {
+struct TypeMap<DataType::INT32> {
   using type = int;
 };
 template <>
-struct TypeMap<paddle::DataType::INT64> {
+struct TypeMap<DataType::INT64> {
   using type = int64_t;
 };
 
@@ -362,7 +362,7 @@ __global__ __launch_bounds__(512) void filling_padding_rows_kernel(
     const int cols,
     const int quanted_cols,
     const int* __restrict__ padding_rows) {
-  uint32_t rows = padding_rows[blockIdx.x];
+  int64_t rows = static_cast<int64_t>(padding_rows[blockIdx.x]);
   if constexpr (FILLING_X_UNZIPPED) {
     vectorized_memset(
         &X_unzipped_ptr[rows * cols], static_cast<TokenT>(0), cols);
