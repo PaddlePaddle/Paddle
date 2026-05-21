@@ -1757,15 +1757,15 @@ def nansum(
         paddle.core.is_compiled_with_cuda()
         or paddle.core.is_compiled_with_rocm()
     ):
-        ret = _C_ops.nansum(x, axis, dtype, keepdim)
+        return _C_ops.nansum(x, axis, dtype, keepdim, out)
     else:
         zero_tensor = paddle.zeros_like(x)
         tmp_tensor = paddle.where(isnan(x), zero_tensor, x)
         ret = sum(tmp_tensor, axis, dtype, keepdim, name)
-    if out is not None:
-        paddle.assign(ret, out)
-        return out
-    return ret
+        if out is not None:
+            paddle.assign(ret, out)
+            return out
+        return ret
 
 
 def nanmean(
