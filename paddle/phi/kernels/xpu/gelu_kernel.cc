@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/gelu_kernel.h"
 
+#include <type_traits>
+
 #include "glog/logging.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
@@ -31,11 +33,22 @@ void GeluKernel(const Context& dev_ctx,
   if (out && out->numel() == 0) {
     return;
   }
-  int r = xpu::gelu<XPUType>(dev_ctx.x_context(),
-                             reinterpret_cast<const XPUType*>(x.data<T>()),
-                             reinterpret_cast<XPUType*>(out->data<T>()),
-                             out->numel(),
-                             approximate);
+  int r = 0;
+  if constexpr (std::is_same_v<T, phi::bfloat16>) {
+    // Keep bf16 GELU intermediates in higher precision to match GPU behavior.
+    r = xpu::gelu_highprecision<XPUType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(x.data<T>()),
+        reinterpret_cast<XPUType*>(out->data<T>()),
+        out->numel(),
+        approximate);
+  } else {
+    r = xpu::gelu<XPUType>(dev_ctx.x_context(),
+                           reinterpret_cast<const XPUType*>(x.data<T>()),
+                           reinterpret_cast<XPUType*>(out->data<T>()),
+                           out->numel(),
+                           approximate);
+  }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "gelu");
 }
 }  // namespace phi

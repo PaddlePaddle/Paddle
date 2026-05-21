@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/gelu_grad_kernel.h"
 
+#include <type_traits>
+
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -31,13 +33,25 @@ void GeluGradKernel(const Context& dev_ctx,
   if (x_grad && x_grad->numel() == 0) {
     return;
   }
-  int r = xpu::gelu_grad<XPUType>(
-      dev_ctx.x_context(),
-      reinterpret_cast<const XPUType*>(x.data<T>()),
-      reinterpret_cast<const XPUType*>(out_grad.data<T>()),
-      reinterpret_cast<XPUType*>(x_grad->data<T>()),
-      x_grad->numel(),
-      approximate);
+  int r = 0;
+  if constexpr (std::is_same_v<T, phi::bfloat16>) {
+    // Keep bf16 GELU gradient intermediates in higher precision for API parity.
+    r = xpu::gelu_grad_highprecision<XPUType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(x.data<T>()),
+        reinterpret_cast<const XPUType*>(out_grad.data<T>()),
+        reinterpret_cast<XPUType*>(x_grad->data<T>()),
+        x_grad->numel(),
+        approximate);
+  } else {
+    r = xpu::gelu_grad<XPUType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(x.data<T>()),
+        reinterpret_cast<const XPUType*>(out_grad.data<T>()),
+        reinterpret_cast<XPUType*>(x_grad->data<T>()),
+        x_grad->numel(),
+        approximate);
+  }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "gelu_grad");
 }
 }  // namespace phi
