@@ -495,7 +495,7 @@ XPUOpMap& get_kl3_ops() {
       {"label_smooth", XPUKernelSet({FLOAT32})},
       {"layer_norm_grad", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16})},
       {"layer_norm", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16})},
-      {"leaky_relu_grad", XPUKernelSet({FLOAT32})},
+      {"leaky_relu_grad", XPUKernelSet({FLOAT32, FLOAT16})},
       {"leaky_relu", XPUKernelSet({FLOAT32, FLOAT16})},
       {"less_equal", XPUKernelSet({INT64, INT32, FLOAT16, BFLOAT16, FLOAT32})},
       {"less_than", XPUKernelSet({INT64, INT32, FLOAT16, BFLOAT16, FLOAT32})},
