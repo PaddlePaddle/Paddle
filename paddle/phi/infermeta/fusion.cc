@@ -6001,6 +6001,17 @@ void FusedSwigluWeightedBwdInferMeta(const MetaTensor& o1,
   o2_s->set_layout(do2_s.layout());
 }
 
+void FusedSwigluWeightedBwdClampedInferMeta(const MetaTensor& o1,
+                                            const MetaTensor& do2_s,
+                                            const MetaTensor& unzipped_probs,
+                                            double clamp_value,
+                                            MetaTensor* do1,
+                                            MetaTensor* probs_grad,
+                                            MetaTensor* o2_s) {
+  FusedSwigluWeightedBwdInferMeta(
+      o1, do2_s, unzipped_probs, do1, probs_grad, o2_s);
+}
+
 void FusedWeightedSwigluActQuantInferMeta(const MetaTensor& x,
                                           const MetaTensor& prob,
                                           bool using_pow2_scaling,

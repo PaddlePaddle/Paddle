@@ -56,6 +56,7 @@ concurrency_list="^test_fp8_deep_gemm$|\
 ^test_fused_act_dequant_op$|\
 ^test_fused_stack_transpose_quant_op$|\
 ^test_fused_swiglu_weighted_bwd_op$|\
+^test_fused_swiglu_weighted_bwd_clamp_op$|\
 ^test_fused_transpose_wlch_split_quant_op$|\
 ^test_fused_weighted_swiglu_act_quant_op$|\
 ^test_incubate_build_src_rank_and_local_expert_id$|\

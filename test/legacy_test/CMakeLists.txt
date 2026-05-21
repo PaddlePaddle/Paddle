@@ -114,6 +114,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_fused_rms_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_layernorm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_swiglu_weighted_bwd_op)
+  list(REMOVE_ITEM TEST_OPS test_fused_swiglu_weighted_bwd_clamp_op)
   list(REMOVE_ITEM TEST_OPS test_fused_comm_buffer)
   list(REMOVE_ITEM TEST_OPS test_fused_weighted_swiglu_act_quant_op)
   list(REMOVE_ITEM TEST_OPS test_fused_act_dequant_op)
@@ -212,6 +213,7 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_incubate_fast_ln)
   list(REMOVE_ITEM TEST_OPS test_fused_weighted_swiglu_act_quant_op)
   list(REMOVE_ITEM TEST_OPS test_fused_swiglu_weighted_bwd_op)
+  list(REMOVE_ITEM TEST_OPS test_fused_swiglu_weighted_bwd_clamp_op)
   list(REMOVE_ITEM TEST_OPS test_fused_act_dequant_op)
   list(REMOVE_ITEM TEST_OPS test_fused_stack_transpose_quant_op)
   list(REMOVE_ITEM TEST_OPS
@@ -568,6 +570,7 @@ if(NOT WITH_GPU
     test_incubate_cross_entropy_with_softmax_bwd_w_downcast
     test_incubate_embedding_grad
     test_fused_swiglu_weighted_bwd_op
+    test_fused_swiglu_weighted_bwd_clamp_op
     test_fused_transpose_spilt_quant_op
     test_fused_transpose_wlch_split_quant_op
     test_fused_weighted_swiglu_act_quant_op)

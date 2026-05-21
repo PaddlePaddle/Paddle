@@ -176,6 +176,45 @@ def fused_swiglu_weighted_bwd(
         return _C_ops.fused_swiglu_weighted_bwd(o1, do2_s, unzipped_probs)
 
 
+def fused_swiglu_weighted_bwd_clamped(
+    o1: Tensor,
+    do2_s: Tensor,
+    unzipped_probs: Tensor,
+    clamp_value: float,
+    name: str | None = None,
+) -> tuple[Tensor, Tensor, Tensor]:
+    """Clamped variant of ``fused_swiglu_weighted_bwd``.
+
+    When clamp_value is set, the kernel clamps gate to (-inf, clamp_value],
+    value to [-clamp_value, clamp_value], and zeros gradients at saturated inputs.
+
+    Args:
+        o1 (Tensor): BF16 input [..., intermediate_size * 2], split into gate and value halves.
+        do2_s (Tensor): BF16 upstream gradient [..., intermediate_size].
+        unzipped_probs (Tensor): FP32 probability weights [...].
+        clamp_value (float): Clamping threshold for gate/value and gradient masking.
+
+    Returns:
+        tuple[Tensor, Tensor, Tensor]: (do1, probs_grad, o2_s) — same as fused_swiglu_weighted_bwd.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> # doctest: +SKIP('BF16 requires SM80 or higher env')
+            >>> import paddle
+            >>> import paddle.incubate.nn.functional as F
+            >>> paddle.set_device('gpu')
+            >>> o1 = paddle.randn([32, 128, 4096], dtype='bfloat16')
+            >>> do2_s = paddle.randn([32, 128, 2048], dtype='bfloat16')
+            >>> probs = paddle.rand([32, 128, 1], dtype='float32')
+            >>> do1, pg, o2s = F.fused_swiglu_weighted_bwd_clamped(o1, do2_s, probs, clamp_value=6.0)
+    """
+    if in_dynamic_or_pir_mode():
+        return _C_ops.fused_swiglu_weighted_bwd_clamped(
+            o1, do2_s, unzipped_probs, clamp_value
+        )
+
+
 def fused_transpose_split_quant(
     x, input_scales, tokens_per_expert, pow_2_scales=False
 ):

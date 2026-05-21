@@ -1257,6 +1257,15 @@ PADDLE_API void FusedSwigluWeightedBwdInferMeta(
     MetaTensor* probs_grad,
     MetaTensor* o2_s);
 
+PADDLE_API void FusedSwigluWeightedBwdClampedInferMeta(
+    const MetaTensor& o1,
+    const MetaTensor& do2_s,
+    const MetaTensor& unzipped_probs,
+    double clamp_value,
+    MetaTensor* do1,
+    MetaTensor* probs_grad,
+    MetaTensor* o2_s);
+
 PADDLE_API void FusedWeightedSwigluActQuantInferMeta(const MetaTensor& x,
                                                      const MetaTensor& prob,
                                                      bool using_pow2_scaling,
