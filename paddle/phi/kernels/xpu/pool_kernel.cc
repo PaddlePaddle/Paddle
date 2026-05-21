@@ -318,7 +318,7 @@ void MaxPool2dWithIndexKernel(const Context& dev_ctx,
                               const std::vector<int>& dilations_t,
                               bool global_pooling,
                               bool adaptive,
-                              bool ceil_mode UNUSED,
+                              bool ceil_mode,
                               DenseTensor* out,
                               DenseTensor* mask) {
   // Check dilation support - XPU only supports dilation=1
@@ -349,6 +349,13 @@ void MaxPool2dWithIndexKernel(const Context& dev_ctx,
   std::vector<int64_t> kernel_size(kernel_size_t.begin(), kernel_size_t.end());
   std::vector<int64_t> strides(strides_t.begin(), strides_t.end());
   std::vector<int64_t> paddings(paddings_t.begin(), paddings_t.end());
+  funcs::UpdatePadding(&paddings,
+                       global_pooling,
+                       adaptive,
+                       "EXPLICIT",
+                       slice_ddim(x.dims(), 2, x.dims().size()),
+                       strides,
+                       kernel_size);
 
   PADDLE_ENFORCE_EQ(kernel_size.size(),
                     2,
@@ -373,6 +380,19 @@ void MaxPool2dWithIndexKernel(const Context& dev_ctx,
   const int64_t c = x.dims()[1];
   const int64_t in_h = x.dims()[2];
   const int64_t in_w = x.dims()[3];
+  const int64_t out_h = out->dims()[2];
+  const int64_t out_w = out->dims()[3];
+
+  if (ceil_mode && !adaptive && !global_pooling) {
+    // XDNN uses floor mode, so extend trailing padding for ceil-mode output.
+    int64_t in_h_ceil =
+        (out_h - 1) * strides[0] + kernel_size[0] - 2 * paddings[0];
+    int64_t in_w_ceil =
+        (out_w - 1) * strides[1] + kernel_size[1] - 2 * paddings[2];
+    paddings[1] += (in_h_ceil - in_h);
+    paddings[3] += (in_w_ceil - in_w);
+  }
+
   auto input = reinterpret_cast<const XPUType*>(x.data<T>());
   dev_ctx.template Alloc<T>(out);
   auto output = reinterpret_cast<XPUType*>(out->data<T>());

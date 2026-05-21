@@ -396,7 +396,7 @@ void MaxPool2dWithIndexGradKernel(const Context& dev_ctx,
                                   const std::vector<int>& dilations_t,
                                   bool global_pooling,
                                   bool adaptive,
-                                  bool ceil_mode UNUSED,
+                                  bool ceil_mode,
                                   DenseTensor* dx) {
   // Check dilation support - XPU only supports dilation=1
   for (size_t i = 0; i < dilations_t.size(); ++i) {
@@ -419,6 +419,13 @@ void MaxPool2dWithIndexGradKernel(const Context& dev_ctx,
   std::vector<int64_t> kernel_size(kernel_size_t.begin(), kernel_size_t.end());
   std::vector<int64_t> strides(strides_t.begin(), strides_t.end());
   std::vector<int64_t> paddings(paddings_t.begin(), paddings_t.end());
+  funcs::UpdatePadding(&paddings,
+                       global_pooling,
+                       adaptive,
+                       "EXPLICIT",
+                       slice_ddim(dx->dims(), 2, dx->dims().size()),
+                       strides,
+                       kernel_size);
   const auto* index_data = mask.data<int>();
 
   PADDLE_ENFORCE_NOT_NULL(index_data,
@@ -442,6 +449,19 @@ void MaxPool2dWithIndexGradKernel(const Context& dev_ctx,
   const int64_t c = dx->dims()[1];
   const int64_t in_h = dx->dims()[2];
   const int64_t in_w = dx->dims()[3];
+  const int64_t out_h = dout.dims()[2];
+  const int64_t out_w = dout.dims()[3];
+
+  if (ceil_mode && !adaptive && !global_pooling) {
+    // Keep the gradient window geometry consistent with ceil-mode forward.
+    int64_t in_h_ceil =
+        (out_h - 1) * strides[0] + kernel_size[0] - 2 * paddings[0];
+    int64_t in_w_ceil =
+        (out_w - 1) * strides[1] + kernel_size[1] - 2 * paddings[2];
+    paddings[1] += (in_h_ceil - in_h);
+    paddings[3] += (in_w_ceil - in_w);
+  }
+
   auto output_grad = reinterpret_cast<const XPUType*>(dout.data<T>());
 
   int r = 0;
