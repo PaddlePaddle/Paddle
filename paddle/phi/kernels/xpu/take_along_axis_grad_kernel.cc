@@ -69,7 +69,9 @@ void TakeAlongAxisGradKernel(const Context& dev_ctx,
         index_shape,
         axis,
         1,
-        false);
+        // x_grad is zero-filled above; include it as the scatter-add input so
+        // duplicate indices are accumulated consistently with GPU semantics.
+        true);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "paddle_put_along_axis");
   } else {
     r = xpu::paddle_put_along_axis<XPUType, int64_t>(
@@ -83,7 +85,9 @@ void TakeAlongAxisGradKernel(const Context& dev_ctx,
         index_shape,
         axis,
         1,
-        false);
+        // x_grad is zero-filled above; include it as the scatter-add input so
+        // duplicate indices are accumulated consistently with GPU semantics.
+        true);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "paddle_put_along_axis");
   }
 }
