@@ -19,7 +19,6 @@
 
 #ifdef __NVCC__
 #include <cuda_profiler_api.h>
-#include "cutlass_patch/check.h"
 
 #define GPUEvent_t cudaEvent_t
 #define GPUStream_t cudaStream_t
@@ -38,7 +37,6 @@
 #ifdef __HIPCC__
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
-#include "hytlass_patch/check.h"
 
 #define GPUEvent_t hipEvent_t
 #define GPUStream_t hipStream_t

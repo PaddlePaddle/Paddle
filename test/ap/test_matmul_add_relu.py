@@ -30,6 +30,18 @@ def GetPirProgram(fused_func, tensor_args):
     return str(func.infer_program.forward_program)
 
 
+def IsSupportDevice():
+    if paddle.is_compiled_with_cuda():
+        prop = paddle.device.cuda.get_device_properties()
+        cc = prop.major * 10 + prop.minor
+        return cc == 80
+
+    if paddle.is_compiled_with_rocm():
+        return True
+
+    return False
+
+
 class TestMatmulEpilogue(unittest.TestCase):
     def setUp(self):
         dtype = 'float16'
@@ -78,10 +90,11 @@ class TestMatmulEpilogue(unittest.TestCase):
         self.assertTrue(
             'pd_op.ap_variadic' in generated_pir_program, "fusion failed"
         )
-        ap_outs = fused_foo(self.x, self.y, self.b)
-        dy_outs = foo(self.x, self.y, self.b)
-        for dy_out, ap_out in zip(dy_outs, ap_outs):
-            np.testing.assert_allclose(dy_out, ap_out, atol=1e-1)
+        if IsSupportDevice():
+            ap_outs = fused_foo(self.x, self.y, self.b)
+            dy_outs = foo(self.x, self.y, self.b)
+            for dy_out, ap_out in zip(dy_outs, ap_outs):
+                np.testing.assert_allclose(dy_out, ap_out, atol=1e-1)
 
 
 if __name__ == "__main__":
