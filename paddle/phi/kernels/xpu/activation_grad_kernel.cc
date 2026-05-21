@@ -377,24 +377,24 @@ struct XPURelu6GradFunctor : public funcs::BaseActivationFunctor<T> {
       float* dout_fp32 = RAII_GUARD.alloc_l3_or_gm<float>(dout->numel());
       float* dx_fp32 = RAII_GUARD.alloc_l3_or_gm<float>(dx->numel());
 
-      int r = xpu::cast<XPUType, float>(dev_ctx.x_context(),
-                                        reinterpret_cast<const XPUType*>(
-                                            out->data<T>()),
-                                        out_fp32,
-                                        out->numel());
+      int r = xpu::cast<XPUType, float>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(out->data<T>()),
+          out_fp32,
+          out->numel());
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
-      r = xpu::cast<XPUType, float>(dev_ctx.x_context(),
-                                    reinterpret_cast<const XPUType*>(
-                                        dout->data<T>()),
-                                    dout_fp32,
-                                    dout->numel());
+      r = xpu::cast<XPUType, float>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(dout->data<T>()),
+          dout_fp32,
+          dout->numel());
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
       r = xpu::relu6_grad<float>(dev_ctx.x_context(),
-                                  nullptr,
-                                  out_fp32,
-                                  dout_fp32,
-                                  dx_fp32,
-                                  dx->numel());
+                                 nullptr,
+                                 out_fp32,
+                                 dout_fp32,
+                                 dx_fp32,
+                                 dx->numel());
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "relu6_grad");
       r = xpu::cast<float, XPUType>(dev_ctx.x_context(),
                                     dx_fp32,
