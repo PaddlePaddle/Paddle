@@ -22,8 +22,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from paddle import core
-from paddle.device import stream as _stream_context
+from paddle import core, device as _paddle_device
 from paddle.device.cuda.graphs import (
     CUDAGraph,
     is_cuda_graph_supported,
@@ -106,9 +105,14 @@ class graph:
         self.capture_error_mode = capture_error_mode
         # ``paddle.device.stream(None)`` is a documented no-op, so the same
         # guard works whether or not the caller pinned a stream.
-        self._stream_ctx = _stream_context(stream)
+        self._stream_ctx = _paddle_device.stream(stream)
 
     def __enter__(self) -> Self:
+        # Drain pending work and release cached memory so the capture pool
+        # starts with maximal headroom (mirrors torch.cuda.graph.__enter__).
+        # Paddle's C++ ``BeginCUDAGraphCapture`` does neither.
+        _paddle_device.synchronize()
+        _paddle_device.empty_cache()
         self._stream_ctx.__enter__()
         try:
             self.cuda_graph.capture_begin(
