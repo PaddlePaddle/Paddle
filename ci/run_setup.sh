@@ -88,7 +88,7 @@ function run_setup(){
                 export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.9/lib/libpython3.9.dylib
                 pip3.9 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
-        exit 1
+                exit 1
             fi
         elif [ "$PYTHON_ABI" == "cp310-cp310" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.10" ]; then
@@ -338,21 +338,21 @@ EOF
     cd ..
     if [ "${PYTHON_EXECUTABLE}" != "" ];then
         if [ "$SYSTEM" == "Darwin" ]; then
-        if [ "$WITH_ARM" == 'ON' ];then
-              ${PYTHON_EXECUTABLE} setup.py $1 --plat-name=macosx_11_0_arm64;build_error=$?
+            if [ "$WITH_ARM" == 'ON' ];then
+                ${PYTHON_EXECUTABLE} setup.py $1 --plat-name=macosx_11_0_arm64;build_error=$?
             else
-              ${PYTHON_EXECUTABLE} setup.py $1 --plat-name=macosx_10_9_x86_64;build_error=$?
-        fi
+                ${PYTHON_EXECUTABLE} setup.py $1 --plat-name=macosx_10_9_x86_64;build_error=$?
+            fi
         else
             ${PYTHON_EXECUTABLE} setup.py $1;build_error=$?
         fi
     else
         if [ "$SYSTEM" == "Darwin" ]; then
             if [ "$WITH_ARM" == 'ON' ];then
-              python3 setup.py $1 --plat-name=macosx_10_9_arm64;build_error=$?
+                python3 setup.py $1 --plat-name=macosx_10_9_arm64;build_error=$?
             else
-              python3 setup.py $1 --plat-name=macosx_10_9_x86_64;build_error=$?
-        fi
+                python3 setup.py $1 --plat-name=macosx_10_9_x86_64;build_error=$?
+            fi
         else
             python setup.py $1;build_error=$?
         fi

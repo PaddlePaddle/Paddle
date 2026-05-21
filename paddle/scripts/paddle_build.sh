@@ -2669,12 +2669,12 @@ set +x
                 testcase=''
         done <<< "$test_cases";
 
-    ut_actual_total_startTime_s=`date +%s`
+        ut_actual_total_startTime_s=`date +%s`
         card_test "$single_card_tests" 1
-    collect_failed_tests
+        collect_failed_tests
 
-    # add unit test retry for CINN
-    rm -f $tmp_dir/*
+        # add unit test retry for CINN
+        rm -f $tmp_dir/*
         exec_times=0
         retry_unittests_record=''
         retry_time=4
@@ -2748,9 +2748,9 @@ set +x
                     else
                         break
                     fi
-        done
-    fi
-            rerun_ut_endTime_s=`date +%s`
+                done
+            fi
+        rerun_ut_endTime_s=`date +%s`
 
         echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         ut_actual_total_endTime_s=`date +%s`
@@ -3142,8 +3142,8 @@ set +x
                             done
 
                         if [[ "$retry_cases" != "" ]]; then
-                # re-run test run 1 job
-                export CTEST_PARALLEL_LEVEL=1
+                            # re-run test run 1 job
+                            export CTEST_PARALLEL_LEVEL=1
                             card_test "$retry_cases" -1 1
                         fi
                         exec_times=$[$exec_times+1]
@@ -4825,8 +4825,8 @@ function main() {
         bind_test
         ;;
       distribute_test)
-    distribute_test
-    ;;
+        distribute_test
+        ;;
       gen_doc_lib)
         gen_doc_lib $2
         ;;
@@ -4884,7 +4884,7 @@ function main() {
         parallel_test
         if [[ "$IF_DCU" == "ON" ]]; then
           hybrid_paddlex
-    fi
+        fi
         ;;
       nv_cicheck_coverage)
         parallel_test

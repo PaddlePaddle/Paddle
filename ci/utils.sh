@@ -1030,8 +1030,8 @@ set +x
                             done
 
                         if [[ "$retry_cases" != "" ]]; then
-                # re-run test run 1 job
-                export CTEST_PARALLEL_LEVEL=1
+                            # re-run test run 1 job
+                            export CTEST_PARALLEL_LEVEL=1
                             card_test "$retry_cases" -1 1
                         fi
                         exec_times=$[$exec_times+1]
