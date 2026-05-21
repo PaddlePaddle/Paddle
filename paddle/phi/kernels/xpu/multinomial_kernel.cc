@@ -25,6 +25,7 @@ void MultinomialKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const Scalar& num_samples,
                        bool replacement,
+                       bool check_input_zeros,
                        DenseTensor* out) {
   auto int_num_samples = num_samples.to<int64_t>();
   int64_t* out_data = dev_ctx.template Alloc<int64_t>(out);
@@ -36,7 +37,7 @@ void MultinomialKernel(const Context& dev_ctx,
 
   // If replacement is False, it's not a replaceable sample. Every category
   // can be used only once.
-  if (!replacement) {
+  if (!replacement && check_input_zeros) {
     MultinomialInputChecker<T, Context>(dev_ctx, x, num_samples);
   }
 

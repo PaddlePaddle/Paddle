@@ -419,6 +419,7 @@ def multinomial(
     replacement: bool = False,
     name: str | None = None,
     *,
+    check_input_zeros: bool = True,
     out: Tensor | None = None,
 ) -> Tensor:
     """
@@ -441,6 +442,11 @@ def multinomial(
         name(str|None, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
+        check_input_zeros(bool, optional): Whether to validate the input tensor before
+            sampling. When True (default), checks that all elements are >= 0, the
+            row sum is > 0, and (when replacement=False) num_samples does not exceed
+            the number of non-zero categories. Set to False to skip these checks for
+            performance-critical scenarios where inputs are known to be valid.
         out (Tensor|None, optional): The output Tensor. If set, the result will be stored in this Tensor. Default is None.
     Returns:
         Tensor, A Tensor filled with sampled category index after ``num_samples`` times samples.
@@ -481,10 +487,15 @@ def multinomial(
              [3, 1, 0]])
             >>> # doctest: -SKIP
 
+            >>> # Skip input validation for trusted inputs (performance optimization)
+            >>> out4 = paddle.multinomial(x, num_samples=1, check_input_zeros=False)
+
     """
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.multinomial(x, num_samples, replacement, out=out)
+        return _C_ops.multinomial(
+            x, num_samples, replacement, check_input_zeros, out=out
+        )
     else:
         check_variable_and_dtype(
             x, "x", ["uint16", "float16", "float32", "float64"], "multinomial"
@@ -498,7 +509,11 @@ def multinomial(
             type='multinomial',
             inputs={"X": x},
             outputs={'Out': out},
-            attrs={'num_samples': num_samples, 'replacement': replacement},
+            attrs={
+                'num_samples': num_samples,
+                'replacement': replacement,
+                'check_input_zeros': check_input_zeros,
+            },
         )
         out.stop_gradient = True
         return out
