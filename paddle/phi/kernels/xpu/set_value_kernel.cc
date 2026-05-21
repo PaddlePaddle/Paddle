@@ -251,9 +251,8 @@ void SetValueImpl(const Context& dev_ctx,
     }
   }
   if (need_host_update) {
-    using HostT = typename std::conditional<std::is_same<T, bool>::value,
-                                            uint8_t,
-                                            T>::type;
+    using HostT = typename std::
+        conditional<std::is_same<T, bool>::value, uint8_t, T>::type;
     std::vector<HostT> out_cpu(out->numel());
     std::vector<HostT> slice_cpu(slice_numels);
     memory_utils::Copy(CPUPlace(),
@@ -278,9 +277,8 @@ void SetValueImpl(const Context& dev_ctx,
       for (int dim = static_cast<int>(RANK) - 1; dim >= 0; --dim) {
         int64_t coord = index_tmp % slice_shape[dim];
         index_tmp /= slice_shape[dim];
-        out_offset +=
-            (starts_indices[dim] + coord * strides_indices[dim]) *
-            out_strides[dim];
+        out_offset += (starts_indices[dim] + coord * strides_indices[dim]) *
+                      out_strides[dim];
       }
       out_cpu[out_offset] = slice_cpu[i];
     }

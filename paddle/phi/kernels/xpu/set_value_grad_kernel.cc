@@ -14,10 +14,10 @@
 
 #include "paddle/phi/kernels/set_value_grad_kernel.h"
 
-#include "glog/logging.h"
-
 #include <type_traits>
 #include <vector>
+
+#include "glog/logging.h"
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
@@ -166,9 +166,8 @@ void SetValueGradImpl(const Context& dev_ctx,
       }
     }
     if (need_host_update) {
-      using HostT = typename std::conditional<std::is_same<T, bool>::value,
-                                              uint8_t,
-                                              T>::type;
+      using HostT = typename std::
+          conditional<std::is_same<T, bool>::value, uint8_t, T>::type;
       auto x_grad_shape = vectorize<int64_t>(x_grad->dims());
       std::vector<HostT> x_grad_cpu(x_grad->numel());
       memory_utils::Copy(CPUPlace(),
@@ -189,9 +188,8 @@ void SetValueGradImpl(const Context& dev_ctx,
         for (int dim = static_cast<int>(RANK) - 1; dim >= 0; --dim) {
           int64_t coord = index_tmp % out_dims[dim];
           index_tmp /= out_dims[dim];
-          x_grad_offset +=
-              (starts_indices[dim] + coord * steps_indices[dim]) *
-              x_grad_strides[dim];
+          x_grad_offset += (starts_indices[dim] + coord * steps_indices[dim]) *
+                           x_grad_strides[dim];
         }
         x_grad_cpu[x_grad_offset] = static_cast<HostT>(0);
       }
@@ -225,9 +223,8 @@ void SetValueGradImpl(const Context& dev_ctx,
       }
     }
     auto strided_gather = [&](DenseTensor* dst) {
-      using HostT = typename std::conditional<std::is_same<T, bool>::value,
-                                              uint8_t,
-                                              T>::type;
+      using HostT = typename std::
+          conditional<std::is_same<T, bool>::value, uint8_t, T>::type;
       auto dst_shape = vectorize<int64_t>(dst->dims());
       std::vector<HostT> out_grad_cpu(out_grad.numel());
       std::vector<HostT> dst_cpu(dst->numel());
