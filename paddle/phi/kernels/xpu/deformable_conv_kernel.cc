@@ -117,13 +117,14 @@ void DeformableConvKernel(const Context& dev_ctx,
     conv_w = w + 2 * paddings[1];
     padded_x.Resize({batch_size, c, conv_h, conv_w});
     T* padded_x_ptr = dev_ctx.template Alloc<T>(&padded_x);
-    int r_pad = xpu::pad<T>(dev_ctx.x_context(),
-                            input_ptr,
-                            padded_x_ptr,
-                            std::vector<int64_t>{batch_size, c, h, w},
-                            std::vector<int64_t>{0, 0, paddings[0], paddings[1]},
-                            std::vector<int64_t>{0, 0, paddings[0], paddings[1]},
-                            static_cast<T>(0));
+    int r_pad =
+        xpu::pad<T>(dev_ctx.x_context(),
+                    input_ptr,
+                    padded_x_ptr,
+                    std::vector<int64_t>{batch_size, c, h, w},
+                    std::vector<int64_t>{0, 0, paddings[0], paddings[1]},
+                    std::vector<int64_t>{0, 0, paddings[0], paddings[1]},
+                    static_cast<T>(0));
     PADDLE_ENFORCE_XDNN_SUCCESS(r_pad, "pad");
     conv_input_ptr = padded_x_ptr;
     conv_input_dim = c * conv_h * conv_w;
