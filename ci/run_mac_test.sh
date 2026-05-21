@@ -66,7 +66,7 @@ EOF
             pip3.14 install --user hypothesis
         fi
 
-	if [ "$1" == "cp38-cp38" ]; then
+    if [ "$1" == "cp38-cp38" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.8" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.8/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.8/lib/
@@ -131,7 +131,7 @@ EOF
             else
                 exit 1
             fi
-	elif [ "$1" == "cp313-cp313" ]; then
+    elif [ "$1" == "cp313-cp313" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.13" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.13/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.13/lib/
@@ -230,7 +230,7 @@ EOF
                                     retry_unittests_regular="$retry_unittests_regular|^$line$"
                                 fi
                             done
-			find $tmp_dir -mindepth 1 -delete
+            find $tmp_dir -mindepth 1 -delete
                         failed_test_lists=''
                         ctest -R "($retry_unittests_regular)" --output-on-failure -j 4 | tee $tmpfile
                         collect_failed_tests

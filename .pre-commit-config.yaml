@@ -37,6 +37,10 @@ repos:
           (?x)^(
             test/dygraph_to_static/test_error.py
           )$
+      - id: remove-tabs
+        name: Tabs remover (Shell)
+        files: \.sh$
+        args: [--whitespaces-count, '4']
   - repo: https://github.com/PFCCLab/ast-grep-pre-commit-mirror
     rev: v0.42.1
     hooks:
