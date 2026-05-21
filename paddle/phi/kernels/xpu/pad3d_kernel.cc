@@ -150,11 +150,11 @@ void Pad3dKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   if constexpr (std::is_same_v<T, int> || std::is_same_v<T, int64_t>) {
-    PADDLE_ENFORCE_EQ(mode,
-                      "constant",
-                      errors::Unimplemented(
-                          "XPU pad3d only supports int and int64 input for "
-                          "constant mode."));
+    PADDLE_ENFORCE_EQ(
+        mode,
+        "constant",
+        errors::Unimplemented("XPU pad3d only supports int and int64 input for "
+                              "constant mode."));
     std::vector<int64_t> pad_left;
     std::vector<int64_t> pad_right;
     if (is_ncdhw) {
