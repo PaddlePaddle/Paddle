@@ -152,8 +152,7 @@ void MultinomialKernel(const Context& dev_ctx,
   if (!replacement) {
     if (check_input_zeros) {
       // num_samples <= non-zero categories.
-      MultinomialInputChecker<T, Context>(
-          dev_ctx, x, num_samples, /*replacement=*/false);
+      MultinomialInputChecker<T, Context>(dev_ctx, x, num_samples);
     }
     // Refer to [gumbel softmax algorithm]
     DenseTensor rand = EmptyLike<T, Context>(dev_ctx, x);
@@ -182,11 +181,6 @@ void MultinomialKernel(const Context& dev_ctx,
   // Sum of input may not be 1. To get probability in range [0, 1], calculate
   // sum of each row of input, and then use the sum to normalize the input.
   // sum_row_data: sum of each row
-  if (check_input_zeros) {
-    // Validate non-negative values and row sums > 0 before GPU normalization.
-    MultinomialInputChecker<T, Context>(
-        dev_ctx, x, num_samples, /*replacement=*/true);
-  }
   DenseTensor sum_rows_tensor;
   sum_rows_tensor.Resize({num_distributions});
   auto* sum_rows_data = dev_ctx.template Alloc<MT>(&sum_rows_tensor);
