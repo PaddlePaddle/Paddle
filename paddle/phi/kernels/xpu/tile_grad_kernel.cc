@@ -14,8 +14,12 @@
 
 #include "paddle/phi/kernels/tile_grad_kernel.h"
 
+#include <type_traits>
+
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
@@ -89,20 +93,40 @@ void TileGradKernel(const Context& dev_ctx,
     using XPUType = typename XPUTypeTrait<T>::Type;
     // int reduce_sum(Context* xpu_ctx, const T* x, T* y, const
     // std::vector<int64_t>& xshape, const std::vector<int64_t>& rdims)
-    const auto* out_data = reinterpret_cast<const XPUType*>(out_grad.data<T>());
-    auto* x_grad_data = reinterpret_cast<XPUType*>(x_grad->data<T>());
     if (x_grad->numel() > 0) {
-      int r = xpu::reduce_sum<XPUType>(dev_ctx.x_context(),
-                                       out_data,
-                                       x_grad_data,
+      if constexpr (std::is_same_v<T, phi::float16>) {
+        const DenseTensor out_grad_fp32 =
+            Cast<T, Context>(dev_ctx, out_grad, DataType::FLOAT32);
+        DenseTensor x_grad_fp32 = EmptyLike<float, Context>(dev_ctx, *x_grad);
+        int r = xpu::reduce_sum<float>(dev_ctx.x_context(),
+                                       out_grad_fp32.data<float>(),
+                                       x_grad_fp32.data<float>(),
                                        reshape_dims_vec,
                                        reduce_dims_vec);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
+        CastKernel<float, Context>(
+            dev_ctx, x_grad_fp32, DataType::FLOAT16, x_grad);
+      } else {
+        const auto* out_data =
+            reinterpret_cast<const XPUType*>(out_grad.data<T>());
+        auto* x_grad_data = reinterpret_cast<XPUType*>(x_grad->data<T>());
+        int r = xpu::reduce_sum<XPUType>(dev_ctx.x_context(),
+                                         out_data,
+                                         x_grad_data,
+                                         reshape_dims_vec,
+                                         reduce_dims_vec);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
+      }
     }
   }
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    tile_grad, XPU, ALL_LAYOUT, phi::TileGradKernel, float, phi::bfloat16) {}
+PD_REGISTER_KERNEL(tile_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::TileGradKernel,
+                   float,
+                   phi::float16,
+                   phi::bfloat16) {}
