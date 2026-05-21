@@ -85,7 +85,7 @@ std::vector<DenseTensor> InterpreterEngine::operator()(
 
   // the latter can be moved to python side.
   auto &feed_names = info_->InputArgNames();
-  paddle::framework::FetchList outs = inner_interpreter_->Run(feed_names);
+  phi::FetchList outs = inner_interpreter_->Run(feed_names);
 
   std::vector<DenseTensor> outputs;
   utils::FetchOuts(info_->OutputArgNames(), scope_, &outputs);

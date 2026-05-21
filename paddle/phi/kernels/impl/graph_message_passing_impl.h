@@ -90,8 +90,8 @@ template <typename ShapeT = int64_t>
 inline std::vector<ShapeT> InferBroadcastShape(const DDim& x_dims,
                                                const DDim& e_dims,
                                                const std::string& type = "x") {
-  auto x_dims1 = common::vectorize<ShapeT>(x_dims);
-  auto e_dims1 = common::vectorize<ShapeT>(e_dims);
+  auto x_dims1 = vectorize<ShapeT>(x_dims);
+  auto e_dims1 = vectorize<ShapeT>(e_dims);
   std::vector<ShapeT> x_dims2(x_dims1.begin() + 1, x_dims1.end());
   std::vector<ShapeT> e_dims2(e_dims1.begin() + 1, e_dims1.end());
   int max_dim = std::max(x_dims2.size(), e_dims2.size());
@@ -100,8 +100,8 @@ inline std::vector<ShapeT> InferBroadcastShape(const DDim& x_dims,
   std::vector<ShapeT> e_dims_array(max_dim);
   std::vector<ShapeT> out_dims_array(max_dim);
   // Only need to broadcast dimensions other than the 0th dimension.
-  funcs::GetBroadcastDimsArrays(common::make_ddim(x_dims2),
-                                common::make_ddim(e_dims2),
+  funcs::GetBroadcastDimsArrays(make_ddim(x_dims2),
+                                make_ddim(e_dims2),
                                 x_dims_array.data(),
                                 e_dims_array.data(),
                                 out_dims_array.data(),

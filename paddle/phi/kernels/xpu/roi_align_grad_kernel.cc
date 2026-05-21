@@ -26,7 +26,7 @@ template <typename T, typename Context>
 void RoiAlignGradKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& boxes,
-                        const paddle::optional<DenseTensor>& boxes_num,
+                        const optional<DenseTensor>& boxes_num,
                         const DenseTensor& out_grad,
                         int pooled_height,
                         int pooled_width,
@@ -43,8 +43,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
     return;
   }
   if (x.numel() == 0 || boxes.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+    Full<T, Context>(dev_ctx, dx->dims(), 0, dx);
     return;
   }
   DenseTensor roi_batch_id_list;
@@ -56,7 +55,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
   int* cpu_lod = nullptr;
   if (boxes_num) {
     rois_batch_size = boxes_num->numel();
-    if (boxes_num->dtype() == phi::DataType::INT64) {
+    if (boxes_num->dtype() == DataType::INT64) {
       std::vector<int64_t> rois_num_list(rois_batch_size);
       memory_utils::Copy(cplace,
                          rois_num_list.data(),
@@ -68,7 +67,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
       for (int64_t i = 0; i < rois_batch_size; i++) {
         cpu_lod[i + 1] = cpu_lod[i] + rois_num_list[i];
       }
-    } else if (boxes_num->dtype() == phi::DataType::INT32) {
+    } else if (boxes_num->dtype() == DataType::INT32) {
       std::vector<int> rois_num_list(rois_batch_size);
       memory_utils::Copy(cplace,
                          rois_num_list.data(),

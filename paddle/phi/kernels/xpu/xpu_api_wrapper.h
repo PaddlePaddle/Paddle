@@ -64,7 +64,10 @@ inline XPUFCCalcType FCCalcType() {
       {"XPU_PADDLE_FC_INT32_WITH_LL", XPUFCCalcType::FC_INT32_WITH_LL},
   };
 #ifdef PADDLE_WITH_XPU_XRE5
-  auto default_calc_type = XPUFCCalcType::FC_TF32;
+  // Use full float32 accumulation by default for better precision, matching
+  // the GPU default (FLAGS_cublas_allow_tf32=false). Users who need TF32
+  // performance can set env var XPU_PADDLE_FC_TF32.
+  auto default_calc_type = XPUFCCalcType::FC_FLOAT;
 #else
   auto default_calc_type = XPUFCCalcType::FC_INT16;
 #endif
@@ -182,10 +185,8 @@ static void GetFCInfo(const DDim& x_dims,
                       bool trans_x,
                       bool trans_y,
                       XpuFcInfo* info) {
-  DDim new_x_dims =
-      (x_dims.size() > 1) ? x_dims : common::make_ddim({1, x_dims[0]});
-  DDim new_y_dims =
-      (y_dims.size() > 1) ? y_dims : common::make_ddim({y_dims[0], 1});
+  DDim new_x_dims = (x_dims.size() > 1) ? x_dims : make_ddim({1, x_dims[0]});
+  DDim new_y_dims = (y_dims.size() > 1) ? y_dims : make_ddim({y_dims[0], 1});
 
   auto mat_dim_a = funcs::CreateMatrixDescriptor(new_x_dims, 0, trans_x);
   auto mat_dim_b = funcs::CreateMatrixDescriptor(new_y_dims, 0, trans_y);

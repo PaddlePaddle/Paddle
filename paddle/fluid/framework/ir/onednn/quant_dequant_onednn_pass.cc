@@ -409,7 +409,7 @@ void QuantDequantOnednnPass::RemoveFakeOps(
   GraphSafeRemoveNodes(graph, nodes2rm);
 }
 
-void QuantDequantOnednnPass::TransposeWeight(phi::DenseTensor* input) const {
+void QuantDequantOnednnPass::TransposeWeight(DenseTensor* input) const {
   const auto in_dims = input->dims();
   std::vector<int> out_dim_v;
   std::vector<int> axis;
@@ -468,7 +468,7 @@ bool QuantDequantOnednnPass::IsInt8Weight(
 
 void QuantDequantOnednnPass::ConvertFromINT8ToFP32(
     const std::vector<float>& scales,
-    phi::DenseTensor* weight_tensor,
+    DenseTensor* weight_tensor,
     int8_t* int8_weight_data,
     float* fp32_weight_data,
     const std::string& weight_var_name) const {

@@ -122,8 +122,8 @@ void MaxPoolV2GradCUDNNKernel(const Context& dev_ctx,
   auto workspace_handle = dev_ctx.cudnn_workspace_handle();
 
   auto layout = GetLayoutFromStr(data_format);
-  auto layout_format = phi::backends::gpu::GetCudnnTensorFormat(layout);
-  auto input_dtype = phi::backends::gpu::CudnnDataType<T1>::type;
+  auto layout_format = backends::gpu::GetCudnnTensorFormat(layout);
+  auto input_dtype = backends::gpu::CudnnDataType<T1>::type;
   auto saved_idx_dtype = CudnnIndexType<T2>::type;
 
   // Create plan and execute
@@ -132,7 +132,7 @@ void MaxPoolV2GradCUDNNKernel(const Context& dev_ctx,
 
   // Create feature vector for plan caching
   cudnn_frontend::feature_vector_t feature_vector;
-  auto dim_x = phi::vectorize<int64_t>(x.dims());
+  auto dim_x = vectorize<int64_t>(x.dims());
   phi::autotune::BuildFeatureVector(&feature_vector,
                                     dim_x,
                                     kernel_size_int64,

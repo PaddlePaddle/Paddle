@@ -17,8 +17,6 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 std::tuple<TensorDistAttr, TensorDistAttr> AlignExpandAsDistAttrs(
     const DistMetaTensor& x, const DistMetaTensor& y) {
   EXTRACT_SHAPE_AND_DIST_ATTR(x);

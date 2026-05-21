@@ -91,7 +91,7 @@ void RpropKernel(const Context& dev_ctx,
                  const DenseTensor& grad,
                  const DenseTensor& prev,
                  const DenseTensor& learning_rate,
-                 const paddle::optional<DenseTensor>& master_param,
+                 const optional<DenseTensor>& master_param,
                  const DenseTensor& learning_rate_range,
                  const DenseTensor& etas,
                  bool multi_precision,
@@ -99,18 +99,17 @@ void RpropKernel(const Context& dev_ctx,
                  DenseTensor* prev_out,
                  DenseTensor* learning_rate_out,
                  DenseTensor* master_param_out) {
-  using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
-  const MPDType* master_in_data =
-      multi_precision ? master_param->data<MPDType>() : nullptr;
-  MPDType* master_out_data =
-      multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_out)
-                      : nullptr;
+  using MT = typename MPTypeTrait<T>::Type;
+  const MT* master_in_data =
+      multi_precision ? master_param->data<MT>() : nullptr;
+  MT* master_out_data =
+      multi_precision ? dev_ctx.template Alloc<MT>(master_param_out) : nullptr;
 
   int block = 512;
   int64_t grid_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int grid = std::min((param.numel() + block - 1) / block, grid_max);
 
-  RpropKernelGPUImpl<T, MPDType><<<grid, block, 0, dev_ctx.stream()>>>(
+  RpropKernelGPUImpl<T, MT><<<grid, block, 0, dev_ctx.stream()>>>(
       param.data<T>(),
       grad.data<T>(),
       prev.data<T>(),

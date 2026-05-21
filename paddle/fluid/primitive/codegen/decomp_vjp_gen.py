@@ -103,6 +103,7 @@ PRIM_VJP = [
     'logsumexp_grad',
     'masked_select_grad',
     'matmul_grad',
+    'linear_v2_grad',
     'max_grad',
     'maximum_grad',
     'minimum_grad',
@@ -116,6 +117,7 @@ PRIM_VJP = [
     'roll_grad',
     'rsqrt_grad',
     'scale_grad',
+    "div_scale_grad",
     'scatter_grad',
     'scatter_nd_add_grad',
     'sigmoid_grad',
@@ -164,6 +166,7 @@ CUSTOM_VJP = [
     'masked_fill_grad',
     'index_put_grad',
     'index_add_grad',
+    "var_grad",
 ]  # custom vjp list of composite op
 
 VJP_COMPS = PRIM_VJP + CUSTOM_VJP

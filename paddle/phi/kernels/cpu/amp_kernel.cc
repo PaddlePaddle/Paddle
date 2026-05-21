@@ -29,9 +29,9 @@ namespace phi {
 // Utils
 
 template <typename T, bool IsFoundInfOnCPU>
-class UpdateLossScalingFunctor<phi::CPUContext, T, IsFoundInfOnCPU> {
+class UpdateLossScalingFunctor<CPUContext, T, IsFoundInfOnCPU> {
  public:
-  void operator()(const phi::CPUContext& dev_ctx UNUSED,
+  void operator()(const CPUContext& dev_ctx UNUSED,
                   const bool* found_inf_data,
                   const T* pre_loss_scaling_data,
                   const int* good_in_data,
@@ -87,11 +87,11 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
     if (!(*found_inf_data)) {
       DenseTensor tmp;
       tmp.Resize(x->dims());
-      phi::IsfiniteKernel<T, Context>(dev_ctx, *x, &tmp);
+      IsfiniteKernel<T, Context>(dev_ctx, *x, &tmp);
 
       std::vector<int64_t> dims(x->dims().size());
       std::iota(dims.begin(), dims.end(), 0);
-      phi::AllKernel<bool, Context>(dev_ctx, tmp, dims, false, &is_finite);
+      AllKernel<bool, Context>(dev_ctx, tmp, dims, false, &is_finite);
       *found_inf_data = !(*is_finite_data);
     }
     auto eigen_out = EigenVector<T>::Flatten(*out);

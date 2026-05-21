@@ -12,10 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#if defined(PADDLE_WITH_PSCORE)
-#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
-#endif
-
 #include "paddle/fluid/framework/threadpool.h"
 
 #include "paddle/fluid/framework/convert_utils.h"
@@ -67,11 +63,7 @@ void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
 }
 
 void DistMultiTrainer::RegisterHeterCallback() {
-#ifdef PADDLE_WITH_PSCORE
-  auto fleet_ptr = paddle::distributed::FleetWrapper::GetInstance();
-#else
   auto fleet_ptr = FleetWrapper::GetInstance();
-#endif
   fleet_ptr->RegisterHeterCallback(
       [this](int worker, int taskid) { workers_[worker]->Schedule(taskid); });
 }
@@ -107,7 +99,7 @@ inline std::vector<std::shared_ptr<phi::ThreadPool>> &GetThreadPool(
 }
 
 void DistMultiTrainer::InitTrainerEnv(const ProgramDesc &main_program,
-                                      const phi::Place &place) {
+                                      const Place &place) {
   auto pool = GetThreadPool(thread_num_);
   std::vector<std::future<void>> wait_futures;
   PADDLE_ENFORCE_EQ(static_cast<int>(pool.size()),
@@ -223,12 +215,8 @@ void DistMultiTrainer::Finalize() {
   pull_dense_worker_->Stop();
   root_scope_->DropKids();
 
-// flush local client push queue
-#ifdef PADDLE_WITH_PSCORE
-  auto fleet_ptr_ = paddle::distributed::FleetWrapper::GetInstance();
-#else
+  // flush local client push queue
   auto fleet_ptr_ = FleetWrapper::GetInstance();
-#endif
   fleet_ptr_->ClientFlush();
 }
 

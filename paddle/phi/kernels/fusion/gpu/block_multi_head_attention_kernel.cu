@@ -22,13 +22,6 @@
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
 #include "paddle/utils/none.h"
 
-inline int getSMVersion() {
-  const int device = phi::backends::gpu::GetCurrentDeviceId();
-  const phi::gpuDeviceProp prop =
-      phi::backends::gpu::GetDeviceProperties(device);
-  return prop.major * 10 + prop.minor;
-}
-
 #if defined(__CUDACC__) && CUDA_VERSION >= 11000
 #define CUDA_BFLOAT16_AVAILABLE
 #include <cuda_bf16.h>
@@ -36,6 +29,12 @@ inline int getSMVersion() {
 
 namespace phi {
 namespace fusion {
+
+inline int getSMVersion() {
+  const int device = backends::gpu::GetCurrentDeviceId();
+  const phi::gpuDeviceProp prop = backends::gpu::GetDeviceProperties(device);
+  return prop.major * 10 + prop.minor;
+}
 
 int GetMaxLen(const GPUContext& dev_ctx,
               const DenseTensor& seq_lens_tensor,
@@ -276,13 +275,13 @@ __global__ void DequantKernel(T* output,
       VecSize;
   int64_t col_id = idx % n;
 
-  phi::AlignedVector<int32_t, VecSize> in_vec;
-  phi::AlignedVector<float, VecSize> out_scale_vec;
-  phi::AlignedVector<T, VecSize> out_vec;
+  AlignedVector<int32_t, VecSize> in_vec;
+  AlignedVector<float, VecSize> out_scale_vec;
+  AlignedVector<T, VecSize> out_vec;
 
   for (; idx < numel; idx += stride) {
-    phi::Load<int32_t, VecSize>(input + idx, &in_vec);
-    phi::Load<float, VecSize>(dequant_out_scale_data + col_id, &out_scale_vec);
+    Load<int32_t, VecSize>(input + idx, &in_vec);
+    Load<float, VecSize>(dequant_out_scale_data + col_id, &out_scale_vec);
 
 #pragma unroll
     for (int i = 0; i < VecSize; ++i) {
@@ -290,53 +289,52 @@ __global__ void DequantKernel(T* output,
           static_cast<T>(static_cast<float>(in_vec[i]) * out_scale_vec[i]);
     }
 
-    phi::Store<T, VecSize>(out_vec, output + idx);
+    Store<T, VecSize>(out_vec, output + idx);
   }
 }
 
 template <typename T, typename Context>
-void DispatchWithDtype(
-    const Context& dev_ctx,
-    const DenseTensor& qkv,
-    const DenseTensor& key_cache,
-    const DenseTensor& value_cache,
-    const DenseTensor& seq_lens_encoder,
-    const DenseTensor& seq_lens_decoder,
-    const DenseTensor& seq_lens_this_time,
-    const DenseTensor& padding_offsets,
-    const DenseTensor& cum_offsets,
-    const DenseTensor& cu_seqlens_q,
-    const DenseTensor& cu_seqlens_k,
-    const DenseTensor& block_tables,
-    const paddle::optional<DenseTensor>& pre_key_cache,
-    const paddle::optional<DenseTensor>& pre_value_cache,
-    const paddle::optional<DenseTensor>& rope_emb,
-    const paddle::optional<DenseTensor>& mask,
-    const paddle::optional<DenseTensor>& tgt_mask,
-    const paddle::optional<DenseTensor>& cache_k_quant_scales,
-    const paddle::optional<DenseTensor>& cache_v_quant_scales,
-    const paddle::optional<DenseTensor>& cache_k_dequant_scales,
-    const paddle::optional<DenseTensor>& cache_v_dequant_scales,
-    const paddle::optional<DenseTensor>& qkv_out_scale,
-    const paddle::optional<DenseTensor>& qkv_bias,
-    const paddle::optional<DenseTensor>& out_shift,
-    const paddle::optional<DenseTensor>& out_smooth,
-    const paddle::optional<DenseTensor>& max_enc_len_this_time,
-    const paddle::optional<DenseTensor>& max_dec_len_this_time,
-    int max_seq_len,
-    int block_size,
-    bool use_neox_style,
-    const bool dynamic_cachekv_quant,
-    const int quant_round_type,
-    const float quant_max_bound,
-    const float quant_min_bound,
-    const float out_scale,
-    const std::string& compute_dtype,
-    const float rope_theta,
-    DenseTensor* fmha_out,
-    DenseTensor* qkv_out,
-    DenseTensor* key_cache_out,
-    DenseTensor* value_cache_out) {
+void DispatchWithDtype(const Context& dev_ctx,
+                       const DenseTensor& qkv,
+                       const DenseTensor& key_cache,
+                       const DenseTensor& value_cache,
+                       const DenseTensor& seq_lens_encoder,
+                       const DenseTensor& seq_lens_decoder,
+                       const DenseTensor& seq_lens_this_time,
+                       const DenseTensor& padding_offsets,
+                       const DenseTensor& cum_offsets,
+                       const DenseTensor& cu_seqlens_q,
+                       const DenseTensor& cu_seqlens_k,
+                       const DenseTensor& block_tables,
+                       const optional<DenseTensor>& pre_key_cache,
+                       const optional<DenseTensor>& pre_value_cache,
+                       const optional<DenseTensor>& rope_emb,
+                       const optional<DenseTensor>& mask,
+                       const optional<DenseTensor>& tgt_mask,
+                       const optional<DenseTensor>& cache_k_quant_scales,
+                       const optional<DenseTensor>& cache_v_quant_scales,
+                       const optional<DenseTensor>& cache_k_dequant_scales,
+                       const optional<DenseTensor>& cache_v_dequant_scales,
+                       const optional<DenseTensor>& qkv_out_scale,
+                       const optional<DenseTensor>& qkv_bias,
+                       const optional<DenseTensor>& out_shift,
+                       const optional<DenseTensor>& out_smooth,
+                       const optional<DenseTensor>& max_enc_len_this_time,
+                       const optional<DenseTensor>& max_dec_len_this_time,
+                       int max_seq_len,
+                       int block_size,
+                       bool use_neox_style,
+                       const bool dynamic_cachekv_quant,
+                       const int quant_round_type,
+                       const float quant_max_bound,
+                       const float quant_min_bound,
+                       const float out_scale,
+                       const std::string& compute_dtype,
+                       const float rope_theta,
+                       DenseTensor* fmha_out,
+                       DenseTensor* qkv_out,
+                       DenseTensor* key_cache_out,
+                       DenseTensor* value_cache_out) {
   DenseTensor qkv_buf;
   DenseTensor fmha_buf;
 
@@ -392,7 +390,7 @@ void DispatchWithDtype(
   int max_dec_len_this_time_data(0);
   if (!max_dec_len_this_time) {
     DenseTensor max_dec_len_tensor;
-    max_dec_len_tensor.Resize({{1}});
+    max_dec_len_tensor.Resize({1});
     auto* max_dec_len_data = dev_ctx.template Alloc<int>(
         &max_dec_len_tensor, max_dec_len_tensor.numel() * sizeof(int));
     max_dec_len_this_time_data =
@@ -410,7 +408,7 @@ void DispatchWithDtype(
   int max_enc_len_this_time_data(0);
   if (!max_enc_len_this_time) {
     DenseTensor max_enc_len_tensor;
-    max_enc_len_tensor.Resize({{1}});
+    max_enc_len_tensor.Resize({1});
     auto* max_enc_len_data = dev_ctx.template Alloc<int>(
         &max_enc_len_tensor, max_enc_len_tensor.numel() * sizeof(int));
     max_enc_len_this_time_data =
@@ -428,9 +426,9 @@ void DispatchWithDtype(
   DenseTensor qkv_out_decoder;
   if (max_dec_len_this_time_data > 0) {
     if (q_num_head == kv_num_head) {
-      qkv_out_decoder.Resize({{bsz, 3, q_num_head, dim_head}});
+      qkv_out_decoder.Resize({bsz, 3, q_num_head, dim_head});
     } else {
-      qkv_out_decoder.Resize({{bsz, q_num_head + 2 * kv_num_head, dim_head}});
+      qkv_out_decoder.Resize({bsz, q_num_head + 2 * kv_num_head, dim_head});
     }
     auto* qkv_out_decoder_data = dev_ctx.template Alloc<T>(
         &qkv_out_decoder, qkv_out_decoder.numel() * sizeof(T));
@@ -442,25 +440,24 @@ void DispatchWithDtype(
   int sm = getSMVersion();
   if (max_enc_len_this_time_data > 0) {
     if (!use_pre_cache && sm >= 80) {
-      unpadding_q.Resize({{token_num, q_num_head, dim_head}});
-      unpadding_k.Resize({{token_num, kv_num_head, dim_head}});
-      unpadding_v.Resize({{token_num, kv_num_head, dim_head}});
+      unpadding_q.Resize({token_num, q_num_head, dim_head});
+      unpadding_k.Resize({token_num, kv_num_head, dim_head});
+      unpadding_v.Resize({token_num, kv_num_head, dim_head});
 
       dev_ctx.template Alloc<T>(&unpadding_q, unpadding_q.numel() * sizeof(T));
       dev_ctx.template Alloc<T>(&unpadding_k, unpadding_k.numel() * sizeof(T));
       dev_ctx.template Alloc<T>(&unpadding_v, unpadding_v.numel() * sizeof(T));
     } else {
-      q_trans.Resize({{bsz, q_num_head, max_enc_len_this_time_data, dim_head}});
-      k_trans.Resize({{bsz,
-                       kv_num_head,
-                       max_enc_len_this_time_data + pre_cache_length,
-                       dim_head}});
-      v_trans.Resize({{bsz,
-                       kv_num_head,
-                       max_enc_len_this_time_data + pre_cache_length,
-                       dim_head}});
-      qktv_out.Resize(
-          {{bsz, q_num_head, max_enc_len_this_time_data, dim_head}});
+      q_trans.Resize({bsz, q_num_head, max_enc_len_this_time_data, dim_head});
+      k_trans.Resize({bsz,
+                      kv_num_head,
+                      max_enc_len_this_time_data + pre_cache_length,
+                      dim_head});
+      v_trans.Resize({bsz,
+                      kv_num_head,
+                      max_enc_len_this_time_data + pre_cache_length,
+                      dim_head});
+      qktv_out.Resize({bsz, q_num_head, max_enc_len_this_time_data, dim_head});
 
       dev_ctx.template Alloc<T>(&q_trans, q_trans.numel() * sizeof(T));
       dev_ctx.template Alloc<T>(&k_trans, k_trans.numel() * sizeof(T));
@@ -649,16 +646,16 @@ void DispatchWithDtype(
           &qktv_out);
 #elif defined(PADDLE_WITH_HIP)
       DenseTensor q, k, v, out;
-      q.Resize({{bsz, max_enc_len_this_time_data, q_num_head, dim_head}});
-      k.Resize({{bsz,
-                 max_enc_len_this_time_data + pre_cache_length,
-                 kv_num_head,
-                 dim_head}});
-      v.Resize({{bsz,
-                 max_enc_len_this_time_data + pre_cache_length,
-                 kv_num_head,
-                 dim_head}});
-      out.Resize({{bsz, max_enc_len_this_time_data, q_num_head, dim_head}});
+      q.Resize({bsz, max_enc_len_this_time_data, q_num_head, dim_head});
+      k.Resize({bsz,
+                max_enc_len_this_time_data + pre_cache_length,
+                kv_num_head,
+                dim_head});
+      v.Resize({bsz,
+                max_enc_len_this_time_data + pre_cache_length,
+                kv_num_head,
+                dim_head});
+      out.Resize({bsz, max_enc_len_this_time_data, q_num_head, dim_head});
       dev_ctx.template Alloc<T>(&q, q.numel() * sizeof(T));
       dev_ctx.template Alloc<T>(&k, k.numel() * sizeof(T));
       dev_ctx.template Alloc<T>(&v, v.numel() * sizeof(T));
@@ -886,21 +883,21 @@ void BlockMultiheadAttentionKernel(
     const DenseTensor& cu_seqlens_q,
     const DenseTensor& cu_seqlens_k,
     const DenseTensor& block_tables,
-    const paddle::optional<DenseTensor>& pre_key_cache,
-    const paddle::optional<DenseTensor>& pre_value_cache,
-    const paddle::optional<DenseTensor>& rope_emb,
-    const paddle::optional<DenseTensor>& mask,
-    const paddle::optional<DenseTensor>& tgt_mask,
-    const paddle::optional<DenseTensor>& cache_k_quant_scales,
-    const paddle::optional<DenseTensor>& cache_v_quant_scales,
-    const paddle::optional<DenseTensor>& cache_k_dequant_scales,
-    const paddle::optional<DenseTensor>& cache_v_dequant_scales,
-    const paddle::optional<DenseTensor>& qkv_out_scale,
-    const paddle::optional<DenseTensor>& qkv_bias,
-    const paddle::optional<DenseTensor>& out_shift,
-    const paddle::optional<DenseTensor>& out_smooth,
-    const paddle::optional<DenseTensor>& max_enc_len_this_time,
-    const paddle::optional<DenseTensor>& max_dec_len_this_time,
+    const optional<DenseTensor>& pre_key_cache,
+    const optional<DenseTensor>& pre_value_cache,
+    const optional<DenseTensor>& rope_emb,
+    const optional<DenseTensor>& mask,
+    const optional<DenseTensor>& tgt_mask,
+    const optional<DenseTensor>& cache_k_quant_scales,
+    const optional<DenseTensor>& cache_v_quant_scales,
+    const optional<DenseTensor>& cache_k_dequant_scales,
+    const optional<DenseTensor>& cache_v_dequant_scales,
+    const optional<DenseTensor>& qkv_out_scale,
+    const optional<DenseTensor>& qkv_bias,
+    const optional<DenseTensor>& out_shift,
+    const optional<DenseTensor>& out_smooth,
+    const optional<DenseTensor>& max_enc_len_this_time,
+    const optional<DenseTensor>& max_dec_len_this_time,
     int max_seq_len,
     int block_size,
     bool use_neox_style,

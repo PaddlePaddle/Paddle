@@ -69,7 +69,7 @@ void MvCooGradKernel(const Context &dev_ctx,
   if (dx) {
     // InferMeta of SparseCooTensor 'dx', CreateLikeInferMeta
     EmptyLikeCooKernel<T, Context>(dev_ctx, x, dx);
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, dx->nnz());
+    auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, dx->nnz());
     PD_VISIT_BASE_INTEGRAL_TYPES(
         dx->indices().dtype(), "MvCooGradKernel", ([&] {
           MvCooGradGpuKernel<T>
@@ -86,7 +86,7 @@ void MvCooGradKernel(const Context &dev_ctx,
 
   // dvec{Dense} = x'{SparseCoo} * dout{Dense}
   if (dvec) {
-#if CUDA_VERSION >= 11000
+#if defined(PADDLE_WITH_CUDA)
     // InferMeta of DenseTensor 'dvec'
     dvec->Resize(vec.dims());
     dev_ctx.template Alloc<T>(dvec);
@@ -111,8 +111,8 @@ void MvCsrGradKernel(const Context &dev_ctx,
 
     int64_t row_number = dx->dims()[0];
     int64_t col_number = dx->dims()[1];
-    auto config = phi::backends::gpu::GetGpuLaunchConfig2D(
-        dev_ctx, col_number, row_number);
+    auto config =
+        backends::gpu::GetGpuLaunchConfig2D(dev_ctx, col_number, row_number);
     PD_VISIT_BASE_INTEGRAL_TYPES(dx->crows().dtype(), "MvCsrGradKernel", ([&] {
                                    MvCsrGradGpuKernel<T>
                                        <<<config.block_per_grid.x,
@@ -130,7 +130,7 @@ void MvCsrGradKernel(const Context &dev_ctx,
 
   // dvec{Dense} = x'{SparseCsr} * dout{Dense}
   if (dvec) {
-#if CUDA_VERSION >= 11000
+#if defined(PADDLE_WITH_CUDA)
     // InferMeta of DenseTensor 'dvec'
     dvec->Resize(vec.dims());
     dev_ctx.template Alloc<T>(dvec);

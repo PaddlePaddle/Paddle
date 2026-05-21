@@ -51,7 +51,7 @@ class EagerGroup {
   bool is_sparse_ = false;
 
   // for concat kernel
-  std::vector<phi::DenseTensor> dense_tensors_;
+  std::vector<DenseTensor> dense_tensors_;
   std::vector<int64_t> length_;
   int64_t all_length_{0};
   std::vector<IntArray> origin_shapes_;
@@ -64,7 +64,7 @@ class EagerGroup {
   size_t pending_ = -1;
 
   // external message of group
-  phi::DataType dtype_;
+  DataType dtype_;
 
   // help to sync
   std::shared_ptr<ProcessGroup::Task> task;

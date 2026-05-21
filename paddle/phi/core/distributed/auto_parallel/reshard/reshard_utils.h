@@ -47,8 +47,7 @@ PADDLE_API bool NeedComputationClipForPP(
 
 PADDLE_API Place GetDefaultPlace();
 
-PADDLE_API phi::DeviceContext* GetDistTensorDeviceContext(
-    phi::distributed::DistTensor* input);
+PADDLE_API DeviceContext* GetDistTensorDeviceContext(DistTensor* input);
 
 PADDLE_API int64_t GetLocalRankInParticipate(
     const std::vector<int64_t>& process_ids, int64_t global_rank = -1);
@@ -109,25 +108,23 @@ PADDLE_API DDim InferShapeForReshardFromReplicate(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #define PD_VISIT_RESHARD_TYPES PD_VISIT_BOOL_AND_FLOATING_AND_INTEGRAL_TYPES
 #else
-#define PD_VISIT_RESHARD_TYPES(TYPE, NAME, ...)                               \
-  [&] {                                                                       \
-    const auto& __dtype__ = TYPE;                                             \
-    switch (__dtype__) {                                                      \
-      PD_PRIVATE_CASE_TYPE(NAME, ::paddle::DataType::INT32, int, __VA_ARGS__) \
-      PD_PRIVATE_CASE_TYPE(                                                   \
-          NAME, ::paddle::DataType::INT64, int64_t, __VA_ARGS__)              \
-      PD_PRIVATE_CASE_TYPE(                                                   \
-          NAME, ::paddle::DataType::FLOAT32, float, __VA_ARGS__)              \
-      PD_PRIVATE_CASE_TYPE(                                                   \
-          NAME, ::paddle::DataType::FLOAT16, paddle::float16, __VA_ARGS__)    \
-      PD_PRIVATE_CASE_TYPE_BFLOAT16(NAME, __VA_ARGS__)                        \
-      default:                                                                \
-        PD_THROW("Reshard function " #NAME                                    \
-                 " is not implemented"                                        \
-                 " for data type `",                                          \
-                 __dtype__,                                                   \
-                 "`");                                                        \
-    }                                                                         \
+#define PD_VISIT_RESHARD_TYPES(TYPE, NAME, ...)                                \
+  [&] {                                                                        \
+    const auto& __dtype__ = TYPE;                                              \
+    switch (__dtype__) {                                                       \
+      PD_PRIVATE_CASE_TYPE(NAME, ::phi::DataType::INT32, int, __VA_ARGS__)     \
+      PD_PRIVATE_CASE_TYPE(NAME, ::phi::DataType::INT64, int64_t, __VA_ARGS__) \
+      PD_PRIVATE_CASE_TYPE(NAME, ::phi::DataType::FLOAT32, float, __VA_ARGS__) \
+      PD_PRIVATE_CASE_TYPE(                                                    \
+          NAME, ::phi::DataType::FLOAT16, ::phi::float16, __VA_ARGS__)         \
+      PD_PRIVATE_CASE_TYPE_BFLOAT16(NAME, __VA_ARGS__)                         \
+      default:                                                                 \
+        PD_THROW("Reshard function " #NAME                                     \
+                 " is not implemented"                                         \
+                 " for data type `",                                           \
+                 __dtype__,                                                    \
+                 "`");                                                         \
+    }                                                                          \
   }()
 #endif
 

@@ -19,12 +19,12 @@ template <typename T, typename Context>
 void NllLossKernel(const Context& dev_ctx,
                    const DenseTensor& input,
                    const DenseTensor& label,
-                   const paddle::optional<DenseTensor>& weight,
+                   const optional<DenseTensor>& weight,
                    int64_t ignore_index,
                    const std::string& reduction,
                    DenseTensor* out) {
   DenseTensor total_weight;
-  total_weight.set_meta(DenseTensorMeta(phi::CppTypeToDataType<T>::Type(), {}));
+  total_weight.set_meta(DenseTensorMeta(CppTypeToDataType<T>::Type(), {}));
   dev_ctx.template Alloc<T>(total_weight);
   NllLossRawKernel(dev_ctx,
                    input,

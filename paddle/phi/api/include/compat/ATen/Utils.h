@@ -14,9 +14,23 @@
 
 #pragma once
 
-#include <c10/core/ScalarType.h>
-#include <c10/util/ArrayRef.h>
-#include <c10/util/Exception.h>
-#include <c10/util/accumulate.h>
+#include <ATen/core/Tensor.h>
 
-#include <algorithm>
+namespace at {
+namespace detail {
+
+template <typename T>
+Tensor tensor_cpu(ArrayRef<T> values, const TensorOptions& options);
+
+template <typename T>
+Tensor tensor_backend(ArrayRef<T> values, const TensorOptions& options);
+
+template <typename T>
+Tensor tensor_complex_cpu(ArrayRef<T> values, const TensorOptions& options);
+
+template <typename T>
+Tensor tensor_complex_backend(ArrayRef<T> values, const TensorOptions& options);
+
+}  // namespace detail
+
+}  // namespace at

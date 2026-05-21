@@ -36,7 +36,7 @@ void dispatch_tokens_zip(const Context &dev_ctx,
                          const bool MP) {
   using XPU_BF16 = typename XPUTypeTrait<phi::bfloat16>::Type;
   // Map data types to C++ types
-  if (unzipped_token_probs.dtype() == paddle::DataType::FLOAT32) {
+  if (unzipped_token_probs.dtype() == DataType::FLOAT32) {
     int r = xpu::moe_unpermute(
         dev_ctx.x_context(),
         reinterpret_cast<const XPU_BF16 *>(
@@ -65,8 +65,14 @@ void MoeUnpermuteKernel(const Context &dev_ctx,
                         const int total_zipped_tokens_num,
                         const int num_experts,
                         const bool MP,
+                        const bool using_weighted_combine,
                         DenseTensor *zipped_tokens,
                         DenseTensor *zipped_probs_topk) {
+  PADDLE_ENFORCE_EQ(
+      using_weighted_combine,
+      false,
+      common::errors::Unimplemented("moe_unpermute on XPU does not support "
+                                    "using_weighted_combine=true yet."));
   const int64_t cols = unzipped_tokens.dims()[1];
   PADDLE_ENFORCE_LE(cols,
                     std::numeric_limits<int32_t>::max(),

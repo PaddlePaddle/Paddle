@@ -79,7 +79,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/event_python.h"
 #include "paddle/fluid/platform/profiler/profiler.h"
 #include "paddle/fluid/pybind/bind_cost_model.h"
-#include "paddle/fluid/pybind/box_helper_py.h"
 #include "paddle/fluid/pybind/communication.h"
 #include "paddle/fluid/pybind/compatible.h"
 #include "paddle/fluid/pybind/const_value.h"
@@ -97,7 +96,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/io.h"
-#include "paddle/fluid/pybind/metrics_py.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/backends/device_manager.h"
@@ -402,9 +400,9 @@ DenseTensor RebuildTensorFromVmmMeta(const py::tuple &meta) {
       GPUPlace(device_id),
       keep);
   DenseTensor tensor;
-  tensor.Resize(phi::make_ddim(dims_vec));
+  tensor.Resize(dims_vec);
   tensor.ResetHolder(std::move(alloc));
-  tensor.set_type(static_cast<phi::DataType>(dtype_idx));
+  tensor.set_type(static_cast<DataType>(dtype_idx));
   return tensor;
 }
 #endif
@@ -431,7 +429,7 @@ std::tuple<phi::DenseTensor, bool> HandleTensorCopy(
   bool force_copy = copy.has_value() && copy.value();
   bool disallow_copy = copy.has_value() && !copy.value();
 
-  phi::Place dst_place = src.place();
+  Place dst_place = src.place();
   if (dl_device.has_value()) {
     ::DLDeviceType dl_type =
         static_cast<::DLDeviceType>(std::get<0>(dl_device.value()));
@@ -450,7 +448,7 @@ std::tuple<phi::DenseTensor, bool> HandleTensorCopy(
   }
 
   if (force_copy || src.place() != dst_place) {
-    phi::Place ctx_place = src.place() != CPUPlace() ? src.place() : dst_place;
+    Place ctx_place = src.place() != CPUPlace() ? src.place() : dst_place;
     DenseTensor dst(std::make_shared<phi::Allocation>(nullptr, 0, dst_place),
                     src.meta());
     const auto *dev_ctx = phi::DeviceContextPool::Instance().Get(ctx_place);
@@ -642,7 +640,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            py::arg("place"),
            py::arg("batch_size") = -1)
       .def("_copy_from",
-           &TensorCopyFrom<phi::Place>,
+           &TensorCopyFrom<Place>,
            py::arg("tensor"),
            py::arg("place"),
            py::arg("batch_size") = -1)
@@ -695,7 +693,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
             None.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import numpy as np
@@ -715,7 +713,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 
 
            Examples:
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> import paddle
                     >>> import numpy as np
@@ -825,7 +823,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                 None.
 
            Examples:
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> import paddle
                     >>> import numpy as np
@@ -876,7 +874,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                 None.
 
            Examples:
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> import paddle
                     >>> import numpy as np
@@ -906,7 +904,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                list[list[int]]: The lod of the Tensor.
 
            Examples:
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> import paddle
                     >>> import numpy as np
@@ -926,7 +924,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              }
              return dst;
            })
-      .def("_copy", [](const DenseTensor &self, const phi::Place &place) {
+      .def("_copy", [](const DenseTensor &self, const Place &place) {
         // follow fetch_op's implementation
         DenseTensor dst;
         if (self.IsInitialized() && self.numel() > 0) {
@@ -963,7 +961,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 
              size_t size = t[0].cast<size_t>();
              auto dtype =
-                 static_cast<phi::DataType>(t[1].cast<int>());
+                 static_cast<DataType>(t[1].cast<int>());
              auto dims = common::make_ddim(t[2].cast<std::vector<int>>());
              auto device_id = t[4].cast<int>();
 
@@ -1046,7 +1044,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                       tensor dims, lod information, device index.
 
            Examples:
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> import paddle
 
@@ -1081,7 +1079,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              // 3. Rebuild Tensor
              tensor.ResetHolderWithType(
                  shared_reader_holder,
-                 static_cast<phi::DataType>(t[3].cast<int>()));
+                 static_cast<DataType>(t[3].cast<int>()));
              tensor.Resize(common::make_ddim(
                  t[4].cast<std::vector<int64_t>>()));
 
@@ -1095,7 +1093,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                       tensor dims, lod information, device index.
 
            Examples:
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> import paddle
 
@@ -1131,7 +1129,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                      "shared by xpu ipc could use this api."));
 
              size_t size = t[0].cast<size_t>();
-             auto dtype = static_cast<phi::DataType>(t[1].cast<int>());
+             auto dtype = static_cast<DataType>(t[1].cast<int>());
              auto dims = common::make_ddim(
                  t[2].cast<std::vector<int>>());
              auto device_id = t[4].cast<int>();
@@ -1242,7 +1240,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                      dev, size, device_id, std::move(base_ptr));
              tensor.ResetHolderWithType(
                  shared_holder,
-                 static_cast<phi::DataType>(t[3].cast<int>()));
+                 static_cast<DataType>(t[3].cast<int>()));
              tensor.Resize(common::make_ddim(
                  t[4].cast<std::vector<int>>()));
              VLOG(6) << "[DEBUG XPU] _new_shared_xpu: Reshape tensor dims: "
@@ -1335,7 +1333,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                       tensor dims and lod information.
 
            Examples:
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> import paddle
 
@@ -1372,7 +1370,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              // 3. Rebuild Tensor
              tensor.ResetHolderWithType(
                  shared_holder,
-                 static_cast<phi::DataType>(t[3].cast<int>()));
+                 static_cast<DataType>(t[3].cast<int>()));
              tensor.Resize(common::make_ddim(t[4].cast<std::vector<int>>()));
 
              return tensor;
@@ -1385,7 +1383,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                       tensor dims and lod information.
 
            Examples:
-                .. code-block:: python
+                .. code-block:: pycon
 
                     >>> import paddle
 
@@ -1459,7 +1457,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
             // 4. Rebuild Tensor
             tensor.ResetHolderWithType(
                 shared_reader_holder,
-                static_cast<phi::DataType>(t[2].cast<int>()));
+                static_cast<DataType>(t[2].cast<int>()));
             tensor.Resize(common::make_ddim(t[3].cast<std::vector<int>>()));
 
             return tensor;

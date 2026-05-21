@@ -33,6 +33,7 @@ from paddle.base.data_feeder import (
 from paddle.base.libpaddle import Place
 from paddle.profiler.utils import in_profiler_mode
 from paddle.utils import deprecated
+from paddle.utils.decorator_utils import tensor_cuda_decorator
 from paddle.utils.dlpack import DLDeviceType
 from paddle.utils.download import check_and_create_dir
 
@@ -53,6 +54,7 @@ if TYPE_CHECKING:
 
     from paddle import Tensor
     from paddle._typing import DTypeLike, PlaceLike, TensorIndex
+    from paddle.cuda import DeviceLike
 
 
 _grad_scalar = None
@@ -109,7 +111,7 @@ def monkey_patch_tensor():
                                  be converted into framework.Variable. Default False.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> import paddle
@@ -136,6 +138,7 @@ def monkey_patch_tensor():
             '__cuda_array_interface__',
             'itemsize',
             'is_cuda',
+            'is_cpu',
         ]
         param_keys = ['stop_gradient', 'trainable']
         if isinstance(self, EagerParamBase):
@@ -196,7 +199,7 @@ def monkey_patch_tensor():
             value (Variable|np.ndarray): the new value.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.base as base
                 >>> import paddle
@@ -315,10 +318,10 @@ def monkey_patch_tensor():
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
-                >>> x = paddle.to_tensor(5., stop_gradient=False)
+                >>> x = paddle.to_tensor(5.0, stop_gradient=False)
                 >>> for i in range(5):
                 ...     y = paddle.pow(x, 4.0)
                 ...     y.backward()
@@ -333,7 +336,7 @@ def monkey_patch_tensor():
                 >>> print("{}".format(x.grad))
                 0.0
 
-                >>> grad_tensor=paddle.to_tensor(2.)
+                >>> grad_tensor = paddle.to_tensor(2.0)
                 >>> for i in range(5):
                 ...     y = paddle.pow(x, 4.0)
                 ...     y.backward(grad_tensor)
@@ -398,11 +401,11 @@ def monkey_patch_tensor():
             ndarray: Numpy value of the gradient of current Tensor
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
-                >>> x = paddle.to_tensor(5., stop_gradient=False)
+                >>> x = paddle.to_tensor(5.0, stop_gradient=False)
                 >>> y = paddle.pow(x, 4.0)
                 >>> y.backward()
                 >>> print("grad of x: {}".format(x.gradient()))
@@ -424,14 +427,15 @@ def monkey_patch_tensor():
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
+                >>> # doctest: +REQUIRES(env:GPU)
                 >>> import paddle
 
                 >>> x = paddle.to_tensor([[0.3, 0.5, 0.1],
                 >>>        [0.9, 0.9, 0.7],
                 >>>        [0.4, 0.8, 0.2]]).to("cpu", "float64")
-                >>> f = lambda x: 3*x+2
+                >>> f = lambda x: 3 * x + 2
                 >>> x.apply_(f)
                 >>> print(x)
                 Tensor(shape=[3, 3], dtype=float64, place=Place(cpu), stop_gradient=True,
@@ -450,7 +454,6 @@ def monkey_patch_tensor():
                 >>>        [0.9, 0.9, 0.7],
                 >>>        [0.4, 0.8, 0.2]]).to("cpu", "bfloat16")
                 >>> x.apply_(f)
-
 
                 >>> if paddle.is_compiled_with_cuda():
                 >>>     x = paddle.to_tensor([[0.3, 0.5, 0.1],
@@ -472,14 +475,15 @@ def monkey_patch_tensor():
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
+                >>> # doctest: +REQUIRES(env:GPU)
                 >>> import paddle
 
                 >>> x = paddle.to_tensor([[0.3, 0.5, 0.1],
                 >>>        [0.9, 0.9, 0.7],
                 >>>        [0.4, 0.8, 0.2]]).to("cpu", "float64")
-                >>> f = lambda x: 3*x+2
+                >>> f = lambda x: 3 * x + 2
                 >>> y = x.apply(f)
                 >>> print(y)
                 Tensor(shape=[3, 3], dtype=float64, place=Place(cpu), stop_gradient=True,
@@ -498,7 +502,6 @@ def monkey_patch_tensor():
                 >>>        [0.9, 0.9, 0.7],
                 >>>        [0.4, 0.8, 0.2]]).to("cpu", "bfloat16")
                 >>> y = x.apply(f)
-
 
                 >>> if paddle.is_compiled_with_cuda():
                 >>>     x = paddle.to_tensor([[0.3, 0.5, 0.1],
@@ -536,22 +539,20 @@ def monkey_patch_tensor():
             TensorHookRemoveHelper: A helper object that can be used to remove the registered hook by calling `remove()` method.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
                 >>> # hook function return None
                 >>> def print_hook_fn(grad):
                 ...     print(grad)
-                ...
                 >>> # hook function return Tensor
                 >>> def double_hook_fn(grad):
                 ...     grad = grad * 2
                 ...     return grad
-                ...
-                >>> x = paddle.to_tensor([0., 1., 2., 3.], stop_gradient=False)
-                >>> y = paddle.to_tensor([4., 5., 6., 7.], stop_gradient=False)
-                >>> z = paddle.to_tensor([1., 2., 3., 4.])
+                >>> x = paddle.to_tensor([0.0, 1.0, 2.0, 3.0], stop_gradient=False)
+                >>> y = paddle.to_tensor([4.0, 5.0, 6.0, 7.0], stop_gradient=False)
+                >>> z = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
 
                 >>> # one Tensor can register multiple hooks
                 >>> h = x.register_hook(print_hook_fn)
@@ -720,45 +721,84 @@ def monkey_patch_tensor():
     @overload
     def to(
         self: Tensor,
-        device: PlaceLike,
+        device: PlaceLike | None = ...,
         dtype: DTypeLike | None = ...,
-        blocking: bool | None = ...,
+        blocking: bool = ...,
+        copy: bool = ...,
+        *,
+        non_blocking: bool = ...,
     ) -> Tensor: ...
 
     @overload
     def to(
-        self: Tensor, dtype: DTypeLike, blocking: bool | None = ...
+        self: Tensor,
+        dtype: DTypeLike,
+        blocking: bool = ...,
+        copy: bool = ...,
+        *,
+        non_blocking: bool = ...,
     ) -> Tensor: ...
 
     @overload
     def to(
-        self: Tensor, other: Tensor, blocking: bool | None = ...
+        self: Tensor,
+        other: Tensor,
+        blocking: bool = ...,
+        copy: bool = ...,
+        *,
+        non_blocking: bool = ...,
     ) -> Tensor: ...
 
     @framework.dygraph_only
     def to(self: Tensor, *args, **kwargs):
         """
         Performs Tensor dtype and/or device conversion. A paddle.dtype and place
-        are inferred from the arguments of ``self.to(*args, **kwargs)``.There are
-        three ways to call `to`:
+        are inferred from the arguments of ``self.to(*args, **kwargs)``.
 
-            1. to(dtype, blocking=True)
-            2. to(device, dtype=None, blocking=True)
-            3. to(other, blocking=True)
+        This API has three calling conventions:
 
-        **Notes**:
-            **If the self Tensor already has the correct dtype and device,
-            then self is returned. Otherwise, the returned tensor is a copy of self with
-            the desired dtype and device.**
+        1. ``to(device=None, dtype=None, blocking=True, copy=False, *, non_blocking=False)``:
+            Moves and/or casts the Tensor.
+
+        2. ``to(dtype, blocking=True, copy=False, *, non_blocking=False)``:
+            Equivalent to ``self.to(device=None, dtype=dtype, ...)``.
+
+        3. ``to(other, blocking=True, copy=False, *, non_blocking=False)``:
+            Equivalent to ``self.to(device=other.place, dtype=other.dtype, ...)``.
+
+        .. note::
+            If the self Tensor already has the correct dtype and device,
+            then self is returned. Otherwise, the returned tensor is a copy of
+            self with the desired dtype and device.
+
+        Args:
+            device (str|paddle.CPUPlace()|paddle.CUDAPlace()|paddle.CUDAPinnedPlace()|paddle.XPUPlace()|None, optional):
+                The device to move to. Default: ``None``.
+            dtype (str|numpy.dtype|paddle.dtype|None, optional):
+                The desired data type. Default: ``None``.
+            blocking (bool, optional):
+                If ``False`` and the source is in pinned memory, the copy will be
+                asynchronous with respect to the host. Default: ``True``.
+            copy (bool, optional):
+                If ``True``, a new Tensor is created even when the Tensor
+                already matches the desired conversion. Default: ``False``.
+
+        Keyword args:
+            non_blocking (bool, optional):
+                If ``True`` and the source is in pinned memory, the copy will be
+                asynchronous with respect to the host. Default: ``False``.
+                ``non_blocking`` and ``blocking`` are mutually exclusive
+                and cannot both be set at the same time.
 
         Returns:
             Tensor: self
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
+                >>> # doctest: +REQUIRES(env:GPU)
                 >>> import paddle
-                >>> x = paddle.to_tensor([1,2,3])
+                >>> x = paddle.to_tensor([1, 2, 3])
                 >>> print(x)
                 Tensor(shape=[3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                     [1, 2, 3])
@@ -775,7 +815,7 @@ def monkey_patch_tensor():
                 >>> print(x)
                 Tensor(shape=[3], dtype=int16, place=Place(gpu:0), stop_gradient=True,
                     [1, 2, 3])
-                >>> y = paddle.to_tensor([4,5,6])
+                >>> y = paddle.to_tensor([4, 5, 6])
                 >>> y
                 Tensor(shape=[3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                     [4, 5, 6])
@@ -784,95 +824,9 @@ def monkey_patch_tensor():
                 Tensor(shape=[3], dtype=int16, place=Place(gpu:0), stop_gradient=True,
                     [4, 5, 6])
         """
-        device = None
-        dtype = None
-        blocking = None
+        from paddle.nn.layer.layers import _parse_to_args
 
-        if "non_blocking" in kwargs:
-            non_blocking = kwargs.pop("non_blocking")
-        else:
-            non_blocking = False
-
-        if "copy" in kwargs:
-            copy_tensor = kwargs.pop("copy")
-        else:
-            copy_tensor = False
-
-        size_args = len(args)
-        size_kwargs = len(kwargs)
-
-        def get_device_dtype_from_tensor(other):
-            if other is not None:
-                device = str(other.place)[6:-1]
-                dtype = other.dtype
-                return device, dtype
-            else:
-                return None, None
-
-        if size_args + size_kwargs > 3 or size_args + size_kwargs == 0:
-            raise TypeError(
-                "to() received too many arguments - expected one of:\n  \
-                * (Union[str, paddle.CPUPlace(), paddle.CUDAPlace(), paddle.CUDAPinnedPlace(), paddle.XPUPlace(), paddle.CustomPlace()] \
-                device, Union[str, paddle.dtype, numpy.dtype] dtype, bool blocking)\n \
-                * (Union[str, paddle.dtype, numpy.dtype] dtype, bool blocking)\n \
-                * (paddle.Tensor other, bool blocking) "
-            )
-        valid_keys = {"device", "dtype", "blocking", "other"}
-        valid_dtypes = [
-            "bfloat16",
-            "float16",
-            "float32",
-            "float64",
-            "int8",
-            "int16",
-            "int32",
-            "int64",
-            "uint8",
-            "complex64",
-            "complex128",
-            "bool",
-        ]
-        invalid_keys = set(kwargs.keys()) - valid_keys
-        if len(invalid_keys) != 0:
-            raise TypeError(
-                "to() got an unexpected keyword argument "
-                + next(iter(invalid_keys))
-            )
-        if size_args > 0:
-            if isinstance(args[0], paddle.Tensor):
-                device, dtype = get_device_dtype_from_tensor(args[0])
-                if size_args == 2:
-                    blocking = args[1]
-                else:
-                    blocking = kwargs.get("blocking", None)
-            elif (
-                isinstance(args[0], (paddle.dtype, np.dtype))
-                or isinstance(args[0], str)
-                and args[0].lower() in valid_dtypes
-            ):
-                dtype = args[0]
-                if size_args == 2:
-                    blocking = args[1]
-                else:
-                    blocking = kwargs.get("blocking", None)
-            else:
-                device = args[0]
-                if size_args == 2:
-                    dtype = args[1]
-                elif size_args == 3:
-                    dtype, blocking = args[1], args[2]
-                else:
-                    dtype = kwargs.get("dtype", None)
-                    blocking = kwargs.get("blocking", None)
-        else:
-            device = kwargs.get("device", None)
-            dtype = kwargs.get("dtype", None)
-            blocking = kwargs.get("blocking", None)
-            if device is None and dtype is None:
-                device, dtype = get_device_dtype_from_tensor(
-                    kwargs.get("other", None)
-                )
-        blocking = False if not blocking or non_blocking else True
+        device, dtype, blocking, copy_tensor = _parse_to_args(*args, **kwargs)
         return self._to(device, dtype, blocking, copy_tensor)
 
     def clear_grad(self: Tensor) -> None:
@@ -896,7 +850,7 @@ def monkey_patch_tensor():
             ValueError: If the Tensor has more than one element, there must be coordinates.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -918,7 +872,7 @@ def monkey_patch_tensor():
                 >>> print(type(x.item()))
                 <class 'bool'>
 
-                >>> x = paddle.to_tensor(1+1j)
+                >>> x = paddle.to_tensor(1 + 1j)
                 >>> print(x.item())
                 (1+1j)
                 >>> print(type(x.item()))
@@ -950,7 +904,7 @@ def monkey_patch_tensor():
         **Notes: This is a read-only property**
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> var = paddle.ones(shape=[4, 2, 3], dtype="float32")
@@ -971,7 +925,7 @@ def monkey_patch_tensor():
         Returns(str): A readable string.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.seed(2023)
@@ -996,11 +950,11 @@ def monkey_patch_tensor():
         Deep copy Tensor, it will always performs Tensor copy.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import copy
-                >>> x = paddle.to_tensor(2.)
+                >>> x = paddle.to_tensor(2.0)
                 >>> y = copy.deepcopy(x)
                 >>> print(x)
                 Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -1053,7 +1007,7 @@ def monkey_patch_tensor():
             ndarray: dtype is same as current Tensor
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import numpy as np
@@ -1136,7 +1090,7 @@ def monkey_patch_tensor():
             device_id(int, optional): The destination GPU device id. Default: None, means current device.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +REQUIRES(env:GPU)
                 >>> import paddle
@@ -1157,10 +1111,44 @@ def monkey_patch_tensor():
             res.persistable = self.persistable
             return res
 
-    @framework.dygraph_only
+    @overload
     def cuda(
-        self: Tensor, device_id: int | None = None, blocking: bool = True
+        self: Tensor,
+        device_id: Place | int | None = None,
+        blocking: bool = True,
+    ) -> Tensor: ...
+
+    @overload
+    def cuda(
+        self: Tensor,
+        device: str,
+        non_blocking: bool = False,
+    ) -> Tensor: ...
+
+    @framework.dygraph_only
+    @tensor_cuda_decorator()
+    def cuda(
+        self: Tensor,
+        device_id: DeviceLike = None,
+        blocking: bool = True,
     ) -> Tensor:
+        """
+        This API has two signatures:
+
+        1. ``paddle.Tensor.cuda(self, device_id=None, blocking=True)`` (Paddle-style):
+            Returns a copy of the current tensor on the specified device.
+
+        2. ``paddle.Tensor.cuda(self, device, *, non_blocking=False)`` (PyTorch-style):
+            Returns a copy of the current tensor on the specified device.
+
+        Args:
+            device_id (paddle.core.Place|int|str|None, optional): The destination place. Defaults to current expected place.
+                Alias: ``device``.
+            blocking (bool, optional): If ``True`` the copy will be asynchronous. Defaults to ``True``.
+
+        Returns:
+            Tensor: The copy of the current tensor on the specified device.
+        """
         device_type = paddle.device.get_all_device_type()
         if len(
             device_type
@@ -1174,13 +1162,29 @@ def monkey_patch_tensor():
             raise ValueError("No available device found.")
 
         if device_id is None:
+            # None
             res_place = framework._current_expected_place()
             if not isinstance(res_place, res_place_class):
                 res_place = res_place_class(0)
+        elif isinstance(device_id, paddle.device.Device):
+            # Device
+            res_place = device_id._to_place()
         elif isinstance(device_id, int):
+            # int
             res_place = res_place_class(device_id)
+        elif isinstance(device_id, str):
+            # str
+            device = paddle.device(device_id)
+            res_place = device._to_place()
+        elif isinstance(
+            device_id, (core.CUDAPlace, core.CustomPlace, core.XPUPlace)
+        ):
+            # Place
+            res_place = device_id
         else:
-            raise ValueError("device_id must be int|None")
+            raise ValueError(
+                "device_id must be DeviceLike, which is paddle.CUDAPlace|paddle.CustomPlace|paddle.XPUPlace|int|str|None"
+            )
 
         if self.place._equals(res_place):
             return self
@@ -1192,7 +1196,23 @@ def monkey_patch_tensor():
 
     @property
     def is_cuda(self: Tensor) -> bool:
+        """
+        Is ``True`` if the Tensor is stored on the GPU, ``False`` otherwise.
+
+        Returns:
+            bool: ``True`` if the Tensor is stored on the GPU.
+        """
         return self.place.is_gpu_place()
+
+    @property
+    def is_cpu(self: Tensor) -> bool:
+        """
+        Is ``True`` if the Tensor is stored on the CPU, ``False`` otherwise.
+
+        Returns:
+            bool: ``True`` if the Tensor is stored on the CPU.
+        """
+        return self.place.is_cpu_place()
 
     @framework.dygraph_only
     def pin_memory(self: Tensor, blocking: bool = True) -> Tensor:
@@ -1222,13 +1242,15 @@ def monkey_patch_tensor():
             Tensor: A DenseTensor
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
                 >>> values = [1, 2, 3, 4, 5]
                 >>> dense_shape = [3, 4]
-                >>> sparse_x = paddle.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int32'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape)
+                >>> sparse_x = paddle.sparse.sparse_coo_tensor(
+                ...     paddle.to_tensor(indices, dtype='int32'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape
+                ... )
                 >>> print(sparse_x.values())
                 Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [1., 2., 3., 4., 5.])
@@ -1247,13 +1269,15 @@ def monkey_patch_tensor():
             Tensor: A DenseTensor
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
                 >>> values = [1, 2, 3, 4, 5]
                 >>> dense_shape = [3, 4]
-                >>> sparse_x = paddle.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int64'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape)
+                >>> sparse_x = paddle.sparse.sparse_coo_tensor(
+                ...     paddle.to_tensor(indices, dtype='int64'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape
+                ... )
                 >>> dense_x = sparse_x.to_dense()
                 >>> print(dense_x)
                 Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -1278,7 +1302,7 @@ def monkey_patch_tensor():
             Tensor: A SparseCooTensor
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> dense_x = [[0, 1, 0, 2], [0, 0, 3, 4]]
@@ -1308,7 +1332,7 @@ def monkey_patch_tensor():
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> x = paddle.to_tensor([1, 2, 3])
@@ -1336,7 +1360,7 @@ def monkey_patch_tensor():
             Tensor: return the SparseCooTensor after coalesced.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -1353,6 +1377,58 @@ def monkey_patch_tensor():
                 [3., 3.])
         """
         return _C_ops.sparse_coalesce(self)
+
+    @framework.dygraph_only
+    def sparse_mask(
+        self: Tensor, mask: Tensor, name: str | None = None
+    ) -> Tensor:
+        r"""
+         constructs a sparse tensor by extracting values from a dense source at the unique, sorted indices defined by a sparse mask.
+
+        Args:
+            self (Tensor): The input dense tensor (will be filtered).
+            mask (Tensor): Sparse tensor (SparseCooTensor or SparseCsrTensor) used as mask.
+            name (str, optional): Operation name (ignored in this implementation).
+
+        Returns:
+            SparseTensor: A sparse tensor with the same indices as `mask`,
+            containing values from `self` at mask positions.
+
+        Examples:
+            .. code-block:: pycon
+
+                >>> import paddle
+                >>> paddle.set_device('cpu')
+                >>> paddle.seed(2024)
+
+                >>> crows = [0, 2, 3, 5]
+                >>> cols = [1, 3, 2, 0, 1]
+                >>> values = [1.0, 2.0, 3.0, 4.0, 5.0]
+                >>> dense_shape = [3, 4]
+                >>> csr = paddle.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
+                >>> x = paddle.rand(dense_shape)
+                >>> out = x.sparse_mask(csr)
+                >>> print(out)
+                Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
+                crows=[0, 2, 3, 5],
+                cols=[1, 3, 2, 0, 1],
+                values=[0.23659813, 0.08467803, 0.64152628, 0.66596609, 0.90394485])
+
+                >>> paddle.seed(2024)
+                >>> indices = [[0, 1, 2], [1, 2, 0]]
+                >>> values = [1.0, 2.0, 3.0]
+                >>> dense_shape = [3, 3]
+                >>> coo = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
+                >>> x = paddle.rand(dense_shape)
+                >>> out = x.sparse_mask(coo)
+                >>> print(out)
+                Tensor(shape=[3, 3], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
+                indices=[[0, 1, 2],
+                         [1, 2, 0]],
+                values=[0.23659813, 0.40340215, 0.64152628])
+
+        """
+        return _C_ops.sparse_mask_as(self, mask)
 
     @framework.dygraph_only
     def __dlpack_device__(self):
@@ -1401,7 +1477,7 @@ def monkey_patch_tensor():
                  - '{device_type}:{device_id}' for custom device tensors
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -1592,7 +1668,7 @@ def monkey_patch_tensor():
                  returns the CUDA device id (e.g., 0 for `gpu:0`).
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> x = paddle.to_tensor([1, 2, 3], place=paddle.CPUPlace())
@@ -1624,34 +1700,6 @@ def monkey_patch_tensor():
                 "Currently, the __tvm_ffi_env_stream__ method is only supported for GPU tensors."
             )
 
-    def _get_c_dlpack_exchange_api():
-        """
-        Returns the C DLPack exchange API pointer for the current tensor.
-        This is used for interoperability with other libraries that support DLPack.
-
-        In tvm ffi 0.1.3 or below, this API returns the pointer directly.
-        In newer versions, it returns a python capsule containing the pointer.
-        """
-        try:
-            import tvm_ffi
-
-            tvm_ffi_version = tuple(
-                int(x) for x in tvm_ffi.__version__.split(".")
-            )
-            # We assume version format is like '0.1.3'.
-            # All supported releases are '0.1.0', '0.1.1', '0.1.2', '0.1.3'.
-            # We simply assume user will not use beta/rc versions here.
-            # TODO(dev): We should cleanup this after tvm ffi 0.1.3 is not supported.
-            if tvm_ffi_version <= (0, 1, 3):
-                return core.dlpack_exchange_api_ptr()
-        except Exception:
-            pass
-        # For tvm ffi 0.1.4 only, in tvm ffi 0.1.5+, replaced by `__dlpack_c_exchange_api__`
-        return core.dlpack_exchange_api_pycapsule()
-
-    if not hasattr(core, "eager"):
-        return
-
     for method_name, method in (
         ("__bool__", __bool__),
         ("__nonzero__", __nonzero__),
@@ -1662,6 +1710,7 @@ def monkey_patch_tensor():
         ("clear_grad", clear_grad),
         ("inplace_version", inplace_version),
         ("is_cuda", is_cuda),
+        ("is_cpu", is_cpu),
         ("gradient", gradient),
         ("apply_", apply_),
         ("apply", apply),
@@ -1681,6 +1730,7 @@ def monkey_patch_tensor():
         ("to_dense", to_dense),
         ("to_sparse_coo", to_sparse_coo),
         ("coalesce", coalesce),
+        ("sparse_mask", sparse_mask),
         ("_set_grad_ivar", _set_grad_ivar),
         ("value", value),
         ("cpu", cpu),
@@ -1698,8 +1748,9 @@ def monkey_patch_tensor():
         ("__dlpack_device__", __dlpack_device__),
         ("get_device", get_device),
         ("__tvm_ffi_env_stream__", __tvm_ffi_env_stream__),
-        # For TVM FFI 0.1.0-0.1.4, replaced by `__dlpack_c_exchange_api__` in TVM FFI 0.1.5+
-        ("__c_dlpack_exchange_api__", _get_c_dlpack_exchange_api()),
+        # For TVM FFI 0.1.0-0.1.4
+        ("__c_dlpack_exchange_api__", core.dlpack_exchange_api_ptr()),
+        # For TVM FFI 0.1.5+
         ("__dlpack_c_exchange_api__", core.dlpack_exchange_api_pycapsule()),
         ("device", device),
     ):

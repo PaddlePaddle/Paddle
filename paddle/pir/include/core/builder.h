@@ -142,7 +142,7 @@ class Builder {
   IR_API Operation *Build(const std::vector<Value> &inputs,
                           const AttributeMap &attribute,
                           const std::vector<Type> &output_types,
-                          pir::OpInfo op_info);
+                          OpInfo op_info);
 
   IR_API Operation *Insert(Operation *op);
 

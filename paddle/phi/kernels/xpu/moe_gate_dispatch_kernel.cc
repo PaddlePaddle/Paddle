@@ -25,7 +25,7 @@ template <typename T, typename Context>
 void moe_dispatch_fwd(const Context &dev_ctx,
                       const DenseTensor &x,
                       const DenseTensor &gate_logits,
-                      const paddle::optional<DenseTensor> &corr_bias,
+                      const optional<DenseTensor> &corr_bias,
                       int64_t capacity,
                       int64_t k,
                       DenseTensor *y,
@@ -35,7 +35,7 @@ void moe_dispatch_fwd(const Context &dev_ctx,
                       DenseTensor *expert_id,
                       bool use_pad) {
   PADDLE_ENFORCE_EQ(gate_logits.dtype(),
-                    paddle::DataType::FLOAT32,
+                    DataType::FLOAT32,
                     ::common::errors::InvalidArgument(
                         "Unsupported dtype for gate_logits, "
                         "currently only float32 is supported."));
@@ -96,7 +96,7 @@ template <typename T, typename Context>
 void MoeGateDispatchKernel(const Context &dev_ctx,
                            const DenseTensor &x,
                            const DenseTensor &gate_logits,
-                           const paddle::optional<DenseTensor> &corr_bias,
+                           const optional<DenseTensor> &corr_bias,
                            const int64_t k,
                            const int64_t capacity,
                            const bool use_pad,

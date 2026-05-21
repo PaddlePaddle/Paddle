@@ -26,8 +26,8 @@ namespace phi {
 template <typename T, typename Context>
 void LSTMKernel(const Context& dev_ctx,
                 const DenseTensor& input,
-                const paddle::optional<DenseTensor>& h0,
-                const paddle::optional<DenseTensor>& c0,
+                const optional<DenseTensor>& h0,
+                const optional<DenseTensor>& c0,
                 const DenseTensor& weight,
                 const DenseTensor& bias,
                 bool use_peepholes,
@@ -87,7 +87,7 @@ void LSTMKernel(const Context& dev_ctx,
   lstm_value.prev_state_value = nullptr;
   DenseTensor ordered_c0;
 
-  phi::Vector<size_t> order(batch_gate_new->lod()[2]);
+  Vector<size_t> order(batch_gate_new->lod()[2]);
 
   if (cell_t0) {
     // Since the batch computing for LSTM reorders the input sequence
@@ -190,8 +190,8 @@ void LSTMKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void LSTMGradKernel(const Context& dev_ctx,
                     const DenseTensor& input_in,
-                    const paddle::optional<DenseTensor>& h0_in,
-                    const paddle::optional<DenseTensor>& c0_in,
+                    const optional<DenseTensor>& h0_in,
+                    const optional<DenseTensor>& c0_in,
                     const DenseTensor& weight_in,
                     const DenseTensor& bias_in,
                     const DenseTensor& hidden_in,
@@ -242,7 +242,7 @@ void LSTMGradKernel(const Context& dev_ctx,
   // ordered_h0_g/c0_g is the reordered gradient of hidden/cell
   // initialization.
   DenseTensor ordered_h0, ordered_c0, ordered_h0_g, ordered_c0_g;
-  phi::Vector<size_t> order(batch_gate->lod()[2]);
+  Vector<size_t> order(batch_gate->lod()[2]);
 
   if (c0) {
     ReorderInitState<Context, T>(dev_ctx, *c0, order, &ordered_c0, true);

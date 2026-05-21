@@ -233,7 +233,7 @@ def remove_weight_norm(layer: Layer, name: str = 'weight') -> Layer:
         Layer, the origin layer without weight norm
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> from paddle.nn import Conv2D

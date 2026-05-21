@@ -29,6 +29,7 @@ endif()
 if(WITH_XPU)
   list(APPEND BACKENDS_SRCS xpu/xpu_context.cc xpu/xpu_info.cc
        xpu/enforce_xpu.cc)
+  list(APPEND BACKENDS_SRCS xpu/cuda_graph.cc)
   list(
     APPEND
     BACKENDS_SRCS
@@ -67,6 +68,7 @@ if(WITH_CUSTOM_DEVICE)
     BACKENDS_SRCS
     custom/custom_context.cc
     custom/custom_device.cc
+    custom/custom_device_func.cc
     custom/custom_device_op_list.cc
     custom/cuda_graph.h
     custom/cuda_graph.cc)

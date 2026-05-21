@@ -27,14 +27,14 @@ namespace phi {
 template <typename T, typename Context>
 void CTCAlignKernel(const Context& dev_ctx,
                     const DenseTensor& input,
-                    const paddle::optional<DenseTensor>& input_length,
+                    const optional<DenseTensor>& input_length,
                     int blank,
                     bool merge_repeated,
                     int padding_value,
                     DenseTensor* output,
                     DenseTensor* output_length) {
   T* output_data = dev_ctx.template Alloc<T>(output);
-  auto input_dims = common::vectorize<int>(input.dims());
+  auto input_dims = vectorize<int>(input.dims());
   const T* input_data = input.data<T>();
 
   // support tensor input, no lod information
@@ -63,7 +63,7 @@ void CTCAlignKernel(const Context& dev_ctx,
     }
   } else {
     const size_t level = 0;
-    auto input_lod = phi::ToAbsOffset(input.lod());
+    auto input_lod = ToAbsOffset(input.lod());
 
     // check input dims and lod
     PADDLE_ENFORCE_EQ(
@@ -97,7 +97,7 @@ void CTCAlignKernel(const Context& dev_ctx,
     }
 
     // set output lod
-    phi::LegacyLoD output_lod;
+    LegacyLoD output_lod;
     output_lod.push_back(output_lod0);
     output->set_lod(output_lod);
     // resize output dims

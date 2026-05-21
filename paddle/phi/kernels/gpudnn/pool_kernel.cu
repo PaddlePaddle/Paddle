@@ -115,12 +115,12 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
     // input
     transformed_input.Resize(input->dims());
 
-    auto in_dims_vec = common::vectorize(input->dims());
+    auto in_dims_vec = vectorize(input->dims());
     in_dims_vec[1] = input->dims()[4];
     in_dims_vec[2] = input->dims()[1];
     in_dims_vec[3] = input->dims()[2];
     in_dims_vec[4] = input->dims()[3];
-    transformed_input.Resize(common::make_ddim(in_dims_vec));
+    transformed_input.Resize(in_dims_vec);
     dev_ctx.Alloc(&transformed_input, input->type());
 
     funcs::Transpose<Context, T, 5> trans5;
@@ -129,12 +129,12 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
     // output
     transformed_output.Resize(output->dims());
 
-    auto out_dims_vec = common::vectorize(output->dims());
+    auto out_dims_vec = vectorize(output->dims());
     out_dims_vec[1] = output->dims()[4];
     out_dims_vec[2] = output->dims()[1];
     out_dims_vec[3] = output->dims()[2];
     out_dims_vec[4] = output->dims()[3];
-    transformed_output.Resize(common::make_ddim(out_dims_vec));
+    transformed_output.Resize(out_dims_vec);
 #ifdef PADDLE_WITH_HIP
     // MIOPEN not support NHWC data layout
   } else if (data_format == str_NHWC) {
@@ -143,22 +143,22 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
     std::vector<int> axis{0, 3, 1, 2};
 
     transformed_input.Resize(input->dims());
-    auto in_dims_vec = common::vectorize(input->dims());
+    auto in_dims_vec = vectorize(input->dims());
     in_dims_vec[1] = input->dims()[3];
     in_dims_vec[2] = input->dims()[1];
     in_dims_vec[3] = input->dims()[2];
-    transformed_input.Resize(common::make_ddim(in_dims_vec));
+    transformed_input.Resize(in_dims_vec);
     dev_ctx.Alloc(&transformed_input, input->type());
 
     funcs::Transpose<Context, T, 4> trans;
     trans(dev_ctx, *input, &transformed_input, axis);
 
     transformed_output.Resize(output->dims());
-    auto out_dims_vec = common::vectorize(output->dims());
+    auto out_dims_vec = vectorize(output->dims());
     out_dims_vec[1] = output->dims()[3];
     out_dims_vec[2] = output->dims()[1];
     out_dims_vec[3] = output->dims()[2];
-    transformed_output.Resize(common::make_ddim(out_dims_vec));
+    transformed_output.Resize(out_dims_vec);
 #endif
   } else {
     layout = GetLayoutFromStr(data_format);
@@ -176,14 +176,14 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_HIP
   miopenTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
-      layout, common::vectorize<int>(transformed_input.dims()));
+      layout, vectorize<int>(transformed_input.dims()));
   miopenTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
-      layout, common::vectorize<int>(transformed_output.dims()));
+      layout, vectorize<int>(transformed_output.dims()));
 #else
   cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
-      layout, common::vectorize<int>(transformed_input.dims()));
+      layout, vectorize<int>(transformed_input.dims()));
   cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
-      layout, common::vectorize<int>(transformed_output.dims()));
+      layout, vectorize<int>(transformed_output.dims()));
 #endif
   PoolingMode pooling_mode;
   if (pooling_type == "max") {
@@ -207,10 +207,10 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_HIP
   char* pool_workspace;
-  size_t pool_workernel_size_ = 0;
+  size_t pool_worksize = 0;
   PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenPoolingGetWorkSpaceSizeV2(
-      cudnn_pool_desc, cudnn_output_desc, &pool_workernel_size_));
-  PADDLE_ENFORCE_GPU_SUCCESS(hipMalloc(&pool_workspace, pool_workernel_size_));
+      cudnn_pool_desc, cudnn_output_desc, &pool_worksize));
+  PADDLE_ENFORCE_GPU_SUCCESS(hipMalloc(&pool_workspace, pool_worksize));
   PADDLE_ENFORCE_GPU_SUCCESS(
       dynload::miopenPoolingForward(handle,
                                     cudnn_pool_desc,
@@ -222,7 +222,7 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
                                     transformed_output_data,
                                     false,
                                     pool_workspace,
-                                    pool_workernel_size_));
+                                    pool_worksize));
   PADDLE_ENFORCE_GPU_SUCCESS(hipFree(pool_workspace));
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(

@@ -29,8 +29,8 @@ class ValueExecutionInfo;
 class OneDNNPhiKernelInstruction : public InstructionBase {
  public:
   OneDNNPhiKernelInstruction(size_t id,
-                             const phi::Place& place,
-                             ::pir::Operation* op,
+                             const Place& place,
+                             pir::Operation* op,
                              const ValueExecutionInfo* value_exec_info);
 
   ~OneDNNPhiKernelInstruction();
@@ -47,7 +47,7 @@ class OneDNNPhiKernelInstruction : public InstructionBase {
     return infer_meta_interface_;
   }
 
-  ::pir::Operation* Operation() const override { return op_; }
+  pir::Operation* Operation() const override { return op_; }
 
   void Run() override;
 
@@ -65,13 +65,13 @@ class OneDNNPhiKernelInstruction : public InstructionBase {
 
   std::string phi_op_name_;
 
-  ::pir::Operation* op_{nullptr};  // not owned
+  pir::Operation* op_{nullptr};  // not owned
 
   const ValueExecutionInfo* value_exec_info_;  // not owned
 
   std::set<int> data_format_tensors_{};
   std::set<int> skip_format_tensors_{};
-  phi::DataLayout input_layout_{phi::DataLayout::kAnyLayout};
+  DataLayout input_layout_{DataLayout::kAnyLayout};
   std::map<std::string, phi::Attribute> extra_attr_{};
   std::map<std::string, phi::Attribute> ctx_attr_{};
   std::map<std::string, std::vector<std::string>> inputs_{};

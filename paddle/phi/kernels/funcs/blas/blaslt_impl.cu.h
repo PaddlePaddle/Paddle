@@ -32,6 +32,7 @@ limitations under the License. */
 
 COMMON_DECLARE_int64(cublaslt_exhaustive_search_times);
 COMMON_DECLARE_bool(enable_blaslt_global_search);
+COMMON_DECLARE_bool(use_legacy_linear);
 #endif
 
 namespace phi {
@@ -150,7 +151,7 @@ struct MatmulPlanner {
                 const std::vector<int64_t>& y_dims,
                 const bool trans_x,
                 const bool trans_y,
-                phi::DataType dtype,
+                DataType dtype,
                 MatmulFusedType fused_type,
                 const void* bias_data = nullptr,
                 void* reserve_data = nullptr,  // Commonly for ReLu bit-mask.
@@ -258,7 +259,7 @@ struct MatmulDescriptor {
               const int64_t stride_y = 0,
               const int64_t stride_out = 0,
               bool grad_for_dx = true) {
-    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    using MT = typename MPTypeTrait<T>::Type;
     cudaDataType_t mat_type = phi::backends::gpu::ToCudaDataType<T>();
     cudaDataType_t out_mat_type = phi::backends::gpu::ToCudaDataType<T>();
     cudaDataType_t scale_type = phi::backends::gpu::ToCudaDataType<MT>();
@@ -406,7 +407,7 @@ struct MatmulGradDescriptor : MatmulDescriptor {
               int64_t stride_y = 0,
               int64_t stride_out = 0,
               bool grad_for_dx = true) {
-    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    using MT = typename MPTypeTrait<T>::Type;
     cudaDataType_t mat_type = phi::backends::gpu::ToCudaDataType<T>();
     cudaDataType_t scale_type = phi::backends::gpu::ToCudaDataType<MT>();
     cublasComputeType_t compute_type = GetCudaComputeType<T>();
@@ -443,16 +444,16 @@ struct MatmulGradDescriptor : MatmulDescriptor {
 template <typename T, typename OutT = T, class MatmulDescT = MatmulDescriptor>
 struct CublasLtBase {
  public:
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-  static phi::Allocator::AllocationPtr GetWorkspace(
-      const phi::GPUContext& dev_ctx, size_t workspace_size) {
+  using MT = typename MPTypeTrait<T>::Type;
+  static phi::Allocator::AllocationPtr GetWorkspace(const GPUContext& dev_ctx,
+                                                    size_t workspace_size) {
     return phi::memory_utils::Alloc(
         dev_ctx.GetPlace(),
         workspace_size,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   }
 
-  static void RunImpl(const phi::GPUContext& dev_ctx,
+  static void RunImpl(const GPUContext& dev_ctx,
                       MatmulDescT* desc,
                       const size_t sub_key,
                       const T* x_ptr,
@@ -466,7 +467,9 @@ struct CublasLtBase {
     // NOTE(limingshu): As workspace_size varies from different DL framework,
     // I wonder is there any smarter idea for workspace setting, currently I
     // just followed the settings from the NVIDIA colleague`s setting.
-    size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
+    size_t workspace_size = FLAGS_use_legacy_linear
+                                ? static_cast<size_t>(4) * 1024 * 1024
+                                : static_cast<size_t>(1) * 1024 * 1024;
     phi::Allocator::AllocationPtr workspace =
         GetWorkspace(dev_ctx, workspace_size);
 
@@ -490,28 +493,59 @@ struct CublasLtBase {
         cache.SetSubKey(sub_key, reinterpret_cast<void*>(best_desc));
       }
     }
+    cublasLtMatmulHeuristicResult_t heuristic_results = {};
+    if (!FLAGS_use_legacy_linear) {
+      cublasLtMatmulPreference_t preference;
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          dynload::cublasLtMatmulPreferenceCreate(&preference));
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmulPreferenceSetAttribute(
+          preference,
+          CUBLASLT_MATMUL_PREF_MAX_WORKSPACE_BYTES,
+          &workspace_size,
+          sizeof(workspace_size)));
+
+      int returned_results = 0;
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          dynload::cublasLtMatmulAlgoGetHeuristic(cublaslt_handle,
+                                                  desc->op_desc,
+                                                  desc->y_desc,
+                                                  desc->x_desc,
+                                                  desc->out_desc,
+                                                  desc->out_desc,
+                                                  preference,
+                                                  1,
+                                                  &heuristic_results,
+                                                  &returned_results));
+      PADDLE_ENFORCE_GT(
+          returned_results,
+          0,
+          common::errors::Unavailable("No GEMM algorithm available."));
+
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          dynload::cublasLtMatmulPreferenceDestroy(preference));
+    }
 
     VLOG(7) << "[Impl CublasltDescriptor] ";
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        dynload::cublasLtMatmul(cublaslt_handle,
-                                desc->op_desc,
-                                static_cast<void*>(&alpha),
-                                y_ptr,
-                                desc->y_desc,
-                                x_ptr,
-                                desc->x_desc,
-                                static_cast<void*>(&beta),
-                                out_ptr,
-                                desc->out_desc,
-                                out_ptr,
-                                desc->out_desc,
-                                desc->algo,
-                                workspace->ptr(),
-                                workspace_size,
-                                dev_ctx.stream()));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmul(
+        cublaslt_handle,
+        desc->op_desc,
+        static_cast<void*>(&alpha),
+        y_ptr,
+        desc->y_desc,
+        x_ptr,
+        desc->x_desc,
+        static_cast<void*>(&beta),
+        out_ptr,
+        desc->out_desc,
+        out_ptr,
+        desc->out_desc,
+        FLAGS_use_legacy_linear ? desc->algo : &heuristic_results.algo,
+        workspace->ptr(),
+        workspace_size,
+        dev_ctx.stream()));
   }
 
-  static void SearchBestAlgo(const phi::GPUContext& dev_ctx,
+  static void SearchBestAlgo(const GPUContext& dev_ctx,
                              const cublasLtHandle_t& lt_handle,
                              MatmulDescT* desc,
                              const void* alpha,
@@ -585,7 +619,7 @@ struct CublasLtBase {
         dynload::cublasLtMatmulPreferenceDestroy(preference));
   }
 
-  static float RunAndMeasureAlgo(const phi::GPUContext& dev_ctx,
+  static float RunAndMeasureAlgo(const GPUContext& dev_ctx,
                                  const cublasLtHandle_t& lt_handle,
                                  MatmulDescT* desc,
                                  const void* alpha,
@@ -638,15 +672,15 @@ struct CublasLtBase {
 template <>
 struct CublasLtBase<int8_t, int32_t, MatmulDescriptor> {
  public:
-  static phi::Allocator::AllocationPtr GetWorkspace(
-      const phi::GPUContext& dev_ctx, size_t workspace_size) {
+  static phi::Allocator::AllocationPtr GetWorkspace(const GPUContext& dev_ctx,
+                                                    size_t workspace_size) {
     return phi::memory_utils::Alloc(
         dev_ctx.GetPlace(),
         workspace_size,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   }
 
-  static void RunImpl(const phi::GPUContext& dev_ctx,
+  static void RunImpl(const GPUContext& dev_ctx,
                       MatmulDescriptor* desc,
                       const size_t sub_key,
                       const int8_t* x_ptr,
@@ -724,7 +758,7 @@ struct CublasLtBase<int8_t, int32_t, MatmulDescriptor> {
   }
 
   static void SearchBestAlgoGlobal(
-      const phi::GPUContext& dev_ctx,
+      const GPUContext& dev_ctx,
       const cublasLtHandle_t& lt_handle,
       MatmulDescriptor* desc,
       const void* alpha,
@@ -793,7 +827,7 @@ struct CublasLtBase<int8_t, int32_t, MatmulDescriptor> {
     }
   }
 
-  static void SearchBestAlgo(const phi::GPUContext& dev_ctx,
+  static void SearchBestAlgo(const GPUContext& dev_ctx,
                              const cublasLtHandle_t& lt_handle,
                              MatmulDescriptor* desc,
                              const void* alpha,
@@ -867,7 +901,7 @@ struct CublasLtBase<int8_t, int32_t, MatmulDescriptor> {
         dynload::cublasLtMatmulPreferenceDestroy(preference));
   }
 
-  static float RunAndMeasureAlgo(const phi::GPUContext& dev_ctx,
+  static float RunAndMeasureAlgo(const GPUContext& dev_ctx,
                                  const cublasLtHandle_t& lt_handle,
                                  MatmulDescriptor* desc,
                                  const void* alpha,
@@ -1044,7 +1078,7 @@ struct DescriptorSetter {
 template <typename T, typename OutT = T>
 struct MatmulWithCublasLt : public CublasLtBase<T, OutT> {
  public:
-  static void Run(const phi::GPUContext& dev_ctx,
+  static void Run(const GPUContext& dev_ctx,
                   const T* x_data,
                   const T* y_data,
                   OutT* out_data,
@@ -1065,7 +1099,7 @@ struct MatmulWithCublasLt : public CublasLtBase<T, OutT> {
                                    planner);
   }
 
-  static void RunWithBatch(const phi::GPUContext& dev_ctx,
+  static void RunWithBatch(const GPUContext& dev_ctx,
                            const T* x_data,
                            const T* y_data,
                            OutT* out_data,
@@ -1098,7 +1132,7 @@ struct MatmulWithCublasLt : public CublasLtBase<T, OutT> {
                                    planner);
   }
 
-  static void RunWithBatch(const phi::GPUContext& dev_ctx,
+  static void RunWithBatch(const GPUContext& dev_ctx,
                            const T** x_data,
                            const T** y_data,
                            OutT** out_data,
@@ -1127,7 +1161,7 @@ struct MatmulWithCublasLt : public CublasLtBase<T, OutT> {
 // As for just Linear fused epilogue below: out = matmul(x, y) + bias.
 template <typename T>
 struct LinearWithCublasLt : public CublasLtBase<T> {
-  static void Run(const phi::GPUContext& dev_ctx,
+  static void Run(const GPUContext& dev_ctx,
                   const DenseTensor* x,
                   const DenseTensor* y,
                   DenseTensor* out,
@@ -1139,11 +1173,11 @@ struct LinearWithCublasLt : public CublasLtBase<T> {
                   const bool trans_x,
                   const bool trans_y,
                   const MatmulFusedType fused_type) {
-    auto planner = funcs::MatmulPlanner(common::vectorize(x->dims()),
-                                        common::vectorize(y->dims()),
+    auto planner = funcs::MatmulPlanner(vectorize(x->dims()),
+                                        vectorize(y->dims()),
                                         trans_x,
                                         trans_y,
-                                        phi::CppTypeToDataType<T>::Type(),
+                                        CppTypeToDataType<T>::Type(),
                                         fused_type,
                                         bias_data,
                                         reserve_data);
@@ -1162,7 +1196,7 @@ struct LinearWithCublasLt : public CublasLtBase<T> {
 template <typename T, typename DXT, typename DYT, bool TransX, bool TransY>
 struct LinearGradWithCublasLt : public CublasLtBase<T> {
   static void Run(
-      const phi::GPUContext& dev_ctx,
+      const GPUContext& dev_ctx,
       const DenseTensor* x,
       const DenseTensor* y,
       DenseTensor* out,
@@ -1177,11 +1211,11 @@ struct LinearGradWithCublasLt : public CublasLtBase<T> {
       const bool use_addto,
       const bool no_exchange,  // exchange x_desc and y_desc for grad.
       bool grad_for_dx = true) {
-    auto planner = funcs::MatmulPlanner(common::vectorize(x->dims()),
-                                        common::vectorize(y->dims()),
+    auto planner = funcs::MatmulPlanner(vectorize(x->dims()),
+                                        vectorize(y->dims()),
                                         trans_x,
                                         trans_y,
-                                        phi::CppTypeToDataType<T>::Type(),
+                                        CppTypeToDataType<T>::Type(),
                                         fused_type,
                                         bias_data,
                                         reserve_data,

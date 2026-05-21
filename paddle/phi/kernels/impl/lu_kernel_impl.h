@@ -75,7 +75,7 @@ void SetValueCompute(const Context& dev_ctx,
       none_axes_cur++;
     }
 
-    slice_dims_for_assign = common::make_ddim(slice_dims_with_none);
+    slice_dims_for_assign = make_ddim(slice_dims_with_none);
   }
 
   auto place = dev_ctx.GetPlace();
@@ -107,9 +107,9 @@ void SetValueCompute(const Context& dev_ctx,
   // Step 1: Set the value of out at `_index` to zero
   slice_e.device(eigen_place) = slice_e.constant(T(0));
 
-  auto starts_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
-  auto ends_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
-  auto strides_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
+  auto starts_indices = Eigen::DSizes<int64_t, D>();
+  auto ends_indices = Eigen::DSizes<int64_t, D>();
+  auto strides_indices = Eigen::DSizes<int64_t, D>();
 
   for (size_t i = 0; i < D; ++i) {
     starts_indices[i] = 0;
@@ -154,7 +154,7 @@ void SetValueCompute(const Context& dev_ctx,
         dev_ctx, slice_tensor, *value_tensor, SubFunctor<T>(), &slice_tensor);
   } else {
     DenseTensor value_t(dtype);
-    auto value_dims = common::make_ddim(shape);
+    auto value_dims = make_ddim(shape);
     funcs::CheckIsDimsMatch(slice_dims_for_assign, value_dims);
 
     value_t.Resize(value_dims);
@@ -234,7 +234,7 @@ void Tensor_Add(const Context& dev_ctx,
   out->Resize(src1.dims());
   dev_ctx.template Alloc<T>(out);
 
-  phi::AddKernel<T, Context>(dev_ctx, src1, src2, out);
+  AddKernel<T, Context>(dev_ctx, src1, src2, out);
 }
 
 template <typename Context, typename T>
@@ -245,7 +245,7 @@ void Tensor_Sub(const Context& dev_ctx,
   out->Resize(src1.dims());
   dev_ctx.template Alloc<T>(out);
 
-  phi::SubtractKernel<T, Context>(dev_ctx, src1, src2, out);
+  SubtractKernel<T, Context>(dev_ctx, src1, src2, out);
 }
 
 template <typename Context, typename T, size_t D>
@@ -295,8 +295,8 @@ void SliceCompute(const Context& dev_ctx,
   out_dims = funcs::GetDecreasedDims(slice_dims, decrease_axis);
 
   // 2.2 Get output
-  auto offsets = Eigen::DSizes<Eigen::DenseIndex, D>();
-  auto extents = Eigen::DSizes<Eigen::DenseIndex, D>();
+  auto offsets = Eigen::DSizes<int64_t, D>();
+  auto extents = Eigen::DSizes<int64_t, D>();
 
   for (size_t i = 0; i < D; ++i) {
     offsets[i] = 0;
@@ -313,24 +313,8 @@ void SliceCompute(const Context& dev_ctx,
   auto out_t = EigenTensor<T, D>::From(*out, slice_dims);
   auto& eigen_place = *dev_ctx.eigen_device();
 
-  if (in->numel() <= Eigen::NumTraits<int>::highest()) {
-    // similar to tf.slice:
-    // if element number less than INT_MAX, change the type of index to int
-    Eigen::DSizes<int, D> offsets_32bit, extents_32bit;
-    for (size_t i = 0; i < D; i++) {
-      offsets_32bit[i] = offsets[i];
-      extents_32bit[i] = extents[i];
-    }
-    funcs::EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
-        eigen_place,
-        To32BitIndex(out_t),
-        To32BitIndex(in_t),
-        offsets_32bit,
-        extents_32bit);
-  } else {
-    funcs::EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
-        eigen_place, out_t, in_t, offsets, extents);
-  }
+  funcs::EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
+      eigen_place, out_t, in_t, offsets, extents);
 
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
@@ -385,7 +369,7 @@ void arange(const Context& dev_ctx,
             int w,
             int batchsize = 1,
             int h = 1) {
-  tmp->Resize(common::make_ddim({batchsize * w}));
+  tmp->Resize({batchsize * w});
   dev_ctx.template HostAlloc<int32_t>(tmp);
   auto tmpdata = tmp->data<int32_t>();
   for (int b = 0; b < batchsize; b++) {
@@ -436,14 +420,14 @@ void LU_Unpack(const Context& dev_ctx,
   // set L's diagonal 1
   auto dim = std::min(H, W);
   DenseTensor rowtensor, rt_dev;
-  auto batchsize = product(common::slice_ddim(udims, 0, udims.size() - 2));
+  auto batchsize = product(slice_ddim(udims, 0, udims.size() - 2));
 
   // if udims is [0, ..., H, W], it should be 0
   if (udims.size() == 2) batchsize = std::max(static_cast<int>(batchsize), 1);
 
   arange<Context>(dev_ctx, &rowtensor, dim, batchsize, H);
   auto idtptr = rowtensor.data<int32_t>();
-  if (phi::AllocationType::GPU == dev_ctx.GetPlace().GetType()) {
+  if (AllocationType::GPU == dev_ctx.GetPlace().GetType()) {
     Copy(dev_ctx, rowtensor, dev_ctx.GetPlace(), false, &rt_dev);
     idtptr = rt_dev.data<int32_t>();
   }
@@ -474,7 +458,7 @@ void Unpack_Pivot(const Context& dev_ctx,
                   int h,
                   int w UNUSED) {
   auto dims = Pivot.dims();
-  auto Pdimvec = common::vectorize(dims);
+  auto Pdimvec = vectorize(dims);
   auto prank = Pdimvec.size();
   auto Pnum = dims[prank - 1];
   DenseTensor Pivot_cpu;
@@ -483,14 +467,14 @@ void Unpack_Pivot(const Context& dev_ctx,
   auto pdataptr = Pivot_cpu.data<int32_t>();
   Pdimvec[prank - 1] = h;
   Pdimvec.emplace_back(h);
-  auto Pdim = common::make_ddim(Pdimvec);
+  auto Pdim = make_ddim(Pdimvec);
   P->Resize(Pdim);
   dev_ctx.template Alloc<T>(P);
   auto pdata = P->data<T>();
   funcs::SetConstant<Context, T> setter;
   setter(dev_ctx, P, static_cast<T>(0));
 
-  auto batchsize = product(common::slice_ddim(dims, 0, prank - 1));
+  auto batchsize = product(slice_ddim(dims, 0, prank - 1));
   if (prank == 1) batchsize = std::max(static_cast<int>(batchsize), 1);
 
   DenseTensor idt;
@@ -522,7 +506,7 @@ DenseTensor Transpose2DTo6D(const Context& dev_ctx, const DenseTensor& x) {
   // transpose the last two dimision
   DenseTensor ret;
   auto x_dim = x.dims();
-  auto x_vec = common::vectorize<int>(x_dim);
+  auto x_vec = vectorize<int>(x_dim);
   int rank = x_vec.size();
 
   for (int i = 0; i < x_dim.size(); i++) {
@@ -539,7 +523,7 @@ DenseTensor Transpose2DTo6D(const Context& dev_ctx, const DenseTensor& x) {
     axis[i] = i;
   }
   std::swap(axis[rank - 1], axis[rank - 2]);
-  ret.Resize(common::make_ddim(x_vec));
+  ret.Resize(x_vec);
   dev_ctx.template Alloc<T>(&ret);
   switch (rank) {
     case 2: {

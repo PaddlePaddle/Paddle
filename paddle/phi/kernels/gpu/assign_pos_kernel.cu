@@ -36,7 +36,7 @@ __global__ void AssignPos(T* cum_count,
   CUDA_KERNEL_LOOP(i, limit) {
     int number_idx = numbers[i];
     if (number_idx > -1) {
-      int p = phi::CudaAtomicAdd(cum_count + number_idx, -1);
+      int p = CudaAtomicAdd(cum_count + number_idx, -1);
       out[p - 1] = i;
     }
   }
@@ -70,7 +70,7 @@ void AssignPosKernel(const Context& dev_ctx,
     cpu_eff_num_len_data = cpu_eff_num_len.data<T>()[0];
   }
 
-  DDim out_dims = common::make_ddim({cpu_eff_num_len_data});
+  DDim out_dims = make_ddim({cpu_eff_num_len_data});
   out->Resize(out_dims);
   auto out_data = dev_ctx.template Alloc<T>(out);
 

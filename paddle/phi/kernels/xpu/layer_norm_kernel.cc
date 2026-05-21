@@ -22,8 +22,8 @@ namespace phi {
 template <typename T, typename TW, typename Context>
 void LayerNormKernelImpl(const Context& dev_ctx,
                          const DenseTensor& x,
-                         const paddle::optional<DenseTensor>& scale,
-                         const paddle::optional<DenseTensor>& bias,
+                         const optional<DenseTensor>& scale,
+                         const optional<DenseTensor>& bias,
                          float epsilon,
                          int begin_norm_axis,
                          DenseTensor* out,
@@ -61,9 +61,9 @@ void LayerNormKernelImpl(const Context& dev_ctx,
 template <typename T, typename Context>
 void LayerNormKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const paddle::optional<DenseTensor>& scale,
-                     const paddle::optional<DenseTensor>& bias,
-                     float epsilon,
+                     const optional<DenseTensor>& scale,
+                     const optional<DenseTensor>& bias,
+                     double epsilon,
                      int begin_norm_axis,
                      DenseTensor* out,
                      DenseTensor* mean,
@@ -72,7 +72,7 @@ void LayerNormKernel(const Context& dev_ctx,
   bool valid_bias = (bias.get_ptr() != nullptr);
 
   auto x_dtype = x.dtype();
-  phi::DataType scale_bias_dtype;
+  DataType scale_bias_dtype;
   if (valid_scale) {
     scale_bias_dtype = scale->dtype();
     if (valid_bias) {
@@ -89,7 +89,7 @@ void LayerNormKernel(const Context& dev_ctx,
   bool is_scale_bias_same_dtype_with_x = (x_dtype == scale_bias_dtype);
   if (!is_scale_bias_same_dtype_with_x) {
     PADDLE_ENFORCE_EQ(scale_bias_dtype,
-                      phi::DataType::FLOAT32,
+                      DataType::FLOAT32,
                       common::errors::InvalidArgument(
                           "Unsupported data type of Scale and Bias"));
   }

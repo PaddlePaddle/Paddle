@@ -88,7 +88,7 @@ class HybridParallelInferenceHelper:
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example1
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED, env:GPU)
@@ -112,10 +112,8 @@ class HybridParallelInferenceHelper:
             ...     with paddle.base.device_guard(f'{device}:0'):
             ...         X = paddle.static.data(name='X', shape=[None, 2], dtype='float32')
             ...     with paddle.base.device_guard(f'{device}:all'):
-            ...         max_len = paddle.full(
-            ...             shape=[1], dtype="int64", fill_value=5, name="n")
-            ...         step_idx = paddle.full(
-            ...             shape=[1], dtype="int64", fill_value=0, name="i")
+            ...         max_len = paddle.full(shape=[1], dtype="int64", fill_value=5, name="n")
+            ...         step_idx = paddle.full(shape=[1], dtype="int64", fill_value=0, name="i")
             ...         data = paddle.tensor.array_write(X, step_idx)
             ...         cond_int = paddle.full(shape=[1], dtype="int64", fill_value=0, name="cond_int")
             ...         cond = paddle.less_than(x=step_idx, y=max_len)
@@ -127,13 +125,11 @@ class HybridParallelInferenceHelper:
             ...             paddle.tensor.array_write(input, i=step_idx, array=data)
             ...         with paddle.base.device_guard(f'{device}:0'):
             ...             param_attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(1.0))
-            ...             weight1 = paddle.static.create_parameter(
-            ...                 shape=[2, 5], dtype='float32', attr=param_attr, is_bias=False)
+            ...             weight1 = paddle.static.create_parameter(shape=[2, 5], dtype='float32', attr=param_attr, is_bias=False)
             ...             hidden1 = paddle.matmul(input, weight1)
             ...         with paddle.base.device_guard(f'{device}:1'):
             ...             param_attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(2.0))
-            ...             weight2 = paddle.static.create_parameter(
-            ...                 shape=[5, 2], dtype='float32', attr=param_attr, is_bias=False)
+            ...             weight2 = paddle.static.create_parameter(shape=[5, 2], dtype='float32', attr=param_attr, is_bias=False)
             ...             hidden2 = paddle.matmul(hidden1, weight2)
             ...             paddle.tensor.array_write(hidden2, i=step_idx, array=data)
             ...             # update cond and assign to cond_int, we will sync cond_int
@@ -148,7 +144,13 @@ class HybridParallelInferenceHelper:
             ...     with paddle.base.device_guard(f'{device}:all'):
             ...         # use a empty lod_tensor_array to clear lod_tensor_array
             ...         paddle.assign(paddle.tensor.create_array(data.dtype), data)
-            >>> helper = hybrid_parallel_inference.HybridParallelInferenceHelper(startup_program, main_program, micro_batch_size=2, num_pp=2, init_comm=nranks>1)
+            >>> helper = hybrid_parallel_inference.HybridParallelInferenceHelper(
+            ...     startup_program,
+            ...     main_program,
+            ...     micro_batch_size=2,
+            ...     num_pp=2,
+            ...     init_comm=nranks > 1,
+            ... )
             >>> helper.gen_infer_program(['array_write_0.out'], ['cond_int.tmp_0'])
             >>> exe = paddle.static.Executor(paddle.CUDAPlace(dev_id))
             >>> exe.run(startup_program)

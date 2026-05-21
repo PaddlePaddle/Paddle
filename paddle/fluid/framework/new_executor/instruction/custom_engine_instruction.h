@@ -32,12 +32,12 @@ class CustomEngineInstruction : public InstructionBase {
   typedef void (*DeletePtr)(void*);
   CustomEngineInstruction(
       size_t id,
-      const phi::Place& place,
-      ::pir::Operation* op,
+      const Place& place,
+      pir::Operation* op,
       ValueExecutionInfo* value_exec_info,
       paddle::framework::interpreter::ExecutionConfig execution_config);
 
-  ::pir::Operation* Operation() const override { return op_; }
+  pir::Operation* Operation() const override { return op_; }
   const ValueExecutionInfo* GetValueExecutionInfo() const {
     return value_exec_info_;
   }
@@ -58,7 +58,7 @@ class CustomEngineInstruction : public InstructionBase {
     return engine_outputs_;
   }
 
-  const std::unordered_map<pir::Value, std::vector<phi::DenseTensor*>>&
+  const std::unordered_map<pir::Value, std::vector<DenseTensor*>>&
   GetEngineValueToTensors() const {
     return engine_value_to_tensors_;
   }
@@ -83,15 +83,15 @@ class CustomEngineInstruction : public InstructionBase {
   }
 
  private:
-  phi::Place place_;
+  Place place_;
   std::string op_name_ = "custom_engine.group_op";
-  ::pir::Operation* op_{nullptr};  // not owned
+  pir::Operation* op_{nullptr};  // not owned
 
   phi::KernelContext kernel_context_;
 
   std::vector<pir::Value> engine_inputs_;
   std::vector<pir::Value> engine_outputs_;
-  std::unordered_map<pir::Value, std::vector<phi::DenseTensor*>>
+  std::unordered_map<pir::Value, std::vector<DenseTensor*>>
       engine_value_to_tensors_;
   std::unordered_map<pir::Value, std::vector<std::string>>
       engine_value_to_var_names_;

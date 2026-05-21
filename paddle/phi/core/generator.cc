@@ -41,7 +41,7 @@ const std::shared_ptr<Generator>& DefaultXPUGenerator(int64_t device_id) {
   static std::vector<std::shared_ptr<Generator>> default_xpu_generators;
 
   std::call_once(num_devices_init_flag, []() {
-    num_xpu_devices = phi::backends::xpu::GetXPUDeviceCount();
+    num_xpu_devices = backends::xpu::GetXPUDeviceCount();
     xpu_device_flags.resize(num_xpu_devices);
     default_xpu_generators.resize(num_xpu_devices);
   });
@@ -72,7 +72,7 @@ const std::shared_ptr<Generator>& DefaultCUDAGenerator(int64_t device_id) {
   static std::vector<std::shared_ptr<Generator>> default_cuda_generators;
 
   std::call_once(num_devices_init_flag, []() {
-    num_cuda_devices = phi::backends::gpu::GetGPUDeviceCount();
+    num_cuda_devices = backends::gpu::GetGPUDeviceCount();
     cuda_device_flags.resize(num_cuda_devices);
     default_cuda_generators.resize(num_cuda_devices);
   });
@@ -101,10 +101,9 @@ const std::shared_ptr<Generator>& DefaultCPUGenerator() {
 }
 
 const std::shared_ptr<Generator>& DefaultCustomDeviceGenerator(
-    const phi::CustomPlace& place) {
-  static std::
-      unordered_map<phi::Place, std::shared_ptr<Generator>, phi::Place::Hash>
-          generators;
+    const CustomPlace& place) {
+  static std::unordered_map<Place, std::shared_ptr<Generator>, Place::Hash>
+      generators;
   if (generators.find(place) == generators.end()) {
     generators.insert({place, std::make_shared<Generator>(GetRandomSeed())});
   }
@@ -203,9 +202,9 @@ Generator::Generator(uint64_t seed, int64_t device_id) {
   print_state_info();
 }
 
-phi::Generator::GeneratorState Generator::GetState() { return state(); }
+Generator::GeneratorState Generator::GetState() { return state(); }
 
-void Generator::SetState(const phi::Generator::GeneratorState& state) {
+void Generator::SetState(const Generator::GeneratorState& state) {
   std::lock_guard<std::mutex> lock(mu_);
   if (current_index < states_.size())
     states_[current_index] = state;
@@ -246,6 +245,11 @@ inline std::shared_ptr<std::mt19937_64> Generator::cpu_engine() {
 uint64_t Generator::GetCurrentSeed() {
   std::lock_guard<std::mutex> lock(mu_);
   return state().seed;
+}
+
+uint64_t Generator::GetCurrentOffset() {
+  std::lock_guard<std::mutex> lock(mu_);
+  return state().offset;
 }
 
 uint64_t Generator::Seed() {

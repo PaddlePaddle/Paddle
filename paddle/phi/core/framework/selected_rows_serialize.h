@@ -32,16 +32,16 @@ namespace phi {
  * or to a in memory string. GPU tensor will be copied to CPU.
  */
 PADDLE_API void SerializeToStream(std::ostream& os,
-                                  const phi::SelectedRows& selected_rows,
-                                  const phi::DeviceContext& dev_ctx);
+                                  const SelectedRows& selected_rows,
+                                  const DeviceContext& dev_ctx);
 PADDLE_API void DeserializeFromStream(std::istream& is,
-                                      phi::SelectedRows* selected_rows,
-                                      const phi::DeviceContext& dev_ctx);
+                                      SelectedRows* selected_rows,
+                                      const DeviceContext& dev_ctx);
 
 PADDLE_API void SerializeToStream(std::ostream& os,
-                                  const phi::SelectedRows& selected_rows);
+                                  const SelectedRows& selected_rows);
 
 PADDLE_API void DeserializeFromStream(std::istream& is,
-                                      phi::SelectedRows* selected_rows);
+                                      SelectedRows* selected_rows);
 
 }  // namespace phi

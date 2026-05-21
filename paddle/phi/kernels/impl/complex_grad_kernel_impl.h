@@ -30,7 +30,7 @@ void RealGradKernel(const Context& dev_ctx,
     return;
   }
   auto numel = dout.numel();
-  auto* dout_data = dout.data<phi::dtype::Real<T>>();
+  auto* dout_data = dout.data<dtype::Real<T>>();
   auto* dx_data =
       dev_ctx.template Alloc<T>(dx, static_cast<size_t>(numel * sizeof(T)));
 
@@ -48,7 +48,7 @@ void ImagGradKernel(const Context& dev_ctx,
     return;
   }
   auto numel = dout.numel();
-  auto* dout_data = dout.data<phi::dtype::Real<T>>();
+  auto* dout_data = dout.data<dtype::Real<T>>();
   auto* dx_data =
       dev_ctx.template Alloc<T>(dx, static_cast<size_t>(numel * sizeof(T)));
 
@@ -61,8 +61,8 @@ template <typename T>
 struct ComplexGradForRealFunctor {
   inline HOSTDEVICE T operator()(const T x UNUSED,
                                  const T y UNUSED,
-                                 const phi::dtype::complex<T> out UNUSED,
-                                 const phi::dtype::complex<T> dout) {
+                                 const dtype::complex<T> out UNUSED,
+                                 const dtype::complex<T> dout) {
     return dout.real;
   }
 };
@@ -71,8 +71,8 @@ template <typename T>
 struct ComplexGradForImagFunctor {
   inline HOSTDEVICE T operator()(const T x UNUSED,
                                  const T y UNUSED,
-                                 const phi::dtype::complex<T> out UNUSED,
-                                 const phi::dtype::complex<T> dout) {
+                                 const dtype::complex<T> out UNUSED,
+                                 const dtype::complex<T> dout) {
     return dout.imag;
   }
 };
@@ -84,22 +84,20 @@ void ComplexGradKernel(const Context& dev_ctx,
                        const DenseTensor& dout,
                        DenseTensor* dx,
                        DenseTensor* dy) {
-  using C = phi::dtype::complex<T>;
+  using C = dtype::complex<T>;
   if (dout.numel() == 0) {
     if (dx) {
       if (dx->numel() == 0) {
         dev_ctx.template Alloc<T>(dx);
       } else {
-        phi::Full<T, Context>(
-            dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+        Full<T, Context>(dev_ctx, dx->dims(), 0, dx);
       }
     }
     if (dy) {
       if (dy->numel() == 0) {
         dev_ctx.template Alloc<T>(dy);
       } else {
-        phi::Full<T, Context>(
-            dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+        Full<T, Context>(dev_ctx, dy->dims(), 0, dy);
       }
     }
     return;

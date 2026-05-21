@@ -72,7 +72,7 @@ class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
 
  protected:
   phi::Allocation *AllocateImpl(size_t size) override;
-  size_t CompactImpl(const phi::Place &place) override;
+  size_t CompactImpl(const Place &place) override;
   void FreeImpl(phi::Allocation *allocation) override;
 
  private:
@@ -92,7 +92,7 @@ class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
   std::map<std::pair<size_t, void *>, std::list<Block>::iterator> free_blocks_;
   std::list<Block> all_blocks_;
   std::list<AllocationPtr> allocations_;
-  phi::Place place_;
+  Place place_;
   SpinLock spinlock_;
 };
 
@@ -121,7 +121,7 @@ class VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator
   std::vector<size_t> GetCompactSize() const { return compact_size_; }
 
  protected:
-  size_t CompactImpl(const phi::Place &place) override;
+  size_t CompactImpl(const Place &place) override;
 
  private:
   std::vector<size_t> compact_size_;

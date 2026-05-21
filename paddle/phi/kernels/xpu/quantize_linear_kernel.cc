@@ -22,15 +22,13 @@
 
 namespace phi {
 
-// Note: We should re-design this kernel's args when we abandon fluid op
-// definition
 template <typename T, typename Context>
 void DeQuantizeLinearKernel(const Context& dev_ctx,
                             const DenseTensor& x,
-                            const paddle::optional<DenseTensor>& in_scale,
+                            const optional<DenseTensor>& in_scale,
                             const DenseTensor& zero_point,
-                            const paddle::optional<DenseTensor>& in_accum,
-                            const paddle::optional<DenseTensor>& in_state,
+                            const optional<DenseTensor>& in_accum,
+                            const optional<DenseTensor>& in_state,
                             int quant_axis,
                             int bit_length,
                             int qmin,
@@ -145,7 +143,7 @@ void DeQuantizeLinearKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void QuantizeLinearInferKernel(const Context& dev_ctx,
                                const DenseTensor& x,
-                               const paddle::optional<DenseTensor>& scale,
+                               const optional<DenseTensor>& scale,
                                const DenseTensor& zero_point,
                                int quant_axis,
                                int bit_length,
@@ -230,15 +228,13 @@ void QuantizeLinearInferKernel(const Context& dev_ctx,
   }
 }
 
-// Note: We should re-design this kernel's args when we abandon fluid op
-// definition
 template <typename T, typename Context>
 void QuantizeLinearKernel(const Context& dev_ctx,
                           const DenseTensor& x,
-                          const paddle::optional<DenseTensor>& scale,
+                          const optional<DenseTensor>& scale,
                           const DenseTensor& zero_point,
-                          const paddle::optional<DenseTensor>& in_accum,
-                          const paddle::optional<DenseTensor>& in_state,
+                          const optional<DenseTensor>& in_accum,
+                          const optional<DenseTensor>& in_state,
                           int quant_axis,
                           int bit_length,
                           int qmin,
@@ -280,8 +276,7 @@ void QuantizeLinearDeprecatedInferKernel(const Context& dev_ctx,
                                          int round_type,
                                          bool only_observer,
                                          DenseTensor* out) {
-  paddle::optional<DenseTensor> scale =
-      paddle::make_optional<DenseTensor>(in_scale);
+  optional<DenseTensor> scale = paddle::make_optional<DenseTensor>(in_scale);
   QuantizeLinearInferKernel<T, Context>(dev_ctx,
                                         x,
                                         scale,
@@ -307,8 +302,7 @@ void DeQuantizeLinearDeprecatedKernel(const Context& dev_ctx,
                                       int round_type,
                                       bool only_observer,
                                       DenseTensor* out) {
-  paddle::optional<DenseTensor> scale =
-      paddle::make_optional<DenseTensor>(in_scale);
+  optional<DenseTensor> scale = paddle::make_optional<DenseTensor>(in_scale);
   DeQuantizeLinearKernel<T, Context>(dev_ctx,
                                      x,
                                      scale,

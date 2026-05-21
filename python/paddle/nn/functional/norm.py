@@ -18,6 +18,7 @@ import inspect
 import numbers
 from typing import TYPE_CHECKING, Any
 
+import numpy as np
 from typing_extensions import overload
 
 import paddle
@@ -87,24 +88,24 @@ def normalize(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn.functional as F
 
             >>> paddle.disable_static()
-            >>> x = paddle.arange(6, dtype="float32").reshape([2,3])
+            >>> x = paddle.arange(6, dtype="float32").reshape([2, 3])
             >>> y = F.normalize(x)
             >>> print(y)
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0.        , 0.44721359, 0.89442718],
-             [0.42426404, 0.56568539, 0.70710671]])
+             [0.42426407, 0.56568545, 0.70710677]])
 
             >>> y = F.normalize(x, p=1.5)
             >>> print(y)
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0.        , 0.40862012, 0.81724024],
-             [0.35684016, 0.47578689, 0.59473360]])
+             [0.35684019, 0.47578692, 0.59473366]])
 
             >>> y = F.normalize(x, axis=0)
             >>> print(y)
@@ -191,7 +192,7 @@ def batch_norm(
         None
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -207,14 +208,19 @@ def batch_norm(
             >>> weight = paddle.to_tensor([2], dtype="float32")
             >>> bias = paddle.to_tensor([1], dtype="float32")
 
-            >>> batch_norm_out = paddle.nn.functional.batch_norm(x, running_mean,
-            ...                                             running_variance, weight, bias)
+            >>> batch_norm_out = paddle.nn.functional.batch_norm(
+            ...     x,
+            ...     running_mean,
+            ...     running_variance,
+            ...     weight,
+            ...     bias,
+            ... )
             >>> print(batch_norm_out)
             Tensor(shape=[2, 1, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[[1.         , 2.99998999 , 4.99997997 ],
-               [6.99996948 , 8.99995995 , 10.99994946]]],
-             [[[12.99993896, 14.99992943, 16.99991989],
-               [18.99990845, 20.99989891, 22.99988937]]]])
+               [6.99996996 , 8.99995995 , 10.99995041]]],
+             [[[12.99993992, 14.99992943, 16.99991989],
+               [18.99991035, 20.99990082, 22.99988937]]]])
 
     """
     assert len(x.shape) >= 2, "input dim must be larger than 1"
@@ -369,7 +375,7 @@ def layer_norm(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(2023)
@@ -377,14 +383,14 @@ def layer_norm(
             >>> layer_norm_out = paddle.nn.functional.layer_norm(x, x.shape[1:])
             >>> print(layer_norm_out)
             Tensor(shape=[2, 2, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[[[ 0.87799639, -0.32706568, -1.23529339],
-               [ 1.01540327, -0.66222906, -0.72354043]],
-              [[ 1.24183702,  0.45458138, -0.33506915],
-               [ 0.41468468,  1.26852870, -1.98983312]]],
-             [[[ 0.02837803,  1.27684665, -0.90110683],
-               [-0.94709367, -0.15110941, -1.16546965]],
-              [[-0.82010198,  0.11218392, -0.86506516],
-               [ 1.09489357,  0.19107464,  2.14656854]]]])
+            [[[[ 0.87799621, -0.32706589, -1.23529351],
+               [ 1.01540303, -0.66222930, -0.72354060]],
+              [[ 1.24183691,  0.45458117, -0.33506936],
+               [ 0.41468447,  1.26852846, -1.98983335]]],
+             [[[ 0.02837802,  1.27684653, -0.90110677],
+               [-0.94709361, -0.15110941, -1.16546965]],
+              [[-0.82010192,  0.11218391, -0.86506510],
+               [ 1.09489346,  0.19107464,  2.14656830]]]])
 
     """
     input_shape = list(x.shape)
@@ -465,9 +471,9 @@ def rms_norm(
     input: Tensor,
     normalized_shape: Sequence[int],
     weight: Tensor | None = None,
-    eps: float = 1e-5,
+    eps: float | None = None,
     name: str | None = None,
-) -> tuple[Tensor, Tensor]:
+) -> Tensor:
     """
     Applies Layer Normalization over the last dimension of the input tensor using CUDA implementation.
 
@@ -478,33 +484,23 @@ def rms_norm(
             If it is a single integer, this module will normalize over the last dimension
             which is expected to be of that specific size.
         weight(Tensor, optional): The weight tensor of rms_norm. Default: None.
-        eps(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-05.
+        eps(float|None, optional): The small value added to the variance to prevent division by zero.
+            If None, uses machine epsilon for the compute dtype: ``float64`` inputs use
+            ``np.finfo(np.float64).eps`` (double epsilon), all other dtypes use
+            ``np.finfo(np.float32).eps`` (float epsilon). Default: None.
         name (str, optional): Name of the operator.
 
     Returns:
         out (Tensor): Normalized tensor of same shape as input.
-        invvar (Tensor): Tensor of shape [rows], the inverse standard deviation of each row.
     """
 
-    if in_dynamic_or_pir_mode():
-        return _C_ops.rms_norm(input, weight, normalized_shape, eps)
+    if eps is None:
+        if input.dtype == paddle.float64:
+            eps = np.finfo(np.float64).eps  # ~2.22e-16, double machine epsilon
+        else:
+            eps = np.finfo(np.float32).eps  # ~1.19e-7, float machine epsilon
 
-    helper = LayerHelper('rms_norm', **locals())
-    from paddle.base.data_feeder import convert_dtype
-
-    dtype = convert_dtype(input.dtype)
-    out = helper.create_variable_for_type_inference(dtype)
-    invvar = helper.create_variable_for_type_inference('float32')
-
-    inputs = {'input': input, 'weight': weight}
-
-    helper.append_op(
-        type='rms_norm',
-        inputs=inputs,
-        outputs={'out': out, 'invvar': invvar},
-        attrs={"normalized_shape": normalized_shape, "eps": eps},
-    )
-    return out, invvar
+    return _C_ops.rms_norm(input, weight, normalized_shape, eps)[0]
 
 
 def instance_norm(
@@ -541,7 +537,7 @@ def instance_norm(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(2023)
@@ -795,7 +791,7 @@ def group_norm(*args: Any, **kwargs: Any) -> Tensor:
         Tensor, the output has the same shape with ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(100)

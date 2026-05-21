@@ -31,29 +31,33 @@ def transpose_qkv(init_q, init_k, init_v):
 
 
 def mult_qkv_rotate_every_two(value, cos_tensor, sin_tensor):
+    rot_dim = cos_tensor.shape[-1]
+    value_rot, value_pass = value[..., :rot_dim], value[..., rot_dim:]
     rotate_two_q = paddle.stack(
-        [-value[:, :, :, 1::2], value[:, :, :, 0::2]], axis=-1
-    ).reshape(value.shape)
+        [-value_rot[:, :, :, 1::2], value_rot[:, :, :, 0::2]], axis=-1
+    ).reshape(value_rot.shape)
     query = paddle.add(
-        paddle.multiply(value, cos_tensor),
+        paddle.multiply(value_rot, cos_tensor),
         paddle.multiply(rotate_two_q, sin_tensor),
     )
-    return query
+    return paddle.concat([query, value_pass], axis=-1)
 
 
 def mult_qkv_rotate_half(value, cos_tensor, sin_tensor):
+    rot_dim = cos_tensor.shape[-1]
+    value_rot, value_pass = value[..., :rot_dim], value[..., rot_dim:]
     rotate_half_q = paddle.concat(
         [
-            -value[..., value.shape[-1] // 2 :],
-            value[..., : value.shape[-1] // 2],
+            -value_rot[..., value_rot.shape[-1] // 2 :],
+            value_rot[..., : value_rot.shape[-1] // 2],
         ],
         axis=-1,
-    ).reshape(value.shape)
+    ).reshape(value_rot.shape)
     query = paddle.add(
-        paddle.multiply(value, cos_tensor),
+        paddle.multiply(value_rot, cos_tensor),
         paddle.multiply(rotate_half_q, sin_tensor),
     )
-    return query
+    return paddle.concat([query, value_pass], axis=-1)
 
 
 def get_sin_cos_tensor(seq_len, head_dim, dtype="float32"):
@@ -142,15 +146,18 @@ class XPUTestFusedRotaryPositionEmbedding(unittest.TestCase):
             self.atol = 1e-4
             self.rtol = 1e-4
 
-    def get_inputs(self, seed, with_sin_cos, dtype="float32"):
+    def get_inputs(
+        self, seed, with_sin_cos, rotary_percent=1.0, dtype="float32"
+    ):
         paddle.disable_static()
         paddle.seed(seed)
         tensor_q = self.get_paddle_tensor(self.shape_q)
         tensor_k = self.get_paddle_tensor(self.shape_k)
         tensor_v = self.get_paddle_tensor(self.shape_v)
 
+        pe_head_dim = int(tensor_q.shape[3] * rotary_percent)
         tensor_sin, tensor_cos = (
-            get_sin_cos_tensor(tensor_q.shape[1], tensor_q.shape[3], dtype)
+            get_sin_cos_tensor(tensor_q.shape[1], pe_head_dim, dtype)
             if with_sin_cos
             else (None, None)
         )
@@ -161,6 +168,7 @@ class XPUTestFusedRotaryPositionEmbedding(unittest.TestCase):
         rope_function,
         seed,
         with_sin_cos=True,
+        rotary_percent=1.0,
         use_neox_rotary_style=True,
         position_ids=None,
     ):
@@ -169,7 +177,7 @@ class XPUTestFusedRotaryPositionEmbedding(unittest.TestCase):
         bw = []
 
         tensor_q, tensor_k, tensor_v, tensor_sin, tensor_cos = self.get_inputs(
-            seed, with_sin_cos, self.dtype
+            seed, with_sin_cos, rotary_percent, self.dtype
         )
 
         out_q, out_k, out_v = rope_function(
@@ -284,10 +292,46 @@ class XPUTestFusedRotaryPositionEmbedding(unittest.TestCase):
         )
         self.check_forward_backward(p_fw, f_fw, p_bw, f_bw)
 
+    def test_fused_rope_rotary_percent_neox(self):
+        paddle.set_device('xpu')
+        p_fw, p_bw = self.get_forward_backward(
+            ref_rotary_position_embedding,
+            seed=self.seed,
+            with_sin_cos=True,
+            rotary_percent=0.5,
+            use_neox_rotary_style=True,
+        )
+        f_fw, f_bw = self.get_forward_backward(
+            fused_rotary_position_embedding,
+            seed=self.seed,
+            with_sin_cos=True,
+            rotary_percent=0.5,
+            use_neox_rotary_style=True,
+        )
+        self.check_forward_backward(p_fw, f_fw, p_bw, f_bw)
+
+    def test_fused_rope_rotary_percent_half(self):
+        paddle.set_device('xpu')
+        p_fw, p_bw = self.get_forward_backward(
+            ref_rotary_position_embedding,
+            seed=self.seed,
+            with_sin_cos=True,
+            rotary_percent=0.5,
+            use_neox_rotary_style=False,
+        )
+        f_fw, f_bw = self.get_forward_backward(
+            fused_rotary_position_embedding,
+            seed=self.seed,
+            with_sin_cos=True,
+            rotary_percent=0.5,
+            use_neox_rotary_style=False,
+        )
+        self.check_forward_backward(p_fw, f_fw, p_bw, f_bw)
+
     def test_static(self):
         paddle.set_device('xpu')
         tensor_q, tensor_k, tensor_v, tensor_sin, tensor_cos = self.get_inputs(
-            self.seed, True, self.dtype
+            self.seed, True, dtype=self.dtype
         )
         p_fw, p_bw = self.get_forward_backward(
             ref_rotary_position_embedding,
@@ -453,6 +497,16 @@ class XPUTestFusedRotaryPositionEmbeddingBf16_2(unittest.TestCase):
             )
 
 
+class XPUTestFusedRotaryPositionEmbeddingMQA(
+    XPUTestFusedRotaryPositionEmbedding
+):
+    def init_case(self):
+        self.shape_q = [2, 8, 4, 16]
+        self.shape_k = [2, 8, 1, 16]
+        self.shape_v = [2, 8, 1, 16]
+        self.dtype = "float32"
+
+
 class XPUTestFusedRotaryPositionEmbeddingGQA(
     XPUTestFusedRotaryPositionEmbedding
 ):
@@ -461,6 +515,191 @@ class XPUTestFusedRotaryPositionEmbeddingGQA(
         self.shape_k = [2, 8, 1, 16]
         self.shape_v = [2, 8, 1, 16]
         self.dtype = "float32"
+
+
+class TestFusedRotaryPositionEmbeddingZeroSizeXPU(unittest.TestCase):
+    def setUp(self):
+        self.dtype = "float32"
+        self.qkv_shape = [0, 1, 8, 8]
+        self.sin_cos_shape = [1, 1, 1, 8]
+
+    def init_data(self):
+        self.q = paddle.randn(self.qkv_shape, dtype=self.dtype)
+        self.k = paddle.randn(self.qkv_shape, dtype=self.dtype)
+        self.v = paddle.randn(self.qkv_shape, dtype=self.dtype)
+        self.q.stop_gradient = False
+        self.k.stop_gradient = False
+        self.v.stop_gradient = False
+        self.sin = paddle.sin(
+            paddle.randn(self.sin_cos_shape, dtype=self.dtype)
+        )
+        self.cos = paddle.cos(
+            paddle.randn(self.sin_cos_shape, dtype=self.dtype)
+        )
+
+    def _test_forward_backward(self):
+        out_q, out_k, out_v = fused_rotary_position_embedding(
+            self.q,
+            self.k,
+            self.v,
+            sin=self.sin,
+            cos=self.cos,
+            use_neox_rotary_style=False,
+        )
+        out = out_q + out_k + out_v
+        out.backward()
+        np.testing.assert_allclose(
+            self.q.shape, self.q.grad.shape, rtol=1e-05, atol=1e-06
+        )
+        np.testing.assert_allclose(
+            self.k.shape, self.k.grad.shape, rtol=1e-05, atol=1e-06
+        )
+        np.testing.assert_allclose(
+            self.v.shape, self.v.grad.shape, rtol=1e-05, atol=1e-06
+        )
+
+    def test_zero_size(self):
+        self.init_data()
+        self._test_forward_backward()
+
+
+class TestFusedRotaryPositionEmbeddingZeroNumHeadsXPU(unittest.TestCase):
+    """Test fused_rotary_position_embedding with k or v tensors that have
+    zero num_heads (e.g. shape [batch, seq, 0, head_dim]).
+    """
+
+    def setUp(self):
+        self.dtype = "float32"
+        self.batch_size = 1
+        self.seq_len = 8
+        self.num_heads_q = 4
+        self.head_dim = 8
+        self.sin_cos_shape = [1, self.seq_len, 1, self.head_dim]
+
+    def _make_tensor(self, shape, requires_grad=True):
+        t = paddle.randn(shape, dtype=self.dtype)
+        t.stop_gradient = not requires_grad
+        return t
+
+    def _make_sin_cos(self):
+        sin = paddle.sin(paddle.randn(self.sin_cos_shape, dtype=self.dtype))
+        cos = paddle.cos(paddle.randn(self.sin_cos_shape, dtype=self.dtype))
+        return sin, cos
+
+    def _run_forward_backward(self, q, k, v, sin, cos, **kwargs):
+        """Run forward + backward; return outputs and check no crash."""
+        out_q, out_k, out_v = fused_rotary_position_embedding(
+            q, k, v, sin=sin, cos=cos, **kwargs
+        )
+        loss_terms = []
+        for out in [out_q, out_k, out_v]:
+            if out is not None and out._is_initialized() and out.numel() > 0:
+                loss_terms.append(out.sum())
+        if loss_terms:
+            sum(loss_terms).backward()
+        return out_q, out_k, out_v
+
+    def test_v_zero_num_heads(self):
+        """v with 0 num_heads should not crash."""
+        q_shape = [
+            self.batch_size,
+            self.seq_len,
+            self.num_heads_q,
+            self.head_dim,
+        ]
+        kv_shape = [self.batch_size, self.seq_len, 0, self.head_dim]
+        q = self._make_tensor(q_shape)
+        k = self._make_tensor(kv_shape)
+        v = self._make_tensor(kv_shape)
+        sin, cos = self._make_sin_cos()
+
+        out_q, out_k, out_v = self._run_forward_backward(
+            q, k, v, sin, cos, use_neox_rotary_style=False
+        )
+        self.assertEqual(list(out_q.shape), q_shape)
+        self.assertEqual(list(out_k.shape), kv_shape)
+        self.assertEqual(list(out_v.shape), kv_shape)
+
+    def test_k_zero_num_heads(self):
+        """k with 0 num_heads should not crash."""
+        q_shape = [
+            self.batch_size,
+            self.seq_len,
+            self.num_heads_q,
+            self.head_dim,
+        ]
+        k_shape = [self.batch_size, self.seq_len, 0, self.head_dim]
+        q = self._make_tensor(q_shape)
+        k = self._make_tensor(k_shape)
+        sin, cos = self._make_sin_cos()
+
+        out_q, out_k, out_v = self._run_forward_backward(
+            q, k, None, sin, cos, use_neox_rotary_style=False
+        )
+        self.assertEqual(list(out_q.shape), q_shape)
+        self.assertEqual(list(out_k.shape), k_shape)
+
+    def test_kv_zero_num_heads(self):
+        """Both k and v with 0 num_heads should not crash."""
+        q_shape = [
+            self.batch_size,
+            self.seq_len,
+            self.num_heads_q,
+            self.head_dim,
+        ]
+        kv_shape = [self.batch_size, self.seq_len, 0, self.head_dim]
+        q = self._make_tensor(q_shape)
+        k = self._make_tensor(kv_shape)
+        v = self._make_tensor(kv_shape)
+        sin, cos = self._make_sin_cos()
+
+        out_q, out_k, out_v = self._run_forward_backward(
+            q, k, v, sin, cos, use_neox_rotary_style=False
+        )
+        self.assertEqual(list(out_q.shape), q_shape)
+        self.assertEqual(list(out_k.shape), kv_shape)
+        self.assertEqual(list(out_v.shape), kv_shape)
+
+    def test_v_zero_num_heads_neox_style(self):
+        """v with 0 num_heads, neox rotary style, should not crash."""
+        q_shape = [
+            self.batch_size,
+            self.seq_len,
+            self.num_heads_q,
+            self.head_dim,
+        ]
+        kv_shape = [self.batch_size, self.seq_len, 0, self.head_dim]
+        q = self._make_tensor(q_shape)
+        k = self._make_tensor(kv_shape)
+        v = self._make_tensor(kv_shape)
+        sin, cos = self._make_sin_cos()
+
+        out_q, out_k, out_v = self._run_forward_backward(
+            q, k, v, sin, cos, use_neox_rotary_style=True
+        )
+        self.assertEqual(list(out_q.shape), q_shape)
+        self.assertEqual(list(out_k.shape), kv_shape)
+        self.assertEqual(list(out_v.shape), kv_shape)
+
+    def test_q_grad_shape_with_zero_kv(self):
+        """Backward pass gradient shape for q should be correct when k/v have 0 heads."""
+        q_shape = [
+            self.batch_size,
+            self.seq_len,
+            self.num_heads_q,
+            self.head_dim,
+        ]
+        kv_shape = [self.batch_size, self.seq_len, 0, self.head_dim]
+        q = self._make_tensor(q_shape)
+        k = self._make_tensor(kv_shape)
+        v = self._make_tensor(kv_shape)
+        sin, cos = self._make_sin_cos()
+
+        out_q, out_k, out_v = fused_rotary_position_embedding(
+            q, k, v, sin=sin, cos=cos, use_neox_rotary_style=False
+        )
+        out_q.sum().backward()
+        self.assertEqual(list(q.grad.shape), q_shape)
 
 
 # too long for CI

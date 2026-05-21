@@ -43,7 +43,7 @@ namespace paddle::framework {
 
 PyLayerInstruction::PyLayerInstruction(
     size_t id,
-    const phi::Place& place,
+    const Place& place,
     pir::Operation* op,
     ValueExecutionInfo* value_exec_info,
     interpreter::ExecutionConfig execution_config)

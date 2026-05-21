@@ -640,7 +640,9 @@ static void GetGraphOpDesc(const std::vector<Node *> &nodes,
 
         std::vector<std::string> deps;
         for (auto in : n->inputs) {
-          if (in->IsVar() && !in->IsCtrlVar()) {
+          if (in->IsVar() && !in->IsCtrlVar() &&
+              in->Name().find(details::kFusedVarNamePrefix) !=
+                  std::string::npos) {
             deps.push_back(in->Name());
           }
         }

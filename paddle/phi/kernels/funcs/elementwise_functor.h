@@ -24,6 +24,14 @@ limitations under the License. */
 #endif
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/type_safe_sign_math.h"
+#include "paddle/phi/kernels/funcs/sleef_vectorized_math.h"
+
+#ifdef PADDLE_WITH_SLEEF
+#include <sleef.h>
+#if defined(__AVX512F__)
+#include <immintrin.h>
+#endif
+#endif
 
 namespace phi {
 namespace funcs {
@@ -1123,12 +1131,12 @@ struct RemainderGradYFunctor<
     T,
     typename std::enable_if<std::is_floating_point<T>::value>::type> {
   inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
-    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+    using MT = typename MPTypeTrait<T>::Type;
     // dy = -dout * (floor_div(x, y))
-    auto x_ = static_cast<MPType>(x);
-    auto y_ = static_cast<MPType>(y);
-    FloorDivideFunctor<MPType> floor_div;
-    return static_cast<T>(-static_cast<MPType>(dout) * (floor_div(x_, y_)));
+    auto x_ = static_cast<MT>(x);
+    auto y_ = static_cast<MT>(y);
+    FloorDivideFunctor<MT> floor_div;
+    return static_cast<T>(-static_cast<MT>(dout) * (floor_div(x_, y_)));
   }
 };
 template <typename T>
@@ -1177,11 +1185,11 @@ struct RemainderGradXYFunctor<
     // dx = dout
     outs[0] = static_cast<OutT>(dout);
     // dy = -dout * (x / y)
-    using MPType = typename phi::dtype::MPTypeTrait<InT>::Type;
-    auto x_ = static_cast<MPType>(x);
-    auto y_ = static_cast<MPType>(y);
-    FloorDivideFunctor<MPType> floor_div;
-    outs[1] = static_cast<OutT>(static_cast<MPType>(-dout) * floor_div(x_, y_));
+    using MT = typename MPTypeTrait<InT>::Type;
+    auto x_ = static_cast<MT>(x);
+    auto y_ = static_cast<MT>(y);
+    FloorDivideFunctor<MT> floor_div;
+    outs[1] = static_cast<OutT>(static_cast<MT>(-dout) * floor_div(x_, y_));
     return outs;
   }
 };
@@ -1414,8 +1422,34 @@ struct InverseTruncDivideFunctor<dtype::bfloat16> {
   }
 };
 
+#ifdef PADDLE_WITH_SLEEF
+template <typename T>
+inline HOSTDEVICE
+    typename std::enable_if<std::is_same<T, float>::value, T>::type
+    compute_pow_sleef(const T a, const T b) {
+  return Sleef_powf1_u10(a, b);
+}
+
+template <typename T>
+inline HOSTDEVICE
+    typename std::enable_if<std::is_same<T, double>::value, T>::type
+    compute_pow_sleef(const T a, const T b) {
+  return Sleef_powd1_u10(a, b);
+}
+
+#if defined(__AVX512F__)
+inline HOSTDEVICE __m512 compute_pow_sleef_vec(__m512 a, __m512 b) {
+  return Sleef_powf16_u10(a, b);
+}
+
+inline HOSTDEVICE __m512d compute_pow_sleef_vec(__m512d a, __m512d b) {
+  return Sleef_powd8_u10(a, b);
+}
+#endif
+#endif
+
 #if defined(__CUDA_ARCH__) || defined(__HIPCC__)
-template <typename T, typename MPType>
+template <typename T, typename MT>
 inline HOSTDEVICE typename std::enable_if<std::is_integral<T>::value, T>::type
 compute_pow(const T a, const T b) {
   // TODO(wujionghao): A potential speed improvement is supporting different
@@ -1430,23 +1464,23 @@ compute_pow(const T a, const T b) {
   }
   return llrint(pow(static_cast<double>(a), static_cast<double>(b)));
 }
-template <typename T, typename MPType>
+template <typename T, typename MT>
 inline HOSTDEVICE typename std::enable_if<!std::is_integral<T>::value, T>::type
 compute_pow(const T a, const T b) {
-  MPType a_val = static_cast<MPType>(a);
-  MPType b_val = static_cast<MPType>(b);
+  MT a_val = static_cast<MT>(a);
+  MT b_val = static_cast<MT>(b);
   return static_cast<T>(pow(a_val, b_val));
 }
 #else
-template <typename T, typename MPType>
+template <typename T, typename MT>
 inline HOSTDEVICE T compute_pow(const T a, const T b) {
   if constexpr (std::is_integral<T>::value) {
     if (a == static_cast<T>(0) && b < static_cast<T>(0)) {
       return static_cast<T>(0);
     }
   }
-  MPType a_val = static_cast<MPType>(a);
-  MPType b_val = static_cast<MPType>(b);
+  MT a_val = static_cast<MT>(a);
+  MT b_val = static_cast<MT>(b);
 #ifdef PADDLE_WITH_XPU_KP
   return static_cast<T>(pow(a_val, b_val));
 #endif
@@ -1456,17 +1490,17 @@ inline HOSTDEVICE T compute_pow(const T a, const T b) {
 
 template <typename T>
 struct ElementwisePowFunctor {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   inline HOSTDEVICE T operator()(const T a, const T b) const {
-    return compute_pow<T, MPType>(a, b);
+    return compute_pow<T, MT>(a, b);
   }
 };
 
 template <typename T>
 struct ElementwiseInversePowFunctor {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   inline HOSTDEVICE T operator()(const T a, const T b) const {
-    return compute_pow<T, MPType>(b, a);
+    return compute_pow<T, MT>(b, a);
   }
 };
 

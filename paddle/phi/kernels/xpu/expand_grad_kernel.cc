@@ -33,8 +33,7 @@ void ExpandGradKernel(const Context& dev_ctx,
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
 
   if ((in_grad && in_grad->numel() == 0) || out_grad.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(in_grad->dims())), 0, in_grad);
+    Full<T, Context>(dev_ctx, in_grad->dims(), 0, in_grad);
     return;
   }
 
@@ -68,8 +67,7 @@ void ExpandGradKernel<double, XPUContext>(const XPUContext& dev_ctx,
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
 
   if ((in_grad && in_grad->numel() == 0) || out_grad.numel() == 0) {
-    phi::Full<double, XPUContext>(
-        dev_ctx, phi::IntArray(common::vectorize(in_grad->dims())), 0, in_grad);
+    Full<double, XPUContext>(dev_ctx, in_grad->dims(), 0, in_grad);
     return;
   }
 

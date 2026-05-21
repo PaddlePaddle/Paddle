@@ -12,96 +12,93 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// #The file has been adapted from pytorch project
-// #Licensed under  BSD-style license -
+// The file has been adapted from pytorch project
+// Licensed under BSD-style license -
 // https://github.com/pytorch/pytorch/blob/main/LICENSE
 
 #pragma once
 
+#include <torch/headeronly/core/TensorAccessor.h>
+
 #include <c10/macros/Macros.h>
 #include <c10/util/ArrayRef.h>
+#include <c10/util/Exception.h>
+
+#include <cstddef>
+#include <cstdint>
+#include <type_traits>
 
 namespace at {
-template <typename T>
-struct DefaultPtrTraits {
-  typedef T* PtrType;
-};
+
+using torch::headeronly::DefaultPtrTraits;
+#if defined(__CUDACC__) || defined(__HIPCC__)
+using torch::headeronly::RestrictPtrTraits;
+#endif
 
 template <typename T,
           size_t N,
           template <typename U> class PtrTraits = DefaultPtrTraits,
           typename index_t = int64_t>
-class TensorAccessorBase {
- public:
-  typedef typename PtrTraits<T>::PtrType PtrType;
+using TensorAccessorBase = torch::headeronly::detail::
+    TensorAccessorBase<c10::IntArrayRef, T, N, PtrTraits, index_t>;
 
-  C10_HOST_DEVICE TensorAccessorBase(PtrType data_,
-                                     const index_t* sizes_,
-                                     const index_t* strides_)  // NOLINT
-      : data_(data_), sizes_(sizes_), strides_(strides_) {}    // NOLINT
-  C10_HOST IntArrayRef sizes() const { return IntArrayRef(sizes_, N); }
-  C10_HOST IntArrayRef strides() const { return IntArrayRef(strides_, N); }
-  C10_HOST_DEVICE index_t stride(index_t i) const { return strides_[i]; }
-  C10_HOST_DEVICE index_t size(index_t i) const { return sizes_[i]; }
-  C10_HOST_DEVICE PtrType data() { return data_; }
-  C10_HOST_DEVICE const PtrType data() const { return data_; }
-
- protected:
-  PtrType data_;
-  const index_t* sizes_;
-  const index_t* strides_;
-};
-
-// The `TensorAccessor` is typically instantiated for CPU `Tensor`s using
-// `Tensor.accessor<T, N>()`.
-// For CUDA `Tensor`s, `GenericPackedTensorAccessor` is used on the host and
-// only indexing on the device uses `TensorAccessor`s.
 template <typename T,
           size_t N,
           template <typename U> class PtrTraits = DefaultPtrTraits,
           typename index_t = int64_t>
-class TensorAccessor : public TensorAccessorBase<T, N, PtrTraits, index_t> {
- public:
-  typedef typename PtrTraits<T>::PtrType PtrType;
+using TensorAccessor = torch::headeronly::detail::
+    TensorAccessor<c10::IntArrayRef, T, N, PtrTraits, index_t>;
 
-  C10_HOST_DEVICE TensorAccessor(PtrType data_,
-                                 const index_t* sizes_,
-                                 const index_t* strides_)
-      : TensorAccessorBase<T, N, PtrTraits, index_t>(data_, sizes_, strides_) {}
+namespace detail {
 
-  C10_HOST_DEVICE TensorAccessor<T, N - 1, PtrTraits, index_t> operator[](
-      index_t i) {
-    return TensorAccessor<T, N - 1, PtrTraits, index_t>(
-        this->data_ + this->strides_[0] * i,
-        this->sizes_ + 1,
-        this->strides_ + 1);
-  }
-
-  C10_HOST_DEVICE const TensorAccessor<T, N - 1, PtrTraits, index_t> operator[](
-      index_t i) const {
-    return TensorAccessor<T, N - 1, PtrTraits, index_t>(
-        this->data_ + this->strides_[0] * i,
-        this->sizes_ + 1,
-        this->strides_ + 1);
+template <size_t N, typename index_t>
+struct IndexBoundsCheck {
+  explicit IndexBoundsCheck(index_t i) {
+    TORCH_CHECK(0 <= i && i < index_t{N},
+                "Index ",
+                i,
+                " is not within bounds of a tensor of dimension ",
+                N);
   }
 };
 
-template <typename T, template <typename U> class PtrTraits, typename index_t>
-class TensorAccessor<T, 1, PtrTraits, index_t>
-    : public TensorAccessorBase<T, 1, PtrTraits, index_t> {
- public:
-  typedef typename PtrTraits<T>::PtrType PtrType;
+}  // namespace detail
 
-  C10_HOST_DEVICE TensorAccessor(PtrType data_,
-                                 const index_t* sizes_,
-                                 const index_t* strides_)
-      : TensorAccessorBase<T, 1, PtrTraits, index_t>(data_, sizes_, strides_) {}
-  C10_HOST_DEVICE T& operator[](index_t i) {
-    return this->data_[this->strides_[0] * i];
-  }
-  C10_HOST_DEVICE const T& operator[](index_t i) const {
-    return this->data_[this->strides_[0] * i];
-  }
-};
+template <typename T,
+          size_t N,
+          template <typename U> class PtrTraits = DefaultPtrTraits,
+          typename index_t = int64_t>
+using GenericPackedTensorAccessorBase =
+    torch::headeronly::detail::GenericPackedTensorAccessorBase<
+        detail::IndexBoundsCheck<N, index_t>,
+        T,
+        N,
+        PtrTraits,
+        index_t>;
+
+template <typename T,
+          size_t N,
+          template <typename U> class PtrTraits = DefaultPtrTraits,
+          typename index_t = int64_t>
+using GenericPackedTensorAccessor =
+    torch::headeronly::detail::GenericPackedTensorAccessor<
+        TensorAccessor<T, N - 1, PtrTraits, index_t>,
+        detail::IndexBoundsCheck<N, index_t>,
+        T,
+        N,
+        PtrTraits,
+        index_t>;
+
+template <typename T,
+          size_t N,
+          template <typename U> class PtrTraits = DefaultPtrTraits>
+using PackedTensorAccessor32 =
+    GenericPackedTensorAccessor<T, N, PtrTraits, int32_t>;
+
+template <typename T,
+          size_t N,
+          template <typename U> class PtrTraits = DefaultPtrTraits>
+using PackedTensorAccessor64 =
+    GenericPackedTensorAccessor<T, N, PtrTraits, int64_t>;
 
 }  // namespace at

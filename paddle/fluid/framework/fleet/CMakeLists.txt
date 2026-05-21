@@ -3,35 +3,11 @@ cc_library(
   SRCS fleet_wrapper.cc
   DEPS framework_proto variable_helper scope)
 
-cc_library(
-  ps_gpu_wrapper
-  SRCS ps_gpu_wrapper.cc
-  DEPS gloo_wrapper)
-
 if(WITH_NCCL OR WITH_RCCL)
   cc_library(
     nccl_wrapper
     SRCS nccl_wrapper.cc
     DEPS framework_proto variable_helper scope)
-endif()
-if(WITH_BOX_PS)
-  if(WITH_GPU)
-    nv_library(
-      box_wrapper
-      SRCS box_wrapper.cc box_wrapper.cu
-      DEPS framework_proto lod_tensor box_ps)
-  endif()
-  if(WITH_ROCM)
-    hip_library(
-      box_wrapper
-      SRCS box_wrapper.cc box_wrapper.cu
-      DEPS framework_proto lod_tensor box_ps)
-  endif()
-else()
-  cc_library(
-    box_wrapper
-    SRCS box_wrapper.cc
-    DEPS framework_proto lod_tensor)
 endif()
 
 if(WITH_GLOO)
@@ -39,22 +15,9 @@ if(WITH_GLOO)
     gloo_wrapper
     SRCS gloo_wrapper.cc
     DEPS framework_proto variable_helper scope gloo)
-  cc_library(
-    metrics
-    SRCS metrics.cc
-    DEPS gloo_wrapper)
 else()
   cc_library(
     gloo_wrapper
     SRCS gloo_wrapper.cc
     DEPS framework_proto variable_helper scope)
-  cc_library(
-    metrics
-    SRCS metrics.cc
-    DEPS gloo_wrapper)
 endif()
-
-cc_library(
-  heter_wrapper
-  SRCS heter_wrapper.cc
-  DEPS framework_proto device_context heter_service_proto)

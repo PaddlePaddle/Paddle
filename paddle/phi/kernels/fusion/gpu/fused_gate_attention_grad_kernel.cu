@@ -24,8 +24,8 @@ namespace fusion {
 
 template <typename T>
 struct SigmoidMultiplyGradFunctor {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  MPType one = static_cast<MPType>(1.0f);
+  using MT = typename MPTypeTrait<T>::Type;
+  MT one = static_cast<MT>(1.0f);
 
   // Gradient of Multiply:
   //  dx = dout * y
@@ -34,7 +34,7 @@ struct SigmoidMultiplyGradFunctor {
   inline HOSTDEVICE phi::Array<T, 2> operator()(const T dout,
                                                 const T x,
                                                 T y) const {
-    MPType x_mp = static_cast<MPType>(x);
+    MT x_mp = static_cast<MT>(x);
     T sigmoid_out = static_cast<T>(one / (one + exp(-x_mp)));
     T d_sigmoid_out = dout * y;
     phi::Array<T, 2> outs;
@@ -63,7 +63,7 @@ void ComputeMergedQKVMatmulBackward(
   int n = 3 * config.num_heads * config.head_dim;
   int k = config.q_dim;
   auto qkv_compute =
-      phi::fusion::AttnMatMul<T>(dev_ctx, false, true, m, n, k, false);
+      fusion::AttnMatMul<T>(dev_ctx, false, true, m, n, k, false);
   qkv_compute.ComputeBackward(query,
                               qkv_weight,
                               qkv_out_grad,
@@ -98,8 +98,8 @@ void ComputeSeparatedQKVMatmulBackward(
   int kv_m = config.batch_size * config.seq_len_m * config.m_size;
   int kv_n = config.num_heads * config.head_dim;
   int kv_k = config.kv_dim;
-  auto kv_compute = phi::fusion::AttnMatMul<T>(
-      dev_ctx, false, false, kv_m, kv_n, kv_k, false);
+  auto kv_compute =
+      fusion::AttnMatMul<T>(dev_ctx, false, false, kv_m, kv_n, kv_k, false);
   kv_compute.ComputeBackward(
       key, key_weight, key_out_grad, key_grad, key_weight_grad, nullptr, false);
 
@@ -123,7 +123,7 @@ void ComputeSeparatedQKVMatmulBackward(
   int q_n = config.num_heads * config.head_dim;
   int q_k = config.q_dim;
   auto q_compute =
-      phi::fusion::AttnMatMul<T>(dev_ctx, false, false, q_m, q_n, q_k, false);
+      fusion::AttnMatMul<T>(dev_ctx, false, false, q_m, q_n, q_k, false);
   q_compute.ComputeBackward(query,
                             query_weight,
                             query_out_grad,
@@ -159,7 +159,7 @@ void ComputeGatingLinearBackward(
   int n = config.num_heads * config.head_dim;
   int k = config.q_dim;
   auto gate_linear =
-      phi::fusion::AttnMatMul<T>(dev_ctx, false, false, m, n, k, true);
+      fusion::AttnMatMul<T>(dev_ctx, false, false, m, n, k, true);
   gate_linear.ComputeForward(gate_weight,
                              query,
                              gate_bias,
@@ -211,8 +211,7 @@ void ComputeOutputLinearBackward(
   int m = config.batch_size * config.seq_len_m * config.seq_len_r;
   int n = config.q_dim;
   int k = config.num_heads * config.head_dim;
-  auto out_linear =
-      phi::fusion::AttnMatMul<T>(dev_ctx, false, false, m, n, k, true);
+  auto out_linear = fusion::AttnMatMul<T>(dev_ctx, false, false, m, n, k, true);
   out_linear.ComputeBackward(input,
                              out_linear_weight,
                              out_grad,
@@ -227,25 +226,25 @@ template <typename T, typename Context>
 void FusedGateAttentionGradKernel(
     const Context &dev_ctx,
     const DenseTensor &query_in,
-    const paddle::optional<DenseTensor> &key_in,
-    const paddle::optional<DenseTensor> &query_weight_in,
-    const paddle::optional<DenseTensor> &key_weight_in,
-    const paddle::optional<DenseTensor> &value_weight_in,
-    const paddle::optional<DenseTensor> &qkv_weight_in,
-    const paddle::optional<DenseTensor> &nonbatched_bias_in,
-    const paddle::optional<DenseTensor> &src_mask_in,
-    const paddle::optional<DenseTensor> &gate_weight_in,
-    const paddle::optional<DenseTensor> &gate_bias_in,
+    const optional<DenseTensor> &key_in,
+    const optional<DenseTensor> &query_weight_in,
+    const optional<DenseTensor> &key_weight_in,
+    const optional<DenseTensor> &value_weight_in,
+    const optional<DenseTensor> &qkv_weight_in,
+    const optional<DenseTensor> &nonbatched_bias_in,
+    const optional<DenseTensor> &src_mask_in,
+    const optional<DenseTensor> &gate_weight_in,
+    const optional<DenseTensor> &gate_bias_in,
     const DenseTensor &out_linear_weight_in,
     const DenseTensor &out_linear_bias_in,
-    const paddle::optional<DenseTensor> &query_transpose_out_in,
-    const paddle::optional<DenseTensor> &key_transpose_out_in,
-    const paddle::optional<DenseTensor> &value_transpose_out_in,
-    const paddle::optional<DenseTensor> &qkv_transpose_out_in,
-    const paddle::optional<DenseTensor> &softmax_out_in,
-    const paddle::optional<DenseTensor> &softmax_lse_in,
+    const optional<DenseTensor> &query_transpose_out_in,
+    const optional<DenseTensor> &key_transpose_out_in,
+    const optional<DenseTensor> &value_transpose_out_in,
+    const optional<DenseTensor> &qkv_transpose_out_in,
+    const optional<DenseTensor> &softmax_out_in,
+    const optional<DenseTensor> &softmax_lse_in,
     const DenseTensor &fmha_out_in,
-    const paddle::optional<DenseTensor> &gate_out_in,
+    const optional<DenseTensor> &gate_out_in,
     const DenseTensor &out_grad_in,
     bool has_gating,
     bool merge_qkv,

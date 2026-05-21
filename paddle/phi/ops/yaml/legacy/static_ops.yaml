@@ -44,7 +44,7 @@
   args : (Tensor start, Tensor end, Tensor step)
   output : Tensor(out)
   infer_meta :
-    func : ArangeTensorInferMeta
+    func : ArangeTensorInferMetaLegacy
   kernel :
     func : arange_tensor
   data_transform :
@@ -417,6 +417,19 @@
     force_backend : force_cpu
   traits : paddle::dialect::ForwardOnlyTrait
 
+- op : group_norm
+  args : (Tensor x, Tensor scale, Tensor bias, float epsilon = 1e-5, int groups = -1, str data_format = "NCHW")
+  output : Tensor(y), Tensor(mean), Tensor(variance)
+  infer_meta :
+    func : GroupNormInferMeta
+    spmd_rule : GroupNormInferSpmd
+  kernel :
+    func : group_norm
+  optional : scale, bias
+  intermediate : mean, variance
+  backward : group_norm_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+
 - op : hardswish
   args : (Tensor x, float threshold = 6.0f, float scale = 6.0f, float offset = 3.0f)
   output : Tensor(out)
@@ -448,6 +461,20 @@
   kernel :
     func : kthvalue
   backward : kthvalue_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+
+- op : layer_norm
+  args : (Tensor x, Tensor scale, Tensor bias, float epsilon = 1e-5, int begin_norm_axis = 1)
+  output : Tensor(out), Tensor(mean), Tensor(variance)
+  infer_meta :
+    func : LayerNormInferMeta
+    spmd_rule : LayerNormInferSpmd
+  kernel :
+    func : layer_norm
+    data_type : x
+  backward : layer_norm_grad
+  intermediate : mean, variance
+  optional : scale, bias
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : leaky_relu
@@ -733,6 +760,17 @@
     data_type : x
   traits : paddle::dialect::ForwardOnlyTrait
 
+- op : p_norm
+  args : (Tensor x,  double porder=2,  int axis=-1,  float epsilon=1.0e-12f,  bool keepdim=false,  bool asvector=false)
+  output : Tensor(out)
+  infer_meta :
+    func : PNormInferMeta
+    spmd_rule: PNormInferSpmd
+  kernel :
+    func : p_norm
+  backward : p_norm_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+
 - op : p_recv
   args : (int ring_id = 0, int peer = 0, DataType dtype = DataType::FLOAT32, int[] out_shape = {}, bool dynamic_shape = false)
   output : Tensor(out)
@@ -862,7 +900,7 @@
   args : (Tensor start, Tensor end, Tensor step)
   output : Tensor(out)
   infer_meta :
-    func : RangeTensorInferMeta
+    func : RangeTensorInferMetaLegacy
   kernel :
     func : range_tensor
   data_transform :

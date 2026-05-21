@@ -39,15 +39,15 @@ class PirInterpreter : public InterpreterBaseImpl {
                           InstructionSchedulingPriorityLess>;
 
  public:
-  PirInterpreter(const phi::Place& place,
+  PirInterpreter(const Place& place,
                  const std::vector<std::string>& fetch_var_names,
-                 const ::pir::Block* ir_block,
+                 const pir::Block* ir_block,
                  Scope* scope,
                  const ExecutionConfig& execution_config = ExecutionConfig());
 
-  PirInterpreter(const phi::Place& place,
+  PirInterpreter(const Place& place,
                  const std::vector<std::string>& fetch_var_names,
-                 const ::pir::Block* ir_block,
+                 const pir::Block* ir_block,
                  Scope* scope,
                  std::shared_ptr<ValueExecutionInfo> value_exe_info,
                  const ExecutionConfig& execution_config = ExecutionConfig());
@@ -94,7 +94,7 @@ class PirInterpreter : public InterpreterBaseImpl {
 
   Scope* InnerScope() const;
 
-  const phi::Place& GetPlace() const override { return place_; }
+  const Place& GetPlace() const override { return place_; }
 
   void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) override {}
 
@@ -108,7 +108,7 @@ class PirInterpreter : public InterpreterBaseImpl {
     pir_input_hookfuncs_ = hookfuncs;
   }
 
-  std::string GetNameByValue(::pir::Value value) const;
+  std::string GetNameByValue(pir::Value value) const;
 
   // Only for debug
   Variable* DebugVar(const std::string& name) const override;
@@ -169,7 +169,7 @@ class PirInterpreter : public InterpreterBaseImpl {
   // Note(sonder): share the op dependency and event analysis procedure.
   bool is_shared_results_build_{false};
 
-  const phi::Place place_;
+  const Place place_;
 
   // from variable scope
 
@@ -251,7 +251,7 @@ class PirInterpreter : public InterpreterBaseImpl {
 
   void RecordMemcpyD2H(InstructionBase* instr_node);
 
-  ::pir::Value GetValueByName(const std::string& var_name);
+  pir::Value GetValueByName(const std::string& var_name);
 
   void CheckGC(InstructionBase* instr);
 
@@ -265,9 +265,9 @@ class PirInterpreter : public InterpreterBaseImpl {
 
   InstructionSchedulingPriorityLess ir_instruction_scheduling_priority_less;
 
-  const ::pir::Block* ir_block_{nullptr};
+  const pir::Block* ir_block_{nullptr};
 
-  std::unordered_map<::pir::Block*, PirInterpreter*> sub_blocks_;  // Not owned
+  std::unordered_map<pir::Block*, PirInterpreter*> sub_blocks_;  // Not owned
 
   std::vector<std::unique_ptr<InstructionBase>> vec_instruction_base_;
 

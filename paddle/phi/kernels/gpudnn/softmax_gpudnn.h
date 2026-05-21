@@ -100,7 +100,7 @@ inline int CalcBlockSize(int vec_size, uint64_t dim_size) {
   }
 
   while (block_size < (max_block_size)) block_size *= 2;
-  block_size = std::max(block_size, static_cast<uint64_t>(32));
+  block_size = std::max(block_size, static_cast<uint64_t>(PADDLE_WARP_SIZE));
   return block_size;
 }
 
@@ -130,39 +130,118 @@ __device__ __forceinline__ void WarpReduceMax(T* sum) {
   }
 }
 
+// Shuffle-down warp reduction (vs XOR in WarpReduceSum/Max).
+template <typename T, int BatchSize, int WarpSize>
+__device__ __forceinline__ void WarpReduceSumDown(T* sum) {
+#pragma unroll
+  for (int offset = WarpSize / 2; offset > 0; offset /= 2) {
+#pragma unroll
+    for (int i = 0; i < BatchSize; ++i) {
+      T sum_val =
+          phi::backends::gpu::CudaShuffleDownSync(0xFFFFFFFF, sum[i], offset);
+      sum[i] = sum[i] + sum_val;
+    }
+  }
+}
+
+template <typename T, int BatchSize, int WarpSize>
+__device__ __forceinline__ void WarpReduceMaxDown(T* sum) {
+#pragma unroll
+  for (int offset = WarpSize / 2; offset > 0; offset /= 2) {
+#pragma unroll
+    for (int i = 0; i < BatchSize; ++i) {
+      T max_val =
+          phi::backends::gpu::CudaShuffleDownSync(0xFFFFFFFF, sum[i], offset);
+      sum[i] = max(sum[i], max_val);
+    }
+  }
+}
+
 template <typename T>
 __inline__ __device__ void BlockReduceMax(T* val) {
-  static __shared__ T shared[32];
-  int lane = threadIdx.x & 0x1f;
-  int wid = threadIdx.x >> 5;
+  static __shared__ T shared[PADDLE_WARP_SIZE];
+  int lane = threadIdx.x & PADDLE_WARP_MASK;
+  int wid = threadIdx.x >> PADDLE_WARP_SHIFT;
 
-  WarpReduceMax<T, 1, 32>(val);
+  WarpReduceMax<T, 1, PADDLE_WARP_SIZE>(val);
 
   if (lane == 0) shared[wid] = *val;
 
   __syncthreads();
 
-  int block_span = (blockDim.x + warpSize - 1) >> 5;
+  int block_span = (blockDim.x + warpSize - 1) >> PADDLE_WARP_SHIFT;
   *val = (lane < block_span) ? shared[lane] : -1e10f;
-  WarpReduceMax<T, 1, 32>(val);
+  WarpReduceMax<T, 1, PADDLE_WARP_SIZE>(val);
 }
 
 template <typename T>
 __inline__ __device__ void BlockReduceSum(T* val) {
-  static __shared__ T shared[32];
-  int lane = threadIdx.x & 0x1f;
-  int wid = threadIdx.x >> 5;
+  static __shared__ T shared[PADDLE_WARP_SIZE];
+  int lane = threadIdx.x & PADDLE_WARP_MASK;
+  int wid = threadIdx.x >> PADDLE_WARP_SHIFT;
 
-  WarpReduceSum<T, 1, 32>(val);
+  WarpReduceSum<T, 1, PADDLE_WARP_SIZE>(val);
 
   __syncthreads();
   if (lane == 0) shared[wid] = *val;
 
   __syncthreads();
 
-  int block_span = (blockDim.x + warpSize - 1) >> 5;
+  int block_span = (blockDim.x + warpSize - 1) >> PADDLE_WARP_SHIFT;
   *val = (lane < block_span) ? shared[lane] : static_cast<T>(0.0f);
-  WarpReduceSum<T, 1, 32>(val);
+  WarpReduceSum<T, 1, PADDLE_WARP_SIZE>(val);
+}
+
+// Block reduction using shuffle-down with broadcast to all threads.
+template <typename T>
+__inline__ __device__ void BlockReduceMaxDown(T* val) {
+  static __shared__ T shared[PADDLE_WARP_SIZE];
+  int lane = threadIdx.x & PADDLE_WARP_MASK;
+  int wid = threadIdx.x >> PADDLE_WARP_SHIFT;
+
+  WarpReduceMaxDown<T, 1, PADDLE_WARP_SIZE>(val);
+
+  if (lane == 0) shared[wid] = *val;
+
+  __syncthreads();
+
+  int block_span = (blockDim.x + warpSize - 1) >> PADDLE_WARP_SHIFT;
+  *val = (lane < block_span) ? shared[lane] : -1e10f;
+  if (wid == 0) {
+    WarpReduceMaxDown<T, 1, PADDLE_WARP_SIZE>(val);
+  }
+  // Broadcast final result from thread 0 to all threads
+  if (threadIdx.x == 0) {
+    shared[0] = *val;
+  }
+  __syncthreads();
+  *val = shared[0];
+}
+
+template <typename T>
+__inline__ __device__ void BlockReduceSumDown(T* val) {
+  static __shared__ T shared[PADDLE_WARP_SIZE];
+  int lane = threadIdx.x & PADDLE_WARP_MASK;
+  int wid = threadIdx.x >> PADDLE_WARP_SHIFT;
+
+  WarpReduceSumDown<T, 1, PADDLE_WARP_SIZE>(val);
+
+  __syncthreads();
+  if (lane == 0) shared[wid] = *val;
+
+  __syncthreads();
+
+  int block_span = (blockDim.x + warpSize - 1) >> PADDLE_WARP_SHIFT;
+  *val = (lane < block_span) ? shared[lane] : static_cast<T>(0.0f);
+  if (wid == 0) {
+    WarpReduceSumDown<T, 1, PADDLE_WARP_SIZE>(val);
+  }
+  // Broadcast final result from thread 0 to all threads
+  if (threadIdx.x == 0) {
+    shared[0] = *val;
+  }
+  __syncthreads();
+  *val = shared[0];
 }
 
 template <typename Tx, typename Ty = Tx>
@@ -294,6 +373,15 @@ struct LogSoftmaxForwardFunctor {
   HOSTDEVICE inline LogSoftmaxForwardFunctor(Tx max, Tx sum)
       : max(max), log_sum(std::log(sum)) {}
 
+  // Constructor with pre-computed log_sum for use when log(sum) was computed
+  // in higher precision (e.g. double) externally. The tag struct disambiguates
+  // from the (max, sum) constructor above.
+  struct PrecomputedLogSum {};
+  HOSTDEVICE inline LogSoftmaxForwardFunctor(Tx max,
+                                             Tx log_sum_value,
+                                             PrecomputedLogSum)
+      : max(max), log_sum(log_sum_value) {}
+
   HOSTDEVICE inline Ty operator()(const Tx& x) const {
     return static_cast<Ty>(x - max - log_sum);
   }
@@ -338,7 +426,7 @@ ThreadVecReduce(const T* data,
                 const int shift,
                 const Reduction<T, AccT>& functor,
                 AccT default_value) {
-  using VecT = phi::AlignedVector<T, VecSize>;
+  using VecT = AlignedVector<T, VecSize>;
   AccT thread_val = default_value;
 
   // for memory align, handle the unaligned data in first block.
@@ -383,7 +471,7 @@ __device__ __forceinline__ void ThreadVecWriteVec(T* out,
                                                   IndexType dim_size,
                                                   const int shift,
                                                   Reduction<AccT, T> functor) {
-  using VecT = phi::AlignedVector<T, VecSize>;
+  using VecT = AlignedVector<T, VecSize>;
 
   // for memory align, handle the unaligned data in first block.
   IndexType offset = threadIdx.x;
@@ -457,7 +545,7 @@ __global__ void KeMatrixSoftmaxForward(T* softmax,
                                        IndexType dim_size) {
   constexpr int kVecSize =
       MaxWithOne<MATRIX_SOFTMAX_ALIGN_BYTES / sizeof(T)>::kValue;
-  using VecT = phi::AlignedVector<T, kVecSize>;
+  using VecT = AlignedVector<T, kVecSize>;
 
   uint64_t bid = blockIdx.x;
   T* batch_input = const_cast<T*>(src) + (uint64_t)bid * dim_size;
@@ -531,11 +619,12 @@ __global__ void WarpSoftmaxForward(T* softmax,
                                    const IndexType stride,
                                    const IndexType element_count) {
   constexpr IndexType kDimCeil = 1 << Log2Elements;
-  constexpr IndexType kWarpSize = (kDimCeil < 32) ? kDimCeil : 32;
+  constexpr IndexType kWarpSize =
+      (kDimCeil < PADDLE_WARP_SIZE) ? kDimCeil : PADDLE_WARP_SIZE;
   constexpr IndexType kVSize = sizeof(VecT) / sizeof(T);
   constexpr IndexType kLoops = kDimCeil / kWarpSize;
   constexpr IndexType kLoopsV = (kLoops >= kVSize) ? (kLoops / kVSize) : 1;
-  constexpr IndexType kBatchSize = (kDimCeil <= 32) ? 2 : 1;
+  constexpr IndexType kBatchSize = (kDimCeil <= PADDLE_WARP_SIZE) ? 2 : 1;
   IndexType first_batch =
       (static_cast<IndexType>(blockDim.y) * blockIdx.x + threadIdx.y) *
       kBatchSize;
@@ -652,9 +741,10 @@ __global__ void WarpSoftmaxBackward(T* dst,
                                     IndexType element_count) {
   constexpr IndexType kVSize = sizeof(VecT) / sizeof(T);
   constexpr IndexType kDimCeil = 1 << Log2Elements;
-  constexpr IndexType kWarpSize = (kDimCeil < 32) ? kDimCeil : 32;
+  constexpr IndexType kWarpSize =
+      (kDimCeil < PADDLE_WARP_SIZE) ? kDimCeil : PADDLE_WARP_SIZE;
   constexpr IndexType kLoops = kDimCeil / kWarpSize;
-  constexpr IndexType kBatchSize = (kDimCeil <= 128) ? 2 : 1;
+  constexpr IndexType kBatchSize = (kDimCeil <= PADDLE_WARP_SIZE * 4) ? 2 : 1;
   constexpr IndexType kLoopsV = (kLoops >= kVSize) ? (kLoops / kVSize) : 1;
   IndexType element_count_v = element_count / kVSize;
   IndexType first_batch =
@@ -767,7 +857,7 @@ __global__ void WarpSoftmaxBackward(T* dst,
     break;
 
 /*
-  Wrapper of softmax formward with template instantiation on size of input.
+  Wrapper of softmax forward with template instantiation on size of input.
 */
 template <typename T, typename VecT, typename IndexType, bool LogMode>
 void SwitchWarpSoftmaxForward(const IndexType blocks,
@@ -873,7 +963,7 @@ static void GetBlockDim(int64_t mid_dim, int64_t low_dim, dim3* block) {
   constexpr int max_num_threads = 1024;
   int64_t block_x = int64_t(1) << Log2Ceil(low_dim);
   int64_t block_y = int64_t(1) << Log2Ceil(mid_dim);
-  block->x = std::min<int64_t>(block_x, 32);
+  block->x = std::min<int64_t>(block_x, PADDLE_WARP_SIZE);
   block->y = std::min<int64_t>(block_y, max_num_threads / block->x);
   block->x = std::min<int64_t>(block_x, max_num_threads / block->y);
 }
@@ -1265,6 +1355,9 @@ template <typename T>
 bool UseCudnnSoftmax(const GPUContext& dev_ctx,
                      int64_t softmax_dim,
                      bool last_dim) {
+  if (FLAGS_use_accuracy_compatible_kernel) {
+    return false;
+  }
   bool cudnn_available = dev_ctx.cudnn_handle();
   if (!dev_ctx.cudnn_handle()) {
     if (std::is_same<T, phi::bfloat16>::value) {
@@ -1386,7 +1479,7 @@ inline dim3 SoftMaxForwardGetBlockSize(uint64_t dim_size) {
   uint64_t block_size = 1;
   uint64_t max_block_size = std::min(dim_size, static_cast<uint64_t>(1024));
 
-  int warp_size = 32;
+  int warp_size = PADDLE_WARP_SIZE;
   if (max_block_size % warp_size == 0) {
     block_size = max_block_size;
   } else {
@@ -1452,13 +1545,13 @@ __device__ __forceinline__ AccT blockReduce(AccT* shared_mem,
 
   // Warp 0 is responsible for reducing the partial results produced by the
   // other warps.
-  uint32_t mask = (((uint64_t)1) << (blockDim.x / 32)) - 1;
-  if (threadIdx.x < 32) {
-    int lane = threadIdx.x % 32;
-    if (lane < blockDim.x / 32) {
+  uint32_t mask = (((uint64_t)1) << (blockDim.x / PADDLE_WARP_SIZE)) - 1;
+  if (threadIdx.x < PADDLE_WARP_SIZE) {
+    int lane = threadIdx.x % PADDLE_WARP_SIZE;
+    if (lane < blockDim.x / PADDLE_WARP_SIZE) {
 #pragma unroll
-      for (int i = 0; i < 32; ++i) {
-        warpVal = r(warpVal, shared_mem[lane * 32 + i]);
+      for (int i = 0; i < PADDLE_WARP_SIZE; ++i) {
+        warpVal = r(warpVal, shared_mem[lane * PADDLE_WARP_SIZE + i]);
       }
 #if !defined(USE_ROCM)
       __syncwarp(mask);
@@ -1474,7 +1567,7 @@ __device__ __forceinline__ AccT blockReduce(AccT* shared_mem,
   AccT blockVal = defaultVal;
 
   if (threadIdx.x == 0) {
-    for (int i = 0; i < blockDim.x / 32; ++i) {
+    for (int i = 0; i < blockDim.x / PADDLE_WARP_SIZE; ++i) {
       blockVal = r(blockVal, shared_mem[i]);
     }
     shared_mem[0] = blockVal;
@@ -1525,8 +1618,8 @@ __device__ __forceinline__ void WriteResultsVectorized(
     const T* input,
     T* output,
     Function<T, AccT, T> function) {
-  using LoadT = phi::AlignedVector<T, VecSize>;
-  using StoreT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
+  using StoreT = AlignedVector<T, VecSize>;
 
   int offset = threadIdx.x;
 
@@ -1601,8 +1694,8 @@ __device__ __forceinline__ void WriteResultsVectorized(
     const T* output,
     const T* gradOut,
     Function<T, AccT, T> function) {
-  using gradInputT = phi::AlignedVector<T, VecSize>;
-  using outputT = phi::AlignedVector<T, VecSize>;
+  using gradInputT = AlignedVector<T, VecSize>;
+  using outputT = AlignedVector<T, VecSize>;
 
   IndexType offset = threadIdx.x;
 
@@ -1723,8 +1816,7 @@ __global__ void SoftMaxForwardReg(T* output,
     }
   }
 
-  // Reduce to the Max for block
-  BlockReduceMax<AccT>(&threadMax);
+  BlockReduceMaxDown<AccT>(&threadMax);
   AccT max_k = threadMax;
 
   SumExpFunctor<T, AccT> sumExpFunc(max_k);
@@ -1736,7 +1828,7 @@ __global__ void SoftMaxForwardReg(T* output,
       threadExp = sumExpFunc(threadExp, reg[reg_idx]);
     }
   }
-  BlockReduceSum<AccT>(&threadExp);
+  BlockReduceSumDown<AccT>(&threadExp);
   AccT sumAll = threadExp;
 
   Function<T, AccT, T> function(max_k, sumAll);
@@ -1770,24 +1862,22 @@ __global__ void SoftMaxForward(T* output, const T* input, IndexType classes) {
   const IndexType output_shift =
       ((uint64_t)output) % SOFTMAX_ALIGN_BYTES / sizeof(T);
 
-  // max
   AccT threadMax = ThreadVecReduce<MaxFunctor, T, AccT, IndexType, VecSize>(
       input,
       classes,
       static_cast<IndexType>(shift),
       MaxFunctor<T, AccT>(),
       std::numeric_limits<AccT>::lowest());
-  BlockReduceMax<AccT>(&threadMax);
+  BlockReduceMaxDown<AccT>(&threadMax);
   AccT max_k = threadMax;
 
-  // reduce all values
   AccT threadExp = ThreadVecReduce<SumExpFunctor, T, AccT, IndexType, VecSize>(
       input,
       classes,
       static_cast<IndexType>(shift),
       SumExpFunctor<T, AccT>(max_k),
       static_cast<AccT>(0.));
-  BlockReduceSum<AccT>(&threadExp);
+  BlockReduceSumDown<AccT>(&threadExp);
   AccT sumAll = threadExp;
 
   Function<T, AccT, T> function(max_k, sumAll);
@@ -1812,8 +1902,8 @@ __global__ void SoftMaxBackward(T* gradInput,
                                 const T* output,
                                 const T* gradOut,
                                 IndexType classes) {
-  using LoadT = phi::AlignedVector<T, VecSize>;
-  using StoreT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
+  using StoreT = AlignedVector<T, VecSize>;
 
   extern __shared__ unsigned char shared_mem[];
   auto sdata = reinterpret_cast<AccT*>(shared_mem);
@@ -1875,7 +1965,7 @@ __global__ void SoftMaxForwardSmem(T* output,
   auto smem_reduction_cache =
       reinterpret_cast<AccT*>(shared_mem + classes * sizeof(T));
 
-  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
   const LoadT* const input_vec_ptr = reinterpret_cast<const LoadT*>(input);
   LoadT* const smem_input_cache_vec_ptr =
       reinterpret_cast<LoadT*>(smem_input_cache);
@@ -1894,7 +1984,7 @@ __global__ void SoftMaxForwardSmem(T* output,
     }
   }
 
-  BlockReduceMax<AccT>(&threadMax);
+  BlockReduceMaxDown<AccT>(&threadMax);
   AccT max_k = threadMax;
 
   // Reload inputs from shared memory to compute the sum. The previous reduction
@@ -1910,13 +2000,13 @@ __global__ void SoftMaxForwardSmem(T* output,
     }
   }
 
-  BlockReduceSum<AccT>(&threadExp);
+  BlockReduceSumDown<AccT>(&threadExp);
   AccT sumAll = threadExp;
 
   Function<T, AccT, T> function(max_k, sumAll);
 
   // Use vectorized stores to write the output.
-  using StoreT = phi::AlignedVector<T, VecSize>;
+  using StoreT = AlignedVector<T, VecSize>;
   StoreT* output_vec_ptr = reinterpret_cast<StoreT*>(output);
   for (IndexType offset = threadIdx.x; offset * VecSize < classes;
        offset += blockDim.x) {
@@ -1955,7 +2045,7 @@ __global__ void SoftMaxBackwardSmem(T* gradInput,
   gradOut += static_cast<int64_t>(blockIdx.x) * classes;
 
   AccT threadSum = 0;
-  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadT = AlignedVector<T, VecSize>;
   const LoadT* const gradOutput_vec_ptr =
       reinterpret_cast<const LoadT*>(gradOut);
   LoadT* const smem_gradOutput_cache_vec_ptr =
@@ -1983,7 +2073,7 @@ __global__ void SoftMaxBackwardSmem(T* gradInput,
   Function<T, AccT, T> function(sum_k);
 
   // Use vectorized stores to write the output.
-  using StoreT = phi::AlignedVector<T, VecSize>;
+  using StoreT = AlignedVector<T, VecSize>;
   StoreT* gradInput_vec_ptr = reinterpret_cast<StoreT*>(gradInput);
   const LoadT* const output_vec_ptr = reinterpret_cast<const LoadT*>(output);
   for (int32_t offset = threadIdx.x; offset * VecSize < classes;
@@ -2132,10 +2222,12 @@ __global__ void softmax_warp_forward(T* dst,
   // warp_size_t and kWarpBatchSize must match the return values
   // batches_per_warp and warp_size of the warp_softmax_forward_kernel method.
   constexpr IndexType next_power_of_two = 1 << log2_elements;
-  constexpr IndexType warp_size_t =
-      (next_power_of_two < 32) ? next_power_of_two : 32;
+  constexpr IndexType warp_size_t = (next_power_of_two < PADDLE_WARP_SIZE)
+                                        ? next_power_of_two
+                                        : PADDLE_WARP_SIZE;
   constexpr IndexType kWarpIterationSize = next_power_of_two / warp_size_t;
-  constexpr IndexType kWarpBatchSize = (next_power_of_two <= 128) ? 2 : 1;
+  constexpr IndexType kWarpBatchSize =
+      (next_power_of_two <= PADDLE_WARP_SIZE * 4) ? 2 : 1;
 
   IndexType first_batch =
       (static_cast<IndexType>(blockDim.y) * static_cast<IndexType>(blockIdx.x) +
@@ -2244,10 +2336,12 @@ __global__ void softmax_warp_backward(T* gradInput,
   // warp_size_t and kWarpBatchSize must match the return values
   // batches_per_warp and warp_size of the warp_softmax_backward_kernel method.
   constexpr IndexType next_power_of_two = 1 << log2_elements;
-  constexpr IndexType warp_size_t =
-      (next_power_of_two < 32) ? next_power_of_two : 32;
+  constexpr IndexType warp_size_t = (next_power_of_two < PADDLE_WARP_SIZE)
+                                        ? next_power_of_two
+                                        : PADDLE_WARP_SIZE;
   constexpr IndexType kWarpIterationSize = next_power_of_two / warp_size_t;
-  constexpr IndexType kWarpBatchSize = (next_power_of_two <= 128) ? 2 : 1;
+  constexpr IndexType kWarpBatchSize =
+      (next_power_of_two <= PADDLE_WARP_SIZE * 4) ? 2 : 1;
 
   IndexType first_batch =
       (static_cast<IndexType>(blockDim.y) * static_cast<IndexType>(blockIdx.x) +
@@ -2334,14 +2428,17 @@ void dispatch_softmax_forward(const GPUContext& dev_ctx,
 
   // This value must match the warp_size_t constexpr value computed inside
   // softmax_warp_forward.
-  IndexType warp_size = (next_power_of_two < 32) ? next_power_of_two : 32;
+  IndexType warp_size = (next_power_of_two < PADDLE_WARP_SIZE)
+                            ? next_power_of_two
+                            : PADDLE_WARP_SIZE;
 
   // This value must match the kWarpBatchSize constexpr value computed inside
   // softmax_warp_forward.
-  IndexType batches_per_warp = (next_power_of_two <= 128) ? 2 : 1;
+  IndexType batches_per_warp =
+      (next_power_of_two <= PADDLE_WARP_SIZE * 4) ? 2 : 1;
 
   // Use 128 threads per block to maximize GPU utilization.
-  constexpr IndexType threads_per_block = 128;
+  constexpr IndexType threads_per_block = PADDLE_WARP_SIZE * 4;
 
   IndexType warps_per_block = (threads_per_block / warp_size);
   IndexType batches_per_block = warps_per_block * batches_per_warp;
@@ -2388,9 +2485,12 @@ void dispatch_softmax_backward(const GPUContext& dev_ctx,
   IndexType log2_elements = Log2Ceil(softmax_elements);
   const IndexType next_power_of_two = 1 << log2_elements;
 
-  IndexType warp_size = (next_power_of_two < 32) ? next_power_of_two : 32;
-  IndexType batches_per_warp = (next_power_of_two <= 128) ? 2 : 1;
-  constexpr IndexType threads_per_block = 128;
+  IndexType warp_size = (next_power_of_two < PADDLE_WARP_SIZE)
+                            ? next_power_of_two
+                            : PADDLE_WARP_SIZE;
+  IndexType batches_per_warp =
+      (next_power_of_two <= PADDLE_WARP_SIZE * 4) ? 2 : 1;
+  constexpr IndexType threads_per_block = PADDLE_WARP_SIZE * 4;
 
   IndexType warps_per_block = (threads_per_block / warp_size);
   IndexType batches_per_block = warps_per_block * batches_per_warp;
@@ -2437,7 +2537,7 @@ void dispatch_host_softmax_forward(const GPUContext& dev_ctx,
                                    T* out_data) {
   constexpr IndexType VecSize = sizeof(float4) / sizeof(T);
   dim3 block = SoftMaxForwardGetBlockSize(dim_size);
-  size_t smem_reduction_size = block.x / 32 * sizeof(AccT);
+  size_t smem_reduction_size = block.x / PADDLE_WARP_SIZE * sizeof(AccT);
   auto max_elements_per_smem =
       (GetDeviceProp()->sharedMemPerBlock - smem_reduction_size) / sizeof(T);
 
@@ -2496,7 +2596,7 @@ void dispatch_host_softmax_backward(const GPUContext& dev_ctx,
   constexpr int VecSize = sizeof(float4) / sizeof(T);
   dim3 block = dim3(CalcBlockSize(VecSize, dim_size));
 
-  size_t smem_reduction_size = block.x / 32 * sizeof(AccT);
+  size_t smem_reduction_size = block.x / PADDLE_WARP_SIZE * sizeof(AccT);
   auto max_elements_per_smem =
       (GetDeviceProp()->sharedMemPerBlock - smem_reduction_size) / sizeof(T);
   bool can_use_smem = static_cast<size_t>(dim_size) < max_elements_per_smem;
@@ -2663,11 +2763,12 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
         D > std::numeric_limits<int32_t>::max()) {
       int dim_log2 = static_cast<int>(Log2Ceil(dim));
       IndexType dim_ceil = 1 << dim_log2;
-      int warp_size = (dim_ceil < 32) ? dim_ceil : 32;
-      int batches_per_warp = (dim_ceil <= 32) ? 2 : 1;
+      int warp_size =
+          (dim_ceil < PADDLE_WARP_SIZE) ? dim_ceil : PADDLE_WARP_SIZE;
+      int batches_per_warp = (dim_ceil <= PADDLE_WARP_SIZE) ? 2 : 1;
 
       // use 128 threads per block to maximize gpu utilization
-      constexpr int threads_per_block = 128;
+      constexpr int threads_per_block = 4 * PADDLE_WARP_SIZE;
 
       int warps_per_block = (threads_per_block / warp_size);
       int batches_per_block = warps_per_block * batches_per_warp;
@@ -2802,10 +2903,11 @@ void SoftmaxBackwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
         D > std::numeric_limits<int32_t>::max()) {
       int dim_log2 = Log2Ceil(dim);
       IndexType dim_ceil = 1 << dim_log2;
-      int warp_size = (dim_ceil < 32) ? dim_ceil : 32;
-      int batches_per_warp = (dim_ceil <= 128) ? 2 : 1;
+      int warp_size =
+          (dim_ceil < PADDLE_WARP_SIZE) ? dim_ceil : PADDLE_WARP_SIZE;
+      int batches_per_warp = (dim_ceil <= PADDLE_WARP_SIZE * 4) ? 2 : 1;
 
-      constexpr int threads_per_block = 128;
+      constexpr int threads_per_block = 4 * PADDLE_WARP_SIZE;
 
       int warps_per_block = (threads_per_block / warp_size);
       int batches_per_block = warps_per_block * batches_per_warp;

@@ -44,8 +44,7 @@ struct Block {
 };
 
 struct BlockAllocation : public Allocation {
-  explicit BlockAllocation(const std::list<Block>::iterator& it,
-                           phi::Place place)
+  explicit BlockAllocation(const std::list<Block>::iterator& it, Place place)
       : Allocation(it->ptr_, it->size_, place), block_it_(it) {
     it->allocation_ = this;
   }

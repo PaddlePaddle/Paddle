@@ -181,7 +181,7 @@ template <typename T, typename Context>
 void ChunkEvalKernel(const Context& dev_ctx,
                      const DenseTensor& inference,
                      const DenseTensor& label,
-                     const paddle::optional<DenseTensor>& seq_length,
+                     const optional<DenseTensor>& seq_length,
                      int num_chunk_types,
                      const std::string& chunk_scheme,
                      const std::vector<int>& excluded_chunk_types,

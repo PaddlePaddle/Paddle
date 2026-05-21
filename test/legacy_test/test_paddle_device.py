@@ -25,20 +25,25 @@ class TestDevice(unittest.TestCase):
         self.assertEqual(d.type, "cpu")
         self.assertIsNone(d.index)
 
+        self.assertEqual(repr(d), "device(type='cpu')")
+
+        self.assertEqual(repr(Device('cuda:0')), "device(type='cuda', index=0)")
+
         d = Device("cuda")
-        self.assertEqual(str(d), "cuda:0")
+        self.assertEqual(str(d), "cuda")
         self.assertEqual(d.type, "cuda")
-        self.assertEqual(d.index, 0)
+        self.assertEqual(d.index, None)
+        self.assertEqual(repr(d), "device(type='cuda')")
 
         d = Device("gpu")
-        self.assertEqual(str(d), "gpu:0")
+        self.assertEqual(str(d), "gpu")
         self.assertEqual(d.type, "gpu")
-        self.assertEqual(d.index, 0)
+        self.assertEqual(d.index, None)
 
         d = Device("xpu")
-        self.assertEqual(str(d), "xpu:0")
+        self.assertEqual(str(d), "xpu")
         self.assertEqual(d.type, "xpu")
-        self.assertEqual(d.index, 0)
+        self.assertEqual(d.index, None)
 
     def test_str_with_index(self):
         d = Device("cuda", 1)
@@ -98,6 +103,24 @@ class TestDevice(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             Device("abc:0")
+
+    def test_getattr_forward_to_place(self):
+        # Test that unknown attributes are forwarded to paddle.Place
+        d_cpu = Device("cpu")
+        self.assertTrue(d_cpu.is_cpu_place())
+        self.assertFalse(d_cpu.is_gpu_place())
+        self.assertFalse(d_cpu.is_xpu_place())
+
+        # Test CUDA device methods
+        if paddle.device.is_available() and paddle.is_compiled_with_cuda():
+            d_cuda = Device("cuda:0")
+            self.assertFalse(d_cuda.is_cpu_place())
+            self.assertTrue(d_cuda.is_gpu_place())
+            self.assertEqual(d_cuda.gpu_device_id(), 0)
+
+            d_gpu = Device("gpu:0")
+            self.assertTrue(d_gpu.is_gpu_place())
+            self.assertEqual(d_gpu.gpu_device_id(), 0)
 
 
 if __name__ == "__main__":

@@ -41,19 +41,19 @@ void ScatterGradKernel(const Context &dev_ctx,
   }
   const auto &index_type = index.dtype();
   bool index_type_match =
-      index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;
+      index_type == DataType::INT32 || index_type == DataType::INT64;
   PADDLE_ENFORCE_EQ(index_type_match,
                     true,
                     common::errors::InvalidArgument(
                         "scatter_op index holds the wrong type, it holds [%s],"
                         "but desires to be [%s] or [%s]",
                         index_type,
-                        phi::DataType::INT32,
-                        phi::DataType::INT64));
+                        DataType::INT32,
+                        DataType::INT64));
 
   if (x_grad) {
     Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
-    if (index_type == phi::DataType::INT32) {
+    if (index_type == DataType::INT32) {
       funcs::CPUScatterGradForX<T, int32_t>(dev_ctx, index, x_grad);
     } else {
       funcs::CPUScatterGradForX<T, int64_t>(dev_ctx, index, x_grad);
@@ -63,7 +63,7 @@ void ScatterGradKernel(const Context &dev_ctx,
   if (updates_grad) {
     dev_ctx.template Alloc<T>(updates_grad);
     // Gradient by Gather: dUpdates = dO[Ids]
-    if (index_type == phi::DataType::INT32) {
+    if (index_type == DataType::INT32) {
       funcs::CPUGather<T, int32_t>(dev_ctx, out_grad, index, updates_grad);
     } else {
       funcs::CPUGather<T, int64_t>(dev_ctx, out_grad, index, updates_grad);

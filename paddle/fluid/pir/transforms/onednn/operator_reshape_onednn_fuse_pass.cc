@@ -21,7 +21,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 class FusedTransposeReshapeFusePattern : public paddle::drr::DrrPatternBase {
  private:
   std::string fusable_ops_;
@@ -351,13 +351,13 @@ class TransposeReshapeFusePattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-class OperatorReshapePass : public pir::PatternRewritePass {
+class OperatorReshapePass : public PatternRewritePass {
  public:
   OperatorReshapePass()
-      : pir::PatternRewritePass("operator_reshape_onednn_fuse_pass", 2) {}
+      : PatternRewritePass("operator_reshape_onednn_fuse_pass", 2) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext *context) override {
+    RewritePatternSet ps(context);
     int benefit_idx = 1;
 
     ps.Add(paddle::drr::Create<FcReshapeFusePattern>(
@@ -382,14 +382,10 @@ class OperatorReshapePass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
-
 std::unique_ptr<Pass> CreateOperatorReshapeOneDNNPass() {
   return std::make_unique<OperatorReshapePass>();
 }
 
 }  // namespace pir
 
-REGISTER_IR_PASS(operator_reshape_onednn_fuse_pass, OperatorReshapePass);
+REGISTER_IR_PASS(operator_reshape_onednn_fuse_pass, pir::OperatorReshapePass);

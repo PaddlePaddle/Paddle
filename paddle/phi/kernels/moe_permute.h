@@ -20,7 +20,7 @@ namespace phi {
 template <typename T, typename Context>
 void MoePermuteKernel(const Context &dev_ctx,
                       const DenseTensor &X,
-                      const paddle::optional<DenseTensor> &XScale,
+                      const optional<DenseTensor> &XScale,
                       const DenseTensor &expert_routemap_topk,
                       const DenseTensor &expert_prob_topk,
                       const int num_experts,

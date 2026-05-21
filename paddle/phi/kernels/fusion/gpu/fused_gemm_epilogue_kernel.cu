@@ -77,13 +77,7 @@ void FusedGemmEpilogueKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(out);
     return;
   }
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION < 11060
-  PADDLE_THROW(common::errors::Unimplemented(
-      "The fused_gemm_epilogue operator only support CUDA 11.6 "
-      "or higher version."));
-#endif
-#if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060) || \
-    defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
   dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
   // (M * K) * (K * N)

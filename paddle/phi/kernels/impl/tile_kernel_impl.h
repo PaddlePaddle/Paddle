@@ -41,7 +41,7 @@ void Tile(const Context& dev_ctx,
             "be positive integers, but the value received is %d.",
             repeat_times[i]));
   }
-  auto vec_x_dims = common::vectorize<int64_t>(x_dims);
+  auto vec_x_dims = vectorize<int64_t>(x_dims);
   if (repeat_times.size() < vec_x_dims.size()) {
     int diff = vec_x_dims.size() - repeat_times.size();
     repeat_times.insert(repeat_times.begin(), diff, 1);
@@ -59,15 +59,15 @@ void Tile(const Context& dev_ctx,
           repeat_times.size()));
 
   if (Rank == 0) {
-    Copy<DeviceContext>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
-  Eigen::DSizes<Eigen::DenseIndex, Rank> bcast_dims;
+  Eigen::DSizes<int64_t, Rank> bcast_dims;
   for (size_t i = 0; i < repeat_times.size(); ++i) {
     bcast_dims[i] = repeat_times[i];
   }
 
-  DDim new_x_dims = common::make_ddim(vec_x_dims);
+  DDim new_x_dims = make_ddim(vec_x_dims);
   DDim out_dims(new_x_dims);
   for (size_t i = 0; i < repeat_times.size(); ++i) {
     out_dims[i] *= repeat_times[i];
@@ -80,15 +80,8 @@ void Tile(const Context& dev_ctx,
   auto eigen_out = EigenTensor<T, Rank>::From(*out, out_dims);
   auto& place = *dev_ctx.eigen_device();
 
-  // use 32-bit index to speed up
-  bool use_32bit_index = eigen_out.size() < Eigen::NumTraits<int>::highest();
-  if (use_32bit_index) {
-    funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
-        place, To32BitIndex(eigen_out), To32BitIndex(eigen_x), bcast_dims);
-  } else {
-    funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
-        place, eigen_out, eigen_x, bcast_dims);
-  }
+  funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
+      place, eigen_out, eigen_x, bcast_dims);
 }
 
 template <typename T, typename Context>

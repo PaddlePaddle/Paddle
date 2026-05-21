@@ -23,30 +23,30 @@ namespace distributed {
 
 template <>
 void SplitDenseTensorByNumelWithType(const phi::XPUContext &dev_ctx,
-                                     const phi::DenseTensor &t_in,
-                                     std::vector<phi::DenseTensor> *t_list,
-                                     phi::DataType type) {
+                                     const DenseTensor &t_in,
+                                     std::vector<DenseTensor> *t_list,
+                                     DataType type) {
   switch (type) {
-    case phi::DataType::FLOAT16:
+    case DataType::FLOAT16:
       SplitDenseTensorByNumel<phi::XPUContext, phi::dtype::float16>()(
           dev_ctx, t_in, t_list);
       break;
-    case phi::DataType::BFLOAT16:
+    case DataType::BFLOAT16:
       SplitDenseTensorByNumel<phi::XPUContext, phi::dtype::bfloat16>()(
           dev_ctx, t_in, t_list);
       break;
-    case phi::DataType::FLOAT32:
+    case DataType::FLOAT32:
       SplitDenseTensorByNumel<phi::XPUContext, float>()(dev_ctx, t_in, t_list);
       break;
-    case phi::DataType::INT32:
+    case DataType::INT32:
       SplitDenseTensorByNumel<phi::XPUContext, int32_t>()(
           dev_ctx, t_in, t_list);
       break;
-    case phi::DataType::INT64:
+    case DataType::INT64:
       SplitDenseTensorByNumel<phi::XPUContext, int64_t>()(
           dev_ctx, t_in, t_list);
       break;
-    case phi::DataType::UINT8:
+    case DataType::UINT8:
       SplitDenseTensorByNumel<phi::XPUContext, uint8_t>()(
           dev_ctx, t_in, t_list);
       break;
@@ -57,33 +57,32 @@ void SplitDenseTensorByNumelWithType(const phi::XPUContext &dev_ctx,
 }
 
 template <>
-void ConcatDenseTensorByNumelWithType(
-    const phi::XPUContext &dev_ctx,
-    const std::vector<phi::DenseTensor> &t_list,
-    phi::DenseTensor *p_out,
-    phi::DataType type) {
+void ConcatDenseTensorByNumelWithType(const phi::XPUContext &dev_ctx,
+                                      const std::vector<DenseTensor> &t_list,
+                                      DenseTensor *p_out,
+                                      DataType type) {
   switch (type) {
-    case phi::DataType::FLOAT16:
+    case DataType::FLOAT16:
       ConcatDenseTensorByNumel<phi::XPUContext, phi::dtype::float16>()(
           dev_ctx, t_list, p_out);
       break;
-    case phi::DataType::BFLOAT16:
+    case DataType::BFLOAT16:
       ConcatDenseTensorByNumel<phi::XPUContext, phi::dtype::bfloat16>()(
           dev_ctx, t_list, p_out);
       break;
-    case phi::DataType::FLOAT32:
+    case DataType::FLOAT32:
       ConcatDenseTensorByNumel<phi::XPUContext, float>()(
           dev_ctx, t_list, p_out);
       break;
-    case phi::DataType::INT32:
+    case DataType::INT32:
       ConcatDenseTensorByNumel<phi::XPUContext, int32_t>()(
           dev_ctx, t_list, p_out);
       break;
-    case phi::DataType::INT64:
+    case DataType::INT64:
       ConcatDenseTensorByNumel<phi::XPUContext, int64_t>()(
           dev_ctx, t_list, p_out);
       break;
-    case phi::DataType::UINT8:
+    case DataType::UINT8:
       ConcatDenseTensorByNumel<phi::XPUContext, uint8_t>()(
           dev_ctx, t_list, p_out);
       break;
@@ -94,8 +93,8 @@ void ConcatDenseTensorByNumelWithType(
 }
 
 void ConcatTensorByNumel(const phi::DeviceContext &dev_ctx,
-                         const std::vector<phi::DenseTensor> &tensor_list,
-                         phi::DenseTensor *tensor) {
+                         const std::vector<DenseTensor> &tensor_list,
+                         DenseTensor *tensor) {
   const auto &place = dev_ctx.GetPlace();
   if (phi::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
@@ -116,8 +115,8 @@ void ConcatTensorByNumel(const phi::DeviceContext &dev_ctx,
 }
 
 void SplitTensorByNumel(const phi::DeviceContext &dev_ctx,
-                        const phi::DenseTensor &tensor,
-                        std::vector<phi::DenseTensor> *tensor_list) {
+                        const DenseTensor &tensor,
+                        std::vector<DenseTensor> *tensor_list) {
   const auto &place = dev_ctx.GetPlace();
   if (phi::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU

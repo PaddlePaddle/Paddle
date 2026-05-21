@@ -182,7 +182,7 @@ GradNodeScale::operator()(
           "This indicates an issue with Eager Dygraph Backward logic",
           grads.size()));
   paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize> outs;
-  // 2. Create needed out parttern
+  // 2. Create needed out pattern
   paddle::Tensor out;
   // Apply Gradient Hooks
   if (GradientHooksRegistered()) {

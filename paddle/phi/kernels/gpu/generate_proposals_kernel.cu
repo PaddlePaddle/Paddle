@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <vector>
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -35,22 +36,22 @@ int const kThreadsPerBlock = sizeof(uint64_t) * 8;
 static const double kBBoxClipDefault = std::log(1000.0 / 16.0);
 
 template <typename T>
-static void SortDescending(const phi::GPUContext &dev_ctx,
+static void SortDescending(const GPUContext &dev_ctx,
                            const DenseTensor &value,
                            DenseTensor *value_out,
                            DenseTensor *index_out) {
   int num = static_cast<int>(value.numel());
   DenseTensor index_in_t;
-  index_in_t.Resize(common::make_ddim({num}));
+  index_in_t.Resize({num});
   int *idx_in = dev_ctx.template Alloc<int>(&index_in_t);
-  funcs::ForRange<phi::GPUContext> for_range(dev_ctx, num);
+  funcs::ForRange<GPUContext> for_range(dev_ctx, num);
   for_range(funcs::RangeInitFunctor{0, 1, idx_in});
 
-  index_out->Resize(common::make_ddim({num}));
+  index_out->Resize({num});
   int *idx_out = dev_ctx.template Alloc<int>(index_out);
 
   const T *keys_in = value.data<T>();
-  value_out->Resize(common::make_ddim({num}));
+  value_out->Resize({num});
   T *keys_out = dev_ctx.template Alloc<T>(value_out);
 
   // Determine temporary device storage requirements
@@ -67,7 +68,7 @@ static void SortDescending(const phi::GPUContext &dev_ctx,
                                                     dev_ctx.stream());
   // Allocate temporary storage
   auto place = dev_ctx.GetPlace();
-  auto d_temp_storage = phi::memory_utils::Alloc(place, temp_storage_bytes);
+  auto d_temp_storage = memory_utils::Alloc(place, temp_storage_bytes);
 
   // Run sorting operation
   cub::DeviceRadixSort::SortPairsDescending<T, int>(d_temp_storage->ptr(),
@@ -278,7 +279,7 @@ static __global__ void NMSKernel(const int n_boxes,
 }
 
 template <typename T>
-static void NMS(const phi::GPUContext &dev_ctx,
+static void NMS(const GPUContext &dev_ctx,
                 const DenseTensor &proposals,
                 const DenseTensor &sorted_indices,
                 const T nms_threshold,
@@ -292,10 +293,10 @@ static void NMS(const phi::GPUContext &dev_ctx,
 
   const T *boxes = proposals.data<T>();
   auto place = dev_ctx.GetPlace();
-  auto mask_ptr = phi::memory_utils::Alloc(
-      place,
-      boxes_num * col_blocks * sizeof(uint64_t),
-      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  auto mask_ptr =
+      memory_utils::Alloc(place,
+                          boxes_num * col_blocks * sizeof(uint64_t),
+                          Stream(reinterpret_cast<StreamId>(dev_ctx.stream())));
   uint64_t *mask_dev = reinterpret_cast<uint64_t *>(mask_ptr->ptr());
 
   NMSKernel<<<blocks, threads, 0, dev_ctx.stream()>>>(
@@ -304,6 +305,14 @@ static void NMS(const phi::GPUContext &dev_ctx,
   std::vector<uint64_t> remv(col_blocks);
   memset(&remv[0], 0, sizeof(uint64_t) * col_blocks);
 
+  PADDLE_ENFORCE_EQ(
+      backends::gpu::IsCUDAGraphCapturing(),
+      false,
+      common::errors::InvalidArgument(
+          "GenerateProposals does not support CUDA Graph capture: async D2H "
+          "copy to local vector 'mask_host' will bake the destination address "
+          "into the graph; on replay the vector is re-created at a different "
+          "address, causing a dangling-pointer write."));
   std::vector<uint64_t> mask_host(boxes_num * col_blocks);
   memory_utils::Copy(CPUPlace(),
                      mask_host.data(),
@@ -327,12 +336,14 @@ static void NMS(const phi::GPUContext &dev_ctx,
       }
     }
   }
-  keep_out->Resize(common::make_ddim({num_to_keep}));
+  keep_out->Resize({num_to_keep});
   int *keep = dev_ctx.template Alloc<int>(keep_out);
+  const int *stable_keep = backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      const_cast<int *>(keep_vec.data()), keep_vec.size());
   memory_utils::Copy(place,
                      keep,
                      CPUPlace(),
-                     keep_vec.data(),
+                     stable_keep,
                      sizeof(int) * num_to_keep,
                      dev_ctx.stream());
   dev_ctx.Wait();
@@ -340,7 +351,7 @@ static void NMS(const phi::GPUContext &dev_ctx,
 
 template <typename T>
 static std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
-    const phi::GPUContext &dev_ctx,
+    const GPUContext &dev_ctx,
     const DenseTensor &im_shape,
     const DenseTensor &anchors,
     const DenseTensor &variances,
@@ -358,16 +369,16 @@ static std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
   int64_t num = scores.numel();
   int pre_nms_num = (pre_nms_top_n <= 0 || pre_nms_top_n > num) ? scores.numel()
                                                                 : pre_nms_top_n;
-  scores_sort.Resize(common::make_ddim({pre_nms_num, 1}));
-  index_sort.Resize(common::make_ddim({pre_nms_num, 1}));
+  scores_sort.Resize({pre_nms_num, 1});
+  index_sort.Resize({pre_nms_num, 1});
 
   // 2. box decode and clipping
   DenseTensor proposals;
-  proposals.Resize(common::make_ddim({pre_nms_num, 4}));
+  proposals.Resize({pre_nms_num, 4});
   dev_ctx.template Alloc<T>(&proposals);
 
   {
-    funcs::ForRange<phi::GPUContext> for_range(dev_ctx, pre_nms_num);
+    funcs::ForRange<GPUContext> for_range(dev_ctx, pre_nms_num);
     for_range(BoxDecodeAndClipFunctor<T>{anchors.data<T>(),
                                          bbox_deltas.data<T>(),
                                          variances.data<T>(),
@@ -379,9 +390,9 @@ static std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
 
   // 3. filter
   DenseTensor keep_index, keep_num_t;
-  keep_index.Resize(common::make_ddim({pre_nms_num}));
+  keep_index.Resize({pre_nms_num});
   dev_ctx.template Alloc<int>(&keep_index);
-  keep_num_t.Resize(common::make_ddim({1}));
+  keep_num_t.Resize({1});
   dev_ctx.template Alloc<int>(&keep_num_t);
   min_size = std::max(min_size, 1.0f);
   auto stream = dev_ctx.stream();
@@ -402,23 +413,23 @@ static std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
                      sizeof(int),
                      dev_ctx.stream());
   dev_ctx.Wait();
-  keep_index.Resize(common::make_ddim({keep_num}));
+  keep_index.Resize({keep_num});
 
   DenseTensor scores_filter, proposals_filter;
   // Handle the case when there is no keep index left
   if (keep_num == 0) {
-    funcs::SetConstant<phi::GPUContext, T> set_zero;
-    proposals_filter.Resize(common::make_ddim({1, 4}));
+    funcs::SetConstant<GPUContext, T> set_zero;
+    proposals_filter.Resize({1, 4});
     dev_ctx.template Alloc<T>(&proposals_filter);
-    scores_filter.Resize(common::make_ddim({1, 1}));
+    scores_filter.Resize({1, 1});
     dev_ctx.template Alloc<T>(&scores_filter);
     set_zero(dev_ctx, &proposals_filter, static_cast<T>(0));
     set_zero(dev_ctx, &scores_filter, static_cast<T>(0));
     return std::make_pair(proposals_filter, scores_filter);
   }
-  proposals_filter.Resize(common::make_ddim({keep_num, 4}));
+  proposals_filter.Resize({keep_num, 4});
   dev_ctx.template Alloc<T>(&proposals_filter);
-  scores_filter.Resize(common::make_ddim({keep_num, 1}));
+  scores_filter.Resize({keep_num, 1});
   dev_ctx.template Alloc<T>(&scores_filter);
   funcs::GPUGather<T>(dev_ctx, proposals, keep_index, &proposals_filter);
   funcs::GPUGather<T>(dev_ctx, scores_sort, keep_index, &scores_filter);
@@ -436,13 +447,13 @@ static std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
          &keep_nms,
          pixel_offset);
   if (post_nms_top_n > 0 && post_nms_top_n < keep_nms.numel()) {
-    keep_nms.Resize(common::make_ddim({post_nms_top_n}));
+    keep_nms.Resize({post_nms_top_n});
   }
 
   DenseTensor scores_nms, proposals_nms;
-  proposals_nms.Resize(common::make_ddim({keep_nms.numel(), 4}));
+  proposals_nms.Resize({keep_nms.numel(), 4});
   dev_ctx.template Alloc<T>(&proposals_nms);
-  scores_nms.Resize(common::make_ddim({keep_nms.numel(), 1}));
+  scores_nms.Resize({keep_nms.numel(), 1});
   dev_ctx.template Alloc<T>(&scores_nms);
   funcs::GPUGather<T>(dev_ctx, proposals_filter, keep_nms, &proposals_nms);
   funcs::GPUGather<T>(dev_ctx, scores_filter, keep_nms, &scores_nms);
@@ -484,35 +495,35 @@ void GenerateProposalsKernel(const Context &dev_ctx,
   int64_t h_bbox = bbox_dim[2];
   int64_t w_bbox = bbox_dim[3];
 
-  rpn_rois->Resize(common::make_ddim({bbox_deltas.numel() / 4, 4}));
+  rpn_rois->Resize({bbox_deltas.numel() / 4, 4});
   dev_ctx.template Alloc<T>(rpn_rois);
-  rpn_roi_probs->Resize(common::make_ddim({scores.numel(), 1}));
+  rpn_roi_probs->Resize({scores.numel(), 1});
   dev_ctx.template Alloc<T>(rpn_roi_probs);
 
   if (scores.numel() == 0) {
-    rpn_rois->Resize(common::make_ddim({0, 4}));
+    rpn_rois->Resize({0, 4});
     if (rpn_rois_num != nullptr) {
-      rpn_rois_num->Resize(common::make_ddim({}));
+      rpn_rois_num->Resize({});
       Full<int64_t, Context>(dev_ctx, rpn_rois_num->dims(), 0, rpn_rois_num);
     }
     return;
   }
 
   DenseTensor bbox_deltas_swap, scores_swap;
-  bbox_deltas_swap.Resize(common::make_ddim({num, h_bbox, w_bbox, c_bbox}));
+  bbox_deltas_swap.Resize({num, h_bbox, w_bbox, c_bbox});
   dev_ctx.template Alloc<T>(&bbox_deltas_swap);
-  scores_swap.Resize(common::make_ddim({num, h_score, w_score, c_score}));
+  scores_swap.Resize({num, h_score, w_score, c_score});
   dev_ctx.template Alloc<T>(&scores_swap);
 
-  funcs::Transpose<phi::GPUContext, T, 4> trans;
+  funcs::Transpose<GPUContext, T, 4> trans;
   std::vector<int> axis = {0, 2, 3, 1};
   trans(dev_ctx, bbox_deltas, &bbox_deltas_swap, axis);
   trans(dev_ctx, scores, &scores_swap, axis);
 
   DenseTensor tmp_anchors = anchors;
   DenseTensor tmp_variances = variances;
-  tmp_anchors.Resize(common::make_ddim({tmp_anchors.numel() / 4, 4}));
-  tmp_variances.Resize(common::make_ddim({tmp_variances.numel() / 4, 4}));
+  tmp_anchors.Resize({tmp_anchors.numel() / 4, 4});
+  tmp_variances.Resize({tmp_variances.numel() / 4, 4});
 
   T *rpn_rois_data = rpn_rois->data<T>();
   T *rpn_roi_probs_data = rpn_roi_probs->data<T>();
@@ -529,9 +540,8 @@ void GenerateProposalsKernel(const Context &dev_ctx,
     DenseTensor bbox_deltas_slice = bbox_deltas_swap.Slice(i, i + 1);
     DenseTensor scores_slice = scores_swap.Slice(i, i + 1);
 
-    bbox_deltas_slice.Resize(
-        common::make_ddim({h_bbox * w_bbox * c_bbox / 4, 4}));
-    scores_slice.Resize(common::make_ddim({h_score * w_score * c_score, 1}));
+    bbox_deltas_slice.Resize({h_bbox * w_bbox * c_bbox / 4, 4});
+    scores_slice.Resize({h_score * w_score * c_score, 1});
 
     std::pair<DenseTensor, DenseTensor> box_score_pair =
         ProposalForOneImage<T>(dev_ctx,
@@ -568,21 +578,23 @@ void GenerateProposalsKernel(const Context &dev_ctx,
     tmp_num.push_back(proposals.dims()[0]);
   }
   if (rpn_rois_num != nullptr) {
-    rpn_rois_num->Resize(common::make_ddim({num}));
+    rpn_rois_num->Resize({num});
     dev_ctx.template Alloc<int>(rpn_rois_num);
     int *num_data = rpn_rois_num->data<int>();
+    const int *stable_num = backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+        const_cast<int *>(tmp_num.data()), num);
     memory_utils::Copy(place,
                        num_data,
                        cpu_place,
-                       &tmp_num[0],
+                       stable_num,
                        sizeof(int) * num,
                        dev_ctx.stream());
-    rpn_rois_num->Resize(common::make_ddim({num}));
+    rpn_rois_num->Resize({num});
   }
-  phi::LegacyLoD lod;
+  LegacyLoD lod;
   lod.emplace_back(offset);
-  rpn_rois->Resize(common::make_ddim({num_proposals, 4}));
-  rpn_roi_probs->Resize(common::make_ddim({num_proposals, 1}));
+  rpn_rois->Resize({num_proposals, 4});
+  rpn_roi_probs->Resize({num_proposals, 1});
 }
 
 }  // namespace phi

@@ -26,9 +26,7 @@ void RandomGradKernel(const Context& dev_ctx,
                       int64_t from,
                       int64_t to,
                       DenseTensor* x_grad) {
-  auto dims = vectorize(x_grad->dims());
-  float value = static_cast<float>(0.0f);
-  phi::FullKernel<T>(dev_ctx, dims, value, x_grad->dtype(), x_grad);
+  Full<T>(dev_ctx, x_grad->dims(), 0.0f, x_grad);
 }
 
 }  // namespace phi

@@ -780,7 +780,7 @@ void MultiEncoderXPUFusePass::PrepareInputMax(
     DenseTensor fc_max_in_cpu_tensor;
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
         phi::DeviceContextPool::Instance().Get(CPUPlace()));
-    fc_max_in_cpu_tensor.set_type(phi::DataType::FLOAT32);
+    fc_max_in_cpu_tensor.set_type(DataType::FLOAT32);
     fc_max_in_cpu_tensor.Resize({max_ptr_size});
     std::vector<float> output_scales(max_ptr_size, input_max[i]);
     memcpy(cpu_ctx->Alloc<float>(&fc_max_in_cpu_tensor),
@@ -825,7 +825,7 @@ void MultiEncoderXPUFusePass::PrepareQKVWeight(
   paddle::experimental::CheckAndTrans2Contiguous(&q_w_t);
   paddle::experimental::CheckAndTrans2Contiguous(&k_w_t);
   paddle::experimental::CheckAndTrans2Contiguous(&v_w_t);
-  std::vector<const phi::DenseTensor*> in_tensors{&q_w_t, &k_w_t, &v_w_t};
+  std::vector<const DenseTensor*> in_tensors{&q_w_t, &k_w_t, &v_w_t};
   bool is_per_channel = false;
   if (!enable_int8) {
     CastToFp32(&q_w_t);
@@ -967,7 +967,7 @@ void MultiEncoderXPUFusePass::PrepareQKVBias(Graph* graph,
   DenseTensor qkv_bias_tensor;
   int64_t q_bias_fp32_size = q_bias_fp32_tensor.numel();
   qkv_bias_tensor.Resize(DDim({q_bias_fp32_size * 3}));
-  qkv_bias_tensor.set_type(phi::DataType::FLOAT32);
+  qkv_bias_tensor.set_type(DataType::FLOAT32);
   auto* cpu_ctx = static_cast<phi::CPUContext*>(
       phi::DeviceContextPool::Instance().Get(CPUPlace()));
   auto* qkv_bias_data = cpu_ctx->Alloc<float>(&qkv_bias_tensor);
@@ -1148,9 +1148,9 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
     auto weight_dtype =
         scope->FindVar(q_matmul_w->Name())->Get<DenseTensor>().dtype();
     std::string use_precision = "float32";
-    if (weight_dtype == phi::DataType::INT8) {
+    if (weight_dtype == DataType::INT8) {
       use_precision = "int8";
-    } else if (weight_dtype == phi::DataType::FLOAT16) {
+    } else if (weight_dtype == DataType::FLOAT16) {
       use_precision = "float16";
     }
     bool is_per_channel = false;

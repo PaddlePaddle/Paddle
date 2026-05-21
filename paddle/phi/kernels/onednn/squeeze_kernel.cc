@@ -26,7 +26,7 @@ void ExecuteSqueeze(const Context& dev_ctx,
                     const DDim& x_dims,
                     const DDim& out_dims,
                     DenseTensor* out) {
-  auto x_vec_dims = common::vectorize(x_dims);
+  auto x_vec_dims = vectorize(x_dims);
 
   funcs::ReorderOneDNNHandler reorder_handler(
       x_vec_dims,
@@ -48,8 +48,8 @@ void ExecuteSqueeze(const Context& dev_ctx,
 
   out->Resize(out_dims);
 
-  auto reshape_dims = out_dims.size() != 0 ? common::vectorize(out_dims)
-                                           : std::vector<int64_t>{1};
+  auto reshape_dims =
+      out_dims.size() != 0 ? vectorize(out_dims) : std::vector<int64_t>{1};
   out->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(reshape_dims));
 }
 
@@ -65,10 +65,8 @@ void SqueezeKernel(const Context& dev_ctx,
   // Currently there is only transformation for tensors, while attr axes still
   // follows default dtype instead of oneDNN dtype, so here manually change it
   if ((x_dims_tz >= 3) &&
-      (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
-           DataLayout::NDHWC ||
-       phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
-           DataLayout::NHWC)) {
+      (OneDNNContext::tls().get_cur_paddle_data_layout() == DataLayout::NDHWC ||
+       OneDNNContext::tls().get_cur_paddle_data_layout() == DataLayout::NHWC)) {
     int axes_size = tmp.size();
     for (int i = 0; i < axes_size; i++) {
       if (tmp[i] < 0) {

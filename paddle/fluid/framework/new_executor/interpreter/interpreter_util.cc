@@ -141,7 +141,7 @@ bool IsCommunicationOp(const Instruction& instr) {
   return instr.OpBaseValid() && IsCommunicationOp(instr.OpBase());
 }
 
-bool IsCommunicationOp(const ::pir::Operation* op) {
+bool IsCommunicationOp(const pir::Operation* op) {
   return op->attributes().count("ring_id") != 0;
 }
 
@@ -165,7 +165,7 @@ bool IsGradOp(const std::string& op_name) {
   return paddle::string::ends_with(op_name, "_grad");
 }
 
-bool IsSupportedHeterPlace(const phi::Place& place) {
+bool IsSupportedHeterPlace(const Place& place) {
   return phi::is_gpu_place(place) || phi::is_xpu_place(place) ||
          phi::is_ipu_place(place) || phi::is_custom_place(place);
 }
@@ -279,7 +279,7 @@ GetUnusedVars(const BlockDesc& block,
 }
 
 OpFuncType AnalyseOpFuncType(const OpFuncNode& op_func_node,
-                             const phi::Place& place) {
+                             const Place& place) {
   if (phi::is_cpu_place(place)) {
     return OpFuncType::kCpuSync;
   }
@@ -394,7 +394,7 @@ std::tuple<VariableValueMap, VariableIdMap> BuildVariableMap(
 }
 
 void ApplyDeviceGuard(const OperatorBase* op_base,
-                      const phi::Place& place,
+                      const Place& place,
                       OpKernelType* expected_kernel_key) {
   bool need_change_place =
       (op_base->HasAttr("op_device") &&
@@ -476,7 +476,7 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
 }
 
 phi::DeviceContext* ConstructDeviceContext(const OperatorBase* op,
-                                           const phi::Place& place) {
+                                           const Place& place) {
   auto& pool = phi::DeviceContextPool::Instance();
   auto* default_dev_ctx = pool.Get(place);
 
@@ -526,7 +526,7 @@ phi::DeviceContext* ConstructDeviceContext(const OperatorBase* op,
 }
 
 void HandleOperatorBase(
-    const phi::Place& place,
+    const Place& place,
     std::shared_ptr<OperatorBase> op,
     OpFuncNode* op_func_node,
     Scope* scope,
@@ -551,7 +551,7 @@ void HandleOperatorBase(
   op_func_node->dev_ctx_ = dev_ctx;
 }
 
-void BuildOpFuncList(const phi::Place& place,
+void BuildOpFuncList(const Place& place,
                      const framework::BlockDesc& block,
                      const std::set<std::string>& skip_gc_vars,
                      std::vector<OpFuncNode>* vec_func_list,
@@ -951,7 +951,7 @@ void BuildOpFuncList(const phi::Place& place,
 
             // avoid overwriting valid data
             if (static_build && original_tensor->initialized()) {
-              const phi::Place& target_place = transformed_tensor->place();
+              const Place& target_place = transformed_tensor->place();
               phi::DeviceContext* dev_ctx_for_copy = nullptr;
               if (target_place.GetType() != AllocationType::CPU) {
                 dev_ctx_for_copy = pool.Get(target_place);
@@ -1010,7 +1010,7 @@ void BuildOpFuncList(const phi::Place& place,
       for (auto& vname : op->InputVars()) {
         auto* var = local_scope->FindVar(vname);
         if (var == nullptr) continue;
-        const phi::DenseTensor* tensor{nullptr};
+        const DenseTensor* tensor{nullptr};
         if (var->IsType<DenseTensor>()) {
           tensor = &var->Get<DenseTensor>();
         } else {
@@ -1026,7 +1026,7 @@ void BuildOpFuncList(const phi::Place& place,
       for (auto& vname : op->OutputVars(true)) {
         auto* var = local_scope->FindVar(vname);
         if (var == nullptr) continue;
-        const phi::DenseTensor* tensor{nullptr};
+        const DenseTensor* tensor{nullptr};
         if (var->IsType<DenseTensor>()) {
           tensor = &var->Get<DenseTensor>();
         } else {
@@ -1410,7 +1410,7 @@ void PrintValuesAndVariables(
     ret_variable_str += "(";
     if (!op.operands().empty()) {
       for (size_t i = 0; i < op.num_operands(); ++i) {
-        ::pir::Value in_value = op.operand(i).source();
+        pir::Value in_value = op.operand(i).source();
         if (value_2_var_name.count(in_value)) {
           // get Variable by Value
           auto& var_name = value_2_var_name.at(in_value);
@@ -1499,13 +1499,13 @@ bool IsNoNeedBuffer(pir::Operation* op, pir::Value value) {
 }
 
 std::unordered_map<std::string, std::set<std::string>> GetNoNeedBufferValues(
-    const std::unordered_map<std::string, std::shared_ptr<::pir::Program>>&
+    const std::unordered_map<std::string, std::shared_ptr<pir::Program>>&
         type_to_ir_program) {
   std::unordered_map<std::string, std::set<std::string>> shadow_output_values;
   std::set<std::string> no_need_buffer_vars;
 
   for (auto& pair : type_to_ir_program) {
-    std::shared_ptr<::pir::Program> program = pair.second;
+    std::shared_ptr<pir::Program> program = pair.second;
     // Iterate over the block_args and data_op output, and if all ops in all
     // programs using this value are of the no_need_buffer type, then insert
     // this value into the no_need_buffer set.

@@ -20,19 +20,17 @@
 namespace phi {
 namespace fusion {
 
-namespace dynload = phi::dynload;
 template <typename T>
 using BatchNormParamType =
-    typename phi::backends::gpu::CudnnDataType<T>::BatchNormParamType;
+    typename backends::gpu::CudnnDataType<T>::BatchNormParamType;
 
 #if CUDNN_VERSION >= 8000
 
 template <typename T>
 struct BNStatsFinalizeArgs {
   BNStatsFinalizeArgs() {
-    dtype = phi::backends::gpu::CudnnDataType<T>::type;
-    param_dtype =
-        phi::backends::gpu::CudnnDataType<BatchNormParamType<T>>::type;
+    dtype = backends::gpu::CudnnDataType<T>::type;
+    param_dtype = backends::gpu::CudnnDataType<BatchNormParamType<T>>::type;
     format = CUDNN_TENSOR_NHWC;
   }
 
@@ -44,7 +42,7 @@ struct BNStatsFinalizeArgs {
             "The size of param_shape is expected to 4. But received "
             "param_shape's size is %d, param_shape is [%s].",
             param_shape.size(),
-            common::make_ddim(param_shape)));
+            make_ddim(param_shape)));
 
     in_desc.set(param_shape, format, param_dtype);
     out_desc.set(param_shape, format, dtype);
@@ -54,8 +52,8 @@ struct BNStatsFinalizeArgs {
   cudnnDataType_t param_dtype;
   cudnnTensorFormat_t format;
 
-  phi::backends::gpu::TensorDescriptor in_desc;
-  phi::backends::gpu::TensorDescriptor out_desc;
+  backends::gpu::TensorDescriptor in_desc;
+  backends::gpu::TensorDescriptor out_desc;
 };
 
 template <typename T>

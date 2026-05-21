@@ -43,21 +43,21 @@ __global__ void SwiGLUGradCUDAKernel(const T *__restrict__ x,
 
       int64_t dz_offset = row_offset + col_offset;
       int64_t x_offset = dz_offset + row_offset;
-      phi::AlignedVector<T, VecSize> x_vec;
-      phi::AlignedVector<T, VecSize> y_vec;
-      phi::AlignedVector<T, VecSize> dz_vec;
+      AlignedVector<T, VecSize> x_vec;
+      AlignedVector<T, VecSize> y_vec;
+      AlignedVector<T, VecSize> dz_vec;
 
-      phi::Load<T, VecSize>(x + x_offset, &x_vec);
-      phi::Load<T, VecSize>(y + x_offset, &y_vec);
-      phi::Load<T, VecSize>(dz + dz_offset, &dz_vec);
+      Load<T, VecSize>(x + x_offset, &x_vec);
+      Load<T, VecSize>(y + x_offset, &y_vec);
+      Load<T, VecSize>(dz + dz_offset, &dz_vec);
 
 #pragma unroll
       for (int i = 0; i < VecSize; ++i) {
         functor(x_vec[i], y_vec[i], dz_vec[i], &x_vec[i], &y_vec[i]);
       }
 
-      phi::Store<T, VecSize>(x_vec, dx + x_offset);
-      phi::Store<T, VecSize>(y_vec, dy + x_offset);
+      Store<T, VecSize>(x_vec, dx + x_offset);
+      Store<T, VecSize>(y_vec, dy + x_offset);
       idx += stride;
     }
   } else {
@@ -68,15 +68,15 @@ __global__ void SwiGLUGradCUDAKernel(const T *__restrict__ x,
     int64_t limit = numel - VecSize;
 
     while (idx <= limit) {
-      phi::AlignedVector<T, VecSize> x_vec;
-      phi::AlignedVector<T, VecSize> y_vec;
-      phi::AlignedVector<T, VecSize> dz_vec;
+      AlignedVector<T, VecSize> x_vec;
+      AlignedVector<T, VecSize> y_vec;
+      AlignedVector<T, VecSize> dz_vec;
 
-      phi::Load<T, VecSize>(x + idx, &x_vec);
+      Load<T, VecSize>(x + idx, &x_vec);
       if constexpr (HasDX) {
-        phi::Load<T, VecSize>(y + idx, &y_vec);
+        Load<T, VecSize>(y + idx, &y_vec);
       }
-      phi::Load<T, VecSize>(dz + idx, &dz_vec);
+      Load<T, VecSize>(dz + idx, &dz_vec);
 
 #pragma unroll
       for (int i = 0; i < VecSize; ++i) {
@@ -87,10 +87,10 @@ __global__ void SwiGLUGradCUDAKernel(const T *__restrict__ x,
                 &dz_vec[i]);
       }
       if constexpr (HasDX) {
-        phi::Store<T, VecSize>(x_vec, dx + idx);
+        Store<T, VecSize>(x_vec, dx + idx);
       }
       if constexpr (HasDY) {
-        phi::Store<T, VecSize>(dz_vec, dy + idx);
+        Store<T, VecSize>(dz_vec, dy + idx);
       }
       idx += stride;
     }
@@ -115,16 +115,15 @@ void SwiGLUGradKernelImpl(const Context &dev_ctx,
                           T *dy,
                           int64_t m,
                           int64_t n) {
-  int vec_size =
-      std::min(phi::GetVectorizedSize<T>(x), phi::GetVectorizedSize<T>(dz));
+  int vec_size = std::min(GetVectorizedSize<T>(x), GetVectorizedSize<T>(dz));
   if (y) {
-    vec_size = std::min(vec_size, phi::GetVectorizedSize<T>(y));
+    vec_size = std::min(vec_size, GetVectorizedSize<T>(y));
   }
   if (dx) {
-    vec_size = std::min(vec_size, phi::GetVectorizedSize<T>(dx));
+    vec_size = std::min(vec_size, GetVectorizedSize<T>(dx));
   }
   if (dy) {
-    vec_size = std::min(vec_size, phi::GetVectorizedSize<T>(dy));
+    vec_size = std::min(vec_size, GetVectorizedSize<T>(dy));
   }
 
 #define PD_LAUNCH_SWIGLU_GRAD_CUDA_KERNEL_BASE(                           \
@@ -157,8 +156,7 @@ void SwiGLUGradKernelImpl(const Context &dev_ctx,
   } while (0)
 
   if (y) {
-    auto config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, m * n, vec_size);
+    auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, m * n, vec_size);
     if (dx) {
       if (dy) {
         PD_LAUNCH_SWIGLU_GRAD_CUDA_KERNEL(false, true, true);
@@ -183,7 +181,7 @@ void SwiGLUGradKernelImpl(const Context &dev_ctx,
     y = x + n;
     dy = dx + n;
     auto config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, m * n / vec_size, 1);
+        backends::gpu::GetGpuLaunchConfig1D(dev_ctx, m * n / vec_size, 1);
     PD_LAUNCH_SWIGLU_GRAD_CUDA_KERNEL(true, true, true);
   }
 }

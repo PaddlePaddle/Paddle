@@ -22,6 +22,7 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
 
+struct C_CinnInterface;
 namespace phi {
 
 struct DeviceProp {
@@ -63,6 +64,8 @@ class DeviceInterface {  // Driver / Runtime
 
   virtual ~DeviceInterface() {}
 
+  virtual C_CinnInterface* GetCinnInterface() { return nullptr; }
+
   // Info
   virtual size_t GetComputeCapability(size_t dev_id);
 
@@ -78,7 +81,19 @@ class DeviceInterface {  // Driver / Runtime
 
   virtual size_t GetMaxThreadsPerBlock(size_t dev_id);
 
+  virtual size_t GetMaxSharedMemPerBlock(size_t dev_id);
+
+  virtual size_t GetMaxBlocksPerMultiProcessor(size_t dev_id);
+
+  virtual size_t GetWarpSize(size_t dev_id);
+
+  virtual size_t GetMaxRegistersPerMultiProcessor(size_t dev_id);
+
+  virtual size_t GetPreferredVectorWidth(size_t dev_id);
+
   virtual std::array<unsigned int, 3> GetMaxGridDimSize(size_t dev_id);
+
+  virtual std::array<unsigned int, 3> GetMaxBlockDimSize(size_t dev_id);
 
   virtual bool IsFloat16Supported(size_t dev_id);
 
@@ -87,7 +102,7 @@ class DeviceInterface {  // Driver / Runtime
   virtual bool IsDnnAvailable(size_t dev_id);
 
   virtual void* InitEigenDevice(const Place& place,
-                                phi::stream::stream_t stream,
+                                stream::stream_t stream,
                                 phi::Allocator* allocator);
 
   virtual void DestroyEigenDevice(size_t dev_id, void* eigen_device);
@@ -324,7 +339,7 @@ class DeviceInterface {  // Driver / Runtime
 
   virtual void InitBlasHandle(size_t dev_id,
                               void** blas_handle,
-                              phi::stream::stream_t stream);
+                              stream::stream_t stream);
 
   virtual void BlasSetMathMode(size_t dev_id, void* blas_handle, int math_mode);
 
@@ -333,6 +348,12 @@ class DeviceInterface {  // Driver / Runtime
   virtual void DestroyBlasHandle(size_t dev_id, void* blas_handle);
 
   virtual void DestroyBlasLtHandle(size_t dev_id, void* blaslt_handle);
+
+  virtual void InitDnnHandle(size_t dev_id,
+                             void** dnn_handle,
+                             phi::stream::stream_t stream);
+
+  virtual void DestroyDnnHandle(size_t dev_id, void* dnn_handle);
 
   // CudaGraph
   virtual void CUDAStreamBeginCapture(size_t dev_id,

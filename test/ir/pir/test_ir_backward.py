@@ -17,6 +17,11 @@ import unittest
 import numpy as np
 
 import paddle
+
+# NOTE(Pan Zhaowu): Using legacy_linear to fulfill promise of high-level grad,
+# with no side-effects to other ops.
+# linear_v2's decomposed grad is fully tested in test_gradname_parse.py
+paddle.set_flags({"FLAGS_use_legacy_linear": True})
 from paddle.autograd.backward_utils import ValueDict, ValueSet
 from paddle.autograd.ir_backward import grad
 from paddle.base.wrapped_decorator import signature_safe_contextmanager

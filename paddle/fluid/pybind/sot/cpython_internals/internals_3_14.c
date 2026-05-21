@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include <internal/pycore_code.h>
 #include <internal/pycore_frame.h>
+#include <internal/pycore_genobject.h>
 #define Py_BUILD_CORE       // internal/pycore_opcode.h need this macro
 #define NEED_OPCODE_TABLES  // To get _PyOpcode_Caches and _PyOpcode_Deopt
 
@@ -141,7 +142,7 @@ static void Internal_take_ownership(PyFrameObject *f,
     PyErr_SetRaisedException(exc);
   }
   if (!_PyObject_GC_IS_TRACKED((PyObject *)f)) {
-    _PyObject_GC_TRACK((PyObject *)f);
+    PyObject_GC_Track((PyObject *)f);
   }
   Py_END_CRITICAL_SECTION();
 }
@@ -165,7 +166,7 @@ void Internal_PyFrame_ClearExceptCode(_PyInterpreterFrame *frame) {
          _PyGen_GetGeneratorFromFrame(frame)->gi_frame_state == FRAME_CLEARED);
   // GH-99729: Clearing this frame can expose the stack (via finalizers). It's
   // crucial that this frame has been unlinked, and is no longer visible:
-  assert(_PyThreadState_GET()->current_frame != frame);
+  assert(PyThreadState_GET()->current_frame != frame);
   if (frame->frame_obj) {
     PyFrameObject *f = frame->frame_obj;
     frame->frame_obj = NULL;

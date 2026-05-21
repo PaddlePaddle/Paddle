@@ -25,7 +25,7 @@ void DeformableConvKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& offset,
                           const DenseTensor& filter,
-                          const paddle::optional<DenseTensor>& mask,
+                          const optional<DenseTensor>& mask,
                           const std::vector<int>& strides,
                           const std::vector<int>& paddings,
                           const std::vector<int>& dilations,
@@ -34,14 +34,13 @@ void DeformableConvKernel(const Context& dev_ctx,
                           int im2col_step,
                           DenseTensor* out) {
   if (x.numel() == 0 || filter.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    Full<T, Context>(dev_ctx, out->dims(), 0, out);
     return;
   }
   dev_ctx.template Alloc<T>(out);
 
-  if (phi::backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId()) ==
-      phi::backends::xpu::XPUVersion::XPU1) {
+  if (backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId()) ==
+      backends::xpu::XPUVersion::XPU1) {
     PADDLE_ENFORCE_EQ(
         deformable_groups == 1,
         true,
@@ -60,7 +59,7 @@ void DeformableConvKernel(const Context& dev_ctx,
                         "in deformable_conv op."));
 
   const int64_t batch_size = x.dims()[0];
-  std::vector<int64_t> output_shape_vec(common::vectorize(out->dims()));
+  std::vector<int64_t> output_shape_vec(vectorize(out->dims()));
 
   const T* input_ptr = x.data<T>();
   const T* filter_ptr = filter.data<T>();

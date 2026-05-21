@@ -1504,34 +1504,37 @@ class Model:
     Examples:
         1. A common example
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example1
 
+            >>> # doctest: +TIMEOUT(30)
             >>> import paddle
             >>> import paddle.nn as nn
             >>> import paddle.vision.transforms as T
             >>> from paddle.static import InputSpec
 
-            >>> device = paddle.set_device('cpu') # or 'gpu'
+            >>> device = paddle.set_device('cpu')  # or 'gpu'
 
             >>> net = nn.Sequential(
             ...     nn.Flatten(1),
             ...     nn.Linear(784, 200),
             ...     nn.Tanh(),
-            ...     nn.Linear(200, 10))
-            ...
+            ...     nn.Linear(200, 10),
+            ... )
             >>> # inputs and labels are not required for dynamic graph.
             >>> input = InputSpec([None, 784], 'float32', 'x')
             >>> label = InputSpec([None, 1], 'int64', 'label')
 
             >>> model = paddle.Model(net, input, label)
-            >>> optim = paddle.optimizer.SGD(learning_rate=1e-3,
-            ...     parameters=model.parameters())
-            ...
-            >>> model.prepare(optim,
-            ...             paddle.nn.CrossEntropyLoss(),
-            ...             paddle.metric.Accuracy())
-            ...
+            >>> optim = paddle.optimizer.SGD(
+            ...     learning_rate=1e-3,
+            ...     parameters=model.parameters(),
+            ... )
+            >>> model.prepare(
+            ...     optim,
+            ...     paddle.nn.CrossEntropyLoss(),
+            ...     paddle.metric.Accuracy(),
+            ... )
             >>> transform = T.Compose([
             ...     T.Transpose(),
             ...     T.Normalize([127.5], [127.5])
@@ -1542,9 +1545,10 @@ class Model:
 
         2. An example using mixed precision training.
 
-        .. code-block:: python
+        .. code-block:: pycon
             :name: code-example2
 
+            >>> # doctest: +TIMEOUT(30)
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> paddle.device.set_device('gpu')
@@ -1554,30 +1558,37 @@ class Model:
             >>> def run_example_code():
             ...     device = paddle.set_device('gpu')
             ...
-            ...     net = nn.Sequential(nn.Flatten(1), nn.Linear(784, 200), nn.Tanh(),
-            ...                         nn.Linear(200, 10))
+            ...     net = nn.Sequential(
+            ...         nn.Flatten(1),
+            ...         nn.Linear(784, 200),
+            ...         nn.Tanh(),
+            ...         nn.Linear(200, 10),
+            ...     )
             ...
             ...     model = paddle.Model(net)
-            ...     optim = paddle.optimizer.SGD(learning_rate=1e-3, parameters=model.parameters())
+            ...     optim = paddle.optimizer.SGD(
+            ...         learning_rate=1e-3,
+            ...         parameters=model.parameters(),
+            ...     )
             ...
             ...     amp_configs = {
             ...         "level": "O1",
             ...         "custom_white_list": {'conv2d'},
-            ...         "use_dynamic_loss_scaling": True
+            ...         "use_dynamic_loss_scaling": True,
             ...     }
-            ...     model.prepare(optim,
+            ...     model.prepare(
+            ...         optim,
             ...         paddle.nn.CrossEntropyLoss(),
             ...         paddle.metric.Accuracy(),
-            ...         amp_configs=amp_configs)
+            ...         amp_configs=amp_configs,
+            ...     )
             ...
             ...     transform = T.Compose([T.Transpose(), T.Normalize([127.5], [127.5])])
             ...     data = paddle.vision.datasets.MNIST(mode='train', transform=transform)
             ...     model.fit(data, epochs=2, batch_size=32, verbose=1)
-            ...
             >>> # mixed precision training is only supported on GPU now.
             >>> if paddle.is_compiled_with_cuda():
             ...     run_example_code()
-            ...
     """
 
     mode: Literal["train", "eval", "test"]
@@ -1650,25 +1661,27 @@ class Model:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.nn as nn
                 >>> from paddle.static import InputSpec
                 >>> paddle.seed(2023)
 
-                >>> device = paddle.set_device('cpu') # or 'gpu'
+                >>> device = paddle.set_device('cpu')  # or 'gpu'
 
                 >>> net = nn.Sequential(
                 ...     nn.Linear(784, 200),
                 ...     nn.Tanh(),
-                ...     nn.Linear(200, 10))
-                ...
+                ...     nn.Linear(200, 10),
+                ... )
                 >>> input = InputSpec([None, 784], 'float32', 'x')
                 >>> label = InputSpec([None, 1], 'int64', 'label')
                 >>> model = paddle.Model(net, input, label)
-                >>> optim = paddle.optimizer.SGD(learning_rate=1e-3,
-                ...     parameters=model.parameters())
+                >>> optim = paddle.optimizer.SGD(
+                ...     learning_rate=1e-3,
+                ...     parameters=model.parameters(),
+                ... )
                 >>> model.prepare(optim, paddle.nn.CrossEntropyLoss())
                 >>> data = paddle.rand((4, 784), dtype="float32")
                 >>> label = paddle.randint(0, 10, (4, 1), dtype="int64")
@@ -1763,14 +1776,14 @@ class Model:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.nn as nn
                 >>> from paddle.static import InputSpec
                 >>> paddle.seed(2023)
 
-                >>> device = paddle.set_device('cpu') # or 'gpu'
+                >>> device = paddle.set_device('cpu')  # or 'gpu'
 
                 >>> input = InputSpec([None, 784], 'float32', 'x')
                 >>> label = InputSpec([None, 1], 'int64', 'label')
@@ -1779,8 +1792,8 @@ class Model:
                 ...     nn.Linear(784, 200),
                 ...     nn.Tanh(),
                 ...     nn.Linear(200, 10),
-                ...     nn.Softmax())
-                ...
+                ...     nn.Softmax(),
+                ... )
                 >>> model = paddle.Model(net, input, label)
                 >>> model.prepare()
                 >>> data = paddle.rand((1, 784), dtype="float32")
@@ -1825,7 +1838,7 @@ class Model:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +TIMEOUT(80)
                 >>> import paddle
@@ -1839,19 +1852,36 @@ class Model:
                 >>> if not dynamic:
                 ...     paddle.enable_static()
 
-                >>> transform = T.Compose([T.Transpose(),
-                ...                        T.Normalize([127.5], [127.5])])
+                >>> transform = T.Compose(
+                ...     [
+                ...         T.Transpose(),
+                ...         T.Normalize([127.5], [127.5]),
+                ...     ]
+                ... )
                 >>> train_dataset = MNIST(mode='train', transform=transform)
-                >>> train_loader = paddle.io.DataLoader(train_dataset, batch_size=64)
+                >>> train_loader = paddle.io.DataLoader(
+                ...     train_dataset,
+                ...     batch_size=64,
+                ... )
                 >>> val_dataset = MNIST(mode='test', transform=transform)
-                >>> val_loader = paddle.io.DataLoader(val_dataset, batch_size=64)
+                >>> val_loader = paddle.io.DataLoader(
+                ...     val_dataset,
+                ...     batch_size=64,
+                ... )
 
                 >>> input = InputSpec([None, 1, 28, 28], 'float32', 'image')
                 >>> label = InputSpec([None, 1], 'int64', 'label')
 
                 >>> model = paddle.Model(paddle.vision.models.LeNet(), input, label)
-                >>> optim = paddle.optimizer.Adam(learning_rate=0.001, parameters=model.parameters())
-                >>> model.prepare(optim, paddle.nn.CrossEntropyLoss(), paddle.metric.Accuracy(topk=(1, 2)))
+                >>> optim = paddle.optimizer.Adam(
+                ...     learning_rate=0.001,
+                ...     parameters=model.parameters(),
+                ... )
+                >>> model.prepare(
+                ...     optim,
+                ...     paddle.nn.CrossEntropyLoss(),
+                ...     paddle.metric.Accuracy(topk=(1, 2)),
+                ... )
                 >>> model.fit(train_loader, val_loader, epochs=2, verbose=0)
                 >>> model.save('checkpoint/test')  # save for training
                 >>> model.save('inference_model', False)  # save for inference
@@ -1901,7 +1931,7 @@ class Model:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.nn as nn
@@ -1911,12 +1941,15 @@ class Model:
 
                 >>> input = InputSpec([None, 784], 'float32', 'x')
 
-                >>> model = paddle.Model(nn.Sequential(
-                ...     nn.Linear(784, 200),
-                ...     nn.Tanh(),
-                ...     nn.Linear(200, 10),
-                ...     nn.Softmax()), input)
-                ...
+                >>> model = paddle.Model(
+                ...     nn.Sequential(
+                ...         nn.Linear(784, 200),
+                ...         nn.Tanh(),
+                ...         nn.Linear(200, 10),
+                ...         nn.Softmax(),
+                ...     ),
+                ...     input,
+                ... )
                 >>> model.save('checkpoint/test')
                 >>> model.load('checkpoint/test')
 
@@ -1925,8 +1958,12 @@ class Model:
         def _load_state_from_path(path):
             if not os.path.exists(path):
                 return
+            from paddle.framework.restricted_unpickler import (
+                safe_load_pickle,
+            )
+
             with open(path, 'rb') as f:
-                return pickle.load(f, encoding='latin1')
+                return safe_load_pickle(f, encoding='latin1')
 
         def _check_match(key, param):
             state = param_state.get(key, None)
@@ -1993,7 +2030,7 @@ class Model:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> import paddle.nn as nn
@@ -2001,11 +2038,14 @@ class Model:
                 >>> paddle.seed(2023)
                 >>> input = InputSpec([None, 784], 'float32', 'x')
 
-                >>> model = paddle.Model(nn.Sequential(
-                ...     nn.Linear(784, 200),
-                ...     nn.Tanh(),
-                ...     nn.Linear(200, 10)), input)
-                ...
+                >>> model = paddle.Model(
+                ...     nn.Sequential(
+                ...         nn.Linear(784, 200),
+                ...         nn.Tanh(),
+                ...         nn.Linear(200, 10),
+                ...     ),
+                ...     input,
+                ... )
                 >>> params = model.parameters()
                 >>> print(params)
                 [Parameter containing:
@@ -2277,7 +2317,7 @@ class Model:
             1. An example use Dataset and set batch size, shuffle in fit.
                How to make a batch is done internally.
 
-            .. code-block:: python
+            .. code-block:: pycon
                 :name: code-example3
 
                 >>> # doctest: +TIMEOUT(80)
@@ -2289,35 +2329,40 @@ class Model:
                 >>> dynamic = True
                 >>> if not dynamic:
                 ...     paddle.enable_static()
-                ...
-                >>> transform = T.Compose([T.Transpose(),
-                ...                        T.Normalize([127.5], [127.5])])
+                >>> transform = T.Compose(
+                ...     [
+                ...         T.Transpose(),
+                ...         T.Normalize([127.5], [127.5]),
+                ...     ]
+                ... )
                 >>> train_dataset = MNIST(mode='train', transform=transform)
                 >>> val_dataset = MNIST(mode='test', transform=transform)
 
                 >>> input = InputSpec([None, 1, 28, 28], 'float32', 'image')
                 >>> label = InputSpec([None, 1], 'int64', 'label')
 
-                >>> model = paddle.Model(
-                ...     paddle.vision.models.LeNet(),
-                ...     input, label)
+                >>> model = paddle.Model(paddle.vision.models.LeNet(), input, label)
                 >>> optim = paddle.optimizer.Adam(
-                ...     learning_rate=0.001, parameters=model.parameters())
+                ...     learning_rate=0.001,
+                ...     parameters=model.parameters(),
+                ... )
                 >>> model.prepare(
                 ...     optim,
                 ...     paddle.nn.CrossEntropyLoss(),
-                ...     paddle.metric.Accuracy(topk=(1, 2)))
-                >>> model.fit(train_dataset,
-                ...             val_dataset,
-                ...             epochs=2,
-                ...             batch_size=64,
-                ...             save_dir='mnist_checkpoint')
-                ...
+                ...     paddle.metric.Accuracy(topk=(1, 2)),
+                ... )
+                >>> model.fit(
+                ...     train_dataset,
+                ...     val_dataset,
+                ...     epochs=2,
+                ...     batch_size=64,
+                ...     save_dir='mnist_checkpoint',
+                ... )
 
             2. An example use DataLoader, batch size and shuffle is set in
                DataLoader.
 
-            .. code-block:: python
+            .. code-block:: pycon
                 :name: code-example4
 
                 >>> # doctest: +TIMEOUT(80)
@@ -2329,32 +2374,41 @@ class Model:
                 >>> dynamic = True
                 >>> if not dynamic:
                 ...     paddle.enable_static()
-                ...
-                >>> transform = T.Compose([T.Transpose(),
-                ...                        T.Normalize([127.5], [127.5])])
+                >>> transform = T.Compose(
+                ...     [
+                ...         T.Transpose(),
+                ...         T.Normalize([127.5], [127.5]),
+                ...     ]
+                ... )
                 >>> train_dataset = MNIST(mode='train', transform=transform)
-                >>> train_loader = paddle.io.DataLoader(train_dataset,
-                ...     batch_size=64)
+                >>> train_loader = paddle.io.DataLoader(
+                ...     train_dataset,
+                ...     batch_size=64,
+                ... )
                 >>> val_dataset = MNIST(mode='test', transform=transform)
-                >>> val_loader = paddle.io.DataLoader(val_dataset,
-                ...     batch_size=64)
-                ...
+                >>> val_loader = paddle.io.DataLoader(
+                ...     val_dataset,
+                ...     batch_size=64,
+                ... )
                 >>> input = InputSpec([None, 1, 28, 28], 'float32', 'image')
                 >>> label = InputSpec([None, 1], 'int64', 'label')
 
-                >>> model = paddle.Model(
-                ...     paddle.vision.models.LeNet(), input, label)
+                >>> model = paddle.Model(paddle.vision.models.LeNet(), input, label)
                 >>> optim = paddle.optimizer.Adam(
-                ...     learning_rate=0.001, parameters=model.parameters())
+                ...     learning_rate=0.001,
+                ...     parameters=model.parameters(),
+                ... )
                 >>> model.prepare(
                 ...     optim,
                 ...     paddle.nn.CrossEntropyLoss(),
-                ...     paddle.metric.Accuracy(topk=(1, 2)))
-                >>> model.fit(train_loader,
-                ...             val_loader,
-                ...             epochs=2,
-                ...             save_dir='mnist_checkpoint')
-                ...
+                ...     paddle.metric.Accuracy(topk=(1, 2)),
+                ... )
+                >>> model.fit(
+                ...     train_loader,
+                ...     val_loader,
+                ...     epochs=2,
+                ...     save_dir='mnist_checkpoint',
+                ... )
         """
         assert train_data is not None, "train_data must be given!"
 
@@ -2493,7 +2547,7 @@ class Model:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> # doctest: +SKIP('Cause each step's acc and using time are not same when repeat running')
                 >>> import paddle
@@ -2501,8 +2555,12 @@ class Model:
                 >>> from paddle.static import InputSpec
 
                 >>> # declarative mode
-                >>> transform = T.Compose([T.Transpose(),
-                ...                        T.Normalize([127.5], [127.5])])
+                >>> transform = T.Compose(
+                ...     [
+                ...         T.Transpose(),
+                ...         T.Normalize([127.5], [127.5]),
+                ...     ]
+                ... )
                 >>> val_dataset = paddle.vision.datasets.MNIST(mode='test', transform=transform)
 
                 >>> input = InputSpec([-1, 1, 28, 28], 'float32', 'image')
@@ -2633,7 +2691,7 @@ class Model:
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import numpy as np
                 >>> import paddle
@@ -2652,7 +2710,6 @@ class Model:
                 ...
                 ...     def __len__(self):
                 ...         return len(self.images)
-                ...
                 >>> test_dataset = MnistDataset(mode='test', return_label=False)
 
                 >>> # imperative mode
@@ -2893,7 +2950,10 @@ class Model:
                 >>> input = InputSpec([None, 1, 28, 28], 'float32', 'image')
                 >>> label = InputSpec([None, 1], 'int64', 'label')
                 >>> model = paddle.Model(paddle.vision.models.LeNet(), input, label)
-                >>> optim = paddle.optimizer.Adam(learning_rate=0.001, parameters=model.parameters())
+                >>> optim = paddle.optimizer.Adam(
+                ...     learning_rate=0.001,
+                ...     parameters=model.parameters(),
+                ... )
                 >>> model.prepare(optim, paddle.nn.CrossEntropyLoss())
                 >>> params_info = model.summary()
                 >>> print(params_info)
@@ -2919,7 +2979,7 @@ class Model:
                 Params size (MB): 0.24
                 Estimated Total Size (MB): 0.35
                 ---------------------------------------------------------------------------
-                {'total_params': np.int64(61610), 'trainable_params': np.int64(61610)}
+                {'total_params': 61610, 'trainable_params': 61610}
 
         """
         assert input_size is not None or self._inputs is not None, (

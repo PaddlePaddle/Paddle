@@ -62,38 +62,42 @@ class ESC50(AudioClassificationDataset):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +TIMEOUT(60)
             >>> import paddle
 
             >>> mode = 'dev'
-            >>> esc50_dataset = paddle.audio.datasets.ESC50(mode=mode,  # type: ignore[arg-type]
-            ...                                         feat_type='raw')
+            >>> esc50_dataset = paddle.audio.datasets.ESC50(
+            ...     mode=mode,  # type: ignore[arg-type]
+            ...     feat_type='raw',
+            ... )
             >>> for idx in range(5):
             ...     audio, label = esc50_dataset[idx]
             ...     # do something with audio, label
             ...     print(audio.shape, label)
             ...     # [audio_data_length] , label_id
-            [220500] 0
-            [220500] 14
-            [220500] 36
-            [220500] 36
-            [220500] 19
+            paddle.Size([220500]) 0
+            paddle.Size([220500]) 14
+            paddle.Size([220500]) 36
+            paddle.Size([220500]) 36
+            paddle.Size([220500]) 19
 
-            >>> esc50_dataset = paddle.audio.datasets.ESC50(mode=mode,  # type: ignore[arg-type]
-            ...                                         feat_type='mfcc',
-            ...                                         n_mfcc=40)
+            >>> esc50_dataset = paddle.audio.datasets.ESC50(
+            ...     mode=mode,  # type: ignore[arg-type]
+            ...     feat_type='mfcc',
+            ...     n_mfcc=40,
+            ... )
             >>> for idx in range(5):
             ...     audio, label = esc50_dataset[idx]
             ...     # do something with mfcc feature, label
             ...     print(audio.shape, label)
             ...     # [feature_dim, length] , label_id
-            [40, 1723] 0
-            [40, 1723] 14
-            [40, 1723] 36
-            [40, 1723] 36
-            [40, 1723] 19
+            paddle.Size([40, 1723]) 0
+            paddle.Size([40, 1723]) 14
+            paddle.Size([40, 1723]) 36
+            paddle.Size([40, 1723]) 36
+            paddle.Size([40, 1723]) 19
 
     """
 

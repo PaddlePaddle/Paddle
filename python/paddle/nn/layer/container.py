@@ -45,17 +45,19 @@ class LayerDict(Layer):
         sublayers (LayerDict|OrderedDict|list[(key,Layer)...], optional): iterable of key/value pairs, the type of value is 'paddle.nn.Layer' .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import numpy as np
             >>> from collections import OrderedDict
 
-            >>> sublayers = OrderedDict([
-            ...     ('conv1d', paddle.nn.Conv1D(3, 2, 3)),
-            ...     ('conv2d', paddle.nn.Conv2D(3, 2, 3)),
-            ...     ('conv3d', paddle.nn.Conv3D(4, 6, (3, 3, 3))),
-            >>> ])
+            >>> sublayers = OrderedDict(
+            ...     [
+            ...         ('conv1d', paddle.nn.Conv1D(3, 2, 3)),
+            ...         ('conv2d', paddle.nn.Conv2D(3, 2, 3)),
+            ...         ('conv3d', paddle.nn.Conv3D(4, 6, (3, 3, 3))),
+            ...     ]
+            ... )
 
             >>> layers_dict = paddle.nn.LayerDict(sublayers=sublayers)
 
@@ -63,7 +65,6 @@ class LayerDict(Layer):
 
             >>> for k in layers_dict:
             ...     l = layers_dict[k]
-            ...
             >>> print(len(layers_dict))
             3
 
@@ -121,7 +122,7 @@ class LayerDict(Layer):
             None.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> from collections import OrderedDict
@@ -151,7 +152,7 @@ class LayerDict(Layer):
             key (str): the key to be removed.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> from collections import OrderedDict
@@ -183,7 +184,7 @@ class LayerDict(Layer):
             None.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> from collections import OrderedDict
@@ -212,7 +213,7 @@ class LayerDict(Layer):
             None.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> from collections import OrderedDict
@@ -241,7 +242,7 @@ class LayerDict(Layer):
             None.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> from collections import OrderedDict
@@ -276,7 +277,7 @@ class LayerDict(Layer):
             sublayers (LayerDict|OrderedDict|list[(key,Layer)...]): iterable of key/value pairs, the type of value is 'paddle.nn.Layer' .
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> from collections import OrderedDict
@@ -334,6 +335,7 @@ class ParameterDict(Layer):
 
     Parameters:
         parameters (iterable, optional): a mapping (dictionary) of (string : Any) or an iterable of key-value pairs of type (string, Any)
+            alias: values
 
     Examples:
         .. code-block:: pycon
@@ -374,6 +376,7 @@ class ParameterDict(Layer):
             paddle.Size([5, 4])
     """
 
+    @param_one_alias(["parameters", "values"])
     def __init__(
         self,
         parameters: (
@@ -417,7 +420,10 @@ class ParameterDict(Layer):
             + type(parameters).__name__
         )
 
-        if isinstance(parameters, (OrderedDict, ParameterDict, Mapping)):
+        if isinstance(parameters, ParameterDict):
+            for key, parameter in parameters._parameters.items():
+                self.add_parameter(key, parameter)
+        elif isinstance(parameters, (OrderedDict, Mapping)):
             for key, parameter in parameters.items():
                 self.add_parameter(key, parameter)
         else:
@@ -427,6 +433,33 @@ class ParameterDict(Layer):
                         f"The length of the {i}'s element in parameters is {len(kv)}, which must be 2."
                     )
                 self.add_parameter(kv[0], kv[1])
+
+    def pop(self, key: str) -> Tensor:
+        """Remove key from the ParameterDict and return its parameter.
+
+        Parameters:
+            key (str): the key to be removed.
+        """
+        v = self[key]
+        del self._parameters[key]
+        return v
+
+    def keys(self) -> Iterable[str]:
+        """Return an iterable of the keys in the ParameterDict.
+
+        Parameters:
+            None.
+        """
+        return self._parameters.keys()
+
+    def values(self) -> Iterable[Tensor]:
+        """Return an iterable of the parameters in the ParameterDict.
+
+        Parameters:
+            None.
+        """
+        with param_guard(self._parameters):
+            return list(self._parameters.values())
 
 
 class ParameterList(Layer):
@@ -520,7 +553,7 @@ class LayerList(Layer):
         sublayers (iterable of Layer, optional): sublayers to hold
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -528,7 +561,8 @@ class LayerList(Layer):
             ...     def __init__(self):
             ...         super().__init__()
             ...         self.linears = paddle.nn.LayerList(
-            ...             [paddle.nn.Linear(10, 10) for i in range(10)])
+            ...             [paddle.nn.Linear(10, 10) for i in range(10)],
+            ...         )
             ...
             ...     def forward(self, x):
             ...         # LayerList can act as an iterable, or be indexed using ints
@@ -609,7 +643,7 @@ class LayerList(Layer):
             sublayer (Layer): sublayer to append
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -632,7 +666,7 @@ class LayerList(Layer):
             sublayer (Layer): sublayer to insert
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -670,7 +704,7 @@ class LayerList(Layer):
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -706,7 +740,7 @@ class Sequential(Layer):
         None.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 

@@ -30,21 +30,21 @@ defaults:
 jobs:
   check-bypass:
     name: Check bypass
-    if: ${{ inputs.clone-can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
-      workflow-name: 'xpu'
+      workflow-name: "xpu"
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
   build:
     name: Build
-    needs: check-bypass
-    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
+    needs: [check-bypass]
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' && inputs.clone-can-skip != 'true' }}
     env:
       TASK: paddle-CI-${{ github.event.pull_request.number }}-xpu_build
     runs-on:
       group: XPU-build
+    timeout-minutes: 120
     steps:
       - name: Check docker image and run  container
         env:
@@ -107,6 +107,7 @@ jobs:
             -w /paddle --network host ${docker_image} /bin/bash
 
       - name: Download paddle.tar.gz and update test branch
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           ulimit -n 102400
@@ -184,6 +185,7 @@ jobs:
       TASK: paddle-CI-${{ github.event.pull_request.number }}-xpu_test
     runs-on:
       group: Kunlun
+    timeout-minutes: 120
 
     steps:
       - name: Determine the runner
@@ -224,6 +226,7 @@ jobs:
             -v /ssd1/cibuild/.ccache:/root/.ccache \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/paddle \
+            -v /ssd1/cibuild/tmp:/tmp \
             --device ${XPU_CODE_1} \
             --device ${XPU_CODE_2} \
             --device /dev/xpuctrl \

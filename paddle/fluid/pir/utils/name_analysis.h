@@ -24,32 +24,30 @@ namespace pir {
 namespace utils {
 namespace name_analysis {
 
-std::vector<std::string> GetValueAllNames(pir::Value value);
-std::string GetValueFirstName(pir::Value value);
-std::optional<std::string> TryGetValueFirstName(pir::Value value);
-pir::Value GetParameterValueByName(const pir::Program &program,
-                                   const std::string &name);
-std::unordered_map<std::string, pir::Value> GetAllParameterValues(
-    const pir::Program &program);
+std::vector<std::string> GetValueAllNames(Value value);
+std::string GetValueFirstName(Value value);
+std::optional<std::string> TryGetValueFirstName(Value value);
+Value GetParameterValueByName(const Program &program, const std::string &name);
+std::unordered_map<std::string, Value> GetAllParameterValues(
+    const Program &program);
 
-void SetValueName(pir::Value value, const std::string name);
+void SetValueName(Value value, const std::string name);
 
 std::map<std::string, std::string> RenameValue(Value value,
                                                const std::string &new_name,
                                                Block *block);
-std::optional<std::string> GetValueInputName(pir::Value value);
+std::optional<std::string> GetValueInputName(Value value);
 
-std::vector<std::string> GetValueOutputNames(pir::Value value);
-pir::Value GetOutputValueByName(const pir::Program &program,
-                                const std::string &name);
-pir::Value GetValueByNameInPhiKernelProgram(const pir::Program &program,
-                                            const std::string &name);
-inline bool HasOnlyOneValueName(pir::Value value) {
+std::vector<std::string> GetValueOutputNames(Value value);
+Value GetOutputValueByName(const Program &program, const std::string &name);
+Value GetValueByNameInPhiKernelProgram(const Program &program,
+                                       const std::string &name);
+inline bool HasOnlyOneValueName(Value value) {
   std::vector<std::string> names = GetValueAllNames(value);
   return std::set<std::string>(names.begin(), names.end()).size() <= 1;
 }
-std::unordered_map<std::string, pir::Value> GetAllNamedValues(
-    const pir::Program &program);
+std::unordered_map<std::string, Value> GetAllNamedValues(
+    const Program &program);
 
 }  // namespace name_analysis
 }  // namespace utils

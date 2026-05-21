@@ -183,12 +183,12 @@ struct DefaultComputeType<half> {
   using type = float;
 };
 
-#if CUDA_VERSION >= 11000
+#if defined(PADDLE_WITH_CUDA)
 template <>
 struct DefaultComputeType<nv_bfloat16> {
   using type = float;
 };
-#endif  // CUDA_VERSION >= 11000
+#endif
 
 template <typename T>
 class HasCanPackAs {
@@ -994,10 +994,10 @@ struct SkipLoadAndStoreResidual {
 template <typename T, typename Context>
 void FusedLayerNormKernel(const Context& dev_ctx,
                           const DenseTensor& x,
-                          const paddle::optional<DenseTensor>& bias,
-                          const paddle::optional<DenseTensor>& residual,
-                          const paddle::optional<DenseTensor>& norm_weight,
-                          const paddle::optional<DenseTensor>& norm_bias,
+                          const optional<DenseTensor>& bias,
+                          const optional<DenseTensor>& residual,
+                          const optional<DenseTensor>& norm_weight,
+                          const optional<DenseTensor>& norm_bias,
                           const float epsilon,
                           const float residual_alpha,
                           const int begin_norm_axis,
@@ -1064,11 +1064,11 @@ void FusedLayerNormKernel(const Context& dev_ctx,
     cols *= x.dims()[i];
   }
 
-  phi::fusion::DropoutParam dropout_param(true, 0, true, true, 0.0, nullptr, 0);
-  phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t>
+  fusion::DropoutParam dropout_param(true, 0, true, true, 0.0, nullptr, 0);
+  fusion::FusedDropoutLayerNormHelper<T, uint8_t>
       residual_bias_add_layernorm_helper(
           dev_ctx, rows, cols, dropout_param, epsilon, residual_alpha);
-  phi::fusion::AttnLayerNorm<T> layernorm_helper(dev_ctx, epsilon, rows, cols);
+  fusion::AttnLayerNorm<T> layernorm_helper(dev_ctx, epsilon, rows, cols);
 
   // Do residual + bias + x
   if (residual && norm_weight_data == nullptr && norm_bias_data == nullptr) {

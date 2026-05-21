@@ -34,7 +34,7 @@ void MatmulCooDenseGradKernel(const Context& dev_ctx,
                               const DenseTensor& dout,
                               SparseCooTensor* dx,
                               DenseTensor* dy) {
-#if CUDA_VERSION >= 11030 || HIP_VERSION >= 403
+#if defined(PADDLE_WITH_CUDA) || HIP_VERSION >= 403
   auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
 
   // dx{SparseCoo} = dout{Dense} * y'{Dense}
@@ -81,7 +81,7 @@ void MatmulCsrDenseGradKernel(const Context& dev_ctx,
                               const DenseTensor& dout,
                               SparseCsrTensor* dx,
                               DenseTensor* dy) {
-#if CUDA_VERSION >= 11030 || HIP_VERSION >= 403
+#if defined(PADDLE_WITH_CUDA) || HIP_VERSION >= 403
   auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
 
   // dx{SparseCsr} = dout{Dense} * y'{Dense}
@@ -120,10 +120,10 @@ void MatmulCsrCsrGradKernel(const Context& dev_ctx,
                             const SparseCsrTensor& dout,
                             SparseCsrTensor* dx,
                             SparseCsrTensor* dy) {
-#if CUDA_VERSION >= 11000
+#if defined(PADDLE_WITH_CUDA)
   auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
 
-  std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
+  std::vector<int64_t> xdim_vec = vectorize(x.dims());
   auto x_ndims = xdim_vec.size();
   std::vector<int> perm;
   if (x_ndims == 2) {
@@ -184,7 +184,7 @@ void MaskedMatmulCsrGradKernel(const Context& dev_ctx,
                                const SparseCsrTensor& dout,
                                DenseTensor* dx,
                                DenseTensor* dy) {
-#if CUDA_VERSION >= 11000
+#if defined(PADDLE_WITH_CUDA)
   auto sparse_blas = funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
 
   // dx{Dense} = dout{SparseCsr} * y'{Dense}
@@ -202,7 +202,7 @@ void MaskedMatmulCsrGradKernel(const Context& dev_ctx,
   // dy{Dense} = x'{Dense} * dout{SparseCsr}
   // That is: dy'{Dense} = dout'{SparseCsr} * x{Dense}
   if (dy) {
-    std::vector<int> trans_dim_vec = common::vectorize<int>(y.dims());
+    std::vector<int> trans_dim_vec = vectorize<int>(y.dims());
     size_t rank = trans_dim_vec.size();
     std::swap(trans_dim_vec[rank - 1], trans_dim_vec[rank - 2]);
     DenseTensor trans_dy = Empty<T, Context>(dev_ctx, trans_dim_vec);

@@ -72,9 +72,9 @@ class LayerNormOneDNNHandler
 template <typename T, typename Context>
 void LayerNormKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const paddle::optional<DenseTensor>& scale_opt,
-                     const paddle::optional<DenseTensor>& bias_opt,
-                     float epsilon,
+                     const optional<DenseTensor>& scale_opt,
+                     const optional<DenseTensor>& bias_opt,
+                     double epsilon,
                      int begin_norm_axis,
                      DenseTensor* y,
                      DenseTensor* mean,
@@ -85,7 +85,7 @@ void LayerNormKernel(const Context& dev_ctx,
 
   const auto& onednn_engine = dev_ctx.GetEngine();
 
-  auto src_tz = common::vectorize(x.dims());
+  auto src_tz = vectorize(x.dims());
   PADDLE_ENFORCE_EQ(begin_norm_axis,
                     (src_tz.size() - 1),
                     common::errors::InvalidArgument(
@@ -109,7 +109,7 @@ void LayerNormKernel(const Context& dev_ctx,
 
   auto layer_norm_p = handler.AcquireForwardPrimitive();
 
-  auto& astream = phi::OneDNNContext::tls().get_stream();
+  auto& astream = OneDNNContext::tls().get_stream();
   std::unordered_map<int, dnnl::memory> args = {{DNNL_ARG_SRC, *src_memory},
                                                 {DNNL_ARG_DST, *dst_memory}};
 

@@ -20,7 +20,7 @@ template <typename T, typename Context>
 void WeightOnlyLinearXpuKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& weight,
-                               const paddle::optional<DenseTensor>& bias,
+                               const optional<DenseTensor>& bias,
                                const DenseTensor& weight_scale,
                                const std::string& weight_dtype,
                                const int32_t arch,
@@ -31,8 +31,8 @@ void WeightOnlyLinearXpuKernel(const Context& dev_ctx,
       "int8",
       common::errors::Fatal(
           "WeightOnlyLinearXpuKernel xpu just support int8 weight only"));
-  phi::XPUPlace place(phi::backends::xpu::GetXPUCurrentDeviceId());
-  auto xpu_ctx = static_cast<const phi::XPUContext*>(&dev_ctx);
+  XPUPlace place(backends::xpu::GetXPUCurrentDeviceId());
+  auto xpu_ctx = static_cast<const XPUContext*>(&dev_ctx);
   dev_ctx.template Alloc<T>(out);
   int r = 0;
   switch (x.dtype()) {

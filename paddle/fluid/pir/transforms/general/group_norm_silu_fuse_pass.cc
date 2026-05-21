@@ -54,7 +54,7 @@ After the pass is applied:GPU
                      Out
 */
 
-namespace {
+namespace pir {
 
 class GroupNormSiluPattern : public paddle::drr::DrrPatternBase {
  private:
@@ -82,9 +82,9 @@ class GroupNormSiluPattern : public paddle::drr::DrrPatternBase {
 
 #ifdef PADDLE_WITH_CUDA
     pat.AddConstraint([this](const paddle::drr::MatchContext &match_ctx) {
-      auto x_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("X"));
-      if (!this->enable_gpu_mixed_ && !x_dtype.isa<pir::Float16Type>() &&
-          !x_dtype.isa<pir::BFloat16Type>()) {
+      auto x_dtype = GetDataTypeFromValue(match_ctx.Tensor("X"));
+      if (!this->enable_gpu_mixed_ && !x_dtype.isa<Float16Type>() &&
+          !x_dtype.isa<BFloat16Type>()) {
         return false;
       }
       return true;
@@ -93,9 +93,13 @@ class GroupNormSiluPattern : public paddle::drr::DrrPatternBase {
 
 #ifdef PADDLE_WITH_CUDA
     paddle::drr::ResultPattern res = pat.ResultPattern();
+    const auto &fused_epsilon = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> double {
+          return match_ctx.Attr<double>("epsilon");
+        });
     const auto &add_group_norm_silu_op =
         res.Op(paddle::dialect::AddGroupNormSiluOp::name(),
-               {{"epsilon", pat.Attr("epsilon")},
+               {{"epsilon", fused_epsilon},
                 {"groups", pat.Attr("groups")},
                 {"data_format", pat.Attr("data_format")},
                 {"activation", res.StrAttr("silu")}});
@@ -110,9 +114,13 @@ class GroupNormSiluPattern : public paddle::drr::DrrPatternBase {
 #endif
 #ifdef PADDLE_WITH_XPU
     paddle::drr::ResultPattern res = pat.ResultPattern();
-    const auto &group_norm_silu_xpu = res.Op(
-        paddle::dialect::GroupNormSiluXpuOp::name(),
-        {{{"epsilon", pat.Attr("epsilon")}, {"groups", pat.Attr("groups")}}});
+    const auto &fused_epsilon = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> double {
+          return match_ctx.Attr<double>("epsilon");
+        });
+    const auto &group_norm_silu_xpu =
+        res.Op(paddle::dialect::GroupNormSiluXpuOp::name(),
+               {{{"epsilon", fused_epsilon}, {"groups", pat.Attr("groups")}}});
     group_norm_silu_xpu(
         {&res.Tensor("X"), &res.Tensor("Scale"), &res.Tensor("Bias")},
         {&res.Tensor("Out")});
@@ -120,13 +128,13 @@ class GroupNormSiluPattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-class GroupNormSiluFusePass : public pir::PatternRewritePass {
+class GroupNormSiluFusePass : public PatternRewritePass {
  public:
   GroupNormSiluFusePass()
-      : pir::PatternRewritePass("group_norm_silu_fuse_pass", 2) {}
+      : PatternRewritePass("group_norm_silu_fuse_pass", 2) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext *context) override {
+    RewritePatternSet ps(context);
     bool enable_gpu_mixed = false;
     if (Has("enable_gpu_mixed")) {
       enable_gpu_mixed = Get<bool>("enable_gpu_mixed");
@@ -137,13 +145,10 @@ class GroupNormSiluFusePass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
 std::unique_ptr<Pass> CreateGroupNormSiluFusePass() {
   return std::make_unique<GroupNormSiluFusePass>();
 }
 
 }  // namespace pir
 
-REGISTER_IR_PASS(group_norm_silu_fuse_pass, GroupNormSiluFusePass);
+REGISTER_IR_PASS(group_norm_silu_fuse_pass, pir::GroupNormSiluFusePass);

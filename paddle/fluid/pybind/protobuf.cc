@@ -472,22 +472,22 @@ void BindOpDesc(pybind11::module *m) {
       .def(py::init<paddle::experimental::Scalar>())
       .def("__str__", &paddle::experimental::Scalar::ToString)
       .def("__repr__", &paddle::experimental::Scalar::ToString)
-      .def("__eq__", &paddle::experimental::Scalar::operator==<paddle::Tensor>)
+      .def("__eq__", &paddle::experimental::Scalar::operator==<Tensor>)
       .def("value",
            [](const paddle::experimental::Scalar &self)
                -> paddle::variant<bool, int64_t, double, std::complex<double>> {
              auto dtype = self.dtype();
              switch (dtype) {
-               case phi::DataType::FLOAT64:
-               case phi::DataType::FLOAT32:
+               case DataType::FLOAT64:
+               case DataType::FLOAT32:
                  return self.to<double>();
-               case phi::DataType::INT32:
-               case phi::DataType::INT64:
+               case DataType::INT32:
+               case DataType::INT64:
                  return self.to<int64_t>();
-               case phi::DataType::BOOL:
+               case DataType::BOOL:
                  return self.to<bool>();
-               case phi::DataType::COMPLEX64:
-               case phi::DataType::COMPLEX128:
+               case DataType::COMPLEX64:
+               case DataType::COMPLEX128:
                  // to paddle's complex to avoid ambiguous
                  // when converting bfloat16 or float16 to std::complex<double>
                  return static_cast<std::complex<double>>(

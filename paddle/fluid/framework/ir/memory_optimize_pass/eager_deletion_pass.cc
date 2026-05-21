@@ -50,7 +50,7 @@ static bool IsDenseTensor(VarDesc *var) {
   return var->Proto()->type().type() == proto::VarType::DENSE_TENSOR;
 }
 
-// Get memory size of phi::DenseTensor
+// Get memory size of DenseTensor
 static int64_t GetMemorySize(
     const std::unordered_map<std::string, std::vector<details::VarHandle *>>
         &vars,
@@ -62,7 +62,7 @@ static int64_t GetMemorySize(
   PADDLE_ENFORCE_EQ(IsDenseTensor(var_desc),
                     true,
                     common::errors::InvalidArgument(
-                        "Var(%s) must be phi::DenseTensor.", var_name));
+                        "Var(%s) must be DenseTensor.", var_name));
   auto dims = var_desc->GetShape();
   return static_cast<int64_t>(
       SizeOfType(var_desc->GetDataType()) *
@@ -119,14 +119,14 @@ struct GCVarInfo {
 // Delete delete_lod_tensor_only is not used currently
 static OpToVarNameSetMap ShrinkGCVars(const OpToVarNameSetMap &m,
                                       const details::GraphVars &vars,
-                                      const std::vector<phi::Place> &places,
+                                      const std::vector<Place> &places,
                                       double fraction_of_memory_size,
                                       bool delete_lod_tensor_only = false) {
   // Do not perform gc when fraction_of_memory_size = 0
   if (fraction_of_memory_size <= 0.0) return {};
 
   /**
-   * Step 1: Split all variables into DenseTensor and Non-phi::DenseTensor.
+   * Step 1: Split all variables into DenseTensor and Non-DenseTensor.
    * We can only calculate memory size of DenseTensors
    */
   OpToVarNameSetMap lod_tensors, other_vars;
@@ -142,10 +142,10 @@ static OpToVarNameSetMap ShrinkGCVars(const OpToVarNameSetMap &m,
    */
 
   // place -> variable info (name, memory size, place, scope_idx)
-  std::map<phi::Place, std::vector<GCVarInfo>> place_to_vars;
+  std::map<Place, std::vector<GCVarInfo>> place_to_vars;
 
   // place -> total memory sizes
-  std::map<phi::Place, int64_t> place_to_size;
+  std::map<Place, int64_t> place_to_size;
   for (auto &op_vars_pair : lod_tensors) {
     auto *op = op_vars_pair.first;
     auto &var_names = op_vars_pair.second;
@@ -209,7 +209,7 @@ void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
   const auto &last_live_ops =
       Get<std::vector<LastLiveOpsOfVars>>(kLastLiveOpsOfVars);
   const auto &gcs = Get<GarbageCollectorMap>(kGarbageCollector);
-  const auto &places = Get<std::vector<phi::Place>>(kAllPlaces);
+  const auto &places = Get<std::vector<Place>>(kAllPlaces);
 
   // a reverse map of last_live_ops
   //   i.e., last op --> variable names which can be deleted.

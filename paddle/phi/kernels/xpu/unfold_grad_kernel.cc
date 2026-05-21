@@ -34,7 +34,7 @@ void UnfoldGradKernel(const Context& dev_ctx,
   if (x_grad->numel() == 0) {
     return;
   }
-  const std::string data_format = common::DataLayoutToString(x.layout());
+  const std::string data_format = DataLayoutToString(x.layout());
   bool is_nchw = data_format == "NCHW";
   PADDLE_ENFORCE_EQ(is_nchw,
                     true,

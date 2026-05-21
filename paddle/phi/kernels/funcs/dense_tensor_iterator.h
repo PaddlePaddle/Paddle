@@ -21,8 +21,10 @@
 #include "paddle/utils/small_vector.h"
 
 namespace phi {
+
 struct DenseTensorIteratorConfig;
 struct DenseTensorIterator;
+struct Tensor32BitSplitter;
 
 enum struct FastSetupType : uint8_t { NONE, CONTIGUOUS };
 
@@ -79,9 +81,14 @@ struct DenseTensorIteratorBase {
   const std::vector<int64_t>& strides(int64_t arg) const {
     return operands_[arg].stride_bytes;
   }
-  const void* data_ptr(int64_t arg) const;
+  DataType dtype(int64_t arg = 0) const { return operands_[arg].current_dtype; }
+  std::vector<int64_t> view_offsets() const { return view_offsets_; }
+  void* data_ptr(int64_t arg) const;
   bool should_accumulate() const { return accumulate_; }
   bool is_final_output() const { return final_output_; }
+  int get_dim_to_split() const;
+  bool is_dim_reduced(int dim) const;
+  std::unique_ptr<DenseTensorIterator> split(int dim);
 
  protected:
   void populate_operands(DenseTensorIteratorConfig&);
@@ -93,10 +100,12 @@ struct DenseTensorIteratorBase {
   bool fast_set_up(const DenseTensorIteratorConfig&);
   FastSetupType compute_fast_setup_type(const DenseTensorIteratorConfig&);
   void coalesce_dimensions();
+  void narrow(int dim, int64_t start, int64_t size);
 
  protected:
   std::vector<int64_t> shape_;
   std::vector<int64_t> perm_;
+  std::vector<int64_t> view_offsets_;
   bool has_coalesced_dimensions_ = false;
   size_t num_outputs_ = 0;
   bool all_ops_same_shape_ = false;
@@ -106,6 +115,8 @@ struct DenseTensorIteratorBase {
   std::vector<DenseOperandInfo> operands_;
   std::vector<int64_t> compatible_stride(int64_t element_size) const;
   std::vector<int64_t> invert_perm(std::vector<int64_t> input) const;
+  bool can_use_32bit_indexing() const;
+  Tensor32BitSplitter with_32bit_indexing() const;
   virtual void set_output_raw_strided(int64_t output_idx,
                                       std::vector<int64_t> sizes,
                                       std::vector<int64_t> strides);
@@ -116,9 +127,9 @@ struct DenseTensorIteratorBase {
 };
 
 /**
- * DenseTensorIterator: Used for preprocessing metadata of tensors participating
- * in computation. Can be directly used as OffsetCalculator input parameter to
- * assist with index calculations.
+ * DenseTensorIterator: Used for preprocessing metadata of tensors
+ * participating in computation. Can be directly used as OffsetCalculator
+ * input parameter to assist with index calculations.
  */
 struct DenseTensorIterator final : public DenseTensorIteratorBase {
   DenseTensorIterator() : DenseTensorIteratorBase() {}
@@ -221,6 +232,37 @@ struct DimIter {
   int64_t end;
   paddle::small_vector<int64_t, 4> values;
   int64_t offset;
+};
+
+struct Tensor32BitSplitter {
+  struct iterator {
+    iterator() = default;
+    explicit iterator(const DenseTensorIteratorBase& iter);
+    iterator(iterator&&) = default;
+    iterator& operator=(iterator&&) = default;
+    ~iterator() = default;
+
+    DenseTensorIterator& operator*() const;
+    iterator& operator++();
+
+    bool operator==(const iterator& other) const {
+      return this == &other ||
+             (iterator_stack_.empty() && other.iterator_stack_.empty());
+    }
+
+    bool operator!=(const iterator& other) const { return !(*this == other); }
+
+    std::vector<std::unique_ptr<DenseTensorIterator>> iterator_stack_;
+  };
+
+  explicit Tensor32BitSplitter(const DenseTensorIteratorBase& iter)
+      : source_iterator_(iter) {}
+
+  iterator begin() const;
+  iterator end() const;
+
+ private:
+  const DenseTensorIteratorBase& source_iterator_;
 };
 
 }  // namespace phi

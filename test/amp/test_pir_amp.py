@@ -62,9 +62,11 @@ class TestPirAMPProgram(unittest.TestCase):
             for op in main.global_block().ops:
                 if op.name() == 'pd_op.cast':
                     cast_op_count += 1
-            np.testing.assert_equal(out1.dtype, core.DataType.FLOAT32)
+            # NOTE(Pan Zhaowu): After implementation of linear_v2, there's no
+            # need for mix-precision add op applies to intermediate result.
+            np.testing.assert_equal(out1.dtype, core.DataType.FLOAT16)
             np.testing.assert_equal(out2.dtype, core.DataType.FLOAT32)
-            np.testing.assert_equal(cast_op_count, 3)
+            np.testing.assert_equal(cast_op_count, 4)
             _white_list, _black_list = core._get_amp_op_list()
             np.testing.assert_equal(len(_white_list), 0)
             np.testing.assert_equal(len(_black_list), 0)
@@ -88,9 +90,11 @@ class TestPirAMPProgram(unittest.TestCase):
             for op in main.global_block().ops:
                 if op.name() == 'pd_op.cast':
                     cast_op_count += 1
-            np.testing.assert_equal(out1.dtype, core.DataType.FLOAT32)
+            # NOTE(Pan Zhaowu): After implementation of linear_v2, there's no
+            # need for mix-precision add op applies to intermediate result.
+            np.testing.assert_equal(out1.dtype, core.DataType.BFLOAT16)
             np.testing.assert_equal(out2.dtype, core.DataType.FLOAT32)
-            np.testing.assert_equal(cast_op_count, 3)
+            np.testing.assert_equal(cast_op_count, 4)
             _white_list, _black_list = core._get_amp_op_list()
             np.testing.assert_equal(len(_white_list), 0)
             np.testing.assert_equal(len(_black_list), 0)

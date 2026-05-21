@@ -33,8 +33,7 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
   }
   // If out_grad is empty (e.g. mask all false), x_grad should be all zeros.
   if (out_grad.numel() == 0 && x_grad) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
     return;
   }
 

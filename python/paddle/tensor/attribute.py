@@ -20,7 +20,8 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
-from paddle.utils.decorator_utils import ParamAliasDecorator, param_one_alias
+from paddle._C_ops import real  # noqa: F401
+from paddle.utils.decorator_utils import param_one_alias
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..base.framework import in_dynamic_or_pir_mode, use_pir_api
@@ -46,7 +47,7 @@ def rank(input: Tensor) -> Tensor:
         Tensor, the output data type is int32.: The 0-D tensor with the dimensions of the input Tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -145,7 +146,7 @@ def shape(input: Tensor) -> Tensor:
         return out
 
 
-@ParamAliasDecorator({"x": ["input"]})
+@param_one_alias(["x", "input"])
 def is_complex(x: Tensor) -> bool:
     """Return whether x is a tensor of complex data type(complex64 or complex128).
 
@@ -162,7 +163,7 @@ def is_complex(x: Tensor) -> bool:
         bool: True if the data type of the input is complex data type, otherwise false.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -208,11 +209,11 @@ def is_floating_point(x: Tensor) -> bool:
         bool: True if the dtype of `x` is floating type, otherwise false.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.arange(1., 5., dtype='float32')
+            >>> x = paddle.arange(1.0, 5.0, dtype='float32')
             >>> y = paddle.arange(1, 5, dtype='int32')
             >>> print(paddle.is_floating_point(x))
             True
@@ -247,7 +248,7 @@ def is_integer(x: Tensor) -> bool:
         bool: True if the data type of the input is integer data type, otherwise false.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -290,54 +291,6 @@ def is_integer(x: Tensor) -> bool:
     return is_int_dtype
 
 
-def real(x: Tensor, name: str | None = None) -> Tensor:
-    """
-    Returns a new Tensor containing real values of the input Tensor.
-
-    Args:
-        x (Tensor): the input Tensor, its data type could be complex64 or complex128.
-        name (str|None, optional): The default value is None. Normally there is no need for
-            user to set this property. For more information, please refer to :ref:`api_guide_Name` .
-
-    Returns:
-        Tensor: a Tensor containing real values of the input Tensor.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor(
-            ...     [[1 + 6j, 2 + 5j, 3 + 4j], [4 + 3j, 5 + 2j, 6 + 1j]])
-            >>> print(x)
-            Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
-            [[(1+6j), (2+5j), (3+4j)],
-             [(4+3j), (5+2j), (6+1j)]])
-
-            >>> real_res = paddle.real(x)
-            >>> print(real_res)
-            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[1., 2., 3.],
-             [4., 5., 6.]])
-
-            >>> real_t = x.real()
-            >>> print(real_t)
-            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[1., 2., 3.],
-             [4., 5., 6.]])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.real(x)
-    else:
-        check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'real')
-        helper = LayerHelper('real', **locals())
-        out = helper.create_variable_for_type_inference(
-            dtype=_complex_to_real_dtype(helper.input_dtype())
-        )
-        helper.append_op(type='real', inputs={'X': x}, outputs={'Out': out})
-        return out
-
-
 def imag(x: Tensor, name: str | None = None) -> Tensor:
     """
     Returns a new tensor containing imaginary values of input tensor.
@@ -351,16 +304,20 @@ def imag(x: Tensor, name: str | None = None) -> Tensor:
         Tensor: a tensor containing imaginary values of the input tensor.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> x = paddle.to_tensor(
-            ...     [[1 + 6j, 2 + 5j, 3 + 4j], [4 + 3j, 5 + 2j, 6 + 1j]])
+            ...     [
+            ...         [1 + 6j, 2 + 5j, 3 + 4j],
+            ...         [4 + 3j, 5 + 2j, 6 + 1j],
+            ...     ]
+            ... )
             >>> print(x)
             Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
-            [[(1+6j), (2+5j), (3+4j)],
-             [(4+3j), (5+2j), (6+1j)]])
+            [[(1.00000000+6.00000000j), (2.00000000+5.00000000j), (3.00000000+4.00000000j)],
+             [(4.00000000+3.00000000j), (5.00000000+2.00000000j), (6.00000000+1.00000000j)]])
 
             >>> imag_res = paddle.imag(x)
             >>> print(imag_res)

@@ -12,11 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .tensor.compat_softmax import softmax
-from .tensor.math import logsumexp
-from .tensor.ops import expm1
+from .tensor.compat_softmax import log_softmax, softmax
+from .tensor.math import expm1, i0, i0e, i1, i1e, log1p, logit, logsumexp
 
 __all__ = [
+    "i0",
+    "i0e",
+    "i1",
+    "i1e",
+    "log1p",
+    "log_softmax",
+    "logit",
     "logsumexp",
     "softmax",
     "expm1",

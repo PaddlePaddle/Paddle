@@ -52,8 +52,8 @@ class Node;
 void recompute_bias_and_weights(const Scope* scope,
                                 ir::Node* conv_weight,
                                 const ir::Node& ac_scale,
-                                const phi::DenseTensor& ac_bias_tensor,
-                                phi::DenseTensor* eltwise_y_in_tensor) {
+                                const DenseTensor& ac_bias_tensor,
+                                DenseTensor* eltwise_y_in_tensor) {
   using EigenVectorArrayMap =
       Eigen::Map<Eigen::Array<float, Eigen::Dynamic, 1>>;
   using ConstEigenVectorArrayMap =

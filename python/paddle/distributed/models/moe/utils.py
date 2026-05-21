@@ -30,7 +30,7 @@ def _number_count(numbers, upper_range):
     Returns:
         out (Tensor): The output expert count.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
@@ -75,7 +75,7 @@ def _assign_pos(x, cum_count):
         out (Tensor): Assemble numbers in the order of counters.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
@@ -143,7 +143,7 @@ def _limit_by_capacity(expert_count, capacity, n_worker):
     Returns:
         out (Tensor): The output expert count limit by capacity.
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
@@ -190,7 +190,7 @@ def _prune_gate_by_capacity(gate_idx, expert_count, n_expert, n_worker):
         new_gate_idx (Tensor): The gate_id sequence corresponding to the new input data after passing through prune.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle
@@ -200,7 +200,10 @@ def _prune_gate_by_capacity(gate_idx, expert_count, n_expert, n_worker):
             >>> n_worker = 1
             >>> n_expert = 8
             >>> new_gate_id = utils._prune_gate_by_capacity(
-            ...     gate_idx, expert_count, n_expert, n_worker
+            ...     gate_idx,
+            ...     expert_count,
+            ...     n_expert,
+            ...     n_worker,
             ... )
             >>> print(new_gate_id)
             Tensor(shape=[8], dtype=int64, place=Place(gpu:0), stop_gradient=True,

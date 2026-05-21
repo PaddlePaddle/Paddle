@@ -26,7 +26,9 @@ limitations under the License. */
 #include <array>
 #include <functional>
 #include <mutex>
+#include <utility>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/forwards.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/backends/gpu/gpu_helper.h"
@@ -115,6 +117,10 @@ class PADDLE_API GPUContext : public DeviceContext,
 
   /*! \brief  Return cublasLt handle in the device context. */
   blasLtHandle_t cublaslt_handle() const;
+
+  /*! \brief  Return persistent cublasLt workspace (grow-only, multi-stream
+   * safe). */
+  std::pair<void*, size_t> cublaslt_workspace(size_t required_size) const;
 
   /*! \brief  Return cusolver handle in the device context. */
   solverHandle_t cusolver_dn_handle() const;
@@ -304,6 +310,11 @@ class GPUPinnedContext
   const Place& GetPlace() const override;
 
   Eigen::DefaultDevice* eigen_device() const;
+
+  dnnHandle_t cudnn_handle() const override {
+    PADDLE_THROW(common::errors::Unavailable(
+        "GPUPinnedContext does not support cudnn_handle()."));
+  }
 
   static const char* name() { return "GPUPinnedContext"; }
 

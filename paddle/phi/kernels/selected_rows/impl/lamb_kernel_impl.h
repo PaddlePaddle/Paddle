@@ -33,8 +33,8 @@ void ComputeRowImpl(const Context& dev_ctx,
                     const DenseTensor& mom2,
                     const DenseTensor& beta1_pow,
                     const DenseTensor& beta2_pow,
-                    const paddle::optional<DenseTensor>& master_param_opt,
-                    const paddle::optional<DenseTensor>& skip_update_opt,
+                    const optional<DenseTensor>& master_param_opt,
+                    const optional<DenseTensor>& skip_update_opt,
                     float weight_decay_f,
                     float beta1_f,
                     float beta2_f,
@@ -57,8 +57,8 @@ void LambKernel(const Context& dev_ctx,
                 const DenseTensor& moment2,
                 const DenseTensor& beta1_pow,
                 const DenseTensor& beta2_pow,
-                const paddle::optional<DenseTensor>& master_param,
-                const paddle::optional<DenseTensor>& skip_update,
+                const optional<DenseTensor>& master_param,
+                const optional<DenseTensor>& skip_update,
                 float weight_decay,
                 float beta1,
                 float beta2,
@@ -130,8 +130,8 @@ void ComputeRowImpl(const Context& dev_ctx,
                     const DenseTensor& mom2,
                     const DenseTensor& beta1_pow,
                     const DenseTensor& beta2_pow,
-                    const paddle::optional<DenseTensor>& master_param_opt,
-                    const paddle::optional<DenseTensor>& skip_update_opt,
+                    const optional<DenseTensor>& master_param_opt,
+                    const optional<DenseTensor>& skip_update_opt,
                     float weight_decay_f,
                     float beta1_f,
                     float beta2_f,
@@ -293,11 +293,11 @@ void ComputeRowImpl(const Context& dev_ctx,
   // paddle/phi/kernels/impl/lamb_kernel_impl.h Please modify it together
 
   // DenseTensor p_norm_t;
-  // p_norm_t.Resize(common::make_ddim({1}));
+  // p_norm_t.Resize({1});
   // auto* p_norm_ptr = dev_ctx.template Alloc<MT>(&p_norm_t);
 
   // DenseTensor trust_ratio_div_norm_t;
-  // trust_ratio_div_norm_t.Resize(common::make_ddim({1}));
+  // trust_ratio_div_norm_t.Resize({1});
   // auto* trust_ratio_div_norm_ptr =
   //     dev_ctx.template Alloc<MT>(&trust_ratio_div_norm_t);
 
@@ -330,7 +330,7 @@ void ComputeRowImpl(const Context& dev_ctx,
     const auto& name = "Param";
     auto pn = funcs::ToVector(p_norm_ptr, 1, dev_ctx.GetPlace());
     auto tn = funcs::ToVector(trust_ratio_div_norm_ptr, 1, dev_ctx.GetPlace());
-    auto dtype = DataTypeToString(phi::CppTypeToDataType<T>::Type());
+    auto dtype = DataTypeToString(CppTypeToDataType<T>::Type());
     VLOG(1) << "Param " << dtype << " " << name << " pn = " << pn[0]
             << " , tn = " << tn[0];
   }

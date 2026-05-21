@@ -19,15 +19,15 @@
 #include "paddle/phi/kernels/impl/rmsprop_kernel_impl.h"
 namespace phi {
 template <typename T>
-struct RmsFunctor<T, phi::CPUContext> {
-  RmsFunctor(const phi::CPUContext &dev_ctx,
+struct RmsFunctor<T, CPUContext> {
+  RmsFunctor(const CPUContext &dev_ctx,
              const DenseTensor &param,
              const DenseTensor &mean_square,
              const DenseTensor &grad,
              const DenseTensor &moment,
              const DenseTensor &learning_rate,
-             const paddle::optional<DenseTensor> &mean_grad_opt,
-             const paddle::optional<DenseTensor> &master_param UNUSED,
+             const optional<DenseTensor> &mean_grad_opt,
+             const optional<DenseTensor> &master_param UNUSED,
              float epsilon_t,
              float decay_t,
              float momentum_t,

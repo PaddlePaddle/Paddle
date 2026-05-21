@@ -103,13 +103,17 @@ def init_rpc(
         None.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle.distributed.rpc as rpc
 
-            >>> rpc.init_rpc("worker0", rank=0, world_size=1,
-            ...             master_endpoint="127.0.0.1:8001")
+            >>> rpc.init_rpc(
+            ...     "worker0",
+            ...     rank=0,
+            ...     world_size=1,
+            ...     master_endpoint="127.0.0.1:8001",
+            ... )
 
             >>> rpc.shutdown()
 
@@ -187,7 +191,7 @@ def rpc_sync(
         Returns the result of running ``fn`` with ``args`` and ``kwargs``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle.distributed.rpc as rpc
@@ -195,8 +199,12 @@ def rpc_sync(
             >>> def add(a, b):
             ...     return a + b
 
-            >>> rpc.init_rpc("worker0", rank=0, world_size=1,
-            ...         master_endpoint="127.0.0.1:8002")
+            >>> rpc.init_rpc(
+            ...     "worker0",
+            ...     rank=0,
+            ...     world_size=1,
+            ...     master_endpoint="127.0.0.1:8002",
+            ... )
 
             >>> ret = rpc.rpc_sync("worker0", add, args=(2, 3))
             >>> rpc.shutdown()
@@ -236,7 +244,7 @@ def rpc_async(
         ``kwargs`` can be got by `fut.wait()`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle.distributed.rpc as rpc
@@ -244,8 +252,12 @@ def rpc_async(
             >>> def add(a, b):
             ...     return a + b
 
-            >>> rpc.init_rpc("worker0", rank=0, world_size=1,
-            ...         master_endpoint="127.0.0.1:8003")
+            >>> rpc.init_rpc(
+            ...     "worker0",
+            ...     rank=0,
+            ...     world_size=1,
+            ...     master_endpoint="127.0.0.1:8003",
+            ... )
 
             >>> fut = rpc.rpc_async("worker0", add, args=(2, 3))
             >>> print(fut.wait())
@@ -318,13 +330,17 @@ def shutdown() -> None:
         None.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle.distributed.rpc as rpc
 
-            >>> rpc.init_rpc("worker0", rank=0, world_size=1,
-            ...             master_endpoint="127.0.0.1:8004")
+            >>> rpc.init_rpc(
+            ...     "worker0",
+            ...     rank=0,
+            ...     world_size=1,
+            ...     master_endpoint="127.0.0.1:8004",
+            ... )
 
             >>> rpc.shutdown()
 
@@ -352,15 +368,19 @@ def get_worker_info(name: str) -> WorkerInfo:
         class `WorkerInfo` with attribute `name`, `rank`, `ip` and `port`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle.distributed.rpc as rpc
             >>> import os
 
             >>> os.environ["PADDLE_WORKER_ENDPOINT"] = "127.0.0.1:9002"
-            >>> rpc.init_rpc("worker0", rank=0, world_size=1,
-            ...             master_endpoint="127.0.0.1:8005")
+            >>> rpc.init_rpc(
+            ...     "worker0",
+            ...     rank=0,
+            ...     world_size=1,
+            ...     master_endpoint="127.0.0.1:8005",
+            ... )
 
             >>> print(rpc.get_worker_info("worker0"))
             {name: worker0, rank: 0, ip: 127.0.0.1, port: 9002}
@@ -381,15 +401,19 @@ def get_all_worker_infos() -> list[WorkerInfo]:
         List[WorkerInfo].
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle.distributed.rpc as rpc
             >>> import os
 
             >>> os.environ["PADDLE_WORKER_ENDPOINT"] = "127.0.0.1:9003"
-            >>> rpc.init_rpc("worker0", rank=0, world_size=1,
-            ...         master_endpoint="127.0.0.1:8006")
+            >>> rpc.init_rpc(
+            ...     "worker0",
+            ...     rank=0,
+            ...     world_size=1,
+            ...     master_endpoint="127.0.0.1:8006",
+            ... )
 
             >>> print(rpc.get_all_worker_infos())
             [{name: worker0, rank: 0, ip: 127.0.0.1, port: 9003}]
@@ -409,15 +433,19 @@ def get_current_worker_info() -> WorkerInfo:
         class `WorkerInfo` with attribute `name`, `rank`, `ip` and `port`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> import paddle.distributed.rpc as rpc
             >>> import os
 
             >>> os.environ["PADDLE_WORKER_ENDPOINT"] = "127.0.0.1:9004"
-            >>> rpc.init_rpc("worker0", rank=0, world_size=1,
-            ...             master_endpoint="127.0.0.1:8007")
+            >>> rpc.init_rpc(
+            ...     "worker0",
+            ...     rank=0,
+            ...     world_size=1,
+            ...     master_endpoint="127.0.0.1:8007",
+            ... )
 
             >>> print(rpc.get_current_worker_info())
             {name: worker0, rank: 0, ip: 127.0.0.1, port: 9004}

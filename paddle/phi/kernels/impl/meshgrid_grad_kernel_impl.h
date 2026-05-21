@@ -35,8 +35,7 @@ void MeshgridBackward(const Context& dev_ctx,
       auto* out = outs[i];
       dev_ctx.template Alloc<T>(out);
       if (out->numel() != 0) {
-        phi::Full<T, Context>(
-            dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+        Full<T, Context>(dev_ctx, out->dims(), 0, out);
       }
     }
     return;
@@ -60,12 +59,12 @@ void MeshgridBackward(const Context& dev_ctx,
       }
     }
 
-    Eigen::DSizes<Eigen::DenseIndex, Rank> reduce_dims;
+    Eigen::DSizes<int64_t, Rank> reduce_dims;
     for (int k = 0; k < n; k++) {
       reduce_dims[k] = reduce_dims_vec[k];
     }
 
-    Eigen::DSizes<Eigen::DenseIndex, Rank * 2> reshape_dims;
+    Eigen::DSizes<int64_t, Rank * 2> reshape_dims;
     for (int k = 0; k < n * 2; k++) {
       reshape_dims[k] = reshape_dims_vec[k];
     }

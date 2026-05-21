@@ -26,13 +26,13 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 
-class DeadCodeEliminationPass : public pir::Pass {
+class DeadCodeEliminationPass : public Pass {
  public:
-  DeadCodeEliminationPass() : pir::Pass("dead_code_elimination_pass", 0) {}
+  DeadCodeEliminationPass() : Pass("dead_code_elimination_pass", 0) {}
 
-  void Run(pir::Operation* op) override {
+  void Run(Operation* op) override {
     VLOG(6) << "apply dead_code_elimination_pass";
     int64_t num_erasers{0};
     std::vector<std::string> deleted_vars;
@@ -42,8 +42,8 @@ class DeadCodeEliminationPass : public pir::Pass {
       EraseOp(*op->GetParentProgram()->block(), &num_erasers, &deleted_vars);
       updated = pre_num_erasers != num_erasers;
     }
-    if (Has(pir::Pass::kParamScopeAttr)) {
-      auto scope = &Get<paddle::framework::Scope>(pir::Pass::kParamScopeAttr);
+    if (Has(Pass::kParamScopeAttr)) {
+      auto scope = &Get<paddle::framework::Scope>(Pass::kParamScopeAttr);
       if (deleted_vars.size() > 0) {
         scope->EraseVars(deleted_vars);
       }
@@ -52,13 +52,12 @@ class DeadCodeEliminationPass : public pir::Pass {
   }
 
  private:
-  void EraseOp(const pir::Block& block,
+  void EraseOp(const Block& block,
                int64_t* num_erasers,
                std::vector<std::string>* deleted_vars) {
-    std::vector<pir::Operation*> deleted_ops;
+    std::vector<Operation*> deleted_ops;
     for (auto& op : block) {
-      if (op.HasTrait<pir::SideEffectTrait>() ||
-          op.isa<paddle::dialect::DataOp>() ||
+      if (op.HasTrait<SideEffectTrait>() || op.isa<paddle::dialect::DataOp>() ||
           op.isa<paddle::dialect::WhileOp>() ||
           paddle::dialect::IsCustomOp(&op) ||
           paddle::dialect::IsInplaceOp(&op)) {
@@ -70,11 +69,11 @@ class DeadCodeEliminationPass : public pir::Pass {
     }
 
     for (auto* op : deleted_ops) {
-      if (op->isa<pir::ParameterOp>()) {
-        auto parameter_op = op->dyn_cast<pir::ParameterOp>();
+      if (op->isa<ParameterOp>()) {
+        auto parameter_op = op->dyn_cast<ParameterOp>();
         deleted_vars->push_back(parameter_op.param_name());
-      } else if (op->isa<pir::ConstantTensorOp>()) {
-        auto constant_tensor_op = op->dyn_cast<pir::ConstantTensorOp>();
+      } else if (op->isa<ConstantTensorOp>()) {
+        auto constant_tensor_op = op->dyn_cast<ConstantTensorOp>();
         deleted_vars->push_back(constant_tensor_op.tensor_name());
       }
       op->Erase();
@@ -97,14 +96,10 @@ class DeadCodeEliminationPass : public pir::Pass {
   }
 };
 
-}  // namespace
-
-namespace pir {
-
 std::unique_ptr<Pass> CreateDeadCodeEliminationPass() {
   return std::make_unique<DeadCodeEliminationPass>();
 }
 
 }  // namespace pir
 
-REGISTER_IR_PASS(dead_code_elimination_pass, DeadCodeEliminationPass);
+REGISTER_IR_PASS(dead_code_elimination_pass, pir::DeadCodeEliminationPass);

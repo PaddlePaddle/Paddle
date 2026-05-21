@@ -510,7 +510,7 @@ T *SafeGetTensorPtr(const DenseTensor *t) {{
 }}
 
 template <typename T>
-T *SafeGetTensorPtr(const paddle::optional<DenseTensor> &t) {{
+T *SafeGetTensorPtr(const optional<DenseTensor> &t) {{
   return t ? SafeGetTensorPtr<T>(t.get()) : nullptr;
 }}
 

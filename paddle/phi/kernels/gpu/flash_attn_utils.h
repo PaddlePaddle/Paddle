@@ -33,7 +33,7 @@ namespace phi {
 #ifdef PADDLE_WITH_FLASHATTN
 static std::pair<uint64_t, uint64_t> GenerateRNGState(
     const GPUContext& dev_ctx,
-    const paddle::optional<DenseTensor>& fixed_seed_offset,
+    const optional<DenseTensor>& fixed_seed_offset,
     const std::string& rng_name,
     const int64_t batch_size,
     const int64_t num_heads) {
@@ -164,8 +164,8 @@ struct FlashAttnParamsBase {
                       const float _scale,
                       const bool _causal,
                       const DataType q_dtype,
-                      const paddle::optional<DenseTensor>& attn_mask,
-                      const paddle::optional<DenseTensor>& startend_row_indices,
+                      const optional<DenseTensor>& attn_mask,
+                      const optional<DenseTensor>& startend_row_indices,
                       const bool _unpadded_lse,
                       const int _total_q)
       : version(_version),
@@ -242,30 +242,29 @@ struct FlashAttnFwdParamsV2 : public FlashAttnParamsBase {
   DenseTensor* seed_offset;
   DenseTensor tile_count_semaphore;
 
-  FlashAttnFwdParamsV2(
-      const GPUContext& dev_ctx,
-      const int _version,
-      const int _batch_size,
-      const int64_t _max_seqlen_q,
-      const int64_t _max_seqlen_k,
-      const int _num_heads,
-      const int _num_heads_k,
-      const int _head_size,
-      const float _dropout,
-      const float _scale,
-      const bool _causal,
-      const bool _return_softmax,
-      const DataType q_dtype,
-      const bool is_test,
-      const std::string& rng_name,
-      const paddle::optional<DenseTensor>& fixed_seed_offset,
-      const paddle::optional<DenseTensor>& attn_mask,
-      const paddle::optional<DenseTensor>& startend_row_indices,
-      DenseTensor* _softmax,
-      DenseTensor* _softmax_lse,
-      DenseTensor* _seed_offset,
-      const bool _unpadded_lse,
-      const int _total_q)
+  FlashAttnFwdParamsV2(const GPUContext& dev_ctx,
+                       const int _version,
+                       const int _batch_size,
+                       const int64_t _max_seqlen_q,
+                       const int64_t _max_seqlen_k,
+                       const int _num_heads,
+                       const int _num_heads_k,
+                       const int _head_size,
+                       const float _dropout,
+                       const float _scale,
+                       const bool _causal,
+                       const bool _return_softmax,
+                       const DataType q_dtype,
+                       const bool is_test,
+                       const std::string& rng_name,
+                       const optional<DenseTensor>& fixed_seed_offset,
+                       const optional<DenseTensor>& attn_mask,
+                       const optional<DenseTensor>& startend_row_indices,
+                       DenseTensor* _softmax,
+                       DenseTensor* _softmax_lse,
+                       DenseTensor* _seed_offset,
+                       const bool _unpadded_lse,
+                       const int _total_q)
       : FlashAttnParamsBase(_version,
                             /*is_fwd=*/true,
                             _batch_size,
@@ -308,7 +307,7 @@ struct FlashAttnFwdParamsV2 : public FlashAttnParamsBase {
     seed_offset_data[0] = static_cast<int64_t>(seed);
     seed_offset_data[1] = static_cast<int64_t>(offset);
 
-    softmax_lse->Resize(phi::make_ddim(softmax_lse_dims));
+    softmax_lse->Resize(softmax_lse_dims);
     dev_ctx.template Alloc<float>(softmax_lse);
 
     if (_version == 3) {
@@ -340,24 +339,23 @@ struct FlashAttnBwdParamsV2 : public FlashAttnParamsBase {
   DenseTensor softmax_lse_log2;
   DenseTensor dq_semaphore;
 
-  FlashAttnBwdParamsV2(
-      const GPUContext& dev_ctx,
-      const int _version,
-      const int _batch_size,
-      const int64_t _max_seqlen_q,
-      const int64_t _max_seqlen_k,
-      const int _num_heads,
-      const int _num_heads_k,
-      const int _head_size,
-      const float _dropout,
-      const float _scale,
-      const bool _causal,
-      const DataType q_dtype,
-      const paddle::optional<DenseTensor>& attn_mask,
-      const paddle::optional<DenseTensor>& startend_row_indices,
-      const int64_t* seed_offset_data,
-      const bool _unpadded_lse,
-      const int _total_q)
+  FlashAttnBwdParamsV2(const GPUContext& dev_ctx,
+                       const int _version,
+                       const int _batch_size,
+                       const int64_t _max_seqlen_q,
+                       const int64_t _max_seqlen_k,
+                       const int _num_heads,
+                       const int _num_heads_k,
+                       const int _head_size,
+                       const float _dropout,
+                       const float _scale,
+                       const bool _causal,
+                       const DataType q_dtype,
+                       const optional<DenseTensor>& attn_mask,
+                       const optional<DenseTensor>& startend_row_indices,
+                       const int64_t* seed_offset_data,
+                       const bool _unpadded_lse,
+                       const int _total_q)
       : FlashAttnParamsBase(_version,
                             /*is_fwd=*/false,
                             _batch_size,
@@ -402,7 +400,7 @@ static void CheckFlashAttnStatus(const bool status) {
                     true,
                     common::errors::External(
                         "Error in Flash-Attention, detail information is: %s",
-                        phi::dynload::flash_attn_error()));
+                        dynload::flash_attn_error()));
 }
 #endif
 

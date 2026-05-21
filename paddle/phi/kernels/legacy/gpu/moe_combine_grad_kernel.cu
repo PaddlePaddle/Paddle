@@ -192,12 +192,12 @@ void MoeCombineAutoGradKernel(const Context& dev_ctx,
   // bypass the grad_combine_weights_helper's shape mismatch to kernel shape
   // issue.
   DenseTensor* grad_combine_weight_intermediate(grad_combine_weights_helper);
-  phi::MetaTensor grad_combine_weight_intermediate_meta(
+  MetaTensor grad_combine_weight_intermediate_meta(
       grad_combine_weight_intermediate);
   grad_combine_weight_intermediate_meta.set_dims(
-      common::make_ddim({grad_combine_weights_helper->dims()[0],
-                         grad_combine_weights_helper->dims()[1],
-                         x.dims()[1]}));
+      make_ddim({grad_combine_weights_helper->dims()[0],
+                 grad_combine_weights_helper->dims()[1],
+                 x.dims()[1]}));
   grad_combine_weight_intermediate_meta.set_dtype(combine_weights.dtype());
   dev_ctx.template Alloc<T>(grad_combine_weight_intermediate);
   Full<T, Context>(dev_ctx,

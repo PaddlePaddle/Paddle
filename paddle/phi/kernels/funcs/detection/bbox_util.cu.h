@@ -19,6 +19,7 @@
 #include <vector>
 #ifdef __NVCC__
 #include "cub/cub.cuh"
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #endif
 #ifdef __HIPCC__
 #include <hipcub/hipcub.hpp>
@@ -46,7 +47,7 @@ struct RangeInitFunctor {
 };
 
 template <typename T>
-static void SortDescending(const phi::GPUContext &dev_ctx,
+static void SortDescending(const GPUContext &dev_ctx,
                            const DenseTensor &value,
                            DenseTensor *value_out,
                            DenseTensor *index_out) {
@@ -54,7 +55,7 @@ static void SortDescending(const phi::GPUContext &dev_ctx,
   DenseTensor index_in_t;
   index_in_t.Resize({num});
   int *idx_in = dev_ctx.Alloc<int>(&index_in_t);
-  ForRange<phi::GPUContext> for_range(dev_ctx, num);
+  ForRange<GPUContext> for_range(dev_ctx, num);
   for_range(RangeInitFunctor{0, 1, idx_in});
 
   index_out->Resize({num});
@@ -289,7 +290,7 @@ static __global__ void NMSKernel(const int n_boxes,
 }
 
 template <typename T>
-static void NMS(const phi::GPUContext &dev_ctx,
+static void NMS(const GPUContext &dev_ctx,
                 const DenseTensor &proposals,
                 const DenseTensor &sorted_indices,
                 const T nms_threshold,
@@ -317,6 +318,16 @@ static void NMS(const phi::GPUContext &dev_ctx,
   std::vector<uint64_t> remv(col_blocks);
   memset(&remv[0], 0, sizeof(uint64_t) * col_blocks);
 
+#ifdef __NVCC__
+  PADDLE_ENFORCE_EQ(
+      phi::backends::gpu::IsCUDAGraphCapturing(),
+      false,
+      common::errors::InvalidArgument(
+          "NMSKernel (bbox_util) does not support CUDA Graph capture: async "
+          "D2H copy to local vector 'mask_host' will bake the destination "
+          "address into the graph; on replay the vector is re-created at a "
+          "different address, causing a dangling-pointer write."));
+#endif
   std::vector<uint64_t> mask_host(boxes_num * col_blocks);
   phi::memory_utils::Copy(CPUPlace(),
                           mask_host.data(),
@@ -342,10 +353,16 @@ static void NMS(const phi::GPUContext &dev_ctx,
   }
   keep_out->Resize({num_to_keep});
   int *keep = dev_ctx.Alloc<int>(keep_out);
+#ifdef __NVCC__
+  const int *stable_kv = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      const_cast<int *>(keep_vec.data()), keep_vec.size());
+#else
+  const int *stable_kv = keep_vec.data();
+#endif
   phi::memory_utils::Copy(place,
                           keep,
                           CPUPlace(),
-                          keep_vec.data(),
+                          stable_kv,
                           sizeof(int) * num_to_keep,
                           dev_ctx.stream());
   dev_ctx.Wait();

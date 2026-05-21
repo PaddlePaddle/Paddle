@@ -25,12 +25,12 @@ namespace fusion {
 
 template <typename T, typename Context>
 void FusedRopeGradKernel(const Context& dev_ctx,
-                         const paddle::optional<DenseTensor>& sin,
-                         const paddle::optional<DenseTensor>& cos,
-                         const paddle::optional<DenseTensor>& position_ids,
+                         const optional<DenseTensor>& sin,
+                         const optional<DenseTensor>& cos,
+                         const optional<DenseTensor>& position_ids,
                          const DenseTensor& dout_q,
-                         const paddle::optional<DenseTensor>& dout_k,
-                         const paddle::optional<DenseTensor>& dout_v,
+                         const optional<DenseTensor>& dout_k,
+                         const optional<DenseTensor>& dout_v,
                          bool use_neox_rotary_style,
                          bool time_major,
                          float rotary_emb_base,

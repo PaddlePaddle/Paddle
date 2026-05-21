@@ -22,7 +22,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void ApFacadeKernel(const Context& dev_ctx,
-                    const paddle::optional<std::vector<const DenseTensor*>>& xs,
+                    const optional<std::vector<const DenseTensor*>>& xs,
                     int64_t num_outputs,
                     const std::string& custom_op_name,
                     const std::string& infer_meta_func_name,

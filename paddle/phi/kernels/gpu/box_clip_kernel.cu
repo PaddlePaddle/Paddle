@@ -58,12 +58,12 @@ void GPUBoxClipKernel(const Context &dev_ctx,
   const int64_t num = input_p->dims()[0];
   const int64_t bbox_width = input_p->numel() / num;
   auto lod = input_p->lod();
-  phi::LegacyLoD abs_offset_lod = phi::ToAbsOffset(lod);
+  LegacyLoD abs_offset_lod = ToAbsOffset(lod);
 
   auto stream = dev_ctx.stream();
   const size_t batch_size = lod.back().size() - 1;
   T *output_data = dev_ctx.template Alloc<T>(output);
-  phi::MixVector<size_t> mix_vector(&abs_offset_lod[0]);
+  MixVector<size_t> mix_vector(&abs_offset_lod[0]);
   GPUBoxClip<T, 512><<<batch_size, 512, 0, stream>>>(
       input_p->data<T>(),
       mix_vector.CUDAMutableData(dev_ctx.GetPlace()),

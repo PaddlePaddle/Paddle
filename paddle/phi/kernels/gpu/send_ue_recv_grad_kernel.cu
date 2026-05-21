@@ -43,7 +43,7 @@ void CalculateXEGradForMinMax(const Context& dev_ctx,
                               T* e_grad,
                               const DenseTensor* out = nullptr) {
   const T* out_data = out->data<T>();
-  const auto& bcast_info = phi::CalcBCastInfo(x_dims, e_dims);
+  const auto& bcast_info = CalcBCastInfo(x_dims, e_dims);
   thrust::device_vector<int64_t> l_bcastoff, r_bcastoff;
   if (bcast_info.use_bcast) {
     CopyBCastOff(bcast_info, &l_bcastoff, &r_bcastoff);
@@ -136,7 +136,7 @@ void CalculateXGrad(const Context& dev_ctx,
                                                    slice_size,
                                                    functor);
       } else {
-        const auto& bcast_info = phi::CalcBCastInfo(out_grad_dims, e_dims);
+        const auto& bcast_info = CalcBCastInfo(out_grad_dims, e_dims);
         DenseTensor x_grad_v2 = EmptyLike<T, Context>(dev_ctx, out_grad_tensor);
         funcs::SetConstant<Context, T>()(dev_ctx, &x_grad_v2, T(0));
         T* x_grad_v2_data = x_grad_v2.data<T>();
@@ -151,12 +151,11 @@ void CalculateXGrad(const Context& dev_ctx,
                                                    bcast_info.out_len,
                                                    functor);
         // Run reduce_sum
-        DenseTensor x_grad_out =
-            phi::Sum<T, Context>(dev_ctx,
-                                 x_grad_v2,
-                                 phi::IntArray(reduce_idx),
-                                 phi::CppTypeToDataType<T>::Type(),
-                                 true);
+        DenseTensor x_grad_out = Sum<T, Context>(dev_ctx,
+                                                 x_grad_v2,
+                                                 IntArray(reduce_idx),
+                                                 CppTypeToDataType<T>::Type(),
+                                                 true);
 #ifdef PADDLE_WITH_HIP
         hipMemcpy(x_grad,
                   x_grad_out.data<T>(),
@@ -171,7 +170,7 @@ void CalculateXGrad(const Context& dev_ctx,
 #endif
       }
     } else if (message_op == "MUL") {
-      const auto& bcast_info = phi::CalcBCastInfo(out_grad_dims, e_dims);
+      const auto& bcast_info = CalcBCastInfo(out_grad_dims, e_dims);
       thrust::device_vector<int64_t> l_bcastoff, r_bcastoff;
       if (bcast_info.use_bcast) {
         CopyBCastOff(bcast_info, &l_bcastoff, &r_bcastoff);
@@ -228,12 +227,11 @@ void CalculateXGrad(const Context& dev_ctx,
                 bcast_info.use_bcast,
                 mul_functor,
                 sum_functor);
-        DenseTensor x_grad_out =
-            phi::Sum<T, Context>(dev_ctx,
-                                 x_grad_v2,
-                                 phi::IntArray(reduce_idx),
-                                 phi::CppTypeToDataType<T>::Type(),
-                                 true);
+        DenseTensor x_grad_out = Sum<T, Context>(dev_ctx,
+                                                 x_grad_v2,
+                                                 IntArray(reduce_idx),
+                                                 CppTypeToDataType<T>::Type(),
+                                                 true);
 #ifdef PADDLE_WITH_HIP
         hipMemcpy(x_grad,
                   x_grad_out.data<T>(),
@@ -261,7 +259,7 @@ void CalculateXGrad(const Context& dev_ctx,
                                                    slice_size,
                                                    s_count);
       } else {
-        const auto& bcast_info = phi::CalcBCastInfo(out_grad_dims, e_dims);
+        const auto& bcast_info = CalcBCastInfo(out_grad_dims, e_dims);
         DenseTensor x_grad_v2 = EmptyLike<T, Context>(dev_ctx, out_grad_tensor);
         funcs::SetConstant<Context, T>()(dev_ctx, &x_grad_v2, T(0));
         T* x_grad_v2_data = x_grad_v2.data<T>();
@@ -274,12 +272,11 @@ void CalculateXGrad(const Context& dev_ctx,
                                                    bcast_info.out_len,
                                                    s_count);
         // Run reduce_sum
-        DenseTensor x_grad_out =
-            phi::Sum<T, Context>(dev_ctx,
-                                 x_grad_v2,
-                                 phi::IntArray(reduce_idx),
-                                 phi::CppTypeToDataType<T>::Type(),
-                                 true);
+        DenseTensor x_grad_out = Sum<T, Context>(dev_ctx,
+                                                 x_grad_v2,
+                                                 IntArray(reduce_idx),
+                                                 CppTypeToDataType<T>::Type(),
+                                                 true);
 #ifdef PADDLE_WITH_HIP
         hipMemcpy(x_grad,
                   x_grad_out.data<T>(),
@@ -294,7 +291,7 @@ void CalculateXGrad(const Context& dev_ctx,
 #endif
       }
     } else if (message_op == "MUL") {
-      const auto& bcast_info = phi::CalcBCastInfo(out_grad_dims, e_dims);
+      const auto& bcast_info = CalcBCastInfo(out_grad_dims, e_dims);
       thrust::device_vector<int64_t> l_bcastoff, r_bcastoff;
       if (bcast_info.use_bcast) {
         CopyBCastOff(bcast_info, &l_bcastoff, &r_bcastoff);
@@ -342,12 +339,11 @@ void CalculateXGrad(const Context& dev_ctx,
                 out_len,
                 bcast_info.use_bcast);
         // Run reduce_sum
-        DenseTensor x_grad_out =
-            phi::Sum<T, Context>(dev_ctx,
-                                 x_grad_v2,
-                                 phi::IntArray(reduce_idx),
-                                 phi::CppTypeToDataType<T>::Type(),
-                                 true);
+        DenseTensor x_grad_out = Sum<T, Context>(dev_ctx,
+                                                 x_grad_v2,
+                                                 IntArray(reduce_idx),
+                                                 CppTypeToDataType<T>::Type(),
+                                                 true);
         // TODO(daisiming): Whether use x_grad instead.
 #ifdef PADDLE_WITH_HIP
         hipMemcpy(x_grad,
@@ -380,7 +376,7 @@ void CalculateEGrad(const Context& dev_ctx,
                     int64_t index_size,
                     T* e_grad,
                     const DenseTensor* dst_count = nullptr) {
-  const auto& bcast_info = phi::CalcBCastInfo(x_dims, e_dims);
+  const auto& bcast_info = CalcBCastInfo(x_dims, e_dims);
   thrust::device_vector<int64_t> l_bcastoff, r_bcastoff;
   if (bcast_info.use_bcast) {
     CopyBCastOff(bcast_info, &l_bcastoff, &r_bcastoff);
@@ -560,8 +556,8 @@ void SendUERecvGradKernel(const Context& dev_ctx,
                           const DenseTensor& y,
                           const DenseTensor& src_index,
                           const DenseTensor& dst_index,
-                          const paddle::optional<DenseTensor>& out,
-                          const paddle::optional<DenseTensor>& dst_count,
+                          const optional<DenseTensor>& out,
+                          const optional<DenseTensor>& dst_count,
                           const DenseTensor& out_grad,
                           const std::string& message_op,
                           const std::string& reduce_op,
@@ -576,7 +572,7 @@ void SendUERecvGradKernel(const Context& dev_ctx,
     return;
   }
 
-  if (index_type == phi::DataType::INT32) {
+  if (index_type == DataType::INT32) {
     GraphSendUERecvGradOpCUDAKernelLaunchHelper<Context, T, int32_t>(
         dev_ctx,
         out_grad,
@@ -590,7 +586,7 @@ void SendUERecvGradKernel(const Context& dev_ctx,
         y_grad,
         dst_count.get_ptr(),
         out.get_ptr());
-  } else if (index_type == phi::DataType::INT64) {
+  } else if (index_type == DataType::INT64) {
     GraphSendUERecvGradOpCUDAKernelLaunchHelper<Context, T, int64_t>(
         dev_ctx,
         out_grad,

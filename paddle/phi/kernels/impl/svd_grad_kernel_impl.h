@@ -34,7 +34,7 @@ static DenseTensor Fill(const Context& dev_ctx,
                         std::vector<int64_t> shape,
                         T fill_value) {
   DenseTensor ret;
-  ret.Resize(common::make_ddim(shape));
+  ret.Resize(shape);
   dev_ctx.template Alloc<T>(&ret);
   funcs::SetConstant<Context, T>()(dev_ctx, &ret, fill_value);
   return ret;
@@ -58,7 +58,7 @@ static DenseTensor Unsqueeze(const DenseTensor& x, int axis = 0) {
   // don't copy data, only change the dims
   DenseTensor out;
   out.ShareDataWith(x);
-  std::vector<int64_t> out_shape = common::vectorize<int64_t>(x.dims());
+  std::vector<int64_t> out_shape = vectorize<int64_t>(x.dims());
   if (axis >= 0) {
     auto index = (out_shape.begin() + axis);
     out_shape.insert(index, 1);
@@ -66,7 +66,7 @@ static DenseTensor Unsqueeze(const DenseTensor& x, int axis = 0) {
     auto index = (out_shape.end() + axis + 1);
     out_shape.insert(index, 1);
   }
-  out.Resize(common::make_ddim(out_shape));
+  out.Resize(out_shape);
   return out;
 }
 
@@ -81,9 +81,9 @@ struct SvdGradFunctor {
                   const DenseTensor& u,
                   const DenseTensor& vh,
                   const DenseTensor& s,
-                  const paddle::optional<DenseTensor>& u_grad,
-                  const paddle::optional<DenseTensor>& vh_grad,
-                  const paddle::optional<DenseTensor>& s_grad,
+                  const optional<DenseTensor>& u_grad,
+                  const optional<DenseTensor>& vh_grad,
+                  const optional<DenseTensor>& s_grad,
                   bool full_matrices,
                   DenseTensor* x_grad) {
     const auto& dX = *x_grad;
@@ -189,17 +189,17 @@ struct SvdGradFunctor {
 };
 
 template <typename T, typename Context>
-struct SvdGradFunctor<phi::dtype::complex<T>, Context> {
+struct SvdGradFunctor<dtype::complex<T>, Context> {
   void operator()(const Context& dev_ctx,
                   const DenseTensor& u,
                   const DenseTensor& vh,
                   const DenseTensor& s,
-                  const paddle::optional<DenseTensor>& u_grad,
-                  const paddle::optional<DenseTensor>& vh_grad,
-                  const paddle::optional<DenseTensor>& s_grad,
+                  const optional<DenseTensor>& u_grad,
+                  const optional<DenseTensor>& vh_grad,
+                  const optional<DenseTensor>& s_grad,
                   bool full_matrices,
                   DenseTensor* x_grad) {
-    using C = phi::dtype::complex<T>;
+    using C = dtype::complex<T>;
     const auto& dX = *x_grad;
     int64_t m = dX.dims()[dX.dims().size() - 2];
     int64_t n = dX.dims()[dX.dims().size() - 1];
@@ -331,9 +331,9 @@ void SvdGradKernel(const Context& dev_ctx,
                    const DenseTensor& u,
                    const DenseTensor& vh,
                    const DenseTensor& s,
-                   const paddle::optional<DenseTensor>& u_grad,
-                   const paddle::optional<DenseTensor>& vh_grad,
-                   const paddle::optional<DenseTensor>& s_grad,
+                   const optional<DenseTensor>& u_grad,
+                   const optional<DenseTensor>& vh_grad,
+                   const optional<DenseTensor>& s_grad,
                    bool full_matrices,
                    DenseTensor* x_grad) {
   SvdGradFunctor<T, Context>()(

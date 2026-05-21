@@ -27,7 +27,7 @@ namespace {
 std::vector<int64_t> CheckBmmTensorMeta(const DistMetaTensor& tensor,
                                         const char* tensor_name,
                                         const char* rule_name) {
-  const auto shape = common::vectorize(tensor.dims());
+  const auto shape = vectorize(tensor.dims());
   const auto& dims_mapping = tensor.dist_attr().multi_dims_mapping();
 
   PADDLE_ENFORCE_EQ(shape.size(),

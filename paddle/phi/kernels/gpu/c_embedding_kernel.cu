@@ -81,7 +81,7 @@ void CEmbeddingKernel(const Context& dev_ctx,
   int threads = kNumCUDAThreads;
 
   const auto& index_type = ids.dtype();
-  if (index_type == phi::DataType::INT32) {
+  if (index_type == DataType::INT32) {
     CEmbedding<T, int32_t>
         <<<blocks, threads, 0, dev_ctx.stream()>>>(output,
                                                    table,
@@ -94,7 +94,7 @@ void CEmbeddingKernel(const Context& dev_ctx,
                                                    limit,
                                                    vocab_size);
 
-  } else if (index_type == phi::DataType::INT64) {
+  } else if (index_type == DataType::INT64) {
     CEmbedding<T, int64_t>
         <<<blocks, threads, 0, dev_ctx.stream()>>>(output,
                                                    table,
@@ -113,8 +113,6 @@ void CEmbeddingKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-#if (NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000) || \
-    defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUSTOM_DEVICE)
 PD_REGISTER_KERNEL(c_embedding,
                    GPU,
                    ALL_LAYOUT,
@@ -125,14 +123,3 @@ PD_REGISTER_KERNEL(c_embedding,
                    phi::float16,
                    phi::complex64,
                    phi::complex128) {}
-#else
-PD_REGISTER_KERNEL(c_embedding,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::CEmbeddingKernel,
-                   float,
-                   double,
-                   phi::float16,
-                   phi::complex64,
-                   phi::complex128) {}
-#endif

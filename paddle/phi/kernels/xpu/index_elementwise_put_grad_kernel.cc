@@ -162,7 +162,7 @@ void LaunchIndexElementwisePutWithTensorGradXPUKernel(
     }
     if (value_grad->numel() == 1) {
       DenseTensor tmp_value_grad(value_grad->dtype());
-      tmp_value_grad.Resize(common::make_ddim(input_dims));
+      tmp_value_grad.Resize(input_dims);
       dev_ctx.template Alloc<T>(&tmp_value_grad);
 
       XPUIndexElementwisePutGradKernel<T, Context, int64_t>(dev_ctx,
@@ -185,7 +185,7 @@ void LaunchIndexElementwisePutWithTensorGradXPUKernel(
                             value_grad->dtype(),
                             false,
                             value_grad);
-    } else if (value_grad->dims() == common::make_ddim(input_dims)) {
+    } else if (value_grad->dims() == make_ddim(input_dims)) {
       dev_ctx.template Alloc<T>(value_grad);
       XPUIndexElementwisePutGradKernel<T, Context, int64_t>(dev_ctx,
                                                             out_grad,
@@ -199,7 +199,7 @@ void LaunchIndexElementwisePutWithTensorGradXPUKernel(
                                                             value_grad);
     } else {
       DenseTensor tmp_value_grad(value_grad->dtype());
-      tmp_value_grad.Resize(common::make_ddim(input_dims));
+      tmp_value_grad.Resize(input_dims);
       dev_ctx.template Alloc<T>(&tmp_value_grad);
 
       XPUIndexElementwisePutGradKernel<T, Context, int64_t>(dev_ctx,
@@ -222,7 +222,7 @@ void LaunchIndexElementwisePutWithTensorGradXPUKernel(
           &after_dims, &before_dims, &compress_dims, &dims_without_1);
 
       auto pre_dims = value_grad->dims();
-      value_grad->Resize(common::make_ddim(dims_without_1));
+      value_grad->Resize(dims_without_1);
       IntArray v_axis(compress_dims);
       SumKernel<T, Context>(dev_ctx,
                             tmp_value_grad,
@@ -275,15 +275,14 @@ void IndexElementwisePutGradKernel(
     const int64_t slice_offset,
     DenseTensor* x_grad) {
   const auto& index_type = indices[0]->dtype();
-  PADDLE_ENFORCE_EQ(
-      index_type == phi::DataType::INT64 ||
-          (index_type == phi::DataType::BOOL && indices.size() == 1),
-      true,
-      common::errors::InvalidArgument(
-          "Index holds the wrong type, it holds [%s], but "
-          "desires to be [%s].",
-          index_type,
-          phi::DataType::INT64));
+  PADDLE_ENFORCE_EQ(index_type == DataType::INT64 ||
+                        (index_type == DataType::BOOL && indices.size() == 1),
+                    true,
+                    common::errors::InvalidArgument(
+                        "Index holds the wrong type, it holds [%s], but "
+                        "desires to be [%s].",
+                        index_type,
+                        DataType::INT64));
   std::vector<DenseTensor> tmp_args;
   if (indices.empty()) {
     if (x_grad) {
@@ -318,13 +317,13 @@ void IndexElementwisePutWithTensorGradKernel(
     DenseTensor* x_grad,
     DenseTensor* value_grad) {
   const auto& index_type = indices[0]->dtype();
-  PADDLE_ENFORCE_EQ(index_type == phi::DataType::INT64,
+  PADDLE_ENFORCE_EQ(index_type == DataType::INT64,
                     true,
                     common::errors::InvalidArgument(
                         "Index holds the wrong type, it holds [%s], but "
                         "desires to be [%s].",
                         index_type,
-                        phi::DataType::INT64));
+                        DataType::INT64));
 
   std::vector<DenseTensor> tmp_args;
   if (indices.empty()) {
@@ -332,11 +331,7 @@ void IndexElementwisePutWithTensorGradKernel(
       Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     }
     if (value_grad) {
-      FullKernel<T, Context>(dev_ctx,
-                             vectorize(value_grad->dims()),
-                             0.0f,
-                             value_grad->dtype(),
-                             value_grad);
+      Full<T, Context>(dev_ctx, value_grad->dims(), 0.0f, value_grad);
     }
     return;
   }

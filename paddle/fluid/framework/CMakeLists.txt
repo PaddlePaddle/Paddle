@@ -109,7 +109,7 @@ cc_library(
 cc_library(
   tensor
   SRCS tensor_util.cc
-  DEPS data_type dlpack_tensor device_context phi common)
+  DEPS data_type dlpack_tensor phi common)
 
 cc_library(
   lod_tensor
@@ -119,7 +119,7 @@ cc_library(
 cc_library(
   garbage_collector
   SRCS garbage_collector.cc
-  DEPS device_context phi common glog)
+  DEPS phi common glog)
 
 cc_library(
   var_type_traits
@@ -220,7 +220,7 @@ cc_library(
 cc_library(
   no_need_buffer_vars_inference
   SRCS no_need_buffer_vars_inference.cc
-  DEPS attribute device_context)
+  DEPS attribute phi)
 cc_library(
   op_info
   SRCS op_info.cc
@@ -239,7 +239,7 @@ endif()
 cc_library(
   op_kernel_type
   SRCS op_kernel_type.cc
-  DEPS device_context phi common)
+  DEPS phi common)
 
 if(WITH_XPU)
   cc_library(
@@ -334,7 +334,7 @@ cc_library(
 
 if(WITH_PYTHON)
   py_proto_compile(framework_py_proto SRCS framework.proto data_feed.proto)
-  py_proto_compile(trainer_py_proto SRCS trainer_desc.proto data_feed.proto)
+  py_proto_compile(trainer_py_proto SRCS trainer_desc.proto)
   py_proto_compile(distributed_strategy_py_proto SRCS
                    distributed_strategy.proto)
   py_proto_compile(pass_desc_py_proto SRCS pass_desc.proto)
@@ -450,16 +450,13 @@ if(WITH_DISTRIBUTE)
          trainer_factory.cc
          trainer.cc
          data_feed_factory.cc
-         heterxpu_trainer.cc
          data_feed.cc
          device_worker.cc
          hogwild_worker.cc
-         hetercpu_worker.cc
          ps_gpu_worker.cc
          ps_gpu_trainer.cc
          downpour_worker.cc
          downpour_worker_opt.cc
-         data_feed.cu
          pull_dense_worker.cc
          section_worker.cc
          device_worker_factory.cc
@@ -469,10 +466,7 @@ if(WITH_DISTRIBUTE)
          glog
          framework_io
          fleet_wrapper
-         heter_wrapper
-         ps_gpu_wrapper
-         box_wrapper
-         metrics
+         gloo_wrapper
          densetensor_printer
          feed_fetch_method
          feed_hook
@@ -489,16 +483,13 @@ else()
          trainer_factory.cc
          trainer.cc
          data_feed_factory.cc
-         heterxpu_trainer.cc
          data_feed.cc
          device_worker.cc
          hogwild_worker.cc
-         hetercpu_worker.cc
          ps_gpu_worker.cc
          ps_gpu_trainer.cc
          downpour_worker.cc
          downpour_worker_opt.cc
-         data_feed.cu
          pull_dense_worker.cc
          section_worker.cc
          device_worker_factory.cc
@@ -508,9 +499,6 @@ else()
          glog
          framework_io
          fleet_wrapper
-         heter_wrapper
-         ps_gpu_wrapper
-         box_wrapper
          densetensor_printer
          feed_fetch_method
          feed_hook
@@ -550,11 +538,6 @@ cc_library(
   dlpack_tensor
   SRCS dlpack_tensor.cc
   DEPS dlpack phi)
-
-cc_library(
-  op_compatible_info
-  SRCS op_compatible_info.cc
-  DEPS string_helper proto_desc)
 
 # Get the current working branch
 execute_process(

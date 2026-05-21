@@ -22,10 +22,10 @@ namespace phi {
 template <typename T, typename Context>
 void RmsNormQuantGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
-                            const paddle::optional<DenseTensor>& bias,
-                            const paddle::optional<DenseTensor>& residual,
+                            const optional<DenseTensor>& bias,
+                            const optional<DenseTensor>& residual,
                             const DenseTensor& norm_weight,
-                            const paddle::optional<DenseTensor>& norm_bias,
+                            const optional<DenseTensor>& norm_bias,
                             const DenseTensor& inv_var,
                             const DenseTensor& out_grad,
                             const float epsilon,

@@ -34,8 +34,8 @@ void RandomKernel(const Context& dev_ctx,
       dev_ctx.GetGenerator()->GetCPUEngine();
 
   if constexpr (std::is_floating_point<T>::value ||
-                std::is_same<T, phi::float16>::value ||
-                std::is_same<T, phi::bfloat16>::value) {
+                std::is_same<T, float16>::value ||
+                std::is_same<T, bfloat16>::value) {
     from = update_from<T>(from);
     to = update_to<T>(to);
 

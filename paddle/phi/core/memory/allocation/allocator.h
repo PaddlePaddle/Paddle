@@ -106,9 +106,9 @@ class Allocator;
  */
 class Allocation : public phi::Allocation {
  public:
-  Allocation(void* ptr, size_t size, phi::Place place)
+  Allocation(void* ptr, size_t size, Place place)
       : phi::Allocation(ptr, size, place), base_ptr_(ptr) {}
-  Allocation(void* ptr, void* base_ptr, size_t size, const phi::Place& place)
+  Allocation(void* ptr, void* base_ptr, size_t size, const Place& place)
       : phi::Allocation(ptr, size, place), base_ptr_(base_ptr) {}
 
   void* base_ptr() const { return base_ptr_; }
@@ -201,16 +201,16 @@ class PADDLE_API Allocator : public phi::Allocator {
     FreeImpl(allocation);
   }
 
-  uint64_t Release(const phi::Place& place) { return ReleaseImpl(place); }
-  size_t Compact(const phi::Place& place) { return CompactImpl(place); }
+  uint64_t Release(const Place& place) { return ReleaseImpl(place); }
+  size_t Compact(const Place& place) { return CompactImpl(place); }
 
   virtual void Accept(AllocatorVisitor* visitor);
 
  protected:
   virtual phi::Allocation* AllocateImpl(size_t size) = 0;
   virtual void FreeImpl(phi::Allocation* allocation);
-  virtual uint64_t ReleaseImpl(const phi::Place& place UNUSED) { return 0; }
-  virtual size_t CompactImpl(const phi::Place& place UNUSED) {
+  virtual uint64_t ReleaseImpl(const Place& place UNUSED) { return 0; }
+  virtual size_t CompactImpl(const Place& place UNUSED) {
     PADDLE_THROW(phi::errors::Unimplemented("Compact is not supported"));
     return 0;
   }
@@ -294,7 +294,7 @@ class PADDLE_API MultiScalePoolAllocator : public Allocator {
   std::shared_ptr<Allocator> small_allocator_;
   std::shared_ptr<Allocator> large_allocator_;
   size_t alignment_;
-  phi::Place place_;
+  Place place_;
 
   // Record allocate event into `allocation_records_` when
   // `FLAGS_record_alloc_event` is True.

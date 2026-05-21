@@ -638,23 +638,25 @@ struct FlowGraph {
 
 using Edge = FlowGraph::Edge;
 
-class TransferLayoutPass : public pir::Pass {
- public:
-  TransferLayoutPass() : pir::Pass("transfer_layout_pass", 2) {}
+namespace pir {
 
-  bool CanApplyOn(pir::Operation* op) const override {
-    if (!op->isa<pir::ModuleOp>()) {
+class TransferLayoutPass : public Pass {
+ public:
+  TransferLayoutPass() : Pass("transfer_layout_pass", 2) {}
+
+  bool CanApplyOn(Operation* op) const override {
+    if (!op->isa<ModuleOp>()) {
       return false;
     }
     return op->num_regions() > 0;
   }
 
-  void Run(pir::Operation* op) override {
-    pir::IrContext* ctx = pir::IrContext::Instance();
-    ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
+  void Run(Operation* op) override {
+    IrContext* ctx = IrContext::Instance();
+    ctx->GetOrRegisterDialect<BuiltinDialect>();
     ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
-    auto module_op = op->dyn_cast<pir::ModuleOp>();
+    auto module_op = op->dyn_cast<ModuleOp>();
     auto* program = module_op.program();
 
     // MinCut
@@ -672,7 +674,7 @@ class TransferLayoutPass : public pir::Pass {
     std::unordered_map<Node, Node> op_src_set;
     std::vector<Edge> op_set;
     for (const auto& e : cut) {
-      if (std::get_if<const pir::Operation*>(&(e.src.data))) {
+      if (std::get_if<const Operation*>(&(e.src.data))) {
         op_src_set[e.src] = e.dst;
         op_set.push_back(e);
       } else {
@@ -700,7 +702,7 @@ class TransferLayoutPass : public pir::Pass {
 
     VLOG(10) << "-----------------------[min cut end]------------------------";
 
-    pir::Builder builder(ctx, program->block());
+    Builder builder(ctx, program->block());
     auto layout_to_perm = [](std::string src, std::string dst) {
       std::vector<int> perm(src.size(), 0);
       std::unordered_map<char, int> d;
@@ -754,9 +756,9 @@ class TransferLayoutPass : public pir::Pass {
       // not in cut set and its layout should not be changed
       if (src_set.find(node) == src_set.end()) {
         // process layout transformation
-        if (std::get_if<const pir::Operation*>(&(node.data)) != nullptr) {
-          auto* op = const_cast<pir::Operation*>(
-              std::get<const pir::Operation*>(node.data));
+        if (std::get_if<const Operation*>(&(node.data)) != nullptr) {
+          auto* op =
+              const_cast<Operation*>(std::get<const Operation*>(node.data));
           VLOG(10) << "[Rewrite][RewriteByLayout] " << node;
           auto layout_transformation_iface =
               op->dyn_cast<paddle::dialect::LayoutTransformationInterface>();
@@ -783,11 +785,11 @@ class TransferLayoutPass : public pir::Pass {
         // just insert a transpose op
         auto src = node;
         auto dst = op_src_set[src];
-        auto dst_value = std::get<pir::Value>(dst.data);
+        auto dst_value = std::get<Value>(dst.data);
 
         VLOG(10) << "[Rewrite][Op] for var:"
                  << (dst_value ? (dst_value.defining_op()) : nullptr)
-                 << " t:" << (dst_value ? (dst_value.type()) : pir::Type());
+                 << " t:" << (dst_value ? (dst_value.type()) : Type());
 
         // enforce dst value.defining_op = src
         const auto& perm =
@@ -802,12 +804,12 @@ class TransferLayoutPass : public pir::Pass {
             builder.Build<paddle::dialect::TransposeOp>(dst_value, perm);
         transpose_op->set_attribute(
             "source",
-            pir::StrAttribute::get(transpose_op->ir_context(),
-                                   "transfer_layout_pass"));
-        auto replace_uses_without_self = [&](pir::OpOperand arg) {
+            StrAttribute::get(transpose_op->ir_context(),
+                              "transfer_layout_pass"));
+        auto replace_uses_without_self = [&](OpOperand arg) {
           return arg.owner() != transpose_op.operation();
         };
-        pir::SetNewLayoutForValue(transpose_op.out(), new_layout);
+        SetNewLayoutForValue(transpose_op.out(), new_layout);
         dst_value.ReplaceUsesWithIf(transpose_op.out(),
                                     replace_uses_without_self);
         value_replacement_map[dst_value] = transpose_op.out();
@@ -820,12 +822,12 @@ class TransferLayoutPass : public pir::Pass {
         VLOG(10) << "[Rewrite][Var] for " << node;
         const auto& ops = var_set[node];
         // operand should be replaced
-        std::unordered_set<const pir::Operation*> operation_set;
+        std::unordered_set<const Operation*> operation_set;
         for (auto op : ops) {
-          operation_set.insert(std::get<const pir::Operation*>(op.data));
+          operation_set.insert(std::get<const Operation*>(op.data));
         }
 
-        auto value = std::get<pir::Value>(node.data);
+        auto value = std::get<Value>(node.data);
         // The 'value' might have been replaced with its transposed version
         // due to processing previous Op-sourced cut edges. See more details at
         // https://github.com/PaddlePaddle/Paddle/pull/73418
@@ -849,9 +851,9 @@ class TransferLayoutPass : public pir::Pass {
             builder.Build<paddle::dialect::TransposeOp>(value, perm);
         transpose_op->set_attribute(
             "source",
-            pir::StrAttribute::get(transpose_op->ir_context(),
-                                   "transfer_layout_pass"));
-        auto replace_uses_in_cut_set = [&](pir::OpOperand arg) {
+            StrAttribute::get(transpose_op->ir_context(),
+                              "transfer_layout_pass"));
+        auto replace_uses_in_cut_set = [&](OpOperand arg) {
           bool is_arg_in_cut_set =
               operation_set.find(arg.owner()) != operation_set.end();
           auto cur_op = arg.owner();
@@ -866,7 +868,7 @@ class TransferLayoutPass : public pir::Pass {
           }
           return is_arg_in_cut_set && (arg.owner() != transpose_op.operation());
         };
-        pir::SetNewLayoutForValue(transpose_op.out(), new_layout);
+        SetNewLayoutForValue(transpose_op.out(), new_layout);
         value.ReplaceUsesWithIf(transpose_op.out(), replace_uses_in_cut_set);
       }
     }
@@ -876,15 +878,13 @@ class TransferLayoutPass : public pir::Pass {
  private:
   // Tracks how an original op output Value is redirected to a new Value (from a
   // TransposeOp) due to an Op-sourced cut.
-  std::unordered_map<pir::Value, pir::Value> value_replacement_map;
+  std::unordered_map<Value, Value> value_replacement_map;
 };
 
-namespace pir {
-
-std::unique_ptr<pir::Pass> CreateTransferLayoutPass() {
+std::unique_ptr<Pass> CreateTransferLayoutPass() {
   return std::make_unique<TransferLayoutPass>();
 }
 
 }  // namespace pir
 
-REGISTER_IR_PASS(transfer_layout_pass, TransferLayoutPass);
+REGISTER_IR_PASS(transfer_layout_pass, pir::TransferLayoutPass);

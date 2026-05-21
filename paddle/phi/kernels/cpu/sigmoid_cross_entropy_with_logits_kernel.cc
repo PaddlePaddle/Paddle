@@ -27,7 +27,7 @@ void SigmoidCrossEntropyWithLogitsKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
     const DenseTensor& label,
-    const paddle::optional<DenseTensor>& pos_weight,
+    const optional<DenseTensor>& pos_weight,
     bool normalize,
     int ignore_index,
     DenseTensor* out) {

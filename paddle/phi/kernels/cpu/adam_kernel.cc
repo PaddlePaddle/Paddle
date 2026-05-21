@@ -29,33 +29,32 @@ PD_DECLARE_int32(inner_op_parallelism);
 namespace phi {
 
 template <typename T, typename Context>
-PADDLE_API void AdamDenseKernel(
-    const Context& dev_ctx,
-    const DenseTensor& param,
-    const DenseTensor& grad,
-    const DenseTensor& learning_rate,
-    const DenseTensor& moment1,
-    const DenseTensor& moment2,
-    const paddle::optional<DenseTensor>& moment2_max,
-    const DenseTensor& beta1_pow,
-    const DenseTensor& beta2_pow,
-    const paddle::optional<DenseTensor>& master_param,
-    const paddle::optional<DenseTensor>& skip_update,
-    const Scalar& beta1,
-    const Scalar& beta2,
-    const Scalar& epsilon,
-    bool lazy_mode,
-    int64_t min_row_size_to_use_multithread,
-    bool multi_precision,
-    bool use_global_beta_pow,
-    bool amsgrad,
-    DenseTensor* param_out,
-    DenseTensor* moment1_out,
-    DenseTensor* moment2_out,
-    DenseTensor* moment2_max_out,
-    DenseTensor* beta1_pow_out,
-    DenseTensor* beta2_pow_out,
-    DenseTensor* master_param_outs) {
+PADDLE_API void AdamDenseKernel(const Context& dev_ctx,
+                                const DenseTensor& param,
+                                const DenseTensor& grad,
+                                const DenseTensor& learning_rate,
+                                const DenseTensor& moment1,
+                                const DenseTensor& moment2,
+                                const optional<DenseTensor>& moment2_max,
+                                const DenseTensor& beta1_pow,
+                                const DenseTensor& beta2_pow,
+                                const optional<DenseTensor>& master_param,
+                                const optional<DenseTensor>& skip_update,
+                                const Scalar& beta1,
+                                const Scalar& beta2,
+                                const Scalar& epsilon,
+                                bool lazy_mode,
+                                int64_t min_row_size_to_use_multithread,
+                                bool multi_precision,
+                                bool use_global_beta_pow,
+                                bool amsgrad,
+                                DenseTensor* param_out,
+                                DenseTensor* moment1_out,
+                                DenseTensor* moment2_out,
+                                DenseTensor* moment2_max_out,
+                                DenseTensor* beta1_pow_out,
+                                DenseTensor* beta2_pow_out,
+                                DenseTensor* master_param_outs) {
   VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
 
   bool skip_update_ = false;
@@ -66,7 +65,7 @@ PADDLE_API void AdamDenseKernel(
         errors::InvalidArgument("Input(SkipUpdate) size must be 1, but get %d",
                                 skip_update->numel()));
     std::vector<bool> skip_update_vec;
-    phi::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
+    TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
     skip_update_ = skip_update_vec[0];
   }
   // skip_update=true, just copy input to output, and TensorCopy will call
@@ -126,11 +125,11 @@ PADDLE_API void AdamDenseKernel(
   T* mom2_max_out_ptr =
       amsgrad ? dev_ctx.template Alloc<T>(moment2_max_out) : nullptr;
 
-  T learning_rate_ =
-      learning_rate.data<T>()[0] * (sqrt(1 - beta2_p) / (1 - beta1_p));
+  T learning_rate_ = static_cast<T>(learning_rate.data<double>()[0]) *
+                     (sqrt(1 - beta2_p) / (1 - beta1_p));
   T eps = epsilon_ * sqrt(1 - beta2_p);
 
-  phi::jit::adam_attr_t attr(beta1_, beta2_, amsgrad);
+  jit::adam_attr_t attr(beta1_, beta2_, amsgrad);
   int64_t numel = param.numel();
 
   const T* param_ptr = param.data<T>();
@@ -139,8 +138,7 @@ PADDLE_API void AdamDenseKernel(
   const T* mom2_max_ptr = amsgrad ? moment2_max.get().data<T>() : nullptr;
   const T* grad_ptr = grad.data<T>();
 
-  auto adam =
-      phi::jit::KernelFuncs<phi::jit::AdamTuple<T>, CPUPlace>::Cache().At(attr);
+  auto adam = jit::KernelFuncs<jit::AdamTuple<T>, CPUPlace>::Cache().At(attr);
 
   static constexpr int64_t chunk_size = 512;
 
@@ -201,10 +199,10 @@ void MergedAdamKernel(
     const std::vector<const DenseTensor*>& learning_rate,
     const std::vector<const DenseTensor*>& moment1,
     const std::vector<const DenseTensor*>& moment2,
-    const paddle::optional<std::vector<const DenseTensor*>>& moment2_max,
+    const optional<std::vector<const DenseTensor*>>& moment2_max,
     const std::vector<const DenseTensor*>& beta1_pow,
     const std::vector<const DenseTensor*>& beta2_pow,
-    const paddle::optional<std::vector<const DenseTensor*>>& master_param,
+    const optional<std::vector<const DenseTensor*>>& master_param,
     const Scalar& beta1,
     const Scalar& beta2,
     const Scalar& epsilon,
@@ -278,6 +276,7 @@ void MergedAdamKernel(
     T* mom2_max_out_data =
         amsgrad ? dev_ctx.template Alloc<T>(moment2_max_out[idx]) : nullptr;
 
+    const T lr_val = static_cast<T>(learning_rate[idx]->data<double>()[0]);
     funcs::AdamFunctor<T, funcs::CPUAdam> functor(
         beta1_,
         beta2_,
@@ -290,7 +289,7 @@ void MergedAdamKernel(
         dev_ctx.template Alloc<T>(moment2_out[idx]),
         mom2_max_in_data,
         mom2_max_out_data,
-        learning_rate[idx]->data<T>(),
+        &lr_val,
         grad[idx]->data<T>(),
         param[idx]->data<T>(),
         dev_ctx.template Alloc<T>(param_out[idx]),
@@ -308,7 +307,10 @@ void MergedAdamKernel(
 }  // namespace phi
 
 PD_REGISTER_KERNEL(adam, CPU, ALL_LAYOUT, phi::AdamDenseKernel, float, double) {
+  kernel->InputAt(2).SetDataType(phi::DataType::FLOAT64);
 }
 
 PD_REGISTER_KERNEL(
-    merged_adam, CPU, ALL_LAYOUT, phi::MergedAdamKernel, float, double) {}
+    merged_adam, CPU, ALL_LAYOUT, phi::MergedAdamKernel, float, double) {
+  kernel->InputAt(2).SetDataType(phi::DataType::FLOAT64);
+}

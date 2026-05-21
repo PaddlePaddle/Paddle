@@ -17,10 +17,12 @@ import os
 from paddle.base.core import (
     CUDAPlace,
     CustomPlace,
+    XPUPlace,
     get_all_custom_device_type,
     is_compiled_with_cuda,
     is_compiled_with_custom_device,
     is_compiled_with_rocm,
+    is_compiled_with_xpu,
 )
 
 
@@ -38,12 +40,12 @@ if (
     is_compiled_with_cuda()
     or is_compiled_with_rocm()
     or check_compiled_with_custom_device()
+    or is_compiled_with_xpu()
 ):
     from paddle.base.core import CUDAGraph as CoreCUDAGraph
 
     def is_cuda_graph_supported():
         return True
-
 else:
     CoreCUDAGraph = None
 
@@ -66,7 +68,13 @@ cuda_graph_id = 0
 
 
 class CUDAGraph:
-    def __init__(self, place=None, mode="thread_local", pool_id=None):
+    def __init__(
+        self,
+        place=None,
+        mode="thread_local",
+        pool_id=None,
+        enable_replace=False,
+    ):
         assert CoreCUDAGraph is not None, (
             "CUDA Graph is only supported on PaddlePaddle compiled with NVIDIA GPU."
         )
@@ -75,17 +83,24 @@ class CUDAGraph:
         if place is None and check_compiled_with_custom_device():
             place = current_expected_place()
         elif place is None:
-            device_id = int(os.environ.get('FLAGS_selected_gpus', 0))
-            place = CUDAPlace(device_id)
+            if is_compiled_with_cuda():
+                device_id = int(os.environ.get('FLAGS_selected_gpus', 0))
+                place = CUDAPlace(device_id)
+            elif is_compiled_with_xpu():
+                device_id = int(os.environ.get('FLAGS_selected_xpus', 0))
+                place = XPUPlace(device_id)
+            else:
+                raise RuntimeError("Not Supported devices")
 
         self._place = place
         assert mode in ALL_MODES
         self._mode = ALL_MODES.index(mode)
         self._pool_id = pool_id
+        self._enable_replace = enable_replace
 
     def capture_begin(self):
         CoreCUDAGraph.begin_capture_with_pool_id(
-            self._place, self._mode, self._pool_id
+            self._place, self._mode, self._pool_id, self._enable_replace
         )
 
     def capture_end(self):
@@ -107,3 +122,6 @@ class CUDAGraph:
         if flags is None:
             flags = 2047  # only all information. It can be any integer inside [1, 2048)
         self._graph.print_to_dot_files(dirname, flags)
+
+    def replace_input_ptrs(self, old_ptrs, new_ptrs):
+        self._graph.replace_input_ptrs(old_ptrs, new_ptrs)

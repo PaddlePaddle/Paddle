@@ -28,11 +28,11 @@ class Scope;
 class PythonFunctionInstruction : public InstructionBase {
  public:
   PythonFunctionInstruction(size_t id,
-                            const phi::Place& place,
-                            ::pir::Operation* op,
+                            const Place& place,
+                            pir::Operation* op,
                             const ValueExecutionInfo& value_exec_info);
 
-  ::pir::Operation* Operation() const override { return op_; }
+  pir::Operation* Operation() const override { return op_; }
 
   void Run() override;
 
@@ -52,11 +52,11 @@ class PythonFunctionInstruction : public InstructionBase {
       nullptr;  // Unused in runtime
 
   // use for update output
-  std::vector<phi::DenseTensor*> cache_out_ptrs_;
+  std::vector<DenseTensor*> cache_out_ptrs_;
 
   std::string python_op_name_;
 
-  ::pir::Operation* op_{nullptr};  // not owned
+  pir::Operation* op_{nullptr};  // not owned
 
   const paddle::OpMetaInfo* python_op_meta_;   // not owned
   const ValueExecutionInfo& value_exec_info_;  // not owned

@@ -37,7 +37,7 @@ void rocsolver_potrs(const solverHandle_t &handle,
                      T *Bdata,
                      int ldb);
 
-using phi::dtype::complex;
+using dtype::complex;
 #define FUNC_WITH_TYPES(m)                        \
   m(float, s, float) m(double, d, double)         \
       m(complex<float>, c, rocblas_float_complex) \
@@ -107,15 +107,15 @@ void cusolver_potrs<double>(const solverHandle_t &handle,
 }
 
 template <>
-void cusolver_potrs<phi::complex64>(const solverHandle_t &handle,
-                                    cublasFillMode_t uplo,
-                                    int M,
-                                    int N,
-                                    phi::complex64 *Adata,
-                                    int lda,
-                                    phi::complex64 *Bdata,
-                                    int ldb,
-                                    int *devInfo) {
+void cusolver_potrs<complex64>(const solverHandle_t &handle,
+                               cublasFillMode_t uplo,
+                               int M,
+                               int N,
+                               complex64 *Adata,
+                               int lda,
+                               complex64 *Bdata,
+                               int ldb,
+                               int *devInfo) {
   PADDLE_ENFORCE_GPU_SUCCESS(
       dynload::cusolverDnCpotrs(handle,
                                 uplo,
@@ -129,15 +129,15 @@ void cusolver_potrs<phi::complex64>(const solverHandle_t &handle,
 }
 
 template <>
-void cusolver_potrs<phi::complex128>(const cusolverDnHandle_t &handle,
-                                     cublasFillMode_t uplo,
-                                     int M,
-                                     int N,
-                                     phi::complex128 *Adata,
-                                     int lda,
-                                     phi::complex128 *Bdata,
-                                     int ldb,
-                                     int *devInfo) {
+void cusolver_potrs<complex128>(const cusolverDnHandle_t &handle,
+                                cublasFillMode_t uplo,
+                                int M,
+                                int N,
+                                complex128 *Adata,
+                                int lda,
+                                complex128 *Bdata,
+                                int ldb,
+                                int *devInfo) {
   PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnZpotrs(
       handle,
       uplo,

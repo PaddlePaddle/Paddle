@@ -128,7 +128,7 @@ void GraphSendUERecvOpKernelLaunchHelper(const Context& dev_ctx,
   } else {
     dims_[0] = out_size;
   }
-  out->Resize(common::make_ddim(dims_));
+  out->Resize(dims_);
   for (auto dim : dims_) {
     memset_size *= dim;
   }
@@ -139,7 +139,7 @@ void GraphSendUERecvOpKernelLaunchHelper(const Context& dev_ctx,
   memset(out_data, 0, memset_bytes);
 
   if (index_size == 0) return;
-  const auto& bcast_info = phi::CalcBCastInfo(x.dims(), y.dims());
+  const auto& bcast_info = CalcBCastInfo(x.dims(), y.dims());
   const T* x_data = x.data<T>();
   const T* y_data = y.data<T>();
   const IndexT* s_index = src_index.data<IndexT>();
@@ -274,13 +274,13 @@ void SendUERecvKernel(const Context& dev_ctx,
           out_size_data[0] <= 0 ? x.dims()[0] : out_size_data[0];
       dst_count->Resize({input_size});
     }
-    out->Resize(common::make_ddim(dims_));
+    out->Resize(dims_);
     Full<T, Context>(dev_ctx, out->dims(), 0, out);
     Full<int, Context>(dev_ctx, dst_count->dims(), 0, dst_count);
     return;
   }
 
-  if (index_type == phi::DataType::INT32) {
+  if (index_type == DataType::INT32) {
     GraphSendUERecvOpKernelLaunchHelper<Context, T, int32_t>(dev_ctx,
                                                              x,
                                                              y,
@@ -291,7 +291,7 @@ void SendUERecvKernel(const Context& dev_ctx,
                                                              out_size_data[0],
                                                              out,
                                                              dst_count);
-  } else if (index_type == phi::DataType::INT64) {
+  } else if (index_type == DataType::INT64) {
     GraphSendUERecvOpKernelLaunchHelper<Context, T, int64_t>(dev_ctx,
                                                              x,
                                                              y,

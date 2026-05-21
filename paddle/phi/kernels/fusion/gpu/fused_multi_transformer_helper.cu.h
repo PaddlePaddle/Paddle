@@ -46,44 +46,44 @@ class BiasActHelper {
                const DenseTensor *bias,
                DenseTensor *output) {
     const T *bias_data = (bias == nullptr) ? nullptr : bias->data<T>();
-    funcs::Load<T> load_func(x->data<T>());
-    funcs::Store<T> store_func(output->data<T>());
+    funcs::LoadFunc<T> load_func(x->data<T>());
+    funcs::StoreFunc<T> store_func(output->data<T>());
     ComputeImpl(bias_data, load_func, store_func);
   }
 
  private:
-  template <typename LoadFunc, typename StoreFunc, typename LoadT = T>
+  template <typename LoadFuncT, typename StoreFuncT, typename LoadT = T>
   void ComputeImpl(const T *bias_data,
-                   LoadFunc load_func,
-                   StoreFunc store_func) {
+                   LoadFuncT load_func,
+                   StoreFuncT store_func) {
     if (act_method_ == "geglu") {
       // Note(Zhengzekang): For GLU structure, we need divide the cols by 2.
       VLOG(5) << "doing geglu";
       LaunchActFFNGlu<T,
                       phi::fusion::LayerNormParamTypeGeluFunctor<T>,
-                      LoadFunc,
-                      StoreFunc,
+                      LoadFuncT,
+                      StoreFuncT,
                       LoadT>(
           dev_ctx_, bias_data, rows_, cols_ / 2, load_func, store_func);
     } else if (act_method_ == "swiglu") {
       VLOG(5) << "doing swiglu";
-      LaunchActFFNGlu<T, CudaSwishFunctor<T>, LoadFunc, StoreFunc, LoadT>(
+      LaunchActFFNGlu<T, CudaSwishFunctor<T>, LoadFuncT, StoreFuncT, LoadT>(
           dev_ctx_, bias_data, rows_, cols_ / 2, load_func, store_func);
     } else if (act_method_ == "gelu") {
       if (FLAGS_use_fast_math) {
         VLOG(5) << "doing Fast GELU";
         LaunchBiasAct<T,
                       phi::fusion::FastGeluFunctor<T>,
-                      LoadFunc,
-                      StoreFunc,
+                      LoadFuncT,
+                      StoreFuncT,
                       LoadT>(
             dev_ctx_, bias_data, rows_, cols_, load_func, store_func);
       } else {
         VLOG(5) << "doing GELU";
         LaunchBiasAct<T,
                       phi::fusion::LayerNormParamTypeGeluFunctor<T>,
-                      LoadFunc,
-                      StoreFunc,
+                      LoadFuncT,
+                      StoreFuncT,
                       LoadT>(
             dev_ctx_, bias_data, rows_, cols_, load_func, store_func);
       }
@@ -132,13 +132,13 @@ class GEMMHelper {
     using NvType = typename phi::PDDataTypeTraits<T>::DataType;
 
     if (gemm_method_ == "None") {
-      auto ffn_linear_compute = phi::fusion::AttnMatMul<T>(dev_ctx_,
-                                                           false,
-                                                           transpose_weight_,
-                                                           token_num_,
-                                                           dim_ffn_,
-                                                           dim_embed_,
-                                                           compute_bias);
+      auto ffn_linear_compute = fusion::AttnMatMul<T>(dev_ctx_,
+                                                      false,
+                                                      transpose_weight_,
+                                                      token_num_,
+                                                      dim_ffn_,
+                                                      dim_embed_,
+                                                      compute_bias);
       ffn_linear_compute.ComputeForward(weight, input, bias, output, output);
     } else {
       PADDLE_THROW(common::errors::Unimplemented(
@@ -174,10 +174,9 @@ class NormHelper {
                               // Layernorm. Need support rmsnorm.
         layernorm_helper_(dev_ctx_, epsilon_, rows_, cols_) {
     // VLOG(0) << "NormHelper residual_alpha:" << residual_alpha_;
-    phi::fusion::DropoutParam dropout_param(
-        true, 0, true, true, 0.0, nullptr, 0);
+    fusion::DropoutParam dropout_param(true, 0, true, true, 0.0, nullptr, 0);
     residual_bias_add_layernorm_helper_ =
-        phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t>(
+        fusion::FusedDropoutLayerNormHelper<T, uint8_t>(
             dev_ctx, rows_, cols_, dropout_param, epsilon_);
   }
 
@@ -293,7 +292,7 @@ class NormHelper {
   int64_t cols_;
   float epsilon_;
   float residual_alpha_;
-  phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t>
+  fusion::FusedDropoutLayerNormHelper<T, uint8_t>
       residual_bias_add_layernorm_helper_;
   AttnLayerNorm<T> layernorm_helper_;
 };

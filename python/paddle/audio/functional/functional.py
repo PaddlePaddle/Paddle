@@ -37,14 +37,13 @@ def hz_to_mel(freq: _TensorOrFloat, htk: bool = False) -> _TensorOrFloat:
         Union[Tensor, float]: Frequency in mels.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> val = 3.0
             >>> htk_flag = True
-            >>> mel_paddle_tensor = paddle.audio.functional.hz_to_mel(
-            ...     paddle.to_tensor(val), htk_flag)
+            >>> mel_paddle_tensor = paddle.audio.functional.hz_to_mel(paddle.to_tensor(val), htk_flag)
     """
 
     if htk:
@@ -91,15 +90,13 @@ def mel_to_hz(mel: _TensorOrFloat, htk: bool = False) -> _TensorOrFloat:
         Union[float, Tensor]: Frequencies in Hz.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> val = 3.0
             >>> htk_flag = True
-            >>> mel_paddle_tensor = paddle.audio.functional.mel_to_hz(
-            ...     paddle.to_tensor(val), htk_flag)
-            ...
+            >>> mel_paddle_tensor = paddle.audio.functional.mel_to_hz(paddle.to_tensor(val), htk_flag)
     """
     if htk:
         return 700.0 * (10.0 ** (mel / 2595.0) - 1.0)
@@ -143,7 +140,7 @@ def mel_frequencies(
         Tensor: Tensor of n_mels frequencies in Hz with shape `(n_mels,)`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -152,8 +149,7 @@ def mel_frequencies(
             >>> f_max = 10000
             >>> htk_flag = True
 
-            >>> paddle_mel_freq = paddle.audio.functional.mel_frequencies(
-            ...     n_mels, f_min, f_max, htk_flag, 'float64')
+            >>> paddle_mel_freq = paddle.audio.functional.mel_frequencies(n_mels, f_min, f_max, htk_flag, 'float64')
     """
     # 'Center freqs' of mel bands - uniformly spaced between limits
     min_mel = hz_to_mel(f_min, htk=htk)
@@ -175,7 +171,7 @@ def fft_frequencies(sr: int, n_fft: int, dtype: str = 'float32') -> Tensor:
         Tensor: FFT frequencies in Hz with shape `(n_fft//2 + 1,)`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -212,7 +208,7 @@ def compute_fbank_matrix(
         Tensor: Mel transform matrix with shape `(n_mels, n_fft//2 + 1)`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -277,13 +273,12 @@ def power_to_db(
         Tensor: Power spectrogram in db scale.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> val = 3.0
-            >>> decibel_paddle = paddle.audio.functional.power_to_db(
-            ...     paddle.to_tensor(val))
+            >>> decibel_paddle = paddle.audio.functional.power_to_db(paddle.to_tensor(val))
     """
     if amin <= 0:
         raise Exception("amin must be strictly positive")
@@ -321,7 +316,7 @@ def create_dct(
         Tensor: The DCT matrix with shape `(n_mels, n_mfcc)`.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> n_mfcc = 23
@@ -340,3 +335,277 @@ def create_dct(
         dct[0] *= 1.0 / math.sqrt(2.0)
         dct *= math.sqrt(2.0 / float(n_mels))
     return dct.T
+
+
+def _get_sinc_resample_kernel(
+    orig_freq: int,
+    new_freq: int,
+    gcd: int,
+    lowpass_filter_width: int = 6,
+    rolloff: float = 0.99,
+    resampling_method: Literal[
+        "sinc_interp_hann", "sinc_interp_kaiser"
+    ] = "sinc_interp_hann",
+    beta: float | None = None,
+    dtype: paddle.dtype | None = None,
+):
+    """
+    Generate the sinc interpolation kernel for resampling.
+
+    This internal function computes the resampling kernel based on the sinc
+    interpolation formula with windowing. The kernel is used by
+    _apply_sinc_resample_kernel to perform the actual resampling.
+
+    Args:
+        orig_freq (int): Original sampling frequency.
+        new_freq (int): Target sampling frequency.
+        gcd (int): Greatest common divisor of orig_freq and new_freq.
+        lowpass_filter_width (int, optional): Controls the sharpness of the filter,
+            larger value means sharper but less efficient. Default: 6.
+        rolloff (float, optional): Roll-off frequency as a fraction of the Nyquist.
+            Lower values reduce anti-aliasing but also attenuate high frequencies.
+            Default: 0.99.
+        resampling_method (str, optional): Window method for filter design.
+            Options: ["sinc_interp_hann", "sinc_interp_kaiser"]. Default: "sinc_interp_hann".
+        beta (float, optional): Shape parameter for Kaiser window. Required only
+            when resampling_method="sinc_interp_kaiser". Default: None.
+        dtype (paddle.dtype, optional): Data type for kernel computation.
+            If None, uses float64 for computation and converts to float32 for output.
+            Default: None.
+
+    Returns:
+        tuple: (kernel, width)
+            - kernel (Tensor): Resampling kernel of shape (1, 1, kernel_width)
+            - width (int): Half-width of the filter in terms of input samples
+
+    Raises:
+        Exception: If frequencies are not integers.
+        ValueError: If resampling_method is invalid or lowpass_filter_width <= 0.
+    """
+    if not (int(orig_freq) == orig_freq and int(new_freq) == new_freq):
+        raise ValueError(
+            "Frequencies must be of integer type to ensure quality resampling computation. "
+            "To work around this, manually convert both frequencies to integer values "
+            "that maintain their resampling rate ratio before passing them into the function. "
+            "Example: To downsample a 44100 hz waveform by a factor of 8, use "
+            "`orig_freq=8` and `new_freq=1` instead of `orig_freq=44100` and `new_freq=5512.5`. "
+        )
+
+    if resampling_method not in ["sinc_interp_hann", "sinc_interp_kaiser"]:
+        raise ValueError(f"Invalid resampling method: {resampling_method}")
+
+    orig_freq = int(orig_freq) // gcd
+    new_freq = int(new_freq) // gcd
+
+    if lowpass_filter_width <= 0:
+        raise ValueError("Low pass filter width should be positive.")
+    base_freq = min(orig_freq, new_freq)
+
+    # Perform antialiasing filtering by removing the highest frequencies.
+    base_freq *= rolloff
+
+    # Calculate filter width based on lowpass_filter_width and frequency ratio
+    width = math.ceil(lowpass_filter_width * orig_freq / base_freq)
+    idx_dtype = dtype if dtype is not None else paddle.float64
+
+    idx = (
+        paddle.arange(-width, width + orig_freq, dtype=idx_dtype)[None, None]
+        / orig_freq
+    )
+
+    t = (
+        paddle.arange(0, -new_freq, -1, dtype=dtype)[:, None, None] / new_freq
+        + idx
+    )
+    t *= base_freq
+    t = t.clip_(-lowpass_filter_width, lowpass_filter_width)
+
+    # we do not use built-in paddle windows here as we need to evaluate the window
+    # at specific positions, not over a regular grid.
+    if resampling_method == "sinc_interp_hann":
+        window = paddle.cos(t * math.pi / lowpass_filter_width / 2) ** 2
+    else:
+        # sinc_interp_kaiser
+        if beta is None:
+            beta = 14.769656459379492
+        beta_tensor = paddle.to_tensor(float(beta))
+        window = paddle.i0(
+            beta_tensor * paddle.sqrt(1 - (t / lowpass_filter_width) ** 2),
+        ) / paddle.i0(beta_tensor)
+
+    t *= math.pi
+
+    scale = base_freq / orig_freq
+    kernels = paddle.where(
+        t == 0, paddle.to_tensor(1.0).cast(t.dtype), t.sin() / t
+    )
+    kernels *= window * scale
+
+    if dtype is None:  # pragma: no cover
+        kernels = kernels.cast(paddle.float32)
+
+    return kernels, width
+
+
+def _apply_sinc_resample_kernel(
+    waveform: Tensor,
+    orig_freq: int,
+    new_freq: int,
+    gcd: int,
+    kernel: Tensor,
+    width: int,
+):
+    """
+    Apply sinc interpolation resampling using precomputed kernel.
+
+    This internal function performs the actual resampling operation using the
+    kernel generated by _get_sinc_resample_kernel. It handles batch processing
+    and ensures correct output length.
+
+    Args:
+        waveform (Tensor): Input waveform of shape (..., time). Must be floating point.
+        orig_freq (int): Original sampling frequency.
+        new_freq (int): Target sampling frequency.
+        gcd (int): Greatest common divisor of orig_freq and new_freq.
+        kernel (Tensor): Resampling kernel from _get_sinc_resample_kernel.
+        width (int): Half-width of the filter from _get_sinc_resample_kernel.
+
+    Returns:
+        Tensor: Resampled waveform of shape (..., new_time).
+
+    """
+
+    orig_freq = int(orig_freq) // gcd
+    new_freq = int(new_freq) // gcd
+
+    # pack batch
+    shape = waveform.shape
+    waveform = waveform.reshape([-1, shape[-1]])
+
+    num_wavs, length = waveform.shape
+    waveform = paddle.nn.functional.pad(waveform, (width, width + orig_freq))
+    resampled = paddle.nn.functional.conv1d(
+        waveform[:, None], kernel, stride=orig_freq
+    )
+    resampled = resampled.transpose([0, 2, 1]).reshape((num_wavs, -1))
+    target_length = paddle.ceil(
+        paddle.to_tensor(new_freq * length / orig_freq)
+    ).astype(paddle.int64)
+    resampled = resampled[..., :target_length]
+
+    # unpack batch
+    resampled = resampled.reshape(shape[:-1] + resampled.shape[-1:])
+    return resampled
+
+
+def resample(
+    waveform: Tensor,
+    orig_freq: int,
+    new_freq: int,
+    lowpass_filter_width: int = 6,
+    rolloff: float = 0.99,
+    resampling_method: Literal[
+        "sinc_interp_hann", "sinc_interp_kaiser"
+    ] = "sinc_interp_hann",
+    beta: float | None = None,
+) -> Tensor:
+    """
+    Resample the waveform from orig_freq to new_freq using bandlimited interpolation.
+
+    This function implements resampling through sinc interpolation with windowing.
+    It first computes a resampling kernel based on the specified parameters, then
+    applies it to the input waveform using convolution. The algorithm handles both
+    upsampling and downsampling while minimizing aliasing artifacts.
+
+    Args:
+        waveform (Tensor): The input signal of dimension (..., time). Must be
+            floating point type (float32 or float64).
+        orig_freq (int): The original frequency of the signal. Must be positive.
+        new_freq (int): The desired target frequency. Must be positive.
+        lowpass_filter_width (int, optional): Controls the sharpness of the filter.
+            Larger values give sharper filtering but are less efficient.
+            Default: 6.
+        rolloff (float, optional): The roll-off frequency of the filter as a fraction
+            of the Nyquist frequency. Lower values reduce anti-aliasing but also
+            attenuate some high frequencies. Default: 0.99.
+        resampling_method (str, optional): The windowing method to use for filter
+            design. Options: "sinc_interp_hann" (Hann window) or "sinc_interp_kaiser"
+            (Kaiser window). Default: "sinc_interp_hann".
+        beta (float, optional): Shape parameter for the Kaiser window. Required only
+            when resampling_method="sinc_interp_kaiser". If not provided for Kaiser,
+            a default value of 14.769656459379492 is used. Default: None.
+
+    Returns:
+        Tensor: The waveform resampled to new_freq, with dimension (..., new_time).
+
+    Raises:
+        ValueError: If orig_freq or new_freq are not positive.
+        Exception: If frequencies are not integers (see note below).
+        TypeError: If waveform is not floating point.
+
+    Note:
+        - orig_freq and new_freq must be integers. For non-integer frequencies,
+          convert them to integers while maintaining the ratio.
+        - For repeated resampling with same parameters, use
+          :class:`paddle.audio.transforms.Resample` for better efficiency.
+        - Uses windowed sinc interpolation for high-quality audio resampling.
+        - This function does not support ONNX export now.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> from paddle.audio.functional import resample
+
+            >>> # Create a sample waveform (1 channel, 1000 samples at 16000 Hz)
+            >>> waveform = paddle.randn([1, 1000])
+
+            >>> # Downsample from 16000 Hz to 8000 Hz
+            >>> resampled = resample(waveform, 16000, 8000)
+            >>> print(resampled.shape)
+            paddle.Size([1, 500])
+
+            >>> # Upsample from 16000 Hz to 48000 Hz with custom filter width
+            >>> resampled = resample(waveform, 16000, 48000, lowpass_filter_width=12)
+            >>> print(resampled.shape)
+            paddle.Size([1, 3000])
+
+            >>> # Use Kaiser window resampling
+            >>> resampled = resample(waveform, 16000, 8000, resampling_method="sinc_interp_kaiser", beta=12.0)
+            >>> print(resampled.shape)
+            paddle.Size([1, 500])
+
+            >>> # Batch processing: multiple waveforms
+            >>> batch_waveforms = paddle.randn([4, 1, 1000])  # [batch, channels, time]
+            >>> resampled_batch = resample(batch_waveforms, 16000, 8000)
+            >>> print(resampled_batch.shape)
+            paddle.Size([4, 1, 500])
+    """
+    if orig_freq <= 0.0 or new_freq <= 0.0:
+        raise ValueError(
+            "Original frequency and desired frequency should be positive integers"
+        )
+    if not waveform.is_floating_point():
+        raise TypeError(
+            f"Expected floating point type for waveform tensor, but received {waveform.dtype}."
+        )
+
+    if orig_freq == new_freq:
+        return waveform
+
+    gcd = math.gcd(int(orig_freq), int(new_freq))
+
+    kernel, width = _get_sinc_resample_kernel(
+        orig_freq,
+        new_freq,
+        gcd,
+        lowpass_filter_width,
+        rolloff,
+        resampling_method,
+        beta,
+        waveform.dtype,
+    )
+    resampled = _apply_sinc_resample_kernel(
+        waveform, orig_freq, new_freq, gcd, kernel, width
+    )
+    return resampled

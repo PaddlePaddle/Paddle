@@ -65,11 +65,6 @@ if [[ $changed_deprecated_tests_count -gt 0 ]]; then
     check_approval 1 wanghuancoder
 fi
 
-if [[ $git_files -gt 19 || $git_count -gt 999 ]];then
-    echo_line="You must have raindrops2sea or XiaoguangHu01 approval for change 20+ files or add than 1000+ lines of content.\n"
-    check_approval 1 raindrops2sea XiaoguangHu01
-fi
-
 for API_FILE in ${API_FILES[*]}; do
   API_CHANGE=`git diff --name-only upstream/$BRANCH | grep -F "${API_FILE}" | grep -v "/CMakeLists.txt" || true`
   if [ "${API_CHANGE}" ] && [ "${PR_ID}" != "" ]; then
@@ -92,11 +87,11 @@ done
 
 CI_OLD_SCRIPTS_PADDLE_BUILD=$(git diff --name-only upstream/$BRANCH | grep -E "paddle/scripts/paddle_build.*")
 CI_OLD_SCRIPTS_COVERAGE=$(git diff --name-only upstream/$BRANCH | grep -E "tools/coverage")
-CI_OLD_SCRIPTS_TOOLS=$(git diff --name-only upstream/$BRANCH | grep -E "tools" | grep "check_")
+CI_OLD_SCRIPTS_TOOLS=$(git diff --name-only upstream/$BRANCH | grep -E "tools" | grep "check_" | grep -Ev "^tools/(test_)?check_abi_compatibility\.py$" || true)
 
 if [ -n "$CI_OLD_SCRIPTS_PADDLE_BUILD" ] || [ -n "$CI_OLD_SCRIPTS_COVERAGE" ] || [ -n "$CI_OLD_SCRIPTS_TOOLS" ]; then
-    echo_line="You must have one RD (swgu98, ooooo-create) approval for the old CI scripts.\n"
-    check_approval 1 swgu98 ooooo-create
+    echo_line="You must have one RD (swgu98 or risemeup1) approval for the old CI scripts.\n"
+    check_approval 1 swgu98 risemeup1
 fi
 
 HAS_MODIFIED_LINUX_NPU_YML=$(git diff --name-only upstream/$BRANCH | grep ".github/workflows/_Linux-NPU.yml" || true)
@@ -114,11 +109,6 @@ fi
 
 FILTER=`git diff --name-only upstream/$BRANCH | grep -v "tools/" | grep -v "ci/"`
 
-HAS_CONST_CAST=`git diff -U0 upstream/$BRANCH $FILTER | grep '^\+' | grep -o -m 1 "const_cast" || true`
-if [ ${HAS_CONST_CAST} ] && [ "${PR_ID}" != "" ]; then
-    echo_line="You must have one RD (XiaoguangHu01, Xreki, zhangbo9674, zyfncg) approval for the usage of const_cast.\n"
-    check_approval 1 XiaoguangHu01 Xreki zhangbo9674 zyfncg
-fi
 
 HAS_PADDLE_GET=`git diff -U0 upstream/$BRANCH $FILTER |grep "^+" |grep -o -m 1 "paddle::get" || true`
 if [ ${HAS_PADDLE_GET} ] && [ "${PR_ID}" != "" ]; then
@@ -126,11 +116,6 @@ if [ ${HAS_PADDLE_GET} ] && [ "${PR_ID}" != "" ]; then
     check_approval 1 zhangbo9674
 fi
 
-HAS_LEGACY_KERNEL_REGISTRATION=`git diff -U0 upstream/$BRANCH $FILTER | grep '^\+' | grep -oE -m 1 "REGISTER_OP[A-Z_]{1,9}KERNEL[_FUNCTOR|_WITH_CUSTOM_TYPE|_EX]*" || true`
-if [ ${HAS_LEGACY_KERNEL_REGISTRATION} ] && [ "${PR_ID}" != "" ]; then
-    echo_line="In principle, adding an OpKernel needs to be in the phi/kernels directory. If you must add an OpKernel in the fluid/operators directory, please request one of the RD (zyfncg, YuanRisheng, zhangbo9674) review and approve.\n"
-    check_approval 1 zyfncg YuanRisheng zhangbo9674
-fi
 
 PYTHON_FILE_ADDED_LINES=$(git diff -U0 upstream/$BRANCH -- 'python/*.py' |grep "^+")
 IF_USE_SUBPROCESS=`echo $PYTHON_FILE_ADDED_LINES | grep -B5 --no-group-separator "subprocess\." || true`
@@ -147,8 +132,8 @@ fi
 CPP_FILE_ADDED_LINES=$(git diff -U0 upstream/$BRANCH -- 'paddle/' |grep "^+")
 IF_USE_FESETROUND=`echo $CPP_FILE_ADDED_LINES | grep -B5 --no-group-separator "fesetround" || true`
 if [[ ${IF_USE_FESETROUND} ]]; then
-    echo_line="You must have one RD (zyfncg(Recommend), SigureMo, zhangbo9674) approval for using fesetround, which may affect all floating-point precision calculations in the same process.\n"
-    check_approval 1 zyfncg SigureMo zhangbo9674
+    echo_line="You must have one RD (SigureMo(Recommend), zhangbo9674) approval for using fesetround, which may affect all floating-point precision calculations in the same process.\n"
+    check_approval 1 SigureMo zhangbo9674
 fi
 
 INFERMETA_FILES_ADDED_LINES=$(git diff -U0 upstream/$BRANCH -- 'paddle/phi/infermeta/' |grep "^+")
@@ -156,22 +141,17 @@ IF_ADD_METACONFIG=`echo $INFERMETA_FILES_ADDED_LINES | grep -B5 --no-group-separ
 HAS_MODIFIED_OP_BUILD_GEN_SCRIPT=`git diff --name-only upstream/$BRANCH -- 'paddle/fluid/pir/dialect/op_generator/op_build_gen.py'`
 if [ -n "${IF_ADD_METACONFIG}" ] && [ -z "${HAS_MODIFIED_OP_BUILD_GEN_SCRIPT}" ]; then
     echo_line="If your added infermeta file contains MetaConfig, you must update _INFERMETA_NEED_META_CONFIG in op_build_gen.py synchronously.\n"
-    echo_line=${echo_line}"If you believe this is a false positive, please request one of the RD (SigureMo(Recommend), DrRyanHuang, zyfncg, zhangbo9674) approval for the changes.\n"
-    check_approval 1 SigureMo DrRyanHuang zyfncg zhangbo9674
+    echo_line=${echo_line}"If you believe this is a false positive, please request one of the RD (SigureMo(Recommend), DrRyanHuang, zhangbo9674) approval for the changes.\n"
+    check_approval 1 SigureMo DrRyanHuang zhangbo9674
 fi
 
 CINN_FILES_ADDED_LINES=$(git diff -U0 upstream/$BRANCH -- 'paddle/cinn/' |grep "^+")
 IF_ADD_LOG_INFO=`echo $CINN_FILES_ADDED_LINES | grep -B5 --no-group-separator "LOG(INFO)" || true`
 if [[ ${IF_ADD_LOG_INFO} ]]; then
-    echo_line="You must have one RD (SigureMo(Recommend), DrRyanHuang, zyfncg) approval for using LOG(INFO), which may make user confused. Recommend to move it under if (FLAGS_cinn_debug)\n"
-    check_approval 1 SigureMo DrRyanHuang zyfncg
+    echo_line="You must have one RD (SigureMo(Recommend), DrRyanHuang) approval for using LOG(INFO), which may make user confused. Recommend to move it under if (FLAGS_cinn_debug)\n"
+    check_approval 1 SigureMo DrRyanHuang
 fi
 
-HAS_DEFINE_FLAG=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "DEFINE_int32" |grep -o -m 1 "DEFINE_bool" | grep -o -m 1 "DEFINE_string" || true`
-if [ ${HAS_DEFINE_FLAG} ] && [ "${PR_ID}" != "" ]; then
-    echo_line="You must have one RD zyfncg or zhangbo9674 approval for the usage (either add or delete) of DEFINE_int32/DEFINE_bool/DEFINE_string flag.\n"
-    check_approval 1 zyfncg zhangbo9674
-fi
 
 NO_NPU_FILE=`git diff --name-only upstream/$BRANCH | grep -v "_npu.py"`
 HAS_UNITTEST_SKIP=`git diff -U0 upstream/$BRANCH ${NO_NPU_FILE} | grep "^+[[:space:]]\{0,\}@unittest.skip" || true`
@@ -190,8 +170,8 @@ CI_FILTER=`git diff --name-only upstream/$BRANCH | grep -v "ci/"`
 
 HAS_MODIFIED_DECLARATIONS=`git diff -U0 upstream/$BRANCH $CI_FILTER |grep "^+" |grep "paddle/phi/kernels/declarations.h" || true`
 if [ "${HAS_MODIFIED_DECLARATIONS}" != "" ] && [ "${PR_ID}" != "" ]; then
-    echo_line="You must be approved by zyfncg or zhangbo9674 for paddle/phi/kernels/declarations.h using. Thanks!\n"
-    check_approval 1 zyfncg zhangbo9674
+    echo_line="You must be approved by wanghuancoder or zhangbo9674 for paddle/phi/kernels/declarations.h using. Thanks!\n"
+    check_approval 1 wanghuancoder zhangbo9674
 fi
 
 HAS_USED_CCTESTOLD=`git diff -U0 upstream/$BRANCH $CI_FILTER |grep "cc_test_old" || true`
@@ -208,20 +188,20 @@ fi
 
 HAS_CREATE_NEW_PASS=`git diff -U0 upstream/$BRANCH $CI_FILTER |grep "paddle/pir/include/pass/pass.h" || true`
 if [ "${HAS_CREATE_NEW_PASS}" != "" ] && [ "${PR_ID}" != "" ]; then
-    echo_line="If you implement a new Pass, you must be approved by yuanlehome or zyfncg. Thanks!\n"
-    check_approval 1 yuanlehome zyfncg
+    echo_line="If you implement a new Pass, you must be approved by yuanlehome or zhangbo9674. Thanks!\n"
+    check_approval 1 yuanlehome zhangbo9674
 fi
 
 HAS_MODIFIED_API_COMPAT_YAML=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/ops/yaml/op_compat.yaml" || true`
 if [ "${HAS_MODIFIED_API_COMPAT_YAML}" != "" ] && [ "${PR_ID}" != "" ]; then
-    echo_line="You must be approved by zyfncg or heavyrain-lzy for paddle/phi/ops/yaml/op_compat.yaml changes, which manages the extra params of Op and name mapping between Yaml and OpMaker. In order to ensure compatibility of framework, this file isn't allowed to be modified at will!\n"
-    check_approval 1 zyfncg heavyrain-lzy
+    echo_line="You must be approved by wanghuancoder or zhangbo9674 for paddle/phi/ops/yaml/op_compat.yaml changes, which manages the extra params of Op and name mapping between Yaml and OpMaker. In order to ensure compatibility of framework, this file isn't allowed to be modified at will!\n"
+    check_approval 1 wanghuancoder zhangbo9674
 fi
 
 HAS_MODIFIED_API_FW_BW_YAML=`git diff --name-only upstream/$BRANCH | grep -E "paddle/phi/ops/yaml/ops.yaml|paddle/phi/ops/yaml/backward.yaml" || true`
 if [ "${HAS_MODIFIED_API_FW_BW_YAML}" != "" ] && [ "${PR_ID}" != "" ]; then
-    echo_line="You must be approved by zyfncg or heavyrain-lzy for paddle/phi/ops/yaml/ops.yaml or paddle/phi/ops/yaml/backward.yaml changes, which manage the generated code for the C++ OP. You can only change them according to the specification at the beginning of this two file.\n Recommend you obtain approval from gongshaotian or Hongqing-work, if only modified the InferSymbolicShapeInterface interfaces in the YAML file.\n"
-    check_approval 1 zyfncg heavyrain-lzy gongshaotian Hongqing-work
+    echo_line="You must be approved by wanghuancoder or gongshaotian for paddle/phi/ops/yaml/ops.yaml or paddle/phi/ops/yaml/backward.yaml changes, which manage the generated code for the C++ OP. You can only change them according to the specification at the beginning of this two file.\n Recommend you obtain approval from gongshaotian, if only modified the InferSymbolicShapeInterface interfaces in the YAML file.\n"
+    check_approval 1 wanghuancoder gongshaotian
 fi
 
 HAS_MODIFIED_PRIMITIVE_YAML=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/primitive/primitive/primitive.yaml" || true`
@@ -244,8 +224,8 @@ fi
 
 HAS_MODIFIED_DRR_INCLUDE_DIR=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/pir/drr/include" || true`
 if [ "${HAS_MODIFIED_DRR_INCLUDE_DIR}" != "" ] && [ "${PR_ID}" != "" ]; then
-    echo_line="You must have one RD (yuanlehome, zyfncg) approval for file changes in paddle/fluid/pir/drr/include.\n"
-    check_approval 1 yuanlehome zyfncg
+    echo_line="You must have one RD (yuanlehome, zhangbo9674) approval for file changes in paddle/fluid/pir/drr/include.\n"
+    check_approval 1 yuanlehome zhangbo9674
 fi
 
 
@@ -257,32 +237,32 @@ fi
 
 HAS_MODIFIED_API_GENE=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/api/generator" || true`
 if [ "${HAS_MODIFIED_API_GENE}" != "" ] && [ "${PR_ID}" != "" ]; then
-    echo_line="You must have one RD (zyfncg, YuanRisheng, zhangbo9674, heavyrain-lzy) approval for file changes in paddle/phi/api/generator, which manages the generated code for C++ API in paddle/phi/api/lib/api.cc.\n"
-    check_approval 1 zyfncg YuanRisheng zhangbo9674 heavyrain-lzy
+    echo_line="You must have one RD (zhangbo9674, wanghuancoder) approval for file changes in paddle/phi/api/generator, which manages the generated code for C++ API in paddle/phi/api/lib/api.cc.\n"
+    check_approval 1 zhangbo9674 wanghuancoder
 fi
 
 HAS_MODIFIED_EAGER_GENE=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/eager/auto_code_generator" || true`
 if [ "${HAS_MODIFIED_EAGER_GENE}" != "" ] && [ "${PR_ID}" != "" ]; then
-    echo_line="You must have one RD (JiabinYang, zyfncg, zhangbo9674, heavyrain-lzy) approval for file changes in paddle/fluid/eager/auto_code_generator, which manages the generated code for dygraph functions in paddle/fluid/eager/api/generated.\n"
-    check_approval 1 JiabinYang zyfncg zhangbo9674 heavyrain-lzy
+    echo_line="You must have one RD (zhangbo9674, wanghuancoder) approval for file changes in paddle/fluid/eager/auto_code_generator, which manages the generated code for dygraph functions in paddle/fluid/eager/api/generated.\n"
+    check_approval 1 zhangbo9674 wanghuancoder
 fi
 
 HAS_MODIFIED_OPERATOR_GENE=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/operators/generator" || true`
 if [ "${HAS_MODIFIED_OPERATOR_GENE}" != "" ] && [ "${PR_ID}" != "" ]; then
-    echo_line="You must have one RD (zyfncg, iclementine, zhangbo9674, heavyrain-lzy) approval for file changes in paddle/fluid/operators/generator, which manages the generated code for OpMaker in paddle/fluid/operators/(generated_op.cc | sparse_generated_op.cc)\n"
-    check_approval 1 zyfncg iclementine zhangbo9674 heavyrain-lzy
+    echo_line="You must have one RD (zhangbo9674, wanghuancoder) approval for file changes in paddle/fluid/operators/generator, which manages the generated code for OpMaker in paddle/fluid/operators/(generated_op.cc | sparse_generated_op.cc)\n"
+    check_approval 1 zhangbo9674 wanghuancoder
 fi
 
 HAS_MODIFIED_SETUP_IN=`git diff --name-only upstream/$BRANCH | grep "python/setup.py.in" || true`
 if [ "${HAS_MODIFIED_SETUP_IN}" != "" ] && [ "${PR_ID}" != "" ]; then
-    echo_line="You must have one RD (risemeup1, zyfncg, YuanRisheng, zhangbo9674) approval for file changes in python/setup.py.in, which manages the header files that can be used from outside of framework.\n"
-    check_approval 1 risemeup1 zyfncg YuanRisheng zhangbo9674
+    echo_line="You must have one RD (risemeup1, zhangbo9674) approval for file changes in python/setup.py.in, which manages the header files that can be used from outside of framework.\n"
+    check_approval 1 risemeup1 zhangbo9674
 fi
 
 HAS_MODIFIED_SETUP=`git diff --name-only upstream/$BRANCH | grep "${PADDLE_ROOT}/setup.py" || true`
 if [ "${HAS_MODIFIED_SETUP}" != "" ] || ([ "${HAS_MODIFIED_SETUP_IN}" != "" ] && [ "${HAS_MODIFIED_SETUP}" == "" ]); then
-    echo_line="You must have one RD (risemeup1, zyfncg, YuanRisheng, zhangbo9674) approval for file changes in setup.py or setup.py and python/setup.py.in are not changed synchronously.\n"
-    check_approval 1 risemeup1 zyfncg YuanRisheng zhangbo9674
+    echo_line="You must have one RD (risemeup1, zhangbo9674) approval for file changes in setup.py or setup.py and python/setup.py.in are not changed synchronously.\n"
+    check_approval 1 risemeup1 zhangbo9674
 fi
 
 HAS_MODIFIED_STATIC_BUILD=`git diff --name-only upstream/$BRANCH | grep "new_executor/interpreter/static_build.cc" || true`
@@ -309,15 +289,21 @@ if [ "${HAS_MODIFIED_PADDLE_DISTRIBUTED}" != "" ] && [ "${PR_ID}" != "" ]; then
     check_approval 1 From00 ForFishes gongweibao sneaxiy
 fi
 
-ALL_PADDLE_ENFORCE=`git diff -U0 upstream/$BRANCH |grep "^+" |grep -zoE "PADDLE_ENFORCE\(.[^,\);]+.[^;]*\);\s" || true`
+HAS_MODIFIED_AGENTS_SKILLS=`git diff --name-only upstream/$BRANCH | grep "^\\.agents/skills/" || true`
+if [ "${HAS_MODIFIED_AGENTS_SKILLS}" != "" ] && [ "${PR_ID}" != "" ]; then
+    echo_line="You must have one RD (zrr1999, SigureMo, ShigureNyako) approval for file changes in .agents/skills.\n"
+    check_approval 1 zrr1999 SigureMo ShigureNyako
+fi
+
+ALL_PADDLE_ENFORCE=`git diff -U0 upstream/$BRANCH -- . ':!.agents/skills/' |grep "^+" |grep -zoE "PADDLE_ENFORCE\(.[^,\);]+.[^;]*\);\s" || true`
 if [ "${ALL_PADDLE_ENFORCE}" != "" ] && [ "${PR_ID}" != "" ]; then
     echo_line="PADDLE_ENFORCE is not recommended. Please use PADDLE_ENFORCE_EQ/NE/GT/GE/LT/LE or PADDLE_ENFORCE_NOT_NULL or PADDLE_ENFORCE_GPU_SUCCESS instead, see [ https://github.com/PaddlePaddle/Paddle/wiki/PADDLE_ENFORCE-Rewriting-Specification ] for details.\nYou must have one RD (luotao1 (Recommend) or zhangbo9674) approval for the usage (either add or delete) of PADDLE_ENFORCE.\n${ALL_PADDLE_ENFORCE}\n"
     check_approval 1 luotao1 zhangbo9674
 fi
 
-CHINESE_CHECK=$(git diff -U0 upstream/$BRANCH |grep "^+" |grep -P '[\p{Han}]')
+CHINESE_CHECK=$(git diff -U0 upstream/$BRANCH -- . ':!.agents/skills/' |grep "^+" |grep -P '[\p{Han}]')
 if [ "${CHINESE_CHECK}" != "" ] && [ "${PR_ID}" != "" ]; then
-	echo_line="Not recommended to use Chinese. You must have one RD (swgu98 or zhangbo9674 or risemeup1) approval."
+    echo_line="Not recommended to use Chinese. You must have one RD (swgu98 or zhangbo9674 or risemeup1) approval.\n"
     check_approval 1 swgu98 zhangbo9674 risemeup1
 fi
 
@@ -332,8 +318,8 @@ fi
 
 EMPTY_GRAD_OP_REGISTERED=`echo $ALL_ADDED_LINES |grep -zoE "REGISTER_OP_WITHOUT_GRADIENT\([^;.]*\)[;\s]" || echo $ALL_ADDED_LINES |grep -zoE "[[:graph:]]*EmptyGradOpMaker<[[:graph:]]*>" || true`
 if [ "${EMPTY_GRAD_OP_REGISTERED}" != "" ] && [ "${GIT_PT_ID}" != "" ]; then
-    echo_line="You must have one RD (xiaoguoguo626807, XiaoguangHu01, kolinwei or JiabinYang) approval for the usage of REGISTER_OP_WITHOUT_GRADIENT or EmptyGradOpMaker.\nThe code that do not meet the specification are as follows:\n${EMPTY_GRAD_OP_REGISTERED}\n"
-    check_approval 1 xiaoguoguo626807 XiaoguangHu01 kolinwei JiabinYang
+    echo_line="You must have one RD (xiaoguoguo626807, XiaoguangHu01 or kolinwei) approval for the usage of REGISTER_OP_WITHOUT_GRADIENT or EmptyGradOpMaker.\nThe code that do not meet the specification are as follows:\n${EMPTY_GRAD_OP_REGISTERED}\n"
+    check_approval 1 xiaoguoguo626807 XiaoguangHu01 kolinwei
 fi
 
 HAS_MODIFIED_DY2ST_TEST_FILES=$(git diff --name-only --diff-filter=ACMR upstream/$BRANCH | grep "test/dygraph_to_static/test_" || true)
@@ -365,8 +351,21 @@ if [ "${HAS_MODIFIED_PY_OR_CPP_FILES}" != "" ] && [ "${PR_ID}" != "" ]; then
         echo_line=${echo_line}${error_lines}"\n"
         echo_line=${echo_line}"You can run following command to fix the errors:\n"
         echo_line=${echo_line}"    python tools/check_code_block_format.py "$(echo ${HAS_MODIFIED_PY_OR_CPP_FILES} | tr "\n" " ")"\n"
-        echo_line=${echo_line}"If you believe this is a false positive, please request one of the RD (sunzhongkai588, SigureMo, ooooo-create) approval for the changes.\n"
-        check_approval 1 sunzhongkai588 SigureMo ooooo-create
+        echo_line=${echo_line}"If you believe this is a false positive, please request one of the RD (sunzhongkai588, SigureMo) approval for the changes.\n"
+        check_approval 1 sunzhongkai588 SigureMo
+    fi
+fi
+
+if [ "${HAS_MODIFIED_PY_OR_CPP_FILES}" != "" ] && [ "${PR_ID}" != "" ]; then
+    CODE_BLOCK_PYTHON_MARKER=$(git diff -U0 upstream/$BRANCH -- ${HAS_MODIFIED_PY_OR_CPP_FILES} \
+        | grep '^+' \
+        | grep -Pv '^\+\s*(#|//|/\*|\*)' \
+        | grep -P '\.\.\s+code-block::\s+python\b' || true)
+    if [ "${CODE_BLOCK_PYTHON_MARKER}" != "" ]; then
+        echo_line="Your PR adds '.. code-block:: python' marker in docstrings/comments. Please confirm whether this marker is expected and follows our docstring rules.\n"
+        echo_line=${echo_line}"The matched lines are as follows:\n${CODE_BLOCK_PYTHON_MARKER}\n"
+        echo_line=${echo_line}"If you believe this is necessary, please request one of the RD (SigureMo(Recommend), sunzhongkai588, ShigureNyako) approval for the changes.\n"
+        check_approval 1 SigureMo sunzhongkai588 ShigureNyako
     fi
 fi
 
@@ -392,8 +391,8 @@ for CHANGE_FILE in ${HAS_MODIFIED_PHI_FILES}; do
     fi
 done
 if [ "${PHI_INCLUDE_FLUID_FILES}" != "" ] && [ "${PR_ID}" != "" ]; then
-    echo_line="You must have one RD (YuanRisheng or zyfncg) approval for the including paddle/fluid header in paddle/phi files(${PHI_INCLUDE_FLUID_FILES}).\n"
-    check_approval 1 YuanRisheng zyfncg
+    echo_line="You must have one RD (swgu98, risemeup1) approval for the including paddle/fluid header in paddle/phi files(${PHI_INCLUDE_FLUID_FILES}).\n"
+    check_approval 1 swgu98 risemeup1
 fi
 
 HAS_MODIFIED_PHI_HEADER_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/.*\.h" || true`
@@ -405,8 +404,8 @@ for CHANGE_FILE in ${HAS_MODIFIED_PHI_HEADER_FILES}; do
     fi
 done
 if [ "${PHI_INCLUDE_THIRD_PARTY_FILES}" != "" ] && [ "${PR_ID}" != "" ]; then
-    echo_line="You must have one RD (jiahy0825, zyfncg, YuanRisheng or heavyrain-lzy) approval for including \"gflags/gflags.h\" or \"glog/logging.h\" headerfile in paddle/phi headerfiles(${PHI_INCLUDE_THIRD_PARTY_FILES}). Recommend including third party headers in phi source files(*.cc) instead of phi headerfiles(*.h). Because if phi headerfiles include third party headers like \"gflags.h\" or \"logging.h\", error might occur when outside developers use phi headerfiles directly.\n"
-    check_approval 1 jiahy0825 zyfncg YuanRisheng heavyrain-lzy
+    echo_line="You must have one RD (wanghuancoder, SigureMo) approval for including \"gflags/gflags.h\" or \"glog/logging.h\" headerfile in paddle/phi headerfiles(${PHI_INCLUDE_THIRD_PARTY_FILES}). Recommend including third party headers in phi source files(*.cc) instead of phi headerfiles(*.h). Because if phi headerfiles include third party headers like \"gflags.h\" or \"logging.h\", error might occur when outside developers use phi headerfiles directly.\n"
+    check_approval 1 wanghuancoder SigureMo
 fi
 
 HAS_MODIFIED_PADDLE_API_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/.*\.h" || true`
@@ -418,8 +417,8 @@ for CHANGE_FILE in ${HAS_MODIFIED_PHI_HEADER_FILES}; do
     fi
 done
 if [ "${INCLUDE_PADDLE_API_FILES}" != "" ] && [ "${PR_ID}" != "" ]; then
-    echo_line="You must have one RD (jiahy0825, zyfncg) or PM (sunzhongkai588, Ligoml) approval for code changes about PADDLE_API. If you add a new PADDLE_API, please make sure you have written detailed comments about the parameter and usage of this PADDLE_API .\n"
-    check_approval 1 jiahy0825 zyfncg sunzhongkai588 Ligoml
+    echo_line="You must have one RD (wanghuancoder, SigureMo) or PM (sunzhongkai588) approval for code changes about PADDLE_API. If you add a new PADDLE_API, please make sure you have written detailed comments about the parameter and usage of this PADDLE_API .\n"
+    check_approval 1 sunzhongkai588 wanghuancoder SigureMo
 fi
 
 HAS_MODIFIED_PHI_OR_FLUID_FILES=`git diff --name-only upstream/$BRANCH | grep -E "paddle/phi|paddle/fluid" || true`
@@ -431,8 +430,8 @@ for CHANGE_FILE in ${HAS_MODIFIED_PHI_OR_FLUID_FILES}; do
     fi
 done
 if [ "${USE_MUTABLE_DATA_FILES}" != "" ] && [ "${PR_ID}" != "" ]; then
-    echo_line="You can not use the DenseTensor::mutable_data() method in files(${USE_MUTABLE_DATA_FILES}). If you want to alloc memory, use phi::DeviceContext::Alloc() or phi::DeviceContext::HostAlloc() instead and if you want to get mutable data, use DenseTensor::data(). If you have any questions, you can have one RD (YuanRisheng, zyfncg or From00) review and approve.\n"
-    check_approval 1 YuanRisheng zyfncg From00
+    echo_line="You can not use the DenseTensor::mutable_data() method in files(${USE_MUTABLE_DATA_FILES}). If you want to alloc memory, use phi::DeviceContext::Alloc() or phi::DeviceContext::HostAlloc() instead and if you want to get mutable data, use DenseTensor::data(). If you have any questions, you can have one RD (From00 or SigureMo) review and approve.\n"
+    check_approval 1 From00 SigureMo
 fi
 
 ALL_CHANGE_FILES=`git diff --numstat upstream/$BRANCH | awk '{print $3}' | grep ".py"`
@@ -473,7 +472,7 @@ fi
 
 HAS_OPERATORBASE_FLAG=`git diff -U0 --diff-filter=A upstream/$BRANCH | grep -E "public[[:space:]]+.*OperatorBase" || true`
 if [ "${HAS_OPERATORBASE_FLAG}" != "" ] && [ "${PR_ID}" != "" ]; then
-    echo_line="In order to support dynamic graph, all ops are not recommended to inherit OperatorBase. Please use OperatorWithKernel instead.\nYou must have one RD (XiaoguangHu01) approval for the inherit of OperatorBase.\nYou inherit the OperatorBase class. The corresponding lines are as follows:\n${HAS_OPERATORBASE_FLAG}"
+    echo_line="In order to support dynamic graph, all ops are not recommended to inherit OperatorBase. Please use OperatorWithKernel instead.\nYou must have one RD (XiaoguangHu01) approval for the inherit of OperatorBase.\nYou inherit the OperatorBase class. The corresponding lines are as follows:\n${HAS_OPERATORBASE_FLAG}\n"
     check_approval 1 XiaoguangHu01
 fi
 
@@ -495,7 +494,7 @@ if [ "${OP_FILE_CHANGED}" != "" ] && [ "${PR_ID}" != "" ]; then
     done
     if [ "${ERROR_LINES}" != "" ]; then
         ERROR_LINES=${ERROR_LINES//+/'\n+\t'}
-        echo_line="Using ShareDataWith or ShareBufferWith is not recommended. You must have one RD's (zhhsplendid (Recommend), zhangbo9674) approval to use these methods. For more information, please refer to https://github.com/PaddlePaddle/Paddle/wiki/ShareDataWith-is-prohibited-in-OP. The error lines are as follows:${ERROR_LINES}"
+        echo_line="Using ShareDataWith or ShareBufferWith is not recommended. You must have one RD's (zhhsplendid (Recommend), zhangbo9674) approval to use these methods. For more information, please refer to https://github.com/PaddlePaddle/Paddle/wiki/ShareDataWith-is-prohibited-in-OP. The error lines are as follows:${ERROR_LINES}\n"
         check_approval 1 zhhsplendid zhangbo9674
     fi
 fi
@@ -512,7 +511,7 @@ if [ "${CMAKE_FILE_CHANGED}" != "" ] && [ "${PR_ID}" != "" ]; then
     done
     if [ "${ERROR_LINES}" != "" ]; then
         ERROR_LINES=${ERROR_LINES//+/'\n+\t'}
-        echo_line="Change compilation flag of warnings is not recommended. You must have one RD's (risemeup1 (Recommend)) approval to use these methods. "
+        echo_line="Change compilation flag of warnings is not recommended. You must have one RD's (risemeup1 (Recommend)) approval to use these methods.\n"
         check_approval 1 risemeup1
     fi
 fi
@@ -558,7 +557,7 @@ if [ "${RUNTYPE_FILE_CHANGED}" != "" ] && [ "${PR_ID}" != "" ]; then
     fi
     done
     if [[ ${RUNTYPE_ADD_LINES} != "" ]];then
-        echo_line="You must have one QA (XieYunshen(Recommend) or chalsliu) approval for setting parameter RUN_TYPE as EXCLUSIVE, DIST, HYBRID, NIGHTLY, EXCLUSIVE:NIGHTLY or DISTNIGHTLY, or setting parameter SERIAL, or setting TIMEOUT properties.\nThe corresponding lines are as follows:\n${RUNTYPE_ADD_LINES}\nFor more information, please refer to:https://github.com/PaddlePaddle/Paddle/wiki/PaddlePaddle-Unit-test-specification"
+        echo_line="You must have one QA (XieYunshen(Recommend) or chalsliu) approval for setting parameter RUN_TYPE as EXCLUSIVE, DIST, HYBRID, NIGHTLY, EXCLUSIVE:NIGHTLY or DISTNIGHTLY, or setting parameter SERIAL, or setting TIMEOUT properties.\nThe corresponding lines are as follows:\n${RUNTYPE_ADD_LINES}\nFor more information, please refer to:https://github.com/PaddlePaddle/Paddle/wiki/PaddlePaddle-Unit-test-specification\n"
     check_approval 1 XieYunshen chalsliu
     fi
 fi
@@ -570,12 +569,12 @@ NEW_ADDED=$(git diff upstream/$BRANCH -- '*.cc' '*.cpp' '*.cuh' '*.cu' | grep '^
 DELETE_ADDED=$(git diff upstream/$BRANCH -- '*.cc' '*.cpp' '*.cuh' '*.cu' | grep '^+' | grep -w 'delete' | grep -v '//')
 
 if [ -n "$MALLOC_ADDED" ] && [ -z "$FREE_ADDED" ]; then
-  echo_line="There is \"malloc\" but no \"free\", please check whether there is a resource leak.\n If you must do this, you must have one RD (sneaxiy) approval.\nThe following lines with \"malloc\" were found:\n$MALLOC_ADDED"
+  echo_line="There is \"malloc\" but no \"free\", please check whether there is a resource leak.\n If you must do this, you must have one RD (sneaxiy) approval.\nThe following lines with \"malloc\" were found:\n$MALLOC_ADDED\n"
   check_approval 1 sneaxiy
 fi
 
 if [ -n "$NEW_ADDED" ] && [ -z "$DELETE_ADDED" ]; then
-  echo_line="There is \"new\" but no \"delete\", please check whether there is a resource leak.\n If you must do this, you must have one RD (sneaxiy) approval.\nThe following lines with \"new\" were found:\n$NEW_ADDED"
+  echo_line="There is \"new\" but no \"delete\", please check whether there is a resource leak.\n If you must do this, you must have one RD (sneaxiy) approval.\nThe following lines with \"new\" were found:\n$NEW_ADDED\n"
   check_approval 1 sneaxiy
 fi
 
@@ -589,7 +588,7 @@ if [ -n "${UNITYBUILD_RULE_CHANGED}" -a -n "${PR_ID}" ]; then
     echo_line="You must have one RD (Avin0323(Recommend) or
                wanghuancoder) approval for modifying
                unity_build_rule.cmake which the rules of Unity Build."
-    echo_line=$(echo ${echo_line})
+    echo_line="$(echo ${echo_line})\n"
     # Avin0323(23427135) zhwesky2010(52485244)
     # wanghuancoder(26922892) luotao1(6836917)
     check_approval 1 Avin0323 wanghuancoder
@@ -605,10 +604,27 @@ BIGTENSOR_GLOBS=(
 
 BIGTENSOR_CHANGED=$(git diff -U0 upstream/$BRANCH -- "${BIGTENSOR_GLOBS[@]}" | grep "^+" | grep -E "int .*threadIdx.*\*.*|int .*blockDim.*\*.*|int .*blockIdx.*\*.*|int32_t .*threadIdx.*\*.*|int32_t .*blockDim.*\*.*|int32_t .*blockIdx.*|auto .*threadIdx.*\*.*|auto .*blockDim.*\*.*|auto .*blockIdx.*\*.*|uint32_t .*threadIdx.*\*.*|uint32_t .*blockDim.*\*.*|uint32_t .*blockIdx.*\*.*" || true)
 if [ -n "${BIGTENSOR_CHANGED}" ]; then
-    echo_line="You must have one RD (zrr1999(Recommend) or wanghuancoder) approval for modifying kernel code with threadIdx, blockDim or blockIdx multiplications assigned to int, int32_t, uint32_t, or auto type variables.\nThe following lines were found:\n${BIGTENSOR_CHANGED}"
+    echo_line="You must have one RD (zrr1999(Recommend) or wanghuancoder) approval for modifying kernel code with threadIdx, blockDim or blockIdx multiplications assigned to int, int32_t, uint32_t, or auto type variables.\nThe following lines were found:\n${BIGTENSOR_CHANGED}\n"
     check_approval 1 zrr1999 wanghuancoder
 fi
 
+
+HAS_MODIFIED_PHI_DIR=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/" | grep -v "paddle/phi/api/" | grep -v "python_api_info.yaml" || true`
+if [ "${HAS_MODIFIED_PHI_DIR}" != "" ] && [ "${PR_ID}" != "" ]; then
+    echo_line="You modified files in paddle/phi/ directory. You must have one RD (wanghuancoder, zrr1999, DanielSun11) approval.\n"
+    echo_line="${echo_line}[IMPORTANT] Please ensure you have run the following tests before merging:\n"
+    echo_line="${echo_line}  1. 0-Size Tensor test\n"
+    echo_line="${echo_line}  2. BigTensor test\n"
+    echo_line="${echo_line}  3. Precision test\n"
+    echo_line="${echo_line}You can copy the following prompt to your AI agent to help run these tests:\n"
+    echo_line="${echo_line}---\n"
+    echo_line="${echo_line}Please run the following tests for my paddle/phi changes and report results:\n"
+    echo_line="${echo_line}1) 0-Size Tensor test: verify all modified ops handle empty tensors (shape with 0) without crashing.\n"
+    echo_line="${echo_line}2) BigTensor test: verify all modified ops handle large tensors (with numel > INT32_MAX) correctly, especially checking for int32 index overflow.\n"
+    echo_line="${echo_line}3) Precision test: verify all modified ops produce numerically consistent results against the baseline (develop branch), checking both float32 and float16/bfloat16 dtypes.\n"
+    echo_line="${echo_line}---\n"
+    check_approval 1 wanghuancoder zrr1999 DanielSun11
+fi
 
 if [ -n "${echo_list}" ];then
   echo "****************"

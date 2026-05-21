@@ -512,7 +512,7 @@ class Linear(nn.Layer):
         - output: Multi-dimensional tensor with shape :math:`[*, out\_features]` . The data type is the same as the input .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(100)
@@ -600,13 +600,10 @@ class Linear(nn.Layer):
         Resets parameters based on their initialization used in ``__init__``.
         """
 
-        nn.init.kaiming_uniform_(self.weight, a=sqrt(5))
-        if self.bias is not None:
-            # nn.init._calculate_fan_in_and_fan_out(self.weight) for 2D array
-            # is equivalent to returning (weight.shape[1], weight.shape[0])
-            # TODO(heqianyue): use _calculate_fan_in_and_fan_out when available
-            fan_in = self.weight.shape[1]
-            bound = 1 / sqrt(fan_in) if fan_in > 0 else 0
+        bound = 1 / sqrt(self.in_features) if self.in_features > 0 else 0
+        if self.in_features > 0 and self.out_features > 0:
+            nn.init.uniform_(self.weight, -bound, bound)
+        if self.bias is not None and self.out_features > 0:
             nn.init.uniform_(self.bias, -bound, bound)
 
 
@@ -699,16 +696,25 @@ class Softmax(nn.Layer):
         - output: Tensor with the same shape as input.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([[[2.0, 3.0, 4.0, 5.0],
-            ...                        [3.0, 4.0, 5.0, 6.0],
-            ...                        [7.0, 8.0, 8.0, 9.0]],
-            ...                       [[1.0, 2.0, 3.0, 4.0],
-            ...                        [5.0, 6.0, 7.0, 8.0],
-            ...                        [6.0, 7.0, 8.0, 9.0]]], dtype='float32')
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [
+            ...             [2.0, 3.0, 4.0, 5.0],
+            ...             [3.0, 4.0, 5.0, 6.0],
+            ...             [7.0, 8.0, 8.0, 9.0],
+            ...         ],
+            ...         [
+            ...             [1.0, 2.0, 3.0, 4.0],
+            ...             [5.0, 6.0, 7.0, 8.0],
+            ...             [6.0, 7.0, 8.0, 9.0],
+            ...         ],
+            ...     ],
+            ...     dtype='float32',
+            ... )
             >>> m = paddle.compat.nn.Softmax()
             >>> out = m(x)
             >>> print(out)

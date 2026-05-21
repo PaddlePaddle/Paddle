@@ -25,11 +25,11 @@ void QKVAttentionXPUKernelImpl(const Context& dev_ctx,
                                const DenseTensor& q,
                                const DenseTensor& k,
                                const DenseTensor& v,
-                               const paddle::optional<DenseTensor>& q_max,
-                               const paddle::optional<DenseTensor>& k_max,
-                               const paddle::optional<DenseTensor>& v_max,
-                               const paddle::optional<DenseTensor>& qk_max,
-                               const paddle::optional<DenseTensor>& qkv_max,
+                               const optional<DenseTensor>& q_max,
+                               const optional<DenseTensor>& k_max,
+                               const optional<DenseTensor>& v_max,
+                               const optional<DenseTensor>& qk_max,
+                               const optional<DenseTensor>& qkv_max,
                                float alpha,
                                int head_num,
                                int head_dim,
@@ -99,9 +99,9 @@ void QKVAttentionXPUKernelImpl(const Context& dev_ctx,
         if (qkv_fc_fusion) {
           x_fp16.Resize(q.dims());
         } else {
-          std::vector<int64_t> out_dims = common::vectorize(q.dims());
+          std::vector<int64_t> out_dims = vectorize(q.dims());
           out_dims.insert(out_dims.begin(), 3);
-          x_fp16.Resize(common::make_ddim(out_dims));
+          x_fp16.Resize(out_dims);
         }
         auto* x_fp16_data_t = reinterpret_cast<XPUTypeFP16*>(
             dev_ctx.template Alloc<phi::float16>(&x_fp16));
@@ -282,11 +282,11 @@ void QKVAttentionXPUKernel(const Context& dev_ctx,
                            const DenseTensor& q,
                            const DenseTensor& k,
                            const DenseTensor& v,
-                           const paddle::optional<DenseTensor>& q_max,
-                           const paddle::optional<DenseTensor>& k_max,
-                           const paddle::optional<DenseTensor>& v_max,
-                           const paddle::optional<DenseTensor>& qk_max,
-                           const paddle::optional<DenseTensor>& qkv_max,
+                           const optional<DenseTensor>& q_max,
+                           const optional<DenseTensor>& k_max,
+                           const optional<DenseTensor>& v_max,
+                           const optional<DenseTensor>& qk_max,
+                           const optional<DenseTensor>& qkv_max,
                            float alpha,
                            int head_num,
                            int head_dim,

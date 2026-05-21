@@ -54,11 +54,11 @@ template <typename T, typename Context>
 void SubtractDoubleGradKernel(const Context& dev_ctx,
                               const DenseTensor& y,
                               const DenseTensor& dout,
-                              const paddle::optional<DenseTensor>& ddx,
-                              const paddle::optional<DenseTensor>& ddy,
+                              const optional<DenseTensor>& ddx,
+                              const optional<DenseTensor>& ddy,
                               int axis,
                               DenseTensor* ddout) {
-  phi::SubtractDoubleGradImpl<T>(dev_ctx, y, ddx, ddy, dout, axis, ddout);
+  SubtractDoubleGradImpl<T>(dev_ctx, y, ddx, ddy, dout, axis, ddout);
 }
 
 }  // namespace phi

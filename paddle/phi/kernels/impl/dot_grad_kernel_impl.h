@@ -213,8 +213,8 @@ struct DotDoubleGradFunction {
                   const DenseTensor* tensor_x,
                   const DenseTensor* tensor_y,
                   const DenseTensor* tensor_dout,
-                  const paddle::optional<DenseTensor>* tensor_ddx_opt,
-                  const paddle::optional<DenseTensor>* tensor_ddy_opt,
+                  const optional<DenseTensor>* tensor_ddx_opt,
+                  const optional<DenseTensor>* tensor_ddy_opt,
                   DenseTensor* tensor_dx,
                   DenseTensor* tensor_dy,
                   DenseTensor* tensor_ddout);
@@ -226,8 +226,8 @@ struct DotDoubleGradFunction<Context, T, funcs::EnableComplex<T>> {
                   const DenseTensor* tensor_x,
                   const DenseTensor* tensor_y,
                   const DenseTensor* tensor_dout,
-                  const paddle::optional<DenseTensor>* tensor_ddx_opt,
-                  const paddle::optional<DenseTensor>* tensor_ddy_opt,
+                  const optional<DenseTensor>* tensor_ddx_opt,
+                  const optional<DenseTensor>* tensor_ddy_opt,
                   DenseTensor* tensor_dx,
                   DenseTensor* tensor_dy,
                   DenseTensor* tensor_ddout) {
@@ -433,8 +433,8 @@ struct DotDoubleGradFunction<Context, T, funcs::DisableComplex<T>> {
                   const DenseTensor* tensor_x,
                   const DenseTensor* tensor_y,
                   const DenseTensor* tensor_dout,
-                  const paddle::optional<DenseTensor>* tensor_ddx_opt,
-                  const paddle::optional<DenseTensor>* tensor_ddy_opt,
+                  const optional<DenseTensor>* tensor_ddx_opt,
+                  const optional<DenseTensor>* tensor_ddy_opt,
                   DenseTensor* tensor_dx,
                   DenseTensor* tensor_dy,
                   DenseTensor* tensor_ddout) {
@@ -595,11 +595,11 @@ struct DotTripleGradFunction {
                   const DenseTensor* in_tensor_x,
                   const DenseTensor* in_tensor_y,
                   const DenseTensor* in_tensor_dout,
-                  const paddle::optional<DenseTensor>* in_tensor_ddx_opt,
-                  const paddle::optional<DenseTensor>* in_tensor_ddy_opt,
-                  const paddle::optional<DenseTensor>* in_tensor_d_dx_opt,
-                  const paddle::optional<DenseTensor>* in_tensor_d_dy_opt,
-                  const paddle::optional<DenseTensor>* in_tensor_d_ddout_opt,
+                  const optional<DenseTensor>* in_tensor_ddx_opt,
+                  const optional<DenseTensor>* in_tensor_ddy_opt,
+                  const optional<DenseTensor>* in_tensor_d_dx_opt,
+                  const optional<DenseTensor>* in_tensor_d_dy_opt,
+                  const optional<DenseTensor>* in_tensor_d_ddout_opt,
                   DenseTensor* out_tensor_d_x,
                   DenseTensor* out_tensor_d_y,
                   DenseTensor* out_tensor_d_dout,
@@ -615,11 +615,11 @@ struct DotTripleGradFunction<Context, T, funcs::EnableComplex<T>> {
                   const DenseTensor* in_tensor_x,
                   const DenseTensor* in_tensor_y,
                   const DenseTensor* in_tensor_dout,
-                  const paddle::optional<DenseTensor>* in_tensor_ddx_opt,
-                  const paddle::optional<DenseTensor>* in_tensor_ddy_opt,
-                  const paddle::optional<DenseTensor>* in_tensor_d_dx_opt,
-                  const paddle::optional<DenseTensor>* in_tensor_d_dy_opt,
-                  const paddle::optional<DenseTensor>* in_tensor_d_ddout_opt,
+                  const optional<DenseTensor>* in_tensor_ddx_opt,
+                  const optional<DenseTensor>* in_tensor_ddy_opt,
+                  const optional<DenseTensor>* in_tensor_d_dx_opt,
+                  const optional<DenseTensor>* in_tensor_d_dy_opt,
+                  const optional<DenseTensor>* in_tensor_d_ddout_opt,
                   DenseTensor* out_tensor_d_x,
                   DenseTensor* out_tensor_d_y,
                   DenseTensor* out_tensor_d_dout,
@@ -1009,11 +1009,11 @@ struct DotTripleGradFunction<Context, T, funcs::DisableComplex<T>> {
                   const DenseTensor* in_tensor_x,
                   const DenseTensor* in_tensor_y,
                   const DenseTensor* in_tensor_dout,
-                  const paddle::optional<DenseTensor>* in_tensor_ddx_opt,
-                  const paddle::optional<DenseTensor>* in_tensor_ddy_opt,
-                  const paddle::optional<DenseTensor>* in_tensor_d_dx_opt,
-                  const paddle::optional<DenseTensor>* in_tensor_d_dy_opt,
-                  const paddle::optional<DenseTensor>* in_tensor_d_ddout_opt,
+                  const optional<DenseTensor>* in_tensor_ddx_opt,
+                  const optional<DenseTensor>* in_tensor_ddy_opt,
+                  const optional<DenseTensor>* in_tensor_d_dx_opt,
+                  const optional<DenseTensor>* in_tensor_d_dy_opt,
+                  const optional<DenseTensor>* in_tensor_d_ddout_opt,
                   DenseTensor* out_tensor_d_x,
                   DenseTensor* out_tensor_d_y,
                   DenseTensor* out_tensor_d_dout,
@@ -1378,16 +1378,14 @@ void DotGradKernel(const Context& dev_ctx,
   if (dx) {
     dev_ctx.template Alloc<T>(dx);
     if (dx->numel() == 0) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(y.dims())), 0, dy);
+      Full<T, Context>(dev_ctx, y.dims(), 0, dy);
       return;
     }
   }
   if (dy) {
     dev_ctx.template Alloc<T>(dy);
     if (dy->numel() == 0) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(x.dims())), 0, dx);
+      Full<T, Context>(dev_ctx, x.dims(), 0, dx);
       return;
     }
   }
@@ -1399,8 +1397,8 @@ void DotDoubleGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& y,
                          const DenseTensor& dout,
-                         const paddle::optional<DenseTensor>& ddx,
-                         const paddle::optional<DenseTensor>& ddy,
+                         const optional<DenseTensor>& ddx,
+                         const optional<DenseTensor>& ddy,
                          DenseTensor* dx,
                          DenseTensor* dy,
                          DenseTensor* ddout) {
@@ -1413,11 +1411,11 @@ void DotTripleGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& y,
                          const DenseTensor& dout,
-                         const paddle::optional<DenseTensor>& ddx,
-                         const paddle::optional<DenseTensor>& ddy,
-                         const paddle::optional<DenseTensor>& d_dx,
-                         const paddle::optional<DenseTensor>& d_dy,
-                         const paddle::optional<DenseTensor>& d_ddout,
+                         const optional<DenseTensor>& ddx,
+                         const optional<DenseTensor>& ddy,
+                         const optional<DenseTensor>& d_dx,
+                         const optional<DenseTensor>& d_dy,
+                         const optional<DenseTensor>& d_ddout,
                          DenseTensor* d_x,
                          DenseTensor* d_y,
                          DenseTensor* d_ddx,

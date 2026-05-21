@@ -50,8 +50,9 @@ def get_device_properties(
             and the number of multiprocessors on the device.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
+            >>> # doctest: +REQUIRES(env:METAX_GPU)
             >>> import paddle
             >>> paddle.device.get_device_properties('metax_gpu:0')
             >>> paddle.device.get_device_properties(0)

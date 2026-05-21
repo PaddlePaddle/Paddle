@@ -100,17 +100,15 @@ __global__ void KeLinearInterpBw(T* in,
     }
 
     if (data_layout == DataLayout::NCHW) {
-      phi::CudaAtomicAdd(
-          &in_pos[0], static_cast<T>(w2lambda * static_cast<MT>(out_pos[0])));
-      phi::CudaAtomicAdd(
-          &in_pos[w_id],
-          static_cast<T>(w1lambda * static_cast<MT>(out_pos[0])));
+      CudaAtomicAdd(&in_pos[0],
+                    static_cast<T>(w2lambda * static_cast<MT>(out_pos[0])));
+      CudaAtomicAdd(&in_pos[w_id],
+                    static_cast<T>(w1lambda * static_cast<MT>(out_pos[0])));
     } else {
-      phi::CudaAtomicAdd(
-          &in_pos[0], static_cast<T>(w2lambda * static_cast<MT>(out_pos[0])));
-      phi::CudaAtomicAdd(
-          &in_pos[w_id * num_channels],
-          static_cast<T>(w1lambda * static_cast<MT>(out_pos[0])));
+      CudaAtomicAdd(&in_pos[0],
+                    static_cast<T>(w2lambda * static_cast<MT>(out_pos[0])));
+      CudaAtomicAdd(&in_pos[w_id * num_channels],
+                    static_cast<T>(w1lambda * static_cast<MT>(out_pos[0])));
     }
   }
 }
@@ -158,7 +156,7 @@ __global__ void KeNearestNeighborInterpNCHWBw(T* in,
     while (nc_id < nc) {
       T* in_pos = &in[in_index];
       const T out_pos = out[out_index];
-      phi::CudaAtomicAdd(in_pos, out_pos);
+      CudaAtomicAdd(in_pos, out_pos);
       in_index += in_index_stride;
       out_index += out_index_stride;
       nc_id += nc_stride;
@@ -211,7 +209,7 @@ __global__ void KeNearestNeighborInterpBw(
                     in_img_idx * num_channels + channel_id];
 
     const T out_pos = out[tid];
-    phi::CudaAtomicAdd(in_pos, out_pos);
+    CudaAtomicAdd(in_pos, out_pos);
   }
 }
 
@@ -235,7 +233,7 @@ __inline__ __device__ T PartialBlockMin(T val,
     }
   } else {
     shared_last_val = std::numeric_limits<T>::max();
-    phi::CudaAtomicMin(&shared_last_val, val);
+    CudaAtomicMin(&shared_last_val, val);
     shared[wid] = shared_last_val;
     shared_last_idx = wid;
   }
@@ -328,27 +326,27 @@ __global__ void KeBilinearInterpBwShareMemory(T* in,
             ? (in_top_max_index - in_top_min_index)
             : (in_bot_max_index - in_bot_min_index);
     if (h_id != 0) {
-      phi::CudaAtomicAdd(&s_data[0][input_index - in_top_min_index],
-                         h2lambda * w2lambda * value);
-      phi::CudaAtomicAdd(&s_data[0][top_right_index - in_top_min_index],
-                         h2lambda * w1lambda * value);
-      phi::CudaAtomicAdd(&s_data[1][bot_left_index - in_bot_min_index],
-                         h1lambda * w2lambda * value);
-      phi::CudaAtomicAdd(&s_data[1][bot_right_index - in_bot_min_index],
-                         h1lambda * w1lambda * value);
+      CudaAtomicAdd(&s_data[0][input_index - in_top_min_index],
+                    h2lambda * w2lambda * value);
+      CudaAtomicAdd(&s_data[0][top_right_index - in_top_min_index],
+                    h2lambda * w1lambda * value);
+      CudaAtomicAdd(&s_data[1][bot_left_index - in_bot_min_index],
+                    h1lambda * w2lambda * value);
+      CudaAtomicAdd(&s_data[1][bot_right_index - in_bot_min_index],
+                    h1lambda * w1lambda * value);
     } else {
-      phi::CudaAtomicAdd(&s_data[0][top_right_index - in_top_min_index],
-                         (h2lambda + h1lambda) * w1lambda * value);
-      phi::CudaAtomicAdd(&s_data[1][bot_left_index - in_bot_min_index],
-                         (h1lambda + h2lambda) * w2lambda * value);
+      CudaAtomicAdd(&s_data[0][top_right_index - in_top_min_index],
+                    (h2lambda + h1lambda) * w1lambda * value);
+      CudaAtomicAdd(&s_data[1][bot_left_index - in_bot_min_index],
+                    (h1lambda + h2lambda) * w2lambda * value);
     }
     __syncthreads();
 
     if (threadIdx.x <= upper_limit_share_idx) {
-      phi::CudaAtomicAdd(&in[in_top_min_index + threadIdx.x],
-                         static_cast<T>(s_data[0][threadIdx.x]));
-      phi::CudaAtomicAdd(&in[in_bot_min_index + threadIdx.x],
-                         static_cast<T>(s_data[1][threadIdx.x]));
+      CudaAtomicAdd(&in[in_top_min_index + threadIdx.x],
+                    static_cast<T>(s_data[0][threadIdx.x]));
+      CudaAtomicAdd(&in[in_bot_min_index + threadIdx.x],
+                    static_cast<T>(s_data[1][threadIdx.x]));
     }
   }
 }
@@ -480,15 +478,14 @@ __global__ void KeBilinearInterpNCHWBw(T* in,
 
       MT d2val = static_cast<MT>(out[index]);
 
-      phi::CudaAtomicAdd(in + GetInputIndex(nc, in_h, in_w, h1, w1),
-                         static_cast<T>(h0lambda * w0lambda * d2val));
-      phi::CudaAtomicAdd(in + GetInputIndex(nc, in_h, in_w, h1, w1 + x_id),
-                         static_cast<T>(h0lambda * w1lambda * d2val));
-      phi::CudaAtomicAdd(in + GetInputIndex(nc, in_h, in_w, h1 + y_id, w1),
-                         static_cast<T>(h1lambda * w0lambda * d2val));
-      phi::CudaAtomicAdd(
-          in + GetInputIndex(nc, in_h, in_w, h1 + y_id, w1 + x_id),
-          static_cast<T>(h1lambda * w1lambda * d2val));
+      CudaAtomicAdd(in + GetInputIndex(nc, in_h, in_w, h1, w1),
+                    static_cast<T>(h0lambda * w0lambda * d2val));
+      CudaAtomicAdd(in + GetInputIndex(nc, in_h, in_w, h1, w1 + x_id),
+                    static_cast<T>(h0lambda * w1lambda * d2val));
+      CudaAtomicAdd(in + GetInputIndex(nc, in_h, in_w, h1 + y_id, w1),
+                    static_cast<T>(h1lambda * w0lambda * d2val));
+      CudaAtomicAdd(in + GetInputIndex(nc, in_h, in_w, h1 + y_id, w1 + x_id),
+                    static_cast<T>(h1lambda * w1lambda * d2val));
     }
   }
 }
@@ -540,14 +537,13 @@ __global__ void KeBilinearInterpBw(T* in,
     MT value = static_cast<MT>(out[tid]);
     T* in_pos = &in[out_id_h * in_chw + in_img_idy * in_w * num_channels +
                     in_img_idx * num_channels + channel_id];
-    phi::CudaAtomicAdd(&in_pos[0], static_cast<T>(h2lambda * w2lambda * value));
-    phi::CudaAtomicAdd(&in_pos[w_id * num_channels],
-                       static_cast<T>(h2lambda * w1lambda * value));
-    phi::CudaAtomicAdd(&in_pos[h_id * in_w * num_channels],
-                       static_cast<T>(h1lambda * w2lambda * value));
-    phi::CudaAtomicAdd(
-        &in_pos[h_id * in_w * num_channels + w_id * num_channels],
-        static_cast<T>(h1lambda * w1lambda * value));
+    CudaAtomicAdd(&in_pos[0], static_cast<T>(h2lambda * w2lambda * value));
+    CudaAtomicAdd(&in_pos[w_id * num_channels],
+                  static_cast<T>(h2lambda * w1lambda * value));
+    CudaAtomicAdd(&in_pos[h_id * in_w * num_channels],
+                  static_cast<T>(h1lambda * w2lambda * value));
+    CudaAtomicAdd(&in_pos[h_id * in_w * num_channels + w_id * num_channels],
+                  static_cast<T>(h1lambda * w1lambda * value));
   }
 }
 
@@ -622,9 +618,9 @@ __global__ void KeBicubicInterpBw(T* in,
           in_pos = &in[out_id_h * input_w + access_y * in_img_w * num_channels +
                        access_x * num_channels + channel_id];
         }
-        phi::CudaAtomicAdd(&in_pos[0],
-                           static_cast<T>(static_cast<MT>(out_pos[0]) *
-                                          y_coeffs[j] * x_coeffs[i]));
+        CudaAtomicAdd(&in_pos[0],
+                      static_cast<T>(static_cast<MT>(out_pos[0]) * y_coeffs[j] *
+                                     x_coeffs[i]));
       }
     }
   }
@@ -740,22 +736,20 @@ __global__ void KeTrilinearInterpBw(T* in,
       const T* out_pos = &out[out_id_h * output_w + out_id_w];
 
       // trilinear interpolation grad
-      phi::CudaAtomicAdd(&in_pos1[0],
-                         d2lambda * h2lambda * w2lambda * out_pos[0]);
-      phi::CudaAtomicAdd(&in_pos1[w_id],
-                         d2lambda * h2lambda * w1lambda * out_pos[0]);
-      phi::CudaAtomicAdd(&in_pos1[h_id * in_img_w],
-                         d2lambda * h1lambda * w2lambda * out_pos[0]);
-      phi::CudaAtomicAdd(&in_pos1[h_id * in_img_w + w_id],
-                         d2lambda * h1lambda * w1lambda * out_pos[0]);
-      phi::CudaAtomicAdd(&in_pos2[0],
-                         d1lambda * h2lambda * w2lambda * out_pos[0]);
-      phi::CudaAtomicAdd(&in_pos2[w_id],
-                         d1lambda * h2lambda * w1lambda * out_pos[0]);
-      phi::CudaAtomicAdd(&in_pos2[h_id * in_img_w],
-                         d1lambda * h1lambda * w2lambda * out_pos[0]);
-      phi::CudaAtomicAdd(&in_pos2[h_id * in_img_w + w_id],
-                         d1lambda * h1lambda * w1lambda * out_pos[0]);
+      CudaAtomicAdd(&in_pos1[0], d2lambda * h2lambda * w2lambda * out_pos[0]);
+      CudaAtomicAdd(&in_pos1[w_id],
+                    d2lambda * h2lambda * w1lambda * out_pos[0]);
+      CudaAtomicAdd(&in_pos1[h_id * in_img_w],
+                    d2lambda * h1lambda * w2lambda * out_pos[0]);
+      CudaAtomicAdd(&in_pos1[h_id * in_img_w + w_id],
+                    d2lambda * h1lambda * w1lambda * out_pos[0]);
+      CudaAtomicAdd(&in_pos2[0], d1lambda * h2lambda * w2lambda * out_pos[0]);
+      CudaAtomicAdd(&in_pos2[w_id],
+                    d1lambda * h2lambda * w1lambda * out_pos[0]);
+      CudaAtomicAdd(&in_pos2[h_id * in_img_w],
+                    d1lambda * h1lambda * w2lambda * out_pos[0]);
+      CudaAtomicAdd(&in_pos2[h_id * in_img_w + w_id],
+                    d1lambda * h1lambda * w1lambda * out_pos[0]);
     } else {
       int64_t in_pos1_idx =
           static_cast<int64_t>(out_id_h) * input_w +
@@ -772,22 +766,20 @@ __global__ void KeTrilinearInterpBw(T* in,
       const T* out_pos = &out[out_id_h * output_w + out_id_w];
 
       // trilinear interpolation grad
-      phi::CudaAtomicAdd(&in_pos1[0],
-                         d2lambda * h2lambda * w2lambda * out_pos[0]);
-      phi::CudaAtomicAdd(&in_pos1[w_id * num_channels],
-                         d2lambda * h2lambda * w1lambda * out_pos[0]);
-      phi::CudaAtomicAdd(&in_pos1[h_id * in_img_w * num_channels],
-                         d2lambda * h1lambda * w2lambda * out_pos[0]);
-      phi::CudaAtomicAdd(
+      CudaAtomicAdd(&in_pos1[0], d2lambda * h2lambda * w2lambda * out_pos[0]);
+      CudaAtomicAdd(&in_pos1[w_id * num_channels],
+                    d2lambda * h2lambda * w1lambda * out_pos[0]);
+      CudaAtomicAdd(&in_pos1[h_id * in_img_w * num_channels],
+                    d2lambda * h1lambda * w2lambda * out_pos[0]);
+      CudaAtomicAdd(
           &in_pos1[h_id * in_img_w * num_channels + w_id * num_channels],
           d2lambda * h1lambda * w1lambda * out_pos[0]);
-      phi::CudaAtomicAdd(&in_pos2[0],
-                         d1lambda * h2lambda * w2lambda * out_pos[0]);
-      phi::CudaAtomicAdd(&in_pos2[w_id * num_channels],
-                         d1lambda * h2lambda * w1lambda * out_pos[0]);
-      phi::CudaAtomicAdd(&in_pos2[h_id * in_img_w * num_channels],
-                         d1lambda * h1lambda * w2lambda * out_pos[0]);
-      phi::CudaAtomicAdd(
+      CudaAtomicAdd(&in_pos2[0], d1lambda * h2lambda * w2lambda * out_pos[0]);
+      CudaAtomicAdd(&in_pos2[w_id * num_channels],
+                    d1lambda * h2lambda * w1lambda * out_pos[0]);
+      CudaAtomicAdd(&in_pos2[h_id * in_img_w * num_channels],
+                    d1lambda * h1lambda * w2lambda * out_pos[0]);
+      CudaAtomicAdd(
           &in_pos2[h_id * in_img_w * num_channels + w_id * num_channels],
           d1lambda * h1lambda * w1lambda * out_pos[0]);
     }
@@ -865,7 +857,7 @@ __global__ void KeNearestNeighbor3DInterpBw(T* in,
 
     T* in_pos = &in[in_pos_idx];
     const T out_pos = out[out_id_h * output_w + out_id_w];
-    phi::CudaAtomicAdd(in_pos, out_pos);
+    CudaAtomicAdd(in_pos, out_pos);
   }
 }
 
@@ -967,7 +959,7 @@ __global__ void KeInterpAABwNCHW(T* in_grad,
         const MT grad = grad_out * wy_val * wx_val;
         const int64_t in_idx =
             i * in_img_h * in_img_w + (ymin + y) * in_img_w + (xmin + x);
-        phi::CudaAtomicAdd(&in_grad[in_idx], static_cast<T>(grad));
+        CudaAtomicAdd(&in_grad[in_idx], static_cast<T>(grad));
       }
     }
   }
@@ -1050,7 +1042,7 @@ __global__ void KeInterpAABwNHWC(T* in_grad,
               (i * in_img_h * in_img_w + (ymin + y) * in_img_w + (xmin + x)) *
                   c +
               ch;
-          phi::CudaAtomicAdd(&in_grad[in_idx], static_cast<T>(grad));
+          CudaAtomicAdd(&in_grad[in_idx], static_cast<T>(grad));
         }
       }
     }
@@ -1117,7 +1109,7 @@ __global__ void KeInterpAABwNCHWNoSharedMem(T* in_grad,
         const MT grad = grad_out * wy_val * wx_val;
         const int64_t in_idx =
             i * in_img_h * in_img_w + (ymin + y) * in_img_w + (xmin + x);
-        phi::CudaAtomicAdd(&in_grad[in_idx], static_cast<T>(grad));
+        CudaAtomicAdd(&in_grad[in_idx], static_cast<T>(grad));
       }
     }
   }
@@ -1186,7 +1178,7 @@ __global__ void KeInterpAABwNHWCNoSharedMem(T* in_grad,
               (i * in_img_h * in_img_w + (ymin + y) * in_img_w + (xmin + x)) *
                   c +
               ch;
-          phi::CudaAtomicAdd(&in_grad[in_idx], static_cast<T>(grad));
+          CudaAtomicAdd(&in_grad[in_idx], static_cast<T>(grad));
         }
       }
     }
@@ -1197,9 +1189,9 @@ template <typename T, typename Context>
 static void Interpolate1DCUDABwd(
     const Context& dev_ctx,
     const DenseTensor& input,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const DenseTensor& output_grad,
     const std::string& data_layout_str,
     int out_w,
@@ -1208,7 +1200,7 @@ static void Interpolate1DCUDABwd(
     bool align_corners,
     int align_mode,
     DenseTensor* input_grad) {
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
   int64_t n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -1272,7 +1264,7 @@ static void Interpolate1DCUDABwd(
     return;
   }
 
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   MT ratio_w =
       funcs::AreaPixelComputeScale<MT>(in_w, out_w, align_corners, scale_w);
   int64_t in_cw = c * in_w;
@@ -1305,9 +1297,9 @@ template <typename T, typename Context>
 static void Interpolate2DCUDABwd(
     const Context& dev_ctx,
     const DenseTensor& input,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const DenseTensor& output_grad,
     const std::string& data_layout_str,
     int64_t out_h,
@@ -1317,7 +1309,7 @@ static void Interpolate2DCUDABwd(
     bool align_corners,
     int align_mode,
     DenseTensor* input_grad) {
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
   int64_t n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -1405,10 +1397,9 @@ static void Interpolate2DCUDABwd(
     return;
   }
 
-  using MT =
-      typename std::conditional_t<std::is_integral<T>::value,
-                                  float,
-                                  typename phi::dtype::MPTypeTrait<T>::Type>;
+  using MT = typename std::conditional_t<std::is_integral<T>::value,
+                                         float,
+                                         typename MPTypeTrait<T>::Type>;
   MT ratio_h =
       funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h);
   MT ratio_w =
@@ -1575,9 +1566,9 @@ template <typename T, typename Context>
 static void InterpolateAA2DCUDABwd(
     const Context& dev_ctx,
     const DenseTensor& input,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const DenseTensor& output_grad,
     const std::string& data_layout_str,
     int out_h,
@@ -1591,7 +1582,7 @@ static void InterpolateAA2DCUDABwd(
     dev_ctx.template Alloc<T>(input_grad);
     return;
   }
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
   int64_t n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -1679,10 +1670,9 @@ static void InterpolateAA2DCUDABwd(
     return;
   }
 
-  using MT =
-      typename std::conditional_t<std::is_integral<T>::value,
-                                  float,
-                                  typename phi::dtype::MPTypeTrait<T>::Type>;
+  using MT = typename std::conditional_t<std::is_integral<T>::value,
+                                         float,
+                                         typename MPTypeTrait<T>::Type>;
   MT ratio_h =
       funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h);
   MT ratio_w =
@@ -1693,7 +1683,7 @@ static void InterpolateAA2DCUDABwd(
   // Lambda to launch AA interpolation backward kernel
   auto launch_aa_bw_kernel = [&](auto filter) {
     int device_id = dev_ctx.GetPlace().GetDeviceId();
-    auto& gpu_props = phi::backends::gpu::GetDeviceProperties(device_id);
+    auto& gpu_props = backends::gpu::GetDeviceProperties(device_id);
 
     // Use AAInterpLaunchConfig to compute block/grid dimensions with dynamic
     // adjustment for shared memory limits
@@ -1752,7 +1742,8 @@ static void InterpolateAA2DCUDABwd(
       int block_y = std::min(256 / block_x, 8);
       int grid_x = (out_w + block_x - 1) / block_x;
       int grid_y = (out_h + block_y - 1) / block_y;
-      int grid_z = std::min(static_cast<int>(nc), gpu_props.maxGridSize[2]);
+      int grid_z = std::min(static_cast<int>(nc),
+                            static_cast<int>(gpu_props.maxGridSize[2]));
       dim3 block_noshmem(block_x, block_y);
       dim3 grid_noshmem(grid_x, grid_y, grid_z);
 
@@ -1799,9 +1790,9 @@ template <typename T, typename Context>
 static void Interpolate3DCUDABwd(
     const Context& dev_ctx,
     const DenseTensor& input,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const DenseTensor& output_grad,
     const std::string& data_layout_str,
     int out_d,
@@ -1812,7 +1803,7 @@ static void Interpolate3DCUDABwd(
     bool align_corners,
     int align_mode,
     DenseTensor* input_grad) {
-  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = StringToDataLayout(data_layout_str);
   int64_t n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -1920,10 +1911,9 @@ static void Interpolate3DCUDABwd(
     return;
   }
 
-  using MT =
-      typename std::conditional_t<std::is_integral<T>::value,
-                                  float,
-                                  typename phi::dtype::MPTypeTrait<T>::Type>;
+  using MT = typename std::conditional_t<std::is_integral<T>::value,
+                                         float,
+                                         typename MPTypeTrait<T>::Type>;
   MT ratio_d =
       funcs::AreaPixelComputeScale<MT>(in_d, out_d, align_corners, scale_d);
   MT ratio_h =
@@ -1993,9 +1983,9 @@ template <typename T, typename Context>
 void InterpolateGradKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const DenseTensor& out_grad,
     const std::string& data_layout,
     int out_d,
@@ -2064,9 +2054,9 @@ template <typename T, typename Context>
 void BilinearInterpGradKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const DenseTensor& out_grad,
     const std::string& data_layout,
     int out_d,
@@ -2098,9 +2088,9 @@ template <typename T, typename Context>
 void LegacyBilinearInterpGradKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const DenseTensor& out_grad,
     const std::string& data_layout,
     int out_d,
@@ -2139,9 +2129,9 @@ template <typename T, typename Context>
 void NearestInterpGradKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const DenseTensor& out_grad,
     const std::string& data_layout,
     int out_d,
@@ -2173,9 +2163,9 @@ template <typename T, typename Context>
 void LegacyNearestInterpGradKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const DenseTensor& out_grad,
     const std::string& data_layout,
     int out_d,
@@ -2214,9 +2204,9 @@ template <typename T, typename Context>
 void TrilinearInterpGradKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const DenseTensor& out_grad,
     const std::string& data_layout,
     int out_d,
@@ -2248,9 +2238,9 @@ template <typename T, typename Context>
 void LinearInterpGradKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const DenseTensor& out_grad,
     const std::string& data_layout,
     int out_d,
@@ -2282,9 +2272,9 @@ template <typename T, typename Context>
 void BicubicInterpGradKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const DenseTensor& out_grad,
     const std::string& data_layout,
     int out_d,
@@ -2316,9 +2306,9 @@ template <typename T, typename Context>
 void InterpAntialiasGradKernel(
     const Context& dev_ctx,
     const DenseTensor& x,
-    const paddle::optional<DenseTensor>& out_size,
-    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
-    const paddle::optional<DenseTensor>& scale_tensor,
+    const optional<DenseTensor>& out_size,
+    const optional<std::vector<const DenseTensor*>>& size_tensor,
+    const optional<DenseTensor>& scale_tensor,
     const DenseTensor& out_grad,
     const std::string& data_layout,
     int out_d,

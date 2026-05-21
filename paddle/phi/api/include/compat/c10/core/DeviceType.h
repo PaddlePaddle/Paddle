@@ -14,30 +14,81 @@
 
 #pragma once
 
+// If you modified DeviceType in this file, please also sync your changes into
+// torch/headeronly/core/DeviceType.h.
+#include <torch/headeronly/core/DeviceType.h>
+
 #include <ostream>
 
 #include "paddle/phi/common/place.h"
 
 namespace c10 {
 
-using DeviceType = phi::AllocationType;
+inline phi::AllocationType DeviceTypeToPhi(DeviceType d) {
+  switch (d) {
+    case DeviceType::CPU:
+      return phi::AllocationType::CPU;
+    case DeviceType::CUDA:
+      return phi::AllocationType::GPU;
+    case DeviceType::XPU:
+      return phi::AllocationType::XPU;
+    case DeviceType::IPU:
+      return phi::AllocationType::IPU;
+    case DeviceType::CUSTOM:
+      return phi::AllocationType::CUSTOM;
+  }
+  return phi::AllocationType::UNDEFINED;
+}
 
-constexpr DeviceType kCUDA = DeviceType::GPU;
-constexpr DeviceType kCPU = DeviceType::CPU;
-constexpr DeviceType kCUSTOM = DeviceType::CUSTOM;
+inline DeviceType PhiToDeviceType(phi::AllocationType d) {
+  switch (d) {
+    case phi::AllocationType::CPU:
+      return DeviceType::CPU;
+    case phi::AllocationType::GPU:
+      return DeviceType::CUDA;
+    case phi::AllocationType::XPU:
+      return DeviceType::XPU;
+    case phi::AllocationType::IPU:
+      return DeviceType::IPU;
+    case phi::AllocationType::CUSTOM:
+      return DeviceType::CUSTOM;
+    default:
+      return DeviceType::CPU;
+  }
+}
+
+inline bool isValidDeviceType(DeviceType d) {
+  switch (d) {
+    case DeviceType::CPU:
+    case DeviceType::CUDA:
+    case DeviceType::XPU:
+    case DeviceType::IPU:
+    case DeviceType::CUSTOM:
+      return true;
+    default:
+      return false;
+  }
+}
+
+inline std::ostream& operator<<(std::ostream& os, DeviceType d) {
+  switch (d) {
+    case DeviceType::CPU:
+      os << "cpu";
+      break;
+    case DeviceType::CUDA:
+      os << "cuda";
+      break;
+    case DeviceType::XPU:
+      os << "xpu";
+      break;
+    case DeviceType::IPU:
+      os << "ipu";
+      break;
+    case DeviceType::CUSTOM:
+      os << "privateuseone";
+      break;
+  }
+  return os;
+}
 
 }  // namespace c10
-
-namespace at {
-using c10::DeviceType;
-using c10::kCPU;
-using c10::kCUDA;
-using c10::kCUSTOM;
-}  // namespace at
-
-namespace torch {
-using c10::DeviceType;
-using c10::kCPU;
-using c10::kCUDA;
-using c10::kCUSTOM;
-}  // namespace torch

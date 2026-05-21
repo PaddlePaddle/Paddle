@@ -24,13 +24,13 @@ namespace fusion {
 
 template <typename T>
 struct SigmoidMultiplyFunctor {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  MPType one = static_cast<MPType>(1.0f);
+  using MT = typename MPTypeTrait<T>::Type;
+  MT one = static_cast<MT>(1.0f);
 
   // sigmoid(x) = 1 / (1 + exp(-x))
   // out = sigmoid(x) * y
   inline HOSTDEVICE T operator()(T x, T y) const {
-    MPType x_mp = static_cast<MPType>(x);
+    MT x_mp = static_cast<MT>(x);
     T sigmoid_out = static_cast<T>(one / (one + exp(-x_mp)));
     return sigmoid_out * y;
   }
@@ -52,7 +52,7 @@ void ComputeMergedQKVMatmulForward(const GPUContext &dev_ctx,
   int n = 3 * config.num_heads * config.head_dim;
   int k = config.q_dim;
   auto qkv_compute =
-      phi::fusion::AttnMatMul<T>(dev_ctx, false, true, m, n, k, false);
+      fusion::AttnMatMul<T>(dev_ctx, false, true, m, n, k, false);
   qkv_compute.ComputeForward(qkv_weight, query, nullptr, qkv_out, nullptr);
 }
 
@@ -80,7 +80,7 @@ void ComputeSeparatedQKVMatmulForward(
   int q_n = config.num_heads * config.head_dim;
   int q_k = config.q_dim;
   auto q_compute =
-      phi::fusion::AttnMatMul<T>(dev_ctx, false, false, q_m, q_n, q_k, false);
+      fusion::AttnMatMul<T>(dev_ctx, false, false, q_m, q_n, q_k, false);
   q_compute.ComputeForward(query_weight, query, nullptr, query_out, nullptr);
 
   // k_out = GEMM(key, key_weight)
@@ -90,8 +90,8 @@ void ComputeSeparatedQKVMatmulForward(
   int kv_m = config.batch_size * config.seq_len_m * config.m_size;
   int kv_n = config.num_heads * config.head_dim;
   int kv_k = config.kv_dim;
-  auto kv_compute = phi::fusion::AttnMatMul<T>(
-      dev_ctx, false, false, kv_m, kv_n, kv_k, false);
+  auto kv_compute =
+      fusion::AttnMatMul<T>(dev_ctx, false, false, kv_m, kv_n, kv_k, false);
   kv_compute.ComputeForward(key_weight, key, nullptr, key_out, nullptr);
 
   // value_out = GEMM(value, value_weight)
@@ -118,7 +118,7 @@ void ComputeGatingLinearForward(const GPUContext &dev_ctx,
   int n = config.num_heads * config.head_dim;
   int k = config.q_dim;
   auto gate_linear =
-      phi::fusion::AttnMatMul<T>(dev_ctx, false, false, m, n, k, true);
+      fusion::AttnMatMul<T>(dev_ctx, false, false, m, n, k, true);
   gate_linear.ComputeForward(gate_weight,
                              query,
                              gate_bias,
@@ -147,8 +147,7 @@ void ComputeOutputLinearForward(const GPUContext &dev_ctx,
   int m = config.batch_size * config.seq_len_m * config.seq_len_r;
   int n = config.q_dim;
   int k = config.num_heads * config.head_dim;
-  auto out_linear =
-      phi::fusion::AttnMatMul<T>(dev_ctx, false, false, m, n, k, true);
+  auto out_linear = fusion::AttnMatMul<T>(dev_ctx, false, false, m, n, k, true);
   out_linear.ComputeForward(out_linear_weight,
                             fmha_or_gate_out,
                             out_linear_bias,
@@ -158,32 +157,31 @@ void ComputeOutputLinearForward(const GPUContext &dev_ctx,
 }
 
 template <typename T, typename Context>
-void FusedGateAttentionOpKernel(
-    const Context &dev_ctx,
-    const DenseTensor &query_in,
-    const paddle::optional<DenseTensor> &key_in,
-    const paddle::optional<DenseTensor> &query_weight_in,
-    const paddle::optional<DenseTensor> &key_weight_in,
-    const paddle::optional<DenseTensor> &value_weight_in,
-    const paddle::optional<DenseTensor> &qkv_weight_in,
-    const paddle::optional<DenseTensor> &nonbatched_bias_in,
-    const DenseTensor &src_mask_in,
-    const paddle::optional<DenseTensor> &gate_weight_in,
-    const paddle::optional<DenseTensor> &gate_bias_in,
-    const DenseTensor &out_linear_weight_in,
-    const DenseTensor &out_linear_bias_in,
-    bool has_gating,
-    bool merge_qkv,
-    bool use_flash_attn,
-    DenseTensor *query_transpose_out,
-    DenseTensor *key_transpose_out,
-    DenseTensor *value_transpose_out,
-    DenseTensor *qkv_transpose_out,
-    DenseTensor *softmax_out,
-    DenseTensor *softmax_lse,
-    DenseTensor *fmha_out,
-    DenseTensor *gate_out,
-    DenseTensor *out) {
+void FusedGateAttentionOpKernel(const Context &dev_ctx,
+                                const DenseTensor &query_in,
+                                const optional<DenseTensor> &key_in,
+                                const optional<DenseTensor> &query_weight_in,
+                                const optional<DenseTensor> &key_weight_in,
+                                const optional<DenseTensor> &value_weight_in,
+                                const optional<DenseTensor> &qkv_weight_in,
+                                const optional<DenseTensor> &nonbatched_bias_in,
+                                const DenseTensor &src_mask_in,
+                                const optional<DenseTensor> &gate_weight_in,
+                                const optional<DenseTensor> &gate_bias_in,
+                                const DenseTensor &out_linear_weight_in,
+                                const DenseTensor &out_linear_bias_in,
+                                bool has_gating,
+                                bool merge_qkv,
+                                bool use_flash_attn,
+                                DenseTensor *query_transpose_out,
+                                DenseTensor *key_transpose_out,
+                                DenseTensor *value_transpose_out,
+                                DenseTensor *qkv_transpose_out,
+                                DenseTensor *softmax_out,
+                                DenseTensor *softmax_lse,
+                                DenseTensor *fmha_out,
+                                DenseTensor *gate_out,
+                                DenseTensor *out) {
   const auto *query = &query_in;
   const auto *key = key_in.get_ptr();
   const auto *query_weight = query_weight_in.get_ptr();
@@ -228,12 +226,12 @@ void FusedGateAttentionOpKernel(
         dev_ctx, config, query, qkv_out, qkv_weight_in.get());
 
     if (config.CanUseFlashAttn()) {
-      qkv_transpose_out->Resize(common::make_ddim({3,
-                                                   config.batch_size,
-                                                   config.seq_len_m,
-                                                   config.seq_len_r,
-                                                   config.num_heads,
-                                                   config.head_dim}));
+      qkv_transpose_out->Resize({3,
+                                 config.batch_size,
+                                 config.seq_len_m,
+                                 config.seq_len_r,
+                                 config.num_heads,
+                                 config.head_dim});
     }
     funcs::AllocWithDebugInfo<T>(
         dev_ctx, "qkv_transpose_out", qkv_transpose_out);

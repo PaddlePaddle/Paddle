@@ -974,7 +974,7 @@ template <typename T, typename Context>
 void MultiClassNMSGPUKernel(const Context& dev_ctx,
                             const DenseTensor& bboxes,
                             const DenseTensor& scores,
-                            const paddle::optional<DenseTensor>& rois_num,
+                            const optional<DenseTensor>& rois_num,
                             float score_threshold,
                             int nms_top_k,
                             int keep_top_k,
@@ -1006,7 +1006,7 @@ void MultiClassNMSGPUKernel(const Context& dev_ctx,
 
     DenseTensor bboxes_cpu, scores_cpu, rois_num_cpu_tenor;
     DenseTensor out_cpu, index_cpu, nms_rois_num_cpu;
-    paddle::optional<DenseTensor> rois_num_cpu(paddle::none);
+    optional<DenseTensor> rois_num_cpu(paddle::none);
     auto cpu_place = CPUPlace();
     auto gpu_place = dev_ctx.GetPlace();
 
@@ -1015,25 +1015,25 @@ void MultiClassNMSGPUKernel(const Context& dev_ctx,
     Copy(dev_ctx, scores, cpu_place, false, &scores_cpu);
     if (has_roisnum) {
       Copy(dev_ctx, *rois_num.get_ptr(), cpu_place, false, &rois_num_cpu_tenor);
-      rois_num_cpu = paddle::optional<DenseTensor>(rois_num_cpu_tenor);
+      rois_num_cpu = optional<DenseTensor>(rois_num_cpu_tenor);
     }
     dev_ctx.Wait();
-    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-    auto* cpu_ctx = static_cast<phi::CPUContext*>(pool.Get(cpu_place));
-    MultiClassNMSKernel<T, phi::CPUContext>(*cpu_ctx,
-                                            bboxes_cpu,
-                                            scores_cpu,
-                                            rois_num_cpu,
-                                            score_threshold,
-                                            nms_top_k,
-                                            keep_top_k,
-                                            nms_threshold,
-                                            normalized,
-                                            nms_eta,
-                                            background_label,
-                                            &out_cpu,
-                                            &index_cpu,
-                                            &nms_rois_num_cpu);
+    DeviceContextPool& pool = DeviceContextPool::Instance();
+    auto* cpu_ctx = static_cast<CPUContext*>(pool.Get(cpu_place));
+    MultiClassNMSKernel<T, CPUContext>(*cpu_ctx,
+                                       bboxes_cpu,
+                                       scores_cpu,
+                                       rois_num_cpu,
+                                       score_threshold,
+                                       nms_top_k,
+                                       keep_top_k,
+                                       nms_threshold,
+                                       normalized,
+                                       nms_eta,
+                                       background_label,
+                                       &out_cpu,
+                                       &index_cpu,
+                                       &nms_rois_num_cpu);
     // copy back
     Copy(dev_ctx, out_cpu, gpu_place, false, out);
     Copy(dev_ctx, index_cpu, gpu_place, false, index);

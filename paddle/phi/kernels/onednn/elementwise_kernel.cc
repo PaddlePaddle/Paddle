@@ -28,8 +28,8 @@ KernelKey ElementwiseGetKernelTypeForVar(
   const KernelKey& expected_kernel_type = ctx->GetKernelKey();
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
-  if (expected_kernel_type.dtype() == phi::DataType::COMPLEX64 ||
-      expected_kernel_type.dtype() == phi::DataType::COMPLEX128) {
+  if (expected_kernel_type.dtype() == DataType::COMPLEX64 ||
+      expected_kernel_type.dtype() == DataType::COMPLEX128) {
     // only promote inputs's types when contains complex input
     return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
   } else {
@@ -38,8 +38,7 @@ KernelKey ElementwiseGetKernelTypeForVar(
     // then we also need to rotate shape NHWC -> NCWH
     if ((expected_kernel_type.layout() == DataLayout::ONEDNN) &&
         (tensor.layout() != DataLayout::ONEDNN) &&
-        phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
-            DataLayout::NHWC) {
+        OneDNNContext::tls().get_cur_paddle_data_layout() == DataLayout::NHWC) {
       return phi::KernelKey(
           tensor.place(), DataLayout::NHWC, expected_kernel_type.dtype());
     }

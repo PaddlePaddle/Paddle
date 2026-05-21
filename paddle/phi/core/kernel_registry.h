@@ -24,7 +24,7 @@ namespace phi {
 
 #define BACKEND(arg__) phi::Backend::arg__
 #define DATA_LAYOUT(arg__) phi::DataLayout::arg__
-#define DATATYPE(arg__) phi::DataType::arg__
+#define DATATYPE(arg__) DataType::arg__
 
 template <typename Func>
 struct KernelArgsParseFunctor;
@@ -281,6 +281,7 @@ struct KernelRegistrar {
 #define IS_BACKEND_CPU_OneDNN 1
 #define IS_BACKEND_CPU_KPS 0
 #define IS_BACKEND_CPU_GPU 0
+#define IS_BACKEND_CPU_GPUDNN 0
 #define IS_BACKEND_CPU_DEFAULT 0
 
 #define IF_ELSE(condition) IF_ELSE_EXPAND(IF_ELSE_HELPER(condition))

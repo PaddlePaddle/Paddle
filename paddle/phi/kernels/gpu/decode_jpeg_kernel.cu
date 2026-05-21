@@ -40,8 +40,7 @@ void DecodeJpegKernel(const Context& dev_ctx,
                       DenseTensor* out) {
   // Create nvJPEG handle
   if (nvjpeg_handle == nullptr) {
-    nvjpegStatus_t create_status =
-        phi::dynload::nvjpegCreateSimple(&nvjpeg_handle);
+    nvjpegStatus_t create_status = dynload::nvjpegCreateSimple(&nvjpeg_handle);
 
     PADDLE_ENFORCE_EQ(
         create_status,
@@ -51,7 +50,7 @@ void DecodeJpegKernel(const Context& dev_ctx,
 
   nvjpegJpegState_t nvjpeg_state;
   nvjpegStatus_t state_status =
-      phi::dynload::nvjpegJpegStateCreate(nvjpeg_handle, &nvjpeg_state);
+      dynload::nvjpegJpegStateCreate(nvjpeg_handle, &nvjpeg_state);
 
   PADDLE_ENFORCE_EQ(
       state_status,
@@ -66,13 +65,13 @@ void DecodeJpegKernel(const Context& dev_ctx,
   auto* x_data = x.data<T>();
 
   nvjpegStatus_t info_status =
-      phi::dynload::nvjpegGetImageInfo(nvjpeg_handle,
-                                       x_data,
-                                       (std::size_t)x.numel(),
-                                       &components,
-                                       &subsampling,
-                                       widths,
-                                       heights);
+      dynload::nvjpegGetImageInfo(nvjpeg_handle,
+                                  x_data,
+                                  (std::size_t)x.numel(),
+                                  &components,
+                                  &subsampling,
+                                  widths,
+                                  heights);
   PADDLE_ENFORCE_EQ(info_status,
                     NVJPEG_STATUS_SUCCESS,
                     errors::Fatal("nvjpegGetImageInfo failed: ", info_status));
@@ -91,7 +90,7 @@ void DecodeJpegKernel(const Context& dev_ctx,
       output_format = NVJPEG_OUTPUT_RGB;
       output_components = 3;
     } else {
-      phi::dynload::nvjpegJpegStateDestroy(nvjpeg_state);
+      dynload::nvjpegJpegStateDestroy(nvjpeg_state);
       PADDLE_THROW(errors::Fatal(
           "The provided mode is not supported for JPEG files on GPU"));
     }
@@ -102,7 +101,7 @@ void DecodeJpegKernel(const Context& dev_ctx,
     output_format = NVJPEG_OUTPUT_RGB;
     output_components = 3;
   } else {
-    phi::dynload::nvjpegJpegStateDestroy(nvjpeg_state);
+    dynload::nvjpegJpegStateDestroy(nvjpeg_state);
     PADDLE_THROW(errors::Fatal(
         "The provided mode is not supported for JPEG files on GPU"));
   }
@@ -118,7 +117,7 @@ void DecodeJpegKernel(const Context& dev_ctx,
   int sz = widths[0] * heights[0];
 
   std::vector<int64_t> out_shape = {output_components, height, width};
-  out->Resize(common::make_ddim(out_shape));
+  out->Resize(out_shape);
 
   T* data = dev_ctx.template Alloc<T>(out);
 
@@ -127,13 +126,13 @@ void DecodeJpegKernel(const Context& dev_ctx,
     out_image.pitch[c] = width;
   }
 
-  nvjpegStatus_t decode_status = phi::dynload::nvjpegDecode(nvjpeg_handle,
-                                                            nvjpeg_state,
-                                                            x_data,
-                                                            x.numel(),
-                                                            output_format,
-                                                            &out_image,
-                                                            nvjpeg_stream);
+  nvjpegStatus_t decode_status = dynload::nvjpegDecode(nvjpeg_handle,
+                                                       nvjpeg_state,
+                                                       x_data,
+                                                       x.numel(),
+                                                       output_format,
+                                                       &out_image,
+                                                       nvjpeg_stream);
 }
 }  // namespace phi
 

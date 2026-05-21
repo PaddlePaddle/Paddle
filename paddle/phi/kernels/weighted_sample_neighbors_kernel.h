@@ -19,18 +19,17 @@
 namespace phi {
 
 template <typename T, typename Context>
-void GraphWeightedSampleNeighborsKernel(
-    const Context& dev_ctx,
-    const DenseTensor& row,
-    const DenseTensor& col_ptr,
-    const DenseTensor& edge_weight,
-    const DenseTensor& x,
-    const paddle::optional<DenseTensor>& eids,
-    int sample_size,
-    bool return_eids,
-    DenseTensor* out,
-    DenseTensor* out_count,
-    DenseTensor* out_eids);
+void GraphWeightedSampleNeighborsKernel(const Context& dev_ctx,
+                                        const DenseTensor& row,
+                                        const DenseTensor& col_ptr,
+                                        const DenseTensor& edge_weight,
+                                        const DenseTensor& x,
+                                        const optional<DenseTensor>& eids,
+                                        int sample_size,
+                                        bool return_eids,
+                                        DenseTensor* out,
+                                        DenseTensor* out_count,
+                                        DenseTensor* out_eids);
 
 template <typename T, typename Context>
 void WeightedSampleNeighborsKernel(const Context& dev_ctx,
@@ -38,7 +37,7 @@ void WeightedSampleNeighborsKernel(const Context& dev_ctx,
                                    const DenseTensor& col_ptr,
                                    const DenseTensor& edge_weight,
                                    const DenseTensor& x,
-                                   const paddle::optional<DenseTensor>& eids,
+                                   const optional<DenseTensor>& eids,
                                    int sample_size,
                                    bool return_eids,
                                    DenseTensor* out,

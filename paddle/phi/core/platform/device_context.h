@@ -21,6 +21,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/core/memory/malloc.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_types.h"
 #include "paddle/phi/core/platform/device_type.h"
@@ -91,6 +92,11 @@ class IPUDeviceContext
   /*! \brief  Wait for all operations completion in the stream. */
   void Wait() const override;
 
+  dnnHandle_t cudnn_handle() const override {
+    PADDLE_THROW(common::errors::Unavailable(
+        "IPUDeviceContext does not support cudnn_handle()."));
+  }
+
   static const char* name() { return "IPUDeviceContext"; }
 
  private:
@@ -128,7 +134,7 @@ namespace phi {
 
 #ifdef PADDLE_WITH_IPU
 template <>
-struct DefaultDeviceContextType<phi::IPUPlace> {
+struct DefaultDeviceContextType<IPUPlace> {
   using TYPE = paddle::platform::IPUDeviceContext;
 };
 #endif

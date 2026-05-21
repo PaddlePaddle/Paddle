@@ -42,7 +42,7 @@ struct ConvCacheKey {
                const std::vector<int>& arg_strides,
                const std::vector<int>& arg_paddings,
                const std::vector<int>& arg_dilations,
-               phi::DataType arg_dtype,
+               DataType arg_dtype,
                int arg_groups,
                int64_t arg_data_layout)
       : x_dims(arg_x_dims),
@@ -69,7 +69,7 @@ struct ConvCacheKey {
   std::vector<int> strides;
   std::vector<int> paddings;
   std::vector<int> dilations;
-  phi::DataType dtype;
+  DataType dtype;
   int groups;
   int64_t data_layout;
 };

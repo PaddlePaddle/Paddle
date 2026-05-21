@@ -308,8 +308,8 @@ __global__ void DoubleGradComputeDScale(const T *x,
 template <typename T, typename Context>
 void InstanceNormGradKernel(const Context &dev_ctx,
                             const DenseTensor &x,
-                            const paddle::optional<DenseTensor> &scale,
-                            const paddle::optional<DenseTensor> &bias UNUSED,
+                            const optional<DenseTensor> &scale,
+                            const optional<DenseTensor> &bias UNUSED,
                             const DenseTensor &saved_mean,
                             const DenseTensor &saved_variance,
                             const DenseTensor &d_y,
@@ -317,7 +317,7 @@ void InstanceNormGradKernel(const Context &dev_ctx,
                             DenseTensor *d_x,
                             DenseTensor *d_scale,
                             DenseTensor *d_bias) {
-  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using AccT = typename MPTypeTrait<T>::Type;
   double epsilon = static_cast<double>(epsilon_f);
   const auto *scale_ptr = scale.get_ptr();
 
@@ -531,18 +531,18 @@ void InstanceNormGradKernel(const Context &dev_ctx,
 template <typename T, typename Context>
 void InstanceNormDoubleGradKernel(const Context &dev_ctx,
                                   const DenseTensor &x,
-                                  const paddle::optional<DenseTensor> &scale,
+                                  const optional<DenseTensor> &scale,
                                   const DenseTensor &saved_mean,
                                   const DenseTensor &saved_variance,
                                   const DenseTensor &dy,
-                                  const paddle::optional<DenseTensor> &ddx,
-                                  const paddle::optional<DenseTensor> &ddscale,
-                                  const paddle::optional<DenseTensor> &ddbias,
+                                  const optional<DenseTensor> &ddx,
+                                  const optional<DenseTensor> &ddscale,
+                                  const optional<DenseTensor> &ddbias,
                                   float epsilon_f,
                                   DenseTensor *dx,
                                   DenseTensor *dscale,
                                   DenseTensor *ddy) {
-  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using AccT = typename MPTypeTrait<T>::Type;
   const auto *Scale = scale.get_ptr();
   const auto *ddX = ddx.get_ptr();
   const auto *ddScale = ddscale.get_ptr();

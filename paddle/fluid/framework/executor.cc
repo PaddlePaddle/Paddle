@@ -65,7 +65,7 @@ ExecutorPrepareContext::~ExecutorPrepareContext() {
   VLOG(5) << "destroy ExecutorPrepareContext";
 }
 
-Executor::Executor(const phi::Place& place) : place_(place) {}
+Executor::Executor(const Place& place) : place_(place) {}
 
 Executor::~Executor() {
 #ifdef PADDLE_WITH_DNNL
@@ -201,7 +201,7 @@ void Executor::Run(const ProgramDesc& pdesc,
 // Return true if the block has feed operators and holder of matching info.
 static bool has_feed_operators(
     const BlockDesc& block,
-    const std::map<std::string, const phi::DenseTensor*>& feed_targets,
+    const std::map<std::string, const DenseTensor*>& feed_targets,
     const std::string& feed_holder_name) {
   size_t feed_count = 0;
   for (auto* op : block.AllOps()) {
@@ -320,7 +320,7 @@ static bool has_fetch_operators(
 
 void Executor::Run(const ProgramDesc& program,
                    Scope* scope,
-                   std::map<std::string, const phi::DenseTensor*>* feed_targets,
+                   std::map<std::string, const DenseTensor*>* feed_targets,
                    std::map<std::string, FetchType*>* fetch_targets,
                    bool create_local_scope,
                    bool create_vars,
@@ -549,7 +549,7 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx,
 void Executor::RunPreparedContext(
     ExecutorPrepareContext* ctx,
     Scope* scope,
-    std::map<std::string, const phi::DenseTensor*>* feed_targets,
+    std::map<std::string, const DenseTensor*>* feed_targets,
     std::map<std::string, FetchType*>* fetch_targets,
     bool create_local_scope,
     bool create_vars,

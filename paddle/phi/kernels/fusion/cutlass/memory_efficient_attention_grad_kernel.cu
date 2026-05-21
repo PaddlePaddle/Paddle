@@ -40,9 +40,9 @@ void MemoryEfficientAttentionGradKernel(
     const DenseTensor& query,
     const DenseTensor& key,
     const DenseTensor& value,
-    const paddle::optional<DenseTensor>& bias,
-    const paddle::optional<DenseTensor>& cu_seqlens_q,
-    const paddle::optional<DenseTensor>& cu_seqlens_k,
+    const optional<DenseTensor>& bias,
+    const optional<DenseTensor>& cu_seqlens_q,
+    const optional<DenseTensor>& cu_seqlens_k,
     const DenseTensor& output,
     const DenseTensor& logsumexp,
     const DenseTensor& seed_and_offset,
@@ -335,11 +335,11 @@ void MemoryEfficientAttentionGradKernel(
       DenseTensor output_grad_tmp =
           output_grad.dtype() == DataType::FLOAT32
               ? output_grad
-              : phi::Cast<T, Context>(dev_ctx, output_grad, DataType::FLOAT32);
+              : Cast<T, Context>(dev_ctx, output_grad, DataType::FLOAT32);
       DenseTensor output_tmp =
           output.dtype() == DataType::FLOAT32
               ? output
-              : phi::Cast<T, Context>(dev_ctx, output, DataType::FLOAT32);
+              : Cast<T, Context>(dev_ctx, output, DataType::FLOAT32);
       DenseTensor delta_mul =
           phi::Multiply<float, Context>(dev_ctx, output_grad_tmp, output_tmp);
 
@@ -356,8 +356,7 @@ void MemoryEfficientAttentionGradKernel(
           {delta_mul.dims()[0], delta_mul.dims()[2], delta_mul.dims()[1]},
           DataType::FLOAT32,
           &delta);
-      phi::TransposeKernel<float, Context>(
-          dev_ctx, delta_sum, {0, 2, 1}, &delta);
+      TransposeKernel<float, Context>(dev_ctx, delta_sum, {0, 2, 1}, &delta);
     }
     VLOG(3) << "p.output" << output.dtype();
     VLOG(3) << "p.output_grad" << output_grad.dtype();

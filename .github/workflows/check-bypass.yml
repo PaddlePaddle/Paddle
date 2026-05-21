@@ -15,13 +15,14 @@ on:
 jobs:
   check-bypass:
     name: Check bypass
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     permissions:
       contents: read
     env:
-      CI_TEAM_MEMBERS: '["swgu98", "risemeup1" , "XieYunshen", "luotao1", "ooooo-create"]'
+      CI_TEAM_MEMBERS: '["swgu98", "risemeup1" , "XieYunshen", "luotao1", "SigureMo"]'
     outputs:
       can-skip: ${{ steps.check-bypass.outputs.can-skip }}
+    timeout-minutes: 3
     steps:
       - id: check-bypass
         name: Check Bypass

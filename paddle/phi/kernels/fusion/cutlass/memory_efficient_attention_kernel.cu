@@ -34,11 +34,11 @@ void MemoryEfficientAttentionForwardKernel(
     const DenseTensor& query,
     const DenseTensor& key,
     const DenseTensor& value,
-    const paddle::optional<DenseTensor>& bias,
-    const paddle::optional<DenseTensor>& cu_seqlens_q,
-    const paddle::optional<DenseTensor>& cu_seqlens_k,
-    const paddle::optional<DenseTensor>& causal_diagonal,
-    const paddle::optional<DenseTensor>& seqlen_k,
+    const optional<DenseTensor>& bias,
+    const optional<DenseTensor>& cu_seqlens_q,
+    const optional<DenseTensor>& cu_seqlens_k,
+    const optional<DenseTensor>& causal_diagonal,
+    const optional<DenseTensor>& seqlen_k,
     const Scalar& max_seqlen_q,
     const Scalar& max_seqlen_k,
     const bool causal,
@@ -48,7 +48,7 @@ void MemoryEfficientAttentionForwardKernel(
     DenseTensor* output,
     DenseTensor* logsumexp,
     DenseTensor* seed_and_offset) {
-  phi::Dim<1> seed_dims;
+  Dim<1> seed_dims;
   seed_dims[0] = 2;
   seed_and_offset->Resize(seed_dims);
   dev_ctx.template HostAlloc<int64_t>(seed_and_offset);
@@ -66,14 +66,10 @@ void MemoryEfficientAttentionForwardKernel(
 
   if (query.numel() == 0 || key.numel() == 0 || value.numel() == 0) {
     if (output) {
-      Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
+      Full<T, Context>(dev_ctx, output->dims(), 0, output);
     }
     if (logsumexp) {
-      Full<T, Context>(dev_ctx,
-                       phi::IntArray(common::vectorize(logsumexp->dims())),
-                       0,
-                       logsumexp);
+      Full<T, Context>(dev_ctx, logsumexp->dims(), 0, logsumexp);
     }
     return;
   }
@@ -144,7 +140,7 @@ void MemoryEfficientAttentionForwardKernel(
     output->Resize({q_dims[0], q_dims[1], q_dims[2], v_dims[3]});
 
     constexpr int64_t kAlignLSE = KernelType::kAlignLSE;
-    phi::Dim<3> logsumexp_dims;
+    Dim<3> logsumexp_dims;
     logsumexp_dims[0] =
         cu_seqlens_q ? cu_seqlens_q.get().dims()[0] - 1 : q_dims[0];
     logsumexp_dims[1] = q_dims[2];

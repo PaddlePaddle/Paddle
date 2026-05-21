@@ -16,19 +16,15 @@
 
 #include <iterator>
 #include <random>
-#include <set>
-#include <string>
-#include <vector>
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math/sampler.h"
 #include "paddle/utils/optional.h"
-#include "unsupported/Eigen/CXX11/Tensor"
 
 namespace phi {
 
-using Sampler = phi::math::Sampler;
+using Sampler = math::Sampler;
 
 template <typename Context, typename T>
 static void inline PrepareSamples(const Context &dev_ctx,
@@ -69,11 +65,11 @@ void NCEKernel(const Context &dev_ctx,
                const DenseTensor &input_in,
                const DenseTensor &label_in,
                const DenseTensor &weight_in,
-               const paddle::optional<DenseTensor> &bias_in,
-               const paddle::optional<DenseTensor> &sample_weight_in,
-               const paddle::optional<DenseTensor> &custom_dist_probs,
-               const paddle::optional<DenseTensor> &custom_dist_alias,
-               const paddle::optional<DenseTensor> &custom_dist_alias_probs,
+               const optional<DenseTensor> &bias_in,
+               const optional<DenseTensor> &sample_weight_in,
+               const optional<DenseTensor> &custom_dist_probs,
+               const optional<DenseTensor> &custom_dist_alias,
+               const optional<DenseTensor> &custom_dist_alias_probs,
                int num_total_classes,
                const std::vector<int> &custom_neg_classes,
                int num_neg_samples,
@@ -90,11 +86,11 @@ void NCEKernel(const Context &dev_ctx,
   Sampler *sampler;
   switch (sampler_type) {
     case 0: {
-      sampler = new phi::math::UniformSampler(num_total_classes - 1, seed);
+      sampler = new math::UniformSampler(num_total_classes - 1, seed);
       break;
     }
     case 1: {
-      sampler = new phi::math::LogUniformSampler(num_total_classes - 1, seed);
+      sampler = new math::LogUniformSampler(num_total_classes - 1, seed);
       break;
     }
     case 2: {
@@ -137,11 +133,11 @@ void NCEKernel(const Context &dev_ctx,
       const float *probs_data = dist_probs->data<float>();
       const int *alias_data = dist_alias->data<int>();
       const float *alias_probs_data = dist_alias_probs->data<float>();
-      sampler = new phi::math::CustomSampler(num_total_classes - 1,
-                                             probs_data,
-                                             alias_data,
-                                             alias_probs_data,
-                                             seed);
+      sampler = new math::CustomSampler(num_total_classes - 1,
+                                        probs_data,
+                                        alias_data,
+                                        alias_probs_data,
+                                        seed);
       break;
     }
     default: {
@@ -165,10 +161,10 @@ void NCEKernel(const Context &dev_ctx,
         (num_true_classes == -1) ? -1 : (num_neg_samples + num_true_classes));
 
     sample_labels = &sample_labels_tmp;
-    sample_labels->Resize(common::make_ddim(sample_out_dims));
+    sample_labels->Resize(sample_out_dims);
 
     sample_out = &sample_out_tmp;
-    sample_out->Resize(common::make_ddim(sample_out_dims));
+    sample_out->Resize(sample_out_dims);
   } else {
     sample_labels = sample_labels_out;
     sample_out = sample_logits_out;
@@ -220,7 +216,7 @@ void NCEKernel(const Context &dev_ctx,
 
   auto weight_mat = EigenMatrix<T>::From(weight_in);
   for (int64_t i = 0; i < sample_labels->numel(); ++i) {
-    Eigen::Tensor<T, 0, Eigen::RowMajor, Eigen::DenseIndex> result =
+    Eigen::Tensor<T, 0, Eigen::RowMajor, int64_t> result =
         (input_mat.chip(static_cast<int>(i / sample_labels->dims()[1]), 0) *
          weight_mat.chip(sample_labels_data[i], 0))
             .sum();

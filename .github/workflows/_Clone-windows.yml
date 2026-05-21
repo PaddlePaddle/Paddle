@@ -2,6 +2,14 @@ name: Clone-windows
 
 on:
   workflow_call:
+    inputs:
+      skill-can-skip:
+        type: string
+        required: false
+        default: "false"
+    outputs:
+      can-skip:
+        value: ${{ jobs.clone.outputs.can-skip }}
 
 permissions: read-all
 
@@ -19,8 +27,12 @@ defaults:
 jobs:
   clone:
     name: Clone Paddle
+    if: ${{ github.repository_owner == 'PaddlePaddle' }}
+    outputs:
+      can-skip: ${{ inputs.skill-can-skip == 'true' }}
     runs-on:
       group: win-clone
+    timeout-minutes: 30
     steps:
       - name: Git config
         run: |
@@ -30,15 +42,13 @@ jobs:
           git config --global core.longpaths true
 
       - name: Clone paddle
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.base.ref }}
           fetch-depth: 1000
 
       - name: Merge pr
         run: |
-          git config --unset http.https://github.com/.extraheader
-          REM git submodule foreach --recursive sh -c "git config --local --unset-all 'http.https://github.com/.extraheader'"
           REM git submodule foreach --recursive sh -c "git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'"
           git switch %BRANCH%
           git branch -D test
@@ -48,6 +58,8 @@ jobs:
           git merge --no-ff pr
           git branch -d pr
           REM call %ci_scripts%\third_party_tag.bat
+          git config -f .gitmodules submodule.third_party/openvino.update none && git submodule sync third_party/openvino
+          git submodule update --init --recursive
 
       - name: Upload paddle to bos
         working-directory: ..
@@ -73,4 +85,6 @@ jobs:
           cd ${{ github.workspace }}
           git switch %BRANCH%
           git branch -D test
+          git config -f .gitmodules submodule.third_party/openvino.update none && git submodule sync third_party/openvino
+          git submodule update --init --recursive
           git gc

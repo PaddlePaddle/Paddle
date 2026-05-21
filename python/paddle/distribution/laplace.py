@@ -49,7 +49,7 @@ class Laplace(distribution.Distribution):
         scale (scalar|Tensor): The scale of the distribution.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> paddle.seed(2023)
@@ -187,7 +187,7 @@ class Laplace(distribution.Distribution):
           Tensor: The log probability, whose data type is same with value.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -219,7 +219,7 @@ class Laplace(distribution.Distribution):
             The entropy of distribution.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -250,7 +250,7 @@ class Laplace(distribution.Distribution):
             Tensor: The cumulative probability of value.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 
@@ -289,7 +289,7 @@ class Laplace(distribution.Distribution):
             Tensor: The cumulative probability of value.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> m = paddle.distribution.Laplace(paddle.to_tensor(0.0), paddle.to_tensor(1.0))
@@ -314,7 +314,7 @@ class Laplace(distribution.Distribution):
             Tensor: A sample tensor that fits the Laplace distribution.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.seed(2023)
@@ -338,7 +338,7 @@ class Laplace(distribution.Distribution):
             Tensor: A sample tensor that fits the Laplace distribution.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
                 >>> paddle.seed(2023)
@@ -410,7 +410,7 @@ class Laplace(distribution.Distribution):
             Tensor: The kl-divergence between two laplace distributions.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle
 

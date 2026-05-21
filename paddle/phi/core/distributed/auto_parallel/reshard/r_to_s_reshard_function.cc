@@ -55,7 +55,7 @@ std::map<int, int64_t> GetSplitAxisWithDimsMapping(
 }
 }  // namespace
 
-void RToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
+void RToSReshardFunction::Eval(DeviceContext* dev_ctx,
                                const DistTensor& in,
                                const TensorDistAttr& out_dist_attr,
                                DistTensor* out) {
@@ -158,7 +158,7 @@ bool RToSReshardFunctionCrossMesh::IsSuitable(
   return true;
 }
 
-void RToSReshardFunctionCrossMesh::Eval(phi::DeviceContext* dev_ctx,
+void RToSReshardFunctionCrossMesh::Eval(DeviceContext* dev_ctx,
                                         const DistTensor& in,
                                         const TensorDistAttr& out_dist_attr,
                                         DistTensor* out) {

@@ -24,8 +24,6 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 SpmdInfo GatherNdInferSpmd(const DistMetaTensor& x,
                            const DistMetaTensor& index) {
   // Step0: Verify Input Args Based on GatherNd Logic

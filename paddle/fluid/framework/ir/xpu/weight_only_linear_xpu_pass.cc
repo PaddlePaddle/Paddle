@@ -115,19 +115,19 @@ void PermuteINT8WeightOnlyPass::ApplyPermuteINT8WeightOnly(
       auto scale_names = weight_only_linear->Op()->Input(scale_name);
       int id = 0;
       for (auto name : input_names) {
-        phi::DenseTensor* scale_tensor =
+        DenseTensor* scale_tensor =
             scope->Var(scale_names[id])->GetMutable<DenseTensor>();
         PADDLE_ENFORCE_NOT_NULL(
             scale_tensor,
             common::errors::Fatal(
                 "weight_scale tensor node should not be nullptr"));
 
-        size_t dst_hash = HashTensor<phi::dtype::float16>(*scale_tensor);
+        size_t dst_hash = HashTensor<phi::float16>(*scale_tensor);
         std::string pre_name = GetPrefixWithoutHash(name);
         std::string dst_name = pre_name + "_#" + std::to_string(dst_hash);
         auto* dst_node = FindNodeWithName(graph, dst_name);
         if (dst_node == nullptr) {
-          phi::DenseTensor* curr_tensor =
+          DenseTensor* curr_tensor =
               scope->Var(name)->GetMutable<DenseTensor>();
           PADDLE_ENFORCE_NOT_NULL(
               curr_tensor,
@@ -153,7 +153,7 @@ void PermuteINT8WeightOnlyPass::ApplyPermuteINT8WeightOnly(
           auto* dst_var = scope->FindVar(dst_name);
           if (dst_var == nullptr) {
             DenseTensor tmp_tensor;
-            tmp_tensor.set_type(phi::DataType::INT8);
+            tmp_tensor.set_type(DataType::INT8);
             tmp_tensor.Resize(curr_tensor->dims());
             cpu_ctx->Alloc<int8_t>(&tmp_tensor);
 

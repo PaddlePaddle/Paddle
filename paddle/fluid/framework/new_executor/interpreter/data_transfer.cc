@@ -30,7 +30,7 @@ namespace paddle::framework::interpreter {
 
 bool DataTransferHelper::apply(const phi::KernelKey& kernel_type_for_var,
                                const phi::KernelKey& expected_kernel_key,
-                               const phi::DenseTensor* tensor,
+                               const DenseTensor* tensor,
                                const std::string& var_name,
                                std::string* new_var_name,
                                std::vector<OpFuncNode>* op_func_nodes,
@@ -179,7 +179,7 @@ void DataTransferHelper::RunAndConstructOpFuncNode(
   new_op_func_node.dev_ctx_ = dev_ctx;
   new_op_func_node.operator_base_ = op;
 
-  const phi::Place& place = dev_ctx->GetPlace();
+  const Place& place = dev_ctx->GetPlace();
   if (phi::is_cpu_place(place)) {
     new_op_func_node.type_ = OpFuncType::kCpuSync;
   } else if (phi::is_gpu_place(place)) {
@@ -240,8 +240,7 @@ bool IsTensorOfVarInitialized(Variable* var) {
     if (var->IsType<DenseTensor>() || var->IsType<phi::SelectedRows>()) {
       return GetDenseTensorOrSelectedRowsValueFromVar(*var)->IsInitialized();
     } else if (var->IsType<phi::TensorArray>()) {
-      return static_cast<const phi::DenseTensor*>(
-                 &(var->Get<phi::TensorArray>()[0]))
+      return static_cast<const DenseTensor*>(&(var->Get<phi::TensorArray>()[0]))
           ->IsInitialized();
     }
   }
@@ -258,14 +257,13 @@ std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
 #ifdef PADDLE_WITH_DNNL
 
   // NOTE(zhiqiu): hot fix, follow the same logic in DataCopy() in fetch_op.cc
-  if (in_layout == phi::DataLayout::ONEDNN &&
+  if (in_layout == DataLayout::ONEDNN &&
       var_name == framework::GradVarName("Filter") && is_fetch_v2) {
     VLOG(4) << "Match special case(Filter && fetch_v2) " << var_name;
-    out_layout = phi::DataLayout::kNCHW;
+    out_layout = DataLayout::kNCHW;
   }
 
-  if (in_layout == phi::DataLayout::ONEDNN &&
-      out_layout != phi::DataLayout::ONEDNN) {
+  if (in_layout == DataLayout::ONEDNN && out_layout != DataLayout::ONEDNN) {
     auto target_layout = phi::OneDNNContext::tls().get_cur_paddle_data_layout();
     VLOG(4) << "TransDataLayoutFromOneDNN: " << in_layout << "->"
             << target_layout;
@@ -376,8 +374,8 @@ std::shared_ptr<OperatorBase> TransferDtype(const std::string& var_name,
 
 std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
                                              std::string* new_var_name,
-                                             const phi::Place& src_place,
-                                             const phi::Place& dst_place,
+                                             const Place& src_place,
+                                             const Place& dst_place,
                                              VariableScope* var_scope,
                                              framework::Scope* local_scope) {
   // 1. Generate new_var_name and Initialize it
@@ -447,7 +445,7 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
 }
 
 void ApplyDataTransform(const OpKernelType& expected_kernel_key,
-                        const phi::Place& place,
+                        const Place& place,
                         VariableValueMap* ins_map_temp,
                         VariableValueMap* outs_map_temp,
                         VariableScope* var_scope,
@@ -507,14 +505,14 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
           const std::string var_name = argument_names[i];
           Variable* var = arguments->at(i);
 
-          const phi::DenseTensor* tensor_in = nullptr;
+          const DenseTensor* tensor_in = nullptr;
           if (var->IsType<DenseTensor>() || var->IsType<phi::SelectedRows>()) {
             tensor_in = GetDenseTensorOrSelectedRowsValueFromVar(*var);
           } else if (var->IsType<phi::TensorArray>()) {
             if (var->Get<phi::TensorArray>().empty()) {
               continue;
             }
-            tensor_in = static_cast<const phi::DenseTensor*>(
+            tensor_in = static_cast<const DenseTensor*>(
                 &(var->Get<phi::TensorArray>()[0]));
           } else {
             continue;
@@ -573,7 +571,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
               infer_varkernel_context.SetVarName(
                   const_cast<std::string*>(&parameter_name));
               infer_varkernel_context.SetDenseTensor(
-                  const_cast<phi::DenseTensor*>(tensor_in));
+                  const_cast<DenseTensor*>(tensor_in));
               kernel_key_for_var = phi_kernel->get_kerneltype_forvar_fn_(
                   &infer_varkernel_context);
             }
@@ -742,7 +740,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
 }
 
 void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
-                                 const phi::Place& place,
+                                 const Place& place,
                                  const VariableNameMap& out_names,
                                  VariableValueMap* out_vars,
                                  VariableScope* var_scope,

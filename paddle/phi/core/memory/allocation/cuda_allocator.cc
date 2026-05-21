@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/phi/core/memory/allocation/cuda_allocator.h"
+#include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/memory/stats.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
@@ -48,7 +50,7 @@ phi::Allocation* CUDAAllocator::AllocateImpl(size_t size) {
   void* ptr;
   auto result = platform::RecordedGpuMalloc(&ptr, size, place_.device);
   if (LIKELY(result == gpuSuccess)) {
-    return new Allocation(ptr, size, phi::Place(place_));
+    return new Allocation(ptr, size, Place(place_));
   }
 
   size_t avail, total, actual_avail, actual_total;
@@ -68,9 +70,13 @@ phi::Allocation* CUDAAllocator::AllocateImpl(size_t size) {
         limit_size);
   }
 
+  size_t actual_allocated_memory =
+      paddle::memory::DeviceMemoryStatCurrentValue("Allocated", place_.device);
+
   PADDLE_THROW_BAD_ALLOC(common::errors::ResourceExhausted(
       "\n\nOut of memory error on GPU %d. "
-      "Cannot allocate %s memory on GPU %d, %s memory has been allocated and "
+      "Cannot allocate %s memory on GPU %d, %s memory has been "
+      "allocated(actual using allocated memory %s) and "
       "available memory is only %s.\n\n"
       "Please check whether there is any other process using GPU %d.\n"
       "1. If yes, please stop them, or start PaddlePaddle on another GPU.\n"
@@ -79,6 +85,7 @@ phi::Allocation* CUDAAllocator::AllocateImpl(size_t size) {
       string::HumanReadableSize(size),
       place_.device,
       string::HumanReadableSize(allocated),
+      string::HumanReadableSize(actual_allocated_memory),
       string::HumanReadableSize(avail),
       place_.device,
       err_msg));

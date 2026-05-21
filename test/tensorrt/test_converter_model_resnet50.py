@@ -38,6 +38,10 @@ from paddle.tensorrt.util import (
 )
 from paddle.vision.models import resnet18
 
+# NOTE(Pan Zhaowu): using legacy linear to fulfill promise of tensorrt graph capturing
+# and converting.
+paddle.set_flags({"FLAGS_use_legacy_linear": True})
+
 
 def standardize(array):
     mean_val = np.mean(array)

@@ -457,7 +457,7 @@ void QKVDispatchWithDtype(const Context &dev_ctx,
                           const DenseTensor &q,
                           const DenseTensor &k,
                           const DenseTensor &v,
-                          const paddle::optional<DenseTensor> &src_mask,
+                          const optional<DenseTensor> &src_mask,
                           DenseTensor *out) {
   const auto &q_dims = q.dims();
   int bsz = q_dims[0];
@@ -506,7 +506,7 @@ void QKVMMHAKernel(const Context &dev_ctx,
                    const DenseTensor &q,
                    const DenseTensor &k,
                    const DenseTensor &v,
-                   const paddle::optional<DenseTensor> &src_mask,
+                   const optional<DenseTensor> &src_mask,
                    DenseTensor *out) {
 #ifndef PADDLE_WITH_HIP
   QKVDispatchWithDtype<T, Context>(dev_ctx, q, k, v, src_mask, out);

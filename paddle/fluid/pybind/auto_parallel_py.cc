@@ -177,7 +177,7 @@ void BindAutoParallel(py::module *m) {
                     std::dynamic_pointer_cast<phi::distributed::DistTensor>(
                         tensor.impl());
                 auto res_dist = self.Eval(dev_ctx, *p_dist, dist_attr);
-                return paddle::Tensor(res_dist);
+                return Tensor(res_dist);
               },
               py::call_guard<py::gil_scoped_release>());
 
@@ -382,7 +382,7 @@ void BindAutoParallel(py::module *m) {
         - ReduceType.kRedAll
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.distributed as dist
@@ -408,7 +408,7 @@ void BindAutoParallel(py::module *m) {
         The `Placement` is base class that describes how to place the tensor on ProcessMesh. it has three subclass: `Replicate`, `Shard` and `Partial`.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: pycon
 
                 >>> import paddle.distributed as dist
                 >>> placements = [dist.Replicate(), dist.Shard(0), dist.Partial()]
@@ -454,12 +454,12 @@ void BindAutoParallel(py::module *m) {
                    dim (int): specify the slicing dimension of the tensor.
 
                Examples:
-                   .. code-block:: python
+                   .. code-block:: pycon
 
                        >>> import paddle
                        >>> import paddle.distributed as dist
                        >>> mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=['x', 'y'])
-                       >>> a = paddle.to_tensor([[1,2,3],[5,6,7]])
+                       >>> a = paddle.to_tensor([[1, 2, 3], [5, 6, 7]])
                        >>> # doctest: +REQUIRES(env:DISTRIBUTED)
                        >>> # distributed tensor
                        >>> d_tensor = dist.shard_tensor(a, mesh, [dist.Shard(0), dist.Shard(1)])
@@ -511,7 +511,7 @@ void BindAutoParallel(py::module *m) {
                    The `Replicate` describes the tensor placed repeatedly on ProcessMesh.
 
                    Examples:
-                       .. code-block:: python
+                       .. code-block:: pycon
 
                            >>> import paddle
                            >>> import paddle.distributed as dist
@@ -553,7 +553,7 @@ void BindAutoParallel(py::module *m) {
                    reduce_type (paddle.distributed.ReduceType): the reduce type of the Partial state, default `paddle.distributed.ReduceType.kRedSum`.
 
                  Examples:
-                     .. code-block:: python
+                     .. code-block:: pycon
 
                          >>> import paddle
                          >>> import paddle.distributed as dist

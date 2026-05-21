@@ -29,7 +29,7 @@ void AssignKernel(const Context& dev_ctx,
 
 template <typename Context>
 void AssignRawKernel(const Context& dev_ctx,
-                     const paddle::optional<DenseTensor>& x,
+                     const optional<DenseTensor>& x,
                      DenseTensor* out) {
   if (x) {
     if (!x->IsInitialized()) {
@@ -40,7 +40,7 @@ void AssignRawKernel(const Context& dev_ctx,
   }
 }
 
-// Note: use `const paddle::optional<std::vector<const DenseTensor*>&> x`
+// Note: use `const optional<std::vector<const DenseTensor*>&> x`
 // as input if needed
 template <typename Context>
 void AssignArrayKernel(const Context& dev_ctx,
@@ -67,7 +67,7 @@ typename std::enable_if<std::is_same<T, bool>::value>::type CopyVectorToTensor(
   for (const auto& val : values) {
     assign_values.emplace_back(val.to<int>());
   }
-  phi::TensorFromVector(assign_values, dev_ctx, out);
+  TensorFromVector(assign_values, dev_ctx, out);
 
   // use the array to replace to vector
   bool* array_ptr = new T[assign_values.size()];
@@ -88,7 +88,7 @@ typename std::enable_if<!std::is_same<T, bool>::value>::type CopyVectorToTensor(
   for (const auto& val : values) {
     assign_values.emplace_back(val.to<T>());
   }
-  phi::TensorFromVector(assign_values, dev_ctx, out);
+  TensorFromVector(assign_values, dev_ctx, out);
 }
 
 template <typename T, typename Context>
@@ -97,7 +97,7 @@ void AssignValueKernel(const Context& dev_ctx,
                        DataType dtype,
                        const std::vector<Scalar>& values,
                        DenseTensor* out) {
-  auto template_dtype = phi::CppTypeToDataType<T>::Type();
+  auto template_dtype = CppTypeToDataType<T>::Type();
   PADDLE_ENFORCE_EQ(dtype,
                     template_dtype,
                     common::errors::InvalidArgument(
@@ -106,7 +106,7 @@ void AssignValueKernel(const Context& dev_ctx,
                         dtype,
                         template_dtype));
   CopyVectorToTensor<T>(dev_ctx, values, out);
-  out->Resize(common::make_ddim(shape));
+  out->Resize(shape);
 }
 
 #ifdef _WIN32

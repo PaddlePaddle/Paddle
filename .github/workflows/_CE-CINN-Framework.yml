@@ -9,6 +9,10 @@ on:
       can-skip:
         type: string
         required: false
+      build-can-skip:
+        type: string
+        required: false
+        default: 'false'
 
 env:
   PR_ID: ${{ github.event.pull_request.number }}
@@ -27,11 +31,22 @@ defaults:
     shell: bash
 
 jobs:
+  check-bypass:
+    name: Check bypass
+    if: ${{ github.repository_owner == 'PaddlePaddle' && inputs.build-can-skip != 'true' }}
+    uses: ./.github/workflows/check-bypass.yml
+    with:
+      workflow-name: ce-cinn-framework
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
   cinn:
     name: CINN
-    if: ${{ inputs.can-skip != 'true' }}
+    if: ${{ inputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' }}
+    needs: [check-bypass]
     runs-on:
       group: BD_BJ-V100
+    timeout-minutes: 120
     steps:
       - name: Check docker image and run container
         env:
@@ -67,6 +82,7 @@ jobs:
       - name: Download Paddle and PaddleTest
         env:
           work_dir: ${{ github.workspace }}
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
@@ -85,15 +101,8 @@ jobs:
           tar -zvxf PaddleTest.tar.gz 1>/dev/null 2>&1
           '
 
-      - name: Check bypass
-        id: check-bypass
-        uses: ./.github/actions/check-bypass
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          workflow-name: ce-cinn-framework
-
       - name: Determine ci trigger
-        if: steps.check-bypass.outputs.can-skip != 'true'
+
         env:
           work_dir: ${{ github.workspace }}
         run: |
@@ -107,7 +116,7 @@ jobs:
           '
 
       - name: Run check
-        if: ${{ steps.check-bypass.outputs.can-skip != 'true' && env.skip_ci != 'true' }}
+        if: ${{ env.skip_ci != 'true' }}
         env:
           work_dir: ${{ github.workspace }}
         run: |

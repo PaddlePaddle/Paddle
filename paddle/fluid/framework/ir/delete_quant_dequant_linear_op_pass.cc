@@ -136,7 +136,7 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
     std::unordered_set<const Node*> nodes2rm = {};
 
     // Get input scale from tensor
-    const phi::DenseTensor& input_scale_tensor =
+    const DenseTensor& input_scale_tensor =
         scope->GetVar(quantize_linear_op_scale->Name())->Get<DenseTensor>();
     PADDLE_ENFORCE_EQ(phi::is_cpu_place(input_scale_tensor.place()),
                       true,
@@ -144,12 +144,12 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
                           "Input scale tensor's place should be CPU."));
 
     float input_scale = NAN;
-    if (input_scale_tensor.dtype() == phi::DataType::FLOAT32) {
+    if (input_scale_tensor.dtype() == DataType::FLOAT32) {
       const float* input_scale_data = input_scale_tensor.data<float>();
       input_scale = input_scale_data[0];
-    } else if (input_scale_tensor.dtype() == phi::DataType::FLOAT16) {
-      const phi::dtype::float16* input_scale_data =
-          input_scale_tensor.data<phi::dtype::float16>();
+    } else if (input_scale_tensor.dtype() == DataType::FLOAT16) {
+      const phi::float16* input_scale_data =
+          input_scale_tensor.data<phi::float16>();
       input_scale = static_cast<float>(input_scale_data[0]);
     } else {
       PADDLE_THROW(common::errors::Unimplemented("%d is not supported.",

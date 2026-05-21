@@ -33,7 +33,7 @@ namespace fusion {
 
 using helper = phi::CudnnFrontendConvHelper;
 template <typename T>
-using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
+using CudnnDataType = backends::gpu::CudnnDataType<T>;
 
 /*
  * Implements Scale + Bias + ReLU + Conv + BNStats fusion pattern.
@@ -51,22 +51,21 @@ using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
  * https://docs.nvidia.com/deeplearning/cudnn/developer-guide/index.html#genstats-runtime-fusion-engine
  */
 template <typename T, typename Context>
-void FusedScaleBiasReluConvBnstatsImpl(
-    const Context& dev_ctx,
-    const DenseTensor& x,
-    const DenseTensor& w,
-    const paddle::optional<DenseTensor>& scale,
-    const paddle::optional<DenseTensor>& bias,
-    const std::vector<int>& paddings,
-    const std::vector<int>& dilations,
-    const std::vector<int>& strides,
-    const std::string& padding_algorithm,
-    bool fuse_prologue,
-    bool exhaustive_search,
-    bool deterministic,
-    DenseTensor* output,
-    DenseTensor* sum_output,
-    DenseTensor* sqsum_output) {
+void FusedScaleBiasReluConvBnstatsImpl(const Context& dev_ctx,
+                                       const DenseTensor& x,
+                                       const DenseTensor& w,
+                                       const optional<DenseTensor>& scale,
+                                       const optional<DenseTensor>& bias,
+                                       const std::vector<int>& paddings,
+                                       const std::vector<int>& dilations,
+                                       const std::vector<int>& strides,
+                                       const std::string& padding_algorithm,
+                                       bool fuse_prologue,
+                                       bool exhaustive_search,
+                                       bool deterministic,
+                                       DenseTensor* output,
+                                       DenseTensor* sum_output,
+                                       DenseTensor* sqsum_output) {
   auto& plan_cache = phi::autotune::AutoTuneCache::Instance().GetConvV8(
       phi::autotune::AlgorithmType::kScaleBiasReluConvBNstats);
 
@@ -85,7 +84,7 @@ void FusedScaleBiasReluConvBnstatsImpl(
   auto filter_dims = w_transformed.dims();
   DDim in_data_dims = slice_ddim(in_dims, 1, in_dims.size() - 1);
   DDim filter_data_dims = slice_ddim(filter_dims, 1, filter_dims.size() - 1);
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = vectorize<int>(filter_data_dims);
   phi::UpdatePaddingAndDilation(&paddings_vec,
                                 &dilations_vec,
                                 padding_algorithm,
@@ -116,18 +115,17 @@ void FusedScaleBiasReluConvBnstatsImpl(
 
   // build tensors
   cudnnTensorFormat_t layout_format = CUDNN_TENSOR_NHWC;
-  auto tensor_format = phi::backends::gpu::ToCudnnDataType(x.dtype());
+  auto tensor_format = backends::gpu::ToCudnnDataType(x.dtype());
 
   auto tensor_format_math = CUDNN_DATA_FLOAT;
   auto compute_dtype = CUDNN_DATA_FLOAT;
 
   // get dims in CUDNN manner: [N, C, H, W]
-  auto dim_x = phi::backends::gpu::TransformDimOrder(
-      common::vectorize<int64_t>(in_dims));
-  auto dim_filt = phi::backends::gpu::TransformDimOrder(
-      common::vectorize<int64_t>(filter_dims));
-  auto dim_y = phi::backends::gpu::TransformDimOrder(
-      common::vectorize<int64_t>(output->dims()));
+  auto dim_x = backends::gpu::TransformDimOrder(vectorize<int64_t>(in_dims));
+  auto dim_filt =
+      backends::gpu::TransformDimOrder(vectorize<int64_t>(filter_dims));
+  auto dim_y =
+      backends::gpu::TransformDimOrder(vectorize<int64_t>(output->dims()));
   std::vector<int64_t> dim_scale(dim_x.size(), 1);
   dim_scale[1] = dim_x[1];                        //  [1, C, 1, 1]
   std::vector<int64_t> dim_sum(dim_x.size(), 1);  // [1, K, 1, 1]
@@ -318,12 +316,11 @@ void BNFinalizeImpl(const Context& dev_ctx,
   auto workspace_handle = dev_ctx.cudnn_workspace_handle();
   // set dtypes
   cudnnTensorFormat_t layout_format = CUDNN_TENSOR_NHWC;
-  auto tensor_format_bn =
-      phi::backends::gpu::ToCudnnDataType(sum_tensor.dtype());
-  auto tensor_format = phi::backends::gpu::ToCudnnDataType(eq_scale->dtype());
+  auto tensor_format_bn = backends::gpu::ToCudnnDataType(sum_tensor.dtype());
+  auto tensor_format = backends::gpu::ToCudnnDataType(eq_scale->dtype());
   auto compute_dtype = CUDNN_DATA_FLOAT;
   // create tensor descriptors
-  auto dim_input = common::vectorize<int64_t>(sum_tensor.dims());
+  auto dim_input = vectorize<int64_t>(sum_tensor.dims());
   std::vector<int64_t> dim_c = {1, dim_input[0], 1, 1};  //  [1, C, 1, 1]
   std::vector<int64_t> dim_scalar = {1, 1, 1, 1};
   std::vector<int64_t> stride_scalar = {1, 1, 1, 1};
@@ -476,8 +473,8 @@ template <typename T, typename Context>
 void FusedScaleBiasReluConvBnKernel(const Context& dev_ctx,
                                     const DenseTensor& x,
                                     const DenseTensor& w,
-                                    const paddle::optional<DenseTensor>& scale,
-                                    const paddle::optional<DenseTensor>& bias,
+                                    const optional<DenseTensor>& scale,
+                                    const optional<DenseTensor>& bias,
                                     const DenseTensor& bn_scale,
                                     const DenseTensor& bn_bias,
                                     const DenseTensor& input_running_mean,
@@ -500,7 +497,7 @@ void FusedScaleBiasReluConvBnKernel(const Context& dev_ctx,
                                     DenseTensor* saved_var,
                                     DenseTensor* eq_scale,
                                     DenseTensor* eq_bias) {
-  auto cudnn_version = phi::backends::gpu::DnnVersion();
+  auto cudnn_version = backends::gpu::DnnVersion();
   PADDLE_ENFORCE_GE(cudnn_version,
                     8800,
                     common::errors::PreconditionNotMet(
@@ -555,7 +552,7 @@ void FusedScaleBiasReluConvBnKernel(const Context& dev_ctx,
   if (accumulation_count == 0) {
     // dim_out = [N, H, W, C]
     // accumulation_count = N * H * W
-    auto dim_out = common::vectorize<int64_t>(out->dims());
+    auto dim_out = vectorize<int64_t>(out->dims());
     accumulation_count = dim_out[0] * dim_out[1] * dim_out[2];
   }
 

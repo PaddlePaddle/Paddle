@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from typing_extensions import TypeAlias, overload
 
@@ -26,9 +26,9 @@ from paddle.framework import (
     in_dynamic_or_pir_mode,
 )
 from paddle.utils.decorator_utils import (
-    ParamAliasDecorator,
     param_two_alias,
     param_two_alias_one_default,
+    use_first_signature,
 )
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
@@ -90,16 +90,24 @@ def mean(
         type as ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([[[1., 2., 3., 4.],
-            ...                        [5., 6., 7., 8.],
-            ...                        [9., 10., 11., 12.]],
-            ...                       [[13., 14., 15., 16.],
-            ...                        [17., 18., 19., 20.],
-            ...                        [21., 22., 23., 24.]]])
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [
+            ...             [1.0, 2.0, 3.0, 4.0],
+            ...             [5.0, 6.0, 7.0, 8.0],
+            ...             [9.0, 10.0, 11.0, 12.0],
+            ...         ],
+            ...         [
+            ...             [13.0, 14.0, 15.0, 16.0],
+            ...             [17.0, 18.0, 19.0, 20.0],
+            ...             [21.0, 22.0, 23.0, 24.0],
+            ...         ],
+            ...     ]
+            ... )
             >>> out1 = paddle.mean(x)
             >>> print(out1.numpy())
             12.5
@@ -120,7 +128,7 @@ def mean(
             [ 8.5 12.5 16.5]
             >>> out5 = paddle.mean(x, dtype='float64')
             >>> out5
-            Tensor(shape=[], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+            Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
                 12.50000000)
     """
     if dtype is not None:
@@ -174,7 +182,7 @@ def mean(
         return out_tensor
 
 
-@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def var(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
@@ -188,15 +196,11 @@ def var(
     """
     Computes the variance of ``x`` along ``axis`` .
 
-    .. note::
-        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dim`` can be used as an alias for ``axis``.
-        For example, ``var(input=tensor_x, dim=1, ...)`` is equivalent to ``var(x=tensor_x, axis=1, ...)``.
-
     Args:
         x (Tensor): The input Tensor with data type float16, float32, float64.
-            alias: ``input``.
+            Alias: ``input``.
         axis (int|list|tuple|None, optional): The axis along which to perform variance calculations. ``axis`` should be int, list(int) or tuple(int).
-            alias: ``dim``.
+            Alias: ``dim``.
 
             - If ``axis`` is a list/tuple of dimension(s), variance is calculated along all element(s) of ``axis`` . ``axis`` or element(s) of ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
             - If ``axis`` or element(s) of ``axis`` is less than 0, it works the same way as :math:`axis + D` .
@@ -213,7 +217,7 @@ def var(
         Tensor, results of variance along ``axis`` of ``x``, with the same data type as ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -232,6 +236,17 @@ def var(
         actual_correction = 1.0 if unbiased else 0.0
     else:
         actual_correction = float(correction)
+
+    if paddle.is_compiled_with_cuda() and in_dynamic_or_pir_mode():
+        return _C_ops.var(
+            x,
+            axis if axis is not None else [],
+            keepdim,
+            unbiased,
+            actual_correction,
+            out=out,
+        )
+
     if not in_dynamic_mode():
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64'], 'var'
@@ -285,18 +300,38 @@ def var(
     return result
 
 
+@overload
 def std(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
-    unbiased: bool = True,
+    unbiased: bool | None = None,
     keepdim: bool = False,
     name: str | None = None,
-) -> Tensor:
+    *,
+    correction: float = 1,
+    out: Tensor | None = None,
+) -> Tensor: ...
+
+
+@overload
+def std(
+    input: Tensor,
+    dim: int | Sequence[int] | None = None,
+    *,
+    correction: float = 1,
+    keepdim: bool = False,
+    out: Tensor | None = None,
+) -> Tensor: ...
+
+
+@use_first_signature
+def std(*args: Any, **kwargs: Any) -> Tensor:
     """
     Computes the standard-deviation of ``x`` along ``axis`` .
 
     Args:
         x (Tensor): The input Tensor with data type float16, float32, float64.
+            Alias: ``input``.
         axis (int|list|tuple|None, optional): The axis along which to perform
             standard-deviation calculations. ``axis`` should be int, list(int)
             or tuple(int). If ``axis`` is a list/tuple of dimension(s),
@@ -306,6 +341,7 @@ def std(
             ``axis`` is less than 0, it works the same way as :math:`axis + D` .
             If ``axis`` is None, standard-deviation is calculated over all
             elements of ``x``. Default is None.
+            Alias: ``dim``.
         unbiased (bool, optional): Whether to use the unbiased estimation. If
             ``unbiased`` is True, the standard-deviation is calculated via the
             unbiased estimator. If ``unbiased`` is True,  the divisor used in
@@ -319,13 +355,16 @@ def std(
             the output Tensor is squeezed in ``axis`` . Default is False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
+        correction (int|float, optional): Difference between the sample size and sample degrees of freedom.
+            Defaults to 1 (Bessel's correction). If unbiased is specified, this parameter is ignored.
+        out (Tensor|None, optional): Output tensor. Default is None.
 
     Returns:
         Tensor, results of standard-deviation along ``axis`` of ``x``, with the
         same data type as ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -333,20 +372,47 @@ def std(
             >>> out1 = paddle.std(x)
             >>> print(out1.numpy())
             1.6329932
+
             >>> out2 = paddle.std(x, unbiased=False)
             >>> print(out2.numpy())
             1.490712
+
             >>> out3 = paddle.std(x, axis=1)
             >>> print(out3.numpy())
             [1.       2.081666]
 
+            >>> out4 = paddle.std(x=x, keepdim=True, correction=1.5)
+            >>> print(out4.numpy())
+            [[1.721326]]
+
+            >>> out5 = paddle.std(input=x, dim=[0, 1])
+            >>> print(out5.numpy())
+            1.6329932
+
     """
-    if not in_dynamic_or_pir_mode():
-        check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'std'
+    if paddle.is_compiled_with_cuda() and in_dynamic_or_pir_mode():
+        x = args[0] if len(args) > 0 else kwargs.get('x', kwargs.get('input'))
+        axis = (
+            args[1]
+            if len(args) > 1
+            else kwargs.get('axis', kwargs.get('dim', None))
         )
-    out = var(**locals())
-    return paddle.sqrt(out)
+        unbiased = args[2] if len(args) > 2 else kwargs.get('unbiased', None)
+        keepdim = args[3] if len(args) > 3 else kwargs.get('keepdim', False)
+        correction = kwargs.get('correction', 1.0)
+        out = kwargs.get('out', None)
+
+        axis = axis if axis is not None else []
+        if unbiased is not None:
+            correction = 1.0 if unbiased else 0.0
+        else:
+            correction = float(correction)
+        return _C_ops.std(x, axis, keepdim, unbiased, correction, out=out)
+
+    variance = var(*args, **kwargs)
+    if 'out' in kwargs:
+        return paddle.sqrt(variance, out=kwargs['out'])
+    return paddle.sqrt(variance)
 
 
 def numel(x: Tensor, name: str | None = None) -> Tensor:
@@ -362,7 +428,7 @@ def numel(x: Tensor, name: str | None = None) -> Tensor:
         Tensor: The number of elements for the input Tensor, whose shape is [].
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
@@ -443,10 +509,15 @@ def nanmedian(
         only nanmedian value will be returned.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
-            >>> x = paddle.to_tensor([[float('nan'), 2. , 3. ], [0. , 1. , 2. ]])
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [float('nan'), 2.0, 3.0],
+            ...         [0.0, 1.0, 2.0],
+            ...     ]
+            ... )
 
             >>> y1 = x.nanmedian()
             >>> print(y1.numpy())
@@ -480,7 +551,7 @@ def nanmedian(
             >>> print(y7_index.numpy())
             [1 1]
 
-            >>> y8 = x.nanmedian((0,1), mode='min')
+            >>> y8 = x.nanmedian((0, 1), mode='min')
             >>> print(y8.numpy())
             2.0
     """
@@ -602,7 +673,7 @@ def median(
         indices will be int64.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import numpy as np
@@ -648,7 +719,15 @@ def median(
             [1, 1, 1])
 
             >>> # cases containing nan values
-            >>> x = paddle.to_tensor(np.array([[1,float('nan'),3,float('nan')],[1,2,3,4],[float('nan'),1,2,3]]))
+            >>> x = paddle.to_tensor(
+            ...     np.array(
+            ...         [
+            ...             [1, float('nan'), 3, float('nan')],
+            ...             [1, 2, 3, 4],
+            ...             [float('nan'), 1, 2, 3],
+            ...         ]
+            ...     )
+            ... )
 
             >>> y6 = paddle.median(x, axis=-1, keepdim=True)
             >>> print(y6)
@@ -943,11 +1022,11 @@ def quantile(
         Tensor, results of quantile along ``axis`` of ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
-            >>> y = paddle.arange(0, 8 ,dtype="float32").reshape([4, 2])
+            >>> y = paddle.arange(0, 8, dtype="float32").reshape([4, 2])
             >>> print(y)
             Tensor(shape=[4, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0., 1.],
@@ -968,17 +1047,17 @@ def quantile(
             >>> y3 = paddle.quantile(y, q=[0.3, 0.5], axis=0)
             >>> print(y3)
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[1.80000000, 2.80000000],
+            [[1.80000007, 2.80000019],
              [3.        , 4.        ]])
 
-            >>> y[0,0] = float("nan")
+            >>> y[0, 0] = float("nan")
             >>> y4 = paddle.quantile(y, q=0.8, axis=1, keepdim=True)
             >>> print(y4)
             Tensor(shape=[4, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[nan       ],
-             [2.80000000],
-             [4.80000000],
-             [6.80000000]])
+             [2.79999995],
+             [4.80000019],
+             [6.80000019]])
 
     """
     return _compute_quantile(
@@ -992,12 +1071,15 @@ def quantile(
     )
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def nanquantile(
     x: Tensor,
     q: float | Sequence[float] | Tensor,
     axis: list[int] | int | None = None,
     keepdim: bool = False,
     interpolation: _Interpolation = "linear",
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Compute the quantile of the input as if NaN values in input did not exist.
@@ -1005,6 +1087,7 @@ def nanquantile(
 
     Args:
         x (Tensor): The input Tensor, it's data type can be float32, float64, int32, int64.
+            Alias: ``input``.
         q (int|float|list|Tensor): The q for calculate quantile, which should be in range [0, 1]. If q is a list or
             a 1-D Tensor, each element of q will be calculated and the first dimension of output is same to the number of ``q`` .
             If q is a 0-D Tensor, it will be treated as an integer or float.
@@ -1013,6 +1096,7 @@ def nanquantile(
             If ``axis`` is less than 0, it works the same way as :math:`axis + D`.
             If ``axis`` is a list, quantile is calculated over all elements of given axes.
             If ``axis`` is None, quantile is calculated over all elements of ``x``. Default is None.
+            Alias: ``dim``.
         keepdim (bool, optional): Whether to reserve the reduced dimension(s)
             in the output Tensor. If ``keepdim`` is True, the dimensions of
             the output Tensor is the same as ``x`` except in the reduced
@@ -1021,22 +1105,26 @@ def nanquantile(
         interpolation (str, optional): The interpolation method to use
             when the desired quantile falls between two data points. Must be one of linear, higher,
             lower, midpoint and nearest. Default is linear.
-        name (str|None, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor, results of quantile along ``axis`` of ``x``.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
 
             >>> x = paddle.to_tensor(
-            ...     [[0, 1, 2, 3, 4],
-            ...      [5, 6, 7, 8, 9]],
-            ...     dtype="float32")
-            >>> x[0,0] = float("nan")
+            ...     [
+            ...         [0, 1, 2, 3, 4],
+            ...         [5, 6, 7, 8, 9],
+            ...     ],
+            ...     dtype="float32",
+            ... )
+            >>> x[0, 0] = float("nan")
 
             >>> y1 = paddle.nanquantile(x, q=0.5, axis=[0, 1])
             >>> print(y1)
@@ -1057,8 +1145,8 @@ def nanquantile(
             >>> y4 = paddle.nanquantile(x, q=0.8, axis=1, keepdim=True)
             >>> print(y4)
             Tensor(shape=[2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[3.40000000],
-             [8.20000000]])
+            [[3.40000010],
+             [8.19999981]])
 
             >>> nan = paddle.full(shape=[2, 3], fill_value=float("nan"))
             >>> y5 = paddle.nanquantile(nan, q=0.8, axis=1, keepdim=True)
@@ -1075,4 +1163,5 @@ def nanquantile(
         keepdim=keepdim,
         interpolation=interpolation,
         ignore_nan=True,
+        out=out,
     )

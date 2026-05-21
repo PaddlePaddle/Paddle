@@ -52,6 +52,10 @@ ParamsT CreateParamsImpl(common::ARMArch) {
 
 ParamsT CreateParamsImpl(common::NVGPUArch) { return CreateCudaParams(); }
 
+ParamsT CreateParamsImpl(common::CustomDeviceArch) {
+  return CreateCudaParams();
+}
+
 ParamsT CreateParamsImpl(common::HygonDCUArchHIP) { return CreateCudaParams(); }
 
 ParamsT CreateParamsImpl(common::HygonDCUArchSYCL) {

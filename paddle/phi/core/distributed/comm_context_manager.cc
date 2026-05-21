@@ -190,7 +190,7 @@ void CommContextManager::CreateGlooCommContext(
 void CommContextManager::CreateXCCLCommContext(
     const std::shared_ptr<Store>& store,
     const std::string& unique_comm_key,
-    const phi::Place& place,
+    const Place& place,
     int rank,
     int size,
     const std::string& hash_key) {
@@ -220,7 +220,7 @@ void CommContextManager::CreateXCCLCommContext(
   if (CommContextManager::device_id != -1) {
     std::unique_ptr<phi::CustomContext> dev_ctx(
 
-        new phi::CustomContext(phi::CustomPlace(place)));
+        new phi::CustomContext(CustomPlace(place)));
     // dev_ctx->SetAllocator(phi::memory_utils::GetAllocator(
     //     CommContextManager::device_id, dev_ctx->GetStream()));
     // dev_ctx->SetHostAllocator(phi::memory_utils::GetHostAllocator());

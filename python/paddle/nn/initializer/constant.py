@@ -121,16 +121,14 @@ class Constant(ConstantInitializer):
         value (float32|float64, optional): constant value to initialize the parameter. Default: 0.0.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> import paddle
             >>> import paddle.nn as nn
 
             >>> paddle.seed(2023)
             >>> data = paddle.rand([30, 10, 2], dtype='float32')
-            >>> linear = nn.Linear(2,
-            ...                     4,
-            ...                     weight_attr=nn.initializer.Constant(value=2.0))
+            >>> linear = nn.Linear(2, 4, weight_attr=nn.initializer.Constant(value=2.0))
             >>> res = linear(data)
             >>> print(linear.weight)
             Parameter containing:

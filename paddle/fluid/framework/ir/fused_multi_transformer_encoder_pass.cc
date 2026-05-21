@@ -1458,9 +1458,9 @@ PDNode* MultiDevicesFusedMultiTransformerEncoderFuseQKVPattern::operator()() {
 namespace paddle::framework::ir {
 
 template <typename T>
-inline void QKVWeightsProcess(phi::DenseTensor* wq_tensor,
-                              phi::DenseTensor* wk_tensor,
-                              phi::DenseTensor* wv_tensor,
+inline void QKVWeightsProcess(DenseTensor* wq_tensor,
+                              DenseTensor* wk_tensor,
+                              DenseTensor* wv_tensor,
                               const int num_head,
                               const int dim_head,
                               const int dim_embed) {
@@ -1500,9 +1500,9 @@ inline void QKVWeightsProcess(phi::DenseTensor* wq_tensor,
 }
 
 template <typename T>
-inline void QKVBiasProcess(phi::DenseTensor* bq_tensor,
-                           phi::DenseTensor* bk_tensor,
-                           phi::DenseTensor* bv_tensor,
+inline void QKVBiasProcess(DenseTensor* bq_tensor,
+                           DenseTensor* bk_tensor,
+                           DenseTensor* bv_tensor,
                            const int num_head,
                            const int dim_head,
                            const int dim_embed) {
@@ -1533,25 +1533,25 @@ inline void QKVBiasProcess(phi::DenseTensor* bq_tensor,
          sizeof(T) * bq_tensor->numel());
 }
 
-inline void QKVWeightsBiasProcess(phi::DenseTensor* wq_tensor,
-                                  phi::DenseTensor* wk_tensor,
-                                  phi::DenseTensor* wv_tensor,
-                                  phi::DenseTensor* bq_tensor,
-                                  phi::DenseTensor* bk_tensor,
-                                  phi::DenseTensor* bv_tensor,
+inline void QKVWeightsBiasProcess(DenseTensor* wq_tensor,
+                                  DenseTensor* wk_tensor,
+                                  DenseTensor* wv_tensor,
+                                  DenseTensor* bq_tensor,
+                                  DenseTensor* bk_tensor,
+                                  DenseTensor* bv_tensor,
                                   const int num_head,
                                   const int dim_head,
                                   const int dim_embed) {
   switch (wq_tensor->dtype()) {
-    case phi::DataType::FLOAT16:
-      QKVWeightsProcess<phi::dtype::float16>(
+    case DataType::FLOAT16:
+      QKVWeightsProcess<phi::float16>(
           wq_tensor, wk_tensor, wv_tensor, num_head, dim_head, dim_embed);
       break;
-    case phi::DataType::FLOAT32:
+    case DataType::FLOAT32:
       QKVWeightsProcess<float>(
           wq_tensor, wk_tensor, wv_tensor, num_head, dim_head, dim_embed);
       break;
-    case phi::DataType::INT8:
+    case DataType::INT8:
       QKVWeightsProcess<int8_t>(
           wq_tensor, wk_tensor, wv_tensor, num_head, dim_head, dim_embed);
       break;
@@ -1562,11 +1562,11 @@ inline void QKVWeightsBiasProcess(phi::DenseTensor* wq_tensor,
       break;
   }
   switch (bq_tensor->dtype()) {
-    case phi::DataType::FLOAT16:
-      QKVBiasProcess<phi::dtype::float16>(
+    case DataType::FLOAT16:
+      QKVBiasProcess<phi::float16>(
           bq_tensor, bk_tensor, bv_tensor, num_head, dim_head, dim_embed);
       break;
-    case phi::DataType::FLOAT32:
+    case DataType::FLOAT32:
       QKVBiasProcess<float>(
           bq_tensor, bk_tensor, bv_tensor, num_head, dim_head, dim_embed);
       break;
@@ -1579,7 +1579,7 @@ inline void QKVWeightsBiasProcess(phi::DenseTensor* wq_tensor,
 }
 
 template <typename T>
-inline void QKVWeightsProcessFuseQKV(phi::DenseTensor* qkv_w_tensor,
+inline void QKVWeightsProcessFuseQKV(DenseTensor* qkv_w_tensor,
                                      const int num_head,
                                      const int dim_head,
                                      const int dim_embed) {
@@ -1617,7 +1617,7 @@ inline void QKVWeightsProcessFuseQKV(phi::DenseTensor* qkv_w_tensor,
 }
 
 template <typename T>
-inline void QKVBiasProcessFuseQKV(phi::DenseTensor* qkv_b_tensor,
+inline void QKVBiasProcessFuseQKV(DenseTensor* qkv_b_tensor,
                                   const int num_head,
                                   const int dim_head,
                                   const int dim_embed) {
@@ -1650,21 +1650,21 @@ inline void QKVBiasProcessFuseQKV(phi::DenseTensor* qkv_b_tensor,
          sizeof(T) * qkv_b_tensor->numel());
 }
 
-inline void QKVWeightsBiasProcessFuseQKV(phi::DenseTensor* qkv_w_tensor,
-                                         phi::DenseTensor* qkv_b_tensor,
+inline void QKVWeightsBiasProcessFuseQKV(DenseTensor* qkv_w_tensor,
+                                         DenseTensor* qkv_b_tensor,
                                          const int num_head,
                                          const int dim_head,
                                          const int dim_embed) {
   switch (qkv_w_tensor->dtype()) {
-    case phi::DataType::FLOAT16:
-      QKVWeightsProcessFuseQKV<phi::dtype::float16>(
+    case DataType::FLOAT16:
+      QKVWeightsProcessFuseQKV<phi::float16>(
           qkv_w_tensor, num_head, dim_head, dim_embed);
       break;
-    case phi::DataType::FLOAT32:
+    case DataType::FLOAT32:
       QKVWeightsProcessFuseQKV<float>(
           qkv_w_tensor, num_head, dim_head, dim_embed);
       break;
-    case phi::DataType::INT8:
+    case DataType::INT8:
       QKVWeightsProcessFuseQKV<int8_t>(
           qkv_w_tensor, num_head, dim_head, dim_embed);
       break;
@@ -1675,11 +1675,11 @@ inline void QKVWeightsBiasProcessFuseQKV(phi::DenseTensor* qkv_w_tensor,
       break;
   }
   switch (qkv_b_tensor->dtype()) {
-    case phi::DataType::FLOAT16:
-      QKVBiasProcessFuseQKV<phi::dtype::float16>(
+    case DataType::FLOAT16:
+      QKVBiasProcessFuseQKV<phi::float16>(
           qkv_b_tensor, num_head, dim_head, dim_embed);
       break;
-    case phi::DataType::FLOAT32:
+    case DataType::FLOAT32:
       QKVBiasProcessFuseQKV<float>(qkv_b_tensor, num_head, dim_head, dim_embed);
       break;
     default:
@@ -1691,7 +1691,7 @@ inline void QKVWeightsBiasProcessFuseQKV(phi::DenseTensor* qkv_w_tensor,
 }
 
 // Just use for fused_multi_transformer_int8
-inline void TransposeWeights(phi::DenseTensor* weight_tensor) {
+inline void TransposeWeights(DenseTensor* weight_tensor) {
   auto* dev_ctx = static_cast<phi::CPUContext*>(
       phi::DeviceContextPool::Instance().Get(CPUPlace()));
   int m = static_cast<int>(weight_tensor->dims()[0]);

@@ -73,12 +73,12 @@ namespace paddle::framework::ir {
   GET_IR_NODE_FROM_SUBGRAPH(bn_saved_variance, bn_saved_variance, pattern_name)
 
 void recompute_bias_and_weights(const Scope* scope,
-                                ir::Node* conv_weight,                   //
-                                const ir::Node& bn_scale,                //
-                                const phi::DenseTensor& bn_bias_tensor,  //
-                                const ir::Node& bn_mean,                 //
-                                const ir::Node& bn_variance,             //
-                                phi::DenseTensor* eltwise_y_in_tensor,   //
+                                ir::Node* conv_weight,              //
+                                const ir::Node& bn_scale,           //
+                                const DenseTensor& bn_bias_tensor,  //
+                                const ir::Node& bn_mean,            //
+                                const ir::Node& bn_variance,        //
+                                DenseTensor* eltwise_y_in_tensor,   //
                                 float epsilon,
                                 const std::string& conv_type) {
   using EigenVectorArrayMap =
@@ -354,7 +354,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
         scope->FindVar(conv_weight->Name())->GetMutable<DenseTensor>();
     auto tensor_type = conv_weight_tensor->dtype();
 
-    if (tensor_type == phi::DataType::FLOAT16) {
+    if (tensor_type == DataType::FLOAT16) {
       ConvertTensorType<float16, float>(conv_weight_tensor);
     }
 
@@ -373,7 +373,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
     bool onednn_with_bias = is_onednn && has_bias;
 
     // Create eltwise_y (conv bias) variable
-    phi::DenseTensor* eltwise_y_in_tensor = nullptr;
+    DenseTensor* eltwise_y_in_tensor = nullptr;
     Node* eltwise_y_in_node = nullptr;
     if (!onednn_with_bias) {
       VarDesc eltwise_y_in_desc(
@@ -404,7 +404,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
                                  epsilon,
                                  conv_type());
 
-      if (tensor_type == phi::DataType::FLOAT16) {
+      if (tensor_type == DataType::FLOAT16) {
         ConvertTensorType<float, float16>(conv_weight_tensor);
         ConvertTensorType<float, float16>(eltwise_y_in_tensor);
       }
@@ -446,7 +446,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
                                    epsilon,
                                    conv_type());
 
-        if (tensor_type == phi::DataType::FLOAT16) {
+        if (tensor_type == DataType::FLOAT16) {
           ConvertTensorType<float, float16>(conv_weight_tensor);
           ConvertTensorType<float, float16>(conv_bias_tensor);
         }
@@ -673,7 +673,7 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
         scope->FindVar(conv_weight->Name())->GetMutable<DenseTensor>();
     auto tensor_type = conv_weight_tensor->dtype();
 
-    if (tensor_type == phi::DataType::FLOAT16) {
+    if (tensor_type == DataType::FLOAT16) {
       ConvertTensorType<float16, float>(conv_weight_tensor);
       ConvertTensorType<float16, float>(eltwise_y_in_tensor);
     }
@@ -732,7 +732,7 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
                                  conv_type());
     }
 
-    if (tensor_type == phi::DataType::FLOAT16) {
+    if (tensor_type == DataType::FLOAT16) {
       ConvertTensorType<float, float16>(conv_weight_tensor);
       ConvertTensorType<float, float16>(eltwise_y_in_tensor);
     }

@@ -29,8 +29,8 @@ namespace paddle {
 namespace framework {
 
 YieldInstruction::YieldInstruction(size_t id,
-                                   const phi::Place &place,
-                                   ::pir::Operation *op,
+                                   const Place &place,
+                                   pir::Operation *op,
                                    ValueExecutionInfo *value_exe_info)
     : InstructionBase(id, place), op_(op), value_exe_info_(value_exe_info) {
   VLOG(6) << "construct yield instruction";
@@ -98,9 +98,8 @@ void FullFakeTensor(const pir::Value &output_value, Variable *output_var) {
   }
 #ifdef PADDLE_WITH_CUDA
   phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
-  auto *dev_ctx = pool.Get(phi::GPUPlace());
-  phi::DataType dtype =
-      paddle::dialect::TransToPhiDataType(out_tensor_type.dtype());
+  auto *dev_ctx = pool.Get(GPUPlace());
+  DataType dtype = paddle::dialect::TransToPhiDataType(out_tensor_type.dtype());
   phi::FullKernel<float, phi::GPUContext>(
       *(static_cast<phi::GPUContext *>(dev_ctx)),
       phi::IntArray(common::vectorize(abs_dims)),

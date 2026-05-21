@@ -29,33 +29,33 @@ PD_DECLARE_int32(inner_op_parallelism);
 namespace phi::sr {
 
 template <typename T, typename Context>
-void AdamDenseParamSparseGradKernel(
-    const Context& dev_ctx,
-    const DenseTensor& param,
-    const SelectedRows& grad,
-    const DenseTensor& learning_rate,
-    const DenseTensor& moment1,
-    const DenseTensor& moment2,
-    const paddle::optional<DenseTensor>& moment2_max,
-    const DenseTensor& beta1_pow,
-    const DenseTensor& beta2_pow,
-    const paddle::optional<DenseTensor>& master_param UNUSED,
-    const paddle::optional<DenseTensor>& skip_update,
-    const Scalar& beta1,
-    const Scalar& beta2,
-    const Scalar& epsilon,
-    bool lazy_mode,
-    int64_t min_row_size_to_use_multithread,
-    bool multi_precision UNUSED,
-    bool use_global_beta_pow,
-    bool amsgrad,
-    DenseTensor* param_out,
-    DenseTensor* moment1_out,
-    DenseTensor* moment2_out,
-    DenseTensor* moment2_max_out,
-    DenseTensor* beta1_pow_out,
-    DenseTensor* beta2_pow_out,
-    DenseTensor* master_param_outs UNUSED) {
+void AdamDenseParamSparseGradKernel(const Context& dev_ctx,
+                                    const DenseTensor& param,
+                                    const SelectedRows& grad,
+                                    const DenseTensor& learning_rate,
+                                    const DenseTensor& moment1,
+                                    const DenseTensor& moment2,
+                                    const optional<DenseTensor>& moment2_max,
+                                    const DenseTensor& beta1_pow,
+                                    const DenseTensor& beta2_pow,
+                                    const optional<DenseTensor>& master_param
+                                        UNUSED,
+                                    const optional<DenseTensor>& skip_update,
+                                    const Scalar& beta1,
+                                    const Scalar& beta2,
+                                    const Scalar& epsilon,
+                                    bool lazy_mode,
+                                    int64_t min_row_size_to_use_multithread,
+                                    bool multi_precision UNUSED,
+                                    bool use_global_beta_pow,
+                                    bool amsgrad,
+                                    DenseTensor* param_out,
+                                    DenseTensor* moment1_out,
+                                    DenseTensor* moment2_out,
+                                    DenseTensor* moment2_max_out,
+                                    DenseTensor* beta1_pow_out,
+                                    DenseTensor* beta2_pow_out,
+                                    DenseTensor* master_param_outs UNUSED) {
   VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
 
   bool skip_update_ = false;
@@ -66,7 +66,7 @@ void AdamDenseParamSparseGradKernel(
         errors::InvalidArgument("Input(SkipUpdate) size must be 1, but get %d",
                                 skip_update->numel()));
     std::vector<bool> skip_update_vec;
-    phi::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
+    TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
     skip_update_ = skip_update_vec[0];
   }
   // skip_update=true, just copy input to output, and TensorCopy will call
@@ -146,6 +146,7 @@ void AdamDenseParamSparseGradKernel(
   const int64_t* rows = mixv_grad_merge_rows.Data(dev_ctx.GetPlace());
   auto row_numel = grad_tensor.numel() / grad_merge.rows().size();
 
+  T lr_value = static_cast<T>(learning_rate.data<double>()[0]);
   funcs::SparseAdamFunctor<T, funcs::CPUAdam> functor(
       beta1_,
       beta2_,
@@ -158,7 +159,7 @@ void AdamDenseParamSparseGradKernel(
       dev_ctx.template Alloc<T>(moment2_out),
       amsgrad ? moment2_max.get().data<T>() : nullptr,
       amsgrad ? dev_ctx.template Alloc<T>(moment2_max_out) : nullptr,
-      learning_rate.data<T>(),
+      &lr_value,
       grad_data,
       param.data<T>(),
       dev_ctx.template Alloc<T>(param_out),

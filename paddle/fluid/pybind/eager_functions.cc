@@ -58,6 +58,11 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/pybind/cuda_streams_py.h"
 #endif
 
+#if defined(PADDLE_WITH_CUDA)
+#include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
+#include "paddle/phi/kernels/legacy/gpu/tensor_debug.h"
+#endif
+
 #include "paddle/common/flags.h"
 #include "paddle/fluid/eager/custom_operator/custom_operator_utils.h"
 #include "paddle/phi/api/include/operants_manager.h"
@@ -98,7 +103,7 @@ size_t PyArray_Size_(PyObject* numpy_data) {
 
 class EagerNumpyAllocation : public phi::Allocation {
  public:
-  explicit EagerNumpyAllocation(PyObject* numpy_data, phi::DataType dtype)
+  explicit EagerNumpyAllocation(PyObject* numpy_data, DataType dtype)
       : Allocation(
             static_cast<void*>(pybind11::detail::array_proxy(numpy_data)->data),
             phi::SizeOf(dtype) * PyArray_Size_(numpy_data),
@@ -136,7 +141,7 @@ static PyObject* eager_api_scale(PyObject* self,
   float bias = CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 2), 2);
   bool bias_after_scale = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 3), 3);
   bool trace_backward = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 4), 4);
-  paddle::Tensor ret;
+  Tensor ret;
   {
     eager_gil_scoped_release guard;
     EagerSetDeviceId();
@@ -193,7 +198,7 @@ static PyObject* eager_api_run_partial_grad(PyObject* self,
     no_grad_vars = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 7), 7, mesh);
   }
 
-  std::vector<paddle::Tensor> result;
+  std::vector<Tensor> result;
   {
     eager_gil_scoped_release guard;
     EagerSetDeviceId();
@@ -216,9 +221,9 @@ static PyObject* eager_api_tensor_copy(PyObject* self,
                                        PyObject* args,
                                        PyObject* kwargs) {
   EAGER_TRY
-  paddle::Tensor& src =
+  Tensor& src =
       reinterpret_cast<TensorObject*>(PyTuple_GET_ITEM(args, 0))->tensor;
-  paddle::Tensor& dst =
+  Tensor& dst =
       reinterpret_cast<TensorObject*>(PyTuple_GET_ITEM(args, 1))->tensor;
   auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 2), 2);
   bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 3), 3);
@@ -242,18 +247,18 @@ PyObject* eager_api_get_all_grads(PyObject* self,
   EAGER_TRY
   auto tensor_list = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
 
-  std::vector<paddle::Tensor> ret;
+  std::vector<Tensor> ret;
   for (auto& tensor : tensor_list) {
     VLOG(6) << "Get grad for tensor: " << tensor.name();
     auto meta = egr::EagerUtils::nullable_autograd_meta(tensor);
     if (!meta || meta->StopGradient()) {
-      ret.emplace_back(paddle::Tensor());
+      ret.emplace_back(Tensor());
       continue;
     }
     if (meta && meta->Grad().has_allocation()) {
       ret.emplace_back(meta->Grad());
     } else {
-      ret.emplace_back(paddle::Tensor());
+      ret.emplace_back(Tensor());
     }
   }
   return ToPyObject(ret, true);
@@ -266,7 +271,7 @@ PyObject* eager_api_get_grads_lists(PyObject* self,
   EAGER_TRY
   auto tensor_list = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
   // The order of the 3 vectors is: FP16_grads, BF16_grads, FP32_grads
-  std::vector<std::vector<paddle::Tensor>> ret(3);
+  std::vector<std::vector<Tensor>> ret(3);
 
   for (auto& tensor : tensor_list) {
     VLOG(6) << "Get grad for tensor: " << tensor.name();
@@ -274,13 +279,13 @@ PyObject* eager_api_get_grads_lists(PyObject* self,
     if (meta && meta->Grad().has_allocation()) {
       auto& grad = meta->Grad();
       switch (grad.dtype()) {
-        case phi::DataType::FLOAT16:
+        case DataType::FLOAT16:
           ret[0].emplace_back(grad);
           break;
-        case phi::DataType::BFLOAT16:
+        case DataType::BFLOAT16:
           ret[1].emplace_back(grad);
           break;
-        case phi::DataType::FLOAT32:
+        case DataType::FLOAT32:
           ret[2].emplace_back(grad);
           break;
         default:
@@ -300,26 +305,26 @@ PyObject* eager_api_get_grads_types(PyObject* self,
   EAGER_TRY
   auto tensor_list = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
 
-  std::vector<phi::DataType> ret;
+  std::vector<DataType> ret;
 
   for (auto& tensor : tensor_list) {
     VLOG(6) << "Get grad for tensor: " << tensor.name();
     auto meta = egr::EagerUtils::nullable_autograd_meta(tensor);
     if (!meta || meta->StopGradient()) {
-      ret.emplace_back(phi::DataType::UNDEFINED);
+      ret.emplace_back(DataType::UNDEFINED);
       continue;
     }
 
     auto& grad = meta->Grad();
     if (meta && grad.has_allocation()) {
       if ((grad.is_dense_tensor() || grad.is_dist_tensor()) &&
-          (tensor.dtype() == phi::DataType::FLOAT32 ||
-           tensor.dtype() == phi::DataType::FLOAT16 ||
-           tensor.dtype() == phi::DataType::BFLOAT16)) {
+          (tensor.dtype() == DataType::FLOAT32 ||
+           tensor.dtype() == DataType::FLOAT16 ||
+           tensor.dtype() == DataType::BFLOAT16)) {
         ret.emplace_back(tensor.dtype());
       }
     } else {
-      ret.emplace_back(phi::DataType::UNDEFINED);
+      ret.emplace_back(DataType::UNDEFINED);
     }
   }
 
@@ -334,12 +339,12 @@ static PyObject* eager_api_read_next_tensor_list(PyObject* self,
   EAGER_TRY
   auto tensor_base_list =
       CastPyArg2VectorOfTensorBase(PyTuple_GET_ITEM(args, 0), 0);
-  std::vector<paddle::Tensor> tensor_list;
+  std::vector<Tensor> tensor_list;
   {
     eager_gil_scoped_release guard;
     tensor_list.reserve(tensor_base_list.size());
     auto func = [](phi::DenseTensor& tensor_base) {
-      paddle::Tensor tensor(egr::Controller::Instance().GenerateUniqueName());
+      Tensor tensor(egr::Controller::Instance().GenerateUniqueName());
       auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
       autograd_meta->SetPersistable(false);
       autograd_meta->SetStopGradient(true);
@@ -466,9 +471,9 @@ static PyObject* eager_api_jit_function_call(PyObject* self,
 
   std::shared_ptr<jit::Function> function =
       CastPyArg2JitFunction(PyTuple_GET_ITEM(args, 0), 0);
-  std::vector<paddle::Tensor> ins =
+  std::vector<Tensor> ins =
       CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 1), 1);
-  std::vector<paddle::Tensor> outs;
+  std::vector<Tensor> outs;
   {
     eager_gil_scoped_release guard;
     EagerSetDeviceId();
@@ -525,7 +530,7 @@ static PyObject* eager_api__get_custom_operator_inplace_reverse_idx(
 // parameters
 static Tensor InitializedEmptyTensor() {
   auto ddims = common::make_ddim({0});
-  auto tensor = paddle::Tensor();
+  auto tensor = Tensor();
   tensor.set_name(
       egr::Controller::Instance().GenerateUniqueName("generated_tensor"));
   auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
@@ -533,7 +538,7 @@ static Tensor InitializedEmptyTensor() {
   std::shared_ptr<DenseTensor> dense_tensor = nullptr;
   std::shared_ptr<phi::Allocation> allocation_ptr = nullptr;
   dense_tensor = std::make_shared<DenseTensor>(
-      allocation_ptr, phi::DenseTensorMeta(phi::DataType::FLOAT32, ddims));
+      allocation_ptr, phi::DenseTensorMeta(DataType::FLOAT32, ddims));
   tensor.set_impl(dense_tensor);
   autograd_meta->SetGradNode(
       std::make_shared<egr::GradNodeAccumulation>(tensor));
@@ -591,18 +596,17 @@ PyObject* eager_api_run_custom_op(PyObject* self,
       VLOG(7) << "Custom operator add input " << input
               << " to CustomOpKernelContext. Add un-initialized tensor "
                  "because the optional input is None";
-      ctx.EmplaceBackInput(paddle::Tensor());
+      ctx.EmplaceBackInput(Tensor());
       continue;
     }
-    if (paddle::framework::detail::IsDuplicableVar(input)) {
-      std::vector<paddle::Tensor> tensors =
-          CastPyArg2VectorOfTensor(obj, i + 1);
+    if (framework::detail::IsDuplicableVar(input)) {
+      std::vector<Tensor> tensors = CastPyArg2VectorOfTensor(obj, i + 1);
       ctx.EmplaceBackInputs(std::move(tensors));
       VLOG(7) << "Custom operator add input " << input
               << " to CustomOpKernelContext. Add vector<Tensor> size = "
               << ctx.InputRangeAt(i).second - ctx.InputRangeAt(i).first;
     } else {
-      const paddle::Tensor& tensor = CastPyArg2Tensor(obj, i + 1);  // NOLINT
+      const Tensor& tensor = CastPyArg2Tensor(obj, i + 1);  // NOLINT
       ctx.EmplaceBackInput(tensor);
       VLOG(7) << "Custom operator add input " << input
               << " to CustomOpKernelContext. Add Tensor for general case.";
@@ -624,18 +628,18 @@ PyObject* eager_api_run_custom_op(PyObject* self,
         VLOG(7) << "Custom operator add input " << input
                 << " to CustomOpKernelContext. Add un-initialized tensor "
                    "because the optional input is None";
-        ctx.EmplaceBackInput(paddle::Tensor());
+        ctx.EmplaceBackInput(Tensor());
         continue;
       }
-      if (paddle::framework::detail::IsDuplicableVar(input)) {
-        std::vector<paddle::Tensor> tensors =
+      if (framework::detail::IsDuplicableVar(input)) {
+        std::vector<Tensor> tensors =
             CastPyArg2VectorOfTensor(obj, i + 1, mesh);
         ctx.EmplaceBackInputs(std::move(tensors));
         VLOG(7) << "Custom operator add input " << input
                 << " to CustomOpKernelContext. Add vector<Tensor> size = "
                 << ctx.InputRangeAt(i).second - ctx.InputRangeAt(i).first;
       } else {
-        paddle::Tensor& tensor = CastPyArg2Tensor(obj, i + 1);  // NOLINT
+        Tensor& tensor = CastPyArg2Tensor(obj, i + 1);  // NOLINT
         ConvertAllInputsToDistTensor(mesh, tensor);
         ctx.EmplaceBackInput(tensor);
         VLOG(7) << "Custom operator add input " << input
@@ -712,17 +716,17 @@ PyObject* eager_api_run_custom_op(PyObject* self,
         const auto& input_range = ctx.InputRangeAt(in_idx);
         const auto& input_tensor = ctx.InputAt(input_range.first);
         // inplace optional [Tensor or vector<Tensor>], un-initialized tensor.
-        if (paddle::framework::detail::IsOptionalVar(output) &&
+        if (framework::detail::IsOptionalVar(output) &&
             !input_tensor.has_allocation()) {
           VLOG(7) << "Custom operator add output " << output
                   << " to CustomOpKernelContext. Add un-initialized tensor "
                      "because the inplace optional input is None";
-          ctx.EmplaceBackOutput(paddle::Tensor());
+          ctx.EmplaceBackOutput(Tensor());
           continue;
         }
         /// inplace vector<Tensor>, initialized tensor.
-        if (paddle::framework::detail::IsDuplicableVar(output)) {
-          std::vector<paddle::Tensor> empty_tensors;
+        if (framework::detail::IsDuplicableVar(output)) {
+          std::vector<Tensor> empty_tensors;
           size_t vector_size = input_range.second - input_range.first;
           empty_tensors.resize(vector_size);
           for (size_t i = 0; i < vector_size; ++i) {
@@ -748,11 +752,10 @@ PyObject* eager_api_run_custom_op(PyObject* self,
     // handle optional None output when construct backward graph
     for (size_t i = 0; i < ctx.OutputRange().size(); i++) {
       if (ctx.OutputRangeAt(i).first + 1 == ctx.OutputRangeAt(i).second) {
-        paddle::Tensor* out_tensor =
-            ctx.MutableOutputAt(ctx.OutputRangeAt(i).first);
+        Tensor* out_tensor = ctx.MutableOutputAt(ctx.OutputRangeAt(i).first);
         if (!out_tensor->has_allocation()) {
           PADDLE_ENFORCE(
-              paddle::framework::detail::IsOptionalVar(outputs.at(i)) ||
+              framework::detail::IsOptionalVar(outputs.at(i)) ||
                   out_tensor->is_dist_tensor(),
               common::errors::InvalidArgument(
                   "Custom operator[%s]'s %d-th output is not initialized. "
@@ -857,7 +860,7 @@ PyObject* eager_api_run_custom_op(PyObject* self,
       // Prepare Grad outputs
       size_t no_grad_cnt = 0;
       for (size_t i = 0; i < slot_ins_num; i++) {
-        const std::vector<paddle::Tensor>& in_tensors = ctx.InputsBetween(
+        const std::vector<Tensor>& in_tensors = ctx.InputsBetween(
             ctx.InputRangeAt(i).first, ctx.InputRangeAt(i).second);
 
         if (slot_map[0][0].find(static_cast<int>(i)) != slot_map[0][0].end()) {
@@ -871,7 +874,7 @@ PyObject* eager_api_run_custom_op(PyObject* self,
       // Prepare Grad inputs with grad of fwd outputs
       for (size_t i = 0; i < slot_outs_num; i++) {
         const auto& size_pair = ctx.OutputRangeAt(i);
-        const std::vector<paddle::Tensor>& out_tensors =
+        const std::vector<Tensor>& out_tensors =
             ctx.OutputsBetween(size_pair.first, size_pair.second);
         for (size_t j = size_pair.first; j < size_pair.second; j++) {
           // SetOutRankWithSlot: slot_id = i, rank = j - size_pair.first
@@ -945,7 +948,7 @@ static PyObject* eager_api_sparse_coo_tensor(PyObject* self,
   auto non_zero_elements = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 1), 1);
   auto dense_shape = CastPyArg2VectorOfInt(PyTuple_GET_ITEM(args, 2), 2);
   auto stop_gradient = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 3), 3);
-  paddle::Tensor tensor;
+  Tensor tensor;
   {
     eager_gil_scoped_release guard;
     EagerSetDeviceId();
@@ -990,7 +993,7 @@ static PyObject* eager_api_sparse_csr_tensor(PyObject* self,
   auto non_zero_elements = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 2), 2);
   auto dense_shape = CastPyArg2VectorOfInt(PyTuple_GET_ITEM(args, 3), 3);
   auto stop_gradient = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 4), 4);
-  paddle::Tensor tensor;
+  Tensor tensor;
   {
     eager_gil_scoped_release guard;
     EagerSetDeviceId();
@@ -1055,6 +1058,52 @@ static PyObject* eager_api_reset_saved_tensors_hooks(PyObject* self,
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+
+#if defined(PADDLE_WITH_CUDA)
+static PyObject* eager_api_print_tensor_in_gpu(PyObject* self,
+                                               PyObject* args,
+                                               PyObject* kwargs) {
+  EAGER_TRY
+  VLOG(4) << "Running in eager_api_print_tensor_in_gpu.";
+  auto tensor = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
+  PADDLE_ENFORCE_EQ(tensor.is_dense_tensor(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "_print_tensor_in_gpu only supports DenseTensor."));
+  const auto& dense =
+      *static_cast<const phi::DenseTensor*>(tensor.impl().get());
+  PADDLE_ENFORCE_EQ(dense.place().GetType() == phi::AllocationType::GPU,
+                    true,
+                    common::errors::InvalidArgument(
+                        "_print_tensor_in_gpu only supports GPU tensors. "
+                        "Please call tensor.cuda() first."));
+  // ----------------------------------------------------------------
+  // Stream selection: must use the CUDA Graph capturing stream when
+  // capture is in progress.  Using get_current_stream() (which may
+  // return the legacy stream 0) during capture would cause
+  // cudaErrorStreamCaptureImplicit (error 906) because CUDA forbids
+  // any operation on the legacy stream while another stream is being
+  // captured.
+  //
+  // When NOT capturing, get_current_stream gives the correct stream
+  // for ordering the debug kernel after preceding ops.
+  // ----------------------------------------------------------------
+  cudaStream_t stream = nullptr;
+  if (phi::backends::gpu::CUDAGraph::IsCapturing()) {
+    // During graph capture the DeviceContext stream IS the capturing
+    // stream (set in cuda_graph_with_memory_pool.cc:BeginCapture).
+    auto* dev_ctx = static_cast<phi::GPUContext*>(
+        phi::DeviceContextPool::Instance().Get(dense.place()));
+    stream = dev_ctx->stream();
+  } else {
+    const auto device_id = dense.place().GetDeviceId();
+    stream = paddle::platform::get_current_stream(device_id)->raw_stream();
+  }
+  phi::DebugPrintGPUTensor(dense, stream);
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+#endif
 
 #if defined(PADDLE_WITH_CUDA)
 static PyObject* eager_api_async_read(PyObject* self,
@@ -1210,9 +1259,9 @@ static PyObject* eager_api_async_read(PyObject* self,
     }
 
     // Select the index data to the buffer
-    auto index_select = [](const paddle::Tensor& src_tensor,
-                           const paddle::Tensor& index_tensor,
-                           paddle::Tensor* buffer_tensor) {
+    auto index_select = [](const Tensor& src_tensor,
+                           const Tensor& index_tensor,
+                           Tensor* buffer_tensor) {
       auto* src_data = src_tensor.data<float>();
       auto* index_data = index_tensor.data<int64_t>();
       auto* buffer_data = buffer_tensor->data<float>();
@@ -1349,7 +1398,7 @@ static PyObject* eager_api_to_uva_tensor(PyObject* self,
                                          PyObject* kwargs) {
   EAGER_TRY
   VLOG(4) << "Running in eager_api_to_uva_tensor.";
-  auto new_tensor = std::make_shared<paddle::Tensor>(
+  auto new_tensor = std::make_shared<Tensor>(
       egr::Controller::Instance().GenerateUniqueName());
   PyObject* obj = PyTuple_GET_ITEM(args, 0);
   auto array = py::cast<py::array>(py::handle(obj));
@@ -1375,8 +1424,8 @@ static PyObject* eager_api_to_uva_tensor(PyObject* self,
     SetUVATensorFromPyArray<int8_t>(new_tensor, array, device_id);
   } else if (py::isinstance<py::array_t<int16_t>>(array)) {
     SetUVATensorFromPyArray<int16_t>(new_tensor, array, device_id);
-  } else if (py::isinstance<py::array_t<phi::dtype::float16>>(array)) {
-    SetUVATensorFromPyArray<phi::dtype::float16>(new_tensor, array, device_id);
+  } else if (py::isinstance<py::array_t<phi::float16>>(array)) {
+    SetUVATensorFromPyArray<phi::float16>(new_tensor, array, device_id);
   } else if (py::isinstance<py::array_t<bool>>(array)) {
     SetUVATensorFromPyArray<bool>(new_tensor, array, device_id);
   } else {
@@ -1415,7 +1464,7 @@ static PyObject* eager_api_set_master_grads(PyObject* self,
     if (!egr::EagerUtils::IsLeafTensor(tensor)) {
       continue;
     }
-    paddle::Tensor* grad = egr::EagerUtils::mutable_grad(tensor);
+    Tensor* grad = egr::EagerUtils::mutable_grad(tensor);
     PADDLE_ENFORCE_NE(
         grad,
         nullptr,
@@ -1423,10 +1472,9 @@ static PyObject* eager_api_set_master_grads(PyObject* self,
                               "Please check if you have manually cleared "
                               "the grad inside autograd_meta"));
     if (((*grad).has_allocation() || (*grad).is_dist_tensor()) &&
-        ((*grad).dtype() == phi::DataType::FLOAT16 ||
-         (*grad).dtype() == phi::DataType::BFLOAT16)) {
-      auto master_grad =
-          paddle::experimental::cast(*grad, phi::DataType::FLOAT32);
+        ((*grad).dtype() == DataType::FLOAT16 ||
+         (*grad).dtype() == DataType::BFLOAT16)) {
+      auto master_grad = paddle::experimental::cast(*grad, DataType::FLOAT32);
       grad->set_impl(master_grad.impl());
     }
     VLOG(6) << "finish setting master_grad for tensor: " << tensor.name();
@@ -1689,6 +1737,10 @@ PyMethodDef variable_functions[] = {  // NOLINT
      nullptr},
     {"to_uva_tensor",
      (PyCFunction)(void (*)())eager_api_to_uva_tensor,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_print_tensor_in_gpu",
+     (PyCFunction)(void (*)())eager_api_print_tensor_in_gpu,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
 #endif

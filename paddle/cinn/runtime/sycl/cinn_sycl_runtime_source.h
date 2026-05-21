@@ -351,11 +351,11 @@ inline sycl::half FN_FP16(pow)(sycl::half a, sycl::half b) {
 // *************************************************************** //
 // reduce operator, need `--expt-relaxed-constexpr` option to call std function
 // in device kernel
-#define EXPAND_REDUCE_INT32_MARCO(MARCO, ...)                               \
-  MARCO(sum_int32, 0, int, ##__VA_ARGS__)                                   \
-  MARCO(prod_int32, 1, int, ##__VA_ARGS__)                                  \
-  MARCO(max_int32, std::numeric_limits<int32_t>::min(), int, ##__VA_ARGS__) \
-  MARCO(min_int32, std::numeric_limits<int32_t>::max(), int, ##__VA_ARGS__)
+#define EXPAND_REDUCE_INT32_MACRO(MACRO, ...)                               \
+  MACRO(sum_int32, 0, int, ##__VA_ARGS__)                                   \
+  MACRO(prod_int32, 1, int, ##__VA_ARGS__)                                  \
+  MACRO(max_int32, std::numeric_limits<int32_t>::min(), int, ##__VA_ARGS__) \
+  MACRO(min_int32, std::numeric_limits<int32_t>::max(), int, ##__VA_ARGS__)
 
 inline int cinn_sum_int32(const int left, const int right) {
   return left + right;
@@ -370,12 +370,12 @@ inline int cinn_min_int32(const int left, const int right) {
   return sycl::min(left, right);
 }
 
-#define EXPAND_REDUCE_INT64_MARCO(MARCO, ...)                                 \
-  MARCO(sum_int64, 0, int64_t, ##__VA_ARGS__)                                 \
-  MARCO(prod_int64, 1, int64_t, ##__VA_ARGS__)                                \
-  MARCO(                                                                      \
+#define EXPAND_REDUCE_INT64_MACRO(MACRO, ...)                                 \
+  MACRO(sum_int64, 0, int64_t, ##__VA_ARGS__)                                 \
+  MACRO(prod_int64, 1, int64_t, ##__VA_ARGS__)                                \
+  MACRO(                                                                      \
       max_int64, std::numeric_limits<int64_t>::min(), int64_t, ##__VA_ARGS__) \
-  MARCO(min_int64, std::numeric_limits<int64_t>::max(), int64_t, ##__VA_ARGS__)
+  MACRO(min_int64, std::numeric_limits<int64_t>::max(), int64_t, ##__VA_ARGS__)
 
 inline int64_t cinn_sum_int64(const int64_t left, const int64_t right) {
   return left + right;
@@ -524,8 +524,8 @@ inline bool cinn_any(const bool left, const bool right) {
     }                                                                          \
   }
 
-EXPAND_REDUCE_INT32_MARCO(CINN_WARP_SHUFFLE_INTERNAL_IMPL)
-EXPAND_REDUCE_INT64_MARCO(CINN_WARP_SHUFFLE_INTERNAL_IMPL)
+EXPAND_REDUCE_INT32_MACRO(CINN_WARP_SHUFFLE_INTERNAL_IMPL)
+EXPAND_REDUCE_INT64_MACRO(CINN_WARP_SHUFFLE_INTERNAL_IMPL)
 EXPAND_REDUCE_FP32_MACRO(CINN_WARP_SHUFFLE_INTERNAL_IMPL)
 EXPAND_REDUCE_FP64_MACRO(CINN_WARP_SHUFFLE_INTERNAL_IMPL)
 EXPAND_REDUCE_BOOL_MACRO(CINN_WARP_SHUFFLE_INTERNAL_IMPL)
@@ -556,8 +556,8 @@ EXPAND_REDUCE_FP16_MACRO(CINN_WARP_SHUFFLE_INTERNAL_IMPL)
     return cinn_warp_shuffle_##REDUCE_TYPE##_internal(tmp_val, item_ct1); \
   }
 
-EXPAND_REDUCE_INT32_MARCO(CINN_WARP_REDUCE_IMPL)
-EXPAND_REDUCE_INT64_MARCO(CINN_WARP_REDUCE_IMPL)
+EXPAND_REDUCE_INT32_MACRO(CINN_WARP_REDUCE_IMPL)
+EXPAND_REDUCE_INT64_MACRO(CINN_WARP_REDUCE_IMPL)
 EXPAND_REDUCE_FP32_MACRO(CINN_WARP_REDUCE_IMPL)
 EXPAND_REDUCE_FP64_MACRO(CINN_WARP_REDUCE_IMPL)
 EXPAND_REDUCE_BOOL_MACRO(CINN_WARP_REDUCE_IMPL)
@@ -621,8 +621,8 @@ performance if there is no access to global memory.
         cinn_warp_shuffle_##REDUCE_TYPE##_internal);                        \
   }
 
-EXPAND_REDUCE_INT32_MARCO(CINN_BLOCK_REDUCE_INTERNAL_MACRO)
-EXPAND_REDUCE_INT64_MARCO(CINN_BLOCK_REDUCE_INTERNAL_MACRO)
+EXPAND_REDUCE_INT32_MACRO(CINN_BLOCK_REDUCE_INTERNAL_MACRO)
+EXPAND_REDUCE_INT64_MACRO(CINN_BLOCK_REDUCE_INTERNAL_MACRO)
 EXPAND_REDUCE_FP32_MACRO(CINN_BLOCK_REDUCE_INTERNAL_MACRO)
 EXPAND_REDUCE_FP64_MACRO(CINN_BLOCK_REDUCE_INTERNAL_MACRO)
 EXPAND_REDUCE_BOOL_MACRO(CINN_BLOCK_REDUCE_INTERNAL_MACRO)
@@ -651,8 +651,8 @@ EXPAND_REDUCE_FP16_MACRO(CINN_BLOCK_REDUCE_INTERNAL_MACRO)
     return cinn_block_reduce_##REDUCE_TYPE##_internal(tmp_val, item_ct1); \
   }
 
-EXPAND_REDUCE_INT32_MARCO(CINN_BLOCK_REDUCE_IMPL)
-EXPAND_REDUCE_INT64_MARCO(CINN_BLOCK_REDUCE_IMPL)
+EXPAND_REDUCE_INT32_MACRO(CINN_BLOCK_REDUCE_IMPL)
+EXPAND_REDUCE_INT64_MACRO(CINN_BLOCK_REDUCE_IMPL)
 EXPAND_REDUCE_FP32_MACRO(CINN_BLOCK_REDUCE_IMPL)
 EXPAND_REDUCE_FP64_MACRO(CINN_BLOCK_REDUCE_IMPL)
 EXPAND_REDUCE_BOOL_MACRO(CINN_BLOCK_REDUCE_IMPL)
@@ -667,8 +667,8 @@ EXPAND_REDUCE_FP16_MACRO(CINN_BLOCK_REDUCE_IMPL)
 
 #undef CINN_BLOCK_REDUCE_IMPL
 
-#undef EXPAND_REDUCE_INT32_MARCO
-#undef EXPAND_REDUCE_INT64_MARCO
+#undef EXPAND_REDUCE_INT32_MACRO
+#undef EXPAND_REDUCE_INT64_MACRO
 #undef EXPAND_REDUCE_FP32_MACRO
 #undef EXPAND_REDUCE_FP64_MACRO
 #undef EXPAND_REDUCE_BOOL_MACRO

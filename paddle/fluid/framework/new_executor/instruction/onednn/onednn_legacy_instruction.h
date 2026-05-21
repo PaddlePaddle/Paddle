@@ -29,8 +29,8 @@ class ValueExecutionInfo;
 class OneDNNLegacyKernelInstruction : public InstructionBase {
  public:
   OneDNNLegacyKernelInstruction(size_t id,
-                                const phi::Place& place,
-                                ::pir::Operation* op,
+                                const Place& place,
+                                pir::Operation* op,
                                 const ValueExecutionInfo* value_exec_info);
 
   ~OneDNNLegacyKernelInstruction();
@@ -48,7 +48,7 @@ class OneDNNLegacyKernelInstruction : public InstructionBase {
 
   const std::string& Name() const override { return legacy_op_name_; }
 
-  ::pir::Operation* Operation() const override { return op_; }
+  pir::Operation* Operation() const override { return op_; }
 
  private:
   std::string legacy_op_name_;
@@ -64,13 +64,13 @@ class OneDNNLegacyKernelInstruction : public InstructionBase {
 
   phi::Kernel* phi_kernel_{nullptr};  // not owned
 
-  ::pir::Operation* op_{nullptr};  // not owned
+  pir::Operation* op_{nullptr};  // not owned
 
   const ValueExecutionInfo* value_exec_info_;  // not owned
 
   std::set<std::string> data_format_tensors_{};
   std::set<std::string> skip_format_tensors_{};
-  phi::DataLayout input_layout_{phi::DataLayout::kAnyLayout};
+  DataLayout input_layout_{DataLayout::kAnyLayout};
 };
 
 }  // namespace framework

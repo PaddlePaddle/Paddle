@@ -13,14 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/auc_kernel.h"
-
-#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
-
-using phi::PADDLE_CUDA_NUM_THREADS;
 
 __global__ void ClearObsoleteDataKernel(int64_t *pos,
                                         int64_t *neg,
@@ -74,9 +70,9 @@ __global__ void AddDataKernel(const int64_t *label_data,
                    "The predict data must gather or equal 0.");
     uint32_t binIdx = static_cast<uint32_t>(predict_data * num_thresholds);
     if (label_data[i]) {
-      phi::CudaAtomicAdd(pos + cur_step_begin + binIdx, 1);
+      CudaAtomicAdd(pos + cur_step_begin + binIdx, 1);
     } else {
-      phi::CudaAtomicAdd(neg + cur_step_begin + binIdx, 1);
+      CudaAtomicAdd(neg + cur_step_begin + binIdx, 1);
     }
   }
 }
@@ -189,7 +185,7 @@ void AucKernel(const Context &dev_ctx,
                const DenseTensor &label,
                const DenseTensor &stat_pos,
                const DenseTensor &stat_neg,
-               const paddle::optional<DenseTensor> &ins_tag_weight,
+               const optional<DenseTensor> &ins_tag_weight,
                const std::string &curve,
                int num_thresholds,
                int slide_steps,

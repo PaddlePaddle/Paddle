@@ -100,6 +100,10 @@ class Unpool2dMaxFunctor {
     const T* input_data = input.data<T>();
     const IndT* indices_data = indices.data<IndT>();
     T* output_data = dev_ctx.template Alloc<T>(output);
+    // Early return for zero-size input to avoid invalid CUDA kernel launch
+    if (input.numel() == 0) {
+      return;
+    }
     int threads = 1024;
     int64_t grid_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
     int grid = std::min((input.numel() + threads - 1) / threads, grid_max);
@@ -158,6 +162,10 @@ class Unpool3dMaxFunctor {
     const T* input_data = input.data<T>();
     const IndT* indices_data = indices.data<IndT>();
     T* output_data = dev_ctx.template Alloc<T>(output);
+    // Early return for zero-size input to avoid invalid CUDA kernel launch
+    if (input.numel() == 0) {
+      return;
+    }
     int threads = 1024;
     int64_t grid_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
     int grid = std::min((input.numel() + threads - 1) / threads, grid_max);
@@ -196,7 +204,7 @@ void UnpoolKernel(const Context& dev_ctx,
   }
 
   const auto& indices_type = indices.dtype();
-  if (indices_type == phi::DataType::INT32) {
+  if (indices_type == DataType::INT32) {
     Unpool2dMaxFunctor<T, int, Context> unpool2d_max_forward;
     unpool2d_max_forward(dev_ctx, x, indices, out);
   } else {
@@ -225,7 +233,7 @@ void Unpool3dKernel(const Context& dev_ctx,
   }
 
   const auto& indices_type = indices.dtype();
-  if (indices_type == phi::DataType::INT32) {
+  if (indices_type == DataType::INT32) {
     Unpool3dMaxFunctor<T, int, Context> unpool3d_max_forward;
     unpool3d_max_forward(dev_ctx, x, indices, out);
   } else {

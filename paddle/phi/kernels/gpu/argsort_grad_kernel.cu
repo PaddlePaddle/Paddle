@@ -26,6 +26,12 @@
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 #ifdef __HIPCC__
+#include <rocprim/config.hpp>
+#if defined(ROCPRIM_VERSION) && ROCPRIM_VERSION >= 400000
+// rocPRIM 4.x (ROCm 7.0+) removed rocprim::detail::radix_key_codec_base.
+// This TU has no actual cub::*/thrust::*/rocprim::* sort calls, so no
+// replacement traits are needed; keep this arm empty.
+#else
 namespace rocprim {
 namespace detail {
 template <>
@@ -37,6 +43,7 @@ struct radix_key_codec_base<phi::bfloat16>
     : radix_key_codec_integral<phi::bfloat16, uint16_t> {};
 }  // namespace detail
 }  // namespace rocprim
+#endif  // ROCPRIM_VERSION
 #else
 // set cub base traits in order to handle float16
 namespace cub {
@@ -83,7 +90,7 @@ static __global__ void FillGrad(const T* dO,
 }
 
 template <typename T, typename IndType>
-void ArgFullAssign(const phi::GPUContext& dev_ctx,
+void ArgFullAssign(const GPUContext& dev_ctx,
                    const DenseTensor* dO,
                    const DenseTensor* indices,
                    DenseTensor* dX,
@@ -117,7 +124,7 @@ void ArgFullAssign(const phi::GPUContext& dev_ctx,
 }
 
 template <typename T>
-void ArgFlattenAssign(const phi::GPUContext& dev_ctx,
+void ArgFlattenAssign(const GPUContext& dev_ctx,
                       const DenseTensor* dO,
                       const DenseTensor* indices,
                       int64_t size,
@@ -170,7 +177,7 @@ void ArgsortGradKernel(const Context& dev_ctx,
   // Special case for full sort, speedup ~190x.
   if (axis == -1 || axis + 1 == in_dims.size()) {
     const int64_t input_height =
-        common::product(common::slice_ddim(in_dims, 0, in_dims.size() - 1));
+        common::product(slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t input_width = in_dims[in_dims.size() - 1];
     ArgFullAssign<T, int64_t>(
         dev_ctx, &out_grad, &indices, in_grad, input_height, input_width);
@@ -199,8 +206,8 @@ void ArgsortGradKernel(const Context& dev_ctx,
     TransposeKernel<T, Context>(dev_ctx, out_grad, trans, &trans_dO);
     TransposeKernel<int64_t, Context>(dev_ctx, indices, trans, &trans_ind);
 
-    const int64_t input_height = common::product(
-        common::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
+    const int64_t input_height =
+        common::product(slice_ddim(trans_dims, 0, trans_dims.size() - 1));
     const int64_t input_width = trans_dims[trans_dims.size() - 1];
 
     DenseTensor tmp_out;

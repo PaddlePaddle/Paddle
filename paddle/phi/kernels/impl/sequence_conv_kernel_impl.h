@@ -25,7 +25,7 @@ namespace phi {
 template <typename T, typename Context>
 void SequenceConvKernel(const Context& dev_ctx,
                         const DenseTensor& x,
-                        const paddle::optional<DenseTensor>& padding_data,
+                        const optional<DenseTensor>& padding_data,
                         const DenseTensor& filter,
                         int context_length,
                         bool padding_trainable,
@@ -64,7 +64,7 @@ void SequenceConvKernel(const Context& dev_ctx,
   funcs::SetConstant<Context, T> set_zero;
   auto blas = funcs::GetBlas<Context, T>(dev_ctx);
   set_zero(dev_ctx, &col, static_cast<T>(0));
-  phi::math::ContextProjectFunctor<Context, T> seq_project_functor;
+  math::ContextProjectFunctor<Context, T> seq_project_functor;
 
   seq_project_functor(dev_ctx,
                       *in,
@@ -83,7 +83,7 @@ void SequenceConvKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void SequenceConvGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
-                            const paddle::optional<DenseTensor>& padding_data,
+                            const optional<DenseTensor>& padding_data,
                             const DenseTensor& filter,
                             const DenseTensor& out_grad,
                             int context_length,
@@ -125,8 +125,8 @@ void SequenceConvGradKernel(const Context& dev_ctx,
     set_zero(dev_ctx, &col, static_cast<T>(0));
     blas.MatMul(*out_g, false, filter, true, &col);
   }
-  phi::math::ContextProjectFunctor<Context, T> seq_project_functor;
-  phi::math::ContextProjectGradFunctor<Context, T> seq_project_grad_functor;
+  math::ContextProjectFunctor<Context, T> seq_project_functor;
+  math::ContextProjectGradFunctor<Context, T> seq_project_grad_functor;
 
   if (in_g != nullptr) {
     dev_ctx.template Alloc<T>(in_g);

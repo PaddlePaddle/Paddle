@@ -30,7 +30,6 @@ defaults:
 jobs:
   check-bypass:
     name: Check bypass
-    if: ${{ inputs.clone-can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: distribute-test
@@ -39,10 +38,11 @@ jobs:
 
   test:
     name: Test
-    needs: check-bypass
-    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
+    needs: [check-bypass]
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' && inputs.clone-can-skip != 'true' }}
     runs-on:
       group: Distribute
+    timeout-minutes: 120
     steps:
       - name: Check docker image and run container
         env:
@@ -121,6 +121,7 @@ jobs:
           -w /paddle --network host ${docker_image}
 
       - name: Download paddle.tar.gz and merge target branch
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*

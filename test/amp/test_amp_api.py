@@ -23,6 +23,8 @@ from paddle import nn
 from paddle.base import core
 from paddle.static import amp
 
+paddle.set_flags({"FLAGS_use_legacy_linear": True})
+
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),

@@ -34,20 +34,20 @@ using allocation::AllocationPtr;
 using allocation::Allocator;
 using phi::Allocation;
 
-PADDLE_API extern std::shared_ptr<Allocation> AllocShared(
-    const phi::Place& place, size_t size);
+PADDLE_API extern std::shared_ptr<Allocation> AllocShared(const Place& place,
+                                                          size_t size);
 
-PADDLE_API extern AllocationPtr Alloc(const phi::Place& place, size_t size);
+PADDLE_API extern AllocationPtr Alloc(const Place& place, size_t size);
 
-PADDLE_API extern uint64_t Release(const phi::Place& place);
+PADDLE_API extern uint64_t Release(const Place& place);
 
 // Compact memory of free blocks held by the VmmAllocator.
 PADDLE_API extern size_t Compact(const GPUPlace& place);
 
 PADDLE_API extern std::shared_ptr<Allocation> AllocShared(
-    const phi::Place& place, size_t size, const phi::Stream& stream);
+    const Place& place, size_t size, const phi::Stream& stream);
 
-PADDLE_API extern AllocationPtr Alloc(const phi::Place& place,
+PADDLE_API extern AllocationPtr Alloc(const Place& place,
                                       size_t size,
                                       const phi::Stream& stream);
 
@@ -74,8 +74,7 @@ bool RecordStream(std::shared_ptr<Allocation> allocation, XPUStream stream);
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-extern uint64_t Release(const phi::CustomPlace& place,
-                        phi::stream::stream_t stream);
+extern uint64_t Release(const CustomPlace& place, phi::stream::stream_t stream);
 
 bool RecordStream(std::shared_ptr<Allocation> allocation,
                   phi::stream::stream_t stream);
@@ -89,7 +88,7 @@ phi::stream::stream_t GetStream(const std::shared_ptr<Allocation>& allocation);
 template <typename StreamType>
 struct ThrustAllocator {
   typedef char value_type;
-  ThrustAllocator(phi::Place place, StreamType stream) {
+  ThrustAllocator(Place place, StreamType stream) {
     place_ = place;
     stream_ = stream;
   }
@@ -118,7 +117,7 @@ struct ThrustAllocator {
   typedef std::unordered_map<char*, std::shared_ptr<phi::Allocation>>
       allocation_map_type;
   allocation_map_type busy_allocation_;
-  phi::Place place_;
+  Place place_;
   StreamType stream_;
 };
 

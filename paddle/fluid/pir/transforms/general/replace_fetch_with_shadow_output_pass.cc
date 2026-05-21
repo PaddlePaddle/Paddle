@@ -21,62 +21,57 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 
 class ReplaceFetchWithShadowOutputPattern
-    : public pir::OpRewritePattern<paddle::dialect::FetchOp> {
+    : public OpRewritePattern<paddle::dialect::FetchOp> {
  public:
-  using pir::OpRewritePattern<paddle::dialect::FetchOp>::OpRewritePattern;
-  bool MatchAndRewrite(
-      paddle::dialect::FetchOp op,
-      pir::PatternRewriter& rewriter) const override {  // NOLINT
+  using OpRewritePattern<paddle::dialect::FetchOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::FetchOp op,
+                       PatternRewriter& rewriter) const override {  // NOLINT
     // for pd_op.data -> value -> pd_op.fetch, we insert pd_op.scale before
     // pd_op.fetch to solve error likes [what(): (NotFound) Variable 'xxx' is
     // not found in scope.]
-    if (pir::GetDefiningOpForInput(op, 0)->HasAttribute("name")) {
+    if (GetDefiningOpForInput(op, 0)->HasAttribute("name")) {
       auto scale_op = rewriter.Build<paddle::dialect::ScaleOp>(
           op->operand_source(0), 1.0, 0.0, true);
-      rewriter.Build<pir::ShadowOutputOp>(
+      rewriter.Build<ShadowOutputOp>(
           scale_op->result(0),
-          op->attributes().at("name").dyn_cast<pir::StrAttribute>().AsString());
+          op->attributes().at("name").dyn_cast<StrAttribute>().AsString());
     } else {
-      rewriter.Build<pir::ShadowOutputOp>(
+      rewriter.Build<ShadowOutputOp>(
           op->operand_source(0),
-          op->attributes().at("name").dyn_cast<pir::StrAttribute>().AsString());
+          op->attributes().at("name").dyn_cast<StrAttribute>().AsString());
     }
     rewriter.EraseOp(op);
     return true;
   }
 };
 
-class ReplaceFetchWithShadowOutputPass : public pir::PatternRewritePass {
+class ReplaceFetchWithShadowOutputPass : public PatternRewritePass {
  public:
   ReplaceFetchWithShadowOutputPass()
-      : pir::PatternRewritePass("replace_fetch_with_shadow_output_pass", 0) {}
+      : PatternRewritePass("replace_fetch_with_shadow_output_pass", 0) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext* context) override {
+    RewritePatternSet ps(context);
     ps.Add<ReplaceFetchWithShadowOutputPattern>(context);
     return ps;
   }
 
-  bool CanApplyOn(pir::Operation* op) const override {
-    return op->isa<::pir::ModuleOp>() && op->num_regions() > 0;
+  bool CanApplyOn(Operation* op) const override {
+    return op->isa<ModuleOp>() && op->num_regions() > 0;
   }
 
  private:
-  pir::FrozenRewritePatternSet patterns_;
+  FrozenRewritePatternSet patterns_;
 };
 
-}  // namespace
-
-namespace pir {
-
-std::unique_ptr<pir::Pass> CreateReplaceFetchWithShadowOutputPass() {
+std::unique_ptr<Pass> CreateReplaceFetchWithShadowOutputPass() {
   return std::make_unique<ReplaceFetchWithShadowOutputPass>();
 }
 
 }  // namespace pir
 
 REGISTER_IR_PASS(replace_fetch_with_shadow_output_pass,
-                 ReplaceFetchWithShadowOutputPass);
+                 pir::ReplaceFetchWithShadowOutputPass);

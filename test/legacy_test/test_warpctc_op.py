@@ -630,6 +630,69 @@ class TestWarpCTCOpError(unittest.TestCase):
         self.assertRaises(ValueError, test_dygraph_zero_size)
         paddle.enable_static()
 
+    def test_dygraph_zero_size_with_padding(self):
+        """Test zero size inputs when using LogitsLength and LabelLength."""
+        paddle.disable_static()
+
+        batch_size = 4
+        num_classes = 8
+        max_sequence_length = 5
+        logits = paddle.uniform(
+            [max_sequence_length, batch_size, num_classes],
+            min=0.1,
+            max=1.0,
+        )
+        labels = paddle.randint(
+            0, num_classes - 1, [batch_size, num_classes], dtype="int32"
+        )
+        labels_length = paddle.to_tensor([2, 1, 3, 2])
+        logits_length = paddle.to_tensor([5, 4, 3, 2])
+
+        def test_zero_labels_batch_size():
+            labels = paddle.zeros([0, 3], dtype="int32")
+            paddle.nn.functional.ctc_loss(
+                log_probs=logits,
+                labels=labels,
+                input_lengths=logits_length,
+                label_lengths=labels_length,
+            )
+
+        def test_zero_logits_length_batch_size():
+            logits_length = paddle.zeros([0], dtype="int32")
+            paddle.nn.functional.ctc_loss(
+                log_probs=logits,
+                labels=labels,
+                input_lengths=logits_length,
+                label_lengths=labels_length,
+            )
+
+        def test_zero_labels_length_batch_size():
+            labels_length = paddle.zeros([0], dtype="int32")
+            paddle.nn.functional.ctc_loss(
+                log_probs=logits,
+                labels=labels,
+                input_lengths=logits_length,
+                label_lengths=labels_length,
+            )
+
+        self.assertRaisesRegex(
+            ValueError,
+            f"Expected label to have size {batch_size} at dimension 0, but got size 0",
+            test_zero_labels_batch_size,
+        )
+        self.assertRaisesRegex(
+            ValueError,
+            f"Expected logits_length to have size {batch_size} at dimension 0, but got size 0",
+            test_zero_logits_length_batch_size,
+        )
+        self.assertRaisesRegex(
+            ValueError,
+            f"Expected labels_length to have size {batch_size} at dimension 0, but got size 0",
+            test_zero_labels_length_batch_size,
+        )
+
+        paddle.enable_static()
+
 
 class TestCTCLossAPICase(unittest.TestCase):
     def test_class_api(self):

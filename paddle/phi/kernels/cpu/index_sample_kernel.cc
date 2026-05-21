@@ -30,7 +30,7 @@
 #include "paddle/phi/core/utils/data_type.h"
 namespace phi {
 template <typename T, typename Context, typename IndexT = int>
-void IndexSampleInner(const Context &context,
+void IndexSampleInner(const Context &dev_ctx,
                       const DenseTensor &input,
                       const DenseTensor &index,
                       DenseTensor *output) {
@@ -44,8 +44,8 @@ void IndexSampleInner(const Context &context,
 
   std::vector<T> input_vec;
   std::vector<IndexT> index_vec;
-  phi::TensorToVector(input, context, &input_vec);
-  phi::TensorToVector<IndexT>(index, context, &index_vec);
+  TensorToVector(input, dev_ctx, &input_vec);
+  TensorToVector<IndexT>(index, dev_ctx, &index_vec);
 
   std::vector<T> res(index_ids_num);
   for (int64_t i = 0; i < index_ids_num; i++) {
@@ -76,9 +76,9 @@ void IndexSampleInner(const Context &context,
     res[i] = v;
   }
 
-  auto ddim = common::make_ddim({batch_size, index_length});
-  context.template Alloc<T>(output);
-  phi::TensorFromVector(res, context, output);
+  auto ddim = make_ddim({batch_size, index_length});
+  dev_ctx.template Alloc<T>(output);
+  TensorFromVector(res, dev_ctx, output);
   output->Resize(ddim);
 }
 

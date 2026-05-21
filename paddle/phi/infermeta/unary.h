@@ -69,6 +69,12 @@ PADDLE_API void ArgMinMaxInferMeta(const MetaTensor& x,
                                    MetaTensor* out,
                                    MetaConfig config = MetaConfig());
 
+PADDLE_API void AMinMaxInferMeta(const MetaTensor& x,
+                                 const std::vector<int64_t>& axis,
+                                 bool keep_dim,
+                                 MetaTensor* min,
+                                 MetaTensor* max);
+
 PADDLE_API void MinMaxWithIndexInferMeta(const MetaTensor& x,
                                          const Scalar& axis,
                                          bool keepdims,
@@ -341,6 +347,9 @@ PADDLE_API void FFTR2CInferMeta(const MetaTensor& x,
                                 MetaTensor* out,
                                 MetaConfig = MetaConfig());
 
+PADDLE_API void FlashMaskGetUniqueIdInferMeta(const MetaTensor& x,
+                                              MetaTensor* out);
+
 PADDLE_API void FlattenInferMeta(const MetaTensor& x,
                                  int start_axis,
                                  int stop_axis,
@@ -393,6 +402,7 @@ PADDLE_API void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
                                            bool return_transpose_only,
                                            bool using_e5m2,
                                            bool using_pow2_scale,
+                                           bool using_ue8m0_scale,
                                            MetaTensor* out,
                                            MetaTensor* scale,
                                            MetaTensor* out_transposed,
@@ -475,6 +485,7 @@ PADDLE_API void MaxPoolWithIndexInferMeta(const MetaTensor& x,
                                           const std::vector<int>& kernel_size,
                                           const std::vector<int>& strides,
                                           const std::vector<int>& paddings,
+                                          const std::vector<int>& dilations,
                                           bool global_pooling,
                                           bool adaptive,
                                           bool ceil_mode,
@@ -590,7 +601,7 @@ PADDLE_API void PixelUnshuffleInferMeta(const MetaTensor& x,
                                         MetaTensor* out);
 
 PADDLE_API void PNormInferMeta(const MetaTensor& x,
-                               float porder,
+                               double porder,
                                int axis,
                                float epsilon,
                                bool keepdim,
@@ -1114,5 +1125,21 @@ PADDLE_API void IntBincountInferMeta(const MetaTensor& x,
                                      int64_t high,
                                      int64_t dtype,
                                      MetaTensor* out);
+
+PADDLE_API void VarInferMeta(const MetaTensor& x,
+                             const std::vector<int64_t>& axis,
+                             bool keepdim,
+                             bool unbiased,
+                             double correction,
+                             MetaTensor* out,
+                             MetaConfig config = MetaConfig());
+
+PADDLE_API void StdInferMeta(const MetaTensor& x,
+                             const std::vector<int64_t>& axis,
+                             bool keepdim,
+                             bool unbiased,
+                             double correction,
+                             MetaTensor* out,
+                             MetaConfig config = MetaConfig());
 
 }  // namespace phi

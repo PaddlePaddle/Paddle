@@ -190,7 +190,7 @@ void LaunchDepthwiseConv3dCompatible(const Context& dev_ctx,
   int grid = std::min((num_outputs - 1) / block + 1, (int64_t)65536);
   auto stream = dev_ctx.stream();
 
-  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using AccT = typename MPTypeTrait<T>::Type;
 
   const T* input_ptr = input_ncdhw.data<T>();
   T* output_ptr = out_ncdhw.data<T>();
@@ -292,7 +292,7 @@ template <typename T, typename Context>
 void DepthwiseConv3dBiasKernel(const Context& dev_ctx,
                                const DenseTensor& input,
                                const DenseTensor& filter,
-                               const paddle::optional<DenseTensor>& bias,
+                               const optional<DenseTensor>& bias,
                                const std::vector<int>& strides_t,
                                const std::vector<int>& paddings_t,
                                const std::string& padding_algorithm,
@@ -328,7 +328,7 @@ void DepthwiseConv3dBiasKernel(const Context& dev_ctx,
   auto filter_dims = filter.dims();
 
   DDim in_data_dims;
-  const DataLayout data_layout = common::StringToDataLayout(data_format);
+  const DataLayout data_layout = StringToDataLayout(data_format);
   if (data_layout != DataLayout::NDHWC) {
     in_data_dims = slice_ddim(in_dims, 2, in_dims.size());
   } else {

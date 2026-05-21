@@ -10,11 +10,12 @@ permissions:
 jobs:
   remove-skip-ci-labels:
     name: Remove skip-ci labels on new commits
+    if: ${{ github.repository_owner == 'PaddlePaddle' }}
     runs-on: ubuntu-latest
     steps:
       - name: Get PR labels
         id: get-labels
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -34,7 +35,7 @@ jobs:
 
       - name: Remove skip-ci labels
         if: steps.get-labels.outputs.has-skip-ci-labels == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |

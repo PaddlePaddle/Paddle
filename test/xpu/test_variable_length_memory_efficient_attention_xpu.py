@@ -272,5 +272,50 @@ class TestMemEffAPIVariableDtypeFP16Static(unittest.TestCase):
         np.testing.assert_allclose(res[0], self.ref_out, rtol=5e-03, atol=1e-03)
 
 
+class TestMemEffAttentionVariableAPI_ZeroHeadsMaskMismatch(unittest.TestCase):
+    def setUp(self):
+        self.place = paddle.XPUPlace(0)
+        self.dtype = 'float16'
+        self.scale = 0.125
+
+    def test_case_exact_same_as_error_message(self):
+        paddle.disable_static()
+        q = paddle.to_tensor(
+            np.random.random([1, 0, 31, 64]).astype(self.dtype),
+            place=self.place,
+        )
+        k = paddle.to_tensor(
+            np.random.random([1, 1, 31, 64]).astype(self.dtype),
+            place=self.place,
+        )
+        v = paddle.to_tensor(
+            np.random.random([1, 1, 31, 64]).astype(self.dtype),
+            place=self.place,
+        )
+        seq_lens = paddle.to_tensor(
+            np.ones([1, 1]).astype('int32'), place=self.place
+        )
+        kv_seq_lens = paddle.to_tensor(
+            np.ones([1, 1]).astype('int32'), place=self.place
+        )
+        mask = paddle.to_tensor(
+            np.random.random([1, 1, 50, 50]).astype(self.dtype),
+            place=self.place,
+        )
+
+        out = variable_length_memory_efficient_attention(
+            q,
+            k,
+            v,
+            seq_lens,
+            kv_seq_lens,
+            mask=mask,
+            scale=self.scale,
+        )
+
+        self.assertEqual(out.numel(), 0)
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
     unittest.main()

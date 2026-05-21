@@ -61,7 +61,7 @@ static DenseTensor Fill(const Context& dev_ctx,
                         std::vector<int> shape,
                         T fill_value) {
   DenseTensor ret;
-  ret.Resize(common::make_ddim(shape));
+  ret.Resize(shape);
   dev_ctx.template Alloc<T>(&ret);
   funcs::SetConstant<Context, T>()(dev_ctx, &ret, fill_value);
   return ret;
@@ -131,16 +131,14 @@ void ComplexGradKernel(const Context& dev_ctx,
       if (dx->numel() == 0) {
         dev_ctx.template Alloc<T>(dx);
       } else {
-        phi::Full<T, Context>(
-            dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+        Full<T, Context>(dev_ctx, dx->dims(), 0, dx);
       }
     }
     if (dy) {
       if (dy->numel() == 0) {
         dev_ctx.template Alloc<T>(dy);
       } else {
-        phi::Full<T, Context>(
-            dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+        Full<T, Context>(dev_ctx, dy->dims(), 0, dy);
       }
     }
     return;
@@ -163,7 +161,7 @@ void ComplexGradKernel(const Context& dev_ctx,
       dx->ShareDataWith(real_dout);
     } else {
       ExpandGradKernel<T, Context>(
-          dev_ctx, x, real_dout, phi::IntArray(phi::vectorize(x.dims())), dx);
+          dev_ctx, x, real_dout, phi::IntArray(vectorize(x.dims())), dx);
     }
   }
 
@@ -172,7 +170,7 @@ void ComplexGradKernel(const Context& dev_ctx,
       dy->ShareDataWith(imag_dout);
     } else {
       ExpandGradKernel<T, Context>(
-          dev_ctx, y, imag_dout, phi::IntArray(phi::vectorize(y.dims())), dy);
+          dev_ctx, y, imag_dout, phi::IntArray(vectorize(y.dims())), dy);
     }
   }
 }

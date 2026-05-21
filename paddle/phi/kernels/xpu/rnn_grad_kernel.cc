@@ -26,7 +26,7 @@ void RnnGradKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const std::vector<const DenseTensor*>& pre_state,
                    const std::vector<const DenseTensor*>& weight_list,
-                   const paddle::optional<DenseTensor>& sequence_length,
+                   const optional<DenseTensor>& sequence_length,
                    const DenseTensor& out,
                    const DenseTensor& dropout_state,
                    const DenseTensor& reserve,
@@ -106,7 +106,7 @@ void RnnGradKernel(const Context& dev_ctx,
   x_grad->Resize(x.dims());
   dev_ctx.template Alloc<T>(x_grad);
 
-  funcs::SetConstant<phi::XPUContext, T> zero;
+  funcs::SetConstant<XPUContext, T> zero;
   zero(dev_ctx, x_grad, static_cast<T>(0.0));
 
   DenseTensor a, b;
@@ -165,12 +165,12 @@ void RnnGradKernel(const Context& dev_ctx,
   bool has_seq_length = sequence_length.is_initialized();
   std::vector<int64_t> seq_len_tensor(batch_size, seq_len);
   if (has_seq_length) {
-    if (sequence_length->dtype() == phi::DataType::INT32) {
+    if (sequence_length->dtype() == DataType::INT32) {
       std::vector<int> tensor_int32 =
           phi::GetVectorFromTensor<int>(sequence_length.get_ptr());
       seq_len_tensor =
           std::vector<int64_t>(tensor_int32.begin(), tensor_int32.end());
-    } else {  // phi::DataType::INT64
+    } else {  // DataType::INT64
       seq_len_tensor =
           phi::GetVectorFromTensor<int64_t>(sequence_length.get_ptr());
     }

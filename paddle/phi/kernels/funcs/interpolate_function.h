@@ -116,18 +116,18 @@ inline std::vector<int> get_new_shape(
     const std::vector<const DenseTensor*>& list_new_shape_tensor) {
   // get tensor from
   std::vector<int> vec_new_shape;
-  auto& pool = phi::DeviceContextPool::Instance();
+  auto& pool = DeviceContextPool::Instance();
   for (size_t i = 0; i < list_new_shape_tensor.size(); ++i) {
     auto tensor = list_new_shape_tensor[i];
-    phi::DeviceContext* dev_ctx = pool.Get(tensor->place());
-    PADDLE_ENFORCE_EQ(tensor->dims() == common::make_ddim({1}) ||
-                          tensor->dims() == common::make_ddim({}),
-                      true,
-                      errors::InvalidArgument(
-                          "The shape of dimension tensor should be [1] or [],"
-                          "but received d%.",
-                          tensor->dims()));
-    if (tensor->dtype() == phi::DataType::INT64) {
+    DeviceContext* dev_ctx = pool.Get(tensor->place());
+    PADDLE_ENFORCE_EQ(
+        tensor->dims() == make_ddim({1}) || tensor->dims() == make_ddim({}),
+        true,
+        errors::InvalidArgument(
+            "The shape of dimension tensor should be [1] or [],"
+            "but received d%.",
+            tensor->dims()));
+    if (tensor->dtype() == DataType::INT64) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       if (tensor->place().GetType() == AllocationType::CUSTOM) {
         DenseTensor temp;
@@ -151,7 +151,7 @@ inline std::vector<int> get_new_shape(
       } else {
         vec_new_shape.push_back(static_cast<int64_t>(*tensor->data<int64_t>()));
       }
-    } else if (tensor->dtype() == phi::DataType::INT32) {
+    } else if (tensor->dtype() == DataType::INT32) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       if (tensor->place().GetType() == AllocationType::CUSTOM) {
         DenseTensor temp;
@@ -187,8 +187,8 @@ inline std::vector<T> get_new_data_from_tensor(
   std::vector<T> vec_new_data;
   auto* new_data = new_data_tensor->data<T>();
   DenseTensor cpu_starts_tensor;
-  auto& pool = phi::DeviceContextPool::Instance();
-  phi::DeviceContext* dev_ctx = pool.Get(new_data_tensor->place());
+  auto& pool = DeviceContextPool::Instance();
+  DeviceContext* dev_ctx = pool.Get(new_data_tensor->place());
   if (new_data_tensor->place().GetType() == AllocationType::GPU) {
     phi::Copy(*dev_ctx, *new_data_tensor, CPUPlace(), true, &cpu_starts_tensor);
     new_data = cpu_starts_tensor.data<T>();

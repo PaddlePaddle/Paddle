@@ -53,24 +53,24 @@ void SequenceMaskScalarKernel(const Context& dev_ctx,
       maxlen = static_cast<int>(*std::max_element(x_data, x_data + x_numel));
 #endif
     }
-    auto y_dim = common::vectorize<int64_t>(x.dims());
+    auto y_dim = vectorize<int64_t>(x.dims());
     y_dim.push_back(maxlen);
-    y->Resize(common::make_ddim(y_dim));
+    y->Resize(y_dim);
   }
   if (x_numel == 0) {
     dev_ctx.Alloc(y, out_dtype);
     return;
   }
 
-  phi::VisitDataType(out_dtype,
-                     funcs::SequenceMaskFunctor<Context, T>(
-                         dev_ctx, x_data, y, x_numel * maxlen, maxlen));
+  VisitDataType(out_dtype,
+                funcs::SequenceMaskFunctor<Context, T>(
+                    dev_ctx, x_data, y, x_numel * maxlen, maxlen));
 }
 
 template <typename T, typename Context>
 void SequenceMaskKernel(const Context& dev_ctx,
                         const DenseTensor& x,
-                        const paddle::optional<DenseTensor>& max_len_tensor,
+                        const optional<DenseTensor>& max_len_tensor,
                         int maxlen,
                         DataType out_dtype,
                         DenseTensor* y) {
@@ -84,9 +84,9 @@ void SequenceMaskKernel(const Context& dev_ctx,
       maxlen = *max_len_tensor.get_ptr()->data<int32_t>();
     }
 
-    auto y_dim = common::vectorize<int64_t>(x.dims());
+    auto y_dim = vectorize<int64_t>(x.dims());
     y_dim.push_back(maxlen);
-    y->Resize(common::make_ddim(y_dim));
+    y->Resize(y_dim);
 
     PADDLE_ENFORCE_GT(
         maxlen,

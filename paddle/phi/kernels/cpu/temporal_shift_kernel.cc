@@ -96,7 +96,7 @@ void TemporalShiftKernel(const Context& dev_ctx,
   auto* input = &x;
   auto* output = out;
   int t = seg_num;
-  const DataLayout data_layout = common::StringToDataLayout(data_format_str);
+  const DataLayout data_layout = StringToDataLayout(data_format_str);
 
   const int nt = static_cast<int>(input->dims()[0]);
   const int c = static_cast<int>(
@@ -114,9 +114,8 @@ void TemporalShiftKernel(const Context& dev_ctx,
   const int c1 = static_cast<int>(static_cast<float>(c) * shift_ratio);
   const int c2 = static_cast<int>(static_cast<float>(c) * 2.f * shift_ratio);
 
-  DDim out_dims =
-      (data_layout == DataLayout::NCHW ? common::make_ddim({nt, c, h, w})
-                                       : common::make_ddim({nt, h, w, c}));
+  DDim out_dims = (data_layout == DataLayout::NCHW ? make_ddim({nt, c, h, w})
+                                                   : make_ddim({nt, h, w, c}));
   const T* input_data = input->data<T>();
   output->Resize(out_dims);
   T* output_data = dev_ctx.template Alloc<T>(output);

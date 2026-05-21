@@ -229,7 +229,7 @@ phi::Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
   RegisterHandle(reinterpret_cast<void*>(ptr), handle);
 
   return new Allocation(
-      reinterpret_cast<void*>(ptr), size, phi::Place(place_));  // NOLINT
+      reinterpret_cast<void*>(ptr), size, Place(place_));  // NOLINT
 }
 
 CUmemGenericAllocationHandle CUDAVirtualMemAllocator::GetHandleFromBasePtr(

@@ -63,24 +63,23 @@ void ASGDKernel(const Context& dev_ctx,
                 const DenseTensor& d,
                 const DenseTensor& y,
                 const DenseTensor& n,
-                const paddle::optional<DenseTensor>& master_param,
+                const optional<DenseTensor>& master_param,
                 bool multi_precision,
                 DenseTensor* param_out,
                 DenseTensor* d_out,
                 DenseTensor* y_out,
                 DenseTensor* master_param_out) {
-  using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
-  const MPDType* master_in_data =
-      multi_precision ? master_param->data<MPDType>() : nullptr;
-  MPDType* master_out_data =
-      multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_out)
-                      : nullptr;
+  using MT = typename MPTypeTrait<T>::Type;
+  const MT* master_in_data =
+      multi_precision ? master_param->data<MT>() : nullptr;
+  MT* master_out_data =
+      multi_precision ? dev_ctx.template Alloc<MT>(master_param_out) : nullptr;
 
   int block = 512;
   int64_t grid_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int grid = std::min((param.numel() + block - 1) / block, grid_max);
 
-  ASGDKernelGPUImpl<T, MPDType><<<grid, block, 0, dev_ctx.stream()>>>(
+  ASGDKernelGPUImpl<T, MT><<<grid, block, 0, dev_ctx.stream()>>>(
       param.data<T>(),
       grad.data<T>(),
       learning_rate.data<T>(),

@@ -132,12 +132,12 @@ void PoolGradRawGPUDNNKernel(const Context& dev_ctx,
 
     // input
     transformed_input.Resize(input->dims());
-    auto in_dims_vec = common::vectorize(input->dims());
+    auto in_dims_vec = vectorize(input->dims());
     in_dims_vec[1] = input->dims()[4];
     in_dims_vec[2] = input->dims()[1];
     in_dims_vec[3] = input->dims()[2];
     in_dims_vec[4] = input->dims()[3];
-    transformed_input.Resize(common::make_ddim(in_dims_vec));
+    transformed_input.Resize(in_dims_vec);
     dev_ctx.Alloc(&transformed_input, input->type());
 
     funcs::Transpose<Context, T, 5> trans5;
@@ -145,12 +145,12 @@ void PoolGradRawGPUDNNKernel(const Context& dev_ctx,
 
     // output
     transformed_output.Resize(output->dims());
-    auto out_dims_vec = common::vectorize(output->dims());
+    auto out_dims_vec = vectorize(output->dims());
     out_dims_vec[1] = output->dims()[4];
     out_dims_vec[2] = output->dims()[1];
     out_dims_vec[3] = output->dims()[2];
     out_dims_vec[4] = output->dims()[3];
-    transformed_output.Resize(common::make_ddim(out_dims_vec));
+    transformed_output.Resize(out_dims_vec);
 
     dev_ctx.Alloc(&transformed_output, output->type());
 
@@ -158,14 +158,14 @@ void PoolGradRawGPUDNNKernel(const Context& dev_ctx,
     trans5_v2(dev_ctx, *output, &transformed_output, axis);
 
     // output grad
-    transformed_output_grad.Resize(common::make_ddim(out_dims_vec));
+    transformed_output_grad.Resize(out_dims_vec);
     dev_ctx.Alloc(&transformed_output_grad, output_grad->type());
 
     funcs::Transpose<Context, T, 5> trans5_v3;
     trans5_v3(dev_ctx, *output_grad, &transformed_output_grad, axis);
 
     // input grad
-    transformed_input_grad.Resize(common::make_ddim(in_dims_vec));
+    transformed_input_grad.Resize(in_dims_vec);
 
 #ifdef PADDLE_WITH_HIP
     // MIOPEN not support NHWC data layout
@@ -176,11 +176,11 @@ void PoolGradRawGPUDNNKernel(const Context& dev_ctx,
 
     // input
     transformed_input.Resize(input->dims());
-    auto in_dims_vec = common::vectorize(input->dims());
+    auto in_dims_vec = vectorize(input->dims());
     in_dims_vec[1] = input->dims()[3];
     in_dims_vec[2] = input->dims()[1];
     in_dims_vec[3] = input->dims()[2];
-    transformed_input.Resize(common::make_ddim(in_dims_vec));
+    transformed_input.Resize(in_dims_vec);
     dev_ctx.Alloc(&transformed_input, input->type());
 
     funcs::Transpose<Context, T, 4> trans4;
@@ -188,25 +188,25 @@ void PoolGradRawGPUDNNKernel(const Context& dev_ctx,
 
     // output
     transformed_output.Resize(output->dims());
-    auto out_dims_vec = common::vectorize(output->dims());
+    auto out_dims_vec = vectorize(output->dims());
     out_dims_vec[1] = output->dims()[3];
     out_dims_vec[2] = output->dims()[1];
     out_dims_vec[3] = output->dims()[2];
-    transformed_output.Resize(common::make_ddim(out_dims_vec));
+    transformed_output.Resize(out_dims_vec);
     dev_ctx.Alloc(&transformed_output, output->type());
 
     funcs::Transpose<Context, T, 4> trans4_v2;
     trans4_v2(dev_ctx, *output, &transformed_output, axis);
 
     // output grad
-    transformed_output_grad.Resize(common::make_ddim(out_dims_vec));
+    transformed_output_grad.Resize(out_dims_vec);
     dev_ctx.Alloc(&transformed_output_grad, output_grad->type());
 
     funcs::Transpose<Context, T, 4> trans4_v3;
     trans4_v3(dev_ctx, *output_grad, &transformed_output_grad, axis);
 
     // input grad
-    transformed_input_grad.Resize(common::make_ddim(in_dims_vec));
+    transformed_input_grad.Resize(in_dims_vec);
 #endif
   } else {
     layout = GetLayoutFromStr(data_format);
@@ -227,14 +227,14 @@ void PoolGradRawGPUDNNKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_HIP
   miopenTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
-      layout, common::vectorize<int>(transformed_input.dims()));
+      layout, vectorize<int>(transformed_input.dims()));
   miopenTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
-      layout, common::vectorize<int>(transformed_output.dims()));
+      layout, vectorize<int>(transformed_output.dims()));
 #else
   cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
-      layout, common::vectorize<int>(transformed_input.dims()));
+      layout, vectorize<int>(transformed_input.dims()));
   cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
-      layout, common::vectorize<int>(transformed_output.dims()));
+      layout, vectorize<int>(transformed_output.dims()));
 #endif
   PoolingMode pooling_mode;
   if (pooling_type == "max") {

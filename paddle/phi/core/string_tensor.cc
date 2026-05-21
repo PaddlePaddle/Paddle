@@ -33,7 +33,7 @@ StringTensor::StringTensor(Allocator* a, StringTensorMeta&& meta)
   init_holder();
 }
 
-StringTensor::StringTensor(const std::shared_ptr<phi::Allocation>& holder,
+StringTensor::StringTensor(const std::shared_ptr<Allocation>& holder,
                            const StringTensorMeta& meta)
     : meta_(meta), holder_(holder) {}
 
@@ -108,15 +108,28 @@ StringTensor& StringTensor::Resize(const DDim& dims) {
   meta_.dims = dims;
   return *this;
 }
+
+StringTensor& StringTensor::Resize(const std::initializer_list<int64_t> dims) {
+  return Resize(make_ddim(dims));
+}
+
+StringTensor& StringTensor::Resize(const std::vector<int64_t>& dims) {
+  return Resize(make_ddim(dims));
+}
+
+StringTensor& StringTensor::Resize(const std::vector<int>& dims) {
+  return Resize(make_ddim(dims));
+}
+
 // TODO(zhoushunjie): need to remove it for general space
 void StringTensor::init_holder() {
   void* ptr = holder_->ptr();
   auto& place = holder_->place();
   auto bytes_size = holder_->size();
   VLOG(6) << "Init StringTensor data with bytes:" << bytes_size;
-  if (place.GetType() == phi::AllocationType::CPU) {
+  if (place.GetType() == AllocationType::CPU) {
     std::memset(ptr, 0, bytes_size);
-  } else if (place.GetType() == phi::AllocationType::GPU) {
+  } else if (place.GetType() == AllocationType::GPU) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #ifdef PADDLE_WITH_HIP
     hipMemset(ptr, 0, bytes_size);
@@ -178,7 +191,7 @@ void* StringTensor::AllocateFrom(Allocator* allocator,
   return reinterpret_cast<void*>(ptr);
 }
 
-dtype::pstring* StringTensor::mutable_data(const phi::Place& place,
+dtype::pstring* StringTensor::mutable_data(const Place& place,
                                            size_t requested_size) {
   PADDLE_ENFORCE_GE(
       numel(),

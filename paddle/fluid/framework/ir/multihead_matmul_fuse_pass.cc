@@ -635,12 +635,12 @@ namespace paddle::framework::ir {
 
 namespace {
 template <typename T>
-inline void QKVWeightsProcess(phi::DenseTensor* wq_tensor,
-                              phi::DenseTensor* wk_tensor,
-                              phi::DenseTensor* wv_tensor,
-                              phi::DenseTensor* bq_tensor,
-                              phi::DenseTensor* bk_tensor,
-                              phi::DenseTensor* bv_tensor) {
+inline void QKVWeightsProcess(DenseTensor* wq_tensor,
+                              DenseTensor* wk_tensor,
+                              DenseTensor* wv_tensor,
+                              DenseTensor* bq_tensor,
+                              DenseTensor* bk_tensor,
+                              DenseTensor* bv_tensor) {
   auto* wq_data = wq_tensor->mutable_data<T>(CPUPlace());
   auto* wk_data = wk_tensor->mutable_data<T>(CPUPlace());
   auto* wv_data = wv_tensor->mutable_data<T>(CPUPlace());
@@ -900,11 +900,11 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     auto* bv_tensor =
         scope->FindVar(eltadd2_b->Name())->GetMutable<DenseTensor>();
 
-    if (wq_tensor->dtype() == phi::DataType::FLOAT32) {
+    if (wq_tensor->dtype() == DataType::FLOAT32) {
       QKVWeightsProcess<float>(
           wq_tensor, wk_tensor, wv_tensor, bq_tensor, bk_tensor, bv_tensor);
-    } else if (wq_tensor->dtype() == phi::DataType::FLOAT16) {
-      QKVWeightsProcess<phi::dtype::float16>(
+    } else if (wq_tensor->dtype() == DataType::FLOAT16) {
+      QKVWeightsProcess<phi::float16>(
           wq_tensor, wk_tensor, wv_tensor, bq_tensor, bk_tensor, bv_tensor);
     } else {
       PADDLE_THROW(common::errors::Unavailable(

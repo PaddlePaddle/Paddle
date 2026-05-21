@@ -24,48 +24,47 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ResNetUnitGradKernel(
-    const Context &dev_ctx,
-    const DenseTensor &x_in,
-    const DenseTensor &filter_x_in,
-    const DenseTensor &conv_x_in,
-    const DenseTensor &scale_x_in,
-    const DenseTensor &bias_x_in,
-    const DenseTensor &saved_mean_x_in,
-    const DenseTensor &saved_invstd_x_in,
-    const paddle::optional<DenseTensor> &z_in,
-    const paddle::optional<DenseTensor> &filter_z_in,
-    const paddle::optional<DenseTensor> &conv_z_in,
-    const paddle::optional<DenseTensor> &scale_z_in,
-    const paddle::optional<DenseTensor> &bias_z_in,
-    const paddle::optional<DenseTensor> &saved_mean_z_in,
-    const paddle::optional<DenseTensor> &saved_invstd_z_in,
-    const DenseTensor &out,
-    const DenseTensor &bit_mask,
-    const DenseTensor &out_grad,
-    int stride,
-    int stride_z,
-    int padding,
-    int dilation,
-    int group,
-    float momentum_in,
-    float epsilon,
-    const std::string &data_format,
-    bool fuse_add,
-    bool has_shortcut,
-    bool use_global_stats,
-    bool is_test,
-    bool use_addto,
-    const std::string &act_type,
-    DenseTensor *x_grad,
-    DenseTensor *filter_x_grad,
-    DenseTensor *scale_x_grad,
-    DenseTensor *bias_x_grad,
-    DenseTensor *z_grad,
-    DenseTensor *filter_z_grad,
-    DenseTensor *scale_z_grad,
-    DenseTensor *bias_z_grad) {
-  PADDLE_ENFORCE_EQ(phi::backends::gpu::CudnnDataType<T>::type,
+void ResNetUnitGradKernel(const Context &dev_ctx,
+                          const DenseTensor &x_in,
+                          const DenseTensor &filter_x_in,
+                          const DenseTensor &conv_x_in,
+                          const DenseTensor &scale_x_in,
+                          const DenseTensor &bias_x_in,
+                          const DenseTensor &saved_mean_x_in,
+                          const DenseTensor &saved_invstd_x_in,
+                          const optional<DenseTensor> &z_in,
+                          const optional<DenseTensor> &filter_z_in,
+                          const optional<DenseTensor> &conv_z_in,
+                          const optional<DenseTensor> &scale_z_in,
+                          const optional<DenseTensor> &bias_z_in,
+                          const optional<DenseTensor> &saved_mean_z_in,
+                          const optional<DenseTensor> &saved_invstd_z_in,
+                          const DenseTensor &out,
+                          const DenseTensor &bit_mask,
+                          const DenseTensor &out_grad,
+                          int stride,
+                          int stride_z,
+                          int padding,
+                          int dilation,
+                          int group,
+                          float momentum_in,
+                          float epsilon,
+                          const std::string &data_format,
+                          bool fuse_add,
+                          bool has_shortcut,
+                          bool use_global_stats,
+                          bool is_test,
+                          bool use_addto,
+                          const std::string &act_type,
+                          DenseTensor *x_grad,
+                          DenseTensor *filter_x_grad,
+                          DenseTensor *scale_x_grad,
+                          DenseTensor *bias_x_grad,
+                          DenseTensor *z_grad,
+                          DenseTensor *filter_z_grad,
+                          DenseTensor *scale_z_grad,
+                          DenseTensor *bias_z_grad) {
+  PADDLE_ENFORCE_EQ(backends::gpu::CudnnDataType<T>::type,
                     CUDNN_DATA_HALF,
                     common::errors::Unavailable(
                         "ResNetUnitOp only supports float16 for now."));
@@ -86,11 +85,11 @@ void ResNetUnitGradKernel(
   double eps = static_cast<double>(epsilon);
   double momentum = static_cast<double>(momentum_in);
 
-  auto x_shape = common::vectorize<int>(x->dims());
-  auto filter_x_shape = common::vectorize<int>(filter_x->dims());
-  auto param_shape = common::vectorize<int>(scale_x->dims());
-  auto output_shape = common::vectorize<int>(output->dims());
-  auto bitmask_shape = common::vectorize<int>(bitmask->dims());
+  auto x_shape = vectorize<int>(x->dims());
+  auto filter_x_shape = vectorize<int>(filter_x->dims());
+  auto param_shape = vectorize<int>(scale_x->dims());
+  auto output_shape = vectorize<int>(output->dims());
+  auto bitmask_shape = vectorize<int>(bitmask->dims());
 
   // 1. Backward of BN (+ Add + Relu) for x, get conv_out_x_grad,
   // scale_x_grad, bias_x_grad
@@ -159,8 +158,8 @@ void ResNetUnitGradKernel(
                        eps);
 
     // 1.3 Backward of Conv for z, get z_grad and filter_z_grad
-    auto z_shape = common::vectorize<int>(z->dims());
-    auto filter_z_shape = common::vectorize<int>(filter_z->dims());
+    auto z_shape = vectorize<int>(z->dims());
+    auto filter_z_shape = vectorize<int>(filter_z->dims());
     phi::fusion::CudnnNormConvolutionGrad<T> conv_z_op(dev_ctx,
                                                        z_shape,
                                                        filter_z_shape,
@@ -219,47 +218,46 @@ PD_REGISTER_KERNEL(resnet_unit_grad,
 namespace phi {
 
 template <typename T, typename Context>
-void ResNetUnitGradEmptyKernel(
-    const Context &dev_ctx,
-    const DenseTensor &x_in,
-    const DenseTensor &filter_x_in,
-    const DenseTensor &conv_x_in,
-    const DenseTensor &scale_x_in,
-    const DenseTensor &bias_x_in,
-    const DenseTensor &saved_mean_x_in,
-    const DenseTensor &saved_invstd_x_in,
-    const paddle::optional<DenseTensor> &z_in,
-    const paddle::optional<DenseTensor> &filter_z_in,
-    const paddle::optional<DenseTensor> &conv_z_in,
-    const paddle::optional<DenseTensor> &scale_z_in,
-    const paddle::optional<DenseTensor> &bias_z_in,
-    const paddle::optional<DenseTensor> &saved_mean_z_in,
-    const paddle::optional<DenseTensor> &saved_invstd_z_in,
-    const DenseTensor &out,
-    const DenseTensor &bit_mask,
-    const DenseTensor &out_grad,
-    int stride,
-    int stride_z,
-    int padding,
-    int dilation,
-    int group,
-    float momentum_in,
-    float epsilon,
-    const std::string &data_format,
-    bool fuse_add,
-    bool has_shortcut,
-    bool use_global_stats,
-    bool is_test,
-    bool use_addto,
-    const std::string &act_type,
-    DenseTensor *x_grad,
-    DenseTensor *filter_x_grad,
-    DenseTensor *scale_x_grad,
-    DenseTensor *bias_x_grad,
-    DenseTensor *z_grad,
-    DenseTensor *filter_z_grad,
-    DenseTensor *scale_z_grad,
-    DenseTensor *bias_z_grad) {}
+void ResNetUnitGradEmptyKernel(const Context &dev_ctx,
+                               const DenseTensor &x_in,
+                               const DenseTensor &filter_x_in,
+                               const DenseTensor &conv_x_in,
+                               const DenseTensor &scale_x_in,
+                               const DenseTensor &bias_x_in,
+                               const DenseTensor &saved_mean_x_in,
+                               const DenseTensor &saved_invstd_x_in,
+                               const optional<DenseTensor> &z_in,
+                               const optional<DenseTensor> &filter_z_in,
+                               const optional<DenseTensor> &conv_z_in,
+                               const optional<DenseTensor> &scale_z_in,
+                               const optional<DenseTensor> &bias_z_in,
+                               const optional<DenseTensor> &saved_mean_z_in,
+                               const optional<DenseTensor> &saved_invstd_z_in,
+                               const DenseTensor &out,
+                               const DenseTensor &bit_mask,
+                               const DenseTensor &out_grad,
+                               int stride,
+                               int stride_z,
+                               int padding,
+                               int dilation,
+                               int group,
+                               float momentum_in,
+                               float epsilon,
+                               const std::string &data_format,
+                               bool fuse_add,
+                               bool has_shortcut,
+                               bool use_global_stats,
+                               bool is_test,
+                               bool use_addto,
+                               const std::string &act_type,
+                               DenseTensor *x_grad,
+                               DenseTensor *filter_x_grad,
+                               DenseTensor *scale_x_grad,
+                               DenseTensor *bias_x_grad,
+                               DenseTensor *z_grad,
+                               DenseTensor *filter_z_grad,
+                               DenseTensor *scale_z_grad,
+                               DenseTensor *bias_z_grad) {}
 }  // namespace phi
 
 PD_REGISTER_KERNEL(resnet_unit_grad,

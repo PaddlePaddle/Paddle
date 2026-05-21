@@ -73,8 +73,7 @@ void TopkGradKernel(const Context& dev_ctx,
   int64_t pre, n, post;
   GetDims(in_dims, axis, &pre, &n, &post);
 
-  FullKernel<T, Context>(
-      dev_ctx, vectorize(x_grad->dims()), 0.0f, x_grad->dtype(), x_grad);
+  Full<T, Context>(dev_ctx, x_grad->dims(), 0.0f, x_grad);
 
   // launch the xpu kernel to assign the grad
   int ret = xpu::scatter_element<XPUType, int64_t>(

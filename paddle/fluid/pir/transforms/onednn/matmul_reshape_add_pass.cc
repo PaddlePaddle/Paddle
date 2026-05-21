@@ -22,7 +22,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-namespace {
+namespace pir {
 class MatmulReshapeElementwiseAddFusePattern
     : public paddle::drr::DrrPatternBase {
  private:
@@ -85,17 +85,16 @@ class MatmulReshapeElementwiseAddFusePattern
                                   : add_(pat.Tensor("y"), pat.Tensor("out"));
 
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
-      auto w_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("w"));
-      if (!w_dtype.isa<pir::Float16Type>() &&
-          !w_dtype.isa<pir::Float32Type>() &&
-          !w_dtype.isa<pir::Float64Type>()) {
+      auto w_dtype = GetDataTypeFromValue(match_ctx.Tensor("w"));
+      if (!w_dtype.isa<Float16Type>() && !w_dtype.isa<Float32Type>() &&
+          !w_dtype.isa<Float64Type>()) {
         return false;
       }
 
-      auto w_dims = pir::GetShapeFromValue(match_ctx.Tensor("reshape_w"));
-      auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("reshape_x"));
-      auto y_dims = pir::GetShapeFromValue(match_ctx.Tensor("y"));
-      auto origin_x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
+      auto w_dims = GetShapeFromValue(match_ctx.Tensor("reshape_w"));
+      auto x_dims = GetShapeFromValue(match_ctx.Tensor("reshape_x"));
+      auto y_dims = GetShapeFromValue(match_ctx.Tensor("y"));
+      auto origin_x_dims = GetShapeFromValue(match_ctx.Tensor("x"));
 
       if (origin_x_dims.size() < 2) {
         return false;
@@ -125,7 +124,7 @@ class MatmulReshapeElementwiseAddFusePattern
     paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &in_num_col_dims_attr =
         res.ComputeAttr([](const paddle::drr::MatchContext &match_ctx) -> int {
-          auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("reshape_x"));
+          auto x_dims = GetShapeFromValue(match_ctx.Tensor("reshape_x"));
           return static_cast<int>(x_dims.size()) - 1;
         });
 
@@ -157,13 +156,13 @@ class MatmulReshapeElementwiseAddFusePattern
   }
 };
 
-class MatmulReshapeAddFusePass : public pir::PatternRewritePass {
+class MatmulReshapeAddFusePass : public PatternRewritePass {
  public:
   MatmulReshapeAddFusePass()
-      : pir::PatternRewritePass("matmul_reshape_add_fuse_pass", 2) {}
+      : PatternRewritePass("matmul_reshape_add_fuse_pass", 2) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    pir::RewritePatternSet ps(context);
+  RewritePatternSet InitializePatterns(IrContext *context) override {
+    RewritePatternSet ps(context);
     std::vector<bool> bool_set = {false, true};
     int benefit_idx = 1;
     for (auto as_x : bool_set) {
@@ -180,14 +179,10 @@ class MatmulReshapeAddFusePass : public pir::PatternRewritePass {
   }
 };
 
-}  // namespace
-
-namespace pir {
-
 std::unique_ptr<Pass> CreateMatmulReshapeAddPass() {
   // pd_op.matmul + reshape + pd_op.add -> onednn_op.fused_matmul
   return std::make_unique<MatmulReshapeAddFusePass>();
 }
 }  // namespace pir
 
-REGISTER_IR_PASS(matmul_reshape_add_fuse_pass, MatmulReshapeAddFusePass);
+REGISTER_IR_PASS(matmul_reshape_add_fuse_pass, pir::MatmulReshapeAddFusePass);

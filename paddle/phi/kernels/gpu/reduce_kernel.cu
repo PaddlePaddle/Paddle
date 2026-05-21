@@ -13,7 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/reduce_kernel.h"
+#include "paddle/phi/kernels/reduce_nansum_grad_kernel.h"
 
+#include "paddle/phi/kernels/funcs/for_range.h"
+#include "paddle/phi/kernels/gpu/reduce.h"
 #include "paddle/phi/kernels/gpu/reduce_amin_amax_common.h"
 #include "paddle/phi/kernels/reduce_amin_grad_kernel.h"
 #include "paddle/phi/kernels/reduce_max_grad_kernel.h"
@@ -64,17 +67,13 @@ void ReduceSumGradKernel(const Context& dev_ctx,
   // make new tensor
   DenseTensor new_out_grad(out_grad.dtype());
   new_out_grad.ShareDataWith(out_grad);
-  new_out_grad.Resize(common::make_ddim(update_dims));
+  new_out_grad.Resize(update_dims);
 
   // call ReduceGrad
   dev_ctx.Alloc(x_grad, x.dtype());
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  phi::ReduceGrad<kps::IdentityFunctor<T, MPType>>(
-      dev_ctx,
-      &new_out_grad,
-      x_grad,
-      x.dtype(),
-      kps::IdentityFunctor<T, MPType>());
+  using MT = typename MPTypeTrait<T>::Type;
+  ReduceGrad<kps::IdentityFunctor<T, MT>>(
+      dev_ctx, &new_out_grad, x_grad, x.dtype(), kps::IdentityFunctor<T, MT>());
 }
 
 template <typename T, typename Context>
@@ -106,16 +105,19 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
   // make new tensor
   DenseTensor new_out_grad(out_grad.dtype());
   new_out_grad.ShareDataWith(out_grad);
-  new_out_grad.Resize(common::make_ddim(update_dims));
+  new_out_grad.Resize(update_dims);
 
   // call BroadcastKernel
   dev_ctx.Alloc(x_grad, x.dtype());
   std::vector<const DenseTensor*> inputs = {&new_out_grad};
   std::vector<DenseTensor*> outputs = {x_grad};
 
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  funcs::BroadcastKernel<T>(
-      dev_ctx, inputs, &outputs, kps::DivideFunctor<T, MPType>(reduce_num), 0);
+  using MT = typename MPTypeTrait<T>::Type;
+  funcs::BroadcastKernel<T>(dev_ctx,
+                            inputs,
+                            &outputs,
+                            kps::MPTypeDivideFunctor<T, MT>(reduce_num),
+                            0);
 }
 
 template <typename T, typename Context>
@@ -224,6 +226,63 @@ void ReduceKernel(const Context& dev_ctx,
 #endif
 }
 
+template <typename T>
+struct NanMaskFunctor {
+  const T* x_data;
+  T* x_grad_data;
+
+  NanMaskFunctor(const T* x_data, T* x_grad_data)
+      : x_data(x_data), x_grad_data(x_grad_data) {}
+
+  HOSTDEVICE void operator()(size_t idx) const {
+    // NaN != NaN for floating-point; always false for integral types
+    if (x_data[idx] != x_data[idx]) {
+      x_grad_data[idx] = static_cast<T>(0);
+    }
+  }
+};
+
+template <typename T, typename Context>
+void NansumGradKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& out_grad,
+                      const IntArray& dims,
+                      bool keep_dim,
+                      bool reduce_all,
+                      DenseTensor* x_grad) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
+  if (x_grad && x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    return;
+  }
+
+  // Step 1: broadcast out_grad to x_grad shape (same as sum_grad)
+  int dim_size = x.dims().size();
+  std::vector<int> reduce_dims =
+      funcs::details::GetReduceDim(dims.GetData(), dim_size, reduce_all);
+
+  auto update_dims = vectorize(x.dims());
+  for (auto i : reduce_dims) {
+    update_dims[i] = 1;
+  }
+
+  DenseTensor new_out_grad(out_grad.dtype());
+  new_out_grad.ShareDataWith(out_grad);
+  new_out_grad.Resize(update_dims);
+
+  dev_ctx.Alloc(x_grad, x.dtype());
+  using MT = typename MPTypeTrait<T>::Type;
+  ReduceGrad<kps::IdentityFunctor<T, MT>>(
+      dev_ctx, &new_out_grad, x_grad, x.dtype(), kps::IdentityFunctor<T, MT>());
+
+  // Step 2: zero out gradient where x is NaN
+  const T* x_data = x.data<T>();
+  T* x_grad_data = x_grad->data<T>();
+  int64_t numel = x.numel();
+  funcs::ForRange<Context> for_range(dev_ctx, numel);
+  for_range(NanMaskFunctor<T>(x_data, x_grad_data));
+}
+
 }  // namespace phi
 
 #if NCCL_VERSION_CODE >= 21000
@@ -316,6 +375,25 @@ PD_REGISTER_KERNEL(sum_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::ReduceSumGradKernel,
+                   bool,
+                   float,
+                   double,
+                   phi::float16,
+                   phi::bfloat16,
+                   int8_t,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   phi::complex64,
+                   phi::complex128) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}
+
+PD_REGISTER_KERNEL(nansum_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::NansumGradKernel,
                    bool,
                    float,
                    double,

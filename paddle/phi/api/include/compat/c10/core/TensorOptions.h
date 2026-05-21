@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// #The file has been adapted from pytorch project
-// #Licensed under  BSD-style license -
+// The file has been adapted from pytorch project
+// Licensed under BSD-style license -
 // https://github.com/pytorch/pytorch/blob/main/LICENSE
 
 #pragma once
@@ -23,6 +23,8 @@
 #include <c10/core/Layout.h>
 #include <c10/core/MemoryFormat.h>
 #include <c10/core/ScalarType.h>
+#include <c10/core/ScalarTypeToTypeMeta.h>
+#include <c10/util/typeid.h>
 #include <optional>
 
 #include "paddle/common/macros.h"
@@ -36,8 +38,14 @@ inline Layout layout_or_default(std::optional<Layout> layout) {
 inline Device device_or_default(std::optional<Device> device) {
   return device.value_or(Device(kCPU));
 }
-inline ScalarType dtype_or_default(std::optional<ScalarType> dtype) {
+inline caffe2::TypeMeta dtype_or_default(
+    std::optional<caffe2::TypeMeta> dtype) {
   return dtype.value_or(get_default_dtype());
+}
+
+// legacy overload
+inline ScalarType dtype_or_default(std::optional<ScalarType> dtype) {
+  return dtype.value_or(get_default_dtype_as_scalartype());
 }
 
 inline bool pinned_memory_or_default(std::optional<bool> pinned_memory) {
@@ -68,6 +76,18 @@ struct PADDLE_API TensorOptions {
     this->set_device(std::forward<T>(device));
   }
 
+  template <
+      typename... Args,
+      typename = std::enable_if_t<std::is_constructible_v<Device, Args&&...>>>
+  /* implicit */ TensorOptions(Args&&... args)  // NOLINT
+      : TensorOptions(Device(std::forward<Args>(args)...)) {}
+
+  /* implicit */ TensorOptions(caffe2::TypeMeta dtype)  // NOLINT
+      : TensorOptions() {
+    this->set_dtype(dtype);
+  }
+
+  // legacy constructor to support ScalarType
   /* implicit */ TensorOptions(c10::ScalarType dtype)  // NOLINT
       : TensorOptions() {
     this->set_dtype(dtype);
@@ -85,11 +105,25 @@ struct PADDLE_API TensorOptions {
     return r;
   }
 
+  template <typename... Args>
+  [[nodiscard]] TensorOptions device(Args&&... args) const noexcept {
+    return device(
+        std::optional<Device>(std::in_place, std::forward<Args>(args)...));
+  }
+
   [[nodiscard]] TensorOptions device_index(
       c10::DeviceIndex device_index) const noexcept {
     return device(Device(kCUDA, device_index));
   }
 
+  [[nodiscard]] TensorOptions dtype(
+      std::optional<caffe2::TypeMeta> dtype) const noexcept {
+    TensorOptions r = *this;
+    r.set_dtype(dtype);
+    return r;
+  }
+
+  // legacy overload to support ScalarType
   [[nodiscard]] TensorOptions dtype(
       std::optional<ScalarType> dtype) const noexcept {
     TensorOptions r = *this;
@@ -99,6 +133,7 @@ struct PADDLE_API TensorOptions {
 
   template <typename T>
   TensorOptions& dtype() {
+    dtype_ = caffe2::TypeMeta::Make<T>();
     has_dtype_ = true;
     return *this;
   }
@@ -141,11 +176,13 @@ struct PADDLE_API TensorOptions {
 
   c10::DeviceIndex device_index() const noexcept { return device().index(); }
 
-  ScalarType dtype() const noexcept { return dtype_or_default(dtype_opt()); }
+  caffe2::TypeMeta dtype() const noexcept {
+    return dtype_or_default(dtype_opt());
+  }
 
   bool has_dtype() const noexcept { return has_dtype_; }
 
-  std::optional<c10::ScalarType> dtype_opt() const noexcept {
+  std::optional<caffe2::TypeMeta> dtype_opt() const noexcept {
     return has_dtype_ ? std::make_optional(dtype_) : std::nullopt;
   }
 
@@ -218,9 +255,19 @@ struct PADDLE_API TensorOptions {
     }
   }
 
-  void set_dtype(std::optional<ScalarType> dtype) & noexcept {
+  void set_dtype(std::optional<caffe2::TypeMeta> dtype) & noexcept {
     if (dtype) {
       dtype_ = *dtype;
+      has_dtype_ = true;
+    } else {
+      has_dtype_ = false;
+    }
+  }
+
+  // legacy overload to support ScalarType
+  void set_dtype(std::optional<ScalarType> dtype) & noexcept {
+    if (dtype) {
+      dtype_ = scalarTypeToTypeMeta(*dtype);
       has_dtype_ = true;
     } else {
       has_dtype_ = false;
@@ -264,9 +311,9 @@ struct PADDLE_API TensorOptions {
   }
 
   Device device_ = c10::kCPU;
-  c10::ScalarType dtype_ = c10::ScalarType::Float;
-  Layout layout_ = at::kStrided;                           // 8-bit
-  MemoryFormat memory_format_ = MemoryFormat::Contiguous;  // 8-bit
+  caffe2::TypeMeta dtype_ = caffe2::TypeMeta::Make<float>();  // 16-bit
+  Layout layout_ = at::kStrided;                              // 8-bit
+  MemoryFormat memory_format_ = MemoryFormat::Contiguous;     // 8-bit
 
   bool requires_grad_ : 1;
   bool pinned_memory_ : 1;
@@ -279,8 +326,18 @@ struct PADDLE_API TensorOptions {
   bool has_memory_format_ : 1;
 };
 
-inline TensorOptions dtype(ScalarType dtype) {
+inline TensorOptions dtype(caffe2::TypeMeta dtype) {
   return TensorOptions().dtype(dtype);
+}
+
+// legacy overload
+inline TensorOptions dtype(ScalarType dtype) {
+  return TensorOptions().dtype(scalarTypeToTypeMeta(dtype));
+}
+
+template <typename T>
+inline TensorOptions dtype() {
+  return dtype(caffe2::TypeMeta::Make<T>());
 }
 
 inline TensorOptions layout(Layout layout) {
@@ -316,7 +373,3 @@ inline std::string toString(const TensorOptions& options) {
 namespace at {
 using namespace c10;  // NOLINT
 }  // namespace at
-
-namespace torch {
-using namespace c10;  // NOLINT
-}  // namespace torch

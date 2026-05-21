@@ -66,7 +66,9 @@ if TYPE_CHECKING:
             no_grad_set: set[Tensor],
         ) -> tuple[list[Operator], list[tuple[Tensor, Tensor]]]: ...
 
-        def step(self) -> None: ...
+        def step(
+            self, closure: Callable[[], Tensor] | None
+        ) -> Tensor | None: ...
 
         def set_state_dict(self, state_dict: dict[str, Tensor]) -> None: ...
 
@@ -493,7 +495,7 @@ def amp_guard(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -507,7 +509,6 @@ def amp_guard(
             >>> # doctest: +SKIP("This has diff in xdoctest env")
             paddle.float16
             >>> # doctest: -SKIP
-            ...
             >>> with paddle.amp.amp_guard(enable=False):
             ...     conv = conv2d(data)
             ...     print(conv.dtype)
@@ -886,7 +887,7 @@ def amp_decorate(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> # Demo1: single model and optimizer:
@@ -1087,7 +1088,7 @@ def autocast(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -1146,7 +1147,7 @@ def auto_cast(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
@@ -1261,7 +1262,7 @@ def decorate(
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> # Demo1: single model and optimizer:
@@ -1386,7 +1387,7 @@ def is_autocast_enabled(device_type: PlaceLike | None = None) -> bool:
         bool: True if auto-mixed-precision is enabled, False otherwise.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> # Demo1: Check if auto-mixed-precision is enabled by default
@@ -1421,7 +1422,7 @@ def get_autocast_dtype(device_type: PlaceLike | None = None) -> _DTypeLiteral:
         _DTypeLiteral: The current AMP dtype.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> # Demo1: Get default auto-mixed-precision dtype

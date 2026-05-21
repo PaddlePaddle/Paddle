@@ -77,19 +77,19 @@ void FFNGrad(const GPUContext& dev_ctx,
              const int bsz_seq,
              const int d_model,
              const int dim_feedforward,
-             const phi::fusion::DropoutParam& dropout_param1,
-             const phi::fusion::DropoutParam& dropout_param2,
+             const fusion::DropoutParam& dropout_param1,
+             const fusion::DropoutParam& dropout_param2,
              const std::string& act_method,
              const bool pre_layer_norm,
              const float epsilon1,
              const float epsilon2,
              const bool add_residual,
              const int ring_id) {
-  phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t> pre_layernorm_helper(
+  fusion::FusedDropoutLayerNormHelper<T, uint8_t> pre_layernorm_helper(
       bsz_seq, d_model, epsilon1);
-  phi::fusion::FusedDropoutHelper<T, uint8_t> fused_act_dropout_helper(
+  fusion::FusedDropoutHelper<T, uint8_t> fused_act_dropout_helper(
       dev_ctx, bsz_seq, dim_feedforward, dropout_param1);
-  phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t>
+  fusion::FusedDropoutLayerNormHelper<T, uint8_t>
       fused_dropout_layernorm_helper(
           dev_ctx, bsz_seq, d_model, dropout_param2, epsilon2);
 
@@ -211,52 +211,51 @@ void FFNGrad(const GPUContext& dev_ctx,
 }
 
 template <typename T, typename Context>
-void FusedFeedForwardGradKernel(
-    const Context& dev_ctx,
-    const DenseTensor& out_grad,
-    const DenseTensor& x,
-    const DenseTensor& linear1_weight,
-    const paddle::optional<DenseTensor>& linear1_bias,
-    const DenseTensor& linear2_weight,
-    const DenseTensor& dropout1_mask,
-    const DenseTensor& dropout2_mask,
-    const DenseTensor& linear1_out,
-    const DenseTensor& dropout1_out,
-    const paddle::optional<DenseTensor>& dropout2_out,
-    const paddle::optional<DenseTensor>& ln1_scale,
-    const paddle::optional<DenseTensor>& ln1_bias,
-    const paddle::optional<DenseTensor>& ln1_out,
-    const paddle::optional<DenseTensor>& ln1_mean,
-    const paddle::optional<DenseTensor>& ln1_variance,
-    const paddle::optional<DenseTensor>& ln2_scale,
-    const paddle::optional<DenseTensor>& ln2_bias,
-    const paddle::optional<DenseTensor>& ln2_mean,
-    const paddle::optional<DenseTensor>& ln2_variance,
-    const paddle::optional<DenseTensor>& linear2_bias,
-    bool pre_layer_norm,
-    float ln1_epsilon,
-    float ln2_epsilon,
-    const std::string& act_method,
-    float dropout1_prob,
-    float dropout2_prob,
-    const std::string& dropout1_implementation,
-    const std::string& dropout2_implementation,
-    bool is_test,
-    bool dropout1_fix_seed,
-    bool dropout2_fix_seed,
-    int dropout1_seed_val,
-    int dropout2_seed_val,
-    bool add_residual,
-    int ring_id,
-    DenseTensor* x_grad,
-    DenseTensor* linear1_weight_grad,
-    DenseTensor* linear1_bias_grad,
-    DenseTensor* linear2_weight_grad,
-    DenseTensor* linear2_bias_grad,
-    DenseTensor* ln1_scale_grad,
-    DenseTensor* ln1_bias_grad,
-    DenseTensor* ln2_scale_grad,
-    DenseTensor* ln2_bias_grad) {
+void FusedFeedForwardGradKernel(const Context& dev_ctx,
+                                const DenseTensor& out_grad,
+                                const DenseTensor& x,
+                                const DenseTensor& linear1_weight,
+                                const optional<DenseTensor>& linear1_bias,
+                                const DenseTensor& linear2_weight,
+                                const DenseTensor& dropout1_mask,
+                                const DenseTensor& dropout2_mask,
+                                const DenseTensor& linear1_out,
+                                const DenseTensor& dropout1_out,
+                                const optional<DenseTensor>& dropout2_out,
+                                const optional<DenseTensor>& ln1_scale,
+                                const optional<DenseTensor>& ln1_bias,
+                                const optional<DenseTensor>& ln1_out,
+                                const optional<DenseTensor>& ln1_mean,
+                                const optional<DenseTensor>& ln1_variance,
+                                const optional<DenseTensor>& ln2_scale,
+                                const optional<DenseTensor>& ln2_bias,
+                                const optional<DenseTensor>& ln2_mean,
+                                const optional<DenseTensor>& ln2_variance,
+                                const optional<DenseTensor>& linear2_bias,
+                                bool pre_layer_norm,
+                                float ln1_epsilon,
+                                float ln2_epsilon,
+                                const std::string& act_method,
+                                float dropout1_prob,
+                                float dropout2_prob,
+                                const std::string& dropout1_implementation,
+                                const std::string& dropout2_implementation,
+                                bool is_test,
+                                bool dropout1_fix_seed,
+                                bool dropout2_fix_seed,
+                                int dropout1_seed_val,
+                                int dropout2_seed_val,
+                                bool add_residual,
+                                int ring_id,
+                                DenseTensor* x_grad,
+                                DenseTensor* linear1_weight_grad,
+                                DenseTensor* linear1_bias_grad,
+                                DenseTensor* linear2_weight_grad,
+                                DenseTensor* linear2_bias_grad,
+                                DenseTensor* ln1_scale_grad,
+                                DenseTensor* ln1_bias_grad,
+                                DenseTensor* ln2_scale_grad,
+                                DenseTensor* ln2_bias_grad) {
   using U = funcs::LayerNormParamType<T>;
 
   auto* ln1_out_ptr = pre_layer_norm ? ln1_out.get_ptr() : nullptr;
@@ -284,20 +283,20 @@ void FusedFeedForwardGradKernel(
   bool is_upscale_in_train1 = dropout1_implementation == "upscale_in_train";
   bool is_upscale_in_train2 = dropout2_implementation == "upscale_in_train";
 
-  phi::fusion::DropoutParam dropout_param1(dropout1_fix_seed,
-                                           0,
-                                           is_test,
-                                           is_upscale_in_train1,
-                                           dropout1_prob,
-                                           nullptr,
-                                           dropout1_seed_val);
-  phi::fusion::DropoutParam dropout_param2(dropout2_fix_seed,
-                                           0,
-                                           is_test,
-                                           is_upscale_in_train2,
-                                           dropout2_prob,
-                                           nullptr,
-                                           dropout2_seed_val);
+  fusion::DropoutParam dropout_param1(dropout1_fix_seed,
+                                      0,
+                                      is_test,
+                                      is_upscale_in_train1,
+                                      dropout1_prob,
+                                      nullptr,
+                                      dropout1_seed_val);
+  fusion::DropoutParam dropout_param2(dropout2_fix_seed,
+                                      0,
+                                      is_test,
+                                      is_upscale_in_train2,
+                                      dropout2_prob,
+                                      nullptr,
+                                      dropout2_seed_val);
 
   dev_ctx.template Alloc<T>(d_x, d_x->numel() * sizeof(T));
   if (d_ln1_scale) {
@@ -328,53 +327,21 @@ void FusedFeedForwardGradKernel(
   if (d_x->numel() == 0) {
     // for 0-size Tensor init the grad tensor to 0
     if (d_ln1_scale)
-      phi::Full<U, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(d_ln1_scale->dims())),
-          0,
-          d_ln1_scale);
+      Full<U, Context>(dev_ctx, d_ln1_scale->dims(), 0, d_ln1_scale);
     if (d_ln1_bias)
-      phi::Full<U, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(d_ln1_bias->dims())),
-          0,
-          d_ln1_bias);
+      Full<U, Context>(dev_ctx, d_ln1_bias->dims(), 0, d_ln1_bias);
     if (d_ln2_scale)
-      phi::Full<U, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(d_ln2_scale->dims())),
-          0,
-          d_ln2_scale);
+      Full<U, Context>(dev_ctx, d_ln2_scale->dims(), 0, d_ln2_scale);
     if (d_ln2_bias)
-      phi::Full<U, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(d_ln2_bias->dims())),
-          0,
-          d_ln2_bias);
+      Full<U, Context>(dev_ctx, d_ln2_bias->dims(), 0, d_ln2_bias);
     if (d_linear1_bias)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(d_linear1_bias->dims())),
-          0,
-          d_linear1_bias);
+      Full<T, Context>(dev_ctx, d_linear1_bias->dims(), 0, d_linear1_bias);
     if (d_linear2_bias)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(d_linear2_bias->dims())),
-          0,
-          d_linear2_bias);
+      Full<T, Context>(dev_ctx, d_linear2_bias->dims(), 0, d_linear2_bias);
     if (d_linear1_weight)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(d_linear1_weight->dims())),
-          0,
-          d_linear1_weight);
+      Full<T, Context>(dev_ctx, d_linear1_weight->dims(), 0, d_linear1_weight);
     if (d_linear2_weight)
-      phi::Full<T, Context>(
-          dev_ctx,
-          phi::IntArray(common::vectorize(d_linear2_weight->dims())),
-          0,
-          d_linear2_weight);
+      Full<T, Context>(dev_ctx, d_linear2_weight->dims(), 0, d_linear2_weight);
 
     return;
   }

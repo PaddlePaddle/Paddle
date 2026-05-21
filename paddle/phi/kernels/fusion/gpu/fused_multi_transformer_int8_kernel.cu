@@ -29,23 +29,22 @@ void FusedMultiTransformerINT8OpKernel(
     const std::vector<const DenseTensor *> &ln_scale,
     const std::vector<const DenseTensor *> &ln_bias,
     const std::vector<const DenseTensor *> &qkv_w,
-    const paddle::optional<std::vector<const DenseTensor *>> &qkv_bias_in,
-    const paddle::optional<std::vector<const DenseTensor *>> &cache_kv_in,
-    const paddle::optional<DenseTensor> &time_step_in,
-    const paddle::optional<DenseTensor> &src_mask_in,
+    const optional<std::vector<const DenseTensor *>> &qkv_bias_in,
+    const optional<std::vector<const DenseTensor *>> &cache_kv_in,
+    const optional<DenseTensor> &time_step_in,
+    const optional<DenseTensor> &src_mask_in,
     const std::vector<const DenseTensor *> &out_linear_w,
-    const paddle::optional<std::vector<const DenseTensor *>> &out_linear_bias,
+    const optional<std::vector<const DenseTensor *>> &out_linear_bias,
     const std::vector<const DenseTensor *> &ffn_ln_scale,
     const std::vector<const DenseTensor *> &ffn_ln_bias,
     const std::vector<const DenseTensor *> &ffn1_weight,
-    const paddle::optional<std::vector<const DenseTensor *>> &ffn1_bias,
+    const optional<std::vector<const DenseTensor *>> &ffn1_bias,
     const std::vector<const DenseTensor *> &ffn2_weight,
-    const paddle::optional<std::vector<const DenseTensor *>> &ffn2_bias,
-    const paddle::optional<std::vector<const DenseTensor *>> &qkv_out_scale,
-    const paddle::optional<std::vector<const DenseTensor *>>
-        &out_linear_out_scale,
-    const paddle::optional<std::vector<const DenseTensor *>> &ffn1_out_scale,
-    const paddle::optional<std::vector<const DenseTensor *>> &ffn2_out_scale,
+    const optional<std::vector<const DenseTensor *>> &ffn2_bias,
+    const optional<std::vector<const DenseTensor *>> &qkv_out_scale,
+    const optional<std::vector<const DenseTensor *>> &out_linear_out_scale,
+    const optional<std::vector<const DenseTensor *>> &ffn1_out_scale,
+    const optional<std::vector<const DenseTensor *>> &ffn2_out_scale,
     bool pre_layer_norm,
     float epsilon,
     float dropout_rate,
@@ -93,13 +92,13 @@ void FusedMultiTransformerINT8OpKernel(
   auto ln_scales = ln_scale;
   auto ln_biases = ln_bias;
 
-  auto ln_compute = phi::fusion::AttnLayerNorm<T, T, int8_t>(
-      dev_ctx, epsilon, bsz_seq, dim_embed);
+  auto ln_compute =
+      fusion::AttnLayerNorm<T, T, int8_t>(dev_ctx, epsilon, bsz_seq, dim_embed);
   DenseTensor ln_mean, ln_var;
-  ln_mean.Resize({{bsz_seq}});
+  ln_mean.Resize({bsz_seq});
   auto *ln_mean_data =
       dev_ctx.template Alloc<U>(&ln_mean, ln_mean.numel() * sizeof(U));
-  ln_var.Resize({{bsz_seq}});
+  ln_var.Resize({bsz_seq});
   auto *ln_var_data =
       dev_ctx.template Alloc<U>(&ln_var, ln_var.numel() * sizeof(U));
 
@@ -118,18 +117,18 @@ void FusedMultiTransformerINT8OpKernel(
 
   bool compute_bias = qkv_biases.size() > 0 && time_step == nullptr;
   // (transA, transB, compute_bias) = (false, trans_qkvw, false)
-  phi::fusion::AttnMatmulINT8<T> qkv_compute(
+  fusion::AttnMatmulINT8<T> qkv_compute(
       dev_ctx, bsz_seq, output_size, input_size, compute_bias);
   DenseTensor qkv_out;
-  qkv_out.Resize({{bsz, seq_len, 3, num_head, dim_head}});
+  qkv_out.Resize({bsz, seq_len, 3, num_head, dim_head});
   auto *qkv_out_data =
       dev_ctx.template Alloc<T>(&qkv_out, qkv_out.numel() * sizeof(T));
 
   // 3. fmha
-  phi::fusion::AttnDropoutParam attn_param(
+  fusion::AttnDropoutParam attn_param(
       true, "upscale_in_train", 0.0, true, true, 0, nullptr);
-  auto fmha_compute = phi::fusion::FMHARef<T>(
-      dev_ctx, bsz, seq_len, num_head, dim_head, attn_param);
+  auto fmha_compute =
+      fusion::FMHARef<T>(dev_ctx, bsz, seq_len, num_head, dim_head, attn_param);
   auto *src_mask = src_mask_in.get_ptr();
   auto cache_kvs = std::vector<const DenseTensor *>();
   if (cache_kv_in) {
@@ -160,32 +159,32 @@ void FusedMultiTransformerINT8OpKernel(
   }
 
   DenseTensor transpose_out_2, qk_out;
-  transpose_out_2.Resize({{3, bsz, num_head, seq_len, dim_head}});
+  transpose_out_2.Resize({3, bsz, num_head, seq_len, dim_head});
   auto *transpose_out_2_data = dev_ctx.template Alloc<T>(
       &transpose_out_2, transpose_out_2.numel() * sizeof(T));
 
-  qk_out.Resize({{bsz, num_head, seq_len, out_seq_len}});
+  qk_out.Resize({bsz, num_head, seq_len, out_seq_len});
   auto *qk_out_data =
       dev_ctx.template Alloc<T>(&qk_out, qk_out.numel() * sizeof(T));
 
   DenseTensor softmax_out;
   DenseTensor attn_dropout_mask_out, attn_dropout_out;
   DenseTensor qktv_out, fmha_out;
-  softmax_out.Resize({{bsz, num_head, seq_len, out_seq_len}});
+  softmax_out.Resize({bsz, num_head, seq_len, out_seq_len});
   auto *softmax_out_data =
       dev_ctx.template Alloc<T>(&softmax_out, softmax_out.numel() * sizeof(T));
 
-  attn_dropout_mask_out.Resize({{bsz, num_head, seq_len, out_seq_len}});
+  attn_dropout_mask_out.Resize({bsz, num_head, seq_len, out_seq_len});
   auto *attn_dropout_mask_out_data = dev_ctx.template Alloc<T>(
       &attn_dropout_mask_out, attn_dropout_mask_out.numel() * sizeof(T));
-  attn_dropout_out.Resize({{bsz, num_head, seq_len, out_seq_len}});
+  attn_dropout_out.Resize({bsz, num_head, seq_len, out_seq_len});
   auto *attn_dropout_data_data = dev_ctx.template Alloc<T>(
       &attn_dropout_out, attn_dropout_out.numel() * sizeof(T));
 
-  qktv_out.Resize({{bsz, num_head, seq_len, dim_head}});
+  qktv_out.Resize({bsz, num_head, seq_len, dim_head});
   auto *qktv_out_data =
       dev_ctx.template Alloc<T>(&qktv_out, qktv_out.numel() * sizeof(T));
-  fmha_out.Resize({{bsz, seq_len, num_head, dim_head}});
+  fmha_out.Resize({bsz, seq_len, num_head, dim_head});
   auto *fmha_out_data =
       dev_ctx.template Alloc<T>(&fmha_out, fmha_out.numel() * sizeof(T));
 
@@ -194,16 +193,15 @@ void FusedMultiTransformerINT8OpKernel(
   auto out_linear_biases = out_linear_bias.get();
 
   // (transA, transB, compute_bias) = (false, false, false)
-  phi::fusion::AttnMatmulINT8<T> out_linear_compute(
+  fusion::AttnMatmulINT8<T> out_linear_compute(
       dev_ctx, bsz_seq, dim_embed, hidden_size, false);
 
   // 5. ln(residual + bias)
-  phi::fusion::DropoutParam dropout_param2(
-      true, 0, true, true, 0.0, nullptr, 0);
-  phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t, int32_t, int8_t>
+  fusion::DropoutParam dropout_param2(true, 0, true, true, 0.0, nullptr, 0);
+  fusion::FusedDropoutLayerNormHelper<T, uint8_t, int32_t, int8_t>
       fused_dropout_layernorm_helper(
           dev_ctx, bsz_seq, dim_embed, dropout_param2, epsilon);
-  phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t>
+  fusion::FusedDropoutLayerNormHelper<T, uint8_t>
       fused_dropout_layernorm_helper_for_post_layernorm(
           dev_ctx, bsz_seq, dim_embed, dropout_param2, epsilon);
   auto ffn_ln_scales = ffn_ln_scale;
@@ -211,12 +209,12 @@ void FusedMultiTransformerINT8OpKernel(
   DenseTensor bias_dropout_residual_out, dropout_mask_out;
   T *bias_dropout_residual_out_data = nullptr;
   if (pre_layer_norm) {
-    bias_dropout_residual_out.Resize({{bsz, seq_len, dim_embed}});
+    bias_dropout_residual_out.Resize({bsz, seq_len, dim_embed});
     bias_dropout_residual_out_data = dev_ctx.template Alloc<T>(
         &bias_dropout_residual_out,
         bias_dropout_residual_out.numel() * sizeof(T));
   }
-  dropout_mask_out.Resize({{bsz, seq_len, dim_embed}});
+  dropout_mask_out.Resize({bsz, seq_len, dim_embed});
   auto *dropout_mask_out_data = dev_ctx.template Alloc<uint8_t>(
       &dropout_mask_out, dropout_mask_out.numel() * sizeof(uint8_t));
 
@@ -226,45 +224,43 @@ void FusedMultiTransformerINT8OpKernel(
   auto ffn1_weight_dim = ffn1_weights[0]->dims();
 
   int dim_ffn = ffn1_weight_dim[0];
-  phi::fusion::AttnMatmulINT8<T> ffn1_linear_compute(
+  fusion::AttnMatmulINT8<T> ffn1_linear_compute(
       dev_ctx, bsz_seq, dim_ffn, dim_embed, false);
   DenseTensor ffn1_out;
-  ffn1_out.Resize({{bsz_seq, dim_ffn}});
+  ffn1_out.Resize({bsz_seq, dim_ffn});
   auto *ffn1_out_data =
       dev_ctx.template Alloc<T>(&ffn1_out, ffn1_out.numel() * sizeof(T));
 
   // 7. ffn act + bias
-  phi::fusion::DropoutParam ffn1_dropout_param(
-      true, 0, true, true, 0.0, nullptr, 0);
-  phi::fusion::FusedDropoutHelper<T, uint8_t, int32_t, int8_t>
+  fusion::DropoutParam ffn1_dropout_param(true, 0, true, true, 0.0, nullptr, 0);
+  fusion::FusedDropoutHelper<T, uint8_t, int32_t, int8_t>
       fused_act_dropout_helper(dev_ctx, bsz_seq, dim_ffn, ffn1_dropout_param);
-  phi::fusion::FusedDropoutHelper<T, uint8_t>
+  fusion::FusedDropoutHelper<T, uint8_t>
       fused_act_dropout_helper_for_post_layernorm(
           dev_ctx, bsz_seq, dim_ffn, ffn1_dropout_param);
   DenseTensor ffn1_dropout_out, ffn1_dropout_mask;
-  ffn1_dropout_out.Resize({{bsz_seq, dim_ffn}});
+  ffn1_dropout_out.Resize({bsz_seq, dim_ffn});
   auto *ffn1_dropout_out_data = dev_ctx.template Alloc<T>(
       &ffn1_dropout_out, ffn1_dropout_out.numel() * sizeof(T));
-  ffn1_dropout_mask.Resize({{bsz_seq, dim_ffn}});
+  ffn1_dropout_mask.Resize({bsz_seq, dim_ffn});
   auto *ffn1_dropout_mask_data = dev_ctx.template Alloc<uint8_t>(
       &ffn1_dropout_mask, ffn1_dropout_mask.numel() * sizeof(uint8_t));
 
   // 8. ffn2 matmul
   auto ffn2_weights = ffn2_weight;
   auto ffn2_biases = ffn2_bias.get();
-  phi::fusion::AttnMatmulINT8<T> ffn2_linear_compute(
+  fusion::AttnMatmulINT8<T> ffn2_linear_compute(
       dev_ctx, bsz_seq, dim_embed, dim_ffn, false);
 
   // 9. ffn2 residual bias
-  phi::fusion::DropoutParam ffn2_dropout_param(
-      true, 0, true, true, 0.0, nullptr, 0);
-  phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t, int32_t, int8_t>
+  fusion::DropoutParam ffn2_dropout_param(true, 0, true, true, 0.0, nullptr, 0);
+  fusion::FusedDropoutLayerNormHelper<T, uint8_t, int32_t, int8_t>
       ffn2_fused_dropout_helper(
           dev_ctx, bsz_seq, dim_embed, ffn2_dropout_param, epsilon);
-  phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t, int32_t, T>
+  fusion::FusedDropoutLayerNormHelper<T, uint8_t, int32_t, T>
       ffn2_fused_dropout_dequant_helper(
           dev_ctx, bsz_seq, dim_embed, ffn2_dropout_param, epsilon);
-  phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t>
+  fusion::FusedDropoutLayerNormHelper<T, uint8_t>
       ffn2_fused_dropout_helper_for_post_layernorm(
           dev_ctx, bsz_seq, dim_embed, ffn2_dropout_param, epsilon);
 
@@ -274,15 +270,15 @@ void FusedMultiTransformerINT8OpKernel(
   int m_max = bsz_seq, k_max = std::max(dim_embed, dim_ffn),
       n_max = std::max({output_size, dim_embed, dim_ffn});
 
-  input_workspace.Resize({{(m_max * k_max + 31) / 32 * 32}});
+  input_workspace.Resize({(m_max * k_max + 31) / 32 * 32});
   dev_ctx.template Alloc<int8_t>(&input_workspace,
                                  input_workspace.numel() * sizeof(int8_t));
 
-  output_workspace.Resize({{(n_max * m_max + 31) / 32 * 32}});
+  output_workspace.Resize({(n_max * m_max + 31) / 32 * 32});
   dev_ctx.template Alloc<int32_t>(&output_workspace,
                                   output_workspace.numel() * sizeof(int32_t));
 
-  cublaslt_workspace.Resize({{3000000}});
+  cublaslt_workspace.Resize({3000000});
   dev_ctx.template Alloc<int8_t>(&cublaslt_workspace,
                                  cublaslt_workspace.numel() * sizeof(int8_t));
 
@@ -290,7 +286,7 @@ void FusedMultiTransformerINT8OpKernel(
   auto *from_data = dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
   DenseTensor *from_tensor = out;
   DenseTensor tmp_out;
-  tmp_out.Resize({{bsz, seq_len, dim_embed}});
+  tmp_out.Resize({bsz, seq_len, dim_embed});
   auto *tmp_out_data =
       dev_ctx.template Alloc<T>(&tmp_out, tmp_out.numel() * sizeof(T));
 

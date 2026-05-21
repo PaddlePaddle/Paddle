@@ -24,9 +24,9 @@ void SvdGradKernel(const Context& dev_ctx,
                    const DenseTensor& u,
                    const DenseTensor& vh,
                    const DenseTensor& s,
-                   const paddle::optional<DenseTensor>& u_grad,
-                   const paddle::optional<DenseTensor>& vh_grad,
-                   const paddle::optional<DenseTensor>& s_grad,
+                   const optional<DenseTensor>& u_grad,
+                   const optional<DenseTensor>& vh_grad,
+                   const optional<DenseTensor>& s_grad,
                    bool full_matrices,
                    DenseTensor* X_grad);
 }  // namespace phi

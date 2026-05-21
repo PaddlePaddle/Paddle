@@ -24,7 +24,7 @@ namespace allocation {
 
 class CustomAllocator : public Allocator {
  public:
-  explicit CustomAllocator(const phi::CustomPlace& place) : place_(place) {}
+  explicit CustomAllocator(const CustomPlace& place) : place_(place) {}
 
   bool IsAllocThreadSafe() const override;
 
@@ -33,7 +33,7 @@ class CustomAllocator : public Allocator {
   phi::Allocation* AllocateImpl(size_t size) override;
 
  private:
-  phi::Place place_;
+  Place place_;
   std::once_flag once_flag_;
 };
 

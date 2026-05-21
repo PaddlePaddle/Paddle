@@ -63,6 +63,13 @@ class CodeGenGpuHost : public CodeGenHost {
           } else {
             return CodeGenHost::Visit(op);
           }
+        },
+        [&](common::CustomDeviceArch) {
+          if (op->name == runtime::intrinsic::call_custom_device_kernel) {
+            return LowerGPUKernelCall(op);
+          } else {
+            return CodeGenHost::Visit(op);
+          }
         });
   }
 

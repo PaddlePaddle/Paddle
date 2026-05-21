@@ -13,6 +13,7 @@
 // limitations under the License.
 #pragma once
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/common/macros.h"
 #include "paddle/phi/core/distributed/comm_context.h"
 
@@ -25,7 +26,7 @@ namespace distributed {
 
 class XCCLCommContext final : public CommContext {
  public:
-  XCCLCommContext(const phi::Place& place,
+  XCCLCommContext(const Place& place,
                   int rank,
                   int size,
                   const ccl::CCLRootId& xccl_id);
@@ -88,7 +89,7 @@ class XCCLCommContext final : public CommContext {
  private:
   DISABLE_COPY_AND_ASSIGN(XCCLCommContext);
 
-  phi::Place place_;
+  Place place_;
   ccl::CCLComm xccl_comm_;
   std::shared_ptr<phi::stream::Stream> stream_;
   std::unique_ptr<phi::CustomContext> dev_ctx_;
@@ -96,3 +97,4 @@ class XCCLCommContext final : public CommContext {
 
 }  // namespace distributed
 }  // namespace phi
+#endif

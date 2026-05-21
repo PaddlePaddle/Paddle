@@ -90,8 +90,8 @@ def fused_act_dequant(
     Args:
         x (Tensor): Input quantized tensor with dtype float8_e4m3fn and shape [M, N]. This tensor contains the quantized
             activations from previous layers.
-        x_scale (Tensor): Dequantization scale tensor with dtype float32 and shape [M, (N + 127) // 128].
-            Each scale value corresponds to a 128-column block in the input tensor.
+        x_scale (Tensor): Dequantization scale tensor with dtype float32 and shape [M, (N + 127) // 128] or int32 and shape [M, (N + 511) // 512].
+            Each scale value corresponds to a 128-column in the input tensor.
 
     Returns:
         Tensor. Dequantized output tensor with dtype bfloat16 and shape [M, N]. The values are
@@ -388,10 +388,71 @@ def fp8_quant_blockwise(
     output_scale_transpose: bool = True,
     return_transpose_only: bool = False,
     using_pow2_scale: bool = True,
+    using_ue8m0_scale: bool = False,
     quant_method: str = "1x128",
     output_type: str = "e4m3",
     name: str | None = None,
 ):
+    """
+    Applies blockwise FP8 quantization to input tensor with flexible configuration options.
+    Note:
+        This function performs blockwise quantization from higher precision formats (typically bfloat16)
+        to FP8 format (float8_e4m3fn by default). The quantization is performed in blocks (128x128 or 1x128)
+        for better numerical stability and hardware efficiency.
+    Args:
+        x (Tensor): Input tensor to be quantized. Typically has dtype bfloat16 and shape [M, N].
+        epsilon (float, optional): Small constant added to avoid division by zero when computing scales.
+            Default: 0.0.
+        input_transpose (bool, optional): Whether to transpose the input before quantization.
+            If True, input shape [M, N] becomes [N, M]. Default: False.
+        output_scale_transpose (bool, optional): Whether to transpose the output scale tensor.
+            Default: True.
+        return_transpose_only (bool, optional): If True and input_transpose is True, returns only
+            the transposed quantized output and scale. Default: False.
+        using_pow2_scale (bool, optional): Whether to use power-of-2 quantization scaling for
+            better hardware efficiency. Default: True.
+        using_ue8m0_scale (bool, optional): Whether to use unsigned 8-bit with mantissa 0 scaling format.
+            If True, the output scale tensor has dtype int32, where each element contains 4 packed ue8m0 scales.
+            If False, the output scale tensor has dtype float32.
+            Default: False.
+        quant_method (str, optional): Quantization block size method. Options: "1x128" or "128x128".
+            "1x128" uses 1x128 blocks, "128x128" uses 128x128 blocks. Default: "1x128".
+        output_type (str, optional): Output FP8 format. Currently only "e4m3" (float8_e4m3fn) is supported.
+            Default: "e4m3".
+        name (str, optional): Name for the operation. Default: None.
+    Returns:
+        tuple: The return value depends on the configuration:
+            - If not input_transpose: returns (quantized_output, scale)
+            - If return_transpose_only and input_transpose: returns (transposed_quantized_output, transposed_scale)
+            - Otherwise: returns (quantized_output, scale, transposed_quantized_output, transposed_scale)
+        Where:
+            - quantized_output (Tensor): Quantized output tensor with dtype float8_e4m3fn.
+            - scale (Tensor): Dequantization scale tensor with dtype float32.
+            - transposed_quantized_output (Tensor): Transposed quantized output (if input_transpose).
+            - transposed_scale (Tensor): Transposed scale tensor (if input_transpose).
+    Examples:
+        .. code-block:: pycon
+
+            >>> # doctest: +SKIP('BF16 requires SM80 or higher env')
+            >>> import paddle
+            >>> import paddle.incubate.nn.functional as F
+            >>> paddle.set_device('gpu')
+            >>> x = paddle.randn([1024, 512], dtype='bfloat16')
+            >>> x = paddle.clip(x, min=-50, max=50)
+            # Basic quantization
+            >>> quantized, scale = F.fp8_quant_blockwise(x)
+            >>> print(quantized.shape)
+            paddle.Size([1024, 512])
+            >>> print(scale.shape)
+            paddle.Size([1024, 4])
+            # With transpose
+            >>> quantized, scale, transposed_quantized, transposed_scale = F.fp8_quant_blockwise(
+            ...     x, input_transpose=True, return_transpose_only=False
+            ... )
+            >>> print(transposed_quantized.shape)
+            paddle.Size([512, 1024])
+    """
+
     if quant_method == "1x128":
         using_1x128 = True
     elif quant_method == "128x128":
@@ -414,6 +475,7 @@ def fp8_quant_blockwise(
             return_transpose_only,
             using_e5m2,
             using_pow2_scale,
+            using_ue8m0_scale,
         )
         # Aligned with kitchen's logic
         if not input_transpose:

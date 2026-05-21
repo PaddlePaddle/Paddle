@@ -56,13 +56,13 @@ class BasicTokenizer {
 
 class WordPieceTokenizer {
  public:
-  explicit WordPieceTokenizer(const phi::Vocab* vocab,
+  explicit WordPieceTokenizer(const Vocab* vocab,
                               const wstring& unk_token = L"[UNK]",
                               const size_t max_input_chars_per_word = 100);
   void Tokenize(const wstring& text, vector<int64_t>* output) const;
 
  private:
-  const phi::Vocab* vocab_;
+  const Vocab* vocab_;
   wstring unk_token_{L"[UNK]"};
   int64_t unk_token_id_;
   size_t max_input_chars_per_word_;
@@ -70,7 +70,7 @@ class WordPieceTokenizer {
 
 class BertTokenizer {
  public:
-  explicit BertTokenizer(const phi::Vocab* vocab,
+  explicit BertTokenizer(const Vocab* vocab,
                          bool do_lower_case = false,
                          const wstring& unk_token = L"[UNK]",
                          const wstring& pad_token = L"[PAD]",
@@ -113,7 +113,7 @@ class BertTokenizer {
   bool do_lower_case_;
   wstring unk_token_, pad_token_, cls_token_, mask_token_, sep_token_;
   string padding_site_;
-  const phi::Vocab* vocab_;
+  const Vocab* vocab_;
   BasicTokenizer basic_tokenizer_;
   WordPieceTokenizer word_piece_tokenizer_;
   int64_t unk_token_id_, cls_token_id_, mask_token_id_, pad_token_id_,
@@ -171,7 +171,7 @@ wchar_t BasicTokenizer::do_lower_case(wchar_t ch) const {
 
 void BasicTokenizer::Tokenize(const string& text, vector<wstring>* res) const {
   std::wstring unicode_text;
-  bool status = phi::ConvertStrToWstr(text, &unicode_text);
+  bool status = ConvertStrToWstr(text, &unicode_text);
   if (!status) {
     // String is converted into wstring failedly.
     return;
@@ -203,7 +203,7 @@ void BasicTokenizer::Tokenize(const string& text, vector<wstring>* res) const {
 }
 
 WordPieceTokenizer::WordPieceTokenizer(
-    const phi::Vocab* vocab,
+    const Vocab* vocab,
     const wstring& unk_token /* = L"[UNK]"*/,
     const size_t max_input_chars_per_word /* = 100 */)
     : vocab_(vocab),
@@ -259,7 +259,7 @@ void WordPieceTokenizer::Tokenize(const wstring& text,
   }
 }
 
-BertTokenizer::BertTokenizer(const phi::Vocab* vocab,
+BertTokenizer::BertTokenizer(const Vocab* vocab,
                              bool do_lower_case /* = false */,
                              const wstring& unk_token /* = L"[UNK]" */,
                              const wstring& pad_token /* = L"[PAD]" */,
@@ -410,7 +410,7 @@ int BertTokenizer::Encode(
     }
   } else {
     std::wstring unicode_text;
-    bool status_a = phi::ConvertStrToWstr(text, &unicode_text);
+    bool status_a = ConvertStrToWstr(text, &unicode_text);
     if (!status_a) {
       return 0;
     }
@@ -532,16 +532,16 @@ void BertTokenizer::BatchEncode(
 
 template <typename T, typename Context>
 void FasterTokenizerKernel(const Context& dev_ctx,
-                           const phi::ExtendedTensor& vocab_in,
-                           const phi::ExtendedTensor& text_in,
-                           const paddle::optional<phi::Strings>& text_pair_in,
+                           const ExtendedTensor& vocab_in,
+                           const ExtendedTensor& text_in,
+                           const optional<Strings>& text_pair_in,
                            bool do_lower_case,
                            bool is_split_into_words,
                            int max_seq_len,
                            bool pad_to_max_seq_len,
                            DenseTensor* input_ids,
                            DenseTensor* segment_ids) {
-  const auto* vocab = reinterpret_cast<const phi::Vocab*>(&vocab_in);
+  const auto* vocab = reinterpret_cast<const Vocab*>(&vocab_in);
   const auto* text = reinterpret_cast<const Strings*>(&text_in);
   const auto* text_pair =
       reinterpret_cast<const Strings*>(text_pair_in.get_ptr());
@@ -581,12 +581,11 @@ void FasterTokenizerKernel(const Context& dev_ctx,
     }
   }
 
-  input_ids->Resize(
-      common::make_ddim({static_cast<int64_t>(batch_size),
-                         static_cast<int64_t>(batch_max_seq_len)}));
+  input_ids->Resize(make_ddim({static_cast<int64_t>(batch_size),
+                               static_cast<int64_t>(batch_max_seq_len)}));
   auto* input_ids_data = dev_ctx.template Alloc<T>(input_ids);
-  seg_ids->Resize(common::make_ddim({static_cast<int64_t>(batch_size),
-                                     static_cast<int64_t>(batch_max_seq_len)}));
+  seg_ids->Resize(make_ddim({static_cast<int64_t>(batch_size),
+                             static_cast<int64_t>(batch_max_seq_len)}));
   auto* seg_ids_data = dev_ctx.template Alloc<T>(seg_ids);
 
   auto pad_token_id = tokenizer.GetPadTokenID();
