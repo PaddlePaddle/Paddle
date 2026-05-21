@@ -37,6 +37,8 @@ EOF
             pip3.11 uninstall -y paddlepaddle
         elif [ "$1" == "cp312-cp312" ]; then
             pip3.12 uninstall -y paddlepaddle
+        elif [ "$1" == "cp313-cp313" ]; then
+            pip3.13 uninstall -y paddlepaddle
         elif [ "$1" == "cp314-cp314" ]; then
             pip3.14 uninstall -y paddlepaddle
         fi
@@ -56,6 +58,9 @@ EOF
         elif [ "$1" == "cp312-cp312" ]; then
             pip3.12 install --user ${PADDLE_ROOT}/dist/*.whl
             pip3.12 install --user hypothesis
+        elif [ "$1" == "cp313-cp313" ]; then
+            pip3.13 install --user ${PADDLE_ROOT}/dist/*.whl
+            pip3.13 install --user hypothesis
         elif [ "$1" == "cp314-cp314" ]; then
             pip3.14 install --user ${PADDLE_ROOT}/dist/*.whl
             pip3.14 install --user hypothesis
