@@ -200,21 +200,23 @@ void ComputePutAlongAxisGradOnHost(const DenseTensor& x,
 
     if (!include_self || reduce == "assign") {
       for (int64_t i = 0; i < index_numel; ++i) {
-        x_grad_data[GetPutOffset(index_data, i, index_dims, x_dims, x_strides, axis)] =
+        x_grad_data[GetPutOffset(
+            index_data, i, index_dims, x_dims, x_strides, axis)] =
             static_cast<T>(0);
       }
     } else if (reduce == "multiply" || reduce == "mul") {
       std::vector<int64_t> last_visit(x.numel(), -1);
       for (int64_t i = 0; i < index_numel; ++i) {
-        last_visit[GetPutOffset(index_data, i, index_dims, x_dims, x_strides, axis)] = i;
+        last_visit[GetPutOffset(
+            index_data, i, index_dims, x_dims, x_strides, axis)] = i;
       }
       for (int64_t i = 0; i < index_numel; ++i) {
         const int64_t x_offset =
             GetPutOffset(index_data, i, index_dims, x_dims, x_strides, axis);
         if (last_visit[x_offset] == i) {
           if (x_data[x_offset] != static_cast<T>(0)) {
-            x_grad_data[x_offset] = x_grad_data[x_offset] * out_data[x_offset] /
-                                    x_data[x_offset];
+            x_grad_data[x_offset] =
+                x_grad_data[x_offset] * out_data[x_offset] / x_data[x_offset];
           } else {
             x_grad_data[x_offset] = static_cast<T>(0);
           }
@@ -232,13 +234,13 @@ void ComputePutAlongAxisGradOnHost(const DenseTensor& x,
         }
       }
       for (int64_t i = 0; i < x.numel(); ++i) {
-        x_grad_data[i] =
-            x_grad_data[i] / static_cast<T>(num_elements[i] + 1);
+        x_grad_data[i] = x_grad_data[i] / static_cast<T>(num_elements[i] + 1);
       }
     } else if (reduce == "mean") {
       std::vector<int> num_elements(x.numel(), 0);
       for (int64_t i = 0; i < index_numel; ++i) {
-        num_elements[GetPutOffset(index_data, i, index_dims, x_dims, x_strides, axis)] += 1;
+        num_elements[GetPutOffset(
+            index_data, i, index_dims, x_dims, x_strides, axis)] += 1;
       }
       for (int64_t i = 0; i < x.numel(); ++i) {
         if (num_elements[i]) {
@@ -272,7 +274,8 @@ void ComputePutAlongAxisGradOnHost(const DenseTensor& x,
     } else if (reduce == "mean") {
       std::vector<int> num_elements(x.numel(), static_cast<int>(include_self));
       for (int64_t i = index_numel - 1; i >= 0; --i) {
-        num_elements[GetPutOffset(index_data, i, index_dims, x_dims, x_strides, axis)] += 1;
+        num_elements[GetPutOffset(
+            index_data, i, index_dims, x_dims, x_strides, axis)] += 1;
       }
       for (int64_t i = index_numel - 1; i >= 0; --i) {
         int64_t x_offset =
@@ -306,7 +309,8 @@ void ComputePutAlongAxisGradOnHost(const DenseTensor& x,
           if (out_data[x_offset] == x_data[x_offset]) {
             divisor += 1;
           }
-          value_grad_data[i] = out_grad_data[x_offset] / static_cast<T>(divisor);
+          value_grad_data[i] =
+              out_grad_data[x_offset] / static_cast<T>(divisor);
         }
       }
     }
@@ -360,11 +364,11 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
         DenseTensor zero_value;
         zero_value.Resize(index.dims());
         dev_ctx.template Alloc<T>(&zero_value);
-        int ret = xpu::constant(
-            dev_ctx.x_context(),
-            reinterpret_cast<XPUType*>(zero_value.data<T>()),
-            zero_value.numel(),
-            XPUType(0));
+        int ret =
+            xpu::constant(dev_ctx.x_context(),
+                          reinterpret_cast<XPUType*>(zero_value.data<T>()),
+                          zero_value.numel(),
+                          XPUType(0));
         PADDLE_ENFORCE_XDNN_SUCCESS(ret, "constant");
         if (index_dtype == DataType::INT32) {
           ret = xpu::paddle_put_along_axis(
@@ -448,29 +452,29 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
   }
 
   if (index_dtype == DataType::INT32) {
-    ComputePutAlongAxisGradOnHost<T, int32_t>(x_cpu,
-                                             index_cpu,
-                                             value_cpu,
-                                             out_cpu,
-                                             out_grad_cpu,
-                                             axis,
-                                             reduce,
-                                             include_self,
-                                             x_grad ? &x_grad_cpu : nullptr,
-                                             value_grad ? &value_grad_cpu
-                                                        : nullptr);
+    ComputePutAlongAxisGradOnHost<T, int32_t>(
+        x_cpu,
+        index_cpu,
+        value_cpu,
+        out_cpu,
+        out_grad_cpu,
+        axis,
+        reduce,
+        include_self,
+        x_grad ? &x_grad_cpu : nullptr,
+        value_grad ? &value_grad_cpu : nullptr);
   } else {
-    ComputePutAlongAxisGradOnHost<T, int64_t>(x_cpu,
-                                             index_cpu,
-                                             value_cpu,
-                                             out_cpu,
-                                             out_grad_cpu,
-                                             axis,
-                                             reduce,
-                                             include_self,
-                                             x_grad ? &x_grad_cpu : nullptr,
-                                             value_grad ? &value_grad_cpu
-                                                        : nullptr);
+    ComputePutAlongAxisGradOnHost<T, int64_t>(
+        x_cpu,
+        index_cpu,
+        value_cpu,
+        out_cpu,
+        out_grad_cpu,
+        axis,
+        reduce,
+        include_self,
+        x_grad ? &x_grad_cpu : nullptr,
+        value_grad ? &value_grad_cpu : nullptr);
   }
 
   if (x_grad) {
