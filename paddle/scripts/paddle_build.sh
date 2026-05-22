@@ -150,6 +150,18 @@ function cmake_base() {
             else
                 exit 1
             fi
+	elif [ "$1" == "cp314-cp314" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.14" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.14/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.14/lib/
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.14/bin/:${PATH}
+                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.14/bin/python3
+            -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.14/include/python3.14/
+            -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.14/lib/libpython3.14.dylib"
+                pip3.14 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+            else
+                exit 1
+            fi
         fi
     else
         if [ "$1" != "" ]; then
@@ -202,6 +214,14 @@ function cmake_base() {
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.13.0/lib/libpython3.so"
                 pip3.13 install -r ${PADDLE_ROOT}/python/requirements.txt
                 pip3.13 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
+	    elif [ "$1" == "cp314-cp314" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.14.0/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.14.0/bin/:${PATH}
+                export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.14.0/bin/python3.14
+            -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.14.0/include/python3.14
+            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.14.0/lib/libpython3.so"
+                pip3.14 install -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.14 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
             elif [ "$1" == "conda-python3.8" ]; then
                 export LD_LIBRARY_PATH=/opt/conda/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/conda/bin/:${PATH}
@@ -4200,6 +4220,19 @@ function run_setup(){
             else
                 exit 1
             fi
+	elif [ "$1" == "cp314-cp314" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.14" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.14/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.14/lib/
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.14/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.14/bin/python3
+                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.14/include/python3.14/
+                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.14/lib/libpython3.14.dylib
+                pip3.14 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+            else
+                exit 1
+            fi
         fi
     else
         if [ "$1" != "" ]; then
@@ -4258,6 +4291,15 @@ function run_setup(){
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.13.0/lib/libpython3.so
                 pip3.13 install -r ${PADDLE_ROOT}/python/requirements.txt
                 pip3.13 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
+	    elif [ "$1" == "cp314-cp314" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.14.0/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.14.0/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.14.0/bin/python3.14
+                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.14.0/include/python3.14
+                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.14.0/lib/libpython3.so
+                pip3.14 install -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.14 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
              fi
         else
             pip install -r ${PADDLE_ROOT}/python/requirements.txt
@@ -4498,6 +4540,20 @@ function run_setup_mac(){
             else
                 exit 1
             fi
+	elif [ "$1" == "cp314-cp314" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.14" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.14/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.14/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:${PADDLE_ROOT}/build/third_party/install/lapack/lib
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.14/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.14/bin/python3
+                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.14/include/python3.14/
+                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.14/lib/libpython3.14.dylib
+                pip3.14 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+            else
+                exit 1
+            fi
         fi
     else
         if [ "$1" != "" ]; then
@@ -4550,6 +4606,14 @@ function run_setup_mac(){
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.13.0/include/python3.13
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.13.0/lib/libpython3.so
                 pip3.13 install -r ${PADDLE_ROOT}/python/requirements.txt
+	    elif [ "$1" == "cp314-cp314" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.14.0/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.14.0/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.14.0/bin/python3.14
+                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.14.0/include/python3.14
+                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.14.0/lib/libpython3.so
+                pip3.14 install -r ${PADDLE_ROOT}/python/requirements.txt
             elif [ "$1" == "conda-python3.8" ]; then
                 export LD_LIBRARY_PATH=/opt/conda/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/conda/bin/:${PATH}
@@ -4899,7 +4963,7 @@ function main() {
       cicheck_sot)
         check_run_sot_ci
         export WITH_SHARED_PHI=ON
-        PYTHON_VERSIONS=(3.9 3.10 3.11 3.12 3.13)
+        PYTHON_VERSIONS=(3.9 3.10 3.11 3.12 3.13 3.14)
         for PY_VERSION in ${PYTHON_VERSIONS[@]}; do
             ln -sf $(which python${PY_VERSION}) /usr/local/bin/python
             ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip

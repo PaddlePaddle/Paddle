@@ -57,6 +57,11 @@ kv_head_num = 2  # num_key_value_heads (GQA)
 head_dim = hidden_size // head_num
 intermediate_size = 128
 qkv_dim = (head_num + 2 * kv_head_num) * head_dim
+batched_proj_shape = (
+    2,
+    256,
+    128,
+)  # 3D: triggers batched NS + transpose (256 > 128)
 seq_length = 2
 batch_size = 4
 STEPS = 3
@@ -120,6 +125,7 @@ class QKVFFNNet(paddle.nn.Layer):
         np_up_gate,
         np_down_proj,
         np_lm_head,
+        np_batched_proj,
     ):
         super().__init__()
         self.config = config
@@ -177,6 +183,12 @@ class QKVFFNNet(paddle.nn.Layer):
             ),
         )
 
+        self.batched_proj = paddle.create_parameter(
+            shape=list(batched_proj_shape),
+            dtype='float32',
+            default_initializer=paddle.nn.initializer.Assign(np_batched_proj),
+        )
+
     def forward(self, x):
         # Embedding
         h = self.embed_tokens(x)  # [batch, seq, hidden]
@@ -198,6 +210,10 @@ class QKVFFNNet(paddle.nn.Layer):
 
         # Down projection
         out = self.down_proj(out)  # [batch, seq, hidden]
+
+        # Batched projection (3D param: triggers batched NS + transpose path)
+        bp_scale = paddle.einsum('bsh,kmn->', out, self.batched_proj)
+        out = out + bp_scale * 1e-4
 
         # LM head
         logits = self.lm_head(out)  # [batch, seq, vocab]
@@ -259,6 +275,7 @@ class TestDistShardingMuonTraining(unittest.TestCase):
             np.random.random_sample((hidden_size, 2 * intermediate_size)),
             np.random.random_sample((hidden_size, hidden_size)),
             np.random.random_sample((hidden_size, vocab_size)),
+            np.random.random_sample(batched_proj_shape),
         )
 
     def _build_split_concat_func_map(self, model):
@@ -338,9 +355,15 @@ class TestDistShardingMuonTraining(unittest.TestCase):
 
     def _build_model(self, weights):
         """Build a single model instance from weights."""
-        np_embed, np_qkv, np_o_proj, np_up_gate, np_down_proj, np_lm_head = (
-            weights
-        )
+        (
+            np_embed,
+            np_qkv,
+            np_o_proj,
+            np_up_gate,
+            np_down_proj,
+            np_lm_head,
+            np_batched_proj,
+        ) = weights
         model = QKVFFNNet(
             self.config,
             np_embed,
@@ -349,6 +372,7 @@ class TestDistShardingMuonTraining(unittest.TestCase):
             np_up_gate,
             np_down_proj,
             np_lm_head,
+            np_batched_proj,
         )
         model = mix_precision_utils.MixPrecisionLayer(model, dtype="bfloat16")
         model = paddle.amp.decorate(models=model, level='O2', dtype='bfloat16')

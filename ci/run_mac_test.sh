@@ -37,6 +37,10 @@ EOF
             pip3.11 uninstall -y paddlepaddle
         elif [ "$1" == "cp312-cp312" ]; then
             pip3.12 uninstall -y paddlepaddle
+        elif [ "$1" == "cp313-cp313" ]; then
+            pip3.13 uninstall -y paddlepaddle
+        elif [ "$1" == "cp314-cp314" ]; then
+            pip3.14 uninstall -y paddlepaddle
         fi
 
         if [ "$1" == "cp38-cp38" ]; then
@@ -54,6 +58,12 @@ EOF
         elif [ "$1" == "cp312-cp312" ]; then
             pip3.12 install --user ${PADDLE_ROOT}/dist/*.whl
             pip3.12 install --user hypothesis
+        elif [ "$1" == "cp313-cp313" ]; then
+            pip3.13 install --user ${PADDLE_ROOT}/dist/*.whl
+            pip3.13 install --user hypothesis
+        elif [ "$1" == "cp314-cp314" ]; then
+            pip3.14 install --user ${PADDLE_ROOT}/dist/*.whl
+            pip3.14 install --user hypothesis
         fi
 
 	if [ "$1" == "cp38-cp38" ]; then
@@ -131,6 +141,19 @@ EOF
                 export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.13/include/python3.13/
                 export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.13/lib/libpython3.13.dylib
                 pip3.13 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+            else
+                exit 1
+            fi
+	elif [ "$1" == "cp314-cp314" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.14" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.14/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.14/lib/
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.14/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.14/bin/python3
+                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.14/include/python3.14/
+                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.14/lib/libpython3.14.dylib
+                pip3.14 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
             fi

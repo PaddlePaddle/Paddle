@@ -129,6 +129,32 @@ function run_setup(){
             else
                 exit 1
             fi
+        elif [ "$PYTHON_ABI" == "cp313-cp313" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.13" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.13/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.13/lib/
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.13/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.13/bin/python3
+                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.13/include/python3.13/
+                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.13/lib/libpython3.13.dylib
+                pip3.13 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+            else
+                exit 1
+            fi
+        elif [ "$PYTHON_ABI" == "cp314-cp314" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.14" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.14/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.14/lib/
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.14/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.14/bin/python3
+                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.14/include/python3.14/
+                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.14/lib/libpython3.14.dylib
+                pip3.14 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+            else
+                exit 1
+            fi
         fi
     else
         if [ "$PYTHON_ABI" != "" ]; then
@@ -178,6 +204,24 @@ function run_setup(){
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.12.0/lib/libpython3.so
                 pip3.12 install -r ${PADDLE_ROOT}/python/requirements.txt
                 pip3.12 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
+            elif [ "$PYTHON_ABI" == "cp313-cp313" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.13.0/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.13.0/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.13.0/bin/python3.13
+                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.13.0/include/python3.13
+                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.13.0/lib/libpython3.so
+                pip3.13 install -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.13 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
+            elif [ "$PYTHON_ABI" == "cp314-cp314" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.14.0/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.14.0/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.14.0/bin/python3.14
+                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.14.0/include/python3.14
+                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.14.0/lib/libpython3.so
+                pip3.14 install -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.14 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
            fi
         else
             echo "::group::Installing python dependencies"

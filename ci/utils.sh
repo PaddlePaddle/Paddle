@@ -357,6 +357,18 @@ function cmake_base() {
             else
                 exit 1
             fi
+	elif [ "$1" == "cp314-cp314" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.14" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.14/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.14/lib/
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.14/bin/:${PATH}
+                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.14/bin/python3
+            -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.14/include/python3.14/
+            -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.14/lib/libpython3.14.dylib"
+                pip3.14 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+            else
+                exit 1
+            fi
         fi
     else
         if [ "$1" != "" ]; then
@@ -401,6 +413,14 @@ function cmake_base() {
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.13.0/lib/libpython3.so"
                 pip3.13 install -r ${PADDLE_ROOT}/python/requirements.txt
                 pip3.13 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
+	        elif [ "$1" == "cp314-cp314" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.14.0/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.14.0/bin/:${PATH}
+                export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.14.0/bin/python3.14
+            -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.14.0/include/python3.14
+            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.14.0/lib/libpython3.so"
+                pip3.14 install -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.14 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
             fi
             # for CINN, to find libcuda.so.1
             export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/cuda-11.2/compat/
