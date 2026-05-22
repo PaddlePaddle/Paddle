@@ -3053,9 +3053,7 @@ def main():
     ) = get_setup_parameters()
 
     # Log for PYPI, get long_description of setup()
-    with open(
-        paddle_source_dir + '/python/paddle/README.md', "r", encoding='UTF-8'
-    ) as f:
+    with open(paddle_source_dir + '/README.md', "r", encoding='UTF-8') as f:
         long_description = f.read()
 
     # strip *.so to reduce package size
