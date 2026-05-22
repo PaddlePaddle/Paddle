@@ -558,7 +558,7 @@ XPUOpMap& get_kl2_ops() {
       {"where_grad", XPUKernelSet({INT32, INT64, FLOAT16, FLOAT32})},
       {"where", XPUKernelSet({INT32, INT64, FLOAT32, FLOAT16, BFLOAT16})},
       {"sin", XPUKernelSet({FLOAT32, FLOAT16})},
-      {"sin_grad", XPUKernelSet({FLOAT32})},
+      {"sin_grad", XPUKernelSet({FLOAT32, FLOAT16})},
       {"cos", XPUKernelSet({FLOAT32, FLOAT16})},
       {"cos_grad", XPUKernelSet({FLOAT32})},
       {"linspace", XPUKernelSet({FLOAT32, INT32, INT64})},
