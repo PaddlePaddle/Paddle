@@ -319,6 +319,14 @@ def _get_readme_github_ref() -> str:
 
     if commit and commit != 'Unknown':
         return commit
+    tag_version_regex = env_dict.get("TAG_VERSION_REGEX")
+    paddle_version = env_dict.get("PADDLE_VERSION")
+    if (
+        tag_version_regex
+        and paddle_version
+        and re.fullmatch(tag_version_regex, paddle_version)
+    ):
+        return f'v{paddle_version}'
     return 'develop'
 
 

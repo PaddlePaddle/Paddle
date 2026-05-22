@@ -47,6 +47,8 @@ def _get_readme_github_ref() -> str:
 
     if commit and commit != 'Unknown':
         return commit
+    if re.fullmatch(r'@TAG_VERSION_REGEX@', '@PADDLE_VERSION@'):
+        return 'v@PADDLE_VERSION@'
     return 'develop'
 
 def _convert_readme_relative_paths_for_pypi(readme: str) -> str:
