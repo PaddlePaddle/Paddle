@@ -608,10 +608,11 @@ struct XPUSinGradFunctor : public funcs::BaseActivationFunctor<T> {
       float* dout_fp32 = RAII_GUARD.alloc_l3_or_gm<float>(len);
       float* cos_fp32 = RAII_GUARD.alloc_l3_or_gm<float>(len);
       float* dx_fp32 = RAII_GUARD.alloc_l3_or_gm<float>(len);
-      int r = xpu::cast<XPUType, float>(dev_ctx.x_context(),
-                                        reinterpret_cast<const XPUType*>(x_data),
-                                        x_fp32,
-                                        len);
+      int r =
+          xpu::cast<XPUType, float>(dev_ctx.x_context(),
+                                    reinterpret_cast<const XPUType*>(x_data),
+                                    x_fp32,
+                                    len);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
       r = xpu::cast<XPUType, float>(dev_ctx.x_context(),
                                     reinterpret_cast<const XPUType*>(dout_data),
@@ -620,7 +621,8 @@ struct XPUSinGradFunctor : public funcs::BaseActivationFunctor<T> {
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
       r = xpu::cos<float>(dev_ctx.x_context(), x_fp32, cos_fp32, len);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "cos");
-      r = xpu::mul<float>(dev_ctx.x_context(), dout_fp32, cos_fp32, dx_fp32, len);
+      r = xpu::mul<float>(
+          dev_ctx.x_context(), dout_fp32, cos_fp32, dx_fp32, len);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "mul");
       r = xpu::cast<float, XPUType>(dev_ctx.x_context(),
                                     dx_fp32,
@@ -628,11 +630,12 @@ struct XPUSinGradFunctor : public funcs::BaseActivationFunctor<T> {
                                     len);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
     } else {
-      int r = xpu::sin_grad<XPUType>(dev_ctx.x_context(),
-                                     reinterpret_cast<const XPUType*>(x_data),
-                                     reinterpret_cast<const XPUType*>(dout_data),
-                                     reinterpret_cast<XPUType*>(dx_data),
-                                     len);
+      int r =
+          xpu::sin_grad<XPUType>(dev_ctx.x_context(),
+                                 reinterpret_cast<const XPUType*>(x_data),
+                                 reinterpret_cast<const XPUType*>(dout_data),
+                                 reinterpret_cast<XPUType*>(dx_data),
+                                 len);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "sin_grad");
     }
   }
