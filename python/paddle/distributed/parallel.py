@@ -1290,11 +1290,12 @@ def init_process_group(
     group_name: str = '',
     pg_options: Any = None,
     device_id: Any = None,
-) -> Group:
+) -> None:
     """
 
     Compatibility wrapper around :func:`init_parallel_env` mirroring the
-    signature of :func:`torch.distributed.init_process_group`.
+    signature of :func:`torch.distributed.init_process_group` (which also
+    returns ``None``).
 
     Paddle picks up ``world_size`` / ``rank`` / endpoints from the environment
     variables that ``paddle.distributed.launch`` (or ``torchrun``) sets. Most
@@ -1307,7 +1308,7 @@ def init_process_group(
       :class:`UserWarning` is emitted and the env value is preserved.
     - ``rank``: same convention with ``PADDLE_TRAINER_ID``.
 
-    The created default group is also accessible via
+    After this call, the default global group is reachable via
     :attr:`paddle.distributed.group.WORLD`.
 
     Args:
@@ -1331,17 +1332,16 @@ def init_process_group(
             not used.
 
     Returns:
-        Group: The default global communication group, the same object
-        returned by :func:`paddle.distributed.init_parallel_env` and
-        reachable via :attr:`paddle.distributed.group.WORLD`.
+        None. Matches ``torch.distributed.init_process_group``; access the
+        default group via :attr:`paddle.distributed.group.WORLD`.
 
     Examples:
         .. code-block:: pycon
 
             >>> # doctest: +REQUIRES(env: DISTRIBUTED)
             >>> import paddle.distributed as dist
-            >>> world = dist.init_process_group(backend='nccl')
-            >>> assert world is dist.group.WORLD
+            >>> dist.init_process_group(backend='nccl')
+            >>> world = dist.group.WORLD
             >>> # equivalent Paddle-native form:
             >>> # dist.init_parallel_env()
     """
@@ -1371,7 +1371,7 @@ def init_process_group(
                 stacklevel=2,
             )
 
-    return init_parallel_env()
+    init_parallel_env()
 
 
 def get_rank(group: Group | None = None) -> int:
