@@ -345,7 +345,7 @@ function cmake_base() {
             else
                 exit 1
             fi
-    elif [ "$1" == "cp313-cp313" ]; then
+        elif [ "$1" == "cp313-cp313" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.13" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.13/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.13/lib/
@@ -357,7 +357,7 @@ function cmake_base() {
             else
                 exit 1
             fi
-    elif [ "$1" == "cp314-cp314" ]; then
+        elif [ "$1" == "cp314-cp314" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.14" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.14/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.14/lib/

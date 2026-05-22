@@ -1083,13 +1083,13 @@ function main() {
     macos
   else
     yellow "          您的系统为：Linux"
-  echo
-      OS=`cat /etc/issue|awk 'NR==1 {print $1}'`
-      if [[ $OS == "\S" ]] || [[ "$OS" == "CentOS" ]] || [[ $OS == "Ubuntu" ]];then
+    echo
+    OS=`cat /etc/issue|awk 'NR==1 {print $1}'`
+    if [[ $OS == "\S" ]] || [[ "$OS" == "CentOS" ]] || [[ $OS == "Ubuntu" ]];then
         linux
-      else
+    else
         red "您的系统不在本安装包的支持范围，如您需要在windows环境下安装PaddlePaddle，请您参考PaddlePaddle官网的windows安装文档"
-      fi
+    fi
   fi
 }
 main
