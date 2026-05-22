@@ -52,8 +52,9 @@ unset GREP_OPTIONS
 source $(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/utils.sh
 init
 
-ln -sf $(which python3.9) /usr/local/bin/python
-ln -sf $(which pip3.9) /usr/local/bin/pip
+PY_VERSION=${PY_VERSION:-3.12}
+ln -sf $(which python${PY_VERSION}) /usr/local/bin/python
+ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip
 
 echo "::group::Install zstd"
 apt install zstd -y
