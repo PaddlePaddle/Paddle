@@ -311,6 +311,50 @@ def git_commit() -> str:
     return str(git_commit)
 
 
+def _get_readme_github_ref() -> str:
+    try:
+        commit = git_commit()
+    except Exception:
+        commit = ''
+
+    if commit and commit != 'Unknown':
+        return commit
+    return 'develop'
+
+
+def _convert_readme_relative_paths_for_pypi(readme: str) -> str:
+    ref = _get_readme_github_ref()
+    github_blob_url = f'https://github.com/PaddlePaddle/Paddle/blob/{ref}/'
+    github_raw_url = (
+        f'https://raw.githubusercontent.com/PaddlePaddle/Paddle/{ref}/'
+    )
+
+    readme = re.sub(
+        r'\]\(\./([^)]+)\)',
+        lambda match: f']({github_blob_url}{match.group(1)})',
+        readme,
+    )
+    readme = re.sub(
+        r'(src=)(["\'])\./([^"\']+)\2',
+        lambda match: (
+            f'{match.group(1)}{match.group(2)}{github_raw_url}'
+            f'{match.group(3)}{match.group(2)}'
+        ),
+        readme,
+        flags=re.IGNORECASE,
+    )
+    readme = re.sub(
+        r'(href=)(["\'])\./([^"\']+)\2',
+        lambda match: (
+            f'{match.group(1)}{match.group(2)}{github_blob_url}'
+            f'{match.group(3)}{match.group(2)}'
+        ),
+        readme,
+        flags=re.IGNORECASE,
+    )
+    return readme
+
+
 def _get_version_detail(idx):
     assert idx < 3, (
         "version info consists of %(major)d.%(minor)d.%(patch)d, \
@@ -3054,7 +3098,7 @@ def main():
 
     # Log for PYPI, get long_description of setup()
     with open(paddle_source_dir + '/README.md', "r", encoding='UTF-8') as f:
-        long_description = f.read()
+        long_description = _convert_readme_relative_paths_for_pypi(f.read())
 
     # strip *.so to reduce package size
     if env_dict.get("WITH_STRIP") == 'ON':
