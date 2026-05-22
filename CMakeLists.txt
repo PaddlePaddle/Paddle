@@ -534,6 +534,7 @@ if(WITH_GPU)
   if(NOT WIN32)
     include(cupti)
   endif()
+  set_property(GLOBAL APPEND PROPERTY OS_DEPENDENCY_MODULES ${CUDA_LIBRARIES})
 endif()
 
 if(WITH_ROCM)

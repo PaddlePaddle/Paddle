@@ -114,7 +114,9 @@ __device__ void ComputeScaleAndWrite(__nv_bfloat16 *data,
 
   // Parallel reduction within each group
   for (int stride = group_size / 2; stride > 0; stride >>= 1) {
-    __nv_bfloat16 other = __shfl_down_sync(mask, global_max, stride);
+    // __nv_bfloat16 other = __shfl_down_sync(mask, global_max, stride);
+    __nv_bfloat16 other = static_cast<__nv_bfloat16>(__shfl_down_sync(mask, static_cast<float>(global_max), stride));
+
     global_max = BF16_MAX(other, global_max);
   }
 

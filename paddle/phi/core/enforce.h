@@ -113,7 +113,7 @@ void ThrowWarnInternal(const std::string& message);
              __LINE__,                                             \
              #_IS_NOT_ERROR,                                       \
              ##__VA_ARGS__);                                       \
-      asm("trap;");                                                \
+      __builtin_trap();                                                \
     }                                                              \
   } while (0)
 #elif defined(__HIPCC__)

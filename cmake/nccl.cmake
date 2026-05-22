@@ -16,6 +16,8 @@ if(WITH_NCCL)
     PATHS ${NCCL_ROOT} ${NCCL_ROOT}/include ${NCCL_ROOT}/local/include
           $ENV{NCCL_ROOT} $ENV{NCCL_ROOT}/include $ENV{NCCL_ROOT}/local/include
     NO_DEFAULT_PATH)
+  include_directories(BEFORE ${NCCL_INCLUDE_DIR})
+  add_definitions("-DBKCL_CUDA_FP16_COMPAT_H_")
 
   file(READ ${NCCL_INCLUDE_DIR}/nccl.h NCCL_VERSION_FILE_CONTENTS)
 

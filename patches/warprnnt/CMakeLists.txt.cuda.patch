@@ -54,3 +54,14 @@
  ENDIF()
  
  IF (APPLE)
+@@ -145,7 +107,9 @@ IF (WITH_GPU OR WITH_ROCM)
+     endif()
+ 
+     IF (WITH_GPU)
+-        CUDA_ADD_LIBRARY(warprnnt ${WARPRNNT_SHARED} src/rnnt_entrypoint.cu)
++        # CUDA_ADD_LIBRARY(warprnnt ${WARPRNNT_SHARED} src/rnnt_entrypoint.cu)
++        enable_language(CUDA)
++        add_library(warprnnt ${WARPRNNT_SHARED} src/rnnt_entrypoint.cu)
+     ELSE()
+         HIP_ADD_LIBRARY(warprnnt ${WARPRNNT_SHARED} src/rnnt_entrypoint.cu)
+         TARGET_LINK_LIBRARIES(warprnnt PUBLIC ${ROCM_HIPRTC_LIB})

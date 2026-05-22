@@ -433,7 +433,7 @@ __device__ void ComputeRowScale(const v64_t<T> x[8],
     // reduce [32] => [1]
     T warp_max = local_max;
     for (uint32_t offset = 16; offset > 0; offset /= 2) {
-      T other = __shfl_down_sync(0xFFFFFFFF, warp_max, offset);
+      T other = static_cast<T>(__shfl_down_sync(0xFFFFFFFF, static_cast<float>(warp_max), offset));
       warp_max = device_max(warp_max, other);
     }
     if (threadIdx.x == 0) {

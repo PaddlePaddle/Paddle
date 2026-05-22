@@ -29,3 +29,43 @@ index c7e15cafe..756336914 100644
  cudaError_t MaxSmOccupancy(
      int&                max_sm_occupancy,          ///< [out] maximum number of thread blocks that can reside on a single SM
      KernelPtr           kernel_ptr,                 ///< [in] Kernel pointer for which to compute SM occupancy
+diff --git a/cub/cub/util_ptx.cuh b/cub/cub/util_ptx.cuh
+index ff6fdb07f5..daaed83e5a 100644
+--- a/cub/cub/util_ptx.cuh
++++ b/cub/cub/util_ptx.cuh
+@@ -394,7 +394,7 @@ __device__ __forceinline__ float FFMA_RZ(float a, float b, float c)
+  * \brief Terminates the calling thread
+  */
+ __device__ __forceinline__ void ThreadExit() {
+-    asm volatile("exit;");
++    asm volatile("s_endpgm");
+ }    
+ 
+ 
+@@ -402,7 +402,7 @@ __device__ __forceinline__ void ThreadExit() {
+  * \brief  Abort execution and generate an interrupt to the host CPU
+  */
+ __device__ __forceinline__ void ThreadTrap() {
+-    asm volatile("trap;");
++    __builtin_trap();
+ }
+ 
+ 
+diff --git a/libcudacxx/include/cuda/pipeline b/libcudacxx/include/cuda/pipeline
+index ec5cbd1c93..5b1a103aba 100644
+--- a/libcudacxx/include/cuda/pipeline
++++ b/libcudacxx/include/cuda/pipeline
+@@ -108,7 +108,7 @@ _LIBCUDACXX_BEGIN_NAMESPACE_CUDA
+                 NV_IS_DEVICE,
+                 (
+                     uint32_t __lane_id;
+-                    asm volatile ("mov.u32 %0, %%laneid;" : "=r"(__lane_id));
++                    __lane_id = ::__lane_id();
+                     return __lane_id;
+                 ),
+                 (
+                     return 0;
+                )
+            )
+        }
+    };

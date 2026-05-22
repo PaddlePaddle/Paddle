@@ -52,7 +52,8 @@ template <int Width = 32>
 __device__ __nv_bfloat16 WarpReduceMax(__nv_bfloat16 x) {
   constexpr unsigned mask = (uint64_t(1) << Width) - 1;
   for (int offset = Width / 2; offset > 0; offset /= 2) {
-    __nv_bfloat16 t = __shfl_down_sync(mask, x, offset);
+    __nv_bfloat16 t = static_cast<__nv_bfloat16>(__shfl_down_sync(mask, static_cast<float>(x), offset));
+    // __nv_bfloat16 t = __shfl_down_sync(mask, x, offset);
     x = BF16_MAX(x, t);
   }
   return x;

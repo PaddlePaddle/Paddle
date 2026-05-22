@@ -123,7 +123,7 @@ void CublasGemm(cublasHandle_t cublas_handle,
                                            CUDA_R_32F,
                                            CUBLAS_GEMM_DEFAULT));
   } else if constexpr (std::is_same<T, float>::value) {
-    CUBLAS_CALL(phi::dynload::cublasSgemm(cublas_handle,
+    CUBLAS_CALL(phi::dynload::cublasSgemm_v2(cublas_handle,
                                           transpose_b,
                                           transpose_a,
                                           m,

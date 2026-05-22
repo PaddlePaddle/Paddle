@@ -228,12 +228,12 @@ function(select_nvcc_arch_flags out_variable out_arch_bin)
     if(arch MATCHES "([0-9]+)\\(([0-9]+)\\)")
       # User explicitly specified PTX for the concrete BIN
       string(APPEND nvcc_flags
-             " -gencode arch=compute_${CMAKE_MATCH_2},code=sm_${CMAKE_MATCH_1}")
+             " --cuda-gpu-arch=sm_${CMAKE_MATCH_1}")
       string(APPEND nvcc_archs_readable " sm_${CMAKE_MATCH_1}")
       string(APPEND nvcc_archs_bin_list " ${CMAKE_MATCH_1}")
     else()
       # User didn't explicitly specify PTX for the concrete BIN, we assume PTX=BIN
-      string(APPEND nvcc_flags " -gencode arch=compute_${arch},code=sm_${arch}")
+      string(APPEND nvcc_flags " --cuda-gpu-arch=sm_${arch}")
       string(APPEND nvcc_archs_readable " sm_${arch}")
       string(APPEND nvcc_archs_bin_list " ${arch}")
     endif()
@@ -242,7 +242,7 @@ function(select_nvcc_arch_flags out_variable out_arch_bin)
   # Tell NVCC to add PTX intermediate code for the specified architectures
   foreach(arch ${cuda_arch_ptx})
     string(APPEND nvcc_flags
-           " -gencode arch=compute_${arch},code=compute_${arch}")
+           " --cuda-gpu-arch=compute_${arch}")
     string(APPEND nvcc_archs_readable " compute_${arch}")
   endforeach()
 
