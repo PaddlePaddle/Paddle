@@ -264,6 +264,7 @@ from paddle import (
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 optim = optimizer
 distributions = distribution
 _sys.modules['paddle.optim'] = optimizer
@@ -372,6 +373,12 @@ distributions = distribution
 >>>>>>> 1297e14fc9 (Align paths)
 =======
 >>>>>>> 4d4062833a (Refactor the alignment)
+=======
+optim = optimizer
+distributions = distribution
+_sys.modules['paddle.optim'] = optimizer
+_sys.modules['paddle.distributions'] = distribution
+>>>>>>> 520e8390b8 (Modify alias method)
 
 # high-level api
 from . import (
