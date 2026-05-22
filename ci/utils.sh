@@ -357,7 +357,7 @@ function cmake_base() {
             else
                 exit 1
             fi
-	elif [ "$1" == "cp314-cp314" ]; then
+    elif [ "$1" == "cp314-cp314" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.14" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.14/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.14/lib/
@@ -413,7 +413,7 @@ function cmake_base() {
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.13.0/lib/libpython3.so"
                 pip3.13 install -r ${PADDLE_ROOT}/python/requirements.txt
                 pip3.13 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
-	        elif [ "$1" == "cp314-cp314" ]; then
+            elif [ "$1" == "cp314-cp314" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.14.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.14.0/bin/:${PATH}
                 export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.14.0/bin/python3.14
