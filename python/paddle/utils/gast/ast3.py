@@ -1,33 +1,4 @@
 # Copyright (c) 2016, Serge Guelton
-# All rights reserved.
-
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-
-# 	Redistributions of source code must retain the above copyright notice, this
-# 	list of conditions and the following disclaimer.
-
-# 	Redistributions in binary form must reproduce the above copyright notice,
-# 	this list of conditions and the following disclaimer in the documentation
-# 	and/or other materials provided with the distribution.
-
-# 	Neither the name of HPCProject, Serge Guelton nor the names of its
-# 	contributors may be used to endorse or promote products derived from this
-# 	software without specific prior written permission.
-
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-# NOTE(paddle-dev): We introduce third-party library Gast as unified AST
-# representation. See https://github.com/serge-sans-paille/gast for details.
 
 from .astn import AstToGAst, GAstToAst
 from . import gast
@@ -36,6 +7,30 @@ import sys
 
 
 class Ast3ToGAst(AstToGAst):
+    if sys.version_info.minor == 12:
+
+        def visit_TypeVar(self, node):
+            new_node = gast.TypeVar(
+                self._visit(node.name),
+                self._visit(node.bound),
+                None
+            )
+            return gast.copy_location(new_node, node)
+
+        def visit_TypeVarTuple(self, node):
+            new_node = gast.TypeVarTuple(
+                self._visit(node.name),
+                None
+            )
+            return gast.copy_location(new_node, node)
+
+        def visit_ParamSpec(self, node):
+            new_node = gast.ParamSpec(
+                self._visit(node.name),
+                None
+            )
+            return gast.copy_location(new_node, node)
+
     if sys.version_info.minor < 10:
 
         def visit_alias(self, node):
@@ -68,11 +63,11 @@ class Ast3ToGAst(AstToGAst):
             return new_node
 
     if sys.version_info.minor < 8:
-
-        # TODO(Python 3.14): this legacy AST branch references nodes removed
-        # from ast in Python 3.14; keep it isolated to Python < 3.8.
         def visit_Module(self, node):
-            new_node = gast.Module(self._visit(node.body), [])  # type_ignores
+            new_node = gast.Module(
+                self._visit(node.body),
+                []  # type_ignores
+            )
             return new_node
 
         def visit_Num(self, node):
@@ -82,8 +77,6 @@ class Ast3ToGAst(AstToGAst):
             )
             return gast.copy_location(new_node, node)
 
-        # TODO(Python 3.14): this legacy AST visitor references nodes removed
-        # from ast in Python 3.14; keep it isolated to Python < 3.8.
         def visit_Ellipsis(self, node):
             new_node = gast.Constant(
                 Ellipsis,
@@ -93,8 +86,6 @@ class Ast3ToGAst(AstToGAst):
             new_node.end_lineno = new_node.end_col_offset = None
             return new_node
 
-        # TODO(Python 3.14): this legacy AST visitor references nodes removed
-        # from ast in Python 3.14; keep it isolated to Python < 3.8.
         def visit_Str(self, node):
             new_node = gast.Constant(
                 node.s,
@@ -102,23 +93,10 @@ class Ast3ToGAst(AstToGAst):
             )
             return gast.copy_location(new_node, node)
 
-        # TODO(Python 3.14): this legacy AST visitor references nodes removed
-        # from ast in Python 3.14; keep it isolated to Python < 3.8.
         def visit_Bytes(self, node):
             new_node = gast.Constant(
                 node.s,
                 None,
-            )
-            return gast.copy_location(new_node, node)
-
-        def visit_ClassDef(self, node):
-            new_node = gast.ClassDef(
-                self._visit(node.name),
-                self._visit(node.bases),
-                self._visit(node.keywords),
-                self._visit(node.body),
-                self._visit(node.decorator_list),
-                [],  # type_params
             )
             return gast.copy_location(new_node, node)
 
@@ -185,7 +163,8 @@ class Ast3ToGAst(AstToGAst):
         def visit_Call(self, node):
             if sys.version_info.minor < 5:
                 if node.starargs:
-                    star = gast.Starred(self._visit(node.starargs), gast.Load())
+                    star = gast.Starred(self._visit(node.starargs),
+                                        gast.Load())
                     gast.copy_location(star, node)
                     starred = [star]
                 else:
@@ -207,8 +186,6 @@ class Ast3ToGAst(AstToGAst):
             )
             return gast.copy_location(new_node, node)
 
-        # TODO(Python 3.14): this legacy AST visitor references nodes removed
-        # from ast in Python 3.14; keep it isolated to Python < 3.8.
         def visit_NameConstant(self, node):
             if node.value is None:
                 new_node = gast.Constant(None, None)
@@ -249,7 +226,7 @@ class Ast3ToGAst(AstToGAst):
             node.arg,  # micro-optimization here, don't call self._visit
             gast.Param(),
             self._visit(node.annotation),
-            extra_arg,  # type_comment
+            extra_arg  # type_comment
         )
         return ast.copy_location(new_node, node)
 
@@ -258,8 +235,7 @@ class Ast3ToGAst(AstToGAst):
             new_node = gast.ExceptHandler(
                 self._visit(node.type),
                 gast.Name(node.name, gast.Store(), None, None),
-                self._visit(node.body),
-            )
+                self._visit(node.body))
             return ast.copy_location(new_node, node)
         else:
             return self.generic_visit(node)
@@ -276,18 +252,6 @@ class Ast3ToGAst(AstToGAst):
             return ast.copy_location(new_node, node)
 
     if 8 <= sys.version_info.minor < 12:
-
-        def visit_ClassDef(self, node):
-            new_node = gast.ClassDef(
-                self._visit(node.name),
-                self._visit(node.bases),
-                self._visit(node.keywords),
-                self._visit(node.body),
-                self._visit(node.decorator_list),
-                [],  # type_params
-            )
-            return gast.copy_location(new_node, node)
-
         def visit_FunctionDef(self, node):
             new_node = gast.FunctionDef(
                 self._visit(node.name),
@@ -312,30 +276,61 @@ class Ast3ToGAst(AstToGAst):
             )
             return gast.copy_location(new_node, node)
 
+    if sys.version_info.minor < 12:
+
+        def visit_ClassDef(self, node):
+            new_node = gast.ClassDef(
+                self._visit(node.name),
+                self._visit(node.bases),
+                self._visit(node.keywords),
+                self._visit(node.body),
+                self._visit(node.decorator_list),
+                [],  # type_params
+            )
+            return gast.copy_location(new_node, node)
+
 
 class GAstToAst3(GAstToAst):
-    if sys.version_info.minor < 10:
+    if sys.version_info.minor == 12:
+        def visit_TypeVar(self, node):
+            new_node = ast.TypeVar(
+                self._visit(node.name),
+                self._visit(node.bound)
+            )
+            return ast.copy_location(new_node, node)
 
+        def visit_TypeVarTuple(self, node):
+            new_node = ast.TypeVarTuple(
+                self._visit(node.name),
+            )
+            return ast.copy_location(new_node, node)
+
+        def visit_ParamSpec(self, node):
+            new_node = ast.ParamSpec(
+                self._visit(node.name),
+            )
+            return ast.copy_location(new_node, node)
+
+    if sys.version_info.minor < 10:
         def visit_alias(self, node):
             new_node = ast.alias(
-                self._visit(node.name), self._visit(node.asname)
+                self._visit(node.name),
+                self._visit(node.asname)
             )
             return new_node
 
     if sys.version_info.minor < 9:
-
         def visit_Subscript(self, node):
             def adjust_slice(s):
                 if isinstance(s, ast.Slice):
                     return s
                 else:
                     return ast.Index(s)
-
             if isinstance(node.slice, gast.Tuple):
                 if any(isinstance(elt, gast.slice) for elt in node.slice.elts):
                     new_slice = ast.ExtSlice(
-                        [adjust_slice(x) for x in self._visit(node.slice.elts)]
-                    )
+                        [adjust_slice(x) for x in
+                         self._visit(node.slice.elts)])
                 else:
                     value = ast.Tuple(self._visit(node.slice.elts), ast.Load())
                     ast.copy_location(value, node.slice)
@@ -361,8 +356,6 @@ class GAstToAst3(GAstToAst):
 
     if sys.version_info.minor < 8:
 
-        # TODO(Python 3.14): this legacy AST branch constructs nodes removed
-        # from ast in Python 3.14; keep it isolated to Python < 3.8.
         def visit_Module(self, node):
             new_node = ast.Module(self._visit(node.body))
             return new_node
@@ -373,14 +366,8 @@ class GAstToAst3(GAstToAst):
             elif node.value is Ellipsis:
                 new_node = ast.Ellipsis()
             elif isinstance(node.value, bool):
-                # TODO(Python 3.14): this legacy AST branch constructs nodes
-                # removed from ast in Python 3.14; keep it isolated to
-                # Python < 3.8.
                 new_node = ast.NameConstant(node.value)
             elif isinstance(node.value, (int, float, complex)):
-                # TODO(Python 3.14): this legacy AST branch constructs nodes
-                # removed from ast in Python 3.14; keep it isolated to
-                # Python < 3.8.
                 new_node = ast.Num(node.value)
             elif isinstance(node.value, str):
                 new_node = ast.Str(node.value)
@@ -395,10 +382,12 @@ class GAstToAst3(GAstToAst):
         if sys.version_info.minor < 8:
             extra_args = tuple()
         else:
-            extra_args = (self._visit(node.type_comment),)
+            extra_args = self._visit(node.type_comment),
 
         new_node = ast.arg(
-            self._visit(node.id), self._visit(node.annotation), *extra_args
+            self._visit(node.id),
+            self._visit(node.annotation),
+            *extra_args
         )
         return ast.copy_location(new_node, node)
 
@@ -412,8 +401,9 @@ class GAstToAst3(GAstToAst):
     def visit_ExceptHandler(self, node):
         if node.name:
             new_node = ast.ExceptHandler(
-                self._visit(node.type), node.name.id, self._visit(node.body)
-            )
+                self._visit(node.type),
+                node.name.id,
+                self._visit(node.body))
             return ast.copy_location(new_node, node)
         else:
             return self.generic_visit(node)
@@ -519,9 +509,7 @@ class GAstToAst3(GAstToAst):
                 self._visit(node.keywords),
             )
             return ast.copy_location(new_node, node)
-
-    if 5 <= sys.version_info.minor < 12:
-
+    if  5 <= sys.version_info.minor < 12:
         def visit_ClassDef(self, node):
             new_node = ast.ClassDef(
                 self._visit(node.name),
@@ -532,8 +520,7 @@ class GAstToAst3(GAstToAst):
             )
             return ast.copy_location(new_node, node)
 
-    if 8 <= sys.version_info.minor < 12:
-
+    if  8 <= sys.version_info.minor < 12:
         def visit_FunctionDef(self, node):
             new_node = ast.FunctionDef(
                 self._visit(node.name),
@@ -556,23 +543,24 @@ class GAstToAst3(GAstToAst):
             )
             return ast.copy_location(new_node, node)
 
+
+
     def visit_arguments(self, node):
-        extra_args = [
-            self._make_arg(node.vararg),
-            [self._make_arg(n) for n in node.kwonlyargs],
-            self._visit(node.kw_defaults),
-            self._make_arg(node.kwarg),
-            self._visit(node.defaults),
-        ]
+        extra_args = [self._make_arg(node.vararg),
+                      [self._make_arg(n) for n in node.kwonlyargs],
+                      self._visit(node.kw_defaults),
+                      self._make_arg(node.kwarg),
+                      self._visit(node.defaults), ]
         if sys.version_info.minor >= 8:
             new_node = ast.arguments(
                 [self._make_arg(arg) for arg in node.posonlyargs],
                 [self._make_arg(n) for n in node.args],
-                *extra_args,
+                *extra_args
             )
         else:
             new_node = ast.arguments(
-                [self._make_arg(n) for n in node.args], *extra_args
+                [self._make_arg(n) for n in node.args],
+                *extra_args
             )
         return new_node
 
