@@ -27,7 +27,7 @@ set(PYBIND_PATCH_COMMAND "")
 if(LINUX
    AND (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
    AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
-  set(PYBIND_TAG v2.13.6)
+  set(PYBIND_TAG v3.0.4)
   file(TO_NATIVE_PATH
        ${PADDLE_SOURCE_DIR}/patches/pybind/detail/internals.h.patch native_dst)
   # Note: [Why calling some `git` commands before `patch`?]
