@@ -538,11 +538,6 @@ def parse(*args, **kwargs):
     return ast_to_gast(_ast.parse(*args, **kwargs))
 
 
-def unparse(gast_obj):
-    from .unparser import unparse
-    return unparse(gast_obj)
-
-
 def literal_eval(node_or_string):
     if isinstance(node_or_string, AST):
         node_or_string = gast_to_ast(node_or_string)
