@@ -88,7 +88,7 @@ jobs:
           AGILE_PULL_ID: ${{ github.event.pull_request.number }}
           AGILE_REVISION: ${{ github.event.pull_request.head.sha }}
           GIT_PR_ID: ${{ github.event.pull_request.number }}
-          PYTHON_VERSION: 3.10
+          PYTHON_VERSION: "3.10"
           no_proxy: bcebos.com
           USE_910B: 1
           FLAGS_set_to_1d: "False"
@@ -152,34 +152,19 @@ jobs:
       - name: Install Paddle-CPU
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          set -ex
+          set -x
           source ~/.bashrc
           wget -q https://sys-p0.bj.bcebos.com/libstdc%2B%2B6_13.1.0-8ubuntu1_20.04.2_amd64.deb
           dpkg -i *deb
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/cpu_whl/${PR_ID}/${COMMIT_ID}/paddlepaddle-0.0.0-cp310-cp310-linux_x86_64.whl --no-check-certificate
           PATH=/usr/local/bin:${PATH}
           echo "export PATH=$PATH" >> ~/.bashrc
-          PYTHON_ABI="cp${PYTHON_VERSION/./}"
-          if ! python_bin="$(command -v "python${PYTHON_VERSION}")"; then
-            echo "python${PYTHON_VERSION} is not available in the NPU docker image" >&2
-            exit 1
-          fi
-          if ! pip_bin="$(command -v "pip${PYTHON_VERSION}")"; then
-            echo "pip${PYTHON_VERSION} is not available in the NPU docker image" >&2
-            exit 1
-          fi
-          ln -sf "${python_bin}" /usr/local/bin/python
-          ln -sf "${python_bin}" /usr/local/bin/python3
-          ln -sf "${pip_bin}" /usr/local/bin/pip
-          ln -sf "${pip_bin}" /usr/local/bin/pip3
-          ln -sf "${python_bin}" /usr/bin/python
-          ln -sf "${python_bin}" /usr/bin/python3
-          ln -sf "${pip_bin}" /usr/bin/pip
-          ln -sf "${pip_bin}" /usr/bin/pip3
-          hash -r
-          wheel="paddlepaddle-0.0.0-${PYTHON_ABI}-${PYTHON_ABI}-linux_x86_64.whl"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/cpu_whl/${PR_ID}/${COMMIT_ID}/${wheel} --no-check-certificate
+          ln -sf $(which python3.10) /usr/local/bin/python
+          ln -sf $(which pip3.10) /usr/local/bin/pip
+          ln -sf $(which python3.10) /usr/bin/python
+          ln -sf $(which pip3.10) /usr/bin/pip
           echo "::group::Install Paddle"
-          python -m pip install "${wheel}" && rm -rf "${wheel}"
+          pip install paddlepaddle-*.whl && rm -rf paddlepaddle-*.whl
           python -c "import paddle; print(paddle.__version__)"
           python -c "import paddle; print(paddle.version.commit)"
           echo "::endgroup::"

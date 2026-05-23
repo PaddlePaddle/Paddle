@@ -63,7 +63,7 @@ jobs:
           WITH_DISTRIBUTE: "ON"
           PREC_SUFFIX: .py3
           WITH_UNITY_BUILD: "ON"
-          PY_VERSION: 3.10
+          PY_VERSION: "3.10"
           PROC_RUN: 12
           FLAGS_enable_eager_mode: 1
           WITH_TENSORRT: "OFF"
