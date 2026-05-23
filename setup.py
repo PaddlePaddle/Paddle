@@ -312,12 +312,9 @@ def git_commit() -> str:
 
 
 def _get_readme_github_ref() -> str:
-    try:
-        commit = git_commit()
-    except Exception:
-        commit = ''
+    commit = git_commit()
 
-    if commit and commit != 'Unknown':
+    if commit != 'Unknown':
         return commit
     tag_version_regex = env_dict.get("TAG_VERSION_REGEX")
     paddle_version = env_dict.get("PADDLE_VERSION")
@@ -337,11 +334,13 @@ def _convert_readme_relative_paths_for_pypi(readme: str) -> str:
         f'https://raw.githubusercontent.com/PaddlePaddle/Paddle/{ref}/'
     )
 
+    # Convert markdown ](./...) links to GitHub blob URLs.
     readme = re.sub(
         r'\]\(\./([^)]+)\)',
         lambda match: f']({github_blob_url}{match.group(1)})',
         readme,
     )
+    # Convert HTML src="./..." paths to GitHub raw URLs.
     readme = re.sub(
         r'(src=)(["\'])\./([^"\']+)\2',
         lambda match: (
@@ -351,6 +350,7 @@ def _convert_readme_relative_paths_for_pypi(readme: str) -> str:
         readme,
         flags=re.IGNORECASE,
     )
+    # Convert HTML href="./..." links to GitHub blob URLs.
     readme = re.sub(
         r'(href=)(["\'])\./([^"\']+)\2',
         lambda match: (
