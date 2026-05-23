@@ -869,6 +869,37 @@ _nodes = (
         ),
     ),
     (
+        'TemplateStr',
+        (
+            ('values',),
+            (
+                'lineno',
+                'col_offset',
+                'end_lineno',
+                'end_col_offset',
+            ),
+            (expr,),
+        ),
+    ),
+    (
+        'Interpolation',
+        (
+            (
+                'value',
+                'str',
+                'conversion',
+                'format_spec',
+            ),
+            (
+                'lineno',
+                'col_offset',
+                'end_lineno',
+                'end_col_offset',
+            ),
+            (expr,),
+        ),
+    ),
+    (
         'Constant',
         (
             ('value', 'kind'),
@@ -1253,6 +1284,8 @@ def get_docstring(node, clean=True):
 
             holder = node.body[0].value
             return inspect.cleandoc(getattr(holder, holder._fields[0]))
+        # TODO(Python 3.14): remove this legacy .s compatibility access once
+        # all supported Python versions use Constant.value for docstrings.
         return node.body[0].value.s
 
 

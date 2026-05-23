@@ -69,6 +69,8 @@ class Ast3ToGAst(AstToGAst):
 
     if sys.version_info.minor < 8:
 
+        # TODO(Python 3.14): this legacy AST branch references nodes removed
+        # from ast in Python 3.14; keep it isolated to Python < 3.8.
         def visit_Module(self, node):
             new_node = gast.Module(self._visit(node.body), [])  # type_ignores
             return new_node
@@ -80,6 +82,8 @@ class Ast3ToGAst(AstToGAst):
             )
             return gast.copy_location(new_node, node)
 
+        # TODO(Python 3.14): this legacy AST visitor references nodes removed
+        # from ast in Python 3.14; keep it isolated to Python < 3.8.
         def visit_Ellipsis(self, node):
             new_node = gast.Constant(
                 Ellipsis,
@@ -89,6 +93,8 @@ class Ast3ToGAst(AstToGAst):
             new_node.end_lineno = new_node.end_col_offset = None
             return new_node
 
+        # TODO(Python 3.14): this legacy AST visitor references nodes removed
+        # from ast in Python 3.14; keep it isolated to Python < 3.8.
         def visit_Str(self, node):
             new_node = gast.Constant(
                 node.s,
@@ -96,6 +102,8 @@ class Ast3ToGAst(AstToGAst):
             )
             return gast.copy_location(new_node, node)
 
+        # TODO(Python 3.14): this legacy AST visitor references nodes removed
+        # from ast in Python 3.14; keep it isolated to Python < 3.8.
         def visit_Bytes(self, node):
             new_node = gast.Constant(
                 node.s,
@@ -199,6 +207,8 @@ class Ast3ToGAst(AstToGAst):
             )
             return gast.copy_location(new_node, node)
 
+        # TODO(Python 3.14): this legacy AST visitor references nodes removed
+        # from ast in Python 3.14; keep it isolated to Python < 3.8.
         def visit_NameConstant(self, node):
             if node.value is None:
                 new_node = gast.Constant(None, None)
@@ -351,6 +361,8 @@ class GAstToAst3(GAstToAst):
 
     if sys.version_info.minor < 8:
 
+        # TODO(Python 3.14): this legacy AST branch constructs nodes removed
+        # from ast in Python 3.14; keep it isolated to Python < 3.8.
         def visit_Module(self, node):
             new_node = ast.Module(self._visit(node.body))
             return new_node
@@ -361,8 +373,14 @@ class GAstToAst3(GAstToAst):
             elif node.value is Ellipsis:
                 new_node = ast.Ellipsis()
             elif isinstance(node.value, bool):
+                # TODO(Python 3.14): this legacy AST branch constructs nodes
+                # removed from ast in Python 3.14; keep it isolated to
+                # Python < 3.8.
                 new_node = ast.NameConstant(node.value)
             elif isinstance(node.value, (int, float, complex)):
+                # TODO(Python 3.14): this legacy AST branch constructs nodes
+                # removed from ast in Python 3.14; keep it isolated to
+                # Python < 3.8.
                 new_node = ast.Num(node.value)
             elif isinstance(node.value, str):
                 new_node = ast.Str(node.value)
