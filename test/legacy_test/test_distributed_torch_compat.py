@@ -104,6 +104,20 @@ class TestDistributedTorchCompat(unittest.TestCase):
 
     @mock.patch('paddle.distributed.parallel.init_parallel_env')
     @mock.patch.dict(os.environ, {}, clear=False)
+    def test_init_process_group_raises_on_double_init(self, _):
+        # Once the default group is in place, a second call must raise
+        # rather than silently no-op'ing via ``init_parallel_env``'s
+        # early return. Mirrors PyTorch's
+        # ``trying to initialize the default process group twice!``.
+        dist.group.WORLD = Group(
+            rank_in_group=0, id=0, ranks=[0], pg=None, name='_default_pg'
+        )
+        with self.assertRaises(RuntimeError) as ctx:
+            dist.init_process_group(backend='gloo')
+        self.assertIn('already been initialized', str(ctx.exception))
+
+    @mock.patch('paddle.distributed.parallel.init_parallel_env')
+    @mock.patch.dict(os.environ, {}, clear=False)
     def test_init_process_group_sets_backend_env(self, _):
         dist.init_process_group(backend='nccl')
         self.assertEqual(os.environ.get('PADDLE_DISTRI_BACKEND'), 'nccl')

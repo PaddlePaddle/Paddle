@@ -128,12 +128,10 @@ class _DistGroupMeta(type):
 
     Mirrors PyTorch's ``torch.distributed.group`` (also implemented via a
     metaclass) so that ``WORLD`` reflects the current default global group
-    rather than a static sentinel. Assignment is supported and mirrors the
-    registration ``init_parallel_env`` performs at
-    ``parallel.py:1188-1192`` — the default group lives in four registries
-    (``_GroupManager`` here plus ``_group_map`` / ``_group_map_by_name`` /
-    ``_group_map_backend`` in :mod:`paddle.distributed.collective`) and they
-    must stay in sync.
+    rather than a static sentinel. Assignment is delegated to
+    :func:`paddle.distributed.collective._set_default_group` /
+    :func:`paddle.distributed.collective._clear_default_group` so the
+    four-registry plumbing has a single owner.
     """
 
     @property
@@ -145,38 +143,19 @@ class _DistGroupMeta(type):
 
     @WORLD.setter
     def WORLD(cls, value: Group | None) -> None:
-        # Mirror ``init_parallel_env``'s default-group registration so the
-        # group is visible through every accessor (communication-layer
-        # ``_get_global_group`` and collective-layer ``_get_default_group``
-        # alike). The helper functions in ``collective`` assert ``not in`` so
-        # they refuse to overwrite an existing entry; we drop the previous
-        # default first to keep the setter idempotent.
+        # Lazy import: ``collective`` imports from this module, so we cannot
+        # depend on it at import time.
         from paddle.distributed import collective as _coll
 
-        prev = _GroupManager.group_map_by_id.pop(
-            _GroupManager.global_group_id, None
-        )
-        _coll._group_map.pop(_coll._global_env_gid, None)
-        _coll._group_map_by_name.pop(_coll._default_group_name, None)
-        if prev is not None:
-            _coll._group_map_backend.pop(prev, None)
-
         if value is None:
+            _coll._clear_default_group()
             return
         if not isinstance(value, Group):
             raise TypeError(
                 "group.WORLD must be a Group instance or None, got "
                 f"{type(value).__name__}"
             )
-
-        _GroupManager.group_map_by_id[_GroupManager.global_group_id] = value
-        _coll._group_map[_coll._global_env_gid] = value
-        _coll._group_map_by_name[_coll._default_group_name] = value
-        # ``Group.backend`` dereferences ``_pg``, so skip the backend map
-        # when no ProcessGroup is attached (e.g. an externally constructed
-        # Group used purely as a slot placeholder).
-        if value._pg is not None:
-            _coll._group_map_backend[value] = value._pg.name()
+        _coll._set_default_group(value)
 
 
 class group(metaclass=_DistGroupMeta):

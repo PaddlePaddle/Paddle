@@ -1335,6 +1335,13 @@ def init_process_group(
         None. Matches ``torch.distributed.init_process_group``; access the
         default group via :attr:`paddle.distributed.group.WORLD`.
 
+    Raises:
+        RuntimeError: If the default process group has already been
+            initialized. Mirrors PyTorch, which raises
+            ``"trying to initialize the default process group twice!"``
+            on the same condition. Use :func:`destroy_process_group` first
+            if a re-init is intentional.
+
     Examples:
         .. code-block:: pycon
 
@@ -1345,6 +1352,14 @@ def init_process_group(
             >>> # equivalent Paddle-native form:
             >>> # dist.init_parallel_env()
     """
+    if is_initialized():
+        raise RuntimeError(
+            "The default process group has already been initialized. "
+            "init_process_group() can only be called once; call "
+            "paddle.distributed.destroy_process_group() first if a re-init "
+            "is intentional."
+        )
+
     if backend is not None:
         os.environ['PADDLE_DISTRI_BACKEND'] = backend
 
