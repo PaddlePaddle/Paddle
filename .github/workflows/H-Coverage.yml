@@ -497,7 +497,7 @@ jobs:
     if: needs.build.outputs.can-skip != 'true'
     runs-on:
       group: Fleet-H-single-card
-    timeout-minutes: 70
+    timeout-minutes: 60
     env:
       PIP_CACHE_DIR: /root/.cache/pip
       CACHE_DIR: /root/.cache
@@ -616,7 +616,7 @@ jobs:
     if: ${{ needs.build.outputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' && needs.check-skill.outputs.can-skip != 'true' }}
     runs-on:
       group: Fleet-H-multi-card
-    timeout-minutes: 70
+    timeout-minutes: 60
     env:
       PIP_CACHE_DIR: /root/.cache/pip
       TASK: paddle-fleet-CI-${{ github.event.pull_request.number }}-multi-card_test
