@@ -88,7 +88,7 @@ jobs:
           AGILE_PULL_ID: ${{ github.event.pull_request.number }}
           AGILE_REVISION: ${{ github.event.pull_request.head.sha }}
           GIT_PR_ID: ${{ github.event.pull_request.number }}
-          PYTHON_VERSION: 3.12
+          PYTHON_VERSION: 3.10
           no_proxy: bcebos.com
           USE_910B: 1
           FLAGS_set_to_1d: "False"
