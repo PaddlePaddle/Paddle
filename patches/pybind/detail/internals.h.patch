@@ -2,13 +2,7 @@ diff --git a/include/pybind11/detail/internals.h b/include/pybind11/detail/inter
 index a49cdaa4..19fff38f 100644
 --- a/include/pybind11/detail/internals.h
 +++ b/include/pybind11/detail/internals.h
-@@ -124,10 +124,17 @@ public:
-     thread_specific_storage &operator=(T *pval) {
-         set(pval);
-         return *this;
-     }
--
-+
+@@ -129,3 +129,10 @@
  private:
 +#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ <= 8
 +#    pragma GCC diagnostic push
@@ -19,6 +13,3 @@ index a49cdaa4..19fff38f 100644
 +#    pragma GCC diagnostic pop
 +#endif
  };
--
-+
- PYBIND11_NAMESPACE_BEGIN(detail)
