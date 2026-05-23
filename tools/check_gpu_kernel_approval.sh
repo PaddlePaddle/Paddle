@@ -31,11 +31,11 @@ echo -e "\e[33mBegin to compare GPU kernels between dev and pr...\e[0m"
 if ! python "${PADDLE_ROOT}/tools/gpu_kernel_compare.py" dev_phi_kernels.json pr_phi_kernels.json; then
   APPROVALS=$(echo "${approval_line}"|python "${PADDLE_ROOT}"/tools/check_pr_approval.py 1 wanghuancoder)
   if [[ "${APPROVALS}" == "FALSE" ]]; then
-	echo -e "\e[31m**************************************************************\e[0m"
-	echo -e "\e[31mPlease ensure the added GPU kernel supports big tensors, defined as those with a number of elements (numel) greater than 2^31 - 1. In the PR description, please describe how you tested this scenario and validated the data accuracy.\e[0m"
-	echo -e "\e[31mYou must have one RD (wanghuancoder) approval.\e[0m"
-	echo -e "\e[31m**************************************************************\e[0m"
-	exit 6
+    echo -e "\e[31m**************************************************************\e[0m"
+    echo -e "\e[31mPlease ensure the added GPU kernel supports big tensors, defined as those with a number of elements (numel) greater than 2^31 - 1. In the PR description, please describe how you tested this scenario and validated the data accuracy.\e[0m"
+    echo -e "\e[31mYou must have one RD (wanghuancoder) approval.\e[0m"
+    echo -e "\e[31m**************************************************************\e[0m"
+    exit 6
   fi
 fi
 echo -e "\e[33mComparison completed.\e[0m"

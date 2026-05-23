@@ -577,6 +577,7 @@ jobs:
           '
 
       - name: Single card test
+        timeout-minutes: 50
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -xce '
           pwd
@@ -592,7 +593,7 @@ jobs:
           export UV_NO_SYNC=1 # This environment variable prevents uv sync from being executed when running un run.
           export UV_HTTP_TIMEOUT=300
           python -c "import paddle; print(paddle.version.commit)"
-          timeout 40m bash ci/single_card_test.sh
+          bash ci/single_card_test.sh
           single_card_exit_code=$?
           if [[ "$single_card_exit_code" != "0" ]]; then
             echo -e "::error:: \033[31mSingle card test failed.\033[0m"
@@ -689,6 +690,7 @@ jobs:
           '
 
       - name: Multi-card test
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -ce '
           export PYTHONPATH=$(pwd)
@@ -704,7 +706,7 @@ jobs:
           export UV_SKIP_WHEEL_FILENAME_CHECK=1 #This environment variable allows installing the latest commit-level whl package of Paddle.
           export UV_NO_SYNC=1 # This environment variable prevents uv sync from being executed when running un run.
           export UV_HTTP_TIMEOUT=300
-          timeout 20m bash ci/multi-card_test.sh
+          bash ci/multi-card_test.sh
           multi_card_exit_code=$?
           if [[ "$multi_card_exit_code" != "0" ]]; then
             echo -e "::error:: \033[31mMulti card test failed.\033[0m"
