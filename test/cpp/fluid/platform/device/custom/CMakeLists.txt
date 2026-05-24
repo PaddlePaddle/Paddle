@@ -10,4 +10,14 @@ if(WITH_CUSTOM_DEVICE)
     paddle_test(fake_cinn_stub_test SRCS fake_cinn_stub_test.cc DEPS phi
                 cinnapi)
   endif()
+
+  if(WITH_CINN)
+    # fake_nvgpu_cinn_test: exercises the CINN CustomDevice code path
+    # (C_CinnInterface + C_DeviceInterface) using real CUDA/NVRTC/Driver APIs
+    # loaded at runtime via dlopen. No WITH_GPU=ON required at compile time.
+    # End-to-end: NVRTC compile -> cuModuleLoad -> cuLaunchKernel with result
+    # verification. Requires NVIDIA GPU hardware + CUDA libs at runtime.
+    paddle_test(fake_nvgpu_cinn_test SRCS fake_nvgpu_cinn_test.cc DEPS phi
+                cinnapi)
+  endif()
 endif()
