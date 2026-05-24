@@ -57,7 +57,9 @@ set(KERNEL_LIST
 list(REMOVE_DUPLICATES fluid_modules)
 # Drop Python-only or otherwise inference-unsafe fluid targets before creating
 # both static and shared inference libraries.
-list(REMOVE_ITEM fluid_modules ${not_infer_modules})
+if(not_infer_modules)
+  list(REMOVE_ITEM fluid_modules ${not_infer_modules})
+endif()
 # windows static library（both CPU and GPU）over the limit, so no longer create_static_lib,
 # and cc_library is dummy
 if(WIN32)

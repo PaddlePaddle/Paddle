@@ -37,8 +37,8 @@ if(LINUX
   # reset it to PYBIND_TAG before copying the include tree.
   set(PYBIND_PREPARE_COMMAND git checkout -- . && git clean -fd && git checkout
                              ${PYBIND_TAG})
-  set(PYBIND_PATCH_COMMAND
-      COMMAND patch -Nd ${PYBIND_INCLUDE_DIR}/pybind11/detail -i ${native_dst})
+  set(PYBIND_PATCH_COMMAND COMMAND patch -N -p1 -d ${PYBIND_SOURCE_DIR} -i
+                           ${native_dst})
 endif()
 
 ExternalProject_Add(
