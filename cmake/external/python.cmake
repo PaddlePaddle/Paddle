@@ -16,9 +16,18 @@ include(python_module)
 
 check_py_version(${PY_VERSION})
 
-# Find Python with minimum PY_VERSION specified or will raise error!
-find_package(PythonInterp ${PY_VERSION} REQUIRED)
-find_package(PythonLibs ${PY_VERSION} REQUIRED)
+# Find Python 3 with minimum PY_VERSION specified or will raise error!
+find_package(Python ${PY_VERSION} REQUIRED COMPONENTS Interpreter Development)
+
+# Backward-compat: populate legacy variables used across the build
+set(PYTHON_EXECUTABLE ${Python_EXECUTABLE})
+set(PYTHON_INCLUDE_DIR ${Python_INCLUDE_DIRS})
+set(PYTHON_INCLUDE_DIRS ${Python_INCLUDE_DIRS})
+set(PYTHON_LIBRARIES ${Python_LIBRARIES})
+
+message(STATUS "Found Python: ${Python_EXECUTABLE}")
+message(STATUS "Python include path: ${Python_INCLUDE_DIRS}")
+message(STATUS "Python libraries: ${Python_LIBRARIES}")
 
 if(WIN32)
   execute_process(
@@ -68,12 +77,11 @@ add_library(python SHARED IMPORTED GLOBAL)
 set_property(TARGET python PROPERTY IMPORTED_LOCATION ${PYTHON_LIBRARIES})
 
 set(py_env "")
-if(PYTHONINTERP_FOUND)
+if(Python_Interpreter_FOUND)
   find_python_module(pip REQUIRED)
   find_python_module(numpy REQUIRED)
   find_python_module(wheel REQUIRED)
   find_python_module(google.protobuf REQUIRED)
-  find_package(NumPy REQUIRED)
   if(${PY_GOOGLE.PROTOBUF_VERSION} AND ${PY_GOOGLE.PROTOBUF_VERSION}
                                        VERSION_LESS "3.0.0")
     message(
@@ -81,7 +89,7 @@ if(PYTHONINTERP_FOUND)
         "Found Python Protobuf ${PY_GOOGLE.PROTOBUF_VERSION} < 3.0.0, "
         "please use pip to upgrade protobuf. pip install -U protobuf")
   endif()
-endif(PYTHONINTERP_FOUND)
+endif()
 
-include_directories(${PYTHON_INCLUDE_DIR})
-include_directories(${PYTHON_NUMPY_INCLUDE_DIR})
+target_include_directories(python INTERFACE ${PYTHON_INCLUDE_DIRS}
+                                            ${NumPy_INCLUDE_DIRS})
