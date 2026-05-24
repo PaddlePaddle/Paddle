@@ -99,13 +99,16 @@ class graph:
         stream: Stream | None = None,
         capture_error_mode: str = 'global',
     ) -> None:
+        # Attribute names mirror ``torch.cuda.graph`` so user code that
+        # introspects ``g.cuda_graph`` / ``g.capture_stream`` / ``g.stream_ctx``
+        # / ``g.pool`` / ``g.capture_error_mode`` ports across unchanged.
         self.cuda_graph = cuda_graph
         self.pool = pool
-        self.stream = stream
+        self.capture_stream = stream
         self.capture_error_mode = capture_error_mode
         # ``paddle.device.stream(None)`` is a documented no-op, so the same
         # guard works whether or not the caller pinned a stream.
-        self._stream_ctx = _paddle_device.stream(stream)
+        self.stream_ctx = _paddle_device.stream(stream)
 
     def __enter__(self) -> Self:
         # Drain pending work and release cached memory so the capture pool
@@ -113,13 +116,13 @@ class graph:
         # Paddle's C++ ``BeginCUDAGraphCapture`` does neither.
         _paddle_device.synchronize()
         _paddle_device.empty_cache()
-        self._stream_ctx.__enter__()
+        self.stream_ctx.__enter__()
         try:
             self.cuda_graph.capture_begin(
                 pool=self.pool, capture_error_mode=self.capture_error_mode
             )
         except BaseException:
-            self._stream_ctx.__exit__(None, None, None)
+            self.stream_ctx.__exit__(None, None, None)
             raise
         return self
 
@@ -132,4 +135,4 @@ class graph:
         try:
             self.cuda_graph.capture_end()
         finally:
-            self._stream_ctx.__exit__(exc_type, exc_value, traceback)
+            self.stream_ctx.__exit__(exc_type, exc_value, traceback)
