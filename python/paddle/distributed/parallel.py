@@ -1342,6 +1342,14 @@ def init_process_group(
             on the same condition. Use :func:`destroy_process_group` first
             if a re-init is intentional.
 
+    .. note::
+
+        Unlike :func:`init_parallel_env`, ``init_process_group`` is **not**
+        idempotent — calling it after the default group has been
+        initialized raises :exc:`RuntimeError` instead of silently
+        returning the existing group. This matches
+        ``torch.distributed.init_process_group`` semantics.
+
     Examples:
         .. code-block:: pycon
 

@@ -143,8 +143,20 @@ class _DistGroupMeta(type):
 
     @WORLD.setter
     def WORLD(cls, value: Group | None) -> None:
-        # Lazy import: ``collective`` imports from this module, so we cannot
-        # depend on it at import time.
+        # ``paddle.distributed.collective`` imports ``_GroupManager`` from
+        # this module at its top, so importing it at *this* module's top
+        # would form a textual import cycle. We defer the import to call
+        # time, which is safe in practice: a caller can only reach this
+        # setter by having already run ``import paddle.distributed`` (which
+        # is what makes ``dist.group.WORLD = ...`` resolvable), and that
+        # import fully loads both modules — in either order — before
+        # returning. The function-body ``import`` therefore amounts to a
+        # cached ``sys.modules`` lookup, not a fresh load. A
+        # registration-callback alternative (collective injecting the two
+        # helpers into this module at its own load time) was considered but
+        # rejected: it shifts the same timing constraint to a different
+        # place and produces an inconsistent setter if invoked between the
+        # two modules' load points.
         from paddle.distributed import collective as _coll
 
         if value is None:
@@ -158,8 +170,14 @@ class _DistGroupMeta(type):
         _coll._set_default_group(value)
 
 
-class group(metaclass=_DistGroupMeta):
+class _DistGroupNamespace(metaclass=_DistGroupMeta):
     """Compat namespace mirroring ``torch.distributed.group``.
+
+    The class is named ``_DistGroupNamespace`` internally so it does not
+    shadow the sibling submodule ``paddle.distributed.communication.group``
+    in the package namespace; it is re-exported from
+    :mod:`paddle.distributed.communication` and :mod:`paddle.distributed` as
+    ``group`` so user code sees the PyTorch-compatible name.
 
     Exposes :attr:`WORLD`, which returns the default global :class:`Group`
     after :func:`paddle.distributed.init_parallel_env` /

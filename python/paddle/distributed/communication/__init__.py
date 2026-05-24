@@ -17,12 +17,16 @@ from .all_to_all import alltoall, alltoall_single  # noqa: F401
 from .batch_isend_irecv import P2POp, batch_isend_irecv  # noqa: F401
 from .broadcast import broadcast, broadcast_object_list  # noqa: F401
 from .gather import gather  # noqa: F401
+
+# Re-export the namespace class under the PyTorch-compatible name ``group``.
+# It is named ``_DistGroupNamespace`` in ``.group`` to avoid shadowing this
+# submodule within the package; the alias here restores the public name.
 from .group import (  # noqa: F401
+    _DistGroupNamespace as group,
     barrier,
     destroy_process_group,
     get_backend,
     get_group,
-    group,
     is_initialized,
     wait,
 )

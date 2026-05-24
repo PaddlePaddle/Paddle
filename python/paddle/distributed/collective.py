@@ -70,7 +70,16 @@ def _get_global_env():
 # group map : the map of all group, 0 for GlobalGroup
 # Dict[int, Group]
 _group_map = {}
+# Id of the default global group inside ``_group_map``. This must match
+# ``_GroupManager.global_group_id`` in ``communication.group`` because
+# ``_set_default_group`` / ``_clear_default_group`` key the same group into
+# both registries; the assertion below trips at import time if a future edit
+# breaks that invariant.
 _global_env_gid = 0
+assert _global_env_gid == _GroupManager.global_group_id, (
+    "_global_env_gid != _GroupManager.global_group_id; the default-group id "
+    "must be the same integer in both registries"
+)
 
 # group map by name : the map of all groups from their names
 # Dict[name, Group]
