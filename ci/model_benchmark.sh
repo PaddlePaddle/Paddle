@@ -30,12 +30,12 @@ set_python () {
 
 wget_model_benchmark_ci () {
     cd ${ROOT_DIR}
-    wget --no-proxy https://paddle-github-action.bj.bcebos.com/paddle-qa/benchmark/${bos_path}/model_benchmark_ci_action_latest.tar
+    wget -nv --no-proxy https://paddle-github-action.bj.bcebos.com/paddle-qa/benchmark/${bos_path}/model_benchmark_ci_action_latest.tar
     tar xvf model_benchmark_ci_action_latest.tar
     mv model_benchmark_ci_action/* ${ROOT_DIR}
 
     rm -rf benchmark_summary_res.csv
-    wget --no-proxy https://paddle-github-action.bj.bcebos.com/paddle-qa/benchmark/${bos_path}/benchmark_summary_res.csv
+    wget -nv --no-proxy https://paddle-github-action.bj.bcebos.com/paddle-qa/benchmark/${bos_path}/benchmark_summary_res.csv
     cd ${ROOT_DIR}
     wget -q --no-proxy https://xly-devops.bj.bcebos.com/PaddleTest/PaddleTest.tar.gz
     tar xf PaddleTest.tar.gz
@@ -54,7 +54,7 @@ get_paddlescope_tar () {
 update_summary () {
     cd ${ROOT_DIR}
     rm -rf benchmark_summary_res.csv
-    wget --no-proxy https://paddle-github-action.bj.bcebos.com/paddle-qa/benchmark/${bos_path}/benchmark_summary_res.csv
+    wget -nv --no-proxy https://paddle-github-action.bj.bcebos.com/paddle-qa/benchmark/${bos_path}/benchmark_summary_res.csv
     bash main.sh update_summary
     python ${push_file} benchmark_summary_res.csv paddle-github-action/paddle-qa/benchmark/${bos_path} upload
     echo "----------benchmark_log: update_summary done ------------- "
