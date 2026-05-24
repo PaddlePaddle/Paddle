@@ -77,7 +77,7 @@ jobs:
   build:
     name: Coverage build
     needs: [clone, check-bypass]
-    if: ${{ needs.check-bypass.outputs.can-skip != 'true' && needs.clone.outputs.can-skip != 'true' }}
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' && needs.clone.outputs.can-skip != 'true' && needs.clone.outputs.xpu-only != 'true' }}
     runs-on:
       group: GZ_BD-CPU
     timeout-minutes: 120
