@@ -33,7 +33,8 @@ jobs:
   check-skill:
     name: Check file paths
     if: ${{ github.repository_owner == 'PaddlePaddle' }}
-    runs-on: ubuntu-latest
+    runs-on:
+      group: APPROVAL
     continue-on-error: true
     permissions:
       contents: read
@@ -41,6 +42,9 @@ jobs:
     outputs:
       can-skip: ${{ steps.skip-skill.outputs.should-skip }}
     steps:
+      - name: Cleanup
+        run: |
+          rm -rf * .[^.]*
       - name: Checkout
         uses: actions/checkout@v6
       - name: Run skip check

@@ -18,8 +18,12 @@ env:
 jobs:
   cancel:
     name: Cancel CI-Windows for ${{ github.event.pull_request.number }}
-    runs-on: ubuntu-latest
+    runs-on:
+      group: APPROVAL
     steps:
+      - name: Cleanup
+        run: |
+          rm -rf * .[^.]*
       - name: Cancel CI-Windows
         run: |
           exit 0
