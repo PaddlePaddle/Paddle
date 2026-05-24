@@ -9,7 +9,8 @@ on:
 jobs:
   comment:
     name: Post Preview URLs Comment
-    runs-on: ubuntu-latest
+    runs-on:
+      group: APPROVAL
     if: >
       github.event.workflow_run.event == 'pull_request' &&
       github.event.workflow_run.conclusion == 'success'
@@ -17,6 +18,9 @@ jobs:
       pull-requests: write
 
     steps:
+      - name: Cleanup
+        run: |
+          rm -rf * .[^.]*
       - name: Download artifacts
         id: download
         uses: actions/download-artifact@v8
