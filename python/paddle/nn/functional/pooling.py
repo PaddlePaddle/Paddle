@@ -1485,6 +1485,13 @@ def adaptive_avg_pool1d(
     _check_input(x, 3)
     pool_size = [1, *convert_to_list(output_size, 1, "pool_size")]
 
+    if (
+        in_dynamic_or_pir_mode()
+        and isinstance(output_size, int)
+        and output_size == 1
+    ):
+        return _C_ops.mean(x, [-1], True)
+
     x = unsqueeze(x, [2])
     if in_dynamic_or_pir_mode():
         if in_dynamic_mode():
@@ -1626,6 +1633,14 @@ def adaptive_avg_pool2d(
     if in_dynamic_or_pir_mode():
         if in_dynamic_mode():
             x = x._use_gpudnn(False)
+        if all(isinstance(s, int) for s in output_size) and output_size == [
+            1,
+            1,
+        ]:
+            if data_format == 'NCHW':
+                return _C_ops.mean(x, [-1, -2], True)
+            else:  # NHWC
+                return _C_ops.mean(x, [1, 2], True)
         return _C_ops.pool2d(
             x,
             output_size,
@@ -1761,6 +1776,15 @@ def adaptive_avg_pool3d(
     if in_dynamic_or_pir_mode():
         if in_dynamic_mode():
             x = x._use_gpudnn(False)
+        if all(isinstance(s, int) for s in output_size) and output_size == [
+            1,
+            1,
+            1,
+        ]:
+            if data_format == 'NCDHW':
+                return _C_ops.mean(x, [-1, -2, -3], True)
+            else:  # NDHWC
+                return _C_ops.mean(x, [1, 2, 3], True)
         return _C_ops.pool3d(
             x,
             output_size,
