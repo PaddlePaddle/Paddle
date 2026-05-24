@@ -100,56 +100,20 @@ jobs:
           echo "Extracting build.tar.gz"
           git config --global --add safe.directory ${work_dir}
           tar --use-compress-program="pzstd -1" -xpf build.tar.gz --strip-components=1
-          api_doc_spec_diff=$(python tools/diff_api.py paddle/fluid/API_DEV.spec.doc paddle/fluid/API_PR.spec.doc || true)
+          if ! api_doc_spec_diff=$(python tools/diff_api.py paddle/fluid/API_DEV.spec.doc paddle/fluid/API_PR.spec.doc); then
+            echo "diff_api.py failed for API doc specs."
+            exit 1
+          fi
           if [ -z "$api_doc_spec_diff" ]; then
             echo "API documents no change."
             exit 0
           fi
-          # Save diff to a file for the next step
-          echo "$api_doc_spec_diff" > /tmp/api_doc_diff.txt
 
           cd /
           source ${{ github.workspace }}/../../../proxy
           pip3 install --progress-bar off -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple --force-reinstall ${work_dir}/build/pr_whl/*.whl
           bash ${work_dir}/ci/run_docs_preview.sh
           '
-
-      - name: Generate Comment Body
-        id: generate_comment
-        run: |
-          comment_body=$(docker exec ${{ env.container_name }} /bin/bash -c '
-          if [ ! -f "/tmp/api_doc_diff.txt" ]; then
-            exit 0
-          fi
-          python /paddle/tools/generate_doc_comment.py /tmp/api_doc_diff.txt ${{ env.PR_ID }}
-          ')
-          echo "comment_body<<EOF" >> $GITHUB_OUTPUT
-          echo "$comment_body" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-          if [ -n "$comment_body" ]; then
-            echo "::group::📝 Generated Comment Preview"
-            echo "$comment_body"
-            echo "::endgroup::"
-          else
-            echo "::notice::No comment generated"
-          fi
-
-      - name: Save comment artifacts
-        if: steps.generate_comment.outputs.comment_body != ''
-        run: |
-          echo "${{ steps.generate_comment.outputs.comment_body }}" > comment_body.txt
-          echo "${{ env.PR_ID }}" > pr_number.txt
-
-      - name: Upload comment artifacts
-        if: steps.generate_comment.outputs.comment_body != ''
-        uses: actions/upload-artifact@v7
-        with:
-          name: doc-preview-comment
-          path: |
-            comment_body.txt
-            pr_number.txt
-          retention-days: 1
 
       - name: Terminate and delete the container
         if: always()
