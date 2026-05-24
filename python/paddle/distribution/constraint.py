@@ -108,11 +108,15 @@ class Symmetric(Square):
         square_check = super().__call__(value)
         if not bool(square_check.all()):
             return square_check
+<<<<<<< HEAD
         return (
             paddle.isclose(value, _matrix_transpose(value), atol=1e-6)
             .all(-2)
             .all(-1)
         )
+=======
+        return paddle.isclose(value, value.mT, atol=1e-6).all(-2).all(-1)
+>>>>>>> ba7e1248bb9680a1991b473428cb5ae7e27ef398
 
 
 class PositiveDefinite(Symmetric):
@@ -120,6 +124,7 @@ class PositiveDefinite(Symmetric):
         if value.dim() < 2:
             return paddle.zeros(value.shape[:-2], dtype='bool')
         sym_check = super().__call__(value)
+<<<<<<< HEAD
         if hasattr(paddle.linalg, 'eigvalsh'):
             return sym_check & (paddle.linalg.eigvalsh(value) > 0).all(-1)
         try:
@@ -127,6 +132,11 @@ class PositiveDefinite(Symmetric):
             return sym_check
         except Exception:
             return paddle.zeros(value.shape[:-2], dtype='bool')
+=======
+        if not bool(sym_check.all()):
+            return sym_check
+        return (paddle.linalg.eigvalsh(value) > 0).all(-1)
+>>>>>>> ba7e1248bb9680a1991b473428cb5ae7e27ef398
 
 
 class Simplex(Constraint):

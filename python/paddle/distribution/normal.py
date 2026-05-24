@@ -143,6 +143,20 @@ class Normal(distribution.Distribution):
         self,
         loc: _NormalLoc,
         scale: _NormalScale,
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+        name: str | None = None,
+>>>>>>> 62f6f13e11 (Align paths)
+=======
+        name: str | None = None,
+>>>>>>> ff3070eee1 (Align paths)
+=======
+>>>>>>> 4ba450abc2 (Del name)
+>>>>>>> ba7e1248bb9680a1991b473428cb5ae7e27ef398
         validate_args: bool | None = None,
     ) -> None:
         if not in_dynamic_mode():

@@ -24,6 +24,7 @@ from parameterize import (
 )
 
 import paddle
+from paddle.distribution import constraint
 from paddle.distribution.multivariate_normal import MultivariateNormal
 
 
@@ -268,11 +269,19 @@ class TestMVNValidateArgsAndExpand(unittest.TestCase):
         dist = MultivariateNormal(
             loc=loc, covariance_matrix=cov, validate_args=True
         )
+<<<<<<< HEAD
         self.assertTrue(dist._validate_args_value)
         np.testing.assert_allclose(dist.mode.numpy(), loc.numpy())
 
         expanded = dist.expand((3,))
         self.assertTrue(expanded._validate_args_value)
+=======
+        self.assertTrue(dist._validate_args_enabled)
+        np.testing.assert_allclose(dist.mode.numpy(), loc.numpy())
+
+        expanded = dist.expand((3,))
+        self.assertTrue(expanded._validate_args_enabled)
+>>>>>>> ba7e1248bb9680a1991b473428cb5ae7e27ef398
         self.assertEqual(expanded.batch_shape, (3,))
         self.assertEqual(expanded.event_shape, (2,))
         np.testing.assert_allclose(
@@ -309,6 +318,181 @@ class TestMVNValidateArgsAndExpand(unittest.TestCase):
         with self.assertRaises(ValueError):
             dist.log_prob(paddle.to_tensor([np.nan, 0.0], dtype='float32'))
 
+<<<<<<< HEAD
+=======
+    def test_validate_args_additional_errors(self):
+        paddle.disable_static()
+        loc = paddle.to_tensor([0.0, 0.0], dtype='float32')
+        cov = paddle.to_tensor([[2.0, 0.5], [0.5, 1.5]], dtype='float32')
+
+        with self.assertRaises(ValueError):
+            MultivariateNormal(
+                loc=paddle.to_tensor(0.0),
+                covariance_matrix=paddle.to_tensor([[1.0]], dtype='float32'),
+            )
+
+        with self.assertRaises(ValueError):
+            MultivariateNormal(loc=loc, covariance_matrix=paddle.ones([2]))
+
+        with self.assertRaises(ValueError):
+            MultivariateNormal(loc=loc, scale_tril=paddle.ones([2]))
+
+        with self.assertRaises(ValueError):
+            MultivariateNormal(loc=loc, precision_matrix=paddle.ones([2]))
+        with self.assertRaises(ValueError):
+            MultivariateNormal(
+                loc=loc,
+                precision_matrix=paddle.to_tensor(
+                    [[1.0, 2.0], [2.0, 1.0]], dtype='float32'
+                ),
+                validate_args=True,
+            )
+
+        dist = MultivariateNormal(
+            loc=loc, covariance_matrix=cov, validate_args=True
+        )
+        with self.assertRaises(ValueError):
+            dist.log_prob(paddle.zeros([3], dtype='float32'))
+        batch_dist = MultivariateNormal(
+            loc=paddle.zeros([2, 2], dtype='float32'),
+            covariance_matrix=cov,
+            validate_args=True,
+        )
+        with self.assertRaises(ValueError):
+            batch_dist.log_prob(paddle.zeros([3, 2], dtype='float32'))
+
+    def test_validate_args_false_and_lazy_properties(self):
+        paddle.disable_static()
+        loc = paddle.to_tensor([0.0, 0.0], dtype='float32')
+        bad_scale = paddle.to_tensor([[1.0, 2.0], [0.0, 1.0]], dtype='float32')
+        dist = MultivariateNormal(
+            loc=loc, scale_tril=bad_scale, validate_args=False
+        )
+        self.assertFalse(dist._validate_args_enabled)
+
+        cov = paddle.to_tensor([[2.0, 0.5], [0.5, 1.5]], dtype='float32')
+        precision = paddle.linalg.inv(cov)
+        scale = paddle.linalg.cholesky(cov)
+
+        cov_dist = MultivariateNormal(loc=loc, covariance_matrix=cov)
+        np.testing.assert_allclose(cov_dist.scale_tril.numpy(), scale.numpy())
+        np.testing.assert_allclose(
+            cov_dist.precision_matrix.numpy(), precision.numpy(), rtol=1e-5
+        )
+
+        scale_dist = MultivariateNormal(loc=loc, scale_tril=scale)
+        scale_expanded = scale_dist.expand((3,))
+        np.testing.assert_allclose(
+            scale_expanded.scale_tril.numpy(),
+            np.broadcast_to(scale.numpy(), (3, 2, 2)),
+        )
+
+        precision_dist = MultivariateNormal(loc=loc, precision_matrix=precision)
+        precision_expanded = precision_dist.expand((3,))
+        np.testing.assert_allclose(
+            precision_dist.covariance_matrix.numpy(), cov.numpy(), rtol=1e-5
+        )
+        np.testing.assert_allclose(
+            precision_expanded.precision_matrix.numpy(),
+            np.broadcast_to(precision.numpy(), (3, 2, 2)),
+            rtol=1e-5,
+        )
+
+
+class TestMVNConstraints(unittest.TestCase):
+    def test_constraints_check(self):
+        paddle.disable_static()
+        with self.assertRaises(NotImplementedError):
+            constraint.Constraint()(paddle.ones([1], dtype='float32'))
+
+        np.testing.assert_array_equal(
+            constraint.real_vector.check(
+                paddle.to_tensor([1.0, np.nan], dtype='float32')
+            ).numpy(),
+            np.array(False),
+        )
+        np.testing.assert_array_equal(
+            constraint.real_vector.check(
+                paddle.to_tensor(1.0, dtype='float32')
+            ).numpy(),
+            np.array(False),
+        )
+
+        lower = paddle.to_tensor([[1.0, 0.0], [2.0, 3.0]], dtype='float32')
+        not_lower = paddle.to_tensor([[1.0, 2.0], [0.0, 3.0]], dtype='float32')
+        np.testing.assert_array_equal(
+            constraint.lower_triangular.check(lower).numpy(), np.array(True)
+        )
+        np.testing.assert_array_equal(
+            constraint.lower_triangular.check(not_lower).numpy(),
+            np.array(False),
+        )
+        np.testing.assert_array_equal(
+            constraint.lower_triangular.check(
+                paddle.to_tensor([1.0, 2.0], dtype='float32')
+            ).numpy(),
+            np.array(False),
+        )
+
+        bad_cholesky = paddle.to_tensor(
+            [[1.0, 0.0], [2.0, -3.0]], dtype='float32'
+        )
+        np.testing.assert_array_equal(
+            constraint.lower_cholesky.check(lower).numpy(), np.array(True)
+        )
+        np.testing.assert_array_equal(
+            constraint.lower_cholesky.check(bad_cholesky).numpy(),
+            np.array(False),
+        )
+
+        square = paddle.eye(2, dtype='float32')
+        not_square = paddle.ones([2, 3], dtype='float32')
+        not_symmetric = paddle.to_tensor(
+            [[1.0, 2.0], [0.0, 1.0]], dtype='float32'
+        )
+        not_positive_definite = paddle.to_tensor(
+            [[1.0, 2.0], [2.0, 1.0]], dtype='float32'
+        )
+        np.testing.assert_array_equal(
+            constraint.square.check(square).numpy(), np.array(True)
+        )
+        np.testing.assert_array_equal(
+            constraint.square.check(not_square).numpy(), np.array(False)
+        )
+        np.testing.assert_array_equal(
+            constraint.symmetric.check(not_symmetric).numpy(), np.array(False)
+        )
+        np.testing.assert_array_equal(
+            constraint.positive_definite.check(square).numpy(), np.array(True)
+        )
+        np.testing.assert_array_equal(
+            constraint.positive_definite.check(not_positive_definite).numpy(),
+            np.array(False),
+        )
+
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+        eigvalsh = paddle.linalg.eigvalsh
+        delattr(paddle.linalg, 'eigvalsh')
+        try:
+            np.testing.assert_array_equal(
+                constraint.positive_definite.check(square).numpy(),
+                np.array(True),
+            )
+            np.testing.assert_array_equal(
+                constraint.positive_definite.check(
+                    not_positive_definite
+                ).numpy(),
+                np.array(False),
+            )
+        finally:
+            paddle.linalg.eigvalsh = eigvalsh
+
+>>>>>>> 62c82bdae5 (Add tests for coverage)
+=======
+>>>>>>> 777bfad34c (Fix some bugs)
+>>>>>>> ba7e1248bb9680a1991b473428cb5ae7e27ef398
 
 if __name__ == '__main__':
     unittest.main(argv=[''], verbosity=3, exit=False)
