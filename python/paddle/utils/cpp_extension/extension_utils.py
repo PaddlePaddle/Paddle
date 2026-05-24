@@ -195,6 +195,11 @@ def custom_write_stub(resource, pyfile):
             for custom_op in custom_ops:
                 setattr(mod, custom_op, eval(custom_op))
 
+            for attr_name, attr_value in list(mod.__dict__.items()):
+                if attr_name.startswith('__') and attr_name.endswith('__'):
+                    continue
+                globals()[attr_name] = attr_value
+
         __bootstrap__()
 
         """
