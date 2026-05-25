@@ -69,8 +69,9 @@ RUN rm /usr/bin/python && ln -s /usr/bin/python3.9 /usr/bin/python && \
 
 WORKDIR /home
 RUN wget -q https://bootstrap.pypa.io/get-pip.py && \
-    wget -q https://bootstrap.pypa.io/pip/3.9/get-pip.py -O get-pip-3.9.py && \
-RUN sed -i 's#"install", "--upgrade", "--force-reinstall"#"install", "--upgrade", "--force-reinstall", "--break-system-packages"#' get-pip.py
+    wget -q https://bootstrap.pypa.io/pip/3.9/get-pip.py -O get-pip-3.9.py
+RUN sed -i 's#"install", "--upgrade", "--force-reinstall"#"install", "--upgrade", "--force-reinstall", "--break-system-packages"#' get-pip.py && \
+    sed -i 's#"install", "--upgrade", "--force-reinstall"#"install", "--upgrade", "--force-reinstall", "--break-system-packages"#' get-pip-3.9.py
 
 RUN python3.9 get-pip-3.9.py && \
   python3.10 get-pip.py && \
