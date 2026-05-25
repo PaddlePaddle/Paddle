@@ -28,12 +28,7 @@ import paddle
 from paddle.base import core
 from paddle.framework import in_dynamic_mode
 
-from .communication.group import (
-    Group,
-    _add_new_group,
-    _GroupManager,
-    is_initialized,
-)
+from .communication.group import Group, _add_new_group, is_initialized
 from .fleet.layers.mpu.mp_ops import (  # noqa: F401
     _c_concat,
     _c_identity,
@@ -70,16 +65,7 @@ def _get_global_env():
 # group map : the map of all group, 0 for GlobalGroup
 # Dict[int, Group]
 _group_map = {}
-# Id of the default global group inside ``_group_map``. This must match
-# ``_GroupManager.global_group_id`` in ``communication.group`` because
-# ``_set_default_group`` / ``_clear_default_group`` key the same group into
-# both registries; the assertion below trips at import time if a future edit
-# breaks that invariant.
 _global_env_gid = 0
-assert _global_env_gid == _GroupManager.global_group_id, (
-    "_global_env_gid != _GroupManager.global_group_id; the default-group id "
-    "must be the same integer in both registries"
-)
 
 # group map by name : the map of all groups from their names
 # Dict[name, Group]
@@ -153,43 +139,6 @@ def _set_group_map_backend(group, backend):
     global _group_map_backend
     assert group not in _group_map_backend
     _group_map_backend[group] = backend
-
-
-def _set_default_group(group):
-    """Register ``group`` as the default global group in every registry.
-
-    Owns the four-table synchronization that ``init_parallel_env`` performs at
-    ``parallel.py:1188-1192`` — :data:`_group_map`,
-    :data:`_group_map_by_name` and :data:`_group_map_backend` here, plus
-    ``_GroupManager.group_map_by_id`` in
-    :mod:`paddle.distributed.communication.group`. Callers (notably the
-    ``group.WORLD`` setter) should go through this helper rather than touching
-    the registries directly so a future refactor only has one place to update.
-
-    Idempotent: any previous default-group entry is dropped first so the
-    per-registry ``not in`` assertions on the :func:`_set_group_map` family
-    cannot be tripped by reassignment.
-    """
-    _clear_default_group()
-    _GroupManager.group_map_by_id[_GroupManager.global_group_id] = group
-    _group_map[_global_env_gid] = group
-    _group_map_by_name[_default_group_name] = group
-    # ``Group.backend`` dereferences ``_pg`` — skip the backend map when no
-    # ProcessGroup is attached (e.g. an externally constructed Group used
-    # purely as a slot placeholder in tests).
-    if group._pg is not None:
-        _group_map_backend[group] = group._pg.name()
-
-
-def _clear_default_group():
-    """Remove the default global group entry from every registry."""
-    prev = _GroupManager.group_map_by_id.pop(
-        _GroupManager.global_group_id, None
-    )
-    _group_map.pop(_global_env_gid, None)
-    _group_map_by_name.pop(_default_group_name, None)
-    if prev is not None:
-        _group_map_backend.pop(prev, None)
 
 
 def _new_ring_id():

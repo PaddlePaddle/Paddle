@@ -124,15 +124,7 @@ class _GroupManager:
 
 
 class _DistGroupMeta(type):
-    """Metaclass exposing :attr:`group.WORLD` as a dynamic class property.
-
-    Mirrors PyTorch's ``torch.distributed.group`` (also implemented via a
-    metaclass) so that ``WORLD`` reflects the current default global group
-    rather than a static sentinel. Assignment is delegated to
-    :func:`paddle.distributed.collective._set_default_group` /
-    :func:`paddle.distributed.collective._clear_default_group` so the
-    four-registry plumbing has a single owner.
-    """
+    """Metaclass exposing :attr:`group.WORLD` as a dynamic class property."""
 
     @property
     def WORLD(cls) -> Group | None:
@@ -143,54 +135,35 @@ class _DistGroupMeta(type):
 
     @WORLD.setter
     def WORLD(cls, value: Group | None) -> None:
-        # ``paddle.distributed.collective`` imports ``_GroupManager`` from
-        # this module at its top, so importing it at *this* module's top
-        # would form a textual import cycle. We defer the import to call
-        # time, which is safe in practice: a caller can only reach this
-        # setter by having already run ``import paddle.distributed`` (which
-        # is what makes ``dist.group.WORLD = ...`` resolvable), and that
-        # import fully loads both modules — in either order — before
-        # returning. The function-body ``import`` therefore amounts to a
-        # cached ``sys.modules`` lookup, not a fresh load. A
-        # registration-callback alternative (collective injecting the two
-        # helpers into this module at its own load time) was considered but
-        # rejected: it shifts the same timing constraint to a different
-        # place and produces an inconsistent setter if invoked between the
-        # two modules' load points.
+        # Lazy import: ``collective`` imports from this module at its top.
         from paddle.distributed import collective as _coll
 
+        prev = _GroupManager.group_map_by_id.pop(
+            _GroupManager.global_group_id, None
+        )
+        _coll._group_map.pop(_coll._global_env_gid, None)
+        _coll._group_map_by_name.pop(_coll._default_group_name, None)
+        if prev is not None:
+            _coll._group_map_backend.pop(prev, None)
+
         if value is None:
-            _coll._clear_default_group()
             return
         if not isinstance(value, Group):
             raise TypeError(
                 "group.WORLD must be a Group instance or None, got "
                 f"{type(value).__name__}"
             )
-        _coll._set_default_group(value)
+
+        _GroupManager.group_map_by_id[_GroupManager.global_group_id] = value
+        _coll._group_map[_coll._global_env_gid] = value
+        _coll._group_map_by_name[_coll._default_group_name] = value
+        if value._pg is not None:
+            _coll._group_map_backend[value] = value._pg.name()
 
 
 class _DistGroupNamespace(metaclass=_DistGroupMeta):
-    """Compat namespace mirroring ``torch.distributed.group``.
-
-    The class is named ``_DistGroupNamespace`` internally so it does not
-    shadow the sibling submodule ``paddle.distributed.communication.group``
-    in the package namespace; it is re-exported from
-    :mod:`paddle.distributed.communication` and :mod:`paddle.distributed` as
-    ``group`` so user code sees the PyTorch-compatible name.
-
-    Exposes :attr:`WORLD`, which returns the default global :class:`Group`
-    after :func:`paddle.distributed.init_parallel_env` /
-    :func:`paddle.distributed.init_process_group`, and ``None`` before
-    initialization - matching ``torch.distributed.group.WORLD`` semantics.
-    Assignment (``group.WORLD = pg`` / ``group.WORLD = None``) is also
-    supported and updates the default-group slot in :class:`_GroupManager`.
-
-    User code converted from PyTorch such as
-    ``paddle.distributed.broadcast(t, group=paddle.distributed.group.WORLD)``
-    works without modification, and so do
-    ``isinstance(group.WORLD, Group)`` and attribute access on the returned
-    group object once distributed is initialized.
+    """Namespace exposing :attr:`WORLD`, re-exported as
+    :data:`paddle.distributed.group`.
     """
 
 

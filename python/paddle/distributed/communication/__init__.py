@@ -21,6 +21,8 @@ from .gather import gather  # noqa: F401
 # Re-export the namespace class under the PyTorch-compatible name ``group``.
 # It is named ``_DistGroupNamespace`` in ``.group`` to avoid shadowing this
 # submodule within the package; the alias here restores the public name.
+# Do NOT import ``group`` from this package expecting the submodule; import
+# names from ``.group`` directly instead.
 from .group import (  # noqa: F401
     _DistGroupNamespace as group,
     barrier,
