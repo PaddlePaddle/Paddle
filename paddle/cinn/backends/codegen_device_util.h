@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <glog/logging.h>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -132,6 +133,7 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
                          common::ARMArch>) { CINN_NOT_IMPLEMENTED; },
         [&](common::CustomDeviceArch) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
+          LOG(INFO) << "[COVERAGE HIT] codegen_device_util.h:134";
           custom_device::CodeGenCustomDevice codegen_dev(
               cinn::common::DefaultCustomDeviceTarget());
           codegen_dev.Compile(ir::LoweredFunc(func));

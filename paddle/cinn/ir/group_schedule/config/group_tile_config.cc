@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/ir/group_schedule/config/group_tile_config.h"
+#include <glog/logging.h>
 #include <type_traits>
 #include <variant>
 #include "paddle/cinn/common/target.h"
@@ -48,6 +49,7 @@ int GetWarpSize(const common::Target& target) {
           return 32;
         } else if constexpr (std::is_same_v<ArchT, common::CustomDeviceArch>) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
+          LOG(INFO) << "[COVERAGE HIT] group_tile_config.cc:50";
           if (!impl.device_type.empty()) {
             return phi::DeviceManager::GetWarpSize(
                 phi::CustomPlace(impl.device_type, impl.device_id));
@@ -71,6 +73,7 @@ int GetMaxRegistersPerSM(const common::Target& target) {
           return 65536;
         } else if constexpr (std::is_same_v<ArchT, common::CustomDeviceArch>) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
+          LOG(INFO) << "[COVERAGE HIT] group_tile_config.cc:73";
           if (!impl.device_type.empty()) {
             return phi::DeviceManager::GetMaxRegistersPerMultiProcessor(
                 phi::CustomPlace(impl.device_type, impl.device_id));
@@ -318,6 +321,7 @@ int CalculateWarpNums(const SMConfig& sm_config,
   int max_warp_cnt = max_threads / warp_size;
   int min_diff_to_full_sm = sm_config.sm_count;
 #ifdef CINN_WITH_CUSTOM_DEVICE
+  LOG(INFO) << "[COVERAGE HIT] group_tile_config.cc:320";
   int best_warp_nums = std::min(8, max_warp_cnt);
   std::vector<int> thread_configs;
   if (max_threads >= 1024) thread_configs.push_back(1024);
@@ -367,6 +371,7 @@ int UpdateWarpNumsInDifferentCase(
   const auto& last_dim = base_info->iter_space_type.back().first;
   if (group_vectorize_info.has_if_else_op && last_dim == "R") {
 #ifdef CINN_WITH_CUSTOM_DEVICE
+    LOG(INFO) << "[COVERAGE HIT] group_tile_config.cc:369";
     warp_nums = Trim(warp_nums, 1, std::min(16, max_warp_cnt));
 #else
     warp_nums = Trim(warp_nums, 1, 16);
@@ -374,12 +379,14 @@ int UpdateWarpNumsInDifferentCase(
   } else if (!group_vectorize_info.args_broadcast_axis_info.empty() &&
              last_dim == "S") {
 #ifdef CINN_WITH_CUSTOM_DEVICE
+    LOG(INFO) << "[COVERAGE HIT] group_tile_config.cc:376";
     warp_nums = Trim(warp_nums, 1, std::min(8, max_warp_cnt));
 #else
     warp_nums = Trim(warp_nums, 1, 8);
 #endif
   } else {
 #ifdef CINN_WITH_CUSTOM_DEVICE
+    LOG(INFO) << "[COVERAGE HIT] group_tile_config.cc:382";
     warp_nums = Trim(warp_nums, 1, max_warp_cnt);
 #else
     warp_nums = Trim(warp_nums, 1, 32);
@@ -584,6 +591,7 @@ bool RegisterNumsLimitedCheckInCTACanApplyVectorize(
   VLOG(5) << "calculate other registers is : " << other_register_occupy_sum
           << "\n";
 #ifdef CINN_WITH_CUSTOM_DEVICE
+  LOG(INFO) << "[COVERAGE HIT] group_tile_config.cc:586";
   int max_threads_per_sm = target.get_max_threads_per_sm();
   int max_warps_per_sm = max_threads_per_sm / warp_size;
   int max_blocks_per_sm_limit = target.get_max_blocks_per_sm();
@@ -684,6 +692,7 @@ TileConfigMap BuildVectorizeConfig(
                      target.get_max_blocks_per_sm(),
                      target.get_multi_processor_count());
 #ifdef CINN_WITH_CUSTOM_DEVICE
+  LOG(INFO) << "[COVERAGE HIT] group_tile_config.cc:686";
   int max_threads_per_block = target.max_num_threads();
   int max_warp_cnt = max_threads_per_block / warp_size;
 #else
@@ -790,6 +799,7 @@ std::pair<int64_t, int64_t> FindBestReduceBlockThreadNum(
     if (factor > rd_thread_num) break;
     int64_t new_rd_thread_num = rd_thread_num / factor;
 #ifdef CINN_WITH_CUSTOM_DEVICE
+    LOG(INFO) << "[COVERAGE HIT] group_tile_config.cc:792";
     int64_t avail_blocks_per_sm =
         max_threads_per_sm / (sp_thread_num * new_rd_thread_num);
 #else
@@ -859,6 +869,7 @@ TileConfigMap BuildPureStaticShapeConfig(
   int64_t rd_thread_num = 1;
   if (last_dim == "R") {
 #ifdef CINN_WITH_CUSTOM_DEVICE
+    LOG(INFO) << "[COVERAGE HIT] group_tile_config.cc:861";
     rd_thread_num = warp_size;
     int64_t remain_reduce_numel = CeilDiv(reduce_numel, warp_size);
 #else
@@ -872,6 +883,7 @@ TileConfigMap BuildPureStaticShapeConfig(
       reduce_method = WarpReduceMethod();
     } else {
 #ifdef CINN_WITH_CUSTOM_DEVICE
+      LOG(INFO) << "[COVERAGE HIT] group_tile_config.cc:874";
       rd_thread_num *= Trim(remain_reduce_numel, 1, max_warp_cnt);
 #else
       rd_thread_num *= Trim(remain_reduce_numel, 1, 32);
@@ -880,6 +892,7 @@ TileConfigMap BuildPureStaticShapeConfig(
     }
   } else {  // last_dim == "S"
 #ifdef CINN_WITH_CUSTOM_DEVICE
+    LOG(INFO) << "[COVERAGE HIT] group_tile_config.cc:882";
     sp_thread_num = warp_size;
     int64_t remain_spatial_numel = CeilDiv(spatial_numel, warp_size);
 #else
@@ -932,6 +945,7 @@ TileConfigMap BuildPureStaticShapeConfig(
   int64_t sp_upper_bound = base_info->spatial_numel > 1 ? kMaxNumel : 1;
   int64_t rd_upper_bound = base_info->reduce_numel > 1 ? kMaxNumel : 1;
 #ifdef CINN_WITH_CUSTOM_DEVICE
+  LOG(INFO) << "[COVERAGE HIT] group_tile_config.cc:934";
   int64_t warp_num =
       Trim(sp_thread_num * rd_thread_num / warp_size, 1, max_warp_cnt);
 #else
@@ -971,6 +985,7 @@ TileConfigMap BuildStaticSpatialConfig(
     int64_t rd_block_num = FloorPow2(sm_count / sp_block_num);
 
 #ifdef CINN_WITH_CUSTOM_DEVICE
+    LOG(INFO) << "[COVERAGE HIT] group_tile_config.cc:973";
     int small_warp_num = std::min(8, max_warp_cnt);
     collector({1, kMaxNumel, 1, medium_bucket_threshold},
               {small_warp_num,
@@ -988,6 +1003,7 @@ TileConfigMap BuildStaticSpatialConfig(
     int max_warp_num = max_warp_cnt;
     if (rd_block_num > 1 && base_info->can_apply_grid_reduce) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
+      LOG(INFO) << "[COVERAGE HIT] group_tile_config.cc:990";
       int64_t rd_threshold = rd_block_num * min_loops * max_threads;
       collector({1, kMaxNumel, medium_bucket_threshold + 1, rd_threshold},
                 {max_warp_num,
@@ -1017,6 +1033,7 @@ TileConfigMap BuildStaticSpatialConfig(
 #endif
     } else {
 #ifdef CINN_WITH_CUSTOM_DEVICE
+      LOG(INFO) << "[COVERAGE HIT] group_tile_config.cc:1019";
       collector({1, kMaxNumel, medium_bucket_threshold + 1, kMaxNumel},
                 {max_warp_num,
                  warp_size,
@@ -1034,6 +1051,7 @@ TileConfigMap BuildStaticSpatialConfig(
 
   } else {  // last_dim == "S"
 #ifdef CINN_WITH_CUSTOM_DEVICE
+    LOG(INFO) << "[COVERAGE HIT] group_tile_config.cc:1036";
     int64_t sp_block_num =
         std::max(CeilDiv(spatial_numel, warp_size), int64_t(1));
     int64_t rd_block_num = FloorPow2(sm_count / sp_block_num);
@@ -1109,6 +1127,7 @@ TileConfigMap BuildStaticReduceConfig(
   // { warp, rd_thread, rd_block, sp_inner, vec_factor, rd_inner, rd_method }
   if (last_dim == "R") {
 #ifdef CINN_WITH_CUSTOM_DEVICE
+    LOG(INFO) << "[COVERAGE HIT] group_tile_config.cc:1111";
     if (base_info->reduce_numel <= small_bucket_threshold) {
       int64_t spatial_inner_num =
           small_bucket_threshold / CeilPow2(base_info->reduce_numel);
@@ -1177,6 +1196,7 @@ TileConfigMap BuildStaticReduceConfig(
 #endif
   } else {  // last_dim == "S"
 #ifdef CINN_WITH_CUSTOM_DEVICE
+    LOG(INFO) << "[COVERAGE HIT] group_tile_config.cc:1179";
     if (base_info->reduce_numel == 1) {
       collector({1, max_threads - 1, 1, 1},
                 {-1, warp_size, 1, 1, 1, 1, -1, NoneReduceMethod()});
@@ -1235,6 +1255,7 @@ TileConfigMap BuildDynamicShapeConfig(
 
   if (last_dim == "R") {
 #ifdef CINN_WITH_CUSTOM_DEVICE
+    LOG(INFO) << "[COVERAGE HIT] group_tile_config.cc:1237";
     collector(
         {1, kMaxNumel, 1, small_bucket_threshold},
         {small_warp_num, warp_size, warp_size, 1, 1, 1, 8, WarpReduceMethod()});
@@ -1268,6 +1289,7 @@ TileConfigMap BuildDynamicShapeConfig(
 #endif
   } else {  // last_dim == "S"
 #ifdef CINN_WITH_CUSTOM_DEVICE
+    LOG(INFO) << "[COVERAGE HIT] group_tile_config.cc:1270";
     collector({1, kMaxNumel, 1, kMaxNumel},
               {medium_warp_num,
                warp_size,

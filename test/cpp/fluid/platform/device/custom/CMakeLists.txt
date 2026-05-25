@@ -9,6 +9,26 @@ if(WITH_CUSTOM_DEVICE)
     # on any CI environment with WITH_CUSTOM_DEVICE=ON and WITH_CINN=ON.
     paddle_test(fake_cinn_stub_test SRCS fake_cinn_stub_test.cc DEPS phi
                 cinnapi)
+
+    # fake_cinn_compiler_test: exercises CINN_WITH_CUSTOM_DEVICE code paths in
+    # group_tile_config.cc (BuildScheduleConfig), compiler_custom_device.cc
+    # (cdrtc::Compiler), and target.cc (DefaultCustomDeviceTarget). Uses CPU
+    # stub device. NO GPU REQUIRED.
+    paddle_test(fake_cinn_compiler_test SRCS fake_cinn_compiler_test.cc DEPS
+                phi cinnapi)
+
+    # fake_cinn_stub_plugin.so: Shared library plugin for Python-level CINN
+    # CustomDevice tests. Loaded via CUSTOM_DEVICE_ROOT at runtime.
+    add_library(
+      fake_cinn_stub_plugin SHARED
+      ${CMAKE_SOURCE_DIR}/test/custom_runtime/fake_cinn_stub_plugin.cc)
+    target_include_directories(fake_cinn_stub_plugin
+                               PRIVATE ${CMAKE_SOURCE_DIR})
+    set_target_properties(
+      fake_cinn_stub_plugin
+      PROPERTIES PREFIX ""
+                 LIBRARY_OUTPUT_DIRECTORY
+                 ${CMAKE_BINARY_DIR}/test/custom_runtime/fake_cinn_stub)
   endif()
 
   if(WITH_CINN)

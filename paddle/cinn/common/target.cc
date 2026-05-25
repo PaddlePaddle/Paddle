@@ -125,6 +125,7 @@ int GetMaxNumThreadsImpl(HygonDCUArchSYCL arch) { return 1024; }
 
 int GetMaxNumThreadsImpl(CustomDeviceArch arch) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
+  LOG(INFO) << "[COVERAGE HIT] target.cc:127";
   return static_cast<int>(phi::DeviceManager::GetMaxThreadsPerBlock(
       phi::CustomPlace(arch.device_type, arch.device_id)));
 #else
@@ -174,6 +175,7 @@ int GetMultiProcessCountImpl(HygonDCUArchSYCL arch) {
 
 int GetMultiProcessCountImpl(CustomDeviceArch arch) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
+  LOG(INFO) << "[COVERAGE HIT] target.cc:176";
   return static_cast<int>(phi::DeviceManager::GetMultiProcessors(
       phi::CustomPlace(arch.device_type, arch.device_id)));
 #else
@@ -229,6 +231,7 @@ int GetMaxThreadsPerSmImpl(HygonDCUArchSYCL arch) {
 
 int GetMaxThreadsPerSmImpl(CustomDeviceArch arch) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
+  LOG(INFO) << "[COVERAGE HIT] target.cc:231";
   return static_cast<int>(phi::DeviceManager::GetMaxThreadsPerMultiProcessor(
       phi::CustomPlace(arch.device_type, arch.device_id)));
 #else
@@ -282,6 +285,7 @@ int GetMaxBlocksPerSmImpl(HygonDCUArchSYCL arch) {
 
 int GetMaxBlocksPerSmImpl(CustomDeviceArch arch) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
+  LOG(INFO) << "[COVERAGE HIT] target.cc:284";
   return static_cast<int>(phi::DeviceManager::GetMaxBlocksPerMultiProcessor(
       phi::CustomPlace(arch.device_type, arch.device_id)));
 #else
@@ -421,6 +425,7 @@ const Target &DefaultHygonDcuSyclTarget() {
 
 const Target &DefaultCustomDeviceTarget() {
 #ifdef CINN_WITH_CUSTOM_DEVICE
+  LOG(INFO) << "[COVERAGE HIT] target.cc:423";
   auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
 
   std::string device_type = "unknown_custom_device";

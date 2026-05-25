@@ -355,6 +355,8 @@ std::string Compiler::GetSourceCode(const ir::Module& module) {
       [&](common::ARMArch) -> std::string { CINN_NOT_IMPLEMENTED; },
       [&](common::CustomDeviceArch) -> std::string {
 #ifdef CINN_WITH_CUSTOM_DEVICE
+        LOG(INFO)
+            << "[COVERAGE HIT] compiler.cc:357 GetSourceCode/CustomDeviceArch";
         auto _host_module_device_module_ =
             SplitDeviceAndHostModule(module);  // NOLINT
         auto& host_module = std::get<0>(_host_module_device_module_);
@@ -552,6 +554,8 @@ void Compiler::RegisterCudaModuleSymbol() {
 
 void Compiler::RegisterCustomDeviceModuleSymbol() {
 #ifdef CINN_WITH_CUSTOM_DEVICE
+  LOG(INFO)
+      << "[COVERAGE HIT] compiler.cc:554 RegisterCustomDeviceModuleSymbol";
   // 1. Get the plugin instance (needed for LoadModule later)
   auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
   PADDLE_ENFORCE_EQ(!dev_types.empty(),
@@ -713,6 +717,7 @@ void Compiler::CompileCudaModule(const Module& module,
 void Compiler::CompileCustomDeviceModule(const Module& module,
                                          const std::string& code) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
+  LOG(INFO) << "[COVERAGE HIT] compiler.cc:715 CompileCustomDeviceModule";
   auto _host_module_device_module_ =
       SplitDeviceAndHostModule(module);  // NOLINT
   auto& host_module = std::get<0>(_host_module_device_module_);

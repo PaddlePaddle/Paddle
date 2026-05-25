@@ -183,6 +183,17 @@ C_Status FakeCinnGetMaxThreadsPerMP(const C_Device device,
   return C_SUCCESS;
 }
 
+C_Status FakeCinnGetWarpSize(const C_Device device, size_t *warp_size) {
+  *warp_size = 32;
+  return C_SUCCESS;
+}
+
+C_Status FakeCinnGetMaxRegistersPerMP(const C_Device device,
+                                      size_t *max_registers) {
+  *max_registers = 65536;
+  return C_SUCCESS;
+}
+
 C_Status FakeCinnGetMaxThreadsPerBlock(const C_Device device,
                                        size_t *threads_per_block) {
   *threads_per_block = 1024;
@@ -405,6 +416,8 @@ void InitFakeCinnStubDevice(CustomRuntimeParams *params) {
   params->interface->get_compute_capability = FakeCinnGetComputeCapability;
   params->interface->get_multi_process = FakeCinnGetMultiProcess;
   params->interface->get_max_threads_per_mp = FakeCinnGetMaxThreadsPerMP;
+  params->interface->get_warp_size = FakeCinnGetWarpSize;
+  params->interface->get_max_registers_per_mp = FakeCinnGetMaxRegistersPerMP;
   params->interface->get_max_threads_per_block = FakeCinnGetMaxThreadsPerBlock;
   params->interface->get_max_shared_mem_per_block =
       FakeCinnGetMaxSharedMemPerBlock;

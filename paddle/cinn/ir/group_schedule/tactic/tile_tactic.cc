@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/ir/group_schedule/tactic/tile_tactic.h"
+#include <glog/logging.h>
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/common/enforce.h"
@@ -67,6 +68,7 @@ void TileTactic::Init(ScheduleContext* context) {
   };
   auto GetNumThreadPerBlock = [&](int64_t lower_bound) -> int64_t {
 #ifdef CINN_WITH_CUSTOM_DEVICE
+    LOG(INFO) << "[COVERAGE HIT] tile_tactic.cc:69";
     const int64_t max_num_threads =
         cinn::common::DefaultDeviceTarget().max_num_threads();
     // When designing the tile config, we can further subdivided.
