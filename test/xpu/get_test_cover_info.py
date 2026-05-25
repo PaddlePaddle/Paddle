@@ -122,6 +122,8 @@ xpu_test_op_type_white_list = [
     "c_sync_calc_stream_float32",
     "reshape2_bool",
     "reshape2_grad_bool",
+    "put_along_axis_grad_int16",
+    "put_along_axis_grad_uint8",
 ]
 xpu_test_device_op_white_list = []
 xpu_test_device_op_type_white_list = []
