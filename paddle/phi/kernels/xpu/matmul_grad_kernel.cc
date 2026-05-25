@@ -104,6 +104,51 @@ void CastXpuMatmulGradOutputByDtype(const Context& dev_ctx,
   }
 }
 
+template <typename Context>
+void AllocXpuMatmulGradOutputByDtype(const Context& dev_ctx,
+                                     DenseTensor* output) {
+  switch (output->dtype()) {
+    case DataType::FLOAT32:
+      dev_ctx.template Alloc<float>(output);
+      break;
+    case DataType::FLOAT16:
+      dev_ctx.template Alloc<dtype::float16>(output);
+      break;
+    case DataType::BFLOAT16:
+      dev_ctx.template Alloc<dtype::bfloat16>(output);
+      break;
+    default:
+      PADDLE_THROW(
+          common::errors::Unavailable("XPU matmul_grad only supports float32, "
+                                      "float16 and bfloat16 gradient "
+                                      "outputs, but received %s.",
+                                      output->dtype()));
+  }
+}
+
+template <typename Context>
+void FullXpuMatmulGradOutputByDtype(const Context& dev_ctx,
+                                    const DDim& dims,
+                                    DenseTensor* output) {
+  switch (output->dtype()) {
+    case DataType::FLOAT32:
+      Full<float, Context>(dev_ctx, dims, 0, output);
+      break;
+    case DataType::FLOAT16:
+      Full<dtype::float16, Context>(dev_ctx, dims, 0, output);
+      break;
+    case DataType::BFLOAT16:
+      Full<dtype::bfloat16, Context>(dev_ctx, dims, 0, output);
+      break;
+    default:
+      PADDLE_THROW(
+          common::errors::Unavailable("XPU matmul_grad only supports float32, "
+                                      "float16 and bfloat16 gradient "
+                                      "outputs, but received %s.",
+                                      output->dtype()));
+  }
+}
+
 template <typename ComputeT, typename Context>
 void MatmulGradKernelImpl(const Context& dev_ctx,
                           const DenseTensor& x,
@@ -115,13 +160,21 @@ void MatmulGradKernelImpl(const Context& dev_ctx,
                           DenseTensor* dy) {
   using XPUType = typename XPUTypeTrait<ComputeT>::Type;
   if (x.numel() == 0) {
-    dev_ctx.template Alloc<ComputeT>(dx);
-    Full<ComputeT, Context>(dev_ctx, y.dims(), 0, dy);
+    if (dx) {
+      AllocXpuMatmulGradOutputByDtype(dev_ctx, dx);
+    }
+    if (dy) {
+      FullXpuMatmulGradOutputByDtype(dev_ctx, y.dims(), dy);
+    }
     return;
   }
   if (y.numel() == 0) {
-    dev_ctx.template Alloc<ComputeT>(dy);
-    Full<ComputeT, Context>(dev_ctx, x.dims(), 0, dx);
+    if (dy) {
+      AllocXpuMatmulGradOutputByDtype(dev_ctx, dy);
+    }
+    if (dx) {
+      FullXpuMatmulGradOutputByDtype(dev_ctx, x.dims(), dx);
+    }
     return;
   }
 
