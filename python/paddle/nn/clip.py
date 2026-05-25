@@ -265,7 +265,11 @@ def _squared_l2_norm(x):
     Return the squared L2 norm of a tensor.
     """
 
+    # print("x.max: ", x.max())
+    # print("x.min: ", x.min())
     x = _cast_to_mp_type_if_enabled(x)
+    x = x.astype('float32')
+    print("[squared_l2_norm] x.dtype:", x.dtype)
 
     if in_dynamic_or_pir_mode():
         return _C_ops.squared_l2_norm(x)
@@ -388,6 +392,7 @@ class ClipGradBase:
     def __call__(
         self, params_grads: list[tuple[Tensor, Tensor]]
     ) -> list[tuple[Tensor, Tensor]]:
+        print('call clip grad')
         if in_dynamic_mode():
             return self._dygraph_clip(params_grads)
         elif in_pir_mode():
@@ -642,6 +647,79 @@ def _allow_pure_bf16_global_norm_clip(*args):
         _allow_pure_bf16_global_norm_clip_flag = args[0]
         return old_value
 
+class ClipGradByGlobalNormAccuracyCompatible(ClipGradBase):
+    clip_norm: float
+    auto_skip_clip: bool
+
+    def __init__(
+        self,
+        clip_norm: float,
+        auto_skip_clip: bool = False,
+    ):
+        super().__init__()
+        self.clip_norm = float(clip_norm)
+        self.auto_skip_clip = auto_skip_clip
+
+    def _get_global_norm(self, params_grads):
+        norm_list = []
+        # TODO adjust the order to be the same as torch
+        for p, g in params_grads:
+            if getattr(p, 'need_clip', True) is False:
+                continue
+
+            sum_square = _squared_l2_norm(g)
+            norm = paddle.sqrt(sum_square)
+            norm_list.append(norm)
+
+        norm_tensor = paddle.stack(norm_list).astype(paddle.float32)
+
+        sum_square = _squared_l2_norm(norm_tensor)
+
+        global_norm_var = paddle.sqrt(sum_square)
+        return global_norm_var
+
+    def _dygraph_clip(self, params_grads):
+        global_norm_var = self._get_global_norm(params_grads)
+        global_norm_var = global_norm_var + 1e-6
+        need_clip = False
+        sum_dtype = paddle.get_default_dtype()
+        max_global_norm = paddle.full(
+            shape=[1], dtype=sum_dtype, fill_value=self.clip_norm
+        )
+        if not self.auto_skip_clip:  # always apply clip
+            need_clip = True
+            clip_var = paddle.divide(
+                x=max_global_norm,
+                y=paddle.maximum(x=global_norm_var, y=max_global_norm),
+            )
+        elif global_norm_var > max_global_norm:
+            # only when global_norm_var > max_global_norm, grad need clip
+            need_clip = True
+            clip_var = paddle.divide(x=max_global_norm, y=global_norm_var)
+
+        params_and_grads = []
+        for p, g in params_grads:
+            if g is None:
+                continue
+            if getattr(p, 'need_clip', True) is False:
+                params_and_grads.append((p, g))
+                continue
+            if need_clip:
+                clip_input = (
+                    clip_var.astype(g.dtype)
+                    if clip_var.dtype != g.dtype
+                    else clip_var
+                )
+                if _can_inplace_clip_grad(g, clip_input):
+                    g.multiply_(clip_input)
+                    params_and_grads.append((p, g))
+                else:
+                    new_grad = paddle.multiply(g, clip_input)
+                    params_and_grads.append((p, new_grad))
+            else:
+                params_and_grads.append((p, g))
+
+        return params_and_grads
 
 class ClipGradByGlobalNorm(ClipGradBase):
     r"""
@@ -727,36 +805,50 @@ class ClipGradByGlobalNorm(ClipGradBase):
 
     @imperative_base.no_grad()
     def _dygraph_clip(self, params_grads):
+        if paddle.get_flags("FLAGS_use_accuracy_compatible_kernel")[
+            "FLAGS_use_accuracy_compatible_kernel"
+        ]:
+            return ClipGradByGlobalNormAccuracyCompatible(self.clip_norm)._dygraph_clip(params_grads)
+
         params_and_grads = []
         sum_square_list = []
         sum_square_list_fp16 = []
         sum_square_list_fp32 = []
         flag_auto_hybrid_pp = True  # Determine whether to use the new dynamic graph semi-automatic parallel pp framework
         if len(params_grads) > 0 and len(params_grads[0]) > 0:
+            print('src_mesh is not None')
             src_mesh = params_grads[0][0].process_mesh
         else:
+            print('src_mesh is None')
             src_mesh = None
 
         for p, g in params_grads:
             if g is None:
                 continue
+            print("-*" * 20)
             if getattr(p, 'need_clip', True) is False:
                 continue
             merge_grad = g
+            print(f"[clip.py] grad.dtype: {g.dtype}")
 
             if in_dynamic_mode() and g.is_selected_rows():
+                print('in dynamic mode and grad is selected rows')
                 merge_grad = merge_selected_rows(g)
                 merge_grad = merge_grad._get_tensor_from_selected_rows()
 
             elif g.type == core.VarDesc.VarType.SELECTED_ROWS:
+                print('g.type ==  core.VarDesc.VarType.SELECTED_ROWS')
                 merge_grad = merge_selected_rows(g)
                 merge_grad = get_tensor_from_selected_rows(merge_grad)
 
+            print(f"[clip.py] _squared_l2_norm input: shape={merge_grad.shape}, dtype={merge_grad.dtype}, numel={merge_grad.numel()}")
             sum_square = _squared_l2_norm(merge_grad)
+            print(f"[clip.py] sum_square = {sum_square}, dtype: {sum_square.dtype}")
 
             # if the gradient mesh is not equal to src mesh
             # do reshard to get the result of squared_l2 from other pp stage mesh
             if src_mesh is not None and g.process_mesh != src_mesh:
+                print('src_meash is not none and grad process mesh not equal to src_mesh')
                 flag_auto_hybrid_pp = False
                 pp_mesh = get_complete_pp_mesh(g.process_mesh)
                 if set(g.process_mesh.process_ids) < set(pp_mesh.process_ids):
@@ -777,6 +869,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
             elif sum_square.dtype == paddle.float32:
                 sum_square_list_fp32.append(sum_square)
             else:
+                #Q: int64也用double吗
                 sum_square_list.append(sum_square)
 
         # all parameters have been filtered out
@@ -859,6 +952,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
             shape=[1], dtype=sum_dtype, fill_value=self.clip_norm
         )
 
+        print(f"计算到的总范数:                 {global_norm_var:.6f}")
         need_clip = False
         if not self.auto_skip_clip:  # always apply clip
             need_clip = True
@@ -870,6 +964,8 @@ class ClipGradByGlobalNorm(ClipGradBase):
             # only when global_norm_var > max_global_norm, grad need clip
             need_clip = True
             clip_var = paddle.divide(x=max_global_norm, y=global_norm_var)
+        print(f"实际裁剪系数:                   {clip_var.item():.10f}")
+        print(f"是否发生裁剪:                   {'是' if clip_var.item() < 1.0 else '否'}")
 
         for p, g in params_grads:
             if g is None:
