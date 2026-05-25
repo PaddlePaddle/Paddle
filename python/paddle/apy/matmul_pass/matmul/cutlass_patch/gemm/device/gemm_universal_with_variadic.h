@@ -18,9 +18,11 @@
 
 #pragma once
 
+#include "cutlass_patch/backend.h"
+
+#ifdef __NVCC__
 #include "cutlass/arch/arch.h"
 #include "cutlass/arch/mma.h"
-#include "cutlass/cutlass.h"
 #include "cutlass/device_kernel.h"
 #include "cutlass/numeric_types.h"
 
@@ -31,9 +33,26 @@
 #include "cutlass/gemm/device/default_gemm_configuration.h"
 #include "cutlass/gemm/device/gemm_universal_base.h"
 #include "cutlass/gemm/kernel/default_gemm_universal.h"
-#include "cutlass_patch/gemm/kernel/default_gemm_with_variadic.h"
 
 #include "cutlass/layout/permute.h"
+#elif defined(__HIPCC__)
+#include "hytlass/arch/arch.h"
+#include "hytlass/arch/mma.h"
+#include "hytlass/device_kernel.h"
+#include "hytlass/numeric_types.h"
+
+#include "hytlass/gemm/gemm.h"
+#include "hytlass/gemm/kernel/gemm_universal.h"
+#include "hytlass/gemm/threadblock/threadblock_swizzle.h"
+
+#include "hytlass/gemm/device/default_gemm_configuration.h"
+#include "hytlass/gemm/device/gemm_universal_base.h"
+#include "hytlass/gemm/kernel/default_gemm_universal.h"
+
+#include "hytlass/layout/permute.h"
+#endif
+
+#include "cutlass_patch/gemm/kernel/default_gemm_with_variadic.h"
 
 namespace cutlass_patch {
 namespace gemm {

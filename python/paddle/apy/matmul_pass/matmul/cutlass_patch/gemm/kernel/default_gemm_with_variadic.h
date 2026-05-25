@@ -20,10 +20,15 @@
 
 #pragma once
 
-#include "cutlass/cutlass.h"
+#include "cutlass_patch/backend.h"
 
+#ifdef __NVCC__
 #include "cutlass/gemm/kernel/default_gemm_universal.h"
 #include "cutlass/gemm/kernel/gemm_universal.h"
+#elif defined(__HIPCC__)
+#include "hytlass/gemm/kernel/default_gemm_universal.h"
+#include "hytlass/gemm/kernel/gemm_universal.h"
+#endif
 
 #include "cutlass_patch/epilogue/threadblock/default_epilogue_with_variadic.h"
 #include "cutlass_patch/epilogue/threadblock/epilogue_with_variadic.h"

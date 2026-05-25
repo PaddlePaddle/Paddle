@@ -24,11 +24,13 @@
 
 #pragma once
 
+#include "cutlass_patch/backend.h"
+
+#ifdef __NVCC__
 #include <cuda/std/cassert>
 
 #include "cutlass/aligned_buffer.h"
 #include "cutlass/array.h"
-#include "cutlass/cutlass.h"
 #include "cutlass/functional.h"
 #include "cutlass/layout/tensor.h"
 #include "cutlass/layout/vector.h"
@@ -43,6 +45,24 @@
 #include "cutlass/epilogue/threadblock/epilogue_base.h"
 #include "cutlass/epilogue/threadblock/epilogue_base_streamk.h"
 #include "cutlass/epilogue/threadblock/predicated_tile_iterator.h"
+#elif defined(__HIPCC__)
+#include "hytlass/aligned_buffer.h"
+#include "hytlass/array.h"
+#include "hytlass/functional.h"
+#include "hytlass/layout/tensor.h"
+#include "hytlass/layout/vector.h"
+#include "hytlass/numeric_types.h"
+#include "hytlass/tensor_coord.h"
+
+#include "hytlass/gemm/gemm.h"
+
+#include "hytlass/transform/pitch_linear_thread_map.h"
+#include "hytlass/transform/threadblock/regular_tile_iterator.h"
+
+#include "hytlass/epilogue/threadblock/epilogue_base.h"
+#include "hytlass/epilogue/threadblock/epilogue_base_streamk.h"
+#include "hytlass/epilogue/threadblock/predicated_tile_iterator.h"
+#endif
 
 #include "cutlass_patch/trace_device.h"
 

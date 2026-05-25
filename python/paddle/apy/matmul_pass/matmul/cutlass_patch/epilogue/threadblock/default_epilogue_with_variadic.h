@@ -23,8 +23,10 @@
 
 #pragma once
 
+#include "cutlass_patch/backend.h"
+
+#ifdef __NVCC__
 #include "cutlass/array.h"
-#include "cutlass/cutlass.h"
 #include "cutlass/numeric_types.h"
 
 #include "cutlass/gemm/gemm.h"
@@ -32,10 +34,23 @@
 #include "cutlass/epilogue/threadblock/default_epilogue_tensor_op.h"
 #include "cutlass/epilogue/threadblock/default_epilogue_volta_tensor_op.h"
 #include "cutlass/epilogue/threadblock/epilogue.h"
-#include "cutlass_patch/epilogue/threadblock/epilogue_with_variadic.h"
-// #include "cutlass/epilogue/threadblock/epilogue_streamk_with_broadcast.h"
 
 #include "cutlass/layout/permute.h"
+#elif defined(__HIPCC__)
+#include "hytlass/array.h"
+#include "hytlass/numeric_types.h"
+
+#include "hytlass/gemm/gemm.h"
+
+#include "hytlass/epilogue/threadblock/default_epilogue_tensor_op.h"
+#include "hytlass/epilogue/threadblock/default_epilogue_volta_tensor_op.h"
+#include "hytlass/epilogue/threadblock/epilogue.h"
+
+#include "hytlass/layout/permute.h"
+#endif
+
+#include "cutlass_patch/epilogue/threadblock/epilogue_with_variadic.h"
+// #include "cutlass/epilogue/threadblock/epilogue_streamk_with_broadcast.h"
 
 namespace cutlass_patch {
 namespace epilogue {

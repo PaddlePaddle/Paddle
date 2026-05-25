@@ -19,12 +19,21 @@
 
 #pragma once
 
+#include "cutlass_patch/backend.h"
+
+#ifdef __NVCC__
 #include "cutlass/array.h"
-#include "cutlass/cutlass.h"
 #include "cutlass/epilogue/thread/scale_type.h"
 #include "cutlass/functional.h"
 #include "cutlass/numeric_conversion.h"
 #include "cutlass/numeric_types.h"
+#elif defined(__HIPCC__)
+#include "hytlass/array.h"
+#include "hytlass/epilogue/thread/scale_type.h"
+#include "hytlass/functional.h"
+#include "hytlass/numeric_conversion.h"
+#include "hytlass/numeric_types.h"
+#endif
 
 namespace cutlass_patch {
 namespace epilogue {

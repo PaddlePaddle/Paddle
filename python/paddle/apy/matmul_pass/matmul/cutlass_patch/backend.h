@@ -14,20 +14,9 @@
 
 #pragma once
 
-#include "cutlass_patch/backend.h"
-
-namespace cutlass_patch {
-
-struct BatchedMatrixCoord {
-  int batch;
-  int row;
-  int column;
-
-  CUTLASS_HOST_DEVICE
-  BatchedMatrixCoord() : batch(0), row(0), column(0) {}
-
-  CUTLASS_HOST_DEVICE
-  BatchedMatrixCoord(int b, int r, int c) : batch(b), row(r), column(c) {}
-};
-
-};  // namespace cutlass_patch
+#ifdef __NVCC__
+#include "cutlass/cutlass.h"
+#elif defined(__HIPCC__)
+#include "hytlass/hytlass.h"
+namespace cutlass = hytlass;
+#endif
