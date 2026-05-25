@@ -133,10 +133,11 @@ void FusedLayerNormKernel(const Context& dev_ctx,
                                m * n);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "add");
       dev_ctx.template Alloc<T>(residual_out);
-      r = baidu::xpu::api::copy(xpu_ctx->x_context(),
-                                reinterpret_cast<XPUType*>(ln_out->data<T>()),
-                                reinterpret_cast<XPUType*>(residual_out->data<T>()),
-                                m * n);
+      r = baidu::xpu::api::copy(
+          xpu_ctx->x_context(),
+          reinterpret_cast<XPUType*>(ln_out->data<T>()),
+          reinterpret_cast<XPUType*>(residual_out->data<T>()),
+          m * n);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
     } else {
       if (bias) {
@@ -202,19 +203,18 @@ void FusedLayerNormKernel(const Context& dev_ctx,
         DenseTensor ln_input;
         ln_input.Resize(x.dims());
         dev_ctx.template Alloc<T>(&ln_input);
-        r = baidu::xpu::api::add(xpu_ctx->x_context(),
-                                 x_ptr,
-                                 reinterpret_cast<const XPUType*>(
-                                     residual_tmp.data<T>()),
-                                 reinterpret_cast<XPUType*>(ln_input.data<T>()),
-                                 m * n);
+        r = baidu::xpu::api::add(
+            xpu_ctx->x_context(),
+            x_ptr,
+            reinterpret_cast<const XPUType*>(residual_tmp.data<T>()),
+            reinterpret_cast<XPUType*>(ln_input.data<T>()),
+            m * n);
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "add");
-        r = baidu::xpu::api::copy(xpu_ctx->x_context(),
-                                  reinterpret_cast<const XPUType*>(
-                                      ln_input.data<T>()),
-                                  reinterpret_cast<XPUType*>(
-                                      residual_out->data<T>()),
-                                  m * n);
+        r = baidu::xpu::api::copy(
+            xpu_ctx->x_context(),
+            reinterpret_cast<const XPUType*>(ln_input.data<T>()),
+            reinterpret_cast<XPUType*>(residual_out->data<T>()),
+            m * n);
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
         DenseTensor ln_out_tmp;
         ln_out_tmp.Resize(out->dims());
