@@ -262,6 +262,14 @@ void SetValueGradImpl(const Context& dev_ctx,
     if (value_grad->dims() == out_dims) {
       if (need_host_gather) {
         strided_gather(value_grad);
+        if (need_reverse) {
+          r = xpu::flip(dev_ctx.x_context(),
+                        reinterpret_cast<const XPUType*>(value_grad->data<T>()),
+                        reinterpret_cast<XPUType*>(value_grad->data<T>()),
+                        out_dims_vector,
+                        flip_axis);
+          PADDLE_ENFORCE_XDNN_SUCCESS(r, "flip");
+        }
       } else if (need_reverse) {
         r = xpu::strided_slice(
             dev_ctx.x_context(),
