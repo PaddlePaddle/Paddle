@@ -690,11 +690,11 @@ class LayerNorm(Layer):
         self,
         normalized_shape: int | Sequence[int],
         epsilon: float = 1e-5,
-        *,
         elementwise_affine: bool = True,
         bias: bool = True,
         device: PlaceLike | None = None,
         dtype: DTypeLike | None = None,
+        *,
         weight_attr: bool | ParamAttr | None = None,
         bias_attr: bool | ParamAttr | None = None,
         name: str | None = None,
@@ -718,7 +718,7 @@ class LayerNorm(Layer):
 
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
-        param_shape = [np.prod(self._normalized_shape)]
+        param_shape = self._normalized_shape
 
         if weight_attr is False:
             self.weight = None
@@ -744,11 +744,13 @@ class LayerNorm(Layer):
             )
 
     def forward(self, input: Tensor) -> Tensor:
+        weight = self.weight.flatten() if self.weight is not None else None
+        bias = self.bias.flatten() if self.bias is not None else None
         return layer_norm(
             input,
             normalized_shape=self._normalized_shape,
-            weight=self.weight,
-            bias=self.bias,
+            weight=weight,
+            bias=bias,
             epsilon=self._epsilon,
         )
 

@@ -4086,5 +4086,121 @@ class TestTensorIndexCopyInplaceAPI(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestLayerNormAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.normalized_shape = [2, 3]
+        self.x_shape = [2, 2, 3]
+        self.eps = 1e-5
+        self.np_x = np.random.rand(*self.x_shape).astype("float32")
+
+    def _expected(self):
+        axes = tuple(
+            range(
+                len(self.x_shape) - len(self.normalized_shape),
+                len(self.x_shape),
+            )
+        )
+        mean = np.mean(self.np_x, axis=axes, keepdims=True)
+        var = np.var(self.np_x, axis=axes, keepdims=True)
+        return (self.np_x - mean) / np.sqrt(var + self.eps)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        layer1 = paddle.nn.LayerNorm(self.normalized_shape, self.eps)
+        out1 = layer1(x)
+        # 2. Paddle keyword arguments
+        layer2 = paddle.nn.LayerNorm(
+            normalized_shape=self.normalized_shape, epsilon=self.eps
+        )
+        out2 = layer2(x)
+        # 3. PyTorch Positional arguments
+        layer3 = paddle.nn.LayerNorm(self.normalized_shape, self.eps, False)
+        out3 = layer3(x)
+        # 4. PyTorch keyword arguments (alias)
+        layer4 = paddle.nn.LayerNorm(
+            normalized_shape=self.normalized_shape,
+            eps=self.eps,
+            elementwise_affine=False,
+        )
+        out4 = layer4(x)
+        # 5. Mixed arguments
+        layer5 = paddle.nn.LayerNorm(
+            self.normalized_shape, eps=self.eps, bias=False
+        )
+        out5 = layer5(x)
+        # 6. PyTorch positional bias/device/dtype arguments
+        layer6 = paddle.nn.LayerNorm(
+            self.normalized_shape, self.eps, True, True, None, "float64"
+        )
+
+        expected = self._expected()
+        for out in [out1, out2, out3, out4, out5]:
+            np.testing.assert_allclose(out.numpy(), expected, rtol=1e-5)
+        self.assertEqual(
+            tuple(layer1.weight.shape), tuple(self.normalized_shape)
+        )
+        self.assertEqual(tuple(layer1.bias.shape), tuple(self.normalized_shape))
+        self.assertIsNone(layer3.weight)
+        self.assertIsNone(layer3.bias)
+        self.assertIsNotNone(layer5.weight)
+        self.assertIsNone(layer5.bias)
+        self.assertEqual(layer6.weight.dtype, paddle.float64)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=self.x_shape, dtype=str(self.np_x.dtype)
+            )
+
+            # 1. Paddle Positional arguments
+            layer1 = paddle.nn.LayerNorm(self.normalized_shape, self.eps)
+            out1 = layer1(x)
+            # 2. Paddle keyword arguments
+            layer2 = paddle.nn.LayerNorm(
+                normalized_shape=self.normalized_shape, epsilon=self.eps
+            )
+            out2 = layer2(x)
+            # 3. PyTorch Positional arguments
+            layer3 = paddle.nn.LayerNorm(self.normalized_shape, self.eps, False)
+            out3 = layer3(x)
+            # 4. PyTorch keyword arguments (alias)
+            layer4 = paddle.nn.LayerNorm(
+                normalized_shape=self.normalized_shape,
+                eps=self.eps,
+                elementwise_affine=False,
+            )
+            out4 = layer4(x)
+
+            self.assertEqual(
+                tuple(layer1.weight.shape), tuple(self.normalized_shape)
+            )
+            self.assertEqual(
+                tuple(layer1.bias.shape), tuple(self.normalized_shape)
+            )
+            self.assertIsNone(layer3.weight)
+            self.assertIsNone(layer3.bias)
+
+            exe = paddle.static.Executor()
+            exe.run(startup)
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3, out4],
+            )
+
+        expected = self._expected()
+        for out in fetches:
+            np.testing.assert_allclose(out, expected, rtol=1e-5)
+
+
 if __name__ == "__main__":
     unittest.main()
