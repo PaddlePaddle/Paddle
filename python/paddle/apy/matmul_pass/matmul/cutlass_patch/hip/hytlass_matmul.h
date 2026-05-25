@@ -20,12 +20,12 @@
 #include "hytlass/gemm/device/gemm_universal.h"
 #include "hytlass/gemm/device/gemm_universal_with_broadcast.h"
 
-#include "hytlass_patch/epilogue/thread/linear_combination_unary.h"
-#include "hytlass_patch/epilogue/thread/linear_combination_variadic.h"
-#include "hytlass_patch/gemm/device/gemm_universal_with_variadic.h"
+#include "cutlass_patch/epilogue/thread/linear_combination_unary.h"
+#include "cutlass_patch/epilogue/thread/linear_combination_variadic.h"
+#include "cutlass_patch/gemm/device/gemm_universal_with_variadic.h"
 
-#include "hytlass_patch/all_tuning_configs.h"
-#include "hytlass_patch/batched_matrix_coord.h"
+#include "cutlass_patch/batched_matrix_coord.h"
+#include "cutlass_patch/hip/all_tuning_configs.h"
 
 #include "params.h"  // NOLINT
 
@@ -42,7 +42,7 @@
 
 namespace ap {
 
-using MatrixCoord = hytlass::BatchedMatrixCoord;
+using MatrixCoord = cutlass_patch::BatchedMatrixCoord;
 using bfloat16 = __hip_bfloat16;
 
 // Operation performed by GEMM
@@ -172,16 +172,17 @@ void MatmulAddVariadic(
 
   // Epilogue operation as LinearCombination:
   //  alpha * accumulator + beta * source
-  using EpilogueOutputOp = hytlass::epilogue::thread::LinearCombinationVariadic<
-      VariadicFunctor,
-      ElementOutput,
-      AlignC,
-      ElementAccumulator,
-      ElementComputeEpilogue,
-      hytlass::epilogue::thread::ScaleType::NoBetaScaling>;  // <- alpha x AB +
-                                                             // bias
+  using EpilogueOutputOp =
+      cutlass_patch::epilogue::thread::LinearCombinationVariadic<
+          VariadicFunctor,
+          ElementOutput,
+          AlignC,
+          ElementAccumulator,
+          ElementComputeEpilogue,
+          hytlass::epilogue::thread::ScaleType::NoBetaScaling>;  // <- alpha x
+                                                                 // AB + bias
 
-  using GemmFunc = hytlass::gemm::device::GemmUniversalWithVariadic<
+  using GemmFunc = cutlass_patch::gemm::device::GemmUniversalWithVariadic<
       ElementInputA,
       hytlass::layout::RowMajor,
       ElementInputB,
