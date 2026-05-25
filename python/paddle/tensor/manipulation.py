@@ -2839,6 +2839,8 @@ def split(
     if in_dynamic_mode():
         if isinstance(dim, Variable):
             dim = dim.item(0)
+        elif paddle.is_tensor(dim):
+            dim = dim.item()
         assert dim + len(input.shape) >= 0, "(rank(x) + axis) must >= 0"
         dim = (dim + len(input.shape)) if dim < 0 else dim
 
@@ -2863,6 +2865,9 @@ def split(
         if isinstance(dim, int):
             assert len(input.shape) + dim >= 0, "(rank(x) + axis) must >= 0"
             dim = (len(input.shape) + dim) if dim < 0 else dim
+        elif isinstance(dim, paddle.pir.Value):
+            # Convert Value tensor to int if possible (for shape-dependent logic)
+            pass  # let it flow as Tensor to executor for runtime resolution
 
         input_shape = input.shape
 
