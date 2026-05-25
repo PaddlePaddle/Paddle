@@ -31,14 +31,9 @@ void GeluGradKernel(const Context& dev_ctx,
   if (x_grad && x_grad->numel() == 0) {
     return;
   }
-  // Use high-precision variant for float16/bfloat16 to promote intermediate
-  // computations to float32, matching GPU behavior via MPTypeTrait.
-  // This avoids catastrophic rounding errors when computing gelu_grad entirely
-  // in reduced-precision types (e.g. bfloat16 max_abs_diff ~46051).
   int r = 0;
-  if constexpr (std::is_same_v<T, phi::dtype::float16> ||
-                std::is_same_v<T, phi::dtype::bfloat16>) {
-    r = xpu::gelu_grad_highprecision<XPUType>(
+  if constexpr (std::is_same_v<T, phi::dtype::bfloat16>) {
+    r = xpu::gelu_grad_nvidia_highprecision<XPUType>(
         dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(x.data<T>()),
         reinterpret_cast<const XPUType*>(out_grad.data<T>()),

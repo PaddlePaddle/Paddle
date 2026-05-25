@@ -31,14 +31,9 @@ void GeluKernel(const Context& dev_ctx,
   if (out && out->numel() == 0) {
     return;
   }
-  // Use high-precision variant for float16/bfloat16 to promote intermediate
-  // computations to float32, matching GPU behavior via MPTypeTrait.
-  // This avoids catastrophic rounding errors when computing gelu entirely
-  // in reduced-precision types (e.g. bfloat16 max_abs_diff ~46051).
   int r = 0;
-  if constexpr (std::is_same_v<T, phi::dtype::float16> ||
-                std::is_same_v<T, phi::dtype::bfloat16>) {
-    r = xpu::gelu_highprecision<XPUType>(
+  if constexpr (std::is_same_v<T, phi::dtype::bfloat16>) {
+    r = xpu::gelu_nvidia_highprecision<XPUType>(
         dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(x.data<T>()),
         reinterpret_cast<XPUType*>(out->data<T>()),
