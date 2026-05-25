@@ -11,12 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""PyTorch-compatible CUDA graph APIs.
-
-Mirrors ``torch.cuda.graphs``: re-exports :class:`CUDAGraph` from
-:mod:`paddle.device.cuda.graphs` and adds the :class:`graph` context manager
-plus :func:`graph_pool_handle`.
-"""
+"""CUDA graph APIs."""
 
 from __future__ import annotations
 
@@ -46,11 +41,8 @@ __all__ = [
 
 def graph_pool_handle() -> int:
     """Return an opaque token usable as the ``pool`` argument of
-    :meth:`CUDAGraph.capture_begin` or :class:`graph`.
-
-    Mirrors ``torch.cuda.graph_pool_handle``: graphs that share the same pool
-    token also share an underlying memory pool, which is what enables their
-    captured allocations to alias across replays.
+    :meth:`CUDAGraph.capture_begin` or :class:`graph`. Graphs sharing the
+    same token share an underlying memory pool.
     """
     if not is_cuda_graph_supported():
         raise RuntimeError(
@@ -63,22 +55,13 @@ def graph_pool_handle() -> int:
 class graph:
     """Context manager that wraps a CUDA graph capture.
 
-    Mirrors ``torch.cuda.graph``: entering the context switches to
-    ``stream`` (via :func:`paddle.cuda.stream`) when provided and calls
-    ``cuda_graph.capture_begin(...)``; exiting calls
-    ``cuda_graph.capture_end()`` and restores the previous stream.
-
     Args:
         cuda_graph (CUDAGraph): The :class:`CUDAGraph` instance to capture into.
         pool (int, optional): Memory pool token from :func:`graph_pool_handle`
-            or another graph's :meth:`CUDAGraph.pool`. Passed through to
-            ``capture_begin``.
+            or another graph's :meth:`CUDAGraph.pool`.
         stream (paddle.cuda.Stream, optional): CUDA stream to capture on.
-            When provided, the capture runs under
-            ``paddle.cuda.stream(stream)`` so the previous stream is restored
-            on exit. When ``None``, capture happens on the current stream.
-        capture_error_mode (str, optional): Passed through to
-            ``capture_begin``; only ``'global'`` is honored.
+            When ``None``, capture happens on the current stream.
+        capture_error_mode (str, optional): Only ``'global'`` is honored.
 
     Examples:
         .. code-block:: pycon
@@ -99,21 +82,13 @@ class graph:
         stream: Stream | None = None,
         capture_error_mode: str = 'global',
     ) -> None:
-        # Attribute names mirror ``torch.cuda.graph`` so user code that
-        # introspects ``g.cuda_graph`` / ``g.capture_stream`` / ``g.stream_ctx``
-        # / ``g.pool`` / ``g.capture_error_mode`` ports across unchanged.
         self.cuda_graph = cuda_graph
         self.pool = pool
         self.capture_stream = stream
         self.capture_error_mode = capture_error_mode
-        # ``paddle.device.stream(None)`` is a documented no-op, so the same
-        # guard works whether or not the caller pinned a stream.
         self.stream_ctx = _paddle_device.stream(stream)
 
     def __enter__(self) -> Self:
-        # Drain pending work and release cached memory so the capture pool
-        # starts with maximal headroom (mirrors torch.cuda.graph.__enter__).
-        # Paddle's C++ ``BeginCUDAGraphCapture`` does neither.
         _paddle_device.synchronize()
         _paddle_device.empty_cache()
         self.stream_ctx.__enter__()
