@@ -1097,11 +1097,11 @@ void cumprod_grad(const Tensor& x,
     auto compute_dtype = is_int ? DataType::FLOAT32 : out_grad.dtype();
     auto x_compute = is_int ? cast<T>(x, compute_dtype) : x;
     auto out_compute = is_int ? cast<T>(out, compute_dtype) : out;
-    auto out_grad_compute = is_int ? cast<T>(out_grad, compute_dtype) : out_grad;
+    auto out_grad_compute =
+        is_int ? cast<T>(out_grad, compute_dtype) : out_grad;
     std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
     auto zero_tensor = full<T>(x_dim, 0.0, compute_dtype, x.place());
-    auto zero_mask =
-        cast<T>(equal<T>(x_compute, zero_tensor), compute_dtype);
+    auto zero_mask = cast<T>(equal<T>(x_compute, zero_tensor), compute_dtype);
     // determine the index of first zero
     auto zero_mask_cumsum_exclusive =
         cumsum<T>(zero_mask, dim, false, true, reverse);
@@ -1122,10 +1122,9 @@ void cumprod_grad(const Tensor& x,
         cumprod<T>(replace_first_one, dim, exclusive, reverse);
     auto zeros_dx = cumsum<T>(
         cumprod_recompute * out_grad_compute, dim, false, exclusive, !reverse);
-    auto x_grad_res =
-        ((ones_tensor - first_zero_mask) * common_dx +
-         first_zero_mask * zeros_dx) /
-        replace_one;
+    auto x_grad_res = ((ones_tensor - first_zero_mask) * common_dx +
+                       first_zero_mask * zeros_dx) /
+                      replace_one;
     if (is_int) {
       x_grad_res = cast<T>(x_grad_res, org_dtype);
     }

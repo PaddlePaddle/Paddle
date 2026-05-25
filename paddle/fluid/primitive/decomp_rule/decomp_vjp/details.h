@@ -99,7 +99,8 @@ void cumprod_grad(const Tensor& x,
     auto compute_dtype = is_int ? DataType::FLOAT32 : out_grad.dtype();
     auto x_compute = is_int ? cast<T>(x, compute_dtype) : x;
     auto out_compute = is_int ? cast<T>(out, compute_dtype) : out;
-    auto out_grad_compute = is_int ? cast<T>(out_grad, compute_dtype) : out_grad;
+    auto out_grad_compute =
+        is_int ? cast<T>(out_grad, compute_dtype) : out_grad;
     Tensor zero_tensor, ones_tensor;
     if (has_dynamic_shape(x.shape())) {
       zero_tensor = backend::full_with_tensor<T>(
@@ -110,8 +111,7 @@ void cumprod_grad(const Tensor& x,
       zero_tensor = full<T>(x.shape(), 0.0, compute_dtype, x.place());
       ones_tensor = full<T>(x.shape(), 1.0, compute_dtype, x.place());
     }
-    auto zero_mask =
-        cast<T>(equal<T>(x_compute, zero_tensor), compute_dtype);
+    auto zero_mask = cast<T>(equal<T>(x_compute, zero_tensor), compute_dtype);
     // determine the index of first zero
     auto zero_mask_cumsum_exclusive =
         cumsum<T>(zero_mask, dim, false, true, reverse);
