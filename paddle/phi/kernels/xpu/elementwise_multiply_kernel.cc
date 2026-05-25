@@ -52,27 +52,19 @@ void MultiplyKernel(const Context& dev_ctx,
 }
 
 #ifdef PADDLE_WITH_XPU_FFT
-template <typename T>
-void ComplexMultiplyWithFloatParts(const XPUContext& dev_ctx,
-                                   const DenseTensor& x,
-                                   const DenseTensor& y,
-                                   DenseTensor* out) {
+template <>
+void MultiplyKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
+                                                const DenseTensor& x,
+                                                const DenseTensor& y,
+                                                DenseTensor* out) {
   if (out->numel() == 0) {
-    dev_ctx.template Alloc<T>(out);
+    dev_ctx.template Alloc<phi::complex64>(out);
     return;
   }
-  // XPU does not provide double elementwise arithmetic. For complex128, use
-  // the supported float elementwise path for real/imag parts, then cast the
-  // result parts back when composing the complex128 output.
-  using RealT = dtype::Real<T>;
-  const DenseTensor x_real = Cast<RealT, XPUContext>(
-      dev_ctx, Real<T, XPUContext>(dev_ctx, x), DataType::FLOAT32);
-  const DenseTensor x_imag = Cast<RealT, XPUContext>(
-      dev_ctx, Imag<T, XPUContext>(dev_ctx, x), DataType::FLOAT32);
-  const DenseTensor y_real = Cast<RealT, XPUContext>(
-      dev_ctx, Real<T, XPUContext>(dev_ctx, y), DataType::FLOAT32);
-  const DenseTensor y_imag = Cast<RealT, XPUContext>(
-      dev_ctx, Imag<T, XPUContext>(dev_ctx, y), DataType::FLOAT32);
+  auto x_real = Real<phi::complex64, XPUContext>(dev_ctx, x);
+  auto x_imag = Imag<phi::complex64, XPUContext>(dev_ctx, x);
+  auto y_real = Real<phi::complex64, XPUContext>(dev_ctx, y);
+  auto y_imag = Imag<phi::complex64, XPUContext>(dev_ctx, y);
   DenseTensor real_out = Subtract<float, XPUContext>(
       dev_ctx,
       Multiply<float, XPUContext>(dev_ctx, x_real, y_real),
@@ -81,31 +73,7 @@ void ComplexMultiplyWithFloatParts(const XPUContext& dev_ctx,
       dev_ctx,
       Multiply<float, XPUContext>(dev_ctx, x_real, y_imag),
       Multiply<float, XPUContext>(dev_ctx, x_imag, y_real));
-  if constexpr (std::is_same_v<T, phi::complex64>) {
-    phi::ComplexKernel<float>(dev_ctx, real_out, imag_out, out);
-  } else {
-    phi::ComplexKernel<double>(
-        dev_ctx,
-        Cast<float, XPUContext>(dev_ctx, real_out, DataType::FLOAT64),
-        Cast<float, XPUContext>(dev_ctx, imag_out, DataType::FLOAT64),
-        out);
-  }
-}
-
-template <>
-void MultiplyKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
-                                                const DenseTensor& x,
-                                                const DenseTensor& y,
-                                                DenseTensor* out) {
-  ComplexMultiplyWithFloatParts<phi::complex64>(dev_ctx, x, y, out);
-}
-
-template <>
-void MultiplyKernel<phi::complex128, XPUContext>(const XPUContext& dev_ctx,
-                                                 const DenseTensor& x,
-                                                 const DenseTensor& y,
-                                                 DenseTensor* out) {
-  ComplexMultiplyWithFloatParts<phi::complex128>(dev_ctx, x, y, out);
+  phi::ComplexKernel<float>(dev_ctx, real_out, imag_out, out);
 }
 #endif
 
@@ -120,7 +88,6 @@ PD_REGISTER_KERNEL(multiply,
                    phi::bfloat16,
 #ifdef PADDLE_WITH_XPU_FFT
                    phi::complex64,
-                   phi::complex128,
 #endif
                    float,
                    int,

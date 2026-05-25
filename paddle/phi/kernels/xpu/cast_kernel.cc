@@ -110,15 +110,16 @@ template <typename InT, typename OutRealT, typename Context>
 void CastComplexToComplexXPUKernelImpl(const Context& dev_ctx,
                                        const DenseTensor& x,
                                        DenseTensor* out) {
-  using InRealT = dtype::Real<InT>;
   DenseTensor real = Real<InT, Context>(dev_ctx, x);
   DenseTensor imag = Imag<InT, Context>(dev_ctx, x);
   DenseTensor out_real;
   DenseTensor out_imag;
   out_real.Resize(x.dims());
   out_imag.Resize(x.dims());
-  CastXPUKernelImpl<InRealT, OutRealT, Context>(dev_ctx, real, &out_real);
-  CastXPUKernelImpl<InRealT, OutRealT, Context>(dev_ctx, imag, &out_imag);
+  CastXPUKernelImpl<dtype::Real<InT>, OutRealT, Context>(
+      dev_ctx, real, &out_real);
+  CastXPUKernelImpl<dtype::Real<InT>, OutRealT, Context>(
+      dev_ctx, imag, &out_imag);
   phi::ComplexKernel<OutRealT>(dev_ctx, out_real, out_imag, out);
 }
 #endif
