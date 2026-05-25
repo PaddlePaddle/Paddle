@@ -1465,7 +1465,7 @@ compute_pow_grad_dx(T x, T y, T out UNUSED, T dout) {
   if (y == static_cast<T>(0.0)) return static_cast<T>(0.0);
   return static_cast<T>(
       static_cast<double>(dout) * static_cast<double>(y) *
-      std::pow(static_cast<double>(x), static_cast<double>(y - 1)));
+      std::pow(static_cast<double>(x), static_cast<double>(y) - 1.0));
 }
 template <typename T, typename MPType>
 HOSTDEVICE typename std::enable_if<!std::is_integral<T>::value, T>::type
