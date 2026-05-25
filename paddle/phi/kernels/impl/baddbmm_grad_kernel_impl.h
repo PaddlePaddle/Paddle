@@ -17,12 +17,15 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/baddbmm_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
+
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 namespace phi {
 
@@ -32,7 +35,7 @@ struct BCopyOrScaleFunctor {
       : scale_(scale), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    using MPType = typename dtype::MPTypeTrait<T>::Type;
+    using MPType = typename MPTypeTrait<T>::Type;
     const MPType mp_scale = static_cast<MPType>(scale_);
     const MPType mp_x = static_cast<MPType>(x_[idx]);
     output_[idx] = static_cast<T>(mp_scale * mp_x);
@@ -60,7 +63,7 @@ void BaddbmmGradKernel(const Context& dev_ctx,
                        DenseTensor* input_grad,
                        DenseTensor* x_grad,
                        DenseTensor* y_grad) {
-  using MPType = typename dtype::MPTypeTrait<T>::Type;
+  using MPType = typename MPTypeTrait<T>::Type;
   bool is_float16_or_bfloat16 = false;
   if (std::is_same<T, float16>::value || std::is_same<T, bfloat16>::value) {
     is_float16_or_bfloat16 = true;
@@ -203,51 +206,111 @@ void BaddbmmGradKernel(const Context& dev_ctx,
   if (x_grad) {
     dev_ctx.template Alloc<T>(x_grad);
     total_elems = x.dims()[0] * x.dims()[1] * x.dims()[2];
-    // x_grad = out_grad * y'. x_grad: B x M x K, out_grad : B x M x N, y : B x
-    // K x N
-    for (int64_t i = 0; i < x.dims()[0]; ++i) {
-      auto out_grad_slice = out_grad.Slice(i, i + 1);
-      auto y_slice = y.Slice(i, i + 1);
-      auto x_grad_slice = x_grad->Slice(i, i + 1);
-      auto x_grad_dims = x_grad_slice.dims();
-
-      x_grad_slice.Resize({x_grad_dims[1], x_grad_dims[2]});
-      y_slice.Resize({y_slice.dims()[1], y_slice.dims()[2]});
-      out_grad_slice.Resize(
-          {out_grad_slice.dims()[1], out_grad_slice.dims()[2]});
-      blas.MatMul(out_grad_slice, false, y_slice, true, &x_grad_slice);
-    }
-    if (!is_float16_or_bfloat16) {
-      mt_blas.SCAL(total_elems, alpha, x_grad->data<MPType>());
+    // x_grad = alpha * out_grad @ y^T
+    // out_grad: [B, M, N], y: [B, K, N], x_grad: [B, M, K]
+    int64_t B_dim = x.dims()[0];
+    int64_t M_dim = x.dims()[1];
+    int64_t K_dim = x.dims()[2];
+    int64_t N_dim = y.dims()[2];
+    if constexpr (std::is_same_v<MPType, float>) {
+      float gemm_alpha = FLAGS_use_accuracy_compatible_kernel ? 1.0f : alpha;
+      float zero = 0.0f;
+      blas.BatchedGEMM(CblasNoTrans,
+                       CblasTrans,
+                       M_dim,
+                       K_dim,
+                       N_dim,
+                       gemm_alpha,
+                       out_grad.data<T>(),
+                       y.data<T>(),
+                       zero,
+                       x_grad->data<T>(),
+                       B_dim,
+                       M_dim * N_dim,
+                       K_dim * N_dim);
     } else {
-      funcs::ForRange<Context> for_range(dev_ctx, total_elems);
-      BCopyOrScaleFunctor<T> functor(
-          alpha, x_grad->data<T>(), x_grad->data<T>(), total_elems);
-      for_range(functor);
+      T gemm_alpha = FLAGS_use_accuracy_compatible_kernel
+                         ? static_cast<T>(1)
+                         : static_cast<T>(alpha);
+      T zero = static_cast<T>(0);
+      blas.BatchedGEMM(CblasNoTrans,
+                       CblasTrans,
+                       M_dim,
+                       K_dim,
+                       N_dim,
+                       gemm_alpha,
+                       out_grad.data<T>(),
+                       y.data<T>(),
+                       zero,
+                       x_grad->data<T>(),
+                       B_dim,
+                       M_dim * N_dim,
+                       K_dim * N_dim);
+    }
+    if (FLAGS_use_accuracy_compatible_kernel) {
+      if (!is_float16_or_bfloat16) {
+        mt_blas.SCAL(total_elems, alpha, x_grad->data<MPType>());
+      } else {
+        funcs::ForRange<Context> for_range(dev_ctx, total_elems);
+        BCopyOrScaleFunctor<T> functor(
+            alpha, x_grad->data<T>(), x_grad->data<T>(), total_elems);
+        for_range(functor);
+      }
     }
   }
   if (y_grad) {
     dev_ctx.template Alloc<T>(y_grad);
     total_elems = y.dims()[0] * y.dims()[1] * y.dims()[2];
-    // y_grad = x' * out_grad. y_grad: B x K x N, out_grad : B x M x N, x : B x
-    // M x K
-    for (int64_t i = 0; i < x.dims()[0]; ++i) {
-      auto out_grad_slice = out_grad.Slice(i, i + 1);
-      auto x_slice = x.Slice(i, i + 1);
-      auto y_grad_slice = y_grad->Slice(i, i + 1);
-      out_grad_slice.Resize(
-          {out_grad_slice.dims()[1], out_grad_slice.dims()[2]});
-      x_slice.Resize({x_slice.dims()[1], x_slice.dims()[2]});
-      y_grad_slice.Resize({y_grad_slice.dims()[1], y_grad_slice.dims()[2]});
-      blas.MatMul(x_slice, true, out_grad_slice, false, &y_grad_slice);
-    }
-    if (!is_float16_or_bfloat16) {
-      mt_blas.SCAL(total_elems, alpha, y_grad->data<MPType>());
+    // y_grad = alpha * x^T @ out_grad
+    // x: [B, M, K], out_grad: [B, M, N], y_grad: [B, K, N]
+    int64_t B_dim = x.dims()[0];
+    int64_t M_dim = x.dims()[1];
+    int64_t K_dim = x.dims()[2];
+    int64_t N_dim = y.dims()[2];
+    if constexpr (std::is_same_v<MPType, float>) {
+      float gemm_alpha = FLAGS_use_accuracy_compatible_kernel ? 1.0f : alpha;
+      float zero = 0.0f;
+      blas.BatchedGEMM(CblasTrans,
+                       CblasNoTrans,
+                       K_dim,
+                       N_dim,
+                       M_dim,
+                       gemm_alpha,
+                       x.data<T>(),
+                       out_grad.data<T>(),
+                       zero,
+                       y_grad->data<T>(),
+                       B_dim,
+                       M_dim * K_dim,
+                       M_dim * N_dim);
     } else {
-      funcs::ForRange<Context> for_range(dev_ctx, total_elems);
-      BCopyOrScaleFunctor<T> functor(
-          alpha, y_grad->data<T>(), y_grad->data<T>(), total_elems);
-      for_range(functor);
+      T gemm_alpha = FLAGS_use_accuracy_compatible_kernel
+                         ? static_cast<T>(1)
+                         : static_cast<T>(alpha);
+      T zero = static_cast<T>(0);
+      blas.BatchedGEMM(CblasTrans,
+                       CblasNoTrans,
+                       K_dim,
+                       N_dim,
+                       M_dim,
+                       gemm_alpha,
+                       x.data<T>(),
+                       out_grad.data<T>(),
+                       zero,
+                       y_grad->data<T>(),
+                       B_dim,
+                       M_dim * K_dim,
+                       M_dim * N_dim);
+    }
+    if (FLAGS_use_accuracy_compatible_kernel) {
+      if (!is_float16_or_bfloat16) {
+        mt_blas.SCAL(total_elems, alpha, y_grad->data<MPType>());
+      } else {
+        funcs::ForRange<Context> for_range(dev_ctx, total_elems);
+        BCopyOrScaleFunctor<T> functor(
+            alpha, y_grad->data<T>(), y_grad->data<T>(), total_elems);
+        for_range(functor);
+      }
     }
   }
 }

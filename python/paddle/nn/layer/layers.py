@@ -27,6 +27,7 @@ from typing_extensions import Self, overload
 
 import paddle
 from paddle import Tensor, dtype, nn, profiler
+from paddle.autograd import PyLayer
 from paddle.autograd.backward_utils import ValueSet
 from paddle.base import core, framework, unique_name
 from paddle.base.core import VarDesc
@@ -126,6 +127,65 @@ def set_op_customized_attrs_post_hook(layer, inputs, outputs):
         # remove pre-hook and post-hook
         for hook_helper in layer._op_recorder.hooks:
             hook_helper.remove()
+
+
+class _LayerBackwardInputHook(PyLayer):
+    @staticmethod
+    def forward(ctx, layer, *flat_inputs):
+        ctx.layer = layer
+        return tuple(inp.clone() for inp in flat_inputs)
+
+    @staticmethod
+    def backward(ctx, *grad_inputs):
+        layer = ctx.layer
+        grad_inputs = tuple(grad_inputs)
+        grad_outputs = getattr(layer, "_current_grad_outputs", ())
+
+        for hook in layer._get_backward_hooks():
+            hook_result = hook(layer, grad_inputs, grad_outputs)
+            if hook_result is not None:
+                if not isinstance(hook_result, tuple):
+                    hook_result = (hook_result,)
+                grad_inputs = hook_result
+
+        if hasattr(layer, "_current_grad_outputs"):
+            delattr(layer, "_current_grad_outputs")
+        if hasattr(layer, "_has_backward_input_hook"):
+            delattr(layer, "_has_backward_input_hook")
+        return grad_inputs
+
+
+class _LayerBackwardOutputHook(PyLayer):
+    @staticmethod
+    def forward(ctx, layer, *flat_outputs):
+        ctx.layer = layer
+        return tuple(out.clone() for out in flat_outputs)
+
+    @staticmethod
+    def backward(ctx, *grad_outputs):
+        layer = ctx.layer
+        grad_outputs = tuple(grad_outputs)
+
+        for hook in layer._get_backward_pre_hooks():
+            hook_result = hook(layer, grad_outputs)
+            if hook_result is not None:
+                if not isinstance(hook_result, tuple):
+                    hook_result = (hook_result,)
+                grad_outputs = hook_result
+
+        if not getattr(layer, "_has_backward_input_hook", False):
+            grad_inputs = ()
+            for hook in layer._get_backward_hooks():
+                hook_result = hook(layer, grad_inputs, grad_outputs)
+                if hook_result is not None:
+                    if not isinstance(hook_result, tuple):
+                        hook_result = (hook_result,)
+                    grad_inputs = hook_result
+            if hasattr(layer, "_has_backward_input_hook"):
+                delattr(layer, "_has_backward_input_hook")
+
+        layer._current_grad_outputs = grad_outputs
+        return grad_outputs
 
 
 def _scope_dist2single(dist_scope):
@@ -601,18 +661,20 @@ class Layer:
         self._forward_pre_hooks: typing.OrderedDict[int, _ForwardPreHook] = (
             OrderedDict()
         )
-        self._forward_post_hooks: typing.OrderedDict[int, _ForwardPostHook] = (
+        self._forward_hooks: typing.OrderedDict[int, _ForwardPostHook] = (
             OrderedDict()
         )
-        self._forward_pre_hooks_with_kwargs_flag: typing.OrderedDict[
-            int, bool
-        ] = OrderedDict()
-        self._forward_post_hooks_with_kwargs_flag: typing.OrderedDict[
-            int, bool
-        ] = OrderedDict()
-        self._forward_post_hooks_always_called: typing.OrderedDict[
-            int, bool
-        ] = OrderedDict()
+        self._forward_pre_hooks_with_kwargs: typing.OrderedDict[int, bool] = (
+            OrderedDict()
+        )
+        self._forward_hooks_with_kwargs: typing.OrderedDict[int, bool] = (
+            OrderedDict()
+        )
+        self._forward_hooks_always_called: typing.OrderedDict[int, bool] = (
+            OrderedDict()
+        )
+        self._backward_pre_hooks = OrderedDict()
+        self._backward_hooks = OrderedDict()
 
         # only used in AMP Training
         self._cast_to_low_precision = True
@@ -620,6 +682,9 @@ class Layer:
         self._state_dict_hooks: typing.OrderedDict[int, _StateDictHook] = (
             OrderedDict()
         )
+        self._state_dict_pre_hooks = OrderedDict()
+        self._load_state_dict_pre_hooks = OrderedDict()
+        self._load_state_dict_post_hooks = OrderedDict()
         # Records original functions after @to_static to support to rollback
         self._original_funcs = OrderedDict()
 
@@ -633,6 +698,38 @@ class Layer:
             raise TypeError(f"_modules must be dict-like, got {type(value)}")
         self._sub_layers.clear()
         self._sub_layers.update(value)
+
+    @property
+    def _forward_post_hooks(self):
+        return self._forward_hooks
+
+    @_forward_post_hooks.setter
+    def _forward_post_hooks(self, value):
+        self._forward_hooks = value
+
+    @property
+    def _forward_post_hooks_with_kwargs_flag(self):
+        return self._forward_hooks_with_kwargs
+
+    @_forward_post_hooks_with_kwargs_flag.setter
+    def _forward_post_hooks_with_kwargs_flag(self, value):
+        self._forward_hooks_with_kwargs = value
+
+    @property
+    def _forward_post_hooks_always_called(self):
+        return self._forward_hooks_always_called
+
+    @_forward_post_hooks_always_called.setter
+    def _forward_post_hooks_always_called(self, value):
+        self._forward_hooks_always_called = value
+
+    @property
+    def _forward_pre_hooks_with_kwargs_flag(self):
+        return self._forward_pre_hooks_with_kwargs
+
+    @_forward_pre_hooks_with_kwargs_flag.setter
+    def _forward_pre_hooks_with_kwargs_flag(self, value):
+        self._forward_pre_hooks_with_kwargs = value
 
     @property
     def _non_persistent_buffers_set(self):
@@ -1014,6 +1111,42 @@ class Layer:
                 hook_remove_helper._hook_id, last=False
             )
         return hook_remove_helper
+
+    def register_full_backward_pre_hook(
+        self, hook: Callable[..., Any], prepend: bool = False
+    ) -> HookRemoveHelper:
+        hook_remove_helper = HookRemoveHelper(self._backward_pre_hooks)
+        self._backward_pre_hooks[hook_remove_helper._hook_id] = hook
+        if prepend:
+            self._backward_pre_hooks.move_to_end(
+                hook_remove_helper._hook_id, last=False
+            )
+        return hook_remove_helper
+
+    def register_backward_hook(
+        self, hook: Callable[..., Any]
+    ) -> HookRemoveHelper:
+        raise NotImplementedError(
+            "register_backward_hook is not supported. "
+            "Please use register_full_backward_hook instead."
+        )
+
+    def register_full_backward_hook(
+        self, hook: Callable[..., Any], prepend: bool = False
+    ) -> HookRemoveHelper:
+        hook_remove_helper = HookRemoveHelper(self._backward_hooks)
+        self._backward_hooks[hook_remove_helper._hook_id] = hook
+        if prepend:
+            self._backward_hooks.move_to_end(
+                hook_remove_helper._hook_id, last=False
+            )
+        return hook_remove_helper
+
+    def _get_backward_hooks(self):
+        return list(self._backward_hooks.values())
+
+    def _get_backward_pre_hooks(self):
+        return list(self._backward_pre_hooks.values())
 
     def create_parameter(
         self,
@@ -1858,6 +1991,13 @@ class Layer:
         def inner():
             nonlocal outputs, inputs, kwargs
 
+            backward_hooks = []
+            backward_pre_hooks = []
+            if self._backward_pre_hooks:
+                backward_pre_hooks = self._get_backward_pre_hooks()
+            if self._backward_hooks:
+                backward_hooks = self._get_backward_hooks()
+
             for hook_id, forward_pre_hook in self._forward_pre_hooks.items():
                 if hook_id in self._forward_pre_hooks_with_kwargs_flag:
                     args_kwargs_result = forward_pre_hook(self, inputs, kwargs)
@@ -1878,6 +2018,29 @@ class Layer:
                         if not isinstance(hook_result, tuple):
                             hook_result = (hook_result,)
                         inputs = hook_result
+
+            if in_dygraph_mode() and (backward_hooks or backward_pre_hooks):
+                flat_inputs = paddle.utils.flatten(inputs)
+                tensor_inputs = [
+                    inp
+                    for inp in flat_inputs
+                    if isinstance(inp, Tensor) and not inp.stop_gradient
+                ]
+                if tensor_inputs:
+                    self._has_backward_input_hook = True
+                    hooked_inputs = _LayerBackwardInputHook.apply(
+                        self, *tensor_inputs
+                    )
+                    if isinstance(hooked_inputs, Tensor):
+                        hooked_inputs = (hooked_inputs,)
+                    hooked_inputs = list(hooked_inputs)
+
+                    def replace_input(inp):
+                        if isinstance(inp, Tensor) and not inp.stop_gradient:
+                            return hooked_inputs.pop(0)
+                        return inp
+
+                    inputs = paddle.utils.map_structure(replace_input, inputs)
 
             if not self._built:
                 self._build_once(*inputs, **kwargs)
@@ -1907,6 +2070,30 @@ class Layer:
 
                 if hook_result is not None:
                     outputs = hook_result
+
+            if in_dygraph_mode() and (backward_hooks or backward_pre_hooks):
+                flat_outputs = paddle.utils.flatten(outputs)
+                tensor_outputs = [
+                    out
+                    for out in flat_outputs
+                    if isinstance(out, Tensor) and not out.stop_gradient
+                ]
+                if tensor_outputs:
+                    hooked_outputs = _LayerBackwardOutputHook.apply(
+                        self, *tensor_outputs
+                    )
+                    if isinstance(hooked_outputs, Tensor):
+                        hooked_outputs = (hooked_outputs,)
+                    hooked_outputs = list(hooked_outputs)
+
+                    def replace_output(out):
+                        if isinstance(out, Tensor) and not out.stop_gradient:
+                            return hooked_outputs.pop(0)
+                        return out
+
+                    outputs = paddle.utils.map_structure(
+                        replace_output, outputs
+                    )
 
             return outputs
 
@@ -1943,6 +2130,8 @@ class Layer:
             (not in_to_static_mode())
             and (not self._forward_pre_hooks)
             and (not self._forward_post_hooks)
+            and (not self._backward_pre_hooks)
+            and (not self._backward_hooks)
             and (self.__class__._build_once is Layer._build_once or self._built)
             and in_dygraph_mode()
             and (not in_profiler_mode() or in_sot_simulation_mode())
@@ -2455,6 +2644,26 @@ class Layer:
         self._state_dict_hooks[hook_remove_helper._hook_id] = hook
         return hook_remove_helper
 
+    def register_state_dict_post_hook(
+        self, hook: _StateDictHook
+    ) -> HookRemoveHelper:
+        return self.register_state_dict_hook(hook)
+
+    def register_state_dict_pre_hook(self, hook: Callable[..., None]):
+        hook_remove_helper = HookRemoveHelper(self._state_dict_pre_hooks)
+        self._state_dict_pre_hooks[hook_remove_helper._hook_id] = hook
+        return hook_remove_helper
+
+    def register_load_state_dict_pre_hook(self, hook: Callable[..., None]):
+        hook_remove_helper = HookRemoveHelper(self._load_state_dict_pre_hooks)
+        self._load_state_dict_pre_hooks[hook_remove_helper._hook_id] = hook
+        return hook_remove_helper
+
+    def register_load_state_dict_post_hook(self, hook: Callable[..., None]):
+        hook_remove_helper = HookRemoveHelper(self._load_state_dict_post_hooks)
+        self._load_state_dict_post_hooks[hook_remove_helper._hook_id] = hook
+        return hook_remove_helper
+
     def _obtain_parameters_buffers(
         self,
         destination: _StateDict | None = None,
@@ -2510,6 +2719,9 @@ class Layer:
 
         if destination is None:
             destination = OrderedDict()
+        if use_hook:
+            for state_dict_pre_hook in self._state_dict_pre_hooks.values():
+                state_dict_pre_hook(self, structured_name_prefix, keep_vars)
         for name, data in self._parameters.items():
             if data is not None:
                 destination[structured_name_prefix + name] = (
@@ -2915,10 +3127,52 @@ class Layer:
                     expected by this module but present in the provided ``state_dict``.
         """
         error_msgs: list[str] = []
+        missing_keys: list[str] = []
+        unexpected_keys: list[str] = []
 
-        missing_keys, unexpected_keys = self.set_state_dict(
+        def visit_load_state_dict_hooks(layer, prefix, is_post_hook=False):
+            if is_post_hook:
+                incompatible_keys = _IncompatibleKeys(
+                    missing_keys, unexpected_keys
+                )
+                for hook in layer._load_state_dict_post_hooks.values():
+                    hook_result = hook(layer, incompatible_keys)
+                    if hook_result is not None:
+                        raise AssertionError(
+                            "Hooks registered with ``register_load_state_dict_post_hook`` are not"
+                            "expected to return new values, if incompatible_keys need to be modified,"
+                            "it should be done inplace."
+                        )
+            else:
+                local_metadata: dict[str, Any] = {}
+                for hook in layer._load_state_dict_pre_hooks.values():
+                    hook(
+                        layer,
+                        state_dict,
+                        prefix,
+                        local_metadata,
+                        strict,
+                        missing_keys,
+                        unexpected_keys,
+                        error_msgs,
+                    )
+            for layer_name, layer_item in layer._sub_layers.items():
+                if layer_item is not None:
+                    visit_load_state_dict_hooks(
+                        layer_item,
+                        prefix + layer_name + ".",
+                        is_post_hook,
+                    )
+
+        visit_load_state_dict_hooks(self, "")
+
+        load_missing_keys, load_unexpected_keys = self.set_state_dict(
             state_dict, use_structured_name=True
         )
+        missing_keys.extend(load_missing_keys)
+        unexpected_keys.extend(load_unexpected_keys)
+
+        visit_load_state_dict_hooks(self, "", is_post_hook=True)
 
         if strict:
             if len(unexpected_keys) > 0:
@@ -3060,7 +3314,7 @@ class Layer:
             dtype=dtype,
             blocking=blocking,
             include_sublayers=True,
-            floating_only=False,
+            floating_only=True,
         )
 
     def _apply(
@@ -3214,8 +3468,10 @@ class Layer:
             )
 
         def transform(t, device, dtype, blocking):
-            if floating_only and (not paddle.is_floating_point(t)):
-                return t
+            if floating_only and paddle.is_integer(t):
+                if device is None:
+                    return t
+                return self._transform(t, device, None, blocking)
             return self._transform(t, device, dtype, blocking)
 
         with warnings.catch_warnings():

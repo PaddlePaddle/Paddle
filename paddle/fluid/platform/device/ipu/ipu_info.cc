@@ -9,18 +9,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+// Implementation moved to paddle/phi/core/platform/device/ipu/ipu_info.cc
+// This file is kept for CMake target compatibility only.
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
-
-#include "paddle/fluid/platform/device/ipu/ipu_device.h"
-
-namespace paddle {
-namespace platform {
-
-//! Get a list of device ids from environment variable or use all.
-std::vector<int> GetSelectedIPUDevices() { return ipu::GetDeviceIds(); }
-
-//! Get the total number of IPU devices in system.
-int GetIPUDeviceCount() { return ipu::GetNumDevices(); }
-
-}  // namespace platform
-}  // namespace paddle

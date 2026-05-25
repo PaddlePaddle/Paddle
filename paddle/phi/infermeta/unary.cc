@@ -2158,12 +2158,6 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
 
   const int64_t rows = x_dims[0];
   const int64_t cols = x_dims[1];
-  PADDLE_ENFORCE_LE(rows,
-                    65535 * 128,
-                    common::errors::InvalidArgument(
-                        "Currently only supports the first dim of "
-                        "Input(X) <= 65535 * 128, but got %d",
-                        rows));
 
   PADDLE_ENFORCE_EQ(
       cols % 4,
@@ -6442,6 +6436,7 @@ void UniqueRawInferMeta(const MetaTensor& x,
                         MetaTensor* indices,
                         MetaTensor* index,
                         MetaTensor* counts) {
+  out->set_dtype(x.dtype());
   if (!is_sorted) {
     PADDLE_ENFORCE_EQ(x.dims().size() == 1 || x.dims().size() == 0,
                       true,

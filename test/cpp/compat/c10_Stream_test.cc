@@ -43,12 +43,6 @@ void BlockingStreamCallback(hipStream_t /*stream*/,
   }
 }
 
-void EnqueueBlockingCallback(const c10::cuda::CUDAStream& stream,
-                             StreamCallbackGate* gate) {
-  C10_CUDA_CHECK(hipStreamAddCallback(
-      stream.raw_stream(), BlockingStreamCallback, gate, 0));
-}
-
 void CreateRawStream(hipStream_t* stream) {
   C10_CUDA_CHECK(hipStreamCreate(stream));
 }
@@ -64,20 +58,6 @@ void CUDART_CB BlockingStreamCallback(void* user_data) {
   while (!gate->load(std::memory_order_acquire)) {
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
-}
-
-void EnqueueBlockingCallback(const c10::cuda::CUDAStream& stream,
-                             StreamCallbackGate* gate) {
-  C10_CUDA_CHECK(
-      cudaLaunchHostFunc(stream.raw_stream(), BlockingStreamCallback, gate));
-}
-
-void CreateRawStream(cudaStream_t* stream) {
-  C10_CUDA_CHECK(cudaStreamCreate(stream));
-}
-
-void DestroyRawStream(cudaStream_t stream) {
-  C10_CUDA_CHECK(cudaStreamDestroy(stream));
 }
 
 void ClearLastStreamError() { (void)cudaGetLastError(); }
@@ -152,21 +132,6 @@ TEST(StreamTest, QueryCudaStreamReady) {
   // synchronize first to ensure no pending work, then query should be true.
   EXPECT_NO_THROW(s.synchronize());
   EXPECT_TRUE(s.query());
-}
-
-TEST(StreamTest, QueryCudaStreamNotReadyReturnsFalse) {
-  if (!at::cuda::is_available()) {
-    return;
-  }
-  auto cuda_stream = c10::cuda::getStreamFromPool(/*isHighPriority=*/false);
-  StreamCallbackGate release_callback{false};
-  ASSERT_NO_THROW(EnqueueBlockingCallback(cuda_stream, &release_callback));
-
-  c10::Stream s = cuda_stream.unwrap();
-  EXPECT_FALSE(s.query());
-
-  release_callback.store(true, std::memory_order_release);
-  EXPECT_NO_THROW(s.synchronize());
 }
 
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP

@@ -20,10 +20,9 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
 namespace phi::distributed {
-using phi::distributed::auto_parallel::str_join;
 
 SpmdInfo TriuInferSpmdBase(const DistMetaTensor& x) {
-  auto x_shape = common::vectorize(x.dims());
+  auto x_shape = vectorize(x.dims());
   int x_ndim = x_shape.size();
   const auto& x_dist_attr_src = x.dist_attr();
   const std::vector<int64_t>& x_dims_mapping = x_dist_attr_src.dims_mapping();
@@ -70,7 +69,7 @@ SpmdInfo TriuInferSpmd(const DistMetaTensor& x, int diagonal) {
 
 SpmdInfo TriuInferSpmdReverseBase(const DistMetaTensor& x,
                                   const DistMetaTensor& out) {
-  auto out_shape = common::vectorize(out.dims());
+  auto out_shape = vectorize(out.dims());
   int out_ndim = out_shape.size();
   const auto& out_dist_attr_src = out.dist_attr();
   const std::vector<int64_t>& out_dims_mapping =
@@ -117,7 +116,7 @@ SpmdInfo TriuInferSpmdReverse(const DistMetaTensor& x,
 }
 
 SpmdInfo TriuGradInferSpmdBase(const DistMetaTensor& out_grad) {
-  auto out_shape = common::vectorize(out_grad.dims());
+  auto out_shape = vectorize(out_grad.dims());
   int out_ndim = out_shape.size();
   const auto& out_dist_attr_src = out_grad.dist_attr();
   const std::vector<int64_t>& out_dims_mapping =

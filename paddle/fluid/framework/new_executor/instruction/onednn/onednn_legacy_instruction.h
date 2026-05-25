@@ -70,7 +70,7 @@ class OneDNNLegacyKernelInstruction : public InstructionBase {
 
   std::set<std::string> data_format_tensors_{};
   std::set<std::string> skip_format_tensors_{};
-  phi::DataLayout input_layout_{phi::DataLayout::kAnyLayout};
+  DataLayout input_layout_{DataLayout::kAnyLayout};
 };
 
 }  // namespace framework

@@ -52,7 +52,7 @@ class TestTorchProxy(unittest.TestCase):
         with self.assertRaises(ModuleNotFoundError):
             import torch.nonexistent_module
 
-        paddle.compat.disable_torch_proxy()
+        paddle.disable_compat()
         with self.assertRaises(ModuleNotFoundError):
             import torch
         with self.assertRaises(ModuleNotFoundError):
@@ -60,30 +60,30 @@ class TestTorchProxy(unittest.TestCase):
         with self.assertRaises(ModuleNotFoundError):
             import torch.nn.functional
 
-    def test_use_torch_proxy_guard(self):
+    def test_use_compat_guard(self):
         with self.assertRaises(ModuleNotFoundError):
             import torch
-        with paddle.compat.use_torch_proxy_guard():
+        with paddle.use_compat_guard():
             import torch
 
             self.assertIs(torch.sin, paddle.sin)
         with self.assertRaises(ModuleNotFoundError):
             import torch
 
-        with paddle.compat.use_torch_proxy_guard():
+        with paddle.use_compat_guard():
             import torch
 
             self.assertIs(torch.cos, paddle.cos)
-            with paddle.compat.use_torch_proxy_guard(enable=False):
+            with paddle.use_compat_guard(enable=False):
                 with self.assertRaises(ModuleNotFoundError):
                     import torch
-                with paddle.compat.use_torch_proxy_guard(enable=True):
+                with paddle.use_compat_guard(enable=True):
                     import torch
 
         with self.assertRaises(ModuleNotFoundError):
             import torch
 
-    @paddle.compat.use_torch_proxy_guard()
+    @paddle.use_compat_guard()
     def test_use_torch_inside_inner_function(self):
         result = use_torch_inside_inner_function()
 
@@ -94,7 +94,7 @@ class TestTorchProxy(unittest.TestCase):
 
 class TestTorchProxyBlockedModule(unittest.TestCase):
     def test_blocked_module(self):
-        with paddle.compat.use_torch_proxy_guard():
+        with paddle.use_compat_guard():
             with self.assertRaises(ModuleNotFoundError):
                 import torch._dynamo.allow_in_graph  # noqa: F401
 
@@ -124,7 +124,7 @@ class TestTorchProxyLocalEnabledModule(unittest.TestCase):
         torch_proxy_local_enabled_module.use_torch_compat_api()
         paddle.compat.proxy.TORCH_PROXY_FINDER._globally_enabled = False
         paddle.compat.proxy.TORCH_PROXY_FINDER._local_enabled_scope = set()
-        paddle.compat.disable_torch_proxy()
+        paddle.disable_compat()
 
 
 class TestTorchProxyUseMockedModule(unittest.TestCase):
@@ -132,7 +132,7 @@ class TestTorchProxyUseMockedModule(unittest.TestCase):
         # Define mocked torch before use torch proxy
         mocked_torch = MagicMock()
         sys.modules["torch"] = mocked_torch
-        with paddle.compat.use_torch_proxy_guard(scope=set()):
+        with paddle.use_compat_guard(scope=set()):
             import torch
 
             # torch proxy should not affect mocked torch,
@@ -143,20 +143,27 @@ class TestTorchProxyUseMockedModule(unittest.TestCase):
 
 
 class TestOverrideTorchModule(unittest.TestCase):
-    @paddle.compat.use_torch_proxy_guard()
+    @paddle.use_compat_guard()
     def test_relu(self):
         import torch
 
         self.assertIs(torch.relu, paddle.nn.functional.relu)
 
-    @paddle.compat.use_torch_proxy_guard()
+    @paddle.use_compat_guard()
+    def test_torch_version_class(self):
+        import torch
+
+        self.assertIs(torch.TorchVersion, paddle.PaddleVersion)
+        self.assertIsInstance(torch.__version__, paddle.PaddleVersion)
+
+    @paddle.use_compat_guard()
     def test_access_compat_functions_by_getattr(self):
         import torch
 
         self.assertIs(torch.nn.Unfold, paddle.compat.nn.Unfold)
         self.assertIs(torch.nn.Linear, paddle.compat.nn.Linear)
 
-    @paddle.compat.use_torch_proxy_guard()
+    @paddle.use_compat_guard()
     def test_access_compat_functions_by_import(self):
         from torch.nn.functional import linear, softmax
 
@@ -176,7 +183,7 @@ class TestFakeInterface(unittest.TestCase):
 
 
 class TestDeviceAsTypeHints(unittest.TestCase):
-    @paddle.compat.use_torch_proxy_guard()
+    @paddle.use_compat_guard()
     def test_device_as_type_hints(self):
         from typing import Optional
 

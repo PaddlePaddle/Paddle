@@ -1,5 +1,5 @@
 <p align="center">
-<img align="center" src="doc/imgs/logo.png", width=1600>
+<img align="center" src="./doc/imgs/logo.png", width=1600>
 <p>
 
 --------------------------------------------------------------------------------
@@ -9,7 +9,7 @@ English | [简体中文](./README_cn.md) | [日本語](./README_ja.md)
 [![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](https://paddlepaddle.org.cn/documentation/docs/en/guides/index_en.html)
 [![Documentation Status](https://img.shields.io/badge/中文文档-最新-brightgreen.svg)](https://paddlepaddle.org.cn/documentation/docs/zh/guides/index_cn.html)
 [![Release](https://img.shields.io/github/release/PaddlePaddle/Paddle.svg)](https://github.com/PaddlePaddle/Paddle/releases)
-[![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](./LICENSE)
 ![X (formerly Twitter) URL](https://img.shields.io/twitter/url?url=https%3A%2F%2Fx.com%2FPaddlePaddle)
 
 Welcome to the PaddlePaddle GitHub.
@@ -78,4 +78,4 @@ We provide [English](https://www.paddlepaddle.org.cn/documentation/docs/en/guide
 
 ## Copyright and License
 
-PaddlePaddle is provided under the [Apache-2.0 license](LICENSE).
+PaddlePaddle is provided under the [Apache-2.0 license](./LICENSE).

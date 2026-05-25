@@ -24,8 +24,6 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 SpmdInfo CumSumInferSpmd(const DistMetaTensor& x,
                          int axis,
                          bool flatten,

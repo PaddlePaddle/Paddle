@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/onednn/axpy_handler.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -48,12 +49,14 @@ void SGDDenseKernel(const Context& dev_ctx,
   auto* out_data = dev_ctx.template Alloc<T>(param_out);
   const T* param_data = param.data<T>();
   const auto* grad_data = grad.data<T>();
-  const auto* lr = learning_rate.data<T>();
+  using MT = typename dtype::MPTypeTrait<T>::Type;
+  const auto* lr = learning_rate.data<MT>();
   // Since dense SGD is not in place operation, first copy params to output
   // tensor and then update it.
   std::memcpy(out_data, param_data, param.memory_size());
-  funcs::OneDNNAXPYHandler<T>(param_out->numel(), -lr[0], dev_ctx.GetEngine())(
-      grad_data, out_data);
+  funcs::OneDNNAXPYHandler<T>(param_out->numel(),
+                              static_cast<T>(-lr[0]),
+                              dev_ctx.GetEngine())(grad_data, out_data);
 }
 
 template <typename T, typename Context>
@@ -74,10 +77,11 @@ void SGDDenseParamSparseGradKernel(const Context& dev_ctx,
 
   const auto* grad_data = grad_value.data<T>();
   auto* out_data = param_out->data<T>();
-  const auto* lr = learning_rate.data<T>();
+  using MT = typename dtype::MPTypeTrait<T>::Type;
+  const auto* lr = learning_rate.data<MT>();
 
   funcs::OneDNNAXPYHandler<T> axpy_handler(
-      grad_width, -lr[0], dev_ctx.GetEngine());
+      grad_width, static_cast<T>(-lr[0]), dev_ctx.GetEngine());
 
   for (size_t i = 0; i < grad_rows.size(); ++i) {
     PADDLE_ENFORCE_LT(

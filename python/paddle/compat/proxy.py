@@ -127,6 +127,9 @@ def _create_proxy_module(
 
 GLOBAL_OVERRIDES: dict[str, OverriddenAttribute] = {
     "torch.relu": LazyImportOverriddenAttribute("paddle.nn.functional.relu"),
+    "torch.TorchVersion": LazyImportOverriddenAttribute(
+        "paddle.paddle_version.PaddleVersion"
+    ),
 }
 
 TORCH_PROXY_BLOCKED_MODULES = {
@@ -271,7 +274,7 @@ class TorchProxyMetaFinder:
         patched_dunder_attr: str,
     ):
         # Return a special loader that imports the blocked module without torch proxy
-        with use_torch_proxy_guard(enable=False):
+        with use_compat_guard(enable=False):
             spec = importlib.util.find_spec(fullname)
             if spec is None:
                 return None
@@ -296,7 +299,7 @@ class TorchProxyMetaFinder:
 
                 def exec_module(self, module):
                     # Import the real module with torch proxy disabled
-                    with use_torch_proxy_guard(
+                    with use_compat_guard(
                         enable=enable_proxy_when_exec_module, silent=True
                     ):
                         original_loader.exec_module(module)
@@ -471,7 +474,7 @@ def _parse_scope(scope: str | Iterable[str] | None) -> set[str] | None:
     return set(scope)
 
 
-def enable_torch_proxy(
+def enable_compat(
     *,
     scope: _ScopeType = None,
     blocked_modules: _ScopeType = None,
@@ -525,7 +528,7 @@ def enable_torch_proxy(
     sys.meta_path.insert(0, TORCH_PROXY_FINDER)
 
 
-def disable_torch_proxy() -> None:
+def disable_compat() -> None:
     """
     Disable the PyTorch proxy by removing the TorchProxyMetaFinder from sys.meta_path.
     This prevents 'torch' imports from being proxied to PaddlePaddle.
@@ -552,7 +555,7 @@ def disable_torch_proxy() -> None:
 
 
 @contextmanager
-def use_torch_proxy_guard(
+def use_compat_guard(
     *,
     enable: bool = True,
     scope: _ScopeType = None,
@@ -579,13 +582,13 @@ def use_torch_proxy_guard(
 
             >>> import paddle
 
-            >>> with paddle.compat.use_torch_proxy_guard():
+            >>> with paddle.use_compat_guard():
             ...     # code that requires the Torch compat to be enabled
             ...     import torch  # type: ignore[import-not-found]
             ...
             ...     assert torch.sin is paddle.sin
             ...     # Temporarily disable the Torch compat
-            ...     with paddle.compat.use_torch_proxy_guard(enable=False):
+            ...     with paddle.use_compat_guard(enable=False):
             ...         try:
             ...             import torch
             ...         except ModuleNotFoundError:
@@ -606,7 +609,7 @@ def use_torch_proxy_guard(
         yield
         return
     if enable:
-        enable_torch_proxy(scope=scope, silent=silent)
+        enable_compat(scope=scope, silent=silent)
         try:
             yield
         finally:
@@ -614,13 +617,13 @@ def use_torch_proxy_guard(
                 original_local_enabled_scope
             )
             TORCH_PROXY_FINDER._globally_enabled = original_globally_enabled
-            disable_torch_proxy()
+            disable_compat()
     else:
-        disable_torch_proxy()
+        disable_compat()
         try:
             yield
         finally:
-            enable_torch_proxy(scope=None, silent=True)
+            enable_compat(scope=None, silent=True)
             TORCH_PROXY_FINDER._local_enabled_scope = (
                 original_local_enabled_scope
             )
@@ -674,7 +677,7 @@ def paddle_triton_fun():
             ...     y = tl.load(Y + offs, mask=mask)
             ...     tl.store(Z + offs, x + y, mask=mask)
     """
-    enable_torch_proxy(scope={"triton"})
+    enable_compat(scope={"triton"})
     import triton
 
     return triton

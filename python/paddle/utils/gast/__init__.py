@@ -30,4 +30,4 @@
 # representation. See https://github.com/serge-sans-paille/gast for details.
 
 from .gast import *
-from ast import NodeVisitor, NodeTransformer, iter_fields, dump
+from ast import NodeVisitor, NodeTransformer, iter_fields

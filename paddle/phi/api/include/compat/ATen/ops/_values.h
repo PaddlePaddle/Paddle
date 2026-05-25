@@ -34,12 +34,7 @@ inline at::Tensor Tensor::_values() const {
     return paddle::Tensor(
         std::make_shared<phi::DenseTensor>(sparse_coo_tensor->values()));
   } else {
-    auto sparse_csr_tensor =
-        std::dynamic_pointer_cast<phi::SparseCsrTensor>(tensor_.impl());
-    PD_CHECK(sparse_csr_tensor != nullptr,
-             "_values: failed to cast tensor impl to SparseCsrTensor");
-    return paddle::Tensor(
-        std::make_shared<phi::DenseTensor>(sparse_csr_tensor->values()));
+    PD_THROW("_values is not implemented for SparseCsr tensors");
   }
 }
 
