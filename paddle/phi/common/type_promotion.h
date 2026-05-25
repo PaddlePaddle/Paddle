@@ -157,7 +157,13 @@ inline phi::DataType GetPromoteDtype(
       (x_shape.size() == 0 || y_shape.size() == 0)) {
     if (!is_common_dtype_for_scalar(x_dtype, y_dtype) ||
         (x_shape.size() == 0 && y_shape.size() == 0)) {
-      return phi::promoteTypes(x_dtype, y_dtype);
+      auto promote_type = phi::promoteTypes(x_dtype, y_dtype);
+#if defined(PADDLE_WITH_XPU)
+      if (promote_type == DataType::COMPLEX128) {
+        promote_type = DataType::COMPLEX64;
+      }
+#endif
+      return promote_type;
     } else {
       if (x_shape.size() == 0) {
         return y_dtype;
@@ -167,7 +173,13 @@ inline phi::DataType GetPromoteDtype(
     }
   }
 
-  return phi::promoteTypes(x_dtype, y_dtype);
+  auto promote_type = phi::promoteTypes(x_dtype, y_dtype);
+#if defined(PADDLE_WITH_XPU)
+  if (promote_type == DataType::COMPLEX128) {
+    promote_type = DataType::COMPLEX64;
+  }
+#endif
+  return promote_type;
 }
 
 inline phi::DataType GetPromoteDtypeOldIr(const std::string& op_name,
