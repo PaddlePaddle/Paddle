@@ -60,10 +60,14 @@ void FusedLayerNormKernel(const Context& dev_ctx,
           "quantized output yet."));
   const bool quant_int8 = out->dtype() == phi::DataType::INT8;
   DenseTensor fp_out;
+  DenseTensor quant_input;
   DenseTensor* ln_out = out;
   if (quant_int8) {
     fp_out.Resize(out->dims());
+    quant_input.Resize(out->dims());
     dev_ctx.template Alloc<float>(&fp_out);
+    dev_ctx.template Alloc<T>(&quant_input);
+    ln_out = &quant_input;
   } else {
     dev_ctx.template Alloc<T>(out);
   }
@@ -71,6 +75,9 @@ void FusedLayerNormKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<float>(variance);
 
   if (m * n == 0) {
+    if (quant_int8) {
+      dev_ctx.template Alloc<int8_t>(out);
+    }
     if (residual) {
       dev_ctx.template Alloc<T>(residual_out);
     }
@@ -125,6 +132,12 @@ void FusedLayerNormKernel(const Context& dev_ctx,
                                reinterpret_cast<XPUType*>(ln_out->data<T>()),
                                m * n);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "add");
+      dev_ctx.template Alloc<T>(residual_out);
+      r = baidu::xpu::api::copy(xpu_ctx->x_context(),
+                                reinterpret_cast<XPUType*>(ln_out->data<T>()),
+                                reinterpret_cast<XPUType*>(residual_out->data<T>()),
+                                m * n);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
     } else {
       if (bias) {
         r = baidu::xpu::api::broadcast_add(
@@ -143,7 +156,15 @@ void FusedLayerNormKernel(const Context& dev_ctx,
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
       }
     }
-    return;
+    if (!quant_int8 || quant_scale <= 0.0f) {
+      return;
+    }
+    r = baidu::xpu::api::cast<XPUType, float>(
+        xpu_ctx->x_context(),
+        reinterpret_cast<const XPUType*>(ln_out->data<T>()),
+        fp_out.data<float>(),
+        m * n);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
   } else {
     auto x_ptr = reinterpret_cast<const XPUType*>(x.data<T>());
     if (bias) {
