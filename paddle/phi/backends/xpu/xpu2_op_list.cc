@@ -317,7 +317,7 @@ XPUOpMap& get_kl2_ops() {
       {"p_norm", XPUKernelSet({FLOAT32})},
       {"p_norm_grad", XPUKernelSet({FLOAT32})},
       {"pad3d_grad", XPUKernelSet({FLOAT32, INT32, INT64})},
-      {"pad3d", XPUKernelSet({FLOAT32, FLOAT16, INT32, INT64})},
+      {"pad3d", XPUKernelSet({FLOAT32, FLOAT16})},
       {"pad", XPUKernelSet({FLOAT32, INT32, INT16, FLOAT16})},
       {"pad_grad", XPUKernelSet({FLOAT32, INT32, INT16, FLOAT16})},
       {"pixel_shuffle", XPUKernelSet({FLOAT32})},

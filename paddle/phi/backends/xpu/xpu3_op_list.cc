@@ -594,7 +594,7 @@ XPUOpMap& get_kl3_ops() {
            UINT8,
        })},
       {"pad3d_grad", XPUKernelSet({FLOAT32, INT32, INT64})},
-      {"pad3d", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16, INT32, INT64})},
+      {"pad3d", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16})},
       {"pad",
        XPUKernelSet({FLOAT32,
                      INT32,
