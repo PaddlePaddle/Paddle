@@ -143,6 +143,7 @@ void exec_fft(const XPUContext& dev_ctx,
       }
     }
 
+    dev_ctx.Alloc<To>(out);
     phi::memory_utils::Copy(out->place(),
                             out->data(),
                             phi::CPUPlace(),
