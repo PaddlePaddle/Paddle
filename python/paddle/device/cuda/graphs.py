@@ -142,6 +142,20 @@ class CUDAGraph:
     def capture_end(self):
         self._graph = CoreCUDAGraph.end_capture()
 
+    def _require_captured(self) -> None:
+        """Raise a clear error if no graph has been captured yet.
+
+        ``self._graph`` is only populated by :meth:`capture_end`; methods that
+        consume it (``replay`` / ``reset`` / ``debug_dump`` / ...) would
+        otherwise raise ``AttributeError`` on ``NoneType`` when called too
+        early. Centralizing the check produces a single, actionable message.
+        """
+        if self._graph is None:
+            raise RuntimeError(
+                "CUDAGraph has not been captured yet. "
+                "Call capture_begin/capture_end first."
+            )
+
     def instantiate(self) -> None:
         """No-op shim for ``torch.cuda.CUDAGraph.instantiate``.
 
@@ -152,9 +166,11 @@ class CUDAGraph:
         return None
 
     def replay(self):
+        self._require_captured()
         self._graph.replay()
 
     def reset(self):
+        self._require_captured()
         self._graph.reset()
 
     def pool(self) -> int:
@@ -182,6 +198,7 @@ class CUDAGraph:
                 "debug_dump requires debug mode to be enabled first. "
                 "Call enable_debug_mode() before debug_dump()."
             )
+        self._require_captured()
         self.print_to_dot_files(debug_path)
 
     def raw_cuda_graph(self) -> NoReturn:
