@@ -18,13 +18,17 @@ jobs:
     name: Pre Commit
     if: ${{ github.repository_owner == 'PaddlePaddle' && needs.check-bypass.outputs.can-skip != 'true' }}
     needs: [check-bypass]
-    runs-on: ubuntu-latest
+    runs-on:
+      group: APPROVAL
     timeout-minutes: 10
     env:
       PR_ID: ${{ github.event.pull_request.number }}
       BRANCH: develop
 
     steps:
+      - name: Cleanup
+        run: |
+          rm -rf * .[^.]*
       - name: Checkout base repo
         uses: actions/checkout@v6
         with:

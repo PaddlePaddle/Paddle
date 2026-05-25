@@ -1,6 +1,5 @@
-
 <p align="center">
-<img align="center" src="doc/imgs/logo.png", width=1600>
+<img align="center" src="./doc/imgs/logo.png", width=1600>
 <p>
 
 --------------------------------------------------------------------------------
@@ -10,23 +9,26 @@
 [![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](https://paddlepaddle.org.cn/documentation/docs/en/guides/index_en.html)
 [![Documentation Status](https://img.shields.io/badge/中文文档-最新-brightgreen.svg)](https://paddlepaddle.org.cn/documentation/docs/zh/guides/index_cn.html)
 [![Release](https://img.shields.io/github/release/PaddlePaddle/Paddle.svg)](https://github.com/PaddlePaddle/Paddle/releases)
-[![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](./LICENSE)
+![X (formerly Twitter) URL](https://img.shields.io/twitter/url?url=https%3A%2F%2Fx.com%2FPaddlePaddle)
 
-欢迎来到 PaddlePaddle GitHub
+欢迎来到 PaddlePaddle GitHub。
 
-飞桨(PaddlePaddle)以百度多年的深度学习技术研究和业务应用为基础，是中国首个自主研发、功能完备、 开源开放的产业级深度学习平台，集深度学习核心训练和推理框架、基础模型库、端到端开发套件和丰富的工具组件于一体。目前，飞桨文心开发者数量已超过2333万，服务超过76万家企业，创建的模型达到110万。飞桨助力开发者快速实现 AI 想法，快速上线 AI 业务。帮助越来越多的行业完成 AI 赋能，实现产业智能化升级。
+飞桨(PaddlePaddle)作为中国首个自主研发的深度学习平台，自 2016 年起正式面向专业社区开源。它是一个具备先进技术和丰富功能的产业级平台，涵盖深度学习核心框架、基础模型库、端到端开发套件、工具组件以及服务平台。
+飞桨源于产业实践，并持续专注于产业化。它已被制造、农业、企业服务等众多领域广泛采用，服务超过 2333 万开发者、76 万家企业，生成 110 万个模型。凭借这些优势，飞桨帮助越来越多合作伙伴实现 AI 商业化。
 
 ## 安装
 
 ### PaddlePaddle 最新版本: 3.3
 
-跟进 PaddlePaddle 最新特性请参考我们的[版本说明](https://github.com/PaddlePaddle/Paddle/releases)
+我们的愿景是通过 PaddlePaddle 让每个人都能使用深度学习。
+请参考我们的[版本说明](https://github.com/PaddlePaddle/Paddle/releases)了解 PaddlePaddle 最新特性。
 
 ### 安装最新稳定版本或每日最新构建版本
 
 安装方法详见官网 [安装说明](https://www.paddlepaddle.org.cn/install/quick)。
 
-## 飞桨新一代框架 3.2
+## **飞桨新一代框架 3.2**
 
 - **动静统一自动并行**
 
@@ -69,4 +71,4 @@
 
 ## 版权和许可证
 
-PaddlePaddle 由[Apache-2.0 license](LICENSE)提供
+PaddlePaddle 由 [Apache-2.0 license](./LICENSE) 提供。

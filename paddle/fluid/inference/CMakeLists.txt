@@ -55,6 +55,11 @@ set(KERNEL_LIST
 
 # shared inference library deps
 list(REMOVE_DUPLICATES fluid_modules)
+# Drop Python-only or otherwise inference-unsafe fluid targets before creating
+# both static and shared inference libraries.
+if(not_infer_modules)
+  list(REMOVE_ITEM fluid_modules ${not_infer_modules})
+endif()
 # windows static library（both CPU and GPU）over the limit, so no longer create_static_lib,
 # and cc_library is dummy
 if(WIN32)
@@ -91,9 +96,6 @@ set(SHARED_INFERENCE_SRCS
 # NOTE(Aurelius84): For inference library, some DEPS is useless
 # such as non-infer operator related targets et.al.
 list(REMOVE_ITEM fluid_modules cinn_op_dialect)
-# NOTE(Aurelisu84): Remove pir dialect related target DEPS for inference
-# shared library to prune library size.
-# list(REMOVE_ITEM fluid_modules ${not_infer_modules})
 
 if(WIN32)
   set(SHARED_INFERENCE_DEPS phi dynload_common common ${fluid_modules}

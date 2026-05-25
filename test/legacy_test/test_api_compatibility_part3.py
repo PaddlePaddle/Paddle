@@ -1694,6 +1694,59 @@ class TestLayerAndTensorToAPI(unittest.TestCase):
             t.to('float64', copy='yes')
 
 
+# Test paddle.dtype.itemsize compatibility (mirrors torch.dtype.itemsize).
+class TestDtypeItemsizeAPI(unittest.TestCase):
+    EXPECTED = {
+        'float16': 2,
+        'bfloat16': 2,
+        'float32': 4,
+        'float64': 8,
+        'complex64': 8,
+        'complex128': 16,
+        'int8': 1,
+        'int16': 2,
+        'int32': 4,
+        'int64': 8,
+        'uint8': 1,
+        'uint16': 2,
+        'uint32': 4,
+        'uint64': 8,
+        'bool': 1,
+        'float8_e4m3fn': 1,
+        'float8_e5m2': 1,
+    }
+
+    def test_all_standard_dtypes(self):
+        for name, want in self.EXPECTED.items():
+            if not hasattr(paddle, name):
+                continue
+            with self.subTest(dtype=name):
+                self.assertEqual(getattr(paddle, name).itemsize, want)
+
+    def test_returns_int(self):
+        self.assertIsInstance(paddle.float32.itemsize, int)
+
+    def test_property_lives_on_class(self):
+        self.assertIsInstance(type(paddle.float32).itemsize, property)
+
+    def test_aliases_match(self):
+        self.assertEqual(paddle.float.itemsize, paddle.float32.itemsize)
+        self.assertEqual(paddle.double.itemsize, paddle.float64.itemsize)
+        self.assertEqual(paddle.half.itemsize, paddle.float16.itemsize)
+        self.assertEqual(paddle.short.itemsize, paddle.int16.itemsize)
+        self.assertEqual(paddle.long.itemsize, paddle.int64.itemsize)
+        self.assertEqual(paddle.cfloat.itemsize, paddle.complex64.itemsize)
+        self.assertEqual(paddle.cdouble.itemsize, paddle.complex128.itemsize)
+
+    def test_matches_tensor_element_size(self):
+        for name in ('float32', 'float64', 'int32', 'int64', 'bool'):
+            with self.subTest(dtype=name):
+                t = paddle.zeros([1], dtype=name)
+                self.assertEqual(
+                    getattr(paddle, name).itemsize, t.element_size()
+                )
+
+
 # Test select_scatter compatibility
 class TestSelectScatterAPICompatibility(unittest.TestCase):
     def setUp(self):
@@ -2311,7 +2364,6 @@ class TestConv2dTransposeAPI(unittest.TestCase):
                 np.testing.assert_allclose(fetches[0], fetches[i], rtol=1e-5)
 
 
-# Test Conv2DTranspose layer compatibility
 @unittest.skipIf(
     sys.platform == 'win32',
     "Conv transpose compatibility tests not supported on Windows-Inference",
@@ -2515,6 +2567,471 @@ class TestConv3DTransposeLayerAPI(unittest.TestCase):
         paddle.disable_static()
         with self.assertRaises(TypeError):
             paddle.nn.Conv3DTranspose(2, 2, 3, 1, 0, 0, 1, True, bias=True)
+
+
+class TestL1LossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.rand(3, 4).astype("float32")
+        self.np_label = np.random.rand(3, 4).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        label = paddle.to_tensor(self.np_label)
+
+        # 1. Paddle positional arguments
+        out1 = paddle.nn.functional.l1_loss(input, label)
+        # 2. Paddle keyword arguments
+        out2 = paddle.nn.functional.l1_loss(input=input, label=label)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.nn.functional.l1_loss(input=input, target=label)
+        # 4. Mixed arguments
+        out4 = paddle.nn.functional.l1_loss(input, target=label)
+
+        ref_out = np.mean(np.abs(self.np_input - self.np_label))
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        # PyTorch deprecated args translate to reduction
+        ref_sum = np.sum(np.abs(self.np_input - self.np_label))
+        ref_none = np.abs(self.np_input - self.np_label)
+
+        # 5. size_average=False translates to reduction='sum'
+        out5 = paddle.nn.functional.l1_loss(input, label, size_average=False)
+        np.testing.assert_allclose(out5.numpy(), ref_sum, rtol=1e-6)
+        # 6. reduce=False translates to reduction='none'
+        out6 = paddle.nn.functional.l1_loss(input, label, reduce=False)
+        np.testing.assert_allclose(out6.numpy(), ref_none, rtol=1e-6)
+        # 7. reduce=True + size_average=True translates to reduction='mean'
+        out7 = paddle.nn.functional.l1_loss(
+            input, label, reduce=True, size_average=True
+        )
+        np.testing.assert_allclose(out7.numpy(), ref_out, rtol=1e-6)
+        # 8. reduce=True + size_average=False translates to reduction='sum'
+        out8 = paddle.nn.functional.l1_loss(
+            input, label, reduce=True, size_average=False
+        )
+        np.testing.assert_allclose(out8.numpy(), ref_sum, rtol=1e-6)
+        # 9. legacy args combined with target alias
+        out9 = paddle.nn.functional.l1_loss(
+            input=input, target=label, size_average=False
+        )
+        np.testing.assert_allclose(out9.numpy(), ref_sum, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            input = paddle.static.data(
+                name="input", shape=[3, 4], dtype='float32'
+            )
+            label = paddle.static.data(
+                name="label", shape=[3, 4], dtype='float32'
+            )
+
+            out1 = paddle.nn.functional.l1_loss(input, label)
+            out2 = paddle.nn.functional.l1_loss(input=input, label=label)
+            out3 = paddle.nn.functional.l1_loss(input=input, target=label)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"input": self.np_input, "label": self.np_label},
+                fetch_list=[out1, out2, out3],
+            )
+            ref_out = np.mean(np.abs(self.np_input - self.np_label))
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out, rtol=1e-6)
+
+
+class TestKLDivAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        # input is log-probability
+        x = np.log(np.random.rand(5, 6).astype("float32") + 1e-3)
+        self.np_input = x
+        self.np_label = np.random.rand(5, 6).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        label = paddle.to_tensor(self.np_label)
+
+        # 1. Paddle positional arguments
+        out1 = paddle.nn.functional.kl_div(input, label, 'mean')
+        # 2. Paddle keyword arguments
+        out2 = paddle.nn.functional.kl_div(input=input, label=label)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.nn.functional.kl_div(input=input, target=label)
+        # 4. Mixed arguments
+        out4 = paddle.nn.functional.kl_div(input, target=label)
+
+        for out in [out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestSmoothL1LossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.rand(3, 4).astype("float32")
+        self.np_label = np.random.rand(3, 4).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        label = paddle.to_tensor(self.np_label)
+
+        # 1. Paddle positional arguments
+        out1 = paddle.nn.functional.smooth_l1_loss(input, label)
+        # 2. Paddle keyword arguments
+        out2 = paddle.nn.functional.smooth_l1_loss(input=input, label=label)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.nn.functional.smooth_l1_loss(input=input, target=label)
+        # 4. Mixed arguments
+        out4 = paddle.nn.functional.smooth_l1_loss(input, target=label)
+
+        for out in [out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestHingeEmbeddingLossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.rand(3, 4).astype("float32")
+        self.np_label = np.random.choice([-1, 1], size=(3, 4)).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        label = paddle.to_tensor(self.np_label)
+
+        out1 = paddle.nn.functional.hinge_embedding_loss(input, label)
+        out2 = paddle.nn.functional.hinge_embedding_loss(
+            input=input, label=label
+        )
+        out3 = paddle.nn.functional.hinge_embedding_loss(
+            input=input, target=label
+        )
+        out4 = paddle.nn.functional.hinge_embedding_loss(input, target=label)
+
+        for out in [out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestCosineEmbeddingLossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input1 = np.random.rand(4, 5).astype("float32")
+        self.np_input2 = np.random.rand(4, 5).astype("float32")
+        self.np_label = np.array([1, -1, 1, -1], dtype="int64")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input1 = paddle.to_tensor(self.np_input1)
+        input2 = paddle.to_tensor(self.np_input2)
+        label = paddle.to_tensor(self.np_label)
+
+        out1 = paddle.nn.functional.cosine_embedding_loss(input1, input2, label)
+        out2 = paddle.nn.functional.cosine_embedding_loss(
+            input1=input1, input2=input2, label=label
+        )
+        out3 = paddle.nn.functional.cosine_embedding_loss(
+            input1=input1, input2=input2, target=label
+        )
+        out4 = paddle.nn.functional.cosine_embedding_loss(
+            input1, input2, target=label
+        )
+
+        for out in [out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestMultiLabelSoftMarginLossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.rand(3, 4).astype("float32")
+        self.np_label = np.random.choice([-1, 1], size=(3, 4)).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        label = paddle.to_tensor(self.np_label)
+
+        out1 = paddle.nn.functional.multi_label_soft_margin_loss(input, label)
+        out2 = paddle.nn.functional.multi_label_soft_margin_loss(
+            input=input, label=label
+        )
+        out3 = paddle.nn.functional.multi_label_soft_margin_loss(
+            input=input, target=label
+        )
+        out4 = paddle.nn.functional.multi_label_soft_margin_loss(
+            input, target=label
+        )
+
+        for out in [out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestMultiLabelMarginLossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.rand(2, 4).astype("float32")
+        self.np_label = np.array(
+            [[3, 0, -1, -1], [0, 2, -1, -1]], dtype="int64"
+        )
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        label = paddle.to_tensor(self.np_label)
+
+        out1 = paddle.nn.functional.multi_label_margin_loss(input, label)
+        out2 = paddle.nn.functional.multi_label_margin_loss(
+            input=input, label=label
+        )
+        out3 = paddle.nn.functional.multi_label_margin_loss(
+            input=input, target=label
+        )
+        out4 = paddle.nn.functional.multi_label_margin_loss(input, target=label)
+
+        for out in [out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestSoftMarginLossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.rand(3, 4).astype("float32")
+        self.np_label = np.random.choice([-1, 1], size=(3, 4)).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        label = paddle.to_tensor(self.np_label)
+
+        out1 = paddle.nn.functional.soft_margin_loss(input, label)
+        out2 = paddle.nn.functional.soft_margin_loss(input=input, label=label)
+        out3 = paddle.nn.functional.soft_margin_loss(input=input, target=label)
+        out4 = paddle.nn.functional.soft_margin_loss(input, target=label)
+
+        for out in [out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestTripletMarginWithDistanceLossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.rand(3, 4).astype("float32")
+        self.np_pos = np.random.rand(3, 4).astype("float32")
+        self.np_neg = np.random.rand(3, 4).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        pos = paddle.to_tensor(self.np_pos)
+        neg = paddle.to_tensor(self.np_neg)
+
+        out1 = paddle.nn.functional.triplet_margin_with_distance_loss(
+            input, pos, neg
+        )
+        out2 = paddle.nn.functional.triplet_margin_with_distance_loss(
+            input=input, positive=pos, negative=neg
+        )
+        # PyTorch alias: anchor instead of input
+        out3 = paddle.nn.functional.triplet_margin_with_distance_loss(
+            anchor=input, positive=pos, negative=neg
+        )
+
+        for out in [out2, out3]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestTripletMarginLossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.rand(3, 4).astype("float32")
+        self.np_pos = np.random.rand(3, 4).astype("float32")
+        self.np_neg = np.random.rand(3, 4).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        pos = paddle.to_tensor(self.np_pos)
+        neg = paddle.to_tensor(self.np_neg)
+
+        out1 = paddle.nn.functional.triplet_margin_loss(input, pos, neg)
+        out2 = paddle.nn.functional.triplet_margin_loss(
+            input=input, positive=pos, negative=neg
+        )
+        # PyTorch aliases: anchor instead of input, eps instead of epsilon
+        out3 = paddle.nn.functional.triplet_margin_loss(
+            anchor=input, positive=pos, negative=neg, eps=1e-06
+        )
+        out4 = paddle.nn.functional.triplet_margin_loss(
+            input, pos, neg, eps=1e-06
+        )
+
+        for out in [out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestGaussianNLLLossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.randn(5, 2).astype("float32")
+        self.np_label = np.random.randn(5, 2).astype("float32")
+        self.np_var = np.ones((5, 2)).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        label = paddle.to_tensor(self.np_label)
+        var = paddle.to_tensor(self.np_var)
+
+        # 1. Paddle positional arguments
+        out1 = paddle.nn.functional.gaussian_nll_loss(input, label, var)
+        # 2. Paddle keyword arguments
+        out2 = paddle.nn.functional.gaussian_nll_loss(
+            input=input, label=label, variance=var
+        )
+        # 3. PyTorch keyword arguments (aliases)
+        out3 = paddle.nn.functional.gaussian_nll_loss(
+            input=input, target=label, var=var
+        )
+        # 4. Mixed
+        out4 = paddle.nn.functional.gaussian_nll_loss(
+            input, target=label, var=var, eps=1e-06
+        )
+
+        for out in [out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestMarginRankingLossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.rand(4, 5).astype("float32")
+        self.np_other = np.random.rand(4, 5).astype("float32")
+        self.np_label = np.random.choice([-1, 1], size=(4, 5)).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        other = paddle.to_tensor(self.np_other)
+        label = paddle.to_tensor(self.np_label)
+
+        # 1. Paddle positional arguments
+        out1 = paddle.nn.functional.margin_ranking_loss(input, other, label)
+        # 2. Paddle keyword arguments
+        out2 = paddle.nn.functional.margin_ranking_loss(
+            input=input, other=other, label=label
+        )
+        # 3. PyTorch keyword arguments (aliases)
+        out3 = paddle.nn.functional.margin_ranking_loss(
+            input1=input, input2=other, target=label
+        )
+
+        for out in [out2, out3]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestGaussianNLLLossLayerAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.randn(5, 2).astype("float32")
+        self.np_label = np.random.randn(5, 2).astype("float32")
+        self.np_var = np.ones((5, 2)).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        label = paddle.to_tensor(self.np_label)
+        var = paddle.to_tensor(self.np_var)
+
+        # Paddle: epsilon
+        layer1 = paddle.nn.GaussianNLLLoss(epsilon=1e-06)
+        # PyTorch alias: eps
+        layer2 = paddle.nn.GaussianNLLLoss(eps=1e-06)
+
+        out1 = layer1(input, label, var)
+        out2 = layer2(input, label, var)
+        np.testing.assert_allclose(out1.numpy(), out2.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestPoissonNLLLossLayerAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.randn(5, 2).astype("float32")
+        self.np_label = np.random.randn(5, 2).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        label = paddle.to_tensor(self.np_label)
+
+        # Paddle: epsilon
+        layer1 = paddle.nn.PoissonNLLLoss(epsilon=1e-08)
+        # PyTorch alias: eps
+        layer2 = paddle.nn.PoissonNLLLoss(eps=1e-08)
+
+        out1 = layer1(input, label)
+        out2 = layer2(input, label)
+        np.testing.assert_allclose(out1.numpy(), out2.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
+
+
+class TestTripletMarginLossLayerAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_input = np.random.rand(3, 4).astype("float32")
+        self.np_pos = np.random.rand(3, 4).astype("float32")
+        self.np_neg = np.random.rand(3, 4).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        input = paddle.to_tensor(self.np_input)
+        pos = paddle.to_tensor(self.np_pos)
+        neg = paddle.to_tensor(self.np_neg)
+
+        # Paddle: epsilon
+        layer1 = paddle.nn.TripletMarginLoss(epsilon=1e-06)
+        # PyTorch alias: eps
+        layer2 = paddle.nn.TripletMarginLoss(eps=1e-06)
+
+        out1 = layer1(input, pos, neg)
+        out2 = layer2(input, pos, neg)
+        np.testing.assert_allclose(out1.numpy(), out2.numpy(), rtol=1e-6)
+
+        paddle.enable_static()
 
 
 def _assert_unary_inplace_result(
@@ -3241,6 +3758,330 @@ class TestSquareInplaceAPI(unittest.TestCase):
         out = paddle.square_(x)
 
         _assert_unary_inplace_result(self, x, out, ref_out)
+
+        paddle.enable_static()
+
+
+class TestInferenceModeAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([1.0, 2.0, 3.0], dtype="float32")
+        self.shape = self.np_x.shape
+        self.dtype = str(self.np_x.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x, stop_gradient=False)
+
+        # 1. Paddle Positional arguments
+        ctx = paddle.inference_mode()
+        self.assertTrue(paddle.is_grad_enabled())
+        with ctx:
+            out1 = x * 2
+            self.assertFalse(paddle.is_grad_enabled())
+        self.assertTrue(paddle.is_grad_enabled())
+        # 2. Paddle keyword arguments
+        with paddle.inference_mode(mode=True):
+            out2 = x * 2
+            self.assertFalse(paddle.is_grad_enabled())
+        # 3. PyTorch keyword arguments
+        with paddle.no_grad(), paddle.inference_mode(mode=False):
+            out3 = x * 2
+            self.assertTrue(paddle.is_grad_enabled())
+
+        # 4. Decorator without parentheses
+        @paddle.inference_mode
+        def no_grad_decorated(tensor):
+            out = tensor * 2
+            self.assertFalse(paddle.is_grad_enabled())
+            return out
+
+        out4 = no_grad_decorated(x)
+
+        # 5. Decorator with mode=False
+        @paddle.inference_mode(mode=False)
+        def enable_grad_decorated(tensor):
+            out = tensor * 2
+            self.assertTrue(paddle.is_grad_enabled())
+            return out
+
+        with paddle.no_grad():
+            out5 = enable_grad_decorated(x)
+
+        def mode_func(tensor):
+            return tensor * 2
+
+        out6 = paddle.inference_mode(mode=mode_func)(x)
+
+        # Verify all outputs
+        ref_out = self.np_x * 2
+        for out in [out1, out2, out3, out4, out5, out6]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+        for out in [out1, out2, out4, out6]:
+            self.assertTrue(out.stop_gradient)
+        for out in [out3, out5]:
+            self.assertFalse(out.stop_gradient)
+        self.assertTrue(paddle.is_grad_enabled())
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            x.stop_gradient = False
+
+            # 1. Paddle Positional arguments
+            with paddle.inference_mode():
+                out1 = x * 2
+            # 2. Paddle keyword arguments
+            with paddle.inference_mode(mode=True):
+                out2 = x * 2
+            # 3. PyTorch keyword arguments
+            with paddle.no_grad(), paddle.inference_mode(mode=False):
+                out3 = x * 2
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3],
+            )
+
+        # Verify all outputs
+        ref_out = self.np_x * 2
+        for out in fetches:
+            np.testing.assert_allclose(out, ref_out, rtol=1e-6)
+
+
+class TestTensorIndexCopyInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_x = np.zeros((2, 3, 4), dtype="float32")
+        self.np_source_dim1 = (
+            np.arange(1, 17).reshape(2, 2, 4).astype("float32")
+        )
+        self.np_source_dim2 = (
+            np.arange(1, 13).reshape(2, 3, 2).astype("float32")
+        )
+
+    def _expected(self, x, dim, index, source):
+        expected = x.copy()
+        for i, idx in enumerate(index):
+            dest_index = [slice(None)] * expected.ndim
+            src_index = [slice(None)] * source.ndim
+            dest_index[dim] = idx
+            src_index[dim] = i
+            expected[tuple(dest_index)] = source[tuple(src_index)]
+        return expected
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        index = paddle.to_tensor([0, 2], dtype="int64")
+        source_dim1 = paddle.to_tensor(self.np_source_dim1)
+        source_dim2 = paddle.to_tensor(self.np_source_dim2)
+
+        # 1. Tensor method - positional args
+        x1 = paddle.to_tensor(self.np_x)
+        out1 = x1.index_copy_(1, index, source_dim1)
+        # 2. Tensor method - keyword args
+        x2 = paddle.to_tensor(self.np_x)
+        out2 = x2.index_copy_(dim=1, index=index, source=source_dim1)
+        # 3. Tensor method - mixed args
+        x3 = paddle.to_tensor(self.np_x)
+        out3 = x3.index_copy_(1, index=index, source=source_dim1)
+        # 4. Tensor method - negative dim
+        x4 = paddle.to_tensor(self.np_x)
+        out4 = x4.index_copy_(-1, index, source_dim2)
+        # 5. Tensor method - dim 0
+        x5 = paddle.zeros([3, 2], dtype="int32")
+        out5 = x5.index_copy_(
+            0,
+            paddle.to_tensor([0, 2], dtype="int64"),
+            paddle.to_tensor([[3, 4], [5, 6]], dtype="int32"),
+        )
+        # 6. Tensor method - scalar tensor
+        x6 = paddle.zeros([], dtype="float32")
+        out6 = x6.index_copy_(
+            0, paddle.to_tensor([0], dtype="int64"), paddle.to_tensor(7.0)
+        )
+        # 7. Tensor method - scalar source
+        x7 = paddle.zeros([3], dtype="float32")
+        out7 = x7.index_copy_(
+            0, paddle.to_tensor([1], dtype="int64"), paddle.to_tensor(8.0)
+        )
+        # 8. Tensor method - empty index
+        x8 = paddle.ones([2, 3], dtype="float32")
+        out8 = x8.index_copy_(
+            1,
+            paddle.to_tensor([], dtype="int64"),
+            paddle.empty([2, 0], dtype="float32"),
+        )
+        # 9. Tensor method - scalar index
+        x9 = paddle.zeros([3], dtype="float32")
+        out9 = x9.index_copy_(
+            0, paddle.to_tensor(1, dtype="int64"), paddle.to_tensor([9.0])
+        )
+        # 10. Tensor method - scalar tensor with non-scalar source
+        x10 = paddle.zeros([], dtype="float32")
+        out10 = x10.index_copy_(
+            -1, paddle.to_tensor(0, dtype="int64"), paddle.to_tensor([10.0])
+        )
+        # 11. Tensor method - scalar tensor with empty index
+        x11 = paddle.zeros([], dtype="float32")
+        out11 = x11.index_copy_(
+            0,
+            paddle.to_tensor([], dtype="int64"),
+            paddle.empty([0], dtype="float32"),
+        )
+
+        ref_dim1 = self._expected(self.np_x, 1, [0, 2], self.np_source_dim1)
+        ref_dim2 = self._expected(self.np_x, 2, [0, 2], self.np_source_dim2)
+        for out in [out1, out2, out3]:
+            np.testing.assert_allclose(out.numpy(), ref_dim1, rtol=1e-6)
+        np.testing.assert_allclose(out4.numpy(), ref_dim2, rtol=1e-6)
+        np.testing.assert_array_equal(
+            out5.numpy(), np.array([[3, 4], [0, 0], [5, 6]], dtype="int32")
+        )
+        np.testing.assert_allclose(out6.numpy(), np.array(7.0, dtype="float32"))
+        np.testing.assert_allclose(
+            out7.numpy(), np.array([0.0, 8.0, 0.0], dtype="float32")
+        )
+        np.testing.assert_allclose(
+            out8.numpy(), np.ones([2, 3], dtype="float32")
+        )
+        np.testing.assert_allclose(
+            out9.numpy(), np.array([0.0, 9.0, 0.0], dtype="float32")
+        )
+        np.testing.assert_allclose(
+            out10.numpy(), np.array(10.0, dtype="float32")
+        )
+        np.testing.assert_allclose(
+            out11.numpy(), np.array(0.0, dtype="float32")
+        )
+        self.assertIs(out1, x1)
+        self.assertIs(out6, x6)
+        self.assertIs(out10, x10)
+        self.assertIs(out11, x11)
+
+        with self.assertRaises(IndexError):
+            paddle.zeros([], dtype="float32").index_copy_(
+                1, paddle.to_tensor([0], dtype="int64"), paddle.to_tensor(7.0)
+            )
+        with self.assertRaises(RuntimeError):
+            paddle.to_tensor(self.np_x).index_copy_(
+                1,
+                paddle.to_tensor([0, 2], dtype="int32"),
+                source_dim1,
+            )
+        with self.assertRaises(RuntimeError):
+            paddle.to_tensor(self.np_x).index_copy_(
+                1,
+                index,
+                paddle.ones(self.np_source_dim1.shape, dtype="float64"),
+            )
+        with self.assertRaises(IndexError):
+            paddle.to_tensor(self.np_x).index_copy_(
+                1,
+                paddle.to_tensor([[0, 2]], dtype="int64"),
+                source_dim1,
+            )
+        with self.assertRaises(IndexError):
+            paddle.to_tensor(self.np_x).index_copy_(
+                1,
+                index,
+                paddle.ones([2, 2], dtype="float32"),
+            )
+        with self.assertRaises(IndexError):
+            paddle.to_tensor(self.np_x).index_copy_(
+                1,
+                paddle.to_tensor([0], dtype="int64"),
+                source_dim1,
+            )
+        with self.assertRaises(IndexError):
+            paddle.zeros([3], dtype="float32").index_copy_(
+                0,
+                paddle.to_tensor([0, 1], dtype="int64"),
+                paddle.to_tensor(7.0),
+            )
+        with self.assertRaises(RuntimeError):
+            paddle.to_tensor(self.np_x).index_copy_(
+                1,
+                index,
+                paddle.ones([2, 2, 3], dtype="float32"),
+            )
+        with self.assertRaises(IndexError):
+            paddle.zeros([3], dtype="float32").index_copy_(
+                0,
+                paddle.to_tensor([-1], dtype="int64"),
+                paddle.to_tensor([7.0]),
+            )
+        with self.assertRaises(IndexError):
+            paddle.zeros([3], dtype="float32").index_copy_(
+                0,
+                paddle.to_tensor([3], dtype="int64"),
+                paddle.to_tensor([7.0]),
+            )
+
+        paddle.enable_static()
+
+    def test_dygraph_functionality(self):
+        paddle.disable_static()
+
+        x = paddle.arange(60, dtype="float64").reshape([3, 4, 5])
+        source = paddle.arange(100, 140, dtype="float64").reshape([2, 4, 5])
+        out = x.index_copy_(0, paddle.to_tensor([2, 0], dtype="int64"), source)
+        expected = self._expected(
+            np.arange(60).reshape([3, 4, 5]).astype("float64"),
+            0,
+            [2, 0],
+            np.arange(100, 140).reshape([2, 4, 5]).astype("float64"),
+        )
+        np.testing.assert_allclose(out.numpy(), expected, rtol=1e-6)
+        self.assertIs(out, x)
+
+        x = paddle.zeros([2, 0, 3], dtype="float32")
+        source = paddle.empty([2, 0, 0], dtype="float32")
+        out = x.index_copy_(2, paddle.to_tensor([], dtype="int64"), source)
+        np.testing.assert_allclose(out.numpy(), np.zeros([2, 0, 3], "float32"))
+
+        x = paddle.ones([3, 2], dtype="float32")
+        source = paddle.to_tensor([[2.0, 3.0], [4.0, 5.0]])
+        out = x.index_copy_(0, paddle.to_tensor([2, 0], dtype="int64"), source)
+        np.testing.assert_allclose(
+            out.numpy(),
+            np.array([[4.0, 5.0], [1.0, 1.0], [2.0, 3.0]], dtype="float32"),
+        )
+
+        paddle.enable_static()
+
+    def test_dygraph_backward(self):
+        paddle.disable_static()
+
+        x = paddle.arange(6, dtype="float32").reshape([3, 2])
+        x.stop_gradient = False
+        source = paddle.to_tensor(
+            [[7.0, 8.0], [9.0, 10.0]], stop_gradient=False
+        )
+        out = x.clone().index_copy_(
+            0, paddle.to_tensor([0, 2], dtype="int64"), source
+        )
+        out.sum().backward()
+
+        np.testing.assert_allclose(
+            out.numpy(),
+            np.array([[7.0, 8.0], [2.0, 3.0], [9.0, 10.0]], dtype="float32"),
+            rtol=1e-6,
+        )
+        np.testing.assert_allclose(
+            x.grad.numpy(),
+            np.array([[0.0, 0.0], [1.0, 1.0], [0.0, 0.0]], dtype="float32"),
+            rtol=1e-6,
+        )
+        np.testing.assert_allclose(
+            source.grad.numpy(), np.ones([2, 2], dtype="float32"), rtol=1e-6
+        )
 
         paddle.enable_static()
 

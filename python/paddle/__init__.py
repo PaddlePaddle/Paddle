@@ -24,10 +24,11 @@ import typing
 __is_metainfo_generated = False
 try:
     from paddle.cuda_env import *  # noqa: F403
-    from paddle.version import (  # noqa: F401
-        commit as __git_commit__,
-        full_version as __version__,
+    from paddle.paddle_version import (  # noqa: F401
+        PaddleVersion,
+        __version__,
     )
+    from paddle.version import commit as __git_commit__  # noqa: F401
 
     __is_metainfo_generated = True
 
@@ -245,6 +246,7 @@ from paddle import (
     metric as metric,
     nn as nn,
     onnx as onnx,
+    optim as optim,
     optimizer as optimizer,
     quantization as quantization,
     random as random,
@@ -292,15 +294,16 @@ from .audio.functional.window import (  # noqa: F401
 from .autograd import (
     enable_grad,
     grad,
+    inference_mode,
     is_grad_enabled,
     no_grad,
     set_grad_enabled,
 )
 from .base.core import Size
-from .compat import (
-    disable_torch_proxy as disable_compat,
-    enable_torch_proxy as enable_compat,
-    use_torch_proxy_guard as use_compat_guard,  # noqa: F401
+from .compat.proxy import (
+    disable_compat,
+    enable_compat,
+    use_compat_guard,
 )
 from .device import (  # noqa: F401
     Event,
@@ -1049,6 +1052,7 @@ swapaxes = transpose
 manual_seed = seed
 sub = subtract
 sub_ = subtract_
+movedim = moveaxis
 
 __all__ = [
     'block_diag',
@@ -1273,6 +1277,7 @@ __all__ = [
     'enable_grad',
     'set_grad_enabled',
     'is_grad_enabled',
+    'inference_mode',
     'mod',
     'mod_',
     'abs',
@@ -1475,6 +1480,7 @@ __all__ = [
     'fmax',
     'fmin',
     'moveaxis',
+    'movedim',
     'repeat_interleave',
     'clone',
     'kthvalue',
@@ -1570,6 +1576,7 @@ __all__ = [
     'autocast',
     'enable_compat',
     'disable_compat',
+    'use_compat_guard',
 ]
 import os
 

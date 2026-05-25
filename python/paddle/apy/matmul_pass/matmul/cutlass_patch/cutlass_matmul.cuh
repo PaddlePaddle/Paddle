@@ -29,12 +29,12 @@
 #include "cutlass/gemm/device/gemm_universal_with_broadcast.h"
 
 #include "cutlass_patch/batched_matrix_coord.h"
+#include "cutlass_patch/default_config_id.h"
 #include "cutlass_patch/epilogue/thread/linear_combination_unary.h"
 #include "cutlass_patch/epilogue/thread/linear_combination_variadic.h"
 #include "cutlass_patch/gemm/device/gemm_universal_with_variadic.h"
 
-#include "default_config_id.h"  // NOLINT
-#include "params.h"             // NOLINT
+#include "params.h"  // NOLINT
 
 #define CHECK_CUTLASS(status)                                             \
   {                                                                       \
