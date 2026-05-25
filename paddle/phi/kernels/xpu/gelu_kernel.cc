@@ -35,13 +35,27 @@ void GeluKernel(const Context& dev_ctx,
   }
   int r = 0;
   if constexpr (std::is_same_v<T, phi::bfloat16>) {
-    // Keep bf16 GELU intermediates in higher precision to match GPU behavior.
-    r = xpu::gelu_highprecision<XPUType>(
-        dev_ctx.x_context(),
-        reinterpret_cast<const XPUType*>(x.data<T>()),
-        reinterpret_cast<XPUType*>(out->data<T>()),
-        out->numel(),
-        approximate);
+    if (approximate) {
+      r = xpu::gelu_nvidia_highprecision<XPUType>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(x.data<T>()),
+          reinterpret_cast<XPUType*>(out->data<T>()),
+          out->numel(),
+          approximate);
+    } else if (out->numel() >= 1000000) {
+      r = xpu::gelu_nvidia_highprecision<XPUType>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(x.data<T>()),
+          reinterpret_cast<XPUType*>(out->data<T>()),
+          out->numel(),
+          approximate);
+    } else {
+      r = xpu::gelu<XPUType>(dev_ctx.x_context(),
+                             reinterpret_cast<const XPUType*>(x.data<T>()),
+                             reinterpret_cast<XPUType*>(out->data<T>()),
+                             out->numel(),
+                             approximate);
+    }
   } else {
     r = xpu::gelu<XPUType>(dev_ctx.x_context(),
                            reinterpret_cast<const XPUType*>(x.data<T>()),

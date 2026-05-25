@@ -35,14 +35,31 @@ void GeluGradKernel(const Context& dev_ctx,
   }
   int r = 0;
   if constexpr (std::is_same_v<T, phi::bfloat16>) {
-    // Keep bf16 GELU gradient intermediates in higher precision for API parity.
-    r = xpu::gelu_grad_highprecision<XPUType>(
-        dev_ctx.x_context(),
-        reinterpret_cast<const XPUType*>(x.data<T>()),
-        reinterpret_cast<const XPUType*>(out_grad.data<T>()),
-        reinterpret_cast<XPUType*>(x_grad->data<T>()),
-        x_grad->numel(),
-        approximate);
+    if (approximate) {
+      r = xpu::gelu_grad_nvidia_highprecision<XPUType>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(x.data<T>()),
+          reinterpret_cast<const XPUType*>(out_grad.data<T>()),
+          reinterpret_cast<XPUType*>(x_grad->data<T>()),
+          x_grad->numel(),
+          approximate);
+    } else if (x_grad->numel() >= 1000000) {
+      r = xpu::gelu_grad_nvidia_highprecision<XPUType>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(x.data<T>()),
+          reinterpret_cast<const XPUType*>(out_grad.data<T>()),
+          reinterpret_cast<XPUType*>(x_grad->data<T>()),
+          x_grad->numel(),
+          approximate);
+    } else {
+      r = xpu::gelu_grad<XPUType>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(x.data<T>()),
+          reinterpret_cast<const XPUType*>(out_grad.data<T>()),
+          reinterpret_cast<XPUType*>(x_grad->data<T>()),
+          x_grad->numel(),
+          approximate);
+    }
   } else {
     r = xpu::gelu_grad<XPUType>(
         dev_ctx.x_context(),
