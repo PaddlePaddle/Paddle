@@ -20,6 +20,7 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import convert_float_to_uint16
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -83,11 +84,16 @@ class XPUTestPNormOp(XPUOpTestWrapper):
             self.set_attrs()
             np.random.seed(12345)
 
-            x_np = np.random.uniform(-10, 10, self.shape).astype(self.dtype)
+            x_np = np.random.uniform(-10, 10, self.shape).astype(
+                np.float32 if self.dtype == np.uint16 else self.dtype
+            )
 
             ref_y_np = ref_p_norm(
                 x_np, self.axis, self.porder, self.keepdims, self.asvector
             )
+            if self.dtype == np.uint16:
+                x_np = convert_float_to_uint16(x_np)
+                ref_y_np = convert_float_to_uint16(ref_y_np)
             self.inputs = {'X': x_np}
             self.outputs = {'Out': ref_y_np}
             self.attrs = {

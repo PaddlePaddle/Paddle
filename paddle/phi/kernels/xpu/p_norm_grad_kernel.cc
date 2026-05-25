@@ -101,6 +101,7 @@ void PNormGradKernel(const Context& dev_ctx,
                                   reinterpret_cast<XPUType*>(x_grad->data<T>()),
                                   x_grad->numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    dev_ctx.Wait();
     return;
   } else {
     auto xdim = x.dims();

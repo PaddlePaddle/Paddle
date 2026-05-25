@@ -61,7 +61,6 @@ void PNormKernel(const Context& dev_ctx,
   if constexpr (std::is_same<T, phi::bfloat16>::value) {
     // XPU p_norm kernels operate in float for bfloat16 inputs to match GPU's
     // promoted accumulation path, then cast the final result back to bfloat16.
-    xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
     DenseTensor x_float;
     x_float.Resize(x.dims());
     float* x_float_data = dev_ctx.template Alloc<float>(&x_float);
