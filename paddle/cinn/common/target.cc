@@ -484,6 +484,9 @@ int GetMaxThreads() {
     int device_id = phi::DeviceManager::GetDevice(dev_types[0]);
     std::string dev_type = dev_types[0];
     auto place = phi::CustomPlace(dev_type, device_id);
+    // Align with CUDA path: * 4 approximates concurrent warp batches per SM.
+    // Without this factor, CustomDevice reports a 4x lower upper bound than
+    // CUDA on equivalent hardware, which over-throttles GroupSchedule.
     max_threads = static_cast<int>(
         phi::DeviceManager::GetMultiProcessors(place) *
         phi::DeviceManager::GetMaxThreadsPerMultiProcessor(place) * 4);

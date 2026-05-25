@@ -615,11 +615,17 @@ void TileBroadcastTactic::Apply(ir::IRSchedule* sch,
     return;
   }
 #ifdef CINN_WITH_CUSTOM_DEVICE
-  // Thick-SM upgrade: only takes effect on devices like Iluvatar (mtps >= 4096).
-  // Doubles per-block work density; matches NV's medium-bucket serial-8 intent.
+  // Thick-SM upgrade: wide-SM CustomDevices (e.g. Iluvatar) benefit from
+  // doubled per-block work density; smaller-SM devices keep the default
+  // block_size. Matches NV's medium-bucket serial-8 intent.
   // Vectorize path uses the original block_size unchanged.
+  // NOTE: currently only Iluvatar-class devices are known to satisfy this
+  // threshold. If a future CustomDevice with mtps >= kWideSmMtpsThreshold
+  // turns out to be unsuitable for this amplification, switch to an explicit
+  // device-capability whitelist instead of a single mtps threshold.
+  constexpr int kWideSmMtpsThreshold = 4096;
   const int mtps = context_->target.get_max_threads_per_sm();
-  if (mtps >= 4096) {
+  if (mtps >= kWideSmMtpsThreshold) {
     const int ws = context_->config.tile_config.warp_size;
     block_size = std::min(static_cast<int>(ws * 16),
                           static_cast<int>(context_->target.max_num_threads()));
