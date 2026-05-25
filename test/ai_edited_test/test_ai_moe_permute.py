@@ -372,6 +372,104 @@ class TestMoePermute(unittest.TestCase):
         not paddle.is_compiled_with_cuda(),
         "CUDA required for moe_permute",
     )
+    def test_moe_permute_invalid_padding_alignment(self):
+        (
+            hidden_states,
+            expert_routemap_topk,
+            expert_prob_topk,
+            num_experts,
+            tokens_per_expert,
+        ) = self._build_basic_inputs()
+        with self.assertRaisesRegex(Exception, "padding_alignment"):
+            moe_permute(
+                hidden_states,
+                None,
+                expert_routemap_topk,
+                expert_prob_topk,
+                num_experts,
+                tokens_per_expert,
+                0,
+            )
+
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cuda(),
+        "CUDA required for moe_permute",
+    )
+    def test_moe_permute_invalid_override_buffer_size(self):
+        (
+            hidden_states,
+            expert_routemap_topk,
+            expert_prob_topk,
+            num_experts,
+            tokens_per_expert,
+        ) = self._build_basic_inputs()
+        with self.assertRaisesRegex(Exception, "override_buffer_size"):
+            moe_permute(
+                hidden_states,
+                None,
+                expert_routemap_topk,
+                expert_prob_topk,
+                num_experts,
+                tokens_per_expert,
+                16,
+                override_buffer_size=-2,
+            )
+
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cuda(),
+        "CUDA required for moe_permute",
+    )
+    def test_moe_permute_mismatched_prob_shape(self):
+        (
+            hidden_states,
+            expert_routemap_topk,
+            _expert_prob_topk,
+            num_experts,
+            tokens_per_expert,
+        ) = self._build_basic_inputs()
+        expert_prob_topk = paddle.zeros([3, 7], dtype="float32")
+        with self.assertRaisesRegex(Exception, "expert_prob_topk"):
+            moe_permute(
+                hidden_states,
+                None,
+                expert_routemap_topk,
+                expert_prob_topk,
+                num_experts,
+                tokens_per_expert,
+                16,
+            )
+
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cuda(),
+        "CUDA required for moe_permute",
+    )
+    def test_moe_permute_fp8_requires_scale_when_gather(self):
+        (
+            hidden_states,
+            expert_routemap_topk,
+            expert_prob_topk,
+            num_experts,
+            tokens_per_expert,
+        ) = self._build_basic_inputs()
+        try:
+            hidden_states = hidden_states.astype(paddle.float8_e4m3fn)
+        except Exception as e:
+            self.skipTest(f"float8_e4m3fn is not available: {e}")
+        with self.assertRaisesRegex(Exception, "XScale"):
+            moe_permute(
+                hidden_states,
+                None,
+                expert_routemap_topk,
+                expert_prob_topk,
+                num_experts,
+                tokens_per_expert,
+                16,
+            )
+
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cuda(),
+        "CUDA required for moe_permute",
+    )
     def test_moe_permute_override_buffer_size(self):
         """Test moe_permute with override_buffer_size parameter.
         测试带有 override_buffer_size 参数的 moe_permute。"""
