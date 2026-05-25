@@ -130,22 +130,24 @@ void exec_fft(const XPUContext& dev_ctx,
       // C2R — CPU functor internally handles conj+inverse for forward case
       FFTC2RFunctor<phi::CPUContext, Ti, To> func;
       func(cpu_ctx, cpu_x, &cpu_out, axes, FFTNormMode::none, forward);
-    } else if constexpr (std::is_same_v<Ti, float> &&
-                         std::is_same_v<To, phi::dtype::complex<float>>) {
-      // R2C — CPU functor internally handles exec_plan+conj for inverse case
-      FFTR2CFunctor<phi::CPUContext, Ti, To> func;
-      func(cpu_ctx, cpu_x, &cpu_out, axes, FFTNormMode::none, forward);
     } else {
-      // C2C
-      FFTC2CFunctor<phi::CPUContext, Ti, To> func;
-      func(cpu_ctx, cpu_x, &cpu_out, axes, FFTNormMode::none, forward);
+      if constexpr (std::is_same_v<Ti, float> &&
+                    std::is_same_v<To, phi::dtype::complex<float>>) {
+        // R2C — CPU functor internally handles exec_plan+conj for inverse case
+        FFTR2CFunctor<phi::CPUContext, Ti, To> func;
+        func(cpu_ctx, cpu_x, &cpu_out, axes, FFTNormMode::none, forward);
+      } else {
+        // C2C
+        FFTC2CFunctor<phi::CPUContext, Ti, To> func;
+        func(cpu_ctx, cpu_x, &cpu_out, axes, FFTNormMode::none, forward);
+      }
     }
 
     phi::memory_utils::Copy(out->place(),
-                          out->data(),
-                          phi::CPUPlace(),
-                          cpu_out.data(),
-                          out->numel() * sizeof(To));
+                            out->data(),
+                            phi::CPUPlace(),
+                            cpu_out.data(),
+                            out->numel() * sizeof(To));
     return;
   }
 
