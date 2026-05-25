@@ -31,6 +31,20 @@ if TYPE_CHECKING:
     _QuantRoundType: TypeAlias = Literal[0, 1]
 
 
+def _round_ties_to_even(x):
+    lower = paddle.floor(x)
+    upper = paddle.ceil(x)
+    lower_diff = x - lower
+    upper_diff = upper - x
+    nearest = paddle.where(lower_diff < upper_diff, lower, upper)
+    lower_is_even = lower * 0.5 == paddle.floor(lower * 0.5)
+    return paddle.where(
+        lower_diff == upper_diff,
+        paddle.where(lower_is_even, lower, upper),
+        nearest,
+    )
+
+
 def _block_multihead_attention_xpu_fallback(
     qkv,
     key_cache,
@@ -139,7 +153,7 @@ def _block_multihead_attention_xpu_fallback(
     if out_scale > 0:
         quant = out.astype("float32") * (quant_max_bound * out_scale)
         if quant_round_type == 0:
-            quant = paddle.round(quant)
+            quant = _round_ties_to_even(quant)
         else:
             quant = paddle.round(quant)
         out = paddle.clip(quant, quant_min_bound, quant_max_bound).astype(
@@ -450,6 +464,7 @@ def block_multihead_attention(
                 qkv.dtype == paddle.int32
                 or key_cache.dtype == paddle.uint8
                 or pre_key_cache is not None
+                or use_dynamic_cachekv_quant
                 or out_scale > 0
                 or qkv_bias is not None
                 or q_num_head != kv_num_head
