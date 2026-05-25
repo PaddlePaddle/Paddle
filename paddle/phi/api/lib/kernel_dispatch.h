@@ -126,13 +126,6 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
     auto promote_result = PromoteTypes(dtype_set);
     if (promote_result != DataType::UNDEFINED) {
       key_set.dtype = promote_result;
-      // XPU does not support complex128; downgrade to complex64 to avoid
-      // cast errors when mixing complex64/float64 that promotes to complex128.
-      if (promote_result == DataType::COMPLEX128 &&
-          key_set.backend_set.Has(Backend::XPU)) {
-        key_set.dtype = DataType::COMPLEX64;
-        VLOG(8) << "XPU does not support complex128, downgrade to complex64";
-      }
       VLOG(8) << "promote kernel DataType:" << promote_result;
     }
   }
