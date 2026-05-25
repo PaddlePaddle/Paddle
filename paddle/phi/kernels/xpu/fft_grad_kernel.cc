@@ -38,7 +38,7 @@ namespace phi {
 // - C2C also has stability issues with small axes (e.g., <= 8)
 // For robustness, fall back to CPU when any FFT axis has <= 8 elements.
 static bool XPUFFTAxesMeetConstraint(const DDim& dims,
-                                      const std::vector<int64_t>& axes) {
+                                     const std::vector<int64_t>& axes) {
   for (auto axis : axes) {
     if (dims[axis] <= 8) {
       return false;
@@ -121,8 +121,12 @@ void FFTR2CGradKernel(const Context& dev_ctx,
     funcs::FFTC2CFunctor<phi::CPUContext, T, T> fft_c2c_cpu_func;
 
     if (!onesided) {
-      fft_c2c_cpu_func(
-          *cpu_ctx, out_grad_cpu, &complex_x_grad_cpu, axes, norm_type, !forward);
+      fft_c2c_cpu_func(*cpu_ctx,
+                       out_grad_cpu,
+                       &complex_x_grad_cpu,
+                       axes,
+                       norm_type,
+                       !forward);
     } else {
       phi::DenseTensor full_dy_cpu;
       full_dy_cpu.Resize(x_grad->dims());
@@ -132,9 +136,14 @@ void FFTR2CGradKernel(const Context& dev_ctx,
       auto rank = out_grad_cpu.dims().size();
       std::vector<int> pads(rank * 2, 0);
       pads[axes.back() * 2 + 1] = zero_length;
-      PadKernel<T>(*cpu_ctx, out_grad_cpu, pads, static_cast<float>(0.0), &full_dy_cpu);
-      fft_c2c_cpu_func(
-          *cpu_ctx, full_dy_cpu, &complex_x_grad_cpu, axes, norm_type, !forward);
+      PadKernel<T>(
+          *cpu_ctx, out_grad_cpu, pads, static_cast<float>(0.0), &full_dy_cpu);
+      fft_c2c_cpu_func(*cpu_ctx,
+                       full_dy_cpu,
+                       &complex_x_grad_cpu,
+                       axes,
+                       norm_type,
+                       !forward);
     }
 
     phi::DenseTensor x_grad_cpu;
