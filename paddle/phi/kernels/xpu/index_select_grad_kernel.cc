@@ -43,33 +43,33 @@ void IndexSelectGradCPUFallback(const DenseTensor& out_grad,
   // Zero out x_grad
   memset(out_data, 0, sizeof(T) * x_grad->numel());
 
-  auto slice_size = 1;
-  for (auto i = dim + 1; i < input_dim_size; i++) {
+  int64_t slice_size = 1;
+  for (int64_t i = dim + 1; i < input_dim_size; i++) {
     slice_size *= input_dim[i];
   }
 
-  auto input_width = slice_size * input_dim[dim];
-  auto output_width = slice_size * output_dim[dim];
+  int64_t input_width = slice_size * input_dim[dim];
+  int64_t output_width = slice_size * output_dim[dim];
 
-  auto outer_nums = 1;
-  for (auto i = 0; i < dim; i++) {
+  int64_t outer_nums = 1;
+  for (int64_t i = 0; i < dim; i++) {
     outer_nums *= input_dim[i];
   }
 
-  auto index_size = index.dims()[0];
+  int64_t index_size = index.dims()[0];
 
-  for (auto i = 0; i < outer_nums; i++) {
-    auto input_start_offset = i * input_width;
-    auto output_start_offset = i * output_width;
+  for (int64_t i = 0; i < outer_nums; i++) {
+    int64_t input_start_offset = i * input_width;
+    int64_t output_start_offset = i * output_width;
 
-    for (auto j = 0; j < index_size; j++) {
+    for (int64_t j = 0; j < index_size; j++) {
       IndexT index_value = index_data[j];
       if (index_value < 0) {
         index_value += output_dim[dim];
       }
       auto src = input_data + input_start_offset + j * slice_size;
       auto dst = out_data + output_start_offset + index_value * slice_size;
-      for (int k = 0; k < slice_size; k++) {
+      for (int64_t k = 0; k < slice_size; k++) {
         dst[k] += src[k];
       }
     }
@@ -129,7 +129,7 @@ void IndexSelectGradKernel(const Context& dev_ctx,
       IndexSelectGradCPUFallback<T, int64_t>(
           out_grad_cpu, index, &x_grad_cpu, dim);
     }
-    Copy(dev_ctx, x_grad_cpu, dev_ctx.GetPlace(), false, x_grad);
+    Copy(dev_ctx, x_grad_cpu, dev_ctx.GetPlace(), true, x_grad);
     return;
   }
   using XPUType = typename XPUTypeTrait<T>::Type;
