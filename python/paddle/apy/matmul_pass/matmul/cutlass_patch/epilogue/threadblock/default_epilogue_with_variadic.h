@@ -37,7 +37,7 @@
 
 #include "cutlass/layout/permute.h"
 
-namespace cutlass {
+namespace cutlass_patch {
 namespace epilogue {
 namespace threadblock {
 
@@ -48,18 +48,19 @@ template <typename Shape,
           typename OutputOp,
           int ElementsPerAccess,
           bool ScatterD = false,
-          typename PermuteDLayout = layout::NoPermute,
-          conv::StrideSupport StrideSupport = conv::StrideSupport::kUnity,
+          typename PermuteDLayout = cutlass::layout::NoPermute,
+          cutlass::conv::StrideSupport StrideSupport =
+              cutlass::conv::StrideSupport::kUnity,
           int Rank = 4>
 struct DefaultEpilogueWithVariadicSimt {
-  static conv::StrideSupport const kStrideSupport = StrideSupport;
+  static cutlass::conv::StrideSupport const kStrideSupport = StrideSupport;
   static int const kRank = Rank;
 
   static bool const UseCUDAStore =
-      platform::is_same<ElementOutput, double>::value;
+      cutlass::platform::is_same<ElementOutput, double>::value;
 
   /// Use defaults related to the existing epilogue
-  using Base =
+  using Base = cutlass::epilogue::threadblock::
       DefaultEpilogueSimt<Shape, WarpMmaSimt, OutputOp, ElementsPerAccess>;
 
   using PackedOutputTileIterator =
@@ -82,16 +83,15 @@ struct DefaultEpilogueWithVariadicSimt {
   //
   // Stores the result z = (y = GEMM(A, B, C), variadic)
   //
-  using OutputTileIterator =
-      typename platform::conditional<StrideSupport ==
-                                         cutlass::conv::StrideSupport::kUnity,
-                                     PackedOutputTileIterator,
-                                     StridedOutputTileIterator>::type;
+  using OutputTileIterator = typename cutlass::platform::conditional<
+      StrideSupport == cutlass::conv::StrideSupport::kUnity,
+      PackedOutputTileIterator,
+      StridedOutputTileIterator>::type;
 
   //
   // Define the epilogue
   //
-  using Epilogue = cutlass::epilogue::threadblock::EpilogueWithVariadic<
+  using Epilogue = cutlass_patch::epilogue::threadblock::EpilogueWithVariadic<
       Shape,
       WarpMmaSimt,
       Base::kPartitionsK,
@@ -110,13 +110,14 @@ template <typename Shape,
           typename OutputOp,
           int ElementsPerAccess,
           bool ScatterD = false,
-          typename PermuteDLayout = layout::NoPermute>
+          typename PermuteDLayout = cutlass::layout::NoPermute>
 struct DefaultEpilogueWithVariadicSimtStridedDgrad {
   /// Use defaults related to the existing epilogue
-  using Base = DefaultEpilogueSimtStridedDgrad<Shape,
-                                               WarpMmaSimt,
-                                               OutputOp,
-                                               ElementsPerAccess>;
+  using Base = cutlass::epilogue::threadblock::DefaultEpilogueSimtStridedDgrad<
+      Shape,
+      WarpMmaSimt,
+      OutputOp,
+      ElementsPerAccess>;
 
   //
   // Stores the result z = (y = GEMM(A, B, C), variadic)
@@ -129,7 +130,7 @@ struct DefaultEpilogueWithVariadicSimtStridedDgrad {
   //
   // Define the epilogue
   //
-  using Epilogue = cutlass::epilogue::threadblock::EpilogueWithVariadic<
+  using Epilogue = cutlass_patch::epilogue::threadblock::EpilogueWithVariadic<
       Shape,
       WarpMmaSimt,
       Base::kPartitionsK,
@@ -149,14 +150,15 @@ template <typename Shape,
           typename OutputOp,
           int ElementsPerAccess,
           bool ScatterD = false,
-          typename PermuteDLayout = layout::NoPermute>
+          typename PermuteDLayout = cutlass::layout::NoPermute>
 struct DefaultEpilogueWithVariadicTensorOp {
   /// Use defaults related to the existing epilogue
-  using Base = DefaultEpilogueTensorOp<Shape,
-                                       WarpMmaTensorOp,
-                                       PartitionsK,
-                                       OutputOp,
-                                       ElementsPerAccess>;
+  using Base = cutlass::epilogue::threadblock::DefaultEpilogueTensorOp<
+      Shape,
+      WarpMmaTensorOp,
+      PartitionsK,
+      OutputOp,
+      ElementsPerAccess>;
 
   //
   // Stores the result z = (y = GEMM(A, B, C), variadic)
@@ -171,7 +173,7 @@ struct DefaultEpilogueWithVariadicTensorOp {
   //
   // Define the epilogue
   //
-  using Epilogue = cutlass::epilogue::threadblock::EpilogueWithVariadic<
+  using Epilogue = cutlass_patch::epilogue::threadblock::EpilogueWithVariadic<
       Shape,
       WarpMmaTensorOp,
       PartitionsK,
@@ -184,57 +186,6 @@ struct DefaultEpilogueWithVariadicTensorOp {
       Base::kFragmentsPerIteration>;
 };
 
-#if 0
-/// Defines sensible defaults for streamk epilogues for TensorOps.
-template <
-  typename Shape,
-  typename WarpMmaTensorOp,
-  int PartitionsK,
-  typename ElementOutput,
-  typename OutputOp,
-  int ElementsPerAccess,
-  bool ScatterD = false,
-  typename PermuteDLayout = layout::NoPermute
->
-struct DefaultStreamkEpilogueWithVariadicTensorOp {
-  /// Use defaults related to the existing epilogue
-  using Base = DefaultEpilogueTensorOp<
-    Shape,
-    WarpMmaTensorOp,
-    PartitionsK,
-    OutputOp,
-    ElementsPerAccess
-  >;
-
-  //
-  // Stores the result z = (y = GEMM(A, B, C), variadic)
-  //
-  using OutputTileIterator = cutlass::epilogue
-  ::threadblock::PredicatedTileIterator<
-    typename Base::OutputTileThreadMap,
-    ElementOutput,
-    ScatterD,
-    PermuteDLayout
-  >;
-
-  //
-  // Define the epilogue
-  //
-  using Epilogue = cutlass::epilogue::threadblock::EpilogueStreamkWithVariadic<
-    Shape,
-    WarpMmaTensorOp,
-    PartitionsK,
-    OutputTileIterator,
-    typename Base::AccumulatorFragmentIterator,
-    typename Base::WarpTileIterator,
-    typename Base::SharedLoadIterator,
-    OutputOp,
-    typename Base::Padding,
-    Base::kFragmentsPerIteration
-  >;
-};
-#endif
-
 /// Defines sensible defaults for epilogues for VoltaTensorOps.
 template <typename Shape,
           typename WarpMmaTensorOp,
@@ -244,11 +195,12 @@ template <typename Shape,
           int ElementsPerAccess>
 struct DefaultEpilogueWithVariadicVoltaTensorOp {
   /// Use defaults related to the existing epilogue
-  using Base = DefaultEpilogueVoltaTensorOp<Shape,
-                                            WarpMmaTensorOp,
-                                            PartitionsK,
-                                            OutputOp,
-                                            ElementsPerAccess>;
+  using Base = cutlass::epilogue::threadblock::DefaultEpilogueVoltaTensorOp<
+      Shape,
+      WarpMmaTensorOp,
+      PartitionsK,
+      OutputOp,
+      ElementsPerAccess>;
 
   //
   // Stores the result z = (y = GEMM(A, B, C), variadic)
@@ -259,7 +211,7 @@ struct DefaultEpilogueWithVariadicVoltaTensorOp {
   //
   // Define the epilogue
   //
-  using Epilogue = cutlass::epilogue::threadblock::EpilogueWithVariadic<
+  using Epilogue = cutlass_patch::epilogue::threadblock::EpilogueWithVariadic<
       Shape,
       WarpMmaTensorOp,
       PartitionsK,
@@ -273,4 +225,4 @@ struct DefaultEpilogueWithVariadicVoltaTensorOp {
 
 }  // namespace threadblock
 }  // namespace epilogue
-}  // namespace cutlass
+}  // namespace cutlass_patch

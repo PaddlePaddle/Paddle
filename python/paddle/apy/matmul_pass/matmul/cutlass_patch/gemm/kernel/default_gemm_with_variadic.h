@@ -28,7 +28,7 @@
 #include "cutlass_patch/epilogue/threadblock/default_epilogue_with_variadic.h"
 #include "cutlass_patch/epilogue/threadblock/epilogue_with_variadic.h"
 
-namespace cutlass {
+namespace cutlass_patch {
 namespace gemm {
 namespace kernel {
 
@@ -38,7 +38,7 @@ template <
     /// Layout type for A matrix operand
     typename LayoutA_,
     /// Complex elementwise transformation on A operand
-    ComplexTransform TransformA,
+    cutlass::ComplexTransform TransformA,
     /// Access granularity of A matrix in units of elements
     int kAlignmentA,
     /// Element type for B matrix operand
@@ -46,7 +46,7 @@ template <
     /// Layout type for B matrix operand
     typename LayoutB_,
     /// Complex elementwise transformation on B operand
-    ComplexTransform TransformB,
+    cutlass::ComplexTransform TransformB,
     /// Access granularity of B matrix in units of elements
     int kAlignmentB,
     /// Element type for C and D matrix operands
@@ -77,29 +77,30 @@ template <
     ///
     typename Enable = void>
 struct DefaultGemmWithVariadic {
-  using GemmBase = typename DefaultGemmUniversal<ElementA_,
-                                                 LayoutA_,
-                                                 TransformA,
-                                                 kAlignmentA,
-                                                 ElementB_,
-                                                 LayoutB_,
-                                                 TransformB,
-                                                 kAlignmentB,
-                                                 ElementC_,
-                                                 LayoutC_,
-                                                 ElementAccumulator,
-                                                 OperatorClass,
-                                                 ArchTag,
-                                                 ThreadblockShape,
-                                                 WarpShape,
-                                                 InstructionShape,
-                                                 EpilogueOutputOp,
-                                                 ThreadblockSwizzle,
-                                                 Stages,
-                                                 Operator>::GemmKernel;
+  using GemmBase = typename cutlass::gemm::kernel::DefaultGemmUniversal<
+      ElementA_,
+      LayoutA_,
+      TransformA,
+      kAlignmentA,
+      ElementB_,
+      LayoutB_,
+      TransformB,
+      kAlignmentB,
+      ElementC_,
+      LayoutC_,
+      ElementAccumulator,
+      OperatorClass,
+      ArchTag,
+      ThreadblockShape,
+      WarpShape,
+      InstructionShape,
+      EpilogueOutputOp,
+      ThreadblockSwizzle,
+      Stages,
+      Operator>::GemmKernel;
 
   // Define epilogue
-  using Epilogue = typename cutlass::epilogue::threadblock::
+  using Epilogue = typename cutlass_patch::epilogue::threadblock::
       DefaultEpilogueWithVariadicTensorOp<
           typename GemmBase::Epilogue::Shape,
           typename GemmBase::Epilogue::WarpMmaOperator,
@@ -109,7 +110,7 @@ struct DefaultGemmWithVariadic {
           GemmBase::Epilogue::kElementsPerAccess>::Epilogue;
 
   // Compose the GEMM kernel
-  using GemmKernel =
+  using GemmKernel = cutlass::gemm::kernel::
       GemmUniversal<typename GemmBase::Mma, Epilogue, ThreadblockSwizzle>;
 };
 
@@ -122,7 +123,7 @@ template <
     /// Layout type for A matrix operand
     typename LayoutA_,
     /// Complex elementwise transformation on A operand
-    ComplexTransform TransformA,
+    cutlass::ComplexTransform TransformA,
     /// Access granularity of A matrix in units of elements
     int kAlignmentA,
     /// Element type for B matrix operand
@@ -130,7 +131,7 @@ template <
     /// Layout type for B matrix operand
     typename LayoutB_,
     /// Complex elementwise transformation on B operand
-    ComplexTransform TransformB,
+    cutlass::ComplexTransform TransformB,
     /// Access granularity of B matrix in units of elements
     int kAlignmentB,
     /// Element type for C and D matrix operands
@@ -179,29 +180,30 @@ struct DefaultGemmWithVariadic<ElementA_,
                                Stages,
                                Operator,
                                Enable> {
-  using GemmBase = typename DefaultGemmUniversal<ElementA_,
-                                                 LayoutA_,
-                                                 TransformA,
-                                                 kAlignmentA,
-                                                 ElementB_,
-                                                 LayoutB_,
-                                                 TransformB,
-                                                 kAlignmentB,
-                                                 ElementC_,
-                                                 LayoutC_,
-                                                 ElementAccumulator,
-                                                 OperatorClass,
-                                                 cutlass::arch::Sm70,
-                                                 ThreadblockShape,
-                                                 WarpShape,
-                                                 InstructionShape,
-                                                 EpilogueOutputOp,
-                                                 ThreadblockSwizzle,
-                                                 Stages,
-                                                 Operator>::GemmKernel;
+  using GemmBase = typename cutlass::gemm::kernel::DefaultGemmUniversal<
+      ElementA_,
+      LayoutA_,
+      TransformA,
+      kAlignmentA,
+      ElementB_,
+      LayoutB_,
+      TransformB,
+      kAlignmentB,
+      ElementC_,
+      LayoutC_,
+      ElementAccumulator,
+      OperatorClass,
+      cutlass::arch::Sm70,
+      ThreadblockShape,
+      WarpShape,
+      InstructionShape,
+      EpilogueOutputOp,
+      ThreadblockSwizzle,
+      Stages,
+      Operator>::GemmKernel;
 
   // Define epilogue
-  using Epilogue = typename cutlass::epilogue::threadblock::
+  using Epilogue = typename cutlass_patch::epilogue::threadblock::
       DefaultEpilogueWithVariadicVoltaTensorOp<
           typename GemmBase::Epilogue::Shape,
           typename GemmBase::Epilogue::WarpMmaOperator,
@@ -211,10 +213,10 @@ struct DefaultGemmWithVariadic<ElementA_,
           GemmBase::Epilogue::kElementsPerAccess>::Epilogue;
 
   // Compose the GEMM kernel
-  using GemmKernel =
+  using GemmKernel = cutlass::gemm::kernel::
       GemmUniversal<typename GemmBase::Mma, Epilogue, ThreadblockSwizzle>;
 };
 
 }  // namespace kernel
 }  // namespace gemm
-}  // namespace cutlass
+}  // namespace cutlass_patch

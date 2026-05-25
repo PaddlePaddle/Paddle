@@ -46,56 +46,61 @@
 
 #include "cutlass_patch/trace_device.h"
 
-namespace cutlass {
+namespace cutlass_patch {
 namespace epilogue {
 namespace threadblock {
 
 /// Epilogue operator
-template <typename Shape_,  ///< Shape of threadblock tile (concept: GemmShape)
-          typename WarpMmaOperator_,  ///< Warp-level MMA operator (concept:
-                                      ///< gemm::warp::MmaTensorOp)
-          int PartitionsK,  ///< Number of partitions of the K dimension
-          typename OutputTileIterator_,  ///< Tile iterator reading and writing
-                                         ///< output tensors
-          typename AccumulatorFragmentIterator_,  ///< Fragment iterator
-                                                  ///< selecting accumulators
-          typename WarpTileIterator_,    ///< Warp-scoped tile iterator writing
-                                         ///< accumulators to SMEM
-          typename SharedLoadIterator_,  ///< Threadblock-scoped tile iterator
-                                         ///< loading from SMEM
-          typename OutputOp_,            ///< Output operator
-          typename Padding_,  ///< Padding added to SMEM allocation to avoid
-                              ///< bank conflicts (concept: MatrixShape)
-          int FragmentsPerPartition =
-              1,                  ///< Used to coarsten the epilogue granularity
-          int IterationsUnroll =  ///< Used to reduce binary size when epilogue
-                                  ///< op is large
-          (!IsEpilogueFunctorHeavy<OutputOp_>::value)>
+template <
+    typename Shape_,  ///< Shape of threadblock tile (concept: GemmShape)
+    typename WarpMmaOperator_,     ///< Warp-level MMA operator (concept:
+                                   ///< gemm::warp::MmaTensorOp)
+    int PartitionsK,               ///< Number of partitions of the K dimension
+    typename OutputTileIterator_,  ///< Tile iterator reading and writing
+                                   ///< output tensors
+    typename AccumulatorFragmentIterator_,  ///< Fragment iterator
+                                            ///< selecting accumulators
+    typename WarpTileIterator_,    ///< Warp-scoped tile iterator writing
+                                   ///< accumulators to SMEM
+    typename SharedLoadIterator_,  ///< Threadblock-scoped tile iterator
+                                   ///< loading from SMEM
+    typename OutputOp_,            ///< Output operator
+    typename Padding_,  ///< Padding added to SMEM allocation to avoid
+                        ///< bank conflicts (concept: MatrixShape)
+    int FragmentsPerPartition =
+        1,                  ///< Used to coarsten the epilogue granularity
+    int IterationsUnroll =  ///< Used to reduce binary size when epilogue
+                            ///< op is large
+    (!cutlass::epilogue::threadblock::IsEpilogueFunctorHeavy<OutputOp_>::value)>
 class EpilogueWithVariadic
-    : public EpilogueBase<Shape_,
-                          typename WarpMmaOperator_::Shape,
-                          PartitionsK,
-                          AccumulatorFragmentIterator_,
-                          WarpTileIterator_,
-                          Padding_,
-                          FragmentsPerPartition>,
-      public EpilogueBaseStreamK<Shape_,
-                                 PartitionsK,
-                                 WarpMmaOperator_,
-                                 AccumulatorFragmentIterator_> {
+    : public cutlass::epilogue::threadblock::EpilogueBase<
+          Shape_,
+          typename WarpMmaOperator_::Shape,
+          PartitionsK,
+          AccumulatorFragmentIterator_,
+          WarpTileIterator_,
+          Padding_,
+          FragmentsPerPartition>,
+      public cutlass::epilogue::threadblock::EpilogueBaseStreamK<
+          Shape_,
+          PartitionsK,
+          WarpMmaOperator_,
+          AccumulatorFragmentIterator_> {
  public:
-  using Base = EpilogueBase<Shape_,
-                            typename WarpMmaOperator_::Shape,
-                            PartitionsK,
-                            AccumulatorFragmentIterator_,
-                            WarpTileIterator_,
-                            Padding_,
-                            FragmentsPerPartition>;
+  using Base = cutlass::epilogue::threadblock::EpilogueBase<
+      Shape_,
+      typename WarpMmaOperator_::Shape,
+      PartitionsK,
+      AccumulatorFragmentIterator_,
+      WarpTileIterator_,
+      Padding_,
+      FragmentsPerPartition>;
 
-  using BaseStreamK = EpilogueBaseStreamK<Shape_,
-                                          PartitionsK,
-                                          WarpMmaOperator_,
-                                          AccumulatorFragmentIterator_>;
+  using BaseStreamK = cutlass::epilogue::threadblock::EpilogueBaseStreamK<
+      Shape_,
+      PartitionsK,
+      WarpMmaOperator_,
+      AccumulatorFragmentIterator_>;
 
   using Shape = Shape_;
   using WarpMmaOperator = WarpMmaOperator_;
@@ -106,7 +111,7 @@ class EpilogueWithVariadic
   using SharedLoadIterator = SharedLoadIterator_;
   using OutputOp = OutputOp_;
   using Padding = Padding_;
-  using Layout = layout::RowMajor;
+  using Layout = cutlass::layout::RowMajor;
   using LongIndex = typename Layout::LongIndex;
 
   /// Number of warps per block
@@ -141,12 +146,14 @@ class EpilogueWithVariadic
   using ConstTensorRef = typename OutputTileIterator::ConstTensorRef;
 
   /// Vector type used by the global output iterator
-  using OutputAccessType = Array<typename OutputTileIterator::Element,
-                                 OutputTileIterator::kElementsPerAccess>;
+  using OutputAccessType =
+      cutlass::Array<typename OutputTileIterator::Element,
+                     OutputTileIterator::kElementsPerAccess>;
 
   /// Vector type used by the shared output iterator
-  using AccumulatorAccessType = Array<typename WarpTileIterator::Element,
-                                      OutputTileIterator::kElementsPerAccess>;
+  using AccumulatorAccessType =
+      cutlass::Array<typename WarpTileIterator::Element,
+                     OutputTileIterator::kElementsPerAccess>;
 
   static int constexpr kSmemTiles = Base::kFragmentsPerIteration > 1
                                         ? Base::kFragmentsPerIteration
@@ -431,7 +438,7 @@ class EpilogueWithVariadic
 
     // Add fragments shared by other k partitions
     if (kPartitionsK > 1) {
-      plus<typename SharedLoadIterator::Fragment> add_fragments;
+      cutlass::plus<typename SharedLoadIterator::Fragment> add_fragments;
 
       CUTLASS_PRAGMA_UNROLL
       for (int i = 1; i < kPartitionsK; ++i) {
@@ -596,7 +603,7 @@ class EpilogueWithVariadic
       shared_load_iterator_.load(aligned_accum_fragment[0]);
 
       if (kPartitionsK > 1) {
-        plus<typename SharedLoadIterator::Fragment> add_fragments;
+        cutlass::plus<typename SharedLoadIterator::Fragment> add_fragments;
 
         CUTLASS_PRAGMA_UNROLL
         for (int i = 1; i < kPartitionsK; ++i) {
@@ -636,4 +643,4 @@ class EpilogueWithVariadic
 
 }  // namespace threadblock
 }  // namespace epilogue
-}  // namespace cutlass
+}  // namespace cutlass_patch
