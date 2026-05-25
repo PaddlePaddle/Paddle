@@ -37,7 +37,7 @@ namespace phi {
 // XPU FFT hardware requires all FFT axes to have > 8 elements.
 // Returns true if all axes meet the XPU hardware constraint.
 static bool XPUFFTAxesMeetConstraint(const DDim& dims,
-                                      const std::vector<int64_t>& axes) {
+                                     const std::vector<int64_t>& axes) {
   for (auto axis : axes) {
     if (dims[axis] <= 8) {
       return false;
@@ -129,16 +129,19 @@ void FFTR2CGradKernel(const Context& dev_ctx,
       DenseTensorMeta full_dy_meta(out_grad_cpu.type(), x_grad->dims());
       full_dy_cpu.set_meta(full_dy_meta);
       cpu_ctx->template Alloc<T>(&full_dy_cpu);
-      auto zero_length =
-          static_cast<int>(full_dy_cpu.dims().at(axes.back()) -
-                           out_grad_cpu.dims().at(axes.back()));
+      auto zero_length = static_cast<int>(full_dy_cpu.dims().at(axes.back()) -
+                                          out_grad_cpu.dims().at(axes.back()));
       auto rank = out_grad_cpu.dims().size();
       std::vector<int> pads(rank * 2, 0);
       pads[axes.back() * 2 + 1] = zero_length;
       PadKernel<T>(
           *cpu_ctx, out_grad_cpu, pads, static_cast<float>(0.0), &full_dy_cpu);
-      fft_c2c_cpu_func(
-          *cpu_ctx, full_dy_cpu, &complex_x_grad_cpu, axes, norm_type, !forward);
+      fft_c2c_cpu_func(*cpu_ctx,
+                       full_dy_cpu,
+                       &complex_x_grad_cpu,
+                       axes,
+                       norm_type,
+                       !forward);
     }
 
     // Run RealKernel on CPU and copy result back to XPU
@@ -217,14 +220,12 @@ void FFTC2RGradKernel(const Context& dev_ctx,
     }
     int64_t stride_second_to_last_axis =
         stride_to_last_axis * ddim[axes.back()];
-    funcs::ForRange<phi::CPUContext> for_range(*cpu_ctx,
-                                                x_grad_cpu.numel());
-    funcs::FFTFillConjGradFunctor<C> grad_functor(
-        x_grad_cpu.data<C>(),
-        axes.back(),
-        stride_second_to_last_axis,
-        stride_to_last_axis,
-        double_length);
+    funcs::ForRange<phi::CPUContext> for_range(*cpu_ctx, x_grad_cpu.numel());
+    funcs::FFTFillConjGradFunctor<C> grad_functor(x_grad_cpu.data<C>(),
+                                                  axes.back(),
+                                                  stride_second_to_last_axis,
+                                                  stride_to_last_axis,
+                                                  double_length);
     for_range(grad_functor);
 
     dev_ctx.template Alloc<C>(x_grad);

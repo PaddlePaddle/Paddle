@@ -34,7 +34,7 @@ namespace phi {
 // XPU FFT hardware requires all FFT axes to have > 8 elements.
 // Returns true if all axes meet the XPU hardware constraint.
 static bool XPUFFTAxesMeetConstraint(const DDim& dims,
-                                      const std::vector<int64_t>& axes) {
+                                     const std::vector<int64_t>& axes) {
   for (auto axis : axes) {
     if (dims[axis] <= 8) {
       return false;
@@ -156,8 +156,7 @@ void FFTR2CKernel(const Context& dev_ctx,
       cpu_ctx->template Alloc<C>(&out_cpu);
 
       funcs::FFTR2CFunctor<phi::CPUContext, T, C> fft_r2c_cpu_func;
-      fft_r2c_cpu_func(
-          *cpu_ctx, x_cpu, &out_cpu, axes, norm_type, forward);
+      fft_r2c_cpu_func(*cpu_ctx, x_cpu, &out_cpu, axes, norm_type, forward);
 
       phi::Copy(dev_ctx, out_cpu, dev_ctx.GetPlace(), false, out);
     } else {
@@ -170,15 +169,10 @@ void FFTR2CKernel(const Context& dev_ctx,
       onesided_out_shape[last_fft_axis] = onesided_last_axis_size;
 
       phi::DenseTensor onesided_out_cpu =
-          Empty<C, phi::CPUContext>(
-              *cpu_ctx, vectorize(onesided_out_shape));
+          Empty<C, phi::CPUContext>(*cpu_ctx, vectorize(onesided_out_shape));
       funcs::FFTR2CFunctor<phi::CPUContext, T, C> fft_r2c_cpu_func;
-      fft_r2c_cpu_func(*cpu_ctx,
-                       x_cpu,
-                       &onesided_out_cpu,
-                       axes,
-                       norm_type,
-                       forward);
+      fft_r2c_cpu_func(
+          *cpu_ctx, x_cpu, &onesided_out_cpu, axes, norm_type, forward);
 
       // Fill conjugate on CPU (manual implementation without XPU deps)
       phi::DenseTensor out_cpu;
@@ -189,8 +183,7 @@ void FFTR2CKernel(const Context& dev_ctx,
           vectorize<int64_t>(common::stride(onesided_out_cpu.dims()));
       std::vector<int64_t> dst_strides_v =
           vectorize<int64_t>(common::stride(out_cpu.dims()));
-      std::vector<int64_t> dst_shape_v =
-          vectorize<int64_t>(out_cpu.dims());
+      std::vector<int64_t> dst_shape_v = vectorize<int64_t>(out_cpu.dims());
       const auto last_axis = axes.back();
       const auto last_axis_size = out_cpu.dims().at(last_axis) / 2 + 1;
       const int64_t rank = out_cpu.dims().size();
@@ -199,18 +192,16 @@ void FFTR2CKernel(const Context& dev_ctx,
         _is_fft_axis[i] = true;
       }
 
-      funcs::ForRange<phi::CPUContext> for_range(*cpu_ctx,
-                                                  out_cpu.numel());
-      funcs::FFTFillConjFunctor<C> fill_conj_functor(
-          onesided_out_cpu.data<C>(),
-          out_cpu.data<C>(),
-          src_strides_v.data(),
-          dst_strides_v.data(),
-          dst_shape_v.data(),
-          _is_fft_axis.get(),
-          last_axis,
-          last_axis_size,
-          rank);
+      funcs::ForRange<phi::CPUContext> for_range(*cpu_ctx, out_cpu.numel());
+      funcs::FFTFillConjFunctor<C> fill_conj_functor(onesided_out_cpu.data<C>(),
+                                                     out_cpu.data<C>(),
+                                                     src_strides_v.data(),
+                                                     dst_strides_v.data(),
+                                                     dst_shape_v.data(),
+                                                     _is_fft_axis.get(),
+                                                     last_axis,
+                                                     last_axis_size,
+                                                     rank);
       for_range(fill_conj_functor);
 
       phi::Copy(dev_ctx, out_cpu, dev_ctx.GetPlace(), false, out);
