@@ -375,7 +375,10 @@ def hardsigmoid(
         return out
 
 
-def hardswish(x: Tensor, name: str | None = None) -> Tensor:
+@param_one_alias(["x", "input"])
+def hardswish(
+    x: Tensor, inplace: bool | str = False, name: str | None = None
+) -> Tensor:
     r"""
     hardswish activation. hardswish is proposed in MobileNetV3, and performs
     better in computational stability and efficiency compared to swish function.
@@ -394,6 +397,8 @@ def hardswish(x: Tensor, name: str | None = None) -> Tensor:
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
+            Alias: ``input``.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -411,8 +416,14 @@ def hardswish(x: Tensor, name: str | None = None) -> Tensor:
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.       , 5.        , 0.66666669])
     """
+    if isinstance(inplace, str):
+        if name is None:
+            name = inplace
+        inplace = False
+
     if in_dynamic_or_pir_mode():
-        return _C_ops.hardswish(x)
+        out = _C_ops.hardswish(x)
+        return paddle.assign(out, output=x) if inplace else out
     else:
         check_variable_and_dtype(
             x,
@@ -960,7 +971,10 @@ def maxout(
         return out
 
 
-def relu6(x: Tensor, name: str | None = None) -> Tensor:
+@param_one_alias(["x", "input"])
+def relu6(
+    x: Tensor, inplace: bool | str = False, name: str | None = None
+) -> Tensor:
     """
     relu6 activation
 
@@ -970,6 +984,8 @@ def relu6(x: Tensor, name: str | None = None) -> Tensor:
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
+            Alias: ``input``.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -987,9 +1003,15 @@ def relu6(x: Tensor, name: str | None = None) -> Tensor:
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.        , 0.30000001, 6.        ])
     """
+    if isinstance(inplace, str):
+        if name is None:
+            name = inplace
+        inplace = False
+
     threshold = 6.0
     if in_dynamic_or_pir_mode():
-        return _C_ops.relu6(x)
+        out = _C_ops.relu6(x)
+        return paddle.assign(out, output=x) if inplace else out
 
     check_variable_and_dtype(
         x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'relu6'
