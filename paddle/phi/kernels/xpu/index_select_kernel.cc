@@ -25,26 +25,24 @@
 namespace phi {
 
 template <typename Context, typename IndexT>
-void ValidateIndexSelectIndex(const Context& dev_ctx,
-                              const DenseTensor& index,
-                              int64_t axis_dim) {
-  const IndexT* index_data = nullptr;
-  std::vector<IndexT> index_cpu_data;
+std::vector<IndexT> GetValidatedIndexSelectIndex(const Context& dev_ctx,
+                                                 const DenseTensor& index,
+                                                 int64_t axis_dim) {
+  std::vector<IndexT> index_cpu_data(index.numel());
   if (index.place().GetType() == AllocationType::CPU) {
-    index_data = index.data<IndexT>();
+    const IndexT* index_data = index.data<IndexT>();
+    index_cpu_data.assign(index_data, index_data + index.numel());
   } else {
-    index_cpu_data.resize(index.numel());
     memory_utils::Copy(CPUPlace(),
                        index_cpu_data.data(),
                        dev_ctx.GetPlace(),
                        index.data<IndexT>(),
                        sizeof(IndexT) * index.numel());
-    index_data = index_cpu_data.data();
   }
 
   for (int64_t i = 0; i < index.numel(); ++i) {
     PADDLE_ENFORCE_GE(
-        index_data[i],
+        index_cpu_data[i],
         -axis_dim,
         common::errors::InvalidArgument(
             "Variable value (index) of OP(index_select) "
@@ -52,9 +50,9 @@ void ValidateIndexSelectIndex(const Context& dev_ctx,
             "value.",
             -axis_dim,
             axis_dim,
-            static_cast<int64_t>(index_data[i])));
+            static_cast<int64_t>(index_cpu_data[i])));
     PADDLE_ENFORCE_LT(
-        index_data[i],
+        index_cpu_data[i],
         axis_dim,
         common::errors::InvalidArgument(
             "Variable value (index) of OP(index_select) "
@@ -62,8 +60,12 @@ void ValidateIndexSelectIndex(const Context& dev_ctx,
             "value.",
             -axis_dim,
             axis_dim,
-            static_cast<int64_t>(index_data[i])));
+            static_cast<int64_t>(index_cpu_data[i])));
+    if (index_cpu_data[i] < 0) {
+      index_cpu_data[i] += axis_dim;
+    }
   }
+  return index_cpu_data;
 }
 
 template <typename T, typename Context>
@@ -106,46 +108,40 @@ void IndexSelectKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(output);
   int r = 0;
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-  int8_t* index_ptr = nullptr;  // temp xpu buffer
   int byte_times = SizeOf(index_type);
-  if (index.place() == CPUPlace()) {
-    index_ptr = RAII_GUARD.alloc_l3_or_gm<int8_t>(byte_times * index.numel());
-    PADDLE_ENFORCE_XDNN_NOT_NULL(index_ptr);
-    const void* cpu_idx_data = nullptr;
-    if (index_type == DataType::INT64) {
-      cpu_idx_data = reinterpret_cast<const void*>(index.data<int64_t>());
-    } else if (index_type == DataType::INT32) {
-      cpu_idx_data = reinterpret_cast<const void*>(index.data<int>());
-    }
-    memory_utils::Copy(dev_ctx.GetPlace(),
-                       reinterpret_cast<void*>(index_ptr),
-                       CPUPlace(),
-                       cpu_idx_data,
-                       byte_times * index.numel());
-  }
   if (index_type == DataType::INT64) {
-    // XDNN may crash on invalid indices, so match CPU validation first.
-    ValidateIndexSelectIndex<Context, int64_t>(dev_ctx, index, input_dim[dim]);
-    const int64_t* index_data =
-        index_ptr ? reinterpret_cast<const int64_t*>(index_ptr)
-                  : index.template data<int64_t>();
+    auto index_cpu_data = GetValidatedIndexSelectIndex<Context, int64_t>(
+        dev_ctx, index, input_dim[dim]);
+    int64_t* index_ptr =
+        RAII_GUARD.alloc_l3_or_gm<int64_t>(index_cpu_data.size());
+    PADDLE_ENFORCE_XDNN_NOT_NULL(index_ptr);
+    memory_utils::Copy(dev_ctx.GetPlace(),
+                       index_ptr,
+                       CPUPlace(),
+                       index_cpu_data.data(),
+                       byte_times * index.numel());
     r = xpu::index_select<XPUType, int64_t>(
         dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(in_data),
-        reinterpret_cast<const int64_t*>(index_data),
+        index_ptr,
         reinterpret_cast<XPUType*>(output->data<T>()),
         in_shape,
         index_len,
         dim);
   } else {
-    // XDNN may crash on invalid indices, so match CPU validation first.
-    ValidateIndexSelectIndex<Context, int>(dev_ctx, index, input_dim[dim]);
-    const int* index_data = index_ptr ? reinterpret_cast<const int*>(index_ptr)
-                                      : index.template data<int>();
+    auto index_cpu_data = GetValidatedIndexSelectIndex<Context, int>(
+        dev_ctx, index, input_dim[dim]);
+    int* index_ptr = RAII_GUARD.alloc_l3_or_gm<int>(index_cpu_data.size());
+    PADDLE_ENFORCE_XDNN_NOT_NULL(index_ptr);
+    memory_utils::Copy(dev_ctx.GetPlace(),
+                       index_ptr,
+                       CPUPlace(),
+                       index_cpu_data.data(),
+                       byte_times * index.numel());
     r = xpu::index_select<XPUType, int>(
         dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(in_data),
-        reinterpret_cast<const int*>(index_data),
+        index_ptr,
         reinterpret_cast<XPUType*>(output->data<T>()),
         in_shape,
         index_len,
