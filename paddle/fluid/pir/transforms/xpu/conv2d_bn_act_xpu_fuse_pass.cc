@@ -1,4 +1,4 @@
-// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/transforms/xpu/conv2d_bn_xpu_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/xpu/conv2d_bn_act_xpu_fuse_pass.h"
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/ir_adaptor/translator/utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -26,19 +27,52 @@
 
 namespace {
 
-class Conv2dBnFusePattern : public paddle::drr::DrrPatternBase {
+// Fuse pattern:
+//   y = conv2d(x, w);
+//   y = batch_norm(y, mean, var, scale, bias);
+//   y = act(y);            // act in {relu, swish, hardswish}
+// =>
+//   y = conv2d_xpu(x, w_folded, w_max, b_folded, act=ACT_TYPE);
+//
+// Switches:
+//   - bn_inplace_   : whether to match BatchNorm_Op (inplace) vs BatchNormOp
+//   - is_depthwise_ : whether to match DepthwiseConv2dOp vs Conv2dOp
+//   - act_op_name_  : which activation op to match (pd_op.relu / swish /
+//   hardswish)
+//   - act_type_     : corresponding xpu::Activation_t value
+class Conv2dBnActFusePattern : public paddle::drr::DrrPatternBase {
  private:
   bool bn_inplace_;
+  bool is_depthwise_;
+  std::string act_op_name_;
+  int act_type_;
 
  public:
-  explicit Conv2dBnFusePattern(bool bn_inplace) : bn_inplace_(bn_inplace) {}
+  Conv2dBnActFusePattern(bool bn_inplace,
+                         bool is_depthwise,
+                         std::string act_op_name,
+                         int act_type)
+      : bn_inplace_(bn_inplace),
+        is_depthwise_(is_depthwise),
+        act_op_name_(std::move(act_op_name)),
+        act_type_(act_type) {}
 
-  std::string name() const override { return "Conv2dBnFusePattern"; }
+  std::string name() const override {
+    std::string s = "Conv2dBnActFusePattern_";
+    s += (is_depthwise_ ? "depthwise_" : "conv_");
+    s += (bn_inplace_ ? "bn_inplace_" : "bn_");
+    // sanitize: pd_op.relu -> relu
+    auto pos = act_op_name_.rfind('.');
+    s += (pos == std::string::npos) ? act_op_name_
+                                    : act_op_name_.substr(pos + 1);
+    return s;
+  }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &conv2d =
-        pat.Op(paddle::dialect::Conv2dOp::name(),
+        pat.Op(is_depthwise_ ? paddle::dialect::DepthwiseConv2dOp::name()
+                             : paddle::dialect::Conv2dOp::name(),
                {{"strides", pat.Attr("strides")},
                 {"paddings", pat.Attr("paddings")},
                 {"padding_algorithm", pat.Attr("padding_algorithm")},
@@ -51,6 +85,8 @@ class Conv2dBnFusePattern : public paddle::drr::DrrPatternBase {
                             {
                                 {"epsilon", pat.Attr("epsilon")},
                             });
+
+    const auto &relu = pat.Op(act_op_name_);
 
     conv2d({&pat.Tensor("input"), &pat.Tensor("filter")},
            {&pat.Tensor("conv2d_out")});
@@ -65,6 +101,8 @@ class Conv2dBnFusePattern : public paddle::drr::DrrPatternBase {
         &pat.Tensor("saved_mean"),
         &pat.Tensor("saved_variance"),
         &pat.Tensor("reserve_space")});
+    relu({&pat.Tensor("bn_out")}, {&pat.Tensor("relu_out")});
+
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       std::vector<int64_t> conv_input_shape =
           pir::GetShapeFromValue(match_ctx.Tensor("input"));
@@ -90,6 +128,7 @@ class Conv2dBnFusePattern : public paddle::drr::DrrPatternBase {
       }
       return true;
     });
+
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
     // bn_var shape
@@ -108,7 +147,6 @@ class Conv2dBnFusePattern : public paddle::drr::DrrPatternBase {
           return {bn_scale_shape[0], 1, 1, 1};
         });
 
-    // reshape scale shape
     const auto &expand_1_shape =
         res.ComputeAttr([&](const paddle::drr::MatchContext &match_ctx)
                             -> std::vector<int64_t> {
@@ -137,7 +175,7 @@ class Conv2dBnFusePattern : public paddle::drr::DrrPatternBase {
           }
         });
 
-    // make new scale:  bn_scale/sqrt(bn_var+epsilon)
+    // make new scale: bn_scale / sqrt(bn_var + epsilon)
     const auto &full1 = res.Op(paddle::dialect::FullOp::name(),
                                {{"shape", bn_var_shape_attr},
                                 {"value", pat.Attr("epsilon")},
@@ -154,13 +192,12 @@ class Conv2dBnFusePattern : public paddle::drr::DrrPatternBase {
                                        {{"shape", scale_shape_attr}});
     res.Tensor("res_scale") = reshape_scale(res.Tensor("new_scale"));
 
-    //--- deal with filter ---
+    // --- folded filter: filter * scale ---
     const auto &mul_filter_op = res.Op(paddle::dialect::MultiplyOp::name());
     res.Tensor("res_filter") =
         mul_filter_op(res.Tensor("filter"), res.Tensor("res_scale"));
 
-    // --- deal with bias ---
-    // new bias: bn_bias - (bn_mean * scale)
+    // --- folded bias: bn_bias - bn_mean * scale ---
     const auto &bn_mean_mul_op = res.Op(paddle::dialect::MultiplyOp::name());
     res.Tensor("bn_mean_mul_out") =
         bn_mean_mul_op(res.Tensor("bn_mean"), res.Tensor("new_scale"));
@@ -168,10 +205,7 @@ class Conv2dBnFusePattern : public paddle::drr::DrrPatternBase {
     res.Tensor("res_bias") =
         sub_bias_op(res.Tensor("bn_bias"), res.Tensor("bn_mean_mul_out"));
 
-    // get max filter and max x
-    // NOTE: max must be computed on the FOLDED filter (after BN fold), and
-    // must be the absolute-max value (Max(Abs(filter))) so that XDNN's
-    // int16 quantization scale is correct.
+    // filter_max = expand( max( abs( folded_filter ) ) )
     const auto &abs_op = res.Op(paddle::dialect::AbsOp::name());
     const auto &max_op1 =
         res.Op(paddle::dialect::MaxOp::name(),
@@ -183,6 +217,7 @@ class Conv2dBnFusePattern : public paddle::drr::DrrPatternBase {
         res.Op(paddle::dialect::ExpandOp::name(), {{"shape", expand_1_shape}});
     res.Tensor("res_filter_max") = expand(res.Tensor("filter_max"));
 
+    // act_type passed in via constructor (RELU=1, SWISH=12, HARD_SWISH=14)
     const auto &conv2d_xpu =
         res.Op(paddle::dialect::Conv2dXpuOp::name(),
                {{
@@ -191,8 +226,7 @@ class Conv2dBnFusePattern : public paddle::drr::DrrPatternBase {
                    {"strides", pat.Attr("strides")},
                    {"padding_algorithm", pat.Attr("padding_algorithm")},
                    {"groups", pat.Attr("groups")},
-                   {"act_type",
-                    res.Int32Attr(static_cast<int>(xpu::Activation_t::LINEAR))},
+                   {"act_type", res.Int32Attr(act_type_)},
                    {"act_param", res.Float32Attr(0.0f)},
                    {"out_dtype", out_dtype_attr},
                }});
@@ -208,20 +242,34 @@ class Conv2dBnFusePattern : public paddle::drr::DrrPatternBase {
             &res.InputNoneTensor(),
             &res.InputNoneTensor(),
         },
-        {&res.Tensor("bn_out"), &res.Tensor("out_max")});
+        {&res.Tensor("relu_out"), &res.Tensor("out_max")});
   }
 };
 
-class Conv2dBnFuseXpuPass : public pir::PatternRewritePass {
+class Conv2dBnActFuseXpuPass : public pir::PatternRewritePass {
  public:
-  Conv2dBnFuseXpuPass()
-      : pir::PatternRewritePass("conv2d_bn_xpu_fuse_pass", 2) {}
+  Conv2dBnActFuseXpuPass()
+      : pir::PatternRewritePass("conv2d_bn_act_xpu_fuse_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    bool bn_inplace = true;
-    ps.Add(paddle::drr::Create<Conv2dBnFusePattern>(context, bn_inplace));
-    ps.Add(paddle::drr::Create<Conv2dBnFusePattern>(context, !bn_inplace));
+    // (act_op_name, act_type) pairs aligned with xpu::Activation_t enum.
+    const std::vector<std::pair<std::string, int>> acts = {
+        {paddle::dialect::ReluOp::name(),
+         static_cast<int>(xpu::Activation_t::RELU)},
+        {paddle::dialect::SwishOp::name(),
+         static_cast<int>(xpu::Activation_t::SWISH)},
+        {paddle::dialect::HardswishOp::name(),
+         static_cast<int>(xpu::Activation_t::HARD_SWISH)},
+    };
+    for (bool bn_inplace : {true, false}) {
+      for (bool is_depthwise : {false, true}) {
+        for (const auto &act : acts) {
+          ps.Add(paddle::drr::Create<Conv2dBnActFusePattern>(
+              context, bn_inplace, is_depthwise, act.first, act.second));
+        }
+      }
+    }
     return ps;
   }
 };
@@ -230,10 +278,10 @@ class Conv2dBnFuseXpuPass : public pir::PatternRewritePass {
 
 namespace pir {
 
-std::unique_ptr<Pass> CreateConv2dBnFuseXpuPass() {
-  return std::make_unique<Conv2dBnFuseXpuPass>();
+std::unique_ptr<Pass> CreateConv2dBnActFuseXpuPass() {
+  return std::make_unique<Conv2dBnActFuseXpuPass>();
 }
 
 }  // namespace pir
 
-REGISTER_IR_PASS(conv2d_bn_xpu_fuse_pass, Conv2dBnFuseXpuPass);
+REGISTER_IR_PASS(conv2d_bn_act_xpu_fuse_pass, Conv2dBnActFuseXpuPass);
