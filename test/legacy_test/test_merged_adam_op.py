@@ -140,7 +140,7 @@ class TestMergedAdam(unittest.TestCase):
         )
         params = self.gen_rand_data(shapes, dtype)
         grads = self.gen_rand_data(shapes, dtype)
-        lrs = self.gen_rand_data([[1], [1], [1], [1]], mp_dtype)
+        lrs = self.gen_rand_data([[1], [1], [1], [1]], np.float64)
         moment1s = self.gen_rand_data(shapes, mp_dtype)
         moment2s = self.gen_rand_data(shapes, mp_dtype)
         moment2s_max = self.gen_zero_data(shapes, mp_dtype)
@@ -208,8 +208,11 @@ class TestMergedAdam(unittest.TestCase):
                     )
 
     def test_main(self):
+        places = get_devices()
+        if 'cpu' not in places:
+            places = ['cpu', *places]
         for multi_precision in [False, True]:
-            for place in get_devices():
+            for place in places:
                 self.check_with_place(place, multi_precision)
 
 

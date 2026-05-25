@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from . import lr_scheduler  # noqa: F401
 from .adadelta import Adadelta
 from .adagrad import Adagrad
 from .adam import Adam
