@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
 import sys
 import unittest
 
@@ -2057,6 +2058,146 @@ class TestLogitAPI(unittest.TestCase):
         np.testing.assert_allclose(
             fetches[3], ref_out_eps, rtol=1e-5, atol=1e-6
         )
+
+
+class TestSpecialErfAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.shape = [3, 4]
+        self.inputs = [
+            np.random.uniform(-3.0, 3.0, self.shape).astype(dtype)
+            for dtype in ["float32", "float64"]
+        ]
+
+    def _ref_erf(self, x):
+        return np.array(
+            [math.erf(float(v)) for v in x.flatten()], dtype=x.dtype
+        ).reshape(x.shape)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        for np_x in self.inputs:
+            x = paddle.to_tensor(np_x)
+
+            # 1. Paddle Positional arguments
+            out1 = paddle.special.erf(x)
+            # 2. Paddle keyword arguments
+            out2 = paddle.special.erf(x=x)
+            # 3. PyTorch keyword arguments (alias)
+            out3 = paddle.special.erf(input=x)
+            # 4. out parameter test
+            out4 = paddle.empty_like(x)
+            out5 = paddle.special.erf(x, out=out4)
+
+            # Verify all outputs
+            expected = self._ref_erf(np_x)
+            for out in [out1, out2, out3, out4, out5]:
+                np.testing.assert_allclose(
+                    out.numpy(), expected, rtol=1e-5, atol=1e-6
+                )
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        for i, np_x in enumerate(self.inputs):
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                x = paddle.static.data(
+                    name=f"x_{i}", shape=self.shape, dtype=str(np_x.dtype)
+                )
+
+                # 1. Paddle Positional arguments
+                out1 = paddle.special.erf(x)
+                # 2. Paddle keyword arguments
+                out2 = paddle.special.erf(x=x)
+                # 3. PyTorch keyword arguments (alias)
+                out3 = paddle.special.erf(input=x)
+
+                exe = paddle.static.Executor()
+                fetches = exe.run(
+                    main,
+                    feed={f"x_{i}": np_x},
+                    fetch_list=[out1, out2, out3],
+                )
+
+                # Verify all outputs
+                expected = self._ref_erf(np_x)
+                for out in fetches:
+                    np.testing.assert_allclose(
+                        out, expected, rtol=1e-5, atol=1e-6
+                    )
+
+
+class TestSpecialSincAPI(unittest.TestCase):
+    def setUp(self):
+        self.shape = [3, 4]
+        base = np.array(
+            [
+                [0.0, -3.0, -1.5, -0.25],
+                [0.25, 0.5, 1.0, 1.5],
+                [2.0, 2.5, 3.0, 4.25],
+            ]
+        )
+        self.inputs = [base.astype(dtype) for dtype in ["float32", "float64"]]
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        for np_x in self.inputs:
+            x = paddle.to_tensor(np_x)
+
+            # 1. Paddle Positional arguments
+            out1 = paddle.special.sinc(x)
+            # 2. Paddle keyword arguments
+            out2 = paddle.special.sinc(x=x)
+            # 3. PyTorch keyword arguments (alias)
+            out3 = paddle.special.sinc(input=x)
+            # 4. out parameter test
+            out4 = paddle.empty_like(x)
+            out5 = paddle.special.sinc(x, out=out4)
+
+            # Verify all outputs
+            expected = np.sinc(np_x)
+            for out in [out1, out2, out3, out4, out5]:
+                np.testing.assert_allclose(
+                    out.numpy(), expected, rtol=1e-5, atol=1e-6
+                )
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        for i, np_x in enumerate(self.inputs):
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                x = paddle.static.data(
+                    name=f"sinc_x_{i}",
+                    shape=self.shape,
+                    dtype=str(np_x.dtype),
+                )
+
+                # 1. Paddle Positional arguments
+                out1 = paddle.special.sinc(x)
+                # 2. Paddle keyword arguments
+                out2 = paddle.special.sinc(x=x)
+                # 3. PyTorch keyword arguments (alias)
+                out3 = paddle.special.sinc(input=x)
+
+                exe = paddle.static.Executor()
+                fetches = exe.run(
+                    main,
+                    feed={f"sinc_x_{i}": np_x},
+                    fetch_list=[out1, out2, out3],
+                )
+
+                # Verify all outputs
+                expected = np.sinc(np_x)
+                for out in fetches:
+                    np.testing.assert_allclose(
+                        out, expected, rtol=1e-5, atol=1e-6
+                    )
 
 
 # Test conv1d_transpose / conv_transpose1d compatibility

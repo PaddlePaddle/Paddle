@@ -13,9 +13,23 @@
 # limitations under the License.
 
 from .tensor.compat_softmax import log_softmax, softmax
-from .tensor.math import expm1, i0, i0e, i1, i1e, log1p, logit, logsumexp
+from .tensor.creation import assign
+from .tensor.math import (
+    erf as _erf,
+    expm1,
+    i0,
+    i0e,
+    i1,
+    i1e,
+    log1p,
+    logit,
+    logsumexp,
+    sinc as _sinc,
+)
+from .utils.decorator_utils import param_one_alias
 
 __all__ = [
+    "erf",
     "i0",
     "i0e",
     "i1",
@@ -24,6 +38,19 @@ __all__ = [
     "log_softmax",
     "logit",
     "logsumexp",
+    "sinc",
     "softmax",
     "expm1",
 ]
+
+
+@param_one_alias(["x", "input"])
+def erf(x, name=None, *, out=None):
+    result = _erf(x, name=name)
+    return assign(result, out) if out is not None else result
+
+
+@param_one_alias(["x", "input"])
+def sinc(x, name=None, *, out=None):
+    result = _sinc(x, name=name)
+    return assign(result, out) if out is not None else result
