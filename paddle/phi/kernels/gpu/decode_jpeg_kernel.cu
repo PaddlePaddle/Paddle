@@ -114,7 +114,7 @@ void DecodeJpegKernel(const Context& dev_ctx,
     cudaStreamCreateWithFlags(&nvjpeg_stream, cudaStreamNonBlocking);
   }
 
-  int sz = widths[0] * heights[0];
+  int64_t sz = (int64_t)widths[0] * heights[0];
 
   std::vector<int64_t> out_shape = {output_components, height, width};
   out->Resize(out_shape);

@@ -246,7 +246,7 @@ struct MatrixEighFunctor<CPUContext, T> {
     int dim_size = dims.size();
     int64_t batch_size = GetBatchSize(dims);
 
-    int vector_stride = dims[dim_size - 1] * dims[dim_size - 2];
+    int64_t vector_stride = dims[dim_size - 1] * dims[dim_size - 2];
     int values_stride = dims[dim_size - 1];
     char uplo = is_lower ? 'L' : 'U';
     char jobz = has_vectors ? 'V' : 'N';

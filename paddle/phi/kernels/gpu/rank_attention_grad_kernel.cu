@@ -51,7 +51,7 @@ void RankAttentionGradOpCUDAKernel(const Context &dev_ctx,
       static_cast<int64_t>(rank_offset_max_rank) * x_fea_dim;
   auto &place = *dev_ctx.eigen_device();
 
-  int max_ins = std::max(ins_num, static_cast<int64_t>(max_size));
+  int64_t max_ins = std::max(ins_num, static_cast<int64_t>(max_size));
   // initialize out grad
   dev_ctx.template Alloc<T>(drank_para);
   auto drank_para_eigen = EigenVector<T>::Flatten(*drank_para);
@@ -93,9 +93,16 @@ void RankAttentionGradOpCUDAKernel(const Context &dev_ctx,
                    strideA,
                    strideB);
   // merge param_grad to get drank_para
+  int64_t expanded_grad_rows = ins_num * block_matrix_row;
+  PADDLE_ENFORCE_LE_INT_MAX(expanded_grad_rows, "expanded_grad_rows");
+  PADDLE_ENFORCE_LE_INT_MAX(para_row, "para_row");
+  PADDLE_ENFORCE_LE_INT_MAX(para_col, "para_col");
+  PADDLE_ENFORCE_LE_INT_MAX(ins_num, "ins_num");
+  PADDLE_ENFORCE_LE_INT_MAX(x_fea_dim, "x_fea_dim");
+
   merge_rank_attention_param_grad(dev_ctx.stream(),
                                   param_grad_data,
-                                  ins_num * block_matrix_row,
+                                  expanded_grad_rows,
                                   para_col,
                                   drank_para->data<T>(),
                                   para_row,

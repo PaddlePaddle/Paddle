@@ -63,19 +63,23 @@ __global__ void DWConv3dFwdKernel(const T* input,
   const int dilation_h = kKnownDilationH > 0 ? kKnownDilationH : dilation_h_in;
   const int dilation_w = kKnownDilationW > 0 ? kKnownDilationW : dilation_w_in;
 
-  const int num_outputs = batch_size * output_channels * output_depth *
-                          output_height * output_width;
+  const int64_t num_outputs = (int64_t)batch_size * output_channels *
+                              output_depth * output_height * output_width;
   const int channel_multiplier = output_channels / input_channels;
 
-  const int i_stride_c = input_depth * input_height * input_width;
-  const int i_stride_d = input_height * input_width;
+  const int64_t i_stride_c = (int64_t)input_depth * input_height * input_width;
+  const int64_t i_stride_d = (int64_t)input_height * input_width;
   const int i_stride_h = input_width;
 
-  const int w_stride_c = kernel_t * kernel_h * kernel_w;
+  const int64_t w_stride_c = (int64_t)kernel_t * kernel_h * kernel_w;
 
-  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < num_outputs;
-       index += blockDim.x * gridDim.x) {
-    int temp = index;
+  for (int64_t index =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+           static_cast<int64_t>(threadIdx.x);
+       index < num_outputs;
+       index +=
+       static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(gridDim.x)) {
+    int64_t temp = index;
     const int w_out = temp % output_width;
     temp /= output_width;
     const int h_out = temp % output_height;

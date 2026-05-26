@@ -80,8 +80,8 @@ struct QrFunctor {
     int n = x_dims[x_rank - 1];
     int min_mn = std::min(m, n);
     int k = reduced_mode ? min_mn : m;
-    int64_t batch_size = static_cast<int64_t>(x.numel() / (m * n));
-    int qr_stride = m * n;
+    int64_t batch_size = static_cast<int64_t>(x.numel() / ((int64_t)m * n));
+    int64_t qr_stride = (int64_t)m * n;
     int tau_stride = min_mn;
 
     if (compute_q) {
@@ -209,8 +209,8 @@ struct QrFunctor<dtype::complex<T>, Context> {
     int n = x_dims[x_rank - 1];
     int min_mn = std::min(m, n);
     int k = reduced_mode ? min_mn : m;
-    int batch_size = x.numel() / (m * n);
-    int qr_stride = m * n;
+    int64_t batch_size = x.numel() / ((int64_t)m * n);
+    int64_t qr_stride = (int64_t)m * n;
     int tau_stride = min_mn;
     if (compute_q) {
       dev_ctx.template Alloc<dtype::complex<T>>(
