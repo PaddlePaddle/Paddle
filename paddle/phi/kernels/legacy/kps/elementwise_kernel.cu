@@ -50,8 +50,8 @@ PD_REGISTER_KERNEL(
 }
 #else
 
-using float16 = phi::float16;
-using bfloat16 = phi::bfloat16;
+using kPhiFloat16 = ::phi::dtype::float16;
+using kPhiBFloat16 = ::phi::dtype::bfloat16;
 using complex64 = phi::complex64;
 using complex128 = phi::complex128;
 
@@ -67,8 +67,8 @@ PD_REGISTER_KERNEL(add_raw,
                    uint8_t,
                    int8_t,
                    int64_t,
-                   float16,
-                   bfloat16,
+                   kPhiFloat16,
+                   kPhiBFloat16,
                    complex64,
                    complex128) {}
 
@@ -84,8 +84,8 @@ PD_REGISTER_KERNEL(divide_raw,
                    int,
                    int64_t,
                    bool,
-                   float16,
-                   bfloat16,
+                   kPhiFloat16,
+                   kPhiBFloat16,
                    complex64,
                    complex128) {}
 
@@ -98,10 +98,10 @@ PD_REGISTER_KERNEL(multiply_raw,
                    int,
                    int64_t,
                    bool,
-                   float16,
+                   kPhiFloat16,
                    complex64,
                    complex128,
-                   bfloat16) {}
+                   kPhiBFloat16) {}
 
 PD_REGISTER_KERNEL(subtract_raw,
                    KPS,
@@ -112,8 +112,8 @@ PD_REGISTER_KERNEL(subtract_raw,
                    int16_t,
                    int,
                    int64_t,
-                   float16,
-                   bfloat16,
+                   kPhiFloat16,
+                   kPhiBFloat16,
                    complex64,
                    complex128) {}
 
@@ -125,8 +125,8 @@ PD_REGISTER_KERNEL(maximum_raw,
                    double,
                    int,
                    int64_t,
-                   float16,
-                   bfloat16) {}
+                   kPhiFloat16,
+                   kPhiBFloat16) {}
 PD_REGISTER_KERNEL(minimum_raw,
                    KPS,
                    ALL_LAYOUT,
@@ -135,8 +135,8 @@ PD_REGISTER_KERNEL(minimum_raw,
                    double,
                    int,
                    int64_t,
-                   float16,
-                   bfloat16) {}
+                   kPhiFloat16,
+                   kPhiBFloat16) {}
 PD_REGISTER_KERNEL(remainder_raw,
                    KPS,
                    ALL_LAYOUT,
@@ -144,11 +144,11 @@ PD_REGISTER_KERNEL(remainder_raw,
                    float,
                    double,
                    int,
-                   float16,
+                   kPhiFloat16,
                    complex64,
                    complex128,
                    int64_t,
-                   bfloat16) {}
+                   kPhiBFloat16) {}
 PD_REGISTER_KERNEL(floor_divide_raw,
                    KPS,
                    ALL_LAYOUT,
@@ -160,8 +160,8 @@ PD_REGISTER_KERNEL(floor_divide_raw,
                    int64_t,
                    float,
                    double,
-                   float16,
-                   bfloat16) {}
+                   kPhiFloat16,
+                   kPhiBFloat16) {}
 PD_REGISTER_KERNEL(elementwise_pow_raw,
                    KPS,
                    ALL_LAYOUT,
@@ -169,9 +169,9 @@ PD_REGISTER_KERNEL(elementwise_pow_raw,
                    float,
                    double,
                    int,
-                   float16,
+                   kPhiFloat16,
                    int64_t,
-                   bfloat16,
+                   kPhiBFloat16,
                    complex64,
                    complex128) {}
 #endif

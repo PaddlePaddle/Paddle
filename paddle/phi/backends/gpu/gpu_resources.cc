@@ -25,9 +25,7 @@
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cublas.h"
 #include "paddle/phi/backends/dynload/cublasLt.h"
-#ifdef WITH_CUDNN_FRONTEND
 #include "paddle/phi/backends/dynload/cudnn.h"
-#endif
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/backends/dynload/cusparse.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
@@ -215,7 +213,6 @@ void DestroyBlasLtHandle(blasLtHandle_t handle) {
 #endif
 }
 
-#ifdef WITH_CUDNN_FRONTEND
 void InitDnnHandle(dnnHandle_t* handle, gpuStream_t stream, Place place) {
   if (phi::dynload::HasCUDNN()) {
 #ifdef PADDLE_WITH_HIP
@@ -275,12 +272,6 @@ void DestroyDnnHandle(dnnHandle_t handle) {
   }
 #endif  // PADDLE_WITH_HIP
 }
-#else
-void InitDnnHandle(dnnHandle_t* handle, gpuStream_t stream, Place place) {
-  *handle = nullptr;
-}
-void DestroyDnnHandle(dnnHandle_t handle) {}
-#endif
 
 void InitSolverHandle(solverHandle_t* handle, gpuStream_t stream) {
 #if defined(PADDLE_WITH_CUDA)

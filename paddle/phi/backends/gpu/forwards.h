@@ -36,7 +36,9 @@ using cublasLtHandle_t = struct cublasLtContext *;
 
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
 // Forward declaration of cuDNN types.
-#ifdef WITH_CUDNN_FRONTEND
+// Skip when cudnn.h is already included — its types may be macro-mapped
+// (e.g. xpudnn wrapper) and conflict with these forward declarations.
+#ifndef CUDNN_VERSION
 using cudnnHandle_t = struct cudnnContext *;
 using cudnnTensorDescriptor_t = struct cudnnTensorStruct *;
 using cudnnConvolutionDescriptor_t = struct cudnnConvolutionStruct *;
@@ -62,7 +64,7 @@ using cudnnFusedOpsConstParamPack_t = struct cudnnFusedOpsConstParamStruct *;
 using cudnnFusedOpsVariantParamPack_t =
     struct cudnnFusedOpsVariantParamStruct *;
 using cudnnFusedOpsPlan_t = struct cudnnFusedOpsPlanStruct *;
-#endif
+#endif  // CUDNN_VERSION
 
 // Forward declaration of cuSOLVER types.
 using cusolverDnHandle_t = void *;

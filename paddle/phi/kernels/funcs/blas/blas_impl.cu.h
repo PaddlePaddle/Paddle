@@ -196,8 +196,8 @@ struct CUBlas<float> {
 
   template <typename... ARGS>
   static void GETRF_BATCH(ARGS... args) {
-    // PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasSgetrfBatched(args...));
     PADDLE_THROW(phi::errors::Unimplemented( "GETRI_BATCH is not supported by xtrans."));
+    // PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasSgetrfBatched(args...));
   }
 
   template <typename... ARGS>
@@ -219,7 +219,7 @@ struct CUBlas<float> {
 
   template <typename... ARGS>
   static void TRSM_BATCH(ARGS... args) {
-    PADDLE_THROW(phi::errors::Unimplemented("SmatinvBatched is not supported by xtrans."));
+    PADDLE_THROW(phi::errors::Unimplemented("StrsmBatched is not supported by xtrans."));
     // PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasStrsmBatched(args...));
   }
 
@@ -307,7 +307,7 @@ struct CUBlas<double> {
 
   template <typename... ARGS>
   static void GETRI_BATCH(ARGS... args) {
-    PADDLE_THROW(phi::errors::Unimplemented("GETRI_BATCH is not supported by xtrans."));
+    PADDLE_THROW(phi::errors::Unimplemented("GETRI_BATCH is not supported by xtrans. upgrade"));
     // PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasDgetriBatched(args...));
   }
 
@@ -324,7 +324,7 @@ struct CUBlas<double> {
 
   template <typename... ARGS>
   static void TRSM_BATCH(ARGS... args) {
-    PADDLE_THROW(phi::errors::Unimplemented("DmatinvBatched is not supported by xtrans."));
+    PADDLE_THROW(phi::errors::Unimplemented("cublasDtrsmBatched is not supported by xtrans."));
 	  // PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasDtrsmBatched(args...));
   }
 

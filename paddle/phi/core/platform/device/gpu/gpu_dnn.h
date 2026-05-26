@@ -22,7 +22,6 @@ namespace paddle {
 namespace platform {
 
 using DataLayout = phi::DataLayout;
-#ifdef WITH_CUDNN_FRONTEND
 using PoolingMode = phi::backends::gpu::PoolingMode;
 template <typename T>
 using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
@@ -41,7 +40,6 @@ using ScopedRNNTensorDescriptor = phi::backends::gpu::ScopedRNNTensorDescriptor;
 using ScopedSpatialTransformerDescriptor =
     phi::backends::gpu::ScopedSpatialTransformerDescriptor;
 #endif
-#endif  // WITH_CUDNN_FRONTEND
 
 }  // namespace platform
 }  // namespace paddle
