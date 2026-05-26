@@ -75,7 +75,7 @@ __global__ void DWConv2dFwdKernel(const T* __restrict__ input,
       inputChannels /= depthwiseMultiplier;
     }
 
-    int weightOffset = c * kernelHeight * kernelWidth;
+    int64_t weightOffset = (int64_t)c * kernelHeight * kernelWidth;
     AccT value = biasEnabled ? static_cast<AccT>(bias[c]) : AccT(0);
     const IndexT offset0 =
         (n * inputChannels + inputChannel) * inputHeight * inputWidth;
@@ -140,7 +140,7 @@ __global__ void DWConv2dFwdKernelGeneric(const T* __restrict__ input,
       inputChannels /= depthwiseMultiplier;
     }
 
-    int weightOffset = c * kernelHeight * kernelWidth;
+    int64_t weightOffset = (int64_t)c * kernelHeight * kernelWidth;
     int kHmin = 0, kHmax = kernelHeight, kWmin = 0, kWmax = kernelWidth;
 
     int h_in_min = -padHeight + h * strideHeight;

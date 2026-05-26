@@ -84,14 +84,14 @@ void ScanKernel(const Context& dev_ctx,
     axis += out_dims.size();
   }
 
-  int pre = 1;
-  int post = 1;
-  int mid = static_cast<int>(out_dims[axis]);
+  int64_t pre = 1;
+  int64_t post = 1;
+  int64_t mid = out_dims[axis];
   for (int i = 0; i < axis; ++i) {
-    pre *= static_cast<int>(out_dims[i]);
+    pre *= out_dims[i];
   }
   for (int i = axis + 1; i < out_dims.size(); ++i) {
-    post *= static_cast<int>(out_dims[i]);
+    post *= out_dims[i];
   }
 
   auto x0 = EigenVector<T>::Flatten(x);

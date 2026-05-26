@@ -132,9 +132,12 @@ void ConvCudnnGradKernelImplV7(
              &o_w);
   }
 
-  int group_offset_in = i_c / groups * i_h * i_w * i_d;
-  int group_offset_out = o_c / groups * o_h * o_w * o_d;
-  int group_offset_filter = transformed_filter_channel->numel() / groups;
+  int64_t group_offset_in = (int64_t)i_c / groups * i_h * i_w * i_d;
+  int64_t group_offset_out = (int64_t)o_c / groups * o_h * o_w * o_d;
+  int64_t group_offset_filter = transformed_filter_channel->numel() / groups;
+  PADDLE_ENFORCE_LE_INT_MAX(group_offset_in, "group_offset_in");
+  PADDLE_ENFORCE_LE_INT_MAX(group_offset_out, "group_offset_out");
+  PADDLE_ENFORCE_LE_INT_MAX(group_offset_filter, "group_offset_filter");
 
 // ------------------- cudnn backward algorithm ---------------------
 #ifdef PADDLE_WITH_HIP
@@ -282,19 +285,20 @@ void ConvCudnnGradKernelImplV7(
           workspace_size);
     }
 #else
-    ConvRunner<T, ConvKind::kBackwardData>::Apply(dev_ctx,
-                                                  args1,
-                                                  bwd_result,
-                                                  output_grad_data,
-                                                  filter_data,
-                                                  transformed_input_grad_data,
-                                                  groups,
-                                                  group_offset_in,
-                                                  group_offset_filter,
-                                                  group_offset_out,
-                                                  workspace_size,
-                                                  &workspace_handle,
-                                                  use_addto);
+    ConvRunner<T, ConvKind::kBackwardData>::Apply(
+        dev_ctx,
+        args1,
+        bwd_result,
+        output_grad_data,
+        filter_data,
+        transformed_input_grad_data,
+        groups,
+        static_cast<int>(group_offset_in),
+        static_cast<int>(group_offset_filter),
+        static_cast<int>(group_offset_out),
+        workspace_size,
+        &workspace_handle,
+        use_addto);
 #endif
   }
 
@@ -322,19 +326,20 @@ void ConvCudnnGradKernelImplV7(
         },
         workspace_size);
 #else
-    ConvRunner<T, ConvKind::kBackwardFilter>::Apply(dev_ctx,
-                                                    args2,
-                                                    filter_result,
-                                                    output_grad_data,
-                                                    input_data,
-                                                    filter_grad_data,
-                                                    groups,
-                                                    group_offset_in,
-                                                    group_offset_filter,
-                                                    group_offset_out,
-                                                    workspace_size,
-                                                    &workspace_handle,
-                                                    false);
+    ConvRunner<T, ConvKind::kBackwardFilter>::Apply(
+        dev_ctx,
+        args2,
+        filter_result,
+        output_grad_data,
+        input_data,
+        filter_grad_data,
+        groups,
+        static_cast<int>(group_offset_in),
+        static_cast<int>(group_offset_filter),
+        static_cast<int>(group_offset_out),
+        workspace_size,
+        &workspace_handle,
+        false);
 #endif
   }
 }
@@ -1174,9 +1179,12 @@ void ConvCudnnGradGradKernel(const Context& dev_ctx,
            &o_h,
            &o_w);
 
-  int group_offset_in = i_c / groups * i_h * i_w * i_d;
-  int group_offset_out = o_c / groups * o_h * o_w * o_d;
-  int group_offset_filter = W->numel() / groups;
+  int64_t group_offset_in = (int64_t)i_c / groups * i_h * i_w * i_d;
+  int64_t group_offset_out = (int64_t)o_c / groups * o_h * o_w * o_d;
+  int64_t group_offset_filter = W->numel() / groups;
+  PADDLE_ENFORCE_LE_INT_MAX(group_offset_in, "group_offset_in");
+  PADDLE_ENFORCE_LE_INT_MAX(group_offset_out, "group_offset_out");
+  PADDLE_ENFORCE_LE_INT_MAX(group_offset_filter, "group_offset_filter");
 
   ScalingParamType<T> alpha = 1.0f;
   ScalingParamType<T> beta = 0.0f;
@@ -1211,19 +1219,20 @@ void ConvCudnnGradGradKernel(const Context& dev_ctx,
           },
           workspace_size);
 #else
-      ConvRunner<T, ConvKind::kForward>::Apply(dev_ctx,
-                                               args1,
-                                               fwd_result1,
-                                               ddx,
-                                               w,
-                                               transformed_ddy_channel,
-                                               groups,
-                                               group_offset_in,
-                                               group_offset_filter,
-                                               group_offset_out,
-                                               workspace_size,
-                                               &workspace_handle,
-                                               false);
+      ConvRunner<T, ConvKind::kForward>::Apply(
+          dev_ctx,
+          args1,
+          fwd_result1,
+          ddx,
+          w,
+          transformed_ddy_channel,
+          groups,
+          static_cast<int>(group_offset_in),
+          static_cast<int>(group_offset_filter),
+          static_cast<int>(group_offset_out),
+          workspace_size,
+          &workspace_handle,
+          false);
 #endif
     }
     if (ddW) {
@@ -1248,19 +1257,20 @@ void ConvCudnnGradGradKernel(const Context& dev_ctx,
           },
           workspace_size);
 #else
-      ConvRunner<T, ConvKind::kForward>::Apply(dev_ctx,
-                                               args2,
-                                               fwd_result2,
-                                               x,
-                                               ddw,
-                                               transformed_ddy_channel,
-                                               groups,
-                                               group_offset_in,
-                                               group_offset_filter,
-                                               group_offset_out,
-                                               workspace_size,
-                                               &workspace_handle,
-                                               true);
+      ConvRunner<T, ConvKind::kForward>::Apply(
+          dev_ctx,
+          args2,
+          fwd_result2,
+          x,
+          ddw,
+          transformed_ddy_channel,
+          groups,
+          static_cast<int>(group_offset_in),
+          static_cast<int>(group_offset_filter),
+          static_cast<int>(group_offset_out),
+          workspace_size,
+          &workspace_handle,
+          true);
 #endif
     }
     if (channel_last) {
@@ -1291,19 +1301,20 @@ void ConvCudnnGradGradKernel(const Context& dev_ctx,
         },
         workspace_size);
 #else
-    ConvRunner<T, ConvKind::kBackwardFilter>::Apply(dev_ctx,
-                                                    args3,
-                                                    filter_result,
-                                                    transformed_dy_channel,
-                                                    ddx,
-                                                    dw,
-                                                    groups,
-                                                    group_offset_in,
-                                                    group_offset_filter,
-                                                    group_offset_out,
-                                                    workspace_size,
-                                                    &workspace_handle,
-                                                    false);
+    ConvRunner<T, ConvKind::kBackwardFilter>::Apply(
+        dev_ctx,
+        args3,
+        filter_result,
+        transformed_dy_channel,
+        ddx,
+        dw,
+        groups,
+        static_cast<int>(group_offset_in),
+        static_cast<int>(group_offset_filter),
+        static_cast<int>(group_offset_out),
+        workspace_size,
+        &workspace_handle,
+        false);
 #endif
   }
 
@@ -1330,19 +1341,20 @@ void ConvCudnnGradGradKernel(const Context& dev_ctx,
         },
         workspace_size);
 #else
-    ConvRunner<T, ConvKind::kBackwardData>::Apply(dev_ctx,
-                                                  args4,
-                                                  data_result,
-                                                  transformed_dy_channel,
-                                                  ddw,
-                                                  transformed_dx,
-                                                  groups,
-                                                  group_offset_in,
-                                                  group_offset_filter,
-                                                  group_offset_out,
-                                                  workspace_size,
-                                                  &workspace_handle,
-                                                  false);
+    ConvRunner<T, ConvKind::kBackwardData>::Apply(
+        dev_ctx,
+        args4,
+        data_result,
+        transformed_dy_channel,
+        ddw,
+        transformed_dx,
+        groups,
+        static_cast<int>(group_offset_in),
+        static_cast<int>(group_offset_filter),
+        static_cast<int>(group_offset_out),
+        workspace_size,
+        &workspace_handle,
+        false);
 #endif
 
     if (!is_sys_pad) {

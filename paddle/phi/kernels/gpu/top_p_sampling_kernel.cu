@@ -96,7 +96,10 @@ struct SegmentOffsetIter {
   explicit SegmentOffsetIter(int num_cols) : num_cols_(num_cols) {}
 
   __host__ __device__ __forceinline__ int operator()(int idx) const {
-    return idx * num_cols_;
+#ifndef __CUDA_ARCH__
+    PADDLE_ENFORCE_LE_INT_MAX((int64_t)idx * num_cols_, "idx * num_cols_");
+#endif
+    return static_cast<int>((int64_t)idx * num_cols_);
   }
 
   int num_cols_;
@@ -154,7 +157,7 @@ int GetBlockSize(int vocab_size) {
   }
 }
 
-inline int div_up(int a, int n) { return (a + n - 1) / n; }
+inline int64_t div_up(int64_t a, int64_t n) { return (a + n - 1) / n; }
 
 template <typename T>
 __device__ __forceinline__ void AddTo(Pair<T> topk[],
@@ -359,12 +362,12 @@ __global__ void KeMatrixTopPBeamTopK(const T* src,
 
   int top_num = TopPBeamTopK;
   float top_p_num = static_cast<float>(top_ps[bid]);
-  const int offset = bid * vocab_size;
+  const int64_t offset = static_cast<int64_t>(bid) * vocab_size;
   int64_t* topk_ids_now = nullptr;
   T* topk_scores_now = nullptr;
   if (k > 0) {
-    topk_ids_now = topk_ids + bid * k;
-    topk_scores_now = topk_scores + bid * k;
+    topk_ids_now = topk_ids + static_cast<int64_t>(bid) * k;
+    topk_scores_now = topk_scores + static_cast<int64_t>(bid) * k;
   }
 
   __shared__ Pair<T> shared_max[BlockSize / WARP_SIZE];
@@ -489,15 +492,16 @@ __global__ void KeMatrixTopPBeamTopKFt(const T* src,
   }
 
   while (top_num) {
-    ThreadGetTopK<T, MaxLength, BlockSize>(topk,
-                                           &beam,
-                                           TopPBeamTopK,
-                                           src + bid * vocab_size,
-                                           &firststep,
-                                           &is_empty,
-                                           &max,
-                                           vocab_size,
-                                           tid);
+    ThreadGetTopK<T, MaxLength, BlockSize>(
+        topk,
+        &beam,
+        TopPBeamTopK,
+        src + static_cast<int64_t>(bid) * vocab_size,
+        &firststep,
+        &is_empty,
+        &max,
+        vocab_size,
+        tid);
     BlockReduce<T, MaxLength, BlockSize>(
         shared_max, topk, beam_max, &beam, &top_num, &count, tid, wid, lane);
   }
@@ -553,7 +557,8 @@ __global__ void SetCountIter(int* count_iter, int num) {
   int tid = threadIdx.x;
   int bid = blockIdx.x;
   int idx = bid * blockDim.x + tid;
-  for (int i = idx; i < num; i += gridDim.x * blockDim.x) {
+  for (int64_t i = idx; i < num; i += static_cast<int64_t>(gridDim.x) *
+                                      static_cast<int64_t>(blockDim.x)) {
     count_iter[i] = i;
   }
 }
@@ -711,7 +716,7 @@ __global__ void topp_sampling(T* sorted_probs,
   // Initialize running total
   BlockPrefixCallbackOp prefix_op(0);
 
-  int offset = bid * vocab_size;
+  int64_t offset = static_cast<int64_t>(bid) * vocab_size;
 #ifdef DEBUG_TOPP
   if (tid == 0) {
     printf(
@@ -852,7 +857,7 @@ __global__ void topp_sampling_ft(T* sorted_probs,
   }
   __syncthreads();
 
-  int offset = bid * vocab_size;
+  int64_t offset = static_cast<int64_t>(bid) * vocab_size;
 #ifdef DEBUG_TOPP
   if (tid == 0) {
     printf(
@@ -1036,7 +1041,8 @@ __global__ void setup_kernel(GPU(randState_t) * state,
   int64_t idx =
       static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
       static_cast<int64_t>(threadIdx.x);
-  for (int i = idx; i < bs; i += gridDim.x * blockDim.x) {
+  for (int64_t i = idx; i < bs; i += static_cast<int64_t>(gridDim.x) *
+                                     static_cast<int64_t>(blockDim.x)) {
     GPU(rand_init)(static_cast<uint64_t>(seed[i]), 0, 0, &state[i]);
   }
 }
@@ -1049,7 +1055,8 @@ __global__ void setup_kernel(GPU(randState_t) * state,
   int64_t idx =
       static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
       static_cast<int64_t>(threadIdx.x);
-  for (int i = idx; i < bs; i += gridDim.x * blockDim.x) {
+  for (int64_t i = idx; i < bs; i += static_cast<int64_t>(gridDim.x) *
+                                     static_cast<int64_t>(blockDim.x)) {
     if (need_batch_random) {
       GPU(rand_init)(seed, i, offset, &state[i]);
     } else {
@@ -1095,7 +1102,8 @@ void TopPSamplingKernel(const Context& dev_ctx,
   int64_t p_num = ps.numel();
   int64_t bs = in_dims[0];
   // TODO(large-tensor): downstream functors may still use int
-  int vocab_size = in_dims[1];
+  PADDLE_ENFORCE_LE_INT_MAX(in_dims[1], "vocab_size");
+  int vocab_size = static_cast<int>(in_dims[1]);
   T* out_ptr = dev_ctx.template Alloc<T>(out);
   int64_t* ids_ptr = dev_ctx.template Alloc<int64_t>(ids);
   T* topk_scores_data = nullptr;
@@ -1257,7 +1265,6 @@ void TopPSamplingKernel(const Context& dev_ctx,
                           count_iter_begin.data<int>(),
                           mode);
 }
-
 }  // namespace phi
 
 #ifdef CUDA_BFLOAT16_AVAILABLE
