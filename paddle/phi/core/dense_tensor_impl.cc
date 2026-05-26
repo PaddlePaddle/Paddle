@@ -108,9 +108,8 @@ void* DenseTensor::mutable_data(const Place& place,
       0,
       common::errors::PreconditionNotMet(
           "The Tensor's element number must be equal or greater than zero. "
-          "The Tensor's shape is [",
-          dims(),
-          "] now"));
+          "The Tensor's shape is %s now.",
+          dims()));
   size_t size = numel() * SizeOf(dtype());
   if (requested_size && (requested_size > size)) {
     size = requested_size;
@@ -140,9 +139,8 @@ void* DenseTensor::mutable_data(const Place& place,
       0,
       common::errors::PreconditionNotMet(
           "The Tensor's element number must be equal or greater than zero. "
-          "The Tensor's shape is [",
-          dims(),
-          "] now"));
+          "The Tensor's shape is %s now.",
+          dims()));
   size_t size = numel() * SizeOf(dtype());
 
   /* some versions of paddle::variant don't have operator!= */
@@ -317,7 +315,7 @@ DenseTensor DenseTensor::Slice(int64_t begin_idx, int64_t end_idx) const {
       begin_idx,
       0,
       common::errors::OutOfRange("The start row index must be greater than 0."
-                                 "But received the start index is d%.",
+                                 "But received the start index is %d.",
                                  begin_idx));
   PADDLE_ENFORCE_LE(
       end_idx,

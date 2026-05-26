@@ -198,9 +198,8 @@ dtype::pstring* StringTensor::mutable_data(const Place& place,
       0,
       common::errors::PreconditionNotMet(
           "The Tensor's element number must be equal or greater than zero. "
-          "The Tensor's shape is [",
-          dims(),
-          "] now"));
+          "The Tensor's shape is %s now.",
+          dims()));
   size_t size = numel() * SizeOf(dtype());
   if (requested_size && (requested_size > size)) {
     size = requested_size;
