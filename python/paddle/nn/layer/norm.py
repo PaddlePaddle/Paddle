@@ -744,13 +744,11 @@ class LayerNorm(Layer):
             )
 
     def forward(self, input: Tensor) -> Tensor:
-        weight = self.weight.flatten() if self.weight is not None else None
-        bias = self.bias.flatten() if self.bias is not None else None
         return layer_norm(
             input,
             normalized_shape=self._normalized_shape,
-            weight=weight,
-            bias=bias,
+            weight=self.weight,
+            bias=self.bias,
             epsilon=self._epsilon,
         )
 
