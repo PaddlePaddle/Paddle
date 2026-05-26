@@ -31,7 +31,8 @@ defaults:
 jobs:
   check-skill:
     name: Check file paths
-    runs-on: ubuntu-latest
+    runs-on:
+      group: APPROVAL
     continue-on-error: true
     permissions:
       contents: read
@@ -39,6 +40,9 @@ jobs:
     outputs:
       can-skip: ${{ steps.skip-skill.outputs.should-skip || 'false' }}
     steps:
+      - name: Cleanup
+        run: |
+          rm -rf * .[^.]*
       - name: Checkout
         uses: actions/checkout@v6
       - name: Run skip check
