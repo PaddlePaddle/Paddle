@@ -453,6 +453,35 @@ if 'complex64' in support_types:
 
 
 @unittest.skipIf(
+    not paddle.is_compiled_with_xpu(), "core is not compiled with XPU"
+)
+class TestTensorComplex64Float64Add(unittest.TestCase):
+    def _check_add(self, x_np, y_np):
+        place = base.XPUPlace(0)
+        with base.dygraph.guard(place):
+            x = paddle.to_tensor(x_np)
+            y = paddle.to_tensor(y_np)
+            out = x + y
+            expected = x_np.astype(np.complex128) + y_np.astype(np.complex128)
+            self.assertEqual(out.dtype, paddle.complex128)
+            np.testing.assert_allclose(out.numpy(), expected)
+
+    def test_complex64_float64_add(self):
+        x_np = (
+            np.random.rand(4, 3, 2) + 1j * np.random.rand(4, 3, 2)
+        ).astype(np.complex64)
+        y_np = np.random.rand(4, 3, 2).astype(np.float64)
+        self._check_add(x_np, y_np)
+
+    def test_float64_complex64_add(self):
+        x_np = np.random.rand(100000, 4).astype(np.float64)
+        y_np = (
+            np.random.rand(4) + 1j * np.random.rand(4)
+        ).astype(np.complex64)
+        self._check_add(x_np, y_np)
+
+
+@unittest.skipIf(
     core.get_xpu_device_version(0) != core.XPUVersion.XPU3,
     "only supported on XPU3",
 )
