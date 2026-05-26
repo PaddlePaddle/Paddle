@@ -386,7 +386,8 @@ static GPU(blasLtEpilogue_t)
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "The activation attribute of fused_gemm_epilogue op should be"
-        " one of {\"none\", \"relu\", \"gelu\"}. But received %s." activation));
+        " one of {\"none\", \"relu\", \"gelu\"}. But received %s.",
+        activation));
   }
 }
 
