@@ -19,12 +19,16 @@ jobs:
   check-skill:
     name: Check file paths
     if: ${{ github.repository_owner == 'PaddlePaddle' }}
-    runs-on: ubuntu-latest
+    runs-on:
+      group: APPROVAL
     permissions:
       contents: read
     outputs:
       can-skip: ${{ steps.skip-skill.outputs.should-skip }}
     steps:
+      - name: Cleanup
+        run: |
+          rm -rf * .[^.]*
       - name: Checkout
         uses: actions/checkout@v6
       - name: Run skip check
@@ -93,12 +97,12 @@ jobs:
       can-skip: ${{ needs.cpu.outputs.can-skip == 'true' || needs.clone.outputs.can-skip == 'true' }}
       docker_npu_image: ${{ needs.build-docker.outputs.docker_npu_image }}
 
-  ixuca:
-    name: Linux-IXUCA
-    uses: ./.github/workflows/_Linux-IXUCA.yml
-    needs: [clone]
-    with:
-      can-skip: ${{ needs.clone.outputs.can-skip }}
+  # ixuca:
+  #   name: Linux-IXUCA
+  #   uses: ./.github/workflows/_Linux-IXUCA.yml
+  #   needs: [clone]
+  #   with:
+  #     can-skip: ${{ needs.clone.outputs.can-skip }}
 
   distribute:
     name: Distribute-stable-build

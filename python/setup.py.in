@@ -39,6 +39,48 @@ def git_commit() -> str:
     git_commit = git_commit.decode()
     return str(git_commit)
 
+def _get_readme_github_ref() -> str:
+    commit = git_commit()
+
+    if commit != 'Unknown':
+        return commit
+    if re.fullmatch(r'@TAG_VERSION_REGEX@', '@PADDLE_VERSION@'):
+        return 'v@PADDLE_VERSION@'
+    return 'develop'
+
+def _convert_readme_relative_paths_for_pypi(readme: str) -> str:
+    ref = _get_readme_github_ref()
+    github_blob_url = f'https://github.com/PaddlePaddle/Paddle/blob/{ref}/'
+    github_raw_url = f'https://raw.githubusercontent.com/PaddlePaddle/Paddle/{ref}/'
+
+    # Convert markdown ](./...) links to GitHub blob URLs.
+    readme = re.sub(
+        r'\]\(\./([^)]+)\)',
+        lambda match: f']({github_blob_url}{match.group(1)})',
+        readme,
+    )
+    # Convert HTML src="./..." paths to GitHub raw URLs.
+    readme = re.sub(
+        r'(src=)(["\'])\./([^"\']+)\2',
+        lambda match: (
+            f'{match.group(1)}{match.group(2)}{github_raw_url}'
+            f'{match.group(3)}{match.group(2)}'
+        ),
+        readme,
+        flags=re.IGNORECASE,
+    )
+    # Convert HTML href="./..." links to GitHub blob URLs.
+    readme = re.sub(
+        r'(href=)(["\'])\./([^"\']+)\2',
+        lambda match: (
+            f'{match.group(1)}{match.group(2)}{github_blob_url}'
+            f'{match.group(3)}{match.group(2)}'
+        ),
+        readme,
+        flags=re.IGNORECASE,
+    )
+    return readme
+
 def _get_version_detail(idx):
     assert idx < 3, "version info consists of %(major)d.%(minor)d.%(patch)d, \
         so detail index must less than 3"
@@ -1383,6 +1425,40 @@ if '${WITH_XPU}' == 'ON':
         package_data['paddle.libs'] += ['${XPU_XBLAS_LLVM_LIB_NAME}']
         shutil.copy('${XPU_XBLAS_CLANG_LIB}', libs_path)
         package_data['paddle.libs'] += ['${XPU_XBLAS_CLANG_LIB_NAME}']
+        shutil.copy('${XPU_XBLAS_CLANG}', libs_path)
+        xpu_xblas_clang_path = os.path.join(
+            libs_path, '${XPU_XBLAS_CLANG_NAME}'
+        )
+        os.chmod(
+            xpu_xblas_clang_path,
+            os.stat(xpu_xblas_clang_path).st_mode | 0o111,
+        )
+        package_data['paddle.libs'] += ['${XPU_XBLAS_CLANG_NAME}']
+        shutil.copy('${XPU_XBLAS_LLD}', libs_path)
+        xpu_xblas_lld_path = os.path.join(
+            libs_path, '${XPU_XBLAS_LLD_NAME}'
+        )
+        os.chmod(
+            xpu_xblas_lld_path,
+            os.stat(xpu_xblas_lld_path).st_mode | 0o111,
+        )
+        package_data['paddle.libs'] += ['${XPU_XBLAS_LLD_NAME}']
+        shutil.copy('${XPU_XBLAS_CLUSTER_BUILTINS_P800_ENC}', libs_path)
+        package_data['paddle.libs'] += [
+            '${XPU_XBLAS_CLUSTER_BUILTINS_P800_ENC_NAME}'
+        ]
+        shutil.copy('${XPU_XBLAS_SDNN_BUILTINS_P800_ENC}', libs_path)
+        package_data['paddle.libs'] += [
+            '${XPU_XBLAS_SDNN_BUILTINS_P800_ENC_NAME}'
+        ]
+        shutil.copy('${XPU_XBLAS_XBFLOAT16_BUILTINS_P800_ENC}', libs_path)
+        package_data['paddle.libs'] += [
+            '${XPU_XBLAS_XBFLOAT16_BUILTINS_P800_ENC_NAME}'
+        ]
+        shutil.copy('${XPU_XBLAS_XCCL_BUILTINS_P800_ENC}', libs_path)
+        package_data['paddle.libs'] += [
+            '${XPU_XBLAS_XCCL_BUILTINS_P800_ENC_NAME}'
+        ]
         shutil.copy('${XPU_XFA_LIB}', libs_path)
         package_data['paddle.libs'] += ['${XPU_XFA_LIB_NAME}']
         shutil.copy('${XPU_XPUDNN_LIB}', libs_path)
@@ -1762,8 +1838,8 @@ else:
         yield
 
 # Log for PYPI
-with open("@PADDLE_BINARY_DIR@/python/paddle/README.md", "r", encoding='UTF-8') as f:
-    long_description = f.read()
+with open("@PADDLE_SOURCE_DIR@/README.md", "r", encoding='UTF-8') as f:
+    long_description = _convert_readme_relative_paths_for_pypi(f.read())
 
 # strip *.so to reduce package size
 if '${WITH_STRIP}' == 'ON':
@@ -2079,6 +2155,7 @@ with redirect_stdout():
             'Programming Language :: Python :: 3.11',
             'Programming Language :: Python :: 3.12',
             'Programming Language :: Python :: 3.13',
+            'Programming Language :: Python :: 3.14',
             'Typing :: Typed',
         ],
     )

@@ -38,15 +38,12 @@ from ast import iter_child_nodes, walk
 try:
     from ast import TypeIgnore
 except ImportError:
-
     class TypeIgnore(AST):
         pass
-
 
 try:
     from ast import pattern
 except ImportError:
-
     class pattern(AST):
         pass
 
@@ -54,7 +51,6 @@ except ImportError:
 try:
     from ast import type_param
 except ImportError:
-
     class type_param(AST):
         pass
 
@@ -67,10 +63,8 @@ def _make_node(Name, Fields, Attributes, Bases):
     def create_node(self, *args, **kwargs):
         if len(args) > len(Fields):
             raise TypeError(
-                "{} constructor takes at most {} positional arguments".format(
-                    Name, len(Fields)
-                )
-            )
+                "{} constructor takes at most {} positional arguments".
+                format(Name, len(Fields)))
 
         # it's faster to iterate rather than zipping or enumerate
         for i in range(len(args)):
@@ -78,20 +72,19 @@ def _make_node(Name, Fields, Attributes, Bases):
         if kwargs:  # cold branch
             self.__dict__.update(kwargs)
 
-    setattr(
-        _sys.modules[__name__],
-        Name,
-        type(
+    setattr(_sys.modules[__name__],
             Name,
-            Bases,
-            {
-                '__init__': create_node,
-                '_fields': Fields,
-                '_attributes': Attributes,
-            },
-        ),
-    )
+            type(Name,
+                 Bases,
+                 {'__init__': create_node,
+                  '_fields': Fields,
+                  '_field_types': {},
+                  '_attributes': Attributes}))
 
+def _fill_field_types(Name, FieldTypes):
+    node = getattr(_sys.modules[__name__], Name)
+    assert len(node._fields) == len(FieldTypes), Name
+    node._field_types.update(zip(node._fields, FieldTypes))
 
 _nodes = (
     # mod
@@ -100,882 +93,194 @@ _nodes = (
     ('Expression', (('body',), (), (mod,))),
     ('FunctionType', (('argtypes', 'returns'), (), (mod,))),
     ('Suite', (('body',), (), (mod,))),
+
     # stmt
-    (
-        'FunctionDef',
-        (
-            (
-                'name',
-                'args',
-                'body',
-                'decorator_list',
-                'returns',
-                'type_comment',
-                'type_params',
-            ),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (stmt,),
-        ),
-    ),
-    (
-        'AsyncFunctionDef',
-        (
-            (
-                'name',
-                'args',
-                'body',
-                'decorator_list',
-                'returns',
-                'type_comment',
-                'type_params',
-            ),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (stmt,),
-        ),
-    ),
-    (
-        'ClassDef',
-        (
-            (
-                'name',
-                'bases',
-                'keywords',
-                'body',
-                'decorator_list',
-                'type_params',
-            ),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (stmt,),
-        ),
-    ),
-    (
-        'Return',
-        (
-            ('value',),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (stmt,),
-        ),
-    ),
-    (
-        'Delete',
-        (
-            ('targets',),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (stmt,),
-        ),
-    ),
-    (
-        'Assign',
-        (
-            ('targets', 'value', 'type_comment'),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (stmt,),
-        ),
-    ),
-    (
-        'TypeAlias',
-        (
-            ('name', 'type_params', 'value'),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (stmt,),
-        ),
-    ),
-    (
-        'AugAssign',
-        (
-            (
-                'target',
-                'op',
-                'value',
-            ),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (stmt,),
-        ),
-    ),
-    (
-        'AnnAssign',
-        (
-            (
-                'target',
-                'annotation',
-                'value',
-                'simple',
-            ),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (stmt,),
-        ),
-    ),
-    (
-        'Print',
-        (
-            (
-                'dest',
-                'values',
-                'nl',
-            ),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (stmt,),
-        ),
-    ),
-    (
-        'For',
-        (
-            ('target', 'iter', 'body', 'orelse', 'type_comment'),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (stmt,),
-        ),
-    ),
-    (
-        'AsyncFor',
-        (
-            ('target', 'iter', 'body', 'orelse', 'type_comment'),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (stmt,),
-        ),
-    ),
-    (
-        'While',
-        (
-            (
-                'test',
-                'body',
-                'orelse',
-            ),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (stmt,),
-        ),
-    ),
-    (
-        'If',
-        (
-            (
-                'test',
-                'body',
-                'orelse',
-            ),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (stmt,),
-        ),
-    ),
-    (
-        'With',
-        (
-            ('items', 'body', 'type_comment'),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (stmt,),
-        ),
-    ),
-    (
-        'AsyncWith',
-        (
-            ('items', 'body', 'type_comment'),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (stmt,),
-        ),
-    ),
-    (
-        'Match',
-        (
-            ('subject', 'cases'),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (stmt,),
-        ),
-    ),
-    (
-        'Raise',
-        (
-            (
-                'exc',
-                'cause',
-            ),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (stmt,),
-        ),
-    ),
-    (
-        'Try',
-        (
-            (
-                'body',
-                'handlers',
-                'orelse',
-                'finalbody',
-            ),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (stmt,),
-        ),
-    ),
-    (
-        'TryStar',
-        (
-            (
-                'body',
-                'handlers',
-                'orelse',
-                'finalbody',
-            ),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (stmt,),
-        ),
-    ),
-    (
-        'Assert',
-        (
-            (
-                'test',
-                'msg',
-            ),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (stmt,),
-        ),
-    ),
-    (
-        'Import',
-        (
-            ('names',),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (stmt,),
-        ),
-    ),
-    (
-        'ImportFrom',
-        (
-            (
-                'module',
-                'names',
-                'level',
-            ),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (stmt,),
-        ),
-    ),
-    (
-        'Exec',
-        (
-            (
-                'body',
-                'globals',
-                'locals',
-            ),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (stmt,),
-        ),
-    ),
-    (
-        'Global',
-        (
-            ('names',),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (stmt,),
-        ),
-    ),
-    (
-        'Nonlocal',
-        (
-            ('names',),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (stmt,),
-        ),
-    ),
-    (
-        'Expr',
-        (
-            ('value',),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (stmt,),
-        ),
-    ),
-    (
-        'Pass',
-        (
-            (),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (stmt,),
-        ),
-    ),
-    (
-        'Break',
-        (
-            (),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (stmt,),
-        ),
-    ),
-    (
-        'Continue',
-        (
-            (),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (stmt,),
-        ),
-    ),
+    ('FunctionDef', (('name', 'args', 'body', 'decorator_list', 'returns',
+                      'type_comment', 'type_params'),
+                     ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+                     (stmt,))),
+    ('AsyncFunctionDef', (('name', 'args', 'body', 'decorator_list', 'returns',
+                           'type_comment', 'type_params',),
+                          ('lineno', 'col_offset',
+                           'end_lineno', 'end_col_offset',),
+                          (stmt,))),
+    ('ClassDef', (('name', 'bases', 'keywords', 'body', 'decorator_list',
+                   'type_params',),
+                  ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+                  (stmt,))),
+    ('Return', (('value',),
+                ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+                (stmt,))),
+    ('Delete', (('targets',),
+                ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+                (stmt,))),
+    ('Assign', (('targets', 'value', 'type_comment'),
+                ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+                (stmt,))),
+    ('TypeAlias', (('name', 'type_params', 'value'),
+                  ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+                  (stmt,))),
+    ('AugAssign', (('target', 'op', 'value',),
+                   ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+                   (stmt,))),
+    ('AnnAssign', (('target', 'annotation', 'value', 'simple',),
+                   ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+                   (stmt,))),
+    ('Print', (('dest', 'values', 'nl',),
+               ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+               (stmt,))),
+    ('For', (('target', 'iter', 'body', 'orelse', 'type_comment'),
+             ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+             (stmt,))),
+    ('AsyncFor', (('target', 'iter', 'body', 'orelse', 'type_comment'),
+                  ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+                  (stmt,))),
+    ('While', (('test', 'body', 'orelse',),
+               ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+               (stmt,))),
+    ('If', (('test', 'body', 'orelse',),
+            ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+            (stmt,))),
+    ('With', (('items', 'body', 'type_comment'),
+              ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+              (stmt,))),
+    ('AsyncWith', (('items', 'body', 'type_comment'),
+                   ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+                   (stmt,))),
+    ('Match', (('subject', 'cases'),
+                   ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+                   (stmt,))),
+    ('Raise', (('exc', 'cause',),
+               ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+               (stmt,))),
+    ('Try', (('body', 'handlers', 'orelse', 'finalbody',),
+             ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+             (stmt,))),
+    ('TryStar', (('body', 'handlers', 'orelse', 'finalbody',),
+             ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+             (stmt,))),
+    ('Assert', (('test', 'msg',),
+                ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+                (stmt,))),
+    ('Import', (('names',),
+                ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+                (stmt,))),
+    ('ImportFrom', (('module', 'names', 'level',),
+                    ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+                    (stmt,))),
+    ('Exec', (('body', 'globals', 'locals',),
+              ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+              (stmt,))),
+    ('Global', (('names',),
+                ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+                (stmt,))),
+    ('Nonlocal', (('names',),
+                  ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+                  (stmt,))),
+    ('Expr', (('value',),
+              ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+              (stmt,))),
+    ('Pass', ((), ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+              (stmt,))),
+    ('Break', ((), ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+               (stmt,))),
+    ('Continue', ((),
+                  ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+                  (stmt,))),
+
     # expr
-    (
-        'BoolOp',
-        (
-            (
-                'op',
-                'values',
-            ),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (expr,),
-        ),
-    ),
-    (
-        'NamedExpr',
-        (
-            (
-                'target',
-                'value',
-            ),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (expr,),
-        ),
-    ),
-    (
-        'BinOp',
-        (
-            (
-                'left',
-                'op',
-                'right',
-            ),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (expr,),
-        ),
-    ),
-    (
-        'UnaryOp',
-        (
-            (
-                'op',
-                'operand',
-            ),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (expr,),
-        ),
-    ),
-    (
-        'Lambda',
-        (
-            (
-                'args',
-                'body',
-            ),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (expr,),
-        ),
-    ),
-    (
-        'IfExp',
-        (
-            (
-                'test',
-                'body',
-                'orelse',
-            ),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (expr,),
-        ),
-    ),
-    (
-        'Dict',
-        (
-            (
-                'keys',
-                'values',
-            ),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (expr,),
-        ),
-    ),
-    (
-        'Set',
-        (
-            ('elts',),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (expr,),
-        ),
-    ),
-    (
-        'ListComp',
-        (
-            (
-                'elt',
-                'generators',
-            ),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (expr,),
-        ),
-    ),
-    (
-        'SetComp',
-        (
-            (
-                'elt',
-                'generators',
-            ),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (expr,),
-        ),
-    ),
-    (
-        'DictComp',
-        (
-            (
-                'key',
-                'value',
-                'generators',
-            ),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (expr,),
-        ),
-    ),
-    (
-        'GeneratorExp',
-        (
-            (
-                'elt',
-                'generators',
-            ),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (expr,),
-        ),
-    ),
-    (
-        'Await',
-        (
-            ('value',),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (expr,),
-        ),
-    ),
-    (
-        'Yield',
-        (
-            ('value',),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (expr,),
-        ),
-    ),
-    (
-        'YieldFrom',
-        (
-            ('value',),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (expr,),
-        ),
-    ),
-    (
-        'Compare',
-        (
-            (
-                'left',
-                'ops',
-                'comparators',
-            ),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (expr,),
-        ),
-    ),
-    (
-        'Call',
-        (
-            (
-                'func',
-                'args',
-                'keywords',
-            ),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (expr,),
-        ),
-    ),
-    (
-        'Repr',
-        (
-            ('value',),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (expr,),
-        ),
-    ),
-    (
-        'FormattedValue',
-        (
-            (
-                'value',
-                'conversion',
-                'format_spec',
-            ),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (expr,),
-        ),
-    ),
-    (
-        'JoinedStr',
-        (
-            ('values',),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (expr,),
-        ),
-    ),
-    (
-        'Constant',
-        (
-            ('value', 'kind'),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (expr,),
-        ),
-    ),
-    (
-        'Attribute',
-        (
-            (
-                'value',
-                'attr',
-                'ctx',
-            ),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (expr,),
-        ),
-    ),
-    (
-        'Subscript',
-        (
-            (
-                'value',
-                'slice',
-                'ctx',
-            ),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (expr,),
-        ),
-    ),
-    (
-        'Starred',
-        (
-            (
-                'value',
-                'ctx',
-            ),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (expr,),
-        ),
-    ),
-    (
-        'Name',
-        (
-            ('id', 'ctx', 'annotation', 'type_comment'),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (expr,),
-        ),
-    ),
-    (
-        'List',
-        (
-            (
-                'elts',
-                'ctx',
-            ),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (expr,),
-        ),
-    ),
-    (
-        'Tuple',
-        (
-            (
-                'elts',
-                'ctx',
-            ),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (expr,),
-        ),
-    ),
+
+    ('BoolOp', (('op', 'values',),
+                ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+                (expr,))),
+    ('NamedExpr', (('target', 'value',),
+                ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+                (expr,))),
+    ('BinOp', (('left', 'op', 'right',),
+               ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+               (expr,))),
+    ('UnaryOp', (('op', 'operand',),
+                 ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+                 (expr,))),
+    ('Lambda', (('args', 'body',),
+                ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+                (expr,))),
+    ('IfExp', (('test', 'body', 'orelse',),
+               ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+               (expr,))),
+    ('Dict', (('keys', 'values',),
+              ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+              (expr,))),
+    ('Set', (('elts',),
+             ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+             (expr,))),
+    ('ListComp', (('elt', 'generators',),
+                  ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+                  (expr,))),
+    ('SetComp', (('elt', 'generators',),
+                 ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+                 (expr,))),
+    ('DictComp', (('key', 'value', 'generators',),
+                  ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+                  (expr,))),
+    ('GeneratorExp', (('elt', 'generators',),
+                      ('lineno', 'col_offset',
+                       'end_lineno', 'end_col_offset',),
+                      (expr,))),
+    ('Await', (('value',),
+               ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+               (expr,))),
+    ('Yield', (('value',),
+               ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+               (expr,))),
+    ('YieldFrom', (('value',),
+                   ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+                   (expr,))),
+    ('Compare', (('left', 'ops', 'comparators',),
+                 ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+                 (expr,))),
+    ('Call', (('func', 'args', 'keywords',),
+              ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+              (expr,))),
+    ('Repr', (('value',),
+              ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+              (expr,))),
+    ('FormattedValue', (('value', 'conversion', 'format_spec',),
+                        ('lineno', 'col_offset',
+                         'end_lineno', 'end_col_offset',),
+                        (expr,))),
+    ('Interpolation', (('value', 'str', 'conversion', 'format_spec',),
+                        ('lineno', 'col_offset',
+                         'end_lineno', 'end_col_offset',),
+                        (expr,))),
+    ('JoinedStr', (('values',),
+                   ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+                   (expr,))),
+    ('TemplateStr', (('values',),
+                   ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+                   (expr,))),
+    ('Constant', (('value', 'kind'),
+                  ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+                  (expr,))),
+    ('Attribute', (('value', 'attr', 'ctx',),
+                   ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+                   (expr,))),
+    ('Subscript', (('value', 'slice', 'ctx',),
+                   ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+                   (expr,))),
+    ('Starred', (('value', 'ctx',),
+                 ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+                 (expr,))),
+    ('Name', (('id', 'ctx', 'annotation', 'type_comment'),
+              ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+              (expr,))),
+    ('List', (('elts', 'ctx',),
+              ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+              (expr,))),
+    ('Tuple', (('elts', 'ctx',),
+               ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+               (expr,))),
+
     # expr_context
     ('Load', ((), (), (expr_context,))),
     ('Store', ((), (), (expr_context,))),
@@ -983,23 +288,16 @@ _nodes = (
     ('AugLoad', ((), (), (expr_context,))),
     ('AugStore', ((), (), (expr_context,))),
     ('Param', ((), (), (expr_context,))),
+
     # slice
-    (
-        'Slice',
-        (
-            ('lower', 'upper', 'step'),
-            (
-                'lineno',
-                'col_offset',
-                'end_lineno',
-                'end_col_offset',
-            ),
-            (slice,),
-        ),
-    ),
+    ('Slice', (('lower', 'upper', 'step'),
+               ('lineno', 'col_offset', 'end_lineno', 'end_col_offset',),
+               (slice,))),
+
     # boolop
     ('And', ((), (), (boolop,))),
     ('Or', ((), (), (boolop,))),
+
     # operator
     ('Add', ((), (), (operator,))),
     ('Sub', ((), (), (operator,))),
@@ -1014,51 +312,13 @@ _nodes = (
     ('BitXor', ((), (), (operator,))),
     ('BitAnd', ((), (), (operator,))),
     ('FloorDiv', ((), (), (operator,))),
+
     # unaryop
-    (
-        'Invert',
-        (
-            (),
-            (),
-            (
-                unaryop,
-                AST,
-            ),
-        ),
-    ),
-    (
-        'Not',
-        (
-            (),
-            (),
-            (
-                unaryop,
-                AST,
-            ),
-        ),
-    ),
-    (
-        'UAdd',
-        (
-            (),
-            (),
-            (
-                unaryop,
-                AST,
-            ),
-        ),
-    ),
-    (
-        'USub',
-        (
-            (),
-            (),
-            (
-                unaryop,
-                AST,
-            ),
-        ),
-    ),
+    ('Invert', ((), (), (unaryop, AST,))),
+    ('Not', ((), (), (unaryop, AST,))),
+    ('UAdd', ((), (), (unaryop, AST,))),
+    ('USub', ((), (), (unaryop, AST,))),
+
     # cmpop
     ('Eq', ((), (), (cmpop,))),
     ('NotEq', ((), (), (cmpop,))),
@@ -1070,168 +330,212 @@ _nodes = (
     ('IsNot', ((), (), (cmpop,))),
     ('In', ((), (), (cmpop,))),
     ('NotIn', ((), (), (cmpop,))),
+
     # comprehension
     ('comprehension', (('target', 'iter', 'ifs', 'is_async'), (), (AST,))),
+
     # excepthandler
-    (
-        'ExceptHandler',
-        (
-            ('type', 'name', 'body'),
-            ('lineno', 'col_offset', 'end_lineno', 'end_col_offset'),
-            (excepthandler,),
-        ),
-    ),
+    ('ExceptHandler', (('type', 'name', 'body'),
+                       ('lineno', 'col_offset',
+                        'end_lineno', 'end_col_offset'),
+                       (excepthandler,))),
+
     # arguments
-    (
-        'arguments',
-        (
-            (
-                'args',
-                'posonlyargs',
-                'vararg',
-                'kwonlyargs',
-                'kw_defaults',
-                'kwarg',
-                'defaults',
-            ),
-            (),
-            (AST,),
-        ),
-    ),
+    ('arguments', (('args', 'posonlyargs', 'vararg', 'kwonlyargs',
+                    'kw_defaults', 'kwarg', 'defaults'), (), (AST,))),
+
     # keyword
-    (
-        'keyword',
-        (
-            ('arg', 'value'),
-            ('lineno', 'col_offset', 'end_lineno', 'end_col_offset'),
-            (AST,),
-        ),
-    ),
+    ('keyword', (('arg', 'value'),
+                 ('lineno', 'col_offset', 'end_lineno', 'end_col_offset'),
+                 (AST,))),
+
     # alias
-    (
-        'alias',
-        (
-            ('name', 'asname'),
-            ('lineno', 'col_offset', 'end_lineno', 'end_col_offset'),
-            (AST,),
-        ),
-    ),
+    ('alias', (('name', 'asname'),
+               ('lineno', 'col_offset', 'end_lineno', 'end_col_offset'),
+               (AST,))),
+
     # withitem
     ('withitem', (('context_expr', 'optional_vars'), (), (AST,))),
+
     # match_case
     ('match_case', (('pattern', 'guard', 'body'), (), (AST,))),
+
     # pattern
-    (
-        'MatchValue',
-        (
-            ('value',),
-            ('lineno', 'col_offset', 'end_lineno', 'end_col_offset'),
-            (pattern,),
-        ),
-    ),
-    (
-        'MatchSingleton',
-        (
-            ('value',),
-            ('lineno', 'col_offset', 'end_lineno', 'end_col_offset'),
-            (pattern,),
-        ),
-    ),
-    (
-        'MatchSequence',
-        (
-            ('patterns',),
-            ('lineno', 'col_offset', 'end_lineno', 'end_col_offset'),
-            (pattern,),
-        ),
-    ),
-    (
-        'MatchMapping',
-        (
-            ('keys', 'patterns', 'rest'),
-            ('lineno', 'col_offset', 'end_lineno', 'end_col_offset'),
-            (pattern,),
-        ),
-    ),
-    (
-        'MatchClass',
-        (
-            ('cls', 'patterns', 'kwd_attrs', 'kwd_patterns'),
-            ('lineno', 'col_offset', 'end_lineno', 'end_col_offset'),
-            (pattern,),
-        ),
-    ),
-    (
-        'MatchStar',
-        (
-            ('name',),
-            ('lineno', 'col_offset', 'end_lineno', 'end_col_offset'),
-            (pattern,),
-        ),
-    ),
-    (
-        'MatchAs',
-        (
-            ('pattern', 'name'),
-            ('lineno', 'col_offset', 'end_lineno', 'end_col_offset'),
-            (pattern,),
-        ),
-    ),
-    (
-        'MatchOr',
-        (
-            ('patterns',),
-            ('lineno', 'col_offset', 'end_lineno', 'end_col_offset'),
-            (pattern,),
-        ),
-    ),
+    ('MatchValue', (('value',),
+                    ('lineno', 'col_offset', 'end_lineno', 'end_col_offset'),
+                    (pattern,))),
+    ('MatchSingleton', (('value',),
+                        ('lineno', 'col_offset',
+                         'end_lineno', 'end_col_offset'),
+                        (pattern,))),
+    ('MatchSequence', (('patterns',),
+                       ('lineno', 'col_offset',
+                        'end_lineno', 'end_col_offset'),
+                       (pattern,))),
+    ('MatchMapping', (('keys', 'patterns', 'rest'),
+                      ('lineno', 'col_offset',
+                       'end_lineno', 'end_col_offset'),
+                      (pattern,))),
+    ('MatchClass', (('cls', 'patterns', 'kwd_attrs', 'kwd_patterns'),
+                    ('lineno', 'col_offset',
+                     'end_lineno', 'end_col_offset'),
+                    (pattern,))),
+    ('MatchStar', (('name',),
+                   ('lineno', 'col_offset',
+                    'end_lineno', 'end_col_offset'),
+                   (pattern,))),
+    ('MatchAs', (('pattern', 'name'),
+                   ('lineno', 'col_offset',
+                    'end_lineno', 'end_col_offset'),
+                   (pattern,))),
+    ('MatchOr', (('patterns',),
+                 ('lineno', 'col_offset',
+                  'end_lineno', 'end_col_offset'),
+                 (pattern,))),
+
     # type_ignore
     ('type_ignore', ((), ('lineno', 'tag'), (TypeIgnore,))),
+
     # type_param
-    (
-        'TypeVar',
-        (
-            (
-                'name',
-                'bound',
-            ),
-            ('lineno', 'col_offset', 'end_lineno', 'end_col_offset'),
-            (type_param,),
-        ),
-    ),
-    (
-        'ParamSpec',
-        (
-            ('name',),
-            ('lineno', 'col_offset', 'end_lineno', 'end_col_offset'),
-            (type_param,),
-        ),
-    ),
-    (
-        'TypeVarTuple',
-        (
-            ('name',),
-            ('lineno', 'col_offset', 'end_lineno', 'end_col_offset'),
-            (type_param,),
-        ),
-    ),
-)
+    ('TypeVar', (('name', 'bound', 'default_value'),
+                 ('lineno', 'col_offset',
+                  'end_lineno', 'end_col_offset'),
+                 (type_param,))),
+    ('ParamSpec', (('name', 'default_value'),
+                 ('lineno', 'col_offset',
+                  'end_lineno', 'end_col_offset'),
+                 (type_param,))),
+    ('TypeVarTuple', (('name', 'default_value'),
+                 ('lineno', 'col_offset',
+                  'end_lineno', 'end_col_offset'),
+                 (type_param,))),
+    )
 
+for _name, _descr in _nodes:
+    _make_node(_name, *_descr)
 
-for name, descr in _nodes:
-    _make_node(name, *descr)
+# As an exception to gast rule that states that all nodes are identical for all
+# python version, we don't fill the field type for python with a version lower
+# than 3.10. Those version lack type support to be compatible with the more
+# modern representation anyway. The _field_types still exists though, but it's
+# always empty.
+if _sys.version_info >= (3, 10):
+
+    _node_types = (
+        # mod
+        ('Module', (list[stmt], list[type_ignore])),
+        ('Interactive', (list[stmt],)),
+        ('Expression', (expr,)),
+        ('FunctionType', ('argtypes', 'returns'),),
+        ('Suite', (list[stmt],),),
+
+        # stmt
+        ('FunctionDef', (str, arguments, list[stmt], list[expr], expr | None, str | None, list[type_param]),),
+        ('AsyncFunctionDef', (str, arguments, list[stmt], list[expr], expr | None, str | None, list[type_param]),),
+        ('ClassDef', (str, list[expr], list[keyword], list[stmt], list[expr], list[type_param])),
+        ('Return', (expr | None,)),
+        ('Delete', (list[expr],)),
+        ('Assign', (list[expr], expr, str | None),),
+        ('TypeAlias', (expr, list[type_param], expr),),
+        ('AugAssign', (expr, operator, expr), ),
+        ('AnnAssign', (expr, expr, expr | None, int), ),
+        ('Print', (expr | None, list[expr], bool), ),
+        ('For', (expr, expr, list[stmt], list[stmt], str | None), ),
+        ('AsyncFor', (expr, expr, list[stmt], list[stmt], str | None), ),
+        ('While', (expr, list[stmt], list[stmt]), ),
+        ('If', (expr, list[stmt], list[stmt]), ),
+        ('With', (list[withitem], list[stmt], str | None), ),
+        ('AsyncWith', (list[withitem], list[stmt], str | None), ),
+        ('Match', (expr, match_case), ),
+        ('Raise', (expr | None, expr | None), ),
+        ('Try', (list[stmt], list[excepthandler], list[stmt], list[stmt]), ),
+        ('TryStar', (list[stmt], list[excepthandler], list[stmt], list[stmt]), ),
+        ('Assert', (expr, expr | None), ),
+        ('Import', (list[alias],), ),
+        ('ImportFrom', (str|None, list[alias], int | None), ),
+        ('Exec', (expr, expr | None, expr | None), ),
+        ('Global', (list[str],), ),
+        ('Nonlocal', (list[str],), ),
+        ('Expr', (expr,), ),
+
+        # expr
+
+        ('BoolOp', (boolop, list[expr]), ),
+        ('NamedExpr', (expr, expr), ),
+        ('BinOp', (expr, operator, expr), ),
+        ('UnaryOp', (unaryop, expr), ),
+        ('Lambda', (arguments, expr), ),
+        ('IfExp', (expr, expr, expr), ),
+        ('Dict', (list[expr], list[expr]), ),
+        ('Set', (list[expr],), ),
+        ('ListComp', (expr, list[comprehension]), ),
+        ('SetComp', (expr, list[comprehension]), ),
+        ('DictComp', (expr, expr, list[comprehension]), ),
+        ('GeneratorExp', (expr, list[comprehension]), ),
+        ('Await', (expr,), ),
+        ('Yield', (expr | None,), ),
+        ('YieldFrom', (expr,), ),
+        ('Compare', (expr, list[cmpop], list[expr]), ),
+        ('Call', (expr, list[expr], list[keyword]), ),
+        ('Repr', (expr,), ),
+        ('FormattedValue', (expr, int, expr | None), ),
+        ('Interpolation', (expr, str, int, expr | None), ),
+        ('JoinedStr', (list[expr],), ),
+        ('TemplateStr', (list[expr],), ),
+        ('Constant', (object, str | None), ),
+        ('Attribute', (expr, str, expr_context), ),
+        ('Subscript', (expr, expr, expr_context), ),
+        ('Starred', (expr, expr_context), ),
+        ('Name', (str, expr_context, expr, str | None), ),
+        ('List', (list[expr], expr_context), ),
+        ('Tuple', (list[expr], expr_context), ),
+        ('Slice', (expr | None, expr | None, expr | None), ),
+
+        # comprehension
+        ('comprehension', (expr, expr, list[expr], int), ),
+
+        # excepthandler
+        ('ExceptHandler', (expr | None, str | None, list[stmt]), ),
+
+        # arguments
+        ('arguments', (list[expr], list[expr], expr | None, list[expr], list[expr], expr | None, list[expr]), ),
+
+        # keyword
+        ('keyword', (str | None, expr), ),
+
+        # alias
+        ('alias', (str, str | None), ),
+
+        # withitem
+        ('withitem', (expr, expr | None), ),
+
+        # match_case
+        ('match_case', (pattern, expr, list[stmt]), ),
+
+        # pattern
+        ('MatchValue', (expr,), ),
+        ('MatchSingleton', (object,), ),
+        ('MatchSequence', (list[pattern],), ),
+        ('MatchMapping', (list[expr], list[pattern], str | None), ),
+        ('MatchClass', (expr, list[pattern], list[str], list[pattern]), ),
+        ('MatchStar', (str | None,), ),
+        ('MatchAs', (pattern | None, str | None), ),
+        ('MatchOr', (list[pattern],), ),
+
+        # type_param
+        ('TypeVar', (str, expr | None, expr | None), ),
+        ('ParamSpec', (str, expr | None), ),
+        ('TypeVarTuple', (str, expr | None), ),
+    )
+
+    for _name, _types in _node_types:
+        _fill_field_types(_name, _types)
 
 from .ast3 import ast_to_gast, gast_to_ast
 
 
 def parse(*args, **kwargs):
     return ast_to_gast(_ast.parse(*args, **kwargs))
-
-
-def unparse(gast_obj):
-    from .unparser import unparse
-
-    return unparse(gast_obj)
 
 
 def literal_eval(node_or_string):
@@ -1241,23 +545,22 @@ def literal_eval(node_or_string):
 
 
 def get_docstring(node, clean=True):
-    if not isinstance(node, (FunctionDef, ClassDef, Module)):
+    if not isinstance(node, (AsyncFunctionDef, FunctionDef, ClassDef, Module)):
         raise TypeError("%r can't have docstrings" % node.__class__.__name__)
-    if (
-        node.body
-        and isinstance(node.body[0], Expr)
-        and isinstance(node.body[0].value, Constant)
-    ):
-        if clean:
-            import inspect
-
-            holder = node.body[0].value
-            return inspect.cleandoc(getattr(holder, holder._fields[0]))
-        return node.body[0].value.s
+    if not(node.body and isinstance(node.body[0], Expr)):
+        return None
+    node = node.body[0].value
+    if isinstance(node, Constant) and isinstance(node.value, str):
+        text = node.value
+    else:
+        return None
+    if clean:
+        import inspect
+        text = inspect.cleandoc(text)
+    return text
 
 
 # the following are directly imported from python3.8's Lib/ast.py  #
-
 
 def copy_location(new_node, old_node):
     """
@@ -1266,11 +569,8 @@ def copy_location(new_node, old_node):
     and return *new_node*.
     """
     for attr in 'lineno', 'col_offset', 'end_lineno', 'end_col_offset':
-        if (
-            attr in old_node._attributes
-            and attr in new_node._attributes
-            and hasattr(old_node, attr)
-        ):
+        if attr in old_node._attributes and attr in new_node._attributes \
+           and hasattr(old_node, attr):
             setattr(new_node, attr, getattr(old_node, attr))
     return new_node
 
@@ -1283,7 +583,6 @@ def fix_missing_locations(node):
     attributes recursively where not already set, by setting them to the values
     of the parent node.  It works recursively starting at *node*.
     """
-
     def _fix(node, lineno, col_offset, end_lineno, end_col_offset):
         if 'lineno' in node._attributes:
             if not hasattr(node, 'lineno'):
@@ -1307,9 +606,17 @@ def fix_missing_locations(node):
                 end_col_offset = node.end_col_offset
         for child in iter_child_nodes(node):
             _fix(child, lineno, col_offset, end_lineno, end_col_offset)
-
     _fix(node, 1, 0, 1, 0)
     return node
+
+
+if _sys.version_info.major == 3 and _sys.version_info.minor >= 8:
+    get_source_segment = _ast.get_source_segment
+else:
+    # No end_lineno no end_col_offset info set for those version, so always
+    # return None
+    def get_source_segment(source, node, padded=False):
+        return None
 
 
 def increment_lineno(node, n=1):
@@ -1325,110 +632,87 @@ def increment_lineno(node, n=1):
             child.end_lineno = (getattr(child, 'end_lineno', 0) or 0) + n
     return node
 
-
-if _sys.version_info.major == 3 and _sys.version_info.minor >= 13:
-    dump = _ast.dump
-else:
-    # Code import from Lib/ast.py
-    #
-    # minor changes: getattr(x, y, ...) is None => getattr(x, y, 42) is None
-    #
-    def dump(
-        node,
-        annotate_fields=True,
-        include_attributes=False,
-        # *,  # removed for compatibility with python2 :-/
-        indent=None,
-        show_empty=False,
-    ):
-        """
-        Return a formatted dump of the tree in node.  This is mainly useful for
-        debugging purposes.  If annotate_fields is true (by default),
-        the returned string will show the names and the values for fields.
-        If annotate_fields is false, the result string will be more compact by
-        omitting unambiguous field names.  Attributes such as line
-        numbers and column offsets are not dumped by default.  If this is wanted,
-        include_attributes can be set to true.  If indent is a non-negative
-        integer or string, then the tree will be pretty-printed with that indent
-        level. None (the default) selects the single line representation.
-        If show_empty is False, then empty lists and fields that are None
-        will be omitted from the output for better readability.
-        """
-
-        def _format(node, level=0):
-            if indent is not None:
-                level += 1
-                prefix = '\n' + indent * level
-                sep = ',\n' + indent * level
-            else:
-                prefix = ''
-                sep = ', '
-            if isinstance(node, AST):
-                cls = type(node)
-                args = []
-                args_buffer = []
-                allsimple = True
-                keywords = annotate_fields
-                for name in node._fields:
+# Code import from Lib/ast.py
+#
+# minor changes: getattr(x, y, ...) is None => getattr(x, y, 42) is None
+#
+def dump(
+    node, annotate_fields=True, include_attributes=False,
+    # *,  # removed for compatibility with python2 :-/
+    indent=None, show_empty=False,
+):
+    """
+    Return a formatted dump of the tree in node.  This is mainly useful for
+    debugging purposes.  If annotate_fields is true (by default),
+    the returned string will show the names and the values for fields.
+    If annotate_fields is false, the result string will be more compact by
+    omitting unambiguous field names.  Attributes such as line
+    numbers and column offsets are not dumped by default.  If this is wanted,
+    include_attributes can be set to true.  If indent is a non-negative
+    integer or string, then the tree will be pretty-printed with that indent
+    level. None (the default) selects the single line representation.
+    If show_empty is False, then empty lists and fields that are None
+    will be omitted from the output for better readability.
+    """
+    def _format(node, level=0):
+        if indent is not None:
+            level += 1
+            prefix = '\n' + indent * level
+            sep = ',\n' + indent * level
+        else:
+            prefix = ''
+            sep = ', '
+        if isinstance(node, AST):
+            cls = type(node)
+            args = []
+            args_buffer = []
+            allsimple = True
+            keywords = annotate_fields
+            for name in node._fields:
+                try:
+                    value = getattr(node, name)
+                except AttributeError:
+                    keywords = True
+                    continue
+                if value is None and getattr(cls, name, 42) is None:
+                    keywords = True
+                    continue
+                if not show_empty:
+                    if value == []:
+                        if not keywords:
+                            args_buffer.append(repr(value))
+                        continue
+                    if not keywords:
+                        args.extend(args_buffer)
+                        args_buffer = []
+                value, simple = _format(value, level)
+                allsimple = allsimple and simple
+                if keywords:
+                    args.append('%s=%s' % (name, value))
+                else:
+                    args.append(value)
+            if include_attributes and node._attributes:
+                for name in node._attributes:
                     try:
                         value = getattr(node, name)
                     except AttributeError:
-                        keywords = True
                         continue
                     if value is None and getattr(cls, name, 42) is None:
-                        keywords = True
                         continue
-                    if (
-                        not show_empty
-                        and (value is None or value == [])
-                        # Special cases:
-                        # `Constant(value=None)` and `MatchSingleton(value=None)`
-                        and not isinstance(node, (Constant, MatchSingleton))
-                    ):
-                        args_buffer.append(repr(value))
-                        continue
-                    elif not keywords:
-                        args.extend(args_buffer)
-                        args_buffer = []
                     value, simple = _format(value, level)
                     allsimple = allsimple and simple
-                    if keywords:
-                        args.append('%s=%s' % (name, value))
-                    else:
-                        args.append(value)
-                if include_attributes and node._attributes:
-                    for name in node._attributes:
-                        try:
-                            value = getattr(node, name)
-                        except AttributeError:
-                            continue
-                        if value is None and getattr(cls, name, 42) is None:
-                            continue
-                        value, simple = _format(value, level)
-                        allsimple = allsimple and simple
-                        args.append('%s=%s' % (name, value))
-                if allsimple and len(args) <= 3:
-                    return (
-                        '%s(%s)' % (node.__class__.__name__, ', '.join(args)),
-                        not args,
-                    )
-                return (
-                    '%s(%s%s)'
-                    % (node.__class__.__name__, prefix, sep.join(args)),
-                    False,
-                )
-            elif isinstance(node, list):
-                if not node:
-                    return '[]', True
-                return (
-                    '[%s%s]'
-                    % (prefix, sep.join(_format(x, level)[0] for x in node)),
-                    False,
-                )
-            return repr(node), True
+                    args.append('%s=%s' % (name, value))
+            if allsimple and len(args) <= 3:
+                return '%s(%s)' % (node.__class__.__name__, ', '.join(args)), not args
+            return '%s(%s%s)' % (node.__class__.__name__, prefix, sep.join(args)), False
+        elif isinstance(node, list):
+            if not node:
+                return '[]', True
+            return '[%s%s]' % (prefix, sep.join(_format(x, level)[0] for x in node)), False
+        return repr(node), True
 
-        if not isinstance(node, AST):
-            raise TypeError('expected AST, got %r' % node.__class__.__name__)
-        if indent is not None and not isinstance(indent, str):
-            indent = ' ' * indent
-        return _format(node)[0]
+    if not isinstance(node, AST):
+        raise TypeError('expected AST, got %r' % node.__class__.__name__)
+    if indent is not None and not isinstance(indent, str):
+        indent = ' ' * indent
+    return _format(node)[0]

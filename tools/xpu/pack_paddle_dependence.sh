@@ -81,18 +81,34 @@ function xhpc_prepare() {
   cp -r ${XHPC_DIR_NAME}/xdnn/so/libxpuapi.so xpu/lib
 
   if [ "$WITH_XPU_XRE5" -eq 1 ]; then
-    check_files ${XHPC_DIR_NAME}/xblas/include/cublasLt.h ${XHPC_DIR_NAME}/xblas/so/libxpu_blas.so ${XHPC_DIR_NAME}/xblas/dependency_so/libxpujitc.so ${XHPC_DIR_NAME}/xblas/dependency_so/libLLVM-15.so ${XHPC_DIR_NAME}/xblas/dependency_so/libclang-cpp.so ${XHPC_DIR_NAME}/xblas/dependency_so/libclang-cpp.so.15
+    check_files ${XHPC_DIR_NAME}/xblas/include/cublasLt.h \
+                ${XHPC_DIR_NAME}/xblas/so/libxpu_blas.so \
+                ${XHPC_DIR_NAME}/xblas/dependency_so/libxpujitc.so \
+                ${XHPC_DIR_NAME}/xblas/dependency_so/libLLVM-15.so \
+                ${XHPC_DIR_NAME}/xblas/dependency_so/libclang-cpp.so \
+                ${XHPC_DIR_NAME}/xblas/dependency_so/libclang-cpp.so.15 \
+                ${XHPC_DIR_NAME}/xblas/dependency_so/clang \
+                ${XHPC_DIR_NAME}/xblas/dependency_so/ld.lld \
+                ${XHPC_DIR_NAME}/xblas/dependency_so/cluster_builtins_p800.enc \
+                ${XHPC_DIR_NAME}/xblas/dependency_so/sdnn_builtins_p800.enc \
+                ${XHPC_DIR_NAME}/xblas/dependency_so/xbfloat16_wrapper.enc \
+                ${XHPC_DIR_NAME}/xblas/dependency_so/xccl_builtins_p800.enc
     cp -r ${XHPC_DIR_NAME}/xblas/include/* xpu/include/xhpc/xblas
     cp -r ${XHPC_DIR_NAME}/xblas/so/libxpu_blas.so xpu/lib/
     cp -r ${XHPC_DIR_NAME}/xblas/dependency_so/libxpujitc.so xpu/lib/
     cp -r ${XHPC_DIR_NAME}/xblas/dependency_so/libLLVM-15.so xpu/lib/
     cp -r ${XHPC_DIR_NAME}/xblas/dependency_so/libclang-cpp.so* xpu/lib/
+    cp -r ${XHPC_DIR_NAME}/xblas/dependency_so/clang xpu/lib/
+    cp -r ${XHPC_DIR_NAME}/xblas/dependency_so/lld xpu/lib/
+    cp -r ${XHPC_DIR_NAME}/xblas/dependency_so/*.enc xpu/lib/
+    ln -sf lld xpu/lib/ld.lld
     # FIXME(lilujia): when rpath in libxpujitc.so is set, the following code is not needed
     patchelf --set-rpath '$ORIGIN/' xpu/lib/libxpujitc.so
 
     check_files ${XHPC_DIR_NAME}/xfa/include/flash_api.h ${XHPC_DIR_NAME}/xfa/so/libxpu_flash_attention.so
     cp -r ${XHPC_DIR_NAME}/xfa/include/* xpu/include/xhpc/xfa
     cp -r ${XHPC_DIR_NAME}/xfa/so/libxpu_flash_attention.so xpu/lib/
+    cp -r ${XHPC_DIR_NAME}/xfa/include/xpu/internal/attention/attention_types.h xpu/include/xpu/internal/attention/attention_types.h
 
     check_files ${XHPC_DIR_NAME}/xpudnn/include/xpudnn.h ${XHPC_DIR_NAME}/xpudnn/so/libxpu_dnn.so ${XHPC_DIR_NAME}/xpudnn/so/libomp.so
     cp -r ${XHPC_DIR_NAME}/xpudnn/include/* xpu/include/xhpc/xpudnn
@@ -158,6 +174,10 @@ function local_assemble() {
       cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xblas/dependency_so/libxpujitc.so xpu/lib/
       cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xblas/dependency_so/libLLVM-15.so xpu/lib/
       cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xblas/dependency_so/libclang-cpp.so* xpu/lib/
+      cp -r ${XHPC_DIR_NAME}/xblas/dependency_so/clang xpu/lib/
+      cp -r ${XHPC_DIR_NAME}/xblas/dependency_so/lld xpu/lib/
+      cp -r ${XHPC_DIR_NAME}/xblas/dependency_so/*.enc xpu/lib/
+      ln -sf lld xpu/lib/ld.lld
 
       cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xfa/include/* xpu/include/xhpc/xfa
       cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xfa/so/libxpu_flash_attention.so xpu/lib/

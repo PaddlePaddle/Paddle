@@ -51,11 +51,13 @@ def _generate_translators(to):
                 # handle nodes that are not part of the AST
                 return
             cls = getattr(to, class_name)
-            init_fields = {
-                field: self._visit(getattr(node, field))
-                for field in node._fields
-            }
-            new_node = cls(**init_fields)
+            new_node = cls(
+                **{
+                    field: self._visit(getattr(node, field))
+                    for field in node._fields
+                    if hasattr(node, field)
+                }
+            )
 
             for attr in node._attributes:
                 try:
