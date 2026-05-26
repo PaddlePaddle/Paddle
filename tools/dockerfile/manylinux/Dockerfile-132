@@ -67,9 +67,9 @@ RUN cd /tmp && \
       --with-ensurepip=install && \
     make -j"$(nproc)" && \
     make altinstall && \
-    ln -sf /usr/local/bin/python${PYTHON_SHORT} /usr/local/bin/python3 && \
+    ln -sf /usr/local/bin/python${PYTHON_VERSION} /usr/local/bin/python3 && \
     ln -sf /usr/local/bin/python3 /usr/local/bin/python && \
-    ln -sf /usr/local/bin/pip${PYTHON_SHORT} /usr/local/bin/pip3 && \
+    ln -sf /usr/local/bin/pip${PYTHON_VERSION} /usr/local/bin/pip3 && \
     ln -sf /usr/local/bin/pip3 /usr/local/bin/pip && \
     python3 -m pip install --no-cache-dir --upgrade pip setuptools wheel packaging && \
     cd / && \
