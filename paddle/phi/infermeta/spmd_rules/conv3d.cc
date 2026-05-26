@@ -82,7 +82,7 @@ SpmdInfo Conv3dInferSpmdBase(const DistMetaTensor& input,
                         "When shard channel dim to a mesh (multiple cards), "
                         "each card will compute partial output, "
                         "otherwise, mark channel dim as replicate, each card "
-                        "will compute complete output."
+                        "will compute complete output. "
                         "But now the Input channel's dims mapping is [%d], and "
                         "the filter channel's dims mapping is [%d].",
                         input_dims_mapping[input_channel_dim],

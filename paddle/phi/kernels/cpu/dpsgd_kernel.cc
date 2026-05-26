@@ -42,14 +42,14 @@ void DpsgdOpKernel(const Context &dev_ctx,
                     sz,
                     common::errors::InvalidArgument(
                         "Input parameter's number of elements is error, "
-                        "expected %d, but received %d.",
+                        "expected %lld, but received %lld.",
                         sz,
                         param->numel()));
   PADDLE_ENFORCE_EQ(grad->numel(),
                     sz,
                     common::errors::InvalidArgument(
                         "Input gradient's number of elements is error, "
-                        "expected %d, but received %d.",
+                        "expected %lld, but received %lld.",
                         sz,
                         grad->numel()));
 
