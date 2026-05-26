@@ -197,10 +197,26 @@ struct KernelRegistrar {
   ::phi::KernelArgsParseFunctor<                              \
       decltype(&meta_kernel_fn<cpp_dtype, context>)>::Parse
 
+// nvcc 13.x crashes in cudafe++ on the explicit instantiation form
+// `template decltype(fn<T, Ctx>) fn<T, Ctx>;`. Keep macro registration intact
+// by replacing it with a `used` anchor that still forces the specialization
+// to be emitted without hitting the buggy syntax.
+#if defined(__CUDACC__) && !defined(_WIN32) && \
+    defined(__CUDACC_VER_MAJOR__) && (__CUDACC_VER_MAJOR__ >= 13)
+#define PD_DECLTYPE_FUNCTION_TEMPLATE_INSTANTIATION_IMPL(id, ...)          \
+  static auto* const PD_CONCATENATE(__pd_kernel_instantiation_anchor_, id) \
+      __attribute__((used)) = &__VA_ARGS__;
+#define PD_DECLTYPE_FUNCTION_TEMPLATE_INSTANTIATION(...) \
+  PD_DECLTYPE_FUNCTION_TEMPLATE_INSTANTIATION_IMPL(PD_ID, __VA_ARGS__)
+#else
+#define PD_DECLTYPE_FUNCTION_TEMPLATE_INSTANTIATION(...) \
+  template decltype(__VA_ARGS__) __VA_ARGS__;
+#endif
+
 // The macro for instantiating function kernel
 #define FUNCTION_KERNEL_INSTANTIATION(meta_kernel_fn, cpp_dtype, context) \
-  template decltype(meta_kernel_fn<cpp_dtype, context>)                   \
-      meta_kernel_fn<cpp_dtype, context>;
+  PD_DECLTYPE_FUNCTION_TEMPLATE_INSTANTIATION(                            \
+      meta_kernel_fn<cpp_dtype, context>)
 
 /** PD_REGISTER_KERNEL
  *
@@ -1368,7 +1384,7 @@ struct KernelRegistrar {
 #if (defined(PADDLE_WITH_CUSTOM_DEVICE) && defined(PADDLE_WITH_CUDA))
 #define PD_REGISTER_KERNEL_FOR_ALL_DTYPE(                                \
     kernel_name, backend, layout, kernel_fn)                             \
-  template decltype(kernel_fn) kernel_fn;                                \
+  PD_DECLTYPE_FUNCTION_TEMPLATE_INSTANTIATION(kernel_fn)                 \
   static void                                                            \
       __FAKE_PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
           const ::phi::KernelKey& kernel_key UNUSED,                     \
@@ -1391,7 +1407,7 @@ struct KernelRegistrar {
 #ifndef _WIN32
 #define __PD_REGISTER_KERNEL_FOR_ALL_DTYPE(                                    \
     reg_type, kernel_name, backend, layout, kernel_fn)                         \
-  template decltype(kernel_fn) kernel_fn;                                      \
+  PD_DECLTYPE_FUNCTION_TEMPLATE_INSTANTIATION(kernel_fn)                       \
   static void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(    \
       const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel);              \
   static const ::phi::KernelRegistrar                                          \
@@ -1440,8 +1456,8 @@ struct KernelRegistrar {
 #if (defined(PADDLE_WITH_CUSTOM_DEVICE) && defined(PADDLE_WITH_CUDA))
 #define PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(                        \
     kernel_name, layout, meta_kernel_fn)                                 \
-  template decltype(meta_kernel_fn<::phi::CustomContext>)                \
-      meta_kernel_fn<::phi::CustomContext>;                              \
+  PD_DECLTYPE_FUNCTION_TEMPLATE_INSTANTIATION(                           \
+      meta_kernel_fn<::phi::CustomContext>)                              \
   static void                                                            \
       __FAKE_PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
           const ::phi::KernelKey kernel_key UNUSED,                      \
@@ -1535,7 +1551,7 @@ struct KernelRegistrar {
 #ifndef _WIN32
 #define ___PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(                           \
     reg_type, kernel_name, backend, layout, kernel_fn, args_def_fn)            \
-  template decltype(kernel_fn) kernel_fn;                                      \
+  PD_DECLTYPE_FUNCTION_TEMPLATE_INSTANTIATION(kernel_fn)                       \
   static const ::phi::KernelRegistrar                                          \
       __reg_phi_kernel_##kernel_name##_##backend##_##layout(                   \
           reg_type,                                                            \

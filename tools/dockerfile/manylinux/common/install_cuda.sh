@@ -63,6 +63,17 @@ function install_cusparselt_063 {
     rm -rf tmp_cusparselt
 }
 
+function install_cusparselt_090_cuda13 {
+    # cuSparseLt license: https://docs.nvidia.com/cuda/cusparselt/license.html
+    mkdir tmp_cusparselt && pushd tmp_cusparselt
+    wget -q https://developer.download.nvidia.com/compute/cusparselt/redist/libcusparse_lt/linux-x86_64/libcusparse_lt-linux-x86_64-0.9.0.3_cuda13-archive.tar.xz
+    tar xf libcusparse_lt-linux-x86_64-0.9.0.3_cuda13-archive.tar.xz
+    cp -a libcusparse_lt-linux-x86_64-0.9.0.3_cuda13-archive/include/* /usr/local/cuda/include/
+    cp -a libcusparse_lt-linux-x86_64-0.9.0.3_cuda13-archive/lib/* /usr/local/cuda/lib64/
+    popd
+    rm -rf tmp_cusparselt
+}
+
 function install_nccl_2162 {
     wget -q https://nccl2-deb.cdn.bcebos.com/nccl_2.16.2-1+cuda11.8_x86_64.txz --no-check-certificate --no-proxy
     tar xf nccl_2.16.2-1+cuda11.8_x86_64.txz
@@ -95,6 +106,14 @@ function install_nccl_2234 {
     rm -rf nccl_2.23.4-1+cuda12.6_x86_64 nccl_2.23.4-1+cuda12.6_x86_64.txz
 }
 
+function install_nccl_2297_cuda132 {
+    yum-config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo
+    yum install -y \
+        libnccl-2.29.7-1+cuda13.2 \
+        libnccl-devel-2.29.7-1+cuda13.2 \
+        libnccl-static-2.29.7-1+cuda13.2
+}
+
 function install_trt_8616 {
     wget -q https://paddle-ci.gz.bcebos.com/TRT/TensorRT-8.6.1.6.Linux.x86_64-gnu.cuda-11.8.tar.gz --no-check-certificate --no-proxy
     tar -zxf TensorRT-8.6.1.6.Linux.x86_64-gnu.cuda-11.8.tar.gz -C /usr/local
@@ -107,6 +126,13 @@ function install_trt_105018 {
     tar -zxf TensorRT-10.5.0.18.Linux.x86_64-gnu.cuda-12.6.tar.gz -C /usr/local
     cp -rf /usr/local/TensorRT-10.5.0.18/include/* /usr/include/ && cp -rf /usr/local/TensorRT-10.5.0.18/lib/* /usr/lib/
     rm -f TensorRT-10.5.0.18.Linux.x86_64-gnu.cuda-12.6.tar.gz
+}
+
+function install_trt_1016111 {
+    wget -q https://developer.download.nvidia.com/compute/machine-learning/tensorrt/10.16.1/tars/TensorRT-10.16.1.11.Linux.x86_64-gnu.cuda-13.2.tar.gz --no-check-certificate --no-proxy
+    tar -zxf TensorRT-10.16.1.11.Linux.x86_64-gnu.cuda-13.2.tar.gz -C /usr/local
+    cp -rf /usr/local/TensorRT-10.16.1.11/include/* /usr/include/ && cp -rf /usr/local/TensorRT-10.16.1.11/lib/* /usr/lib/
+    rm -f TensorRT-10.16.1.11.Linux.x86_64-gnu.cuda-13.2.tar.gz
 }
 
 function install_118 {
@@ -264,6 +290,36 @@ function install_129 {
     ldconfig
 }
 
+function install_132 {
+    CUDNN_VERSION=9.20.0.48
+    NCCL_VERSION=2.29.7
+    TensorRT_VERSION=10.16.1.11
+    echo "Installing CUDA 13.2.0 and cuDNN ${CUDNN_VERSION} and NCCL ${NCCL_VERSION} and TensorRT ${TensorRT_VERSION} and cuSparseLt-0.9.0"
+    rm -rf /usr/local/cuda-13.2 /usr/local/cuda
+    # install CUDA 13.2.0 in the same container
+    wget -q https://developer.download.nvidia.com/compute/cuda/13.2.0/local_installers/cuda_13.2.0_595.45.04_linux.run
+    chmod +x cuda_13.2.0_595.45.04_linux.run
+    ./cuda_13.2.0_595.45.04_linux.run --toolkit --driver --silent --kernel-source-path=/usr/src/kernels/4.18.0-553.34.1.el8_10.x86_64
+    rm -f cuda_13.2.0_595.45.04_linux.run
+    rm -f /usr/local/cuda && ln -s /usr/local/cuda-13.2 /usr/local/cuda
+    rm -rf /usr/bin/nvidia-smi
+
+    # cuDNN license: https://developer.nvidia.com/cudnn/license_agreement
+    mkdir tmp_cudnn && cd tmp_cudnn
+    wget -q https://developer.download.nvidia.com/compute/cudnn/redist/cudnn/linux-x86_64/cudnn-linux-x86_64-${CUDNN_VERSION}_cuda13-archive.tar.xz -O cudnn-linux-x86_64-${CUDNN_VERSION}_cuda13-archive.tar.xz
+    tar xf cudnn-linux-x86_64-${CUDNN_VERSION}_cuda13-archive.tar.xz
+    cp -a cudnn-linux-x86_64-${CUDNN_VERSION}_cuda13-archive/include/* /usr/local/cuda/include/
+    cp -a cudnn-linux-x86_64-${CUDNN_VERSION}_cuda13-archive/lib/* /usr/local/cuda/lib64/
+    cd ..
+    rm -rf tmp_cudnn
+
+    install_nccl_2297_cuda132
+    install_trt_1016111
+    install_cusparselt_090_cuda13
+
+    ldconfig
+}
+
 function prune_118 {
     echo "Pruning CUDA 11.8 and cuDNN"
     #####################################################################################
@@ -407,6 +463,8 @@ do
     12.6) install_126; prune_126
         ;;
     12.9) install_129
+        ;;
+    13.2) install_132
         ;;
     *) echo "bad argument $1"; exit 1
         ;;
