@@ -221,7 +221,7 @@ void OpTester::CreateOpDesc() {
         attr_types.find(name),
         attr_types.end(),
         common::errors::NotFound(
-            "Operator %s does not have attribute %d.", type_, name));
+            "Operator %s does not have attribute %s.", type_, name));
 
     const std::string &value_str = item.second;
     const framework::proto::AttrType &type = attr_types[name];
