@@ -1061,7 +1061,7 @@ class TestIsposinfAPICompatibility(unittest.TestCase):
         # 4-5. out parameter test
         out4 = paddle.zeros_like(out1)
         out5 = paddle.isposinf(x, out=out4)
-        assert out4 is out5
+        self.assertIs(out4, out5)
         # 6. Tensor method
         out6 = x.isposinf()
 
@@ -4134,7 +4134,7 @@ class TestKaiserWindowAPI(unittest.TestCase):
             dtype='float64',
             out=out4,
         )
-        assert out4 is out5
+        self.assertIs(out4, out5)
         # 6. Explicit dtype=None compatibility
         out6 = paddle.kaiser_window(3, dtype=None)
         # 7. strided layout compatibility

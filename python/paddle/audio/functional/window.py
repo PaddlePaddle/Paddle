@@ -406,7 +406,7 @@ def get_window(
     window: _WindowLiteral | tuple[_WindowLiteral, float],
     win_length: int,
     fftbins: bool = True,
-    dtype: str = 'float64',
+    dtype: str | None = 'float64',
 ) -> Tensor:
     """Return a window of a given length and type.
 
@@ -430,6 +430,8 @@ def get_window(
             >>> std = 7
             >>> gaussian_window = paddle.audio.functional.get_window(('gaussian', std), n_fft)
     """
+    if dtype is None:
+        dtype = 'float32'
     sym = not fftbins
     args = ()
     if isinstance(window, tuple):
@@ -464,6 +466,10 @@ def _apply_window_postprocess(
     pin_memory: bool = False,
     requires_grad: bool = False,
 ) -> Tensor:
+    if layout not in (None, 'strided'):
+        raise RuntimeError(
+            "Window functions only support layout='strided' or None"
+        )
     if layout is not None:
         warnings.warn("layout only supports 'strided' in Paddle; ignored")
 
@@ -620,17 +626,12 @@ def kaiser_window(
             >>> win = paddle.kaiser_window(400, beta=8.6)
             >>> win = paddle.kaiser_window(400, requires_grad=True)
     """
-    if dtype is None:
-        dtype = 'float32'
-    if layout == 'sparse':
-        raise RuntimeError("kaiser_window is not implemented for sparse types")
-    layout_for_postprocess = None if layout == 'strided' else layout
     w = get_window(
         ('kaiser', beta), window_length, fftbins=periodic, dtype=dtype
     )
     w = _apply_window_postprocess(
         w,
-        layout=layout_for_postprocess,
+        layout=layout,
         device=device,
         pin_memory=pin_memory,
         requires_grad=requires_grad,
