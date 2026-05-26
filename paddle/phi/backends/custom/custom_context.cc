@@ -436,8 +436,8 @@ struct CustomContext::Impl {
     PADDLE_ENFORCE_NE(
         iter,
         dnn_attrs_.end(),
-        common::errors::NotFound("Attribute `%s` is not found in CustomContext.",
-                                 attr_name));
+        common::errors::NotFound(
+            "Attribute `%s` is not found in CustomContext.", attr_name));
     return iter->second;
   }
 

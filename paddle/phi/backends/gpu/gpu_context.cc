@@ -854,8 +854,8 @@ struct GPUContext::Impl {
     PADDLE_ENFORCE_NE(
         iter,
         dnn_attrs_.end(),
-      common::errors::NotFound("Attribute `%s` is not found in GPUContext.",
-                               attr_name));
+        common::errors::NotFound("Attribute `%s` is not found in GPUContext.",
+                                 attr_name));
     return iter->second;
   }
 

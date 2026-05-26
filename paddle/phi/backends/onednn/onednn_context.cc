@@ -321,7 +321,8 @@ struct OneDNNContext::Impl {
         iter,
         dnn_inputs_.end(),
         common::errors::NotFound(
-            "Input DenseTensor `%s` is not found in OneDNNContext.", input_name));
+            "Input DenseTensor `%s` is not found in OneDNNContext.",
+            input_name));
     return iter->second;
   }
 
