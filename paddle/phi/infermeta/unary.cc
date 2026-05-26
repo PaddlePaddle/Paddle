@@ -841,8 +841,8 @@ void DecodeJpegInferMeta(const MetaTensor& x,
   } else if (mode == "rgb") {
     out_dims = {3, -1, -1};
   } else {
-    errors::Fatal("The provided mode is not supported for JPEG files on GPU: ",
-                  mode);
+    errors::Fatal(
+        "The provided mode is not supported for JPEG files on GPU: %s", mode);
   }
   if (out != nullptr) {
     out->set_dims(make_ddim(out_dims));
@@ -4859,7 +4859,7 @@ void ViewSliceInferMeta(const MetaTensor& input,
       begin_idx,
       0,
       common::errors::OutOfRange("The start row index must be greater than 0."
-                                 "But received the start index is d%.",
+                                 "But received the start index is %d.",
                                  begin_idx));
   PADDLE_ENFORCE_LE(
       end_idx,

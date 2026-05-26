@@ -27,7 +27,7 @@ using phi::distributed::auto_parallel::str_join;
   PADDLE_ENFORCE_EQ(x##_ndim,                                          \
                     x##_dims_mapping_src.size(),                       \
                     common::errors::InvalidArgument(                   \
-                        "[%d] [%d] The Tensor [%d]'s rank [%d] and "   \
+                        "[%s] [%d] The Tensor [%s]'s rank [%d] and "   \
                         "dims_mapping size [%d] are not matched.",     \
                         __FILE__,                                      \
                         __LINE__,                                      \
@@ -41,7 +41,7 @@ using phi::distributed::auto_parallel::str_join;
   PADDLE_ENFORCE_EQ(x##_ndim,                                                \
                     x##_dims_mapping_src.size(),                             \
                     common::errors::InvalidArgument(                         \
-                        "[%d] [%d] The Tensor [%d]'s rank [%d] and "         \
+                        "[%s] [%d] The Tensor [%s]'s rank [%d] and "         \
                         "dims_mapping size [%d] are not matched.",           \
                         __FILE__,                                            \
                         __LINE__,                                            \
@@ -54,7 +54,7 @@ using phi::distributed::auto_parallel::str_join;
   PADDLE_ENFORCE_EQ(x##_ndim,                                        \
                     x##_dims_mapping_src.size(),                     \
                     common::errors::InvalidArgument(                 \
-                        "[%d] [%d] The Tensor [%d]'s rank [%d] and " \
+                        "[%s] [%d] The Tensor [%s]'s rank [%d] and " \
                         "dims_mapping size [%d] are not matched.",   \
                         __FILE__,                                    \
                         __LINE__,                                    \

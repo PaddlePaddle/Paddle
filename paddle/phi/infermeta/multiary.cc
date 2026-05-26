@@ -4160,12 +4160,12 @@ void LogspaceInferMeta(const MetaTensor& start,
                                       "but received input size is %s.",
                                       common::product(num_dims)));
   auto b_dims = base.dims();
-  PADDLE_ENFORCE_EQ(common::product(b_dims),
-                    true,
-                    common::errors::InvalidArgument(
-                        "The size of Input(Base) must be 1,"
-                        "but received input size is common::product(b_dims).",
-                        common::product(b_dims)));
+  PADDLE_ENFORCE_EQ(
+      common::product(b_dims),
+      1,
+      common::errors::InvalidArgument("The size of Input(Base) must be 1,"
+                                      "but received input size is %s.",
+                                      common::product(b_dims)));
   out->set_dims(make_ddim({-1}));
   out->set_dtype(dtype);
 }
@@ -5783,6 +5783,7 @@ void WarpctcInferMeta(const MetaTensor& logits,
       errors::InvalidArgument(
           "The value of Attr(blank) should be in interval [0, %d), "
           "but received %d",
+          sequence_width,
           blank));
   PADDLE_ENFORCE_LT(
       blank,
@@ -5790,6 +5791,7 @@ void WarpctcInferMeta(const MetaTensor& logits,
       errors::InvalidArgument(
           "The value of Attr(blank) should be in interval [0, %d), "
           "but received %d",
+          sequence_width,
           blank));
 
   loss->set_dims({num_sequences, 1});
@@ -5815,6 +5817,7 @@ void WarprnntInferMeta(const MetaTensor& input,
       errors::InvalidArgument(
           "The value of Attr(blank) should be in interval [0, %d), "
           "but received %d",
+          D,
           blank));
   PADDLE_ENFORCE_LT(
       blank,
@@ -5822,6 +5825,7 @@ void WarprnntInferMeta(const MetaTensor& input,
       errors::InvalidArgument(
           "The value of Attr(blank) should be in interval [0, %d), "
           "but received %d",
+          D,
           blank));
 
   loss->set_dims({input_dims[0]});
@@ -5886,7 +5890,8 @@ void WeightOnlyLinearInferMeta(const MetaTensor& x,
         bias_dims.size(),
         1UL,
         errors::InvalidArgument(
-            "The size of Input(Bias)'s dimension should equal to 1UL.",
+            "The size of Input(Bias)'s dimension should equal to 1UL, but "
+            "received %d.",
             bias_dims.size()));
   }
 
@@ -6056,9 +6061,9 @@ void YoloLossInferMeta(const MetaTensor& x,
   PADDLE_ENFORCE_EQ(
       dim_gtbox[2],
       4,
-      common::errors::InvalidArgument("Input(GTBox) dim[2] should be 4",
-                                      "But receive dim[2](%s) != 5. ",
-                                      dim_gtbox[2]));
+      common::errors::InvalidArgument(
+          "Input(GTBox) dim[2] should be 4, but receive dim[2](%s) != 4.",
+          dim_gtbox[2]));
   PADDLE_ENFORCE_EQ(dim_gtlabel.size(),
                     2,
                     common::errors::InvalidArgument(

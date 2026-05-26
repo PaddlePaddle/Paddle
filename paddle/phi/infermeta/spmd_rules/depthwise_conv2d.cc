@@ -77,13 +77,13 @@ SpmdInfo DepthwiseConv2dInferSpmd(const DistMetaTensor& input,
                         "dims_mapping size [%d] are not matched.",
                         filter_ndim,
                         filter_dims_mapping.size()));
-  PADDLE_ENFORCE_EQ(filter_dims_mapping[1],
-                    -1,
-                    common::errors::InvalidArgument(
-                        "The Tensor Filter's dims_mapping on channel dim "
-                        "should always be -1.",
-                        "But now it's [%d]",
-                        filter_dims_mapping[1]));
+  PADDLE_ENFORCE_EQ(
+      filter_dims_mapping[1],
+      -1,
+      common::errors::InvalidArgument(
+          "The Tensor Filter's dims_mapping on channel dim should "
+          "always be -1. But now it's [%d]",
+          filter_dims_mapping[1]));
 
   VLOG(6) << "DepthwiseConv2D InferForward Inputs: "
           << "Input shape: [" << str_join(original_input_shape)
