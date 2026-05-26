@@ -18,7 +18,7 @@ ARG TARGETARCH
 ENV WITH_GPU=${WITH_GPU:-ON}
 ENV WITH_AVX=${WITH_AVX:-ON}
 ENV DEBIAN_FRONTEND=noninteractive
-ENV LD_LIBRARY_PATH=/usr/local/cuda-13.2/compat:/usr/local/cuda-13.2/targets/x86_64-linux/lib:/usr/local/cuda-13.2/targets/sbsa-linux/lib:/usr/local/cuda-13.2/targets/aarch64-linux/lib:/usr/local/cuda-13.2/lib64:$LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH=/usr/local/cuda-13.2/compat:$LD_LIBRARY_PATH
 
 ENV HOME /root
 
@@ -29,6 +29,9 @@ RUN apt-get update --allow-unauthenticated && \
       curl \
       wget \
       make \
+      zstd \
+      rsync \
+      ca-certificates \
       build-essential \
       libgl1 \
       libglib2.0-0 \
