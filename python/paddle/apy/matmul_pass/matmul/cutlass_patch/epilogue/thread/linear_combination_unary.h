@@ -19,14 +19,23 @@
 
 #pragma once
 
+#include "cutlass_patch/backend.h"
+
+#ifdef __NVCC__
 #include "cutlass/array.h"
-#include "cutlass/cutlass.h"
 #include "cutlass/epilogue/thread/scale_type.h"
 #include "cutlass/functional.h"
 #include "cutlass/numeric_conversion.h"
 #include "cutlass/numeric_types.h"
+#elif defined(__HIPCC__)
+#include "hytlass/array.h"
+#include "hytlass/epilogue/thread/scale_type.h"
+#include "hytlass/functional.h"
+#include "hytlass/numeric_conversion.h"
+#include "hytlass/numeric_types.h"
+#endif
 
-namespace cutlass {
+namespace cutlass_patch {
 namespace epilogue {
 namespace thread {
 
@@ -59,9 +68,10 @@ template <
     typename ElementAccumulator_ = ElementOutput_,  ///< Accumulator data type
     typename ElementCompute_ =
         ElementOutput_,  ///< Data type used to compute linear combination
-    ScaleType::Kind Scale =
-        ScaleType::Default,  ///< Control Alpha and Beta scaling
-    FloatRoundStyle Round = FloatRoundStyle::round_to_nearest,
+    cutlass::epilogue::thread::ScaleType::Kind Scale =
+        cutlass::epilogue::thread::ScaleType::Default,  ///< Control Alpha and
+                                                        ///< Beta scaling
+    cutlass::FloatRoundStyle Round = cutlass::FloatRoundStyle::round_to_nearest,
     bool IsHeavy = false>
 class LinearCombinationUnary {
  public:
@@ -74,14 +84,15 @@ class LinearCombinationUnary {
   static bool const kIsHeavy = IsHeavy;
   static int const kElementsPerAccess = ElementsPerAccess;
   static int const kCount = ElementsPerAccess;
-  static const ScaleType::Kind kScale = Scale;
+  static const cutlass::epilogue::thread::ScaleType::Kind kScale = Scale;
 
-  using FragmentOutput = Array<ElementOutput, kElementsPerAccess>;
-  using FragmentAccumulator = Array<ElementAccumulator, kElementsPerAccess>;
-  using FragmentSource = Array<ElementOutput, kElementsPerAccess>;
-  using FragmentCompute = Array<ElementCompute, kElementsPerAccess>;
+  using FragmentOutput = cutlass::Array<ElementOutput, kElementsPerAccess>;
+  using FragmentAccumulator =
+      cutlass::Array<ElementAccumulator, kElementsPerAccess>;
+  using FragmentSource = cutlass::Array<ElementOutput, kElementsPerAccess>;
+  using FragmentCompute = cutlass::Array<ElementCompute, kElementsPerAccess>;
 
-  static FloatRoundStyle const kRound = Round;
+  static cutlass::FloatRoundStyle const kRound = Round;
 
   /// Host-constructable parameters structure
   struct Params {
@@ -142,12 +153,13 @@ class LinearCombinationUnary {
   /// Returns true if source is needed
   CUTLASS_HOST_DEVICE
   bool is_source_needed() const {
-    if (Scale == ScaleType::NoBetaScaling)
+    if (Scale == cutlass::epilogue::thread::ScaleType::NoBetaScaling)
       return params_.beta != ElementCompute(0);
 
-    if (Scale == ScaleType::OnlyAlphaScaling) return false;
+    if (Scale == cutlass::epilogue::thread::ScaleType::OnlyAlphaScaling)
+      return false;
 
-    if (Scale == ScaleType::Nothing) return false;
+    if (Scale == cutlass::epilogue::thread::ScaleType::Nothing) return false;
 
     return params_.beta != ElementCompute(0);
   }
@@ -169,15 +181,15 @@ class LinearCombinationUnary {
   FragmentOutput operator()(FragmentAccumulator const &accumulator,
                             FragmentOutput const &source) const {
     // Convert source to internal compute numeric type
-    NumericArrayConverter<ElementCompute,
-                          ElementOutput,
-                          kElementsPerAccess,
-                          Round>
+    cutlass::NumericArrayConverter<ElementCompute,
+                                   ElementOutput,
+                                   kElementsPerAccess,
+                                   Round>
         source_converter;
-    NumericArrayConverter<ElementCompute,
-                          ElementAccumulator,
-                          kElementsPerAccess,
-                          Round>
+    cutlass::NumericArrayConverter<ElementCompute,
+                                   ElementAccumulator,
+                                   kElementsPerAccess,
+                                   Round>
         accumulator_converter;
 
     FragmentCompute converted_source = source_converter(source);
@@ -186,16 +198,16 @@ class LinearCombinationUnary {
     // Perform binary operations
     FragmentCompute intermediate;
 
-    multiplies<FragmentCompute> mul_add_source;
-    multiply_add<FragmentCompute> mul_add_accumulator;
+    cutlass::multiplies<FragmentCompute> mul_add_source;
+    cutlass::multiply_add<FragmentCompute> mul_add_accumulator;
     UnaryOp<ElementCompute> unary_op;
 
-    if (Scale == ScaleType::NoBetaScaling) {
+    if (Scale == cutlass::epilogue::thread::ScaleType::NoBetaScaling) {
       intermediate = converted_source;
       // D = alpha * Accum + X
       intermediate = mul_add_accumulator(
           params_.alpha, converted_accumulator, intermediate);
-    } else if (Scale == ScaleType::Nothing) {
+    } else if (Scale == cutlass::epilogue::thread::ScaleType::Nothing) {
       intermediate = converted_accumulator;
     } else {
       // X =  beta * C + uniform
@@ -223,10 +235,10 @@ class LinearCombinationUnary {
     }
 
     // Convert to destination numeric type
-    NumericArrayConverter<ElementOutput,
-                          ElementCompute,
-                          kElementsPerAccess,
-                          Round>
+    cutlass::NumericArrayConverter<ElementOutput,
+                                   ElementCompute,
+                                   kElementsPerAccess,
+                                   Round>
         destination_converter;
 
     return destination_converter(intermediate);
@@ -236,10 +248,10 @@ class LinearCombinationUnary {
   CUTLASS_HOST_DEVICE
   FragmentOutput operator()(FragmentAccumulator const &accumulator) const {
     // Convert source to internal compute numeric type
-    NumericArrayConverter<ElementCompute,
-                          ElementAccumulator,
-                          kElementsPerAccess,
-                          Round>
+    cutlass::NumericArrayConverter<ElementCompute,
+                                   ElementAccumulator,
+                                   kElementsPerAccess,
+                                   Round>
         accumulator_converter;
 
     FragmentCompute converted_accumulator = accumulator_converter(accumulator);
@@ -247,10 +259,10 @@ class LinearCombinationUnary {
     // Perform binary operations
     FragmentCompute intermediate;
 
-    multiplies<FragmentCompute> mul_add_accumulator;
+    cutlass::multiplies<FragmentCompute> mul_add_accumulator;
     UnaryOp<ElementCompute> unary_op;
 
-    if (Scale == ScaleType::Nothing) {
+    if (Scale == cutlass::epilogue::thread::ScaleType::Nothing) {
       intermediate = converted_accumulator;
     } else {
       // D = alpha * Accum
@@ -275,10 +287,10 @@ class LinearCombinationUnary {
     }
 
     // Convert to destination numeric type
-    NumericArrayConverter<ElementOutput,
-                          ElementCompute,
-                          kElementsPerAccess,
-                          Round>
+    cutlass::NumericArrayConverter<ElementOutput,
+                                   ElementCompute,
+                                   kElementsPerAccess,
+                                   Round>
         destination_converter;
 
     return destination_converter(intermediate);
@@ -287,4 +299,4 @@ class LinearCombinationUnary {
 
 }  // namespace thread
 }  // namespace epilogue
-}  // namespace cutlass
+}  // namespace cutlass_patch

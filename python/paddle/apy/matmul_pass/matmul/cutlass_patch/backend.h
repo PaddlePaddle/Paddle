@@ -1,4 +1,4 @@
-// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,20 +14,6 @@
 
 #pragma once
 
-#include "cutlass_patch/backend.h"
-
-namespace cutlass_patch {
-
-struct BatchedMatrixCoord {
-  int batch;
-  int row;
-  int column;
-
-  CUTLASS_HOST_DEVICE
-  BatchedMatrixCoord() : batch(0), row(0), column(0) {}
-
-  CUTLASS_HOST_DEVICE
-  BatchedMatrixCoord(int b, int r, int c) : batch(b), row(r), column(c) {}
-};
-
-};  // namespace cutlass_patch
+#ifdef __NVCC__
+#include "cutlass/cutlass.h"
+#endif
