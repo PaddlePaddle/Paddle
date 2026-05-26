@@ -14,6 +14,7 @@
 
 #pragma once
 #include <functional>
+#include <limits>
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/custom_operator_utils.h"
@@ -731,6 +732,14 @@ static PyObject *static_api_run_custom_op(PyObject *self,
                 op_type,
                 attr_name_and_type[0],
                 attr_start_idx + i + 1));
+        PADDLE_ENFORCE_LE(
+            scalar.to<int64_t>(),
+            static_cast<int64_t>(std::numeric_limits<int>::max()),
+            common::errors::InvalidArgument(
+                "Custom op '%s' int attr '%s' value %lld overflows int32.",
+                op_type,
+                attr_name_and_type[0],
+                scalar.to<int64_t>()));
         int_attr = scalar.to<int>();
       } else {
         int_attr = CastPyArg2AttrInt(obj, attr_start_idx + i);
