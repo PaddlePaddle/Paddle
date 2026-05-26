@@ -383,14 +383,8 @@ class Hardswish(Layer):
             [-0.       , 5.        , 0.66666669])
     """
 
-    def __init__(
-        self, inplace: bool | str = False, name: str | None = None
-    ) -> None:
+    def __init__(self, inplace: bool = False, name: str | None = None) -> None:
         super().__init__()
-        if isinstance(inplace, str):
-            if name is None:
-                name = inplace
-            inplace = False
         self._name = name
         self._inplace = inplace
 
@@ -791,14 +785,8 @@ class ReLU6(Layer):
             [0.        , 0.30000000, 6.        ])
     """
 
-    def __init__(
-        self, inplace: bool | str = False, name: str | None = None
-    ) -> None:
+    def __init__(self, inplace: bool = False, name: str | None = None) -> None:
         super().__init__()
-        if isinstance(inplace, str):
-            if name is None:
-                name = inplace
-            inplace = False
         self._name = name
         self._inplace = inplace
 
