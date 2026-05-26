@@ -196,7 +196,7 @@ Expr IndiceToAbsOffset(const std::vector<Expr> &shape,
         true,
         ::common::errors::InvalidArgument(
             "The shape data type currently supports only int32 or int64, but "
-            "the current data type of shape[{}] is {}",
+            "the current data type of shape[%d] is %s",
             i,
             shape[i].type()));
 

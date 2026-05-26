@@ -215,11 +215,10 @@ cnnlDataType_t convert_to_cnnl_dtype(void *v_args, int num_args) {
   } else if (is_float8e4m3) {
     data_type = CUDA_R_8F_E4M3;
   } else {
-    PADDLE_THROW(
-        ::common::errors::InvalidArgument("unsupported cudnn data type: ",
-                                          static_cast<int>(type_code),
-                                          ", bits = ",
-                                          bits));
+    PADDLE_THROW(::common::errors::InvalidArgument(
+        "unsupported cudnn data type: %d, bits = %d",
+        static_cast<int>(type_code),
+        bits));
   }
   return data_type;
 }
@@ -475,11 +474,10 @@ void cinn_call_cnnl_matmul(void *v_args,
     std::stringstream ss;
     ss << "unsupported cublas data type: " << static_cast<int>(type_code)
        << ", bytes = " << bytes;
-    PADDLE_THROW(
-        ::common::errors::InvalidArgument("unsupported cublas data type: ",
-                                          static_cast<int>(type_code),
-                                          ", bytes = ",
-                                          bytes));
+    PADDLE_THROW(::common::errors::InvalidArgument(
+        "unsupported cublas data type: %d, bytes = %d",
+        static_cast<int>(type_code),
+        bytes));
   }
 
   if (a1 * a2 * b1 * b2 == 1) {

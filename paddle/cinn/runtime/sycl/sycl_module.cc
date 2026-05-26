@@ -61,7 +61,7 @@ void* SYCLModule::GetFunction(const std::string& func_name) {
       kernel_func,
       nullptr,
       ::common::errors::InvalidArgument(
-          "Errors: Sycl failed to get function %s", dlerror(), ":dlsym\n"));
+          "Errors: Sycl failed to get function %s:dlsym", dlerror()));
   return reinterpret_cast<void*>(kernel_func);
 }
 
