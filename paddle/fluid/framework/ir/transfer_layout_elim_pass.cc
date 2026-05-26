@@ -221,17 +221,16 @@ void TransferLayoutElimPass::ElimTwoTransferlayout(Node *op_node,
   auto transfer_layout0 = var1->inputs[0];
   auto var0 = transfer_layout0->inputs[0];
   auto var2 = op_node->outputs[0];
-  PADDLE_ENFORCE_EQ(
-      op_node->Name() == "transfer_layout",
-      true,
-      common::errors::InvalidArgument("op_node->Name() must be transfer_layout",
-                                      "received %s",
-                                      op_node->Name()));
+  PADDLE_ENFORCE_EQ(op_node->Name() == "transfer_layout",
+                    true,
+                    common::errors::InvalidArgument(
+                        "op_node->Name() must be transfer_layout, received %s",
+                        op_node->Name()));
   PADDLE_ENFORCE_EQ(
       transfer_layout0->Name() == "transfer_layout",
       true,
       common::errors::InvalidArgument(
-          "op_node->inputs[0]->inputs[0]->Name() must be transfer_layout",
+          "op_node->inputs[0]->inputs[0]->Name() must be transfer_layout, "
           "received %s",
           transfer_layout0->Name()));
   int dst0 = transfer_layout0->Op()->GetAttrIfExists<int>("dst_layout");

@@ -361,7 +361,8 @@ class OpConverter {
                               optim_input_shape[i],
                               common::errors::InvalidArgument(
                                   "The dim (%d) of the min_input_shape and "
-                                  "optim_input_shape should be same."));
+                                  "optim_input_shape should be same.",
+                                  i));
           }
         }
         engine->DeclareInput(
@@ -696,7 +697,7 @@ class OpConverter {
           std::is_same<T, phi::dtype::float16>::value ||
           std::is_same<T, int32_t>::value)) {
       PADDLE_THROW(common::errors::InvalidArgument(
-          "Unsupported data type (%s) for TensorRT AddConstantLayer, only "
+          "Unsupported data type for TensorRT AddConstantLayer, only "
           "supports float, half or int32_t."));
     }
 
@@ -733,8 +734,8 @@ class OpConverter {
           std::is_same<T, phi::dtype::float16>::value ||
           std::is_same<T, int32_t>::value || std::is_same<T, bool>::value)) {
       PADDLE_THROW(common::errors::InvalidArgument(
-          "Unsupported data type (%s) for TensorRT AddConstantLayer, only "
-          "supports float, half or int32_t."));
+          "Unsupported data type for TensorRT AddConstantLayer, only "
+          "supports float, half, int32_t or bool."));
     }
 
     std::unique_ptr<phi::DenseTensor> tmp_tensor(new phi::DenseTensor());

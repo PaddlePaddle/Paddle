@@ -84,7 +84,7 @@ class ElementwiseMulCompositeGradOpMaker
         axis,
         -1,
         common::errors::InvalidArgument(
-            "We only support axis = -1 in composite mul_grad but we got: ",
+            "We only support axis = -1 in composite mul_grad but we got: %d.",
             axis));
     prim::multiply_grad<prim::DescTensor>(
         x, y, out_grad, axis, x_grad_p, y_grad_p);
@@ -137,7 +137,7 @@ class ElementwiseMulCompositeDoubleGradOpMaker
                       -1,
                       common::errors::InvalidArgument(
                           "We only support axis = -1 in composite "
-                          "add_double_grad but we got: ",
+                          "add_double_grad but we got: %d",
                           axis));
 
     // get output

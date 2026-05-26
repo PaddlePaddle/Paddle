@@ -61,11 +61,11 @@ static inline common::DDim infer_size_symdimvector(common::DDim a,
     PADDLE_ENFORCE_EQ(
         sizeA == sizeB || sizeA == 1 || sizeB == 1,
         true,
-        common::errors::Fatal("The size of tensor a (",
+        common::errors::Fatal("The size of tensor a (%d) must "
+                              "match the size of tensor b (%d) "
+                              "at non-singleton dimension %d",
                               sizeA,
-                              ") must match the size of tensor b (",
                               sizeB,
-                              ") at non-singleton dimension ",
                               i));
 
     // 1s map to the other size (even 0).

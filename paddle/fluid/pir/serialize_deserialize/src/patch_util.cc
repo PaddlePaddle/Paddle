@@ -221,7 +221,8 @@ std::string YamlStringToDataLayoutString(const std::string& layout) {
     return "STRIDED";
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "Unknown Data Layout type ", layout, "."));
+        "Unknown Data Layout type %s.",
+        layout));
   }
 }
 

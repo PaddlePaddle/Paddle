@@ -75,7 +75,8 @@ class GenBKCLIdOp : public framework::OperatorBase {
         trainer_id,
         0,
         common::errors::InvalidArgument("trainer_id %d is less than 0. Its "
-                                        "valid range is [0, trainer_size)"));
+                                        "valid range is [0, trainer_size)",
+                                        trainer_id));
     PADDLE_ENFORCE_LT(
         trainer_id,
         static_cast<int>(trainers.size()),

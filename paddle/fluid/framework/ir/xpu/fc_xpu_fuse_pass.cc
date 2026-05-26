@@ -844,7 +844,7 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
       PADDLE_ENFORCE_NOT_NULL(
           var,
           common::errors::NotFound(
-              "The input persistable [%s] var of [%s] op is not found.",
+              "The input persistable var [%s] of op is not found.",
               mul_w_name));
       auto* weight_tensor = var->GetMutable<DenseTensor>();
       float* fp32_weight_data = weight_tensor->data<float>();

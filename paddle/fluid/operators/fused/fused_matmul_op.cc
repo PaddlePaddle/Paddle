@@ -29,8 +29,8 @@ static std::vector<int64_t> GetInputShape(phi::DDim dim,
   PADDLE_ENFORCE_GT(dim.size(),
                     0,
                     common::errors::InvalidArgument(
-                        "The Input(%s) has not been initialized properly. The "
-                        "shape of Input(%s) = [%s].",
+                        "The Input has not been initialized properly. The "
+                        "shape of Input = [%s].",
                         dim));
 
   auto is_input_fused = (!shape.empty() && !axis.empty());

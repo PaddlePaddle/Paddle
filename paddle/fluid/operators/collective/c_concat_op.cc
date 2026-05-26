@@ -53,7 +53,7 @@ class CConcatOp : public framework::OperatorWithKernel {
                       nranks,
                       common::errors::InvalidArgument(
                           "The value of rank (%d) for c_concat must "
-                          "be less than that of nranks.",
+                          "be less than that of nranks (%d).",
                           rank,
                           nranks));
 

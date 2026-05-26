@@ -120,7 +120,7 @@ void BuildEngineValueMap(
     } else {
       PADDLE_THROW(common::errors::Unimplemented(
           "Only support DenseTensor and Vector<DenseTensor> now, "
-          "not support .",
+          "not support %d.",
           var->Type()));
     }
   }
@@ -139,7 +139,7 @@ CustomEngineInstruction::CustomEngineInstruction(
                     ::common::errors::InvalidArgument(
                         "The Op to construct CustomEngineInstruction must be a "
                         "custom engine op.  "
-                        "but got op is %d",
+                        "but got op is %s",
                         op->name()));
 
   auto op_attributes = op->attributes();

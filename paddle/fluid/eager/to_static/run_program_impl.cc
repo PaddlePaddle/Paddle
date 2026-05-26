@@ -124,7 +124,7 @@ void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "The RunProgram(Grad)Op only support output "
-        "variable of type DenseTensor, SelectedRows or VariableRefArray",
+        "variable %s of type DenseTensor, SelectedRows or VariableRefArray",
         name));
   }
 }
@@ -177,7 +177,7 @@ void ShareTensorsIntoScopeWithName(const std::vector<Tensor> &tensors,
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
           "The RunProgram(Grad)Op only support input "
-          "variable of type DenseTensor, SelectedRows or VariableRefArray",
+          "variable %s of type DenseTensor, SelectedRows or VariableRefArray.",
           name));
     }
   }
@@ -255,7 +255,7 @@ void ShareTensorsFromScopeWithName(std::vector<Tensor> *tensors,
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
           "The RunProgram(Grad)Op only support output "
-          "variable of type DenseTensor, SelectedRows or VariableRefArray",
+          "variable %s of type DenseTensor, SelectedRows or VariableRefArray.",
           name));
     }
   }
@@ -295,7 +295,7 @@ void ShareTensorsFromScopeWithPartialBlock(
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
           "The RunProgram(Grad)Op only support output "
-          "variable of type DenseTensor, SelectedRows or VariableRefArray",
+          "variable %s of type DenseTensor, SelectedRows or VariableRefArray.",
           name));
     }
   }

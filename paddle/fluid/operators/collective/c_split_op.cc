@@ -55,7 +55,7 @@ class CSplitOp : public framework::OperatorWithKernel {
                       nranks,
                       common::errors::InvalidArgument(
                           "The value of rank (%d) for c_split must "
-                          "be less than that of nranks.",
+                          "be less than that of nranks (%d).",
                           rank,
                           nranks));
 

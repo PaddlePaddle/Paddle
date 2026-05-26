@@ -511,7 +511,8 @@ class CompositeGradOpMakerBase {
                       origin_names.size(),
                       common::errors::InvalidArgument(
                           "The size of outputs must be equal to the size "
-                          "of the origin_names.",
+                          "of the origin_names, but got outputs size: %d, "
+                          "origin_names size: %d.",
                           outputs.size(),
                           origin_names.size()));
     for (size_t i = 0; i < outputs.size(); ++i) {
