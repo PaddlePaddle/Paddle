@@ -41,7 +41,12 @@ int GetMaxLen(const Context& dev_ctx,
                  max_len_tensor->data<int>(),
                  sizeof(int),
                  XPUMemcpyKind::XPU_DEVICE_TO_HOST);
-  PADDLE_ENFORCE_EQ(r, 0, common::errors::Fatal("xpu_memcpy failed."));
+  PADDLE_ENFORCE_EQ(
+      r,
+      0,
+      common::errors::Fatal(
+          "Failed to copy the maximum sequence length from XPU to CPU in "
+          "block_multihead_attention_xpu."));
   return max_len_cpu;
 }
 
@@ -385,7 +390,11 @@ void BlockMultiheadAttentionXPUKernel(
                                   attn_mask_cpu.size() * sizeof(float),
                                   XPUMemcpyKind::XPU_HOST_TO_DEVICE);
         PADDLE_ENFORCE_EQ(
-            mask_ret, 0, common::errors::Fatal("xpu_memcpy failed."));
+            mask_ret,
+            0,
+            common::errors::Fatal(
+                "Failed to copy the generated causal attention mask from CPU "
+                "to XPU in block_multihead_attention_xpu."));
       }
       xpu::QKVAttnParam qkv_attn_param(lods,
                                        q_num_head,
