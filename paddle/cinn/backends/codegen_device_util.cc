@@ -18,6 +18,10 @@
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/common/enforce.h"
+#ifdef CINN_WITH_CUSTOM_DEVICE
+#include "paddle/cinn/runtime/custom_device/custom_device_backend_api.h"
+#include "paddle/phi/backends/device_manager.h"
+#endif
 
 namespace cinn {
 namespace backends {
@@ -186,6 +190,21 @@ static std::string CurTailFnName(const std::string &origin_fn_name) {
 }
 
 bool RequiresCooperativeLaunch(const ir::LoweredFunc &func) {
+#ifdef CINN_WITH_CUSTOM_DEVICE
+  // Check if the vendor has enabled cooperative launch support.
+  auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+  if (!dev_types.empty()) {
+    std::string dev_type = dev_types[0];
+    int device_id = phi::DeviceManager::GetDevice(dev_type);
+    auto place = phi::CustomPlace(dev_type, device_id);
+    auto &plugin =
+        runtime::custom_device::CinnCustomDevicePlugin::GetInstance(place);
+    auto *runtime_strategy = plugin.GetRuntime();
+    if (!runtime_strategy || !runtime_strategy->SupportsCooperativeLaunch()) {
+      return false;
+    }
+  }
+#endif
   for (auto &space : func->temp_spaces) {
     if (space.size() != ir::Expr(0)) {
       return true;

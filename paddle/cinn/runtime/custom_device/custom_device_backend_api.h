@@ -79,6 +79,11 @@ class CustomRuntimeStrategy {
                                        int block_z,
                                        int shared_mem,
                                        void* stream) = 0;
+
+  /// Whether this device supports cooperative kernel launch (grid-level sync).
+  /// Default: false. Vendors override to return true if their hardware and
+  /// runtime support cooperative launch semantics.
+  virtual bool SupportsCooperativeLaunch() { return false; }
 };
 
 // Compilation Optimization Interface: Responsible for vendor-specific

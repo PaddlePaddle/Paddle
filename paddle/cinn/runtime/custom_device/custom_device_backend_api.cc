@@ -204,6 +204,10 @@ class DefaultRuntimeStrategy : public CustomRuntimeStrategy {
                  stream);
   }
 
+  bool SupportsCooperativeLaunch() override {
+    return cif_ && cif_->launch_cooperative_kernel;
+  }
+
  private:
   C_CinnInterface* cif_;
 };
