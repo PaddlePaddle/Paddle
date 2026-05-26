@@ -153,12 +153,20 @@ class _DistGroupMeta(type):
                 "group.WORLD must be a Group instance or None, got "
                 f"{type(value).__name__}"
             )
+        if value.id != _GroupManager.global_group_id:
+            raise ValueError(
+                f"group.WORLD expects a Group with id="
+                f"{_GroupManager.global_group_id}, got id={value.id}"
+            )
 
         _GroupManager.group_map_by_id[_GroupManager.global_group_id] = value
         _coll._group_map[_coll._global_env_gid] = value
         _coll._group_map_by_name[_coll._default_group_name] = value
         if value._pg is not None:
-            _coll._group_map_backend[value] = value._pg.name()
+            # ``ProcessGroup.name()`` returns the C++ backend name in upper
+            # case (e.g. ``NCCL``); the registry is keyed by the lower-case
+            # Python form used in ``_valid_backend_list``.
+            _coll._group_map_backend[value] = value._pg.name().lower()
 
 
 class _DistGroupNamespace(metaclass=_DistGroupMeta):

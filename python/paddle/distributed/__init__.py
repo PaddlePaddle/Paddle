@@ -99,7 +99,6 @@ from .communication import (  # noqa: F401
     gather,
     get_backend,
     get_group,
-    group,
     irecv,
     is_initialized,
     isend,
@@ -114,6 +113,10 @@ from .communication import (  # noqa: F401
     stream,
     wait,
 )
+
+# Import the namespace class directly from the submodule so it does not
+# shadow ``communication.group`` (the submodule) inside the package.
+from .communication.group import _DistGroupNamespace as group
 from .entry_attr import (
     CountFilterEntry,
     ProbabilityEntry,

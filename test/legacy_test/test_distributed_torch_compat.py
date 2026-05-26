@@ -82,6 +82,16 @@ class TestDistributedTorchCompat(unittest.TestCase):
         with self.assertRaises(TypeError):
             dist.group.WORLD = 42
 
+    def test_group_world_setter_rejects_mismatched_id(self):
+        # The default group must be keyed by ``_GroupManager.global_group_id``
+        # (== 0); a Group whose own ``id`` differs would break ``get_group``
+        # lookups, so the setter must reject it.
+        mismatched = Group(
+            rank_in_group=0, id=5, ranks=[0], pg=None, name='wrong-id'
+        )
+        with self.assertRaises(ValueError):
+            dist.group.WORLD = mismatched
+
     def test_process_group_re_export(self):
         from paddle.base.core import ProcessGroup as core_pg
 
