@@ -58,9 +58,9 @@ RUN apt-get update --allow-unauthenticated && \
     rm -rf /var/lib/apt/lists/*
 
 RUN cd /tmp && \
-    wget -q https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tar.xz && \
-    tar -xf Python-${PYTHON_VERSION}.tar.xz && \
-    cd Python-${PYTHON_VERSION} && \
+    wget -q https://www.python.org/ftp/python/${PYTHON_SOURCE_VERSION}/Python-${PYTHON_SOURCE_VERSION}.tar.xz && \
+    tar -xf Python-${PYTHON_SOURCE_VERSION}.tar.xz && \
+    cd Python-${PYTHON_SOURCE_VERSION} && \
     ./configure \
       --prefix=/usr/local \
       --enable-optimizations \
@@ -73,7 +73,7 @@ RUN cd /tmp && \
     ln -sf /usr/local/bin/pip3 /usr/local/bin/pip && \
     python3 -m pip install --no-cache-dir --upgrade pip setuptools wheel packaging && \
     cd / && \
-    rm -rf /tmp/Python-${PYTHON_VERSION} /tmp/Python-${PYTHON_VERSION}.tar.xz
+    rm -rf /tmp/Python-${PYTHON_SOURCE_VERSION} /tmp/Python-${PYTHON_SOURCE_VERSION}.tar.xz
 
 WORKDIR /home
 RUN set -eux; \
