@@ -195,9 +195,7 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
     platform::Communicator,
     platform::NCCLCommunicator,
 #endif
-#ifdef WITH_CUDNN_FRONTEND
     phi::funcs::CudnnRNNCache,
-#endif
 #endif
 #if defined(PADDLE_WITH_XPU_BKCL)
     BKCLUniqueId,

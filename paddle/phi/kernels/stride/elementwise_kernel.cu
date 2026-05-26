@@ -323,8 +323,8 @@ void FullLikeStrideKernel(const Context &dev_ctx,
 
 }  // namespace phi
 
-using float16 = phi::float16;
-using bfloat16 = phi::bfloat16;
+using kPhiFloat16 = ::phi::dtype::float16;
+using kPhiBFloat16 = ::phi::dtype::bfloat16;
 using complex64 = phi::complex64;
 using complex128 = phi::complex128;
 
@@ -412,8 +412,8 @@ PD_REGISTER_KERNEL(subtract,
                    int16_t,
                    int,
                    int64_t,
-                   float16,
-                   bfloat16,
+                   kPhiFloat16,
+                   kPhiBFloat16,
                    complex64,
                    complex128) {}
 
@@ -426,10 +426,10 @@ PD_REGISTER_KERNEL(multiply,
                    int,
                    int64_t,
                    bool,
-                   float16,
+                   kPhiFloat16,
                    complex64,
                    complex128,
-                   bfloat16) {}
+                   kPhiBFloat16) {}
 
 PD_REGISTER_KERNEL(divide,
                    GPU,
@@ -443,8 +443,8 @@ PD_REGISTER_KERNEL(divide,
                    int,
                    int64_t,
                    bool,
-                   float16,
-                   bfloat16,
+                   kPhiFloat16,
+                   kPhiBFloat16,
                    complex64,
                    complex128) {}
 
@@ -519,8 +519,8 @@ PD_REGISTER_KERNEL(heaviside,
                    float,
                    double,
                    int,
-                   float16,
-                   bfloat16,
+                   kPhiFloat16,
+                   kPhiBFloat16,
                    int64_t) {}
 
 PD_REGISTER_KERNEL(fmax,
@@ -530,8 +530,8 @@ PD_REGISTER_KERNEL(fmax,
                    float,
                    double,
                    int,
-                   float16,
-                   bfloat16,
+                   kPhiFloat16,
+                   kPhiBFloat16,
                    int64_t) {}
 
 PD_REGISTER_KERNEL(fmin,
@@ -541,8 +541,8 @@ PD_REGISTER_KERNEL(fmin,
                    float,
                    double,
                    int,
-                   float16,
-                   bfloat16,
+                   kPhiFloat16,
+                   kPhiBFloat16,
                    int64_t) {}
 
 #endif

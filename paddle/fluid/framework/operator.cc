@@ -54,10 +54,8 @@ class DenseTensor;
 #include "paddle/phi/core/platform/device/xpu/xpu_op_list.h"
 #endif
 
-#ifdef WITH_CUDNN_FRONTEND
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/core/platform/device/gpu/gpu_dnn.h"
-#endif
 #endif
 
 COMMON_DECLARE_bool(benchmark);

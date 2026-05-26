@@ -15,9 +15,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_CUDA
 #include <cublas_v2.h>
-#ifdef WITH_CUDNN_FRONTEND
 #include <cudnn.h>
-#endif
 #include <cufft.h>
 #include <curand.h>
 #include <cusparse.h>
@@ -48,9 +46,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cublas.h"
-#ifdef WITH_CUDNN_FRONTEND
 #include "paddle/phi/backends/dynload/cudnn.h"
-#endif
 #include "paddle/phi/backends/dynload/curand.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
@@ -113,7 +109,7 @@ void ThrowWarnInternal(const std::string& message);
              __LINE__,                                             \
              #_IS_NOT_ERROR,                                       \
              ##__VA_ARGS__);                                       \
-      __builtin_trap();                                                \
+      asm("trap;");                                                \
     }                                                              \
   } while (0)
 #elif defined(__HIPCC__)
@@ -307,9 +303,7 @@ struct ExternalApiType {};
 
 DEFINE_EXTERNAL_API_TYPE(cudaError_t, cudaSuccess);
 DEFINE_EXTERNAL_API_TYPE(curandStatus_t, CURAND_STATUS_SUCCESS);
-#ifdef WITH_CUDNN_FRONTEND
 DEFINE_EXTERNAL_API_TYPE(cudnnStatus_t, CUDNN_STATUS_SUCCESS);
-#endif
 DEFINE_EXTERNAL_API_TYPE(cublasStatus_t, CUBLAS_STATUS_SUCCESS);
 DEFINE_EXTERNAL_API_TYPE(cusparseStatus_t, CUSPARSE_STATUS_SUCCESS);
 DEFINE_EXTERNAL_API_TYPE(cusolverStatus_t, CUSOLVER_STATUS_SUCCESS);
@@ -346,7 +340,6 @@ inline std::string build_nvidia_error_msg(curandStatus_t stat) {
   return sout.str();
 }
 
-#ifdef WITH_CUDNN_FRONTEND
 /*************** CUDNN ERROR ***************/
 inline bool is_error(cudnnStatus_t stat) {
   return stat != CUDNN_STATUS_SUCCESS;
@@ -359,7 +352,6 @@ inline std::string build_nvidia_error_msg(cudnnStatus_t stat) {
        << GetExternalErrorMsg(stat);
   return sout.str();
 }
-#endif
 
 /*************** CUBLAS ERROR ***************/
 inline bool is_error(cublasStatus_t stat) {
