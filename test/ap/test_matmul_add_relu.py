@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import subprocess
 import unittest
 
 import numpy as np
@@ -31,18 +30,16 @@ def GetPirProgram(fused_func, tensor_args):
     return str(func.infer_program.forward_program)
 
 
-def IsCertainDevices():
-    try:
-        sp = subprocess.Popen(
-            ['nvidia-smi', '-q'], stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
-        out_str = sp.communicate()[0].decode('utf-8')
-        if 'A100' in out_str:
-            return True
-        else:
-            return False
-    except Exception as e:
-        return False
+def IsSupportDevice():
+    if paddle.is_compiled_with_cuda():
+        prop = paddle.device.cuda.get_device_properties()
+        cc = prop.major * 10 + prop.minor
+        return cc == 80
+
+    if paddle.is_compiled_with_rocm():
+        return True
+
+    return False
 
 
 class TestMatmulEpilogue(unittest.TestCase):
@@ -81,8 +78,11 @@ class TestMatmulEpilogue(unittest.TestCase):
 
     def test_subgraph(self):
         foo = self.getSubGraph()
+        backend_device = 'dcu' if paddle.is_compiled_with_rocm() else 'cuda'
         fused_foo = pcc.compile(
-            foo, ap_path=f"{os.path.dirname(paddle.__file__)}/apy/matmul_pass"
+            foo,
+            ap_path=f"{os.path.dirname(paddle.__file__)}/apy/matmul_pass",
+            backend_device=backend_device,
         )
         generated_pir_program = GetPirProgram(
             fused_foo, [self.x, self.y, self.b]
@@ -90,7 +90,7 @@ class TestMatmulEpilogue(unittest.TestCase):
         self.assertTrue(
             'pd_op.ap_variadic' in generated_pir_program, "fusion failed"
         )
-        if IsCertainDevices():
+        if IsSupportDevice():
             ap_outs = fused_foo(self.x, self.y, self.b)
             dy_outs = foo(self.x, self.y, self.b)
             for dy_out, ap_out in zip(dy_outs, ap_outs):

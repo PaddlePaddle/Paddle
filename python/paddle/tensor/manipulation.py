@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import builtins
 import functools
 import inspect
 import math
@@ -6956,6 +6957,7 @@ def repeat_interleave(
     return out
 
 
+@param_one_alias(["x", "input"])
 def moveaxis(
     x: Tensor,
     source: int | Sequence[int],
@@ -6969,6 +6971,7 @@ def moveaxis(
 
     Args:
         x (Tensor): The input Tensor. It is a N-D Tensor of data types bool, int32, int64, float32, float64, complex64, complex128.
+            Alias: ``input``.
         source(int|tuple|list): ``source`` position of axis that will be moved. Each element must be unique and integer.
         destination(int|tuple|list): ``destination`` position of axis that has been moved. Each element must be unique and integer.
         name(str|None, optional): The default value is None.  Normally there is no need for user to set this
@@ -7898,6 +7901,91 @@ def index_add_(
     """
     scaled_value = value * alpha if alpha != 1 else value
     return _C_ops.index_add_(x, index, scaled_value, axis)
+
+
+@inplace_apis_in_dygraph_only
+def index_copy_(
+    x: Tensor,
+    dim: int,
+    index: Tensor,
+    source: Tensor,
+) -> Tensor:
+    """
+    Copies the elements of source tensor into the input tensor by selecting the indices in the order given in index.
+    """
+    if x.ndim == 0:
+        if dim not in (-1, 0):
+            raise IndexError(
+                f"Dimension out of range (expected to be in range of [-1, 0], but got {dim})"
+            )
+        dim = 0
+    else:
+        dim = non_negative_axis(x, dim)
+    if index.ndim >= 2:
+        raise IndexError("index_copy_(): index must be 0D or 1D")
+    if convert_dtype(index.dtype) != 'int64':
+        raise RuntimeError("index_copy_(): index must be int64")
+    if x.dtype != source.dtype:
+        raise RuntimeError(
+            "index_copy_(): self and source must have same dtype"
+        )
+    num_indices = index.numel().item()
+    if num_indices != 0:
+        dim_size = x.shape[dim] if x.ndim > 0 else 1
+        if ((index < 0) | (index >= dim_size)).any():
+            raise IndexError("index_copy_(): index out of bounds")
+
+    source_is_scalar = source.ndim == 0
+    if source_is_scalar:
+        if num_indices != 1:
+            raise IndexError("index_copy_(): scalar source requires one index")
+    elif source.ndim != x.ndim and x.ndim != 0:
+        raise IndexError("index_copy_(): source and self must have same rank")
+    elif num_indices != source.shape[dim]:
+        raise IndexError(
+            "index_copy_(): index length must match source size at dim"
+        )
+
+    if x.ndim == 0:
+        if num_indices == 0:
+            return x
+        if source_is_scalar:
+            source = source.reshape([1])
+        if x.place.is_xpu_place():
+            x.reshape_([1]).scatter_(index.reshape([num_indices]), source)
+            return x.reshape_([])
+        x.reshape_([1])[index.reshape([num_indices])] = source
+        return x.reshape_([])
+
+    x_sliced_shape = list(x.shape[:dim]) + list(x.shape[dim + 1 :])
+    source_sliced_shape = (
+        []
+        if source_is_scalar
+        else list(source.shape[:dim]) + list(source.shape[dim + 1 :])
+    )
+    if x_sliced_shape != source_sliced_shape:
+        raise RuntimeError(
+            "index_copy_(): source and destination slices must match"
+        )
+
+    if num_indices == 0:
+        return x
+    if source_is_scalar:
+        source = source.reshape([1])
+    if x.place.is_xpu_place():
+        index_shape = [1] * x.ndim
+        index_shape[dim] = num_indices
+        return put_along_axis_(
+            x,
+            index.reshape(index_shape),
+            source,
+            dim,
+            'assign',
+            include_self=True,
+            broadcast=True,
+        )
+    x[(builtins.slice(None),) * dim + (index,)] = source
+    return x
 
 
 @ParamAliasDecorator({"x": ["input"], "axis": ["dim"], "shape": ["sizes"]})

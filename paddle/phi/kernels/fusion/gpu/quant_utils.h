@@ -191,6 +191,14 @@ __device__ __forceinline__ float ComputeScale(const float amax,
       ComputeScaleImpl<IType, OType, Power2Scaling>(amax, eps));
 }
 
+__device__ __forceinline__ constexpr bool MustUsePower2Scaling() {
+#ifdef __CUDA_ARCH__
+  return __CUDA_ARCH__ != 900;
+#else
+  return false;
+#endif
+}
+
 // -------------------------------------- From Kitchen
 // ----------------------------------
 

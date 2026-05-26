@@ -24,10 +24,11 @@ import typing
 __is_metainfo_generated = False
 try:
     from paddle.cuda_env import *  # noqa: F403
-    from paddle.version import (  # noqa: F401
-        commit as __git_commit__,
-        full_version as __version__,
+    from paddle.paddle_version import (  # noqa: F401
+        PaddleVersion,
+        __version__,
     )
+    from paddle.version import commit as __git_commit__  # noqa: F401
 
     __is_metainfo_generated = True
 
@@ -1051,6 +1052,7 @@ swapaxes = transpose
 manual_seed = seed
 sub = subtract
 sub_ = subtract_
+movedim = moveaxis
 
 __all__ = [
     'block_diag',
@@ -1478,6 +1480,7 @@ __all__ = [
     'fmax',
     'fmin',
     'moveaxis',
+    'movedim',
     'repeat_interleave',
     'clone',
     'kthvalue',

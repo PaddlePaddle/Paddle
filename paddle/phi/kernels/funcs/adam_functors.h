@@ -365,7 +365,7 @@ class SparseAdamFunctor<T, GPUAdam, MT> {
   MT* moment2_out_;
   const MT* moment2_max_;
   MT* moment2_max_out_;
-  const MT* lr_;
+  const double* lr_;
   const T* grad_;
   const T* param_;
   T* param_out_;
@@ -390,7 +390,7 @@ class SparseAdamFunctor<T, GPUAdam, MT> {
                     MT* mom2_out,
                     const MT* mom2_max,
                     MT* mom2_max_out,
-                    const MT* lr,
+                    const double* lr,
                     const T* grad,
                     const T* param,
                     T* param_out,
@@ -429,7 +429,7 @@ class SparseAdamFunctor<T, GPUAdam, MT> {
     MT mom1 = moment1_[i];
     MT mom2 = moment2_[i];
 
-    MT lr = *lr_;
+    MT lr = static_cast<MT>(*lr_);
     MT beta1_pow = *beta1_pow_;
     MT beta2_pow = *beta2_pow_;
     MT p = master_param_ ? master_param_[i] : static_cast<MT>(param_[i]);
