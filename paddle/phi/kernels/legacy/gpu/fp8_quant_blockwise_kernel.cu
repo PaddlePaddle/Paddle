@@ -131,8 +131,8 @@ __device__ __forceinline__ float device_max(float a, float b) {
 }
 
 template <bool Power2Scaling>
-__device__ __forceinline__ float ScaleWrapper(const float amax,
-                                              const float eps) {
+__device__ __forceinline__ float ScaleWrapperImpl(const float amax,
+                                                  const float eps) {
   constexpr float fp8_max = 448.0f;
   float amax_mod = fmaxf(amax, eps);
   if (amax_mod == 0.f) {
@@ -159,6 +159,13 @@ __device__ __forceinline__ float ScaleWrapper(const float amax,
     scale = ldexpf(1.0f, normal_biased_exp);
   }
   return scale;
+}
+
+template <bool Power2Scaling>
+__device__ __forceinline__ float ScaleWrapper(const float amax,
+                                              const float eps) {
+  return RoundPower2Scale<Power2Scaling>(
+      ScaleWrapperImpl<Power2Scaling>(amax, eps));
 }
 
 template <typename ScaleT, bool using_ue8m0_scale>
@@ -970,8 +977,6 @@ PD_REGISTER_KERNEL(fp8_quant_blockwise,
                    ALL_LAYOUT,
                    phi::FP8QuantBlockWiseKernel,
                    phi::float16,
-                   phi::bfloat16,
-                   float,
-                   double) {}
+                   phi::bfloat16) {}
 
 // NOLINTEND
