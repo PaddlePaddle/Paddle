@@ -12,6 +12,7 @@ MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 ARG WITH_GPU
 ARG WITH_AVX
 ARG PYTHON_VERSION=3.12
+ARG PYTHON_SOURCE_VERSION=3.12.13
 ARG TARGETARCH
 
 ENV WITH_GPU=${WITH_GPU:-ON}
@@ -28,6 +29,7 @@ RUN apt-get update --allow-unauthenticated && \
       curl \
       wget \
       make \
+      build-essential \
       libgl1 \
       libglib2.0-0 \
       libssl-dev \
@@ -36,14 +38,42 @@ RUN apt-get update --allow-unauthenticated && \
       libtool \
       libmlx5-1 \
       libibverbs-dev \
+      pkg-config \
+      zlib1g-dev \
+      libbz2-dev \
+      libreadline-dev \
+      libsqlite3-dev \
+      libncursesw5-dev \
+      libffi-dev \
+      libgdbm-dev \
+      libgdbm-compat-dev \
+      liblzma-dev \
+      libexpat1-dev \
+      tk-dev \
+      uuid-dev \
+      xz-utils \
       ccache \
-      python${PYTHON_VERSION} \
-      python${PYTHON_VERSION}-dev \
-      python3-pip \
       libnccl2=2.29.7-1+cuda13.2 \
       libnccl-dev=2.29.7-1+cuda13.2 && \
-    ln -sf /usr/bin/python3 /usr/bin/python && \
     rm -rf /var/lib/apt/lists/*
+
+RUN cd /tmp && \
+    wget -q https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tar.xz && \
+    tar -xf Python-${PYTHON_VERSION}.tar.xz && \
+    cd Python-${PYTHON_VERSION} && \
+    ./configure \
+      --prefix=/usr/local \
+      --enable-optimizations \
+      --with-ensurepip=install && \
+    make -j"$(nproc)" && \
+    make altinstall && \
+    ln -sf /usr/local/bin/python${PYTHON_SHORT} /usr/local/bin/python3 && \
+    ln -sf /usr/local/bin/python3 /usr/local/bin/python && \
+    ln -sf /usr/local/bin/pip${PYTHON_SHORT} /usr/local/bin/pip3 && \
+    ln -sf /usr/local/bin/pip3 /usr/local/bin/pip && \
+    python3 -m pip install --no-cache-dir --upgrade pip setuptools wheel packaging && \
+    cd / && \
+    rm -rf /tmp/Python-${PYTHON_VERSION} /tmp/Python-${PYTHON_VERSION}.tar.xz
 
 WORKDIR /home
 RUN set -eux; \
