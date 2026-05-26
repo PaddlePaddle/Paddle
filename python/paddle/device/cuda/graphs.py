@@ -72,8 +72,7 @@ cuda_graph_id = 0
 
 
 class CUDAGraph:
-    """Wrapper around a CUDA graph capture, aligned with ``torch.cuda.CUDAGraph``.
-
+    """
     The native Paddle constructor takes ``place``, ``mode``, ``pool_id`` and
     ``enable_replace``; the PyTorch-compatible ``keep_graph`` keyword is
     accepted as well. ``capture_begin`` additionally accepts the PyTorch

@@ -83,7 +83,7 @@ class graph:
         capture_error_mode: str = 'global',
     ) -> None:
         self.cuda_graph = cuda_graph
-        self.pool = pool
+        self.pool = () if pool is None else (pool,)
         self.capture_stream = stream
         self.capture_error_mode = capture_error_mode
         self.stream_ctx = _paddle_device.stream(stream)
@@ -94,7 +94,7 @@ class graph:
         self.stream_ctx.__enter__()
         try:
             self.cuda_graph.capture_begin(
-                pool=self.pool, capture_error_mode=self.capture_error_mode
+                *self.pool, capture_error_mode=self.capture_error_mode
             )
         except BaseException:
             self.stream_ctx.__exit__(None, None, None)
