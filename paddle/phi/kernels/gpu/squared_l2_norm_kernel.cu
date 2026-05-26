@@ -18,7 +18,10 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
+#include "paddle/phi/kernels/gpu/reduce.h"
+
 namespace phi {
+
 template <typename T, typename Context>
 void SquaredL2NormKernel(const Context& dev_ctx,
                          const DenseTensor& x,
@@ -28,8 +31,8 @@ void SquaredL2NormKernel(const Context& dev_ctx,
   for (size_t i = 0; i < x.dims().size(); i++) {
     origin_reduce_dims.push_back(i);
   }
-  funcs::ReduceKernel<T, T, kps::AddFunctor, kps::SquareFunctor<T, T>>(
-      dev_ctx, x, out, kps::SquareFunctor<T, T>(), origin_reduce_dims);
+  funcs::ReduceGpuKernel<T, T, kps::SquaredL2NormOps>(
+      dev_ctx, x, out, origin_reduce_dims);
 }
 
 }  // namespace phi
