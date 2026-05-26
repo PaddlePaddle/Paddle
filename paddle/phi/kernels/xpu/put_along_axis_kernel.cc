@@ -169,6 +169,26 @@ int64_t GetPutOffset(const IndexT* index_data,
   return x_offset;
 }
 
+template <typename T, typename SrcT>
+void CastHostTensorData(const DenseTensor& src, DenseTensor* dst) {
+  const auto* src_data = src.data<SrcT>();
+  auto* dst_data = dst->data<T>();
+  for (int64_t i = 0; i < src.numel(); ++i) {
+    dst_data[i] = static_cast<T>(src_data[i]);
+  }
+}
+
+template <typename T>
+void CastHostTensorToKernelType(const DenseTensor& src, DenseTensor* dst) {
+  if (src.dtype() == DataType::INT64) {
+    CastHostTensorData<T, int64_t>(src, dst);
+  } else {
+    PADDLE_THROW(errors::InvalidArgument(
+        "Unsupported out_grad dtype %s for XPU put_along_axis_grad host path",
+        DataTypeToString(src.dtype())));
+  }
+}
+
 template <typename T, typename IndexT>
 void ComputePutAlongAxisGradOnHost(const DenseTensor& x,
                                    const DenseTensor& index,
@@ -439,6 +459,15 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
   Copy(dev_ctx, out, CPUPlace(), false, &out_cpu);
   Copy(dev_ctx, out_grad, CPUPlace(), false, &out_grad_cpu);
 
+  const DenseTensor* out_grad_host = &out_grad_cpu;
+  DenseTensor out_grad_cast_cpu;
+  if (out_grad_cpu.dtype() != phi::CppTypeToDataType<T>::Type()) {
+    out_grad_cast_cpu.Resize(out_grad_cpu.dims());
+    dev_ctx.template HostAlloc<T>(&out_grad_cast_cpu);
+    CastHostTensorToKernelType<T>(out_grad_cpu, &out_grad_cast_cpu);
+    out_grad_host = &out_grad_cast_cpu;
+  }
+
   DenseTensor x_grad_cpu;
   DenseTensor value_grad_cpu;
   if (x_grad) {
@@ -457,7 +486,7 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
         index_cpu,
         value_cpu,
         out_cpu,
-        out_grad_cpu,
+        *out_grad_host,
         axis,
         reduce,
         include_self,
@@ -469,7 +498,7 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
         index_cpu,
         value_cpu,
         out_cpu,
-        out_grad_cpu,
+        *out_grad_host,
         axis,
         reduce,
         include_self,
