@@ -141,7 +141,7 @@ inline bool is_common_dtype_for_scalar(DataType x, DataType y) {
 }
 
 inline bool IsXpuAddComplex128Promote(const std::string& op_name,
-                                        DataType promote_type) {
+                                      DataType promote_type) {
 #if defined(PADDLE_WITH_XPU)
   return promote_type == DataType::COMPLEX128 &&
          (op_name == "add" || op_name == "add_" ||
