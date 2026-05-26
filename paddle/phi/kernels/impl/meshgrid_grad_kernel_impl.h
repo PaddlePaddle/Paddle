@@ -108,8 +108,7 @@ void MeshgridGradKernel(const Context& dev_ctx,
       break;
     default:
       PADDLE_THROW(common::errors::InvalidArgument(
-          "Excepted Tensor numbers between 1 and 6, but only received d% .",
-          n));
+          "Excepted Tensor numbers between 1 and 6, but only received %d.", n));
   }
 }
 

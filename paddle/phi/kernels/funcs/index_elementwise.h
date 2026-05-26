@@ -59,7 +59,7 @@ struct CPUOffsetCalculator {
         dims,
         MAX_DIMS,
         common::errors::InvalidArgument(
-            "Tensor has too many dims. Maximum dim is d%.", MAX_DIMS));
+            "Tensor has too many dims. Maximum dim is %d.", MAX_DIMS));
     for (int i = 0; i < dims; i++) {
       sizes_[i] = CPUIntDivider<index_t>(sizes[i]);
       for (int arg = 0; arg < NARGS; arg++) {

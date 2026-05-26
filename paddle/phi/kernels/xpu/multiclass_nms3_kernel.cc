@@ -98,14 +98,14 @@ void MultiClassNMSKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(boxes_count == bboxes.dims()[0],
                       true,
                       common::errors::InvalidArgument(
-                          "boxes_count should equal boxes->dims()[0].",
+                          "boxes_count should equal boxes->dims()[0]."
                           "But received: (%d) and (%d)",
                           boxes_count,
                           bboxes.dims()[0]));
     PADDLE_ENFORCE_EQ(boxes_count == score_dims[0],
                       true,
                       common::errors::InvalidArgument(
-                          "boxes_count should equal score_dims[0].",
+                          "boxes_count should equal score_dims[0]."
                           "But received: (%d) and (%d)",
                           boxes_count,
                           score_dims[0]));

@@ -191,9 +191,9 @@ void PsroiPoolKernel(const Context& dev_ctx,
                       rois_num_with_lod,
                       errors::InvalidArgument(
                           "The number of rois from input(ROIs) and its LOD "
-                          "must be the same. Received rois %d of input(ROIs) "
-                          "but the number of rois %d from its LOD is %d",
-                          rois_num,
+                          "must be the same. Received rois %d of input(ROIs), "
+                          "but the number of rois from its LOD is %d.",
+                          rois_num_t,
                           rois_num_with_lod));
 
     // set rois batch id

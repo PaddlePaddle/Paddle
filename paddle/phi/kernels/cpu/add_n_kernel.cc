@@ -70,6 +70,7 @@ void AddNKernel(const Context& dev_ctx,
             "Expected type of Input(X) of %d-th must be Tensor, "
             "SelectedRows. But got "
             "unsupported type: %s.",
+            i,
             x[i]->type_info().name()));
       }
     }
@@ -113,6 +114,7 @@ void AddNKernel(const Context& dev_ctx,
             "Expected type of Input(X) of %d-th must be Tensor, "
             "SelectedRows. But got "
             "unsupported type: %s.",
+            i,
             x[i]->type_info().name()));
       }
     }

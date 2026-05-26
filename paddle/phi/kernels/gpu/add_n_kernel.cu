@@ -169,6 +169,7 @@ void AddNKernel(const Context &dev_ctx,
           errors::InvalidArgument("The dtype of inputs should be the same, "
                                   "but received the dtype of input 1 is %s, "
                                   "input %d is %s",
+                                  in_other_dtype,
                                   i,
                                   x[i]->dtype()));
       if (DenseTensor::classof(x[i])) {

@@ -37,11 +37,10 @@ void FastWhereXPUKernel(const Context& dev_ctx,
       x_dims,
       y_dims,
       errors::PreconditionNotMet(
-          "The dimensions of inputs should be equal, but x_dims=[",
+          "The dimensions of inputs should be equal, but x_dims=[%s] and "
+          "y_dims=[%s]",
           x.dims(),
-          "] and y_dims=[",
-          y.dims(),
-          "]"));
+          y.dims()));
 #ifndef PADDLE_WITH_XPU_PLUGIN
   LOG(INFO)
       << "Add -DWITH_XPU_PLUGIN=ON to build xpu::plugin::fast_where(), or use "

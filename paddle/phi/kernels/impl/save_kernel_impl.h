@@ -40,8 +40,7 @@ void SaveKernel(const Context& dev_ctx,
       false,
       common::errors::PreconditionNotMet(
           "%s exists!, cannot save to it when overwrite is set to false.",
-          file_path,
-          overwrite));
+          file_path));
 
   MkDirRecursively(DirName(file_path).c_str());
 

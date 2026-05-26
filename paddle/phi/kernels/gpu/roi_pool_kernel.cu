@@ -184,8 +184,8 @@ void RoiPoolKernel(const Context& dev_ctx,
                       boxes_num_with_lod,
                       common::errors::InvalidArgument(
                           "The number of rois from input(ROIs) and its LOD "
-                          "must be the same. Received rois %d of input(ROIs) "
-                          "but the number of rois %d from its LOD is %d",
+                          "must be the same. Received rois %d of input(ROIs), "
+                          "but the number of rois from its LOD is %d.",
                           rois_num,
                           boxes_num_with_lod));
     for (int n = 0; n < boxes_batch_size; ++n) {

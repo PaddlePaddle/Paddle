@@ -17,6 +17,7 @@
 #include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/arange_kernel.h"
 #include "paddle/phi/kernels/contiguous_kernel.h"
@@ -419,9 +420,8 @@ void IndexElementwiseGetGradKernel(const Context& dev_ctx,
                     common::errors::InvalidArgument(
                         "Index holds the wrong type, it holds [%s], but "
                         "desires to be [%s].",
-                        index_type,
-                        DataType::INT32,
-                        DataType::INT64));
+                        DataTypeToString(index_type),
+                        DataTypeToString(DataType::INT64)));
 
   if (accumulate && index.size() == 1 && !is_combined) {
 #ifdef PADDLE_WITH_CUDA
