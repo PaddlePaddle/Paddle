@@ -83,6 +83,10 @@ FROM cuda as cuda12.6
 RUN bash ./install_cuda.sh 12.6
 ENV DESIRED_CUDA=12.6
 
+FROM cuda as cuda13.2
+RUN bash ./install_cuda.sh 13.2
+ENV DESIRED_CUDA=13.2
+
 
 # Install paddle
 FROM python as paddle
