@@ -135,6 +135,20 @@ class _DistGroupMeta(type):
 
     @WORLD.setter
     def WORLD(cls, value: Group | None) -> None:
+        # Validate before mutating any registry so a rejected assignment
+        # leaves the existing default group intact.
+        if value is not None:
+            if not isinstance(value, Group):
+                raise TypeError(
+                    "group.WORLD must be a Group instance or None, got "
+                    f"{type(value).__name__}"
+                )
+            if value.id != _GroupManager.global_group_id:
+                raise ValueError(
+                    f"group.WORLD expects a Group with id="
+                    f"{_GroupManager.global_group_id}, got id={value.id}"
+                )
+
         # Lazy import: ``collective`` imports from this module at its top.
         from paddle.distributed import collective as _coll
 
@@ -148,16 +162,6 @@ class _DistGroupMeta(type):
 
         if value is None:
             return
-        if not isinstance(value, Group):
-            raise TypeError(
-                "group.WORLD must be a Group instance or None, got "
-                f"{type(value).__name__}"
-            )
-        if value.id != _GroupManager.global_group_id:
-            raise ValueError(
-                f"group.WORLD expects a Group with id="
-                f"{_GroupManager.global_group_id}, got id={value.id}"
-            )
 
         _GroupManager.group_map_by_id[_GroupManager.global_group_id] = value
         _coll._group_map[_coll._global_env_gid] = value
@@ -272,6 +276,15 @@ def destroy_process_group(group: Group | None = None) -> None:
     )
     if _is_global_group(group):
         _GroupManager.group_map_by_id.clear()
+        # The default group is also registered in the collective-layer
+        # registries by ``init_parallel_env``; clear those slots too so a
+        # follow-up ``init_process_group`` re-creates the default group
+        # rather than hitting ``init_parallel_env``'s early-return path.
+        from paddle.distributed import collective as _coll
+
+        _coll._group_map.pop(_coll._global_env_gid, None)
+        _coll._group_map_by_name.pop(_coll._default_group_name, None)
+        _coll._group_map_backend.pop(group, None)
     else:
         del _GroupManager.group_map_by_id[group.id]
 

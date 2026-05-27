@@ -92,6 +92,50 @@ class TestDistributedTorchCompat(unittest.TestCase):
         with self.assertRaises(ValueError):
             dist.group.WORLD = mismatched
 
+    def test_group_world_setter_preserves_world_on_invalid_assignment(self):
+        # Validation must happen before mutating any registry — a failed
+        # assignment must leave the existing WORLD intact.
+        original = Group(
+            rank_in_group=0, id=0, ranks=[0], pg=None, name='original'
+        )
+        dist.group.WORLD = original
+        self.assertIs(dist.group.WORLD, original)
+
+        with self.assertRaises(TypeError):
+            dist.group.WORLD = "not a group"
+        self.assertIs(dist.group.WORLD, original)
+
+        with self.assertRaises(ValueError):
+            dist.group.WORLD = Group(
+                rank_in_group=0, id=5, ranks=[0], pg=None, name='wrong-id'
+            )
+        self.assertIs(dist.group.WORLD, original)
+
+    def test_destroy_process_group_clears_all_registries(self):
+        # destroy_process_group() on the default group must clear every
+        # registry (communication ``_GroupManager`` plus collective's
+        # ``_group_map`` / ``_group_map_by_name`` / ``_group_map_backend``)
+        # so a follow-up init_process_group can re-create it instead of
+        # hitting init_parallel_env's early-return path.
+        from paddle.distributed import collective as _coll
+        from paddle.distributed.communication.group import (
+            destroy_process_group,
+        )
+
+        dist.group.WORLD = Group(
+            rank_in_group=0, id=0, ranks=[0], pg=None, name='_default_pg'
+        )
+        # Pre-condition: setter populated all four registries.
+        self.assertIsNotNone(dist.group.WORLD)
+        self.assertIn(_coll._global_env_gid, _coll._group_map)
+        self.assertIn(_coll._default_group_name, _coll._group_map_by_name)
+
+        destroy_process_group()
+
+        self.assertIsNone(dist.group.WORLD)
+        self.assertNotIn(_coll._global_env_gid, _coll._group_map)
+        self.assertNotIn(_coll._default_group_name, _coll._group_map_by_name)
+
     def test_process_group_re_export(self):
         from paddle.base.core import ProcessGroup as core_pg
 
@@ -191,6 +235,30 @@ class TestDistributedTorchCompat(unittest.TestCase):
             if 'world_size=' in str(w.message) or 'rank=' in str(w.message)
         ]
         self.assertEqual(unwanted, [])
+
+    @mock.patch('paddle.distributed.parallel.init_parallel_env')
+    @mock.patch.dict(
+        os.environ,
+        {
+            'WORLD_SIZE': '2',
+            'RANK': '1',
+            'LOCAL_RANK': '1',
+            'MASTER_ADDR': '127.0.0.1',
+            'MASTER_PORT': '29500',
+        },
+        clear=True,
+    )
+    def test_init_process_group_does_not_auto_map_torchrun_env(self, _):
+        # The wrapper accepts PyTorch-style arguments for source
+        # compatibility, but it does not currently translate torchrun env
+        # vars into the PADDLE_* variables consumed by ParallelEnv.
+        dist.init_process_group(backend='gloo')
+
+        self.assertEqual(os.environ.get('PADDLE_DISTRI_BACKEND'), 'gloo')
+        self.assertIsNone(os.environ.get('PADDLE_TRAINERS_NUM'))
+        self.assertIsNone(os.environ.get('PADDLE_TRAINER_ID'))
+        self.assertIsNone(os.environ.get('PADDLE_CURRENT_ENDPOINT'))
+        self.assertIsNone(os.environ.get('PADDLE_TRAINER_ENDPOINTS'))
 
     def test_in___all__(self):
         for name in ('group', 'init_process_group', 'ProcessGroup'):

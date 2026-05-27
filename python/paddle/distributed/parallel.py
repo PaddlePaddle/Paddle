@@ -1297,8 +1297,10 @@ def init_process_group(
     signature of :func:`torch.distributed.init_process_group` (which also
     returns ``None``).
 
-    Paddle picks up ``world_size`` / ``rank`` / endpoints from the environment
-    variables that ``paddle.distributed.launch`` (or ``torchrun``) sets. Most
+    Paddle picks up ``world_size`` / ``rank`` / endpoints from the
+    ``PADDLE_*`` environment variables set by ``paddle.distributed.launch``;
+    ``torchrun`` is not currently auto-detected (its ``WORLD_SIZE`` /
+    ``RANK`` / ``MASTER_ADDR`` / ``MASTER_PORT`` are not mapped). Most
     PyTorch arguments are accepted for source compatibility but only
     ``backend``, ``world_size`` and ``rank`` are forwarded:
 
