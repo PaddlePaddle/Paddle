@@ -162,6 +162,7 @@ def set_rng_state(
 
     Args:
         state_list(list|tuple): The device states to set back to device generators. state_list is obtained from get_rng_state().
+            Alias: ``new_state``.
         device(str): This parameter determines the specific running device.
             It can be ``cpu``, ``gpu``, ``xpu``, Default is None.
             If None, return the generators of current device (specified by ``set_device``).
