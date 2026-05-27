@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/common/ddim.h"
+#include "paddle/common/enforce.h"
 #include "paddle/common/layout.h"
 #include "paddle/phi/kernels/conv_transpose_kernel.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
@@ -90,9 +91,13 @@ void ConvTransposeRawKernel(const Context& dev_ctx,
   }
   DDim col_shape(make_ddim(col_shape_vec));
 
+  const size_t col_matrix_axis = data_dim + 1;
+  PADDLE_ENFORCE_LE_INT_MAX(col_matrix_axis, "col_matrix_axis");
+
   // use col_matrix_shape in the gemm calculation
   // size: (o_c/g * k_h * k_w, h * w) or (o_c/g * k_d * k_h * k_w, d * h * w)
-  DDim col_matrix_shape = flatten_to_2d(col_shape, data_dim + 1);
+  DDim col_matrix_shape =
+      flatten_to_2d(col_shape, static_cast<int>(col_matrix_axis));
 
   DenseTensor col;
   col.Resize(col_shape);
@@ -148,6 +153,9 @@ void ConvTransposeRawKernel(const Context& dev_ctx,
   // convolution transpose: gemm + col2im or col2vol (similar to conv-backward
   // on x)
   size_t D = x.dims().size();
+  const size_t channel_axis = D - 2;
+  PADDLE_ENFORCE_LE_INT_MAX(channel_axis, "channel_axis");
+  const int channel_axis_int = static_cast<int>(channel_axis);
   for (int i = 0; i < batch_size; i++) {
     // batch with size (i_c, h * w) or (i_c, d * h * w) for channel_first
     // batch with size (h * w, i_c) or (d * h * w, i_c) for channel_last
@@ -183,7 +191,7 @@ void ConvTransposeRawKernel(const Context& dev_ctx,
             dev_ctx, &x_batch, &in_slice, start, end, axes);
         start = g * out_step;
         end = (g + 1) * out_step;
-        axes = D - 2;
+        axes = channel_axis_int;
         if (D == 4U) {
           funcs::Slice<Context, T, 3>(
               dev_ctx, &out_batch, &out_slice, start, end, axes);
@@ -227,8 +235,7 @@ void ConvTransposeRawKernel(const Context& dev_ctx,
       }
     }
     if (data_layout == DataLayout::NHWC) {
-      concat_functor(
-          dev_ctx, out_batch_vec, static_cast<int>(D - 2), &out_batch);
+      concat_functor(dev_ctx, out_batch_vec, channel_axis_int, &out_batch);
     }
   }
 }

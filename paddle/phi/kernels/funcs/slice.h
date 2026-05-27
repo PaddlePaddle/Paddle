@@ -131,7 +131,7 @@ static void Slice(const Context& dev_ctx,
   auto in_dims = input->dims();
   auto offsets = Eigen::DSizes<int64_t, D>();
   auto extents = Eigen::DSizes<int64_t, D>();
-  for (size_t i = 0; i < D; ++i) {
+  for (int i = 0; i < static_cast<int>(D); ++i) {
     offsets[i] = 0;
     extents[i] = in_dims[i];
   }

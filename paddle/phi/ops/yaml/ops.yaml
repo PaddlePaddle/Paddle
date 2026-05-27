@@ -4649,7 +4649,7 @@
   traits: pir::UnaryElementWiseTrait
 
 - op : renorm
-  args : (Tensor x, float p, int axis, float max_norm)
+  args : (Tensor x, float p, int64_t axis, float max_norm)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta

@@ -82,7 +82,8 @@ struct DropoutParam {
                                    offset,
                                    &seed,
                                    &tmp_increment);
-    increment = tmp_increment;
+    PADDLE_ENFORCE_LE_INT_MAX(tmp_increment, "tmp_increment");
+    increment = static_cast<int>(tmp_increment);
     return increment;
   }
 };

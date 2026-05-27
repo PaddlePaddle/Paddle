@@ -1595,9 +1595,12 @@ void Blas<CPUContext>::GEMM(CBLAS_TRANSPOSE transA,
         common::errors::Unimplemented("GEMM not supported for large tensor "
                                       "size on CPU, please check your code!"));
   }
-  int lda = (transA == CblasNoTrans) ? K : M;
-  int ldb = (transB == CblasNoTrans) ? N : K;
-  int ldc = N;
+  PADDLE_ENFORCE_LE_INT_MAX(M, "M");
+  PADDLE_ENFORCE_LE_INT_MAX(N, "N");
+  PADDLE_ENFORCE_LE_INT_MAX(K, "K");
+  int lda = static_cast<int>((transA == CblasNoTrans) ? K : M);
+  int ldb = static_cast<int>((transB == CblasNoTrans) ? N : K);
+  int ldc = static_cast<int>(N);
   CBlas<T>::GEMM(CblasRowMajor,
                  transA,
                  transB,
@@ -1741,9 +1744,12 @@ void Blas<DeviceContext>::MatMul(const DenseTensor &mat_a,
                                       "should be same, please check your "
                                       "code."));
 
-  int M = dim_out[0];
-  int N = dim_out[1];
-  int K = !trans_a ? dim_a[1] : dim_a[0];
+  PADDLE_ENFORCE_LE_INT_MAX(dim_out[0], "dim_out[0]");
+  PADDLE_ENFORCE_LE_INT_MAX(dim_out[1], "dim_out[1]");
+  PADDLE_ENFORCE_LE_INT_MAX(!trans_a ? dim_a[1] : dim_a[0], "cblas GEMM K");
+  int M = static_cast<int>(dim_out[0]);
+  int N = static_cast<int>(dim_out[1]);
+  int K = static_cast<int>(!trans_a ? dim_a[1] : dim_a[0]);
 
   CBLAS_TRANSPOSE transA = !trans_a ? CblasNoTrans : CblasTrans;
   CBLAS_TRANSPOSE transB = !trans_b ? CblasNoTrans : CblasTrans;

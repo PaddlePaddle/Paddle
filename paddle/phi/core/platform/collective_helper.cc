@@ -129,22 +129,21 @@ void NCCLCommContext::CreateAllNCCLComms(const std::vector<int>& dev_ids,
       dev_ids.size(),
       0,
       common::errors::InvalidArgument("Expected the size of dev_ids > 0. But "
-                                      "received the size of dev_ids is %d.",
+                                      "received the size of dev_ids is %zu.",
                                       dev_ids.size()));
-
   const int kDevices = dev_ids.size();
   ncclComm_t comms[kDevices];  // NOLINT
   PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::ncclCommInitAll(comms, dev_ids.size(), dev_ids.data()));
+      phi::dynload::ncclCommInitAll(comms, kDevices, dev_ids.data()));
 
   PADDLE_ENFORCE_EQ(comm_map_.count(ring_id),
                     0,
                     common::errors::InvalidArgument(
                         "Expected comm_map_.count(ring_id) = 0. But received "
-                        "comm_map_.count(ring_id) is %d.",
+                        "comm_map_.count(ring_id) is %zu.",
                         comm_map_.count(ring_id)));
-  for (size_t i = 0; i < dev_ids.size(); ++i) {
-    AssignNCCLComm(comms[i], dev_ids.size(), i, dev_ids[i], ring_id);
+  for (int i = 0; i < kDevices; ++i) {
+    AssignNCCLComm(comms[i], kDevices, i, dev_ids[i], ring_id);
     VLOG(1) << "nccl communicator of rank " << i << " in ring " << ring_id
             << " has been created on device " << dev_ids[i];
   }
@@ -164,7 +163,7 @@ void NCCLCommContext::CreateNCCLCommMultiTrainer(
       dev_ids.size(),
       0,
       common::errors::InvalidArgument(
-          "dev ids = [%d], it should greater than 0.", dev_ids.size()));
+          "dev ids = [%zu], it should greater than 0.", dev_ids.size()));
   const int kDevices = dev_ids.size();
   VLOG(1) << "Begin CreateNCCLCommMultiTrainer. device number: " << kDevices
           << ", ntrainers: " << ntrainers << ", train_id: " << train_id
@@ -510,7 +509,7 @@ void XCCLCommContext::CreateXCCLCommMultiTrainer(
       dev_ids.size(),
       0,
       common::errors::InvalidArgument(
-          "dev ids = [%d], it should greater than 0.", dev_ids.size()));
+          "dev ids = [%zu], it should greater than 0.", dev_ids.size()));
   const int kDevices = dev_ids.size();
   VLOG(1) << "Begin CreateXCCLCommMultiTrainer. device number: " << kDevices
           << ", ntrainers: " << ntrainers << ", train_id: " << train_id

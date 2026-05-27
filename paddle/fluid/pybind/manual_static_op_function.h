@@ -957,19 +957,23 @@ static PyObject *static_api_run_custom_op(PyObject *self,
   pir::Operation *op =
       paddle::dialect::ApiBuilder::Instance().GetBuilder()->Build(
           std::move(argument));
+  PADDLE_ENFORCE_LE_UINT32_MAX(outputs.size(), "number of outputs");
   for (size_t i = 0; i < outputs.size(); ++i) {
     const auto &output = outputs.at(i);
     if (paddle::framework::detail::IsDuplicableVar(output)) {
-      if (op->result(i).type().dyn_cast<pir::VectorType>()) {
-        auto split_op = paddle::dialect::ApiBuilder::Instance()
-                            .GetBuilder()
-                            ->Build<pir::SplitOp>(op->result(i));
+      if (op->result(static_cast<uint32_t>(i))
+              .type()
+              .dyn_cast<pir::VectorType>()) {
+        auto split_op =
+            paddle::dialect::ApiBuilder::Instance()
+                .GetBuilder()
+                ->Build<pir::SplitOp>(op->result(static_cast<uint32_t>(i)));
         auto split_outputs = split_op.outputs();
         op_results.insert(
             op_results.end(), split_outputs.begin(), split_outputs.end());
       }
     } else {
-      op_results.push_back(op->result(i));
+      op_results.push_back(op->result(static_cast<uint32_t>(i)));
     }
   }
   callstack_recorder.AttachToOps();
@@ -1319,19 +1323,23 @@ static PyObject *run_python_op(PyObject *self,
   pir::Operation *op =
       paddle::dialect::ApiBuilder::Instance().GetBuilder()->Build(
           std::move(argument));
+  PADDLE_ENFORCE_LE_UINT32_MAX(outputs.size(), "number of outputs");
   for (size_t i = 0; i < outputs.size(); ++i) {
     const auto &output = outputs.at(i);
     if (paddle::framework::detail::IsDuplicableVar(output)) {
-      if (op->result(i).type().dyn_cast<pir::VectorType>()) {
-        auto split_op = paddle::dialect::ApiBuilder::Instance()
-                            .GetBuilder()
-                            ->Build<pir::SplitOp>(op->result(i));
+      if (op->result(static_cast<uint32_t>(i))
+              .type()
+              .dyn_cast<pir::VectorType>()) {
+        auto split_op =
+            paddle::dialect::ApiBuilder::Instance()
+                .GetBuilder()
+                ->Build<pir::SplitOp>(op->result(static_cast<uint32_t>(i)));
         auto split_outputs = split_op.outputs();
         op_results.insert(
             op_results.end(), split_outputs.begin(), split_outputs.end());
       }
     } else {
-      op_results.push_back(op->result(i));
+      op_results.push_back(op->result(static_cast<uint32_t>(i)));
     }
   }
   callstack_recorder.AttachToOps();

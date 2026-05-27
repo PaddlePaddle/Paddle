@@ -22,6 +22,7 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/elementwise_kernel.h"
@@ -82,7 +83,7 @@ static inline std::vector<int64_t> compute_strides(
   const auto& original_shape = input_dims;
   const auto& original_stride = input_strides;
   int64_t element_size_in_bytes = input_elesize;
-  int offset = ndim - original_shape.size();
+  int64_t offset = ndim - static_cast<int64_t>(original_shape.size());
   if (offset > 0)
     stride_bytes.resize(ndim, 0);
   else
@@ -481,13 +482,13 @@ static inline void cal_shape_stride(const std::vector<int64_t>& index_dims,
     }
   }
 
-  int shape_size = shape_tmp->size();
+  int64_t shape_size = static_cast<int64_t>(shape_tmp->size());
   stride_tmp->resize(shape_size);
   if (shape_size > 0) {
     (*stride_tmp)[shape_size - 1] = 1;
   }
   if (shape_size > 1) {
-    for (int i = shape_size - 2; i >= 0; i--) {
+    for (int64_t i = shape_size - 2; i >= 0; i--) {
       (*stride_tmp)[i] = (*stride_tmp)[i + 1] * (*shape_tmp)[i + 1];
     }
   }
@@ -705,9 +706,10 @@ computeLinearIndex(const GPUContext& dev_ctx,
   int64_t nElemBefore = 1, nElemAfter = 1, strideBefore = 0;
 
   for (int64_t i = 0; i < src.dims().size(); ++i) {
+    PADDLE_ENFORCE_LE_INT_MAX(i, "i index for DDim access");
     if (indices[i].initialized()) {
-      auto wrapped_index =
-          wrapIndexOnce(dev_ctx, indices[i], i, src.dims()[i], check_range);
+      auto wrapped_index = wrapIndexOnce(
+          dev_ctx, indices[i], i, src.dims()[static_cast<int>(i)], check_range);
 
       auto strides_tensor = phi::Full<int64_t, GPUContext>(
           dev_ctx,
@@ -723,13 +725,13 @@ computeLinearIndex(const GPUContext& dev_ctx,
       } else {
         linearIndex = scaled_index;
         if (i > 0) {
-          strideBefore = src.strides()[i - 1];
+          strideBefore = src.strides()[static_cast<int>(i - 1)];
         }
       }
     } else if (linearIndex.initialized()) {
-      nElemAfter *= src.dims()[i];
+      nElemAfter *= src.dims()[static_cast<int>(i)];
     } else {
-      nElemBefore *= src.dims()[i];
+      nElemBefore *= src.dims()[static_cast<int>(i)];
     }
   }
 

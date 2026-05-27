@@ -25,7 +25,7 @@ namespace funcs {
 struct BroadcastDimsSimplifier {
   using DimVector = std::vector<int64_t>;
   typedef void (*MergeFunctor)(
-      bool &, std::vector<DimVector> &, DimVector &, int, int);
+      bool &, std::vector<DimVector> &, DimVector &, int64_t, int);
 
   int N;
   int rank;
@@ -60,7 +60,7 @@ struct BroadcastDimsSimplifier {
     auto merge_sequential_dims = [](bool &equal,
                                     std::vector<DimVector> &in_dims,
                                     DimVector &out,
-                                    int i,
+                                    int64_t i,
                                     int num) {
       for (int j = 1; j < num; ++j) {
         equal &= (in_dims[0][i] == in_dims[j][i]) ? true : false;
@@ -80,7 +80,7 @@ struct BroadcastDimsSimplifier {
     auto merge_sequential_one_dims = [](bool &equal,
                                         std::vector<DimVector> &in_dims,
                                         DimVector &out,
-                                        int i,
+                                        int64_t i,
                                         int num) {
       equal = in_dims[0][i] == 1;
       if (equal) {
@@ -153,7 +153,7 @@ struct BroadcastDimsSimplifier {
   // offset computation in CUDA Kernel.
   template <typename MergeFunctor>
   __inline__ void MergeDimensions(MergeFunctor merge_func, int N) {
-    auto VectorReorganise = [](DimVector *vec, int l_idx, int m_idx) {
+    auto VectorReorganise = [](DimVector *vec, int64_t l_idx, int64_t m_idx) {
       (*vec)[m_idx - 1] = std::accumulate(vec->begin() + l_idx,
                                           vec->begin() + m_idx,
                                           int64_t{1},
@@ -164,7 +164,7 @@ struct BroadcastDimsSimplifier {
     int64_t i = 0;
     while (i < rank) {
       int cnt = 0;
-      int low_idx = i;
+      int64_t low_idx = i;
       bool equal = true;
       do {
         merge_func(equal, in_dims, out_dims, i, N);
@@ -293,7 +293,7 @@ struct PermuteDimsSimplifier {
     // valid_map is [0, -1, 1, -1] and generate simplified
     // dims as [32, 10]
     for (auto i = 0; i < rank; ++i) {
-      const int dim_val = combined_dims[i];
+      const int64_t dim_val = combined_dims[i];
       if (dim_val == 1) {
         valid_map[i] = -1;
       } else {
@@ -345,7 +345,7 @@ struct DimsSimplifiedLogger {
   static std::string ReversedVectorToString(const std::vector<T> &reversed_v) {
     std::stringstream ss;
     bool is_last = true;
-    for (int i = reversed_v.size() - 1; i >= 0; --i) {
+    for (int64_t i = static_cast<int64_t>(reversed_v.size()) - 1; i >= 0; --i) {
       if (is_last) {
         ss << reversed_v[i];
         is_last = false;

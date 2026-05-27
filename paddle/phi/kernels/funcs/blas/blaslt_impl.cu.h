@@ -769,6 +769,9 @@ struct CublasLtBase<int8_t, int32_t, MatmulDescriptor> {
       phi::Allocator::AllocationPtr& workspace,  // NOLINT
       size_t& workspace_size) {                  // NOLINT
     void* bias_ptr = nullptr;
+    PADDLE_ENFORCE_LE_INT_MAX(desc->M_, "desc->M_");
+    PADDLE_ENFORCE_LE_INT_MAX(desc->N_, "desc->N_");
+    PADDLE_ENFORCE_LE_INT_MAX(desc->K_, "desc->K_");
     cublasLtMatmulAlgo_t* algo =
         cublaslt_internal::CublasLtAlgoCache::Instance().CublasLtAlgoSelect(
             lt_handle,

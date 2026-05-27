@@ -459,13 +459,15 @@ void LaunchBroadcastKernel(
                                        func);
 #else
   const int64_t &numel = classifier.numel;
+  PADDLE_ENFORCE_LE_INT_MAX(numel, "numel");
   auto gpu_config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, VecSize);
   auto stream = dev_ctx.stream();
-  auto threads = gpu_config.GetBlockSize();
+  int threads = static_cast<int>(gpu_config.GetBlockSize());
   auto blocks = gpu_config.block_per_grid;
-  uint32_t main_offset = (numel / (VecSize * threads)) * VecSize * threads;
-  uint32_t tail_tid = numel % (VecSize * threads);
+  uint32_t numel32 = static_cast<uint32_t>(numel);
+  uint32_t main_offset = (numel32 / (VecSize * threads)) * VecSize * threads;
+  uint32_t tail_tid = numel32 % (VecSize * threads);
 
   if (classifier.all_elementwise) {
     VectorizedBroadcastKernel<Functor,

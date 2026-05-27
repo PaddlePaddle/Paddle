@@ -36,7 +36,7 @@ struct EigenDim {
                           arity(dims),
                           D));
     Type ret;
-    for (int64_t d = 0; d < arity(dims); d++) {
+    for (int d = 0; d < arity(dims); d++) {
       ret[d] = dims[d];
     }
     return ret;

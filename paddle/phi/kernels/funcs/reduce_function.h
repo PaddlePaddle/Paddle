@@ -1365,18 +1365,25 @@ inline void GetShuffledDim(const DDim& src_dims,
   }
 
   for (size_t i = 0; i < reduce_size; ++i) {
-    dst_dims->at(src_size - reduce_size + i) =
-        src_dims[regular_reduced_dims[i]];
-    (*perm_axis)[src_size - reduce_size + i] = regular_reduced_dims[i];
-    src_dims_check[regular_reduced_dims[i]] = true;
+    int64_t red_dim = regular_reduced_dims[i];
+    PADDLE_ENFORCE_LE_INT_MAX(red_dim, "reduced dim index for DDim access");
+    size_t dst_idx = src_size - reduce_size + i;
+    PADDLE_ENFORCE_LE_INT_MAX(dst_idx, "dst_dims index");
+    dst_dims->at(static_cast<int>(dst_idx)) =
+        src_dims[static_cast<int>(red_dim)];
+    (*perm_axis)[static_cast<int>(dst_idx)] = regular_reduced_dims[i];
+    src_dims_check[static_cast<int>(red_dim)] = true;
   }
 
   size_t offset = 0;
   for (size_t i = 0; i < src_dims_check.size(); ++i) {
     bool is_reduced = src_dims_check[i];
     if (!is_reduced) {
-      (*perm_axis)[offset] = i;
-      dst_dims->at(offset++) = src_dims[i];
+      PADDLE_ENFORCE_LE_INT_MAX(offset, "dst_dims index");
+      PADDLE_ENFORCE_LE_INT_MAX(i, "src_dims index");
+      (*perm_axis)[offset] = static_cast<int>(i);
+      dst_dims->at(static_cast<int>(offset)) = src_dims[static_cast<int>(i)];
+      offset++;
     }
   }
 }

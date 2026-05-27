@@ -71,7 +71,8 @@ class Shard : public Placement {
  public:
   explicit Shard(int dim) : dim_(dim) {}
 
-  Shard(int dim, int split_factor) : dim_(dim), split_factor_(split_factor) {}
+  Shard(int dim, int64_t split_factor)
+      : dim_(dim), split_factor_(split_factor) {}
 
   bool is_shard(std::optional<int> dim = std::nullopt) const override {
     if (dim && *dim == this->dim_) {
@@ -103,7 +104,7 @@ class Shard : public Placement {
 
   void set_split_factor(int64_t sf) { split_factor_ = sf; }
 
-  int get_split_factor() const { return split_factor_; }
+  int64_t get_split_factor() const { return split_factor_; }
 
   friend std::ostream& operator<<(std::ostream& os, const Shard& p) {
     os << p.to_string();
@@ -131,15 +132,20 @@ class Shard : public Placement {
 
  protected:
   int dim_;
-  int split_factor_ = 1;
+  int64_t split_factor_ = 1;
 };
 
 class CoShard : public Shard {
  public:
   CoShard(int64_t dim, int64_t co_shard_order)
-      : Shard(dim, 1), co_shard_order_(co_shard_order) {}
+      : Shard(static_cast<int>(dim), 1), co_shard_order_(co_shard_order) {
+    PADDLE_ENFORCE_LE_INT_MAX(dim, "dim");
+  }
 
-  int get_co_shard_order() const override { return co_shard_order_; }
+  int get_co_shard_order() const override {
+    PADDLE_ENFORCE_LE_INT_MAX(co_shard_order_, "co_shard_order_");
+    return static_cast<int>(co_shard_order_);
+  }
 
   std::string to_string() const override {
     std::stringstream ss;

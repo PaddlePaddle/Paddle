@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/common/ddim.h"
+#include "paddle/common/enforce.h"
 #include "paddle/common/layout.h"
 #include "paddle/phi/kernels/conv_transpose_grad_kernel.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
@@ -110,9 +111,13 @@ void ConvTransposeGradRawKernel(const Context& dev_ctx,
   }
   DDim col_shape(make_ddim(col_shape_vec));
 
+  const size_t col_matrix_axis = data_dim + 1;
+  PADDLE_ENFORCE_LE_INT_MAX(col_matrix_axis, "col_matrix_axis");
+
   // use col_matrix_shape in the gemm calculation
   // size: (o_c * k_h * k_w, h * w) or (o_c * k_d * k_h * k_w, d * h * w)
-  DDim col_matrix_shape = flatten_to_2d(col_shape, data_dim + 1);
+  DDim col_matrix_shape =
+      flatten_to_2d(col_shape, static_cast<int>(col_matrix_axis));
 
   // output size: (o_c, o_h, o_w) or (o_c, o_d, o_h, o_w) for channel_first
   // output size: (o_h, o_w, o_c) or (o_d, o_h, o_w, o_c) for channel_last
@@ -176,6 +181,9 @@ void ConvTransposeGradRawKernel(const Context& dev_ctx,
     }
 
     size_t D = x.dims().size();
+    const size_t channel_axis = D - 2;
+    PADDLE_ENFORCE_LE_INT_MAX(channel_axis, "channel_axis");
+    const int channel_axis_int = static_cast<int>(channel_axis);
     for (int i = 0; i < batch_size; i++) {
       // batch with size (o_c, o_h, o_w) or (o_c, o_d, o_h, o_w) for
       // channel_first
@@ -273,8 +281,7 @@ void ConvTransposeGradRawKernel(const Context& dev_ctx,
           }
         }
         if (data_layout == DataLayout::NHWC) {
-          concat_functor(
-              dev_ctx, dx_batch_vec, static_cast<int>(D - 2), &dx_batch);
+          concat_functor(dev_ctx, dx_batch_vec, channel_axis_int, &dx_batch);
         }
       }
       if (dfilter) {

@@ -98,7 +98,8 @@ void CPUGather(const CPUContext& dev_ctx UNUSED,
             -index_dim_size,
             p_index[i],
             i));
-    IndexT index_ = (p_index[i] < 0 ? p_index[i] + index_dim_size : p_index[i]);
+    int64_t index_ =
+        (p_index[i] < 0 ? p_index[i] + index_dim_size : p_index[i]);
     memcpy(p_output + i * slice_size, p_src + index_ * slice_size, slice_bytes);
   }
 }

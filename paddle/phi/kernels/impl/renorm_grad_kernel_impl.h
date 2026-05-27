@@ -26,14 +26,14 @@ void RenormGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& dout,
                       float p,
-                      int axis,
+                      int64_t axis,
                       float max_norm,
                       DenseTensor* dx) {
   int64_t numel = dout.numel();
   const T* dout_data = dout.template data<T>();
   const T* x_data = x.template data<T>();
   auto input_dims = x.dims();
-  int dim = axis;
+  int64_t dim = axis;
   auto dimension_each = input_dims[dim];
   dx->Resize(x.dims());
   dev_ctx.template Alloc<T>(dx);

@@ -642,7 +642,7 @@ void BindEagerUtils(PyObject* module);
 
 std::tuple<std::vector<int64_t>,
            paddle::flat_hash_map<int64_t, phi::ReduceType>>
-CvtPlacements(phi::distributed::Placements placements, int ndim);
+CvtPlacements(phi::distributed::Placements placements, int64_t ndim);
 
 void EagerSetDeviceId();
 

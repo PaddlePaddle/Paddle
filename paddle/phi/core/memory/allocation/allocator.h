@@ -160,12 +160,14 @@ static T&& FillValue(T&& allocation) {
         PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
       }
       if (FLAGS_alloc_fill_value >= 0) {
+        PADDLE_ENFORCE_LE_INT_MAX(FLAGS_alloc_fill_value,
+                                  "FLAGS_alloc_fill_value");
+        int fill_value = static_cast<int>(FLAGS_alloc_fill_value);
         if (phi::is_gpu_place(allocation->place())) {
-          PADDLE_ENFORCE_GPU_SUCCESS(cudaMemset(
-              allocation->ptr(), FLAGS_alloc_fill_value, allocation->size()));
+          PADDLE_ENFORCE_GPU_SUCCESS(
+              cudaMemset(allocation->ptr(), fill_value, allocation->size()));
         } else {
-          std::memset(
-              allocation->ptr(), FLAGS_alloc_fill_value, allocation->size());
+          std::memset(allocation->ptr(), fill_value, allocation->size());
         }
         if (need_sync) {
           PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());

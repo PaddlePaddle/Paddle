@@ -579,10 +579,7 @@ struct FMinFunctor<dtype::bfloat16> {
 template <>
 struct FMinFunctor<int> {
   inline HOSTDEVICE int operator()(const int a, const int b) const {
-    float float_a = static_cast<float>(a);
-    float float_b = static_cast<float>(b);
-    auto result = std::fmin(float_a, float_b);
-    return std::lrint(result);
+    return a < b ? a : b;
   }
 };
 
@@ -629,10 +626,7 @@ struct FMaxFunctor<dtype::bfloat16> {
 template <>
 struct FMaxFunctor<int> {
   inline HOSTDEVICE int operator()(const int a, const int b) const {
-    float float_a = static_cast<float>(a);
-    float float_b = static_cast<float>(b);
-    auto result = std::fmax(float_a, float_b);
-    return std::lrint(result);
+    return a > b ? a : b;
   }
 };
 

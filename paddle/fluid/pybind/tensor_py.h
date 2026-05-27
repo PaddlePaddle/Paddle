@@ -24,6 +24,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/pybind/complex.h"
@@ -708,7 +709,7 @@ void _sliceCompute(const DenseTensor *in,
   for (size_t i = 0; i < axes.size(); ++i) {
     start = starts[i];
     if (start < 0) {
-      start = (start + in_dims[axes[i]]);
+      start = static_cast<int>(start + in_dims[axes[i]]);
     }
     start = std::max(start, 0);
     offsets[axes[i]] = start;
@@ -736,8 +737,8 @@ void _concatCompute(const std::vector<DenseTensor> &ins,
           out_stride,
           in.data<T>(),
           in_stride,
-          in_stride[axis]);
-      output_offset += in_stride[axis];
+          in_stride[static_cast<size_t>(axis)]);
+      output_offset += in_stride[static_cast<size_t>(axis)];
     }
   } else {
     phi::funcs::ConcatFunctor<phi::CPUContext, T> concat_functor;
@@ -763,11 +764,16 @@ inline void _getSliceinfo(const DenseTensor &self,
                                  "should be in the range of [0, %d).",
                                  dim,
                                  srcDDim.size()));
+  PADDLE_ENFORCE_LE_INT_MAX(dim, "dim");
 
   if (py::isinstance<py::slice>(obj)) {
     size_t lstart, lstop, lstep, lslicelength;
     py::slice s = static_cast<py::slice>(obj);
-    if (!s.compute(srcDDim[dim], &lstart, &lstop, &lstep, &lslicelength)) {
+    if (!s.compute(srcDDim[static_cast<int>(dim)],
+                   &lstart,
+                   &lstop,
+                   &lstep,
+                   &lslicelength)) {
       PADDLE_THROW(common::errors::OutOfRange(
           "Slice on dim: %d is error, please check the validity of tensor "
           "dims or slice item.",
@@ -780,13 +786,13 @@ inline void _getSliceinfo(const DenseTensor &self,
   } else if (py::isinstance<py::int_>(obj)) {
     start = static_cast<int64_t>(static_cast<py::int_>(obj));
     PADDLE_ENFORCE(
-        std::abs(start) < srcDDim[dim],
+        std::abs(start) < srcDDim[static_cast<int>(dim)],
         common::errors::OutOfRange("The start %d of slice is out of bounds, "
                                    "it should be in the range of (%d, %d).",
                                    start,
-                                   -srcDDim[dim],
-                                   srcDDim[dim]));
-    start = (start >= 0) ? start : srcDDim[dim] - start;
+                                   -srcDDim[static_cast<int>(dim)],
+                                   srcDDim[static_cast<int>(dim)]));
+    start = (start >= 0) ? start : srcDDim[static_cast<int>(dim)] - start;
     stop = start + 1;
     step = 1;
     slicelength = 1;

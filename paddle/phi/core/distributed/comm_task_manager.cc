@@ -118,9 +118,9 @@ void CommTaskManager::Stop() {
 inline void LogLongStr(const std::string prefix, const std::string& log) {
   size_t max_log_size = 20000;
   if (log.size() >= max_log_size) {
-    int log_count = log.size() / max_log_size + 1;
-    int index = 0;
-    int part = 0;
+    size_t log_count = log.size() / max_log_size + 1;
+    size_t index = 0;
+    size_t part = 0;
     while (index + max_log_size < log.size()) {
       LOG(INFO) << prefix << "part:" << part << "/" << log_count << ","
                 << log.substr(index, max_log_size) << std::endl;

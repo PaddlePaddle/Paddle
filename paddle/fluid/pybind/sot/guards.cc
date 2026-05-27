@@ -61,10 +61,10 @@ limitations under the License. */
 template <typename T>
 static inline bool check_shape(
     const std::vector<std::optional<int64_t>>& expected,
-    int ndim,
+    size_t ndim,
     const T& actual_shape,
     int64_t min_non_specialized_number) {
-  if (expected.size() != static_cast<size_t>(ndim)) {
+  if (expected.size() != ndim) {
     return false;
   }
   for (size_t i = 0; i < expected.size(); ++i) {
@@ -158,8 +158,10 @@ bool ShapeMatchGuard::check(PyObject* value) {
   auto tensor = GetTensorFromPyObject(value);
   HANDLE_NULL_TENSOR(tensor);
   auto shape = tensor->shape();
-  return check_shape<std::vector<int64_t>>(
-      expected_, shape.size(), shape, min_non_specialized_number_);
+  return check_shape<std::vector<int64_t>>(expected_,
+                                           static_cast<size_t>(shape.size()),
+                                           shape,
+                                           min_non_specialized_number_);
 }
 
 bool AttributeMatchGuard::check(PyObject* value) {

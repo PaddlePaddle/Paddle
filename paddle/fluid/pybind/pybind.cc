@@ -1337,9 +1337,12 @@ static std::vector<std::vector<pir::Value>> GenerateBackwardBlockForPyLayerOp(
   VLOG(6) << "Update pylayer_grad op finished";
 
   std::vector<std::vector<pir::Value>> res{inputs_.size()};
+  PADDLE_ENFORCE_LE_UINT32_MAX(res.size(), "number of results");
   for (size_t i = 0; i < res.size(); ++i) {
     res[i].resize(1);
-    res[i][0] = !stop_gradients[i][0] ? pylayer_grad->result(i) : pir::Value();
+    res[i][0] = !stop_gradients[i][0]
+                    ? pylayer_grad->result(static_cast<uint32_t>(i))
+                    : pir::Value();
   }
   return res;
 }

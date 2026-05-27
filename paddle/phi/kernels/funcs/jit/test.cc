@@ -120,7 +120,8 @@ void TestKernelXYZN() {
       const T* x_data = x.data();
       const T* y_data = y.data();
       const T* zref_data = zref.data();
-      const int d = zref.size();
+      PADDLE_ENFORCE_LE_INT_MAX(zref.size(), "zref.size()");
+      const int d = static_cast<int>(zref.size());
 
       std::vector<T> ztgt(d);
       T* ztgt_data = ztgt.data();
@@ -171,7 +172,8 @@ void TestKernelAXYN() {
       EXPECT_EQ(yref.size(), x.size());
       const T* x_data = x.data();
       const T* yref_data = yref.data();
-      const int d = yref.size();
+      PADDLE_ENFORCE_LE_INT_MAX(yref.size(), "yref.size()");
+      const int d = static_cast<int>(yref.size());
       std::vector<T> ytgt(d);
       T* ytgt_data = ytgt.data();
       // test normal
@@ -213,7 +215,8 @@ void TestKernelXYN() {
       EXPECT_EQ(yref.size(), x.size());
       const T* x_data = x.data();
       const T* yref_data = yref.data();
-      const int d = yref.size();
+      PADDLE_ENFORCE_LE_INT_MAX(yref.size(), "yref.size()");
+      const int d = static_cast<int>(yref.size());
       std::vector<T> ytgt(d);
       T* ytgt_data = ytgt.data();
       // test normal
@@ -288,7 +291,8 @@ void TestKernelLSTM() {
               EXPECT_EQ(wp.size(), 3 * ht_ref.size());
 
               // x could be changed after compute, so copy to save src
-              int d = ht_ref.size();
+              PADDLE_ENFORCE_LE_INT_MAX(ht_ref.size(), "ht_ref.size()");
+              int d = static_cast<int>(ht_ref.size());
               std::vector<T> x(xsrc.size()), ct(ct_ref.size()),
                   ht(ht_ref.size());
               std::vector<T> checked(2 * d);
@@ -366,7 +370,8 @@ void TestKernelGRU() {
           EXPECT_EQ(xsrc.size(), 3 * ht_ref.size());
 
           // x could be changed after compute, so copy to save src
-          int d = ht_ref.size();
+          PADDLE_ENFORCE_LE_INT_MAX(ht_ref.size(), "ht_ref.size()");
+          int d = static_cast<int>(ht_ref.size());
           std::vector<T> x(xsrc.size()), ht(ht_ref.size());
           std::copy(xsrc.begin(), xsrc.end(), x.begin());
           const T* ht_1_data = ht_1.data();
@@ -574,7 +579,8 @@ void TestKernelSeqPool() {
                            const typename KernelTuple::attr_type& attr) {
           EXPECT_TRUE(tgt != nullptr);
           EXPECT_EQ(x.size() % yref.size(), static_cast<size_t>(0));
-          int w = yref.size();
+          PADDLE_ENFORCE_LE_INT_MAX(yref.size(), "yref.size()");
+          int w = static_cast<int>(yref.size());
           std::vector<T> y(w);
           const T* x_data = x.data();
           const T* yref_data = yref.data();
@@ -634,7 +640,8 @@ void TestKernelEmbSeqPool() {
             const T* table_data = table.data();
             const int64_t* idx_data = idx.data();
             const T* oref_data = oref.data();
-            int o_w = oref.size();
+            PADDLE_ENFORCE_LE_INT_MAX(oref.size(), "oref.size()");
+            int o_w = static_cast<int>(oref.size());
             std::vector<T> out(o_w);
             T* o_data = out.data();
             tgt(table_data, idx_data, o_data, &attr);

@@ -14,6 +14,7 @@
 
 #pragma once
 #include <sstream>
+#include "paddle/common/enforce.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -63,7 +64,9 @@ inline void* GetPointerByOffset(void* raw_pointer,
 inline void CheckSizeOnEachRank(const DDim& tensor_dim,
                                 const std::vector<int64_t>& size_on_each_rank,
                                 int world_size) {
-  int length_size_on_each_rank = size_on_each_rank.size();
+  PADDLE_ENFORCE_LE_INT_MAX(size_on_each_rank.size(),
+                            "size_on_each_rank.size()");
+  int length_size_on_each_rank = static_cast<int>(size_on_each_rank.size());
   PADDLE_ENFORCE_EQ(
       length_size_on_each_rank,
       world_size,

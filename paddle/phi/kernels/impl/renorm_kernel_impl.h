@@ -24,7 +24,7 @@ template <typename T, typename Context>
 void RenormKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   float p,
-                  int axis,
+                  int64_t axis,
                   float max_norm,
                   DenseTensor* out) {
   out->Resize(x.dims());
@@ -34,7 +34,7 @@ void RenormKernel(const Context& dev_ctx,
   }
   auto x_ptr = x.template data<T>();
   auto numel = x.numel();
-  int dim = axis;
+  int64_t dim = axis;
   auto input_dims = x.dims();
   auto dimension_each = input_dims[dim];
 

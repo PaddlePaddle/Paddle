@@ -18,6 +18,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/common/flags.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace phi {
 
@@ -28,7 +29,11 @@ inline bool CheckIsLastDimsMatch(const DDim& first, const DDim& second) {
   size_t min_len = std::min(n1, n2);
 
   for (size_t i = 0; i < min_len; i++) {
-    if (first[n1 - 1 - i] != second[n2 - 1 - i]) {
+    auto idx1 = n1 - 1 - i;
+    auto idx2 = n2 - 1 - i;
+    PADDLE_ENFORCE_LE_INT_MAX(idx1, "DDim index for CheckIsLastDimsMatch");
+    PADDLE_ENFORCE_LE_INT_MAX(idx2, "DDim index for CheckIsLastDimsMatch");
+    if (first[static_cast<int>(idx1)] != second[static_cast<int>(idx2)]) {
       return false;
     }
   }
@@ -263,10 +268,13 @@ inline void CheckAndUpdateSliceAttrs(const DDim in_dims,
       continue;
     }
 
-    T dim_value = in_dims[axis];
+    PADDLE_ENFORCE_LE_INT_MAX(axis, "axis for DDim access");
+    T dim_value = in_dims[static_cast<int>(axis)];
 
     if (dim_value > 0) {
-      T step = steps == nullptr ? 1 : (*steps)[i];
+      int64_t step_val = steps == nullptr ? 1 : (*steps)[i];
+      PADDLE_ENFORCE_LE_INT_MAX(step_val, "step value");
+      T step = static_cast<T>(step_val);
       PADDLE_ENFORCE_NE(
           step,
           0,
@@ -307,9 +315,12 @@ inline void UpdateSliceAttrs(const DDim in_dims,
     if (infer_flags != nullptr && (*infer_flags)[i] == -1) {
       continue;
     }
-    T dim_value = in_dims[axis];
+    PADDLE_ENFORCE_LE_INT_MAX(axis, "axis for DDim access");
+    T dim_value = in_dims[static_cast<int>(axis)];
     if (dim_value > 0) {
-      T step = steps == nullptr ? 1 : (*steps)[i];
+      int64_t step_val = steps == nullptr ? 1 : (*steps)[i];
+      PADDLE_ENFORCE_LE_INT_MAX(step_val, "step value");
+      T step = static_cast<T>(step_val);
       T start = (*starts)[i];
       T end = (*ends)[i];
 
@@ -502,7 +513,8 @@ inline void ConstructNewSliceAttrs(const DDim& x_dims,
     if (pos == -1) {
       (*new_axes)[i] = i;
       (*new_starts)[i] = 0;
-      (*new_ends)[i] = x_dims[i];
+      PADDLE_ENFORCE_LE_INT_MAX(i, "DDim index for ConstructNewSliceAttrs");
+      (*new_ends)[i] = x_dims[static_cast<int>(i)];
     } else {
       (*new_axes)[i] = axes[pos];
       (*new_starts)[i] = starts[pos];

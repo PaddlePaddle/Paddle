@@ -66,11 +66,6 @@ void FusedRopeGradKernel(const Context& dev_ctx,
     freqs_head_dim = sin_dims[sin_dims.size() - 1];
   }
 
-  const int64_t warps_per_block = std::min(num_heads, static_cast<int64_t>(8));
-  dim3 grid(seq_len, batch_size);
-  dim3 block(32, warps_per_block);  // 32 threads per warp
-  size_t shared_mem_size = 2 * head_dim * sizeof(float);
-
   // Q
   int64_t stride_s_q = time_major ? dout_q.strides()[0] : dout_q.strides()[1];
   int64_t stride_b_q = time_major ? dout_q.strides()[1] : dout_q.strides()[0];

@@ -18,6 +18,7 @@
 
 #include "paddle/common/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/utils/small_vector.h"
 
 namespace phi {
@@ -76,7 +77,10 @@ struct DenseTensorIteratorBase {
   int ntensors() const { return static_cast<int>(operands_.size()); }
   bool is_contiguous() const;
   int64_t num_output_elements() const;
-  int noutputs() const { return num_outputs_; }
+  int noutputs() const {
+    PADDLE_ENFORCE_LE_INT_MAX(num_outputs_, "num_outputs");
+    return static_cast<int>(num_outputs_);
+  }
   int num_reduce_dims() const;
   const std::vector<int64_t>& strides(int64_t arg) const {
     return operands_[arg].stride_bytes;

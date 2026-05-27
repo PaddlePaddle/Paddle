@@ -175,8 +175,10 @@ void BindTuplePopOp(py::module* m) {
       .def("pop_all_values",
            [](TuplePopOp& self) -> py::list {
              py::list res;
+             PADDLE_ENFORCE_LE_UINT32_MAX(self.num_results(),
+                                          "number of results");
              for (size_t i = 0; i < self.num_results(); ++i) {
-               res.append(self.result(i));
+               res.append(self.result(static_cast<uint32_t>(i)));
              }
              return res;
            })
@@ -342,7 +344,7 @@ std::vector<Value> PyWhileOp::OptimizeUpdate() {
   for (uint32_t i = 0; i < num_results(); ++i) {
     res.push_back(result(i));
   }
-  for (size_t operand_index = 1u, arg_index = 0u; operand_index < operand_num;
+  for (uint32_t operand_index = 1u, arg_index = 0u; operand_index < operand_num;
        ++operand_index, ++arg_index) {
     if (!body_block.arg(arg_index).type().isa<pir::DenseTensorType>()) {
       continue;
@@ -372,7 +374,7 @@ std::vector<Value> PyWhileOp::OptimizeUpdate() {
     }
   }
 
-  for (size_t operand_index = 1u, arg_index = 0u; operand_index < operand_num;
+  for (uint32_t operand_index = 1u, arg_index = 0u; operand_index < operand_num;
        ++operand_index) {
     operand_source(operand_index).set_type(body_block.arg(arg_index).type());
     if (yield_op.operand_source(operand_index) == body_block.arg(arg_index)) {
@@ -388,7 +390,8 @@ std::vector<Value> PyWhileOp::OptimizeUpdate() {
       ++arg_index;
     }
   }
-  for (size_t extra_input_idx = 0u; extra_input_idx < extra_inputs_.size();
+  PADDLE_ENFORCE_LE_UINT32_MAX(extra_inputs_.size(), "number of extra inputs");
+  for (uint32_t extra_input_idx = 0u; extra_input_idx < extra_inputs_.size();
        ++extra_input_idx) {
     new_input.push_back(extra_inputs_[extra_input_idx]);
     new_yield_val.push_back(
@@ -405,13 +408,15 @@ std::vector<Value> PyWhileOp::OptimizeUpdate() {
   builder.SetInsertionPointToBlockEnd(&body_block);
   builder.Build<YieldOp>(new_yield_val);
   operation_->Verify();
-  for (size_t result_index = 0;
+  for (uint32_t result_index = 0;
        result_index < num_results() - extra_inputs_.size();
        ++result_index) {
     res[index_vec[result_index]] = result(result_index);
   }
-  for (size_t i = 0; i < extra_inputs_.size(); ++i) {
-    res.push_back(result(num_results() - extra_inputs_.size() + i));
+  PADDLE_ENFORCE_LE_UINT32_MAX(extra_inputs_.size(), "number of extra inputs");
+  for (uint32_t i = 0; i < extra_inputs_.size(); ++i) {
+    res.push_back(result(
+        static_cast<uint32_t>(num_results() - extra_inputs_.size() + i)));
   }
   return res;
 }

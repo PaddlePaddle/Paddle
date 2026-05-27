@@ -109,7 +109,7 @@ static void StridedSliceFunctor(int64_t* starts,
                                 const size_t size) {
   for (size_t axis = 0; axis < size; axis++) {
     int64_t axis_size = dims[axes[axis]];
-    int axis_index = axis;
+    size_t axis_index = axis;
     if (axis_size < 0) {
       starts[axis_index] = 0;
       ends[axis_index] = 1;

@@ -3854,8 +3854,10 @@ static PyObject* tensor_method__uva(TensorObject* self,
       true,
       common::errors::InvalidArgument("Unified virtual addressing only support "
                                       "CPU Tensor currently."));
-  int device_id =
+  int64_t dev_id =
       pybind::CastPyArg2AttrLong(PyTuple_GET_ITEM(args, 0), 0);  // NOLINT
+  PADDLE_ENFORCE_LE_INT_MAX(dev_id, "device_id");
+  int device_id = static_cast<int>(dev_id);
   phi::DenseTensor* dense_tensor = nullptr;
   if (self->tensor.is_dist_tensor()) {
     dense_tensor =

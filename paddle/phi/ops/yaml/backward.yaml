@@ -3066,8 +3066,8 @@
   inplace : (out_grad -> x_grad)
 
 - backward_op : renorm_grad
-  forward : renorm (Tensor x, float p, int axis, float max_norm) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, float p, int axis, float max_norm)
+  forward : renorm (Tensor x, float p, int64_t axis, float max_norm) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, float p, int64_t axis, float max_norm)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta

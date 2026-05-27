@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -105,16 +106,18 @@ class CudnnRNNCache {
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cudnnCreateRNNDataDescriptor(&y_desc_));
 
+    PADDLE_ENFORCE_LE_INT_MAX(seq_length_, "RNN sequence length");
+    const int seq_length_int = static_cast<int>(seq_length_);
     std::vector<int> seq_length_array(batch_size_);
     for (int i = 0; i < batch_size_; ++i) {
-      seq_length_array[i] = seq_length_;
+      seq_length_array[i] = seq_length_int;
     }
 
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetRNNDataDescriptor(
         x_desc_,
         cudnn_type,
         CUDNN_RNN_DATA_LAYOUT_BATCH_MAJOR_UNPACKED,
-        seq_length_,
+        seq_length_int,
         batch_size_,
         input_size_,
         reinterpret_cast<const int *>(seq_length_array.data()),
@@ -124,7 +127,7 @@ class CudnnRNNCache {
         y_desc_,
         cudnn_type,
         CUDNN_RNN_DATA_LAYOUT_BATCH_MAJOR_UNPACKED,
-        seq_length_,
+        seq_length_int,
         batch_size_,
         hidden_size_ * numDirections,
         reinterpret_cast<const int *>(seq_length_array.data()),
@@ -270,8 +273,10 @@ class CudnnRNNCache {
         common::errors::InvalidArgument(
             "The cudnn lstm and setting weight size should be same."));
 
+    PADDLE_ENFORCE_LE_INT_MAX(weights_size_ / cudnn_size,
+                              "weights_size_ / cudnn_size");
     int dim_w[3];
-    dim_w[0] = weights_size_ / cudnn_size;
+    dim_w[0] = static_cast<int>(weights_size_ / cudnn_size);
     dim_w[1] = 1;
     dim_w[2] = 1;
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetFilterNdDescriptor(

@@ -12,6 +12,7 @@ limitations under the License. */
 #pragma once
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/common/macros.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/detail/strided_memcpy.h"
@@ -90,9 +91,11 @@ inline void StridedNumelCopyWithAxis(const Context& dev_ctx,
                                      const T* src,
                                      const DDim& src_stride_numel,
                                      int64_t size) {
-  int64_t before = dst_stride_numel[0] / dst_stride_numel[axis];
-  int64_t src_after = src_stride_numel[axis];
-  int64_t dst_after = dst_stride_numel[axis];
+  PADDLE_ENFORCE_LE_INT_MAX(axis, "strided memcpy axis");
+  const int axis_int = static_cast<int>(axis);
+  int64_t before = dst_stride_numel[0] / dst_stride_numel[axis_int];
+  int64_t src_after = src_stride_numel[axis_int];
+  int64_t dst_after = dst_stride_numel[axis_int];
   auto place = dev_ctx.GetPlace();
 
   PADDLE_ENFORCE_EQ(src_stride_numel.size(),
@@ -104,30 +107,16 @@ inline void StridedNumelCopyWithAxis(const Context& dev_ctx,
                         src_stride_numel.size(),
                         dst_stride_numel.size()));
 
-  for (int64_t i = 0; i < axis; ++i) {
-    if (i < axis) {
-      PADDLE_ENFORCE_EQ(
-          src_stride_numel[i] / src_stride_numel[axis],
-          dst_stride_numel[i] / dst_stride_numel[axis],
-          common::errors::InvalidArgument(
-              "Source and destination tensor should have the same number of "
-              "elements except the specified axis, but the source elements "
-              "number is %d, destination elements number is %d.",
-              src_stride_numel[i] / src_stride_numel[axis],
-              dst_stride_numel[i] / dst_stride_numel[axis]));
-    } else if (i == axis) {
-      continue;
-    } else {
-      PADDLE_ENFORCE_EQ(
-          src_stride_numel[i],
-          dst_stride_numel[i],
-          common::errors::InvalidArgument(
-              "Source and destination tensor should have the same number of "
-              "elements except the specified axis, but the source elements "
-              "number is %d, destination elements number is %d.",
-              src_stride_numel[i],
-              dst_stride_numel[i]));
-    }
+  for (int i = 0; i < axis_int; ++i) {
+    PADDLE_ENFORCE_EQ(
+        src_stride_numel[i] / src_stride_numel[axis_int],
+        dst_stride_numel[i] / dst_stride_numel[axis_int],
+        common::errors::InvalidArgument(
+            "Source and destination tensor should have the same number of "
+            "elements except the specified axis, but the source elements "
+            "number is %ld, destination elements number is %ld.",
+            src_stride_numel[i] / src_stride_numel[axis_int],
+            dst_stride_numel[i] / dst_stride_numel[axis_int]));
   }
 
   for (int64_t i = 0; i < before; ++i) {

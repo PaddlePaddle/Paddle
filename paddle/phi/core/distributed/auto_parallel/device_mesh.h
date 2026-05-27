@@ -255,7 +255,17 @@ class PADDLE_API DeviceMesh {
   int64_t ndim() const { return shape_.size(); }
 
   int64_t dim_size(int64_t dim) const {
-    int64_t cdim = canonical_dim(dim, shape_.size());
+    int64_t ndim_sz = ndim();
+    PADDLE_ENFORCE_LE_INT_MAX(dim, "dim");
+    PADDLE_ENFORCE_LE_INT_MAX(ndim_sz, "ndim_sz");
+    PADDLE_ENFORCE_EQ(
+        dim >= -ndim_sz && dim < ndim_sz,
+        true,
+        errors::InvalidArgument("Dimension %d is outside of [-%d, %d).",
+                                static_cast<int>(dim),
+                                static_cast<int>(ndim_sz),
+                                static_cast<int>(ndim_sz)));
+    int64_t cdim = dim < 0 ? dim + ndim_sz : dim;
     return shape_[cdim];
   }
 

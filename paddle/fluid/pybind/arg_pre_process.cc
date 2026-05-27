@@ -564,7 +564,7 @@ void PixelShufflePreProcess(std::string* data_format) {
 }
 
 // Renorm preprocessing: handle negative axis
-void NegativeAxisPreProcess(Tensor* x, int* axis) {
+void NegativeAxisPreProcess(Tensor* x, int64_t* axis) {
   int rank = x->dims().size();
 
   // Check upper bound first
@@ -572,42 +572,43 @@ void NegativeAxisPreProcess(Tensor* x, int* axis) {
       *axis,
       rank,
       common::errors::InvalidArgument(
-          "the axis:%d should be less than the shape's size %d", *axis, rank));
+          "the axis:%ld should be less than the shape's size %d", *axis, rank));
 
   // If axis is negative, check lower bound then convert
   if (*axis < 0) {
     PADDLE_ENFORCE_GE(
         *axis,
         -rank,
-        common::errors::InvalidArgument(
-            "the axis:%d should not be less than -1 * length of input_shape:%d",
-            *axis,
-            -rank));
+        common::errors::InvalidArgument("the axis:%ld should not be less than "
+                                        "-1 * length of input_shape:%d",
+                                        *axis,
+                                        -rank));
     *axis = *axis + rank;
   }
 }
 
-void NegativeAxisPreProcess(Value* x, int* axis) {
+void NegativeAxisPreProcess(Value* x, int64_t* axis) {
   // Handle negative axis for static graph
   auto x_shape = pir::GetShapeFromValue(*x);
   int64_t rank = x_shape.size();
 
   // Check upper bound first
-  PADDLE_ENFORCE_LT(
-      *axis,
-      static_cast<int>(rank),
-      common::errors::InvalidArgument(
-          "the axis:%d should be less than the shape's size %ld", *axis, rank));
+  PADDLE_ENFORCE_LT(*axis,
+                    rank,
+                    common::errors::InvalidArgument(
+                        "the axis:%ld should be less than the shape's size %ld",
+                        *axis,
+                        rank));
 
   // If axis is negative, check lower bound then convert
   if (*axis < 0) {
     PADDLE_ENFORCE_GE(
         *axis,
-        -static_cast<int>(rank),
-        common::errors::InvalidArgument("the axis:%d should not be less than "
+        -rank,
+        common::errors::InvalidArgument("the axis:%ld should not be less than "
                                         "-1 * length of input_shape:%ld",
                                         *axis,
-                                        -static_cast<int>(rank)));
+                                        -rank));
     *axis = *axis + rank;
   }
 }

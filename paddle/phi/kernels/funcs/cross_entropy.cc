@@ -42,14 +42,14 @@ struct HardLabelCrossEntropyCPUFunctorImpl {
 
     int64_t num_classes = prob_->dims()[1];
 
-    const int num_remain = num_classes / axis_dim_;
+    const int64_t num_remain = num_classes / axis_dim_;
 
     const T* prob_data = prob_->template data<T>();
     T* loss_data = out_->template data<T>();
 
     const auto* label_data = labels_->template data<U>();
     for (int64_t i = 0; i < batch_size; ++i) {
-      for (int j = 0; j < num_remain; j++) {
+      for (int64_t j = 0; j < num_remain; j++) {
         int lbl = static_cast<int>(label_data[i * num_remain + j]);  // NOLINT
         if (lbl != ignore_index_) {
           PADDLE_ENFORCE_GE(lbl,

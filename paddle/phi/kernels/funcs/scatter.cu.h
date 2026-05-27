@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -357,7 +358,11 @@ void GPUScatterNdAdd(const GPUContext& dev_ctx,
 }
 
 inline int64_t ensure_nonempty_size(const DenseTensor& t, int64_t dim) {
-  return t.dims().size() == 0 ? 1 : t.dims()[dim];
+  if (t.dims().size() == 0) {
+    return 1;
+  }
+  PADDLE_ENFORCE_LE_INT_MAX(dim, "dim index for DDim access");
+  return t.dims()[static_cast<int>(dim)];
 }
 
 inline int64_t ensure_nonempty_stride(const DenseTensor& t, int64_t dim) {
@@ -365,7 +370,8 @@ inline int64_t ensure_nonempty_stride(const DenseTensor& t, int64_t dim) {
     return 1;
   }
   auto strides = common::stride(t.dims());
-  return strides[dim];
+  PADDLE_ENFORCE_LE_INT_MAX(dim, "dim index for stride access");
+  return strides[static_cast<int>(dim)];
 }
 
 using IdxVec = std::vector<int64_t>;

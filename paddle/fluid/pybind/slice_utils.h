@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/eager/utils.h"
@@ -55,8 +56,8 @@ static inline common::DDim infer_size_symdimvector(common::DDim a,
     int64_t offset = ndim - 1 - i;
     int64_t dimA = dimsA - 1 - offset;
     int64_t dimB = dimsB - 1 - offset;
-    auto sizeA = (dimA >= 0) ? a[dimA] : 1;
-    auto sizeB = (dimB >= 0) ? b[dimB] : 1;
+    auto sizeA = (dimA >= 0) ? a[static_cast<int>(dimA)] : 1;
+    auto sizeB = (dimB >= 0) ? b[static_cast<int>(dimB)] : 1;
 
     PADDLE_ENFORCE_EQ(
         sizeA == sizeB || sizeA == 1 || sizeB == 1,
@@ -69,7 +70,7 @@ static inline common::DDim infer_size_symdimvector(common::DDim a,
                               i));
 
     // 1s map to the other size (even 0).
-    expandedSizes[i] = sizeA == 1 ? sizeB : sizeA;
+    expandedSizes[static_cast<int>(i)] = sizeA == 1 ? sizeB : sizeA;
   }
 
   return expandedSizes;
@@ -393,7 +394,7 @@ static void ParseIndex(const Tensor& tensor,
     PyObject* slice_item = PyTuple_GetItem(index, i);
 
     infer_flags->push_back(1);
-    int64_t dim_len = shape[current_dim];
+    int64_t dim_len = shape[static_cast<int>(current_dim)];
     if (PyCheckInteger(slice_item) || IsNumpyType(slice_item)) {
       // integer, PyLong_AsLong supports both int and long
       int64_t start = static_cast<int64_t>(PyLong_AsLong(slice_item));
@@ -531,7 +532,7 @@ static void ParseIndex(const Tensor& tensor,
             (*advanced_index_dim)[estimated_dim] = estimated_dim;
             estimated_dim++;
             current_dim++;
-            dim_len = shape[current_dim];
+            dim_len = shape[static_cast<int>(current_dim)];
           }
         } else {
           // int tensor consumes only one dimension of input tensor
@@ -563,11 +564,12 @@ static void ParseIndex(const Tensor& tensor,
   }
 
   // valid_index is the number of dimensions exclude None index
-  const int valid_indices = size - none_axes->size() - ell_count;
+  const int64_t valid_indices =
+      static_cast<int64_t>(size) - none_axes->size() - ell_count;
   PADDLE_ENFORCE_EQ(valid_indices <= rank,
                     true,
                     common::errors::InvalidArgument(
-                        "Too many indices (%d) for tensor of dimension %d.",
+                        "Too many indices (%ld) for tensor of dimension %d.",
                         valid_indices,
                         rank));
 }

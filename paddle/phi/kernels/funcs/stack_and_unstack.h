@@ -16,6 +16,7 @@
 
 #include "glog/logging.h"
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/funcs/fast_divmod.h"
 #include "paddle/phi/kernels/funcs/segmented_array.h"
@@ -76,6 +77,7 @@ void StackRawKernel(const Context& dev_ctx,
                     int axis,
                     DenseTensor* out) {
   if (axis < 0) axis += (x[0]->dims().size() + 1);
+  PADDLE_ENFORCE_LE_INT_MAX(x.size(), "number of stack inputs");
   int num = static_cast<int>(x.size());
 
   // zero sized tensor case
@@ -96,10 +98,16 @@ void StackRawKernel(const Context& dev_ctx,
   int64_t out_col = x_col * num;
 
   if (out->numel() < std::numeric_limits<int32_t>::max()) {
+    PADDLE_ENFORCE_LE_INT_MAX(x_col, "stack input columns");
+    PADDLE_ENFORCE_LE_INT_MAX(x_row, "stack input rows");
+    PADDLE_ENFORCE_LE_INT_MAX(out_col, "stack output columns");
+    const auto x_col_i32 = static_cast<int32_t>(x_col);
+    const auto x_row_i32 = static_cast<int32_t>(x_row);
+    const auto out_col_i32 = static_cast<int32_t>(out_col);
     switch (CalcArraySize(num)) {
       SEGMENTED_ARRAY_KERNEL_HELPER(
           LaunchStackKernel<Context, T, int32_t, kArraySize>(
-              dev_ctx, x_col, x_row, out_col, x, out));
+              dev_ctx, x_col_i32, x_row_i32, out_col_i32, x, out));
     }
   } else {
     switch (CalcArraySize(num)) {
@@ -228,12 +236,25 @@ void LaunchUnStackKernel(const Context& dev_ctx,
       bid_x = tile_x_num;
     else
       bid_x = backends::gpu::kMultiDimslimit;
-    dim3 blocks(tid_x, tid_y, 1);
-    dim3 grids(bid_x, bid_y, 1);
+    if (std::is_same<IndexT, int32_t>::value) {
+      PADDLE_ENFORCE_LE_INT_MAX(out_row, "unstack output rows");
+      PADDLE_ENFORCE_LE_INT_MAX(split_dim, "unstack split dimension");
+      PADDLE_ENFORCE_LE_INT_MAX(tile_x_num, "unstack tile x count");
+    }
+    PADDLE_ENFORCE_LE_UINT32_MAX(tid_x, "unstack CUDA block x size");
+    PADDLE_ENFORCE_LE_UINT32_MAX(tid_y, "unstack CUDA block y size");
+    PADDLE_ENFORCE_LE_UINT32_MAX(bid_x, "unstack CUDA grid x size");
+    PADDLE_ENFORCE_LE_UINT32_MAX(bid_y, "unstack CUDA grid y size");
+    dim3 blocks(static_cast<uint32_t>(tid_x), static_cast<uint32_t>(tid_y), 1);
+    dim3 grids(static_cast<uint32_t>(bid_x), static_cast<uint32_t>(bid_y), 1);
 
     UnStackCudaKernelForLastDim<T, IndexT, decltype(setter.array)>
         <<<grids, blocks, 0, dev_ctx.stream()>>>(
-            x_ptr, split_dim, out_row, tile_x_num, setter.array);
+            x_ptr,
+            static_cast<IndexT>(split_dim),
+            static_cast<IndexT>(out_row),
+            static_cast<IndexT>(tile_x_num),
+            setter.array);
   } else {
     FastDivMod<IndexT> col_divmoder(out_col);
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
@@ -281,14 +302,26 @@ void UnStackRawKernel(const Context& dev_ctx,
 
   int64_t out_col = x.numel() / (split_dim * out_row);
 
+  PADDLE_ENFORCE_LE_INT_MAX(split_dim, "number of unstack outputs");
+  const int split_dim_int = static_cast<int>(split_dim);
   if (x.numel() < std::numeric_limits<int32_t>::max()) {
-    switch (CalcArraySize(split_dim)) {
+    PADDLE_ENFORCE_LE_INT_MAX(out_row, "unstack output rows");
+    PADDLE_ENFORCE_LE_INT_MAX(out_col, "unstack output columns");
+    const auto out_row_i32 = static_cast<int32_t>(out_row);
+    const auto split_dim_i32 = static_cast<int32_t>(split_dim);
+    const auto out_col_i32 = static_cast<int32_t>(out_col);
+    switch (CalcArraySize(split_dim_int)) {
       SEGMENTED_ARRAY_KERNEL_HELPER(
-          LaunchUnStackKernel<Context, T, int32_t, kArraySize>(
-              dev_ctx, out_row, split_dim, out_col, split_dim, x, outs));
+          LaunchUnStackKernel<Context, T, int32_t, kArraySize>(dev_ctx,
+                                                               out_row_i32,
+                                                               split_dim_i32,
+                                                               out_col_i32,
+                                                               split_dim_i32,
+                                                               x,
+                                                               outs));
     }
   } else {
-    switch (CalcArraySize(split_dim)) {
+    switch (CalcArraySize(split_dim_int)) {
       SEGMENTED_ARRAY_KERNEL_HELPER(
           LaunchUnStackKernel<Context, T, int64_t, kArraySize>(
               dev_ctx, out_row, split_dim, out_col, split_dim, x, outs));

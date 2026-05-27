@@ -400,8 +400,8 @@ static void CallSoftmaxMaskGPUKernelV2(const Context& dev_ctx,
                                        const DenseTensor& mask,
                                        DenseTensor* out,
                                        int64_t batch_count,
-                                       int64_t attn_heads,
-                                       int64_t query_seqs,
+                                       uint32_t attn_heads,
+                                       uint32_t query_seqs,
                                        int key_seq_len,
                                        int pow2_index,
                                        const dim3& blocks,
@@ -517,7 +517,7 @@ void FusedSoftmaxMaskKernel(const Context& dev_ctx,
                         mask_dim[1]));
 
   // dim of x and mask must be equal
-  for (size_t idx = 0; idx < 4; ++idx) {
+  for (int idx = 0; idx < 4; ++idx) {
     if (idx == 1) continue;
     PADDLE_ENFORCE_EQ(
         x_dim[idx],
@@ -566,21 +566,34 @@ void FusedSoftmaxMaskKernel(const Context& dev_ctx,
       attn_heads > dev_ctx.GetCUDAMaxGridDimSize()[1] ||
       batches > dev_ctx.GetCUDAMaxGridDimSize()[2]) {
     int64_t total_blocks = batch_count / batches_per_block;
-    dim3 blocks(total_blocks);
+    PADDLE_ENFORCE_LE_UINT32_MAX(total_blocks,
+                                 "fused_softmax_mask CUDA launch grid.x");
+    dim3 blocks(static_cast<uint32_t>(total_blocks));
     int64_t query_seqs = query_seq_len / batches_per_block;
+    PADDLE_ENFORCE_LE_UINT32_MAX(attn_heads, "fused_softmax_mask attn_heads");
+    PADDLE_ENFORCE_LE_UINT32_MAX(query_seqs, "fused_softmax_mask query_seqs");
     CallSoftmaxMaskGPUKernelV2<T, Context>(dev_ctx,
                                            x,
                                            mask,
                                            out,
                                            batch_count,
-                                           attn_heads,
-                                           query_seqs,
+                                           static_cast<uint32_t>(attn_heads),
+                                           static_cast<uint32_t>(query_seqs),
                                            static_cast<int>(key_seq_len),
                                            pow2_index,
                                            blocks,
                                            threads);
   } else {
-    dim3 blocks(query_seq_len / batches_per_block, attn_heads, batches);
+    const int64_t query_seq_blocks = query_seq_len / batches_per_block;
+    PADDLE_ENFORCE_LE_UINT32_MAX(query_seq_blocks,
+                                 "fused_softmax_mask CUDA launch grid.x");
+    PADDLE_ENFORCE_LE_UINT32_MAX(attn_heads,
+                                 "fused_softmax_mask CUDA launch grid.y");
+    PADDLE_ENFORCE_LE_UINT32_MAX(batches,
+                                 "fused_softmax_mask CUDA launch grid.z");
+    dim3 blocks(static_cast<uint32_t>(query_seq_blocks),
+                static_cast<uint32_t>(attn_heads),
+                static_cast<uint32_t>(batches));
     CallSoftmaxMaskGPUKernelV1<T, Context>(dev_ctx,
                                            x,
                                            mask,

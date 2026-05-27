@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -104,8 +105,10 @@ void FusedActDequantKernel(const Context& dev_ctx,
                            const DenseTensor& x_scale,
                            DenseTensor* out) {
   auto x_dims = x.dims();
-  int rows = x_dims[0];
-  int cols = x_dims[1];
+  PADDLE_ENFORCE_LE_INT_MAX(x_dims[0], "fused_act_dequant rows");
+  PADDLE_ENFORCE_LE_INT_MAX(x_dims[1], "fused_act_dequant cols");
+  int rows = static_cast<int>(x_dims[0]);
+  int cols = static_cast<int>(x_dims[1]);
 
   out->Resize({rows, cols});
   dev_ctx.template Alloc<phi::bfloat16>(out);

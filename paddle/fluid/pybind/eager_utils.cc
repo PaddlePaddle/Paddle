@@ -16,6 +16,7 @@ limitations under the License. */
 #include <vector>
 
 #include <variant>
+#include "paddle/common/enforce.h"
 #include "paddle/common/exception.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
@@ -441,6 +442,7 @@ std::vector<Tensor> CastPyArg2VectorOfTensor(
                 &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
                       tensor.impl())
                       ->process_mesh());
+            PADDLE_ENFORCE_LE_INT_MAX(i, "index for mesh_start_index");
             mesh_start_index = i;
           }
         }
@@ -480,6 +482,7 @@ std::vector<Tensor> CastPyArg2VectorOfTensor(
                 &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
                       tensor.impl())
                       ->process_mesh());
+            PADDLE_ENFORCE_LE_INT_MAX(i, "index for mesh_start_index");
             mesh_start_index = i;
           }
         }
@@ -1629,6 +1632,7 @@ std::vector<Tensor> GetTensorListFromPyObject_(
               &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
                     tensor.impl())
                     ->process_mesh());
+          PADDLE_ENFORCE_LE_INT_MAX(i, "index for mesh_start_index");
           mesh_start_index = i;
         }
       }
@@ -1670,6 +1674,7 @@ std::vector<Tensor> GetTensorListFromPyObject_(
               &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
                     tensor.impl())
                     ->process_mesh());
+          PADDLE_ENFORCE_LE_INT_MAX(i, "index for mesh_start_index");
           mesh_start_index = i;
         }
       }
@@ -1805,6 +1810,7 @@ paddle::optional<std::vector<Tensor>> GetOptionalTensorListFromArgs(
               &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
                     tensor.impl())
                     ->process_mesh());
+          PADDLE_ENFORCE_LE_INT_MAX(i, "index for mesh_start_index");
           mesh_start_index = i;
         }
       }
@@ -1846,6 +1852,7 @@ paddle::optional<std::vector<Tensor>> GetOptionalTensorListFromArgs(
               &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
                     tensor.impl())
                     ->process_mesh());
+          PADDLE_ENFORCE_LE_INT_MAX(i, "index for mesh_start_index");
           mesh_start_index = i;
         }
       }
@@ -1947,6 +1954,7 @@ std::vector<Tensor*> GetTensorPtrListFromArgs(
               &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
                     tensor->impl())
                     ->process_mesh());
+          PADDLE_ENFORCE_LE_INT_MAX(i, "index for mesh_start_index");
           mesh_start_index = i;
         }
       }
@@ -1979,6 +1987,7 @@ std::vector<Tensor*> GetTensorPtrListFromArgs(
               &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
                     tensor->impl())
                     ->process_mesh());
+          PADDLE_ENFORCE_LE_INT_MAX(i, "index for mesh_start_index");
           mesh_start_index = i;
         }
       }
@@ -2026,6 +2035,7 @@ std::vector<Tensor*> GetTensorPtrListFromPyObject(PyObject* obj) {
               &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
                     tensor->impl())
                     ->process_mesh());
+          PADDLE_ENFORCE_LE_INT_MAX(i, "index for mesh_start_index");
           mesh_start_index = i;
         }
       }
@@ -2054,6 +2064,7 @@ std::vector<Tensor*> GetTensorPtrListFromPyObject(PyObject* obj) {
               &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
                     tensor->impl())
                     ->process_mesh());
+          PADDLE_ENFORCE_LE_INT_MAX(i, "index for mesh_start_index");
           mesh_start_index = i;
         }
       }
@@ -2095,6 +2106,7 @@ std::vector<Tensor> GetTensorListFromPyObject(PyObject* obj, bool allow_none) {
                 &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
                       tensor.impl())
                       ->process_mesh());
+            PADDLE_ENFORCE_LE_INT_MAX(i, "index for mesh_start_index");
             mesh_start_index = i;
           }
         }
@@ -2133,6 +2145,7 @@ std::vector<Tensor> GetTensorListFromPyObject(PyObject* obj, bool allow_none) {
                 &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
                       tensor.impl())
                       ->process_mesh());
+            PADDLE_ENFORCE_LE_INT_MAX(i, "index for mesh_start_index");
             mesh_start_index = i;
           }
         }
@@ -2908,6 +2921,7 @@ std::vector<Tensor>& GetTensorListFromArgsWithBuffer(
           local_mesh = &(std::static_pointer_cast<phi::distributed::DistTensor>(
                              tensor.impl())
                              ->process_mesh());
+          PADDLE_ENFORCE_LE_INT_MAX(i, "index for mesh_start_index");
           mesh_start_index = i;
         }
       }
@@ -2939,6 +2953,7 @@ std::vector<Tensor>& GetTensorListFromArgsWithBuffer(
           local_mesh = &(std::static_pointer_cast<phi::distributed::DistTensor>(
                              tensor.impl())
                              ->process_mesh());
+          PADDLE_ENFORCE_LE_INT_MAX(i, "index for mesh_start_index");
           mesh_start_index = i;
         }
       }
@@ -3432,7 +3447,7 @@ void BindEagerUtils(PyObject* module) {
 
 std::tuple<std::vector<int64_t>,
            paddle::flat_hash_map<int64_t, phi::ReduceType>>
-CvtPlacements(Placements placements, int ndim) {
+CvtPlacements(Placements placements, int64_t ndim) {
   std::vector<int64_t> dim_map(ndim, -1);
   for (size_t i = 0; i < placements.size(); i++) {
     auto& placement = placements[i];

@@ -311,7 +311,8 @@ void PruneWithInput(const std::vector<Value> &input_vars,
                                      total_ops_list.end());
   std::vector<bool> intersection_op_flags(total_ops.size(), true);
   std::set<Value> output_vars_set(output_vars.begin(), output_vars.end());
-  for (uint32_t index = total_ops.size() - 1; index != (uint32_t)(-1);
+  for (uint32_t index = static_cast<uint32_t>(total_ops.size() - 1);
+       index != static_cast<uint32_t>(-1);
        --index) {
     auto op = total_ops[index];
     auto op_results = op->results();
@@ -327,7 +328,8 @@ void PruneWithInput(const std::vector<Value> &input_vars,
 
   std::set<Value> input_vars_set(new_input_vars.begin(), new_input_vars.end());
   std::vector<Operation *> remove_ops;
-  for (uint32_t index = total_ops.size() - 1; index != (uint32_t)(-1);
+  for (uint32_t index = static_cast<uint32_t>(total_ops.size() - 1);
+       index != static_cast<uint32_t>(-1);
        --index) {
     auto op = total_ops[index];
     if (!intersection_op_flags[index]) {
@@ -537,8 +539,10 @@ void BindProgram(py::module *m) {
           [](const std::shared_ptr<Program> &self) {
             size_t num_blocks = 0;
             auto top_level_op = self->module_op();
+            PADDLE_ENFORCE_LE_UINT32_MAX(top_level_op->num_regions(),
+                                         "number of regions");
             for (size_t i = 0; i < top_level_op->num_regions(); ++i) {
-              auto &region = top_level_op->region(i);
+              auto &region = top_level_op->region(static_cast<unsigned int>(i));
               num_blocks += region.size();
             }
             return num_blocks;

@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -203,7 +204,9 @@ struct PointerArraySetter : public ArraySetterBase<Context> {
                              num_bytes,
                              use_cuda_graph));
     }
-    array.Set(data_ptr, t->size(), dev_ptr);
+    PADDLE_ENFORCE_LE_INT_MAX(t->size(), "number of tensors");
+    const int tensor_num = static_cast<int>(t->size());
+    array.Set(data_ptr, tensor_num, dev_ptr);
   }
 
  private:

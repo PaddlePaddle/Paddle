@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "paddle/common/enforce.h"
 #include "paddle/common/macros.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
@@ -88,6 +89,11 @@ struct ForRange<GPUContext> {
 #endif
     size_t block_size = limit_ <= num_threads ? limit_ : num_threads;
     size_t grid_size = (limit_ + num_threads - 1) / num_threads;
+
+    // NOTE(large-tensor): Kernel launch requires int type for grid/block
+    // dimension
+    PADDLE_ENFORCE_LE_INT_MAX(grid_size, "grid_size");
+    PADDLE_ENFORCE_LE_INT_MAX(block_size, "block_size");
 
     if (grid_size == 1) {
       ForRangeElemwiseOpGridIsOne<<<1, block_size, 0, dev_ctx_.stream()>>>(

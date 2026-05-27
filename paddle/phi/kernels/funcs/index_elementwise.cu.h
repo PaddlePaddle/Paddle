@@ -21,6 +21,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/dense_tensor_iterator.h"
 #include "paddle/phi/kernels/funcs/index_elementwise_utils.h"
@@ -112,7 +113,8 @@ struct IntDivider<unsigned int> {
 
     uint64_t one = 1;
     uint64_t magic = ((one << 32) * ((one << shift) - divisor)) / divisor + 1;
-    m1 = magic;
+    PADDLE_ENFORCE_LE_UINT32_MAX(magic, "IntDivider magic");
+    m1 = static_cast<unsigned int>(magic);
   }
 
   __host__ __device__ inline unsigned int div(unsigned int n) const {

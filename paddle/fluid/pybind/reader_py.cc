@@ -87,7 +87,7 @@ static paddle::optional<std::vector<int64_t>> DiffTensorShape(
 
   for (int64_t idx = 1; idx < rank; ++idx) {
     PADDLE_ENFORCE_GE(
-        tensor_shape[idx],
+        tensor_shape[static_cast<int>(idx)],
         0,
         common::errors::InvalidArgument(
             "Tensor shape at dim %d must not be less than 0", idx));

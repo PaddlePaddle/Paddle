@@ -21,6 +21,7 @@ typedef SSIZE_T ssize_t;
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
@@ -398,7 +399,11 @@ static void ConstructFwdAndBwdMap(
           VLOG(7) << " ==== Custom Operator: " << op_type << "'s No." << j
                   << " inputs: " << inputs_names[j] << " related to No." << i
                   << " grad_outputs: " << grad_outputs_names[i];
-          in_out_map[op_type][0][0][j] = i;  // NOLINT
+          PADDLE_ENFORCE_LE_INT_MAX(j, "forward input index");
+          PADDLE_ENFORCE_LE_INT_MAX(i, "grad output index");
+          const int fwd_input_idx = static_cast<int>(j);
+          const int grad_output_idx = static_cast<int>(i);
+          in_out_map[op_type][0][0][fwd_input_idx] = grad_output_idx;
         }
       }
     }
@@ -411,7 +416,11 @@ static void ConstructFwdAndBwdMap(
             VLOG(7) << " ==== Custom Operator: " << op_type << "'s No." << j
                     << " outputs: " << outputs_names[j] << " related to No."
                     << i << " grad_inputs's grad: " << grad_inputs_names[i];
-            in_out_map[op_type][0][1][j] = i;  // NOLINT
+            PADDLE_ENFORCE_LE_INT_MAX(j, "forward output index");
+            PADDLE_ENFORCE_LE_INT_MAX(i, "grad input index");
+            const int fwd_output_idx = static_cast<int>(j);
+            const int grad_input_idx = static_cast<int>(i);
+            in_out_map[op_type][0][1][fwd_output_idx] = grad_input_idx;
           }
         }
       } else {
@@ -424,7 +433,11 @@ static void ConstructFwdAndBwdMap(
                       << " outputs: " << outputs_names[j] << " related to No."
                       << i
                       << " grad_inputs fwd outputs: " << grad_inputs_names[i];
-              in_out_map[op_type][0][2][j] = i;  // NOLINT
+              PADDLE_ENFORCE_LE_INT_MAX(j, "forward output index");
+              PADDLE_ENFORCE_LE_INT_MAX(i, "grad input index");
+              const int fwd_output_idx = static_cast<int>(j);
+              const int grad_input_idx = static_cast<int>(i);
+              in_out_map[op_type][0][2][fwd_output_idx] = grad_input_idx;
             }
           }
         } else {
@@ -434,7 +447,11 @@ static void ConstructFwdAndBwdMap(
                       << " inputs: " << inputs_names[j] << " related to No."
                       << i
                       << " grad_inputs fwd inputs: " << grad_inputs_names[i];
-              in_out_map[op_type][0][3][j] = i;  // NOLINT
+              PADDLE_ENFORCE_LE_INT_MAX(j, "forward input index");
+              PADDLE_ENFORCE_LE_INT_MAX(i, "grad input index");
+              const int fwd_input_idx = static_cast<int>(j);
+              const int grad_input_idx = static_cast<int>(i);
+              in_out_map[op_type][0][3][fwd_input_idx] = grad_input_idx;
             }
           }
         }
@@ -457,7 +474,11 @@ static void ConstructFwdAndBwdMap(
           VLOG(7) << " ==== Custom Operator: " << op_type << "'s No." << j
                   << " attrs: " << attrs_names[j] << " related to No." << i
                   << " grad_attrs: " << grad_attrs_names[i];
-          in_out_map[op_type][0][4][j] = i;  // NOLINT
+          PADDLE_ENFORCE_LE_INT_MAX(j, "forward attribute index");
+          PADDLE_ENFORCE_LE_INT_MAX(i, "grad attribute index");
+          const int fwd_attr_idx = static_cast<int>(j);
+          const int grad_attr_idx = static_cast<int>(i);
+          in_out_map[op_type][0][4][fwd_attr_idx] = grad_attr_idx;
         }
       }
     }
@@ -519,7 +540,12 @@ static PyObject* eager_api__get_custom_operator_inplace_reverse_idx(
                        "the input of `Inplace` again and make "
                        "sure you registered your op accurately. ",
                        input));
-    inplace_idx_map[distance(outputs.begin(), out_iter)] = in_idx;  // NOLINT
+    const auto output_idx = distance(outputs.begin(), out_iter);
+    PADDLE_ENFORCE_LE_INT_MAX(output_idx, "inplace output index");
+    PADDLE_ENFORCE_LE_INT_MAX(in_idx, "inplace input index");
+    const int output_idx_int = static_cast<int>(output_idx);
+    const int input_idx_int = static_cast<int>(in_idx);
+    inplace_idx_map[output_idx_int] = input_idx_int;
   }
 
   return ToPyObject(inplace_idx_map);
@@ -1265,9 +1291,10 @@ static PyObject* eager_api_async_read(PyObject* self,
       auto* src_data = src_tensor.data<float>();
       auto* index_data = index_tensor.data<int64_t>();
       auto* buffer_data = buffer_tensor->data<float>();
-      const int& slice_size =
-          src_tensor.numel() / src_tensor.dims()[0];       // NOLINT
-      const int& copy_bytes = slice_size * sizeof(float);  // NOLINT
+      const int64_t slice_size =
+          src_tensor.numel() / src_tensor.dims()[0];  // NOLINT
+      const size_t copy_bytes =
+          static_cast<size_t>(slice_size) * sizeof(float);  // NOLINT
       int64_t c = 0;
       for (int64_t i = 0; i < index_tensor.numel(); i++) {
         std::memcpy(buffer_data + c * slice_size,
@@ -1412,22 +1439,32 @@ static PyObject* eager_api_to_uva_tensor(PyObject* self,
     }
   }
 
+  PADDLE_ENFORCE_LE_INT_MAX(device_id, "device_id");
+
   if (py::isinstance<py::array_t<int32_t>>(array)) {
-    SetUVATensorFromPyArray<int32_t>(new_tensor, array, device_id);
+    SetUVATensorFromPyArray<int32_t>(
+        new_tensor, array, static_cast<int>(device_id));
   } else if (py::isinstance<py::array_t<int64_t>>(array)) {
-    SetUVATensorFromPyArray<int64_t>(new_tensor, array, device_id);
+    SetUVATensorFromPyArray<int64_t>(
+        new_tensor, array, static_cast<int>(device_id));
   } else if (py::isinstance<py::array_t<float>>(array)) {
-    SetUVATensorFromPyArray<float>(new_tensor, array, device_id);
+    SetUVATensorFromPyArray<float>(
+        new_tensor, array, static_cast<int>(device_id));
   } else if (py::isinstance<py::array_t<double>>(array)) {
-    SetUVATensorFromPyArray<double>(new_tensor, array, device_id);
+    SetUVATensorFromPyArray<double>(
+        new_tensor, array, static_cast<int>(device_id));
   } else if (py::isinstance<py::array_t<int8_t>>(array)) {
-    SetUVATensorFromPyArray<int8_t>(new_tensor, array, device_id);
+    SetUVATensorFromPyArray<int8_t>(
+        new_tensor, array, static_cast<int>(device_id));
   } else if (py::isinstance<py::array_t<int16_t>>(array)) {
-    SetUVATensorFromPyArray<int16_t>(new_tensor, array, device_id);
+    SetUVATensorFromPyArray<int16_t>(
+        new_tensor, array, static_cast<int>(device_id));
   } else if (py::isinstance<py::array_t<phi::float16>>(array)) {
-    SetUVATensorFromPyArray<phi::float16>(new_tensor, array, device_id);
+    SetUVATensorFromPyArray<phi::float16>(
+        new_tensor, array, static_cast<int>(device_id));
   } else if (py::isinstance<py::array_t<bool>>(array)) {
-    SetUVATensorFromPyArray<bool>(new_tensor, array, device_id);
+    SetUVATensorFromPyArray<bool>(
+        new_tensor, array, static_cast<int>(device_id));
   } else {
     // obj may be any type, obj.cast<py::array>() may be failed,
     // then the array.dtype will be string of unknown meaning.

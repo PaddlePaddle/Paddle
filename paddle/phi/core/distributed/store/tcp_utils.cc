@@ -178,7 +178,10 @@ SocketType tcp_listen(const std::string host,
                     common::errors::InvalidArgument(
                         "Bind network on %s:%s failed.", node, port));
 
-  ::listen(sockfd, FLAGS_tcp_max_syn_backlog);
+  PADDLE_ENFORCE_LE_INT_MAX(FLAGS_tcp_max_syn_backlog,
+                            "FLAGS_tcp_max_syn_backlog");
+  const int backlog = static_cast<int>(FLAGS_tcp_max_syn_backlog);
+  ::listen(sockfd, backlog);
 
   VLOG(0) << "The server starts to listen on " << node << ":" << port
           << "; setting synclog to " << FLAGS_tcp_max_syn_backlog;

@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <cstdint>
 
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 
 #define INT_BITS 32
@@ -53,7 +54,11 @@ struct FastDivMod {
         ((long_one << INT_BITS) * ((long_one << shift_val) - divisor)) /
             divisor +
         1;
-    multiplier = temp_div;
+#if !defined(__CUDA_ARCH__) && !defined(__HIP_DEVICE_COMPILE__) && \
+    !defined(__HIPCC__)
+    PADDLE_ENFORCE_LE_UINT32_MAX(temp_div, "FastDivMod multiplier");
+#endif
+    multiplier = static_cast<uint32_t>(temp_div);
   }
 
   __device__ __forceinline__ uint32_t Div(uint32_t n) const {

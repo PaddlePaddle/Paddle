@@ -22,7 +22,7 @@ template <typename T, typename Context>
 void RenormKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   float p,
-                  int axis,
+                  int64_t axis,
                   float max_norm,
                   DenseTensor* out);
 }  // namespace phi

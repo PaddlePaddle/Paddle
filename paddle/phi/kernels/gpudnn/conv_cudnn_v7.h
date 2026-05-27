@@ -49,15 +49,17 @@ template <typename PerfT, typename AlgoT>
 void ChooseAlgoByWorkspace(const std::vector<PerfT>& perf_results,
                            size_t workspace_limit,
                            SearchResult<AlgoT>* search_result) {
-  int best_algo_idx = -1;
+  size_t best_algo_idx = 0;
+  bool has_best_algo = false;
   for (size_t i = 0; i < perf_results.size(); ++i) {
     const auto& result = perf_results[i];
     if (result.status == CUDNN_STATUS_SUCCESS &&
         result.memory <= workspace_limit) {
-      if (best_algo_idx == -1) {
+      if (!has_best_algo) {
         // The algorithm which has minimize time cost and need a workspace_size
         // fitting the workspace_limit constraint.
         best_algo_idx = i;
+        has_best_algo = true;
         // Each perf_results[i].time is set to be -1 in heuristic search.
         if (perf_results[best_algo_idx].time < 0) {
           break;
@@ -75,7 +77,7 @@ void ChooseAlgoByWorkspace(const std::vector<PerfT>& perf_results,
       }
     }
   }
-  if (best_algo_idx != -1) {
+  if (has_best_algo) {
     const auto& result = perf_results[best_algo_idx];
     search_result->algo = result.algo;
     search_result->time = result.time;

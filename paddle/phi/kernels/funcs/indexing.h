@@ -21,6 +21,7 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/nonzero_kernel.h"
@@ -52,8 +53,19 @@ static inline common::DDim InferSizeSymdimvector(const common::DDim& a,
     int64_t offset = ndim - 1 - i;
     int64_t dimA = dimsA - 1 - offset;
     int64_t dimB = dimsB - 1 - offset;
-    auto sizeA = (dimA >= 0) ? a[dimA] : 1;
-    auto sizeB = (dimB >= 0) ? b[dimB] : 1;
+    int64_t sizeA, sizeB;
+    if (dimA >= 0) {
+      PADDLE_ENFORCE_LE_INT_MAX(dimA, "dimA index for DDim access");
+      sizeA = a[static_cast<int>(dimA)];
+    } else {
+      sizeA = 1;
+    }
+    if (dimB >= 0) {
+      PADDLE_ENFORCE_LE_INT_MAX(dimB, "dimB index for DDim access");
+      sizeB = b[static_cast<int>(dimB)];
+    } else {
+      sizeB = 1;
+    }
 
     PADDLE_ENFORCE_EQ(
         sizeA == sizeB || sizeA == 1 || sizeB == 1,
@@ -65,7 +77,8 @@ static inline common::DDim InferSizeSymdimvector(const common::DDim& a,
                               ") at non-singleton dimension ",
                               i));
 
-    expandedSizes[i] = sizeA == 1 ? sizeB : sizeA;
+    PADDLE_ENFORCE_LE_INT_MAX(i, "expandedSizes index");
+    expandedSizes[static_cast<int>(i)] = sizeA == 1 ? sizeB : sizeA;
   }
 
   return expandedSizes;

@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
@@ -279,7 +280,11 @@ void DispatchConcatWithDifferentShapeKernelLimitNum(
         dev_ctx, ins, inputs_col_num, inputs_data, inputs_col); \
     __VA_ARGS__;                                                \
   } break;
-  switch (phi::backends::gpu::RoundToNextHighPowOfTwo(limit_num, 4)) {
+  const auto limit_num_pow2 =
+      phi::backends::gpu::RoundToNextHighPowOfTwo(limit_num, 4);
+  PADDLE_ENFORCE_LE_INT_MAX(limit_num_pow2, "concat/split vectorized limit");
+  const int limit_num_pow2_int = static_cast<int>(limit_num_pow2);
+  switch (limit_num_pow2_int) {
     IMPL_CONCATE_CUDA_KERNEL_HELPER(
         IMPL_COMPLEX_CONCAT_CUDA_KERNEL_CASE,
         ConcatTensorWithDifferentShape<IndexT, MovSize, decltype(ptr_col_array)>
@@ -396,7 +401,11 @@ void DispatchConcatWithSameShapeKernelLimitNum(
     __VA_ARGS__;                                                          \
   } break;
 
-  switch (phi::backends::gpu::RoundToNextHighPowOfTwo(limit_num, 4)) {
+  const auto limit_num_pow2 =
+      phi::backends::gpu::RoundToNextHighPowOfTwo(limit_num, 4);
+  PADDLE_ENFORCE_LE_INT_MAX(limit_num_pow2, "concat/split vectorized limit");
+  const int limit_num_pow2_int = static_cast<int>(limit_num_pow2);
+  switch (limit_num_pow2_int) {
     IMPL_CONCATE_CUDA_KERNEL_HELPER(
         IMPL_CONCAT_CUDA_KERNEL_CASE,
         ConcatTensorWithSameShape<IndexT, MovSize, decltype(ptr_array)>

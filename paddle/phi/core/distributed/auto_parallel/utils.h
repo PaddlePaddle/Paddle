@@ -48,7 +48,7 @@ bool has_duplicates(const std::vector<T>& vec) {
   return false;
 }
 
-inline int64_t canonical_dim(int dim, int ndim) {
+inline int64_t canonical_dim(int64_t dim, int64_t ndim) {
   PADDLE_ENFORCE_EQ(
       dim >= -ndim && dim < ndim,
       true,

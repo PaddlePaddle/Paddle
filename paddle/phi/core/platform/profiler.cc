@@ -36,9 +36,22 @@
 COMMON_DECLARE_bool(enable_record_memory);
 COMMON_DECLARE_int64(host_trace_level);
 
+namespace {
+
+uint32_t GetHostTraceLevel() {
+  PADDLE_ENFORCE_GE(FLAGS_host_trace_level,
+                    0,
+                    common::errors::InvalidArgument(
+                        "host_trace_level should be non-negative."));
+  PADDLE_ENFORCE_LE_UINT32_MAX(FLAGS_host_trace_level, "host_trace_level");
+  return static_cast<uint32_t>(FLAGS_host_trace_level);
+}
+
+}  // namespace
+
 struct ProfilerOptions {
   uint32_t trace_switch = 0;  // bit 0: cpu, bit 1: gpu, bit 2: xpu
-  uint32_t trace_level = FLAGS_host_trace_level;
+  uint32_t trace_level = GetHostTraceLevel();
 };
 
 // #if defined(_WIN32) && defined(PHI_SHARED)

@@ -455,11 +455,15 @@ struct ReduceConfig {
     if (!ShouldReduceGlobal()) {
       return 0;
     }
-    return sizeof(int) * GetGridDim().x;
+    auto result = sizeof(int) * GetGridDim().x;
+    PADDLE_ENFORCE_LE_INT_MAX(result, "semaphore size");
+    return static_cast<int>(result);
   }
 
   int ValuesPerThread() const {
-    return phi::backends::gpu::DivUp<int64_t>(num_inputs, step_input);
+    auto val = phi::backends::gpu::DivUp<int64_t>(num_inputs, step_input);
+    PADDLE_ENFORCE_LE_INT_MAX(val, "values per thread");
+    return static_cast<int>(val);
   }
 };
 

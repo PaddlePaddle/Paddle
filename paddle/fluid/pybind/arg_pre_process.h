@@ -77,8 +77,8 @@ void BaddbmmPreProcess(Tensor* input, Tensor* x, Tensor* y);
 void BaddbmmPreProcess(pir::Value* input, pir::Value* x, pir::Value* y);
 
 // Renorm preprocessing: handle negative axis
-void NegativeAxisPreProcess(Tensor* x, int* axis);
-void NegativeAxisPreProcess(Value* x, int* axis);
+void NegativeAxisPreProcess(Tensor* x, int64_t* axis);
+void NegativeAxisPreProcess(Value* x, int64_t* axis);
 
 void PixelShufflePreProcess(std::string* data_format);
 

@@ -279,8 +279,8 @@ struct cpu_gather_scatter_functor {
           "self_size, src_size, index_size cannot be 0");
       return;
     }
-    int self_select_dim_size = self_dims[dim];
-    int src_select_dim_size = src_dims[dim];
+    int64_t self_select_dim_size = self_dims[dim];
+    int64_t src_select_dim_size = src_dims[dim];
 
     // gather and assign do not need nums_of_elements
     std::vector<int> nums_of_elements;

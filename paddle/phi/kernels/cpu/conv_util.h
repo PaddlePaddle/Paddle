@@ -28,7 +28,7 @@ inline void UpdatePaddingAndDilation(std::vector<T>* paddings,
                                      const std::vector<T>& ksize) {
   // set padding size == data_dims.size() * 2
   auto data_shape = vectorize<T>(data_dims);
-  if (static_cast<int>(paddings->size()) == data_dims.size()) {
+  if (paddings->size() == static_cast<size_t>(data_dims.size())) {
     for (int i = 0; i < data_dims.size(); ++i) {
       T copy_pad = *(paddings->begin() + 2 * i);
       paddings->insert(paddings->begin() + 2 * i + 1, copy_pad);
@@ -116,8 +116,8 @@ inline std::vector<int64_t> ComputeOutputShape(
   auto in_dims = input.dims();
   auto filter_dims = filter.dims();
 
-  int dilation_size = dilations.size();
-  for (int i = 0; i < dilation_size; ++i) {
+  const size_t dilation_size = dilations.size();
+  for (size_t i = 0; i < dilation_size; ++i) {
     PADDLE_ENFORCE_GT(
         dilations[i],
         0,
@@ -150,8 +150,8 @@ inline std::vector<int64_t> ComputeOutputShape(
           filter_dims,
           filter_dims.size()));
 
-  int stride_size = strides.size();
-  for (int i = 0; i < stride_size; ++i) {
+  const size_t stride_size = strides.size();
+  for (size_t i = 0; i < stride_size; ++i) {
     PADDLE_ENFORCE_GT(
         strides[i],
         0,
@@ -230,14 +230,15 @@ inline std::vector<int64_t> ComputeOutputShape(
     filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
   }
 
-  std::vector<int> ksize = vectorize<int>(filter_data_dims);
-  std::vector<int> paddings_vec = paddings;
-  std::vector<int> dilations_vec = dilations;
+  std::vector<int64_t> ksize = vectorize<int64_t>(filter_data_dims);
+  std::vector<int64_t> paddings_vec(paddings.begin(), paddings.end());
+  std::vector<int64_t> dilations_vec(dilations.begin(), dilations.end());
+  std::vector<int64_t> strides_vec(strides.begin(), strides.end());
   phi::UpdatePaddingAndDilation(&paddings_vec,
                                 &dilations_vec,
                                 padding_algorithm,
                                 in_data_dims,
-                                strides,
+                                strides_vec,
                                 ksize);
 
   std::vector<int64_t> output_shape({in_dims[0]});
@@ -249,12 +250,19 @@ inline std::vector<int64_t> ComputeOutputShape(
         (in_data_dims[i] <= 0 || filter_dims[i + 2] <= 0)) {
       output_shape.push_back(-1);
     } else {
-      output_shape.push_back(ConvOutSize(in_data_dims[i],
-                                         filter_data_dims[i],
-                                         dilations_vec[i],
-                                         paddings_vec[2 * i],
-                                         paddings_vec[2 * i + 1],
-                                         strides[i]));
+      PADDLE_ENFORCE_LE_INT_MAX(in_data_dims[i], "conv input size");
+      PADDLE_ENFORCE_LE_INT_MAX(filter_data_dims[i], "conv filter size");
+      PADDLE_ENFORCE_LE_INT_MAX(dilations_vec[i], "conv dilation");
+      PADDLE_ENFORCE_LE_INT_MAX(paddings_vec[2 * i], "conv padding left");
+      PADDLE_ENFORCE_LE_INT_MAX(paddings_vec[2 * i + 1], "conv padding right");
+      PADDLE_ENFORCE_LE_INT_MAX(strides_vec[i], "conv stride");
+      output_shape.push_back(
+          ConvOutSize(static_cast<int>(in_data_dims[i]),
+                      static_cast<int>(filter_data_dims[i]),
+                      static_cast<int>(dilations_vec[i]),
+                      static_cast<int>(paddings_vec[2 * i]),
+                      static_cast<int>(paddings_vec[2 * i + 1]),
+                      static_cast<int>(strides_vec[i])));
     }
   }
   if (channel_last) {
@@ -270,6 +278,7 @@ inline bool IsExpand(const std::vector<int64_t>& filter_dim,
                      const std::vector<int>& dilations) {
   bool filter_1 = true, strides_1 = true, padding_0 = true, dilation_1 = true;
   for (size_t j = 0; j < strides.size(); ++j) {
+    PADDLE_ENFORCE_LE_INT_MAX(filter_dim[j + 2], "conv filter dimension");
     filter_1 = filter_1 && (static_cast<int>(filter_dim[j + 2]) == 1);
     strides_1 = strides_1 && (strides[j] == 1);
     padding_0 = padding_0 && (paddings[j] == 0);
