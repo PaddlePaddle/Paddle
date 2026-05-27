@@ -372,8 +372,8 @@ class CUDAGraph {
 
   bool is_first_run_{true};
 
-  static paddle::optional<std::thread::id> capturing_thread_id_;
-  static std::unique_ptr<CUDAGraph> capturing_graph_;
+  static PADDLE_API paddle::optional<std::thread::id> capturing_thread_id_;
+  static PADDLE_API std::unique_ptr<CUDAGraph> capturing_graph_;
 };
 
 class CUDAGraphCaptureModeGuard {
