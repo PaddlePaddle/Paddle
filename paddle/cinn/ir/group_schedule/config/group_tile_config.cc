@@ -330,7 +330,7 @@ int CalculateWarpNums(const SMConfig& sm_config,
     thread_configs.push_back(t);
   }
   if (thread_configs.empty()) {
-    thread_configs.push_back(max_threads); 
+    thread_configs.push_back(max_threads);
   }
 #else
   int best_warp_nums = 8;
@@ -594,7 +594,11 @@ bool RegisterNumsLimitedCheckInCTACanApplyVectorize(
   int max_blocks_per_sm_limit = target.get_max_blocks_per_sm();
   int max_regs_per_sm = GetMaxRegistersPerSM(target);
   int max_blocks_per_sm =
-      Trim(CeilDiv(max_warps_per_sm, warp_nums), 1, max_blocks_per_sm_limit);
+      max_blocks_per_sm_limit > 0
+          ? Trim(CeilDiv(max_warps_per_sm, warp_nums),
+                 1,
+                 max_blocks_per_sm_limit)
+          : std::max(int64_t(1), CeilDiv(max_warps_per_sm, warp_nums));
   int best_register_nums_per_thread =
       max_regs_per_sm / max_blocks_per_sm / warp_nums / warp_size;
 #else
@@ -685,9 +689,9 @@ TileConfigMap BuildVectorizeConfig(
   bool can_vectorize = false;
   bool is_sm_fully_utilized = true;
   ReduceMethod reduce_method = NoneReduceMethod();
-  SMConfig sm_config(target.get_max_threads_per_sm(),
-                     target.get_max_blocks_per_sm(),
-                     target.get_multi_processor_count());
+  SMConfig sm_config(std::max(1, target.get_max_threads_per_sm()),
+                     std::max(1, target.get_max_blocks_per_sm()),
+                     std::max(1, target.get_multi_processor_count()));
 #ifdef CINN_WITH_CUSTOM_DEVICE
   int max_threads_per_block = target.max_num_threads();
   int max_warp_cnt = max_threads_per_block / warp_size;

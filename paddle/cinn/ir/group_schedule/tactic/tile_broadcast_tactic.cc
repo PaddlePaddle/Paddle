@@ -618,7 +618,8 @@ void TileBroadcastTactic::Apply(ir::IRSchedule* sch,
   // Thick-SM upgrade: wide-SM CustomDevices (e.g. Iluvatar) benefit from
   // doubled per-block work density; smaller-SM devices keep the default
   // block_size. Matches NV's medium-bucket serial-8 intent.
-  // Vectorize path uses the original block_size unchanged.
+  // Vectorize path is already handled and has returned above; the
+  // amplification below only affects the non-vectorize NHWCLayout path.
   // NOTE: currently only Iluvatar-class devices are known to satisfy this
   // threshold. If a future CustomDevice with mtps >= kWideSmMtpsThreshold
   // turns out to be unsuitable for this amplification, switch to an explicit

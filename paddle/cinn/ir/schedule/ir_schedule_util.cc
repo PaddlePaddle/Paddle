@@ -210,7 +210,7 @@ void SetCudaAxisInfo(ir::LoweredFunc lowered_func) {
         int mtps = tgt.get_max_threads_per_sm();
         int target_total = reg_per_sm / kTargetRegPerThread;
         if (mtps > 0) target_total = std::min(target_total, mtps);
-        if (target_total > 0) {
+        if (target_total > 0 && max_threads_per_block > 0) {
           min_blocks_per_sm = target_total / max_threads_per_block;
           int hw_max_bps = tgt.get_max_blocks_per_sm();
           if (hw_max_bps > 0) {
