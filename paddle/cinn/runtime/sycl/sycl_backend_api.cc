@@ -74,7 +74,7 @@ void SYCLBackendAPI::set_device(int device_id) {
       device_id,
       this->devices.size() - 1,
       ::common::errors::InvalidArgument(
-          "set valid device id! device id: %d > max device id: %zu",
+          "set valid device id! device id: %d > max device id: %d",
           device_id,
           this->devices.size() - 1));
   if (this->contexts[device_id] == nullptr) {
