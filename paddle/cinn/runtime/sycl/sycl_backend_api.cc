@@ -67,7 +67,7 @@ void SYCLBackendAPI::set_device(int device_id) {
   if (!initialized_) Init(common::UnknownArch{});
   PADDLE_ENFORCE_GE(
       device_id,
-      0UL,
+      0,
       ::common::errors::InvalidArgument(
           "please set valid device id! device id: %d", device_id));
   PADDLE_ENFORCE_LE(
