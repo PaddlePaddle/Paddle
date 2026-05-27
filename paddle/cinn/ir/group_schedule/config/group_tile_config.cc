@@ -986,8 +986,8 @@ TileConfigMap BuildStaticSpatialConfig(
     if (hw_max_bps > 0) blocks_per_sm = std::min(blocks_per_sm, hw_max_bps);
     blocks_per_sm = std::max(1, blocks_per_sm);
     rd_block_num = std::max(int64_t(1),
-        FloorPow2(static_cast<int64_t>(sm_count) * blocks_per_sm /
-                  sp_block_num));
+                            FloorPow2(static_cast<int64_t>(sm_count) *
+                                      blocks_per_sm / sp_block_num));
 
     collector({1, kMaxNumel, 1, medium_bucket_threshold},
               {small_warp_num,
