@@ -2653,21 +2653,20 @@ class TestHardswishAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_dygraph_inplace(self):
-        with paddle.pir_utils.DygraphOldIrGuard():
-            paddle.disable_static()
-            expected = self._expected()
+        paddle.disable_static()
+        expected = self._expected()
 
-            x = paddle.to_tensor(self.np_x)
-            out = paddle.nn.Hardswish(inplace=True)(x)
-            self.assertIs(out, x)
-            np.testing.assert_allclose(x.numpy(), expected, rtol=1e-6)
+        x = paddle.to_tensor(self.np_x)
+        out = paddle.nn.Hardswish(inplace=True)(x)
+        self.assertIs(out, x)
+        np.testing.assert_allclose(x.numpy(), expected, rtol=1e-6)
 
-            x = paddle.to_tensor(self.np_x)
-            out = paddle.nn.functional.hardswish(x, inplace=True)
-            self.assertIs(out, x)
-            np.testing.assert_allclose(x.numpy(), expected, rtol=1e-6)
+        x = paddle.to_tensor(self.np_x)
+        out = paddle.nn.functional.hardswish(x, inplace=True)
+        self.assertIs(out, x)
+        np.testing.assert_allclose(x.numpy(), expected, rtol=1e-6)
 
-            paddle.enable_static()
+        paddle.enable_static()
 
     def test_static_Compatibility(self):
         paddle.enable_static()
@@ -2742,21 +2741,20 @@ class TestReLU6API(unittest.TestCase):
         paddle.enable_static()
 
     def test_dygraph_inplace(self):
-        with paddle.pir_utils.DygraphOldIrGuard():
-            paddle.disable_static()
-            expected = self._expected()
+        paddle.disable_static()
+        expected = self._expected()
 
-            x = paddle.to_tensor(self.np_x)
-            out = paddle.nn.ReLU6(inplace=True)(x)
-            self.assertIs(out, x)
-            np.testing.assert_allclose(x.numpy(), expected, rtol=1e-6)
+        x = paddle.to_tensor(self.np_x)
+        out = paddle.nn.ReLU6(inplace=True)(x)
+        self.assertIs(out, x)
+        np.testing.assert_allclose(x.numpy(), expected, rtol=1e-6)
 
-            x = paddle.to_tensor(self.np_x)
-            out = paddle.nn.functional.relu6(x, inplace=True)
-            self.assertIs(out, x)
-            np.testing.assert_allclose(x.numpy(), expected, rtol=1e-6)
+        x = paddle.to_tensor(self.np_x)
+        out = paddle.nn.functional.relu6(x, inplace=True)
+        self.assertIs(out, x)
+        np.testing.assert_allclose(x.numpy(), expected, rtol=1e-6)
 
-            paddle.enable_static()
+        paddle.enable_static()
 
     def test_static_Compatibility(self):
         paddle.enable_static()

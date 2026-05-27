@@ -418,6 +418,10 @@ def hardswish(
     """
     if in_dynamic_or_pir_mode():
         if inplace:
+            if not hasattr(_C_ops, 'hardswish_'):
+                out = _C_ops.hardswish(x)
+                x._inplace_assign(out)
+                return x
             return _C_ops.hardswish_(x)
         else:
             return _C_ops.hardswish(x)
@@ -1001,6 +1005,10 @@ def relu6(x: Tensor, inplace: bool = False, name: str | None = None) -> Tensor:
     threshold = 6.0
     if in_dynamic_or_pir_mode():
         if inplace:
+            if not hasattr(_C_ops, 'relu6_'):
+                out = _C_ops.relu6(x)
+                x._inplace_assign(out)
+                return x
             return _C_ops.relu6_(x)
         else:
             return _C_ops.relu6(x)
