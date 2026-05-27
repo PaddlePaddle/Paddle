@@ -66,18 +66,31 @@ int GetWarpSize(const common::Target& target) {
 // this returns a strategy-level value that targets high occupancy.
 // For MetaX (104 SM): 2048/(8*64) = 4 warps → 256 threads/block
 // For Iluvatar (16 SM): 8192/(2*64) = 64 warps → 4096 threads/block
+// Threshold to distinguish many-SM devices (e.g., MetaX C500 104 SM) from
+// few-SM devices (e.g., Iluvatar BI-150 16 SM). Many-SM devices benefit from
+// more lightweight blocks per SM; few-SM devices need fewer heavy blocks.
+constexpr int kManySMThreshold = 64;
+
 int GetOptimalWarpCount(const common::Target& target) {
   int warp_size = GetWarpSize(target);
   int max_threads_per_sm = target.get_max_threads_per_sm();
   int max_blocks_per_sm = target.get_max_blocks_per_sm();
   int sm_count = target.get_multi_processor_count();
 
-  // Many-SM: many lightweight blocks; Few-SM: fewer heavy blocks
-  int target_blocks = (sm_count >= 64) ? std::min(8, max_blocks_per_sm)
-                                       : std::min(2, max_blocks_per_sm);
+  // if hardware params are not available, fall back to a safe default
+  if (warp_size <= 0 || max_threads_per_sm <= 0 || max_blocks_per_sm <= 0) {
+    return 1;
+  }
+
+  int target_blocks = (sm_count >= kManySMThreshold)
+                          ? std::min(8, max_blocks_per_sm)
+                          : std::min(2, max_blocks_per_sm);
+  target_blocks = std::max(target_blocks, 1);  // Prevent division by zero
   int optimal_threads = max_threads_per_sm / target_blocks;
   int optimal_warps = optimal_threads / warp_size;
-  return std::max(optimal_warps, 1);
+  // Clamp: at least 1, at most max threads per block / warp_size
+  int max_warp_cnt = target.max_num_threads() / warp_size;
+  return std::max(std::min(optimal_warps, max_warp_cnt), 1);
 }
 
 // Get the maximum number of registers per SM
@@ -1346,10 +1359,9 @@ CombineBaseInfoAndConfig(
 std::unordered_map<BucketInfo, ScheduleConfig, BucketInfoHash>
 BuildScheduleConfig(const std::shared_ptr<FusionGroupInfo>& group_info,
                     const common::Target& target) {
-  LOG_FIRST_N(INFO, 1) << "[CINN] Hardware params for tile config:";
-  LOG_FIRST_N(INFO, 1) << "  WarpSize          : " << GetWarpSize(target);
-  LOG_FIRST_N(INFO, 1) << "  RegistersPerSM    : "
-                       << GetMaxRegistersPerSM(target);
+  VLOG(5) << "[CINN] Hardware params for tile config:";
+  VLOG(5) << "  WarpSize          : " << GetWarpSize(target);
+  VLOG(5) << "  RegistersPerSM    : " << GetMaxRegistersPerSM(target);
   target.PrintHardwareParams();
   std::shared_ptr<ScheduleConfig::BaseInfo> base_info =
       InitBasicInfo(group_info);

@@ -38,6 +38,9 @@ void cinn_call_custom_device_kernel(void *kernel_fn,
                     false,
                     phi::errors::NotFound("No Custom Device type registered."));
 
+  // NOTE: dev_types[0] assumes only one custom device type is registered.
+  // Multi-device-type coexistence is a known system limitation; the correct
+  // device type should be propagated from the kernel launch context.
   std::string dev_type = dev_types[0];
   int device_id = phi::DeviceManager::GetDevice(dev_type);
   auto place = phi::CustomPlace(dev_type, device_id);
@@ -102,6 +105,9 @@ void cinn_call_custom_device_cooperative_kernel(void *kernel_fn,
                     false,
                     phi::errors::NotFound("No Custom Device type registered."));
 
+  // NOTE: dev_types[0] assumes only one custom device type is registered.
+  // Multi-device-type coexistence is a known system limitation; the correct
+  // device type should be propagated from the kernel launch context.
   std::string dev_type = dev_types[0];
   int device_id = phi::DeviceManager::GetDevice(dev_type);
   auto place = phi::CustomPlace(dev_type, device_id);

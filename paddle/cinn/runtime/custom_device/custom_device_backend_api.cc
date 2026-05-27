@@ -172,7 +172,7 @@ class DefaultRuntimeStrategy : public CustomRuntimeStrategy {
                                int block_z,
                                int shared_mem,
                                void* stream) override {
-    if (cif_ && cif_->launch_cooperative_kernel) {
+    if (SupportsCooperativeLaunch()) {
       cif_->launch_cooperative_kernel(cif_->dev_ptr,
                                       func_ptr,
                                       args,
@@ -188,7 +188,7 @@ class DefaultRuntimeStrategy : public CustomRuntimeStrategy {
       return;
     }
     // Graceful fallback: use regular launch with a warning
-    LOG(WARNING) << "launch_cooperative_kernel not implemented by vendor, "
+    LOG(WARNING) << "launch_cooperative_kernel not supported by vendor, "
                     "falling back to launch_kernel.";
     LaunchKernel(func_ptr,
                  func_name,
@@ -205,7 +205,12 @@ class DefaultRuntimeStrategy : public CustomRuntimeStrategy {
   }
 
   bool SupportsCooperativeLaunch() override {
-    return cif_ && cif_->launch_cooperative_kernel;
+    if (!cif_) return false;
+    size_t required_size =
+        offsetof(C_CinnInterface, launch_cooperative_kernel) +
+        sizeof(cif_->launch_cooperative_kernel);
+    if (cif_->size < required_size) return false;
+    return cif_->launch_cooperative_kernel != nullptr;
   }
 
  private:

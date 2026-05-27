@@ -18,10 +18,6 @@
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/common/enforce.h"
-#ifdef CINN_WITH_CUSTOM_DEVICE
-#include "paddle/cinn/runtime/custom_device/custom_device_backend_api.h"
-#include "paddle/phi/backends/device_manager.h"
-#endif
 
 namespace cinn {
 namespace backends {
@@ -189,22 +185,11 @@ static std::string CurTailFnName(const std::string &origin_fn_name) {
   return new_fn_name;
 }
 
-bool RequiresCooperativeLaunch(const ir::LoweredFunc &func) {
-#ifdef CINN_WITH_CUSTOM_DEVICE
-  // Check if the vendor has enabled cooperative launch support.
-  auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
-  if (!dev_types.empty()) {
-    std::string dev_type = dev_types[0];
-    int device_id = phi::DeviceManager::GetDevice(dev_type);
-    auto place = phi::CustomPlace(dev_type, device_id);
-    auto &plugin =
-        runtime::custom_device::CinnCustomDevicePlugin::GetInstance(place);
-    auto *runtime_strategy = plugin.GetRuntime();
-    if (!runtime_strategy || !runtime_strategy->SupportsCooperativeLaunch()) {
-      return false;
-    }
+bool RequiresCooperativeLaunch(const ir::LoweredFunc &func,
+                               const common::Target &target) {
+  if (!target.get_supports_cooperative_launch()) {
+    return false;
   }
-#endif
   for (auto &space : func->temp_spaces) {
     if (space.size() != ir::Expr(0)) {
       return true;
@@ -293,12 +278,13 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
           << func_node->cuda_axis_info.block_dim(2) << "), "
           << "shared_mem: " << shared_mem_bytes.value();
   std::optional<const char *> call_kernel;
-  cinn::common::DefaultDeviceTarget().arch.Match(
+  auto target = cinn::common::DefaultDeviceTarget();
+  target.arch.Match(
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
         CINN_NOT_IMPLEMENTED;
       },
       [&](common::NVGPUArch) {
-        call_kernel = RequiresCooperativeLaunch(func)
+        call_kernel = RequiresCooperativeLaunch(func, target)
                           ? runtime::intrinsic::call_cuda_cooperative_kernel
                           : runtime::intrinsic::call_cuda_kernel;
       },
@@ -310,7 +296,7 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
       },
       [&](common::CustomDeviceArch) {
         call_kernel =
-            RequiresCooperativeLaunch(func)
+            RequiresCooperativeLaunch(func, target)
                 ? runtime::intrinsic::call_custom_device_cooperative_kernel
                 : runtime::intrinsic::call_custom_device_kernel;
       });
