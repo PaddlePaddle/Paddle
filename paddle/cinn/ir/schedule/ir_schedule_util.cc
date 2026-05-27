@@ -192,6 +192,9 @@ void SetCudaAxisInfo(ir::LoweredFunc lowered_func) {
       // If RegistersPerSM is unavailable, leave min_blocks_per_sm = -1 and
       // let the compiler pick its default occupancy, instead of using
       // NV's 65536 which would under-tune wide-register devices.
+      // 64 is NV's typical regs/thread budget. On wide-register devices it
+      // is conservative -- yields a smaller min_blocks_per_sm, only relaxes
+      // the occupancy hint, never causes spill.
       constexpr int kTargetRegPerThread = 64;
       const auto& tgt = cinn::common::DefaultDeviceTarget();
       int reg_per_sm = 0;
