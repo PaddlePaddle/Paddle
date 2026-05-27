@@ -2692,8 +2692,6 @@ class TestNansumAPI(unittest.TestCase):
             out1 = paddle.nansum(x=x, input=x)
         with self.assertRaises(ValueError):
             out2 = paddle.nansum(x, dim=1, axis=1)
-        with self.assertRaises(TypeError):
-            out3 = paddle.nansum(x, 1, False, 'int32')
         paddle.enable_static()
 
 

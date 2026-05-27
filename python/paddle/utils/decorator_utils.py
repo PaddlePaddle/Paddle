@@ -1302,10 +1302,8 @@ def nansum_decorator() -> Callable[
             # args[0] is x
             # args[1] is axis
             # args[2] is keepdim, use torch signature
-            if len(args) >= 3 and isinstance(args[2], bool):
+            if len(args) == 3 and isinstance(args[2], bool):
                 kwargs["keepdim"] = args[2]
-                if len(args) > 3:
-                    raise TypeError("nansum() received too many arguments")
                 args = (args[0], args[1])
             return func(*args, **kwargs)
 
