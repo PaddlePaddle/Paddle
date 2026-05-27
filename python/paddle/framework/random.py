@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 
 import paddle
 from paddle.base import core
+from paddle.utils.decorator_utils import param_one_alias
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -150,6 +151,7 @@ def get_cuda_rng_state() -> list[paddle.base.core.GeneratorState]:
     return state_list
 
 
+@param_one_alias(["state_list", "new_state"])
 def set_rng_state(
     state_list: Sequence[paddle.base.core.GeneratorState],
     device: str | None = None,
