@@ -822,6 +822,38 @@ class TestPaddleCudaGraphContextManager(unittest.TestCase):
             repr(paddle.device.current_stream()), repr(prev_stream)
         )
 
+    def test_graph_context_manager_default_does_not_warn(self):
+        # ``with paddle.cuda.graph(CUDAGraph()):`` is the most common
+        # default usage; it must not surface the
+        # ``capture_error_mode-takes-precedence`` warning, since the user
+        # didn't pick ``capture_error_mode`` here.
+        import warnings as _w
+
+        from paddle.device.cuda import graphs as graphs_module
+
+        original_begin = graphs_module.CoreCUDAGraph.begin_capture_with_pool_id
+        original_end = graphs_module.CoreCUDAGraph.end_capture
+        graphs_module.CoreCUDAGraph.begin_capture_with_pool_id = (
+            lambda *args, **kwargs: None
+        )
+        graphs_module.CoreCUDAGraph.end_capture = lambda: None
+        try:
+            g = paddle.cuda.CUDAGraph()
+            with _w.catch_warnings(record=True) as ws:
+                _w.simplefilter('always')
+                with paddle.cuda.graph(g):
+                    pass
+            msgs = [str(w.message) for w in ws]
+            self.assertFalse(
+                any('takes precedence' in m for m in msgs),
+                f'unexpected precedence warning: {msgs}',
+            )
+        finally:
+            graphs_module.CoreCUDAGraph.begin_capture_with_pool_id = (
+                original_begin
+            )
+            graphs_module.CoreCUDAGraph.end_capture = original_end
+
     def test_graph_context_manager_stream_none_is_noop(self):
         # When ``stream`` is None the current stream must be unchanged.
         if not can_use_cuda_graph():

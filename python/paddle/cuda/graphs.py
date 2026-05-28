@@ -59,7 +59,9 @@ class graph:
             or another graph's :meth:`CUDAGraph.pool`.
         stream (paddle.cuda.Stream, optional): CUDA stream to capture on.
             When ``None``, capture happens on the current stream.
-        capture_error_mode (str, optional): Only ``'global'`` is honored.
+        capture_error_mode (str, optional): One of ``'global'``,
+            ``'thread_local'``, ``'relaxed'``. When ``None`` (default) the
+            underlying :class:`CUDAGraph`'s constructor ``mode`` is used.
 
     Examples:
         .. code-block:: pycon
@@ -78,7 +80,7 @@ class graph:
         cuda_graph: CUDAGraph,
         pool: int | None = None,
         stream: Stream | None = None,
-        capture_error_mode: str = 'global',
+        capture_error_mode: str | None = None,
     ) -> None:
         self.cuda_graph = cuda_graph
         self.pool = pool
