@@ -143,8 +143,14 @@ def _is_safe_class(cls) -> bool:
         '__setstate__',
     }
     for method in dangerous_methods:
-        if method in cls_dict:
-            return False
+        # Check each class in the MRO for dangerous method definitions
+        for base in cls.__mro__:
+            # Skip object - its default __reduce__ is safe for user-defined classes
+            if base is object:
+                continue
+            # Check if this base class defines the dangerous method
+            if method in getattr(base, '__dict__', {}):
+                return False
 
     return True
 

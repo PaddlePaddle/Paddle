@@ -35,48 +35,30 @@ struct SwizzleWrapper {
 //       cutlass::gemm::threadblock::GemmBatchedIdentityThreadblockSwizzle;
 // };
 
-#define AP_AUTOTUNE_half(func, stream, ...)                               \
-  {                                                                       \
-    using FuncType = decltype(func<0>);                                   \
-    static int selected_config_id = -1;                                   \
-    static std::vector<std::function<FuncType>> matmul_functions = {      \
-        func<0>,  func<1>,  func<2>,  func<3>,  func<4>,  func<5>,        \
-        func<6>,  func<7>,  func<8>,  func<9>,  func<10>, func<11>,       \
-        func<12>, func<13>, func<14>, func<15>, func<16>, func<17>,       \
-        func<18>, func<19>, func<20>, func<21>, func<22>};                \
-    if (selected_config_id == -1) {                                       \
-      selected_config_id =                                                \
-          ap::ProfileBestConfig(matmul_functions, stream, ##__VA_ARGS__); \
-    }                                                                     \
-    matmul_functions[selected_config_id](__VA_ARGS__);                    \
+#define AP_AUTOTUNE(func, stream_ptr, count, ...)                             \
+  {                                                                           \
+    using FuncType = decltype(func<0>);                                       \
+    static int selected_config_id = -1;                                       \
+    static std::vector<std::function<FuncType>> matmul_functions =            \
+        []<std::size_t... Is>(std::index_sequence<Is...>) {                   \
+      return std::vector<std::function<FuncType>>{func<Is>...};               \
+    }                                                                         \
+    (std::make_index_sequence<count>());                                      \
+                                                                              \
+    if (selected_config_id == -1) {                                           \
+      selected_config_id =                                                    \
+          ap::ProfileBestConfig(matmul_functions, stream_ptr, ##__VA_ARGS__); \
+    }                                                                         \
+                                                                              \
+    matmul_functions[selected_config_id](__VA_ARGS__);                        \
   }
 
-#define AP_AUTOTUNE_nv_bfloat16(func, stream, ...) \
-  AP_AUTOTUNE_half(func, stream, __VA_ARGS__)
-
-#define AP_AUTOTUNE_float(func, stream, ...)                                   \
-  {                                                                            \
-    using FuncType = decltype(func<0>);                                        \
-    static int selected_config_id = -1;                                        \
-    static std::vector<std::function<FuncType>> matmul_functions = {func<0>,   \
-                                                                    func<1>,   \
-                                                                    func<2>,   \
-                                                                    func<3>,   \
-                                                                    func<4>,   \
-                                                                    func<5>,   \
-                                                                    func<6>,   \
-                                                                    func<7>,   \
-                                                                    func<8>,   \
-                                                                    func<9>,   \
-                                                                    func<10>,  \
-                                                                    func<11>,  \
-                                                                    func<12>}; \
-    if (selected_config_id == -1) {                                            \
-      selected_config_id =                                                     \
-          ap::ProfileBestConfig(matmul_functions, stream, ##__VA_ARGS__);      \
-    }                                                                          \
-    matmul_functions[selected_config_id](__VA_ARGS__);                         \
-  }
+#define AP_AUTOTUNE_half(func, stream_ptr, ...) \
+  AP_AUTOTUNE(func, stream_ptr, ap::kNumConfigsHalf, __VA_ARGS__)
+#define AP_AUTOTUNE_float(func, stream_ptr, ...) \
+  AP_AUTOTUNE(func, stream_ptr, ap::kNumConfigsFloat, __VA_ARGS__)
+#define AP_AUTOTUNE_bfloat16(func, stream_ptr, ...) \
+  AP_AUTOTUNE_half(func, stream_ptr, __VA_ARGS__)
 
 template <typename ElementT, int SwizzleFactor, bool Batched, int Id = 0>
 struct GemmTuningConfigs {

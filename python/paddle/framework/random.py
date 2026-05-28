@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 
 import paddle
 from paddle.base import core
+from paddle.utils.decorator_utils import param_one_alias
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -150,6 +151,7 @@ def get_cuda_rng_state() -> list[paddle.base.core.GeneratorState]:
     return state_list
 
 
+@param_one_alias(["state_list", "new_state"])
 def set_rng_state(
     state_list: Sequence[paddle.base.core.GeneratorState],
     device: str | None = None,
@@ -160,6 +162,7 @@ def set_rng_state(
 
     Args:
         state_list(list|tuple): The device states to set back to device generators. state_list is obtained from get_rng_state().
+            Alias: ``new_state``.
         device(str): This parameter determines the specific running device.
             It can be ``cpu``, ``gpu``, ``xpu``, Default is None.
             If None, return the generators of current device (specified by ``set_device``).

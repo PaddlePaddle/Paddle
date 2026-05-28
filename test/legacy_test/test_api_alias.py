@@ -187,12 +187,91 @@ class TestAlias(unittest.TestCase):
                 paddle.optim.sgd.SGD,
                 None,
             ),
+            (
+                paddle.optimizer.lr.PiecewiseDecay,
+                paddle.optim.lr_scheduler.ConstantLR,
+                None,
+                None,
+            ),
+            (
+                paddle.optimizer.lr.CosineAnnealingDecay,
+                paddle.optim.lr_scheduler.CosineAnnealingLR,
+                None,
+                None,
+            ),
+            (
+                paddle.optimizer.lr.CosineAnnealingWarmRestarts,
+                paddle.optim.lr_scheduler.CosineAnnealingWarmRestarts,
+                None,
+                None,
+            ),
+            (
+                paddle.optimizer.lr.CyclicLR,
+                paddle.optim.lr_scheduler.CyclicLR,
+                None,
+                None,
+            ),
+            (
+                paddle.optimizer.lr.ExponentialDecay,
+                paddle.optim.lr_scheduler.ExponentialLR,
+                None,
+                None,
+            ),
+            (
+                paddle.optimizer.lr.LRScheduler,
+                paddle.optim.lr_scheduler.LRScheduler,
+                None,
+                None,
+            ),
+            (
+                paddle.optimizer.lr.LambdaDecay,
+                paddle.optim.lr_scheduler.LambdaLR,
+                None,
+                None,
+            ),
+            (
+                paddle.optimizer.lr.LinearLR,
+                paddle.optim.lr_scheduler.LinearLR,
+                None,
+                None,
+            ),
+            (
+                paddle.optimizer.lr.MultiStepDecay,
+                paddle.optim.lr_scheduler.MultiStepLR,
+                None,
+                None,
+            ),
+            (
+                paddle.optimizer.lr.MultiplicativeDecay,
+                paddle.optim.lr_scheduler.MultiplicativeLR,
+                None,
+                None,
+            ),
+            (
+                paddle.optimizer.lr.OneCycleLR,
+                paddle.optim.lr_scheduler.OneCycleLR,
+                None,
+                None,
+            ),
+            (
+                paddle.optimizer.lr.ReduceOnPlateau,
+                paddle.optim.lr_scheduler.ReduceLROnPlateau,
+                None,
+                None,
+            ),
+            (
+                paddle.optimizer.lr.StepDecay,
+                paddle.optim.lr_scheduler.StepLR,
+                None,
+                None,
+            ),
         ]
 
     def test_compatibility(self):
         for pairs in self.api_map:
             self.assertTrue(pairs[0], pairs[1])
-            self.assertTrue(pairs[0], pairs[2])
+            if pairs[2] is not None:
+                self.assertTrue(pairs[0], pairs[2])
             if pairs[3] is not None:
                 self.assertTrue(pairs[0], pairs[3])
 

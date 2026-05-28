@@ -121,6 +121,7 @@ from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc, dygraph_utils
 from paddle.pir import Value
 from paddle.utils.decorator_utils import (
+    nansum_decorator,
     param_one_alias,
     param_two_alias,
     variadic_tensor_decorator,
@@ -1638,14 +1639,45 @@ def nan_to_num_(
     return x
 
 
+@overload
 def nansum(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
     dtype: DTypeLike | None = None,
     keepdim: bool = False,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor: ...
+
+
+@overload
+def nansum(
+    input: Tensor,
+    dim: int | Sequence[int] | None = None,
+    keepdim: bool = False,
+    *,
+    dtype: DTypeLike | None = None,
+    out: Tensor | None = None,
+) -> Tensor: ...
+
+
+@nansum_decorator()
+def nansum(
+    x: Tensor,
+    axis: int | Sequence[int] | None = None,
+    dtype: DTypeLike | None = None,
+    keepdim: bool = False,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
+    This API has two signatures:
+
+    1. ``paddle.nansum(x, axis=None, dtype=None, keepdim=False, name=None, *, out=None)`` (Paddle-style)
+    2. ``paddle.nansum(input, dim=None, keepdim=False, *, dtype=None, out=None)`` (PyTorch-style)
+
     Computes the sum of tensor elements over the given axis, treating Not a Numbers (NaNs) as zero.
 
     Args:
@@ -1725,10 +1757,10 @@ def nansum(
         paddle.core.is_compiled_with_cuda()
         or paddle.core.is_compiled_with_rocm()
     ):
-        return _C_ops.nansum(x, axis, dtype, keepdim)
+        return _C_ops.nansum(x, axis, dtype, keepdim, out=out)
     zero_tensor = paddle.zeros_like(x)
     tmp_tensor = paddle.where(isnan(x), zero_tensor, x)
-    return sum(tmp_tensor, axis, dtype, keepdim, name)
+    return sum(tmp_tensor, axis, dtype, keepdim, name, out=out)
 
 
 def nanmean(

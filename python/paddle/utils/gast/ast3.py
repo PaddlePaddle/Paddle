@@ -36,6 +36,30 @@ import sys
 
 
 class Ast3ToGAst(AstToGAst):
+    if sys.version_info.minor == 12:
+
+        def visit_TypeVar(self, node):
+            new_node = gast.TypeVar(
+                self._visit(node.name),
+                self._visit(node.bound),
+                None
+            )
+            return gast.copy_location(new_node, node)
+
+        def visit_TypeVarTuple(self, node):
+            new_node = gast.TypeVarTuple(
+                self._visit(node.name),
+                None
+            )
+            return gast.copy_location(new_node, node)
+
+        def visit_ParamSpec(self, node):
+            new_node = gast.ParamSpec(
+                self._visit(node.name),
+                None
+            )
+            return gast.copy_location(new_node, node)
+
     if sys.version_info.minor < 10:
 
         def visit_alias(self, node):
@@ -68,9 +92,11 @@ class Ast3ToGAst(AstToGAst):
             return new_node
 
     if sys.version_info.minor < 8:
-
         def visit_Module(self, node):
-            new_node = gast.Module(self._visit(node.body), [])  # type_ignores
+            new_node = gast.Module(
+                self._visit(node.body),
+                []  # type_ignores
+            )
             return new_node
 
         def visit_Num(self, node):
@@ -100,17 +126,6 @@ class Ast3ToGAst(AstToGAst):
             new_node = gast.Constant(
                 node.s,
                 None,
-            )
-            return gast.copy_location(new_node, node)
-
-        def visit_ClassDef(self, node):
-            new_node = gast.ClassDef(
-                self._visit(node.name),
-                self._visit(node.bases),
-                self._visit(node.keywords),
-                self._visit(node.body),
-                self._visit(node.decorator_list),
-                [],  # type_params
             )
             return gast.copy_location(new_node, node)
 
@@ -177,7 +192,8 @@ class Ast3ToGAst(AstToGAst):
         def visit_Call(self, node):
             if sys.version_info.minor < 5:
                 if node.starargs:
-                    star = gast.Starred(self._visit(node.starargs), gast.Load())
+                    star = gast.Starred(self._visit(node.starargs),
+                                        gast.Load())
                     gast.copy_location(star, node)
                     starred = [star]
                 else:
@@ -239,7 +255,7 @@ class Ast3ToGAst(AstToGAst):
             node.arg,  # micro-optimization here, don't call self._visit
             gast.Param(),
             self._visit(node.annotation),
-            extra_arg,  # type_comment
+            extra_arg  # type_comment
         )
         return ast.copy_location(new_node, node)
 
@@ -248,8 +264,7 @@ class Ast3ToGAst(AstToGAst):
             new_node = gast.ExceptHandler(
                 self._visit(node.type),
                 gast.Name(node.name, gast.Store(), None, None),
-                self._visit(node.body),
-            )
+                self._visit(node.body))
             return ast.copy_location(new_node, node)
         else:
             return self.generic_visit(node)
@@ -266,18 +281,6 @@ class Ast3ToGAst(AstToGAst):
             return ast.copy_location(new_node, node)
 
     if 8 <= sys.version_info.minor < 12:
-
-        def visit_ClassDef(self, node):
-            new_node = gast.ClassDef(
-                self._visit(node.name),
-                self._visit(node.bases),
-                self._visit(node.keywords),
-                self._visit(node.body),
-                self._visit(node.decorator_list),
-                [],  # type_params
-            )
-            return gast.copy_location(new_node, node)
-
         def visit_FunctionDef(self, node):
             new_node = gast.FunctionDef(
                 self._visit(node.name),
@@ -302,30 +305,61 @@ class Ast3ToGAst(AstToGAst):
             )
             return gast.copy_location(new_node, node)
 
+    if sys.version_info.minor < 12:
+
+        def visit_ClassDef(self, node):
+            new_node = gast.ClassDef(
+                self._visit(node.name),
+                self._visit(node.bases),
+                self._visit(node.keywords),
+                self._visit(node.body),
+                self._visit(node.decorator_list),
+                [],  # type_params
+            )
+            return gast.copy_location(new_node, node)
+
 
 class GAstToAst3(GAstToAst):
-    if sys.version_info.minor < 10:
+    if sys.version_info.minor == 12:
+        def visit_TypeVar(self, node):
+            new_node = ast.TypeVar(
+                self._visit(node.name),
+                self._visit(node.bound)
+            )
+            return ast.copy_location(new_node, node)
 
+        def visit_TypeVarTuple(self, node):
+            new_node = ast.TypeVarTuple(
+                self._visit(node.name),
+            )
+            return ast.copy_location(new_node, node)
+
+        def visit_ParamSpec(self, node):
+            new_node = ast.ParamSpec(
+                self._visit(node.name),
+            )
+            return ast.copy_location(new_node, node)
+
+    if sys.version_info.minor < 10:
         def visit_alias(self, node):
             new_node = ast.alias(
-                self._visit(node.name), self._visit(node.asname)
+                self._visit(node.name),
+                self._visit(node.asname)
             )
             return new_node
 
     if sys.version_info.minor < 9:
-
         def visit_Subscript(self, node):
             def adjust_slice(s):
                 if isinstance(s, ast.Slice):
                     return s
                 else:
                     return ast.Index(s)
-
             if isinstance(node.slice, gast.Tuple):
                 if any(isinstance(elt, gast.slice) for elt in node.slice.elts):
                     new_slice = ast.ExtSlice(
-                        [adjust_slice(x) for x in self._visit(node.slice.elts)]
-                    )
+                        [adjust_slice(x) for x in
+                         self._visit(node.slice.elts)])
                 else:
                     value = ast.Tuple(self._visit(node.slice.elts), ast.Load())
                     ast.copy_location(value, node.slice)
@@ -377,10 +411,12 @@ class GAstToAst3(GAstToAst):
         if sys.version_info.minor < 8:
             extra_args = tuple()
         else:
-            extra_args = (self._visit(node.type_comment),)
+            extra_args = self._visit(node.type_comment),
 
         new_node = ast.arg(
-            self._visit(node.id), self._visit(node.annotation), *extra_args
+            self._visit(node.id),
+            self._visit(node.annotation),
+            *extra_args
         )
         return ast.copy_location(new_node, node)
 
@@ -394,8 +430,9 @@ class GAstToAst3(GAstToAst):
     def visit_ExceptHandler(self, node):
         if node.name:
             new_node = ast.ExceptHandler(
-                self._visit(node.type), node.name.id, self._visit(node.body)
-            )
+                self._visit(node.type),
+                node.name.id,
+                self._visit(node.body))
             return ast.copy_location(new_node, node)
         else:
             return self.generic_visit(node)
@@ -501,9 +538,7 @@ class GAstToAst3(GAstToAst):
                 self._visit(node.keywords),
             )
             return ast.copy_location(new_node, node)
-
-    if 5 <= sys.version_info.minor < 12:
-
+    if  5 <= sys.version_info.minor < 12:
         def visit_ClassDef(self, node):
             new_node = ast.ClassDef(
                 self._visit(node.name),
@@ -514,8 +549,7 @@ class GAstToAst3(GAstToAst):
             )
             return ast.copy_location(new_node, node)
 
-    if 8 <= sys.version_info.minor < 12:
-
+    if  8 <= sys.version_info.minor < 12:
         def visit_FunctionDef(self, node):
             new_node = ast.FunctionDef(
                 self._visit(node.name),
@@ -538,23 +572,24 @@ class GAstToAst3(GAstToAst):
             )
             return ast.copy_location(new_node, node)
 
+
+
     def visit_arguments(self, node):
-        extra_args = [
-            self._make_arg(node.vararg),
-            [self._make_arg(n) for n in node.kwonlyargs],
-            self._visit(node.kw_defaults),
-            self._make_arg(node.kwarg),
-            self._visit(node.defaults),
-        ]
+        extra_args = [self._make_arg(node.vararg),
+                      [self._make_arg(n) for n in node.kwonlyargs],
+                      self._visit(node.kw_defaults),
+                      self._make_arg(node.kwarg),
+                      self._visit(node.defaults), ]
         if sys.version_info.minor >= 8:
             new_node = ast.arguments(
                 [self._make_arg(arg) for arg in node.posonlyargs],
                 [self._make_arg(n) for n in node.args],
-                *extra_args,
+                *extra_args
             )
         else:
             new_node = ast.arguments(
-                [self._make_arg(n) for n in node.args], *extra_args
+                [self._make_arg(n) for n in node.args],
+                *extra_args
             )
         return new_node
 

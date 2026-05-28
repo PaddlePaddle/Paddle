@@ -52,6 +52,10 @@ void ChooseAlgoByWorkspace(const std::vector<PerfT>& perf_results,
   size_t best_algo_idx = 0;
   bool has_best_algo = false;
   for (size_t i = 0; i < perf_results.size(); ++i) {
+                           SearchResult<AlgoT>* search_result,
+                           int available_algo_num) {
+  int best_algo_idx = -1;
+  for (size_t i = 0; i < available_algo_num; ++i) {
     const auto& result = perf_results[i];
     if (result.status == CUDNN_STATUS_SUCCESS &&
         result.memory <= workspace_limit) {
@@ -160,7 +164,7 @@ struct SearchAlgorithmBase<ConvKind::kForward> {
                                             workspace_size_limit);
       // cudnnGetConvolutionForwardAlgorithm is removed in CUDNN-8
       ChooseAlgoByWorkspace<PerfT, AlgoT>(
-          perf_results, workspace_size_limit, &result);
+          perf_results, workspace_size_limit, &result, actual_perf_count);
     }
 
     result.workspace_size = GetWorkspaceSize(args, result.algo);
@@ -207,7 +211,7 @@ struct SearchAlgorithmBase<ConvKind::kForward> {
         returned_algo_count,
         workspace_size_limit);
     ChooseAlgoByWorkspace<PerfT, AlgoT>(
-        perf_results, workspace_size_limit, &result);
+        perf_results, workspace_size_limit, &result, returned_algo_count);
 
     result.workspace_size = GetWorkspaceSize(args, result.algo);
     return result;
@@ -303,7 +307,7 @@ struct SearchAlgorithmBase<ConvKind::kBackwardData> {
     if (result.workspace_size > workspace_size_limit) {
       // cudnnGetConvolutionBackwardDataAlgorithm is removed in CUDNN-8
       ChooseAlgoByWorkspace<PerfT, AlgoT>(
-          perf_results, workspace_size_limit, &result);
+          perf_results, workspace_size_limit, &result, actual_perf_count);
     }
     result.workspace_size = GetWorkspaceSize(args, result.algo);
     return result;
@@ -349,7 +353,7 @@ struct SearchAlgorithmBase<ConvKind::kBackwardData> {
         returned_algo_count,
         workspace_size_limit);
     ChooseAlgoByWorkspace<PerfT, AlgoT>(
-        perf_results, workspace_size_limit, &result);
+        perf_results, workspace_size_limit, &result, returned_algo_count);
 
     result.workspace_size = GetWorkspaceSize(args, result.algo);
     return result;
@@ -445,7 +449,7 @@ struct SearchAlgorithmBase<ConvKind::kBackwardFilter> {
     if (result.workspace_size > workspace_size_limit) {
       // cudnnGetConvolutionBackwardFilterAlgorithm is removed in CUDNN-8
       ChooseAlgoByWorkspace<PerfT, AlgoT>(
-          perf_results, workspace_size_limit, &result);
+          perf_results, workspace_size_limit, &result, actual_perf_count);
     }
 
     result.workspace_size = GetWorkspaceSize(args, result.algo);
@@ -493,7 +497,7 @@ struct SearchAlgorithmBase<ConvKind::kBackwardFilter> {
           returned_algo_count,
           workspace_size_limit);
       ChooseAlgoByWorkspace<PerfT, AlgoT>(
-          perf_results, workspace_size_limit, &result);
+          perf_results, workspace_size_limit, &result, returned_algo_count);
     } else {
       int max_algos = GetAlgorithmMaxCount(args.handle);
       std::vector<PerfT> perf_results(max_algos);
@@ -515,7 +519,7 @@ struct SearchAlgorithmBase<ConvKind::kBackwardFilter> {
           perf_results.size(),
           workspace_size_limit);
       ChooseAlgoByWorkspace<PerfT, AlgoT>(
-          perf_results, workspace_size_limit, &result);
+          perf_results, workspace_size_limit, &result, returned_algo_count);
     }
 
     result.workspace_size = GetWorkspaceSize(args, result.algo);

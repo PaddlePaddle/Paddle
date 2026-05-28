@@ -63,10 +63,10 @@ __global__ void BinaryElementwiseKernel(
       using ArgsT = typename Traits::ArgsTuple;
       __simd__ ArgsT args[VecSize];
       __simd__ ConditionalT<OutT, NumOuts> result[VecSize];
-      std::get<0>(args[idx]) =
+      std::get<0>(args[0]) =
           *(reinterpret_cast<const _ptr_ std::tuple_element_t<0, ArgsT> *>(
               reinterpret_cast<const _ptr_ char *>(ins[0]) + offsets[1]));
-      std::get<1>(args[idx]) =
+      std::get<1>(args[0]) =
           *(reinterpret_cast<const _ptr_ std::tuple_element_t<1, ArgsT> *>(
               reinterpret_cast<const _ptr_ char *>(ins[1]) + offsets[2]));
       funcs::SameDimsElementwisePrimitiveCaller<ConditionalT<OutT, NumOuts>,
@@ -108,7 +108,7 @@ __global__ void UnaryElementwiseKernel(
       using ArgsT = typename Traits::ArgsTuple;
       __simd__ ArgsT args[VecSize];
       __simd__ ConditionalT<OutT, NumOuts> result[VecSize];
-      std::get<0>(args[idx]) =
+      std::get<0>(args[0]) =
           *(reinterpret_cast<const _ptr_ std::tuple_element_t<0, ArgsT> *>(
               reinterpret_cast<const _ptr_ char *>(ins[0]) + offsets[1]));
       funcs::SameDimsElementwisePrimitiveCaller<ConditionalT<OutT, NumOuts>,

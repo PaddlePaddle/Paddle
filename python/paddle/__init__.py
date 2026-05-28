@@ -1052,6 +1052,7 @@ swapaxes = transpose
 manual_seed = seed
 sub = subtract
 sub_ = subtract_
+movedim = moveaxis
 
 __all__ = [
     'block_diag',
@@ -1479,6 +1480,7 @@ __all__ = [
     'fmax',
     'fmin',
     'moveaxis',
+    'movedim',
     'repeat_interleave',
     'clone',
     'kthvalue',

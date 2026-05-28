@@ -18,8 +18,12 @@ env:
 jobs:
   cancel:
     name: Cancel CI-Build for ${{ github.event.pull_request.number }}
-    runs-on: ubuntu-latest
+    runs-on:
+      group: APPROVAL
     steps:
+      - name: Cleanup
+        run: |
+          rm -rf * .[^.]*
       - name: Cancel CI-build
         run: |
           exit 0

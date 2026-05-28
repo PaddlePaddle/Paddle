@@ -311,6 +311,58 @@ def git_commit() -> str:
     return str(git_commit)
 
 
+def _get_readme_github_ref() -> str:
+    commit = git_commit()
+
+    if commit != 'Unknown':
+        return commit
+    tag_version_regex = env_dict.get("TAG_VERSION_REGEX")
+    paddle_version = env_dict.get("PADDLE_VERSION")
+    if (
+        tag_version_regex
+        and paddle_version
+        and re.fullmatch(tag_version_regex, paddle_version)
+    ):
+        return f'v{paddle_version}'
+    return 'develop'
+
+
+def _convert_readme_relative_paths_for_pypi(readme: str) -> str:
+    ref = _get_readme_github_ref()
+    github_blob_url = f'https://github.com/PaddlePaddle/Paddle/blob/{ref}/'
+    github_raw_url = (
+        f'https://raw.githubusercontent.com/PaddlePaddle/Paddle/{ref}/'
+    )
+
+    # Convert markdown ](./...) links to GitHub blob URLs.
+    readme = re.sub(
+        r'\]\(\./([^)]+)\)',
+        lambda match: f']({github_blob_url}{match.group(1)})',
+        readme,
+    )
+    # Convert HTML src="./..." paths to GitHub raw URLs.
+    readme = re.sub(
+        r'(src=)(["\'])\./([^"\']+)\2',
+        lambda match: (
+            f'{match.group(1)}{match.group(2)}{github_raw_url}'
+            f'{match.group(3)}{match.group(2)}'
+        ),
+        readme,
+        flags=re.IGNORECASE,
+    )
+    # Convert HTML href="./..." links to GitHub blob URLs.
+    readme = re.sub(
+        r'(href=)(["\'])\./([^"\']+)\2',
+        lambda match: (
+            f'{match.group(1)}{match.group(2)}{github_blob_url}'
+            f'{match.group(3)}{match.group(2)}'
+        ),
+        readme,
+        flags=re.IGNORECASE,
+    )
+    return readme
+
+
 def _get_version_detail(idx):
     assert idx < 3, (
         "version info consists of %(major)d.%(minor)d.%(patch)d, \
@@ -1109,7 +1161,8 @@ def get_setup_requires():
 def get_paddle_extra_install_requirements():
     paddle_cuda_requires = []
     paddle_tensorrt_requires = []
-    # (Note risemeup1): Paddle will install the pypi cuda package provided by Nvidia, which includes the cuda runtime, cudnn, and cublas, thereby making the operation of 'pip install paddle' no longer dependent on the installation of cuda and cudnn.
+    cuda_major_version = None
+    # (Note risemeup1): Paddle will install the pypi cuda package provided by Nvidia, which includes the cuda runtime, cudnn, and cublas. Additionally, it now supports the installation of TensorRT, further enhancing its functionality. This integration simplifies the process as the operation of 'pip install paddle' is no longer dependent on the separate installation of cuda, cudnn, or TensorRT.
     if env_dict.get("WITH_PIP_CUDA_LIBRARIES") == "ON":
         if platform.system() == 'Linux':
             PADDLE_CUDA_INSTALL_REQUIREMENTS = {
@@ -1220,6 +1273,23 @@ def get_paddle_extra_install_requirements():
                     "nvidia-cufile==1.15.1.6; platform_system == 'Linux' | "
                     "cuda-python==13.0.3; platform_system == 'Linux'"
                 ),
+                "13.2": (
+                    "nvidia-cuda-nvrtc==13.2.78; platform_system == 'Linux' | "
+                    "nvidia-cuda-runtime==13.2.75; platform_system == 'Linux' | "
+                    "nvidia-cuda-cupti==13.2.75; platform_system == 'Linux' | "
+                    "nvidia-cudnn-cu13==9.21.0.82; platform_system == 'Linux' | "
+                    "nvidia-cublas==13.4.0.1; platform_system == 'Linux' | "
+                    "nvidia-cufft==12.2.0.46; platform_system == 'Linux' | "
+                    "nvidia-curand==10.4.2.55; platform_system == 'Linux' | "
+                    "nvidia-cusolver==12.2.0.1; platform_system == 'Linux' | "
+                    "nvidia-cusparse==12.7.10.1; platform_system == 'Linux' | "
+                    "nvidia-cusparselt-cu13==0.9.0; platform_system == 'Linux' | "
+                    "nvidia-nccl-cu13==2.29.7; platform_system == 'Linux' | "
+                    "nvidia-nvtx==13.2.75; platform_system == 'Linux' | "
+                    "nvidia-nvjitlink==13.2.78; platform_system == 'Linux' | "
+                    "nvidia-cufile==1.17.1.22; platform_system == 'Linux' | "
+                    "cuda-python==13.2.0; platform_system == 'Linux'"
+                ),
             }
             if env_dict.get("WITH_CINN") == "ON":
                 PADDLE_CUDA_INSTALL_REQUIREMENTS["12.3"] += (
@@ -1239,6 +1309,9 @@ def get_paddle_extra_install_requirements():
                 )
                 PADDLE_CUDA_INSTALL_REQUIREMENTS["13.0"] += (
                     " | nvidia-cuda-cccl==13.0.85;platform_system == 'Linux' "
+                )
+                PADDLE_CUDA_INSTALL_REQUIREMENTS["13.2"] += (
+                    " | nvidia-cuda-cccl==13.2.75;platform_system == 'Linux' "
                 )
 
         elif platform.system() == 'Windows':
@@ -1317,43 +1390,54 @@ def get_paddle_extra_install_requirements():
 
     if env_dict.get("WITH_PIP_TENSORRT") == "ON":
         version_str = get_tensorrt_version()
-        version_default = int(version_str.split(".")[0])
-        if platform.system() == 'Linux' or (
-            platform.system() == 'Windows' and version_default >= 10
+        version_default = (
+            int(version_str.split(".")[0]) if version_str else None
+        )
+        if platform.system() == 'Linux' and cuda_major_version == '13.2':
+            if not version_str and platform.machine() == 'aarch64':
+                return paddle_cuda_requires, ["tensorrt-cu13==10.16.1.11"]
+            PADDLE_TENSORRT_INSTALL_REQUIREMENTS = [
+                "tensorrt-cu13==10.16.1.11",
+            ]
+        elif platform.system() == 'Linux' or (
+            platform.system() == 'Windows'
+            and version_default is not None
+            and version_default >= 10
         ):
             PADDLE_TENSORRT_INSTALL_REQUIREMENTS = [
                 "tensorrt==8.5.3.1",
                 "tensorrt==8.6.0",
                 "tensorrt==8.6.1.post1",
+                "tensorrt==10.3.0",
             ]
+        else:
+            return paddle_cuda_requires, []
 
-            if not version_str:
-                return paddle_cuda_requires, []
+        if not version_str:
+            return paddle_cuda_requires, []
 
-            version_main = ".".join(version_str.split(".")[:3])
+        version_main = ".".join(version_str.split(".")[:3])
 
-            matched_package = None
-            for (
-                paddle_tensorrt_requires
-            ) in PADDLE_TENSORRT_INSTALL_REQUIREMENTS:
-                paddle_tensorrt_version = paddle_tensorrt_requires.split("==")[
-                    1
-                ]
-                paddle_tensorrt_main = ".".join(
-                    paddle_tensorrt_version.split(".")[:3]
-                )
+        matched_package = None
+        for paddle_tensorrt_requires in PADDLE_TENSORRT_INSTALL_REQUIREMENTS:
+            paddle_tensorrt_version = paddle_tensorrt_requires.split("==")[1]
+            paddle_tensorrt_main = ".".join(
+                paddle_tensorrt_version.split(".")[:3]
+            )
 
-                if version_main == paddle_tensorrt_main:
-                    matched_package = paddle_tensorrt_requires
-                    break
+            if version_main == paddle_tensorrt_main:
+                matched_package = paddle_tensorrt_requires
+                break
 
-            if matched_package:
-                paddle_tensorrt_requires = [matched_package]
-            else:
-                print(
-                    f"No exact match found for TensorRT Version: {version_str}. We currently support TensorRT versions 8.5.3.1, 8.6.0, and 8.6.1."
-                )
-                return paddle_cuda_requires, []
+        if matched_package:
+            paddle_tensorrt_requires = [matched_package]
+        else:
+            print(
+                "No exact match found for TensorRT Version: "
+                f"{version_str}. We currently support TensorRT versions "
+                "8.5.3.1, 8.6.0, 8.6.1.post1, 10.3.0, and 10.16.1.11."
+            )
+            return paddle_cuda_requires, []
 
     return paddle_cuda_requires, paddle_tensorrt_requires
 
@@ -1828,6 +1912,50 @@ def get_package_data_and_package_dir():
             shutil.copy(env_dict.get("XPU_XBLAS_CLANG_LIB"), libs_path)
             package_data['paddle.libs'] += [
                 env_dict.get("XPU_XBLAS_CLANG_LIB_NAME")
+            ]
+            shutil.copy(env_dict.get("XPU_XBLAS_CLANG"), libs_path)
+            xpu_xblas_clang_path = os.path.join(
+                libs_path, env_dict.get("XPU_XBLAS_CLANG_NAME")
+            )
+            os.chmod(
+                xpu_xblas_clang_path,
+                os.stat(xpu_xblas_clang_path).st_mode | 0o111,
+            )
+            package_data['paddle.libs'] += [
+                env_dict.get("XPU_XBLAS_CLANG_NAME")
+            ]
+            shutil.copy(env_dict.get("XPU_XBLAS_LLD"), libs_path)
+            xpu_xblas_lld_path = os.path.join(
+                libs_path, env_dict.get("XPU_XBLAS_LLD_NAME")
+            )
+            os.chmod(
+                xpu_xblas_lld_path,
+                os.stat(xpu_xblas_lld_path).st_mode | 0o111,
+            )
+            package_data['paddle.libs'] += [env_dict.get("XPU_XBLAS_LLD_NAME")]
+            shutil.copy(
+                env_dict.get("XPU_XBLAS_CLUSTER_BUILTINS_P800_ENC"), libs_path
+            )
+            package_data['paddle.libs'] += [
+                env_dict.get("XPU_XBLAS_CLUSTER_BUILTINS_P800_ENC_NAME")
+            ]
+            shutil.copy(
+                env_dict.get("XPU_XBLAS_SDNN_BUILTINS_P800_ENC"), libs_path
+            )
+            package_data['paddle.libs'] += [
+                env_dict.get("XPU_XBLAS_SDNN_BUILTINS_P800_ENC_NAME")
+            ]
+            shutil.copy(
+                env_dict.get("XPU_XBLAS_XBFLOAT16_BUILTINS_P800_ENC"), libs_path
+            )
+            package_data['paddle.libs'] += [
+                env_dict.get("XPU_XBLAS_XBFLOAT16_BUILTINS_P800_ENC_NAME")
+            ]
+            shutil.copy(
+                env_dict.get("XPU_XBLAS_XCCL_BUILTINS_P800_ENC"), libs_path
+            )
+            package_data['paddle.libs'] += [
+                env_dict.get("XPU_XBLAS_XCCL_BUILTINS_P800_ENC_NAME")
             ]
             shutil.copy(env_dict.get("XPU_XFA_LIB"), libs_path)
             package_data['paddle.libs'] += [env_dict.get("XPU_XFA_LIB_NAME")]
@@ -3053,10 +3181,8 @@ def main():
     ) = get_setup_parameters()
 
     # Log for PYPI, get long_description of setup()
-    with open(
-        paddle_source_dir + '/python/paddle/README.md', "r", encoding='UTF-8'
-    ) as f:
-        long_description = f.read()
+    with open(paddle_source_dir + '/README.md', "r", encoding='UTF-8') as f:
+        long_description = _convert_readme_relative_paths_for_pypi(f.read())
 
     # strip *.so to reduce package size
     if env_dict.get("WITH_STRIP") == 'ON':
@@ -3139,6 +3265,7 @@ def main():
             'Programming Language :: Python :: 3.11',
             'Programming Language :: Python :: 3.12',
             'Programming Language :: Python :: 3.13',
+            'Programming Language :: Python :: 3.14',
             'Typing :: Typed',
         ],
     )

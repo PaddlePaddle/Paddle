@@ -13,12 +13,15 @@
 // limitations under the License.
 #ifdef CINN_WITH_CUSTOM_DEVICE
 #include "paddle/cinn/backends/extern_func_jit_register.h"
+#include "paddle/cinn/common/bfloat16.h"
 #include "paddle/cinn/common/float16.h"
 #include "paddle/cinn/runtime/custom_device/custom_device_backend_api.h"
 #include "paddle/phi/backends/device_manager.h"
 
 #define CINN_CUSTOM_DEVICE_FP16
+#define CINN_CUSTOM_DEVICE_BF16
 
+using cinn::common::bfloat16;
 using cinn::common::float16;
 using cinn::runtime::custom_device::CustomBackendAPI;
 
