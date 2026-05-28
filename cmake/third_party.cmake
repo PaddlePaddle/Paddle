@@ -581,6 +581,10 @@ if(NOT WITH_GPU
    OR (ARCH_BIN_CONTAINS_90 EQUAL -1))
   set(WITH_NVSHMEM OFF)
 endif()
+# DeepEP GPU retired, force disable NVSHMEM for non-XPU builds
+if(NOT WITH_XPU)
+  set(WITH_NVSHMEM OFF)
+endif()
 if(WITH_SLEEF
    AND NOT WITH_ROCM
    AND NOT WIN32)
