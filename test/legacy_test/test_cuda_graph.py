@@ -589,6 +589,32 @@ class TestPaddleCudaCUDAGraphCompat(unittest.TestCase):
         finally:
             graphs_module.CoreCUDAGraph.begin_capture_with_pool_id = original
 
+    def test_capture_begin_uses_constructor_mode_when_unset(self):
+        # When ``capture_error_mode`` is omitted, ``capture_begin`` must
+        # fall back to the constructor's ``mode`` rather than silently
+        # forcing 'global'. Existing Paddle callers like
+        # ``CUDAGraph(mode='relaxed').capture_begin()`` rely on this.
+        from paddle.device.cuda import graphs as graphs_module
+
+        captured = {}
+        original = graphs_module.CoreCUDAGraph.begin_capture_with_pool_id
+
+        def fake_begin(place, mode, pool_id, enable_replace):
+            captured["mode"] = mode
+
+        graphs_module.CoreCUDAGraph.begin_capture_with_pool_id = fake_begin
+        try:
+            for name, expected in [
+                ("global", 0),
+                ("thread_local", 1),
+                ("relaxed", 2),
+            ]:
+                g = paddle.cuda.CUDAGraph(mode=name)
+                g.capture_begin()
+                self.assertEqual(captured["mode"], expected)
+        finally:
+            graphs_module.CoreCUDAGraph.begin_capture_with_pool_id = original
+
     def test_capture_begin_materializes_pool_id(self):
         # ``g.pool()`` must return the same id that ``capture_begin`` passed
         # to the C++ side, so that ``g2.capture_begin(pool=g.pool())`` shares

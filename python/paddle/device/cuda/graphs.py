@@ -69,6 +69,13 @@ def current_expected_place():
 ALL_MODES = ["global", "thread_local", "relaxed"]
 cuda_graph_id = 0
 
+# Sentinel used by ``CUDAGraph.capture_begin`` to distinguish "no
+# ``capture_error_mode`` argument was passed" (fall back to the constructor's
+# ``mode``) from "the caller explicitly chose 'global'" (which would otherwise
+# override the constructor and silently regress callers that constructed the
+# graph with a different mode).
+_CAPTURE_ERROR_MODE_DEFAULT = object()
+
 
 class CUDAGraph:
     """
@@ -125,7 +132,9 @@ class CUDAGraph:
         self._keep_graph = keep_graph
         self._debug_mode = False
 
-    def capture_begin(self, pool=None, capture_error_mode='global'):
+    def capture_begin(
+        self, pool=None, capture_error_mode=_CAPTURE_ERROR_MODE_DEFAULT
+    ):
         """Begin capturing CUDA work on the current stream.
 
         Args:
@@ -135,9 +144,9 @@ class CUDAGraph:
                 memory pool. Overrides ``pool_id`` from the constructor.
             capture_error_mode (str, optional): One of ``'global'``,
                 ``'thread_local'``, ``'relaxed'`` (see :data:`ALL_MODES`).
-                Defaults to ``'global'`` to match
-                ``torch.cuda.CUDAGraph.capture_begin``. Invalid values raise
-                :class:`ValueError`.
+                When omitted, the constructor's ``mode`` is used; when
+                supplied, it overrides the constructor for this capture.
+                Invalid values raise :class:`ValueError`.
         """
         # Materialize the pool id eagerly so that ``self.pool()`` returns the
         # exact id passed to the C++ side. Without this, ``pool is None`` and
@@ -150,12 +159,15 @@ class CUDAGraph:
         elif self._pool_id is None:
             self._pool_id = CoreCUDAGraph.gen_new_memory_pool_id()
 
-        if capture_error_mode not in ALL_MODES:
-            raise ValueError(
-                f"capture_error_mode must be one of {ALL_MODES}, "
-                f"but got {capture_error_mode!r}."
-            )
-        mode = ALL_MODES.index(capture_error_mode)
+        if capture_error_mode is _CAPTURE_ERROR_MODE_DEFAULT:
+            mode = self._mode
+        else:
+            if capture_error_mode not in ALL_MODES:
+                raise ValueError(
+                    f"capture_error_mode must be one of {ALL_MODES}, "
+                    f"but got {capture_error_mode!r}."
+                )
+            mode = ALL_MODES.index(capture_error_mode)
 
         CoreCUDAGraph.begin_capture_with_pool_id(
             self._place, mode, self._pool_id, self._enable_replace
