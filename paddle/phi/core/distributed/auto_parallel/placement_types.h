@@ -138,11 +138,15 @@ class Shard : public Placement {
 class CoShard : public Shard {
  public:
   CoShard(int64_t dim, int64_t co_shard_order)
-      : Shard(static_cast<int>(dim), 1), co_shard_order_(co_shard_order) {
-    PADDLE_ENFORCE_LE_INT_MAX(dim, "dim");
-  }
+      : Shard(CheckAndCastDim(dim), 1), co_shard_order_(co_shard_order) {}
 
   int get_co_shard_order() const override {
+    PADDLE_ENFORCE_GE(
+        co_shard_order_,
+        0,
+        common::errors::InvalidArgument(
+            "The co_shard_order should be non-negative, but received %ld.",
+            co_shard_order_));
     PADDLE_ENFORCE_LE_INT_MAX(co_shard_order_, "co_shard_order_");
     return static_cast<int>(co_shard_order_);
   }
@@ -200,6 +204,17 @@ class CoShard : public Shard {
   }
 
  private:
+  static int CheckAndCastDim(int64_t dim) {
+    PADDLE_ENFORCE_GE(
+        dim,
+        0,
+        common::errors::InvalidArgument(
+            "The dim of CoShard should be non-negative, but received %ld.",
+            dim));
+    PADDLE_ENFORCE_LE_INT_MAX(dim, "dim");
+    return static_cast<int>(dim);
+  }
+
   int64_t co_shard_order_ = 0;
 };
 

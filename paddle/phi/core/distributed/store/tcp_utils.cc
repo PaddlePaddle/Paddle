@@ -178,6 +178,12 @@ SocketType tcp_listen(const std::string host,
                     common::errors::InvalidArgument(
                         "Bind network on %s:%s failed.", node, port));
 
+  PADDLE_ENFORCE_GE(FLAGS_tcp_max_syn_backlog,
+                    0,
+                    common::errors::InvalidArgument(
+                        "FLAGS_tcp_max_syn_backlog should be non-negative, "
+                        "but received %ld.",
+                        FLAGS_tcp_max_syn_backlog));
   PADDLE_ENFORCE_LE_INT_MAX(FLAGS_tcp_max_syn_backlog,
                             "FLAGS_tcp_max_syn_backlog");
   const int backlog = static_cast<int>(FLAGS_tcp_max_syn_backlog);

@@ -440,7 +440,6 @@ struct FusedLayernormResidualDropoutBiasFunctor {
       LayerNormParamType<T> *var,
       GPU(Stream_t) stream) {
     int blockDim = funcs::GetDesiredBlockDim(cols / VecSize);
-    PADDLE_ENFORCE_LE_INT_MAX(rows, "rows");
     if (mean != nullptr && var != nullptr) {
       LaunchFusedLayernormResidualDropoutBiasCUDAKernel<T,
                                                         MaskType,
@@ -469,6 +468,7 @@ struct FusedLayernormResidualDropoutBiasFunctor {
           mean,
           var);
     } else {
+      PADDLE_ENFORCE_LE_INT_MAX(rows, "rows");
       FusedLayernormResidualDropoutBiasInfer<T,
                                              MaskType,
                                              VecSize,

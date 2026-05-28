@@ -57,7 +57,7 @@ void RadixSortPairsImpl(const GPUContext& dev_ctx,
       common::errors::InvalidArgument(
           "CUB sort does not support sorting more than INT_MAX elements"));
 
-  const int n_int = n_int;
+  const int n_int = static_cast<int>(n);
   using key_t_ = typename CudaType<key_t>::type;
 
   phi::Allocator::AllocationPtr keys_out_owner;
