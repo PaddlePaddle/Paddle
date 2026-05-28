@@ -656,18 +656,56 @@ class ClipGradByGlobalNormAccuracyCompatible(ClipGradBase):
         self.clip_norm = float(clip_norm)
         self.auto_skip_clip = auto_skip_clip
 
+    def _infer_output_dtype(self, dtypes):
+        """Infer output dtype based on input dtypes combination.
+
+        Rules:
+            All fp32       -> fp32
+            All bf16       -> bf16
+            fp32 + bf16    -> fp32
+            fp32 + fp16    -> fp32
+            fp16 + bf16    -> fp32
+            fp64 + any     -> fp64
+        """
+        dtype_set = set(dtypes)
+        if paddle.float64 in dtype_set:
+            return paddle.float64
+        if len(dtype_set) == 1:
+            return dtype_set.pop()
+        # mixed fp16/bf16/fp32 -> fp32
+        return paddle.float32
+
     def _get_global_norm(self, params_grads):
-        local_norm_list = []
+        # Group local norms by dtype
+        norm_by_dtype = {}
         for p, g in params_grads:
             if g is None or getattr(p, 'need_clip', True) is False:
                 continue
-            local_norm_list.append(paddle.linalg.vector_norm(g, 2.0))
+            norm = paddle.linalg.vector_norm(g, 2.0)
+            dt = g.dtype
+            if dt not in norm_by_dtype:
+                norm_by_dtype[dt] = []
+            norm_by_dtype[dt].append(norm)
 
-        if not local_norm_list:
+        if not norm_by_dtype:
             return None
-        global_norm_var = paddle.linalg.vector_norm(
-            paddle.stack(local_norm_list)
-        )
+
+        output_dtype = self._infer_output_dtype(norm_by_dtype.keys())
+
+        # Stack per-dtype groups and cast to output dtype
+        all_norms = []
+        for dt, norms in norm_by_dtype.items():
+            stacked = paddle.stack(norms)
+            if dt != output_dtype:
+                stacked = stacked.cast(output_dtype)
+            all_norms.append(stacked)
+
+        if len(all_norms) == 1:
+            combined = all_norms[0]
+        else:
+            combined = paddle.concat(all_norms)
+
+        global_norm_var = paddle.linalg.vector_norm(combined)
         return global_norm_var
 
     def _dygraph_clip(self, params_grads):
