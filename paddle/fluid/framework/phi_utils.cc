@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/phi_utils.h"
 
 #include <sstream>
+#include <unordered_set>
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -136,11 +137,33 @@ phi::KernelKey FallBackToCpu(const phi::KernelKey& kernel_key,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (kernel_key.backend() == phi::Backend::GPU ||
       kernel_key.backend() == phi::Backend::GPUDNN) {
-    VLOG(3) << "phi missing GPU kernel: " << op.Type()
-            << ", expected_kernel_key:" << kernel_key
-            << ", fallback to CPU one!";
-    return phi::KernelKey(
-        phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
+    static const std::unordered_set<std::string> gpu_black_list = {
+#ifdef PADDLE_WITH_HIP
+        "affine_grid_grad",
+        "apply_per_channel_scale",
+        "calc_reduced_attn",
+        "cuda_gemm",
+        "eigvalsh",
+        "lu",
+        "matrix_rank",
+        "matrix_rank_tol",
+        "svd",
+#endif
+    };
+    if (gpu_black_list.find(op.Type()) != gpu_black_list.end() ||
+        (op.Type() == "batch_norm" &&
+         kernel_key.dtype() == phi::DataType::BFLOAT16)) {
+      VLOG(3) << "phi missing GPU kernel: " << op.Type()
+              << ", expected_kernel_key:" << kernel_key
+              << ", fallback to CPU one!";
+      return phi::KernelKey(
+          phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
+    }
+    PADDLE_THROW(
+        common::errors::NotFound("The kernel (%s) with key %s is not found and "
+                                 "GPU kernel cannot fallback to CPU one.",
+                                 op.Type(),
+                                 kernel_key));
   }
 #endif
 
