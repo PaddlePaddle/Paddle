@@ -89,7 +89,7 @@ __global__ void GPUPSROIPoolForward(const int nthreads,
     bool is_empty = (hend <= hstart) || (wend <= wstart);
 
     int64_t input_channel =
-        (int64_t)(c * pooled_height + ph) * pooled_width + pw;
+        ((int64_t)c * pooled_height + ph) * pooled_width + pw;
     const T* offset_input_data =
         input_data +
         (roi_batch_id * input_channels + input_channel) * height * width;

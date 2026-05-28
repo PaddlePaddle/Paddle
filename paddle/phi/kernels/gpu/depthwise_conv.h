@@ -1999,9 +1999,9 @@ class DepthwiseConvFilterGradFunctor<GPUContext, T, fuse_relu_before_conv> {
         blocks =                                                               \
             std::min(std::max(block_size / output_channels, 1), output_width); \
                                                                                \
-        grid = dim3(static_cast<int>(ksize_width * ksize_height),              \
-                    output_height,                                             \
-                    batch_size);                                               \
+        const int64_t ksize_area = (int64_t)ksize_width * ksize_height;        \
+        PADDLE_ENFORCE_LE_INT_MAX(ksize_area, "depthwise conv filter size");   \
+        grid = dim3(static_cast<int>(ksize_area), output_height, batch_size);  \
         threads = dim3(std::min(output_channels, block_size), blocks, 1);      \
       }                                                                        \
       KernelDepthwiseConvFilterGradSp<T,                                       \

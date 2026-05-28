@@ -94,11 +94,6 @@ void RankAttentionGradOpCUDAKernel(const Context &dev_ctx,
                    strideB);
   // merge param_grad to get drank_para
   int64_t expanded_grad_rows = ins_num * block_matrix_row;
-  PADDLE_ENFORCE_LE_INT_MAX(expanded_grad_rows, "expanded_grad_rows");
-  PADDLE_ENFORCE_LE_INT_MAX(para_row, "para_row");
-  PADDLE_ENFORCE_LE_INT_MAX(para_col, "para_col");
-  PADDLE_ENFORCE_LE_INT_MAX(ins_num, "ins_num");
-  PADDLE_ENFORCE_LE_INT_MAX(x_fea_dim, "x_fea_dim");
 
   merge_rank_attention_param_grad(dev_ctx.stream(),
                                   param_grad_data,

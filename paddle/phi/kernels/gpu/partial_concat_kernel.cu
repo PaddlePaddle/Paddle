@@ -78,7 +78,7 @@ void PartialConcatOpCUDAKernel(const Context &dev_ctx,
 
   int in_num = in_vars.size();
   int64_t batch_size = input_dim[0];
-  int64_t out_batch_len = partial_len * in_num;
+  int64_t out_batch_len = (int64_t)partial_len * in_num;
   int64_t all_length = batch_size * out_batch_len;
 
   constexpr size_t theory_sm_threads = 1024;

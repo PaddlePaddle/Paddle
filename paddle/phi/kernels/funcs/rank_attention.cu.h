@@ -122,9 +122,9 @@ __global__ void expand_rank_attention_param_kernel(const T* input,
     if (lower < 0 || faster < 0) {
       continue;
     }
-    int start = lower * max_rank + faster;
-    int64_t ori_idx = (int64_t)start * param_col * input_col +
-                      k_offset * param_col + output_col_idx;
+    int64_t start = (int64_t)lower * max_rank + faster;
+    int64_t ori_idx =
+        start * param_col * input_col + k_offset * param_col + output_col_idx;
     output_param[idx] = param[ori_idx];
   }
 }
