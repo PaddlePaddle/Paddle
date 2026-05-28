@@ -2226,6 +2226,16 @@ class TestEagerTensorNelement(unittest.TestCase):
         self.assertEqual(x_actual_nelement, x_expected_nelement)
 
 
+class TestEagerTensorNbytes(unittest.TestCase):
+    def test_nbytes(self):
+        paddle.disable_static()
+        np_x = np.random.random((3, 8, 4))
+        x = paddle.to_tensor(np_x, dtype="float64")
+        x_actual_nbytes = x.nbytes
+        x_expected_nbytes = np.prod((3, 8, 4, 8))
+        self.assertEqual(x_actual_nbytes, x_expected_nbytes)
+
+
 class TestEagerTensorStride(unittest.TestCase):
     def test_stride_no_dim(self):
         paddle.disable_static()

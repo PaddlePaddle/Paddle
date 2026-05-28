@@ -1514,6 +1514,13 @@ def monkey_patch_value():
         """
         return self.element_size()
 
+    @property
+    def nbytes(self: Tensor) -> int:
+        """
+        Returns the number of bytes consumed by the “view” of elements of the Tensor if the Tensor does not use sparse storage layout. Defined to be ``size`` * ``element_size()``
+        """
+        return self.size * self.element_size()
+
     import paddle
 
     def get_device(self) -> None:
@@ -1696,6 +1703,7 @@ def monkey_patch_value():
         ('__bool__', _bool_),
         ('__complex__', _complex_),
         ('itemsize', itemsize),
+        ('nbytes', nbytes),
     ]
     dtype_conversion_methods = _create_dtype_conversion_methods()
     value_methods.extend(dtype_conversion_methods)

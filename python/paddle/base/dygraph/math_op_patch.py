@@ -605,6 +605,13 @@ def monkey_patch_math_tensor():
         """
         return self.element_size()
 
+    @property
+    def nbytes(self: Tensor) -> int:
+        """
+        Returns the number of bytes consumed by the “view” of elements of the Tensor if the Tensor does not use sparse storage layout. Defined to be ``size`` * ``element_size()``
+        """
+        return self.size * self.element_size()
+
     def _reduce_ex_(self: Tensor, proto):
         data_numpy = self.numpy()
         place = str(self.place)[6:-1]  # Place(gpu:1) -> gpu:1
@@ -645,6 +652,7 @@ def monkey_patch_math_tensor():
         # for logical compare
         ('__array_ufunc__', None),
         ('itemsize', itemsize),
+        ('nbytes', nbytes),
         ('__reduce_ex__', _reduce_ex_),
     ]
 
