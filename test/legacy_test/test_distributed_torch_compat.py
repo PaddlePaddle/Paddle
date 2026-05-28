@@ -215,9 +215,7 @@ class TestDistributedTorchCompat(unittest.TestCase):
         dist.init_process_group(backend='gloo', world_size=4)
         self.assertEqual(os.environ.get('PADDLE_TRAINERS_NUM'), '4')
 
-    @mock.patch('paddle.distributed.parallel.init_parallel_env')
-    @mock.patch.dict(os.environ, {}, clear=False)
-    def test_init_process_group_writes_rank_when_env_unset(self, _):
+    def test_init_process_group_writes_rank_when_env_unset(self):
         os.environ.pop('PADDLE_TRAINER_ID', None)
         dist.init_process_group(backend='gloo', rank=2)
         self.assertEqual(os.environ.get('PADDLE_TRAINER_ID'), '2')
