@@ -89,19 +89,18 @@ function make_ubuntu20_cu12_dockerfile(){
     cd git-2.17.1 \&\& \
     ./configure --with-openssl --with-curl --prefix=/usr/local \&\& \
     make -j8 \&\& make install " ${dockerfile_name}
-  sed -i "${dockerfile_line}i RUN pip install wheel \&\& pip3.10 install PyGithub wheel distro jinja2" ${dockerfile_name}
-  sed -i "${dockerfile_line}i RUN cd /usr/local/TensorRT-8.6.1.6/python \&\& pip3.10 install tensorrt-8.6.1-cp310-none-linux_x86_64.whl" ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN pip install wheel \&\& pip3.12 install PyGithub wheel distro jinja2" ${dockerfile_name}
   sed -i 's# && rm /etc/apt/sources.list.d/nvidia-ml.list##g' ${dockerfile_name}
-  sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh trt8616#g' ${dockerfile_name}
+  sed -i 's#RUN bash /build_scripts/install_trt.sh##g' ${dockerfile_name}
   sed -i 's#<install_cudnn>#RUN bash /build_scripts/install_cudnn.sh cudnn896 #g' ${dockerfile_name}
   sed -i "${dockerfile_line}i WORKDIR /home \n \
     RUN git clone --depth=1 https://github.com/PaddlePaddle/PaddleNLP.git -b stable/paddle-ci \&\& cd PaddleNLP \&\& \
     sed -i '/lac/d' scripts/regression/requirements_ci.txt \&\& \
-    pip3.10 install -r requirements.txt \&\& \
-    pip3.10 install -r scripts/regression/requirements_ci.txt \&\& \
-    pip3.10 install --no-build-isolation lac \&\& \
-    pip3.10 install -r csrc/requirements.txt \&\& \
-    pip3.10 install pytest-timeout \&\& \
+    pip3.12 install -r requirements.txt \&\& \
+    pip3.12 install -r scripts/regression/requirements_ci.txt \&\& \
+    pip3.12 install --no-build-isolation lac \&\& \
+    pip3.12 install -r csrc/requirements.txt \&\& \
+    pip3.12 install pytest-timeout \&\& \
     cd /home \&\& rm -rf PaddleNLP" ${dockerfile_name}
 }
 
