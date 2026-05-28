@@ -1061,7 +1061,7 @@ class TestIsposinfAPICompatibility(unittest.TestCase):
         # 4-5. out parameter test
         out4 = paddle.zeros_like(out1)
         out5 = paddle.isposinf(x, out=out4)
-        assert out4 is out5
+        self.assertIs(out4, out5)
         # 6. Tensor method
         out6 = x.isposinf()
 

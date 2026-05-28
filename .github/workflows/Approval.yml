@@ -25,9 +25,13 @@ jobs:
     name: Check approval
     needs: [check-bypass]
     if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
-    runs-on: ubuntu-latest
+    runs-on:
+      group: APPROVAL
     timeout-minutes: 10
     steps:
+      - name: Cleanup
+        run: |
+          rm -rf * .[^.]*
       - name: Checkout Repository
         uses: actions/checkout@v6
         with:
