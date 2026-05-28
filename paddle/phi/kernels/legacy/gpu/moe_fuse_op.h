@@ -129,8 +129,8 @@ void modify_expert_id_launcher(const T* expert_id,
                                const cudaStream_t& stream) {
   const int max = 1024;
   const int64_t total_rows = static_cast<int64_t>(num_rows) * k;
-  PADDLE_ENFORCE_LE_INT_MAX(total_rows, "CUDA launch total_rows num_rows * k");
-  const int threads = std::min(max, static_cast<int>(total_rows));
+  const int threads =
+      static_cast<int>(std::min(static_cast<int64_t>(max), total_rows));
   const int64_t blocks64 =
       (total_rows + static_cast<int64_t>(threads) - 1) / threads;
   PADDLE_ENFORCE_LE_INT_MAX(blocks64, "CUDA launch grid num_rows * k");
@@ -163,8 +163,8 @@ void unmodify_expert_id_launcher(const T* expert_id,
                                  const cudaStream_t& stream) {
   const int max = 1024;
   const int64_t total_rows = static_cast<int64_t>(num_rows) * k;
-  PADDLE_ENFORCE_LE_INT_MAX(total_rows, "CUDA launch total_rows num_rows * k");
-  const int threads = std::min(max, static_cast<int>(total_rows));
+  const int threads =
+      static_cast<int>(std::min(static_cast<int64_t>(max), total_rows));
   const int64_t blocks64 =
       (total_rows + static_cast<int64_t>(threads) - 1) / threads;
   PADDLE_ENFORCE_LE_INT_MAX(blocks64, "CUDA launch grid num_rows * k");
@@ -220,7 +220,6 @@ void compute_total_rows_before_expert(const T* sorted_indices,
                                       const int64_t num_experts,
                                       int64_t* total_rows_before_expert,
                                       const cudaStream_t& stream) {
-  PADDLE_ENFORCE_LE_INT_MAX(num_experts, "CUDA launch total experts");
   const int threads =
       static_cast<int>(std::min(static_cast<int64_t>(1024), num_experts));
   const int64_t blocks64 =
@@ -512,7 +511,6 @@ void compute_global_expert_offset(
   const auto& exec_policy = thrust::cuda::par(allocator).on(stream);
   thrust::copy(exec_policy, ptr, ptr + len, outptr);
   thrust::sort(exec_policy, outptr, outptr + len);
-  PADDLE_ENFORCE_LE_INT_MAX(num_experts, "CUDA launch total experts");
   const int threads =
       static_cast<int>(std::min(static_cast<int64_t>(1024), num_experts));
   const int64_t blocks64 =
@@ -572,8 +570,8 @@ void modify_and_mask_expert_id_launcher(const T* expert_id,
                                         const cudaStream_t& stream) {
   const int max = 1024;
   const int64_t total_rows = static_cast<int64_t>(num_rows) * k;
-  PADDLE_ENFORCE_LE_INT_MAX(total_rows, "CUDA launch total_rows num_rows * k");
-  const int threads = std::min(max, static_cast<int>(total_rows));
+  const int threads =
+      static_cast<int>(std::min(static_cast<int64_t>(max), total_rows));
   const int64_t blocks64 =
       (total_rows + static_cast<int64_t>(threads) - 1) / threads;
   PADDLE_ENFORCE_LE_INT_MAX(blocks64, "CUDA launch grid num_rows * k");
@@ -605,7 +603,6 @@ void compute_local_expert_offset(
   thrust::fill(
       exec_policy, offset_ptr, offset_ptr + num_experts, static_cast<T>(0));
 
-  PADDLE_ENFORCE_LE_INT_MAX(num_experts, "CUDA launch total experts");
   const int threads =
       static_cast<int>(std::min(static_cast<int64_t>(1024), num_experts));
   const int64_t blocks64 =
@@ -669,7 +666,6 @@ void cal_expert_size_and_filter_launcher(T* expert_id,
                                          bool reverse,
                                          const cudaStream_t& stream) {
   if (len <= 0) return;
-  PADDLE_ENFORCE_LE_INT_MAX(len, "CUDA launch total rows len");
   const int threads =
       static_cast<int>(std::min(static_cast<int64_t>(1024), len));
   const int64_t blocks64 = (len + static_cast<int64_t>(threads) - 1) / threads;
@@ -767,8 +763,8 @@ void build_seqsort_kv_pairs_kernel_launcher(
     cudaStream_t stream) {
   const int max = 1024;
   const int64_t total_rows = static_cast<int64_t>(num_rows) * k;
-  PADDLE_ENFORCE_LE_INT_MAX(total_rows, "CUDA launch total_rows num_rows * k");
-  const int threads = std::min(max, static_cast<int>(total_rows));
+  const int threads =
+      static_cast<int>(std::min(static_cast<int64_t>(max), total_rows));
   const int64_t blocks64 =
       (total_rows + static_cast<int64_t>(threads) - 1) / threads;
   PADDLE_ENFORCE_LE_INT_MAX(blocks64, "CUDA launch grid num_rows * k");
@@ -851,7 +847,6 @@ void copy_unpermuted_to_permuted_kernelLauncher(
     const int64_t num_cols,
     cudaStream_t stream) {
   PADDLE_ENFORCE_LE_INT_MAX(padded_len, "CUDA launch grid padded_len");
-  PADDLE_ENFORCE_LE_INT_MAX(num_cols, "CUDA launch thread count num_cols");
   const int blocks = static_cast<int>(padded_len);
   const int threads =
       static_cast<int>(std::min(num_cols, static_cast<int64_t>(1024)));
