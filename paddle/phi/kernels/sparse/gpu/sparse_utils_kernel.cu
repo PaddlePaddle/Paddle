@@ -359,9 +359,13 @@ void CsrToCooGPUKernel(const GPUContext& dev_ctx,
 
 #ifdef PADDLE_WITH_HIP
   DenseTensor indices = Empty<int>(dev_ctx, {sparse_dim, non_zero_num});
+  DenseTensor offsets = Empty<int>(dev_ctx, {batches});
   int* coo_indices = indices.data<int>();
-  int* coo_rows_data = coo_indices;
+  int* batch_ptr = x_dims.size() == 2 ? nullptr : coo_indices;
+  int* coo_rows_data =
+      x_dims.size() == 2 ? coo_indices : batch_ptr + non_zero_num;
   int* coo_cols_data = coo_rows_data + non_zero_num;
+  int* offsets_ptr = batches == 1 ? nullptr : offsets.data<int>();
 #else
   DenseTensor indices = Empty<IntT>(dev_ctx, {sparse_dim, non_zero_num});
   DenseTensor offsets = Empty<IntT>(dev_ctx, {batches});
@@ -376,15 +380,17 @@ void CsrToCooGPUKernel(const GPUContext& dev_ctx,
   T* coo_values_data = values.data<T>();
 
   if (batches > 1) {
-#ifdef PADDLE_WITH_HIP
-    PADDLE_THROW(common::errors::Unimplemented(
-        "'rocsparse_csr2coo' only supports batches "
-        "with a value of 1 currently."));
-#else
     auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, batches, 1);
+#ifdef PADDLE_WITH_HIP
+    GetBatchSizes<int><<<config.block_per_grid.x, config.thread_per_block.x>>>(
+        csr_crows_data, rows, batches, offsets_ptr);
+    thrust::exclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
+                           offsets_ptr,
+                           offsets_ptr + batches,
+                           offsets_ptr);
+#else
     GetBatchSizes<IntT><<<config.block_per_grid.x, config.thread_per_block.x>>>(
         csr_crows_data, rows, batches, offsets_ptr);
-
     thrust::exclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
                            offsets_ptr,
                            offsets_ptr + batches,
@@ -393,14 +399,22 @@ void CsrToCooGPUKernel(const GPUContext& dev_ctx,
   }
 
 #ifdef PADDLE_WITH_HIP
-  dev_ctx.CusparseCall([&](rocsparse_handle handle) {
-    phi::dynload::rocsparse_csr2coo(handle,
-                                    csr_crows_data,
-                                    non_zero_num,
-                                    rows,
-                                    coo_rows_data,
-                                    rocsparse_index_base_zero);
-  });
+  if (batches > 1) {
+    auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rows, 1);
+    config.block_per_grid.y = batches;
+    ConvertCsrCrowsToCooRows<int>
+        <<<config.block_per_grid, config.thread_per_block.x>>>(
+            csr_crows_data, offsets_ptr, coo_rows_data, batch_ptr, rows);
+  } else {
+    dev_ctx.CusparseCall([&](rocsparse_handle handle) {
+      phi::dynload::rocsparse_csr2coo(handle,
+                                      csr_crows_data,
+                                      non_zero_num,
+                                      rows,
+                                      coo_rows_data,
+                                      rocsparse_index_base_zero);
+    });
+  }
 #else
   auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rows, 1);
   config.block_per_grid.y = batches;
