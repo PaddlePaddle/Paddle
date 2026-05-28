@@ -366,6 +366,7 @@ from .nn.functional.distance import (
     pdist,
 )
 from .nn.initializer.lazy_init import LazyGuard
+from .random import initial_seed
 from .tensor.attribute import (
     imag,
     is_complex,
@@ -1577,6 +1578,7 @@ __all__ = [
     'enable_compat',
     'disable_compat',
     'use_compat_guard',
+    'initial_seed',
 ]
 import os
 

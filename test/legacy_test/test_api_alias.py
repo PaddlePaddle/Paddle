@@ -265,6 +265,12 @@ class TestAlias(unittest.TestCase):
                 None,
                 None,
             ),
+            (
+                paddle.random.initial_seed,
+                paddle.initial_seed,
+                None,
+                None,
+            ),
         ]
 
     def test_compatibility(self):
