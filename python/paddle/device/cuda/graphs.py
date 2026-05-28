@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 import os
-import warnings
 from typing import NoReturn
 
 from paddle.base.core import (
@@ -93,6 +92,18 @@ class CUDAGraph:
             "CUDA Graph is only supported on PaddlePaddle compiled with NVIDIA GPU."
         )
 
+        # ``torch.cuda.CUDAGraph(True)`` passes the bool positionally. Treat
+        # a bool ``place`` as the torch-style positional ``keep_graph`` so
+        # users porting the PyTorch idiom don't hit an obscure pybind error
+        # at capture time.
+        if isinstance(place, bool):
+            if keep_graph is not False:
+                raise TypeError(
+                    "keep_graph is specified both positionally and by keyword"
+                )
+            keep_graph = place
+            place = None
+
         self._graph = None
         if place is None and check_compiled_with_custom_device():
             place = current_expected_place()
@@ -122,20 +133,32 @@ class CUDAGraph:
                 :func:`paddle.cuda.graph_pool_handle` or another graph's
                 :meth:`pool`. When provided, this graph shares the indicated
                 memory pool. Overrides ``pool_id`` from the constructor.
-            capture_error_mode (str, optional): PyTorch-compatible knob; only
-                ``'global'`` is currently honored. Other values are accepted
-                with a warning.
+            capture_error_mode (str, optional): One of ``'global'``,
+                ``'thread_local'``, ``'relaxed'`` (see :data:`ALL_MODES`).
+                Defaults to ``'global'`` to match
+                ``torch.cuda.CUDAGraph.capture_begin``. Invalid values raise
+                :class:`ValueError`.
         """
+        # Materialize the pool id eagerly so that ``self.pool()`` returns the
+        # exact id passed to the C++ side. Without this, ``pool is None`` and
+        # ``self._pool_id is None`` would leave ``self._pool_id`` unset, the
+        # C++ side would mint its own internal id, and a later ``self.pool()``
+        # would generate a *different* id — breaking
+        # ``g2.capture_begin(pool=g.pool())``.
         if pool is not None:
             self._pool_id = pool
-        if capture_error_mode != 'global':
-            warnings.warn(
-                f"capture_error_mode='{capture_error_mode}' is not yet "
-                "supported in Paddle CUDAGraph; only 'global' is honored.",
-                stacklevel=2,
+        elif self._pool_id is None:
+            self._pool_id = CoreCUDAGraph.gen_new_memory_pool_id()
+
+        if capture_error_mode not in ALL_MODES:
+            raise ValueError(
+                f"capture_error_mode must be one of {ALL_MODES}, "
+                f"but got {capture_error_mode!r}."
             )
+        mode = ALL_MODES.index(capture_error_mode)
+
         CoreCUDAGraph.begin_capture_with_pool_id(
-            self._place, self._mode, self._pool_id, self._enable_replace
+            self._place, mode, self._pool_id, self._enable_replace
         )
 
     def capture_end(self):

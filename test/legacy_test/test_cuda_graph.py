@@ -15,7 +15,6 @@ import os
 import pathlib
 import shutil
 import unittest
-import warnings
 
 import numpy as np
 from op_test import is_custom_device
@@ -518,6 +517,21 @@ class TestPaddleCudaCUDAGraphCompat(unittest.TestCase):
         g2 = paddle.cuda.CUDAGraph(keep_graph=True)
         self.assertTrue(g2._keep_graph)
 
+    def test_constructor_positional_bool_is_keep_graph(self):
+        # ``torch.cuda.CUDAGraph(True)`` passes the bool positionally; our
+        # signature would otherwise bind it to ``place`` and surface only as
+        # an obscure pybind error inside ``capture_begin``. The bool-shim in
+        # ``__init__`` re-routes it to ``keep_graph``.
+        g_true = paddle.cuda.CUDAGraph(True)
+        self.assertTrue(g_true._keep_graph)
+        g_false = paddle.cuda.CUDAGraph(False)
+        self.assertFalse(g_false._keep_graph)
+
+        # Conflict: ``CUDAGraph(True, keep_graph=True)`` is ambiguous and
+        # must raise.
+        with self.assertRaises(TypeError):
+            paddle.cuda.CUDAGraph(True, keep_graph=True)
+
     def test_pool_returns_int_idempotent(self):
         g = paddle.cuda.CUDAGraph()
         token = g.pool()
@@ -546,21 +560,54 @@ class TestPaddleCudaCUDAGraphCompat(unittest.TestCase):
         finally:
             graphs_module.CoreCUDAGraph.begin_capture_with_pool_id = original
 
-    def test_capture_error_mode_warns(self):
-        g = paddle.cuda.CUDAGraph()
+    def test_capture_error_mode_propagated_and_validated(self):
+        # capture_error_mode must be validated against ALL_MODES and the
+        # resolved mode index must be forwarded to the C++ binding rather
+        # than ignored.
         from paddle.device.cuda import graphs as graphs_module
 
+        captured = {}
         original = graphs_module.CoreCUDAGraph.begin_capture_with_pool_id
-        graphs_module.CoreCUDAGraph.begin_capture_with_pool_id = (
-            lambda *args, **kwargs: None
-        )
+
+        def fake_begin(place, mode, pool_id, enable_replace):
+            captured["mode"] = mode
+
+        graphs_module.CoreCUDAGraph.begin_capture_with_pool_id = fake_begin
         try:
-            with warnings.catch_warnings(record=True) as ws:
-                warnings.simplefilter("always")
-                g.capture_begin(capture_error_mode="thread_local")
-            self.assertTrue(
-                any("capture_error_mode" in str(w.message) for w in ws)
-            )
+            for name, expected in [
+                ("global", 0),
+                ("thread_local", 1),
+                ("relaxed", 2),
+            ]:
+                g = paddle.cuda.CUDAGraph()
+                g.capture_begin(capture_error_mode=name)
+                self.assertEqual(captured["mode"], expected)
+
+            g = paddle.cuda.CUDAGraph()
+            with self.assertRaises(ValueError):
+                g.capture_begin(capture_error_mode="not-a-mode")
+        finally:
+            graphs_module.CoreCUDAGraph.begin_capture_with_pool_id = original
+
+    def test_capture_begin_materializes_pool_id(self):
+        # ``g.pool()`` must return the same id that ``capture_begin`` passed
+        # to the C++ side, so that ``g2.capture_begin(pool=g.pool())`` shares
+        # the same memory pool. Before materialization, capture_begin would
+        # forward ``None`` and pool() would later mint a *different* id.
+        from paddle.device.cuda import graphs as graphs_module
+
+        captured = {}
+        original = graphs_module.CoreCUDAGraph.begin_capture_with_pool_id
+
+        def fake_begin(place, mode, pool_id, enable_replace):
+            captured["pool_id"] = pool_id
+
+        graphs_module.CoreCUDAGraph.begin_capture_with_pool_id = fake_begin
+        try:
+            g = paddle.cuda.CUDAGraph()
+            g.capture_begin()
+            self.assertIsNotNone(captured["pool_id"])
+            self.assertEqual(g.pool(), captured["pool_id"])
         finally:
             graphs_module.CoreCUDAGraph.begin_capture_with_pool_id = original
 
