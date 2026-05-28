@@ -27,6 +27,7 @@ CodeGenCustomDevice::CodeGenCustomDevice(Target target)
     : CodeGenGpuDev(target) {}
 
 void CodeGenCustomDevice::PrintIncludes() {
+  LOG(INFO) << "[COVERAGE HIT] codegen_custom_device_dev.cc:29 PrintIncludes";
   // 1. Basic macro definitions
   str_ += "#define CINN_WITH_CUSTOM_DEVICE\n";
   str_ += "#include \"float16.h\"\n";

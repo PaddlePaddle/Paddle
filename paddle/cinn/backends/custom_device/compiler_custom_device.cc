@@ -36,6 +36,8 @@ namespace cdrtc {
 Compiler::Compiler(const cinn::common::Target& target) : target_(target) {}
 std::string Compiler::operator()(const std::string& code,
                                  bool include_headers) {
+  LOG(INFO) << "[COVERAGE HIT] compiler_custom_device.cc:37 "
+               "cdrtc::Compiler::operator()";
   std::string dev_type = "";
   auto devs = phi::DeviceManager::GetAllCustomDeviceTypes();
   if (!devs.empty()) {

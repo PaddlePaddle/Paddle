@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/optim/optimize.h"
+#include <glog/logging.h>
 
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
@@ -107,6 +108,7 @@ ir::LoweredFunc Optimize(ir::LoweredFunc fn,
       },
       [&](common::CustomDeviceArch) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
+        LOG(INFO) << "[COVERAGE HIT] optimize.cc:109";
         ir::SetCudaAxisInfo(copied);
         if (remove_gpu_for_loops) {
           VLOG(4) << "Before removing GPU for loops:\n" << copied;

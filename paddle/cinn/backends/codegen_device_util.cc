@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/backends/codegen_device_util.h"
+#include <glog/logging.h>
 
 #include "paddle/cinn/backends/cuda_util.h"
 #include "paddle/cinn/ir/ir_mutator.h"
@@ -261,6 +262,7 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
       },
       [&](common::CustomDeviceArch) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
+        LOG(INFO) << "[COVERAGE HIT] codegen_device_util.cc:263";
         shared_mem_bytes = CalculateSharedMemory(func);
 #endif
       });

@@ -1516,6 +1516,7 @@ int GetNaiveVecAlignmentImpl(common::HygonDCUArchSYCL, const Target &target) {
 int GetNaiveVecAlignmentImpl(common::CustomDeviceArch arch,
                              const Target &target) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
+  LOG(INFO) << "[COVERAGE HIT] codegen_llvm.cc:1518";
   auto place = phi::CustomPlace(arch.device_type, arch.device_id);
   return phi::DeviceManager::GetPreferredVectorWidth(place);
 #else

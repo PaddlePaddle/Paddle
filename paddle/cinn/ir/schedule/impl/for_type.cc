@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <glog/logging.h>
 #include "paddle/cinn/common/dev_info_manager.h"
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/ir/schedule/impl/ir_schedule.h"
@@ -209,6 +210,7 @@ void DyScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
       },
       [&](const common::CustomDeviceArch& arch) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
+        LOG(INFO) << "[COVERAGE HIT] for_type.cc:211";
         auto place = phi::CustomPlace(arch.device_type, arch.device_id);
 
         const std::array<int, 3> kMaxBlockDims = {

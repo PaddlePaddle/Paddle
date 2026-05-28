@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/ir/group_schedule/tactic/tile_broadcast_tactic.h"
+#include <glog/logging.h>
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 
 PD_DECLARE_bool(cinn_enable_tile_broadcast);
@@ -291,6 +292,7 @@ std::vector<int> GetCommonBroadcastAxis(ir::IRSchedule* sch) {
 int TileBroadcastTactic::CalcNumWarps(int64_t num_warps) const {
   // NHWC layout: calculate number of warps per block
 #ifdef CINN_WITH_CUSTOM_DEVICE
+  LOG(INFO) << "[COVERAGE HIT] tile_broadcast_tactic.cc:294";
   const int MAX_WARP_BLOCK = context_->target.max_num_threads() /
                              context_->config.tile_config.warp_size;
 #else
@@ -362,6 +364,7 @@ void TileBroadcastTactic::Init(ScheduleContext* context, ir::IRSchedule* sch) {
     // TODO(liangshuhao): we may allow aligning to 16 if further optimizations
     //    can compensate for the cost of non-coalesced access.
 #ifdef CINN_WITH_CUSTOM_DEVICE
+    LOG(INFO) << "[COVERAGE HIT] tile_broadcast_tactic.cc:365";
     if (low_broadcast_size_ % context_->config.tile_config.warp_size != 0) {
 #else
     if (low_broadcast_size_ % 32 != 0) {
@@ -380,6 +383,7 @@ void TileBroadcastTactic::Init(ScheduleContext* context, ir::IRSchedule* sch) {
     InitBroadcastSizeInfo();
     // 4. compatible channel size is the multiple of 32
 #ifdef CINN_WITH_CUSTOM_DEVICE
+    LOG(INFO) << "[COVERAGE HIT] tile_broadcast_tactic.cc:383";
     if (preserved_size_ % context_->config.tile_config.warp_size != 0) {
 #else
     if (preserved_size_ % 32 != 0) {
@@ -387,6 +391,7 @@ void TileBroadcastTactic::Init(ScheduleContext* context, ir::IRSchedule* sch) {
       return;
     }
 #ifdef CINN_WITH_CUSTOM_DEVICE
+    LOG(INFO) << "[COVERAGE HIT] tile_broadcast_tactic.cc:390";
     int num_warps =
         CalcNumWarps(preserved_size_ / context_->config.tile_config.warp_size);
 #else
@@ -491,6 +496,7 @@ std::vector<std::string> TileBroadcastTactic::TileNCHW(
   //     => [blockX', blockY, (blockX, loop, threadX)].
   VLOG(4) << "TileBroadcastTactic using original NCHW layout\n";
 #ifdef CINN_WITH_CUSTOM_DEVICE
+  LOG(INFO) << "[COVERAGE HIT] tile_broadcast_tactic.cc:494";
   if (low_broadcast_size_ <= (context_->config.tile_config.warp_size * 8)) {
 #else
   if (low_broadcast_size_ <= 256) {
@@ -498,6 +504,7 @@ std::vector<std::string> TileBroadcastTactic::TileNCHW(
     sch->Split(block_id, 0, {-1, 4});
     return {"blockIdx.y", "", "blockIdx.x", "threadIdx.x"};
 #ifdef CINN_WITH_CUSTOM_DEVICE
+    LOG(INFO) << "[COVERAGE HIT] tile_broadcast_tactic.cc:501";
   } else if (low_broadcast_size_ <= (context_->target.max_num_threads() * 2)) {
 #else
   } else if (low_broadcast_size_ <= 2048) {
@@ -519,6 +526,7 @@ std::vector<std::string> TileBroadcastTactic::TileNHWC(
   VLOG(4) << "TileBroadcastTactic using NHWC layout, block size: " << block_size
           << "\n";
 #ifdef CINN_WITH_CUSTOM_DEVICE
+  LOG(INFO) << "[COVERAGE HIT] tile_broadcast_tactic.cc:522";
   if (broadcast_size_ <= (context_->config.tile_config.warp_size * 2)) {
 #else
   if (broadcast_size_ <= 64) {
@@ -586,6 +594,7 @@ std::vector<std::string> TileBroadcastTactic::TileVectorizeNCHW(
     sch->Split(block_id, 2, {-1, vectorize_factor});
     return {"blockIdx.y", "blockIdx.x", "threadIdx.x", ""};
 #ifdef CINN_WITH_CUSTOM_DEVICE
+    LOG(INFO) << "[COVERAGE HIT] tile_broadcast_tactic.cc:589";
   } else if (low_broadcast_size_ <= (context_->target.max_num_threads() * 2)) {
 #else
   } else if (low_broadcast_size_ <= 2048) {
@@ -605,6 +614,7 @@ void TileBroadcastTactic::Apply(ir::IRSchedule* sch,
                                 const std::string& block_id) {
   if (applied_layout_ == BroadcastLayout::Invalid) return;
 #ifdef CINN_WITH_CUSTOM_DEVICE
+  LOG(INFO) << "[COVERAGE HIT] tile_broadcast_tactic.cc:608";
   int block_size = context_->config.tile_config.warp_size * 8;
 #else
   int block_size = 256;
@@ -618,6 +628,7 @@ void TileBroadcastTactic::Apply(ir::IRSchedule* sch,
   // preserved_size, func will return later
   if (applied_layout_ == BroadcastLayout::NHWCLayout) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
+    LOG(INFO) << "[COVERAGE HIT] tile_broadcast_tactic.cc:621";
     int num_warps =
         CalcNumWarps(preserved_size_ / context_->config.tile_config.warp_size);
 #else
@@ -628,6 +639,7 @@ void TileBroadcastTactic::Apply(ir::IRSchedule* sch,
       return;
     }
 #ifdef CINN_WITH_CUSTOM_DEVICE
+    LOG(INFO) << "[COVERAGE HIT] tile_broadcast_tactic.cc:631";
     block_size =
         std::clamp(num_warps * context_->config.tile_config.warp_size,
                    context_->config.tile_config.warp_size * 4,

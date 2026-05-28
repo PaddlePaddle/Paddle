@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/optim/trans_buffer_with_dynamic_shape.h"
+#include <glog/logging.h>
 
 #include <numeric>
 #include <unordered_set>
@@ -193,6 +194,7 @@ LogicalResult TransBufferWithDynamicShapePass::Run(ir::LoweredFunc func) {
       },
       [&](const common::CustomDeviceArch& arch) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
+        LOG(INFO) << "[COVERAGE HIT] trans_buffer_with_dynamic_shape.cc:195";
         size_t max_shm_per_block = phi::DeviceManager::GetMaxSharedMemPerBlock(
             phi::CustomPlace(arch.device_type, arch.device_id));
         PADDLE_ENFORCE_LE(

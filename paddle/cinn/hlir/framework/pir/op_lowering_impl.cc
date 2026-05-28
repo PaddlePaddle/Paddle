@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/framework/pir/op_lowering_impl.h"
+#include <glog/logging.h>
 
 #include <string>
 
@@ -436,6 +437,7 @@ std::vector<CondFuncPriorWrapper> OpLowererImpl::PostProcess(
           },
           [&](common::CustomDeviceArch) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
+            LOG(INFO) << "[COVERAGE HIT] op_lowering_impl.cc:438";
             // optim::EliminateCommonGlobalMemoryRead(&(func_body));
             ir::stmt::BlockRef func_body_block =
                 ir::ConvertExprBlockToStmtBlock(func_body);
