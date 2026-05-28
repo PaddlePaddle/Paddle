@@ -327,6 +327,8 @@ class GradNodeBase {
           out_grads);
   bool NeedComplexToRealConversion() { return need_complex_to_real_; }
 
+  virtual bool GradInDtypeConsistent() { return true; }
+
   virtual std::string name() { return "GradNodeBase"; }
 
   /**

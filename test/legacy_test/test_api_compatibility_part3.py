@@ -1061,7 +1061,7 @@ class TestIsposinfAPICompatibility(unittest.TestCase):
         # 4-5. out parameter test
         out4 = paddle.zeros_like(out1)
         out5 = paddle.isposinf(x, out=out4)
-        assert out4 is out5
+        self.assertIs(out4, out5)
         # 6. Tensor method
         out6 = x.isposinf()
 
@@ -4084,6 +4084,134 @@ class TestTensorIndexCopyInplaceAPI(unittest.TestCase):
         )
 
         paddle.enable_static()
+
+
+class TestKaiserWindowAPI(unittest.TestCase):
+    def setUp(self):
+        self.window_length = 7
+        self.beta = 6.0
+
+    def _expected(
+        self, window_length, periodic=True, beta=12.0, dtype="float32"
+    ):
+        if window_length <= 1:
+            return np.ones((window_length,), dtype=dtype)
+
+        length = window_length + 1 if periodic else window_length
+        n = np.arange(length, dtype=dtype)
+        alpha = (length - 1) / 2.0
+        out = np.i0(beta * np.sqrt(1 - ((n - alpha) / alpha) ** 2.0)) / np.i0(
+            beta
+        )
+        if periodic:
+            out = out[:-1]
+        return out.astype(dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.kaiser_window(
+            self.window_length, False, self.beta, dtype='float64'
+        )
+        # 2. Paddle keyword arguments
+        out2 = paddle.kaiser_window(
+            window_length=self.window_length,
+            periodic=False,
+            beta=self.beta,
+            dtype='float64',
+        )
+        # 3. Mixed arguments
+        out3 = paddle.kaiser_window(
+            self.window_length, periodic=False, beta=self.beta, dtype='float64'
+        )
+        # 4-5. out parameter test
+        out4 = paddle.empty([self.window_length], dtype='float64')
+        out5 = paddle.kaiser_window(
+            self.window_length,
+            False,
+            self.beta,
+            dtype='float64',
+            out=out4,
+        )
+        self.assertIs(out4, out5)
+        # 6. Explicit dtype=None compatibility
+        out6 = paddle.kaiser_window(3, dtype=None)
+        # 7. strided layout compatibility
+        out7 = paddle.kaiser_window(
+            self.window_length,
+            False,
+            self.beta,
+            dtype='float64',
+            layout='strided',
+        )
+        # 8. window_length=0 edge case
+        out8 = paddle.kaiser_window(0)
+        # 9. window_length=1 edge case
+        out9 = paddle.kaiser_window(1, dtype='float64')
+
+        expected = self._expected(
+            self.window_length, periodic=False, beta=self.beta, dtype='float64'
+        )
+        for out in [out1, out2, out3, out4, out5, out7]:
+            np.testing.assert_allclose(out.numpy(), expected, rtol=1e-12)
+        np.testing.assert_allclose(out6.numpy(), self._expected(3), rtol=1e-5)
+        self.assertEqual(out6.dtype, paddle.float32)
+        np.testing.assert_allclose(out8.numpy(), np.ones((0,), dtype='float32'))
+        np.testing.assert_allclose(out9.numpy(), np.ones((1,), dtype='float64'))
+        self.assertEqual(out9.dtype, paddle.float64)
+
+        with self.assertRaises(RuntimeError):
+            paddle.kaiser_window(3, layout='sparse')
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            # 1. Paddle Positional arguments
+            out1 = paddle.kaiser_window(
+                self.window_length, False, self.beta, dtype='float64'
+            )
+            # 2. Paddle keyword arguments
+            out2 = paddle.kaiser_window(
+                window_length=self.window_length,
+                periodic=False,
+                beta=self.beta,
+                dtype='float64',
+            )
+            # 3. Mixed arguments
+            out3 = paddle.kaiser_window(
+                self.window_length,
+                periodic=False,
+                beta=self.beta,
+                dtype='float64',
+            )
+            # 4. Explicit dtype=None compatibility
+            out4 = paddle.kaiser_window(3, dtype=None)
+            # 5. strided layout compatibility
+            out5 = paddle.kaiser_window(
+                self.window_length,
+                False,
+                self.beta,
+                dtype='float64',
+                layout='strided',
+            )
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                fetch_list=[out1, out2, out3, out4, out5],
+            )
+
+        expected = self._expected(
+            self.window_length, periodic=False, beta=self.beta, dtype='float64'
+        )
+        for out in fetches[:3] + fetches[4:]:
+            np.testing.assert_allclose(out, expected, rtol=1e-12)
+        np.testing.assert_allclose(fetches[3], self._expected(3), rtol=1e-5)
 
 
 if __name__ == "__main__":

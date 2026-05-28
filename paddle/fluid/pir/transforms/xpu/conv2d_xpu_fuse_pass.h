@@ -1,4 +1,4 @@
-// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,20 +14,12 @@
 
 #pragma once
 
-#include "cutlass_patch/backend.h"
+#include <memory>
 
-namespace cutlass_patch {
+#include "paddle/pir/include/pass/pass.h"
 
-struct BatchedMatrixCoord {
-  int batch;
-  int row;
-  int column;
+namespace pir {
 
-  CUTLASS_HOST_DEVICE
-  BatchedMatrixCoord() : batch(0), row(0), column(0) {}
+std::unique_ptr<Pass> CreateConv2dXpuFusePass();
 
-  CUTLASS_HOST_DEVICE
-  BatchedMatrixCoord(int b, int r, int c) : batch(b), row(r), column(c) {}
-};
-
-};  // namespace cutlass_patch
+}  // namespace pir

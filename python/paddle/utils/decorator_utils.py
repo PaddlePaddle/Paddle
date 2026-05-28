@@ -1225,3 +1225,45 @@ def fill_diagonal_inplace_decorator() -> Callable[
         return wrapper
 
     return decorator
+
+
+def nansum_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """
+    Usage Example:
+    PyTorch: torch.nansum(input, dim=None, keepdim=False, *, dtype=None, out=None)
+    Paddle: paddle.nansum(x, axis=None, dtype=None, keepdim=False, name=None, *, out=None)
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if "input" in kwargs:
+                if "x" not in kwargs:
+                    kwargs["x"] = kwargs.pop("input")
+                else:
+                    raise ValueError(
+                        "Cannot specify both 'x' and its alias 'input'."
+                    )
+
+            if "dim" in kwargs:
+                if "axis" not in kwargs:
+                    kwargs["axis"] = kwargs.pop("dim")
+                else:
+                    raise ValueError(
+                        "Cannot specify both 'axis' and its alias 'dim'."
+                    )
+
+            # args[0] is x
+            # args[1] is axis
+            # args[2] is keepdim, use torch signature
+            if len(args) == 3 and isinstance(args[2], bool):
+                kwargs["keepdim"] = args[2]
+                args = (args[0], args[1])
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
