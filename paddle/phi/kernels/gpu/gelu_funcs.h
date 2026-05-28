@@ -16,6 +16,7 @@
 
 #include "glog/logging.h"
 
+#include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
@@ -151,6 +152,7 @@ static bool TryLaunchFP16FastGeluFwdVectorizeCUDAKernel(
       block = std::min<size_t>(block, dev_ctx.GetCUDAMaxGridDimSize()[0]);    \
       VLOG(10) << "Use FP16 fast gelu fwd kernel, block = " << block          \
                << " , thread = " << thread;                                   \
+      PADDLE_ENFORCE_LE_UINT32_MAX(block, "fast gelu fwd CUDA block size");   \
       FP16FastGeluFwdCUDAKernel<__vec_size, __use_fast_math>                  \
           <<<static_cast<unsigned int>(block),                                \
              static_cast<unsigned int>(thread),                               \
@@ -191,6 +193,7 @@ static bool TryLaunchFP16FastGeluBwdVectorizeCUDAKernel(
       block = std::min<size_t>(block, dev_ctx.GetCUDAMaxGridDimSize()[0]);    \
       VLOG(10) << "Use FP16 fast gelu bwd kernel, block = " << block          \
                << " , thread = " << thread;                                   \
+      PADDLE_ENFORCE_LE_UINT32_MAX(block, "fast gelu bwd CUDA block size");   \
       FP16FastGeluBwdCUDAKernel<__vec_size, __use_fast_math>                  \
           <<<static_cast<unsigned int>(block),                                \
              static_cast<unsigned int>(thread),                               \

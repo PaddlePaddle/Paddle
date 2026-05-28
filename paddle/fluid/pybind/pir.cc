@@ -311,6 +311,7 @@ void PruneWithInput(const std::vector<Value> &input_vars,
                                      total_ops_list.end());
   std::vector<bool> intersection_op_flags(total_ops.size(), true);
   std::set<Value> output_vars_set(output_vars.begin(), output_vars.end());
+  PADDLE_ENFORCE_LE_UINT32_MAX(total_ops.size(), "number of operations");
   for (uint32_t index = static_cast<uint32_t>(total_ops.size() - 1);
        index != static_cast<uint32_t>(-1);
        --index) {

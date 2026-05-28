@@ -534,7 +534,6 @@ struct gpu_gather_scatter_functor {
     auto stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
 
     int64_t ndim = index.dims().size();
-    const int ndim_int = ndim;
 
     DenseTensor shape_stride_dev;
     shape_stride_dev.Resize({3 * ndim});
@@ -544,11 +543,10 @@ struct gpu_gather_scatter_functor {
       shape_stride_host.Resize({3 * ndim});
       dev_ctx.template HostAlloc<int64_t>(&shape_stride_host);
       int64_t* host_data = shape_stride_host.data<int64_t>();
-      for (int i = 0; i < ndim_int; i++) {
-        const int64_t offset = static_cast<int64_t>(i);
-        host_data[offset] = index_dims[i];
-        host_data[offset + ndim] = src.strides()[i];
-        host_data[offset + (ndim << 1)] = self.strides()[i];
+      for (int64_t i = 0; i < ndim; i++) {
+        host_data[i] = index_dims[i];
+        host_data[i + ndim] = src.strides()[i];
+        host_data[i + (ndim << 1)] = self.strides()[i];
       }
       auto* restored = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
           host_data, 3 * ndim);

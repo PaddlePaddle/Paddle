@@ -131,7 +131,8 @@ void NCCLCommContext::CreateAllNCCLComms(const std::vector<int>& dev_ids,
       common::errors::InvalidArgument("Expected the size of dev_ids > 0. But "
                                       "received the size of dev_ids is %zu.",
                                       dev_ids.size()));
-  const int kDevices = dev_ids.size();
+  PADDLE_ENFORCE_LE_INT_MAX(dev_ids.size(), "dev_ids.size()");
+  const int kDevices = static_cast<int>(dev_ids.size());
   ncclComm_t comms[kDevices];  // NOLINT
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::ncclCommInitAll(comms, kDevices, dev_ids.data()));
@@ -164,7 +165,8 @@ void NCCLCommContext::CreateNCCLCommMultiTrainer(
       0,
       common::errors::InvalidArgument(
           "dev ids = [%zu], it should greater than 0.", dev_ids.size()));
-  const int kDevices = dev_ids.size();
+  PADDLE_ENFORCE_LE_INT_MAX(dev_ids.size(), "dev_ids.size()");
+  const int kDevices = static_cast<int>(dev_ids.size());
   VLOG(1) << "Begin CreateNCCLCommMultiTrainer. device number: " << kDevices
           << ", ntrainers: " << ntrainers << ", train_id: " << train_id
           << ", rind_id: " << ring_id;
@@ -510,7 +512,8 @@ void XCCLCommContext::CreateXCCLCommMultiTrainer(
       0,
       common::errors::InvalidArgument(
           "dev ids = [%zu], it should greater than 0.", dev_ids.size()));
-  const int kDevices = dev_ids.size();
+  PADDLE_ENFORCE_LE_INT_MAX(dev_ids.size(), "dev_ids.size()");
+  const int kDevices = static_cast<int>(dev_ids.size());
   VLOG(1) << "Begin CreateXCCLCommMultiTrainer. device number: " << kDevices
           << ", ntrainers: " << ntrainers << ", train_id: " << train_id
           << ", rind_id: " << ring_id;

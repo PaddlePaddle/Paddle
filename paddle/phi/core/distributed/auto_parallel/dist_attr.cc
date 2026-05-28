@@ -360,13 +360,12 @@ void TensorDistAttr::from_proto(const TensorDistAttrProto& proto) {
 void TensorDistAttr::to_proto(TensorDistAttrProto* proto) const {
   proto->mutable_process_mesh()->CopyFrom(distributed::to_proto(process_mesh_));
 
-  PADDLE_ENFORCE_LE_INT_MAX(dims_mapping_.size(), "dims_mapping size");
-  const int dims_mapping_size = static_cast<int>(dims_mapping_.size());
-  for (int i = 0; i < dims_mapping_size; ++i) {
+  for (size_t i = 0; i < dims_mapping_.size(); ++i) {
     proto->add_dims_mapping();
-    const size_t i_size = static_cast<size_t>(i);
-    for (size_t j = 0; j < dims_mapping_.at(i_size).size(); ++j) {
-      proto->mutable_dims_mapping(i)->add_mesh_dims(dims_mapping_[i_size][j]);
+    PADDLE_ENFORCE_LE_INT_MAX(i, "dims_mapping index");
+    const int idx = static_cast<int>(i);
+    for (size_t j = 0; j < dims_mapping_.at(i).size(); ++j) {
+      proto->mutable_dims_mapping(idx)->add_mesh_dims(dims_mapping_[i][j]);
     }
   }
 

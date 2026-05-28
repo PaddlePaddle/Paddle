@@ -709,7 +709,9 @@ void _sliceCompute(const DenseTensor *in,
   for (size_t i = 0; i < axes.size(); ++i) {
     start = starts[i];
     if (start < 0) {
-      start = static_cast<int>(start + in_dims[axes[i]]);
+      const auto slice_start = start + in_dims[axes[i]];
+      PADDLE_ENFORCE_LE_INT_MAX(slice_start, "slice start");
+      start = static_cast<int>(slice_start);
     }
     start = std::max(start, 0);
     offsets[axes[i]] = start;

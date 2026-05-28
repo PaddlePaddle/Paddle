@@ -415,8 +415,9 @@ std::vector<Value> PyWhileOp::OptimizeUpdate() {
   }
   PADDLE_ENFORCE_LE_UINT32_MAX(extra_inputs_.size(), "number of extra inputs");
   for (uint32_t i = 0; i < extra_inputs_.size(); ++i) {
-    res.push_back(result(
-        static_cast<uint32_t>(num_results() - extra_inputs_.size() + i)));
+    const auto result_index = num_results() - extra_inputs_.size() + i;
+    PADDLE_ENFORCE_LE_UINT32_MAX(result_index, "result index");
+    res.push_back(result(static_cast<uint32_t>(result_index)));
   }
   return res;
 }
