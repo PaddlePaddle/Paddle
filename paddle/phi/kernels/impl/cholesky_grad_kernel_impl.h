@@ -120,7 +120,7 @@ struct MatrixSetDiagFunctor {
     // y_index and x_index are nonnegative by construction.
     if (y_index < m_ && x_index < n_) {
       const int64_t out_index =
-          (int64_t)batch * m_ * n_ + y_index * n_ + x_index;
+          static_cast<int64_t>(batch) * m_ * n_ + y_index * n_ + x_index;
       output_[out_index] = diag_[index];
     }
   }

@@ -169,13 +169,14 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
   // We create tensor buffer in order to avoid allocating memory frequently
   // 10 means allocate 10*batch_size bytes memory, such as int_mask, zero...
   int64_t buffer_size =
-      (int64_t)batch_size * (n_labels + 1) * seq_len + 10 * batch_size;
+      static_cast<int64_t>(batch_size) * (n_labels + 1) * seq_len +
+      10 * batch_size;
   DenseTensor int_buffer = Empty<int64_t>(dev_ctx, {buffer_size});
   funcs::TensorBuffer int_tensor_buffer(int_buffer);
   // create float tensor buffer
   // 10 means allocate 10*batch_size*n_labels bytes, such as alpha, alpha_max
-  buffer_size = (int64_t)batch_size * (seq_len + 10) * n_labels +
-                (int64_t)(batch_size + 2) * n_labels * n_labels;
+  buffer_size = static_cast<int64_t>(batch_size) * (seq_len + 10) * n_labels +
+                static_cast<int64_t>(batch_size + 2) * n_labels * n_labels;
   DenseTensor float_buffer = Empty<T>(dev_ctx, {buffer_size});
   funcs::TensorBuffer float_tensor_buffer(float_buffer);
   DenseTensor left_length = int_tensor_buffer.GetBufferBlock({batch_size, 1});

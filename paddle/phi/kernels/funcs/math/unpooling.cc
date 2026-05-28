@@ -29,8 +29,8 @@ class Unpool2dMaxFunctor<CPUContext, T> {
     const int output_channels = static_cast<int>(output->dims()[1]);
     const int output_height = static_cast<int>(output->dims()[2]);
     const int output_width = static_cast<int>(output->dims()[3]);
-    int64_t input_feasize = (int64_t)input_height * input_width;
-    int64_t output_feasize = (int64_t)output_height * output_width;
+    int64_t input_feasize = static_cast<int64_t>(input_height) * input_width;
+    int64_t output_feasize = static_cast<int64_t>(output_height) * output_width;
     const T* input_data = input.data<T>();
     const int* indices_data = indices.data<int>();
     T* output_data = context.template Alloc<T>(output);
@@ -74,8 +74,8 @@ class Unpool2dMaxGradFunctor<CPUContext, T> {
     const int output_channels = static_cast<int>(output.dims()[1]);
     const int output_height = static_cast<int>(output.dims()[2]);
     const int output_width = static_cast<int>(output.dims()[3]);
-    int64_t input_feasize = (int64_t)input_height * input_width;
-    int64_t output_feasize = (int64_t)output_height * output_width;
+    int64_t input_feasize = static_cast<int64_t>(input_height) * input_width;
+    int64_t output_feasize = static_cast<int64_t>(output_height) * output_width;
     const int* indices_data = indices.data<int>();
     const T* output_grad_data = output_grad.data<T>();
     T* input_grad_data = context.template Alloc<T>(input_grad);
@@ -120,9 +120,10 @@ class Unpool3dMaxFunctor<CPUContext, T> {
     const int output_depth = static_cast<int>(output->dims()[2]);
     const int output_height = static_cast<int>(output->dims()[3]);
     const int output_width = static_cast<int>(output->dims()[4]);
-    int64_t input_feasize = (int64_t)input_depth * input_height * input_width;
+    int64_t input_feasize =
+        static_cast<int64_t>(input_depth) * input_height * input_width;
     int64_t output_feasize =
-        (int64_t)output_depth * output_height * output_width;
+        static_cast<int64_t>(output_depth) * output_height * output_width;
     const T* input_data = input.data<T>();
     const int* indices_data = indices.data<int>();
     T* output_data = context.template Alloc<T>(output);
@@ -169,9 +170,10 @@ class Unpool3dMaxGradFunctor<CPUContext, T> {
     const int output_depth = static_cast<int>(output.dims()[2]);
     const int output_height = static_cast<int>(output.dims()[3]);
     const int output_width = static_cast<int>(output.dims()[4]);
-    int64_t input_feasize = (int64_t)input_depth * input_height * input_width;
+    int64_t input_feasize =
+        static_cast<int64_t>(input_depth) * input_height * input_width;
     int64_t output_feasize =
-        (int64_t)output_depth * output_height * output_width;
+        static_cast<int64_t>(output_depth) * output_height * output_width;
     const int* indices_data = indices.data<int>();
     const T* output_grad_data = output_grad.data<T>();
     T* input_grad_data = context.template Alloc<T>(input_grad);

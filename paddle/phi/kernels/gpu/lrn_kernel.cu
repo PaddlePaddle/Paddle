@@ -41,7 +41,7 @@ __global__ void KeCMRNormFillScale(int img_size,
 
     in += offset;
     mid += offset;
-    const int64_t step = (int64_t)H * W;
+    const int64_t step = static_cast<int64_t>(H) * W;
     const int pre_pad = (size - 1) / 2;
     const int post_pad = size - pre_pad - 1;
 

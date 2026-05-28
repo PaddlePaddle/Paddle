@@ -96,7 +96,7 @@ void GroupNormKernel(const Context& dev_ctx,
       std::fill(x_var_arr.begin(), x_var_arr.end(), T(0));
       T x_mean = 0, x_var = 0;
       int64_t number = std::min(static_cast<int64_t>(group_size),
-                                C - (int64_t)gid * group_size);
+                                C - static_cast<int64_t>(gid) * group_size);
       auto* tmp_x = iter_x_data;
       auto* x_src_data = iter_x_data;
       auto* tmp_y = iter_y_data;
@@ -211,8 +211,8 @@ void GroupNormKernel(const Context& dev_ctx,
       }
     }
     if (data_layout == DataLayout::NHWC) {
-      iter_x_data = x_data + (int64_t)(bid + 1) * C * imsize;
-      iter_y_data = y_data + (int64_t)(bid + 1) * C * imsize;
+      iter_x_data = x_data + static_cast<int64_t>(bid + 1) * C * imsize;
+      iter_y_data = y_data + static_cast<int64_t>(bid + 1) * C * imsize;
     }
   }
 }

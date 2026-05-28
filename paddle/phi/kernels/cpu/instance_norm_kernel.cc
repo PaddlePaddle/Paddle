@@ -60,7 +60,7 @@ void InstanceNormKernel(const Context& dev_ctx,
   const int N = static_cast<int>(x_dims[0]);
   PADDLE_ENFORCE_LE_INT_MAX(x_dims[1], "C");
   const int C = static_cast<int>(x_dims[1]);
-  const int64_t num_instances = (int64_t)N * C;
+  const int64_t num_instances = static_cast<int64_t>(N) * C;
   PADDLE_ENFORCE_LE_INT_MAX(x.numel() / N / C, "sample_size");
   const int sample_size = static_cast<int>(x.numel() / N / C);
   auto* place = dev_ctx.eigen_device();

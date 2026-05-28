@@ -207,8 +207,8 @@ void YoloLossKernel(const Context& dev_ctx,
   const int b = static_cast<int>(gt_box.dims()[1]);
   int input_size = downsample_ratio * h;
 
-  const int64_t stride = (int64_t)h * w;
-  const int64_t an_stride = (int64_t)(class_num + 5) * stride;
+  const int64_t stride = static_cast<int64_t>(h) * w;
+  const int64_t an_stride = static_cast<int64_t>(class_num + 5) * stride;
 
   T label_pos = 1.0;
   T label_neg = 0.0;

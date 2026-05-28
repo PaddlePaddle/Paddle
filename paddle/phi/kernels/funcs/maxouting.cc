@@ -31,15 +31,15 @@ void MaxOutFunctor<DeviceContext, T>::operator()(const DeviceContext& dev_ctx,
   const int input_width =
       static_cast<int>(axis == 1 ? input.dims()[3] : input.dims()[2]);
   const int output_channels = static_cast<int>(output->dims()[axis]);
-  int64_t fea_size = (int64_t)input_height * input_width;
+  int64_t fea_size = static_cast<int64_t>(input_height) * input_width;
   // c_size means the output size of each sample
-  int64_t c_size = (int64_t)fea_size * output_channels;
+  int64_t c_size = static_cast<int64_t>(fea_size) * output_channels;
   const T* input_data = input.data<T>();
   T* output_data = dev_ctx.template Alloc<T>(output);
   for (int i = 0; i < batch_size; ++i) {
-    int64_t new_bindex = (int64_t)c_size * i;
+    int64_t new_bindex = static_cast<int64_t>(c_size) * i;
     for (int c = 0; c < output_channels; ++c) {
-      int64_t new_cindex = (int64_t)fea_size * c;
+      int64_t new_cindex = static_cast<int64_t>(fea_size) * c;
       for (int64_t f = 0; f < fea_size; ++f) {
         T ele = static_cast<T>(-FLT_MAX);
         int64_t input_idx = 0, output_idx = 0;
@@ -78,15 +78,15 @@ void MaxOutGradFunctor<DeviceContext, T>::operator()(
   const int input_width =
       static_cast<int>(axis == 1 ? input.dims()[3] : input.dims()[2]);
   const int output_channels = static_cast<int>(output.dims()[axis]);
-  int64_t fea_size = (int64_t)input_height * input_width;
+  int64_t fea_size = static_cast<int64_t>(input_height) * input_width;
   const T* input_data = input.data<T>();
   const T* output_data = output.data<T>();
   const T* output_grad_data = output_grad.data<T>();
   T* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
   for (int i = 0; i < batch_size; ++i) {
-    int64_t blen = (int64_t)fea_size * output_channels * i;
+    int64_t blen = static_cast<int64_t>(fea_size) * output_channels * i;
     for (int c = 0; c < output_channels; ++c) {
-      int64_t clen = (int64_t)fea_size * c;
+      int64_t clen = static_cast<int64_t>(fea_size) * c;
       for (int64_t f = 0; f < fea_size; ++f) {
         int64_t input_idx0 = 0, output_idx = 0;
         bool continue_match = true;

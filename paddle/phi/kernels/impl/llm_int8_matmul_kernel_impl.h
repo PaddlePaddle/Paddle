@@ -514,7 +514,7 @@ void LaunchSplitKernel(const T* x,
                        int kfp_num,
                        gpuStream_t stream) {
   int max_row = m > n ? m : n;
-  const int64_t elem_cnt = (int64_t)max_row * kfp_num;
+  const int64_t elem_cnt = static_cast<int64_t>(max_row) * kfp_num;
   int num_blocks = 1;
   PADDLE_ENFORCE_GPU_SUCCESS(GetGridSize(elem_cnt, &num_blocks));
   PADDLE_ENFORCE_LE_INT_MAX(elem_cnt, "elem_cnt");

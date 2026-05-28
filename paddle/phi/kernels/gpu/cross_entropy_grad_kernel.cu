@@ -60,7 +60,8 @@ __global__ void HardLabelCrossEntropyGradientKernel(T* logit_grad,
     int idx_n = index / remain;
     int idx_remain = index % remain;
     int tmp = static_cast<int>(labels[index]);
-    int64_t idx = (int64_t)idx_n * d + (int64_t)tmp * remain + idx_remain;
+    int64_t idx = static_cast<int64_t>(idx_n) * d +
+                  static_cast<int64_t>(tmp) * remain + idx_remain;
     if (ignore_index != tmp) {
       using AccT = typename MPTypeTrait<T>::Type;
       AccT softmax_v = static_cast<AccT>(logit_grad[idx]);

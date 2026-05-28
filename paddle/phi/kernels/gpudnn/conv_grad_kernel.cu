@@ -132,8 +132,10 @@ void ConvCudnnGradKernelImplV7(
              &o_w);
   }
 
-  int64_t group_offset_in = (int64_t)i_c / groups * i_h * i_w * i_d;
-  int64_t group_offset_out = (int64_t)o_c / groups * o_h * o_w * o_d;
+  int64_t group_offset_in =
+      static_cast<int64_t>(i_c) / groups * i_h * i_w * i_d;
+  int64_t group_offset_out =
+      static_cast<int64_t>(o_c) / groups * o_h * o_w * o_d;
   int64_t group_offset_filter = transformed_filter_channel->numel() / groups;
   PADDLE_ENFORCE_LE_INT_MAX(group_offset_in, "group_offset_in");
   PADDLE_ENFORCE_LE_INT_MAX(group_offset_out, "group_offset_out");
@@ -1179,8 +1181,10 @@ void ConvCudnnGradGradKernel(const Context& dev_ctx,
            &o_h,
            &o_w);
 
-  int64_t group_offset_in = (int64_t)i_c / groups * i_h * i_w * i_d;
-  int64_t group_offset_out = (int64_t)o_c / groups * o_h * o_w * o_d;
+  int64_t group_offset_in =
+      static_cast<int64_t>(i_c) / groups * i_h * i_w * i_d;
+  int64_t group_offset_out =
+      static_cast<int64_t>(o_c) / groups * o_h * o_w * o_d;
   int64_t group_offset_filter = W->numel() / groups;
   PADDLE_ENFORCE_LE_INT_MAX(group_offset_in, "group_offset_in");
   PADDLE_ENFORCE_LE_INT_MAX(group_offset_out, "group_offset_out");

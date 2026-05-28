@@ -37,12 +37,13 @@ void PsroiPoolKernel(const Context& dev_ctx,
   int64_t width = in_dims[3];
   int64_t rois_num_t = rois.dims()[0];
 
-  PADDLE_ENFORCE_EQ(input_channels,
-                    (int64_t)output_channels * pooled_height * pooled_width,
-                    errors::InvalidArgument(
-                        "the channels of input "
-                        "X should equal the product of "
-                        "output_channels x pooled_height x pooled_width"));
+  PADDLE_ENFORCE_EQ(
+      input_channels,
+      static_cast<int64_t>(output_channels) * pooled_height * pooled_width,
+      errors::InvalidArgument(
+          "the channels of input "
+          "X should equal the product of "
+          "output_channels x pooled_height x pooled_width"));
 
   auto in_stride = stride(in_dims);
   auto out_stride = stride(out->dims());
@@ -111,7 +112,7 @@ void PsroiPoolKernel(const Context& dev_ctx,
     int roi_batch_id = rois_batch_id_data[n];
 
     // [start, end) interval for spatial sampling
-    const T* offset_input_rois = input_rois + (int64_t)n * 4;
+    const T* offset_input_rois = input_rois + static_cast<int64_t>(n) * 4;
     T roi_start_w = static_cast<T>(round(offset_input_rois[0])) * spatial_scale;
     T roi_start_h = static_cast<T>(round(offset_input_rois[1])) * spatial_scale;
     T roi_end_w =
@@ -149,7 +150,8 @@ void PsroiPoolKernel(const Context& dev_ctx,
 
           int64_t output_index = out_row_offset + pw;
           int64_t input_channel =
-              ((int64_t)c * pooled_height + ph) * pooled_width + pw;
+              (static_cast<int64_t>(c) * pooled_height + ph) * pooled_width +
+              pw;
           int64_t input_plane_offset =
               roi_batch_id * in_stride[0] + input_channel * in_stride[1];
           const T* offset_input_data = input_data + input_plane_offset;

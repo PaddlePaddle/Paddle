@@ -55,8 +55,8 @@ void YoloBoxKernel(const Context& dev_ctx,
   int input_size_h = downsample_ratio * h;
   int input_size_w = downsample_ratio * w;
 
-  const int64_t stride = (int64_t)h * w;
-  const int64_t an_stride = (int64_t)(class_num + 5) * stride;
+  const int64_t stride = static_cast<int64_t>(h) * w;
+  const int64_t an_stride = static_cast<int64_t>(class_num + 5) * stride;
 
   DenseTensor anchors_;
   anchors_.Resize({an_num * 2});

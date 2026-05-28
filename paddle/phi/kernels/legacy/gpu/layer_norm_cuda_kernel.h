@@ -137,7 +137,7 @@ __device__ void cuWelfordMuSigma2(const T* __restrict__ vals,
     const int64_t thrx =
         static_cast<int64_t>(threadIdx.x) +
         static_cast<int64_t>(threadIdx.y) * static_cast<int64_t>(blockDim.x);
-    const T* lvals = vals + (int64_t)i1 * n2;
+    const T* lvals = vals + static_cast<int64_t>(i1) * n2;
     int64_t l = 4 * thrx;
     for (; l + 3 < n2; l += 4 * numx) {
       for (int k = 0; k < 4; ++k) {
@@ -249,7 +249,7 @@ __device__ void cuWelfordMuSigma2(const phi::float16* __restrict__ vals,
     const int64_t thrx =
         static_cast<int64_t>(threadIdx.x) +
         static_cast<int64_t>(threadIdx.y) * static_cast<int64_t>(blockDim.x);
-    const auto* lvals = vals + (int64_t)i1 * n2;
+    const auto* lvals = vals + static_cast<int64_t>(i1) * n2;
     int64_t l = 8 * thrx;
     if ((((size_t)lvals) & 3) != 0) {  // NOLINT
       // 16 bit alignment
@@ -411,8 +411,8 @@ __device__ void cuApplyLayerNorm_(V* __restrict__ output_vals,
     U* buf = shared.getPointer();
     U mu, sigma2;
     cuWelfordMuSigma2(vals, n1, n2, i1, mu, sigma2, buf, rms_only);
-    const T* lvals = vals + (int64_t)i1 * n2;
-    V* ovals = output_vals + (int64_t)i1 * n2;
+    const T* lvals = vals + static_cast<int64_t>(i1) * n2;
+    V* ovals = output_vals + static_cast<int64_t>(i1) * n2;
     U c_invvar = rsqrt(sigma2 + epsilon);
     const int64_t numx =
         static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockDim.y);
@@ -501,8 +501,8 @@ __device__ void cuLoadWriteStridedInputs(const int i1_block,
     for (int k = 0; k < blockDim.y; ++k) {
       int i2 = i2_off + k;
       int64_t load_idx = i1 * n2 + i2;
-      int64_t write_idx =
-          (int64_t)thr_load_row_off * row_stride + thr_load_col_off + k;
+      int64_t write_idx = static_cast<int64_t>(thr_load_row_off) * row_stride +
+                          thr_load_col_off + k;
       if (i2 < n2) {
         U curr_input = static_cast<U>(input[load_idx]);
         U curr_dout = static_cast<U>(dout[load_idx]);
@@ -522,8 +522,8 @@ __device__ void cuLoadWriteStridedInputs(const int i1_block,
     }
   } else {
     for (int k = 0; k < blockDim.y; ++k) {
-      int64_t write_idx =
-          (int64_t)thr_load_row_off * row_stride + thr_load_col_off + k;
+      int64_t write_idx = static_cast<int64_t>(thr_load_row_off) * row_stride +
+                          thr_load_col_off + k;
       if (!rms_only) {
         warp_buf1[write_idx] = U(0);
       }
@@ -557,8 +557,8 @@ __device__ void cuLoadAddStridedInputs(const int i1_block,
     for (int k = 0; k < blockDim.y; ++k) {
       int i2 = i2_off + k;
       int64_t load_idx = i1 * n2 + i2;
-      int64_t write_idx =
-          (int64_t)thr_load_row_off * row_stride + thr_load_col_off + k;
+      int64_t write_idx = static_cast<int64_t>(thr_load_row_off) * row_stride +
+                          thr_load_col_off + k;
       if (i2 < n2) {
         U curr_input = static_cast<U>(input[load_idx]);
         U curr_dout = static_cast<U>(dout[load_idx]);
@@ -657,7 +657,7 @@ __global__ void cuComputePartGradGammaBeta(const V* __restrict__ dout,
   U acc2 = U(0);
   for (int k = 0; k < blockDim.y; ++k) {
     int64_t row1 = static_cast<int64_t>(threadIdx.y) +
-                   (int64_t)k * static_cast<int64_t>(blockDim.y);
+                   static_cast<int64_t>(k) * static_cast<int64_t>(blockDim.y);
     int64_t idx1 = row1 * row_stride + static_cast<int64_t>(threadIdx.x);
     if (!rms_only) {
       acc1 += warp_buf1[idx1];
@@ -731,9 +731,9 @@ __global__ void cuComputeGradGammaBeta(const U* part_grad_gamma,
         static_cast<int64_t>(threadIdx.y) * num_warp_reductions * n2 + i2;
     for (int warp_offset = 0; warp_offset < num_warp_reductions;
          ++warp_offset) {
-      sum_gamma += part_grad_gamma_ptr[(int64_t)warp_offset * n2];
+      sum_gamma += part_grad_gamma_ptr[static_cast<int64_t>(warp_offset) * n2];
       if (!rms_only) {
-        sum_beta += part_grad_beta_ptr[(int64_t)warp_offset * n2];
+        sum_beta += part_grad_beta_ptr[static_cast<int64_t>(warp_offset) * n2];
       }
     }
     // inter-warp reductions

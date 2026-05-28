@@ -75,16 +75,17 @@ __global__ void DWConv3dBwdInputKernel(const T* grad_output,
   const int stride_w = kKnownStrideW > 0 ? kKnownStrideW : stride_w_in;
 
   const int channel_multiplier = output_channels / input_channels;
-  const int64_t num_input = (int64_t)batch_size * input_channels * input_depth *
-                            input_height * input_width;
+  const int64_t num_input = static_cast<int64_t>(batch_size) * input_channels *
+                            input_depth * input_height * input_width;
 
-  const int64_t i_stride_c = (int64_t)input_depth * input_height * input_width;
-  const int64_t i_stride_d = (int64_t)input_height * input_width;
+  const int64_t i_stride_c =
+      static_cast<int64_t>(input_depth) * input_height * input_width;
+  const int64_t i_stride_d = static_cast<int64_t>(input_height) * input_width;
   const int i_stride_h = input_width;
 
   const int64_t o_stride_c =
-      (int64_t)output_depth * output_height * output_width;
-  const int64_t o_stride_d = (int64_t)output_height * output_width;
+      static_cast<int64_t>(output_depth) * output_height * output_width;
+  const int64_t o_stride_d = static_cast<int64_t>(output_height) * output_width;
   const int o_stride_h = output_width;
 
   const int w_stride_c = kernel_t * kernel_h * kernel_w;
@@ -373,7 +374,8 @@ void LaunchDepthwiseConv3dBackwardCompatible(const Context& dev_ctx,
   if (grad_input_ptr) {
     int64_t num_elements = input_grad_ncdhw_ptr->numel();
     int block = 256;
-    int grid = std::min((num_elements - 1) / block + 1, (int64_t)65536);
+    int grid =
+        std::min((num_elements - 1) / block + 1, static_cast<int64_t>(65536));
 
     bool is_k3 = (kernel_t == 3 && kernel_h == 3 && kernel_w == 3);
     bool is_d1 = (dilations[0] == 1 && dilations[1] == 1 && dilations[2] == 1);

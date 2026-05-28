@@ -47,7 +47,7 @@ __global__ void KeCMRNormDiff(int img_size,
     out_g += offset;
     x_g += offset;
 
-    const int64_t step = (int64_t)H * W;
+    const int64_t step = static_cast<int64_t>(H) * W;
     const int pre_pad = size - (size + 1) / 2;
     const int post_pad = size - pre_pad - 1;
 

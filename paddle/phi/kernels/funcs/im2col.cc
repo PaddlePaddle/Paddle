@@ -121,7 +121,8 @@ class Col2ImFunctor<funcs::ColFormat::CFO, DeviceContext, T> {
         common::errors::InvalidArgument("Output_height and padding(padding_up, "
                                         "padding_down) are inconsistent."));
 
-    int64_t channels_col = (int64_t)im_channels * filter_height * filter_width;
+    int64_t channels_col =
+        static_cast<int64_t>(im_channels) * filter_height * filter_width;
 
     T* im_data = im->data<T>();
     const T* col_data = col.data<T>();

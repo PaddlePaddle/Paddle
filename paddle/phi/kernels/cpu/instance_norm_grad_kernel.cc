@@ -73,7 +73,7 @@ void InstanceNormGradKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_LE_INT_MAX(x_dims[1], "C");
   const int N = static_cast<int>(x_dims[0]);
   const int C = static_cast<int>(x_dims[1]);
-  const int64_t num_instances = (int64_t)N * C;
+  const int64_t num_instances = static_cast<int64_t>(N) * C;
   PADDLE_ENFORCE_LE_INT_MAX(x.numel() / N / C, "sample_size");
   const int sample_size = static_cast<int>(x.numel() / N / C);
 
@@ -191,7 +191,7 @@ void InstanceNormDoubleGradKernel(const Context& dev_ctx,
   funcs::ExtractNCWHD(x_dims, DataLayout::NCHW, &N, &C, &H, &W, &D);
   PADDLE_ENFORCE_LE_INT_MAX(x.numel() / N / C, "sample_size");
   const int sample_size = static_cast<int>(x.numel() / N / C);
-  const int64_t num_instances = (int64_t)N * C;
+  const int64_t num_instances = static_cast<int64_t>(N) * C;
 
   const T* mean_data = saved_mean.data<T>();
   const T* inv_var_data = saved_variance.data<T>();

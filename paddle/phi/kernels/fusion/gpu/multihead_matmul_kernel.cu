@@ -32,15 +32,15 @@ __global__ void transpose(T *src,
                           const int seq_len,
                           const int head_num,
                           const int size_per_head) {
-  int64_t batch_id =
-      static_cast<int64_t>(blockIdx.x) / ((int64_t)head_num * seq_len);
+  int64_t batch_id = static_cast<int64_t>(blockIdx.x) /
+                     (static_cast<int64_t>(head_num) * seq_len);
   int64_t seq_id = static_cast<int64_t>(blockIdx.x) % seq_len;
-  int64_t head_id =
-      (static_cast<int64_t>(blockIdx.x) % ((int64_t)head_num * seq_len)) /
-      seq_len;
-  dst[batch_id * ((int64_t)head_num * seq_len * size_per_head) +
-      seq_id * ((int64_t)head_num * size_per_head) + head_id * size_per_head +
-      threadIdx.x] =
+  int64_t head_id = (static_cast<int64_t>(blockIdx.x) %
+                     (static_cast<int64_t>(head_num) * seq_len)) /
+                    seq_len;
+  dst[batch_id * (static_cast<int64_t>(head_num) * seq_len * size_per_head) +
+      seq_id * (static_cast<int64_t>(head_num) * size_per_head) +
+      head_id * size_per_head + threadIdx.x] =
       src[static_cast<int64_t>(blockIdx.x) * size_per_head + threadIdx.x];
 }
 
@@ -139,7 +139,8 @@ void TransQKVWithBias(const int batch,
                       float *output,
                       gpuStream_t stream) {
   // BxSx3xNxH + 3xNxH -> 3xBxNxSxH
-  int64_t scratch_size = (int64_t)batch * head_num * seq_len * seq_len;
+  int64_t scratch_size =
+      static_cast<int64_t>(batch) * head_num * seq_len * seq_len;
   const dim3 grid(seq_len, batch, 3);
   // scratch % 4 == 0 to ensure the alignment
   if (head_size % 4 == 0 && scratch_size % 4 == 0) {
@@ -201,7 +202,8 @@ void TransQKVWithBias(const int batch,
                       phi::float16 *output,
                       gpuStream_t stream) {
   // BxSx3xNxH + 3xNxH -> 3xBxNxSxH
-  int64_t scratch_size = (int64_t)batch * head_num * seq_len * seq_len;
+  int64_t scratch_size =
+      static_cast<int64_t>(batch) * head_num * seq_len * seq_len;
   const dim3 grid(seq_len, batch, 3);
   if (head_size % 2 == 0 && scratch_size % 2 == 0) {
     const int h = head_size / 2;
@@ -253,8 +255,8 @@ __global__ void broadcast(const T *src,
                           T *dst,
                           const int seq_len,
                           const int head_num) {
-  int64_t batch_id =
-      static_cast<int64_t>(blockIdx.x) / ((int64_t)head_num * seq_len);
+  int64_t batch_id = static_cast<int64_t>(blockIdx.x) /
+                     (static_cast<int64_t>(head_num) * seq_len);
   int64_t dst_offset = static_cast<int64_t>(blockIdx.x) * seq_len;
   if (threadIdx.x < seq_len) {
     dst[threadIdx.x + dst_offset] = src[threadIdx.x + batch_id * seq_len];
@@ -303,12 +305,13 @@ void MultiheadMatmulKernel(const Context &dev_ctx,
   int hidden = input_dims[2];
   DenseTensor temp_bias_tensor;
   // if bias_qk is[batch, 1, 1, seq_len], the bias_qk_d need to be broadcasted
-  if (bias_qk && bias_qk->numel() == ((int64_t)batch * seq_len)) {
+  if (bias_qk && bias_qk->numel() == (static_cast<int64_t>(batch) * seq_len)) {
     VLOG(4) << "Do broadcasted bias_qk from [batch, 1, 1, seq_len]";
-    temp_bias_tensor.Resize({(int64_t)batch * head_number * seq_len * seq_len});
+    temp_bias_tensor.Resize(
+        {static_cast<int64_t>(batch) * head_number * seq_len * seq_len});
     auto *temp_qk_bias = dev_ctx.template Alloc<T>(
         &temp_bias_tensor, temp_bias_tensor.numel() * sizeof(T));
-    int64_t grid_size64 = (int64_t)batch * head_number * seq_len;
+    int64_t grid_size64 = static_cast<int64_t>(batch) * head_number * seq_len;
     int block = round_up(seq_len);
     PADDLE_ENFORCE_LE_INT_MAX(
         grid_size64, "CUDA launch grid batch_size * head_num * seq_len");
@@ -319,12 +322,14 @@ void MultiheadMatmulKernel(const Context &dev_ctx,
   }
   // if bias_qk is[1, 1, seq_len, seq_len], the bias_qk_d need to be
   // broadcasted
-  if (bias_qk && bias_qk->numel() == ((int64_t)seq_len * seq_len)) {
+  if (bias_qk &&
+      bias_qk->numel() == (static_cast<int64_t>(seq_len) * seq_len)) {
     VLOG(4) << "do broadcasted bias_qk from  [1, 1, seq_len, seq_len]";
-    temp_bias_tensor.Resize({(int64_t)batch * head_number * seq_len * seq_len});
+    temp_bias_tensor.Resize(
+        {static_cast<int64_t>(batch) * head_number * seq_len * seq_len});
     auto *temp_qk_bias = dev_ctx.template Alloc<T>(
         &temp_bias_tensor, temp_bias_tensor.numel() * sizeof(T));
-    int64_t grid_size64 = (int64_t)batch * head_number * seq_len;
+    int64_t grid_size64 = static_cast<int64_t>(batch) * head_number * seq_len;
     int block = round_up(seq_len);
     PADDLE_ENFORCE_LE_INT_MAX(
         grid_size64, "CUDA launch grid batch_size * head_num * seq_len");
@@ -334,7 +339,8 @@ void MultiheadMatmulKernel(const Context &dev_ctx,
     bias_qk_d = static_cast<const T *>(temp_qk_bias);
   }
   if (!bias_qk) {
-    int64_t size = (int64_t)batch * head_number * seq_len * seq_len;
+    int64_t size =
+        static_cast<int64_t>(batch) * head_number * seq_len * seq_len;
     temp_bias_tensor.Resize({size});
     auto *temp_qk_bias = dev_ctx.template Alloc<T>(
         &temp_bias_tensor, temp_bias_tensor.numel() * sizeof(T));
@@ -359,9 +365,9 @@ void MultiheadMatmulKernel(const Context &dev_ctx,
 
   DenseTensor temp_out_tensor;
   auto temp_out_dims = make_ddim({batch, seq_len, 3, head_number, head_size});
-  temp_out_tensor.Resize(
-      {(int64_t)batch * seq_len,
-       common::product(temp_out_dims) / ((int64_t)batch * seq_len)});
+  temp_out_tensor.Resize({static_cast<int64_t>(batch) * seq_len,
+                          common::product(temp_out_dims) /
+                              (static_cast<int64_t>(batch) * seq_len)});
   auto *temp_out_data = dev_ctx.template Alloc<T>(
       &temp_out_tensor, temp_out_tensor.numel() * sizeof(T));
 
@@ -373,7 +379,8 @@ void MultiheadMatmulKernel(const Context &dev_ctx,
 
   DenseTensor multihead_temp_tensor;
   // B * head_number * S * S * 1 + B * S * 3 * N * H
-  int64_t scratch_size = (int64_t)batch * head_number * seq_len * seq_len * 1;
+  int64_t scratch_size =
+      static_cast<int64_t>(batch) * head_number * seq_len * seq_len * 1;
   multihead_temp_tensor.Resize({scratch_size + temp_out_tensor.numel()});
   auto *multihead_temp_data = dev_ctx.template Alloc<T>(
       &multihead_temp_tensor, multihead_temp_tensor.numel() * sizeof(T));
@@ -419,7 +426,7 @@ void MultiheadMatmulKernel(const Context &dev_ctx,
                            T(0.0));
   }
 
-  int64_t grid_size64 = (int64_t)batch * head_number * seq_len;
+  int64_t grid_size64 = static_cast<int64_t>(batch) * head_number * seq_len;
   int block = head_size;
   PADDLE_ENFORCE_LE_INT_MAX(grid_size64,
                             "CUDA launch grid batch_size * head_num * seq_len");
