@@ -41,9 +41,16 @@ void PsroiPoolKernel(const Context& dev_ctx,
       input_channels,
       static_cast<int64_t>(output_channels) * pooled_height * pooled_width,
       errors::InvalidArgument(
-          "the channels of input "
-          "X should equal the product of "
-          "output_channels x pooled_height x pooled_width"));
+          "Expected the channels of input X to be equal to output_channels * "
+          "pooled_height * pooled_width, but received input_channels: %ld, "
+          "output_channels: %d, pooled_height: %d, pooled_width: %d, "
+          "expected channels: %ld.",
+          input_channels,
+          output_channels,
+          pooled_height,
+          pooled_width,
+          static_cast<int64_t>(output_channels) * pooled_height *
+              pooled_width));
 
   auto in_stride = stride(in_dims);
   auto out_stride = stride(out->dims());
