@@ -2156,10 +2156,12 @@ class TestSpecialSincAPI(unittest.TestCase):
             # 4. out parameter test
             out4 = paddle.empty_like(x)
             out5 = paddle.special.sinc(x, out=out4)
+            out6 = paddle.empty_like(x)
+            out7 = paddle.sinc(input=x, out=out6)
 
             # Verify all outputs
             expected = np.sinc(np_x)
-            for out in [out1, out2, out3, out4, out5]:
+            for out in [out1, out2, out3, out4, out5, out6, out7]:
                 np.testing.assert_allclose(
                     out.numpy(), expected, rtol=1e-5, atol=1e-6
                 )
@@ -2184,12 +2186,13 @@ class TestSpecialSincAPI(unittest.TestCase):
                 out2 = paddle.special.sinc(x=x)
                 # 3. PyTorch keyword arguments (alias)
                 out3 = paddle.special.sinc(input=x)
+                out4 = paddle.sinc(input=x)
 
                 exe = paddle.static.Executor()
                 fetches = exe.run(
                     main,
                     feed={f"sinc_x_{i}": np_x},
-                    fetch_list=[out1, out2, out3],
+                    fetch_list=[out1, out2, out3, out4],
                 )
 
                 # Verify all outputs

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from .tensor.compat_softmax import log_softmax, softmax
-from .tensor.creation import assign
 from .tensor.math import (
     erf,
     expm1,
@@ -24,9 +23,8 @@ from .tensor.math import (
     log1p,
     logit,
     logsumexp,
-    sinc as _sinc,
+    sinc,
 )
-from .utils.decorator_utils import param_one_alias
 
 __all__ = [
     "erf",
@@ -42,42 +40,3 @@ __all__ = [
     "softmax",
     "expm1",
 ]
-
-
-@param_one_alias(["x", "input"])
-def sinc(x, name=None, *, out=None):
-    r"""
-    Calculate the normalized sinc of ``x`` elementwise.
-
-    .. math::
-
-        out_i =
-        \left\{
-        \begin{aligned}
-        &1 & \text{ if $x_i = 0$} \\
-        &\frac{\sin(\pi x_i)}{\pi x_i} & \text{ otherwise}
-        \end{aligned}
-        \right.
-
-    Args:
-        x (Tensor): The input Tensor. Must be one of the following types: bfloat16, float16, float32, float64. Alias: ``input``.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Keyword Args:
-        out (Tensor|None, optional): The output Tensor. If set, the result will be stored in this Tensor. Default is None.
-
-    Returns:
-        out (Tensor), The Tensor of elementwise-computed normalized sinc result.
-
-    Examples:
-        .. code-block:: pycon
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([0.0, 0.5, 1.0], dtype='float32')
-            >>> paddle.special.sinc(x)
-            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [1.        , 0.63661975, 0.        ])
-    """
-    result = _sinc(x, name=name)
-    return assign(result, out) if out is not None else result
