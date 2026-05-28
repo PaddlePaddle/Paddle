@@ -1919,9 +1919,8 @@ class DepthwiseConvFilterGradFunctor<GPUContext, T, fuse_relu_before_conv> {
       if ((int64_t)output_height * output_width < WARP_SIZE) {
         int64_t total_threads =
             (int64_t)batch_size * output_height * output_width;
-        PADDLE_ENFORCE_LE_INT_MAX(total_threads,
-                                  "batch_size * output_height * output_width");
-        threads = dim3(std::min(block_size, static_cast<int>(total_threads)));
+        threads = dim3(static_cast<int>(
+            std::min(static_cast<int64_t>(block_size), total_threads)));
       }
     } else {
       // Large block size may cause atomic dependence, reduce block size here.
@@ -1935,12 +1934,14 @@ class DepthwiseConvFilterGradFunctor<GPUContext, T, fuse_relu_before_conv> {
       threads = dim3(std::min(output_channels, block_size), blocks, 1);
 
       if (output_channels < SMALL_THRESHOLD) {
-        const int64_t hwc_size = ksize_height * ksize_width * output_channels;
-        PADDLE_ENFORCE_LE_INT_MAX(hwc_size, "filter_hwc_size");
-        grid = dim3(static_cast<int>((hwc_size + block_size - 1) / block_size),
-                    batch_size,
-                    1);
-        threads = dim3(std::min(static_cast<int>(hwc_size), block_size));
+        const int64_t hwc_size =
+            (int64_t)ksize_height * ksize_width * output_channels;
+        const int64_t blocks64 =
+            (hwc_size + static_cast<int64_t>(block_size) - 1) / block_size;
+        PADDLE_ENFORCE_LE_INT_MAX(blocks64, "CUDA launch grid filter_hwc_size");
+        grid = dim3(static_cast<int>(blocks64), batch_size, 1);
+        threads = dim3(static_cast<int>(
+            std::min(static_cast<int64_t>(block_size), hwc_size)));
       }
     }
     int filter_multiplier = output_channels / input_channels;
