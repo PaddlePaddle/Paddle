@@ -417,10 +417,7 @@ def hardswish(
             [-0.       , 5.        , 0.66666669])
     """
     if in_dynamic_or_pir_mode():
-        if inplace:
-            return _C_ops.hardswish_(x)
-        else:
-            return _C_ops.hardswish(x)
+        return _C_ops.hardswish_(x) if inplace else _C_ops.hardswish(x)
     else:
         check_variable_and_dtype(
             x,
@@ -1000,10 +997,7 @@ def relu6(x: Tensor, inplace: bool = False, name: str | None = None) -> Tensor:
     """
     threshold = 6.0
     if in_dynamic_or_pir_mode():
-        if inplace:
-            return _C_ops.relu6_(x)
-        else:
-            return _C_ops.relu6(x)
+        return _C_ops.relu6_(x) if inplace else _C_ops.relu6(x)
 
     check_variable_and_dtype(
         x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'relu6'
