@@ -265,11 +265,7 @@ def _squared_l2_norm(x):
     Return the squared L2 norm of a tensor.
     """
 
-    # print("x.max: ", x.max())
-    # print("x.min: ", x.min())
     x = _cast_to_mp_type_if_enabled(x)
-    x = x.astype('float32')
-    print("[squared_l2_norm] x.dtype:", x.dtype)
 
     if in_dynamic_or_pir_mode():
         return _C_ops.squared_l2_norm(x)
@@ -392,7 +388,6 @@ class ClipGradBase:
     def __call__(
         self, params_grads: list[tuple[Tensor, Tensor]]
     ) -> list[tuple[Tensor, Tensor]]:
-        print('call clip grad')
         if in_dynamic_mode():
             return self._dygraph_clip(params_grads)
         elif in_pir_mode():
@@ -647,6 +642,7 @@ def _allow_pure_bf16_global_norm_clip(*args):
         _allow_pure_bf16_global_norm_clip_flag = args[0]
         return old_value
 
+
 class ClipGradByGlobalNormAccuracyCompatible(ClipGradBase):
     clip_norm: float
     auto_skip_clip: bool
@@ -659,173 +655,32 @@ class ClipGradByGlobalNormAccuracyCompatible(ClipGradBase):
         super().__init__()
         self.clip_norm = float(clip_norm)
         self.auto_skip_clip = auto_skip_clip
-        self.should_comm_on_shard_dim = False
-
-    def _merge_grad(self, g):
-        merge_grad = g
-        if in_dynamic_mode() and g.is_selected_rows():
-            merge_grad = merge_selected_rows(g)
-            merge_grad = merge_grad._get_tensor_from_selected_rows()
-        elif g.type == core.VarDesc.VarType.SELECTED_ROWS:
-            merge_grad = merge_selected_rows(g)
-            merge_grad = get_tensor_from_selected_rows(merge_grad)
-        return merge_grad
-
-    def _get_local_norm(self, merge_grad):
-        norm_input = _cast_to_mp_type_if_enabled(merge_grad).detach()
-        if norm_input.place.is_cpu_place() and (
-            norm_input.dtype == paddle.float16
-            or norm_input.dtype == paddle.bfloat16
-        ):
-            norm_input = norm_input.astype('float32')
-        return paddle.linalg.vector_norm(norm_input, 2.0)
 
     def _get_global_norm(self, params_grads):
         local_norm_list = []
-        sum_square_list = []
-        sum_square_list_fp16 = []
-        sum_square_list_fp32 = []
-        flag_auto_hybrid_pp = True
-        if len(params_grads) > 0 and len(params_grads[0]) > 0:
-            src_mesh = params_grads[0][0].process_mesh
-        else:
-            src_mesh = None
-
         for p, g in params_grads:
-            if g is None:
+            if g is None or getattr(p, 'need_clip', True) is False:
                 continue
-            if getattr(p, 'need_clip', True) is False:
-                continue
+            local_norm_list.append(paddle.linalg.vector_norm(g, 2.0))
 
-            merge_grad = self._merge_grad(g)
-            local_norm = self._get_local_norm(merge_grad)
-            print("local norm is: ", local_norm)
-            local_norm_list.append(local_norm)
-
-            sum_square = paddle.square(local_norm)
-            print("sum square is: ", sum_square)
-
-            if src_mesh is not None and g.process_mesh != src_mesh:
-                flag_auto_hybrid_pp = False
-                pp_mesh = get_complete_pp_mesh(g.process_mesh)
-                if set(g.process_mesh.process_ids) < set(pp_mesh.process_ids):
-                    flag_auto_hybrid_pp = True
-                    sum_square = dist.reshard(
-                        sum_square, pp_mesh, sum_square.placements
-                    )
-
-                sum_square = dist.reshard(
-                    sum_square, src_mesh, sum_square.placements
-                )
-
-            if (
-                sum_square.dtype == paddle.float16
-                or sum_square.dtype == paddle.bfloat16
-            ):
-                sum_square_list_fp16.append(sum_square)
-            elif sum_square.dtype == paddle.float32:
-                sum_square_list_fp32.append(sum_square)
-            else:
-                sum_square_list.append(sum_square)
-
-        if (
-            len(sum_square_list)
-            + len(sum_square_list_fp16)
-            + len(sum_square_list_fp32)
-            == 0
-        ):
-            return None, None
-
-        sum_dtype = 'float64' if len(sum_square_list) > 0 else 'float32'
-
-        if src_mesh is None and not self.should_comm_on_shard_dim:
-            norm_tensor_inputs = local_norm_list
-            if any(
-                norm.dtype != local_norm_list[0].dtype for norm in local_norm_list
-            ):
-                norm_tensor_inputs = [
-                    norm.astype(sum_dtype)
-                    if norm.dtype != sum_dtype
-                    else norm
-                    for norm in local_norm_list
-                ]
-            norm_tensor = paddle.stack(norm_tensor_inputs)
-            print("norm_tensor is: ", norm_tensor)
-            global_norm_var = paddle.linalg.vector_norm(norm_tensor, 2.0)
-            print("global_norm_var is: ", global_norm_var)
-            return global_norm_var, global_norm_var.dtype
-
-        def async_add_n(var_list):
-            return paddle.stack(var_list).sum()
-
-        global_norm_var = []
-        if len(sum_square_list_fp16) > 0:
-            global_norm_var_fp16 = async_add_n(sum_square_list_fp16)
-            global_norm_var.append(global_norm_var_fp16.astype(sum_dtype))
-        if len(sum_square_list_fp32) > 0:
-            global_norm_var_fp32 = async_add_n(sum_square_list_fp32)
-            if sum_dtype == 'float32':
-                global_norm_var.append(global_norm_var_fp32)
-            else:
-                global_norm_var.append(global_norm_var_fp32.astype(sum_dtype))
-        if len(sum_square_list) > 0:
-            global_norm_var_fp64 = async_add_n(sum_square_list)
-            global_norm_var.append(global_norm_var_fp64)
-
-        global_norm_var = async_add_n(global_norm_var)
-
-        if flag_auto_hybrid_pp and src_mesh is not None:
-            g_mesh = dist.get_mesh()
-            if (
-                g_mesh
-                and "pp" in g_mesh.dim_names
-                and g_mesh.get_dim_size("pp") > 1
-            ):
-                pp_group = g_mesh.get_submesh_with_dim("pp").get_group("pp")
-
-                global_norm_var_local = global_norm_var._local_value()
-                dist.all_reduce(
-                    global_norm_var_local,
-                    op=dist.ReduceOp.SUM,
-                    group=pp_group,
-                )
-
-                global_norm_var = dist.shard_tensor(
-                    global_norm_var_local,
-                    global_norm_var.process_mesh,
-                    global_norm_var.placements,
-                )
-
-        if self.should_comm_on_shard_dim and hasattr(self, 'sharding_group'):
-            paddle.distributed.all_reduce(
-                global_norm_var._local_value(), group=self.sharding_group
-            ).wait()
-
-        if self.should_comm_on_shard_dim and hasattr(self, 'mp_group'):
-            paddle.distributed.all_reduce(
-                global_norm_var._local_value(), group=self.mp_group
-            ).wait()
-
-        if self.should_comm_on_shard_dim and hasattr(self, 'fsdp_group'):
-            paddle.distributed.all_reduce(
-                global_norm_var, group=self.fsdp_group
-            ).wait()
-
-        global_norm_var = paddle.sqrt(global_norm_var)
-        print("global_norm_var is: ", global_norm_var)
-        return global_norm_var, sum_dtype
+        if not local_norm_list:
+            return None
+        global_norm_var = paddle.linalg.vector_norm(
+            paddle.stack(local_norm_list)
+        )
+        return global_norm_var
 
     def _dygraph_clip(self, params_grads):
-        global_norm_var, sum_dtype = self._get_global_norm(params_grads)
+        global_norm_var = self._get_global_norm(params_grads)
         if global_norm_var is None:
             return params_grads
 
         global_norm_var = global_norm_var + 1e-6
         need_clip = False
         max_global_norm = paddle.full(
-            shape=[1], dtype=sum_dtype, fill_value=self.clip_norm
+            shape=[], dtype=global_norm_var.dtype, fill_value=self.clip_norm
         )
-        if not self.auto_skip_clip:  # always apply clip
+        if not self.auto_skip_clip:
             need_clip = True
             clip_var = paddle.divide(
                 x=max_global_norm,
@@ -834,8 +689,6 @@ class ClipGradByGlobalNormAccuracyCompatible(ClipGradBase):
         elif global_norm_var > max_global_norm:
             need_clip = True
             clip_var = paddle.divide(x=max_global_norm, y=global_norm_var)
-        print(f"实际裁剪系数:                   {clip_var.item():.10f}")
-        print(f"是否发生裁剪:                   {'是' if clip_var.item() < 1.0 else '否'}")
 
         params_and_grads = []
         for p, g in params_grads:
@@ -860,6 +713,7 @@ class ClipGradByGlobalNormAccuracyCompatible(ClipGradBase):
                 params_and_grads.append((p, g))
 
         return params_and_grads
+
 
 class ClipGradByGlobalNorm(ClipGradBase):
     r"""
@@ -951,16 +805,6 @@ class ClipGradByGlobalNorm(ClipGradBase):
             accuracy_compatible_clip = ClipGradByGlobalNormAccuracyCompatible(
                 self.clip_norm, self.auto_skip_clip
             )
-            accuracy_compatible_clip.should_comm_on_shard_dim = (
-                self.should_comm_on_shard_dim
-            )
-            for attr_name in ('sharding_group', 'mp_group', 'fsdp_group'):
-                if hasattr(self, attr_name):
-                    setattr(
-                        accuracy_compatible_clip,
-                        attr_name,
-                        getattr(self, attr_name),
-                    )
             return accuracy_compatible_clip._dygraph_clip(params_grads)
 
         params_and_grads = []
@@ -969,39 +813,30 @@ class ClipGradByGlobalNorm(ClipGradBase):
         sum_square_list_fp32 = []
         flag_auto_hybrid_pp = True  # Determine whether to use the new dynamic graph semi-automatic parallel pp framework
         if len(params_grads) > 0 and len(params_grads[0]) > 0:
-            print('src_mesh is not None')
             src_mesh = params_grads[0][0].process_mesh
         else:
-            print('src_mesh is None')
             src_mesh = None
 
         for p, g in params_grads:
             if g is None:
                 continue
-            print("-*" * 20)
             if getattr(p, 'need_clip', True) is False:
                 continue
             merge_grad = g
-            print(f"[clip.py] grad.dtype: {g.dtype}")
 
             if in_dynamic_mode() and g.is_selected_rows():
-                print('in dynamic mode and grad is selected rows')
                 merge_grad = merge_selected_rows(g)
                 merge_grad = merge_grad._get_tensor_from_selected_rows()
 
             elif g.type == core.VarDesc.VarType.SELECTED_ROWS:
-                print('g.type ==  core.VarDesc.VarType.SELECTED_ROWS')
                 merge_grad = merge_selected_rows(g)
                 merge_grad = get_tensor_from_selected_rows(merge_grad)
 
-            print(f"[clip.py] _squared_l2_norm input: shape={merge_grad.shape}, dtype={merge_grad.dtype}, numel={merge_grad.numel()}")
             sum_square = _squared_l2_norm(merge_grad)
-            print(f"[clip.py] sum_square = {sum_square}, dtype: {sum_square.dtype}")
 
             # if the gradient mesh is not equal to src mesh
             # do reshard to get the result of squared_l2 from other pp stage mesh
             if src_mesh is not None and g.process_mesh != src_mesh:
-                print('src_meash is not none and grad process mesh not equal to src_mesh')
                 flag_auto_hybrid_pp = False
                 pp_mesh = get_complete_pp_mesh(g.process_mesh)
                 if set(g.process_mesh.process_ids) < set(pp_mesh.process_ids):
@@ -1022,7 +857,6 @@ class ClipGradByGlobalNorm(ClipGradBase):
             elif sum_square.dtype == paddle.float32:
                 sum_square_list_fp32.append(sum_square)
             else:
-                #Q: int64也用double吗
                 sum_square_list.append(sum_square)
 
         # all parameters have been filtered out
@@ -1105,7 +939,6 @@ class ClipGradByGlobalNorm(ClipGradBase):
             shape=[1], dtype=sum_dtype, fill_value=self.clip_norm
         )
 
-        print(f"计算到的总范数:                 {global_norm_var:.6f}")
         need_clip = False
         if not self.auto_skip_clip:  # always apply clip
             need_clip = True
@@ -1117,8 +950,6 @@ class ClipGradByGlobalNorm(ClipGradBase):
             # only when global_norm_var > max_global_norm, grad need clip
             need_clip = True
             clip_var = paddle.divide(x=max_global_norm, y=global_norm_var)
-        print(f"实际裁剪系数:                   {clip_var.item():.10f}")
-        print(f"是否发生裁剪:                   {'是' if clip_var.item() < 1.0 else '否'}")
 
         for p, g in params_grads:
             if g is None:
