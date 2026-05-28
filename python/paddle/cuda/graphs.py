@@ -24,8 +24,6 @@ from paddle.device.cuda.graphs import (
 )
 
 if TYPE_CHECKING:
-    from types import TracebackType
-
     from typing_extensions import Self
 
     from paddle.device import Stream
@@ -83,7 +81,7 @@ class graph:
         capture_error_mode: str = 'global',
     ) -> None:
         self.cuda_graph = cuda_graph
-        self.pool = () if pool is None else (pool,)
+        self.pool = pool
         self.capture_stream = stream
         self.capture_error_mode = capture_error_mode
         self.stream_ctx = _paddle_device.stream(stream)
@@ -94,20 +92,15 @@ class graph:
         self.stream_ctx.__enter__()
         try:
             self.cuda_graph.capture_begin(
-                *self.pool, capture_error_mode=self.capture_error_mode
+                pool=self.pool, capture_error_mode=self.capture_error_mode
             )
         except BaseException:
             self.stream_ctx.__exit__(None, None, None)
             raise
         return self
 
-    def __exit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_value: BaseException | None,
-        traceback: TracebackType | None,
-    ) -> None:
+    def __exit__(self, *args: object) -> None:
         try:
             self.cuda_graph.capture_end()
         finally:
-            self.stream_ctx.__exit__(exc_type, exc_value, traceback)
+            self.stream_ctx.__exit__(*args)
