@@ -99,7 +99,7 @@ function make_ubuntu20_cu12_dockerfile(){
     sed -i '/fast_tokenizer_python/d' requirements.txt \&\& \
     pip3.12 install -r requirements.txt \&\& \
     pip3.12 install -r scripts/regression/requirements_ci.txt \&\& \
-    pip3.12 install --no-build-isolation lac fast_tokenizer_python \&\& \
+    pip3.12 install --no-build-isolation lac \&\& \
     pip3.12 install -r csrc/requirements.txt \&\& \
     pip3.12 install pytest-timeout \&\& \
     cd /home \&\& rm -rf PaddleNLP" ${dockerfile_name}
