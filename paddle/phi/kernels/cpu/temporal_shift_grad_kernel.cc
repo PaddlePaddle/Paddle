@@ -109,10 +109,10 @@ void TemporalShiftGradKernel(const Context& dev_ctx,
                                      ? output_grad->dims()[3]
                                      : output_grad->dims()[2]);
 
-  const int64_t hw = (int64_t)h * w;
-  const int64_t chw = (int64_t)c * hw;
-  const int64_t tchw = (int64_t)t * chw;
-  const int64_t ntchw = (int64_t)nt * chw;
+  const int64_t hw = static_cast<int64_t>(h) * w;
+  const int64_t chw = static_cast<int64_t>(c) * hw;
+  const int64_t tchw = static_cast<int64_t>(t) * chw;
+  const int64_t ntchw = static_cast<int64_t>(nt) * chw;
 
   const int c1 = static_cast<int>(static_cast<float>(c) * shift_ratio);
   const int c2 = static_cast<int>(static_cast<float>(c) * 2.f * shift_ratio);

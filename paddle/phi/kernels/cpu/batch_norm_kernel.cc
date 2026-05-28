@@ -89,8 +89,8 @@ void BatchNormKernel(const Context& dev_ctx,
   const int64_t C =
       data_layout == DataLayout::NCHW ? x_dims[1] : x_dims[x_dims.size() - 1];
   const int64_t sample_size = x.numel() / N / C;
-  const int64_t num_batch_channels = (int64_t)N * C;
-  const int64_t num_batch_spatial = (int64_t)N * sample_size;
+  const int64_t num_batch_channels = static_cast<int64_t>(N) * C;
+  const int64_t num_batch_spatial = static_cast<int64_t>(N) * sample_size;
 
   // alloc memory
   dev_ctx.template Alloc<T>(y);

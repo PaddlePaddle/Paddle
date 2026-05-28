@@ -61,7 +61,7 @@ size_t CalcCubSortPairsWorkspaceSize(int num_items, int num_segments) {
 
 template <typename T>
 size_t CalcDetectionForwardBBoxDataSize(int N, int C1) {
-  return (int64_t)N * C1 * sizeof(T);
+  return static_cast<int64_t>(N) * C1 * sizeof(T);
 }
 
 template <typename T>
@@ -71,12 +71,12 @@ size_t CalcDetectionForwardBBoxPermuteSize(bool share_location, int N, int C1) {
 
 template <typename T>
 size_t CalcDetectionForwardPreNMSSize(int N, int C2) {
-  return (int64_t)N * C2 * sizeof(T);
+  return static_cast<int64_t>(N) * C2 * sizeof(T);
 }
 
 template <typename T>
 size_t CalcDetectionForwardPostNMSSize(int N, int num_classes, int top_k) {
-  return (int64_t)N * num_classes * top_k * sizeof(T);
+  return static_cast<int64_t>(N) * num_classes * top_k * sizeof(T);
 }
 
 size_t CalcTotalWorkspaceSize(size_t* workspaces, int count) {
@@ -95,13 +95,15 @@ size_t CalcSortScoresPerClassWorkspaceSize(const int num,
                                            const int num_classes,
                                            const int num_preds_per_class) {
   size_t wss[4];
-  const int64_t array_len = (int64_t)num * num_classes * num_preds_per_class;
+  const int64_t array_len =
+      static_cast<int64_t>(num) * num_classes * num_preds_per_class;
   PADDLE_ENFORCE_LE_INT_MAX(array_len,
                             "num_images * num_classes * num_preds_per_class");
-  wss[0] = array_len * sizeof(T);                           // temp scores
-  wss[1] = array_len * sizeof(int);                         // temp indices
-  wss[2] = ((int64_t)num * num_classes + 1) * sizeof(int);  // offsets
-  const int64_t num_segments = (int64_t)num * num_classes;
+  wss[0] = array_len * sizeof(T);    // temp scores
+  wss[1] = array_len * sizeof(int);  // temp indices
+  wss[2] =
+      (static_cast<int64_t>(num) * num_classes + 1) * sizeof(int);  // offsets
+  const int64_t num_segments = static_cast<int64_t>(num) * num_classes;
   PADDLE_ENFORCE_LE_INT_MAX(num_segments, "num_segments");
   wss[3] = CalcCubSortPairsWorkspaceSize<T, int>(
       static_cast<int>(array_len), static_cast<int>(num_segments));
@@ -112,7 +114,8 @@ size_t CalcSortScoresPerClassWorkspaceSize(const int num,
 template <typename T>
 size_t CalcSortScoresPerImageWorkspaceSize(const int num_images,
                                            const int num_items_per_image) {
-  const int64_t array_len = (int64_t)num_images * num_items_per_image;
+  const int64_t array_len =
+      static_cast<int64_t>(num_images) * num_items_per_image;
   PADDLE_ENFORCE_LE_INT_MAX(array_len, "num_images * num_items_per_image");
   size_t wss[2];
   wss[0] = (num_images + 1) * sizeof(int);  // offsets

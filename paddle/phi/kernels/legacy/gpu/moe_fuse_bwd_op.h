@@ -285,12 +285,12 @@ __global__ void topk_grad_with_mask(const T* dy,               // [s, k]
 ) {
   // init dx to zero
   for (int i = blockIdx.x; i < num_rows; i += gridDim.x) {
-    int64_t base_grad = (int64_t)i * num_experts;
+    int64_t base_grad = static_cast<int64_t>(i) * num_experts;
     for (int j = threadIdx.x; j < num_experts; j += blockDim.x) {
       dx[base_grad + j] = static_cast<T>(0);
     }
     __syncthreads();
-    int64_t base_index = (int64_t)i * k;
+    int64_t base_index = static_cast<int64_t>(i) * k;
     for (int j = threadIdx.x; j < k; j += blockDim.x) {
       int64_t idx = topk_idx[base_index + j];
       if (combine_weights[base_index + j] > static_cast<T>(0)) {

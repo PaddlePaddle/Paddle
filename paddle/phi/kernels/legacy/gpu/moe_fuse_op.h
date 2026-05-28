@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+
 #include <thrust/adjacent_difference.h>  // 包含常用的 thrust 算法
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
@@ -129,6 +130,7 @@ void modify_expert_id_launcher(const T* expert_id,
                                const cudaStream_t& stream) {
   const int max = 1024;
   const int64_t total_rows = static_cast<int64_t>(num_rows) * k;
+
   const int threads =
       static_cast<int>(std::min(static_cast<int64_t>(max), total_rows));
   const int64_t blocks64 =
@@ -163,6 +165,7 @@ void unmodify_expert_id_launcher(const T* expert_id,
                                  const cudaStream_t& stream) {
   const int max = 1024;
   const int64_t total_rows = static_cast<int64_t>(num_rows) * k;
+
   const int threads =
       static_cast<int>(std::min(static_cast<int64_t>(max), total_rows));
   const int64_t blocks64 =
@@ -570,6 +573,7 @@ void modify_and_mask_expert_id_launcher(const T* expert_id,
                                         const cudaStream_t& stream) {
   const int max = 1024;
   const int64_t total_rows = static_cast<int64_t>(num_rows) * k;
+
   const int threads =
       static_cast<int>(std::min(static_cast<int64_t>(max), total_rows));
   const int64_t blocks64 =
@@ -763,6 +767,7 @@ void build_seqsort_kv_pairs_kernel_launcher(
     cudaStream_t stream) {
   const int max = 1024;
   const int64_t total_rows = static_cast<int64_t>(num_rows) * k;
+
   const int threads =
       static_cast<int>(std::min(static_cast<int64_t>(max), total_rows));
   const int64_t blocks64 =

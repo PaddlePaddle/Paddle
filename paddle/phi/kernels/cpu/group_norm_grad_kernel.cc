@@ -117,7 +117,7 @@ void GroupNormGradKernel(const Context& dev_ctx,
       T x_var = var_data[bid * groups + gid];
       T var_inv = 1.0 / sqrt(x_var + epsilon);
       int64_t number = std::min(static_cast<int64_t>(group_size),
-                                C - (int64_t)gid * group_size);
+                                C - static_cast<int64_t>(gid) * group_size);
       T number_inv = 1.0 / (number * imsize);
       auto* tmp_x = iter_x_data;
       auto* tmp_y = iter_y_data;
@@ -216,11 +216,11 @@ void GroupNormGradKernel(const Context& dev_ctx,
       }
     }
     if (data_layout == DataLayout::NHWC) {
-      iter_x_data = x_data + (int64_t)(bid + 1) * C * imsize;
+      iter_x_data = x_data + static_cast<int64_t>(bid + 1) * C * imsize;
       if (d_x_data) {
-        iter_d_x_data = d_x_data + (int64_t)(bid + 1) * C * imsize;
+        iter_d_x_data = d_x_data + static_cast<int64_t>(bid + 1) * C * imsize;
       }
-      iter_y_data = y_data + (int64_t)(bid + 1) * C * imsize;
+      iter_y_data = y_data + static_cast<int64_t>(bid + 1) * C * imsize;
     }
   }
 }

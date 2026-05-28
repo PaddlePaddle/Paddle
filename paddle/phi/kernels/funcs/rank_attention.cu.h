@@ -109,7 +109,7 @@ __global__ void expand_rank_attention_param_kernel(const T* input,
     int64_t output_col_idx = idx % output_param_col;
     int64_t output_row_idx = idx / output_param_col;
 
-    int64_t block_matrix_row = (int64_t)max_rank * input_col;
+    int64_t block_matrix_row = static_cast<int64_t>(max_rank) * input_col;
     int64_t ins_idx = output_row_idx / block_matrix_row;
     int64_t start_offset = output_row_idx % block_matrix_row;
 
@@ -122,7 +122,7 @@ __global__ void expand_rank_attention_param_kernel(const T* input,
     if (lower < 0 || faster < 0) {
       continue;
     }
-    int64_t start = (int64_t)lower * max_rank + faster;
+    int64_t start = static_cast<int64_t>(lower) * max_rank + faster;
     int64_t ori_idx =
         start * param_col * input_col + k_offset * param_col + output_col_idx;
     output_param[idx] = param[ori_idx];
@@ -183,7 +183,7 @@ __global__ void merge_param_gradient_kernel(T* expanded_grad,
     int64_t param_col_idx = tid % param_grad_col;
     int64_t param_row_idx = tid / param_grad_col;
 
-    int64_t block_matrix_row = (int64_t)max_rank * input_col;
+    int64_t block_matrix_row = static_cast<int64_t>(max_rank) * input_col;
     int64_t rank_idx = param_row_idx / block_matrix_row;
     int64_t rank_offset = param_row_idx % block_matrix_row;
 

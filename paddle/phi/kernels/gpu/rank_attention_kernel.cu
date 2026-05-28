@@ -51,11 +51,11 @@ void RankAttentionCUDAKernel(const Context &dev_ctx,
       max_rank,
       common::errors::InvalidArgument("Input(RankOffset) has wrong columns."));
   PADDLE_ENFORCE_EQ(
-      (int64_t)max_rank * max_rank * x_fea_dim,
+      static_cast<int64_t>(max_rank) * max_rank * x_fea_dim,
       para_row,
       common::errors::InvalidArgument("Input(RankParam) has wrong rows."));
 
-  int64_t block_matrix_row = (int64_t)max_rank * x_fea_dim;
+  int64_t block_matrix_row = static_cast<int64_t>(max_rank) * x_fea_dim;
   int64_t max_ins = std::max(ins_num, static_cast<int64_t>(max_size));
 
   DenseTensor param_help;

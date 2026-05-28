@@ -84,14 +84,15 @@ void PsroiPoolGradKernel(const Context& dev_ctx,
       // set roi_batch_id
       int64_t roi_batch_id = rois_batch_id_data[n];
       int64_t input_channel =
-          ((int64_t)c * pooled_height + ph) * pooled_width + pw;
+          (static_cast<int64_t>(c) * pooled_height + ph) * pooled_width + pw;
       int64_t input_offset =
-          ((int64_t)roi_batch_id * input_channels + input_channel) * height *
-          width;
+          (static_cast<int64_t>(roi_batch_id) * input_channels +
+           input_channel) *
+          height * width;
       T* offset_dx_data = dx_data + input_offset;
 
       // [start, end) interval for spatial sampling
-      const T* offset_input_rois = input_rois + (int64_t)n * 4;
+      const T* offset_input_rois = input_rois + static_cast<int64_t>(n) * 4;
       T roi_start_w =
           static_cast<T>(round(offset_input_rois[0])) * spatial_scale;
       T roi_start_h =
@@ -127,7 +128,7 @@ void PsroiPoolGradKernel(const Context& dev_ctx,
       T diff_val = is_empty ? 0. : dout_data[i] / bin_area;
       for (int64_t ih = hstart; ih < hend; ++ih) {
         for (int64_t iw = wstart; iw < wend; ++iw) {
-          int64_t input_index = (int64_t)ih * width + iw;
+          int64_t input_index = static_cast<int64_t>(ih) * width + iw;
           offset_dx_data[input_index] += diff_val;
         }
       }

@@ -24,7 +24,7 @@ namespace phi {
 
 template <typename T>
 __device__ inline int resolve_root_int(int b, int cX4, int x, int32_t sign) {
-  int64_t bXb_cX4 = (int64_t)b * b - cX4;
+  int64_t bXb_cX4 = static_cast<int64_t>(b) * b - cX4;
   double sr = ::sqrt(static_cast<double>(bXb_cX4));
   T res = ::__double2ll_rd((-b + sign * sr) / 2);
   if (bXb_cX4 != static_cast<int64_t>(sr * sr)) {

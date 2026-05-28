@@ -67,7 +67,7 @@ __global__ void naive_conv2d_kernel(const T *input,
                                     const T *residual,
                                     float alpha,  // for leaky_relu
                                     OpType op_type) {
-  int64_t M = (int64_t)batch * oh * ow;
+  int64_t M = static_cast<int64_t>(batch) * oh * ow;
   int N = oc;
   int kc = ic / groups;
   int K = kc * kh * kw;
@@ -182,7 +182,7 @@ float conv2d_diff_gpu(const ConvAllParams &params, OpType op_type, T a) {
   uint3 grid = {(M + blockM - 1) / blockM, (N + blockN - 1) / blockN, 1};
   uint3 block = {blockM, blockN, 1};
 
-  int64_t output_size = (int64_t)batch * oc * oh * ow;
+  int64_t output_size = static_cast<int64_t>(batch) * oc * oh * ow;
   T *output_from_cutlass =
       reinterpret_cast<T *>(malloc(sizeof(T) * output_size));
   cudaMemcpy(output_from_cutlass,

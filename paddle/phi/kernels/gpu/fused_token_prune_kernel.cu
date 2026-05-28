@@ -44,7 +44,7 @@ __global__ void FillIndex(int64_t* indices, int num_raws, int num_cols) {
 
   for (; tid < num_threads; tid += stride) {
     int col = tid % num_cols;
-    indices[tid] = (int64_t)col;
+    indices[tid] = static_cast<int64_t>(col);
   }
 }
 

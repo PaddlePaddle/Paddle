@@ -234,8 +234,8 @@ void FusedAttentionKernel(const Context &dev_ctx,
     dim_head = dim_embed / (num_head * nranks);
   }
 
-  int64_t bsz_seq = (int64_t)batch_size * max_seq_len;
-  int64_t hidden_size = (int64_t)num_head * dim_head;
+  int64_t bsz_seq = static_cast<int64_t>(batch_size) * max_seq_len;
+  int64_t hidden_size = static_cast<int64_t>(num_head) * dim_head;
   int64_t output_size = 3 * hidden_size;
   int input_size = dim_embed;
 

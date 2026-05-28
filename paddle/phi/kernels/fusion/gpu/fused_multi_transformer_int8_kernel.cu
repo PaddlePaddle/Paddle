@@ -75,7 +75,7 @@ void FusedMultiTransformerINT8OpKernel(
   int bsz = input_x_dims[0];
   int seq_len = input_x_dims[1];
   int dim_embed = input_x_dims[2];
-  int64_t bsz_seq = (int64_t)bsz * seq_len;
+  int64_t bsz_seq = static_cast<int64_t>(bsz) * seq_len;
 
   // quant input scales, vector, size = num_layers
 
@@ -111,7 +111,7 @@ void FusedMultiTransformerINT8OpKernel(
   const auto qkv_w_dims = qkv_weights[0]->dims();
   int num_head = trans_qkvw ? qkv_w_dims[1] : qkv_w_dims[2];
   int dim_head = trans_qkvw ? qkv_w_dims[2] : qkv_w_dims[3];
-  int64_t hidden_size = (int64_t)num_head * dim_head;
+  int64_t hidden_size = static_cast<int64_t>(num_head) * dim_head;
   int64_t output_size = 3 * hidden_size;
   int input_size = dim_embed;
 
@@ -280,7 +280,9 @@ void FusedMultiTransformerINT8OpKernel(
   DenseTensor input_workspace, output_workspace, cublaslt_workspace;
   // for input and output transform data is CUBLASLT_ORDER_COL32 format,
   int64_t m_max = bsz_seq, k_max = std::max(dim_embed, dim_ffn),
-          n_max = std::max({output_size, (int64_t)dim_embed, (int64_t)dim_ffn});
+          n_max = std::max({output_size,
+                            static_cast<int64_t>(dim_embed),
+                            static_cast<int64_t>(dim_ffn)});
 
   input_workspace.Resize({(m_max * k_max + 31) / 32 * 32});
   dev_ctx.template Alloc<int8_t>(&input_workspace,
@@ -429,7 +431,8 @@ void FusedMultiTransformerINT8OpKernel(
                                   &fmha_out);
       // [3, bsz, num_head, seq_len, head_dim]
       T *qkv_data = transpose_out_2_data;
-      int64_t q_size = (int64_t)bsz * seq_len * num_head * dim_head;
+      int64_t q_size =
+          static_cast<int64_t>(bsz) * seq_len * num_head * dim_head;
       int64_t k_size = q_size;
       const T *q_ptr = qkv_data;
       const T *k_ptr = q_ptr + q_size;
@@ -486,7 +489,7 @@ void FusedMultiTransformerINT8OpKernel(
       phi::fusion::AllReduce<int32_t>(
           output_workspace,
           ring_id,
-          (int64_t)bsz * seq_len * num_head * dim_head,
+          static_cast<int64_t>(bsz) * seq_len * num_head * dim_head,
           dev_ctx);
     } else {
       out_linear_compute.ComputeForward(out_linear_weights[i],
@@ -627,7 +630,7 @@ void FusedMultiTransformerINT8OpKernel(
       phi::fusion::AllReduce<int32_t>(
           output_workspace,
           ring_id,
-          (int64_t)bsz * seq_len * num_head * dim_head,
+          static_cast<int64_t>(bsz) * seq_len * num_head * dim_head,
           dev_ctx);
     } else {
       phi::fusion::AllReduce<T>(*buf0, ring_id, buf0->numel(), dev_ctx);

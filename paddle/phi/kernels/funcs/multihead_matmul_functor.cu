@@ -539,9 +539,9 @@ inline void MatmulWithHeadQK(const GPUContext &dev_ctx,
                    reinterpret_cast<run_type *>(k_buf_),
                    static_cast<run_type>(beta),
                    reinterpret_cast<run_type *>(qk_buf_),
-                   (int64_t)batch_size * head_num,
-                   (int64_t)seq_len * size_per_head,
-                   (int64_t)seq_len * size_per_head);
+                   static_cast<int64_t>(batch_size) * head_num,
+                   static_cast<int64_t>(seq_len) * size_per_head,
+                   static_cast<int64_t>(seq_len) * size_per_head);
 
   if (seq_len <= 1024) {
     int64_t grid_size64 = static_cast<int64_t>(batch_size) * head_num * seq_len;
@@ -663,8 +663,8 @@ inline void MatmulWithHeadQKV(const GPUContext &dev_ctx,
                               T *dst,
                               T alpha,
                               T beta) {
-  int64_t m = (int64_t)batch_size * seq_len;
-  int64_t k = (int64_t)head_num * size_per_head;
+  int64_t m = static_cast<int64_t>(batch_size) * seq_len;
+  int64_t k = static_cast<int64_t>(head_num) * size_per_head;
 
   typedef typename CUDATypeTraits<T>::TYPE run_type;
   auto blas = funcs::GetBlas<GPUContext, run_type>(dev_ctx);
@@ -682,9 +682,9 @@ inline void MatmulWithHeadQKV(const GPUContext &dev_ctx,
                    reinterpret_cast<run_type *>(v_buf_),
                    static_cast<run_type>(beta),
                    reinterpret_cast<run_type *>(dst),
-                   (int64_t)batch_size * head_num,
-                   (int64_t)seq_len * seq_len,
-                   (int64_t)seq_len * size_per_head);
+                   static_cast<int64_t>(batch_size) * head_num,
+                   static_cast<int64_t>(seq_len) * seq_len,
+                   static_cast<int64_t>(seq_len) * size_per_head);
 }
 
 template <typename T>
@@ -700,7 +700,8 @@ void MultiheadGPUComputeFunctor<T>::operator()(const GPUContext &dev_ctx,
                                                T alpha,
                                                T beta) {
   auto stream = dev_ctx.stream();
-  const int64_t tsize = (int64_t)batch * head_num * seq_len * head_size;
+  const int64_t tsize =
+      static_cast<int64_t>(batch) * head_num * seq_len * head_size;
 
   T *qptr = tptr;
   T *kptr = qptr + tsize;

@@ -63,15 +63,18 @@ __global__ void DWConv3dFwdKernel(const T* input,
   const int dilation_h = kKnownDilationH > 0 ? kKnownDilationH : dilation_h_in;
   const int dilation_w = kKnownDilationW > 0 ? kKnownDilationW : dilation_w_in;
 
-  const int64_t num_outputs = (int64_t)batch_size * output_channels *
-                              output_depth * output_height * output_width;
+  const int64_t num_outputs = static_cast<int64_t>(batch_size) *
+                              output_channels * output_depth * output_height *
+                              output_width;
   const int channel_multiplier = output_channels / input_channels;
 
-  const int64_t i_stride_c = (int64_t)input_depth * input_height * input_width;
-  const int64_t i_stride_d = (int64_t)input_height * input_width;
+  const int64_t i_stride_c =
+      static_cast<int64_t>(input_depth) * input_height * input_width;
+  const int64_t i_stride_d = static_cast<int64_t>(input_height) * input_width;
   const int i_stride_h = input_width;
 
-  const int64_t w_stride_c = (int64_t)kernel_t * kernel_h * kernel_w;
+  const int64_t w_stride_c =
+      static_cast<int64_t>(kernel_t) * kernel_h * kernel_w;
 
   for (int64_t index =
            static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
@@ -191,7 +194,8 @@ void LaunchDepthwiseConv3dCompatible(const Context& dev_ctx,
 
   int64_t num_outputs = out->numel();
   int block = 256;
-  int grid = std::min((num_outputs - 1) / block + 1, (int64_t)65536);
+  int grid =
+      std::min((num_outputs - 1) / block + 1, static_cast<int64_t>(65536));
   auto stream = dev_ctx.stream();
 
   using AccT = typename MPTypeTrait<T>::Type;
