@@ -2612,6 +2612,7 @@ class TestTopkAPI(unittest.TestCase):
                 np.testing.assert_array_equal(fetches[i + 1], ref_indices)
 
 
+# Test nansum compatibility
 class TestNansumAPI(unittest.TestCase):
     def setUp(self):
         self.np_x = np.array(
@@ -2621,7 +2622,7 @@ class TestNansumAPI(unittest.TestCase):
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
         x = paddle.to_tensor(self.np_x)
-        ref_value = np.nansum(self.np_x, axis=1, keepdims=True)
+        ref_value = np.nansum(x, axis=1, keepdims=True)
 
         # 1. Paddle positional arguments
         out1 = paddle.nansum(x, 1, None, True)
@@ -2631,7 +2632,7 @@ class TestNansumAPI(unittest.TestCase):
         out3 = paddle.nansum(x, 1, True)
         # 4. PyTorch keyword arguments
         out4 = paddle.nansum(input=x, dim=1, keepdim=True)
-        # 5-6. Mixed arguments & out parameter
+        # 5. Mixed arguments & out parameter
         out5 = paddle.empty([])
         out6 = paddle.nansum(input=x, axis=1, keepdim=True, out=out5)
         # 7. Class method positional arguments
@@ -2671,19 +2672,26 @@ class TestNansumAPI(unittest.TestCase):
             fetches = exe.run(
                 main,
                 feed={"x": self.np_x},
-                fetch_list=[out1, out2, out3, out4, out5, out6, out7],
+                fetch_list=[
+                    out1,
+                    out2,
+                    out3,
+                    out4,
+                    out5,
+                    out6,
+                    out7,
+                ],
             )
-
-        for out in fetches:
-            np.testing.assert_array_equal(out, ref_value)
+            for i in range(0, len(fetches)):
+                np.testing.assert_array_equal(fetches[i], ref_value)
 
     def test_nansum_compat_decorator_raise(self):
         paddle.disable_static()
         x = paddle.to_tensor(self.np_x)
         with self.assertRaises(ValueError):
-            paddle.nansum(x=x, input=x)
+            out1 = paddle.nansum(x=x, input=x)
         with self.assertRaises(ValueError):
-            paddle.nansum(x, dim=1, axis=1)
+            out2 = paddle.nansum(x, dim=1, axis=1)
         paddle.enable_static()
 
 
