@@ -136,11 +136,11 @@ phi::KernelKey FallBackToCpu(const phi::KernelKey& kernel_key,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (kernel_key.backend() == phi::Backend::GPU ||
       kernel_key.backend() == phi::Backend::GPUDNN) {
-    PADDLE_THROW(
-        common::errors::NotFound("The kernel (%s) with key %s is not found and "
-                                 "GPU kernel cannot fallback to CPU one.",
-                                 op.Type(),
-                                 kernel_key));
+    VLOG(3) << "phi missing GPU kernel: " << op.Type()
+            << ", expected_kernel_key:" << kernel_key
+            << ", fallback to CPU one!";
+    return phi::KernelKey(
+        phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
   }
 #endif
 
