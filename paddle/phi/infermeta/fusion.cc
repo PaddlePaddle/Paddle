@@ -4689,8 +4689,9 @@ void QKVAttentionXPUInferMeta(const MetaTensor& q,
                           "The shape of k , v should be the same! "
                           "But received ."));
   }
-  int64_t hidden_dim = qkv_fc_fusion ? (int64_t)3 * head_num * head_dim
-                                     : (int64_t)head_num * head_dim;
+  int64_t hidden_dim = qkv_fc_fusion
+                           ? static_cast<int64_t>(3) * head_num * head_dim
+                           : static_cast<int64_t>(head_num) * head_dim;
   PADDLE_ENFORCE_EQ(
       q_dims[2],
       hidden_dim,
@@ -4701,8 +4702,8 @@ void QKVAttentionXPUInferMeta(const MetaTensor& q,
           hidden_dim));
 
   // output shape: {B, L, HD}
-  qkv->set_dims(
-      make_ddim({q_dims[0], q_dims[1], (int64_t)head_num * head_dim}));
+  qkv->set_dims(make_ddim(
+      {q_dims[0], q_dims[1], static_cast<int64_t>(head_num) * head_dim}));
   qkv->set_dtype(out_dtype);
   qkv->set_layout(q.layout());
 }
@@ -4816,7 +4817,7 @@ void CrossAttentionXPUInferMeta(
                                       input_q_dims[2],
                                       " vs ",
                                       input_kv_dims[2]));
-  int64_t hidden_dim = (int64_t)head_num * head_dim;
+  int64_t hidden_dim = static_cast<int64_t>(head_num) * head_dim;
   PADDLE_ENFORCE_EQ(
       input_q_dims[2],
       hidden_dim,
@@ -4847,8 +4848,9 @@ void CrossAttentionXPUInferMeta(
           "The dim of mask should be not greater than 4!", mask_dims.size()));
 
   // output shape: {B, qL, H*D}
-  qkv->set_dims(make_ddim(
-      {input_q_dims[0], input_q_dims[1], (int64_t)head_num * head_dim}));
+  qkv->set_dims(make_ddim({input_q_dims[0],
+                           input_q_dims[1],
+                           static_cast<int64_t>(head_num) * head_dim}));
   qkv->set_dtype(out_dtype);
   qkv->set_layout(input_q.layout());
   // TODO(Terry) optimize the max value num

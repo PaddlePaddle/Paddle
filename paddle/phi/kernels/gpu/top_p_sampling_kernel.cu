@@ -97,9 +97,10 @@ struct SegmentOffsetIter {
 
   __host__ __device__ __forceinline__ int operator()(int idx) const {
 #ifndef __CUDA_ARCH__
-    PADDLE_ENFORCE_LE_INT_MAX((int64_t)idx * num_cols_, "idx * num_cols_");
+    PADDLE_ENFORCE_LE_INT_MAX(static_cast<int64_t>(idx) * num_cols_,
+                              "idx * num_cols_");
 #endif
-    return static_cast<int>((int64_t)idx * num_cols_);
+    return static_cast<int>(static_cast<int64_t>(idx) * num_cols_);
   }
 
   int num_cols_;

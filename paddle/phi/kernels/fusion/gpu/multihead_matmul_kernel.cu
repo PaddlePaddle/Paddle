@@ -151,13 +151,15 @@ void TransQKVWithBias(const int batch,
     const dim3 block(h, head_num, 1);
 
     // limit h * head_num to max block size(1024).
-    PADDLE_ENFORCE_LE((int64_t)h * head_num,
-                      1024,
-                      common::errors::InvalidArgument(
-                          "head_num (%d) * head_size (%d) should <= %d",
-                          head_num,
-                          head_size,
-                          1024 * 4));
+    PADDLE_ENFORCE_LE(
+        static_cast<int64_t>(h) * head_num,
+        1024,
+        common::errors::InvalidArgument(
+            "Expected h * head_num to be less than or equal to 1024, but "
+            "received h: %d, head_num: %d, h * head_num: %ld.",
+            h,
+            head_num,
+            static_cast<int64_t>(h) * head_num));
     TransposeQkvKernel<float4>
         <<<grid, block, 0, stream>>>(h, input4, bias4, output4);
   } else if (head_size % 2 == 0 && scratch_size % 2 == 0) {
@@ -167,25 +169,30 @@ void TransQKVWithBias(const int batch,
     float2 *output2 = reinterpret_cast<float2 *>(output);
     const dim3 block(h, head_num, 1);
     // limit h * head_num to max block size(1024).
-    PADDLE_ENFORCE_LE((int64_t)h * head_num,
-                      1024,
-                      common::errors::InvalidArgument(
-                          "head_num (%d) * head_size (%d) should <= %d",
-                          head_num,
-                          head_size,
-                          1024 * 2));
+    PADDLE_ENFORCE_LE(
+        static_cast<int64_t>(h) * head_num,
+        1024,
+        common::errors::InvalidArgument(
+            "Expected h * head_num to be less than or equal to 1024, but "
+            "received h: %d, head_num: %d, h * head_num: %ld.",
+            h,
+            head_num,
+            static_cast<int64_t>(h) * head_num));
     TransposeQkvKernel<float2>
         <<<grid, block, 0, stream>>>(h, input2, bias2, output2);
   } else {
     const dim3 block(head_size, head_num, 1);
     // limit head_size * head_num to max block size(1024).
-    PADDLE_ENFORCE_LE((int64_t)head_size * head_num,
-                      1024,
-                      common::errors::InvalidArgument(
-                          "head_num (%d) * head_size (%d) should <= %d",
-                          head_num,
-                          head_size,
-                          1024));
+    PADDLE_ENFORCE_LE(
+        static_cast<int64_t>(head_size) * head_num,
+        1024,
+        common::errors::InvalidArgument(
+            "Expected head_size * head_num to be less than or equal to 1024, "
+            "but received head_size: %d, head_num: %d, head_size * head_num: "
+            "%ld.",
+            head_size,
+            head_num,
+            static_cast<int64_t>(head_size) * head_num));
     TransposeQkvKernel<float>
         <<<grid, block, 0, stream>>>(head_size, input, bias, output);
   }
@@ -212,13 +219,15 @@ void TransQKVWithBias(const int batch,
     half2 *output2 = reinterpret_cast<half2 *>(output);
     const dim3 block(h, head_num, 1);
     // limit h * head_num to max block size(1024).
-    PADDLE_ENFORCE_LE((int64_t)h * head_num,
-                      1024,
-                      common::errors::InvalidArgument(
-                          "head_num (%d) * head_size (%d) should <= %d",
-                          head_num,
-                          head_size,
-                          1024 * 2));
+    PADDLE_ENFORCE_LE(
+        static_cast<int64_t>(h) * head_num,
+        1024,
+        common::errors::InvalidArgument(
+            "Expected h * head_num to be less than or equal to 1024, but "
+            "received h: %d, head_num: %d, h * head_num: %ld.",
+            h,
+            head_num,
+            static_cast<int64_t>(h) * head_num));
     TransposeQkvKernel<half2>
         <<<grid, block, 0, stream>>>(h, input2, bias2, output2);
   } else {
@@ -228,13 +237,16 @@ void TransQKVWithBias(const int batch,
     half *output_half = reinterpret_cast<half *>(output);
 
     // limit head_size * head_num to max block size(1024).
-    PADDLE_ENFORCE_LE((int64_t)head_size * head_num,
-                      1024,
-                      common::errors::InvalidArgument(
-                          "head_num (%d) * head_size (%d) should <= %d",
-                          head_num,
-                          head_size,
-                          1024));
+    PADDLE_ENFORCE_LE(
+        static_cast<int64_t>(head_size) * head_num,
+        1024,
+        common::errors::InvalidArgument(
+            "Expected head_size * head_num to be less than or equal to 1024, "
+            "but received head_size: %d, head_num: %d, head_size * head_num: "
+            "%ld.",
+            head_size,
+            head_num,
+            static_cast<int64_t>(head_size) * head_num));
     TransposeQkvKernel<half><<<grid, block, 0, stream>>>(
         head_size, input_half, bias_half, output_half);
   }
