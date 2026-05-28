@@ -608,7 +608,7 @@ def monkey_patch_math_tensor():
     @property
     def nbytes(self: Tensor) -> int:
         """
-        Returns the number of bytes consumed by the “view” of elements of the Tensor if the Tensor does not use sparse storage layout. Defined to be ``size`` * ``element_size()``
+        Returns the number of bytes allocated for elements of the Tensor. Defined to be ``size`` * ``element_size()``
         """
         return self.size * self.element_size()
 
