@@ -95,7 +95,64 @@ if __is_metainfo_generated:
 
 # NOTE(SigureMo): We should place the import of base.core before other modules,
 # because there are some initialization codes in base/core/__init__.py.
-from .base import core  # noqa: F401
+from .base import core
+
+
+def _normalize_cuda_arch(arch):
+    if isinstance(arch, str):
+        arch = arch.replace('sm_', '').replace('compute_', '')
+    return int(arch)
+
+
+def _check_cuda_arch_compatible():
+    if not core.is_compiled_with_cuda():
+        return
+
+    device_count = core.get_cuda_device_count()
+
+    if device_count == 0:
+        return
+
+    from .version import compiled_cuda_archs
+
+    supported_archs = {
+        _normalize_cuda_arch(arch) for arch in compiled_cuda_archs
+    }
+    if not supported_archs:
+        return
+
+    unsupported_devices = []
+    for device_id in range(device_count):
+        prop = core.get_device_properties(device_id)
+        device_arch = prop.major * 10 + prop.minor
+        if device_arch not in supported_archs:
+            unsupported_devices.append(
+                f"gpu:{device_id} {prop.name}, compute capability sm_{device_arch}"
+            )
+
+    if not unsupported_devices:
+        return
+
+    supported_archs_str = ', '.join(
+        f"sm_{arch}" for arch in sorted(supported_archs)
+    )
+    unsupported_devices_str = '\n  '.join(unsupported_devices)
+    raise RuntimeError(
+        "The installed PaddlePaddle GPU package is not compatible with "
+        "the current CUDA device.\n"
+        f"Current unsupported CUDA device(s):\n  {unsupported_devices_str}\n\n"
+        "Paddle CUDA kernels in this package support:\n"
+        f"  {supported_archs_str}\n\n"
+        "This mismatch can cause CUDA kernels to fail or produce incorrect "
+        "results. Please install a PaddlePaddle package built with the "
+        "current GPU compute capability, or rebuild PaddlePaddle with the "
+        "required CUDA architecture enabled."
+    )
+
+
+_check_cuda_arch_compatible()
+
+
 from .base.dygraph.generated_tensor_methods_patch import (
     monkey_patch_generated_methods_for_tensor,
 )
