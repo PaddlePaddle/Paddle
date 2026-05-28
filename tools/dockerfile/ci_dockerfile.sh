@@ -93,15 +93,6 @@ function make_ubuntu20_cu12_dockerfile(){
   sed -i 's# && rm /etc/apt/sources.list.d/nvidia-ml.list##g' ${dockerfile_name}
   sed -i 's#RUN bash /build_scripts/install_trt.sh##g' ${dockerfile_name}
   sed -i 's#<install_cudnn>#RUN bash /build_scripts/install_cudnn.sh cudnn896 #g' ${dockerfile_name}
-  sed -i "${dockerfile_line}i WORKDIR /home \n \
-    RUN git clone --depth=1 https://github.com/PaddlePaddle/PaddleNLP.git -b stable/paddle-ci \&\& cd PaddleNLP \&\& \
-    sed -i '/lac/d' scripts/regression/requirements_ci.txt \&\& \
-    pip3.10 install -r requirements.txt \&\& \
-    pip3.10 install -r scripts/regression/requirements_ci.txt \&\& \
-    pip3.10 install --no-build-isolation lac \&\& \
-    pip3.10 install -r csrc/requirements.txt \&\& \
-    pip3.10 install pytest-timeout \&\& \
-    cd /home \&\& rm -rf PaddleNLP" ${dockerfile_name}
 }
 
 
