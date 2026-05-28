@@ -15,7 +15,8 @@
 from __future__ import annotations
 
 import os
-from typing import NoReturn
+import warnings
+from typing import NoReturn, overload
 
 from paddle.base.core import (
     CUDAPlace,
@@ -69,13 +70,6 @@ def current_expected_place():
 ALL_MODES = ["global", "thread_local", "relaxed"]
 cuda_graph_id = 0
 
-# Sentinel used by ``CUDAGraph.capture_begin`` to distinguish "no
-# ``capture_error_mode`` argument was passed" (fall back to the constructor's
-# ``mode``) from "the caller explicitly chose 'global'" (which would otherwise
-# override the constructor and silently regress callers that constructed the
-# graph with a different mode).
-_CAPTURE_ERROR_MODE_DEFAULT = object()
-
 
 class CUDAGraph:
     """
@@ -85,6 +79,20 @@ class CUDAGraph:
     keywords ``pool`` and ``capture_error_mode`` so the same instance can be
     driven from either API style.
     """
+
+    @overload
+    def __init__(self, keep_graph: bool, /) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        place: CUDAPlace | XPUPlace | CustomPlace | None = None,
+        mode: str = "thread_local",
+        pool_id: int | None = None,
+        enable_replace: bool = False,
+        *,
+        keep_graph: bool = False,
+    ) -> None: ...
 
     def __init__(
         self,
@@ -99,10 +107,6 @@ class CUDAGraph:
             "CUDA Graph is only supported on PaddlePaddle compiled with NVIDIA GPU."
         )
 
-        # ``torch.cuda.CUDAGraph(True)`` passes the bool positionally. Treat
-        # a bool ``place`` as the torch-style positional ``keep_graph`` so
-        # users porting the PyTorch idiom don't hit an obscure pybind error
-        # at capture time.
         if isinstance(place, bool):
             if keep_graph is not False:
                 raise TypeError(
@@ -133,8 +137,8 @@ class CUDAGraph:
         self._debug_mode = False
 
     def capture_begin(
-        self, pool=None, capture_error_mode=_CAPTURE_ERROR_MODE_DEFAULT
-    ):
+        self, pool: int | None = None, capture_error_mode: str | None = None
+    ) -> None:
         """Begin capturing CUDA work on the current stream.
 
         Args:
@@ -144,22 +148,17 @@ class CUDAGraph:
                 memory pool. Overrides ``pool_id`` from the constructor.
             capture_error_mode (str, optional): One of ``'global'``,
                 ``'thread_local'``, ``'relaxed'`` (see :data:`ALL_MODES`).
-                When omitted, the constructor's ``mode`` is used; when
-                supplied, it overrides the constructor for this capture.
+                When ``None`` (default) the constructor's ``mode`` is used;
+                otherwise it overrides the constructor for this capture and a
+                :class:`UserWarning` is emitted to flag the precedence.
                 Invalid values raise :class:`ValueError`.
         """
-        # Materialize the pool id eagerly so that ``self.pool()`` returns the
-        # exact id passed to the C++ side. Without this, ``pool is None`` and
-        # ``self._pool_id is None`` would leave ``self._pool_id`` unset, the
-        # C++ side would mint its own internal id, and a later ``self.pool()``
-        # would generate a *different* id — breaking
-        # ``g2.capture_begin(pool=g.pool())``.
         if pool is not None:
             self._pool_id = pool
         elif self._pool_id is None:
             self._pool_id = CoreCUDAGraph.gen_new_memory_pool_id()
 
-        if capture_error_mode is _CAPTURE_ERROR_MODE_DEFAULT:
+        if capture_error_mode is None:
             mode = self._mode
         else:
             if capture_error_mode not in ALL_MODES:
@@ -168,6 +167,14 @@ class CUDAGraph:
                     f"but got {capture_error_mode!r}."
                 )
             mode = ALL_MODES.index(capture_error_mode)
+            if mode != self._mode:
+                warnings.warn(
+                    f"capture_error_mode={capture_error_mode!r} differs from "
+                    f"the constructor mode={ALL_MODES[self._mode]!r}; the "
+                    f"explicit capture_error_mode takes precedence for this "
+                    f"capture.",
+                    stacklevel=2,
+                )
 
         CoreCUDAGraph.begin_capture_with_pool_id(
             self._place, mode, self._pool_id, self._enable_replace
@@ -191,13 +198,12 @@ class CUDAGraph:
             )
 
     def instantiate(self) -> None:
-        """No-op shim for ``torch.cuda.CUDAGraph.instantiate``.
+        """Instantiate the CUDA graph for replay.
 
-        Paddle builds the executable eagerly inside :meth:`capture_end`, so
-        there is nothing left to do at instantiate time. Provided for API
-        compatibility.
+        Called automatically by :meth:`capture_end`; provided as an explicit
+        shim for source compatibility with
+        ``torch.cuda.CUDAGraph.instantiate`` (which also returns ``None``).
         """
-        return None
 
     def replay(self):
         self._require_captured()

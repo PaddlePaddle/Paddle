@@ -563,7 +563,8 @@ class TestPaddleCudaCUDAGraphCompat(unittest.TestCase):
     def test_capture_error_mode_propagated_and_validated(self):
         # capture_error_mode must be validated against ALL_MODES and the
         # resolved mode index must be forwarded to the C++ binding rather
-        # than ignored.
+        # than ignored. Construct with the matching mode so the precedence
+        # warning (covered separately) does not fire here.
         from paddle.device.cuda import graphs as graphs_module
 
         captured = {}
@@ -579,13 +580,48 @@ class TestPaddleCudaCUDAGraphCompat(unittest.TestCase):
                 ("thread_local", 1),
                 ("relaxed", 2),
             ]:
-                g = paddle.cuda.CUDAGraph()
+                g = paddle.cuda.CUDAGraph(mode=name)
                 g.capture_begin(capture_error_mode=name)
                 self.assertEqual(captured["mode"], expected)
 
             g = paddle.cuda.CUDAGraph()
             with self.assertRaises(ValueError):
                 g.capture_begin(capture_error_mode="not-a-mode")
+        finally:
+            graphs_module.CoreCUDAGraph.begin_capture_with_pool_id = original
+
+    def test_capture_error_mode_override_warns(self):
+        # An explicit ``capture_error_mode`` overrides the constructor's
+        # ``mode`` for this capture; surface a ``UserWarning`` so callers
+        # know which one wins. Matching values must not warn.
+        import warnings as _w
+
+        from paddle.device.cuda import graphs as graphs_module
+
+        original = graphs_module.CoreCUDAGraph.begin_capture_with_pool_id
+        graphs_module.CoreCUDAGraph.begin_capture_with_pool_id = (
+            lambda *args, **kwargs: None
+        )
+        try:
+            g = paddle.cuda.CUDAGraph(mode='thread_local')
+            with _w.catch_warnings(record=True) as ws:
+                _w.simplefilter('always')
+                g.capture_begin(capture_error_mode='global')
+            msgs = [str(w.message) for w in ws]
+            self.assertTrue(
+                any('takes precedence' in m for m in msgs),
+                f'expected precedence warning, got: {msgs}',
+            )
+
+            g = paddle.cuda.CUDAGraph(mode='thread_local')
+            with _w.catch_warnings(record=True) as ws:
+                _w.simplefilter('always')
+                g.capture_begin(capture_error_mode='thread_local')
+            msgs = [str(w.message) for w in ws]
+            self.assertFalse(
+                any('takes precedence' in m for m in msgs),
+                f'unexpected precedence warning: {msgs}',
+            )
         finally:
             graphs_module.CoreCUDAGraph.begin_capture_with_pool_id = original
 
