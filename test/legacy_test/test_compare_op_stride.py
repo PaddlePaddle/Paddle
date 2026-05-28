@@ -202,6 +202,10 @@ create_test_act_stride_class(
 )
 
 
+@unittest.skipIf(
+    not (paddle.core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
+)
 class TestCompareStridedSliceWithScalar(unittest.TestCase):
     def setUp(self):
         self.place = get_device_place()
