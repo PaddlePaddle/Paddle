@@ -155,7 +155,8 @@ void PriorBoxKernel(const Context& dev_ctx,
     var_et(0, i) = variances[i];
   }
 
-  int64_t box_num = feature_height * feature_width * num_priors;
+  int64_t box_num =
+      static_cast<int64_t>(feature_height) * feature_width * num_priors;
   auto var_dim = var->dims();
   var->Resize({box_num, static_cast<int64_t>(variances.size())});
 
