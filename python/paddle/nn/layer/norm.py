@@ -718,7 +718,7 @@ class LayerNorm(Layer):
 
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
-        param_shape = self._normalized_shape
+        param_shape = [np.prod(self._normalized_shape)]
 
         if weight_attr is False:
             self.weight = None

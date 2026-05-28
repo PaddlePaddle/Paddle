@@ -421,11 +421,6 @@ def layer_norm(
             + str(input_shape)
         )
 
-    if weight is not None and len(weight.shape) > 1:
-        weight = weight.flatten()
-    if bias is not None and len(bias.shape) > 1:
-        bias = bias.flatten()
-
     if in_dynamic_or_pir_mode():
         out = _C_ops.layer_norm(x, weight, bias, epsilon, begin_norm_axis)
         return out

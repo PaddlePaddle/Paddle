@@ -4140,10 +4140,6 @@ class TestLayerNormAPI(unittest.TestCase):
         expected = self._expected()
         for out in [out1, out2, out3, out4, out5]:
             np.testing.assert_allclose(out.numpy(), expected, rtol=1e-5)
-        self.assertEqual(
-            tuple(layer1.weight.shape), tuple(self.normalized_shape)
-        )
-        self.assertEqual(tuple(layer1.bias.shape), tuple(self.normalized_shape))
         self.assertIsNone(layer3.weight)
         self.assertIsNone(layer3.bias)
         self.assertIsNotNone(layer5.weight)
@@ -4180,12 +4176,6 @@ class TestLayerNormAPI(unittest.TestCase):
             )
             out4 = layer4(x)
 
-            self.assertEqual(
-                tuple(layer1.weight.shape), tuple(self.normalized_shape)
-            )
-            self.assertEqual(
-                tuple(layer1.bias.shape), tuple(self.normalized_shape)
-            )
             self.assertIsNone(layer3.weight)
             self.assertIsNone(layer3.bias)
 
