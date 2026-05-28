@@ -35,7 +35,7 @@ __global__ void combine_no_weight_bwd_kernel(const T* combine_weights,
   int ki = blockIdx.y;  // Sequence index
 
   if (i < seqlen && ki < k) {
-    int64_t idx = scatter_index[i * k + ki];  // Index into x
+    int idx = scatter_index[i * k + ki];  // Index into x
     if (fabsf(combine_weights[i * k + ki]) <=
         epsilon) {  // no grad for padding tokens
       return;

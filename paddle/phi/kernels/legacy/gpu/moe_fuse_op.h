@@ -96,10 +96,8 @@ void topk_gating_softmax_kernelLauncher(const T* input,
                                         cudaStream_t stream) {
   static constexpr int WARPS_PER_TB = 4;
   static constexpr int TPB = 256;
-  PADDLE_ENFORCE_LE_INT_MAX(static_cast<int64_t>(num_rows),
-                            "CUDA launch grid num_rows");
-  const int grid_size = num_rows;
-  moe_top_k<T, TPB><<<grid_size, TPB, 0, stream>>>(
+  const int blocks = num_rows;
+  moe_top_k<T, TPB><<<blocks, TPB, 0, stream>>>(
       input, bias, output, indices, source_row, num_experts, k);
 }
 
@@ -133,12 +131,12 @@ void modify_expert_id_launcher(const T* expert_id,
   const int64_t total_rows = static_cast<int64_t>(num_rows) * k;
   PADDLE_ENFORCE_LE_INT_MAX(total_rows, "CUDA launch total_rows num_rows * k");
   const int threads = std::min(max, static_cast<int>(total_rows));
-  const int64_t grid_size64 =
+  const int64_t blocks64 =
       (total_rows + static_cast<int64_t>(threads) - 1) / threads;
-  PADDLE_ENFORCE_LE_INT_MAX(grid_size64, "CUDA launch grid num_rows * k");
-  const int grid_size = static_cast<int>(grid_size64);
+  PADDLE_ENFORCE_LE_INT_MAX(blocks64, "CUDA launch grid num_rows * k");
+  const int blocks = static_cast<int>(blocks64);
 
-  modify_expert_id<T><<<grid_size, threads, 0, stream>>>(
+  modify_expert_id<T><<<blocks, threads, 0, stream>>>(
       expert_id, expert_id_out, k, num_rows, num_experts);
 }
 
@@ -167,12 +165,12 @@ void unmodify_expert_id_launcher(const T* expert_id,
   const int64_t total_rows = static_cast<int64_t>(num_rows) * k;
   PADDLE_ENFORCE_LE_INT_MAX(total_rows, "CUDA launch total_rows num_rows * k");
   const int threads = std::min(max, static_cast<int>(total_rows));
-  const int64_t grid_size64 =
+  const int64_t blocks64 =
       (total_rows + static_cast<int64_t>(threads) - 1) / threads;
-  PADDLE_ENFORCE_LE_INT_MAX(grid_size64, "CUDA launch grid num_rows * k");
-  const int grid_size = static_cast<int>(grid_size64);
+  PADDLE_ENFORCE_LE_INT_MAX(blocks64, "CUDA launch grid num_rows * k");
+  const int blocks = static_cast<int>(blocks64);
 
-  unmodify_expert_id<T><<<grid_size, threads, 0, stream>>>(
+  unmodify_expert_id<T><<<blocks, threads, 0, stream>>>(
       expert_id, expert_id_out, k, num_rows, num_experts);
 }
 
@@ -225,12 +223,12 @@ void compute_total_rows_before_expert(const T* sorted_indices,
   PADDLE_ENFORCE_LE_INT_MAX(num_experts, "CUDA launch total experts");
   const int threads =
       static_cast<int>(std::min(static_cast<int64_t>(1024), num_experts));
-  const int64_t grid_size64 =
+  const int64_t blocks64 =
       (num_experts + static_cast<int64_t>(threads) - 1) / threads;
-  PADDLE_ENFORCE_LE_INT_MAX(grid_size64, "CUDA launch grid num_experts");
-  const int grid_size = static_cast<int>(grid_size64);
+  PADDLE_ENFORCE_LE_INT_MAX(blocks64, "CUDA launch grid num_experts");
+  const int blocks = static_cast<int>(blocks64);
 
-  compute_total_rows_before_expert_kernel<T><<<grid_size, threads, 0, stream>>>(
+  compute_total_rows_before_expert_kernel<T><<<blocks, threads, 0, stream>>>(
       sorted_indices, total_indices, num_experts, total_rows_before_expert);
 }
 
@@ -321,14 +319,14 @@ void initialize_moe_routing_kernelLauncher(
     const int64_t capacity,
     bool use_pad,
     cudaStream_t stream) {
-  const int64_t grid_size64 = static_cast<int64_t>(num_rows) * k;
-  PADDLE_ENFORCE_LE_INT_MAX(grid_size64, "CUDA launch grid num_rows * k");
-  const int grid_size = static_cast<int>(grid_size64);
+  const int64_t blocks64 = static_cast<int64_t>(num_rows) * k;
+  PADDLE_ENFORCE_LE_INT_MAX(blocks64, "CUDA launch grid num_rows * k");
+  const int blocks = static_cast<int>(blocks64);
   const int threads = std::min(cols, 1024);
   constexpr int max_pack_size = 16 / sizeof(T);
   if (cols % max_pack_size == 0) {
     initialize_moe_routing_kernel<T, max_pack_size>
-        <<<grid_size, threads, 0, stream>>>(
+        <<<blocks, threads, 0, stream>>>(
             unpermuted_input,
             permuted_output,
             expanded_dest_row_to_expanded_source_row,
@@ -342,7 +340,7 @@ void initialize_moe_routing_kernelLauncher(
             capacity,
             use_pad);
   } else {
-    initialize_moe_routing_kernel<T, 1><<<grid_size, threads, 0, stream>>>(
+    initialize_moe_routing_kernel<T, 1><<<blocks, threads, 0, stream>>>(
         unpermuted_input,
         permuted_output,
         expanded_dest_row_to_expanded_source_row,
@@ -454,16 +452,16 @@ void initialize_moe_routing_permute_kernelLauncher(
     cudaStream_t stream) {
   const int loop_size = 2;
   const int64_t total_rows = static_cast<int64_t>(num_rows) * k;
-  const int64_t grid_size64 = total_rows / loop_size;
+  const int64_t blocks64 = total_rows / loop_size;
   assert(total_rows % loop_size == 0);
-  PADDLE_ENFORCE_LE_INT_MAX(grid_size64,
+  PADDLE_ENFORCE_LE_INT_MAX(blocks64,
                             "CUDA launch grid num_rows * k / loop_size");
-  const int grid_size = static_cast<int>(grid_size64);
+  const int blocks = static_cast<int>(blocks64);
   const int threads = std::min(cols, 1024);
   constexpr int max_pack_size = 16 / sizeof(T);
   if (cols % max_pack_size == 0) {
     initialize_moe_routing_permute_kernel<T, max_pack_size, loop_size>
-        <<<grid_size, threads, 0, stream>>>(
+        <<<blocks, threads, 0, stream>>>(
             unpermuted_input,
             permuted_output,
             expanded_dest_row_to_expanded_source_row,
@@ -479,7 +477,7 @@ void initialize_moe_routing_permute_kernelLauncher(
             num_local_experts);
   } else {
     initialize_moe_routing_permute_kernel<T, 1, loop_size>
-        <<<grid_size, threads, 0, stream>>>(
+        <<<blocks, threads, 0, stream>>>(
             unpermuted_input,
             permuted_output,
             expanded_dest_row_to_expanded_source_row,
@@ -517,14 +515,14 @@ void compute_global_expert_offset(
   PADDLE_ENFORCE_LE_INT_MAX(num_experts, "CUDA launch total experts");
   const int threads =
       static_cast<int>(std::min(static_cast<int64_t>(1024), num_experts));
-  const int64_t grid_size64 =
+  const int64_t blocks64 =
       (num_experts + static_cast<int64_t>(threads) - 1) / threads;
-  PADDLE_ENFORCE_LE_INT_MAX(grid_size64, "CUDA launch grid num_experts");
-  const int grid_size = static_cast<int>(grid_size64);
+  PADDLE_ENFORCE_LE_INT_MAX(blocks64, "CUDA launch grid num_experts");
+  const int blocks = static_cast<int>(blocks64);
   PADDLE_ENFORCE_LE_INT_MAX(len, "compute sorted experts length");
   const int sorted_experts_len = static_cast<int>(len);
 
-  compute_total_rows_before_expert_kernel<T><<<grid_size, threads, 0, stream>>>(
+  compute_total_rows_before_expert_kernel<T><<<blocks, threads, 0, stream>>>(
       sort_buffer, sorted_experts_len, num_experts, expert_offset);
   thrust::adjacent_difference(
       exec_policy, offsetptr, offsetptr + num_experts, offsetptr);
@@ -576,19 +574,19 @@ void modify_and_mask_expert_id_launcher(const T* expert_id,
   const int64_t total_rows = static_cast<int64_t>(num_rows) * k;
   PADDLE_ENFORCE_LE_INT_MAX(total_rows, "CUDA launch total_rows num_rows * k");
   const int threads = std::min(max, static_cast<int>(total_rows));
-  const int64_t grid_size64 =
+  const int64_t blocks64 =
       (total_rows + static_cast<int64_t>(threads) - 1) / threads;
-  PADDLE_ENFORCE_LE_INT_MAX(grid_size64, "CUDA launch grid num_rows * k");
-  const int grid_size = static_cast<int>(grid_size64);
+  PADDLE_ENFORCE_LE_INT_MAX(blocks64, "CUDA launch grid num_rows * k");
+  const int blocks = static_cast<int>(blocks64);
 
   modify_and_mask_expert_id<T>
-      <<<grid_size, threads, 0, stream>>>(expert_id,
-                                          expert_id_out,
-                                          k,
-                                          num_rows,
-                                          num_experts,
-                                          expert_start_index,
-                                          expert_end_index);
+      <<<blocks, threads, 0, stream>>>(expert_id,
+                                       expert_id_out,
+                                       k,
+                                       num_rows,
+                                       num_experts,
+                                       expert_start_index,
+                                       expert_end_index);
 }
 
 template <typename T>
@@ -610,14 +608,14 @@ void compute_local_expert_offset(
   PADDLE_ENFORCE_LE_INT_MAX(num_experts, "CUDA launch total experts");
   const int threads =
       static_cast<int>(std::min(static_cast<int64_t>(1024), num_experts));
-  const int64_t grid_size64 =
+  const int64_t blocks64 =
       (num_experts + static_cast<int64_t>(threads) - 1) / threads;
-  PADDLE_ENFORCE_LE_INT_MAX(grid_size64, "CUDA launch grid num_experts");
-  const int grid_size = static_cast<int>(grid_size64);
+  PADDLE_ENFORCE_LE_INT_MAX(blocks64, "CUDA launch grid num_experts");
+  const int blocks = static_cast<int>(blocks64);
   PADDLE_ENFORCE_LE_INT_MAX(len, "compute sorted experts length");
   const int sorted_experts_len = static_cast<int>(len);
 
-  compute_total_rows_before_expert_kernel<T><<<grid_size, threads, 0, stream>>>(
+  compute_total_rows_before_expert_kernel<T><<<blocks, threads, 0, stream>>>(
       sorted_expert_id, sorted_experts_len, num_experts, expert_offset);
   // 不考虑 capacity 影响
   thrust::adjacent_difference(
@@ -674,19 +672,18 @@ void cal_expert_size_and_filter_launcher(T* expert_id,
   PADDLE_ENFORCE_LE_INT_MAX(len, "CUDA launch total rows len");
   const int threads =
       static_cast<int>(std::min(static_cast<int64_t>(1024), len));
-  const int64_t grid_size64 =
-      (len + static_cast<int64_t>(threads) - 1) / threads;
-  PADDLE_ENFORCE_LE_INT_MAX(grid_size64, "CUDA launch grid len");
-  const int grid_size = static_cast<int>(grid_size64);
+  const int64_t blocks64 = (len + static_cast<int64_t>(threads) - 1) / threads;
+  PADDLE_ENFORCE_LE_INT_MAX(blocks64, "CUDA launch grid len");
+  const int blocks = static_cast<int>(blocks64);
   cal_expert_size_and_filter<T>
-      <<<grid_size, threads, 0, stream>>>(expert_id,
-                                          expert_offset,
-                                          len,
-                                          num_experts,
-                                          capacity,
-                                          expert_start_index,
-                                          expert_end_index,
-                                          reverse);
+      <<<blocks, threads, 0, stream>>>(expert_id,
+                                       expert_offset,
+                                       len,
+                                       num_experts,
+                                       capacity,
+                                       expert_start_index,
+                                       expert_end_index,
+                                       reverse);
 }
 
 template <typename T>
@@ -772,11 +769,11 @@ void build_seqsort_kv_pairs_kernel_launcher(
   const int64_t total_rows = static_cast<int64_t>(num_rows) * k;
   PADDLE_ENFORCE_LE_INT_MAX(total_rows, "CUDA launch total_rows num_rows * k");
   const int threads = std::min(max, static_cast<int>(total_rows));
-  const int64_t grid_size64 =
+  const int64_t blocks64 =
       (total_rows + static_cast<int64_t>(threads) - 1) / threads;
-  PADDLE_ENFORCE_LE_INT_MAX(grid_size64, "CUDA launch grid num_rows * k");
-  const int grid_size = static_cast<int>(grid_size64);
-  build_seqsort_kv_pairs_kernel<<<grid_size, threads, 0, stream>>>(
+  PADDLE_ENFORCE_LE_INT_MAX(blocks64, "CUDA launch grid num_rows * k");
+  const int blocks = static_cast<int>(blocks64);
+  build_seqsort_kv_pairs_kernel<<<blocks, threads, 0, stream>>>(
       seqsort_key,
       seqsort_value,
       expanded_dest_row_to_expanded_source_row,
@@ -855,32 +852,32 @@ void copy_unpermuted_to_permuted_kernelLauncher(
     cudaStream_t stream) {
   PADDLE_ENFORCE_LE_INT_MAX(padded_len, "CUDA launch grid padded_len");
   PADDLE_ENFORCE_LE_INT_MAX(num_cols, "CUDA launch thread count num_cols");
-  const int grid_size = static_cast<int>(padded_len);
+  const int blocks = static_cast<int>(padded_len);
   const int threads =
       static_cast<int>(std::min(num_cols, static_cast<int64_t>(1024)));
   constexpr int64_t max_pack_size = 16 / sizeof(T);
   if (num_cols % max_pack_size == 0) {
     copy_unpermuted_to_permuted_kernel<T, max_pack_size>
-        <<<grid_size, threads, 0, stream>>>(unpermuted_input,
-                                            permuted_output,
-                                            padded_out_to_unpermuted_input,
-                                            padded_out_to_expanded_input,
-                                            expanded_input_to_padded_out,
-                                            padded_len,
-                                            num_rows,
-                                            k,
-                                            num_cols);
+        <<<blocks, threads, 0, stream>>>(unpermuted_input,
+                                         permuted_output,
+                                         padded_out_to_unpermuted_input,
+                                         padded_out_to_expanded_input,
+                                         expanded_input_to_padded_out,
+                                         padded_len,
+                                         num_rows,
+                                         k,
+                                         num_cols);
   } else {
     copy_unpermuted_to_permuted_kernel<T, 1>
-        <<<grid_size, threads, 0, stream>>>(unpermuted_input,
-                                            permuted_output,
-                                            padded_out_to_unpermuted_input,
-                                            padded_out_to_expanded_input,
-                                            expanded_input_to_padded_out,
-                                            padded_len,
-                                            num_rows,
-                                            k,
-                                            num_cols);
+        <<<blocks, threads, 0, stream>>>(unpermuted_input,
+                                         permuted_output,
+                                         padded_out_to_unpermuted_input,
+                                         padded_out_to_expanded_input,
+                                         expanded_input_to_padded_out,
+                                         padded_len,
+                                         num_rows,
+                                         k,
+                                         num_cols);
   }
 }
 }  // namespace phi

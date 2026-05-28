@@ -87,9 +87,6 @@ void RankAttentionCUDAKernel(const Context &dev_ctx,
   T *ins_rank_data = ins_rank->data<T>();
   T *out_data = out->data<T>();
 
-  PADDLE_ENFORCE_LE_INT_MAX(ins_num, "ins_num");
-  PADDLE_ENFORCE_LE_INT_MAX(block_matrix_row, "block_matrix_row");
-
   expand_rank_attention_input(dev_ctx.stream(),
                               x.data<T>(),
                               ins_num,
@@ -104,9 +101,6 @@ void RankAttentionCUDAKernel(const Context &dev_ctx,
                               max_rank);
 
   int64_t param_help_rows = ins_num * block_matrix_row;
-  PADDLE_ENFORCE_LE_INT_MAX(param_help_rows, "param_help_rows");
-  PADDLE_ENFORCE_LE_INT_MAX(para_row, "para_row");
-  PADDLE_ENFORCE_LE_INT_MAX(para_col, "para_col");
 
   expand_rank_attention_param(dev_ctx.stream(),
                               x.data<T>(),
