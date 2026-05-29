@@ -78,7 +78,7 @@ def hsigmoid(x, w, label, bias, num_classes):
         length = code_table.get_length()
         for j in range(length):
             idx = code_table.cal_index(j)
-            pre_output[i][j] += bias[idx][0]
+            pre_output[i][j] += np.asarray(bias[idx]).item()
     for i in range(batch_size):
         code_table = CodeTable(num_classes, label[i])
         length = code_table.get_length()
@@ -143,7 +143,7 @@ def hsigmoidWithCustomTree(
             length = code_table.get_length()
             for j in range(length):
                 idx = code_table.cal_index(j)
-                pre_output[i][j] += bias[idx][0]
+                pre_output[i][j] += np.asarray(bias[idx]).item()
     for i in range(batch_size):
         code_table = CodeTableWithCustomTree(path_table, path_code, i)
         length = code_table.get_length()
