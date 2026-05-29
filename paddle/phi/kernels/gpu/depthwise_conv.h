@@ -241,12 +241,12 @@ __device__ __inline__ void KernelDepthwiseConvNCHW(
       -padding_height + static_cast<int64_t>(h_out) * stride_height;
   int64_t w_in_start =
       -padding_width + static_cast<int64_t>(w_out) * stride_width;
-
-#pragma unroll
+  
   int64_t h_in = h_in_start;
-  for (int fh = 0; fh < fh_size; fh++, h_in += dilate_height) {
 #pragma unroll
+  for (int fh = 0; fh < fh_size; fh++, h_in += dilate_height) {
     int64_t w_in = w_in_start;
+#pragma unroll
     for (int fw = 0; fw < fw_size; fw++, w_in += dilate_width) {
       if (h_in >= 0 && h_in < input_height && w_in >= 0 && w_in < input_width) {
         int64_t offset = in_offset + h_in * input_width + w_in;
@@ -299,11 +299,11 @@ __device__ __inline__ void KernelDepthwiseConvNHWC(
       -padding_width + static_cast<int64_t>(w_out) * stride_width;
   int64_t weight_offset = 0;
 
-#pragma unroll
   int64_t h_in = h_in_start;
-  for (int fh = 0; fh < fh_size; ++fh, h_in += dilate_height) {
 #pragma unroll
+  for (int fh = 0; fh < fh_size; ++fh, h_in += dilate_height) {
     int64_t w_in = w_in_start;
+#pragma unroll
     for (int fw = 0; fw < fw_size; ++fw, w_in += dilate_width) {
       if (h_in >= 0 && h_in < input_height && w_in >= 0 && w_in < input_width) {
         int64_t offset =
