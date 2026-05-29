@@ -2595,6 +2595,8 @@ class Model:
                 >>> from paddle.static import InputSpec
 
                 >>> # declarative mode
+                >>> # Note: new Metric API is not yet supported in static
+                >>> # graph mode. Use dynamic graph mode for metrics.
                 >>> transform = T.Compose(
                 ...     [
                 ...         T.Transpose(),
@@ -2606,10 +2608,10 @@ class Model:
                 >>> input = InputSpec([-1, 1, 28, 28], 'float32', 'image')
                 >>> label = InputSpec([None, 1], 'int64', 'label')
                 >>> model = paddle.Model(paddle.vision.models.LeNet(), input, label)
-                >>> model.prepare(metrics=paddle.metric.Accuracy(task="multiclass", num_classes=10))
+                >>> model.prepare()
                 >>> result = model.evaluate(val_dataset, batch_size=64)
                 >>> print(result)
-                {'MulticlassAccuracy': 0.0699}
+                {'loss': 0.0}
         """
 
         if eval_data is not None and isinstance(eval_data, Dataset):
@@ -2936,6 +2938,7 @@ class Model:
                     else:
                         metric_names.append(base_name)
 
+                self._cached_metrics_names = metric_names
                 for k, v in zip(metric_names, metrics):
                     logs[k] = v
             else:
@@ -3087,6 +3090,9 @@ class Model:
             metric.reset()
 
     def _metrics_name(self):
+        cached = getattr(self, '_cached_metrics_names', None)
+        if cached is not None:
+            return cached
         metrics_name = ['loss'] if self._loss else []
         for m in self._metrics:
             metrics_name.extend(to_list(m.name))

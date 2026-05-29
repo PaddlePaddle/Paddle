@@ -135,7 +135,9 @@ def to_onehot(
         dtype=label_tensor.dtype,
     )
     index = label_tensor.cast("int64").unsqueeze(1).expand_as(tensor_onehot)
-    return tensor_onehot.put_along_axis(index, 1.0, axis=1)
+    return tensor_onehot.put_along_axis(
+        index, paddle.ones_like(tensor_onehot), axis=1
+    )
 
 
 def _top_k_with_half_precision_support(
@@ -162,14 +164,15 @@ def select_topk(
         A binary tensor of the same shape as the input tensor of type ``int32``
     """
     topk_tensor = paddle.zeros_like(prob_tensor, dtype=paddle.int32)
+    ones = paddle.ones_like(topk_tensor)
     if topk == 1:
         indices = prob_tensor.argmax(axis=axis, keepdim=True)
-        topk_tensor = topk_tensor.put_along_axis(indices, 1, axis=axis)
+        topk_tensor = topk_tensor.put_along_axis(indices, ones, axis=axis)
     else:
         indices = _top_k_with_half_precision_support(
             prob_tensor, k=topk, axis=axis
         )
-        topk_tensor = topk_tensor.put_along_axis(indices, 1, axis=axis)
+        topk_tensor = topk_tensor.put_along_axis(indices, ones, axis=axis)
     return topk_tensor.cast("int32")
 
 
