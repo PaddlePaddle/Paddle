@@ -83,7 +83,7 @@ def _binary_clf_curve(
         if sample_weights is not None:
             fps = _cumsum((1 - target) * weight, axis=0)[threshold_idxs]
         else:
-            fps = 1 + threshold_idxs - tps
+            fps = 1 + threshold_idxs - tps.to(paddle.long)
         return fps, tps, preds[threshold_idxs]
 
 

@@ -93,7 +93,9 @@ class Accuracy:
     def __new__(cls, topk=(1,), name=None, **kwargs):
         from paddle.metric.classification import MulticlassAccuracy
 
-        return MulticlassAccuracy(top_k=topk[0] if topk else 1, name=name, **kwargs)
+        return MulticlassAccuracy(
+            top_k=topk[0] if topk else 1, name=name, **kwargs
+        )
 
 
 class Auc:
@@ -104,6 +106,4 @@ class Auc:
     def __new__(cls, curve='ROC', num_thresholds=4095, name='auc', **kwargs):
         from paddle.metric.classification import BinaryAUROC
 
-        return BinaryAUROC(
-            thresholds=num_thresholds, name=name, **kwargs
-        )
+        return BinaryAUROC(thresholds=num_thresholds, name=name, **kwargs)

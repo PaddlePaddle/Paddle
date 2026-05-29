@@ -653,7 +653,6 @@ class StaticPIRGraphAdapter:
                                     )
                                     supported_metrics.append(metric)
                                 except TypeError:
-
                                     warnings.warn(
                                         f"{type(metric).__name__} is not "
                                         "supported by paddle.Model "
@@ -671,13 +670,10 @@ class StaticPIRGraphAdapter:
                         for metric in self.model._metrics:
                             try:
                                 metrics.append(
-                                    to_list(
-                                        metric.compute(*(outputs + labels))
-                                    )
+                                    to_list(metric.compute(*(outputs + labels)))
                                 )
                                 supported_metrics.append(metric)
                             except TypeError:
-
                                 warnings.warn(
                                     f"{type(metric).__name__} is not "
                                     "supported by paddle.Model "
@@ -699,13 +695,10 @@ class StaticPIRGraphAdapter:
                     for metric in self.model._metrics:
                         try:
                             metrics.append(
-                                to_list(
-                                    metric.compute(*(outputs + labels))
-                                )
+                                to_list(metric.compute(*(outputs + labels)))
                             )
                             supported_metrics.append(metric)
                         except TypeError:
-
                             warnings.warn(
                                 f"{type(metric).__name__} is not "
                                 "supported by paddle.Model "
@@ -1140,7 +1133,6 @@ class StaticGraphAdapter:
                         )
                         supported_metrics.append(metric)
                     except TypeError:
-
                         warnings.warn(
                             f"{type(metric).__name__} is not "
                             "supported by paddle.Model "

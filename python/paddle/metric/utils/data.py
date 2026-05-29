@@ -172,7 +172,10 @@ def select_topk(
         indices = _top_k_with_half_precision_support(
             prob_tensor, k=topk, axis=axis
         )
-        topk_tensor = topk_tensor.put_along_axis(indices, ones, axis=axis)
+        topk_values = paddle.ones_like(indices, dtype=paddle.int32)
+        topk_tensor = topk_tensor.put_along_axis(
+            indices, topk_values, axis=axis
+        )
     return topk_tensor.cast("int32")
 
 

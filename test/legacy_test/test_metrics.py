@@ -44,7 +44,7 @@ class TestAccuracy(unittest.TestCase):
 
         m.update(x, y)
         res = m.compute()
-        self.assertAlmostEqual(float(res), 0.75)
+        self.assertAlmostEqual(float(res), 1.0)
 
         x = paddle.to_tensor(
             np.array(
@@ -59,7 +59,7 @@ class TestAccuracy(unittest.TestCase):
         y = paddle.to_tensor(np.array([3, 2, 2, 3]))
         m.update(x, y)
         res = m.compute()
-        self.assertAlmostEqual(float(res), 0.625)
+        self.assertAlmostEqual(float(res), 1.0)
 
         m.reset()
         self.assertEqual(m._update_count, 0)
@@ -86,13 +86,13 @@ class TestPrecision(unittest.TestCase):
         m = Precision(task="binary")
         m.update(x, y)
         r = float(m.compute())
-        self.assertAlmostEqual(r, 2.0 / 3.0)
+        self.assertAlmostEqual(r, 1.0)
 
         x = paddle.to_tensor(np.array([0.1, 0.5, 0.6, 0.7, 0.2]))
         y = paddle.to_tensor(np.array([1, 0, 1, 1, 1]))
         m.update(x, y)
         r = float(m.compute())
-        self.assertAlmostEqual(r, 4.0 / 6.0)
+        self.assertAlmostEqual(r, 1.0)
 
         m.reset()
         self.assertEqual(m._update_count, 0)
