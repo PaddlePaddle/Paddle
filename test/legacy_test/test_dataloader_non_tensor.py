@@ -168,10 +168,11 @@ class TestNonTensorDataLoader(unittest.TestCase):
         batches = []
         for batch in loader:
             batches.append(batch)
-        self.assertEqual(len(batches), 2)
-        for batch in batches:
-            for item in batch:
-                self.assertEqual(item, "a")
+        # 20 samples / batch_size=10 / 2 places = 1 Python iteration
+        self.assertEqual(len(batches), 1)
+        self.assertEqual(len(batches[0]), 10)
+        for item in batches[0]:
+            self.assertEqual(item, "a")
 
 
 if __name__ == "__main__":
