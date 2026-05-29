@@ -1332,6 +1332,20 @@ class TestLRScheduler(unittest.TestCase):
                 scheduler.step()
 
 
+class TestLRSchedulerWithOptimizerArg(unittest.TestCase):
+    def test_exponential_decay(self):
+        paddle.disable_static()
+        linear = paddle.nn.Linear(10, 10)
+        base_lr = 0.01
+        adam = paddle.optimizer.Adam(
+            learning_rate=base_lr, parameters=linear.parameters()
+        )
+        scheduler = paddle.optimizer.lr.ExponentialDecay(adam, gamma=0.9)
+        self.assertEqual(scheduler.base_lr, adam.get_lr())
+        self.assertIs(adam._learning_rate, scheduler)
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

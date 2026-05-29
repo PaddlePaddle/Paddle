@@ -32,6 +32,7 @@ from paddle.base.framework import (
     in_dygraph_mode,
 )
 from paddle.base.layer_helper import LayerHelper
+from paddle.utils.decorator_utils import param_one_alias
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -144,20 +145,26 @@ class LRScheduler:
     last_epoch: int
     verbose: bool
 
+    @param_one_alias(["learning_rate", "optimizer"])
     def __init__(
         self,
-        learning_rate: float = 0.1,
+        learning_rate: float | paddle.optimizer.Optimizer = 0.1,
         last_epoch: int = -1,
         verbose: bool = False,
     ) -> None:
-        if not isinstance(learning_rate, (float, int)):
+        if isinstance(learning_rate, (float, int)):
+            if learning_rate < 0:
+                raise ValueError(f"Invalid learning rate: {learning_rate}")
+            self.base_lr = float(learning_rate)
+            self.last_lr = float(learning_rate)
+        elif isinstance(learning_rate, paddle.optimizer.Optimizer):
+            self.base_lr = learning_rate.get_lr()
+            self.last_lr = learning_rate.get_lr()
+            learning_rate.set_lr_scheduler(self)
+        else:
             raise TypeError(
-                f"The type of learning rate must be float, but received {type(learning_rate)}"
+                f"The type of learning rate must be int, float or paddle.optimizer.Optimizer, but received {type(learning_rate)}"
             )
-        if learning_rate < 0:
-            raise ValueError(f"Invalid learning rate: {learning_rate}")
-        self.base_lr = float(learning_rate)
-        self.last_lr = float(learning_rate)
         self.last_epoch = last_epoch
         self.verbose = verbose
         self._var_name = None
@@ -1089,9 +1096,10 @@ class ExponentialDecay(LRScheduler):
 
     gamma: float
 
+    @param_one_alias(["learning_rate", "optimizer"])
     def __init__(
         self,
-        learning_rate: float,
+        learning_rate: float | paddle.optimizer.Optimizer,
         gamma: float,
         last_epoch: int = -1,
         verbose: bool = False,
