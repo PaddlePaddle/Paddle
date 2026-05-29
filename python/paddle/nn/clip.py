@@ -708,6 +708,7 @@ class ClipGradByGlobalNormAccuracyCompatible(ClipGradBase):
         global_norm_var = paddle.linalg.vector_norm(combined)
         return global_norm_var
 
+    @imperative_base.no_grad()
     def _dygraph_clip(self, params_grads):
         global_norm_var = self._get_global_norm(params_grads)
         if global_norm_var is None:
