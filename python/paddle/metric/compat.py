@@ -84,3 +84,26 @@ def accuracy(
         },
     )
     return acc_out
+
+
+class Accuracy:
+    """Backward-compatible ``paddle.metric.Accuracy`` for code that does not
+    pass ``task=``.  Delegates to :class:`MulticlassAccuracy`."""
+
+    def __new__(cls, topk=(1,), name=None, **kwargs):
+        from paddle.metric.classification import MulticlassAccuracy
+
+        return MulticlassAccuracy(top_k=topk[0] if topk else 1, name=name, **kwargs)
+
+
+class Auc:
+    """Backward-compatible ``paddle.metric.Auc`` for code that uses the old
+    ``curve='ROC'`` / ``num_thresholds`` API.  Delegates to
+    :class:`BinaryAUROC`."""
+
+    def __new__(cls, curve='ROC', num_thresholds=4095, name='auc', **kwargs):
+        from paddle.metric.classification import BinaryAUROC
+
+        return BinaryAUROC(
+            thresholds=num_thresholds, name=name, **kwargs
+        )

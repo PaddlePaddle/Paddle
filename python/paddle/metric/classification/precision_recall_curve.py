@@ -190,6 +190,10 @@ class BinaryPrecisionRecallCurve(Metric):
             self.preds.append(state[0])
             self.target.append(state[1])
 
+    @property
+    def names(self) -> list[str]:
+        return [f"{self.name}_0", f"{self.name}_1", f"{self.name}_2"]
+
     def compute(self) -> tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor]:
         """Compute metric."""
         state = (
@@ -413,6 +417,10 @@ class MulticlassPrecisionRecallCurve(Metric):
             self.preds.append(state[0])
             self.target.append(state[1])
 
+    @property
+    def names(self) -> list[str]:
+        return [f"{self.name}_0", f"{self.name}_1", f"{self.name}_2"]
+
     def compute(
         self,
     ) -> (
@@ -628,6 +636,10 @@ class MultilabelPrecisionRecallCurve(Metric):
         else:
             self.preds.append(state[0])
             self.target.append(state[1])
+
+    @property
+    def names(self) -> list[str]:
+        return [f"{self.name}_0", f"{self.name}_1", f"{self.name}_2"]
 
     def compute(
         self,

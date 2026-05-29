@@ -573,8 +573,9 @@ class StaticPIRGraphAdapter:
             return rets[:]
 
         metric_states = restore_flatten_list(rets[num_loss:], metric_splits)
+        supported = getattr(self, '_supported_metrics', self.model._metrics)
         metrics = []
-        for metric, state in zip(self.model._metrics, metric_states):
+        for metric, state in zip(supported, metric_states):
             metric.update(*state)
             metrics.append(metric.compute())
 
@@ -598,6 +599,7 @@ class StaticPIRGraphAdapter:
 
         losses = []
         metrics = []
+        supported_metrics = []
         prog_param = prog.get_all_parameter_values()
 
         named_sublayers = self.model.network.named_sublayers(
@@ -649,14 +651,16 @@ class StaticPIRGraphAdapter:
                                             metric.compute(*(outputs + labels))
                                         )
                                     )
-                                except TypeError as exc:
-                                    raise NotImplementedError(
+                                    supported_metrics.append(metric)
+                                except TypeError:
+
+                                    warnings.warn(
                                         f"{type(metric).__name__} is not "
                                         "supported by paddle.Model "
-                                        "static graph. Use dynamic "
-                                        "graph mode or remove the "
-                                        "metric."
-                                    ) from exc
+                                        "static graph and will be "
+                                        "skipped. Use dynamic graph "
+                                        "mode to evaluate this metric."
+                                    )
                 else:
                     outputs = to_list(self.model.network.forward(*inputs))
 
@@ -667,16 +671,20 @@ class StaticPIRGraphAdapter:
                         for metric in self.model._metrics:
                             try:
                                 metrics.append(
-                                    to_list(metric.compute(*(outputs + labels)))
+                                    to_list(
+                                        metric.compute(*(outputs + labels))
+                                    )
                                 )
-                            except TypeError as exc:
-                                raise NotImplementedError(
+                                supported_metrics.append(metric)
+                            except TypeError:
+
+                                warnings.warn(
                                     f"{type(metric).__name__} is not "
                                     "supported by paddle.Model "
-                                    "static graph. Use dynamic "
-                                    "graph mode or remove the "
-                                    "metric."
-                                ) from exc
+                                    "static graph and will be "
+                                    "skipped. Use dynamic graph "
+                                    "mode to evaluate this metric."
+                                )
 
                 self._loss_endpoint = paddle.add_n(losses)
 
@@ -691,16 +699,20 @@ class StaticPIRGraphAdapter:
                     for metric in self.model._metrics:
                         try:
                             metrics.append(
-                                to_list(metric.compute(*(outputs + labels)))
+                                to_list(
+                                    metric.compute(*(outputs + labels))
+                                )
                             )
-                        except TypeError as exc:
-                            raise NotImplementedError(
+                            supported_metrics.append(metric)
+                        except TypeError:
+
+                            warnings.warn(
                                 f"{type(metric).__name__} is not "
                                 "supported by paddle.Model "
-                                "static graph. Use dynamic "
-                                "graph mode or remove the "
-                                "metric."
-                            ) from exc
+                                "static graph and will be "
+                                "skipped. Use dynamic graph "
+                                "mode to evaluate this metric."
+                            )
 
         if mode != 'train':
             # Some operators, e.g., :ref:`api_paddle_base_layers_batch_norm` , behave differently between
@@ -710,6 +722,7 @@ class StaticPIRGraphAdapter:
             prog.set_is_test_attr()
 
         self._input_vars[mode] = inputs
+        self._supported_metrics = supported_metrics
 
         self._progs[mode] = prog
         self._endpoints[mode] = {
@@ -1036,8 +1049,9 @@ class StaticGraphAdapter:
             return rets[:]
 
         metric_states = restore_flatten_list(rets[num_loss:], metric_splits)
+        supported = getattr(self, '_supported_metrics', self.model._metrics)
         metrics = []
-        for metric, state in zip(self.model._metrics, metric_states):
+        for metric, state in zip(supported, metric_states):
             # cut off padding size
             if (
                 self.mode != 'train'
@@ -1101,6 +1115,7 @@ class StaticGraphAdapter:
 
         losses = []
         metrics = []
+        supported_metrics = []
         with base.program_guard(prog, self._startup_prog):
             inputs = self.model._inputs
             labels = self.model._labels if self.model._labels else []
@@ -1123,14 +1138,16 @@ class StaticGraphAdapter:
                         metrics.append(
                             to_list(metric.compute(*(outputs + labels)))
                         )
-                    except TypeError as exc:
-                        raise NotImplementedError(
+                        supported_metrics.append(metric)
+                    except TypeError:
+
+                        warnings.warn(
                             f"{type(metric).__name__} is not "
                             "supported by paddle.Model "
-                            "static graph. Use dynamic "
-                            "graph mode or remove the "
-                            "metric."
-                        ) from exc
+                            "static graph and will be "
+                            "skipped. Use dynamic graph "
+                            "mode to evaluate this metric."
+                        )
 
             if mode == 'train' and self.model._optimizer:
                 self._loss_endpoint = paddle.add_n(losses)
@@ -1170,6 +1187,7 @@ class StaticGraphAdapter:
             prog = prog.clone(for_test=True)
 
         self._input_vars[mode] = inputs
+        self._supported_metrics = supported_metrics
 
         self._progs[mode] = prog
         self._endpoints[mode] = {
@@ -2930,13 +2948,7 @@ class Model:
                     res = metric.compute()
                     values = to_list(res)
                     metrics.extend(values)
-                    base_name = metric.name
-                    if len(values) > 1:
-                        metric_names.extend(
-                            [f"{base_name}_{i}" for i in range(len(values))]
-                        )
-                    else:
-                        metric_names.append(base_name)
+                    metric_names.extend(metric.names)
 
                 self._cached_metrics_names = metric_names
                 for k, v in zip(metric_names, metrics):
@@ -3095,7 +3107,7 @@ class Model:
             return cached
         metrics_name = ['loss'] if self._loss else []
         for m in self._metrics:
-            metrics_name.extend(to_list(m.name))
+            metrics_name.extend(m.names)
         return metrics_name
 
     def _len_data_loader(self, data_loader):

@@ -131,6 +131,10 @@ class BinarySensitivityAtSpecificity(BinaryPrecisionRecallCurve):
         self.validate_args = validate_args
         self.min_specificity = min_specificity
 
+    @property
+    def names(self) -> list[str]:
+        return [f"{self.name}_0", f"{self.name}_1"]
+
     def compute(self) -> tuple[paddle.Tensor, paddle.Tensor]:
         """Compute metric."""
         state = (
@@ -246,6 +250,10 @@ class MulticlassSensitivityAtSpecificity(MulticlassPrecisionRecallCurve):
         self.validate_args = validate_args
         self.min_specificity = min_specificity
 
+    @property
+    def names(self) -> list[str]:
+        return [f"{self.name}_0", f"{self.name}_1"]
+
     def compute(self) -> tuple[paddle.Tensor, paddle.Tensor]:
         """Compute metric."""
         state = (
@@ -348,6 +356,10 @@ class MultilabelSensitivityAtSpecificity(MultilabelPrecisionRecallCurve):
             )
         self.validate_args = validate_args
         self.min_specificity = min_specificity
+
+    @property
+    def names(self) -> list[str]:
+        return [f"{self.name}_0", f"{self.name}_1"]
 
     def compute(self) -> tuple[paddle.Tensor, paddle.Tensor]:
         """Compute metric."""

@@ -368,6 +368,15 @@ class MulticlassStatScores(_AbstractStatScores):
 
     def update(self, preds: paddle.Tensor, target: paddle.Tensor) -> None:
         """Update state with predictions and targets."""
+        # Auto-squeeze [N, 1] target when preds is [N, C] — common in Paddle
+        # where labels come as column vectors from DataLoader.
+        if (
+            preds.ndim == 2
+            and target.ndim == 2
+            and target.shape[-1] == 1
+            and preds.shape[0] == target.shape[0]
+        ):
+            target = target.squeeze(-1)
         if self.validate_args:
             _multiclass_stat_scores_tensor_validation(
                 preds,

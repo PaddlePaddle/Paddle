@@ -232,6 +232,16 @@ class Metric(ABC, nn.Layer):
         return self._name
 
     @property
+    def names(self) -> list[str]:
+        """Expanded list of names for this metric.
+
+        For single-value metrics this is ``[self.name]``.  Multi-value
+        metrics (e.g. ROC, PrecisionRecallCurve) override this to return
+        one suffixed name per value, e.g. ``['ROC_0', 'ROC_1', 'ROC_2']``.
+        """
+        return [self._name]
+
+    @property
     def update_called(self) -> bool:
         return self._update_count > 0
 

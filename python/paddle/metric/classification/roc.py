@@ -126,6 +126,10 @@ class BinaryROC(BinaryPrecisionRecallCurve):
     plot_lower_bound: float = 0.0
     plot_upper_bound: float = 1.0
 
+    @property
+    def names(self) -> list[str]:
+        return [f"{self.name}_0", f"{self.name}_1", f"{self.name}_2"]
+
     def compute(self) -> tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor]:
         """Compute metric."""
         state = (
@@ -306,6 +310,10 @@ class MulticlassROC(MulticlassPrecisionRecallCurve):
     plot_upper_bound: float = 1.0
     plot_legend_name: str = "Class"
 
+    @property
+    def names(self) -> list[str]:
+        return [f"{self.name}_0", f"{self.name}_1", f"{self.name}_2"]
+
     def compute(
         self,
     ) -> (
@@ -476,6 +484,10 @@ class MultilabelROC(MultilabelPrecisionRecallCurve):
     plot_lower_bound: float = 0.0
     plot_upper_bound: float = 1.0
     plot_legend_name: str = "Label"
+
+    @property
+    def names(self) -> list[str]:
+        return [f"{self.name}_0", f"{self.name}_1", f"{self.name}_2"]
 
     def compute(
         self,

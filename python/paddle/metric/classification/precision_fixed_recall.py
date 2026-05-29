@@ -139,6 +139,10 @@ class BinaryPrecisionAtFixedRecall(BinaryPrecisionRecallCurve):
         self.validate_args = validate_args
         self.min_recall = min_recall
 
+    @property
+    def names(self) -> list[str]:
+        return [f"{self.name}_0", f"{self.name}_1"]
+
     def compute(self) -> tuple[paddle.Tensor, paddle.Tensor]:
         """Compute metric."""
         state = (
@@ -303,6 +307,10 @@ class MulticlassPrecisionAtFixedRecall(MulticlassPrecisionRecallCurve):
         self.validate_args = validate_args
         self.min_recall = min_recall
 
+    @property
+    def names(self) -> list[str]:
+        return [f"{self.name}_0", f"{self.name}_1"]
+
     def compute(self) -> tuple[paddle.Tensor, paddle.Tensor]:
         """Compute metric."""
         state = (
@@ -458,6 +466,10 @@ class MultilabelPrecisionAtFixedRecall(MultilabelPrecisionRecallCurve):
             )
         self.validate_args = validate_args
         self.min_recall = min_recall
+
+    @property
+    def names(self) -> list[str]:
+        return [f"{self.name}_0", f"{self.name}_1"]
 
     def compute(self) -> tuple[paddle.Tensor, paddle.Tensor]:
         """Compute metric."""
