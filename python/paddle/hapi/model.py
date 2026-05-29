@@ -713,7 +713,7 @@ class StaticPIRGraphAdapter:
                                 "static graph mode with the new metric API. "
                                 "Metrics will be skipped."
                             )
-                            self.model._metrics = []
+                            self._static_metrics_unsupported = True
                             metrics = []
                             break
 

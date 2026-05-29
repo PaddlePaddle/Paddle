@@ -281,7 +281,7 @@ class MulticlassAccuracy(MulticlassStatScores):
         self,
         num_classes: int | None = None,
         top_k: int = 1,
-        average: str | None = "micro",
+        average: str | None = "macro",
         multidim_average: str = "global",
         ignore_index: int | None = None,
         validate_args: bool = True,
@@ -310,17 +310,19 @@ class MulticlassAccuracy(MulticlassStatScores):
 
     def update(self, preds: paddle.Tensor, target: paddle.Tensor) -> None:
         """Update state with predictions and targets."""
-        if self._use_cpp_op:
+        if self._use_cpp_op and (
+            preds.is_floating_point()
+            and preds.ndim == 2
+            and preds.dtype in (paddle.float32, paddle.float64)
+            and (
+                target.ndim == 1 or (target.ndim == 2 and target.shape[1] == 1)
+            )
+        ):
             if target.dtype == paddle.int32:
                 target = paddle.cast(target, paddle.int64)
-            # C++ accuracy op requires label shape [N, 1]
             if target.ndim == 1:
                 target = target.reshape([-1, 1])
-            if preds.dtype in (paddle.float32, paddle.float64):
-                topk_out, topk_indices = paddle.topk(preds, k=self.top_k)
-            else:
-                topk_indices = preds
-                topk_out = paddle.zeros_like(preds, dtype="float32")
+            topk_out, topk_indices = paddle.topk(preds, k=self.top_k)
             if in_dynamic_mode():
                 # C++ op returns (acc, batch_correct, batch_total)
                 # Accumulate across batches manually
