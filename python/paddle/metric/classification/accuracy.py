@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING, Any
 
 from typing_extensions import Literal
@@ -296,8 +297,6 @@ class MulticlassAccuracy(MulticlassStatScores):
             validate_args=validate_args,
             **kwargs,
         )
-        # For the common micro + top_k=1 + global + no ignore_index case,
-        # delegate to the C++ accuracy op for better performance.
         self._use_cpp_op = (
             self.average == "micro"
             and self.top_k == 1
@@ -307,18 +306,39 @@ class MulticlassAccuracy(MulticlassStatScores):
         if self._use_cpp_op:
             self.declare("_correct", default=paddle.zeros([], dtype="int32"))
             self.declare("_total", default=paddle.zeros([], dtype="int32"))
+        self._cpp_op_active: bool | None = None  # None = not yet decided
 
-    def update(self, preds: paddle.Tensor, target: paddle.Tensor) -> None:
-        """Update state with predictions and targets."""
-        if self._use_cpp_op and (
+    @staticmethod
+    def _eligible_for_cpp_op(
+        preds: paddle.Tensor, target: paddle.Tensor
+    ) -> bool:
+        """Check if inputs satisfy C++ accuracy op constraints."""
+        return (
             preds.is_floating_point()
             and preds.ndim == 2
             and preds.dtype in (paddle.float32, paddle.float64)
             and (
                 target.ndim == 1 or (target.ndim == 2 and target.shape[1] == 1)
             )
-        ):
-            self._cpp_op_active = True
+        )
+
+    def update(self, preds: paddle.Tensor, target: paddle.Tensor) -> None:
+        """Update state with predictions and targets."""
+        use_cpp = self._use_cpp_op and self._eligible_for_cpp_op(preds, target)
+
+        # Lock the path on first update; prevent mixing C++ and Python state
+        if self._cpp_op_active is None:
+            self._cpp_op_active = use_cpp
+        elif use_cpp != self._cpp_op_active:
+            # Path mismatch — skip this batch to avoid corrupting state
+            warnings.warn(
+                f"{self.__class__.__name__}: input format changed between "
+                "batches (float 2D vs other). Skipping this update to "
+                "preserve metric state consistency."
+            )
+            return
+
+        if self._cpp_op_active:
             if target.dtype == paddle.int32:
                 target = paddle.cast(target, paddle.int64)
             if target.ndim == 1:
@@ -341,12 +361,11 @@ class MulticlassAccuracy(MulticlassStatScores):
                 self._correct = self._correct + batch_correct
                 self._total = self._total + batch_total
             return
-        self._cpp_op_active = False
         return super().update(preds, target)
 
     def compute(self) -> paddle.Tensor:
         """Compute accuracy based on inputs passed in to ``update`` previously."""
-        if self._use_cpp_op and getattr(self, '_cpp_op_active', False):
+        if self._cpp_op_active:
             correct = self._correct.astype("float32")
             total = self._total.astype("float32")
             return paddle.where(
