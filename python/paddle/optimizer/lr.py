@@ -2582,9 +2582,10 @@ class CosineAnnealingWarmRestarts(LRScheduler):
     eta_min: float
     T_cur: int
 
+    @param_one_alias(["learning_rate", "optimizer"])
     def __init__(
         self,
-        learning_rate: float,
+        learning_rate: float | paddle.optimizer.Optimizer,
         T_0: int,
         T_mult: int = 1,
         eta_min: float = 0,
