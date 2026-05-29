@@ -78,7 +78,7 @@ class TestPirTensorNbytes(unittest.TestCase):
             x = paddle.assign(np.random.rand(2, 8, 4).astype("float32"))
             exe = paddle.base.Executor(paddle.CPUPlace())
             fetches = exe.run(main, fetch_list=[x.nbytes])
-            self.assertEqual(fetches[0], np.prod((2, 8, 4, 4)))
+            self.assertEqual(fetches[0], 2 * 8 * 4 * 4)
 
 
 if __name__ == '__main__':

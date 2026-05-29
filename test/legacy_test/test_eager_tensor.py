@@ -2232,7 +2232,7 @@ class TestEagerTensorNbytes(unittest.TestCase):
         np_x = np.random.random((3, 8, 4))
         x = paddle.to_tensor(np_x, dtype="float64")
         x_actual_nbytes = x.nbytes
-        x_expected_nbytes = np.prod((3, 8, 4, 8))
+        x_expected_nbytes = 3 * 8 * 4 * 8
         self.assertEqual(x_actual_nbytes, x_expected_nbytes)
 
 
