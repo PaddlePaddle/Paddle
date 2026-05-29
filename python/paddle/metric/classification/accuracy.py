@@ -318,14 +318,13 @@ class MulticlassAccuracy(MulticlassStatScores):
                 target.ndim == 1 or (target.ndim == 2 and target.shape[1] == 1)
             )
         ):
+            self._cpp_op_active = True
             if target.dtype == paddle.int32:
                 target = paddle.cast(target, paddle.int64)
             if target.ndim == 1:
                 target = target.reshape([-1, 1])
             topk_out, topk_indices = paddle.topk(preds, k=self.top_k)
             if in_dynamic_mode():
-                # C++ op returns (acc, batch_correct, batch_total)
-                # Accumulate across batches manually
                 _acc, batch_correct, batch_total = _legacy_C_ops.accuracy(
                     topk_out,
                     topk_indices,
@@ -336,18 +335,18 @@ class MulticlassAccuracy(MulticlassStatScores):
                 self._correct = self._correct + batch_correct
                 self._total = self._total + batch_total
             elif in_pir_mode():
-                # PIR mode: op returns new tensors, accumulate manually
                 _acc, batch_correct, batch_total = _C_ops.accuracy(
                     topk_out, topk_indices, target
                 )
                 self._correct = self._correct + batch_correct
                 self._total = self._total + batch_total
             return
+        self._cpp_op_active = False
         return super().update(preds, target)
 
     def compute(self) -> paddle.Tensor:
         """Compute accuracy based on inputs passed in to ``update`` previously."""
-        if self._use_cpp_op:
+        if self._use_cpp_op and getattr(self, '_cpp_op_active', False):
             correct = self._correct.astype("float32")
             total = self._total.astype("float32")
             return paddle.where(
