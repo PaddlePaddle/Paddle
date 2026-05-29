@@ -111,8 +111,7 @@ class ReadOp : public framework::OperatorBase {
     phi::RecordEvent record_event(
         Type().c_str(), phi::TracerEventType::UserDefined, 1);
 
-    reader->ReadNext(&ins);
-    if (ins.empty()) {
+    if (!reader->ReadNext(&ins)) {
       VLOG(3) << "throw_eof_exp";
       PADDLE_THROW_EOF();
     }

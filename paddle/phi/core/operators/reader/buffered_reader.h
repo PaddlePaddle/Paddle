@@ -60,7 +60,7 @@ class PADDLE_API BufferedReader : public framework::DecoratedReader {
  protected:
   void ShutdownImpl() override;
   void StartImpl() override;
-  void ReadNextImpl(phi::TensorArray* out) override;
+  bool ReadNextImpl(phi::TensorArray* out) override;
 
  private:
   ThreadPool thread_pool_;
