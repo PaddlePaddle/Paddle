@@ -28,7 +28,7 @@ RUN git config --global --add safe.directory '*'
 RUN ln -s /opt/rh/gcc-toolset-${DEVTOOLSET_VERSION}/root/usr/lib/gcc/x86_64-redhat-linux/${DEVTOOLSET_VERSION} /usr/lib/gcc/x86_64-redhat-linux/${DEVTOOLSET_VERSION}
 ENV PATH=/opt/rh/gcc-toolset-${DEVTOOLSET_VERSION}/root/usr/bin:$PATH
 
-# cmake-3.18.4
+# cmake-3.31.0
 WORKDIR /home
 RUN wget -q https://cmake.org/files/v3.31/cmake-3.31.0-linux-x86_64.tar.gz && tar -zxvf cmake-3.31.0-linux-x86_64.tar.gz && rm cmake-3.31.0-linux-x86_64.tar.gz
 ENV PATH=/home/cmake-3.31.0-linux-x86_64/bin:$PATH
