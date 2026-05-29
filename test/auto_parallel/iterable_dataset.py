@@ -130,7 +130,11 @@ def train(fetch):
 
     # init engine
     engine = auto.Engine(
-        mlp, loss, optimizer, paddle.metric.Accuracy(), strategy=dist_strategy
+        mlp,
+        loss,
+        optimizer,
+        paddle.metric.Accuracy(task="multiclass", num_classes=class_num),
+        strategy=dist_strategy,
     )
 
     # train

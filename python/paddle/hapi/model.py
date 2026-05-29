@@ -1638,7 +1638,7 @@ class Model:
             ...     model.prepare(
             ...         optim,
             ...         paddle.nn.CrossEntropyLoss(),
-            ...         paddle.metric.Accuracy(),
+            ...         paddle.metric.Accuracy(task="multiclass", num_classes=10),
             ...         amp_configs=amp_configs,
             ...     )
             ...
@@ -1802,7 +1802,7 @@ class Model:
                 >>> model.prepare(
                 ...     optim,
                 ...     paddle.nn.CrossEntropyLoss(),
-                ...     metrics=paddle.metric.Accuracy(),
+                ...     metrics=paddle.metric.Accuracy(task="multiclass", num_classes=10),
                 ... )
                 >>> data = paddle.rand((4, 784), dtype="float32")
                 >>> label = paddle.randint(0, 10, (4, 1), dtype="int64")
