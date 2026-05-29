@@ -14,7 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set -e
+
 # install gdrcopy
 cd /usr/local
-wget -q https://paddle-ci.gz.bcebos.com/gdrcopy.tar && tar xf gdrcopy.tar && rm -rf gdrcopy.tar
+wget -q https://paddle-ci.gz.bcebos.com/gdrcopy.tar
+tar xf gdrcopy.tar
+rm -f gdrcopy.tar
 ldconfig
