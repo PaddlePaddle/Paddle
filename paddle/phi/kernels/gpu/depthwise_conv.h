@@ -241,7 +241,7 @@ __device__ __inline__ void KernelDepthwiseConvNCHW(
       -padding_height + static_cast<int64_t>(h_out) * stride_height;
   int64_t w_in_start =
       -padding_width + static_cast<int64_t>(w_out) * stride_width;
-  
+
   int64_t h_in = h_in_start;
 #pragma unroll
   for (int fh = 0; fh < fh_size; fh++, h_in += dilate_height) {
