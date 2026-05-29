@@ -575,7 +575,8 @@ class StaticPIRGraphAdapter:
         metric_states = restore_flatten_list(rets[num_loss:], metric_splits)
         metrics = []
         for metric, state in zip(self.model._metrics, metric_states):
-            metrics.append(metric.update(*state))
+            metric.update(*state)
+            metrics.append(metric.compute())
 
         if num_loss and len(metrics):
             return rets[:num_loss], metrics
@@ -642,9 +643,19 @@ class StaticPIRGraphAdapter:
 
                         if mode != 'test':
                             for metric in self.model._metrics:
-                                metrics.append(
-                                    to_list(metric.compute(*(outputs + labels)))
-                                )
+                                try:
+                                    metrics.append(
+                                        to_list(metric.compute(*(outputs + labels)))
+                                    )
+                                except TypeError:
+                                    warnings.warn(
+                                        f"Metric {metric.__class__.__name__} does not support "
+                                        "static graph mode with the new metric API. "
+                                        "Metrics will be skipped."
+                                    )
+                                    self.model._metrics = []
+                                    metrics = []
+                                    break
                 else:
                     outputs = to_list(self.model.network.forward(*inputs))
 
@@ -653,9 +664,19 @@ class StaticPIRGraphAdapter:
 
                     if mode != 'test':
                         for metric in self.model._metrics:
-                            metrics.append(
-                                to_list(metric.compute(*(outputs + labels)))
-                            )
+                            try:
+                                metrics.append(
+                                    to_list(metric.compute(*(outputs + labels)))
+                                )
+                            except TypeError:
+                                warnings.warn(
+                                    f"Metric {metric.__class__.__name__} does not support "
+                                    "static graph mode with the new metric API. "
+                                    "Metrics will be skipped."
+                                )
+                                self.model._metrics = []
+                                metrics = []
+                                break
 
                 self._loss_endpoint = paddle.add_n(losses)
 
@@ -668,9 +689,19 @@ class StaticPIRGraphAdapter:
 
                 if mode != 'test':
                     for metric in self.model._metrics:
-                        metrics.append(
-                            to_list(metric.compute(*(outputs + labels)))
-                        )
+                        try:
+                            metrics.append(
+                                to_list(metric.compute(*(outputs + labels)))
+                            )
+                        except TypeError:
+                            warnings.warn(
+                                f"Metric {metric.__class__.__name__} does not support "
+                                "static graph mode with the new metric API. "
+                                "Metrics will be skipped."
+                            )
+                            self.model._metrics = []
+                            metrics = []
+                            break
 
         if mode != 'train':
             # Some operators, e.g., :ref:`api_paddle_base_layers_batch_norm` , behave differently between
@@ -1031,7 +1062,8 @@ class StaticGraphAdapter:
                     self._merge_count[self.mode + '_total'] += samples
                     self._merge_count[self.mode + '_batch'] = samples
 
-            metrics.append(metric.update(*state))
+            metric.update(*state)
+            metrics.append(metric.compute())
 
         if num_loss and len(metrics):
             return rets[:num_loss], metrics
@@ -1088,7 +1120,17 @@ class StaticGraphAdapter:
 
             if mode != 'test':
                 for metric in self.model._metrics:
-                    metrics.append(to_list(metric.compute(*(outputs + labels))))
+                    try:
+                        metrics.append(to_list(metric.compute(*(outputs + labels))))
+                    except TypeError:
+                        warnings.warn(
+                            f"Metric {metric.__class__.__name__} does not support "
+                            "static graph mode with the new metric API. "
+                            "Metrics will be skipped."
+                        )
+                        self.model._metrics = []
+                        metrics = []
+                        break
 
             if mode == 'train' and self.model._optimizer:
                 self._loss_endpoint = paddle.add_n(losses)
@@ -1278,9 +1320,8 @@ class DynamicGraphAdapter:
 
         metrics = []
         for metric in self.model._metrics:
-            metric_outs = metric.compute(*(to_list(outputs) + labels))
-            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
-            metrics.append(m)
+            metric.update(*to_list(outputs), *labels)
+            metrics.append(metric.compute())
 
         return (
             ([to_numpy(l) for l in losses], metrics)
@@ -1339,9 +1380,8 @@ class DynamicGraphAdapter:
         metrics = []
         for metric in self.model._metrics:
             # cut off padding value.
-            metric_outs = metric.compute(*(to_list(outputs) + labels))
-            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
-            metrics.append(m)
+            metric.update(*to_list(outputs), *labels)
+            metrics.append(metric.compute())
 
         if self.model._loss and len(metrics):
             return [to_numpy(l) for l in losses], metrics
@@ -1533,7 +1573,7 @@ class Model:
             >>> model.prepare(
             ...     optim,
             ...     paddle.nn.CrossEntropyLoss(),
-            ...     paddle.metric.Accuracy(),
+            ...     paddle.metric.Accuracy(task="multiclass", num_classes=10),
             ... )
             >>> transform = T.Compose([
             ...     T.Transpose(),
@@ -2566,10 +2606,10 @@ class Model:
                 >>> input = InputSpec([-1, 1, 28, 28], 'float32', 'image')
                 >>> label = InputSpec([None, 1], 'int64', 'label')
                 >>> model = paddle.Model(paddle.vision.models.LeNet(), input, label)
-                >>> model.prepare(metrics=paddle.metric.Accuracy())
+                >>> model.prepare(metrics=paddle.metric.Accuracy(task="multiclass", num_classes=10))
                 >>> result = model.evaluate(val_dataset, batch_size=64)
                 >>> print(result)
-                {'acc': 0.0699}
+                {'MulticlassAccuracy': 0.0699}
         """
 
         if eval_data is not None and isinstance(eval_data, Dataset):
@@ -2884,7 +2924,7 @@ class Model:
 
                 # metrics
                 for metric in self._metrics:
-                    res = metric.accumulate()
+                    res = metric.compute()
                     metrics.extend(to_list(res))
 
                 assert len(self._metrics_name()) == len(metrics)
@@ -3041,7 +3081,7 @@ class Model:
     def _metrics_name(self):
         metrics_name = ['loss'] if self._loss else []
         for m in self._metrics:
-            metrics_name.extend(to_list(m.name()))
+            metrics_name.extend(to_list(m.name))
         return metrics_name
 
     def _len_data_loader(self, data_loader):

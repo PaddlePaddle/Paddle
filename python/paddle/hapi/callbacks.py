@@ -407,7 +407,7 @@ class ProgBarLogger(Callback):
             >>> model.prepare(
             ...     optimizer=optim,
             ...     loss=paddle.nn.CrossEntropyLoss(),
-            ...     metrics=paddle.metric.Accuracy(),
+            ...     metrics=paddle.metric.Accuracy(task="multiclass", num_classes=10),
             ... )
 
             >>> callback = paddle.callbacks.ProgBarLogger(log_freq=10)
@@ -686,7 +686,7 @@ class ModelCheckpoint(Callback):
             >>> model.prepare(
             ...     optimizer=optim,
             ...     loss=paddle.nn.CrossEntropyLoss(),
-            ...     metrics=paddle.metric.Accuracy(),
+            ...     metrics=paddle.metric.Accuracy(task="multiclass", num_classes=10),
             ... )
 
             >>> callback = paddle.callbacks.ModelCheckpoint(save_dir='./temp')
@@ -784,7 +784,7 @@ class LRScheduler(Callback):
             >>> model.prepare(
             ...     optimizer=optim,
             ...     loss=paddle.nn.CrossEntropyLoss(),
-            ...     metrics=paddle.metric.Accuracy(),
+            ...     metrics=paddle.metric.Accuracy(task="multiclass", num_classes=10),
             ... )
 
             >>> # if LRScheduler callback not set, an instance LRScheduler update by step
@@ -893,7 +893,7 @@ class EarlyStopping(Callback):
             >>> model.prepare(
             ...     optim,
             ...     loss=CrossEntropyLoss(reduction="sum"),
-            ...     metrics=[Accuracy()],
+            ...     metrics=[Accuracy(task="multiclass", num_classes=10)],
             ... )
             >>> callbacks = paddle.callbacks.EarlyStopping(
             ...     'loss',
@@ -1037,7 +1037,7 @@ class VisualDL(Callback):
             >>> model.prepare(
             ...     optimizer=optim,
             ...     loss=paddle.nn.CrossEntropyLoss(),
-            ...     metrics=paddle.metric.Accuracy(),
+            ...     metrics=paddle.metric.Accuracy(task="multiclass", num_classes=10),
             ... )
 
             >>> ## uncomment following lines to fit model with visualdl callback function
@@ -1174,7 +1174,7 @@ class WandbCallback(Callback):
             >>> model.prepare(
             ...     optimizer=optim,
             ...     loss=paddle.nn.CrossEntropyLoss(),
-            ...     metrics=paddle.metric.Accuracy(),
+            ...     metrics=paddle.metric.Accuracy(task="multiclass", num_classes=10),
             ... )
 
             >>> ## uncomment following lines to fit model with wandb callback function
@@ -1366,7 +1366,7 @@ class ReduceLROnPlateau(Callback):
             >>> model.prepare(
             ...     optim,
             ...     loss=CrossEntropyLoss(),
-            ...     metrics=[Accuracy()],
+            ...     metrics=[Accuracy(task="multiclass", num_classes=10)],
             ... )
             >>> callbacks = paddle.callbacks.ReduceLROnPlateau(patience=2, verbose=1)
             >>> model.fit(

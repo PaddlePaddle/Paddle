@@ -92,7 +92,7 @@ def _convert_sequence_to_dense_rank(
 ) -> paddle.Tensor:
     """Convert a sequence to the rank tensor."""
     if sort:
-        x = (paddle.sort(axis=0, x=x), paddle.argsort(axis=0, x=x)).values
+        x = paddle.sort(axis=0, x=x)
     _ones = paddle.zeros(1, x.shape[1], dtype=paddle.int32, device=x.place)
     return _cumsum(paddle.concat([_ones, (x[1:] != x[:-1]).int()], axis=0), axis=0)
 

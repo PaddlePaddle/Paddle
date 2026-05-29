@@ -582,9 +582,6 @@ class Metric(ABC, nn.Layer):
             name = prefix + key
             if name in state_dict:
                 setattr(self, key, state_dict.pop(name))
-        super()._load_from_state_dict(
-            state_dict, prefix, local_metadata, missing_keys, unexpected_keys, error_msgs
-        )
 
     def _copy_state_dict(self) -> dict[str, paddle.Tensor | list[Any]]:
         cache: dict[str, paddle.Tensor | list[Any]] = {}

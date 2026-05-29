@@ -35,6 +35,10 @@ if TYPE_CHECKING:
     from paddle.metric.metric import Metric
     from paddle.metric.utils.plot import _AX_TYPE, _PLOT_OUT_TYPE
 
+import paddle
+from paddle import _C_ops, _legacy_C_ops
+from paddle.framework import in_dynamic_mode, in_pir_mode
+
 if not _MATPLOTLIB_AVAILABLE:
     __doctest_skip__ = [
         "BinaryAccuracy.plot",
@@ -273,8 +277,52 @@ class MulticlassAccuracy(MulticlassStatScores):
     plot_upper_bound: float = 1.0
     plot_legend_name: str = "Class"
 
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        # For the common micro + top_k=1 + global + no ignore_index case,
+        # delegate to the C++ accuracy op for better performance.
+        self._use_cpp_op = (
+            self.average == "micro"
+            and self.top_k == 1
+            and self.multidim_average == "global"
+            and self.ignore_index is None
+        )
+        if self._use_cpp_op:
+            self.declare("_correct", default=paddle.zeros([], dtype="int64"))
+            self.declare("_total", default=paddle.zeros([], dtype="int64"))
+
+    def update(self, preds: paddle.Tensor, target: paddle.Tensor) -> None:
+        """Update state with predictions and targets."""
+        if self._use_cpp_op:
+            if target.dtype == paddle.int32:
+                target = paddle.cast(target, paddle.int64)
+            if preds.dtype in (paddle.float32, paddle.float64):
+                topk_out, topk_indices = paddle.topk(preds, k=self.top_k)
+            else:
+                topk_indices = preds
+                topk_out = paddle.zeros_like(preds, dtype="float32")
+            if in_dynamic_mode():
+                # Legacy C++ op mutates correct/total in-place
+                _legacy_C_ops.accuracy(
+                    topk_out, topk_indices, target,
+                    self._correct, self._total,
+                )
+            elif in_pir_mode():
+                # PIR mode: op returns new tensors, accumulate manually
+                _acc, batch_correct, batch_total = _C_ops.accuracy(
+                    topk_out, topk_indices, target
+                )
+                self._correct = self._correct + batch_correct
+                self._total = self._total + batch_total
+            return
+        return super().update(preds, target)
+
     def compute(self) -> paddle.Tensor:
         """Compute accuracy based on inputs passed in to ``update`` previously."""
+        if self._use_cpp_op:
+            correct = self._correct.astype("float32")
+            total = self._total.astype("float32")
+            return paddle.where(total > 0, correct / total, paddle.zeros_like(total))
         tp, fp, tn, fn = self._final_state()
         return _accuracy_reduce(
             tp,

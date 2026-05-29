@@ -299,12 +299,12 @@ class TestModel(unittest.TestCase):
         model.prepare(
             optim_new,
             loss=CrossEntropyLoss(reduction="sum"),
-            metrics=Accuracy(),
+            metrics=Accuracy(task="multiclass", num_classes=10),
         )
         model.fit(self.train_dataset, batch_size=64, shuffle=False)
 
         result = model.evaluate(self.val_dataset, batch_size=64)
-        np.testing.assert_allclose(result['acc'], self.acc1)
+        np.testing.assert_allclose(result['MulticlassAccuracy'], self.acc1)
 
         model.fit(
             self.train_dataset,
@@ -370,12 +370,12 @@ class TestModel(unittest.TestCase):
         model.prepare(
             optim_new,
             loss=CrossEntropyLoss(reduction="sum"),
-            metrics=Accuracy(),
+            metrics=Accuracy(task="multiclass", num_classes=10),
         )
         model.fit(self.train_dataset, batch_size=64, shuffle=False)
 
         result = model.evaluate(self.val_dataset, batch_size=64)
-        np.testing.assert_allclose(result['acc'], self.acc1)
+        np.testing.assert_allclose(result['MulticlassAccuracy'], self.acc1)
 
         train_sampler = DistributedBatchSampler(
             self.train_dataset,
@@ -412,10 +412,10 @@ class TestModel(unittest.TestCase):
     def evaluate(self, dynamic):
         base.enable_dygraph(self.device) if dynamic else None
         model = Model(LeNet(), self.inputs, self.labels)
-        model.prepare(metrics=Accuracy())
+        model.prepare(metrics=Accuracy(task="multiclass", num_classes=10))
         model.load(self.weight_path)
         result = model.evaluate(self.val_dataset, batch_size=64)
-        np.testing.assert_allclose(result['acc'], self.acc1)
+        np.testing.assert_allclose(result['MulticlassAccuracy'], self.acc1)
 
         sampler = DistributedBatchSampler(
             self.val_dataset, batch_size=64, shuffle=False

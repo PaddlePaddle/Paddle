@@ -44,6 +44,8 @@ __all__ = [
 
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+        # Backward-compatible functional API (delegates to C++ ops)
+        "accuracy": ("paddle.metric.compat", "accuracy"),
         # Classification
         "Accuracy": ("paddle.metric.classification", "Accuracy"),
         "AUROC": ("paddle.metric.classification", "AUROC"),
@@ -89,13 +91,20 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
         "SymmetricMeanAbsolutePercentageError": ("paddle.metric.regression", "SymmetricMeanAbsolutePercentageError"),
         "TweedieDevianceScore": ("paddle.metric.regression", "TweedieDevianceScore"),
         "WeightedMeanAbsolutePercentageError": ("paddle.metric.regression", "WeightedMeanAbsolutePercentageError"),
+        "JensenShannonDivergence": ("paddle.metric.regression", "JensenShannonDivergence"),
+        "NormalizedRootMeanSquaredError": ("paddle.metric.regression", "NormalizedRootMeanSquaredError"),
+        "RelativeSquaredError": ("paddle.metric.regression", "RelativeSquaredError"),
+        "ContinuousRankedProbabilityScore": ("paddle.metric.regression", "ContinuousRankedProbabilityScore"),
+        "CriticalSuccessIndex": ("paddle.metric.regression", "CriticalSuccessIndex"),
         # Wrappers
         "BootStrapper": ("paddle.metric.wrappers", "BootStrapper"),
         "ClasswiseWrapper": ("paddle.metric.wrappers", "ClasswiseWrapper"),
         "MinMaxMetric": ("paddle.metric.wrappers", "MinMaxMetric"),
         "MetricTracker": ("paddle.metric.wrappers", "MetricTracker"),
         "MultitaskWrapper": ("paddle.metric.wrappers", "MultitaskWrapper"),
+        "MultioutputWrapper": ("paddle.metric.wrappers", "MultioutputWrapper"),
         "Running": ("paddle.metric.wrappers", "Running"),
+        "FeatureShareMetric": ("paddle.metric.wrappers", "FeatureShare"),
 }
 
 

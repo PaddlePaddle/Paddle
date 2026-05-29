@@ -26,10 +26,7 @@ def _normalized_root_mean_squared_error_update(
     if normalization == "mean":
         denom = paddle.mean(target, axis=0)
     elif normalization == "range":
-        denom = (
-            paddle.max(target, axis=0).values
-            - paddle.min(target, axis=0).values
-        )
+        denom = paddle.max(target, axis=0) - paddle.min(target, axis=0)
     elif normalization == "std":
         denom = paddle.std(x=target, unbiased=0, axis=0)
     elif normalization == "l2":
