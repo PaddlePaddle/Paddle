@@ -305,28 +305,34 @@ class MulticlassAccuracy(MulticlassStatScores):
             and self.ignore_index is None
         )
         if self._use_cpp_op:
-            self.declare("_correct", default=paddle.zeros([], dtype="int64"))
-            self.declare("_total", default=paddle.zeros([], dtype="int64"))
+            self.declare("_correct", default=paddle.zeros([], dtype="int32"))
+            self.declare("_total", default=paddle.zeros([], dtype="int32"))
 
     def update(self, preds: paddle.Tensor, target: paddle.Tensor) -> None:
         """Update state with predictions and targets."""
         if self._use_cpp_op:
             if target.dtype == paddle.int32:
                 target = paddle.cast(target, paddle.int64)
+            # C++ accuracy op requires label shape [N, 1]
+            if target.ndim == 1:
+                target = target.reshape([-1, 1])
             if preds.dtype in (paddle.float32, paddle.float64):
                 topk_out, topk_indices = paddle.topk(preds, k=self.top_k)
             else:
                 topk_indices = preds
                 topk_out = paddle.zeros_like(preds, dtype="float32")
             if in_dynamic_mode():
-                # Legacy C++ op mutates correct/total in-place
-                _legacy_C_ops.accuracy(
+                # C++ op returns (acc, batch_correct, batch_total)
+                # Accumulate across batches manually
+                _acc, batch_correct, batch_total = _legacy_C_ops.accuracy(
                     topk_out,
                     topk_indices,
                     target,
-                    self._correct,
-                    self._total,
+                    paddle.zeros([1], dtype="int32"),
+                    paddle.zeros([1], dtype="int32"),
                 )
+                self._correct = self._correct + batch_correct
+                self._total = self._total + batch_total
             elif in_pir_mode():
                 # PIR mode: op returns new tensors, accumulate manually
                 _acc, batch_correct, batch_total = _C_ops.accuracy(
