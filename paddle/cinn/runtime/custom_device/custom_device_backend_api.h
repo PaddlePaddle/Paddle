@@ -78,7 +78,21 @@ class CustomRuntimeStrategy {
                                        int block_y,
                                        int block_z,
                                        int shared_mem,
-                                       void* stream) = 0;
+                                       void* stream) {
+    // Default: fall back to non-cooperative launch.
+    LaunchKernel(func_ptr,
+                 func_name,
+                 args,
+                 num_args,
+                 grid_x,
+                 grid_y,
+                 grid_z,
+                 block_x,
+                 block_y,
+                 block_z,
+                 shared_mem,
+                 stream);
+  }
 
   /// Whether this device supports cooperative kernel launch (grid-level sync).
   /// Default: false. Vendors override to return true if their hardware and

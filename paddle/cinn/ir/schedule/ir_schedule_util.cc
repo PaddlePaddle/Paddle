@@ -25,7 +25,6 @@
 
 #include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/common/ir_util.h"
-#include "paddle/cinn/common/target.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/ir_visitor.h"
@@ -179,9 +178,7 @@ void SetCudaAxisInfo(ir::LoweredFunc lowered_func) {
     int min_blocks_per_sm = -1;
     info.set_max_threads_per_block(max_threads_per_block);
     if (!lowered_func->temp_spaces.empty()) {
-      int max_threads_per_sm =
-          cinn::common::DefaultDeviceTarget().get_max_threads_per_sm();
-      min_blocks_per_sm = max_threads_per_sm / max_threads_per_block;
+      min_blocks_per_sm = 1024 / max_threads_per_block;
       if (min_blocks_per_sm > 1) {
         info.set_min_blocks_per_sm(min_blocks_per_sm);
       }

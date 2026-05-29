@@ -47,6 +47,10 @@ void cinn_call_custom_device_kernel(void *kernel_fn,
 
   auto &plugin = CinnCustomDevicePlugin::GetInstance(place);
   auto *runtime_strategy = plugin.GetRuntime();
+  if (!runtime_strategy) {
+    LOG(ERROR) << "No runtime strategy found for custom device: " << dev_type;
+    return;
+  }
 
   VLOG(3) << "Launching kernel on " << dev_type << ":" << device_id << " Grid("
           << grid_x << "," << grid_y << "," << grid_z << ")"
@@ -114,6 +118,10 @@ void cinn_call_custom_device_cooperative_kernel(void *kernel_fn,
 
   auto &plugin = CinnCustomDevicePlugin::GetInstance(place);
   auto *runtime_strategy = plugin.GetRuntime();
+  if (!runtime_strategy) {
+    LOG(ERROR) << "No runtime strategy found for custom device: " << dev_type;
+    return;
+  }
 
   VLOG(3) << "Launching cooperative kernel on " << dev_type << ":" << device_id
           << " Grid(" << grid_x << "," << grid_y << "," << grid_z << ")"
