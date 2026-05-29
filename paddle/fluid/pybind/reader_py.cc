@@ -241,7 +241,10 @@ class MultiDeviceFeedReader {
     ResultList result;
     result.reserve(ret_.size());
     for (size_t i = 0; i < ret_.size(); ++i) {
-      if (ret_status_[i] != Status::kSuccess) continue;
+      if (ret_status_[i] != Status::kSuccess) {
+        if (!kKeepOrder) result.emplace_back();
+        continue;
+      }
       result.emplace_back(std::move(ret_[i]));
     }
     ReadAsync();

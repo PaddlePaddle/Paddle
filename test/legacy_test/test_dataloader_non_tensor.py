@@ -142,34 +142,36 @@ class TestNonTensorDataLoader(unittest.TestCase):
         item.empty() to filter EOF, so empty TensorArrays from non-Tensor
         batches are preserved in multi-place (kKeepOrder) mode.
         """
-        import numpy as np
-
         import paddle
 
-        class TensorDS(Dataset):
+        class NonTensorDS(Dataset):
             def __init__(self, n):
                 self.n = n
 
             def __getitem__(self, idx):
-                return np.array([idx], dtype="float32")
+                return "a"
 
             def __len__(self):
                 return self.n
 
-        # Multi-place with Tensor data — regression check
-        dataset = TensorDS(20)
+        # Multi-place with non-Tensor data — regression for ordered reader
+        dataset = NonTensorDS(20)
         loader = DataLoader(
             dataset,
             batch_size=10,
             shuffle=False,
             drop_last=True,
+            collate_fn=identity_collate,
             num_workers=0,
             places=[paddle.CPUPlace(), paddle.CPUPlace()],
         )
-        batch_count = 0
+        batches = []
         for batch in loader:
-            batch_count += 1
-        self.assertEqual(batch_count, 1)
+            batches.append(batch)
+        self.assertEqual(len(batches), 2)
+        for batch in batches:
+            for item in batch:
+                self.assertEqual(item, "a")
 
 
 if __name__ == "__main__":
