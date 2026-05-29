@@ -838,13 +838,64 @@ class ClipGradByGlobalNorm(ClipGradBase):
 
     @imperative_base.no_grad()
     def _dygraph_clip(self, params_grads):
+        # Try to use accuracy-compatible implementation for better numerical
+        # reproducibility. Fall back to default path when the scenario is
+        # unsupported (distributed comm, SelectedRows grads, cross-mesh grads).
         if paddle.get_flags("FLAGS_use_accuracy_compatible_kernel")[
             "FLAGS_use_accuracy_compatible_kernel"
         ]:
-            accuracy_compatible_clip = ClipGradByGlobalNormAccuracyCompatible(
-                self.clip_norm, self.auto_skip_clip
-            )
-            return accuracy_compatible_clip._dygraph_clip(params_grads)
+            use_accuracy_compatible = True
+            if len(params_grads) > 0 and len(params_grads[0]) > 0:
+                src_mesh = params_grads[0][0].process_mesh
+            else:
+                src_mesh = None
+
+            # Fallback: pipeline parallelism requires cross-stage comm, not supported
+            if src_mesh is not None:
+                g_mesh = dist.get_mesh()
+                if (
+                    g_mesh
+                    and "pp" in g_mesh.dim_names
+                    and g_mesh.get_dim_size("pp") > 1
+                ):
+                    use_accuracy_compatible = False
+
+            # Fallback: sharding/MP/FSDP requires allreduce across groups, not supported
+            if (
+                use_accuracy_compatible
+                and self.should_comm_on_shard_dim
+                and (
+                    hasattr(self, 'sharding_group')
+                    or hasattr(self, 'mp_group')
+                    or hasattr(self, 'fsdp_group')
+                )
+            ):
+                use_accuracy_compatible = False
+
+            if use_accuracy_compatible:
+                for p, g in params_grads:
+                    if g is None or getattr(p, 'need_clip', True) is False:
+                        continue
+
+                    # Fallback: SelectedRows sparse grad not supported
+                    if (
+                        in_dynamic_mode() and g.is_selected_rows()
+                    ) or g.type == core.VarDesc.VarType.SELECTED_ROWS:
+                        use_accuracy_compatible = False
+                        break
+
+                    # Fallback: grads on different meshes need cross-mesh, comm not supported
+                    if src_mesh is not None and g.process_mesh != src_mesh:
+                        use_accuracy_compatible = False
+                        break
+
+            if use_accuracy_compatible:
+                accuracy_compatible_clip = (
+                    ClipGradByGlobalNormAccuracyCompatible(
+                        self.clip_norm, self.auto_skip_clip
+                    )
+                )
+                return accuracy_compatible_clip._dygraph_clip(params_grads)
 
         params_and_grads = []
         sum_square_list = []
