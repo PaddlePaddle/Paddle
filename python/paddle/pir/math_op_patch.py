@@ -1517,8 +1517,14 @@ def monkey_patch_value():
     @property
     def nbytes(self: Tensor) -> int:
         """
-        Returns the number of bytes allocated for elements of the Tensor. Defined to be ``size`` * ``element_size()``
+        Returns the number of bytes allocated for elements of the dense Tensor. Defined to be ``size`` * ``element_size()``
         """
+        if self.is_sparse_coo_tensor_type() or self.is_sparse_csr_tensor_type():
+            raise RuntimeError(
+                "nbytes is not defined for sparse tensors. "
+                "Add nbytes of indices and values for sparse storage size, "
+                "or multiply numel by element_size for the equivalent dense tensor."
+            )
         return self.size * self.element_size()
 
     import paddle
