@@ -91,10 +91,10 @@ def _pearson_corrcoef_update(
         var_y = var_y + batch_var_y + delta_y**2 * correction
         corr_xy = corr_xy + batch_cov_xy + delta_x * delta_y * correction
     max_abs_dev_x = paddle.maximum(
-        max_abs_dev_x, paddle.max((preds - mx_new).abs(), axis=0)[0]
+        max_abs_dev_x, paddle.max((preds - mx_new).abs(), axis=0)
     )
     max_abs_dev_y = paddle.maximum(
-        max_abs_dev_y, paddle.max((target - my_new).abs(), axis=0)[0]
+        max_abs_dev_y, paddle.max((target - my_new).abs(), axis=0)
     )
     return (
         mx_new,

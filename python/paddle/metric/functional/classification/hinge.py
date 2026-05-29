@@ -174,7 +174,7 @@ def _multiclass_hinge_loss_update(
     target = to_onehot(target, max(2, preds.shape[1])).bool()
     if multiclass_mode == "crammer-singer":
         margin = preds[target]
-        margin -= paddle.max(preds[~target].view(preds.shape[0], -1), axis=1)[0]
+        margin -= paddle.max(preds[~target].view(preds.shape[0], -1), axis=1)
     else:
         target = target.bool()
         margin = paddle.zeros_like(preds)
