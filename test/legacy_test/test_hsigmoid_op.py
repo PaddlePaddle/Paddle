@@ -26,12 +26,13 @@ np.random.seed(100)
 
 
 def find_latest_set(num):
+    num = int(np.asarray(num).item())
     return 1 + int(math.floor(math.log2(num)))
 
 
 class CodeTable:
     def __init__(self, num_classes, code):
-        self.c = num_classes + code
+        self.c = int(np.asarray(num_classes + code).item())
 
     def cal_index(self, bit):
         return (self.c >> (bit + 1)) - 1

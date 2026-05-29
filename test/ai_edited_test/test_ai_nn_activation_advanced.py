@@ -113,7 +113,7 @@ class TestPReLULayer(unittest.TestCase):
     def test_prelu_learnable(self):
         """测试PReLU可学习参数 / Test PReLU learnable parameters"""
         prelu = nn.PReLU(init=0.25)
-        self.assertAlmostEqual(float(prelu._weight.numpy()), 0.25, places=5)
+        self.assertAlmostEqual(float(prelu._weight.item()), 0.25, places=5)
 
 
 class TestSoftmaxLayers(unittest.TestCase):

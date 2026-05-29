@@ -23,6 +23,7 @@ from test_block_multihead_attention import (
     get_padding_offset,
     is_sm_supported,
     remove_padding,
+    skip_coverage_block_multihead_attention_quant,
 )
 
 import paddle
@@ -1622,9 +1623,11 @@ class TestBlockGroupQueryAttnEncDecPTQDequant(unittest.TestCase):
 @unittest.skipIf(
     not (core.is_compiled_with_cuda() or is_custom_device())
     or get_cuda_version() < 11040
-    or not is_sm_supported,
+    or not is_sm_supported
+    or skip_coverage_block_multihead_attention_quant,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
-    "and device's compute capability must be 8.x or 90",
+    "and device's compute capability must be 8.x or 90, or this Coverage quant "
+    "case is disabled",
 )
 class TestBlockGroupQueryAttnEncDecPTQDequantQuantShiftSmooth(
     unittest.TestCase
@@ -2025,9 +2028,11 @@ class TestBlockGroupQueryAttnEncDecPTQDequantQuantShiftSmooth(
 @unittest.skipIf(
     not (core.is_compiled_with_cuda() or is_custom_device())
     or get_cuda_version() < 11040
-    or not is_sm_supported,
+    or not is_sm_supported
+    or skip_coverage_block_multihead_attention_quant,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
-    "and device's compute capability must be 8.x or 90",
+    "and device's compute capability must be 8.x or 90, or this Coverage quant "
+    "case is disabled",
 )
 class TestBlockGroupQueryAttnEncDecQuant(unittest.TestCase):
     def setUp(self):
