@@ -17,8 +17,6 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
-import paddle
-
 
 def _compute_auc_ref(pred, labels, num_thresholds=200, slide_steps=1):
     """Compute AUC reference values matching the C++ auc op behavior."""
