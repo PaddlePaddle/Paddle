@@ -573,8 +573,14 @@ class StaticPIRGraphAdapter:
             return rets[:]
 
         metric_states = restore_flatten_list(rets[num_loss:], metric_splits)
+        _unsupported = getattr(self, '_unsupported_metric_classes', set())
+        supported_metrics = [
+            m
+            for m in self.model._metrics
+            if type(m).__name__ not in _unsupported
+        ]
         metrics = []
-        for metric, state in zip(self.model._metrics, metric_states):
+        for metric, state in zip(supported_metrics, metric_states):
             metric.update(*state)
             metrics.append(metric.compute())
 
@@ -642,40 +648,12 @@ class StaticPIRGraphAdapter:
                             losses = self.model._loss(*(outputs + labels))
 
                         if mode != 'test':
-                            if getattr(
-                                self, '_static_metrics_unsupported', False
-                            ):
-                                pass
-                            else:
-                                for metric in self.model._metrics:
-                                    try:
-                                        metrics.append(
-                                            to_list(
-                                                metric.compute(
-                                                    *(outputs + labels)
-                                                )
-                                            )
-                                        )
-                                    except TypeError:
-                                        warnings.warn(
-                                            f"Metric {metric.__class__.__name__} does not support "
-                                            "static graph mode with the new metric API. "
-                                            "Metrics will be skipped."
-                                        )
-                                        self._static_metrics_unsupported = True
-                                        metrics = []
-                                        break
-                else:
-                    outputs = to_list(self.model.network.forward(*inputs))
-
-                    if mode != 'test' and self.model._loss:
-                        losses = self.model._loss(*(outputs + labels))
-
-                    if mode != 'test':
-                        if getattr(self, '_static_metrics_unsupported', False):
-                            pass
-                        else:
+                            if not hasattr(self, '_unsupported_metric_classes'):
+                                self._unsupported_metric_classes = set()
                             for metric in self.model._metrics:
+                                mcls = type(metric).__name__
+                                if mcls in self._unsupported_metric_classes:
+                                    continue
                                 try:
                                     metrics.append(
                                         to_list(
@@ -684,13 +662,35 @@ class StaticPIRGraphAdapter:
                                     )
                                 except TypeError:
                                     warnings.warn(
-                                        f"Metric {metric.__class__.__name__} does not support "
-                                        "static graph mode with the new metric API. "
-                                        "Metrics will be skipped."
+                                        f"Metric {mcls} is not supported "
+                                        "by paddle.Model static graph. "
+                                        "It will be skipped."
                                     )
-                                    self._static_metrics_unsupported = True
-                                    metrics = []
-                                    break
+                                    self._unsupported_metric_classes.add(mcls)
+                else:
+                    outputs = to_list(self.model.network.forward(*inputs))
+
+                    if mode != 'test' and self.model._loss:
+                        losses = self.model._loss(*(outputs + labels))
+
+                    if mode != 'test':
+                        if not hasattr(self, '_unsupported_metric_classes'):
+                            self._unsupported_metric_classes = set()
+                        for metric in self.model._metrics:
+                            mcls = type(metric).__name__
+                            if mcls in self._unsupported_metric_classes:
+                                continue
+                            try:
+                                metrics.append(
+                                    to_list(metric.compute(*(outputs + labels)))
+                                )
+                            except TypeError:
+                                warnings.warn(
+                                    f"Metric {mcls} is not supported "
+                                    "by paddle.Model static graph. "
+                                    "It will be skipped."
+                                )
+                                self._unsupported_metric_classes.add(mcls)
 
                 self._loss_endpoint = paddle.add_n(losses)
 
@@ -702,20 +702,23 @@ class StaticPIRGraphAdapter:
                     losses = self.model._loss(*(outputs + labels))
 
                 if mode != 'test':
+                    if not hasattr(self, '_unsupported_metric_classes'):
+                        self._unsupported_metric_classes = set()
                     for metric in self.model._metrics:
+                        mcls = type(metric).__name__
+                        if mcls in self._unsupported_metric_classes:
+                            continue
                         try:
                             metrics.append(
                                 to_list(metric.compute(*(outputs + labels)))
                             )
                         except TypeError:
                             warnings.warn(
-                                f"Metric {metric.__class__.__name__} does not support "
-                                "static graph mode with the new metric API. "
-                                "Metrics will be skipped."
+                                f"Metric {mcls} is not supported "
+                                "by paddle.Model static graph. "
+                                "It will be skipped."
                             )
-                            self._static_metrics_unsupported = True
-                            metrics = []
-                            break
+                            self._unsupported_metric_classes.add(mcls)
 
         if mode != 'train':
             # Some operators, e.g., :ref:`api_paddle_base_layers_batch_norm` , behave differently between
@@ -1051,8 +1054,14 @@ class StaticGraphAdapter:
             return rets[:]
 
         metric_states = restore_flatten_list(rets[num_loss:], metric_splits)
+        _unsupported = getattr(self, '_unsupported_metric_classes', set())
+        supported_metrics = [
+            m
+            for m in self.model._metrics
+            if type(m).__name__ not in _unsupported
+        ]
         metrics = []
-        for metric, state in zip(self.model._metrics, metric_states):
+        for metric, state in zip(supported_metrics, metric_states):
             # cut off padding size
             if (
                 self.mode != 'train'
@@ -1133,23 +1142,23 @@ class StaticGraphAdapter:
                     labels = [_all_gather(l) for l in labels]
 
             if mode != 'test':
-                if getattr(self, '_static_metrics_unsupported', False):
-                    pass
-                else:
-                    for metric in self.model._metrics:
-                        try:
-                            metrics.append(
-                                to_list(metric.compute(*(outputs + labels)))
-                            )
-                        except TypeError:
-                            warnings.warn(
-                                f"Metric {metric.__class__.__name__} does not support "
-                                "static graph mode with the new metric API. "
-                                "Metrics will be skipped."
-                            )
-                            self._static_metrics_unsupported = True
-                            metrics = []
-                            break
+                if not hasattr(self, '_unsupported_metric_classes'):
+                    self._unsupported_metric_classes = set()
+                for metric in self.model._metrics:
+                    mcls = type(metric).__name__
+                    if mcls in self._unsupported_metric_classes:
+                        continue
+                    try:
+                        metrics.append(
+                            to_list(metric.compute(*(outputs + labels)))
+                        )
+                    except TypeError:
+                        warnings.warn(
+                            f"Metric {mcls} is not supported "
+                            "by paddle.Model static graph. "
+                            "It will be skipped."
+                        )
+                        self._unsupported_metric_classes.add(mcls)
 
             if mode == 'train' and self.model._optimizer:
                 self._loss_endpoint = paddle.add_n(losses)
