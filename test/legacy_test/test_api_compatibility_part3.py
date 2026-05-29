@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
 import sys
 import unittest
 
@@ -1061,7 +1062,7 @@ class TestIsposinfAPICompatibility(unittest.TestCase):
         # 4-5. out parameter test
         out4 = paddle.zeros_like(out1)
         out5 = paddle.isposinf(x, out=out4)
-        assert out4 is out5
+        self.assertIs(out4, out5)
         # 6. Tensor method
         out6 = x.isposinf()
 
@@ -2057,6 +2058,149 @@ class TestLogitAPI(unittest.TestCase):
         np.testing.assert_allclose(
             fetches[3], ref_out_eps, rtol=1e-5, atol=1e-6
         )
+
+
+class TestSpecialErfAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.shape = [3, 4]
+        self.inputs = [
+            np.random.uniform(-3.0, 3.0, self.shape).astype(dtype)
+            for dtype in ["float32", "float64"]
+        ]
+
+    def _ref_erf(self, x):
+        return np.array(
+            [math.erf(float(v)) for v in x.flatten()], dtype=x.dtype
+        ).reshape(x.shape)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        for np_x in self.inputs:
+            x = paddle.to_tensor(np_x)
+
+            # 1. Paddle Positional arguments
+            out1 = paddle.special.erf(x)
+            # 2. Paddle keyword arguments
+            out2 = paddle.special.erf(x=x)
+            # 3. PyTorch keyword arguments (alias)
+            out3 = paddle.special.erf(input=x)
+            # 4. out parameter test
+            out4 = paddle.empty_like(x)
+            out5 = paddle.special.erf(x, out=out4)
+
+            # Verify all outputs
+            expected = self._ref_erf(np_x)
+            for out in [out1, out2, out3, out4, out5]:
+                np.testing.assert_allclose(
+                    out.numpy(), expected, rtol=1e-5, atol=1e-6
+                )
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        for i, np_x in enumerate(self.inputs):
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                x = paddle.static.data(
+                    name=f"x_{i}", shape=self.shape, dtype=str(np_x.dtype)
+                )
+
+                # 1. Paddle Positional arguments
+                out1 = paddle.special.erf(x)
+                # 2. Paddle keyword arguments
+                out2 = paddle.special.erf(x=x)
+                # 3. PyTorch keyword arguments (alias)
+                out3 = paddle.special.erf(input=x)
+
+                exe = paddle.static.Executor()
+                fetches = exe.run(
+                    main,
+                    feed={f"x_{i}": np_x},
+                    fetch_list=[out1, out2, out3],
+                )
+
+                # Verify all outputs
+                expected = self._ref_erf(np_x)
+                for out in fetches:
+                    np.testing.assert_allclose(
+                        out, expected, rtol=1e-5, atol=1e-6
+                    )
+
+
+class TestSpecialSincAPI(unittest.TestCase):
+    def setUp(self):
+        self.shape = [3, 4]
+        base = np.array(
+            [
+                [0.0, -3.0, -1.5, -0.25],
+                [0.25, 0.5, 1.0, 1.5],
+                [2.0, 2.5, 3.0, 4.25],
+            ]
+        )
+        self.inputs = [base.astype(dtype) for dtype in ["float32", "float64"]]
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        for np_x in self.inputs:
+            x = paddle.to_tensor(np_x)
+
+            # 1. Paddle Positional arguments
+            out1 = paddle.special.sinc(x)
+            # 2. Paddle keyword arguments
+            out2 = paddle.special.sinc(x=x)
+            # 3. PyTorch keyword arguments (alias)
+            out3 = paddle.special.sinc(input=x)
+            # 4. out parameter test
+            out4 = paddle.empty_like(x)
+            out5 = paddle.special.sinc(x, out=out4)
+            out6 = paddle.empty_like(x)
+            out7 = paddle.sinc(input=x, out=out6)
+
+            # Verify all outputs
+            expected = np.sinc(np_x)
+            for out in [out1, out2, out3, out4, out5, out6, out7]:
+                np.testing.assert_allclose(
+                    out.numpy(), expected, rtol=1e-5, atol=1e-6
+                )
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        for i, np_x in enumerate(self.inputs):
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                x = paddle.static.data(
+                    name=f"sinc_x_{i}",
+                    shape=self.shape,
+                    dtype=str(np_x.dtype),
+                )
+
+                # 1. Paddle Positional arguments
+                out1 = paddle.special.sinc(x)
+                # 2. Paddle keyword arguments
+                out2 = paddle.special.sinc(x=x)
+                # 3. PyTorch keyword arguments (alias)
+                out3 = paddle.special.sinc(input=x)
+                out4 = paddle.sinc(input=x)
+
+                exe = paddle.static.Executor()
+                fetches = exe.run(
+                    main,
+                    feed={f"sinc_x_{i}": np_x},
+                    fetch_list=[out1, out2, out3, out4],
+                )
+
+                # Verify all outputs
+                expected = np.sinc(np_x)
+                for out in fetches:
+                    np.testing.assert_allclose(
+                        out, expected, rtol=1e-5, atol=1e-6
+                    )
 
 
 # Test conv1d_transpose / conv_transpose1d compatibility
@@ -4084,6 +4228,240 @@ class TestTensorIndexCopyInplaceAPI(unittest.TestCase):
         )
 
         paddle.enable_static()
+
+
+class TestKaiserWindowAPI(unittest.TestCase):
+    def setUp(self):
+        self.window_length = 7
+        self.beta = 6.0
+
+    def _expected(
+        self, window_length, periodic=True, beta=12.0, dtype="float32"
+    ):
+        if window_length <= 1:
+            return np.ones((window_length,), dtype=dtype)
+
+        length = window_length + 1 if periodic else window_length
+        n = np.arange(length, dtype=dtype)
+        alpha = (length - 1) / 2.0
+        out = np.i0(beta * np.sqrt(1 - ((n - alpha) / alpha) ** 2.0)) / np.i0(
+            beta
+        )
+        if periodic:
+            out = out[:-1]
+        return out.astype(dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.kaiser_window(
+            self.window_length, False, self.beta, dtype='float64'
+        )
+        # 2. Paddle keyword arguments
+        out2 = paddle.kaiser_window(
+            window_length=self.window_length,
+            periodic=False,
+            beta=self.beta,
+            dtype='float64',
+        )
+        # 3. Mixed arguments
+        out3 = paddle.kaiser_window(
+            self.window_length, periodic=False, beta=self.beta, dtype='float64'
+        )
+        # 4-5. out parameter test
+        out4 = paddle.empty([self.window_length], dtype='float64')
+        out5 = paddle.kaiser_window(
+            self.window_length,
+            False,
+            self.beta,
+            dtype='float64',
+            out=out4,
+        )
+        self.assertIs(out4, out5)
+        # 6. Explicit dtype=None compatibility
+        out6 = paddle.kaiser_window(3, dtype=None)
+        # 7. strided layout compatibility
+        out7 = paddle.kaiser_window(
+            self.window_length,
+            False,
+            self.beta,
+            dtype='float64',
+            layout='strided',
+        )
+        # 8. window_length=0 edge case
+        out8 = paddle.kaiser_window(0)
+        # 9. window_length=1 edge case
+        out9 = paddle.kaiser_window(1, dtype='float64')
+
+        expected = self._expected(
+            self.window_length, periodic=False, beta=self.beta, dtype='float64'
+        )
+        for out in [out1, out2, out3, out4, out5, out7]:
+            np.testing.assert_allclose(out.numpy(), expected, rtol=1e-12)
+        np.testing.assert_allclose(out6.numpy(), self._expected(3), rtol=1e-5)
+        self.assertEqual(out6.dtype, paddle.float32)
+        np.testing.assert_allclose(out8.numpy(), np.ones((0,), dtype='float32'))
+        np.testing.assert_allclose(out9.numpy(), np.ones((1,), dtype='float64'))
+        self.assertEqual(out9.dtype, paddle.float64)
+
+        with self.assertRaises(RuntimeError):
+            paddle.kaiser_window(3, layout='sparse')
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            # 1. Paddle Positional arguments
+            out1 = paddle.kaiser_window(
+                self.window_length, False, self.beta, dtype='float64'
+            )
+            # 2. Paddle keyword arguments
+            out2 = paddle.kaiser_window(
+                window_length=self.window_length,
+                periodic=False,
+                beta=self.beta,
+                dtype='float64',
+            )
+            # 3. Mixed arguments
+            out3 = paddle.kaiser_window(
+                self.window_length,
+                periodic=False,
+                beta=self.beta,
+                dtype='float64',
+            )
+            # 4. Explicit dtype=None compatibility
+            out4 = paddle.kaiser_window(3, dtype=None)
+            # 5. strided layout compatibility
+            out5 = paddle.kaiser_window(
+                self.window_length,
+                False,
+                self.beta,
+                dtype='float64',
+                layout='strided',
+            )
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                fetch_list=[out1, out2, out3, out4, out5],
+            )
+
+        expected = self._expected(
+            self.window_length, periodic=False, beta=self.beta, dtype='float64'
+        )
+        for out in fetches[:3] + fetches[4:]:
+            np.testing.assert_allclose(out, expected, rtol=1e-12)
+        np.testing.assert_allclose(fetches[3], self._expected(3), rtol=1e-5)
+
+
+class TestLayerNormAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.normalized_shape = [2, 3]
+        self.x_shape = [2, 2, 3]
+        self.eps = 1e-5
+        self.np_x = np.random.rand(*self.x_shape).astype("float32")
+
+    def _expected(self):
+        axes = tuple(
+            range(
+                len(self.x_shape) - len(self.normalized_shape),
+                len(self.x_shape),
+            )
+        )
+        mean = np.mean(self.np_x, axis=axes, keepdims=True)
+        var = np.var(self.np_x, axis=axes, keepdims=True)
+        return (self.np_x - mean) / np.sqrt(var + self.eps)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        layer1 = paddle.nn.LayerNorm(self.normalized_shape, self.eps)
+        out1 = layer1(x)
+        # 2. Paddle keyword arguments
+        layer2 = paddle.nn.LayerNorm(
+            normalized_shape=self.normalized_shape, epsilon=self.eps
+        )
+        out2 = layer2(x)
+        # 3. PyTorch Positional arguments
+        layer3 = paddle.nn.LayerNorm(self.normalized_shape, self.eps, False)
+        out3 = layer3(x)
+        # 4. PyTorch keyword arguments (alias)
+        layer4 = paddle.nn.LayerNorm(
+            normalized_shape=self.normalized_shape,
+            eps=self.eps,
+            elementwise_affine=False,
+        )
+        out4 = layer4(x)
+        # 5. Mixed arguments
+        layer5 = paddle.nn.LayerNorm(
+            self.normalized_shape, eps=self.eps, bias=False
+        )
+        out5 = layer5(x)
+        # 6. PyTorch positional bias/device/dtype arguments
+        layer6 = paddle.nn.LayerNorm(
+            self.normalized_shape, self.eps, True, True, None, "float64"
+        )
+
+        expected = self._expected()
+        for out in [out1, out2, out3, out4, out5]:
+            np.testing.assert_allclose(out.numpy(), expected, rtol=1e-5)
+        self.assertIsNone(layer3.weight)
+        self.assertIsNone(layer3.bias)
+        self.assertIsNotNone(layer5.weight)
+        self.assertIsNone(layer5.bias)
+        self.assertEqual(layer6.weight.dtype, paddle.float64)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=self.x_shape, dtype=str(self.np_x.dtype)
+            )
+
+            # 1. Paddle Positional arguments
+            layer1 = paddle.nn.LayerNorm(self.normalized_shape, self.eps)
+            out1 = layer1(x)
+            # 2. Paddle keyword arguments
+            layer2 = paddle.nn.LayerNorm(
+                normalized_shape=self.normalized_shape, epsilon=self.eps
+            )
+            out2 = layer2(x)
+            # 3. PyTorch Positional arguments
+            layer3 = paddle.nn.LayerNorm(self.normalized_shape, self.eps, False)
+            out3 = layer3(x)
+            # 4. PyTorch keyword arguments (alias)
+            layer4 = paddle.nn.LayerNorm(
+                normalized_shape=self.normalized_shape,
+                eps=self.eps,
+                elementwise_affine=False,
+            )
+            out4 = layer4(x)
+
+            self.assertIsNone(layer3.weight)
+            self.assertIsNone(layer3.bias)
+
+            exe = paddle.static.Executor()
+            exe.run(startup)
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3, out4],
+            )
+
+        expected = self._expected()
+        for out in fetches:
+            np.testing.assert_allclose(out, expected, rtol=1e-5)
 
 
 if __name__ == "__main__":

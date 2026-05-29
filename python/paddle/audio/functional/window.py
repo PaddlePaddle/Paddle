@@ -406,7 +406,7 @@ def get_window(
     window: _WindowLiteral | tuple[_WindowLiteral, float],
     win_length: int,
     fftbins: bool = True,
-    dtype: str = 'float64',
+    dtype: str | None = 'float64',
 ) -> Tensor:
     """Return a window of a given length and type.
 
@@ -430,6 +430,8 @@ def get_window(
             >>> std = 7
             >>> gaussian_window = paddle.audio.functional.get_window(('gaussian', std), n_fft)
     """
+    if dtype is None:
+        dtype = 'float32'
     sym = not fftbins
     args = ()
     if isinstance(window, tuple):
@@ -464,6 +466,10 @@ def _apply_window_postprocess(
     pin_memory: bool = False,
     requires_grad: bool = False,
 ) -> Tensor:
+    if layout not in (None, 'strided'):
+        raise RuntimeError(
+            "Window functions only support layout='strided' or None"
+        )
     if layout is not None:
         warnings.warn("layout only supports 'strided' in Paddle; ignored")
 
@@ -586,11 +592,12 @@ def kaiser_window(
     periodic: bool = True,
     beta: float = 12.0,
     *,
-    dtype: str = 'float32',
+    dtype: str | None = 'float32',
     layout: str | None = None,
     device: PlaceLike | None = None,
     pin_memory: bool = False,
     requires_grad: bool = False,
+    out: Tensor | None = None,
 ):
     """
     Compute a Kaiser window.
@@ -606,6 +613,7 @@ def kaiser_window(
             device will be the CPU for CPU tensor types and the current CUDA device for CUDA tensor types. Default: None.
         pin_memory(bool, optional): If set, return tensor would be allocated in the pinned memory. Works only for CPU tensors. Default: False
         requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
+        out(Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor: A 1-D tensor of shape `(window_length,)` containing the Kaiser window.
@@ -621,13 +629,14 @@ def kaiser_window(
     w = get_window(
         ('kaiser', beta), window_length, fftbins=periodic, dtype=dtype
     )
-    return _apply_window_postprocess(
+    w = _apply_window_postprocess(
         w,
         layout=layout,
         device=device,
         pin_memory=pin_memory,
         requires_grad=requires_grad,
     )
+    return paddle.assign(w, out) if out is not None else w
 
 
 def blackman_window(

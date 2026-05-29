@@ -24,6 +24,7 @@
 #include <numeric>
 #include <utility>
 
+#include "paddle/cinn/common/target.h"
 #include "paddle/cinn/hlir/pe/load_x86_params.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/utils/string.h"
@@ -82,7 +83,14 @@ int GetInnerSplitter(int origin, int other_axis) {
   two_exp = two_exp / 2;
   int a = SplitEven(two_exp);
   int b = two_exp / a;
-  while (a * other_axis >= 1024 || b * other_axis >= 1024) {
+#ifdef CINN_WITH_CUSTOM_DEVICE
+  static int v = cinn::common::DefaultDeviceTarget().max_num_threads();
+  const int max_thread_block = v > 0 ? v : 1024;
+#else
+  constexpr int max_thread_block = 1024;
+#endif
+  while (a * other_axis >= max_thread_block ||
+         b * other_axis >= max_thread_block) {
     two_exp = two_exp / 2;
     a = SplitEven(two_exp);
     b = two_exp / a;

@@ -1,0 +1,116 @@
+# A image for building paddle binaries
+# Use cuda devel base image for both cpu and gpu environment
+# When you modify it, please be aware of cudnn-runtime version
+ARG CUDA_VERSION=13.2
+ARG BASE_TARGET=cuda${CUDA_VERSION}
+
+FROM nvcr.io/nvidia/cuda:13.2.0-cudnn-devel-ubuntu24.04 as base
+LABEL maintainer="paddle-dev@baidu.com"
+
+
+# ENV variables
+ARG WITH_GPU
+ARG WITH_AVX
+ARG PYTHON_VERSION=3.12
+ARG PYTHON_SOURCE_VERSION=3.12.13
+ARG TMP_DIR=patchelf_tmp
+
+ENV WITH_GPU=${WITH_GPU:-ON}
+ENV WITH_AVX=${WITH_AVX:-ON}
+ENV DEBIAN_FRONTEND=noninteractive
+ENV LD_LIBRARY_PATH=/usr/local/cuda-13.2/compat:$LD_LIBRARY_PATH
+ENV GDRCOPY_HOME=/usr/local/gdrcopy
+
+ENV HOME /root
+
+RUN apt-get update --allow-unauthenticated && \
+    apt-get install -y --no-install-recommends \
+      git \
+      vim \
+      curl \
+      wget \
+      make \
+      zstd \
+      rsync \
+      ca-certificates \
+      build-essential \
+      libgl1 \
+      libglib2.0-0 \
+      libssl-dev \
+      autoconf \
+      automake \
+      libtool \
+      libmlx5-1 \
+      libibverbs-dev \
+      pkg-config \
+      zlib1g-dev \
+      libbz2-dev \
+      libreadline-dev \
+      libsqlite3-dev \
+      libncursesw5-dev \
+      libffi-dev \
+      libgdbm-dev \
+      libgdbm-compat-dev \
+      liblzma-dev \
+      libexpat1-dev \
+      tk-dev \
+      uuid-dev \
+      xz-utils \
+      ccache \
+      libnccl2=2.29.7-1+cuda13.2 \
+      libnccl-dev=2.29.7-1+cuda13.2 && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN cd /tmp && \
+    wget -q https://www.python.org/ftp/python/${PYTHON_SOURCE_VERSION}/Python-${PYTHON_SOURCE_VERSION}.tar.xz && \
+    tar -xf Python-${PYTHON_SOURCE_VERSION}.tar.xz && \
+    cd Python-${PYTHON_SOURCE_VERSION} && \
+    ./configure \
+      --prefix=/usr/local \
+      --enable-optimizations \
+      --with-ensurepip=install && \
+    make -j"$(nproc)" && \
+    make altinstall && \
+    ln -sf /usr/local/bin/python${PYTHON_VERSION} /usr/local/bin/python3 && \
+    ln -sf /usr/local/bin/python3 /usr/local/bin/python && \
+    ln -sf /usr/local/bin/pip${PYTHON_VERSION} /usr/local/bin/pip3 && \
+    ln -sf /usr/local/bin/pip3 /usr/local/bin/pip && \
+    python3 -m pip install --no-cache-dir --upgrade pip setuptools wheel packaging && \
+    cd / && \
+    rm -rf /tmp/Python-${PYTHON_SOURCE_VERSION} /tmp/Python-${PYTHON_SOURCE_VERSION}.tar.xz
+
+WORKDIR /home
+RUN set -eux; \
+        if [ "${TARGETARCH:-}" = "amd64" ] || [ "$(uname -m)" = "x86_64" ]; then \
+            CMAKE_ARCH="x86_64"; \
+        elif [ "${TARGETARCH:-}" = "arm64" ] || [ "$(uname -m)" = "aarch64" ]; then \
+            CMAKE_ARCH="aarch64"; \
+        else \
+            echo "Unsupported architecture: TARGETARCH=${TARGETARCH:-unknown}, uname -m=$(uname -m)"; \
+            exit 1; \
+        fi; \
+        CMAKE_PKG="cmake-3.31.0-linux-${CMAKE_ARCH}.tar.gz"; \
+        wget -q "https://cmake.org/files/v3.31/${CMAKE_PKG}"; \
+        tar -zxf "${CMAKE_PKG}"; \
+        rm "${CMAKE_PKG}"; \
+        mv "/home/cmake-3.31.0-linux-${CMAKE_ARCH}" /home/cmake-3.31.0; \
+        rm -rf /home/cmake-3.31.0/doc /home/cmake-3.31.0/man
+
+ENV PATH=/home/cmake-3.31.0/bin:$PATH
+
+RUN rm -rf "$TMP_DIR" && git clone --depth 1 --branch 0.15.0 https://github.com/NixOS/patchelf "$TMP_DIR" && \
+    cd "$TMP_DIR" && ./bootstrap.sh && \
+    ./configure && make && make install && \
+    cd .. && rm -rf "$TMP_DIR"
+
+COPY paddle/scripts/compile_requirements.txt /root
+COPY python/requirements.txt /root
+RUN pip config set global.break-system-packages true && \
+    pip install -r /root/requirements.txt && \
+    pip install -r /root/compile_requirements.txt && \
+    rm -rf /root/compile_requirements.txt /root/requirements.txt
+
+RUN cd /usr/local && \
+    wget -q https://paddle-ci.gz.bcebos.com/gdrcopy.tar && \
+    tar xf gdrcopy.tar && \
+    rm -f gdrcopy.tar

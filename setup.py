@@ -1161,7 +1161,8 @@ def get_setup_requires():
 def get_paddle_extra_install_requirements():
     paddle_cuda_requires = []
     paddle_tensorrt_requires = []
-    # (Note risemeup1): Paddle will install the pypi cuda package provided by Nvidia, which includes the cuda runtime, cudnn, and cublas, thereby making the operation of 'pip install paddle' no longer dependent on the installation of cuda and cudnn.
+    cuda_major_version = None
+    # (Note risemeup1): Paddle will install the pypi cuda package provided by Nvidia, which includes the cuda runtime, cudnn, and cublas. Additionally, it now supports the installation of TensorRT, further enhancing its functionality. This integration simplifies the process as the operation of 'pip install paddle' is no longer dependent on the separate installation of cuda, cudnn, or TensorRT.
     if env_dict.get("WITH_PIP_CUDA_LIBRARIES") == "ON":
         if platform.system() == 'Linux':
             PADDLE_CUDA_INSTALL_REQUIREMENTS = {
@@ -1272,6 +1273,23 @@ def get_paddle_extra_install_requirements():
                     "nvidia-cufile==1.15.1.6; platform_system == 'Linux' | "
                     "cuda-python==13.0.3; platform_system == 'Linux'"
                 ),
+                "13.2": (
+                    "nvidia-cuda-nvrtc==13.2.78; platform_system == 'Linux' | "
+                    "nvidia-cuda-runtime==13.2.75; platform_system == 'Linux' | "
+                    "nvidia-cuda-cupti==13.2.75; platform_system == 'Linux' | "
+                    "nvidia-cudnn-cu13==9.21.0.82; platform_system == 'Linux' | "
+                    "nvidia-cublas==13.4.0.1; platform_system == 'Linux' | "
+                    "nvidia-cufft==12.2.0.46; platform_system == 'Linux' | "
+                    "nvidia-curand==10.4.2.55; platform_system == 'Linux' | "
+                    "nvidia-cusolver==12.2.0.1; platform_system == 'Linux' | "
+                    "nvidia-cusparse==12.7.10.1; platform_system == 'Linux' | "
+                    "nvidia-cusparselt-cu13==0.9.0; platform_system == 'Linux' | "
+                    "nvidia-nccl-cu13==2.29.7; platform_system == 'Linux' | "
+                    "nvidia-nvtx==13.2.75; platform_system == 'Linux' | "
+                    "nvidia-nvjitlink==13.2.78; platform_system == 'Linux' | "
+                    "nvidia-cufile==1.17.1.22; platform_system == 'Linux' | "
+                    "cuda-python==13.2.0; platform_system == 'Linux'"
+                ),
             }
             if env_dict.get("WITH_CINN") == "ON":
                 PADDLE_CUDA_INSTALL_REQUIREMENTS["12.3"] += (
@@ -1291,6 +1309,9 @@ def get_paddle_extra_install_requirements():
                 )
                 PADDLE_CUDA_INSTALL_REQUIREMENTS["13.0"] += (
                     " | nvidia-cuda-cccl==13.0.85;platform_system == 'Linux' "
+                )
+                PADDLE_CUDA_INSTALL_REQUIREMENTS["13.2"] += (
+                    " | nvidia-cuda-cccl==13.2.75;platform_system == 'Linux' "
                 )
 
         elif platform.system() == 'Windows':
@@ -1369,43 +1390,54 @@ def get_paddle_extra_install_requirements():
 
     if env_dict.get("WITH_PIP_TENSORRT") == "ON":
         version_str = get_tensorrt_version()
-        version_default = int(version_str.split(".")[0])
-        if platform.system() == 'Linux' or (
-            platform.system() == 'Windows' and version_default >= 10
+        version_default = (
+            int(version_str.split(".")[0]) if version_str else None
+        )
+        if platform.system() == 'Linux' and cuda_major_version == '13.2':
+            if not version_str and platform.machine() == 'aarch64':
+                return paddle_cuda_requires, ["tensorrt-cu13==10.16.1.11"]
+            PADDLE_TENSORRT_INSTALL_REQUIREMENTS = [
+                "tensorrt-cu13==10.16.1.11",
+            ]
+        elif platform.system() == 'Linux' or (
+            platform.system() == 'Windows'
+            and version_default is not None
+            and version_default >= 10
         ):
             PADDLE_TENSORRT_INSTALL_REQUIREMENTS = [
                 "tensorrt==8.5.3.1",
                 "tensorrt==8.6.0",
                 "tensorrt==8.6.1.post1",
+                "tensorrt==10.3.0",
             ]
+        else:
+            return paddle_cuda_requires, []
 
-            if not version_str:
-                return paddle_cuda_requires, []
+        if not version_str:
+            return paddle_cuda_requires, []
 
-            version_main = ".".join(version_str.split(".")[:3])
+        version_main = ".".join(version_str.split(".")[:3])
 
-            matched_package = None
-            for (
-                paddle_tensorrt_requires
-            ) in PADDLE_TENSORRT_INSTALL_REQUIREMENTS:
-                paddle_tensorrt_version = paddle_tensorrt_requires.split("==")[
-                    1
-                ]
-                paddle_tensorrt_main = ".".join(
-                    paddle_tensorrt_version.split(".")[:3]
-                )
+        matched_package = None
+        for paddle_tensorrt_requires in PADDLE_TENSORRT_INSTALL_REQUIREMENTS:
+            paddle_tensorrt_version = paddle_tensorrt_requires.split("==")[1]
+            paddle_tensorrt_main = ".".join(
+                paddle_tensorrt_version.split(".")[:3]
+            )
 
-                if version_main == paddle_tensorrt_main:
-                    matched_package = paddle_tensorrt_requires
-                    break
+            if version_main == paddle_tensorrt_main:
+                matched_package = paddle_tensorrt_requires
+                break
 
-            if matched_package:
-                paddle_tensorrt_requires = [matched_package]
-            else:
-                print(
-                    f"No exact match found for TensorRT Version: {version_str}. We currently support TensorRT versions 8.5.3.1, 8.6.0, and 8.6.1."
-                )
-                return paddle_cuda_requires, []
+        if matched_package:
+            paddle_tensorrt_requires = [matched_package]
+        else:
+            print(
+                "No exact match found for TensorRT Version: "
+                f"{version_str}. We currently support TensorRT versions "
+                "8.5.3.1, 8.6.0, 8.6.1.post1, 10.3.0, and 10.16.1.11."
+            )
+            return paddle_cuda_requires, []
 
     return paddle_cuda_requires, paddle_tensorrt_requires
 
