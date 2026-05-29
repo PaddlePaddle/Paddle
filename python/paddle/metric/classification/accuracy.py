@@ -277,8 +277,25 @@ class MulticlassAccuracy(MulticlassStatScores):
     plot_upper_bound: float = 1.0
     plot_legend_name: str = "Class"
 
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
+    def __init__(
+        self,
+        num_classes: int | None = None,
+        top_k: int = 1,
+        average: str | None = "micro",
+        multidim_average: str = "global",
+        ignore_index: int | None = None,
+        validate_args: bool = True,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(
+            num_classes=num_classes,
+            top_k=top_k,
+            average=average,
+            multidim_average=multidim_average,
+            ignore_index=ignore_index,
+            validate_args=validate_args,
+            **kwargs,
+        )
         # For the common micro + top_k=1 + global + no ignore_index case,
         # delegate to the C++ accuracy op for better performance.
         self._use_cpp_op = (

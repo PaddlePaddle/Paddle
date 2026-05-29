@@ -647,8 +647,12 @@ class Engine:
                     if metric_out:
                         metric.update(*metric_out)
                         results = metric.compute()
-                        for i, res in enumerate(auto_utils.to_list(results)):
-                            logs[metric.name] = res
+                        results_list = auto_utils.to_list(results)
+                        if len(results_list) == 1:
+                            logs[metric.name] = results_list[0]
+                        else:
+                            for i, res in enumerate(results_list):
+                                logs[f"{metric.name}_{i}"] = res
                     group_idx += 1
         # logging outputs
         elif mode == "predict":
