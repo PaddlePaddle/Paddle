@@ -1785,9 +1785,10 @@ class CosineAnnealingDecay(LRScheduler):
     eta_min: float
     last_epoch: int
 
+    @param_one_alias(["learning_rate", "optimizer"])
     def __init__(
         self,
-        learning_rate: float,
+        learning_rate: float | paddle.optimizer.Optimizer,
         T_max: int,
         eta_min: float = 0,
         last_epoch: int = -1,

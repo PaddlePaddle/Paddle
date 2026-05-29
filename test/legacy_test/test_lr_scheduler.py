@@ -1345,6 +1345,20 @@ class TestLRSchedulerWithOptimizerArg(unittest.TestCase):
         self.assertIs(adam._learning_rate, scheduler)
         paddle.enable_static()
 
+    def test_cosine_annealing_decay(self):
+        paddle.disable_static()
+        linear = paddle.nn.Linear(10, 10)
+        base_lr = 0.01
+        adam = paddle.optimizer.Adam(
+            learning_rate=base_lr, parameters=linear.parameters()
+        )
+        scheduler = paddle.optimizer.lr.CosineAnnealingDecay(
+            optimizer=adam, T_max=10
+        )
+        self.assertEqual(scheduler.base_lr, adam.get_lr())
+        self.assertIs(adam._learning_rate, scheduler)
+        paddle.enable_static()
+
 
 if __name__ == '__main__':
     paddle.enable_static()
