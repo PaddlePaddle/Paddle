@@ -49,7 +49,7 @@ function do_cpython_build {
     #    GIL='--disable-gil'
     #fi
 
-    LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH} CFLAGS="-Wformat" ./configure --prefix=${prefix} --enable-shared $unicode_flags > /dev/null
+    LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH} CFLAGS="-Wformat" LDFLAGS="-Wl,-rpath,${prefix}/lib" ./configure --prefix=${prefix} --enable-shared $unicode_flags > /dev/null
     LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH} make -j8 > /dev/null
     LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH} make install > /dev/null
 
