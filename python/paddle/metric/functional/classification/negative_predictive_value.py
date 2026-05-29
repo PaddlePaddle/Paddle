@@ -1,3 +1,17 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -115,18 +129,21 @@ def binary_negative_predictive_value(
     Example (multidim tensors):
         >>> from paddle.metric.functional.classification import binary_negative_predictive_value
         >>> target = tensor([[[0, 1], [1, 0], [0, 1]], [[1, 1], [0, 0], [1, 0]]])
-        >>> preds = tensor([[[0.59, 0.91], [0.91, 0.99], [0.63, 0.04]],
-        ...                 [[0.38, 0.04], [0.86, 0.780], [0.45, 0.37]]])
+        >>> preds = tensor([[[0.59, 0.91], [0.91, 0.99], [0.63, 0.04]], [[0.38, 0.04], [0.86, 0.780], [0.45, 0.37]]])
         >>> binary_negative_predictive_value(preds, target, multidim_average='samplewise')
         tensor([0.0000, 0.2500])
 
     """
     if validate_args:
-        _binary_stat_scores_arg_validation(threshold, multidim_average, ignore_index)
+        _binary_stat_scores_arg_validation(
+            threshold, multidim_average, ignore_index
+        )
         _binary_stat_scores_tensor_validation(
             preds, target, multidim_average, ignore_index
         )
-    preds, target = _binary_stat_scores_format(preds, target, threshold, ignore_index)
+    preds, target = _binary_stat_scores_format(
+        preds, target, threshold, ignore_index
+    )
     tp, fp, tn, fn = _binary_stat_scores_update(preds, target, multidim_average)
     return _negative_predictive_value_reduce(
         tp,
@@ -219,10 +236,7 @@ def multiclass_negative_predictive_value(
     Example (preds is float tensor):
         >>> from paddle.metric.functional.classification import multiclass_negative_predictive_value
         >>> target = tensor([2, 1, 0, 0])
-        >>> preds = tensor([[0.16, 0.26, 0.58],
-        ...                 [0.22, 0.61, 0.17],
-        ...                 [0.71, 0.09, 0.20],
-        ...                 [0.05, 0.82, 0.13]])
+        >>> preds = tensor([[0.16, 0.26, 0.58], [0.22, 0.61, 0.17], [0.71, 0.09, 0.20], [0.05, 0.82, 0.13]])
         >>> multiclass_negative_predictive_value(preds, target, num_classes=3)
         tensor(0.8889)
         >>> multiclass_negative_predictive_value(preds, target, num_classes=3, average=None)
@@ -234,9 +248,7 @@ def multiclass_negative_predictive_value(
         >>> preds = tensor([[[0, 2], [2, 0], [0, 1]], [[2, 2], [2, 1], [1, 0]]])
         >>> multiclass_negative_predictive_value(preds, target, num_classes=3, multidim_average='samplewise')
         tensor([0.7833, 0.6556])
-        >>> multiclass_negative_predictive_value(
-        ...     preds, target, num_classes=3, multidim_average='samplewise', average=None
-        ... )
+        >>> multiclass_negative_predictive_value(preds, target, num_classes=3, multidim_average='samplewise', average=None)
         tensor([[1.0000, 0.6000, 0.7500],
                 [0.8000, 0.5000, 0.6667]])
 
@@ -250,7 +262,13 @@ def multiclass_negative_predictive_value(
         )
     preds, target = _multiclass_stat_scores_format(preds, target, top_k)
     tp, fp, tn, fn = _multiclass_stat_scores_update(
-        preds, target, num_classes, top_k, average, multidim_average, ignore_index
+        preds,
+        target,
+        num_classes,
+        top_k,
+        average,
+        multidim_average,
+        ignore_index,
     )
     return _negative_predictive_value_reduce(
         tp,
@@ -351,13 +369,10 @@ def multilabel_negative_predictive_value(
     Example (multidim tensors):
         >>> from paddle.metric.functional.classification import multilabel_negative_predictive_value
         >>> target = tensor([[[0, 1], [1, 0], [0, 1]], [[1, 1], [0, 0], [1, 0]]])
-        >>> preds = tensor([[[0.59, 0.91], [0.91, 0.99], [0.63, 0.04]],
-        ...                 [[0.38, 0.04], [0.86, 0.780], [0.45, 0.37]]])
+        >>> preds = tensor([[[0.59, 0.91], [0.91, 0.99], [0.63, 0.04]], [[0.38, 0.04], [0.86, 0.780], [0.45, 0.37]]])
         >>> multilabel_negative_predictive_value(preds, target, num_labels=3, multidim_average='samplewise')
         tensor([0.0000, 0.1667])
-        >>> multilabel_negative_predictive_value(
-        ...     preds, target, num_labels=3, multidim_average='samplewise', average=None
-        ... )
+        >>> multilabel_negative_predictive_value(preds, target, num_labels=3, multidim_average='samplewise', average=None)
         tensor([[0.0000, 0.0000, 0.0000],
                 [0.0000, 0.0000, 0.5000]])
 
@@ -372,7 +387,9 @@ def multilabel_negative_predictive_value(
     preds, target = _multilabel_stat_scores_format(
         preds, target, num_labels, threshold, ignore_index
     )
-    tp, fp, tn, fn = _multilabel_stat_scores_update(preds, target, multidim_average)
+    tp, fp, tn, fn = _multilabel_stat_scores_update(
+        preds, target, multidim_average
+    )
     return _negative_predictive_value_reduce(
         tp,
         fp,
@@ -416,7 +433,7 @@ def negative_predictive_value(
 
     LegacyExample:
         >>> from paddle import tensor
-        >>> preds  = tensor([2, 0, 2, 1])
+        >>> preds = tensor([2, 0, 2, 1])
         >>> target = tensor([1, 1, 2, 0])
         >>> negative_predictive_value(preds, target, task="multiclass", average='macro', num_classes=3)
         tensor(0.6667)

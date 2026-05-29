@@ -645,7 +645,9 @@ class StaticPIRGraphAdapter:
                             for metric in self.model._metrics:
                                 try:
                                     metrics.append(
-                                        to_list(metric.compute(*(outputs + labels)))
+                                        to_list(
+                                            metric.compute(*(outputs + labels))
+                                        )
                                     )
                                 except TypeError:
                                     warnings.warn(
@@ -1121,7 +1123,9 @@ class StaticGraphAdapter:
             if mode != 'test':
                 for metric in self.model._metrics:
                     try:
-                        metrics.append(to_list(metric.compute(*(outputs + labels))))
+                        metrics.append(
+                            to_list(metric.compute(*(outputs + labels)))
+                        )
                     except TypeError:
                         warnings.warn(
                             f"Metric {metric.__class__.__name__} does not support "

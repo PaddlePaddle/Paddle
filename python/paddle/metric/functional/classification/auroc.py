@@ -1,3 +1,17 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 from typing_extensions import Literal
@@ -70,7 +84,11 @@ def _binary_auroc_arg_validation(
     ignore_index: int | None = None,
 ) -> None:
     _binary_precision_recall_curve_arg_validation(thresholds, ignore_index)
-    if max_fpr is not None and not isinstance(max_fpr, float) and 0 < max_fpr <= 1:
+    if (
+        max_fpr is not None
+        and not isinstance(max_fpr, float)
+        and 0 < max_fpr <= 1
+    ):
         raise ValueError(
             f"Arguments `max_fpr` should be a float in range (0, 1], but got: {max_fpr}"
         )
@@ -89,7 +107,9 @@ def _binary_auroc_compute(
     max_area: Tensor = paddle.tensor(max_fpr, device=_device)
     stop = paddle.bucketize(max_area, fpr, out_int32=True, right=True)
     weight = (max_area - fpr[stop - 1]) / (fpr[stop] - fpr[stop - 1])
-    interp_tpr: Tensor = paddle.lerp(x=tpr[stop - 1], y=tpr[stop], weight=weight)
+    interp_tpr: Tensor = paddle.lerp(
+        x=tpr[stop - 1], y=tpr[stop], weight=weight
+    )
     tpr = paddle.concat([tpr[:stop], interp_tpr.view(1)])
     fpr = paddle.concat([fpr[:stop], max_area.view(1)])
     partial_auc = _auc_compute_without_check(fpr, tpr, 1.0)
@@ -162,7 +182,9 @@ def binary_auroc(
     """
     if validate_args:
         _binary_auroc_arg_validation(max_fpr, thresholds, ignore_index)
-        _binary_precision_recall_curve_tensor_validation(preds, target, ignore_index)
+        _binary_precision_recall_curve_tensor_validation(
+            preds, target, ignore_index
+        )
     preds, target, thresholds = _binary_precision_recall_curve_format(
         preds, target, thresholds, ignore_index
     )
@@ -266,10 +288,14 @@ def multiclass_auroc(
 
     Example:
         >>> from paddle.metric.functional.classification import multiclass_auroc
-        >>> preds = paddle.to_tensor([[0.75, 0.05, 0.05, 0.05, 0.05],
-        ...                       [0.05, 0.75, 0.05, 0.05, 0.05],
-        ...                       [0.05, 0.05, 0.75, 0.05, 0.05],
-        ...                       [0.05, 0.05, 0.05, 0.75, 0.05]])
+        >>> preds = paddle.to_tensor(
+        ...     [
+        ...         [0.75, 0.05, 0.05, 0.05, 0.05],
+        ...         [0.05, 0.75, 0.05, 0.05, 0.05],
+        ...         [0.05, 0.05, 0.75, 0.05, 0.05],
+        ...         [0.05, 0.05, 0.05, 0.75, 0.05],
+        ...     ]
+        ... )
         >>> target = paddle.to_tensor([0, 1, 3, 2])
         >>> multiclass_auroc(preds, target, num_classes=5, average="macro", thresholds=None)
         tensor(0.5333)
@@ -282,7 +308,9 @@ def multiclass_auroc(
 
     """
     if validate_args:
-        _multiclass_auroc_arg_validation(num_classes, average, thresholds, ignore_index)
+        _multiclass_auroc_arg_validation(
+            num_classes, average, thresholds, ignore_index
+        )
         _multiclass_precision_recall_curve_tensor_validation(
             preds, target, num_classes, ignore_index
         )
@@ -328,7 +356,9 @@ def _multilabel_auroc_compute(
             preds = preds[~idx]
             target = target[~idx]
         return _binary_auroc_compute((preds, target), thresholds, max_fpr=None)
-    fpr, tpr, _ = _multilabel_roc_compute(state, num_labels, thresholds, ignore_index)
+    fpr, tpr, _ = _multilabel_roc_compute(
+        state, num_labels, thresholds, ignore_index
+    )
     return _reduce_auroc(
         fpr,
         tpr,
@@ -403,14 +433,8 @@ def multilabel_auroc(
 
     Example:
         >>> from paddle.metric.functional.classification import multilabel_auroc
-        >>> preds = paddle.to_tensor([[0.75, 0.05, 0.35],
-        ...                       [0.45, 0.75, 0.05],
-        ...                       [0.05, 0.55, 0.75],
-        ...                       [0.05, 0.65, 0.05]])
-        >>> target = paddle.to_tensor([[1, 0, 1],
-        ...                        [0, 0, 0],
-        ...                        [0, 1, 1],
-        ...                        [1, 1, 1]])
+        >>> preds = paddle.to_tensor([[0.75, 0.05, 0.35], [0.45, 0.75, 0.05], [0.05, 0.55, 0.75], [0.05, 0.65, 0.05]])
+        >>> target = paddle.to_tensor([[1, 0, 1], [0, 0, 0], [0, 1, 1], [1, 1, 1]])
         >>> multilabel_auroc(preds, target, num_labels=3, average="macro", thresholds=None)
         tensor(0.6528)
         >>> multilabel_auroc(preds, target, num_labels=3, average=None, thresholds=None)
@@ -422,7 +446,9 @@ def multilabel_auroc(
 
     """
     if validate_args:
-        _multilabel_auroc_arg_validation(num_labels, average, thresholds, ignore_index)
+        _multilabel_auroc_arg_validation(
+            num_labels, average, thresholds, ignore_index
+        )
         _multilabel_precision_recall_curve_tensor_validation(
             preds, target, num_labels, ignore_index
         )
@@ -468,11 +494,9 @@ def auroc(
         >>> auroc(preds, target, task='binary')
         tensor(0.5000)
 
-        >>> preds = paddle.to_tensor([[0.90, 0.05, 0.05],
-        ...                       [0.05, 0.90, 0.05],
-        ...                       [0.05, 0.05, 0.90],
-        ...                       [0.85, 0.05, 0.10],
-        ...                       [0.10, 0.10, 0.80]])
+        >>> preds = paddle.to_tensor(
+        ...     [[0.90, 0.05, 0.05], [0.05, 0.90, 0.05], [0.05, 0.05, 0.90], [0.85, 0.05, 0.10], [0.10, 0.10, 0.80]]
+        ... )
         >>> target = paddle.to_tensor([0, 1, 1, 2, 2])
         >>> auroc(preds, target, task='multiclass', num_classes=3)
         tensor(0.7778)
@@ -489,7 +513,13 @@ def auroc(
                 f"`num_classes` is expected to be `int` but `{type(num_classes)} was passed.`"
             )
         return multiclass_auroc(
-            preds, target, num_classes, average, thresholds, ignore_index, validate_args
+            preds,
+            target,
+            num_classes,
+            average,
+            thresholds,
+            ignore_index,
+            validate_args,
         )
     if task == ClassificationTask.MULTILABEL:
         if not isinstance(num_labels, int):
@@ -497,6 +527,12 @@ def auroc(
                 f"`num_labels` is expected to be `int` but `{type(num_labels)} was passed.`"
             )
         return multilabel_auroc(
-            preds, target, num_labels, average, thresholds, ignore_index, validate_args
+            preds,
+            target,
+            num_labels,
+            average,
+            thresholds,
+            ignore_index,
+            validate_args,
         )
     return None

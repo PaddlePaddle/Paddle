@@ -1,3 +1,17 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 import paddle
@@ -23,7 +37,9 @@ def _weighted_mean_absolute_percentage_error_update(
 
 
 def _weighted_mean_absolute_percentage_error_compute(
-    sum_abs_error: paddle.Tensor, sum_scale: paddle.Tensor, epsilon: float = 1.17e-06
+    sum_abs_error: paddle.Tensor,
+    sum_scale: paddle.Tensor,
+    epsilon: float = 1.17e-06,
 ) -> paddle.Tensor:
     """Compute Weighted Absolute Percentage Error.
 
@@ -57,8 +73,12 @@ def weighted_mean_absolute_percentage_error(
 
     Example:
         >>> from paddle import randn
-        >>> preds = randn(20,)
-        >>> target = randn(20,)
+        >>> preds = randn(
+        ...     20,
+        ... )
+        >>> target = randn(
+        ...     20,
+        ... )
         >>> weighted_mean_absolute_percentage_error(preds, target)
         tensor(1.3967)
 
@@ -66,4 +86,6 @@ def weighted_mean_absolute_percentage_error(
     sum_abs_error, sum_scale = _weighted_mean_absolute_percentage_error_update(
         preds, target
     )
-    return _weighted_mean_absolute_percentage_error_compute(sum_abs_error, sum_scale)
+    return _weighted_mean_absolute_percentage_error_compute(
+        sum_abs_error, sum_scale
+    )

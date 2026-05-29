@@ -42,7 +42,11 @@ class TestReduceLROnPlateau(unittest.TestCase):
         inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
         labels = [InputSpec([None, 1], 'int64', 'label')]
         model = Model(net, inputs=inputs, labels=labels)
-        model.prepare(optim, loss=CrossEntropyLoss(), metrics=[Accuracy(task="multiclass", num_classes=10)])
+        model.prepare(
+            optim,
+            loss=CrossEntropyLoss(),
+            metrics=[Accuracy(task="multiclass", num_classes=10)],
+        )
         callbacks = paddle.callbacks.ReduceLROnPlateau(
             patience=1, verbose=1, cooldown=1
         )
@@ -72,7 +76,11 @@ class TestReduceLROnPlateau(unittest.TestCase):
         inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
         labels = [InputSpec([None, 1], 'int64', 'label')]
         model = Model(net, inputs=inputs, labels=labels)
-        model.prepare(optim, loss=CrossEntropyLoss(), metrics=[Accuracy(task="multiclass", num_classes=10)])
+        model.prepare(
+            optim,
+            loss=CrossEntropyLoss(),
+            metrics=[Accuracy(task="multiclass", num_classes=10)],
+        )
         callbacks = paddle.callbacks.ReduceLROnPlateau(
             monitor='miou', patience=3, verbose=1
         )
@@ -93,9 +101,17 @@ class TestReduceLROnPlateau(unittest.TestCase):
             parameters=net.parameters(),
         )
 
-        model.prepare(optim, loss=CrossEntropyLoss(), metrics=[Accuracy(task="multiclass", num_classes=10)])
+        model.prepare(
+            optim,
+            loss=CrossEntropyLoss(),
+            metrics=[Accuracy(task="multiclass", num_classes=10)],
+        )
         callbacks = paddle.callbacks.ReduceLROnPlateau(
-            monitor='MulticlassAccuracy', mode='max', patience=3, verbose=1, cooldown=1
+            monitor='MulticlassAccuracy',
+            mode='max',
+            patience=3,
+            verbose=1,
+            cooldown=1,
         )
         model.fit(
             train_dataset,

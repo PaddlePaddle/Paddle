@@ -1,3 +1,17 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 import paddle
@@ -98,7 +112,9 @@ def multilabel_coverage_error(
         _multilabel_confusion_matrix_arg_validation(
             num_labels, threshold=0.0, ignore_index=ignore_index
         )
-        _multilabel_ranking_tensor_validation(preds, target, num_labels, ignore_index)
+        _multilabel_ranking_tensor_validation(
+            preds, target, num_labels, ignore_index
+        )
     preds, target = _multilabel_confusion_matrix_format(
         preds,
         target,
@@ -178,7 +194,9 @@ def multilabel_ranking_average_precision(
         _multilabel_confusion_matrix_arg_validation(
             num_labels, threshold=0.0, ignore_index=ignore_index
         )
-        _multilabel_ranking_tensor_validation(preds, target, num_labels, ignore_index)
+        _multilabel_ranking_tensor_validation(
+            preds, target, num_labels, ignore_index
+        )
     preds, target = _multilabel_confusion_matrix_format(
         preds,
         target,
@@ -187,7 +205,9 @@ def multilabel_ranking_average_precision(
         ignore_index=ignore_index,
         should_threshold=False,
     )
-    score, num_elements = _multilabel_ranking_average_precision_update(preds, target)
+    score, num_elements = _multilabel_ranking_average_precision_update(
+        preds, target
+    )
     return _ranking_reduce(score, num_elements)
 
 
@@ -267,7 +287,9 @@ def multilabel_ranking_loss(
         _multilabel_confusion_matrix_arg_validation(
             num_labels, threshold=0.0, ignore_index=ignore_index
         )
-        _multilabel_ranking_tensor_validation(preds, target, num_labels, ignore_index)
+        _multilabel_ranking_tensor_validation(
+            preds, target, num_labels, ignore_index
+        )
     preds, target = _multilabel_confusion_matrix_format(
         preds,
         target,

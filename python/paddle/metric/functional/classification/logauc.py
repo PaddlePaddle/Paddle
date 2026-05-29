@@ -1,3 +1,17 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 from typing_extensions import Literal
@@ -145,7 +159,9 @@ def binary_logauc(
 
     """
     _validate_fpr_range(fpr_range)
-    fpr, tpr, _ = binary_roc(preds, target, thresholds, ignore_index, validate_args)
+    fpr, tpr, _ = binary_roc(
+        preds, target, thresholds, ignore_index, validate_args
+    )
     return _binary_logauc_compute(fpr, tpr, fpr_range)
 
 
@@ -212,10 +228,14 @@ def multiclass_logauc(
 
     Example:
         >>> from paddle.metric.functional.classification import multiclass_logauc
-        >>> preds = paddle.to_tensor([[0.75, 0.05, 0.05, 0.05, 0.05],
-        ...                       [0.05, 0.75, 0.05, 0.05, 0.05],
-        ...                       [0.05, 0.05, 0.75, 0.05, 0.05],
-        ...                       [0.05, 0.05, 0.05, 0.75, 0.05]])
+        >>> preds = paddle.to_tensor(
+        ...     [
+        ...         [0.75, 0.05, 0.05, 0.05, 0.05],
+        ...         [0.05, 0.75, 0.05, 0.05, 0.05],
+        ...         [0.05, 0.05, 0.75, 0.05, 0.05],
+        ...         [0.05, 0.05, 0.05, 0.75, 0.05],
+        ...     ]
+        ... )
         >>> target = paddle.to_tensor([0, 1, 3, 2])
         >>> multiclass_logauc(preds, target, num_classes=5, average="macro", thresholds=None)
         tensor(0.4000)
@@ -300,14 +320,8 @@ def multilabel_logauc(
 
     Example:
         >>> from paddle.metric.functional.classification import multilabel_logauc
-        >>> preds = paddle.to_tensor([[0.75, 0.05, 0.35],
-        ...                       [0.45, 0.75, 0.05],
-        ...                       [0.05, 0.55, 0.75],
-        ...                       [0.05, 0.65, 0.05]])
-        >>> target = paddle.to_tensor([[1, 0, 1],
-        ...                        [0, 0, 0],
-        ...                        [0, 1, 1],
-        ...                        [1, 1, 1]])
+        >>> preds = paddle.to_tensor([[0.75, 0.05, 0.35], [0.45, 0.75, 0.05], [0.05, 0.55, 0.75], [0.05, 0.65, 0.05]])
+        >>> target = paddle.to_tensor([[1, 0, 1], [0, 0, 0], [0, 1, 1], [1, 1, 1]])
         >>> multilabel_logauc(preds, target, num_labels=3, average="macro", thresholds=None)
         tensor(0.3945)
         >>> multilabel_logauc(preds, target, num_labels=3, average=None, thresholds=None)

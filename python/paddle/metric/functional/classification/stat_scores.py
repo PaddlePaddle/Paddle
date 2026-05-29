@@ -1,3 +1,17 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 from typing_extensions import Literal
@@ -198,19 +212,22 @@ def binary_stat_scores(
     Example (multidim tensors):
         >>> from paddle.metric.functional.classification import binary_stat_scores
         >>> target = tensor([[[0, 1], [1, 0], [0, 1]], [[1, 1], [0, 0], [1, 0]]])
-        >>> preds = tensor([[[0.59, 0.91], [0.91, 0.99], [0.63, 0.04]],
-        ...                 [[0.38, 0.04], [0.86, 0.780], [0.45, 0.37]]])
+        >>> preds = tensor([[[0.59, 0.91], [0.91, 0.99], [0.63, 0.04]], [[0.38, 0.04], [0.86, 0.780], [0.45, 0.37]]])
         >>> binary_stat_scores(preds, target, multidim_average='samplewise')
         tensor([[2, 3, 0, 1, 3],
                 [0, 2, 1, 3, 3]])
 
     """
     if validate_args:
-        _binary_stat_scores_arg_validation(threshold, multidim_average, ignore_index)
+        _binary_stat_scores_arg_validation(
+            threshold, multidim_average, ignore_index
+        )
         _binary_stat_scores_tensor_validation(
             preds, target, multidim_average, ignore_index
         )
-    preds, target = _binary_stat_scores_format(preds, target, threshold, ignore_index)
+    preds, target = _binary_stat_scores_format(
+        preds, target, threshold, ignore_index
+    )
     tp, fp, tn, fn = _binary_stat_scores_update(preds, target, multidim_average)
     return _binary_stat_scores_compute(tp, fp, tn, fn, multidim_average)
 
@@ -354,7 +371,10 @@ def _multiclass_stat_scores_format(
 
 
 def _refine_preds_oh(
-    preds: paddle.Tensor, preds_oh: paddle.Tensor, target: paddle.Tensor, top_k: int
+    preds: paddle.Tensor,
+    preds_oh: paddle.Tensor,
+    target: paddle.Tensor,
+    top_k: int,
 ) -> paddle.Tensor:
     """Refines prediction one-hot encodings by replacing entries with target one-hot when there's an intersection.
 
@@ -403,7 +423,9 @@ def _multiclass_stat_scores_update(
     """
     if multidim_average == "samplewise" or top_k != 1:
         ignore_in = (
-            0 <= ignore_index <= num_classes - 1 if ignore_index is not None else None
+            0 <= ignore_index <= num_classes - 1
+            if ignore_index is not None
+            else None
         )
         if ignore_index is not None and not ignore_in:
             preds = preds.clone()
@@ -418,7 +440,9 @@ def _multiclass_stat_scores_update(
             preds[idx] = num_classes
         if top_k > 1:
             preds_oh = paddle.moveaxis(
-                x=select_topk(preds, topk=top_k, axis=1), source=1, destination=-1
+                x=select_topk(preds, topk=top_k, axis=1),
+                source=1,
+                destination=-1,
             )
             preds_oh = _refine_preds_oh(preds, preds_oh, target, top_k)
         else:
@@ -464,7 +488,9 @@ def _multiclass_stat_scores_update(
             idx = target != ignore_index
             preds = preds[idx]
             target = target[idx]
-        unique_mapping = target.to(paddle.long) * num_classes + preds.to(paddle.long)
+        unique_mapping = target.to(paddle.long) * num_classes + preds.to(
+            paddle.long
+        )
         bins = _bincount(unique_mapping, minlength=num_classes**2)
         confmat = bins.reshape(num_classes, num_classes)
         tp = confmat.diag()
@@ -496,11 +522,12 @@ def _multiclass_stat_scores_compute(
     if average == "weighted":
         weight = tp + fn
         if multidim_average == "global":
-            return (res * (weight / weight.sum()).reshape(*weight.shape, 1)).sum(
-                sum_dim
-            )
+            return (
+                res * (weight / weight.sum()).reshape(*weight.shape, 1)
+            ).sum(sum_dim)
         return (
-            res * (weight / weight.sum(-1, keepdim=True)).reshape(*weight.shape, 1)
+            res
+            * (weight / weight.sum(-1, keepdim=True)).reshape(*weight.shape, 1)
         ).sum(sum_dim)
     if average is None or average == "none":
         return res
@@ -584,10 +611,7 @@ def multiclass_stat_scores(
     Example (preds is float tensor):
         >>> from paddle.metric.functional.classification import multiclass_stat_scores
         >>> target = tensor([2, 1, 0, 0])
-        >>> preds = tensor([[0.16, 0.26, 0.58],
-        ...                 [0.22, 0.61, 0.17],
-        ...                 [0.71, 0.09, 0.20],
-        ...                 [0.05, 0.82, 0.13]])
+        >>> preds = tensor([[0.16, 0.26, 0.58], [0.22, 0.61, 0.17], [0.71, 0.09, 0.20], [0.05, 0.82, 0.13]])
         >>> multiclass_stat_scores(preds, target, num_classes=3, average='micro')
         tensor([3, 1, 7, 1, 4])
         >>> multiclass_stat_scores(preds, target, num_classes=3, average=None)
@@ -620,9 +644,17 @@ def multiclass_stat_scores(
         )
     preds, target = _multiclass_stat_scores_format(preds, target, top_k)
     tp, fp, tn, fn = _multiclass_stat_scores_update(
-        preds, target, num_classes, top_k, average, multidim_average, ignore_index
+        preds,
+        target,
+        num_classes,
+        top_k,
+        average,
+        multidim_average,
+        ignore_index,
     )
-    return _multiclass_stat_scores_compute(tp, fp, tn, fn, average, multidim_average)
+    return _multiclass_stat_scores_compute(
+        tp, fp, tn, fn, average, multidim_average
+    )
 
 
 def _multilabel_stat_scores_arg_validation(
@@ -871,8 +903,7 @@ def multilabel_stat_scores(
     Example (multidim tensors):
         >>> from paddle.metric.functional.classification import multilabel_stat_scores
         >>> target = tensor([[[0, 1], [1, 0], [0, 1]], [[1, 1], [0, 0], [1, 0]]])
-        >>> preds = tensor([[[0.59, 0.91], [0.91, 0.99], [0.63, 0.04]],
-        ...                 [[0.38, 0.04], [0.86, 0.780], [0.45, 0.37]]])
+        >>> preds = tensor([[[0.59, 0.91], [0.91, 0.99], [0.63, 0.04]], [[0.38, 0.04], [0.86, 0.780], [0.45, 0.37]]])
         >>> multilabel_stat_scores(preds, target, num_labels=3, multidim_average='samplewise', average='micro')
         tensor([[2, 3, 0, 1, 3],
                 [0, 2, 1, 3, 3]])
@@ -895,8 +926,12 @@ def multilabel_stat_scores(
     preds, target = _multilabel_stat_scores_format(
         preds, target, num_labels, threshold, ignore_index
     )
-    tp, fp, tn, fn = _multilabel_stat_scores_update(preds, target, multidim_average)
-    return _multilabel_stat_scores_compute(tp, fp, tn, fn, average, multidim_average)
+    tp, fp, tn, fn = _multilabel_stat_scores_update(
+        preds, target, multidim_average
+    )
+    return _multilabel_stat_scores_compute(
+        tp, fp, tn, fn, average, multidim_average
+    )
 
 
 def stat_scores(
@@ -923,7 +958,7 @@ def stat_scores(
 
     Legacy Example:
         >>> from paddle import tensor
-        >>> preds  = tensor([1, 0, 2, 1])
+        >>> preds = tensor([1, 0, 2, 1])
         >>> target = tensor([1, 1, 2, 0])
         >>> stat_scores(preds, target, task='multiclass', num_classes=3, average='micro')
         tensor([2, 2, 6, 2, 4])
@@ -937,7 +972,12 @@ def stat_scores(
     assert multidim_average is not None
     if task == ClassificationTask.BINARY:
         return binary_stat_scores(
-            preds, target, threshold, multidim_average, ignore_index, validate_args
+            preds,
+            target,
+            threshold,
+            multidim_average,
+            ignore_index,
+            validate_args,
         )
     if task == ClassificationTask.MULTICLASS:
         if not isinstance(num_classes, int):

@@ -1,3 +1,17 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 from typing_extensions import Literal
@@ -21,7 +35,9 @@ def _normalized_root_mean_squared_error_update(
         normalization: type of normalization to be applied. Choose from "mean", "range", "std", "l2"
 
     """
-    sum_squared_error, num_obs = _mean_squared_error_update(preds, target, num_outputs)
+    sum_squared_error, num_obs = _mean_squared_error_update(
+        preds, target, num_outputs
+    )
     target = target.view(-1) if num_outputs == 1 else target
     if normalization == "mean":
         denom = paddle.mean(target, axis=0)
@@ -70,8 +86,8 @@ def normalized_root_mean_squared_error(
     Example:
         >>> import paddle
         >>> from paddle.metric.functional.regression import normalized_root_mean_squared_error
-        >>> preds = paddle.to_tensor([0., 1, 2, 3])
-        >>> target = paddle.to_tensor([0., 1, 2, 2])
+        >>> preds = paddle.to_tensor([0.0, 1, 2, 3])
+        >>> target = paddle.to_tensor([0.0, 1, 2, 2])
         >>> normalized_root_mean_squared_error(preds, target, normalization="mean")
         tensor(0.4000)
         >>> normalized_root_mean_squared_error(preds, target, normalization="range")
@@ -84,14 +100,16 @@ def normalized_root_mean_squared_error(
     Example (multioutput):
         >>> import paddle
         >>> from paddle.metric.functional.regression import normalized_root_mean_squared_error
-        >>> preds = paddle.to_tensor([[0., 1], [2, 3], [4, 5], [6, 7]])
-        >>> target = paddle.to_tensor([[0., 1], [3, 3], [4, 5], [8, 9]])
+        >>> preds = paddle.to_tensor([[0.0, 1], [2, 3], [4, 5], [6, 7]])
+        >>> target = paddle.to_tensor([[0.0, 1], [3, 3], [4, 5], [8, 9]])
         >>> normalized_root_mean_squared_error(preds, target, normalization="mean", num_outputs=2)
         tensor([0.2981, 0.2222])
 
     """
-    sum_squared_error, num_obs, denom = _normalized_root_mean_squared_error_update(
-        preds, target, num_outputs=num_outputs, normalization=normalization
+    sum_squared_error, num_obs, denom = (
+        _normalized_root_mean_squared_error_update(
+            preds, target, num_outputs=num_outputs, normalization=normalization
+        )
     )
     return _normalized_root_mean_squared_error_compute(
         sum_squared_error, num_obs, denom

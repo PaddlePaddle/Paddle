@@ -1,3 +1,17 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -44,7 +58,9 @@ def _binary_clf_curve(
 
     """
     with paddle.no_grad():
-        if sample_weights is not None and not isinstance(sample_weights, paddle.Tensor):
+        if sample_weights is not None and not isinstance(
+            sample_weights, paddle.Tensor
+        ):
             sample_weights = paddle.tensor(
                 sample_weights, device=preds.device, dtype=paddle.float32
             )
@@ -54,7 +70,9 @@ def _binary_clf_curve(
         preds = preds[desc_score_indices]
         target = target[desc_score_indices]
         weight = (
-            sample_weights[desc_score_indices] if sample_weights is not None else 1.0
+            sample_weights[desc_score_indices]
+            if sample_weights is not None
+            else 1.0
         )
         distinct_value_indices = paddle.where(preds[1:] - preds[:-1])[0]
         threshold_idxs = paddle.nn.functional.pad(
@@ -91,7 +109,9 @@ def _binary_precision_recall_curve_arg_validation(
     - ``ignore_index`` has to be None or int
 
     """
-    if thresholds is not None and not isinstance(thresholds, (list, int, Tensor)):
+    if thresholds is not None and not isinstance(
+        thresholds, (list, int, Tensor)
+    ):
         raise ValueError(
             f"Expected argument `thresholds` to either be an integer, list of floats or tensor of floats, but got {thresholds}"
         )
@@ -176,7 +196,9 @@ def _binary_precision_recall_curve_format(
 
 
 def _binary_precision_recall_curve_update(
-    preds: paddle.Tensor, target: paddle.Tensor, thresholds: paddle.Tensor | None
+    preds: paddle.Tensor,
+    target: paddle.Tensor,
+    thresholds: paddle.Tensor | None,
 ) -> paddle.Tensor | tuple[paddle.Tensor, paddle.Tensor]:
     """Return the state to calculate the pr-curve with.
 
@@ -255,13 +277,18 @@ def _binary_precision_recall_curve_compute(
         precision = _safe_divide(tps, tps + fps, zero_division="nan")
         recall = _safe_divide(tps, tps + fns, zero_division="nan")
         precision = paddle.concat(
-            [precision, paddle.ones(1, dtype=precision.dtype, device=precision.place)]
+            [
+                precision,
+                paddle.ones(1, dtype=precision.dtype, device=precision.place),
+            ]
         )
         recall = paddle.concat(
             [recall, paddle.zeros(1, dtype=recall.dtype, device=recall.place)]
         )
         return precision, recall, thresholds
-    fps, tps, thresholds = _binary_clf_curve(state[0], state[1], pos_label=pos_label)
+    fps, tps, thresholds = _binary_clf_curve(
+        state[0], state[1], pos_label=pos_label
+    )
     precision = tps / (tps + fps)
     recall = tps / tps[-1]
     if (state[1] == 0).all():
@@ -277,7 +304,10 @@ def _binary_precision_recall_curve_compute(
         ]
     )
     recall = paddle.concat(
-        [recall.flip(axis=0), paddle.zeros(1, dtype=recall.dtype, device=recall.place)]
+        [
+            recall.flip(axis=0),
+            paddle.zeros(1, dtype=recall.dtype, device=recall.place),
+        ]
     )
     thresholds = thresholds.flip(axis=0).detach().clone()
     return precision, recall, thresholds
@@ -353,7 +383,9 @@ def binary_precision_recall_curve(
     """
     if validate_args:
         _binary_precision_recall_curve_arg_validation(thresholds, ignore_index)
-        _binary_precision_recall_curve_tensor_validation(preds, target, ignore_index)
+        _binary_precision_recall_curve_tensor_validation(
+            preds, target, ignore_index
+        )
     preds, target, thresholds = _binary_precision_recall_curve_format(
         preds, target, thresholds, ignore_index
     )
@@ -455,7 +487,9 @@ def _multiclass_precision_recall_curve_format(
     preds = normalize_logits_if_needed(preds, "softmax")
     if average == "micro":
         preds = preds.flatten()
-        target = paddle.nn.functional.one_hot(target, num_classes=num_classes).flatten()
+        target = paddle.nn.functional.one_hot(
+            target, num_classes=num_classes
+        ).flatten()
     thresholds = _adjust_threshold_arg(thresholds, preds.place)
     return preds, target, thresholds
 
@@ -497,14 +531,18 @@ def _multiclass_precision_recall_curve_update_vectorized(
 
     """
     len_t = len(thresholds)
-    preds_t = (preds.unsqueeze(-1) >= thresholds.unsqueeze(0).unsqueeze(0)).long()
+    preds_t = (
+        preds.unsqueeze(-1) >= thresholds.unsqueeze(0).unsqueeze(0)
+    ).long()
     target_t = paddle.nn.functional.one_hot(target, num_classes=num_classes)
     unique_mapping = preds_t + 2 * target_t.long().unsqueeze(-1)
-    unique_mapping += 4 * paddle.arange(num_classes, device=preds.place).unsqueeze(
-        0
-    ).unsqueeze(-1)
+    unique_mapping += 4 * paddle.arange(
+        num_classes, device=preds.place
+    ).unsqueeze(0).unsqueeze(-1)
     unique_mapping += 4 * num_classes * paddle.arange(len_t, device=preds.place)
-    bins = _bincount(unique_mapping.flatten(), minlength=4 * num_classes * len_t)
+    bins = _bincount(
+        unique_mapping.flatten(), minlength=4 * num_classes * len_t
+    )
     return bins.reshape(len_t, num_classes, 2, 2)
 
 
@@ -523,14 +561,19 @@ def _multiclass_precision_recall_curve_update_loop(
     """
     len_t = len(thresholds)
     target_t = paddle.nn.functional.one_hot(target, num_classes=num_classes)
-    confmat = thresholds.new_empty((len_t, num_classes, 2, 2), dtype=paddle.int64)
+    confmat = thresholds.new_empty(
+        (len_t, num_classes, 2, 2), dtype=paddle.int64
+    )
     for i in range(len_t):
         preds_t = preds >= thresholds[i]
         confmat[i, :, 1, 1] = (target_t & preds_t).sum(dim=0)
         confmat[i, :, 0, 1] = (~target_t & preds_t).sum(dim=0)
         confmat[i, :, 1, 0] = (target_t & ~preds_t).sum(dim=0)
     confmat[:, :, 0, 0] = (
-        len(preds_t) - confmat[:, :, 0, 1] - confmat[:, :, 1, 0] - confmat[:, :, 1, 1]
+        len(preds_t)
+        - confmat[:, :, 0, 1]
+        - confmat[:, :, 1, 0]
+        - confmat[:, :, 1, 1]
     )
     return confmat
 
@@ -540,7 +583,10 @@ def _multiclass_precision_recall_curve_compute(
     num_classes: int,
     thresholds: paddle.Tensor | None,
     average: Literal["micro", "macro"] | None = None,
-) -> tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor] | tuple[list[paddle.Tensor], list[paddle.Tensor], list[paddle.Tensor]]:
+) -> (
+    tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor]
+    | tuple[list[paddle.Tensor], list[paddle.Tensor], list[paddle.Tensor]]
+):
     """Compute the final pr-curve.
 
     If state is a single tensor, then we calculate the pr-curve from a multi threshold confusion matrix. If state is
@@ -559,14 +605,19 @@ def _multiclass_precision_recall_curve_compute(
             [
                 precision,
                 paddle.ones(
-                    1, num_classes, dtype=precision.dtype, device=precision.device
+                    1,
+                    num_classes,
+                    dtype=precision.dtype,
+                    device=precision.device,
                 ),
             ]
         )
         recall = paddle.concat(
             [
                 recall,
-                paddle.zeros(1, num_classes, dtype=recall.dtype, device=recall.place),
+                paddle.zeros(
+                    1, num_classes, dtype=recall.dtype, device=recall.place
+                ),
             ]
         )
         precision = precision.T
@@ -584,10 +635,16 @@ def _multiclass_precision_recall_curve_compute(
             thres_list.append(res[2])
         tensor_state = False
     if average == "macro":
-        thres = thres.repeat(num_classes) if tensor_state else paddle.concat(thres_list, 0)
+        thres = (
+            thres.repeat(num_classes)
+            if tensor_state
+            else paddle.concat(thres_list, 0)
+        )
         thres = paddle.sort(x=thres)
         mean_precision = (
-            precision.flatten() if tensor_state else paddle.concat(precision_list, 0)
+            precision.flatten()
+            if tensor_state
+            else paddle.concat(precision_list, 0)
         )
         mean_precision = paddle.sort(x=mean_precision)
         mean_recall = paddle.zeros_like(mean_precision)
@@ -612,7 +669,10 @@ def multiclass_precision_recall_curve(
     average: Literal["micro", "macro"] | None = None,
     ignore_index: int | None = None,
     validate_args: bool = True,
-) -> tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor] | tuple[list[paddle.Tensor], list[paddle.Tensor], list[paddle.Tensor]]:
+) -> (
+    tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor]
+    | tuple[list[paddle.Tensor], list[paddle.Tensor], list[paddle.Tensor]]
+):
     """Compute the precision-recall curve for multiclass tasks.
 
     The curve consist of multiple pairs of precision and recall values evaluated at different thresholds, such that the
@@ -676,14 +736,16 @@ def multiclass_precision_recall_curve(
 
     Example:
         >>> from paddle.metric.functional.classification import multiclass_precision_recall_curve
-        >>> preds = paddle.to_tensor([[0.75, 0.05, 0.05, 0.05, 0.05],
-        ...                       [0.05, 0.75, 0.05, 0.05, 0.05],
-        ...                       [0.05, 0.05, 0.75, 0.05, 0.05],
-        ...                       [0.05, 0.05, 0.05, 0.75, 0.05]])
-        >>> target = paddle.to_tensor([0, 1, 3, 2])
-        >>> precision, recall, thresholds = multiclass_precision_recall_curve(
-        ...    preds, target, num_classes=5, thresholds=None
+        >>> preds = paddle.to_tensor(
+        ...     [
+        ...         [0.75, 0.05, 0.05, 0.05, 0.05],
+        ...         [0.05, 0.75, 0.05, 0.05, 0.05],
+        ...         [0.05, 0.05, 0.75, 0.05, 0.05],
+        ...         [0.05, 0.05, 0.05, 0.75, 0.05],
+        ...     ]
         ... )
+        >>> target = paddle.to_tensor([0, 1, 3, 2])
+        >>> precision, recall, thresholds = multiclass_precision_recall_curve(preds, target, num_classes=5, thresholds=None)
         >>> precision  # doctest: +NORMALIZE_WHITESPACE
         [tensor([0.2500, 1.0000, 1.0000]), tensor([0.2500, 1.0000, 1.0000]), tensor([0.2500, 0.0000, 1.0000]),
          tensor([0.2500, 0.0000, 1.0000]), tensor([0., 1.])]
@@ -692,9 +754,7 @@ def multiclass_precision_recall_curve(
         >>> thresholds
         [tensor([0.0500, 0.7500]), tensor([0.0500, 0.7500]), tensor([0.0500, 0.7500]), tensor([0.0500, 0.7500]),
          tensor([0.0500])]
-        >>> multiclass_precision_recall_curve(
-        ...     preds, target, num_classes=5, thresholds=5
-        ... )  # doctest: +NORMALIZE_WHITESPACE
+        >>> multiclass_precision_recall_curve(preds, target, num_classes=5, thresholds=5)  # doctest: +NORMALIZE_WHITESPACE
         (tensor([[0.2500, 1.0000, 1.0000, 1.0000,    nan, 1.0000],
                  [0.2500, 1.0000, 1.0000, 1.0000,    nan, 1.0000],
                  [0.2500, 0.0000, 0.0000, 0.0000,    nan, 1.0000],
@@ -757,7 +817,9 @@ def _multilabel_precision_recall_curve_tensor_validation(
     - that the pred tensor is floating point
 
     """
-    _binary_precision_recall_curve_tensor_validation(preds, target, ignore_index)
+    _binary_precision_recall_curve_tensor_validation(
+        preds, target, ignore_index
+    )
     if preds.shape[1] != num_labels:
         raise ValueError(
             f"Expected both `target.shape[1]` and `preds.shape[1]` to be equal to the number of labels but got {preds.shape[1]} and expected {num_labels}"
@@ -811,11 +873,13 @@ def _multilabel_precision_recall_curve_update(
     if thresholds is None:
         return preds, target
     len_t = len(thresholds)
-    preds_t = (preds.unsqueeze(-1) >= thresholds.unsqueeze(0).unsqueeze(0)).long()
+    preds_t = (
+        preds.unsqueeze(-1) >= thresholds.unsqueeze(0).unsqueeze(0)
+    ).long()
     unique_mapping = preds_t + 2 * target.long().unsqueeze(-1)
-    unique_mapping += 4 * paddle.arange(num_labels, device=preds.place).unsqueeze(
-        0
-    ).unsqueeze(-1)
+    unique_mapping += 4 * paddle.arange(
+        num_labels, device=preds.place
+    ).unsqueeze(0).unsqueeze(-1)
     unique_mapping += 4 * num_labels * paddle.arange(len_t, device=preds.place)
     unique_mapping = unique_mapping[unique_mapping >= 0]
     bins = _bincount(unique_mapping, minlength=4 * num_labels * len_t)
@@ -827,7 +891,10 @@ def _multilabel_precision_recall_curve_compute(
     num_labels: int,
     thresholds: paddle.Tensor | None,
     ignore_index: int | None = None,
-) -> tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor] | tuple[list[paddle.Tensor], list[paddle.Tensor], list[paddle.Tensor]]:
+) -> (
+    tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor]
+    | tuple[list[paddle.Tensor], list[paddle.Tensor], list[paddle.Tensor]]
+):
     """Compute the final pr-curve.
 
     If state is a single tensor, then we calculate the pr-curve from a multi threshold confusion matrix. If state is
@@ -844,14 +911,19 @@ def _multilabel_precision_recall_curve_compute(
             [
                 precision,
                 paddle.ones(
-                    1, num_labels, dtype=precision.dtype, device=precision.device
+                    1,
+                    num_labels,
+                    dtype=precision.dtype,
+                    device=precision.device,
                 ),
             ]
         )
         recall = paddle.concat(
             [
                 recall,
-                paddle.zeros(1, num_labels, dtype=recall.dtype, device=recall.place),
+                paddle.zeros(
+                    1, num_labels, dtype=recall.dtype, device=recall.place
+                ),
             ]
         )
         return precision.T, recall.T, thresholds
@@ -879,7 +951,10 @@ def multilabel_precision_recall_curve(
     thresholds: int | list[float] | paddle.Tensor | None = None,
     ignore_index: int | None = None,
     validate_args: bool = True,
-) -> tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor] | tuple[list[paddle.Tensor], list[paddle.Tensor], list[paddle.Tensor]]:
+) -> (
+    tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor]
+    | tuple[list[paddle.Tensor], list[paddle.Tensor], list[paddle.Tensor]]
+):
     """Compute the precision-recall curve for multilabel tasks.
 
     The curve consist of multiple pairs of precision and recall values evaluated at different thresholds, such that the
@@ -936,17 +1011,9 @@ def multilabel_precision_recall_curve(
 
     Example:
         >>> from paddle.metric.functional.classification import multilabel_precision_recall_curve
-        >>> preds = paddle.to_tensor([[0.75, 0.05, 0.35],
-        ...                       [0.45, 0.75, 0.05],
-        ...                       [0.05, 0.55, 0.75],
-        ...                       [0.05, 0.65, 0.05]])
-        >>> target = paddle.to_tensor([[1, 0, 1],
-        ...                        [0, 0, 0],
-        ...                        [0, 1, 1],
-        ...                        [1, 1, 1]])
-        >>> precision, recall, thresholds = multilabel_precision_recall_curve(
-        ...    preds, target, num_labels=3, thresholds=None
-        ... )
+        >>> preds = paddle.to_tensor([[0.75, 0.05, 0.35], [0.45, 0.75, 0.05], [0.05, 0.55, 0.75], [0.05, 0.65, 0.05]])
+        >>> target = paddle.to_tensor([[1, 0, 1], [0, 0, 0], [0, 1, 1], [1, 1, 1]])
+        >>> precision, recall, thresholds = multilabel_precision_recall_curve(preds, target, num_labels=3, thresholds=None)
         >>> precision  # doctest: +NORMALIZE_WHITESPACE
         [tensor([0.5000, 0.5000, 1.0000, 1.0000]), tensor([0.5000, 0.6667, 0.5000, 0.0000, 1.0000]),
          tensor([0.7500, 1.0000, 1.0000, 1.0000])]
@@ -955,9 +1022,7 @@ def multilabel_precision_recall_curve(
          tensor([1.0000, 0.6667, 0.3333, 0.0000])]
         >>> thresholds  # doctest: +NORMALIZE_WHITESPACE
         [tensor([0.0500, 0.4500, 0.7500]), tensor([0.0500, 0.5500, 0.6500, 0.7500]), tensor([0.0500, 0.3500, 0.7500])]
-        >>> multilabel_precision_recall_curve(
-        ...     preds, target, num_labels=3, thresholds=5
-        ... )  # doctest: +NORMALIZE_WHITESPACE
+        >>> multilabel_precision_recall_curve(preds, target, num_labels=3, thresholds=5)  # doctest: +NORMALIZE_WHITESPACE
         (tensor([[0.5000, 0.5000, 1.0000, 1.0000,    nan, 1.0000],
                  [0.5000, 0.6667, 0.6667, 0.0000,    nan, 1.0000],
                  [0.7500, 1.0000, 1.0000, 1.0000,    nan, 1.0000]]),
@@ -995,7 +1060,10 @@ def precision_recall_curve(
     average: Literal["micro", "macro"] | None = None,
     ignore_index: int | None = None,
     validate_args: bool = True,
-) -> tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor] | tuple[list[paddle.Tensor], list[paddle.Tensor], list[paddle.Tensor]]:
+) -> (
+    tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor]
+    | tuple[list[paddle.Tensor], list[paddle.Tensor], list[paddle.Tensor]]
+):
     """Compute the precision-recall curve.
 
     The curve consist of multiple pairs of precision and recall values evaluated at different thresholds, such that the
@@ -1019,10 +1087,14 @@ def precision_recall_curve(
         >>> thresholds
         tensor([0.0000, 0.1000, 0.4000, 0.8000])
 
-        >>> pred = paddle.to_tensor([[0.75, 0.05, 0.05, 0.05, 0.05],
-        ...                      [0.05, 0.75, 0.05, 0.05, 0.05],
-        ...                      [0.05, 0.05, 0.75, 0.05, 0.05],
-        ...                      [0.05, 0.05, 0.05, 0.75, 0.05]])
+        >>> pred = paddle.to_tensor(
+        ...     [
+        ...         [0.75, 0.05, 0.05, 0.05, 0.05],
+        ...         [0.05, 0.75, 0.05, 0.05, 0.05],
+        ...         [0.05, 0.05, 0.75, 0.05, 0.05],
+        ...         [0.05, 0.05, 0.05, 0.75, 0.05],
+        ...     ]
+        ... )
         >>> target = paddle.to_tensor([0, 1, 3, 2])
         >>> precision, recall, thresholds = precision_recall_curve(pred, target, task='multiclass', num_classes=5)
         >>> precision
@@ -1046,7 +1118,13 @@ def precision_recall_curve(
                 f"`num_classes` is expected to be `int` but `{type(num_classes)} was passed.`"
             )
         return multiclass_precision_recall_curve(
-            preds, target, num_classes, thresholds, average, ignore_index, validate_args
+            preds,
+            target,
+            num_classes,
+            thresholds,
+            average,
+            ignore_index,
+            validate_args,
         )
     if task == ClassificationTask.MULTILABEL:
         if not isinstance(num_labels, int):

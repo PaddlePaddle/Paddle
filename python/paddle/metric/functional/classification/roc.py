@@ -1,3 +1,17 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 from typing_extensions import Literal
@@ -40,8 +54,12 @@ def _binary_roc_compute(
         fps, tps, thres = _binary_clf_curve(
             preds=state[0], target=state[1], pos_label=pos_label
         )
-        tps = paddle.concat([paddle.zeros(1, dtype=tps.dtype, device=tps.place), tps])
-        fps = paddle.concat([paddle.zeros(1, dtype=fps.dtype, device=fps.place), fps])
+        tps = paddle.concat(
+            [paddle.zeros(1, dtype=tps.dtype, device=tps.place), tps]
+        )
+        fps = paddle.concat(
+            [paddle.zeros(1, dtype=fps.dtype, device=fps.place), fps]
+        )
         thres = paddle.concat(
             [paddle.ones(1, dtype=thres.dtype, device=thres.place), thres]
         )
@@ -137,7 +155,9 @@ def binary_roc(
     """
     if validate_args:
         _binary_precision_recall_curve_arg_validation(thresholds, ignore_index)
-        _binary_precision_recall_curve_tensor_validation(preds, target, ignore_index)
+        _binary_precision_recall_curve_tensor_validation(
+            preds, target, ignore_index
+        )
     preds, target, thresholds = _binary_precision_recall_curve_format(
         preds, target, thresholds, ignore_index
     )
@@ -150,7 +170,10 @@ def _multiclass_roc_compute(
     num_classes: int,
     thresholds: paddle.Tensor | None,
     average: Literal["micro", "macro"] | None = None,
-) -> tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor] | tuple[list[paddle.Tensor], list[paddle.Tensor], list[paddle.Tensor]]:
+) -> (
+    tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor]
+    | tuple[list[paddle.Tensor], list[paddle.Tensor], list[paddle.Tensor]]
+):
     if average == "micro":
         return _binary_roc_compute(state, thresholds, pos_label=1)
     if isinstance(state, paddle.Tensor) and thresholds is not None:
@@ -174,10 +197,14 @@ def _multiclass_roc_compute(
         tensor_state = False
     if average == "macro":
         thres = (
-            thres.repeat(num_classes) if tensor_state else paddle.concat(thres_list, axis=0)
+            thres.repeat(num_classes)
+            if tensor_state
+            else paddle.concat(thres_list, axis=0)
         )
         thres = paddle.sort(descending=True, x=thres)
-        mean_fpr = fpr.flatten() if tensor_state else paddle.concat(fpr_list, axis=0)
+        mean_fpr = (
+            fpr.flatten() if tensor_state else paddle.concat(fpr_list, axis=0)
+        )
         mean_fpr = paddle.sort(x=mean_fpr)
         mean_tpr = paddle.zeros_like(mean_fpr)
         for i in range(num_classes):
@@ -201,7 +228,10 @@ def multiclass_roc(
     average: Literal["micro", "macro"] | None = None,
     ignore_index: int | None = None,
     validate_args: bool = True,
-) -> tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor] | tuple[list[paddle.Tensor], list[paddle.Tensor], list[paddle.Tensor]]:
+) -> (
+    tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor]
+    | tuple[list[paddle.Tensor], list[paddle.Tensor], list[paddle.Tensor]]
+):
     """Compute the Receiver Operating Characteristic (ROC) for multiclass tasks.
 
     The curve consist of multiple pairs of true positive rate (TPR) and false positive rate (FPR) values evaluated at
@@ -268,14 +298,16 @@ def multiclass_roc(
 
     Example:
         >>> from paddle.metric.functional.classification import multiclass_roc
-        >>> preds = paddle.to_tensor([[0.75, 0.05, 0.05, 0.05, 0.05],
-        ...                       [0.05, 0.75, 0.05, 0.05, 0.05],
-        ...                       [0.05, 0.05, 0.75, 0.05, 0.05],
-        ...                       [0.05, 0.05, 0.05, 0.75, 0.05]])
-        >>> target = paddle.to_tensor([0, 1, 3, 2])
-        >>> fpr, tpr, thresholds = multiclass_roc(
-        ...    preds, target, num_classes=5, thresholds=None
+        >>> preds = paddle.to_tensor(
+        ...     [
+        ...         [0.75, 0.05, 0.05, 0.05, 0.05],
+        ...         [0.05, 0.75, 0.05, 0.05, 0.05],
+        ...         [0.05, 0.05, 0.75, 0.05, 0.05],
+        ...         [0.05, 0.05, 0.05, 0.75, 0.05],
+        ...     ]
         ... )
+        >>> target = paddle.to_tensor([0, 1, 3, 2])
+        >>> fpr, tpr, thresholds = multiclass_roc(preds, target, num_classes=5, thresholds=None)
         >>> fpr  # doctest: +NORMALIZE_WHITESPACE
         [tensor([0., 0., 1.]), tensor([0., 0., 1.]), tensor([0.0000, 0.3333, 1.0000]),
          tensor([0.0000, 0.3333, 1.0000]), tensor([0., 1.])]
@@ -284,9 +316,7 @@ def multiclass_roc(
         >>> thresholds  # doctest: +NORMALIZE_WHITESPACE
         [tensor([1.0000, 0.7500, 0.0500]), tensor([1.0000, 0.7500, 0.0500]),
          tensor([1.0000, 0.7500, 0.0500]), tensor([1.0000, 0.7500, 0.0500]), tensor([1.0000, 0.0500])]
-        >>> multiclass_roc(
-        ...     preds, target, num_classes=5, thresholds=5
-        ... )  # doctest: +NORMALIZE_WHITESPACE
+        >>> multiclass_roc(preds, target, num_classes=5, thresholds=5)  # doctest: +NORMALIZE_WHITESPACE
         (tensor([[0.0000, 0.0000, 0.0000, 0.0000, 1.0000],
                  [0.0000, 0.0000, 0.0000, 0.0000, 1.0000],
                  [0.0000, 0.3333, 0.3333, 0.3333, 1.0000],
@@ -321,7 +351,10 @@ def _multilabel_roc_compute(
     num_labels: int,
     thresholds: paddle.Tensor | None,
     ignore_index: int | None = None,
-) -> tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor] | tuple[list[paddle.Tensor], list[paddle.Tensor], list[paddle.Tensor]]:
+) -> (
+    tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor]
+    | tuple[list[paddle.Tensor], list[paddle.Tensor], list[paddle.Tensor]]
+):
     if isinstance(state, paddle.Tensor) and thresholds is not None:
         tps = state[:, :, 1, 1]
         fps = state[:, :, 0, 1]
@@ -339,7 +372,9 @@ def _multilabel_roc_compute(
                 idx = target == ignore_index
                 preds = preds[~idx]
                 target = target[~idx]
-            res = _binary_roc_compute((preds, target), thresholds=None, pos_label=1)
+            res = _binary_roc_compute(
+                (preds, target), thresholds=None, pos_label=1
+            )
             fpr.append(res[0])
             tpr.append(res[1])
             thres.append(res[2])
@@ -353,7 +388,10 @@ def multilabel_roc(
     thresholds: int | list[float] | paddle.Tensor | None = None,
     ignore_index: int | None = None,
     validate_args: bool = True,
-) -> tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor] | tuple[list[paddle.Tensor], list[paddle.Tensor], list[paddle.Tensor]]:
+) -> (
+    tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor]
+    | tuple[list[paddle.Tensor], list[paddle.Tensor], list[paddle.Tensor]]
+):
     """Compute the Receiver Operating Characteristic (ROC) for multilabel tasks.
 
     The curve consist of multiple pairs of true positive rate (TPR) and false positive rate (FPR) values evaluated at
@@ -413,17 +451,9 @@ def multilabel_roc(
 
     Example:
         >>> from paddle.metric.functional.classification import multilabel_roc
-        >>> preds = paddle.to_tensor([[0.75, 0.05, 0.35],
-        ...                       [0.45, 0.75, 0.05],
-        ...                       [0.05, 0.55, 0.75],
-        ...                       [0.05, 0.65, 0.05]])
-        >>> target = paddle.to_tensor([[1, 0, 1],
-        ...                        [0, 0, 0],
-        ...                        [0, 1, 1],
-        ...                        [1, 1, 1]])
-        >>> fpr, tpr, thresholds = multilabel_roc(
-        ...    preds, target, num_labels=3, thresholds=None
-        ... )
+        >>> preds = paddle.to_tensor([[0.75, 0.05, 0.35], [0.45, 0.75, 0.05], [0.05, 0.55, 0.75], [0.05, 0.65, 0.05]])
+        >>> target = paddle.to_tensor([[1, 0, 1], [0, 0, 0], [0, 1, 1], [1, 1, 1]])
+        >>> fpr, tpr, thresholds = multilabel_roc(preds, target, num_labels=3, thresholds=None)
         >>> fpr  # doctest: +NORMALIZE_WHITESPACE
         [tensor([0.0000, 0.0000, 0.5000, 1.0000]),
          tensor([0.0000, 0.5000, 0.5000, 0.5000, 1.0000]),
@@ -436,9 +466,7 @@ def multilabel_roc(
         [tensor([1.0000, 0.7500, 0.4500, 0.0500]),
          tensor([1.0000, 0.7500, 0.6500, 0.5500, 0.0500]),
          tensor([1.0000, 0.7500, 0.3500, 0.0500])]
-        >>> multilabel_roc(
-        ...     preds, target, num_labels=3, thresholds=5
-        ... )  # doctest: +NORMALIZE_WHITESPACE
+        >>> multilabel_roc(preds, target, num_labels=3, thresholds=5)  # doctest: +NORMALIZE_WHITESPACE
         (tensor([[0.0000, 0.0000, 0.0000, 0.5000, 1.0000],
                  [0.0000, 0.5000, 0.5000, 0.5000, 1.0000],
                  [0.0000, 0.0000, 0.0000, 0.0000, 1.0000]]),
@@ -474,7 +502,10 @@ def roc(
     average: Literal["micro", "macro"] | None = None,
     ignore_index: int | None = None,
     validate_args: bool = True,
-) -> tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor] | tuple[list[paddle.Tensor], list[paddle.Tensor], list[paddle.Tensor]]:
+) -> (
+    tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor]
+    | tuple[list[paddle.Tensor], list[paddle.Tensor], list[paddle.Tensor]]
+):
     """Compute the Receiver Operating Characteristic (ROC).
 
     The curve consist of multiple pairs of true positive rate (TPR) and false positive rate (FPR) values evaluated at
@@ -498,10 +529,9 @@ def roc(
         >>> thresholds
         tensor([1.0000, 0.9526, 0.8808, 0.7311, 0.5000])
 
-        >>> pred = paddle.to_tensor([[0.75, 0.05, 0.05, 0.05],
-        ...                      [0.05, 0.75, 0.05, 0.05],
-        ...                      [0.05, 0.05, 0.75, 0.05],
-        ...                      [0.05, 0.05, 0.05, 0.75]])
+        >>> pred = paddle.to_tensor(
+        ...     [[0.75, 0.05, 0.05, 0.05], [0.05, 0.75, 0.05, 0.05], [0.05, 0.05, 0.75, 0.05], [0.05, 0.05, 0.05, 0.75]]
+        ... )
         >>> target = paddle.to_tensor([0, 1, 3, 2])
         >>> fpr, tpr, thresholds = roc(pred, target, task='multiclass', num_classes=4)
         >>> fpr
@@ -514,10 +544,9 @@ def roc(
          tensor([1.0000, 0.7500, 0.0500]),
          tensor([1.0000, 0.7500, 0.0500])]
 
-        >>> pred = paddle.to_tensor([[0.8191, 0.3680, 0.1138],
-        ...                      [0.3584, 0.7576, 0.1183],
-        ...                      [0.2286, 0.3468, 0.1338],
-        ...                      [0.8603, 0.0745, 0.1837]])
+        >>> pred = paddle.to_tensor(
+        ...     [[0.8191, 0.3680, 0.1138], [0.3584, 0.7576, 0.1183], [0.2286, 0.3468, 0.1338], [0.8603, 0.0745, 0.1837]]
+        ... )
         >>> target = paddle.to_tensor([[1, 1, 0], [0, 1, 0], [0, 0, 0], [0, 1, 1]])
         >>> fpr, tpr, thresholds = roc(pred, target, task='multilabel', num_labels=3)
         >>> fpr
@@ -534,14 +563,22 @@ def roc(
     """
     task = ClassificationTask.from_str(task)
     if task == ClassificationTask.BINARY:
-        return binary_roc(preds, target, thresholds, ignore_index, validate_args)
+        return binary_roc(
+            preds, target, thresholds, ignore_index, validate_args
+        )
     if task == ClassificationTask.MULTICLASS:
         if not isinstance(num_classes, int):
             raise ValueError(
                 f"`num_classes` is expected to be `int` but `{type(num_classes)} was passed.`"
             )
         return multiclass_roc(
-            preds, target, num_classes, thresholds, average, ignore_index, validate_args
+            preds,
+            target,
+            num_classes,
+            thresholds,
+            average,
+            ignore_index,
+            validate_args,
         )
     if task == ClassificationTask.MULTILABEL:
         if not isinstance(num_labels, int):

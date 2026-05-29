@@ -1,3 +1,17 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 from typing_extensions import Literal
@@ -14,7 +28,9 @@ from paddle.metric.utils.data import to_onehot
 from paddle.metric.utils.enums import ClassificationTaskNoMultilabel
 
 
-def _hinge_loss_compute(measure: paddle.Tensor, total: paddle.Tensor) -> paddle.Tensor:
+def _hinge_loss_compute(
+    measure: paddle.Tensor, total: paddle.Tensor
+) -> paddle.Tensor:
     return measure / total
 
 
@@ -22,7 +38,9 @@ def _binary_hinge_loss_arg_validation(
     squared: bool, ignore_index: int | None = None
 ) -> None:
     if not isinstance(squared, bool):
-        raise ValueError(f"Expected argument `squared` to be an bool but got {squared}")
+        raise ValueError(
+            f"Expected argument `squared` to be an bool but got {squared}"
+        )
     if ignore_index is not None and not isinstance(ignore_index, int):
         raise ValueError(
             f"Expected argument `ignore_index` to either be `None` or an integer, but got {ignore_index}"
@@ -103,7 +121,11 @@ def binary_hinge_loss(
         _binary_hinge_loss_arg_validation(squared, ignore_index)
         _binary_hinge_loss_tensor_validation(preds, target, ignore_index)
     preds, target = _binary_confusion_matrix_format(
-        preds, target, threshold=0.0, ignore_index=ignore_index, convert_to_labels=False
+        preds,
+        target,
+        threshold=0.0,
+        ignore_index=ignore_index,
+        convert_to_labels=False,
     )
     measures, total = _binary_hinge_loss_update(preds, target, squared)
     return _hinge_loss_compute(measures, total)
@@ -212,10 +234,7 @@ def multiclass_hinge_loss(
     Example:
         >>> from paddle import tensor
         >>> from paddle.metric.functional.classification import multiclass_hinge_loss
-        >>> preds = tensor([[0.25, 0.20, 0.55],
-        ...                 [0.55, 0.05, 0.40],
-        ...                 [0.10, 0.30, 0.60],
-        ...                 [0.90, 0.05, 0.05]])
+        >>> preds = tensor([[0.25, 0.20, 0.55], [0.55, 0.05, 0.40], [0.10, 0.30, 0.60], [0.90, 0.05, 0.05]])
         >>> target = tensor([0, 1, 2, 0])
         >>> multiclass_hinge_loss(preds, target, num_classes=3)
         tensor(0.9125)
@@ -279,7 +298,9 @@ def hinge_loss(
     """
     task = ClassificationTaskNoMultilabel.from_str(task)
     if task == ClassificationTaskNoMultilabel.BINARY:
-        return binary_hinge_loss(preds, target, squared, ignore_index, validate_args)
+        return binary_hinge_loss(
+            preds, target, squared, ignore_index, validate_args
+        )
     if task == ClassificationTaskNoMultilabel.MULTICLASS:
         if not isinstance(num_classes, int):
             raise ValueError(

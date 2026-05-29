@@ -304,8 +304,11 @@ class MulticlassAccuracy(MulticlassStatScores):
             if in_dynamic_mode():
                 # Legacy C++ op mutates correct/total in-place
                 _legacy_C_ops.accuracy(
-                    topk_out, topk_indices, target,
-                    self._correct, self._total,
+                    topk_out,
+                    topk_indices,
+                    target,
+                    self._correct,
+                    self._total,
                 )
             elif in_pir_mode():
                 # PIR mode: op returns new tensors, accumulate manually
@@ -322,7 +325,9 @@ class MulticlassAccuracy(MulticlassStatScores):
         if self._use_cpp_op:
             correct = self._correct.astype("float32")
             total = self._total.astype("float32")
-            return paddle.where(total > 0, correct / total, paddle.zeros_like(total))
+            return paddle.where(
+                total > 0, correct / total, paddle.zeros_like(total)
+            )
         tp, fp, tn, fn = self._final_state()
         return _accuracy_reduce(
             tp,

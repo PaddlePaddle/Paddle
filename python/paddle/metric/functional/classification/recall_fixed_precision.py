@@ -1,3 +1,17 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 from typing import Callable
@@ -161,12 +175,16 @@ def binary_recall_at_fixed_precision(
         _binary_recall_at_fixed_precision_arg_validation(
             min_precision, thresholds, ignore_index
         )
-        _binary_precision_recall_curve_tensor_validation(preds, target, ignore_index)
+        _binary_precision_recall_curve_tensor_validation(
+            preds, target, ignore_index
+        )
     preds, target, thresholds = _binary_precision_recall_curve_format(
         preds, target, thresholds, ignore_index
     )
     state = _binary_precision_recall_curve_update(preds, target, thresholds)
-    return _binary_recall_at_fixed_precision_compute(state, thresholds, min_precision)
+    return _binary_recall_at_fixed_precision_compute(
+        state, thresholds, min_precision
+    )
 
 
 def _multiclass_recall_at_fixed_precision_arg_validation(
@@ -268,10 +286,14 @@ def multiclass_recall_at_fixed_precision(
 
     Example:
         >>> from paddle.metric.functional.classification import multiclass_recall_at_fixed_precision
-        >>> preds = paddle.to_tensor([[0.75, 0.05, 0.05, 0.05, 0.05],
-        ...                       [0.05, 0.75, 0.05, 0.05, 0.05],
-        ...                       [0.05, 0.05, 0.75, 0.05, 0.05],
-        ...                       [0.05, 0.05, 0.05, 0.75, 0.05]])
+        >>> preds = paddle.to_tensor(
+        ...     [
+        ...         [0.75, 0.05, 0.05, 0.05, 0.05],
+        ...         [0.05, 0.75, 0.05, 0.05, 0.05],
+        ...         [0.05, 0.05, 0.75, 0.05, 0.05],
+        ...         [0.05, 0.05, 0.05, 0.75, 0.05],
+        ...     ]
+        ... )
         >>> target = paddle.to_tensor([0, 1, 3, 2])
         >>> multiclass_recall_at_fixed_precision(preds, target, num_classes=5, min_precision=0.5, thresholds=None)
         (tensor([1., 1., 0., 0., 0.]), tensor([0.7500, 0.7500, nan, nan, nan]))
@@ -397,14 +419,8 @@ def multilabel_recall_at_fixed_precision(
 
     Example:
         >>> from paddle.metric.functional.classification import multilabel_recall_at_fixed_precision
-        >>> preds = paddle.to_tensor([[0.75, 0.05, 0.35],
-        ...                       [0.45, 0.75, 0.05],
-        ...                       [0.05, 0.55, 0.75],
-        ...                       [0.05, 0.65, 0.05]])
-        >>> target = paddle.to_tensor([[1, 0, 1],
-        ...                        [0, 0, 0],
-        ...                        [0, 1, 1],
-        ...                        [1, 1, 1]])
+        >>> preds = paddle.to_tensor([[0.75, 0.05, 0.35], [0.45, 0.75, 0.05], [0.05, 0.55, 0.75], [0.05, 0.65, 0.05]])
+        >>> target = paddle.to_tensor([[1, 0, 1], [0, 0, 0], [0, 1, 1], [1, 1, 1]])
         >>> multilabel_recall_at_fixed_precision(preds, target, num_labels=3, min_precision=0.5, thresholds=None)
         (tensor([1., 1., 1.]), tensor([0.0500, 0.5500, 0.0500]))
         >>> multilabel_recall_at_fixed_precision(preds, target, num_labels=3, min_precision=0.5, thresholds=5)
@@ -456,7 +472,12 @@ def recall_at_fixed_precision(
     task = ClassificationTask.from_str(task)
     if task == ClassificationTask.BINARY:
         return binary_recall_at_fixed_precision(
-            preds, target, min_precision, thresholds, ignore_index, validate_args
+            preds,
+            target,
+            min_precision,
+            thresholds,
+            ignore_index,
+            validate_args,
         )
     if task == ClassificationTask.MULTICLASS:
         if not isinstance(num_classes, int):

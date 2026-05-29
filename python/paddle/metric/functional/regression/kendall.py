@@ -1,3 +1,17 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 from typing_extensions import Literal
@@ -52,7 +66,11 @@ def _concordant_element_sum(
     x: paddle.Tensor, y: paddle.Tensor, i: int
 ) -> paddle.Tensor:
     """Count a total number of concordant pairs in a single sequence."""
-    return paddle.logical_and(x[i] < x[i + 1 :], y[i] < y[i + 1 :]).sum(0).unsqueeze(0)
+    return (
+        paddle.logical_and(x[i] < x[i + 1 :], y[i] < y[i + 1 :])
+        .sum(0)
+        .unsqueeze(0)
+    )
 
 
 def _count_concordant_pairs(
@@ -60,7 +78,10 @@ def _count_concordant_pairs(
 ) -> paddle.Tensor:
     """Count a total number of concordant pairs in given sequences."""
     return paddle.concat(
-        [_concordant_element_sum(preds, target, i) for i in range(preds.shape[0])]
+        [
+            _concordant_element_sum(preds, target, i)
+            for i in range(preds.shape[0])
+        ]
     ).sum(0)
 
 
@@ -83,7 +104,10 @@ def _count_discordant_pairs(
 ) -> paddle.Tensor:
     """Count a total number of discordant pairs in given sequences."""
     return paddle.concat(
-        [_discordant_element_sum(preds, target, i) for i in range(preds.shape[0])]
+        [
+            _discordant_element_sum(preds, target, i)
+            for i in range(preds.shape[0])
+        ]
     ).sum(0)
 
 
@@ -94,10 +118,14 @@ def _convert_sequence_to_dense_rank(
     if sort:
         x = paddle.sort(axis=0, x=x)
     _ones = paddle.zeros(1, x.shape[1], dtype=paddle.int32, device=x.place)
-    return _cumsum(paddle.concat([_ones, (x[1:] != x[:-1]).int()], axis=0), axis=0)
+    return _cumsum(
+        paddle.concat([_ones, (x[1:] != x[:-1]).int()], axis=0), axis=0
+    )
 
 
-def _get_ties(x: paddle.Tensor) -> tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor]:
+def _get_ties(
+    x: paddle.Tensor,
+) -> tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor]:
     """Get a total number of ties and staistics for p-value calculation for  a given sequence."""
     ties = paddle.zeros(x.shape[1], dtype=x.dtype, device=x.place)
     ties_p1 = paddle.zeros(x.shape[1], dtype=x.dtype, device=x.place)
@@ -167,24 +195,34 @@ def _calculate_tau(
         total_combinations: Tensor = n_total * (n_total - 1) // 2
         if preds_ties is None:
             preds_ties = paddle.tensor(
-                0.0, dtype=total_combinations.dtype, device=total_combinations.device
+                0.0,
+                dtype=total_combinations.dtype,
+                device=total_combinations.device,
             )
         if target_ties is None:
             target_ties = paddle.tensor(
-                0.0, dtype=total_combinations.dtype, device=total_combinations.device
+                0.0,
+                dtype=total_combinations.dtype,
+                device=total_combinations.device,
             )
         denominator = (total_combinations - preds_ties) * (
             total_combinations - target_ties
         )
         return con_min_dis_pairs / paddle.sqrt(denominator)
     preds_unique = paddle.tensor(
-        [len(p.unique()) for p in preds.T], dtype=preds.dtype, device=preds.device
+        [len(p.unique()) for p in preds.T],
+        dtype=preds.dtype,
+        device=preds.device,
     )
     target_unique = paddle.tensor(
-        [len(t.unique()) for t in target.T], dtype=target.dtype, device=target.device
+        [len(t.unique()) for t in target.T],
+        dtype=target.dtype,
+        device=target.device,
     )
     min_classes = paddle.minimum(preds_unique, target_unique)
-    return 2 * con_min_dis_pairs / ((min_classes - 1) / min_classes * n_total**2)
+    return (
+        2 * con_min_dis_pairs / ((min_classes - 1) / min_classes * n_total**2)
+    )
 
 
 def _get_p_value_for_t_value_from_dist(t_value: paddle.Tensor) -> paddle.Tensor:
@@ -195,11 +233,14 @@ def _get_p_value_for_t_value_from_dist(t_value: paddle.Tensor) -> paddle.Tensor:
     """
     device = t_value
     normal_dist = paddle.distribution.Normal(
-        loc=paddle.tensor([0.0]).to(device), scale=paddle.tensor([1.0]).to(device)
+        loc=paddle.tensor([0.0]).to(device),
+        scale=paddle.tensor([1.0]).to(device),
     )
     is_nan = t_value.isnan()
     t_value = t_value.nan_to_num()
     """Not Support auto convert *.cdf, please judge whether it is Pytorch API and convert by yourself"""
+
+
 def _calculate_p_value(
     con_min_dis_pairs: paddle.Tensor,
     n_total: paddle.Tensor,
@@ -215,7 +256,9 @@ def _calculate_p_value(
     """Calculate p-value for Kendall's tau from metric metadata."""
     t_value_denominator_base = n_total * (n_total - 1) * (2 * n_total + 5)
     if variant == _MetricVariant.A:
-        t_value = 3 * con_min_dis_pairs / paddle.sqrt(t_value_denominator_base / 2)
+        t_value = (
+            3 * con_min_dis_pairs / paddle.sqrt(t_value_denominator_base / 2)
+        )
     else:
         m = n_total * (n_total - 1)
         t_value_denominator: Tensor = (
@@ -425,9 +468,15 @@ def kendall_rank_corrcoef(
             "Argument `alternative` is required if `t_test=True` but got `None`."
         )
     _variant = _MetricVariant.from_str(str(variant))
-    _alternative = _TestAlternative.from_str(str(alternative)) if t_test else None
+    _alternative = (
+        _TestAlternative.from_str(str(alternative)) if t_test else None
+    )
     _preds, _target = _kendall_corrcoef_update(
-        preds, target, [], [], num_outputs=1 if preds.ndim == 1 else preds.shape[-1]
+        preds,
+        target,
+        [],
+        [],
+        num_outputs=1 if preds.ndim == 1 else preds.shape[-1],
     )
     tau, p_value = _kendall_corrcoef_compute(
         dim_zero_cat(_preds), dim_zero_cat(_target), _variant, _alternative

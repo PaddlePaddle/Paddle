@@ -53,13 +53,16 @@ class BaseAggregator(Metric):
         self,
         fn: Callable | str,
         default_value: paddle.Tensor | list,
-        nan_strategy: Literal["error", "warn", "ignore", "disable"] | float = "error",
+        nan_strategy: Literal["error", "warn", "ignore", "disable"]
+        | float = "error",
         state_name: str = "value",
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
         allowed_nan_strategy = ("error", "warn", "ignore", "disable")
-        if nan_strategy not in allowed_nan_strategy and not isinstance(nan_strategy, float):
+        if nan_strategy not in allowed_nan_strategy and not isinstance(
+            nan_strategy, float
+        ):
             raise ValueError(
                 f"Arg `nan_strategy` should either be a float or one of {allowed_nan_strategy} but got {nan_strategy}."
             )
@@ -91,19 +94,26 @@ class BaseAggregator(Metric):
                     raise RuntimeError("Encountered `nan` values in tensor")
                 if self.nan_strategy in ("ignore", "warn"):
                     if self.nan_strategy == "warn":
-                        warnings.warn("Encountered `nan` values in tensor. Will be removed.", UserWarning)
+                        warnings.warn(
+                            "Encountered `nan` values in tensor. Will be removed.",
+                            UserWarning,
+                        )
                     mask = ~(nans | nans_weight)
                     x = x[mask]
                     weight = weight[mask]
                 else:
                     if not isinstance(self.nan_strategy, float):
-                        raise ValueError(f"`nan_strategy` shall be float but you pass {self.nan_strategy}")
+                        raise ValueError(
+                            f"`nan_strategy` shall be float but you pass {self.nan_strategy}"
+                        )
                     x[nans | nans_weight] = self.nan_strategy
                     weight[nans | nans_weight] = 1.0
         else:
             weight = paddle.ones_like(x, dtype=paddle.get_default_dtype())
 
-        return x.astype(paddle.get_default_dtype()), weight.astype(paddle.get_default_dtype())
+        return x.astype(paddle.get_default_dtype()), weight.astype(
+            paddle.get_default_dtype()
+        )
 
     def update(self, value: float | paddle.Tensor) -> None:
         """Overwrite in child class."""
@@ -126,7 +136,8 @@ class MaxMetric(BaseAggregator):
 
     def __init__(
         self,
-        nan_strategy: Literal["error", "warn", "ignore", "disable"] | float = "warn",
+        nan_strategy: Literal["error", "warn", "ignore", "disable"]
+        | float = "warn",
         **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -143,7 +154,11 @@ class MaxMetric(BaseAggregator):
         if value.size != 0:
             self.max_value = paddle.maximum(self.max_value, value.max())
 
-    def plot(self, val: paddle.Tensor | list[paddle.Tensor] | None = None, ax: Any = None) -> tuple[Any, Any]:
+    def plot(
+        self,
+        val: paddle.Tensor | list[paddle.Tensor] | None = None,
+        ax: Any = None,
+    ) -> tuple[Any, Any]:
         """Plot a single or multiple values from the metric."""
         import matplotlib.pyplot as plt
 
@@ -156,10 +171,20 @@ class MaxMetric(BaseAggregator):
             ax.set_xticklabels(["Max"])
             ax.set_ylabel("Value")
             ax.set_title(self.name if self.name else "Maximum Value")
-            ax.text(0, val.item() + 0.02, f"{val.item():.3f}", ha="center", va="bottom")
+            ax.text(
+                0,
+                val.item() + 0.02,
+                f"{val.item():.3f}",
+                ha="center",
+                va="bottom",
+            )
         else:
-            values = [v.item() if isinstance(v, paddle.Tensor) else v for v in val]
-            ax.plot(values, marker="o", linestyle="-", linewidth=2, markersize=6)
+            values = [
+                v.item() if isinstance(v, paddle.Tensor) else v for v in val
+            ]
+            ax.plot(
+                values, marker="o", linestyle="-", linewidth=2, markersize=6
+            )
             ax.set_xlabel("Step")
             ax.set_ylabel("Maximum Value")
             ax.grid(True)
@@ -179,7 +204,8 @@ class MinMetric(BaseAggregator):
 
     def __init__(
         self,
-        nan_strategy: Literal["error", "warn", "ignore", "disable"] | float = "warn",
+        nan_strategy: Literal["error", "warn", "ignore", "disable"]
+        | float = "warn",
         **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -196,7 +222,11 @@ class MinMetric(BaseAggregator):
         if value.size != 0:
             self.min_value = paddle.minimum(self.min_value, value.min())
 
-    def plot(self, val: paddle.Tensor | list[paddle.Tensor] | None = None, ax: Any = None) -> tuple[Any, Any]:
+    def plot(
+        self,
+        val: paddle.Tensor | list[paddle.Tensor] | None = None,
+        ax: Any = None,
+    ) -> tuple[Any, Any]:
         """Plot a single or multiple values from the metric."""
         import matplotlib.pyplot as plt
 
@@ -209,10 +239,20 @@ class MinMetric(BaseAggregator):
             ax.set_xticklabels(["Min"])
             ax.set_ylabel("Value")
             ax.set_title(self.name if self.name else "Minimum Value")
-            ax.text(0, val.item() + 0.02, f"{val.item():.3f}", ha="center", va="bottom")
+            ax.text(
+                0,
+                val.item() + 0.02,
+                f"{val.item():.3f}",
+                ha="center",
+                va="bottom",
+            )
         else:
-            values = [v.item() if isinstance(v, paddle.Tensor) else v for v in val]
-            ax.plot(values, marker="o", linestyle="-", linewidth=2, markersize=6)
+            values = [
+                v.item() if isinstance(v, paddle.Tensor) else v for v in val
+            ]
+            ax.plot(
+                values, marker="o", linestyle="-", linewidth=2, markersize=6
+            )
             ax.set_xlabel("Step")
             ax.set_ylabel("Minimum Value")
             ax.grid(True)
@@ -230,7 +270,8 @@ class SumMetric(BaseAggregator):
 
     def __init__(
         self,
-        nan_strategy: Literal["error", "warn", "ignore", "disable"] | float = "warn",
+        nan_strategy: Literal["error", "warn", "ignore", "disable"]
+        | float = "warn",
         **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -247,7 +288,11 @@ class SumMetric(BaseAggregator):
         if value.size != 0:
             self.sum_value += value.sum()
 
-    def plot(self, val: paddle.Tensor | list[paddle.Tensor] | None = None, ax: Any = None) -> tuple[Any, Any]:
+    def plot(
+        self,
+        val: paddle.Tensor | list[paddle.Tensor] | None = None,
+        ax: Any = None,
+    ) -> tuple[Any, Any]:
         """Plot a single or multiple values from the metric."""
         import matplotlib.pyplot as plt
 
@@ -260,10 +305,20 @@ class SumMetric(BaseAggregator):
             ax.set_xticklabels(["Sum"])
             ax.set_ylabel("Value")
             ax.set_title(self.name if self.name else "Sum Value")
-            ax.text(0, val.item() + 0.02, f"{val.item():.3f}", ha="center", va="bottom")
+            ax.text(
+                0,
+                val.item() + 0.02,
+                f"{val.item():.3f}",
+                ha="center",
+                va="bottom",
+            )
         else:
-            values = [v.item() if isinstance(v, paddle.Tensor) else v for v in val]
-            ax.plot(values, marker="o", linestyle="-", linewidth=2, markersize=6)
+            values = [
+                v.item() if isinstance(v, paddle.Tensor) else v for v in val
+            ]
+            ax.plot(
+                values, marker="o", linestyle="-", linewidth=2, markersize=6
+            )
             ax.set_xlabel("Step")
             ax.set_ylabel("Sum Value")
             ax.grid(True)
@@ -281,7 +336,8 @@ class CatMetric(BaseAggregator):
 
     def __init__(
         self,
-        nan_strategy: Literal["error", "warn", "ignore", "disable"] | float = "warn",
+        nan_strategy: Literal["error", "warn", "ignore", "disable"]
+        | float = "warn",
         **kwargs: Any,
     ) -> None:
         super().__init__("cat", [], nan_strategy, **kwargs)
@@ -298,7 +354,11 @@ class CatMetric(BaseAggregator):
             return _dim_zero_cat(self.value)
         return self.value
 
-    def plot(self, val: paddle.Tensor | list[paddle.Tensor] | None = None, ax: Any = None) -> tuple[Any, Any]:
+    def plot(
+        self,
+        val: paddle.Tensor | list[paddle.Tensor] | None = None,
+        ax: Any = None,
+    ) -> tuple[Any, Any]:
         """Plot a single or multiple values from the metric."""
         import matplotlib.pyplot as plt
 
@@ -306,13 +366,21 @@ class CatMetric(BaseAggregator):
             val = self.compute()
         fig, ax = plt.subplots() if ax is None else (None, ax)
         if isinstance(val, paddle.Tensor) and val.ndim == 1:
-            ax.hist(val.numpy(), bins=20, color="skyblue", edgecolor="black", alpha=0.7)
+            ax.hist(
+                val.numpy(),
+                bins=20,
+                color="skyblue",
+                edgecolor="black",
+                alpha=0.7,
+            )
             ax.set_xlabel("Value")
             ax.set_ylabel("Frequency")
             ax.set_title(self.name if self.name else "Distribution of Values")
             ax.grid(True, alpha=0.3)
         else:
-            raise NotImplementedError("Plotting multiple values for CatMetric is not supported")
+            raise NotImplementedError(
+                "Plotting multiple values for CatMetric is not supported"
+            )
         return fig, ax
 
 
@@ -326,7 +394,8 @@ class MeanMetric(BaseAggregator):
 
     def __init__(
         self,
-        nan_strategy: Literal["error", "warn", "ignore", "disable"] | float = "warn",
+        nan_strategy: Literal["error", "warn", "ignore", "disable"]
+        | float = "warn",
         **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -365,7 +434,11 @@ class MeanMetric(BaseAggregator):
         """Compute the aggregated value."""
         return self.mean_value / self.weight
 
-    def plot(self, val: paddle.Tensor | list[paddle.Tensor] | None = None, ax: Any = None) -> tuple[Any, Any]:
+    def plot(
+        self,
+        val: paddle.Tensor | list[paddle.Tensor] | None = None,
+        ax: Any = None,
+    ) -> tuple[Any, Any]:
         """Plot a single or multiple values from the metric."""
         import matplotlib.pyplot as plt
 
@@ -378,10 +451,20 @@ class MeanMetric(BaseAggregator):
             ax.set_xticklabels(["Mean"])
             ax.set_ylabel("Value")
             ax.set_title(self.name if self.name else "Mean Value")
-            ax.text(0, val.item() + 0.02, f"{val.item():.3f}", ha="center", va="bottom")
+            ax.text(
+                0,
+                val.item() + 0.02,
+                f"{val.item():.3f}",
+                ha="center",
+                va="bottom",
+            )
         else:
-            values = [v.item() if isinstance(v, paddle.Tensor) else v for v in val]
-            ax.plot(values, marker="o", linestyle="-", linewidth=2, markersize=6)
+            values = [
+                v.item() if isinstance(v, paddle.Tensor) else v for v in val
+            ]
+            ax.plot(
+                values, marker="o", linestyle="-", linewidth=2, markersize=6
+            )
             ax.set_xlabel("Step")
             ax.set_ylabel("Mean Value")
             ax.grid(True)
@@ -401,7 +484,8 @@ class RunningMean(Metric):
     def __init__(
         self,
         window: int = 5,
-        nan_strategy: Literal["error", "warn", "ignore", "disable"] | float = "warn",
+        nan_strategy: Literal["error", "warn", "ignore", "disable"]
+        | float = "warn",
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -415,7 +499,7 @@ class RunningMean(Metric):
             value = paddle.to_tensor(value, dtype=paddle.get_default_dtype())
         self.buffer.append(value)
         if len(self.buffer) > self.window:
-            self.buffer = self.buffer[-self.window:]
+            self.buffer = self.buffer[-self.window :]
 
     def compute(self) -> paddle.Tensor:
         """Compute the running mean."""
@@ -434,7 +518,10 @@ class RunningMean(Metric):
                     values.append(v_flat)
                 elif self.nan_strategy == "warn":
                     if paddle.isnan(v_flat).any():
-                        warnings.warn("Encountered `nan` values in tensor. Will be removed.", UserWarning)
+                        warnings.warn(
+                            "Encountered `nan` values in tensor. Will be removed.",
+                            UserWarning,
+                        )
                     v_clean = v_flat[~paddle.isnan(v_flat)]
                     if v_clean.size > 0:
                         values.append(v_clean)
@@ -443,7 +530,9 @@ class RunningMean(Metric):
                     if v_clean.size > 0:
                         values.append(v_clean)
                 else:
-                    v_imputed = paddle.where(paddle.isnan(v_flat), self.nan_strategy, v_flat)
+                    v_imputed = paddle.where(
+                        paddle.isnan(v_flat), self.nan_strategy, v_flat
+                    )
                     values.append(v_imputed)
             else:
                 values.append(paddle.to_tensor(v))
@@ -454,7 +543,11 @@ class RunningMean(Metric):
         all_values = paddle.concat([v.flatten() for v in values])
         return all_values.mean()
 
-    def plot(self, val: paddle.Tensor | list[paddle.Tensor] | None = None, ax: Any = None) -> tuple[Any, Any]:
+    def plot(
+        self,
+        val: paddle.Tensor | list[paddle.Tensor] | None = None,
+        ax: Any = None,
+    ) -> tuple[Any, Any]:
         """Plot a single or multiple values from the metric."""
         import matplotlib.pyplot as plt
 
@@ -466,15 +559,33 @@ class RunningMean(Metric):
             ax.set_xticks([0])
             ax.set_xticklabels(["Running Mean"])
             ax.set_ylabel("Value")
-            ax.set_title(self.name if self.name else f"Running Mean (window={self.window})")
-            ax.text(0, val.item() + 0.02, f"{val.item():.3f}", ha="center", va="bottom")
+            ax.set_title(
+                self.name
+                if self.name
+                else f"Running Mean (window={self.window})"
+            )
+            ax.text(
+                0,
+                val.item() + 0.02,
+                f"{val.item():.3f}",
+                ha="center",
+                va="bottom",
+            )
         else:
-            values = [v.item() if isinstance(v, paddle.Tensor) else v for v in val]
-            ax.plot(values, marker="o", linestyle="-", linewidth=2, markersize=6)
+            values = [
+                v.item() if isinstance(v, paddle.Tensor) else v for v in val
+            ]
+            ax.plot(
+                values, marker="o", linestyle="-", linewidth=2, markersize=6
+            )
             ax.set_xlabel("Step")
             ax.set_ylabel("Running Mean")
             ax.grid(True)
-            ax.set_title(self.name if self.name else f"Running Mean Over Time (window={self.window})")
+            ax.set_title(
+                self.name
+                if self.name
+                else f"Running Mean Over Time (window={self.window})"
+            )
         return fig, ax
 
 
@@ -490,7 +601,8 @@ class RunningSum(Metric):
     def __init__(
         self,
         window: int = 5,
-        nan_strategy: Literal["error", "warn", "ignore", "disable"] | float = "warn",
+        nan_strategy: Literal["error", "warn", "ignore", "disable"]
+        | float = "warn",
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -504,7 +616,7 @@ class RunningSum(Metric):
             value = paddle.to_tensor(value, dtype=paddle.get_default_dtype())
         self.buffer.append(value)
         if len(self.buffer) > self.window:
-            self.buffer = self.buffer[-self.window:]
+            self.buffer = self.buffer[-self.window :]
 
     def compute(self) -> paddle.Tensor:
         """Compute the running sum."""
@@ -523,7 +635,10 @@ class RunningSum(Metric):
                     values.append(v_flat)
                 elif self.nan_strategy == "warn":
                     if paddle.isnan(v_flat).any():
-                        warnings.warn("Encountered `nan` values in tensor. Will be removed.", UserWarning)
+                        warnings.warn(
+                            "Encountered `nan` values in tensor. Will be removed.",
+                            UserWarning,
+                        )
                     v_clean = v_flat[~paddle.isnan(v_flat)]
                     if v_clean.size > 0:
                         values.append(v_clean)
@@ -532,7 +647,9 @@ class RunningSum(Metric):
                     if v_clean.size > 0:
                         values.append(v_clean)
                 else:
-                    v_imputed = paddle.where(paddle.isnan(v_flat), self.nan_strategy, v_flat)
+                    v_imputed = paddle.where(
+                        paddle.isnan(v_flat), self.nan_strategy, v_flat
+                    )
                     values.append(v_imputed)
             else:
                 values.append(paddle.to_tensor(v))
@@ -543,7 +660,11 @@ class RunningSum(Metric):
         all_values = paddle.concat([v.flatten() for v in values])
         return all_values.sum()
 
-    def plot(self, val: paddle.Tensor | list[paddle.Tensor] | None = None, ax: Any = None) -> tuple[Any, Any]:
+    def plot(
+        self,
+        val: paddle.Tensor | list[paddle.Tensor] | None = None,
+        ax: Any = None,
+    ) -> tuple[Any, Any]:
         """Plot a single or multiple values from the metric."""
         import matplotlib.pyplot as plt
 
@@ -555,13 +676,31 @@ class RunningSum(Metric):
             ax.set_xticks([0])
             ax.set_xticklabels(["Running Sum"])
             ax.set_ylabel("Value")
-            ax.set_title(self.name if self.name else f"Running Sum (window={self.window})")
-            ax.text(0, val.item() + 0.02, f"{val.item():.3f}", ha="center", va="bottom")
+            ax.set_title(
+                self.name
+                if self.name
+                else f"Running Sum (window={self.window})"
+            )
+            ax.text(
+                0,
+                val.item() + 0.02,
+                f"{val.item():.3f}",
+                ha="center",
+                va="bottom",
+            )
         else:
-            values = [v.item() if isinstance(v, paddle.Tensor) else v for v in val]
-            ax.plot(values, marker="o", linestyle="-", linewidth=2, markersize=6)
+            values = [
+                v.item() if isinstance(v, paddle.Tensor) else v for v in val
+            ]
+            ax.plot(
+                values, marker="o", linestyle="-", linewidth=2, markersize=6
+            )
             ax.set_xlabel("Step")
             ax.set_ylabel("Running Sum")
             ax.grid(True)
-            ax.set_title(self.name if self.name else f"Running Sum Over Time (window={self.window})")
+            ax.set_title(
+                self.name
+                if self.name
+                else f"Running Sum Over Time (window={self.window})"
+            )
         return fig, ax

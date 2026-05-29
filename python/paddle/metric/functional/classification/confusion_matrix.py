@@ -1,3 +1,17 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 from typing_extensions import Literal
@@ -34,7 +48,9 @@ def _confusion_matrix_reduce(
             f"Argument `normalize` needs to one of the following: {allowed_normalize}"
         )
     if normalize is not None and normalize != "none":
-        confmat = confmat.float() if not confmat.is_floating_point() else confmat
+        confmat = (
+            confmat.float() if not confmat.is_floating_point() else confmat
+        )
         if normalize == "true":
             confmat = confmat / confmat.sum(dim=-1, keepdim=True)
         elif normalize == "pred":
@@ -213,7 +229,9 @@ def binary_confusion_matrix(
 
     """
     if validate_args:
-        _binary_confusion_matrix_arg_validation(threshold, ignore_index, normalize)
+        _binary_confusion_matrix_arg_validation(
+            threshold, ignore_index, normalize
+        )
         _binary_confusion_matrix_tensor_validation(preds, target, ignore_index)
     preds, target = _binary_confusion_matrix_format(
         preds, target, threshold, ignore_index
@@ -333,7 +351,9 @@ def _multiclass_confusion_matrix_update(
     preds: paddle.Tensor, target: paddle.Tensor, num_classes: int
 ) -> paddle.Tensor:
     """Compute the bins to update the confusion matrix with."""
-    unique_mapping = target.to(paddle.long) * num_classes + preds.to(paddle.long)
+    unique_mapping = target.to(paddle.long) * num_classes + preds.to(
+        paddle.long
+    )
     bins = _bincount(unique_mapping, minlength=num_classes**2)
     return bins.reshape(num_classes, num_classes)
 
@@ -400,10 +420,7 @@ def multiclass_confusion_matrix(
     Example (pred is float tensor):
         >>> from paddle.metric.functional.classification import multiclass_confusion_matrix
         >>> target = tensor([2, 1, 0, 0])
-        >>> preds = tensor([[0.16, 0.26, 0.58],
-        ...                 [0.22, 0.61, 0.17],
-        ...                 [0.71, 0.09, 0.20],
-        ...                 [0.05, 0.82, 0.13]])
+        >>> preds = tensor([[0.16, 0.26, 0.58], [0.22, 0.61, 0.17], [0.71, 0.09, 0.20], [0.05, 0.82, 0.13]])
         >>> multiclass_confusion_matrix(preds, target, num_classes=3)
         tensor([[1, 1, 0],
                 [0, 1, 0],
@@ -417,7 +434,9 @@ def multiclass_confusion_matrix(
         _multiclass_confusion_matrix_tensor_validation(
             preds, target, num_classes, ignore_index
         )
-    preds, target = _multiclass_confusion_matrix_format(preds, target, ignore_index)
+    preds, target = _multiclass_confusion_matrix_format(
+        preds, target, ignore_index
+    )
     confmat = _multiclass_confusion_matrix_update(preds, target, num_classes)
     return _multiclass_confusion_matrix_compute(confmat, normalize)
 
@@ -514,8 +533,12 @@ def _multilabel_confusion_matrix_format(
         preds = normalize_logits_if_needed(preds, "sigmoid")
         if should_threshold:
             preds = preds > threshold
-    preds = paddle.moveaxis(x=preds, source=1, destination=-1).reshape(-1, num_labels)
-    target = paddle.moveaxis(x=target, source=1, destination=-1).reshape(-1, num_labels)
+    preds = paddle.moveaxis(x=preds, source=1, destination=-1).reshape(
+        -1, num_labels
+    )
+    target = paddle.moveaxis(x=target, source=1, destination=-1).reshape(
+        -1, num_labels
+    )
     if ignore_index is not None:
         preds = preds.clone()
         target = target.clone()
@@ -688,6 +711,12 @@ def confusion_matrix(
                 f"`num_labels` is expected to be `int` but `{type(num_labels)} was passed.`"
             )
         return multilabel_confusion_matrix(
-            preds, target, num_labels, threshold, normalize, ignore_index, validate_args
+            preds,
+            target,
+            num_labels,
+            threshold,
+            normalize,
+            ignore_index,
+            validate_args,
         )
     raise ValueError(f"Task {task} not supported.")

@@ -1,7 +1,22 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Paddle metric base classes: Metric, CompositionalMetric.
 
 Merged from the user's paddle-native implementation and paddle.metric upstream features.
 """
+
 from __future__ import annotations
 
 import functools
@@ -192,7 +207,9 @@ class Metric(ABC, nn.Layer):
         self._computed = None
         self._forward_cache = None
         self._is_synced = False
-        self._cache: dict[str, list[paddle.Tensor] | paddle.Tensor] | None = None
+        self._cache: dict[str, list[paddle.Tensor] | paddle.Tensor] | None = (
+            None
+        )
         self._to_sync = self._sync_on_compute
         self._should_unsync = True
         self._enable_grad = False
@@ -333,9 +350,13 @@ class Metric(ABC, nn.Layer):
             or self.full_state_update is None
             or self._dist_sync_on_step
         ):
-            self._forward_cache = self._forward_full_state_update(*args, **kwargs)
+            self._forward_cache = self._forward_full_state_update(
+                *args, **kwargs
+            )
         else:
-            self._forward_cache = self._forward_reduce_state_update(*args, **kwargs)
+            self._forward_cache = self._forward_reduce_state_update(
+                *args, **kwargs
+            )
         return self._forward_cache
 
     def _forward_full_state_update(self, *args: Any, **kwargs: Any) -> Any:
@@ -458,7 +479,9 @@ class Metric(ABC, nn.Layer):
     ) -> None:
         if self._is_synced and should_sync:
             raise RuntimeError("The Metric has already been synced.")
-        dist_available_fn = distributed_available or self._distributed_available_fn
+        dist_available_fn = (
+            distributed_available or self._distributed_available_fn
+        )
         if not should_sync or not dist_available_fn():
             return
         sync_fn = dist_sync_fn or self._dist_sync_fn or _gather_all_tensors
@@ -487,7 +510,9 @@ class Metric(ABC, nn.Layer):
                         all_elements.append(elem)
                 reduce_fn = self._reductions[name]
                 if reduce_fn is not None:
-                    if all_elements and isinstance(all_elements[0], paddle.Tensor):
+                    if all_elements and isinstance(
+                        all_elements[0], paddle.Tensor
+                    ):
                         reduced = reduce_fn(paddle.stack(all_elements))
                     else:
                         reduced = all_elements
@@ -502,7 +527,9 @@ class Metric(ABC, nn.Layer):
         if not self._is_synced:
             raise RuntimeError("The Metric has already been un-synced.")
         if self._cache is None:
-            raise RuntimeError("The internal cache should exist to unsync the Metric.")
+            raise RuntimeError(
+                "The internal cache should exist to unsync the Metric."
+            )
         for attr, val in self._cache.items():
             setattr(self, attr, val)
         self._is_synced = False
@@ -563,7 +590,10 @@ class Metric(ABC, nn.Layer):
         for name in self._defaults:
             key = name if use_structured_name else name
             if key in state_dict:
-                if isinstance(state_dict[key], paddle.Tensor) and name in self._buffers:
+                if (
+                    isinstance(state_dict[key], paddle.Tensor)
+                    and name in self._buffers
+                ):
                     getattr(self, name).set_value(state_dict[key])
                 else:
                     setattr(self, name, state_dict[key])
@@ -645,8 +675,12 @@ class Metric(ABC, nn.Layer):
 
     def __setattr__(self, name: str, value: Any) -> None:
         _protected = {
-            "higher_is_better", "is_differentiable", "full_state_update",
-            "plot_lower_bound", "plot_upper_bound", "plot_legend_name",
+            "higher_is_better",
+            "is_differentiable",
+            "full_state_update",
+            "plot_lower_bound",
+            "plot_upper_bound",
+            "plot_legend_name",
         }
         if name in _protected:
             for cls in type(self).__mro__:
@@ -675,7 +709,9 @@ class Metric(ABC, nn.Layer):
         out._dtype_convert = False
         return out
 
-    def _apply(self, fn: Callable, exclude_state: Sequence[str] = "") -> nn.Layer:
+    def _apply(
+        self, fn: Callable, exclude_state: Sequence[str] = ""
+    ) -> nn.Layer:
         """Overwrite _apply to also move metric states to the correct device."""
         this = super()._apply(fn)
         fs = str(fn)
@@ -704,9 +740,13 @@ class Metric(ABC, nn.Layer):
             elif isinstance(current_val, Sequence):
                 setattr(this, key, [fn(cur_v) for cur_v in current_val])
         if this._computed is not None:
-            this._computed = _apply_to_collection(this._computed, paddle.Tensor, fn)
+            this._computed = _apply_to_collection(
+                this._computed, paddle.Tensor, fn
+            )
         if this._forward_cache is not None:
-            this._forward_cache = _apply_to_collection(this._forward_cache, paddle.Tensor, fn)
+            this._forward_cache = _apply_to_collection(
+                this._forward_cache, paddle.Tensor, fn
+            )
         return this
 
     # ============ Method Wrappers ============
@@ -742,7 +782,9 @@ class Metric(ABC, nn.Layer):
                 distributed_available=self._distributed_available_fn,
             ):
                 value = _squeeze_if_scalar(compute(*args, **kwargs))
-                value = _apply_to_collection(value, paddle.Tensor, lambda x: x.clone())
+                value = _apply_to_collection(
+                    value, paddle.Tensor, lambda x: x.clone()
+                )
             if self._compute_with_cache:
                 self._computed = value
             return value
@@ -757,13 +799,18 @@ class Metric(ABC, nn.Layer):
                     self,
                     key,
                     [
-                        cur_v.to("cpu") if isinstance(cur_v, paddle.Tensor) else cur_v
+                        cur_v.to("cpu")
+                        if isinstance(cur_v, paddle.Tensor)
+                        else cur_v
                         for cur_v in current_val
                     ],
                 )
 
     def _filter_kwargs(self, **kwargs: Any) -> dict[str, Any]:
-        _params = (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
+        _params = (
+            inspect.Parameter.VAR_POSITIONAL,
+            inspect.Parameter.VAR_KEYWORD,
+        )
         _sign_params = self._update_signature.parameters
         filtered_kwargs = {
             k: v
@@ -771,7 +818,8 @@ class Metric(ABC, nn.Layer):
             if k in _sign_params and _sign_params[k].kind not in _params
         }
         exists_var_keyword = any(
-            v.kind == inspect.Parameter.VAR_KEYWORD for v in _sign_params.values()
+            v.kind == inspect.Parameter.VAR_KEYWORD
+            for v in _sign_params.values()
         )
         if not filtered_kwargs and not exists_var_keyword:
             return {}
@@ -783,7 +831,10 @@ class Metric(ABC, nn.Layer):
 
     def plot(
         self,
-        val: paddle.Tensor | Sequence[paddle.Tensor] | dict[str, paddle.Tensor] | None = None,
+        val: paddle.Tensor
+        | Sequence[paddle.Tensor]
+        | dict[str, paddle.Tensor]
+        | None = None,
         ax: Any | None = None,
     ) -> Any:
         """Plot the metric value. Override in subclasses for custom plotting."""
@@ -791,7 +842,11 @@ class Metric(ABC, nn.Layer):
 
     def _plot(
         self,
-        val: paddle.Tensor | Sequence[paddle.Tensor] | dict[str, paddle.Tensor] | Sequence[dict[str, paddle.Tensor]] | None = None,
+        val: paddle.Tensor
+        | Sequence[paddle.Tensor]
+        | dict[str, paddle.Tensor]
+        | Sequence[dict[str, paddle.Tensor]]
+        | None = None,
         ax: Any | None = None,
     ) -> Any:
         from paddle.metric.utils.plot import plot_single_or_multi_val
@@ -810,89 +865,145 @@ class Metric(ABC, nn.Layer):
 
     # ============ Composition Operators ============
 
-    def __add__(self, other: Metric | builtins.float | paddle.Tensor) -> CompositionalMetric:
+    def __add__(
+        self, other: Metric | builtins.float | paddle.Tensor
+    ) -> CompositionalMetric:
         return CompositionalMetric(paddle.add, self, other)
 
-    def __and__(self, other: Metric | builtins.float | paddle.Tensor) -> CompositionalMetric:
+    def __and__(
+        self, other: Metric | builtins.float | paddle.Tensor
+    ) -> CompositionalMetric:
         return CompositionalMetric(paddle.bitwise_and, self, other)
 
-    def __eq__(self, other: Metric | builtins.float | paddle.Tensor) -> CompositionalMetric:
+    def __eq__(
+        self, other: Metric | builtins.float | paddle.Tensor
+    ) -> CompositionalMetric:
         return CompositionalMetric(paddle.equal, self, other)
 
-    def __floordiv__(self, other: Metric | builtins.float | paddle.Tensor) -> CompositionalMetric:
+    def __floordiv__(
+        self, other: Metric | builtins.float | paddle.Tensor
+    ) -> CompositionalMetric:
         return CompositionalMetric(paddle.floor_divide, self, other)
 
-    def __ge__(self, other: Metric | builtins.float | paddle.Tensor) -> CompositionalMetric:
+    def __ge__(
+        self, other: Metric | builtins.float | paddle.Tensor
+    ) -> CompositionalMetric:
         return CompositionalMetric(paddle.greater_equal, self, other)
 
-    def __gt__(self, other: Metric | builtins.float | paddle.Tensor) -> CompositionalMetric:
+    def __gt__(
+        self, other: Metric | builtins.float | paddle.Tensor
+    ) -> CompositionalMetric:
         return CompositionalMetric(paddle.greater_than, self, other)
 
-    def __le__(self, other: Metric | builtins.float | paddle.Tensor) -> CompositionalMetric:
+    def __le__(
+        self, other: Metric | builtins.float | paddle.Tensor
+    ) -> CompositionalMetric:
         return CompositionalMetric(paddle.less_equal, self, other)
 
-    def __lt__(self, other: Metric | builtins.float | paddle.Tensor) -> CompositionalMetric:
+    def __lt__(
+        self, other: Metric | builtins.float | paddle.Tensor
+    ) -> CompositionalMetric:
         return CompositionalMetric(paddle.less_than, self, other)
 
-    def __matmul__(self, other: Metric | builtins.float | paddle.Tensor) -> CompositionalMetric:
+    def __matmul__(
+        self, other: Metric | builtins.float | paddle.Tensor
+    ) -> CompositionalMetric:
         return CompositionalMetric(paddle.matmul, self, other)
 
-    def __mod__(self, other: Metric | builtins.float | paddle.Tensor) -> CompositionalMetric:
+    def __mod__(
+        self, other: Metric | builtins.float | paddle.Tensor
+    ) -> CompositionalMetric:
         return CompositionalMetric(paddle.mod, self, other)
 
-    def __mul__(self, other: Metric | builtins.float | paddle.Tensor) -> CompositionalMetric:
+    def __mul__(
+        self, other: Metric | builtins.float | paddle.Tensor
+    ) -> CompositionalMetric:
         return CompositionalMetric(paddle.multiply, self, other)
 
-    def __ne__(self, other: Metric | builtins.float | paddle.Tensor) -> CompositionalMetric:
+    def __ne__(
+        self, other: Metric | builtins.float | paddle.Tensor
+    ) -> CompositionalMetric:
         return CompositionalMetric(paddle.not_equal, self, other)
 
-    def __or__(self, other: Metric | builtins.float | paddle.Tensor) -> CompositionalMetric:
+    def __or__(
+        self, other: Metric | builtins.float | paddle.Tensor
+    ) -> CompositionalMetric:
         return CompositionalMetric(paddle.bitwise_or, self, other)
 
-    def __pow__(self, other: Metric | builtins.float | paddle.Tensor) -> CompositionalMetric:
+    def __pow__(
+        self, other: Metric | builtins.float | paddle.Tensor
+    ) -> CompositionalMetric:
         return CompositionalMetric(paddle.pow, self, other)
 
-    def __sub__(self, other: Metric | builtins.float | paddle.Tensor) -> CompositionalMetric:
+    def __sub__(
+        self, other: Metric | builtins.float | paddle.Tensor
+    ) -> CompositionalMetric:
         return CompositionalMetric(paddle.subtract, self, other)
 
-    def __truediv__(self, other: Metric | builtins.float | paddle.Tensor) -> CompositionalMetric:
+    def __truediv__(
+        self, other: Metric | builtins.float | paddle.Tensor
+    ) -> CompositionalMetric:
         return CompositionalMetric(paddle.divide, self, other)
 
-    def __xor__(self, other: Metric | builtins.float | paddle.Tensor) -> CompositionalMetric:
+    def __xor__(
+        self, other: Metric | builtins.float | paddle.Tensor
+    ) -> CompositionalMetric:
         return CompositionalMetric(paddle.bitwise_xor, self, other)
 
     # Reverse operators
-    def __radd__(self, other: Metric | builtins.float | paddle.Tensor) -> CompositionalMetric:
+    def __radd__(
+        self, other: Metric | builtins.float | paddle.Tensor
+    ) -> CompositionalMetric:
         return CompositionalMetric(paddle.add, other, self)
 
-    def __rand__(self, other: Metric | builtins.float | paddle.Tensor) -> CompositionalMetric:
+    def __rand__(
+        self, other: Metric | builtins.float | paddle.Tensor
+    ) -> CompositionalMetric:
         return CompositionalMetric(paddle.bitwise_and, other, self)
 
-    def __rfloordiv__(self, other: Metric | builtins.float | paddle.Tensor) -> CompositionalMetric:
+    def __rfloordiv__(
+        self, other: Metric | builtins.float | paddle.Tensor
+    ) -> CompositionalMetric:
         return CompositionalMetric(paddle.floor_divide, other, self)
 
-    def __rmatmul__(self, other: Metric | builtins.float | paddle.Tensor) -> CompositionalMetric:
+    def __rmatmul__(
+        self, other: Metric | builtins.float | paddle.Tensor
+    ) -> CompositionalMetric:
         return CompositionalMetric(paddle.matmul, other, self)
 
-    def __rmod__(self, other: Metric | builtins.float | paddle.Tensor) -> CompositionalMetric:
+    def __rmod__(
+        self, other: Metric | builtins.float | paddle.Tensor
+    ) -> CompositionalMetric:
         return CompositionalMetric(paddle.mod, other, self)
 
-    def __rmul__(self, other: Metric | builtins.float | paddle.Tensor) -> CompositionalMetric:
+    def __rmul__(
+        self, other: Metric | builtins.float | paddle.Tensor
+    ) -> CompositionalMetric:
         return CompositionalMetric(paddle.multiply, other, self)
 
-    def __ror__(self, other: Metric | builtins.float | paddle.Tensor) -> CompositionalMetric:
+    def __ror__(
+        self, other: Metric | builtins.float | paddle.Tensor
+    ) -> CompositionalMetric:
         return CompositionalMetric(paddle.bitwise_or, other, self)
 
-    def __rpow__(self, other: Metric | builtins.float | paddle.Tensor) -> CompositionalMetric:
+    def __rpow__(
+        self, other: Metric | builtins.float | paddle.Tensor
+    ) -> CompositionalMetric:
         return CompositionalMetric(paddle.pow, other, self)
 
-    def __rsub__(self, other: Metric | builtins.float | paddle.Tensor) -> CompositionalMetric:
+    def __rsub__(
+        self, other: Metric | builtins.float | paddle.Tensor
+    ) -> CompositionalMetric:
         return CompositionalMetric(paddle.subtract, other, self)
 
-    def __rtruediv__(self, other: Metric | builtins.float | paddle.Tensor) -> CompositionalMetric:
+    def __rtruediv__(
+        self, other: Metric | builtins.float | paddle.Tensor
+    ) -> CompositionalMetric:
         return CompositionalMetric(paddle.divide, other, self)
 
-    def __rxor__(self, other: Metric | builtins.float | paddle.Tensor) -> CompositionalMetric:
+    def __rxor__(
+        self, other: Metric | builtins.float | paddle.Tensor
+    ) -> CompositionalMetric:
         return CompositionalMetric(paddle.bitwise_xor, other, self)
 
     # Unary operators
@@ -952,13 +1063,25 @@ class CompositionalMetric(Metric):
 
     def update(self, *args: Any, **kwargs: Any) -> None:
         if isinstance(self.metric_a, Metric):
-            self.metric_a.update(*args, **self.metric_a._filter_kwargs(**kwargs))
+            self.metric_a.update(
+                *args, **self.metric_a._filter_kwargs(**kwargs)
+            )
         if isinstance(self.metric_b, Metric):
-            self.metric_b.update(*args, **self.metric_b._filter_kwargs(**kwargs))
+            self.metric_b.update(
+                *args, **self.metric_b._filter_kwargs(**kwargs)
+            )
 
     def compute(self) -> Any:
-        val_a = self.metric_a.compute() if isinstance(self.metric_a, Metric) else self.metric_a
-        val_b = self.metric_b.compute() if isinstance(self.metric_b, Metric) else self.metric_b
+        val_a = (
+            self.metric_a.compute()
+            if isinstance(self.metric_a, Metric)
+            else self.metric_a
+        )
+        val_b = (
+            self.metric_b.compute()
+            if isinstance(self.metric_b, Metric)
+            else self.metric_b
+        )
         # Ensure operands are tensors (Paddle ops don't accept raw floats)
         if val_a is not None and not isinstance(val_a, paddle.Tensor):
             val_a = paddle.to_tensor(val_a)

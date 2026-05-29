@@ -1,3 +1,17 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 from typing_extensions import Literal
@@ -32,7 +46,9 @@ def _cohen_kappa_reduce(
         w_mat = w_mat.reshape(num_classes, num_classes)
     elif weights in ("linear", "quadratic"):
         w_mat = paddle.zeros_like(confmat)
-        w_mat += paddle.arange(num_classes, dtype=w_mat.dtype, device=w_mat.place)
+        w_mat += paddle.arange(
+            num_classes, dtype=w_mat.dtype, device=w_mat.place
+        )
         w_mat = (
             paddle.abs(w_mat - w_mat.T)
             if weights == "linear"
@@ -58,7 +74,9 @@ def _binary_cohen_kappa_arg_validation(
     - ``weights`` has to be "linear" | "quadratic" | "none" | None
 
     """
-    _binary_confusion_matrix_arg_validation(threshold, ignore_index, normalize=None)
+    _binary_confusion_matrix_arg_validation(
+        threshold, ignore_index, normalize=None
+    )
     allowed_weights = "linear", "quadratic", "none", None
     if weights not in allowed_weights:
         raise ValueError(
@@ -211,20 +229,21 @@ def multiclass_cohen_kappa(
     Example (pred is float tensor):
         >>> from paddle.metric.functional.classification import multiclass_cohen_kappa
         >>> target = tensor([2, 1, 0, 0])
-        >>> preds = tensor([[0.16, 0.26, 0.58],
-        ...                 [0.22, 0.61, 0.17],
-        ...                 [0.71, 0.09, 0.20],
-        ...                 [0.05, 0.82, 0.13]])
+        >>> preds = tensor([[0.16, 0.26, 0.58], [0.22, 0.61, 0.17], [0.71, 0.09, 0.20], [0.05, 0.82, 0.13]])
         >>> multiclass_cohen_kappa(preds, target, num_classes=3)
         tensor(0.6364)
 
     """
     if validate_args:
-        _multiclass_cohen_kappa_arg_validation(num_classes, ignore_index, weights)
+        _multiclass_cohen_kappa_arg_validation(
+            num_classes, ignore_index, weights
+        )
         _multiclass_confusion_matrix_tensor_validation(
             preds, target, num_classes, ignore_index
         )
-    preds, target = _multiclass_confusion_matrix_format(preds, target, ignore_index)
+    preds, target = _multiclass_confusion_matrix_format(
+        preds, target, ignore_index
+    )
     confmat = _multiclass_confusion_matrix_update(preds, target, num_classes)
     return _cohen_kappa_reduce(confmat, weights)
 

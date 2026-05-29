@@ -52,8 +52,10 @@ def _compute_auc_ref(pred, labels, num_thresholds=200, slide_steps=1):
         for i in range(num_thresholds):
             cum_neg_prev = cum_neg
             cum_neg += stat_neg[i]
-            auc += (cum_neg - cum_neg_prev) * (stat_pos[i] + stat_pos[i + 1]) / 2.0
-        auc /= (total_pos * total_neg)
+            auc += (
+                (cum_neg - cum_neg_prev) * (stat_pos[i] + stat_pos[i + 1]) / 2.0
+            )
+        auc /= total_pos * total_neg
 
     return auc, stat_pos, stat_neg
 
@@ -88,7 +90,9 @@ class TestAucSinglePredOp(OpTest):
 
         for i in range(128):
             pred[i][1] = pred[i][0]
-        auc_val, pos, neg = _compute_auc_ref(pred, labels, num_thresholds, slide_steps)
+        auc_val, pos, neg = _compute_auc_ref(
+            pred, labels, num_thresholds, slide_steps
+        )
 
         pos_out = pos.tolist() * 2
         pos_out.append(1)
@@ -130,7 +134,9 @@ class TestAucGlobalSinglePredOp(OpTest):
 
         for i in range(128):
             pred[i][1] = pred[i][0]
-        auc_val, pos, neg = _compute_auc_ref(pred, labels, num_thresholds, slide_steps)
+        auc_val, pos, neg = _compute_auc_ref(
+            pred, labels, num_thresholds, slide_steps
+        )
 
         self.outputs = {
             'AUC': np.array(auc_val).astype("float64"),

@@ -1,3 +1,17 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 from typing_extensions import Literal
@@ -11,7 +25,9 @@ from paddle.metric.functional.classification.roc import (
 from paddle.metric.utils.enums import ClassificationTask
 
 
-def _binary_eer_compute(fpr: paddle.Tensor, tpr: paddle.Tensor) -> paddle.Tensor:
+def _binary_eer_compute(
+    fpr: paddle.Tensor, tpr: paddle.Tensor
+) -> paddle.Tensor:
     """Compute Equal Error Rate (EER) for binary classification task."""
     diff = fpr - (1 - tpr)
     idx = paddle.argmin(paddle.abs(diff))
@@ -79,7 +95,9 @@ def binary_eer(
         tensor(0.7500)
 
     """
-    fpr, tpr, _ = binary_roc(preds, target, thresholds, ignore_index, validate_args)
+    fpr, tpr, _ = binary_roc(
+        preds, target, thresholds, ignore_index, validate_args
+    )
     return _eer_compute(fpr, tpr)
 
 
@@ -134,10 +152,14 @@ def multiclass_eer(
 
     Example:
         >>> from paddle.metric.functional.classification import multiclass_eer
-        >>> preds = paddle.to_tensor([[0.75, 0.05, 0.05, 0.05, 0.05],
-        ...                       [0.05, 0.75, 0.05, 0.05, 0.05],
-        ...                       [0.05, 0.05, 0.75, 0.05, 0.05],
-        ...                       [0.05, 0.05, 0.05, 0.75, 0.05]])
+        >>> preds = paddle.to_tensor(
+        ...     [
+        ...         [0.75, 0.05, 0.05, 0.05, 0.05],
+        ...         [0.05, 0.75, 0.05, 0.05, 0.05],
+        ...         [0.05, 0.05, 0.75, 0.05, 0.05],
+        ...         [0.05, 0.05, 0.05, 0.75, 0.05],
+        ...     ]
+        ... )
         >>> target = paddle.to_tensor([0, 1, 3, 2])
         >>> multiclass_eer(preds, target, num_classes=5, average="macro", thresholds=None)
         tensor(0.4667)
@@ -150,7 +172,13 @@ def multiclass_eer(
 
     """
     fpr, tpr, _ = multiclass_roc(
-        preds, target, num_classes, thresholds, average, ignore_index, validate_args
+        preds,
+        target,
+        num_classes,
+        thresholds,
+        average,
+        ignore_index,
+        validate_args,
     )
     return _eer_compute(fpr, tpr)
 
@@ -196,14 +224,8 @@ def multilabel_eer(
 
     Example:
         >>> from paddle.metric.functional.classification import multilabel_eer
-        >>> preds = paddle.to_tensor([[0.75, 0.05, 0.35],
-        ...                       [0.45, 0.75, 0.05],
-        ...                       [0.05, 0.55, 0.75],
-        ...                       [0.05, 0.65, 0.05]])
-        >>> target = paddle.to_tensor([[1, 0, 1],
-        ...                        [0, 0, 0],
-        ...                        [0, 1, 1],
-        ...                        [1, 1, 1]])
+        >>> preds = paddle.to_tensor([[0.75, 0.05, 0.35], [0.45, 0.75, 0.05], [0.05, 0.55, 0.75], [0.05, 0.65, 0.05]])
+        >>> target = paddle.to_tensor([[1, 0, 1], [0, 0, 0], [0, 1, 1], [1, 1, 1]])
         >>> multilabel_eer(preds, target, num_labels=3, thresholds=None)
         tensor([0.5000, 0.5000, 0.1667])
         >>> multilabel_eer(preds, target, num_labels=3, thresholds=5)
@@ -254,26 +276,37 @@ def eer(
         >>> eer(preds, target, task='binary')
         tensor(0.5833)
 
-        >>> preds = paddle.to_tensor([[0.90, 0.05, 0.05],
-        ...                       [0.05, 0.90, 0.05],
-        ...                       [0.05, 0.05, 0.90],
-        ...                       [0.85, 0.05, 0.10],
-        ...                       [0.10, 0.10, 0.80]])
+        >>> preds = paddle.to_tensor(
+        ...     [[0.90, 0.05, 0.05], [0.05, 0.90, 0.05], [0.05, 0.05, 0.90], [0.85, 0.05, 0.10], [0.10, 0.10, 0.80]]
+        ... )
         >>> target = paddle.to_tensor([0, 1, 1, 2, 2])
-        >>> eer(preds, target, task='multiclass', num_classes=3, )
+        >>> eer(
+        ...     preds,
+        ...     target,
+        ...     task='multiclass',
+        ...     num_classes=3,
+        ... )
         tensor([0.0000, 0.4167, 0.4167])
 
     """
     task = ClassificationTask.from_str(task)
     if task == ClassificationTask.BINARY:
-        return binary_eer(preds, target, thresholds, ignore_index, validate_args)
+        return binary_eer(
+            preds, target, thresholds, ignore_index, validate_args
+        )
     if task == ClassificationTask.MULTICLASS:
         if not isinstance(num_classes, int):
             raise ValueError(
                 f"`num_classes` is expected to be `int` but `{type(num_classes)} was passed.`"
             )
         return multiclass_eer(
-            preds, target, num_classes, thresholds, average, ignore_index, validate_args
+            preds,
+            target,
+            num_classes,
+            thresholds,
+            average,
+            ignore_index,
+            validate_args,
         )
     if task == ClassificationTask.MULTILABEL:
         if not isinstance(num_labels, int):

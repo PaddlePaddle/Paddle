@@ -1,3 +1,17 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 from typing_extensions import Literal
@@ -33,12 +47,18 @@ def _reduce_average_precision(
     weights: paddle.Tensor | None = None,
 ) -> paddle.Tensor:
     """Reduce multiple average precision score into one number."""
-    if isinstance(precision, paddle.Tensor) and isinstance(recall, paddle.Tensor):
+    if isinstance(precision, paddle.Tensor) and isinstance(
+        recall, paddle.Tensor
+    ):
         precision = paddle.where(
             paddle.isnan(precision), paddle.zeros_like(precision), precision
         )
-        recall = paddle.where(paddle.isnan(recall), paddle.zeros_like(recall), recall)
-        res = -paddle.sum((recall[:, 1:] - recall[:, :-1]) * precision[:, :-1], 1)
+        recall = paddle.where(
+            paddle.isnan(recall), paddle.zeros_like(recall), recall
+        )
+        res = -paddle.sum(
+            (recall[:, 1:] - recall[:, :-1]) * precision[:, :-1], 1
+        )
     else:
         res = paddle.stack(
             [
@@ -68,11 +88,15 @@ def _binary_average_precision_compute(
     state: paddle.Tensor | tuple[paddle.Tensor, paddle.Tensor],
     thresholds: paddle.Tensor | None,
 ) -> paddle.Tensor:
-    precision, recall, _ = _binary_precision_recall_curve_compute(state, thresholds)
+    precision, recall, _ = _binary_precision_recall_curve_compute(
+        state, thresholds
+    )
     precision = paddle.where(
         paddle.isnan(precision), paddle.zeros_like(precision), precision
     )
-    recall = paddle.where(paddle.isnan(recall), paddle.zeros_like(recall), recall)
+    recall = paddle.where(
+        paddle.isnan(recall), paddle.zeros_like(recall), recall
+    )
     return -paddle.sum((recall[1:] - recall[:-1]) * precision[:-1])
 
 
@@ -144,7 +168,9 @@ def binary_average_precision(
     """
     if validate_args:
         _binary_precision_recall_curve_arg_validation(thresholds, ignore_index)
-        _binary_precision_recall_curve_tensor_validation(preds, target, ignore_index)
+        _binary_precision_recall_curve_tensor_validation(
+            preds, target, ignore_index
+        )
     preds, target, thresholds = _binary_precision_recall_curve_format(
         preds, target, thresholds, ignore_index
     )
@@ -255,10 +281,14 @@ def multiclass_average_precision(
 
     Example:
         >>> from paddle.metric.functional.classification import multiclass_average_precision
-        >>> preds = paddle.to_tensor([[0.75, 0.05, 0.05, 0.05, 0.05],
-        ...                       [0.05, 0.75, 0.05, 0.05, 0.05],
-        ...                       [0.05, 0.05, 0.75, 0.05, 0.05],
-        ...                       [0.05, 0.05, 0.05, 0.75, 0.05]])
+        >>> preds = paddle.to_tensor(
+        ...     [
+        ...         [0.75, 0.05, 0.05, 0.05, 0.05],
+        ...         [0.05, 0.75, 0.05, 0.05, 0.05],
+        ...         [0.05, 0.05, 0.75, 0.05, 0.05],
+        ...         [0.05, 0.05, 0.05, 0.75, 0.05],
+        ...     ]
+        ... )
         >>> target = paddle.to_tensor([0, 1, 3, 2])
         >>> multiclass_average_precision(preds, target, num_classes=5, average="macro", thresholds=None)
         tensor(0.6250)
@@ -404,14 +434,8 @@ def multilabel_average_precision(
 
     Example:
         >>> from paddle.metric.functional.classification import multilabel_average_precision
-        >>> preds = paddle.to_tensor([[0.75, 0.05, 0.35],
-        ...                       [0.45, 0.75, 0.05],
-        ...                       [0.05, 0.55, 0.75],
-        ...                       [0.05, 0.65, 0.05]])
-        >>> target = paddle.to_tensor([[1, 0, 1],
-        ...                        [0, 0, 0],
-        ...                        [0, 1, 1],
-        ...                        [1, 1, 1]])
+        >>> preds = paddle.to_tensor([[0.75, 0.05, 0.35], [0.45, 0.75, 0.05], [0.05, 0.55, 0.75], [0.05, 0.65, 0.05]])
+        >>> target = paddle.to_tensor([[1, 0, 1], [0, 0, 0], [0, 1, 1], [1, 1, 1]])
         >>> multilabel_average_precision(preds, target, num_labels=3, average="macro", thresholds=None)
         tensor(0.7500)
         >>> multilabel_average_precision(preds, target, num_labels=3, average=None, thresholds=None)
@@ -476,10 +500,14 @@ def average_precision(
         >>> average_precision(pred, target, task="binary")
         tensor(1.)
 
-        >>> pred = paddle.to_tensor([[0.75, 0.05, 0.05, 0.05, 0.05],
-        ...                      [0.05, 0.75, 0.05, 0.05, 0.05],
-        ...                      [0.05, 0.05, 0.75, 0.05, 0.05],
-        ...                      [0.05, 0.05, 0.05, 0.75, 0.05]])
+        >>> pred = paddle.to_tensor(
+        ...     [
+        ...         [0.75, 0.05, 0.05, 0.05, 0.05],
+        ...         [0.05, 0.75, 0.05, 0.05, 0.05],
+        ...         [0.05, 0.05, 0.75, 0.05, 0.05],
+        ...         [0.05, 0.05, 0.05, 0.75, 0.05],
+        ...     ]
+        ... )
         >>> target = paddle.to_tensor([0, 1, 3, 2])
         >>> average_precision(pred, target, task="multiclass", num_classes=5, average=None)
         tensor([1.0000, 1.0000, 0.2500, 0.2500,    nan])
@@ -496,7 +524,13 @@ def average_precision(
                 f"`num_classes` is expected to be `int` but `{type(num_classes)} was passed.`"
             )
         return multiclass_average_precision(
-            preds, target, num_classes, average, thresholds, ignore_index, validate_args
+            preds,
+            target,
+            num_classes,
+            average,
+            thresholds,
+            ignore_index,
+            validate_args,
         )
     if task == ClassificationTask.MULTILABEL:
         if not isinstance(num_labels, int):
@@ -504,6 +538,12 @@ def average_precision(
                 f"`num_labels` is expected to be `int` but `{type(num_labels)} was passed.`"
             )
         return multilabel_average_precision(
-            preds, target, num_labels, average, thresholds, ignore_index, validate_args
+            preds,
+            target,
+            num_labels,
+            average,
+            thresholds,
+            ignore_index,
+            validate_args,
         )
     return None

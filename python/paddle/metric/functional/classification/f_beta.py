@@ -1,3 +1,17 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -54,7 +68,9 @@ def _fbeta_reduce(
     fbeta_score = _safe_divide(
         (1 + beta2) * tp, (1 + beta2) * tp + beta2 * fn + fp, zero_division
     )
-    return _adjust_weights_safe_divide(fbeta_score, average, multilabel, tp, fp, fn)
+    return _adjust_weights_safe_divide(
+        fbeta_score, average, multilabel, tp, fp, fn
+    )
 
 
 def _binary_fbeta_score_arg_validation(
@@ -137,8 +153,7 @@ def binary_fbeta_score(
     Example (multidim tensors):
         >>> from paddle.metric.functional.classification import binary_fbeta_score
         >>> target = tensor([[[0, 1], [1, 0], [0, 1]], [[1, 1], [0, 0], [1, 0]]])
-        >>> preds = tensor([[[0.59, 0.91], [0.91, 0.99], [0.63, 0.04]],
-        ...                 [[0.38, 0.04], [0.86, 0.780], [0.45, 0.37]]])
+        >>> preds = tensor([[[0.59, 0.91], [0.91, 0.99], [0.63, 0.04]], [[0.38, 0.04], [0.86, 0.780], [0.45, 0.37]]])
         >>> binary_fbeta_score(preds, target, beta=2.0, multidim_average='samplewise')
         tensor([0.5882, 0.0000])
 
@@ -150,7 +165,9 @@ def binary_fbeta_score(
         _binary_stat_scores_tensor_validation(
             preds, target, multidim_average, ignore_index
         )
-    preds, target = _binary_stat_scores_format(preds, target, threshold, ignore_index)
+    preds, target = _binary_stat_scores_format(
+        preds, target, threshold, ignore_index
+    )
     tp, fp, tn, fn = _binary_stat_scores_update(preds, target, multidim_average)
     return _fbeta_reduce(
         tp,
@@ -178,7 +195,12 @@ def _multiclass_fbeta_score_arg_validation(
             f"Expected argument `beta` to be a float larger than 0, but got {beta}."
         )
     _multiclass_stat_scores_arg_validation(
-        num_classes, top_k, average, multidim_average, ignore_index, zero_division
+        num_classes,
+        top_k,
+        average,
+        multidim_average,
+        ignore_index,
+        zero_division,
     )
 
 
@@ -262,10 +284,7 @@ def multiclass_fbeta_score(
     Example (preds is float tensor):
         >>> from paddle.metric.functional.classification import multiclass_fbeta_score
         >>> target = tensor([2, 1, 0, 0])
-        >>> preds = tensor([[0.16, 0.26, 0.58],
-        ...                 [0.22, 0.61, 0.17],
-        ...                 [0.71, 0.09, 0.20],
-        ...                 [0.05, 0.82, 0.13]])
+        >>> preds = tensor([[0.16, 0.26, 0.58], [0.22, 0.61, 0.17], [0.71, 0.09, 0.20], [0.05, 0.82, 0.13]])
         >>> multiclass_fbeta_score(preds, target, beta=2.0, num_classes=3)
         tensor(0.7963)
         >>> multiclass_fbeta_score(preds, target, beta=2.0, num_classes=3, average=None)
@@ -297,7 +316,13 @@ def multiclass_fbeta_score(
         )
     preds, target = _multiclass_stat_scores_format(preds, target, top_k)
     tp, fp, tn, fn = _multiclass_stat_scores_update(
-        preds, target, num_classes, top_k, average, multidim_average, ignore_index
+        preds,
+        target,
+        num_classes,
+        top_k,
+        average,
+        multidim_average,
+        ignore_index,
     )
     return _fbeta_reduce(
         tp,
@@ -325,7 +350,12 @@ def _multilabel_fbeta_score_arg_validation(
             f"Expected argument `beta` to be a float larger than 0, but got {beta}."
         )
     _multilabel_stat_scores_arg_validation(
-        num_labels, threshold, average, multidim_average, ignore_index, zero_division
+        num_labels,
+        threshold,
+        average,
+        multidim_average,
+        ignore_index,
+        zero_division,
     )
 
 
@@ -417,8 +447,7 @@ def multilabel_fbeta_score(
     Example (multidim tensors):
         >>> from paddle.metric.functional.classification import multilabel_fbeta_score
         >>> target = tensor([[[0, 1], [1, 0], [0, 1]], [[1, 1], [0, 0], [1, 0]]])
-        >>> preds = tensor([[[0.59, 0.91], [0.91, 0.99], [0.63, 0.04]],
-        ...                 [[0.38, 0.04], [0.86, 0.780], [0.45, 0.37]]])
+        >>> preds = tensor([[[0.59, 0.91], [0.91, 0.99], [0.63, 0.04]], [[0.38, 0.04], [0.86, 0.780], [0.45, 0.37]]])
         >>> multilabel_fbeta_score(preds, target, num_labels=3, beta=2.0, multidim_average='samplewise')
         tensor([0.5556, 0.0000])
         >>> multilabel_fbeta_score(preds, target, num_labels=3, beta=2.0, multidim_average='samplewise', average=None)
@@ -442,7 +471,9 @@ def multilabel_fbeta_score(
     preds, target = _multilabel_stat_scores_format(
         preds, target, num_labels, threshold, ignore_index
     )
-    tp, fp, tn, fn = _multilabel_stat_scores_update(preds, target, multidim_average)
+    tp, fp, tn, fn = _multilabel_stat_scores_update(
+        preds, target, multidim_average
+    )
     return _fbeta_reduce(
         tp,
         fp,
@@ -517,8 +548,7 @@ def binary_f1_score(
     Example (multidim tensors):
         >>> from paddle.metric.functional.classification import binary_f1_score
         >>> target = tensor([[[0, 1], [1, 0], [0, 1]], [[1, 1], [0, 0], [1, 0]]])
-        >>> preds = tensor([[[0.59, 0.91], [0.91, 0.99], [0.63, 0.04]],
-        ...                 [[0.38, 0.04], [0.86, 0.780], [0.45, 0.37]]])
+        >>> preds = tensor([[[0.59, 0.91], [0.91, 0.99], [0.63, 0.04]], [[0.38, 0.04], [0.86, 0.780], [0.45, 0.37]]])
         >>> binary_f1_score(preds, target, multidim_average='samplewise')
         tensor([0.5000, 0.0000])
 
@@ -612,10 +642,7 @@ def multiclass_f1_score(
     Example (preds is float tensor):
         >>> from paddle.metric.functional.classification import multiclass_f1_score
         >>> target = tensor([2, 1, 0, 0])
-        >>> preds = tensor([[0.16, 0.26, 0.58],
-        ...                 [0.22, 0.61, 0.17],
-        ...                 [0.71, 0.09, 0.20],
-        ...                 [0.05, 0.82, 0.13]])
+        >>> preds = tensor([[0.16, 0.26, 0.58], [0.22, 0.61, 0.17], [0.71, 0.09, 0.20], [0.05, 0.82, 0.13]])
         >>> multiclass_f1_score(preds, target, num_classes=3)
         tensor(0.7778)
         >>> multiclass_f1_score(preds, target, num_classes=3, average=None)
@@ -731,8 +758,7 @@ def multilabel_f1_score(
     Example (multidim tensors):
         >>> from paddle.metric.functional.classification import multilabel_f1_score
         >>> target = tensor([[[0, 1], [1, 0], [0, 1]], [[1, 1], [0, 0], [1, 0]]])
-        >>> preds = tensor([[[0.59, 0.91], [0.91, 0.99], [0.63, 0.04]],
-        ...                 [[0.38, 0.04], [0.86, 0.780], [0.45, 0.37]]])
+        >>> preds = tensor([[[0.59, 0.91], [0.91, 0.99], [0.63, 0.04]], [[0.38, 0.04], [0.86, 0.780], [0.45, 0.37]]])
         >>> multilabel_f1_score(preds, target, num_labels=3, multidim_average='samplewise')
         tensor([0.4444, 0.0000])
         >>> multilabel_f1_score(preds, target, num_labels=3, multidim_average='samplewise', average=None)

@@ -1,3 +1,17 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -30,7 +44,13 @@ def _explained_variance_update(
     sum_squared_error = paddle.sum(diff * diff, axis=0)
     sum_target = paddle.sum(target, axis=0)
     sum_squared_target = paddle.sum(target * target, axis=0)
-    return (num_obs, sum_error, sum_squared_error, sum_target, sum_squared_target)
+    return (
+        num_obs,
+        sum_error,
+        sum_squared_error,
+        sum_target,
+        sum_squared_target,
+    )
 
 
 def _explained_variance_compute(
@@ -74,7 +94,9 @@ def _explained_variance_compute(
     nonzero_denominator = denominator != 0
     valid_score = nonzero_numerator & nonzero_denominator
     output_scores = paddle.ones_like(diff_avg)
-    output_scores[valid_score] = 1.0 - numerator[valid_score] / denominator[valid_score]
+    output_scores[valid_score] = (
+        1.0 - numerator[valid_score] / denominator[valid_score]
+    )
     output_scores[nonzero_numerator & ~nonzero_denominator] = 0.0
     if multioutput == "raw_values":
         return output_scores

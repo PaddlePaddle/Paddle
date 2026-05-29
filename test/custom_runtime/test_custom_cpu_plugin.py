@@ -94,7 +94,9 @@ class TestCustomCPUPlugin(unittest.TestCase):
                 self.output_weight = self.create_parameter(
                     [self.shape, self.size]
                 )
-                self.accuracy = paddle.metric.Accuracy(task="multiclass", num_classes=10)
+                self.accuracy = paddle.metric.Accuracy(
+                    task="multiclass", num_classes=10
+                )
 
             def forward(self, inputs, label=None):
                 x = paddle.reshape(inputs, shape=[-1, self.shape])
@@ -216,7 +218,9 @@ class TestCustomCPUPlugin(unittest.TestCase):
                 self.output_weight = self.create_parameter(
                     [self.shape, self.size]
                 )
-                self.accuracy = paddle.metric.Accuracy(task="multiclass", num_classes=10)
+                self.accuracy = paddle.metric.Accuracy(
+                    task="multiclass", num_classes=10
+                )
 
             def forward(self, inputs, label=None):
                 x = paddle.reshape(inputs, shape=[-1, self.shape])

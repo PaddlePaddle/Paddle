@@ -1,3 +1,17 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 from typing_extensions import Literal
@@ -14,7 +28,9 @@ from paddle.metric.utils.enums import ClassificationTaskNoMultilabel
 
 
 def _binning_bucketize(
-    confidences: paddle.Tensor, accuracies: paddle.Tensor, bin_boundaries: paddle.Tensor
+    confidences: paddle.Tensor,
+    accuracies: paddle.Tensor,
+    bin_boundaries: paddle.Tensor,
 ) -> tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor]:
     """Compute calibration bins using ``paddle.bucketize``. Use for ``pytorch >=1.6``.
 
@@ -38,7 +54,9 @@ def _binning_bucketize(
         len(bin_boundaries), device=confidences.device, dtype=confidences.dtype
     )
     indices = paddle.bucketize(confidences, bin_boundaries, right=True) - 1
-    count_bin.scatter_add_(dim=0, index=indices, src=paddle.ones_like(confidences))
+    count_bin.scatter_add_(
+        dim=0, index=indices, src=paddle.ones_like(confidences)
+    )
     conf_bin.scatter_add_(dim=0, index=indices, src=confidences)
     conf_bin = paddle.nan_to_num(x=conf_bin / count_bin)
     acc_bin.scatter_add_(dim=0, index=indices, src=accuracies)
@@ -73,7 +91,11 @@ def _ce_compute(
     """
     if isinstance(bin_boundaries, int):
         bin_boundaries = paddle.linspace(
-            0, 1, bin_boundaries + 1, dtype=confidences.dtype, device=confidences.device
+            0,
+            1,
+            bin_boundaries + 1,
+            dtype=confidences.dtype,
+            device=confidences.device,
         )
     if norm not in {"l1", "l2", "max"}:
         raise ValueError(
@@ -201,7 +223,11 @@ def binary_calibration_error(
         _binary_calibration_error_arg_validation(n_bins, norm, ignore_index)
         _binary_calibration_error_tensor_validation(preds, target, ignore_index)
     preds, target = _binary_confusion_matrix_format(
-        preds, target, threshold=0.0, ignore_index=ignore_index, convert_to_labels=False
+        preds,
+        target,
+        threshold=0.0,
+        ignore_index=ignore_index,
+        convert_to_labels=False,
     )
     confidences, accuracies = _binary_calibration_error_update(preds, target)
     return _ce_compute(confidences, accuracies, n_bins, norm)
@@ -307,10 +333,7 @@ def multiclass_calibration_error(
 
     Example:
         >>> from paddle.metric.functional.classification import multiclass_calibration_error
-        >>> preds = paddle.to_tensor([[0.25, 0.20, 0.55],
-        ...                       [0.55, 0.05, 0.40],
-        ...                       [0.10, 0.30, 0.60],
-        ...                       [0.90, 0.05, 0.05]])
+        >>> preds = paddle.to_tensor([[0.25, 0.20, 0.55], [0.55, 0.05, 0.40], [0.10, 0.30, 0.60], [0.90, 0.05, 0.05]])
         >>> target = paddle.to_tensor([0, 1, 2, 0])
         >>> multiclass_calibration_error(preds, target, num_classes=3, n_bins=3, norm='l1')
         tensor(0.2000)
@@ -330,7 +353,9 @@ def multiclass_calibration_error(
     preds, target = _multiclass_confusion_matrix_format(
         preds, target, ignore_index, convert_to_labels=False
     )
-    confidences, accuracies = _multiclass_calibration_error_update(preds, target)
+    confidences, accuracies = _multiclass_calibration_error_update(
+        preds, target
+    )
     return _ce_compute(confidences, accuracies, n_bins, norm)
 
 
@@ -382,7 +407,13 @@ def calibration_error(
                 f"`num_classes` is expected to be `int` but `{type(num_classes)} was passed.`"
             )
         return multiclass_calibration_error(
-            preds, target, num_classes, n_bins, norm, ignore_index, validate_args
+            preds,
+            target,
+            num_classes,
+            n_bins,
+            norm,
+            ignore_index,
+            validate_args,
         )
     raise ValueError(
         f"Expected argument `task` to either be `'binary'` or `'multiclass'` but got {task}"

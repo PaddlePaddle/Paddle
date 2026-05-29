@@ -1,3 +1,17 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 from typing_extensions import Literal
@@ -32,7 +46,9 @@ def _matthews_corrcoef_reduce(confmat: paddle.Tensor) -> paddle.Tensor:
         if tp + tn != 0 and fp + fn == 0:
             return paddle.tensor(1.0, dtype=confmat.dtype, device=confmat.place)
         if tp + tn == 0 and fp + fn != 0:
-            return paddle.tensor(-1.0, dtype=confmat.dtype, device=confmat.place)
+            return paddle.tensor(
+                -1.0, dtype=confmat.dtype, device=confmat.place
+            )
     confmat = confmat.float()
     tk = confmat.sum(dim=-1)
     pk = confmat.sum(dim=-2)
@@ -65,7 +81,12 @@ def _matthews_corrcoef_reduce(confmat: paddle.Tensor) -> paddle.Tensor:
             numerator = tp * tn
         else:
             return paddle.tensor(0, dtype=confmat.dtype, device=confmat.place)
-        denom = (tp + fp + eps) * (tp + fn + eps) * (tn + fp + eps) * (tn + fn + eps)
+        denom = (
+            (tp + fp + eps)
+            * (tp + fn + eps)
+            * (tn + fp + eps)
+            * (tn + fn + eps)
+        )
     elif denom == 0:
         return paddle.tensor(0, dtype=confmat.dtype, device=confmat.place)
     return numerator / paddle.sqrt(denom)
@@ -118,7 +139,9 @@ def binary_matthews_corrcoef(
 
     """
     if validate_args:
-        _binary_confusion_matrix_arg_validation(threshold, ignore_index, normalize=None)
+        _binary_confusion_matrix_arg_validation(
+            threshold, ignore_index, normalize=None
+        )
         _binary_confusion_matrix_tensor_validation(preds, target, ignore_index)
     preds, target = _binary_confusion_matrix_format(
         preds, target, threshold, ignore_index
@@ -168,10 +191,7 @@ def multiclass_matthews_corrcoef(
     Example (pred is float tensor):
         >>> from paddle.metric.functional.classification import multiclass_matthews_corrcoef
         >>> target = tensor([2, 1, 0, 0])
-        >>> preds = tensor([[0.16, 0.26, 0.58],
-        ...                 [0.22, 0.61, 0.17],
-        ...                 [0.71, 0.09, 0.20],
-        ...                 [0.05, 0.82, 0.13]])
+        >>> preds = tensor([[0.16, 0.26, 0.58], [0.22, 0.61, 0.17], [0.71, 0.09, 0.20], [0.05, 0.82, 0.13]])
         >>> multiclass_matthews_corrcoef(preds, target, num_classes=3)
         tensor(0.7000)
 
@@ -183,7 +203,9 @@ def multiclass_matthews_corrcoef(
         _multiclass_confusion_matrix_tensor_validation(
             preds, target, num_classes, ignore_index
         )
-    preds, target = _multiclass_confusion_matrix_format(preds, target, ignore_index)
+    preds, target = _multiclass_confusion_matrix_format(
+        preds, target, ignore_index
+    )
     confmat = _multiclass_confusion_matrix_update(preds, target, num_classes)
     return _matthews_corrcoef_reduce(confmat)
 

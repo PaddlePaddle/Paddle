@@ -1,3 +1,17 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -118,18 +132,21 @@ def binary_precision(
     Example (multidim tensors):
         >>> from paddle.metric.functional.classification import binary_precision
         >>> target = tensor([[[0, 1], [1, 0], [0, 1]], [[1, 1], [0, 0], [1, 0]]])
-        >>> preds = tensor([[[0.59, 0.91], [0.91, 0.99], [0.63, 0.04]],
-        ...                 [[0.38, 0.04], [0.86, 0.780], [0.45, 0.37]]])
+        >>> preds = tensor([[[0.59, 0.91], [0.91, 0.99], [0.63, 0.04]], [[0.38, 0.04], [0.86, 0.780], [0.45, 0.37]]])
         >>> binary_precision(preds, target, multidim_average='samplewise')
         tensor([0.4000, 0.0000])
 
     """
     if validate_args:
-        _binary_stat_scores_arg_validation(threshold, multidim_average, ignore_index)
+        _binary_stat_scores_arg_validation(
+            threshold, multidim_average, ignore_index
+        )
         _binary_stat_scores_tensor_validation(
             preds, target, multidim_average, ignore_index
         )
-    preds, target = _binary_stat_scores_format(preds, target, threshold, ignore_index)
+    preds, target = _binary_stat_scores_format(
+        preds, target, threshold, ignore_index
+    )
     tp, fp, tn, fn = _binary_stat_scores_update(preds, target, multidim_average)
     return _precision_recall_reduce(
         "precision",
@@ -222,10 +239,7 @@ def multiclass_precision(
     Example (preds is float tensor):
         >>> from paddle.metric.functional.classification import multiclass_precision
         >>> target = tensor([2, 1, 0, 0])
-        >>> preds = tensor([[0.16, 0.26, 0.58],
-        ...                 [0.22, 0.61, 0.17],
-        ...                 [0.71, 0.09, 0.20],
-        ...                 [0.05, 0.82, 0.13]])
+        >>> preds = tensor([[0.16, 0.26, 0.58], [0.22, 0.61, 0.17], [0.71, 0.09, 0.20], [0.05, 0.82, 0.13]])
         >>> multiclass_precision(preds, target, num_classes=3)
         tensor(0.8333)
         >>> multiclass_precision(preds, target, num_classes=3, average=None)
@@ -251,7 +265,13 @@ def multiclass_precision(
         )
     preds, target = _multiclass_stat_scores_format(preds, target, top_k)
     tp, fp, tn, fn = _multiclass_stat_scores_update(
-        preds, target, num_classes, top_k, average, multidim_average, ignore_index
+        preds,
+        target,
+        num_classes,
+        top_k,
+        average,
+        multidim_average,
+        ignore_index,
     )
     return _precision_recall_reduce(
         "precision",
@@ -352,8 +372,7 @@ def multilabel_precision(
     Example (multidim tensors):
         >>> from paddle.metric.functional.classification import multilabel_precision
         >>> target = tensor([[[0, 1], [1, 0], [0, 1]], [[1, 1], [0, 0], [1, 0]]])
-        >>> preds = tensor([[[0.59, 0.91], [0.91, 0.99], [0.63, 0.04]],
-        ...                 [[0.38, 0.04], [0.86, 0.780], [0.45, 0.37]]])
+        >>> preds = tensor([[[0.59, 0.91], [0.91, 0.99], [0.63, 0.04]], [[0.38, 0.04], [0.86, 0.780], [0.45, 0.37]]])
         >>> multilabel_precision(preds, target, num_labels=3, multidim_average='samplewise')
         tensor([0.3333, 0.0000])
         >>> multilabel_precision(preds, target, num_labels=3, multidim_average='samplewise', average=None)
@@ -371,7 +390,9 @@ def multilabel_precision(
     preds, target = _multilabel_stat_scores_format(
         preds, target, num_labels, threshold, ignore_index
     )
-    tp, fp, tn, fn = _multilabel_stat_scores_update(preds, target, multidim_average)
+    tp, fp, tn, fn = _multilabel_stat_scores_update(
+        preds, target, multidim_average
+    )
     return _precision_recall_reduce(
         "precision",
         tp,
@@ -447,18 +468,21 @@ def binary_recall(
     Example (multidim tensors):
         >>> from paddle.metric.functional.classification import binary_recall
         >>> target = tensor([[[0, 1], [1, 0], [0, 1]], [[1, 1], [0, 0], [1, 0]]])
-        >>> preds = tensor([[[0.59, 0.91], [0.91, 0.99], [0.63, 0.04]],
-        ...                 [[0.38, 0.04], [0.86, 0.780], [0.45, 0.37]]])
+        >>> preds = tensor([[[0.59, 0.91], [0.91, 0.99], [0.63, 0.04]], [[0.38, 0.04], [0.86, 0.780], [0.45, 0.37]]])
         >>> binary_recall(preds, target, multidim_average='samplewise')
         tensor([0.6667, 0.0000])
 
     """
     if validate_args:
-        _binary_stat_scores_arg_validation(threshold, multidim_average, ignore_index)
+        _binary_stat_scores_arg_validation(
+            threshold, multidim_average, ignore_index
+        )
         _binary_stat_scores_tensor_validation(
             preds, target, multidim_average, ignore_index
         )
-    preds, target = _binary_stat_scores_format(preds, target, threshold, ignore_index)
+    preds, target = _binary_stat_scores_format(
+        preds, target, threshold, ignore_index
+    )
     tp, fp, tn, fn = _binary_stat_scores_update(preds, target, multidim_average)
     return _precision_recall_reduce(
         "recall",
@@ -551,10 +575,7 @@ def multiclass_recall(
     Example (preds is float tensor):
         >>> from paddle.metric.functional.classification import multiclass_recall
         >>> target = tensor([2, 1, 0, 0])
-        >>> preds = tensor([[0.16, 0.26, 0.58],
-        ...                 [0.22, 0.61, 0.17],
-        ...                 [0.71, 0.09, 0.20],
-        ...                 [0.05, 0.82, 0.13]])
+        >>> preds = tensor([[0.16, 0.26, 0.58], [0.22, 0.61, 0.17], [0.71, 0.09, 0.20], [0.05, 0.82, 0.13]])
         >>> multiclass_recall(preds, target, num_classes=3)
         tensor(0.8333)
         >>> multiclass_recall(preds, target, num_classes=3, average=None)
@@ -580,7 +601,13 @@ def multiclass_recall(
         )
     preds, target = _multiclass_stat_scores_format(preds, target, top_k)
     tp, fp, tn, fn = _multiclass_stat_scores_update(
-        preds, target, num_classes, top_k, average, multidim_average, ignore_index
+        preds,
+        target,
+        num_classes,
+        top_k,
+        average,
+        multidim_average,
+        ignore_index,
     )
     return _precision_recall_reduce(
         "recall",
@@ -681,8 +708,7 @@ def multilabel_recall(
     Example (multidim tensors):
         >>> from paddle.metric.functional.classification import multilabel_recall
         >>> target = tensor([[[0, 1], [1, 0], [0, 1]], [[1, 1], [0, 0], [1, 0]]])
-        >>> preds = tensor([[[0.59, 0.91], [0.91, 0.99], [0.63, 0.04]],
-        ...                 [[0.38, 0.04], [0.86, 0.780], [0.45, 0.37]]])
+        >>> preds = tensor([[[0.59, 0.91], [0.91, 0.99], [0.63, 0.04]], [[0.38, 0.04], [0.86, 0.780], [0.45, 0.37]]])
         >>> multilabel_recall(preds, target, num_labels=3, multidim_average='samplewise')
         tensor([0.6667, 0.0000])
         >>> multilabel_recall(preds, target, num_labels=3, multidim_average='samplewise', average=None)
@@ -700,7 +726,9 @@ def multilabel_recall(
     preds, target = _multilabel_stat_scores_format(
         preds, target, num_labels, threshold, ignore_index
     )
-    tp, fp, tn, fn = _multilabel_stat_scores_update(preds, target, multidim_average)
+    tp, fp, tn, fn = _multilabel_stat_scores_update(
+        preds, target, multidim_average
+    )
     return _precision_recall_reduce(
         "recall",
         tp,
@@ -744,7 +772,7 @@ def precision(
 
     Legacy Example:
         >>> from paddle import tensor
-        >>> preds  = tensor([2, 0, 2, 1])
+        >>> preds = tensor([2, 0, 2, 1])
         >>> target = tensor([1, 1, 2, 0])
         >>> precision(preds, target, task="multiclass", average='macro', num_classes=3)
         tensor(0.1667)
@@ -834,7 +862,7 @@ def recall(
 
     Legacy Example:
         >>> from paddle import tensor
-        >>> preds  = tensor([2, 0, 2, 1])
+        >>> preds = tensor([2, 0, 2, 1])
         >>> target = tensor([1, 1, 2, 0])
         >>> recall(preds, target, task="multiclass", average='macro', num_classes=3)
         tensor(0.3333)

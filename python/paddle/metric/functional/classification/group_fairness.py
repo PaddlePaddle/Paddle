@@ -1,3 +1,17 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 from typing_extensions import Literal
@@ -54,9 +68,13 @@ def _binary_groups_stat_scores(
     """
     if validate_args:
         _binary_stat_scores_arg_validation(threshold, "global", ignore_index)
-        _binary_stat_scores_tensor_validation(preds, target, "global", ignore_index)
+        _binary_stat_scores_tensor_validation(
+            preds, target, "global", ignore_index
+        )
         _groups_validation(groups, num_groups)
-    preds, target = _binary_stat_scores_format(preds, target, threshold, ignore_index)
+    preds, target = _binary_stat_scores_format(
+        preds, target, threshold, ignore_index
+    )
     groups = _groups_format(groups)
     indexes, indices = paddle.sort(groups.squeeze(1))
     preds = preds[indices]
@@ -71,7 +89,9 @@ def _binary_groups_stat_scores(
 
 
 def _groups_reduce(
-    group_stats: list[tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor, paddle.Tensor]]
+    group_stats: list[
+        tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor, paddle.Tensor]
+    ],
 ) -> dict[str, paddle.Tensor]:
     """Compute rates for all the group statistics."""
     return {
@@ -81,7 +101,9 @@ def _groups_reduce(
 
 
 def _groups_stat_transform(
-    group_stats: list[tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor, paddle.Tensor]]
+    group_stats: list[
+        tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor, paddle.Tensor]
+    ],
 ) -> dict[str, paddle.Tensor]:
     """Transform group statistics by creating a tensor for each statistic."""
     return {
@@ -147,7 +169,13 @@ def binary_groups_stat_rates(
 
     """
     group_stats = _binary_groups_stat_scores(
-        preds, target, groups, num_groups, threshold, ignore_index, validate_args
+        preds,
+        target,
+        groups,
+        num_groups,
+        threshold,
+        ignore_index,
+        validate_args,
     )
     return _groups_reduce(group_stats)
 
@@ -225,7 +253,13 @@ def demographic_parity(
     num_groups = paddle.unique(groups).shape[0]
     target = paddle.zeros(preds.shape)
     group_stats = _binary_groups_stat_scores(
-        preds, target, groups, num_groups, threshold, ignore_index, validate_args
+        preds,
+        target,
+        groups,
+        num_groups,
+        threshold,
+        ignore_index,
+        validate_args,
     )
     transformed_group_stats = _groups_stat_transform(group_stats)
     return _compute_binary_demographic_parity(**transformed_group_stats)
@@ -307,7 +341,13 @@ def equal_opportunity(
     """
     num_groups = paddle.unique(groups).shape[0]
     group_stats = _binary_groups_stat_scores(
-        preds, target, groups, num_groups, threshold, ignore_index, validate_args
+        preds,
+        target,
+        groups,
+        num_groups,
+        threshold,
+        ignore_index,
+        validate_args,
     )
     transformed_group_stats = _groups_stat_transform(group_stats)
     return _compute_binary_equal_opportunity(**transformed_group_stats)
@@ -349,12 +389,19 @@ def binary_fairness(
     if task == "demographic_parity":
         if target is not None:
             rank_zero_warn(
-                "The task demographic_parity does not require a target.", UserWarning
+                "The task demographic_parity does not require a target.",
+                UserWarning,
             )
         target = paddle.zeros(preds.shape)
     num_groups = paddle.unique(groups).shape[0]
     group_stats = _binary_groups_stat_scores(
-        preds, target, groups, num_groups, threshold, ignore_index, validate_args
+        preds,
+        target,
+        groups,
+        num_groups,
+        threshold,
+        ignore_index,
+        validate_args,
     )
     transformed_group_stats = _groups_stat_transform(group_stats)
     if task == "demographic_parity":

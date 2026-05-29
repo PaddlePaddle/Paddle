@@ -1,3 +1,17 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 from typing_extensions import Literal
@@ -72,13 +86,17 @@ def _jaccard_index_reduce(
         denom = confmat.sum(0) + confmat.sum(1) - num
     if average == "micro":
         num = num.sum()
-        denom = denom.sum() - (denom[ignore_index] if ignore_index_cond else 0.0)
+        denom = denom.sum() - (
+            denom[ignore_index] if ignore_index_cond else 0.0
+        )
     jaccard = _safe_divide(num, denom, zero_division=zero_division)
     if average is None or average == "none" or average == "micro":
         return jaccard
     if average == "weighted":
         weights = (
-            confmat[:, 1, 1] + confmat[:, 1, 0] if confmat.ndim == 3 else confmat.sum(1)
+            confmat[:, 1, 1] + confmat[:, 1, 0]
+            if confmat.ndim == 3
+            else confmat.sum(1)
         )
     else:
         weights = paddle.ones_like(jaccard)
@@ -148,7 +166,9 @@ def binary_jaccard_index(
         preds, target, threshold, ignore_index
     )
     confmat = _binary_confusion_matrix_update(preds, target)
-    return _jaccard_index_reduce(confmat, average="binary", zero_division=zero_division)
+    return _jaccard_index_reduce(
+        confmat, average="binary", zero_division=zero_division
+    )
 
 
 def _multiclass_jaccard_index_arg_validation(
@@ -220,23 +240,27 @@ def multiclass_jaccard_index(
     Example (pred is float tensor):
         >>> from paddle.metric.functional.classification import multiclass_jaccard_index
         >>> target = tensor([2, 1, 0, 0])
-        >>> preds = tensor([[0.16, 0.26, 0.58],
-        ...                 [0.22, 0.61, 0.17],
-        ...                 [0.71, 0.09, 0.20],
-        ...                 [0.05, 0.82, 0.13]])
+        >>> preds = tensor([[0.16, 0.26, 0.58], [0.22, 0.61, 0.17], [0.71, 0.09, 0.20], [0.05, 0.82, 0.13]])
         >>> multiclass_jaccard_index(preds, target, num_classes=3)
         tensor(0.6667)
 
     """
     if validate_args:
-        _multiclass_jaccard_index_arg_validation(num_classes, ignore_index, average)
+        _multiclass_jaccard_index_arg_validation(
+            num_classes, ignore_index, average
+        )
         _multiclass_confusion_matrix_tensor_validation(
             preds, target, num_classes, ignore_index
         )
-    preds, target = _multiclass_confusion_matrix_format(preds, target, ignore_index)
+    preds, target = _multiclass_confusion_matrix_format(
+        preds, target, ignore_index
+    )
     confmat = _multiclass_confusion_matrix_update(preds, target, num_classes)
     return _jaccard_index_reduce(
-        confmat, average=average, ignore_index=ignore_index, zero_division=zero_division
+        confmat,
+        average=average,
+        ignore_index=ignore_index,
+        zero_division=zero_division,
     )
 
 
@@ -246,7 +270,9 @@ def _multilabel_jaccard_index_arg_validation(
     ignore_index: int | None = None,
     average: Literal["micro", "macro", "weighted", "none"] | None = "macro",
 ) -> None:
-    _multilabel_confusion_matrix_arg_validation(num_labels, threshold, ignore_index)
+    _multilabel_confusion_matrix_arg_validation(
+        num_labels, threshold, ignore_index
+    )
     allowed_average = "micro", "macro", "weighted", "none", None
     if average not in allowed_average:
         raise ValueError(
@@ -318,7 +344,9 @@ def multilabel_jaccard_index(
 
     """
     if validate_args:
-        _multilabel_jaccard_index_arg_validation(num_labels, threshold, ignore_index)
+        _multilabel_jaccard_index_arg_validation(
+            num_labels, threshold, ignore_index
+        )
         _multilabel_confusion_matrix_tensor_validation(
             preds, target, num_labels, ignore_index
         )
@@ -327,7 +355,10 @@ def multilabel_jaccard_index(
     )
     confmat = _multilabel_confusion_matrix_update(preds, target, num_labels)
     return _jaccard_index_reduce(
-        confmat, average=average, ignore_index=ignore_index, zero_division=zero_division
+        confmat,
+        average=average,
+        ignore_index=ignore_index,
+        zero_division=zero_division,
     )
 
 

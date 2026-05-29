@@ -67,7 +67,10 @@ def _remove_suffix(string: str, suffix: str) -> str:
 
 
 def plot_single_or_multi_val(
-    val: paddle.Tensor | Sequence[paddle.Tensor] | dict[str, paddle.Tensor] | Sequence[dict[str, paddle.Tensor]],
+    val: paddle.Tensor
+    | Sequence[paddle.Tensor]
+    | dict[str, paddle.Tensor]
+    | Sequence[dict[str, paddle.Tensor]],
     ax: Any = None,
     higher_is_better: bool | None = None,
     lower_bound: float | None = None,
@@ -87,11 +90,20 @@ def plot_single_or_multi_val(
         else:
             for i, v in enumerate(val):
                 label = f"{legend_name} {i}" if legend_name else f"{i}"
-                ax.plot(i, v.item(), marker="o", markersize=10, linestyle="None", label=label)
+                ax.plot(
+                    i,
+                    v.item(),
+                    marker="o",
+                    markersize=10,
+                    linestyle="None",
+                    label=label,
+                )
     elif isinstance(val, dict):
         for i, (k, v) in enumerate(val.items()):
             if v.size != 1:
-                ax.plot(v.numpy(), marker="o", markersize=10, linestyle="-", label=k)
+                ax.plot(
+                    v.numpy(), marker="o", markersize=10, linestyle="-", label=k
+                )
                 ax.get_xaxis().set_visible(True)
                 ax.set_xlabel("Step")
                 ax.set_xticks(range(len(v)))
@@ -100,16 +112,33 @@ def plot_single_or_multi_val(
     elif isinstance(val, Sequence):
         n_steps = len(val)
         if isinstance(val[0], dict):
-            val_dict = {k: paddle.stack([val[i][k] for i in range(n_steps)]) for k in val[0]}
+            val_dict = {
+                k: paddle.stack([val[i][k] for i in range(n_steps)])
+                for k in val[0]
+            }
             for k, v in val_dict.items():
-                ax.plot(v.numpy(), marker="o", markersize=10, linestyle="-", label=k)
+                ax.plot(
+                    v.numpy(), marker="o", markersize=10, linestyle="-", label=k
+                )
         else:
             val_tensor = paddle.stack(val, 0)
             multi_series = val_tensor.ndim != 1
-            val_tensor = val_tensor.T if multi_series else val_tensor.unsqueeze(0)
+            val_tensor = (
+                val_tensor.T if multi_series else val_tensor.unsqueeze(0)
+            )
             for i, v in enumerate(val_tensor):
-                label = (f"{legend_name} {i}" if legend_name else f"{i}") if multi_series else ""
-                ax.plot(v.numpy(), marker="o", markersize=10, linestyle="-", label=label)
+                label = (
+                    (f"{legend_name} {i}" if legend_name else f"{i}")
+                    if multi_series
+                    else ""
+                )
+                ax.plot(
+                    v.numpy(),
+                    marker="o",
+                    markersize=10,
+                    linestyle="-",
+                    label=label,
+                )
         ax.get_xaxis().set_visible(True)
         ax.set_xlabel("Step")
         ax.set_xticks(range(n_steps))
@@ -118,13 +147,29 @@ def plot_single_or_multi_val(
 
     handles, labels = ax.get_legend_handles_labels()
     if handles and labels:
-        ax.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, 1.15), ncol=3, fancybox=True, shadow=True)
+        ax.legend(
+            handles,
+            labels,
+            loc="upper center",
+            bbox_to_anchor=(0.5, 1.15),
+            ncol=3,
+            fancybox=True,
+            shadow=True,
+        )
 
     ylim = ax.get_ylim()
-    factor = 0.1 * (upper_bound - lower_bound) if (lower_bound is not None and upper_bound is not None) else 0.1 * (ylim[1] - ylim[0])
+    factor = (
+        0.1 * (upper_bound - lower_bound)
+        if (lower_bound is not None and upper_bound is not None)
+        else 0.1 * (ylim[1] - ylim[0])
+    )
     ax.set_ylim(
-        bottom=lower_bound - factor if lower_bound is not None else ylim[0] - factor,
-        top=upper_bound + factor if upper_bound is not None else ylim[1] + factor,
+        bottom=lower_bound - factor
+        if lower_bound is not None
+        else ylim[0] - factor,
+        top=upper_bound + factor
+        if upper_bound is not None
+        else ylim[1] + factor,
     )
     ax.grid(True)
     ax.set_ylabel(name if name is not None else None)
@@ -138,10 +183,22 @@ def plot_single_or_multi_val(
     if higher_is_better is not None:
         if lower_bound is not None and not higher_is_better:
             ax.set_xlim(xlim[0] - xfactor, xlim[1])
-            ax.text(xlim[0], lower_bound, s="Optimal \n value", horizontalalignment="center", verticalalignment="center")
+            ax.text(
+                xlim[0],
+                lower_bound,
+                s="Optimal \n value",
+                horizontalalignment="center",
+                verticalalignment="center",
+            )
         if upper_bound is not None and higher_is_better:
             ax.set_xlim(xlim[0] - xfactor, xlim[1])
-            ax.text(xlim[0], upper_bound, s="Optimal \n value", horizontalalignment="center", verticalalignment="center")
+            ax.text(
+                xlim[0],
+                upper_bound,
+                s="Optimal \n value",
+                horizontalalignment="center",
+                verticalalignment="center",
+            )
 
     return fig, ax
 
@@ -158,7 +215,10 @@ class MetricCollection(paddle.nn.LayerDict):
 
     def __init__(
         self,
-        metrics: Metric | MetricCollection | Sequence[Metric | MetricCollection] | dict[str, Metric | MetricCollection],
+        metrics: Metric
+        | MetricCollection
+        | Sequence[Metric | MetricCollection]
+        | dict[str, Metric | MetricCollection],
         *additional_metrics: Metric,
         prefix: str | None = None,
         postfix: str | None = None,
@@ -177,7 +237,10 @@ class MetricCollection(paddle.nn.LayerDict):
     @property
     def metric_state(self) -> dict[str, dict[str, Any]]:
         """Get the current state of the metric."""
-        return {k: m.metric_state for k, m in self.items(keep_base=False, copy_state=False)}
+        return {
+            k: m.metric_state
+            for k, m in self.items(keep_base=False, copy_state=False)
+        }
 
     def forward(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
         """Call forward for each metric sequentially."""
@@ -238,11 +301,18 @@ class MetricCollection(paddle.nn.LayerDict):
             state2 = getattr(metric2, key)
             if type(state1) != type(state2):
                 return False
-            if isinstance(state1, paddle.Tensor) and isinstance(state2, paddle.Tensor):
-                if not (state1.shape == state2.shape and allclose(state1, state2)):
+            if isinstance(state1, paddle.Tensor) and isinstance(
+                state2, paddle.Tensor
+            ):
+                if not (
+                    state1.shape == state2.shape and allclose(state1, state2)
+                ):
                     return False
             if isinstance(state1, list) and isinstance(state2, list):
-                if not all(s1.shape == s2.shape and allclose(s1, s2) for s1, s2 in zip(state1, state2)):
+                if not all(
+                    s1.shape == s2.shape and allclose(s1, s2)
+                    for s1, s2 in zip(state1, state2)
+                ):
                     return False
         return True
 
@@ -255,15 +325,24 @@ class MetricCollection(paddle.nn.LayerDict):
                     mi = getattr(self, cg[i])
                     for state in m0._defaults:
                         m0_state = getattr(m0, state)
-                        setattr(mi, state, deepcopy(m0_state) if copy else m0_state)
-                    mi._update_count = deepcopy(m0._update_count) if copy else m0._update_count
+                        setattr(
+                            mi, state, deepcopy(m0_state) if copy else m0_state
+                        )
+                    mi._update_count = (
+                        deepcopy(m0._update_count) if copy else m0._update_count
+                    )
         self._state_is_copy = copy
 
     def compute(self) -> dict[str, Any]:
         """Compute the result for each metric in the collection."""
         return self._compute_and_reduce("compute")
 
-    def _compute_and_reduce(self, method_name: Literal["compute", "forward"], *args: Any, **kwargs: Any) -> dict[str, Any]:
+    def _compute_and_reduce(
+        self,
+        method_name: Literal["compute", "forward"],
+        *args: Any,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
         """Compute result from collection and reduce into a single dictionary."""
         result = {}
         for k, m in self.items(keep_base=True, copy_state=False):
@@ -272,7 +351,9 @@ class MetricCollection(paddle.nn.LayerDict):
             elif method_name == "forward":
                 res = m(*args, **m._filter_kwargs(**kwargs))
             else:
-                raise ValueError(f"method_name should be either 'compute' or 'forward', but got {method_name}")
+                raise ValueError(
+                    f"method_name should be either 'compute' or 'forward', but got {method_name}"
+                )
             result[k] = res
         _, duplicates = _flatten_dict(result)
         flattened_results = {}
@@ -282,11 +363,19 @@ class MetricCollection(paddle.nn.LayerDict):
                 for key, v in res.items():
                     if duplicates:
                         stripped_k = k.replace(getattr(m, "prefix", ""), "")
-                        stripped_k = stripped_k.replace(getattr(m, "postfix", ""), "")
+                        stripped_k = stripped_k.replace(
+                            getattr(m, "postfix", ""), ""
+                        )
                         key = f"{stripped_k}_{key}"
-                    if getattr(m, "_from_collection", False) and m.prefix is not None:
+                    if (
+                        getattr(m, "_from_collection", False)
+                        and m.prefix is not None
+                    ):
                         key = f"{m.prefix}{key}"
-                    if getattr(m, "_from_collection", False) and m.postfix is not None:
+                    if (
+                        getattr(m, "_from_collection", False)
+                        and m.postfix is not None
+                    ):
                         key = f"{key}{m.postfix}"
                     flattened_results[key] = v
             else:
@@ -300,7 +389,9 @@ class MetricCollection(paddle.nn.LayerDict):
         if self._enable_compute_groups and self._groups_checked:
             self._compute_groups_create_state_ref()
 
-    def clone(self, prefix: str | None = None, postfix: str | None = None) -> MetricCollection:
+    def clone(
+        self, prefix: str | None = None, postfix: str | None = None
+    ) -> MetricCollection:
         """Make a copy of the metric collection."""
         mc = deepcopy(self)
         if prefix:
@@ -316,7 +407,10 @@ class MetricCollection(paddle.nn.LayerDict):
 
     def add_metrics(
         self,
-        metrics: Metric | MetricCollection | Sequence[Metric | MetricCollection] | dict[str, Metric | MetricCollection],
+        metrics: Metric
+        | MetricCollection
+        | Sequence[Metric | MetricCollection]
+        | dict[str, Metric | MetricCollection],
         *additional_metrics: Metric,
     ) -> None:
         """Add new metrics to Metric Collection."""
@@ -329,7 +423,9 @@ class MetricCollection(paddle.nn.LayerDict):
                 sel = metrics if isinstance(m, Metric) else remain
                 sel.append(m)
             if remain:
-                warnings.warn(f"You have passes extra arguments {remain} which are not `Metric` so they will be ignored.")
+                warnings.warn(
+                    f"You have passes extra arguments {remain} which are not `Metric` so they will be ignored."
+                )
         elif additional_metrics:
             raise ValueError(
                 f"You have passes extra arguments {additional_metrics} which are not compatible with first passed dictionary {metrics} so they will be ignored."
@@ -338,7 +434,9 @@ class MetricCollection(paddle.nn.LayerDict):
             for name in sorted(metrics.keys()):
                 metric = metrics[name]
                 if not isinstance(metric, (Metric, MetricCollection)):
-                    raise ValueError(f"Value {metric} belonging to key {name} is not an instance of `Metric` or `MetricCollection`")
+                    raise ValueError(
+                        f"Value {metric} belonging to key {name} is not an instance of `Metric` or `MetricCollection`"
+                    )
                 if isinstance(metric, Metric):
                     self[name] = metric
                 else:
@@ -350,11 +448,15 @@ class MetricCollection(paddle.nn.LayerDict):
         elif isinstance(metrics, Sequence):
             for metric in metrics:
                 if not isinstance(metric, (Metric, MetricCollection)):
-                    raise ValueError(f"Input {metric} to `MetricCollection` is not a instance of `Metric` or `MetricCollection`")
+                    raise ValueError(
+                        f"Input {metric} to `MetricCollection` is not a instance of `Metric` or `MetricCollection`"
+                    )
                 if isinstance(metric, Metric):
                     name = metric.__class__.__name__
                     if name in self:
-                        raise ValueError(f"Encountered two metrics both named {name}")
+                        raise ValueError(
+                            f"Encountered two metrics both named {name}"
+                        )
                     self[name] = metric
                 else:
                     for k, v in metric.items(keep_base=False):
@@ -365,7 +467,9 @@ class MetricCollection(paddle.nn.LayerDict):
         elif isinstance(metrics, MetricCollection):
             for name, metric in metrics.items(keep_base=False):
                 if name in self:
-                    raise ValueError(f"Metric with name '{name}' already exists in the collection.")
+                    raise ValueError(
+                        f"Metric with name '{name}' already exists in the collection."
+                    )
                 self[name] = metric
         else:
             raise ValueError(
@@ -395,7 +499,9 @@ class MetricCollection(paddle.nn.LayerDict):
                     counter += 1
             self._groups_checked = True
         else:
-            self._groups = {i: [str(k)] for i, k in enumerate(self.keys(keep_base=True))}
+            self._groups = {
+                i: [str(k)] for i, k in enumerate(self.keys(keep_base=True))
+            }
 
     @property
     def compute_groups(self) -> dict[int, list[str]]:
@@ -424,7 +530,9 @@ class MetricCollection(paddle.nn.LayerDict):
             return self._modules.keys()
         return self._to_renamed_dict().keys()
 
-    def items(self, keep_base: bool = False, copy_state: bool = True) -> Iterable[tuple[str, Metric]]:
+    def items(
+        self, keep_base: bool = False, copy_state: bool = True
+    ) -> Iterable[tuple[str, Metric]]:
         """Return an iterable of the LayerDict key/value pairs."""
         self._compute_groups_create_state_ref(copy_state)
         if keep_base:
@@ -450,15 +558,21 @@ class MetricCollection(paddle.nn.LayerDict):
         """Check if argument is a string or None."""
         if arg is None or isinstance(arg, str):
             return arg
-        raise ValueError(f"Expected input `{name}` to be a string, but got {type(arg)}")
+        raise ValueError(
+            f"Expected input `{name}` to be a string, but got {type(arg)}"
+        )
 
     def __repr__(self) -> str:
         """Return the representation of the metric collection."""
         repr_str = super().__repr__()[:-2]
         if self.prefix:
-            repr_str += f",\n  prefix={self.prefix}{',' if self.postfix else ''}"
+            repr_str += (
+                f",\n  prefix={self.prefix}{',' if self.postfix else ''}"
+            )
         if self.postfix:
-            repr_str += f"{',' if not self.prefix else ''}\n  postfix={self.postfix}"
+            repr_str += (
+                f"{',' if not self.prefix else ''}\n  postfix={self.postfix}"
+            )
         return repr_str + "\n)"
 
     def set_dtype(self, dst_type: str | paddle.dtype) -> MetricCollection:
@@ -477,20 +591,34 @@ class MetricCollection(paddle.nn.LayerDict):
         import matplotlib.pyplot as plt
 
         if not isinstance(together, bool):
-            raise ValueError(f"Expected argument `together` to be a boolean, but got {type(together)}")
+            raise ValueError(
+                f"Expected argument `together` to be a boolean, but got {type(together)}"
+            )
         if ax is not None:
             if together and not isinstance(ax, plt.Axes):
-                raise ValueError(f"Expected argument `ax` to be a matplotlib axis object, but got {type(ax)} when `together=True`")
-            if not together and not (isinstance(ax, Sequence) and all(isinstance(a, plt.Axes) for a in ax) and len(ax) == len(self)):
-                raise ValueError(f"Expected argument `ax` to be a sequence of matplotlib axis objects, but got {type(ax)} when `together=False`")
+                raise ValueError(
+                    f"Expected argument `ax` to be a matplotlib axis object, but got {type(ax)} when `together=True`"
+                )
+            if not together and not (
+                isinstance(ax, Sequence)
+                and all(isinstance(a, plt.Axes) for a in ax)
+                and len(ax) == len(self)
+            ):
+                raise ValueError(
+                    f"Expected argument `ax` to be a sequence of matplotlib axis objects, but got {type(ax)} when `together=False`"
+                )
         val = val or self.compute()
         if together:
             return plot_single_or_multi_val(val, ax=ax)
         fig_axs = []
-        for i, (k, m) in enumerate(self.items(keep_base=False, copy_state=False)):
+        for i, (k, m) in enumerate(
+            self.items(keep_base=False, copy_state=False)
+        ):
             if isinstance(val, dict):
                 f, a = m.plot(val[k], ax=ax[i] if ax is not None else ax)
             elif isinstance(val, Sequence):
-                f, a = m.plot([v[k] for v in val], ax=ax[i] if ax is not None else ax)
+                f, a = m.plot(
+                    [v[k] for v in val], ax=ax[i] if ax is not None else ax
+                )
             fig_axs.append((f, a))
         return fig_axs

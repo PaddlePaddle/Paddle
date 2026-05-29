@@ -1,3 +1,17 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 from typing_extensions import Literal
@@ -15,7 +29,9 @@ from paddle.metric.utils.compute import _safe_divide
 from paddle.metric.utils.enums import ClassificationTaskNoBinary
 
 
-def _exact_match_reduce(correct: paddle.Tensor, total: paddle.Tensor) -> paddle.Tensor:
+def _exact_match_reduce(
+    correct: paddle.Tensor, total: paddle.Tensor
+) -> paddle.Tensor:
     """Reduce exact match."""
     return _safe_divide(correct, total)
 
@@ -33,7 +49,8 @@ def _multiclass_exact_match_update(
     correct = (preds == target).sum(1) == preds.shape[1]
     correct = correct if multidim_average == "samplewise" else correct.sum()
     total = paddle.tensor(
-        preds.shape[0] if multidim_average == "global" else 1, device=correct.device
+        preds.shape[0] if multidim_average == "global" else 1,
+        device=correct.device,
     )
     return correct, total
 
@@ -131,7 +148,8 @@ def _multilabel_exact_match_update(
         )
     correct = ((preds == target).sum(1) == num_labels).sum(dim=-1)
     total = paddle.tensor(
-        preds.shape[0 if multidim_average == "global" else 2], device=correct.device
+        preds.shape[0 if multidim_average == "global" else 2],
+        device=correct.device,
     )
     return correct, total
 
@@ -198,8 +216,7 @@ def multilabel_exact_match(
     Example (multidim tensors):
         >>> from paddle.metric.functional.classification import multilabel_exact_match
         >>> target = tensor([[[0, 1], [1, 0], [0, 1]], [[1, 1], [0, 0], [1, 0]]])
-        >>> preds = tensor([[[0.59, 0.91], [0.91, 0.99], [0.63, 0.04]],
-        ...                 [[0.38, 0.04], [0.86, 0.780], [0.45, 0.37]]])
+        >>> preds = tensor([[[0.59, 0.91], [0.91, 0.99], [0.63, 0.04]], [[0.38, 0.04], [0.86, 0.780], [0.45, 0.37]]])
         >>> multilabel_exact_match(preds, target, num_labels=3, multidim_average='samplewise')
         tensor([0., 0.])
 
@@ -260,7 +277,12 @@ def exact_match(
     if task == ClassificationTaskNoBinary.MULTICLASS:
         assert num_classes is not None
         return multiclass_exact_match(
-            preds, target, num_classes, multidim_average, ignore_index, validate_args
+            preds,
+            target,
+            num_classes,
+            multidim_average,
+            ignore_index,
+            validate_args,
         )
     if task == ClassificationTaskNoBinary.MULTILABEL:
         assert num_labels is not None
