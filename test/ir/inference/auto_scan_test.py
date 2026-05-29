@@ -38,8 +38,18 @@ from paddle import pir
 from paddle.base.core import PassVersionChecker
 from paddle.static.log_helper import get_logger
 
-# windows and xpu not support tensorrt
-if os.name != 'nt' and (not os.getenv('WITH_XPU')):
+Input = PrecisionMode = TensorRTConfig = convert_to_trt = None
+_skip_coverage_tensorrt_export_import = (
+    os.getenv("PADDLE_COVERAGE_SKIP_TENSORRT_EXPORT_IMPORT", "0") == "1"
+)
+
+# Windows and XPU do not support TensorRT. Coverage OneDNN autoscan tests do
+# not exercise TensorRT export, and Coverage builds can miss TRT plugin symbols.
+if (
+    not _skip_coverage_tensorrt_export_import
+    and os.name != 'nt'
+    and not os.getenv('WITH_XPU')
+):
     try:
         from paddle.tensorrt.export import (
             Input,
@@ -47,8 +57,8 @@ if os.name != 'nt' and (not os.getenv('WITH_XPU')):
             TensorRTConfig,
             convert_to_trt,
         )
-    except ImportError:
-        raise RuntimeError("TensorRT package is not available.")
+    except ImportError as exc:
+        raise RuntimeError("TensorRT package is not available.") from exc
 
 LOGLEVEL = os.environ.get("PADDLE_TEST_LOGLEVEL", "INFO").upper()
 logging = get_logger(
@@ -815,6 +825,11 @@ class TrtLayerAutoScanTest(AutoScanTest):
         *args,
         **kwargs,
     ):
+        if run_pir and _skip_coverage_tensorrt_export_import:
+            self.skipTest(
+                "TensorRT export import is disabled in this Coverage run."
+            )
+
         all_passes = True
 
         def random_to_skip():
