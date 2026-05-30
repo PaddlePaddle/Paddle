@@ -1204,9 +1204,10 @@ class MultiStepDecay(LRScheduler):
     milestones: Sequence[int]
     gamma: float
 
+    @param_one_alias(["learning_rate", "optimizer"])
     def __init__(
         self,
-        learning_rate: float,
+        learning_rate: float | paddle.optimizer.Optimizer,
         milestones: Sequence[int],
         gamma: float = 0.1,
         last_epoch: int = -1,

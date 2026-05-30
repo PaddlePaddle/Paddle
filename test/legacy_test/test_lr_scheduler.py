@@ -1359,7 +1359,7 @@ class TestLRSchedulerWithOptimizerArg(unittest.TestCase):
         self.assertIs(adam._learning_rate, scheduler)
         paddle.enable_static()
 
-    def test_cosine_annealing_warm_restarts_decay(self):
+    def test_cosine_annealing_warm_restarts(self):
         paddle.disable_static()
         linear = paddle.nn.Linear(10, 10)
         sgd = paddle.optimizer.SGD(
@@ -1367,6 +1367,19 @@ class TestLRSchedulerWithOptimizerArg(unittest.TestCase):
         )
         scheduler = paddle.optimizer.lr.CosineAnnealingWarmRestarts(
             optimizer=sgd, T_0=1
+        )
+        self.assertEqual(scheduler.base_lr, sgd.get_lr())
+        self.assertIs(sgd._learning_rate, scheduler)
+        paddle.enable_static()
+
+    def test_multi_step_decay(self):
+        paddle.disable_static()
+        linear = paddle.nn.Linear(10, 10)
+        sgd = paddle.optimizer.SGD(
+            learning_rate=0.5, parameters=linear.parameters()
+        )
+        scheduler = paddle.optimizer.lr.MultiStepDecay(
+            optimizer=sgd, milestones=[2, 4, 6]
         )
         self.assertEqual(scheduler.base_lr, sgd.get_lr())
         self.assertIs(sgd._learning_rate, scheduler)
