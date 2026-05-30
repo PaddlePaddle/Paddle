@@ -21,6 +21,14 @@
 #include <algorithm>
 #include <vector>
 
+// [xtrans-compat] xtrans defines cusolverDnParams_t as int (not a pointer),
+// so nullptr cannot be used as "no params". Use 0 instead.
+#if defined(__clang__) && defined(__CUDACC__)
+#define CUSOLVER_DN_PARAMS_NULL static_cast<cusolverDnParams_t>(0)
+#else
+#define CUSOLVER_DN_PARAMS_NULL nullptr
+#endif
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/enforce.h"
@@ -424,7 +432,7 @@ void BatchedGeqrf<GPUContext, float>(const GPUContext& dev_ctx,
 
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cusolverDnXgeqrf_bufferSize(handle,
-                                                  0,
+                                                  CUSOLVER_DN_PARAMS_NULL,
                                                   m_64,
                                                   n_64,
                                                   CUDA_R_32F,
@@ -461,7 +469,7 @@ void BatchedGeqrf<GPUContext, float>(const GPUContext& dev_ctx,
 
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::cusolverDnXgeqrf(handle,
-                                         0,
+                                         CUSOLVER_DN_PARAMS_NULL,
                                          m_64,
                                          n_64,
                                          CUDA_R_32F,

@@ -14,7 +14,7 @@
 
 #pragma once
 
-#if defined(__NVCC__) || defined(__CUDACC__) || defined(__CUDACC__)
+#if defined(__NVCC__)
 #include <thrust/device_vector.h>
 #endif
 #include "glog/logging.h"
@@ -161,7 +161,7 @@ struct CUBlas<float> {
 // Because the gcc 4.8 doesn't expand template parameter pack that
 // appears in a lambda-expression, I can not use template parameter pack
 // here.
-#if 1 || (CUDA_VERSION >= 12030 && defined(__linux__))
+#if CUDA_VERSION >= 12030 && defined(__linux__)
     VLOG(5) << "use_tensor_op_math: "
             << (dev_ctx->tensor_core_available() ? "True" : "False");
     dev_ctx->TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
@@ -384,7 +384,7 @@ struct CUBlas<phi::float16> {
                                   ldc));
   }
 
-#if defined(__NVCC__) || defined(__CUDACC__) || defined(__CUDACC__)
+#if defined(__NVCC__)
   static void GEMM_BATCH(phi::GPUContext *dev_ctx,
                          cublasOperation_t transa,
                          cublasOperation_t transb,
@@ -587,7 +587,7 @@ struct CUBlas<phi::float16> {
                          cudaDataType_t Ctype,
                          int64_t ldc,
                          cudaDataType_t computeType) {
-#if 1 || (CUDA_VERSION >= 12030 && defined(__linux__))
+#if (CUDA_VERSION >= 12030 && defined(__linux__))
     cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
     bool use_tensor_op_math = dev_ctx->tensor_core_available();
     if (use_tensor_op_math) {
@@ -871,7 +871,7 @@ struct CUBlas<phi::complex64> {
                          cudaDataType_t Ctype,
                          int64_t ldc,
                          cudaDataType_t computeType) {
-#if 1 || (CUDA_VERSION >= 12030 && defined(__linux__))
+#if (CUDA_VERSION >= 12030 && defined(__linux__))
     cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
     bool use_tensor_op_math = dev_ctx->tensor_core_available();
     if (use_tensor_op_math) {
@@ -1307,7 +1307,7 @@ struct CUBlas<phi::complex128> {
                          cudaDataType_t Ctype,
                          int64_t ldc,
                          cudaDataType_t computeType) {
-#if 1 || (CUDA_VERSION >= 12030 && defined(__linux__))
+#if (CUDA_VERSION >= 12030 && defined(__linux__))
     cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
     bool use_tensor_op_math = dev_ctx->tensor_core_available();
     if (use_tensor_op_math) {
@@ -1463,7 +1463,7 @@ void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   if (FLAGS_enable_cublas_tensor_op_math && std::is_same<T, float>::value) {
     auto &cuda_ctx = const_cast<phi::GPUContext &>(dev_ctx_);
     if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
-#if 1 || (CUDA_VERSION >= 12030 && defined(__linux__))
+#if (CUDA_VERSION >= 12030 && defined(__linux__))
       CUBlas<T>::GEMM_EX_64(&cuda_ctx,
                             cuTransB,
                             cuTransA,
@@ -1574,7 +1574,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   // using tensor cores in volta GPUs.
   auto &cuda_ctx = const_cast<phi::GPUContext &>(dev_ctx_);
   if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
-#if 1 || (CUDA_VERSION >= 12030 && defined(__linux__))
+#if (CUDA_VERSION >= 12030 && defined(__linux__))
     CUBlas<phi::float16>::GEMM_EX_64(&cuda_ctx,
                                      cuTransB,
                                      cuTransA,
@@ -1672,7 +1672,7 @@ void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   if (FLAGS_enable_cublas_tensor_op_math && std::is_same<T, float>::value) {
     auto &cuda_ctx = const_cast<phi::GPUContext &>(dev_ctx_);
     if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
-#if 1 || (CUDA_VERSION >= 12030 && defined(__linux__))
+#if (CUDA_VERSION >= 12030 && defined(__linux__))
       CUBlas<T>::GEMM_EX_64(&cuda_ctx,
                             cuTransB,
                             cuTransA,
@@ -1784,7 +1784,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   // input/output in fp16, computation in fp32, which can also be accelerated
   // using tensor cores in volta GPUs.
   if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
-#if 1 || (CUDA_VERSION >= 12030 && defined(__linux__))
+#if (CUDA_VERSION >= 12030 && defined(__linux__))
     CUBlas<phi::float16>::GEMM_EX_64(&cuda_ctx,
                                      cuTransB,
                                      cuTransA,
@@ -1890,7 +1890,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   }
   VLOG(5) << "use_tensor_op_math: " << (use_tensor_op_math ? "True" : "False");
   if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
-#if 1 || (CUDA_VERSION >= 12030 && defined(__linux__))
+#if (CUDA_VERSION >= 12030 && defined(__linux__))
     cublasComputeType_t migratedComputeType = CUBLAS_COMPUTE_32F;
     dev_ctx_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
       PADDLE_ENFORCE_GPU_SUCCESS(
@@ -1991,7 +1991,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   }
   VLOG(5) << "use_tensor_op_math: " << (use_tensor_op_math ? "True" : "False");
   if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
-#if 1 || (CUDA_VERSION >= 12030 && defined(__linux__))
+#if (CUDA_VERSION >= 12030 && defined(__linux__))
     cublasComputeType_t migratedComputeType = CUBLAS_COMPUTE_32F;
     dev_ctx_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
       PADDLE_ENFORCE_GPU_SUCCESS(
@@ -2091,7 +2091,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
 #endif
 
   if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
-#if 1 || (CUDA_VERSION >= 12030 && defined(__linux__))
+#if (CUDA_VERSION >= 12030 && defined(__linux__))
     CUBlas<phi::complex64>::GEMM_EX_64(&cuda_ctx,
                                        cuTransB,
                                        cuTransA,
@@ -2201,7 +2201,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   // input/output in fp16, computation in fp32, which can also be accelerated
   // using tensor cores in volta GPUs.
   if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
-#if 1 || (CUDA_VERSION >= 12030 && defined(__linux__))
+#if (CUDA_VERSION >= 12030 && defined(__linux__))
     CUBlas<phi::complex128>::GEMM_EX_64(&cuda_ctx,
                                         cuTransB,
                                         cuTransA,
@@ -2626,7 +2626,7 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
 #endif
     }
     if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
-#if 1 || (CUDA_VERSION >= 12030 && defined(__linux__))
+#if (CUDA_VERSION >= 12030 && defined(__linux__))
       dev_ctx_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
         PADDLE_ENFORCE_GPU_SUCCESS(
             phi::dynload::cublasGemmStridedBatchedEx_64(handle,
@@ -2806,7 +2806,7 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
 
     if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE ||
         batchCount > INT_MAX_VALUE) {
-#if 1 || (CUDA_VERSION >= 12030 && defined(__linux__))
+#if (CUDA_VERSION >= 12030 && defined(__linux__))
       dev_ctx_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
         PADDLE_ENFORCE_GPU_SUCCESS(
             phi::dynload::cublasGemmStridedBatchedEx_64(handle,
@@ -2937,7 +2937,7 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
   VLOG(5) << "use_tensor_op_math: " << (use_tensor_op_math ? "True" : "False");
   if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE ||
       batchCount > INT_MAX_VALUE) {
-#if 1 || (CUDA_VERSION >= 12030 && defined(__linux__))
+#if (CUDA_VERSION >= 12030 && defined(__linux__))
     dev_ctx_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::cublasGemmStridedBatchedEx_64(handle,
@@ -3128,7 +3128,7 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
   }
 }
 
-#if defined(__NVCC__) || defined(__CUDACC__) || defined(__CUDACC__)
+#if defined(__NVCC__)
 template <>
 template <>
 inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,

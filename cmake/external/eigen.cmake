@@ -41,9 +41,14 @@ endif()
 
 file(TO_NATIVE_PATH "${PADDLE_SOURCE_DIR}/patches/eigen/TensorRandom.h.patch"
      tensor_random_header)
+file(TO_NATIVE_PATH "${PADDLE_SOURCE_DIR}/patches/eigen/Macros.h.patch"
+     macros_header)
+file(TO_NATIVE_PATH "${PADDLE_SOURCE_DIR}/patches/eigen/Half.h.patch"
+     half_header)
 # See: [Why calling some `git` commands before `patch`?]
 set(EIGEN_PATCH_COMMAND git checkout -- . && git checkout ${EIGEN_TAG} && git
-                        apply ${tensor_random_header})
+                        apply ${tensor_random_header} && git apply
+                        ${macros_header} && git apply ${half_header})
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/Complex.h.patch
        complex_header)

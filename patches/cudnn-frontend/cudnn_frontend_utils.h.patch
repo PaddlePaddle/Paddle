@@ -1,0 +1,18 @@
+--- a/include/cudnn_frontend_utils.h
++++ b/include/cudnn_frontend_utils.h
+@@ -39,7 +39,7 @@
+ #include "cudnn_frontend/thirdparty/nlohmann/json.hpp"
+ #endif
+ 
+-using json = nlohmann::json;
++// using json = nlohmann::json;
+ 
+ template <>
+ struct nlohmann::adl_serializer<float> {
+@@ -194,6 +194,7 @@
+ #define CUDNN_FRONTEND_UNUSED(X) ((void)X)
+ namespace cudnn_frontend {
+ 
++using json = nlohmann::json;
+ /// Detailed feature_vector. Generally the Tensor and Operation properties
+ using feature_vector_t = std::vector<int64_t>;

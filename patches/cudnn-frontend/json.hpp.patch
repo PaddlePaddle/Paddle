@@ -1,0 +1,11 @@
+--- a/include/cudnn_frontend/thirdparty/nlohmann/json.hpp
++++ b/include/cudnn_frontend/thirdparty/nlohmann/json.hpp
+@@ -2585,7 +2585,7 @@
+         auto it = std::find_if(std::begin(m), std::end(m),                                      \
+                                [&j](const std::pair<ENUM_TYPE, BasicJsonType>& ej_pair) -> bool \
+         {                                                                                       \
+-            return ej_pair.second == j;                                                         \
++            return ej_pair.second.dump() == j.dump();                                           \
+         });                                                                                     \
+         e = ((it != std::end(m)) ? it : std::begin(m))->first;                                  \
+     }

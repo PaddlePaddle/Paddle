@@ -21,7 +21,7 @@
 
 namespace phi {
 
-#if defined(__NVCC__) || defined(__CUDACC__)
+#if defined(__NVCC__)
 
 template <typename T>
 struct AbsGradCUDAFunctor {

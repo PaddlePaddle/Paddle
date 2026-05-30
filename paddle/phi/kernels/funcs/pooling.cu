@@ -15,7 +15,7 @@ limitations under the License. */
 #include <algorithm>
 #include <vector>
 #include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
-#ifdef __CUDACC__ //1
+#ifdef __NVCC__
 #include <curand_kernel.h>
 #endif
 #ifdef __HIPCC__
@@ -2948,7 +2948,7 @@ __global__ void FractionalKernelMaxPool2d(
   if (random_u == 0) {
     IndexT thread_idx =
         static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
-#if defined(__NVCC__) || defined(__CUDACC__)
+#if defined(__NVCC__)
     curandStatePhilox4_32_10_t state;
     curand_init(seed, thread_idx, offset, &state);
 #else
@@ -3305,7 +3305,7 @@ __global__ void FractionalKernelMaxPool3d(
   if (random_u == 0) {
     IndexT thread_idx =
         static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
-#if defined(__NVCC__) || defined(__CUDACC__)
+#if defined(__NVCC__)
     curandStatePhilox4_32_10_t state;
     curand_init(seed, thread_idx, offset, &state);
 #else

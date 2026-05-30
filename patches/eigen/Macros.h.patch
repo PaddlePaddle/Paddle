@@ -1,0 +1,30 @@
+--- a/Eigen/src/Core/util/Macros.h
++++ b/Eigen/src/Core/util/Macros.h
+@@ -115,7 +115,7 @@ namespace Eigen {
+ #endif
+ 
+-#if defined(__NVCC__)
++#if defined(__NVCC__) && !defined(__XCN__)
+ #if defined(__CUDACC_VER_MAJOR__) && (__CUDACC_VER_MAJOR__ >= 9)
+   #define EIGEN_COMP_NVCC  ((__CUDACC_VER_MAJOR__ * 10000) + (__CUDACC_VER_MINOR__ * 100))
+ #elif defined(__CUDACC_VER__)
+   #define EIGEN_COMP_NVCC __CUDACC_VER__
+@@ -855,7 +855,7 @@ namespace Eigen {
+ 
+ #if defined(EIGEN_CUDACC) && EIGEN_HAS_CONSTEXPR
+   // While available already with c++11, this is useful mostly starting with c++14 and relaxed constexpr rules
+-  #if defined(__NVCC__)
++  #if defined(__NVCC__) && !defined(__XCN__)
+     // nvcc considers constexpr functions as __host__ __device__ with the option --expt-relaxed-constexpr
+     #ifdef __CUDACC_RELAXED_CONSTEXPR__
+       #define EIGEN_CONSTEXPR_ARE_DEVICE_FUNC
+@@ -1174,7 +1174,7 @@ namespace Eigen {
+ // When compiling CUDA/HIP device code with NVCC or HIPCC
+ // pull in math functions from the global namespace.
+ // In host mode, and when device code is compiled with clang,
+ // use the std versions.
+-#if (defined(EIGEN_CUDA_ARCH) && defined(__NVCC__)) || defined(EIGEN_HIP_DEVICE_COMPILE)
++#if (defined(EIGEN_CUDA_ARCH) && defined(__NVCC__) && !defined(__XCN__)) || defined(EIGEN_HIP_DEVICE_COMPILE)
+   #define EIGEN_USING_STD(FUNC) using ::FUNC;
+ #else
+   #define EIGEN_USING_STD(FUNC) using std::FUNC;

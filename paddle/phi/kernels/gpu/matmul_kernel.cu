@@ -69,6 +69,9 @@ PD_REGISTER_KERNEL(matmul,
                    phi::bfloat16,
                    phi::complex64,
                    phi::complex128) {
+  if (kernel_key.dtype() == phi::DataType::INT8) {
+    kernel->OutputAt(0).SetDataType(phi::DataType::INT32);
+  }
 }
 #endif
 
@@ -95,6 +98,9 @@ PD_REGISTER_KERNEL(matmul_with_flatten,
                    double,
                    phi::bfloat16,
                    phi::float16) {
+  if (kernel_key.dtype() == phi::DataType::INT8) {
+    kernel->OutputAt(0).SetDataType(phi::DataType::INT32);
+  }
 }
 #endif
 
@@ -110,23 +116,3 @@ PD_REGISTER_KERNEL(legacy_matmul,
     kernel->OutputAt(0).SetDataType(phi::DataType::INT32);
   }
 }
-
-// ---------------------------------------------------------------------------
-// Stub for CudaGemm<int8_t>: cuda_gemm_kernel.cu is disabled on this backend.
-// MatmulKernel<int8_t> still needs to be registered (fc_functor etc. call it
-// directly), but the CudaGemm fast path will throw at runtime if ever reached.
-// The fallback MatMulInt8Function path (cublasLt) will be tried first.
-// ---------------------------------------------------------------------------
-#ifdef PADDLE_WITH_CUDA
-namespace phi {
-template <>
-void CudaGemm<int8_t, phi::GPUContext>(const phi::GPUContext& /*dev_ctx*/,
-                                       const phi::DenseTensor& /*input*/,
-                                       const phi::DenseTensor& /*w*/,
-                                       phi::DenseTensor* /*output*/) {
-  PADDLE_THROW(common::errors::Unimplemented(
-      "CudaGemm<int8_t> is not supported on this backend "
-      "(cuda_gemm_kernel.cu is disabled)."));
-}
-}  // namespace phi
-#endif

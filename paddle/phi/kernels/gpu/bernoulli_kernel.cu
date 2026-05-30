@@ -14,7 +14,7 @@
 
 #include "paddle/phi/kernels/bernoulli_kernel.h"
 
-#ifdef __CUDACC__ //1
+#ifdef __NVCC__
 #include <curand_kernel.h>
 #endif
 #ifdef __HIPCC__
@@ -40,7 +40,7 @@ __global__ void bernoulli_cuda_kernel(
   size_t thread_idx =
       static_cast<size_t>(blockIdx.x * blockDim.x + threadIdx.x);
 
-#if defined(__NVCC__) || defined(__CUDACC__)
+#if defined(__NVCC__)
   curandStatePhilox4_32_10_t state;
   curand_init(seed, thread_idx, offset, &state);
 #else

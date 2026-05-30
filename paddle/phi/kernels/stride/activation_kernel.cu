@@ -29,7 +29,7 @@
 #include "paddle/phi/kernels/selu_kernel.h"
 #include "paddle/phi/kernels/stride/elementwise_stride_base.cu.h"
 
-#if defined(__NVCC__) || defined(__CUDACC__) || defined(__HIPCC__) || defined(__xpu__)
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 #include "paddle/phi/kernels/funcs/dims_simplifier.h"
 #endif
 COMMON_DECLARE_bool(use_stride_kernel);
@@ -87,12 +87,12 @@ DEFINE_CUDA_ACTIVATION_STRIDE_OP(Sin, CudaSinFunctor)
 DEFINE_CUDA_ACTIVATION_STRIDE_OP(Tan, CudaTanFunctor)
 DEFINE_CUDA_ACTIVATION_STRIDE_OP(Acos, CudaAcosFunctor)
 DEFINE_CUDA_ACTIVATION_STRIDE_OP(Asin, CudaAsinFunctor)
-// DEFINE_CUDA_ACTIVATION_STRIDE_OP(Atan, CudaAtanFunctor)
+DEFINE_CUDA_ACTIVATION_STRIDE_OP(Atan, CudaAtanFunctor)
 DEFINE_CUDA_ACTIVATION_STRIDE_OP(Sinh, CudaSinhFunctor)
 DEFINE_CUDA_ACTIVATION_STRIDE_OP(Cosh, CudaCoshFunctor)
 DEFINE_CUDA_ACTIVATION_STRIDE_OP(Asinh, CudaAsinhFunctor)
 DEFINE_CUDA_ACTIVATION_STRIDE_OP(Acosh, CudaAcoshFunctor)
-// DEFINE_CUDA_ACTIVATION_STRIDE_OP(Atanh, CudaAtanhFunctor)
+DEFINE_CUDA_ACTIVATION_STRIDE_OP(Atanh, CudaAtanhFunctor)
 DEFINE_CUDA_ACTIVATION_STRIDE_OP(Relu, CudaReluFunctor)
 DEFINE_CUDA_ACTIVATION_STRIDE_OP(Tanh, CudaTanhFunctor)
 DEFINE_CUDA_ACTIVATION_STRIDE_OP(Silu, CudaSiluFunctor)

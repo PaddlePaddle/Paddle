@@ -17,7 +17,7 @@ limitations under the License. */
 #include <cublasXt.h>
 #include <cublas_v2.h>
 #include <cuda.h>
-#if 1 || (CUDA_VERSION >= 12030 && defined(__linux__))
+#if CUDA_VERSION >= 12030 && defined(__linux__)
 #include <cublas_api.h>
 #endif
 

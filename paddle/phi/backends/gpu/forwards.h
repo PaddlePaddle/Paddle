@@ -67,10 +67,10 @@ using cudnnFusedOpsPlan_t = struct cudnnFusedOpsPlanStruct *;
 #endif  // CUDNN_VERSION
 
 // Forward declaration of cuSOLVER types.
-using cusolverDnHandle_t = void *;
+using cusolverDnHandle_t = struct cusolverDnContext *;
 
 // Forward declaration of cuSparse types.
-using cusparseHandle_t = void *;
+using cusparseHandle_t = struct cusparseContext *;
 
 // Forward declaration of NCCL types.
 using ncclComm_t = struct ncclComm *;

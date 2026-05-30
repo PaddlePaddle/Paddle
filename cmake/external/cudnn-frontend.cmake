@@ -99,7 +99,11 @@ ExternalProject_Add(
   DOWNLOAD_DIR ${CUDNN_FRONTEND_DOWNLOAD_DIR}
   DOWNLOAD_NO_PROGRESS 1
   UPDATE_COMMAND ""
-  PATCH_COMMAND ""
+  PATCH_COMMAND
+    patch -p1 -i
+    ${PADDLE_SOURCE_DIR}/patches/cudnn-frontend/cudnn_frontend_utils.h.patch
+    && patch -p1 -i
+    ${PADDLE_SOURCE_DIR}/patches/cudnn-frontend/json.hpp.patch
   CONFIGURE_COMMAND ""
   BUILD_COMMAND ""
   INSTALL_COMMAND ""

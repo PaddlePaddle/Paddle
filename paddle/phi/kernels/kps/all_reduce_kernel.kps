@@ -27,7 +27,7 @@
 #undef __CUDA__
 #endif
 
-#if defined(__NVCC__) || defined(__CUDACC__)
+#if defined(__NVCC__)
 #undef __NVCC__
 #endif
 

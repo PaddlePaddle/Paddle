@@ -24,6 +24,7 @@
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 #include <cudnn.h>
+
 #include "paddle/phi/kernels/funcs/cudnn_rnn_cache.h"
 #include "paddle/phi/kernels/gpudnn/conv_gpudnn_info.h"
 #endif

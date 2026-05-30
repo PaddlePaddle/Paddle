@@ -36,7 +36,7 @@
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cublas.h"
-// cudnn disabled: #include "paddle/phi/backends/dynload/cudnn.h"
+#include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/backends/dynload/cusparse.h"
 #endif  // PADDLE_WITH_CUDA
@@ -180,7 +180,7 @@ void GPUContextResource::DestroyGPUResource() {
     stream_ = nullptr;
   }
 
-  // DestroyDnnHandle();  // cudnn disabled
+  DestroyDnnHandle();
   DestroyBlasHandle();
   DestroyBlasLtHandle();
   DestroySolverHandle();
@@ -207,12 +207,13 @@ void GPUContextResource::InitGpuEigenDevice() {
   gpu_eigen_device_ = std::make_unique<Eigen::GpuDevice>(eigen_stream_.get());
 }
 
-// void GPUContextResource::InitDnnHandle() {  // cudnn disabled
-//   phi::InitDnnHandle(&dnn_handle_, stream_, place_);
-// }
-// void GPUContextResource::DestroyDnnHandle() {  // cudnn disabled
-//   phi::DestroyDnnHandle(dnn_handle_);
-// }
+void GPUContextResource::InitDnnHandle() {
+  phi::InitDnnHandle(&dnn_handle_, stream_, place_);
+}
+
+void GPUContextResource::DestroyDnnHandle() {
+  phi::DestroyDnnHandle(dnn_handle_);
+}
 
 void GPUContextResource::DestroyBlasHandle() {
   phi::DestroyBlasHandle(blas_handle_);
@@ -252,14 +253,14 @@ phi::Place GPUContextResource::Place() const { return place_; }
 
 gpuStream_t GPUContextResource::GetStream() const { return stream_; }
 
-// dnnHandle_t GPUContextResource::GetDnnHandle() const { return dnn_handle_; }  // cudnn disabled
+dnnHandle_t GPUContextResource::GetDnnHandle() const { return dnn_handle_; }
 
-// std::function<phi::dnnHandle_t()> GPUContextResource::GetDnnHandleCreator() {  // cudnn disabled
-//   return [&]() -> phi::dnnHandle_t {
-//     InitDnnHandle();
-//     return dnn_handle_;
-//   };
-// }
+std::function<phi::dnnHandle_t()> GPUContextResource::GetDnnHandleCreator() {
+  return [&]() -> phi::dnnHandle_t {
+    InitDnnHandle();
+    return dnn_handle_;
+  };
+}
 
 blasHandle_t GPUContextResource::GetBlasHandle() const { return blas_handle_; }
 

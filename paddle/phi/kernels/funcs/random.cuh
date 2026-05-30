@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#ifdef __CUDACC__ //1
+#ifdef __NVCC__
 #include <cuda_runtime_api.h>  // NOLINT
 #endif
 
