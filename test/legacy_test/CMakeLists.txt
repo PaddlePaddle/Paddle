@@ -671,9 +671,7 @@ foreach(TEST_OP ${TEST_OPS})
 endforeach()
 if(WITH_COVERAGE)
   if(TEST test_randperm_op)
-    set_tests_properties(
-      test_randperm_op PROPERTIES ENVIRONMENT
-                                  "PADDLE_SKIP_RANDPERM_LARGE_N_CPU=1")
+    set_tests_properties(test_randperm_op PROPERTIES TIMEOUT 500)
   endif()
   if(TEST test_block_multihead_attention)
     set_tests_properties(

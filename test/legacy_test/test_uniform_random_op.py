@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import hashlib
+import math
 import os
 import platform
 import sys
@@ -44,6 +45,51 @@ def _float_bits(value, dtype):
     if value.dtype == np.float64:
         return int(value.view(np.uint64))
     return None
+
+
+def _chunked_mean(out, chunk_size):
+    flat = out.ravel()
+    total = np.float64(0.0)
+    for start in range(0, flat.size, chunk_size):
+        chunk = flat[start : start + chunk_size]
+        total = np.float64(total + np.sum(chunk, dtype=np.float64))
+    return np.float64(total / flat.size)
+
+
+def _debug_reference_mean(out, expect_mean):
+    flat = out.ravel()
+    fsum_mean = np.float64(math.fsum(map(float, flat)) / flat.size)
+    longdouble_mean = np.sum(out, dtype=np.longdouble) / np.longdouble(
+        flat.size
+    )
+    longdouble_mean_f64 = np.float64(longdouble_mean)
+    chunked_mean_1m = _chunked_mean(out, 1_000_000)
+    chunked_mean_16k = _chunked_mean(out, 16_384)
+    print(
+        "[uniform_random_debug] "
+        f"reference_fsum_mean={fsum_mean!r} "
+        f"diff={fsum_mean - expect_mean!r} "
+        f"bits={_float_bits(fsum_mean, np.float64)}"
+    )
+    print(
+        "[uniform_random_debug] "
+        f"reference_longdouble_mean={longdouble_mean!r} "
+        f"as_float64={longdouble_mean_f64!r} "
+        f"diff={longdouble_mean_f64 - expect_mean!r} "
+        f"bits={_float_bits(longdouble_mean_f64, np.float64)}"
+    )
+    print(
+        "[uniform_random_debug] "
+        f"reference_chunked_mean_1m={chunked_mean_1m!r} "
+        f"diff={chunked_mean_1m - expect_mean!r} "
+        f"bits={_float_bits(chunked_mean_1m, np.float64)}"
+    )
+    print(
+        "[uniform_random_debug] "
+        f"reference_chunked_mean_16k={chunked_mean_16k!r} "
+        f"diff={chunked_mean_16k - expect_mean!r} "
+        f"bits={_float_bits(chunked_mean_16k, np.float64)}"
+    )
 
 
 def _debug_uniform_random_output(
@@ -107,6 +153,7 @@ def _debug_uniform_random_output(
         f"mean_bits={_float_bits(mean, np.asarray(mean).dtype)} "
         f"expect_mean_bits={_float_bits(expect_mean, expect_mean.dtype)}"
     )
+    _debug_reference_mean(out, expect_mean)
     print(
         "[uniform_random_debug] "
         f"std={std!r} expect_std={expect_std!r} "
