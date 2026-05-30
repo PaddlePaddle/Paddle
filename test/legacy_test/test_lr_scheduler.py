@@ -1398,6 +1398,17 @@ class TestLRSchedulerWithOptimizerArg(unittest.TestCase):
         self.assertIs(sgd._learning_rate, scheduler)
         paddle.enable_static()
 
+    def test_step_decay(self):
+        paddle.disable_static()
+        linear = paddle.nn.Linear(10, 10)
+        sgd = paddle.optimizer.SGD(
+            learning_rate=0.5, parameters=linear.parameters()
+        )
+        scheduler = paddle.optimizer.lr.StepDecay(optimizer=sgd, step_size=2)
+        self.assertEqual(scheduler.base_lr, sgd.get_lr())
+        self.assertIs(sgd._learning_rate, scheduler)
+        paddle.enable_static()
+
 
 if __name__ == '__main__':
     paddle.enable_static()
