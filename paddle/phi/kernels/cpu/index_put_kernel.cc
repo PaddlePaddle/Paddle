@@ -31,7 +31,10 @@ void index_put_kernel(const int64_t N,
                       int64_t is_single_val_tensor,
                       bool accumulate,
                       T* out) {
-  auto put_value = [&](int64_t idx) {
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
+  for (int64_t idx = 0; idx < N; ++idx) {
     int64_t cur_ix = 0;
     int64_t offset = 0;
 
@@ -47,19 +50,6 @@ void index_put_kernel(const int64_t N,
       *(out + offset) += *(vals + (idx & is_single_val_tensor));
     } else {
       *(out + offset) = *(vals + (idx & is_single_val_tensor));
-    }
-  };
-
-  if (accumulate) {
-    for (int64_t idx = 0; idx < N; ++idx) {
-      put_value(idx);
-    }
-  } else {
-#ifdef PADDLE_WITH_MKLML
-#pragma omp parallel for
-#endif
-    for (int64_t idx = 0; idx < N; ++idx) {
-      put_value(idx);
     }
   }
 }

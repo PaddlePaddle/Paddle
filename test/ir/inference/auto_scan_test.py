@@ -825,11 +825,6 @@ class TrtLayerAutoScanTest(AutoScanTest):
         *args,
         **kwargs,
     ):
-        if run_pir and _skip_coverage_tensorrt_export_import:
-            self.skipTest(
-                "TensorRT export import is disabled in this Coverage run."
-            )
-
         all_passes = True
 
         def random_to_skip():
