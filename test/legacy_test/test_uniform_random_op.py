@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import hashlib
+import os
+import platform
+import sys
 import unittest
 
 import numpy as np
@@ -31,6 +35,104 @@ from paddle import base
 from paddle.base import Program, core, program_guard
 from paddle.base.framework import convert_np_dtype_to_dtype_
 from paddle.tensor import random
+
+
+def _float_bits(value, dtype):
+    value = np.asarray(value, dtype=dtype)
+    if value.dtype == np.float32:
+        return int(value.view(np.uint32))
+    if value.dtype == np.float64:
+        return int(value.view(np.uint64))
+    return None
+
+
+def _debug_uniform_random_output(
+    case_name, out, expect_mean, expect_std, sample, expect
+):
+    mean = np.mean(out)
+    std = np.std(out)
+    expect_mean = np.asarray(expect_mean, dtype=np.asarray(mean).dtype)
+    expect_std = np.asarray(expect_std, dtype=np.asarray(std).dtype)
+    expect_sample = np.asarray(expect, dtype=sample.dtype)
+    out_bytes = np.ascontiguousarray(out).view(np.uint8)
+
+    print(f"[uniform_random_debug] case={case_name}")
+    print(
+        "[uniform_random_debug] "
+        f"python={sys.version.split()[0]} "
+        f"platform={platform.platform()} "
+        f"numpy={np.__version__} "
+        f"paddle={paddle.__version__}"
+    )
+    print(
+        "[uniform_random_debug] "
+        f"numpy_version={np.__version__} numpy_file={np.__file__}"
+    )
+    try:
+        print(
+            "[uniform_random_debug] "
+            f"device={paddle.device.cuda.get_device_name()} "
+            f"cuda={paddle.version.cuda()} "
+            f"cudnn={paddle.version.cudnn()}"
+        )
+    except Exception as exc:
+        print(f"[uniform_random_debug] device_info_error={exc!r}")
+    try:
+        flags = paddle.get_flags(
+            ["FLAGS_deterministic_rng", "FLAGS_deterministic_rng_grid"]
+        )
+        print(f"[uniform_random_debug] paddle_flags={flags}")
+    except Exception as exc:
+        print(f"[uniform_random_debug] paddle_flags_error={exc!r}")
+    print(
+        "[uniform_random_debug] "
+        f"env_OMP_NUM_THREADS={os.environ.get('OMP_NUM_THREADS')} "
+        f"env_OPENBLAS_NUM_THREADS={os.environ.get('OPENBLAS_NUM_THREADS')} "
+        f"env_MKL_NUM_THREADS={os.environ.get('MKL_NUM_THREADS')}"
+    )
+    print(
+        "[uniform_random_debug] "
+        f"shape={out.shape} dtype={out.dtype} strides={out.strides} "
+        f"c_contiguous={out.flags.c_contiguous}"
+    )
+    print(
+        "[uniform_random_debug] "
+        f"sha256={hashlib.sha256(out_bytes).hexdigest()} "
+        f"min={np.min(out)!r} max={np.max(out)!r}"
+    )
+    print(
+        "[uniform_random_debug] "
+        f"mean={mean!r} expect_mean={expect_mean!r} "
+        f"mean_diff={mean - expect_mean!r} "
+        f"mean_bits={_float_bits(mean, np.asarray(mean).dtype)} "
+        f"expect_mean_bits={_float_bits(expect_mean, expect_mean.dtype)}"
+    )
+    print(
+        "[uniform_random_debug] "
+        f"std={std!r} expect_std={expect_std!r} "
+        f"std_diff={std - expect_std!r} "
+        f"std_bits={_float_bits(std, np.asarray(std).dtype)} "
+        f"expect_std_bits={_float_bits(expect_std, expect_std.dtype)}"
+    )
+    print(
+        "[uniform_random_debug] "
+        "sample="
+        f"{np.array2string(sample, precision=17, floatmode='unique')}"
+    )
+    print(
+        "[uniform_random_debug] "
+        "sample_expect="
+        f"{np.array2string(expect_sample, precision=17, floatmode='unique')} "
+        f"sample_max_abs_diff={np.max(np.abs(sample - expect_sample))!r}"
+    )
+    if hasattr(np, "show_runtime"):
+        print("[uniform_random_debug] numpy_show_runtime_begin")
+        np.show_runtime()
+        print("[uniform_random_debug] numpy_show_runtime_end")
+    else:
+        print("[uniform_random_debug] numpy_config_begin")
+        np.__config__.show()
+        print("[uniform_random_debug] numpy_config_end")
 
 
 def output_hist(out):
@@ -674,6 +776,14 @@ class TestRandomValue(unittest.TestCase):
             0.55972187,
         ]
         out = paddle.rand([32, 3, 1024, 1024], dtype='float64').numpy()
+        _debug_uniform_random_output(
+            "rand_float64",
+            out,
+            expect_mean,
+            expect_std,
+            out[2, 1, 512, 1000:1010],
+            expect,
+        )
         self.assertEqual(np.mean(out), expect_mean)
         self.assertEqual(np.std(out), expect_std)
         np.testing.assert_allclose(
@@ -695,6 +805,14 @@ class TestRandomValue(unittest.TestCase):
             0.9810645,
         ]
         out = paddle.rand([32, 3, 1024, 1024], dtype='float32').numpy()
+        _debug_uniform_random_output(
+            "rand_float32",
+            out,
+            expect_mean,
+            expect_std,
+            out[2, 1, 512, 1000:1010],
+            expect,
+        )
         self.assertEqual(np.mean(out), expect_mean)
         self.assertEqual(np.std(out), expect_std)
         np.testing.assert_allclose(
@@ -719,6 +837,14 @@ class TestRandomValue(unittest.TestCase):
             paddle.empty([16, 16, 16, 16], dtype='float32')
             .uniform_(-50, 100)
             .numpy()
+        )
+        _debug_uniform_random_output(
+            "uniform_inplace_float32",
+            out,
+            expect_mean,
+            expect_std,
+            out[10, 10, 10, 0:10],
+            expect,
         )
         self.assertEqual(np.mean(out), expect_mean)
         self.assertEqual(np.std(out), expect_std)
