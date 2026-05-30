@@ -32,7 +32,7 @@ from paddle.base.framework import (
     in_dygraph_mode,
 )
 from paddle.base.layer_helper import LayerHelper
-from paddle.utils.decorator_utils import param_one_alias
+from paddle.utils.decorator_utils import param_one_alias, param_two_alias
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -1557,9 +1557,10 @@ class ReduceOnPlateau(LRScheduler):
     min_lr: float
     epsilon: float
 
+    @param_two_alias(["learning_rate", "optimizer"], ["epsilon", "eps"])
     def __init__(
         self,
-        learning_rate: float,
+        learning_rate: float | paddle.optimizer.Optimizer,
         mode: Literal["min", "max"] = 'min',
         factor: float = 0.1,
         patience: int = 10,
@@ -1587,10 +1588,6 @@ class ReduceOnPlateau(LRScheduler):
                 'threshold mode: ' + threshold_mode + ' is unknown!'
             )
         self.threshold_mode = threshold_mode
-        if not isinstance(learning_rate, (float, int)):
-            raise TypeError(
-                f"The type of 'learning_rate' in 'ReduceOnPlateau' must be 'float', but received {type(learning_rate)}."
-            )
 
         self.patience = patience
         self.threshold = threshold
@@ -1604,8 +1601,17 @@ class ReduceOnPlateau(LRScheduler):
         self.num_bad_epochs = 0
 
         # Can not call Parent __init__, so implement here.
-        self.base_lr = float(learning_rate)
-        self.last_lr = float(learning_rate)
+        if isinstance(learning_rate, (float, int)):
+            self.base_lr = float(learning_rate)
+            self.last_lr = float(learning_rate)
+        elif isinstance(learning_rate, paddle.optimizer.Optimizer):
+            self.base_lr = learning_rate.get_lr()
+            self.last_lr = learning_rate.get_lr()
+            learning_rate.set_lr_scheduler(self)
+        else:
+            raise TypeError(
+                f"The type of 'learning_rate' in 'ReduceOnPlateau' must be int, float or paddle.optimizer.Optimizer, but received {type(learning_rate)}"
+            )
         self.last_epoch = 0
         self.verbose = verbose
         self._var_name = None
