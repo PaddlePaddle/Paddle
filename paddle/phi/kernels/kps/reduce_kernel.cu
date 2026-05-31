@@ -297,8 +297,8 @@ PD_REGISTER_KERNEL(sum_raw, KPS, ALL_LAYOUT, phi::SumRawKernel, float) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
 #else
-using kPhiFloat16 = ::phi::dtype::float16;
-using kPhiBFloat16 = ::phi::dtype::bfloat16;
+using float16 = phi::float16;
+using bfloat16 = phi::bfloat16;
 using complex64 = phi::complex64;
 using complex128 = phi::complex128;
 
@@ -370,7 +370,7 @@ PD_REGISTER_KERNEL(mean_raw,
                    bool,
                    phi::bfloat16,
                    phi::float8_e4m3fn,
-                   kPhiFloat16,
+                   float16,
                    int,
                    int64_t,
                    phi::complex64,
@@ -394,8 +394,8 @@ PD_REGISTER_KERNEL(sum_raw,
                    bool,
                    float,
                    double,
-                   kPhiFloat16,
-                   kPhiBFloat16,
+                   float16,
+                   bfloat16,
                    int8_t,
                    uint8_t,
                    int16_t,

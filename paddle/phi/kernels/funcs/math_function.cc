@@ -46,7 +46,8 @@ limitations under the License. */
 
 namespace phi::funcs {
 
-using kPhiFloat16 = ::phi::dtype::float16;
+using float16 = phi::float16;
+
 template struct SetConstant<phi::CPUContext, phi::float8_e4m3fn>;
 template struct SetConstant<phi::CPUContext, phi::float8_e5m2>;
 template struct SetConstant<phi::CPUContext, phi::float16>;

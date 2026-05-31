@@ -28,7 +28,8 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-using kPhiFloat16 = ::phi::dtype::float16;
+using float16 = phi::float16;
+
 template <typename T>
 struct FcTypeTraits;
 

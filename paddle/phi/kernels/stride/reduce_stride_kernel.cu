@@ -147,8 +147,8 @@ void MeanStrideKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-using kPhiFloat16 = ::phi::dtype::float16;
-using kPhiBFloat16 = ::phi::dtype::bfloat16;
+using float16 = phi::float16;
+using bfloat16 = phi::bfloat16;
 using complex64 = phi::complex64;
 using complex128 = phi::complex128;
 

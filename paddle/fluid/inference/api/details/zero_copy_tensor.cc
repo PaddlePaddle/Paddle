@@ -31,16 +31,9 @@
 
 namespace paddle_infer {
 
-using kPhiFloat16 = ::phi::dtype::float16;
-using kPhiBFloat16 = ::phi::dtype::bfloat16;
-// XPU runtime headers (transitively pulled by cuDNN2 includes) declare
-// `struct float16`/`struct bfloat16` in the global namespace, which would
-// shadow `phi::dtype::float16` for unqualified lookups in this TU and break
-// template name mangling. Force unqualified `float16`/`bfloat16` here to
-// resolve to the phi::dtype types so explicit instantiations match the
-// symbols expected by other translation units.
-using float16 = ::phi::dtype::float16;
-using bfloat16 = ::phi::dtype::bfloat16;
+using float16 = phi::dtype::float16;
+using bfloat16 = phi::dtype::bfloat16;
+
 void Tensor::Reshape(const std::vector<int> &shape) {
 #ifdef PADDLE_WITH_ONNXRUNTIME
   if (is_ort_tensor_) {

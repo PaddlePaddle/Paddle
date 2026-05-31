@@ -340,8 +340,8 @@ PD_REGISTER_KERNEL(
     elementwise_pow, KPS, ALL_LAYOUT, phi::ElementwisePowKernel, float) {}
 
 #else
-using kPhiFloat16 = ::phi::dtype::float16;
-using kPhiBFloat16 = ::phi::dtype::bfloat16;
+using float16 = phi::float16;
+using bfloat16 = phi::bfloat16;
 using complex64 = phi::complex64;
 using complex128 = phi::complex128;
 
@@ -352,8 +352,8 @@ PD_REGISTER_KERNEL(fmax,
                    float,
                    double,
                    int,
-                   kPhiFloat16,
-                   kPhiBFloat16,
+                   float16,
+                   bfloat16,
                    int64_t) {}
 
 PD_REGISTER_KERNEL(fmin,
@@ -363,8 +363,8 @@ PD_REGISTER_KERNEL(fmin,
                    float,
                    double,
                    int,
-                   kPhiFloat16,
-                   kPhiBFloat16,
+                   float16,
+                   bfloat16,
                    int64_t) {}
 
 PD_REGISTER_KERNEL(heaviside,
@@ -374,8 +374,8 @@ PD_REGISTER_KERNEL(heaviside,
                    float,
                    double,
                    int,
-                   kPhiFloat16,
-                   kPhiBFloat16,
+                   float16,
+                   bfloat16,
                    int64_t) {}
 
 PD_REGISTER_KERNEL(add,
@@ -390,8 +390,8 @@ PD_REGISTER_KERNEL(add,
                    uint8_t,
                    int8_t,
                    int64_t,
-                   kPhiFloat16,
-                   kPhiBFloat16,
+                   float16,
+                   bfloat16,
                    complex64,
                    complex128) {}
 
@@ -407,8 +407,8 @@ PD_REGISTER_KERNEL(grad_add,
                    uint8_t,
                    int8_t,
                    int64_t,
-                   kPhiFloat16,
-                   kPhiBFloat16,
+                   float16,
+                   bfloat16,
                    complex64,
                    complex128) {}
 
@@ -424,8 +424,8 @@ PD_REGISTER_KERNEL(divide,
                    int,
                    int64_t,
                    bool,
-                   kPhiFloat16,
-                   kPhiBFloat16,
+                   float16,
+                   bfloat16,
                    complex64,
                    complex128) {}
 
@@ -438,10 +438,10 @@ PD_REGISTER_KERNEL(multiply,
                    int,
                    int64_t,
                    bool,
-                   kPhiFloat16,
+                   float16,
                    complex64,
                    complex128,
-                   kPhiBFloat16) {}
+                   bfloat16) {}
 
 PD_REGISTER_KERNEL(subtract,
                    KPS,
@@ -452,8 +452,8 @@ PD_REGISTER_KERNEL(subtract,
                    int16_t,
                    int,
                    int64_t,
-                   kPhiFloat16,
-                   kPhiBFloat16,
+                   float16,
+                   bfloat16,
                    complex64,
                    complex128) {}
 

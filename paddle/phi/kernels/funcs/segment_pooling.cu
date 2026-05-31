@@ -442,7 +442,7 @@ class SegmentPoolGradFunctor<phi::GPUContext, T, IndexT> {
 };
 
 using GPU = phi::GPUContext;
-using kPhiFloat16 = ::phi::dtype::float16;
+using float16 = phi::float16;
 template class SegmentPoolFunctor<GPU, float, int>;
 template class SegmentPoolFunctor<GPU, float, int64_t>;
 template class SegmentPoolFunctor<GPU, double, int>;

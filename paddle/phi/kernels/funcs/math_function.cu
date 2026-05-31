@@ -123,8 +123,9 @@ void BatchTranspose(T* output,
       output, input, batch, m, n, swizzle);
 }
 
-using kPhiFloat16 = ::phi::dtype::float16;
-using kPhiBFloat16 = ::phi::dtype::bfloat16;
+using float16 = phi::float16;
+using bfloat16 = phi::bfloat16;
+
 template void BatchTranspose(float16* output,
                              const float16* input,
                              int64_t batch,

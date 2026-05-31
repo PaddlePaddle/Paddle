@@ -413,11 +413,7 @@ void Pool3dGradGPUDNNKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-// Note: do NOT use `using phi::float16;` here — when xtrans_cuda's xpudnn
-// wrapper is enabled, it pulls `xpu/refactor/util/float16.h` into the global
-// namespace, which would collide with `phi::float16`. Use a uniquely-named
-// alias so the PD_REGISTER_KERNEL macro arg `kPhiFloat16` is unambiguous.
-using kPhiFloat16 = ::phi::dtype::float16;
+using phi::float16;
 
 #ifdef PADDLE_WITH_HIP
 // MIOPEN do not support double
@@ -426,19 +422,19 @@ PD_REGISTER_KERNEL(pool2d_grad,
                    ALL_LAYOUT,
                    phi::Pool2dGradGPUDNNKernel,
                    float,
-                   kPhiFloat16) {}
+                   float16) {}
 PD_REGISTER_KERNEL(pool2d_double_grad,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::Pool2dDoubleGradGPUDNNKernel,
                    float,
-                   kPhiFloat16) {}
+                   float16) {}
 PD_REGISTER_KERNEL(pool3d_grad,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::Pool3dGradGPUDNNKernel,
                    float,
-                   kPhiFloat16) {}
+                   float16) {}
 #else
 PD_REGISTER_KERNEL(pool2d_grad,
                    GPUDNN,
@@ -446,19 +442,19 @@ PD_REGISTER_KERNEL(pool2d_grad,
                    phi::Pool2dGradGPUDNNKernel,
                    float,
                    double,
-                   kPhiFloat16) {}
+                   float16) {}
 PD_REGISTER_KERNEL(pool2d_double_grad,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::Pool2dDoubleGradGPUDNNKernel,
                    float,
                    double,
-                   kPhiFloat16) {}
+                   float16) {}
 PD_REGISTER_KERNEL(pool3d_grad,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::Pool3dGradGPUDNNKernel,
                    float,
                    double,
-                   kPhiFloat16) {}
+                   float16) {}
 #endif

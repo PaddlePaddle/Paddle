@@ -571,8 +571,7 @@ void Conv3dTransposeGPUDNNKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-// Avoid collision with xpudnn wrapper's global ::float16.
-using kPhiFloat16 = ::phi::dtype::float16;
+using float16 = phi::float16;
 
 #ifdef PADDLE_WITH_HIP
 // MIOPEN do not support double
@@ -581,13 +580,13 @@ PD_REGISTER_KERNEL(conv2d_transpose,
                    ALL_LAYOUT,
                    phi::Conv2dTransposeGPUDNNKernel,
                    float,
-                   kPhiFloat16) {}
+                   float16) {}
 PD_REGISTER_KERNEL(conv3d_transpose,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::Conv3dTransposeGPUDNNKernel,
                    float,
-                   kPhiFloat16) {}
+                   float16) {}
 #else
 #if CUDNN_VERSION_MIN(8, 1, 0)
 PD_REGISTER_KERNEL(conv2d_transpose,
@@ -596,7 +595,7 @@ PD_REGISTER_KERNEL(conv2d_transpose,
                    phi::Conv2dTransposeGPUDNNKernel,
                    float,
                    double,
-                   kPhiFloat16,
+                   float16,
                    phi::bfloat16) {}
 PD_REGISTER_KERNEL(conv3d_transpose,
                    GPUDNN,
@@ -604,7 +603,7 @@ PD_REGISTER_KERNEL(conv3d_transpose,
                    phi::Conv3dTransposeGPUDNNKernel,
                    float,
                    double,
-                   kPhiFloat16,
+                   float16,
                    phi::bfloat16) {}
 #else
 PD_REGISTER_KERNEL(conv2d_transpose,
@@ -613,14 +612,14 @@ PD_REGISTER_KERNEL(conv2d_transpose,
                    phi::Conv2dTransposeGPUDNNKernel,
                    float,
                    double,
-                   kPhiFloat16) {}
+                   float16) {}
 PD_REGISTER_KERNEL(conv3d_transpose,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::Conv3dTransposeGPUDNNKernel,
                    float,
                    double,
-                   kPhiFloat16) {}
+                   float16) {}
 #endif
 
 #endif

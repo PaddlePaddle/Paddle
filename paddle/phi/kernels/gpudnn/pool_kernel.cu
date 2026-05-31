@@ -326,7 +326,7 @@ void Pool3dGPUDNNKernel(const Context& dev_ctx,
 }  // namespace phi
 
 // Avoid collision with xpudnn wrapper's global ::float16.
-using kPhiFloat16 = ::phi::dtype::float16;
+using phi::float16;
 
 #ifdef PADDLE_WITH_HIP
 // MIOPEN do not support double
@@ -341,12 +341,12 @@ PD_REGISTER_KERNEL(pool2d,
                    phi::Pool2dGPUDNNKernel,
                    float,
                    double,
-                   kPhiFloat16) {}
+                   float16) {}
 PD_REGISTER_KERNEL(pool3d,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::Pool3dGPUDNNKernel,
                    float,
                    double,
-                   kPhiFloat16) {}
+                   float16) {}
 #endif

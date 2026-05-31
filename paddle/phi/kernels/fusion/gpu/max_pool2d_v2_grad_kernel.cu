@@ -241,8 +241,7 @@ void MaxPool2dV2GradCUDNNKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-// Avoid collision with xpudnn wrapper's global ::float16.
-using kPhiFloat16 = ::phi::dtype::float16;
+using phi::float16;
 
 PD_REGISTER_KERNEL(max_pool2d_v2_grad,  // cuda_only
                    GPU,
