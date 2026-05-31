@@ -66,6 +66,8 @@ echo "::group::Install dependencies"
 
 pip install -r "${work_dir}/python/requirements.txt"
 pip install -r "${work_dir}/python/unittest_py/requirements.txt"
+pip uninstall numpy -y
+pip install numpy==2.0.2
 pip install PyGithub
 
 echo "::endgroup::"
