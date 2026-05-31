@@ -226,6 +226,8 @@ jobs:
               curl -fsSL https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
               "${target_python}" /tmp/get-pip.py || "${target_python}" /tmp/get-pip.py --break-system-packages
             fi
+            "${target_python}" -m pip install --upgrade "setuptools==68.2.0" wheel || "${target_python}" -m pip install --upgrade "setuptools==68.2.0" wheel --break-system-packages
+            export SETUPTOOLS_USE_DISTUTILS=local
             python_bin=$(command -v "${target_python}" || true)
             pip_bin=$(command -v "${target_pip}" || true)
             if [ -z "${python_bin}" ] || [ -z "${pip_bin}" ]; then
@@ -444,6 +446,8 @@ jobs:
               curl -fsSL https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
               "${target_python}" /tmp/get-pip.py || "${target_python}" /tmp/get-pip.py --break-system-packages
             fi
+            "${target_python}" -m pip install --upgrade "setuptools==68.2.0" wheel || "${target_python}" -m pip install --upgrade "setuptools==68.2.0" wheel --break-system-packages
+            export SETUPTOOLS_USE_DISTUTILS=local
             python_bin=$(command -v "${target_python}" || true)
             pip_bin=$(command -v "${target_pip}" || true)
             if [ -z "${python_bin}" ] || [ -z "${pip_bin}" ]; then
@@ -571,6 +575,8 @@ jobs:
               curl -fsSL https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
               "${target_python}" /tmp/get-pip.py || "${target_python}" /tmp/get-pip.py --break-system-packages
             fi
+            "${target_python}" -m pip install --upgrade "setuptools==68.2.0" wheel || "${target_python}" -m pip install --upgrade "setuptools==68.2.0" wheel --break-system-packages
+            export SETUPTOOLS_USE_DISTUTILS=local
             python_bin=$(command -v "${target_python}" || true)
             pip_bin=$(command -v "${target_pip}" || true)
             if [ -z "${python_bin}" ] || [ -z "${pip_bin}" ]; then
@@ -741,6 +747,8 @@ jobs:
               curl -fsSL https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
               "${target_python}" /tmp/get-pip.py || "${target_python}" /tmp/get-pip.py --break-system-packages
             fi
+            "${target_python}" -m pip install --upgrade "setuptools==68.2.0" wheel || "${target_python}" -m pip install --upgrade "setuptools==68.2.0" wheel --break-system-packages
+            export SETUPTOOLS_USE_DISTUTILS=local
             python_bin=$(command -v "${target_python}" || true)
             pip_bin=$(command -v "${target_pip}" || true)
             if [ -z "${python_bin}" ] || [ -z "${pip_bin}" ]; then
@@ -907,6 +915,8 @@ jobs:
               curl -fsSL https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
               "${target_python}" /tmp/get-pip.py || "${target_python}" /tmp/get-pip.py --break-system-packages
             fi
+            "${target_python}" -m pip install --upgrade "setuptools==68.2.0" wheel || "${target_python}" -m pip install --upgrade "setuptools==68.2.0" wheel --break-system-packages
+            export SETUPTOOLS_USE_DISTUTILS=local
             python_bin=$(command -v "${target_python}" || true)
             pip_bin=$(command -v "${target_pip}" || true)
             if [ -z "${python_bin}" ] || [ -z "${pip_bin}" ]; then
