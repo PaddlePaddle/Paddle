@@ -468,7 +468,7 @@ jobs:
           }
           setup_target_python
           pip install build//python/dist/*.whl --no-deps
-          pip install -r python/unittest_py/requirements.txt
+          pip install --ignore-installed -r python/requirements.txt -r python/unittest_py/requirements.txt pytest "setuptools==68.2.0"
           bash $ci_scripts/h-test.sh
           '
 
