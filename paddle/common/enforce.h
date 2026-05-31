@@ -17,6 +17,7 @@
 #ifdef __GNUC__
 #include <cxxabi.h>  // for __cxa_demangle
 #endif               // __GNUC__
+#include <cstdint>
 #include <exception>
 #include <iostream>
 #if !defined(_WIN32)
