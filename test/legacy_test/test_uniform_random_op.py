@@ -659,8 +659,8 @@ class TestRandomValue(unittest.TestCase):
         paddle.set_device(get_device())
         paddle.seed(2021)
 
-        expect_mean = 0.500004543388202
-        expect_std = 0.2886737916729752
+        expect_mean = 0.50000454338820199406967503819032572209835052490234375
+        expect_std = 0.288673791672975188493666109934565611183643341064453125
         expect = [
             0.55298901,
             0.65184678,
