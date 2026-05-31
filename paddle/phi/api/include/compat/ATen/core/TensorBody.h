@@ -542,6 +542,15 @@ class Tensor : public TensorBase {
   at::Tensor& unsqueeze_(int64_t dim) const;
   at::Tensor& unsqueeze_(at::IntArrayRef dim) const;
 
+  at::Tensor stft(int64_t n_fft,
+                  ::std::optional<int64_t> hop_length = ::std::nullopt,
+                  ::std::optional<int64_t> win_length = ::std::nullopt,
+                  const ::std::optional<at::Tensor>& window = ::std::nullopt,
+                  bool normalized = false,
+                  ::std::optional<bool> onesided = ::std::nullopt,
+                  ::std::optional<bool> return_complex = ::std::nullopt,
+                  ::std::optional<bool> align_to_window = ::std::nullopt) const;
+
   at::Tensor sum(::std::optional<at::ScalarType> dtype = ::std::nullopt) const;
   at::Tensor sum(at::OptionalIntArrayRef dim,
                  bool keepdim = false,
