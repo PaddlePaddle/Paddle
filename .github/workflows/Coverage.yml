@@ -109,7 +109,7 @@ jobs:
           WITH_FLAGCX: "ON"
           LITE_GIT_TAG: develop
           WITH_UNITY_BUILD: "ON"
-          PY_VERSION: 3.9
+          PY_VERSION: "3.12"
           WITH_SHARED_PHI: "ON"
           WITH_CINN: "ON"
           INFERENCE_DEMO_INSTALL_DIR: /root/.cache/coverage
@@ -299,7 +299,7 @@ jobs:
           PADDLE_VERSION: 0.0.0
           WITH_DISTRIBUTE: "ON"
           WITH_UNITY_BUILD: "ON"
-          PY_VERSION: 3.9
+          PY_VERSION: "3.12"
           WITH_SHARED_PHI: "ON"
           WITH_CINN: "ON"
           INFERENCE_DEMO_INSTALL_DIR: /root/.cache/coverage
