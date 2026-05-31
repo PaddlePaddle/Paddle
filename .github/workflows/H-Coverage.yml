@@ -104,7 +104,7 @@ jobs:
           LITE_GIT_TAG: develop
           WITH_UNITY_BUILD: "ON"
           WITH_FA_BUILD_WITH_CACHE: "ON"
-          PY_VERSION: "3.10"
+          PY_VERSION: "3.12"
           INFERENCE_DEMO_INSTALL_DIR: /root/.cache/coverage
           CCACHE_MAXSIZE: 50G
           CCACHE_LIMIT_MULTIPLE: 0.8
@@ -191,13 +191,17 @@ jobs:
           mkdir -p ${CFS_DIR}/.cache/coverage
           mkdir -p ${CFS_DIR}/.ccache/coverage
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda-12.9/compat
+          python_bin=$(command -v python${PY_VERSION}) || exit 1
+          pip_bin=$(command -v pip${PY_VERSION}) || exit 1
+          ln -sf ${python_bin} /usr/local/bin/python
+          ln -sf ${pip_bin} /usr/local/bin/pip
           source ${{ github.workspace }}/../../../proxy
           bash ${ci_scripts}/cmake-predownload.sh
           bash ${ci_scripts}/cmake_preload_data_file.sh
           pip install -r python/requirements.txt
           mkdir -p build && cd build
           ccache -z
-          cmake .. -DPY_VERSION=3.10 -DWITH_GPU=ON -DWITH_DISTRIBUTE=ON -DWITH_TESTING=ON -DCUDA_ARCH_NAME=Manual -DCUDA_ARCH_BIN="90" -DFA_JOB_POOLS_COMPILE=1 -DWITH_CUDNN_FRONTEND=ON -DON_INFER=OFF -DWITH_NVSHMEM=ON
+          cmake .. -DPY_VERSION=3.12 -DWITH_GPU=ON -DWITH_DISTRIBUTE=ON -DWITH_TESTING=ON -DCUDA_ARCH_NAME=Manual -DCUDA_ARCH_BIN="90" -DFA_JOB_POOLS_COMPILE=1 -DWITH_CUDNN_FRONTEND=ON -DON_INFER=OFF -DWITH_NVSHMEM=ON
           make -j20
           EXIT_CODE=$?
           ccache -s
@@ -223,7 +227,7 @@ jobs:
         env:
           home_path: ${{ github.workspace }}/..
           bos_file: ${{ github.workspace }}/../bos_retry/BosClient.py
-          paddle_whl: paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+          paddle_whl: paddlepaddle_gpu-0.0.0-cp312-cp312-linux_x86_64.whl
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           echo "::group::Install bce-python-sdk"
@@ -238,7 +242,7 @@ jobs:
           fi
           cd /paddle
           mv /Paddle.tar.gz .
-          cp ./build/python/dist/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl .
+          cp ./build/python/dist/paddlepaddle_gpu-0.0.0-cp312-cp312-linux_x86_64.whl .
           echo "Uploading Paddle.tar.gz"
           python ${{ env.bos_file }} Paddle.tar.gz paddle-github-action/PR/h-coverage/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
           echo "Uploading coverage wheel"
@@ -283,7 +287,7 @@ jobs:
           PADDLE_VERSION: 0.0.0
           WITH_DISTRIBUTE: "ON"
           WITH_UNITY_BUILD: "ON"
-          PY_VERSION: "3.10"
+          PY_VERSION: "3.12"
           WITH_SHARED_PHI: "ON"
           GPU_DEVICES: ${{ env.GPU_DEVICES }}
           WITH_CINN: "ON"
@@ -359,6 +363,10 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
+          python_bin=$(command -v python${PY_VERSION}) || exit 1
+          pip_bin=$(command -v pip${PY_VERSION}) || exit 1
+          ln -sf ${python_bin} /usr/local/bin/python
+          ln -sf ${pip_bin} /usr/local/bin/pip
           pip install build//python/dist/*.whl --no-deps
           pip install -r python/unittest_py/requirements.txt
           bash $ci_scripts/h-test.sh
@@ -392,6 +400,7 @@ jobs:
     env:
       TASK: fleet-ci-paddle-build-whl-${{ github.event.pull_request.number }}
       docker_image: "ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:ubuntu24-cuda129-dev"
+      PY_VERSION: "3.12"
     steps:
       - name: Check docker image and run container
         env:
@@ -425,6 +434,7 @@ jobs:
             -e CCACHE_LIMIT_MULTIPLE \
             -e CCACHE_STATSLOG \
             -e CCACHE_SLOPPINESS \
+            -e PY_VERSION \
             -w /paddle --network host ${docker_image}
 
       - name: uv build whl
@@ -433,6 +443,10 @@ jobs:
           rm -rf * .[^.]*
           set -x
           source ${{ github.workspace }}/../../../proxy
+          python_bin=$(command -v python${PY_VERSION}) || exit 1
+          pip_bin=$(command -v pip${PY_VERSION}) || exit 1
+          ln -sf ${python_bin} /usr/local/bin/python
+          ln -sf ${pip_bin} /usr/local/bin/pip
           apt-get update
           apt-get install -y libnvidia-compute-535
           python -m pip install --upgrade pip wheel setuptools
@@ -458,9 +472,9 @@ jobs:
           export LD_LIBRARY_PATH=/usr/local/cuda-12.9/compat:$LD_LIBRARY_PATH
           export IS_NVIDIA=True
           echo "Downloading Paddle.tar.gz from cfs"
-          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/h-coverage/${PR_ID}/${COMMIT_ID}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --no-check-certificate
+          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/h-coverage/${PR_ID}/${COMMIT_ID}/paddlepaddle_gpu-0.0.0-cp312-cp312-linux_x86_64.whl --no-check-certificate
           pip uninstall paddlepaddle-gpu -y
-          pip install paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --force-reinstall --extra-index-url=https://www.paddlepaddle.org.cn/packages/nightly/cu129/
+          pip install paddlepaddle_gpu-0.0.0-cp312-cp312-linux_x86_64.whl --force-reinstall --extra-index-url=https://www.paddlepaddle.org.cn/packages/nightly/cu129/
           pip install paddle-nvidia-nvshmem-cu12 --extra-index-url https://www.paddlepaddle.org.cn/packages/nightly/cu129/
           uv build --wheel --no-build-isolation -v --python $(which python)
           '
@@ -469,7 +483,7 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -ce '
           set -x
-          OPS_DST=paddlefleet_ops-0.0.0-cp310-cp310-linux_x86_64.whl
+          OPS_DST=paddlefleet_ops-0.0.0-cp312-cp312-linux_x86_64.whl
           wget -q --no-proxy "https://paddle-whl.bj.bcebos.com/nightly/cu129/paddlefleet-ops/${OPS_DST}" -O dist/${OPS_DST}
           '
 
@@ -506,6 +520,7 @@ jobs:
       PIP_CACHE_DIR: /root/.cache/pip
       CACHE_DIR: /root/.cache
       TASK: paddle-fleet-CI-${{ github.event.pull_request.number }}-single-card-test
+      PY_VERSION: "3.12"
     steps:
       - name: Determine the runner
         run: |
@@ -535,6 +550,7 @@ jobs:
             -e no_proxy \
             -e CI_name \
             -e PIP_CACHE_DIR \
+            -e PY_VERSION \
             -e work_dir \
             -e GITHUB_SHA="${{ github.event.pull_request.head.sha }}" \
             -e GITHUB_HEAD_REF="${{ github.head_ref }}" \
@@ -550,6 +566,10 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -ce '
           rm -rf * .[^.]*
           source /root/proxy
+          python_bin=$(command -v python${PY_VERSION}) || exit 1
+          pip_bin=$(command -v pip${PY_VERSION}) || exit 1
+          ln -sf ${python_bin} /usr/local/bin/python
+          ln -sf ${pip_bin} /usr/local/bin/pip
           export LD_LIBRARY_PATH=/usr/local/cuda-12.9/targets/x86_64-linux/lib:/usr/local/cuda/lib64
           pip install uv coverage==7.6.1 bce-python-sdk==0.8.74 wrapt pytest matplotlib parameterized
           wget -q --tries=5 --no-proxy --no-check-certificate https://paddle-github-action.cdn.bcebos.com/PR/paddlefleet/${PR_ID}/${COMMIT_ID}/paddldfleet.tar.gz
@@ -570,12 +590,12 @@ jobs:
           mkdir -p /PaddlePaddle
           cd /PaddlePaddle
           echo "Downloading Paddle.tar.gz from cfs"
-          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/h-coverage/${PR_ID}/${COMMIT_ID}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --no-check-certificate
+          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/h-coverage/${PR_ID}/${COMMIT_ID}/paddlepaddle_gpu-0.0.0-cp312-cp312-linux_x86_64.whl --no-check-certificate
           export UV_SKIP_WHEEL_FILENAME_CHECK=1 #This environment variable allows installing the latest commit-level whl package of Paddle.
           export UV_NO_SYNC=1 # This environment variable prevents uv sync from being executed when running un run.
           export UV_HTTP_TIMEOUT=300
           pip uninstall paddlepaddle-gpu -y
-          pip install paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --force-reinstall --extra-index-url=https://www.paddlepaddle.org.cn/packages/nightly/cu129/
+          pip install paddlepaddle_gpu-0.0.0-cp312-cp312-linux_x86_64.whl --force-reinstall --extra-index-url=https://www.paddlepaddle.org.cn/packages/nightly/cu129/
           echo "paddlefleet commit:"
           python -c "import paddlefleet; print(paddlefleet.version.commit)"
           '
@@ -625,6 +645,7 @@ jobs:
       PIP_CACHE_DIR: /root/.cache/pip
       TASK: paddle-fleet-CI-${{ github.event.pull_request.number }}-multi-card_test
       docker_image: "ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:ubuntu24-cuda129-dev"
+      PY_VERSION: "3.12"
     steps:
       - name: Check docker image and run container
         run: |
@@ -647,6 +668,7 @@ jobs:
             -e no_proxy \
             -e CI_name \
             -e PIP_CACHE_DIR \
+            -e PY_VERSION \
             -e work_dir \
             -e GITHUB_SHA="${{ github.event.pull_request.head.sha }}" \
             -e GITHUB_HEAD_REF="${{ github.head_ref }}" \
@@ -663,6 +685,10 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -ce '
           rm -rf * .[^.]*
           source /root/proxy
+          python_bin=$(command -v python${PY_VERSION}) || exit 1
+          pip_bin=$(command -v pip${PY_VERSION}) || exit 1
+          ln -sf ${python_bin} /usr/local/bin/python
+          ln -sf ${pip_bin} /usr/local/bin/pip
           export LD_LIBRARY_PATH=/usr/local/cuda-12.9/targets/x86_64-linux/lib:/usr/local/cuda/lib64
           pip install uv coverage==7.6.1 bce-python-sdk==0.8.74 wrapt pytest matplotlib parameterized
           wget -q --tries=5 --no-proxy --no-check-certificate https://paddle-github-action.cdn.bcebos.com/PR/paddlefleet/${PR_ID}/${COMMIT_ID}/paddldfleet.tar.gz
@@ -683,12 +709,12 @@ jobs:
           mkdir -p /PaddlePaddle
           cd /PaddlePaddle
           echo "Downloading Paddle.tar.gz from cfs"
-          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/h-coverage/${PR_ID}/${COMMIT_ID}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --no-check-certificate
+          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/h-coverage/${PR_ID}/${COMMIT_ID}/paddlepaddle_gpu-0.0.0-cp312-cp312-linux_x86_64.whl --no-check-certificate
           export UV_SKIP_WHEEL_FILENAME_CHECK=1 #This environment variable allows installing the latest commit-level whl package of Paddle.
           export UV_NO_SYNC=1 # This environment variable prevents uv sync from being executed when running un run.
           export UV_HTTP_TIMEOUT=300
           pip uninstall paddlepaddle-gpu -y
-          pip install paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --force-reinstall --extra-index-url=https://www.paddlepaddle.org.cn/packages/nightly/cu129/
+          pip install paddlepaddle_gpu-0.0.0-cp312-cp312-linux_x86_64.whl --force-reinstall --extra-index-url=https://www.paddlepaddle.org.cn/packages/nightly/cu129/
           echo "paddlefleet commit:"
           python -c "import paddlefleet; print(paddlefleet.version.commit)"
           '
