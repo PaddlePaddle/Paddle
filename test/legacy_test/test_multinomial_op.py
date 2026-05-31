@@ -53,61 +53,6 @@ def sample_output_two_dimension(out, shape):
     return sample_prob
 
 
-def log_multinomial_std_debug(case_name, y, expected_std):
-    actual_std = np.std(y)
-    actual_std_float = float(actual_std)
-    expected_std_float = float(expected_std)
-    std_abs_diff = actual_std_float - expected_std_float
-    std_ulp = float(np.spacing(expected_std_float))
-    std_ulp_diff = abs(std_abs_diff) / std_ulp if std_ulp != 0 else float("inf")
-
-    cpu_features = []
-    try:
-        np_core = getattr(np, "_core", None)
-        if np_core is None:
-            np_core = np.core
-        features = np_core._multiarray_umath.__cpu_features__
-        cpu_features = sorted(
-            name for name, enabled in features.items() if enabled
-        )
-    except Exception as exc:
-        cpu_features = [f"unavailable: {exc}"]
-
-    print(f"[multinomial_std_debug] case={case_name}")
-    print(
-        "[multinomial_std_debug] "
-        f"python_version={sys.version.split()[0]} "
-        f"numpy_version={np.__version__} numpy_file={np.__file__} "
-        f"paddle_version={paddle.__version__}"
-    )
-    print(
-        "[multinomial_std_debug] "
-        f"device={paddle.device.get_device()} "
-        f"cuda_device_name={paddle.device.cuda.get_device_name()}"
-    )
-    print(
-        "[multinomial_std_debug] "
-        f"y.dtype={y.dtype} y.shape={y.shape} y.strides={y.strides} "
-        f"c_contiguous={y.flags.c_contiguous}"
-    )
-    print(
-        "[multinomial_std_debug] "
-        f"sum={np.sum(y)!r} mean={np.mean(y)!r} var={np.var(y)!r} "
-        f"std={actual_std!r} expected_std={expected_std!r}"
-    )
-    print(
-        "[multinomial_std_debug] "
-        f"std_abs_diff={std_abs_diff:.17g} "
-        f"std_ulp={std_ulp:.17g} std_ulp_diff={std_ulp_diff:.17g}"
-    )
-    print(
-        "[multinomial_std_debug] "
-        f"min={np.min(y)!r} max={np.max(y)!r} "
-        f"numpy_cpu_features={cpu_features}"
-    )
-    return actual_std
-
-
 class TestMultinomialOp(OpTest):
     def setUp(self):
         paddle.enable_static()
@@ -588,14 +533,7 @@ class TestMultinomialAlias(unittest.TestCase):
         ).numpy()
         self.assertEqual(np.sum(y), 102371362581)
         self.assertEqual(np.mean(y), 4998.60168852539)
-        self.assertEqual(
-            log_multinomial_std_debug(
-                "TestMultinomialAlias.test_alias_torch.replacement_true_1",
-                y,
-                2886.316308500771,
-            ),
-            2886.316308500771,
-        )
+        self.assertEqual(np.std(y), 2886.3163085007764)
         expect = [7630, 8235, 8445, 3275, 5580, 4591, 1331, 342, 1662, 7156]
         np.testing.assert_array_equal(y[100, 0:10], expect)
 
@@ -675,28 +613,14 @@ class TestRandomValue(unittest.TestCase):
         y = paddle.multinomial(x, 20000, replacement=True).numpy()
         self.assertEqual(np.sum(y), 102371362581)
         self.assertEqual(np.mean(y), 4998.60168852539)
-        self.assertEqual(
-            log_multinomial_std_debug(
-                "TestRandomValue.test_fixed_random_number.replacement_true_1",
-                y,
-                2886.316308500771,
-            ),
-            2886.316308500771,
-        )
+        self.assertEqual(np.std(y), 2886.3163085007764)
         expect = [7630, 8235, 8445, 3275, 5580, 4591, 1331, 342, 1662, 7156]
         np.testing.assert_array_equal(y[100, 0:10], expect)
 
         y = paddle.multinomial(x, 20000, replacement=True).numpy()
         self.assertEqual(np.sum(y), 102400672117)
         self.assertEqual(np.mean(y), 5000.032818212891)
-        self.assertEqual(
-            log_multinomial_std_debug(
-                "TestRandomValue.test_fixed_random_number.replacement_true_2",
-                y,
-                2886.913426124017,
-            ),
-            2886.913426124017,
-        )
+        self.assertEqual(np.std(y), 2886.913426124017)
         expect = [4159, 7849, 9305, 5759, 4422, 122, 345, 2897, 5200, 5911]
         np.testing.assert_array_equal(y[100, 0:10], expect)
 
