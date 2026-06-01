@@ -4812,11 +4812,11 @@ void CrossAttentionXPUInferMeta(
   PADDLE_ENFORCE_EQ(
       input_q_dims[2],
       input_kv_dims[2],
-      common::errors::InvalidArgument("The hidden_dim of input_q and input_kv "
-                                      "should be the same! Received ",
-                                      input_q_dims[2],
-                                      " vs ",
-                                      input_kv_dims[2]));
+      common::errors::InvalidArgument(
+          "The hidden_dim of input_q and input_kv should be the same! "
+          "Received %d vs %d.",
+          input_q_dims[2],
+          input_kv_dims[2]));
   int64_t hidden_dim = static_cast<int64_t>(head_num) * head_dim;
   PADDLE_ENFORCE_EQ(input_q_dims[2],
                     hidden_dim,
