@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from functools import cache, partial
+from functools import partial
 
 import pytest
 from generate_startend_row_indices import (
@@ -32,16 +32,7 @@ from generate_startend_row_indices import (
 from test_util import attention_ref
 
 import paddle
-from paddle.nn.functional.flash_attention import (
-    flashmask_attention,
-    flashmask_get_unique_id,
-)
-
-
-@cache
-def _has_flashmask_v3_sparse_backward_support():
-    return bool((flashmask_get_unique_id().numpy() != 0).any())
-
+from paddle.nn.functional.flash_attention import flashmask_attention
 
 # batch_size, seqlen_q, seqlen_k, nheads, nheads_kv
 shape_cases = [
@@ -151,16 +142,6 @@ def test_flashmask(
     startend_row_indices, causal = gen_startend_row_indices(
         batch_size, seqlen_q, seqlen_k, nheads_startend_row_indices
     )
-
-    if (
-        fa_version == 3
-        and startend_row_indices is not None
-        and not _has_flashmask_v3_sparse_backward_support()
-    ):
-        pytest.skip(
-            "Skipping FlashMask V3 sparse-mask backward because "
-            "NVSHMEM/FlashMask V3 sparse backward support is unavailable."
-        )
 
     if startend_row_indices is None and causal and d == 80:
         pytest.skip(
