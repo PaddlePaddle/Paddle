@@ -233,7 +233,12 @@ def __getattr__(name: str) -> object:
     if name in _SUBPACKAGES:
         import importlib
 
-        return importlib.import_module(f"paddle.metric.{name}")
+        try:
+            return importlib.import_module(f"paddle.metric.{name}")
+        except ImportError:
+            raise AttributeError(
+                f"module 'paddle.metric' has no attribute {name!r}"
+            ) from None
     raise AttributeError(f"module 'paddle.metric' has no attribute {name!r}")
 
 
