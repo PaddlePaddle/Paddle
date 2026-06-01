@@ -129,6 +129,15 @@ class TestNanmeanAPI(unittest.TestCase):
         test_case(self.x_grad, (0, 1))
         paddle.enable_static()
 
+    def test_arg_dtype(self):
+        paddle.disable_static()
+        x_tensor = paddle.to_tensor(self.x)
+        out = paddle.nanmean(x_tensor, (0, 2), dtype='float64')
+        out_ref = np.nanmean(self.x, (0, 2), np.float64)
+        np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.0001)
+        self.assertTrue(out.dtype, paddle.float64)
+        paddle.enable_static()
+
 
 class TestNanmeanAPI_ZeroSize(unittest.TestCase):
     # test paddle.tensor.math.nanmean

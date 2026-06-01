@@ -1763,17 +1763,22 @@ def nansum(
     return sum(tmp_tensor, axis, dtype, keepdim, name, out=out)
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def nanmean(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
     keepdim: bool = False,
     name: str | None = None,
+    *,
+    dtype: DTypeLike | None = None,
+    out: Tensor | None = None,
 ) -> Tensor:
     r"""
     Compute the arithmetic mean along the specified axis, ignoring NaNs.
 
     Args:
         x (Tensor): The input Tensor with data type uint16, float16, float32, float64.
+            Alias: ``input``.
         axis (int|list|tuple, optional):The axis along which to perform nanmean
             calculations. ``axis`` should be int, list(int) or tuple(int). If
             ``axis`` is a list/tuple of dimension(s), nanmean is calculated along
@@ -1782,6 +1787,7 @@ def nanmean(
             ``axis`` or element(s) of ``axis`` is less than 0, it works the
             same way as :math:`axis + D` . If ``axis`` is None, nanmean is
             calculated over all elements of ``x``. Default is None.
+            Alias: ``dim``.
         keepdim (bool, optional): Whether to reserve the reduced dimension(s)
             in the output Tensor. If ``keepdim`` is True, the dimensions of
             the output Tensor is the same as ``x`` except in the reduced
@@ -1789,6 +1795,10 @@ def nanmean(
             the output Tensor is squeezed in ``axis`` . Default is False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
+        dtype (str|paddle.dtype|np.dtype, optional): The dtype of output Tensor. The default value is None, the dtype of output is the same as input Tensor `x`.
+
+    Keywords Argument:
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default is None, a new Tensor will be created to store the result.
 
     Returns:
         Tensor, results of arithmetic mean along ``axis`` of ``x``, with the same data
@@ -1851,11 +1861,14 @@ def nanmean(
     )
     if axis is not None:
         check_type(axis, 'axis/dim', (int, list, tuple), 'nanmean')
+    if dtype is None:
+        dtype = x.dtype
 
-    cnt = paddle.sum(~paddle.isnan(x), axis=axis, keepdim=keepdim)
+    cnt = paddle.sum(~paddle.isnan(x), axis=axis, dtype=dtype, keepdim=keepdim)
     return paddle.divide(
-        paddle.nansum(x, axis=axis, keepdim=keepdim, name=name),
-        cnt.astype(x.dtype),
+        paddle.nansum(x, axis=axis, dtype=dtype, keepdim=keepdim, name=name),
+        cnt,
+        out=out,
     )
 
 
