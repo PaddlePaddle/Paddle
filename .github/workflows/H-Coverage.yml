@@ -499,7 +499,7 @@ jobs:
     timeout-minutes: 60
     env:
       TASK: fleet-ci-paddle-build-whl-${{ github.event.pull_request.number }}
-      docker_image: "ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:ubuntu24-cuda129-dev"
+      docker_image: "ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:ubuntu24-cuda129-py312-dev"
       PY_VERSION: "3.12"
     steps:
       - name: Check docker image and run container
@@ -543,63 +543,9 @@ jobs:
           rm -rf * .[^.]*
           set -x
           source ${{ github.workspace }}/../../../proxy
-          setup_target_python() {
-            local target_python="python${PY_VERSION}"
-            local target_pip="pip${PY_VERSION}"
-            local opt_python_dir="/opt/_internal/cpython-${PY_VERSION}.0/bin"
-            local apt_updated=0
-            apt_update_once() {
-              if [ "${apt_updated}" != "1" ]; then
-                apt-get update
-                apt_updated=1
-              fi
-            }
-            if ! command -v "${target_python}" >/dev/null 2>&1 || ! command -v "${target_pip}" >/dev/null 2>&1; then
-              if [ -d "${opt_python_dir}" ]; then
-                export PATH="${opt_python_dir}:${PATH}"
-              fi
-            fi
-            if ! command -v "${target_python}" >/dev/null 2>&1 || ! command -v "${target_pip}" >/dev/null 2>&1; then
-              apt_update_once
-              if ! apt-cache show "${target_python}" >/dev/null 2>&1; then
-                apt-get install -y software-properties-common ca-certificates curl
-                add-apt-repository -y ppa:deadsnakes/ppa
-                apt_updated=0
-                apt_update_once
-              fi
-              apt-get install -y "${target_python}" "${target_python}-dev" ca-certificates curl
-            fi
-            if ! command -v "${target_pip}" >/dev/null 2>&1; then
-              if ! command -v curl >/dev/null 2>&1; then
-                apt_update_once
-                apt-get install -y ca-certificates curl
-              fi
-              curl -fsSL https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
-              "${target_python}" /tmp/get-pip.py || "${target_python}" /tmp/get-pip.py --break-system-packages
-            fi
-            "${target_python}" -m pip config set global.break-system-packages true || true
-            "${target_python}" -m pip install --upgrade "setuptools==68.2.0" wheel || "${target_python}" -m pip install --upgrade "setuptools==68.2.0" wheel --break-system-packages
-            export SETUPTOOLS_USE_DISTUTILS=local
-            python_bin=$(command -v "${target_python}" || true)
-            pip_bin=$(command -v "${target_pip}" || true)
-            if [ -z "${python_bin}" ] || [ -z "${pip_bin}" ]; then
-              echo "ERROR: Python ${PY_VERSION} or pip ${PY_VERSION} is unavailable after setup." >&2
-              echo "PATH=${PATH}" >&2
-              command -v "${target_python}" || true
-              command -v "${target_pip}" || true
-              exit 1
-            fi
-            ln -sf "${python_bin}" /usr/local/bin/python
-            ln -sf "${pip_bin}" /usr/local/bin/pip
-            echo "Using python: $(command -v python)"
-            python --version
-            echo "Using pip: $(command -v pip)"
-            pip --version
-          }
-          setup_target_python
-          apt-get update
-          apt-get install -y libnvidia-compute-535
-          python -m pip install --upgrade pip wheel "setuptools==68.2.0" || python -m pip install --upgrade pip wheel "setuptools==68.2.0" --break-system-packages
+          python --version
+          pip --version
+          pip install --upgrade pip wheel
           git clone https://github.com/PaddlePaddle/PaddleFleet.git .
           git config --global --add safe.directory /paddle
           git config user.name "PaddleCI"
@@ -619,7 +565,6 @@ jobs:
           pip install uv coverage==7.6.1 bce-python-sdk==0.8.74 wrapt
           echo "uv build"
           git submodule update --init --recursive
-          export LD_LIBRARY_PATH=/usr/local/cuda-12.9/compat:$LD_LIBRARY_PATH
           export IS_NVIDIA=True
           echo "Downloading Paddle.tar.gz from cfs"
           wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/h-coverage/${PR_ID}/${COMMIT_ID}/paddlepaddle_gpu-0.0.0-cp312-cp312-linux_x86_64.whl --no-check-certificate
@@ -680,7 +625,7 @@ jobs:
       - name: Check docker image and run container
         env:
           GPU_DEVICES: ${{ env.GPU_DEVICES }}
-          docker_image: "ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:ubuntu24-cuda129-dev"
+          docker_image: "ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:ubuntu24-cuda129-py312-dev"
         run: |
           container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
@@ -716,61 +661,8 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -ce '
           rm -rf * .[^.]*
           source /root/proxy
-          setup_target_python() {
-            local target_python="python${PY_VERSION}"
-            local target_pip="pip${PY_VERSION}"
-            local opt_python_dir="/opt/_internal/cpython-${PY_VERSION}.0/bin"
-            local apt_updated=0
-            apt_update_once() {
-              if [ "${apt_updated}" != "1" ]; then
-                apt-get update
-                apt_updated=1
-              fi
-            }
-            if ! command -v "${target_python}" >/dev/null 2>&1 || ! command -v "${target_pip}" >/dev/null 2>&1; then
-              if [ -d "${opt_python_dir}" ]; then
-                export PATH="${opt_python_dir}:${PATH}"
-              fi
-            fi
-            if ! command -v "${target_python}" >/dev/null 2>&1 || ! command -v "${target_pip}" >/dev/null 2>&1; then
-              apt_update_once
-              if ! apt-cache show "${target_python}" >/dev/null 2>&1; then
-                apt-get install -y software-properties-common ca-certificates curl
-                add-apt-repository -y ppa:deadsnakes/ppa
-                apt_updated=0
-                apt_update_once
-              fi
-              apt-get install -y "${target_python}" "${target_python}-dev" ca-certificates curl
-            fi
-            if ! command -v "${target_pip}" >/dev/null 2>&1; then
-              if ! command -v curl >/dev/null 2>&1; then
-                apt_update_once
-                apt-get install -y ca-certificates curl
-              fi
-              curl -fsSL https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
-              "${target_python}" /tmp/get-pip.py || "${target_python}" /tmp/get-pip.py --break-system-packages
-            fi
-            "${target_python}" -m pip config set global.break-system-packages true || true
-            "${target_python}" -m pip install --upgrade "setuptools==68.2.0" wheel || "${target_python}" -m pip install --upgrade "setuptools==68.2.0" wheel --break-system-packages
-            export SETUPTOOLS_USE_DISTUTILS=local
-            python_bin=$(command -v "${target_python}" || true)
-            pip_bin=$(command -v "${target_pip}" || true)
-            if [ -z "${python_bin}" ] || [ -z "${pip_bin}" ]; then
-              echo "ERROR: Python ${PY_VERSION} or pip ${PY_VERSION} is unavailable after setup." >&2
-              echo "PATH=${PATH}" >&2
-              command -v "${target_python}" || true
-              command -v "${target_pip}" || true
-              exit 1
-            fi
-            ln -sf "${python_bin}" /usr/local/bin/python
-            ln -sf "${pip_bin}" /usr/local/bin/pip
-            echo "Using python: $(command -v python)"
-            python --version
-            echo "Using pip: $(command -v pip)"
-            pip --version
-          }
-          setup_target_python
-          export LD_LIBRARY_PATH=/usr/local/cuda-12.9/compat:/usr/local/cuda-12.9/targets/x86_64-linux/lib:/usr/local/cuda-12.9/lib64:/usr/local/cuda/compat:/usr/local/cuda/lib:/usr/local/cuda/lib64:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
+          python --version
+          pip --version
           pip install uv coverage==7.6.1 bce-python-sdk==0.8.74 wrapt pytest matplotlib parameterized
           wget -q --tries=5 --no-proxy --no-check-certificate https://paddle-github-action.cdn.bcebos.com/PR/paddlefleet/${PR_ID}/${COMMIT_ID}/paddldfleet.tar.gz
           tar -xf paddldfleet.tar.gz --strip-components=1
@@ -786,7 +678,6 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           set -e
-          export LD_LIBRARY_PATH=/usr/local/cuda-12.9/compat:/usr/local/cuda-12.9/targets/x86_64-linux/lib:/usr/local/cuda-12.9/lib64:/usr/local/cuda/compat:/usr/local/cuda/lib:/usr/local/cuda/lib64:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
           mkdir -p /PaddlePaddle
           cd /PaddlePaddle
           echo "Downloading Paddle.tar.gz from cfs"
@@ -805,7 +696,6 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -xce '
           pwd
-          export LD_LIBRARY_PATH=/usr/local/cuda-12.9/compat:/usr/local/cuda-12.9/targets/x86_64-linux/lib:/usr/local/cuda-12.9/lib64:/usr/local/cuda/compat:/usr/local/cuda/lib:/usr/local/cuda/lib64:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
           if [ "${BRANCH}" != "develop" ]; then
             git checkout $fleet_branch
             echo "Checked out fleet branch: $fleet_branch"
@@ -844,7 +734,7 @@ jobs:
     env:
       PIP_CACHE_DIR: /root/.cache/pip
       TASK: paddle-fleet-CI-${{ github.event.pull_request.number }}-multi-card_test
-      docker_image: "ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:ubuntu24-cuda129-dev"
+      docker_image: "ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:ubuntu24-cuda129-py312-dev"
       PY_VERSION: "3.12"
     steps:
       - name: Check docker image and run container
@@ -885,61 +775,8 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -ce '
           rm -rf * .[^.]*
           source /root/proxy
-          setup_target_python() {
-            local target_python="python${PY_VERSION}"
-            local target_pip="pip${PY_VERSION}"
-            local opt_python_dir="/opt/_internal/cpython-${PY_VERSION}.0/bin"
-            local apt_updated=0
-            apt_update_once() {
-              if [ "${apt_updated}" != "1" ]; then
-                apt-get update
-                apt_updated=1
-              fi
-            }
-            if ! command -v "${target_python}" >/dev/null 2>&1 || ! command -v "${target_pip}" >/dev/null 2>&1; then
-              if [ -d "${opt_python_dir}" ]; then
-                export PATH="${opt_python_dir}:${PATH}"
-              fi
-            fi
-            if ! command -v "${target_python}" >/dev/null 2>&1 || ! command -v "${target_pip}" >/dev/null 2>&1; then
-              apt_update_once
-              if ! apt-cache show "${target_python}" >/dev/null 2>&1; then
-                apt-get install -y software-properties-common ca-certificates curl
-                add-apt-repository -y ppa:deadsnakes/ppa
-                apt_updated=0
-                apt_update_once
-              fi
-              apt-get install -y "${target_python}" "${target_python}-dev" ca-certificates curl
-            fi
-            if ! command -v "${target_pip}" >/dev/null 2>&1; then
-              if ! command -v curl >/dev/null 2>&1; then
-                apt_update_once
-                apt-get install -y ca-certificates curl
-              fi
-              curl -fsSL https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
-              "${target_python}" /tmp/get-pip.py || "${target_python}" /tmp/get-pip.py --break-system-packages
-            fi
-            "${target_python}" -m pip config set global.break-system-packages true || true
-            "${target_python}" -m pip install --upgrade "setuptools==68.2.0" wheel || "${target_python}" -m pip install --upgrade "setuptools==68.2.0" wheel --break-system-packages
-            export SETUPTOOLS_USE_DISTUTILS=local
-            python_bin=$(command -v "${target_python}" || true)
-            pip_bin=$(command -v "${target_pip}" || true)
-            if [ -z "${python_bin}" ] || [ -z "${pip_bin}" ]; then
-              echo "ERROR: Python ${PY_VERSION} or pip ${PY_VERSION} is unavailable after setup." >&2
-              echo "PATH=${PATH}" >&2
-              command -v "${target_python}" || true
-              command -v "${target_pip}" || true
-              exit 1
-            fi
-            ln -sf "${python_bin}" /usr/local/bin/python
-            ln -sf "${pip_bin}" /usr/local/bin/pip
-            echo "Using python: $(command -v python)"
-            python --version
-            echo "Using pip: $(command -v pip)"
-            pip --version
-          }
-          setup_target_python
-          export LD_LIBRARY_PATH=/usr/local/cuda-12.9/compat:/usr/local/cuda-12.9/targets/x86_64-linux/lib:/usr/local/cuda-12.9/lib64:/usr/local/cuda/compat:/usr/local/cuda/lib:/usr/local/cuda/lib64:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
+          python --version
+          pip --version
           pip install uv coverage==7.6.1 bce-python-sdk==0.8.74 wrapt pytest matplotlib parameterized
           wget -q --tries=5 --no-proxy --no-check-certificate https://paddle-github-action.cdn.bcebos.com/PR/paddlefleet/${PR_ID}/${COMMIT_ID}/paddldfleet.tar.gz
           tar -xf paddldfleet.tar.gz --strip-components=1
@@ -955,7 +792,6 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           set -e
-          export LD_LIBRARY_PATH=/usr/local/cuda-12.9/compat:/usr/local/cuda-12.9/targets/x86_64-linux/lib:/usr/local/cuda-12.9/lib64:/usr/local/cuda/compat:/usr/local/cuda/lib:/usr/local/cuda/lib64:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
           mkdir -p /PaddlePaddle
           cd /PaddlePaddle
           echo "Downloading Paddle.tar.gz from cfs"
@@ -974,7 +810,6 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -ce '
           export PYTHONPATH=$(pwd)
-          export LD_LIBRARY_PATH=/usr/local/cuda-12.9/compat:/usr/local/cuda-12.9/targets/x86_64-linux/lib:/usr/local/cuda-12.9/lib64:/usr/local/cuda/compat:/usr/local/cuda/lib:/usr/local/cuda/lib64:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
           if [ "${BRANCH}" != "develop" ]; then
             git checkout $fleet_branch
             echo "Checked out fleet branch: $fleet_branch"
