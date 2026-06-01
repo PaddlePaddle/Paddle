@@ -343,18 +343,8 @@ HOSTDEVICE inline complex<T>& operator-=(complex<T>& a,  // NOLINT
 template <typename T>
 HOSTDEVICE inline complex<T>& operator*=(complex<T>& a,  // NOLINT
                                          const complex<T>& b) {
-#if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
-    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
-  a = complex<T>(thrust::complex<T>(a.real, a.imag) *=
-                 thrust::complex<T>(b.real, b.imag));
+  a = a * b;
   return a;
-#else
-  T r = a.real * b.real - a.imag * b.imag;
-  T i = a.imag * b.real + b.imag * a.real;
-  a.real = r;
-  a.imag = i;
-  return a;
-#endif
 }
 
 template <typename T>
