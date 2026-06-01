@@ -25,6 +25,11 @@ namespace funcs {
 template <typename Context, typename RepeatsT>
 void RepeatsTensor2IndexTensorFunctor<Context, RepeatsT>::operator()(
     const Context &dev_ctx, const DenseTensor &repeats, DenseTensor *index) {
+  if (repeats.dims()[0] == 0) {
+    index->Resize({0});
+    dev_ctx.template Alloc<RepeatsT>(index);
+    return;
+  }
   DenseTensor repeats_cpu_copy;
   if (repeats.place().GetType() != AllocationType::CPU) {
     phi::Copy(dev_ctx, repeats, CPUPlace(), true, &repeats_cpu_copy);
@@ -57,6 +62,11 @@ void RepeatsTensor2IndexTensorFunctor<Context, RepeatsT>::operator()(
 template <typename RepeatsT>
 void RepeatsTensor2IndexTensorFunctor<CPUContext, RepeatsT>::operator()(
     const CPUContext &dev_ctx, const DenseTensor &repeats, DenseTensor *index) {
+  if (repeats.dims()[0] == 0) {
+    index->Resize({0});
+    dev_ctx.template Alloc<RepeatsT>(index);
+    return;
+  }
   const RepeatsT *repeats_data = repeats.data<RepeatsT>();
 
   int64_t index_size = 0;
@@ -86,6 +96,11 @@ template class RepeatsTensor2IndexTensorFunctor<CPUContext, int64_t>;
 template <typename RepeatsT>
 void RepeatsTensor2IndexTensorFunctor<XPUContext, RepeatsT>::operator()(
     const XPUContext &dev_ctx, const DenseTensor &repeats, DenseTensor *index) {
+  if (repeats.dims()[0] == 0) {
+    index->Resize({0});
+    dev_ctx.template Alloc<RepeatsT>(index);
+    return;
+  }
   DenseTensor repeats_cpu_copy;
   phi::Copy(dev_ctx, repeats, CPUPlace(), true, &repeats_cpu_copy);
   const RepeatsT *repeats_data = repeats_cpu_copy.data<RepeatsT>();

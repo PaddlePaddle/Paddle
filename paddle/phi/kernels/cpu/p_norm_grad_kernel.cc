@@ -55,6 +55,9 @@ void PNormGradKernel(const Context& dev_ctx,
   auto* in_norm_dy = &out_grad;
   auto* out_dx = x_grad;
   dev_ctx.template Alloc<T>(out_dx);
+  if (out_dx->numel() == 0) {
+    return;
+  }
 
   T eps = static_cast<T>(epsilon);
   auto xdim = in_x->dims();
