@@ -369,7 +369,7 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
-          python -m pip install pytest
+          python -m pip install pytest einops
           cd test/test_flashmask_ci
           bash run.sh
           '
