@@ -221,7 +221,7 @@ template <typename T>
 HOSTDEVICE inline complex<T> operator*(const complex<T>& a,
                                        const complex<T>& b) {
 #if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
-    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
+    (defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__))
   if constexpr (std::is_same<T, double>::value) {
     // real = a.real*b.real - a.imag*b.imag = fma(a.real, b.real,
     // -(a.imag*b.imag)) imag = a.imag*b.real + b.imag*a.real = fma(b.imag,
