@@ -68,6 +68,7 @@ class graph:
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
+            >>> paddle.device.set_device('gpu')
             >>> g = paddle.cuda.CUDAGraph()
             >>> x = paddle.zeros([2, 3])
             >>> with paddle.cuda.graph(g):
@@ -89,7 +90,9 @@ class graph:
         self.stream_ctx = _paddle_device.stream(stream)
 
     def __enter__(self) -> Self:
-        _paddle_device.synchronize()
+        # Synchronize the graph's own device, not the process-wide current
+        # device which may be CPU (synchronize rejects non-accelerator places).
+        _paddle_device.synchronize(self.cuda_graph._place)
         _paddle_device.empty_cache()
         self.stream_ctx.__enter__()
         try:

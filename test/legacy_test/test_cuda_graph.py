@@ -673,9 +673,12 @@ class TestPaddleCudaCUDAGraphCompat(unittest.TestCase):
         finally:
             graphs_module.CoreCUDAGraph.begin_capture_with_pool_id = original
 
-    def test_instantiate_is_noop(self):
+    def test_instantiate_requires_capture(self):
+        # ``instantiate`` returns the core graph built by ``capture_end``; on a
+        # freshly constructed graph there is nothing captured yet, so it raises.
         g = paddle.cuda.CUDAGraph()
-        self.assertIsNone(g.instantiate())
+        with self.assertRaises(RuntimeError):
+            g.instantiate()
 
     def test_debug_dump_requires_enable_debug_mode(self):
         g = paddle.cuda.CUDAGraph()
@@ -708,7 +711,8 @@ class TestPaddleCudaCUDAGraphCompat(unittest.TestCase):
         y = x + 10
         z.add_(x)
         g.capture_end()
-        g.instantiate()  # no-op but should not error
+        # ``instantiate`` returns the core CUDA graph held after capture.
+        self.assertIs(g.instantiate(), g._graph)
 
         z_before = z.numpy().copy()
         x_new = paddle.to_tensor(

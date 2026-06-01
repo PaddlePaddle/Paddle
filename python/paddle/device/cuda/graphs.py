@@ -197,13 +197,17 @@ class CUDAGraph:
                 "Call capture_begin/capture_end first."
             )
 
-    def instantiate(self) -> None:
-        """Instantiate the CUDA graph for replay.
+    def instantiate(self) -> CoreCUDAGraph:
+        """Return the instantiated core CUDA graph held by this wrapper.
 
-        Called automatically by :meth:`capture_end`; provided as an explicit
-        shim for source compatibility with
-        ``torch.cuda.CUDAGraph.instantiate`` (which also returns ``None``).
+        Paddle builds the executable graph eagerly inside :meth:`capture_end`,
+        so by the time this is called the graph is already instantiated. It is
+        kept for source compatibility with ``torch.cuda.CUDAGraph.instantiate``
+        and returns the held core :class:`~paddle.base.core.CUDAGraph` produced
+        by :meth:`capture_end`.
         """
+        self._require_captured()
+        return self._graph
 
     def replay(self):
         self._require_captured()
