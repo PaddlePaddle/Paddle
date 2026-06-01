@@ -232,3 +232,14 @@ def __getattr__(name: str) -> object:
 
 def __dir__() -> list[str]:
     return __all__ + list(_LAZY_IMPORTS.keys())
+
+
+# Register subpackages so that ``import paddle.metric.classification`` (etc.)
+# resolves correctly through Python's import machinery.  Without these
+# explicit imports the subpackages remain invisible to ``importlib`` even
+# though the directories and ``__init__.py`` files exist on disk.
+from paddle.metric import (
+    classification,  # noqa: F401
+    regression,  # noqa: F401
+    wrappers,  # noqa: F401
+)

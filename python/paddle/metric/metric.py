@@ -287,9 +287,16 @@ class Metric(ABC, nn.Layer):
                 ``"sum"``, ``"mean"``, ``"cat"``, ``"min"``, ``"max"``, a callable, or None.
             persistent: Whether the state is saved in ``state_dict``.
         """
-        if not isinstance(default, (paddle.Tensor, list)) or (
-            isinstance(default, list) and default
-        ):
+        # In static graph mode ``paddle.zeros()`` returns a ``pir.Value``
+        # instead of a ``Tensor``.  Accept it gracefully so that metric
+        # objects can be *constructed* under ``enable_static()``; actual
+        # computation is skipped later via ``_supported_metrics``.
+        _is_valid = isinstance(default, (paddle.Tensor, list)) or (
+            not paddle.framework.in_dynamic_mode()
+            and default is not None
+            and not isinstance(default, dict)
+        )
+        if not _is_valid or (isinstance(default, list) and default):
             raise ValueError(
                 "state variable must be a tensor or any empty list (where you can append tensors)"
             )
@@ -310,8 +317,17 @@ class Metric(ABC, nn.Layer):
         if isinstance(default, paddle.Tensor):
             default = default.contiguous()
             self.register_buffer(name, default, persistable=persistent)
-        else:
+        elif isinstance(default, list):
             setattr(self, name, default)
+        else:
+            # Static-graph ``pir.Value`` — store as plain attribute; no buffer
+            # registration (not a real Tensor) and no deepcopy (Value is not
+            # copyable).
+            setattr(self, name, default)
+            self._defaults[name] = default
+            self._persistent[name] = persistent
+            self._reductions[name] = dist_reduce_fn
+            return
         self._defaults[name] = deepcopy(default)
         self._persistent[name] = persistent
         self._reductions[name] = dist_reduce_fn
@@ -340,7 +356,7 @@ class Metric(ABC, nn.Layer):
                     else paddle.CPUPlace()
                 )
                 setattr(self, attr, default.clone().to(device))
-            else:
+            elif isinstance(default, list):
                 getattr(self, attr).clear()
         self._cache = None
         self._is_synced = False

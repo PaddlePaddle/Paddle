@@ -2341,7 +2341,7 @@ class Engine:
     def _metrics_name(self):
         metrics_name = ['loss'] if self._loss else []
         for m in self._metrics:
-            metrics_name.extend(auto_utils.to_list(m.name))
+            metrics_name.extend(m.names)
         return metrics_name
 
     def _switch_mode(self, mode):

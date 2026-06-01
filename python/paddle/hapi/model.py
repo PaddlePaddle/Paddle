@@ -2927,16 +2927,33 @@ class Model:
 
                 outs = getattr(self, mode + '_batch')(*_inputs)
 
+                # In static graph mode the executor may return 0-d numpy
+                # scalars inside a list; normalise to a flat list of floats.
+                def _to_float_list(val):
+                    import numpy as np
+
+                    if isinstance(val, (list, tuple)):
+                        return [float(v) for v in val]
+                    if isinstance(val, np.ndarray):
+                        return (
+                            [float(val)]
+                            if val.ndim == 0
+                            else [float(v) for v in val]
+                        )
+                    return [float(val)]
+
                 if self._metrics and self._loss:
-                    metrics = [[float(l) for l in outs[0]]]
+                    metrics = [_to_float_list(outs[0])]
                 elif self._loss:
-                    metrics = [[float(l) for l in outs]]
+                    metrics = [_to_float_list(outs)]
                 else:
                     metrics = []
 
                 # metrics
                 metric_names = [] if not self._loss else ['loss']
-                for metric in self._metrics:
+                for metric in getattr(
+                    self._adapter, '_supported_metrics', self._metrics
+                ):
                     res = metric.compute()
                     values = to_list(res)
                     metrics.extend(values)
