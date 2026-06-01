@@ -55,7 +55,15 @@ extern void *cublas_dso_handle;
   };                                                                        \
   extern DynLoad__##__name __name
 
-  #define CUBLAS_BLAS_ROUTINE_EACH(__macro) \
+#define CUBLAS_BLAS_ROUTINE_EACH(__macro) \
+  __macro(cublasSaxpy_v2);                \
+  __macro(cublasDaxpy_v2);                \
+  __macro(cublasCaxpy_v2);                \
+  __macro(cublasZaxpy_v2);                \
+  __macro(cublasSscal_v2);                \
+  __macro(cublasDscal_v2);                \
+  __macro(cublasScopy_v2);                \
+  __macro(cublasDcopy_v2);                \
   __macro(cublasSgemv_v2);                \
   __macro(cublasDgemv_v2);                \
   __macro(cublasCgemv_v2);                \
@@ -93,6 +101,10 @@ extern void *cublas_dso_handle;
   __macro(cublasCgetriBatched);           \
   __macro(cublasZgetrfBatched);           \
   __macro(cublasZgetriBatched);           \
+  __macro(cublasSmatinvBatched);          \
+  __macro(cublasDmatinvBatched);          \
+  __macro(cublasCmatinvBatched);          \
+  __macro(cublasZmatinvBatched);          \
   __macro(cublasSgetrsBatched);           \
   __macro(cublasDgetrsBatched);           \
   __macro(cublasSdot_v2);                 \
@@ -115,81 +127,9 @@ extern void *cublas_dso_handle;
   __macro(cublasGemmBatchedEx);           \
   __macro(cublasGemmStridedBatchedEx);
 
-// #define CUBLAS_BLAS_ROUTINE_EACH(__macro) \
-//   __macro(cublasSaxpy_v2);                \
-//   __macro(cublasDaxpy_v2);                \
-//   __macro(cublasCaxpy_v2);                \
-//   __macro(cublasZaxpy_v2);                \
-//   __macro(cublasSscal_v2);                \
-//   __macro(cublasDscal_v2);                \
-//   __macro(cublasScopy_v2);                \
-//   __macro(cublasDcopy_v2);                \
-//   __macro(cublasSgemv_v2);                \
-//   __macro(cublasDgemv_v2);                \
-//   __macro(cublasCgemv_v2);                \
-//   __macro(cublasZgemv_v2);                \
-//   __macro(cublasSgemm_v2);                \
-//   __macro(cublasDgemm_v2);                \
-//   __macro(cublasCgemm_v2);                \
-//   __macro(cublasZgemm_v2);                \
-//   __macro(cublasHgemm);                   \
-//   __macro(cublasSgemmEx);                 \
-//   __macro(cublasSgeam);                   \
-//   __macro(cublasDgeam);                   \
-//   __macro(cublasStrsm_v2);                \
-//   __macro(cublasDtrsm_v2);                \
-//   __macro(cublasCtrsm_v2);                \
-//   __macro(cublasZtrsm_v2);                \
-//   __macro(cublasCreate_v2);               \
-//   __macro(cublasDestroy_v2);              \
-//   __macro(cublasSetStream_v2);            \
-//   __macro(cublasSetPointerMode_v2);       \
-//   __macro(cublasGetPointerMode_v2);       \
-//   __macro(cublasSgemmBatched);            \
-//   __macro(cublasDgemmBatched);            \
-//   __macro(cublasCgemmBatched);            \
-//   __macro(cublasZgemmBatched);            \
-//   __macro(cublasStrsmBatched);            \
-//   __macro(cublasDtrsmBatched);            \
-//   __macro(cublasCtrsmBatched);            \
-//   __macro(cublasZtrsmBatched);            \
-//   __macro(cublasSgetrfBatched);           \
-//   __macro(cublasSgetriBatched);           \
-//   __macro(cublasDgetrfBatched);           \
-//   __macro(cublasDgetriBatched);           \
-//   __macro(cublasCgetrfBatched);           \
-//   __macro(cublasCgetriBatched);           \
-//   __macro(cublasZgetrfBatched);           \
-//   __macro(cublasZgetriBatched);           \
-//   __macro(cublasSmatinvBatched);          \
-//   __macro(cublasDmatinvBatched);          \
-//   __macro(cublasCmatinvBatched);          \
-//   __macro(cublasZmatinvBatched);          \
-//   __macro(cublasSgetrsBatched);           \
-//   __macro(cublasDgetrsBatched);           \
-//   __macro(cublasSdot_v2);                 \
-//   __macro(cublasDdot_v2);                 \
-//   __macro(cublasCdotc_v2);                \
-//   __macro(cublasZdotc_v2);                \
-//   __macro(cublasCdotu_v2);                \
-//   __macro(cublasZdotu_v2);                \
-//   __macro(cublasDotEx);                   \
-//   __macro(cublasGemmEx);                  \
-//   __macro(cublasSgemmStridedBatched);     \
-//   __macro(cublasDgemmStridedBatched);     \
-//   __macro(cublasCgemmStridedBatched);     \
-//   __macro(cublasZgemmStridedBatched);     \
-//   __macro(cublasHgemmStridedBatched);     \
-//   __macro(cublasSetMathMode);             \
-//   __macro(cublasGetMathMode);             \
-//   __macro(cublasCgeam);                   \
-//   __macro(cublasZgeam);                   \
-//   __macro(cublasGemmBatchedEx);           \
-//   __macro(cublasGemmStridedBatchedEx);
-
 CUBLAS_BLAS_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
 
-#if 1 || (CUDA_VERSION >= 12030 && defined(__linux__))
+#if CUDA_VERSION >= 12030 && defined(__linux__)
 #define CUBLAS_BLAS_ROUTINE_EACH_R5(__macro) \
   __macro(cublasGemmStridedBatchedEx_64);    \
   __macro(cublasGemmEx_64);                  \

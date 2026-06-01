@@ -290,7 +290,6 @@ if(WITH_TENSORRT)
                  ${CMAKE_C_FLAGS})
 endif()
 
-add_definitions(-DCUB_DISABLE_CDP)
 
 string(APPEND CMAKE_CXX_FLAGS " -Wno-error")
 string(APPEND CMAKE_C_FLAGS " -Wno-error")

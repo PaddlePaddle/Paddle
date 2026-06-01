@@ -28,8 +28,7 @@ using cudaStream_t = struct CUstream_st *;
 using cudaEvent_t = struct CUevent_st *;
 
 // Forward declaration of cuBLAS types.
-// using cublasHandle_t = struct cublasContext *;
-using cublasHandle_t = void *;
+using cublasHandle_t = struct cublasContext *;
 
 // Forward declaration of cuBLASLt types.
 using cublasLtHandle_t = struct cublasLtContext *;

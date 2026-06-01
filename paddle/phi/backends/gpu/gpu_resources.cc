@@ -171,9 +171,9 @@ void InitBlasHandle(blasHandle_t* blas_handle, gpuStream_t stream) {
   phi::dynload::rocblas_create_handle(blas_handle);
   phi::dynload::rocblas_set_stream(*blas_handle, stream);
 #else   // PADDLE_WITH_CUDA
-  PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasCreate_v2(blas_handle));
+  PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasCreate(blas_handle));
   PADDLE_RETRY_CUDA_SUCCESS(
-      phi::dynload::cublasSetStream_v2(*blas_handle, stream));
+      phi::dynload::cublasSetStream(*blas_handle, stream));
 #endif  // PADDLE_WITH_HIP
 }
 
@@ -185,7 +185,7 @@ void DestroyBlasHandle(blasHandle_t handle) {
   }
 #else
   if (handle != nullptr) {
-    phi::dynload::cublasDestroy_v2(handle);
+    phi::dynload::cublasDestroy(handle);
     handle = nullptr;
   }
 #endif  // PADDLE_WITH_HIP

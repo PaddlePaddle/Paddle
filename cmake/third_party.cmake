@@ -356,6 +356,9 @@ if(WITH_GPU
     # include(external/cutlass) # download, build, install cusparselt
     # list(APPEND third_party_deps extern_cutlass)
     # set(WITH_CUTLASS ON)
+    # include(external/cutlass) # download, build, install cusparselt
+    # list(APPEND third_party_deps extern_cutlass)
+    # set(WITH_CUTLASS ON)
   endif()
 endif()
 
