@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import os
 import pickle
 import tarfile
 from typing import TYPE_CHECKING, Any, Literal
@@ -22,7 +23,7 @@ import numpy.typing as npt
 from PIL import Image
 
 import paddle
-from paddle.dataset.common import _check_exists_and_download
+from paddle.dataset.common import _check_exists_and_download, md5file
 from paddle.io import Dataset
 
 if TYPE_CHECKING:
@@ -153,6 +154,15 @@ class Cifar10(Dataset[tuple["_ImageDataType", "npt.NDArray[Any]"]]):
             )
             self.data_file = _check_exists_and_download(
                 data_file, self.data_url, self.data_md5, 'cifar', download
+            )
+        elif not os.path.exists(self.data_file):
+            raise ValueError(
+                f"Local CIFAR archive does not exist: {self.data_file}."
+            )
+        elif md5file(self.data_file) != self.data_md5:
+            raise ValueError(
+                "Loading unverified local CIFAR pickle archive is disabled. "
+                f"Please use the official archive with MD5 {self.data_md5}."
             )
 
         self.transform = transform
