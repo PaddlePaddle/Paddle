@@ -149,6 +149,7 @@ set(PYBIND_SRCS
 
 if(WITH_DISTRIBUTE)
   set(PYBIND_SRCS ${PYBIND_SRCS} dist_api.cc)
+  set(PYBIND_SRCS ${PYBIND_SRCS} symmetric_memory_api.cc)
 
   string(FIND "${CUDA_ARCH_BIN}" "90" ARCH_BIN_CONTAINS_90)
   if(WITH_GPU AND (ARCH_BIN_CONTAINS_90 GREATER -1))
