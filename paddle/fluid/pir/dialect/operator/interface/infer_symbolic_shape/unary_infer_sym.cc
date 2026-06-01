@@ -939,7 +939,7 @@ bool DecodeJpegOpInferSymbolicShape(
                  infer_context->GetNextSymName()};
   } else {
     PADDLE_THROW(common::errors::Fatal(
-        "The provided mode is not supported for JPEG files on GPU: ", mode));
+        "The provided mode is not supported for JPEG files on GPU: %s", mode));
   }
 
   infer_context->SetShapeOrDataForValue(

@@ -127,7 +127,7 @@ void Pool2dKernel(const Context& dev_ctx,
           true);
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
-          "Unsupported pooling type for kunlun ", pooling_type));
+          "Unsupported pooling type for kunlun %s", pooling_type));
     }
   } else {
     if (pooling_type == "max") {
@@ -157,7 +157,7 @@ void Pool2dKernel(const Context& dev_ctx,
           true);
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
-          "Unsupported pooling type for kunlun ", pooling_type));
+          "Unsupported pooling type for kunlun %s", pooling_type));
     }
   }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "pool2d");
@@ -269,7 +269,7 @@ void Pool3dKernel(const Context& dev_ctx,
           data_format == "NCDHW");
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
-          "Unsupported pooling type for kunlun ", pooling_type));
+          "Unsupported pooling type for kunlun %s", pooling_type));
     }
   } else {
     if (pooling_type == "max") {
@@ -303,7 +303,7 @@ void Pool3dKernel(const Context& dev_ctx,
           data_format == "NCDHW");
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
-          "Unsupported pooling type for kunlun ", pooling_type));
+          "Unsupported pooling type for kunlun %s", pooling_type));
     }
   }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "pool3d");

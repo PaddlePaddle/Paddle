@@ -42,12 +42,16 @@ void DpsgdOpKernel(const Context &dev_ctx,
                     sz,
                     common::errors::InvalidArgument(
                         "Input parameter's number of elements is error, "
-                        "expected %zu, but received %zu."));
+                        "expected %lld, but received %lld.",
+                        sz,
+                        param->numel()));
   PADDLE_ENFORCE_EQ(grad->numel(),
                     sz,
                     common::errors::InvalidArgument(
                         "Input gradient's number of elements is error, "
-                        "expected %zu, but received %zu."));
+                        "expected %lld, but received %lld.",
+                        sz,
+                        grad->numel()));
 
   const T *lr = learning_rate->data<T>();
   const T *param_data = param->data<T>();

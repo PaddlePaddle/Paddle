@@ -111,8 +111,7 @@ class SumOp : public framework::OperatorWithKernel {
       PADDLE_THROW(common::errors::InvalidArgument(
           "Expected each tensor in Input(x) in sum op has be initialized, but "
           "some tensor in Input(x) is not be initialized, please check your "
-          "code.",
-          framework::ToTypeName(x_vars[0]->Type())));
+          "code."));
     }
     PADDLE_THROW(common::errors::InvalidArgument(
         "Expected type of Input(X) must be Tensor,  SelectedRows or "

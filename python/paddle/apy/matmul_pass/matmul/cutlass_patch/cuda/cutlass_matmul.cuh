@@ -29,7 +29,7 @@
 #include "cutlass/gemm/device/gemm_universal_with_broadcast.h"
 
 #include "cutlass_patch/batched_matrix_coord.h"
-#include "cutlass_patch/default_config_id.h"
+#include "cutlass_patch/cuda/default_config_id.h"
 #include "cutlass_patch/epilogue/thread/linear_combination_unary.h"
 #include "cutlass_patch/epilogue/thread/linear_combination_variadic.h"
 #include "cutlass_patch/gemm/device/gemm_universal_with_variadic.h"
@@ -52,7 +52,7 @@ using bfloat16 = nv_bfloat16;
 template <typename T, int N>
 using Array = cutlass::Array<T, N>;
 
-using MatrixCoord = cutlass::BatchedMatrixCoord;
+using MatrixCoord = cutlass_patch::BatchedMatrixCoord;
 
 // Convert CUDA data type to cutlass data type
 template <typename T>
@@ -181,16 +181,17 @@ void MatmulAddVariadic(
 
   // Epilogue operation as LinearCombination:
   //  alpha * accumulator + beta * source
-  using EpilogueOutputOp = cutlass::epilogue::thread::LinearCombinationVariadic<
-      VariadicFunctor,
-      ElementOutput,
-      AlignC,
-      ElementAccumulator,
-      ElementComputeEpilogue,
-      cutlass::epilogue::thread::ScaleType::NoBetaScaling>;  // <- alpha x AB +
-                                                             // bias
+  using EpilogueOutputOp =
+      cutlass_patch::epilogue::thread::LinearCombinationVariadic<
+          VariadicFunctor,
+          ElementOutput,
+          AlignC,
+          ElementAccumulator,
+          ElementComputeEpilogue,
+          cutlass::epilogue::thread::ScaleType::NoBetaScaling>;  // <- alpha x
+                                                                 // AB + bias
 
-  using GemmFunc = cutlass::gemm::device::GemmUniversalWithVariadic<
+  using GemmFunc = cutlass_patch::gemm::device::GemmUniversalWithVariadic<
       ElementInputA,
       cutlass::layout::RowMajor,
       ElementInputB,

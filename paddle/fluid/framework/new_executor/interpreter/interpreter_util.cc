@@ -1467,14 +1467,18 @@ const std::vector<std::string> GetInstructionCallStack(
     PADDLE_ENFORCE(
         attr.isa<pir::ArrayAttribute>(),
         common::errors::InvalidArgument(
-            "%s: Callstack attributes of %s is not ArrayAttribute type", type));
+            "%s: Callstack attributes of %s is not ArrayAttribute type",
+            type,
+            OpProtoAndCheckerMaker::OpCreationCallstackAttrName()));
     pir::ArrayAttribute array_attribute = attr.dyn_cast<pir::ArrayAttribute>();
     std::vector<pir::Attribute> vec_attr = array_attribute.AsVector();
     for (auto value : vec_attr) {
       PADDLE_ENFORCE(
           value.isa<pir::StrAttribute>(),
           common::errors::InvalidArgument(
-              "%s: Callstack attributes of %s is not StrAttribute type", type));
+              "%s: Callstack attributes of %s is not StrAttribute type",
+              type,
+              OpProtoAndCheckerMaker::OpCreationCallstackAttrName()));
       vec_str.emplace_back(value.dyn_cast<pir::StrAttribute>().AsString());
     }
   }
