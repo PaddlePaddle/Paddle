@@ -4818,14 +4818,13 @@ void CrossAttentionXPUInferMeta(
                                       " vs ",
                                       input_kv_dims[2]));
   int64_t hidden_dim = static_cast<int64_t>(head_num) * head_dim;
-  PADDLE_ENFORCE_EQ(
-      input_q_dims[2],
-      hidden_dim,
-      common::errors::InvalidArgument(
-          "The last dimension of input_q should be [H*D]! "
-          "Received %d != expected %d.",
-          input_q_dims[2],
-          hidden_dim));
+  PADDLE_ENFORCE_EQ(input_q_dims[2],
+                    hidden_dim,
+                    common::errors::InvalidArgument(
+                        "The last dimension of input_q should be [H*D]! "
+                        "Received %d != expected %d.",
+                        input_q_dims[2],
+                        hidden_dim));
   PADDLE_ENFORCE_EQ(fc_weight.size(),
                     3,
                     common::errors::InvalidArgument(

@@ -40,13 +40,13 @@ __global__ void ShuffleChannel(const int64_t nthreads,
   int64_t offset =
       static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(gridDim.x);
   for (int64_t ii = index; ii < nthreads; ii += offset) {
-    const int64_t n = index / group_row / group_column / len;
-    const int64_t i = (index / group_column / len) % group_row;
-    const int64_t j = index / len % group_column;
+    const int64_t n = ii / group_row / group_column / len;
+    const int64_t i = (ii / group_column / len) % group_row;
+    const int64_t j = ii / len % group_column;
     const int64_t k =
-        index - (n * feature_map_size + (i * group_column + j) * len);
+        ii - (n * feature_map_size + (i * group_column + j) * len);
     T* p_o = output + n * feature_map_size + (j * group_row + i) * len;
-    p_o[k] = input[index];
+    p_o[k] = input[ii];
   }
 }
 

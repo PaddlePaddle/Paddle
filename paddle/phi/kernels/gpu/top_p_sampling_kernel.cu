@@ -1103,8 +1103,16 @@ void TopPSamplingKernel(const Context& dev_ctx,
   int64_t p_num = ps.numel();
   int64_t bs = in_dims[0];
   // TODO(large-tensor): downstream functors may still use int
+  PADDLE_ENFORCE_LE_INT_MAX(p_num, "p_num");
+  PADDLE_ENFORCE_LE_INT_MAX(bs + 1, "bs + 1");
   PADDLE_ENFORCE_LE_INT_MAX(in_dims[1], "vocab_size");
-  int vocab_size = static_cast<int>(in_dims[1]);
+  int64_t num_items64 = bs * in_dims[1];
+  PADDLE_ENFORCE_LE_INT_MAX(num_items64, "bs * vocab_size");
+  const int p_num_int = static_cast<int>(p_num);
+  const int vocab_size = static_cast<int>(in_dims[1]);
+  const int num_segments = static_cast<int>(bs);
+  const int num_segments_with_end = static_cast<int>(bs + 1);
+  const int num_items = static_cast<int>(num_items64);
   T* out_ptr = dev_ctx.template Alloc<T>(out);
   int64_t* ids_ptr = dev_ctx.template Alloc<int64_t>(ids);
   T* topk_scores_data = nullptr;
@@ -1134,8 +1142,9 @@ void TopPSamplingKernel(const Context& dev_ctx,
   int BlockSize = GetBlockSize(vocab_size);
 
   switch (BlockSize) {
-    FIXED_BLOCK_DIM(FillIndex<int64_t><<<bs, kBlockDim, 0, cu_stream>>>(
-        inds_input.data<int64_t>(), bs, vocab_size));
+    FIXED_BLOCK_DIM(FillIndex<int64_t>
+                    <<<num_segments, kBlockDim, 0, cu_stream>>>(
+                        inds_input.data<int64_t>(), bs, vocab_size));
     default:
       PD_THROW("the input data shape has error in the FillIndex kernel.");
   }
@@ -1154,7 +1163,7 @@ void TopPSamplingKernel(const Context& dev_ctx,
   bool need_batch_random = false;
 
   if (infer_seed) {
-    setup_kernel<<<1, 256, 0, cu_stream>>>(states, infer_seed, bs);
+    setup_kernel<<<1, 256, 0, cu_stream>>>(states, infer_seed, num_segments);
   } else {
     if (seed_now == -1) {
       need_batch_random = true;
@@ -1164,10 +1173,10 @@ void TopPSamplingKernel(const Context& dev_ctx,
       seed_now = seed_offset.first;
       offset = seed_offset.second;
       setup_kernel<<<1, 256, 0, cu_stream>>>(
-          states, seed_now, offset, bs, need_batch_random);
+          states, seed_now, offset, num_segments, need_batch_random);
     } else {
       setup_kernel<<<1, 256, 0, cu_stream>>>(
-          states, seed_now, offset, bs, need_batch_random);
+          states, seed_now, offset, num_segments, need_batch_random);
     }
   }
 
@@ -1177,7 +1186,8 @@ void TopPSamplingKernel(const Context& dev_ctx,
   DenseTensor count_iter_begin;
   count_iter_begin.Resize({bs});
   dev_ctx.template Alloc<int>(&count_iter_begin);
-  SetCountIter<<<1, 256, 0, cu_stream>>>(count_iter.data<int>(), bs + 1);
+  SetCountIter<<<1, 256, 0, cu_stream>>>(count_iter.data<int>(),
+                                         num_segments_with_end);
 
   T* threshold_data = SafeGetTensorPtr<T>(threshold);
 
@@ -1198,7 +1208,7 @@ void TopPSamplingKernel(const Context& dev_ctx,
       count_iter.data<int>(),
       count_iter_begin.data<int>(),
       k,
-      bs,
+      num_segments,
       need_batch_random,
       mode);
 
@@ -1219,8 +1229,8 @@ void TopPSamplingKernel(const Context& dev_ctx,
       reinterpret_cast<DataType_*>(const_cast<T*>(sorted_out.data<T>())),
       inds_input.data<int64_t>(),
       sorted_id.data<int64_t>(),
-      vocab_size * bs,
-      bs,
+      num_items,
+      num_segments,
       segment_offsets_t_begin,
       segment_offsets_t_end + 1,
       0,
@@ -1240,8 +1250,8 @@ void TopPSamplingKernel(const Context& dev_ctx,
       reinterpret_cast<DataType_*>(const_cast<T*>(sorted_out.data<T>())),
       inds_input.data<int64_t>(),
       sorted_id.data<int64_t>(),
-      vocab_size * bs,
-      bs,
+      num_items,
+      num_segments,
       segment_offsets_t_begin,
       segment_offsets_t_end + 1,
       0,
@@ -1257,9 +1267,9 @@ void TopPSamplingKernel(const Context& dev_ctx,
                           threshold_data,
                           infer_seed,
                           states,
-                          p_num,
+                          p_num_int,
                           vocab_size,
-                          bs,
+                          num_segments,
                           seed_now + offset,
                           need_batch_random,
                           count_iter.data<int>(),
