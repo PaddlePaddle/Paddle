@@ -27,6 +27,7 @@ images per class.
 
 """
 
+import os
 import pickle
 import tarfile
 
@@ -52,14 +53,21 @@ def reader_creator(filename, sub_name, cycle=False, md5sum=None):
         for sample, label in zip(data, labels):
             yield (sample / 255.0).astype(numpy.float32), int(label)
 
+    verified_stat = None
+
     def reader():
+        nonlocal verified_stat
         if md5sum is not None:
-            file_md5 = paddle.dataset.common.md5file(filename)
-            if file_md5 != md5sum:
-                raise ValueError(
-                    "Loading unverified CIFAR pickle archive disabled. "
-                    f"Please use the official MD5 {md5sum}."
-                )
+            stat = os.stat(filename)
+            current_stat = (stat.st_mtime_ns, stat.st_size)
+            if verified_stat != current_stat:
+                file_md5 = paddle.dataset.common.md5file(filename)
+                if file_md5 != md5sum:
+                    raise ValueError(
+                        "Loading unverified CIFAR pickle archive disabled. "
+                        f"Please use the official MD5 {md5sum}."
+                    )
+                verified_stat = current_stat
         while True:
             with tarfile.open(filename, mode='r') as f:
                 names = (

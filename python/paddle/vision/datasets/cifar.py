@@ -16,6 +16,7 @@ from __future__ import annotations
 import os
 import pickle
 import tarfile
+from functools import lru_cache
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
@@ -50,6 +51,22 @@ MODE_FLAG_MAP = {
     'train100': 'train',
     'test100': 'test',
 }
+
+
+@lru_cache(maxsize=8)
+def _cached_md5file(path, _mtime_ns, _size):
+    return md5file(path)
+
+
+def _check_local_cifar_md5(path, expected_md5):
+    path = os.path.abspath(path)
+    stat = os.stat(path)
+    file_md5 = _cached_md5file(path, stat.st_mtime_ns, stat.st_size)
+    if file_md5 != expected_md5:
+        raise ValueError(
+            "Loading unverified local CIFAR pickle archive is disabled. "
+            f"Please use the official archive with MD5 {expected_md5}."
+        )
 
 
 class Cifar10(Dataset[tuple["_ImageDataType", "npt.NDArray[Any]"]]):
@@ -159,11 +176,8 @@ class Cifar10(Dataset[tuple["_ImageDataType", "npt.NDArray[Any]"]]):
             raise ValueError(
                 f"Local CIFAR archive does not exist: {self.data_file}."
             )
-        elif md5file(self.data_file) != self.data_md5:
-            raise ValueError(
-                "Loading unverified local CIFAR pickle archive is disabled. "
-                f"Please use the official archive with MD5 {self.data_md5}."
-            )
+        else:
+            _check_local_cifar_md5(self.data_file, self.data_md5)
 
         self.transform = transform
 

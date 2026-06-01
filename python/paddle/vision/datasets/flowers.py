@@ -35,6 +35,7 @@ import paddle
 from paddle.dataset.common import _check_exists_and_download
 from paddle.io import Dataset
 from paddle.utils import try_import
+from paddle.utils.download import _safe_extract_tar
 
 __all__ = []
 
@@ -49,23 +50,6 @@ SETID_MD5 = 'a5357ecc9cb78c4bef273ce3793fc85c'
 # and trnid is the flag of train data. But test data is more than train data.
 # So we exchange the train data and test data.
 MODE_FLAG_MAP = {'train': 'tstid', 'test': 'trnid', 'valid': 'valid'}
-
-
-def _safe_extract_tar(data_tar, path):
-    abs_path = os.path.abspath(path)
-    members = data_tar.getmembers()
-    for member in members:
-        if member.name in ('', '.'):
-            raise RuntimeError(f"Unsafe tar member path: {member.name}")
-        member_path = os.path.abspath(os.path.join(path, member.name))
-        try:
-            if os.path.commonpath([abs_path, member_path]) != abs_path:
-                raise RuntimeError(f"Unsafe tar member path: {member.name}")
-        except ValueError as e:
-            raise RuntimeError(f"Unsafe tar member path: {member.name}") from e
-        if not (member.isfile() or member.isdir()):
-            raise RuntimeError(f"Unsafe tar member type: {member.name}")
-    data_tar.extractall(path, members=members)
 
 
 class Flowers(Dataset[tuple["_ImageDataType", "npt.NDArray[np.int64]"]]):
@@ -200,7 +184,7 @@ class Flowers(Dataset[tuple["_ImageDataType", "npt.NDArray[np.int64]"]]):
             os.mkdir(self.data_path)
         jpg_path = os.path.join(self.data_path, "jpg")
         if not os.path.exists(jpg_path):
-            _safe_extract_tar(data_tar, self.data_path)
+            _safe_extract_tar(data_tar, self.data_path, on_unsafe='raise')
 
         scio = try_import('scipy.io')
         self.labels = scio.loadmat(label_file)['labels'][0]
