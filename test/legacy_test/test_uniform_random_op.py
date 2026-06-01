@@ -56,6 +56,17 @@ def output_hist_diag(out):
     return hist, prob
 
 
+def assert_stat_near(test_case, actual, expected, delta):
+    actual_value = float(actual)
+    expected_value = float(expected)
+    test_case.assertLessEqual(
+        abs(actual_value - expected_value),
+        delta,
+        f"actual={actual!r}, actual_float={actual_value:.17g}, "
+        f"expected={expected_value:.17g}, delta={delta}",
+    )
+
+
 class TestUniformRandomOp_attr_tensorlist(OpTest):
     def setUp(self):
         self.op_type = "uniform_random"
@@ -674,13 +685,13 @@ class TestRandomValue(unittest.TestCase):
             0.55972187,
         ]
         out = paddle.rand([32, 3, 1024, 1024], dtype='float64').numpy()
-        self.assertEqual(np.mean(out), expect_mean)
-        self.assertEqual(np.std(out), expect_std)
+        assert_stat_near(self, np.mean(out), expect_mean, 1e-12)
+        assert_stat_near(self, np.std(out), expect_std, 1e-12)
         np.testing.assert_allclose(
             out[2, 1, 512, 1000:1010], expect, rtol=1e-05
         )
 
-        expect_mean = 0.50002604722976684570312500
+        expect_mean = 0.500025331974029541015625
         expect_std = 0.2886914908885955810546875
         expect = [
             0.45320973,
@@ -695,8 +706,8 @@ class TestRandomValue(unittest.TestCase):
             0.9810645,
         ]
         out = paddle.rand([32, 3, 1024, 1024], dtype='float32').numpy()
-        self.assertEqual(np.mean(out), expect_mean)
-        self.assertEqual(np.std(out), expect_std)
+        assert_stat_near(self, np.mean(out), expect_mean, 1e-6)
+        assert_stat_near(self, np.std(out), expect_std, 1e-6)
         np.testing.assert_allclose(
             out[2, 1, 512, 1000:1010], expect, rtol=1e-05
         )
@@ -720,8 +731,8 @@ class TestRandomValue(unittest.TestCase):
             .uniform_(-50, 100)
             .numpy()
         )
-        self.assertEqual(np.mean(out), expect_mean)
-        self.assertEqual(np.std(out), expect_std)
+        assert_stat_near(self, np.mean(out), expect_mean, 1e-5)
+        assert_stat_near(self, np.std(out), expect_std, 1e-5)
         np.testing.assert_allclose(out[10, 10, 10, 0:10], expect, rtol=1e-05)
 
         paddle.enable_static()

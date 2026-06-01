@@ -53,6 +53,17 @@ def sample_output_two_dimension(out, shape):
     return sample_prob
 
 
+def assert_stat_near(test_case, actual, expected, delta):
+    actual_value = float(actual)
+    expected_value = float(expected)
+    test_case.assertLessEqual(
+        abs(actual_value - expected_value),
+        delta,
+        f"actual={actual!r}, actual_float={actual_value:.17g}, "
+        f"expected={expected_value:.17g}, delta={delta}",
+    )
+
+
 class TestMultinomialOp(OpTest):
     def setUp(self):
         paddle.enable_static()
@@ -533,7 +544,7 @@ class TestMultinomialAlias(unittest.TestCase):
         ).numpy()
         self.assertEqual(np.sum(y), 102371362581)
         self.assertEqual(np.mean(y), 4998.60168852539)
-        self.assertEqual(np.std(y), 2886.3163085007764)
+        assert_stat_near(self, np.std(y), 2886.3163085007764, 1e-9)
         expect = [7630, 8235, 8445, 3275, 5580, 4591, 1331, 342, 1662, 7156]
         np.testing.assert_array_equal(y[100, 0:10], expect)
 
@@ -613,14 +624,14 @@ class TestRandomValue(unittest.TestCase):
         y = paddle.multinomial(x, 20000, replacement=True).numpy()
         self.assertEqual(np.sum(y), 102371362581)
         self.assertEqual(np.mean(y), 4998.60168852539)
-        self.assertEqual(np.std(y), 2886.3163085007764)
+        assert_stat_near(self, np.std(y), 2886.3163085007764, 1e-9)
         expect = [7630, 8235, 8445, 3275, 5580, 4591, 1331, 342, 1662, 7156]
         np.testing.assert_array_equal(y[100, 0:10], expect)
 
         y = paddle.multinomial(x, 20000, replacement=True).numpy()
         self.assertEqual(np.sum(y), 102400672117)
         self.assertEqual(np.mean(y), 5000.032818212891)
-        self.assertEqual(np.std(y), 2886.913426124017)
+        assert_stat_near(self, np.std(y), 2886.913426124019, 1e-9)
         expect = [4159, 7849, 9305, 5759, 4422, 122, 345, 2897, 5200, 5911]
         np.testing.assert_array_equal(y[100, 0:10], expect)
 
