@@ -24,7 +24,7 @@ from paddle.device.cuda.graphs import CUDAGraph
 
 @unittest.skipIf(
     not (paddle.is_compiled_with_cuda() or is_custom_device())
-    or float(paddle.version.cuda()) < 11.0,
+    or (paddle.is_compiled_with_cuda() and float(paddle.version.cuda()) < 11.0),
     "only support cuda >= 11.0",
 )
 class TestCUDAGraphInFirstBatch(unittest.TestCase):
