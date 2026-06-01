@@ -353,12 +353,9 @@ if(WITH_GPU
    AND NOT WIN32
    AND NOT APPLE)
   if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.0)
-    # include(external/cutlass) # download, build, install cusparselt
-    # list(APPEND third_party_deps extern_cutlass)
-    # set(WITH_CUTLASS ON)
-    # include(external/cutlass) # download, build, install cusparselt
-    # list(APPEND third_party_deps extern_cutlass)
-    # set(WITH_CUTLASS ON)
+    include(external/cutlass) # download, build, install cusparselt
+    list(APPEND third_party_deps extern_cutlass)
+    set(WITH_CUTLASS ON)
   endif()
 endif()
 

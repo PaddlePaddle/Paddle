@@ -1906,10 +1906,13 @@ struct AttentionBackwardKernel {
       if (kPrologueQK && isLastColumn) {
         int32_t next_query, next_key;
         incrIteration(p, query_start, key_start, next_query, next_key);
-        DISPATCH_BOOL(next_key != key_start, kForceReloadK, ([&]() {
-                        prologueQkNextIteration<kForceReloadK>(
-                            shared_storage, p, next_query, next_key);
-                      }));
+        if (next_key != key_start) {
+          prologueQkNextIteration<true>(
+              shared_storage, p, next_query, next_key);
+        } else {
+          prologueQkNextIteration<false>(
+              shared_storage, p, next_query, next_key);
+        }
       }
 
       // Output results
@@ -1976,7 +1979,7 @@ struct AttentionBackwardKernel {
         thread_id,
         cutlass::MatrixCoord{0, 0});
 
-    MatmulQK::Mma::prologue<kReloadK, true>(shared_storage.mm_qk_k(),
+    MatmulQK::Mma::template prologue<kReloadK, true>(shared_storage.mm_qk_k(),
                                             shared_storage.mm_qk_q(),
                                             iterator_A,
                                             iterator_B,
