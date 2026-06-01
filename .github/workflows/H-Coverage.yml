@@ -113,7 +113,7 @@ jobs:
         run: |
           container_name=${TASK}-build-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
-          docker_image=ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:cuda129-coverage-test
+          docker_image=ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:ubuntu24-cuda129-py312-dev
           docker run -d -t --name ${container_name} \
             -v "/home/data/cfs:/home/data/cfs" \
             -v "/home/data/cfs/.cache:/root/.cache" \
@@ -192,60 +192,8 @@ jobs:
           mkdir -p ${CFS_DIR}/.cache/coverage
           mkdir -p ${CFS_DIR}/.ccache/coverage
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda-12.9/compat
-          setup_target_python() {
-            local target_python="python${PY_VERSION}"
-            local target_pip="pip${PY_VERSION}"
-            local opt_python_dir="/opt/_internal/cpython-${PY_VERSION}.0/bin"
-            local apt_updated=0
-            apt_update_once() {
-              if [ "${apt_updated}" != "1" ]; then
-                apt-get update
-                apt_updated=1
-              fi
-            }
-            if ! command -v "${target_python}" >/dev/null 2>&1 || ! command -v "${target_pip}" >/dev/null 2>&1; then
-              if [ -d "${opt_python_dir}" ]; then
-                export PATH="${opt_python_dir}:${PATH}"
-              fi
-            fi
-            if ! command -v "${target_python}" >/dev/null 2>&1 || ! command -v "${target_pip}" >/dev/null 2>&1; then
-              apt_update_once
-              if ! apt-cache show "${target_python}" >/dev/null 2>&1; then
-                apt-get install -y software-properties-common ca-certificates curl
-                add-apt-repository -y ppa:deadsnakes/ppa
-                apt_updated=0
-                apt_update_once
-              fi
-              apt-get install -y "${target_python}" "${target_python}-dev" ca-certificates curl
-            fi
-            if ! command -v "${target_pip}" >/dev/null 2>&1; then
-              if ! command -v curl >/dev/null 2>&1; then
-                apt_update_once
-                apt-get install -y ca-certificates curl
-              fi
-              curl -fsSL https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
-              "${target_python}" /tmp/get-pip.py || "${target_python}" /tmp/get-pip.py --break-system-packages
-            fi
-            "${target_python}" -m pip config set global.break-system-packages true || true
-            "${target_python}" -m pip install --upgrade "setuptools==68.2.0" wheel || "${target_python}" -m pip install --upgrade "setuptools==68.2.0" wheel --break-system-packages
-            export SETUPTOOLS_USE_DISTUTILS=local
-            python_bin=$(command -v "${target_python}" || true)
-            pip_bin=$(command -v "${target_pip}" || true)
-            if [ -z "${python_bin}" ] || [ -z "${pip_bin}" ]; then
-              echo "ERROR: Python ${PY_VERSION} or pip ${PY_VERSION} is unavailable after setup." >&2
-              echo "PATH=${PATH}" >&2
-              command -v "${target_python}" || true
-              command -v "${target_pip}" || true
-              exit 1
-            fi
-            ln -sf "${python_bin}" /usr/local/bin/python
-            ln -sf "${pip_bin}" /usr/local/bin/pip
-            echo "Using python: $(command -v python)"
-            python --version
-            echo "Using pip: $(command -v pip)"
-            pip --version
-          }
-          setup_target_python
+          python --version
+          pip --version
           bash ${ci_scripts}/cmake-predownload.sh
           bash ${ci_scripts}/cmake_preload_data_file.sh
           pip install -r python/requirements.txt
@@ -352,7 +300,7 @@ jobs:
         run: |
           container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
-          docker_image=ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:cuda129-coverage-test
+          docker_image=ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:ubuntu24-cuda129-py312-dev
           docker run -d -t --gpus "\"device=${GPU_DEVICES}\"" --name ${container_name} \
             -v "/home/data/cfs:/home/data/cfs" \
             -v "/home/data/cfs/.cache:/root/.cache" \
@@ -413,62 +361,10 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
-          setup_target_python() {
-            local target_python="python${PY_VERSION}"
-            local target_pip="pip${PY_VERSION}"
-            local opt_python_dir="/opt/_internal/cpython-${PY_VERSION}.0/bin"
-            local apt_updated=0
-            apt_update_once() {
-              if [ "${apt_updated}" != "1" ]; then
-                apt-get update
-                apt_updated=1
-              fi
-            }
-            if ! command -v "${target_python}" >/dev/null 2>&1 || ! command -v "${target_pip}" >/dev/null 2>&1; then
-              if [ -d "${opt_python_dir}" ]; then
-                export PATH="${opt_python_dir}:${PATH}"
-              fi
-            fi
-            if ! command -v "${target_python}" >/dev/null 2>&1 || ! command -v "${target_pip}" >/dev/null 2>&1; then
-              apt_update_once
-              if ! apt-cache show "${target_python}" >/dev/null 2>&1; then
-                apt-get install -y software-properties-common ca-certificates curl
-                add-apt-repository -y ppa:deadsnakes/ppa
-                apt_updated=0
-                apt_update_once
-              fi
-              apt-get install -y "${target_python}" "${target_python}-dev" ca-certificates curl
-            fi
-            if ! command -v "${target_pip}" >/dev/null 2>&1; then
-              if ! command -v curl >/dev/null 2>&1; then
-                apt_update_once
-                apt-get install -y ca-certificates curl
-              fi
-              curl -fsSL https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
-              "${target_python}" /tmp/get-pip.py || "${target_python}" /tmp/get-pip.py --break-system-packages
-            fi
-            "${target_python}" -m pip config set global.break-system-packages true || true
-            "${target_python}" -m pip install --upgrade "setuptools==68.2.0" wheel || "${target_python}" -m pip install --upgrade "setuptools==68.2.0" wheel --break-system-packages
-            export SETUPTOOLS_USE_DISTUTILS=local
-            python_bin=$(command -v "${target_python}" || true)
-            pip_bin=$(command -v "${target_pip}" || true)
-            if [ -z "${python_bin}" ] || [ -z "${pip_bin}" ]; then
-              echo "ERROR: Python ${PY_VERSION} or pip ${PY_VERSION} is unavailable after setup." >&2
-              echo "PATH=${PATH}" >&2
-              command -v "${target_python}" || true
-              command -v "${target_pip}" || true
-              exit 1
-            fi
-            ln -sf "${python_bin}" /usr/local/bin/python
-            ln -sf "${pip_bin}" /usr/local/bin/pip
-            echo "Using python: $(command -v python)"
-            python --version
-            echo "Using pip: $(command -v pip)"
-            pip --version
-          }
-          setup_target_python
+          python --version
+          pip --version
           pip install build//python/dist/*.whl --no-deps
-          pip install --ignore-installed -r python/requirements.txt -r python/unittest_py/requirements.txt pytest "setuptools==68.2.0"
+          pip install -r python/unittest_py/requirements.txt
           bash $ci_scripts/h-test.sh
           '
 
