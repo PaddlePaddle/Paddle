@@ -37,6 +37,8 @@ from paddle.utils.decorator_utils import (
     param_one_alias,
     param_two_alias,
     reshape_decorator,
+    slice_scatter_decorator,
+    tensordot_decorator,
     tile_decorator,
     variadic_tensor_decorator,
     view_decorator,
@@ -6434,19 +6436,25 @@ def strided_slice(
         return out
 
 
+@tensordot_decorator()
 def tensordot(
     x: Tensor,
     y: Tensor,
     axes: int | NestedSequence[int] | Tensor = 2,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     r"""
     This function computes a contraction, which sum the product of elements from two tensors along the given axes.
 
     Args:
         x (Tensor): The left tensor for contraction with data type ``float16`` or ``float32`` or ``float64``.
+            Alias: ``a``.
         y (Tensor): The right tensor for contraction with the same data type as ``x``.
+            Alias: ``b``.
         axes (int|tuple|list|Tensor, optional):  The axes to contract for ``x`` and ``y``, defaulted to integer ``2``.
+            Alias: ``dims``.
 
             1. It could be a non-negative integer ``n``,
                in which the function will sum over the last ``n`` axes of ``x`` and the first ``n`` axes of ``y`` in order.
@@ -6464,6 +6472,9 @@ def tensordot(
                Note that the ``axes`` with Tensor type is ONLY available in Dygraph mode.
         name(str|None, optional): The default value is None.  Normally there is no need for user to set this property.
                              For more information, please refer to :ref:`api_guide_Name` .
+
+    Keyword Args:
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Return:
         Output (Tensor), The contraction result with the same data type as ``x`` and ``y``.
@@ -6663,8 +6674,11 @@ def tensordot(
     y = y.transpose(perm=perm_y).reshape(
         [contraction_size, not_contraction_size_y]
     )
-    out = x.matmul(y).reshape(shape_out)
-    return out
+    result = x.matmul(y).reshape(shape_out)
+    if out is not None:
+        paddle.assign(result, out)
+        return out
+    return result
 
 
 def as_complex(x: Tensor, name: str | None = None) -> Tensor:
@@ -8665,13 +8679,14 @@ def select_scatter(
         return output
 
 
+@slice_scatter_decorator()
 def slice_scatter(
     x: Tensor,
     value: Tensor,
-    axes: Sequence[int],
-    starts: Sequence[int],
-    ends: Sequence[int],
-    strides: Sequence[int],
+    axes: Sequence[int] | None = None,
+    starts: Sequence[int] | None = None,
+    ends: Sequence[int] | None = None,
+    strides: Sequence[int] | None = None,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -8680,11 +8695,17 @@ def slice_scatter(
 
     Args:
         x (Tensor) : The input Tensor. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex128`.
+            Alias: ``input``.
         value (Tensor) : The tensor to embed into x. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex128`.
+            Alias: ``src``.
         axes (list|tuple) : the dimensions to insert the value.
+            Alias: ``dim``.
         starts (list|tuple) : the start indices of where to insert.
+            Alias: ``start``.
         ends (list|tuple) : the stop indices of where to insert.
+            Alias: ``end``.
         strides (list|tuple) : the steps for each insert.
+            Alias: ``step``.
         name (str|None, optional): Name for the operation (optional, default is None).
 
     Returns:

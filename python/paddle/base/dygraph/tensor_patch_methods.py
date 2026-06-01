@@ -1214,6 +1214,22 @@ def monkey_patch_tensor():
         """
         return self.place.is_cpu_place()
 
+    def col_indices(self: Tensor) -> Tensor:
+        """
+        Alias for cols() method for PyTorch compatibility.
+
+        Returns the column indices of a SparseCsrTensor.
+        """
+        return self.cols()
+
+    def crow_indices(self: Tensor) -> Tensor:
+        """
+        Alias for crows() method for PyTorch compatibility.
+
+        Returns the compressed row indices of a SparseCsrTensor.
+        """
+        return self.crows()
+
     @framework.dygraph_only
     def pin_memory(self: Tensor, blocking: bool = True) -> Tensor:
         if (
@@ -1318,6 +1334,15 @@ def monkey_patch_tensor():
             return self
 
         return _C_ops.sparse_to_sparse_coo(self, sparse_dim)
+
+    @framework.dygraph_only
+    def to_sparse(self: Tensor, sparse_dim: int) -> Tensor:
+        """
+        Alias for to_sparse_coo for PyTorch compatibility.
+
+        See to_sparse_coo for details.
+        """
+        return self.to_sparse_coo(sparse_dim)
 
     @framework.dygraph_only
     def _md5sum(self: Tensor) -> str:
@@ -1729,6 +1754,7 @@ def monkey_patch_tensor():
         ("values", values),
         ("to_dense", to_dense),
         ("to_sparse_coo", to_sparse_coo),
+        ("to_sparse", to_sparse),
         ("coalesce", coalesce),
         ("sparse_mask", sparse_mask),
         ("_set_grad_ivar", _set_grad_ivar),
@@ -1753,6 +1779,8 @@ def monkey_patch_tensor():
         # For TVM FFI 0.1.5+
         ("__dlpack_c_exchange_api__", core.dlpack_exchange_api_pycapsule()),
         ("device", device),
+        ("col_indices", col_indices),
+        ("crow_indices", crow_indices),
     ):
         setattr(core.eager.Tensor, method_name, method)
 

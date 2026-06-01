@@ -1267,3 +1267,154 @@ def nansum_decorator() -> Callable[
         return wrapper
 
     return decorator
+
+
+def tensordot_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """
+    Decorator for tensordot to handle parameter alias and positional out.
+
+    Usage Example:
+    PyTorch: torch.tensordot(a, b, dims=2, out=None)
+    Paddle: paddle.tensordot(x, y, axes=2, *, out=None)
+
+    The decorator handles:
+    - Parameter aliases: a->x, b->y, dims->axes
+    - Positional out parameter: PyTorch's out is 4th positional, Paddle's is keyword-only
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            # Handle parameter aliases for keyword arguments
+            if "a" in kwargs and "x" not in kwargs:
+                kwargs["x"] = kwargs.pop("a")
+            if "b" in kwargs and "y" not in kwargs:
+                kwargs["y"] = kwargs.pop("b")
+            if "dims" in kwargs and "axes" not in kwargs:
+                kwargs["axes"] = kwargs.pop("dims")
+
+            # Handle positional out parameter: PyTorch allows out as 4th positional arg
+            # torch.tensordot(a, b, dims, out) -> paddle.tensordot(x, y, axes, out=out)
+            if len(args) >= 4:
+                # Check if 4th arg looks like a tensor (for out parameter)
+                fourth_arg = args[3]
+                if isinstance(fourth_arg, (paddle.Tensor, paddle.pir.Value)):
+                    kwargs["x"] = args[0]
+                    kwargs["y"] = args[1]
+                    kwargs["axes"] = args[2]
+                    kwargs["out"] = fourth_arg
+                    args = args[4:]
+
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def slice_scatter_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """
+    Decorator for slice_scatter to support both PyTorch and Paddle signatures.
+
+    PyTorch: torch.slice_scatter(input, src, dim=0, start=None, end=None, step=1)
+    Paddle: paddle.slice_scatter(x, value, axes=[0], starts=[0], ends=[-1], strides=[1])
+
+    PyTorch uses single-axis operation (dim is int) with default values.
+    Paddle uses multi-axis operation (axes is list) with no defaults.
+
+    This decorator:
+    1. Handles keyword argument aliases
+    2. Applies PyTorch default values when parameters are missing
+    3. Converts single int to list format for Paddle
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            # Handle keyword argument aliases
+            if "input" in kwargs and "x" not in kwargs:
+                kwargs["x"] = kwargs.pop("input")
+            if "src" in kwargs and "value" not in kwargs:
+                kwargs["value"] = kwargs.pop("src")
+            if "dim" in kwargs and "axes" not in kwargs:
+                kwargs["axes"] = kwargs.pop("dim")
+            if "start" in kwargs and "starts" not in kwargs:
+                kwargs["starts"] = kwargs.pop("start")
+            if "end" in kwargs and "ends" not in kwargs:
+                kwargs["ends"] = kwargs.pop("end")
+            if "step" in kwargs and "strides" not in kwargs:
+                kwargs["strides"] = kwargs.pop("step")
+
+            # PyTorch style with positional args: (input, src, dim, start, end, step)
+            # Only x and value are required, rest have defaults
+            # Note: Check kwargs first before applying defaults from positional args
+            if len(args) >= 2:
+                new_kwargs = {"x": args[0], "value": args[1]}
+                arg_len = len(args)
+
+                # dim/axes - default to 0, but respect kwargs if provided
+                if arg_len > 2:
+                    dim_val = args[2]
+                    new_kwargs["axes"] = (
+                        [dim_val] if isinstance(dim_val, int) else dim_val
+                    )
+                elif "axes" not in kwargs:
+                    new_kwargs["axes"] = [0]
+
+                # start/starts - default to 0, but respect kwargs if provided
+                if arg_len > 3 and args[3] is not None:
+                    start_val = args[3]
+                    new_kwargs["starts"] = (
+                        [start_val] if isinstance(start_val, int) else start_val
+                    )
+                elif "starts" not in kwargs:
+                    new_kwargs["starts"] = [0]
+
+                # end/ends - use a very large value to mean "to the end", but respect kwargs if provided
+                if arg_len > 4 and args[4] is not None:
+                    end_val = args[4]
+                    new_kwargs["ends"] = (
+                        [end_val] if isinstance(end_val, int) else end_val
+                    )
+                elif "ends" not in kwargs:
+                    new_kwargs["ends"] = [1000000]
+
+                # step/strides - default to 1, but respect kwargs if provided
+                if arg_len > 5:
+                    step_val = args[5]
+                    new_kwargs["strides"] = (
+                        [step_val] if isinstance(step_val, int) else step_val
+                    )
+                elif "strides" not in kwargs:
+                    new_kwargs["strides"] = [1]
+
+                kwargs.update(new_kwargs)
+                args = ()
+
+            # Apply defaults for keyword args if not provided
+            if "axes" not in kwargs or kwargs["axes"] is None:
+                kwargs["axes"] = [0]
+            if "starts" not in kwargs or kwargs["starts"] is None:
+                kwargs["starts"] = [0]
+            # For ends, use None to mean "to the end", will be handled by converting to large value
+            if "ends" not in kwargs or kwargs["ends"] is None:
+                kwargs["ends"] = [1000000]
+            if "strides" not in kwargs or kwargs["strides"] is None:
+                kwargs["strides"] = [1]
+
+            # Convert single int to list for Paddle
+            for key in ["axes", "starts", "ends", "strides"]:
+                if key in kwargs and isinstance(kwargs[key], int):
+                    kwargs[key] = [kwargs[key]]
+
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator

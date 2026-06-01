@@ -4464,5 +4464,923 @@ class TestLayerNormAPI(unittest.TestCase):
             np.testing.assert_allclose(out, expected, rtol=1e-5)
 
 
+# Test select_scatter compatibility
+class TestSelectScatterAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_x = np.random.rand(2, 3, 4).astype("float32")
+        self.np_values = np.random.rand(2, 4).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        values = paddle.to_tensor(self.np_values)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.select_scatter(x, values, 1, 1)
+        # 2. Paddle keyword arguments
+        out2 = paddle.select_scatter(x=x, values=values, axis=1, index=1)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.select_scatter(input=x, src=values, dim=1, index=1)
+        # 4. Mixed arguments
+        out4 = paddle.select_scatter(x, values, axis=1, index=1)
+        # 5. Tensor method - args
+        out5 = x.select_scatter(values, 1, 1)
+        # 6. Tensor method - kwargs (PyTorch alias)
+        out6 = x.select_scatter(src=values, dim=1, index=1)
+
+        # Verify all outputs have same shape
+        for out in [out1, out2, out3, out4, out5, out6]:
+            self.assertEqual(out.shape, x.shape)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=self.np_x.shape, dtype="float32"
+            )
+            values = paddle.static.data(
+                name="values", shape=self.np_values.shape, dtype="float32"
+            )
+
+            # 1. Paddle Positional arguments
+            out1 = paddle.select_scatter(x, values, 1, 1)
+            # 2. Paddle keyword arguments
+            out2 = paddle.select_scatter(x=x, values=values, axis=1, index=1)
+            # 3. PyTorch keyword arguments (alias)
+            out3 = paddle.select_scatter(input=x, src=values, dim=1, index=1)
+            # 4. Tensor method
+            out4 = x.select_scatter(values, 1, 1)
+
+            exe = paddle.static.Executor()
+            exe.run(startup)
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x, "values": self.np_values},
+                fetch_list=[out1, out2, out3, out4],
+            )
+
+            for out in fetches:
+                self.assertEqual(out.shape, self.np_x.shape)
+
+
+# Test sgn compatibility
+class TestSgnAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_x = np.random.randn(2, 3).astype("float32")
+        self.shape = [2, 3]
+        self.dtype = np.float32
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.sgn(x)
+        # 2. Paddle keyword arguments
+        out2 = paddle.sgn(x=x)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.sgn(input=x)
+        # 4-5. out parameter test
+        out4 = paddle.empty_like(x)
+        out5 = paddle.sgn(x, out=out4)
+        # 6. Tensor method
+        out6 = x.sgn()
+
+        ref_out = np.sign(self.np_x)
+        for out in [out1, out2, out3, out5, out6]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-5)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype="float32")
+
+            # 1. Paddle Positional arguments
+            out1 = paddle.sgn(x)
+            # 2. Paddle keyword arguments
+            out2 = paddle.sgn(x=x)
+            # 3. PyTorch keyword arguments (alias)
+            out3 = paddle.sgn(input=x)
+            # 4. Tensor method
+            out4 = x.sgn()
+
+            exe = paddle.static.Executor()
+            exe.run(startup)
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3, out4],
+            )
+
+            ref_out = np.sign(self.np_x)
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out, rtol=1e-5)
+
+
+# Test signbit compatibility
+class TestSignbitAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_x = np.array([-0.0, 1.1, -2.1, 0.0, 2.5]).astype("float32")
+        self.shape = [5]
+        self.dtype = np.float32
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.signbit(x)
+        # 2. Paddle keyword arguments
+        out2 = paddle.signbit(x=x)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.signbit(input=x)
+        # 4-5. out parameter test
+        out4 = paddle.empty(self.shape, dtype="bool")
+        out5 = paddle.signbit(x, out=out4)
+        # 6. Tensor method
+        out6 = x.signbit()
+
+        ref_out = np.array([True, False, True, False, False])
+        for out in [out1, out2, out3, out5, out6]:
+            np.testing.assert_array_equal(out.numpy(), ref_out)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype="float32")
+
+            # 1. Paddle Positional arguments
+            out1 = paddle.signbit(x)
+            # 2. Paddle keyword arguments
+            out2 = paddle.signbit(x=x)
+            # 3. PyTorch keyword arguments (alias)
+            out3 = paddle.signbit(input=x)
+            # 4. Tensor method
+            out4 = x.signbit()
+
+            exe = paddle.static.Executor()
+            exe.run(startup)
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3, out4],
+            )
+
+            ref_out = np.array([True, False, True, False, False])
+            for out in fetches:
+                np.testing.assert_array_equal(out, ref_out)
+
+
+# Test slice_scatter compatibility
+class TestSliceScatterAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_x = np.zeros((3, 9)).astype("float32")
+        self.np_value = np.ones((3, 2)).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        value = paddle.to_tensor(self.np_value)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.slice_scatter(x, value, [1], [2], [6], [2])
+        # 2. Paddle keyword arguments
+        out2 = paddle.slice_scatter(
+            x=x, value=value, axes=[1], starts=[2], ends=[6], strides=[2]
+        )
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.slice_scatter(
+            input=x, src=value, dim=[1], start=[2], end=[6], step=[2]
+        )
+        # 4. Mixed arguments
+        out4 = paddle.slice_scatter(
+            x, value, axes=[1], starts=[2], ends=[6], strides=[2]
+        )
+        # 5. Tensor method - args
+        out5 = x.slice_scatter(value, [1], [2], [6], [2])
+        # 6. Tensor method - kwargs (PyTorch alias)
+        out6 = x.slice_scatter(src=value, dim=[1], start=[2], end=[6], step=[2])
+
+        # Verify all outputs have same shape
+        for out in [out1, out2, out3, out4, out5, out6]:
+            self.assertEqual(out.shape, x.shape)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=self.np_x.shape, dtype="float32"
+            )
+            value = paddle.static.data(
+                name="value", shape=self.np_value.shape, dtype="float32"
+            )
+
+            # 1. Paddle Positional arguments
+            out1 = paddle.slice_scatter(x, value, [1], [2], [6], [2])
+            # 2. Paddle keyword arguments
+            out2 = paddle.slice_scatter(
+                x=x, value=value, axes=[1], starts=[2], ends=[6], strides=[2]
+            )
+            # 3. PyTorch keyword arguments (alias)
+            out3 = paddle.slice_scatter(
+                input=x, src=value, dim=[1], start=[2], end=[6], step=[2]
+            )
+            # 4. Tensor method
+            out4 = x.slice_scatter(value, [1], [2], [6], [2])
+
+            exe = paddle.static.Executor()
+            exe.run(startup)
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x, "value": self.np_value},
+                fetch_list=[out1, out2, out3, out4],
+            )
+
+            for out in fetches:
+                self.assertEqual(out.shape, self.np_x.shape)
+
+
+# Test take compatibility
+class TestTakeAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_x = np.arange(0, 12).reshape([3, 4]).astype("float32")
+        self.np_index = np.arange(4, 10).reshape([2, 3]).astype("int64")
+        self.shape_x = [3, 4]
+        self.shape_index = [2, 3]
+        self.dtype = np.float32
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        index = paddle.to_tensor(self.np_index)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.take(x, index)
+        # 2. Paddle keyword arguments
+        out2 = paddle.take(x=x, index=index)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.take(input=x, index=index)
+        # 4. Mixed arguments
+        out4 = paddle.take(x, index=index)
+        # 5. Tensor method - args
+        out5 = x.take(index)
+        # 6. Tensor method - kwargs
+        out6 = x.take(index=index)
+
+        ref_out = self.np_x.flatten()[self.np_index.flatten()].reshape(
+            self.np_index.shape
+        )
+        for out in [out1, out2, out3, out4, out5, out6]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-5)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=self.shape_x, dtype="float32"
+            )
+            index = paddle.static.data(
+                name="index", shape=self.shape_index, dtype="int64"
+            )
+
+            # 1. Paddle Positional arguments
+            out1 = paddle.take(x, index)
+            # 2. Paddle keyword arguments
+            out2 = paddle.take(x=x, index=index)
+            # 3. PyTorch keyword arguments (alias)
+            out3 = paddle.take(input=x, index=index)
+            # 4. Tensor method
+            out4 = x.take(index)
+
+            exe = paddle.static.Executor()
+            exe.run(startup)
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x, "index": self.np_index},
+                fetch_list=[out1, out2, out3, out4],
+            )
+
+            ref_out = self.np_x.flatten()[self.np_index.flatten()].reshape(
+                self.np_index.shape
+            )
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out, rtol=1e-5)
+
+
+# Test tensordot compatibility
+class TestTensordotAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_x = np.random.rand(2, 3).astype("float32")
+        self.np_y = np.random.rand(3, 4).astype("float32")
+        self.shape_x = [2, 3]
+        self.shape_y = [3, 4]
+        self.dtype = np.float32
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        y = paddle.to_tensor(self.np_y)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.tensordot(x, y, axes=1)
+        # 2. Paddle keyword arguments
+        out2 = paddle.tensordot(x=x, y=y, axes=1)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.tensordot(a=x, b=y, dims=1)
+        # 4. Mixed arguments
+        out4 = paddle.tensordot(x, y, axes=1)
+        # 5-6. out parameter test
+        out5 = paddle.empty([2, 4], dtype="float32")
+        out6 = paddle.tensordot(x, y, axes=1, out=out5)
+
+        ref_out = np.matmul(self.np_x, self.np_y)
+        for out in [out1, out2, out3, out4, out6]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-5)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=self.shape_x, dtype="float32"
+            )
+            y = paddle.static.data(
+                name="y", shape=self.shape_y, dtype="float32"
+            )
+
+            # 1. Paddle Positional arguments
+            out1 = paddle.tensordot(x, y, axes=1)
+            # 2. Paddle keyword arguments
+            out2 = paddle.tensordot(x=x, y=y, axes=1)
+            # 3. PyTorch keyword arguments (alias)
+            out3 = paddle.tensordot(a=x, b=y, dims=1)
+
+            exe = paddle.static.Executor()
+            exe.run(startup)
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x, "y": self.np_y},
+                fetch_list=[out1, out2, out3],
+            )
+
+            ref_out = np.matmul(self.np_x, self.np_y)
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out, rtol=1e-5)
+
+
+# Test vander compatibility
+class TestVanderAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_x = np.array([1.0, 2.0, 3.0]).astype("float32")
+        self.shape = [3]
+        self.dtype = np.float32
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.vander(x, 3)
+        # 2. Paddle keyword arguments
+        out2 = paddle.vander(x=x, n=3)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.vander(x, N=3)
+        # 4. Mixed arguments
+        out4 = paddle.vander(x, n=3, increasing=True)
+
+        # Verify shape
+        for out in [out1, out2, out3, out4]:
+            self.assertEqual(out.shape, (3, 3))
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype="float32")
+
+            # 1. Paddle Positional arguments
+            out1 = paddle.vander(x, 3)
+            # 2. Paddle keyword arguments
+            out2 = paddle.vander(x=x, n=3)
+            # 3. PyTorch keyword arguments (alias)
+            out3 = paddle.vander(x, N=3)
+
+            exe = paddle.static.Executor()
+            exe.run(startup)
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3],
+            )
+
+            for out in fetches:
+                self.assertEqual(out.shape, (3, 3))
+
+
+# Test logaddexp compatibility
+class TestLogaddexpAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_x = np.array([-1, -2, -3]).astype("float64")
+        self.np_y = np.array([-1]).astype("float64")
+        self.shape_x = [3]
+        self.shape_y = [1]
+        self.dtype = np.float64
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        y = paddle.to_tensor(self.np_y)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.logaddexp(x, y)
+        # 2. Paddle keyword arguments
+        out2 = paddle.logaddexp(x=x, y=y)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.logaddexp(input=x, other=y)
+        # 4. Mixed arguments
+        out4 = paddle.logaddexp(x, y=y)
+        # 5-6. out parameter test
+        out5 = paddle.empty([3], dtype="float64")
+        out6 = paddle.logaddexp(x, y, out=out5)
+        # 7. Tensor method
+        out7 = x.logaddexp(y)
+
+        ref_out = np.logaddexp(self.np_x, self.np_y)
+        for out in [out1, out2, out3, out4, out6, out7]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-5)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=self.shape_x, dtype="float64"
+            )
+            y = paddle.static.data(
+                name="y", shape=self.shape_y, dtype="float64"
+            )
+
+            # 1. Paddle Positional arguments
+            out1 = paddle.logaddexp(x, y)
+            # 2. Paddle keyword arguments
+            out2 = paddle.logaddexp(x=x, y=y)
+            # 3. PyTorch keyword arguments (alias)
+            out3 = paddle.logaddexp(input=x, other=y)
+            # 4. Tensor method
+            out4 = x.logaddexp(y)
+
+            exe = paddle.static.Executor()
+            exe.run(startup)
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x, "y": self.np_y},
+                fetch_list=[out1, out2, out3, out4],
+            )
+
+            ref_out = np.logaddexp(self.np_x, self.np_y)
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out, rtol=1e-5)
+
+
+# Test logspace compatibility
+class TestLogspaceAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.start = 0
+        self.stop = 10
+        self.num = 5
+        self.base = 2.0
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.logspace(
+            self.start, self.stop, self.num, self.base, 'float32'
+        )
+        # 2. Paddle keyword arguments
+        out2 = paddle.logspace(
+            start=self.start,
+            stop=self.stop,
+            num=self.num,
+            base=self.base,
+            dtype='float32',
+        )
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.logspace(
+            self.start,
+            end=self.stop,
+            steps=self.num,
+            base=self.base,
+            dtype='float32',
+        )
+        # 4. Mixed arguments
+        out4 = paddle.logspace(
+            self.start, self.stop, num=self.num, base=self.base, dtype='float32'
+        )
+        # 5-6. out parameter test
+        out5 = paddle.empty([self.num], dtype='float32')
+        out6 = paddle.logspace(
+            self.start, self.stop, self.num, self.base, 'float32', out=out5
+        )
+
+        # Verify shape
+        for out in [out1, out2, out3, out4, out6]:
+            self.assertEqual(out.shape, (self.num,))
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            # 1. Paddle Positional arguments
+            out1 = paddle.logspace(
+                self.start, self.stop, self.num, self.base, 'float32'
+            )
+            # 2. Paddle keyword arguments
+            out2 = paddle.logspace(
+                start=self.start,
+                stop=self.stop,
+                num=self.num,
+                base=self.base,
+                dtype='float32',
+            )
+            # 3. PyTorch keyword arguments (alias)
+            out3 = paddle.logspace(
+                self.start,
+                end=self.stop,
+                steps=self.num,
+                base=self.base,
+                dtype='float32',
+            )
+
+            exe = paddle.static.Executor()
+            exe.run(startup)
+            fetches = exe.run(
+                main,
+                feed={},
+                fetch_list=[out1, out2, out3],
+            )
+
+            for out in fetches:
+                self.assertEqual(out.shape, (self.num,))
+
+
+# Test moveaxis compatibility
+class TestMoveaxisAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_x = np.random.rand(3, 2, 4).astype("float32")
+        self.shape = [3, 2, 4]
+        self.dtype = np.float32
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.moveaxis(x, 0, 1)
+        # 2. Paddle keyword arguments
+        out2 = paddle.moveaxis(x=x, source=0, destination=1)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.moveaxis(input=x, source=0, destination=1)
+        # 4. Mixed arguments
+        out4 = paddle.moveaxis(x, source=0, destination=1)
+        # 5. Tensor method - args
+        out5 = x.moveaxis(0, 1)
+        # 6. Tensor method - kwargs
+        out6 = x.moveaxis(source=0, destination=1)
+
+        # Verify shape changed correctly
+        expected_shape = (2, 3, 4)
+        for out in [out1, out2, out3, out4, out5, out6]:
+            self.assertEqual(out.shape, expected_shape)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype="float32")
+
+            # 1. Paddle Positional arguments
+            out1 = paddle.moveaxis(x, 0, 1)
+            # 2. Paddle keyword arguments
+            out2 = paddle.moveaxis(x=x, source=0, destination=1)
+            # 3. PyTorch keyword arguments (alias)
+            out3 = paddle.moveaxis(input=x, source=0, destination=1)
+            # 4. Tensor method
+            out4 = x.moveaxis(0, 1)
+
+            exe = paddle.static.Executor()
+            exe.run(startup)
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3, out4],
+            )
+
+            expected_shape = (2, 3, 4)
+            for out in fetches:
+                self.assertEqual(out.shape, expected_shape)
+
+
+# Test nan_to_num compatibility
+class TestNanToNumAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_x = np.array(
+            [float('nan'), 0.3, float('+inf'), float('-inf')]
+        ).astype("float32")
+        self.shape = [4]
+        self.dtype = np.float32
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.nan_to_num(x)
+        # 2. Paddle keyword arguments
+        out2 = paddle.nan_to_num(x=x)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.nan_to_num(input=x)
+        # 4. Mixed arguments
+        out4 = paddle.nan_to_num(x, nan=1.0)
+        # 5-6. out parameter test
+        out5 = paddle.empty([4], dtype="float32")
+        out6 = paddle.nan_to_num(x, out=out5)
+        # 7. Tensor method
+        out7 = x.nan_to_num()
+
+        # Verify no nan values in outputs
+        for out in [out1, out2, out3, out4, out6, out7]:
+            self.assertFalse(paddle.isnan(out).any().item())
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype="float32")
+
+            # 1. Paddle Positional arguments
+            out1 = paddle.nan_to_num(x)
+            # 2. Paddle keyword arguments
+            out2 = paddle.nan_to_num(x=x)
+            # 3. PyTorch keyword arguments (alias)
+            out3 = paddle.nan_to_num(input=x)
+            # 4. Tensor method
+            out4 = x.nan_to_num()
+
+            exe = paddle.static.Executor()
+            exe.run(startup)
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3, out4],
+            )
+
+            for out in fetches:
+                self.assertFalse(np.isnan(out).any())
+
+
+# Test nanmean compatibility
+class TestNanmeanAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_x = np.array(
+            [[float('nan'), 0.3, 0.5, 0.9], [0.1, 0.2, float('-nan'), 0.7]]
+        ).astype("float32")
+        self.shape = [2, 4]
+        self.dtype = np.float32
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.nanmean(x)
+        # 2. Paddle keyword arguments
+        out2 = paddle.nanmean(x=x)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.nanmean(input=x)
+        # 4. Mixed arguments
+        out4 = paddle.nanmean(x, axis=0)
+        # 5. PyTorch dim alias
+        out5 = paddle.nanmean(input=x, dim=0)
+        # 6-7. out parameter test
+        out6 = paddle.empty([4], dtype="float32")
+        out7 = paddle.nanmean(x, axis=0, out=out6)
+        # 8. Tensor method
+        out8 = x.nanmean()
+
+        # Verify outputs are valid
+        for out in [out1, out2, out3, out8]:
+            self.assertFalse(paddle.isnan(out).any().item())
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype="float32")
+
+            # 1. Paddle Positional arguments
+            out1 = paddle.nanmean(x)
+            # 2. Paddle keyword arguments
+            out2 = paddle.nanmean(x=x)
+            # 3. PyTorch keyword arguments (alias)
+            out3 = paddle.nanmean(input=x)
+            # 4. PyTorch dim alias
+            out4 = paddle.nanmean(input=x, dim=0)
+            # 5. Tensor method
+            out5 = x.nanmean()
+
+            exe = paddle.static.Executor()
+            exe.run(startup)
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3, out5],
+            )
+
+            for out in fetches:
+                self.assertFalse(np.isnan(out).any())
+
+
+# Test nansum compatibility
+class TestNansumAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_x = np.array(
+            [[float('nan'), 0.3, 0.5, 0.9], [0.1, 0.2, float('-nan'), 0.7]]
+        ).astype("float32")
+        self.shape = [2, 4]
+        self.dtype = np.float32
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.nansum(x)
+        # 2. Paddle keyword arguments
+        out2 = paddle.nansum(x=x)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.nansum(input=x)
+        # 4. Mixed arguments
+        out4 = paddle.nansum(x, axis=0)
+        # 5. PyTorch dim alias
+        out5 = paddle.nansum(input=x, dim=0)
+        # 6-7. out parameter test
+        out6 = paddle.empty([4], dtype="float32")
+        out7 = paddle.nansum(x, axis=0, out=out6)
+        # 8. Tensor method
+        out8 = x.nansum()
+
+        # Verify outputs are valid
+        for out in [out1, out2, out3, out8]:
+            self.assertFalse(paddle.isnan(out).any().item())
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype="float32")
+
+            # 1. Paddle Positional arguments
+            out1 = paddle.nansum(x)
+            # 2. Paddle keyword arguments
+            out2 = paddle.nansum(x=x)
+            # 3. PyTorch keyword arguments (alias)
+            out3 = paddle.nansum(input=x)
+            # 4. PyTorch dim alias
+            out4 = paddle.nansum(input=x, dim=0)
+            # 5. Tensor method
+            out5 = x.nansum()
+
+            exe = paddle.static.Executor()
+            exe.run(startup)
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3, out5],
+            )
+
+            for out in fetches:
+                self.assertFalse(np.isnan(out).any())
+
+
+# Test masked_fill compatibility
+class TestMaskedFillAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_x = np.ones((3, 3)).astype("float32")
+        self.np_mask = np.array([[True, True, False]]).astype("bool")
+        self.shape = [3, 3]
+        self.dtype = np.float32
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        mask = paddle.to_tensor(self.np_mask)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.masked_fill(x, mask, 2.0)
+        # 2. Paddle keyword arguments
+        out2 = paddle.masked_fill(x=x, mask=mask, value=2.0)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.masked_fill(input=x, mask=mask, value=2.0)
+        # 4. Mixed arguments
+        out4 = paddle.masked_fill(x, mask=mask, value=2.0)
+        # 5. Tensor method - args
+        out5 = x.masked_fill(mask, 2.0)
+        # 6. Tensor method - kwargs
+        out6 = x.masked_fill(mask=mask, value=2.0)
+
+        # Verify all outputs have same shape
+        for out in [out1, out2, out3, out4, out5, out6]:
+            self.assertEqual(out.shape, x.shape)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype="float32")
+            mask = paddle.static.data(name="mask", shape=[1, 3], dtype="bool")
+
+            # 1. Paddle Positional arguments
+            out1 = paddle.masked_fill(x, mask, 2.0)
+            # 2. Paddle keyword arguments
+            out2 = paddle.masked_fill(x=x, mask=mask, value=2.0)
+            # 3. PyTorch keyword arguments (alias)
+            out3 = paddle.masked_fill(input=x, mask=mask, value=2.0)
+            # 4. Tensor method
+            out4 = x.masked_fill(mask, 2.0)
+
+            exe = paddle.static.Executor()
+            exe.run(startup)
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x, "mask": self.np_mask},
+                fetch_list=[out1, out2, out3, out4],
+            )
+
+            for out in fetches:
+                self.assertEqual(list(out.shape), self.shape)
+
+
 if __name__ == "__main__":
     unittest.main()
