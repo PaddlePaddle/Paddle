@@ -52,7 +52,9 @@ __global__ __launch_bounds__(256) void tokens_zip_kernel(
   // Strided load: blockDim.x may be < num_experts, so each thread
   // handles multiple slots to cover the full [0, num_experts) range.
   for (int i = threadIdx.x; i < num_experts; i += blockDim.x) {
-    const int fetch_row = zipped_expertwise_rowmap[this_row * num_experts + i];
+    const int fetch_row =
+        zipped_expertwise_rowmap[static_cast<int64_t>(this_row) * num_experts +
+                                 i];
     local_row_fetchlist[i] = fetch_row;
     if constexpr (WEIGHTED_TOKEN) {
       local_row_weight[i] =
@@ -64,11 +66,12 @@ __global__ __launch_bounds__(256) void tokens_zip_kernel(
 
 #pragma unroll
   for (int k = 0; k < topk; ++k) {
-    const int expert_idx = expert_routemap_topk[this_row * topk + k];
+    const int expert_idx =
+        expert_routemap_topk[static_cast<int64_t>(this_row) * topk + k];
     if (expert_idx < 0) [[likely]]
       continue;
     const int expert_fetch_row = local_row_fetchlist[expert_idx];
-    zipped_probs_topk[this_row * topk + k] =
+    zipped_probs_topk[static_cast<int64_t>(this_row) * topk + k] =
         unzipped_token_probs[expert_fetch_row];
   }
 
@@ -303,13 +306,15 @@ void MoeUnpermuteKernel(const Context &dev_ctx,
           "total_zipped_tokens_num, but got %ld and %d.",
           expert_routemap_topk.dims()[0],
           total_zipped_tokens_num));
-  const int64_t cols = unzipped_tokens.dims()[1];
-  PADDLE_ENFORCE_GE(
-      cols,
-      0,
+  PADDLE_ENFORCE_EQ(
+      unzipped_token_probs.numel(),
+      unzipped_tokens.dims()[0],
       common::errors::InvalidArgument(
-          "unzipped_tokens.dims()[1] should be non-negative, but got %ld.",
-          cols));
+          "Input unzipped_token_probs's number of elements should be equal to "
+          "unzipped_tokens.dims()[0], but got %ld and %ld.",
+          unzipped_token_probs.numel(),
+          unzipped_tokens.dims()[0]));
+  const int64_t cols = unzipped_tokens.dims()[1];
   PADDLE_ENFORCE_LE(cols,
                     std::numeric_limits<int32_t>::max(),
                     common::errors::InvalidArgument(
