@@ -839,7 +839,10 @@ def add_(
     return _C_ops.add_(x, scaled_y)
 
 
-def logaddexp(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+@param_two_alias(["x", "input"], ["y", "other"])
+def logaddexp(
+    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     """
     Elementwise LogAddExp Operator.
     Add of exponentiations of the inputs
@@ -876,8 +879,13 @@ def logaddexp(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
     Args:
         x (Tensor): Tensor of any dimensions. Its dtype should be int32, int64, bfloat16, float16, float32, float64.
+            Alias: ``input``.
         y (Tensor): Tensor of any dimensions. Its dtype should be int32, int64, bfloat16, float16, float32, float64.
+            Alias: ``other``.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Keyword Args:
+        out (Tensor|None, optional): The output tensor. If provided, the result will be assigned to this tensor.
 
     Returns:
         N-D Tensor. A location into which the result is stored. It's dimension equals with x.
@@ -899,7 +907,11 @@ def logaddexp(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     _maximum = paddle.maximum(x, y)
     if _maximum.dtype == paddle.int32 or _maximum.dtype == paddle.int64:
         _maximum = _maximum.astype(log_1p.dtype)
-    return log_1p + _maximum
+    result = log_1p + _maximum
+    if out is not None:
+        paddle.assign(result, out)
+        return out
+    return result
 
 
 @param_two_alias(["x", "input"], ["y", "other"])
@@ -1516,6 +1528,7 @@ def reduce_as(x: Tensor, target: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+@param_one_alias(["x", "input"])
 def nan_to_num(
     x: Tensor,
     nan: float = 0.0,
@@ -1528,6 +1541,7 @@ def nan_to_num(
 
     Args:
         x (Tensor): An N-D Tensor, the data type is float32, float64.
+            Alias: ``input``.
         nan (float, optional): the value to replace NaNs with. Default is 0.
         posinf (float|None, optional): if a Number, the value to replace positive infinity values with. If None, positive infinity values are replaced with the greatest finite value representable by input’s dtype. Default is None.
         neginf (float|None, optional): if a Number, the value to replace negative infinity values with. If None, negative infinity values are replaced with the lowest finite value representable by input’s dtype. Default is None.
@@ -1638,6 +1652,7 @@ def nan_to_num_(
     return x
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def nansum(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
@@ -1650,11 +1665,13 @@ def nansum(
 
     Args:
         x (Tensor): An N-D Tensor, the data type is bfloat16, float16, float32, float64, int32 or int64.
+            Alias: ``input``.
         axis (int|list|tuple, optional): The dimensions along which the nansum is performed. If
             :attr:`None`, nansum all elements of :attr:`x` and return a
             Tensor with a single element, otherwise must be in the
             range :math:`[-rank(x), rank(x))`. If :math:`axis[i] < 0`,
             the dimension to reduce is :math:`rank + axis[i]`.
+            Alias: ``dim``.
         dtype (str|paddle.dtype|np.dtype, optional): The dtype of output Tensor. The default value is None, the dtype
             of output is the same as input Tensor `x`.
         keepdim (bool, optional): Whether to reserve the reduced dimension in the
@@ -1731,6 +1748,7 @@ def nansum(
     return sum(tmp_tensor, axis, dtype, keepdim, name)
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def nanmean(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
@@ -1742,6 +1760,7 @@ def nanmean(
 
     Args:
         x (Tensor): The input Tensor with data type uint16, float16, float32, float64.
+            Alias: ``input``.
         axis (int|list|tuple, optional):The axis along which to perform nanmean
             calculations. ``axis`` should be int, list(int) or tuple(int). If
             ``axis`` is a list/tuple of dimension(s), nanmean is calculated along
@@ -1750,6 +1769,7 @@ def nanmean(
             ``axis`` or element(s) of ``axis`` is less than 0, it works the
             same way as :math:`axis + D` . If ``axis`` is None, nanmean is
             calculated over all elements of ``x``. Default is None.
+            Alias: ``dim``.
         keepdim (bool, optional): Whether to reserve the reduced dimension(s)
             in the output Tensor. If ``keepdim`` is True, the dimensions of
             the output Tensor is the same as ``x`` except in the reduced
@@ -5285,7 +5305,10 @@ def frac_(x: Tensor, name: str | None = None) -> Tensor:
         return _C_ops.subtract_(x, y)
 
 
-def sgn(x: Tensor, name: str | None = None) -> Tensor:
+@param_one_alias(["x", "input"])
+def sgn(
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     """
     For complex tensor, this API returns a new tensor whose elements have the same angles as the corresponding
     elements of input and absolute values of one.
@@ -5294,7 +5317,11 @@ def sgn(x: Tensor, name: str | None = None) -> Tensor:
 
     Args:
         x (Tensor): The input tensor, which data type should be float16, float32, float64, complex64, complex128.
+            Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
+        out (Tensor|None, optional): The output tensor. If provided, the result will be assigned to this tensor.
 
     Returns:
         Tensor: A sign Tensor for real input, or normalized Tensor for complex input, shape and data type are same as input.
@@ -5340,10 +5367,14 @@ def sgn(x: Tensor, name: str | None = None) -> Tensor:
         output = expand_x / x_abs
         zeros = paddle.zeros_like(output)
         output = paddle.where(paddle.isnan(output), zeros, output)
-
-        return paddle.as_complex(output)
+        result = paddle.as_complex(output)
     else:
-        return paddle.sign(x)
+        result = paddle.sign(x)
+
+    if out is not None:
+        paddle.assign(result, out)
+        return out
+    return result
 
 
 def take(
@@ -5774,6 +5805,7 @@ def cumulative_trapezoid(
     return ret
 
 
+@param_one_alias(["n", "N"])
 def vander(
     x: Tensor,
     n: int | None = None,
@@ -5792,6 +5824,7 @@ def vander(
     Args:
         x (Tensor): The input tensor, it must be 1-D Tensor, and it's data type should be ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'].
         n (int|None): Number of columns in the output. If n is not specified, a square array is returned (n = len(x)).
+            Alias: ``N``.
         increasing(bool): Order of the powers of the columns. If True, the powers increase from left to right, if False (the default) they are reversed.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
     Returns:
@@ -6372,13 +6405,20 @@ def combinations(
     return paddle.stack(grids, 1)
 
 
-def signbit(x: Tensor, name: str | None = None) -> Tensor:
+@param_one_alias(["x", "input"])
+def signbit(
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     r"""
     Tests if each element of input has its sign bit set or not.
 
     Args:
         x (Tensor): The input Tensor. Must be one of the following types: float16, float32, float64, bfloat16, uint8, int8, int16, int32, int64.
+            Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None).For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
+        out (Tensor|None, optional): The output tensor. If provided, the result will be assigned to this tensor.
 
     Returns:
         out (Tensor): The output Tensor. The sign bit of the corresponding element of the input tensor, True means negative, False means positive.
@@ -6429,8 +6469,12 @@ def signbit(x: Tensor, name: str | None = None) -> Tensor:
     ones = paddle.to_tensor(ones, x.dtype).reshape(x.shape)
     neg_zero_x = paddle.copysign(ones, x)
     x = paddle.sign(neg_zero_x)
-    out = paddle.cast(x < 0, dtype='bool')
-    return out
+    result = paddle.cast(x < 0, dtype='bool')
+
+    if out is not None:
+        paddle.assign(result, out)
+        return out
+    return result
 
 
 @param_one_alias(["x", "input"])

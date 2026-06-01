@@ -1225,3 +1225,48 @@ def fill_diagonal_inplace_decorator() -> Callable[
         return wrapper
 
     return decorator
+
+
+def slice_scatter_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """
+    Decorator for slice_scatter to handle parameter alias and type conversion.
+
+    Usage Example:
+    PyTorch: torch.slice_scatter(input, src, dim=0, start=None, end=None, step=1)
+    Paddle: paddle.slice_scatter(x, value, axes, starts, ends, strides, name=None)
+
+    The decorator converts:
+    - Parameter aliases: input->x, src->value, dim->axes, start->starts, end->ends, step->strides
+    - Type conversion: int -> list of int (e.g., dim=0 -> axes=[0])
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            # Handle parameter aliases
+            alias_map = {
+                'input': 'x',
+                'src': 'value',
+                'dim': 'axes',
+                'start': 'starts',
+                'end': 'ends',
+                'step': 'strides',
+            }
+            for alias, original in alias_map.items():
+                if alias in kwargs and original not in kwargs:
+                    kwargs[original] = kwargs.pop(alias)
+
+            # Convert int to list for dim/axes, start/starts, end/ends, step/strides
+            int_to_list_params = ['axes', 'starts', 'ends', 'strides']
+            for param in int_to_list_params:
+                if param in kwargs and isinstance(kwargs[param], int):
+                    kwargs[param] = [kwargs[param]]
+
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator

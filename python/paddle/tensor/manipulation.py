@@ -37,6 +37,7 @@ from paddle.utils.decorator_utils import (
     param_one_alias,
     param_two_alias,
     reshape_decorator,
+    slice_scatter_decorator,
     tile_decorator,
     variadic_tensor_decorator,
     view_decorator,
@@ -6434,19 +6435,24 @@ def strided_slice(
         return out
 
 
+@ParamAliasDecorator({"x": ["a"], "y": ["b"], "axes": ["dims"]})
 def tensordot(
     x: Tensor,
     y: Tensor,
     axes: int | NestedSequence[int] | Tensor = 2,
     name: str | None = None,
+    out: Tensor | None = None,
 ) -> Tensor:
     r"""
     This function computes a contraction, which sum the product of elements from two tensors along the given axes.
 
     Args:
         x (Tensor): The left tensor for contraction with data type ``float16`` or ``float32`` or ``float64``.
+            Alias: ``a``.
         y (Tensor): The right tensor for contraction with the same data type as ``x``.
+            Alias: ``b``.
         axes (int|tuple|list|Tensor, optional):  The axes to contract for ``x`` and ``y``, defaulted to integer ``2``.
+            Alias: ``dims``.
 
             1. It could be a non-negative integer ``n``,
                in which the function will sum over the last ``n`` axes of ``x`` and the first ``n`` axes of ``y`` in order.
@@ -6663,8 +6669,11 @@ def tensordot(
     y = y.transpose(perm=perm_y).reshape(
         [contraction_size, not_contraction_size_y]
     )
-    out = x.matmul(y).reshape(shape_out)
-    return out
+    result = x.matmul(y).reshape(shape_out)
+    if out is not None:
+        paddle.assign(result, out)
+        return out
+    return result
 
 
 def as_complex(x: Tensor, name: str | None = None) -> Tensor:
@@ -8665,6 +8674,7 @@ def select_scatter(
         return output
 
 
+@slice_scatter_decorator()
 def slice_scatter(
     x: Tensor,
     value: Tensor,
@@ -8678,13 +8688,27 @@ def slice_scatter(
     Embeds the `value` tensor into `x` along multiple axes. Returns a new tensor instead of a view.
     The size of `axes` must be equal to `starts` , `ends` and `strides`.
 
+    Note:
+        This API has two signatures:
+        1. ``paddle.slice_scatter(x, value, axes, starts, ends, strides, name=None)`` (Paddle-style):
+            Embed the value tensor with list-type parameters.
+        2. ``paddle.slice_scatter(input, src, dim, start, end, step, name=None)`` (PyTorch-style):
+            Embed the value tensor with int-type parameters, which will be automatically converted to list.
+            Alias: ``input`` for ``x``, ``src`` for ``value``, ``dim`` for ``axes``, ``start`` for ``starts``, ``end`` for ``ends``, ``step`` for ``strides``.
+
     Args:
         x (Tensor) : The input Tensor. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex128`.
+            Alias: ``input``.
         value (Tensor) : The tensor to embed into x. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex128`.
+            Alias: ``src``.
         axes (list|tuple) : the dimensions to insert the value.
+            Alias: ``dim``.
         starts (list|tuple) : the start indices of where to insert.
+            Alias: ``start``.
         ends (list|tuple) : the stop indices of where to insert.
+            Alias: ``end``.
         strides (list|tuple) : the steps for each insert.
+            Alias: ``step``.
         name (str|None, optional): Name for the operation (optional, default is None).
 
     Returns:

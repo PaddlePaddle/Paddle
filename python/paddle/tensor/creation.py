@@ -554,6 +554,7 @@ def linspace(
         return out
 
 
+@param_two_alias(["stop", "end"], ["num", "steps"])
 def logspace(
     start: float | paddle.Tensor,
     stop: float | paddle.Tensor,
@@ -576,8 +577,10 @@ def logspace(
         stop(int|float|Tensor): The input :attr:`stop` is exponent of last entry in the \
             sequence. It is a scalar, or a 0-D Tensor of shape [] with input data \
             type int32, int64, float32 or float64.
+            Alias: ``end``.
         num(int|Tensor): The input :attr:`num` is given number of items in the sequence. \
             It is an int scalar, or a 0-D Tensor of shape [] with data type int32.
+            Alias: ``steps``.
         base(int|float|Tensor): The input :attr:`base` is base of the logarithm function. \
             It is a scalar, or a 0-D Tensor of shape [] with input data type int32, int64, \
             float32 or float64.
@@ -3762,7 +3765,12 @@ def complex(
 
 
 def tril_indices(
-    row: int, col: int, offset: int = 0, dtype='int64'
+    row: int,
+    col: int,
+    offset: int = 0,
+    dtype='int64',
+    *,
+    device: PlaceLike | None = None,
 ) -> paddle.Tensor:
     """
     Return the indices of the lower triangular part of the 2-D matrix
@@ -3780,6 +3788,9 @@ def tril_indices(
             - If offset < 0, excludes just as many diagonals below the main diagonal.
 
         dtype (str|core.VarDesc.VarType|core.DataType, optional): the data type of the output tensor, can be int32, int64.
+
+    Keyword Args:
+        device (PlaceLike|None, optional): The device of the output tensor. Default: None, meaning current device.
 
     Returns:
         Tensor: Results of the indices of lower triangular part of a row * col matrix,
@@ -3822,12 +3833,16 @@ def tril_indices(
     else:
         col = row
 
+    place = (
+        _current_expected_place()
+        if device is None
+        else _get_paddle_place(device)
+    )
+
     if in_dynamic_or_pir_mode():
         if col is None:
             col = row
-        out = _C_ops.tril_indices(
-            row, col, offset, dtype, _current_expected_place()
-        )
+        out = _C_ops.tril_indices(row, col, offset, dtype, place)
         return out
     else:
         if not isinstance(offset, int):
@@ -3847,7 +3862,12 @@ def tril_indices(
 
 
 def triu_indices(
-    row: int, col: int | None = None, offset: int = 0, dtype='int64'
+    row: int,
+    col: int | None = None,
+    offset: int = 0,
+    dtype='int64',
+    *,
+    device: PlaceLike | None = None,
 ) -> paddle.Tensor:
     """
     Return the indices of the upper triangular part of the 2-D matrix
@@ -3867,6 +3887,10 @@ def triu_indices(
 
         dtype (str|np.dtype|core.VarDesc.VarType|core.DataType, optional): the data type of the output tensor,
             can be int32, int64, default value is int64.
+
+    Keyword Args:
+        device (PlaceLike|None, optional): The device of the output tensor. Default: None, meaning current device.
+
     Returns:
         Tensor: Results of the indices of upper triangular part of a row * col matrix,
         where the first row contains row coordinates of and the second row contains column coordinates.
@@ -3904,12 +3928,16 @@ def triu_indices(
     else:
         col = row
 
+    place = (
+        _current_expected_place()
+        if device is None
+        else _get_paddle_place(device)
+    )
+
     if in_dynamic_or_pir_mode():
         if col is None:
             col = row
-        out = _C_ops.triu_indices(
-            row, col, offset, dtype, _current_expected_place()
-        )
+        out = _C_ops.triu_indices(row, col, offset, dtype, place)
         return out
     else:
         if not isinstance(offset, int):
