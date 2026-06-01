@@ -673,18 +673,6 @@ if(WITH_COVERAGE)
   if(TEST test_randperm_op)
     set_tests_properties(test_randperm_op PROPERTIES TIMEOUT 500)
   endif()
-  if(TEST test_block_multihead_attention)
-    set_tests_properties(
-      test_block_multihead_attention
-      PROPERTIES ENVIRONMENT
-                 "PADDLE_COVERAGE_SKIP_BLOCK_MULTIHEAD_ATTENTION_QUANT=1")
-  endif()
-  if(TEST test_block_multihead_attention_gqa)
-    set_tests_properties(
-      test_block_multihead_attention_gqa
-      PROPERTIES ENVIRONMENT
-                 "PADDLE_COVERAGE_SKIP_BLOCK_MULTIHEAD_ATTENTION_QUANT=1")
-  endif()
 endif()
 py_test_modules(
   test_imperative_ocr_attention_model MODULES

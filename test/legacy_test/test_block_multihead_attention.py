@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
 import unittest
 
 import numpy as np
@@ -46,10 +45,6 @@ is_sm7x = (
 )
 
 is_sm_supported = is_sm8x or is_sm9x or is_sm7x
-skip_coverage_block_multihead_attention_quant = (
-    os.getenv("PADDLE_COVERAGE_SKIP_BLOCK_MULTIHEAD_ATTENTION_QUANT", "0")
-    == "1"
-)
 
 
 def create_attn_mask(
@@ -1956,11 +1951,9 @@ class TestBlockMultiHeadAttnEncDecPTQDequant(unittest.TestCase):
 @unittest.skipIf(
     not (core.is_compiled_with_cuda() or is_custom_device())
     or get_cuda_version() < 11040
-    or not is_sm_supported
-    or skip_coverage_block_multihead_attention_quant,
+    or not is_sm_supported,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
-    "and device's compute capability must be 8.x or 90, or this Coverage quant "
-    "case is disabled",
+    " and device's compute capability must be 7.x, 8.x or 9.x",
 )
 class TestBlockMultiHeadAttnEncDecPTQDequantQuantShiftSmooth(unittest.TestCase):
     def setUp(self):
@@ -2341,11 +2334,9 @@ class TestBlockMultiHeadAttnEncDecPTQDequantQuantShiftSmooth(unittest.TestCase):
 @unittest.skipIf(
     not (core.is_compiled_with_cuda() or is_custom_device())
     or get_cuda_version() < 11040
-    or not is_sm_supported
-    or skip_coverage_block_multihead_attention_quant,
+    or not is_sm_supported,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
-    "and device's compute capability must be 8.x or 90, or this Coverage quant "
-    "case is disabled",
+    " and device's compute capability must be 7.x, 8.x or 9.x",
 )
 class TestBlockMultiHeadAttnEncDecQuant(unittest.TestCase):
     def setUp(self):
