@@ -29,6 +29,7 @@ void ForceRegisterCinnCustomDeviceHostAPI();
 void ForceRegisterCinnCustomDeviceIntrinsics();
 void ForceRegisterCustomDeviceIntrinsicsReduce();
 void ForceRegisterCustomDeviceIntrinsicsFloat16();
+void ForceRegisterCustomDeviceIntrinsicsBFloat16();
 
 // ============================================================
 // Anonymous Namespace: Define concrete default implementation classes
@@ -423,6 +424,7 @@ struct CinnCustomDeviceStaticInitializer {
     ForceRegisterCinnCustomDeviceIntrinsics();
     ForceRegisterCustomDeviceIntrinsicsReduce();
     ForceRegisterCustomDeviceIntrinsicsFloat16();
+    ForceRegisterCustomDeviceIntrinsicsBFloat16();
   }
 };
 

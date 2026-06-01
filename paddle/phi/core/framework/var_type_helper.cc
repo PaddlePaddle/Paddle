@@ -112,7 +112,7 @@ int DataTypeNumAlign(const VarType::Type t) {
   } else {
     PADDLE_THROW(common::errors::Unavailable(
         "Only supports to align data type include float32, float64, complex64 "
-        "and complex128, but received data type is `s`.",
+        "and complex128, but received data type is %s.",
         VarDataTypeToString(t)));
   }
   return cast_type_num;

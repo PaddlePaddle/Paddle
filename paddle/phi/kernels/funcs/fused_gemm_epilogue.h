@@ -386,8 +386,7 @@ static GPU(blasLtEpilogue_t)
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "The activation attribute of fused_gemm_epilogue op should be"
-        " one of {\"none\", \"relu\", \"gelu\"}. But received %s."
-        "But received activation=%s.",
+        " one of {\"none\", \"relu\", \"gelu\"}. But received %s.",
         activation));
   }
 }
@@ -688,8 +687,8 @@ static GPU(blasLtEpilogue_t)
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "The activation_grad attribute of fused_gemm_epilogue op should "
-        "be one of {\"none\", \"relu\", \"gelu\"}. But received %s."
-        "But received activation_grad=%s.",
+        "be one of {\"none\", \"relu\", \"gelu\"}. But received "
+        "activation_grad=%s.",
         activation_grad));
   }
 }

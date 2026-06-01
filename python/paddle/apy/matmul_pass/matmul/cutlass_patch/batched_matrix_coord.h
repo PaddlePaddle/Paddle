@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "cutlass/cutlass.h"
+#include "cutlass_patch/backend.h"
 
-namespace cutlass {
+namespace cutlass_patch {
 
 struct BatchedMatrixCoord {
   int batch;
@@ -30,4 +30,4 @@ struct BatchedMatrixCoord {
   BatchedMatrixCoord(int b, int r, int c) : batch(b), row(r), column(c) {}
 };
 
-};  // namespace cutlass
+};  // namespace cutlass_patch

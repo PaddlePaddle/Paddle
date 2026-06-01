@@ -1078,18 +1078,18 @@ function main() {
   echo
   SYSTEM=`uname -s`
   if [[ "$SYSTEM" == "Darwin" ]];then
-  	yellow "          您的系统为：MAC OSX"
+    yellow "          您的系统为：MAC OSX"
     echo
-  	macos
+    macos
   else
- 	yellow "          您的系统为：Linux"
-  echo
-	  OS=`cat /etc/issue|awk 'NR==1 {print $1}'`
-	  if [[ $OS == "\S" ]] || [[ "$OS" == "CentOS" ]] || [[ $OS == "Ubuntu" ]];then
-	    linux
-	  else
-	    red "您的系统不在本安装包的支持范围，如您需要在windows环境下安装PaddlePaddle，请您参考PaddlePaddle官网的windows安装文档"
-	  fi
+    yellow "          您的系统为：Linux"
+    echo
+    OS=`cat /etc/issue|awk 'NR==1 {print $1}'`
+    if [[ $OS == "\S" ]] || [[ "$OS" == "CentOS" ]] || [[ $OS == "Ubuntu" ]];then
+        linux
+    else
+        red "您的系统不在本安装包的支持范围，如您需要在windows环境下安装PaddlePaddle，请您参考PaddlePaddle官网的windows安装文档"
+    fi
   fi
 }
 main

@@ -1,4 +1,4 @@
-// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,13 +14,6 @@
 
 #pragma once
 
-#include <memory>
-#include "paddle/pir/include/core/dll_decl.h"
-
-namespace pir {
-
-class Pass;
-
-IR_API std::unique_ptr<Pass> CreateConv2dBnFuseXpuPass();
-
-}  // namespace pir
+#ifdef __NVCC__
+#include "cutlass/cutlass.h"
+#endif

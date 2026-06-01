@@ -297,10 +297,11 @@ struct OneDNNContext::Impl {
   }
   const Attribute& GetDnnAttr(const std::string& attr_name) const {
     auto iter = dnn_attrs_.find(attr_name);
-    PADDLE_ENFORCE_NE(iter,
-                      dnn_attrs_.end(),
-                      common::errors::NotFound(
-                          "Attribute `%s` is not found in OneDNNContext."));
+    PADDLE_ENFORCE_NE(
+        iter,
+        dnn_attrs_.end(),
+        common::errors::NotFound(
+            "Attribute `%s` is not found in OneDNNContext.", attr_name));
     return iter->second;
   }
 
@@ -320,7 +321,8 @@ struct OneDNNContext::Impl {
         iter,
         dnn_inputs_.end(),
         common::errors::NotFound(
-            "Input DenseTensor `%s` is not found in OneDNNContext."));
+            "Input DenseTensor `%s` is not found in OneDNNContext.",
+            input_name));
     return iter->second;
   }
 

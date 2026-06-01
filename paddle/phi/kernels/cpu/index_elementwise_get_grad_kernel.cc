@@ -143,9 +143,8 @@ void IndexElementwiseGetGradKernel(const Context& dev_ctx,
                     common::errors::InvalidArgument(
                         "Index holds the wrong type, it holds [%s], but "
                         "desires to be [%s].",
-                        index_type,
-                        DataType::INT32,
-                        DataType::INT64));
+                        DataTypeToString(index_type),
+                        DataTypeToString(DataType::INT64)));
   CPUIndexElementwiseGetGrad<T, int64_t>(dev_ctx,
                                          x,
                                          out_grad,

@@ -366,6 +366,7 @@ from .nn.functional.distance import (
     pdist,
 )
 from .nn.initializer.lazy_init import LazyGuard
+from .random import initial_seed
 from .tensor.attribute import (
     imag,
     is_complex,
@@ -1052,6 +1053,7 @@ swapaxes = transpose
 manual_seed = seed
 sub = subtract
 sub_ = subtract_
+movedim = moveaxis
 
 __all__ = [
     'block_diag',
@@ -1479,6 +1481,7 @@ __all__ = [
     'fmax',
     'fmin',
     'moveaxis',
+    'movedim',
     'repeat_interleave',
     'clone',
     'kthvalue',
@@ -1575,6 +1578,7 @@ __all__ = [
     'enable_compat',
     'disable_compat',
     'use_compat_guard',
+    'initial_seed',
 ]
 import os
 

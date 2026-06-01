@@ -82,7 +82,8 @@ __device__ float BlockReduceScale(__nv_bfloat16 x[8][4]) {
   if (threadIdx.y == 0 && threadIdx.x < 16) {
     warp_max = WarpReduceMax<16>(block_max[threadIdx.x]);
     if (threadIdx.x == 0) {
-      block_scale = ComputeScale<__nv_bfloat16, OutT>(warp_max, 0.0f);
+      block_scale = ComputeScale<__nv_bfloat16, OutT, MustUsePower2Scaling()>(
+          warp_max, 0.0f);
     }
   }
   __syncthreads();

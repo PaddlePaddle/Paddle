@@ -185,6 +185,7 @@ from .manipulation import (  # noqa: F401
     hstack,
     index_add,
     index_add_,
+    index_copy_,
     index_fill,
     index_fill_,
     index_put,
@@ -513,6 +514,7 @@ ge = greater_equal
 sub = subtract
 sub_ = subtract_
 clamp_ = clip_
+movedim = moveaxis
 
 # this list used in math_op_patch.py for _binary_creator_
 tensor_method_func = [
@@ -844,6 +846,7 @@ tensor_method_func = [
     'erfinv_',
     'angle',
     'moveaxis',
+    'movedim',
     'repeat_interleave',
     'take_along_axis',
     'take_along_dim',
@@ -859,6 +862,7 @@ tensor_method_func = [
     'scatter_add_',
     'index_add',
     "index_add_",
+    "index_copy_",
     'index_put',
     'index_put_',
     'take',

@@ -7,4 +7,5 @@ gather_srcs(
   custom_device_util.cc
   custom_device_intrinsics.cc
   custom_device_intrinsics_reduce.cc
-  custom_device_intrinsics_float16.cc)
+  custom_device_intrinsics_float16.cc
+  custom_device_intrinsics_bfloat16.cc)

@@ -42,20 +42,20 @@ void DecodeJpegKernel(const Context& dev_ctx,
   if (nvjpeg_handle == nullptr) {
     nvjpegStatus_t create_status = dynload::nvjpegCreateSimple(&nvjpeg_handle);
 
-    PADDLE_ENFORCE_EQ(
-        create_status,
-        NVJPEG_STATUS_SUCCESS,
-        errors::Fatal("nvjpegCreateSimple failed: ", create_status));
+    PADDLE_ENFORCE_EQ(create_status,
+                      NVJPEG_STATUS_SUCCESS,
+                      errors::Fatal("nvjpegCreateSimple failed: %d.",
+                                    static_cast<int>(create_status)));
   }
 
   nvjpegJpegState_t nvjpeg_state;
   nvjpegStatus_t state_status =
       dynload::nvjpegJpegStateCreate(nvjpeg_handle, &nvjpeg_state);
 
-  PADDLE_ENFORCE_EQ(
-      state_status,
-      NVJPEG_STATUS_SUCCESS,
-      errors::Fatal("nvjpegJpegStateCreate failed: ", state_status));
+  PADDLE_ENFORCE_EQ(state_status,
+                    NVJPEG_STATUS_SUCCESS,
+                    errors::Fatal("nvjpegJpegStateCreate failed: %d",
+                                  static_cast<int>(state_status)));
 
   int components;
   nvjpegChromaSubsampling_t subsampling;
@@ -74,7 +74,8 @@ void DecodeJpegKernel(const Context& dev_ctx,
                                   heights);
   PADDLE_ENFORCE_EQ(info_status,
                     NVJPEG_STATUS_SUCCESS,
-                    errors::Fatal("nvjpegGetImageInfo failed: ", info_status));
+                    errors::Fatal("nvjpegGetImageInfo failed: %d",
+                                  static_cast<int>(info_status)));
 
   int width = widths[0];
   int height = heights[0];

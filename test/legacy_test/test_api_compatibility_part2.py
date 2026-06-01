@@ -2612,5 +2612,88 @@ class TestTopkAPI(unittest.TestCase):
                 np.testing.assert_array_equal(fetches[i + 1], ref_indices)
 
 
+# Test nansum compatibility
+class TestNansumAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array(
+            [[float('nan'), 0.3, 0.5, 0.9], [0.1, 0.2, float('-nan'), 0.7]]
+        ).astype('float32')
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_value = np.nansum(x, axis=1, keepdims=True)
+
+        # 1. Paddle positional arguments
+        out1 = paddle.nansum(x, 1, None, True)
+        # 2. Paddle keyword arguments
+        out2 = paddle.nansum(x=x, axis=1, keepdim=True)
+        # 3. PyTorch positional arguments
+        out3 = paddle.nansum(x, 1, True)
+        # 4. PyTorch keyword arguments
+        out4 = paddle.nansum(input=x, dim=1, keepdim=True)
+        # 5. Mixed arguments & out parameter
+        out5 = paddle.empty([])
+        out6 = paddle.nansum(input=x, axis=1, keepdim=True, out=out5)
+        # 7. Class method positional arguments
+        out7 = x.nansum(1, None, True)
+        # 8. Class method keyword arguments
+        out8 = x.nansum(axis=1, keepdim=True)
+
+        for out in [out1, out2, out3, out4, out5, out6, out7, out8]:
+            np.testing.assert_array_equal(out.numpy(), ref_value)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        ref_value = np.nansum(self.np_x, axis=1, keepdims=True)
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[2, 4], dtype='float32')
+
+            # 1. Paddle positional arguments
+            out1 = paddle.nansum(x, 1, None, True)
+            # 2. Paddle keyword arguments
+            out2 = paddle.nansum(x=x, axis=1, keepdim=True)
+            # 3. PyTorch positional arguments
+            out3 = paddle.nansum(x, 1, True)
+            # 4. PyTorch keyword arguments
+            out4 = paddle.nansum(input=x, dim=1, keepdim=True)
+            # 5. Mixed arguments
+            out5 = paddle.nansum(input=x, axis=1, keepdim=True)
+            # 6. Class method positional arguments
+            out6 = x.nansum(1, None, True)
+            # 7. Class method keyword arguments
+            out7 = x.nansum(axis=1, keepdim=True)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[
+                    out1,
+                    out2,
+                    out3,
+                    out4,
+                    out5,
+                    out6,
+                    out7,
+                ],
+            )
+            for i in range(0, len(fetches)):
+                np.testing.assert_array_equal(fetches[i], ref_value)
+
+    def test_nansum_compat_decorator_raise(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        with self.assertRaises(ValueError):
+            out1 = paddle.nansum(x=x, input=x)
+        with self.assertRaises(ValueError):
+            out2 = paddle.nansum(x, dim=1, axis=1)
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
     unittest.main()

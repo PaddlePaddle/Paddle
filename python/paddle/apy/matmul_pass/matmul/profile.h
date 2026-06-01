@@ -14,53 +14,70 @@
 
 #pragma once
 
-#include <cuda_profiler_api.h>
 #include <functional>
+#include <utility>
+
+#ifdef __NVCC__
+#include <cuda_profiler_api.h>
+
+#define GPUEvent_t cudaEvent_t
+#define GPUStream_t cudaStream_t
+
+#define GPUEventCreate(e) cudaEventCreate(e)
+#define GPUEventDestroy(e) cudaEventDestroy(e)
+#define GPUEventRecord(e, s) cudaEventRecord(e, s)
+#define GPUEventSynchronize(e) cudaEventSynchronize(e)
+#define GPUEventElapsedTime(ms, s, e) cudaEventElapsedTime(ms, s, e)
+#define GPUProfilerStart() cudaProfilerStart()
+#define GPUProfilerStop() cudaProfilerStop()
+#define GPUStreamSynchronize(s) cudaStreamSynchronize(s)
+#define CHECK_GPU CHECK_CUDA
+#endif
 
 namespace ap {
 
 class GpuTimer {
  public:
   explicit GpuTimer(bool profile) : profile_(profile) {
-    CHECK_CUDA(cudaEventCreate(&start_));
-    CHECK_CUDA(cudaEventCreate(&stop_));
+    CHECK_GPU(GPUEventCreate(&start_));
+    CHECK_GPU(GPUEventCreate(&stop_));
   }
 
   ~GpuTimer() {
-    CHECK_CUDA(cudaEventDestroy(start_));
-    CHECK_CUDA(cudaEventDestroy(stop_));
+    CHECK_GPU(GPUEventDestroy(start_));
+    CHECK_GPU(GPUEventDestroy(stop_));
   }
 
-  void Start(cudaStream_t stream) {
-    CHECK_CUDA(cudaEventRecord(start_, stream));
+  void Start(GPUStream_t stream) {
+    CHECK_GPU(GPUEventRecord(start_, stream));
     if (profile_) {
-      CHECK_CUDA(cudaProfilerStart());
+      CHECK_GPU(GPUProfilerStart());
     }
   }
 
-  void Stop(cudaStream_t stream) {
-    CHECK_CUDA(cudaEventRecord(stop_, stream));
+  void Stop(GPUStream_t stream) {
+    CHECK_GPU(GPUEventRecord(stop_, stream));
     if (profile_) {
-      CHECK_CUDA(cudaProfilerStop());
+      CHECK_GPU(GPUProfilerStop());
     }
   }
 
   float ElapsedTime() {
     float milliseconds = 0;
-    CHECK_CUDA(cudaEventSynchronize(stop_));
-    CHECK_CUDA(cudaEventElapsedTime(&milliseconds, start_, stop_));
+    CHECK_GPU(GPUEventSynchronize(stop_));
+    CHECK_GPU(GPUEventElapsedTime(&milliseconds, start_, stop_));
     return milliseconds;
   }
 
  private:
   bool profile_{false};
-  cudaEvent_t start_{nullptr};
-  cudaEvent_t stop_{nullptr};
+  GPUEvent_t start_{nullptr};
+  GPUEvent_t stop_{nullptr};
 };
 
 template <typename FuncType, typename... Args>
 int ProfileBestConfig(const std::vector<FuncType> &funcs,
-                      cudaStream_t stream,
+                      void *stream_ptr,
                       Args &&...args) {
   std::cout
       << "=================================================================="
@@ -73,13 +90,15 @@ int ProfileBestConfig(const std::vector<FuncType> &funcs,
   float min_time_ms = 100000.f;
   int min_time_idx = -1;
 
+  GPUStream_t stream = *reinterpret_cast<GPUStream_t *>(stream_ptr);
+
   for (int idx = 0; idx < funcs.size(); ++idx) {
     auto func = funcs[idx];
     for (int i = 0; i < kWarmupIters; i++) {
       func(std::forward<Args>(args)...);
     }
     if (stream) {
-      CHECK_CUDA(cudaStreamSynchronize(stream));
+      CHECK_GPU(GPUStreamSynchronize(stream));
     }
 
     gpu_timer.Start(stream);

@@ -1,4 +1,6 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#!/bin/bash
+
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,3 +13,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+set -e
+
+# install gdrcopy
+cd /usr/local
+wget -q https://paddle-ci.gz.bcebos.com/gdrcopy.tar
+tar xf gdrcopy.tar
+rm -f gdrcopy.tar
+ldconfig

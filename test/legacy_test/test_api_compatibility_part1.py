@@ -2161,5 +2161,17 @@ class TestPixelShuffleAPI(unittest.TestCase):
                 np.testing.assert_array_equal(fetches[0], out)
 
 
+# Test paddle.set_rng_state compatibility
+class TestSetRngStateAPI(unittest.TestCase):
+    def test_Compatibility(self):
+        states = paddle.get_rng_state()
+        # 1. positional argument
+        paddle.set_rng_state(states)
+        # 2. paddle-style keyword argument
+        paddle.set_rng_state(state_list=states)
+        # 3. torch-style keyword argument
+        paddle.set_rng_state(new_state=states)
+
+
 if __name__ == '__main__':
     unittest.main()

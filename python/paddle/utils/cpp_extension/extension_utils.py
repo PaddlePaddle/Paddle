@@ -192,8 +192,16 @@ def custom_write_stub(resource, pyfile):
                 except ImportError:
                     mod = types.ModuleType(__name__)
 
-            for custom_op in custom_ops:
-                setattr(mod, custom_op, eval(custom_op))
+            module_globals = globals()
+            # Generated custom op APIs are already defined on this stub module.
+            generated_custom_ops = set(custom_ops)
+
+            for attr_name, attr_value in list(mod.__dict__.items()):
+                if attr_name.startswith('__') and attr_name.endswith('__'):
+                    continue
+                if attr_name in generated_custom_ops:
+                    continue
+                module_globals[attr_name] = attr_value
 
         __bootstrap__()
 
