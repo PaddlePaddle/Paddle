@@ -179,7 +179,6 @@ jobs:
       - name: Build
         run: |
           docker exec -t ${{ env.container_name }}  /bin/bash -c '
-          source ${{ github.workspace }}/../../../proxy
           flashattn_version=$(git submodule status|grep flashattn|awk "{print \$1}"|sed "s#-##g")
           echo flashattn_version:$flashattn_version
           url="https://xly-devops.bj.bcebos.com/gpups/flash-attention/cu90/flashattn_libs_${flashattn_version}.tar"
@@ -192,8 +191,7 @@ jobs:
           mkdir -p ${CFS_DIR}/.cache/coverage
           mkdir -p ${CFS_DIR}/.ccache/coverage
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda-12.9/compat
-          python --version
-          pip --version
+          source ${{ github.workspace }}/../../../proxy
           bash ${ci_scripts}/cmake-predownload.sh
           bash ${ci_scripts}/cmake_preload_data_file.sh
           pip install -r python/requirements.txt
@@ -361,8 +359,6 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
-          python --version
-          pip --version
           pip install build//python/dist/*.whl --no-deps
           pip install -r python/unittest_py/requirements.txt
           bash $ci_scripts/h-test.sh
@@ -440,9 +436,9 @@ jobs:
           rm -rf * .[^.]*
           set -x
           source ${{ github.workspace }}/../../../proxy
-          python --version
-          pip --version
-          pip install --upgrade pip wheel
+          apt-get update
+          apt-get install -y libnvidia-compute-535
+          python -m pip install --upgrade pip wheel setuptools
           git clone https://github.com/PaddlePaddle/PaddleFleet.git .
           git config --global --add safe.directory /paddle
           git config user.name "PaddleCI"
@@ -462,6 +458,7 @@ jobs:
           pip install uv coverage==7.6.1 bce-python-sdk==0.8.74 wrapt
           echo "uv build"
           git submodule update --init --recursive
+          export LD_LIBRARY_PATH=/usr/local/cuda-12.9/compat:$LD_LIBRARY_PATH
           export IS_NVIDIA=True
           echo "Downloading Paddle.tar.gz from cfs"
           wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/h-coverage/${PR_ID}/${COMMIT_ID}/paddlepaddle_gpu-0.0.0-cp312-cp312-linux_x86_64.whl --no-check-certificate
@@ -558,8 +555,7 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -ce '
           rm -rf * .[^.]*
           source /root/proxy
-          python --version
-          pip --version
+          export LD_LIBRARY_PATH=/usr/local/cuda-12.9/targets/x86_64-linux/lib:/usr/local/cuda/lib64
           pip install uv coverage==7.6.1 bce-python-sdk==0.8.74 wrapt pytest matplotlib parameterized
           wget -q --tries=5 --no-proxy --no-check-certificate https://paddle-github-action.cdn.bcebos.com/PR/paddlefleet/${PR_ID}/${COMMIT_ID}/paddldfleet.tar.gz
           tar -xf paddldfleet.tar.gz --strip-components=1
@@ -575,6 +571,7 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           set -e
+          export LD_LIBRARY_PATH=/usr/local/cuda-12.9/targets/x86_64-linux/lib:/usr/local/cuda/lib64
           mkdir -p /PaddlePaddle
           cd /PaddlePaddle
           echo "Downloading Paddle.tar.gz from cfs"
@@ -593,6 +590,7 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -xce '
           pwd
+          export LD_LIBRARY_PATH=/usr/local/cuda-12.9/targets/x86_64-linux/lib:/usr/local/cuda/lib64
           if [ "${BRANCH}" != "develop" ]; then
             git checkout $fleet_branch
             echo "Checked out fleet branch: $fleet_branch"
@@ -672,8 +670,7 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -ce '
           rm -rf * .[^.]*
           source /root/proxy
-          python --version
-          pip --version
+          export LD_LIBRARY_PATH=/usr/local/cuda-12.9/targets/x86_64-linux/lib:/usr/local/cuda/lib64
           pip install uv coverage==7.6.1 bce-python-sdk==0.8.74 wrapt pytest matplotlib parameterized
           wget -q --tries=5 --no-proxy --no-check-certificate https://paddle-github-action.cdn.bcebos.com/PR/paddlefleet/${PR_ID}/${COMMIT_ID}/paddldfleet.tar.gz
           tar -xf paddldfleet.tar.gz --strip-components=1
@@ -689,6 +686,7 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           set -e
+          export LD_LIBRARY_PATH=/usr/local/cuda-12.9/targets/x86_64-linux/lib:/usr/local/cuda/lib64
           mkdir -p /PaddlePaddle
           cd /PaddlePaddle
           echo "Downloading Paddle.tar.gz from cfs"
@@ -707,6 +705,7 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -ce '
           export PYTHONPATH=$(pwd)
+          export LD_LIBRARY_PATH=/usr/local/cuda-12.9/targets/x86_64-linux/lib:/usr/local/cuda/lib64
           if [ "${BRANCH}" != "develop" ]; then
             git checkout $fleet_branch
             echo "Checked out fleet branch: $fleet_branch"
