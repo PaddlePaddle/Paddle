@@ -219,27 +219,23 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
 }
 
 
+_SUBPACKAGES = {"classification", "regression", "wrappers", "functional"}
+
+
 def __getattr__(name: str) -> object:
-    """Lazy imports for domain-specific metrics."""
+    """Lazy imports for domain-specific metrics and subpackages."""
     if name in _LAZY_IMPORTS:
         module_path, attr_name = _LAZY_IMPORTS[name]
         import importlib
 
         mod = importlib.import_module(module_path)
         return getattr(mod, attr_name)
+    if name in _SUBPACKAGES:
+        import importlib
+
+        return importlib.import_module(f"paddle.metric.{name}")
     raise AttributeError(f"module 'paddle.metric' has no attribute {name!r}")
 
 
 def __dir__() -> list[str]:
-    return __all__ + list(_LAZY_IMPORTS.keys())
-
-
-# Register subpackages so that ``import paddle.metric.classification`` (etc.)
-# resolves correctly through Python's import machinery.  Without these
-# explicit imports the subpackages remain invisible to ``importlib`` even
-# though the directories and ``__init__.py`` files exist on disk.
-from paddle.metric import (
-    classification,  # noqa: F401
-    regression,  # noqa: F401
-    wrappers,  # noqa: F401
-)
+    return __all__ + list(_LAZY_IMPORTS.keys()) + list(_SUBPACKAGES)
