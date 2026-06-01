@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import platform
+import struct
 import unittest
 
 import numpy as np
@@ -230,6 +231,28 @@ class TestMemoryreserved(unittest.TestCase):
             rebuilt_tensor.numpy(),
             tensor.numpy(),
         )
+
+    def test_share_cuda_vmm_slice_uses_tensor_data_size(self):
+        if not _vmm_runtime_available():
+            self.skipTest(
+                "Virtual memory allocator is not available on this device."
+            )
+        tensor = paddle.arange(0, 64, dtype="float32").reshape([8, 8])
+        sliced = tensor.value().get_tensor()._slice(2, 5)
+
+        meta = sliced._share_cuda()
+        header = struct.unpack_from("<BHIIQQQ", meta[0], 0)
+        alloc_size = header[4]
+        offset = header[5]
+        expected = tensor[2:5]
+        expected_data_size = expected.numel() * np.dtype("float32").itemsize
+
+        self.assertEqual(alloc_size, expected_data_size)
+        self.assertGreater(offset, 0)
+
+        imported = paddle.base.core.DenseTensor._new_shared_cuda(meta)
+        imported_tensor = paddle.to_tensor(imported)
+        np.testing.assert_allclose(imported_tensor.numpy(), expected.numpy())
 
 
 if __name__ == "__main__":

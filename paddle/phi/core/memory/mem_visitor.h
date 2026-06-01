@@ -332,7 +332,8 @@ class VMMAllocateCompactSizeVisitor : public AllocatorComputeStreamVisitor {
 class VmmTensorPartsVisitor : public AllocatorVisitor {
  public:
   using BlockPart = allocation::BlockPart;
-  explicit VmmTensorPartsVisitor(void* ptr) : target_ptr_(ptr) {}
+  explicit VmmTensorPartsVisitor(void* ptr, size_t size)
+      : target_ptr_(ptr), target_size_(size) {}
 
   void Visit(VirtualMemoryAutoGrowthBestFitAllocator* allocator) override;
 
@@ -341,6 +342,7 @@ class VmmTensorPartsVisitor : public AllocatorVisitor {
 
  private:
   void* target_ptr_{nullptr};
+  size_t target_size_{0};
   bool found_{false};
   std::vector<BlockPart> parts_;
 };
