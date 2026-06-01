@@ -182,6 +182,33 @@ void InstanceNormKernel(const Context &dev_ctx,
       saved_variance ? saved_variance->data<BatchNormParamType<T>>()
                      : saved_variance_tmp.data<BatchNormParamType<T>>();
 
+  // MIOpen/cuDNN batch norm requires N*spatial_size > 1.  Instance norm
+  // reshapes to {1, N*C, H, W, D} so the effective N is 1.  When H*W*D <= 1
+  // the library call fails.  Handle the degenerate case: output = bias
+  // (x-mean=0, variance=0), saved_mean=0, saved_variance=1/sqrt(eps).
+  if (H * W * D <= 1) {
+    convert_data_type<AccT, T><<<grid, block, 0, dev_ctx.stream()>>>(
+        bias_tmp.template data<AccT>(), y->template data<T>(), NxC);
+    if (saved_variance) {
+      functor(dev_ctx,
+              saved_variance,
+              static_cast<BatchNormParamType<T>>(
+                  1.0 / std::sqrt(static_cast<double>(epsilon))));
+    }
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        dynload::miopenDestroyTensorDescriptor(data_desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        dynload::miopenDestroyTensorDescriptor(in_param_desc_));
+#else
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        dynload::cudnnDestroyTensorDescriptor(data_desc_));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        dynload::cudnnDestroyTensorDescriptor(in_param_desc_));
+#endif
+    return;
+  }
+
 #ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenBatchNormalizationForwardTraining(
       handle,
