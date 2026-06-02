@@ -17,6 +17,7 @@
 #ifdef __GNUC__
 #include <cxxabi.h>  // for __cxa_demangle
 #endif               // __GNUC__
+#include <cinttypes>
 #include <exception>
 #include <iostream>
 #if !defined(_WIN32)
@@ -335,15 +336,38 @@ using CommonType2 = typename std::add_lvalue_reference<
 #define PADDLE_ENFORCE_LE(__VAL0, __VAL1, ...) \
   __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <=, >, __VA_ARGS__)
 
-#define PADDLE_ENFORCE_LE_INT_MAX(var, var_name)                             \
-  PADDLE_ENFORCE_LE(var,                                                     \
-                    std::numeric_limits<int>::max(),                         \
-                    common::errors::InvalidArgument(                         \
-                        "Tensor dimension %s=%ld exceeds the maximum value " \
-                        "that int can represent (%d).",                      \
-                        var_name,                                            \
-                        var,                                                 \
-                        std::numeric_limits<int>::max()))
+#define PADDLE_ENFORCE_LE_INT_MAX(var, var_name)                              \
+  do {                                                                        \
+    const auto paddle_enforce_value = (var);                                  \
+    PADDLE_ENFORCE_LE(paddle_enforce_value,                                   \
+                      std::numeric_limits<int>::max(),                        \
+                      common::errors::InvalidArgument(                        \
+                          "Tensor dimension %s=%s exceeds the maximum value " \
+                          "that int can represent (%d).",                     \
+                          var_name,                                           \
+                          paddle::string::to_string(paddle_enforce_value),    \
+                          std::numeric_limits<int>::max()));                  \
+  } while (0)
+
+#define PADDLE_ENFORCE_LE_UINT32_MAX(var, var_name)                          \
+  do {                                                                       \
+    const auto paddle_enforce_value = (var);                                 \
+    PADDLE_ENFORCE_GE(paddle_enforce_value,                                  \
+                      0,                                                     \
+                      common::errors::InvalidArgument(                       \
+                          "Value %s=%s should be non-negative.",             \
+                          var_name,                                          \
+                          paddle::string::to_string(paddle_enforce_value))); \
+    PADDLE_ENFORCE_LE(                                                       \
+        static_cast<uint64_t>(paddle_enforce_value),                         \
+        static_cast<uint64_t>(std::numeric_limits<uint32_t>::max()),         \
+        common::errors::InvalidArgument(                                     \
+            "Value %s=%" PRIu64 " exceeds the maximum value that "           \
+            "uint32_t can represent (%u).",                                  \
+            var_name,                                                        \
+            static_cast<uint64_t>(paddle_enforce_value),                     \
+            std::numeric_limits<uint32_t>::max()));                          \
+  } while (0)
 
 TEST_API bool RegisterLogSimplyStr(const std::string& type,
                                    const std::string& simply);
