@@ -15,6 +15,10 @@
 #include "paddle/phi/core/memory/mem_utils.h"
 
 #include <algorithm>
+#include <cstdint>
+#include <limits>
+
+#include "paddle/common/enforce.h"
 #include "paddle/phi/core/memory/allocation/allocator_facade.h"
 #include "paddle/phi/core/memory/malloc.h"
 #include "paddle/phi/core/memory/mem_visitor.h"
@@ -26,6 +30,161 @@
 #endif
 namespace paddle {
 namespace memory {
+
+namespace {
+
+bool TryConcatAdjacent(allocation::BlockPart* a,
+                       const allocation::BlockPart& b) {
+  if (!a) return false;
+  if (a->chunk.get() != b.chunk.get()) return false;
+  if (a->chunk_rel_off + a->len != b.chunk_rel_off) return false;
+  a->len += b.len;
+  return true;
+}
+
+std::vector<allocation::BlockPart> SlicePartsForRange(
+    const std::vector<allocation::BlockPart>& parts,
+    size_t pick_off,
+    size_t pick_len) {
+  std::vector<allocation::BlockPart> out;
+  if (pick_len == 0 || parts.empty()) {
+    return out;
+  }
+
+  PADDLE_ENFORCE_LE(
+      pick_off,
+      std::numeric_limits<size_t>::max() - pick_len,
+      common::errors::InvalidArgument(
+          "Invalid VMM compact part slice range: offset %zu plus length %zu "
+          "overflows.",
+          pick_off,
+          pick_len));
+
+  if (parts.size() == 1) {
+    const auto& p = parts.front();
+    PADDLE_ENFORCE_LE(
+        pick_off,
+        p.len,
+        common::errors::InvalidArgument(
+            "Invalid VMM compact part slice offset %zu for part length %zu.",
+            pick_off,
+            p.len));
+    PADDLE_ENFORCE_LE(
+        pick_len,
+        p.len - pick_off,
+        common::errors::InvalidArgument(
+            "Invalid VMM compact part slice length %zu at offset %zu for part "
+            "length %zu.",
+            pick_len,
+            pick_off,
+            p.len));
+    return {
+        allocation::BlockPart{p.chunk, p.chunk_rel_off + pick_off, pick_len}};
+  }
+
+  out.reserve(parts.size());
+  const size_t pick_end = pick_off + pick_len;
+  size_t cursor = 0;
+  size_t sliced_len = 0;
+  for (const auto& p : parts) {
+    const size_t part_begin = cursor;
+    const size_t part_end = cursor + p.len;
+    cursor = part_end;
+
+    if (part_end <= pick_off) {
+      continue;
+    }
+    if (part_begin >= pick_end) {
+      break;
+    }
+
+    const size_t slice_begin = std::max(part_begin, pick_off);
+    const size_t slice_end = std::min(part_end, pick_end);
+    allocation::BlockPart cut{p.chunk,
+                              p.chunk_rel_off + (slice_begin - part_begin),
+                              slice_end - slice_begin};
+    if (!out.empty() && TryConcatAdjacent(&out.back(), cut)) {
+      sliced_len += cut.len;
+      continue;
+    }
+    out.push_back(std::move(cut));
+    sliced_len += out.back().len;
+  }
+  PADDLE_ENFORCE_EQ(
+      sliced_len,
+      pick_len,
+      common::errors::InvalidArgument(
+          "Invalid VMM compact part slice range: requested %zu bytes at offset "
+          "%zu, but only sliced %zu bytes from %zu parts.",
+          pick_len,
+          pick_off,
+          sliced_len,
+          parts.size()));
+  return out;
+}
+
+void AppendPartsTail(std::vector<allocation::BlockPart>* dst,
+                     std::vector<allocation::BlockPart>* src) {
+  if (src->empty()) return;
+  dst->reserve(dst->size() + src->size());
+  auto begin = src->begin();
+  if (!dst->empty() && TryConcatAdjacent(&dst->back(), src->front())) {
+    ++begin;
+  }
+  dst->insert(dst->end(),
+              std::make_move_iterator(begin),
+              std::make_move_iterator(src->end()));
+}
+
+std::vector<allocation::BlockPart> CollectPartsForAddressRange(
+    const std::list<Block>& blocks, void* ptr, size_t size) {
+  std::vector<allocation::BlockPart> out;
+  if (size == 0) {
+    return out;
+  }
+
+  const auto target_begin = reinterpret_cast<uintptr_t>(ptr);
+  PADDLE_ENFORCE_LE(
+      size,
+      std::numeric_limits<uintptr_t>::max() - target_begin,
+      common::errors::InvalidArgument(
+          "Invalid VMM compact address range: ptr %p plus size %zu overflows.",
+          ptr,
+          size));
+  const auto target_end = target_begin + size;
+  size_t collected_len = 0;
+
+  for (const auto& block : blocks) {
+    const auto block_begin = reinterpret_cast<uintptr_t>(block.ptr_);
+    const auto block_end = block_begin + block.size_;
+    if (block_end <= target_begin) {
+      continue;
+    }
+    if (block_begin >= target_end) {
+      break;
+    }
+
+    const auto slice_begin = std::max(block_begin, target_begin);
+    const auto slice_end = std::min(block_end, target_end);
+    auto block_parts = SlicePartsForRange(
+        block.parts_, slice_begin - block_begin, slice_end - slice_begin);
+    collected_len += slice_end - slice_begin;
+    AppendPartsTail(&out, &block_parts);
+  }
+
+  PADDLE_ENFORCE_EQ(
+      collected_len,
+      size,
+      common::errors::InvalidArgument(
+          "Invalid VMM compact address range: requested %zu bytes from ptr %p, "
+          "but only collected %zu bytes.",
+          size,
+          ptr,
+          collected_len));
+  return out;
+}
+
+}  // namespace
 
 bool IsContiguousAndAscending(const std::list<Block>& blocks) {
   return std::adjacent_find(
@@ -52,6 +211,8 @@ size_t TotalMemoryCompactor::Compact(std::list<Block>& blocks,
   cudaDeviceSynchronize();
   for (auto& block : blocks) {
     if (!block.is_free_) {
+      auto new_parts =
+          CollectPartsForAddressRange(blocks, new_ptr, block.size_);
       if (block.ptr_ != new_ptr && block.ptr_ >= start_ptr) {
         auto src = static_cast<uint8_t*>(block.ptr_);
         auto dst = static_cast<uint8_t*>(new_ptr);
@@ -73,8 +234,10 @@ size_t TotalMemoryCompactor::Compact(std::list<Block>& blocks,
         }
       }
       block.allocation_->set_ptr(new_ptr);
-      block.allocation_->block_it_ = new_blocks.insert(
+      auto new_block = new_blocks.insert(
           new_blocks.end(), {new_ptr, block.size_, false, block.allocation_});
+      new_block->parts_ = std::move(new_parts);
+      block.allocation_->block_it_ = new_block;
       new_ptr = static_cast<uint8_t*>(new_ptr) + block.size_;
     } else {
       remaining_size += block.size_;
@@ -82,7 +245,10 @@ size_t TotalMemoryCompactor::Compact(std::list<Block>& blocks,
   }
   cudaDeviceSynchronize();
   if (remaining_size > 0) {
+    auto free_parts =
+        CollectPartsForAddressRange(blocks, new_ptr, remaining_size);
     new_blocks.push_back({new_ptr, remaining_size, true});
+    new_blocks.back().parts_ = std::move(free_parts);
   }
 
   blocks = std::move(new_blocks);
