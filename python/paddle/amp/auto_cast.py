@@ -794,6 +794,8 @@ class StateDictHook:
         with paddle.base.framework._dygraph_guard(paddle.base.dygraph.Tracer()):
             for key in state_dict:
                 param = state_dict[key]
+                if not isinstance(param, paddle.Tensor):
+                    continue
                 if paddle.is_floating_point(param):
                     param_applied = paddle.cast(param, self._save_dtype)
                     param_applied.name = param.name
@@ -1339,6 +1341,18 @@ def decorate(
             )
             use_multi_precision = master_weight is not False
             _set_multi_precision(optimizers, use_multi_precision)
+            if save_dtype is not None:
+                if save_dtype not in [
+                    'float16',
+                    'bfloat16',
+                    'float32',
+                    'float64',
+                ]:
+                    raise ValueError(
+                        f"save_dtype can only be float16 float32 or float64, but your input save_dtype is {save_dtype}."
+                    )
+                for layer in models.sublayers(include_self=True):
+                    layer.register_state_dict_hook(StateDictHook(save_dtype))
             if optimizers is None:
                 return models
             else:
