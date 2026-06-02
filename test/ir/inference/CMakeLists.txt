@@ -132,11 +132,6 @@ file(
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "test_onednn_*.py")
 string(REPLACE ".py" "" TEST_ONEDNN_IR_PASSES "${TEST_ONEDNN_IR_PASSES}")
-set(COVERAGE_SKIP_TENSORRT_EXPORT_IMPORT_ENV)
-if(WITH_COVERAGE)
-  set(COVERAGE_SKIP_TENSORRT_EXPORT_IMPORT_ENV
-      PADDLE_COVERAGE_SKIP_TENSORRT_EXPORT_IMPORT=1)
-endif()
 foreach(TEST_INFERENCE_IR_PASS ${TEST_ONEDNN_IR_PASSES})
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES ${TEST_INFERENCE_IR_PASS})
 endforeach()
@@ -145,8 +140,7 @@ if(WIN32 AND WIN_UNITTEST_LEVEL LESS 2)
   message(STATUS "Skip tests unrelated to CUDA/TRT")
 elseif(WITH_ONEDNN)
   foreach(target ${TEST_ONEDNN_IR_PASSES})
-    py_test_modules(${target} MODULES ${target} ENVS
-                    ${COVERAGE_SKIP_TENSORRT_EXPORT_IMPORT_ENV})
+    py_test_modules(${target} MODULES ${target})
     set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
   endforeach()
 endif()
@@ -340,8 +334,7 @@ elseif(WITH_ONEDNN)
       test_onednn_fc_gru_fuse_pass
       test_onednn_fc_lstm_fuse_pass)
   foreach(target ${PIR_COVERAGE_ONEDNN_TESTS})
-    py_test_modules(${target}_pir MODULES ${target} ENVS FLAGS_enable_pir_api=1
-                    ${COVERAGE_SKIP_TENSORRT_EXPORT_IMPORT_ENV})
+    py_test_modules(${target}_pir MODULES ${target} ENVS FLAGS_enable_pir_api=1)
     set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
     message(STATUS "PIR Copied Test: ${target}_pir in inference test")
   endforeach()
