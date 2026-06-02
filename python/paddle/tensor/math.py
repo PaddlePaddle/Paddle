@@ -1797,7 +1797,7 @@ def nanmean(
             For more information, please refer to :ref:`api_guide_Name`.
         dtype (str|paddle.dtype|np.dtype, optional): The dtype of output Tensor. The default value is None, the dtype of output is the same as input Tensor `x`.
 
-    Keywords Argument:
+    Keyword Argument:
         out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default is None, a new Tensor will be created to store the result.
 
     Returns:

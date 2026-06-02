@@ -135,7 +135,7 @@ class TestNanmeanAPI(unittest.TestCase):
         out = paddle.nanmean(x_tensor, (0, 2), dtype='float64')
         out_ref = np.nanmean(self.x, (0, 2), np.float64)
         np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.0001)
-        self.assertTrue(out.dtype, paddle.float64)
+        self.assertEqual(out.dtype, paddle.float64)
         paddle.enable_static()
 
 
