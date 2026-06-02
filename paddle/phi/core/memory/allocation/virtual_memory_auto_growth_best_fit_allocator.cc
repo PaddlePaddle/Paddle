@@ -171,6 +171,10 @@ static inline void AppendPartsTail(std::vector<BlockPart> *dst,
               std::make_move_iterator(src->end()));
 }
 
+static inline bool ShouldLogAllocatorStats(uint64_t seq) {
+  return seq <= 10 || seq % 10000 == 0;
+}
+
 VirtualMemoryAutoGrowthBestFitAllocator::
     VirtualMemoryAutoGrowthBestFitAllocator(
         const std::shared_ptr<Allocator> &underlying_allocator,
@@ -182,6 +186,30 @@ VirtualMemoryAutoGrowthBestFitAllocator::
       place_(place) {
   // NOTE(liujinnan): Only support TotalMemoryCompactor strategy for now.
   memory_compactor_ = std::make_unique<TotalMemoryCompactor>();
+}
+
+void VirtualMemoryAutoGrowthBestFitAllocator::MaybeLogAllocatorStats(
+    const char *reason, uint64_t seq) const {
+  if (!VLOG_IS_ON(4) || !ShouldLogAllocatorStats(seq)) {
+    return;
+  }
+  VLOG(4) << "[VMM][AllocatorStats]"
+          << " reason=" << reason
+          << " alloc_from_free_calls=" << alloc_from_free_calls_
+          << " hits=" << alloc_from_free_hits_
+          << " misses=" << alloc_from_free_misses_ << " splits=" << split_count_
+          << " no_splits=" << no_split_count_
+          << " exact_fit=" << exact_fit_count_
+          << " near_fit_no_split=" << near_fit_no_split_count_
+          << " single_part_splits=" << single_part_split_count_
+          << " multi_part_splits=" << multi_part_split_count_
+          << " free_calls=" << free_calls_
+          << " merge_prev=" << free_merge_prev_count_
+          << " merge_next=" << free_merge_next_count_
+          << " merge_both=" << free_merge_both_count_
+          << " merge_none=" << free_merge_none_count_
+          << " free_blocks=" << free_blocks_.size()
+          << " all_blocks=" << all_blocks_.size();
 }
 
 phi::Allocation *VirtualMemoryAutoGrowthBestFitAllocator::AllocateImpl(
@@ -237,6 +265,29 @@ bool VirtualMemoryAutoGrowthBestFitAllocator::CollectTensorParts(
 
 void VirtualMemoryAutoGrowthBestFitAllocator::TryMergeBlock2Blocks(
     std::list<Block>::iterator block) {
+  if (VLOG_IS_ON(4)) {
+    const bool can_merge_prev =
+        block != all_blocks_.begin() && std::prev(block)->is_free_ &&
+        reinterpret_cast<uint8_t *>(std::prev(block)->ptr_) +
+                std::prev(block)->size_ ==
+            block->ptr_;
+    const bool can_merge_next =
+        block != std::prev(all_blocks_.end()) && std::next(block)->is_free_ &&
+        reinterpret_cast<uint8_t *>(block->ptr_) + block->size_ ==
+            std::next(block)->ptr_;
+    ++free_calls_;
+    if (can_merge_prev && can_merge_next) {
+      ++free_merge_both_count_;
+    } else if (can_merge_prev) {
+      ++free_merge_prev_count_;
+    } else if (can_merge_next) {
+      ++free_merge_next_count_;
+    } else {
+      ++free_merge_none_count_;
+    }
+    MaybeLogAllocatorStats("free", free_calls_);
+  }
+
   if (block->ptr_ == all_blocks_.front().ptr_ &&
       block->ptr_ == all_blocks_.back().ptr_) {
     block->is_free_ = true;
@@ -458,11 +509,26 @@ void VirtualMemoryAutoGrowthBestFitAllocator::ExtendOrCompact(size_t size) {
 
 phi::Allocation *VirtualMemoryAutoGrowthBestFitAllocator::AllocFromFreeBlocks(
     size_t size) {
+  if (VLOG_IS_ON(4)) {
+    ++alloc_from_free_calls_;
+  }
   auto iter = free_blocks_.lower_bound(std::make_pair(size, nullptr));
   if (iter != free_blocks_.end()) {
     std::list<Block>::iterator block_it = iter->second;
     free_blocks_.erase(iter);
+    if (VLOG_IS_ON(4)) {
+      ++alloc_from_free_hits_;
+    }
     if (NeedSplit(block_it->size_, alignment_, size)) {
+      if (VLOG_IS_ON(4)) {
+        ++split_count_;
+        if (block_it->parts_.size() == 1) {
+          ++single_part_split_count_;
+        } else {
+          ++multi_part_split_count_;
+        }
+        MaybeLogAllocatorStats("alloc_split", alloc_from_free_calls_);
+      }
       void *remaining_ptr = reinterpret_cast<uint8_t *>(block_it->ptr_) + size;
       size_t remaining_size = block_it->size_ - size;
 
@@ -481,9 +547,22 @@ phi::Allocation *VirtualMemoryAutoGrowthBestFitAllocator::AllocFromFreeBlocks(
       free_blocks_.emplace(std::make_pair(remaining_size, remaining_ptr),
                            remaining_free_block);
     } else {
+      if (VLOG_IS_ON(4)) {
+        ++no_split_count_;
+        if (block_it->size_ == size) {
+          ++exact_fit_count_;
+        } else {
+          ++near_fit_no_split_count_;
+        }
+        MaybeLogAllocatorStats("alloc_no_split", alloc_from_free_calls_);
+      }
       block_it->is_free_ = false;
     }
     return new BlockAllocation(block_it, place_);
+  }
+  if (VLOG_IS_ON(4)) {
+    ++alloc_from_free_misses_;
+    MaybeLogAllocatorStats("alloc_miss", alloc_from_free_calls_);
   }
   return nullptr;
 }
