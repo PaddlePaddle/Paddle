@@ -95,6 +95,14 @@ void SwiGLUGradKernel(const Context &dev_ctx,
                           "by 2 when Input(Y) is None, but got %d",
                           n));
     const auto &dz_dims = dz.dims();
+    PADDLE_ENFORCE_EQ(
+        dz_dims.size(),
+        dims.size(),
+        common::errors::InvalidArgument(
+            "The rank of Input(dz):[%d] must be equal to the rank of "
+            "Input(X):[%d] when Input(Y) is None.",
+            dz_dims.size(),
+            dims.size()));
     for (int i = 0; i < dims.size() - 1; ++i) {
       PADDLE_ENFORCE_EQ(dz_dims[i],
                         dims[i],
@@ -105,14 +113,6 @@ void SwiGLUGradKernel(const Context &dev_ctx,
                             dz_dims,
                             dims));
     }
-    PADDLE_ENFORCE_EQ(
-        dz_dims.size(),
-        dims.size(),
-        common::errors::InvalidArgument(
-            "The rank of Input(dz):[%d] must be equal to the rank of "
-            "Input(X):[%d] when Input(Y) is None.",
-            dz_dims.size(),
-            dims.size()));
     PADDLE_ENFORCE_EQ(
         dz_dims[dz_dims.size() - 1],
         n / 2,
