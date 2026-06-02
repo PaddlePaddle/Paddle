@@ -2755,7 +2755,9 @@ class Layer:
             getattr(self.__class__, "get_extra_state", Layer.get_extra_state)
             is not Layer.get_extra_state
         ):
-            destination[extra_state_key] = self.get_extra_state()
+            extra_state = self.get_extra_state()
+            if extra_state is not None:
+                destination[extra_state_key] = extra_state
 
         if include_sublayers:
             for layer_name, layer_item in self._sub_layers.items():

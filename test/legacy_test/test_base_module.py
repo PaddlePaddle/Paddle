@@ -377,6 +377,20 @@ class TestLoadStateDict(unittest.TestCase):
 
         self.assertTrue(paddle.allclose(self.module.param1, paddle.ones([3])))
 
+    def test_load_state_dict_assign(self):
+        self.module.register_parameter('weight', nn.Parameter(paddle.ones([1])))
+        old_weight = self.module.weight
+        state_dict = {'weight': paddle.full([1], 3.0)}
+
+        result = self.module.load_state_dict(state_dict, assign=True)
+
+        self.assertIsNot(self.module.weight, old_weight)
+        self.assertTrue(
+            paddle.allclose(self.module.weight, state_dict['weight'])
+        )
+        self.assertEqual(len(result.missing_keys), 0)
+        self.assertEqual(len(result.unexpected_keys), 0)
+
 
 class TestNamedParameters(unittest.TestCase):
     def setUp(self):

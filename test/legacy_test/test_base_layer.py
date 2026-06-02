@@ -577,6 +577,29 @@ class TestStateDictHook(unittest.TestCase):
 
                 self.assertEqual(layer_load.value, state)
 
+    def test_none_extra_state_is_not_saved(self):
+        class NoneExtraStateLayer(paddle.nn.Layer):
+            def __init__(self):
+                super().__init__()
+                parameter = self.create_parameter(
+                    shape=[1], dtype='float32', is_bias=False
+                )
+                self.register_parameter("weight", parameter)
+
+            def get_extra_state(self):
+                return None
+
+            def set_extra_state(self, state):
+                self.value = state
+
+        with base.dygraph.guard():
+            state_dict = NoneExtraStateLayer().state_dict()
+
+            self.assertIn("weight", state_dict)
+            self.assertNotIn("_extra_state", state_dict)
+            for value in state_dict.values():
+                self.assertIsNotNone(value)
+
     def test_extra_state_missing_method(self):
         class MissingSetExtraStateLayer(paddle.nn.Layer):
             def get_extra_state(self):
