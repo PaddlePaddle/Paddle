@@ -13,7 +13,6 @@
 [submodule "third_party/gloo"]
 	path = third_party/gloo
 	url = https://github.com/PFCCLab/gloo.git
-	branch = paddle
 	ignore = dirty
 [submodule "third_party/dlpack"]
 	path = third_party/dlpack
