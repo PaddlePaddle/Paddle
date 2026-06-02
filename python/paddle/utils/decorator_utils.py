@@ -1225,3 +1225,30 @@ def fill_diagonal_inplace_decorator() -> Callable[
         return wrapper
 
     return decorator
+
+
+def lr_scheduler_optimizer_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """
+    Usage Example:
+    PyTorch: __init__(self, optimizer, last_epoch) -> None:
+    Paddle: __init__(self, learning_rate, last_epoch, verbose) -> None:
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if "optimizer" in kwargs:
+                if "learning_rate" not in kwargs:
+                    kwargs["learning_rate"] = kwargs.pop("optimizer")
+                else:
+                    raise ValueError(
+                        "Cannot specify both 'learning_rate' and 'optimizer'."
+                    )
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
