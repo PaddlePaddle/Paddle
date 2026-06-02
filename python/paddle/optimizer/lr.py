@@ -33,7 +33,7 @@ from paddle.base.framework import (
 )
 from paddle.base.layer_helper import LayerHelper
 from paddle.utils.decorator_utils import (
-    lr_scheduler_optimizer_decorator,
+    lr_scheduler_decorator,
     param_one_alias,
 )
 
@@ -164,10 +164,10 @@ class LRScheduler:
         verbose: bool = False,
     ) -> None: ...
 
-    @lr_scheduler_optimizer_decorator()
+    @lr_scheduler_decorator()
     def __init__(
         self,
-        learning_rate: float | paddle.optimizer.Optimizer = 0.1,
+        learning_rate: float = 0.1,
         last_epoch: int = -1,
         verbose: bool = False,
     ) -> None:
@@ -176,10 +176,6 @@ class LRScheduler:
                 raise ValueError(f"Invalid learning rate: {learning_rate}")
             self.base_lr = float(learning_rate)
             self.last_lr = float(learning_rate)
-        elif isinstance(learning_rate, paddle.optimizer.Optimizer):
-            self.base_lr = learning_rate.get_lr()
-            self.last_lr = learning_rate.get_lr()
-            learning_rate.set_lr_scheduler(self)
         else:
             raise TypeError(
                 f"The type of param learning_rate or optimizer must be int, float or paddle.optimizer.Optimizer, but received {type(learning_rate)}"
@@ -1133,10 +1129,10 @@ class ExponentialDecay(LRScheduler):
         verbose: bool = False,
     ) -> None: ...
 
-    @lr_scheduler_optimizer_decorator()
+    @lr_scheduler_decorator()
     def __init__(
         self,
-        learning_rate: float | paddle.optimizer.Optimizer,
+        learning_rate: float,
         gamma: float,
         last_epoch: int = -1,
         verbose: bool = False,
@@ -1261,10 +1257,10 @@ class MultiStepDecay(LRScheduler):
         verbose: bool = False,
     ) -> None: ...
 
-    @lr_scheduler_optimizer_decorator()
+    @lr_scheduler_decorator()
     def __init__(
         self,
-        learning_rate: float | paddle.optimizer.Optimizer,
+        learning_rate: float,
         milestones: Sequence[int],
         gamma: float = 0.1,
         last_epoch: int = -1,
@@ -1403,10 +1399,10 @@ class StepDecay(LRScheduler):
         verbose: bool = False,
     ) -> None: ...
 
-    @lr_scheduler_optimizer_decorator()
+    @lr_scheduler_decorator()
     def __init__(
         self,
-        learning_rate: float | paddle.optimizer.Optimizer,
+        learning_rate: float,
         step_size: int,
         gamma: float = 0.1,
         last_epoch: int = -1,
@@ -1665,11 +1661,11 @@ class ReduceOnPlateau(LRScheduler):
         verbose: bool = False,
     ) -> None: ...
 
-    @lr_scheduler_optimizer_decorator()
+    @lr_scheduler_decorator()
     @param_one_alias(["epsilon", "eps"])
     def __init__(
         self,
-        learning_rate: float | paddle.optimizer.Optimizer,
+        learning_rate: float,
         mode: Literal["min", "max"] = 'min',
         factor: float = 0.1,
         patience: int = 10,
@@ -1713,13 +1709,9 @@ class ReduceOnPlateau(LRScheduler):
         if isinstance(learning_rate, (float, int)):
             self.base_lr = float(learning_rate)
             self.last_lr = float(learning_rate)
-        elif isinstance(learning_rate, paddle.optimizer.Optimizer):
-            self.base_lr = learning_rate.get_lr()
-            self.last_lr = learning_rate.get_lr()
-            learning_rate.set_lr_scheduler(self)
         else:
             raise TypeError(
-                f"The type of 'learning_rate' in 'ReduceOnPlateau' must be int, float or paddle.optimizer.Optimizer, but received {type(learning_rate)}"
+                f"The type of param learning_rate or optimizer must be int, float or paddle.optimizer.Optimizer, but received {type(learning_rate)}"
             )
         self.last_epoch = 0
         self.verbose = verbose
@@ -1921,10 +1913,10 @@ class CosineAnnealingDecay(LRScheduler):
         verbose: bool = False,
     ) -> None: ...
 
-    @lr_scheduler_optimizer_decorator()
+    @lr_scheduler_decorator()
     def __init__(
         self,
-        learning_rate: float | paddle.optimizer.Optimizer,
+        learning_rate: float,
         T_max: int,
         eta_min: float = 0,
         last_epoch: int = -1,
@@ -2740,10 +2732,10 @@ class CosineAnnealingWarmRestarts(LRScheduler):
         verbose: bool = False,
     ) -> None: ...
 
-    @lr_scheduler_optimizer_decorator()
+    @lr_scheduler_decorator()
     def __init__(
         self,
-        learning_rate: float | paddle.optimizer.Optimizer,
+        learning_rate: float,
         T_0: int,
         T_mult: int = 1,
         eta_min: float = 0,

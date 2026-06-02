@@ -1201,13 +1201,25 @@ def lr_scheduler_optimizer_decorator() -> Callable[
     def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
         @functools.wraps(func)
         def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            opt = None
             if "optimizer" in kwargs:
                 if "learning_rate" not in kwargs:
-                    kwargs["learning_rate"] = kwargs.pop("optimizer")
+                    opt = kwargs.pop("optimizer")
+                    kwargs["learning_rate"] = opt.get_lr()
                 else:
                     raise ValueError(
                         "Cannot specify both 'learning_rate' and 'optimizer'."
                     )
+            elif len(args) > 1 and isinstance(
+                args[1], paddle.optimizer.Optimizer
+            ):
+                opt = args[1]
+                args_list = list(args)
+                args_list[1] = opt.get_lr()
+                args = tuple(args_list)
+
+            if opt is not None:
+                opt.set_lr_scheduler(args[0])
             return func(*args, **kwargs)
 
         wrapper.__signature__ = inspect.signature(func)
