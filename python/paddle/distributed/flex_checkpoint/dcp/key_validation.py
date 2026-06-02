@@ -202,8 +202,8 @@ def validate_and_report_keys_standard(
         randomly_initialized_keys=set(),
     )
 
-    # 5. Print on rank 0
-    if paddle.distributed.get_rank() == 0:
+    # 5. Print on rank 0 (or always when not using dist)
+    if not use_dist or paddle.distributed.get_rank() == 0:
         _print_standard_report(result, checkpoint_path, len(global_dst_keys))
 
     return result
