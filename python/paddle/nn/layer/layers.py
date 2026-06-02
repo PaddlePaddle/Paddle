@@ -3000,6 +3000,9 @@ class Layer:
             state_dict(dict) : Dict contains all the parameters and persistable buffers.
             use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter or buffer name as key.
                                                   Default: True.
+            assign(bool, optional): When set to ``False``, the properties of the tensors
+                in the current layer are preserved whereas setting it to ``True`` preserves
+                properties of the tensors in the state dict. Default: ``False``.
         Returns:
             missing_keys(list):A list of str containing the missing keys
             unexpected_keys(list):A list of str containing the unexpected keys

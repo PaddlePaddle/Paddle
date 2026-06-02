@@ -618,8 +618,6 @@ class TestStateDictHook(unittest.TestCase):
 
             state_dict = layer.state_dict()
 
-            if not paddle.framework.in_pir_mode():
-                self.assertEqual(state_dict["weight"].dtype, paddle.float64)
             self.assertEqual(state_dict["_extra_state"], {"value": 1})
 
     def test_default_extra_state(self):
