@@ -51,7 +51,7 @@ from ..base.data_feeder import (
 from ..base.framework import Variable, default_main_program
 from ..framework import (
     LayerHelper,
-    convert_np_dtype_to_dtype_,
+    convert_nptype_to_datatype_or_vartype,
     core,
     dygraph_only,
     in_dynamic_mode,
@@ -251,7 +251,7 @@ def cast(x: Tensor, dtype: DTypeLike) -> Tensor:
             >>> y = paddle.cast(x, 'uint8')
     """
     if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
     if in_dynamic_or_pir_mode():
         return _C_ops.cast(x, dtype)
     else:
@@ -314,7 +314,7 @@ def cast_(x: Tensor, dtype: DTypeLike) -> Tensor:
     """
     if in_dynamic_mode():
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-            dtype = convert_np_dtype_to_dtype_(dtype)
+            dtype = convert_nptype_to_datatype_or_vartype(dtype)
         return _C_ops.cast_(x, dtype)
 
 
@@ -3638,7 +3638,7 @@ def unique_consecutive(
     if not isinstance(
         attr_dtype, (core.VarDesc.VarType, paddle.pir.core.DataType)
     ):
-        attr_dtype = convert_np_dtype_to_dtype_(dtype)
+        attr_dtype = convert_nptype_to_datatype_or_vartype(dtype)
 
     if in_dynamic_mode():
         if math.prod(x.shape) == 0:
@@ -3906,7 +3906,7 @@ def unique(
         axis = []
     else:
         axis = [axis]
-    attr_dtype = convert_np_dtype_to_dtype_(dtype)
+    attr_dtype = convert_nptype_to_datatype_or_vartype(dtype)
     if in_dynamic_mode():
         if math.prod(x.shape) == 0:
             outs = [x.clone()]
@@ -8143,7 +8143,9 @@ def view(
         if not isinstance(
             shape_or_dtype, (core.VarDesc.VarType, core.DataType)
         ):
-            shape_or_dtype = convert_np_dtype_to_dtype_(shape_or_dtype)
+            shape_or_dtype = convert_nptype_to_datatype_or_vartype(
+                shape_or_dtype
+            )
         if x.dtype == shape_or_dtype:
             return x
         return _C_ops.view_dtype(x, shape_or_dtype)

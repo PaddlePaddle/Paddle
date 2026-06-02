@@ -26,7 +26,7 @@ from paddle.utils.decorator_utils import (
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ...base.data_feeder import check_dtype, check_variable_and_dtype
-from ...base.framework import convert_np_dtype_to_dtype_
+from ...base.framework import convert_nptype_to_datatype_or_vartype
 from ...base.layer_helper import LayerHelper
 from ...tensor.manipulation import chunk
 from ...tensor.math import sigmoid, tanh, tanh_  # noqa: F401
@@ -1304,7 +1304,7 @@ def softmax(
         and (not isinstance(dtype, core.VarDesc.VarType))
         and (not isinstance(dtype, core.DataType))
     ):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
     if in_dynamic_or_pir_mode():
         outs_cast = x if dtype is None else _C_ops.cast(x, dtype)
         return _C_ops.softmax(outs_cast, axis, out=out)
@@ -1359,7 +1359,7 @@ def softmax_(
     Please refer to :ref:`api_paddle_nn_functional_softmax`.
     """
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
     outs_cast = x if dtype is None else _C_ops.cast(x, dtype)
     return _C_ops.softmax_(outs_cast, axis)
 
@@ -1769,7 +1769,7 @@ def log_softmax(
               [-3.44018970 , -2.44018970 , -1.44018970 , -0.44018970 ]]])
     """
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
 
     if in_dynamic_or_pir_mode():
         if dtype is not None and x.dtype != dtype:

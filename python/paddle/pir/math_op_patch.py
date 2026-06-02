@@ -453,7 +453,7 @@ def monkey_patch_value():
         """
 
         if not isinstance(dtype, DataType):
-            dtype = paddle.pir.core.convert_np_dtype_to_dtype_(dtype)
+            dtype = paddle.pir.core.convert_nptype_to_datatype(dtype)
 
         if self.dtype == dtype:
             return self

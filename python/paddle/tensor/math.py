@@ -136,7 +136,7 @@ from ..base.data_feeder import (
 from ..common_ops_import import Variable
 from ..framework import (
     LayerHelper,
-    convert_np_dtype_to_dtype_,
+    convert_nptype_to_datatype_or_vartype,
     core,
     in_dynamic_mode,
     in_dynamic_or_pir_mode,
@@ -3093,7 +3093,7 @@ def cumsum(
         ]:
             x = cast(x, "int64")
     else:
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
         if x.dtype != dtype:
             x = cast(x, dtype)
 
@@ -3149,7 +3149,7 @@ def cumsum_(
         flatten = False
     if dtype is not None:
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-            dtype = convert_np_dtype_to_dtype_(dtype)
+            dtype = convert_nptype_to_datatype_or_vartype(dtype)
         if x.dtype != dtype:
             x = cast_(x, dtype)
 
@@ -3248,7 +3248,7 @@ def cummax(
 
     check_dtype(dtype, 'dtype', ['int32', 'int64'], 'cummax')
     if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
 
     if in_dynamic_or_pir_mode():
         if out is not None:
@@ -3365,7 +3365,7 @@ def cummin(
 
     check_dtype(dtype, 'dtype', ['int32', 'int64'], 'cummin')
     if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
 
     if in_dynamic_or_pir_mode():
         if out is not None:
@@ -3464,7 +3464,9 @@ def logcumsumexp(
         flatten = True
     else:
         flatten = False
-    if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
+    if dtype is not None and x.dtype != convert_nptype_to_datatype_or_vartype(
+        dtype
+    ):
         x = cast(x, dtype)
 
     if in_dynamic_or_pir_mode():
@@ -3575,7 +3577,7 @@ def cumprod(
 
     if dtype is not None:
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-            dtype = convert_np_dtype_to_dtype_(dtype)
+            dtype = convert_nptype_to_datatype_or_vartype(dtype)
         if x.dtype != dtype:
             x = cast(x, dtype)
 
@@ -3626,7 +3628,7 @@ def cumprod_(
         x = _C_ops.flatten_(x, 0, len(x.shape) - 1)
     if dtype is not None:
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-            dtype = convert_np_dtype_to_dtype_(dtype)
+            dtype = convert_nptype_to_datatype_or_vartype(dtype)
         if x.dtype != dtype:
             x = cast_(x, dtype)
 
@@ -3744,7 +3746,7 @@ def prod(
             ],
             'prod',
         )
-        if x.dtype != convert_np_dtype_to_dtype_(dtype):
+        if x.dtype != convert_nptype_to_datatype_or_vartype(dtype):
             x = cast(x, dtype)
 
     # axis is 0-size tensor.

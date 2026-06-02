@@ -44,12 +44,12 @@ from paddle.base.framework import (
     Parameter,
     Program,
     _current_expected_place as _get_device,
-    convert_np_dtype_to_dtype_,
+    convert_nptype_to_datatype_or_vartype,
+    datatype_to_vartype,
     default_main_program,
     in_dygraph_mode,
     in_pir_mode,
     name_struct,
-    paddle_type_to_proto_type,
 )
 from paddle.base.layer_helper_base import LayerHelperBase
 from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
@@ -1451,7 +1451,7 @@ class Layer:
             and dtype in valid_dtypes
         ):
             if isinstance(dtype, (str, np.dtype)):
-                dtype = framework.convert_np_dtype_to_dtype_(dtype)
+                dtype = framework.convert_nptype_to_datatype_or_vartype(dtype)
             self._dtype = dtype
             for layer in self.sublayers():
                 layer._dtype = dtype
@@ -3361,17 +3361,17 @@ class Layer:
             dtype = t.dtype
 
         if not isinstance(dtype, (VarDesc.VarType, core.DataType)):
-            dtype = convert_np_dtype_to_dtype_(dtype)
+            dtype = convert_nptype_to_datatype_or_vartype(dtype)
 
         # 1. gpu place need to determine whether the memory is sufficient for allocation:
         if t.place.is_gpu_place():
             # for gpu, minimum memory allocation unit is 256 bytes.
-            proto_dtype = (
-                paddle_type_to_proto_type[dtype]
+            var_dtype = (
+                datatype_to_vartype[dtype]
                 if isinstance(dtype, core.DataType)
                 else dtype
             )
-            size_dtype = core.size_of_dtype(proto_dtype)
+            size_dtype = core.size_of_dtype(var_dtype)
             # Note(zhangbo): Paddle GPU minimum memory allocation unit is 256 bytes, waiting_alloc_memory will compute ‘t’ occupied memory space.
             # Coefficient 1.2 is used to avoid OOM that may occur in this critical state when the memory is just enough.
             waiting_alloc_memory = (
@@ -3534,7 +3534,9 @@ class Layer:
             and dst_type in valid_dtypes
         ):
             if isinstance(dst_type, (str, np.dtype)):
-                dst_type = framework.convert_np_dtype_to_dtype_(dst_type)
+                dst_type = framework.convert_nptype_to_datatype_or_vartype(
+                    dst_type
+                )
 
             def layer_trans(layer):
                 layer._to_impl(

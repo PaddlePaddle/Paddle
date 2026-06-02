@@ -646,9 +646,7 @@ class PaddleToTensorRTConverter:
                     constant_result = op.results()[0]
                     constant_value_name = op.attrs()["value"]
                     out_dtype = np.dtype(
-                        paddle.pir.core._PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[
-                            constant_result.dtype
-                        ]
+                        paddle.pir.core.datatype_to_str[constant_result.dtype]
                     )
                     tensor_data = self.scope.var(
                         constant_value_name

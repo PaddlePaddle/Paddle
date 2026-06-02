@@ -43,7 +43,7 @@ from paddle.common_ops_import import (
     in_dygraph_mode,
 )
 from paddle.framework import use_pir_api
-from paddle.pir.core import _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE
+from paddle.pir.core import datatype_to_str
 from paddle.utils import (
     assert_same_structure,
     copy_mutable_vars,
@@ -1622,7 +1622,7 @@ class OutputSelector:
             for out, block in out_with_blocks:
                 if expected_dtype != out.dtype:
                     out = run_with_block(paddle.cast, block)(
-                        out, _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[expected_dtype]
+                        out, datatype_to_str[expected_dtype]
                     )
                 new_outs.append(out)
             return new_outs

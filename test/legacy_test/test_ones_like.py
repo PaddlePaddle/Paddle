@@ -20,7 +20,7 @@ from op_test import get_device_place
 import paddle
 from paddle import _C_ops, base, ones_like
 from paddle.base import Program, program_guard
-from paddle.base.framework import convert_np_dtype_to_dtype_
+from paddle.base.framework import convert_nptype_to_datatype_or_vartype
 
 
 class TestOnesLikeAPI(unittest.TestCase):
@@ -60,7 +60,9 @@ class TestOnesAPI(unittest.TestCase):
         paddle.disable_static(place)
 
         for dtype in [np.float32, np.float64, np.int32, np.int64]:
-            out = _C_ops.ones(shape, convert_np_dtype_to_dtype_(dtype), place)
+            out = _C_ops.ones(
+                shape, convert_nptype_to_datatype_or_vartype(dtype), place
+            )
             self.assertEqual((out.numpy() == np.ones(shape, dtype)).all(), True)
 
         paddle.enable_static()

@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import subprocess
+import sys
+import textwrap
 import unittest
 
 import numpy as np
@@ -261,6 +265,225 @@ class TestIinfoAPI(unittest.TestCase):
             for out in [out1, out2, out3]:
                 assert out.min == -2147483648
                 assert out.max == 2147483647
+
+
+# Test additional paddle.dtype.itemsize compatibility.
+class TestDtypeItemsizeExtendedAPI(unittest.TestCase):
+    EXPECTED = (
+        'float16',
+        'bfloat16',
+        'float32',
+        'float64',
+        'complex64',
+        'complex128',
+        'int8',
+        'int16',
+        'int32',
+        'int64',
+        'uint8',
+        'uint16',
+        'uint32',
+        'uint64',
+        'bool',
+        'float8_e4m3fn',
+        'float8_e5m2',
+    )
+
+    def test_dtype_str(self):
+        for name in self.EXPECTED:
+            with self.subTest(dtype=name):
+                self.assertEqual(str(getattr(paddle, name)), f'paddle.{name}')
+
+    def test_int_alias_matches(self):
+        self.assertEqual(paddle.int.itemsize, paddle.int32.itemsize)
+
+
+class TestFloatingDtypeAPI(unittest.TestCase):
+    EXPECTED = {
+        'float16': (16, 0.0009765625, -65504.0, 65504.0, 6.103515625e-05),
+        'bfloat16': (
+            16,
+            0.0078125,
+            -3.3895313892515355e38,
+            3.3895313892515355e38,
+            1.1754943508222875e-38,
+        ),
+        'float32': (
+            32,
+            1.1920928955078125e-07,
+            -3.4028234663852886e38,
+            3.4028234663852886e38,
+            1.1754943508222875e-38,
+        ),
+        'float64': (
+            64,
+            2.220446049250313e-16,
+            -1.7976931348623157e308,
+            1.7976931348623157e308,
+            2.2250738585072014e-308,
+        ),
+        'float8_e4m3fn': (8, 0.125, -448.0, 448.0, 0.015625),
+        'float8_e5m2': (8, 0.25, -57344.0, 57344.0, 6.103515625e-05),
+    }
+
+    def check_finfo(self, info, name):
+        bits, eps, min_value, max_value, tiny = self.EXPECTED[name]
+        self.assertEqual(info.bits, bits)
+        self.assertEqual(str(info.dtype), name)
+        self.assertEqual(info.eps, eps)
+        self.assertEqual(info.min, min_value)
+        self.assertEqual(info.max, max_value)
+        self.assertEqual(info.smallest_normal, tiny)
+        self.assertEqual(info.tiny, tiny)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+
+        for name in self.EXPECTED:
+            dtype = getattr(paddle, name)
+            with self.subTest(dtype=name):
+                # 1. Paddle Positional arguments
+                out1 = paddle.finfo(dtype)
+                # 2. Paddle keyword arguments
+                out2 = paddle.finfo(dtype=dtype)
+                # 3. PyTorch keyword arguments (alias)
+                out3 = paddle.finfo(type=dtype)
+
+                # Verify all outputs
+                for out in [out1, out2, out3]:
+                    self.check_finfo(out, name)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            for name in self.EXPECTED:
+                dtype = getattr(paddle, name)
+                with self.subTest(dtype=name):
+                    # 1. Paddle Positional arguments
+                    out1 = paddle.finfo(dtype)
+                    # 2. Paddle keyword arguments
+                    out2 = paddle.finfo(dtype=dtype)
+                    # 3. PyTorch keyword arguments (alias)
+                    out3 = paddle.finfo(type=dtype)
+
+                    # Verify all outputs
+                    for out in [out1, out2, out3]:
+                        self.check_finfo(out, name)
+
+
+class TestIntegerDtypeAPI(unittest.TestCase):
+    EXPECTED = {
+        'uint8': (0, 255, 8),
+        'uint16': (0, 65535, 16),
+        'uint32': (0, 4294967295, 32),
+        'uint64': (0, 18446744073709551615, 64),
+        'int8': (-128, 127, 8),
+        'int16': (-32768, 32767, 16),
+        'int32': (-2147483648, 2147483647, 32),
+        'int64': (-9223372036854775808, 9223372036854775807, 64),
+    }
+
+    def check_iinfo(self, info, name):
+        min_value, max_value, bits = self.EXPECTED[name]
+        self.assertEqual(info.min, min_value)
+        self.assertEqual(info.max, max_value)
+        self.assertEqual(info.bits, bits)
+        self.assertEqual(str(info.dtype), name)
+        self.assertIn(f'max={max_value}', repr(info))
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+
+        for name in self.EXPECTED:
+            dtype = getattr(paddle, name)
+            with self.subTest(dtype=name):
+                # 1. Paddle Positional arguments
+                out1 = paddle.iinfo(dtype)
+                # 2. Paddle keyword arguments
+                out2 = paddle.iinfo(dtype=dtype)
+                # 3. PyTorch keyword arguments (alias)
+                out3 = paddle.iinfo(type=dtype)
+                out4 = paddle.iinfo(name)
+                out5 = paddle.iinfo(np.dtype(name))
+                out6 = paddle.iinfo(getattr(np, name))
+                out7 = paddle.iinfo(name.upper())
+                out8 = paddle.iinfo(f" {name} ")
+
+                # Verify all outputs
+                for out in [out1, out2, out3, out4, out5, out6, out7, out8]:
+                    self.check_iinfo(out, name)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            for name in self.EXPECTED:
+                dtype = getattr(paddle, name)
+                with self.subTest(dtype=name):
+                    # 1. Paddle Positional arguments
+                    out1 = paddle.iinfo(dtype)
+                    # 2. Paddle keyword arguments
+                    out2 = paddle.iinfo(dtype=dtype)
+                    # 3. PyTorch keyword arguments (alias)
+                    out3 = paddle.iinfo(type=dtype)
+                    out4 = paddle.iinfo(name)
+                    out5 = paddle.iinfo(np.dtype(name))
+                    out6 = paddle.iinfo(getattr(np, name))
+                    out7 = paddle.iinfo(name.upper())
+                    out8 = paddle.iinfo(f" {name} ")
+
+                    # Verify all outputs
+                    for out in [out1, out2, out3, out4, out5, out6, out7, out8]:
+                        self.check_iinfo(out, name)
+
+
+class TestLegacyVarTypeDtypeAPI(unittest.TestCase):
+    def test_uint_iinfo_with_pir_disabled(self):
+        code = textwrap.dedent(
+            """
+            import numpy as np
+            import paddle
+
+            expected = {
+                'uint16': (0, 65535, 16),
+                'uint32': (0, 4294967295, 32),
+                'uint64': (0, 18446744073709551615, 64),
+            }
+            assert str(paddle.bfloat16) == 'paddle.bfloat16'
+            for name, (min_value, max_value, bits) in expected.items():
+                dtype = getattr(paddle, name)
+                assert str(dtype) == f'paddle.{name}'
+                for arg in (
+                    dtype,
+                    name,
+                    np.dtype(name),
+                    getattr(np, name),
+                    name.upper(),
+                    f" {name} ",
+                ):
+                    info = paddle.iinfo(arg)
+                    assert info.min == min_value
+                    assert info.max == max_value
+                    assert info.bits == bits
+                    assert str(info.dtype) == name
+            """
+        )
+        env = os.environ.copy()
+        env["FLAGS_enable_pir_api"] = "0"
+        subprocess.run(
+            [sys.executable, "-c", code],
+            check=True,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
 
 
 # Test angle compatibility
