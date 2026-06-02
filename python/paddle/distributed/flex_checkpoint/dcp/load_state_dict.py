@@ -626,7 +626,7 @@ def _handle_aoa(
     # AOA key validation (after engine init)
     from .key_validation import validate_and_report_keys_aoa
 
-    validate_and_report_keys_aoa(aoa_engine, metadata, path)
+    validate_and_report_keys_aoa(aoa_engine, metadata, path, use_dist=use_dist)
 
     src_desc_to_sharded_tensor = {}
     dst_to_src_desc_mapping = {}

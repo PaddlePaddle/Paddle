@@ -218,6 +218,7 @@ def validate_and_report_keys_aoa(
     aoa_engine: AOAEngine,
     metadata: Metadata,
     checkpoint_path: str,
+    use_dist: bool = True,
 ) -> KeyValidationResult:
     """Validate keys for the AOA loading path.
 
@@ -259,8 +260,8 @@ def validate_and_report_keys_aoa(
         randomly_initialized_keys=randomly_initialized_keys,
     )
 
-    # 6. Print on rank 0
-    if paddle.distributed.get_rank() == 0:
+    # 6. Print on rank 0 (or always when not using dist)
+    if not use_dist or paddle.distributed.get_rank() == 0:
         _print_aoa_report(
             result, aoa_mappings, explicitly_removed, checkpoint_path
         )
