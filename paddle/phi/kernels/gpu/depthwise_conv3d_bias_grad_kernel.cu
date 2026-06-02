@@ -75,28 +75,22 @@ __global__ void DWConv3dBwdInputKernel(const T* grad_output,
   const int stride_w = kKnownStrideW > 0 ? kKnownStrideW : stride_w_in;
 
   const int channel_multiplier = output_channels / input_channels;
-  const int64_t num_input = static_cast<int64_t>(batch_size) * input_channels *
-                            input_depth * input_height * input_width;
+  const int num_input =
+      batch_size * input_channels * input_depth * input_height * input_width;
 
-  const int64_t i_stride_c =
-      static_cast<int64_t>(input_depth) * input_height * input_width;
-  const int64_t i_stride_d = static_cast<int64_t>(input_height) * input_width;
+  const int i_stride_c = input_depth * input_height * input_width;
+  const int i_stride_d = input_height * input_width;
   const int i_stride_h = input_width;
 
-  const int64_t o_stride_c =
-      static_cast<int64_t>(output_depth) * output_height * output_width;
-  const int64_t o_stride_d = static_cast<int64_t>(output_height) * output_width;
+  const int o_stride_c = output_depth * output_height * output_width;
+  const int o_stride_d = output_height * output_width;
   const int o_stride_h = output_width;
 
   const int w_stride_c = kernel_t * kernel_h * kernel_w;
 
-  for (int64_t index =
-           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
-           static_cast<int64_t>(threadIdx.x);
-       index < num_input;
-       index +=
-       static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(gridDim.x)) {
-    int64_t temp = index;
+  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < num_input;
+       index += blockDim.x * gridDim.x) {
+    int temp = index;
     const int in_col = temp % input_width;
     temp /= input_width;
     const int in_row = temp % input_height;
@@ -374,8 +368,7 @@ void LaunchDepthwiseConv3dBackwardCompatible(const Context& dev_ctx,
   if (grad_input_ptr) {
     int64_t num_elements = input_grad_ncdhw_ptr->numel();
     int block = 256;
-    int grid =
-        std::min((num_elements - 1) / block + 1, static_cast<int64_t>(65536));
+    int grid = std::min((num_elements - 1) / block + 1, (int64_t)65536);
 
     bool is_k3 = (kernel_t == 3 && kernel_h == 3 && kernel_w == 3);
     bool is_d1 = (dilations[0] == 1 && dilations[1] == 1 && dilations[2] == 1);

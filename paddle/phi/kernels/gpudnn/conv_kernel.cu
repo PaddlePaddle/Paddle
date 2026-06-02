@@ -142,14 +142,9 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
              &o_w);
   }
 
-  int64_t group_offset_in =
-      static_cast<int64_t>(i_c) / groups * i_h * i_w * i_d;
-  int64_t group_offset_out =
-      static_cast<int64_t>(o_c) / groups * o_h * o_w * o_d;
-  int64_t group_offset_filter = transformed_filter_channel->numel() / groups;
-  PADDLE_ENFORCE_LE_INT_MAX(group_offset_in, "group_offset_in");
-  PADDLE_ENFORCE_LE_INT_MAX(group_offset_out, "group_offset_out");
-  PADDLE_ENFORCE_LE_INT_MAX(group_offset_filter, "group_offset_filter");
+  int group_offset_in = i_c / groups * i_h * i_w * i_d;
+  int group_offset_out = o_c / groups * o_h * o_w * o_d;
+  int group_offset_filter = transformed_filter_channel->numel() / groups;
   // ------------------- cudnn conv workspace ---------------------
   size_t workspace_size = 0;  // final workspace to allocate.
 // ------------------- cudnn conv algorithm ---------------------
@@ -204,20 +199,19 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
       },
       workspace_size);
 #else
-  ConvRunner<T, ConvKind::kForward>::Apply(
-      dev_ctx,
-      args,
-      fwd_result,
-      input_data,
-      filter_data,
-      output_data,
-      groups,
-      static_cast<int>(group_offset_in),
-      static_cast<int>(group_offset_filter),
-      static_cast<int>(group_offset_out),
-      workspace_size,
-      &workspace_handle,
-      false);
+  ConvRunner<T, ConvKind::kForward>::Apply(dev_ctx,
+                                           args,
+                                           fwd_result,
+                                           input_data,
+                                           filter_data,
+                                           output_data,
+                                           groups,
+                                           group_offset_in,
+                                           group_offset_filter,
+                                           group_offset_out,
+                                           workspace_size,
+                                           &workspace_handle,
+                                           false);
 #endif
 }
 

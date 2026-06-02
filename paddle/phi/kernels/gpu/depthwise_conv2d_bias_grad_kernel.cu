@@ -140,8 +140,7 @@ __global__ void DWConv2dBwdInputKernel(const T* __restrict__ grad_output,
 
     for (int multiplier = 0; multiplier < depthwiseMultiplier; ++multiplier) {
       int och = (c * depthwiseMultiplier) + multiplier;
-      int64_t weightOffset =
-          static_cast<int64_t>(och) * kernelHeight * kernelWidth;
+      int weightOffset = och * kernelHeight * kernelWidth;
       for (int kh = 0; kh < KH_LIMIT; ++kh) {
         for (int kw = 0; kw < KW_LIMIT; ++kw) {
           int h_out = h + padHeight - kh * dilationHeight;
@@ -153,10 +152,8 @@ __global__ void DWConv2dBwdInputKernel(const T* __restrict__ grad_output,
 
             if ((h_out >= 0) && (h_out < outputHeight) && (w_out >= 0) &&
                 (w_out < outputWidth)) {
-              const int64_t offset =
-                  ((static_cast<int64_t>(n) * outputChannels + och) *
-                       outputHeight +
-                   h_out) *
+              const int offset =
+                  ((n * outputChannels + och) * outputHeight + h_out) *
                       outputWidth +
                   w_out;
               value += (static_cast<AccT>(weight[weightOffset]) *
