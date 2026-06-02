@@ -467,6 +467,170 @@ class TestStateDictHook(unittest.TestCase):
                     {"weight": paddle.ones_like(parameter)}, strict=True
                 )
 
+    def test_extra_state_state_dict(self):
+        class ExtraStateLayer(paddle.nn.Layer):
+            def __init__(self, value):
+                super().__init__()
+                self.value = value
+
+            def get_extra_state(self):
+                return {"value": self.value}
+
+            def set_extra_state(self, state):
+                self.value = state["value"]
+
+        with base.dygraph.guard():
+            layer = ExtraStateLayer(1)
+            layer.child = ExtraStateLayer(2)
+
+            state_dict = layer.state_dict(prefix="prefix.")
+
+            self.assertEqual(state_dict["prefix._extra_state"], {"value": 1})
+            self.assertEqual(
+                state_dict["prefix.child._extra_state"], {"value": 2}
+            )
+
+    def test_extra_state_load_state_dict(self):
+        class ExtraStateLayer(paddle.nn.Layer):
+            def __init__(self, value):
+                super().__init__()
+                self.value = value
+                parameter = self.create_parameter(
+                    shape=[1], dtype='float32', is_bias=False
+                )
+                self.register_parameter("weight", parameter)
+
+            def get_extra_state(self):
+                return {"value": self.value}
+
+            def set_extra_state(self, state):
+                self.value = state["value"]
+
+        with base.dygraph.guard():
+            layer = ExtraStateLayer(0)
+            layer.child = ExtraStateLayer(0)
+
+            incompatible_keys = layer.load_state_dict(
+                {
+                    "weight": paddle.ones_like(layer.weight),
+                    "_extra_state": {"value": 3},
+                    "child.weight": paddle.ones_like(layer.child.weight),
+                    "child._extra_state": {"value": 4},
+                },
+                strict=True,
+            )
+
+            self.assertEqual(layer.value, 3)
+            self.assertEqual(layer.child.value, 4)
+            np.testing.assert_array_equal(layer.weight.numpy(), np.ones([1]))
+            np.testing.assert_array_equal(
+                layer.child.weight.numpy(), np.ones([1])
+            )
+            self.assertEqual(incompatible_keys.missing_keys, [])
+            self.assertEqual(incompatible_keys.unexpected_keys, [])
+
+    def test_extra_state_strict_error(self):
+        class ExtraStateLayer(paddle.nn.Layer):
+            def __init__(self):
+                super().__init__()
+                self.value = 0
+
+            def get_extra_state(self):
+                return {"value": self.value}
+
+            def set_extra_state(self, state):
+                self.value = state["value"]
+
+        with base.dygraph.guard():
+            layer = ExtraStateLayer()
+            layer.child = ExtraStateLayer()
+
+            with self.assertRaisesRegex(RuntimeError, "child._extra_state"):
+                layer.load_state_dict(
+                    {"_extra_state": {"value": 1}}, strict=True
+                )
+
+            layer = paddle.nn.Layer()
+            with self.assertRaisesRegex(RuntimeError, "_extra_state"):
+                layer.load_state_dict(
+                    {"_extra_state": {"value": 1}}, strict=True
+                )
+
+    def test_extra_state_non_dict(self):
+        class ExtraStateLayer(paddle.nn.Layer):
+            def __init__(self, value):
+                super().__init__()
+                self.value = value
+
+            def get_extra_state(self):
+                return self.value
+
+            def set_extra_state(self, state):
+                self.value = state
+
+        with base.dygraph.guard():
+            for state in ("value", 1, ExtraStateLayer(2)):
+                layer = ExtraStateLayer(state)
+                layer_load = ExtraStateLayer(None)
+
+                layer_load.load_state_dict(layer.state_dict())
+
+                self.assertEqual(layer_load.value, state)
+
+    def test_extra_state_missing_method(self):
+        class MissingSetExtraStateLayer(paddle.nn.Layer):
+            def get_extra_state(self):
+                return {"value": 1}
+
+        class MissingGetExtraStateLayer(paddle.nn.Layer):
+            def set_extra_state(self, state):
+                self.value = state["value"]
+
+        with base.dygraph.guard():
+            layer = MissingSetExtraStateLayer()
+            with self.assertRaisesRegex(RuntimeError, "Unexpected key"):
+                layer.load_state_dict(layer.state_dict())
+
+            layer = MissingGetExtraStateLayer()
+            with self.assertRaisesRegex(RuntimeError, "Missing key"):
+                layer.load_state_dict(layer.state_dict())
+
+    def test_extra_state_with_amp_state_dict_hook(self):
+        class ExtraStateLayer(paddle.nn.Layer):
+            def __init__(self):
+                super().__init__()
+                parameter = self.create_parameter(
+                    shape=[1], dtype='float32', is_bias=False
+                )
+                self.register_parameter("weight", parameter)
+
+            def get_extra_state(self):
+                return {"value": 1}
+
+            def set_extra_state(self, state):
+                self.value = state["value"]
+
+        with base.dygraph.guard():
+            layer = ExtraStateLayer()
+            layer = paddle.amp.decorate(
+                models=layer, level='O2', save_dtype='float64'
+            )
+
+            state_dict = layer.state_dict()
+
+            self.assertEqual(state_dict["weight"].dtype, paddle.float64)
+            self.assertEqual(state_dict["_extra_state"], {"value": 1})
+
+    def test_default_extra_state(self):
+        with base.dygraph.guard():
+            layer = paddle.nn.Layer()
+
+            self.assertNotIn("_extra_state", layer.state_dict())
+            with self.assertRaisesRegex(RuntimeError, "get_extra_state"):
+                layer.get_extra_state()
+            with self.assertRaisesRegex(RuntimeError, "set_extra_state"):
+                layer.set_extra_state(None)
+
 
 class BufferNetWithModification(paddle.nn.Layer):
     def __init__(self, shape):

@@ -266,6 +266,13 @@ class TestGetSubmodule(unittest.TestCase):
             self.module.get_parameter("fake_attr")
         self.assertIn("`fake_attr` is not an nn.Parameter", str(cm.exception))
 
+        self.module.register_buffer(
+            "fake_param", paddle.to_tensor([1.0, 2.0, 3.0])
+        )
+        with self.assertRaises(AttributeError) as cm:
+            self.module.get_parameter("fake_param")
+        self.assertIn("`fake_param` is not an nn.Parameter", str(cm.exception))
+
     def test_get_extra_state_raises(self):
         with self.assertRaises(RuntimeError) as cm:
             self.module.get_extra_state()
@@ -898,6 +905,8 @@ class TestGrad(unittest.TestCase):
             self.assertTrue(paddle.allclose(p.grad, paddle.zeros_like(p.grad)))
 
         self.model.zero_grad()
+        for p in self.model.parameters():
+            self.assertIsNone(p.grad)
 
 
 # test ModuleList

@@ -20,7 +20,9 @@ namespace at {
 
 inline at::Tensor detach(const at::Tensor& self) {
   // Create a new Tensor that shares data but has no autograd history
-  PaddleTensor detached_tensor(self._PD_GetInner().impl());
+  auto inner = self._PD_GetInner();
+  PaddleTensor detached_tensor(inner.impl());
+  detached_tensor.set_name(inner.name());
   detached_tensor.set_autograd_meta(nullptr);
   return Tensor(detached_tensor);
 }
