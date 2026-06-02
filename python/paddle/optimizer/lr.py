@@ -171,15 +171,14 @@ class LRScheduler:
         last_epoch: int = -1,
         verbose: bool = False,
     ) -> None:
-        if isinstance(learning_rate, (float, int)):
-            if learning_rate < 0:
-                raise ValueError(f"Invalid learning rate: {learning_rate}")
-            self.base_lr = float(learning_rate)
-            self.last_lr = float(learning_rate)
-        else:
+        if not isinstance(learning_rate, (float, int)):
             raise TypeError(
                 f"The type of param learning_rate or optimizer must be int, float or paddle.optimizer.Optimizer, but received {type(learning_rate)}"
             )
+        if learning_rate < 0:
+            raise ValueError(f"Invalid learning rate: {learning_rate}")
+        self.base_lr = float(learning_rate)
+        self.last_lr = float(learning_rate)
         self.last_epoch = last_epoch
         self.verbose = verbose
         self._var_name = None
@@ -1693,6 +1692,10 @@ class ReduceOnPlateau(LRScheduler):
                 'threshold mode: ' + threshold_mode + ' is unknown!'
             )
         self.threshold_mode = threshold_mode
+        if not isinstance(learning_rate, (float, int)):
+            raise TypeError(
+                f"The type of param learning_rate or optimizer must be int, float or paddle.optimizer.Optimizer, but received {type(learning_rate)}"
+            )
 
         self.patience = patience
         self.threshold = threshold
@@ -1706,13 +1709,8 @@ class ReduceOnPlateau(LRScheduler):
         self.num_bad_epochs = 0
 
         # Can not call Parent __init__, so implement here.
-        if isinstance(learning_rate, (float, int)):
-            self.base_lr = float(learning_rate)
-            self.last_lr = float(learning_rate)
-        else:
-            raise TypeError(
-                f"The type of param learning_rate or optimizer must be int, float or paddle.optimizer.Optimizer, but received {type(learning_rate)}"
-            )
+        self.base_lr = float(learning_rate)
+        self.last_lr = float(learning_rate)
         self.last_epoch = 0
         self.verbose = verbose
         self._var_name = None
