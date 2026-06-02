@@ -164,7 +164,7 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
               adam_op->Op()->GetAttr("min_row_size_to_use_multithread")),
           common::errors::PreconditionNotMet(
               "All adam Op's attr(min_row_size_to_use_multithread) must be "
-              "same, but there are two different value: %I64, %I64.",
+              "same, but there are two different value: %lld, %lld.",
               min_row_size_to_use_multithread,
               PADDLE_GET_CONST(
                   int64_t,

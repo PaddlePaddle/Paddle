@@ -1140,12 +1140,79 @@ class MuonShardingOptimizer:
                             del slice_param.main_grad
                     comm_buffer.assign_slice_grad(param, slice_param)
 
+    def set_grad_clip_info(self):
+        from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.hybrid_parallel_optimizer import (
+            ClipGradByAdaptiveNorm,
+        )
+
+        if isinstance(self._inner_opt._grad_clip, ClipGradByAdaptiveNorm):
+            if not hasattr(
+                self._inner_opt._grad_clip, "group_index_to_name_to_local_idx"
+            ):
+                # Build parameter groups and their metadata
+                group_index_to_name_to_local_idx = {}  # group_idx -> {param_name: local_index}
+                param_name_to_group_idx = {}  # param_name -> group_idx
+                group_idx_to_comm_group = {}  # group_idx -> comm_group
+                group_idx_to_param_num = {}  # group_idx -> param count
+
+                group_idx = 0
+                # 1D params
+                for _, comm_buffer in enumerate(self._comm_buffer_list):
+                    name_to_local_idx = {}
+                    for local_idx, param in enumerate(comm_buffer._params):
+                        param = self._slice_params[param.name]
+                        if param._is_initialized():
+                            name_to_local_idx[param.name] = local_idx
+                            param_name_to_group_idx[param.name] = group_idx
+                    group_index_to_name_to_local_idx[group_idx] = (
+                        name_to_local_idx
+                    )
+                    group_idx_to_comm_group[group_idx] = comm_buffer._comm_group
+                    group_idx_to_param_num[group_idx] = len(comm_buffer._params)
+                    group_idx += 1
+
+                # 2D params
+                for color_key, params_2d in self._params_2d_by_color.items():
+                    name_to_local_idx = {}
+                    local_2d_names = {p.name for p in self._local_2d}
+                    for local_idx, param in enumerate(params_2d):
+                        if param.name in local_2d_names:
+                            name_to_local_idx[param.name] = local_idx
+                            param_name_to_group_idx[param.name] = group_idx
+                    group_index_to_name_to_local_idx[group_idx] = (
+                        name_to_local_idx
+                    )
+
+                    # Get comm group from color_key
+                    group_info = self._color_to_group_info[color_key]
+                    comm_group = group_info['group']
+
+                    group_idx_to_comm_group[group_idx] = comm_group
+                    group_idx_to_param_num[group_idx] = len(params_2d)
+                    group_idx += 1
+
+                self._inner_opt._grad_clip.group_index_to_name_to_local_idx = (
+                    group_index_to_name_to_local_idx
+                )
+                self._inner_opt._grad_clip.param_name_to_group_idx = (
+                    param_name_to_group_idx
+                )
+                self._inner_opt._grad_clip.group_idx_to_comm_group = (
+                    group_idx_to_comm_group
+                )
+                self._inner_opt._grad_clip.group_idx_to_param_num = (
+                    group_idx_to_param_num
+                )
+                self._inner_opt._grad_clip.sharding_stage1_v2 = True
+
     def step(self):
         """Optimizer step: update local 2D params and 1D slices, then sync."""
         self.reset_param_storage()
 
         self._collect_comm_buffers()
         self._assign_slice_grad()
+
+        self.set_grad_clip_info()
 
         if not isinstance(self._origin_parameter_list[0], dict):
             params_grads = []
@@ -1182,6 +1249,8 @@ class MuonShardingOptimizer:
                 if param.name not in self._slice_params:
                     continue
                 slice_p = self._slice_params[param.name]
+                if not slice_p._is_initialized():
+                    continue
                 grad_var = slice_p._grad_ivar()
                 if (
                     hasattr(slice_p, "main_grad")

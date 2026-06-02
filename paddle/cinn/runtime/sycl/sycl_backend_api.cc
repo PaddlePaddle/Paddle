@@ -65,17 +65,18 @@ void SYCLBackendAPI::Init(Arch arch) {
 
 void SYCLBackendAPI::set_device(int device_id) {
   if (!initialized_) Init(common::UnknownArch{});
-  PADDLE_ENFORCE_GE(device_id,
-                    0UL,
-                    ::common::errors::InvalidArgument(
-                        "please set valid device id! device id", device_id));
+  PADDLE_ENFORCE_GE(
+      device_id,
+      0,
+      ::common::errors::InvalidArgument(
+          "please set valid device id! device id: %d", device_id));
   PADDLE_ENFORCE_LE(
       device_id,
       this->devices.size() - 1,
-      ::common::errors::InvalidArgument("set valid device id! device id: ",
-                                        device_id,
-                                        " > max device id:",
-                                        this->devices.size() - 1));
+      ::common::errors::InvalidArgument(
+          "set valid device id! device id: %d > max device id: %d",
+          device_id,
+          this->devices.size() - 1));
   if (this->contexts[device_id] == nullptr) {
     auto exception_handler = [](::sycl::exception_list exceptions) {
       for (const std::exception_ptr& e : exceptions) {

@@ -55,10 +55,11 @@ void AddNKernel(const Context& dev_ctx,
       }
       ptrs.push_back(reinterpret_cast<const XPUType*>(in_t.data<T>()));
     } else if (SelectedRows::classof(x[i])) {
-      PADDLE_ENFORCE_EQ(x[i]->dtype(),
-                        DataType::FLOAT32,
-                        errors::InvalidArgument("SelectedRowsAdd(scatter) only",
-                                                "supports float type"));
+      PADDLE_ENFORCE_EQ(
+          x[i]->dtype(),
+          DataType::FLOAT32,
+          errors::InvalidArgument(
+              "SelectedRowsAdd(scatter) only supports float type"));
 
       auto& in_t = *(static_cast<const SelectedRows*>(x[i]));
       functor(dev_ctx, in_t, out);
@@ -67,6 +68,7 @@ void AddNKernel(const Context& dev_ctx,
           "Expected type of Input(X) of %d-th must be Tensor, "
           "SelectedRows. But got "
           "unsupported type: %s.",
+          i,
           x[i]->type_info().name()));
     }
   }

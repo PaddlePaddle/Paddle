@@ -422,12 +422,13 @@ void DistributedFusedLambInitOpKernel(
                         g_out,
                         errors::InvalidArgument(
                             "The %d-th Input(Grad) and Output(Grad) should "
-                            "be the same tensor."));
+                            "be the same tensor.",
+                            i));
       auto numel = p->numel();
-      PADDLE_ENFORCE_GT(
-          numel,
-          0,
-          errors::InvalidArgument("The %d-th Input(Param) have no elements."));
+      PADDLE_ENFORCE_GT(numel,
+                        0,
+                        errors::InvalidArgument(
+                            "The %d-th Input(Param) have no elements.", i));
 
       void *g_data = nullptr;
       if (g->IsInitialized()) {

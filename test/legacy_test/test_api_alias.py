@@ -265,15 +265,21 @@ class TestAlias(unittest.TestCase):
                 None,
                 None,
             ),
+            (
+                paddle.random.initial_seed,
+                paddle.initial_seed,
+                None,
+                None,
+            ),
         ]
 
     def test_compatibility(self):
         for pairs in self.api_map:
-            self.assertTrue(pairs[0], pairs[1])
+            self.assertIs(pairs[0], pairs[1])
             if pairs[2] is not None:
-                self.assertTrue(pairs[0], pairs[2])
+                self.assertIs(pairs[0], pairs[2])
             if pairs[3] is not None:
-                self.assertTrue(pairs[0], pairs[3])
+                self.assertIs(pairs[0], pairs[3])
 
 
 if __name__ == "__main__":

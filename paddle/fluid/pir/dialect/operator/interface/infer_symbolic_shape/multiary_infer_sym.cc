@@ -4770,7 +4770,8 @@ bool WeightOnlyLinearOpInferSymbolicShape(
         bias_shape.size(),
         1UL,
         common::errors::InvalidArgument(
-            "The size of Input(Bias)'s dimension should equal to 1UL.",
+            "The size of Input(Bias)'s dimension should equal to 1UL, "
+            "but received %d.",
             bias_shape.size()));
   }
 

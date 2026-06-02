@@ -1,4 +1,6 @@
-# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+#!/bin/bash
+
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,6 +16,9 @@
 
 set -e
 
-python -m pytest test_flashmask_ci.py -v
-python -m pytest test_fwd_md5sum.py -v
-python -m pytest test_flashmask_group.py -v
+# install gdrcopy
+cd /usr/local
+wget -q https://paddle-ci.gz.bcebos.com/gdrcopy.tar
+tar xf gdrcopy.tar
+rm -f gdrcopy.tar
+ldconfig

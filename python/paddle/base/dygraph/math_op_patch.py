@@ -605,6 +605,19 @@ def monkey_patch_math_tensor():
         """
         return self.element_size()
 
+    @property
+    def nbytes(self: Tensor) -> int:
+        """
+        Returns the number of bytes allocated for elements of the dense Tensor. Defined to be ``size`` * ``element_size()``
+        """
+        if self.is_sparse():
+            raise RuntimeError(
+                "nbytes is not defined for sparse tensors. "
+                "Add nbytes of indices and values for sparse storage size, "
+                "or multiply numel by element_size for the equivalent dense tensor."
+            )
+        return self.size * self.element_size()
+
     def _reduce_ex_(self: Tensor, proto):
         data_numpy = self.numpy()
         place = str(self.place)[6:-1]  # Place(gpu:1) -> gpu:1
@@ -645,6 +658,7 @@ def monkey_patch_math_tensor():
         # for logical compare
         ('__array_ufunc__', None),
         ('itemsize', itemsize),
+        ('nbytes', nbytes),
         ('__reduce_ex__', _reduce_ex_),
     ]
 

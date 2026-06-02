@@ -14,17 +14,24 @@ ENV LANGUAGE en_US.UTF-8
 
 RUN yum -y update
 RUN yum -y install epel-release
-RUN yum install -y sudo wget curl perl util-linux xz bzip2 git patch which perl zlib-devel openssl-devel yum-utils autoconf automake make gcc-toolset-${DEVTOOLSET_VERSION}-toolchain unzip bison diffutils automake which file vim libffi-devel ncurses-devel sqlite-devel readline-devel tk-devel gdbm-devel glibc-devel libstdc++-devel glib2-devel libX11-devel libXext-devel libXrender-devel  mesa-libGL-devel libICE-devel libSM-devel ncurses-devel freetype-devel libpng-devel kernel-devel kmod
+RUN yum install -y \
+    sudo wget curl perl util-linux xz bzip2 git patch which zlib-devel openssl-devel \
+    yum-utils autoconf automake make gcc-toolset-${DEVTOOLSET_VERSION}-toolchain \
+    unzip bison diffutils file vim libffi-devel ncurses-devel sqlite-devel \
+    readline-devel tk-devel gdbm-devel glibc-devel libstdc++-devel glib2-devel \
+    libX11-devel libXext-devel libXrender-devel mesa-libGL-devel libICE-devel \
+    libSM-devel freetype-devel libpng-devel kernel-devel kmod \
+    rdma-core-devel libibverbs-devel
 
 # Just add everything as a safe.directory for git since these will be used in multiple places with git
 RUN git config --global --add safe.directory '*'
 RUN ln -s /opt/rh/gcc-toolset-${DEVTOOLSET_VERSION}/root/usr/lib/gcc/x86_64-redhat-linux/${DEVTOOLSET_VERSION} /usr/lib/gcc/x86_64-redhat-linux/${DEVTOOLSET_VERSION}
 ENV PATH=/opt/rh/gcc-toolset-${DEVTOOLSET_VERSION}/root/usr/bin:$PATH
 
-# cmake-3.18.4
+# cmake-3.31.0
 WORKDIR /home
-RUN wget -q https://cmake.org/files/v3.18/cmake-3.18.0-Linux-x86_64.tar.gz && tar -zxvf cmake-3.18.0-Linux-x86_64.tar.gz && rm cmake-3.18.0-Linux-x86_64.tar.gz
-ENV PATH=/home/cmake-3.18.0-Linux-x86_64/bin:$PATH
+RUN wget -q https://cmake.org/files/v3.31/cmake-3.31.0-linux-x86_64.tar.gz && tar -zxvf cmake-3.31.0-linux-x86_64.tar.gz && rm cmake-3.31.0-linux-x86_64.tar.gz
+ENV PATH=/home/cmake-3.31.0-linux-x86_64/bin:$PATH
 
 # go-1.15.12
 WORKDIR /home
@@ -59,12 +66,14 @@ RUN bash ./install_ccache.sh && rm install_ccache.sh
 
 # Install CUDA
 FROM base as cuda
-ARG CUDA_VERSION=12.4
+ARG CUDA_VERSION
 RUN rm -rf /usr/local/cuda-*
 ENV CUDA_HOME=/usr/local/cuda-${CUDA_VERSION}
 ENV CUDA_VERSION=${CUDA_VERSION}
 ENV PATH=/usr/local/cuda-${CUDA_VERSION}/bin:$PATH
+ENV LD_LIBRARY_PATH=/usr/local/cuda-${CUDA_VERSION}/compat:$LD_LIBRARY_PATH
 ADD ./common/install_cuda.sh install_cuda.sh
+ADD ./common/install_gdrcopy.sh install_gdrcopy.sh
 
 FROM cuda as cuda11.8
 RUN bash ./install_cuda.sh 11.8
@@ -77,15 +86,25 @@ ENV DESIRED_CUDA=12.3
 FROM cuda as cuda12.4
 RUN bash ./install_cuda.sh 12.4
 ENV DESIRED_CUDA=12.4
-ENV DESIRED_CUDA=12.6
 
 FROM cuda as cuda12.6
 RUN bash ./install_cuda.sh 12.6
 ENV DESIRED_CUDA=12.6
 
+FROM cuda as cuda12.9
+RUN bash ./install_cuda.sh 12.9 && bash ./install_gdrcopy.sh
+ENV DESIRED_CUDA=12.9
+ENV GDRCOPY_HOME=/usr/local/gdrcopy
+
+FROM cuda as cuda13.0
+RUN bash ./install_cuda.sh 13.0 && bash ./install_gdrcopy.sh
+ENV DESIRED_CUDA=13.0
+ENV GDRCOPY_HOME=/usr/local/gdrcopy
+
 FROM cuda as cuda13.2
-RUN bash ./install_cuda.sh 13.2
+RUN bash ./install_cuda.sh 13.2 && bash ./install_gdrcopy.sh
 ENV DESIRED_CUDA=13.2
+ENV GDRCOPY_HOME=/usr/local/gdrcopy
 
 
 # Install paddle
