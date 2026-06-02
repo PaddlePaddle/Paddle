@@ -175,6 +175,26 @@ static inline bool ShouldLogAllocatorStats(uint64_t seq) {
   return seq <= 10 || seq % 10000 == 0;
 }
 
+static BlockPart MakeBlockPart(void *ptr, size_t size, int device) {
+  auto chunk = std::make_shared<VmmChunkMeta>();
+  chunk->base = reinterpret_cast<VmmDevicePtr>(ptr);
+  chunk->size = size;
+#ifdef PADDLE_WITH_CUDA
+  auto handle = CUDAVirtualMemAllocator::GetHandleFromBasePtr(ptr);
+  PADDLE_ENFORCE_NE(
+      handle,
+      0,
+      common::errors::InvalidArgument(
+          "Allocation returned by underlying allocator is not VMM allocation"));
+  chunk->handle = handle;
+#else
+  PADDLE_THROW(common::errors::Unavailable(
+      "Virtual memory auto-growth allocator requires CUDA support."));
+#endif
+  chunk->device = device;
+  return BlockPart{chunk, 0, size};
+}
+
 VirtualMemoryAutoGrowthBestFitAllocator::
     VirtualMemoryAutoGrowthBestFitAllocator(
         const std::shared_ptr<Allocator> &underlying_allocator,
@@ -411,6 +431,10 @@ VirtualMemoryAutoGrowthBestFitAllocator::AllocateOrCompact(size_t size) {
         auto realloc_ptr =
             underlying_allocator_->Allocate(size - free_block->size_);
         VLOG(4) << "Re-alloc size {" << realloc_ptr->size() << "} success";
+        std::vector<BlockPart> realloc_parts;
+        realloc_parts.emplace_back(MakeBlockPart(
+            realloc_ptr->ptr(), realloc_ptr->size(), place_.device));
+        AppendPartsTail(&free_block->parts_, &realloc_parts);
         free_block->size_ += realloc_ptr->size();
         allocations_.push_back(std::move(realloc_ptr));  // hold allocation
       } catch (const paddle::memory::allocation::BadAlloc &e) {
@@ -454,23 +478,7 @@ void VirtualMemoryAutoGrowthBestFitAllocator::ExtendOrCompact(size_t size) {
   allocations_.push_back(std::move(allocateptr));  // hold allocation
 
   std::vector<BlockPart> new_parts;
-  auto chunk = std::make_shared<VmmChunkMeta>();
-  chunk->base = reinterpret_cast<VmmDevicePtr>(alloc_ptr);
-  chunk->size = alloc_size;
-#ifdef PADDLE_WITH_CUDA
-  auto handle = CUDAVirtualMemAllocator::GetHandleFromBasePtr(alloc_ptr);
-  PADDLE_ENFORCE_NE(
-      handle,
-      0,
-      common::errors::InvalidArgument(
-          "Allocation returned by underlying allocator is not VMM allocation"));
-  chunk->handle = handle;
-#else
-  PADDLE_THROW(common::errors::Unavailable(
-      "Virtual memory auto-growth allocator requires CUDA support."));
-#endif
-  chunk->device = place_.device;
-  new_parts.emplace_back(BlockPart{chunk, 0, alloc_size});
+  new_parts.emplace_back(MakeBlockPart(alloc_ptr, alloc_size, place_.device));
 
   if (all_blocks_.empty()) {
     all_blocks_.emplace_back(alloc_ptr, alloc_size, true);
