@@ -333,6 +333,10 @@ datatype_to_vartype = {
     DataType.FLOAT8_E5M2: core.VarDesc.VarType.FP8_E5M2,
 }
 
+# Compatibility aliases for external packages. Keep Paddle internal code using
+# the normalized dtype names above.
+paddle_type_to_proto_type = datatype_to_vartype
+
 
 def in_dygraph_mode() -> bool:
     """
@@ -1553,6 +1557,13 @@ def convert_to_datatype(dtype):
         return pir.core.vartype_to_datatype[dtype]
     else:
         return pir.core.convert_nptype_to_datatype(dtype)
+
+
+# Compatibility aliases for external packages. Keep Paddle internal code using
+# the normalized conversion names above.
+convert_np_dtype_to_proto_type = convert_nptype_to_vartype
+convert_np_dtype_to_dtype_ = convert_nptype_to_datatype_or_vartype
+convert_to_proto_type = convert_to_vartype
 
 
 def dtype_is_floating(dtype):
