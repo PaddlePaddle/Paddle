@@ -23,6 +23,12 @@ set(SOURCE_INCLUDE_DIR ${SOURCE_DIR}/include)
 
 include_directories(${YAML_INCLUDE_DIR})
 
+file(TO_NATIVE_PATH
+     ${PADDLE_SOURCE_DIR}/patches/yaml-cpp/emitterutils.cpp.patch
+     YAML_CPP_EMITTERUTILS_PATCH)
+set(YAML_PATCH_COMMAND git checkout -- . && git apply
+                       ${YAML_CPP_EMITTERUTILS_PATCH})
+
 set(YAML_BuildTests
     OFF
     CACHE INTERNAL "")
@@ -86,6 +92,7 @@ ExternalProject_Add(
   SOURCE_DIR ${SOURCE_DIR}
   PREFIX ${YAML_PREFIX_DIR}
   UPDATE_COMMAND ""
+  PATCH_COMMAND ${YAML_PATCH_COMMAND}
   CMAKE_ARGS -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
              -DYAML_BUILD_SHARED_LIBS=OFF
              -DYAML_MSVC_SHARED_RT=${YAML_MSVC_SHARED_RT}
