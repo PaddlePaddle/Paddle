@@ -69,22 +69,32 @@ struct exponential_transform {
   T lambda_;
 };
 
-template <typename T>
+// Boundary check is performed AFTER casting the float-precision result to the
+// destination dtype DstT, mirroring PyTorch's `value == to` semantics. When the
+// result happens to round up to the upper bound in DstT precision (which is
+// frequent for fp16/bf16), we clamp it back to `min` to keep the output
+// strictly in [min, max). With DstT = T (the default), behavior is equivalent
+// to (and slightly more correct than) the previous `val == 1.0` check.
+template <typename T, typename DstT = T>
 struct uniform_real_transform {
   explicit uniform_real_transform(T min, T max)
-      : range_(max - min), min_(min) {}
+      : range_(max - min),
+        min_(min),
+        min_dst_(static_cast<DstT>(min)),
+        max_dst_(static_cast<DstT>(max)) {}
 
-  HOSTDEVICE inline T operator()(T val) const {
-    if (UNLIKELY(val == static_cast<T>(1.0))) {
-      return min_;
-    } else {
-      return val * range_ + min_;
-    }
+  HOSTDEVICE inline DstT operator()(T val) const {
+    DstT result = static_cast<DstT>(val * range_ + min_);
+    // Also catch the case where float-precision arithmetic rounds up to max
+    // after casting to a lower-precision DstT (e.g. float16/bfloat16).
+    return (result == max_dst_) ? min_dst_ : result;
   }
 
  private:
   T range_;
   T min_;
+  DstT min_dst_;
+  DstT max_dst_;
 };
 
 template <typename T, typename R>
