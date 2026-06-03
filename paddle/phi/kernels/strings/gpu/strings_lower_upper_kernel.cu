@@ -20,16 +20,6 @@ limitations under the License. */
 namespace phi {
 namespace strings {
 
-// [xtrans-compat] xtrans clang-based nvcc lacks device-side malloc/free, so
-// every kernel below that does pstring construction/assignment cannot compile.
-#if defined(__XCN__)
-#define PADDLE_STRINGS_GPU_XTRANS_STUB 1
-#else
-#define PADDLE_STRINGS_GPU_XTRANS_STUB 0
-#endif
-
-#if !PADDLE_STRINGS_GPU_XTRANS_STUB
-
 template <typename CharConverter>
 __global__ void StringCaseConvertCUDAKernel(pstring* out,
                                             const pstring* in,
@@ -176,32 +166,6 @@ void StringUpperKernel(const ContextT& dev_ctx,
                           UTF8CaseConverter<ContextT, UTF8ToUpper>,
                           ContextT>()(dev_ctx, x, use_utf8_encoding, out);
 }
-
-#else  // PADDLE_STRINGS_GPU_XTRANS_STUB
-
-template <typename ContextT>
-void StringLowerKernel(const ContextT& dev_ctx,
-                       const StringTensor& x,
-                       bool use_utf8_encoding,
-                       StringTensor* out) {
-  PADDLE_THROW(common::errors::Unimplemented(
-      "StringLowerKernel on GPU is not supported on xtrans because "
-      "device-side pstring requires malloc/free which xtrans does not "
-      "provide."));
-}
-
-template <typename ContextT>
-void StringUpperKernel(const ContextT& dev_ctx,
-                       const StringTensor& x,
-                       bool use_utf8_encoding,
-                       StringTensor* out) {
-  PADDLE_THROW(common::errors::Unimplemented(
-      "StringUpperKernel on GPU is not supported on xtrans because "
-      "device-side pstring requires malloc/free which xtrans does not "
-      "provide."));
-}
-
-#endif  // PADDLE_STRINGS_GPU_XTRANS_STUB
 #ifdef _WIN32
 template PADDLE_API void StringLowerKernel<GPUContext>(const GPUContext&,
                                                        const StringTensor& x,

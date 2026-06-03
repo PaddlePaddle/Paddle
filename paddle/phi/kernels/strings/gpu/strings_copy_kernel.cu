@@ -28,21 +28,10 @@ limitations under the License. */
 namespace phi {
 namespace strings {
 
-// [xtrans-compat] xtrans clang-based nvcc lacks device-side malloc/free.
-#if defined(__XCN__)
-#define PADDLE_STRINGS_GPU_XTRANS_STUB 1
-#else
-#define PADDLE_STRINGS_GPU_XTRANS_STUB 0
-#endif
-
 __global__ void CopyFromStringTensor(pstring* dst,
                                      const pstring* src,
                                      int64_t num) {
-#if PADDLE_STRINGS_GPU_XTRANS_STUB
-  // [xtrans-compat] pstring assignment uses device malloc/free not available.
-#else
   CUDA_KERNEL_LOOP(i, num) { dst[i] = src[i]; }
-#endif
 }
 
 template <typename Context>
@@ -50,11 +39,6 @@ void Copy(const Context& dev_ctx,
           const StringTensor& src,
           bool blocking,
           StringTensor* dst) {
-#if PADDLE_STRINGS_GPU_XTRANS_STUB
-  PADDLE_THROW(common::errors::Unimplemented(
-      "strings::Copy on GPU is not supported on xtrans because device-side "
-      "pstring requires malloc/free which xtrans does not provide."));
-#else
   auto* src_ptr = src.data();
   const auto& src_place = src.place();
   auto dst_place = dst->place();
@@ -127,7 +111,6 @@ void Copy(const Context& dev_ctx,
     CopyFromStringTensor<<<grid_size, block_size, 0, dev_ctx.stream()>>>(
         dst_ptr, src_ptr, numel);
   }
-#endif  // PADDLE_STRINGS_GPU_XTRANS_STUB
 }
 #ifdef _WIN32
 template PADDLE_API void Copy<GPUContext>(const GPUContext&,

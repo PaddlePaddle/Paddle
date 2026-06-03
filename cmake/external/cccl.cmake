@@ -17,8 +17,14 @@ include_directories(${CCCL_INCLUDE_DIR})
 
 file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/cccl/util_device.cuh.patch
      native_src)
-set(CCCL_PATCH_COMMAND git checkout -- . && git checkout ${CCCL_TAG} && git
-                       apply ${native_src})
+file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/cccl/cmath.patch
+     native_src_cmath)
+file(TO_NATIVE_PATH
+     ${PADDLE_SOURCE_DIR}/patches/cccl/detect_cuda_runtime.cuh.patch
+     native_src_detect_rt)
+set(CCCL_PATCH_COMMAND
+    git checkout -- . && git checkout ${CCCL_TAG} && git apply ${native_src}
+    && git apply ${native_src_cmath} && git apply ${native_src_detect_rt})
 
 ExternalProject_Add(
   extern_cccl

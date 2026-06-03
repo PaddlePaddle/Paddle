@@ -325,7 +325,6 @@ void Pool3dGPUDNNKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-// Avoid collision with xpudnn wrapper's global ::float16.
 using phi::float16;
 
 #ifdef PADDLE_WITH_HIP

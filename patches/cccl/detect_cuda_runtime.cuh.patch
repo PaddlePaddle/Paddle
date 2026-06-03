@@ -1,0 +1,22 @@
+diff --git a/cub/cub/detail/detect_cuda_runtime.cuh b/cub/cub/detail/detect_cuda_runtime.cuh
+index b8e776db74..c08d7a1feb 100644
+--- a/cub/cub/detail/detect_cuda_runtime.cuh
++++ b/cub/cub/detail/detect_cuda_runtime.cuh
+@@ -82,6 +82,17 @@
+ #define CUB_RDC_ENABLED
+ #define CUB_RUNTIME_FUNCTION __host__ __device__
+ 
++#elif defined(__XCN__)
++
++// xtrans (clang-based CUDA compiler) does not define __CUDACC_RDC__ but still
++// requires CUB_RUNTIME_FUNCTION-decorated helpers to be callable from
++// __host__ __device__ thrust entry points. The function bodies already use
++// NV_IF_TARGET to gate runtime-API usage to the host side, so making the
++// declarations __host__ __device__ is safe. We intentionally do NOT define
++// CUB_RDC_ENABLED here, since xtrans does not support device-side kernel
++// launches.
++#define CUB_RUNTIME_FUNCTION __host__ __device__
++
+ #else // RDC disabled:
+ 
+ #define CUB_RUNTIME_FUNCTION __host__

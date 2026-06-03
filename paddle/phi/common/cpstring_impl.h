@@ -184,7 +184,16 @@ HOSTDEVICE static inline size_t PD_PString_ToInternalSizeT(
  * Need to implement in other source file.
  */
 HOSTDEVICE static inline void PD_Free(void *ptr, size_t size UNUSED) {
+#if defined(__XCN__) && defined(__CUDA_ARCH__)
+  // xtrans has no device-side heap. PD_PString uses small-string optimization
+  // for sizes <= PD_PString_SmallCapacity and does not call PD_Free in that
+  // case. Reaching here means a LARGE-type pstring is being freed on device,
+  // which we cannot service. Trap loudly instead of corrupting state.
+  (void)ptr;
+  __trap();
+#else
   free(ptr);
+#endif
 }
 
 HOSTDEVICE static inline void *PD_Memset(void *src, int ch, size_t size) {
@@ -204,12 +213,28 @@ HOSTDEVICE static inline void *PD_Memcpy(void *dst,
   return dst;
 }
 
-HOSTDEVICE static inline void *PD_Malloc(size_t size) { return malloc(size); }
+HOSTDEVICE static inline void *PD_Malloc(size_t size) {
+#if defined(__XCN__) && defined(__CUDA_ARCH__)
+  // See PD_Free: SSO path never reaches PD_Malloc on device; LARGE-type
+  // strings on device are unsupported under xtrans.
+  (void)size;
+  __trap();
+  return nullptr;
+#else
+  return malloc(size);
+#endif
+}
 
 HOSTDEVICE static inline void *PD_Realloc(void *ptr,
                                           size_t old_size UNUSED,
                                           size_t new_size) {
-#if (defined(__NVCC__) || defined(__HIPCC__))
+#if defined(__XCN__) && defined(__CUDA_ARCH__)
+  // See PD_Free.
+  (void)ptr;
+  (void)new_size;
+  __trap();
+  return nullptr;
+#elif (defined(__NVCC__) || defined(__HIPCC__))
   if (old_size >= new_size) {
     return ptr;
   }

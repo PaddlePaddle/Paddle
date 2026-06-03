@@ -20,7 +20,6 @@
 #include "paddle/phi/kernels/funcs/segmented_array.h"
 #include "paddle/phi/kernels/fusion/gpu/quant_utils.h"
 #include "paddle/phi/kernels/primitive/datamover_primitives.h"
-#include <cuda_bf16.h>
 
 namespace phi {
 namespace fusion {

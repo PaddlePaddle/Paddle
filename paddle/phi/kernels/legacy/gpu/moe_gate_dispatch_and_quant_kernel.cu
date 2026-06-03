@@ -17,7 +17,6 @@
 #include "paddle/phi/kernels/fusion/gpu/quant_utils.h"
 #include "paddle/phi/kernels/legacy/gpu/moe_fuse_op.h"
 #include "paddle/phi/kernels/legacy/gpu/moe_ops_utils.h"
-#include <cuda_bf16.h>
 
 namespace phi {
 constexpr int64_t TileSize = 128;

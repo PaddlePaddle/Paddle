@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/legacy/gpu/fp8_quant_blockwise_kernel.h"
 #include <cuda_fp8.h>
-#include <cuda_bf16.h>
 #include <cstdint>
 #include <vector>
 #include "paddle/common/flags.h"

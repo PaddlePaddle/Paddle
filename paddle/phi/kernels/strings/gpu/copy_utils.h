@@ -24,15 +24,6 @@ namespace phi {
 namespace strings {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-
-// [xtrans-compat] xtrans clang-based nvcc does not support device-side
-// malloc/free, so any pstring construction/assignment in device code fails.
-#if defined(__XCN__)
-#define PADDLE_STRINGS_GPU_XTRANS_STUB 1
-#else
-#define PADDLE_STRINGS_GPU_XTRANS_STUB 0
-#endif
-
 __global__ void SerializeStringsData(const phi::dtype::pstring* src_str,
                                      uint8_t* strings_data,
                                      int32_t* strings_offset,
@@ -102,16 +93,11 @@ __global__ void DeserializeCUDAKernel(const char* strings_data,
                                       const int* strings_offset,
                                       phi::dtype::pstring* dst_str,
                                       int numel) {
-#if PADDLE_STRINGS_GPU_XTRANS_STUB
-  // [xtrans-compat] device-side pstring construction needs malloc/free not
-  // available on xtrans. Host-side caller throws before invoking this kernel.
-#else
   CUDA_KERNEL_LOOP(i, numel) {
     // -1 not include '\0'
     auto len = strings_offset[i + 1] - strings_offset[i] - 1;
     dst_str[i] = phi::dtype::pstring(strings_data + strings_offset[i], len);
   }
-#endif
 }
 #endif
 
@@ -186,12 +172,6 @@ void SerializeOnGPU(const phi::GPUContext& dev_ctx,
 void DeserializeOnGPU(const phi::GPUContext& dev_ctx,
                       const DenseTensor& src,
                       StringTensor* dst) {
-#if PADDLE_STRINGS_GPU_XTRANS_STUB
-  PADDLE_THROW(common::errors::Unimplemented(
-      "DeserializeOnGPU is not supported on xtrans because device-side "
-      "pstring construction requires malloc/free which xtrans does not "
-      "provide."));
-#else
   auto* strings_data = reinterpret_cast<const char*>(src.data<uint8_t>());
   auto* strings_offset = reinterpret_cast<const int*>(strings_data);
   int numel = 0;
@@ -211,7 +191,6 @@ void DeserializeOnGPU(const phi::GPUContext& dev_ctx,
       dim3((numel + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE, 1);
   DeserializeCUDAKernel<<<grid_size, block_size, 0, dev_ctx.stream()>>>(
       strings_data, strings_offset, dst_str, numel);
-#endif  // PADDLE_STRINGS_GPU_XTRANS_STUB
 }
 #endif
 
