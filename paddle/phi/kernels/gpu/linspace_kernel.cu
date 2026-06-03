@@ -124,7 +124,9 @@ void LinspaceKernel(const Context& dev_ctx,
     LinspaceSpecialKernel<T><<<1, 1, 0, stream>>>(start_value, out_data);
   } else if (isIntegralType(dtype, true)) {
     int block = 512;
-    int grid = (num + block - 1) / block;
+    int64_t grid_64 = (num + block - 1) / block;
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "grid");
+    uint32_t grid = static_cast<uint32_t>(grid_64);
 
     float step =
         (static_cast<float>(stop_value) - static_cast<float>(start_value)) /
@@ -133,7 +135,9 @@ void LinspaceKernel(const Context& dev_ctx,
         start_value, stop_value, step, num, out_data);
   } else {
     int block = 512;
-    int grid = (num + block - 1) / block;
+    int64_t grid_64 = (num + block - 1) / block;
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "grid");
+    uint32_t grid = static_cast<uint32_t>(grid_64);
 
     T step = (static_cast<T>(stop_value) - static_cast<T>(start_value)) /
              static_cast<T>(num - 1);

@@ -98,7 +98,8 @@ void CPUGather(const CPUContext& dev_ctx UNUSED,
             -index_dim_size,
             p_index[i],
             i));
-    IndexT index_ = (p_index[i] < 0 ? p_index[i] + index_dim_size : p_index[i]);
+    int64_t index_ =
+        (p_index[i] < 0 ? p_index[i] + index_dim_size : p_index[i]);
     memcpy(p_output + i * slice_size, p_src + index_ * slice_size, slice_bytes);
   }
 }
@@ -133,7 +134,7 @@ void CPUGatherNd(const CPUContext& dev_ctx UNUSED,
     int64_t index_ = 0;
     int64_t temp = 1;
     for (int64_t j = end_size - 1; j >= 0; --j) {
-      IndexT index_value = p_index[i * end_size + j];
+      int64_t index_value = static_cast<int64_t>(p_index[i * end_size + j]);
       PADDLE_ENFORCE_LT(
           index_value,
           input_dims[j],

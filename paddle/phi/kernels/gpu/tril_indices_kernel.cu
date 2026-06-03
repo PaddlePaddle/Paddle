@@ -15,7 +15,9 @@
 #include "paddle/phi/kernels/tril_indices_kernel.h"
 
 #include <algorithm>
+
 #include <tuple>
+#include "paddle/common/enforce.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -98,7 +100,8 @@ void TrilIndicesKernel(const Context& dev_ctx,
                        DenseTensor* out) {
   T* out_data = dev_ctx.template Alloc<T>(out);
   auto out_dims = out->dims();
-  int tril_size = out_dims[1];
+  PADDLE_ENFORCE_LE_INT_MAX(out_dims[1], "tril_size");
+  int tril_size = static_cast<int>(out_dims[1]);
 
   if (tril_size > 0) {
     auto m_first_row = offset > 0

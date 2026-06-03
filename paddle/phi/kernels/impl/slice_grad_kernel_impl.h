@@ -210,10 +210,11 @@ void SliceGradCompute(const Context& dev_ctx,
   if (decrease_size > 0) {
     if (decrease_size == static_cast<size_t>(in_dims.size())) {
       // all dims decrease
-      std::vector<int> origin_out_shape(decrease_size, 1);
-      out_dims = make_ddim(std::vector<int>(decrease_size, 1));
+      std::vector<int64_t> origin_out_shape(decrease_size, 1);
+      out_dims = make_ddim(std::vector<int64_t>(decrease_size, 1));
     } else {
-      std::vector<int> origin_out_shape(out_dims.size() + decrease_size, -1);
+      std::vector<int64_t> origin_out_shape(out_dims.size() + decrease_size,
+                                            -1);
       for (size_t i = 0; i < decrease_size; ++i) {
         origin_out_shape[decrease_axis[i]] = 1;
       }
@@ -350,7 +351,7 @@ void SliceArrayGradKernel(const Context& dev_ctx,
   start = std::max(start, static_cast<int64_t>(0));
   // set zero
   funcs::SetConstant<Context, T> functor;
-  for (int i = 0; i < d_in_size; ++i) {
+  for (int64_t i = 0; i < d_in_size; ++i) {
     const auto& dim = input.at(i).dims();
     auto* in_grad_tensor = &input_grad->at(i);
     in_grad_tensor->Resize(dim);
@@ -358,8 +359,8 @@ void SliceArrayGradKernel(const Context& dev_ctx,
     functor(dev_ctx, in_grad_tensor, static_cast<T>(0));
   }
 
-  int d_out_size = out_grad.size();
-  for (int i = 0; i < d_out_size; ++i) {
+  int64_t d_out_size = out_grad.size();
+  for (int64_t i = 0; i < d_out_size; ++i) {
     Copy<Context>(dev_ctx,
                   out_grad[i],
                   dev_ctx.GetPlace(),
@@ -382,7 +383,7 @@ void SliceArrayDenseGradKernel(const Context& dev_ctx,
   start = std::max(start, static_cast<int64_t>(0));
   // set zero
   funcs::SetConstant<Context, T> functor;
-  for (int i = 0; i < d_in_size; ++i) {
+  for (int64_t i = 0; i < d_in_size; ++i) {
     const auto& dim = input.at(i).dims();
     auto* in_grad_tensor = &input_grad->at(i);
     in_grad_tensor->Resize(dim);

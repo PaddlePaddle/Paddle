@@ -40,7 +40,7 @@ void RepeatsTensor2IndexTensorFunctor<Context, RepeatsT>::operator()(
           : repeats_cpu_copy.data<RepeatsT>();
 
   int64_t index_size = 0;
-  for (int i = 0; i < repeats.dims()[0]; i++) {
+  for (int64_t i = 0; i < repeats.dims()[0]; i++) {
     PADDLE_ENFORCE_GE(repeats_data[i],
                       0,
                       common::errors::InvalidArgument(
@@ -49,9 +49,10 @@ void RepeatsTensor2IndexTensorFunctor<Context, RepeatsT>::operator()(
     index_size += repeats_data[i];
   }
   std::vector<RepeatsT> index_vec(index_size);
-  int offset = 0;
-  for (int i = 0; i < repeats.dims()[0]; i++) {
-    std::fill_n(index_vec.begin() + offset, repeats_data[i], i);
+  int64_t offset = 0;
+  for (int64_t i = 0; i < repeats.dims()[0]; i++) {
+    std::fill_n(
+        index_vec.begin() + offset, repeats_data[i], static_cast<RepeatsT>(i));
     offset += repeats_data[i];
   }
   index->Resize({index_size});
@@ -70,7 +71,7 @@ void RepeatsTensor2IndexTensorFunctor<CPUContext, RepeatsT>::operator()(
   const RepeatsT *repeats_data = repeats.data<RepeatsT>();
 
   int64_t index_size = 0;
-  for (int i = 0; i < repeats.dims()[0]; i++) {
+  for (int64_t i = 0; i < repeats.dims()[0]; i++) {
     PADDLE_ENFORCE_GE(repeats_data[i],
                       0,
                       common::errors::InvalidArgument(
@@ -79,9 +80,10 @@ void RepeatsTensor2IndexTensorFunctor<CPUContext, RepeatsT>::operator()(
     index_size += repeats_data[i];
   }
   std::vector<RepeatsT> index_vec(index_size);
-  int offset = 0;
-  for (int i = 0; i < repeats.dims()[0]; i++) {
-    std::fill_n(index_vec.begin() + offset, repeats_data[i], i);
+  int64_t offset = 0;
+  for (int64_t i = 0; i < repeats.dims()[0]; i++) {
+    std::fill_n(
+        index_vec.begin() + offset, repeats_data[i], static_cast<RepeatsT>(i));
     offset += repeats_data[i];
   }
   index->Resize({index_size});
@@ -106,7 +108,7 @@ void RepeatsTensor2IndexTensorFunctor<XPUContext, RepeatsT>::operator()(
   const RepeatsT *repeats_data = repeats_cpu_copy.data<RepeatsT>();
 
   int64_t index_size = 0;
-  for (int i = 0; i < repeats.dims()[0]; i++) {
+  for (int64_t i = 0; i < repeats.dims()[0]; i++) {
     PADDLE_ENFORCE_GE(repeats_data[i],
                       0,
                       common::errors::InvalidArgument(
@@ -115,9 +117,10 @@ void RepeatsTensor2IndexTensorFunctor<XPUContext, RepeatsT>::operator()(
     index_size += repeats_data[i];
   }
   std::vector<RepeatsT> index_vec(index_size);
-  int offset = 0;
-  for (int i = 0; i < repeats.dims()[0]; i++) {
-    std::fill_n(index_vec.begin() + offset, repeats_data[i], i);
+  int64_t offset = 0;
+  for (int64_t i = 0; i < repeats.dims()[0]; i++) {
+    std::fill_n(
+        index_vec.begin() + offset, repeats_data[i], static_cast<RepeatsT>(i));
     offset += repeats_data[i];
   }
   index->Resize({index_size});

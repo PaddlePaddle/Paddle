@@ -15,6 +15,7 @@ limitations under the License. */
 #include <algorithm>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/memory_utils.h"
@@ -275,8 +276,8 @@ void TransposeNormal<DeviceContext, T>::operator()(
   int block_size = (elements >= MAX_BLOCK_DIM)
                        ? MAX_BLOCK_DIM
                        : (1 << static_cast<int>(std::log2(elements)));
-  int grid_size = elements / block_size;
-  grid_size = (grid_size >= MAX_GRID_DIM) ? MAX_GRID_DIM : grid_size;
+  const uint32_t grid_size = static_cast<uint32_t>(
+      std::min(elements / block_size, static_cast<int64_t>(MAX_GRID_DIM)));
   TransposeNormalKernel<T><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
       in_ptr, out_ptr, elements, in_stride_ptr, out_stride_ptr, axis_ptr, rank);
 }
@@ -319,8 +320,8 @@ struct TransposeNormal<GPUContext, T> {
     int block_size = (elements >= MAX_BLOCK_DIM)
                          ? MAX_BLOCK_DIM
                          : (1 << static_cast<int>(std::log2(elements)));
-    int grid_size = elements / block_size;
-    grid_size = (grid_size >= MAX_GRID_DIM) ? MAX_GRID_DIM : grid_size;
+    const uint32_t grid_size = static_cast<uint32_t>(
+        std::min(elements / block_size, static_cast<int64_t>(MAX_GRID_DIM)));
     TransposeNormalKernel<T>
         <<<grid_size, block_size, 0, dev_ctx.stream()>>>(in_ptr,
                                                          out_ptr,

@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/logspace_kernel.h"
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -101,7 +102,9 @@ void LogspaceKernel(const Context& dev_ctx,
   double step = 0;
   auto stream = dev_ctx.stream();
   int block = 512;
-  int grid = (num + block - 1) / block;
+  int64_t grid_64 = (num + block - 1) / block;
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "grid");
+  uint32_t grid = static_cast<uint32_t>(grid_64);
   if (num != 1) {
     step = (static_cast<double>(mt_stop_data - mt_start_data)) / (num - 1);
     LogspaceKernelInner<T><<<grid, block, 0, stream>>>(

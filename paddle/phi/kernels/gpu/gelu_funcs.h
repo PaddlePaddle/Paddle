@@ -152,7 +152,10 @@ static bool TryLaunchFP16FastGeluFwdVectorizeCUDAKernel(
       VLOG(10) << "Use FP16 fast gelu fwd kernel, block = " << block          \
                << " , thread = " << thread;                                   \
       FP16FastGeluFwdCUDAKernel<__vec_size, __use_fast_math>                  \
-          <<<block, thread, 0, dev_ctx.stream()>>>(x, y, n);                  \
+          <<<static_cast<unsigned int>(block),                                \
+             static_cast<unsigned int>(thread),                               \
+             0,                                                               \
+             dev_ctx.stream()>>>(x, y, n);                                    \
       return true;                                                            \
     }                                                                         \
   } while (0)
@@ -189,7 +192,10 @@ static bool TryLaunchFP16FastGeluBwdVectorizeCUDAKernel(
       VLOG(10) << "Use FP16 fast gelu bwd kernel, block = " << block          \
                << " , thread = " << thread;                                   \
       FP16FastGeluBwdCUDAKernel<__vec_size, __use_fast_math>                  \
-          <<<block, thread, 0, dev_ctx.stream()>>>(x, y_g, x_g, n);           \
+          <<<static_cast<unsigned int>(block),                                \
+             static_cast<unsigned int>(thread),                               \
+             0,                                                               \
+             dev_ctx.stream()>>>(x, y_g, x_g, n);                             \
       return true;                                                            \
     }                                                                         \
   } while (0)

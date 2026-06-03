@@ -47,7 +47,7 @@ void MeshgridBackward(const Context& dev_ctx,
     auto in_grad = EigenVector<T>::Flatten(*outs[i]);
 
     std::vector<int> reduce_dims_vec;
-    std::vector<int> reshape_dims_vec;
+    std::vector<int64_t> reshape_dims_vec;
     for (int j = 0; j < n; j++) {
       reduce_dims_vec.push_back(reshape_dims_vec.size());
       if (j == i) {

@@ -22,6 +22,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/autotune/cache.h"
@@ -169,18 +170,24 @@ static inline void GetNCDHW(const DDim& dims,
                             int* D,
                             int* H,
                             int* W) {
-  *N = dims[0];
-  *C = layout == DataLayout::NCHW ? dims[1] : dims[dims.size() - 1];
-  int i = layout == DataLayout::NCHW ? 0 : 1;
-  if (dims.size() == 5) {
-    *D = dims[2 - i];
-    *H = dims[3 - i];
-    *W = dims[4 - i];
-  } else {
-    *D = 1;
-    *H = dims[2 - i];
-    *W = dims[3 - i];
-  }
+  const int64_t n = dims[0];
+  const int64_t c =
+      layout == DataLayout::NCHW ? dims[1] : dims[dims.size() - 1];
+  const int i = layout == DataLayout::NCHW ? 0 : 1;
+  const int64_t d = dims.size() == 5 ? dims[2 - i] : 1;
+  const int64_t h = dims[dims.size() == 5 ? 3 - i : 2 - i];
+  const int64_t w = dims[dims.size() == 5 ? 4 - i : 3 - i];
+
+  PADDLE_ENFORCE_LE_INT_MAX(n, "N");
+  PADDLE_ENFORCE_LE_INT_MAX(c, "C");
+  PADDLE_ENFORCE_LE_INT_MAX(d, "D");
+  PADDLE_ENFORCE_LE_INT_MAX(h, "H");
+  PADDLE_ENFORCE_LE_INT_MAX(w, "W");
+  *N = static_cast<int>(n);
+  *C = static_cast<int>(c);
+  *D = static_cast<int>(d);
+  *H = static_cast<int>(h);
+  *W = static_cast<int>(w);
 }
 
 template <typename Context, typename T, size_t D>

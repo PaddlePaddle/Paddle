@@ -16,6 +16,7 @@
 
 #include <thrust/device_vector.h>
 
+#include "paddle/common/enforce.h"
 #include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -102,10 +103,16 @@ void GraphSendUVOpCUDAKernelLaunchHelper(const Context& dev_ctx,
   }
 
   int64_t out_len = bcast_info.out_len;
-  const int ntx = FindNumThreads(out_len, dev_ctx.GetMaxThreadsPerBlock());
+  PADDLE_ENFORCE_LE_INT_MAX(out_len, "out_len");
+  const int out_len_int = static_cast<int>(out_len);
+  const int ntx = FindNumThreads(out_len_int, dev_ctx.GetMaxThreadsPerBlock());
   const int nty = dev_ctx.GetMaxThreadsPerBlock() / ntx;
-  const int nbx = (out_len + ntx - 1) / ntx;
-  const int nby = FindNumBlocks('y', (index_size + nty - 1) / nty);
+  const int64_t nbx64 = (out_len + ntx - 1) / ntx;
+  PADDLE_ENFORCE_LE_INT_MAX(nbx64, "grid.x");
+  const int nbx = static_cast<int>(nbx64);
+  const int64_t nby64 = (index_size + nty - 1) / nty;
+  PADDLE_ENFORCE_LE_INT_MAX(nby64, "grid.y");
+  const int nby = FindNumBlocks('y', static_cast<int>(nby64));
   const dim3 grid(nbx, nby);
   const dim3 block(ntx, nty);
   if (message_op == "ADD") {

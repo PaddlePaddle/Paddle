@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <vector>
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
@@ -40,6 +41,7 @@ static void SortDescending(const GPUContext &dev_ctx,
                            const DenseTensor &value,
                            DenseTensor *value_out,
                            DenseTensor *index_out) {
+  PADDLE_ENFORCE_LE_INT_MAX(value.numel(), "generate_proposals sort num");
   int num = static_cast<int>(value.numel());
   DenseTensor index_in_t;
   index_in_t.Resize({num});
@@ -286,9 +288,11 @@ static void NMS(const GPUContext &dev_ctx,
                 DenseTensor *keep_out,
                 bool pixel_offset = true) {
   int64_t boxes_num = proposals.dims()[0];
+  PADDLE_ENFORCE_LE_INT_MAX(boxes_num, "generate_proposals NMS boxes_num");
+  const int boxes_num_int = static_cast<int>(boxes_num);
   const int64_t col_blocks = DIVUP(boxes_num, kThreadsPerBlock);
-  dim3 blocks(DIVUP(boxes_num, kThreadsPerBlock),
-              DIVUP(boxes_num, kThreadsPerBlock));
+  const uint32_t col_blocks_u32 = static_cast<uint32_t>(col_blocks);
+  dim3 blocks(col_blocks_u32, col_blocks_u32);
   dim3 threads(kThreadsPerBlock);
 
   const T *boxes = proposals.data<T>();
@@ -300,7 +304,7 @@ static void NMS(const GPUContext &dev_ctx,
   uint64_t *mask_dev = reinterpret_cast<uint64_t *>(mask_ptr->ptr());
 
   NMSKernel<<<blocks, threads, 0, dev_ctx.stream()>>>(
-      boxes_num, nms_threshold, boxes, mask_dev, pixel_offset);
+      boxes_num_int, nms_threshold, boxes, mask_dev, pixel_offset);
 
   std::vector<uint64_t> remv(col_blocks);
   memset(&remv[0], 0, sizeof(uint64_t) * col_blocks);
@@ -323,7 +327,7 @@ static void NMS(const GPUContext &dev_ctx,
 
   std::vector<int> keep_vec;
   int num_to_keep = 0;
-  for (int i = 0; i < boxes_num; i++) {
+  for (int i = 0; i < boxes_num_int; i++) {
     int nblock = i / kThreadsPerBlock;
     int inblock = i % kThreadsPerBlock;
 
@@ -367,8 +371,10 @@ static std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
   DenseTensor scores_sort, index_sort;
   SortDescending<T>(dev_ctx, scores, &scores_sort, &index_sort);
   int64_t num = scores.numel();
-  int pre_nms_num = (pre_nms_top_n <= 0 || pre_nms_top_n > num) ? scores.numel()
-                                                                : pre_nms_top_n;
+  int64_t pre_nms_num64 =
+      (pre_nms_top_n <= 0 || pre_nms_top_n > num) ? num : pre_nms_top_n;
+  PADDLE_ENFORCE_LE_INT_MAX(pre_nms_num64, "generate_proposals pre_nms_num");
+  int pre_nms_num = static_cast<int>(pre_nms_num64);
   scores_sort.Resize({pre_nms_num, 1});
   index_sort.Resize({pre_nms_num, 1});
 
@@ -575,7 +581,9 @@ void GenerateProposalsKernel(const Context &dev_ctx,
     dev_ctx.Wait();
     num_proposals += proposals.dims()[0];
     offset.emplace_back(num_proposals);
-    tmp_num.push_back(proposals.dims()[0]);
+    PADDLE_ENFORCE_LE_INT_MAX(proposals.dims()[0],
+                              "generate_proposals rpn_rois_num");
+    tmp_num.push_back(static_cast<int>(proposals.dims()[0]));
   }
   if (rpn_rois_num != nullptr) {
     rpn_rois_num->Resize({num});

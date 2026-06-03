@@ -18,6 +18,7 @@
 #include <limits>
 #include <set>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -335,22 +336,27 @@ struct ReduceConfig {
 
   int SplitInput(int parallelism) {
     const int current_step = step_input;
-    step_input *= parallelism;
+    const int64_t next_step = static_cast<int64_t>(step_input) * parallelism;
+    PADDLE_ENFORCE_LE_INT_MAX(next_step, "reduce step_input");
+    step_input = static_cast<int>(next_step);
     return current_step;
   }
 
   int SplitOutput(int parallelism) {
     const int current_step = step_output;
-    step_output *= parallelism;
+    const int64_t next_step = static_cast<int64_t>(step_output) * parallelism;
+    PADDLE_ENFORCE_LE_INT_MAX(next_step, "reduce step_output");
+    step_output = static_cast<int>(next_step);
     return current_step;
   }
 
   dim3 GetBlockDim() const { return dim3(block_width, block_height); }
 
   dim3 GetGridDim() const {
-    return dim3(phi::backends::gpu::DivUp<int64_t>(
-                    num_outputs / output_vec_size, step_output),
-                ctas_per_output);
+    const auto grid_x = phi::backends::gpu::DivUp<int64_t>(
+        num_outputs / output_vec_size, step_output);
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "grid.x");
+    return dim3(static_cast<uint32_t>(grid_x), ctas_per_output);
   }
 
   HOSTDEVICE bool ShouldReduceBlockX() const {
@@ -443,7 +449,8 @@ struct ReduceConfig {
       return 0;
     }
 
-    auto size = (int64_t)element_size_bytes * num_outputs * ctas_per_output;
+    int64_t size = static_cast<int64_t>(element_size_bytes) * num_outputs *
+                   ctas_per_output;
     if (!ShouldReduceBlockX()) {
       size *= GetBlockDim().x * output_vec_size;
     }
@@ -455,11 +462,15 @@ struct ReduceConfig {
     if (!ShouldReduceGlobal()) {
       return 0;
     }
-    return sizeof(int) * GetGridDim().x;
+    size_t result = sizeof(int) * GetGridDim().x;
+    PADDLE_ENFORCE_LE_INT_MAX(result, "semaphore size");
+    return static_cast<int>(result);
   }
 
   int ValuesPerThread() const {
-    return phi::backends::gpu::DivUp<int64_t>(num_inputs, step_input);
+    int64_t val = phi::backends::gpu::DivUp<int64_t>(num_inputs, step_input);
+    PADDLE_ENFORCE_LE_INT_MAX(val, "values per thread");
+    return static_cast<int>(val);
   }
 };
 

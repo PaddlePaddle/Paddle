@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/instance_norm_grad_kernel.h"
 
 #include "glog/logging.h"
+#include "paddle/common/enforce.h"
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -509,16 +510,17 @@ void InstanceNormGradKernel(const Context &dev_ctx,
 #endif
   } else {
     if (d_x) {
-      GradComputeDX<T, block>
-          <<<static_cast<int>(NxC), block, 0, dev_ctx.stream()>>>(
-              d_y.data<T>(),
-              scale_tmp.data<BatchNormParamType<T>>(),
-              saved_mean_data,
-              x.data<T>(),
-              saved_var_data,
-              C,
-              sample_size64,
-              d_x->data<T>());
+      PADDLE_ENFORCE_LE_UINT32_MAX(NxC, "instance_norm_grad grid.x");
+      const uint32_t grid = static_cast<uint32_t>(NxC);
+      GradComputeDX<T, block><<<grid, block, 0, dev_ctx.stream()>>>(
+          d_y.data<T>(),
+          scale_tmp.data<BatchNormParamType<T>>(),
+          saved_mean_data,
+          x.data<T>(),
+          saved_var_data,
+          C,
+          sample_size64,
+          d_x->data<T>());
     }
   }
   if (d_scale && d_bias) {

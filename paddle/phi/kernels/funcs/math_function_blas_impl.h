@@ -16,6 +16,7 @@ limitations under the License. */
 #include <algorithm>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/memory_utils.h"
@@ -48,6 +49,8 @@ void ColwiseSum<GPUContext, double>::operator()(const GPUContext& dev_ctx,
 
   SetConstant<GPUContext, double> set;
   set(dev_ctx, &one, static_cast<double>(1.0));
+  PADDLE_ENFORCE_LE_INT_MAX(in_dims[0], "ColwiseSum GEMV m");
+  PADDLE_ENFORCE_LE_INT_MAX(in_dims[1], "ColwiseSum GEMV n");
   funcs::GetBlas<GPUContext, double>(dev_ctx).GEMV(true,
                                                    static_cast<int>(in_dims[0]),
                                                    static_cast<int>(in_dims[1]),
@@ -82,6 +85,8 @@ void RowwiseSum<GPUContext, double>::operator()(const GPUContext& dev_ctx,
 
   SetConstant<GPUContext, double> set;
   set(dev_ctx, &one, static_cast<double>(1.0));
+  PADDLE_ENFORCE_LE_INT_MAX(in_dims[1], "RowwiseSum GEMV m");
+  PADDLE_ENFORCE_LE_INT_MAX(in_dims[0], "RowwiseSum GEMV n");
   funcs::GetBlas<GPUContext, double>(dev_ctx).GEMV(true,
                                                    static_cast<int>(in_dims[1]),
                                                    static_cast<int>(in_dims[0]),

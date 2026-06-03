@@ -155,7 +155,7 @@ class CoordinateManager {
     if (change_dim != src_dim) offset1 += strides1[change_dim];
     if constexpr (compute_both) offset2 += strides2->operator[](change_dim);
     for (int dim = change_dim + 1; dim < ndim; dim++) {
-      int dim_max_index = shape[dim] - 1;
+      int64_t dim_max_index = shape[dim] - 1;
       // clear the tail elements after the carrying dim
       if constexpr (compute_both)
         offset2 -= strides2->operator[](dim) * dim_max_index;
@@ -234,7 +234,7 @@ class ReversedCoordinateManager {
     if (change_dim != src_dim) offset1 -= strides1[change_dim];
     if constexpr (compute_both) offset2 -= strides2->operator[](change_dim);
     for (int dim = change_dim + 1; dim < ndim; dim++) {
-      int dim_max_index = shape[dim] - 1;
+      int64_t dim_max_index = shape[dim] - 1;
       // clear the tail elements after the carrying dim
       if constexpr (compute_both)
         offset2 += strides2->operator[](dim) * dim_max_index;
@@ -279,8 +279,8 @@ struct cpu_gather_scatter_functor {
           "self_size, src_size, index_size cannot be 0");
       return;
     }
-    int self_select_dim_size = self_dims[dim];
-    int src_select_dim_size = src_dims[dim];
+    int64_t self_select_dim_size = self_dims[dim];
+    int64_t src_select_dim_size = src_dims[dim];
 
     // gather and assign do not need nums_of_elements
     std::vector<int> nums_of_elements;
