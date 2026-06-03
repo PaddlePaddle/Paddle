@@ -1333,6 +1333,19 @@ class TestLRScheduler(unittest.TestCase):
 
 
 class TestLRSchedulerWithOptimizerArg(unittest.TestCase):
+    def _test_network(self, net, optimizer, scheduler):
+        paddle.disable_static()
+        for epoch in range(10):
+            for batch_id in range(5):
+                x = paddle.uniform([10, 10])
+                out = net(x)
+                loss = paddle.mean(out)
+                loss.backward()
+                optimizer.step()
+                optimizer.clear_gradients()
+                scheduler.step()
+        paddle.enable_static()
+
     def test_exponential_decay(self):
         paddle.disable_static()
         linear = paddle.nn.Linear(10, 10)
@@ -1343,6 +1356,7 @@ class TestLRSchedulerWithOptimizerArg(unittest.TestCase):
         scheduler = paddle.optimizer.lr.ExponentialDecay(adam, gamma=0.9)
         self.assertEqual(scheduler.base_lr, adam.get_lr())
         self.assertIs(adam._learning_rate, scheduler)
+        self._test_network(linear, adam, scheduler)
         paddle.enable_static()
 
     def test_cosine_annealing_decay(self):
@@ -1357,6 +1371,7 @@ class TestLRSchedulerWithOptimizerArg(unittest.TestCase):
         )
         self.assertEqual(scheduler.base_lr, adam.get_lr())
         self.assertIs(adam._learning_rate, scheduler)
+        self._test_network(linear, adam, scheduler)
         paddle.enable_static()
 
     def test_cosine_annealing_warm_restarts(self):
@@ -1370,6 +1385,7 @@ class TestLRSchedulerWithOptimizerArg(unittest.TestCase):
         )
         self.assertEqual(scheduler.base_lr, sgd.get_lr())
         self.assertIs(sgd._learning_rate, scheduler)
+        self._test_network(linear, sgd, scheduler)
         paddle.enable_static()
 
     def test_multi_step_decay(self):
@@ -1383,6 +1399,7 @@ class TestLRSchedulerWithOptimizerArg(unittest.TestCase):
         )
         self.assertEqual(scheduler.base_lr, sgd.get_lr())
         self.assertIs(sgd._learning_rate, scheduler)
+        self._test_network(linear, sgd, scheduler)
         paddle.enable_static()
 
     def test_reduce_on_plateau(self):
@@ -1396,6 +1413,15 @@ class TestLRSchedulerWithOptimizerArg(unittest.TestCase):
         )
         self.assertEqual(scheduler.base_lr, sgd.get_lr())
         self.assertIs(sgd._learning_rate, scheduler)
+        for epoch in range(10):
+            for batch_id in range(5):
+                x = paddle.uniform([10, 10])
+                out = linear(x)
+                loss = paddle.mean(out)
+                loss.backward()
+                sgd.step()
+                sgd.clear_gradients()
+                scheduler.step(loss)
         paddle.enable_static()
 
     def test_step_decay(self):
@@ -1407,6 +1433,7 @@ class TestLRSchedulerWithOptimizerArg(unittest.TestCase):
         scheduler = paddle.optimizer.lr.StepDecay(optimizer=sgd, step_size=2)
         self.assertEqual(scheduler.base_lr, sgd.get_lr())
         self.assertIs(sgd._learning_rate, scheduler)
+        self._test_network(linear, sgd, scheduler)
         paddle.enable_static()
 
 
