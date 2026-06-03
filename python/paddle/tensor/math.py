@@ -1306,10 +1306,6 @@ def remainder(
         return _elementwise_op(LayerHelper('elementwise_mod', **locals()))
 
 
-mod = remainder
-floor_mod = remainder
-
-
 @param_two_alias(["x", "input"], ["y", "other"])
 def mul(
     x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
@@ -1547,8 +1543,8 @@ def nan_to_num(
         x (Tensor): An N-D Tensor, the data type is float32, float64.
             Alias: ``input``.
         nan (float, optional): the value to replace NaNs with. Default is 0.
-        posinf (float|None, optional): if a Number, the value to replace positive infinity values with. If None, positive infinity values are replaced with the greatest finite value representable by input’s dtype. Default is None.
-        neginf (float|None, optional): if a Number, the value to replace negative infinity values with. If None, negative infinity values are replaced with the lowest finite value representable by input’s dtype. Default is None.
+        posinf (float|None, optional): if a Number, the value to replace positive infinity values with. If None, positive infinity values are replaced with the greatest finite value representable by input's dtype. Default is None.
+        neginf (float|None, optional): if a Number, the value to replace negative infinity values with. If None, negative infinity values are replaced with the lowest finite value representable by input's dtype. Default is None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Keyword Args:
@@ -1562,7 +1558,7 @@ def nan_to_num(
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([float(‘nan’), 0.3, float(‘+inf’), float(‘-inf’)], dtype=’float32’)
+            >>> x = paddle.to_tensor([float('nan'), 0.3, float('+inf'), float('-inf')], dtype='float32')
             >>> out1 = paddle.nan_to_num(x)
             >>> out1
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -2164,11 +2160,6 @@ def trunc_(input: Tensor, name: str | None = None) -> Tensor:
         return _C_ops.trunc_(input)
 
 
-# Alias for PyTorch compatibility
-fix = trunc
-fix_ = trunc_
-
-
 def mm(
     input: Tensor,
     mat2: Tensor,
@@ -2358,8 +2349,12 @@ def addmv_(
     """
     Inplace version of ``addmv`` API.
     """
-    result = beta * input + alpha * mm(mat, vec)
-    paddle.assign(result, input)
+    if beta != 1.0:
+        input.scale_(beta)
+    mv_result = mm(mat, vec.unsqueeze(1)).squeeze(1)
+    if alpha != 1.0:
+        mv_result.scale_(alpha)
+    input.add_(mv_result)
     return input
 
 
@@ -2420,8 +2415,12 @@ def addr_(
     """
     Inplace version of ``addr`` API.
     """
-    result = beta * input + alpha * outer(vec1, vec2)
-    paddle.assign(result, input)
+    if beta != 1.0:
+        input.scale_(beta)
+    outer_result = outer(vec1, vec2)
+    if alpha != 1.0:
+        outer_result.scale_(alpha)
+    input.add_(outer_result)
     return input
 
 
@@ -4447,11 +4446,6 @@ def multigammaln_(x: Tensor, p: int, name: str | None = None) -> Tensor:
     return x
 
 
-# Alias for PyTorch compatibility
-mvlgamma = multigammaln
-mvlgamma_ = multigammaln_
-
-
 @param_one_alias(['x', 'input'])
 def neg(
     x: Tensor, name: str | None = None, *, out: Tensor | None = None
@@ -4503,10 +4497,6 @@ def neg_(x: Tensor, name: str | None = None) -> Tensor:
     return x.scale_(
         scale=-1.0, bias=0.0, bias_after_scale=True, act=None, name=name
     )
-
-
-# Alias for PyTorch compatibility
-negative_ = neg_
 
 
 @param_one_alias(['x', 'input'])

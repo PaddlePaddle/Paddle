@@ -38,7 +38,6 @@ from paddle.utils.decorator_utils import (
     param_two_alias,
     reshape_decorator,
     slice_scatter_decorator,
-    tensordot_decorator,
     tile_decorator,
     variadic_tensor_decorator,
     view_decorator,
@@ -6436,14 +6435,13 @@ def strided_slice(
         return out
 
 
-@tensordot_decorator()
+@ParamAliasDecorator({"x": ["a"], "y": ["b"], "axes": ["dims"]})
 def tensordot(
     x: Tensor,
     y: Tensor,
     axes: int | NestedSequence[int] | Tensor = 2,
-    name: str | None = None,
-    *,
     out: Tensor | None = None,
+    name: str | None = None,
 ) -> Tensor:
     r"""
     This function computes a contraction, which sum the product of elements from two tensors along the given axes.
@@ -6470,11 +6468,9 @@ def tensordot(
             4. It could be a tensor, in which the ``axes`` tensor will be translated to a python list
                and applied the same rules described above to determine the contraction axes.
                Note that the ``axes`` with Tensor type is ONLY available in Dygraph mode.
+        out (Tensor|None, optional): The output tensor. Default: None.
         name(str|None, optional): The default value is None.  Normally there is no need for user to set this property.
                              For more information, please refer to :ref:`api_guide_Name` .
-
-    Keyword Args:
-        out (Tensor|None, optional): The output tensor. Default: None.
 
     Return:
         Output (Tensor), The contraction result with the same data type as ``x`` and ``y``.
@@ -8677,6 +8673,29 @@ def select_scatter(
         )
 
         return output
+
+
+@overload
+def slice_scatter(
+    x: Tensor,
+    value: Tensor,
+    axes: Sequence[int] | None = None,
+    starts: Sequence[int] | None = None,
+    ends: Sequence[int] | None = None,
+    strides: Sequence[int] | None = None,
+    name: str | None = None,
+) -> Tensor: ...
+
+
+@overload
+def slice_scatter(
+    input: Tensor,
+    src: Tensor,
+    dim: int = 0,
+    start: int | None = None,
+    end: int | None = None,
+    step: int = 1,
+) -> Tensor: ...
 
 
 @slice_scatter_decorator()

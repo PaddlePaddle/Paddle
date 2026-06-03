@@ -1216,17 +1216,17 @@ def monkey_patch_tensor():
 
     def col_indices(self: Tensor) -> Tensor:
         """
-        Alias for cols() method for PyTorch compatibility.
-
         Returns the column indices of a SparseCsrTensor.
+
+        Alias for cols() method.
         """
         return self.cols()
 
     def crow_indices(self: Tensor) -> Tensor:
         """
-        Alias for crows() method for PyTorch compatibility.
-
         Returns the compressed row indices of a SparseCsrTensor.
+
+        Alias for crows() method.
         """
         return self.crows()
 
@@ -1336,12 +1336,17 @@ def monkey_patch_tensor():
         return _C_ops.sparse_to_sparse_coo(self, sparse_dim)
 
     @framework.dygraph_only
-    def to_sparse(self: Tensor, sparse_dim: int) -> Tensor:
+    def to_sparse(self: Tensor, sparse_dim: int | None = None) -> Tensor:
         """
-        Alias for to_sparse_coo for PyTorch compatibility.
+        Convert the tensor to sparse COO format.
+
+        Args:
+            sparse_dim: Number of sparse dimensions. If None, uses the tensor's rank.
 
         See to_sparse_coo for details.
         """
+        if sparse_dim is None:
+            sparse_dim = len(self.shape)
         return self.to_sparse_coo(sparse_dim)
 
     @framework.dygraph_only

@@ -652,12 +652,10 @@ def logspace(
             tensor_base,
             dtype,
             place,
+            out=out,
         )
         if requires_grad:
             result.stop_gradient = False
-        if out is not None:
-            paddle.assign(result, out)
-            return out
         return result
     elif in_pir_mode():
         start_dtype = convert_dtype(tensor_start.dtype)
@@ -692,11 +690,8 @@ def logspace(
             tensor_num,
             tensor_base,
             dtype,
-            _current_expected_place(),
+            place,
         )
-        if out is not None:
-            paddle.assign(result, out)
-            return out
         return result
     else:
         helper = LayerHelper("logspace", **locals())
@@ -3798,7 +3793,6 @@ def tril_indices(
     dtype='int64',
     *,
     device: PlaceLike | None = None,
-    layout: str | None = None,
 ) -> paddle.Tensor:
     """
     Return the indices of the lower triangular part of the 2-D matrix
@@ -3819,7 +3813,6 @@ def tril_indices(
 
     Keyword Args:
         device (PlaceLike|None, optional): The device of the output tensor. Default: None.
-        layout (str|None, optional): Layout is not supported, only 'strided' is available. Default: None.
 
     Returns:
         Tensor: Results of the indices of lower triangular part of a row * col matrix,
@@ -3897,7 +3890,6 @@ def triu_indices(
     dtype='int64',
     *,
     device: PlaceLike | None = None,
-    layout: str | None = None,
 ) -> paddle.Tensor:
     """
     Return the indices of the upper triangular part of the 2-D matrix
@@ -3920,7 +3912,6 @@ def triu_indices(
 
     Keyword Args:
         device (PlaceLike|None, optional): The device of the output tensor. Default: None.
-        layout (str|None, optional): Layout is not supported, only 'strided' is available. Default: None.
 
     Returns:
         Tensor: Results of the indices of upper triangular part of a row * col matrix,

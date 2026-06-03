@@ -317,13 +317,10 @@ from .math import (  # noqa: F401
     exp,
     exp_,
     expm1,
-    fix,
-    fix_,
     floor,
     floor_,
     floor_divide,
     floor_divide_,
-    floor_mod,
     fmax,
     fmin,
     frac,
@@ -383,15 +380,12 @@ from .math import (  # noqa: F401
     min,
     minimum,
     mm,
-    mod,
     mul,
     multigammaln,
     multigammaln_,
     multiplex,
     multiply,
     multiply_,
-    mvlgamma,
-    mvlgamma_,
     nan_to_num,
     nan_to_num_,
     nanmean,
@@ -399,7 +393,6 @@ from .math import (  # noqa: F401
     neg,
     neg_,
     negative,
-    negative_,
     nextafter,
     outer,
     polygamma,
@@ -526,6 +519,13 @@ sub = subtract
 sub_ = subtract_
 clamp_ = clip_
 movedim = moveaxis
+mod = remainder
+floor_mod = remainder
+fix = trunc
+fix_ = trunc_
+mvlgamma = multigammaln
+mvlgamma_ = multigammaln_
+negative_ = neg_
 
 # this list used in math_op_patch.py for _binary_creator_
 tensor_method_func = [

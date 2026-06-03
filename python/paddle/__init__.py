@@ -639,12 +639,9 @@ from .tensor.math import (  # noqa: F401
     exp,
     expm1,
     expm1_,
-    fix,
-    fix_,
     floor,
     floor_divide,
     floor_divide_,
-    floor_mod,
     fmax,
     fmin,
     frac,
@@ -703,15 +700,12 @@ from .tensor.math import (  # noqa: F401
     min,
     minimum,
     mm,
-    mod,
     mul,
     multigammaln,
     multigammaln_,
     multiplex,
     multiply,
     multiply_,
-    mvlgamma,
-    mvlgamma_,
     nan_to_num,
     nan_to_num_,
     nanmean,
@@ -1063,6 +1057,13 @@ manual_seed = seed
 sub = subtract
 sub_ = subtract_
 movedim = moveaxis
+mod = remainder
+floor_mod = remainder
+fix = trunc
+fix_ = trunc_
+mvlgamma = multigammaln
+mvlgamma_ = multigammaln_
+negative_ = neg_
 
 __all__ = [
     'block_diag',
