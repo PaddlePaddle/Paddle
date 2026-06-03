@@ -5654,6 +5654,31 @@ def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
         return out
 
 
+def reshape_as(x: Tensor, other: Tensor, name: str | None = None) -> Tensor:
+    r"""
+    Reshape the Tensor ``x`` to the same shape as ``other``.
+
+    Args:
+        x (Tensor): The input Tensor.
+        other (Tensor): The Tensor whose shape will be used.
+        name (str|None, optional): Name for the operation. Default: None.
+
+    Returns:
+        Tensor: A Tensor with the same shape as ``other``.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> x = paddle.arange(24, dtype='float32')
+            >>> other = paddle.zeros([2, 3, 4])
+            >>> out = x.reshape_as(other)
+            >>> print(out.shape)
+            [2, 3, 4]
+    """
+    return reshape(x, other.shape, name=name)
+
+
 def masked_scatter(
     x: Tensor, mask: Tensor, value: Tensor, name: str | None = None
 ) -> Tensor:

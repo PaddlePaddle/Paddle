@@ -4883,5 +4883,107 @@ class TestNormalValidateArgsAPI(unittest.TestCase):
             np.testing.assert_allclose(out, ref_out, rtol=1e-6)
 
 
+class TestTensorTransposeInplaceAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.arange(24).reshape(2, 3, 4).astype("float32")
+
+    def _check_output(self, out, expected):
+        np.testing.assert_allclose(out.numpy(), expected)
+        self.assertEqual(tuple(out.shape), expected.shape)
+
+    def test_dygraph_Compatibility(self):
+        if paddle.is_compiled_with_xpu():
+            self.skipTest("transpose_ is not supported on XPU")
+
+        paddle.disable_static()
+
+        expected_swap_01 = np.transpose(self.np_x, (1, 0, 2))
+        expected_swap_n10 = np.transpose(self.np_x, (2, 1, 0))
+
+        # 1. Paddle Positional arguments
+        x1 = paddle.to_tensor(self.np_x)
+        out1 = x1.transpose_([1, 0, 2])
+        # 2. Paddle keyword arguments
+        x2 = paddle.to_tensor(self.np_x)
+        out2 = x2.transpose_(perm=[1, 0, 2])
+        # 3. PyTorch Positional arguments
+        x3 = paddle.to_tensor(self.np_x)
+        out3 = x3.transpose_(0, 1)
+        # 4. PyTorch keyword arguments
+        x4 = paddle.to_tensor(self.np_x)
+        out4 = x4.transpose_(dim0=0, dim1=1)
+        # 5. Mixed arguments
+        x5 = paddle.to_tensor(self.np_x)
+        out5 = x5.transpose_(0, dim1=1)
+        # 6. PyTorch keyword arguments out of order
+        x6 = paddle.to_tensor(self.np_x)
+        out6 = x6.transpose_(dim1=1, dim0=0)
+        # 7. PyTorch negative dim arguments
+        x7 = paddle.to_tensor(self.np_x)
+        out7 = x7.transpose_(-1, 0)
+        # 8. PyTorch same dim arguments
+        x8 = paddle.to_tensor(self.np_x)
+        out8 = x8.transpose_(1, 1)
+
+        for out in [out1, out2, out3, out4, out5, out6]:
+            self._check_output(out, expected_swap_01)
+        self._check_output(out7, expected_swap_n10)
+        self._check_output(out8, self.np_x)
+
+        paddle.enable_static()
+
+
+class TestTensorReshapeAsAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_x = np.arange(24).astype("float32")
+        self.np_other = np.random.rand(2, 3, 4).astype("float64")
+        self.expected = self.np_x.reshape(self.np_other.shape)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        other = paddle.to_tensor(self.np_other)
+
+        # 1. Tensor method - args
+        out1 = x.reshape_as(other)
+        # 2. Tensor method - kwargs
+        out2 = x.reshape_as(other=other)
+
+        for out in [out1, out2]:
+            np.testing.assert_allclose(out.numpy(), self.expected)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=self.np_x.shape, dtype=str(self.np_x.dtype)
+            )
+            other = paddle.static.data(
+                name="other",
+                shape=self.np_other.shape,
+                dtype=str(self.np_other.dtype),
+            )
+
+            # 1. Tensor method - args
+            out1 = x.reshape_as(other)
+            # 2. Tensor method - kwargs
+            out2 = x.reshape_as(other=other)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x, "other": self.np_other},
+                fetch_list=[out1, out2],
+            )
+
+        for out in fetches:
+            np.testing.assert_allclose(out, self.expected)
+
+
 if __name__ == "__main__":
     unittest.main()
