@@ -27,7 +27,7 @@ from ..base import core
 from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..base.framework import (
     Variable,
-    convert_np_dtype_to_dtype_,
+    convert_nptype_to_datatype_or_vartype,
     in_dygraph_mode,
     in_dynamic_or_pir_mode,
     in_pir_mode,
@@ -1384,7 +1384,7 @@ def read_file(filename: str, name: str | None = None) -> Tensor:
             paddle.Size([142773])
     """
 
-    attr_dtype = convert_np_dtype_to_dtype_('uint8')
+    attr_dtype = convert_nptype_to_datatype_or_vartype('uint8')
     if in_dynamic_or_pir_mode():
         return _C_ops.read_file(filename, attr_dtype, paddle.CPUPlace())
     else:

@@ -37,7 +37,7 @@ paddle.set_flags({"FLAGS_use_legacy_linear": True})
 import paddle.inference as paddle_infer
 from paddle import base
 from paddle.base import core
-from paddle.framework import convert_np_dtype_to_dtype_
+from paddle.framework import convert_nptype_to_datatype_or_vartype
 
 
 class TestCumsumOp(unittest.TestCase):
@@ -288,7 +288,9 @@ class TestCumsumOp_INT(unittest.TestCase):
         data = paddle.to_tensor(data_np)
         y = paddle.cumsum(data, axis=0, dtype='int32')
         z = np.cumsum(data_np, axis=0, dtype="int32")
-        np.testing.assert_equal(convert_np_dtype_to_dtype_(z.dtype), y.dtype)
+        np.testing.assert_equal(
+            convert_nptype_to_datatype_or_vartype(z.dtype), y.dtype
+        )
 
     def run_static_uint8(self, use_gpu=False):
         with paddle.static.program_guard(paddle.static.Program()):

@@ -26,7 +26,7 @@ from op_test import OpTest
 
 import paddle
 from paddle.base.framework import (
-    convert_np_dtype_to_proto_type,
+    convert_nptype_to_vartype,
 )
 
 
@@ -59,7 +59,7 @@ class SequenceMaskTestBase(OpTest):
         self.outputs = {'Y': self.calc_ground_truth_mask()}
         self.attrs = {
             'maxlen': self.maxlen,
-            'out_dtype': convert_np_dtype_to_proto_type(self.mask_dtype),
+            'out_dtype': convert_nptype_to_vartype(self.mask_dtype),
         }
 
     def calc_ground_truth_mask(self):
@@ -135,9 +135,7 @@ class SequenceMaskTestBase_tensor_attr(OpTest):
 
         self.inputs = {'X': self.x, 'MaxLenTensor': self.maxlen_tensor}
         self.outputs = {'Y': self.calc_ground_truth_mask()}
-        self.attrs = {
-            'out_dtype': convert_np_dtype_to_proto_type(self.mask_dtype)
-        }
+        self.attrs = {'out_dtype': convert_nptype_to_vartype(self.mask_dtype)}
 
     def calc_ground_truth_mask(self):
         maxlen = np.max(self.x) if self.maxlen < 0 else self.maxlen
@@ -229,7 +227,7 @@ class SequenceMaskTest_ZeroSize(OpTest):
         self.outputs = {'Y': self.y}
         self.attrs = {
             'maxlen': self.maxlen,
-            'out_dtype': convert_np_dtype_to_proto_type(self.mask_dtype),
+            'out_dtype': convert_nptype_to_vartype(self.mask_dtype),
         }
 
     def test_check_output(self):

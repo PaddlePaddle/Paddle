@@ -29,7 +29,7 @@ from utils import dygraph_guard
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
-from paddle.base.framework import convert_np_dtype_to_dtype_
+from paddle.base.framework import convert_nptype_to_datatype_or_vartype
 from paddle.tensor import random
 
 
@@ -171,7 +171,7 @@ class TestUniformRandomOp(OpTest):
             "shape": [1000, 784],
             "min": -5.0,
             "max": 10.0,
-            "dtype": convert_np_dtype_to_dtype_(self.dtype),
+            "dtype": convert_nptype_to_datatype_or_vartype(self.dtype),
         }
         self.output_hist = output_hist
 

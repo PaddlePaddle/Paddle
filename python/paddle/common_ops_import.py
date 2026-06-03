@@ -25,7 +25,6 @@ from paddle.base.framework import (  # noqa: F401
     Variable,
     _create_tensor,
     _dygraph_tracer,
-    convert_np_dtype_to_dtype_,
     default_main_program,
     device_guard,
     dygraph_only,

@@ -220,6 +220,7 @@
     param : [x]
   kernel :
     func : hardswish
+  inplace : (x -> out)
   backward : hardswish_grad
 
 - op : less_equal

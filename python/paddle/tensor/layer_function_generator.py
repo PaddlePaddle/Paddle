@@ -23,7 +23,7 @@ from ..common_ops_import import Variable
 from ..framework import (
     LayerHelper,
     OpProtoHolder,
-    convert_np_dtype_to_dtype_,
+    convert_nptype_to_datatype_or_vartype,
     core,
     in_dynamic_mode,
     in_dynamic_or_pir_mode,
@@ -122,7 +122,7 @@ def generate_layer_fn(op_type: str):
             arg_dtype = kwargs.get("dtype")
             if arg_dtype:
                 if not isinstance(arg_dtype, core.VarDesc.VarType):
-                    dtype = convert_np_dtype_to_dtype_(arg_dtype)
+                    dtype = convert_nptype_to_datatype_or_vartype(arg_dtype)
                 else:
                     dtype = arg_dtype
             else:

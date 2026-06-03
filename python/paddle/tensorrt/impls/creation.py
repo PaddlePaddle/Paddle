@@ -17,7 +17,7 @@ import numpy as np
 import tensorrt as trt
 
 import paddle
-from paddle.pir.core import _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE
+from paddle.pir.core import datatype_to_str
 from paddle.tensorrt.converter_utils import (
     add_1D_constant_layer,
     get_input_constant_value,
@@ -51,7 +51,7 @@ def full_converter(network, paddle_op, inputs):
     shape = paddle_op.attrs()["shape"]
     value = paddle_op.attrs().get("value", 1.0)
     dtype = paddle_op.attrs().get("dtype")
-    out_dtype = np.dtype(_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[dtype])
+    out_dtype = np.dtype(datatype_to_str[dtype])
     if out_dtype == np.dtype("float64"):
         out_dtype = np.dtype("float32")
     if out_dtype == np.dtype("int64"):

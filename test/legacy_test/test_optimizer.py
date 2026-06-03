@@ -23,7 +23,7 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.base.framework import (
-    convert_np_dtype_to_dtype_,
+    convert_nptype_to_datatype_or_vartype,
 )
 from paddle.io import Dataset
 
@@ -51,7 +51,9 @@ class TestOptimizerDtype(unittest.TestCase):
             adam = paddle.optimizer.Adam(parameters=model.parameters())
             loss.backward()
             adam.step()
-            self.assertEqual(adam._dtype, convert_np_dtype_to_dtype_(dtype))
+            self.assertEqual(
+                adam._dtype, convert_nptype_to_datatype_or_vartype(dtype)
+            )
 
     def test_float64(self):
         self.check_with_dtype('float64')
