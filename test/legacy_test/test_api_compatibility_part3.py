@@ -21,6 +21,106 @@ import numpy as np
 import paddle
 
 
+class TestClipGradNormAPI(unittest.TestCase):
+    def setUp(self):
+        self.max_norm = 3.0
+        self.grad1 = np.array([[0.5, -12.0], [4.0, -0.25]], dtype="float32")
+        self.grad2 = np.array([[1.5, -2.0], [0.75, 6.0]], dtype="float32")
+
+    def _make_param(self, grad):
+        x = paddle.to_tensor(np.ones_like(grad, dtype="float32"))
+        x.grad = paddle.to_tensor(grad)
+        return x
+
+    def _make_params(self):
+        return [self._make_param(self.grad1), self._make_param(self.grad2)]
+
+    def _capture(self, out, params):
+        return out.numpy(), [param.grad.numpy() for param in params]
+
+    def _check_result(self, actual, expected):
+        actual_norm, actual_grads = actual
+        expected_norm, expected_grads = expected
+        np.testing.assert_allclose(actual_norm, expected_norm, rtol=1e-5)
+        for actual_grad, expected_grad in zip(actual_grads, expected_grads):
+            np.testing.assert_allclose(actual_grad, expected_grad, rtol=1e-5)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+
+        # 1. Paddle Positional arguments
+        x1 = self._make_param(self.grad1)
+        out1 = paddle.nn.utils.clip_grad_norm_(x1, self.max_norm, 2.0, False)
+        # 2. Paddle keyword arguments
+        params2 = self._make_params()
+        out2 = paddle.nn.utils.clip_grad_norm_(
+            parameters=params2,
+            max_norm=self.max_norm,
+            norm_type=1.0,
+            error_if_nonfinite=False,
+        )
+        # Reference for PyTorch compatibility forms
+        ref_params = self._make_params()
+        ref_out = paddle.nn.utils.clip_grad_norm_(
+            ref_params, self.max_norm, 2.0, False
+        )
+        ref = self._capture(ref_out, ref_params)
+        # 3. PyTorch keyword arguments
+        params3 = self._make_params()
+        out3 = paddle.nn.utils.clip_grad_norm_(
+            parameters=params3,
+            max_norm=self.max_norm,
+            norm_type=2.0,
+            error_if_nonfinite=False,
+            foreach=None,
+        )
+        # 4. PyTorch Positional arguments
+        params4 = self._make_params()
+        out4 = paddle.nn.utils.clip_grad_norm_(
+            params4, self.max_norm, 2.0, False, None
+        )
+        # 5. Mixed arguments
+        params5 = self._make_params()
+        out5 = paddle.nn.utils.clip_grad_norm_(
+            params5, max_norm=self.max_norm, norm_type=2.0, foreach=True
+        )
+        # 6. PyTorch keyword arguments out of order
+        params6 = self._make_params()
+        out6 = paddle.nn.utils.clip_grad_norm_(
+            foreach=None,
+            error_if_nonfinite=False,
+            norm_type=2.0,
+            max_norm=self.max_norm,
+            parameters=params6,
+        )
+        # 7. Generator parameters
+        ref_params_inf = self._make_params()
+        ref_out_inf = paddle.nn.utils.clip_grad_norm_(
+            ref_params_inf, self.max_norm, float("inf"), False
+        )
+        ref_inf = self._capture(ref_out_inf, ref_params_inf)
+        params7 = self._make_params()
+        out7 = paddle.nn.utils.clip_grad_norm_(
+            (p for p in params7),
+            max_norm=self.max_norm,
+            norm_type="inf",
+            foreach=None,
+        )
+
+        self.assertIsInstance(out1, paddle.Tensor)
+        self.assertIsInstance(out2, paddle.Tensor)
+        for out, params in [
+            (out3, params3),
+            (out4, params4),
+            (out5, params5),
+            (out6, params6),
+        ]:
+            self._check_result(self._capture(out, params), ref)
+        self._check_result(self._capture(out7, params7), ref_inf)
+
+        paddle.enable_static()
+
+
 # Test mv compatibility
 @unittest.skipIf(
     paddle.is_compiled_with_custom_device('iluvatar_gpu'),

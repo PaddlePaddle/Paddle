@@ -32,6 +32,7 @@ def clip_grad_norm_(
     max_norm: float,
     norm_type: float = 2.0,
     error_if_nonfinite: bool = False,
+    foreach: bool | None = None,
 ) -> Tensor:
     r"""Clips gradient norm of the iterable parameters.
 
@@ -49,6 +50,8 @@ def clip_grad_norm_(
         error_if_nonfinite (bool): if True, throw an error if the total
             norm of the gradients from :attr:`parameters` is `nan`,
             `inf`, or `-inf`.
+        foreach (bool|None, optional): This parameter is accepted for
+            PyTorch compatibility and has no effect. Default: None.
 
     Returns:
         Total norm of the parameter gradients (treated as a single vector).
@@ -75,14 +78,17 @@ def clip_grad_norm_(
 
     if isinstance(parameters, paddle.Tensor):
         parameters = [parameters]
+    else:
+        parameters = list(parameters)
+
+    max_norm = float(max_norm)
+    norm_type = float(norm_type)
 
     support_norm_type = [float("inf"), 0, 1, 2]
     if norm_type not in support_norm_type:
         raise ValueError(f'norm_type only support {support_norm_type}')
 
     grads = [p.grad_ for p in parameters if p.grad_ is not None]
-    max_norm = float(max_norm)
-    norm_type = float(norm_type)
     if len(grads) == 0:
         return paddle.to_tensor(0.0)
     if norm_type == float("inf"):
