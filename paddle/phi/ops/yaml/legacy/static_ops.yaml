@@ -380,7 +380,7 @@
     func : fused_softplus
 
 - op : gaussian
-  args : (IntArray shape = {}, float mean = .0f, float std = 1.0f, int seed = 0, DataType dtype = DataType::FLOAT32)
+  args : (IntArray shape = {}, double mean = .0, double std = 1.0, int seed = 0, DataType dtype = DataType::FLOAT32)
   output: Tensor(out)
   infer_meta :
     func : GaussianInferMeta

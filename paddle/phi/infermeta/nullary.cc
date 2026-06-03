@@ -225,8 +225,8 @@ void EyeInferMeta(const Scalar& num_rows,
 }
 
 void GaussianInferMeta(const IntArray& shape,
-                       float mean,
-                       float std,
+                       double mean,
+                       double std,
                        int seed,
                        DataType dtype,
                        MetaTensor* out) {
