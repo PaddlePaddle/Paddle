@@ -1189,7 +1189,7 @@ def batch_sampler_decorator() -> Callable[
     return decorator
 
 
-def lr_scheduler_optimizer_decorator() -> Callable[
+def lr_scheduler_decorator() -> Callable[
     [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
 ]:
     """
