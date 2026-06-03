@@ -2616,17 +2616,19 @@ class TestBlockMultiHeadAttnEncDecQuant(unittest.TestCase):
     or get_cuda_version() < 11040
     or not is_sm_supported,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
-    "and device's compute capability must be 8.x or 90",
+    " and device's compute capability must be 7.x, 8.x or 9.x",
 )
 class TestBlockMultiHeadAttnOutScaleQuantKernel(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self.place = get_device_place()
         self.batch_size = 1
-        self.num_head = 8
+        self.num_head = 1
         self.seq_len = 1
         self.max_dec_len = 0
-        self.dim_head = 64
+        # Keep hid_dim below 64 so the old grid formula launches with
+        # grid.x=0 even when x86 masks the oversized shift count.
+        self.dim_head = 32
         self.hid_dim = self.num_head * self.dim_head
         self.blocksize = 64
         self.token_num = self.batch_size * self.seq_len
@@ -2648,16 +2650,8 @@ class TestBlockMultiHeadAttnOutScaleQuantKernel(unittest.TestCase):
             self.dim_head,
         )
 
-        self.cache_k = paddle.to_tensor(
-            np.zeros(self.cache_shape),
-            dtype=self.dtype,
-            place=self.place,
-        )
-        self.cache_v = paddle.to_tensor(
-            np.zeros(self.cache_shape),
-            dtype=self.dtype,
-            place=self.place,
-        )
+        self.cache_k = paddle.zeros(self.cache_shape, dtype=self.dtype)
+        self.cache_v = paddle.zeros(self.cache_shape, dtype=self.dtype)
         self.seq_lens_encoder = paddle.to_tensor(
             [self.seq_len] * self.batch_size, dtype="int32", place=self.place
         )
@@ -2739,6 +2733,7 @@ class TestBlockMultiHeadAttnOutScaleQuantKernel(unittest.TestCase):
             out_scale=1.0,
         )[0]
 
+        # round(quant_max_bound=127.0 * out_scale=1.0 * v=0.25) = 32.
         np.testing.assert_array_equal(
             out.numpy(),
             np.full((self.token_num, self.hid_dim), 32, dtype=np.int8),
