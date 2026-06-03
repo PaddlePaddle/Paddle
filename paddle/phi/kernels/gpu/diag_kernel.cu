@@ -97,16 +97,16 @@ void DiagKernel(const Context& dev_ctx,
           (offset >= 0 ? offset * out_stride_1 : -offset * out_stride_0);
 
       std::tuple<int64_t, int64_t> block_grid_size = GetBlockGridSize(size);
+      uint32_t grid = static_cast<uint32_t>(std::get<1>(block_grid_size));
+      uint32_t block = static_cast<uint32_t>(std::get<0>(block_grid_size));
 
-      PasteDiagonalKernel<T><<<std::get<1>(block_grid_size),
-                               std::get<0>(block_grid_size),
-                               0,
-                               dev_ctx.stream()>>>(out_data,
-                                                   x_data,
-                                                   start,
-                                                   x_length,
-                                                   out_stride_0 + out_stride_1,
-                                                   x_stride);
+      PasteDiagonalKernel<T>
+          <<<grid, block, 0, dev_ctx.stream()>>>(out_data,
+                                                 x_data,
+                                                 start,
+                                                 x_length,
+                                                 out_stride_0 + out_stride_1,
+                                                 x_stride);
     }
   } else {
     const int64_t x_stride_0 = funcs::ComputeStride(0, x_dims);
@@ -125,10 +125,9 @@ void DiagKernel(const Context& dev_ctx,
       const int64_t out_stride_0 = funcs::ComputeStride(0, out_dims);
 
       std::tuple<int64_t, int64_t> block_grid_size = GetBlockGridSize(size);
-      ExtractDiagonalKernel<T><<<std::get<1>(block_grid_size),
-                                 std::get<0>(block_grid_size),
-                                 0,
-                                 dev_ctx.stream()>>>(
+      uint32_t grid = static_cast<uint32_t>(std::get<1>(block_grid_size));
+      uint32_t block = static_cast<uint32_t>(std::get<0>(block_grid_size));
+      ExtractDiagonalKernel<T><<<grid, block, 0, dev_ctx.stream()>>>(
           out_data, x_data, start, size, x_stride_0 + x_stride_1, out_stride_0);
     }
   }

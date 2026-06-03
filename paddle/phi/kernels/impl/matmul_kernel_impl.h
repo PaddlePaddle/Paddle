@@ -523,6 +523,7 @@ void MatMulFunctionImplWithBlas(
                      K * N);
   } else {
     // in the case, can't use stridedgemm
+    PADDLE_ENFORCE_LE_INT_MAX(out_batch_size, "out_batch_size");
     std::vector<const T*> x_ptr(out_batch_size);
     std::vector<const T*> y_ptr(out_batch_size);
     std::vector<T*> out_ptr(out_batch_size);
@@ -550,7 +551,7 @@ void MatMulFunctionImplWithBlas(
                      y_ptr.data(),
                      static_cast<T>(flag),
                      out_ptr.data(),
-                     out_batch_size);
+                     static_cast<int>(out_batch_size));
   }
 }
 
@@ -640,7 +641,7 @@ void MatMulFunctionImplWithCublasLt(
     Out->ResizeAndAllocate(make_ddim(out_dims));
     dev_ctx.template Alloc<T>(Out);
     if (trans_y) {
-      const int M = Y.numel() / N;
+      const int64_t M = Y.numel() / N;
       VLOG(3) << "MatMul with blaslt 2";
       blaslt::Run(dev_ctx,
                   y_data,
@@ -653,8 +654,8 @@ void MatMulFunctionImplWithCublasLt(
                   false,
                   matmul_planner);
     } else {
-      const int M = y_dims[y_ndim - 1];
-      const int batch_size = Y.numel() / (M * N);
+      const int64_t M = y_dims[y_ndim - 1];
+      const int64_t batch_size = Y.numel() / (M * N);
       if (batch_size == 1) {
         VLOG(3) << "MatMul with blaslt 3";
         blaslt::Run(dev_ctx,
@@ -669,6 +670,7 @@ void MatMulFunctionImplWithCublasLt(
                     matmul_planner);
       } else {
         VLOG(3) << "MatMul with blaslt 4";
+        PADDLE_ENFORCE_LE_INT_MAX(batch_size, "batch_size");
         blaslt::RunWithBatch(dev_ctx,
                              y_data,
                              x_data,
@@ -678,7 +680,7 @@ void MatMulFunctionImplWithCublasLt(
                              N,
                              true,
                              false,
-                             batch_size,
+                             static_cast<int>(batch_size),
                              M * N,
                              0,
                              M,
@@ -724,8 +726,8 @@ void MatMulFunctionImplWithCublasLt(
     dev_ctx.template Alloc<T>(Out);
 
     if (trans_x) {
-      const int M = x_dims[x_ndim - 1];
-      const int batch_size = X.numel() / (M * N);
+      const int64_t M = x_dims[x_ndim - 1];
+      const int64_t batch_size = X.numel() / (M * N);
       if (batch_size == 1) {
         VLOG(3) << "MatMul with blaslt 5";
         blaslt::Run(dev_ctx,
@@ -740,6 +742,7 @@ void MatMulFunctionImplWithCublasLt(
                     matmul_planner);
       } else {
         VLOG(3) << "MatMul with blaslt 6";
+        PADDLE_ENFORCE_LE_INT_MAX(batch_size, "batch_size");
         blaslt::RunWithBatch(dev_ctx,
                              x_data,
                              y_data,
@@ -749,14 +752,14 @@ void MatMulFunctionImplWithCublasLt(
                              N,
                              true,
                              false,
-                             batch_size,
+                             static_cast<int>(batch_size),
                              M * N,
                              0,
                              M,
                              matmul_planner);
       }
     } else {
-      const int M = X.numel() / N;
+      const int64_t M = X.numel() / N;
       VLOG(3) << "MatMul with blaslt 7";
       blaslt::Run(dev_ctx,
                   x_data,
@@ -772,8 +775,8 @@ void MatMulFunctionImplWithCublasLt(
     return;
   }
 
-  const int M = trans_x ? x_dims[x_ndim - 1] : x_dims[x_ndim - 2];
-  const int K = trans_x ? x_dims[x_ndim - 2] : x_dims[x_ndim - 1];
+  const int64_t M = trans_x ? x_dims[x_ndim - 1] : x_dims[x_ndim - 2];
+  const int64_t K = trans_x ? x_dims[x_ndim - 2] : x_dims[x_ndim - 1];
   if (trans_y) {
     PADDLE_ENFORCE_EQ(
         y_dims[y_ndim - 1],
@@ -797,7 +800,7 @@ void MatMulFunctionImplWithCublasLt(
                                         y_ndim - 2,
                                         y_dims[y_ndim - 2]));
   }
-  const int N = trans_y ? y_dims[y_ndim - 2] : y_dims[y_ndim - 1];
+  const int64_t N = trans_y ? y_dims[y_ndim - 2] : y_dims[y_ndim - 1];
   const int ndim = (std::max)(x_ndim, y_ndim);
   std::vector<std::int64_t> x_broadcast_dims(ndim);
   std::vector<std::int64_t> y_broadcast_dims(ndim);
@@ -839,6 +842,7 @@ void MatMulFunctionImplWithCublasLt(
                       1LL,
                       std::multiplies<std::int64_t>());
   if (out_batch_size == 0) return;
+  PADDLE_ENFORCE_LE_INT_MAX(out_batch_size, "out_batch_size");
   if (x_batch_size == 1 && y_batch_size == 1) {
     VLOG(3) << "MatMul with blaslt 8";
     blaslt::Run(dev_ctx,
@@ -875,7 +879,7 @@ void MatMulFunctionImplWithCublasLt(
                            K,
                            trans_x,
                            trans_y,
-                           out_batch_size,
+                           static_cast<int>(out_batch_size),
                            0,
                            K * N,
                            M * N,
@@ -905,7 +909,7 @@ void MatMulFunctionImplWithCublasLt(
                            K,
                            true,
                            trans_y,
-                           out_batch_size,
+                           static_cast<int>(out_batch_size),
                            M * K,
                            0,
                            M * N,
@@ -922,7 +926,7 @@ void MatMulFunctionImplWithCublasLt(
                          K,
                          trans_x,
                          trans_y,
-                         out_batch_size,
+                         static_cast<int>(out_batch_size),
                          M * K,
                          K * N,
                          M * N,
@@ -955,7 +959,7 @@ void MatMulFunctionImplWithCublasLt(
                          K,
                          trans_x,
                          trans_y,
-                         out_batch_size,
+                         static_cast<int>(out_batch_size),
                          matmul_planner);
   }
 }
@@ -1166,7 +1170,7 @@ bool inline MatMulInt8Function(const GPUContext& dev_ctx,
                   &matmul_planner);
     } else {
       const int64_t M = y_dims[y_ndim - 1];
-      const int batch_size = y.numel() / (M * N);
+      const int64_t batch_size = y.numel() / (M * N);
       if (batch_size == 1) {
         blaslt::Run(dev_ctx,
                     y_data,
@@ -1179,6 +1183,7 @@ bool inline MatMulInt8Function(const GPUContext& dev_ctx,
                     false,
                     &matmul_planner);
       } else {
+        PADDLE_ENFORCE_LE_INT_MAX(batch_size, "batch_size");
         blaslt::RunWithBatch(dev_ctx,
                              y_data,
                              x_data,
@@ -1188,7 +1193,7 @@ bool inline MatMulInt8Function(const GPUContext& dev_ctx,
                              N,
                              true,
                              false,
-                             batch_size,
+                             static_cast<int>(batch_size),
                              M * N,
                              0,
                              M,
@@ -1241,8 +1246,8 @@ bool inline MatMulInt8Function(const GPUContext& dev_ctx,
     dev_ctx.template Alloc<int32_t>(out);
 
     if (trans_x) {
-      const int M = x_dims[x_ndim - 1];
-      const int batch_size = x.numel() / (M * N);
+      const int64_t M = x_dims[x_ndim - 1];
+      const int64_t batch_size = x.numel() / (M * N);
       if (batch_size == 1) {
         blaslt::Run(dev_ctx,
                     x_data,
@@ -1255,6 +1260,7 @@ bool inline MatMulInt8Function(const GPUContext& dev_ctx,
                     false,
                     &matmul_planner);
       } else {
+        PADDLE_ENFORCE_LE_INT_MAX(batch_size, "batch_size");
         blaslt::RunWithBatch(dev_ctx,
                              x_data,
                              y_data,
@@ -1264,14 +1270,14 @@ bool inline MatMulInt8Function(const GPUContext& dev_ctx,
                              N,
                              true,
                              false,
-                             batch_size,
+                             static_cast<int>(batch_size),
                              M * N,
                              0,
                              M,
                              &matmul_planner);
       }
     } else {
-      const int M = x.numel() / N;
+      const int64_t M = x.numel() / N;
       blaslt::Run(dev_ctx,
                   x_data,
                   y_data,
@@ -1286,8 +1292,8 @@ bool inline MatMulInt8Function(const GPUContext& dev_ctx,
     return true;
   }
 
-  const int M = trans_x ? x_dims[x_ndim - 1] : x_dims[x_ndim - 2];
-  const int K = trans_x ? x_dims[x_ndim - 2] : x_dims[x_ndim - 1];
+  const int64_t M = trans_x ? x_dims[x_ndim - 1] : x_dims[x_ndim - 2];
+  const int64_t K = trans_x ? x_dims[x_ndim - 2] : x_dims[x_ndim - 1];
   if (trans_y) {
     PADDLE_ENFORCE_EQ(
         y_dims[y_ndim - 1],
@@ -1311,7 +1317,7 @@ bool inline MatMulInt8Function(const GPUContext& dev_ctx,
                                         y_ndim - 2,
                                         y_dims[y_ndim - 2]));
   }
-  const int N = trans_y ? y_dims[y_ndim - 2] : y_dims[y_ndim - 1];
+  const int64_t N = trans_y ? y_dims[y_ndim - 2] : y_dims[y_ndim - 1];
   const int ndim = (std::max)(x_ndim, y_ndim);
   std::vector<std::int64_t> x_broadcast_dims(ndim);
   std::vector<std::int64_t> y_broadcast_dims(ndim);
@@ -1353,6 +1359,7 @@ bool inline MatMulInt8Function(const GPUContext& dev_ctx,
                       std::multiplies<std::int64_t>());
   if (out_batch_size == 0) return true;
 
+  PADDLE_ENFORCE_LE_INT_MAX(out_batch_size, "out_batch_size");
   if (x_batch_size == 1 && M == 1 && trans_y) {
     if (!(K % 4 == 0)) {
       return false;
@@ -1407,7 +1414,7 @@ bool inline MatMulInt8Function(const GPUContext& dev_ctx,
                            K,
                            trans_x,
                            trans_y,
-                           out_batch_size,
+                           static_cast<int>(out_batch_size),
                            0,
                            K * N,
                            M * N,
@@ -1435,7 +1442,7 @@ bool inline MatMulInt8Function(const GPUContext& dev_ctx,
                            K,
                            true,
                            trans_y,
-                           out_batch_size,
+                           static_cast<int>(out_batch_size),
                            M * K,
                            0,
                            M * N,
@@ -1451,7 +1458,7 @@ bool inline MatMulInt8Function(const GPUContext& dev_ctx,
                          K,
                          trans_x,
                          trans_y,
-                         out_batch_size,
+                         static_cast<int>(out_batch_size),
                          M * K,
                          K * N,
                          M * N,
@@ -1483,7 +1490,7 @@ bool inline MatMulInt8Function(const GPUContext& dev_ctx,
                          K,
                          trans_x,
                          trans_y,
-                         out_batch_size,
+                         static_cast<int>(out_batch_size),
                          &matmul_planner);
   }
   return true;
@@ -1525,6 +1532,7 @@ bool inline MatMulInt8Function(const GPUContext& dev_ctx,
             "received Y has [%d] elements.",
             M,
             N));
+    PADDLE_ENFORCE_LE_INT_MAX(M, "M");
     VLOG(3) << "MatMul's case 1";
     out->Resize({});
     dev_ctx.template Alloc<int32_t>(out);
@@ -1533,7 +1541,7 @@ bool inline MatMulInt8Function(const GPUContext& dev_ctx,
                     CblasTrans,
                     1,
                     1,
-                    M,
+                    static_cast<int>(M),
                     static_cast<int32_t>(1),
                     y_data,
                     x_data,
@@ -1567,6 +1575,7 @@ bool inline MatMulInt8Function(const GPUContext& dev_ctx,
                                           y_ndim - 2,
                                           y_dims[y_ndim - 2]));
     }
+    PADDLE_ENFORCE_LE_INT_MAX(N, "N");
     std::vector<std::int64_t> out_dims(y_ndim - 1);
     if (trans_y) {
       std::copy_n(y_dims.cbegin(), y_ndim - 1, out_dims.begin());
@@ -1577,26 +1586,28 @@ bool inline MatMulInt8Function(const GPUContext& dev_ctx,
     out->ResizeAndAllocate(make_ddim(out_dims));
     dev_ctx.template Alloc<int32_t>(out);
     if (trans_y) {
-      const int M = y.numel() / N;
+      const int64_t M = y.numel() / N;
+      PADDLE_ENFORCE_LE_INT_MAX(M, "M");
       VLOG(3) << "MatMul's case 2";
       funcs::Int8GEMV(dev_ctx,
                       false,
-                      M,
-                      N,
+                      static_cast<int>(M),
+                      static_cast<int>(N),
                       static_cast<int32_t>(1),
                       y_data,
                       x_data,
                       static_cast<int32_t>(0),
                       dev_ctx.template Alloc<int32_t>(out));
     } else {
-      const int M = y_dims[y_ndim - 1];
-      const int batch_size = y.numel() / (M * N);
+      const int64_t M = y_dims[y_ndim - 1];
+      PADDLE_ENFORCE_LE_INT_MAX(M, "M");
+      const int64_t batch_size = y.numel() / (M * N);
       if (batch_size == 1) {
         VLOG(3) << "MatMul's case 3";
         funcs::Int8GEMV(dev_ctx,
                         true,
-                        N,
-                        M,
+                        static_cast<int>(N),
+                        static_cast<int>(M),
                         static_cast<int32_t>(1),
                         y_data,
                         x_data,
@@ -1604,18 +1615,19 @@ bool inline MatMulInt8Function(const GPUContext& dev_ctx,
                         dev_ctx.template Alloc<int32_t>(out));
       } else {
         VLOG(3) << "MatMul's case 4";
+        PADDLE_ENFORCE_LE_INT_MAX(batch_size, "batch_size");
         funcs::Int8BatchedGEMM(dev_ctx,
                                CblasTrans,
                                CblasNoTrans,
-                               M,
+                               static_cast<int>(M),
                                1,
-                               N,
+                               static_cast<int>(N),
                                static_cast<int32_t>(1),
                                y_data,
                                x_data,
                                static_cast<int32_t>(0),
                                dev_ctx.template Alloc<int32_t>(out),
-                               batch_size,
+                               static_cast<int>(batch_size),
                                M * N,
                                0);
       }
@@ -1648,6 +1660,7 @@ bool inline MatMulInt8Function(const GPUContext& dev_ctx,
                                           x_ndim - 1,
                                           x_dims[x_ndim - 1]));
     }
+    PADDLE_ENFORCE_LE_INT_MAX(N, "N");
     std::vector<std::int64_t> out_dims(x_ndim - 1);
     if (trans_x) {
       std::copy_n(x_dims.cbegin(), x_ndim - 2, out_dims.begin());
@@ -1659,14 +1672,15 @@ bool inline MatMulInt8Function(const GPUContext& dev_ctx,
     dev_ctx.template Alloc<int32_t>(out);
 
     if (trans_x) {
-      const int M = x_dims[x_ndim - 1];
-      const int batch_size = x.numel() / (M * N);
+      const int64_t M = x_dims[x_ndim - 1];
+      PADDLE_ENFORCE_LE_INT_MAX(M, "M");
+      const int64_t batch_size = x.numel() / (M * N);
       if (batch_size == 1) {
         VLOG(3) << "MatMul's case 5";
         funcs::Int8GEMV(dev_ctx,
                         true,
-                        N,
-                        M,
+                        static_cast<int>(N),
+                        static_cast<int>(M),
                         static_cast<int32_t>(1),
                         x_data,
                         y_data,
@@ -1674,28 +1688,30 @@ bool inline MatMulInt8Function(const GPUContext& dev_ctx,
                         dev_ctx.template Alloc<int32_t>(out));
       } else {
         VLOG(3) << "MatMul's case 6";
+        PADDLE_ENFORCE_LE_INT_MAX(batch_size, "batch_size");
         funcs::Int8BatchedGEMM(dev_ctx,
                                CblasTrans,
                                CblasNoTrans,
-                               M,
+                               static_cast<int>(M),
                                1,
-                               N,
+                               static_cast<int>(N),
                                static_cast<int32_t>(1),
                                x_data,
                                y_data,
                                static_cast<int32_t>(0),
                                dev_ctx.template Alloc<int32_t>(out),
-                               batch_size,
+                               static_cast<int>(batch_size),
                                M * N,
                                0);
       }
     } else {
-      const int M = x.numel() / N;
+      const int64_t M = x.numel() / N;
+      PADDLE_ENFORCE_LE_INT_MAX(M, "M");
       VLOG(3) << "MatMul's case 7";
       funcs::Int8GEMV(dev_ctx,
                       false,
-                      M,
-                      N,
+                      static_cast<int>(M),
+                      static_cast<int>(N),
                       static_cast<int32_t>(1),
                       x_data,
                       y_data,
@@ -1705,8 +1721,8 @@ bool inline MatMulInt8Function(const GPUContext& dev_ctx,
     return true;
   }
 
-  const int M = trans_x ? x_dims[x_ndim - 1] : x_dims[x_ndim - 2];
-  const int K = trans_x ? x_dims[x_ndim - 2] : x_dims[x_ndim - 1];
+  const int64_t M = trans_x ? x_dims[x_ndim - 1] : x_dims[x_ndim - 2];
+  const int64_t K = trans_x ? x_dims[x_ndim - 2] : x_dims[x_ndim - 1];
   if (trans_y) {
     PADDLE_ENFORCE_EQ(
         y_dims[y_ndim - 1],
@@ -1730,7 +1746,10 @@ bool inline MatMulInt8Function(const GPUContext& dev_ctx,
                                         y_ndim - 2,
                                         y_dims[y_ndim - 2]));
   }
-  const int N = trans_y ? y_dims[y_ndim - 2] : y_dims[y_ndim - 1];
+  const int64_t N = trans_y ? y_dims[y_ndim - 2] : y_dims[y_ndim - 1];
+  PADDLE_ENFORCE_LE_INT_MAX(M, "M");
+  PADDLE_ENFORCE_LE_INT_MAX(N, "N");
+  PADDLE_ENFORCE_LE_INT_MAX(K, "K");
   const int ndim = (std::max)(x_ndim, y_ndim);
   std::vector<std::int64_t> x_broadcast_dims(ndim);
   std::vector<std::int64_t> y_broadcast_dims(ndim);
@@ -1772,14 +1791,15 @@ bool inline MatMulInt8Function(const GPUContext& dev_ctx,
                       1LL,
                       std::multiplies<std::int64_t>());
   if (out_batch_size == 0) return true;
+  PADDLE_ENFORCE_LE_INT_MAX(out_batch_size, "out_batch_size");
   if (x_batch_size == 1 && y_batch_size == 1) {
     VLOG(3) << "MatMul's case 8";
     funcs::Int8GEMM(dev_ctx,
                     trans_x ? CblasTrans : CblasNoTrans,
                     trans_y ? CblasTrans : CblasNoTrans,
-                    M,
-                    N,
-                    K,
+                    static_cast<int>(M),
+                    static_cast<int>(N),
+                    static_cast<int>(K),
                     static_cast<int32_t>(1),
                     x_data,
                     y_data,
@@ -1788,10 +1808,11 @@ bool inline MatMulInt8Function(const GPUContext& dev_ctx,
   } else if (x_batch_size == 1) {
     if (M == 1 && trans_y) {
       VLOG(3) << "MatMul's case 9";
+      PADDLE_ENFORCE_LE_INT_MAX(y_batch_size * N, "GEMV M");
       funcs::Int8GEMV(dev_ctx,
                       false,
-                      y_batch_size * N,
-                      K,
+                      static_cast<int>(y_batch_size * N),
+                      static_cast<int>(K),
                       static_cast<int32_t>(1),
                       y_data,
                       x_data,
@@ -1802,27 +1823,28 @@ bool inline MatMulInt8Function(const GPUContext& dev_ctx,
       funcs::Int8BatchedGEMM(dev_ctx,
                              trans_x ? CblasTrans : CblasNoTrans,
                              trans_y ? CblasTrans : CblasNoTrans,
-                             M,
-                             N,
-                             K,
+                             static_cast<int>(M),
+                             static_cast<int>(N),
+                             static_cast<int>(K),
                              static_cast<int32_t>(1),
                              x_data,
                              y_data,
                              static_cast<int32_t>(0),
                              dev_ctx.template Alloc<int32_t>(out),
-                             out_batch_size,
+                             static_cast<int>(out_batch_size),
                              0,
                              K * N);
     }
   } else if (y_batch_size == 1) {
     if (!trans_x) {
       VLOG(3) << "MatMul's case 11";
+      PADDLE_ENFORCE_LE_INT_MAX(x_batch_size * M, "GEMM M");
       funcs::Int8GEMM(dev_ctx,
                       CblasNoTrans,
                       trans_y ? CblasTrans : CblasNoTrans,
-                      x_batch_size * M,
-                      N,
-                      K,
+                      static_cast<int>(x_batch_size * M),
+                      static_cast<int>(N),
+                      static_cast<int>(K),
                       static_cast<int32_t>(1),
                       x_data,
                       y_data,
@@ -1833,15 +1855,15 @@ bool inline MatMulInt8Function(const GPUContext& dev_ctx,
       funcs::Int8BatchedGEMM(dev_ctx,
                              CblasTrans,
                              trans_y ? CblasTrans : CblasNoTrans,
-                             M,
-                             N,
-                             K,
+                             static_cast<int>(M),
+                             static_cast<int>(N),
+                             static_cast<int>(K),
                              static_cast<int32_t>(1),
                              x_data,
                              y_data,
                              static_cast<int32_t>(0),
                              dev_ctx.template Alloc<int32_t>(out),
-                             out_batch_size,
+                             static_cast<int>(out_batch_size),
                              M * K,
                              0);
     }
@@ -1850,15 +1872,15 @@ bool inline MatMulInt8Function(const GPUContext& dev_ctx,
     funcs::Int8BatchedGEMM(dev_ctx,
                            trans_x ? CblasTrans : CblasNoTrans,
                            trans_y ? CblasTrans : CblasNoTrans,
-                           M,
-                           N,
-                           K,
+                           static_cast<int>(M),
+                           static_cast<int>(N),
+                           static_cast<int>(K),
                            static_cast<int32_t>(1),
                            x_data,
                            y_data,
                            static_cast<int32_t>(0),
                            dev_ctx.template Alloc<int32_t>(out),
-                           out_batch_size,
+                           static_cast<int>(out_batch_size),
                            M * K,
                            K * N);
   } else {
@@ -1883,15 +1905,15 @@ bool inline MatMulInt8Function(const GPUContext& dev_ctx,
     funcs::Int8BatchedGEMM(dev_ctx,
                            trans_x ? CblasTrans : CblasNoTrans,
                            trans_y ? CblasTrans : CblasNoTrans,
-                           M,
-                           N,
-                           K,
+                           static_cast<int>(M),
+                           static_cast<int>(N),
+                           static_cast<int>(K),
                            static_cast<int32_t>(1),
                            x_ptr.data(),
                            y_ptr.data(),
                            static_cast<int32_t>(0),
                            out_ptr.data(),
-                           out_batch_size);
+                           static_cast<int>(out_batch_size));
   }
   return true;
 }

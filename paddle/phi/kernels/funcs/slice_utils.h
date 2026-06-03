@@ -15,9 +15,12 @@ limitations under the License. */
 #pragma once
 #include <glog/logging.h>
 #include <paddle/common/ddim.h>
+#include <limits>
 #include <string>
+#include <type_traits>
 #include <vector>
 #include "paddle/common/flags.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace phi {
 
@@ -266,7 +269,15 @@ inline void CheckAndUpdateSliceAttrs(const DDim in_dims,
     T dim_value = in_dims[axis];
 
     if (dim_value > 0) {
-      T step = steps == nullptr ? 1 : (*steps)[i];
+      int64_t step_val = steps == nullptr ? 1 : (*steps)[i];
+      if constexpr (std::is_same<T, int>::value) {
+        PADDLE_ENFORCE_GE(step_val,
+                          static_cast<int64_t>(std::numeric_limits<int>::min()),
+                          common::errors::InvalidArgument(
+                              "step value exceeds the range of int"));
+        PADDLE_ENFORCE_LE_INT_MAX(step_val, "step value");
+      }
+      T step = static_cast<T>(step_val);
       PADDLE_ENFORCE_NE(
           step,
           0,
@@ -309,7 +320,15 @@ inline void UpdateSliceAttrs(const DDim in_dims,
     }
     T dim_value = in_dims[axis];
     if (dim_value > 0) {
-      T step = steps == nullptr ? 1 : (*steps)[i];
+      int64_t step_val = steps == nullptr ? 1 : (*steps)[i];
+      if constexpr (std::is_same<T, int>::value) {
+        PADDLE_ENFORCE_GE(step_val,
+                          static_cast<int64_t>(std::numeric_limits<int>::min()),
+                          common::errors::InvalidArgument(
+                              "step value exceeds the range of int"));
+        PADDLE_ENFORCE_LE_INT_MAX(step_val, "step value");
+      }
+      T step = static_cast<T>(step_val);
       T start = (*starts)[i];
       T end = (*ends)[i];
 

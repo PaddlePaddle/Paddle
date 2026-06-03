@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/index_select_kernel.h"
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
@@ -61,7 +62,9 @@ void IndexSelectKernel(const Context& dev_ctx,
   auto stream = dev_ctx.stream();
 
   unsigned int block_dim = PADDLE_CUDA_NUM_THREADS;
-  dim3 grid_dim = dim3((numel + block_dim - 1) / block_dim);
+  const uint64_t grid_x = (numel + block_dim - 1) / block_dim;
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "grid.x");
+  dim3 grid_dim = dim3(static_cast<uint32_t>(grid_x));
   backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
 
   if (index_type == DataType::INT64) {

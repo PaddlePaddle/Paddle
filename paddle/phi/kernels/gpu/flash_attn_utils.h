@@ -186,7 +186,12 @@ struct FlashAttnParamsBase {
 
     // TODO(GuoxiaWang): check q, k, v dtype
 
-    auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
+    auto round_multiple = [](int x, int m) {
+      int64_t rounded =
+          (static_cast<int64_t>(x) + m - 1) / m * static_cast<int64_t>(m);
+      PADDLE_ENFORCE_LE_INT_MAX(rounded, "flash_attn rounded sequence length");
+      return static_cast<int>(rounded);
+    };
     // FLAGS_flash_attn_version
     if (_version == 3 && !_is_fwd) {
       kBlockM = head_size <= 64 ? 128 : (head_size < 256 ? 64 : 32);
@@ -196,8 +201,12 @@ struct FlashAttnParamsBase {
       head_size_rounded = round_multiple(head_size, 32);
     }
 
-    seqlen_q_rounded = round_multiple(max_seqlen_q, kBlockM);
-    seqlen_k_rounded = round_multiple(max_seqlen_k, 128);
+    PADDLE_ENFORCE_LE_INT_MAX(max_seqlen_q, "flash_attn max_seqlen_q");
+    PADDLE_ENFORCE_LE_INT_MAX(max_seqlen_k, "flash_attn max_seqlen_k");
+    int max_seqlen_q_int = static_cast<int>(max_seqlen_q);
+    int max_seqlen_k_int = static_cast<int>(max_seqlen_k);
+    seqlen_q_rounded = round_multiple(max_seqlen_q_int, kBlockM);
+    seqlen_k_rounded = round_multiple(max_seqlen_k_int, 128);
 
     softmax_lse_dims = unpadded_lse ? std::vector<int64_t>{num_heads, total_q}
                                     : std::vector<int64_t>{

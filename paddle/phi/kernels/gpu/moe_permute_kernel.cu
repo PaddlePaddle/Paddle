@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -591,7 +592,8 @@ void dispatch_preprocess(const Context &dev_ctx,
                                              cudaMemcpyHostToDevice,
                                              dev_ctx.stream()));
 
-  dim3 grid{static_cast<unsigned>(padding_rows.size())};
+  PADDLE_ENFORCE_LE_UINT32_MAX(padding_rows.size(), "padding_rows size");
+  dim3 grid{static_cast<uint32_t>(padding_rows.size())};
   dim3 block{512};
   const int *padding_ptr = padding_tokens_tensor.data<int>();
 
@@ -740,8 +742,9 @@ void MoePermuteKernel(const Context &dev_ctx,
 
   // Preprocess
   constexpr int kEffectiveBlockSize = kPermuteBlockSize;
-  const int cumsum_blocknum =
+  const int64_t cumsum_blocknum_64 =
       (rows + kEffectiveBlockSize - 1) / kEffectiveBlockSize;
+  const int cumsum_blocknum = static_cast<int>(cumsum_blocknum_64);
 
   DenseTensor expert_offset_tensor;
   DenseTensor expert_offset_end_tensor;
@@ -750,8 +753,7 @@ void MoePermuteKernel(const Context &dev_ctx,
   expert_offset_tensor.Resize({kMaxNumExperts});
   expert_offset_end_tensor.Resize({kMaxNumExperts});
   global_expertwise_block_cumsum.Resize(
-      {static_cast<int64_t>(cumsum_blocknum + 2),
-       static_cast<int64_t>(num_experts)});
+      {cumsum_blocknum_64 + 2, static_cast<int64_t>(num_experts)});
 
   dev_ctx.template Alloc<int>(&expert_offset_tensor);
   dev_ctx.template Alloc<int>(&expert_offset_end_tensor);
@@ -821,8 +823,9 @@ void MoePermuteKernel(const Context &dev_ctx,
       int64_t invalid_rows =
           next_expert_offset - expert_offset[i] - tokens_per_expert[i];
       int64_t cur_expert_end = expert_offset[i] + tokens_per_expert[i];
-      for (int j = 0; j < invalid_rows; ++j) {
-        padding_rows.push_back(cur_expert_end + j);
+      for (int64_t j = 0; j < invalid_rows; ++j) {
+        PADDLE_ENFORCE_LE_INT_MAX(cur_expert_end + j, "padding row");
+        padding_rows.push_back(static_cast<int>(cur_expert_end + j));
       }
     }
     if (using_ue8m0_scale) {
@@ -831,8 +834,8 @@ void MoePermuteKernel(const Context &dev_ctx,
                           XScale ? XScale_unzipped->data<int32_t>() : nullptr,
                           token_prob_unzipped->data<float>(),
                           expert_indices->data<int>(),
-                          cols,
-                          quanted_cols,
+                          static_cast<int>(cols),
+                          static_cast<int>(quanted_cols),
                           padding_rows);
     } else {
       dispatch_preprocess(dev_ctx,
@@ -840,8 +843,8 @@ void MoePermuteKernel(const Context &dev_ctx,
                           XScale ? XScale_unzipped->data<float>() : nullptr,
                           token_prob_unzipped->data<float>(),
                           expert_indices->data<int>(),
-                          cols,
-                          quanted_cols,
+                          static_cast<int>(cols),
+                          static_cast<int>(quanted_cols),
                           padding_rows);
     }
   }

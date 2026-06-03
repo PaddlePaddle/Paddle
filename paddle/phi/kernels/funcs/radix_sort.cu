@@ -57,6 +57,11 @@ void RadixSortPairsImpl(const GPUContext& dev_ctx,
       common::errors::InvalidArgument(
           "CUB sort does not support sorting more than INT_MAX elements"));
 
+  PADDLE_ENFORCE_LE_INT_MAX(begin_bit, "radix sort begin_bit");
+  PADDLE_ENFORCE_LE_INT_MAX(end_bit, "radix sort end_bit");
+  const int num_items = static_cast<int>(n);
+  const int begin_bit_int = static_cast<int>(begin_bit);
+  const int end_bit_int = static_cast<int>(end_bit);
   using key_t_ = typename CudaType<key_t>::type;
 
   phi::Allocator::AllocationPtr keys_out_owner;
@@ -75,9 +80,9 @@ void RadixSortPairsImpl(const GPUContext& dev_ctx,
                        keys_out_,
                        values_in,
                        values_out,
-                       static_cast<int>(n),
-                       begin_bit,
-                       end_bit,
+                       num_items,
+                       begin_bit_int,
+                       end_bit_int,
                        dev_ctx.stream());
   } else {
     PADDLE_CUB_WRAPPER(cub::DeviceRadixSort::SortPairs,
@@ -85,9 +90,9 @@ void RadixSortPairsImpl(const GPUContext& dev_ctx,
                        keys_out_,
                        values_in,
                        values_out,
-                       static_cast<int>(n),
-                       begin_bit,
-                       end_bit,
+                       num_items,
+                       begin_bit_int,
+                       end_bit_int,
                        dev_ctx.stream());
   }
 }

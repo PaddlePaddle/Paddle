@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/optional.h"
@@ -39,17 +40,20 @@
 namespace phi {
 
 inline int GetBatchCount(const DDim& dims) {
-  int count = 1;
+  int64_t count = 1;
   int num_dims = dims.size();
   for (int i = 0; i < num_dims - 2; ++i) {
     count *= dims[i];
   }
-  return count;
+  PADDLE_ENFORCE_LE_INT_MAX(count, "lstsq batch count");
+  return static_cast<int>(count);
 }
 
 inline int GetMatrixStride(const DDim& dims) {
   int num_dims = dims.size();
-  return dims[num_dims - 1] * dims[num_dims - 2];
+  int64_t stride = dims[num_dims - 1] * dims[num_dims - 2];
+  PADDLE_ENFORCE_LE_INT_MAX(stride, "lstsq matrix stride");
+  return static_cast<int>(stride);
 }
 
 inline bool IsComplexDtype(const DataType& type) {
