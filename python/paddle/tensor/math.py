@@ -2330,7 +2330,9 @@ def addmv(
             >>> vec = paddle.randn([4])
             >>> out = paddle.addmv(input, mat, vec)
     """
-    result = beta * input + alpha * mm(mat, vec)
+    result = addmm(
+        input.unsqueeze(-1), mat, vec.unsqueeze(-1), beta, alpha
+    ).squeeze(-1)
     if out is not None:
         paddle.assign(result, out)
         return out
@@ -2349,12 +2351,7 @@ def addmv_(
     """
     Inplace version of ``addmv`` API.
     """
-    if beta != 1.0:
-        input.scale_(beta)
-    mv_result = mm(mat, vec.unsqueeze(1)).squeeze(1)
-    if alpha != 1.0:
-        mv_result.scale_(alpha)
-    input.add_(mv_result)
+    addmm_(input.unsqueeze(-1), mat, vec.unsqueeze(-1), beta=beta, alpha=alpha)
     return input
 
 
@@ -2396,7 +2393,7 @@ def addr(
             >>> vec2 = paddle.randn([4])
             >>> out = paddle.addr(input, vec1, vec2)
     """
-    result = beta * input + alpha * outer(vec1, vec2)
+    result = addmm(input, vec1.unsqueeze(-1), vec2.unsqueeze(0), beta, alpha)
     if out is not None:
         paddle.assign(result, out)
         return out
@@ -2415,12 +2412,7 @@ def addr_(
     """
     Inplace version of ``addr`` API.
     """
-    if beta != 1.0:
-        input.scale_(beta)
-    outer_result = outer(vec1, vec2)
-    if alpha != 1.0:
-        outer_result.scale_(alpha)
-    input.add_(outer_result)
+    addmm_(input, vec1.unsqueeze(-1), vec2.unsqueeze(0), beta=beta, alpha=alpha)
     return input
 
 
