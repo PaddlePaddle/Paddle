@@ -12,21 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle.optimizer import (
+    ASGD as ASGD,
+    LBFGS as LBFGS,
+    SGD as SGD,
+    Adadelta as Adadelta,
+    Adagrad as Adagrad,
+    Adam as Adam,
+    Adamax as Adamax,
+    AdamW as AdamW,
+    Muon as Muon,
+    NAdam as NAdam,
+    Optimizer as Optimizer,
+    RAdam as RAdam,
+    RMSProp as RMSProp,
+    Rprop as Rprop,
+)
+
 from . import lr_scheduler  # noqa: F401
-from .adadelta import Adadelta
-from .adagrad import Adagrad
-from .adam import Adam
-from .adamax import Adamax
-from .adamw import AdamW
-from .asgd import ASGD
-from .lbfgs import LBFGS
-from .muon import Muon
-from .nadam import NAdam
-from .optimizer import Optimizer
-from .radam import RAdam
-from .rmsprop import RMSProp
-from .rprop import Rprop
-from .sgd import SGD
 
 __all__ = [
     "Adadelta",

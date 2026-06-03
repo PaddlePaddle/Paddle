@@ -21,12 +21,6 @@ if TYPE_CHECKING:
     from paddle import Tensor
 
 
-def _matrix_transpose(value: Tensor) -> Tensor:
-    perm = list(range(len(value.shape)))
-    perm[-1], perm[-2] = perm[-2], perm[-1]
-    return value.transpose(perm)
-
-
 class Constraint:
     """Constraint condition for random variable."""
 
@@ -108,11 +102,7 @@ class Symmetric(Square):
         square_check = super().__call__(value)
         if not bool(square_check.all()):
             return square_check
-        return (
-            paddle.isclose(value, _matrix_transpose(value), atol=1e-6)
-            .all(-2)
-            .all(-1)
-        )
+        return paddle.isclose(value, value.mT, atol=1e-6).all(-2).all(-1)
 
 
 class PositiveDefinite(Symmetric):
@@ -120,13 +110,9 @@ class PositiveDefinite(Symmetric):
         if value.dim() < 2:
             return paddle.zeros(value.shape[:-2], dtype='bool')
         sym_check = super().__call__(value)
-        if hasattr(paddle.linalg, 'eigvalsh'):
-            return sym_check & (paddle.linalg.eigvalsh(value) > 0).all(-1)
-        try:
-            paddle.linalg.cholesky(value)
+        if not bool(sym_check.all()):
             return sym_check
-        except Exception:
-            return paddle.zeros(value.shape[:-2], dtype='bool')
+        return (paddle.linalg.eigvalsh(value) > 0).all(-1)
 
 
 class Simplex(Constraint):

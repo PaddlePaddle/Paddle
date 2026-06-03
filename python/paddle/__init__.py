@@ -224,6 +224,8 @@ else:
 
     Tensor.__init__ = new_init
 
+import sys as _sys
+
 import paddle.distributed.fleet
 import paddle.text
 import paddle.vision
@@ -258,6 +260,9 @@ from paddle import (
     testing as testing,
     vision as vision,
 )
+
+_sys.modules['paddle.distributions'] = distribution
+distributions = distribution
 
 # high-level api
 from . import (
@@ -1570,6 +1575,7 @@ __all__ = [
     'layer_norm',
     'relu',
     'manual_seed',
+    'initial_seed',
     'softmax',
     'log_softmax',
     'Generator',
@@ -1578,7 +1584,6 @@ __all__ = [
     'enable_compat',
     'disable_compat',
     'use_compat_guard',
-    'initial_seed',
 ]
 import os
 

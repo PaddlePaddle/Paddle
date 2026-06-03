@@ -23,8 +23,8 @@ class TestUtilsAttrError(unittest.TestCase):
 
 
 class TestAlias(unittest.TestCase):
-    def setUp(self):
-        self.api_map = [
+    def test_utils_data_api_alias(self):
+        api_map = [
             (
                 paddle.io.Dataset,
                 paddle.utils.data.Dataset,
@@ -103,183 +103,250 @@ class TestAlias(unittest.TestCase):
                 paddle.utils.data.dataset.TensorDataset,
                 None,
             ),
-            (
-                paddle.optimizer.Adadelta,
-                paddle.optim.Adadelta,
-                paddle.optim.adadelta.Adadelta,
-                None,
-            ),
-            (
-                paddle.optimizer.Adagrad,
-                paddle.optim.Adagrad,
-                paddle.optim.adagrad.Adagrad,
-                None,
-            ),
-            (
-                paddle.optimizer.Adam,
-                paddle.optim.Adam,
-                paddle.optim.adam.Adam,
-                None,
-            ),
-            (
-                paddle.optimizer.Adamax,
-                paddle.optim.Adamax,
-                paddle.optim.adamax.Adamax,
-                None,
-            ),
-            (
-                paddle.optimizer.AdamW,
-                paddle.optim.AdamW,
-                paddle.optim.adamw.AdamW,
-                None,
-            ),
-            (
-                paddle.optimizer.ASGD,
-                paddle.optim.ASGD,
-                paddle.optim.asgd.ASGD,
-                None,
-            ),
-            (
-                paddle.optimizer.LBFGS,
-                paddle.optim.LBFGS,
-                paddle.optim.lbfgs.LBFGS,
-                None,
-            ),
-            (
-                paddle.optimizer.Muon,
-                paddle.optim.Muon,
-                paddle.optim.muon.Muon,
-                None,
-            ),
-            (
-                paddle.optimizer.NAdam,
-                paddle.optim.NAdam,
-                paddle.optim.nadam.NAdam,
-                None,
-            ),
-            (
-                paddle.optimizer.Optimizer,
-                paddle.optim.Optimizer,
-                paddle.optim.optimizer.Optimizer,
-                None,
-            ),
-            (
-                paddle.optimizer.RAdam,
-                paddle.optim.RAdam,
-                paddle.optim.radam.RAdam,
-                None,
-            ),
-            (
-                paddle.optimizer.RMSProp,
-                paddle.optim.RMSProp,
-                paddle.optim.rmsprop.RMSProp,
-                None,
-            ),
-            (
-                paddle.optimizer.Rprop,
-                paddle.optim.Rprop,
-                paddle.optim.rprop.Rprop,
-                None,
-            ),
-            (
-                paddle.optimizer.SGD,
-                paddle.optim.SGD,
-                paddle.optim.sgd.SGD,
-                None,
-            ),
+        ]
+        self.assert_api_map(api_map)
+
+    def test_optimizer_import_usages(self):
+        import paddle.optim.lr_scheduler
+        from paddle import optim
+        from paddle.optim import lr_scheduler
+        from paddle.optim.lr_scheduler import ConstantLR
+
+        self.assertIs(paddle.optim, optim)
+        api_map = [
+            (paddle.optimizer.Adadelta, paddle.optim.Adadelta),
+            (paddle.optimizer.Adagrad, paddle.optim.Adagrad),
+            (paddle.optimizer.Adam, paddle.optim.Adam),
+            (paddle.optimizer.Adamax, paddle.optim.Adamax),
+            (paddle.optimizer.AdamW, paddle.optim.AdamW),
+            (paddle.optimizer.ASGD, paddle.optim.ASGD),
+            (paddle.optimizer.LBFGS, paddle.optim.LBFGS),
+            (paddle.optimizer.Muon, paddle.optim.Muon),
+            (paddle.optimizer.NAdam, paddle.optim.NAdam),
+            (paddle.optimizer.Optimizer, paddle.optim.Optimizer),
+            (paddle.optimizer.RAdam, paddle.optim.RAdam),
+            (paddle.optimizer.RMSProp, paddle.optim.RMSProp),
+            (paddle.optimizer.Rprop, paddle.optim.Rprop),
+            (paddle.optimizer.SGD, paddle.optim.SGD),
             (
                 paddle.optimizer.lr.PiecewiseDecay,
                 paddle.optim.lr_scheduler.ConstantLR,
-                None,
-                None,
+                lr_scheduler.ConstantLR,
+                ConstantLR,
+            ),
+        ]
+        self.assert_api_map(api_map)
+
+    def test_lr_scheduler_api_alias(self):
+        import paddle.optim.lr_scheduler
+        from paddle.optim import lr_scheduler
+        from paddle.optim.lr_scheduler import (
+            ConstantLR,
+            CosineAnnealingLR,
+            CosineAnnealingWarmRestarts,
+            CyclicLR,
+            ExponentialLR,
+            LambdaLR,
+            LinearLR,
+            LRScheduler,
+            MultiplicativeLR,
+            MultiStepLR,
+            OneCycleLR,
+            ReduceLROnPlateau,
+            StepLR,
+        )
+
+        api_map = [
+            (
+                paddle.optimizer.lr.PiecewiseDecay,
+                paddle.optim.lr_scheduler.ConstantLR,
+                lr_scheduler.ConstantLR,
+                ConstantLR,
             ),
             (
                 paddle.optimizer.lr.CosineAnnealingDecay,
                 paddle.optim.lr_scheduler.CosineAnnealingLR,
-                None,
-                None,
+                lr_scheduler.CosineAnnealingLR,
+                CosineAnnealingLR,
             ),
             (
                 paddle.optimizer.lr.CosineAnnealingWarmRestarts,
                 paddle.optim.lr_scheduler.CosineAnnealingWarmRestarts,
-                None,
-                None,
+                lr_scheduler.CosineAnnealingWarmRestarts,
+                CosineAnnealingWarmRestarts,
             ),
             (
                 paddle.optimizer.lr.CyclicLR,
                 paddle.optim.lr_scheduler.CyclicLR,
-                None,
-                None,
+                lr_scheduler.CyclicLR,
+                CyclicLR,
             ),
             (
                 paddle.optimizer.lr.ExponentialDecay,
                 paddle.optim.lr_scheduler.ExponentialLR,
-                None,
-                None,
+                lr_scheduler.ExponentialLR,
+                ExponentialLR,
             ),
             (
                 paddle.optimizer.lr.LRScheduler,
                 paddle.optim.lr_scheduler.LRScheduler,
-                None,
-                None,
+                lr_scheduler.LRScheduler,
+                LRScheduler,
             ),
             (
                 paddle.optimizer.lr.LambdaDecay,
                 paddle.optim.lr_scheduler.LambdaLR,
-                None,
-                None,
+                lr_scheduler.LambdaLR,
+                LambdaLR,
             ),
             (
                 paddle.optimizer.lr.LinearLR,
                 paddle.optim.lr_scheduler.LinearLR,
-                None,
-                None,
+                lr_scheduler.LinearLR,
+                LinearLR,
             ),
             (
                 paddle.optimizer.lr.MultiStepDecay,
                 paddle.optim.lr_scheduler.MultiStepLR,
-                None,
-                None,
+                lr_scheduler.MultiStepLR,
+                MultiStepLR,
             ),
             (
                 paddle.optimizer.lr.MultiplicativeDecay,
                 paddle.optim.lr_scheduler.MultiplicativeLR,
-                None,
-                None,
+                lr_scheduler.MultiplicativeLR,
+                MultiplicativeLR,
             ),
             (
                 paddle.optimizer.lr.OneCycleLR,
                 paddle.optim.lr_scheduler.OneCycleLR,
-                None,
-                None,
+                lr_scheduler.OneCycleLR,
+                OneCycleLR,
             ),
             (
                 paddle.optimizer.lr.ReduceOnPlateau,
                 paddle.optim.lr_scheduler.ReduceLROnPlateau,
-                None,
-                None,
+                lr_scheduler.ReduceLROnPlateau,
+                ReduceLROnPlateau,
             ),
             (
                 paddle.optimizer.lr.StepDecay,
                 paddle.optim.lr_scheduler.StepLR,
-                None,
-                None,
-            ),
-            (
-                paddle.random.initial_seed,
-                paddle.initial_seed,
-                None,
-                None,
+                lr_scheduler.StepLR,
+                StepLR,
             ),
         ]
+        self.assert_api_map(api_map)
 
-    def test_compatibility(self):
-        for pairs in self.api_map:
-            self.assertIs(pairs[0], pairs[1])
-            if pairs[2] is not None:
-                self.assertIs(pairs[0], pairs[2])
-            if pairs[3] is not None:
-                self.assertIs(pairs[0], pairs[3])
+    def test_distribution_import_usages(self):
+        import paddle.distributions.bernoulli
+        import paddle.distributions.beta
+        import paddle.distributions.binomial
+        import paddle.distributions.categorical
+        import paddle.distributions.cauchy
+        import paddle.distributions.chi2
+        import paddle.distributions.constraint
+        import paddle.distributions.continuous_bernoulli
+        import paddle.distributions.dirichlet
+        import paddle.distributions.distribution
+        import paddle.distributions.exponential
+        import paddle.distributions.exponential_family
+        import paddle.distributions.gamma
+        import paddle.distributions.geometric
+        import paddle.distributions.gumbel
+        import paddle.distributions.independent
+        import paddle.distributions.kl
+        import paddle.distributions.laplace
+        import paddle.distributions.lkj_cholesky
+        import paddle.distributions.lognormal
+        import paddle.distributions.multinomial
+        import paddle.distributions.multivariate_normal
+        import paddle.distributions.normal
+        import paddle.distributions.poisson
+        import paddle.distributions.student_t
+        import paddle.distributions.transform
+        import paddle.distributions.transformed_distribution
+        import paddle.distributions.uniform
+        import paddle.distributions.variable
+        from paddle import distributions
+        from paddle.distributions import (
+            bernoulli,
+            beta,
+            binomial,
+            categorical,
+            cauchy,
+            chi2,
+            constraint,
+            continuous_bernoulli,
+            dirichlet,
+            distribution,
+            exponential,
+            exponential_family,
+            gamma,
+            geometric,
+            gumbel,
+            independent,
+            kl,
+            laplace,
+            lkj_cholesky,
+            lognormal,
+            multinomial,
+            multivariate_normal,
+            normal,
+            poisson,
+            student_t,
+            transform,
+            transformed_distribution,
+            uniform,
+            variable,
+        )
+        from paddle.distributions.normal import Normal
+
+        self.assertIs(paddle.distributions, distributions)
+        self.assertTrue(callable(bernoulli.Bernoulli))
+        self.assertTrue(callable(beta.Beta))
+        self.assertTrue(callable(binomial.Binomial))
+        self.assertTrue(callable(categorical.Categorical))
+        self.assertTrue(callable(cauchy.Cauchy))
+        self.assertTrue(callable(chi2.Chi2))
+        self.assertTrue(callable(continuous_bernoulli.ContinuousBernoulli))
+        self.assertTrue(callable(dirichlet.Dirichlet))
+        self.assertTrue(callable(distribution.Distribution))
+        self.assertTrue(callable(exponential.Exponential))
+        self.assertTrue(callable(exponential_family.ExponentialFamily))
+        self.assertTrue(callable(gamma.Gamma))
+        self.assertTrue(callable(geometric.Geometric))
+        self.assertTrue(callable(gumbel.Gumbel))
+        self.assertTrue(callable(independent.Independent))
+        self.assertTrue(callable(laplace.Laplace))
+        self.assertTrue(callable(lkj_cholesky.LKJCholesky))
+        self.assertTrue(callable(lognormal.LogNormal))
+        self.assertTrue(callable(multinomial.Multinomial))
+        self.assertTrue(callable(multivariate_normal.MultivariateNormal))
+        self.assertTrue(callable(paddle.distributions.normal.Normal))
+        self.assertTrue(callable(distributions.normal.Normal))
+        self.assertTrue(callable(normal.Normal))
+        self.assertTrue(callable(Normal))
+        self.assertTrue(callable(poisson.Poisson))
+        self.assertTrue(callable(student_t.StudentT))
+        self.assertTrue(
+            callable(transformed_distribution.TransformedDistribution)
+        )
+        self.assertTrue(callable(uniform.Uniform))
+        self.assertTrue(callable(constraint.Constraint))
+        self.assertTrue(callable(kl.kl_divergence))
+        self.assertTrue(callable(kl.register_kl))
+        self.assertTrue(callable(transform.Transform))
+        self.assertTrue(callable(variable.Variable))
+
+    def test_random_api_alias(self):
+        self.assertIs(paddle.random.initial_seed, paddle.initial_seed)
+
+    def assert_api_map(self, api_map):
+        for pairs in api_map:
+            for alias in pairs[1:]:
+                if alias is not None:
+                    self.assertIs(pairs[0], alias)
 
 
 if __name__ == "__main__":

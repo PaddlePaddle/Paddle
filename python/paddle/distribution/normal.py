@@ -23,7 +23,7 @@ import numpy.typing as npt
 import paddle
 from paddle.base.data_feeder import check_type, convert_dtype
 from paddle.base.framework import Variable
-from paddle.distribution import distribution
+from paddle.distribution import constraint, distribution
 from paddle.framework import in_dynamic_mode
 from paddle.tensor import random
 
@@ -89,6 +89,7 @@ class Normal(distribution.Distribution):
     Args:
         loc(int|float|complex|list|tuple|numpy.ndarray|Tensor): The mean of normal distribution.The data type is float32, float64, complex64 and complex128.
         scale(int|float|list|tuple|numpy.ndarray|Tensor): The std of normal distribution.The data type is float32 and float64.
+        validate_args(bool|None, optional): Whether to validate input arguments. Default is None.
         name(str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
@@ -139,8 +140,18 @@ class Normal(distribution.Distribution):
     name: str
     dtype: dtype
 
+    arg_constraints = {
+        "loc": constraint.real,
+        "scale": constraint.positive,
+    }
+    support = constraint.real
+
     def __init__(
-        self, loc: _NormalLoc, scale: _NormalScale, name: str | None = None
+        self,
+        loc: _NormalLoc,
+        scale: _NormalScale,
+        validate_args: bool | None = None,
+        name: str | None = None,
     ) -> None:
         if not in_dynamic_mode():
             check_type(
@@ -252,7 +263,22 @@ class Normal(distribution.Distribution):
                 if self.dtype != convert_dtype(self.loc.dtype):
                     self.loc = paddle.cast(self.loc, dtype=self.dtype)
                     self.scale = paddle.cast(self.scale, dtype=self.dtype)
-        super().__init__(self.loc.shape)
+        super().__init__(self.loc.shape, validate_args=validate_args)
+        if in_dynamic_mode() and self._validate_args_enabled:
+            self._validate_parameters()
+
+    def _validate_parameters(self) -> None:
+        for param, value in (("loc", self.loc), ("scale", self.scale)):
+            constraint_ = self.arg_constraints[param]
+            valid = constraint_.check(value)
+            if not bool(valid.all()):
+                raise ValueError(
+                    f"Expected parameter {param} "
+                    f"({type(value).__name__} of shape {tuple(value.shape)}) "
+                    f"of distribution {self!r} "
+                    f"to satisfy the constraint {constraint_!r}, "
+                    f"but found invalid values:\n{value}"
+                )
 
     @property
     def mean(self) -> Tensor:
@@ -409,6 +435,8 @@ class Normal(distribution.Distribution):
         """
         name = self.name + '_log_prob'
         value = self._check_values_dtype_in_probs(self.loc, value)
+        if in_dynamic_mode() and self._validate_args_enabled:
+            self._validate_sample(value)
 
         var = self.scale * self.scale
         log_scale = paddle.log(self.scale)

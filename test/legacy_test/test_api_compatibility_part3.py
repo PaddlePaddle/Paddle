@@ -4774,5 +4774,111 @@ class TestDistributionAPI(unittest.TestCase):
                 out1.perplexity()
 
 
+class TestNormalValidateArgsAPI(unittest.TestCase):
+    def setUp(self):
+        paddle.set_device("cpu")
+        self.np_loc = np.array([0.0, 1.0, -1.0], dtype="float32")
+        self.np_scale = np.array([1.0, 2.0, 0.5], dtype="float32")
+        self.np_value = np.array([0.2, 0.8, -0.3], dtype="float32")
+
+    def tearDown(self):
+        paddle.distribution.Distribution.set_default_validate_args(__debug__)
+        paddle.enable_static()
+
+    def _expected_log_prob(self):
+        var = self.np_scale * self.np_scale
+        return (
+            -((self.np_value - self.np_loc) * (self.np_value - self.np_loc))
+            / (2.0 * var)
+            - np.log(self.np_scale)
+            - np.log(np.sqrt(2.0 * np.pi))
+        )
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        paddle.distribution.Distribution.set_default_validate_args(False)
+        loc = paddle.to_tensor(self.np_loc)
+        scale = paddle.to_tensor(self.np_scale)
+        value = paddle.to_tensor(self.np_value)
+
+        # 1. Paddle Positional arguments
+        dist1 = paddle.distributions.normal.Normal(loc, scale)
+        out1 = dist1.log_prob(value)
+        # 2. Paddle keyword arguments
+        dist2 = paddle.distributions.normal.Normal(loc=loc, scale=scale)
+        out2 = dist2.log_prob(value)
+        # 3. PyTorch Positional arguments
+        dist3 = paddle.distributions.normal.Normal(loc, scale, False)
+        out3 = dist3.log_prob(value)
+        # 4. PyTorch keyword arguments
+        dist4 = paddle.distributions.normal.Normal(
+            loc=loc, scale=scale, validate_args=False
+        )
+        out4 = dist4.log_prob(value)
+        # 5. Mixed arguments
+        dist5 = paddle.distributions.normal.Normal(loc, scale=scale)
+        out5 = dist5.log_prob(value)
+
+        ref_out = self._expected_log_prob()
+        for out in [out1, out2, out3, out4, out5]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+        self.assertFalse(dist3._validate_args_enabled)
+        self.assertFalse(dist4._validate_args_enabled)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        paddle.distribution.Distribution.set_default_validate_args(False)
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            loc = paddle.static.data(
+                name="loc", shape=self.np_loc.shape, dtype="float32"
+            )
+            scale = paddle.static.data(
+                name="scale", shape=self.np_scale.shape, dtype="float32"
+            )
+            value = paddle.static.data(
+                name="value", shape=self.np_value.shape, dtype="float32"
+            )
+
+            # 1. Paddle Positional arguments
+            out1 = paddle.distributions.normal.Normal(loc, scale).log_prob(
+                value
+            )
+            # 2. Paddle keyword arguments
+            out2 = paddle.distributions.normal.Normal(
+                loc=loc, scale=scale
+            ).log_prob(value)
+            # 3. PyTorch Positional arguments
+            out3 = paddle.distributions.normal.Normal(
+                loc, scale, False
+            ).log_prob(value)
+            # 4. PyTorch keyword arguments
+            out4 = paddle.distributions.normal.Normal(
+                loc=loc, scale=scale, validate_args=False
+            ).log_prob(value)
+            # 5. Mixed arguments
+            out5 = paddle.distributions.normal.Normal(
+                loc, scale=scale
+            ).log_prob(value)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={
+                    "loc": self.np_loc,
+                    "scale": self.np_scale,
+                    "value": self.np_value,
+                },
+                fetch_list=[out1, out2, out3, out4, out5],
+            )
+
+        ref_out = self._expected_log_prob()
+        for out in fetches:
+            np.testing.assert_allclose(out, ref_out, rtol=1e-6)
+
+
 if __name__ == "__main__":
     unittest.main()

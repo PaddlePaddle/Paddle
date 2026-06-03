@@ -326,6 +326,10 @@ class MultivariateNormal(distribution.Distribution):
     def mode(self) -> Tensor:
         return self.loc
 
+    @mode.setter
+    def mode(self, value: Tensor) -> None:
+        self.loc = value
+
     def sample(self, shape: Sequence[int] = []) -> Tensor:
         """Generate Multivariate Normal samples of the specified shape. The final shape would be ``sample_shape + batch_shape + event_shape``.
 
