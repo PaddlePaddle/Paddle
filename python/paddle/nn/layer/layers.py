@@ -3081,7 +3081,7 @@ class Layer:
                             )
                         setattr(mod, param_name, state)
                     else:
-                        mod._buffers[param_name] = state
+                        setattr(mod, param_name, state)
                 else:
                     param.set_value(state)
         else:
@@ -3213,14 +3213,9 @@ class Layer:
 
         visit_load_state_dict_hooks(self, "")
 
-        if assign:
-            load_missing_keys, load_unexpected_keys = self.set_state_dict(
-                state_dict, use_structured_name=True, assign=assign
-            )
-        else:
-            load_missing_keys, load_unexpected_keys = self.set_state_dict(
-                state_dict, use_structured_name=True
-            )
+        load_missing_keys, load_unexpected_keys = self.set_state_dict(
+            state_dict, use_structured_name=True, assign=assign
+        )
         missing_keys.extend(load_missing_keys)
         unexpected_keys.extend(load_unexpected_keys)
 
