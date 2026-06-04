@@ -5674,7 +5674,7 @@ def reshape_as(x: Tensor, other: Tensor, name: str | None = None) -> Tensor:
             >>> other = paddle.zeros([2, 3, 4])
             >>> out = x.reshape_as(other)
             >>> print(out.shape)
-            [2, 3, 4]
+            paddle.Size([2, 3, 4])
     """
     return reshape(x, other.shape, name=name)
 
