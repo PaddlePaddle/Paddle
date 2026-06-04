@@ -15,22 +15,8 @@
 # Sleef external project configuration
 # Sleef version: 3.6.1 (latest stable release)
 
-set(SLEEF_REPOSITORY "https://github.com/shibatch/sleef.git")
-set(SLEEF_TAG "3.6.1")
-
-# Cache sleef source
-cache_third_party(
-  extern_sleef
-  REPOSITORY
-  ${SLEEF_REPOSITORY}
-  TAG
-  ${SLEEF_TAG}
-  DIR
-  SLEEF_SOURCE_DIR)
-
-set(SLEEF_SOURCE_DIR
-    "${SLEEF_SOURCE_DIR}"
-    CACHE PATH "sleef source dir")
+set(SLEEF_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/sleef)
+set(SLEEF_PREFIX_DIR ${THIRD_PARTY_PATH}/sleef)
 set(SLEEF_INSTALL_DIR "${THIRD_PARTY_PATH}/install/sleef")
 
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
@@ -58,9 +44,9 @@ set(SLEEF_CMAKE_ARGS
 
 ExternalProject_Add(
   extern_sleef
-  ${EXTERNAL_PROJECT_LOG_ARGS} ${SLEEF_DOWNLOAD_CMD}
-  PREFIX ${THIRD_PARTY_PATH}/sleef
+  ${EXTERNAL_PROJECT_LOG_ARGS}
   SOURCE_DIR ${SLEEF_SOURCE_DIR}
+  PREFIX ${SLEEF_PREFIX_DIR}
   UPDATE_COMMAND ""
   CMAKE_ARGS ${SLEEF_CMAKE_ARGS}
   BUILD_BYPRODUCTS
