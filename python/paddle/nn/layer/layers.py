@@ -3079,9 +3079,7 @@ class Layer:
                             state = paddle.nn.Parameter(
                                 state, trainable=param.trainable
                             )
-                        setattr(mod, param_name, state)
-                    else:
-                        setattr(mod, param_name, state)
+                    setattr(mod, param_name, state)
                 else:
                     param.set_value(state)
         else:
