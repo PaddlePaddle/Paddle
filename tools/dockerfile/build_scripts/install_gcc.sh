@@ -71,8 +71,26 @@ elif [ "$1" == "gcc121" ]; then
   cd .. && mkdir temp_gcc121 && cd temp_gcc121 && \
   ../gcc-12.1.0/configure --prefix=/usr/local/gcc-12.1 --enable-checking=release --enable-languages=c,c++ --disable-multilib && \
   make -j8 && make install
-  cd .. && rm -rf temp_gcc122 gcc-12.1.0 gcc-12.1.0.tar.gz
+  cd .. && rm -rf temp_gcc121 gcc-12.1.0 gcc-12.1.0.tar.gz
   cp ${lib_so_6} ${lib_so_6}.bak  && rm -f ${lib_so_6} &&
   ln -s /usr/local/gcc-12.1/lib64/libstdc++.so.6 ${lib_so_6} && \
   cp /usr/local/gcc-12.1/lib64/libstdc++.so.6.0.30 ${lib_path}
+elif [ "$1" == "gcc152" ]; then
+  GCC_VERSION=${GCC_VERSION:-15.2.0}
+  GCC_MAJOR_MINOR=$(echo ${GCC_VERSION} | cut -d. -f1,2)
+  GCC_PREFIX=/usr/local/gcc-${GCC_MAJOR_MINOR}
+  GCC_ARCHIVE=gcc-${GCC_VERSION}.tar.xz
+  wget -q https://ftp.gnu.org/gnu/gcc/gcc-${GCC_VERSION}/${GCC_ARCHIVE}
+  tar -xf ${GCC_ARCHIVE} && \
+  cd gcc-${GCC_VERSION} && \
+  unset LIBRARY_PATH CPATH C_INCLUDE_PATH PKG_CONFIG_PATH CPLUS_INCLUDE_PATH INCLUDE && \
+  ./contrib/download_prerequisites && \
+  cd .. && mkdir temp_gcc152 && cd temp_gcc152 && \
+  ../gcc-${GCC_VERSION}/configure --prefix=${GCC_PREFIX} --enable-checking=release --enable-languages=c,c++ --disable-multilib && \
+  make -j$(nproc) && make install
+  cd .. && rm -rf temp_gcc152 gcc-${GCC_VERSION} ${GCC_ARCHIVE}
+  cp ${lib_so_6} ${lib_so_6}.bak  && rm -f ${lib_so_6} &&
+  ln -s ${GCC_PREFIX}/lib64/libstdc++.so.6 ${lib_so_6} && \
+  cp ${GCC_PREFIX}/lib64/libstdc++.so.6.* ${lib_path}
+
 fi
