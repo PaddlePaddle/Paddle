@@ -8569,9 +8569,7 @@ def diagonal_scatter(
         "axis": ["dim"],
     }
 )
-def select_scatter(
-    x: Tensor, values: Tensor, axis: int, index: int, name: str | None = None
-) -> Tensor:
+def select_scatter(x: Tensor, values: Tensor, axis: int, index: int) -> Tensor:
     """
     Embeds the values of the values tensor into x at the given index of axis.
 
@@ -8580,7 +8578,6 @@ def select_scatter(
         values (Tensor) : The tensor to embed into x. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex128`. Alias: ``src``.
         axis (int) : the dimension to insert the slice into. Alias: ``dim``.
         index (int) : the index to select with.
-        name (str|None, optional): Name for the operation (optional, default is None).
 
     Returns:
         Tensor, same dtype and shape with x
@@ -8685,7 +8682,6 @@ def slice_scatter(
     starts: Sequence[int] | None = None,
     ends: Sequence[int] | None = None,
     strides: Sequence[int] | None = None,
-    name: str | None = None,
 ) -> Tensor: ...
 
 
@@ -8708,7 +8704,6 @@ def slice_scatter(
     starts: Sequence[int] | None = None,
     ends: Sequence[int] | None = None,
     strides: Sequence[int] | None = None,
-    name: str | None = None,
 ) -> Tensor:
     """
     Embeds the `value` tensor into `x` along multiple axes. Returns a new tensor instead of a view.
@@ -8727,7 +8722,6 @@ def slice_scatter(
             Alias: ``end``.
         strides (list|tuple) : the steps for each insert.
             Alias: ``step``.
-        name (str|None, optional): Name for the operation (optional, default is None).
 
     Returns:
         Tensor, same dtype and shape with x

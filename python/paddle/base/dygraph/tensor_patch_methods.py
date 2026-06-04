@@ -1211,6 +1211,7 @@ def monkey_patch_tensor():
         """
         return self.place.is_cpu_place()
 
+    @framework.dygraph_only
     def col_indices(self: Tensor) -> Tensor:
         """
         Returns the column indices of a SparseCsrTensor.
@@ -1219,6 +1220,7 @@ def monkey_patch_tensor():
         """
         return self.cols()
 
+    @framework.dygraph_only
     def crow_indices(self: Tensor) -> Tensor:
         """
         Returns the compressed row indices of a SparseCsrTensor.
