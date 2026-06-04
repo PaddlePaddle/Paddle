@@ -2827,7 +2827,7 @@ class Layer:
         include_sublayers: bool = True,
         structured_name_prefix: str = "",
         use_hook: bool = True,
-        keep_vars: bool = True,
+        keep_vars: bool = False,
     ) -> _StateDict: ...
 
     @overload
@@ -2861,7 +2861,7 @@ class Layer:
             destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None.
             include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True.
             use_hook(bool, optional) : If true, the operations contained in _state_dict_hooks will be appended to the destination. Default: True.
-            keep_vars(bool, optional) : If false, the returned tensors in the state dict are detached from autograd. Default: True.
+            keep_vars(bool, optional) : If false, the returned tensors in the state dict are detached from autograd. Default: False.
 
         Returns:
             dict: a dict contains all the parameters and persistable buffers.
@@ -2897,7 +2897,7 @@ class Layer:
         ):
             return self._state_dict_impl(*args, **kwargs)
 
-        if (len_args >= 2 and isinstance(args[1], str)) or 'prefix' in kwargs:
+        if len_args <= 3:
             base_param_keys = ["destination", "prefix", "keep_vars"]
             for idx in range(min(len_args, len(base_param_keys))):
                 safe_set_param(base_param_keys[idx], args[idx])

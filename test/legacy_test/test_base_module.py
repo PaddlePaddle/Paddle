@@ -862,14 +862,18 @@ class TestStateDict(unittest.TestCase):
                 self.assertTrue(state2[k].stop_gradient)
 
     def test_state_dict_torch_path_keep_vars_default(self):
-        paddle_state = self.model1.state_dict()
-        torch_state = self.model1.state_dict(prefix="module.")
+        keep_vars_state = self.model1.state_dict(keep_vars=True)
+        default_state = self.model1.state_dict()
+        torch_keyword_state = self.model1.state_dict(prefix="module.")
         torch_positional_state = self.model1.state_dict({}, "module.")
 
-        for name, tensor in paddle_state.items():
+        for name, tensor in keep_vars_state.items():
             if hasattr(tensor, "stop_gradient"):
                 self.assertFalse(tensor.stop_gradient)
-                self.assertTrue(torch_state["module." + name].stop_gradient)
+                self.assertTrue(default_state[name].stop_gradient)
+                self.assertTrue(
+                    torch_keyword_state["module." + name].stop_gradient
+                )
                 self.assertTrue(
                     torch_positional_state["module." + name].stop_gradient
                 )
