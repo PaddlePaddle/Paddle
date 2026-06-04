@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <limits>
+
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
@@ -70,10 +72,10 @@ void FusedMultiTransformerOpKernel(
   // 0. input
   auto *input_x = &x;
   const auto input_x_dims = input_x->dims();
-  int bsz = input_x_dims[0];
-  int seq_len = input_x_dims[1];
-  int dim_embed = input_x_dims[2];
-  int bsz_seq = bsz * seq_len;
+  int64_t bsz = input_x_dims[0];
+  int64_t seq_len = input_x_dims[1];
+  int64_t dim_embed = input_x_dims[2];
+  int64_t bsz_seq = bsz * seq_len;
 
   // Optional Bias input for LayerNorm / RMSNorm
   std::vector<const DenseTensor *> ln_biases;
@@ -108,7 +110,7 @@ void FusedMultiTransformerOpKernel(
   }
 
   auto *beam_cache_offset = beam_offset.get_ptr();
-  int beam_size = 1;
+  int64_t beam_size = 1;
   if (beam_cache_offset) {
     beam_size = beam_cache_offset->dims()[1];
   }
@@ -120,7 +122,7 @@ void FusedMultiTransformerOpKernel(
   // cumulative seqlens [batch_size+1]
   DenseTensor cu_seqlens_q, cu_seqlens_k;
   bool encoder_remove_padding = (remove_padding && !time_step);
-  int token_num = 0;
+  int64_t token_num = 0;
 
   auto *from_data = dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
 
@@ -146,16 +148,18 @@ void FusedMultiTransformerOpKernel(
     dev_ctx.template Alloc<int32_t>(&cu_seqlens_q,
                                     cu_seqlens_q.numel() * sizeof(int32_t));
 
+    int token_num_int = 0;
     phi::fusion::InvokeGetPaddingOffset(
         dev_ctx,
-        &token_num,
+        &token_num_int,
         d_token_num,
         padding_offset_tensor.data<int>(),
         cu_seqlens_q.data<int>(),
         sequence_lengths ? sequence_lengths->data<int>()
                          : sequence_lengths_backup.data<int>(),
-        bsz,
-        seq_len);
+        static_cast<int>(bsz),
+        static_cast<int>(seq_len));
+    token_num = token_num_int;
     if (token_num == 0) return;
     padding_offset_tensor.Resize({token_num});
     x_remove_padding.Resize({token_num, dim_embed});
@@ -197,7 +201,7 @@ void FusedMultiTransformerOpKernel(
   }
 
   const auto qkv_w_dims = qkv_weights[0]->dims();
-  int num_head, dim_head;
+  int64_t num_head, dim_head;
   if (gqa_group_size > 0) {
     num_head = trans_qkvw ? (qkv_w_dims[0] - 2 * gqa_group_size)
                           : (qkv_w_dims[1] - 2 * gqa_group_size);
@@ -206,15 +210,33 @@ void FusedMultiTransformerOpKernel(
     num_head = trans_qkvw ? qkv_w_dims[1] : qkv_w_dims[2];
     dim_head = trans_qkvw ? qkv_w_dims[2] : qkv_w_dims[3];
   }
-  int hidden_size = num_head * dim_head;
-  int output_size = gqa_group_size <= 0
-                        ? 3 * hidden_size
-                        : (num_head + 2 * gqa_group_size) * dim_head;
-  int input_size = dim_embed;
+  int64_t hidden_size = num_head * dim_head;
+  int64_t output_size = gqa_group_size <= 0
+                            ? 3 * hidden_size
+                            : (num_head + 2 * gqa_group_size) * dim_head;
+  int64_t input_size = dim_embed;
 
   // Set a flag whether need to add Matmul / Layernorm bias.
   bool compute_bias = qkv_biases.size() > 0;
   bool compute_ln_bias = ln_biases.size() > 0;
+
+  // TODO(large-tensor): GEMMHelper/NormHelper/FFNHelper and downstream functors
+  // still use int internally. Guard until they are fully upgraded to int64_t.
+  PADDLE_ENFORCE_LE(
+      token_num,
+      static_cast<int64_t>(std::numeric_limits<int>::max()),
+      common::errors::InvalidArgument(
+          "token_num (%lld) exceeds INT_MAX. Large tensor support for "
+          "fused_multi_transformer helper classes is not yet implemented.",
+          token_num));
+  PADDLE_ENFORCE_LE(dim_embed,
+                    static_cast<int64_t>(std::numeric_limits<int>::max()),
+                    common::errors::InvalidArgument(
+                        "dim_embed (%lld) exceeds INT_MAX.", dim_embed));
+  PADDLE_ENFORCE_LE(output_size,
+                    static_cast<int64_t>(std::numeric_limits<int>::max()),
+                    common::errors::InvalidArgument(
+                        "output_size (%lld) exceeds INT_MAX.", output_size));
 
   auto qkv_compute = phi::fusion::GEMMHelper<T>(
       dev_ctx, token_num, output_size, input_size, "None", trans_qkvw);
@@ -249,7 +271,7 @@ void FusedMultiTransformerOpKernel(
     pre_caches = *pre_caches_ptr;
   }
 
-  int cache_offset = 0;
+  int64_t cache_offset = 0;
   if (pre_caches.size() > 0) {
     cache_offset = pre_caches[0]->dims()[3];
   }
@@ -402,7 +424,7 @@ void FusedMultiTransformerOpKernel(
   auto ffn1_weight_dim = ffn1_weights[0]->dims();
   // if quant weight,
   // matmul weight is transposed
-  int dim_ffn = ffn1_weight_dim[1];
+  int64_t dim_ffn = ffn1_weight_dim[1];
   phi::fusion::FFNHelper<T> ffn1_helper(
       dev_ctx, act_method, token_num, dim_ffn, dim_embed, "None");
 
@@ -420,7 +442,7 @@ void FusedMultiTransformerOpKernel(
   fusion::FusedDropoutHelper<T, int8_t> fused_act_dropout_helper(
       dev_ctx, token_num, dim_ffn, ffn1_dropout_param);
   DenseTensor ffn1_dropout_out, ffn1_dropout_mask;
-  int tmp_dim_ffn = dim_ffn;
+  int64_t tmp_dim_ffn = dim_ffn;
   if (use_glu) tmp_dim_ffn /= 2;
   int8_t *ffn1_dropout_mask_data = nullptr;
   ffn1_dropout_out.Resize({token_num, tmp_dim_ffn});
@@ -547,7 +569,7 @@ void FusedMultiTransformerOpKernel(
     // step3. fmha
     const DenseTensor *cache_kv = cache_kvs.size() > 0 ? cache_kvs[i] : nullptr;
     DenseTensor *cache_kv_out = cache_kv ? cache_kv_outs[i] : nullptr;
-    int cache_bsz = 0;
+    int64_t cache_bsz = 0;
     if (cache_kv) {
       cache_bsz = cache_kv->dims()[1];
     }
