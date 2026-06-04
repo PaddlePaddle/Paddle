@@ -254,7 +254,3 @@ class TestFlowersSafeExtractTar(unittest.TestCase):
             extracted_file = os.path.join(extract_dir, member_name)
             with open(extracted_file, 'rb') as f:
                 self.assertEqual(f.read(), content)
-
-
-if __name__ == '__main__':
-    unittest.main()
