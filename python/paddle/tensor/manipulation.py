@@ -8706,8 +8706,13 @@ def slice_scatter(
     strides: Sequence[int] | None = None,
 ) -> Tensor:
     """
-    Embeds the `value` tensor into `x` along multiple axes. Returns a new tensor instead of a view.
-    The size of `axes` must be equal to `starts` , `ends` and `strides`.
+    Note:
+        This API has two signatures:
+        1. ``paddle.slice_scatter(x, value, axes=None, starts=None, ends=None, strides=None)`` (Paddle-style):
+            Embeds the `value` tensor into `x` along multiple axes. Returns a new tensor instead of a view.
+            The size of `axes` must be equal to `starts`, `ends` and `strides`.
+        2. ``paddle.slice_scatter(input, src, dim=0, start=None, end=None, step=1)`` (PyTorch-style):
+            Embeds the `src` tensor into `input` along a single axis.
 
     Args:
         x (Tensor) : The input Tensor. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex128`.
