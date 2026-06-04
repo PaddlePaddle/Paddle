@@ -120,7 +120,7 @@ class TestlayernormOp(unittest.TestCase):
         self.norm_weight_np = np.random.uniform(-0.05, 0.05, [cols])
         self.norm_bias_np = np.random.uniform(-0.05, 0.05, [cols])
         self.epsilon = 1e-5
-        self.residual_alpha = np.random.uniform(low=0.1, high=1.1, size=[1])
+        self.residual_alpha = float(np.random.uniform(low=0.1, high=1.1))
 
         self.quant_scale = 0.15
         self.quant_round_type = 1
@@ -417,7 +417,7 @@ class TestlayernormStaticOp(unittest.TestCase):
         self.norm_weight_np = np.random.uniform(-0.05, 0.05, [self.cols])
         self.norm_bias_np = np.random.uniform(-0.05, 0.05, [self.cols])
         self.epsilon = 1e-5
-        self.residual_alpha = np.random.uniform(low=0.1, high=1.1, size=[1])
+        self.residual_alpha = float(np.random.uniform(low=0.1, high=1.1))
 
         self.quant_scale = 0.15
         self.quant_round_type = 1
@@ -839,7 +839,7 @@ class TestlayernormOpCPU(unittest.TestCase):
         self.norm_weight_np = np.random.uniform(-0.05, 0.05, [cols])
         self.norm_bias_np = np.random.uniform(-0.05, 0.05, [cols])
         self.epsilon = 1e-5
-        self.residual_alpha = np.random.uniform(low=0.1, high=1.1, size=[1])
+        self.residual_alpha = float(np.random.uniform(low=0.1, high=1.1))
 
     def check_layernorm(self, x_np, gamma_np, beta_np, dtype):
         paddle.disable_static()
@@ -987,7 +987,7 @@ class TestlayernormStaticOpCPU(unittest.TestCase):
         self.norm_weight_np = np.random.uniform(-0.05, 0.05, [self.cols])
         self.norm_bias_np = np.random.uniform(-0.05, 0.05, [self.cols])
         self.epsilon = 1e-5
-        self.residual_alpha = np.random.uniform(low=0.1, high=1.1, size=[1])
+        self.residual_alpha = float(np.random.uniform(low=0.1, high=1.1))
 
         self.place = paddle.CPUPlace()
 
@@ -1224,7 +1224,7 @@ class TestlayernormOp_ZeroSize(TestlayernormOp):
         self.norm_weight_np = np.random.uniform(-0.05, 0.05, [cols])
         self.norm_bias_np = np.random.uniform(-0.05, 0.05, [cols])
         self.epsilon = 1e-5
-        self.residual_alpha = np.random.uniform(low=0.1, high=1.1, size=[1])
+        self.residual_alpha = float(np.random.uniform(low=0.1, high=1.1))
 
         self.quant_scale = 0.15
         self.quant_round_type = 1
