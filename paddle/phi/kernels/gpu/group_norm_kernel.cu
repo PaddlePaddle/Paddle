@@ -836,7 +836,7 @@ void GroupNormNDHWCKernel(const Context& dev_ctx,
   params_.eps = epsilon;
   auto stream = dev_ctx.stream();
   DenseTensor redBuffer;
-  int buffer_sizes = 2 * params_.n * groups;
+  int64_t buffer_sizes = 2 * static_cast<int64_t>(params_.n) * groups;
   redBuffer.Resize({1, buffer_sizes});
   params_.redBuffer = dev_ctx.template Alloc<float>(&redBuffer);
   int64_t max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];

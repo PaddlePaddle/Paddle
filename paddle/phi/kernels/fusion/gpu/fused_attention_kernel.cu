@@ -234,9 +234,9 @@ void FusedAttentionKernel(const Context &dev_ctx,
     dim_head = dim_embed / (num_head * nranks);
   }
 
-  int bsz_seq = batch_size * max_seq_len;
-  int hidden_size = num_head * dim_head;
-  int output_size = 3 * hidden_size;
+  int64_t bsz_seq = static_cast<int64_t>(batch_size) * max_seq_len;
+  int64_t hidden_size = static_cast<int64_t>(num_head) * dim_head;
+  int64_t output_size = 3 * hidden_size;
   int input_size = dim_embed;
 
   auto layer_norm_compute =
@@ -248,8 +248,15 @@ void FusedAttentionKernel(const Context &dev_ctx,
   }
   // (transA, transB, compute_bias) = (false, true, true)
   bool transB = transpose_qkv_wb ? false : true;
-  auto qkv_compute = fusion::AttnMatMul<T>(
-      dev_ctx, false, transB, bsz_seq, output_size, input_size, compute_bias);
+  PADDLE_ENFORCE_LE_INT_MAX(bsz_seq, "bsz_seq");
+  PADDLE_ENFORCE_LE_INT_MAX(output_size, "output_size");
+  auto qkv_compute = fusion::AttnMatMul<T>(dev_ctx,
+                                           false,
+                                           transB,
+                                           static_cast<int>(bsz_seq),
+                                           static_cast<int>(output_size),
+                                           input_size,
+                                           compute_bias);
 
   fusion::AttnDropoutParam attn_dropout_param(is_test,
                                               attn_dropout_implementation,
@@ -268,8 +275,15 @@ void FusedAttentionKernel(const Context &dev_ctx,
   // which is actually the input size. While the input size is hidden size,
   // which is actually the output size. So for out linear, switch the
   // input size and output size.
-  auto out_linear_compute = fusion::AttnMatMul<T>(
-      dev_ctx, false, false, bsz_seq, input_size, output_size, false);
+  PADDLE_ENFORCE_LE_INT_MAX(bsz_seq, "bsz_seq");
+  PADDLE_ENFORCE_LE_INT_MAX(output_size, "output_size");
+  auto out_linear_compute = fusion::AttnMatMul<T>(dev_ctx,
+                                                  false,
+                                                  false,
+                                                  static_cast<int>(bsz_seq),
+                                                  input_size,
+                                                  static_cast<int>(output_size),
+                                                  false);
   fusion::FusedDropoutLayerNormHelper<T, uint8_t>
       fused_dropout_layernorm_helper(
           dev_ctx, bsz_seq, dim_embed, dropout_param2, ln_epsilon);

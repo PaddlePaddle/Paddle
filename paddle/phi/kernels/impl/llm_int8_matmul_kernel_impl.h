@@ -514,9 +514,10 @@ void LaunchSplitKernel(const T* x,
                        int kfp_num,
                        gpuStream_t stream) {
   int max_row = m > n ? m : n;
-  const int elem_cnt = max_row * kfp_num;
+  const int64_t elem_cnt = static_cast<int64_t>(max_row) * kfp_num;
   int num_blocks = 1;
   PADDLE_ENFORCE_GPU_SUCCESS(GetGridSize(elem_cnt, &num_blocks));
+  PADDLE_ENFORCE_LE_INT_MAX(elem_cnt, "elem_cnt");
   int64_t num_outlier_idx = (k + 31) / 32;
 
   const int32_t sub_x_elem_cnt = m * kfp_num;
@@ -538,7 +539,7 @@ void LaunchSplitKernel(const T* x,
           kfp_num,
           sub_x_elem_cnt,
           sub_w_elem_cnt,
-          elem_cnt);
+          static_cast<int>(elem_cnt));
 }
 
 template <typename T>

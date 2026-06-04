@@ -99,7 +99,7 @@ struct FusedAdamFunctor {
       t_info.GetChunkIdAndTensorId(&chunk_id, &tensor_id);
 
       n = t_info.sizes[tensor_id];
-      int offset = chunk_id * chunk_size;
+      int64_t offset = static_cast<int64_t>(chunk_id) * chunk_size;
       g_ptr = static_cast<const T*>(t_info.grads[tensor_id]) + offset;
       p_ptr = static_cast<T*>(t_info.tensor_addrs[0][tensor_id]) + offset;
       mom1_ptr = static_cast<MT*>(t_info.tensor_addrs[1][tensor_id]) + offset;

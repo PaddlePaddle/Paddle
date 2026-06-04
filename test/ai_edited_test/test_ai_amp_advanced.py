@@ -29,6 +29,8 @@
 
 import unittest
 
+import numpy as np
+
 import paddle
 from paddle import nn
 
@@ -101,7 +103,10 @@ class TestGradScaler(unittest.TestCase):
         new_scaler = paddle.amp.GradScaler(init_loss_scaling=512)
         new_scaler.load_state_dict(state)
         new_state = new_scaler.state_dict()
-        self.assertEqual(float(state['scale']), float(new_state['scale']))
+        self.assertEqual(
+            float(np.asarray(state['scale']).item()),
+            float(np.asarray(new_state['scale']).item()),
+        )
 
 
 class TestAMPDecorate(unittest.TestCase):

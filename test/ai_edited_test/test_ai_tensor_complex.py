@@ -96,14 +96,14 @@ class TestComplexDecomposition(unittest.TestCase):
         # angle(1+1j) = pi/4
         z = paddle.to_tensor([1.0 + 1.0j])
         angle = paddle.angle(z)
-        self.assertAlmostEqual(float(angle.numpy()), np.pi / 4, places=5)
+        self.assertAlmostEqual(float(angle.item()), np.pi / 4, places=5)
 
     def test_abs_complex(self):
         """测试复数模 / Test complex absolute value"""
         # |3 + 4j| = 5
         z = paddle.to_tensor([3.0 + 4.0j])
         magnitude = paddle.abs(z)
-        self.assertAlmostEqual(float(magnitude.numpy()), 5.0, places=4)
+        self.assertAlmostEqual(float(magnitude.item()), 5.0, places=4)
 
     def test_conj(self):
         """测试共轭 / Test conjugate"""

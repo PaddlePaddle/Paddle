@@ -49,8 +49,9 @@ def accuracy(pred, label, topk=(1,)):
 def convert_to_one_hot(y, C):
     oh = np.random.choice(np.arange(C), C, replace=False).astype('float32') / C
     oh = np.tile(oh[np.newaxis, :], (y.shape[0], 1))
+    labels = np.asarray(y).reshape(-1)
     for i in range(y.shape[0]):
-        oh[i, int(y[i])] = 1.0
+        oh[i, int(labels[i])] = 1.0
     return oh
 
 

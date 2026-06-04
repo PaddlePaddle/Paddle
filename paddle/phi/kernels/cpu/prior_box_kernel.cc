@@ -63,10 +63,10 @@ void PriorBoxKernel(const Context& dev_ctx,
     step_height = new_step_h;
   }
 
-  int num_priors =
-      static_cast<int>(new_aspect_ratios.size() * min_sizes.size());
+  int64_t num_priors =
+      static_cast<int64_t>(new_aspect_ratios.size() * min_sizes.size());
   if (!max_sizes.empty()) {
-    num_priors += static_cast<int>(max_sizes.size());
+    num_priors += static_cast<int64_t>(max_sizes.size());
   }
 
   dev_ctx.template Alloc<T>(out);
@@ -144,7 +144,7 @@ void PriorBoxKernel(const Context& dev_ctx,
   }
 
   DenseTensor var_t;
-  var_t.Resize({1, static_cast<int>(variances.size())});
+  var_t.Resize({1, static_cast<int64_t>(variances.size())});
   dev_ctx.template Alloc<T>(&var_t);
   auto var_et = EigenTensor<T, 2>::From(var_t);
 
@@ -155,16 +155,17 @@ void PriorBoxKernel(const Context& dev_ctx,
     var_et(0, i) = variances[i];
   }
 
-  int box_num = static_cast<int>(feature_height * feature_width * num_priors);
+  int64_t box_num =
+      static_cast<int64_t>(feature_height) * feature_width * num_priors;
   auto var_dim = var->dims();
-  var->Resize({box_num, static_cast<int>(variances.size())});
+  var->Resize({box_num, static_cast<int64_t>(variances.size())});
 
   auto e_vars = EigenMatrix<T, Eigen::RowMajor>::From(*var);
 
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for collapse(2)
 #endif
-  for (int i = 0; i < box_num; ++i) {
+  for (int64_t i = 0; i < box_num; ++i) {
     for (size_t j = 0; j < variances.size(); ++j) {
       e_vars(i, j) = variances[j];
     }

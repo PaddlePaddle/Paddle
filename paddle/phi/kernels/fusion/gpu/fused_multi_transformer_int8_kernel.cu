@@ -75,7 +75,7 @@ void FusedMultiTransformerINT8OpKernel(
   int bsz = input_x_dims[0];
   int seq_len = input_x_dims[1];
   int dim_embed = input_x_dims[2];
-  int bsz_seq = bsz * seq_len;
+  int64_t bsz_seq = static_cast<int64_t>(bsz) * seq_len;
 
   // quant input scales, vector, size = num_layers
 
@@ -111,14 +111,19 @@ void FusedMultiTransformerINT8OpKernel(
   const auto qkv_w_dims = qkv_weights[0]->dims();
   int num_head = trans_qkvw ? qkv_w_dims[1] : qkv_w_dims[2];
   int dim_head = trans_qkvw ? qkv_w_dims[2] : qkv_w_dims[3];
-  int hidden_size = num_head * dim_head;
-  int output_size = 3 * hidden_size;
+  int64_t hidden_size = static_cast<int64_t>(num_head) * dim_head;
+  int64_t output_size = 3 * hidden_size;
   int input_size = dim_embed;
 
   bool compute_bias = qkv_biases.size() > 0 && time_step == nullptr;
   // (transA, transB, compute_bias) = (false, trans_qkvw, false)
-  fusion::AttnMatmulINT8<T> qkv_compute(
-      dev_ctx, bsz_seq, output_size, input_size, compute_bias);
+  PADDLE_ENFORCE_LE_INT_MAX(bsz_seq, "bsz_seq");
+  PADDLE_ENFORCE_LE_INT_MAX(output_size, "output_size");
+  fusion::AttnMatmulINT8<T> qkv_compute(dev_ctx,
+                                        static_cast<int>(bsz_seq),
+                                        static_cast<int>(output_size),
+                                        input_size,
+                                        compute_bias);
   DenseTensor qkv_out;
   qkv_out.Resize({bsz, seq_len, 3, num_head, dim_head});
   auto *qkv_out_data =
@@ -193,8 +198,13 @@ void FusedMultiTransformerINT8OpKernel(
   auto out_linear_biases = out_linear_bias.get();
 
   // (transA, transB, compute_bias) = (false, false, false)
-  fusion::AttnMatmulINT8<T> out_linear_compute(
-      dev_ctx, bsz_seq, dim_embed, hidden_size, false);
+  PADDLE_ENFORCE_LE_INT_MAX(bsz_seq, "bsz_seq");
+  PADDLE_ENFORCE_LE_INT_MAX(hidden_size, "hidden_size");
+  fusion::AttnMatmulINT8<T> out_linear_compute(dev_ctx,
+                                               static_cast<int>(bsz_seq),
+                                               dim_embed,
+                                               static_cast<int>(hidden_size),
+                                               false);
 
   // 5. ln(residual + bias)
   fusion::DropoutParam dropout_param2(true, 0, true, true, 0.0, nullptr, 0);
@@ -224,8 +234,9 @@ void FusedMultiTransformerINT8OpKernel(
   auto ffn1_weight_dim = ffn1_weights[0]->dims();
 
   int dim_ffn = ffn1_weight_dim[0];
+  PADDLE_ENFORCE_LE_INT_MAX(bsz_seq, "bsz_seq");
   fusion::AttnMatmulINT8<T> ffn1_linear_compute(
-      dev_ctx, bsz_seq, dim_ffn, dim_embed, false);
+      dev_ctx, static_cast<int>(bsz_seq), dim_ffn, dim_embed, false);
   DenseTensor ffn1_out;
   ffn1_out.Resize({bsz_seq, dim_ffn});
   auto *ffn1_out_data =
@@ -249,8 +260,9 @@ void FusedMultiTransformerINT8OpKernel(
   // 8. ffn2 matmul
   auto ffn2_weights = ffn2_weight;
   auto ffn2_biases = ffn2_bias.get();
+  PADDLE_ENFORCE_LE_INT_MAX(bsz_seq, "bsz_seq");
   fusion::AttnMatmulINT8<T> ffn2_linear_compute(
-      dev_ctx, bsz_seq, dim_embed, dim_ffn, false);
+      dev_ctx, static_cast<int>(bsz_seq), dim_embed, dim_ffn, false);
 
   // 9. ffn2 residual bias
   fusion::DropoutParam ffn2_dropout_param(true, 0, true, true, 0.0, nullptr, 0);
@@ -267,8 +279,10 @@ void FusedMultiTransformerINT8OpKernel(
   // []. init workspace for cublasLt transform
   DenseTensor input_workspace, output_workspace, cublaslt_workspace;
   // for input and output transform data is CUBLASLT_ORDER_COL32 format,
-  int m_max = bsz_seq, k_max = std::max(dim_embed, dim_ffn),
-      n_max = std::max({output_size, dim_embed, dim_ffn});
+  int64_t m_max = bsz_seq, k_max = std::max(dim_embed, dim_ffn),
+          n_max = std::max({output_size,
+                            static_cast<int64_t>(dim_embed),
+                            static_cast<int64_t>(dim_ffn)});
 
   input_workspace.Resize({(m_max * k_max + 31) / 32 * 32});
   dev_ctx.template Alloc<int8_t>(&input_workspace,
@@ -417,7 +431,8 @@ void FusedMultiTransformerINT8OpKernel(
                                   &fmha_out);
       // [3, bsz, num_head, seq_len, head_dim]
       T *qkv_data = transpose_out_2_data;
-      int64_t q_size = bsz * seq_len * num_head * dim_head;
+      int64_t q_size =
+          static_cast<int64_t>(bsz) * seq_len * num_head * dim_head;
       int64_t k_size = q_size;
       const T *q_ptr = qkv_data;
       const T *k_ptr = q_ptr + q_size;
@@ -471,10 +486,11 @@ void FusedMultiTransformerINT8OpKernel(
                                                quant_round_type,
                                                quant_max_bound,
                                                quant_min_bound);
-      phi::fusion::AllReduce<int32_t>(output_workspace,
-                                      ring_id,
-                                      bsz * seq_len * num_head * dim_head,
-                                      dev_ctx);
+      phi::fusion::AllReduce<int32_t>(
+          output_workspace,
+          ring_id,
+          static_cast<int64_t>(bsz) * seq_len * num_head * dim_head,
+          dev_ctx);
     } else {
       out_linear_compute.ComputeForward(out_linear_weights[i],
                                         &fmha_out,
@@ -611,10 +627,11 @@ void FusedMultiTransformerINT8OpKernel(
     }
 
     if (pre_layer_norm) {
-      phi::fusion::AllReduce<int32_t>(output_workspace,
-                                      ring_id,
-                                      bsz * seq_len * num_head * dim_head,
-                                      dev_ctx);
+      phi::fusion::AllReduce<int32_t>(
+          output_workspace,
+          ring_id,
+          static_cast<int64_t>(bsz) * seq_len * num_head * dim_head,
+          dev_ctx);
     } else {
       phi::fusion::AllReduce<T>(*buf0, ring_id, buf0->numel(), dev_ctx);
     }

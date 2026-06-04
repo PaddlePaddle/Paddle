@@ -30,7 +30,7 @@ class TestImdbTrain(unittest.TestCase):
         data, label = imdb[idx]
         self.assertTrue(len(data.shape) == 1)
         self.assertTrue(label.shape[0] == 1)
-        self.assertTrue(int(label) in [0, 1])
+        self.assertTrue(int(np.asarray(label).item()) in [0, 1])
 
 
 class TestImdbTest(unittest.TestCase):
@@ -44,7 +44,7 @@ class TestImdbTest(unittest.TestCase):
         data, label = imdb[idx]
         self.assertTrue(len(data.shape) == 1)
         self.assertTrue(label.shape[0] == 1)
-        self.assertTrue(int(label) in [0, 1])
+        self.assertTrue(int(np.asarray(label).item()) in [0, 1])
 
 
 if __name__ == '__main__':

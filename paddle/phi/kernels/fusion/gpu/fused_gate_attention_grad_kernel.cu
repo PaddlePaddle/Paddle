@@ -59,11 +59,19 @@ void ComputeMergedQKVMatmulBackward(
   dev_ctx.Alloc<T>(qkv_weight_grad, qkv_weight_grad->numel() * sizeof(T));
 
   // Gradient of GEMM(query, qkv_weight)
-  int m = config.batch_size * config.seq_len_m * config.seq_len_r;
-  int n = 3 * config.num_heads * config.head_dim;
-  int k = config.q_dim;
-  auto qkv_compute =
-      fusion::AttnMatMul<T>(dev_ctx, false, true, m, n, k, false);
+  int64_t m = config.batch_size * config.seq_len_m * config.seq_len_r;
+  int64_t n = 3 * config.num_heads * config.head_dim;
+  int64_t k = config.q_dim;
+  PADDLE_ENFORCE_LE_INT_MAX(m, "merged_qkv_num_tokens");
+  PADDLE_ENFORCE_LE_INT_MAX(n, "merged_qkv_hidden_size");
+  PADDLE_ENFORCE_LE_INT_MAX(k, "q_input_dim");
+  auto qkv_compute = fusion::AttnMatMul<T>(dev_ctx,
+                                           false,
+                                           true,
+                                           static_cast<int>(m),
+                                           static_cast<int>(n),
+                                           static_cast<int>(k),
+                                           false);
   qkv_compute.ComputeBackward(query,
                               qkv_weight,
                               qkv_out_grad,
@@ -95,11 +103,19 @@ void ComputeSeparatedQKVMatmulBackward(
   const auto *key_weight = &key_weight_in;
   dev_ctx.Alloc<T>(key_weight_grad, key_weight_grad->numel() * sizeof(T));
 
-  int kv_m = config.batch_size * config.seq_len_m * config.m_size;
-  int kv_n = config.num_heads * config.head_dim;
-  int kv_k = config.kv_dim;
-  auto kv_compute =
-      fusion::AttnMatMul<T>(dev_ctx, false, false, kv_m, kv_n, kv_k, false);
+  int64_t kv_m = config.batch_size * config.seq_len_m * config.m_size;
+  int64_t kv_n = config.num_heads * config.head_dim;
+  int64_t kv_k = config.kv_dim;
+  PADDLE_ENFORCE_LE_INT_MAX(kv_m, "kv_num_tokens");
+  PADDLE_ENFORCE_LE_INT_MAX(kv_n, "kv_hidden_size");
+  PADDLE_ENFORCE_LE_INT_MAX(kv_k, "kv_input_dim");
+  auto kv_compute = fusion::AttnMatMul<T>(dev_ctx,
+                                          false,
+                                          false,
+                                          static_cast<int>(kv_m),
+                                          static_cast<int>(kv_n),
+                                          static_cast<int>(kv_k),
+                                          false);
   kv_compute.ComputeBackward(
       key, key_weight, key_out_grad, key_grad, key_weight_grad, nullptr, false);
 
@@ -119,11 +135,19 @@ void ComputeSeparatedQKVMatmulBackward(
   const auto *query_weight = &query_weight_in;
   dev_ctx.Alloc<T>(query_weight_grad, query_weight_grad->numel() * sizeof(T));
 
-  int q_m = config.batch_size * config.seq_len_m * config.seq_len_r;
-  int q_n = config.num_heads * config.head_dim;
-  int q_k = config.q_dim;
-  auto q_compute =
-      fusion::AttnMatMul<T>(dev_ctx, false, false, q_m, q_n, q_k, false);
+  int64_t q_m = config.batch_size * config.seq_len_m * config.seq_len_r;
+  int64_t q_n = config.num_heads * config.head_dim;
+  int64_t q_k = config.q_dim;
+  PADDLE_ENFORCE_LE_INT_MAX(q_m, "q_num_tokens");
+  PADDLE_ENFORCE_LE_INT_MAX(q_n, "q_hidden_size");
+  PADDLE_ENFORCE_LE_INT_MAX(q_k, "q_input_dim");
+  auto q_compute = fusion::AttnMatMul<T>(dev_ctx,
+                                         false,
+                                         false,
+                                         static_cast<int>(q_m),
+                                         static_cast<int>(q_n),
+                                         static_cast<int>(q_k),
+                                         false);
   q_compute.ComputeBackward(query,
                             query_weight,
                             query_out_grad,
@@ -155,11 +179,19 @@ void ComputeGatingLinearBackward(
   gate_bias_out.Resize(config.gate_out_dims);
   dev_ctx.Alloc<T>(&gate_bias_out, gate_bias_out.numel() * sizeof(T));
 
-  int m = config.batch_size * config.seq_len_m * config.seq_len_r;
-  int n = config.num_heads * config.head_dim;
-  int k = config.q_dim;
-  auto gate_linear =
-      fusion::AttnMatMul<T>(dev_ctx, false, false, m, n, k, true);
+  int64_t m = config.batch_size * config.seq_len_m * config.seq_len_r;
+  int64_t n = config.num_heads * config.head_dim;
+  int64_t k = config.q_dim;
+  PADDLE_ENFORCE_LE_INT_MAX(m, "gate_num_tokens");
+  PADDLE_ENFORCE_LE_INT_MAX(n, "gate_hidden_size");
+  PADDLE_ENFORCE_LE_INT_MAX(k, "gate_input_dim");
+  auto gate_linear = fusion::AttnMatMul<T>(dev_ctx,
+                                           false,
+                                           false,
+                                           static_cast<int>(m),
+                                           static_cast<int>(n),
+                                           static_cast<int>(k),
+                                           true);
   gate_linear.ComputeForward(gate_weight,
                              query,
                              gate_bias,
@@ -208,10 +240,19 @@ void ComputeOutputLinearBackward(
   dev_ctx.Alloc<T>(out_linear_bias_grad,
                    out_linear_bias_grad->numel() * sizeof(T));
 
-  int m = config.batch_size * config.seq_len_m * config.seq_len_r;
-  int n = config.q_dim;
-  int k = config.num_heads * config.head_dim;
-  auto out_linear = fusion::AttnMatMul<T>(dev_ctx, false, false, m, n, k, true);
+  int64_t m = config.batch_size * config.seq_len_m * config.seq_len_r;
+  int64_t n = config.q_dim;
+  int64_t k = config.num_heads * config.head_dim;
+  PADDLE_ENFORCE_LE_INT_MAX(m, "out_linear_num_tokens");
+  PADDLE_ENFORCE_LE_INT_MAX(n, "out_hidden_size");
+  PADDLE_ENFORCE_LE_INT_MAX(k, "out_linear_input_dim");
+  auto out_linear = fusion::AttnMatMul<T>(dev_ctx,
+                                          false,
+                                          false,
+                                          static_cast<int>(m),
+                                          static_cast<int>(n),
+                                          static_cast<int>(k),
+                                          true);
   out_linear.ComputeBackward(input,
                              out_linear_weight,
                              out_grad,

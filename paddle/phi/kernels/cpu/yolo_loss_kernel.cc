@@ -58,7 +58,7 @@ static inline Box<T> GetYoloBox(const T* x,
                                 int grid_size,
                                 int input_size,
                                 int64_t index,
-                                int stride,
+                                int64_t stride,
                                 float scale,
                                 float bias) {
   Box<T> b = {};
@@ -100,7 +100,7 @@ static void CalcBoxLocationLoss(T* loss,
                                 int gj,
                                 int grid_size,
                                 int input_size,
-                                int stride,
+                                int64_t stride,
                                 T score) {
   T tx = gt.x * grid_size - gi;
   T ty = gt.y * grid_size - gj;
@@ -120,7 +120,7 @@ static inline void CalcLabelLoss(T* loss,
                                  const int64_t index,
                                  const int label,
                                  const int class_num,
-                                 const int stride,
+                                 const int64_t stride,
                                  const T pos,
                                  const T neg,
                                  T score) {
@@ -138,8 +138,8 @@ static inline void CalcObjnessLoss(T* loss,
                                    const int an_num,
                                    const int h,
                                    const int w,
-                                   const int stride,
-                                   const int an_stride) {
+                                   const int64_t stride,
+                                   const int64_t an_stride) {
   for (int i = 0; i < n; i++) {
     for (int j = 0; j < an_num; j++) {
       for (int k = 0; k < h; k++) {
@@ -207,8 +207,8 @@ void YoloLossKernel(const Context& dev_ctx,
   const int b = static_cast<int>(gt_box.dims()[1]);
   int input_size = downsample_ratio * h;
 
-  const int stride = h * w;
-  const int an_stride = (class_num + 5) * stride;
+  const int64_t stride = static_cast<int64_t>(h) * w;
+  const int64_t an_stride = static_cast<int64_t>(class_num + 5) * stride;
 
   T label_pos = 1.0;
   T label_neg = 0.0;
@@ -281,7 +281,7 @@ void YoloLossKernel(const Context& dev_ctx,
           // If best IoU is bigger then ignore_thresh,
           // ignore the objectness loss.
           if (best_iou > ignore_thresh) {
-            int obj_idx = (i * mask_num + j) * stride + k * w + l;
+            int64_t obj_idx = (i * mask_num + j) * stride + k * w + l;
             obj_mask_data[obj_idx] = static_cast<T>(-1);
           }
           // all losses should be calculated if best IoU
@@ -338,7 +338,7 @@ void YoloLossKernel(const Context& dev_ctx,
                                stride,
                                score);
 
-        int obj_idx = (i * mask_num + mask_idx) * stride + gj * w + gi;
+        int64_t obj_idx = (i * mask_num + mask_idx) * stride + gj * w + gi;
         obj_mask_data[obj_idx] = score;
 
         int label = gt_label_data[i * b + t];

@@ -68,10 +68,12 @@ RUN rm /usr/bin/python && ln -s /usr/bin/python3.9 /usr/bin/python && \
     rm /usr/bin/python3 && ln -s /usr/bin/python3.9 /usr/bin/python3
 
 WORKDIR /home
-RUN wget -q https://bootstrap.pypa.io/get-pip.py
-RUN sed -i 's#"install", "--upgrade", "--force-reinstall"#"install", "--upgrade", "--force-reinstall", "--break-system-packages"#' get-pip.py
+RUN wget -q https://bootstrap.pypa.io/get-pip.py && \
+    wget -q https://bootstrap.pypa.io/pip/3.9/get-pip.py -O get-pip-3.9.py
+RUN sed -i 's#"install", "--upgrade", "--force-reinstall"#"install", "--upgrade", "--force-reinstall", "--break-system-packages"#' get-pip.py && \
+    sed -i 's#"install", "--upgrade", "--force-reinstall"#"install", "--upgrade", "--force-reinstall", "--break-system-packages"#' get-pip-3.9.py
 
-RUN python3.9 get-pip.py && \
+RUN python3.9 get-pip-3.9.py && \
   python3.10 get-pip.py && \
   python3.11 get-pip.py && \
   python3.12 get-pip.py
@@ -145,16 +147,16 @@ RUN python3.9  -m pip --no-cache-dir install pre-commit==2.17.0 && \
 COPY ./python/requirements.txt /root/
 COPY ./python/unittest_py/requirements.txt /home/
 
-RUN python3.9  -m pip --no-cache-dir install -r  /root/requirements.txt && \
-    python3.9  -m pip --no-cache-dir install -r  /home/requirements.txt && \
+RUN python3.9  -m pip --no-cache-dir install -r /root/requirements.txt && \
+    python3.9  -m pip --no-cache-dir install --break-system-packages --ignore-installed -r /home/requirements.txt && \
     python3.10 -m pip --no-cache-dir install -r /root/requirements.txt && \
-    python3.10 -m pip --no-cache-dir install -r /home/requirements.txt && \
+    python3.10 -m pip --no-cache-dir install --break-system-packages --ignore-installed -r /home/requirements.txt && \
     python3.11 -m pip --no-cache-dir install -r /root/requirements.txt && \
-    python3.11 -m pip --no-cache-dir install -r /home/requirements.txt && \
+    python3.11 -m pip --no-cache-dir install --break-system-packages --ignore-installed -r /home/requirements.txt && \
     python3.12 -m pip --no-cache-dir install --break-system-packages -r /root/requirements.txt && \
-    python3.12 -m pip --no-cache-dir install --break-system-packages -r /home/requirements.txt && \
+    python3.12 -m pip --no-cache-dir install --break-system-packages --ignore-installed -r /home/requirements.txt && \
     python3.13 -m pip --no-cache-dir install -r /root/requirements.txt && \
-    python3.13 -m pip --no-cache-dir install -r /home/requirements.txt && \
+    python3.13 -m pip --no-cache-dir install --break-system-packages --ignore-installed -r /home/requirements.txt && \
     python3.13t -m pip --no-cache-dir install -r /root/requirements.txt
 
 # clang14
