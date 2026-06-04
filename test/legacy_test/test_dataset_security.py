@@ -20,9 +20,9 @@ import unittest
 from unittest import mock
 
 import paddle.vision.datasets.cifar as vision_cifar
-from paddle.dataset.cifar import CIFAR10_MD5, reader_creator
+from paddle.dataset.cifar import CIFAR10_MD5, CIFAR100_MD5, reader_creator
 from paddle.utils.download import _safe_extract_tar
-from paddle.vision.datasets import Cifar10
+from paddle.vision.datasets import Cifar10, Cifar100
 
 
 class TestCifarSecurity(unittest.TestCase):
@@ -68,27 +68,33 @@ class TestCifarSecurity(unittest.TestCase):
             ):
                 list(reader())
 
-    def _count_local_cifar_md5_calls(self, data_file, mutate=None):
+    def _count_local_cifar_md5_calls(
+        self,
+        data_file,
+        dataset_cls=Cifar10,
+        md5sum=CIFAR10_MD5,
+        mutate=None,
+    ):
         md5_calls = []
 
         def fake_md5file(path):
             md5_calls.append(path)
-            return CIFAR10_MD5
+            return md5sum
 
         vision_cifar._cached_md5file.cache_clear()
         try:
             with (
                 mock.patch.object(vision_cifar, 'md5file', fake_md5file),
                 mock.patch.object(
-                    Cifar10,
+                    dataset_cls,
                     '_load_data',
                     lambda dataset: setattr(dataset, 'data', []),
                 ),
             ):
-                Cifar10(data_file=data_file, download=False)
+                dataset_cls(data_file=data_file, download=False)
                 if mutate is not None:
                     mutate()
-                Cifar10(data_file=data_file, download=False)
+                dataset_cls(data_file=data_file, download=False)
         finally:
             vision_cifar._cached_md5file.cache_clear()
 
@@ -101,6 +107,20 @@ class TestCifarSecurity(unittest.TestCase):
 
             self.assertEqual(self._count_local_cifar_md5_calls(data_file), 1)
 
+    def test_cifar100_local_archive_md5_cache_reuses_unchanged_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            data_file = os.path.join(tmpdir, 'cifar-100-python.tar.gz')
+            self._write_tar(data_file)
+
+            self.assertEqual(
+                self._count_local_cifar_md5_calls(
+                    data_file,
+                    dataset_cls=Cifar100,
+                    md5sum=CIFAR100_MD5,
+                ),
+                1,
+            )
+
     def test_local_archive_md5_cache_refreshes_changed_file(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             data_file = os.path.join(tmpdir, 'cifar-10-python.tar.gz')
@@ -111,7 +131,7 @@ class TestCifarSecurity(unittest.TestCase):
                     f.write(b'changed')
 
             self.assertEqual(
-                self._count_local_cifar_md5_calls(data_file, mutate), 2
+                self._count_local_cifar_md5_calls(data_file, mutate=mutate), 2
             )
 
 
