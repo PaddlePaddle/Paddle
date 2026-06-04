@@ -615,11 +615,30 @@ foreach(arch ${NVCC_ARCH_BIN})
     break()
   endif()
 endforeach()
-if(WITH_NVSHMEM AND NOT WITH_XPU)
+
+set(WITH_NVSHMEM_USER_DEFINED OFF)
+if(DEFINED CACHE{WITH_NVSHMEM} AND WITH_NVSHMEM)
+  set(WITH_NVSHMEM_USER_DEFINED ON)
+endif()
+
+set(NVSHMEM_AVAILABLE ON)
+if(NOT WITH_XPU)
   if(NOT WITH_GPU
      OR NOT WITH_DISTRIBUTE
      OR (ARCH_BIN_CONTAINS_90 EQUAL -1)
      OR NOT FLASHATTN_ENABLED)
+    set(NVSHMEM_AVAILABLE OFF)
+  endif()
+endif()
+
+if(WITH_NVSHMEM AND NOT NVSHMEM_AVAILABLE)
+  if(WITH_NVSHMEM_USER_DEFINED)
+    message(
+      FATAL_ERROR
+        "For non-XPU builds, WITH_NVSHMEM=ON requires WITH_GPU=ON, "
+        "WITH_DISTRIBUTE=ON, NVCC_ARCH_BIN containing sm90 or higher, "
+        "and FLASHATTN_ENABLED=ON.")
+  else()
     set(WITH_NVSHMEM OFF)
   endif()
 endif()
