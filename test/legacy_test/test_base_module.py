@@ -379,15 +379,29 @@ class TestLoadStateDict(unittest.TestCase):
 
     def test_load_state_dict_assign(self):
         self.module.register_parameter('weight', nn.Parameter(paddle.ones([1])))
+        self.module.register_buffer('buffer', paddle.ones([1]))
         old_weight = self.module.weight
-        state_dict = {'weight': paddle.full([1], 3.0)}
+        old_buffer = self.module.buffer
+        self.module.weight.trainable = False
+        state_weight = nn.Parameter(paddle.full([1], 3.0))
+        state_dict = {
+            'weight': state_weight,
+            'buffer': paddle.full([1], 5.0),
+        }
 
         result = self.module.load_state_dict(state_dict, assign=True)
 
-        self.assertIsNot(self.module.weight, old_weight)
+        self.assertIs(self.module.weight, state_weight)
+        self.assertIs(self.module.buffer, state_dict['buffer'])
         self.assertTrue(
             paddle.allclose(self.module.weight, state_dict['weight'])
         )
+        self.assertTrue(
+            paddle.allclose(self.module.buffer, state_dict['buffer'])
+        )
+        self.assertFalse(self.module.weight.trainable)
+        self.assertIsNot(self.module.weight, old_weight)
+        self.assertIsNot(self.module.buffer, old_buffer)
         self.assertEqual(len(result.missing_keys), 0)
         self.assertEqual(len(result.unexpected_keys), 0)
 

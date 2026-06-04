@@ -3073,10 +3073,15 @@ class Layer:
                     module_path, _, param_name = key.rpartition(".")
                     mod = self.get_sublayer(module_path)
                     if isinstance(param, paddle.nn.Parameter):
-                        state = paddle.nn.Parameter(
-                            state, trainable=param.trainable
-                        )
-                    setattr(mod, param_name, state)
+                        if isinstance(state, paddle.nn.Parameter):
+                            state.trainable = param.trainable
+                        else:
+                            state = paddle.nn.Parameter(
+                                state, trainable=param.trainable
+                            )
+                        setattr(mod, param_name, state)
+                    else:
+                        mod._buffers[param_name] = state
                 else:
                     param.set_value(state)
         else:
