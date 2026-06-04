@@ -1349,5 +1349,165 @@ class TestCrowIndicesAPI(unittest.TestCase):
         paddle.enable_static()
 
 
+# Test take compatibility
+class TestTakeAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_x = np.array([1, 2, 3, 4, 5]).astype("float32")
+        self.np_indices = np.array([0, 2, 4]).astype("int64")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        indices = paddle.to_tensor(self.np_indices)
+
+        # 1. Paddle positional arguments
+        out1 = paddle.take(x, indices)
+        # 2. Paddle keyword arguments
+        out2 = paddle.take(x=x, index=indices)
+        # 3. Tensor method
+        out3 = x.take(indices)
+
+        # Verify outputs
+        expected = self.np_x[self.np_indices]
+        for out in [out1, out2, out3]:
+            np.testing.assert_allclose(out.numpy(), expected, rtol=1e-5)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=self.np_x.shape, dtype=str(self.np_x.dtype)
+            )
+            indices = paddle.static.data(
+                name="indices",
+                shape=self.np_indices.shape,
+                dtype=str(self.np_indices.dtype),
+            )
+
+            out1 = paddle.take(x, indices)
+            out2 = paddle.take(x=x, index=indices)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={
+                    "x": self.np_x,
+                    "indices": self.np_indices,
+                },
+                fetch_list=[out1, out2],
+            )
+
+            expected = self.np_x[self.np_indices]
+            for out in fetches:
+                np.testing.assert_allclose(out, expected, rtol=1e-5)
+
+        paddle.disable_static()
+
+
+# Test matrix_exp compatibility
+class TestMatrixExpAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_x = np.array([[1.0, 0.0], [0.0, 1.0]]).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. paddle.linalg.matrix_exp
+        out1 = paddle.linalg.matrix_exp(x)
+        # 2. Tensor method
+        out2 = x.matrix_exp()
+
+        # Verify outputs - matrix_exp of identity is e^1 * identity
+        expected = np.exp(1.0) * np.eye(2)
+        for out in [out1, out2]:
+            np.testing.assert_allclose(out.numpy(), expected, rtol=1e-5)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=self.np_x.shape, dtype=str(self.np_x.dtype)
+            )
+
+            out1 = paddle.linalg.matrix_exp(x)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1],
+            )
+
+            expected = np.exp(1.0) * np.eye(2)
+            np.testing.assert_allclose(fetches[0], expected, rtol=1e-5)
+
+        paddle.disable_static()
+
+
+# Test retain_grad compatibility
+class TestRetainGradAPI(unittest.TestCase):
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+
+        # Test retain_grad on leaf tensor
+        x = paddle.to_tensor([1.0, 2.0, 3.0])
+        x.stop_gradient = False
+        x.retain_grad()
+
+        y = x * 2
+        y.sum().backward()
+
+        # Gradient should be retained
+        np.testing.assert_allclose(x.grad.numpy(), [2.0, 2.0, 2.0], rtol=1e-5)
+
+        # Test retain_grad on non-leaf tensor
+        a = paddle.to_tensor([1.0, 2.0])
+        a.stop_gradient = False
+        b = a * 3  # non-leaf
+        b.retain_grad()
+        c = b * 2
+        c.sum().backward()
+
+        # b's gradient should be retained
+        np.testing.assert_allclose(b.grad.numpy(), [2.0, 2.0], rtol=1e-5)
+
+        paddle.enable_static()
+
+
+# Test sparse_mask compatibility
+class TestSparseMaskAPI(unittest.TestCase):
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+
+        # Create dense tensor
+        x = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0]])
+
+        # Create sparse COO tensor as mask
+        indices = paddle.to_tensor([[0, 1], [0, 1]], dtype='int64')
+        values = paddle.to_tensor([1.0, 1.0], dtype='float32')
+        mask = paddle.sparse.sparse_coo_tensor(indices, values, [2, 2])
+
+        # Apply sparse_mask
+        result = x.sparse_mask(mask)
+
+        # Verify result is sparse and has correct values
+        np.testing.assert_allclose(
+            result.values().numpy(), [1.0, 4.0], rtol=1e-5
+        )
+
+        paddle.enable_static()
+
+
 if __name__ == "__main__":
     unittest.main()
