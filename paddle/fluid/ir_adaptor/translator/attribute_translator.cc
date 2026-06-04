@@ -188,6 +188,24 @@ class Int64AttributeVisitor : public AttributeVisitor {
   }
 };
 
+// Some new PIR ops (e.g. `gaussian`) declare attributes such as `mean`/`std`
+// with type `pir::DoubleAttribute`, while the legacy fluid op
+// (`gaussian_random`) stores them as `float` in its proto. Without this
+// special visitor the translator would emit a `pir::FloatAttribute`, which
+// fails the runtime type check on the target op. This visitor up-casts a
+// float-typed legacy attribute into the expected DoubleAttribute. The
+// matching attribute-type upgrade is recorded in
+// `paddle/phi/ops/yaml/op_version.yaml` under op `gaussian_random`.
+class DoubleAttributeVisitor : public AttributeVisitor {
+ public:
+  using AttributeVisitor::AttributeVisitor;
+
+  pir::Attribute operator()(float f) override {
+    VLOG(10) << "translating float to DoubleAttribute";
+    return pir::DoubleAttribute::get(ctx, static_cast<double>(f));
+  }
+};
+
 class Int32ArrayAttributeVisitor : public AttributeVisitor {
  public:
   using AttributeVisitor::AttributeVisitor;
@@ -279,6 +297,7 @@ AttributeTranslator::AttributeTranslator() {
   special_visitors["pir::ArrayAttribute<pir::Int32Attribute>"] =
       new Int32ArrayAttributeVisitor();
   special_visitors["pir::Int64Attribute"] = new Int64AttributeVisitor();
+  special_visitors["pir::DoubleAttribute"] = new DoubleAttributeVisitor();
   special_visitors["pir::BoolAttribute"] = new BoolAttributeVisitor();
 }
 
