@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+
 #include <thrust/adjacent_difference.h>  // 包含常用的 thrust 算法
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
@@ -58,7 +59,8 @@ __launch_bounds__(TPB) __global__
                            : inputs_after_softmax[idx];
 
       for (int prior_k = 0; prior_k < k_idx; ++prior_k) {
-        const int prior_winning_expert = indices[k * block_row + prior_k];
+        const int prior_winning_expert =
+            indices[static_cast<int64_t>(k) * block_row + prior_k];
 
         if (prior_winning_expert == expert) {
           inp_kvp = thread_kvp;
@@ -71,12 +73,12 @@ __launch_bounds__(TPB) __global__
     const cub_kvp result_kvp =
         BlockReduce(tmpStorage).Reduce(thread_kvp, arg_max);
     if (threadIdx.x == 0) {
-      const int idx = k * block_row + k_idx;
+      const int64_t idx = static_cast<int64_t>(k) * block_row + k_idx;
       output[idx] =
           bias ? inputs_after_softmax[thread_read_offset + result_kvp.key]
                : result_kvp.value;
       indices[idx] = result_kvp.key;
-      source_rows[idx] = k_idx * num_rows + block_row;
+      source_rows[idx] = static_cast<int64_t>(k_idx) * num_rows + block_row;
     }
     __syncthreads();
   }
@@ -95,7 +97,8 @@ void topk_gating_softmax_kernelLauncher(const T* input,
                                         cudaStream_t stream) {
   static constexpr int WARPS_PER_TB = 4;
   static constexpr int TPB = 256;
-  moe_top_k<T, TPB><<<num_rows, TPB, 0, stream>>>(
+  const int blocks = num_rows;
+  moe_top_k<T, TPB><<<blocks, TPB, 0, stream>>>(
       input, bias, output, indices, source_row, num_experts, k);
 }
 
@@ -106,7 +109,7 @@ __global__ void modify_expert_id(const T* expert_id,
                                  const int num_rows,
                                  const int64_t num_experts) {
   const int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx >= k * num_rows) return;
+  if (static_cast<int64_t>(idx) >= static_cast<int64_t>(k) * num_rows) return;
   int ik = idx % k;
   int irow = idx / k;
   // const T mask = (~0) >> (8*sizeof(T)-ik); // 最后 ik 位为 1 其他位为 0
@@ -125,9 +128,16 @@ void modify_expert_id_launcher(const T* expert_id,
                                const int num_rows,
                                const int64_t num_experts,
                                const cudaStream_t& stream) {
-  int max = 1024;
-  const int threads = std::min(max, num_rows * k);
-  const int blocks = (num_rows * k + threads - 1) / threads;
+  const int max = 1024;
+  const int64_t total_rows = static_cast<int64_t>(num_rows) * k;
+  PADDLE_ENFORCE_LE_INT_MAX(total_rows, "CUDA launch total_rows num_rows * k");
+
+  const int threads =
+      static_cast<int>(std::min(static_cast<int64_t>(max), total_rows));
+  const int64_t blocks64 =
+      (total_rows + static_cast<int64_t>(threads) - 1) / threads;
+  PADDLE_ENFORCE_LE_INT_MAX(blocks64, "CUDA launch grid num_rows * k");
+  const int blocks = static_cast<int>(blocks64);
 
   modify_expert_id<T><<<blocks, threads, 0, stream>>>(
       expert_id, expert_id_out, k, num_rows, num_experts);
@@ -140,7 +150,7 @@ __global__ void unmodify_expert_id(const T* expert_id,
                                    const int num_rows,
                                    const int64_t num_experts) {
   const int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx >= k * num_rows) return;
+  if (static_cast<int64_t>(idx) >= static_cast<int64_t>(k) * num_rows) return;
   int ik = idx % k;
   int irow = idx / k;
   int offset = log2(k) + 1;
@@ -154,9 +164,16 @@ void unmodify_expert_id_launcher(const T* expert_id,
                                  const int num_rows,
                                  const int64_t num_experts,
                                  const cudaStream_t& stream) {
-  int max = 1024;
-  const int threads = std::min(max, num_rows * k);
-  const int blocks = (num_rows * k + threads - 1) / threads;
+  const int max = 1024;
+  const int64_t total_rows = static_cast<int64_t>(num_rows) * k;
+  PADDLE_ENFORCE_LE_INT_MAX(total_rows, "CUDA launch total_rows num_rows * k");
+
+  const int threads =
+      static_cast<int>(std::min(static_cast<int64_t>(max), total_rows));
+  const int64_t blocks64 =
+      (total_rows + static_cast<int64_t>(threads) - 1) / threads;
+  PADDLE_ENFORCE_LE_INT_MAX(blocks64, "CUDA launch grid num_rows * k");
+  const int blocks = static_cast<int>(blocks64);
 
   unmodify_expert_id<T><<<blocks, threads, 0, stream>>>(
       expert_id, expert_id_out, k, num_rows, num_experts);
@@ -208,8 +225,12 @@ void compute_total_rows_before_expert(const T* sorted_indices,
                                       const int64_t num_experts,
                                       int64_t* total_rows_before_expert,
                                       const cudaStream_t& stream) {
-  const int threads = std::min(static_cast<int64_t>(1024), num_experts);
-  const int blocks = (num_experts + threads - 1) / threads;
+  const int threads =
+      static_cast<int>(std::min(static_cast<int64_t>(1024), num_experts));
+  const int64_t blocks64 =
+      (num_experts + static_cast<int64_t>(threads) - 1) / threads;
+  PADDLE_ENFORCE_LE_INT_MAX(blocks64, "CUDA launch grid num_experts");
+  const int blocks = static_cast<int>(blocks64);
 
   compute_total_rows_before_expert_kernel<T><<<blocks, threads, 0, stream>>>(
       sorted_indices, total_indices, num_experts, total_rows_before_expert);
@@ -248,7 +269,8 @@ __global__ void initialize_moe_routing_kernel(
           0;  // unset scatter-idx
       auto ik = expanded_source_row / num_rows;
       auto isent = expanded_source_row % num_rows;  // transpose
-      combine_weights[isent * k + ik] = 0.f;        // unset combine-weight
+      combine_weights[static_cast<int64_t>(isent) * k + ik] =
+          0.f;  // unset combine-weight
     }
     return;
   }
@@ -268,13 +290,15 @@ __global__ void initialize_moe_routing_kernel(
   // Duplicate and permute rows
   const int source_row = expanded_source_row % num_rows;
 
-  const T* source_row_ptr = unpermuted_input + source_row * cols;
+  const T* source_row_ptr =
+      unpermuted_input + static_cast<int64_t>(source_row) * cols;
   T* dest_row_ptr;
   if (use_pad) {
     dest_row_ptr =
         permuted_output + iexpert * capacity * cols + row_in_expert * cols;
   } else {
-    dest_row_ptr = permuted_output + expanded_dest_row * cols;
+    dest_row_ptr =
+        permuted_output + static_cast<int64_t>(expanded_dest_row) * cols;
   }
 
   for (int tid = threadIdx.x * VecSize; tid < cols;
@@ -299,7 +323,9 @@ void initialize_moe_routing_kernelLauncher(
     const int64_t capacity,
     bool use_pad,
     cudaStream_t stream) {
-  const int blocks = num_rows * k;
+  const int64_t blocks64 = static_cast<int64_t>(num_rows) * k;
+  PADDLE_ENFORCE_LE_INT_MAX(blocks64, "CUDA launch grid num_rows * k");
+  const int blocks = static_cast<int>(blocks64);
   const int threads = std::min(cols, 1024);
   constexpr int max_pack_size = 16 / sizeof(T);
   if (cols % max_pack_size == 0) {
@@ -380,7 +406,8 @@ __global__ void initialize_moe_routing_permute_kernel(
             0;  // unset scatter-idx
         auto ik = expanded_source_row / num_rows;
         auto isent = expanded_source_row % num_rows;  // transpose
-        combine_weights[isent * k + ik] = 0.f;        // unset combine-weight
+        combine_weights[static_cast<int64_t>(isent) * k + ik] =
+            0.f;  // unset combine-weight
       }
       continue;
     }
@@ -393,7 +420,8 @@ __global__ void initialize_moe_routing_permute_kernel(
     // Duplicate and permute rows
     const int source_row = expanded_source_row % num_rows;
 
-    const T* source_row_ptr = unpermuted_input + source_row * cols;
+    const T* source_row_ptr =
+        unpermuted_input + static_cast<int64_t>(source_row) * cols;
     T* dest_row_ptr;
 
     const int64_t irank = iexpert / num_local_experts;
@@ -427,8 +455,12 @@ void initialize_moe_routing_permute_kernelLauncher(
     const int64_t num_local_experts,
     cudaStream_t stream) {
   const int loop_size = 2;
-  const int blocks = (num_rows * k) / loop_size;
-  assert((num_rows * k) % loop_size == 0);
+  const int64_t total_rows = static_cast<int64_t>(num_rows) * k;
+  const int64_t blocks64 = total_rows / loop_size;
+  assert(total_rows % loop_size == 0);
+  PADDLE_ENFORCE_LE_INT_MAX(blocks64,
+                            "CUDA launch grid num_rows * k / loop_size");
+  const int blocks = static_cast<int>(blocks64);
   const int threads = std::min(cols, 1024);
   constexpr int max_pack_size = 16 / sizeof(T);
   if (cols % max_pack_size == 0) {
@@ -484,11 +516,17 @@ void compute_global_expert_offset(
   const auto& exec_policy = thrust::cuda::par(allocator).on(stream);
   thrust::copy(exec_policy, ptr, ptr + len, outptr);
   thrust::sort(exec_policy, outptr, outptr + len);
-  const int threads = std::min(static_cast<int64_t>(1024), num_experts);
-  const int blocks = (num_experts + threads - 1) / threads;
+  const int threads =
+      static_cast<int>(std::min(static_cast<int64_t>(1024), num_experts));
+  const int64_t blocks64 =
+      (num_experts + static_cast<int64_t>(threads) - 1) / threads;
+  PADDLE_ENFORCE_LE_INT_MAX(blocks64, "CUDA launch grid num_experts");
+  const int blocks = static_cast<int>(blocks64);
+  PADDLE_ENFORCE_LE_INT_MAX(len, "compute sorted experts length");
+  const int sorted_experts_len = static_cast<int>(len);
 
   compute_total_rows_before_expert_kernel<T><<<blocks, threads, 0, stream>>>(
-      sort_buffer, len, num_experts, expert_offset);
+      sort_buffer, sorted_experts_len, num_experts, expert_offset);
   thrust::adjacent_difference(
       exec_policy, offsetptr, offsetptr + num_experts, offsetptr);
   // thrust::transform(offsetptr,
@@ -508,7 +546,7 @@ __global__ void modify_and_mask_expert_id(const T* expert_id,
                                           const int expert_start_index,
                                           const int expert_end_index) {
   const int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx >= k * num_rows) return;
+  if (static_cast<int64_t>(idx) >= static_cast<int64_t>(k) * num_rows) return;
   int ik = idx % k;
   int irow = idx / k;
   // const T mask = (~0) >> (8*sizeof(T)-ik); // 最后 ik 位为 1 其他位为 0
@@ -535,9 +573,16 @@ void modify_and_mask_expert_id_launcher(const T* expert_id,
                                         const int expert_start_index,
                                         const int expert_end_index,
                                         const cudaStream_t& stream) {
-  int max = 1024;
-  const int threads = std::min(max, num_rows * k);
-  const int blocks = (num_rows * k + threads - 1) / threads;
+  const int max = 1024;
+  const int64_t total_rows = static_cast<int64_t>(num_rows) * k;
+  PADDLE_ENFORCE_LE_INT_MAX(total_rows, "CUDA launch total_rows num_rows * k");
+
+  const int threads =
+      static_cast<int>(std::min(static_cast<int64_t>(max), total_rows));
+  const int64_t blocks64 =
+      (total_rows + static_cast<int64_t>(threads) - 1) / threads;
+  PADDLE_ENFORCE_LE_INT_MAX(blocks64, "CUDA launch grid num_rows * k");
+  const int blocks = static_cast<int>(blocks64);
 
   modify_and_mask_expert_id<T>
       <<<blocks, threads, 0, stream>>>(expert_id,
@@ -565,11 +610,17 @@ void compute_local_expert_offset(
   thrust::fill(
       exec_policy, offset_ptr, offset_ptr + num_experts, static_cast<T>(0));
 
-  const int threads = std::min(static_cast<int64_t>(1024), num_experts);
-  const int blocks = (num_experts + threads - 1) / threads;
+  const int threads =
+      static_cast<int>(std::min(static_cast<int64_t>(1024), num_experts));
+  const int64_t blocks64 =
+      (num_experts + static_cast<int64_t>(threads) - 1) / threads;
+  PADDLE_ENFORCE_LE_INT_MAX(blocks64, "CUDA launch grid num_experts");
+  const int blocks = static_cast<int>(blocks64);
+  PADDLE_ENFORCE_LE_INT_MAX(len, "compute sorted experts length");
+  const int sorted_experts_len = static_cast<int>(len);
 
   compute_total_rows_before_expert_kernel<T><<<blocks, threads, 0, stream>>>(
-      sorted_expert_id, len, num_experts, expert_offset);
+      sorted_expert_id, sorted_experts_len, num_experts, expert_offset);
   // 不考虑 capacity 影响
   thrust::adjacent_difference(
       exec_policy, offset_ptr, offset_ptr + num_experts, expert_num_ptr);
@@ -584,7 +635,9 @@ __global__ void cal_expert_size_and_filter(T* expert_id,
                                            int64_t expert_start_index,
                                            int64_t expert_end_index,
                                            bool reverse) {
-  const int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+  const int64_t idx =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
   if (idx >= len) return;
   int64_t off = reverse ? expert_offset[expert_end_index - 1] : 0;
   if (reverse) {
@@ -620,8 +673,11 @@ void cal_expert_size_and_filter_launcher(T* expert_id,
                                          bool reverse,
                                          const cudaStream_t& stream) {
   if (len <= 0) return;
-  const int64_t threads = std::min(static_cast<int64_t>(1024), len);
-  const int64_t blocks = (len + threads - 1) / threads;
+  const int threads =
+      static_cast<int>(std::min(static_cast<int64_t>(1024), len));
+  const int64_t blocks64 = (len + static_cast<int64_t>(threads) - 1) / threads;
+  PADDLE_ENFORCE_LE_INT_MAX(blocks64, "CUDA launch grid len");
+  const int blocks = static_cast<int>(blocks64);
   cal_expert_size_and_filter<T>
       <<<blocks, threads, 0, stream>>>(expert_id,
                                        expert_offset,
@@ -649,7 +705,8 @@ __global__ void build_seqsort_kv_pairs_kernel(
     int64_t expert_start_index,
     bool use_pad) {
   const int expanded_dest_row = blockIdx.x * blockDim.x + threadIdx.x;
-  if (expanded_dest_row >= num_rows * k) {
+  if (static_cast<int64_t>(expanded_dest_row) >=
+      static_cast<int64_t>(num_rows) * k) {
     return;
   }
   const int expanded_source_row =
@@ -669,7 +726,8 @@ __global__ void build_seqsort_kv_pairs_kernel(
     // unset scatter-idx
     auto ik = expanded_source_row / num_rows;
     auto isent = expanded_source_row % num_rows;  // transpose
-    combine_weights[isent * k + ik] = 0.f;        // unset combine-weight
+    combine_weights[static_cast<int64_t>(isent) * k + ik] =
+        0.f;  // unset combine-weight
     return;
   }
 
@@ -710,9 +768,16 @@ void build_seqsort_kv_pairs_kernel_launcher(
     const int64_t expert_start_index,
     bool use_pad,
     cudaStream_t stream) {
-  int max = 1024;
-  const int threads = std::min(max, num_rows * k);
-  const int blocks = (num_rows * k + threads - 1) / threads;
+  const int max = 1024;
+  const int64_t total_rows = static_cast<int64_t>(num_rows) * k;
+  PADDLE_ENFORCE_LE_INT_MAX(total_rows, "CUDA launch total_rows num_rows * k");
+
+  const int threads =
+      static_cast<int>(std::min(static_cast<int64_t>(max), total_rows));
+  const int64_t blocks64 =
+      (total_rows + static_cast<int64_t>(threads) - 1) / threads;
+  PADDLE_ENFORCE_LE_INT_MAX(blocks64, "CUDA launch grid num_rows * k");
+  const int blocks = static_cast<int>(blocks64);
   build_seqsort_kv_pairs_kernel<<<blocks, threads, 0, stream>>>(
       seqsort_key,
       seqsort_value,
@@ -753,8 +818,10 @@ __global__ void copy_unpermuted_to_permuted_kernel(
     expanded_input_to_padded_out[source_row_expanded] = padded_dest_row;
   }
 
-  const T* source_row_ptr = unpermuted_input + source_row * cols;
-  T* padded_dest_row_ptr = permuted_output + padded_dest_row * cols;
+  const T* source_row_ptr =
+      unpermuted_input + static_cast<int64_t>(source_row) * cols;
+  T* padded_dest_row_ptr =
+      permuted_output + static_cast<int64_t>(padded_dest_row) * cols;
 
   for (int tid = threadIdx.x * VecSize; tid < cols;
        tid += blockDim.x * VecSize) {
@@ -762,12 +829,13 @@ __global__ void copy_unpermuted_to_permuted_kernel(
     Store<T, VecSize>(src_vec, &padded_dest_row_ptr[tid]);
   }
   PADDLE_ENFORCE(
-      (padded_dest_row < padded_len) && (source_row_expanded < num_rows * k),
+      (padded_dest_row < padded_len) &&
+          (source_row_expanded < static_cast<int64_t>(num_rows) * k),
       "The index is out of bounds, "
       "origin_input[%d] -> distributed_input:[%d], should < [%ld],[%ld] \n",
       source_row_expanded,
       padded_dest_row,
-      num_rows * k,
+      static_cast<int64_t>(num_rows) * k,
       padded_len);
 
   // for (int tid = threadIdx.x; tid < cols; tid += blockDim.x) {
@@ -787,8 +855,10 @@ void copy_unpermuted_to_permuted_kernelLauncher(
     const int64_t k,
     const int64_t num_cols,
     cudaStream_t stream) {
-  auto blocks = padded_len;
-  auto threads = std::min(num_cols, static_cast<int64_t>(1024));
+  PADDLE_ENFORCE_LE_INT_MAX(padded_len, "CUDA launch grid padded_len");
+  const int blocks = static_cast<int>(padded_len);
+  const int threads =
+      static_cast<int>(std::min(num_cols, static_cast<int64_t>(1024)));
   constexpr int64_t max_pack_size = 16 / sizeof(T);
   if (num_cols % max_pack_size == 0) {
     copy_unpermuted_to_permuted_kernel<T, max_pack_size>

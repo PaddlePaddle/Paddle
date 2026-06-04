@@ -98,7 +98,7 @@ __device__ __forceinline__ int SelectTopBeam(Triple* top_beam,
           Insert(top_beam_local, tmp, beam_size);
         }
       } else {
-        int index = offset * seq_width + tid_of_seq;
+        int64_t index = static_cast<int64_t>(offset) * seq_width + tid_of_seq;
         if (!IsAccumulated) {
           float pre_score = pre_scores[offset];
           for (int i = tid_of_seq; i < seq_width; i += num_used_threads) {

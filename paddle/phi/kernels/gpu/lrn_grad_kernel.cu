@@ -31,12 +31,14 @@ __global__ void KeCMRNormDiff(int img_size,
                               T negative_beta,
                               T ratio,
                               const DataLayout data_layout) {
-  const int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  const int64_t idx =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   if (idx < img_size) {
-    const int w = idx % W;
-    const int h = (idx / W) % H;
-    const int n = idx / W / H;
-    const int offset =
+    const int64_t w = idx % W;
+    const int64_t h = (idx / W) % H;
+    const int64_t n = idx / W / H;
+    const int64_t offset =
         (data_layout != DataLayout::NHWC ? (n * C * H + h) * W + w
                                          : ((n * H + h) * W + w) * C);
     x += offset;
@@ -45,29 +47,32 @@ __global__ void KeCMRNormDiff(int img_size,
     out_g += offset;
     x_g += offset;
 
-    const int step = H * W;
+    const int64_t step = static_cast<int64_t>(H) * W;
     const int pre_pad = size - (size + 1) / 2;
     const int post_pad = size - pre_pad - 1;
 
-    int index = 0;
+    int64_t index = 0;
     T accum = 0;
     // TODO(gongwb): optimize this with thread shared array.
     while (index < C + post_pad) {
       if (index < C) {
-        int idx = (data_layout != DataLayout::NHWC ? index * step : index);
-        x_g[idx] = 0.0;
-        accum += out_g[idx] * out[idx] / mid[idx];
+        int64_t idx_val =
+            (data_layout != DataLayout::NHWC ? index * step : index);
+        x_g[idx_val] = 0.0;
+        accum += out_g[idx_val] * out[idx_val] / mid[idx_val];
       }
       if (index >= size) {
-        int idx = (data_layout != DataLayout::NHWC ? (index - size) * step
-                                                   : index - size);
-        accum -= out_g[idx] * out[idx] / mid[idx];
+        int64_t idx_val =
+            (data_layout != DataLayout::NHWC ? (index - size) * step
+                                             : index - size);
+        accum -= out_g[idx_val] * out[idx_val] / mid[idx_val];
       }
       if (index >= post_pad) {
-        int idx = (data_layout != DataLayout::NHWC ? (index - post_pad) * step
-                                                   : index - post_pad);
-        x_g[idx] +=
-            out_g[idx] * pow(mid[idx], negative_beta) - ratio * x[idx] * accum;
+        int64_t idx_val =
+            (data_layout != DataLayout::NHWC ? (index - post_pad) * step
+                                             : index - post_pad);
+        x_g[idx_val] += out_g[idx_val] * pow(mid[idx_val], negative_beta) -
+                        ratio * x[idx_val] * accum;
       }
       ++index;
     }

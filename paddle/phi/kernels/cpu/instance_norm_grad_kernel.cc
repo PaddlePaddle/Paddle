@@ -69,22 +69,26 @@ void InstanceNormGradKernel(const Context& dev_ctx,
 
   const auto& x_dims = x.dims();
 
+  PADDLE_ENFORCE_LE_INT_MAX(x_dims[0], "N");
+  PADDLE_ENFORCE_LE_INT_MAX(x_dims[1], "C");
   const int N = static_cast<int>(x_dims[0]);
   const int C = static_cast<int>(x_dims[1]);
-  const int NxC = N * C;
+  const int64_t num_instances = static_cast<int64_t>(N) * C;
+  PADDLE_ENFORCE_LE_INT_MAX(x.numel() / N / C, "sample_size");
   const int sample_size = static_cast<int>(x.numel() / N / C);
 
   auto* place = dev_ctx.eigen_device();
 
-  Eigen::DSizes<int, 2> rshape(NxC, sample_size);
+  PADDLE_ENFORCE_LE_INT_MAX(num_instances, "num_instances");
+  Eigen::DSizes<int, 2> rshape(static_cast<int>(num_instances), sample_size);
   Eigen::DSizes<int, 2> param_shape(N, C);
-  Eigen::DSizes<int, 2> shape(NxC, sample_size);
+  Eigen::DSizes<int, 2> shape(static_cast<int>(num_instances), sample_size);
 #ifndef EIGEN_HAS_INDEX_LIST
   Eigen::DSizes<int, 1> rdims(0);
   Eigen::DSizes<int, 1> mean_rdims(1);
   Eigen::DSizes<int, 2> bcast(1, sample_size);
   Eigen::DSizes<int, 2> C_shape(C, 1);
-  Eigen::DSizes<int, 2> NxC_shape(NxC, 1);
+  Eigen::DSizes<int, 2> num_instances_shape(static_cast<int>(num_instances), 1);
 #else
   Eigen::IndexList<Eigen::type2index<0>> rdims;
   Eigen::IndexList<Eigen::type2index<1>> mean_rdims;
@@ -92,8 +96,8 @@ void InstanceNormGradKernel(const Context& dev_ctx,
   bcast.set(1, sample_size);
   Eigen::IndexList<int, Eigen::type2index<1>> C_shape;
   C_shape.set(0, C);
-  Eigen::IndexList<int, Eigen::type2index<1>> NxC_shape;
-  NxC_shape.set(0, NxC);
+  Eigen::IndexList<int, Eigen::type2index<1>> num_instances_shape;
+  num_instances_shape.set(0, static_cast<int>(num_instances));
 #endif
 
   DenseTensor scale_data;
@@ -113,8 +117,8 @@ void InstanceNormGradKernel(const Context& dev_ctx,
   auto x_e = EigenVector<T>::Flatten(x);
 
   auto scale_arr = scale_e.reshape(C_shape);
-  auto mean_arr = mean_e.reshape(NxC_shape);
-  auto inv_var_arr = inv_var_e.reshape(NxC_shape);
+  auto mean_arr = mean_e.reshape(num_instances_shape);
+  auto inv_var_arr = inv_var_e.reshape(num_instances_shape);
   auto dy_arr = dy_e.reshape(shape);
   auto x_arr = x_e.reshape(shape);
 
@@ -139,8 +143,10 @@ void InstanceNormGradKernel(const Context& dev_ctx,
         (tmp * dy_arr).sum(mean_rdims).reshape(param_shape).sum(rdims);
   }
 
-  auto dy_mean =
-      dy_arr.mean(mean_rdims).reshape(NxC_shape).eval().broadcast(bcast);
+  auto dy_mean = dy_arr.mean(mean_rdims)
+                     .reshape(num_instances_shape)
+                     .eval()
+                     .broadcast(bcast);
 
   Eigen::DSizes<int, 2> bcast_param(N, sample_size);
   set_constant(dev_ctx, d_x, static_cast<T>(0));
@@ -156,7 +162,7 @@ void InstanceNormGradKernel(const Context& dev_ctx,
                           (dy_arr - dy_mean -
                            tmp * (dy_arr * tmp)
                                      .mean(mean_rdims)
-                                     .reshape(NxC_shape)
+                                     .reshape(num_instances_shape)
                                      .eval()
                                      .broadcast(bcast));
 }
@@ -183,25 +189,28 @@ void InstanceNormDoubleGradKernel(const Context& dev_ctx,
   const auto& x_dims = x.dims();
   int N = 0, C = 0, H = 0, W = 0, D = 0;
   funcs::ExtractNCWHD(x_dims, DataLayout::NCHW, &N, &C, &H, &W, &D);
+  PADDLE_ENFORCE_LE_INT_MAX(x.numel() / N / C, "sample_size");
   const int sample_size = static_cast<int>(x.numel() / N / C);
-  const int NxC = N * C;
+  const int64_t num_instances = static_cast<int64_t>(N) * C;
 
   const T* mean_data = saved_mean.data<T>();
   const T* inv_var_data = saved_variance.data<T>();
   DenseTensor mean_tensor;
   DenseTensor inv_var_tensor;
-  ConstEigenArrayMap<T> x_arr(x.data<T>(), sample_size, NxC);
-  ConstEigenVectorArrayMap<T> mean_arr(mean_data, NxC);
-  ConstEigenVectorArrayMap<T> inv_var_arr(inv_var_data, NxC);
+  ConstEigenArrayMap<T> x_arr(x.data<T>(), sample_size, num_instances);
+  ConstEigenVectorArrayMap<T> mean_arr(mean_data, num_instances);
+  ConstEigenVectorArrayMap<T> inv_var_arr(inv_var_data, num_instances);
 
   DenseTensor mean_tile;
-  mean_tile.Resize({sample_size, NxC});
+  mean_tile.Resize({sample_size, num_instances});
   dev_ctx.template Alloc<T>(&mean_tile);
-  EigenArrayMap<T> mean_tile_data(mean_tile.data<T>(), sample_size, NxC);
+  EigenArrayMap<T> mean_tile_data(
+      mean_tile.data<T>(), sample_size, num_instances);
   DenseTensor inv_var_tile;
-  inv_var_tile.Resize({sample_size, NxC});
+  inv_var_tile.Resize({sample_size, num_instances});
   dev_ctx.template Alloc<T>(&inv_var_tile);
-  EigenArrayMap<T> inv_var_tile_data(inv_var_tile.data<T>(), sample_size, NxC);
+  EigenArrayMap<T> inv_var_tile_data(
+      inv_var_tile.data<T>(), sample_size, num_instances);
 
   mean_tile_data = mean_arr.transpose().replicate(sample_size, 1);
   inv_var_tile_data = inv_var_arr.transpose().replicate(sample_size, 1);
@@ -216,12 +225,13 @@ void InstanceNormDoubleGradKernel(const Context& dev_ctx,
       Scale ? Scale->data<T>() : Scale_data.data<T>(), C);
 
   DenseTensor scale_tile;
-  scale_tile.Resize({sample_size, NxC});
+  scale_tile.Resize({sample_size, num_instances});
   dev_ctx.template Alloc<T>(&scale_tile);
-  EigenArrayMap<T> scale_tile_data(scale_tile.data<T>(), sample_size, NxC);
+  EigenArrayMap<T> scale_tile_data(
+      scale_tile.data<T>(), sample_size, num_instances);
   scale_tile_data = scale_arr.transpose().replicate(sample_size, N);
-  ConstEigenArrayMap<T> dy_arr(dy.data<T>(), sample_size, NxC);
-  ConstEigenArrayMap<T> ddx_arr(ddX->data<T>(), sample_size, NxC);
+  ConstEigenArrayMap<T> dy_arr(dy.data<T>(), sample_size, num_instances);
+  ConstEigenArrayMap<T> ddx_arr(ddX->data<T>(), sample_size, num_instances);
   // math: dx = scale * ((x - mean) * inv_var / HxW * (np.mean(ddx,
   //          axis=(h,w)) * np.sum(dy, axis=(h,w)) -
   //          np.sum(dy * ddx, axis=(h,w)) + 3 * np.mean(dy * (x - mean),
@@ -235,16 +245,16 @@ void InstanceNormDoubleGradKernel(const Context& dev_ctx,
   //          (x - mean) * np.mean(dy * (x - mean),  axis=(h,w)))
 
   DenseTensor x_sub_mean_mul_invstd;
-  x_sub_mean_mul_invstd.Resize({sample_size, NxC});
+  x_sub_mean_mul_invstd.Resize({sample_size, num_instances});
   dev_ctx.template Alloc<T>(&x_sub_mean_mul_invstd);
   EigenArrayMap<T> x_sub_mean_mul_invstd_arr(
-      x_sub_mean_mul_invstd.data<T>(), sample_size, NxC);
+      x_sub_mean_mul_invstd.data<T>(), sample_size, num_instances);
   x_sub_mean_mul_invstd_arr = (x_arr - mean_tile_data) * inv_var_tile_data;
 
   if (dx) {
     dev_ctx.template Alloc<T>(dx);
     set_constant(dev_ctx, dx, static_cast<T>(0));
-    EigenArrayMap<T> dx_arr(dx->data<T>(), sample_size, NxC);
+    EigenArrayMap<T> dx_arr(dx->data<T>(), sample_size, num_instances);
     if (ddX) {
       dx_arr +=
           x_sub_mean_mul_invstd_arr * inv_var_tile_data * inv_var_tile_data /
@@ -265,10 +275,10 @@ void InstanceNormDoubleGradKernel(const Context& dev_ctx,
     if (ddScale) {
       ConstEigenVectorArrayMap<T> ddscale_arr(ddScale->data<T>(), C);
       DenseTensor ddscale_tile;
-      ddscale_tile.Resize({sample_size, NxC});
+      ddscale_tile.Resize({sample_size, num_instances});
       dev_ctx.template Alloc<T>(&ddscale_tile);
       EigenArrayMap<T> ddscale_tile_data(
-          ddscale_tile.data<T>(), sample_size, NxC);
+          ddscale_tile.data<T>(), sample_size, num_instances);
       ddscale_tile_data = ddscale_arr.transpose().replicate(sample_size, N);
       dx_arr += (dy_arr * inv_var_tile_data -
                  dy_arr.colwise().sum() / sample_size * inv_var_tile_data -
@@ -286,10 +296,11 @@ void InstanceNormDoubleGradKernel(const Context& dev_ctx,
     EigenVectorArrayMap<T> dscale_arr(dscale->data<T>(), C);
     if (ddX) {
       DenseTensor first_grad;
-      first_grad.Resize({sample_size, NxC});
+      first_grad.Resize({sample_size, num_instances});
       dev_ctx.template Alloc<T>(&first_grad);
       set_constant(dev_ctx, &first_grad, static_cast<T>(0));
-      EigenArrayMap<T> first_grad_arr(first_grad.data<T>(), sample_size, NxC);
+      EigenArrayMap<T> first_grad_arr(
+          first_grad.data<T>(), sample_size, num_instances);
       first_grad_arr +=
           inv_var_tile_data *
           (dy_arr -
@@ -301,7 +312,7 @@ void InstanceNormDoubleGradKernel(const Context& dev_ctx,
                    .replicate(sample_size, 1) /
                sample_size);
       first_grad_arr = first_grad_arr * ddx_arr;
-      for (int nc = 0; nc < NxC; ++nc) {
+      for (int64_t nc = 0; nc < num_instances; ++nc) {
         int c = nc % C;
         dscale_arr(c) += first_grad_arr.colwise().sum()(nc);
       }
@@ -313,7 +324,7 @@ void InstanceNormDoubleGradKernel(const Context& dev_ctx,
     //           np.mean(ddx * (x - mean), axis=(h,w)))
     dev_ctx.template Alloc<T>(ddy);
     set_constant(dev_ctx, ddy, static_cast<T>(0));
-    EigenArrayMap<T> ddy_arr(ddy->data<T>(), sample_size, NxC);
+    EigenArrayMap<T> ddy_arr(ddy->data<T>(), sample_size, num_instances);
     if (ddX) {
       ddy_arr += scale_tile_data * inv_var_tile_data *
                  (ddx_arr - ddx_arr.colwise().sum() / sample_size -
@@ -324,18 +335,18 @@ void InstanceNormDoubleGradKernel(const Context& dev_ctx,
     if (ddScale && ddBias) {
       ConstEigenVectorArrayMap<T> ddscale_arr(ddScale->data<T>(), C);
       DenseTensor ddscale_tile;
-      ddscale_tile.Resize({sample_size, NxC});
+      ddscale_tile.Resize({sample_size, num_instances});
       dev_ctx.template Alloc<T>(&ddscale_tile);
       EigenArrayMap<T> ddscale_tile_data(
-          ddscale_tile.data<T>(), sample_size, NxC);
+          ddscale_tile.data<T>(), sample_size, num_instances);
       ddscale_tile_data = ddscale_arr.transpose().replicate(sample_size, N);
 
       ConstEigenVectorArrayMap<T> ddbias_arr(ddBias->data<T>(), C);
       DenseTensor ddbias_tile;
-      ddbias_tile.Resize({sample_size, NxC});
+      ddbias_tile.Resize({sample_size, num_instances});
       dev_ctx.template Alloc<T>(&ddbias_tile);
       EigenArrayMap<T> ddbias_tile_data(
-          ddbias_tile.data<T>(), sample_size, NxC);
+          ddbias_tile.data<T>(), sample_size, num_instances);
       ddbias_tile_data = ddbias_arr.transpose().replicate(sample_size, N);
 
       ddy_arr += x_sub_mean_mul_invstd_arr * ddscale_tile_data;

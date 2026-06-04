@@ -36,7 +36,7 @@ void ShuffleChannelOpCUDAKernel(const Context& dev_ctx,
   int group_row = group;
   int group_column = channel / group_row;
   // count is the product of NCHW same as numel()
-  int count = num * group_column * group_row * sp_sz;
+  int64_t count = num * group_column * group_row * sp_sz;
 
   int blocks = NumBlocks(out->numel());
   int threads = kNumCUDAThreads;

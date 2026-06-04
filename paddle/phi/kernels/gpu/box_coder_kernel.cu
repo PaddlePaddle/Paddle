@@ -206,7 +206,9 @@ void BoxCoderKernel(const Context &dev_ctx,
   }
   int64_t len = prior_box.dims()[1];
   int block = 512;
-  int grid = (row * col + block - 1) / block;
+  int64_t grid64 = (row * col + block - 1) / block;
+  PADDLE_ENFORCE_LE_INT_MAX(grid64, "grid");
+  int grid = static_cast<int>(grid64);
 
   int64_t bytes = var_size * sizeof(float);
   auto dev_var =
