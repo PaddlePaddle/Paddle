@@ -646,9 +646,13 @@ class Engine:
                         metric_out.append(outs[idx])
                     if metric_out:
                         metric.update(*metric_out)
-                        results = metric.accumulate()
-                        for i, res in enumerate(auto_utils.to_list(results)):
-                            logs[metric.name()[i]] = res
+                        results = metric.compute()
+                        results_list = auto_utils.to_list(results)
+                        if len(results_list) == 1:
+                            logs[metric.name] = results_list[0]
+                        else:
+                            for i, res in enumerate(results_list):
+                                logs[f"{metric.name}_{i}"] = res
                     group_idx += 1
         # logging outputs
         elif mode == "predict":
@@ -2337,7 +2341,7 @@ class Engine:
     def _metrics_name(self):
         metrics_name = ['loss'] if self._loss else []
         for m in self._metrics:
-            metrics_name.extend(auto_utils.to_list(m.name()))
+            metrics_name.extend(m.names)
         return metrics_name
 
     def _switch_mode(self, mode):

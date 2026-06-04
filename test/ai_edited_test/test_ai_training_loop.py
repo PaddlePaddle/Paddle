@@ -70,7 +70,7 @@ class TestPaddleModelAPI(unittest.TestCase):
                 parameters=self.model.parameters(), learning_rate=0.001
             ),
             loss=nn.CrossEntropyLoss(),
-            metrics=paddle.metric.Accuracy(),
+            metrics=paddle.metric.Accuracy(task="multiclass", num_classes=2),
         )
         self.train_dataset = SimpleDataset(100)
         self.val_dataset = SimpleDataset(40)

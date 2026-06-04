@@ -74,7 +74,7 @@ class TestCallbacks(unittest.TestCase):
             model.prepare(
                 optim,
                 loss=CrossEntropyLoss(reduction="sum"),
-                metrics=[Accuracy()],
+                metrics=[Accuracy(task="multiclass", num_classes=10)],
             )
             callbacks_0 = paddle.callbacks.EarlyStopping(
                 'loss',
@@ -86,7 +86,7 @@ class TestCallbacks(unittest.TestCase):
                 save_best_model=True,
             )
             callbacks_1 = paddle.callbacks.EarlyStopping(
-                'acc',
+                'MulticlassAccuracy',
                 mode='auto',
                 patience=1,
                 verbose=1,
@@ -104,7 +104,7 @@ class TestCallbacks(unittest.TestCase):
                 save_best_model=True,
             )
             callbacks_3 = paddle.callbacks.EarlyStopping(
-                'acc_',
+                'MulticlassAccuracy_',
                 mode='max',
                 patience=1,
                 verbose=1,

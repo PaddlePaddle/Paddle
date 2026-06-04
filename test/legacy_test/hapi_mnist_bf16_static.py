@@ -112,7 +112,11 @@ def main(args):
         )
 
     # Configuration model
-    model.prepare(optim, paddle.nn.CrossEntropyLoss(), Accuracy())
+    model.prepare(
+        optim,
+        paddle.nn.CrossEntropyLoss(),
+        Accuracy(task="multiclass", num_classes=10),
+    )
     # Training model #
     if args.bf16:
         print('Training BF16')

@@ -49,7 +49,7 @@ class TestCallbacks(unittest.TestCase):
         model.prepare(
             optimizer=optim,
             loss=paddle.nn.CrossEntropyLoss(),
-            metrics=paddle.metric.Accuracy(),
+            metrics=paddle.metric.Accuracy(task="multiclass", num_classes=10),
         )
 
         callback = paddle.callbacks.VisualDL(log_dir='visualdl_log_dir')

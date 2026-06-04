@@ -66,7 +66,11 @@ class TestDistTraining(unittest.TestCase):
         optim = paddle.optimizer.Momentum(
             learning_rate=0.001, momentum=0.9, parameters=model.parameters()
         )
-        model.prepare(optim, CrossEntropyLoss(), Accuracy())
+        model.prepare(
+            optim,
+            CrossEntropyLoss(),
+            Accuracy(task="multiclass", num_classes=10),
+        )
 
         train_dataset = MnistDataset(mode='train')
         val_dataset = MnistDataset(mode='test')

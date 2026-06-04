@@ -94,7 +94,9 @@ class TestCustomCPUPlugin(unittest.TestCase):
                 self.output_weight = self.create_parameter(
                     [self.shape, self.size]
                 )
-                self.accuracy = paddle.metric.Accuracy()
+                self.accuracy = paddle.metric.Accuracy(
+                    task="multiclass", num_classes=10
+                )
 
             def forward(self, inputs, label=None):
                 x = paddle.reshape(inputs, shape=[-1, self.shape])
@@ -102,9 +104,8 @@ class TestCustomCPUPlugin(unittest.TestCase):
                 x = paddle.nn.functional.softmax(x)
                 if label is not None:
                     self.accuracy.reset()
-                    correct = self.accuracy.compute(x, label)
-                    self.accuracy.update(correct)
-                    acc = self.accuracy.accumulate()
+                    self.accuracy.update(x, label)
+                    acc = self.accuracy.compute()
                     return x, acc
                 else:
                     return x
@@ -217,7 +218,9 @@ class TestCustomCPUPlugin(unittest.TestCase):
                 self.output_weight = self.create_parameter(
                     [self.shape, self.size]
                 )
-                self.accuracy = paddle.metric.Accuracy()
+                self.accuracy = paddle.metric.Accuracy(
+                    task="multiclass", num_classes=10
+                )
 
             def forward(self, inputs, label=None):
                 x = paddle.reshape(inputs, shape=[-1, self.shape])
@@ -225,9 +228,8 @@ class TestCustomCPUPlugin(unittest.TestCase):
                 x = paddle.nn.functional.softmax(x)
                 if label is not None:
                     self.accuracy.reset()
-                    correct = self.accuracy.compute(x, label)
-                    self.accuracy.update(correct)
-                    acc = self.accuracy.accumulate()
+                    self.accuracy.update(x, label)
+                    acc = self.accuracy.compute()
                     return x, acc
                 else:
                     return x
