@@ -217,8 +217,9 @@ __device__ __inline__ void KernelDepthwiseConvNCHW(
   int64_t idx =
       static_cast<int64_t>(threadIdx.x) +
       static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
-  if (idx >= (output_channels * batch_size * output_height * output_width))
-    return;
+  const int64_t output_numel =
+      output_channels * batch_size * output_height * output_width;
+  if (idx >= output_numel) return;
 
   int tmp_1 = idx / output_width;
   const int w_out = idx - tmp_1 * output_width;
@@ -232,9 +233,10 @@ __device__ __inline__ void KernelDepthwiseConvNCHW(
   const int c_in = c_out / filter_multiplier;
   T value(0);
 
-  int in_offset =
-      ((batch * input_channels + c_in) * input_height) * input_width;
-  int weight_offset = c_out * filter_height * filter_width;
+  int64_t in_offset = static_cast<int64_t>(
+      ((batch * input_channels + c_in) * input_height) * input_width);
+  const int filter_area = filter_height * filter_width;
+  int weight_offset = c_out * filter_area;
   int h_in_start = -padding_height + h_out * stride_height;
   int w_in_start = -padding_width + w_out * stride_width;
 
@@ -245,7 +247,7 @@ __device__ __inline__ void KernelDepthwiseConvNCHW(
     for (int fw = 0, w_in = w_in_start; fw < fw_size;
          fw++, w_in += dilate_width) {
       if (h_in >= 0 && h_in < input_height && w_in >= 0 && w_in < input_width) {
-        int offset = in_offset + h_in * input_width + w_in;
+        int64_t offset = in_offset + h_in * input_width + w_in;
         T in_data = input_data[offset];
         if (fuse_relu_before_conv) {
           value += filter_data[weight_offset] *

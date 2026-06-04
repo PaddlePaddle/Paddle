@@ -321,11 +321,9 @@ __global__ void StridedCopyDefaultFunc(
     Array<int64_t, DDim::kMaxRank + 1> output_stride,
     Array<int64_t, DDim::kMaxRank + 1> dims,
     const int64_t numel) {
-  int64_t gid =
-      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
-      static_cast<int64_t>(threadIdx.x);
+  int64_t gid = static_cast<int64_t>(blockIdx.x * blockDim.x) + threadIdx.x;
 #pragma unroll
-  for (int64_t i = gid; i < numel; i += blockDim.x * gridDim.x) {
+  for (int64_t i = gid; i < numel; i += (blockDim.x * gridDim.x)) {
     int64_t input_offset = 0;
     int64_t index_tmp = i;
 #pragma unroll
