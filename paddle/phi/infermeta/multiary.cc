@@ -6583,6 +6583,17 @@ void MoeUnpermuteInferMeta(const MetaTensor& unzipped_tokens,
                           "but got %ld.",
                           cols));
   }
+  if (!common::contain_unknown_dim(unzipped_tokens.dims()) &&
+      !common::contain_unknown_dim(unzipped_token_probs.dims())) {
+    PADDLE_ENFORCE_EQ(
+        unzipped_token_probs.numel(),
+        unzipped_tokens.dims()[0],
+        common::errors::InvalidArgument(
+            "Input unzipped_token_probs's number of elements should be equal "
+            "to unzipped_tokens.dims()[0], but got %ld and %ld.",
+            unzipped_token_probs.numel(),
+            unzipped_tokens.dims()[0]));
+  }
   if (!common::contain_unknown_dim(expert_routemap_topk.dims())) {
     PADDLE_ENFORCE_GE(topk,
                       1,

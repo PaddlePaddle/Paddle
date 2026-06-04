@@ -178,9 +178,8 @@ class TestTDMSamplerOp(OpTest):
                 )
                 start_offset = end_offset
             # check travel legal
-            assert (
-                self.tree_travel[int(self.x_np[batch_ids])] == positive_travel
-            )
+            x_id = int(np.asarray(self.x_np[batch_ids]).item())
+            assert self.tree_travel[x_id] == positive_travel
 
 
 class TestCase1(TestTDMSamplerOp):

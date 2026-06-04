@@ -165,7 +165,7 @@ static void CalcGridLocationsWithGrad(const CPUContext& dev_ctx,
   T* grid_y_data = dev_ctx.Alloc<T>(grid_y);
 
   const T* grid_data = grid.data<T>();
-  for (int i = 0; i < n * out_h * out_w; i++) {
+  for (int64_t i = 0; i < static_cast<int64_t>(n) * out_h * out_w; i++) {
     grid_x_data[i] = grid_data[2 * i];
     grid_y_data[i] = grid_data[(2 * i) + 1];
   }
@@ -207,7 +207,8 @@ static void Calc3DGridLocationsWithGrad(const CPUContext& dev_ctx,
   T* grid_z_data = dev_ctx.Alloc<T>(grid_z);
 
   const T* grid_data = grid.data<T>();
-  for (int i = 0; i < n * out_d * out_h * out_w; i++) {
+  for (int64_t i = 0; i < static_cast<int64_t>(n) * out_d * out_h * out_w;
+       i++) {
     grid_x_data[i] = grid_data[3 * i];
     grid_y_data[i] = grid_data[(3 * i) + 1];
     grid_z_data[i] = grid_data[(3 * i) + 2];
@@ -410,7 +411,7 @@ static void GatherBilinearGrad(const CPUContext& dev_ctx,
     T* grid_grad_data = grid_grad->data<T>();
     T* grid_grad_x_data = grid_grad_x.data<T>();
     T* grid_grad_y_data = grid_grad_y.data<T>();
-    for (int i = 0; i < n * out_h * out_w; i++) {
+    for (int64_t i = 0; i < static_cast<int64_t>(n) * out_h * out_w; i++) {
       grid_grad_data[2 * i] = grid_grad_x_data[i];
       grid_grad_data[2 * i + 1] = grid_grad_y_data[i];
     }
@@ -566,7 +567,8 @@ static void Gather3DBilinearGrad(const CPUContext& dev_ctx,
     T* grid_grad_x_data = grid_grad_x.data<T>();
     T* grid_grad_y_data = grid_grad_y.data<T>();
     T* grid_grad_z_data = grid_grad_z.data<T>();
-    for (int i = 0; i < n * out_d * out_h * out_w; i++) {
+    for (int64_t i = 0; i < static_cast<int64_t>(n) * out_d * out_h * out_w;
+         i++) {
       grid_grad_data[3 * i] = grid_grad_x_data[i];
       grid_grad_data[3 * i + 1] = grid_grad_y_data[i];
       grid_grad_data[3 * i + 2] = grid_grad_z_data[i];

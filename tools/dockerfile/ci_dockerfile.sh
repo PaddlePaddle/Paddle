@@ -75,7 +75,7 @@ function make_ce_framework_dockerfile(){
 
 function make_ubuntu20_cu12_dockerfile(){
   dockerfile_name="Dockerfile.cuda117_cudnn8_gcc82_ubuntu18_coverage"
-  sed "s#<baseimg>#nvidia/cuda:12.0.1-cudnn8-devel-ubuntu20.04#g" ./Dockerfile.ubuntu20 >${dockerfile_name}
+  sed "s#<baseimg>#nvidia/cuda:12.0.1-cudnn8-devel-ubuntu22.04#g" ./Dockerfile.ubuntu22 >${dockerfile_name}
   sed -i "s#<setcuda>#ENV LD_LIBRARY_PATH=/usr/local/cuda-12.0/targets/x86_64-linux/lib:\$LD_LIBRARY_PATH #g" ${dockerfile_name}
   sed -i 's#<install_cpu_package>##g' ${dockerfile_name}
   sed -i "7i ENV TZ=Asia/Beijing" ${dockerfile_name}
@@ -89,24 +89,10 @@ function make_ubuntu20_cu12_dockerfile(){
     cd git-2.17.1 \&\& \
     ./configure --with-openssl --with-curl --prefix=/usr/local \&\& \
     make -j8 \&\& make install " ${dockerfile_name}
-  sed -i "${dockerfile_line}i RUN pip install wheel \&\& pip3.9 install PyGithub wheel distro jinja2" ${dockerfile_name}
-  sed -i "${dockerfile_line}i RUN cd /usr/local/TensorRT-8.6.1.6/python \&\& pip3.9 install tensorrt-8.6.1-cp39-none-linux_x86_64.whl" ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN pip install wheel \&\& pip3.12 install PyGithub wheel distro jinja2" ${dockerfile_name}
   sed -i 's# && rm /etc/apt/sources.list.d/nvidia-ml.list##g' ${dockerfile_name}
-  sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh trt8616#g' ${dockerfile_name}
-  sed -i 's#RUN bash /build_scripts/install_cudnn.sh cudnn841#RUN bash /build_scripts/install_cudnn.sh cudnn896 #g' ${dockerfile_name}
-  sed -i 's#gcc82#gcc121#g' ${dockerfile_name}
-  sed -i 's#/usr/local/gcc-8.2/bin/gcc#/usr/local/gcc-12.1/bin/gcc#g' ${dockerfile_name}
-  sed -i 's#/usr/local/gcc-8.2/bin/gcc#/usr/local/gcc-12.1/bin/gcc#g' ${dockerfile_name}
-  sed -i 's#/usr/local/gcc-8.2/bin/g++#/usr/local/gcc-12.1/bin/g++#g' ${dockerfile_name}
-  sed -i 's#/usr/local/gcc-8.2/bin/g++#/usr/local/gcc-12.1/bin/g++#g' ${dockerfile_name}
-  sed -i 's#PATH=/usr/local/gcc-8.2/bin:$PATH#PATH=/usr/local/gcc-12.1/bin:$PATH#g' ${dockerfile_name}
-  sed -i "${dockerfile_line}i WORKDIR /home \n \
-    RUN git clone --depth=1 https://github.com/PaddlePaddle/PaddleNLP.git -b stable/paddle-ci \&\& cd PaddleNLP \&\& \
-    pip3.10 install -r requirements.txt \&\& \
-    pip3.10 install -r scripts/regression/requirements_ci.txt \&\& \
-    pip3.10 install -r csrc/requirements.txt \&\& \
-    pip3.10 install pytest-timeout \&\& \
-    cd /home \&\& rm -rf PaddleNLP" ${dockerfile_name}
+  sed -i 's#RUN bash /build_scripts/install_trt.sh##g' ${dockerfile_name}
+  sed -i 's#<install_cudnn>#RUN bash /build_scripts/install_cudnn.sh cudnn896 #g' ${dockerfile_name}
 }
 
 

@@ -21,7 +21,7 @@ import paddle
 from paddle.static import InputSpec
 
 
-class TestMinMaxOperandCast:
+class TestMinMaxOperandCast(unittest.TestCase):
     def eval(self, dy_compute, inputs, input_spec=None):
         dy_out = dy_compute(*inputs)
 

@@ -63,9 +63,9 @@ __global__ void Levenshtein(T* dist,
   int col = index % (N + 1);
   if (row > 0 && col > 0 && row < M + 1 && col < N + 1) {
     int cost = x1[row - 1] == x2[col - 1] ? 0 : 1;
-    int dels = dist[(row - 1) * (N + 1) + col] + 1;
-    int ins = dist[row * (N + 1) + col - 1] + 1;
-    int subs = dist[(row - 1) * (N + 1) + (col - 1)] + cost;
+    int dels = dist[static_cast<int64_t>(row - 1) * (N + 1) + col] + 1;
+    int ins = dist[static_cast<int64_t>(row) * (N + 1) + col - 1] + 1;
+    int subs = dist[static_cast<int64_t>(row - 1) * (N + 1) + (col - 1)] + cost;
     dist[index] = min(dels, min(ins, subs));
   }
 }

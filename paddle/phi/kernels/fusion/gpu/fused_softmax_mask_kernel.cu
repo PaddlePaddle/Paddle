@@ -78,8 +78,10 @@ __global__ void SoftmaxMaskFuseV1GPUKernel(const T* x_data,
   // might be many batches per warp. compute the index within the batch
   int local_idx = threadIdx.x;
 
-  int x_offset = data_first_idx * key_seq_len + kOneLoadingCounts * local_idx;
-  int mask_offset = mask_fist_idx * key_seq_len + kOneLoadingCounts * local_idx;
+  int64_t x_offset =
+      data_first_idx * key_seq_len + kOneLoadingCounts * local_idx;
+  int64_t mask_offset =
+      mask_fist_idx * key_seq_len + kOneLoadingCounts * local_idx;
   x_data += x_offset;
   mask_data += mask_offset;
   y_data += x_offset;

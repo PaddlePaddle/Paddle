@@ -53,10 +53,12 @@ void CopyValidData(DenseTensor* dst_tensor,
             valid_seq_len,
             pad_seq_len,
             valid_seq_len));
-    int seq_data_offset = static_cast<int>(seq_offsets[seq_idx] * step_width);
-    int pad_data_offset = layout == kBatchLengthWidth
-                              ? seq_idx * pad_seq_len * step_width
-                              : seq_idx * step_width;
+    int64_t seq_data_offset =
+        static_cast<int64_t>(seq_offsets[seq_idx]) * step_width;
+    int64_t pad_data_offset =
+        layout == kBatchLengthWidth
+            ? static_cast<int64_t>(seq_idx) * pad_seq_len * step_width
+            : static_cast<int64_t>(seq_idx) * step_width;
     float scale = 1.0f / static_cast<float>(valid_seq_len);
 
     for (int step_idx = 0; step_idx < valid_seq_len; ++step_idx) {

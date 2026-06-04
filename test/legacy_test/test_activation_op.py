@@ -3789,6 +3789,19 @@ class TestRelu6API(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    def test_to_static_inplace_api(self):
+        def relu6_inplace(x):
+            return F.relu6(x, inplace=True)
+
+        with dynamic_guard():
+            x = paddle.to_tensor(self.x_np.copy().astype('float32'))
+            st_f = paddle.jit.to_static(
+                relu6_inplace, full_graph=True, backend=None
+            )
+            out = st_f(x)
+            out_ref = ref_relu6(self.x_np.astype('float32'))
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
+
     def test_base_api(self):
         with (
             static_guard(),
@@ -3954,6 +3967,19 @@ class TestHardswishAPI(unittest.TestCase):
             out_ref = [11648.0, 11448.0]
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+
+    def test_to_static_inplace_api(self):
+        def hardswish_inplace(x):
+            return F.hardswish(x, inplace=True)
+
+        with dynamic_guard():
+            x = paddle.to_tensor(self.x_np.copy().astype('float32'))
+            st_f = paddle.jit.to_static(
+                hardswish_inplace, full_graph=True, backend=None
+            )
+            out = st_f(x)
+            out_ref = ref_hardswish(self.x_np.astype('float32'))
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
     def test_base_api(self):
         with static_guard():

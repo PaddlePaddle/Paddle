@@ -373,7 +373,7 @@ class TestWarpCTCOpWithPadding(OpTest):
         cur = 0
         for batch_id in range(self.batch_size):
             for i in range(self.labels_length[batch_id]):
-                new_labels[batch_id, i] = labels[cur + i]
+                new_labels[batch_id, i] = labels[cur + i].item()
             cur = cur + self.labels_length[batch_id]
 
         self.gradient = np.zeros(
@@ -497,7 +497,7 @@ class TestWarpCTCOpFp64(OpTest):
         cur = 0
         for batch_id in range(self.batch_size):
             for i in range(self.labels_length[batch_id]):
-                new_labels[batch_id, i] = labels[cur + i]
+                new_labels[batch_id, i] = labels[cur + i].item()
             cur = cur + self.labels_length[batch_id]
 
         self.gradient = np.zeros(

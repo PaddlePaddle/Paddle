@@ -105,10 +105,12 @@ void BatchNormGradFunctor(const Context& dev_ctx,
           "The size of input X's dimensions should be less than 6."
           "But received: the size of input X's dimensions is [%d]",
           x_dims.size()));
-  const int N = static_cast<int>(x_dims[0]);
-  const int C = static_cast<int>(
-      data_layout == DataLayout::NCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
-  const int sample_size = static_cast<int>(x.numel() / N / C);
+  const int64_t N = x_dims[0];
+  const int64_t C =
+      data_layout == DataLayout::NCHW ? x_dims[1] : x_dims[x_dims.size() - 1];
+  const int64_t sample_size = x.numel() / N / C;
+  const int64_t num_batch_channels = N * C;
+  const int64_t num_batch_spatial = N * sample_size;
 
   // input dimension is 2 and the format is NCHW. The input can be regarded as
   // NHWC format
@@ -162,7 +164,7 @@ void BatchNormGradFunctor(const Context& dev_ctx,
     d_scale_arr.setZero();
   }
 
-  if (d_x && (N * sample_size) == 1 && !use_global_stats) {
+  if (d_x && num_batch_spatial == 1 && !use_global_stats) {
     Copy(dev_ctx, *d_y, dev_ctx.GetPlace(), false, d_x);
     return;
   }
@@ -181,7 +183,7 @@ void BatchNormGradFunctor(const Context& dev_ctx,
     bias_arr.setZero();
   }
 
-  int scale_coeff = use_global_stats ? 1 : N * sample_size;
+  int64_t scale_coeff = use_global_stats ? 1 : num_batch_spatial;
   const auto scale_inv_var_nhw = scale_arr * inv_var_arr / scale_coeff;
 
   DenseTensor dy_sum;
@@ -211,18 +213,20 @@ void BatchNormGradFunctor(const Context& dev_ctx,
       if (is_inplace) {
         auto px = x;
         EigenArrayMap<T> x_data(
-            dev_ctx.template Alloc<T>(&px), sample_size, N * C);
-        ConstEigenArrayMap<T> y_data(x.data<T>(), sample_size, N * C);
-        for (int nc = 0; nc < N * C; ++nc) {
+            dev_ctx.template Alloc<T>(&px), sample_size, num_batch_channels);
+        ConstEigenArrayMap<T> y_data(
+            x.data<T>(), sample_size, num_batch_channels);
+        for (int64_t nc = 0; nc < num_batch_channels; ++nc) {
           x_data.col(nc) = (y_data.col(nc) - bias_arr(nc % C)) /
                                scale_inv_var_nhw(nc % C) / scale_coeff +
                            mean_arr(nc % C);
         }
       }
-      ConstEigenArrayMap<T> x_arr(x.data<T>(), sample_size, N * C);
-      ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), sample_size, N * C);
+      ConstEigenArrayMap<T> x_arr(x.data<T>(), sample_size, num_batch_channels);
+      ConstEigenArrayMap<T> d_y_arr(
+          d_y->data<T>(), sample_size, num_batch_channels);
 
-      for (int nc = 0; nc < N * C; ++nc) {
+      for (int64_t nc = 0; nc < num_batch_channels; ++nc) {
         int c = nc % C;
         dy_sum_arr(c) += d_y_arr.col(nc).sum();
         dy_mul_x_sub_mean_mul_invstd_sum_arr(c) +=
@@ -237,18 +241,18 @@ void BatchNormGradFunctor(const Context& dev_ctx,
 
       if (d_x) {
         EigenArrayMap<T> d_x_arr(
-            dev_ctx.template Alloc<T>(d_x), sample_size, N * C);
+            dev_ctx.template Alloc<T>(d_x), sample_size, num_batch_channels);
         if (!use_global_stats) {
-          for (int nc = 0; nc < N * C; ++nc) {
+          for (int64_t nc = 0; nc < num_batch_channels; ++nc) {
             int c = nc % C;
             d_x_arr.col(nc) =
                 scale_inv_var_nhw(c) *
-                (d_y_arr.col(nc) * N * sample_size - dy_sum_arr(c) -
+                (d_y_arr.col(nc) * num_batch_spatial - dy_sum_arr(c) -
                  (x_arr.col(nc) - mean_arr[c]) *
                      dy_mul_x_sub_mean_mul_invstd_sum_arr(c) * inv_var_arr(c));
           }
         } else {
-          for (int nc = 0; nc < N * C; ++nc) {
+          for (int64_t nc = 0; nc < num_batch_channels; ++nc) {
             int c = nc % C;
             d_x_arr.col(nc) = scale_inv_var_nhw(c) * d_y_arr.col(nc);
           }
@@ -260,18 +264,18 @@ void BatchNormGradFunctor(const Context& dev_ctx,
       if (is_inplace) {
         auto px = x;
         EigenArrayMap<T> x_data(
-            dev_ctx.template Alloc<T>(&px), C, N * sample_size);
-        ConstEigenArrayMap<T> y_data(x.data<T>(), C, N * sample_size);
-        for (int nhw = 0; nhw < N * sample_size; nhw++) {
+            dev_ctx.template Alloc<T>(&px), C, num_batch_spatial);
+        ConstEigenArrayMap<T> y_data(x.data<T>(), C, num_batch_spatial);
+        for (int64_t nhw = 0; nhw < num_batch_spatial; nhw++) {
           x_data.col(nhw) =
               (y_data.col(nhw) - bias_arr) / scale_inv_var_nhw / scale_coeff +
               mean_arr;
         }
       }
-      ConstEigenArrayMap<T> x_arr(x.data<T>(), C, N * sample_size);
-      ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), C, N * sample_size);
+      ConstEigenArrayMap<T> x_arr(x.data<T>(), C, num_batch_spatial);
+      ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), C, num_batch_spatial);
 
-      for (int nhw = 0; nhw < N * sample_size; ++nhw) {
+      for (int64_t nhw = 0; nhw < num_batch_spatial; ++nhw) {
         dy_sum_arr += d_y_arr.col(nhw);
         dy_mul_x_sub_mean_mul_invstd_sum_arr +=
             (x_arr.col(nhw) - mean_arr) * inv_var_arr * d_y_arr.col(nhw);
@@ -284,17 +288,17 @@ void BatchNormGradFunctor(const Context& dev_ctx,
 
       if (d_x) {
         EigenArrayMap<T> d_x_arr(
-            dev_ctx.template Alloc<T>(d_x), C, N * sample_size);
+            dev_ctx.template Alloc<T>(d_x), C, num_batch_spatial);
         if (!use_global_stats) {
-          for (int nhw = 0; nhw < N * sample_size; ++nhw) {
+          for (int64_t nhw = 0; nhw < num_batch_spatial; ++nhw) {
             d_x_arr.col(nhw) =
                 scale_inv_var_nhw *
-                (d_y_arr.col(nhw) * N * sample_size - dy_sum_arr -
+                (d_y_arr.col(nhw) * num_batch_spatial - dy_sum_arr -
                  (x_arr.col(nhw) - mean_arr) *
                      dy_mul_x_sub_mean_mul_invstd_sum_arr * inv_var_arr);
           }
         } else {
-          for (int nhw = 0; nhw < N * sample_size; ++nhw) {
+          for (int64_t nhw = 0; nhw < num_batch_spatial; ++nhw) {
             d_x_arr.col(nhw) = scale_inv_var_nhw * d_y_arr.col(nhw);
           }
         }
@@ -403,9 +407,9 @@ void BatchNormDoubleGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(ddY);
 
   const auto& x_dims = X->dims();
-  const int C = static_cast<int>(
-      data_layout == DataLayout::NCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
-  const int sample_size = static_cast<int>(X->numel() / C);
+  const int64_t C =
+      data_layout == DataLayout::NCHW ? x_dims[1] : x_dims[x_dims.size() - 1];
+  const int64_t sample_size = X->numel() / C;
   funcs::SetConstant<Context, T> set_constant;
 
   const T* mean_data = Saved_mean->data<T>();

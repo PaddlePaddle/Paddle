@@ -681,7 +681,7 @@ class TestDygraphReshapeAPI(unittest.TestCase):
         input = paddle.to_tensor(input_1)
         output = self.reshape(x=input, shape=[5, 10])
         out_np = output.numpy()
-        expected_out = np.reshape(input_1, newshape=[5, 10])
+        expected_out = np.reshape(input_1, [5, 10])
         np.testing.assert_allclose(expected_out, out_np, rtol=1e-05)
 
     def test_out_uint8(self):
@@ -690,7 +690,7 @@ class TestDygraphReshapeAPI(unittest.TestCase):
         input = paddle.to_tensor(input_1)
         output = self.reshape(x=input, shape=[5, 10])
         out_np = output.numpy()
-        expected_out = np.reshape(input_1, newshape=[5, 10])
+        expected_out = np.reshape(input_1, [5, 10])
         np.testing.assert_allclose(expected_out, out_np, rtol=1e-05)
 
     def test_out_float32(self):
@@ -699,7 +699,7 @@ class TestDygraphReshapeAPI(unittest.TestCase):
         input = paddle.to_tensor(input_1)
         output = self.reshape(x=input, shape=[5, 10])
         out_np = output.numpy()
-        expected_out = np.reshape(input_1, newshape=[5, 10])
+        expected_out = np.reshape(input_1, [5, 10])
         np.testing.assert_allclose(expected_out, out_np, rtol=1e-05)
 
 

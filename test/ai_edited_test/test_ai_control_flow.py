@@ -45,7 +45,7 @@ class TestPaddleCond(unittest.TestCase):
         result = paddle.static.nn.cond(
             x, lambda: paddle.to_tensor([1.0]), lambda: paddle.to_tensor([0.0])
         )
-        self.assertAlmostEqual(float(result.numpy()), 1.0)
+        self.assertAlmostEqual(float(result.item()), 1.0)
 
     def test_cond_false(self):
         """测试条件为False / Test cond when false"""
@@ -53,14 +53,14 @@ class TestPaddleCond(unittest.TestCase):
         result = paddle.static.nn.cond(
             x, lambda: paddle.to_tensor([1.0]), lambda: paddle.to_tensor([0.0])
         )
-        self.assertAlmostEqual(float(result.numpy()), 0.0)
+        self.assertAlmostEqual(float(result.item()), 0.0)
 
     def test_cond_with_computation(self):
         """测试带计算的条件 / Test cond with computation"""
         x = paddle.to_tensor(3.0)
         cond = x > 2.0
         result = paddle.static.nn.cond(cond, lambda: x * 2, lambda: x * 0.5)
-        self.assertAlmostEqual(float(result.numpy()), 6.0, places=5)
+        self.assertAlmostEqual(float(result.item()), 6.0, places=5)
 
 
 class TestWhileLoop(unittest.TestCase):
@@ -78,7 +78,7 @@ class TestWhileLoop(unittest.TestCase):
             return [i + 1]
 
         out = paddle.static.nn.while_loop(cond, body, [i])
-        self.assertEqual(int(out[0].numpy()), 5)
+        self.assertEqual(int(out[0].item()), 5)
 
 
 class TestDynamicShapeModel(unittest.TestCase):

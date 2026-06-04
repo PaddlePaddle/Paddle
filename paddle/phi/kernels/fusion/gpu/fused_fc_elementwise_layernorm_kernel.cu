@@ -73,10 +73,11 @@ __global__ void InplaceAddReluAddLayerNormKernel(const T* y,
   __shared__ T shared_mem[BlockDim + 2];
 
   for (int i = blockIdx.x; i < M; i += gridDim.x) {
-    int index = i * N + threadIdx.x;
+    int64_t index =
+        static_cast<int64_t>(i) * N + static_cast<int64_t>(threadIdx.x);
 
     // The first BlockDim elements will be saved to shared memory.
-    int save_index = threadIdx.x;
+    int64_t save_index = threadIdx.x;
     T* save_ptr = shared_mem;
 
     T sum_i = 0;
@@ -122,7 +123,7 @@ __global__ void InplaceAddReluAddLayerNormKernel(const T* y,
     T mean_i = shared_mem[BlockDim];
     T std_i = static_cast<T>(RealSqrt(shared_mem[BlockDim + 1] + epsilon));
 
-    index = i * N + threadIdx.x;
+    index = static_cast<int64_t>(i) * N + threadIdx.x;
     // First BlockDim elements loading from shared memory.
     save_index = threadIdx.x;
     save_ptr = shared_mem;
@@ -177,10 +178,11 @@ __global__ void InplaceAddReluAddLayerNormKernel(const float16* y_data,
 #endif
 
   for (int i = blockIdx.x; i < M; i += gridDim.x) {
-    int index = i * N + threadIdx.x;
+    int64_t index =
+        static_cast<int64_t>(i) * N + static_cast<int64_t>(threadIdx.x);
 
     // The first BlockDim elements will be saved to shared memory.
-    int save_index = threadIdx.x;
+    int64_t save_index = threadIdx.x;
 #if defined(PADDLE_WITH_CUDA)
     half* save_ptr = shared_mem;
 #else
@@ -261,7 +263,7 @@ __global__ void InplaceAddReluAddLayerNormKernel(const float16* y_data,
         RealSqrt(static_cast<float>(shared_mem[BlockDim + 1]) + epsilon));
 #endif
 
-    index = i * N + threadIdx.x;
+    index = static_cast<int64_t>(i) * N + threadIdx.x;
     // First BlockDim elements loading from shared memory.
     save_index = threadIdx.x;
     save_ptr = shared_mem;

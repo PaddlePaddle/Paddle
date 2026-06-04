@@ -510,7 +510,7 @@ void TriuIndicesInferMeta(
   if (diff_row > 0) {
     tril_size += diff_row * col;
   }
-  std::vector<int64_t> tmp = {2, row * col - tril_size};
+  std::vector<int64_t> tmp = {2, static_cast<int64_t>(row) * col - tril_size};
   auto out_dims = make_ddim(tmp);
   out->set_dims(out_dims);
   out->set_dtype(dtype);

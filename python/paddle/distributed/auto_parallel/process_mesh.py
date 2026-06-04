@@ -278,7 +278,8 @@ class ProcessMesh(core.ProcessMesh):
         else:
             raise ValueError("dim must be a string or an integer.")
         dim_name_index = self._dim_names.index(dim_name)
-        return int(np.where(self._mesh == process_id)[dim_name_index])
+        rank_index = np.where(self._mesh == process_id)[dim_name_index]
+        return int(rank_index.item())
 
     def get_dim_size(self, dim: str | int) -> int:
         if dim is None:

@@ -375,7 +375,10 @@ def hardsigmoid(
         return out
 
 
-def hardswish(x: Tensor, name: str | None = None) -> Tensor:
+@param_one_alias(["x", "input"])
+def hardswish(
+    x: Tensor, inplace: bool = False, name: str | None = None
+) -> Tensor:
     r"""
     hardswish activation. hardswish is proposed in MobileNetV3, and performs
     better in computational stability and efficiency compared to swish function.
@@ -394,6 +397,8 @@ def hardswish(x: Tensor, name: str | None = None) -> Tensor:
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
+            Alias: ``input``.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -412,7 +417,7 @@ def hardswish(x: Tensor, name: str | None = None) -> Tensor:
             [-0.       , 5.        , 0.66666669])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.hardswish(x)
+        return _C_ops.hardswish_(x) if inplace else _C_ops.hardswish(x)
     else:
         check_variable_and_dtype(
             x,
@@ -960,7 +965,8 @@ def maxout(
         return out
 
 
-def relu6(x: Tensor, name: str | None = None) -> Tensor:
+@param_one_alias(["x", "input"])
+def relu6(x: Tensor, inplace: bool = False, name: str | None = None) -> Tensor:
     """
     relu6 activation
 
@@ -970,6 +976,8 @@ def relu6(x: Tensor, name: str | None = None) -> Tensor:
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
+            Alias: ``input``.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -989,7 +997,7 @@ def relu6(x: Tensor, name: str | None = None) -> Tensor:
     """
     threshold = 6.0
     if in_dynamic_or_pir_mode():
-        return _C_ops.relu6(x)
+        return _C_ops.relu6_(x) if inplace else _C_ops.relu6(x)
 
     check_variable_and_dtype(
         x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'relu6'

@@ -66,13 +66,13 @@ class SequenceMaskTestBase(OpTest):
         maxlen = np.max(self.x) if self.maxlen < 0 else self.maxlen
         shape = (*self.x.shape, maxlen)
         index_broadcast = np.broadcast_to(
-            np.reshape(range(maxlen), newshape=[1] * self.x.ndim + [-1]),
+            np.reshape(range(maxlen), [1] * self.x.ndim + [-1]),
             shape=shape,
         )
         x_broadcast = np.broadcast_to(
             np.reshape(
                 self.x,
-                newshape=(*self.x.shape, -1),
+                (*self.x.shape, -1),
             ),
             shape=shape,
         )
@@ -141,13 +141,13 @@ class SequenceMaskTestBase_tensor_attr(OpTest):
         maxlen = np.max(self.x) if self.maxlen < 0 else self.maxlen
         shape = (*self.x.shape, maxlen)
         index_broadcast = np.broadcast_to(
-            np.reshape(range(maxlen), newshape=[1] * self.x.ndim + [-1]),
+            np.reshape(range(maxlen), [1] * self.x.ndim + [-1]),
             shape=shape,
         )
         x_broadcast = np.broadcast_to(
             np.reshape(
                 self.x,
-                newshape=(*self.x.shape, -1),
+                (*self.x.shape, -1),
             ),
             shape=shape,
         )
