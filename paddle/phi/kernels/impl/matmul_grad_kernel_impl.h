@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
@@ -284,6 +285,15 @@ void MatmulGradKernel(const Context& dev_ctx,
                       bool transpose_y,
                       DenseTensor* dx,
                       DenseTensor* dy) {
+  if constexpr (std::is_same<T, phi::bfloat16>::value) {
+    if (out_grad.dtype() == DataType::FLOAT32) {
+      DenseTensor out_grad_bf16 =
+          Cast<float, Context>(dev_ctx, out_grad, DataType::BFLOAT16);
+      MatmulGradKernel<T, Context>(
+          dev_ctx, x, y, out_grad_bf16, transpose_x, transpose_y, dx, dy);
+      return;
+    }
+  }
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(dx);
     Full<T, Context>(dev_ctx, y.dims(), 0, dy);

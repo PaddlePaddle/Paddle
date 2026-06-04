@@ -174,5 +174,88 @@ class TestMmOutBatchedAndShapes(unittest.TestCase):
         )
 
 
+class TestMmOutDtype(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def _skip_if_no_bf16_cuda(self):
+        if not paddle.is_compiled_with_cuda():
+            self.skipTest("CUDA is required for mm out_dtype")
+        if paddle.device.cuda.get_device_capability()[0] < 8:
+            self.skipTest(
+                "BF16 mm out_dtype requires CUDA compute capability >= 8"
+            )
+
+    def test_bf16_to_fp32(self):
+        self._skip_if_no_bf16_cuda()
+        x = paddle.randn([3, 4], dtype='bfloat16')
+        y = paddle.randn([4, 5], dtype='bfloat16')
+        out = paddle.mm(x, y, out_dtype=paddle.float32)
+        ref = paddle.mm(x.astype('float32'), y.astype('float32'))
+        self.assertEqual(out.dtype, paddle.float32)
+        np.testing.assert_allclose(
+            out.numpy(), ref.numpy(), rtol=1e-2, atol=1e-2
+        )
+
+    def test_bf16_to_fp32_transposed_rhs(self):
+        self._skip_if_no_bf16_cuda()
+        x = paddle.randn([3, 4], dtype='bfloat16')
+        weight = paddle.randn([5, 4], dtype='bfloat16')
+        out = paddle.mm(x, weight.t(), out_dtype=paddle.float32)
+        ref = paddle.mm(x.astype('float32'), weight.t().astype('float32'))
+        self.assertEqual(out.dtype, paddle.float32)
+        np.testing.assert_allclose(
+            out.numpy(), ref.numpy(), rtol=1e-2, atol=1e-2
+        )
+
+    def test_bf16_to_fp32_out(self):
+        self._skip_if_no_bf16_cuda()
+        x = paddle.randn([3, 4], dtype='bfloat16')
+        y = paddle.randn([4, 5], dtype='bfloat16')
+        out = paddle.empty([3, 5], dtype='float32')
+        ret = paddle.mm(x, y, out_dtype=paddle.float32, out=out)
+        ref = paddle.mm(x.astype('float32'), y.astype('float32'))
+        self.assertEqual(ret.dtype, paddle.float32)
+        np.testing.assert_allclose(
+            ret.numpy(), ref.numpy(), rtol=1e-2, atol=1e-2
+        )
+
+    def test_bf16_to_fp32_backward_smoke(self):
+        self._skip_if_no_bf16_cuda()
+        x = paddle.randn([3, 4], dtype='bfloat16')
+        weight = paddle.randn([5, 4], dtype='bfloat16')
+        x.stop_gradient = False
+        weight.stop_gradient = False
+        loss = paddle.mm(x, weight.t(), out_dtype=paddle.float32).sum()
+        loss.backward()
+        self.assertEqual(x.grad.dtype, paddle.bfloat16)
+        self.assertEqual(weight.grad.dtype, paddle.bfloat16)
+        self.assertEqual(list(x.grad.shape), [3, 4])
+        self.assertEqual(list(weight.grad.shape), [5, 4])
+
+    def test_out_dtype_rejects_unsupported_cases(self):
+        x = paddle.randn([3, 4], dtype='float32')
+        y = paddle.randn([4, 5], dtype='float32')
+        with self.assertRaises(TypeError):
+            paddle.mm(x, y, out_dtype=paddle.float32)
+        x_bf16 = paddle.randn([3, 4], dtype='bfloat16')
+        y_bf16 = paddle.randn([4, 5], dtype='bfloat16')
+        with self.assertRaises(TypeError):
+            paddle.mm(x_bf16, y_bf16, out_dtype=paddle.bfloat16)
+        with self.assertRaises(ValueError):
+            paddle.mm(
+                x_bf16.reshape([1, 3, 4]),
+                y_bf16.reshape([1, 4, 5]),
+                out_dtype=paddle.float32,
+            )
+        with self.assertRaises(TypeError):
+            paddle.mm(
+                x_bf16,
+                y_bf16,
+                out_dtype=paddle.float32,
+                out=paddle.empty([3, 5], dtype='bfloat16'),
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

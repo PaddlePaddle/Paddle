@@ -189,7 +189,7 @@
   optional : grad_x_grad, grad_y_grad
 
 - backward_op : matmul_grad
-  forward : matmul (Tensor x, Tensor y, bool transpose_x=false, bool transpose_y=false) -> Tensor(out)
+  forward : matmul (Tensor x, Tensor y, bool transpose_x=false, bool transpose_y=false, DataType out_dtype=DataType::UNDEFINED) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad, bool transpose_x=false, bool transpose_y=false)
   output : Tensor(x_grad), Tensor(y_grad)
   infer_meta :
@@ -198,6 +198,7 @@
     spmd_rule : MatmulGradInferSpmd
   kernel :
     func : matmul_grad
+    data_type : x
   backward : matmul_double_grad
 
 - backward_op : maximum_grad

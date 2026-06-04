@@ -2510,7 +2510,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = "", bool force_fp32_output = false]
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = "", bool force_fp32_output = false, DataType out_dtype = DataType::UNDEFINED]
   complex_promote : [X, Y]
 
 - op : matmul_with_flatten (mul)

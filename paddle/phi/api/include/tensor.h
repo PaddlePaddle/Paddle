@@ -763,7 +763,8 @@ class PADDLE_API Tensor final {
   Tensor expand(const IntArray& shape) const;
   Tensor matmul(const Tensor& y,
                 bool transpose_x = false,
-                bool transpose_y = false) const;
+                bool transpose_y = false,
+                DataType out_dtype = DataType::UNDEFINED) const;
   Tensor max(const IntArray& axis = {}, bool keepdim = false) const;
   Tensor maximum(const Tensor& y) const;
   Tensor minimum(const Tensor& y) const;

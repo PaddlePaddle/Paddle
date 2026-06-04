@@ -348,7 +348,7 @@
   backward : matmul_triple_grad
 
 - backward_op : matmul_grad
-  forward : matmul (Tensor x, Tensor y, bool transpose_x=false, bool transpose_y=false) -> Tensor(out)
+  forward : matmul (Tensor x, Tensor y, bool transpose_x=false, bool transpose_y=false, DataType out_dtype=DataType::UNDEFINED) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad, bool transpose_x=false, bool transpose_y=false)
   output : Tensor(x_grad), Tensor(y_grad)
   infer_meta :
@@ -357,6 +357,7 @@
     spmd_rule : MatmulGradInferSpmd
   kernel :
     func : matmul_grad
+    data_type : x
   composite: matmul_grad(x, y, out_grad, transpose_x, transpose_y, x_grad, y_grad)
   backward : matmul_double_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface

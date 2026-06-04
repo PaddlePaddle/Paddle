@@ -115,7 +115,8 @@ void FillMatmulOperandNotation(const int x_ndim,
 SpmdInfo MatmulInferSpmd(const DistMetaTensor& x,
                          const DistMetaTensor& y,
                          bool trans_x,
-                         bool trans_y) {
+                         bool trans_y,
+                         DataType out_dtype UNUSED) {
   // Step0: verify input args based on matmul logic
   auto ori_x_shape = vectorize(x.dims());
   auto ori_y_shape = vectorize(y.dims());

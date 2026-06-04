@@ -363,7 +363,7 @@
   backward : matmul_triple_grad
 
 - backward_op : matmul_grad
-  forward : matmul (Tensor x, Tensor y, bool transpose_x=false, bool transpose_y=false) -> Tensor(out)
+  forward : matmul (Tensor x, Tensor y, bool transpose_x=false, bool transpose_y=false, DataType out_dtype=DataType::UNDEFINED) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad, bool transpose_x=false, bool transpose_y=false)
   output : Tensor(x_grad), Tensor(y_grad)
   infer_meta :
@@ -371,7 +371,7 @@
     param : [x, y]
   kernel :
     func : matmul_grad
-    data_type: out_grad
+    data_type: x
   backward : matmul_double_grad
 
 - backward_op : matmul_triple_grad

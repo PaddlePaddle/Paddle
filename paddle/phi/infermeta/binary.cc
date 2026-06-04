@@ -3066,16 +3066,19 @@ void MaskedFillInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
-void MatmulInferMeta(const MetaTensor& x,
-                     const MetaTensor& y,
-                     bool trans_x,
-                     bool trans_y,
-                     MetaTensor* out,
-                     MetaConfig config) {
+void MatmulInferMetaWithOutDtype(const MetaTensor& x,
+                                 const MetaTensor& y,
+                                 bool trans_x,
+                                 bool trans_y,
+                                 DataType out_dtype,
+                                 MetaTensor* out,
+                                 MetaConfig config) {
   std::vector<int64_t> dims_x = vectorize(x.dims());
   std::vector<int64_t> dims_y = vectorize(y.dims());
-  auto ndims_x = dims_x.size();
-  auto ndims_y = dims_y.size();
+  const auto ori_ndims_x = dims_x.size();
+  const auto ori_ndims_y = dims_y.size();
+  auto ndims_x = ori_ndims_x;
+  auto ndims_y = ori_ndims_y;
   const int64_t lhs_reduce_dim = (ndims_x == 1) ? 0 : ndims_x - 1 - trans_x;
   const int64_t rhs_reduce_dim = (ndims_y == 1) ? 0 : ndims_y - 2 + trans_y;
   const int64_t K_lhs = dims_x[lhs_reduce_dim];
@@ -3159,7 +3162,44 @@ void MatmulInferMeta(const MetaTensor& x,
   auto ddim_out = make_ddim(new_dims);
 
   out->set_dims(ddim_out);
-  if (x.dtype() == DataType::INT8) {
+  if (out_dtype != DataType::UNDEFINED) {
+    PADDLE_ENFORCE_EQ(
+        out_dtype,
+        DataType::FLOAT32,
+        common::errors::InvalidArgument(
+            "The out_dtype of matmul/mm currently only supports float32, but "
+            "received %s.",
+            out_dtype));
+    PADDLE_ENFORCE_EQ(
+        x.dtype(),
+        DataType::BFLOAT16,
+        common::errors::InvalidArgument(
+            "The out_dtype of matmul/mm currently only supports bfloat16 "
+            "Input(X), but received %s.",
+            x.dtype()));
+    PADDLE_ENFORCE_EQ(
+        y.dtype(),
+        DataType::BFLOAT16,
+        common::errors::InvalidArgument(
+            "The out_dtype of matmul/mm currently only supports bfloat16 "
+            "Input(Y), but received %s.",
+            y.dtype()));
+    PADDLE_ENFORCE_EQ(
+        ori_ndims_x,
+        2UL,
+        common::errors::InvalidArgument(
+            "The out_dtype of matmul/mm currently only supports 2-D Input(X), "
+            "but received rank %d.",
+            ori_ndims_x));
+    PADDLE_ENFORCE_EQ(
+        ori_ndims_y,
+        2UL,
+        common::errors::InvalidArgument(
+            "The out_dtype of matmul/mm currently only supports 2-D Input(Y), "
+            "but received rank %d.",
+            ori_ndims_y));
+    out->set_dtype(DataType::FLOAT32);
+  } else if (x.dtype() == DataType::INT8) {
     out->set_dtype(DataType::INT32);
   } else if (x.dtype() == DataType::FLOAT8_E4M3FN ||
              x.dtype() == DataType::FLOAT8_E5M2) {
@@ -3169,6 +3209,16 @@ void MatmulInferMeta(const MetaTensor& x,
   }
   out->set_layout(x.layout());
   out->share_lod(x);
+}
+
+void MatmulInferMeta(const MetaTensor& x,
+                     const MetaTensor& y,
+                     bool trans_x,
+                     bool trans_y,
+                     MetaTensor* out,
+                     MetaConfig config) {
+  MatmulInferMetaWithOutDtype(
+      x, y, trans_x, trans_y, DataType::UNDEFINED, out, config);
 }
 
 void MatmulWithFlattenInferMeta(const MetaTensor& x,

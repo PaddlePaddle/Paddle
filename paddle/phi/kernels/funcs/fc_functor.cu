@@ -413,8 +413,13 @@ void FCInt8Functor<DeviceContext, T>::operator()(
                                   quant_min_bound,
                                   dev_ctx.stream());
 
-  MatmulKernel<int8_t, GPUContext>(
-      dev_ctx, quant_x_tensor, *w_tensor, false, false, &quant_y_tensor);
+  MatmulKernel<int8_t, GPUContext>(dev_ctx,
+                                   quant_x_tensor,
+                                   *w_tensor,
+                                   false,
+                                   false,
+                                   DataType::UNDEFINED,
+                                   &quant_y_tensor);
 
   DenseTensor scale_weights_dev;
   scale_weights_dev.Resize({N});

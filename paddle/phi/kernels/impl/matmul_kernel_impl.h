@@ -2055,17 +2055,92 @@ MatmulJudgeDtypeKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+void MatmulOutDtypeKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& y,
+                          const std::vector<std::int64_t>& x_dims,
+                          const std::vector<std::int64_t>& y_dims,
+                          DenseTensor* out,
+                          bool transpose_x,
+                          bool transpose_y,
+                          DataType out_dtype) {
+  PADDLE_ENFORCE_EQ(
+      out_dtype,
+      DataType::FLOAT32,
+      common::errors::InvalidArgument(
+          "The out_dtype of matmul/mm currently only supports float32."));
+  PADDLE_ENFORCE_EQ(
+      x.dtype(),
+      DataType::BFLOAT16,
+      common::errors::InvalidArgument(
+          "The out_dtype of matmul/mm currently only supports bfloat16 "
+          "Input(X)."));
+  PADDLE_ENFORCE_EQ(
+      y.dtype(),
+      DataType::BFLOAT16,
+      common::errors::InvalidArgument(
+          "The out_dtype of matmul/mm currently only supports bfloat16 "
+          "Input(Y)."));
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      2UL,
+      common::errors::InvalidArgument(
+          "The out_dtype of matmul/mm currently only supports 2-D Input(X)."));
+  PADDLE_ENFORCE_EQ(
+      y_dims.size(),
+      2UL,
+      common::errors::InvalidArgument(
+          "The out_dtype of matmul/mm currently only supports 2-D Input(Y)."));
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+  if constexpr (std::is_same<Context, phi::GPUContext>::value &&
+                std::is_same<T, phi::bfloat16>::value) {
+    const int64_t M = transpose_x ? x_dims[1] : x_dims[0];
+    const int64_t K = transpose_x ? x_dims[0] : x_dims[1];
+    const int64_t N = transpose_y ? y_dims[0] : y_dims[1];
+    const int64_t K_y = transpose_y ? y_dims[1] : y_dims[0];
+    PADDLE_ENFORCE_EQ(
+        K,
+        K_y,
+        common::errors::InvalidArgument(
+            "Input(X)'s width must equal Input(Y)'s height, but received %d "
+            "and %d.",
+            K,
+            K_y));
+    if (x.numel() == 0 || y.numel() == 0) {
+      Full<float, Context>(dev_ctx, out->dims(), 0, out);
+      return;
+    }
+    dev_ctx.template Alloc<float>(out);
+    funcs::Blas<Context> blas(dev_ctx);
+    blas.GEMM(transpose_x ? CblasTrans : CblasNoTrans,
+              transpose_y ? CblasTrans : CblasNoTrans,
+              M,
+              N,
+              K,
+              1.0f,
+              x.data<phi::bfloat16>(),
+              y.data<phi::bfloat16>(),
+              0.0f,
+              out->data<float>());
+  } else {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "The out_dtype of matmul/mm currently only supports CUDA bfloat16 "
+        "inputs."));
+  }
+#else
+  PADDLE_THROW(common::errors::Unimplemented(
+      "The out_dtype of matmul/mm currently only supports CUDA."));
+#endif
+}
+
+template <typename T, typename Context>
 void MatmulKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const DenseTensor& y,
                   bool transpose_x,
                   bool transpose_y,
+                  DataType out_dtype,
                   DenseTensor* out) {
-  if (x.numel() == 0 || y.numel() == 0) {
-    // input shape [1, 1, 5, 0], [1, 1, 0, 5], result shape is [1, 1, 5, 5]
-    Full<T, Context>(dev_ctx, out->dims(), 0, out);
-    return;
-  }
   PADDLE_ENFORCE_GE(
       common::product(x.dims()),
       0,
@@ -2078,6 +2153,23 @@ void MatmulKernel(const Context& dev_ctx,
           "The dims of Input(Y) should be greater than or equal to 0."));
   const std::vector<std::int64_t> x_dims = vectorize(x.dims());
   const std::vector<std::int64_t> y_dims = vectorize(y.dims());
+  if (out_dtype != DataType::UNDEFINED) {
+    MatmulOutDtypeKernel<T, Context>(dev_ctx,
+                                     x,
+                                     y,
+                                     x_dims,
+                                     y_dims,
+                                     out,
+                                     transpose_x,
+                                     transpose_y,
+                                     out_dtype);
+    return;
+  }
+  if (x.numel() == 0 || y.numel() == 0) {
+    // input shape [1, 1, 5, 0], [1, 1, 0, 5], result shape is [1, 1, 5, 5]
+    Full<T, Context>(dev_ctx, out->dims(), 0, out);
+    return;
+  }
   MatmulJudgeDtypeKernel<Context, T>(
       dev_ctx, x, y, x_dims, y_dims, out, transpose_x, transpose_y);
 }
@@ -2279,7 +2371,8 @@ void LegacyMatmulKernel(const Context& dev_ctx,
                         bool transpose_y,
                         float alpha,
                         DenseTensor* out) {
-  MatmulKernel<T, Context>(dev_ctx, x, y, transpose_x, transpose_y, out);
+  MatmulKernel<T, Context>(
+      dev_ctx, x, y, transpose_x, transpose_y, DataType::UNDEFINED, out);
   if (std::fabs(alpha - 1.f) > 1e-6f) {
     ScaleKernel<T, Context>(
         dev_ctx, *out, Scalar(alpha), Scalar(0), false, out);
