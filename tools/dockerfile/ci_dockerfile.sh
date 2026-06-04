@@ -84,11 +84,7 @@ function make_ubuntu20_cu12_dockerfile(){
   dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
   sed -i "${dockerfile_line}i RUN wget --no-check-certificate -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz \&\& \
      tar -xzf  hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/" ${dockerfile_name}
-  sed -i "${dockerfile_line}i RUN apt remove git -y \&\& apt update \&\& apt install -y libcurl4-openssl-dev gettext pigz zstd ninja-build  \&\& wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz \&\& \
-    tar -xvf git-2.17.1.tar.gz \&\& \
-    cd git-2.17.1 \&\& \
-    ./configure --with-openssl --with-curl --prefix=/usr/local \&\& \
-    make -j8 \&\& make install " ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN apt update \&\& apt install -y git libcurl4-openssl-dev gettext pigz zstd ninja-build" ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN pip install wheel \&\& pip3.12 install PyGithub wheel distro jinja2" ${dockerfile_name}
   sed -i 's# && rm /etc/apt/sources.list.d/nvidia-ml.list##g' ${dockerfile_name}
   sed -i 's#RUN bash /build_scripts/install_trt.sh##g' ${dockerfile_name}
