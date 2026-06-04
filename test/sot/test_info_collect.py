@@ -86,7 +86,7 @@ class TestBreakGraphReasonInfo(TestCaseBase):
         serialized = BreakGraphReasonInfo.json_report(history)
         deserialized = BreakGraphReasonInfo.restore_from_string(
             serialized[5:-6]  # remove `<sot>` and `</sot>`
-        )  # `removeprefix` & `removesuffix` are only available from python3.9
+        )  # Keep slicing to remove both fixed report tags.
 
         origin_reasons_dict, _ = BreakGraphReasonInfo.classify(history)
         origin_reasons2count = {
@@ -112,7 +112,7 @@ class TestSubGraphInfo(TestCaseBase):
         serialized = SubGraphInfo.json_report(history)
         deserialized = SubGraphInfo.restore_from_string(
             serialized[5:-6]  # remove `<sot>` and `</sot>`
-        )  # `removeprefix` & `removesuffix` are only available from python3.9
+        )  # Keep slicing to remove both fixed report tags.
 
         self.assertEqual(history, deserialized)
 
