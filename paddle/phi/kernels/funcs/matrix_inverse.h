@@ -15,15 +15,62 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+#include <type_traits>
 
 #include "Eigen/Core"
 #include "Eigen/LU"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/matrix_solve.h"
 
 namespace phi {
 namespace funcs {
+
+template <typename T>
+struct BatchedEyeFunctor {
+  BatchedEyeFunctor(int64_t batch_stride, int64_t n, T* out)
+      : batch_stride_(batch_stride), n_(n), out_(out) {}
+
+  HOSTDEVICE void operator()(size_t idx) const {
+    const int64_t batch_idx = idx / n_;
+    const int64_t diag_idx = idx % n_;
+    out_[batch_idx * batch_stride_ + diag_idx * n_ + diag_idx] =
+        static_cast<T>(1);
+  }
+
+  int64_t batch_stride_;
+  int64_t n_;
+  T* out_;
+};
+
+template <typename Context, typename T>
+void CreateBatchedIdentityMatrix(const Context& dev_ctx,
+                                 const DDim& dims,
+                                 DenseTensor* identity) {
+  identity->Resize(dims);
+  T* identity_data = dev_ctx.template Alloc<T>(identity);
+  funcs::SetConstant<Context, T> set_zero;
+  set_zero(dev_ctx, identity, static_cast<T>(0));
+
+  const int rank = dims.size();
+  const int64_t n = dims[rank - 1];
+  const int64_t batch_size = rank > 2 ? identity->numel() / (n * n) : 1;
+  funcs::ForRange<Context> for_range(dev_ctx, batch_size * n);
+  for_range(BatchedEyeFunctor<T>(n * n, n, identity_data));
+}
+
+template <typename Context, typename T>
+void ComputeInverseBySolve(const Context& dev_ctx,
+                           const DenseTensor& a,
+                           DenseTensor* a_inv) {
+  DenseTensor identity(a.dtype());
+  CreateBatchedIdentityMatrix<Context, T>(dev_ctx, a.dims(), &identity);
+  MatrixSolveFunctor<Context, T> mat_solve;
+  mat_solve(dev_ctx, a, identity, a_inv);
+}
 
 template <typename Context, typename T>
 struct MapMatrixInverseFunctor {

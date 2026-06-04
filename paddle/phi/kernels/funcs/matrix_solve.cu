@@ -23,6 +23,23 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
+namespace {
+// Checked narrowing cast from int64_t to int, following PyTorch's
+// cuda_int_cast pattern. Throws a clear error when the value overflows.
+inline int CudaIntCast(int64_t v, const char* name) {
+  PADDLE_ENFORCE_LE(
+      v,
+      static_cast<int64_t>(std::numeric_limits<int>::max()),
+      common::errors::InvalidArgument(
+          "cuBLAS API requires %s <= %d, but got %lld. "
+          "This is likely because the tensor is too large for cuBLAS.",
+          name,
+          std::numeric_limits<int>::max(),
+          static_cast<long long>(v)));  // NOLINT
+  return static_cast<int>(v);
+}
+}  // namespace
+
 #ifndef PADDLE_WITH_HIP
 /**
  * Transform pivot array to permutation by swapping perm[i] and perm[pivot[i]]
@@ -72,11 +89,14 @@ __global__ void UnpackPivot(const int* __restrict__ pivot,
  */
 template <typename Context, typename T>
 void SolveLU(const funcs::BlasT<Context, T>& blas,
-             int m,
-             int n,
+             int64_t m,
+             int64_t n,
              const T* A,
              T* B,
-             int batch_size) {
+             int64_t batch_size) {
+  // cuBLAS TRSM requires int parameters; checked cast at the boundary.
+  int m_int = CudaIntCast(m, "m (nrhs)");
+  int n_int = CudaIntCast(n, "n");
   constexpr T alpha = 1.0;
   for (int64_t i = 0; i < batch_size; ++i) {
     // Before: U^T @ L^T @ P @ X = B
@@ -84,25 +104,25 @@ void SolveLU(const funcs::BlasT<Context, T>& blas,
               CblasLower,
               CblasTrans,
               CblasNonUnit,
-              m,
-              n,
+              m_int,
+              n_int,
               alpha,
               A + i * n * n,
-              n,
+              n_int,
               B + i * m * n,
-              n);
+              n_int);
     // After: L^T @ P @ X = U^T^-1 @ B
     blas.TRSM(CblasRight,
               CblasUpper,
               CblasTrans,
               CblasUnit,
-              m,
-              n,
+              m_int,
+              n_int,
               alpha,
               A + i * n * n,
-              n,
+              n_int,
               B + i * m * n,
-              n);
+              n_int);
     // After: P @ X = L^T^-1 @ U^T^-1 @ B
   }
 }
@@ -110,36 +130,40 @@ void SolveLU(const funcs::BlasT<Context, T>& blas,
 // Batched version of SolveLU.
 template <typename Context, typename T>
 void BatchedSolveLU(const funcs::BlasT<Context, T>& blas,
-                    int m,
-                    int n,
+                    int64_t m,
+                    int64_t n,
                     const T** A,
                     T** B,
-                    int batch_size) {
+                    int64_t batch_size) {
+  // cuBLAS BatchedTRSM requires int parameters; checked cast at the boundary.
+  int m_int = CudaIntCast(m, "m (nrhs)");
+  int n_int = CudaIntCast(n, "n");
+  int batch_int = CudaIntCast(batch_size, "batch_size");
   constexpr T alpha = 1.0;
   blas.BatchedTRSM(CblasRight,
                    CblasLower,
                    CblasTrans,
                    CblasNonUnit,
-                   m,
-                   n,
+                   m_int,
+                   n_int,
                    alpha,
                    A,
-                   n,
+                   n_int,
                    B,
-                   n,
-                   batch_size);
+                   n_int,
+                   batch_int);
   blas.BatchedTRSM(CblasRight,
                    CblasUpper,
                    CblasTrans,
                    CblasUnit,
-                   m,
-                   n,
+                   m_int,
+                   n_int,
                    alpha,
                    A,
-                   n,
+                   n_int,
                    B,
-                   n,
-                   batch_size);
+                   n_int,
+                   batch_int);
 }
 #endif
 
@@ -159,16 +183,17 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& dev_ctx,
   // https://docs.nvidia.com/cuda/cublas/index.html#cublas-lt-t-gt-getrfbatched
   const auto& a_dims = a.dims();
   const int a_rank = a_dims.size();
-  int n = a_dims[a_rank - 1];
-  int lda = n;
+  int64_t n = a_dims[a_rank - 1];
   int64_t batch_size = a_rank > 2 ? a.numel() / (n * n) : 1;
-  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(a);
 
   const auto& b_dims = b.dims();
   const int b_rank = b_dims.size();
-  int nrhs = b_dims[b_rank - 1];
-  int ldb = n;
-  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(b);
+  int64_t nrhs = b_dims[b_rank - 1];
+
+  // Validate that dimensions fit into int for cuBLAS calls.
+  int n_int = CudaIntCast(n, "n");
+  CudaIntCast(nrhs, "nrhs");
+  CudaIntCast(batch_size, "batch_size");
 
   // 1. Copy input A to a temporary tensor tmp_a for LU factorization.
   DenseTensor tmp_a(a.dtype());
@@ -227,11 +252,11 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& dev_ctx,
       reinterpret_cast<int*>(tmp_gpu_info_data->ptr()) + batch_size;
 
   // 5. Performs LU factorization on A.
-  blas.BatchedGETRF(n,
+  blas.BatchedGETRF(n_int,
                     reinterpret_cast<T**>(tmp_gpu_ptrs_data->ptr()),
                     gpu_pivot_ptr,
                     gpu_info_ptr,
-                    batch_size);
+                    CudaIntCast(batch_size, "batch_size"));
   // After: P @ A^T = L @ U
 
   // check whether BatchedGETRF is executed successfully or not
@@ -241,7 +266,7 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& dev_ctx,
                      gpu_info_ptr,
                      sizeof(int) * batch_size,
                      dev_ctx.stream());
-  for (int i = 0; i < batch_size; ++i) {
+  for (int64_t i = 0; i < batch_size; ++i) {
     PADDLE_ENFORCE_EQ(info[i],
                       0,
                       common::errors::PreconditionNotMet(
@@ -258,7 +283,7 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& dev_ctx,
   // large shapes. In this case, we call the non-batched version for batch_size
   // times instead.
   // Ref: https://docs.nvidia.com/cuda/cublas/#cublas-t-trsmbatched
-  constexpr int max_batch_nrhs = 65535 * 8;  // max(gridDim.y) * 8
+  constexpr int64_t max_batch_nrhs = 65535LL * 8;  // max(gridDim.y) * 8
   if (batch_size > 1 && nrhs <= max_batch_nrhs) {
     BatchedSolveLU(blas,
                    nrhs,

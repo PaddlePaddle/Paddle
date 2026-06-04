@@ -25,6 +25,14 @@ void MatrixInverseFunctor<Context, T>::operator()(const Context& dev_ctx,
                                                   const DenseTensor& a,
                                                   DenseTensor* a_inv) {
 #ifndef PADDLE_WITH_HIP
+  if constexpr (!(std::is_same_v<T, phi::complex64> ||
+                  std::is_same_v<T, phi::complex128>)) {
+    // Align real-valued inverse with PyTorch by reusing the shared LU-solve
+    // backend on both CPU and CUDA: inv(A) == solve(A, I).
+    ComputeInverseBySolve<Context, T>(dev_ctx, a, a_inv);
+    return;
+  }
+
   const auto& mat_dims = a.dims();
   const int rank = mat_dims.size();
   if (mat_dims[rank - 1] > std::numeric_limits<int>::max()) {
@@ -136,7 +144,12 @@ void MatrixInverseFunctor<Context, T>::operator()(const Context& dev_ctx,
                           info[i]));
   }
 #else
-  ComputeInverseEigen<Context, T>(dev_ctx, a, a_inv);
+  if constexpr (std::is_same_v<T, phi::complex64> ||
+                std::is_same_v<T, phi::complex128>) {
+    ComputeInverseEigen<Context, T>(dev_ctx, a, a_inv);
+  } else {
+    ComputeInverseBySolve<Context, T>(dev_ctx, a, a_inv);
+  }
 #endif
 }
 
