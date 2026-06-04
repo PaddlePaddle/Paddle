@@ -30,6 +30,15 @@ constexpr float QUANT_MIN_BOUND = -127.0;
 constexpr int32_t kBlockSize = 256;
 constexpr int32_t kNumWaves = 16;
 
+inline int64_t GetVectorizedElemCount(int64_t n, int64_t vec_size) {
+  return n / vec_size;
+}
+
+inline int NormalizeLaunchSize(int64_t n) {
+  int launch_size = n;
+  return launch_size;
+}
+
 inline cudaError_t GetGridSize(int64_t n, int* num_blocks) {
   int dev;
   {
@@ -286,9 +295,9 @@ __global__ void QuantActKernel(const T* x,
                               VecSize;
        linear_index < elem_cnt;
        linear_index += gridDim.x * blockDim.x * VecSize) {
-    int row_idx = linear_index / cols;
-    int col_idx =
-        linear_index - row_idx * cols;  // equal to linear_index % cols
+    int64_t row_idx64 = linear_index / cols;
+    int row_idx = row_idx64;
+    int col_idx = linear_index - row_idx64 * cols;
     Load<T, VecSize>(x + linear_index, &in_vec);
     int32_t local_outlier_idx = outlier_idx[col_idx / 32];
     float scale = 1.0f / row_ranges[row_idx];
@@ -347,8 +356,10 @@ __global__ void SplitKernel(const T* x,
            static_cast<int64_t>(threadIdx.x);
        linear_idx < elem_cnt;
        linear_idx += blockDim.x * gridDim.x) {
-    int32_t row_idx = linear_idx / kfp_num;  // n
-    int32_t col_idx = linear_idx % kfp_num;  // k
+    int64_t row_idx64 = linear_idx / kfp_num;
+    int64_t col_idx64 = linear_idx % kfp_num;
+    int32_t row_idx = row_idx64;  // n
+    int32_t col_idx = col_idx64;  // k
     int32_t k_id = k_ids_shm[col_idx];
     if (k_id == -1) continue;
     if (linear_idx < sub_x_elem_cnt) {
@@ -486,11 +497,16 @@ void LaunchReduceAbsMaxQuantKernel(const T* x,
           row_ranges,
           outlier_idx);
 
-  const int32_t elem_cnt = rows * cols;
-  const int32_t vectorized_elem_cnt = elem_cnt / VecSize;
+  const int64_t elem_cnt64 = static_cast<int64_t>(rows) * cols;
+  const int32_t elem_cnt = elem_cnt64;
+  const int32_t vectorized_elem_cnt =
+      GetVectorizedElemCount(elem_cnt64, VecSize);
+  const int32_t launch_elem_cnt =
+      elem_cnt64 > 0 ? vectorized_elem_cnt
+                     : GetVectorizedElemCount(VecSize, VecSize);
   int32_t quant_kernel_num_blocks;
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      GetGridSize(vectorized_elem_cnt, &quant_kernel_num_blocks));
+  PADDLE_ENFORCE_GPU_SUCCESS(GetGridSize(NormalizeLaunchSize(launch_elem_cnt),
+                                         &quant_kernel_num_blocks));
   QuantActKernel<DataT, VecSize>
       <<<quant_kernel_num_blocks, kBlockSize, 0, stream>>>(
           reinterpret_cast<const DataT*>(x),
@@ -524,6 +540,7 @@ void LaunchSplitKernel(const T* x,
   const int32_t sub_w_elem_cnt = n * kfp_num;
 
   using DataT = typename PDDataTypeTraits<T>::DataType;
+  int64_t split_elem_cnt = elem_cnt;
   SplitKernel<DataT>
       <<<num_blocks, kBlockSize, kfp_num * sizeof(int32_t), stream>>>(
           reinterpret_cast<const DataT*>(x),
@@ -539,7 +556,7 @@ void LaunchSplitKernel(const T* x,
           kfp_num,
           sub_x_elem_cnt,
           sub_w_elem_cnt,
-          static_cast<int>(elem_cnt));
+          split_elem_cnt);
 }
 
 template <typename T>
@@ -580,9 +597,10 @@ void LLMGemm(const GPUContext& dev_ctx,
              int n) {
   // absmax, quant, outlier
   int64_t num_outlier_idx = (k + 31) / 32;
+  int32_t outlier_idx_count = num_outlier_idx;
   DenseTensor row_ranges, outlier_idx, quant_input;
   row_ranges.Resize({m});
-  outlier_idx.Resize({num_outlier_idx});
+  outlier_idx.Resize({outlier_idx_count});
   quant_input.Resize({m, k});
   dev_ctx.Alloc<float>(&row_ranges);
   dev_ctx.Alloc<int32_t>(&outlier_idx);
