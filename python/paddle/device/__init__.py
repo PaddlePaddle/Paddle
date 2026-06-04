@@ -1497,6 +1497,13 @@ class Stream:
         else:
             return ctypes.c_void_p(self.stream_base.raw_stream)
 
+    @property
+    def cuda_stream(self) -> int:
+        assert isinstance(self.stream_base, core.CUDAStream), (
+            "cuda_stream is only available for CUDA streams"
+        )
+        return self.stream_base.cuda_stream
+
     def __cuda_stream__(self):
         """
         CUDA Stream protocol described at
