@@ -27,24 +27,26 @@ static inline int NumBlocks(const int64_t N) {
 }
 
 template <typename T>
-__global__ void ShuffleChannel(const int nthreads,
-                               const int feature_map_size,
+__global__ void ShuffleChannel(const int64_t nthreads,
+                               const int64_t feature_map_size,
                                T* output,
                                const T* input,
-                               int group_row,
-                               int group_column,
-                               int len) {
+                               int64_t group_row,
+                               int64_t group_column,
+                               int64_t len) {
   int64_t index =
       static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
       static_cast<int64_t>(threadIdx.x);
-  int offset = blockDim.x * gridDim.x;
-  for (size_t ii = index; ii < nthreads; ii += offset) {
-    const int n = index / group_row / group_column / len;
-    const int i = (index / group_column / len) % group_row;
-    const int j = index / len % group_column;
-    const int k = index - (n * feature_map_size + (i * group_column + j) * len);
+  int64_t offset =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(gridDim.x);
+  for (int64_t ii = index; ii < nthreads; ii += offset) {
+    const int64_t n = ii / group_row / group_column / len;
+    const int64_t i = (ii / group_column / len) % group_row;
+    const int64_t j = ii / len % group_column;
+    const int64_t k =
+        ii - (n * feature_map_size + (i * group_column + j) * len);
     T* p_o = output + n * feature_map_size + (j * group_row + i) * len;
-    p_o[k] = input[index];
+    p_o[k] = input[ii];
   }
 }
 

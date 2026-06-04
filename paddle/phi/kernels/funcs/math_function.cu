@@ -41,7 +41,7 @@ __global__ void batch_transpose_kernel(T* output,
                                        const int M,
                                        const int N,
                                        int swizzle) {
-  const int num = M * N;
+  const int64_t num = static_cast<int64_t>(M) * N;
   // "+1" to avoid smem bank conflict
   __shared__ T shbuf[32 * (32 + 1)];
   const int32_t tid = threadIdx.y * blockDim.x + threadIdx.x;
