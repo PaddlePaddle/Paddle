@@ -359,7 +359,7 @@ def adam_step(inputs, attributes, weight_decay=False):
     moment1 = inputs['Moment1']
     moment2 = inputs['Moment2']
     moment2_max = inputs['Moment2Max']
-    lr = float(inputs['LearningRate'])
+    lr = float(np.asarray(inputs['LearningRate']).item())
     beta1_pow = inputs['Beta1Pow']
     beta2_pow = inputs['Beta2Pow']
 

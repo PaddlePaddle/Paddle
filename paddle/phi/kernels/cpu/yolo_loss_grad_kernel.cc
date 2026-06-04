@@ -46,7 +46,7 @@ static void CalcBoxLocationLossGrad(T* input_grad,
                                     int gj,
                                     int grid_size,
                                     int input_size,
-                                    int stride,
+                                    int64_t stride,
                                     T score) {
   T tx = gt.x * grid_size - gi;
   T ty = gt.y * grid_size - gj;
@@ -71,7 +71,7 @@ static inline void CalcLabelLossGrad(T* input_grad,
                                      const int64_t index,
                                      const int label,
                                      const int class_num,
-                                     const int stride,
+                                     const int64_t stride,
                                      const T pos,
                                      const T neg,
                                      T score) {
@@ -92,8 +92,8 @@ static inline void CalcObjnessLossGrad(T* input_grad,
                                        const int an_num,
                                        const int h,
                                        const int w,
-                                       const int stride,
-                                       const int an_stride) {
+                                       const int64_t stride,
+                                       const int64_t an_stride) {
   for (int i = 0; i < n; i++) {
     for (int j = 0; j < an_num; j++) {
       for (int k = 0; k < h; k++) {
@@ -148,8 +148,8 @@ void YoloLossGradKernel(const Context& dev_ctx,
   const int b = static_cast<int>(gt_match_mask.dims()[1]);
   int input_size = downsample_ratio * h;
 
-  const int stride = h * w;
-  const int an_stride = (class_num + 5) * stride;
+  const int64_t stride = static_cast<int64_t>(h) * w;
+  const int64_t an_stride = static_cast<int64_t>(class_num + 5) * stride;
 
   T label_pos = 1.0;
   T label_neg = 0.0;

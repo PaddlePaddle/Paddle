@@ -92,11 +92,11 @@ void CrossEntropyWithSoftmaxGradCPUKernel(const CPUContext& dev_ctx,
       const auto* label_data = label.data<LabelT>();
       T* logit_grad_data = logit_grad->data<T>();
       const T* out_grad_data = out_grad->data<T>();
-      const int remain = d / axis_dim;
-      for (int i = 0; i < n; ++i) {         // for each sample_1_dim
-        for (int j = 0; j < remain; j++) {  // for each sample_other_dims
-          int idx = i * remain + j;  // this sample's label_idx. for 1d case,
-                                     // remain=1 and j=0, so, idx = i
+      const int64_t remain = d / axis_dim;
+      for (int64_t i = 0; i < n; ++i) {         // for each sample_1_dim
+        for (int64_t j = 0; j < remain; j++) {  // for each sample_other_dims
+          int64_t idx = i * remain + j;  // this sample's label_idx. for 1d
+                                         // case, remain=1 and j=0, so, idx = i
           auto lbl = static_cast<int64_t>(label_data[idx]);  // NOLINT
           if (lbl == ignore_index) {
             for (int k = 0; k < axis_dim; ++k) {  // for each class id's label
@@ -144,11 +144,11 @@ void CrossEntropyWithSoftmaxGradCPUKernel(const CPUContext& dev_ctx,
     const auto* label_data = label.data<LabelT>();
     T* logit_grad_data = logit_grad->data<T>();
     const T* out_grad_data = out_grad->data<T>();
-    const int remain = d / axis_dim;
-    for (int i = 0; i < n; ++i) {         // for each sample_1_dim
-      for (int j = 0; j < remain; j++) {  // for each sample_other_dims
-        int idx = i * remain + j;  // this sample's label_idx. for 1d case,
-                                   // remain=1 and j=0, so, idx = i
+    const int64_t remain = d / axis_dim;
+    for (int64_t i = 0; i < n; ++i) {         // for each sample_1_dim
+      for (int64_t j = 0; j < remain; j++) {  // for each sample_other_dims
+        int64_t idx = i * remain + j;  // this sample's label_idx. for 1d case,
+                                       // remain=1 and j=0, so, idx = i
         auto lbl = static_cast<int64_t>(label_data[idx]);  // NOLINT
         if (lbl == ignore_index) {
           for (int k = 0; k < axis_dim; ++k) {  // for each class id's label

@@ -61,6 +61,8 @@ phi::DDim GetDimForInput(const framework::InferShapeContext &ctx,
                     common::errors::InvalidArgument(
                         "The Input(%s) has not been initialized properly. The "
                         "shape of Input(%s) = [%s].",
+                        input_name,
+                        input_name,
                         dim));
   return dim;
 }

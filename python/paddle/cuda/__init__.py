@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING, Union
 
 import paddle
 from paddle import base, core, device as paddle_device, framework
+from paddle.cuda.graphs import CUDAGraph, graph, graph_pool_handle
 from paddle.device import (
     Event,
     Stream,
@@ -899,4 +900,7 @@ __all__ = [
     "ipc_collect",
     "StreamContext",
     "amp",
+    "CUDAGraph",
+    "graph",
+    "graph_pool_handle",
 ]

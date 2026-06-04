@@ -1727,6 +1727,11 @@ class TestDtypeItemsizeAPI(unittest.TestCase):
     def test_returns_int(self):
         self.assertIsInstance(paddle.float32.itemsize, int)
 
+    def test_dtype_str(self):
+        for name in ('float8_e5m2', 'uint16', 'uint32', 'uint64', 'bfloat16'):
+            with self.subTest(dtype=name):
+                self.assertEqual(str(getattr(paddle, name)), f'paddle.{name}')
+
     def test_property_lives_on_class(self):
         self.assertIsInstance(type(paddle.float32).itemsize, property)
 
@@ -1746,6 +1751,103 @@ class TestDtypeItemsizeAPI(unittest.TestCase):
                 self.assertEqual(
                     getattr(paddle, name).itemsize, t.element_size()
                 )
+
+
+class TestFloat8E5M2DtypeAPI(unittest.TestCase):
+    def check_finfo(self, info):
+        self.assertEqual(info.bits, 8)
+        self.assertEqual(str(info.dtype), 'float8_e5m2')
+        self.assertEqual(info.eps, 0.25)
+        self.assertEqual(info.min, -57344.0)
+        self.assertEqual(info.max, 57344.0)
+        self.assertEqual(info.smallest_normal, 6.103515625e-05)
+        self.assertEqual(info.tiny, 6.103515625e-05)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.finfo(paddle.float8_e5m2)
+        # 2. Paddle keyword arguments
+        out2 = paddle.finfo(dtype=paddle.float8_e5m2)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.finfo(type=paddle.float8_e5m2)
+
+        # Verify all outputs
+        for out in [out1, out2, out3]:
+            self.check_finfo(out)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            # 1. Paddle Positional arguments
+            out1 = paddle.finfo(paddle.float8_e5m2)
+            # 2. Paddle keyword arguments
+            out2 = paddle.finfo(dtype=paddle.float8_e5m2)
+            # 3. PyTorch keyword arguments (alias)
+            out3 = paddle.finfo(type=paddle.float8_e5m2)
+
+            # Verify all outputs
+            for out in [out1, out2, out3]:
+                self.check_finfo(out)
+
+
+class TestUnsignedDtypeAPI(unittest.TestCase):
+    EXPECTED = {
+        'uint16': (0, 65535, 16),
+        'uint32': (0, 4294967295, 32),
+        'uint64': (0, 18446744073709551615, 64),
+    }
+
+    def check_iinfo(self, info, name):
+        min_value, max_value, bits = self.EXPECTED[name]
+        self.assertEqual(info.min, min_value)
+        self.assertEqual(info.max, max_value)
+        self.assertEqual(info.bits, bits)
+        self.assertEqual(str(info.dtype), name)
+        self.assertIn(f'max={max_value}', repr(info))
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+
+        for name in self.EXPECTED:
+            dtype = getattr(paddle, name)
+            with self.subTest(dtype=name):
+                # 1. Paddle Positional arguments
+                out1 = paddle.iinfo(dtype)
+                # 2. Paddle keyword arguments
+                out2 = paddle.iinfo(dtype=dtype)
+                # 3. PyTorch keyword arguments (alias)
+                out3 = paddle.iinfo(type=dtype)
+
+                # Verify all outputs
+                for out in [out1, out2, out3]:
+                    self.check_iinfo(out, name)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            for name in self.EXPECTED:
+                dtype = getattr(paddle, name)
+                with self.subTest(dtype=name):
+                    # 1. Paddle Positional arguments
+                    out1 = paddle.iinfo(dtype)
+                    # 2. Paddle keyword arguments
+                    out2 = paddle.iinfo(dtype=dtype)
+                    # 3. PyTorch keyword arguments (alias)
+                    out3 = paddle.iinfo(type=dtype)
+
+                    # Verify all outputs
+                    for out in [out1, out2, out3]:
+                        self.check_iinfo(out, name)
 
 
 # Test select_scatter compatibility

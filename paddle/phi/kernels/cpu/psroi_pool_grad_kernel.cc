@@ -34,31 +34,31 @@ void PsroiPoolGradKernel(const Context& dev_ctx,
                          DenseTensor* dx) {
   if (dx) {
     const auto& in_dims = x.dims();
-    int input_channels = static_cast<int>(in_dims[1]);
-    int height = static_cast<int>(in_dims[2]);
-    int width = static_cast<int>(in_dims[3]);
-    int rois_num_t = static_cast<int>(rois.dims()[0]);
+    int64_t input_channels = in_dims[1];
+    int64_t height = in_dims[2];
+    int64_t width = in_dims[3];
+    int64_t rois_num_t = rois.dims()[0];
 
     // set roi batch id
     DenseTensor rois_batch_id_list;
     rois_batch_id_list.Resize({rois_num_t});
     int* rois_batch_id_data = dev_ctx.template Alloc<int>(&rois_batch_id_list);
-    int rois_batch_size = 0;
+    int64_t rois_batch_size = 0;
     if (rois_num.get_ptr()) {
-      rois_batch_size = static_cast<int>(rois_num->numel());
+      rois_batch_size = rois_num->numel();
       auto* rois_num_t_data = rois_num->data<int>();
-      int start = 0;
-      for (int n = 0; n < rois_batch_size; ++n) {
-        for (int i = start; i < start + rois_num_t_data[n]; ++i) {
+      int64_t start = 0;
+      for (int64_t n = 0; n < rois_batch_size; ++n) {
+        for (int64_t i = start; i < start + rois_num_t_data[n]; ++i) {
           rois_batch_id_data[i] = n;
         }
         start += rois_num_t_data[n];
       }
     } else {
       auto rois_lod = rois.lod().back();
-      rois_batch_size = static_cast<int>(rois_lod.size()) - 1;
+      rois_batch_size = static_cast<int64_t>(rois_lod.size()) - 1;
       // calculate batch id index for each roi according to LoD
-      for (int n = 0; n < rois_batch_size; ++n) {
+      for (int64_t n = 0; n < rois_batch_size; ++n) {
         for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
           rois_batch_id_data[i] = n;
         }
@@ -73,23 +73,26 @@ void PsroiPoolGradKernel(const Context& dev_ctx,
     set_zero(dev_ctx, dx, static_cast<T>(0));
 
     // backpropagate gradient per output pixel
-    int dout_size = static_cast<int>(dout.numel());
-    for (int i = 0; i < dout_size; ++i) {
+    int64_t dout_size = dout.numel();
+    for (int64_t i = 0; i < dout_size; ++i) {
       // The output is in order (n, c, ph, pw)
-      int pw = i % pooled_width;
-      int ph = (i / pooled_width) % pooled_height;
-      int c = (i / pooled_width / pooled_height) % output_channels;
-      int n = i / pooled_width / pooled_height / output_channels;
+      int64_t pw = i % pooled_width;
+      int64_t ph = (i / pooled_width) % pooled_height;
+      int64_t c = (i / pooled_width / pooled_height) % output_channels;
+      int64_t n = i / pooled_width / pooled_height / output_channels;
 
       // set roi_batch_id
-      int roi_batch_id = rois_batch_id_data[n];
-      int input_channel = (c * pooled_height + ph) * pooled_width + pw;
-      int input_offset =
-          (roi_batch_id * input_channels + input_channel) * height * width;
+      int64_t roi_batch_id = rois_batch_id_data[n];
+      int64_t input_channel =
+          (static_cast<int64_t>(c) * pooled_height + ph) * pooled_width + pw;
+      int64_t input_offset =
+          (static_cast<int64_t>(roi_batch_id) * input_channels +
+           input_channel) *
+          height * width;
       T* offset_dx_data = dx_data + input_offset;
 
       // [start, end) interval for spatial sampling
-      const T* offset_input_rois = input_rois + n * 4;
+      const T* offset_input_rois = input_rois + static_cast<int64_t>(n) * 4;
       T roi_start_w =
           static_cast<T>(round(offset_input_rois[0])) * spatial_scale;
       T roi_start_h =
@@ -107,24 +110,25 @@ void PsroiPoolGradKernel(const Context& dev_ctx,
       T bin_size_h = roi_height / static_cast<T>(pooled_height);
       T bin_size_w = roi_width / static_cast<T>(pooled_width);
 
-      int hstart = floor(bin_size_h * static_cast<T>(ph) + roi_start_h);
-      int wstart = floor(bin_size_w * static_cast<T>(pw) + roi_start_w);
-      int hend = ceil(bin_size_h * static_cast<T>(ph + 1) + roi_start_h);
-      int wend = ceil(bin_size_w * static_cast<T>(pw + 1) + roi_start_w);
+      int64_t hstart = floor(bin_size_h * static_cast<T>(ph) + roi_start_h);
+      int64_t wstart = floor(bin_size_w * static_cast<T>(pw) + roi_start_w);
+      int64_t hend = ceil(bin_size_h * static_cast<T>(ph + 1) + roi_start_h);
+      int64_t wend = ceil(bin_size_w * static_cast<T>(pw + 1) + roi_start_w);
 
       // Add roi offsets and clip to input boundaries
-      hstart = std::min(std::max(hstart, 0), height);
-      hend = std::min(std::max(hend, 0), height);
-      wstart = std::min(std::max(wstart, 0), width);
-      wend = std::min(std::max(wend, 0), width);
+      hstart = std::min(std::max(hstart, static_cast<int64_t>(0)), height);
+      hend = std::min(std::max(hend, static_cast<int64_t>(0)), height);
+      wstart = std::min(std::max(wstart, static_cast<int64_t>(0)), width);
+      wend = std::min(std::max(wend, static_cast<int64_t>(0)), width);
       bool is_empty = (hend <= hstart) || (wend <= wstart);
 
       // Accumulate diff_val into input data
-      T bin_area = static_cast<T>((hend - hstart) * (wend - wstart));
+      T bin_area =
+          static_cast<T>(static_cast<int64_t>(hend - hstart) * (wend - wstart));
       T diff_val = is_empty ? 0. : dout_data[i] / bin_area;
-      for (int ih = hstart; ih < hend; ++ih) {
-        for (int iw = wstart; iw < wend; ++iw) {
-          int input_index = ih * width + iw;
+      for (int64_t ih = hstart; ih < hend; ++ih) {
+        for (int64_t iw = wstart; iw < wend; ++iw) {
+          int64_t input_index = static_cast<int64_t>(ih) * width + iw;
           offset_dx_data[input_index] += diff_val;
         }
       }

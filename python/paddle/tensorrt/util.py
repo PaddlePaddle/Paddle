@@ -26,7 +26,7 @@ except Exception as e:
     pass
 from paddle import pir
 from paddle.base.log_helper import get_logger
-from paddle.pir.core import _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE
+from paddle.pir.core import datatype_to_str
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
@@ -281,7 +281,7 @@ class TensorRTConstantManager:
         return cls._instance
 
     def set_constant_value(self, name, tensor_data, value):
-        out_dtype = np.dtype(_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[value.dtype])
+        out_dtype = np.dtype(datatype_to_str[value.dtype])
         if out_dtype == np.dtype("float64"):
             out_dtype = np.dtype("float32")
         if out_dtype == np.dtype("int64"):

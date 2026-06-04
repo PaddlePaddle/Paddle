@@ -202,8 +202,8 @@ __global__ __launch_bounds__(BLOCK_DIM_X) void permute_kernel(
         expert = shared_routemap[lane_id * topk + col];
         prob = shared_probs[lane_id * topk + col];
       } else {
-        expert = routemap_topk[global_row * topk + col];
-        prob = probs_topk[global_row * topk + col];
+        expert = routemap_topk[static_cast<int64_t>(global_row) * topk + col];
+        prob = probs_topk[static_cast<int64_t>(global_row) * topk + col];
       }
     }
     if (expert >= 0 && expert < num_experts) {
@@ -267,8 +267,9 @@ __global__ __launch_bounds__(BLOCK_DIM_X) void permute_kernel(
                       __popc((lane_id < 31) ? (mask >> (lane_id + 1)) : 0u);
         }
 
-        zipped_expertwise_rowmap[global_row * num_experts + expert_id] =
-            final_pos;
+        zipped_expertwise_rowmap[static_cast<int64_t>(global_row) *
+                                     num_experts +
+                                 expert_id] = final_pos;
 #pragma unroll
         for (int k = 0; k < TOPK; k++) {
           if (reg_expert[k] == expert_id) {
@@ -731,11 +732,6 @@ void MoePermuteKernel(const Context &dev_ctx,
           "X.dims()[0], but got %ld and %ld.",
           expert_routemap_topk.dims()[0],
           rows));
-  PADDLE_ENFORCE_GE(
-      rows,
-      0,
-      common::errors::InvalidArgument(
-          "X.dims()[0] should be non-negative, received: (%ld)", rows));
   PADDLE_ENFORCE_LE(
       rows,
       static_cast<int64_t>(std::numeric_limits<int32_t>::max()) -
@@ -744,11 +740,6 @@ void MoePermuteKernel(const Context &dev_ctx,
           "X.dims()[0] should be <= INT_MAX - %d, received: (%ld)",
           kPermuteBlockSize,
           rows));
-  PADDLE_ENFORCE_GE(
-      cols,
-      0,
-      common::errors::InvalidArgument(
-          "X.dims()[1] should be non-negative, received: (%ld)", cols));
   PADDLE_ENFORCE_LE(
       cols,
       std::numeric_limits<int32_t>::max(),
@@ -811,6 +802,16 @@ void MoePermuteKernel(const Context &dev_ctx,
                       common::errors::InvalidArgument(
                           "Input XScale's dims should be 2, but got %u.",
                           XScale.get_ptr()->dims().size()));
+    if (do_gather) {
+      PADDLE_ENFORCE_EQ(
+          XScale.get_ptr()->dims()[0],
+          rows,
+          common::errors::InvalidArgument(
+              "Input XScale's first dimension should be equal to X.dims()[0], "
+              "but got %ld and %ld.",
+              XScale.get_ptr()->dims()[0],
+              rows));
+    }
   }
   const int64_t quanted_cols =
       (XScale.get_ptr() != nullptr) ? XScale.get_ptr()->dims()[1] : 0;

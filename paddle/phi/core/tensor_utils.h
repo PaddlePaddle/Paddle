@@ -58,7 +58,7 @@ class DenseTensorUtils {
         begin_idx,
         0,
         common::errors::OutOfRange("The start row index must be greater than 0."
-                                   "But received the start index is d%.",
+                                   "But received the start index is %d.",
                                    begin_idx));
     PADDLE_ENFORCE_LE(
         end_idx,

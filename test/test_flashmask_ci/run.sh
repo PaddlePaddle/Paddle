@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set -e
+
 python -m pytest test_flashmask_ci.py -v
 python -m pytest test_fwd_md5sum.py -v
 python -m pytest test_flashmask_group.py -v

@@ -358,7 +358,9 @@ def create_array(
         return array
     elif in_pir_mode():
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-            dtype = paddle.base.framework.convert_np_dtype_to_dtype_(dtype)
+            dtype = paddle.base.framework.convert_nptype_to_datatype_or_vartype(
+                dtype
+            )
         out = paddle._pir_ops.create_array(dtype)
         for val in array:
             if dtype != paddle.base.libpaddle.DataType.UNDEFINED:

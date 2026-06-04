@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import pickle
 import types
+from enum import Enum
 
 # Whitelist of allowed modules and their allowed classes.
 # Only these classes can be instantiated during deserialization.
@@ -147,6 +148,9 @@ def _is_safe_class(cls) -> bool:
         for base in cls.__mro__:
             # Skip object - its default __reduce__ is safe for user-defined classes
             if base is object:
+                continue
+            # Enum-related stdlib base implementations are safe.
+            if base is Enum:
                 continue
             # Check if this base class defines the dangerous method
             if method in getattr(base, '__dict__', {}):

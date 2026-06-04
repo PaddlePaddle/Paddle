@@ -3582,7 +3582,7 @@ void FusedFCElementwiseLayerNormInferMeta(const MetaTensor& x,
       2,
       common::errors::InvalidArgument(
           "The input Weight of fc is expected to be a 2-D tensor. "
-          "But received the number of Weight's dimensions is %d, ",
+          "But received the number of Weight's dimensions is %d, "
           "Weight's shape is %s.",
           w_dims.size(),
           w_dims));
@@ -4689,8 +4689,9 @@ void QKVAttentionXPUInferMeta(const MetaTensor& q,
                           "The shape of k , v should be the same! "
                           "But received ."));
   }
-  int hidden_dim =
-      qkv_fc_fusion ? 3 * head_num * head_dim : head_num * head_dim;
+  int64_t hidden_dim = qkv_fc_fusion
+                           ? static_cast<int64_t>(3) * head_num * head_dim
+                           : static_cast<int64_t>(head_num) * head_dim;
   PADDLE_ENFORCE_EQ(
       q_dims[2],
       hidden_dim,
@@ -4701,7 +4702,8 @@ void QKVAttentionXPUInferMeta(const MetaTensor& q,
           hidden_dim));
 
   // output shape: {B, L, HD}
-  qkv->set_dims(make_ddim({q_dims[0], q_dims[1], head_num * head_dim}));
+  qkv->set_dims(make_ddim(
+      {q_dims[0], q_dims[1], static_cast<int64_t>(head_num) * head_dim}));
   qkv->set_dtype(out_dtype);
   qkv->set_layout(q.layout());
 }
@@ -4790,64 +4792,66 @@ void CrossAttentionXPUInferMeta(
   PADDLE_ENFORCE_EQ(input_q_dims.size(),
                     3,
                     common::errors::InvalidArgument(
-                        "The dim of input_q should be 3! But received ",
+                        "The dim of input_q should be 3! But received %d.",
                         input_q_dims.size()));
   PADDLE_ENFORCE_EQ(input_kv_dims.size(),
                     3,
                     common::errors::InvalidArgument(
-                        "The dim of input_kv should be 3! But received ",
+                        "The dim of input_kv should be 3! But received %d.",
                         input_kv_dims.size()));
   // sequence length of q and k/v  not required to be equal
   // but batch size and dim should be the same
   PADDLE_ENFORCE_EQ(
       input_q_dims[0],
       input_kv_dims[0],
-      common::errors::InvalidArgument("The batch size of input_q and input_kv "
-                                      "should be the same! Received ",
-                                      input_q_dims[0],
-                                      " vs ",
-                                      input_kv_dims[0]));
+      common::errors::InvalidArgument(
+          "The batch size of input_q and input_kv should be the same! "
+          "Received %d vs %d.",
+          input_q_dims[0],
+          input_kv_dims[0]));
   PADDLE_ENFORCE_EQ(
       input_q_dims[2],
       input_kv_dims[2],
-      common::errors::InvalidArgument("The hidden_dim of input_q and input_kv "
-                                      "should be the same! Received ",
-                                      input_q_dims[2],
-                                      " vs ",
-                                      input_kv_dims[2]));
-  int hidden_dim = head_num * head_dim;
-  PADDLE_ENFORCE_EQ(
-      input_q_dims[2],
-      hidden_dim,
       common::errors::InvalidArgument(
-          "The last dimension of input_q should be [H*D]! Received ",
+          "The hidden_dim of input_q and input_kv should be the same! "
+          "Received %d vs %d.",
           input_q_dims[2],
-          " != expected ",
-          hidden_dim));
+          input_kv_dims[2]));
+  int64_t hidden_dim = static_cast<int64_t>(head_num) * head_dim;
+  PADDLE_ENFORCE_EQ(input_q_dims[2],
+                    hidden_dim,
+                    common::errors::InvalidArgument(
+                        "The last dimension of input_q should be [H*D]! "
+                        "Received %d != expected %d.",
+                        input_q_dims[2],
+                        hidden_dim));
   PADDLE_ENFORCE_EQ(fc_weight.size(),
                     3,
                     common::errors::InvalidArgument(
-                        "The size of fc_weight should be 3! But received ",
+                        "The size of fc_weight should be 3! But received %d.",
                         fc_weight.size()));
-  PADDLE_ENFORCE_EQ(fc_weight_max.size(),
-                    3,
-                    common::errors::InvalidArgument(
-                        "The size of fc_weight_max should be 3! But received ",
-                        fc_weight_max.size()));
+  PADDLE_ENFORCE_EQ(
+      fc_weight_max.size(),
+      3,
+      common::errors::InvalidArgument(
+          "The size of fc_weight_max should be 3! But received %d.",
+          fc_weight_max.size()));
   PADDLE_ENFORCE_EQ(
       fc_bias.size(),
       3,
       common::errors::InvalidArgument(
-          "The size of fc_bias should be 3! But received ", fc_bias.size()));
+          "The size of fc_bias should be 3! But received %d.", fc_bias.size()));
   PADDLE_ENFORCE_LE(
       mask_dims.size(),
       4,
       common::errors::InvalidArgument(
-          "The dim of mask should be not greater than 4!", mask_dims.size()));
+          "The dim of mask should be not greater than 4! But received %d.",
+          mask_dims.size()));
 
   // output shape: {B, qL, H*D}
-  qkv->set_dims(
-      make_ddim({input_q_dims[0], input_q_dims[1], head_num * head_dim}));
+  qkv->set_dims(make_ddim({input_q_dims[0],
+                           input_q_dims[1],
+                           static_cast<int64_t>(head_num) * head_dim}));
   qkv->set_dtype(out_dtype);
   qkv->set_layout(input_q.layout());
   // TODO(Terry) optimize the max value num

@@ -74,8 +74,7 @@ void SaveFunction(const phi::DenseTensor& x,
       false,
       common::errors::PreconditionNotMet(
           "%s exists!, cannot save to it when overwrite is set to false.",
-          file_path,
-          overwrite));
+          file_path));
 
   MkDirRecursively(DirName(file_path).c_str());
   VLOG(6) << "save func save path: " << file_path;
@@ -110,8 +109,7 @@ void SaveCombineFunction(const std::vector<const phi::DenseTensor*>& x,
       false,
       common::errors::PreconditionNotMet(
           "%s exists!, cannot save to it when overwrite is set to false.",
-          file_path,
-          overwrite));
+          file_path));
 
   MkDirRecursively(DirName(file_path).c_str());
   VLOG(6) << "save func save path: " << file_path;

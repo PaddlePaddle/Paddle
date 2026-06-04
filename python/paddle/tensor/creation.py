@@ -49,7 +49,7 @@ from ..framework import (
     _current_expected_place_,
     _get_paddle_place,
     _to_pinned_place,
-    convert_np_dtype_to_dtype_,
+    convert_nptype_to_datatype_or_vartype,
     core,
     dygraph_only,
     in_dynamic_mode,
@@ -412,7 +412,7 @@ def linspace(
     if not isinstance(num, (Variable, paddle.pir.Value)):
         check_type(num, 'num', (int), 'linspace')
     if not isinstance(dtype, (core.VarDesc.VarType, paddle.pir.core.DataType)):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
     if not isinstance(start, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
             tensor_start = fill_constant([1], dtype, start, force_cpu=True)
@@ -611,7 +611,7 @@ def logspace(
     if not isinstance(num, (Variable, paddle.pir.Value)):
         check_type(num, 'num', (int), 'logspace')
     if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
     if not isinstance(start, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
             tensor_start = fill_constant([1], dtype, start)
@@ -1341,9 +1341,9 @@ class MmapStorage(paddle.base.core.MmapStorage):
         Returns:
             Tensor: The sliced tensor.
         """
-        proto_dtype = paddle.base.framework.convert_to_proto_type(dtype)
+        var_dtype = paddle.base.framework.convert_to_vartype(dtype)
         out: paddle.base.libpaddle.DenseTensor = super().get_slice(
-            proto_dtype, start, stop, step
+            var_dtype, start, stop, step
         )
         return out
 
@@ -1409,7 +1409,7 @@ def full_like(
         dtype = x.dtype
     else:
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-            dtype = convert_np_dtype_to_dtype_(dtype)
+            dtype = convert_nptype_to_datatype_or_vartype(dtype)
     if device is None:
         device = x.place
 
@@ -1492,7 +1492,7 @@ def fill_constant(
             place = core.CPUPlace()
 
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-            dtype = convert_np_dtype_to_dtype_(dtype)
+            dtype = convert_nptype_to_datatype_or_vartype(dtype)
 
         if in_pir_mode() and isinstance(dtype, core.VarDesc.VarType):
             dtype = paddle.pir.core.vartype_to_datatype[dtype]
@@ -1993,7 +1993,7 @@ def eye(
     if dtype is None:
         dtype = paddle.get_default_dtype()
     if not isinstance(dtype, (core.VarDesc.VarType, paddle.pir.core.DataType)):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
     if num_columns is not None:
         _check_attr(num_columns, "num_columns")
     else:
@@ -2279,7 +2279,7 @@ def arange(
         out_shape = [int(math.ceil((end - start) / step))]
 
     if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
 
     if in_dynamic_or_pir_mode():
         device = (
@@ -2482,7 +2482,7 @@ def range(
     )
 
     if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
 
     if is_value_input and in_pir_mode():
         tensor = _C_ops.range_v2(
@@ -3172,7 +3172,7 @@ def empty(
             device = _to_pinned_place(device)
         tensor = _C_ops.empty(
             shape,
-            convert_np_dtype_to_dtype_(dtype),
+            convert_nptype_to_datatype_or_vartype(dtype),
             device,
             out=out,
         )
@@ -3217,7 +3217,7 @@ def empty(
         )
 
         out = helper.create_variable_for_type_inference(dtype=dtype)
-        attrs['dtype'] = convert_np_dtype_to_dtype_(dtype)
+        attrs['dtype'] = convert_nptype_to_datatype_or_vartype(dtype)
         helper.append_op(
             type='empty',
             inputs=inputs,
@@ -3298,7 +3298,7 @@ def empty_like(
 
         tensor = _C_ops.empty(
             x_shape,
-            convert_np_dtype_to_dtype_(dtype),
+            convert_nptype_to_datatype_or_vartype(dtype),
             device,
         )
         if requires_grad is True:
@@ -3349,7 +3349,7 @@ def empty_like(
 
         inputs = {}
         attrs = {}
-        attrs['dtype'] = convert_np_dtype_to_dtype_(dtype)
+        attrs['dtype'] = convert_nptype_to_datatype_or_vartype(dtype)
         shape = paddle.shape(x)
         paddle.utils.get_shape_tensor_inputs(
             inputs=inputs, attrs=attrs, shape=shape, op_type='empty_like'
@@ -3508,7 +3508,7 @@ def assign(x: TensorLike, output: paddle.Tensor | None = None) -> paddle.Tensor:
                 "The type of received input == `object`, it is not supported to convert to tensor, such as [[Var], [Var], [3], [4]]"
             )
 
-        dtype = convert_np_dtype_to_dtype_(input.dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(input.dtype)
         check_dtype(
             dtype,
             'input',
@@ -3812,7 +3812,7 @@ def tril_indices(
              [0, 0, 1, 0, 1, 2]])
     """
     if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
     if not isinstance(row, int) or row < 0:
         raise TypeError("row should be a non-negative int")
 
@@ -3893,7 +3893,7 @@ def triu_indices(
     """
 
     if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
 
     if not isinstance(row, int) or row < 0:
         raise TypeError("row should be a non-negative int")

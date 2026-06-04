@@ -140,9 +140,12 @@ __global__ void KeBackwardLocalStats(const T *dy,
     BatchNormParamType<T> sum1 = 0.;
     BatchNormParamType<T> sum2 = 0.;
     auto mean = means[k];
-    for (int i = threadIdx.x; i < N * M; i += blockDim.x) {
-      int id = layout == DataLayout::NCHW ? (i / M) * C * M + k * M + i % M
-                                          : i * C + k;
+    for (int64_t i = threadIdx.x; i < static_cast<int64_t>(N) * M;
+         i += blockDim.x) {
+      int64_t id = layout == DataLayout::NCHW
+                       ? static_cast<int64_t>(i / M) * C * M +
+                             static_cast<int64_t>(k) * M + i % M
+                       : i * C + k;
       auto g = static_cast<BatchNormParamType<T>>(dy[id]);
       sum1 += g;
       auto x_i = static_cast<BatchNormParamType<T>>(x[id]);
@@ -189,10 +192,10 @@ __global__ void KeBackwardLocalStats2D(const T *dy,
     for (int64_t i = static_cast<int64_t>(blockIdx.y) *
                          static_cast<int64_t>(blockDim.y) +
                      static_cast<int64_t>(threadIdx.y);
-         i < N * M;
+         i < static_cast<int64_t>(N) * M;
          i += gridDim.y * blockDim.y) {
-      int id = layout == DataLayout::NCHW ? (i / M) * C * M + k * M + i % M
-                                          : i * C + k;
+      int64_t id = layout == DataLayout::NCHW ? (i / M) * C * M + k * M + i % M
+                                              : i * C + k;
       auto g = static_cast<BatchNormParamType<T>>(dy[id]);
       sum1 += g;
       auto x_i = static_cast<BatchNormParamType<T>>(x[id]);
@@ -240,7 +243,7 @@ static __global__ void KeBNBackwardScaleBias(
     BatchNormParamType<T> *dscale,
     BatchNormParamType<T> *dbias) {
   const int outer_size = C;
-  const int inner_size = N * HxW;
+  const int64_t inner_size = static_cast<int64_t>(N) * HxW;
   typedef cub::BlockReduce<BatchNormParamType<T>, BlockDim> BlockReduce;
   __shared__ typename BlockReduce::TempStorage temp_storage;
 
@@ -250,10 +253,10 @@ static __global__ void KeBNBackwardScaleBias(
 
     auto inv_var_i = inv_variance[i];
     auto mean_i = mean[i];
-    for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
-      const int id = layout == DataLayout::NCHW
-                         ? ((j / HxW) * C + i) * HxW + (j % HxW)
-                         : j * outer_size + i;
+    for (int64_t j = threadIdx.x; j < inner_size; j += blockDim.x) {
+      const int64_t id = layout == DataLayout::NCHW
+                             ? ((j / HxW) * C + i) * HxW + (j % HxW)
+                             : j * outer_size + i;
       auto x_i = static_cast<BatchNormParamType<T>>(x[id]);
       auto dy_i = static_cast<BatchNormParamType<T>>(dy[id]);
       ds_sum += dy_i * (x_i - mean_i);

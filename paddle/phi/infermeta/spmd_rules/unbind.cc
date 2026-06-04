@@ -32,7 +32,7 @@ SpmdInfo UnbindInferSpmd(const DistMetaTensor& x, int axis) {
   PADDLE_ENFORCE_LT(
       axis,
       x_ndim,
-      common::errors::InvalidArgument("[%d] [%d] The axis [%d] should be less "
+      common::errors::InvalidArgument("[%s] [%d] The axis [%d] should be less "
                                       "than the rank of input tensor [%d].",
                                       __FILE__,
                                       __LINE__,

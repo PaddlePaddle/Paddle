@@ -47,9 +47,7 @@ class XPUTestLinspaceOp(XPUOpTestWrapper):
             self.outputs = {'Out': np.arange(0, 11).astype(self.dtype)}
             self.attrs = {
                 'dtype': int(
-                    paddle.base.framework.convert_np_dtype_to_proto_type(
-                        self.dtype
-                    )
+                    paddle.base.framework.convert_nptype_to_vartype(self.dtype)
                 )
             }
             self.set_attrs()

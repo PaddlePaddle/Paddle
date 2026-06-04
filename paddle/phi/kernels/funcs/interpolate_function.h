@@ -125,7 +125,7 @@ inline std::vector<int> get_new_shape(
         true,
         errors::InvalidArgument(
             "The shape of dimension tensor should be [1] or [],"
-            "but received d%.",
+            "but received %s.",
             tensor->dims()));
     if (tensor->dtype() == DataType::INT64) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE

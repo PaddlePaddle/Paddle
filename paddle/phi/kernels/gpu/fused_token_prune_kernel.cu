@@ -44,7 +44,7 @@ __global__ void FillIndex(int64_t* indices, int num_raws, int num_cols) {
 
   for (; tid < num_threads; tid += stride) {
     int col = tid % num_cols;
-    indices[tid] = (int64_t)col;
+    indices[tid] = static_cast<int64_t>(col);
   }
 }
 
@@ -104,7 +104,8 @@ void FusedTokenPruneOpCUDAKernel(const Context& dev_ctx,
   auto num_heads = attn_dims[1];
   auto max_seq_len = attn_dims[2];
   auto c = x_dims[2];
-  int slimmed_x_len = new_mask_dims[2];
+  PADDLE_ENFORCE_LE_INT_MAX(new_mask_dims[2], "slimmed_x_len");
+  int slimmed_x_len = static_cast<int>(new_mask_dims[2]);
 
   // Outputs
   DenseTensor* out_slimmed_x = slimmed_x;
@@ -166,8 +167,10 @@ void FusedTokenPruneOpCUDAKernel(const Context& dev_ctx,
            dev_ctx.stream()>>>(attn_accu_data, bsz, max_seq_len, max);
   }
   size_t temp_storage_bytes = -1;
-  int num_items = bsz * max_seq_len;
-  int num_segments = bsz;
+  PADDLE_ENFORCE_LE_INT_MAX(bsz * max_seq_len, "bsz * max_seq_len");
+  int num_items = static_cast<int>(bsz * max_seq_len);
+  PADDLE_ENFORCE_LE_INT_MAX(bsz, "bsz");
+  int num_segments = static_cast<int>(bsz);
 
   cub::CountingInputIterator<int64_t> counting_iter(0);
   cub::TransformInputIterator<int64_t,
@@ -217,7 +220,8 @@ void FusedTokenPruneOpCUDAKernel(const Context& dev_ctx,
                                                    {slimmed_x_len} /*ends*/);
   if (keep_order) {
     // 6. reorder
-    num_items = bsz * slimmed_x_len;
+    PADDLE_ENFORCE_LE_INT_MAX(bsz * slimmed_x_len, "bsz * slimmed_x_len");
+    num_items = static_cast<int>(bsz * slimmed_x_len);
     temp_storage_bytes = -1;
     cub::TransformInputIterator<int64_t,
                                 SegmentOffsetIter,

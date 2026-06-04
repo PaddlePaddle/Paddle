@@ -420,12 +420,11 @@ std::unique_ptr<paddle::framework::ir::Graph> BuildGraph(bool backward,
 
   std::unique_ptr<paddle::framework::ir::Graph> graph(
       new paddle::framework::ir::Graph(layers.main_program()));
-  auto proto_dtype = (dtype == "__half")
-                         ? paddle::framework::proto::VarType::FP16
-                         : paddle::framework::proto::VarType::FP32;
+  auto var_type = (dtype == "__half") ? paddle::framework::proto::VarType::FP16
+                                      : paddle::framework::proto::VarType::FP32;
   for (auto* n : graph->Nodes()) {
     if (n && n->IsVar() && n->Var()) {
-      n->Var()->SetDataType(proto_dtype);
+      n->Var()->SetDataType(var_type);
     }
   }
   return graph;

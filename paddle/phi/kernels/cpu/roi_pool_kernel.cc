@@ -143,7 +143,7 @@ void RoiPoolKernel(const Context& dev_ctx,
 
           for (int h = hstart; h < hend; ++h) {
             for (int w = wstart; w < wend; ++w) {
-              const int index = h * width + w;
+              const int64_t index = static_cast<int64_t>(h) * width + w;
               if (batch_data[index] > output_data[pool_index]) {
                 output_data[pool_index] = batch_data[index];
                 arg_max_data[pool_index] = index;
