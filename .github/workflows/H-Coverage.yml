@@ -209,6 +209,7 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ~/.bashrc
           source ${ci_scripts}/utils.sh; clean_build_files
+          : "${PY_VERSION:?PY_VERSION is required}"
           rm -rf $(find . -name "*.a")
           rm -rf $(find . -name "*.o")
           rm -rf lib.linux-x86_64-${PY_VERSION}
