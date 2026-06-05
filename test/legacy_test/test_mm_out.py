@@ -234,6 +234,7 @@ class TestMmOutDtype(unittest.TestCase):
         self.assertEqual(list(weight.grad.shape), [5, 4])
 
     def test_out_dtype_rejects_unsupported_cases(self):
+        self._skip_if_no_bf16_cuda()
         x = paddle.randn([3, 4], dtype='float32')
         y = paddle.randn([4, 5], dtype='float32')
         with self.assertRaises(TypeError):

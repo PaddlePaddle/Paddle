@@ -285,7 +285,9 @@ void MatmulGradKernel(const Context& dev_ctx,
                       bool transpose_y,
                       DenseTensor* dx,
                       DenseTensor* dy) {
-  if constexpr (std::is_same<T, phi::bfloat16>::value) {
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+  if constexpr (std::is_same<T, phi::bfloat16>::value &&
+                std::is_same<Context, phi::GPUContext>::value) {
     if (out_grad.dtype() == DataType::FLOAT32) {
       DenseTensor out_grad_bf16 =
           Cast<float, Context>(dev_ctx, out_grad, DataType::BFLOAT16);
@@ -294,6 +296,7 @@ void MatmulGradKernel(const Context& dev_ctx,
       return;
     }
   }
+#endif
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(dx);
     Full<T, Context>(dev_ctx, y.dims(), 0, dy);

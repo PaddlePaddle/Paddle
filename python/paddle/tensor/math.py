@@ -2195,7 +2195,7 @@ def mm(
 
     """
     if out_dtype is not None:
-        out_dtype = convert_np_dtype_to_dtype_(out_dtype)
+        out_dtype = convert_nptype_to_datatype_or_vartype(out_dtype)
         if out_dtype != core.DataType.FLOAT32:
             raise TypeError(
                 "The out_dtype of paddle.mm currently only supports paddle.float32."
@@ -2269,13 +2269,14 @@ def mm(
         helper = LayerHelper('mm', **locals())
         out_var_dtype = out_dtype if out_dtype is not None else input.dtype
         out = helper.create_variable_for_type_inference(dtype=out_var_dtype)
-        attrs = {'trans_x': False, 'trans_y': False}
-        if out_dtype is not None:
-            attrs['out_dtype'] = out_dtype
         helper.append_op(
-            type='matmul_v2',
+            type='matmul',
             inputs={'X': input, 'Y': mat2},
-            attrs=attrs,
+            attrs={
+                'transpose_x': False,
+                'transpose_y': False,
+                'out_dtype': matmul_out_dtype,
+            },
             outputs={'Out': out},
         )
         return out

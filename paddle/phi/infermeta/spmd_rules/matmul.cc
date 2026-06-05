@@ -300,7 +300,8 @@ SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x_,
                              const DistMetaTensor& y_,
                              const DistMetaTensor& out_grad,
                              bool trans_x,
-                             bool trans_y) {
+                             bool trans_y,
+                             DataType out_dtype UNUSED) {
   DistMetaTensor x = x_, y = y_;
   auto get_attr = [](const ArgDistAttr& attr) -> const TensorDistAttr& {
     return PADDLE_GET_CONST(TensorDistAttr, attr);

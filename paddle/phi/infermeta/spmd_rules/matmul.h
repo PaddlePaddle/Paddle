@@ -41,7 +41,8 @@ SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x,
                              const DistMetaTensor& y,
                              const DistMetaTensor& out_grad,
                              bool trans_x,
-                             bool trans_y);
+                             bool trans_y,
+                             DataType out_dtype = DataType::UNDEFINED);
 
 }  // namespace distributed
 }  // namespace phi
