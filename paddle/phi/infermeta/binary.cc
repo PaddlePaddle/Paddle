@@ -3083,7 +3083,7 @@ void MatmulInferMetaWithOutDtype(const MetaTensor& x,
   const int64_t rhs_reduce_dim = (ndims_y == 1) ? 0 : ndims_y - 2 + trans_y;
   const int64_t K_lhs = dims_x[lhs_reduce_dim];
   const int64_t K_rhs = dims_y[rhs_reduce_dim];
-  if (config.is_runtime || (K_rhs != -1 && K_lhs != -1)) {
+  if (config.is_runtime || (K_rhs > 0 && K_lhs > 0)) {
     PADDLE_ENFORCE_EQ(
         K_lhs,
         K_rhs,
