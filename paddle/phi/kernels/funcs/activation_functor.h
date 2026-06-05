@@ -4610,15 +4610,12 @@ struct CudaRsqrtFunctor<ComplexType<T>>
 
 template <typename T>
 struct CudaRsqrtGradFunctor : public BaseActivationFunctor<T> {
-  using MT = typename MPTypeTrait<T>::Type;
-  MT minus_one_half = static_cast<MT>(-0.5f);
-
   // dx = -0.5 * dout * out^3
   __device__ __forceinline__ T operator()(const T arg_dout,
                                           const T arg_out) const {
-    MT dout = static_cast<MT>(arg_dout);
-    MT out = static_cast<MT>(arg_out);
-    return static_cast<T>(minus_one_half * dout * (out * out * out));
+    T t1 = static_cast<T>(-0.5f) * arg_dout;
+    T cube = static_cast<T>(arg_out * arg_out) * arg_out;
+    return t1 * cube;
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {
