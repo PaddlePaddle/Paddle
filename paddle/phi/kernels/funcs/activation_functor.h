@@ -4614,7 +4614,7 @@ struct CudaRsqrtGradFunctor : public BaseActivationFunctor<T> {
   __device__ __forceinline__ T operator()(const T arg_dout,
                                           const T arg_out) const {
     T t1 = static_cast<T>(-0.5f) * arg_dout;
-    T cube = static_cast<T>(arg_out * arg_out) * arg_out;
+    T cube = arg_out * arg_out * arg_out;
     return t1 * cube;
   }
 
