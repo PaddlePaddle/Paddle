@@ -4566,9 +4566,9 @@ class TestLayerNormAPI(unittest.TestCase):
             np.testing.assert_allclose(out, expected, rtol=1e-5)
 
 
-# Test MultivariateNormal compatibility
 class TestMultivariateNormalAPI(unittest.TestCase):
     def setUp(self):
+        self.place = paddle.CPUPlace()
         self.np_loc = np.array([2.0, -1.0], dtype="float32")
         self.np_cov = np.array([[2.0, 0.5], [0.5, 1.5]], dtype="float32")
         self.np_value = np.array([0.2, -0.8], dtype="float32")
@@ -4586,11 +4586,14 @@ class TestMultivariateNormalAPI(unittest.TestCase):
             - np.log(np.diag(self.np_scale_tril)).sum()
         )
 
+    def tearDown(self):
+        paddle.enable_static()
+
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
-        loc = paddle.to_tensor(self.np_loc)
-        cov = paddle.to_tensor(self.np_cov)
-        value = paddle.to_tensor(self.np_value)
+        loc = paddle.to_tensor(self.np_loc, place=self.place)
+        cov = paddle.to_tensor(self.np_cov, place=self.place)
+        value = paddle.to_tensor(self.np_value, place=self.place)
 
         # 1. Paddle Positional arguments
         out1 = paddle.distribution.MultivariateNormal(loc, cov)
@@ -4673,7 +4676,7 @@ class TestMultivariateNormalAPI(unittest.TestCase):
                     [out.mean, out.variance, out.entropy(), out.log_prob(value)]
                 )
 
-            exe = paddle.static.Executor()
+            exe = paddle.static.Executor(self.place)
             outputs = exe.run(
                 main,
                 feed={
@@ -4776,7 +4779,7 @@ class TestDistributionAPI(unittest.TestCase):
 
 class TestNormalValidateArgsAPI(unittest.TestCase):
     def setUp(self):
-        paddle.set_device("cpu")
+        self.place = paddle.CPUPlace()
         self.np_loc = np.array([0.0, 1.0, -1.0], dtype="float32")
         self.np_scale = np.array([1.0, 2.0, 0.5], dtype="float32")
         self.np_value = np.array([0.2, 0.8, -0.3], dtype="float32")
@@ -4797,9 +4800,9 @@ class TestNormalValidateArgsAPI(unittest.TestCase):
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
         paddle.distribution.Distribution.set_default_validate_args(False)
-        loc = paddle.to_tensor(self.np_loc)
-        scale = paddle.to_tensor(self.np_scale)
-        value = paddle.to_tensor(self.np_value)
+        loc = paddle.to_tensor(self.np_loc, place=self.place)
+        scale = paddle.to_tensor(self.np_scale, place=self.place)
+        value = paddle.to_tensor(self.np_value, place=self.place)
 
         # 1. Paddle Positional arguments
         dist1 = paddle.distributions.normal.Normal(loc, scale)
@@ -4864,7 +4867,7 @@ class TestNormalValidateArgsAPI(unittest.TestCase):
                 loc, scale=scale
             ).log_prob(value)
 
-            exe = paddle.static.Executor()
+            exe = paddle.static.Executor(self.place)
             fetches = exe.run(
                 main,
                 feed={

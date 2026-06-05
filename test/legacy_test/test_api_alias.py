@@ -107,14 +107,21 @@ class TestAlias(unittest.TestCase):
         self.assert_api_map(api_map)
 
     def test_optimizer_import_usages(self):
+        import paddle.optim.adadelta
         import paddle.optim.lr_scheduler
         from paddle import optim
         from paddle.optim import lr_scheduler
+        from paddle.optim.adadelta import Adadelta
         from paddle.optim.lr_scheduler import ConstantLR
 
         self.assertIs(paddle.optim, optim)
         api_map = [
-            (paddle.optimizer.Adadelta, paddle.optim.Adadelta),
+            (
+                paddle.optimizer.Adadelta,
+                paddle.optim.Adadelta,
+                paddle.optim.adadelta.Adadelta,
+                Adadelta,
+            ),
             (paddle.optimizer.Adagrad, paddle.optim.Adagrad),
             (paddle.optimizer.Adam, paddle.optim.Adam),
             (paddle.optimizer.Adamax, paddle.optim.Adamax),
@@ -135,10 +142,12 @@ class TestAlias(unittest.TestCase):
                 ConstantLR,
             ),
         ]
+        self.assertIs(paddle.optim.lr_scheduler, lr_scheduler)
         self.assert_api_map(api_map)
 
     def test_lr_scheduler_api_alias(self):
         import paddle.optim.lr_scheduler
+        import paddle.optimizer.lr
         from paddle.optim import lr_scheduler
         from paddle.optim.lr_scheduler import (
             ConstantLR,
@@ -236,9 +245,17 @@ class TestAlias(unittest.TestCase):
                 StepLR,
             ),
         ]
+        self.assertIs(paddle.optim.lr_scheduler, lr_scheduler)
         self.assert_api_map(api_map)
 
     def test_distribution_import_usages(self):
+        import sys
+
+        import paddle.distribution
+        import paddle.distribution.normal
+
+        distribution_normal_module = paddle.distribution.normal
+        import paddle.distributions
         import paddle.distributions.bernoulli
         import paddle.distributions.beta
         import paddle.distributions.binomial
@@ -269,6 +286,7 @@ class TestAlias(unittest.TestCase):
         import paddle.distributions.uniform
         import paddle.distributions.variable
         from paddle import distributions
+        from paddle.distribution.normal import Normal as DistributionNormal
         from paddle.distributions import (
             bernoulli,
             beta,
@@ -303,6 +321,20 @@ class TestAlias(unittest.TestCase):
         from paddle.distributions.normal import Normal
 
         self.assertIs(paddle.distributions, distributions)
+        self.assertIs(
+            sys.modules["paddle.distribution.normal"],
+            sys.modules["paddle.distributions.normal"],
+        )
+        self.assertIs(distribution_normal_module, paddle.distribution.normal)
+        self.assertIs(distribution_normal_module, paddle.distributions.normal)
+        self.assertIs(paddle.distribution.normal, paddle.distributions.normal)
+        self.assertIs(DistributionNormal, Normal)
+        self.assertIs(paddle.distribution.normal.Normal, DistributionNormal)
+        self.assertIs(paddle.distributions.normal.Normal, Normal)
+        self.assertIs(
+            paddle.distribution.normal.Normal,
+            paddle.distributions.normal.Normal,
+        )
         self.assertTrue(callable(bernoulli.Bernoulli))
         self.assertTrue(callable(beta.Beta))
         self.assertTrue(callable(binomial.Binomial))
@@ -327,6 +359,8 @@ class TestAlias(unittest.TestCase):
         self.assertTrue(callable(distributions.normal.Normal))
         self.assertTrue(callable(normal.Normal))
         self.assertTrue(callable(Normal))
+        self.assertTrue(callable(paddle.distribution.normal.Normal))
+        self.assertTrue(callable(DistributionNormal))
         self.assertTrue(callable(poisson.Poisson))
         self.assertTrue(callable(student_t.StudentT))
         self.assertTrue(

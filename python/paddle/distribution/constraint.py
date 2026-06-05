@@ -89,11 +89,10 @@ class Square(Constraint):
 
     def __call__(self, value: Tensor) -> Tensor:
         if value.dim() < 2:
-            return paddle.zeros(value.shape[:-2], dtype='bool')
-        return paddle.full(
-            value.shape[:-2],
-            value.shape[-2] == value.shape[-1],
-            dtype='bool',
+            return paddle.full_like(value.sum(), False, dtype='bool')
+        batch_value = value.reshape((*value.shape[:-2], -1)).sum(-1)
+        return paddle.full_like(
+            batch_value, value.shape[-2] == value.shape[-1], dtype='bool'
         )
 
 
