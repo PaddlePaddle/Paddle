@@ -8679,10 +8679,10 @@ def select_scatter(x: Tensor, values: Tensor, axis: int, index: int) -> Tensor:
 def slice_scatter(
     x: Tensor,
     value: Tensor,
-    axes: Sequence[int] | None = None,
-    starts: Sequence[int] | None = None,
+    axes: Sequence[int] = [0],
+    starts: Sequence[int] = [0],
     ends: Sequence[int] | None = None,
-    strides: Sequence[int] | None = None,
+    strides: Sequence[int] = [1],
 ) -> Tensor: ...
 
 

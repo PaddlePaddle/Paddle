@@ -692,6 +692,8 @@ def logspace(
             dtype,
             place,
         )
+        if requires_grad:
+            result.stop_gradient = False
         return result
     else:
         helper = LayerHelper("logspace", **locals())
