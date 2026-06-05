@@ -1,0 +1,15 @@
+diff --git a/ThreadPool.h b/ThreadPool.h
+index 4183203..5ea5fcb 100644
+--- a/ThreadPool.h
++++ b/ThreadPool.h
+@@ -12,0 +13 @@
++#include <type_traits>
+@@ -19 +20 @@
+-        -> std::future<typename std::result_of<F(Args...)>::type>;
++        -> std::future<std::invoke_result_t<F, Args...>>;
+@@ -64 +65 @@
+-    -> std::future<typename std::result_of<F(Args...)>::type>
++    -> std::future<std::invoke_result_t<F, Args...>>
+@@ -66 +67 @@
+-    using return_type = typename std::result_of<F(Args...)>::type;
++    using return_type = std::invoke_result_t<F, Args...>;

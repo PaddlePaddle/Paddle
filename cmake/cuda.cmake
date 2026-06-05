@@ -318,11 +318,12 @@ select_nvcc_arch_flags(NVCC_FLAGS_EXTRA NVCC_ARCH_BIN)
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} ${NVCC_FLAGS_EXTRA}")
 message(STATUS "NVCC_FLAGS_EXTRA: ${NVCC_FLAGS_EXTRA}")
 
-# Set C++17 support
+# Set C++20 support
 set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 # Release/Debug flags set by cmake. Such as -O3 -g -DNDEBUG etc.
 # So, don't set these flags here.
-set(CMAKE_CUDA_STANDARD 17)
+set(CMAKE_CUDA_STANDARD 20)
+set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 
 # (Note) For windows, if delete /W[1-4], /W1 will be added defaultly and conflict with -w
 # So replace /W[1-4] with /W0

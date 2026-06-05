@@ -48,7 +48,7 @@ jobs:
 
           cd Paddle/tools/dockerfile
           bash ci_dockerfile.sh
-          md5_value=`md5sum Dockerfile.cuda117_cudnn8_gcc82_ubuntu18_coverage |awk '{print $1}'`
+          md5_value=`md5sum Dockerfile.cuda120_cudnn8_gcc12_ubuntu22_coverage |awk '{print $1}'`
           echo "docker_coverage_image=ccr-2vdh3abv-pub.cnc.bj.baidubce.com/ci/paddle:${md5_value}" >> $GITHUB_OUTPUT
 
           # clean workspace

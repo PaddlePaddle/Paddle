@@ -17,6 +17,7 @@
 #include <numeric>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #include "paddle/common/dim.h"
@@ -103,13 +104,12 @@ class TEST_API DDim {
   int64_t at(int idx) const;
 
   template <typename Visitor>
-  typename std::result_of<Visitor(Dim<0>&)>::type apply_visitor(
-      Visitor&& visitor) {
+  std::invoke_result_t<Visitor, Dim<0>&> apply_visitor(Visitor&& visitor) {
     PADDLE_VISIT_DDIM(rank_, visitor(UnsafeCast<kRank>()));
   }
 
   template <typename Visitor>
-  typename std::result_of<Visitor(const Dim<0>&)>::type apply_visitor(
+  std::invoke_result_t<Visitor, const Dim<0>&> apply_visitor(
       Visitor&& visitor) const {
     PADDLE_VISIT_DDIM(rank_, visitor(UnsafeCast<kRank>()));
   }

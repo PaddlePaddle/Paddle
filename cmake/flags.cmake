@@ -4,36 +4,38 @@ include(CheckCCompilerFlag)
 include(CheckCXXSymbolExists)
 include(CheckTypeSize)
 
-function(check_compiler_cxx17_flag)
+function(check_compiler_cxx20_flag)
   if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    if(${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 8.2)
-      message(FATAL_ERROR "Unsupported GCC version. GCC >= 8.2 required.")
+    if(${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 12)
+      message(FATAL_ERROR "Unsupported GCC version. GCC >= 12 required.")
     endif()
   elseif(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang")
     # cmake >= 3.0 compiler id "AppleClang" on Mac OS X, otherwise "Clang"
     # Apple Clang is a different compiler than upstream Clang which has different version numbers.
     # https://gist.github.com/yamaya/2924292
     if(APPLE) # cmake < 3.0 compiler id "Clang" on Mac OS X
-      if(${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 5.1)
+      if(${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 14)
         message(
           FATAL_ERROR
-            "Unsupported AppleClang version. AppleClang >= 5.1 required.")
+            "Unsupported AppleClang version. AppleClang >= 14 required.")
       endif()
     else()
-      if(${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 3.4)
-        message(FATAL_ERROR "Unsupported Clang version. Clang >= 3.4 required.")
+      if(${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 14)
+        message(FATAL_ERROR "Unsupported Clang version. Clang >= 14 required.")
       endif()
     endif()
   endif()
 endfunction()
 
-check_compiler_cxx17_flag()
+check_compiler_cxx20_flag()
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(NOT WIN32)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
 else()
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -std=c++17")
-  set(CMAKE_CXX_STANDARD 17)
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -std=c++20")
 endif()
 
 # safe_set_flag
