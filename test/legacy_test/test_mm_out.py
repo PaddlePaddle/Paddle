@@ -233,6 +233,36 @@ class TestMmOutDtype(unittest.TestCase):
         self.assertEqual(list(x.grad.shape), [3, 4])
         self.assertEqual(list(weight.grad.shape), [5, 4])
 
+    def test_static_bf16_to_fp32(self):
+        self._skip_if_no_bf16_cuda()
+        paddle.enable_static()
+        try:
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                x = paddle.static.data('x', [3, 4], dtype='bfloat16')
+                y = paddle.static.data('y', [4, 5], dtype='bfloat16')
+                out = paddle.mm(x, y, out_dtype=paddle.float32)
+                self.assertEqual(out.dtype, paddle.float32)
+
+            place = paddle.CUDAPlace(0)
+            exe = paddle.static.Executor(place)
+            exe.run(startup)
+            x_np = np.random.rand(3, 4).astype(np.float32)
+            y_np = np.random.rand(4, 5).astype(np.float32)
+            (out_np,) = exe.run(
+                main,
+                feed={
+                    'x': paddle.to_tensor(x_np).astype('bfloat16').numpy(),
+                    'y': paddle.to_tensor(y_np).astype('bfloat16').numpy(),
+                },
+                fetch_list=[out],
+            )
+            ref = x_np @ y_np
+            np.testing.assert_allclose(out_np, ref, rtol=1e-2, atol=1e-2)
+        finally:
+            paddle.disable_static()
+
     def test_out_dtype_rejects_unsupported_cases(self):
         self._skip_if_no_bf16_cuda()
         x = paddle.randn([3, 4], dtype='float32')

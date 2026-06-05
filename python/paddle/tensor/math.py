@@ -2269,16 +2269,24 @@ def mm(
         helper = LayerHelper('mm', **locals())
         out_var_dtype = out_dtype if out_dtype is not None else input.dtype
         out = helper.create_variable_for_type_inference(dtype=out_var_dtype)
-        helper.append_op(
-            type='matmul',
-            inputs={'X': input, 'Y': mat2},
-            attrs={
-                'transpose_x': False,
-                'transpose_y': False,
-                'out_dtype': matmul_out_dtype,
-            },
-            outputs={'Out': out},
-        )
+        if out_dtype is None:
+            helper.append_op(
+                type='matmul_v2',
+                inputs={'X': input, 'Y': mat2},
+                attrs={'trans_x': False, 'trans_y': False},
+                outputs={'Out': out},
+            )
+        else:
+            helper.append_op(
+                type='matmul',
+                inputs={'X': input, 'Y': mat2},
+                attrs={
+                    'transpose_x': False,
+                    'transpose_y': False,
+                    'out_dtype': matmul_out_dtype,
+                },
+                outputs={'Out': out},
+            )
         return out
 
 
