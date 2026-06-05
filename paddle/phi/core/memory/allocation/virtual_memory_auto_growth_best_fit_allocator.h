@@ -85,7 +85,6 @@ class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
   void ExtendOrCompact(size_t size);
   void TryMergeBlock2Blocks(std::list<Block>::iterator iter);
   void DumpInfo(std::string phase) const;
-  void MaybeLogAllocatorStats(const char *reason, uint64_t seq) const;
 
   std::shared_ptr<Allocator> underlying_allocator_;
   std::unique_ptr<MemoryCompactionStrategy> memory_compactor_;
@@ -96,21 +95,6 @@ class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
   std::list<AllocationPtr> allocations_;
   Place place_;
   SpinLock spinlock_;
-
-  uint64_t alloc_from_free_calls_{0};
-  uint64_t alloc_from_free_hits_{0};
-  uint64_t alloc_from_free_misses_{0};
-  uint64_t split_count_{0};
-  uint64_t no_split_count_{0};
-  uint64_t exact_fit_count_{0};
-  uint64_t near_fit_no_split_count_{0};
-  uint64_t single_part_split_count_{0};
-  uint64_t multi_part_split_count_{0};
-  uint64_t free_calls_{0};
-  uint64_t free_merge_prev_count_{0};
-  uint64_t free_merge_next_count_{0};
-  uint64_t free_merge_both_count_{0};
-  uint64_t free_merge_none_count_{0};
 };
 
 /**
