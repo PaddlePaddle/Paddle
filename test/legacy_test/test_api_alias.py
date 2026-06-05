@@ -249,132 +249,153 @@ class TestAlias(unittest.TestCase):
         self.assert_api_map(api_map)
 
     def test_distribution_import_usages(self):
+        import importlib
         import sys
 
         import paddle.distribution
         import paddle.distribution.normal
-
-        distribution_normal_module = paddle.distribution.normal
         import paddle.distributions
-        import paddle.distributions.bernoulli
-        import paddle.distributions.beta
-        import paddle.distributions.binomial
-        import paddle.distributions.categorical
-        import paddle.distributions.cauchy
-        import paddle.distributions.chi2
-        import paddle.distributions.constraint
-        import paddle.distributions.continuous_bernoulli
-        import paddle.distributions.dirichlet
-        import paddle.distributions.distribution
-        import paddle.distributions.exponential
-        import paddle.distributions.exponential_family
-        import paddle.distributions.gamma
-        import paddle.distributions.geometric
-        import paddle.distributions.gumbel
-        import paddle.distributions.independent
-        import paddle.distributions.kl
-        import paddle.distributions.laplace
-        import paddle.distributions.lkj_cholesky
-        import paddle.distributions.lognormal
-        import paddle.distributions.multinomial
-        import paddle.distributions.multivariate_normal
         import paddle.distributions.normal
-        import paddle.distributions.poisson
-        import paddle.distributions.student_t
-        import paddle.distributions.transform
-        import paddle.distributions.transformed_distribution
-        import paddle.distributions.uniform
-        import paddle.distributions.variable
-        from paddle import distributions
-        from paddle.distribution.normal import Normal as DistributionNormal
-        from paddle.distributions import (
-            bernoulli,
-            beta,
-            binomial,
-            categorical,
-            cauchy,
-            chi2,
-            constraint,
-            continuous_bernoulli,
-            dirichlet,
-            distribution,
-            exponential,
-            exponential_family,
-            gamma,
-            geometric,
-            gumbel,
-            independent,
-            kl,
-            laplace,
-            lkj_cholesky,
-            lognormal,
-            multinomial,
-            multivariate_normal,
-            normal,
-            poisson,
-            student_t,
-            transform,
-            transformed_distribution,
-            uniform,
-            variable,
-        )
-        from paddle.distributions.normal import Normal
+        from paddle import distribution, distributions
+        from paddle.distribution import Normal as DistributionNormal
+        from paddle.distribution.normal import Normal as DistributionSubNormal
+        from paddle.distributions import Normal as DistributionsNormal
+        from paddle.distributions.normal import Normal as DistributionsSubNormal
 
+        self.assertIs(paddle.distribution, distribution)
         self.assertIs(paddle.distributions, distributions)
+        self.assertIs(paddle.distribution, paddle.distributions)
         self.assertIs(
-            sys.modules["paddle.distribution.normal"],
-            sys.modules["paddle.distributions.normal"],
+            sys.modules["paddle.distribution"],
+            sys.modules["paddle.distributions"],
         )
-        self.assertIs(distribution_normal_module, paddle.distribution.normal)
-        self.assertIs(distribution_normal_module, paddle.distributions.normal)
-        self.assertIs(paddle.distribution.normal, paddle.distributions.normal)
-        self.assertIs(DistributionNormal, Normal)
-        self.assertIs(paddle.distribution.normal.Normal, DistributionNormal)
-        self.assertIs(paddle.distributions.normal.Normal, Normal)
-        self.assertIs(
+
+        self.assert_distribution_api_aliases()
+
+        submodule_api_map = [
+            ("bernoulli", "Bernoulli"),
+            ("beta", "Beta"),
+            ("binomial", "Binomial"),
+            ("categorical", "Categorical"),
+            ("cauchy", "Cauchy"),
+            ("chi2", "Chi2"),
+            ("constraint", "Constraint"),
+            ("continuous_bernoulli", "ContinuousBernoulli"),
+            ("dirichlet", "Dirichlet"),
+            ("distribution", "Distribution"),
+            ("exponential", "Exponential"),
+            ("exponential_family", "ExponentialFamily"),
+            ("gamma", "Gamma"),
+            ("geometric", "Geometric"),
+            ("gumbel", "Gumbel"),
+            ("independent", "Independent"),
+            ("laplace", "Laplace"),
+            ("lkj_cholesky", "LKJCholesky"),
+            ("lognormal", "LogNormal"),
+            ("multinomial", "Multinomial"),
+            ("multivariate_normal", "MultivariateNormal"),
+            ("normal", "Normal"),
+            ("poisson", "Poisson"),
+            ("student_t", "StudentT"),
+            ("transform", "Transform"),
+            ("transformed_distribution", "TransformedDistribution"),
+            ("uniform", "Uniform"),
+            ("variable", "Variable"),
+        ]
+        for module_name, api_name in submodule_api_map:
+            self.assert_distribution_submodule_import(
+                importlib, module_name, api_name
+            )
+
+        normal_usages = [
+            DistributionNormal,
+            DistributionsNormal,
+            DistributionSubNormal,
+            DistributionsSubNormal,
+            paddle.distribution.Normal,
+            paddle.distributions.Normal,
             paddle.distribution.normal.Normal,
             paddle.distributions.normal.Normal,
-        )
-        self.assertTrue(callable(bernoulli.Bernoulli))
-        self.assertTrue(callable(beta.Beta))
-        self.assertTrue(callable(binomial.Binomial))
-        self.assertTrue(callable(categorical.Categorical))
-        self.assertTrue(callable(cauchy.Cauchy))
-        self.assertTrue(callable(chi2.Chi2))
-        self.assertTrue(callable(continuous_bernoulli.ContinuousBernoulli))
-        self.assertTrue(callable(dirichlet.Dirichlet))
-        self.assertTrue(callable(distribution.Distribution))
-        self.assertTrue(callable(exponential.Exponential))
-        self.assertTrue(callable(exponential_family.ExponentialFamily))
-        self.assertTrue(callable(gamma.Gamma))
-        self.assertTrue(callable(geometric.Geometric))
-        self.assertTrue(callable(gumbel.Gumbel))
-        self.assertTrue(callable(independent.Independent))
-        self.assertTrue(callable(laplace.Laplace))
-        self.assertTrue(callable(lkj_cholesky.LKJCholesky))
-        self.assertTrue(callable(lognormal.LogNormal))
-        self.assertTrue(callable(multinomial.Multinomial))
-        self.assertTrue(callable(multivariate_normal.MultivariateNormal))
-        self.assertTrue(callable(paddle.distributions.normal.Normal))
-        self.assertTrue(callable(distributions.normal.Normal))
-        self.assertTrue(callable(normal.Normal))
-        self.assertTrue(callable(Normal))
-        self.assertTrue(callable(paddle.distribution.normal.Normal))
-        self.assertTrue(callable(DistributionNormal))
-        self.assertTrue(callable(poisson.Poisson))
-        self.assertTrue(callable(student_t.StudentT))
-        self.assertTrue(
-            callable(transformed_distribution.TransformedDistribution)
-        )
-        self.assertTrue(callable(uniform.Uniform))
-        self.assertTrue(callable(constraint.Constraint))
-        self.assertTrue(callable(kl.kl_divergence))
-        self.assertTrue(callable(kl.register_kl))
-        self.assertTrue(callable(transform.Transform))
-        self.assertTrue(callable(variable.Variable))
+        ]
+        self.assert_normal_usages_equal(normal_usages)
 
     def test_random_api_alias(self):
         self.assertIs(paddle.random.initial_seed, paddle.initial_seed)
+
+    def assert_distribution_api_aliases(self):
+        api_names = [
+            "Bernoulli",
+            "Beta",
+            "Binomial",
+            "Categorical",
+            "Cauchy",
+            "Chi2",
+            "ContinuousBernoulli",
+            "Dirichlet",
+            "Distribution",
+            "Exponential",
+            "ExponentialFamily",
+            "Gamma",
+            "Geometric",
+            "Gumbel",
+            "Independent",
+            "Laplace",
+            "LKJCholesky",
+            "LogNormal",
+            "Multinomial",
+            "MultivariateNormal",
+            "Normal",
+            "Poisson",
+            "StudentT",
+            "Transform",
+            "TransformedDistribution",
+            "Uniform",
+        ]
+        for api_name in api_names:
+            self.assertIs(
+                getattr(paddle.distribution, api_name),
+                getattr(paddle.distributions, api_name),
+            )
+
+    def assert_distribution_submodule_import(
+        self, importlib, module_name, api_name
+    ):
+        distribution_module = importlib.import_module(
+            f"paddle.distribution.{module_name}"
+        )
+        distributions_module = importlib.import_module(
+            f"paddle.distributions.{module_name}"
+        )
+
+        self.assertEqual(
+            distribution_module.__file__, distributions_module.__file__
+        )
+        self.assertTrue(callable(getattr(distribution_module, api_name)))
+        self.assertTrue(callable(getattr(distributions_module, api_name)))
+
+    def assert_normal_usages_equal(self, normal_usages):
+        expected = self.get_normal_usage_outputs(normal_usages[0])
+        for normal in normal_usages[1:]:
+            self.assertEqual(normal.__name__, normal_usages[0].__name__)
+            actual = self.get_normal_usage_outputs(normal)
+            for actual_value, expected_value in zip(actual, expected):
+                self.assert_tensor_equal(actual_value, expected_value)
+
+    def get_normal_usage_outputs(self, normal):
+        value = paddle.to_tensor([0.25, 1.5], dtype="float32")
+        dist = normal([0.0, 1.0], [1.0, 2.0], validate_args=False)
+        return (
+            dist.mean,
+            dist.variance,
+            dist.entropy(),
+            dist.log_prob(value),
+            dist.probs(value),
+        )
+
+    def assert_tensor_equal(self, actual, expected):
+        self.assertEqual(actual.shape, expected.shape)
+        self.assertEqual(actual.dtype, expected.dtype)
+        self.assertTrue(bool(paddle.allclose(actual, expected).item()))
 
     def assert_api_map(self, api_map):
         for pairs in api_map:

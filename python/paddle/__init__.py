@@ -19,6 +19,7 @@
 # implemented as independent modules with no runtime dependency on PyTorch.
 
 import math
+import sys as _sys
 import typing
 
 __is_metainfo_generated = False
@@ -260,6 +261,7 @@ from paddle import (
 )
 
 distributions = distribution
+_sys.modules['paddle.distributions'] = distribution
 
 # high-level api
 from . import (
