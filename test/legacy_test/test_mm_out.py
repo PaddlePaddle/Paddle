@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import convert_float_to_uint16
 
 import paddle
 
@@ -253,8 +254,8 @@ class TestMmOutDtype(unittest.TestCase):
             (out_np,) = exe.run(
                 main,
                 feed={
-                    'x': paddle.to_tensor(x_np).astype('bfloat16').numpy(),
-                    'y': paddle.to_tensor(y_np).astype('bfloat16').numpy(),
+                    'x': convert_float_to_uint16(x_np),
+                    'y': convert_float_to_uint16(y_np),
                 },
                 fetch_list=[out],
             )

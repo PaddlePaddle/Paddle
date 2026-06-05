@@ -2227,10 +2227,11 @@ def mm(
 
     def __check_input(x, y):
         var_names = {'x': x, 'y': y}
+        expected_dtype = ['float16', 'float32', 'float64']
+        if out_dtype is not None:
+            expected_dtype.append('uint16')
         for name, val in var_names.items():
-            check_variable_and_dtype(
-                val, name, ['float16', 'float32', 'float64'], 'mm'
-            )
+            check_variable_and_dtype(val, name, expected_dtype, 'mm')
         x_shape = list(x.shape)
         y_shape = list(y.shape)
         if len(x_shape) == 1:
