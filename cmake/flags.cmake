@@ -29,13 +29,10 @@ endfunction()
 
 check_compiler_cxx20_flag()
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
 if(NOT WIN32)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
 else()
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -std=c++20")
+  set(CMAKE_CXX_STANDARD 20)
 endif()
 
 # safe_set_flag

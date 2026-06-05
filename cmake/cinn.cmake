@@ -98,7 +98,6 @@ if(WITH_GPU)
 
   cuda_select_nvcc_arch_flags(ARCH_FLAGS Auto)
   list(APPEND CUDA_NVCC_FLAGS ${ARCH_FLAGS})
-  set(CMAKE_CUDA_STANDARD ${CMAKE_CXX_STANDARD})
 
   message(
     STATUS
