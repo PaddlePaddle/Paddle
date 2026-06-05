@@ -181,6 +181,8 @@ jobs:
           echo "Extracting Paddle.tar.gz"
           tar -xf Paddle.tar.gz --strip-components=1
           rm Paddle.tar.gz
+          git config --global --add safe.directory ${work_dir}
+          git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
           git remote -v
           set +e
           git remote add upstream https://github.com/PaddlePaddle/Paddle.git
