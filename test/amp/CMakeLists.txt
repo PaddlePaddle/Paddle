@@ -32,7 +32,7 @@ function(py_test_modules TARGET_NAME)
           ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
           ${py_test_modules_ENVS} ${FLAGS_PIR_MODE}
           COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
-          ${PYTHON_EXECUTABLE} -m coverage run --branch -p
+          ${PYTHON_EXECUTABLE} -m coverage run -p
           ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     else()

@@ -354,7 +354,7 @@ class TestFleetHeterBase(unittest.TestCase):
 
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
             envs['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
-            python_path += " -m coverage run --branch -p"
+            python_path += " -m coverage run -p"
         env.update(envs)
         self._all_heter_endpoints = ";".join(
             (self._heter_endpoints, self._heter_endpoints_2)

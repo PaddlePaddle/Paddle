@@ -1063,7 +1063,7 @@ class TestDistBase(unittest.TestCase):
 
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
             required_envs['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
-            ps_cmd += " -m coverage run --branch -p"
+            ps_cmd += " -m coverage run -p"
 
         ps_cmd += " %s --role pserver --endpoints %s --trainer_id 0 --current_endpoint %s --trainers %d --update_method pserver"
 
@@ -1121,7 +1121,7 @@ class TestDistBase(unittest.TestCase):
 
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
             envs['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
-            cmd += " -m coverage run --branch -p"
+            cmd += " -m coverage run -p"
 
         cmd += (
             f" {model} --role trainer --update_method local --lr {self._lr:f}"
@@ -1218,7 +1218,7 @@ class TestDistBase(unittest.TestCase):
 
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
             envs['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
-            tr_cmd += " -m coverage run --branch -p"
+            tr_cmd += " -m coverage run -p"
 
         tr_cmd += " %s --role trainer --endpoints %s --trainer_id %d --current_endpoint %s --trainers %d --update_method pserver --lr %f"
 
@@ -1321,7 +1321,7 @@ class TestDistBase(unittest.TestCase):
         tr_cmd = "%s -u"
 
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
-            tr_cmd += " -m coverage run --branch -p"
+            tr_cmd += " -m coverage run -p"
 
         tr_cmd += " %s --role trainer --endpoints %s --trainer_id %d --current_endpoint %s --update_method %s --lr %f"
 
@@ -1388,7 +1388,7 @@ class TestDistBase(unittest.TestCase):
         tr_cmd = "%s -u"
 
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
-            tr_cmd += " -m coverage run --branch -p"
+            tr_cmd += " -m coverage run -p"
 
         tr_cmd += " %s --role trainer --endpoints %s --trainer_id %d --current_endpoint %s --update_method %s --lr %f"
 

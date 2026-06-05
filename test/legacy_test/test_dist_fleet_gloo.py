@@ -99,7 +99,7 @@ class TestDistGloo_2x2(TestFleetBase):
         python_path = self._python_interp
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
             envs['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
-            python_path += " -m coverage run --branch -p"
+            python_path += " -m coverage run -p"
         env.update(envs)
 
         tr_cmd = f"{python_path} {model}"

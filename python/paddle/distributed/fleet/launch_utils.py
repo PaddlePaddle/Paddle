@@ -544,7 +544,7 @@ def start_local_trainers(
             run_with_coverage()
             or os.environ.get("WITH_COVERAGE", "OFF") == "ON"
         ):
-            coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
+            coverage_args = ["-m", "coverage", "run", "-p"]
         cmd = [
             sys.executable,
             "-u",

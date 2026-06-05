@@ -399,7 +399,7 @@ class AutoParallelizer:
                 ["--rank_mapping_path", self._rank_mapping_path]
             )
             if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
-                coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
+                coverage_args = ["-m", "coverage", "run", "-p"]
             else:
                 coverage_args = []
             new_cmd_args = (

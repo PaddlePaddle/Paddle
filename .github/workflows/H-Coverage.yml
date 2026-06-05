@@ -292,6 +292,8 @@ jobs:
           CCACHE_LIMIT_MULTIPLE: 0.8
           FLAGS_PIR_OPTEST: "TRUE"
           ON_INFER: "ON"
+          # coverage.py sysmon on Python 3.12 requires line-only coverage; keep branch coverage disabled.
+          COVERAGE_CORE: sysmon
           COVERAGE_FILE: ${{ github.workspace }}/build/python-coverage.data
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -334,6 +336,7 @@ jobs:
             -e CCACHE_LIMIT_MULTIPLE \
             -e FLAGS_PIR_OPTEST \
             -e ON_INFER \
+            -e COVERAGE_CORE \
             -e COVERAGE_FILE \
             -e GITHUB_TOKEN \
             -e GITHUB_API_TOKEN \

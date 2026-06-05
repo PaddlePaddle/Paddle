@@ -265,7 +265,7 @@ class TestDistBase(unittest.TestCase):
         env1['DUMP_FILE'] = dump_file_1
 
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
-            tr_cmd = "%s -m coverage run --branch -p %s"
+            tr_cmd = "%s -m coverage run -p %s"
         else:
             tr_cmd = "%s %s"
         tr0_cmd = tr_cmd % (self._python_interp, model_file)

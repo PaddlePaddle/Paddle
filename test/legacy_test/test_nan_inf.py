@@ -28,7 +28,7 @@ class TestNanInfBase(unittest.TestCase):
     def setUp(self):
         self._python_interp = sys.executable
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
-            self._python_interp += " -m coverage run --branch -p"
+            self._python_interp += " -m coverage run -p"
 
         self.env = os.environ.copy()
         paddle.disable_static()

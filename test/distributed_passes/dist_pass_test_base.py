@@ -199,7 +199,7 @@ class DistPassTestBase(unittest.TestCase):
 
         if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
             run_with_coverage(True)
-            coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
+            coverage_args = ["-m", "coverage", "run", "-p"]
         else:
             coverage_args = []
 

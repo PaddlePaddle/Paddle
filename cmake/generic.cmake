@@ -1208,7 +1208,7 @@ function(py_test TARGET_NAME)
           FLAGS_cudnn_deterministic=true ${FLAGS_PIR_MODE}
           PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
           COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
-          ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${py_test_SRCS}
+          ${PYTHON_EXECUTABLE} -m coverage run -p ${py_test_SRCS}
           ${py_test_ARGS}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     else()

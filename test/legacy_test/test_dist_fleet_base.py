@@ -329,7 +329,7 @@ class TestFleetBase(unittest.TestCase):
 
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
             envs['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
-            python_path += " -m coverage run --branch -p"
+            python_path += " -m coverage run -p"
         env.update(envs)
 
         tr_cmd = f"{python_path} {model} --role trainer --endpoints {self._ps_endpoints} --trainer_endpoints {self._tr_endpoints} --current_id {{}} --trainers {self._trainers} --mode {self._mode} --geo_sgd_need_push_nums {self._geo_sgd_need_push_nums} --reader {self._reader} --gloo_path {gloo_path} --test {self._need_test}"

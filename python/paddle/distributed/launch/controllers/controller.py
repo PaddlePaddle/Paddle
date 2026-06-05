@@ -217,7 +217,6 @@ class Controller(ControllerBase):
                     "-m",
                     "coverage",
                     "run",
-                    "--branch",
                     "-p",
                     self.ctx.args.training_script,
                 ]

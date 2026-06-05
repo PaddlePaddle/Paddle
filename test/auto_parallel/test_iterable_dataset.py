@@ -27,7 +27,7 @@ class TestEngineAPI(unittest.TestCase):
         launch_model_path = os.path.join(file_dir, "iterable_dataset.py")
 
         if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
-            coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
+            coverage_args = ["-m", "coverage", "run", "-p"]
         else:
             coverage_args = []
 

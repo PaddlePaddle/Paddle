@@ -353,7 +353,6 @@ def launch() -> None:
                     "-m",
                     "coverage",
                     "run",
-                    "--branch",
                     "-p",
                     ctx.args.training_script,
                 ]

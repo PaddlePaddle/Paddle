@@ -64,7 +64,7 @@ def start_local_trainers(
         print(f"trainer proc env:{current_env}")
 
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
-            cmd = "python -m coverage run --branch -p " + training_script
+            cmd = "python -m coverage run -p " + training_script
         else:
             cmd = "python -u " + training_script
 

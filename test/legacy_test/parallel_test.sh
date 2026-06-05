@@ -37,7 +37,7 @@ if [[ ${TEST_TIMEOUT}"x" == "x" ]]; then
 fi
 
 if [[ ${WITH_COVERAGE} == "ON" ]]; then
-    PYTHON_EXEC="python -u -m coverage run --branch -p "
+    PYTHON_EXEC="python -u -m coverage run -p "
 else
     PYTHON_EXEC="python -u "
 fi

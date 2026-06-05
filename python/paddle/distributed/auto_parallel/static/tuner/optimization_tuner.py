@@ -438,7 +438,7 @@ class OptimizationTuner:
 
     def _launch_profile(self, ctx_path, trial_dir):
         if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
-            coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
+            coverage_args = ["-m", "coverage", "run", "-p"]
         else:
             coverage_args = []
 

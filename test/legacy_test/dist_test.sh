@@ -39,7 +39,7 @@ run_time=$(( $TEST_TIMEOUT - 10 ))
 echo "run_time: ${run_time}"
 
 if [[ ${WITH_COVERAGE} == "ON" ]]; then
-    PYTHON_EXEC="python -u -m coverage run --branch -p "
+    PYTHON_EXEC="python -u -m coverage run -p "
 else
     PYTHON_EXEC="python -u "
 fi
