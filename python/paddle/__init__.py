@@ -238,7 +238,6 @@ from paddle import (
     device as device,
     distributed as distributed,
     distribution as distribution,
-    distributions as distributions,
     geometric as geometric,
     incubate as incubate,
     inference as inference,
@@ -259,6 +258,8 @@ from paddle import (
     testing as testing,
     vision as vision,
 )
+
+distributions = distribution
 
 # high-level api
 from . import (
