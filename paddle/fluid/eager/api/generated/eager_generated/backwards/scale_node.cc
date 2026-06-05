@@ -177,8 +177,7 @@ GradNodeScale::operator()(
   PADDLE_ENFORCE(
       ((grads.size() == 1) && (grads[0].size() == 1)),
       common::errors::Fatal(
-          "ScaleGradNode takes exactly 1 grad tensor."
-          "However received: %d",
+          "ScaleGradNode takes exactly 1 grad tensor. However received: %d. "
           "This indicates an issue with Eager Dygraph Backward logic",
           grads.size()));
   paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize> outs;

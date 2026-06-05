@@ -691,7 +691,8 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
           "should be equal to getNbInputs()."
           "Received phi_kernel_contexts_[data_type]->InputsSize() "
           "= %d, getNbInputs() = %d.",
-          phi_kernel_contexts_[data_type]->InputsSize()));
+          phi_kernel_contexts_[data_type]->InputsSize(),
+          getNbInputs()));
   PADDLE_ENFORCE_EQ(phi_kernel_contexts_[data_type]->OutputsSize(),
                     getNbOutputs(),
                     common::errors::InvalidArgument(

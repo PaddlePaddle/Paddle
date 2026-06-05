@@ -275,15 +275,15 @@ class TestLayerNormParamDygraph(unittest.TestCase):
                 )
                 layer_norm(x1)
 
-            with self.assertRaises(TypeError):
-                paddle.nn.LayerNorm(
-                    self.normalized_shape, 1e-5, None, None, "name"
-                )
+            layer_norm = paddle.nn.LayerNorm(self.normalized_shape, 1e-5, False)
+            self.assertIsNone(layer_norm.weight)
+            self.assertIsNone(layer_norm.bias)
 
-            with self.assertRaises(TypeError):
-                paddle.nn.LayerNorm(
-                    self.normalized_shape, 1e-5, False, "cpu", paddle.float32
-                )
+            layer_norm = paddle.nn.LayerNorm(
+                self.normalized_shape, 1e-5, True, False, None, paddle.float32
+            )
+            self.assertIsNotNone(layer_norm.weight)
+            self.assertIsNone(layer_norm.bias)
 
         self._run_test_on_places(run_test)
 
@@ -443,19 +443,22 @@ class TestLayerNormParamStatic(unittest.TestCase):
                     base.unique_name.guard(),
                     base.program_guard(main, start),
                 ):
-                    with self.assertRaises(TypeError):
-                        paddle.nn.LayerNorm(
-                            self.normalized_shape, 1e-5, None, None, "name"
-                        )
+                    layer_norm = paddle.nn.LayerNorm(
+                        self.normalized_shape, 1e-5, False
+                    )
+                    self.assertIsNone(layer_norm.weight)
+                    self.assertIsNone(layer_norm.bias)
 
-                    with self.assertRaises(TypeError):
-                        paddle.nn.LayerNorm(
-                            self.normalized_shape,
-                            1e-5,
-                            False,
-                            "cpu",
-                            paddle.float32,
-                        )
+                    layer_norm = paddle.nn.LayerNorm(
+                        self.normalized_shape,
+                        1e-5,
+                        True,
+                        False,
+                        None,
+                        paddle.float32,
+                    )
+                    self.assertIsNotNone(layer_norm.weight)
+                    self.assertIsNone(layer_norm.bias)
 
 
 if __name__ == '__main__':

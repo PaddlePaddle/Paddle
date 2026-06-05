@@ -58,15 +58,14 @@ static inline common::DDim infer_size_symdimvector(common::DDim a,
     auto sizeA = (dimA >= 0) ? a[dimA] : 1;
     auto sizeB = (dimB >= 0) ? b[dimB] : 1;
 
-    PADDLE_ENFORCE_EQ(
-        sizeA == sizeB || sizeA == 1 || sizeB == 1,
-        true,
-        common::errors::Fatal("The size of tensor a (",
-                              sizeA,
-                              ") must match the size of tensor b (",
-                              sizeB,
-                              ") at non-singleton dimension ",
-                              i));
+    PADDLE_ENFORCE_EQ(sizeA == sizeB || sizeA == 1 || sizeB == 1,
+                      true,
+                      common::errors::Fatal("The size of tensor a (%d) must "
+                                            "match the size of tensor b (%d) "
+                                            "at non-singleton dimension %d",
+                                            sizeA,
+                                            sizeB,
+                                            i));
 
     // 1s map to the other size (even 0).
     expandedSizes[i] = sizeA == 1 ? sizeB : sizeA;

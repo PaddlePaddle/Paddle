@@ -25,6 +25,16 @@ file(
   "test_trt_convert_*.py")
 string(REPLACE ".py" "" TEST_TRT_CONVERTER "${TEST_TRT_CONVERTER}")
 
+if(WITH_COVERAGE)
+  # TEST_INFERENCE_IR_PASSES is globbed from test_*.py, so remove TRT files
+  # from the generic inference list before clearing the TRT-specific lists.
+  foreach(TEST_TRT_IR_PASS ${TEST_TRT_IR_PASSES})
+    list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES ${TEST_TRT_IR_PASS})
+  endforeach()
+  set(TEST_TRT_IR_PASSES "")
+  set(TEST_TRT_CONVERTER "")
+endif()
+
 list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_use_optimized_model_api")
 list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_onednn_conv_gelu_fuse_pass")
 list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
@@ -164,36 +174,48 @@ if(WITH_GPU AND TENSORRT_FOUND)
   # longer timeout for trt_activation_pass for longer trt optimization time in trt 8
   #set_tests_properties(test_trt_multiclass_nms_op PROPERTIES TIMEOUT 200)
 
-  set_tests_properties(test_trt_convert_index_select PROPERTIES TIMEOUT 600)
-  set_tests_properties(test_trt_convert_anchor_generator PROPERTIES TIMEOUT 600)
-  set_tests_properties(test_trt_convert_gather PROPERTIES TIMEOUT 600)
-  set_tests_properties(test_trt_ops_fp32_mix_precision PROPERTIES TIMEOUT 300)
-  set_tests_properties(test_trt_convert_expand_v2 PROPERTIES TIMEOUT 600)
-  set_tests_properties(test_trt_convert_unary PROPERTIES TIMEOUT 600)
-  set_tests_properties(test_trt_convert_temporal_shift_deprecated
-                       PROPERTIES TIMEOUT 600)
-  set_tests_properties(test_trt_convert_pool2d PROPERTIES TIMEOUT 600)
-  set_tests_properties(test_trt_convert_slice PROPERTIES TIMEOUT 600)
-  set_tests_properties(test_trt_convert_scale PROPERTIES TIMEOUT 600)
-  set_tests_properties(test_trt_convert_elementwise PROPERTIES TIMEOUT 600)
-  set_tests_properties(test_trt_convert_reduce PROPERTIES TIMEOUT 600)
-  set_tests_properties(test_trt_convert_compare_and_logical PROPERTIES TIMEOUT
-                                                                       600)
+  foreach(
+    target
+    test_trt_convert_index_select
+    test_trt_convert_anchor_generator
+    test_trt_convert_gather
+    test_trt_convert_expand_v2
+    test_trt_convert_unary
+    test_trt_convert_temporal_shift_deprecated
+    test_trt_convert_pool2d
+    test_trt_convert_slice
+    test_trt_convert_scale
+    test_trt_convert_elementwise
+    test_trt_convert_reduce
+    test_trt_convert_compare_and_logical)
+    if(TEST ${target})
+      set_tests_properties(${target} PROPERTIES TIMEOUT 600)
+    endif()
+  endforeach()
 
-  if(NOT WIN32)
-
-  else()
-    set_tests_properties(test_trt_convert_fill_constant PROPERTIES TIMEOUT 450)
+  if(TEST test_trt_ops_fp32_mix_precision)
+    set_tests_properties(test_trt_ops_fp32_mix_precision PROPERTIES TIMEOUT 300)
   endif()
 
-  set_tests_properties(test_trt_conv3d_op PROPERTIES TIMEOUT 60)
+  if(WIN32)
+    if(TEST test_trt_convert_fill_constant)
+      set_tests_properties(test_trt_convert_fill_constant PROPERTIES TIMEOUT
+                                                                     450)
+    endif()
+  endif()
+
+  if(TEST test_trt_conv3d_op)
+    set_tests_properties(test_trt_conv3d_op PROPERTIES TIMEOUT 60)
+  endif()
 
   if(WITH_ONEDNN)
     set_tests_properties(test_merge_layernorm_fuse_pass PROPERTIES TIMEOUT 300)
     set_tests_properties(test_skip_merge_layernorm_fuse_pass PROPERTIES TIMEOUT
                                                                         180)
-    set_tests_properties(test_trt_emb_eltwise_layernorm_fuse_pass
-                         PROPERTIES TIMEOUT 180)
+    if(TEST test_trt_emb_eltwise_layernorm_fuse_pass)
+      set_tests_properties(test_trt_emb_eltwise_layernorm_fuse_pass
+                           PROPERTIES TIMEOUT 180)
+    endif()
 
     set_tests_properties(test_fc_fuse_pass PROPERTIES TIMEOUT 240)
     set_tests_properties(test_reverse_roll_fuse_pass PROPERTIES TIMEOUT 120)

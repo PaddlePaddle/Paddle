@@ -74,6 +74,17 @@ function install_cusparselt_090_cuda13 {
     rm -rf tmp_cusparselt
 }
 
+function install_cusparselt_081 {
+    # cuSparseLt license: https://docs.nvidia.com/cuda/cusparselt/license.html
+    mkdir tmp_cusparselt && pushd tmp_cusparselt
+    wget -q https://developer.download.nvidia.com/compute/cusparselt/redist/libcusparse_lt/linux-x86_64/libcusparse_lt-linux-x86_64-0.8.1.1_cuda13-archive.tar.xz
+    tar xf libcusparse_lt-linux-x86_64-0.8.1.1_cuda13-archive.tar.xz
+    cp -a libcusparse_lt-linux-x86_64-0.8.1.1_cuda13-archive/include/* /usr/local/cuda/include/
+    cp -a libcusparse_lt-linux-x86_64-0.8.1.1_cuda13-archive/lib/* /usr/local/cuda/lib64/
+    popd
+    rm -rf tmp_cusparselt
+}
+
 function install_nccl_2162 {
     wget -q https://nccl2-deb.cdn.bcebos.com/nccl_2.16.2-1+cuda11.8_x86_64.txz --no-check-certificate --no-proxy
     tar xf nccl_2.16.2-1+cuda11.8_x86_64.txz
@@ -108,10 +119,21 @@ function install_nccl_2234 {
 
 function install_nccl_2297_cuda132 {
     yum-config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo
+    # `install_132` uses toolkit-only installation, so install the official
+    # forward-compat driver libraries to provide /usr/local/cuda-13.2/compat/libcuda.so.1.
     yum install -y \
+        cuda-compat-13-2 \
         libnccl-2.29.7-1+cuda13.2 \
         libnccl-devel-2.29.7-1+cuda13.2 \
         libnccl-static-2.29.7-1+cuda13.2
+}
+
+function install_nccl_2283 {
+    wget -q https://nccl2-deb.cdn.bcebos.com/nccl_2.28.3-1+cuda13.0_x86_64.txz --no-check-certificate --no-proxy
+    tar xf nccl_2.28.3-1+cuda13.0_x86_64.txz
+    cp -a nccl_2.28.3-1+cuda13.0_x86_64/include/* /usr/include/
+    cp -a nccl_2.28.3-1+cuda13.0_x86_64/lib/* /usr/lib64
+    rm -rf nccl_2.28.3-1+cuda13.0_x86_64 nccl_2.28.3-1+cuda13.0_x86_64.txz
 }
 
 function install_trt_8616 {
@@ -133,6 +155,13 @@ function install_trt_1016111 {
     tar -zxf TensorRT-10.16.1.11.Linux.x86_64-gnu.cuda-13.2.tar.gz -C /usr/local
     cp -rf /usr/local/TensorRT-10.16.1.11/include/* /usr/include/ && cp -rf /usr/local/TensorRT-10.16.1.11/lib/* /usr/lib/
     rm -f TensorRT-10.16.1.11.Linux.x86_64-gnu.cuda-13.2.tar.gz
+}
+
+function install_trt_101339 {
+    wget -q https://paddle-ci.gz.bcebos.com/TRT/TensorRT-10.13.3.9.Linux.x86_64-gnu.cuda-13.0.tar.gz --no-check-certificate --no-proxy
+    tar -zxf TensorRT-10.13.3.9.Linux.x86_64-gnu.cuda-13.0.tar.gz -C /usr/local
+    cp -rf /usr/local/TensorRT-10.13.3.9/include/* /usr/include/ && cp -rf /usr/local/TensorRT-10.13.3.9/lib/* /usr/lib/
+    rm -f TensorRT-10.13.3.9.Linux.x86_64-gnu.cuda-13.0.tar.gz
 }
 
 function install_118 {
@@ -283,9 +312,35 @@ function install_129 {
     install_trt_105018
     install_cusparselt_063
 
-    # install gdrcopy
-    cd /usr/local
-    wget -q https://paddle-ci.gz.bcebos.com/gdrcopy.tar && tar xf gdrcopy.tar && rm -rf gdrcopy.tar
+    ldconfig
+}
+
+function install_130 {
+    CUDNN_VERSION=9.13.0.50
+    NCCL_VERSION=2.28.3
+    TensorRT_VERSION=10.13
+    echo "Installing CUDA 13.0.1 and cuDNN ${CUDNN_VERSION} and NCCL ${NCCL_VERSION} and TensorRT ${TensorRT_VERSION} and cuSparseLt-0.8.1"
+    rm -rf /usr/local/cuda-13.0 /usr/local/cuda
+    # install CUDA 13.0.1 in the same container
+    wget -q https://developer.download.nvidia.com/compute/cuda/13.0.1/local_installers/cuda_13.0.1_580.82.07_linux.run
+    chmod +x cuda_13.0.1_580.82.07_linux.run
+    ./cuda_13.0.1_580.82.07_linux.run --toolkit --driver --silent --kernel-source-path=/usr/src/kernels/4.18.0-553.76.1.el8_10.x86_64
+    rm -f cuda_13.0.1_580.82.07_linux.run
+    rm -f /usr/local/cuda && ln -s /usr/local/cuda-13.0 /usr/local/cuda
+    rm -rf /usr/bin/nvidia-smi
+
+    # cuDNN license: https://developer.nvidia.com/cudnn/license_agreement
+    mkdir tmp_cudnn && cd tmp_cudnn
+    wget -q https://developer.download.nvidia.com/compute/cudnn/redist/cudnn/linux-x86_64/cudnn-linux-x86_64-${CUDNN_VERSION}_cuda13-archive.tar.xz -O cudnn-linux-x86_64-${CUDNN_VERSION}_cuda13-archive.tar.xz
+    tar xf cudnn-linux-x86_64-${CUDNN_VERSION}_cuda13-archive.tar.xz
+    cp -a cudnn-linux-x86_64-${CUDNN_VERSION}_cuda13-archive/include/* /usr/local/cuda/include/
+    cp -a cudnn-linux-x86_64-${CUDNN_VERSION}_cuda13-archive/lib/* /usr/local/cuda/lib64/
+    cd ..
+    rm -rf tmp_cudnn
+
+    install_nccl_2283
+    install_trt_101339
+    install_cusparselt_081
 
     ldconfig
 }
@@ -463,6 +518,8 @@ do
     12.6) install_126; prune_126
         ;;
     12.9) install_129
+        ;;
+    13.0) install_130
         ;;
     13.2) install_132
         ;;

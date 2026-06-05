@@ -2186,7 +2186,10 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             set_tensor_name_str += f'{indent}{indent}egr::SetTensorName(unique_api_name, "{name}", &{name});\n'
             save_md5_checksum_str += f"{indent}{indent}egr::SaveTensorMD5CheckSumToFile(FLAGS_tensor_md5_checksum_output_path, {name});\n"
 
-        get_outputs_str += SET_TENSOR_NAME_TEMPLATE.format(set_tensor_name_str)
+        if not is_inplaced:
+            get_outputs_str += SET_TENSOR_NAME_TEMPLATE.format(
+                set_tensor_name_str
+            )
         get_outputs_str += SAVE_TENSOR_MD5_CHECKSUM_TEMPLATE.format(
             save_md5_checksum_str
         )

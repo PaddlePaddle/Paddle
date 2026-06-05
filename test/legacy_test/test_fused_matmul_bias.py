@@ -118,7 +118,7 @@ class TestFusedMatmulBias(unittest.TestCase):
             self.assertIsNone(bias_grad_np)
 
     def rand_test(self, m, n, k, dtype):
-        seed = int(np.random.randint(low=0, high=1000, size=[1]))
+        seed = int(np.random.randint(low=0, high=1000))
         for trans_x in [False, True]:
             for trans_y in [False, True]:
                 for need_bias in [False, True]:

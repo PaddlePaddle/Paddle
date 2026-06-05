@@ -313,10 +313,10 @@ extra_op_attrs = {
     "unique": ["is_sorted"],
 }
 
-paddle_type_to_proto_type = {
+datatype_to_vartype = {
     DataType.BOOL: core.VarDesc.VarType.BOOL,
     DataType.FLOAT16: core.VarDesc.VarType.FP16,
-    DataType.UINT16: core.VarDesc.VarType.BF16,
+    DataType.UINT16: core.VarDesc.VarType.UINT16,
     DataType.BFLOAT16: core.VarDesc.VarType.BF16,
     DataType.FLOAT32: core.VarDesc.VarType.FP32,
     DataType.FLOAT64: core.VarDesc.VarType.FP64,
@@ -325,11 +325,17 @@ paddle_type_to_proto_type = {
     DataType.INT32: core.VarDesc.VarType.INT32,
     DataType.INT64: core.VarDesc.VarType.INT64,
     DataType.UINT8: core.VarDesc.VarType.UINT8,
+    DataType.UINT32: core.VarDesc.VarType.UINT32,
+    DataType.UINT64: core.VarDesc.VarType.UINT64,
     DataType.COMPLEX64: core.VarDesc.VarType.COMPLEX64,
     DataType.COMPLEX128: core.VarDesc.VarType.COMPLEX128,
     DataType.FLOAT8_E4M3FN: core.VarDesc.VarType.FP8_E4M3FN,
     DataType.FLOAT8_E5M2: core.VarDesc.VarType.FP8_E5M2,
 }
+
+# Compatibility aliases for external packages. Keep Paddle internal code using
+# the normalized dtype names above.
+paddle_type_to_proto_type = datatype_to_vartype
 
 
 def in_dygraph_mode() -> bool:
@@ -1412,11 +1418,11 @@ def grad_var_name(var_name):
     return var_name + GRAD_VAR_SUFFIX
 
 
-def convert_np_dtype_to_proto_type(
+def convert_nptype_to_vartype(
     np_dtype: np.dtype | str,
 ) -> core.VarDesc.VarType:
     """
-    Convert the data type in numpy to the data type in Paddle.
+    Convert a NumPy or string dtype to Paddle VarType.
 
     Args:
         np_dtype (np.dtype|str): The data type in numpy or valid data type
@@ -1429,7 +1435,7 @@ def convert_np_dtype_to_proto_type(
 
     # Convert the data type string to numpy data type.
 
-    str_to_var_type = {
+    str_to_vartype = {
         'float32': core.VarDesc.VarType.FP32,
         'float64': core.VarDesc.VarType.FP64,
         'float16': core.VarDesc.VarType.FP16,
@@ -1437,7 +1443,10 @@ def convert_np_dtype_to_proto_type(
         'int16': core.VarDesc.VarType.INT16,
         'int64': core.VarDesc.VarType.INT64,
         'bool': core.VarDesc.VarType.BOOL,
+        'uint16': core.VarDesc.VarType.BF16,
         'uint8': core.VarDesc.VarType.UINT8,
+        'uint32': core.VarDesc.VarType.UINT32,
+        'uint64': core.VarDesc.VarType.UINT64,
         'int8': core.VarDesc.VarType.INT8,
         'complex64': core.VarDesc.VarType.COMPLEX64,
         'complex128': core.VarDesc.VarType.COMPLEX128,
@@ -1446,7 +1455,7 @@ def convert_np_dtype_to_proto_type(
         'float8_e5m2': core.VarDesc.VarType.FP8_E5M2,
     }
 
-    np_dtype_to_var_type = {
+    nptype_to_vartype = {
         np.dtype("float32"): core.VarDesc.VarType.FP32,
         np.dtype("float64"): core.VarDesc.VarType.FP64,
         np.dtype("float16"): core.VarDesc.VarType.FP16,
@@ -1456,6 +1465,8 @@ def convert_np_dtype_to_proto_type(
         np.dtype("bool_"): core.VarDesc.VarType.BOOL,
         np.dtype("uint16"): core.VarDesc.VarType.BF16,
         np.dtype("uint8"): core.VarDesc.VarType.UINT8,
+        np.dtype("uint32"): core.VarDesc.VarType.UINT32,
+        np.dtype("uint64"): core.VarDesc.VarType.UINT64,
         np.dtype("int8"): core.VarDesc.VarType.INT8,
         np.dtype("complex64"): core.VarDesc.VarType.COMPLEX64,
         np.dtype("complex128"): core.VarDesc.VarType.COMPLEX128,
@@ -1467,6 +1478,8 @@ def convert_np_dtype_to_proto_type(
         np.int64: core.VarDesc.VarType.INT64,
         np.bool_: core.VarDesc.VarType.BOOL,
         np.uint8: core.VarDesc.VarType.UINT8,
+        np.uint32: core.VarDesc.VarType.UINT32,
+        np.uint64: core.VarDesc.VarType.UINT64,
         np.int8: core.VarDesc.VarType.INT8,
         np.uint16: core.VarDesc.VarType.BF16,
         np.complex64: core.VarDesc.VarType.COMPLEX64,
@@ -1474,43 +1487,41 @@ def convert_np_dtype_to_proto_type(
     }
 
     if isinstance(np_dtype, str):
-        if np_dtype in str_to_var_type:
-            return str_to_var_type[np_dtype]
+        key = np_dtype.lower().strip()
+        if key in str_to_vartype:
+            return str_to_vartype[key]
     dtype = np.dtype(np_dtype)
 
-    if dtype in np_dtype_to_var_type:
-        return np_dtype_to_var_type[dtype]
+    if dtype in nptype_to_vartype:
+        return nptype_to_vartype[dtype]
     else:
         raise ValueError(f"Not supported numpy dtype {dtype}")
 
 
-def convert_np_dtype_to_dtype_(
+def convert_nptype_to_datatype_or_vartype(
     np_dtype: np.dtype | str | core.VarDesc.VarType | core.DataType,
 ) -> core.VarDesc.VarType | core.DataType:
     """
-    Convert the data type in numpy to the data type in Paddle.
+    Convert a dtype-like input to Paddle DataType under PIR mode, or VarType
+    under static/dygraph mode.
 
     Args:
         np_dtype (np.dtype|str): The data type in numpy or valid data type
             string.
 
     Returns:
-        core.VarDesc.VarType / core.DataType : The data type in Paddle.
+        core.DataType / core.VarDesc.VarType : The data type in Paddle.
 
     """
     if use_pir_api():
-        if isinstance(np_dtype, core.DataType):
-            return np_dtype
-        return pir.core.convert_np_dtype_to_dtype_(np_dtype)
+        return convert_to_datatype(np_dtype)
 
-    if isinstance(np_dtype, core.VarDesc.VarType):
-        return np_dtype
-    return convert_np_dtype_to_proto_type(np_dtype)
+    return convert_to_vartype(np_dtype)
 
 
-def convert_to_proto_type(dtype):
+def convert_to_vartype(dtype):
     """
-    Convert the data type in numpy to the data type in Paddle.
+    Convert a dtype-like input to Paddle VarType.
 
     Args:
         dtype (np.dtype|str|core.DataType|core.VarDesc.VarType): The data type in numpy, valid data type
@@ -1523,9 +1534,36 @@ def convert_to_proto_type(dtype):
     if isinstance(dtype, core.VarDesc.VarType):
         return dtype
     elif isinstance(dtype, core.DataType):
-        return paddle_type_to_proto_type[dtype]
+        return datatype_to_vartype[dtype]
     else:
-        return convert_np_dtype_to_proto_type(dtype)
+        return convert_nptype_to_vartype(dtype)
+
+
+def convert_to_datatype(dtype):
+    """
+    Convert a dtype-like input to Paddle PIR DataType.
+
+    Args:
+        dtype (np.dtype|str|core.DataType|core.VarDesc.VarType): The data type in numpy, valid data type
+            string or paddle dtype.
+
+    Returns:
+        core.DataType : The PIR data type in Paddle.
+
+    """
+    if isinstance(dtype, core.DataType):
+        return dtype
+    elif isinstance(dtype, core.VarDesc.VarType):
+        return pir.core.vartype_to_datatype[dtype]
+    else:
+        return pir.core.convert_nptype_to_datatype(dtype)
+
+
+# Compatibility aliases for external packages. Keep Paddle internal code using
+# the normalized conversion names above.
+convert_np_dtype_to_proto_type = convert_nptype_to_vartype
+convert_np_dtype_to_dtype_ = convert_nptype_to_datatype_or_vartype
+convert_to_proto_type = convert_to_vartype
 
 
 def dtype_is_floating(dtype):
@@ -1539,7 +1577,7 @@ def dtype_is_floating(dtype):
 
     """
     if not isinstance(dtype, core.VarDesc.VarType):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_to_vartype(dtype)
 
     return dtype in [
         core.VarDesc.VarType.FP16,
@@ -1577,7 +1615,7 @@ def _create_tensor(
     **kwargs,
 ):
     if dtype is not None:
-        dtype = convert_to_proto_type(dtype)
+        dtype = convert_to_vartype(dtype)
     else:
         dtype = core.VarDesc.VarType.FP32
 
@@ -1796,7 +1834,7 @@ class Variable(metaclass=VariableMetaClass):
                 name = self.block.program._name_generator("_generated_var")
 
         if dtype is not None:
-            dtype = convert_to_proto_type(dtype)
+            dtype = convert_to_vartype(dtype)
 
         if dtype == core.VarDesc.VarType.STRINGS:
             type = core.VarDesc.VarType.STRINGS
@@ -7838,7 +7876,7 @@ class EagerParamBase(core.eager.Tensor):
                 )
 
         if dtype is not None:
-            dtype = convert_to_proto_type(dtype)
+            dtype = convert_to_vartype(dtype)
         else:
             dtype = core.VarDesc.VarType.FP32
 
@@ -7889,7 +7927,7 @@ class EagerParamBase(core.eager.Tensor):
                     f"Each dimension of shape for Parameter must be greater than 0, but received {list(shape)}"
                 )
 
-        dtype = convert_to_proto_type(dtype)
+        dtype = convert_to_vartype(dtype)
         name = kwargs.get("name", unique_name.generate("_eager_param_base"))
 
         super().__init__(

@@ -42,7 +42,7 @@ void Layout::Verify() {
       PADDLE_ENFORCE_EQ(axis_names_.find(axis_name) == axis_names_.npos,
                         true,
                         ::common::errors::InvalidArgument(
-                            "{} has already existed.", axis_name));
+                            "%c has already existed.", axis_name));
       axis_names_ += axis_name;
     }
     int offset = 'A' - 'a';
@@ -57,7 +57,7 @@ void Layout::Verify() {
             axis_names_.find(axis_name + offset) == axis_names_.npos,
             true,
             ::common::errors::InvalidArgument(
-                "sub-axis {} finds no primal axis", axis_name));
+                "sub-axis %c finds no primal axis", axis_name));
       }
     }
   }

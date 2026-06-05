@@ -1167,10 +1167,10 @@ if '@WITH_TENSORRT@' =='ON':
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
     setup_requires = f.read().splitlines()
 
-if sys.version_info < (3, 9):
-    raise RuntimeError("Paddle only support Python version>=3.9 now")
+if sys.version_info < (3, 10):
+    raise RuntimeError("Paddle only supports Python version >= 3.10 now")
 
-if sys.version_info >= (3, 9):
+if sys.version_info >= (3, 10):
     setup_requires_tmp = []
     for setup_requires_i in setup_requires:
         if (
@@ -1183,6 +1183,8 @@ if sys.version_info >= (3, 9):
             or "<\"3.8\"" in setup_requires_i
             or '<="3.8"' in setup_requires_i
             or '<"3.9"' in setup_requires_i
+            or '<="3.9"' in setup_requires_i
+            or '<"3.10"' in setup_requires_i
             or setup_requires_i.strip().endswith(
                 '[build]'
             )  # remove `[build]` requirements
@@ -2180,7 +2182,6 @@ with redirect_stdout():
             'Intended Audience :: Science/Research',
             'License :: OSI Approved :: Apache Software License',
             'Programming Language :: C++',
-            'Programming Language :: Python :: 3.9',
             'Programming Language :: Python :: 3.10',
             'Programming Language :: Python :: 3.11',
             'Programming Language :: Python :: 3.12',

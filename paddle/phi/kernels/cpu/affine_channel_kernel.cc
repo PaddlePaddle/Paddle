@@ -62,7 +62,7 @@ void AffineChannelKernel(const Context& dev_ctx,
   auto* x_d = x->data<T>();
   auto* y_d = y->data<T>();
   if (layout == DataLayout::NCHW) {
-    int stride = C * HxW;
+    int64_t stride = static_cast<int64_t>(C) * HxW;
     for (int i = 0; i < N; i++) {
       ConstEigenArrayMap<T> x_e(x_d, HxW, C);
       EigenArrayMap<T> y_e(y_d, HxW, C);
@@ -71,7 +71,7 @@ void AffineChannelKernel(const Context& dev_ctx,
       y_d += stride;
     }
   } else {
-    int num = N * HxW;
+    int64_t num = static_cast<int64_t>(N) * HxW;
     ConstEigenArrayMap<T> x_e(x_d, C, num);
     EigenArrayMap<T> y_e(y_d, C, num);
     y_e = (x_e.colwise() * a_e).colwise() + b_e;

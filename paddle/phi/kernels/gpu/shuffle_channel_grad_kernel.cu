@@ -40,7 +40,7 @@ void ShuffleChannelGradOpCUDAKernel(const Context& dev_ctx,
 
   int blocks = NumBlocks(out_grad.numel());
   int threads = kNumCUDAThreads;
-  int count = num * group_column * group_row * sp_sz;
+  int64_t count = num * group_column * group_row * sp_sz;
 
   ShuffleChannel<T><<<blocks, threads, 0, dev_ctx.stream()>>>(count,
                                                               feature_map_size,

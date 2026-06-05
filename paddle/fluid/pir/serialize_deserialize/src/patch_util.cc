@@ -220,8 +220,8 @@ std::string YamlStringToDataLayoutString(const std::string& layout) {
   } else if (layout == "phi::DataLayout::STRIDED") {
     return "STRIDED";
   } else {
-    PADDLE_THROW(common::errors::InvalidArgument(
-        "Unknown Data Layout type ", layout, "."));
+    PADDLE_THROW(common::errors::InvalidArgument("Unknown Data Layout type %s.",
+                                                 layout));
   }
 }
 

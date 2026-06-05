@@ -22,7 +22,7 @@ import paddle
 from paddle import _C_ops
 from paddle.base.data_feeder import check_type, check_variable_and_dtype
 from paddle.base.framework import (
-    convert_np_dtype_to_dtype_,
+    convert_nptype_to_datatype_or_vartype,
     core,
     in_dynamic_or_pir_mode,
 )
@@ -259,7 +259,7 @@ def sum(
     dtype_flag = False
     if dtype is not None:
         dtype_flag = True
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
 
     if in_dynamic_or_pir_mode():
         return _C_ops.sparse_sum(x, axis, dtype, keepdim)
@@ -626,11 +626,11 @@ def cast(
     if index_dtype and not isinstance(
         index_dtype, (core.VarDesc.VarType, core.DataType)
     ):
-        index_dtype = convert_np_dtype_to_dtype_(index_dtype)
+        index_dtype = convert_nptype_to_datatype_or_vartype(index_dtype)
     if value_dtype and not isinstance(
         value_dtype, (core.VarDesc.VarType, core.DataType)
     ):
-        value_dtype = convert_np_dtype_to_dtype_(value_dtype)
+        value_dtype = convert_nptype_to_datatype_or_vartype(value_dtype)
     return _C_ops.sparse_cast(x, index_dtype, value_dtype)
 
 

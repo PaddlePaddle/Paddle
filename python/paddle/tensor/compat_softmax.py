@@ -20,7 +20,7 @@ from paddle import _C_ops
 from paddle.framework import core, in_dynamic_or_pir_mode
 from paddle.utils.decorator_utils import ForbidKeywordsIgnoreOneParamDecorator
 
-from ..base.framework import convert_np_dtype_to_dtype_
+from ..base.framework import convert_nptype_to_datatype_or_vartype
 
 if TYPE_CHECKING:
     from paddle import Tensor
@@ -174,7 +174,7 @@ def softmax(
         and (not isinstance(dtype, core.VarDesc.VarType))
         and (not isinstance(dtype, core.DataType))
     ):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
     if in_dynamic_or_pir_mode():
         outs_cast = input if dtype is None else _C_ops.cast(input, dtype)
         return _C_ops.softmax(outs_cast, dim, out=out)
@@ -254,7 +254,7 @@ def log_softmax(
         and (not isinstance(dtype, core.VarDesc.VarType))
         and (not isinstance(dtype, core.DataType))
     ):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
 
     if in_dynamic_or_pir_mode():
         outs_cast = input if dtype is None else _C_ops.cast(input, dtype)

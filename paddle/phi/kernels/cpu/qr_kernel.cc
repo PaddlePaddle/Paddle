@@ -68,9 +68,9 @@ struct QrFunctor {
     int min_mn = std::min(m, n);
     int k = reduced_mode ? min_mn : m;
     int64_t batch_size = static_cast<int64_t>(x.numel() / (m * n));
-    int x_stride = m * n;
-    int q_stride = m * k;
-    int r_stride = k * n;
+    int64_t x_stride = static_cast<int64_t>(m) * n;
+    int64_t q_stride = static_cast<int64_t>(m) * k;
+    int64_t r_stride = static_cast<int64_t>(k) * n;
     auto* x_data = x.data<dtype::Real<T>>();
     T* q_data = nullptr;
     if (compute_q) {
@@ -134,9 +134,9 @@ struct QrFunctor<dtype::complex<T>, Context> {
     int min_mn = std::min(m, n);
     int k = reduced_mode ? min_mn : m;
     int batch_size = static_cast<int>(x.numel() / (m * n));
-    int x_stride = m * n;
-    int q_stride = m * k;
-    int r_stride = k * n;
+    int64_t x_stride = static_cast<int64_t>(m) * n;
+    int64_t q_stride = static_cast<int64_t>(m) * k;
+    int64_t r_stride = static_cast<int64_t>(k) * n;
     auto* x_data = x.data<dtype::complex<T>>();
     dtype::complex<T>* q_data = nullptr;
     if (compute_q) {

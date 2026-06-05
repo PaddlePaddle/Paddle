@@ -154,7 +154,7 @@ struct OffsetCalculator {
         dims,
         MAX_DIMS,
         common::errors::InvalidArgument(
-            "Tensor has too many dims. Maximum dim is d%.", MAX_DIMS));
+            "Tensor has too many dims. Maximum dim is %d.", MAX_DIMS));
     for (int i = 0; i < dims; i++) {
       shape_[i] = IntDivider<INDEX_T>(shape[i]);
       for (int arg = 0; arg < NARGS; arg++) {

@@ -466,7 +466,8 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
       var->GetMutable<phi::SelectedRows>()->set_height(dim[0]);
     } else {
       PADDLE_THROW(common::errors::PermissionDenied(
-          "Variable type_id %s, expect DenseTensor/SelectedRows."));
+          "Variable type_id %s, expect DenseTensor/SelectedRows.",
+          framework::ToTypeName(var->Type())));
     }
   }
 

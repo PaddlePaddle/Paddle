@@ -3004,7 +3004,8 @@ DenseTensor* OperatorWithKernel::GetTensorFormInputSafely(
   PADDLE_ENFORCE_NOT_NULL(t,
                           common::errors::InvalidArgument(
                               "The DenseTensor of variable %s is nullptr "
-                              "when promote complex types."));
+                              "when promote complex types.",
+                              name));
   PADDLE_ENFORCE_EQ(
       t->IsInitialized(),
       true,

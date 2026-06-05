@@ -32,7 +32,7 @@ from paddle.base.data_feeder import (
 )
 from paddle.base.framework import (
     Variable,
-    convert_np_dtype_to_dtype_,
+    convert_nptype_to_datatype_or_vartype,
     in_dynamic_or_pir_mode,
 )
 from paddle.base.layer_helper import LayerHelper
@@ -562,7 +562,7 @@ def tdm_child(
     check_dtype(
         dtype, 'dtype', ['int32', 'int64'], 'paddle.incubate.layers.tdm_child'
     )
-    c_dtype = convert_np_dtype_to_dtype_(dtype)
+    c_dtype = convert_nptype_to_datatype_or_vartype(dtype)
     tree_info = helper.create_parameter(
         attr=helper.param_attr,
         shape=[node_nums, 3 + child_nums],
@@ -744,7 +744,7 @@ def tdm_sampler(
     check_dtype(
         dtype, 'dtype', ['int32', 'int64'], 'paddle.incubate.layers.tdm_sampler'
     )
-    c_dtype = convert_np_dtype_to_dtype_(dtype)
+    c_dtype = convert_nptype_to_datatype_or_vartype(dtype)
 
     if len(neg_samples_num_list) != len(layer_node_num_list):
         raise ValueError(

@@ -715,5 +715,36 @@ class TestIndexSelectAPI(unittest.TestCase):
                 z = paddle.repeat_interleave(x, index, axis=1, output_size=5)
 
 
+class TestRepeatInterleave_ZeroSizeRepeatsTensor(unittest.TestCase):
+    """Cover the `repeats.dims()[0] == 0` branch added to
+    paddle/phi/kernels/funcs/repeat_tensor2index_tensor.{cc,cu}.
+
+    The functor short-circuits when the repeats tensor itself is 0-sized
+    (i.e. x.shape[axis] == 0 with a Tensor-typed repeats argument).
+    """
+
+    def _check(self, repeats_dtype):
+        # InferMeta only allows 0-size repeats tensor when x is 1-D shape [0].
+        x_np = np.zeros([0], dtype="float32")
+        repeats_np = np.zeros([0], dtype=repeats_dtype)
+
+        paddle.disable_static()
+        x = paddle.to_tensor(x_np)
+        x.stop_gradient = False
+        repeats = paddle.to_tensor(repeats_np)
+        out = paddle.repeat_interleave(x, repeats, axis=0)
+        np.testing.assert_equal(out.numpy().shape, (0,))
+        # Also exercise the backward path through the functor.
+        loss = paddle.sum(out)
+        loss.backward()
+        np.testing.assert_equal(x.grad.shape, [0])
+
+    def test_zero_size_repeats_int32(self):
+        self._check(repeats_dtype="int32")
+
+    def test_zero_size_repeats_int64(self):
+        self._check(repeats_dtype="int64")
+
+
 if __name__ == '__main__':
     unittest.main()

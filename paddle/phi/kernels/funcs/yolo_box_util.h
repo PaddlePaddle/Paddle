@@ -64,12 +64,12 @@ HOSTDEVICE inline int64_t GetEntryIndex(int64_t batch,
   }
 }
 
-HOSTDEVICE inline int GetIoUIndex(int64_t batch,
-                                  int64_t an_idx,
-                                  int64_t hw_idx,
-                                  int an_num,
-                                  int64_t an_stride,
-                                  int64_t stride) {
+HOSTDEVICE inline int64_t GetIoUIndex(int64_t batch,
+                                      int64_t an_idx,
+                                      int64_t hw_idx,
+                                      int an_num,
+                                      int64_t an_stride,
+                                      int64_t stride) {
   return batch * an_num * an_stride + (batch * an_num + an_idx) * stride +
          hw_idx;
 }

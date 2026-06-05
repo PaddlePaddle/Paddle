@@ -1972,12 +1972,13 @@ void FusedDropoutAddInferMeta(const MetaTensor& x,
 static std::vector<int64_t> GetInputShape(DDim dim,
                                           std::vector<int> shape,
                                           std::vector<int> axis) {
-  PADDLE_ENFORCE_GT(dim.size(),
-                    0,
-                    common::errors::InvalidArgument(
-                        "The Input(%s) has not been initialized properly. The "
-                        "shape of Input(%s) = [%s].",
-                        dim));
+  PADDLE_ENFORCE_GT(
+      dim.size(),
+      0,
+      common::errors::InvalidArgument(
+          "The input has not been initialized properly. The shape of input = "
+          "[%s].",
+          dim));
 
   auto is_input_fused = (!shape.empty() && !axis.empty());
   if (is_input_fused) {
@@ -3537,9 +3538,8 @@ void PReluInferMeta(const MetaTensor& x,
         alpha_rank,
         x_rank,
         common::errors::InvalidArgument(
-            "For mode 'element', rank of weight Alpha must be ",
-            "equal to the rank of input(x). But received alpha's rank: %d, "
-            "x's rank: %d.",
+            "For mode 'element', rank of weight Alpha must be equal to the "
+            "rank of input(x). But received alpha's rank: %d, x's rank: %d.",
             alpha_rank,
             x_rank));
     size_t x_product = 1;
@@ -4044,7 +4044,7 @@ void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
         sequences_dims[sequences_dims.size() - 1],
         std::numeric_limits<int>::max(),
         common::errors::Unavailable(
-            "The size of sorted_sequence %d exceed the maximum limit d%. "
+            "The size of sorted_sequence %d exceed the maximum limit %d. "
             "Because the size of sorted_sequence should be less than the "
             "output maximum value for int32 bit. Please set appropriate "
             "sorted_sequence to meet this requirement! ",
@@ -4335,19 +4335,21 @@ void TakeAlongAxisInferMeta(const MetaTensor& x,
   auto input_dim = x.dims();
   auto index_dim = index.dims();
 
-  PADDLE_ENFORCE_GT(input_dim.size(),
-                    0,
-                    common::errors::InvalidArgument(
-                        "Dimension of the input(Input) of TakeAlongAxisOp "
-                        "should be greater than 0.",
-                        input_dim));
+  PADDLE_ENFORCE_GT(
+      input_dim.size(),
+      0,
+      common::errors::InvalidArgument(
+          "Dimension of the input(Input) of TakeAlongAxisOp should be greater "
+          "than 0, but received %d.",
+          input_dim.size()));
 
-  PADDLE_ENFORCE_GT(index_dim.size(),
-                    0,
-                    common::errors::InvalidArgument(
-                        "Dimension of the input(Index) of TakeAlongAxisOp "
-                        "should be greater than 0.",
-                        index_dim));
+  PADDLE_ENFORCE_GT(
+      index_dim.size(),
+      0,
+      common::errors::InvalidArgument(
+          "Dimension of the input(Index) of TakeAlongAxisOp should be greater "
+          "than 0, but received %d.",
+          index_dim.size()));
 
   out->set_dims(index_dim);
   out->set_dtype(x.dtype());

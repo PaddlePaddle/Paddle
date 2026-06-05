@@ -121,6 +121,7 @@ from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc, dygraph_utils
 from paddle.pir import Value
 from paddle.utils.decorator_utils import (
+    nansum_decorator,
     param_one_alias,
     param_two_alias,
     variadic_tensor_decorator,
@@ -136,7 +137,7 @@ from ..base.data_feeder import (
 from ..common_ops_import import Variable
 from ..framework import (
     LayerHelper,
-    convert_np_dtype_to_dtype_,
+    convert_nptype_to_datatype_or_vartype,
     core,
     in_dynamic_mode,
     in_dynamic_or_pir_mode,
@@ -1638,14 +1639,45 @@ def nan_to_num_(
     return x
 
 
+@overload
 def nansum(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
     dtype: DTypeLike | None = None,
     keepdim: bool = False,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor: ...
+
+
+@overload
+def nansum(
+    input: Tensor,
+    dim: int | Sequence[int] | None = None,
+    keepdim: bool = False,
+    *,
+    dtype: DTypeLike | None = None,
+    out: Tensor | None = None,
+) -> Tensor: ...
+
+
+@nansum_decorator()
+def nansum(
+    x: Tensor,
+    axis: int | Sequence[int] | None = None,
+    dtype: DTypeLike | None = None,
+    keepdim: bool = False,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
+    This API has two signatures:
+
+    1. ``paddle.nansum(x, axis=None, dtype=None, keepdim=False, name=None, *, out=None)`` (Paddle-style)
+    2. ``paddle.nansum(input, dim=None, keepdim=False, *, dtype=None, out=None)`` (PyTorch-style)
+
     Computes the sum of tensor elements over the given axis, treating Not a Numbers (NaNs) as zero.
 
     Args:
@@ -1725,10 +1757,10 @@ def nansum(
         paddle.core.is_compiled_with_cuda()
         or paddle.core.is_compiled_with_rocm()
     ):
-        return _C_ops.nansum(x, axis, dtype, keepdim)
+        return _C_ops.nansum(x, axis, dtype, keepdim, out=out)
     zero_tensor = paddle.zeros_like(x)
     tmp_tensor = paddle.where(isnan(x), zero_tensor, x)
-    return sum(tmp_tensor, axis, dtype, keepdim, name)
+    return sum(tmp_tensor, axis, dtype, keepdim, name, out=out)
 
 
 def nanmean(
@@ -3093,7 +3125,7 @@ def cumsum(
         ]:
             x = cast(x, "int64")
     else:
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
         if x.dtype != dtype:
             x = cast(x, dtype)
 
@@ -3149,7 +3181,7 @@ def cumsum_(
         flatten = False
     if dtype is not None:
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-            dtype = convert_np_dtype_to_dtype_(dtype)
+            dtype = convert_nptype_to_datatype_or_vartype(dtype)
         if x.dtype != dtype:
             x = cast_(x, dtype)
 
@@ -3248,7 +3280,7 @@ def cummax(
 
     check_dtype(dtype, 'dtype', ['int32', 'int64'], 'cummax')
     if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
 
     if in_dynamic_or_pir_mode():
         if out is not None:
@@ -3365,7 +3397,7 @@ def cummin(
 
     check_dtype(dtype, 'dtype', ['int32', 'int64'], 'cummin')
     if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
 
     if in_dynamic_or_pir_mode():
         if out is not None:
@@ -3464,7 +3496,9 @@ def logcumsumexp(
         flatten = True
     else:
         flatten = False
-    if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
+    if dtype is not None and x.dtype != convert_nptype_to_datatype_or_vartype(
+        dtype
+    ):
         x = cast(x, dtype)
 
     if in_dynamic_or_pir_mode():
@@ -3575,7 +3609,7 @@ def cumprod(
 
     if dtype is not None:
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-            dtype = convert_np_dtype_to_dtype_(dtype)
+            dtype = convert_nptype_to_datatype_or_vartype(dtype)
         if x.dtype != dtype:
             x = cast(x, dtype)
 
@@ -3626,7 +3660,7 @@ def cumprod_(
         x = _C_ops.flatten_(x, 0, len(x.shape) - 1)
     if dtype is not None:
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-            dtype = convert_np_dtype_to_dtype_(dtype)
+            dtype = convert_nptype_to_datatype_or_vartype(dtype)
         if x.dtype != dtype:
             x = cast_(x, dtype)
 
@@ -3744,7 +3778,7 @@ def prod(
             ],
             'prod',
         )
-        if x.dtype != convert_np_dtype_to_dtype_(dtype):
+        if x.dtype != convert_nptype_to_datatype_or_vartype(dtype):
             x = cast(x, dtype)
 
     # axis is 0-size tensor.
@@ -6605,7 +6639,10 @@ def isreal(x: Tensor, name: str | None = None) -> Tensor:
     return paddle.equal(paddle.imag(x), 0)
 
 
-def sinc(x: Tensor, name: str | None = None) -> Tensor:
+@param_one_alias(["x", "input"])
+def sinc(
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     r"""
     Calculate the normalized sinc of ``x`` elementwise.
 
@@ -6620,8 +6657,11 @@ def sinc(x: Tensor, name: str | None = None) -> Tensor:
         \right.
 
     Args:
-        x (Tensor): The input Tensor. Must be one of the following types: bfloat16, float16, float32, float64.
+        x (Tensor): The input Tensor. Must be one of the following types: bfloat16, float16, float32, float64. Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
+        out (Tensor|None, optional): The output Tensor. If set, the result will be stored in this Tensor. Default is None.
 
     Returns:
         out (Tensor), The Tensor of elementwise-computed normalized sinc result.
@@ -6657,7 +6697,8 @@ def sinc(x: Tensor, name: str | None = None) -> Tensor:
     tmp = paddle.where(x != 0, x, paddle.full_like(x, 1.0e-20))
     tmp = paddle.multiply(tmp, paddle.to_tensor(math.pi, dtype=x.dtype))
     tmp = paddle.divide(tmp.sin(), tmp)
-    return paddle.where(~paddle.isnan(tmp), tmp, paddle.full_like(x, 1.0))
+    result = paddle.where(~paddle.isnan(tmp), tmp, paddle.full_like(x, 1.0))
+    return assign(result, out) if out is not None else result
 
 
 @inplace_apis_in_dygraph_only

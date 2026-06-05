@@ -533,7 +533,7 @@ class TestMultinomialAlias(unittest.TestCase):
         ).numpy()
         self.assertEqual(np.sum(y), 102371362581)
         self.assertEqual(np.mean(y), 4998.60168852539)
-        self.assertEqual(np.std(y), 2886.316308500771)
+        self.assertEqual(np.std(y), 2886.3163085007764)
         expect = [7630, 8235, 8445, 3275, 5580, 4591, 1331, 342, 1662, 7156]
         np.testing.assert_array_equal(y[100, 0:10], expect)
 
@@ -613,14 +613,14 @@ class TestRandomValue(unittest.TestCase):
         y = paddle.multinomial(x, 20000, replacement=True).numpy()
         self.assertEqual(np.sum(y), 102371362581)
         self.assertEqual(np.mean(y), 4998.60168852539)
-        self.assertEqual(np.std(y), 2886.316308500771)
+        self.assertEqual(np.std(y), 2886.3163085007764)
         expect = [7630, 8235, 8445, 3275, 5580, 4591, 1331, 342, 1662, 7156]
         np.testing.assert_array_equal(y[100, 0:10], expect)
 
         y = paddle.multinomial(x, 20000, replacement=True).numpy()
         self.assertEqual(np.sum(y), 102400672117)
         self.assertEqual(np.mean(y), 5000.032818212891)
-        self.assertEqual(np.std(y), 2886.913426124017)
+        self.assertEqual(np.std(y), 2886.913426124019)
         expect = [4159, 7849, 9305, 5759, 4422, 122, 345, 2897, 5200, 5911]
         np.testing.assert_array_equal(y[100, 0:10], expect)
 

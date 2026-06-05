@@ -27,13 +27,13 @@ namespace phi {
 static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaximumNumBlocks = 4096;
 
-static inline int NumBlocks(const int N) {
-  return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
+static inline int NumBlocks(const int64_t N) {
+  return std::min(static_cast<int>((N + kNumCUDAThreads - 1) / kNumCUDAThreads),
                   kNumMaximumNumBlocks);
 }
 
 template <typename T>
-__global__ void GPUPSROIPoolForward(const int nthreads,
+__global__ void GPUPSROIPoolForward(const int64_t nthreads,
                                     const T* input_data,
                                     const T* input_rois,
                                     const float spatial_scale,
@@ -48,8 +48,8 @@ __global__ void GPUPSROIPoolForward(const int nthreads,
   int64_t index =
       static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
       static_cast<int64_t>(threadIdx.x);
-  int offset = blockDim.x * gridDim.x;
-  for (size_t i = index; i < nthreads; i += offset) {
+  const int64_t offset = static_cast<int64_t>(blockDim.x) * gridDim.x;
+  for (int64_t i = index; i < nthreads; i += offset) {
     // The output is in order (n, c, ph, pw)
     int pw = i % pooled_width;
     int ph = (i / pooled_width) % pooled_height;
@@ -88,10 +88,12 @@ __global__ void GPUPSROIPoolForward(const int nthreads,
     wend = min(max(wend, 0), width);
     bool is_empty = (hend <= hstart) || (wend <= wstart);
 
-    int input_channel = (c * pooled_height + ph) * pooled_width + pw;
-    const T* offset_input_data =
-        input_data +
-        (roi_batch_id * input_channels + input_channel) * height * width;
+    int64_t input_channel =
+        (static_cast<int64_t>(c) * pooled_height + ph) * pooled_width + pw;
+    const int64_t input_offset =
+        (static_cast<int64_t>(roi_batch_id) * input_channels + input_channel) *
+        height * width;
+    const T* offset_input_data = input_data + input_offset;
     T outsum = 0;
 
     for (int ih = hstart; ih < hend; ++ih) {
@@ -191,9 +193,9 @@ void PsroiPoolKernel(const Context& dev_ctx,
                       rois_num_with_lod,
                       errors::InvalidArgument(
                           "The number of rois from input(ROIs) and its LOD "
-                          "must be the same. Received rois %d of input(ROIs) "
-                          "but the number of rois %d from its LOD is %d",
-                          rois_num,
+                          "must be the same. Received rois %d of input(ROIs), "
+                          "but the number of rois from its LOD is %d.",
+                          rois_num_t,
                           rois_num_with_lod));
 
     // set rois batch id

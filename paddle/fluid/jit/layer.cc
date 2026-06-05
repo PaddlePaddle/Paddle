@@ -76,17 +76,17 @@ std::vector<std::string> Layer::FunctionNames() const {
   return names;
 }
 
-#define PD_SPECIALIZE_ATTRIBUTE_TYPE(T)                               \
-  template <>                                                         \
-  T Layer::Attribute<T>(const std::string& name) const {              \
-    if (attrs_map_->find(name) == attrs_map_->end()) {                \
-      PADDLE_THROW(common::errors::NotFound(                          \
-          "Attribute can not found %s, please check if it exists.")); \
-      return T();                                                     \
-    }                                                                 \
-    auto var = attrs_map_->at(name);                                  \
-    T ret = var->Get<T>();                                            \
-    return ret;                                                       \
+#define PD_SPECIALIZE_ATTRIBUTE_TYPE(T)                                     \
+  template <>                                                               \
+  T Layer::Attribute<T>(const std::string& name) const {                    \
+    if (attrs_map_->find(name) == attrs_map_->end()) {                      \
+      PADDLE_THROW(common::errors::NotFound(                                \
+          "Attribute can not found %s, please check if it exists.", name)); \
+      return T();                                                           \
+    }                                                                       \
+    auto var = attrs_map_->at(name);                                        \
+    T ret = var->Get<T>();                                                  \
+    return ret;                                                             \
   }
 
 PD_SPECIALIZE_ATTRIBUTE_TYPE(int)

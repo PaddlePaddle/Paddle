@@ -87,9 +87,9 @@ SpmdInfo Conv2dTransposeInferSpmd(const DistMetaTensor& input,
                         "The Input channel's dims mapping must be equal to "
                         "filter channel's dims mapping in conv2d_transpose. "
                         "When shard channel dim to a mesh (multiple cards), "
-                        "each card will compute partial output, ",
+                        "each card will compute partial output, "
                         "otherwise, mark channel dim as replicate, each card "
-                        "will compute complete output.",
+                        "will compute complete output. "
                         "But now the Input channel's dims mapping is [%d], and "
                         "the filter channel's dims mapping is [%d].",
                         input_dims_mapping[input_channel_dim],

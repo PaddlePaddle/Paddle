@@ -575,11 +575,72 @@ if(WITH_CUSPARSELT)
   list(APPEND third_party_deps extern_cusparselt)
 endif()
 
-string(FIND "${CUDA_ARCH_BIN}" "90" ARCH_BIN_CONTAINS_90)
-if(NOT WITH_GPU
-   OR NOT WITH_DISTRIBUTE
-   OR (ARCH_BIN_CONTAINS_90 EQUAL -1))
-  set(WITH_NVSHMEM OFF)
+set(FLASHATTN_ENABLED OFF)
+if(WITH_ROCM)
+  set(FLASHATTN_ENABLED ON)
+endif()
+
+if(WITH_GPU
+   AND NOT WITH_ARM
+   AND NOT WIN32
+   AND NOT APPLE)
+  if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 12.3
+     AND ${CMAKE_CUDA_COMPILER_VERSION} LESS_EQUAL 13.0)
+    foreach(arch ${NVCC_ARCH_BIN})
+      if(${arch} GREATER_EQUAL 90)
+        set(WITH_FLASHATTN_V3 ON)
+        break()
+      endif()
+    endforeach()
+    foreach(arch ${NVCC_ARCH_BIN})
+      if(${arch} GREATER_EQUAL 80)
+        set(FLASHATTN_ENABLED ON)
+        break()
+      endif()
+    endforeach()
+  elseif(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.4)
+    foreach(arch ${NVCC_ARCH_BIN})
+      if(${arch} GREATER_EQUAL 80)
+        set(FLASHATTN_ENABLED ON)
+        break()
+      endif()
+    endforeach()
+  endif()
+endif()
+
+set(ARCH_BIN_CONTAINS_90 -1)
+foreach(arch ${NVCC_ARCH_BIN})
+  if(${arch} GREATER_EQUAL 90)
+    set(ARCH_BIN_CONTAINS_90 0)
+    break()
+  endif()
+endforeach()
+
+set(WITH_NVSHMEM_USER_DEFINED OFF)
+if(DEFINED CACHE{WITH_NVSHMEM} AND WITH_NVSHMEM)
+  set(WITH_NVSHMEM_USER_DEFINED ON)
+endif()
+
+set(NVSHMEM_AVAILABLE ON)
+if(NOT WITH_XPU)
+  if(NOT WITH_GPU
+     OR NOT WITH_DISTRIBUTE
+     OR (ARCH_BIN_CONTAINS_90 EQUAL -1)
+     OR NOT FLASHATTN_ENABLED)
+    set(NVSHMEM_AVAILABLE OFF)
+  endif()
+endif()
+
+if(WITH_NVSHMEM AND NOT NVSHMEM_AVAILABLE)
+  if(WITH_NVSHMEM_USER_DEFINED)
+    message(
+      FATAL_ERROR
+        "For non-XPU builds, WITH_NVSHMEM=ON requires WITH_GPU=ON, "
+        "WITH_DISTRIBUTE=ON, NVCC_ARCH_BIN containing sm90 or higher, "
+        "and FLASHATTN_ENABLED=ON.")
+  else()
+    set(WITH_NVSHMEM OFF)
+  endif()
 endif()
 if(WITH_SLEEF
    AND NOT WITH_ROCM
@@ -594,42 +655,10 @@ if(WITH_NVSHMEM)
   list(APPEND third_party_deps extern_nvshmem)
 endif()
 
-if(WITH_ROCM)
+if(FLASHATTN_ENABLED)
   include(external/flashattn)
   list(APPEND third_party_deps extern_flashattn)
   set(WITH_FLASHATTN ON)
-endif()
-
-if(WITH_GPU
-   AND NOT WITH_ARM
-   AND NOT WIN32
-   AND NOT APPLE)
-  if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 12.3
-     AND ${CMAKE_CUDA_COMPILER_VERSION} LESS_EQUAL 12.9)
-    foreach(arch ${NVCC_ARCH_BIN})
-      if(${arch} GREATER_EQUAL 90)
-        set(WITH_FLASHATTN_V3 ON)
-        break()
-      endif()
-    endforeach()
-    foreach(arch ${NVCC_ARCH_BIN})
-      if(${arch} GREATER_EQUAL 80)
-        include(external/flashattn)
-        list(APPEND third_party_deps extern_flashattn)
-        set(WITH_FLASHATTN ON)
-        break()
-      endif()
-    endforeach()
-  elseif(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.4)
-    foreach(arch ${NVCC_ARCH_BIN})
-      if(${arch} GREATER_EQUAL 80)
-        include(external/flashattn)
-        list(APPEND third_party_deps extern_flashattn)
-        set(WITH_FLASHATTN ON)
-        break()
-      endif()
-    endforeach()
-  endif()
 endif()
 
 if(WITH_CUDNN_FRONTEND)

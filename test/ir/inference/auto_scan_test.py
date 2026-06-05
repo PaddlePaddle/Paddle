@@ -38,8 +38,17 @@ from paddle import pir
 from paddle.base.core import PassVersionChecker
 from paddle.static.log_helper import get_logger
 
-# windows and xpu not support tensorrt
-if os.name != 'nt' and (not os.getenv('WITH_XPU')):
+Input = PrecisionMode = TensorRTConfig = convert_to_trt = None
+
+
+def _lazy_import_tensorrt_export():
+    global Input, PrecisionMode, TensorRTConfig, convert_to_trt
+    if convert_to_trt is not None:
+        return
+    if os.name == 'nt' or os.getenv('WITH_XPU'):
+        raise RuntimeError(
+            "TensorRT export is not supported on Windows or XPU."
+        )
     try:
         from paddle.tensorrt.export import (
             Input,
@@ -47,8 +56,9 @@ if os.name != 'nt' and (not os.getenv('WITH_XPU')):
             TensorRTConfig,
             convert_to_trt,
         )
-    except ImportError:
-        raise RuntimeError("TensorRT package is not available.")
+    except ImportError as exc:
+        raise RuntimeError("TensorRT package is not available.") from exc
+
 
 LOGLEVEL = os.environ.get("PADDLE_TEST_LOGLEVEL", "INFO").upper()
 logging = get_logger(
@@ -167,6 +177,7 @@ class AutoScanTest(unittest.TestCase):
         return result
 
     def transform_to_trt_program(self, pir_program, trt_config):
+        _lazy_import_tensorrt_export()
         if trt_config.input_data_type == 'float16':
             trt_config.precision_mode = PrecisionMode.FP16
 
@@ -830,6 +841,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
             if not self.is_program_valid(prog_config):
                 continue
             if run_pir and os.name != 'nt' and (not os.getenv('WITH_XPU')):
+                _lazy_import_tensorrt_export()
                 # get pir program from old program
                 main_program_desc, util_program = create_fake_model(
                     prog_config, run_pir=True
