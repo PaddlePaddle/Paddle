@@ -480,8 +480,13 @@ void DistributedFusedLambInitOpKernel(
       ReorderParamGradInfoList(apply_weight_decay, &fp16_infos);
 
   auto param_num = fp32_infos.size() + fp16_infos.size();
-  PADDLE_ENFORCE_LE_INT_MAX(param_num,
-                            "distributed_fused_lamb parameter count");
+  PADDLE_ENFORCE_LE(
+      param_num,
+      static_cast<size_t>(std::numeric_limits<int16_t>::max()),
+      common::errors::InvalidArgument(
+          "The parameter count of distributed_fused_lamb should be <= "
+          "INT16_MAX, but got %zu.",
+          param_num));
   param_order->Resize({static_cast<int16_t>(param_num)});
   auto *param_order_t = dev_ctx.template HostAlloc<int>(param_order);
   for (size_t i = 0; i < fp32_infos.size(); ++i) {

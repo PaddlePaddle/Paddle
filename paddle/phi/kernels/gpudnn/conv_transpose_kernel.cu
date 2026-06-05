@@ -117,17 +117,17 @@ void ConvTransposeCudnnKernelImplV7(const DenseTensor* transformed_x,
 #endif
 
   // ------------------- cudnn conv transpose forward ---------------------
-  int64_t x_offset64 =
+  int64_t x_offset_64 =
       transformed_x->numel() / transformed_x->dims()[0] / groups;
-  int64_t out_offset64 =
+  int64_t out_offset_64 =
       transformed_out->numel() / transformed_out->dims()[0] / groups;
-  int64_t filter_offset64 = filter->numel() / groups;
-  PADDLE_ENFORCE_LE_INT_MAX(x_offset64, "x_offset");
-  PADDLE_ENFORCE_LE_INT_MAX(out_offset64, "out_offset");
-  PADDLE_ENFORCE_LE_INT_MAX(filter_offset64, "filter_offset");
-  int x_offset = static_cast<int>(x_offset64);
-  int out_offset = static_cast<int>(out_offset64);
-  int filter_offset = static_cast<int>(filter_offset64);
+  int64_t filter_offset_64 = filter->numel() / groups;
+  PADDLE_ENFORCE_LE_INT_MAX(x_offset_64, "x_offset");
+  PADDLE_ENFORCE_LE_INT_MAX(out_offset_64, "out_offset");
+  PADDLE_ENFORCE_LE_INT_MAX(filter_offset_64, "filter_offset");
+  int x_offset = static_cast<int>(x_offset_64);
+  int out_offset = static_cast<int>(out_offset_64);
+  int filter_offset = static_cast<int>(filter_offset_64);
   ScalingParamType<T> alpha = 1.0f;
   ScalingParamType<T> beta = 0.0f;
   auto workspace_handle = dev_ctx.cudnn_workspace_handle();

@@ -288,16 +288,16 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& dev_ctx,
 
   // ------------------- cudnn conv backward data ---------------------
   // FIxME(typhoonzero): template type T may not be the same as cudnn call.
-  int64_t x_offset64 = x.numel() / x.dims()[0] / groups;
-  int64_t dout_offset64 =
+  int64_t x_offset_64 = x.numel() / x.dims()[0] / groups;
+  int64_t dout_offset_64 =
       transformed_dout.numel() / transformed_dout.dims()[0] / groups;
-  int64_t filter_offset64 = filter.numel() / groups;
-  PADDLE_ENFORCE_LE_INT_MAX(x_offset64, "x_offset");
-  PADDLE_ENFORCE_LE_INT_MAX(dout_offset64, "dout_offset");
-  PADDLE_ENFORCE_LE_INT_MAX(filter_offset64, "filter_offset");
-  int x_offset = static_cast<int>(x_offset64);
-  int dout_offset = static_cast<int>(dout_offset64);
-  int filter_offset = static_cast<int>(filter_offset64);
+  int64_t filter_offset_64 = filter.numel() / groups;
+  PADDLE_ENFORCE_LE_INT_MAX(x_offset_64, "x_offset");
+  PADDLE_ENFORCE_LE_INT_MAX(dout_offset_64, "dout_offset");
+  PADDLE_ENFORCE_LE_INT_MAX(filter_offset_64, "filter_offset");
+  int x_offset = static_cast<int>(x_offset_64);
+  int dout_offset = static_cast<int>(dout_offset_64);
+  int filter_offset = static_cast<int>(filter_offset_64);
   ScalingParamType<T> alpha = 1.0f;
   ScalingParamType<T> beta = 0.0f;
   auto workspace_handle = dev_ctx.cudnn_workspace_handle();

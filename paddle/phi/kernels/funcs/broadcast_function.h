@@ -442,18 +442,18 @@ void LaunchBroadcastKernel(
     const BroadcastTypeClassifier<OutT, Functor, Arity, NumOuts> &classifier,
     Functor func) {
 #ifdef PADDLE_WITH_XPU_KP
-  const int64_t numel64 = classifier.numel;
-  PADDLE_ENFORCE_LE_UINT32_MAX(numel64, "broadcast numel");
-  const uint32_t numel = static_cast<uint32_t>(numel64);
+  const int64_t numel_64 = classifier.numel;
+  PADDLE_ENFORCE_LE_UINT32_MAX(numel_64, "broadcast numel");
+  const uint32_t numel = static_cast<uint32_t>(numel_64);
   const int threads = 64;
   const int blocks = 8;
   int read_lens = configs[0].buf_len;
   auto stream = dev_ctx.x_context()->xpu_stream;
   const int64_t block_len = static_cast<int64_t>(read_lens) * threads;
-  const int64_t main_offset64 = (numel64 / block_len) * block_len;
-  const int64_t tail_tid64 = numel64 % block_len;
-  const uint32_t main_offset = static_cast<uint32_t>(main_offset64);
-  const uint32_t tail_tid = static_cast<uint32_t>(tail_tid64);
+  const int64_t main_offset_64 = (numel_64 / block_len) * block_len;
+  const int64_t tail_tid_64 = numel_64 % block_len;
+  const uint32_t main_offset = static_cast<uint32_t>(main_offset_64);
+  const uint32_t tail_tid = static_cast<uint32_t>(tail_tid_64);
 
   VectorizedBroadcastKernel<Functor, OutT, Arity, NumOuts, VecSize, false>
       <<<blocks, threads, 0, stream>>>(classifier.ins_data,
@@ -473,12 +473,12 @@ void LaunchBroadcastKernel(
   uint32_t threads = static_cast<uint32_t>(gpu_config.GetBlockSize());
   auto blocks = gpu_config.block_per_grid;
   PADDLE_ENFORCE_LE_UINT32_MAX(numel, "numel");
-  const uint32_t numel_u32 = static_cast<uint32_t>(numel);
+  const uint32_t numel_32 = static_cast<uint32_t>(numel);
   const int64_t block_len = static_cast<int64_t>(VecSize) * threads;
-  const int64_t main_offset64 = (numel / block_len) * block_len;
-  const int64_t tail_tid64 = numel % block_len;
-  uint32_t main_offset = static_cast<uint32_t>(main_offset64);
-  uint32_t tail_tid = static_cast<uint32_t>(tail_tid64);
+  const int64_t main_offset_64 = (numel / block_len) * block_len;
+  const int64_t tail_tid_64 = numel % block_len;
+  uint32_t main_offset = static_cast<uint32_t>(main_offset_64);
+  uint32_t tail_tid = static_cast<uint32_t>(tail_tid_64);
 
   if (classifier.all_elementwise) {
     VectorizedBroadcastKernel<Functor,
@@ -490,7 +490,7 @@ void LaunchBroadcastKernel(
         <<<blocks, threads, 0, stream>>>(classifier.ins_data,
                                          classifier.outs_data,
                                          classifier.use_broadcast,
-                                         numel_u32,
+                                         numel_32,
                                          classifier.configs,
                                          main_offset,
                                          tail_tid,
@@ -502,7 +502,7 @@ void LaunchBroadcastKernel(
         <<<blocks, threads, 0, stream>>>(classifier.ins_data,
                                          classifier.outs_data,
                                          classifier.use_broadcast,
-                                         numel_u32,
+                                         numel_32,
                                          classifier.configs,
                                          main_offset,
                                          tail_tid,
@@ -513,7 +513,7 @@ void LaunchBroadcastKernel(
         <<<blocks, threads, 0, stream>>>(classifier.ins_data,
                                          classifier.outs_data,
                                          classifier.use_broadcast,
-                                         numel_u32,
+                                         numel_32,
                                          classifier.configs,
                                          main_offset,
                                          tail_tid,

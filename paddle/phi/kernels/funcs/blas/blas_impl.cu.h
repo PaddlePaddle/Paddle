@@ -2916,7 +2916,7 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
       (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
   cublasOperation_t cuTransB =
       (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
-  const int64_t strideC = static_int<int64_t>(M) * N;
+  const int64_t strideC = M * N;
 
   float h_alpha = alpha;
   float h_beta = beta;

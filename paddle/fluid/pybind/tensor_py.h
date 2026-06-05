@@ -24,7 +24,6 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/common/enforce.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/pybind/complex.h"
@@ -709,9 +708,7 @@ void _sliceCompute(const DenseTensor *in,
   for (size_t i = 0; i < axes.size(); ++i) {
     start = starts[i];
     if (start < 0) {
-      const int64_t slice_start = start + in_dims[axes[i]];
-      PADDLE_ENFORCE_LE_INT_MAX(slice_start, "slice start");
-      start = static_cast<int>(slice_start);
+      start = (start + in_dims[axes[i]]);
     }
     start = std::max(start, 0);
     offsets[axes[i]] = start;

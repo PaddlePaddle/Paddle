@@ -734,11 +734,11 @@ inline size_t smem_size_in_bytes(
                            stream,                                            \
                            load_func,                                         \
                            store_func)                                        \
-  size_t smem_sz = smem_size_in_bytes<T, SPLIT>(                              \
+  size_t smem_sz_size = smem_size_in_bytes<T, SPLIT>(                         \
       params, Dh, THDS_PER_VALUE, THDS_PER_BLOCK);                            \
-  PADDLE_ENFORCE_LE_INT_MAX(smem_sz,                                          \
+  PADDLE_ENFORCE_LE_INT_MAX(smem_sz_size,                                     \
                             "masked_multihead_attention shared memory size"); \
-  int smem_sz_int = static_cast<int>(smem_sz);                                \
+  int smem_sz = static_cast<int>(smem_sz_size);                               \
   constexpr auto kernel_fn =                                                  \
       masked_multihead_attention_kernel<T,                                    \
                                         Dh,                                   \
@@ -749,12 +749,12 @@ inline size_t smem_size_in_bytes(
                                         decltype(load_func),                  \
                                         decltype(store_func),                 \
                                         SPLIT>;                               \
-  if (smem_sz > 0xc000) {                                                     \
+  if (smem_sz_size > 0xc000) {                                                \
     cudaFuncSetAttribute(                                                     \
-        kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_sz_int); \
+        kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_sz);     \
   }                                                                           \
   dim3 grid(params.split_seq, params.num_head, params.batch_size);            \
-  kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz_int, stream>>>(                   \
+  kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                       \
       params, load_func, store_func)
 
 template <typename T,

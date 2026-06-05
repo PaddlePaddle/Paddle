@@ -325,9 +325,9 @@ void InstanceNormGradKernel(const Context &dev_ctx,
 
   int N, C, H, W, D;
   funcs::ExtractNCWHD(x_dims, DataLayout::NCHW, &N, &C, &H, &W, &D);
-  const int64_t NxC64 = static_cast<int64_t>(N) * C;
-  PADDLE_ENFORCE_LE_INT_MAX(NxC64, "NxC");
-  const int NxC = static_cast<int>(NxC64);
+  const int64_t NxC_64 = static_cast<int64_t>(N) * C;
+  PADDLE_ENFORCE_LE_INT_MAX(NxC_64, "NxC");
+  const int NxC = static_cast<int>(NxC_64);
 
   DenseTensor x_tmp, d_y_tmp;
   x_tmp.ShareDataWith(x).Resize({1, NxC, H, W, D});
@@ -401,9 +401,9 @@ void InstanceNormGradKernel(const Context &dev_ctx,
   }
   std::vector<int> dims;
   std::vector<int> strides;
-  const int64_t sample_size64 = static_cast<int64_t>(H) * W * D;
-  const int64_t stride0 = NxC64 * sample_size64;
-  const int64_t stride1 = sample_size64;
+  const int64_t sample_size_64 = static_cast<int64_t>(H) * W * D;
+  const int64_t stride0 = NxC_64 * sample_size_64;
+  const int64_t stride1 = sample_size_64;
   const int64_t stride2 = static_cast<int64_t>(W) * D;
   PADDLE_ENFORCE_LE_INT_MAX(stride0, "cudnn tensor descriptor stride0");
   PADDLE_ENFORCE_LE_INT_MAX(stride1, "cudnn tensor descriptor stride1");
@@ -519,7 +519,7 @@ void InstanceNormGradKernel(const Context &dev_ctx,
           x.data<T>(),
           saved_var_data,
           C,
-          sample_size64,
+          sample_size_64,
           d_x->data<T>());
     }
   }
@@ -578,9 +578,9 @@ void InstanceNormDoubleGradKernel(const Context &dev_ctx,
   auto &x_dims = x.dims();
   int N, C, H, W, D;
   funcs::ExtractNCWHD(x_dims, DataLayout::NCHW, &N, &C, &H, &W, &D);
-  const int64_t NxC64 = static_cast<int64_t>(N) * C;
-  PADDLE_ENFORCE_LE_INT_MAX(NxC64, "NxC");
-  const int NxC = static_cast<int>(NxC64);
+  const int64_t NxC_64 = static_cast<int64_t>(N) * C;
+  PADDLE_ENFORCE_LE_INT_MAX(NxC_64, "NxC");
+  const int NxC = static_cast<int>(NxC_64);
   const int64_t n = x.numel();
   int64_t sample_size = n / N / C;
 

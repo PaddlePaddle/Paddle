@@ -117,9 +117,9 @@ class Unpool2dMaxFunctor {
     int output_width_int = static_cast<int>(output_width);
     int threads = 1024;
     int64_t grid_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
-    int64_t grid64 =
+    int64_t grid_64 =
         std::min((input.numel() + threads - 1) / threads, grid_max);
-    uint32_t grid = static_cast<uint32_t>(grid64);
+    uint32_t grid = static_cast<uint32_t>(grid_64);
     KernelUnpool2dMax<T, IndT>
         <<<grid, threads, 0, dev_ctx.stream()>>>(input.numel(),
                                                  input_data,
@@ -195,9 +195,9 @@ class Unpool3dMaxFunctor {
     int output_width_int = static_cast<int>(output_width);
     int threads = 1024;
     int64_t grid_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
-    int64_t grid64 =
+    int64_t grid_64 =
         std::min((input.numel() + threads - 1) / threads, grid_max);
-    uint32_t grid = static_cast<uint32_t>(grid64);
+    uint32_t grid = static_cast<uint32_t>(grid_64);
     KernelUnpool3dMax<T, IndT>
         <<<grid, threads, 0, dev_ctx.stream()>>>(input.numel(),
                                                  input_data,

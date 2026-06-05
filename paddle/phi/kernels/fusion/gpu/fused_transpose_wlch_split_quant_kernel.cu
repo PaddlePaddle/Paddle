@@ -252,13 +252,13 @@ void FusedTransposeWLCHSplitQuantKernel(
 
   // Launch kernel
   auto stream = dev_ctx.stream();
-  int64_t grid_x64 = W * L * C / 128;
-  int64_t grid_y64 = (H + 127) / 128;
-  PADDLE_ENFORCE_LE_UINT32_MAX(grid_x64,
+  int64_t grid_x_64 = W * L * C / 128;
+  int64_t grid_y_64 = (H + 127) / 128;
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_x_64,
                                "fused_transpose_wlch_split_quant grid.x");
-  PADDLE_ENFORCE_LE_UINT32_MAX(grid_y64,
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_y_64,
                                "fused_transpose_wlch_split_quant grid.y");
-  dim3 grid(static_cast<uint32_t>(grid_x64), static_cast<uint32_t>(grid_y64));
+  dim3 grid(static_cast<uint32_t>(grid_x_64), static_cast<uint32_t>(grid_y_64));
   dim3 block(32, 16);
 
   const __nv_bfloat16* x_ptr =

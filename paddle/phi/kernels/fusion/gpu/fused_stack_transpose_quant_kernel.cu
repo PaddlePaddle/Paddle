@@ -198,9 +198,9 @@ void FusedStackTransposeQuantImpl(const Context& dev_ctx,
                                   bool transpose,
                                   DenseTensor* out,
                                   DenseTensor* scale) {
-  const size_t N64 = x.size();
-  PADDLE_ENFORCE_LE_INT_MAX(N64, "fused_stack_transpose_quant input count");
-  const int N = static_cast<int>(N64);
+  const size_t N_64 = x.size();
+  PADDLE_ENFORCE_LE_INT_MAX(N_64, "fused_stack_transpose_quant input count");
+  const int N = static_cast<int>(N_64);
 
   // zero sized tensor case
   if (x[0]->numel() == 0) {
@@ -212,10 +212,10 @@ void FusedStackTransposeQuantImpl(const Context& dev_ctx,
   int64_t M = x[0]->dims()[0];
   int64_t K = x[0]->dims()[1];
 
-  int64_t grid_x64 = (M / 128) * (K / 128);
-  PADDLE_ENFORCE_LE_UINT32_MAX(grid_x64, "fused_stack_transpose_quant grid.x");
+  int64_t grid_x_64 = (M / 128) * (K / 128);
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_x_64, "fused_stack_transpose_quant grid.x");
   PADDLE_ENFORCE_LE_UINT32_MAX(N, "fused_stack_transpose_quant grid.z");
-  dim3 grid(static_cast<uint32_t>(grid_x64), 1, static_cast<uint32_t>(N));
+  dim3 grid(static_cast<uint32_t>(grid_x_64), 1, static_cast<uint32_t>(N));
   dim3 block(32, 16);
   auto* out_data = dev_ctx.template Alloc<phi::float8_e4m3fn>(out);
   auto* scale_data = dev_ctx.template Alloc<float>(scale);

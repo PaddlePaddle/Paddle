@@ -135,8 +135,8 @@ void TemporalShiftGradKernel(const Context& dev_ctx,
   int64_t grid = (pixelNum + threads - 1) / threads;
   int64_t blocks_per_sm = dev_ctx.GetMaxPhysicalThreadCount() / threads;
   grid = std::min(dev_ctx.GetSMCount() * blocks_per_sm, grid);
-  const uint32_t grid_u32 = static_cast<uint32_t>(grid);
-  const uint32_t threads_u32 = static_cast<uint32_t>(threads);
+  const uint32_t grid_32 = static_cast<uint32_t>(grid);
+  const uint32_t threads_32 = static_cast<uint32_t>(threads);
 
   if (data_layout == DataLayout::NCHW) {
     if (output_grad->numel() < std::numeric_limits<int32_t>::max()) {
@@ -147,7 +147,7 @@ void TemporalShiftGradKernel(const Context& dev_ctx,
       PADDLE_ENFORCE_LE_INT_MAX(c1, "c1");
       PADDLE_ENFORCE_LE_INT_MAX(c2, "c2");
       KeTemporalShiftBwNCHW<T, int32_t>
-          <<<grid_u32, threads_u32, 0, dev_ctx.stream()>>>(
+          <<<grid_32, threads_32, 0, dev_ctx.stream()>>>(
               output_grad_data,
               input_grad_data,
               static_cast<int32_t>(ntchw),
@@ -159,15 +159,15 @@ void TemporalShiftGradKernel(const Context& dev_ctx,
               static_cast<int32_t>(c2));
     } else {
       KeTemporalShiftBwNCHW<T, int64_t>
-          <<<grid_u32, threads_u32, 0, dev_ctx.stream()>>>(output_grad_data,
-                                                           input_grad_data,
-                                                           ntchw,
-                                                           tchw,
-                                                           chw,
-                                                           hw,
-                                                           t,
-                                                           c1,
-                                                           c2);
+          <<<grid_32, threads_32, 0, dev_ctx.stream()>>>(output_grad_data,
+                                                         input_grad_data,
+                                                         ntchw,
+                                                         tchw,
+                                                         chw,
+                                                         hw,
+                                                         t,
+                                                         c1,
+                                                         c2);
     }
   } else {
     if (output_grad->numel() < std::numeric_limits<int32_t>::max()) {
@@ -178,7 +178,7 @@ void TemporalShiftGradKernel(const Context& dev_ctx,
       PADDLE_ENFORCE_LE_INT_MAX(c1, "c1");
       PADDLE_ENFORCE_LE_INT_MAX(c2, "c2");
       KeTemporalShiftBwNHWC<T, int32_t>
-          <<<grid_u32, threads_u32, 0, dev_ctx.stream()>>>(
+          <<<grid_32, threads_32, 0, dev_ctx.stream()>>>(
               output_grad_data,
               input_grad_data,
               static_cast<int32_t>(ntchw),
@@ -190,15 +190,15 @@ void TemporalShiftGradKernel(const Context& dev_ctx,
               static_cast<int32_t>(c2));
     } else {
       KeTemporalShiftBwNHWC<T, int64_t>
-          <<<grid_u32, threads_u32, 0, dev_ctx.stream()>>>(output_grad_data,
-                                                           input_grad_data,
-                                                           ntchw,
-                                                           tchw,
-                                                           chw,
-                                                           t,
-                                                           c,
-                                                           c1,
-                                                           c2);
+          <<<grid_32, threads_32, 0, dev_ctx.stream()>>>(output_grad_data,
+                                                         input_grad_data,
+                                                         ntchw,
+                                                         tchw,
+                                                         chw,
+                                                         t,
+                                                         c,
+                                                         c1,
+                                                         c2);
     }
   }
 }

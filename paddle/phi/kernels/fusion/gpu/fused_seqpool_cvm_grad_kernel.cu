@@ -264,9 +264,9 @@ void FusedSeqpoolCVMGradCUDAKernel(
   std::vector<const T *> cvm_data(slot_size);
   std::vector<const size_t *> lods_data(slot_size);
 
-  int64_t embedding_size64 = in_grads[0]->numel() / in_grads[0]->dims()[0];
-  PADDLE_ENFORCE_LE_INT_MAX(embedding_size64, "embedding_size");
-  int embedding_size = static_cast<int>(embedding_size64);
+  int64_t embedding_size_64 = in_grads[0]->numel() / in_grads[0]->dims()[0];
+  PADDLE_ENFORCE_LE_INT_MAX(embedding_size_64, "embedding_size");
+  int embedding_size = static_cast<int>(embedding_size_64);
   int batch_size = -1;
   std::vector<phi::MixVector<size_t> *> mix_lods_v(slot_size);
 

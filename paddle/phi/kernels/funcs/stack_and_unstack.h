@@ -96,13 +96,13 @@ void StackRawKernel(const Context& dev_ctx,
   int64_t out_col = x_col * num;
 
   if (out->numel() < std::numeric_limits<int32_t>::max()) {
-    const int32_t x_col_i32 = static_cast<int32_t>(x_col);
-    const int32_t x_row_i32 = static_cast<int32_t>(x_row);
-    const int32_t out_col_i32 = static_cast<int32_t>(out_col);
+    const int32_t x_col_32 = static_cast<int32_t>(x_col);
+    const int32_t x_row_32 = static_cast<int32_t>(x_row);
+    const int32_t out_col_32 = static_cast<int32_t>(out_col);
     switch (CalcArraySize(num)) {
       SEGMENTED_ARRAY_KERNEL_HELPER(
           LaunchStackKernel<Context, T, int32_t, kArraySize>(
-              dev_ctx, x_col_i32, x_row_i32, out_col_i32, x, out));
+              dev_ctx, x_col_32, x_row_32, out_col_32, x, out));
     }
   } else {
     switch (CalcArraySize(num)) {
@@ -289,16 +289,16 @@ void UnStackRawKernel(const Context& dev_ctx,
   int64_t out_col = x.numel() / (split_dim * out_row);
 
   if (x.numel() < std::numeric_limits<int32_t>::max()) {
-    const int32_t out_row_i32 = static_cast<int32_t>(out_row);
-    const int32_t split_dim_i32 = static_cast<int32_t>(split_dim);
-    const int32_t out_col_i32 = static_cast<int32_t>(out_col);
+    const int32_t out_row_32 = static_cast<int32_t>(out_row);
+    const int32_t split_dim_32 = static_cast<int32_t>(split_dim);
+    const int32_t out_col_32 = static_cast<int32_t>(out_col);
     switch (CalcArraySize(split_dim)) {
       SEGMENTED_ARRAY_KERNEL_HELPER(
           LaunchUnStackKernel<Context, T, int32_t, kArraySize>(dev_ctx,
-                                                               out_row_i32,
-                                                               split_dim_i32,
-                                                               out_col_i32,
-                                                               split_dim_i32,
+                                                               out_row_32,
+                                                               split_dim_32,
+                                                               out_col_32,
+                                                               split_dim_32,
                                                                x,
                                                                outs));
     }

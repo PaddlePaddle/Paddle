@@ -134,8 +134,8 @@ void TemporalShiftKernel(const Context& dev_ctx,
   int64_t grid = (pixelNum + threads - 1) / threads;
   int64_t blocks_per_sm = dev_ctx.GetMaxPhysicalThreadCount() / threads;
   grid = std::min(dev_ctx.GetSMCount() * blocks_per_sm, grid);
-  const uint32_t grid_u32 = static_cast<uint32_t>(grid);
-  const uint32_t threads_u32 = static_cast<uint32_t>(threads);
+  const uint32_t grid_32 = static_cast<uint32_t>(grid);
+  const uint32_t threads_32 = static_cast<uint32_t>(threads);
 
   if (data_layout == DataLayout::NCHW) {
     if (x.numel() < std::numeric_limits<int32_t>::max()) {
@@ -146,7 +146,7 @@ void TemporalShiftKernel(const Context& dev_ctx,
       PADDLE_ENFORCE_LE_INT_MAX(c1, "c1");
       PADDLE_ENFORCE_LE_INT_MAX(c2, "c2");
       KeTemporalShiftFwNCHW<T, int32_t>
-          <<<grid_u32, threads_u32, 0, dev_ctx.stream()>>>(
+          <<<grid_32, threads_32, 0, dev_ctx.stream()>>>(
               input_data,
               output_data,
               static_cast<int32_t>(ntchw),
@@ -158,7 +158,7 @@ void TemporalShiftKernel(const Context& dev_ctx,
               static_cast<int32_t>(c2));
     } else {
       KeTemporalShiftFwNCHW<T, int64_t>
-          <<<grid_u32, threads_u32, 0, dev_ctx.stream()>>>(
+          <<<grid_32, threads_32, 0, dev_ctx.stream()>>>(
               input_data, output_data, ntchw, tchw, chw, hw, t, c1, c2);
     }
   } else {
@@ -170,7 +170,7 @@ void TemporalShiftKernel(const Context& dev_ctx,
       PADDLE_ENFORCE_LE_INT_MAX(c1, "c1");
       PADDLE_ENFORCE_LE_INT_MAX(c2, "c2");
       KeTemporalShiftFwNHWC<T, int32_t>
-          <<<grid_u32, threads_u32, 0, dev_ctx.stream()>>>(
+          <<<grid_32, threads_32, 0, dev_ctx.stream()>>>(
               input_data,
               output_data,
               static_cast<int32_t>(ntchw),
@@ -182,7 +182,7 @@ void TemporalShiftKernel(const Context& dev_ctx,
               static_cast<int32_t>(c2));
     } else {
       KeTemporalShiftFwNHWC<T, int64_t>
-          <<<grid_u32, threads_u32, 0, dev_ctx.stream()>>>(
+          <<<grid_32, threads_32, 0, dev_ctx.stream()>>>(
               input_data, output_data, ntchw, tchw, chw, t, c, c1, c2);
     }
   }

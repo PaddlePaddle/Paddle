@@ -376,6 +376,7 @@ void WarpctcKernel(const Context& dev_ctx,
   }
 
   const T* warpctc_logits_data = warpctc_logits.data<T>();
+  PADDLE_ENFORCE_LE_INT_MAX(label.dims()[1], "warpctc label pad length");
   const int label_pad_length = static_cast<int>(label.dims()[1]);
 
   std::vector<int> warpctc_label_lengths(num_sequences);

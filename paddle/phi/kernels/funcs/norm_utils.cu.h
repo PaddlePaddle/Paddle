@@ -450,17 +450,17 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
   funcs::SetConstant<DeviceContext, T> set_constant;
 
   auto &x_dims = X->dims();
-  const int64_t C64 =
+  const int64_t C_64 =
       (data_layout == DataLayout::NCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
-  const int64_t N64 = x_dims[0];
+  const int64_t N_64 = x_dims[0];
   const int64_t num = X->numel();
-  const int64_t sample_size64 = num / N64 / C64;
-  PADDLE_ENFORCE_LE_INT_MAX(C64, "norm double grad C");
-  PADDLE_ENFORCE_LE_INT_MAX(N64, "norm double grad N");
-  PADDLE_ENFORCE_LE_INT_MAX(sample_size64, "norm double grad sample_size");
-  const int C = static_cast<int>(C64);
-  const int N = static_cast<int>(N64);
-  const int sample_size = static_cast<int>(sample_size64);
+  const int64_t sample_size_64 = num / N_64 / C_64;
+  PADDLE_ENFORCE_LE_INT_MAX(C_64, "norm double grad C");
+  PADDLE_ENFORCE_LE_INT_MAX(N_64, "norm double grad N");
+  PADDLE_ENFORCE_LE_INT_MAX(sample_size_64, "norm double grad sample_size");
+  const int C = static_cast<int>(C_64);
+  const int N = static_cast<int>(N_64);
+  const int sample_size = static_cast<int>(sample_size_64);
   DenseTensor scale_tmp;
   if (!Scale) {
     scale_tmp.Resize({C});
@@ -473,7 +473,7 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
   const int64_t max_blocks =
       std::max(static_cast<int64_t>(max_threads / static_cast<int>(block)), 1L);
   const uint32_t channel_grid =
-      static_cast<uint32_t>(std::min(C64, max_blocks));
+      static_cast<uint32_t>(std::min(C_64, max_blocks));
   const uint32_t element_grid =
       static_cast<uint32_t>(std::min((num + block - 1) / block, max_blocks));
 

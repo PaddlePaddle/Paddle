@@ -189,9 +189,9 @@ void BinomialKernel(const Context& dev_ctx,
 
   int block_size = std::min(kMaxBlockDim, dev_ctx.GetMaxThreadsPerBlock());
   dim3 dim_block(block_size);
-  int64_t grid64 = (size + block_size - 1) / block_size;
-  PADDLE_ENFORCE_LE_UINT32_MAX(grid64, "binomial grid.x");
-  dim3 dim_grid(static_cast<uint32_t>(grid64));
+  int64_t grid_64 = (size + block_size - 1) / block_size;
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "binomial grid.x");
+  dim3 dim_grid(static_cast<uint32_t>(grid_64));
   backends::gpu::LimitGridDim(dev_ctx, &dim_grid);
 
   auto gen_cuda = dev_ctx.GetGenerator();

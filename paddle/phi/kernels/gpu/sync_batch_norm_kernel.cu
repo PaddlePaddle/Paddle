@@ -63,9 +63,9 @@ void SyncBatchNormKernel(const Context& dev_ctx,
   int N, C, H, W, D;
   funcs::ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
   int64_t x_numel = x.numel();
-  const int64_t fsize = static_cast<int64_t>(H) * W * D;
-  PADDLE_ENFORCE_LE_INT_MAX(fsize, "sync_batch_norm feature size");
-  const int fsize_int = static_cast<int>(fsize);
+  const int64_t fsize_64 = static_cast<int64_t>(H) * W * D;
+  PADDLE_ENFORCE_LE_INT_MAX(fsize_64, "sync_batch_norm feature size");
+  const int fsize = static_cast<int>(fsize_64);
 
   const T* x_d = x.template data<T>();
   const auto* s_d = scale.template data<BatchNormParamType<T>>();
@@ -99,10 +99,10 @@ void SyncBatchNormKernel(const Context& dev_ctx,
     int grid = std::min(C, (max_threads + threads - 1) / threads);
     if (layout == DataLayout::NCHW) {
       KeLocalStats<T, threads, DataLayout::NCHW>
-          <<<grid, threads, 0, stream>>>(x_d, N, fsize_int, C, stats);
+          <<<grid, threads, 0, stream>>>(x_d, N, fsize, C, stats);
     } else {
       KeLocalStats<T, threads, DataLayout::NHWC>
-          <<<grid, threads, 0, stream>>>(x_d, N, fsize_int, C, stats);
+          <<<grid, threads, 0, stream>>>(x_d, N, fsize, C, stats);
     }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -154,27 +154,11 @@ void SyncBatchNormKernel(const Context& dev_ctx,
       block;
   uint32_t grid2 = static_cast<uint32_t>(grid2_64);
   if (layout == DataLayout::NCHW) {
-    KeNormAffine<T, DataLayout::NCHW><<<grid2, block, 0, stream>>>(x_d,
-                                                                   s_d,
-                                                                   b_d,
-                                                                   mean_data,
-                                                                   var_data,
-                                                                   epsilon,
-                                                                   C,
-                                                                   fsize_int,
-                                                                   x_numel,
-                                                                   y_d);
+    KeNormAffine<T, DataLayout::NCHW><<<grid2, block, 0, stream>>>(
+        x_d, s_d, b_d, mean_data, var_data, epsilon, C, fsize, x_numel, y_d);
   } else {
-    KeNormAffine<T, DataLayout::NHWC><<<grid2, block, 0, stream>>>(x_d,
-                                                                   s_d,
-                                                                   b_d,
-                                                                   mean_data,
-                                                                   var_data,
-                                                                   epsilon,
-                                                                   C,
-                                                                   fsize_int,
-                                                                   x_numel,
-                                                                   y_d);
+    KeNormAffine<T, DataLayout::NHWC><<<grid2, block, 0, stream>>>(
+        x_d, s_d, b_d, mean_data, var_data, epsilon, C, fsize, x_numel, y_d);
   }
 }
 

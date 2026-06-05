@@ -881,7 +881,8 @@ void MoePermuteKernel(const Context &dev_ctx,
   expert_offset_tensor.Resize({kMaxNumExperts});
   expert_offset_end_tensor.Resize({kMaxNumExperts});
   global_expertwise_block_cumsum.Resize(
-      {cumsum_blocknum_64 + 2, static_cast<int64_t>(num_experts)});
+      {static_cast<int64_t>(cumsum_blocknum + 2),
+       static_cast<int64_t>(num_experts)});
 
   dev_ctx.template Alloc<int>(&expert_offset_tensor);
   dev_ctx.template Alloc<int>(&expert_offset_end_tensor);

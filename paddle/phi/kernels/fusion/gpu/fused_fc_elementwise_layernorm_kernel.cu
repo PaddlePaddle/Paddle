@@ -410,15 +410,15 @@ void FusedFCElementwiseLayerNormKernel(const Context& dev_ctx,
                         "'begin_norm_axis' should be greater than zero."));
 
   auto w_dims = w.dims();
-  int64_t N64 = w_dims[1];
-  int64_t K64 = w_dims[0];
-  int64_t M64 = common::product(x.dims()) / K64;
-  PADDLE_ENFORCE_LE_INT_MAX(N64, "fused_fc_elementwise_layernorm N");
-  PADDLE_ENFORCE_LE_INT_MAX(K64, "fused_fc_elementwise_layernorm K");
-  PADDLE_ENFORCE_LE_INT_MAX(M64, "fused_fc_elementwise_layernorm M");
-  int N = static_cast<int>(N64);
-  int K = static_cast<int>(K64);
-  int M = static_cast<int>(M64);
+  int64_t N_64 = w_dims[1];
+  int64_t K_64 = w_dims[0];
+  int64_t M_64 = common::product(x.dims()) / K_64;
+  PADDLE_ENFORCE_LE_INT_MAX(N_64, "fused_fc_elementwise_layernorm N");
+  PADDLE_ENFORCE_LE_INT_MAX(K_64, "fused_fc_elementwise_layernorm K");
+  PADDLE_ENFORCE_LE_INT_MAX(M_64, "fused_fc_elementwise_layernorm M");
+  int N = static_cast<int>(N_64);
+  int K = static_cast<int>(K_64);
+  int M = static_cast<int>(M_64);
 
   const T* x_data = x.data<T>();
   const T* w_data = w.data<T>();

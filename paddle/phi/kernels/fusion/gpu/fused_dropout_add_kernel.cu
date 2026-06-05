@@ -169,12 +169,12 @@ void FusedDropoutAddKernel(const Context& dev_ctx,
     uint64_t seed_data;
     uint64_t increment;
     auto random_prop = GetRandomCudaProp(numel, dev_ctx);
-    size_t grid_size64 = random_prop[0];
-    size_t block_size64 = random_prop[1];
-    PADDLE_ENFORCE_LE_UINT32_MAX(grid_size64, "fused_dropout_add grid.x");
-    PADDLE_ENFORCE_LE_UINT32_MAX(block_size64, "fused_dropout_add block.x");
-    uint32_t grid_size = static_cast<uint32_t>(grid_size64);
-    uint32_t block_size = static_cast<uint32_t>(block_size64);
+    size_t grid_size_64 = random_prop[0];
+    size_t block_size_64 = random_prop[1];
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_64, "fused_dropout_add grid.x");
+    PADDLE_ENFORCE_LE_UINT32_MAX(block_size_64, "fused_dropout_add block.x");
+    uint32_t grid_size = static_cast<uint32_t>(grid_size_64);
+    uint32_t block_size = static_cast<uint32_t>(block_size_64);
     size_t offset = random_prop[2];
     size_t main_offset = random_prop[3];
     auto seed_tensor_ptr = seed_tensor.get_ptr();

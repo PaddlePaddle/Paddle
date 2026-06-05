@@ -98,22 +98,23 @@ class CudnnRNNCache {
     seed_ = seed;
 
     const auto numDirections = is_bidirec_ ? 2 : 1;
-    const int64_t hidden_size_directions64 =
+    const int64_t hidden_size_directions_64 =
         static_cast<int64_t>(hidden_size_) * numDirections;
-    PADDLE_ENFORCE_LE_INT_MAX(hidden_size_directions64,
+    PADDLE_ENFORCE_LE_INT_MAX(hidden_size_directions_64,
                               "RNN hidden size times directions");
     const int hidden_size_directions =
-        static_cast<int>(hidden_size_directions64);
-    const int64_t num_layers_directions64 =
+        static_cast<int>(hidden_size_directions_64);
+    const int64_t num_layers_directions_64 =
         static_cast<int64_t>(num_layers_) * numDirections;
-    PADDLE_ENFORCE_LE_INT_MAX(num_layers_directions64,
+    PADDLE_ENFORCE_LE_INT_MAX(num_layers_directions_64,
                               "RNN num layers times directions");
-    const int num_layers_directions = static_cast<int>(num_layers_directions64);
-    const int64_t hidden_size_batch64 =
+    const int num_layers_directions =
+        static_cast<int>(num_layers_directions_64);
+    const int64_t hidden_size_batch_64 =
         static_cast<int64_t>(hidden_size_) * batch_size_;
-    PADDLE_ENFORCE_LE_INT_MAX(hidden_size_batch64,
+    PADDLE_ENFORCE_LE_INT_MAX(hidden_size_batch_64,
                               "RNN hidden size times batch size");
-    const int hidden_size_batch = static_cast<int>(hidden_size_batch64);
+    const int hidden_size_batch = static_cast<int>(hidden_size_batch_64);
     auto cudnn_size =
         cudnn_type == CUDNN_DATA_FLOAT ? sizeof(float) : sizeof(double);
 #if CUDNN_VERSION >= 90000

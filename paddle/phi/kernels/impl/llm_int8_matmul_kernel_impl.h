@@ -487,9 +487,9 @@ void LaunchReduceAbsMaxQuantKernel(const T* x,
           row_ranges,
           outlier_idx);
 
-  const int64_t elem_cnt64 = static_cast<int64_t>(rows) * cols;
-  PADDLE_ENFORCE_LE_INT_MAX(elem_cnt64, "llm_int8 quant elem_cnt");
-  const int32_t elem_cnt = static_cast<int32_t>(elem_cnt64);
+  const int64_t elem_cnt_64 = static_cast<int64_t>(rows) * cols;
+  PADDLE_ENFORCE_LE_INT_MAX(elem_cnt_64, "llm_int8 quant elem_cnt");
+  const int32_t elem_cnt = static_cast<int32_t>(elem_cnt_64);
   const int32_t vectorized_elem_cnt = elem_cnt / VecSize;
   int32_t quant_kernel_num_blocks;
   PADDLE_ENFORCE_GPU_SUCCESS(
@@ -525,12 +525,12 @@ void LaunchSplitKernel(const T* x,
   PADDLE_ENFORCE_LE_INT_MAX(num_outlier_idx, "num_outlier_idx");
   const int num_outlier_idx_int = static_cast<int>(num_outlier_idx);
 
-  const int64_t sub_x_elem_cnt64 = static_cast<int64_t>(m) * kfp_num;
-  PADDLE_ENFORCE_LE_INT_MAX(sub_x_elem_cnt64, "llm_int8 split sub_x elem_cnt");
-  const int32_t sub_x_elem_cnt = static_cast<int32_t>(sub_x_elem_cnt64);
-  const int64_t sub_w_elem_cnt64 = static_cast<int64_t>(n) * kfp_num;
-  PADDLE_ENFORCE_LE_INT_MAX(sub_w_elem_cnt64, "llm_int8 split sub_w elem_cnt");
-  const int32_t sub_w_elem_cnt = static_cast<int32_t>(sub_w_elem_cnt64);
+  const int64_t sub_x_elem_cnt_64 = static_cast<int64_t>(m) * kfp_num;
+  PADDLE_ENFORCE_LE_INT_MAX(sub_x_elem_cnt_64, "llm_int8 split sub_x elem_cnt");
+  const int32_t sub_x_elem_cnt = static_cast<int32_t>(sub_x_elem_cnt_64);
+  const int64_t sub_w_elem_cnt_64 = static_cast<int64_t>(n) * kfp_num;
+  PADDLE_ENFORCE_LE_INT_MAX(sub_w_elem_cnt_64, "llm_int8 split sub_w elem_cnt");
+  const int32_t sub_w_elem_cnt = static_cast<int32_t>(sub_w_elem_cnt_64);
 
   using DataT = typename PDDataTypeTraits<T>::DataType;
   SplitKernel<DataT>

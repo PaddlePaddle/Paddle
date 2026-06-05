@@ -522,13 +522,13 @@ static inline LayerNormKernelVariant LayerNormKernelDispatch(
       x_numel <= std::numeric_limits<uint32_t>::max()) {
     // using fast_ln_v2 only sm > 70 and x_numel <= uint32_max
     auto prop = funcs::fast_ln_v2::GetDeviceProp();
-    auto hidden_size_uint32 = static_cast<uint32_t>(hidden_size);
+    auto hidden_size_32 = static_cast<uint32_t>(hidden_size);
     if (prop->major > 7 &&
         funcs::fast_ln_v2::has_fast_ln_v2_fwd_kernel(weight_type,
                                                      input_type,
                                                      output_type,
                                                      compute_type,
-                                                     hidden_size_uint32)) {
+                                                     hidden_size_32)) {
       return LayerNormKernelVariant::FAST_LN_V2;
     }
   }

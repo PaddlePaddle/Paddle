@@ -89,21 +89,21 @@ struct SplitFunctor<CPUContext, T> {
     // TODO(zcd): Add input data validity checking
     size_t num = outputs->size();
 
-    int64_t input_rows64 = 1;
+    int64_t input_rows_64 = 1;
     auto dim_0 = ref_inputs[0]->dims();
     for (int i = 0; i < axis; ++i) {
-      input_rows64 *= dim_0[i];
+      input_rows_64 *= dim_0[i];
     }
-    PADDLE_ENFORCE_LE_INT_MAX(input_rows64, "split input_rows");
-    int input_rows = static_cast<int>(input_rows64);
+    PADDLE_ENFORCE_LE_INT_MAX(input_rows_64, "split input_rows");
+    int input_rows = static_cast<int>(input_rows_64);
 
     int input_cols = 0;
 
     std::vector<int64_t> output_cols(outputs->size());
     for (size_t i = 0; i < num; ++i) {
-      int64_t t_cols64 = ref_inputs[i]->numel() / input_rows;
-      PADDLE_ENFORCE_LE_INT_MAX(t_cols64, "split t_cols");
-      int t_cols = static_cast<int>(t_cols64);
+      int64_t t_cols_64 = ref_inputs[i]->numel() / input_rows;
+      PADDLE_ENFORCE_LE_INT_MAX(t_cols_64, "split t_cols");
+      int t_cols = static_cast<int>(t_cols_64);
       PADDLE_ENFORCE_LE_INT_MAX(static_cast<int64_t>(input_cols) + t_cols,
                                 "split input_cols");
       input_cols += t_cols;

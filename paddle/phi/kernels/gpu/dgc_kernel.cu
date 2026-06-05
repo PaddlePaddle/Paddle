@@ -134,9 +134,9 @@ void DGCKernel(const Context& dev_ctx,
       ratio,
       1.0,
       common::errors::InvalidArgument("DGC sparsity ratio must < 1"));
-  int64_t k64 = static_cast<int64_t>(grad.numel() * ratio);
-  PADDLE_ENFORCE_LE_INT_MAX(k64, "dgc k");
-  int k = static_cast<int>(k64);
+  int64_t k_64 = static_cast<int64_t>(grad.numel() * ratio);
+  PADDLE_ENFORCE_LE_INT_MAX(k_64, "dgc k");
+  int k = static_cast<int>(k_64);
 
   VLOG(10) << "m:" << m << ", use_nesterov:" << use_nesterov
            << ", rampup_begin_step:" << rampup_begin_step
@@ -205,9 +205,9 @@ void DGCKernel(const Context& dev_ctx,
 
   void* buf = reinterpret_cast<void*>(tmp_ious_data->ptr());
 
-  int64_t v_out_numel64 = v_out->numel();
-  PADDLE_ENFORCE_LE_INT_MAX(v_out_numel64, "dgc v_out numel");
-  int v_out_numel = static_cast<int>(v_out_numel64);
+  int64_t v_out_numel_64 = v_out->numel();
+  PADDLE_ENFORCE_LE_INT_MAX(v_out_numel_64, "dgc v_out numel");
+  int v_out_numel = static_cast<int>(v_out_numel_64);
   if (!paddle::communication::dgc::k_select(
           static_cast<void*>(encode_grad_out_data),
           k,

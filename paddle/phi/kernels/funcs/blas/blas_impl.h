@@ -1741,13 +1741,13 @@ void Blas<DeviceContext>::MatMul(const DenseTensor &mat_a,
                                       "should be same, please check your "
                                       "code."));
 
-  const int64_t K64 = !trans_a ? dim_a[1] : dim_a[0];
+  const int64_t K_64 = !trans_a ? dim_a[1] : dim_a[0];
   PADDLE_ENFORCE_LE_INT_MAX(dim_out[0], "dim_out[0]");
   PADDLE_ENFORCE_LE_INT_MAX(dim_out[1], "dim_out[1]");
-  PADDLE_ENFORCE_LE_INT_MAX(K64, "cblas GEMM K");
+  PADDLE_ENFORCE_LE_INT_MAX(K_64, "cblas GEMM K");
   int M = static_cast<int>(dim_out[0]);
   int N = static_cast<int>(dim_out[1]);
-  int K = static_cast<int>(K64);
+  int K = static_cast<int>(K_64);
 
   CBLAS_TRANSPOSE transA = !trans_a ? CblasNoTrans : CblasTrans;
   CBLAS_TRANSPOSE transB = !trans_b ? CblasNoTrans : CblasTrans;

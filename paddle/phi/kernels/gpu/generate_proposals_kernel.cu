@@ -291,8 +291,8 @@ static void NMS(const GPUContext &dev_ctx,
   PADDLE_ENFORCE_LE_INT_MAX(boxes_num, "generate_proposals NMS boxes_num");
   const int boxes_num_int = static_cast<int>(boxes_num);
   const int64_t col_blocks = DIVUP(boxes_num, kThreadsPerBlock);
-  const uint32_t col_blocks_u32 = static_cast<uint32_t>(col_blocks);
-  dim3 blocks(col_blocks_u32, col_blocks_u32);
+  const uint32_t col_blocks_32 = static_cast<uint32_t>(col_blocks);
+  dim3 blocks(col_blocks_32, col_blocks_32);
   dim3 threads(kThreadsPerBlock);
 
   const T *boxes = proposals.data<T>();
@@ -371,10 +371,10 @@ static std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
   DenseTensor scores_sort, index_sort;
   SortDescending<T>(dev_ctx, scores, &scores_sort, &index_sort);
   int64_t num = scores.numel();
-  int64_t pre_nms_num64 =
+  int64_t pre_nms_num_64 =
       (pre_nms_top_n <= 0 || pre_nms_top_n > num) ? num : pre_nms_top_n;
-  PADDLE_ENFORCE_LE_INT_MAX(pre_nms_num64, "generate_proposals pre_nms_num");
-  int pre_nms_num = static_cast<int>(pre_nms_num64);
+  PADDLE_ENFORCE_LE_INT_MAX(pre_nms_num_64, "generate_proposals pre_nms_num");
+  int pre_nms_num = static_cast<int>(pre_nms_num_64);
   scores_sort.Resize({pre_nms_num, 1});
   index_sort.Resize({pre_nms_num, 1});
 
