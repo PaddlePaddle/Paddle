@@ -6,8 +6,8 @@ include(CheckTypeSize)
 
 function(check_compiler_cxx20_flag)
   if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    if(${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 12)
-      message(FATAL_ERROR "Unsupported GCC version. GCC >= 12 required.")
+    if(${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 11)
+      message(FATAL_ERROR "Unsupported GCC version. GCC >= 11 required.")
     endif()
   elseif(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang")
     # cmake >= 3.0 compiler id "AppleClang" on Mac OS X, otherwise "Clang"
