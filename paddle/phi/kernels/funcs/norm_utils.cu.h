@@ -471,7 +471,8 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
   constexpr uint32_t block = 512;
   const int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
   const int64_t max_blocks =
-      std::max(static_cast<int64_t>(max_threads / static_cast<int>(block)), 1L);
+      std::max(static_cast<int64_t>(max_threads / static_cast<int>(block)),
+               static_cast<int64_t>(1));
   const uint32_t channel_grid =
       static_cast<uint32_t>(std::min(C_64, max_blocks));
   const uint32_t element_grid =
