@@ -347,6 +347,88 @@ class TestStateDictHook(unittest.TestCase):
                 hook_remove_helper._hook_id, layer._state_dict_hooks
             )
 
+    def test_state_dict_post_hook_with_torch_signature(self):
+        with base.dygraph.guard():
+            layer = paddle.nn.Layer()
+            parameter = layer.create_parameter(
+                shape=[1], dtype='float32', is_bias=False
+            )
+            layer.register_parameter("weight", parameter)
+
+            child = paddle.nn.Layer()
+            child_parameter = child.create_parameter(
+                shape=[1], dtype='float32', is_bias=False
+            )
+            child.register_parameter("weight", child_parameter)
+            layer.add_sublayer("child", child)
+
+            hook_calls = []
+            child_hook_calls = []
+
+            def state_dict_post_hook(
+                module, destination, prefix, local_metadata
+            ):
+                hook_calls.append((module, destination, prefix, local_metadata))
+                destination[prefix + "post_hook_weight"] = destination.pop(
+                    prefix + "weight"
+                )
+
+            def child_state_dict_post_hook(
+                module, destination, prefix, local_metadata
+            ):
+                child_hook_calls.append(
+                    (module, destination, prefix, local_metadata)
+                )
+                destination[prefix + "post_hook_weight"] = destination.pop(
+                    prefix + "weight"
+                )
+
+            hook_remove_helper = layer.register_state_dict_post_hook(
+                state_dict_post_hook
+            )
+            child_hook_remove_helper = child.register_state_dict_post_hook(
+                child_state_dict_post_hook
+            )
+
+            state_dict = layer.state_dict(prefix="prefix.", keep_vars=False)
+
+            self.assertIn("prefix.post_hook_weight", state_dict)
+            self.assertIn("prefix.child.post_hook_weight", state_dict)
+            self.assertNotIn("prefix.weight", state_dict)
+            self.assertNotIn("prefix.child.weight", state_dict)
+            self.assertEqual(hook_calls, [(layer, state_dict, "prefix.", {})])
+            self.assertEqual(
+                child_hook_calls,
+                [(child, state_dict, "prefix.child.", {})],
+            )
+
+            hook_remove_helper.remove()
+            child_hook_remove_helper.remove()
+            self.assertNotIn(
+                hook_remove_helper._hook_id, layer._state_dict_hooks
+            )
+            self.assertNotIn(
+                child_hook_remove_helper._hook_id, child._state_dict_hooks
+            )
+
+    def test_state_dict_post_hook_return_with_torch_signature(self):
+        with base.dygraph.guard():
+            layer = paddle.nn.Layer()
+            parameter = layer.create_parameter(
+                shape=[1], dtype='float32', is_bias=False
+            )
+            layer.register_parameter("weight", parameter)
+
+            def state_dict_post_hook(
+                module, destination, prefix, local_metadata
+            ):
+                return {"replacement": destination[prefix + "weight"]}
+
+            layer.register_state_dict_post_hook(state_dict_post_hook)
+            state_dict = layer.state_dict()
+
+            self.assertEqual(list(state_dict.keys()), ["replacement"])
+
     def test_load_state_dict_hooks(self):
         with base.dygraph.guard():
             layer = paddle.nn.Layer()
