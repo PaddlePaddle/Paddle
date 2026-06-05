@@ -37,7 +37,11 @@ PADDLE_API void GaussianKernel(const Context& dev_ctx,
   } else {
     engine = dev_ctx.GetGenerator()->GetCPUEngine();
   }
-  NormalDistribution<T>(data, size, mean, std, engine);
+  // GaussianKernel takes mean/std as double, while NormalDistribution helper
+  // takes const float&. Cast explicitly to avoid binding a const float& to a
+  // temporary produced by implicit double->float narrowing.
+  NormalDistribution<T>(
+      data, size, static_cast<float>(mean), static_cast<float>(std), engine);
 }
 
 template <typename T, typename Context>
