@@ -914,17 +914,22 @@ void MoePermuteKernel(const Context &dev_ctx,
                                    &expert_offset_end_tensor,
                                    expert_indices);
   } else {
-    int tokens_cumulated = 0;
+    int64_t tokens_cumulated = 0;
     std::vector<int> padding_rows;
     int expert_offset[kMaxNumExperts];
     int expert_offset_end[kMaxNumExperts];
     for (int i = 0; i < kMaxNumExperts; i++) {
       if (i < num_experts) {
-        expert_offset[i] = tokens_cumulated;
-        expert_offset_end[i] = expert_offset[i] + tokens_per_expert[i] - 1;
-        tokens_cumulated += ((tokens_per_expert[i] + padding_alignment - 1) /
-                             padding_alignment) *
-                            padding_alignment;
+        PADDLE_ENFORCE_LE_INT_MAX(tokens_cumulated, "expert offset");
+        expert_offset[i] = static_cast<int>(tokens_cumulated);
+        const int64_t tokens = tokens_per_expert[i];
+        const int64_t padded_tokens =
+            ((tokens + padding_alignment - 1) / padding_alignment) *
+            padding_alignment;
+        const int64_t expert_offset_end_64 = tokens_cumulated + tokens - 1;
+        PADDLE_ENFORCE_LE_INT_MAX(expert_offset_end_64, "expert offset end");
+        expert_offset_end[i] = static_cast<int>(expert_offset_end_64);
+        tokens_cumulated += padded_tokens;
       } else {
         expert_offset[i] = 0;
       }
@@ -952,8 +957,10 @@ void MoePermuteKernel(const Context &dev_ctx,
       int64_t invalid_rows =
           next_expert_offset - expert_offset[i] - tokens_per_expert[i];
       int64_t cur_expert_end = expert_offset[i] + tokens_per_expert[i];
+      if (invalid_rows > 0) {
+        PADDLE_ENFORCE_LE_INT_MAX(next_expert_offset - 1, "padding row");
+      }
       for (int64_t j = 0; j < invalid_rows; ++j) {
-        PADDLE_ENFORCE_LE_INT_MAX(cur_expert_end + j, "padding row");
         padding_rows.push_back(static_cast<int>(cur_expert_end + j));
       }
     }

@@ -98,16 +98,13 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& dev_ctx,
   }
 
   int64_t out_len = bcast_info.out_len;
-  PADDLE_ENFORCE_LE_INT_MAX(out_len, "out_len");
-  const int out_len_int = static_cast<int>(out_len);
-  const int ntx = FindNumThreads(out_len_int, dev_ctx.GetMaxThreadsPerBlock());
+  const int ntx = FindNumThreads(out_len, dev_ctx.GetMaxThreadsPerBlock());
   const int nty = dev_ctx.GetMaxThreadsPerBlock() / ntx;
   const int64_t nbx_64 = (out_len + ntx - 1) / ntx;
   PADDLE_ENFORCE_LE_INT_MAX(nbx_64, "grid.x");
   const int nbx = static_cast<int>(nbx_64);
   const int64_t nby_64 = (index_size + nty - 1) / nty;
-  PADDLE_ENFORCE_LE_INT_MAX(nby_64, "grid.y");
-  const int nby = FindNumBlocks('y', static_cast<int>(nby_64));
+  const int nby = FindNumBlocks('y', nby_64);
   const dim3 grid(nbx, nby);
   const dim3 block(ntx, nty);
   int64_t input_size = x.dims()[0];

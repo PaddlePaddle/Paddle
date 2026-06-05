@@ -75,17 +75,14 @@ void CalculateGrad(const Context& dev_ctx,
 
   if (message_op == "ADD") {
     if (!reduce) {
-      PADDLE_ENFORCE_LE_INT_MAX(slice_size, "slice_size");
-      const int slice_size_int = static_cast<int>(slice_size);
       const int ntx =
-          FindNumThreads(slice_size_int, dev_ctx.GetMaxThreadsPerBlock());
+          FindNumThreads(slice_size, dev_ctx.GetMaxThreadsPerBlock());
       const int nty = dev_ctx.GetMaxThreadsPerBlock() / ntx;
       const int64_t nbx_64 = (slice_size + ntx - 1) / ntx;
       PADDLE_ENFORCE_LE_INT_MAX(nbx_64, "grid.x");
       const int nbx = static_cast<int>(nbx_64);
       const int64_t nby_64 = (index_size + nty - 1) / nty;
-      PADDLE_ENFORCE_LE_INT_MAX(nby_64, "grid.y");
-      const int nby = FindNumBlocks('y', static_cast<int>(nby_64));
+      const int nby = FindNumBlocks('y', nby_64);
       const dim3 grid_tmp(nbx, nby);
       const dim3 block_tmp(ntx, nty);
       GraphSendUVGradCUDAKernel<T, IndexT>
@@ -101,17 +98,14 @@ void CalculateGrad(const Context& dev_ctx,
       funcs::SetConstant<Context, T>()(dev_ctx, &x_grad_v2, T(0));
       T* x_grad_v2_data = x_grad_v2.data<T>();
 
-      PADDLE_ENFORCE_LE_INT_MAX(bcast_info.out_len, "out_len");
-      const int out_len_int = static_cast<int>(bcast_info.out_len);
       const int ntx =
-          FindNumThreads(out_len_int, dev_ctx.GetMaxThreadsPerBlock());
+          FindNumThreads(bcast_info.out_len, dev_ctx.GetMaxThreadsPerBlock());
       const int nty = dev_ctx.GetMaxThreadsPerBlock() / ntx;
       const int64_t nbx_64 = (bcast_info.out_len + ntx - 1) / ntx;
       PADDLE_ENFORCE_LE_INT_MAX(nbx_64, "grid.x");
       const int nbx = static_cast<int>(nbx_64);
       const int64_t nby_64 = (index_size + nty - 1) / nty;
-      PADDLE_ENFORCE_LE_INT_MAX(nby_64, "grid.y");
-      const int nby = FindNumBlocks('y', static_cast<int>(nby_64));
+      const int nby = FindNumBlocks('y', nby_64);
       const dim3 grid_tmp(nbx, nby);
       const dim3 block_tmp(ntx, nty);
       GraphSendUVGradCUDAKernel<T, IndexT>
@@ -148,17 +142,13 @@ void CalculateGrad(const Context& dev_ctx,
       CopyBCastOff(bcast_info, &l_bcastoff, &r_bcastoff);
     }
     int64_t out_len = bcast_info.out_len;
-    PADDLE_ENFORCE_LE_INT_MAX(out_len, "out_len");
-    const int out_len_int = static_cast<int>(out_len);
-    const int ntx =
-        FindNumThreads(out_len_int, dev_ctx.GetMaxThreadsPerBlock());
+    const int ntx = FindNumThreads(out_len, dev_ctx.GetMaxThreadsPerBlock());
     const int nty = dev_ctx.GetMaxThreadsPerBlock() / ntx;
     const int64_t nbx_64 = (out_len + ntx - 1) / ntx;
     PADDLE_ENFORCE_LE_INT_MAX(nbx_64, "grid.x");
     const int nbx = static_cast<int>(nbx_64);
     const int64_t nby_64 = (index_size + nty - 1) / nty;
-    PADDLE_ENFORCE_LE_INT_MAX(nby_64, "grid.y");
-    const int nby = FindNumBlocks('y', static_cast<int>(nby_64));
+    const int nby = FindNumBlocks('y', nby_64);
     const dim3 grid_(nbx, nby);
     const dim3 block_(ntx, nty);
     funcs::MultiplyFunctor<T> mul_functor;

@@ -58,7 +58,7 @@ inline void CopyBCastOff(const BroadCastInfo& bcast_info,
 #endif
 }
 
-inline int FindNumThreads(int dim, int max_num_threads) {
+inline int FindNumThreads(int64_t dim, int max_num_threads) {
   PADDLE_ENFORCE_GE(dim,
                     0,
                     common::errors::PreconditionNotMet(
@@ -72,7 +72,7 @@ inline int FindNumThreads(int dim, int max_num_threads) {
   return res;
 }
 
-inline int FindNumBlocks(char axis, int nblocks, int max_num_blocks = -1) {
+inline int FindNumBlocks(char axis, int64_t nblocks, int max_num_blocks = -1) {
   int default_max_num_blocks = -1;
   switch (axis) {
     case 'x':
@@ -91,6 +91,11 @@ inline int FindNumBlocks(char axis, int nblocks, int max_num_blocks = -1) {
   if (max_num_blocks == -1) {
     max_num_blocks = default_max_num_blocks;
   }
+  PADDLE_ENFORCE_GE(
+      nblocks,
+      0,
+      common::errors::InvalidArgument(
+          "nblocks should be non-negative, but received %d", nblocks));
   PADDLE_ENFORCE_GT(
       max_num_blocks,
       0,
@@ -98,7 +103,7 @@ inline int FindNumBlocks(char axis, int nblocks, int max_num_blocks = -1) {
                                       "but received %d",
                                       max_num_blocks));
   if (nblocks < max_num_blocks) {
-    return nblocks;
+    return static_cast<int>(nblocks);
   }
   return max_num_blocks;
 }
