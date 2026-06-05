@@ -1284,13 +1284,18 @@ def slice_scatter_decorator() -> Callable[
     Decorator for slice_scatter to support PyTorch signature.
 
     PyTorch: torch.slice_scatter(input, src, dim=0, start=None, end=None, step=1)
-    Paddle: paddle.slice_scatter(x, value, axes, starts, ends, strides, name=None)
+    Paddle: paddle.slice_scatter(x, value, axes, starts, ends, strides)
+
+    This decorator handles:
+    1. Parameter aliases: input->x, src->value, dim->axes, start->starts, end->ends, step->strides
+    2. Convert single int to list: PyTorch uses int, Paddle uses list
+    3. Handle PyTorch style positional args
     """
 
     def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
         @functools.wraps(func)
         def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
-            # 1. Keyword argument aliases
+            # 1. Handle keyword argument aliases
             if "input" in kwargs and "x" not in kwargs:
                 kwargs["x"] = kwargs.pop("input")
             if "src" in kwargs and "value" not in kwargs:
@@ -1299,73 +1304,43 @@ def slice_scatter_decorator() -> Callable[
                 kwargs["axes"] = kwargs.pop("dim")
             if "start" in kwargs and "starts" not in kwargs:
                 kwargs["starts"] = kwargs.pop("start")
-            if "end" in kwargs:
-                end_val = kwargs.pop("end")
-                if end_val is not None:
-                    kwargs["ends"] = end_val
+            if "end" in kwargs and "ends" not in kwargs:
+                kwargs["ends"] = kwargs.pop("end")
             if "step" in kwargs and "strides" not in kwargs:
                 kwargs["strides"] = kwargs.pop("step")
 
-            # 2. Convert single int to list
+            # 2. Handle positional arguments
+            # PyTorch: (input, src, dim, start, end, step) - dim is int
+            # Paddle: (x, value, axes, starts, ends, strides) - axes is list
+            if len(args) >= 2:
+                kwargs["x"] = args[0]
+                kwargs["value"] = args[1]
+
+                if len(args) > 2:
+                    # Check if Paddle style (axes is list) or PyTorch style (dim is int)
+                    if isinstance(args[2], list):
+                        # Paddle style
+                        for i, key in enumerate(
+                            ["axes", "starts", "ends", "strides"]
+                        ):
+                            if len(args) > i + 2:
+                                kwargs[key] = args[i + 2]
+                    else:
+                        # PyTorch style: convert int to list
+                        if len(args) > 2:
+                            kwargs["axes"] = [args[2]]
+                        if len(args) > 3:
+                            kwargs["starts"] = [args[3]]
+                        if len(args) > 4:
+                            kwargs["ends"] = [args[4]]
+                        if len(args) > 5:
+                            kwargs["strides"] = [args[5]]
+                args = ()
+
+            # 3. Convert single int to list for keyword args
             for key in ["axes", "starts", "ends", "strides"]:
                 if key in kwargs and isinstance(kwargs[key], int):
                     kwargs[key] = [kwargs[key]]
-
-            # 3. Handle positional arguments
-            if len(args) >= 2:
-                x, value = args[0], args[1]
-                kwargs["x"], kwargs["value"] = x, value
-
-                # Paddle style: (x, value, axes, starts, ends, strides) - axes is list
-                # PyTorch style: (input, src, dim, start, end, step) - dim is int
-                is_paddle_style = len(args) > 2 and isinstance(args[2], list)
-
-                if is_paddle_style:
-                    for i, key in enumerate(
-                        ["axes", "starts", "ends", "strides"]
-                    ):
-                        if len(args) > i + 2:
-                            kwargs[key] = args[i + 2]
-                else:
-                    dim = args[2] if len(args) > 2 else None
-                    start_arg = args[3] if len(args) > 3 else None
-                    end_arg = args[4] if len(args) > 4 else None
-                    step_arg = args[5] if len(args) > 5 else None
-
-                    if "axes" not in kwargs:
-                        kwargs["axes"] = [dim if isinstance(dim, int) else 0]
-                    if "starts" not in kwargs:
-                        kwargs["starts"] = [
-                            start_arg if start_arg is not None else 0
-                        ]
-                    if "strides" not in kwargs:
-                        kwargs["strides"] = [
-                            step_arg if step_arg is not None else 1
-                        ]
-                    if "ends" not in kwargs and end_arg is not None:
-                        kwargs["ends"] = (
-                            [end_arg] if isinstance(end_arg, int) else end_arg
-                        )
-                args = ()
-
-            # 4. Ensure defaults and calculate ends if missing
-            if "x" in kwargs and "value" in kwargs:
-                x, value = kwargs["x"], kwargs["value"]
-
-                kwargs.setdefault("axes", [0])
-                kwargs.setdefault("starts", [0])
-                kwargs.setdefault("strides", [1])
-
-                if "ends" not in kwargs:
-                    kwargs["ends"] = [
-                        _calc_end_from_shapes(
-                            x,
-                            value,
-                            kwargs["axes"],
-                            kwargs["starts"],
-                            kwargs["strides"],
-                        )
-                    ]
 
             return func(*args, **kwargs)
 

@@ -30,6 +30,7 @@ from paddle.tensor import fill_constant
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     VariableArgsDecorator,
+    _calc_end_from_shapes,
     expand_decorator,
     fill_diagonal_inplace_decorator,
     index_add_decorator,
@@ -8700,15 +8701,15 @@ def slice_scatter(
 def slice_scatter(
     x: Tensor,
     value: Tensor,
-    axes: Sequence[int] | None = None,
-    starts: Sequence[int] | None = None,
+    axes: Sequence[int] = [0],
+    starts: Sequence[int] = [0],
     ends: Sequence[int] | None = None,
-    strides: Sequence[int] | None = None,
+    strides: Sequence[int] = [1],
 ) -> Tensor:
     """
     Note:
         This API has two signatures:
-        1. ``paddle.slice_scatter(x, value, axes=None, starts=None, ends=None, strides=None)`` (Paddle-style):
+        1. ``paddle.slice_scatter(x, value, axes=[0], starts=[0], ends=None, strides=[1])`` (Paddle-style):
             Embeds the `value` tensor into `x` along multiple axes. Returns a new tensor instead of a view.
             The size of `axes` must be equal to `starts`, `ends` and `strides`.
         2. ``paddle.slice_scatter(input, src, dim=0, start=None, end=None, step=1)`` (PyTorch-style):
@@ -8719,13 +8720,13 @@ def slice_scatter(
             Alias: ``input``.
         value (Tensor) : The tensor to embed into x. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex128`.
             Alias: ``src``.
-        axes (list|tuple) : the dimensions to insert the value.
+        axes (list|tuple): the dimensions to insert the value. Default: ``[0]``.
             Alias: ``dim``.
-        starts (list|tuple) : the start indices of where to insert.
+        starts (list|tuple): the start indices of where to insert. Default: ``[0]``.
             Alias: ``start``.
-        ends (list|tuple) : the stop indices of where to insert.
+        ends (list|tuple|None): the stop indices of where to insert. Default: ``None``, auto-calculated based on value shape.
             Alias: ``end``.
-        strides (list|tuple) : the steps for each insert.
+        strides (list|tuple): the steps for each insert. Default: ``[1]``.
             Alias: ``step``.
 
     Returns:
@@ -8772,6 +8773,10 @@ def slice_scatter(
               [1., 0., 1., 0., 0.]]])
 
     """
+    # Auto-calculate ends if not provided
+    if ends is None:
+        ends = [_calc_end_from_shapes(x, value, axes, starts, strides)]
+
     none_axes = []
     decrease_axes = []
     dtype = x.dtype

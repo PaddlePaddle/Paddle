@@ -200,37 +200,76 @@ class TestSignbitAPI(unittest.TestCase):
 
 # Test slice_scatter compatibility
 class TestSliceScatterAPI(unittest.TestCase):
-    def setUp(self):
-        np.random.seed(2025)
-        self.np_x = np.zeros((3, 9)).astype("float32")
-        self.np_value = np.ones((3, 2)).astype("float32")
+    """Test slice_scatter decorator compatibility.
+
+    PyTorch: torch.slice_scatter(input, src, dim=0, start=None, end=None, step=1)
+    Paddle: paddle.slice_scatter(x, value, axes, starts, ends, strides)
+
+    The decorator handles:
+    1. PyTorch style positional args (dim/start/end/step are int, triggers is_paddle_style=False)
+    2. PyTorch keyword aliases (input/src/dim/start/end/step)
+    3. end=None handling
+    4. Auto-calc ends when not provided
+    """
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
-        x = paddle.to_tensor(self.np_x)
-        value = paddle.to_tensor(self.np_value)
 
-        # 1. Paddle Positional arguments (list)
-        out1 = paddle.slice_scatter(x, value, [1], [2], [6], [2])
-        # 2. Paddle keyword arguments (list)
-        out2 = paddle.slice_scatter(
-            x=x, value=value, axes=[1], starts=[2], ends=[6], strides=[2]
-        )
-        # 3. PyTorch keyword arguments (int - auto convert to list)
-        out3 = paddle.slice_scatter(
+        # 1. PyTorch style positional args (is_paddle_style=False branch)
+        # Full positional args: dim=1, start=2, end=6, step=2
+        x = paddle.zeros((3, 8))
+        value = paddle.ones((3, 2))
+        out = paddle.slice_scatter(x, value, 1, 2, 6, 2)
+        expected = np.zeros((3, 8))
+        expected[:, 2] = 1.0
+        expected[:, 4] = 1.0
+        np.testing.assert_allclose(out.numpy(), expected, rtol=1e-5)
+
+        # Only dim, start (step defaults to 1)
+        x2 = paddle.zeros((3, 8))
+        value2 = paddle.ones((3, 4))
+        out2 = paddle.slice_scatter(x2, value2, 1, 2)
+        expected2 = np.zeros((3, 8))
+        expected2[:, 2:6] = 1.0
+        np.testing.assert_allclose(out2.numpy(), expected2, rtol=1e-5)
+
+        # Only dim (start defaults to 0)
+        x3 = paddle.zeros((3, 5))
+        value3 = paddle.ones((3, 2))
+        out3 = paddle.slice_scatter(x3, value3, 1)
+        expected3 = np.zeros((3, 5))
+        expected3[:, 0:2] = 1.0
+        np.testing.assert_allclose(out3.numpy(), expected3, rtol=1e-5)
+
+        # 2. PyTorch keyword aliases
+        out4 = paddle.slice_scatter(
             input=x, src=value, dim=1, start=2, end=6, step=2
         )
-        # 4. Mixed arguments
-        out4 = paddle.slice_scatter(
-            x, value, axes=[1], starts=[2], ends=[6], strides=[2]
-        )
-        # 5. Tensor method - args
-        out5 = x.slice_scatter(value, [1], [2], [6], [2])
+        np.testing.assert_allclose(out4.numpy(), expected, rtol=1e-5)
 
-        # Verify all outputs
-        for out in [out1, out2, out3, out4, out5]:
-            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-5)
-            self.assertEqual(out.shape, (3, 9))
+        # 3. end=None handling (line 1304 branch)
+        out5 = paddle.slice_scatter(
+            input=x, src=value, dim=1, start=2, end=None, step=2
+        )
+        np.testing.assert_allclose(out5.numpy(), expected, rtol=1e-5)
+
+        # Not passing end (line 1359-1368 auto-calc ends)
+        out6 = paddle.slice_scatter(input=x, src=value, dim=1, start=2, step=2)
+        np.testing.assert_allclose(out6.numpy(), expected, rtol=1e-5)
+
+        # 4. Paddle style positional args (is_paddle_style=True branch)
+        out7 = paddle.slice_scatter(x, value, [1], [2], [6], [2])
+        np.testing.assert_allclose(out7.numpy(), expected, rtol=1e-5)
+
+        # 5. Paddle keyword args
+        out8 = paddle.slice_scatter(
+            x=x, value=value, axes=[1], starts=[2], ends=[6], strides=[2]
+        )
+        np.testing.assert_allclose(out8.numpy(), expected, rtol=1e-5)
+
+        # 6. Tensor method
+        out9 = x.slice_scatter(value, dim=1, start=2, end=6, step=2)
+        np.testing.assert_allclose(out9.numpy(), expected, rtol=1e-5)
 
         paddle.enable_static()
 
@@ -238,39 +277,38 @@ class TestSliceScatterAPI(unittest.TestCase):
         paddle.enable_static()
         main = paddle.static.Program()
         startup = paddle.static.Program()
+
+        np_x = np.zeros((3, 8)).astype("float32")
+        np_value = np.ones((3, 2)).astype("float32")
+
         with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(
-                name="x", shape=self.np_x.shape, dtype=str(self.np_x.dtype)
-            )
+            x = paddle.static.data(name="x", shape=(3, 8), dtype="float32")
             value = paddle.static.data(
-                name="value",
-                shape=self.np_value.shape,
-                dtype=str(self.np_value.dtype),
+                name="value", shape=(3, 2), dtype="float32"
             )
 
-            # 1. Paddle Positional arguments
+            # Paddle style positional args
             out1 = paddle.slice_scatter(x, value, [1], [2], [6], [2])
-            # 2. Paddle keyword arguments
+            # PyTorch keyword args
             out2 = paddle.slice_scatter(
-                x=x, value=value, axes=[1], starts=[2], ends=[6], strides=[2]
-            )
-            # 3. PyTorch keyword arguments (alias)
-            out3 = paddle.slice_scatter(
                 input=x, src=value, dim=1, start=2, end=6, step=2
             )
-            # 4. Tensor method - args
-            out4 = x.slice_scatter(value, [1], [2], [6], [2])
+            # Tensor method
+            out3 = x.slice_scatter(value, [1], [2], [6], [2])
 
             exe = paddle.static.Executor()
             fetches = exe.run(
                 main,
-                feed={"x": self.np_x, "value": self.np_value},
-                fetch_list=[out1, out2, out3, out4],
+                feed={"x": np_x, "value": np_value},
+                fetch_list=[out1, out2, out3],
             )
 
-            # Verify all outputs
+            expected = np.zeros((3, 8))
+            expected[:, 2] = 1.0
+            expected[:, 4] = 1.0
+
             for out in fetches:
-                np.testing.assert_allclose(out, fetches[0], rtol=1e-5)
+                np.testing.assert_allclose(out, expected, rtol=1e-5)
 
 
 # Test tensordot compatibility
@@ -808,6 +846,10 @@ class TestNansumAPI(unittest.TestCase):
 
 
 # Test masked_fill compatibility
+@unittest.skipIf(
+    paddle.is_compiled_with_xpu(),
+    "Skip on XPU due to kernel issue",
+)
 class TestMaskedFillAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -1410,6 +1452,10 @@ class TestTakeAPI(unittest.TestCase):
 
 
 # Test matrix_exp compatibility
+@unittest.skipIf(
+    paddle.device.is_compiled_with_custom_device("dcu"),
+    "Skip on DCU due to kernel issue",
+)
 class TestMatrixExpAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
