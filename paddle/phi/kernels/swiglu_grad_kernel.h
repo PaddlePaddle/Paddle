@@ -62,12 +62,20 @@ void SwiGLUGradKernel(const Context &dev_ctx,
   if (y) {
     const auto &y_tensor = y.get();
     const auto &y_dims = y_tensor.dims();
+    const auto &dz_dims = dz.dims();
     PADDLE_ENFORCE_EQ(y_dims,
                       dims,
                       common::errors::InvalidArgument(
                           "The shape of Input(Y):[%s] must be equal "
                           "to the shape of Input(X):[%s].",
                           y_dims,
+                          dims));
+    PADDLE_ENFORCE_EQ(dz_dims,
+                      dims,
+                      common::errors::InvalidArgument(
+                          "The shape of Input(dz):[%s] must be equal "
+                          "to the shape of Input(X):[%s].",
+                          dz_dims,
                           dims));
     SwiGLUGradKernelImpl<T, Context>(dev_ctx,
                                      x_ptr,
@@ -86,6 +94,33 @@ void SwiGLUGradKernel(const Context &dev_ctx,
                           "The last dim of Input(X) should be exactly divided "
                           "by 2 when Input(Y) is None, but got %d",
                           n));
+    const auto &dz_dims = dz.dims();
+    PADDLE_ENFORCE_EQ(
+        dz_dims.size(),
+        dims.size(),
+        common::errors::InvalidArgument(
+            "The rank of Input(dz):[%d] must be equal to the rank of "
+            "Input(X):[%d] when Input(Y) is None.",
+            dz_dims.size(),
+            dims.size()));
+    for (int i = 0; i < dims.size() - 1; ++i) {
+      PADDLE_ENFORCE_EQ(dz_dims[i],
+                        dims[i],
+                        common::errors::InvalidArgument(
+                            "The shape of Input(dz):[%s] must be equal to "
+                            "the shape of Input(X):[%s] except the last dim "
+                            "when Input(Y) is None.",
+                            dz_dims,
+                            dims));
+    }
+    PADDLE_ENFORCE_EQ(
+        dz_dims[dz_dims.size() - 1],
+        n / 2,
+        common::errors::InvalidArgument(
+            "The last dim of Input(dz):[%d] must be equal to half of the "
+            "last dim of Input(X):[%d] when Input(Y) is None.",
+            dz_dims[dz_dims.size() - 1],
+            n));
     SwiGLUGradKernelImpl<T, Context>(
         dev_ctx, x_ptr, nullptr, dz_ptr, dx_ptr, nullptr, m, n / 2);
   }
