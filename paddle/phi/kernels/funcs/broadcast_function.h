@@ -466,17 +466,17 @@ void LaunchBroadcastKernel(
                                        read_lens,
                                        func);
 #else
-  const int64_t &numel = classifier.numel;
+  const int64_t numel_64 = classifier.numel;
   auto gpu_config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, VecSize);
+      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel_64, VecSize);
   auto stream = dev_ctx.stream();
   uint32_t threads = static_cast<uint32_t>(gpu_config.GetBlockSize());
   auto blocks = gpu_config.block_per_grid;
-  PADDLE_ENFORCE_LE_UINT32_MAX(numel, "numel");
-  const uint32_t numel_32 = static_cast<uint32_t>(numel);
+  PADDLE_ENFORCE_LE_UINT32_MAX(numel_64, "numel");
+  const uint32_t numel = static_cast<uint32_t>(numel_64);
   const int64_t block_len = static_cast<int64_t>(VecSize) * threads;
-  const int64_t main_offset_64 = (numel / block_len) * block_len;
-  const int64_t tail_tid_64 = numel % block_len;
+  const int64_t main_offset_64 = (numel_64 / block_len) * block_len;
+  const int64_t tail_tid_64 = numel_64 % block_len;
   uint32_t main_offset = static_cast<uint32_t>(main_offset_64);
   uint32_t tail_tid = static_cast<uint32_t>(tail_tid_64);
 
@@ -490,7 +490,7 @@ void LaunchBroadcastKernel(
         <<<blocks, threads, 0, stream>>>(classifier.ins_data,
                                          classifier.outs_data,
                                          classifier.use_broadcast,
-                                         numel_32,
+                                         numel,
                                          classifier.configs,
                                          main_offset,
                                          tail_tid,
@@ -502,7 +502,7 @@ void LaunchBroadcastKernel(
         <<<blocks, threads, 0, stream>>>(classifier.ins_data,
                                          classifier.outs_data,
                                          classifier.use_broadcast,
-                                         numel_32,
+                                         numel,
                                          classifier.configs,
                                          main_offset,
                                          tail_tid,
@@ -513,7 +513,7 @@ void LaunchBroadcastKernel(
         <<<blocks, threads, 0, stream>>>(classifier.ins_data,
                                          classifier.outs_data,
                                          classifier.use_broadcast,
-                                         numel_32,
+                                         numel,
                                          classifier.configs,
                                          main_offset,
                                          tail_tid,
