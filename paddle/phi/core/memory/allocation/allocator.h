@@ -17,6 +17,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -274,9 +275,19 @@ class PADDLE_API MultiScalePoolAllocator : public Allocator {
       uintptr_t allocator_instance = reinterpret_cast<uintptr_t>(this);
       RecordFree(allocator_instance, id, allocation->size());
     }
-    static_cast<Allocation*>(allocation)->PopDecoratedAllocator();
-    IsSmallRequest(allocation->size()) ? small_allocator_->Free(allocation)
-                                       : large_allocator_->Free(allocation);
+    auto* decorated_allocation = static_cast<Allocation*>(allocation);
+    decorated_allocation->PopDecoratedAllocator();
+    Allocator* underlying_allocator =
+        decorated_allocation->TopDecoratedAllocator();
+    PADDLE_ENFORCE_EQ(
+        underlying_allocator == small_allocator_.get() ||
+            underlying_allocator == large_allocator_.get(),
+        true,
+        common::errors::InvalidArgument(
+            "MultiScalePoolAllocator found an unexpected underlying "
+            "allocator when freeing allocation %p.",
+            allocation->ptr()));
+    underlying_allocator->Free(allocation);
   };
   // Get allocate event when start FLAGS_record_alloc_event.
   std::vector<std::tuple<uintptr_t, bool, uint64_t, size_t, int64_t, int64_t>>
