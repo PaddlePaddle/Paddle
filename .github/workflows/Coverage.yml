@@ -4,6 +4,12 @@ on:
   pull_request:
     types: [opened, synchronize]
     branches: [develop, release/**]
+  workflow_dispatch:
+    inputs:
+      full_coverage:
+        description: 'Enable full coverage mode (upload coverage-full.info to BOS)'
+        type: boolean
+        default: false
 
 permissions: read-all
 
@@ -302,6 +308,7 @@ jobs:
           PY_VERSION: "3.12"
           WITH_SHARED_PHI: "ON"
           WITH_CINN: "ON"
+          WITH_ALL_COVERAGE: ${{ inputs.full_coverage && 'ON' || 'OFF' }}
           INFERENCE_DEMO_INSTALL_DIR: /root/.cache/coverage
           CCACHE_MAXSIZE: 200G
           CCACHE_LIMIT_MULTIPLE: 0.8
@@ -344,6 +351,7 @@ jobs:
             -e PY_VERSION \
             -e WITH_SHARED_PHI \
             -e WITH_CINN \
+            -e WITH_ALL_COVERAGE \
             -e INFERENCE_DEMO_INSTALL_DIR \
             -e CCACHE_MAXSIZE \
             -e CCACHE_LIMIT_MULTIPLE \
@@ -390,6 +398,41 @@ jobs:
           source ${ci_scripts}/utils.sh; check_coverage
           mkdir -p /home/data/cfs/coverage/${PR_ID}/${COMMIT_ID}
           cp build/coverage_files/* /home/data/cfs/coverage/${PR_ID}/${COMMIT_ID}
+          '
+
+      - name: Upload full coverage to BOS
+        if: inputs.full_coverage
+        env:
+          home_path: ${{ github.workspace }}/..
+          bos_file: ${{ github.workspace }}/../bos_retry/BosClient.py
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          echo "::group::Install bce-python-sdk"
+          source ${{ github.workspace }}/../../../proxy
+          python -m pip install bce-python-sdk==0.8.74
+          echo "::endgroup::"
+          export AK=paddle
+          export SK=paddle
+          if [ ! -f "${{ env.bos_file }}" ]; then
+            wget -q --no-proxy -O ${{ env.home_path }}/bos_retry.tar.gz https://xly-devops.bj.bcebos.com/home/bos_retry.tar.gz --no-check-certificate
+            mkdir ${{ env.home_path }}/bos_retry
+            tar xf ${{ env.home_path }}/bos_retry.tar.gz -C ${{ env.home_path }}/bos_retry
+          fi
+          cd ${work_dir}/build
+          echo "Uploading coverage-full.info"
+          if [ -f coverage-full.info ]; then
+            python ${{ env.bos_file }} coverage-full.info paddle-github-action/PR/coverage/${PR_ID}/${COMMIT_ID}
+            echo "Uploaded coverage-full.info"
+          else
+            echo "WARNING: coverage-full.info not found, skipping C++ full coverage upload"
+          fi
+          echo "Uploading python-coverage-full.info"
+          if [ -f python-coverage-full.info ]; then
+            python ${{ env.bos_file }} python-coverage-full.info paddle-github-action/PR/coverage/${PR_ID}/${COMMIT_ID}
+            echo "Uploaded python-coverage-full.info"
+          else
+            echo "WARNING: python-coverage-full.info not found, skipping Python full coverage upload"
+          fi
           '
 
       - name: Upload coverage report
