@@ -78,6 +78,7 @@ function make_ubuntu20_cu12_dockerfile(){
   sed "s#<baseimg>#nvidia/cuda:13.0.0-cudnn-devel-ubuntu24.04#g" ./Dockerfile.ubuntu24 >${dockerfile_name}
   sed -i "s#<setcuda>##g" ${dockerfile_name}
   sed -i 's#<install_cpu_package>##g' ${dockerfile_name}
+  sed -i 's#add-apt-repository ppa:deadsnakes/ppa \&\&#add-apt-repository ppa:deadsnakes/ppa \&\& add-apt-repository ppa:ubuntu-toolchain-r/test \&\&#g' ${dockerfile_name}
   sed -i "7i ENV TZ=Asia/Beijing" ${dockerfile_name}
   sed -i "8i RUN ln -snf /usr/share/zoneinfo/\$TZ /etc/localtime && echo \$TZ > /etc/timezone" ${dockerfile_name}
   sed -i "27i RUN apt-get update && apt-get install -y liblzma-dev openmpi-bin openmpi-doc libopenmpi-dev libsndfile1" ${dockerfile_name}
@@ -87,7 +88,7 @@ function make_ubuntu20_cu12_dockerfile(){
   sed -i "${dockerfile_line}i RUN apt update \&\& apt install -y git libcurl4-openssl-dev gettext pigz zstd ninja-build" ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN pip install wheel \&\& pip3.12 install PyGithub wheel distro jinja2" ${dockerfile_name}
   sed -i 's#RUN bash /build_scripts/install_trt.sh##g' ${dockerfile_name}
-  sed -i "${dockerfile_line}i RUN add-apt-repository ppa:ubuntu-toolchain-r/test \&\& apt-get update \&\& \
+  sed -i "${dockerfile_line}i RUN apt-get update \&\& \
     apt-get install -y gcc-15 g++-15 \&\& \
     update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-15 150 \&\& \
     update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-15 150 \&\& \
