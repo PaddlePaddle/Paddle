@@ -38,7 +38,7 @@ if(WITH_GPU)
       COMMAND
         ${CMAKE_COMMAND} -E env
         PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-        ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/${op_test_name}.py
+        python3 ${CMAKE_CURRENT_SOURCE_DIR}/${op_test_name}.py
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   endforeach()
 
@@ -60,8 +60,7 @@ if(WITH_GPU)
       COMMAND
         ${CMAKE_COMMAND} -E env
         PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-        ${PYTHON_EXECUTABLE}
-        ${CMAKE_CURRENT_SOURCE_DIR}/${op_mapper_test_name}.py
+        python3 ${CMAKE_CURRENT_SOURCE_DIR}/${op_mapper_test_name}.py
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   endforeach()
 
@@ -85,7 +84,7 @@ if(WITH_GPU)
       COMMAND
         ${CMAKE_COMMAND} -E env
         PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-        ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/${pass_test_name}.py
+        python3 ${CMAKE_CURRENT_SOURCE_DIR}/${pass_test_name}.py
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   endforeach()
 
@@ -105,7 +104,7 @@ if(WITH_GPU)
       COMMAND
         ${CMAKE_COMMAND} -E env
         PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
-        ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/${runtime_test_name}.py
+        python3 ${CMAKE_CURRENT_SOURCE_DIR}/${runtime_test_name}.py
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   endforeach()
 
@@ -121,7 +120,7 @@ if(WITH_GPU)
       COMMAND
         ${CMAKE_COMMAND} -E env
         PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
-        ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/${ir_test_name}.py
+        python3 ${CMAKE_CURRENT_SOURCE_DIR}/${ir_test_name}.py
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   endforeach()
 

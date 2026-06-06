@@ -26,13 +26,12 @@ np.random.seed(100)
 
 
 def find_latest_set(num):
-    num = int(np.asarray(num).item())
     return 1 + int(math.floor(math.log2(num)))
 
 
 class CodeTable:
     def __init__(self, num_classes, code):
-        self.c = int(np.asarray(num_classes + code).item())
+        self.c = num_classes + code
 
     def cal_index(self, bit):
         return (self.c >> (bit + 1)) - 1
@@ -78,7 +77,7 @@ def hsigmoid(x, w, label, bias, num_classes):
         length = code_table.get_length()
         for j in range(length):
             idx = code_table.cal_index(j)
-            pre_output[i][j] += np.asarray(bias[idx]).item()
+            pre_output[i][j] += bias[idx][0]
     for i in range(batch_size):
         code_table = CodeTable(num_classes, label[i])
         length = code_table.get_length()
@@ -143,7 +142,7 @@ def hsigmoidWithCustomTree(
             length = code_table.get_length()
             for j in range(length):
                 idx = code_table.cal_index(j)
-                pre_output[i][j] += np.asarray(bias[idx]).item()
+                pre_output[i][j] += bias[idx][0]
     for i in range(batch_size):
         code_table = CodeTableWithCustomTree(path_table, path_code, i)
         length = code_table.get_length()
