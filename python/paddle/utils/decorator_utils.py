@@ -1217,10 +1217,9 @@ def lr_scheduler_decorator() -> Callable[
                 args_list = list(args)
                 args_list[1] = opt.get_lr()
                 args = tuple(args_list)
-
+            func(*args, **kwargs)
             if opt is not None:
                 opt.set_lr_scheduler(args[0])
-            return func(*args, **kwargs)
 
         wrapper.__signature__ = inspect.signature(func)
         return wrapper
