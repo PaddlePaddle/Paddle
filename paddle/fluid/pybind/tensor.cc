@@ -200,7 +200,11 @@ namespace {
 void ShareTensorViaVmm(const DenseTensor &self, py::tuple *out) {
   auto *holder =
       dynamic_cast<memory::allocation::Allocation *>(self.Holder().get());
-  paddle::memory::VmmTensorPartsVisitor parts_visitor(holder->ptr());
+  size_t data_size =
+      self.numel() *
+      framework::SizeOfType(framework::TransToProtoVarType(self.type()));
+  paddle::memory::VmmTensorPartsVisitor parts_visitor(
+      const_cast<void *>(self.data()), data_size);
   paddle::memory::allocation::AllocatorFacade::Instance().Accept(
       holder->place(), &parts_visitor);
   PADDLE_ENFORCE_EQ(
@@ -226,7 +230,7 @@ void ShareTensorViaVmm(const DenseTensor &self, py::tuple *out) {
   header.flags = 0x1;
   header.pid = static_cast<uint32_t>(::getpid());
   header.num_entries = static_cast<uint32_t>(parts.size());
-  header.alloc_size = static_cast<uint64_t>(holder->size());
+  header.alloc_size = static_cast<uint64_t>(data_size);
   header.offset = parts[0].chunk_rel_off;
   header.reserved_size = 0;
   for (const auto &p : parts) {
