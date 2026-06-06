@@ -129,25 +129,33 @@ class TestNanmeanAPI(unittest.TestCase):
         test_case(self.x_grad, (0, 1))
         paddle.enable_static()
 
+    @unittest.skipIf(
+        paddle.core.is_compiled_with_xpu(),
+        "XPU does not support type float64.",
+    )
     def test_dygraph_arg_dtype(self):
         paddle.disable_static()
         x_tensor = paddle.to_tensor(self.x)
-        out = paddle.nanmean(x_tensor, (0, 2), dtype='float16')
-        out_ref = np.nanmean(self.x, (0, 2), np.float16)
+        out = paddle.nanmean(x_tensor, (0, 2), dtype='float64')
+        out_ref = np.nanmean(self.x, (0, 2), np.float64)
         np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.0001)
-        self.assertEqual(out.dtype, paddle.float16)
+        self.assertEqual(out.dtype, paddle.float64)
         paddle.enable_static()
 
+    @unittest.skipIf(
+        paddle.core.is_compiled_with_xpu(),
+        "XPU does not support type float64.",
+    )
     def test_static_arg_dtype(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data('X', self.x_shape)
-            out = paddle.nanmean(x, (0, 2), dtype='float16')
+            out = paddle.nanmean(x, (0, 2), dtype='float64')
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x}, fetch_list=[out])
-        out_ref = np.nanmean(self.x, (0, 2), np.float16)
+        out_ref = np.nanmean(self.x, (0, 2), np.float64)
         np.testing.assert_allclose(res[0], out_ref, rtol=0.0001)
-        self.assertEqual(res[0].dtype, np.float16)
+        self.assertEqual(res[0].dtype, np.float64)
 
 
 class TestNanmeanAPI_ZeroSize(unittest.TestCase):
