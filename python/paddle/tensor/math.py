@@ -1867,7 +1867,7 @@ def nanmean(
     cnt = paddle.sum(~paddle.isnan(x), axis=axis, dtype=dtype, keepdim=keepdim)
     return paddle.divide(
         paddle.nansum(x, axis=axis, dtype=dtype, keepdim=keepdim, name=name),
-        cnt,
+        cnt.astype(dtype),
         out=out,
     )
 
