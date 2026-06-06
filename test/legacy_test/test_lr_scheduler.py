@@ -1335,6 +1335,7 @@ class TestLRScheduler(unittest.TestCase):
 class TestLRSchedulerWithOptimizerArg(unittest.TestCase):
     def _test_network(self, net, optimizer, scheduler):
         paddle.disable_static()
+        lrs = [scheduler.get_lr()]
         for epoch in range(10):
             for batch_id in range(5):
                 x = paddle.uniform([10, 10])
@@ -1343,20 +1344,25 @@ class TestLRSchedulerWithOptimizerArg(unittest.TestCase):
                 loss.backward()
                 optimizer.step()
                 optimizer.clear_gradients()
-                scheduler.step()
+            scheduler.step()
+            lrs.append(scheduler.get_lr())
         paddle.enable_static()
+        return lrs
 
     def test_exponential_decay(self):
         paddle.disable_static()
         linear = paddle.nn.Linear(10, 10)
         base_lr = 0.01
+        gamma = 0.9
         adam = paddle.optimizer.Adam(
             learning_rate=base_lr, parameters=linear.parameters()
         )
-        scheduler = paddle.optimizer.lr.ExponentialDecay(adam, gamma=0.9)
+        scheduler = paddle.optimizer.lr.ExponentialDecay(adam, gamma=gamma)
         self.assertEqual(scheduler.base_lr, adam.get_lr())
         self.assertIs(adam._learning_rate, scheduler)
-        self._test_network(linear, adam, scheduler)
+        lrs = self._test_network(linear, adam, scheduler)
+        for i in range(len(lrs)):
+            np.testing.assert_allclose(lrs[i], base_lr * gamma**i)
         paddle.enable_static()
 
     def test_cosine_annealing_decay(self):
@@ -1391,15 +1397,27 @@ class TestLRSchedulerWithOptimizerArg(unittest.TestCase):
     def test_multi_step_decay(self):
         paddle.disable_static()
         linear = paddle.nn.Linear(10, 10)
+        base_lr = 0.5
+        gamma = 0.9
+        milestones = [2, 4, 6]
         sgd = paddle.optimizer.SGD(
-            learning_rate=0.5, parameters=linear.parameters()
+            learning_rate=base_lr, parameters=linear.parameters()
         )
         scheduler = paddle.optimizer.lr.MultiStepDecay(
-            optimizer=sgd, milestones=[2, 4, 6]
+            optimizer=sgd, milestones=milestones, gamma=gamma
         )
         self.assertEqual(scheduler.base_lr, sgd.get_lr())
         self.assertIs(sgd._learning_rate, scheduler)
-        self._test_network(linear, sgd, scheduler)
+        lrs = self._test_network(linear, sgd, scheduler)
+        for i in range(len(lrs)):
+            if i < milestones[0]:
+                np.testing.assert_allclose(lrs[i], base_lr)
+            elif milestones[0] <= i < milestones[1]:
+                np.testing.assert_allclose(lrs[i], base_lr * gamma)
+            elif milestones[1] <= i < milestones[2]:
+                np.testing.assert_allclose(lrs[i], base_lr * gamma**2)
+            else:
+                np.testing.assert_allclose(lrs[i], base_lr * gamma**3)
         paddle.enable_static()
 
     def test_reduce_on_plateau(self):
@@ -1427,13 +1445,22 @@ class TestLRSchedulerWithOptimizerArg(unittest.TestCase):
     def test_step_decay(self):
         paddle.disable_static()
         linear = paddle.nn.Linear(10, 10)
+        base_lr = 0.5
+        gamma = 0.9
+        step_size = 2
         sgd = paddle.optimizer.SGD(
-            learning_rate=0.5, parameters=linear.parameters()
+            learning_rate=base_lr, parameters=linear.parameters()
         )
-        scheduler = paddle.optimizer.lr.StepDecay(optimizer=sgd, step_size=2)
+        scheduler = paddle.optimizer.lr.StepDecay(
+            optimizer=sgd, step_size=step_size, gamma=gamma
+        )
         self.assertEqual(scheduler.base_lr, sgd.get_lr())
         self.assertIs(sgd._learning_rate, scheduler)
-        self._test_network(linear, sgd, scheduler)
+        lrs = self._test_network(linear, sgd, scheduler)
+        for i in range(len(lrs)):
+            np.testing.assert_allclose(
+                lrs[i], base_lr * gamma ** (i // step_size)
+            )
         paddle.enable_static()
 
 
