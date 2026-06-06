@@ -131,31 +131,23 @@ class TestNanmeanAPI(unittest.TestCase):
 
     def test_dygraph_arg_dtype(self):
         paddle.disable_static()
-        x_np = np.random.randint(low=-10, high=11, size=self.x_shape).astype(
-            np.int16
-        )
-        x_np[0, :, :, :] = np.nan
-        x_tensor = paddle.to_tensor(x_np)
-        out = paddle.nanmean(x_tensor, (0, 2), dtype='int32')
-        out_ref = np.nanmean(x_np, (0, 2), np.int32)
+        x_tensor = paddle.to_tensor(self.x)
+        out = paddle.nanmean(x_tensor, (0, 2), dtype='float16')
+        out_ref = np.nanmean(self.x, (0, 2), np.float16)
         np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.0001)
-        self.assertEqual(out.dtype, paddle.int32)
+        self.assertEqual(out.dtype, paddle.float16)
         paddle.enable_static()
 
     def test_static_arg_dtype(self):
         paddle.enable_static()
-        x_np = np.random.randint(low=-10, high=11, size=self.x_shape).astype(
-            np.int16
-        )
-        x_np[0, :, :, :] = np.nan
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data('X', self.x_shape)
-            out = paddle.nanmean(x, (0, 2), dtype='int32')
+            out = paddle.nanmean(x, (0, 2), dtype='float16')
             exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'X': x_np}, fetch_list=[out])
-        out_ref = np.nanmean(x_np, (0, 2), np.int32)
+            res = exe.run(feed={'X': self.x}, fetch_list=[out])
+        out_ref = np.nanmean(self.x, (0, 2), np.float16)
         np.testing.assert_allclose(res[0], out_ref, rtol=0.0001)
-        self.assertEqual(res[0].dtype, np.int32)
+        self.assertEqual(res[0].dtype, np.float16)
 
 
 class TestNanmeanAPI_ZeroSize(unittest.TestCase):
