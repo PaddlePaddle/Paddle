@@ -2405,6 +2405,11 @@ class TestDistributedSamplerAPI(unittest.TestCase):
             def __init__(self, size):
                 self.size = size
 
+            def __getitem__(self, idx):
+                x = idx
+                y = 2 * idx
+                return x, y
+
             def __len__(self):
                 return self.size
 
@@ -2414,7 +2419,7 @@ class TestDistributedSamplerAPI(unittest.TestCase):
         """Test DistributedSampler as alias for DistributedBatchSampler"""
         # 1. positional arguments
         sampler1 = paddle.utils.data.DistributedSampler(
-            self.dataset, 2, 0, False, False
+            self.dataset, 2, 0, False, 2026, False
         )
         # 2. keyword arguments
         sampler2 = paddle.utils.data.DistributedSampler(
@@ -2422,6 +2427,7 @@ class TestDistributedSamplerAPI(unittest.TestCase):
             num_replicas=2,
             rank=0,
             shuffle=False,
+            seed=2026,
             drop_last=False,
         )
         # Verify both samplers produce same batches

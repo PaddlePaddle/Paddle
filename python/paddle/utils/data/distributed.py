@@ -29,6 +29,7 @@ class DistributedSampler(DistributedBatchSampler):
         num_replicas: int | None = None,
         rank: int | None = None,
         shuffle: bool = True,
+        seed: int = 0,
         drop_last: bool = False,
     ) -> None:
         super().__init__(
@@ -38,4 +39,5 @@ class DistributedSampler(DistributedBatchSampler):
             rank,
             shuffle,
             drop_last,
+            seed,
         )

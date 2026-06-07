@@ -233,6 +233,9 @@ class DistributedBatchSampler(BatchSampler):
             batch indices. Default False.
         drop_last(bool, optional): whether drop the last incomplete(less than a mini-batch) batch dataset size.
             Default False.
+        seed(int, optional): random seed used to shuffle indices order if
+            :attr:`shuffle=True`. This number should be identical across all
+            processes in the distributed group. Default 0.
 
     Returns:
         DistributedBatchSampler, return an iterable object for indices iterating.
@@ -281,6 +284,7 @@ class DistributedBatchSampler(BatchSampler):
         rank: int | None = None,
         shuffle: bool = False,
         drop_last: bool = False,
+        seed: int = 0,
     ) -> None:
         self.dataset = dataset
 
@@ -316,6 +320,7 @@ class DistributedBatchSampler(BatchSampler):
         self.epoch = 0
         self.num_samples = int(math.ceil(len(self.dataset) * 1.0 / self.nranks))
         self.total_size = self.num_samples * self.nranks
+        self.seed = seed
 
         # TODO(dev): consider to make it as public argument, acc_steps is only used
         # in auto-parallel
@@ -336,7 +341,7 @@ class DistributedBatchSampler(BatchSampler):
 
         assert len(indices) == self.total_size
         if self.shuffle:
-            np.random.RandomState(self.epoch).shuffle(indices)
+            np.random.RandomState(self.seed + self.epoch).shuffle(indices)
             self.epoch += 1
 
         # subsample
