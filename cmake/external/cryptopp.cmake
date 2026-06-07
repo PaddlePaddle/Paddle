@@ -22,6 +22,8 @@ set(CRYPTOPP_INCLUDE_DIR
     "${CRYPTOPP_INSTALL_DIR}/include"
     CACHE PATH "cryptopp include directory." FORCE)
 set(CRYPTOPP_TAG CRYPTOPP_8_2_0)
+file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/cryptopp/filters.h.patch
+     CRYPTOPP_CXX20_PATCH)
 
 if(WIN32)
   set(CRYPTOPP_LIBRARIES
@@ -77,12 +79,16 @@ ExternalProject_Add(
   SOURCE_DIR ${CRYPTOPP_SOURCE_DIR}
   UPDATE_COMMAND ""
   PATCH_COMMAND
+  COMMAND git checkout -- .
   COMMAND ${CMAKE_COMMAND} -E copy "${CRYPTOPP_CMAKE_SOURCE_DIR}/CMakeLists.txt"
           "<SOURCE_DIR>/CMakeLists.txt"
   COMMAND
     ${CMAKE_COMMAND} -E copy
     "${CRYPTOPP_CMAKE_SOURCE_DIR}/cryptopp-config.cmake"
     "<SOURCE_DIR>/cryptopp-config.cmake"
+  COMMAND git apply --unidiff-zero --ignore-space-change --check
+          ${CRYPTOPP_CXX20_PATCH}
+  COMMAND git apply --unidiff-zero --ignore-space-change ${CRYPTOPP_CXX20_PATCH}
   COMMAND ${CRYPTOPP_PATCH_COMMAND}
   INSTALL_DIR ${CRYPTOPP_INSTALL_DIR}
   CMAKE_ARGS ${CRYPTOPP_CMAKE_ARGS}
