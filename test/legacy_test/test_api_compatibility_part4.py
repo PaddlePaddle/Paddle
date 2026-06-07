@@ -1304,6 +1304,9 @@ class TestNegative_InplaceAPI(unittest.TestCase):
 # Test to_sparse compatibility (alias for to_sparse_coo)
 class TestToSparseAPI(unittest.TestCase):
     def test_dygraph_Compatibility(self):
+        if paddle.device.is_compiled_with_xpu():
+            self.skipTest("sparse ops are not supported on XPU")
+
         paddle.disable_static()
         dense_x = paddle.to_tensor(
             [[0, 1, 0, 2], [0, 0, 3, 4]], dtype='float32'
@@ -1358,6 +1361,9 @@ class TestAutogradEnableGradAPI(unittest.TestCase):
 # Test col_indices compatibility (alias for cols)
 class TestColIndicesAPI(unittest.TestCase):
     def test_dygraph_Compatibility(self):
+        if paddle.device.is_compiled_with_xpu():
+            self.skipTest("sparse ops are not supported on XPU")
+
         paddle.disable_static()
 
         # Create a sparse CSR tensor
@@ -1380,6 +1386,9 @@ class TestColIndicesAPI(unittest.TestCase):
 # Test crow_indices compatibility (alias for crows)
 class TestCrowIndicesAPI(unittest.TestCase):
     def test_dygraph_Compatibility(self):
+        if paddle.device.is_compiled_with_xpu():
+            self.skipTest("sparse ops are not supported on XPU")
+
         paddle.disable_static()
 
         # Create a sparse CSR tensor
