@@ -1270,11 +1270,16 @@ def nansum_decorator() -> Callable[
 
 
 def _calc_end_from_shapes(x, value, axes, starts, strides):
-    """Calculate end value for slice_scatter from tensor shapes."""
-    axes_val = axes[0] if axes else 0
-    dim_idx = axes_val if axes_val >= 0 else len(x.shape) + axes_val
-    value_size = value.shape[dim_idx] if dim_idx < len(value.shape) else 1
-    return starts[0] + value_size * strides[0]
+    """Calculate end values for slice_scatter from tensor shapes.
+
+    Supports multi-axis by calculating end for each axis.
+    """
+    ends = []
+    for i, ax in enumerate(axes):
+        dim_idx = ax if ax >= 0 else len(x.shape) + ax
+        value_size = value.shape[dim_idx] if dim_idx < len(value.shape) else 1
+        ends.append(starts[i] + value_size * strides[i])
+    return ends
 
 
 def slice_scatter_decorator() -> Callable[

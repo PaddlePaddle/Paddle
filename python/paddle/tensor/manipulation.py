@@ -8775,7 +8775,7 @@ def slice_scatter(
     """
     # Auto-calculate ends if not provided
     if ends is None:
-        ends = [_calc_end_from_shapes(x, value, axes, starts, strides)]
+        ends = _calc_end_from_shapes(x, value, axes, starts, strides)
 
     none_axes = []
     decrease_axes = []

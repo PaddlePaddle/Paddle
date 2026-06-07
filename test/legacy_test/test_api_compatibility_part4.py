@@ -271,6 +271,18 @@ class TestSliceScatterAPI(unittest.TestCase):
         out9 = x.slice_scatter(value, dim=1, start=2, end=6, step=2)
         np.testing.assert_allclose(out9.numpy(), expected, rtol=1e-5)
 
+        # 7. Multi-axis with auto-calc ends
+        x_multi = paddle.zeros((3, 3, 5))
+        value_multi = paddle.ones((2, 3, 3))
+        out_multi = paddle.slice_scatter(
+            x_multi, value_multi, axes=[0, 2], starts=[1, 0], strides=[1, 2]
+        )
+        expected_multi = np.zeros((3, 3, 5))
+        expected_multi[1:3, :, 0:5:2] = (
+            1.0  # axes=[0,2], starts=[1,0], auto ends
+        )
+        np.testing.assert_allclose(out_multi.numpy(), expected_multi, rtol=1e-5)
+
         paddle.enable_static()
 
     def test_static_Compatibility(self):
@@ -846,10 +858,6 @@ class TestNansumAPI(unittest.TestCase):
 
 
 # Test masked_fill compatibility
-@unittest.skipIf(
-    paddle.is_compiled_with_xpu(),
-    "Skip on XPU due to kernel issue",
-)
 class TestMaskedFillAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -1452,16 +1460,15 @@ class TestTakeAPI(unittest.TestCase):
 
 
 # Test matrix_exp compatibility
-@unittest.skipIf(
-    paddle.device.is_compiled_with_custom_device("dcu"),
-    "Skip on DCU due to kernel issue",
-)
 class TestMatrixExpAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
         self.np_x = np.array([[1.0, 0.0], [0.0, 1.0]]).astype("float32")
 
     def test_dygraph_Compatibility(self):
+        if paddle.is_compiled_with_custom_device("dcu"):
+            self.skipTest("Skip on DCU due to kernel issue")
+
         paddle.disable_static()
         x = paddle.to_tensor(self.np_x)
 
@@ -1478,6 +1485,9 @@ class TestMatrixExpAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_static_Compatibility(self):
+        if paddle.is_compiled_with_custom_device("dcu"):
+            self.skipTest("Skip on DCU due to kernel issue")
+
         paddle.enable_static()
         main = paddle.static.Program()
         startup = paddle.static.Program()
@@ -1534,6 +1544,10 @@ class TestRetainGradAPI(unittest.TestCase):
 # Test sparse_mask compatibility
 class TestSparseMaskAPI(unittest.TestCase):
     def test_dygraph_Compatibility(self):
+        # Skip on XPU as sparse_mask is not supported
+        if paddle.device.is_compiled_with_xpu():
+            self.skipTest("sparse_mask is not supported on XPU")
+
         paddle.disable_static()
 
         # Create dense tensor
