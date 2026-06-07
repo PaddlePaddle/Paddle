@@ -101,12 +101,100 @@ class TestStripGradSuffix(unittest.TestCase):
             self.assertEqual(backward._strip_grad_suffix_(input_), desired)
 
 
+class TestBackwardParamAlias(unittest.TestCase):
+    """Test backward() with parameter alias: grad_tensor -> gradient"""
+
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_backward_with_grad_tensor_param(self):
+        """Test backward using grad_tensor parameter name."""
+        x = paddle.to_tensor([1.0, 2.0], dtype='float32', stop_gradient=False)
+        y = x**2
+        z = y.sum()
+        grad_tensor = paddle.to_tensor(1.0, dtype='float32')
+        z.backward(grad_tensor=grad_tensor)
+        expected = [2.0, 4.0]
+        np.testing.assert_allclose(x.grad.numpy(), expected, rtol=1e-5)
+
+    def test_backward_with_gradient_alias(self):
+        """Test backward using gradient alias parameter name."""
+        x = paddle.to_tensor([1.0, 2.0], dtype='float32', stop_gradient=False)
+        y = x**2
+        z = y.sum()
+        grad_tensor = paddle.to_tensor(1.0, dtype='float32')
+        z.backward(gradient=grad_tensor)
+        expected = [2.0, 4.0]
+        np.testing.assert_allclose(x.grad.numpy(), expected, rtol=1e-5)
+
+    def test_backward_alias_with_custom_grad(self):
+        """Test gradient alias with custom gradient values."""
+        x = paddle.to_tensor([[1.0, 2.0]], dtype='float32', stop_gradient=False)
+        y = x * 3
+        loss = y.sum()
+        custom_grad = paddle.to_tensor(2.0, dtype='float32')
+        loss.backward(gradient=custom_grad)
+        expected = [[6.0, 6.0]]
+        np.testing.assert_allclose(x.grad.numpy(), expected, rtol=1e-5)
+
+    def test_backward_alias_with_retain_graph(self):
+        """Test gradient alias combined with retain_graph parameter."""
+        x = paddle.to_tensor([2.0], dtype='float32', stop_gradient=False)
+        y = x**2
+        loss = y.sum()
+        grad_tensor = paddle.to_tensor(1.0, dtype='float32')
+        loss.backward(gradient=grad_tensor, retain_graph=True)
+        expected = [4.0]
+        np.testing.assert_allclose(x.grad.numpy(), expected, rtol=1e-5)
+        x.clear_grad()
+        loss.backward(gradient=grad_tensor)
+        np.testing.assert_allclose(x.grad.numpy(), expected, rtol=1e-5)
+
+    def test_backward_alias_with_create_graph(self):
+        """Test gradient alias combined with create_graph parameter."""
+        x = paddle.to_tensor([1.0], dtype='float32', stop_gradient=False)
+        y = x**2
+        loss = y.sum()
+        grad_tensor = paddle.to_tensor(1.0, dtype='float32')
+        loss.backward(gradient=grad_tensor, create_graph=True)
+        self.assertIsNotNone(x.grad)
+        np.testing.assert_allclose(x.grad.numpy(), [2.0], rtol=1e-5)
+
+
 class TestBackwardCreateGraph(unittest.TestCase):
     """Test backward with create_graph parameter for higher-order gradients."""
 
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_tensor_backward_with_create_graph(self):
+        """Test backward with create_graph=True for second-order gradients"""
+        x = paddle.to_tensor(
+            np.array([[1.0, 2.0], [3.0, 4.0]]), dtype='float32'
+        )
+        x.stop_gradient = False
+        y = x * x
+        loss = paddle.sum(y)
+        # First backward with create_graph=True
+        loss.backward(create_graph=True)
+        # Verify first-order gradients
+        self.assertIsNotNone(x.grad)
+        first_grad = x.grad.numpy()
+        np.testing.assert_allclose(
+            first_grad, np.array([[2.0, 4.0], [6.0, 8.0]]), rtol=1e-7
+        )
+        # Compute second-order gradients
+        grad_sum = paddle.sum(x.grad)
+        grad_sum.backward()
+        # Verify second-order gradients
+        self.assertIsNotNone(x.grad)
+        second_grad = x.grad.numpy()
+        np.testing.assert_allclose(
+            second_grad, np.array([[4.0, 6.0], [8.0, 10.0]]), rtol=1e-7
+        )
+
     def test_backward_create_graph_second_order(self):
         """Test computing second-order gradients using create_graph=True."""
-        paddle.disable_static()
         x = paddle.to_tensor([1.0, 2.0], dtype='float32', stop_gradient=False)
         y = x**2
         loss = y.sum()
@@ -122,7 +210,6 @@ class TestBackwardCreateGraph(unittest.TestCase):
 
     def test_backward_create_graph_with_multiple_tensors(self):
         """Test backward with create_graph on multiple output tensors."""
-        paddle.disable_static()
         x = paddle.to_tensor(
             [[1.0, 2.0], [3.0, 4.0]], dtype='float32', stop_gradient=False
         )
@@ -140,7 +227,6 @@ class TestBackwardCreateGraph(unittest.TestCase):
 
     def test_backward_create_graph_with_grad_tensors(self):
         """Test backward with create_graph and custom grad_tensors."""
-        paddle.disable_static()
         x = paddle.to_tensor([1.0, 2.0], dtype='float32', stop_gradient=False)
         y = x**2
         z = y.sum()
@@ -154,7 +240,6 @@ class TestBackwardCreateGraph(unittest.TestCase):
 
     def test_backward_create_graph_retain_graph(self):
         """Test backward with create_graph=True and retain_graph=True."""
-        paddle.disable_static()
         x = paddle.to_tensor([2.0], dtype='float32', stop_gradient=False)
         y = x**3
         loss = y.sum()
@@ -170,7 +255,6 @@ class TestBackwardCreateGraph(unittest.TestCase):
 
     def test_backward_create_graph_chain_rule(self):
         """Test chain rule with higher-order gradients."""
-        paddle.disable_static()
         x = paddle.to_tensor([1.0], dtype='float32', stop_gradient=False)
         y = x**3
         loss = y**2
