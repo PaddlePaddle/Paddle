@@ -3837,7 +3837,9 @@ struct LegacyMatmulOpTranscriber : public OpTranscriber {
     OpTranscriber::RecordOpResultMapping(
         ctx, param_map, op_desc, operation, arg_to_idx);
 
-    float alpha = PADDLE_GET_CONST(float, op_desc.GetAttr("alpha"));
+    float alpha = op_desc.HasAttr("alpha")
+                      ? PADDLE_GET_CONST(float, op_desc.GetAttr("alpha"))
+                      : 1.0f;
     if (abs(alpha - 1.0f) < 1e-6f) {
       return;
     }

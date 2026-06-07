@@ -17,6 +17,7 @@
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
@@ -275,6 +276,12 @@ class HorizontalFusePattern : public pir::RewritePattern {
       if (fused_matmul_op_name.empty()) {
         fused_matmul_op_name = curr_op->name();
         fused_matmul_op_attrs = curr_op->attributes();
+        if (fused_matmul_op_name == paddle::dialect::MatmulOp::name() &&
+            !fused_matmul_op_attrs.count("out_dtype")) {
+          fused_matmul_op_attrs["out_dtype"] =
+              paddle::dialect::DataTypeAttribute::get(rewriter->ir_context(),
+                                                      phi::DataType::UNDEFINED);
+        }
       }
       if (curr_op->num_operands() > 2) {
         combine_op_inputs_bias.push_back(curr_op->operand_source(2));

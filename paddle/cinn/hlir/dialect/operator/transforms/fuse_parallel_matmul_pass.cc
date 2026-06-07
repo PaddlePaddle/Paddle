@@ -50,7 +50,11 @@ class MergeParallelMatmulPattern
           op->attribute("transpose_x").dyn_cast<pir::BoolAttribute>().data();
       bool trans_y =
           op->attribute("transpose_y").dyn_cast<pir::BoolAttribute>().data();
-      return !trans_x && !trans_y;
+      phi::DataType out_dtype =
+          op->attribute("out_dtype")
+              .dyn_cast<paddle::dialect::DataTypeAttribute>()
+              .data();
+      return !trans_x && !trans_y && out_dtype == phi::DataType::UNDEFINED;
     };
     if (!ValidMatmulTranspose(matmul_op)) {
       return false;
@@ -156,7 +160,9 @@ class MergeParallelMatmulPattern
     auto concat_out =
         rewriter.Build<paddle::dialect::ConcatOp>(combine_out, -1).result(0);
     auto matmul_out =
-        rewriter.Build<paddle::dialect::MatmulOp>(input_x, concat_out)
+        rewriter
+            .Build<paddle::dialect::MatmulOp>(
+                input_x, concat_out, false, false, phi::DataType::UNDEFINED)
             .result(0);
 
     const auto& matmul_out_rank =

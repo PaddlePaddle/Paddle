@@ -31,7 +31,8 @@ class MatmulScaleFusePattern : public paddle::drr::DrrPatternBase {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul_op = pat.Op(paddle::dialect::MatmulOp::name(),
                                    {{"transpose_x", pat.Attr("transpose_x")},
-                                    {"transpose_y", pat.Attr("transpose_y")}});
+                                    {"transpose_y", pat.Attr("transpose_y")},
+                                    {"out_dtype", pat.Attr("out_dtype")}});
 
     matmul_op({&pat.Tensor("x"), &pat.Tensor("w")},
               {&pat.Tensor("matmul_out")});
@@ -67,7 +68,8 @@ class MatmulScaleFusePattern : public paddle::drr::DrrPatternBase {
     const auto &matmul_op_res =
         res.Op(paddle::dialect::MatmulOp::name(),
                {{"transpose_x", pat.Attr("transpose_x")},
-                {"transpose_y", pat.Attr("transpose_y")}});
+                {"transpose_y", pat.Attr("transpose_y")},
+                {"out_dtype", pat.Attr("out_dtype")}});
     scale_op_res({&res.Tensor("w"), &full_op_res()},
                  {&res.Tensor("scale_res_out")});
     matmul_op_res({&res.Tensor("x"), &res.Tensor("scale_res_out")},

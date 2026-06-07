@@ -33,7 +33,8 @@ class FusedAllReduceSplitPattern1 : public paddle::drr::DrrPatternBase {
 
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
                                 {{"transpose_x", pat.Attr("trans_x")},
-                                 {"transpose_y", pat.Attr("trans_y")}});
+                                 {"transpose_y", pat.Attr("trans_y")},
+                                 {"out_dtype", pat.Attr("out_dtype")}});
     const auto &all_reduce_ =
         pat.Op(paddle::dialect::AllReduce_Op::name(),
                {{"ring_id", pat.Attr("ring_id")},
@@ -142,7 +143,8 @@ class FusedAllReduceSplitPattern2 : public paddle::drr::DrrPatternBase {
     // out1 = matmul(input, weight)
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
                                 {{"transpose_x", pat.Attr("trans_x")},
-                                 {"transpose_y", pat.Attr("trans_y")}});
+                                 {"transpose_y", pat.Attr("trans_y")},
+                                 {"out_dtype", pat.Attr("out_dtype")}});
     // out2 = all_reduce_(out1)
     const auto &all_reduce_ =
         pat.Op(paddle::dialect::AllReduce_Op::name(),
@@ -193,7 +195,8 @@ class FusedAllReduceSplitPattern2 : public paddle::drr::DrrPatternBase {
     paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &res_matmul = res.Op(paddle::dialect::MatmulOp::name(),
                                     {{"transpose_x", pat.Attr("trans_x")},
-                                     {"transpose_y", pat.Attr("trans_y")}});
+                                     {"transpose_y", pat.Attr("trans_y")},
+                                     {"out_dtype", pat.Attr("out_dtype")}});
     const auto &res_reduce_scatter =
         res.Op(paddle::dialect::ReduceScatterOp::name(),
                {{"ring_id", pat.Attr("ring_id")}, {"nranks", pat.Attr("num")}},

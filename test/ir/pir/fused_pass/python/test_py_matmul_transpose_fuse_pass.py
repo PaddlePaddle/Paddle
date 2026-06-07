@@ -69,6 +69,7 @@ class TestMatmulOutTransposeFusePattern(PassTest):
             {
                 "transpose_x": pat.Attr("transpose_x"),
                 "transpose_y": pat.Attr("transpose_y"),
+                "out_dtype": pat.Attr("out_dtype"),
             },
         )
         transpose_op = pat.Op("pd_op.transpose", {"perm": pat.Attr("perm")})
@@ -98,7 +99,11 @@ class TestMatmulOutTransposeFusePattern(PassTest):
 
         fused_matmul_transpose_op = res.Op(
             "pd_op.matmul",
-            {"transpose_x": transpose_y, "transpose_y": transpose_x},
+            {
+                "transpose_x": transpose_y,
+                "transpose_y": transpose_x,
+                "out_dtype": pat.Attr("out_dtype"),
+            },
         )
 
         fused_matmul_transpose_op(

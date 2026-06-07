@@ -32,7 +32,8 @@ class FusedMatmulAddGradAddPattern : public paddle::drr::DrrPatternBase {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul0 = pat.Op(paddle::dialect::MatmulOp::name(),
                                  {{"transpose_x", pat.Attr("trans_x")},
-                                  {"transpose_y", pat.Attr("trans_y")}});
+                                  {"transpose_y", pat.Attr("trans_y")},
+                                  {"out_dtype", pat.Attr("out_dtype")}});
     const auto &add0 = pat.Op(paddle::dialect::AddOp::name());
     const auto &add_grad = pat.Op(paddle::dialect::AddGradOp::name());
     const auto &matmul_grad = pat.Op(paddle::dialect::MatmulGradOp::name(),
@@ -73,9 +74,15 @@ class FusedMatmulAddGradAddPattern : public paddle::drr::DrrPatternBase {
                    pir::GetDataTypeFromValue(match_ctx.Tensor("weight_grad")));
         });
 
-    const auto &matmul = res.Op(paddle::dialect::MatmulOp::name(),
-                                {{"transpose_x", res.BoolAttr(false)},
-                                 {"transpose_y", res.BoolAttr(true)}});
+    const auto &matmul =
+        res.Op(paddle::dialect::MatmulOp::name(),
+               {{"transpose_x", res.BoolAttr(false)},
+                {"transpose_y", res.BoolAttr(true)},
+                {"out_dtype",
+                 res.ComputeAttr(
+                     [](const paddle::drr::MatchContext &) -> phi::DataType {
+                       return phi::DataType::UNDEFINED;
+                     })}});
     const auto &fused_linear_param_grad_add =
         res.Op(paddle::dialect::FusedLinearParamGradAddOp::name(),
                {{{"multi_precision", multi_precision_attr},
@@ -128,9 +135,15 @@ class FusedMatmulGradAddPattern : public paddle::drr::DrrPatternBase {
                    pir::GetDataTypeFromValue(match_ctx.Tensor("weight_grad")));
         });
 
-    const auto &matmul = res.Op(paddle::dialect::MatmulOp::name(),
-                                {{"transpose_x", res.BoolAttr(false)},
-                                 {"transpose_y", res.BoolAttr(true)}});
+    const auto &matmul =
+        res.Op(paddle::dialect::MatmulOp::name(),
+               {{"transpose_x", res.BoolAttr(false)},
+                {"transpose_y", res.BoolAttr(true)},
+                {"out_dtype",
+                 res.ComputeAttr(
+                     [](const paddle::drr::MatchContext &) -> phi::DataType {
+                       return phi::DataType::UNDEFINED;
+                     })}});
     const auto &fused_linear_param_grad_add =
         res.Op(paddle::dialect::FusedLinearParamGradAddOp::name(),
                {{{"multi_precision", multi_precision_attr},
@@ -170,7 +183,8 @@ class FusedMatmulReshapeMatmulAddPattern : public paddle::drr::DrrPatternBase {
 
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
                                 {{"transpose_x", pat.Attr("trans_x")},
-                                 {"transpose_y", pat.Attr("trans_y")}});
+                                 {"transpose_y", pat.Attr("trans_y")},
+                                 {"out_dtype", pat.Attr("out_dtype")}});
     pat.Tensor("matmul_out") =
         matmul(pat.Tensor("reshape_x"), pat.Tensor("reshape_dy"));
 
@@ -223,7 +237,8 @@ class FusedMatmulAddaPattern : public paddle::drr::DrrPatternBase {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
                                 {{"transpose_x", pat.Attr("trans_x")},
-                                 {"transpose_y", pat.Attr("trans_y")}});
+                                 {"transpose_y", pat.Attr("trans_y")},
+                                 {"out_dtype", pat.Attr("out_dtype")}});
     const auto &add_ = pat.Op(paddle::dialect::Add_Op::name());
 
     matmul({&pat.Tensor("x"), &pat.Tensor("out_grad")},
@@ -267,7 +282,8 @@ class FusedMatmulAddbPattern : public paddle::drr::DrrPatternBase {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
                                 {{"transpose_x", pat.Attr("trans_x")},
-                                 {"transpose_y", pat.Attr("trans_y")}});
+                                 {"transpose_y", pat.Attr("trans_y")},
+                                 {"out_dtype", pat.Attr("out_dtype")}});
     const auto &add_ = pat.Op(paddle::dialect::Add_Op::name());
 
     matmul({&pat.Tensor("x"), &pat.Tensor("out_grad")},
@@ -311,15 +327,18 @@ class FusedMatmulAddGradAddaPattern : public paddle::drr::DrrPatternBase {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
                                 {{"transpose_x", pat.Attr("trans_x")},
-                                 {"transpose_y", pat.Attr("trans_y")}});
+                                 {"transpose_y", pat.Attr("trans_y")},
+                                 {"out_dtype", pat.Attr("out_dtype")}});
     const auto &add = pat.Op(paddle::dialect::AddOp::name());
     const auto &add_grad = pat.Op(paddle::dialect::AddGradOp::name());
     const auto &matmul_g0 = pat.Op(paddle::dialect::MatmulOp::name(),
                                    {{"transpose_x", pat.Attr("trans_xg0")},
-                                    {"transpose_y", pat.Attr("trans_yg0")}});
+                                    {"transpose_y", pat.Attr("trans_yg0")},
+                                    {"out_dtype", pat.Attr("out_dtype_g0")}});
     const auto &matmul_g1 = pat.Op(paddle::dialect::MatmulOp::name(),
                                    {{"transpose_x", pat.Attr("trans_xg1")},
-                                    {"transpose_y", pat.Attr("trans_yg1")}});
+                                    {"transpose_y", pat.Attr("trans_yg1")},
+                                    {"out_dtype", pat.Attr("out_dtype_g1")}});
     const auto &add_ = pat.Op(paddle::dialect::Add_Op::name());
 
     pat.Tensor("out") = matmul(pat.Tensor("x"), pat.Tensor("weight"));
@@ -369,15 +388,18 @@ class FusedMatmulAddGradAddbPattern : public paddle::drr::DrrPatternBase {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
                                 {{"transpose_x", pat.Attr("trans_x")},
-                                 {"transpose_y", pat.Attr("trans_y")}});
+                                 {"transpose_y", pat.Attr("trans_y")},
+                                 {"out_dtype", pat.Attr("out_dtype")}});
     const auto &add = pat.Op(paddle::dialect::AddOp::name());
     const auto &add_grad = pat.Op(paddle::dialect::AddGradOp::name());
     const auto &matmul_g0 = pat.Op(paddle::dialect::MatmulOp::name(),
                                    {{"transpose_x", pat.Attr("trans_xg0")},
-                                    {"transpose_y", pat.Attr("trans_yg0")}});
+                                    {"transpose_y", pat.Attr("trans_yg0")},
+                                    {"out_dtype", pat.Attr("out_dtype_g0")}});
     const auto &matmul_g1 = pat.Op(paddle::dialect::MatmulOp::name(),
                                    {{"transpose_x", pat.Attr("trans_xg1")},
-                                    {"transpose_y", pat.Attr("trans_yg1")}});
+                                    {"transpose_y", pat.Attr("trans_yg1")},
+                                    {"out_dtype", pat.Attr("out_dtype_g1")}});
     const auto &add_ = pat.Op(paddle::dialect::Add_Op::name());
 
     pat.Tensor("out") = matmul(pat.Tensor("x"), pat.Tensor("weight"));
