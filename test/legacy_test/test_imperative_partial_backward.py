@@ -52,6 +52,33 @@ class TestImperativePartialBackward(unittest.TestCase):
             linear1.clear_gradients()
             linear2.clear_gradients()
 
+    def test_backward_with_create_graph(self):
+        """Test backward with create_graph=True for second-order gradients"""
+        with base.dygraph.guard():
+            x = paddle.to_tensor(
+                np.array([[1.0, 2.0], [3.0, 4.0]]), dtype='float32'
+            )
+            x.stop_gradient = False
+            y = x * x
+            loss = paddle.sum(y)
+            # First backward with create_graph=True
+            loss.backward(create_graph=True)
+            # Verify first-order gradients
+            self.assertIsNotNone(x.grad)
+            first_grad = x.grad.numpy()
+            np.testing.assert_allclose(
+                first_grad, np.array([[2.0, 4.0], [6.0, 8.0]]), rtol=1e-7
+            )
+            # Compute second-order gradients
+            grad_sum = paddle.sum(x.grad)
+            grad_sum.backward()
+            # Verify second-order gradients
+            self.assertIsNotNone(x.grad)
+            second_grad = x.grad.numpy()
+            np.testing.assert_allclose(
+                second_grad, np.array([[4.0, 6.0], [8.0, 10.0]]), rtol=1e-7
+            )
+
 
 if __name__ == '__main__':
     unittest.main()
