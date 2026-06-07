@@ -109,6 +109,13 @@ class HorizontalFusePattern : public pir::RewritePattern {
               true) {
         return false;
       }
+      phi::DataType out_dtype =
+          curr_op->attribute("out_dtype")
+              .dyn_cast<paddle::dialect::DataTypeAttribute>()
+              .data();
+      if (out_dtype != phi::DataType::UNDEFINED) {
+        return false;
+      }
       return areOperandsValid();
     }
 
@@ -276,12 +283,6 @@ class HorizontalFusePattern : public pir::RewritePattern {
       if (fused_matmul_op_name.empty()) {
         fused_matmul_op_name = curr_op->name();
         fused_matmul_op_attrs = curr_op->attributes();
-        if (fused_matmul_op_name == paddle::dialect::MatmulOp::name() &&
-            !fused_matmul_op_attrs.count("out_dtype")) {
-          fused_matmul_op_attrs["out_dtype"] =
-              paddle::dialect::DataTypeAttribute::get(rewriter->ir_context(),
-                                                      phi::DataType::UNDEFINED);
-        }
       }
       if (curr_op->num_operands() > 2) {
         combine_op_inputs_bias.push_back(curr_op->operand_source(2));

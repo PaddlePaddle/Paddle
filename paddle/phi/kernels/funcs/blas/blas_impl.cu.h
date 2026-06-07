@@ -1854,6 +1854,9 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                         float beta,
                                         float *C) const {
 #if CUDA_VERSION >= 11000
+  // Note that cublas follows fortran order, so the order is different from
+  // the cblas convention. The int casts of lda/ldb below are safe because
+  // this branch is only reached when M, N, K <= INT_MAX_VALUE.
   int64_t lda = (transA == CblasNoTrans) ? K : M;
   int64_t ldb = (transB == CblasNoTrans) ? N : K;
   cublasOperation_t cuTransA =
