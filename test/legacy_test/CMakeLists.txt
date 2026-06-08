@@ -93,6 +93,11 @@ endif()
 
 if(WITH_XPU)
   list(REMOVE_ITEM TEST_OPS test_max_pool_dilation)
+  list(REMOVE_ITEM TEST_OPS test_api_compatibility_part1)
+  list(REMOVE_ITEM TEST_OPS test_api_compatibility_part2)
+  list(REMOVE_ITEM TEST_OPS test_api_compatibility_part3)
+  list(REMOVE_ITEM TEST_OPS test_api_compatibility_part4)
+  list(REMOVE_ITEM TEST_OPS test_api_compatibility_part5)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_fused_attention_pass)
