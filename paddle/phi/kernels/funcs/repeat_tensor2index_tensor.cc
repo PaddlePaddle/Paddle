@@ -24,7 +24,11 @@ namespace funcs {
 
 template <typename Context, typename RepeatsT>
 void RepeatsTensor2IndexTensorFunctor<Context, RepeatsT>::operator()(
-    const Context &dev_ctx, const DenseTensor &repeats, DenseTensor *index) {
+    const Context &dev_ctx,
+    const DenseTensor &repeats,
+    DenseTensor *index,
+    int64_t output_size) {
+  (void)output_size;
   if (repeats.dims()[0] == 0) {
     index->Resize({0});
     dev_ctx.template Alloc<RepeatsT>(index);
@@ -61,7 +65,11 @@ void RepeatsTensor2IndexTensorFunctor<Context, RepeatsT>::operator()(
 
 template <typename RepeatsT>
 void RepeatsTensor2IndexTensorFunctor<CPUContext, RepeatsT>::operator()(
-    const CPUContext &dev_ctx, const DenseTensor &repeats, DenseTensor *index) {
+    const CPUContext &dev_ctx,
+    const DenseTensor &repeats,
+    DenseTensor *index,
+    int64_t output_size) {
+  (void)output_size;
   if (repeats.dims()[0] == 0) {
     index->Resize({0});
     dev_ctx.template Alloc<RepeatsT>(index);
@@ -95,7 +103,11 @@ template class RepeatsTensor2IndexTensorFunctor<CPUContext, int64_t>;
 #ifdef PADDLE_WITH_XPU
 template <typename RepeatsT>
 void RepeatsTensor2IndexTensorFunctor<XPUContext, RepeatsT>::operator()(
-    const XPUContext &dev_ctx, const DenseTensor &repeats, DenseTensor *index) {
+    const XPUContext &dev_ctx,
+    const DenseTensor &repeats,
+    DenseTensor *index,
+    int64_t output_size) {
+  (void)output_size;
   if (repeats.dims()[0] == 0) {
     index->Resize({0});
     dev_ctx.template Alloc<RepeatsT>(index);

@@ -164,8 +164,7 @@ void RepeatInterleaveWithTensorIndexGradKernel(
 
   if (index_type == DataType::INT64) {
     funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
-        dev_ctx, repeats_tensor, &index);
-    int64_t index_nums = index.numel();
+        dev_ctx, repeats_tensor, &index, output_size);
 
     const int64_t* index_data = index.data<int64_t>();
     index_select_grad_cuda_kernel<T, int64_t>
@@ -181,8 +180,7 @@ void RepeatInterleaveWithTensorIndexGradKernel(
                      delta);
   } else {
     funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
-        dev_ctx, repeats_tensor, &index);
-    int64_t index_nums = index.numel();
+        dev_ctx, repeats_tensor, &index, output_size);
 
     const int* index_data = index.data<int>();
     index_select_grad_cuda_kernel<T, int>

@@ -29,21 +29,47 @@ template <typename T>
 __global__ void fill_array_kernel(T *output,
                                   const T *prefix,
                                   const T *repeats,
-                                  int64_t n) {
-  T idx = blockIdx.x * blockDim.x + threadIdx.x;
+                                  int64_t n,
+                                  int64_t output_size) {
+  int64_t idx = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (idx < n) {
-    T start = prefix[idx];
-    T count = repeats[idx];
+    int64_t start = static_cast<int64_t>(prefix[idx]);
+    int64_t end = start + static_cast<int64_t>(repeats[idx]);
+    end = end > output_size ? output_size : end;
 
-    for (T j = 0; j < count; j++) {
-      output[start + j] = idx;
+    for (int64_t j = start; j < end; j++) {
+      output[j] = static_cast<T>(idx);
     }
   }
 }
 
+template <typename T>
+__global__ void ValidateOutputSizeKernel(const T *prefix,
+                                         const T *repeats,
+                                         int64_t n,
+                                         int64_t output_size) {
+  if (blockIdx.x != 0 || threadIdx.x != 0 || n == 0) {
+    return;
+  }
+
+  const int64_t last_idx = n - 1;
+  const int64_t total_size = static_cast<int64_t>(prefix[last_idx]) +
+                             static_cast<int64_t>(repeats[last_idx]);
+  PADDLE_ENFORCE(
+      total_size == output_size,
+      "When output_size is provided, it should equal to "
+      "sum of repeats tensor. But received output_size = %ld, "
+      "sum of repeats = %ld.",
+      output_size,
+      total_size);
+}
+
 template <typename RepeatsT>
 void RepeatsTensor2IndexTensorFunctor<GPUContext, RepeatsT>::operator()(
-    const GPUContext &dev_ctx, const DenseTensor &repeats, DenseTensor *index) {
+    const GPUContext &dev_ctx,
+    const DenseTensor &repeats,
+    DenseTensor *index,
+    int64_t output_size) {
 #if defined(__NVCC__)
   const RepeatsT *repeats_ptr = repeats.data<RepeatsT>();
   int64_t num_reps = repeats.dims()[0];
@@ -69,22 +95,28 @@ void RepeatsTensor2IndexTensorFunctor<GPUContext, RepeatsT>::operator()(
       cub::Sum(),
       dev_ctx);
 
-  // get last prefix and repeat to compute total size of index tensor
-  RepeatsT last_prefix = 0;
-  RepeatsT last_repeat = 0;
-  cudaMemcpyAsync(&last_prefix,
-                  prefix_ptr + num_reps - 1,
-                  sizeof(RepeatsT),
-                  cudaMemcpyDeviceToHost,
-                  stream);
-  cudaMemcpyAsync(&last_repeat,
-                  repeats_ptr + num_reps - 1,
-                  sizeof(RepeatsT),
-                  cudaMemcpyDeviceToHost,
-                  stream);
-  cudaStreamSynchronize(stream);
-  int64_t total_size =
-      static_cast<int64_t>(last_prefix) + static_cast<int64_t>(last_repeat);
+  int64_t total_size = output_size;
+  if (total_size > 0) {
+    ValidateOutputSizeKernel<<<1, 1, 0, stream>>>(
+        prefix_ptr, repeats_ptr, num_reps, total_size);
+  } else {
+    // get last prefix and repeat to compute total size of index tensor
+    RepeatsT last_prefix = 0;
+    RepeatsT last_repeat = 0;
+    cudaMemcpyAsync(&last_prefix,
+                    prefix_ptr + num_reps - 1,
+                    sizeof(RepeatsT),
+                    cudaMemcpyDeviceToHost,
+                    stream);
+    cudaMemcpyAsync(&last_repeat,
+                    repeats_ptr + num_reps - 1,
+                    sizeof(RepeatsT),
+                    cudaMemcpyDeviceToHost,
+                    stream);
+    cudaStreamSynchronize(stream);
+    total_size =
+        static_cast<int64_t>(last_prefix) + static_cast<int64_t>(last_repeat);
+  }
 
   // resize & alloc index tensor
   index->Resize({total_size});
@@ -99,7 +131,8 @@ void RepeatsTensor2IndexTensorFunctor<GPUContext, RepeatsT>::operator()(
                           PADDLE_CUDA_NUM_THREADS,
                       PADDLE_CUDA_NUM_THREADS,
                       0,
-                      stream>>>(index_ptr, prefix_ptr, repeats_ptr, num_reps);
+                      stream>>>(
+      index_ptr, prefix_ptr, repeats_ptr, num_reps, total_size);
 #else
   DenseTensor repeats_cpu_copy;
   if (repeats.place().GetType() != AllocationType::CPU) {
