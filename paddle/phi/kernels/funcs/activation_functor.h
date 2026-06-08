@@ -33,14 +33,11 @@
 #include <sleef.h>
 #endif
 
-#include "paddle/common/flags.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
-
-COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 #ifdef PADDLE_WITH_XPU_KP
 #define __forceinline__ __inline__
@@ -4615,11 +4612,12 @@ template <typename T>
 struct CudaRsqrtGradFunctor : public BaseActivationFunctor<T> {
   using MT = typename MPTypeTrait<T>::Type;
   MT minus_one_half = static_cast<MT>(-0.5f);
+  bool compatible = false;
 
   // dx = -0.5 * dout * out^3
   __device__ __forceinline__ T operator()(const T arg_dout,
                                           const T arg_out) const {
-    if (FLAGS_use_accuracy_compatible_kernel) {
+    if (compatible) {
       T t1 = static_cast<T>(-0.5f) * arg_dout;
       T cube = arg_out * arg_out * arg_out;
       return t1 * cube;
