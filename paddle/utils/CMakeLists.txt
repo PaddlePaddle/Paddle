@@ -7,3 +7,14 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     DEPS phi common)
 endif()
 cc_library(md5 SRCS md5.cc)
+if(WITH_GPU)
+  nv_library(
+    md5_gpu
+    SRCS md5_gpu.cu
+    DEPS md5 xxhash)
+elseif(WITH_ROCM)
+  hip_library(
+    md5_gpu
+    SRCS md5_gpu.cu
+    DEPS md5 xxhash)
+endif()

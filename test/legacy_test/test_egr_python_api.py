@@ -882,6 +882,9 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         np.testing.assert_array_equal(x.numpy(), y.numpy())
 
     def test_md5sum(self):
+        import hashlib
+
+        # Basic consistency: same data → same hash
         np_x = np.random.random((3, 8, 8))
         x = paddle.to_tensor(np_x, dtype="float64")
         y = paddle.to_tensor(np_x, dtype="float64")
@@ -889,6 +892,259 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         x = paddle.to_tensor(np_x, dtype="bfloat16")
         y = paddle.to_tensor(np_x, dtype="bfloat16")
         self.assertEqual(x._md5sum(), y._md5sum())
+
+        # Verify C++ result matches Python hashlib reference for multiple dtypes
+        for dtype in ["float32", "float64", "int32", "int64"]:
+            np_data = np.random.random((128, 128)).astype(dtype)
+            t = paddle.to_tensor(np_data)
+            expected = hashlib.md5(np_data.tobytes()).hexdigest()
+            self.assertEqual(t._md5sum(), expected)
+
+        # Additional dtype coverage
+        for dtype in ["float16", "int16", "int8"]:
+            np_data = (np.random.random((128, 128)) * 100).astype(dtype)
+            t = paddle.to_tensor(np_data)
+            expected = hashlib.md5(np_data.tobytes()).hexdigest()
+            self.assertEqual(t._md5sum(), expected)
+
+        # Empty tensor: MD5 of zero bytes
+        empty_t = paddle.empty([0], dtype="float32")
+        expected_empty = hashlib.md5(b'').hexdigest()
+        self.assertEqual(empty_t._md5sum(), expected_empty)
+        self.assertEqual(len(empty_t._md5sum()), 32)
+
+        # Different shapes: scalar, 1D, high-dimensional
+        scalar_data = np.array(3.14, dtype="float32")
+        t = paddle.to_tensor(scalar_data)
+        self.assertEqual(
+            t._md5sum(), hashlib.md5(scalar_data.tobytes()).hexdigest()
+        )
+
+        vec_data = np.random.random((1024,)).astype("float32")
+        t = paddle.to_tensor(vec_data)
+        self.assertEqual(
+            t._md5sum(), hashlib.md5(vec_data.tobytes()).hexdigest()
+        )
+
+        high_dim_data = np.random.random((2, 3, 4, 5)).astype("float32")
+        t = paddle.to_tensor(high_dim_data)
+        self.assertEqual(
+            t._md5sum(), hashlib.md5(high_dim_data.tobytes()).hexdigest()
+        )
+
+        # Non-contiguous CPU tensor (transpose)
+        np_data = np.random.random((8, 16)).astype("float32")
+        cpu_t = paddle.to_tensor(np_data)
+        cpu_t_T = cpu_t.T  # non-contiguous
+        expected_T = hashlib.md5(np_data.T.copy().tobytes()).hexdigest()
+        self.assertEqual(cpu_t_T._md5sum(), expected_T)
+
+        # Different data produces different hash
+        a = paddle.to_tensor(np.zeros((4, 4), dtype="float32"))
+        b = paddle.to_tensor(np.ones((4, 4), dtype="float32"))
+        self.assertNotEqual(a._md5sum(), b._md5sum())
+
+        # Test GPU (CUDA/HIP) if available
+        if paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm():
+            for dtype in ["float32", "float64", "int32"]:
+                np_data = np.random.random((128, 128)).astype(dtype)
+                cpu_t = paddle.to_tensor(np_data, place="cpu")
+                gpu_t = paddle.to_tensor(np_data, place="gpu")
+                # GPU and CPU must produce the same digest
+                self.assertEqual(cpu_t._md5sum(), gpu_t._md5sum())
+                # Both must match Python hashlib reference
+                expected = hashlib.md5(np_data.tobytes()).hexdigest()
+                self.assertEqual(gpu_t._md5sum(), expected)
+
+            # Non-contiguous GPU tensor (transpose) - medium size
+            np_data = np.random.random((128, 256)).astype("float32")
+            gpu_t = paddle.to_tensor(np_data, place="gpu")
+            gpu_t_T = gpu_t.T  # non-contiguous
+            cpu_t_T = paddle.to_tensor(np_data.T.copy(), place="cpu")
+            self.assertEqual(gpu_t_T._md5sum(), cpu_t_T._md5sum())
+
+            # Empty GPU tensor
+            empty_gpu = paddle.empty([0], dtype="float32").cuda()
+            self.assertEqual(empty_gpu._md5sum(), expected_empty)
+
+            # Large tensor cross-device consistency:
+            # Below pinned threshold (<1MB): tests malloc+cudaMemcpy path
+            np_small = np.random.random((128, 128)).astype("float32")
+            cpu_s = paddle.to_tensor(np_small, place="cpu")
+            gpu_s = paddle.to_tensor(np_small, place="gpu")
+            self.assertEqual(cpu_s._md5sum(), gpu_s._md5sum())
+            self.assertEqual(
+                gpu_s._md5sum(),
+                hashlib.md5(np_small.tobytes()).hexdigest(),
+            )
+
+            # Above pinned threshold (>1MB): tests cudaMallocHost path
+            np_med = np.random.random((512, 512)).astype("float32")  # 1MB
+            cpu_m = paddle.to_tensor(np_med, place="cpu")
+            gpu_m = paddle.to_tensor(np_med, place="gpu")
+            self.assertEqual(cpu_m._md5sum(), gpu_m._md5sum())
+            self.assertEqual(
+                gpu_m._md5sum(),
+                hashlib.md5(np_med.tobytes()).hexdigest(),
+            )
+
+            # Large tensor (16MB): verifies pinned memory path at scale
+            np_large = np.random.random((2048, 2048)).astype("float32")
+            cpu_l = paddle.to_tensor(np_large, place="cpu")
+            gpu_l = paddle.to_tensor(np_large, place="gpu")
+            self.assertEqual(cpu_l._md5sum(), gpu_l._md5sum())
+            self.assertEqual(
+                gpu_l._md5sum(),
+                hashlib.md5(np_large.tobytes()).hexdigest(),
+            )
+
+        # Test XPU if available
+        if paddle.is_compiled_with_xpu():
+            for dtype in ["float32", "float64", "int32"]:
+                np_data = np.random.random((128, 128)).astype(dtype)
+                cpu_t = paddle.to_tensor(np_data, place="cpu")
+                xpu_t = paddle.to_tensor(np_data, place="xpu")
+                self.assertEqual(cpu_t._md5sum(), xpu_t._md5sum())
+                expected = hashlib.md5(np_data.tobytes()).hexdigest()
+                self.assertEqual(xpu_t._md5sum(), expected)
+
+            # Non-contiguous XPU tensor
+            np_data = np.random.random((128, 256)).astype("float32")
+            xpu_t = paddle.to_tensor(np_data, place="xpu")
+            xpu_t_T = xpu_t.T
+            cpu_t_T = paddle.to_tensor(np_data.T.copy(), place="cpu")
+            self.assertEqual(xpu_t_T._md5sum(), cpu_t_T._md5sum())
+
+            # Large tensor on XPU (16MB)
+            np_large = np.random.random((2048, 2048)).astype("float32")
+            cpu_l = paddle.to_tensor(np_large, place="cpu")
+            xpu_l = paddle.to_tensor(np_large, place="xpu")
+            self.assertEqual(cpu_l._md5sum(), xpu_l._md5sum())
+
+    def test_xxhash64(self):
+        # Same data produces same hash
+        np_x = np.random.random((3, 8, 8))
+        x = paddle.to_tensor(np_x, dtype="float64")
+        y = paddle.to_tensor(np_x, dtype="float64")
+        self.assertEqual(x._xxhash64(), y._xxhash64())
+
+        # Result is a 16-char hex string
+        h = x._xxhash64()
+        self.assertEqual(len(h), 16)
+        int(h, 16)  # must be valid hex
+
+        # Different data produces different hash
+        z = paddle.to_tensor(np.random.random((3, 8, 8)), dtype="float64")
+        self.assertNotEqual(x._xxhash64(), z._xxhash64())
+
+        # Multiple dtypes produce consistent results
+        for dtype in ["float32", "float64", "int32", "int64"]:
+            np_data = np.random.random((128, 128)).astype(dtype)
+            t1 = paddle.to_tensor(np_data)
+            t2 = paddle.to_tensor(np_data)
+            self.assertEqual(t1._xxhash64(), t2._xxhash64())
+            h = t1._xxhash64()
+            self.assertEqual(len(h), 16)
+            int(h, 16)
+
+        # Additional dtype coverage
+        for dtype in ["float16", "bfloat16", "int16", "int8"]:
+            np_data = (np.random.random((128, 128)) * 100).astype(
+                dtype if dtype != "bfloat16" else "float32"
+            )
+            t = paddle.to_tensor(np_data, dtype=dtype)
+            h = t._xxhash64()
+            self.assertEqual(len(h), 16)
+            int(h, 16)
+
+        # Empty tensor
+        empty_t = paddle.empty([0], dtype="float32")
+        h = empty_t._xxhash64()
+        self.assertEqual(len(h), 16)
+        int(h, 16)
+
+        # Different shapes: scalar, 1D, high-dimensional
+        scalar_data = np.array(3.14, dtype="float32")
+        t = paddle.to_tensor(scalar_data)
+        h = t._xxhash64()
+        self.assertEqual(len(h), 16)
+        int(h, 16)
+
+        vec_data = np.random.random((1024,)).astype("float32")
+        t = paddle.to_tensor(vec_data)
+        h = t._xxhash64()
+        self.assertEqual(len(h), 16)
+
+        high_dim_data = np.random.random((2, 3, 4, 5)).astype("float32")
+        t = paddle.to_tensor(high_dim_data)
+        h = t._xxhash64()
+        self.assertEqual(len(h), 16)
+
+        # Non-contiguous CPU tensor (transpose)
+        np_data = np.random.random((128, 256)).astype("float32")
+        cpu_t = paddle.to_tensor(np_data)
+        cpu_t_T = cpu_t.T
+        cpu_t_T_contig = paddle.to_tensor(np_data.T.copy())
+        self.assertEqual(cpu_t_T._xxhash64(), cpu_t_T_contig._xxhash64())
+
+        # Test GPU (CUDA/HIP) if available
+        if paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm():
+            for dtype in ["float32", "float64", "int32"]:
+                np_data = np.random.random((128, 128)).astype(dtype)
+                cpu_t = paddle.to_tensor(np_data, place="cpu")
+                gpu_t = paddle.to_tensor(np_data, place="gpu")
+                # GPU and CPU must produce the same hash
+                self.assertEqual(cpu_t._xxhash64(), gpu_t._xxhash64())
+
+            # Non-contiguous GPU tensor - medium size
+            np_data = np.random.random((128, 256)).astype("float32")
+            gpu_t = paddle.to_tensor(np_data, place="gpu")
+            gpu_t_T = gpu_t.T
+            cpu_t_T = paddle.to_tensor(np_data.T.copy(), place="cpu")
+            self.assertEqual(gpu_t_T._xxhash64(), cpu_t_T._xxhash64())
+
+            # Empty GPU tensor
+            empty_gpu = paddle.empty([0], dtype="float32").cuda()
+            self.assertEqual(empty_gpu._xxhash64(), empty_t._xxhash64())
+
+            # Below pinned threshold (<1MB)
+            np_small = np.random.random((128, 128)).astype("float32")
+            cpu_s = paddle.to_tensor(np_small, place="cpu")
+            gpu_s = paddle.to_tensor(np_small, place="gpu")
+            self.assertEqual(cpu_s._xxhash64(), gpu_s._xxhash64())
+
+            # Above pinned threshold (>1MB)
+            np_med = np.random.random((512, 512)).astype("float32")
+            cpu_m = paddle.to_tensor(np_med, place="cpu")
+            gpu_m = paddle.to_tensor(np_med, place="gpu")
+            self.assertEqual(cpu_m._xxhash64(), gpu_m._xxhash64())
+
+            # Large tensor (16MB)
+            np_large = np.random.random((2048, 2048)).astype("float32")
+            cpu_l = paddle.to_tensor(np_large, place="cpu")
+            gpu_l = paddle.to_tensor(np_large, place="gpu")
+            self.assertEqual(cpu_l._xxhash64(), gpu_l._xxhash64())
+
+        # Test XPU if available
+        if paddle.is_compiled_with_xpu():
+            for dtype in ["float32", "float64", "int32"]:
+                np_data = np.random.random((128, 128)).astype(dtype)
+                cpu_t = paddle.to_tensor(np_data, place="cpu")
+                xpu_t = paddle.to_tensor(np_data, place="xpu")
+                self.assertEqual(cpu_t._xxhash64(), xpu_t._xxhash64())
+
+            # Non-contiguous XPU tensor
+            np_data = np.random.random((128, 256)).astype("float32")
+            xpu_t = paddle.to_tensor(np_data, place="xpu")
+            xpu_t_T = xpu_t.T
+            cpu_t_T = paddle.to_tensor(np_data.T.copy(), place="cpu")
+            self.assertEqual(xpu_t_T._xxhash64(), cpu_t_T._xxhash64())
+
+            # Large tensor on XPU (16MB)
+            np_large = np.random.random((2048, 2048)).astype("float32")
+            cpu_l = paddle.to_tensor(np_large, place="cpu")
+            xpu_l = paddle.to_tensor(np_large, place="xpu")
+            self.assertEqual(cpu_l._xxhash64(), xpu_l._xxhash64())
 
 
 class EagerParamBaseUsageTestCase(unittest.TestCase):

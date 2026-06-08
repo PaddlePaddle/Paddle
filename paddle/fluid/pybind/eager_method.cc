@@ -16,7 +16,9 @@ typedef SSIZE_T ssize_t;
 #endif
 
 #include <Python.h>
+#include <xxhash.h>
 
+#include <cinttypes>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -68,7 +70,12 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/strided_utils.h"
+#include "paddle/utils/md5.h"
 #include "paddle/utils/pybind.h"
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/utils/md5_gpu.h"
+#endif
 
 COMMON_DECLARE_bool(set_to_1d);
 COMMON_DECLARE_bool(use_stride_kernel);
@@ -3906,6 +3913,164 @@ static PyObject* tensor_method__is_string_tensor_hold_allocation(
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method__md5sum(TensorObject* self,
+                                       PyObject* args,
+                                       PyObject* kwargs) {
+  EAGER_TRY
+  PADDLE_ENFORCE_EQ(
+      self->tensor.is_dense_tensor() || self->tensor.is_dist_tensor(),
+      true,
+      common::errors::InvalidArgument(
+          "_md5sum only supports DenseTensor or DistTensor"));
+
+  phi::DenseTensor* dense_tensor = nullptr;
+  if (self->tensor.is_dist_tensor()) {
+    dense_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
+            ->unsafe_mutable_value();
+  } else {
+    dense_tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  }
+
+  if (!dense_tensor->meta().is_contiguous()) {
+    eager_gil_scoped_release guard;
+    *dense_tensor = paddle::experimental::Trans2Contiguous(*dense_tensor);
+  }
+
+  size_t numel = static_cast<size_t>(dense_tensor->numel());
+  size_t element_size = phi::SizeOf(self->tensor.dtype());
+  size_t byte_size = numel * element_size;
+
+  std::string result;
+  if (self->tensor.is_cpu() || self->tensor.is_gpu_pinned() ||
+      self->tensor.is_xpu_pinned()) {
+    const void* data = dense_tensor->data();
+    result = paddle::md5(data, byte_size);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  } else if (self->tensor.is_gpu()) {
+    eager_gil_scoped_release guard;
+    const void* data = dense_tensor->data();
+    auto* dev_ctx = static_cast<phi::GPUContext*>(
+        phi::DeviceContextPool::Instance().Get(self->tensor.place()));
+    result = paddle::md5_gpu(data, byte_size, dev_ctx->stream());
+#endif
+  } else {
+    // Generic D2H fallback for XPU, custom device, etc.
+    eager_gil_scoped_release guard;
+    if (byte_size == 0) {
+      result = paddle::md5(nullptr, 0);
+    } else {
+      void* cpu_buf = std::malloc(byte_size);
+      PADDLE_ENFORCE_NOT_NULL(
+          cpu_buf,
+          common::errors::ResourceExhausted(
+              "Failed to allocate %zu bytes for _md5sum D2H copy", byte_size));
+      phi::DeviceContextPool::Instance().Get(dense_tensor->place())->Wait();
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      if (self->tensor.is_custom_device()) {
+        phi::DeviceManager::GetDeviceWithPlace(dense_tensor->place())
+            ->MemoryCopyD2H(cpu_buf, dense_tensor->data(), byte_size);
+      } else  // NOLINT
+#endif
+      {
+        paddle::memory::Copy(phi::CPUPlace(),
+                             cpu_buf,
+                             dense_tensor->place(),
+                             dense_tensor->data(),
+                             byte_size);
+      }
+      result = paddle::md5(cpu_buf, byte_size);
+      std::free(cpu_buf);
+    }
+  }
+
+  return ToPyObject(result);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_method__xxhash64(TensorObject* self,
+                                         PyObject* args,
+                                         PyObject* kwargs) {
+  EAGER_TRY
+  PADDLE_ENFORCE_EQ(
+      self->tensor.is_dense_tensor() || self->tensor.is_dist_tensor(),
+      true,
+      common::errors::InvalidArgument(
+          "_xxhash64 only supports DenseTensor or DistTensor"));
+
+  phi::DenseTensor* dense_tensor = nullptr;
+  if (self->tensor.is_dist_tensor()) {
+    dense_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
+            ->unsafe_mutable_value();
+  } else {
+    dense_tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  }
+
+  if (!dense_tensor->meta().is_contiguous()) {
+    eager_gil_scoped_release guard;
+    *dense_tensor = paddle::experimental::Trans2Contiguous(*dense_tensor);
+  }
+
+  size_t numel = static_cast<size_t>(dense_tensor->numel());
+  size_t element_size = phi::SizeOf(self->tensor.dtype());
+  size_t byte_size = numel * element_size;
+
+  std::string result;
+  if (self->tensor.is_cpu() || self->tensor.is_gpu_pinned() ||
+      self->tensor.is_xpu_pinned()) {
+    const void* data = dense_tensor->data();
+    uint64_t hash_val = XXH64(data, byte_size, 0);
+    char hex[17];
+    std::snprintf(hex, sizeof(hex), "%016" PRIx64, hash_val);
+    result = std::string(hex, 16);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  } else if (self->tensor.is_gpu()) {
+    eager_gil_scoped_release guard;
+    const void* data = dense_tensor->data();
+    auto* dev_ctx = static_cast<phi::GPUContext*>(
+        phi::DeviceContextPool::Instance().Get(self->tensor.place()));
+    result = paddle::xxhash64_gpu(data, byte_size, dev_ctx->stream());
+#endif
+  } else {
+    // Generic D2H fallback for XPU, custom device, etc.
+    eager_gil_scoped_release guard;
+    uint64_t hash_val;
+    if (byte_size == 0) {
+      hash_val = XXH64(nullptr, 0, 0);
+    } else {
+      void* cpu_buf = std::malloc(byte_size);
+      PADDLE_ENFORCE_NOT_NULL(
+          cpu_buf,
+          common::errors::ResourceExhausted(
+              "Failed to allocate %zu bytes for _xxhash64 D2H copy",
+              byte_size));
+      phi::DeviceContextPool::Instance().Get(dense_tensor->place())->Wait();
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      if (self->tensor.is_custom_device()) {
+        phi::DeviceManager::GetDeviceWithPlace(dense_tensor->place())
+            ->MemoryCopyD2H(cpu_buf, dense_tensor->data(), byte_size);
+      } else  // NOLINT
+#endif
+      {
+        paddle::memory::Copy(phi::CPUPlace(),
+                             cpu_buf,
+                             dense_tensor->place(),
+                             dense_tensor->data(),
+                             byte_size);
+      }
+      hash_val = XXH64(cpu_buf, byte_size, 0);
+      std::free(cpu_buf);
+    }
+    char hex[17];
+    std::snprintf(hex, sizeof(hex), "%016" PRIx64, hash_val);
+    result = std::string(hex, 16);
+  }
+
+  return ToPyObject(result);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyMethodDef variable_methods[] = {  // NOLINT
     {"numpy",
      (PyCFunction)(void (*)())tensor_method_numpy,
@@ -4238,6 +4403,14 @@ PyMethodDef variable_methods[] = {  // NOLINT
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
 #endif
+    {"_md5sum",
+     (PyCFunction)(void (*)())tensor_method__md5sum,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_xxhash64",
+     (PyCFunction)(void (*)())tensor_method__xxhash64,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
     {nullptr, nullptr, 0, nullptr}};
 
 // variable_methods for core.eager.StringTensor
