@@ -2141,7 +2141,7 @@ def mm(
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Keywords Argument:
-        out_dtype (paddle.dtype|None, optional): The desired output data type. Currently only supports ``paddle.float32`` for CUDA bfloat16 2-D inputs. Default: None.
+        out_dtype (paddle.dtype|None, optional): The desired output data type. Currently only supports ``paddle.float32`` for CUDA bfloat16 2-D inputs in dynamic graph. Default: None.
         out (Tensor, optional): The output Tensor. It must have the same data type and shape as the expected output. Default is None, and a new Tensor will be created to store the result.
 
     Returns:
@@ -2218,22 +2218,21 @@ def mm(
             raise TypeError(
                 "The out tensor dtype must be paddle.float32 when out_dtype is paddle.float32."
             )
+        if not in_dynamic_mode():
+            raise NotImplementedError(
+                "The out_dtype of paddle.mm currently only supports dynamic graph."
+            )
+        return _C_ops.mm_out_dtype(input, mat2, out_dtype, out=out)
 
-    matmul_out_dtype = (
-        out_dtype if out_dtype is not None else core.DataType.UNDEFINED
-    )
     if in_dynamic_mode():
-        return _C_ops.matmul(
-            input, mat2, False, False, matmul_out_dtype, out=out
-        )
+        return _C_ops.matmul(input, mat2, False, False, out=out)
 
     def __check_input(x, y):
         var_names = {'x': x, 'y': y}
-        expected_dtype = ['float16', 'float32', 'float64']
-        if out_dtype is not None:
-            expected_dtype.append('uint16')
         for name, val in var_names.items():
-            check_variable_and_dtype(val, name, expected_dtype, 'mm')
+            check_variable_and_dtype(
+                val, name, ['float16', 'float32', 'float64'], 'mm'
+            )
         x_shape = list(x.shape)
         y_shape = list(y.shape)
         if len(x_shape) == 1:
@@ -2265,32 +2264,15 @@ def mm(
 
     __check_input(input, mat2)
     if in_pir_mode():
-        return _C_ops.matmul(
-            input, mat2, False, False, matmul_out_dtype, out=out
-        )
+        return _C_ops.matmul(input, mat2, False, False, out=out)
     else:
         helper = LayerHelper('mm', **locals())
-        out_var_dtype = out_dtype if out_dtype is not None else input.dtype
-        if out is None:
-            out = helper.create_variable_for_type_inference(dtype=out_var_dtype)
-        if out_dtype is None:
-            helper.append_op(
-                type='matmul_v2',
-                inputs={'X': input, 'Y': mat2},
-                attrs={'trans_x': False, 'trans_y': False},
-                outputs={'Out': out},
-            )
-        else:
-            helper.append_op(
-                type='matmul_v2',
-                inputs={'X': input, 'Y': mat2},
-                attrs={
-                    'trans_x': False,
-                    'trans_y': False,
-                    'out_dtype': matmul_out_dtype,
-                },
-                outputs={'Out': out},
-            )
+        out = helper.create_variable_for_type_inference(dtype=input.dtype)
+        helper.append_op(
+            type='matmul_v2',
+            inputs={'X': input, 'Y': mat2},
+            outputs={'Out': out},
+        )
         return out
 
 

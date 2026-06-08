@@ -26,8 +26,14 @@ void MatmulKernel(const Context& dev_ctx,
                   const DenseTensor& y,
                   bool transpose_x,
                   bool transpose_y,
-                  DataType out_dtype,
                   DenseTensor* out);
+
+template <typename T, typename Context>
+void MmOutDtypeKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& y,
+                      DataType out_dtype,
+                      DenseTensor* out);
 
 // In order to be compatible with `mul` op in fluid,
 // it is no longer used in 2.x API
@@ -48,8 +54,7 @@ DenseTensor Matmul(const Context& dev_ctx,
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   MatmulInferMeta(x, y, transpose_x, transpose_y, &meta_out);
-  MatmulKernel<T, Context>(
-      dev_ctx, x, y, transpose_x, transpose_y, DataType::UNDEFINED, &dense_out);
+  MatmulKernel<T, Context>(dev_ctx, x, y, transpose_x, transpose_y, &dense_out);
   return dense_out;
 }
 

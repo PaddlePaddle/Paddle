@@ -15,7 +15,6 @@
 import unittest
 
 import numpy as np
-from op_test import convert_float_to_uint16
 
 import paddle
 
@@ -175,7 +174,7 @@ class TestMmOutBatchedAndShapes(unittest.TestCase):
         )
 
 
-class TestMmOutDtype(unittest.TestCase):
+class TestMmOutDtypeDynamicOnly(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
 
@@ -220,75 +219,9 @@ class TestMmOutDtype(unittest.TestCase):
         np.testing.assert_allclose(
             ret.numpy(), ref.numpy(), rtol=1e-2, atol=1e-2
         )
-
-    def test_bf16_to_fp32_backward_smoke(self):
-        self._skip_if_no_bf16_cuda()
-        x = paddle.randn([3, 4], dtype='bfloat16')
-        weight = paddle.randn([5, 4], dtype='bfloat16')
-        x.stop_gradient = False
-        weight.stop_gradient = False
-        loss = paddle.mm(x, weight.t(), out_dtype=paddle.float32).sum()
-        loss.backward()
-        self.assertEqual(x.grad.dtype, paddle.bfloat16)
-        self.assertEqual(weight.grad.dtype, paddle.bfloat16)
-        self.assertEqual(list(x.grad.shape), [3, 4])
-        self.assertEqual(list(weight.grad.shape), [5, 4])
-
-    def test_static_out_dtype_uses_matmul_v2(self):
-        paddle.enable_static()
-        paddle.pir_utils._switch_to_old_ir_()
-        try:
-            main = paddle.static.Program()
-            startup = paddle.static.Program()
-            with paddle.static.program_guard(main, startup):
-                x = paddle.static.data('x', [3, 4], dtype='bfloat16')
-                y = paddle.static.data('y', [4, 5], dtype='bfloat16')
-                out = paddle.static.data('out', [3, 5], dtype='float32')
-                ret = paddle.mm(x, y, out_dtype=paddle.float32, out=out)
-
-            self.assertIs(ret, out)
-            mm_ops = [
-                op
-                for op in main.global_block().ops
-                if op.type in ('matmul', 'matmul_v2')
-            ]
-            self.assertEqual(len(mm_ops), 1)
-            self.assertEqual(mm_ops[0].type, 'matmul_v2')
-            self.assertTrue(mm_ops[0].has_attr('out_dtype'))
-            self.assertEqual(mm_ops[0].output('Out'), ['out'])
-        finally:
-            paddle.pir_utils._switch_to_pir_()
-            paddle.disable_static()
-
-    def test_static_bf16_to_fp32(self):
-        self._skip_if_no_bf16_cuda()
-        paddle.enable_static()
-        try:
-            main = paddle.static.Program()
-            startup = paddle.static.Program()
-            with paddle.static.program_guard(main, startup):
-                x = paddle.static.data('x', [3, 4], dtype='bfloat16')
-                y = paddle.static.data('y', [4, 5], dtype='bfloat16')
-                out = paddle.mm(x, y, out_dtype=paddle.float32)
-                self.assertEqual(out.dtype, paddle.float32)
-
-            place = paddle.CUDAPlace(0)
-            exe = paddle.static.Executor(place)
-            exe.run(startup)
-            x_np = np.random.rand(3, 4).astype(np.float32)
-            y_np = np.random.rand(4, 5).astype(np.float32)
-            (out_np,) = exe.run(
-                main,
-                feed={
-                    'x': convert_float_to_uint16(x_np),
-                    'y': convert_float_to_uint16(y_np),
-                },
-                fetch_list=[out],
-            )
-            ref = x_np @ y_np
-            np.testing.assert_allclose(out_np, ref, rtol=1e-2, atol=1e-2)
-        finally:
-            paddle.disable_static()
+        np.testing.assert_allclose(
+            out.numpy(), ref.numpy(), rtol=1e-2, atol=1e-2
+        )
 
     def test_out_dtype_rejects_unsupported_cases(self):
         self._skip_if_no_bf16_cuda()
@@ -313,6 +246,19 @@ class TestMmOutDtype(unittest.TestCase):
                 out_dtype=paddle.float32,
                 out=paddle.empty([3, 5], dtype='bfloat16'),
             )
+
+    def test_static_out_dtype_fails_closed(self):
+        paddle.enable_static()
+        try:
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                x = paddle.static.data('x', [3, 4], dtype='bfloat16')
+                y = paddle.static.data('y', [4, 5], dtype='bfloat16')
+                with self.assertRaises(NotImplementedError):
+                    paddle.mm(x, y, out_dtype=paddle.float32)
+        finally:
+            paddle.disable_static()
 
 
 if __name__ == "__main__":

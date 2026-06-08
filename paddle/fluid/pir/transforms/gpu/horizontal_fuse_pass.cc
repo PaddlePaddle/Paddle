@@ -17,7 +17,6 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
@@ -107,13 +106,6 @@ class HorizontalFusePattern : public pir::RewritePattern {
       if (curr_op->HasAttribute("transpose_y") &&
           curr_op->attribute<pir::BoolAttribute>("transpose_y").data() ==
               true) {
-        return false;
-      }
-      phi::DataType out_dtype =
-          curr_op->attribute("out_dtype")
-              .dyn_cast<paddle::dialect::DataTypeAttribute>()
-              .data();
-      if (out_dtype != phi::DataType::UNDEFINED) {
         return false;
       }
       return areOperandsValid();

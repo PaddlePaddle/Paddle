@@ -102,13 +102,7 @@ void MatmulKernel(const Context &dev_ctx,
                   const DenseTensor &y,
                   bool transpose_x,
                   bool transpose_y,
-                  DataType out_dtype,
                   DenseTensor *out) {
-  PADDLE_ENFORCE_EQ(
-      out_dtype,
-      DataType::UNDEFINED,
-      errors::Unimplemented(
-          "The out_dtype of matmul/mm currently only supports CUDA."));
   if (dev_ctx.HasDnnAttr("head_number")) {
     const auto head_number =
         PADDLE_GET_CONST(int, dev_ctx.GetDnnAttr("head_number"));
@@ -571,8 +565,7 @@ void LegacyMatmulKernel(const Context &dev_ctx,
                         bool transpose_y,
                         float alpha,
                         DenseTensor *out) {
-  MatmulKernel<T, Context>(
-      dev_ctx, x, y, transpose_x, transpose_y, DataType::UNDEFINED, out);
+  MatmulKernel<T, Context>(dev_ctx, x, y, transpose_x, transpose_y, out);
   if (std::fabs(alpha - 1.f) > 1e-6f) {
     ScaleKernel<T, Context>(
         dev_ctx, *out, Scalar(alpha), Scalar(0), false, out);

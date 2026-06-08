@@ -2455,10 +2455,6 @@ FusedMultiTransformerEncoderPass::FusedMultiTransformerEncoderPass() {
       .End()
       .AddAttr("trans_y")
       .IsType<bool>()
-      .End()
-      .AddAttr("out_dtype")
-      .IsOptional()
-      .IsIntIn({-1})
       .End();
 
   AddOpCompat(OpCompat("elementwise_add"))
@@ -3296,10 +3292,6 @@ FusedMultiTransformerEncoderFuseQKVPass::
       .End()
       .AddAttr("trans_y")
       .IsType<bool>()
-      .End()
-      .AddAttr("out_dtype")
-      .IsOptional()
-      .IsIntIn({-1})
       .End();
 
   AddOpCompat(OpCompat("elementwise_add"))
@@ -4096,10 +4088,6 @@ MultiDevicesFusedMultiTransformerEncoderPass::
       .End()
       .AddAttr("trans_y")
       .IsType<bool>()
-      .End()
-      .AddAttr("out_dtype")
-      .IsOptional()
-      .IsIntIn({-1})
       .End();
 
   AddOpCompat(OpCompat("elementwise_add"))
@@ -4987,10 +4975,6 @@ MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::
       .End()
       .AddAttr("trans_y")
       .IsType<bool>()
-      .End()
-      .AddAttr("out_dtype")
-      .IsOptional()
-      .IsIntIn({-1})
       .End();
 
   AddOpCompat(OpCompat("elementwise_add"))

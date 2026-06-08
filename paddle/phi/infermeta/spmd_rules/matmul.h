@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include <vector>
 
-#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
 #include "paddle/phi/core/distributed/type_defs.h"
 
@@ -26,8 +25,7 @@ namespace distributed {
 SpmdInfo MatmulInferSpmd(const DistMetaTensor& x,
                          const DistMetaTensor& y,
                          bool trans_x,
-                         bool trans_y,
-                         DataType out_dtype = DataType::UNDEFINED);
+                         bool trans_y);
 
 SpmdInfo MatmulInferSpmdReverse(const DistMetaTensor& x,
                                 const DistMetaTensor& y,
@@ -41,8 +39,7 @@ SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x,
                              const DistMetaTensor& y,
                              const DistMetaTensor& out_grad,
                              bool trans_x,
-                             bool trans_y,
-                             DataType out_dtype = DataType::UNDEFINED);
+                             bool trans_y);
 
 }  // namespace distributed
 }  // namespace phi

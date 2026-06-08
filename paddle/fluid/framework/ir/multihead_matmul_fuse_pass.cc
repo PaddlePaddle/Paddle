@@ -835,10 +835,6 @@ MultiHeadMatmulV2FusePass::MultiHeadMatmulV2FusePass() {
       .End()
       .AddAttr("trans_y")
       .IsType<bool>()
-      .End()
-      .AddAttr("out_dtype")
-      .IsOptional()
-      .IsIntIn({-1})
       .End();
 
   AddOpCompat(OpCompat("softmax"))
@@ -1287,10 +1283,6 @@ MultiHeadMatmulV3FusePass::MultiHeadMatmulV3FusePass() {
       .End()
       .AddAttr("trans_y")  // QK(true) QKV(false)
       .IsType<bool>()
-      .End()
-      .AddAttr("out_dtype")
-      .IsOptional()
-      .IsIntIn({-1})
       .End();
 
   AddOpCompat(OpCompat("softmax"))

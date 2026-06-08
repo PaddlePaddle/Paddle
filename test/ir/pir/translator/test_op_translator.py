@@ -94,25 +94,3 @@ class TestOpWithBackwardTranslator(unittest.TestCase):
             + self.backward_op_type
             + '!'
         )
-
-
-class TestLegacyMatmulV2Translator(TestOpTranslator):
-    def append_op(self):
-        x = paddle.static.data(name='x', shape=[2, 3], dtype='float32')
-        y = paddle.static.data(name='y', shape=[3, 4], dtype='float32')
-        out = self.main_program.current_block().create_var(
-            name='out', shape=[2, 4], dtype='float32'
-        )
-        self.main_program.current_block().append_op(
-            type='matmul_v2',
-            inputs={'X': x, 'Y': y},
-            outputs={'Out': out},
-            attrs={'trans_x': False, 'trans_y': False},
-        )
-
-    def test_matmul_v2_default_out_dtype(self):
-        self.build_model()
-        pir_program = pir.translate_to_pir(self.main_program.desc)
-        serialized_pir_program = str(pir_program)
-        self.assertIn('pd_op.matmul', serialized_pir_program)
-        self.assertIn('out_dtype:Undefined', serialized_pir_program)

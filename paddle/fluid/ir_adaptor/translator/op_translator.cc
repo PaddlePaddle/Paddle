@@ -3837,9 +3837,7 @@ struct LegacyMatmulOpTranscriber : public OpTranscriber {
     OpTranscriber::RecordOpResultMapping(
         ctx, param_map, op_desc, operation, arg_to_idx);
 
-    float alpha = op_desc.HasAttr("alpha")
-                      ? PADDLE_GET_CONST(float, op_desc.GetAttr("alpha"))
-                      : 1.0f;
+    float alpha = PADDLE_GET_CONST(float, op_desc.GetAttr("alpha"));
     if (abs(alpha - 1.0f) < 1e-6f) {
       return;
     }
@@ -3875,10 +3873,6 @@ struct LegacyMatmulOpTranscriber : public OpTranscriber {
                                   const OpAttributeInfo& info) override {
     if (info.name == "transpose_x" || info.name == "transpose_y") {
       (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, false);
-    }
-    if (info.name == "out_dtype") {
-      (*attribute_map)[info.name] = paddle::dialect::DataTypeAttribute::get(
-          ctx, phi::DataType::UNDEFINED);
     }
   }
 };
@@ -4292,7 +4286,6 @@ OpTranslator::OpTranslator() {
   special_handlers["tril_triu"] = TrilAndTriuOpTranscriber();
   special_handlers["tril_triu_grad"] = TrilAndTriuGradOpTranscriber();
   special_handlers["matmul"] = LegacyMatmulOpTranscriber();
-  special_handlers["matmul_v2"] = LegacyMatmulOpTranscriber();
   special_handlers["matrix_rank"] = MatrixRankOpTranscriber();
   special_handlers["mul"] = MulOpTranscriber();
   special_handlers["mul_grad"] = MulGradOpTranscriber();

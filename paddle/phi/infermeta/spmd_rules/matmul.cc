@@ -115,8 +115,7 @@ void FillMatmulOperandNotation(const int x_ndim,
 SpmdInfo MatmulInferSpmd(const DistMetaTensor& x,
                          const DistMetaTensor& y,
                          bool trans_x,
-                         bool trans_y,
-                         DataType out_dtype UNUSED) {
+                         bool trans_y) {
   // Step0: verify input args based on matmul logic
   auto ori_x_shape = vectorize(x.dims());
   auto ori_y_shape = vectorize(y.dims());
@@ -300,8 +299,7 @@ SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x_,
                              const DistMetaTensor& y_,
                              const DistMetaTensor& out_grad,
                              bool trans_x,
-                             bool trans_y,
-                             DataType out_dtype UNUSED) {
+                             bool trans_y) {
   DistMetaTensor x = x_, y = y_;
   auto get_attr = [](const ArgDistAttr& attr) -> const TensorDistAttr& {
     return PADDLE_GET_CONST(TensorDistAttr, attr);

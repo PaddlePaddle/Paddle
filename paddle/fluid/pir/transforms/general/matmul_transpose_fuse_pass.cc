@@ -31,8 +31,7 @@ class MatmulOutTransposeFusePattern : public paddle::drr::DrrPatternBase {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul_op = pat.Op(paddle::dialect::MatmulOp::name(),
                                    {{"transpose_x", pat.Attr("transpose_x")},
-                                    {"transpose_y", pat.Attr("transpose_y")},
-                                    {"out_dtype", pat.Attr("out_dtype")}});
+                                    {"transpose_y", pat.Attr("transpose_y")}});
 
     const auto &transpose_op = pat.Op(paddle::dialect::TransposeOp::name(),
                                       {{"perm", pat.Attr("perm")}});
@@ -70,9 +69,7 @@ class MatmulOutTransposeFusePattern : public paddle::drr::DrrPatternBase {
         });
     const auto &fused_matmul_transpose_op =
         res.Op(paddle::dialect::MatmulOp::name(),
-               {{"transpose_x", transpose_y},
-                {"transpose_y", transpose_x},
-                {"out_dtype", pat.Attr("out_dtype")}});
+               {{"transpose_x", transpose_y}, {"transpose_y", transpose_x}});
     res.Tensor("transpose_op_out") =
         fused_matmul_transpose_op(res.Tensor("y"), res.Tensor("x"));
   }
@@ -85,8 +82,7 @@ class MatmulXTransposeFusePattern : public paddle::drr::DrrPatternBase {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul_op = pat.Op(paddle::dialect::MatmulOp::name(),
                                    {{"transpose_x", pat.Attr("transpose_x")},
-                                    {"transpose_y", pat.Attr("transpose_y")},
-                                    {"out_dtype", pat.Attr("out_dtype")}});
+                                    {"transpose_y", pat.Attr("transpose_y")}});
 
     const auto &transpose_op = pat.Op(paddle::dialect::TransposeOp::name(),
                                       {{"perm", pat.Attr("perm")}});
@@ -125,9 +121,7 @@ class MatmulXTransposeFusePattern : public paddle::drr::DrrPatternBase {
         });
     const auto &fused_matmul_transpose_op =
         res.Op(paddle::dialect::MatmulOp::name(),
-               {{"transpose_x", transpose_x},
-                {"transpose_y", transpose_y},
-                {"out_dtype", pat.Attr("out_dtype")}});
+               {{"transpose_x", transpose_x}, {"transpose_y", transpose_y}});
     res.Tensor("matmul_op_out") =
         fused_matmul_transpose_op(res.Tensor("x"), res.Tensor("y"));
   }
@@ -140,8 +134,7 @@ class MatmulYTransposeFusePattern : public paddle::drr::DrrPatternBase {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul_op = pat.Op(paddle::dialect::MatmulOp::name(),
                                    {{"transpose_x", pat.Attr("transpose_x")},
-                                    {"transpose_y", pat.Attr("transpose_y")},
-                                    {"out_dtype", pat.Attr("out_dtype")}});
+                                    {"transpose_y", pat.Attr("transpose_y")}});
 
     const auto &transpose_op = pat.Op(paddle::dialect::TransposeOp::name(),
                                       {{"perm", pat.Attr("perm")}});
@@ -180,9 +173,7 @@ class MatmulYTransposeFusePattern : public paddle::drr::DrrPatternBase {
         });
     const auto &fused_matmul_transpose_op =
         res.Op(paddle::dialect::MatmulOp::name(),
-               {{"transpose_x", transpose_x},
-                {"transpose_y", transpose_y},
-                {"out_dtype", pat.Attr("out_dtype")}});
+               {{"transpose_x", transpose_x}, {"transpose_y", transpose_y}});
     res.Tensor("matmul_op_out") =
         fused_matmul_transpose_op(res.Tensor("x"), res.Tensor("y"));
   }

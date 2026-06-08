@@ -82,10 +82,6 @@ GpuCpuMapMatmulV2ToMulPass::GpuCpuMapMatmulV2ToMulPass() {
       .End()
       .AddAttr("trans_y")
       .IsBoolEQ(false)
-      .End()
-      .AddAttr("out_dtype")
-      .IsOptional()
-      .IsIntIn({-1})
       .End();
 
   AddOpCompat(OpCompat("mul"))
@@ -122,10 +118,6 @@ GpuCpuMapMatmulV2ToMatmulPass::GpuCpuMapMatmulV2ToMatmulPass() {
       .End()
       .AddAttr("trans_y")
       .IsType<bool>()
-      .End()
-      .AddAttr("out_dtype")
-      .IsOptional()
-      .IsIntIn({-1})
       .End();
 
   AddOpCompat(OpCompat("matmul"))

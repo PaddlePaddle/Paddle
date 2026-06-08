@@ -1728,10 +1728,6 @@ FusedMultiTransformerDecoderPass::FusedMultiTransformerDecoderPass() {
       .End()
       .AddAttr("trans_y")
       .IsType<bool>()
-      .End()
-      .AddAttr("out_dtype")
-      .IsOptional()
-      .IsIntIn({-1})
       .End();
 
   AddOpCompat(OpCompat("elementwise_add"))
@@ -2466,10 +2462,6 @@ FusedMultiTransformerDecoderFuseQKVPass::
       .End()
       .AddAttr("trans_y")
       .IsType<bool>()
-      .End()
-      .AddAttr("out_dtype")
-      .IsOptional()
-      .IsIntIn({-1})
       .End();
 
   AddOpCompat(OpCompat("elementwise_add"))
@@ -3253,10 +3245,6 @@ MultiDevicesFusedMultiTransformerDecoderFuseQKVPass::
       .End()
       .AddAttr("trans_y")
       .IsType<bool>()
-      .End()
-      .AddAttr("out_dtype")
-      .IsOptional()
-      .IsIntIn({-1})
       .End();
 
   AddOpCompat(OpCompat("elementwise_add"))

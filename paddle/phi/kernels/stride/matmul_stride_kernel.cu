@@ -107,7 +107,6 @@ void MatmulStrideKernel(const Context &dev_ctx,
                         const DenseTensor &y,
                         bool transpose_x,
                         bool transpose_y,
-                        DataType out_dtype,
                         DenseTensor *out) {
   if (!FLAGS_use_stride_kernel) {
     PADDLE_THROW(common::errors::Fatal(
@@ -138,7 +137,7 @@ void MatmulStrideKernel(const Context &dev_ctx,
     meta.strides = meta.calc_strides(out->dims());
     out->set_meta(meta);
     phi::MatmulKernel<T, Context>(
-        dev_ctx, x_, y_, transpose_x, transpose_y, out_dtype, out);
+        dev_ctx, x_, y_, transpose_x, transpose_y, out);
     return;
   }
 
@@ -203,8 +202,7 @@ void MatmulStrideKernel(const Context &dev_ctx,
   auto meta = out->meta();
   meta.strides = meta.calc_strides(out->dims());
   out->set_meta(meta);
-  phi::MatmulKernel<T, Context>(
-      dev_ctx, x_, y_, transpose_x, transpose_y, out_dtype, out);
+  phi::MatmulKernel<T, Context>(dev_ctx, x_, y_, transpose_x, transpose_y, out);
 }
 
 }  // namespace phi

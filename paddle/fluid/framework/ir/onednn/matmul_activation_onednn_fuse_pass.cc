@@ -118,10 +118,6 @@ MatmulActivationOnednnFusePass::MatmulActivationOnednnFusePass() {
       .End()
       .AddAttr("trans_y")
       .IsType<bool>()
-      .End()
-      .AddAttr("out_dtype")
-      .IsOptional()
-      .IsIntIn({-1})
       .End();
 
   AddOpCompat(OpCompat("fused_matmul"))

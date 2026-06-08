@@ -246,15 +246,13 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : matmul
-  args : (Tensor x, Tensor y, bool transpose_x = false, bool transpose_y = false, DataType out_dtype = DataType::UNDEFINED)
+  args : (Tensor x, Tensor y, bool transpose_x = false, bool transpose_y = false)
   output : Tensor
   infer_meta :
-    func : MatmulInferMetaWithOutDtype
+    func : MatmulInferMeta
     spmd_rule : MatmulInferSpmd
-    param : [x, y, transpose_x, transpose_y, out_dtype]
   kernel :
     func : matmul
-    data_type : x
   backward : matmul_grad
 
 - op : maximum
@@ -287,6 +285,16 @@
     func : minimum
   backward : minimum_grad
   traits : pir::BinaryElementWiseTrait
+
+- op : mm_out_dtype
+  args : (Tensor x, Tensor y, DataType out_dtype)
+  output : Tensor(out)
+  infer_meta :
+    func : MmOutDtypeInferMeta
+  kernel :
+    func : mm_out_dtype
+    data_type : x
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : multiply
   args : (Tensor x, Tensor y)

@@ -27,13 +27,7 @@ void MatmulKernel(const Context& dev_ctx,
                   const DenseTensor& y,
                   bool transpose_x,
                   bool transpose_y,
-                  DataType out_dtype,
                   DenseTensor* out) {
-  PADDLE_ENFORCE_EQ(
-      out_dtype,
-      DataType::UNDEFINED,
-      common::errors::Unimplemented(
-          "The out_dtype of matmul/mm currently only supports CUDA."));
   if (x.numel() == 0 || y.numel() == 0) {
     // input shape [1, 1, 5, 0], [1, 1, 0, 5], result shape is [1, 1, 5, 5]
     Full<T, Context>(dev_ctx, out->dims(), 0, out);
@@ -94,8 +88,7 @@ void LegacyMatmulKernel(const Context& dev_ctx,
                         bool transpose_y,
                         float alpha UNUSED,
                         DenseTensor* out) {
-  MatmulKernel<T, Context>(
-      dev_ctx, x, y, transpose_x, transpose_y, DataType::UNDEFINED, out);
+  MatmulKernel<T, Context>(dev_ctx, x, y, transpose_x, transpose_y, out);
 }
 }  // namespace phi
 
