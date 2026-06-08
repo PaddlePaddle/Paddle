@@ -89,11 +89,11 @@ inline int ConvOutSize(int input_size,
       0,
       common::errors::InvalidArgument(
           "The output's size is expected to be greater than 0. "
-          "But received: output's size is %ld. The output's size is computed "
-          "by "
-          "((input_size + pad_left + pad_right - (dilation * (filter_size - "
-          "1) + 1)) / stride + 1), where input_size is %d, padding is "
-          "(%d, %d), filter_size is %d, dilation is %d, stride is %d.",
+          "But received: output's size is %ld. The output's size is "
+          "computed by ((input_size + pad_left + pad_right - "
+          "(dilation * (filter_size - 1) + 1)) / stride + 1), where "
+          "input_size is %d, padding is (%d, %d), filter_size is %d, "
+          "dilation is %d, stride is %d.",
           output_size,
           input_size,
           pad_left,
