@@ -423,6 +423,7 @@ void LaunchLayerNormKernel(const Context& dev_ctx,
 
 #define IMPL_LAYER_NORM_WELFORD_CASE(index_t, scale_t, is_same_, vec_size_)    \
   case (vec_size_): {                                                          \
+    PADDLE_ENFORCE_LE_UINT32_MAX(block_size, "grid.x");                        \
     LayerNormFwdWithWelford<index_t, T, U, is_same_, vec_size_>                \
         <<<static_cast<uint32_t>(block_size), threads, 0, dev_ctx.stream()>>>( \
             x_data,                                                            \

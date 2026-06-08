@@ -243,9 +243,10 @@ void SwitchKernel(const Context& dev_ctx,
     const int64_t out_size = out_grad.numel();
     const int64_t weight_size = weight.numel();
     auto gpu_config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_size);
-    const auto grid_size = gpu_config.GetGridSize();
-    const auto block_size = gpu_config.GetBlockSize();
+    const int64_t grid_size = gpu_config.GetGridSize();
+    const int64_t block_size = gpu_config.GetBlockSize();
     PADDLE_ENFORCE_LE_UINT32_MAX(grid_size, "grid");
+    PADDLE_ENFORCE_LE_UINT32_MAX(block_size, "block");
     const uint32_t grid = static_cast<uint32_t>(grid_size);
     const uint32_t block = static_cast<uint32_t>(block_size);
     if (FLAGS_use_accuracy_compatible_kernel) {

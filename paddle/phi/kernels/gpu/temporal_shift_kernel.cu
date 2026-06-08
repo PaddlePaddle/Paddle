@@ -134,6 +134,8 @@ void TemporalShiftKernel(const Context& dev_ctx,
   int64_t grid = (pixelNum + threads - 1) / threads;
   int64_t blocks_per_sm = dev_ctx.GetMaxPhysicalThreadCount() / threads;
   grid = std::min(dev_ctx.GetSMCount() * blocks_per_sm, grid);
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid, "grid");
+  PADDLE_ENFORCE_LE_UINT32_MAX(threads, "threads");
   const uint32_t grid_32 = static_cast<uint32_t>(grid);
   const uint32_t threads_32 = static_cast<uint32_t>(threads);
 

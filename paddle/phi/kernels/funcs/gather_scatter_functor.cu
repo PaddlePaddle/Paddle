@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/gather_scatter_functor.h"
+#include <cassert>
 #include <type_traits>
 #include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
@@ -862,6 +863,7 @@ __global__ void ScatterGradPrePassKernel(
     bool include_self = true) {
   if constexpr (dispatch == GradDispatchTag::MulInputGrad) {
     COMPUTE_OFFSET_SINGLE_OUTPUT(replace_index, 1, tid, 2)
+    assert(tid <= static_cast<int64_t>(std::numeric_limits<int>::max()));
     atomicMax(aux_buffer + replace_index, static_cast<int>(tid));
   } else if constexpr (dispatch == GradDispatchTag::MinMaxInputGrad) {
     // This is a special case, src is stored in shape_strides + 2 * dim but used
@@ -871,10 +873,12 @@ __global__ void ScatterGradPrePassKernel(
       CudaAtomicAdd(aux_buffer + replace_index, 1);
   } else if constexpr (dispatch == GradDispatchTag::MeanInputGrad) {
     COMPUTE_OFFSET_SINGLE_OUTPUT(replace_index, 1, tid, 2)
+    assert(tid <= static_cast<int64_t>(std::numeric_limits<int>::max()));
     atomicMax(aux_buffer + replace_index, static_cast<int>(tid));
     CudaAtomicAdd(aux_buffer + grad_numel + replace_index, 1);
   } else if constexpr (dispatch == GradDispatchTag::ValueGrad) {
     COMPUTE_OFFSET_SINGLE_OUTPUT(replace_index_self, 2, tid, 3)
+    assert(tid <= static_cast<int64_t>(std::numeric_limits<int>::max()));
     atomicMax(aux_buffer + replace_index_self, static_cast<int>(tid));
   } else if constexpr (dispatch == GradDispatchTag::MeanValueGrad) {
     COMPUTE_OFFSET_SINGLE_OUTPUT(replace_index_self, 2, tid, 3)
@@ -1244,7 +1248,6 @@ void gpu_scatter_value_grad_kernel(DenseTensor self,
   const int64_t* shape_strides = shape_stride_dev.data<int64_t>();
   size_t shared_mem_bytes = sizeof(int64_t) * ndim * 3;
 
-  PADDLE_ENFORCE_LE_INT_MAX(index.numel(), "gather_scatter value grad tid");
   ScatterGradPrePassKernel<tensor_t, index_t, ValueGrad>
       <<<grid, block, shared_mem_bytes, stream>>>(grad_data,
                                                   index_data,

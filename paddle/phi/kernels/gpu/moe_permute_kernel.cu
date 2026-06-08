@@ -958,7 +958,8 @@ void MoePermuteKernel(const Context &dev_ctx,
           next_expert_offset - expert_offset[i] - tokens_per_expert[i];
       int64_t cur_expert_end = expert_offset[i] + tokens_per_expert[i];
       if (invalid_rows > 0) {
-        PADDLE_ENFORCE_LE_INT_MAX(next_expert_offset - 1, "padding row");
+        PADDLE_ENFORCE_LE_INT_MAX(cur_expert_end + invalid_rows - 1,
+                                  "padding row");
       }
       for (int64_t j = 0; j < invalid_rows; ++j) {
         padding_rows.push_back(static_cast<int>(cur_expert_end + j));
