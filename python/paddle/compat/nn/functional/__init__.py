@@ -459,20 +459,14 @@ def smooth_l1_loss(
             stacklevel=2,
         )
 
-    # PyTorch requires beta >= 0.
     if beta < 0:
         raise ValueError(
             f"smooth_l1_loss does not accept negative beta, but got beta={beta}."
         )
 
-    # When beta == 0, PyTorch degrades to the pure L1 loss. Delegating to the
-    # underlying huber-based implementation would divide by delta (0/0 -> NaN),
-    # so this case must be handled explicitly.
     if beta == 0:
         return paddle.nn.functional.l1_loss(input, target, reduction=reduction)
 
-    # For beta > 0, huber / beta equals torch's smooth_l1, i.e. is_huber=False
-    # with delta=beta.
     return paddle.nn.functional.smooth_l1_loss(
         input, target, reduction=reduction, delta=beta, is_huber=False
     )

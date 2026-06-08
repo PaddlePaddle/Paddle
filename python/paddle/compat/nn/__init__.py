@@ -829,10 +829,6 @@ class SmoothL1Loss(nn.Layer):
         self.beta = beta
 
     def forward(self, input: Tensor, target: Tensor) -> Tensor:
-        # Reuse the compat functional (bypassing its ForbidKeywordsDecorator since
-        # the kwargs are controlled here) so the beta==0 / beta<0 handling lives in
-        # a single place. Mirrors compat.nn.Linear.forward calling
-        # functional.linear.__wrapped__.
         return functional.smooth_l1_loss.__wrapped__(
             input, target, reduction=self.reduction, beta=self.beta
         )
