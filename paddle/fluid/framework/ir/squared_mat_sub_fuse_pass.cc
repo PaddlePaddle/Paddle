@@ -425,6 +425,10 @@ SquaredMatSubFusePass::SquaredMatSubFusePass() {
       .End()
       .AddAttr("trans_y")
       .IsBoolEQ(false)
+      .End()
+      .AddAttr("out_dtype")
+      .IsOptional()
+      .IsIntIn({-1})
       .End();
 
   AddOpCompat(OpCompat("elementwise_sub"))

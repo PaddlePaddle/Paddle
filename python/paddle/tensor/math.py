@@ -2196,15 +2196,17 @@ def mm(
     """
     if out_dtype is not None:
         out_dtype = convert_nptype_to_datatype_or_vartype(out_dtype)
-        if out_dtype != core.DataType.FLOAT32:
+        float32_dtypes = (core.DataType.FLOAT32, core.VarDesc.VarType.FP32)
+        bf16_dtypes = (core.DataType.BFLOAT16, core.VarDesc.VarType.BF16)
+        if out_dtype not in float32_dtypes:
             raise TypeError(
                 "The out_dtype of paddle.mm currently only supports paddle.float32."
             )
-        if input.dtype != core.DataType.BFLOAT16:
+        if input.dtype not in bf16_dtypes:
             raise TypeError(
                 "The out_dtype of paddle.mm currently only supports bfloat16 input."
             )
-        if mat2.dtype != core.DataType.BFLOAT16:
+        if mat2.dtype not in bf16_dtypes:
             raise TypeError(
                 "The out_dtype of paddle.mm currently only supports bfloat16 mat2."
             )
@@ -2212,7 +2214,7 @@ def mm(
             raise ValueError(
                 "The out_dtype of paddle.mm currently only supports 2-D inputs."
             )
-        if out is not None and out.dtype != core.DataType.FLOAT32:
+        if out is not None and out.dtype not in float32_dtypes:
             raise TypeError(
                 "The out tensor dtype must be paddle.float32 when out_dtype is paddle.float32."
             )
@@ -2269,7 +2271,8 @@ def mm(
     else:
         helper = LayerHelper('mm', **locals())
         out_var_dtype = out_dtype if out_dtype is not None else input.dtype
-        out = helper.create_variable_for_type_inference(dtype=out_var_dtype)
+        if out is None:
+            out = helper.create_variable_for_type_inference(dtype=out_var_dtype)
         if out_dtype is None:
             helper.append_op(
                 type='matmul_v2',
@@ -2279,11 +2282,11 @@ def mm(
             )
         else:
             helper.append_op(
-                type='matmul',
+                type='matmul_v2',
                 inputs={'X': input, 'Y': mat2},
                 attrs={
-                    'transpose_x': False,
-                    'transpose_y': False,
+                    'trans_x': False,
+                    'trans_y': False,
                     'out_dtype': matmul_out_dtype,
                 },
                 outputs={'Out': out},
