@@ -578,24 +578,6 @@ class HookRemoveHelper:
                 del extra_hooks[self._hook_id]
 
 
-def _state_dict_hook_takes_module(hook: Callable[..., Any]) -> bool:
-    try:
-        signature = inspect.signature(hook)
-    except (TypeError, ValueError):
-        return False
-
-    positional_args = 0
-    for param in signature.parameters.values():
-        if param.kind == inspect.Parameter.VAR_POSITIONAL:
-            return True
-        if param.kind in (
-            inspect.Parameter.POSITIONAL_ONLY,
-            inspect.Parameter.POSITIONAL_OR_KEYWORD,
-        ):
-            positional_args += 1
-    return positional_args >= 4
-
-
 class Layer:
     """
     Dynamic graph Layer based on OOD, includes the parameters of the layer, the structure of the forward graph and so on.
@@ -2775,15 +2757,15 @@ class Layer:
         if use_hook:
             local_metadata: dict[str, Any] = {}
             for state_dict_hook in self._state_dict_hooks.values():
-                if _state_dict_hook_takes_module(state_dict_hook):
+                try:
+                    hook_result = state_dict_hook(destination)
+                except TypeError:
                     hook_result = state_dict_hook(
                         self,
                         destination,
                         structured_name_prefix,
                         local_metadata,
                     )
-                else:
-                    hook_result = state_dict_hook(destination)
                 if hook_result is not None:
                     destination = hook_result
 
