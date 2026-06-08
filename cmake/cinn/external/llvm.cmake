@@ -48,7 +48,7 @@ message(STATUS "set MLIR_DIR: ${MLIR_DIR}")
 find_package(LLVM REQUIRED CONFIG HINTS ${LLVM_DIR})
 find_package(MLIR REQUIRED CONFIG HINTS ${MLIR_DIR})
 find_package(ZLIB REQUIRED)
-paddle_fix_llvm_support_tinfo_target()
+paddle_fix_llvm_support_target()
 
 set(LLVM_CLANG_EXECUTABLE ${LLVM_PATH}/bin/clang++)
 set(LLVM_CONFIG_EXECUTABLE ${LLVM_PATH}/bin/llvm-config)

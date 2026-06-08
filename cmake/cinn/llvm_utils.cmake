@@ -23,7 +23,7 @@ function(paddle_resolve_llvm_path out_var)
   message(FATAL_ERROR "Cannot find bin/llvm-config under ${_llvm_path}")
 endfunction()
 
-function(paddle_fix_llvm_support_tinfo_target)
+function(paddle_fix_llvm_support_target)
   if(NOT TARGET LLVMSupport)
     return()
   endif()
@@ -36,8 +36,12 @@ function(paddle_fix_llvm_support_tinfo_target)
 
   set(_updated_llvm_support_libs)
   set(_replaced_tinfo_path OFF)
+  set(_replaced_zlib_target OFF)
   foreach(_llvm_support_lib IN LISTS _llvm_support_libs)
-    if(_llvm_support_lib MATCHES "^/.*/libtinfo\\.so$")
+    if(_llvm_support_lib STREQUAL "ZLIB::ZLIB" AND TARGET zlib)
+      list(APPEND _updated_llvm_support_libs zlib)
+      set(_replaced_zlib_target ON)
+    elseif(_llvm_support_lib MATCHES "^/.*/libtinfo\\.so$")
       find_library(PADDLE_LLVM_TINFO_LIBRARY NAMES tinfo ncursesw ncurses)
       if(PADDLE_LLVM_TINFO_LIBRARY)
         list(APPEND _updated_llvm_support_libs "${PADDLE_LLVM_TINFO_LIBRARY}")
@@ -55,12 +59,18 @@ function(paddle_fix_llvm_support_tinfo_target)
     endif()
   endforeach()
 
-  if(_replaced_tinfo_path)
+  if(_replaced_tinfo_path OR _replaced_zlib_target)
     set_target_properties(
       LLVMSupport PROPERTIES INTERFACE_LINK_LIBRARIES
                              "${_updated_llvm_support_libs}")
-    message(STATUS "Replaced LLVM LLVMSupport tinfo path with "
-                   "${PADDLE_LLVM_TINFO_LIBRARY}")
+    if(_replaced_tinfo_path)
+      message(STATUS "Replaced LLVM LLVMSupport tinfo path with "
+                     "${PADDLE_LLVM_TINFO_LIBRARY}")
+    endif()
+    if(_replaced_zlib_target)
+      message(STATUS "Replaced LLVM LLVMSupport ZLIB::ZLIB dependency with "
+                     "Paddle zlib target")
+    endif()
   endif()
 endfunction()
 
