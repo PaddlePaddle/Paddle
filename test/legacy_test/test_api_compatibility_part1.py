@@ -2611,6 +2611,8 @@ class TestCompatBatchNorm3dAPI(_CompatBatchNormBase, unittest.TestCase):
     x_shape = (2, 3, 2, 4, 5)
     invalid_shape = (2, 3, 4, 5)
     axes = (0, 2, 3, 4)
+
+
 # Test DistributedSampler compatibility
 class TestDistributedSamplerAPI(unittest.TestCase):
     def setUp(self):
