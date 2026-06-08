@@ -747,7 +747,6 @@ void Backward(const std::vector<paddle::Tensor>& tensors,  // outputs
               const std::vector<paddle::Tensor>& grad_tensors,
               bool retain_graph,
               std::string dump_backward_graph_path) {
-  // Coverage guard smoke test: non-executable source diff.
   VLOG(3) << "Run in Backward";
   phi::RecordEvent backward_record_event(
       "backward", phi::TracerEventType::UserDefined, 1);
