@@ -107,12 +107,12 @@ function pr_has_cpp_source_changes() {
     ' "${diff_file}"
 }
 
-function ensure_cpp_diff_coverage_data() {
+function ensure_cpp_extracted_coverage_data() {
     local info_file="$1"
     local diff_file="$2"
 
     if pr_has_cpp_source_changes "${diff_file}" && ! grep -q '^DA:' "${info_file}" 2>/dev/null; then
-        echo "ERROR: ${info_file} has no C++ line coverage data for compiled C++ source changes"
+        echo "ERROR: ${info_file} has no extracted C++ line coverage data for compiled C++ source changes"
         echo "This usually means lcov/gcov failed before producing a valid diff report."
         exit 101
     fi
@@ -230,11 +230,11 @@ lcov --extract coverage-full.info \
     -o coverage-diff.info \
     --rc lcov_branch_coverage=0
 
+ensure_cpp_extracted_coverage_data coverage-diff.info git-diff.out
+
 python ${PADDLE_ROOT}/ci/coverage_diff.py coverage-diff.info git-diff.out > coverage-diff.tmp
 
 mv -f coverage-diff.tmp coverage-diff.info
-
-ensure_cpp_diff_coverage_data coverage-diff.info git-diff.out
 
 cp coverage-diff.info coverage_files
 
