@@ -405,7 +405,7 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
     VLOG(3) << "Warning: AddNOp have only one input, may waste memory";
   }
   bool is_all_0d_tensor = true;
-  DDim in_dim({0});
+  DDim in_dim = x[0]->dims();
   for (size_t i = 0; i < x.size(); ++i) {
     auto x_dim = x[i]->dims();
     // x_dim.size() == 1 means the real dim of selected rows is [0]
@@ -417,51 +417,47 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
       continue;
     }
     is_all_0d_tensor = false;
-    // use the first dimension
-    if (common::product(in_dim) == 0) {
-      in_dim = x_dim;
+
+    if (config.is_runtime) {
+      PADDLE_ENFORCE_EQ(in_dim,
+                        x_dim,
+                        common::errors::InvalidArgument(
+                            "The input tensor X of AddNOp must"
+                            " have same shape. But received X[0]'s shape = "
+                            "[%s], X[%d]'s shape = [%s].",
+                            in_dim,
+                            i,
+                            x_dim));
     } else {
-      if (config.is_runtime) {
-        PADDLE_ENFORCE_EQ(in_dim,
-                          x_dim,
-                          common::errors::InvalidArgument(
-                              "The input tensor X of AddNOp must"
-                              " have same shape. But received X[0]'s shape = "
-                              "[%s], X[%d]'s shape = [%s].",
-                              in_dim,
-                              i,
-                              x_dim));
-      } else {
+      PADDLE_ENFORCE_EQ(
+          in_dim.size(),
+          x_dim.size(),
+          common::errors::InvalidArgument(
+              "The input tensor X of AddNOp must have same "
+              "dimensions. But received X[0]'s dimensions = %d, X[0]'s "
+              "shape = "
+              "[%s], X[%d]'s dimensions = %d, X[%d]'s shape = [%s].",
+              in_dim.size(),
+              in_dim,
+              i,
+              x_dim.size(),
+              i,
+              x_dim));
+      // if in_dim or x_dim has -1, not check equal
+      for (int j = 0; j < x_dim.size(); ++j) {
+        if (x_dim[j] == -1 || in_dim[j] == -1) {
+          continue;
+        }
         PADDLE_ENFORCE_EQ(
-            in_dim.size(),
-            x_dim.size(),
+            in_dim[j],
+            x_dim[j],
             common::errors::InvalidArgument(
-                "The input tensor X of AddNOp must have same "
-                "dimensions. But received X[0]'s dimensions = %d, X[0]'s "
-                "shape = "
-                "[%s], X[%d]'s dimensions = %d, X[%d]'s shape = [%s].",
-                in_dim.size(),
+                "The input tensor X of AddNOp must have same shape "
+                "if not -1."
+                "But received X[0]'s shape = [%s], X[%d]'s shape = [%s].",
                 in_dim,
                 i,
-                x_dim.size(),
-                i,
                 x_dim));
-        // if in_dim or x_dim has -1, not check equal
-        for (int j = 0; j < x_dim.size(); ++j) {
-          if (x_dim[j] == -1 || in_dim[j] == -1) {
-            continue;
-          }
-          PADDLE_ENFORCE_EQ(
-              in_dim[j],
-              x_dim[j],
-              common::errors::InvalidArgument(
-                  "The input tensor X of AddNOp must have same shape "
-                  "if not -1."
-                  "But received X[0]'s shape = [%s], X[%d]'s shape = [%s].",
-                  in_dim,
-                  i,
-                  x_dim));
-        }
       }
     }
   }
