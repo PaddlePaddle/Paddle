@@ -1,4 +1,11 @@
 include(${PROJECT_SOURCE_DIR}/cmake/architecture.cmake)
+include(${PROJECT_SOURCE_DIR}/cmake/cinn/llvm_utils.cmake)
+
+if(LLVM_PATH)
+  paddle_resolve_llvm_path(LLVM_PATH)
+  set(LLVM_DIR ${LLVM_PATH}/lib/cmake/llvm)
+  set(MLIR_DIR ${LLVM_PATH}/lib/cmake/mlir)
+endif()
 
 if(${CMAKE_CXX_COMPILER} STREQUAL "clang++")
   set(CMAKE_EXE_LINKER_FLAGS
@@ -10,6 +17,7 @@ message(STATUS "set MLIR_DIR: ${MLIR_DIR}")
 find_package(LLVM REQUIRED CONFIG HINTS ${LLVM_DIR})
 find_package(MLIR REQUIRED CONFIG HINTS ${MLIR_DIR})
 find_package(ZLIB REQUIRED)
+paddle_fix_llvm_support_tinfo_target()
 
 paddle_get_llvm_native_target(PADDLE_LLVM_NATIVE_TARGET)
 
@@ -39,7 +47,9 @@ cmake -G Ninja ../llvm \
   -DLLVM_ENABLE_ZLIB=OFF \
   -DLLVM_ENABLE_RTTI=ON \
 #]==]
-# The matched llvm-project version is f9dc2b7079350d0fed3bb3775f496b90483c9e42 (currently a temporary commit)
+# Use the official LLVM 13.0.1 release package. LLVM 13 includes the
+# iterator constructor fix needed by C++20 builds:
+# https://github.com/llvm/llvm-project/commit/95d0d8e9e9d1
 
 add_definitions(${LLVM_DEFINITIONS})
 
@@ -61,9 +71,10 @@ get_property(mlir_libs GLOBAL PROPERTY MLIR_ALL_LIBS)
 add_definitions(${LLVM_DEFINITIONS})
 
 # The minimum needed libraries for MLIR IR parse and transform.
+paddle_select_mlir_standard_lib(PADDLE_MLIR_STANDARD_LIB)
 set(MLIR_IR_LIBS
     MLIRAnalysis
-    MLIRStandardOps
+    ${PADDLE_MLIR_STANDARD_LIB}
     MLIRPass
     MLIRParser
     MLIRDialect

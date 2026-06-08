@@ -1,5 +1,6 @@
 include(FetchContent)
 include(${PROJECT_SOURCE_DIR}/cmake/architecture.cmake)
+include(${PROJECT_SOURCE_DIR}/cmake/cinn/llvm_utils.cmake)
 
 set(FETCHCONTENT_BASE_DIR ${THIRD_PARTY_PATH}/llvm)
 set(FETCHCONTENT_QUIET OFF)
@@ -8,22 +9,23 @@ paddle_normalize_target_arch(PADDLE_TARGET_ARCH)
 
 if(PADDLE_TARGET_ARCH STREQUAL "aarch64")
   set(LLVM_DOWNLOAD_URL
-      "https://paddle-inference-dist.cdn.bcebos.com/CINN/llvm11-aarch64-glibc2.17.tar.gz"
+      "https://github.com/llvm/llvm-project/releases/download/llvmorg-13.0.1/clang%2Bllvm-13.0.1-aarch64-linux-gnu.tar.xz"
   )
-  set(LLVM_MD5
-      "71c49723bc3e30626da1bd1b866934ce"
-      CACHE STRING "ARM LLVM11 package MD5")
+  set(LLVM_SHA256
+      15ff2db12683e69e552b6668f7ca49edaa01ce32cb1cbc8f8ed2e887ab291069)
 else()
   set(LLVM_DOWNLOAD_URL
-      https://paddle-inference-dist.bj.bcebos.com/CINN/llvm11-glibc2.17.tar.gz)
-  set(LLVM_MD5 33c7d3cc6d370585381e8d90bd7c2198)
+      "https://github.com/llvm/llvm-project/releases/download/llvmorg-13.0.1/clang%2Bllvm-13.0.1-x86_64-linux-gnu-ubuntu-18.04.tar.xz"
+  )
+  set(LLVM_SHA256
+      84a54c69781ad90615d1b0276a83ff87daaeded99fbc64457c350679df7b4ff0)
 endif()
 
 if(NOT LLVM_PATH)
   FetchContent_Declare(
     external_llvm
     URL ${LLVM_DOWNLOAD_URL}
-    URL_MD5 ${LLVM_MD5}
+    URL_HASH SHA256=${LLVM_SHA256}
     PREFIX ${THIRD_PARTY_PATH}/llvm SOURCE_DIR ${THIRD_PARTY_PATH}/install/llvm)
   FetchContent_GetProperties(external_llvm)
   if(NOT external_llvm_POPULATED)
@@ -31,6 +33,7 @@ if(NOT LLVM_PATH)
   endif()
   set(LLVM_PATH ${THIRD_PARTY_PATH}/install/llvm)
 endif()
+paddle_resolve_llvm_path(LLVM_PATH)
 
 set(LLVM_DIR ${LLVM_PATH}/lib/cmake/llvm)
 set(MLIR_DIR ${LLVM_PATH}/lib/cmake/mlir)
@@ -45,6 +48,7 @@ message(STATUS "set MLIR_DIR: ${MLIR_DIR}")
 find_package(LLVM REQUIRED CONFIG HINTS ${LLVM_DIR})
 find_package(MLIR REQUIRED CONFIG HINTS ${MLIR_DIR})
 find_package(ZLIB REQUIRED)
+paddle_fix_llvm_support_tinfo_target()
 
 set(LLVM_CLANG_EXECUTABLE ${LLVM_PATH}/bin/clang++)
 set(LLVM_CONFIG_EXECUTABLE ${LLVM_PATH}/bin/llvm-config)
@@ -78,9 +82,9 @@ cmake -G Ninja ../llvm \
   -DCMAKE_INSTALL_PREFIX=./install
 #]==]
 
-# The matched llvm-project version is f9dc2b7079350d0fed3bb3775f496b90483c9e42 (currently a temporary commit)
-# Update: to build llvm in manylinux docker with glibc-2.17, and use it in manylinux and ubuntu docker,
-# the patch https://gist.github.com/zhiqiu/6e8d969176dce13d98fd15338a16265e is needed.
+# Use the official LLVM 13.0.1 release package. LLVM 13 includes the
+# iterator constructor fix needed by C++20 builds:
+# https://github.com/llvm/llvm-project/commit/95d0d8e9e9d1
 
 add_definitions(${LLVM_DEFINITIONS})
 
@@ -102,9 +106,10 @@ get_property(mlir_libs GLOBAL PROPERTY MLIR_ALL_LIBS)
 add_definitions(${LLVM_DEFINITIONS})
 
 # The minimum needed libraries for MLIR IR parse and transform.
+paddle_select_mlir_standard_lib(PADDLE_MLIR_STANDARD_LIB)
 set(MLIR_IR_LIBS
     MLIRAnalysis
-    MLIRStandardOps
+    ${PADDLE_MLIR_STANDARD_LIB}
     MLIRPass
     MLIRParser
     MLIRDialect
