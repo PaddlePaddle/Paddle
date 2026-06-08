@@ -26,7 +26,7 @@ from paddle.utils.decorator_utils import (
 )
 
 from .. import core
-from ..framework import convert_np_dtype_to_dtype_
+from ..framework import convert_nptype_to_datatype_or_vartype
 
 if TYPE_CHECKING:
     from typing import Any
@@ -166,7 +166,7 @@ def monkey_patch_math_tensor():
                 new tensor's dtype is: paddle.float32
         """
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-            dtype = convert_np_dtype_to_dtype_(dtype)
+            dtype = convert_nptype_to_datatype_or_vartype(dtype)
 
         if self.dtype == dtype:
             return self

@@ -33,7 +33,7 @@ from paddle.utils.decorator_utils import (
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..common_ops_import import Variable
-from ..framework import LayerHelper, convert_np_dtype_to_dtype_, core
+from ..framework import LayerHelper, convert_nptype_to_datatype_or_vartype, core
 from .manipulation import cast
 from .math import _get_reduce_axis_with_tensor
 
@@ -133,7 +133,7 @@ def mean(
     """
     if dtype is not None:
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-            dtype = convert_np_dtype_to_dtype_(dtype)
+            dtype = convert_nptype_to_datatype_or_vartype(dtype)
         if x.dtype != dtype:
             x = cast(x, dtype)
 

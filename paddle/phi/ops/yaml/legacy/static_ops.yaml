@@ -439,6 +439,7 @@
   kernel :
     func : hardswish
     param : [x]
+  inplace : (x -> out)
   backward : hardswish_grad
 
 - op : hash

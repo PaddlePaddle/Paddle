@@ -42,6 +42,9 @@ vartype_to_datatype = {
     VarDesc.VarType.INT64: DataType.INT64,
     VarDesc.VarType.BOOL: DataType.BOOL,
     VarDesc.VarType.UINT8: DataType.UINT8,
+    VarDesc.VarType.UINT16: DataType.UINT16,
+    VarDesc.VarType.UINT32: DataType.UINT32,
+    VarDesc.VarType.UINT64: DataType.UINT64,
     VarDesc.VarType.INT8: DataType.INT8,
     VarDesc.VarType.COMPLEX64: DataType.COMPLEX64,
     VarDesc.VarType.COMPLEX128: DataType.COMPLEX128,
@@ -53,7 +56,7 @@ vartype_to_datatype = {
 
 datatype_to_vartype = {v: k for k, v in vartype_to_datatype.items()}
 
-np_type_to_paddle_type = {
+nptype_to_datatype = {
     np.dtype("float32"): DataType.FLOAT32,
     np.dtype("float64"): DataType.FLOAT64,
     np.dtype("float16"): DataType.FLOAT16,
@@ -63,6 +66,8 @@ np_type_to_paddle_type = {
     np.dtype("bool_"): DataType.BOOL,
     np.dtype("uint16"): DataType.BFLOAT16,
     np.dtype("uint8"): DataType.UINT8,
+    np.dtype("uint32"): DataType.UINT32,
+    np.dtype("uint64"): DataType.UINT64,
     np.dtype("int8"): DataType.INT8,
     np.dtype("complex64"): DataType.COMPLEX64,
     np.dtype("complex128"): DataType.COMPLEX128,
@@ -75,14 +80,14 @@ np_type_to_paddle_type = {
     np.bool_: DataType.BOOL,
     np.uint16: DataType.BFLOAT16,
     np.uint8: DataType.UINT8,
+    np.uint32: DataType.UINT32,
+    np.uint64: DataType.UINT64,
     np.int8: DataType.INT8,
     np.complex64: DataType.COMPLEX64,
     np.complex128: DataType.COMPLEX128,
-    "float8_e4m3fn": DataType.FLOAT8_E4M3FN,
-    "float8_e5m2": DataType.FLOAT8_E5M2,
 }
 
-_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE = {
+datatype_to_str = {
     DataType.BOOL: 'bool',
     DataType.FLOAT16: 'float16',
     DataType.BFLOAT16: 'uint16',
@@ -103,7 +108,7 @@ _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE = {
 }
 
 
-str_to_paddle_type = {
+str_to_datatype = {
     "float32": DataType.FLOAT32,
     "float64": DataType.FLOAT64,
     "float16": DataType.FLOAT16,
@@ -114,6 +119,8 @@ str_to_paddle_type = {
     "bool_": DataType.BOOL,
     "uint16": DataType.BFLOAT16,
     "uint8": DataType.UINT8,
+    "uint32": DataType.UINT32,
+    "uint64": DataType.UINT64,
     "int8": DataType.INT8,
     "complex64": DataType.COMPLEX64,
     "complex128": DataType.COMPLEX128,
@@ -123,9 +130,9 @@ str_to_paddle_type = {
 }
 
 
-def convert_np_dtype_to_dtype_(np_dtype) -> DataType:
+def convert_nptype_to_datatype(np_dtype) -> DataType:
     """
-    Convert the data type in numpy to the data type in Paddle.
+    Convert a NumPy or string dtype to Paddle PIR DataType.
 
     Args:
         np_dtype (np.dtype|str): The data type in numpy or valid data type
@@ -138,11 +145,11 @@ def convert_np_dtype_to_dtype_(np_dtype) -> DataType:
     # Convert the data type string to numpy data type.
     if isinstance(np_dtype, str):
         key = np_dtype.lower().strip()
-        if key in str_to_paddle_type:
-            return str_to_paddle_type[key]
+        if key in str_to_datatype:
+            return str_to_datatype[key]
     dtype = np.dtype(np_dtype)
-    if dtype in np_type_to_paddle_type:
-        return np_type_to_paddle_type[dtype]
+    if dtype in nptype_to_datatype:
+        return nptype_to_datatype[dtype]
     else:
         raise ValueError(f"Not supported numpy dtype {dtype}")
 
@@ -342,7 +349,7 @@ def create_parameter(
         )
     if dtype is not None:
         if not isinstance(dtype, DataType):
-            dtype = convert_np_dtype_to_dtype_(dtype)
+            dtype = convert_nptype_to_datatype(dtype)
     value_name = name
     if not value_name:
         value_name = unique_name.generate('parameter')
@@ -424,7 +431,7 @@ def create_persistable_value(dtype, shape, name=None, **kwargs):
         )
     if dtype is not None:
         if not isinstance(dtype, DataType):
-            dtype = convert_np_dtype_to_dtype_(dtype)
+            dtype = convert_nptype_to_datatype(dtype)
     value_name = name
     if not value_name:
         value_name = unique_name.generate('persistable_value')

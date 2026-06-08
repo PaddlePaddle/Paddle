@@ -794,6 +794,8 @@ class StateDictHook:
         with paddle.base.framework._dygraph_guard(paddle.base.dygraph.Tracer()):
             for key in state_dict:
                 param = state_dict[key]
+                if not isinstance(param, paddle.Tensor):
+                    continue
                 if paddle.is_floating_point(param):
                     param_applied = paddle.cast(param, self._save_dtype)
                     param_applied.name = param.name

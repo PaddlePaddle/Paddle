@@ -1453,7 +1453,7 @@ static PyObject* tensor_method_detach(TensorObject* self,
     auto v = reinterpret_cast<TensorObject*>(obj);
     new (&(v->tensor)) Tensor();
     v->tensor.set_impl(self->tensor.impl());
-    v->tensor.set_name(egr::Controller::Instance().GenerateUniqueName());
+    v->tensor.set_name(self->tensor.name());
     auto autograd_meta_src = egr::EagerUtils::autograd_meta(&(self->tensor));
     auto autograd_meta = egr::EagerUtils::autograd_meta(&(v->tensor));
     autograd_meta->SetPersistable(autograd_meta_src->Persistable());

@@ -83,9 +83,9 @@ void GesvdjBatched<float>(const GPUContext& dev_ctx,
                           lwork * sizeof(float),
                           Stream(reinterpret_cast<StreamId>(dev_ctx.stream())));
   float* workspace_ptr = reinterpret_cast<float*>(workspace->ptr());
-  int stride_A = lda * n;
-  int stride_U = ldu * (thin_UV ? k : m);
-  int stride_V = ldt * (thin_UV ? k : n);
+  int64_t stride_A = static_cast<int64_t>(lda) * n;
+  int64_t stride_U = static_cast<int64_t>(ldu) * (thin_UV ? k : m);
+  int64_t stride_V = static_cast<int64_t>(ldt) * (thin_UV ? k : n);
   for (int i = 0; i < batchSize; ++i) {
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnSgesvdj(handle,
                                                           jobz,
@@ -164,9 +164,9 @@ void GesvdjBatched<double>(const GPUContext& dev_ctx,
                           lwork * sizeof(double),
                           Stream(reinterpret_cast<StreamId>(dev_ctx.stream())));
   double* workspace_ptr = reinterpret_cast<double*>(workspace->ptr());
-  int stride_A = lda * n;
-  int stride_U = ldu * (thin_UV ? k : m);
-  int stride_V = ldt * (thin_UV ? k : n);
+  int64_t stride_A = static_cast<int64_t>(lda) * n;
+  int64_t stride_U = static_cast<int64_t>(ldu) * (thin_UV ? k : m);
+  int64_t stride_V = static_cast<int64_t>(ldt) * (thin_UV ? k : n);
   for (int i = 0; i < batchSize; ++i) {
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnDgesvdj(handle,
                                                           jobz,
@@ -245,9 +245,9 @@ void GesvdjBatched<complex64>(const GPUContext& dev_ctx,
                           lwork * sizeof(complex64),
                           Stream(reinterpret_cast<StreamId>(dev_ctx.stream())));
   complex64* workspace_ptr = reinterpret_cast<complex64*>(workspace->ptr());
-  int stride_A = lda * n;
-  int stride_U = ldu * (thin_UV ? k : m);
-  int stride_V = ldt * (thin_UV ? k : n);
+  int64_t stride_A = static_cast<int64_t>(lda) * n;
+  int64_t stride_U = static_cast<int64_t>(ldu) * (thin_UV ? k : m);
+  int64_t stride_V = static_cast<int64_t>(ldt) * (thin_UV ? k : n);
   for (int i = 0; i < batchSize; ++i) {
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnCgesvdj(
         handle,
@@ -327,9 +327,9 @@ void GesvdjBatched<complex128>(const GPUContext& dev_ctx,
                           lwork * sizeof(complex128),
                           Stream(reinterpret_cast<StreamId>(dev_ctx.stream())));
   complex128* workspace_ptr = reinterpret_cast<complex128*>(workspace->ptr());
-  int stride_A = lda * n;
-  int stride_U = ldu * (thin_UV ? k : m);
-  int stride_V = ldt * (thin_UV ? k : n);
+  int64_t stride_A = static_cast<int64_t>(lda) * n;
+  int64_t stride_U = static_cast<int64_t>(ldu) * (thin_UV ? k : m);
+  int64_t stride_V = static_cast<int64_t>(ldt) * (thin_UV ? k : n);
   for (int i = 0; i < batchSize; ++i) {
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnZgesvdj(
         handle,

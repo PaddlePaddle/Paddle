@@ -68,7 +68,9 @@ class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
 
   bool TryAllocateBatch(const std::vector<size_t> &sizes);
 
-  bool CollectTensorParts(void *ptr, std::vector<BlockPart> *parts);
+  bool CollectTensorParts(void *ptr,
+                          size_t size,
+                          std::vector<BlockPart> *parts);
 
  protected:
   phi::Allocation *AllocateImpl(size_t size) override;
@@ -83,7 +85,6 @@ class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
   void ExtendOrCompact(size_t size);
   void TryMergeBlock2Blocks(std::list<Block>::iterator iter);
   void DumpInfo(std::string phase) const;
-  std::list<Block>::iterator FindBlockByPtr(void *ptr);
 
   std::shared_ptr<Allocator> underlying_allocator_;
   std::unique_ptr<MemoryCompactionStrategy> memory_compactor_;
@@ -113,7 +114,8 @@ class VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator
       size_t alignment,
       const GPUPlace &place)
       : MultiScalePoolAllocator(
-            small_allocator, large_allocator, alignment, place) {}
+            small_allocator, large_allocator, alignment, place),
+        alignment_(alignment) {}
   bool IsAllocThreadSafe() const override { return true; }
   void PreAlloc() override;
   void Accept(AllocatorVisitor *visitor) override { visitor->Visit(this); }
@@ -124,6 +126,7 @@ class VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator
   size_t CompactImpl(const Place &place) override;
 
  private:
+  size_t alignment_;
   std::vector<size_t> compact_size_;
 };
 

@@ -19,6 +19,7 @@
 # implemented as independent modules with no runtime dependency on PyTorch.
 
 import math
+import sys as _sys
 import typing
 
 __is_metainfo_generated = False
@@ -258,6 +259,9 @@ from paddle import (
     testing as testing,
     vision as vision,
 )
+
+distributions = distribution
+_sys.modules['paddle.distributions'] = distribution
 
 # high-level api
 from . import (
@@ -1570,6 +1574,7 @@ __all__ = [
     'layer_norm',
     'relu',
     'manual_seed',
+    'initial_seed',
     'softmax',
     'log_softmax',
     'Generator',
@@ -1578,7 +1583,6 @@ __all__ = [
     'enable_compat',
     'disable_compat',
     'use_compat_guard',
-    'initial_seed',
 ]
 import os
 

@@ -26,7 +26,7 @@ from utils import dygraph_guard, static_guard
 import paddle
 import paddle.framework.dtype as dtypes
 from paddle.base import core
-from paddle.base.framework import convert_np_dtype_to_dtype_
+from paddle.base.framework import convert_nptype_to_datatype_or_vartype
 from paddle.framework import in_pir_mode
 
 paddle.enable_static()
@@ -175,7 +175,7 @@ class TestFullLikeOp1(OpTest):
 
         self.attrs = {
             'value': self.fill_value,
-            'dtype': convert_np_dtype_to_dtype_(self.dtype),
+            'dtype': convert_nptype_to_datatype_or_vartype(self.dtype),
         }
 
     def init_data(self):

@@ -4644,6 +4644,7 @@
     param : [x]
   kernel :
     func : relu6
+  inplace : (x -> out)
   backward : relu6_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
   traits: pir::UnaryElementWiseTrait

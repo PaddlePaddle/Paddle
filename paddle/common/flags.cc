@@ -2046,12 +2046,13 @@ PHI_DEFINE_EXPORTED_string(
     nvidia_package_dir,  // NOLINT
     "",
     "Specify root dir path for nvidia site-package, such as "
-    "python3.9/site-packages/nvidia");
+    "python3.10/site-packages/nvidia");
 
-PHI_DEFINE_EXPORTED_string(cuda_cccl_dir,  // NOLINT
-                           "",
-                           "Specify root dir path for nv/target, such as "
-                           "python3.9/site-packages/nvidia/cuda_cccl/include/");
+PHI_DEFINE_EXPORTED_string(
+    cuda_cccl_dir,  // NOLINT
+    "",
+    "Specify root dir path for nv/target, such as "
+    "python3.10/site-packages/nvidia/cuda_cccl/include/");
 
 PHI_DEFINE_EXPORTED_string(
     cudnn_dir,  // NOLINT

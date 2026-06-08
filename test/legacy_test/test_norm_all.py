@@ -1806,6 +1806,38 @@ class API_NormTest_ZeroSize(unittest.TestCase):
             )
 
 
+class API_PnormGradTest_ZeroSize(unittest.TestCase):
+    """Cover the 0-size early-return branch in p_norm_grad CPU/GPU kernels.
+
+    The PR adds `if (out_dx->numel() == 0) return;` to both
+    paddle/phi/kernels/cpu/p_norm_grad_kernel.cc and
+    paddle/phi/kernels/gpu/p_norm_grad_kernel.cu. Running backward on a
+    0-size input exercises that branch for every porder dispatch arm
+    (porder == 0, 1, 2, <1, in (1,2), >2, +/-inf).
+    """
+
+    def _run_pnorm_backward(self, shape, axis, porder, dtype="float32"):
+        x_np = (np.random.random(shape) + 1.0).astype(dtype)
+        x = paddle.to_tensor(x_np)
+        x.stop_gradient = False
+        out = paddle.linalg.vector_norm(x=x, p=porder, axis=axis, keepdim=False)
+        loss = paddle.sum(out)
+        loss.backward()
+        # 0-size input -> 0-size grad, with shape preserved.
+        np.testing.assert_equal(x.grad.shape, x.shape)
+        self.assertEqual(x.grad.numel().item(), 0)
+
+    def test_dygraph_zero_size_grad(self):
+        paddle.disable_static()
+        # Trigger every porder branch in PNormGradKernel so each new
+        # `out_dx->numel() == 0` early-return is exercised.
+        porders = [0.0, 0.5, 1.0, 1.5, 2.0, 3.0, float("inf"), float("-inf")]
+        shape = [0, 3, 4]
+        for axis in [0, 1, -1]:
+            for p in porders:
+                self._run_pnorm_backward(shape, axis, p)
+
+
 class API_NormTest_Alias(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()

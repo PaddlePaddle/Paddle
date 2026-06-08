@@ -44,9 +44,10 @@ class TestDirichletOp(OpTest):
     def _hypothesis_testing(self, outs):
         self.assertEqual(outs[0].shape, self.sample_shape)
         self.assertTrue(np.all(outs[0] > 0.0))
+        sample = outs[0][:, 0].astype(np.float64)
         self.assertLess(
             scipy.stats.kstest(
-                outs[0][:, 0],
+                sample,
                 # scipy dirichlet have not cdf, use beta to replace it.
                 scipy.stats.beta(a=self.alpha[0], b=self.alpha[1]).cdf,
             )[0],
@@ -78,9 +79,10 @@ class TestDirichletFP16Op(OpTest):
     def _hypothesis_testing(self, outs):
         self.assertEqual(outs[0].shape, self.sample_shape)
         self.assertTrue(np.all(outs[0] > 0.0))
+        sample = outs[0][:, 0].astype(np.float64)
         self.assertLess(
             scipy.stats.kstest(
-                outs[0][:, 0],
+                sample,
                 # scipy dirichlet have not cdf, use beta to replace it.
                 scipy.stats.beta(a=self.alpha[0], b=self.alpha[1]).cdf,
             )[0],

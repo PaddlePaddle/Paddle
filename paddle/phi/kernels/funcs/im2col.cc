@@ -121,22 +121,23 @@ class Col2ImFunctor<funcs::ColFormat::CFO, DeviceContext, T> {
         common::errors::InvalidArgument("Output_height and padding(padding_up, "
                                         "padding_down) are inconsistent."));
 
-    int channels_col = im_channels * filter_height * filter_width;
+    int64_t channels_col =
+        static_cast<int64_t>(im_channels) * filter_height * filter_width;
 
     T* im_data = im->data<T>();
     const T* col_data = col.data<T>();
 
-    for (int c = 0; c < channels_col; ++c) {
+    for (int64_t c = 0; c < channels_col; ++c) {
       int w_offset = c % filter_width;
       int h_offset = (c / filter_width) % filter_height;
-      int c_im = c / (filter_width * filter_height);
+      int64_t c_im = c / (filter_width * filter_height);
       for (int h = 0; h < col_height; ++h) {
         int im_row_idx = h * stride[0] - padding[0] + h_offset * dilation[0];
         for (int w = 0; w < col_width; ++w) {
           int im_col_idx = w * stride[1] - padding[1] + w_offset * dilation[1];
           if ((im_row_idx) >= 0 && (im_row_idx) < im_height &&
               (im_col_idx) >= 0 && (im_col_idx) < im_width) {
-            int im_offset = 0;
+            int64_t im_offset = 0;
             if (data_layout != DataLayout::NHWC) {
               im_offset =
                   (c_im * im_height + im_row_idx) * im_width + im_col_idx;

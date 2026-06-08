@@ -20,7 +20,7 @@ from paddle.distributed.auto_parallel.static.dist_attribute import (
     TensorDistAttr,
 )
 from paddle.distributed.fleet import auto
-from paddle.framework import convert_np_dtype_to_dtype_, core
+from paddle.framework import convert_nptype_to_datatype_or_vartype, core
 
 
 class TestCumminSPMDRule(unittest.TestCase):
@@ -43,7 +43,7 @@ class TestCumminSPMDRule(unittest.TestCase):
         self.rule = core.get_phi_spmd_rule("cummin")
         self.attrs = OrderedDict()
         self.attrs['axis'] = 1
-        self.attrs['dtype'] = convert_np_dtype_to_dtype_("int64")
+        self.attrs['dtype'] = convert_nptype_to_datatype_or_vartype("int64")
 
     def test_cummin_forward(self):
         # axis = 1

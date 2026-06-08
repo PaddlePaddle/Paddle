@@ -17,6 +17,7 @@ import platform
 import types
 import unittest
 import warnings
+from unittest import mock
 
 import numpy as np
 from op_test import get_device, is_custom_device
@@ -448,6 +449,86 @@ class TestExternalStream(unittest.TestCase):
 
 
 class TestNvtx(unittest.TestCase):
+    def _test_nvtx_range_context_manager_and_decorator(self, nvtx):
+        events = []
+
+        def range_push(msg):
+            events.append(("push", msg))
+
+        def range_pop():
+            events.append(("pop", None))
+
+        with (
+            mock.patch.object(nvtx, "range_push", range_push),
+            mock.patch.object(nvtx, "range_pop", range_pop),
+        ):
+            with nvtx.range("context-{name}", name="formatted"):
+                events.append(("body", "context"))
+            self.assertEqual(
+                events,
+                [
+                    ("push", "context-formatted"),
+                    ("body", "context"),
+                    ("pop", None),
+                ],
+            )
+
+            events.clear()
+
+            @nvtx.range("decorator-{}", "formatted")
+            def decorated(value):
+                events.append(("body", value))
+                return value + 1
+
+            self.assertEqual(decorated(41), 42)
+            self.assertEqual(
+                events,
+                [
+                    ("push", "decorator-formatted"),
+                    ("body", 41),
+                    ("pop", None),
+                ],
+            )
+
+            events.clear()
+            with nvtx.range("outer"):
+                events.append(("body", "outer"))
+                with nvtx.range("inner"):
+                    events.append(("body", "inner"))
+                events.append(("body", "after-inner"))
+            self.assertEqual(
+                events,
+                [
+                    ("push", "outer"),
+                    ("body", "outer"),
+                    ("push", "inner"),
+                    ("body", "inner"),
+                    ("pop", None),
+                    ("body", "after-inner"),
+                    ("pop", None),
+                ],
+            )
+
+            events.clear()
+            with (
+                self.assertRaisesRegex(RuntimeError, "boom"),
+                nvtx.range("exception"),
+            ):
+                events.append(("body", "exception"))
+                raise RuntimeError("boom")
+            self.assertEqual(
+                events,
+                [
+                    ("push", "exception"),
+                    ("body", "exception"),
+                    ("pop", None),
+                ],
+            )
+
+    def test_range_context_manager_and_decorator(self):
+        self._test_nvtx_range_context_manager_and_decorator(paddle.cuda.nvtx)
+        self._test_nvtx_range_context_manager_and_decorator(paddle.device.nvtx)
+
     def test_range_push_pop(self):
         if platform.system().lower() == "windows":
             return
@@ -466,6 +547,10 @@ class TestNvtx(unittest.TestCase):
             paddle.cuda.nvtx.range_pop()
             paddle.device.nvtx.range_push("test_push")
             paddle.device.nvtx.range_pop()
+            with paddle.cuda.nvtx.range("test_{}", "range"):
+                pass
+            with paddle.device.nvtx.range("test_{}", "range"):
+                pass
         except Exception as e:
             self.fail(f"nvtx test failed: {e}")
 

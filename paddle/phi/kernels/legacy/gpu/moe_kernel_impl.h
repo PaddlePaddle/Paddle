@@ -178,7 +178,7 @@ __global__ void initialize_expert_choice_route_kernel(
     const int cols,
     const int k,
     const int batch_size) {
-  int start = cols * blockIdx.x;
+  int64_t start = static_cast<int64_t>(cols) * static_cast<int64_t>(blockIdx.x);
 
   for (int i = threadIdx.x; i < cols; i += blockDim.x) {
     expert_for_source_row[start + i] = blockIdx.x;
@@ -187,7 +187,8 @@ __global__ void initialize_expert_choice_route_kernel(
     attr_mask[start + i] = (T)1.0f;
   }
   if (threadIdx.x == 0) {
-    total_rows_before_expert[blockIdx.x] = batch_size * k * (blockIdx.x + 1);
+    total_rows_before_expert[blockIdx.x] =
+        static_cast<int64_t>(batch_size) * k * (blockIdx.x + 1);
   }
 }
 
@@ -201,13 +202,14 @@ __global__ void softmax_kernel_v4(
     const int seq_len) {
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
   float data[ITEMS_PER_THREAD];
-  int qk_offset;
+  int64_t qk_offset;
   __shared__ float s_mean, s_max;
   float local_max = -1e20f;
   for (int i = 0; blockDim.x * i + threadIdx.x < seq_len; i++) {
-    qk_offset =
-        ((blockIdx.y + blockIdx.z)) * seq_len + blockDim.x * i + threadIdx.x;
-    int mask_offset = (blockIdx.y) * seq_len + blockDim.x * i + threadIdx.x;
+    qk_offset = static_cast<int64_t>(blockIdx.y + blockIdx.z) * seq_len +
+                static_cast<int64_t>(blockDim.x) * i + threadIdx.x;
+    int64_t mask_offset = static_cast<int64_t>(blockIdx.y) * seq_len +
+                          static_cast<int64_t>(blockDim.x) * i + threadIdx.x;
 
     float qk = static_cast<float>(qk_buf_src[qk_offset]);
     float mask_val = static_cast<float>(__ldg(&attr_mask[mask_offset]));
@@ -241,8 +243,8 @@ __global__ void softmax_kernel_v4(
   __syncthreads();
 
   for (int i = 0; blockDim.x * i + threadIdx.x < seq_len; i++) {
-    qk_offset =
-        ((blockIdx.y + blockIdx.z)) * seq_len + blockDim.x * i + threadIdx.x;
+    qk_offset = static_cast<int64_t>(blockIdx.y + blockIdx.z) * seq_len +
+                static_cast<int64_t>(blockDim.x) * i + threadIdx.x;
     qk_buf_[qk_offset] = (T)(data[i] * s_mean);
   }
 #endif
@@ -259,15 +261,16 @@ __global__ void softmax_kernel_v4_half2(T* qk_buf_,
   const T2* attr_mask_half2 = (const T2*)attr_mask;
 
   T2 data[ITEMS_PER_THREAD];
-  int qk_offset;
+  int64_t qk_offset;
   __shared__ float s_mean, s_max;
   float local_max = -1e20f;
   for (int i = 0;
        blockDim.x * i + threadIdx.x < (seq_len / 2) && i < ITEMS_PER_THREAD;
        i++) {
-    qk_offset = ((blockIdx.y + blockIdx.z)) * (seq_len / 2) + blockDim.x * i +
-                threadIdx.x;
-    int mask_offset = blockIdx.y * (seq_len / 2) + blockDim.x * i + threadIdx.x;
+    qk_offset = static_cast<int64_t>(blockIdx.y + blockIdx.z) * (seq_len / 2) +
+                static_cast<int64_t>(blockDim.x) * i + threadIdx.x;
+    int64_t mask_offset = static_cast<int64_t>(blockIdx.y) * (seq_len / 2) +
+                          static_cast<int64_t>(blockDim.x) * i + threadIdx.x;
 
     T2 qk = qk_buf_half2[qk_offset];
     T2 mask_val = __ldg(&attr_mask_half2[mask_offset]);
@@ -310,8 +313,8 @@ __global__ void softmax_kernel_v4_half2(T* qk_buf_,
   for (int i = 0;
        blockDim.x * i + threadIdx.x < (seq_len / 2) && i < ITEMS_PER_THREAD;
        i++) {
-    qk_offset = ((blockIdx.y + blockIdx.z)) * (seq_len / 2) + blockDim.x * i +
-                threadIdx.x;
+    qk_offset = static_cast<int64_t>(blockIdx.y + blockIdx.z) * (seq_len / 2) +
+                static_cast<int64_t>(blockDim.x) * i + threadIdx.x;
     qk_buf_half2[qk_offset] = __hmul2(data[i], __float2half2_rn(s_mean));
   }
 #endif
@@ -329,7 +332,7 @@ __global__ void softmax_kernel_v5_half2(T* qk_buf_,
 
   T2 data[NUM][ITEMS_PER_THREAD];
 
-  int qk_offset[NUM];
+  int64_t qk_offset[NUM];
 
   __shared__ float s_sum[NUM], s_max[NUM];
   float local_max[NUM];
@@ -342,14 +345,16 @@ __global__ void softmax_kernel_v5_half2(T* qk_buf_,
   for (int i = 0;
        blockDim.x * i + threadIdx.x < (seq_len / 2) && i < ITEMS_PER_THREAD;
        i++) {
-    int mask_offset[NUM];
+    int64_t mask_offset[NUM];
 #pragma unroll
     for (int j = 0; j < MAX_NUM; j++) {
       qk_offset[j] =
-          ((blockIdx.y + blockIdx.z) + j * gridDim.x) * (seq_len / 2) +
-          blockDim.x * i + threadIdx.x;
-      mask_offset[j] = (blockIdx.y + j * gridDim.x) * (seq_len / 2) +
-                       blockDim.x * i + threadIdx.x;
+          static_cast<int64_t>((blockIdx.y + blockIdx.z) + j * gridDim.x) *
+              (seq_len / 2) +
+          static_cast<int64_t>(blockDim.x) * i + threadIdx.x;
+      mask_offset[j] =
+          static_cast<int64_t>(blockIdx.y + j * gridDim.x) * (seq_len / 2) +
+          static_cast<int64_t>(blockDim.x) * i + threadIdx.x;
     }
 
     T2 mask_val[NUM];
@@ -430,8 +435,9 @@ __global__ void softmax_kernel_v5_half2(T* qk_buf_,
 #pragma unroll
     for (int j = 0; j < MAX_NUM; j++) {
       qk_offset[j] =
-          ((blockIdx.y + blockIdx.z) + j * gridDim.x) * (seq_len / 2) +
-          blockDim.x * i + threadIdx.x;
+          static_cast<int64_t>((blockIdx.y + blockIdx.z) + j * gridDim.x) *
+              (seq_len / 2) +
+          static_cast<int64_t>(blockDim.x) * i + threadIdx.x;
     }
 
 #pragma unroll
@@ -447,17 +453,20 @@ __global__ void softmax_kernel_v5_half2(T* qk_buf_,
 template <typename T>
 __global__ void transposeAxis01(
     T* out, T* in, const int dim0, const int dim1, const int dim2) {
-  int index = threadIdx.x + blockIdx.x * blockDim.x;
-  if (index < dim0 * dim1 * dim2) {
+  int64_t index =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
+  if (index < static_cast<int64_t>(dim0) * dim1 * dim2) {
     const int input_dim2_index = index % dim2;
     index = (index - input_dim2_index) / dim2;
     const int input_dim1_index = index % dim1;
     index = (index - input_dim1_index) / dim1;
     const int input_dim0_index = index % dim0;
 
-    out[input_dim1_index * dim0 * dim2 + input_dim0_index * dim2 +
-        input_dim2_index] = in[input_dim0_index * dim1 * dim2 +
-                               input_dim1_index * dim2 + input_dim2_index];
+    out[static_cast<int64_t>(input_dim1_index) * dim0 * dim2 +
+        static_cast<int64_t>(input_dim0_index) * dim2 + input_dim2_index] =
+        in[static_cast<int64_t>(input_dim0_index) * dim1 * dim2 +
+           static_cast<int64_t>(input_dim1_index) * dim2 + input_dim2_index];
   }
 }
 
@@ -474,8 +483,8 @@ __global__ void paddingKernel(T* output1,
                               const int num_experts) {
   const bool IS_FP32 = std::is_same<T, float>::value;
   const T MIN_T_VAL = (!IS_FP32) ? (T)HALF_FLT_MIN : (T)FLT_MIN;
-  int offset1 = blockIdx.x * num_tokens;
-  int offset2 = blockIdx.x * batch_size * max_seq_len;
+  int64_t offset1 = static_cast<int64_t>(blockIdx.x) * num_tokens;
+  int64_t offset2 = static_cast<int64_t>(blockIdx.x) * batch_size * max_seq_len;
   for (int i = 0; i < batch_size; i++) {
     const T* in1_ptr = input1 + offset1;
     const int* in2_ptr = input2 + offset1;
@@ -529,7 +538,8 @@ __global__ void general_topk_pair_sort(T* out_keys,
     typename BlockStoreValue::TempStorage storevalue;
   } temp_storage;
 
-  int block_offset = blockIdx.x * BLOCK_THREADS * ITEMS_PER_THREAD;
+  int64_t block_offset =
+      static_cast<int64_t>(blockIdx.x) * BLOCK_THREADS * ITEMS_PER_THREAD;
 
   T thread_keys[ITEMS_PER_THREAD];
   int thread_values[ITEMS_PER_THREAD];
@@ -562,25 +572,29 @@ __global__ void finalize_moe_routing_kernel(
     bool ec_route) {
   const int original_row = blockIdx.x;
   const int num_rows = gridDim.x;
-  T* reduced_row_ptr = reduced_unpermuted_output + original_row * cols;
-  const T* skip_row_ptr = skip + original_row * cols;
+  T* reduced_row_ptr =
+      reduced_unpermuted_output + static_cast<int64_t>(original_row) * cols;
+  const T* skip_row_ptr = skip + static_cast<int64_t>(original_row) * cols;
 
   for (int tid = threadIdx.x; tid < cols; tid += blockDim.x) {
     T thread_output = skip_row_ptr[tid];
     for (int k_idx = 0; k_idx < k; ++k_idx) {
-      const int expanded_original_row = original_row + k_idx * num_rows;
+      const int64_t expanded_original_row =
+          original_row + static_cast<int64_t>(k_idx) * num_rows;
       const int expanded_permuted_row =
           expanded_source_row_to_expanded_dest_row[expanded_original_row];
 
       if (ec_route && expanded_permuted_row == -1) continue;
       const int64_t k_offset =
-          ec_route ? expanded_original_row : original_row * k + k_idx;
+          ec_route ? expanded_original_row
+                   : static_cast<int64_t>(original_row) * k + k_idx;
       const T row_scale = scales[k_offset];
       const T* expanded_permuted_rows_row_ptr =
-          expanded_permuted_rows + expanded_permuted_row * cols;
+          expanded_permuted_rows +
+          static_cast<int64_t>(expanded_permuted_row) * cols;
 
       const int expert_idx = ec_route ? k_idx : expert_for_source_row[k_offset];
-      const T* bias_ptr = bias + expert_idx * cols;
+      const T* bias_ptr = bias + static_cast<int64_t>(expert_idx) * cols;
 
       thread_output =
           thread_output +
@@ -613,10 +627,11 @@ __global__ void initialize_moe_routing_kernel(
   // thread block will be responsible for all k summations.
   const int expanded_dest_row = blockIdx.x;
   const int expanded_source_row =
-      ec_route ? expanded_dest_row_to_expanded_source_row[expanded_dest_row /
-                                                              k * max_seq_len +
-                                                          expanded_dest_row % k]
-               : expanded_dest_row_to_expanded_source_row[expanded_dest_row];
+      ec_route
+          ? expanded_dest_row_to_expanded_source_row
+                [static_cast<int64_t>(expanded_dest_row / k) * max_seq_len +
+                 expanded_dest_row % k]
+          : expanded_dest_row_to_expanded_source_row[expanded_dest_row];
   if (threadIdx.x == 0) {
     expanded_source_row_to_expanded_dest_row[expanded_source_row] =
         expanded_dest_row;
@@ -626,8 +641,10 @@ __global__ void initialize_moe_routing_kernel(
     // Duplicate and permute rows
     const int source_row = expanded_source_row % num_rows;
 
-    const T* source_row_ptr = unpermuted_input + source_row * cols;
-    T* dest_row_ptr = permuted_output + expanded_dest_row * cols;
+    const T* source_row_ptr =
+        unpermuted_input + static_cast<int64_t>(source_row) * cols;
+    T* dest_row_ptr =
+        permuted_output + static_cast<int64_t>(expanded_dest_row) * cols;
 
     for (int tid = threadIdx.x * VecSize; tid < cols;
          tid += blockDim.x * VecSize) {

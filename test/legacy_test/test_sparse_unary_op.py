@@ -17,7 +17,10 @@ import numpy as np
 from op_test import get_device, is_custom_device
 
 import paddle
-from paddle.base.framework import convert_np_dtype_to_dtype_, in_pir_mode
+from paddle.base.framework import (
+    convert_nptype_to_datatype_or_vartype,
+    in_pir_mode,
+)
 
 devices = ['cpu', get_device()]
 
@@ -85,7 +88,7 @@ class TestSparseUnary(unittest.TestCase):
             if dense_func == paddle.cast:
                 dense_out = dense_func(dense_x, args[1])
 
-                int_dtype = convert_np_dtype_to_dtype_(args[0])
+                int_dtype = convert_nptype_to_datatype_or_vartype(args[0])
                 if sp_out.is_sparse_csr():
                     self.assertEqual(sp_out.crows().dtype, int_dtype)
                     self.assertEqual(sp_out.cols().dtype, int_dtype)
@@ -404,7 +407,7 @@ class TestSparseUnaryStatic(unittest.TestCase):
             if dense_func == paddle.cast:
                 dense_out = dense_func(dense_x, args[1])
 
-                int_dtype = convert_np_dtype_to_dtype_(args[0])
+                int_dtype = convert_nptype_to_datatype_or_vartype(args[0])
                 # only support coo format
                 self.assertEqual(sp_out.indices().dtype, int_dtype)
             else:

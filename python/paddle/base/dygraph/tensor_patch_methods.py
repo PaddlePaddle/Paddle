@@ -26,10 +26,7 @@ from typing_extensions import overload
 
 import paddle
 from paddle import _C_ops, profiler
-from paddle.base.data_feeder import (
-    _PADDLE_DTYPE_2_NUMPY_DTYPE,
-    convert_uint16_to_float,
-)
+from paddle.base.data_feeder import convert_uint16_to_float, vartype_to_str
 from paddle.base.libpaddle import Place
 from paddle.profiler.utils import in_profiler_mode
 from paddle.utils import deprecated
@@ -42,7 +39,7 @@ from ..framework import (
     EagerParamBase,
     Parameter,
     Variable,
-    convert_np_dtype_to_dtype_,
+    convert_nptype_to_datatype_or_vartype,
 )
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_tensor
@@ -241,9 +238,9 @@ def monkey_patch_tensor():
             if isinstance(value, paddle.Tensor):
                 dtype = value.dtype
             elif paddle.framework.use_pir_api():
-                dtype = paddle.pir.core.convert_np_dtype_to_dtype_(value.dtype)
+                dtype = paddle.pir.core.convert_nptype_to_datatype(value.dtype)
             else:
-                dtype = convert_np_dtype_to_dtype_(value.dtype)
+                dtype = convert_nptype_to_datatype_or_vartype(value.dtype)
 
             assert self.dtype == dtype, (
                 f"Variable dtype not match, Variable [ {self.name} ] need tensor with dtype {self.dtype}  but load tensor with dtype {dtype}"
@@ -671,8 +668,8 @@ def monkey_patch_tensor():
                 not is_cuda_place(device)
                 or t.place.gpu_device_id() != get_device_id(device)
             ):
-                proto_dtype = framework.convert_to_proto_type(dtype)
-                size_dtype = core.size_of_dtype(proto_dtype)
+                var_dtype = framework.convert_to_vartype(dtype)
+                size_dtype = core.size_of_dtype(var_dtype)
                 # Note(weilong wu): Paddle GPU minimum memory allocation unit is 256 bytes,
                 # waiting_alloc_memory will compute the memory space occupied by 't'.
                 # Coefficient 1.2 is used to avoid OOM that may occur in this critical state when the memory is just enough.
@@ -1764,9 +1761,9 @@ def monkey_patch_tensor():
         origin = core.VarDesc.VarType.__str__
 
         def dtype_str(dtype):
-            if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
-                numpy_dtype = _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
-                if numpy_dtype == 'uint16':
+            if dtype in vartype_to_str:
+                numpy_dtype = vartype_to_str[dtype]
+                if dtype == core.VarDesc.VarType.BF16:
                     numpy_dtype = 'bfloat16'
                 prefix = 'paddle.'
                 return prefix + numpy_dtype

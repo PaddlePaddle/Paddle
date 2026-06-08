@@ -1189,6 +1189,44 @@ def batch_sampler_decorator() -> Callable[
     return decorator
 
 
+def lr_scheduler_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """
+    Usage Example:
+    PyTorch: __init__(self, optimizer, last_epoch) -> None:
+    Paddle: __init__(self, learning_rate, last_epoch, verbose) -> None:
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            opt = None
+            if "optimizer" in kwargs:
+                if "learning_rate" not in kwargs:
+                    opt = kwargs.pop("optimizer")
+                    kwargs["learning_rate"] = opt.get_lr()
+                else:
+                    raise ValueError(
+                        "Cannot specify both 'learning_rate' and 'optimizer'."
+                    )
+            elif len(args) > 1 and isinstance(
+                args[1], paddle.optimizer.Optimizer
+            ):
+                opt = args[1]
+                args_list = list(args)
+                args_list[1] = opt.get_lr()
+                args = tuple(args_list)
+            func(*args, **kwargs)
+            if opt is not None:
+                opt.set_lr_scheduler(args[0])
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
 def fill_diagonal_inplace_decorator() -> Callable[
     [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
 ]:

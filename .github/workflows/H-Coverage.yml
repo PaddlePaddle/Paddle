@@ -209,11 +209,12 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ~/.bashrc
           source ${ci_scripts}/utils.sh; clean_build_files
+          : "${PY_VERSION:?PY_VERSION is required}"
           rm -rf $(find . -name "*.a")
           rm -rf $(find . -name "*.o")
-          rm -rf lib.linux-x86_64-3.9
+          rm -rf lib.linux-x86_64-${PY_VERSION}
           find ./ -name "eager_generator" -or -name  "kernel_signature_generator" -or -name "eager_legacy_op_function_generator" | xargs rm -rf
-          rm -rf ./python/build/lib.linux-x86_64-3.9/
+          rm -rf ./python/build/lib.linux-x86_64-${PY_VERSION}/
           cd "${work_dir}/build/third_party" && find $(ls | grep -v "dlpack" | grep -v "install" | grep -v "eigen3" | grep -v "gflags") -type f ! -name "*.so" -a ! -name "libdnnl.so*" -delete
           cd /
           tar --use-compress-program="pzstd -1" -cf Paddle.tar.gz paddle

@@ -355,7 +355,7 @@ class TestSwigluOp_ZeroSize3(TestSwigluOp_ZeroSize):
 class TestSwigluGradOp(unittest.TestCase):
     def test_swiglu_grad(self):
         x = paddle.randn([10, 2]).astype("float32")
-        out_grad = paddle.randn([10, 2]).astype("float32")
+        out_grad = paddle.randn([10, 1]).astype("float32")
         x_grad, y_grad = paddle._C_ops.swiglu_grad(x, None, out_grad)
         self.assertFalse(
             paddle.all(x_grad == 0).item(), "x_grad should not be all zero"

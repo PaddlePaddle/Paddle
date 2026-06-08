@@ -82,7 +82,7 @@ void BatchSVD(const T* x_data,
               int batches,
               int rows,
               int cols) {
-  int stride = rows * cols;
+  int64_t stride = static_cast<int64_t>(rows) * cols;
   int k = std::min(rows, cols);
   for (int i = 0; i < batches; ++i) {
     LapackSVD<T>(x_data + i * stride, eigenvalues_data + i * k, rows, cols);
