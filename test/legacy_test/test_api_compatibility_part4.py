@@ -104,9 +104,12 @@ class TestSgnAPI(unittest.TestCase):
         out4 = paddle.sgn(x, name=None)
         # 5. Tensor method - args
         out5 = x.sgn()
+        # 6. out parameter test
+        out6 = paddle.empty_like(out1)
+        paddle.sgn(x, out=out6)
 
         # Verify all outputs
-        for out in [out1, out2, out3, out4, out5]:
+        for out in [out1, out2, out3, out4, out5, out6]:
             np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-5)
 
         paddle.enable_static()
@@ -161,9 +164,12 @@ class TestSignbitAPI(unittest.TestCase):
         out4 = paddle.signbit(x, name=None)
         # 5. Tensor method - args
         out5 = x.signbit()
+        # 6. out parameter test
+        out6 = paddle.empty_like(out1)
+        paddle.signbit(x, out=out6)
 
         # Verify all outputs
-        for out in [out1, out2, out3, out4, out5]:
+        for out in [out1, out2, out3, out4, out5, out6]:
             np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-5)
 
         paddle.enable_static()
@@ -343,9 +349,12 @@ class TestTensordotAPI(unittest.TestCase):
         out3 = paddle.tensordot(a=x, b=y, dims=1)
         # 4. Mixed arguments
         out4 = paddle.tensordot(x, y, axes=1)
+        # 5. out parameter test
+        out5 = paddle.empty((2, 4), dtype='float64')
+        paddle.tensordot(x, y, axes=1, out=out5)
 
         # Verify all outputs
-        for out in [out1, out2, out3, out4]:
+        for out in [out1, out2, out3, out4, out5]:
             np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-5)
 
         paddle.enable_static()
@@ -468,6 +477,9 @@ class TestVanderAPI(unittest.TestCase):
         self.np_x = np.array([1.0, 2.0, 3.0]).astype("float32")
 
     def test_dygraph_Compatibility(self):
+        if paddle.is_compiled_with_xpu():
+            self.skipTest("vander is not supported on XPU")
+
         paddle.disable_static()
         x = paddle.to_tensor(self.np_x)
 
@@ -487,6 +499,9 @@ class TestVanderAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_static_Compatibility(self):
+        if paddle.is_compiled_with_xpu():
+            self.skipTest("vander is not supported on XPU")
+
         paddle.enable_static()
         main = paddle.static.Program()
         startup = paddle.static.Program()
@@ -534,9 +549,12 @@ class TestLogaddexpAPI(unittest.TestCase):
         out3 = paddle.logaddexp(input=x, other=y)
         # 4. Mixed arguments
         out4 = paddle.logaddexp(x, y=y)
+        # 5. out parameter test
+        out5 = paddle.empty_like(out1)
+        paddle.logaddexp(x, y, out=out5)
 
         # Verify all outputs
-        for out in [out1, out2, out3, out4]:
+        for out in [out1, out2, out3, out4, out5]:
             np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-5)
 
         paddle.enable_static()
@@ -585,11 +603,23 @@ class TestLogspaceAPI(unittest.TestCase):
         out3 = paddle.logspace(0, end=10, steps=5, base=2)
         # 4. Mixed arguments
         out4 = paddle.logspace(0, 10, num=5, base=2)
+        # 5. requires_grad parameter test
+        out5 = paddle.logspace(0, 10, 5, 2, requires_grad=True)
+        self.assertTrue(out1.stop_gradient)
+        self.assertFalse(out5.stop_gradient)
 
         # Verify all outputs
         for out in [out1, out2, out3, out4]:
             np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-5)
 
+        paddle.enable_static()
+
+    def test_device_param(self):
+        """Test device parameter separately"""
+        paddle.disable_static()
+        # device parameter test
+        out = paddle.logspace(0, 10, 5, base=2, device="cpu")
+        self.assertEqual(str(out.place), "Place(cpu)")
         paddle.enable_static()
 
     def test_static_Compatibility(self):
@@ -701,6 +731,14 @@ class TestNanToNumAPI(unittest.TestCase):
         ).astype("float32")
         np.testing.assert_allclose(out5.numpy(), expected, rtol=1e-5)
 
+        # 6. out parameter test
+        out6 = paddle.empty_like(out1)
+        paddle.nan_to_num(x, out=out6)
+
+        # Verify all outputs (default nan=0, posinf/neginf use large values)
+        for out in [out1, out2, out3, out4, out6]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-5)
+
         paddle.enable_static()
 
     def test_static_Compatibility(self):
@@ -763,6 +801,19 @@ class TestNanmeanAPI(unittest.TestCase):
         out6 = paddle.nanmean(input=x, dim=0)
         np.testing.assert_allclose(out5.numpy(), out6.numpy(), rtol=1e-5)
 
+        # 6. out parameter test
+        out7 = paddle.empty_like(out1)
+        paddle.nanmean(x, out=out7)
+
+        # 7. dtype parameter test
+        out8 = paddle.nanmean(x, dtype='float64')
+        self.assertEqual(out8.dtype, paddle.float64)
+
+        # Verify all outputs (all compute global mean, ignoring nan)
+        for out in [out1, out2, out3, out4, out7]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-5)
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-5)
+
         paddle.enable_static()
 
     def test_static_Compatibility(self):
@@ -824,6 +875,18 @@ class TestNansumAPI(unittest.TestCase):
         out5 = paddle.nansum(x, axis=0)
         out6 = paddle.nansum(input=x, dim=0)
         np.testing.assert_allclose(out5.numpy(), out6.numpy(), rtol=1e-5)
+
+        # 6. out parameter test
+        out7 = paddle.empty_like(out1)
+        paddle.nansum(x, out=out7)
+
+        # 7. dtype parameter test
+        out8 = paddle.nansum(x, dtype='float64')
+        self.assertEqual(out8.dtype, paddle.float64)
+
+        # Verify all outputs (all compute global sum, ignoring nan)
+        for out in [out1, out2, out3, out4, out7]:
+            np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-5)
 
         paddle.enable_static()
 
@@ -945,10 +1008,13 @@ class TestAddmvAPI(unittest.TestCase):
         out4 = input.addmv(mat, vec)
         # 5. Tensor method with kwargs
         out5 = input.addmv(mat=mat, vec=vec, beta=0.5, alpha=2.0)
+        # 6. out parameter test
+        out6 = paddle.empty_like(out1)
+        paddle.addmv(input, mat, vec, out=out6)
 
         # Verify outputs
         expected = 1.0 * self.np_input + 1.0 * np.dot(self.np_mat, self.np_vec)
-        for out in [out1, out2, out4]:
+        for out in [out1, out2, out4, out6]:
             np.testing.assert_allclose(out.numpy(), expected, rtol=1e-5)
 
         paddle.enable_static()
@@ -1041,12 +1107,15 @@ class TestAddrAPI(unittest.TestCase):
         out3 = paddle.addr(input, vec1, vec2, beta=0.5, alpha=2.0)
         # 4. Tensor method
         out4 = input.addr(vec1, vec2)
+        # 5. out parameter test
+        out5 = paddle.empty_like(out1)
+        paddle.addr(input, vec1, vec2, out=out5)
 
         # Verify outputs
         expected = 1.0 * self.np_input + 1.0 * np.outer(
             self.np_vec1, self.np_vec2
         )
-        for out in [out1, out2, out4]:
+        for out in [out1, out2, out4, out5]:
             np.testing.assert_allclose(out.numpy(), expected, rtol=1e-5)
 
         paddle.enable_static()
@@ -1230,10 +1299,13 @@ class TestHistcAPI(unittest.TestCase):
         out2 = paddle.histc(input=x, bins=10, min=0, max=10)
         # 3. Tensor method
         out3 = x.histc(bins=10, min=0, max=10)
+        # 4. out parameter test
+        out4 = paddle.empty_like(out1)
+        paddle.histc(x, bins=10, min=0, max=10, out=out4)
 
         # Verify outputs are float32 (PyTorch compatibility)
         self.assertEqual(out1.dtype, paddle.float32)
-        for out in [out1, out2, out3]:
+        for out in [out1, out2, out3, out4]:
             self.assertEqual(out.dtype, paddle.float32)
 
         paddle.enable_static()
@@ -1304,7 +1376,7 @@ class TestNegative_InplaceAPI(unittest.TestCase):
 # Test to_sparse compatibility (alias for to_sparse_coo)
 class TestToSparseAPI(unittest.TestCase):
     def test_dygraph_Compatibility(self):
-        if paddle.device.is_compiled_with_xpu():
+        if paddle.is_compiled_with_xpu():
             self.skipTest("sparse ops are not supported on XPU")
 
         paddle.disable_static()
@@ -1361,7 +1433,7 @@ class TestAutogradEnableGradAPI(unittest.TestCase):
 # Test col_indices compatibility (alias for cols)
 class TestColIndicesAPI(unittest.TestCase):
     def test_dygraph_Compatibility(self):
-        if paddle.device.is_compiled_with_xpu():
+        if paddle.is_compiled_with_xpu():
             self.skipTest("sparse ops are not supported on XPU")
 
         paddle.disable_static()
@@ -1386,7 +1458,7 @@ class TestColIndicesAPI(unittest.TestCase):
 # Test crow_indices compatibility (alias for crows)
 class TestCrowIndicesAPI(unittest.TestCase):
     def test_dygraph_Compatibility(self):
-        if paddle.device.is_compiled_with_xpu():
+        if paddle.is_compiled_with_xpu():
             self.skipTest("sparse ops are not supported on XPU")
 
         paddle.disable_static()
@@ -1475,7 +1547,7 @@ class TestMatrixExpAPI(unittest.TestCase):
         self.np_x = np.array([[1.0, 0.0], [0.0, 1.0]]).astype("float32")
 
     def test_dygraph_Compatibility(self):
-        if paddle.is_compiled_with_custom_device("dcu"):
+        if paddle.is_compiled_with_rocm():
             self.skipTest("Skip on DCU due to kernel issue")
 
         paddle.disable_static()
@@ -1494,7 +1566,7 @@ class TestMatrixExpAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_static_Compatibility(self):
-        if paddle.is_compiled_with_custom_device("dcu"):
+        if paddle.is_compiled_with_rocm():
             self.skipTest("Skip on DCU due to kernel issue")
 
         paddle.enable_static()
@@ -1554,7 +1626,7 @@ class TestRetainGradAPI(unittest.TestCase):
 class TestSparseMaskAPI(unittest.TestCase):
     def test_dygraph_Compatibility(self):
         # Skip on XPU as sparse_mask is not supported
-        if paddle.device.is_compiled_with_xpu():
+        if paddle.is_compiled_with_xpu():
             self.skipTest("sparse_mask is not supported on XPU")
 
         paddle.disable_static()
