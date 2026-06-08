@@ -422,7 +422,7 @@ void MatMulFunctionImplWithBlas(
       VLOG(3) << "MatMul's case 9";
       PADDLE_ENFORCE_LE_INT_MAX(y_batch_size * N, "GEMV M");
       blas.GEMV(false,
-                y_batch_size * N,
+                static_cast<int>(y_batch_size * N),
                 K,
                 static_cast<T>(1),
                 y_data,

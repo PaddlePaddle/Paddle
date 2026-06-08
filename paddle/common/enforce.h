@@ -346,22 +346,37 @@ using CommonType2 = typename std::add_lvalue_reference<
                         var,                                                 \
                         std::numeric_limits<int>::max()))
 
+namespace details {
+template <typename T,
+          typename std::enable_if<std::is_signed<T>::value, int>::type = 0>
+inline void EnforceNonNegativeForUInt32Max(T var, const char* var_name) {
+  if (var < 0) {
+    PADDLE_THROW(common::errors::InvalidArgument("Value %s=%" PRId64
+                                                 " should be non-negative.",
+                                                 var_name,
+                                                 static_cast<int64_t>(var)));
+  }
+}
+
+template <typename T,
+          typename std::enable_if<!std::is_signed<T>::value, int>::type = 0>
+inline void EnforceNonNegativeForUInt32Max(T var UNUSED,
+                                           const char* var_name UNUSED) {}
+}  // namespace details
+
 #define PADDLE_ENFORCE_LE_UINT32_MAX(var, var_name)                       \
   do {                                                                    \
-    PADDLE_ENFORCE_GE(var,                                                \
-                      0,                                                  \
-                      common::errors::InvalidArgument(                    \
-                          "Value %s=%" PRId64 " should be non-negative.", \
-                          var_name,                                       \
-                          static_cast<int64_t>(var)));                    \
+    auto __var = (var);                                                   \
+    ::common::enforce::details::EnforceNonNegativeForUInt32Max(__var,     \
+                                                               var_name); \
     PADDLE_ENFORCE_LE(                                                    \
-        static_cast<uint64_t>(var),                                       \
+        static_cast<uint64_t>(__var),                                     \
         static_cast<uint64_t>(std::numeric_limits<uint32_t>::max()),      \
         common::errors::InvalidArgument(                                  \
             "Value %s=%" PRIu64 " exceeds the maximum value that "        \
             "uint32_t can represent (%u).",                               \
             var_name,                                                     \
-            static_cast<uint64_t>(var),                                   \
+            static_cast<uint64_t>(__var),                                 \
             std::numeric_limits<uint32_t>::max()));                       \
   } while (0)
 

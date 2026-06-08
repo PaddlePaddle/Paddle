@@ -353,7 +353,7 @@ struct ReduceConfig {
   dim3 GetBlockDim() const { return dim3(block_width, block_height); }
 
   dim3 GetGridDim() const {
-    const auto grid_x = phi::backends::gpu::DivUp<int64_t>(
+    const int64_t grid_x = phi::backends::gpu::DivUp<int64_t>(
         num_outputs / output_vec_size, step_output);
     PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "grid.x");
     PADDLE_ENFORCE_LE_UINT32_MAX(ctas_per_output, "grid.y");

@@ -1033,7 +1033,8 @@ static void ElemwiseGradBroadcast1CUDA(gpuStream_t stream,
   // For small case use 1D block
   constexpr int half_walf = 16;
   if (w < half_walf || h < half_walf) {
-    int block_size = std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), h);
+    int block_size = static_cast<int>(
+        std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), h));
     int64_t grid_size_64 = w;
     auto *dev_ctx = funcs::GetCurrentContext();
     int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
@@ -1086,8 +1087,8 @@ static void ElemwiseGradBroadcast2CUDA(gpuStream_t stream,
                                        T *dx,
                                        T *dy) {
   if (pre == 0 || n == 0 || post == 0) return;
-  int block_size =
-      std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), pre * post);
+  int block_size = static_cast<int>(
+      std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), pre * post));
   int64_t grid_size_64 = n;
   auto *dev_ctx = funcs::GetCurrentContext();
   int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
@@ -1294,8 +1295,8 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
 
     if (is_y) {
       if (w < 16 || h < 16) {
-        int block_size =
-            std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), h);
+        int block_size = static_cast<int>(
+            std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), h));
         int64_t grid_size_64 = w;
         auto *dev_ctx = funcs::GetCurrentContext();
         int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
@@ -1370,8 +1371,8 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
       }
     } else {
       if (w < 16 || h < 16) {
-        int block_size =
-            std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), h);
+        int block_size = static_cast<int>(
+            std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), h));
         int64_t grid_size_64 = w;
         auto *dev_ctx = funcs::GetCurrentContext();
         int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
@@ -1568,7 +1569,8 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
     VLOG(3) << "FastBroadCastAllCUDAF pre:" << pre << " mid:" << mid
             << " post:" << post;
 
-    int block_size = std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), mid);
+    int block_size = static_cast<int>(
+        std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), mid));
     int64_t grid_size_64 = pre * post;
     auto *dev_ctx = funcs::GetCurrentContext();
     int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
@@ -1634,8 +1636,8 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
                                y_dims_array + max_dim,
                                static_cast<int64_t>(1),
                                std::multiplies<int64_t>());
-      int block_size =
-          std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), mid);
+      int block_size = static_cast<int>(
+          std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), mid));
       int64_t grid_size_64 = pre * post;
       auto *dev_ctx = funcs::GetCurrentContext();
       int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
@@ -1688,8 +1690,8 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
                                x_dims_array + max_dim,
                                static_cast<int64_t>(1),
                                std::multiplies<int64_t>());
-      int block_size =
-          std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), mid);
+      int block_size = static_cast<int>(
+          std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), mid));
       int64_t grid_size_64 = pre * post;
       auto *dev_ctx = funcs::GetCurrentContext();
       int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];

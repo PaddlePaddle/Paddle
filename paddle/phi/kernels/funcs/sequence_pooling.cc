@@ -387,7 +387,7 @@ class SequencePoolFunctor<CPUContext, T> {
           phi::jit::KernelFuncs<phi::jit::SeqPoolTuple<T>, CPUPlace>::Cache()
               .At(attr);
       for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
-        const auto h_64 = lod[i + 1] - lod[i];
+        const size_t h_64 = lod[i + 1] - lod[i];
         PADDLE_ENFORCE_LE_INT_MAX(h_64, "sequence_pooling SUM attr.h");
         attr.h = static_cast<int>(h_64);
         if (attr.h == 0) {

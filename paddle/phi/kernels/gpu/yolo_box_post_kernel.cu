@@ -546,6 +546,7 @@ void YoloBoxPostKernel(const Context& dev_ctx,
       }
     }
     PostNMS(&bbox_det_vec, nms_threshold, class_num);
+    PADDLE_ENFORCE_LE_INT_MAX(bbox_det_vec.size(), "bbox_det_num");
     const int bbox_det_num = static_cast<int>(bbox_det_vec.size());
     for (int i = 0; i < bbox_det_num; i++) {
       boxes_scores_data[boxes_scores_id++] =

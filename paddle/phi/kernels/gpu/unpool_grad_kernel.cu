@@ -125,6 +125,7 @@ class Unpool2dMaxGradFunctor {
     int64_t grid_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
     int64_t grid_64 =
         std::min((input.numel() + threads - 1) / threads, grid_max);
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "unpool_grad grid.x");
     uint32_t grid = static_cast<uint32_t>(grid_64);
     KernelUnpool2dMaxGrad<T, IndT>
         <<<grid, threads, 0, dev_ctx.stream()>>>(input.numel(),
@@ -209,6 +210,7 @@ class Unpool3dMaxGradFunctor {
     int64_t grid_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
     int64_t grid_64 =
         std::min((input.numel() + threads - 1) / threads, grid_max);
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "unpool_grad grid.x");
     uint32_t grid = static_cast<uint32_t>(grid_64);
     KernelUnpool3dMaxGrad<T, IndT>
         <<<grid, threads, 0, dev_ctx.stream()>>>(input.numel(),

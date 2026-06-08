@@ -1588,9 +1588,12 @@ void Blas<CPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                             const T *B,
                             T beta,
                             T *C) const {
-  PADDLE_ENFORCE_LE_INT_MAX(M, "GEMM M");
-  PADDLE_ENFORCE_LE_INT_MAX(N, "GEMM N");
-  PADDLE_ENFORCE_LE_INT_MAX(K, "GEMM K");
+  if (M > std::numeric_limits<int>::max() ||
+      N > std::numeric_limits<int>::max() ||
+      K > std::numeric_limits<int>::max()) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "CPU GEMM does not support M, N or K larger than INT_MAX."));
+  }
   int lda = static_cast<int>((transA == CblasNoTrans) ? K : M);
   int ldb = static_cast<int>((transB == CblasNoTrans) ? N : K);
   int ldc = static_cast<int>(N);
@@ -1622,9 +1625,12 @@ void Blas<CPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                             const T *B,
                             U beta,
                             T *C) const {
-  PADDLE_ENFORCE_LE_INT_MAX(M, "GEMM M");
-  PADDLE_ENFORCE_LE_INT_MAX(N, "GEMM N");
-  PADDLE_ENFORCE_LE_INT_MAX(K, "GEMM K");
+  if (M > std::numeric_limits<int>::max() ||
+      N > std::numeric_limits<int>::max() ||
+      K > std::numeric_limits<int>::max()) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "CPU GEMM does not support M, N or K larger than INT_MAX."));
+  }
   int lda = static_cast<int>((transA == CblasNoTrans) ? K : M);
   int ldb = static_cast<int>((transB == CblasNoTrans) ? N : K);
   int ldc = static_cast<int>(N);
@@ -1940,12 +1946,16 @@ void Blas<CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
   PADDLE_ENFORCE_NOT_NULL(
       C, common::errors::InvalidArgument("Pointer C should not be null."));
 
-  PADDLE_ENFORCE_LE_INT_MAX(M, "GEMM M");
-  PADDLE_ENFORCE_LE_INT_MAX(N, "GEMM N");
-  PADDLE_ENFORCE_LE_INT_MAX(K, "GEMM K");
+  if (M > std::numeric_limits<int>::max() ||
+      N > std::numeric_limits<int>::max() ||
+      K > std::numeric_limits<int>::max() ||
+      batchCount > std::numeric_limits<int>::max()) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "CPU BatchedGEMM does not support M, N, K or batchCount larger than "
+        "INT_MAX."));
+  }
 
 #if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
-  PADDLE_ENFORCE_LE_INT_MAX(batchCount, "GEMM batchCount");
   int M_int = static_cast<int>(M);
   int N_int = static_cast<int>(N);
   int K_int = static_cast<int>(K);
@@ -2017,12 +2027,16 @@ void Blas<CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
       B, common::errors::InvalidArgument("Pointer B should not be null."));
   PADDLE_ENFORCE_NOT_NULL(
       C, common::errors::InvalidArgument("Pointer C should not be null."));
-  PADDLE_ENFORCE_LE_INT_MAX(M, "GEMM M");
-  PADDLE_ENFORCE_LE_INT_MAX(N, "GEMM N");
-  PADDLE_ENFORCE_LE_INT_MAX(K, "GEMM K");
+  if (M > std::numeric_limits<int>::max() ||
+      N > std::numeric_limits<int>::max() ||
+      K > std::numeric_limits<int>::max() ||
+      batchCount > std::numeric_limits<int>::max()) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "CPU BatchedGEMM does not support M, N, K or batchCount larger than "
+        "INT_MAX."));
+  }
 
 #if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
-  PADDLE_ENFORCE_LE_INT_MAX(batchCount, "GEMM batchCount");
   int M_int = static_cast<int>(M);
   int N_int = static_cast<int>(N);
   int K_int = static_cast<int>(K);

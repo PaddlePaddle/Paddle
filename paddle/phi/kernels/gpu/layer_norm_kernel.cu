@@ -523,7 +523,7 @@ static inline LayerNormKernelVariant LayerNormKernelDispatch(
       x_numel <= std::numeric_limits<uint32_t>::max()) {
     // using fast_ln_v2 only sm > 70 and x_numel <= uint32_max
     auto prop = funcs::fast_ln_v2::GetDeviceProp();
-    auto hidden_size_32 = static_cast<uint32_t>(hidden_size);
+    uint32_t hidden_size_32 = static_cast<uint32_t>(hidden_size);
     if (prop->major > 7 &&
         funcs::fast_ln_v2::has_fast_ln_v2_fwd_kernel(weight_type,
                                                      input_type,
@@ -634,6 +634,8 @@ void LayerNormKernel(const Context& dev_ctx,
     const int THREADS_PER_CTA = WARPS_N * THREADS_PER_WARP * WARPS_M;        \
     const int ROWS_PER_CTA = WARPS_M;                                        \
     const int64_t grid = (batch_size + ROWS_PER_CTA - 1) / ROWS_PER_CTA;     \
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid, "layer_norm fast v1 grid");           \
+    PADDLE_ENFORCE_LE_INT_MAX(batch_size, "layer_norm fast v1 batch_size");  \
     funcs::fast_ln_v1::fast_ln_v1_fwd_kernel<T,                              \
                                              U,                              \
                                              ScaleT,                         \
@@ -675,7 +677,7 @@ void LayerNormKernel(const Context& dev_ctx,
   switch (kernel_variant) {
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
     case LayerNormKernelVariant::FAST_LN_V2: {
-      auto hidden_size = static_cast<uint32_t>(feature_size);
+      uint32_t hidden_size = static_cast<uint32_t>(feature_size);
       funcs::fast_ln_v2::LaunchNormFwd<T, Context>(dev_ctx,
                                                    stream,
                                                    place,

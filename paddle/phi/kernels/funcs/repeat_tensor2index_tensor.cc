@@ -51,11 +51,11 @@ void RepeatsTensor2IndexTensorFunctor<Context, RepeatsT>::operator()(
     index_size += repeats_data[i];
   }
   std::vector<RepeatsT> index_vec(index_size);
+  if constexpr (std::is_same_v<RepeatsT, int>) {
+    PADDLE_ENFORCE_LE_INT_MAX(repeats.dims()[0] - 1, "repeat index");
+  }
   int64_t offset = 0;
   for (int64_t i = 0; i < repeats.dims()[0]; i++) {
-    if constexpr (std::is_same_v<RepeatsT, int>) {
-      PADDLE_ENFORCE_LE_INT_MAX(i, "repeat index");
-    }
     std::fill_n(
         index_vec.begin() + offset, repeats_data[i], static_cast<RepeatsT>(i));
     offset += repeats_data[i];
@@ -85,11 +85,11 @@ void RepeatsTensor2IndexTensorFunctor<CPUContext, RepeatsT>::operator()(
     index_size += repeats_data[i];
   }
   std::vector<RepeatsT> index_vec(index_size);
+  if constexpr (std::is_same_v<RepeatsT, int>) {
+    PADDLE_ENFORCE_LE_INT_MAX(repeats.dims()[0] - 1, "repeat index");
+  }
   int64_t offset = 0;
   for (int64_t i = 0; i < repeats.dims()[0]; i++) {
-    if constexpr (std::is_same_v<RepeatsT, int>) {
-      PADDLE_ENFORCE_LE_INT_MAX(i, "repeat index");
-    }
     std::fill_n(
         index_vec.begin() + offset, repeats_data[i], static_cast<RepeatsT>(i));
     offset += repeats_data[i];
@@ -125,11 +125,11 @@ void RepeatsTensor2IndexTensorFunctor<XPUContext, RepeatsT>::operator()(
     index_size += repeats_data[i];
   }
   std::vector<RepeatsT> index_vec(index_size);
+  if constexpr (std::is_same_v<RepeatsT, int>) {
+    PADDLE_ENFORCE_LE_INT_MAX(repeats.dims()[0] - 1, "repeat index");
+  }
   int64_t offset = 0;
   for (int64_t i = 0; i < repeats.dims()[0]; i++) {
-    if constexpr (std::is_same_v<RepeatsT, int>) {
-      PADDLE_ENFORCE_LE_INT_MAX(i, "repeat index");
-    }
     std::fill_n(
         index_vec.begin() + offset, repeats_data[i], static_cast<RepeatsT>(i));
     offset += repeats_data[i];

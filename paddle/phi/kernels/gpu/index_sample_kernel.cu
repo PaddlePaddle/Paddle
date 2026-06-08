@@ -86,7 +86,7 @@ void IndexSampleKernel(const Context& dev_ctx,
   }
   auto block_width = backends::gpu::RoundToPowerOfTwo(index_length);
   block_width = MIN(block_width, PREDEFINED_BLOCK_SIZE_X);
-  auto block_height =
+  int64_t block_height =
       backends::gpu::RoundToPowerOfTwo(index_length * batch_size) / block_width;
   block_height = MIN(block_height, PREDEFINED_BLOCK_SIZE / block_width);
   dim3 block_dim(block_width, block_height);
