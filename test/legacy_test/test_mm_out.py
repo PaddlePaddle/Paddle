@@ -179,7 +179,7 @@ class TestMmOutDtypeDynamicOnly(unittest.TestCase):
         paddle.disable_static()
 
     def _skip_if_no_bf16_cuda(self):
-        if not paddle.is_compiled_with_cuda():
+        if not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm():
             self.skipTest("CUDA is required for mm out_dtype")
         if paddle.device.cuda.get_device_capability()[0] < 8:
             self.skipTest(
