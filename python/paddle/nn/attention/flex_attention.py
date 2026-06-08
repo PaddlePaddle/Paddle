@@ -17,8 +17,6 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
-import paddle
-
 if TYPE_CHECKING:
     from paddle import Tensor
 
@@ -68,11 +66,7 @@ def or_masks(*mask_mods: _mask_mod_signature) -> _mask_mod_signature:
         )
 
     def or_mask(b: Tensor, h: Tensor, q_idx: Tensor, kv_idx: Tensor) -> Tensor:
-        result = (
-            b.new_zeros((), dtype='bool')
-            if paddle.in_dynamic_mode()
-            else paddle.full([], False, dtype='bool')
-        )
+        result = b.new_zeros((), dtype='bool')
         for mask in mask_mods:
             result = result | mask(b, h, q_idx, kv_idx)
         return result
@@ -118,11 +112,7 @@ def and_masks(*mask_mods: _mask_mod_signature) -> _mask_mod_signature:
         )
 
     def and_mask(b: Tensor, h: Tensor, q_idx: Tensor, kv_idx: Tensor) -> Tensor:
-        result = (
-            b.new_ones((), dtype='bool')
-            if paddle.in_dynamic_mode()
-            else paddle.full([], True, dtype='bool')
-        )
+        result = b.new_ones((), dtype='bool')
         for mask in mask_mods:
             result = result & mask(b, h, q_idx, kv_idx)
         return result
