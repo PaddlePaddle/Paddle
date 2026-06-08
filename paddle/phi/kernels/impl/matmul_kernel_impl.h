@@ -420,6 +420,7 @@ void MatMulFunctionImplWithBlas(
   } else if (x_batch_size == 1) {
     if (M == 1 && trans_y) {
       VLOG(3) << "MatMul's case 9";
+      PADDLE_ENFORCE_LE_INT_MAX(y_batch_size * N, "GEMV M");
       blas.GEMV(false,
                 y_batch_size * N,
                 K,
@@ -480,6 +481,7 @@ void MatMulFunctionImplWithBlas(
   } else if (y_batch_size == 1) {
     if (!trans_x) {
       VLOG(3) << "MatMul's case 11";
+      PADDLE_ENFORCE_LE_INT_MAX(x_batch_size * M, "GEMM M");
       blas.GEMM(CblasNoTrans,
                 trans_y ? CblasTrans : CblasNoTrans,
                 x_batch_size * M,
@@ -858,6 +860,7 @@ void MatMulFunctionImplWithCublasLt(
   } else if (x_batch_size == 1) {
     if (M == 1 && trans_y) {
       VLOG(3) << "MatMul with blaslt 9";
+      PADDLE_ENFORCE_LE_INT_MAX(y_batch_size * N, "GEMV M");
       blaslt::Run(dev_ctx,
                   y_data,
                   x_data,
@@ -888,6 +891,7 @@ void MatMulFunctionImplWithCublasLt(
   } else if (y_batch_size == 1) {
     if (!trans_x) {
       VLOG(3) << "MatMul with blaslt 11";
+      PADDLE_ENFORCE_LE_INT_MAX(x_batch_size * M, "GEMM M");
       blaslt::Run(dev_ctx,
                   x_data,
                   y_data,

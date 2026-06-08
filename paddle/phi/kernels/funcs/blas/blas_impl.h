@@ -24,8 +24,6 @@
 
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-#define INT_MAX_VALUE 2147483647
-
 namespace phi {
 namespace funcs {
 
@@ -1590,11 +1588,9 @@ void Blas<CPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                             const T *B,
                             T beta,
                             T *C) const {
-  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
-    PADDLE_THROW(
-        common::errors::Unimplemented("GEMM not supported for large tensor "
-                                      "size on CPU, please check your code!"));
-  }
+  PADDLE_ENFORCE_LE_INT_MAX(M, "GEMM M");
+  PADDLE_ENFORCE_LE_INT_MAX(N, "GEMM N");
+  PADDLE_ENFORCE_LE_INT_MAX(K, "GEMM K");
   int lda = static_cast<int>((transA == CblasNoTrans) ? K : M);
   int ldb = static_cast<int>((transB == CblasNoTrans) ? N : K);
   int ldc = static_cast<int>(N);
@@ -1626,11 +1622,9 @@ void Blas<CPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                             const T *B,
                             U beta,
                             T *C) const {
-  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
-    PADDLE_THROW(
-        common::errors::Unimplemented("GEMM not supported for large tensor "
-                                      "size on CPU, please check your code!"));
-  }
+  PADDLE_ENFORCE_LE_INT_MAX(M, "GEMM M");
+  PADDLE_ENFORCE_LE_INT_MAX(N, "GEMM N");
+  PADDLE_ENFORCE_LE_INT_MAX(K, "GEMM K");
   int lda = static_cast<int>((transA == CblasNoTrans) ? K : M);
   int ldb = static_cast<int>((transB == CblasNoTrans) ? N : K);
   int ldc = static_cast<int>(N);
@@ -1946,17 +1940,12 @@ void Blas<CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
   PADDLE_ENFORCE_NOT_NULL(
       C, common::errors::InvalidArgument("Pointer C should not be null."));
 
-  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
-    PADDLE_THROW(
-        common::errors::Unimplemented("CPU GEMM not supported for large tensor "
-                                      "size."));
-  }
+  PADDLE_ENFORCE_LE_INT_MAX(M, "GEMM M");
+  PADDLE_ENFORCE_LE_INT_MAX(N, "GEMM N");
+  PADDLE_ENFORCE_LE_INT_MAX(K, "GEMM K");
 
 #if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
-  if (batchCount > INT_MAX_VALUE) {
-    PADDLE_THROW(common::errors::Unimplemented(
-        "CPU GEMM not supported for large batch size in MKLML."));
-  }
+  PADDLE_ENFORCE_LE_INT_MAX(batchCount, "GEMM batchCount");
   int M_int = static_cast<int>(M);
   int N_int = static_cast<int>(N);
   int K_int = static_cast<int>(K);
@@ -2028,16 +2017,12 @@ void Blas<CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
       B, common::errors::InvalidArgument("Pointer B should not be null."));
   PADDLE_ENFORCE_NOT_NULL(
       C, common::errors::InvalidArgument("Pointer C should not be null."));
-  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
-    PADDLE_THROW(common::errors::Unimplemented(
-        "CPU GEMM not supported for large tensor size"));
-  }
+  PADDLE_ENFORCE_LE_INT_MAX(M, "GEMM M");
+  PADDLE_ENFORCE_LE_INT_MAX(N, "GEMM N");
+  PADDLE_ENFORCE_LE_INT_MAX(K, "GEMM K");
 
 #if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
-  if (batchCount > INT_MAX_VALUE) {
-    PADDLE_THROW(common::errors::Unimplemented(
-        "CPU GEMM not supported for large batch size in MKLML."));
-  }
+  PADDLE_ENFORCE_LE_INT_MAX(batchCount, "GEMM batchCount");
   int M_int = static_cast<int>(M);
   int N_int = static_cast<int>(N);
   int K_int = static_cast<int>(K);

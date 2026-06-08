@@ -11,8 +11,10 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include <type_traits>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -51,6 +53,9 @@ void RepeatsTensor2IndexTensorFunctor<Context, RepeatsT>::operator()(
   std::vector<RepeatsT> index_vec(index_size);
   int64_t offset = 0;
   for (int64_t i = 0; i < repeats.dims()[0]; i++) {
+    if constexpr (std::is_same_v<RepeatsT, int>) {
+      PADDLE_ENFORCE_LE_INT_MAX(i, "repeat index");
+    }
     std::fill_n(
         index_vec.begin() + offset, repeats_data[i], static_cast<RepeatsT>(i));
     offset += repeats_data[i];
@@ -82,6 +87,9 @@ void RepeatsTensor2IndexTensorFunctor<CPUContext, RepeatsT>::operator()(
   std::vector<RepeatsT> index_vec(index_size);
   int64_t offset = 0;
   for (int64_t i = 0; i < repeats.dims()[0]; i++) {
+    if constexpr (std::is_same_v<RepeatsT, int>) {
+      PADDLE_ENFORCE_LE_INT_MAX(i, "repeat index");
+    }
     std::fill_n(
         index_vec.begin() + offset, repeats_data[i], static_cast<RepeatsT>(i));
     offset += repeats_data[i];
@@ -119,6 +127,9 @@ void RepeatsTensor2IndexTensorFunctor<XPUContext, RepeatsT>::operator()(
   std::vector<RepeatsT> index_vec(index_size);
   int64_t offset = 0;
   for (int64_t i = 0; i < repeats.dims()[0]; i++) {
+    if constexpr (std::is_same_v<RepeatsT, int>) {
+      PADDLE_ENFORCE_LE_INT_MAX(i, "repeat index");
+    }
     std::fill_n(
         index_vec.begin() + offset, repeats_data[i], static_cast<RepeatsT>(i));
     offset += repeats_data[i];

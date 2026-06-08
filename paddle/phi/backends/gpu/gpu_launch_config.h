@@ -150,7 +150,7 @@ inline GpuLaunchConfig GetGpuLaunchConfig1D(const GPUContext& dev_ctx,
 
   GpuLaunchConfig config;
   config.thread_per_block.x = threads;
-  config.block_per_grid.x = blocks;
+  config.block_per_grid.x = static_cast<uint32_t>(blocks);
   config.compute_capability = capability;
 
   VLOG(7) << "Get 1-D launch config: numel=" << numel

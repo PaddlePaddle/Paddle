@@ -66,8 +66,8 @@ template <typename T, typename Context>
 DenseTensor Slice(const Context& dev_ctx,
                   const DenseTensor& x,
                   std::vector<int> axes,
-                  std::vector<int> starts,
-                  std::vector<int> ends) {
+                  std::vector<int64_t> starts,
+                  std::vector<int64_t> ends) {
   DenseTensor ret;
   std::vector<int> new_axes = axes;
   std::vector<int64_t> out_shape = vectorize(x.dims());

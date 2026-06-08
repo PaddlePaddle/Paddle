@@ -443,7 +443,7 @@ void LaunchBroadcastKernel(
     Functor func) {
 #ifdef PADDLE_WITH_XPU_KP
   const int64_t numel_64 = classifier.numel;
-  PADDLE_ENFORCE_LE_UINT32_MAX(numel_64, "broadcast numel");
+  PADDLE_ENFORCE_LE_UINT32_MAX(numel_64, "XPU broadcast kernel numel");
   const uint32_t numel = static_cast<uint32_t>(numel_64);
   const int threads = 64;
   const int blocks = 8;

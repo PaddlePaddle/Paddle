@@ -346,22 +346,24 @@ using CommonType2 = typename std::add_lvalue_reference<
                         var,                                                 \
                         std::numeric_limits<int>::max()))
 
-#define PADDLE_ENFORCE_LE_UINT32_MAX(var, var_name)                      \
-  PADDLE_ENFORCE_GE(var,                                                 \
-                    0,                                                   \
-                    common::errors::InvalidArgument(                     \
-                        "Value %s=%" PRId64 " should be non-negative.",  \
-                        var_name,                                        \
-                        static_cast<int64_t>(var)));                     \
-  PADDLE_ENFORCE_LE(                                                     \
-      static_cast<uint64_t>(var),                                        \
-      static_cast<uint64_t>(std::numeric_limits<uint32_t>::max()),       \
-      common::errors::InvalidArgument("Value %s=%" PRIu64                \
-                                      " exceeds the maximum value that " \
-                                      "uint32_t can represent (%u).",    \
-                                      var_name,                          \
-                                      static_cast<uint64_t>(var),        \
-                                      std::numeric_limits<uint32_t>::max()))
+#define PADDLE_ENFORCE_LE_UINT32_MAX(var, var_name)                       \
+  do {                                                                    \
+    PADDLE_ENFORCE_GE(var,                                                \
+                      0,                                                  \
+                      common::errors::InvalidArgument(                    \
+                          "Value %s=%" PRId64 " should be non-negative.", \
+                          var_name,                                       \
+                          static_cast<int64_t>(var)));                    \
+    PADDLE_ENFORCE_LE(                                                    \
+        static_cast<uint64_t>(var),                                       \
+        static_cast<uint64_t>(std::numeric_limits<uint32_t>::max()),      \
+        common::errors::InvalidArgument(                                  \
+            "Value %s=%" PRIu64 " exceeds the maximum value that "        \
+            "uint32_t can represent (%u).",                               \
+            var_name,                                                     \
+            static_cast<uint64_t>(var),                                   \
+            std::numeric_limits<uint32_t>::max()));                       \
+  } while (0)
 
 TEST_API bool RegisterLogSimplyStr(const std::string& type,
                                    const std::string& simply);

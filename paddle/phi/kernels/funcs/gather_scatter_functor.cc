@@ -283,7 +283,7 @@ struct cpu_gather_scatter_functor {
     int64_t src_select_dim_size = src_dims[dim];
 
     // gather and assign do not need nums_of_elements
-    std::vector<int> nums_of_elements;
+    std::vector<int64_t> nums_of_elements;
     if (!is_gather_or_scatter_assign) nums_of_elements.resize(self.numel(), 0);
 
     const int ndim = index.dims().size();
@@ -345,7 +345,7 @@ struct cpu_gather_scatter_functor {
 
     if (method_name == "mean") {
       if (include_self) {
-        for (int i = 0; i < self_size; i++) {
+        for (int64_t i = 0; i < self_size; i++) {
           if (!nums_of_elements[i]) continue;
           if constexpr (std::is_integral_v<std::decay_t<tensor_t>>) {
             self_data[i] = IntFloorDiv(
@@ -356,7 +356,7 @@ struct cpu_gather_scatter_functor {
           }
         }
       } else {
-        for (int i = 0; i < self_size; i++) {
+        for (int64_t i = 0; i < self_size; i++) {
           if (!nums_of_elements[i]) continue;
           if constexpr (std::is_integral_v<std::decay_t<tensor_t>>) {
             self_data[i] = IntFloorDiv(

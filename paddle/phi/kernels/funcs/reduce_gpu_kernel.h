@@ -356,7 +356,9 @@ struct ReduceConfig {
     const auto grid_x = phi::backends::gpu::DivUp<int64_t>(
         num_outputs / output_vec_size, step_output);
     PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "grid.x");
-    return dim3(static_cast<uint32_t>(grid_x), ctas_per_output);
+    PADDLE_ENFORCE_LE_UINT32_MAX(ctas_per_output, "grid.y");
+    return dim3(static_cast<uint32_t>(grid_x),
+                static_cast<uint32_t>(ctas_per_output));
   }
 
   HOSTDEVICE bool ShouldReduceBlockX() const {
@@ -458,13 +460,11 @@ struct ReduceConfig {
     return size;
   }
 
-  int SemaphoreSize() const {
+  size_t SemaphoreSize() const {
     if (!ShouldReduceGlobal()) {
       return 0;
     }
-    size_t result = sizeof(int) * GetGridDim().x;
-    PADDLE_ENFORCE_LE_INT_MAX(result, "semaphore size");
-    return static_cast<int>(result);
+    return sizeof(int) * static_cast<size_t>(GetGridDim().x);
   }
 
   int ValuesPerThread() const {
@@ -592,19 +592,21 @@ ReduceConfig SetReduceConfig(const DenseTensorIterator& iter) {
       grid <= target_grid_size) {
     // Calculate optimal block splitting strategy.
     // Based on SM utilization.
-    int ctas_per_output1 =
+    const int64_t ctas_per_output1 =
         phi::backends::gpu::DivUp<int64_t>(target_grid_size, grid);
     // Based on min workload.
-    int ctas_per_output2 = phi::backends::gpu::DivUp<int64_t>(
+    const int64_t ctas_per_output2 = phi::backends::gpu::DivUp<int64_t>(
         config.ValuesPerThread(), min_values_per_thread);
     // Based on max workload.
-    int ctas_per_output3 = phi::backends::gpu::DivUp<int64_t>(
+    const int64_t ctas_per_output3 = phi::backends::gpu::DivUp<int64_t>(
         config.ValuesPerThread(), max_values_per_thread);
 
     // Choose best splitting strategy to balance parallelism and per-thread
     // workload.
-    config.ctas_per_output = std::max(
-        std::min<int>(ctas_per_output1, ctas_per_output2), ctas_per_output3);
+    const int64_t ctas_per_output = std::max(
+        std::min(ctas_per_output1, ctas_per_output2), ctas_per_output3);
+    PADDLE_ENFORCE_LE_INT_MAX(ctas_per_output, "reduce ctas_per_output");
+    config.ctas_per_output = static_cast<int>(ctas_per_output);
 
     if (config.ctas_per_output > 1) {
       // Case 3: Split input across blocks (requires global memory

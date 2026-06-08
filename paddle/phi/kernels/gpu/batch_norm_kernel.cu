@@ -1148,6 +1148,10 @@ void BatchNormKernel(const Context &dev_ctx,
           int64_t grid_y =
               std::min((N * H * W * D + block_y * 16 - 1) / (block_y * 16),
                        static_cast<int64_t>(MAX_GRID_SIZE));
+          PADDLE_ENFORCE_LE_UINT32_MAX(block_x, "block.x");
+          PADDLE_ENFORCE_LE_UINT32_MAX(block_y, "block.y");
+          PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "grid.x");
+          PADDLE_ENFORCE_LE_UINT32_MAX(grid_y, "grid.y");
 
           block.x = static_cast<uint32_t>(block_x);
           block.y = static_cast<uint32_t>(block_y);

@@ -89,38 +89,32 @@ struct SplitFunctor<CPUContext, T> {
     // TODO(zcd): Add input data validity checking
     size_t num = outputs->size();
 
-    int64_t input_rows_64 = 1;
+    int64_t input_rows = 1;
     auto dim_0 = ref_inputs[0]->dims();
     for (int i = 0; i < axis; ++i) {
-      input_rows_64 *= dim_0[i];
+      input_rows *= dim_0[i];
     }
-    PADDLE_ENFORCE_LE_INT_MAX(input_rows_64, "split input_rows");
-    int input_rows = static_cast<int>(input_rows_64);
 
-    int input_cols = 0;
+    int64_t input_cols = 0;
 
     std::vector<int64_t> output_cols(outputs->size());
     for (size_t i = 0; i < num; ++i) {
-      int64_t t_cols_64 = ref_inputs[i]->numel() / input_rows;
-      PADDLE_ENFORCE_LE_INT_MAX(t_cols_64, "split t_cols");
-      int t_cols = static_cast<int>(t_cols_64);
-      PADDLE_ENFORCE_LE_INT_MAX(static_cast<int64_t>(input_cols) + t_cols,
-                                "split input_cols");
+      int64_t t_cols = ref_inputs[i]->numel() / input_rows;
       input_cols += t_cols;
       output_cols[i] = t_cols;
     }
     auto cpu_place = context.GetPlace();
 
     // computation
-    for (int k = 0; k < input_rows; ++k) {
-      const int64_t src_offset = static_cast<int64_t>(k) * input_cols;
+    for (int64_t k = 0; k < input_rows; ++k) {
+      const int64_t src_offset = k * input_cols;
       const T* src_ptr = input.data<T>() + src_offset;
-      int col_idx = 0;
+      int64_t col_idx = 0;
       for (size_t j = 0; j < num; ++j) {
-        int col_len = static_cast<int>(output_cols[j]);
+        int64_t col_len = output_cols[j];
         auto* out_tensor = outputs->at(j);
         if (out_tensor != nullptr) {
-          const int64_t dst_offset = static_cast<int64_t>(k) * col_len;
+          const int64_t dst_offset = k * col_len;
           T* dst_ptr = out_tensor->data<T>() + dst_offset;
           memory_utils::Copy(cpu_place,
                              dst_ptr,
