@@ -1,4 +1,4 @@
-// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,192 +12,381 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/core/distributed/symmetric_memory/symmetric_memory.h"
+
 #include <cuda_runtime.h>
-#include <cstdint>
+
+#include <cstring>
+#include <mutex>
+#include <stdexcept>
+
+#include "paddle/phi/core/distributed/store/store.h"
+
+#define CUDA_CHECK(cmd)                                              \
+  do {                                                               \
+    cudaError_t e = cmd;                                             \
+    if (e != cudaSuccess) {                                          \
+      throw std::runtime_error(                                      \
+          std::string("CUDA error: ") + cudaGetErrorString(e) +      \
+          " at " + __FILE__ + ":" + std::to_string(__LINE__));       \
+    }                                                                \
+  } while (0)
 
 namespace phi {
 namespace distributed {
 
-// ========== Synchronization Kernels ==========
+// Default signal pad size: 64KB
+size_t SymmetricMemoryAllocator::signal_pad_size_ = 65536;
 
-// Barrier kernel: all ranks signal each other and wait
-__global__ void barrier_kernel(void** signal_pad_ptrs,
-                               int rank,
-                               int world_size,
-                               int channel,
-                               size_t timeout_ms) {
-  // Each rank has signal_pad_size bytes. We use uint32 slots.
-  // Slot layout: [world_size entries per channel]
-  // barrier uses channel*world_size + peer_rank as the slot index
-  int base_offset = channel * world_size;
+// CUDA kernels for synchronization (defined in .cu file)
+extern void launch_barrier_kernel(
+    void** signal_pad_ptrs_dev, int rank, int world_size,
+    int channel, size_t timeout_ms, cudaStream_t stream);
 
-  // Step 1: Signal all peers (write 1 to our slot in their pad)
-  for (int i = 0; i < world_size; ++i) {
-    if (i == rank) continue;
-    volatile uint32_t* peer_pad =
-        static_cast<volatile uint32_t*>(signal_pad_ptrs[i]);
-    atomicAdd(const_cast<uint32_t*>(&peer_pad[base_offset + rank]), 1u);
+extern void launch_put_signal_kernel(
+    void** signal_pad_ptrs_dev, int rank, int dst_rank,
+    int channel, size_t timeout_ms, cudaStream_t stream);
+
+extern void launch_wait_signal_kernel(
+    void** signal_pad_ptrs_dev, int rank, int src_rank,
+    int channel, size_t timeout_ms, cudaStream_t stream);
+
+// Kernel for stream_write_value32 (defined in .cu file)
+extern void launch_stream_write_value32(
+    uint32_t* ptr, int64_t offset, uint32_t val, cudaStream_t stream);
+
+// Kernel for memset32 (defined in .cu file)
+extern void launch_memset32(
+    uint32_t* ptr, int64_t offset, uint32_t val, int64_t count,
+    cudaStream_t stream);
+
+// SymmetricMemory implementation
+SymmetricMemory::SymmetricMemory(int rank,
+                                 int world_size,
+                                 std::vector<void*> buffer_ptrs,
+                                 std::vector<void*> signal_pad_ptrs,
+                                 void** buffer_ptrs_dev,
+                                 void** signal_pad_ptrs_dev,
+                                 size_t buffer_size,
+                                 size_t signal_pad_size,
+                                 int device_id)
+    : rank_(rank),
+      world_size_(world_size),
+      buffer_ptrs_(std::move(buffer_ptrs)),
+      signal_pad_ptrs_(std::move(signal_pad_ptrs)),
+      buffer_ptrs_dev_(buffer_ptrs_dev),
+      signal_pad_ptrs_dev_(signal_pad_ptrs_dev),
+      buffer_size_(buffer_size),
+      signal_pad_size_(signal_pad_size),
+      device_id_(device_id) {}
+
+SymmetricMemory::~SymmetricMemory() = default;
+
+DenseTensor SymmetricMemory::get_buffer(int rank,
+                                        const std::vector<int64_t>& sizes,
+                                        DataType dtype,
+                                        int64_t storage_offset) {
+  if (rank < 0 || rank >= world_size_) {
+    throw std::runtime_error("Invalid rank for get_buffer");
   }
 
-  // Step 2: Wait for all peers to signal us
-  volatile uint32_t* my_pad =
-      static_cast<volatile uint32_t*>(signal_pad_ptrs[rank]);
+  void* ptr = buffer_ptrs_[rank];
+  size_t dtype_size = phi::SizeOf(dtype);
+  size_t offset_bytes = storage_offset * dtype_size;
 
-  unsigned long long start = clock64();
-  // Approximate timeout: assume 1.5 GHz clock
-  unsigned long long timeout_cycles = timeout_ms > 0
-      ? (unsigned long long)timeout_ms * 1500000ULL
-      : 0;
+  auto alloc = std::make_shared<phi::Allocation>(
+      static_cast<uint8_t*>(ptr) + offset_bytes,
+      buffer_size_ - offset_bytes,
+      phi::GPUPlace(device_id_));
 
-  for (int i = 0; i < world_size; ++i) {
-    if (i == rank) continue;
-    while (my_pad[base_offset + i] == 0) {
-      if (timeout_ms > 0 && (clock64() - start) > timeout_cycles) {
-        __trap();
-        return;
-      }
-    }
-  }
-
-  // Step 3: Reset our signals
-  __threadfence_system();
-  for (int i = 0; i < world_size; ++i) {
-    if (i == rank) continue;
-    const_cast<uint32_t*>(
-        const_cast<volatile uint32_t*>(&my_pad[base_offset + i]))[0] = 0;
-  }
-  __threadfence_system();
+  DenseTensorMeta meta(dtype, common::make_ddim(sizes));
+  DenseTensor tensor(alloc, meta);
+  return tensor;
 }
 
-// Put signal: write a signal to dst_rank's signal pad
-__global__ void put_signal_kernel(void** signal_pad_ptrs,
-                                  int rank,
-                                  int dst_rank,
-                                  int channel,
+DenseTensor SymmetricMemory::get_signal_pad(int rank,
+                                            const std::vector<int64_t>& sizes,
+                                            DataType dtype,
+                                            int64_t storage_offset) {
+  if (rank < 0 || rank >= world_size_) {
+    throw std::runtime_error("Invalid rank for get_signal_pad");
+  }
+
+  void* ptr = signal_pad_ptrs_[rank];
+  size_t dtype_size = phi::SizeOf(dtype);
+  size_t offset_bytes = storage_offset * dtype_size;
+
+  std::vector<int64_t> actual_sizes = sizes;
+  if (actual_sizes.empty()) {
+    int64_t numel = static_cast<int64_t>(signal_pad_size_ / dtype_size);
+    actual_sizes = {numel};
+  }
+
+  auto alloc = std::make_shared<phi::Allocation>(
+      static_cast<uint8_t*>(ptr) + offset_bytes,
+      signal_pad_size_ - offset_bytes,
+      phi::GPUPlace(device_id_));
+
+  DenseTensorMeta meta(dtype, common::make_ddim(actual_sizes));
+  DenseTensor tensor(alloc, meta);
+  return tensor;
+}
+
+void SymmetricMemory::barrier(int channel, size_t timeout_ms) {
+  CUDA_CHECK(cudaSetDevice(device_id_));
+  cudaStream_t stream;
+  CUDA_CHECK(cudaStreamCreate(&stream));
+  launch_barrier_kernel(
+      signal_pad_ptrs_dev_, rank_, world_size_, channel, timeout_ms, stream);
+  CUDA_CHECK(cudaStreamSynchronize(stream));
+  CUDA_CHECK(cudaStreamDestroy(stream));
+}
+
+void SymmetricMemory::put_signal(int dst_rank, int channel,
+                                 size_t timeout_ms) {
+  CUDA_CHECK(cudaSetDevice(device_id_));
+  cudaStream_t stream;
+  CUDA_CHECK(cudaStreamCreate(&stream));
+  launch_put_signal_kernel(
+      signal_pad_ptrs_dev_, rank_, dst_rank, channel, timeout_ms, stream);
+  CUDA_CHECK(cudaStreamSynchronize(stream));
+  CUDA_CHECK(cudaStreamDestroy(stream));
+}
+
+void SymmetricMemory::wait_signal(int src_rank, int channel,
                                   size_t timeout_ms) {
-  int base_offset = channel * 8 + rank;  // max 8 ranks per channel group
+  CUDA_CHECK(cudaSetDevice(device_id_));
+  cudaStream_t stream;
+  CUDA_CHECK(cudaStreamCreate(&stream));
+  launch_wait_signal_kernel(
+      signal_pad_ptrs_dev_, rank_, src_rank, channel, timeout_ms, stream);
+  CUDA_CHECK(cudaStreamSynchronize(stream));
+  CUDA_CHECK(cudaStreamDestroy(stream));
+}
 
-  volatile uint32_t* dst_pad =
-      static_cast<volatile uint32_t*>(signal_pad_ptrs[dst_rank]);
+// SymmetricMemoryAllocator implementation
+SymmetricMemoryAllocator& SymmetricMemoryAllocator::Instance() {
+  static SymmetricMemoryAllocator instance;
+  return instance;
+}
 
-  // Wait until previous signal was consumed (slot == 0)
-  unsigned long long start = clock64();
-  unsigned long long timeout_cycles = timeout_ms > 0
-      ? (unsigned long long)timeout_ms * 1500000ULL
-      : 0;
+size_t SymmetricMemoryAllocator::get_signal_pad_size() {
+  return signal_pad_size_;
+}
 
-  while (dst_pad[base_offset] != 0) {
-    if (timeout_ms > 0 && (clock64() - start) > timeout_cycles) {
-      __trap();
-      return;
+void SymmetricMemoryAllocator::set_signal_pad_size(size_t size) {
+  signal_pad_size_ = size;
+}
+
+DenseTensor SymmetricMemoryAllocator::alloc(size_t size,
+                                            int device_id,
+                                            const std::string& group_name) {
+  CUDA_CHECK(cudaSetDevice(device_id));
+
+  // Allocate buffer + signal pad
+  size_t total_size = size + signal_pad_size_;
+  void* ptr = nullptr;
+  CUDA_CHECK(cudaMalloc(&ptr, total_size));
+  CUDA_CHECK(cudaMemset(ptr, 0, total_size));
+
+  AllocInfo info;
+  info.ptr = ptr;
+  info.size = size;
+  info.device_id = device_id;
+  info.group_name = group_name;
+  info.ipc_handle = nullptr;
+
+  alloc_map_[ptr] = info;
+
+  auto alloc = std::make_shared<phi::Allocation>(
+      ptr, size, phi::GPUPlace(device_id));
+
+  DenseTensorMeta meta(DataType::UINT8, {static_cast<int64_t>(size)});
+  DenseTensor tensor(alloc, meta);
+  return tensor;
+}
+
+DenseTensor SymmetricMemoryAllocator::alloc_persistent(
+    size_t size, int device_id, const std::string& group_name,
+    int64_t alloc_id) {
+  auto it = persistent_allocs_.find(alloc_id);
+  if (it != persistent_allocs_.end()) {
+    // Check if still active
+    if (alloc_map_.count(it->second)) {
+      throw std::runtime_error(
+          "Persistent allocation with alloc_id=" + std::to_string(alloc_id) +
+          " already exists and is active");
     }
+    // Reuse the pointer
+    void* ptr = it->second;
+    auto alloc = std::make_shared<phi::Allocation>(
+        ptr, size, phi::GPUPlace(device_id));
+    DenseTensorMeta meta(DataType::UINT8, {static_cast<int64_t>(size)});
+    DenseTensor tensor(alloc, meta);
+    return tensor;
   }
 
-  // Write the signal
-  __threadfence_system();
-  atomicExch(const_cast<uint32_t*>(&dst_pad[base_offset]), 1u);
-  __threadfence_system();
+  DenseTensor tensor = alloc(size, device_id, group_name);
+  persistent_allocs_[alloc_id] = const_cast<void*>(tensor.data());
+  return tensor;
 }
 
-// Wait signal: wait for a signal from src_rank
-__global__ void wait_signal_kernel(void** signal_pad_ptrs,
-                                   int rank,
-                                   int src_rank,
-                                   int channel,
-                                   size_t timeout_ms) {
-  int base_offset = channel * 8 + src_rank;  // max 8 ranks per channel group
+std::shared_ptr<SymmetricMemory> SymmetricMemoryAllocator::rendezvous(
+    const DenseTensor& tensor) {
+  void* ptr = const_cast<void*>(tensor.data());
 
-  volatile uint32_t* my_pad =
-      static_cast<volatile uint32_t*>(signal_pad_ptrs[rank]);
-
-  // Wait until signal arrives
-  unsigned long long start = clock64();
-  unsigned long long timeout_cycles = timeout_ms > 0
-      ? (unsigned long long)timeout_ms * 1500000ULL
-      : 0;
-
-  while (my_pad[base_offset] == 0) {
-    if (timeout_ms > 0 && (clock64() - start) > timeout_cycles) {
-      __trap();
-      return;
-    }
+  // Check if already rendezvous'd
+  auto it = rendezvous_map_.find(ptr);
+  if (it != rendezvous_map_.end()) {
+    return it->second;
   }
 
-  // Consume the signal (reset to 0)
-  __threadfence_system();
-  const_cast<uint32_t*>(
-      const_cast<volatile uint32_t*>(&my_pad[base_offset]))[0] = 0;
-  __threadfence_system();
-}
-
-// ========== Memory Operation Kernels ==========
-
-// Write a single uint32 value at offset
-__global__ void stream_write_value32_kernel(uint32_t* ptr,
-                                            int64_t offset,
-                                            uint32_t val) {
-  ptr[offset] = val;
-  __threadfence_system();
-}
-
-// Set count uint32 values starting at offset
-__global__ void memset32_kernel(uint32_t* ptr,
-                                int64_t offset,
-                                uint32_t val,
-                                int64_t count) {
-  int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx < count) {
-    ptr[offset + idx] = val;
+  // Find allocation info
+  auto alloc_it = alloc_map_.find(ptr);
+  if (alloc_it == alloc_map_.end()) {
+    return nullptr;
   }
+
+  const AllocInfo& info = alloc_it->second;
+  const std::string& group_name = info.group_name;
+
+  auto group_it = group_info_map_.find(group_name);
+  if (group_it == group_info_map_.end()) {
+    throw std::runtime_error(
+        "Group info not found for group: " + group_name);
+  }
+
+  const GroupInfo& group = group_it->second;
+  int rank = group.rank;
+  int world_size = group.world_size;
+  auto* store = group.store.get();
+
+  int device_id = info.device_id;
+  CUDA_CHECK(cudaSetDevice(device_id));
+
+  // Get IPC handle for our buffer
+  cudaIpcMemHandle_t ipc_handle;
+  CUDA_CHECK(cudaIpcGetMemHandle(&ipc_handle, ptr));
+
+  // Exchange IPC handles via store
+  std::string key_prefix = "symm_mem_" + group_name + "_" +
+                           std::to_string(info.size);
+
+  // Put our handle
+  std::vector<uint8_t> handle_data(sizeof(cudaIpcMemHandle_t));
+  std::memcpy(handle_data.data(), &ipc_handle, sizeof(cudaIpcMemHandle_t));
+  store->set(key_prefix + "_rank_" + std::to_string(rank), handle_data);
+
+  // Collect all handles
+  std::vector<void*> buffer_ptrs(world_size, nullptr);
+  std::vector<void*> signal_pad_ptrs(world_size, nullptr);
+  buffer_ptrs[rank] = ptr;
+  signal_pad_ptrs[rank] = static_cast<uint8_t*>(ptr) + info.size;
+
+  for (int i = 0; i < world_size; ++i) {
+    if (i == rank) continue;
+
+    std::string peer_key = key_prefix + "_rank_" + std::to_string(i);
+    std::vector<uint8_t> peer_data = store->get(peer_key);
+
+    cudaIpcMemHandle_t peer_handle;
+    std::memcpy(&peer_handle, peer_data.data(), sizeof(cudaIpcMemHandle_t));
+
+    void* peer_ptr = nullptr;
+    CUDA_CHECK(cudaIpcOpenMemHandle(
+        &peer_ptr, peer_handle, cudaIpcMemLazyEnablePeerAccess));
+    buffer_ptrs[i] = peer_ptr;
+    signal_pad_ptrs[i] = static_cast<uint8_t*>(peer_ptr) + info.size;
+  }
+
+  // Allocate device arrays for pointers
+  void** buffer_ptrs_dev = nullptr;
+  void** signal_pad_ptrs_dev = nullptr;
+  CUDA_CHECK(cudaMalloc(&buffer_ptrs_dev, world_size * sizeof(void*)));
+  CUDA_CHECK(cudaMalloc(&signal_pad_ptrs_dev, world_size * sizeof(void*)));
+  CUDA_CHECK(cudaMemcpy(buffer_ptrs_dev, buffer_ptrs.data(),
+                        world_size * sizeof(void*), cudaMemcpyHostToDevice));
+  CUDA_CHECK(cudaMemcpy(signal_pad_ptrs_dev, signal_pad_ptrs.data(),
+                        world_size * sizeof(void*), cudaMemcpyHostToDevice));
+
+  auto symm_mem = std::make_shared<SymmetricMemory>(
+      rank, world_size, buffer_ptrs, signal_pad_ptrs,
+      buffer_ptrs_dev, signal_pad_ptrs_dev,
+      info.size, signal_pad_size_, device_id);
+
+  rendezvous_map_[ptr] = symm_mem;
+  return symm_mem;
 }
 
-// ========== Host Launch Functions ==========
-
-void launch_barrier_kernel(void** signal_pad_ptrs_dev,
-                           int rank,
-                           int world_size,
-                           int channel,
-                           size_t timeout_ms,
-                           cudaStream_t stream) {
-  barrier_kernel<<<1, 1, 0, stream>>>(
-      signal_pad_ptrs_dev, rank, world_size, channel, timeout_ms);
+bool SymmetricMemoryAllocator::is_symm_mem_tensor(
+    const DenseTensor& tensor) const {
+  const void* ptr = tensor.data();
+  return alloc_map_.count(const_cast<void*>(ptr)) > 0;
 }
 
-void launch_put_signal_kernel(void** signal_pad_ptrs_dev,
-                              int rank,
-                              int dst_rank,
-                              int channel,
-                              size_t timeout_ms,
-                              cudaStream_t stream) {
-  put_signal_kernel<<<1, 1, 0, stream>>>(
-      signal_pad_ptrs_dev, rank, dst_rank, channel, timeout_ms);
+void SymmetricMemoryAllocator::set_group_info(
+    const std::string& group_name, int rank, int world_size,
+    std::shared_ptr<phi::distributed::Store> store) {
+  group_info_map_[group_name] = {rank, world_size, store};
 }
 
-void launch_wait_signal_kernel(void** signal_pad_ptrs_dev,
-                               int rank,
-                               int src_rank,
-                               int channel,
-                               size_t timeout_ms,
-                               cudaStream_t stream) {
-  wait_signal_kernel<<<1, 1, 0, stream>>>(
-      signal_pad_ptrs_dev, rank, src_rank, channel, timeout_ms);
+void SymmetricMemoryAllocator::stream_write_value32(
+    const DenseTensor& tensor, int64_t offset, int64_t val) {
+  if (offset < 0) {
+    throw std::runtime_error("offset must be greater than or equal to 0");
+  }
+  if (val < 0 || val > 4294967295LL) {
+    throw std::runtime_error(
+        "val must be in the range of [0, 4294967295] (uint32_t)");
+  }
+
+  uint32_t* ptr = static_cast<uint32_t*>(const_cast<void*>(tensor.data()));
+  uint32_t value = static_cast<uint32_t>(val);
+
+  cudaStream_t stream;
+  CUDA_CHECK(cudaStreamCreate(&stream));
+  launch_stream_write_value32(ptr, offset, value, stream);
+  CUDA_CHECK(cudaStreamSynchronize(stream));
+  CUDA_CHECK(cudaStreamDestroy(stream));
 }
 
-void launch_stream_write_value32(uint32_t* ptr,
-                                 int64_t offset,
-                                 uint32_t val,
-                                 cudaStream_t stream) {
-  stream_write_value32_kernel<<<1, 1, 0, stream>>>(ptr, offset, val);
-}
+void SymmetricMemoryAllocator::memset32(const DenseTensor& tensor,
+                                        int64_t offset,
+                                        int64_t val,
+                                        int64_t count) {
+  // Validate input
+  auto dims = tensor.dims();
+  if (dims.size() != 1 || tensor.dtype() != DataType::UINT32) {
+    throw std::runtime_error(
+        "input must be a flat, contiguous uint32 tensor");
+  }
 
-void launch_memset32(uint32_t* ptr,
-                     int64_t offset,
-                     uint32_t val,
-                     int64_t count,
-                     cudaStream_t stream) {
-  int threads = 256;
-  int blocks = (count + threads - 1) / threads;
-  memset32_kernel<<<blocks, threads, 0, stream>>>(ptr, offset, val, count);
+  if (offset < 0) {
+    throw std::runtime_error("offset must be greater than or equal to 0");
+  }
+  if (val < 0 || val > 4294967295LL) {
+    throw std::runtime_error(
+        "val must be in the range of [0, 4294967295] (uint32_t)");
+  }
+  if (count <= 0) {
+    throw std::runtime_error("count must be a positive integer");
+  }
+
+  int64_t numel = tensor.numel();
+  if (offset + count > numel) {
+    throw std::runtime_error(
+        "offset + count (" + std::to_string(offset + count) +
+        ") exceeded the numel of the input (" + std::to_string(numel) + ")");
+  }
+
+  uint32_t* ptr = static_cast<uint32_t*>(const_cast<void*>(tensor.data()));
+  uint32_t value = static_cast<uint32_t>(val);
+
+  cudaStream_t stream;
+  CUDA_CHECK(cudaStreamCreate(&stream));
+  launch_memset32(ptr, offset, value, count, stream);
+  CUDA_CHECK(cudaStreamSynchronize(stream));
+  CUDA_CHECK(cudaStreamDestroy(stream));
 }
 
 }  // namespace distributed
