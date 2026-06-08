@@ -31,7 +31,7 @@ RUN apt-get update --allow-unauthenticated && \
   apt-get update && \
   apt-get install -y build-essential curl wget vim git unzip pigz zstd unrar tar xz-utils libssl-dev bzip2 gzip \
     coreutils ntp language-pack-zh-hans libsm6 libxext6 libxrender-dev libgl1 libglx-mesa0 \
-    bison graphviz libjpeg-dev zlib1g-dev automake locales swig net-tools libtool kmod
+    bison graphviz libjpeg-dev zlib1g-dev libtinfo5 automake locales swig net-tools libtool kmod
 <install_cpu_package>
 
 WORKDIR /usr/bin
