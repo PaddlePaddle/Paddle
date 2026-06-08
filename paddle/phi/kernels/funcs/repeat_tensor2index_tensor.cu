@@ -75,6 +75,14 @@ void RepeatsTensor2IndexTensorFunctor<GPUContext, RepeatsT>::operator()(
   int64_t num_reps = repeats.dims()[0];
 
   if (num_reps == 0) {
+    PADDLE_ENFORCE_LE(
+        output_size,
+        0,
+        common::errors::InvalidArgument(
+            "When output_size is provided, it should equal to "
+            "sum of repeats tensor. But received output_size = %ld, "
+            "sum of repeats = 0.",
+            output_size));
     index->Resize({0});
     dev_ctx.template Alloc<RepeatsT>(index);
     return;
