@@ -138,6 +138,7 @@ from ..common_ops_import import Variable
 from ..framework import (
     LayerHelper,
     convert_nptype_to_datatype_or_vartype,
+    convert_to_datatype,
     core,
     in_dynamic_mode,
     in_dynamic_or_pir_mode,
@@ -2118,6 +2119,7 @@ def mm(
     mat2: Tensor,
     name: str | None = None,
     *,
+    out_dtype: DTypeLike | None = None,
     out: Tensor | None = None,
 ) -> Tensor:
     """
@@ -2140,6 +2142,7 @@ def mm(
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Keywords Argument:
+        out_dtype (DTypeLike|None, optional): The output data type. This temporary feature only supports ``paddle.float32`` for dynamic-graph CUDA 2-D bfloat16 inputs. Default is None.
         out (Tensor, optional): The output Tensor. It must have the same data type and shape as the expected output. Default is None, and a new Tensor will be created to store the result.
 
     Returns:
@@ -2192,6 +2195,43 @@ def mm(
 
 
     """
+    if out_dtype is not None:
+        out_dtype = convert_to_datatype(out_dtype)
+        if not in_dynamic_mode():
+            raise NotImplementedError(
+                "The out_dtype of paddle.mm is only supported in dynamic graph mode."
+            )
+        if out_dtype != core.DataType.FLOAT32:
+            raise TypeError(
+                "The out_dtype of paddle.mm currently only supports paddle.float32."
+            )
+        if input.dtype != core.DataType.BFLOAT16:
+            raise TypeError(
+                "The out_dtype of paddle.mm currently only supports bfloat16 input."
+            )
+        if mat2.dtype != core.DataType.BFLOAT16:
+            raise TypeError(
+                "The out_dtype of paddle.mm currently only supports bfloat16 mat2."
+            )
+        if len(input.shape) != 2 or len(mat2.shape) != 2:
+            raise ValueError(
+                "The out_dtype of paddle.mm currently only supports 2-D inputs."
+            )
+        if out is not None and out.dtype != core.DataType.FLOAT32:
+            raise TypeError(
+                "The out tensor dtype must be paddle.float32 when out_dtype is paddle.float32."
+            )
+        if not input.place.is_gpu_place():
+            raise NotImplementedError(
+                "The out_dtype of paddle.mm currently only supports CUDA tensors."
+            )
+        return paddle.mm(
+            input.astype('float32'),
+            mat2.astype('float32'),
+            name=name,
+            out=out,
+        )
+
     if in_dynamic_mode():
         return _C_ops.matmul(input, mat2, False, False, out=out)
 
