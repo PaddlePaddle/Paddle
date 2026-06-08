@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from . import flex_attention
 from .sdpa import (  # noqa: F401
     SDPBackend,
     _cur_sdpa_kernel_backends,
     sdpa_kernel,
 )
 
-__all__ = ["SDPBackend", "sdpa_kernel"]
+__all__ = ["SDPBackend", "sdpa_kernel", "flex_attention"]
