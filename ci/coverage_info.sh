@@ -232,7 +232,7 @@ lcov --extract coverage-full.info \
 
 ensure_cpp_extracted_coverage_data coverage-diff.info git-diff.out
 
-python ${PADDLE_ROOT}/ci/coverage_diff.py coverage-diff.info git-diff.out > coverage-diff.tmp
+python ${PADDLE_ROOT}/ci/coverage_diff.py coverage-diff.info git-diff.out > coverage-diff.tmp || exit 101
 
 mv -f coverage-diff.tmp coverage-diff.info
 
@@ -279,7 +279,7 @@ lcov --extract python-coverage-full.info \
     -o python-coverage-diff.info \
     --rc lcov_branch_coverage=0
 
-python ${PADDLE_ROOT}/ci/coverage_diff.py python-coverage-diff.info python-git-diff.out > python-coverage-diff.tmp
+python ${PADDLE_ROOT}/ci/coverage_diff.py python-coverage-diff.info python-git-diff.out > python-coverage-diff.tmp || exit 101
 
 mv -f python-coverage-diff.tmp python-coverage-diff.info
 
