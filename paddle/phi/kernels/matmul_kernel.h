@@ -28,6 +28,13 @@ void MatmulKernel(const Context& dev_ctx,
                   bool transpose_y,
                   DenseTensor* out);
 
+template <typename T, typename Context>
+void MmOutDtypeKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& y,
+                      DataType out_dtype,
+                      DenseTensor* out);
+
 // In order to be compatible with `mul` op in fluid,
 // it is no longer used in 2.x API
 template <typename T, typename Context>
