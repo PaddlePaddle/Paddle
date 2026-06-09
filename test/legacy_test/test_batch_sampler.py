@@ -21,6 +21,7 @@ import paddle
 from paddle.io import (
     BatchSampler,
     Dataset,
+    DistributedBatchSampler,
     RandomSampler,
     Sampler,
     SequenceSampler,
@@ -402,6 +403,70 @@ class TestWeightedRandomSampler(unittest.TestCase):
             self.assertTrue(False)
         except ValueError:
             self.assertTrue(True)
+
+
+class TestDistributedBatchSamplerSeed(unittest.TestCase):
+    def test_seed_deterministic(self):
+        """Test that same seed produces same indices"""
+        dataset = RandomDataset(100, 10)
+        sampler1 = DistributedBatchSampler(
+            dataset,
+            batch_size=16,
+            num_replicas=2,
+            rank=0,
+            shuffle=True,
+            seed=42,
+        )
+        sampler2 = DistributedBatchSampler(
+            dataset,
+            batch_size=16,
+            num_replicas=2,
+            rank=0,
+            shuffle=True,
+            seed=42,
+        )
+        indices1 = []
+        for batch in sampler1:
+            indices1.extend(batch)
+        indices2 = []
+        for batch in sampler2:
+            indices2.extend(batch)
+        self.assertEqual(indices1, indices2)
+
+    def test_seed_different(self):
+        """Test that different seeds produce different indices"""
+        dataset = RandomDataset(100, 10)
+        sampler1 = DistributedBatchSampler(
+            dataset,
+            batch_size=16,
+            num_replicas=2,
+            rank=0,
+            shuffle=True,
+            seed=42,
+        )
+        sampler2 = DistributedBatchSampler(
+            dataset,
+            batch_size=16,
+            num_replicas=2,
+            rank=0,
+            shuffle=True,
+            seed=123,
+        )
+        indices1 = []
+        for batch in sampler1:
+            indices1.extend(batch)
+        indices2 = []
+        for batch in sampler2:
+            indices2.extend(batch)
+        self.assertNotEqual(indices1, indices2)
+
+    def test_seed_default_value(self):
+        """Test that default seed is 0"""
+        dataset = RandomDataset(100, 10)
+        sampler = DistributedBatchSampler(
+            dataset, batch_size=16, num_replicas=1, rank=0, shuffle=True
+        )
+        self.assertEqual(sampler.seed, 0)
 
 
 if __name__ == '__main__':

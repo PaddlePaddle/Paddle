@@ -2772,8 +2772,17 @@ class Layer:
                     )
 
         if use_hook:
+            local_metadata: dict[str, Any] = {}
             for state_dict_hook in self._state_dict_hooks.values():
-                hook_result = state_dict_hook(destination)
+                try:
+                    hook_result = state_dict_hook(destination)
+                except TypeError:
+                    hook_result = state_dict_hook(
+                        self,
+                        destination,
+                        structured_name_prefix,
+                        local_metadata,
+                    )
                 if hook_result is not None:
                     destination = hook_result
 
