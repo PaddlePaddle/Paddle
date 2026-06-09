@@ -10,8 +10,12 @@ permissions:
 jobs:
   remove-skip-ci-labels:
     name: Remove skip-ci labels on new commits
-    runs-on: ubuntu-latest
+    runs-on:
+      group: APPROVAL
     steps:
+      - name: Cleanup
+        run: |
+          rm -rf * .[^.]*
       - name: Get PR labels
         id: get-labels
         uses: actions/github-script@v8

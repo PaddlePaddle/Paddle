@@ -999,12 +999,26 @@ def restore_unflattened_state_dict(
                 unflattened_local_shape
             )
             direct_reshape_metas[key] = unflattened_meta
+            if (
+                len(unflattened_local_shape) >= 2
+                and unflattened_local_shape[-1] == numel_in_slice
+            ):
+                reshard_needed_tensors[key] = local_tensor.reshape(
+                    (numel_in_slice,)
+                )
+                reshard_target_infos[key] = (
+                    numel_in_slice,
+                    slices,
+                    unflattened_meta,
+                    False,
+                )
         else:
             reshard_needed_tensors[key] = local_tensor
             reshard_target_infos[key] = (
                 numel_in_slice,
                 slices,
                 unflattened_meta,
+                True,
             )
 
     resharded_tensors = {}
@@ -1019,7 +1033,9 @@ def restore_unflattened_state_dict(
     for key, local_tensor in reshard_needed_tensors.items():
         tensor_name, file_name = key
         meta = _metadata_manager.local_tensor_metadata[key]
-        numel, slices, unflattened_meta = reshard_target_infos[key]
+        numel, slices, unflattened_meta, need_resharding = reshard_target_infos[
+            key
+        ]
         tensor_name_expand = f"{tensor_name}.global_offset.{meta.global_offset}"
 
         flat_start, flat_end = meta.flattened_range
@@ -1051,18 +1067,18 @@ def restore_unflattened_state_dict(
         global_offset_1d = (
             ravel_index(tuple(s[0] for s in slices), meta.local_shape),
         )
-
-        destination_sharded_state_dict[
-            (tensor_name_expand, global_offset_1d)
-        ] = ShardedWeight(
-            key=tensor_name_expand,
-            local_tensor=tmp_target_tensor,
-            local_shape=(numel,),
-            global_shape=(math.prod(meta.local_shape),),
-            global_offset=global_offset_1d,
-        )
-        name_mapping[key] = (tensor_name_expand, global_offset_1d)
-        force_gc.append(local_tensor)
+        if need_resharding:
+            destination_sharded_state_dict[
+                (tensor_name_expand, global_offset_1d)
+            ] = ShardedWeight(
+                key=tensor_name_expand,
+                local_tensor=tmp_target_tensor,
+                local_shape=(numel,),
+                global_shape=(math.prod(meta.local_shape),),
+                global_offset=global_offset_1d,
+            )
+            name_mapping[key] = (tensor_name_expand, global_offset_1d)
+            force_gc.append(local_tensor)
 
     global_state_dict_metadata, global_storage_metadata = [], []
     if use_dist:
@@ -1083,6 +1099,7 @@ def restore_unflattened_state_dict(
     tmp_metadata.storage_metadata = {
         k: v for d in global_storage_metadata for k, v in d.items()
     }
+
     _load_state_dict(
         target_state_dict=destination_sharded_state_dict,
         source_state_dict=source_state_dict_for_reshard,
@@ -1093,12 +1110,15 @@ def restore_unflattened_state_dict(
     )
 
     for key in reshard_needed_tensors:
-        target_key = name_mapping[key]
-        unflattened_meta = reshard_target_infos[key][2]
-
-        final_tensor = destination_sharded_state_dict[target_key].local_tensor
-        final_tensor.reshape_(unflattened_meta.local_shape)
-        resharded_tensors[key] = final_tensor
+        need_resharding = reshard_target_infos[key][3]
+        if need_resharding:
+            target_key = name_mapping[key]
+            unflattened_meta = reshard_target_infos[key][2]
+            final_tensor = destination_sharded_state_dict[
+                target_key
+            ].local_tensor
+            final_tensor.reshape_(unflattened_meta.local_shape)
+            resharded_tensors[key] = final_tensor
 
     final_unflattened_state_dict = defaultdict(dict)
     final_local_tensor_meta = defaultdict(list)

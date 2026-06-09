@@ -104,6 +104,19 @@ PHI_DEFINE_EXPORTED_int32(
 
 /**
  * Operator related FLAG
+ * Name: FLAGS_check_nan_inf_blacklist
+ * Since Version:
+ * Value Range: string, default=""
+ * Example: FLAGS_check_nan_inf_blacklist="op1,op2,op3"
+ * Note: Blacklist of ops to skip when checking NAN/INF
+ */
+PHI_DEFINE_EXPORTED_string(
+    check_nan_inf_blacklist,
+    "",
+    "Blacklist of ops to skip when checking NAN/INF, split by ','");
+
+/**
+ * Operator related FLAG
  * Name: FLAGS_check_nan_inf
  * Since Version: 0.13.0
  * Value Range: bool, default=false
@@ -229,6 +242,36 @@ PHI_DEFINE_EXPORTED_bool(
     "Whether allow using an autotuning algorithm for convolution "
     "operator. The autotuning algorithm may be non-deterministic. If "
     "true, the algorithm is deterministic.");
+
+/**
+ * GPU RNG related FLAG
+ * Name: FLAGS_deterministic_rng
+ * Since Version: 3.4
+ * Value Range: bool, default=false
+ * Example: paddle.set_flags({'FLAGS_deterministic_rng': True})
+ * Note: Fix RNG kernel launch config so same seed gives same results
+ *       across GPU types.
+ */
+PHI_DEFINE_EXPORTED_bool(
+    deterministic_rng,
+    false,
+    "Enable cross-device RNG consistency by fixing GPU kernel launch "
+    "configuration. When true, RNG kernels use a fixed grid/block size "
+    "so that the same seed produces identical results across GPU types.");
+
+/**
+ * GPU RNG related FLAG
+ * Name: FLAGS_deterministic_rng_grid
+ * Since Version: 3.4
+ * Value Range: int32, default=1024
+ * Example: paddle.set_flags({'FLAGS_deterministic_rng_grid': 4096})
+ * Note: Grid size cap used when FLAGS_deterministic_rng is enabled.
+ *       Cross-device consistency requires the same value on all devices.
+ */
+PHI_DEFINE_EXPORTED_int32(
+    deterministic_rng_grid,
+    1024,
+    "Grid size cap when FLAGS_deterministic_rng is enabled.");
 
 /**
  * CUDA related FLAG

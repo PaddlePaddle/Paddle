@@ -39,6 +39,7 @@
 #include <shared_mutex>
 #include <tuple>
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/backends/gpu/forwards.h"
 
 namespace c10 {
@@ -95,40 +96,41 @@ inline int64_t getNumGPUs() { return c10::cuda::device_count(); }
 inline bool is_available() { return c10::cuda::device_count() > 0; }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-CUDAContextDeviceProp* getCurrentDeviceProperties();
+PADDLE_API CUDAContextDeviceProp* getCurrentDeviceProperties();
 
-int warp_size();
+PADDLE_API int warp_size();
 
-CUDAContextDeviceProp* getDeviceProperties(c10::DeviceIndex device);
+PADDLE_API CUDAContextDeviceProp* getDeviceProperties(c10::DeviceIndex device);
 
-bool canDeviceAccessPeer(c10::DeviceIndex device, c10::DeviceIndex peer_device);
+PADDLE_API bool canDeviceAccessPeer(c10::DeviceIndex device,
+                                    c10::DeviceIndex peer_device);
 
 /* Handles */
-CUDAContextSparseHandle getCurrentCUDASparseHandle();
-CUDAContextBlasHandle getCurrentCUDABlasHandle();
-CUDAContextBlasLtHandle getCurrentCUDABlasLtHandle();
+PADDLE_API CUDAContextSparseHandle getCurrentCUDASparseHandle();
+PADDLE_API CUDAContextBlasHandle getCurrentCUDABlasHandle();
+PADDLE_API CUDAContextBlasLtHandle getCurrentCUDABlasLtHandle();
 
-void clearCublasWorkspaces();
+PADDLE_API void clearCublasWorkspaces();
 struct WorkspaceMapWithMutex {
   std::map<std::tuple<void*, void*>, at::DataPtr> map;
   std::shared_mutex mutex;
 };
 
-WorkspaceMapWithMutex& cublas_handle_stream_to_workspace();
-WorkspaceMapWithMutex& cublaslt_handle_stream_to_workspace();
-size_t getChosenWorkspaceSize();
-size_t getCUDABlasLtWorkspaceSize();
-void* getCUDABlasLtWorkspace();
+PADDLE_API WorkspaceMapWithMutex& cublas_handle_stream_to_workspace();
+PADDLE_API WorkspaceMapWithMutex& cublaslt_handle_stream_to_workspace();
+PADDLE_API size_t getChosenWorkspaceSize();
+PADDLE_API size_t getCUDABlasLtWorkspaceSize();
+PADDLE_API void* getCUDABlasLtWorkspace();
 
-CUDAContextSolverHandle getCurrentCUDASolverDnHandle();
+PADDLE_API CUDAContextSolverHandle getCurrentCUDASolverDnHandle();
 
 #if defined(USE_CUDSS)
-cudssHandle_t getCurrentCudssHandle();
+PADDLE_API cudssHandle_t getCurrentCudssHandle();
 #endif
 
 // Get the CUDA device allocator for the current device.
 // Returns a pointer to a c10::Allocator that allocates GPU memory.
-c10::Allocator* getCUDADeviceAllocator();
+PADDLE_API c10::Allocator* getCUDADeviceAllocator();
 #endif
 
 }  // namespace at::cuda

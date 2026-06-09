@@ -95,7 +95,7 @@ std::string GetCompleteTraceBackString(StrType&& what,
 
 inline bool is_error(bool stat) { return !stat; }
 
-void ThrowWarnInternal(const std::string& message);
+PADDLE_API void ThrowWarnInternal(const std::string& message);
 
 #if defined(__CUDA_ARCH__)
 // For cuda, the assertions can affect performance and it is therefore

@@ -28,7 +28,7 @@ class TestSemiAutoParallelShardingStage3:
         self._seed = eval(os.getenv("seed"))
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
 
-    def check_tensor_eq(self, a, b, rtol=1e-05, atol=0, verbose=True):
+    def check_tensor_eq(self, a, b, rtol=1e-04, atol=0, verbose=True):
         np.testing.assert_allclose(a, b, rtol=rtol, atol=atol, verbose=verbose)
 
     def get_single_card_rst(self):

@@ -328,6 +328,20 @@ inline DataType StringToDataType(const std::string& dtype) {
   }
 }
 
+inline bool IsFloatingType(const DataType& type) {
+  return (type == DataType::FLOAT16 || type == DataType::BFLOAT16 ||
+          type == DataType::FLOAT32 || type == DataType::FLOAT64 ||
+          type == DataType::FLOAT8_E4M3FN || type == DataType::FLOAT8_E5M2);
+}
+
+inline bool IsIntegerType(const DataType& type) {
+  return (type == DataType::INT8 || type == DataType::INT16 ||
+          type == DataType::INT32 || type == DataType::INT64 ||
+          type == DataType::UINT8 || type == DataType::UINT16 ||
+          type == DataType::UINT32 || type == DataType::UINT64 ||
+          type == DataType::BOOL);
+}
+
 }  // namespace phi
 
 namespace paddle {

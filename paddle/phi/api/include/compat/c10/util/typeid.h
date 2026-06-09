@@ -551,9 +551,15 @@ inline std::ostream& operator<<(std::ostream& stream,
 #define EXPORT_IF_NOT_GCC
 #endif
 
+#if defined(_MSC_VER)
+#define C10_TEMPLATE_API C10_API
+#else
+#define C10_TEMPLATE_API
+#endif
+
 // For use in a .cpp file.
 #define CAFFE_KNOWN_TYPE(T)                                          \
-  template uint16_t TypeMeta::addTypeMetaData<T>();                  \
+  template C10_TEMPLATE_API uint16_t TypeMeta::addTypeMetaData<T>(); \
   template <>                                                        \
   EXPORT_IF_NOT_GCC uint16_t TypeMeta::_typeMetaData<T>() noexcept { \
     static const uint16_t index = addTypeMetaData<T>();              \
@@ -561,11 +567,11 @@ inline std::ostream& operator<<(std::ostream& stream,
   }
 
 // For use in a .cpp file when a declaration in the header is provided.
-#define CAFFE_DEFINE_KNOWN_TYPE(T, ident)                          \
-  template uint16_t TypeMeta::addTypeMetaData<T>();                \
-  namespace detail {                                               \
-  EXPORT_IF_NOT_GCC extern const uint16_t ident##_metadata_index = \
-      TypeMeta::addTypeMetaData<T>();                              \
+#define CAFFE_DEFINE_KNOWN_TYPE(T, ident)                            \
+  template C10_TEMPLATE_API uint16_t TypeMeta::addTypeMetaData<T>(); \
+  namespace detail {                                                 \
+  EXPORT_IF_NOT_GCC extern const uint16_t ident##_metadata_index =   \
+      TypeMeta::addTypeMetaData<T>();                                \
   } /* namespace detail */
 
 // Declaration counterpart: provides an inline fast-path via a detail var.
@@ -575,7 +581,7 @@ inline std::ostream& operator<<(std::ostream& stream,
 // upstream declare/define model.
 #if defined(_MSC_VER)
 #define CAFFE_DECLARE_KNOWN_TYPE(T, ident)                           \
-  extern template uint16_t TypeMeta::addTypeMetaData<T>();           \
+  extern template C10_API uint16_t TypeMeta::addTypeMetaData<T>();   \
   namespace detail {                                                 \
   extern C10_API const uint16_t ident##_metadata_index;              \
   } /* namespace detail */                                           \

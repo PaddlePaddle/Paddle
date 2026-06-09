@@ -33,13 +33,14 @@ using gpuStream_t = hipStream_t;
 #include <string>
 #include <utility>
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/core/platform/device_event_base.h"
 
 namespace c10 {
 using DeviceIndex = int8_t;
 
-struct Device final {
+struct PADDLE_API Device final {
   using Type = DeviceType;
   Device() = default;
   Device(phi::Place place)
@@ -161,7 +162,7 @@ struct Device final {
   }
 };
 
-std::ostream& operator<<(std::ostream& stream, const Device& device);
+PADDLE_API std::ostream& operator<<(std::ostream& stream, const Device& device);
 
 }  // namespace c10
 

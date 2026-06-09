@@ -22,6 +22,8 @@
 #include <functional>
 #include <ostream>
 
+#include "paddle/common/macros.h"
+
 namespace c10 {
 
 using StreamId = int64_t;
@@ -32,7 +34,7 @@ struct StreamData3 {
   DeviceType device_type;
 };
 
-class Stream final {
+class PADDLE_API Stream final {
  private:
   Device device_;
   StreamId id_;

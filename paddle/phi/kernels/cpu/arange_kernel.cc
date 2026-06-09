@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/arange_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/range_function.h"
 
@@ -43,10 +44,38 @@ void ArangeTensorKernel(const Context& dev_ctx,
                         const DenseTensor& end,
                         const DenseTensor& step,
                         DenseTensor* out) {
-  T start_value = start.data<T>()[0];
-  T end_value = end.data<T>()[0];
-  T step_value = step.data<T>()[0];
-  ArangeFunc<T, Context>(dev_ctx, start_value, end_value, step_value, out);
+  int64_t size = 0;
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  bool any_float = phi::IsFloatingType(start.dtype()) ||
+                   phi::IsFloatingType(end.dtype()) ||
+                   phi::IsFloatingType(step.dtype());
+
+  Scalar start_scalar(start);
+  Scalar end_scalar(end);
+  Scalar step_scalar(step);
+
+  if (any_float) {
+    double sv = start_scalar.to<double>();
+    double ev = end_scalar.to<double>();
+    double stv = step_scalar.to<double>();
+    funcs::GetSize<double>(sv, ev, stv, &size);
+  } else {
+    int64_t sv = start_scalar.to<int64_t>();
+    int64_t ev = end_scalar.to<int64_t>();
+    int64_t stv = step_scalar.to<int64_t>();
+    funcs::GetSize<int64_t>(sv, ev, stv, &size);
+  }
+  MPType start_value = start_scalar.to<MPType>();
+  MPType step_value = step_scalar.to<MPType>();
+
+  out->Resize({size});
+  T* out_data = dev_ctx.template Alloc<T>(out);
+  MPType value = start_value;
+  for (int64_t i = 0; i < size; ++i) {
+    out_data[i] = static_cast<T>(value);
+    value += step_value;
+  }
 }
 
 template <typename T, typename Context>
@@ -55,10 +84,31 @@ void ArangeKernel(const Context& dev_ctx,
                   const Scalar& end,
                   const Scalar& step,
                   DenseTensor* out) {
-  T start_value = start.to<T>();
-  T end_value = end.to<T>();
-  T step_value = step.to<T>();
-  ArangeFunc<T, Context>(dev_ctx, start_value, end_value, step_value, out);
+  bool any_float = phi::IsFloatingType(start.dtype()) ||
+                   phi::IsFloatingType(end.dtype()) ||
+                   phi::IsFloatingType(step.dtype());
+  int64_t size = 0;
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  if (any_float) {
+    double sv = start.to<double>();
+    double ev = end.to<double>();
+    double stv = step.to<double>();
+    funcs::GetSize<double>(sv, ev, stv, &size);
+  } else {
+    int64_t sv = start.to<int64_t>();
+    int64_t ev = end.to<int64_t>();
+    int64_t stv = step.to<int64_t>();
+    funcs::GetSize<int64_t>(sv, ev, stv, &size);
+  }
+  MPType start_value = start.to<MPType>();
+  MPType step_value = step.to<MPType>();
+  out->Resize({size});
+  T* out_data = dev_ctx.template Alloc<T>(out);
+  MPType value = start_value;
+  for (int64_t i = 0; i < size; ++i) {
+    out_data[i] = static_cast<T>(value);
+    value += step_value;
+  }
 }
 
 }  // namespace phi

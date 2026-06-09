@@ -362,7 +362,7 @@ __global__ __launch_bounds__(512) void filling_padding_rows_kernel(
     const int cols,
     const int quanted_cols,
     const int* __restrict__ padding_rows) {
-  uint32_t rows = padding_rows[blockIdx.x];
+  int64_t rows = static_cast<int64_t>(padding_rows[blockIdx.x]);
   if constexpr (FILLING_X_UNZIPPED) {
     vectorized_memset(
         &X_unzipped_ptr[rows * cols], static_cast<TokenT>(0), cols);

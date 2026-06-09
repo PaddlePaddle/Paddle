@@ -467,6 +467,205 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
                             err_msg="permuted_scales[{i}] is not correct",
                         )
 
+    def _build_small_permute_inputs(self):
+        seq_len = 3
+        token_len = 128
+        num_experts = 3
+        topk = 8
+        hidden_states = paddle.randn([seq_len, token_len], dtype="bfloat16")
+        expert_routemap_topk = paddle.full([seq_len, topk], -1, dtype="int32")
+        expert_routemap_topk[0, 1] = 0
+        expert_routemap_topk[1, 0] = 1
+        expert_routemap_topk[2, 6] = 1
+        expert_prob_topk = paddle.zeros([seq_len, topk], dtype="float32")
+        expert_prob_topk[0, 1] = 0.6
+        expert_prob_topk[1, 0] = 1.0
+        expert_prob_topk[2, 6] = 1.0
+        tokens_per_expert = [1, 2, 0]
+        return (
+            hidden_states,
+            expert_routemap_topk,
+            expert_prob_topk,
+            num_experts,
+            tokens_per_expert,
+        )
+
+    def _build_small_unpermute_inputs(self):
+        seq_len = 3
+        token_len = 64
+        num_experts = 3
+        topk = 8
+        unzipped_tokens = paddle.randn([4, token_len], dtype="bfloat16")
+        zipped_expertwise_rowmap = paddle.to_tensor(
+            [[1, -1, 0], [-1, 2, -1], [-1, 3, -1]], dtype="int32"
+        )
+        expert_routemap_topk = paddle.full([seq_len, topk], -1, dtype="int32")
+        expert_routemap_topk[0, 1] = 0
+        expert_routemap_topk[0, 4] = 2
+        expert_routemap_topk[1, 0] = 1
+        expert_routemap_topk[2, 6] = 1
+        token_prob_unzipped = paddle.ones([4], dtype="float32")
+        return (
+            unzipped_tokens,
+            zipped_expertwise_rowmap,
+            expert_routemap_topk,
+            token_prob_unzipped,
+            seq_len,
+            num_experts,
+        )
+
+    def test_permute_invalid_inputs(self):
+        (
+            hidden_states,
+            expert_routemap_topk,
+            expert_prob_topk,
+            num_experts,
+            tokens_per_expert,
+        ) = self._build_small_permute_inputs()
+        with self.assertRaisesRegex(Exception, "padding_alignment"):
+            moe_permute(
+                hidden_states,
+                None,
+                expert_routemap_topk,
+                expert_prob_topk,
+                num_experts,
+                tokens_per_expert,
+                0,
+            )
+        with self.assertRaisesRegex(Exception, "override_buffer_size"):
+            moe_permute(
+                hidden_states,
+                None,
+                expert_routemap_topk,
+                expert_prob_topk,
+                num_experts,
+                tokens_per_expert,
+                16,
+                override_buffer_size=-2,
+            )
+        with self.assertRaisesRegex(Exception, "expert_prob_topk"):
+            moe_permute(
+                hidden_states,
+                None,
+                expert_routemap_topk,
+                paddle.zeros([3, 7], dtype="float32"),
+                num_experts,
+                tokens_per_expert,
+                16,
+            )
+
+    def test_permute_fp8_requires_scale_when_gather(self):
+        (
+            hidden_states,
+            expert_routemap_topk,
+            expert_prob_topk,
+            num_experts,
+            tokens_per_expert,
+        ) = self._build_small_permute_inputs()
+        try:
+            hidden_states = hidden_states.astype(paddle.float8_e4m3fn)
+        except Exception as e:
+            self.skipTest(f"float8_e4m3fn is not available: {e}")
+        with self.assertRaisesRegex(Exception, "XScale"):
+            moe_permute(
+                hidden_states,
+                None,
+                expert_routemap_topk,
+                expert_prob_topk,
+                num_experts,
+                tokens_per_expert,
+                16,
+            )
+
+    def test_unpermute_invalid_inputs(self):
+        (
+            unzipped_tokens,
+            zipped_expertwise_rowmap,
+            expert_routemap_topk,
+            token_prob_unzipped,
+            seq_len,
+            num_experts,
+        ) = self._build_small_unpermute_inputs()
+        with self.assertRaisesRegex(Exception, "total_zipped_tokens_num"):
+            moe_unpermute(
+                unzipped_tokens,
+                zipped_expertwise_rowmap,
+                expert_routemap_topk,
+                token_prob_unzipped,
+                -1,
+                num_experts,
+            )
+        with self.assertRaisesRegex(Exception, "zipped_expertwise_rowmap"):
+            moe_unpermute(
+                unzipped_tokens,
+                zipped_expertwise_rowmap,
+                expert_routemap_topk,
+                token_prob_unzipped,
+                seq_len + 1,
+                num_experts,
+            )
+        with self.assertRaisesRegex(Exception, "expert_routemap_topk"):
+            moe_unpermute(
+                unzipped_tokens,
+                zipped_expertwise_rowmap,
+                expert_routemap_topk[:2, :],
+                token_prob_unzipped,
+                seq_len,
+                num_experts,
+            )
+
+    def test_unpermute_invalid_token_probs(self):
+        (
+            unzipped_tokens,
+            zipped_expertwise_rowmap,
+            expert_routemap_topk,
+            token_prob_unzipped,
+            seq_len,
+            num_experts,
+        ) = self._build_small_unpermute_inputs()
+        # unzipped_token_probs must hold one probability per unzipped token row.
+        with self.assertRaisesRegex(Exception, "unzipped_token_probs"):
+            moe_unpermute(
+                unzipped_tokens,
+                zipped_expertwise_rowmap,
+                expert_routemap_topk,
+                paddle.zeros([0], dtype="float32"),
+                seq_len,
+                num_experts,
+            )
+        with self.assertRaisesRegex(Exception, "unzipped_token_probs"):
+            moe_unpermute(
+                unzipped_tokens,
+                zipped_expertwise_rowmap,
+                expert_routemap_topk,
+                token_prob_unzipped[:-1],
+                seq_len,
+                num_experts,
+            )
+
+    def test_permute_invalid_scale_rows(self):
+        (
+            hidden_states,
+            expert_routemap_topk,
+            expert_prob_topk,
+            num_experts,
+            tokens_per_expert,
+        ) = self._build_small_permute_inputs()
+        # XScale's first dimension must match X.dims()[0].
+        mismatched_scale = paddle.zeros(
+            [hidden_states.shape[0] + 1, 1], dtype="float32"
+        )
+        with self.assertRaisesRegex(Exception, "XScale"):
+            moe_permute(
+                hidden_states,
+                mismatched_scale,
+                expert_routemap_topk,
+                expert_prob_topk,
+                num_experts,
+                tokens_per_expert,
+                16,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

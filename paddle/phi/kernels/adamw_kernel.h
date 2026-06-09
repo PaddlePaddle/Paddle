@@ -34,8 +34,8 @@ PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
                                  const Scalar& beta1,
                                  const Scalar& beta2,
                                  const Scalar& epsilon,
-                                 float lr_ratio,
-                                 float coeff,
+                                 double lr_ratio,
+                                 double coeff,
                                  bool with_decay,
                                  bool lazy_mode,
                                  int64_t min_row_size_to_use_multithread,
@@ -49,5 +49,4 @@ PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
                                  DenseTensor* beta1_pow_out,
                                  DenseTensor* beta2_pow_out,
                                  DenseTensor* master_param_outs);
-
 }  // namespace phi

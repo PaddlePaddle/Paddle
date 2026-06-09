@@ -34,7 +34,7 @@ COMMON_DECLARE_bool(force_stride_compute_contig_out);
 
 namespace phi {
 
-inline void PrepareStridedOut(DenseTensor* out) {
+inline void PrepareStridedOut_reduce(DenseTensor* out) {
   if (!FLAGS_use_stride_kernel) {
     PADDLE_THROW(common::errors::Fatal(
         "FLAGS_use_stride_kernel is closed. Strided kernel "
@@ -51,7 +51,7 @@ void AMaxStrideKernel(const Context& dev_ctx,
                       const std::vector<int64_t>& dims,
                       bool keep_dim,
                       DenseTensor* out) {
-  PrepareStridedOut(out);
+  PrepareStridedOut_reduce(out);
 
   phi::AMaxKernel<T, Context>(dev_ctx, x, dims, keep_dim, out);
 }
@@ -62,7 +62,7 @@ void AMinStrideKernel(const Context& dev_ctx,
                       const std::vector<int64_t>& dims,
                       bool keep_dim,
                       DenseTensor* out) {
-  PrepareStridedOut(out);
+  PrepareStridedOut_reduce(out);
 
   phi::AMinKernel<T, Context>(dev_ctx, x, dims, keep_dim, out);
 }
@@ -73,7 +73,7 @@ void MaxStrideKernel(const Context& dev_ctx,
                      const IntArray& dims,
                      bool keep_dim,
                      DenseTensor* out) {
-  PrepareStridedOut(out);
+  PrepareStridedOut_reduce(out);
 
   phi::MaxKernel<T, Context>(dev_ctx, x, dims, keep_dim, out);
 }
@@ -84,7 +84,7 @@ void MinStrideKernel(const Context& dev_ctx,
                      const IntArray& dims,
                      bool keep_dim,
                      DenseTensor* out) {
-  PrepareStridedOut(out);
+  PrepareStridedOut_reduce(out);
 
   phi::MinKernel<T, Context>(dev_ctx, x, dims, keep_dim, out);
 }
@@ -96,7 +96,7 @@ void ProdStrideKernel(const Context& dev_ctx,
                       bool keep_dim,
                       bool reduce_all,
                       DenseTensor* out) {
-  PrepareStridedOut(out);
+  PrepareStridedOut_reduce(out);
 
   phi::ProdKernel<T, Context>(dev_ctx, x, dims, keep_dim, reduce_all, out);
 }
@@ -107,7 +107,7 @@ void AllStrideKernel(const Context& dev_ctx,
                      const std::vector<int64_t>& dims,
                      bool keep_dim,
                      DenseTensor* out) {
-  PrepareStridedOut(out);
+  PrepareStridedOut_reduce(out);
 
   phi::AllKernel<T, Context>(dev_ctx, x, dims, keep_dim, out);
 }
@@ -118,7 +118,7 @@ void AnyStrideKernel(const Context& dev_ctx,
                      const std::vector<int64_t>& dims,
                      bool keep_dim,
                      DenseTensor* out) {
-  PrepareStridedOut(out);
+  PrepareStridedOut_reduce(out);
 
   phi::AnyKernel<T, Context>(dev_ctx, x, dims, keep_dim, out);
 }
@@ -130,7 +130,7 @@ void SumStrideKernel(const Context& dev_ctx,
                      DataType out_dtype,
                      bool keep_dim,
                      DenseTensor* out) {
-  PrepareStridedOut(out);
+  PrepareStridedOut_reduce(out);
 
   phi::SumKernel<T, Context>(dev_ctx, x, dims, out_dtype, keep_dim, out);
 }
@@ -142,7 +142,7 @@ void NansumStrideKernel(const Context& dev_ctx,
                         DataType out_dtype,
                         bool keep_dim,
                         DenseTensor* out) {
-  PrepareStridedOut(out);
+  PrepareStridedOut_reduce(out);
   phi::NansumKernel<T, Context>(dev_ctx, x, dims, out_dtype, keep_dim, out);
 }
 
@@ -152,7 +152,7 @@ void MeanStrideKernel(const Context& dev_ctx,
                       const IntArray& dims,
                       bool keep_dim,
                       DenseTensor* out) {
-  PrepareStridedOut(out);
+  PrepareStridedOut_reduce(out);
 
   phi::MeanKernel<T, Context>(dev_ctx, x, dims, keep_dim, out);
 }

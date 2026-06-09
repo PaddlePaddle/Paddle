@@ -107,7 +107,7 @@ void GpuMemcpyPeerSync(
 void GpuMemsetAsync(void *dst, int value, size_t count, gpuStream_t stream);
 
 //! Blocks until stream has completed all operations.
-void GpuStreamSync(gpuStream_t stream);
+PADDLE_API void GpuStreamSync(gpuStream_t stream);
 
 void GpuDestroyStream(gpuStream_t stream);
 

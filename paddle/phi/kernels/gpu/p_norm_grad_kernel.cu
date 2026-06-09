@@ -394,6 +394,10 @@ void PNormGradKernel(const Context& dev_ctx,
   auto* out_dx = x_grad;
   dev_ctx.template Alloc<T>(out_dx);
 
+  if (out_dx->numel() == 0) {
+    return;
+  }
+
   auto xdim = in_x->dims();
   bool reduce_all = (in_norm->numel() == 1);
   if (axis < 0) {

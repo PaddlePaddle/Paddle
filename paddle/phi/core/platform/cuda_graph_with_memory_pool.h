@@ -25,6 +25,9 @@
 namespace paddle {
 namespace platform {
 
+PADDLE_API bool IsCUDAGraphCapturing();
+PADDLE_API phi::Place CUDAGraphCapturingPlace();
+
 // NOTE: These APIs are not thread-safe.
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_CUSTOM_DEVICE)
@@ -45,18 +48,6 @@ PADDLE_API void BeginCUDAGraphCapture(
     phi::graph::streamCaptureMode mode,
     int64_t pool_id = CUDAGraph::kInvalidPoolID);
 #endif
-
-inline phi::Place CUDAGraphCapturingPlace() {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_CUSTOM_DEVICE)
-  return CUDAGraph::CapturingPlace();
-#else
-  PADDLE_THROW(common::errors::Unimplemented(
-      "CUDA Graph is only supported on NVIDIA GPU device."));
-#endif
-}
-
-using phi::backends::gpu::IsCUDAGraphCapturing;
 
 using phi::backends::gpu::AddPostResetCallbackIfCapturingCUDAGraph;
 

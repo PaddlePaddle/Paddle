@@ -146,6 +146,7 @@ void AdamDenseParamSparseGradKernel(const Context& dev_ctx,
   const int64_t* rows = mixv_grad_merge_rows.Data(dev_ctx.GetPlace());
   auto row_numel = grad_tensor.numel() / grad_merge.rows().size();
 
+  T lr_value = static_cast<T>(learning_rate.data<double>()[0]);
   funcs::SparseAdamFunctor<T, funcs::CPUAdam> functor(
       beta1_,
       beta2_,
@@ -158,7 +159,7 @@ void AdamDenseParamSparseGradKernel(const Context& dev_ctx,
       dev_ctx.template Alloc<T>(moment2_out),
       amsgrad ? moment2_max.get().data<T>() : nullptr,
       amsgrad ? dev_ctx.template Alloc<T>(moment2_max_out) : nullptr,
-      learning_rate.data<T>(),
+      &lr_value,
       grad_data,
       param.data<T>(),
       dev_ctx.template Alloc<T>(param_out),

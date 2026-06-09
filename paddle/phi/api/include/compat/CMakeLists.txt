@@ -1,4 +1,5 @@
 collect_srcs(api_srcs SRCS c10/core/Device.cpp)
+collect_srcs(api_srcs SRCS c10/core/DefaultDtype.cpp)
 collect_srcs(api_srcs SRCS c10/core/Stream.cpp)
 collect_srcs(api_srcs SRCS c10/cuda/CUDAFunctions.cpp)
 collect_srcs(api_srcs SRCS c10/cuda/CUDAStream.cpp)

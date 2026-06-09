@@ -271,6 +271,31 @@ class Adam(Optimizer):
         # whether to use AMSGrad
         self._amsgrad = amsgrad
 
+    def get_lr_dtype(self) -> paddle.dtype:
+        return paddle.float64
+
+    def _create_regularization_of_grad(self, param, grad, regularization=None):
+        from paddle.regularizer import L2Decay
+
+        if (
+            regularization is not None
+            and isinstance(regularization, L2Decay)
+            and paddle.get_flags(['FLAGS_use_accuracy_compatible_kernel']).get(
+                'FLAGS_use_accuracy_compatible_kernel', False
+            )
+        ):
+            # PyTorch fused Adam: grad += param * weight_decay in the kernel
+            # where weight_decay is double. The effective grad is:
+            # float32(float64(grad) + float64(param) * float64(wd))
+            # Replicate without intermediate float32 truncation.
+            wd = float(regularization._coeff)  # Python float (float64)
+            return (grad.cast('float64') + param.cast('float64') * wd).cast(
+                'float32'
+            )
+        return super()._create_regularization_of_grad(
+            param, grad, regularization
+        )
+
     def _add_moments_pows(self, p):
         acc_dtype = p.dtype
         if self._is_dtype_fp16_or_bf16(acc_dtype):

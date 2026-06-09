@@ -119,7 +119,7 @@ void AddmmKernel(const Context& dev_ctx,
     return;
   }
 
-  using MPType = typename MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   if constexpr (std::is_same_v<MPType, float>) {
     float t_alpha = alpha;
     float t_beta = beta;
