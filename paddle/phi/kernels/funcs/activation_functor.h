@@ -4608,23 +4608,23 @@ struct CudaRsqrtFunctor<ComplexType<T>>
   }
 };
 
-template <typename T>
+template <typename T, bool Compatible = false>
 struct CudaRsqrtGradFunctor : public BaseActivationFunctor<T> {
   using MT = typename MPTypeTrait<T>::Type;
   MT minus_one_half = static_cast<MT>(-0.5f);
-  bool compatible = false;
 
   // dx = -0.5 * dout * out^3
   __device__ __forceinline__ T operator()(const T arg_dout,
                                           const T arg_out) const {
-    if (compatible) {
+    if constexpr (Compatible) {
       T t1 = static_cast<T>(-0.5f) * arg_dout;
       T cube = arg_out * arg_out * arg_out;
       return t1 * cube;
+    } else {
+      MT dout = static_cast<MT>(arg_dout);
+      MT out = static_cast<MT>(arg_out);
+      return static_cast<T>(minus_one_half * dout * (out * out * out));
     }
-    MT dout = static_cast<MT>(arg_dout);
-    MT out = static_cast<MT>(arg_out);
-    return static_cast<T>(minus_one_half * dout * (out * out * out));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {

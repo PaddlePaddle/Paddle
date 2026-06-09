@@ -264,10 +264,15 @@ void RsqrtGradKernel(const Context& dev_ctx,
                      const DenseTensor& out,
                      const DenseTensor& dout,
                      DenseTensor* dx) {
-  funcs::CudaRsqrtGradFunctor<T> functor;
-  functor.compatible = FLAGS_use_accuracy_compatible_kernel;
-  ActivationGradGPUImpl<T, Context, funcs::CudaRsqrtGradFunctor<T>>(
-      dev_ctx, nullptr, &out, &dout, dx, functor);
+  if (FLAGS_use_accuracy_compatible_kernel) {
+    funcs::CudaRsqrtGradFunctor<T, true> functor;
+    ActivationGradGPUImpl<T, Context, funcs::CudaRsqrtGradFunctor<T, true>>(
+        dev_ctx, nullptr, &out, &dout, dx, functor);
+  } else {
+    funcs::CudaRsqrtGradFunctor<T, false> functor;
+    ActivationGradGPUImpl<T, Context, funcs::CudaRsqrtGradFunctor<T, false>>(
+        dev_ctx, nullptr, &out, &dout, dx, functor);
+  }
 }
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu6, CudaRelu6GradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Softsign, CudaSoftsignGradFunctor);
