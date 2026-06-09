@@ -618,6 +618,12 @@ PADDLE_API void MatmulInferMeta(const MetaTensor& x,
                                 MetaTensor* out,
                                 MetaConfig config = MetaConfig());
 
+PADDLE_API void MmOutDtypeInferMeta(const MetaTensor& x,
+                                    const MetaTensor& y,
+                                    DataType out_dtype,
+                                    MetaTensor* out,
+                                    MetaConfig config = MetaConfig());
+
 PADDLE_API void MatmulWithFlattenInferMeta(const MetaTensor& x,
                                            const MetaTensor& y,
                                            int x_num_col_dims,
