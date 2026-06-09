@@ -7648,9 +7648,15 @@ def put_along_axis(
                     "`indices` and `values` must have the same number of dimensions!"
                 )
             for i in range(len(arr.shape)):
+                indices_shape_i = indices.shape[i]
+                values_shape_i = values.shape[i]
+                arr_shape_i = arr.shape[i]
+                # Skip check for dynamic shapes (negative values in static graph)
+                if indices_shape_i < 0 or values_shape_i < 0 or arr_shape_i < 0:
+                    continue
                 if (
-                    i != axis and arr.shape[i] < indices.shape[i]
-                ) or indices.shape[i] > values.shape[i]:
+                    i != axis and arr_shape_i < indices_shape_i
+                ) or indices_shape_i > values_shape_i:
                     raise RuntimeError(
                         f"Size does not match at dimension {i} expected index {indices.shape} to be smaller than self {arr.shape} apart from dimension {axis} and to be smaller size than values {values.shape}"
                     )
