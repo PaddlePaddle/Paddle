@@ -123,6 +123,7 @@ function filter_coverage_diff_if_available() {
     local diff_file="$2"
     local tmp_file="$3"
 
+    # Temporary smoke-test marker for CI-only coverage changes.
     if [ ! -f "${info_file}" ]; then
         echo "Skip coverage diff filtering because ${info_file} was not generated."
         : > "${info_file}"
