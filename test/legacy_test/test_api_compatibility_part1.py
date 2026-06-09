@@ -2396,5 +2396,35 @@ class TestSetRngStateAPI(unittest.TestCase):
         paddle.set_rng_state(new_state=states)
 
 
+# Test SGD API compatibility
+class TestSGDAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.params = [
+            paddle.to_tensor(
+                np.random.randn(3, 4).astype('float32'), stop_gradient=False
+            )
+        ]
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        # 1. positional arguments
+        sgd1 = paddle.optim.SGD(self.params, 0.01, 0, 0, 1e-4)
+        # 2. keyword arguments
+        sgd2 = paddle.optim.SGD(
+            params=self.params, lr=0.01, momentum=0.9, weight_decay=1e-4
+        )
+        # 3. Mixed arguments
+        sgd3 = paddle.optim.SGD(
+            self.params, 0.01, momentum=0.9, weight_decay=1e-4
+        )
+        # Verify all optimizers created successfully
+        self.assertIsNotNone(sgd1)
+        self.assertIsNotNone(sgd2)
+        self.assertIsNotNone(sgd3)
+
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
     unittest.main()
