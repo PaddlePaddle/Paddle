@@ -840,7 +840,10 @@ def add_(
     return _C_ops.add_(x, scaled_y)
 
 
-def logaddexp(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+@param_two_alias(["x", "input"], ["y", "other"])
+def logaddexp(
+    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     """
     Elementwise LogAddExp Operator.
     Add of exponentiations of the inputs
@@ -877,8 +880,13 @@ def logaddexp(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
     Args:
         x (Tensor): Tensor of any dimensions. Its dtype should be int32, int64, bfloat16, float16, float32, float64.
+            Alias: ``input``.
         y (Tensor): Tensor of any dimensions. Its dtype should be int32, int64, bfloat16, float16, float32, float64.
+            Alias: ``other``.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Keyword Args:
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         N-D Tensor. A location into which the result is stored. It's dimension equals with x.
@@ -900,7 +908,12 @@ def logaddexp(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     _maximum = paddle.maximum(x, y)
     if _maximum.dtype == paddle.int32 or _maximum.dtype == paddle.int64:
         _maximum = _maximum.astype(log_1p.dtype)
-    return log_1p + _maximum
+    result = log_1p + _maximum
+
+    if out is not None:
+        paddle.assign(result, out)
+        return out
+    return result
 
 
 @param_two_alias(["x", "input"], ["y", "other"])
@@ -1293,10 +1306,6 @@ def remainder(
         return _elementwise_op(LayerHelper('elementwise_mod', **locals()))
 
 
-mod = remainder
-floor_mod = remainder
-
-
 @param_two_alias(["x", "input"], ["y", "other"])
 def mul(
     x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
@@ -1517,22 +1526,29 @@ def reduce_as(x: Tensor, target: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+@param_one_alias(["x", "input"])
 def nan_to_num(
     x: Tensor,
     nan: float = 0.0,
     posinf: float | None = None,
     neginf: float | None = None,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Replaces NaN, positive infinity, and negative infinity values in input tensor.
 
     Args:
         x (Tensor): An N-D Tensor, the data type is float32, float64.
+            Alias: ``input``.
         nan (float, optional): the value to replace NaNs with. Default is 0.
-        posinf (float|None, optional): if a Number, the value to replace positive infinity values with. If None, positive infinity values are replaced with the greatest finite value representable by input’s dtype. Default is None.
-        neginf (float|None, optional): if a Number, the value to replace negative infinity values with. If None, negative infinity values are replaced with the lowest finite value representable by input’s dtype. Default is None.
+        posinf (float|None, optional): if a Number, the value to replace positive infinity values with. If None, positive infinity values are replaced with the greatest finite value representable by input's dtype. Default is None.
+        neginf (float|None, optional): if a Number, the value to replace negative infinity values with. If None, negative infinity values are replaced with the lowest finite value representable by input's dtype. Default is None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor: Results of nan_to_num operation input Tensor ``x``.
@@ -1576,7 +1592,7 @@ def nan_to_num(
     # incorrectly, so we have to explicitly construct tensors here
     posinf_value = paddle.full_like(x, float("+inf"))
     neginf_value = paddle.full_like(x, float("-inf"))
-    nan = paddle.full_like(x, nan)
+    nan_tensor = paddle.full_like(x, nan)
     assert x.dtype in [
         paddle.float32,
         paddle.float64,
@@ -1591,16 +1607,24 @@ def nan_to_num(
         posinf = (
             np.finfo(np.float32).max if is_float32 else np.finfo(np.float64).max
         )
-    posinf = paddle.full_like(x, posinf)
+    posinf_tensor = paddle.full_like(x, posinf)
     if neginf is None:
         neginf = (
             np.finfo(np.float32).min if is_float32 else np.finfo(np.float64).min
         )
-    neginf = paddle.full_like(x, neginf)
-    x = paddle.where(paddle.isnan(x), nan, x)
-    x = paddle.where(paddle.equal(x, posinf_value), posinf, x)
-    x = paddle.where(paddle.equal(x, neginf_value), neginf, x)
-    return x
+    neginf_tensor = paddle.full_like(x, neginf)
+    result = paddle.where(paddle.isnan(x), nan_tensor, x)
+    result = paddle.where(
+        paddle.equal(result, posinf_value), posinf_tensor, result
+    )
+    result = paddle.where(
+        paddle.equal(result, neginf_value), neginf_tensor, result
+    )
+
+    if out is not None:
+        paddle.assign(result, out)
+        return out
+    return result
 
 
 @inplace_apis_in_dygraph_only
@@ -1763,17 +1787,22 @@ def nansum(
     return sum(tmp_tensor, axis, dtype, keepdim, name, out=out)
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def nanmean(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
     keepdim: bool = False,
     name: str | None = None,
+    *,
+    dtype: DTypeLike | None = None,
+    out: Tensor | None = None,
 ) -> Tensor:
     r"""
     Compute the arithmetic mean along the specified axis, ignoring NaNs.
 
     Args:
         x (Tensor): The input Tensor with data type uint16, float16, float32, float64.
+            Alias: ``input``.
         axis (int|list|tuple, optional):The axis along which to perform nanmean
             calculations. ``axis`` should be int, list(int) or tuple(int). If
             ``axis`` is a list/tuple of dimension(s), nanmean is calculated along
@@ -1782,6 +1811,7 @@ def nanmean(
             ``axis`` or element(s) of ``axis`` is less than 0, it works the
             same way as :math:`axis + D` . If ``axis`` is None, nanmean is
             calculated over all elements of ``x``. Default is None.
+            Alias: ``dim``.
         keepdim (bool, optional): Whether to reserve the reduced dimension(s)
             in the output Tensor. If ``keepdim`` is True, the dimensions of
             the output Tensor is the same as ``x`` except in the reduced
@@ -1789,6 +1819,10 @@ def nanmean(
             the output Tensor is squeezed in ``axis`` . Default is False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
+        dtype (str|paddle.dtype|np.dtype|None, optional): The desired data type of the output tensor. Default: None.
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor, results of arithmetic mean along ``axis`` of ``x``, with the same data
@@ -1853,10 +1887,18 @@ def nanmean(
         check_type(axis, 'axis/dim', (int, list, tuple), 'nanmean')
 
     cnt = paddle.sum(~paddle.isnan(x), axis=axis, keepdim=keepdim)
-    return paddle.divide(
-        paddle.nansum(x, axis=axis, keepdim=keepdim, name=name),
-        cnt.astype(x.dtype),
+    nansum_result = paddle.nansum(
+        x, axis=axis, keepdim=keepdim, dtype=dtype, name=name
     )
+    result = paddle.divide(
+        nansum_result,
+        cnt.astype(nansum_result.dtype),
+    )
+
+    if out is not None:
+        paddle.assign(result, out)
+        return out
+    return result
 
 
 @param_two_alias(["x", "input"], ["axis", "dim"])
@@ -2062,13 +2104,18 @@ def add_n(inputs: Tensor | Sequence[Tensor], name: str | None = None) -> Tensor:
         return out
 
 
-def trunc(input: Tensor, name: str | None = None) -> Tensor:
+def trunc(
+    input: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     '''
     This API is used to returns a new tensor with the truncated integer values of input.
 
     Args:
         input (Tensor): The input tensor, it's data type should be int32, int64, float32, float64.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
+        out (Tensor|None, optional): Output tensor. If specified, the result will be written to this tensor. Default: None.
 
     Returns:
         Tensor: The output Tensor of trunc.
@@ -2086,7 +2133,7 @@ def trunc(input: Tensor, name: str | None = None) -> Tensor:
              [-0., -2.]])
     '''
     if in_dynamic_or_pir_mode():
-        return _C_ops.trunc(input)
+        return _C_ops.trunc(input, out=out)
     else:
         inputs = {"X": input}
         attrs = {}
@@ -2242,6 +2289,175 @@ def mm(
             outputs={'Out': out},
         )
         return out
+
+
+def addmv(
+    input: Tensor,
+    mat: Tensor,
+    vec: Tensor,
+    beta: float = 1,
+    alpha: float = 1,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
+    """
+    Performs a matrix-vector product of the matrix `mat` and the vector `vec`,
+    and adds it to the input tensor.
+
+    The formula is: out = beta * input + alpha * (mat @ vec)
+
+    Args:
+        input (Tensor): The input tensor to be added.
+        mat (Tensor): The matrix to be multiplied.
+        vec (Tensor): The vector to be multiplied.
+        beta (float, optional): Multiplier for input. Default: 1.
+        alpha (float, optional): Multiplier for mat @ vec. Default: 1.
+        name (str|None, optional): Name for the operation. Default: None.
+
+    Keyword Args:
+        out (Tensor|None, optional): Output tensor. Default: None.
+
+    Returns:
+        Tensor: The result tensor.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> input = paddle.randn([3])
+            >>> mat = paddle.randn([3, 4])
+            >>> vec = paddle.randn([4])
+            >>> out = paddle.addmv(input, mat, vec)
+    """
+    result = addmm(
+        input.unsqueeze(-1), mat, vec.unsqueeze(-1), beta, alpha
+    ).squeeze(-1)
+    if out is not None:
+        paddle.assign(result, out)
+        return out
+    return result
+
+
+@inplace_apis_in_dygraph_only
+def addmv_(
+    input: Tensor,
+    mat: Tensor,
+    vec: Tensor,
+    beta: float = 1,
+    alpha: float = 1,
+    name: str | None = None,
+) -> Tensor:
+    """
+    Inplace version of ``addmv`` API.
+    """
+    addmm_(input.unsqueeze(-1), mat, vec.unsqueeze(-1), beta=beta, alpha=alpha)
+    return input
+
+
+def addr(
+    input: Tensor,
+    vec1: Tensor,
+    vec2: Tensor,
+    beta: float = 1,
+    alpha: float = 1,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
+    """
+    Performs the outer-product of vectors `vec1` and `vec2` and adds it to the input matrix.
+
+    The formula is: out = beta * input + alpha * (vec1 outer vec2)
+
+    Args:
+        input (Tensor): The input tensor to be added.
+        vec1 (Tensor): The first vector.
+        vec2 (Tensor): The second vector.
+        beta (float, optional): Multiplier for input. Default: 1.
+        alpha (float, optional): Multiplier for outer product. Default: 1.
+        name (str|None, optional): Name for the operation. Default: None.
+
+    Keyword Args:
+        out (Tensor|None, optional): Output tensor. Default: None.
+
+    Returns:
+        Tensor: The result tensor.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> input = paddle.randn([3, 4])
+            >>> vec1 = paddle.randn([3])
+            >>> vec2 = paddle.randn([4])
+            >>> out = paddle.addr(input, vec1, vec2)
+    """
+    result = addmm(input, vec1.unsqueeze(-1), vec2.unsqueeze(0), beta, alpha)
+    if out is not None:
+        paddle.assign(result, out)
+        return out
+    return result
+
+
+@inplace_apis_in_dygraph_only
+def addr_(
+    input: Tensor,
+    vec1: Tensor,
+    vec2: Tensor,
+    beta: float = 1,
+    alpha: float = 1,
+    name: str | None = None,
+) -> Tensor:
+    """
+    Inplace version of ``addr`` API.
+    """
+    addmm_(input, vec1.unsqueeze(-1), vec2.unsqueeze(0), beta=beta, alpha=alpha)
+    return input
+
+
+def histc(
+    input: Tensor,
+    bins: int = 100,
+    min: float = 0.0,
+    max: float = 0.0,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
+    """
+    Computes the histogram of a tensor.
+
+    The elements are sorted into equal width bins between min and max.
+    If min and max are both zero, the minimum and maximum values of the data are used.
+
+    Args:
+        input (Tensor): The input tensor.
+        bins (int, optional): Number of histogram bins. Default: 100.
+        min (float, optional): Lower end of the range (inclusive). Default: 0.0.
+        max (float, optional): Upper end of the range (inclusive). Default: 0.0.
+        name (str|None, optional): Name for the operation. Default: None.
+
+    Keyword Args:
+        out (Tensor|None, optional): Output tensor. Default: None.
+
+    Returns:
+        Tensor: The histogram tensor with dtype float32.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> x = paddle.randn([100])
+            >>> hist = paddle.histc(x, bins=10, min=-5, max=5)
+    """
+    from paddle.tensor.linalg import histogram as _histogram
+
+    result = _histogram(input, bins=bins, min=min, max=max).astype('float32')
+    if out is not None:
+        paddle.assign(result, out)
+        return out
+    return result
 
 
 @param_two_alias(["x", "input"], ["y", "other"])
@@ -5319,7 +5535,10 @@ def frac_(x: Tensor, name: str | None = None) -> Tensor:
         return _C_ops.subtract_(x, y)
 
 
-def sgn(x: Tensor, name: str | None = None) -> Tensor:
+@param_one_alias(["x", "input"])
+def sgn(
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     """
     For complex tensor, this API returns a new tensor whose elements have the same angles as the corresponding
     elements of input and absolute values of one.
@@ -5328,7 +5547,11 @@ def sgn(x: Tensor, name: str | None = None) -> Tensor:
 
     Args:
         x (Tensor): The input tensor, which data type should be float16, float32, float64, complex64, complex128.
+            Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor: A sign Tensor for real input, or normalized Tensor for complex input, shape and data type are same as input.
@@ -5374,12 +5597,17 @@ def sgn(x: Tensor, name: str | None = None) -> Tensor:
         output = expand_x / x_abs
         zeros = paddle.zeros_like(output)
         output = paddle.where(paddle.isnan(output), zeros, output)
-
-        return paddle.as_complex(output)
+        result = paddle.as_complex(output)
     else:
-        return paddle.sign(x)
+        result = paddle.sign(x)
+
+    if out is not None:
+        paddle.assign(result, out)
+        return out
+    return result
 
 
+@param_one_alias(["x", "input"])
 def take(
     x: Tensor,
     index: Tensor,
@@ -5393,6 +5621,7 @@ def take(
 
     Args:
         x (Tensor): An N-D Tensor, its data type should be int32, int64, float32, float64.
+            Alias: ``input``.
         index (Tensor): An N-D Tensor, its data type should be int32, int64.
         mode (str, optional): Specifies how out-of-bounds index will behave. the candidates are ``'raise'``, ``'wrap'`` and ``'clip'``.
 
@@ -5808,6 +6037,7 @@ def cumulative_trapezoid(
     return ret
 
 
+@param_one_alias(["n", "N"])
 def vander(
     x: Tensor,
     n: int | None = None,
@@ -5826,6 +6056,7 @@ def vander(
     Args:
         x (Tensor): The input tensor, it must be 1-D Tensor, and it's data type should be ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'].
         n (int|None): Number of columns in the output. If n is not specified, a square array is returned (n = len(x)).
+            Alias: ``N``.
         increasing(bool): Order of the powers of the columns. If True, the powers increase from left to right, if False (the default) they are reversed.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
     Returns:
@@ -6406,13 +6637,20 @@ def combinations(
     return paddle.stack(grids, 1)
 
 
-def signbit(x: Tensor, name: str | None = None) -> Tensor:
+@param_one_alias(["x", "input"])
+def signbit(
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     r"""
     Tests if each element of input has its sign bit set or not.
 
     Args:
         x (Tensor): The input Tensor. Must be one of the following types: float16, float32, float64, bfloat16, uint8, int8, int16, int32, int64.
+            Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None).For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         out (Tensor): The output Tensor. The sign bit of the corresponding element of the input tensor, True means negative, False means positive.
@@ -6462,9 +6700,13 @@ def signbit(x: Tensor, name: str | None = None) -> Tensor:
     ones = [1.0] * math.prod(x.shape)
     ones = paddle.to_tensor(ones, x.dtype).reshape(x.shape)
     neg_zero_x = paddle.copysign(ones, x)
-    x = paddle.sign(neg_zero_x)
-    out = paddle.cast(x < 0, dtype='bool')
-    return out
+    x_sign = paddle.sign(neg_zero_x)
+    result = paddle.cast(x_sign < 0, dtype='bool')
+
+    if out is not None:
+        paddle.assign(result, out)
+        return out
+    return result
 
 
 @param_one_alias(["x", "input"])

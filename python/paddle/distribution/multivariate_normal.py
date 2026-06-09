@@ -19,7 +19,8 @@ from typing import TYPE_CHECKING
 
 import paddle
 from paddle.base.data_feeder import convert_dtype
-from paddle.distribution import distribution
+from paddle.distribution import constraint, distribution
+from paddle.framework import in_dynamic_mode
 
 if TYPE_CHECKING:
     from paddle import Tensor
@@ -106,12 +107,22 @@ class MultivariateNormal(distribution.Distribution):
     scale_tril: Tensor | None
     dtype: _DTypeLiteral
 
+    arg_constraints = {
+        "loc": constraint.real_vector,
+        "covariance_matrix": constraint.positive_definite,
+        "precision_matrix": constraint.positive_definite,
+        "scale_tril": constraint.lower_cholesky,
+    }
+    support = constraint.real_vector
+    has_rsample = True
+
     def __init__(
         self,
         loc: float | Tensor,
         covariance_matrix: Tensor | None = None,
         precision_matrix: Tensor | None = None,
         scale_tril: Tensor | None = None,
+        validate_args: bool | None = None,
     ):
         self.dtype = paddle.get_default_dtype()
         if isinstance(loc, (float, int)):
@@ -119,10 +130,7 @@ class MultivariateNormal(distribution.Distribution):
         else:
             self.dtype = convert_dtype(loc.dtype)
         if loc.dim() < 1:
-            loc = loc.reshape((1,))
-        self.covariance_matrix = None
-        self.precision_matrix = None
-        self.scale_tril = None
+            raise ValueError("loc must be at least one-dimensional.")
         if (covariance_matrix is not None) + (scale_tril is not None) + (
             precision_matrix is not None
         ) != 1:
@@ -179,6 +187,13 @@ class MultivariateNormal(distribution.Distribution):
             )
         self.loc = loc.expand([*batch_shape, -1])
         event_shape = self.loc.shape[-1:]
+        super().__init__(batch_shape, event_shape, validate_args=validate_args)
+        if in_dynamic_mode() and self._validate_args_enabled:
+            self._validate_parameters(
+                scale_tril=scale_tril,
+                covariance_matrix=covariance_matrix,
+                precision_matrix=precision_matrix,
+            )
 
         if scale_tril is not None:
             self._unbroadcasted_scale_tril = scale_tril
@@ -191,7 +206,99 @@ class MultivariateNormal(distribution.Distribution):
                 precision_matrix
             )
 
-        super().__init__(batch_shape, event_shape)
+    def _validate_parameters(
+        self,
+        *,
+        scale_tril: Tensor | None = None,
+        covariance_matrix: Tensor | None = None,
+        precision_matrix: Tensor | None = None,
+    ) -> None:
+        if scale_tril is not None:
+            matrix_name = "scale_tril"
+            matrix_value = self.scale_tril
+        elif covariance_matrix is not None:
+            matrix_name = "covariance_matrix"
+            matrix_value = self.covariance_matrix
+        else:
+            matrix_name = "precision_matrix"
+            matrix_value = self.precision_matrix
+
+        for param, value in (
+            ("loc", self.loc),
+            (matrix_name, matrix_value),
+        ):
+            constraint_ = self.arg_constraints[param]
+            valid = constraint_.check(value)
+            if not bool(valid.all()):
+                raise ValueError(
+                    f"Expected parameter {param} "
+                    f"({type(value).__name__} of shape {tuple(value.shape)}) "
+                    f"of distribution {self!r} "
+                    f"to satisfy the constraint {constraint_!r}, "
+                    f"but found invalid values:\n{value}"
+                )
+
+    def expand(self, batch_shape, _instance=None):
+        new = (
+            self.__class__.__new__(self.__class__)
+            if _instance is None
+            else _instance
+        )
+        batch_shape = tuple(batch_shape)
+        loc_shape = batch_shape + self.event_shape
+        cov_shape = batch_shape + self.event_shape + self.event_shape
+        new.loc = self.loc.expand(loc_shape)
+        new._unbroadcasted_scale_tril = self._unbroadcasted_scale_tril
+        if "_covariance_matrix" in self.__dict__:
+            new._covariance_matrix = self.covariance_matrix.expand(cov_shape)
+        if "_scale_tril" in self.__dict__:
+            new._scale_tril = self.scale_tril.expand(cov_shape)
+        if "_precision_matrix" in self.__dict__:
+            new._precision_matrix = self.precision_matrix.expand(cov_shape)
+        super(MultivariateNormal, new).__init__(
+            batch_shape, self.event_shape, validate_args=False
+        )
+        new._validate_args_enabled = self._validate_args_enabled
+        return new
+
+    @property
+    def scale_tril(self) -> Tensor:
+        if "_scale_tril" not in self.__dict__:
+            self._scale_tril = self._unbroadcasted_scale_tril.expand(
+                self._batch_shape + self._event_shape + self._event_shape
+            )
+        return self._scale_tril
+
+    @scale_tril.setter
+    def scale_tril(self, value: Tensor) -> None:
+        self._scale_tril = value
+
+    @property
+    def covariance_matrix(self) -> Tensor:
+        if "_covariance_matrix" not in self.__dict__:
+            new_perm = list(range(len(self._unbroadcasted_scale_tril.shape)))
+            new_perm[-1], new_perm[-2] = new_perm[-2], new_perm[-1]
+            self._covariance_matrix = paddle.matmul(
+                self._unbroadcasted_scale_tril,
+                self._unbroadcasted_scale_tril.transpose(new_perm),
+            ).expand(self._batch_shape + self._event_shape + self._event_shape)
+        return self._covariance_matrix
+
+    @covariance_matrix.setter
+    def covariance_matrix(self, value: Tensor) -> None:
+        self._covariance_matrix = value
+
+    @property
+    def precision_matrix(self) -> Tensor:
+        if "_precision_matrix" not in self.__dict__:
+            self._precision_matrix = paddle.linalg.cholesky_inverse(
+                self._unbroadcasted_scale_tril
+            ).expand(self._batch_shape + self._event_shape + self._event_shape)
+        return self._precision_matrix
+
+    @precision_matrix.setter
+    def precision_matrix(self, value: Tensor) -> None:
+        self._precision_matrix = value
 
     @property
     def mean(self) -> Tensor:
@@ -214,6 +321,14 @@ class MultivariateNormal(distribution.Distribution):
             .sum(-1)
             .expand(self._batch_shape + self._event_shape)
         )
+
+    @property
+    def mode(self) -> Tensor:
+        return self.loc
+
+    @mode.setter
+    def mode(self, value: Tensor) -> None:
+        self.loc = value
 
     def sample(self, shape: Sequence[int] = []) -> Tensor:
         """Generate Multivariate Normal samples of the specified shape. The final shape would be ``sample_shape + batch_shape + event_shape``.
@@ -254,6 +369,8 @@ class MultivariateNormal(distribution.Distribution):
           Tensor: log probability. The data type is the same as `self.loc`.
         """
         value = paddle.cast(value, dtype=self.dtype)
+        if in_dynamic_mode() and self._validate_args_enabled:
+            self._validate_sample(value)
 
         diff = value - self.loc
         M = batch_mahalanobis(self._unbroadcasted_scale_tril, diff)

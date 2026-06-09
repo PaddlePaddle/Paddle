@@ -32,6 +32,92 @@ echo "::endgroup::"
 
 cd ${PADDLE_ROOT}/build
 
+function init_gcov_tool() {
+    local cxx_compiler=""
+    local compiler_version=""
+    local compiler_major=""
+    local gcov_version=""
+    local gcov_major=""
+    local candidate=""
+    local cxx_compiler_for_version=""
+    local gcov_candidates=()
+
+    GCOV_TOOL=""
+
+    if [ -f CMakeCache.txt ]; then
+        cxx_compiler=$(awk -F= '/^CMAKE_CXX_COMPILER:FILEPATH=/ {print $2; exit}' CMakeCache.txt)
+    fi
+
+    if [ -n "${cxx_compiler}" ] && [ -x "${cxx_compiler}" ]; then
+        cxx_compiler_for_version="${cxx_compiler}"
+    elif command -v c++ >/dev/null 2>&1; then
+        cxx_compiler_for_version=$(command -v c++)
+    fi
+
+    if [ -n "${cxx_compiler_for_version}" ]; then
+        compiler_version=$("${cxx_compiler_for_version}" -dumpfullversion -dumpversion 2>/dev/null | head -n 1)
+        compiler_major=${compiler_version%%.*}
+        gcov_candidates+=("gcov-${compiler_version}" "gcov-${compiler_major}")
+    fi
+    gcov_candidates+=(gcov)
+
+    for candidate in "${gcov_candidates[@]}"; do
+        if [ -n "${candidate}" ] && command -v "${candidate}" >/dev/null 2>&1; then
+            GCOV_TOOL=$(command -v "${candidate}")
+            break
+        fi
+    done
+
+    if [ -z "${GCOV_TOOL}" ]; then
+        echo "ERROR: no gcov executable found for coverage collection"
+        exit 101
+    fi
+
+    gcov_version=$("${GCOV_TOOL}" --version 2>/dev/null | head -n 1 | grep -oE '[0-9]+([.][0-9]+)+' | tail -n 1)
+    gcov_major=${gcov_version%%.*}
+
+    echo "CXX compiler for coverage: ${cxx_compiler_for_version:-unknown}"
+    if [ -n "${cxx_compiler}" ] && [ "${cxx_compiler}" != "${cxx_compiler_for_version}" ]; then
+        echo "CMake CXX compiler from cache: ${cxx_compiler}"
+    fi
+    echo "CXX compiler version for coverage: ${compiler_version:-unknown}"
+    echo "GCOV tool for coverage: ${GCOV_TOOL}"
+    "${GCOV_TOOL}" --version
+
+    if [ -n "${compiler_major}" ] && [ -n "${gcov_major}" ] && [ "${compiler_major}" != "${gcov_major}" ]; then
+        echo "ERROR: gcov major version ${gcov_major} does not match CXX compiler major version ${compiler_major}"
+        exit 101
+    fi
+}
+
+function pr_has_cpp_source_changes() {
+    local diff_file="$1"
+
+    awk '
+        index($0, "+++ ") == 1 {
+            path = substr($0, 5)
+            if (path ~ /^paddle\// &&
+                path ~ /\.(c|cc|cpp|cxx|cu)$/ &&
+                path !~ /(^|\/)(test|tests)\// &&
+                path !~ /(^|\/)[^\/]*(test_|_test|unittest)[^\/]*\./) {
+                found = 1
+            }
+        }
+        END { exit(found ? 0 : 1) }
+    ' "${diff_file}"
+}
+
+function ensure_cpp_diff_coverage_data() {
+    local info_file="$1"
+    local diff_file="$2"
+
+    if pr_has_cpp_source_changes "${diff_file}" && ! grep -q '^DA:' "${info_file}" 2>/dev/null; then
+        echo "ERROR: ${info_file} has no C++ line coverage data for compiled C++ source changes"
+        echo "This usually means lcov/gcov failed before producing a valid diff report."
+        exit 101
+    fi
+}
+
 # NOTE: This gcda pre-cleaning step keeps/removes files by mapping PR
 # changed files to "*.gcda" paths. That is not always correct: for header-only
 # changes, or changes whose coverage is recorded in other translation units,
@@ -39,7 +125,8 @@ cd ${PADDLE_ROOT}/build
 # now because removing this step may increase "lcov/gcov --capture -d" cost.
 python ${PADDLE_ROOT}/ci/coverage_gcda_clean.py ${PR_ID} || exit 101
 echo "::group::Run lcov"
-lcov --ignore-errors gcov --capture -d ./ -o coverage.info --rc lcov_branch_coverage=0
+init_gcov_tool
+lcov --gcov-tool "${GCOV_TOOL}" --ignore-errors gcov --capture -d ./ -o coverage.info --rc lcov_branch_coverage=0
 echo "::endgroup::"
 
 mkdir coverage_files
@@ -146,6 +233,8 @@ lcov --extract coverage-full.info \
 python ${PADDLE_ROOT}/ci/coverage_diff.py coverage-diff.info git-diff.out > coverage-diff.tmp
 
 mv -f coverage-diff.tmp coverage-diff.info
+
+ensure_cpp_diff_coverage_data coverage-diff.info git-diff.out
 
 cp coverage-diff.info coverage_files
 

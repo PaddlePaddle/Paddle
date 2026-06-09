@@ -84,7 +84,7 @@ class ParallelEnvArgs:
 
 
 def _options_valid_check(options):
-    # `print_config` keeped as a debug options, not show to users
+    # `print_config` kept as a debug options, not show to users
     supported_options = [
         'start_method',
         'ips',
