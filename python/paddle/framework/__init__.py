@@ -47,7 +47,6 @@ from ..base.framework import (  # noqa: F401
     _set_expected_place,
     _stride_in_no_check_dy2st_diff as _no_check_dy2st_diff,
     convert_np_dtype_to_dtype_,
-    convert_nptype_to_datatype_or_vartype,
     deprecate_stat_dict,
     disable_signal_handler,
     dygraph_not_support,

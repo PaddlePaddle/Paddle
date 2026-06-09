@@ -93,7 +93,6 @@ from ..common_ops_import import Variable
 from ..framework import (
     LayerHelper,
     convert_np_dtype_to_dtype_,
-    convert_nptype_to_datatype_or_vartype,
     core,
     in_dynamic_mode,
     in_dynamic_or_pir_mode,
@@ -2166,7 +2165,7 @@ def mm(
 
     """
     if out_dtype is not None:
-        out_dtype = convert_nptype_to_datatype_or_vartype(out_dtype)
+        out_dtype = convert_np_dtype_to_dtype_(out_dtype)
         float32_dtypes = (core.DataType.FLOAT32, core.VarDesc.VarType.FP32)
         bf16_dtypes = (core.DataType.BFLOAT16, core.VarDesc.VarType.BF16)
         if out_dtype not in float32_dtypes:
