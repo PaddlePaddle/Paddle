@@ -2460,5 +2460,39 @@ class TestAdagradAPI(unittest.TestCase):
         paddle.enable_static()
 
 
+# Test AdamW API compatibility
+class TestAdamWAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.params = [
+            paddle.to_tensor(
+                np.random.randn(3, 4).astype('float32'), stop_gradient=False
+            )
+        ]
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        # 1. positional arguments
+        adamw1 = paddle.optim.AdamW(self.params, 1e-3, (0.9, 0.999), 1e-8, 1e-2)
+        # 2. keyword arguments
+        adamw2 = paddle.optim.AdamW(
+            params=self.params,
+            lr=1e-3,
+            betas=(0.9, 0.999),
+            eps=1e-8,
+            weight_decay=1e-2,
+        )
+        # 3. Mixed arguments
+        adamw3 = paddle.optim.AdamW(
+            self.params, 1e-3, betas=(0.9, 0.999), weight_decay=1e-2
+        )
+        # Verify all optimizers created successfully
+        self.assertIsNotNone(adamw1)
+        self.assertIsNotNone(adamw2)
+        self.assertIsNotNone(adamw3)
+
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
     unittest.main()

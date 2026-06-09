@@ -12,4 +12,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.optimizer.adamw import AdamW  # noqa: F401
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from paddle.optimizer.adamw import AdamW as PaddleAdamW
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from paddle import Tensor
+    from paddle.optimizer.adam import _AdamParameterConfig
+
+
+class AdamW(PaddleAdamW):
+    def __init__(
+        self,
+        params: Sequence[Tensor] | Sequence[_AdamParameterConfig] | None,
+        lr: float | Tensor = 1e-3,
+        betas: tuple[float | Tensor, float | Tensor] = (0.9, 0.999),
+        eps: float = 1e-8,
+        weight_decay: float = 1e-2,
+        amsgrad: bool = False,
+    ) -> None:
+        super().__init__(
+            learning_rate=lr,
+            beta1=betas[0],
+            beta2=betas[1],
+            epsilon=eps,
+            parameters=params,
+            weight_decay=weight_decay,
+            amsgrad=amsgrad,
+        )
