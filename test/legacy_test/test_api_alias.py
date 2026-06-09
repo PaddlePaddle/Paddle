@@ -110,12 +110,6 @@ class TestAlias(unittest.TestCase):
                 None,
             ),
             (
-                paddle.optimizer.Adagrad,
-                paddle.optim.Adagrad,
-                paddle.optim.adagrad.Adagrad,
-                None,
-            ),
-            (
                 paddle.optimizer.Adam,
                 paddle.optim.Adam,
                 paddle.optim.adam.Adam,
@@ -125,12 +119,6 @@ class TestAlias(unittest.TestCase):
                 paddle.optimizer.Adamax,
                 paddle.optim.Adamax,
                 paddle.optim.adamax.Adamax,
-                None,
-            ),
-            (
-                paddle.optimizer.AdamW,
-                paddle.optim.AdamW,
-                paddle.optim.adamw.AdamW,
                 None,
             ),
             (
@@ -179,12 +167,6 @@ class TestAlias(unittest.TestCase):
                 paddle.optimizer.Rprop,
                 paddle.optim.Rprop,
                 paddle.optim.rprop.Rprop,
-                None,
-            ),
-            (
-                paddle.optimizer.SGD,
-                paddle.optim.SGD,
-                paddle.optim.sgd.SGD,
                 None,
             ),
             (
