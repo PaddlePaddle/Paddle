@@ -2426,5 +2426,39 @@ class TestSGDAPI(unittest.TestCase):
         paddle.enable_static()
 
 
+# Test Adagrad API compatibility
+class TestAdagradAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.params = [
+            paddle.to_tensor(
+                np.random.randn(3, 4).astype('float32'), stop_gradient=False
+            )
+        ]
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        # 1. positional arguments
+        adagrad1 = paddle.optim.Adagrad(self.params, 1e-2, 0, 0, 0)
+        # 2. keyword arguments
+        adagrad2 = paddle.optim.Adagrad(
+            params=self.params,
+            lr=1e-2,
+            lr_decay=0,
+            weight_decay=0,
+            initial_accumulator_value=0,
+        )
+        # 3. Mixed arguments
+        adagrad3 = paddle.optim.Adagrad(
+            self.params, 1e-2, lr_decay=0, weight_decay=0
+        )
+        # Verify all optimizers created successfully
+        self.assertIsNotNone(adagrad1)
+        self.assertIsNotNone(adagrad2)
+        self.assertIsNotNone(adagrad3)
+
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
     unittest.main()

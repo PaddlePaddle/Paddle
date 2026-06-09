@@ -12,4 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.optimizer.adagrad import Adagrad  # noqa: F401
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from paddle.optimizer.adagrad import Adagrad as PaddleAdagrad
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from paddle import Tensor
+    from paddle.optimizer.adagrad import _AdagradParameterConfig
+
+
+class Adagrad(PaddleAdagrad):
+    def __init__(
+        self,
+        params: Sequence[Tensor] | Sequence[_AdagradParameterConfig] | None,
+        lr: float | Tensor = 1e-2,
+        lr_decay: float = 0,
+        weight_decay: float = 0,
+        initial_accumulator_value: float = 0,
+        eps: float = 1e-10,
+        foreach: bool | None = None,
+    ) -> None:
+        super().__init__(
+            learning_rate=lr,
+            epsilon=eps,
+            parameters=params,
+            weight_decay=weight_decay,
+            initial_accumulator_value=initial_accumulator_value,
+        )
