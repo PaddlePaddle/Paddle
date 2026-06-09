@@ -87,17 +87,13 @@ struct ForRange<GPUContext> {
 #else
     constexpr int num_threads = 1024;
 #endif
-    size_t block_size_64 = limit_ <= num_threads ? limit_ : num_threads;
-    size_t grid_size_64 = (limit_ + num_threads - 1) / num_threads;
-
-    PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_64, "grid_size");
-    const uint32_t grid_size = static_cast<uint32_t>(grid_size_64);
-    const uint32_t block_size = static_cast<uint32_t>(block_size_64);
+    size_t block_size = limit_ <= num_threads ? limit_ : num_threads;
+    size_t grid_size = (limit_ + num_threads - 1) / num_threads;
 
     if (grid_size == 1) {
       ForRangeElemwiseOpGridIsOne<<<1, block_size, 0, dev_ctx_.stream()>>>(
           func);
-    } else if (block_size_64 * grid_size_64 >
+    } else if (block_size * grid_size >
                std::numeric_limits<unsigned int>::max()) {
       ForRangeElemwiseOpLargeSize<<<grid_size,
                                     block_size,
