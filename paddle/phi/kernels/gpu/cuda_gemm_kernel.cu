@@ -60,10 +60,10 @@ __global__ void int8_gemm(int8_t const* act,
       for (int j = 0; j < CtaN; ++j) {
 #pragma unroll
         for (int l = 0; l < kStepK; l += 4) {
-          // acc[i * CtaN + j] +=
-              // __dp4a(reinterpret_cast<int*>(tile_a + l)[0],
-              //        reinterpret_cast<int*>(tile_w + j * kStepK + l)[0],
-              //        acc[i * CtaN + j]);
+          acc[i * CtaN + j] =
+              __dp4a(reinterpret_cast<int*>(tile_a + l)[0],
+                     reinterpret_cast<int*>(tile_w + j * kStepK + l)[0],
+                     acc[i * CtaN + j]);
         }
       }
     }
