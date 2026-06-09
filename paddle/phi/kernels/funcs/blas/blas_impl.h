@@ -1592,7 +1592,15 @@ void Blas<CPUContext>::GEMM(CBLAS_TRANSPOSE transA,
       N > std::numeric_limits<int>::max() ||
       K > std::numeric_limits<int>::max()) {
     PADDLE_THROW(common::errors::Unimplemented(
-        "CPU GEMM does not support M, N or K larger than INT_MAX."));
+        "CPU GEMM only supports M, N and K not larger than INT_MAX. "
+        "Expected M <= %d, N <= %d and K <= %d, but received M = %ld, "
+        "N = %ld, K = %ld.",
+        std::numeric_limits<int>::max(),
+        std::numeric_limits<int>::max(),
+        std::numeric_limits<int>::max(),
+        M,
+        N,
+        K));
   }
   int lda = static_cast<int>((transA == CblasNoTrans) ? K : M);
   int ldb = static_cast<int>((transB == CblasNoTrans) ? N : K);
@@ -1629,7 +1637,15 @@ void Blas<CPUContext>::GEMM(CBLAS_TRANSPOSE transA,
       N > std::numeric_limits<int>::max() ||
       K > std::numeric_limits<int>::max()) {
     PADDLE_THROW(common::errors::Unimplemented(
-        "CPU GEMM does not support M, N or K larger than INT_MAX."));
+        "CPU GEMM only supports M, N and K not larger than INT_MAX. "
+        "Expected M <= %d, N <= %d and K <= %d, but received M = %ld, "
+        "N = %ld, K = %ld.",
+        std::numeric_limits<int>::max(),
+        std::numeric_limits<int>::max(),
+        std::numeric_limits<int>::max(),
+        M,
+        N,
+        K));
   }
   int lda = static_cast<int>((transA == CblasNoTrans) ? K : M);
   int ldb = static_cast<int>((transB == CblasNoTrans) ? N : K);
@@ -1951,8 +1967,18 @@ void Blas<CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
       K > std::numeric_limits<int>::max() ||
       batchCount > std::numeric_limits<int>::max()) {
     PADDLE_THROW(common::errors::Unimplemented(
-        "CPU BatchedGEMM does not support M, N, K or batchCount larger than "
-        "INT_MAX."));
+        "CPU BatchedGEMM only supports M, N, K and batchCount not larger "
+        "than INT_MAX. Expected M <= %d, N <= %d, K <= %d and "
+        "batchCount <= %d, but received M = %ld, N = %ld, K = %ld, "
+        "batchCount = %ld.",
+        std::numeric_limits<int>::max(),
+        std::numeric_limits<int>::max(),
+        std::numeric_limits<int>::max(),
+        std::numeric_limits<int>::max(),
+        M,
+        N,
+        K,
+        batchCount));
   }
 
 #if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)

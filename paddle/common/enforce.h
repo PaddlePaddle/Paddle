@@ -351,10 +351,12 @@ template <typename T,
           typename std::enable_if<std::is_signed<T>::value, int>::type = 0>
 inline void EnforceNonNegativeForUInt32Max(T var, const char* var_name) {
   if (var < 0) {
-    PADDLE_THROW(common::errors::InvalidArgument("Value %s=%" PRId64
-                                                 " should be non-negative.",
-                                                 var_name,
-                                                 static_cast<int64_t>(var)));
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "The value must be non-negative. Expected %s >= 0, but received %s = "
+        "%" PRId64 ".",
+        var_name,
+        var_name,
+        static_cast<int64_t>(var)));
   }
 }
 
@@ -373,11 +375,12 @@ inline void EnforceNonNegativeForUInt32Max(T var UNUSED,
         static_cast<uint64_t>(__var),                                     \
         static_cast<uint64_t>(std::numeric_limits<uint32_t>::max()),      \
         common::errors::InvalidArgument(                                  \
-            "Value %s=%" PRIu64 " exceeds the maximum value that "        \
-            "uint32_t can represent (%u).",                               \
+            "The value must fit in uint32_t. Expected %s <= %u, but "     \
+            "received %s = %" PRIu64 ".",                                 \
             var_name,                                                     \
-            static_cast<uint64_t>(__var),                                 \
-            std::numeric_limits<uint32_t>::max()));                       \
+            std::numeric_limits<uint32_t>::max(),                         \
+            var_name,                                                     \
+            static_cast<uint64_t>(__var)));                               \
   } while (0)
 
 TEST_API bool RegisterLogSimplyStr(const std::string& type,

@@ -164,8 +164,10 @@ static T&& FillValue(T&& allocation) {
         PADDLE_ENFORCE_LE(FLAGS_alloc_fill_value,
                           255,
                           common::errors::InvalidArgument(
-                              "FLAGS_alloc_fill_value should be in range "
-                              "[0, 255], but received %ld.",
+                              "The value of FLAGS_alloc_fill_value must be in "
+                              "range [0, 255]. Expected 0 <= "
+                              "FLAGS_alloc_fill_value <= 255, but received "
+                              "FLAGS_alloc_fill_value = %ld.",
                               FLAGS_alloc_fill_value));
         const int fill_value = static_cast<int>(FLAGS_alloc_fill_value);
         if (phi::is_gpu_place(allocation->place())) {

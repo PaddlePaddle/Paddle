@@ -91,11 +91,12 @@ inline int FindNumBlocks(char axis, int64_t nblocks, int max_num_blocks = -1) {
   if (max_num_blocks == -1) {
     max_num_blocks = default_max_num_blocks;
   }
-  PADDLE_ENFORCE_GE(
-      nblocks,
-      0,
-      common::errors::InvalidArgument(
-          "nblocks should be non-negative, but received %d", nblocks));
+  PADDLE_ENFORCE_GE(nblocks,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The number of CUDA blocks must be non-negative. "
+                        "Expected nblocks >= 0, but received nblocks = %ld.",
+                        nblocks));
   PADDLE_ENFORCE_GT(
       max_num_blocks,
       0,

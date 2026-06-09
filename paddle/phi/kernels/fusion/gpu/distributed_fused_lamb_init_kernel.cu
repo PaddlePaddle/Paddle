@@ -484,8 +484,9 @@ void DistributedFusedLambInitOpKernel(
       param_num,
       static_cast<size_t>(std::numeric_limits<int16_t>::max()),
       common::errors::InvalidArgument(
-          "The parameter count of distributed_fused_lamb should be <= "
-          "INT16_MAX, but got %zu.",
+          "The parameter count of distributed_fused_lamb must fit in int16_t. "
+          "Expected param_num <= %d, but received param_num = %zu.",
+          std::numeric_limits<int16_t>::max(),
           param_num));
   param_order->Resize({static_cast<int16_t>(param_num)});
   auto *param_order_t = dev_ctx.template HostAlloc<int>(param_order);

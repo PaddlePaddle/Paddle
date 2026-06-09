@@ -1033,6 +1033,8 @@ void gpu_scatter_mul_min_max_input_grad_kernel(DenseTensor self,
   } else if (reduce == "amin" || reduce == "amax") {
     funcs::set_constant(dev_ctx, &aux_tensor, 1);
     shared_mem_bytes *= 3;  // two strides, 1 shape
+    PADDLE_ENFORCE_LE_INT_MAX(index.numel(),
+                              "gather_scatter min_max input grad tid");
     ScatterGradPrePassKernel<tensor_t, index_t, MinMaxInputGrad>
         <<<grid, block, shared_mem_bytes, stream>>>(grad_data,
                                                     index_data,
@@ -1365,6 +1367,8 @@ void gpu_scatter_add_mean_value_grad_kernel(DenseTensor self,
     dev_ctx.Alloc<int>(&aux_tensor);
     funcs::set_constant(dev_ctx, &aux_tensor, include_self ? 1 : 0);
     int* aux_buffer = aux_tensor.data<int>();
+    PADDLE_ENFORCE_LE_INT_MAX(index.numel(),
+                              "gather_scatter mean value grad tid");
     ScatterGradPrePassKernel<tensor_t, index_t, MeanValueGrad>
         <<<grid, block, shared_mem_bytes, stream>>>(grad_data,
                                                     index_data,
@@ -1521,6 +1525,8 @@ void gpu_scatter_mul_min_max_value_grad_kernel(DenseTensor self,
     funcs::set_constant(dev_ctx, &aux_tensor, 0);
 
     int* aux_buffer = aux_tensor.data<int>();
+    PADDLE_ENFORCE_LE_INT_MAX(index.numel(),
+                              "gather_scatter min_max value grad tid");
     ScatterGradPrePassKernel<tensor_t, index_t, MinMaxValueGrad>
         <<<grid, block, shared_mem_bytes, stream>>>(grad_data,
                                                     index_data,

@@ -124,9 +124,9 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
       axis_dim,
       class_num,
       common::errors::InvalidArgument(
-          "The axis dimension should be equal to prob's class dimension in "
-          "GPU CrossEntropyFunctor. But received axis dimension is %ld, "
-          "prob's class dimension is %ld.",
+          "The axis dimension must be equal to prob's class dimension in "
+          "GPU CrossEntropyFunctor. Expected axis_dim == class_num, but "
+          "received axis_dim = %ld and class_num = %ld.",
           axis_dim,
           class_num));
 

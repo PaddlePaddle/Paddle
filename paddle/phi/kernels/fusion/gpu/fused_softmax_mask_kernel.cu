@@ -571,7 +571,8 @@ void FusedSoftmaxMaskKernel(const Context& dev_ctx,
                       dev_ctx.GetCUDAMaxGridDimSize()[0],
                       common::errors::InvalidArgument(
                           "The grid.x of fused_softmax_mask CUDA kernel must "
-                          "be less than or equal to %d, but received %ld.",
+                          "not exceed the device limit. Expected total_blocks "
+                          "<= %d, but received total_blocks = %ld.",
                           dev_ctx.GetCUDAMaxGridDimSize()[0],
                           total_blocks));
     PADDLE_ENFORCE_LE_UINT32_MAX(total_blocks,
