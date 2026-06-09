@@ -1508,6 +1508,37 @@ def convert_np_dtype_to_dtype_(
     return convert_np_dtype_to_proto_type(np_dtype)
 
 
+def convert_nptype_to_datatype_or_vartype(
+    np_dtype: np.dtype | str | core.VarDesc.VarType | core.DataType,
+) -> core.VarDesc.VarType | core.DataType:
+    """
+    Convert a dtype-like input to Paddle DataType under PIR mode, or VarType
+    under static/dygraph mode.
+
+    Args:
+        np_dtype (np.dtype|str): The data type in numpy or valid data type
+            string.
+
+    Returns:
+        core.DataType / core.VarDesc.VarType : The data type in Paddle.
+
+    """
+    if use_pir_api():
+        if isinstance(np_dtype, core.DataType):
+            return np_dtype
+        elif isinstance(np_dtype, core.VarDesc.VarType):
+            return pir.core.vartype_to_datatype[np_dtype]
+        else:
+            return pir.core.convert_np_dtype_to_dtype_(np_dtype)
+
+    if isinstance(np_dtype, core.VarDesc.VarType):
+        return np_dtype
+    elif isinstance(np_dtype, core.DataType):
+        return paddle_type_to_proto_type[np_dtype]
+    else:
+        return convert_np_dtype_to_proto_type(np_dtype)
+
+
 def convert_to_proto_type(dtype):
     """
     Convert the data type in numpy to the data type in Paddle.
