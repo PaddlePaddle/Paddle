@@ -14,9 +14,7 @@
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Any, Literal, NamedTuple
-
-from typing_extensions import TypeAlias
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypeAlias
 
 from paddle.dataset.common import DATA_HOME
 from paddle.utils import download
@@ -69,7 +67,7 @@ class ESC50(AudioClassificationDataset):
 
             >>> mode = 'dev'
             >>> esc50_dataset = paddle.audio.datasets.ESC50(
-            ...     mode=mode,  # type: ignore[arg-type]
+            ...     mode=mode,
             ...     feat_type='raw',
             ... )
             >>> for idx in range(5):
@@ -84,7 +82,7 @@ class ESC50(AudioClassificationDataset):
             paddle.Size([220500]) 19
 
             >>> esc50_dataset = paddle.audio.datasets.ESC50(
-            ...     mode=mode,  # type: ignore[arg-type]
+            ...     mode=mode,
             ...     feat_type='mfcc',
             ...     n_mfcc=40,
             ... )

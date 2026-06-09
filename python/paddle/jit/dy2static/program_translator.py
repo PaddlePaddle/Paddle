@@ -20,7 +20,7 @@ import os
 import threading
 import warnings
 import weakref
-from typing import TYPE_CHECKING, Any, Callable, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from typing_extensions import ParamSpec, Self
 
@@ -75,6 +75,8 @@ from .utils import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from paddle._typing import NestedSequence
     from paddle.static import InputSpec, Program
     from paddle.static.amp.fp16_utils import AmpOptions

@@ -22,7 +22,7 @@ import logging
 import os
 import pdb  # noqa: T100
 import re
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 import numpy
 
@@ -49,6 +49,7 @@ from .utils import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from types import ModuleType
 
 __all__ = []

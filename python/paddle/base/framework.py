@@ -26,10 +26,10 @@ import textwrap
 import threading
 import traceback
 import warnings
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from contextlib import contextmanager
 from types import FunctionType, MethodType
-from typing import TYPE_CHECKING, Callable, TypeVar, overload
+from typing import TYPE_CHECKING, TypeVar, overload
 
 import numpy as np
 from typing_extensions import ParamSpec

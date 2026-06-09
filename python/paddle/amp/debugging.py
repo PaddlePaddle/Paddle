@@ -19,7 +19,6 @@ from enum import Enum
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     TypeVar,
 )
 
@@ -33,7 +32,7 @@ from paddle.base import core
 from ..framework import LayerHelper, in_dynamic_or_pir_mode
 
 if TYPE_CHECKING:
-    from collections.abc import Generator, Sequence
+    from collections.abc import Callable, Generator, Sequence
 
     from paddle import Tensor
 
@@ -105,7 +104,7 @@ def check_layer_numerics(
             ...         # return 1/x * self._w + self._b   open it you will see the error log
             ...         return x @ self._w + self._b
             >>> dtype = 'float32'
-            >>> x = paddle.rand([10, 2, 2], dtype=dtype)  # type: ignore[call-overload]
+            >>> x = paddle.rand([10, 2, 2], dtype=dtype)
             >>> model = MyLayer(dtype)
             >>> x[0] = float(0)
             >>> loss = model(x)

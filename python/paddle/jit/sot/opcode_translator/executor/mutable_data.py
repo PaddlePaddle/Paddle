@@ -14,9 +14,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Generic, TypeVar
+from collections.abc import Callable
+from typing import Any, Concatenate, Generic, TypeAlias, TypeVar
 
-from typing_extensions import Concatenate, ParamSpec, TypeAlias
+from typing_extensions import ParamSpec
 
 P = ParamSpec("P")
 R = TypeVar("R")

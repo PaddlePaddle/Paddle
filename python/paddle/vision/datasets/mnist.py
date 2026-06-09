@@ -99,7 +99,7 @@ class MNIST(Dataset[tuple["_ImageDataType", "npt.NDArray[np.int64]"]]):
 
             >>> for img, label in itertools.islice(iter(mnist_test), 5):  # only show first 5 images
             ...     # do something with img and label
-            ...     print(type(img), img.shape, label)  # type: ignore
+            ...     print(type(img), img.shape, label)
             ...     # <class 'paddle.Tensor'> [1, 28, 28] [7]
     """
 
@@ -319,7 +319,7 @@ class FashionMNIST(MNIST):
 
             >>> for img, label in itertools.islice(iter(fashion_mnist_test), 5):  # only show first 5 images
             ...     # do something with img and label
-            ...     print(type(img), img.shape, label)  # type: ignore
+            ...     print(type(img), img.shape, label)
             ...     # <class 'paddle.Tensor'> [1, 28, 28] [9]
     """
 

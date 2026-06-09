@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -27,20 +27,20 @@ from paddle.tensor import multinomial
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from typing import TypeAlias
 
     import numpy.typing as npt
-    from typing_extensions import TypeAlias
 
     from paddle import Tensor
     from paddle._typing import NestedSequence
     from paddle._typing.dtype_like import _DTypeLiteral
 
-    _CategoricalBoundary: TypeAlias = Union[
-        Sequence[float],
-        NestedSequence[float],
-        npt.NDArray[Union[np.float32, np.float64]],
-        Tensor,
-    ]
+    _CategoricalBoundary: TypeAlias = (
+        Sequence[float]
+        | NestedSequence[float]
+        | npt.NDArray[np.float32 | np.float64]
+        | Tensor
+    )
 
 
 class Categorical(distribution.Distribution):

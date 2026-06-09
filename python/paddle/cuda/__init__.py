@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import paddle
 from paddle import base, core, device as paddle_device, framework
@@ -56,7 +56,7 @@ from paddle.tensor.creation import (
 if TYPE_CHECKING:
     from collections.abc import Generator
 
-    DeviceLike = Union[paddle.core.Place, int, str, None]
+    DeviceLike = paddle.core.Place | int | str | None
 
 
 def is_available() -> bool:
