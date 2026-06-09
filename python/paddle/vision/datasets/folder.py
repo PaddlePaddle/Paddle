@@ -207,9 +207,14 @@ class DatasetFolder(Dataset[tuple["_ImageDataType", int]]):
             ...     ]
             ... )
 
+            >>> def cv2_loader(path: str):
+            ...     image = cv2.imread(path)
+            ...     assert image is not None
+            ...     return image
+
             >>> data_folder_2 = DatasetFolder(
             ...     fake_data_dir,
-            ...     loader=lambda x: cv2.imread(x),  # load image with OpenCV
+            ...     loader=cv2_loader,  # load image with OpenCV
             ...     extensions=(".jpg",),  # only load *.jpg files
             ...     transform=transform,  # apply transform to every image
             ... )
@@ -442,9 +447,14 @@ class ImageFolder(Dataset[list["_ImageDataType"]]):
             ...     ]
             ... )
 
+            >>> def cv2_loader(path: str):
+            ...     image = cv2.imread(path)
+            ...     assert image is not None
+            ...     return image
+
             >>> image_folder_2 = ImageFolder(
             ...     fake_data_dir,
-            ...     loader=lambda x: cv2.imread(x),  # load image with OpenCV
+            ...     loader=cv2_loader,  # load image with OpenCV
             ...     extensions=(".jpg",),  # only load *.jpg files
             ...     transform=transform,  # apply transform to every image
             ... )

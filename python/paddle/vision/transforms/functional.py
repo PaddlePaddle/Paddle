@@ -437,12 +437,16 @@ def adjust_brightness(
             >>> fake_img = Image.fromarray(fake_img)
             >>> print(fake_img.size)
             (300, 256)
-            >>> print(fake_img.load()[1, 1])  # type: ignore[index]
+            >>> fake_img_pixels = fake_img.load()
+            >>> assert fake_img_pixels is not None
+            >>> print(fake_img_pixels[1, 1])
             (61, 155, 171)
             >>> converted_img = F.adjust_brightness(fake_img, 0.5)
             >>> print(converted_img.size)
             (300, 256)
-            >>> print(converted_img.load()[1, 1])
+            >>> converted_img_pixels = converted_img.load()
+            >>> assert converted_img_pixels is not None
+            >>> print(converted_img_pixels[1, 1])
             (30, 77, 85)
     """
     if not (

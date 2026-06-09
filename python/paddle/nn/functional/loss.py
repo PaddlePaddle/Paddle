@@ -3143,7 +3143,7 @@ def cross_entropy(
             >>> shape = [N, C]
             >>> label_smoothing = 0.4
             >>> reduction = 'mean'
-            >>> weight: Optional[paddle.Tensor] = None
+            >>> weight = None
             >>> logits = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
             >>> integer_labels = paddle.randint(low=0, high=C, size=[N], dtype='int64')
             >>> one_hot_labels = paddle.nn.functional.one_hot(integer_labels, C).astype('float32')

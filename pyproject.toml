@@ -172,8 +172,9 @@ known-first-party = ["paddle"]
 "test/dygraph_to_static/seq2seq_dygraph_model.py" = ["RUF005"]
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.10"
 cache_dir = ".mypy_cache"
+num_workers = 8
 # Miscellaneous strictness flags
 allow_redefinition = true
 local_partial_types = true

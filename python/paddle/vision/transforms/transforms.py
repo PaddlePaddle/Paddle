@@ -24,12 +24,11 @@ from typing import (
     Generic,
     Literal,
     Protocol,
-    TypeVar,
     overload,
 )
 
 import numpy as np
-from typing_extensions import TypeAlias
+from typing_extensions import TypeAlias, TypeVar
 
 import paddle
 
@@ -45,6 +44,7 @@ if TYPE_CHECKING:
     _TransformInputKeys: TypeAlias = Sequence[
         Literal["image", "coords", "boxes", "mask"]
     ]
+    _ImageDataType: TypeAlias = Tensor | PILImage | npt.NDArray[Any]
     from .functional import (
         _InterpolationCv2,
         _InterpolationPil,
@@ -53,11 +53,9 @@ if TYPE_CHECKING:
 
 
 _InputT = TypeVar(
-    "_InputT", "Tensor", "PILImage", "npt.NDArray[Any]", contravariant=True
+    "_InputT", bound="_ImageDataType", contravariant=True, default=Any
 )
-_RetT = TypeVar(
-    "_RetT", "Tensor", "PILImage", "npt.NDArray[Any]", covariant=True
-)
+_RetT = TypeVar("_RetT", bound="_ImageDataType", covariant=True, default=Any)
 
 
 class _Transform(Protocol, Generic[_InputT, _RetT]):
@@ -226,7 +224,7 @@ class BaseTransform(_Transform[_InputT, _RetT]):
             ...         return img.shape[:2][::-1]
             ...     else:
             ...         raise TypeError("Unexpected type {}".format(type(img)))
-            >>> class CustomRandomFlip(BaseTransform):  # type: ignore[type-arg]
+            >>> class CustomRandomFlip(BaseTransform):
             ...     def __init__(self, prob=0.5, keys=None):
             ...         super().__init__(keys)
             ...         self.prob = prob
@@ -1038,11 +1036,15 @@ class BrightnessTransform(BaseTransform[_InputT, _RetT]):
 
             >>> transform = BrightnessTransform(0.4)
             >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.0).astype(np.uint8))
-            >>> print(fake_img.load()[1, 1])  # type: ignore[index]
+            >>> fake_img_pixels = fake_img.load()
+            >>> assert fake_img_pixels is not None
+            >>> print(fake_img_pixels[1, 1])
             (60, 169, 34)
             >>> # doctest: +SKIP('random sample in Brightness function')
             >>> fake_img = transform(fake_img)
-            >>> print(fake_img.load()[1, 1])
+            >>> converted_img_pixels = fake_img.load()
+            >>> assert converted_img_pixels is not None
+            >>> print(converted_img_pixels[1, 1])
             (68, 192, 38)
 
     """
