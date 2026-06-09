@@ -118,6 +118,26 @@ function ensure_cpp_extracted_coverage_data() {
     fi
 }
 
+function filter_coverage_diff_if_available() {
+    local info_file="$1"
+    local diff_file="$2"
+    local tmp_file="$3"
+
+    if [ ! -f "${info_file}" ]; then
+        echo "Skip coverage diff filtering because ${info_file} was not generated."
+        : > "${info_file}"
+        return
+    fi
+
+    if [ ! -f "${diff_file}" ]; then
+        echo "ERROR: ${diff_file} was not generated for ${info_file}"
+        exit 101
+    fi
+
+    python ${PADDLE_ROOT}/ci/coverage_diff.py "${info_file}" "${diff_file}" > "${tmp_file}" || exit 101
+    mv -f "${tmp_file}" "${info_file}"
+}
+
 # NOTE: This gcda pre-cleaning step keeps/removes files by mapping PR
 # changed files to "*.gcda" paths. That is not always correct: for header-only
 # changes, or changes whose coverage is recorded in other translation units,
@@ -220,9 +240,9 @@ fi
 
 if [ "${PR_ID}" != "" ]; then
 
-    COVERAGE_DIFF_PATTERN="`python ${PADDLE_ROOT}/ci/coverage_pull_request.py files ${PR_ID}`"
+    COVERAGE_DIFF_PATTERN="`python ${PADDLE_ROOT}/ci/coverage_pull_request.py files ${PR_ID}`" || exit 101
 
-    python ${PADDLE_ROOT}/ci/coverage_pull_request.py diff ${PR_ID} > git-diff.out
+    python ${PADDLE_ROOT}/ci/coverage_pull_request.py diff ${PR_ID} > git-diff.out || exit 101
 fi
 
 lcov --extract coverage-full.info \
@@ -232,9 +252,7 @@ lcov --extract coverage-full.info \
 
 ensure_cpp_extracted_coverage_data coverage-diff.info git-diff.out
 
-python ${PADDLE_ROOT}/ci/coverage_diff.py coverage-diff.info git-diff.out > coverage-diff.tmp || exit 101
-
-mv -f coverage-diff.tmp coverage-diff.info
+filter_coverage_diff_if_available coverage-diff.info git-diff.out coverage-diff.tmp
 
 cp coverage-diff.info coverage_files
 
@@ -269,9 +287,9 @@ gen_python_full_report || true  # python-coverage-full.info
 
 
 if [ "${GIT_PR_ID}" != "" ]; then
-    COVERAGE_DIFF_PATTERN="`python ${PADDLE_ROOT}/ci/coverage_pull_request.py files ${GIT_PR_ID}`"
+    COVERAGE_DIFF_PATTERN="`python ${PADDLE_ROOT}/ci/coverage_pull_request.py files ${GIT_PR_ID}`" || exit 101
 
-    python ${PADDLE_ROOT}/ci/coverage_pull_request.py diff ${GIT_PR_ID} > python-git-diff.out
+    python ${PADDLE_ROOT}/ci/coverage_pull_request.py diff ${GIT_PR_ID} > python-git-diff.out || exit 101
 fi
 
 lcov --extract python-coverage-full.info \
@@ -279,8 +297,6 @@ lcov --extract python-coverage-full.info \
     -o python-coverage-diff.info \
     --rc lcov_branch_coverage=0
 
-python ${PADDLE_ROOT}/ci/coverage_diff.py python-coverage-diff.info python-git-diff.out > python-coverage-diff.tmp || exit 101
-
-mv -f python-coverage-diff.tmp python-coverage-diff.info
+filter_coverage_diff_if_available python-coverage-diff.info python-git-diff.out python-coverage-diff.tmp
 
 cp python-coverage-diff.info coverage_files
