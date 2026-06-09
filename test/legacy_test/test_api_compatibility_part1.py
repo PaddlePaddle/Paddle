@@ -2333,57 +2333,6 @@ class TestRealAPI(unittest.TestCase):
                 np.testing.assert_allclose(ref_out, out, rtol=1e-6)
 
 
-# Test pixel_shuffle compatibility
-class TestPixelShuffleAPI(unittest.TestCase):
-    def setUp(self):
-        np.random.seed(2025)
-        self.np_x = np.random.randn(2, 9, 4, 4).astype('float32')
-
-    def test_dygraph_Compatibility(self):
-        paddle.disable_static()
-        x = paddle.to_tensor(self.np_x)
-
-        # 1. Paddle positional arguments
-        out1 = F.pixel_shuffle(x, 3)
-        # 2. Paddle keyword arguments
-        out2 = F.pixel_shuffle(x=x, upscale_factor=3)
-        # 3. PyTorch keyword arguments (alias)
-        out3 = F.pixel_shuffle(input=x, upscale_factor=3)
-        # 4. Mixed arguments
-        out4 = F.pixel_shuffle(x, upscale_factor=3)
-
-        # Verify all outputs match
-        for out in [out2, out3, out4]:
-            np.testing.assert_array_equal(out1.numpy(), out.numpy())
-
-        paddle.enable_static()
-
-    def test_static_Compatibility(self):
-        paddle.enable_static()
-        main = paddle.static.Program()
-        startup = paddle.static.Program()
-        with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(
-                name="x", shape=[2, 9, 4, 4], dtype='float32'
-            )
-
-            # 1. Paddle positional arguments
-            out1 = F.pixel_shuffle(x, 3)
-            # 2. Paddle keyword arguments
-            out2 = F.pixel_shuffle(x=x, upscale_factor=3)
-            # 3. PyTorch keyword arguments (alias)
-            out3 = F.pixel_shuffle(input=x, upscale_factor=3)
-
-            exe = paddle.static.Executor()
-            fetches = exe.run(
-                main,
-                feed={"x": self.np_x},
-                fetch_list=[out1, out2, out3],
-            )
-            for out in fetches[1:]:
-                np.testing.assert_array_equal(fetches[0], out)
-
-
 # Test SGD API compatibility
 class TestSGDAPI(unittest.TestCase):
     def setUp(self):
@@ -2480,6 +2429,57 @@ class TestAdamWAPI(unittest.TestCase):
         self.assertIsNotNone(adamw3)
 
         paddle.enable_static()
+
+
+# Test pixel_shuffle compatibility
+class TestPixelShuffleAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_x = np.random.randn(2, 9, 4, 4).astype('float32')
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle positional arguments
+        out1 = F.pixel_shuffle(x, 3)
+        # 2. Paddle keyword arguments
+        out2 = F.pixel_shuffle(x=x, upscale_factor=3)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = F.pixel_shuffle(input=x, upscale_factor=3)
+        # 4. Mixed arguments
+        out4 = F.pixel_shuffle(x, upscale_factor=3)
+
+        # Verify all outputs match
+        for out in [out2, out3, out4]:
+            np.testing.assert_array_equal(out1.numpy(), out.numpy())
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=[2, 9, 4, 4], dtype='float32'
+            )
+
+            # 1. Paddle positional arguments
+            out1 = F.pixel_shuffle(x, 3)
+            # 2. Paddle keyword arguments
+            out2 = F.pixel_shuffle(x=x, upscale_factor=3)
+            # 3. PyTorch keyword arguments (alias)
+            out3 = F.pixel_shuffle(input=x, upscale_factor=3)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3],
+            )
+            for out in fetches[1:]:
+                np.testing.assert_array_equal(fetches[0], out)
 
 
 # Test paddle.set_rng_state compatibility
