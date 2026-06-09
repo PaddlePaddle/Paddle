@@ -114,9 +114,7 @@ def eliminate_positional_or_keyword_only(
             code.co_filename,
             code.co_name,
             code.co_firstlineno,
-            code.co_linetable
-            if sys.version_info >= (3, 10)
-            else code.co_lnotab,
+            code.co_linetable,
             code.co_freevars,
             code.co_cellvars,
         )
