@@ -31,7 +31,12 @@ if os.name == 'nt' and os.path.isfile(file):
 
 custom_ops = load(
     name='custom_simple_slice_jit',
-    sources=['custom_simple_slice_op.cc'],
+    sources=[
+        os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            'custom_simple_slice_op.cc',
+        )
+    ],
     extra_include_paths=paddle_includes,  # add for Coverage CI
     extra_cxx_cflags=extra_cc_args,  # test for cc flags
     extra_cuda_cflags=extra_nvcc_args,  # test for nvcc flags

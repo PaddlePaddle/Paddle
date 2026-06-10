@@ -32,7 +32,11 @@ if os.name == 'nt' and os.path.isfile(file):
 # Compile and load custom op Just-In-Time.
 extend_custom_attrs = load(
     name='custom_extend_attrs_jit',
-    sources=['extend_attr_test_op.cc'],
+    sources=[
+        os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "extend_attr_test_op.cc"
+        )
+    ],
     extra_include_paths=paddle_includes,  # add for Coverage CI
     extra_cxx_cflags=extra_cc_args,  # test for cflags
     extra_cuda_cflags=extra_nvcc_args,  # test for cflags
