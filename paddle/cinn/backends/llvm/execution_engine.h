@@ -14,10 +14,9 @@
 
 #pragma once
 
-#include <llvm/ADT/StringMap.h>
+#include <llvm/ADT/SmallString.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ExecutionEngine/JITSymbol.h>
-#include <llvm/ExecutionEngine/ObjectCache.h>
 #include <llvm/ExecutionEngine/Orc/CompileUtils.h>
 #include <llvm/ExecutionEngine/Orc/Core.h>
 #include <llvm/ExecutionEngine/Orc/ExecutionUtils.h>
@@ -30,8 +29,6 @@
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Support/Error.h>
-#include <llvm/Support/MemoryBuffer.h>
-#include <llvm/Support/SmallVectorMemoryBuffer.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/raw_ostream.h>
 
@@ -49,16 +46,6 @@
 #include "paddle/cinn/ir/module.h"
 
 namespace cinn::backends {
-
-class NaiveObjectCache : public llvm::ObjectCache {
- public:
-  void notifyObjectCompiled(const llvm::Module *,
-                            llvm::MemoryBufferRef) override;
-  std::unique_ptr<llvm::MemoryBuffer> getObject(const llvm::Module *) override;
-
- private:
-  llvm::StringMap<std::unique_ptr<llvm::MemoryBuffer>> cached_objects_;
-};
 
 struct ExecutionOptions {
   int opt_level{3};
@@ -100,8 +87,7 @@ class ExecutionEngine {
 
  protected:
   explicit ExecutionEngine(bool enable_object_cache)
-      : cache_(std::make_unique<NaiveObjectCache>()),
-        ctx(std::make_unique<llvm::LLVMContext>()),
+      : ctx(std::make_unique<llvm::LLVMContext>()),
         b(std::make_unique<llvm::IRBuilder<>>(*ctx)) {}
 
   void RegisterGlobalRuntimeSymbols();
@@ -116,7 +102,6 @@ class ExecutionEngine {
   mutable std::mutex mu_;
   llvm::SmallString<0> buffer_;
   std::unique_ptr<llvm::orc::LLJIT> jit_;
-  std::unique_ptr<NaiveObjectCache> cache_;
   RuntimeSymbols module_symbols_;
 
   std::unique_ptr<llvm::LLVMContext> ctx;
