@@ -285,8 +285,24 @@ VersionFields = collections.namedtuple(
         'include_dirs',
         'define_macros',
         'undef_macros',
+        'source_hashes',
     ],
 )
+
+
+def _hash_source_files(sources):
+    if not sources:
+        return []
+
+    source_hashes = []
+    for source in sources:
+        source = os.fspath(source)
+        md5 = hashlib.md5()
+        with open(source, 'rb') as f:
+            for chunk in iter(lambda: f.read(1024 * 1024), b''):
+                md5.update(chunk)
+        source_hashes.append((source, md5.hexdigest()))
+    return source_hashes
 
 
 class VersionManager:
@@ -327,11 +343,20 @@ def combine_hash(md5, value):
     return md5
 
 
-def clean_object_if_change_cflags(so_path, extension):
+def _clean_cached_objects(build_directory):
+    if build_directory is None or not os.path.isdir(build_directory):
+        return
+
+    for root, _, files in os.walk(build_directory):
+        for file in files:
+            if file.endswith(('.o', '.obj')):
+                os.remove(os.path.join(root, file))
+
+
+def clean_object_if_change_cflags(so_path, extension, build_directory=None):
     """
-    If already compiling source before, we should check whether cflags
-    have changed and delete the built object to re-compile the source
-    even though source file content keeps unchanged.
+    If sources were already compiled before, check whether the source content
+    or build arguments have changed and delete cached outputs to re-compile.
     """
 
     def serialize(path, version_info):
@@ -352,27 +377,38 @@ def clean_object_if_change_cflags(so_path, extension):
     version_file = os.path.join(base_dir, VERSION_FILE)
 
     # version info
-    args = [getattr(extension, field, None) for field in VersionFields._fields]
+    args = []
+    for field in VersionFields._fields:
+        if field == 'source_hashes':
+            args.append(_hash_source_files(getattr(extension, 'sources', None)))
+        else:
+            args.append(getattr(extension, field, None))
     version_field = VersionFields._make(args)
     versioner = VersionManager(version_field)
 
-    if os.path.exists(so_path) and os.path.exists(version_file):
+    if os.path.exists(version_file):
         old_version_info = deserialize(version_file)
         so_version = old_version_info.get(so_name, None)
-        # delete shared library file if version is changed to re-compile it.
-        if so_version is not None and so_version != versioner.version:
-            log_v(
-                f"Re-Compiling {so_name}, because specified cflags have been changed. New signature {versioner.version} has been saved into {version_file}."
-            )
+        if so_version == versioner.version:
+            return
+
+        log_v(
+            f"Re-Compiling {so_name}, because specified source files or build arguments have been changed. New signature {versioner.version} has been saved into {version_file}."
+        )
+        if os.path.exists(so_path):
             os.remove(so_path)
-            # update new version information
-            new_version_info = versioner.details
-            new_version_info[so_name] = versioner.version
-            serialize(version_file, new_version_info)
+        _clean_cached_objects(build_directory)
+        # update new version information
+        new_version_info = versioner.details
+        new_version_info[so_name] = versioner.version
+        serialize(version_file, new_version_info)
     else:
         # If compile at first time, save compiling detail information for debug.
         if not os.path.exists(base_dir):
             os.makedirs(base_dir)
+        if os.path.exists(so_path):
+            os.remove(so_path)
+            _clean_cached_objects(build_directory)
         details = versioner.details
         details[so_name] = versioner.version
         serialize(version_file, details)

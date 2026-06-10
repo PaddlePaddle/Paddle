@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import os
 import shlex
 import subprocess
@@ -30,11 +31,16 @@ from paddle.utils.cpp_extension.cpp_extension import (
     _is_ninja_available,
     _join_ninja_shell_list,
     _ninja_escape_path,
+    _normalize_object_filename,
     _run_ninja_build,
     _write_ninja_file,
 )
 from paddle.utils.cpp_extension.extension_utils import (
+    VersionFields,
+    VersionManager,
+    _hash_source_files,
     _write_setup_file,
+    clean_object_if_change_cflags,
 )
 
 
@@ -84,6 +90,48 @@ class TestNinjaHelperFunctions(unittest.TestCase):
         self.assertEqual(_as_command_list("gcc"), ["gcc"])
         self.assertEqual(_as_command_list(["gcc", "-c"]), ["gcc", "-c"])
         self.assertEqual(_as_command_list(("gcc", "-c")), ["gcc", "-c"])
+
+    def test_normalize_object_filename_avoids_duplicate_build_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            build_dir = os.path.join(tmpdir, "build", "temp")
+            obj = os.path.join(build_dir, "paddle", "op.o")
+
+            self.assertEqual(
+                _normalize_object_filename(obj, build_dir),
+                os.path.abspath(obj),
+            )
+
+    def test_normalize_object_filename_avoids_duplicate_relative_build_directory(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            old_cwd = os.getcwd()
+            try:
+                os.chdir(tmpdir)
+                build_dir = os.path.join("build", "temp")
+                obj = os.path.join(build_dir, "paddle", "op.o")
+
+                self.assertEqual(
+                    _normalize_object_filename(obj, build_dir),
+                    os.path.abspath(obj),
+                )
+            finally:
+                os.chdir(old_cwd)
+
+    def test_normalize_object_filename_keeps_existing_outside_behavior(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            build_dir = os.path.join(tmpdir, "build", "temp")
+            relative_obj = os.path.join("paddle", "op.o")
+            outside_obj = os.path.join(tmpdir, "outside", "op.o")
+
+            self.assertEqual(
+                _normalize_object_filename(relative_obj, build_dir),
+                os.path.abspath(os.path.join(build_dir, relative_obj)),
+            )
+            self.assertEqual(
+                _normalize_object_filename(outside_obj, build_dir),
+                os.path.abspath(outside_obj),
+            )
 
     def test_write_ninja_file(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -1178,6 +1226,111 @@ class TestBuildExtension(unittest.TestCase):
         self.assertIn('--prepared --use-local-env', content)
         self.assertIn('/DPADDLE_WITH_CUDA', content)
         self.assertNotIn(invalid_extra_args, content)
+
+
+class TestExtensionVersioning(unittest.TestCase):
+    def _extension(self, sources):
+        return SimpleNamespace(
+            sources=sources,
+            extra_compile_args=[],
+            extra_link_args=[],
+            library_dirs=[],
+            runtime_library_dirs=[],
+            include_dirs=[],
+            define_macros=[],
+            undef_macros=[],
+        )
+
+    def test_source_content_hash_participates_in_version(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            source = os.path.join(tmpdir, "custom_op.cc")
+            Path(source).write_text("int value = 1;\n", encoding='utf-8')
+            first_hashes = _hash_source_files([source])
+            first_version = VersionManager(
+                VersionFields(
+                    [source],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    first_hashes,
+                )
+            ).version
+
+            Path(source).write_text("int value = 2;\n", encoding='utf-8')
+            second_hashes = _hash_source_files([source])
+            second_version = VersionManager(
+                VersionFields(
+                    [source],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    second_hashes,
+                )
+            ).version
+
+        self.assertNotEqual(first_hashes, second_hashes)
+        self.assertNotEqual(first_version, second_version)
+        json.dumps({'source_hashes': second_hashes})
+
+    def test_source_content_change_removes_stale_outputs(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            source = os.path.join(tmpdir, "custom_op.cc")
+            so_path = os.path.join(tmpdir, "custom_op.so")
+            build_dir = os.path.join(tmpdir, "build")
+            obj_path = os.path.join(build_dir, "custom_op.o")
+            os.makedirs(build_dir)
+            Path(source).write_text("int value = 1;\n", encoding='utf-8')
+            Path(so_path).write_bytes(b"so")
+            Path(obj_path).write_bytes(b"obj")
+
+            extension = self._extension([source])
+            clean_object_if_change_cflags(so_path, extension, build_dir)
+            version_path = os.path.join(tmpdir, "version.txt")
+            first_version = json.loads(
+                Path(version_path).read_text(encoding='utf-8')
+            )[os.path.basename(so_path)]
+
+            Path(so_path).write_bytes(b"so")
+            Path(obj_path).write_bytes(b"obj")
+            Path(source).write_text("int value = 2;\n", encoding='utf-8')
+            clean_object_if_change_cflags(so_path, extension, build_dir)
+            version_info = json.loads(
+                Path(version_path).read_text(encoding='utf-8')
+            )
+
+        self.assertFalse(os.path.exists(so_path))
+        self.assertFalse(os.path.exists(obj_path))
+        self.assertIn('source_hashes', version_info)
+        self.assertNotEqual(
+            first_version, version_info[os.path.basename(so_path)]
+        )
+
+    def test_source_content_change_removes_stale_objects_without_shared_library(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            source = os.path.join(tmpdir, "custom_op.cc")
+            so_path = os.path.join(tmpdir, "custom_op.so")
+            build_dir = os.path.join(tmpdir, "build")
+            obj_path = os.path.join(build_dir, "custom_op.o")
+            os.makedirs(build_dir)
+            Path(source).write_text("int value = 1;\n", encoding='utf-8')
+
+            extension = self._extension([source])
+            clean_object_if_change_cflags(so_path, extension, build_dir)
+            Path(obj_path).write_bytes(b"obj")
+            Path(source).write_text("int value = 2;\n", encoding='utf-8')
+            clean_object_if_change_cflags(so_path, extension, build_dir)
+
+        self.assertFalse(os.path.exists(obj_path))
 
 
 class TestNinjaGeneratedSetupFile(unittest.TestCase):

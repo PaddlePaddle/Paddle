@@ -466,12 +466,12 @@ class BuildExtension(build_ext):
         else:
             cuda_dlink_post_cflags = None
 
-        # Note(Aurelius84): If already compiling source before, we should check whether
-        # cflags have changed and delete the built shared library to re-compile the source
-        # even though source file content keep unchanged.
+        # Note(Aurelius84): If already compiling source before, we should check
+        # whether sources or build arguments have changed and delete cached
+        # outputs to re-compile the source.
         so_name = self.get_ext_fullpath(self.extensions[0].name)
         clean_object_if_change_cflags(
-            os.path.abspath(so_name), self.extensions[0]
+            os.path.abspath(so_name), self.extensions[0], self.build_temp
         )
 
         # Consider .cu, .cu.cc as valid source extensions.
@@ -1123,7 +1123,7 @@ class BuildExtension(build_ext):
                     # if user set build_directory, output objects there.
                     if build_directory is not None:
                         objects = [
-                            os.path.join(build_directory, obj)
+                            _normalize_object_filename(obj, build_directory)
                             for obj in objects
                         ]
                     # ensure to use abspath
@@ -1805,6 +1805,25 @@ def _as_command_list(command: Sequence[str] | str) -> list[str]:
     if isinstance(command, str):
         return [command]
     return [str(arg) for arg in command]
+
+
+def _is_path_under_directory(path: str, directory: str) -> bool:
+    path = os.path.normcase(os.path.abspath(path))
+    directory = os.path.normcase(os.path.abspath(directory))
+    try:
+        return os.path.commonpath([path, directory]) == directory
+    except ValueError:
+        return False
+
+
+def _normalize_object_filename(
+    obj: str | os.PathLike[str], build_directory: str | os.PathLike[str]
+) -> str:
+    obj = os.fspath(obj)
+    build_directory = os.fspath(build_directory)
+    if _is_path_under_directory(obj, build_directory):
+        return os.path.abspath(obj)
+    return os.path.abspath(os.path.join(build_directory, obj))
 
 
 def _write_ninja_file(path: str, content: str) -> None:
