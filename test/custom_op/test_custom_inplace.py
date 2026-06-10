@@ -39,7 +39,7 @@ if os.name == 'nt' and os.path.isfile(file):
 # Compile and load custom op Just-In-Time.
 custom_inplace = load(
     name='custom_inplace',
-    sources=['custom_inplace.cc'],
+    sources=['test/custom_op/custom_inplace.cc'],
     extra_include_paths=paddle_includes,  # add for Coverage CI
     extra_cxx_cflags=extra_cc_args,  # test for cflags
     extra_cuda_cflags=extra_nvcc_args,  # test for cflags
