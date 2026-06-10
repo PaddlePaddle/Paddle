@@ -521,7 +521,7 @@ def monkey_patch_math_tensor():
 
                 >>> import paddle
                 >>> x = paddle.ones([2, 2])
-                >>> y = x.new_zeros([3, 3])
+                >>> y = x.new_zeros(3, 3)  # type: ignore[arg-type]
                 >>> y.numpy()
                 array([[0., 0., 0.],
                        [0., 0., 0.],

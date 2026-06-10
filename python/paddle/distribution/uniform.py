@@ -91,8 +91,8 @@ class Uniform(distribution.Distribution):
             >>> u2 = Uniform(low=[1.0, 2.0], high=[3.0, 4.0])
             >>> # 4 distributions
             >>> u3 = Uniform(
-            ...     low=paddle.to_tensor([[1.0, 2.0], [3.0, 4.0]], dtype="float32"),
-            ...     high=paddle.to_tensor([[1.5, 2.5], [3.5, 4.5]], dtype="float32"),
+            ...     low=[[1.0, 2.0], [3.0, 4.0]],  # type: ignore[list-item]
+            ...     high=[[1.5, 2.5], [3.5, 4.5]],  # type: ignore[list-item]
             ... )
             >>> # With broadcasting:
             >>> u4 = Uniform(low=3.0, high=[5.0, 6.0, 7.0])
