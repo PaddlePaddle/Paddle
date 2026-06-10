@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/autotune/cache_base.h"
 #include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/contiguous_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/kernels/funcs/blas/blaslt_impl.hip.h"
@@ -2052,6 +2053,94 @@ MatmulJudgeDtypeKernel(const Context& dev_ctx,
                        bool transpose_y) {
   DispatchMatmulKernel<Context, T>(
       dev_ctx, x, y, x_dims, y_dims, out, transpose_x, transpose_y);
+}
+
+template <typename T, typename Context>
+void MmOutDtypeKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& y,
+                      DataType out_dtype,
+                      DenseTensor* out) {
+  PADDLE_ENFORCE_EQ(
+      out_dtype,
+      DataType::FLOAT32,
+      common::errors::InvalidArgument(
+          "The out_dtype of paddle.mm currently only supports float32."));
+  PADDLE_ENFORCE_EQ(
+      x.dtype(),
+      DataType::BFLOAT16,
+      common::errors::InvalidArgument(
+          "The out_dtype of paddle.mm currently only supports bfloat16 "
+          "Input(X)."));
+  PADDLE_ENFORCE_EQ(
+      y.dtype(),
+      DataType::BFLOAT16,
+      common::errors::InvalidArgument(
+          "The out_dtype of paddle.mm currently only supports bfloat16 "
+          "Input(Y)."));
+  const std::vector<std::int64_t> x_dims = vectorize(x.dims());
+  const std::vector<std::int64_t> y_dims = vectorize(y.dims());
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      2UL,
+      common::errors::InvalidArgument(
+          "The out_dtype of paddle.mm currently only supports 2-D Input(X)."));
+  PADDLE_ENFORCE_EQ(
+      y_dims.size(),
+      2UL,
+      common::errors::InvalidArgument(
+          "The out_dtype of paddle.mm currently only supports 2-D Input(Y)."));
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+  if constexpr (std::is_same<Context, phi::GPUContext>::value &&
+                std::is_same<T, phi::bfloat16>::value) {
+    const int64_t M = x_dims[0];
+    const int64_t K = x_dims[1];
+    const int64_t N = y_dims[1];
+    PADDLE_ENFORCE_EQ(
+        K,
+        y_dims[0],
+        common::errors::InvalidArgument(
+            "Input(X)'s width must equal Input(Y)'s height, but received %d "
+            "and %d.",
+            K,
+            y_dims[0]));
+    if (x.numel() == 0 || y.numel() == 0) {
+      Full<float, Context>(dev_ctx, out->dims(), 0, out);
+      return;
+    }
+    DenseTensor x_contiguous;
+    DenseTensor y_contiguous;
+    const DenseTensor* x_ptr = &x;
+    const DenseTensor* y_ptr = &y;
+    if (!x.meta().is_contiguous()) {
+      ContiguousKernel<T, Context>(dev_ctx, x, &x_contiguous);
+      x_ptr = &x_contiguous;
+    }
+    if (!y.meta().is_contiguous()) {
+      ContiguousKernel<T, Context>(dev_ctx, y, &y_contiguous);
+      y_ptr = &y_contiguous;
+    }
+    dev_ctx.template Alloc<float>(out);
+    funcs::Blas<Context> blas(dev_ctx);
+    blas.GEMM(CblasNoTrans,
+              CblasNoTrans,
+              M,
+              N,
+              K,
+              1.0f,
+              x_ptr->data<phi::bfloat16>(),
+              y_ptr->data<phi::bfloat16>(),
+              0.0f,
+              out->data<float>());
+  } else {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "The out_dtype of paddle.mm currently only supports CUDA bfloat16 "
+        "inputs."));
+  }
+#else
+  PADDLE_THROW(common::errors::Unimplemented(
+      "The out_dtype of paddle.mm currently only supports CUDA."));
+#endif
 }
 
 template <typename T, typename Context>

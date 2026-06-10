@@ -23,6 +23,7 @@ from .tensor.math import (
     log1p,
     logit,
     logsumexp,
+    round,
     sinc,
 )
 
@@ -36,6 +37,7 @@ __all__ = [
     "log_softmax",
     "logit",
     "logsumexp",
+    "round",
     "sinc",
     "softmax",
     "expm1",

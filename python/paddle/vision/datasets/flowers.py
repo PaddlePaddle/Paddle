@@ -35,6 +35,7 @@ import paddle
 from paddle.dataset.common import _check_exists_and_download
 from paddle.io import Dataset
 from paddle.utils import try_import
+from paddle.utils.download import _safe_extract_tar
 
 __all__ = []
 
@@ -183,7 +184,7 @@ class Flowers(Dataset[tuple["_ImageDataType", "npt.NDArray[np.int64]"]]):
             os.mkdir(self.data_path)
         jpg_path = os.path.join(self.data_path, "jpg")
         if not os.path.exists(jpg_path):
-            data_tar.extractall(self.data_path)
+            _safe_extract_tar(data_tar, self.data_path, on_unsafe='raise')
 
         scio = try_import('scipy.io')
         self.labels = scio.loadmat(label_file)['labels'][0]

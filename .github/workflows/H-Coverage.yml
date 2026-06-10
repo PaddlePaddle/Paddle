@@ -587,7 +587,7 @@ jobs:
           '
 
       - name: Single card test
-        timeout-minutes: 50
+        timeout-minutes: 60
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -xce '
           pwd
@@ -702,7 +702,7 @@ jobs:
           '
 
       - name: Multi-card test
-        timeout-minutes: 40
+        timeout-minutes: 60
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -ce '
           export PYTHONPATH=$(pwd)

@@ -132,7 +132,7 @@ void VmmTensorPartsVisitor::Visit(
     return;
   }
   std::vector<BlockPart> parts;
-  if (allocator->CollectTensorParts(target_ptr_, &parts)) {
+  if (allocator->CollectTensorParts(target_ptr_, target_size_, &parts)) {
     found_ = true;
     parts_ = std::move(parts);
     return;

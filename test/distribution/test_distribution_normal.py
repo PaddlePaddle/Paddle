@@ -1078,6 +1078,45 @@ def make_complex_normal_loc(mean, dtype='complex64'):
     return np.vectorize(complex)(mean, mean).astype(dtype)
 
 
+class TestNormalValidateArgs(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        paddle.set_device('cpu')
+
+    def test_validate_parameters_rejects_invalid_scale(self):
+        with self.assertRaises(ValueError):
+            Normal(
+                loc=paddle.to_tensor([0.0], dtype='float32'),
+                scale=paddle.to_tensor([-1.0], dtype='float32'),
+                validate_args=True,
+            )
+
+    def test_validate_parameters_skipped_when_disabled(self):
+        Normal(
+            loc=paddle.to_tensor([0.0], dtype='float32'),
+            scale=paddle.to_tensor([-1.0], dtype='float32'),
+            validate_args=False,
+        )
+
+    def test_log_prob_rejects_non_broadcastable_value(self):
+        normal = Normal(
+            loc=paddle.zeros([2], dtype='float32'),
+            scale=paddle.ones([2], dtype='float32'),
+            validate_args=True,
+        )
+        with self.assertRaises(ValueError):
+            normal.log_prob(paddle.zeros([3], dtype='float32'))
+
+    def test_log_prob_rejects_value_outside_support(self):
+        normal = Normal(
+            loc=paddle.zeros([1], dtype='float32'),
+            scale=paddle.ones([1], dtype='float32'),
+            validate_args=True,
+        )
+        with self.assertRaises(ValueError):
+            normal.log_prob(paddle.to_tensor([np.nan], dtype='float32'))
+
+
 @place(config.DEVICES)
 @parameterize_cls(
     (TEST_CASE_NAME, 'loc', 'scale'),

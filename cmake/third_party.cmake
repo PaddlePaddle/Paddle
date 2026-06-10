@@ -575,9 +575,29 @@ if(WITH_CUSPARSELT)
   list(APPEND third_party_deps extern_cusparselt)
 endif()
 
-set(FLASHATTN_ENABLED OFF)
+string(FIND "${CUDA_ARCH_BIN}" "90" ARCH_BIN_CONTAINS_90)
+if(NOT WITH_GPU
+   OR NOT WITH_DISTRIBUTE
+   OR (ARCH_BIN_CONTAINS_90 EQUAL -1))
+  set(WITH_NVSHMEM OFF)
+endif()
+if(WITH_SLEEF
+   AND NOT WITH_ROCM
+   AND NOT WIN32)
+  include(cmake/sleef.cmake)
+  if(TARGET extern_sleef)
+    list(APPEND third_party_deps extern_sleef)
+  endif()
+endif()
+if(WITH_NVSHMEM)
+  include(external/nvshmem)
+  list(APPEND third_party_deps extern_nvshmem)
+endif()
+
 if(WITH_ROCM)
-  set(FLASHATTN_ENABLED ON)
+  include(external/flashattn)
+  list(APPEND third_party_deps extern_flashattn)
+  set(WITH_FLASHATTN ON)
 endif()
 
 if(WITH_GPU
@@ -594,71 +614,22 @@ if(WITH_GPU
     endforeach()
     foreach(arch ${NVCC_ARCH_BIN})
       if(${arch} GREATER_EQUAL 80)
-        set(FLASHATTN_ENABLED ON)
+        include(external/flashattn)
+        list(APPEND third_party_deps extern_flashattn)
+        set(WITH_FLASHATTN ON)
         break()
       endif()
     endforeach()
   elseif(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.4)
     foreach(arch ${NVCC_ARCH_BIN})
       if(${arch} GREATER_EQUAL 80)
-        set(FLASHATTN_ENABLED ON)
+        include(external/flashattn)
+        list(APPEND third_party_deps extern_flashattn)
+        set(WITH_FLASHATTN ON)
         break()
       endif()
     endforeach()
   endif()
-endif()
-
-set(ARCH_BIN_CONTAINS_90 -1)
-foreach(arch ${NVCC_ARCH_BIN})
-  if(${arch} GREATER_EQUAL 90)
-    set(ARCH_BIN_CONTAINS_90 0)
-    break()
-  endif()
-endforeach()
-
-set(WITH_NVSHMEM_USER_DEFINED OFF)
-if(DEFINED CACHE{WITH_NVSHMEM} AND WITH_NVSHMEM)
-  set(WITH_NVSHMEM_USER_DEFINED ON)
-endif()
-
-set(NVSHMEM_AVAILABLE ON)
-if(NOT WITH_XPU)
-  if(NOT WITH_GPU
-     OR NOT WITH_DISTRIBUTE
-     OR (ARCH_BIN_CONTAINS_90 EQUAL -1)
-     OR NOT FLASHATTN_ENABLED)
-    set(NVSHMEM_AVAILABLE OFF)
-  endif()
-endif()
-
-if(WITH_NVSHMEM AND NOT NVSHMEM_AVAILABLE)
-  if(WITH_NVSHMEM_USER_DEFINED)
-    message(
-      FATAL_ERROR
-        "For non-XPU builds, WITH_NVSHMEM=ON requires WITH_GPU=ON, "
-        "WITH_DISTRIBUTE=ON, NVCC_ARCH_BIN containing sm90 or higher, "
-        "and FLASHATTN_ENABLED=ON.")
-  else()
-    set(WITH_NVSHMEM OFF)
-  endif()
-endif()
-if(WITH_SLEEF
-   AND NOT WITH_ROCM
-   AND NOT WIN32)
-  include(cmake/sleef.cmake)
-  if(TARGET extern_sleef)
-    list(APPEND third_party_deps extern_sleef)
-  endif()
-endif()
-if(WITH_NVSHMEM)
-  include(external/nvshmem)
-  list(APPEND third_party_deps extern_nvshmem)
-endif()
-
-if(FLASHATTN_ENABLED)
-  include(external/flashattn)
-  list(APPEND third_party_deps extern_flashattn)
-  set(WITH_FLASHATTN ON)
 endif()
 
 if(WITH_CUDNN_FRONTEND)
