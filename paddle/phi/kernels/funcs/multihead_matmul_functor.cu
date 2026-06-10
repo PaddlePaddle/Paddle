@@ -50,7 +50,7 @@ __global__ void SoftmaxKernelWithEltadd(T *qk_buf_,
                                         const int head_num,
                                         const int seq_len,
                                         const funcs::warp_mask_t mask) {
-  int qk_offset = blockIdx.x * seq_len;
+  int64_t qk_offset = static_cast<int64_t>(blockIdx.x) * seq_len;
   assert(blockDim.x % WARP_SIZE == 0);
 
   float tmp = threadIdx.x < seq_len
@@ -74,7 +74,7 @@ __global__ void SoftmaxKernelWithEltadd<half>(half *qk_buf_,
                                               const int seq_len,
                                               const funcs::warp_mask_t mask) {
 #if defined(PADDLE_WITH_CUDA)
-  int qk_offset = blockIdx.x * seq_len;
+  int64_t qk_offset = static_cast<int64_t>(blockIdx.x) * seq_len;
   assert(blockDim.x % WARP_SIZE == 0);
 
   float tmp = threadIdx.x < seq_len
@@ -98,7 +98,7 @@ __global__ void SoftmaxKernelWithEltadd2(T *qk_buf_,
                                          const int head_num,
                                          const int seq_len,
                                          const funcs::warp_mask_t mask) {
-  int qk_offset = blockIdx.x * seq_len;
+  int64_t qk_offset = static_cast<int64_t>(blockIdx.x) * seq_len;
   int idx = threadIdx.x;
   assert(blockDim.x % WARP_SIZE == 0);
 
@@ -128,7 +128,7 @@ __global__ void SoftmaxKernelWithEltadd2<half2>(half2 *qk_buf_,
 // operator "+" of half only supported after cuda version 10.0
 // HIP defined __HIP_NO_HALF_CONVERSIONS__ in hip.cmake
 #if defined(PADDLE_WITH_CUDA)
-  int qk_offset = blockIdx.x * seq_len;
+  int64_t qk_offset = static_cast<int64_t>(blockIdx.x) * seq_len;
   int idx = threadIdx.x;
   assert(blockDim.x % WARP_SIZE == 0);
 
@@ -156,7 +156,7 @@ __global__ void SoftmaxKernelWithEltaddForLarge(T *qk_buf,
                                                 const int head_num,
                                                 const int seq_len,
                                                 const funcs::warp_mask_t mask) {
-  int qk_offset = blockIdx.x * seq_len;
+  int64_t qk_offset = static_cast<int64_t>(blockIdx.x) * seq_len;
   assert(blockDim.x % WARP_SIZE == 0);
 
   T stride_max = -1e20f;
@@ -193,7 +193,7 @@ __global__ void SoftmaxKernelWithEltaddForLarge(half *qk_buf,
                                                 const int seq_len,
                                                 const funcs::warp_mask_t mask) {
 #if defined(PADDLE_WITH_CUDA)
-  int qk_offset = blockIdx.x * seq_len;
+  int64_t qk_offset = static_cast<int64_t>(blockIdx.x) * seq_len;
   assert(blockDim.x % WARP_SIZE == 0);
 
   float stride_max = -1e20f;
@@ -230,7 +230,7 @@ __global__ void SoftmaxKernelWithEltaddForLarge2(
     const int head_num,
     const int seq_len,
     const funcs::warp_mask_t mask) {
-  int qk_offset = blockIdx.x * seq_len;
+  int64_t qk_offset = static_cast<int64_t>(blockIdx.x) * seq_len;
   assert(blockDim.x % WARP_SIZE == 0);
 
   float2 stride_max = make_float2(-1e20f, -1e20f);
@@ -273,7 +273,7 @@ __global__ void SoftmaxKernelWithEltaddForLarge2(
 // HIP defined __HIP_NO_HALF_CONVERSIONS__ in hip.cmake
 #if defined(PADDLE_WITH_CUDA)
 
-  int qk_offset = blockIdx.x * seq_len;
+  int64_t qk_offset = static_cast<int64_t>(blockIdx.x) * seq_len;
   assert(blockDim.x % WARP_SIZE == 0);
 
   float2 stride_max = make_float2(-1e20f, -1e20f);
@@ -357,10 +357,11 @@ __global__ void softmax_kernel_with_mask(T *qk_buf_,
   T2 *qk_buf_half2 = reinterpret_cast<T2 *>(qk_buf_);
   const T2 *attr_mask_half2 = (const T2 *)attr_mask;
 
-  for (int seq_id = blockIdx.x; seq_id < seq_len; seq_id += gridDim.x * NUM) {
+  for (int64_t seq_id = static_cast<int64_t>(blockIdx.x); seq_id < seq_len;
+       seq_id += static_cast<int64_t>(gridDim.x) * NUM) {
     T2 data[NUM][ITEMS_PER_THREAD];
 
-    int qk_offset[NUM];
+    int64_t qk_offset[NUM];
 
     __shared__ float s_sum[NUM], s_max[NUM];
     float local_max[NUM];
@@ -370,18 +371,25 @@ __global__ void softmax_kernel_with_mask(T *qk_buf_,
     }
 
     for (int i = 0;
-         blockDim.x * i + threadIdx.x < (seq_len / 2) && i < ITEMS_PER_THREAD;
+         static_cast<int64_t>(blockDim.x) * i + threadIdx.x < (seq_len / 2) &&
+         i < ITEMS_PER_THREAD;
          i++) {
-      int mask_offset[NUM];
+      int64_t mask_offset[NUM];
 #pragma unroll
       for (int j = 0; j < NUM; j++) {
-        qk_offset[j] = ((blockIdx.y * head_num + blockIdx.z) * seq_len +
-                        seq_id + j * gridDim.x) *
-                           (seq_len / 2) +
-                       blockDim.x * i + threadIdx.x;
+        qk_offset[j] =
+            ((static_cast<int64_t>(blockIdx.y) * head_num +
+              static_cast<int64_t>(blockIdx.z)) *
+                 static_cast<int64_t>(seq_len) +
+             seq_id +
+             static_cast<int64_t>(j) * static_cast<int64_t>(gridDim.x)) *
+                static_cast<int64_t>(seq_len / 2) +
+            static_cast<int64_t>(blockDim.x) * i + threadIdx.x;
         mask_offset[j] =
-            (blockIdx.y * seq_len + seq_id + j * gridDim.x) * (seq_len / 2) +
-            blockDim.x * i + threadIdx.x;
+            (static_cast<int64_t>(blockIdx.y) * seq_len + seq_id +
+             static_cast<int64_t>(j) * static_cast<int64_t>(gridDim.x)) *
+                static_cast<int64_t>(seq_len / 2) +
+            static_cast<int64_t>(blockDim.x) * i + threadIdx.x;
       }
 
       T2 mask_val[NUM];
@@ -432,7 +440,8 @@ __global__ void softmax_kernel_with_mask(T *qk_buf_,
     }
 
     for (int i = 0;
-         blockDim.x * i + threadIdx.x < (seq_len / 2) && i < ITEMS_PER_THREAD;
+         static_cast<int64_t>(blockDim.x) * i + threadIdx.x < (seq_len / 2) &&
+         i < ITEMS_PER_THREAD;
          i++) {
 #pragma unroll
       for (int j = 0; j < NUM; j++) {
@@ -461,14 +470,19 @@ __global__ void softmax_kernel_with_mask(T *qk_buf_,
     __syncthreads();
 
     for (int i = 0;
-         blockDim.x * i + threadIdx.x < (seq_len / 2) && i < ITEMS_PER_THREAD;
+         static_cast<int64_t>(blockDim.x) * i + threadIdx.x < (seq_len / 2) &&
+         i < ITEMS_PER_THREAD;
          i++) {
 #pragma unroll
       for (int j = 0; j < NUM; j++) {
-        qk_offset[j] = ((blockIdx.y * head_num + blockIdx.z) * seq_len +
-                        seq_id + j * gridDim.x) *
-                           (seq_len / 2) +
-                       blockDim.x * i + threadIdx.x;
+        qk_offset[j] =
+            ((static_cast<int64_t>(blockIdx.y) * head_num +
+              static_cast<int64_t>(blockIdx.z)) *
+                 static_cast<int64_t>(seq_len) +
+             seq_id +
+             static_cast<int64_t>(j) * static_cast<int64_t>(gridDim.x)) *
+                static_cast<int64_t>(seq_len / 2) +
+            static_cast<int64_t>(blockDim.x) * i + threadIdx.x;
       }
 
 #pragma unroll
@@ -525,12 +539,15 @@ inline void MatmulWithHeadQK(const GPUContext &dev_ctx,
                    reinterpret_cast<run_type *>(k_buf_),
                    static_cast<run_type>(beta),
                    reinterpret_cast<run_type *>(qk_buf_),
-                   batch_size * head_num,
-                   seq_len * size_per_head,
-                   seq_len * size_per_head);
+                   static_cast<int64_t>(batch_size) * head_num,
+                   static_cast<int64_t>(seq_len) * size_per_head,
+                   static_cast<int64_t>(seq_len) * size_per_head);
 
   if (seq_len <= 1024) {
-    int grid = batch_size * head_num * seq_len;
+    int64_t grid_size64 = static_cast<int64_t>(batch_size) * head_num * seq_len;
+    PADDLE_ENFORCE_LE_INT_MAX(
+        grid_size64, "CUDA launch grid batch_size * head_num * seq_len");
+    int grid_size = static_cast<int>(grid_size64);
     int block = seq_len;
 
     // Align block to 32, also limit seq_len to max block size.
@@ -540,7 +557,7 @@ inline void MatmulWithHeadQK(const GPUContext &dev_ctx,
               ? WARP_SIZE
               : ((seq_len + (2 * WARP_SIZE - 1)) / (2 * WARP_SIZE)) * WARP_SIZE;
       if (std::is_same<T, float>::value) {
-        SoftmaxKernelWithEltadd2<float2><<<grid, block, 0, stream>>>(
+        SoftmaxKernelWithEltadd2<float2><<<grid_size, block, 0, stream>>>(
             reinterpret_cast<float2 *>(qk_buf_),
             reinterpret_cast<const float2 *>(bias_qk),
             batch_size,
@@ -561,7 +578,7 @@ inline void MatmulWithHeadQK(const GPUContext &dev_ctx,
           SOFTMAX_KERNEL_WITH_MASK(1);
 #endif
         } else {
-          SoftmaxKernelWithEltadd2<__half2><<<grid, block, 0, stream>>>(
+          SoftmaxKernelWithEltadd2<__half2><<<grid_size, block, 0, stream>>>(
               reinterpret_cast<__half2 *>(qk_buf_),
               reinterpret_cast<const __half2 *>(bias_qk),
               batch_size,
@@ -574,21 +591,25 @@ inline void MatmulWithHeadQK(const GPUContext &dev_ctx,
       block = (seq_len <= WARP_SIZE)
                   ? WARP_SIZE
                   : ((seq_len + WARP_SIZE - 1) / WARP_SIZE) * WARP_SIZE;
-      SoftmaxKernelWithEltadd<T><<<grid, block, 0, stream>>>(
+      SoftmaxKernelWithEltadd<T><<<grid_size, block, 0, stream>>>(
           qk_buf_, bias_qk, batch_size, head_num, seq_len, FINAL_MASK);
     }
   } else {
-    int grid = batch_size * head_num * seq_len;
+    int64_t grid_size64 = static_cast<int64_t>(batch_size) * head_num * seq_len;
+    PADDLE_ENFORCE_LE_INT_MAX(
+        grid_size64, "CUDA launch grid batch_size * head_num * seq_len");
+    int grid_size = static_cast<int>(grid_size64);
     int block = 512;
     if (seq_len % 2 == 0) {
       if (std::is_same<T, float>::value) {
-        SoftmaxKernelWithEltaddForLarge2<float2><<<grid, block, 0, stream>>>(
-            reinterpret_cast<float2 *>(qk_buf_),
-            reinterpret_cast<const float2 *>(bias_qk),
-            batch_size,
-            head_num,
-            seq_len / 2,
-            FINAL_MASK);
+        SoftmaxKernelWithEltaddForLarge2<float2>
+            <<<grid_size, block, 0, stream>>>(
+                reinterpret_cast<float2 *>(qk_buf_),
+                reinterpret_cast<const float2 *>(bias_qk),
+                batch_size,
+                head_num,
+                seq_len / 2,
+                FINAL_MASK);
       } else {
         if (bias_is_mask) {
 #if defined(__HIPCC__) || (defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 700)
@@ -612,17 +633,18 @@ inline void MatmulWithHeadQK(const GPUContext &dev_ctx,
           }
 #endif
         } else {
-          SoftmaxKernelWithEltaddForLarge2<__half2><<<grid, block, 0, stream>>>(
-              reinterpret_cast<__half2 *>(qk_buf_),
-              reinterpret_cast<const __half2 *>(bias_qk),
-              batch_size,
-              head_num,
-              seq_len / 2,
-              FINAL_MASK);
+          SoftmaxKernelWithEltaddForLarge2<__half2>
+              <<<grid_size, block, 0, stream>>>(
+                  reinterpret_cast<__half2 *>(qk_buf_),
+                  reinterpret_cast<const __half2 *>(bias_qk),
+                  batch_size,
+                  head_num,
+                  seq_len / 2,
+                  FINAL_MASK);
         }
       }
     } else {
-      SoftmaxKernelWithEltaddForLarge<T><<<grid, block, 0, stream>>>(
+      SoftmaxKernelWithEltaddForLarge<T><<<grid_size, block, 0, stream>>>(
           qk_buf_, bias_qk, batch_size, head_num, seq_len, FINAL_MASK);
     }
   }
@@ -641,8 +663,8 @@ inline void MatmulWithHeadQKV(const GPUContext &dev_ctx,
                               T *dst,
                               T alpha,
                               T beta) {
-  int m = batch_size * seq_len;
-  int k = head_num * size_per_head;
+  int64_t m = static_cast<int64_t>(batch_size) * seq_len;
+  int64_t k = static_cast<int64_t>(head_num) * size_per_head;
 
   typedef typename CUDATypeTraits<T>::TYPE run_type;
   auto blas = funcs::GetBlas<GPUContext, run_type>(dev_ctx);
@@ -660,9 +682,9 @@ inline void MatmulWithHeadQKV(const GPUContext &dev_ctx,
                    reinterpret_cast<run_type *>(v_buf_),
                    static_cast<run_type>(beta),
                    reinterpret_cast<run_type *>(dst),
-                   batch_size * head_num,
-                   seq_len * seq_len,
-                   seq_len * size_per_head);
+                   static_cast<int64_t>(batch_size) * head_num,
+                   static_cast<int64_t>(seq_len) * seq_len,
+                   static_cast<int64_t>(seq_len) * size_per_head);
 }
 
 template <typename T>
@@ -678,7 +700,8 @@ void MultiheadGPUComputeFunctor<T>::operator()(const GPUContext &dev_ctx,
                                                T alpha,
                                                T beta) {
   auto stream = dev_ctx.stream();
-  const int tsize = batch * head_num * seq_len * head_size;
+  const int64_t tsize =
+      static_cast<int64_t>(batch) * head_num * seq_len * head_size;
 
   T *qptr = tptr;
   T *kptr = qptr + tsize;

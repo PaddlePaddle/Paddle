@@ -175,6 +175,13 @@ class Test_Detach(unittest.TestCase):
             array_no_detach_single, array_detach_multi
         )
 
+    def test_detach_keeps_tensor_name(self):
+        with base.dygraph.guard():
+            var = paddle.to_tensor(self.generate_Data())
+            detach_var = var.detach()
+
+            self.assertEqual(detach_var.name, var.name)
+
 
 class TestInplace(unittest.TestCase):
     def test_forward_version(self):

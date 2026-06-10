@@ -99,14 +99,14 @@ void GroupNormGradKernel(const Context& dev_ctx,
   const T* bias_data = nullptr;
   if (bias_ptr) bias_data = bias_ptr->data<T>();
 
-  int imsize = 1;
+  int64_t imsize = 1;
   if (data_layout == DataLayout::NCHW) {
     for (int i = 2; i < x_dims.size(); ++i) {
-      imsize *= static_cast<int>(x_dims[i]);
+      imsize *= x_dims[i];
     }
   } else {
     for (int i = 1; i < x_dims.size() - 1; ++i) {
-      imsize *= static_cast<int>(x_dims[i]);
+      imsize *= x_dims[i];
     }
   }
   auto* iter_x_data = x_data;
@@ -116,7 +116,8 @@ void GroupNormGradKernel(const Context& dev_ctx,
     for (int gid = 0; gid < groups; gid++) {
       T x_var = var_data[bid * groups + gid];
       T var_inv = 1.0 / sqrt(x_var + epsilon);
-      int number = std::min(group_size, static_cast<int>(C - gid * group_size));
+      int64_t number = std::min(static_cast<int64_t>(group_size),
+                                C - static_cast<int64_t>(gid) * group_size);
       T number_inv = 1.0 / (number * imsize);
       auto* tmp_x = iter_x_data;
       auto* tmp_y = iter_y_data;
@@ -129,8 +130,8 @@ void GroupNormGradKernel(const Context& dev_ctx,
       T dp_scale = 0, dp_bias = 0;
 
       if (data_layout == DataLayout::NCHW) {
-        for (int cid = 0; cid < number; cid++) {
-          for (int imid = 0; imid < imsize;
+        for (int64_t cid = 0; cid < number; cid++) {
+          for (int64_t imid = 0; imid < imsize;
                imid++, iter_x_data++, iter_y_data++) {
             T val = iter_x_data[0];
             if (bias_data) val -= bias_data[gid * group_size + cid];
@@ -147,8 +148,8 @@ void GroupNormGradKernel(const Context& dev_ctx,
           }
         }
         if (d_x_data) {
-          for (int cid = 0; cid < number; cid++) {
-            for (int imid = 0; imid < imsize;
+          for (int64_t cid = 0; cid < number; cid++) {
+            for (int64_t imid = 0; imid < imsize;
                  imid++, iter_d_x_data++, tmp_x++, tmp_y++) {
               T v_y = tmp_x[0];
               T dly = tmp_y[0];
@@ -166,10 +167,10 @@ void GroupNormGradKernel(const Context& dev_ctx,
           }
         }
       } else {
-        for (int cid = 0; cid < number; cid++) {
+        for (int64_t cid = 0; cid < number; cid++) {
           iter_x_data = x_src_data + cid;
           iter_y_data = y_src_data + cid;
-          for (int imid = 0; imid < imsize;
+          for (int64_t imid = 0; imid < imsize;
                imid++, iter_x_data += C, iter_y_data += C) {
             T val = iter_x_data[0];
             if (bias_data) val -= bias_data[gid * group_size + cid];
@@ -186,11 +187,11 @@ void GroupNormGradKernel(const Context& dev_ctx,
           }
         }
         if (d_x_data) {
-          for (int cid = 0; cid < number; cid++) {
+          for (int64_t cid = 0; cid < number; cid++) {
             tmp_x = x_src_data + cid;
             tmp_y = y_src_data + cid;
             iter_d_x_data = tmp_d_x + cid;
-            for (int imid = 0; imid < imsize;
+            for (int64_t imid = 0; imid < imsize;
                  imid++, iter_d_x_data += C, tmp_x += C, tmp_y += C) {
               T v_y = tmp_x[0];
               T dly = tmp_y[0];
@@ -215,11 +216,11 @@ void GroupNormGradKernel(const Context& dev_ctx,
       }
     }
     if (data_layout == DataLayout::NHWC) {
-      iter_x_data = x_data + (bid + 1) * C * imsize;
+      iter_x_data = x_data + static_cast<int64_t>(bid + 1) * C * imsize;
       if (d_x_data) {
-        iter_d_x_data = d_x_data + (bid + 1) * C * imsize;
+        iter_d_x_data = d_x_data + static_cast<int64_t>(bid + 1) * C * imsize;
       }
-      iter_y_data = y_data + (bid + 1) * C * imsize;
+      iter_y_data = y_data + static_cast<int64_t>(bid + 1) * C * imsize;
     }
   }
 }

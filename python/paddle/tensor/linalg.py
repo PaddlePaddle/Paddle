@@ -221,6 +221,7 @@ def transpose(
         return out
 
 
+@transpose_decorator()
 @inplace_apis_in_dygraph_only
 def transpose_(x, perm, name=None):
     r"""

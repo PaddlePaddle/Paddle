@@ -1212,6 +1212,24 @@ def monkey_patch_tensor():
         return self.place.is_cpu_place()
 
     @framework.dygraph_only
+    def col_indices(self: Tensor) -> Tensor:
+        """
+        Returns the column indices of a SparseCsrTensor.
+
+        Alias for cols() method.
+        """
+        return self.cols()
+
+    @framework.dygraph_only
+    def crow_indices(self: Tensor) -> Tensor:
+        """
+        Returns the compressed row indices of a SparseCsrTensor.
+
+        Alias for crows() method.
+        """
+        return self.crows()
+
+    @framework.dygraph_only
     def pin_memory(self: Tensor, blocking: bool = True) -> Tensor:
         if (
             self.place.is_cuda_pinned_place()
@@ -1315,6 +1333,20 @@ def monkey_patch_tensor():
             return self
 
         return _C_ops.sparse_to_sparse_coo(self, sparse_dim)
+
+    @framework.dygraph_only
+    def to_sparse(self: Tensor, sparse_dim: int | None = None) -> Tensor:
+        """
+        Convert the tensor to sparse COO format.
+
+        Args:
+            sparse_dim: Number of sparse dimensions. If None, uses the tensor's rank.
+
+        See to_sparse_coo for details.
+        """
+        if sparse_dim is None:
+            sparse_dim = len(self.shape)
+        return self.to_sparse_coo(sparse_dim)
 
     @framework.dygraph_only
     def _md5sum(self: Tensor) -> str:
@@ -1726,6 +1758,7 @@ def monkey_patch_tensor():
         ("values", values),
         ("to_dense", to_dense),
         ("to_sparse_coo", to_sparse_coo),
+        ("to_sparse", to_sparse),
         ("coalesce", coalesce),
         ("sparse_mask", sparse_mask),
         ("_set_grad_ivar", _set_grad_ivar),
@@ -1750,6 +1783,8 @@ def monkey_patch_tensor():
         # For TVM FFI 0.1.5+
         ("__dlpack_c_exchange_api__", core.dlpack_exchange_api_pycapsule()),
         ("device", device),
+        ("col_indices", col_indices),
+        ("crow_indices", crow_indices),
     ):
         setattr(core.eager.Tensor, method_name, method)
 

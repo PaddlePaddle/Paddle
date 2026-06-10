@@ -55,8 +55,8 @@ void YoloBoxKernel(const Context& dev_ctx,
   int input_size_h = downsample_ratio * h;
   int input_size_w = downsample_ratio * w;
 
-  const int stride = h * w;
-  const int an_stride = (class_num + 5) * stride;
+  const int64_t stride = static_cast<int64_t>(h) * w;
+  const int64_t an_stride = static_cast<int64_t>(class_num + 5) * stride;
 
   DenseTensor anchors_;
   anchors_.Resize({an_num * 2});
@@ -82,11 +82,11 @@ void YoloBoxKernel(const Context& dev_ctx,
     for (int j = 0; j < an_num; j++) {
       for (int k = 0; k < h; k++) {
         for (int l = 0; l < w; l++) {
-          int obj_idx = funcs::GetEntryIndex(
+          int64_t obj_idx = funcs::GetEntryIndex(
               i, j, k * w + l, an_num, an_stride, stride, 4, iou_aware);
           T conf = funcs::sigmoid<T>(input_data[obj_idx]);
           if (iou_aware) {
-            int iou_idx =
+            int64_t iou_idx =
                 funcs::GetIoUIndex(i, j, k * w + l, an_num, an_stride, stride);
             T iou = funcs::sigmoid<T>(input_data[iou_idx]);
             conf = pow(conf, static_cast<T>(1. - iou_aware_factor)) *
@@ -96,7 +96,7 @@ void YoloBoxKernel(const Context& dev_ctx,
             continue;
           }
 
-          int box_idx = funcs::GetEntryIndex(
+          int64_t box_idx = funcs::GetEntryIndex(
               i, j, k * w + l, an_num, an_stride, stride, 0, iou_aware);
           funcs::GetYoloBox<T>(box.data(),
                                input_data,
@@ -122,9 +122,10 @@ void YoloBoxKernel(const Context& dev_ctx,
                                      img_width,
                                      clip_bbox);
 
-          int label_idx = funcs::GetEntryIndex(
+          int64_t label_idx = funcs::GetEntryIndex(
               i, j, k * w + l, an_num, an_stride, stride, 5, iou_aware);
-          int score_idx = (i * box_num + j * stride + k * w + l) * class_num;
+          int64_t score_idx =
+              (i * box_num + j * stride + k * w + l) * class_num;
           funcs::CalcLabelScore<T>(scores_data,
                                    input_data,
                                    label_idx,

@@ -21,7 +21,8 @@ import os
 import re
 import sys
 import types
-from typing import TYPE_CHECKING, Union, overload
+from contextlib import contextmanager
+from typing import TYPE_CHECKING, Any, Union, overload
 
 from typing_extensions import TypeAlias
 
@@ -54,6 +55,7 @@ from . import (  # noqa: F401
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
     from contextlib import AbstractContextManager
     from types import TracebackType
 
@@ -1497,6 +1499,13 @@ class Stream:
         else:
             return ctypes.c_void_p(self.stream_base.raw_stream)
 
+    @property
+    def cuda_stream(self) -> int:
+        assert isinstance(self.stream_base, core.CUDAStream), (
+            "cuda_stream is only available for CUDA streams"
+        )
+        return self.stream_base.cuda_stream
+
     def __cuda_stream__(self):
         """
         CUDA Stream protocol described at
@@ -2011,6 +2020,25 @@ class amp:
 
 class nvtx:
     """Namespace for NVTX marker operations."""
+
+    @staticmethod
+    @contextmanager
+    def range(
+        msg: str, *args: Any, **kwargs: Any
+    ) -> Generator[None, None, None]:
+        """
+        Context manager/decorator that pushes and pops an NVTX range.
+
+        Args:
+            msg (str): The name of the NVTX range.
+            *args: Arguments used to format ``msg``.
+            **kwargs: Keyword arguments used to format ``msg``.
+        """
+        nvtx.range_push(msg.format(*args, **kwargs))
+        try:
+            yield
+        finally:
+            nvtx.range_pop()
 
     @staticmethod
     def range_push(msg: str):
