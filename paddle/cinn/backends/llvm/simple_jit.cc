@@ -58,10 +58,10 @@ void SimpleJIT::AddModule(std::unique_ptr<llvm::Module> module, bool optimize) {
   bool debug = false;
   if (optimize) {
     llvm::PassBuilder pass_builder;
-    llvm::LoopAnalysisManager loop_analysis_manager(debug);
-    llvm::FunctionAnalysisManager function_analysis_manager(debug);
-    llvm::CGSCCAnalysisManager cgscc_analysis_manager(debug);
-    llvm::ModuleAnalysisManager module_analysis_manager(debug);
+    llvm::LoopAnalysisManager loop_analysis_manager;
+    llvm::FunctionAnalysisManager function_analysis_manager;
+    llvm::CGSCCAnalysisManager cgscc_analysis_manager;
+    llvm::ModuleAnalysisManager module_analysis_manager;
 
     pass_builder.registerModuleAnalyses(module_analysis_manager);
     pass_builder.registerCGSCCAnalyses(cgscc_analysis_manager);
@@ -115,7 +115,7 @@ SimpleJIT::SimpleJIT() : context_(std::make_unique<llvm::LLVMContext>()) {
 
   for (auto &item : GlobalSymbolRegistry::Global().All()) {
     VLOG(2) << "Insert [" << item.first << "] to SimpleJIT";
-    llvm::cantFail(jit_->define(llvm::orc::absoluteSymbols(
+    llvm::cantFail(jit_->getMainJITDylib().define(llvm::orc::absoluteSymbols(
         {{mangle(item.first),
           {llvm::pointerToJITTargetAddress(item.second),
            llvm::JITSymbolFlags::None}}})));

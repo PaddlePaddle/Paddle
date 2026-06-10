@@ -76,6 +76,24 @@ bool is_integral_type(cinn::common::Type t) {
 
 bool is_floating_type(cinn::common::Type t) { return t.is_float(); }
 
+int GetFixedVectorNumElements(llvm::Type *type) {
+#if LLVM_VERSION_MAJOR >= 13
+  return llvm::cast<llvm::FixedVectorType>(type)->getNumElements();
+#else
+  return llvm::cast<llvm::VectorType>(type)->getNumElements();
+#endif
+}
+
+#if LLVM_VERSION_MAJOR >= 11
+llvm::ElementCount GetFixedElementCount(int lanes) {
+#if LLVM_VERSION_MAJOR >= 13
+  return llvm::ElementCount::getFixed(lanes);
+#else
+  return llvm::ElementCount(lanes, false /*Scalable*/);
+#endif
+}
+#endif
+
 llvm::Value *EmitComparison(llvm::CmpInst::Predicate predicate,
                             llvm::Value *lhs,
                             llvm::Value *rhs,
@@ -125,8 +143,7 @@ CodeGenLLVM::~CodeGenLLVM() {}
 llvm::Value *CodeGenLLVM::EmitVectorSlice(llvm::Value *vec,
                                           int begin,
                                           int extent) {
-  int numel =
-      llvm::dyn_cast<llvm::VectorType>(vec->getType())->getNumElements();
+  int numel = GetFixedVectorNumElements(vec->getType());
   if (extent == numel && begin == 0) return vec;
 
   CHECK(begin >= 0 && extent <= numel) << "Slicing out of bound!";
@@ -148,11 +165,10 @@ llvm::Value *CodeGenLLVM::EmitVectorPad(llvm::Value *vec, int lanes) {
   llvm::Value *mask =
       llvm::UndefValue::get(llvm::VectorType::get(b_->getInt32Ty(), lanes));
 #else
-  llvm::Value *mask = llvm::UndefValue::get(llvm::VectorType::get(
-      b_->getInt32Ty(), llvm::ElementCount(lanes, false /*Scalable*/)));
+  llvm::Value *mask = llvm::UndefValue::get(
+      llvm::VectorType::get(b_->getInt32Ty(), GetFixedElementCount(lanes)));
 #endif
-  int numel =
-      llvm::dyn_cast<llvm::VectorType>(vec->getType())->getNumElements();
+  int numel = GetFixedVectorNumElements(vec->getType());
 
   CHECK(numel <= lanes);
   if (numel == lanes) return vec;
@@ -168,17 +184,15 @@ llvm::Value *CodeGenLLVM::EmitVectorPad(llvm::Value *vec, int lanes) {
 llvm::Value *CodeGenLLVM::EmitVectorConcat(std::vector<llvm::Value *> vecs) {
   int lanes = 0;
   for (auto *v : vecs) {
-    lanes += llvm::dyn_cast<llvm::VectorType>(v->getType())->getNumElements();
+    lanes += GetFixedVectorNumElements(v->getType());
   }
   while (vecs.size() > 1) {
     std::vector<llvm::Value *> new_vecs;
     for (size_t i = 0; i < vecs.size() - 1; i += 2) {
       auto *lhs = vecs[i];
       auto *rhs = vecs[i + 1];
-      const auto lhs_lanes =
-          llvm::dyn_cast<llvm::VectorType>(lhs->getType())->getNumElements();
-      const auto rhs_lanes =
-          llvm::dyn_cast<llvm::VectorType>(rhs->getType())->getNumElements();
+      const auto lhs_lanes = GetFixedVectorNumElements(lhs->getType());
+      const auto rhs_lanes = GetFixedVectorNumElements(rhs->getType());
       if (lhs_lanes < rhs_lanes) {
         lhs = EmitVectorPad(lhs, rhs_lanes);
       } else if (lhs_lanes > rhs_lanes) {
@@ -1084,7 +1098,7 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Store *op) {
             CreateBufferPtr(op->type().ElementOf(), buffer, Visit(&base));
         auto *vtype = llvm::VectorType::get(
                           CinnTypeToLLVMType(op->type().ElementOf(), m_, true),
-                          llvm::ElementCount(lanes, false /*Scalable*/))
+                          GetFixedElementCount(lanes))
                           ->getPointerTo();
         int alignment = std::max(op->type().ElementOf().bits() / 8, 1);
         llvm::StoreInst *inst =
@@ -1257,7 +1271,7 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Ramp *op) {
 
 llvm::Value *CodeGenLLVM::Visit(const ir::Broadcast *op) {
 #if LLVM_VERSION_MAJOR >= 11
-  const llvm::ElementCount elem_count(op->lanes, /*scalable*/ false);
+  const llvm::ElementCount elem_count = GetFixedElementCount(op->lanes);
 #else
   const int elem_count = op->lanes;
 #endif
@@ -1395,7 +1409,7 @@ llvm::Value *CodeGenLLVM::DenseVectorLoad(const ir::Load *op) {
     auto slice_base = optim::ArithSimplify(ramp->base + i);
 
 #if LLVM_VERSION_MAJOR >= 11
-    const llvm::ElementCount elem_count(slice_lanes, /*scalable*/ false);
+    const llvm::ElementCount elem_count = GetFixedElementCount(slice_lanes);
 #else
     const int elem_count = slice_lanes;
 #endif
@@ -1468,8 +1482,7 @@ llvm::Value *CodeGenLLVM::CreateBufferPtr(Type t,
 llvm::Value *CodeGenLLVM::CreateVecSlice(llvm::Value *vec,
                                          int begin,
                                          int lanes) {
-  int total_lanes =
-      llvm::dyn_cast<llvm::VectorType>(vec->getType())->getNumElements();
+  int total_lanes = GetFixedVectorNumElements(vec->getType());
   PADDLE_ENFORCE_LE(begin + lanes,
                     total_lanes,
                     ::common::errors::InvalidArgument(
@@ -1797,7 +1810,7 @@ llvm::Value *CodeGenLLVM::Visit(const ir::intrinsics::BuiltinIntrin *op) {
   llvm::Type *return_type = CinnTypeToLLVMType(op->type(), m_, true);
   llvm::Function *fn = GetIntrinsicDecl(id, return_type, arg_type);
   CHECK(fn) << "Cannot find intrinsic declaration, possible type mismatch: "
-            << llvm::Intrinsic::getName(id, {});
+            << llvm::Intrinsic::getName(id);
   return b_->CreateCall(fn, arg_value);
 }
 
