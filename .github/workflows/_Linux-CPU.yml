@@ -162,6 +162,8 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
+          echo "Cleaning stale Paddle C++ extension JIT cache"
+          rm -rf /root/.cache/paddle_extensions
           bash ${ci_scripts}/run_linux_cpu_test.sh
           EXCODE=$?
           source ${ci_scripts}/utils.sh; clean_build_files
