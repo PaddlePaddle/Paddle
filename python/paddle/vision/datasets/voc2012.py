@@ -75,6 +75,7 @@ class VOC2012(Dataset[tuple["_ImageDataType", "npt.NDArray[Any]"]]):
 
             >>> # doctest: +TIMEOUT(120)
             >>> import itertools
+            >>> import paddle
             >>> import paddle.vision.transforms as T
             >>> from paddle.vision.datasets import VOC2012
 
@@ -113,6 +114,7 @@ class VOC2012(Dataset[tuple["_ImageDataType", "npt.NDArray[Any]"]]):
 
             >>> for img, label in itertools.islice(iter(voc2012_test), 5):  # only show first 5 images
             ...     # do something with img and label
+            ...     assert isinstance(img, paddle.Tensor)
             ...     print(type(img), img.shape)
             ...     # <class 'paddle.Tensor'> [3, 281, 500]
             ...     print(type(label), label.shape)

@@ -610,7 +610,7 @@ def inference(
 
             >>> batch = 4096
             >>> hidd = 1024
-            >>> dtype = "bfloat16"
+            >>> dtype = paddle.bfloat16
             >>> x = paddle.rand([batch, hidd], dtype=dtype)
             >>> mylayer = ExampleLayer(hidd)
             >>> dynamic_result = mylayer(x)

@@ -130,6 +130,7 @@ class DatasetFolder(Dataset[tuple["_ImageDataType", int]]):
             >>> import tempfile
             >>> import cv2
             >>> import numpy as np
+            >>> import paddle
             >>> import paddle.vision.transforms as T
             >>> from pathlib import Path
             >>> from paddle.vision.datasets import DatasetFolder
@@ -226,6 +227,7 @@ class DatasetFolder(Dataset[tuple["_ImageDataType", int]]):
 
             >>> for img, label in iter(data_folder_2):
             ...     # do something with img and label
+            ...     assert isinstance(img, paddle.Tensor)
             ...     print(type(img), img.shape, label)
             ...     # <class 'paddle.Tensor'> [3, 64, 64] 0
 
@@ -380,6 +382,7 @@ class ImageFolder(Dataset[list["_ImageDataType"]]):
             >>> import tempfile
             >>> import cv2
             >>> import numpy as np
+            >>> import paddle
             >>> import paddle.vision.transforms as T
             >>> from pathlib import Path
             >>> from paddle.vision.datasets import ImageFolder
@@ -466,6 +469,7 @@ class ImageFolder(Dataset[list["_ImageDataType"]]):
 
             >>> for (img,) in iter(image_folder_2):
             ...     # do something with img
+            ...     assert isinstance(img, paddle.Tensor)
             ...     print(type(img), img.shape)
             ...     # <class 'paddle.Tensor'> [3, 64, 64]
 

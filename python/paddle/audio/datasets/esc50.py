@@ -65,9 +65,8 @@ class ESC50(AudioClassificationDataset):
             >>> # doctest: +TIMEOUT(60)
             >>> import paddle
 
-            >>> mode = 'dev'
             >>> esc50_dataset = paddle.audio.datasets.ESC50(
-            ...     mode=mode,
+            ...     mode='dev',
             ...     feat_type='raw',
             ... )
             >>> for idx in range(5):
@@ -82,7 +81,7 @@ class ESC50(AudioClassificationDataset):
             paddle.Size([220500]) 19
 
             >>> esc50_dataset = paddle.audio.datasets.ESC50(
-            ...     mode=mode,
+            ...     mode='dev',
             ...     feat_type='mfcc',
             ...     n_mfcc=40,
             ... )

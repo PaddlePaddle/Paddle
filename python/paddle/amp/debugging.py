@@ -103,7 +103,7 @@ def check_layer_numerics(
             ...     def forward(self, x):
             ...         # return 1/x * self._w + self._b   open it you will see the error log
             ...         return x @ self._w + self._b
-            >>> dtype = 'float32'
+            >>> dtype = paddle.float32
             >>> x = paddle.rand([10, 2, 2], dtype=dtype)
             >>> model = MyLayer(dtype)
             >>> x[0] = float(0)
