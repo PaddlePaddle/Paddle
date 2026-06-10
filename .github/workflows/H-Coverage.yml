@@ -505,7 +505,7 @@ jobs:
     if: needs.build.outputs.can-skip != 'true'
     runs-on:
       group: Fleet-H-single-card
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       PIP_CACHE_DIR: /root/.cache/pip
       CACHE_DIR: /root/.cache

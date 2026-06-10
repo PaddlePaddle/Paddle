@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from types import EllipsisType
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -25,8 +26,6 @@ from typing import (
 import numpy as np
 import numpy.typing as npt
 from typing_extensions import Never
-
-from .backport import EllipsisType
 
 if TYPE_CHECKING:
     from paddle import ParamAttr, Tensor
