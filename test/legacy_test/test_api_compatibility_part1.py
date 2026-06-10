@@ -2398,6 +2398,8 @@ class TestSetRngStateAPI(unittest.TestCase):
 
 class _CompatBatchNormBase:
     api = None
+    alias = None
+    alias_name = None
     original_api = None
     x_shape = None
     invalid_shape = None
@@ -2426,19 +2428,19 @@ class _CompatBatchNormBase:
         x = paddle.to_tensor(self.np_x)
 
         # 1. Paddle positional arguments
-        layer1 = self.api(self.num_features)
+        layer1 = self.alias(self.num_features)
         out1 = layer1(x)
         # 2. Paddle keyword arguments
-        layer2 = self.api(num_features=self.num_features, eps=self.eps)
+        layer2 = self.alias(num_features=self.num_features, eps=self.eps)
         out2 = layer2(x)
         # 3. PyTorch positional arguments
-        layer3 = self.api(
+        layer3 = self.alias(
             self.num_features, self.eps, 0.2, False, False, None, "float64"
         )
         x64 = paddle.to_tensor(self.np_x.astype("float64"))
         out3 = layer3(x64)
         # 4. PyTorch keyword arguments
-        layer4 = self.api(
+        layer4 = self.alias(
             dtype="float32",
             device=None,
             track_running_stats=True,
@@ -2450,7 +2452,7 @@ class _CompatBatchNormBase:
         )
         out4 = layer4(x)
         # 5. Mixed arguments
-        layer5 = self.api(self.num_features, eps=self.eps, bias=False)
+        layer5 = self.alias(self.num_features, eps=self.eps, bias=False)
         out5 = layer5(x)
 
         self._check_outputs([out1, out2, out4, out5])
@@ -2463,57 +2465,29 @@ class _CompatBatchNormBase:
         self.assertIsNone(layer3.bias)
         self.assertIsNotNone(layer4.weight)
         self.assertIsNone(layer4.bias)
-        self.assertEqual(layer1.num_batches_tracked.numpy().item(), 1)
-        self.assertIn("num_batches_tracked", layer1.state_dict())
+        self.assertEqual(layer4._momentum, 0.8)
+        self.assertIs(self.api, self.alias)
 
-        layer6 = self.api(self.num_features, track_running_stats=False)
+        layer6 = self.alias(self.num_features, track_running_stats=False)
         layer6.eval()
         out6 = layer6(x)
-        self.assertIsNone(layer6.running_mean)
-        self.assertIsNone(layer6.running_var)
-        self.assertIsNone(layer6.num_batches_tracked)
-        self.assertNotIn("num_batches_tracked", layer6.state_dict())
+        self.assertFalse(layer6.track_running_stats)
+        self.assertFalse(layer6._use_global_stats)
         self._check_outputs([out6])
 
-        layer7 = self.api(self.num_features, momentum=None)
+        layer7 = self.alias(self.num_features, momentum=None)
         out7 = layer7(x)
-        out8 = layer7(x)
-        self._check_outputs([out7, out8])
-        self.assertEqual(layer7.num_batches_tracked.numpy().item(), 2)
+        self._check_outputs([out7])
+        self.assertIsNone(layer7.momentum)
 
-        layer8 = self.api(self.num_features)
+        layer8 = self.alias(self.num_features)
         layer8.eval()
-        out9 = layer8(x)
+        out8 = layer8(x)
         np.testing.assert_allclose(
-            out9.numpy(),
+            out8.numpy(),
             self.np_x / np.sqrt(1.0 + self.eps),
             rtol=1e-5,
         )
-
-        layer9 = self.api(self.num_features)
-        with paddle.no_grad():
-            layer9.weight.set_value(paddle.full([self.num_features], 2.0))
-            layer9.bias.set_value(paddle.full([self.num_features], 3.0))
-            layer9.running_mean.set_value(paddle.full([self.num_features], 4.0))
-            layer9.running_var.set_value(paddle.full([self.num_features], 5.0))
-            layer9.num_batches_tracked.set_value(
-                paddle.full([], 6, dtype="int64")
-            )
-        layer9.reset_parameters()
-        np.testing.assert_allclose(
-            layer9.weight.numpy(), np.ones([self.num_features])
-        )
-        np.testing.assert_allclose(
-            layer9.bias.numpy(), np.zeros([self.num_features])
-        )
-        np.testing.assert_allclose(
-            layer9.running_mean.numpy(), np.zeros([self.num_features])
-        )
-        np.testing.assert_allclose(
-            layer9.running_var.numpy(), np.ones([self.num_features])
-        )
-        self.assertEqual(layer9.num_batches_tracked.numpy().item(), 0)
-        self.assertIn("track_running_stats=True", layer9.extra_repr())
 
         bad_x = paddle.ones(self.invalid_shape, dtype="float32")
         with self.assertRaises(ValueError):
@@ -2521,7 +2495,17 @@ class _CompatBatchNormBase:
 
         original_layer = self.original_api(self.num_features)
         self.assertEqual(original_layer._momentum, 0.9)
-        self.assertFalse(hasattr(paddle.nn, self.api.__name__))
+        original_eps = self.original_api(self.num_features, eps=self.eps)
+        self.assertEqual(original_eps._epsilon, self.eps)
+        original_affine = self.original_api(self.num_features, affine=False)
+        self.assertIsNone(original_affine.weight)
+        self.assertIsNone(original_affine.bias)
+        original_bias = self.original_api(self.num_features, bias=False)
+        self.assertIsNotNone(original_bias.weight)
+        self.assertIsNone(original_bias.bias)
+        original_dtype = self.original_api(self.num_features, dtype="float64")
+        self.assertEqual(original_dtype._dtype, "float64")
+        self.assertFalse(hasattr(paddle.nn, self.alias_name))
         paddle.enable_static()
 
     def test_static_Compatibility(self):
@@ -2534,18 +2518,18 @@ class _CompatBatchNormBase:
             )
 
             # 1. Paddle positional arguments
-            layer1 = self.api(self.num_features)
+            layer1 = self.alias(self.num_features)
             out1 = layer1(x)
             # 2. Paddle keyword arguments
-            layer2 = self.api(num_features=self.num_features, eps=self.eps)
+            layer2 = self.alias(num_features=self.num_features, eps=self.eps)
             out2 = layer2(x)
             # 3. PyTorch positional arguments
-            layer3 = self.api(
+            layer3 = self.alias(
                 self.num_features, self.eps, 0.2, False, False, None, "float32"
             )
             out3 = layer3(x)
             # 4. PyTorch keyword arguments
-            layer4 = self.api(
+            layer4 = self.alias(
                 dtype="float32",
                 device=None,
                 track_running_stats=False,
@@ -2557,13 +2541,13 @@ class _CompatBatchNormBase:
             )
             out4 = layer4(x)
             # 5. Mixed arguments
-            layer5 = self.api(self.num_features, momentum=None)
+            layer5 = self.alias(self.num_features, momentum=None)
             out5 = layer5(x)
 
             self.assertIsNone(layer3.weight)
             self.assertIsNone(layer3.bias)
             self.assertIsNone(layer4.bias)
-            self.assertIsNone(layer4.running_mean)
+            self.assertFalse(layer4._use_global_stats)
 
             exe = paddle.static.Executor()
             exe.run(startup)
@@ -2579,7 +2563,9 @@ class _CompatBatchNormBase:
 
 
 class TestCompatBatchNorm1dAPI(_CompatBatchNormBase, unittest.TestCase):
-    api = paddle.compat.nn.BatchNorm1d
+    api = paddle.compat.nn.BatchNorm1D
+    alias = paddle.compat.nn.BatchNorm1d
+    alias_name = "BatchNorm1d"
     original_api = paddle.nn.BatchNorm1D
     x_shape = (4, 3, 5)
     invalid_shape = (2, 3, 4, 5)
@@ -2589,7 +2575,7 @@ class TestCompatBatchNorm1dAPI(_CompatBatchNormBase, unittest.TestCase):
         paddle.disable_static()
         x_np = np.random.rand(4, self.num_features).astype("float32") * 2 - 1
         x = paddle.to_tensor(x_np)
-        out = self.api(self.num_features)(x)
+        out = self.alias(self.num_features)(x)
         expected = (x_np - np.mean(x_np, axis=0)) / np.sqrt(
             np.var(x_np, axis=0) + self.eps
         )
@@ -2598,7 +2584,9 @@ class TestCompatBatchNorm1dAPI(_CompatBatchNormBase, unittest.TestCase):
 
 
 class TestCompatBatchNorm2dAPI(_CompatBatchNormBase, unittest.TestCase):
-    api = paddle.compat.nn.BatchNorm2d
+    api = paddle.compat.nn.BatchNorm2D
+    alias = paddle.compat.nn.BatchNorm2d
+    alias_name = "BatchNorm2d"
     original_api = paddle.nn.BatchNorm2D
     x_shape = (2, 3, 4, 5)
     invalid_shape = (2, 3, 4)
@@ -2606,7 +2594,9 @@ class TestCompatBatchNorm2dAPI(_CompatBatchNormBase, unittest.TestCase):
 
 
 class TestCompatBatchNorm3dAPI(_CompatBatchNormBase, unittest.TestCase):
-    api = paddle.compat.nn.BatchNorm3d
+    api = paddle.compat.nn.BatchNorm3D
+    alias = paddle.compat.nn.BatchNorm3d
+    alias_name = "BatchNorm3d"
     original_api = paddle.nn.BatchNorm3D
     x_shape = (2, 3, 2, 4, 5)
     invalid_shape = (2, 3, 4, 5)

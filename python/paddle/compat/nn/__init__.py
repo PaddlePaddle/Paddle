@@ -21,7 +21,6 @@ from typing import TYPE_CHECKING
 
 import paddle
 from paddle import nn
-from paddle.nn.initializer import Constant
 from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
 from . import functional
@@ -48,6 +47,9 @@ __all__ = [
     'AvgPool1d',
     'AvgPool2d',
     'AvgPool3d',
+    'BatchNorm1D',
+    'BatchNorm2D',
+    'BatchNorm3D',
     'BatchNorm1d',
     'BatchNorm2d',
     'BatchNorm3d',
@@ -68,10 +70,7 @@ def _ntuple(n, name="parse"):
 _single = _ntuple(1, "_single")
 
 
-class _BatchNorm(nn.Layer):
-    weight: Tensor | None
-    bias: Tensor | None
-
+class BatchNorm1D(nn.BatchNorm1D):
     def __init__(
         self,
         num_features: int,
@@ -83,149 +82,24 @@ class _BatchNorm(nn.Layer):
         dtype: DTypeLike | None = None,
         *,
         bias: bool = True,
-        data_format: str = 'NCHW',
     ) -> None:
-        super().__init__()
-        self.num_features = num_features
+        super().__init__(
+            num_features=num_features,
+            momentum=0.0 if momentum is None else 1.0 - momentum,
+            epsilon=eps,
+            use_global_stats=None if track_running_stats else False,
+            affine=affine,
+            bias=bias,
+            device=device,
+            dtype=dtype,
+        )
         self.eps = eps
         self.momentum = momentum
         self.affine = affine
         self.track_running_stats = track_running_stats
-        self._data_format = data_format
-        self._dtype = (
-            self._helper.get_default_dtype() if dtype is None else dtype
-        )
-
-        if affine:
-            self.weight = self.create_parameter(
-                shape=[num_features],
-                attr=None,
-                dtype=self._dtype,
-                default_initializer=Constant(1.0),
-                device=device,
-            )
-            self.bias = (
-                self.create_parameter(
-                    shape=[num_features],
-                    attr=None,
-                    dtype=self._dtype,
-                    default_initializer=Constant(0.0),
-                    is_bias=True,
-                    device=device,
-                )
-                if bias
-                else None
-            )
-        else:
-            self.weight = None
-            self.bias = None
-
-        if track_running_stats:
-            self.running_mean = self.create_parameter(
-                shape=[num_features],
-                attr=paddle.ParamAttr(trainable=False),
-                dtype=self._dtype,
-                default_initializer=Constant(0.0),
-                device=device,
-            )
-            self.running_mean.stop_gradient = True
-            self.running_var = self.create_parameter(
-                shape=[num_features],
-                attr=paddle.ParamAttr(trainable=False),
-                dtype=self._dtype,
-                default_initializer=Constant(1.0),
-                device=device,
-            )
-            self.running_var.stop_gradient = True
-            self.num_batches_tracked = self.create_parameter(
-                shape=[],
-                attr=paddle.ParamAttr(trainable=False),
-                dtype='int64',
-                default_initializer=Constant(0),
-                device=device,
-            )
-            self.num_batches_tracked.stop_gradient = True
-        else:
-            self.running_mean = None
-            self.running_var = None
-            self.num_batches_tracked = None
-
-    def _check_input_dim(self, input: Tensor) -> None:
-        raise NotImplementedError
-
-    def reset_running_stats(self) -> None:
-        if self.track_running_stats:
-            with paddle.no_grad():
-                self.running_mean.set_value(
-                    paddle.zeros([self.num_features], dtype=self._dtype)
-                )
-                self.running_var.set_value(
-                    paddle.ones([self.num_features], dtype=self._dtype)
-                )
-                self.num_batches_tracked.set_value(
-                    paddle.zeros([], dtype='int64')
-                )
-
-    def reset_parameters(self) -> None:
-        self.reset_running_stats()
-        if self.affine:
-            with paddle.no_grad():
-                self.weight.set_value(
-                    paddle.ones([self.num_features], dtype=self._dtype)
-                )
-                if self.bias is not None:
-                    self.bias.set_value(
-                        paddle.zeros([self.num_features], dtype=self._dtype)
-                    )
-
-    def _paddle_momentum(self) -> float:
-        if self.momentum is None:
-            if self.training and self.track_running_stats:
-                if paddle.in_dynamic_mode():
-                    return 1.0 - 1.0 / float(self.num_batches_tracked.numpy())
-                return 0.0
-            return 1.0
-        return 1.0 - self.momentum
-
-    def _update_num_batches_tracked(self) -> None:
-        if not self.training or not self.track_running_stats:
-            return
-        if self.num_batches_tracked is not None and paddle.in_dynamic_mode():
-            with paddle.no_grad():
-                self.num_batches_tracked.set_value(self.num_batches_tracked + 1)
-
-    def forward(self, input: Tensor) -> Tensor:
-        self._check_input_dim(input)
-        self._update_num_batches_tracked()
-        running_mean = self.running_mean
-        running_var = self.running_var
-        if not self.track_running_stats:
-            running_mean = paddle.zeros([self.num_features], dtype=self._dtype)
-            running_var = paddle.ones([self.num_features], dtype=self._dtype)
-        return nn.functional.batch_norm(
-            input,
-            running_mean,
-            running_var,
-            weight=self.weight,
-            bias=self.bias,
-            training=self.training,
-            momentum=self._paddle_momentum(),
-            epsilon=self.eps,
-            data_format=self._data_format,
-            use_global_stats=not self.training
-            if self.track_running_stats
-            else False,
-        )
-
-    def extra_repr(self) -> str:
-        return (
-            f'{self.num_features}, eps={self.eps}, momentum={self.momentum}, '
-            f'affine={self.affine}, bias={self.bias is not None}, '
-            f'track_running_stats={self.track_running_stats}'
-        )
 
 
-class BatchNorm1d(_BatchNorm):
+class BatchNorm2D(nn.BatchNorm2D):
     def __init__(
         self,
         num_features: int,
@@ -239,25 +113,22 @@ class BatchNorm1d(_BatchNorm):
         bias: bool = True,
     ) -> None:
         super().__init__(
-            num_features,
-            eps,
-            momentum,
-            affine,
-            track_running_stats,
-            device,
-            dtype,
+            num_features=num_features,
+            momentum=0.0 if momentum is None else 1.0 - momentum,
+            epsilon=eps,
+            use_global_stats=None if track_running_stats else False,
+            affine=affine,
             bias=bias,
-            data_format='NCL',
+            device=device,
+            dtype=dtype,
         )
-
-    def _check_input_dim(self, input: Tensor) -> None:
-        if len(input.shape) != 2 and len(input.shape) != 3:
-            raise ValueError(
-                f'expected 2D or 3D input (got {len(input.shape)}D input)'
-            )
+        self.eps = eps
+        self.momentum = momentum
+        self.affine = affine
+        self.track_running_stats = track_running_stats
 
 
-class BatchNorm2d(_BatchNorm):
+class BatchNorm3D(nn.BatchNorm3D):
     def __init__(
         self,
         num_features: int,
@@ -271,54 +142,24 @@ class BatchNorm2d(_BatchNorm):
         bias: bool = True,
     ) -> None:
         super().__init__(
-            num_features,
-            eps,
-            momentum,
-            affine,
-            track_running_stats,
-            device,
-            dtype,
+            num_features=num_features,
+            momentum=0.0 if momentum is None else 1.0 - momentum,
+            epsilon=eps,
+            use_global_stats=None if track_running_stats else False,
+            affine=affine,
             bias=bias,
-            data_format='NCHW',
+            device=device,
+            dtype=dtype,
         )
-
-    def _check_input_dim(self, input: Tensor) -> None:
-        if len(input.shape) != 4:
-            raise ValueError(
-                f'expected 4D input (got {len(input.shape)}D input)'
-            )
+        self.eps = eps
+        self.momentum = momentum
+        self.affine = affine
+        self.track_running_stats = track_running_stats
 
 
-class BatchNorm3d(_BatchNorm):
-    def __init__(
-        self,
-        num_features: int,
-        eps: float = 1e-05,
-        momentum: float | None = 0.1,
-        affine: bool = True,
-        track_running_stats: bool = True,
-        device: PlaceLike | None = None,
-        dtype: DTypeLike | None = None,
-        *,
-        bias: bool = True,
-    ) -> None:
-        super().__init__(
-            num_features,
-            eps,
-            momentum,
-            affine,
-            track_running_stats,
-            device,
-            dtype,
-            bias=bias,
-            data_format='NCDHW',
-        )
-
-    def _check_input_dim(self, input: Tensor) -> None:
-        if len(input.shape) != 5:
-            raise ValueError(
-                f'expected 5D input (got {len(input.shape)}D input)'
-            )
+BatchNorm1d = BatchNorm1D
+BatchNorm2d = BatchNorm2D
+BatchNorm3d = BatchNorm3D
 
 
 class AvgPool1D(nn.Layer):

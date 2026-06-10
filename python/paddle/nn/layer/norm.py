@@ -764,6 +764,7 @@ class _BatchNormBase(Layer):
     weight: Tensor | None
     bias: Tensor | None
 
+    @param_one_alias(["epsilon", "eps"])
     def __init__(
         self,
         num_features: int,
@@ -774,17 +775,30 @@ class _BatchNormBase(Layer):
         data_format: DataLayoutND = 'NCHW',
         use_global_stats: bool | None = None,
         name: str | None = None,
+        *,
+        affine: bool = True,
+        bias: bool = True,
+        device: PlaceLike | None = None,
+        dtype: DTypeLike | None = None,
     ) -> None:
         super().__init__()
         self._num_features = num_features
+        if not affine:
+            weight_attr = False
+            bias_attr = False
+        elif not bias:
+            bias_attr = False
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
         self._use_global_stats = use_global_stats
 
-        if get_default_dtype() == 'float16':
+        if dtype is not None:
+            self._dtype = dtype
+        elif get_default_dtype() == 'float16':
             self._dtype = 'float32'
         else:
             self._dtype = get_default_dtype()
+        self._device = device
 
         param_shape = [num_features]
 
@@ -795,6 +809,7 @@ class _BatchNormBase(Layer):
                 shape=param_shape,
                 dtype=self._dtype,
                 default_initializer=Constant(1.0),
+                device=self._device,
             )
 
         else:
@@ -805,6 +820,7 @@ class _BatchNormBase(Layer):
                 shape=param_shape,
                 dtype=self._dtype,
                 is_bias=True,
+                device=self._device,
             )
         else:
             self.bias = None
@@ -825,6 +841,7 @@ class _BatchNormBase(Layer):
                 do_model_average=True,
             ),
             shape=param_shape,
+            device=self._device,
         )
         self._mean.stop_gradient = True
 
@@ -837,6 +854,7 @@ class _BatchNormBase(Layer):
                 do_model_average=True,
             ),
             shape=param_shape,
+            device=self._device,
         )
         self._variance.stop_gradient = True
 
@@ -1291,6 +1309,7 @@ class BatchNorm1D(_BatchNormBase):
              [[ 1.06272745,  0.24229205, -0.31219530]]])
     """
 
+    @param_one_alias(["epsilon", "eps"])
     def __init__(
         self,
         num_features: int,
@@ -1301,16 +1320,25 @@ class BatchNorm1D(_BatchNormBase):
         data_format: DataLayout1D = 'NCL',
         use_global_stats: bool | None = None,
         name: str | None = None,
+        *,
+        affine: bool = True,
+        bias: bool = True,
+        device: PlaceLike | None = None,
+        dtype: DTypeLike | None = None,
     ) -> None:
         super().__init__(
-            num_features,
-            momentum,
-            epsilon,
-            weight_attr,
-            bias_attr,
-            data_format,
-            use_global_stats,
-            name,
+            num_features=num_features,
+            momentum=momentum,
+            epsilon=epsilon,
+            weight_attr=weight_attr,
+            bias_attr=bias_attr,
+            data_format=data_format,
+            use_global_stats=use_global_stats,
+            name=name,
+            affine=affine,
+            bias=bias,
+            device=device,
+            dtype=dtype,
         )
 
     def _check_data_format(
@@ -1500,6 +1528,7 @@ class BatchNorm3D(_BatchNormBase):
                 [-0.46636176,  1.09858704, -1.55342245]]]]])
     """
 
+    @param_one_alias(["epsilon", "eps"])
     def __init__(
         self,
         num_features: int,
@@ -1510,16 +1539,25 @@ class BatchNorm3D(_BatchNormBase):
         data_format: DataLayout3D = 'NCDHW',
         use_global_stats: bool | None = None,
         name: str | None = None,
+        *,
+        affine: bool = True,
+        bias: bool = True,
+        device: PlaceLike | None = None,
+        dtype: DTypeLike | None = None,
     ) -> None:
         super().__init__(
-            num_features,
-            momentum,
-            epsilon,
-            weight_attr,
-            bias_attr,
-            data_format,
-            use_global_stats,
-            name,
+            num_features=num_features,
+            momentum=momentum,
+            epsilon=epsilon,
+            weight_attr=weight_attr,
+            bias_attr=bias_attr,
+            data_format=data_format,
+            use_global_stats=use_global_stats,
+            name=name,
+            affine=affine,
+            bias=bias,
+            device=device,
+            dtype=dtype,
         )
 
     def _check_data_format(self, input: DataLayout2D | DataLayout3D) -> None:
