@@ -591,7 +591,6 @@ def inference(
         .. code-block:: pycon
 
             >>> # doctest: +SKIP('`paddle.incubate.jit.inference` can not run in xdoctest')
-            >>> from typing import Literal
             >>> import paddle
             >>> class ExampleLayer(paddle.nn.Layer):
             ...     def __init__(self, hidd):
@@ -611,8 +610,8 @@ def inference(
 
             >>> batch = 4096
             >>> hidd = 1024
-            >>> dtype: Literal["bfloat16"] = "bfloat16"
-            >>> x = paddle.rand([batch, hidd], dtype=dtype)
+            >>> dtype = "bfloat16"
+            >>> x = paddle.rand([batch, hidd], dtype=dtype)  # type: ignore[call-overload]
             >>> mylayer = ExampleLayer(hidd)
             >>> dynamic_result = mylayer(x)
             >>> mylayer = paddle.incubate.jit.inference(mylayer)

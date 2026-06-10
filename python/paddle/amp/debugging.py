@@ -92,7 +92,6 @@ def check_layer_numerics(
     Example:
         .. code-block:: pycon
 
-            >>> from typing import Literal
             >>> import paddle
             >>> class MyLayer(paddle.nn.Layer):
             ...     def __init__(self, dtype):
@@ -104,8 +103,8 @@ def check_layer_numerics(
             ...     def forward(self, x):
             ...         # return 1/x * self._w + self._b   open it you will see the error log
             ...         return x @ self._w + self._b
-            >>> dtype: Literal['float32'] = 'float32'
-            >>> x = paddle.rand([10, 2, 2], dtype=dtype)
+            >>> dtype = 'float32'
+            >>> x = paddle.rand([10, 2, 2], dtype=dtype)  # type: ignore[call-overload]
             >>> model = MyLayer(dtype)
             >>> x[0] = float(0)
             >>> loss = model(x)
