@@ -95,11 +95,9 @@ void SimpleJIT::AddModule(std::unique_ptr<llvm::Module> module, bool optimize) {
 }
 
 SimpleJIT::SimpleJIT() : context_(std::make_unique<llvm::LLVMContext>()) {
-  llvm::InitializeAllTargetInfos();
-  llvm::InitializeAllTargets();
-  llvm::InitializeAllTargetMCs();
-  llvm::InitializeAllAsmParsers();
-  llvm::InitializeAllAsmPrinters();
+  llvm::InitializeNativeTarget();
+  llvm::InitializeNativeTargetAsmPrinter();
+  llvm::InitializeNativeTargetAsmParser();
 
   jit_ = llvm::cantFail(llvm::orc::LLJITBuilder().create());
   PADDLE_ENFORCE_NOT_NULL(

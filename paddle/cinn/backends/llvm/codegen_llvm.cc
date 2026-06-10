@@ -1543,11 +1543,9 @@ int GetNaiveVecAlignment(const Target &target) {
 }
 
 void CodeGenLLVM::InitTarget(const Target &target) {
-  llvm::InitializeAllTargetInfos();
-  llvm::InitializeAllTargets();
-  llvm::InitializeAllTargetMCs();
-  llvm::InitializeAllAsmParsers();
-  llvm::InitializeAllAsmPrinters();
+  llvm::InitializeNativeTarget();
+  llvm::InitializeNativeTargetAsmPrinter();
+  llvm::InitializeNativeTargetAsmParser();
   naive_vec_alignment_ = GetNaiveVecAlignment(target);
 }
 

@@ -63,6 +63,25 @@ endif()
 include(${CMAKE_BINARY_DIR}/cmake/cinn/config.cmake)
 include(${PROJECT_SOURCE_DIR}/cmake/architecture.cmake)
 
+if(DEFINED LLVM_ENABLE_RTTI AND NOT LLVM_ENABLE_RTTI)
+  if(MSVC)
+    set(CINN_LLVM_NO_RTTI_OPTION /GR-)
+  else()
+    set(CINN_LLVM_NO_RTTI_OPTION -fno-rtti)
+  endif()
+  set(CINN_LLVM_NO_RTTI_SRCS
+      paddle/cinn/backends/llvm/llvm_util.cc
+      paddle/cinn/backends/llvm/runtime_symbol_registry.cc
+      paddle/cinn/backends/llvm/codegen_llvm.cc
+      paddle/cinn/backends/llvm/codegen_x86.cc
+      paddle/cinn/backends/llvm/simple_jit.cc
+      paddle/cinn/backends/llvm/execution_engine.cc
+      paddle/cinn/backends/llvm/llvm_optimizer.cc)
+  set_source_files_properties(
+    ${CINN_LLVM_NO_RTTI_SRCS} PROPERTIES COMPILE_OPTIONS
+                                         ${CINN_LLVM_NO_RTTI_OPTION})
+endif()
+
 if(WITH_MKL)
   generate_dummy_static_lib(LIB_NAME "cinn_mklml" GENERATOR "mklml.cmake")
   target_link_libraries(cinn_mklml ${MKLML_LIB} ${MKLML_IOMP_LIB})
