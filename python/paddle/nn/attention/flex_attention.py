@@ -14,21 +14,22 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+    from typing import TypeAlias
+
     from paddle import Tensor
 
+    MaskModSignature: TypeAlias = Callable[
+        [Tensor, Tensor, Tensor, Tensor], Tensor
+    ]
 
 __all__ = ["or_masks", "and_masks"]
 
-_mask_mod_signature = Callable[
-    ["Tensor", "Tensor", "Tensor", "Tensor"], "Tensor"
-]
 
-
-def or_masks(*mask_mods: _mask_mod_signature) -> _mask_mod_signature:
+def or_masks(*mask_mods: MaskModSignature) -> MaskModSignature:
     """
     Return a mask function that computes the union of provided mask functions.
 
@@ -74,7 +75,7 @@ def or_masks(*mask_mods: _mask_mod_signature) -> _mask_mod_signature:
     return or_mask
 
 
-def and_masks(*mask_mods: _mask_mod_signature) -> _mask_mod_signature:
+def and_masks(*mask_mods: MaskModSignature) -> MaskModSignature:
     """
     Return a mask function that computes the intersection of provided mask functions.
 
