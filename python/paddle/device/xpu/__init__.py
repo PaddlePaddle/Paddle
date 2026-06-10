@@ -25,7 +25,11 @@ if TYPE_CHECKING:
     from paddle import XPUPlace
     from paddle.base.libpaddle import _gpuDeviceProperties
 
-    _XPUPlaceLike: TypeAlias = XPUPlace | str | int
+    _XPUPlaceLike: TypeAlias = (
+        XPUPlace
+        | str  # some str like 'xpu:0', 'xpu:1', etc.
+        | int  # some int like 0, 1, etc.
+    )
 
 __all__ = [
     'Stream',

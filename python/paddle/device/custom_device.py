@@ -28,7 +28,11 @@ from .custom_streams import (  # noqa: F401
 if TYPE_CHECKING:
     from paddle import CustomPlace
 
-    _CustomPlaceLike: TypeAlias = CustomPlace | str | int
+    _CustomPlaceLike: TypeAlias = (
+        CustomPlace
+        | str  # some string like "iluvatar_gpu" "metax_gpu:0", etc.
+        | int  # some int like 0, 1, etc.
+    )
 
 dev_types = core.get_all_custom_device_type()
 

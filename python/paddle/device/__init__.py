@@ -67,7 +67,12 @@ if TYPE_CHECKING:
     from paddle import CUDAPlace, CustomPlace
     from paddle.base.libpaddle import _customDeviceProperties
 
-    _CustomPlaceLike: TypeAlias = CUDAPlace | CustomPlace | str | int
+    _CustomPlaceLike: TypeAlias = (
+        CUDAPlace
+        | CustomPlace
+        | str  # some string like "iluvatar_gpu" "metax_gpu:0", etc.
+        | int  # some int like 0, 1, etc.
+    )
 
 # Dynamically import device functions based on available devices
 current_device_is_cpu = 0
