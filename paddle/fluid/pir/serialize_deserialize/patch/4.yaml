@@ -138,3 +138,11 @@ op_patches:
       - action : modify_attr
         object : epsilon
         type : pir::DoubleAttribute
+  - op_name : pd_op.gaussian
+    actions:
+      - action : modify_attr
+        object : mean
+        type : pir::DoubleAttribute
+      - action : modify_attr
+        object : std
+        type : pir::DoubleAttribute
