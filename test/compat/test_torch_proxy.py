@@ -189,13 +189,13 @@ class TestDeviceAsTypeHints(unittest.TestCase):
         import torch
 
         # TODO: Remove Optional[...] coverage once Python 3.10 support is dropped.
-        def fn(x: Optional[torch.device]):  # noqa: FA100, UP045, RUF100
+        def fn(x: Optional[torch.device]):  # noqa: UP045
             return x
 
         self.assertTrue(callable(torch.device))
         self.assertEqual(
             fn.__annotations__["x"],
-            Optional[torch.device],  # noqa: UP045, RUF100
+            Optional[torch.device],  # noqa: UP045
         )
         cpu_device = torch.device("cpu")
         self.assertEqual(str(cpu_device), "cpu")
