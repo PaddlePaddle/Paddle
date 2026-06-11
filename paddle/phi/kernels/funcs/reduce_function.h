@@ -1082,6 +1082,7 @@ void ReduceKernel(const KPDevice& dev_ctx,
     dev_ctx.Alloc<Ty>(y);
     return;
   }
+  PADDLE_ENFORCE_LE_INT_MAX(x.numel(), "x.numel()");
 #ifdef PADDLE_WITH_XPU_KP
   auto stream = dev_ctx.x_context()->xpu_stream;
 #else
@@ -1101,6 +1102,9 @@ void ReduceKernel(const KPDevice& dev_ctx,
   using MT = typename MPTypeTrait<Ty>::Type;
   auto config = ReduceConfig<Ty, MT>(origin_reduce_dims, x_dim);
   config.Run(dev_ctx);
+
+  PADDLE_ENFORCE_LE_INT_MAX(config.reduce_num, "reduce_num");
+  PADDLE_ENFORCE_LE_INT_MAX(config.left_num, "left_num");
 
   int64_t numel = x.numel();
   // after config.run()
