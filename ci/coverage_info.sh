@@ -111,7 +111,6 @@ function gen_full_report() {
         "${PADDLE_ROOT}/paddle/fluid/inference/*" \
         "${PADDLE_ROOT}/paddle/fluid/memory/*" \
         "${PADDLE_ROOT}/paddle/fluid/operators/*" \
-        "${PADDLE_ROOT}/paddle/fluid/pybind/*" \
         "${PADDLE_ROOT}/paddle/fluid/eager/*" \
         "${PADDLE_ROOT}/paddle/fluid/pir/*" \
         "${PADDLE_ROOT}/paddle/fluid/ir_adaptor/*" \
