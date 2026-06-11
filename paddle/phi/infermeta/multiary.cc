@@ -406,6 +406,7 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
   }
   bool is_all_0d_tensor = true;
   DDim in_dim({0});
+  bool has_in_dim = false;
   for (size_t i = 0; i < x.size(); ++i) {
     auto x_dim = x[i]->dims();
     // x_dim.size() == 1 means the real dim of selected rows is [0]
@@ -418,8 +419,9 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
     }
     is_all_0d_tensor = false;
     // use the first dimension
-    if (common::product(in_dim) == 0) {
+    if (!has_in_dim) {
       in_dim = x_dim;
+      has_in_dim = true;
     } else {
       if (config.is_runtime) {
         PADDLE_ENFORCE_EQ(in_dim,
