@@ -27,6 +27,7 @@ images per class.
 
 """
 
+import os
 import pickle
 import tarfile
 
@@ -44,7 +45,7 @@ CIFAR100_URL = URL_PREFIX + 'cifar-100-python.tar.gz'
 CIFAR100_MD5 = 'eb9058c3a382ffc7106e4002c42a8d85'
 
 
-def reader_creator(filename, sub_name, cycle=False):
+def reader_creator(filename, sub_name, cycle=False, md5sum=None):
     def read_batch(batch):
         data = batch[b'data']
         labels = batch.get(b'labels', batch.get(b'fine_labels', None))
@@ -52,7 +53,21 @@ def reader_creator(filename, sub_name, cycle=False):
         for sample, label in zip(data, labels):
             yield (sample / 255.0).astype(numpy.float32), int(label)
 
+    verified_stat = None
+
     def reader():
+        nonlocal verified_stat
+        if md5sum is not None:
+            stat = os.stat(filename)
+            current_stat = (stat.st_mtime_ns, stat.st_size)
+            if verified_stat != current_stat:
+                file_md5 = paddle.dataset.common.md5file(filename)
+                if file_md5 != md5sum:
+                    raise ValueError(
+                        "Loading unverified CIFAR pickle archive disabled. "
+                        f"Please use the official MD5 {md5sum}."
+                    )
+                verified_stat = current_stat
         while True:
             with tarfile.open(filename, mode='r') as f:
                 names = (
@@ -90,6 +105,7 @@ def train100():
     return reader_creator(
         paddle.dataset.common.download(CIFAR100_URL, 'cifar', CIFAR100_MD5),
         'train',
+        md5sum=CIFAR100_MD5,
     )
 
 
@@ -112,6 +128,7 @@ def test100():
     return reader_creator(
         paddle.dataset.common.download(CIFAR100_URL, 'cifar', CIFAR100_MD5),
         'test',
+        md5sum=CIFAR100_MD5,
     )
 
 
@@ -137,6 +154,7 @@ def train10(cycle=False):
         paddle.dataset.common.download(CIFAR10_URL, 'cifar', CIFAR10_MD5),
         'data_batch',
         cycle=cycle,
+        md5sum=CIFAR10_MD5,
     )
 
 
@@ -162,6 +180,7 @@ def test10(cycle=False):
         paddle.dataset.common.download(CIFAR10_URL, 'cifar', CIFAR10_MD5),
         'test_batch',
         cycle=cycle,
+        md5sum=CIFAR10_MD5,
     )
 
 

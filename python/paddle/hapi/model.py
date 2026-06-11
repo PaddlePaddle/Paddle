@@ -24,12 +24,11 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Literal,
-    Union,
+    TypeAlias,
     overload,
 )
 
 import numpy as np
-from typing_extensions import TypeAlias
 
 import paddle
 import paddle.distributed as dist
@@ -66,12 +65,9 @@ if TYPE_CHECKING:
     from .callbacks import Callback
     from .model_summary import ModelSummary
 
-    _InputBatch: TypeAlias = Union[
-        Tensor,
-        npt.NDArray[Any],
-        list[Tensor],
-        list[npt.NDArray[Any]],
-    ]
+    _InputBatch: TypeAlias = (
+        Tensor | npt.NDArray[Any] | list[Tensor] | list[npt.NDArray[Any]]
+    )
 
 
 __all__ = []

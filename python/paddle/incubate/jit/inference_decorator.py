@@ -20,7 +20,7 @@ import sys
 import textwrap
 import warnings
 from pathlib import Path
-from typing import Callable, Protocol, TypeVar, overload
+from typing import TYPE_CHECKING, Protocol, TypeVar, overload
 
 from typing_extensions import ParamSpec
 
@@ -29,6 +29,9 @@ from paddle.base.framework import use_pir_api
 from paddle.inference import Config, PrecisionType, create_predictor
 from paddle.nn import Layer
 from paddle.static import InputSpec
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 _LayerT = TypeVar("_LayerT", bound=Layer)
 _InputT = ParamSpec("_InputT")

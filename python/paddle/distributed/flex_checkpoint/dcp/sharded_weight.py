@@ -18,7 +18,7 @@ from __future__ import annotations
 from collections import OrderedDict
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from paddle import Tensor
@@ -86,9 +86,7 @@ class ShardedWeight:
         )
 
 
-ShardedStateDict = Union[
-    dict[str, ShardedWeight], OrderedDict[str, ShardedWeight]
-]
+ShardedStateDict = dict[str, ShardedWeight] | OrderedDict[str, ShardedWeight]
 
 
 def shard_weight(

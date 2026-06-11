@@ -56,9 +56,8 @@ class TESS(AudioClassificationDataset):
             >>> # doctest: +TIMEOUT(60)
             >>> import paddle
 
-            >>> mode = 'dev'
             >>> tess_dataset = paddle.audio.datasets.TESS(
-            ...     mode=mode,  # type: ignore[arg-type]
+            ...     mode='dev',
             ...     feat_type='raw',
             ... )
             >>> for idx in range(5):
@@ -68,7 +67,7 @@ class TESS(AudioClassificationDataset):
             ...     # [audio_data_length] , label_id
 
             >>> tess_dataset = paddle.audio.datasets.TESS(
-            ...     mode=mode,  # type: ignore[arg-type]
+            ...     mode='dev',
             ...     feat_type='mfcc',
             ...     n_mfcc=40,
             ... )

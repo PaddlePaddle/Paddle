@@ -17,7 +17,7 @@ from __future__ import annotations
 import copy
 import enum
 import os
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -36,6 +36,9 @@ from paddle.static.quantization import (
     QuantizationFreezePass,
     QuantizationTransformPass,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 LOGLEVEL = os.environ.get("PADDLE_TEST_LOGLEVEL", "INFO").upper()
 logging = get_logger(

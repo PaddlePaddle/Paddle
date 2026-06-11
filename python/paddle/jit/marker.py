@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import TYPE_CHECKING, Callable, Protocol, TypeVar, overload
+from typing import TYPE_CHECKING, Protocol, TypeVar, overload
 
 from typing_extensions import (
     ParamSpec,
@@ -29,7 +29,7 @@ from .dy2static.utils import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
 
 
 _RetT = TypeVar("_RetT")

@@ -21,24 +21,14 @@ option(
   OFF)
 
 if(WITH_SLEEF)
-  # Try to find system Sleef first
-  find_path(SLEEF_INCLUDE_DIR sleef.h)
-  find_library(SLEEF_LIBRARY sleef)
+  # Always build Sleef from the in-tree submodule (third_party/sleef) to
+  # guarantee consistent feature set (e.g. AVX/AVX2 256-bit symbols like
+  # Sleef_sinf8_u35) across local and CI environments. System-installed
+  # sleef is intentionally not used because its build options are
+  # uncontrolled and may miss required dispatch variants.
+  include(external/sleef)
 
-  if(SLEEF_INCLUDE_DIR AND SLEEF_LIBRARY)
-    message(STATUS "Found Sleef: ${SLEEF_LIBRARY}")
-    message(STATUS "Sleef include dir: ${SLEEF_INCLUDE_DIR}")
-    add_library(sleef UNKNOWN IMPORTED)
-    set_property(TARGET sleef PROPERTY IMPORTED_LOCATION "${SLEEF_LIBRARY}")
-    include_directories(${SLEEF_INCLUDE_DIR})
-    set(SLEEF_FOUND TRUE)
-  else()
-    # If not found, download and build Sleef from source
-    message(STATUS "Sleef not found in system, will build from source")
-    include(external/sleef)
-  endif()
-
-  if(SLEEF_FOUND OR TARGET extern_sleef)
+  if(TARGET extern_sleef)
     add_definitions(-DPADDLE_WITH_SLEEF)
     message(STATUS "Compile with Sleef support")
 

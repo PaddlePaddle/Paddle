@@ -25,6 +25,7 @@ from .dataset import (
     TensorDataset,
     random_split,
 )
+from .distributed import DistributedSampler
 from .sampler import (
     BatchSampler,
     RandomSampler,
@@ -42,6 +43,7 @@ __all__ = [
     'Subset',
     'random_split',
     'BatchSampler',
+    'DistributedSampler',
     'RandomSampler',
     'Sampler',
     'SequentialSampler',

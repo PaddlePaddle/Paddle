@@ -15,9 +15,9 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 
-from typing_extensions import TypeAlias, overload
+from typing_extensions import overload
 
 import paddle
 from paddle import _C_ops

@@ -143,7 +143,7 @@ class Decoder:
         `decoder.step()` would emit a bool `finished` value at each decoding
         step. The emitted `finished` can be used to determine whether every
         batch entries is finished directly, or it can be combined with the
-        finished tracker keeped in `dynamic_decode` by performing a logical OR
+        finished tracker kept in `dynamic_decode` by performing a logical OR
         to take the already finished into account.
 
         If `False`, the latter would be took when performing `dynamic_decode`,

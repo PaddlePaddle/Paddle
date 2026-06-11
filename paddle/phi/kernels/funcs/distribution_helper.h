@@ -69,22 +69,30 @@ struct exponential_transform {
   T lambda_;
 };
 
-template <typename T>
+// uniform_real_transform<T, DstT>:
+//   T    - the arithmetic type used for intermediate computation (e.g. float)
+//   DstT - the final output type written to memory (e.g. float16/bfloat16)
+//
+template <typename T, typename DstT = T>
 struct uniform_real_transform {
   explicit uniform_real_transform(T min, T max)
-      : range_(max - min), min_(min) {}
+      : range_(max - min),
+        min_(min),
+        min_dst_(static_cast<DstT>(min)),
+        max_dst_(static_cast<DstT>(max)) {}
 
-  HOSTDEVICE inline T operator()(T val) const {
-    if (UNLIKELY(val == static_cast<T>(1.0))) {
-      return min_;
-    } else {
-      return val * range_ + min_;
-    }
+  HOSTDEVICE inline DstT operator()(T val) const {
+    DstT result = static_cast<DstT>(val * range_ + min_);
+    // Also catch the case where float-precision arithmetic rounds up to max
+    // after casting to a lower-precision DstT (e.g. float16/bfloat16).
+    return (result == max_dst_) ? min_dst_ : result;
   }
 
  private:
   T range_;
   T min_;
+  DstT min_dst_;
+  DstT max_dst_;
 };
 
 template <typename T, typename R>

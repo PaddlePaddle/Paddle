@@ -13,19 +13,13 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Union
-
-from typing_extensions import TypeAlias
+from typing import TYPE_CHECKING, TypeAlias
 
 if TYPE_CHECKING:
     from paddle import CustomPlace
     from paddle.base.libpaddle import _customDeviceProperties
 
-    _CustomPlaceLike: TypeAlias = Union[
-        CustomPlace,
-        str,
-        int,
-    ]
+    _CustomPlaceLike: TypeAlias = CustomPlace | str | int
 
 __all__ = [
     'get_device_properties',

@@ -21,7 +21,6 @@ import warnings
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     TypeVar,
     overload,
 )
@@ -45,7 +44,7 @@ from .tracer import Tracer
 
 if TYPE_CHECKING:
     from collections import OrderedDict
-    from collections.abc import Generator, Sequence
+    from collections.abc import Callable, Generator, Sequence
     from contextlib import AbstractContextManager
     from types import TracebackType
 
