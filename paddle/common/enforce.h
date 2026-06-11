@@ -369,6 +369,10 @@ inline void EnforceNonNegativeForUInt32Max(T var UNUSED,
 #define PADDLE_ENFORCE_LE_UINT32_MAX(var, var_name)                       \
   do {                                                                    \
     auto __var = (var);                                                   \
+    using __VAR_TYPE__ = typename std::decay<decltype(__var)>::type;      \
+    static_assert(std::is_integral<__VAR_TYPE__>::value,                  \
+                  "PADDLE_ENFORCE_LE_UINT32_MAX only accepts integral "   \
+                  "types.");                                              \
     ::common::enforce::details::EnforceNonNegativeForUInt32Max(__var,     \
                                                                var_name); \
     PADDLE_ENFORCE_LE(                                                    \
