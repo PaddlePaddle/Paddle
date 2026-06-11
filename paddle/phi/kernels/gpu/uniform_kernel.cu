@@ -165,10 +165,8 @@ struct UniformKernelImpl<T, Context, false> {
     if (seed == 0) {
       using MT = typename MPTypeTrait<T>::Type;
       funcs::uniform_distribution<MT> dist;
-      // `range = MT(T(max)) - MT(T(min))`
-      MT min_val = static_cast<MT>(static_cast<T>(min.to<float>()));
-      MT max_val = static_cast<MT>(static_cast<T>(max.to<float>()));
-      funcs::uniform_real_transform<MT, T> trans(min_val, max_val);
+      funcs::uniform_real_transform<MT, T> trans(static_cast<MT>(min.to<T>()),
+                                                 static_cast<MT>(max.to<T>()));
       funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
     } else {
       auto func = UniformGenerator<T>(

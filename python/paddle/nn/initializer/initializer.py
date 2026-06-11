@@ -16,10 +16,9 @@ from __future__ import annotations
 
 import functools
 import math
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, TypeAlias
 
 import numpy as np
-from typing_extensions import TypeAlias
 
 from ...base.framework import (
     EagerParamBase,

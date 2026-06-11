@@ -94,6 +94,7 @@ class Cifar10(Dataset[tuple["_ImageDataType", "npt.NDArray[Any]"]]):
 
             >>> # doctest: +TIMEOUT(60)
             >>> import itertools
+            >>> import paddle
             >>> import paddle.vision.transforms as T
             >>> from paddle.vision.datasets import Cifar10
 
@@ -129,7 +130,8 @@ class Cifar10(Dataset[tuple["_ImageDataType", "npt.NDArray[Any]"]]):
 
             >>> for img, label in itertools.islice(iter(cifar10_test), 5):  # only show first 5 images
             ...     # do something with img and label
-            ...     print(type(img), img.shape, label)  # type: ignore
+            ...     assert isinstance(img, paddle.Tensor)
+            ...     print(type(img), img.shape, label)
             ...     # <class 'paddle.Tensor'> [3, 64, 64] 3
 
     """
@@ -253,6 +255,7 @@ class Cifar100(Cifar10):
 
             >>> # doctest: +TIMEOUT(60)
             >>> import itertools
+            >>> import paddle
             >>> import paddle.vision.transforms as T
             >>> from paddle.vision.datasets import Cifar100
 
@@ -289,7 +292,8 @@ class Cifar100(Cifar10):
 
             >>> for img, label in itertools.islice(iter(cifar100_test), 5):  # only show first 5 images
             ...     # do something with img and label
-            ...     print(type(img), img.shape, label)  # type: ignore
+            ...     assert isinstance(img, paddle.Tensor)
+            ...     print(type(img), img.shape, label)
             ...     # <class 'paddle.Tensor'> [3, 64, 64] 49
 
     """

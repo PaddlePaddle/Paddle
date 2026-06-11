@@ -28,31 +28,29 @@ from paddle.framework import in_dynamic_mode
 from paddle.tensor import random
 
 if TYPE_CHECKING:
-    from typing import Union
-
-    from typing_extensions import TypeAlias
+    from typing import TypeAlias
 
     from paddle import Tensor, dtype
     from paddle._typing import NestedSequence
 
-    _NormalLocBase: TypeAlias = Union[float, complex]
-    _NormalLocNDArray: TypeAlias = Union[
-        np.float32, np.float64, np.complex64, np.complex128
-    ]
-    _NormalLoc: TypeAlias = Union[
-        _NormalLocBase,
-        Sequence[_NormalLocBase],
-        NestedSequence[_NormalLocBase],
-        npt.NDArray[_NormalLocNDArray],
-        Tensor,
-    ]
-    _NormalScale: TypeAlias = Union[
-        float,
-        Sequence[float],
-        NestedSequence[float],
-        npt.NDArray[Union[np.float32, np.float64]],
-        Tensor,
-    ]
+    _NormalLocBase: TypeAlias = float | complex
+    _NormalLocNDArray: TypeAlias = (
+        np.float32 | np.float64 | np.complex64 | np.complex128
+    )
+    _NormalLoc: TypeAlias = (
+        _NormalLocBase
+        | Sequence[_NormalLocBase]
+        | NestedSequence[_NormalLocBase]
+        | npt.NDArray[_NormalLocNDArray]
+        | Tensor
+    )
+    _NormalScale: TypeAlias = (
+        float
+        | Sequence[float]
+        | NestedSequence[float]
+        | npt.NDArray[np.float32 | np.float64]
+        | Tensor
+    )
 
 
 class Normal(distribution.Distribution):

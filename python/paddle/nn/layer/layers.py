@@ -20,7 +20,8 @@ import typing
 import warnings
 import weakref
 from collections import OrderedDict, namedtuple
-from typing import TYPE_CHECKING, Any, Callable, Optional, Union
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from typing_extensions import Self, overload
@@ -73,21 +74,21 @@ if TYPE_CHECKING:
 __all__ = []
 
 
-_ForwardPreHook = Union[
-    Callable[["Layer", tuple[Any, ...]], Optional[Any]],
-    Callable[
+_ForwardPreHook = (
+    Callable[["Layer", tuple[Any, ...]], Any | None]
+    | Callable[
         ["Layer", tuple[Any, ...], dict[str, Any]],
-        Optional[tuple[tuple[Any, ...], dict[str, Any]]],
-    ],
-]
-_ForwardPostHook = Union[
-    Callable[["Layer", tuple[Any, ...], Any], Optional[Any]],
-    Callable[
+        tuple[tuple[Any, ...], dict[str, Any]] | None,
+    ]
+)
+_ForwardPostHook = (
+    Callable[["Layer", tuple[Any, ...], Any], Any | None]
+    | Callable[
         ["Layer", tuple[Any, ...], dict[str, Any], Any],
-        Optional[Any],
-    ],
-]
-_StateDict = Union[dict[str, Any], typing.OrderedDict[str, Any]]
+        Any | None,
+    ]
+)
+_StateDict = dict[str, Any] | typing.OrderedDict[str, Any]
 _StateDictPreHook = Callable[["Layer", str, bool], None]
 _StateDictHook = Callable[[_StateDict], None]
 _EXTRA_STATE_KEY_SUFFIX = "_extra_state"

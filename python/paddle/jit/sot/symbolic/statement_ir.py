@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import functools
 import weakref
-from typing import TYPE_CHECKING, Any, Callable, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 from weakref import WeakValueDictionary
 
 import paddle
@@ -33,6 +33,7 @@ from ..utils import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from contextlib import AbstractContextManager
 
 

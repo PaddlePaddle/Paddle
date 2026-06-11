@@ -19,7 +19,7 @@ import os
 import shutil
 import time
 import unittest
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any
 
 import hypothesis
 import hypothesis.strategies as st
@@ -37,6 +37,9 @@ import paddle.inference as paddle_infer
 from paddle import pir
 from paddle.base.core import PassVersionChecker
 from paddle.static.log_helper import get_logger
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 Input = PrecisionMode = TensorRTConfig = convert_to_trt = None
 

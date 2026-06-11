@@ -38,8 +38,8 @@ OpRole = core.op_proto_and_checker_maker.OpRole
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Sequence
-    from typing import Any, Callable, Literal
+    from collections.abc import Callable, Iterable, Sequence
+    from typing import Any, Literal
 
     import numpy.typing as npt
 

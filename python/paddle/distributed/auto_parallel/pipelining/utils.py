@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Union
+from typing import TYPE_CHECKING, Any
 
 import paddle
 from paddle.distributed import fleet
@@ -23,6 +23,9 @@ from paddle.distributed.auto_parallel.api import (
     dtensor_from_local,
 )
 from paddle.utils import map_structure
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +102,7 @@ def _validate_tensors_metadata(
         )
 
 
-NestedStruct = Union[list[Any], tuple[Any, ...], dict[Any, Any]]
+NestedStruct = list[Any] | tuple[Any, ...] | dict[Any, Any]
 
 
 def _map_structure_only(

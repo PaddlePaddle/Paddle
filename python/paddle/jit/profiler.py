@@ -15,13 +15,16 @@
 from __future__ import annotations
 
 from functools import wraps
-from typing import Callable, TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 from typing_extensions import ParamSpec
 
 from paddle.framework import core
 
 from .dy2static.utils import ENV_SOT_EVENT_LEVEL
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 P = ParamSpec("P")
 T = TypeVar("T")

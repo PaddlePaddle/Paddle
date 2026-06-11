@@ -28,7 +28,7 @@ from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 from .sdpa import scaled_dot_product_attention
 
 if TYPE_CHECKING:
-    from typing_extensions import TypeAlias
+    from typing import TypeAlias
 
     from paddle import Tensor
     from paddle._typing import (

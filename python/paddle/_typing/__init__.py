@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Backport
-from .backport import EllipsisType as EllipsisType
-
 # Basic
 from .basic import (
     NestedList as NestedList,

@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import copy
 import logging
-from typing import TYPE_CHECKING, Any, SupportsIndex, Union
+from typing import TYPE_CHECKING, Any, SupportsIndex
 
 import numpy as np
 
@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 
     from paddle._typing import NestedNumericSequence
 
-    _NumpyShapeLike = Union[SupportsIndex, Sequence[SupportsIndex]]
+    _NumpyShapeLike = SupportsIndex | Sequence[SupportsIndex]
 
 
 # Use to store the previous and current process mesh

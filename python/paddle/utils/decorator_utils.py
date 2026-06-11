@@ -17,8 +17,8 @@ from __future__ import annotations
 import functools
 import inspect
 import warnings
-from collections.abc import Iterable
-from typing import Any, Callable, TypeVar, cast
+from collections.abc import Callable, Iterable
+from typing import Any, TypeVar, cast
 
 from typing_extensions import ParamSpec, get_overloads
 
