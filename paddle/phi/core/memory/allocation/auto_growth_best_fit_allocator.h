@@ -18,7 +18,9 @@
 #include <map>
 #include <memory>
 #include <mutex>  // NOLINT
+#include <tuple>
 #include <utility>
+#include <vector>
 
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/core/memory/allocation/spin_lock.h"
@@ -27,6 +29,7 @@ COMMON_DECLARE_bool(enable_auto_growth_allocator_add_lock);
 
 namespace paddle {
 namespace memory {
+class AllocatorVisitor;
 namespace allocation {
 
 class PADDLE_API AutoGrowthBestFitAllocator : public Allocator {
@@ -38,6 +41,23 @@ class PADDLE_API AutoGrowthBestFitAllocator : public Allocator {
                              int extra_padding_size = 0);
 
   bool IsAllocThreadSafe() const override { return true; }
+
+  void Accept(AllocatorVisitor *visitor) override;
+
+  struct AllocatorStats {
+    size_t total_alloc_times{0}, total_alloc_size{0};
+    size_t total_free_times{0}, total_free_size{0};
+    size_t cache_hit_count{0}, cache_miss_count{0};
+    size_t split_count{0}, merge_count{0};
+    size_t total_requested_size{0};
+    size_t chunk_count{0};
+  };
+  AllocatorStats GetStats() const;
+  std::vector<std::tuple<size_t, uintptr_t, bool>> GetAllBlockInfo() const;
+  size_t GetChunkCount() const {
+    std::lock_guard<SpinLock> guard(spinlock_);
+    return chunks_.size();
+  }
 
   void DumpInfo() const;
 
@@ -116,12 +136,19 @@ class PADDLE_API AutoGrowthBestFitAllocator : public Allocator {
   int extra_padding_size_;
 
   // stat info
-  size_t total_alloc_times_;
-  size_t total_alloc_size_;
-  size_t total_free_times_;
-  size_t total_free_size_;
+  size_t total_alloc_times_{0};
+  size_t total_alloc_size_{0};
+  size_t total_free_times_{0};
+  size_t total_free_size_{0};
 
-  SpinLock spinlock_;
+  // fragmentation counters
+  size_t cache_hit_count_{0};
+  size_t cache_miss_count_{0};
+  size_t split_count_{0};
+  size_t merge_count_{0};
+  size_t total_requested_size_{0};
+
+  mutable SpinLock spinlock_;
 };
 
 }  // namespace allocation

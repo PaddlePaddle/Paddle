@@ -14,12 +14,15 @@
 
 #include "paddle/phi/core/memory/mem_visitor.h"
 #include "paddle/phi/core/memory/allocation/allocator.h"
+#include "paddle/phi/core/memory/allocation/auto_growth_best_fit_allocator.h"
 #include "paddle/phi/core/memory/allocation/retry_allocator.h"
 #include "paddle/phi/core/memory/allocation/spin_lock.h"
 #include "paddle/phi/core/memory/allocation/stat_allocator.h"
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/core/memory/allocation/stream_safe_cuda_allocator.h"
+#endif
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/core/memory/allocation/virtual_memory_auto_growth_best_fit_allocator.h"
 #endif
 
@@ -38,26 +41,16 @@ void AllocatorVisitor::Visit(StatAllocator* allocator) {
   allocator->GetUnderLyingAllocator()->Accept(this);
 }
 
-#ifdef PADDLE_WITH_CUDA
+// AutoGrowthBestFitAllocator is a leaf allocator — no underlying to recurse.
+void AllocatorVisitor::Visit(AutoGrowthBestFitAllocator*) {}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 void AllocatorVisitor::Visit(StreamSafeCUDAAllocator* allocator) {
   const std::vector<StreamSafeCUDAAllocator*>& allocators =
       allocator->GetAllocatorByPlace();
   for (StreamSafeCUDAAllocator* allocator : allocators) {
     allocator->GetUnderLyingAllocator()->Accept(this);
   }
-}
-
-void AllocatorVisitor::Visit(
-    VirtualMemoryAutoGrowthBestFitAllocator* allocator) {
-  allocator->GetUnderLyingAllocator()->Accept(this);
-}
-
-void AllocatorVisitor::Visit(
-    VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator* allocator) {
-  if (allocator->GetSmallAllocator())
-    allocator->GetSmallAllocator()->Accept(this);
-  if (allocator->GetLargeAllocator())
-    allocator->GetLargeAllocator()->Accept(this);
 }
 
 void AllocatorComputeStreamVisitor::Visit(StreamSafeCUDAAllocator* allocator) {
@@ -72,6 +65,42 @@ void AllocatorComputeStreamVisitor::Visit(StreamSafeCUDAAllocator* allocator) {
   // `allocator_map_` as the compute stream allocator. Although this approach is
   // somewhat ugly and may not be robust, it is currently effective.
   allocators[0]->GetUnderLyingAllocator()->Accept(this);
+}
+
+void VMMAllBlocksInfoVisitor::Visit(AutoGrowthBestFitAllocator* allocator) {
+  auto blocks = allocator->GetAllBlockInfo();
+  if (!blocks.empty()) {
+    all_blocks_info_.push_back(blocks);
+  }
+}
+
+void AllocatorStatsVisitor::Visit(AutoGrowthBestFitAllocator* allocator) {
+  auto s = allocator->GetStats();
+  stats_["total_alloc_times"] = s.total_alloc_times;
+  stats_["total_alloc_size"] = s.total_alloc_size;
+  stats_["total_free_times"] = s.total_free_times;
+  stats_["total_free_size"] = s.total_free_size;
+  stats_["cache_hit_count"] = s.cache_hit_count;
+  stats_["cache_miss_count"] = s.cache_miss_count;
+  stats_["split_count"] = s.split_count;
+  stats_["merge_count"] = s.merge_count;
+  stats_["total_requested_size"] = s.total_requested_size;
+  stats_["chunk_count"] = s.chunk_count;
+}
+#endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
+
+#ifdef PADDLE_WITH_CUDA
+void AllocatorVisitor::Visit(
+    VirtualMemoryAutoGrowthBestFitAllocator* allocator) {
+  allocator->GetUnderLyingAllocator()->Accept(this);
+}
+
+void AllocatorVisitor::Visit(
+    VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator* allocator) {
+  if (allocator->GetSmallAllocator())
+    allocator->GetSmallAllocator()->Accept(this);
+  if (allocator->GetLargeAllocator())
+    allocator->GetLargeAllocator()->Accept(this);
 }
 
 void FreeMemoryMetricsVisitor::Visit(
@@ -139,6 +168,6 @@ void VmmTensorPartsVisitor::Visit(
   }
   allocator->GetUnderLyingAllocator()->Accept(this);
 }
-#endif
+#endif  // PADDLE_WITH_CUDA
 }  // namespace memory
 }  // namespace paddle

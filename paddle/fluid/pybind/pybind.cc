@@ -3797,6 +3797,14 @@ All parameter, weight, gradient are variables in Paddle.
     return paddle::memory::GetCompactSize(GPUPlace(device_id));
   });
 #endif
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  m.def("all_block_info", [](int device_id) {
+    return paddle::memory::AllBlockInfo(GPUPlace(device_id));
+  });
+  m.def("allocator_stats", [](int device_id) {
+    return paddle::memory::GetAllocatorStats(GPUPlace(device_id));
+  });
+#endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   m.def(
       "get_device_properties",

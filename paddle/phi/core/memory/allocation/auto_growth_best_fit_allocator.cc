@@ -24,6 +24,7 @@
 #include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/core/memory/allocation/aligned_allocator.h"
+#include "paddle/phi/core/memory/mem_visitor.h"
 
 PHI_DEFINE_EXPORTED_READONLY_bool(
     free_idle_chunk,
@@ -92,10 +93,6 @@ AutoGrowthBestFitAllocator::AutoGrowthBestFitAllocator(
       chunk_size_(std::max(AlignedSize(chunk_size, alignment), alignment)),
       allow_free_idle_chunk_(allow_free_idle_chunk),
       extra_padding_size_(extra_padding_size) {
-  total_alloc_times_ = 0;
-  total_alloc_size_ = 0;
-  total_free_times_ = 0;
-  total_free_size_ = 0;
   VLOG(7) << "chunk_size_:" << chunk_size_;
 }
 
@@ -198,6 +195,7 @@ phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
   BlockIt block_it;
   if (iter != free_blocks.end()) {
     block_it = iter->second;
+    ++cache_hit_count_;
     free_blocks.erase(iter);
     auto *chunk = block_it->chunk_;
     size_t remaining_size = block_it->size_ - size;
@@ -207,6 +205,7 @@ phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
       block_it->is_free_ = false;
       block_it->is_small_ = is_small;
     } else {
+      ++split_count_;
       auto remaining_free_block = chunk->blocks_.insert(
           block_it,
           Block(block_it->ptr_, remaining_size, true, is_small, chunk));
@@ -219,6 +218,7 @@ phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
       block_it->is_small_ = is_small;
     }
   } else {
+    ++cache_miss_count_;
     if (FLAGS_dump_chunk_info) {
       std::cout << "MemDbg memory not enough growth chunk, need size = " << size
                 << std::endl;
@@ -265,6 +265,7 @@ phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
       DumpInfo();
     }
   }
+  total_requested_size_ += unaligned_size;
   ++total_alloc_times_;
   total_alloc_size_ += size;
   VLOG(10) << "Alloc " << block_it->size_ << " bytes, ptr = " << block_it->ptr_;
@@ -294,6 +295,7 @@ void AutoGrowthBestFitAllocator::FreeImpl(phi::Allocation *allocation) {
     --prev_it;
 
     if (prev_it->is_free_) {
+      ++merge_count_;
       free_blocks.erase(std::make_pair(prev_it->size_, prev_it->ptr_));
       prev_it->size_ += block_it->size_;
       blocks.erase(block_it);
@@ -306,6 +308,7 @@ void AutoGrowthBestFitAllocator::FreeImpl(phi::Allocation *allocation) {
 
   // It's weird that using `next_it == blocks.end()` will cause a judgment fail.
   if (block_it != (--blocks.end()) && next_it->is_free_) {
+    ++merge_count_;
     free_blocks.erase(std::make_pair(next_it->size_, next_it->ptr_));
     block_it->size_ += next_it->size_;
     blocks.erase(next_it);
@@ -385,6 +388,38 @@ void AutoGrowthBestFitAllocator::Trace() const {
           << " small free_blocks_num:" << small_free_blocks_.size()
           << " large free_blocks_num:" << large_free_blocks_.size()
           << " curr_chunks_num:" << chunks_.size();
+}
+
+void AutoGrowthBestFitAllocator::Accept(AllocatorVisitor *visitor) {
+  visitor->Visit(this);
+}
+
+std::vector<std::tuple<size_t, uintptr_t, bool>>
+AutoGrowthBestFitAllocator::GetAllBlockInfo() const {
+  std::lock_guard<SpinLock> guard(spinlock_);
+  std::vector<std::tuple<size_t, uintptr_t, bool>> result;
+  for (const auto &chunk : chunks_) {
+    for (const auto &block : chunk.blocks_) {
+      result.emplace_back(
+          block.size_, reinterpret_cast<uintptr_t>(block.ptr_), block.is_free_);
+    }
+  }
+  return result;
+}
+
+AutoGrowthBestFitAllocator::AllocatorStats
+AutoGrowthBestFitAllocator::GetStats() const {
+  std::lock_guard<SpinLock> guard(spinlock_);
+  return {total_alloc_times_,
+          total_alloc_size_,
+          total_free_times_,
+          total_free_size_,
+          cache_hit_count_,
+          cache_miss_count_,
+          split_count_,
+          merge_count_,
+          total_requested_size_,
+          chunks_.size()};
 }
 
 }  // namespace paddle::memory::allocation

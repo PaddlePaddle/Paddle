@@ -14,6 +14,8 @@
 
 #pragma once
 #include <cstdint>
+#include <map>
+#include <string>
 #include <vector>
 #include "paddle/phi/core/enforce.h"
 #ifdef PADDLE_WITH_CUDA
@@ -30,9 +32,11 @@ class StatAllocator;
 class StreamSafeCUDAAllocator;
 class VirtualMemoryAutoGrowthBestFitAllocator;
 class VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator;
+class AutoGrowthBestFitAllocator;
 }  // namespace allocation
 
 using allocation::Allocator;
+using allocation::AutoGrowthBestFitAllocator;
 using allocation::RetryAllocator;
 using allocation::StatAllocator;
 using allocation::StreamSafeCUDAAllocator;
@@ -54,8 +58,11 @@ class AllocatorVisitorReqImpl {
   virtual void Visit(RetryAllocator* allocator) = 0;
   virtual void Visit(StatAllocator* allocator) = 0;
   virtual void Visit(Allocator* allocator) {}
-#ifdef PADDLE_WITH_CUDA
+  virtual void Visit(AutoGrowthBestFitAllocator*) {}
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   virtual void Visit(StreamSafeCUDAAllocator* allocator) = 0;
+#endif
+#ifdef PADDLE_WITH_CUDA
   virtual void Visit(VirtualMemoryAutoGrowthBestFitAllocator* allocator) = 0;
   virtual void Visit(
       VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator* allocator) = 0;
@@ -77,15 +84,18 @@ class AllocatorVisitor : public AllocatorVisitorReqImpl {
   virtual void Visit(RetryAllocator* allocator);
   virtual void Visit(StatAllocator* allocator);
   virtual void Visit(Allocator* allocator) {}
-#ifdef PADDLE_WITH_CUDA
+  virtual void Visit(AutoGrowthBestFitAllocator*);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   virtual void Visit(StreamSafeCUDAAllocator* allocator);
+#endif
+#ifdef PADDLE_WITH_CUDA
   virtual void Visit(VirtualMemoryAutoGrowthBestFitAllocator* allocator);
   virtual void Visit(
       VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator* allocator);
 #endif
 };
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 /**
  * @brief AllocatorComputeStreamVisitor is a Concrete Visitor class designed to
  * only visit compute stream allocators.
@@ -95,7 +105,9 @@ class AllocatorComputeStreamVisitor : public AllocatorVisitor {
   using AllocatorVisitor::Visit;
   void Visit(StreamSafeCUDAAllocator* allocator) override;
 };
+#endif
 
+#ifdef PADDLE_WITH_CUDA
 /**
  * @brief FreeMemoryMetricsVisitor is a Concrete Visitor class designed to
  * inspect allocators for free memory information.
@@ -243,7 +255,9 @@ class VMMFreeBlocksInfoVisitor : public AllocatorComputeStreamVisitor {
    */
   std::vector<std::vector<std::pair<size_t, uintptr_t>>> free_blocks_info_;
 };
+#endif  // PADDLE_WITH_CUDA
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 /**
  * @brief Visitor class to retrieve All block information from a VMM allocator.
  *
@@ -284,7 +298,10 @@ class VMMAllBlocksInfoVisitor : public AllocatorComputeStreamVisitor {
    * @param allocator Pointer to the memory allocator object whose free blocks
    * information is to be extracted.
    */
+#ifdef PADDLE_WITH_CUDA
   void Visit(VirtualMemoryAutoGrowthBestFitAllocator* allocator) override;
+#endif
+  void Visit(AutoGrowthBestFitAllocator* allocator) override;
 
  private:
   /**
@@ -299,6 +316,23 @@ class VMMAllBlocksInfoVisitor : public AllocatorComputeStreamVisitor {
       all_blocks_info_;
 };
 
+/**
+ * @brief Visitor to collect allocator statistics (counters) from
+ * AutoGrowthBestFitAllocator.
+ */
+class AllocatorStatsVisitor : public AllocatorComputeStreamVisitor {
+  using AllocatorComputeStreamVisitor::Visit;
+
+ public:
+  void Visit(AutoGrowthBestFitAllocator* allocator) override;
+  std::map<std::string, size_t> GetStats() const { return stats_; }
+
+ private:
+  std::map<std::string, size_t> stats_;
+};
+#endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
+
+#ifdef PADDLE_WITH_CUDA
 class VMMAllocateRecordEventsVisitor : public AllocatorComputeStreamVisitor {
   using AllocatorComputeStreamVisitor::Visit;
 
