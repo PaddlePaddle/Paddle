@@ -84,7 +84,7 @@ static std::vector<int64_t> GetAttnMaskDims(const DenseTensor* attn_mask) {
 }
 
 static std::vector<int64_t> GetAttnSparseMaskDims(
-    const DenseTensor* startend_row_indices, int max_seqlen_q) {
+    const DenseTensor* startend_row_indices, int64_t max_seqlen_q) {
   std::vector<int64_t> mask_dim_4d;
   if (startend_row_indices) {
     const auto& dtype = startend_row_indices->dtype();
@@ -186,9 +186,8 @@ struct FlashAttnParamsBase {
 
     // TODO(GuoxiaWang): check q, k, v dtype
 
-    auto round_multiple = [](int x, int m) {
-      int64_t rounded =
-          (static_cast<int64_t>(x) + m - 1) / m * static_cast<int64_t>(m);
+    auto round_multiple = [](int64_t x, int m) {
+      int64_t rounded = (x + m - 1) / m * static_cast<int64_t>(m);
       PADDLE_ENFORCE_LE_INT_MAX(rounded, "flash_attn rounded sequence length");
       return static_cast<int>(rounded);
     };
@@ -201,12 +200,8 @@ struct FlashAttnParamsBase {
       head_size_rounded = round_multiple(head_size, 32);
     }
 
-    PADDLE_ENFORCE_LE_INT_MAX(max_seqlen_q, "flash_attn max_seqlen_q");
-    PADDLE_ENFORCE_LE_INT_MAX(max_seqlen_k, "flash_attn max_seqlen_k");
-    int max_seqlen_q_int = static_cast<int>(max_seqlen_q);
-    int max_seqlen_k_int = static_cast<int>(max_seqlen_k);
-    seqlen_q_rounded = round_multiple(max_seqlen_q_int, kBlockM);
-    seqlen_k_rounded = round_multiple(max_seqlen_k_int, 128);
+    seqlen_q_rounded = round_multiple(max_seqlen_q, kBlockM);
+    seqlen_k_rounded = round_multiple(max_seqlen_k, 128);
 
     softmax_lse_dims = unpadded_lse ? std::vector<int64_t>{num_heads, total_q}
                                     : std::vector<int64_t>{

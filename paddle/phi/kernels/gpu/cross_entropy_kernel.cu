@@ -1952,14 +1952,17 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
   }
 
   const int64_t D = d / axis_dim;
-  PADDLE_ENFORCE_LE_INT_MAX(n, "cross_entropy N");
-  PADDLE_ENFORCE_LE_INT_MAX(axis_dim, "cross_entropy axis_dim");
-  PADDLE_ENFORCE_LE_INT_MAX(D, "cross_entropy D");
-  const int n_int = static_cast<int>(n);
-  const int axis_dim_int = static_cast<int>(axis_dim);
-  const int D_int = static_cast<int>(D);
 
   if (soft_label) {
+    // SoftmaxWithCrossEntropySoftLabel uses cudnn descriptors internally,
+    // whose dim arrays are int. Truncation is required here.
+    PADDLE_ENFORCE_LE_INT_MAX(n, "cross_entropy N");
+    PADDLE_ENFORCE_LE_INT_MAX(axis_dim, "cross_entropy axis_dim");
+    PADDLE_ENFORCE_LE_INT_MAX(D, "cross_entropy D");
+    const int n_int = static_cast<int>(n);
+    const int axis_dim_int = static_cast<int>(axis_dim);
+    const int D_int = static_cast<int>(D);
+
     auto* softmax_data = dev_ctx.template Alloc<T>(softmax);
     auto* loss_data = dev_ctx.template Alloc<T>(loss);
     auto* labels_data = label.data<T>();
@@ -1975,6 +1978,10 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
                                         D_int);
   } else {
     if (!numeric_stable_mode) {
+      // Non-cudnn path: DDim / Resize / CrossEntropyFunctor already accept
+      // int64_t. Big-tensor support here additionally requires the int64
+      // upgrade of funcs::SoftmaxCUDNNFunctor and funcs::CrossEntropyFunctor
+      // internals; once those are done this branch needs no INT_MAX guard.
       auto* softmax_data = dev_ctx.template Alloc<T>(softmax);
       auto* loss_data = dev_ctx.template Alloc<T>(loss);
       // CUDNN kernel only suppoer 2-D tensor and perform softmax on last dim
@@ -1996,6 +2003,15 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
                                                   ignore_index,
                                                   axis_dim);
     } else {
+      // numeric_stable_mode path goes through SoftmaxWithCrossEntropyHardLabel,
+      // which uses cudnn descriptors internally; truncation is required.
+      PADDLE_ENFORCE_LE_INT_MAX(n, "cross_entropy N");
+      PADDLE_ENFORCE_LE_INT_MAX(axis_dim, "cross_entropy axis_dim");
+      PADDLE_ENFORCE_LE_INT_MAX(D, "cross_entropy D");
+      const int n_int = static_cast<int>(n);
+      const int axis_dim_int = static_cast<int>(axis_dim);
+      const int D_int = static_cast<int>(D);
+
       // For bfloat16, we integrated mix-precision inside the kernel
       if constexpr (std::is_same_v<T, phi::bfloat16>) {
         auto* softmax_data = dev_ctx.template Alloc<float>(softmax);

@@ -63,9 +63,7 @@ void SyncBatchNormKernel(const Context& dev_ctx,
   int N, C, H, W, D;
   funcs::ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
   int64_t x_numel = x.numel();
-  const int64_t fsize_64 = static_cast<int64_t>(H) * W * D;
-  PADDLE_ENFORCE_LE_INT_MAX(fsize_64, "sync_batch_norm feature size");
-  const int fsize = static_cast<int>(fsize_64);
+  const int64_t fsize = static_cast<int64_t>(H) * W * D;
 
   const T* x_d = x.template data<T>();
   const auto* s_d = scale.template data<BatchNormParamType<T>>();

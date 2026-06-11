@@ -749,7 +749,7 @@ inline size_t smem_size_in_bytes(
                                         decltype(load_func),                  \
                                         decltype(store_func),                 \
                                         SPLIT>;                               \
-  if (smem_sz_size > 0xc000) {                                                \
+  if (smem_sz > 0xc000) {                                                     \
     cudaFuncSetAttribute(                                                     \
         kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_sz);     \
   }                                                                           \

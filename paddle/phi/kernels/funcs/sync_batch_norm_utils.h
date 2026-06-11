@@ -39,7 +39,7 @@ using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
 template <typename T, int BlockDim, DataLayout layout>
 __global__ void KeLocalStats(
-    const T *x, int N, int M, int C, BatchNormParamType<T> *mean_var) {
+    const T *x, int N, int64_t M, int C, BatchNormParamType<T> *mean_var) {
   typedef cub::BlockReduce<BatchNormParamType<T>, BlockDim> BlockReduce;
   __shared__ typename BlockReduce::TempStorage temp_storage;
   for (int k = blockIdx.x; k < C; k += gridDim.x) {
@@ -111,7 +111,7 @@ static __global__ void KeNormAffine(const T *x,
                                     const BatchNormParamType<T> *variance,
                                     const double epsilon,
                                     const int C,
-                                    const int M,
+                                    const int64_t M,
                                     const int64_t num,
                                     T *y) {
   int64_t gid =
@@ -132,7 +132,7 @@ __global__ void KeBackwardLocalStats(const T *dy,
                                      const T *x,
                                      const BatchNormParamType<T> *means,
                                      int N,
-                                     int M,
+                                     int64_t M,
                                      int C,
                                      BatchNormParamType<T> *sum_dy_prod) {
   typedef cub::BlockReduce<BatchNormParamType<T>, BlockDim> BlockReduce;
@@ -175,7 +175,7 @@ __global__ void KeBackwardLocalStats2D(const T *dy,
                                        const T *x,
                                        const BatchNormParamType<T> *means,
                                        int N,
-                                       int M,
+                                       int64_t M,
                                        int C,
                                        BatchNormParamType<T> *block_data_ptr,
                                        int *flag_ptr,
@@ -240,7 +240,7 @@ static __global__ void KeBNBackwardScaleBias(
     const double epsilon,
     const int N,
     const int C,
-    const int HxW,
+    const int64_t HxW,
     BatchNormParamType<T> *dscale,
     BatchNormParamType<T> *dbias) {
   const int outer_size = C;
@@ -352,7 +352,7 @@ static __global__ void KeBNRestoreData(T *x,
                                        const BatchNormParamType<T> *sv_inv,
                                        const double epsilon,
                                        int C,
-                                       int M,
+                                       int64_t M,
                                        int64_t num,
                                        const T *y) {
   int64_t gid =
@@ -524,8 +524,6 @@ void SyncBatchNormGradFunctor(const Context &dev_ctx,
   const int threads = 256;
   int64_t x_numel = x->numel();
   int64_t fsize = H * W * D;
-  PADDLE_ENFORCE_LE_INT_MAX(fsize, "sync_batch_norm grad feature size");
-  const int fsize_int = static_cast<int>(fsize);
   int64_t max_threads = dev_ctx.GetMaxPhysicalThreadCount();
   int64_t grid_64 = std::min(C, (max_threads + threads - 1) / threads);
   PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "sync_batch_norm grad grid");
@@ -544,7 +542,7 @@ void SyncBatchNormGradFunctor(const Context &dev_ctx,
           saved_inv_var,
           epsilon,
           C_int,
-          fsize_int,
+          fsize,
           x_numel,
           x->data<T>());
     } else {
@@ -556,7 +554,7 @@ void SyncBatchNormGradFunctor(const Context &dev_ctx,
           saved_inv_var,
           epsilon,
           C_int,
-          fsize_int,
+          fsize,
           x_numel,
           x->data<T>());
     }
@@ -565,7 +563,7 @@ void SyncBatchNormGradFunctor(const Context &dev_ctx,
   if (layout == DataLayout::NCHW) {
     KeBackwardLocalStats<T, threads, DataLayout::NCHW>
         <<<grid, threads, 0, stream>>>(
-            dy_d, x_d, saved_mean_ptr, N_int, fsize_int, C_int, stats);
+            dy_d, x_d, saved_mean_ptr, N_int, fsize, C_int, stats);
   } else {
     if (x_dims.size() == 2 && N >= 65535) {
       dim3 block;
@@ -597,7 +595,7 @@ void SyncBatchNormGradFunctor(const Context &dev_ctx,
                                        x_d,
                                        saved_mean_ptr,
                                        N_int,
-                                       fsize_int,
+                                       fsize,
                                        C_int,
                                        block_data_ptr,
                                        flag_ptr,
@@ -605,7 +603,7 @@ void SyncBatchNormGradFunctor(const Context &dev_ctx,
     } else {
       KeBackwardLocalStats<T, threads, DataLayout::NHWC>
           <<<grid, threads, 0, stream>>>(
-              dy_d, x_d, saved_mean_ptr, N_int, fsize_int, C_int, stats);
+              dy_d, x_d, saved_mean_ptr, N_int, fsize, C_int, stats);
     }
   }
 
@@ -628,7 +626,7 @@ void SyncBatchNormGradFunctor(const Context &dev_ctx,
                                          epsilon,
                                          N_int,
                                          C_int,
-                                         fsize_int,
+                                         fsize,
                                          d_scale->data<BatchNormParamType<T>>(),
                                          d_bias->data<BatchNormParamType<T>>());
     }
@@ -699,7 +697,7 @@ void SyncBatchNormGradFunctor(const Context &dev_ctx,
                 epsilon,
                 N_int,
                 C_int,
-                fsize_int,
+                fsize,
                 d_scale->data<BatchNormParamType<T>>(),
                 d_bias->data<BatchNormParamType<T>>());
       }
