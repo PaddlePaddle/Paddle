@@ -409,11 +409,12 @@ def launch() -> None:
                     "Check network configuration and hostname resolution "
                     "(/etc/hosts or DNS)."
                 ) from e
-            assert ip != '127.0.0.1', (
-                f"Resolved IP is 127.0.0.1 (hostname={hostname}), "
-                "which is not usable for multi-node communication. "
-                "Ensure /etc/hosts or DNS maps the hostname to a routable IP."
-            )
+            if ip == '127.0.0.1':
+                raise RuntimeError(
+                    f"Resolved IP is 127.0.0.1 (hostname={hostname}), "
+                    "which is not usable for multi-node communication. "
+                    "Ensure /etc/hosts or DNS maps the hostname to a routable IP."
+                )
             if tuner_cfg["search_algo"].get("estimated_num_gpus", None):
                 # get all machine ips and sort them
                 # to avoid etcd deleting key and adding key at the same time
