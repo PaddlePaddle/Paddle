@@ -16,27 +16,28 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from paddle.optimizer.sgd import SGD as PaddleSGD
+from paddle.io import DistributedBatchSampler
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
-    from paddle import Tensor
-    from paddle.optimizer.optimizer import _ParameterConfig
+    from collections.abc import Sized
 
 
-class SGD(PaddleSGD):
+class DistributedSampler(DistributedBatchSampler):
     def __init__(
         self,
-        params: Sequence[Tensor] | Sequence[_ParameterConfig] | None = None,
-        lr: float | Tensor = 1e-3,
-        momentum: float = 0,
-        dampening: float = 0,
-        weight_decay: float | Tensor = 0,
-        nesterov: bool = False,
+        dataset: Sized,
+        num_replicas: int | None = None,
+        rank: int | None = None,
+        shuffle: bool = True,
+        seed: int = 0,
+        drop_last: bool = False,
     ) -> None:
         super().__init__(
-            learning_rate=lr,
-            parameters=params,
-            weight_decay=weight_decay,
+            dataset,
+            1,
+            num_replicas,
+            rank,
+            shuffle,
+            drop_last,
+            seed,
         )

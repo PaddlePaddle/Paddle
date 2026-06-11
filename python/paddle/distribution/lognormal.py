@@ -22,33 +22,32 @@ from paddle.distribution.transformed_distribution import TransformedDistribution
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-    from typing import Union
+    from typing import TypeAlias
 
     import numpy as np
     import numpy.typing as npt
-    from typing_extensions import TypeAlias
 
     from paddle import Tensor
     from paddle._typing import NestedSequence
 
-    _LognormalLocBase: TypeAlias = Union[float, complex]
-    _LognormalLocNDArray: TypeAlias = Union[
-        np.float32, np.float64, np.complex64, np.complex128
-    ]
-    _LognormalLoc: TypeAlias = Union[
-        _LognormalLocBase,
-        Sequence[_LognormalLocBase],
-        NestedSequence[_LognormalLocBase],
-        npt.NDArray[_LognormalLocNDArray],
-        Tensor,
-    ]
-    _LognormalScale: TypeAlias = Union[
-        float,
-        Sequence[float],
-        NestedSequence[float],
-        npt.NDArray[Union[np.float32, np.float64]],
-        Tensor,
-    ]
+    _LognormalLocBase: TypeAlias = float | complex
+    _LognormalLocNDArray: TypeAlias = (
+        np.float32 | np.float64 | np.complex64 | np.complex128
+    )
+    _LognormalLoc: TypeAlias = (
+        _LognormalLocBase
+        | Sequence[_LognormalLocBase]
+        | NestedSequence[_LognormalLocBase]
+        | npt.NDArray[_LognormalLocNDArray]
+        | Tensor
+    )
+    _LognormalScale: TypeAlias = (
+        float
+        | Sequence[float]
+        | NestedSequence[float]
+        | npt.NDArray[np.float32 | np.float64]
+        | Tensor
+    )
 
 
 class LogNormal(TransformedDistribution):

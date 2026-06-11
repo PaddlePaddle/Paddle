@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
 from dataclasses import dataclass, field
 
@@ -161,11 +160,7 @@ class ComplexDataClass:
     a: int
     b: int = 0
     c: int = field(default=1)
-    d: int = (
-        field(default_factory=lambda: 2, kw_only=True)
-        if sys.version_info >= (3, 10)
-        else field(default_factory=lambda: 2)
-    )
+    d: int = field(default_factory=lambda: 2, kw_only=True)
 
 
 def create_dataclass_with_a():

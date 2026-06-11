@@ -166,7 +166,8 @@ class MSRAInitializer(Initializer):
         if in_dygraph_mode():
             if self._uniform:
                 gain = calculate_gain(self._nonlinearity, self._negative_slope)
-                limit = gain * math.sqrt(3.0 / float(fan_in))
+                std = gain / math.sqrt(float(fan_in))
+                limit = math.sqrt(3.0) * std
                 out_var = _C_ops.uniform(
                     var.shape,
                     out_dtype,
@@ -207,7 +208,8 @@ class MSRAInitializer(Initializer):
         elif in_pir_mode():
             if self._uniform:
                 gain = calculate_gain(self._nonlinearity, self._negative_slope)
-                limit = gain * math.sqrt(3.0 / float(fan_in))
+                std = gain / math.sqrt(float(fan_in))
+                limit = math.sqrt(3.0) * std
                 out_var = _C_ops.uniform(
                     var.shape,
                     out_dtype,
@@ -234,7 +236,8 @@ class MSRAInitializer(Initializer):
         else:
             if self._uniform:
                 gain = calculate_gain(self._nonlinearity, self._negative_slope)
-                limit = gain * math.sqrt(3.0 / float(fan_in))
+                std = gain / math.sqrt(float(fan_in))
+                limit = math.sqrt(3.0) * std
                 op = block.append_op(
                     type="uniform_random",
                     inputs={},

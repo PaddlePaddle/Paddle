@@ -26,10 +26,10 @@ import textwrap
 import threading
 import traceback
 import warnings
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from contextlib import contextmanager
 from types import FunctionType, MethodType
-from typing import TYPE_CHECKING, Callable, TypeVar, overload
+from typing import TYPE_CHECKING, TypeVar, overload
 
 import numpy as np
 from typing_extensions import ParamSpec
@@ -8350,7 +8350,7 @@ def device_guard(device: str | None = None) -> Generator[None, None, None]:
             >>> support_gpu = paddle.is_compiled_with_cuda()
             >>> place = paddle.CPUPlace()
             >>> if support_gpu:
-            ...     place = paddle.CUDAPlace(0)  # type: ignore
+            ...     place = paddle.CUDAPlace(0)
 
             >>> # if GPU is supported, the three OPs below will be automatically assigned to CUDAPlace(0)
             >>> data1 = paddle.full(shape=[1, 3, 8, 8], fill_value=0.5, dtype='float32')

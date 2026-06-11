@@ -18,7 +18,7 @@ from __future__ import annotations
 import copy
 import logging
 import threading
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -27,6 +27,8 @@ from paddle.base.log_helper import get_logger
 from paddle.incubate import asp
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     import numpy.typing as npt
 
     from paddle.nn import Layer

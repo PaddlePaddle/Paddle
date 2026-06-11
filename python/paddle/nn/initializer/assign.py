@@ -33,6 +33,8 @@ if TYPE_CHECKING:
 
     import numpy.typing as npt
 
+    from paddle._typing import NestedSequence
+
 __all__ = []
 
 
@@ -271,7 +273,9 @@ class Assign(NumpyArrayInitializer):
 
     def __init__(
         self,
-        value: npt.NDArray[Any] | Sequence[int] | paddle.Tensor,
+        value: npt.NDArray[Any]
+        | Sequence[NestedSequence[int | float | bool | complex]]
+        | paddle.Tensor,
         name: str | None = None,
     ) -> None:
         import numpy

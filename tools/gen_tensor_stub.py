@@ -23,11 +23,12 @@ import sys
 import traceback
 from dataclasses import dataclass
 from functools import cached_property, lru_cache
-from typing import TYPE_CHECKING, Any, Callable, Literal
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 
-from typing_extensions import TypeAlias, get_overloads
+from typing_extensions import get_overloads
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from types import ModuleType
 
 logging.basicConfig(style="{", format="{message}", level=logging.INFO)

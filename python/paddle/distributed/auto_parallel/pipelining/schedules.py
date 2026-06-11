@@ -22,7 +22,6 @@ from enum import Enum
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     NamedTuple,
 )
 
@@ -30,6 +29,8 @@ from paddle import nn
 from paddle.distributed.auto_parallel.pipelining.stage import PipelineStage
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from .stage import _PipelineStageBase
 
 
