@@ -28,7 +28,6 @@ from functools import partial, reduce
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
 )
 
 import paddle
@@ -124,6 +123,8 @@ from .basic import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from ..function_graph import FunctionGraph
 
 

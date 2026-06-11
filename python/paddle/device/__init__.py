@@ -22,9 +22,7 @@ import re
 import sys
 import types
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any, Union, overload
-
-from typing_extensions import TypeAlias
+from typing import TYPE_CHECKING, Any, TypeAlias, overload
 
 import paddle
 from paddle.amp import autocast as _autocast
@@ -63,22 +61,18 @@ if TYPE_CHECKING:
     from paddle._typing.device_like import PlaceLike
     from paddle.base.core import Place
 
-    _InitStreamBase = Union[
-        core.CUDAStream, core.CustomDeviceStream, core.XPUStream
-    ]
-    _InitEventBase = Union[
-        core.CUDAEvent, core.CustomDeviceEvent, core.XPUEvent
-    ]
+    _InitStreamBase = core.CUDAStream | core.CustomDeviceStream | core.XPUStream
+    _InitEventBase = core.CUDAEvent | core.CustomDeviceEvent | core.XPUEvent
 
     from paddle import CUDAPlace, CustomPlace
     from paddle.base.libpaddle import _customDeviceProperties
 
-    _CustomPlaceLike: TypeAlias = Union[
-        CUDAPlace,
-        CustomPlace,
-        str,  # some string like "iluvatar_gpu" "metax_gpu:0", etc.
-        int,  # some int like 0, 1, etc.
-    ]
+    _CustomPlaceLike: TypeAlias = (
+        CUDAPlace
+        | CustomPlace
+        | str  # some string like "iluvatar_gpu" "metax_gpu:0", etc.
+        | int  # some int like 0, 1, etc.
+    )
 
 # Dynamically import device functions based on available devices
 current_device_is_cpu = 0

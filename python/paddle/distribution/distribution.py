@@ -30,8 +30,7 @@ from paddle.framework import (
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-
-    from typing_extensions import TypeGuard
+    from typing import TypeGuard
 
     from paddle import Tensor
     from paddle._typing import NestedNumericSequence, TensorLike

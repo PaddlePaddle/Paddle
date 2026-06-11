@@ -14,12 +14,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Literal
-
-from typing_extensions import TypeAlias
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
 
     from paddle._typing.dtype_like import _DTypeLiteral
     from paddle.vision.transforms.transforms import _Transform
@@ -132,6 +130,7 @@ class DatasetFolder(Dataset[tuple["_ImageDataType", int]]):
             >>> import tempfile
             >>> import cv2
             >>> import numpy as np
+            >>> import paddle
             >>> import paddle.vision.transforms as T
             >>> from pathlib import Path
             >>> from paddle.vision.datasets import DatasetFolder
@@ -228,7 +227,8 @@ class DatasetFolder(Dataset[tuple["_ImageDataType", int]]):
 
             >>> for img, label in iter(data_folder_2):
             ...     # do something with img and label
-            ...     print(type(img), img.shape, label)  # type: ignore
+            ...     assert isinstance(img, paddle.Tensor)
+            ...     print(type(img), img.shape, label)
             ...     # <class 'paddle.Tensor'> [3, 64, 64] 0
 
             >>> shutil.rmtree(fake_data_dir)
@@ -382,6 +382,7 @@ class ImageFolder(Dataset[list["_ImageDataType"]]):
             >>> import tempfile
             >>> import cv2
             >>> import numpy as np
+            >>> import paddle
             >>> import paddle.vision.transforms as T
             >>> from pathlib import Path
             >>> from paddle.vision.datasets import ImageFolder
@@ -468,7 +469,8 @@ class ImageFolder(Dataset[list["_ImageDataType"]]):
 
             >>> for (img,) in iter(image_folder_2):
             ...     # do something with img
-            ...     print(type(img), img.shape)  # type: ignore
+            ...     assert isinstance(img, paddle.Tensor)
+            ...     print(type(img), img.shape)
             ...     # <class 'paddle.Tensor'> [3, 64, 64]
 
             >>> shutil.rmtree(fake_data_dir)

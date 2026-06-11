@@ -18,8 +18,7 @@ from typing import TYPE_CHECKING, Any, NamedTuple, TypeVar
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-
-    from typing_extensions import TypeAlias
+    from typing import TypeAlias
 
     from .mutable_data import DataGetter, MutableData
     from .pycode_generator import PyCodeGen

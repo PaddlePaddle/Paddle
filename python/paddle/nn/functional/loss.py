@@ -35,8 +35,8 @@ from ...common_ops_import import Variable
 from ...tensor.manipulation import reshape
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-    from typing import Callable, TypeAlias
+    from collections.abc import Callable, Sequence
+    from typing import TypeAlias
 
     from paddle import Tensor
 

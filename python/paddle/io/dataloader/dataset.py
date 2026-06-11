@@ -20,7 +20,6 @@ import warnings
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Generic,
     TypeVar,
 )
@@ -33,7 +32,13 @@ from paddle.utils.decorator_utils import variadic_tensor_decorator
 from ... import framework
 
 if TYPE_CHECKING:
-    from collections.abc import Generator, Iterable, Iterator, Sequence
+    from collections.abc import (
+        Callable,
+        Generator,
+        Iterable,
+        Iterator,
+        Sequence,
+    )
 
     from paddle import Tensor
 

@@ -33,11 +33,10 @@ from . import (
 )
 
 if TYPE_CHECKING:
-    from typing import Literal, TypeVar, Union
+    from typing import Literal, TypeAlias, TypeGuard, TypeVar
 
     import numpy.typing as npt
     from PIL.Image import Image as PILImage
-    from typing_extensions import TypeAlias, TypeGuard
 
     from paddle import Tensor
     from paddle._typing import DataLayoutImage, Size2, Size3, Size4
@@ -52,7 +51,7 @@ if TYPE_CHECKING:
         "constant", "edge", "reflect", "symmetric"
     ]
     _ImageDataT = TypeVar("_ImageDataT", Tensor, PILImage, npt.NDArray[Any])
-    _ImageDataType = Union[Tensor, PILImage, npt.NDArray[Any]]
+    _ImageDataType = Tensor | PILImage | npt.NDArray[Any]
 
 __all__ = []
 

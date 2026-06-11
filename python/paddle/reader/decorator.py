@@ -20,20 +20,20 @@ import multiprocessing
 import random
 import sys
 import warnings
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from itertools import zip_longest
 from queue import Queue
 from threading import Thread
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
+    TypeAlias,
     TypedDict,
     TypeVar,
     overload,
 )
 
-from typing_extensions import NotRequired, TypeAlias, Unpack
+from typing_extensions import NotRequired, Unpack
 
 from paddle.base.reader import QUEUE_GET_TIMEOUT
 

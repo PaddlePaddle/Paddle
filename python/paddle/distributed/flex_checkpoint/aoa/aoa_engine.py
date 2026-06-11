@@ -17,7 +17,6 @@ import ast
 import logging
 import re
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 
@@ -31,7 +30,7 @@ from .traceback import AOATraceback
 _ShardInfo = dict[str, list[ShardedWeightDesc]]
 
 # SliceRef := (key, src_slice, dst_slice, postprocess_list)
-SliceRef = tuple[str, tuple[slice, ...], tuple[slice, ...], Optional[list[str]]]
+SliceRef = tuple[str, tuple[slice, ...], tuple[slice, ...], list[str] | None]
 SUPPORTED_DTYPES = ['float16', 'float32', 'bfloat16']
 
 

@@ -20,13 +20,11 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Callable, Iterable, Sequence
-from typing import Any, Union, overload
-
-from typing_extensions import TypeAlias
+from typing import Any, TypeAlias, overload
 
 from ._ops import PYTHON_OP_REGISTRY
 
-_DeviceTypes: TypeAlias = Union[str, Sequence[str], None]
+_DeviceTypes: TypeAlias = str | Sequence[str] | None
 
 
 def warn_about_unimplemented_torch_features(feature: str, fn_name: str) -> None:

@@ -14,13 +14,15 @@
 from __future__ import annotations
 
 import functools
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 import paddle
 import paddle.distributed as dist
 from paddle.utils import flatten, pack_sequence_as
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from paddle.distributed import ProcessMesh
 
 

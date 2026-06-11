@@ -24,11 +24,12 @@ from typing import (
     Generic,
     Literal,
     Protocol,
+    TypeAlias,
     overload,
 )
 
 import numpy as np
-from typing_extensions import TypeAlias, TypeVar
+from typing_extensions import TypeVar
 
 import paddle
 
