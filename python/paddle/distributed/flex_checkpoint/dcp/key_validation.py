@@ -328,15 +328,21 @@ def _print_standard_report(
 ) -> None:
     lines = [_SEP, f"FlexCheckpoint Load Report (Checkpoint: {path})", _SEP]
 
-    if not result.missing_keys and not result.unexpected_keys:
+    if (
+        not result.missing_keys
+        and not result.unexpected_keys
+        and not result.shape_mismatches
+    ):
         lines.append(
             _C.green(
                 f"[OK] All {total_keys} keys matched successfully. "
-                f"(missing: 0, unexpected: 0, shape_mismatch: {len(result.shape_mismatches)})"
+                f"(missing: 0, unexpected: 0, shape_mismatch: 0)"
             )
         )
     else:
-        matched = total_keys - len(result.missing_keys)
+        matched = (
+            total_keys - len(result.missing_keys) - len(result.shape_mismatches)
+        )
         lines.append(
             f"Matched: {matched}/{total_keys} keys | "
             f"Missing: {len(result.missing_keys)} | "
