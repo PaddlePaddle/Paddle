@@ -292,6 +292,7 @@ static void NMS(const GPUContext &dev_ctx,
                 bool pixel_offset = true) {
   int64_t boxes_num = proposals.dims()[0];
   const int64_t col_blocks = DIVUP(boxes_num, kThreadsPerBlock);
+  PADDLE_ENFORCE_LE_UINT32_MAX(col_blocks, "generate_proposals NMS col_blocks");
   const uint32_t col_blocks_32 = static_cast<uint32_t>(col_blocks);
   dim3 blocks(col_blocks_32, col_blocks_32);
   dim3 threads(kThreadsPerBlock);
