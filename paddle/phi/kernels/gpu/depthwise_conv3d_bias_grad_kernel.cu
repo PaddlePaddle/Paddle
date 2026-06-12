@@ -113,13 +113,16 @@ __global__ void DWConv3dBwdInputKernel(const T* grad_output,
     const int64_t out_frame_end = static_cast<int64_t>(in_frame) + padding_t;
 
     AccT sum = 0;
-    const T* weight_ptr =
-        weight + (in_channel * channel_multiplier) * w_stride_c;
-    const T* gout_base = grad_output + batch * (output_channels * o_stride_c);
+    const T* weight_ptr = weight + static_cast<int64_t>(in_channel) *
+                                       channel_multiplier * w_stride_c;
+    const T* gout_base = grad_output + static_cast<int64_t>(batch) *
+                                           output_channels * o_stride_c;
 
     for (int k_chn = 0; k_chn < channel_multiplier; ++k_chn) {
       const T* gout_ptr =
-          gout_base + (in_channel * channel_multiplier + k_chn) * o_stride_c;
+          gout_base +
+          (static_cast<int64_t>(in_channel) * channel_multiplier + k_chn) *
+              o_stride_c;
 
       for (int k_frame = 0; k_frame < kernel_t; ++k_frame) {
         const int64_t out_frame_raw =
@@ -145,7 +148,7 @@ __global__ void DWConv3dBwdInputKernel(const T* grad_output,
                   const int64_t w_offset =
                       k_chn * w_stride_c +
                       static_cast<int64_t>(k_frame) * kernel_h * kernel_w +
-                      k_row * kernel_w + k_col;
+                      static_cast<int64_t>(k_row) * kernel_w + k_col;
                   T val_w = weight_ptr[w_offset];
 
                   const int64_t out_offset =

@@ -328,13 +328,13 @@ __device__ __inline__ void KernelDepthwiseConvNHWC(
 template <typename T, int c_filter, bool fuse_relu_before_conv>
 __device__ __inline__ void KernelDepthwiseConvCFilterNCHW(
     ARG_DEFINE_KernelDepthwiseConv) {
-  const int kWeightSize = c_filter * c_filter;
+  const int kWeightSize =
+      static_cast<int>(static_cast<int64_t>(c_filter) * c_filter);
   T r_weight[kWeightSize];
   const int batch = blockIdx.y;
   const int c_out = blockIdx.x;
-  const T* weight =
-      filter_data + static_cast<int64_t>(c_out) * c_filter * c_filter;
-  for (int i = 0; i < c_filter * c_filter; i++) r_weight[i] = weight[i];
+  const T* weight = filter_data + static_cast<int64_t>(c_out) * kWeightSize;
+  for (int i = 0; i < kWeightSize; i++) r_weight[i] = weight[i];
 
   for (int w_out = threadIdx.x; w_out < output_width; w_out += blockDim.x) {
     for (int h_out = threadIdx.y; h_out < output_height; h_out += blockDim.y) {
@@ -352,19 +352,20 @@ __device__ __inline__ void KernelDepthwiseConvCFilterNCHW(
           (static_cast<int64_t>(batch) * input_channels + c_in) * input_height *
           input_width;
 
-      for (int64_t h_in = h_in_start, h_f = 0; h_f < c_filter;
-           h_in += dilate_height, h_f++) {
-        for (int64_t w_in = w_in_start, w_f = 0; w_f < c_filter;
-             w_in += dilate_width, w_f++) {
+      int64_t h_in = h_in_start;
+      for (int h_f = 0; h_f < c_filter; ++h_f, h_in += dilate_height) {
+        int64_t w_in = w_in_start;
+        for (int w_f = 0; w_f < c_filter; ++w_f, w_in += dilate_width) {
           if (h_in >= 0 && h_in < input_height && w_in >= 0 &&
               w_in < input_width) {
             int64_t offset = in_offset + h_in * input_width + w_in;
             if (fuse_relu_before_conv) {
-              value += r_weight[h_f * c_filter + w_f] *
+              value += r_weight[static_cast<int64_t>(h_f) * c_filter + w_f] *
                        static_cast<T>(
                            max(0.0f, static_cast<double>(input_data[offset])));
             } else {
-              value += r_weight[h_f * c_filter + w_f] * input_data[offset];
+              value += r_weight[static_cast<int64_t>(h_f) * c_filter + w_f] *
+                       input_data[offset];
             }
           }
         }
@@ -396,11 +397,12 @@ __device__ __inline__ void KernelDepthwiseConvCFilterNHWC(
       -padding_height + static_cast<int64_t>(h_out) * stride_height;
   const int64_t wi_size =
       (static_cast<int64_t>(output_width) + dilate_width - 1) / dilate_width;
-  const int kWeightSize = c_filter * c_filter;
+  const int kWeightSize =
+      static_cast<int>(static_cast<int64_t>(c_filter) * c_filter);
   T r_weight[kWeightSize];
 
   for (int c_out = threadIdx.x; c_out < output_channels; c_out += blockDim.x) {
-    for (int i = 0; i < c_filter * c_filter; i++) {
+    for (int i = 0; i < kWeightSize; i++) {
       const T* weight =
           filter_data + static_cast<int64_t>(i) * output_channels + c_out;
       r_weight[i] = weight[0];
@@ -416,10 +418,10 @@ __device__ __inline__ void KernelDepthwiseConvCFilterNHWC(
       T value(0);
       const int64_t w_in_start =
           -padding_width + static_cast<int64_t>(w_out) * stride_width;
-      for (int64_t h_in = h_in_start, h_f = 0; h_f < c_filter;
-           h_in += dilate_height, h_f++) {
-        for (int64_t w_in = w_in_start, w_f = 0; w_f < c_filter;
-             w_in += dilate_width, w_f++) {
+      int64_t h_in = h_in_start;
+      for (int h_f = 0; h_f < c_filter; ++h_f, h_in += dilate_height) {
+        int64_t w_in = w_in_start;
+        for (int w_f = 0; w_f < c_filter; ++w_f, w_in += dilate_width) {
           if (h_in >= 0 && h_in < input_height && w_in >= 0 &&
               w_in < input_width) {
             int64_t offset = in_offset +
@@ -427,11 +429,12 @@ __device__ __inline__ void KernelDepthwiseConvCFilterNHWC(
                                  input_channels +
                              c_in;
             if (fuse_relu_before_conv) {
-              value += r_weight[h_f * c_filter + w_f] *
+              value += r_weight[static_cast<int64_t>(h_f) * c_filter + w_f] *
                        static_cast<T>(
                            max(0.0, static_cast<double>(input_data[offset])));
             } else {
-              value += r_weight[h_f * c_filter + w_f] * input_data[offset];
+              value += r_weight[static_cast<int64_t>(h_f) * c_filter + w_f] *
+                       input_data[offset];
             }
           }
         }
@@ -664,10 +667,10 @@ __device__ __inline__ void KernelDepthwiseConvInputGradNHWC(
         int64_t c_out = static_cast<int64_t>(c_in) * filter_multiplier + c_i;
         int64_t weight_offset =
             static_cast<int64_t>(filter_height) * filter_width;
-        for (int64_t h_out = h_out_start, h_f = 0; h_f < filter_height;
-             h_out += dilate_height, h_f++) {
-          for (int64_t w_out = w_out_start, w_f = 0; w_f < filter_width;
-               w_out += dilate_width, w_f++) {
+        int64_t h_out = h_out_start;
+        for (int h_f = 0; h_f < filter_height; ++h_f, h_out += dilate_height) {
+          int64_t w_out = w_out_start;
+          for (int w_f = 0; w_f < filter_width; ++w_f, w_out += dilate_width) {
             weight_offset--;
             int64_t s_h_out = h_out / stride_height;
             int64_t s_w_out = w_out / stride_width;
@@ -698,18 +701,20 @@ template <typename T,
           bool fuse_relu_before_conv>
 __device__ __inline__ void KernelDepthwiseConvInputGradCFilterNCHW(
     ARG_DEFINE_KernelDepthwiseConvInputGrad) {
-  const int kWeightSize = c_filter * c_filter * c_filter_multiplier + 1;
+  const int kFilterSize =
+      static_cast<int>(static_cast<int64_t>(c_filter) * c_filter);
+  const int kWeightSize = static_cast<int>(static_cast<int64_t>(kFilterSize) *
+                                           c_filter_multiplier) +
+                          1;
   T r_weight[kWeightSize];
   const int batch = blockIdx.y;
   const int c_in = blockIdx.x;
 
   for (int c_i = 0; c_i < filter_multiplier; c_i++) {
     int64_t c_out = static_cast<int64_t>(c_in) * filter_multiplier + c_i;
-    const T* weight =
-        filter_data + static_cast<int64_t>(c_out) * c_filter * c_filter;
-    for (int i = 0; i < c_filter * c_filter; i++)
-      r_weight[i + c_i * c_filter * c_filter] =
-          weight[c_filter * c_filter - i - 1];
+    const T* weight = filter_data + static_cast<int64_t>(c_out) * kFilterSize;
+    for (int i = 0; i < kFilterSize; i++)
+      r_weight[i + c_i * kFilterSize] = weight[kFilterSize - i - 1];
   }
 
   for (int w_in = threadIdx.x; w_in < input_width; w_in += blockDim.x) {
@@ -736,10 +741,10 @@ __device__ __inline__ void KernelDepthwiseConvInputGradCFilterNCHW(
 
       for (int c_i = 0; c_i < filter_multiplier; c_i++) {
         int64_t c_out = static_cast<int64_t>(c_in) * filter_multiplier + c_i;
-        for (int64_t h_out = h_out_start, h_f = 0; h_f < c_filter;
-             h_out += dilate_height, h_f++) {
-          for (int64_t w_out = w_out_start, w_f = 0; w_f < c_filter;
-               w_out += dilate_width, w_f++) {
+        int64_t h_out = h_out_start;
+        for (int h_f = 0; h_f < c_filter; ++h_f, h_out += dilate_height) {
+          int64_t w_out = w_out_start;
+          for (int w_f = 0; w_f < c_filter; ++w_f, w_out += dilate_width) {
             int64_t s_h_out = h_out / stride_height;
             int64_t s_w_out = w_out / stride_width;
             if (h_out % stride_height == 0 && w_out % stride_width == 0 &&
@@ -751,9 +756,9 @@ __device__ __inline__ void KernelDepthwiseConvInputGradCFilterNCHW(
                    s_h_out) *
                       output_width +
                   s_w_out;
-              value +=
-                  output_grad_data[output_grad_offset] *
-                  r_weight[h_f * c_filter + w_f + c_i * c_filter * c_filter];
+              value += output_grad_data[output_grad_offset] *
+                       r_weight[static_cast<int64_t>(h_f) * c_filter + w_f +
+                                c_i * kFilterSize];
             }
           }
         }
@@ -774,7 +779,11 @@ __device__ __inline__ void KernelDepthwiseConvInputGradCFilterNHWC(
   if (h_in >= input_height) {
     return;
   }
-  const int kWeightSize = c_filter * c_filter * c_filter_multiplier + 1;
+  const int kFilterSize =
+      static_cast<int>(static_cast<int64_t>(c_filter) * c_filter);
+  const int kWeightSize = static_cast<int>(static_cast<int64_t>(kFilterSize) *
+                                           c_filter_multiplier) +
+                          1;
   T r_weight[kWeightSize];
   const int batch = blockIdx.z;
   const int64_t wi_size =
@@ -786,9 +795,9 @@ __device__ __inline__ void KernelDepthwiseConvInputGradCFilterNHWC(
   for (int c_in = threadIdx.x; c_in < input_channels; c_in += blockDim.x) {
     for (int c_i = 0; c_i < c_filter_multiplier; c_i++) {
       int64_t c_out = static_cast<int64_t>(c_in) * c_filter_multiplier + c_i;
-      for (int i = 0; i < c_filter * c_filter; i++)
-        r_weight[i + c_i * c_filter * c_filter] =
-            filter_data[static_cast<int64_t>(c_filter * c_filter - i - 1) *
+      for (int i = 0; i < kFilterSize; i++)
+        r_weight[i + c_i * kFilterSize] =
+            filter_data[static_cast<int64_t>(kFilterSize - i - 1) *
                             output_channels +
                         c_out];
     }
@@ -818,10 +827,10 @@ __device__ __inline__ void KernelDepthwiseConvInputGradCFilterNHWC(
 
       for (int c_i = 0; c_i < c_filter_multiplier; c_i++) {
         int64_t c_out = static_cast<int64_t>(c_in) * c_filter_multiplier + c_i;
-        for (int64_t h_out = h_out_start, h_f = 0; h_f < c_filter;
-             h_out += dilate_height, h_f++) {
-          for (int64_t w_out = w_out_start, w_f = 0; w_f < c_filter;
-               w_out += dilate_width, w_f++) {
+        int64_t h_out = h_out_start;
+        for (int h_f = 0; h_f < c_filter; ++h_f, h_out += dilate_height) {
+          int64_t w_out = w_out_start;
+          for (int w_f = 0; w_f < c_filter; ++w_f, w_out += dilate_width) {
             int64_t s_h_out = h_out / stride_height;
             int64_t s_w_out = w_out / stride_width;
             if (h_out % stride_height == 0 && w_out % stride_width == 0 &&
@@ -833,9 +842,9 @@ __device__ __inline__ void KernelDepthwiseConvInputGradCFilterNHWC(
                    s_w_out) *
                       output_channels +
                   c_out;
-              value +=
-                  output_grad_data[output_grad_offset] *
-                  r_weight[h_f * c_filter + w_f + c_i * c_filter * c_filter];
+              value += output_grad_data[output_grad_offset] *
+                       r_weight[static_cast<int64_t>(h_f) * c_filter + w_f +
+                                c_i * kFilterSize];
             }
           }
         }
@@ -1252,7 +1261,8 @@ __device__ __inline__ void KernelDepthwiseConvFilterGradCFilterNHWC(
   if (image_h >= output_height) {
     return;
   }
-  constexpr int kWeightSize = c_filter * c_filter;
+  const int kWeightSize =
+      static_cast<int>(static_cast<int64_t>(c_filter) * c_filter);
   T r_weight[kWeightSize];
   const int64_t wi_size =
       (static_cast<int64_t>(output_width) + dilate_width - 1) / dilate_width;
@@ -1301,7 +1311,7 @@ __device__ __inline__ void KernelDepthwiseConvFilterGradCFilterNHWC(
           } else {
             s = output_grad_data[output_id] * input_data[input_id];
           }
-          r_weight[kernel_ih * c_filter + kernel_iw] += s;
+          r_weight[static_cast<int64_t>(kernel_ih) * c_filter + kernel_iw] += s;
         }
       }
     }
@@ -1340,8 +1350,8 @@ __device__ __inline__ void KernelDepthwiseConvFilterGradCFilterSmallChannelNHWC(
   const int64_t idx =
       static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
       static_cast<int64_t>(threadIdx.x);
-  const int64_t numel =
-      static_cast<int64_t>(output_channels) * c_filter * c_filter;
+  const int64_t numel = static_cast<int64_t>(output_channels) *
+                        static_cast<int64_t>(c_filter) * c_filter;
   if (idx >= numel) {
     return;
   }

@@ -40,8 +40,9 @@ inline uint32_t GET_BLOCKS(
 
 inline int GetGradParamsNumThreads(int64_t batchSize) {
   constexpr int MAX_BLOCK_SIZE = 256;
-  return static_cast<int>(std::min(batchSize * CUDA_WARP_SIZE,
-                                   static_cast<int64_t>(MAX_BLOCK_SIZE)));
+  return static_cast<int>(
+      std::min(static_cast<int64_t>(batchSize) * CUDA_WARP_SIZE,
+               static_cast<int64_t>(MAX_BLOCK_SIZE)));
 }
 
 template <typename T>
