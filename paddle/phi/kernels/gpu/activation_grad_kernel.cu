@@ -258,7 +258,22 @@ DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Exp, CudaExpGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Expm1, CudaExpm1GradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Reciprocal, CudaReciprocalGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Sqrt, CudaSqrtGradFunctor);
-DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Rsqrt, CudaRsqrtGradFunctor);
+// RsqrtGrad: custom kernel to support FLAGS_use_accuracy_compatible_kernel
+template <typename T, typename Context>
+void RsqrtGradKernel(const Context& dev_ctx,
+                     const DenseTensor& out,
+                     const DenseTensor& dout,
+                     DenseTensor* dx) {
+  if (FLAGS_use_accuracy_compatible_kernel) {
+    funcs::CudaRsqrtGradFunctor<T, true> functor;
+    ActivationGradGPUImpl<T, Context, funcs::CudaRsqrtGradFunctor<T, true>>(
+        dev_ctx, nullptr, &out, &dout, dx, functor);
+  } else {
+    funcs::CudaRsqrtGradFunctor<T, false> functor;
+    ActivationGradGPUImpl<T, Context, funcs::CudaRsqrtGradFunctor<T, false>>(
+        dev_ctx, nullptr, &out, &dout, dx, functor);
+  }
+}
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu6, CudaRelu6GradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(Softsign, CudaSoftsignGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPX(LogSigmoid, CudaLogSigmoidGradFunctor);
