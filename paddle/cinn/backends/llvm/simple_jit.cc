@@ -55,7 +55,6 @@ void SimpleJIT::AddModule(std::unique_ptr<llvm::Module> module, bool optimize) {
       ::common::errors::InvalidArgument(
           "Transformation resulted in an invalid module\n\nmodule:\n"));
 
-  bool debug = false;
   if (optimize) {
     llvm::PassBuilder pass_builder;
     llvm::LoopAnalysisManager loop_analysis_manager;
@@ -84,20 +83,14 @@ void SimpleJIT::AddModule(std::unique_ptr<llvm::Module> module, bool optimize) {
 
   llvm::orc::ThreadSafeModule tsm(std::move(module), context_);
   llvm::cantFail(jit_->addIRModule(std::move(tsm)));
-
-  if (debug) {
-    std::string buffer;
-    llvm::raw_string_ostream os(buffer);
-    jit_->getExecutionSession().dump(os);
-    os.flush();
-    VLOG(3) << "compiled jit:\n" << buffer;
-  }
 }
 
 SimpleJIT::SimpleJIT() : context_(std::make_unique<llvm::LLVMContext>()) {
-  llvm::InitializeNativeTarget();
-  llvm::InitializeNativeTargetAsmPrinter();
-  llvm::InitializeNativeTargetAsmParser();
+  llvm::InitializeAllTargetInfos();
+  llvm::InitializeAllTargets();
+  llvm::InitializeAllTargetMCs();
+  llvm::InitializeAllAsmParsers();
+  llvm::InitializeAllAsmPrinters();
 
   jit_ = llvm::cantFail(llvm::orc::LLJITBuilder().create());
   PADDLE_ENFORCE_NOT_NULL(

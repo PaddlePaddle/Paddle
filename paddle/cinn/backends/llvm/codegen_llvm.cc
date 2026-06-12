@@ -77,22 +77,12 @@ bool is_integral_type(cinn::common::Type t) {
 bool is_floating_type(cinn::common::Type t) { return t.is_float(); }
 
 int GetFixedVectorNumElements(llvm::Type *type) {
-#if LLVM_VERSION_MAJOR >= 13
   return llvm::cast<llvm::FixedVectorType>(type)->getNumElements();
-#else
-  return llvm::cast<llvm::VectorType>(type)->getNumElements();
-#endif
 }
 
-#if LLVM_VERSION_MAJOR >= 11
 llvm::ElementCount GetFixedElementCount(int lanes) {
-#if LLVM_VERSION_MAJOR >= 13
   return llvm::ElementCount::getFixed(lanes);
-#else
-  return llvm::ElementCount(lanes, false /*Scalable*/);
-#endif
 }
-#endif
 
 llvm::Value *EmitComparison(llvm::CmpInst::Predicate predicate,
                             llvm::Value *lhs,
@@ -161,13 +151,8 @@ llvm::Value *CodeGenLLVM::EmitVectorSlice(llvm::Value *vec,
 }
 
 llvm::Value *CodeGenLLVM::EmitVectorPad(llvm::Value *vec, int lanes) {
-#if LLVM_VERSION_MAJOR <= 10
-  llvm::Value *mask =
-      llvm::UndefValue::get(llvm::VectorType::get(b_->getInt32Ty(), lanes));
-#else
   llvm::Value *mask = llvm::UndefValue::get(
       llvm::VectorType::get(b_->getInt32Ty(), GetFixedElementCount(lanes)));
-#endif
   int numel = GetFixedVectorNumElements(vec->getType());
 
   CHECK(numel <= lanes);
@@ -1270,11 +1255,7 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Ramp *op) {
 }
 
 llvm::Value *CodeGenLLVM::Visit(const ir::Broadcast *op) {
-#if LLVM_VERSION_MAJOR >= 11
   const llvm::ElementCount elem_count = GetFixedElementCount(op->lanes);
-#else
-  const int elem_count = op->lanes;
-#endif
   llvm::Value *value = Visit(&op->value);
   llvm::Constant *undef = llvm::UndefValue::get(
       llvm::VectorType::get(value->getType(), elem_count));
@@ -1408,11 +1389,7 @@ llvm::Value *CodeGenLLVM::DenseVectorLoad(const ir::Load *op) {
     int slice_lanes = load_lanes;
     auto slice_base = optim::ArithSimplify(ramp->base + i);
 
-#if LLVM_VERSION_MAJOR >= 11
     const llvm::ElementCount elem_count = GetFixedElementCount(slice_lanes);
-#else
-    const int elem_count = slice_lanes;
-#endif
 
     llvm::Type *slice_type = llvm::VectorType::get(
         CinnTypeToLLVMType(op->type().ElementOf(), m_, true), elem_count);
@@ -1543,9 +1520,11 @@ int GetNaiveVecAlignment(const Target &target) {
 }
 
 void CodeGenLLVM::InitTarget(const Target &target) {
-  llvm::InitializeNativeTarget();
-  llvm::InitializeNativeTargetAsmPrinter();
-  llvm::InitializeNativeTargetAsmParser();
+  llvm::InitializeAllTargetInfos();
+  llvm::InitializeAllTargets();
+  llvm::InitializeAllTargetMCs();
+  llvm::InitializeAllAsmParsers();
+  llvm::InitializeAllAsmPrinters();
   naive_vec_alignment_ = GetNaiveVecAlignment(target);
 }
 
