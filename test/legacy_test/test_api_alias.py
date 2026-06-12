@@ -280,6 +280,7 @@ class TestAlias(unittest.TestCase):
             ("cauchy", "Cauchy"),
             ("chi2", "Chi2"),
             ("constraint", "Constraint"),
+            ("constraints", "Constraint"),
             ("continuous_bernoulli", "ContinuousBernoulli"),
             ("dirichlet", "Dirichlet"),
             ("distribution", "Distribution"),

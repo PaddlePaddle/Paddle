@@ -28,7 +28,7 @@ from paddle.framework import (
 )
 from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
-from . import nn as nn
+from . import distributions as distributions, nn as nn
 from .proxy import (  # noqa: F401
     extend_torch_proxy_blocked_modules,
     paddle_triton_fun,

@@ -99,9 +99,11 @@ class Square(Constraint):
 class Symmetric(Square):
     def __call__(self, value: Tensor) -> Tensor:
         square_check = super().__call__(value)
-        if not bool(square_check.all()):
+        if value.shape[-2] != value.shape[-1]:
             return square_check
-        return paddle.isclose(value, value.mT, atol=1e-6).all(-2).all(-1)
+        return square_check & paddle.isclose(value, value.mT, atol=1e-6).all(
+            -2
+        ).all(-1)
 
 
 class PositiveDefinite(Symmetric):
@@ -109,9 +111,9 @@ class PositiveDefinite(Symmetric):
         if value.dim() < 2:
             return paddle.zeros(value.shape[:-2], dtype='bool')
         sym_check = super().__call__(value)
-        if not bool(sym_check.all()):
+        if value.shape[-2] != value.shape[-1]:
             return sym_check
-        return (paddle.linalg.eigvalsh(value) > 0).all(-1)
+        return sym_check & (paddle.linalg.eigvalsh(value) > 0).all(-1)
 
 
 class Simplex(Constraint):
