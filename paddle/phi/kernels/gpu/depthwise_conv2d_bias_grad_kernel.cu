@@ -127,11 +127,10 @@ __global__ void DWConv2dBwdInputKernel(const T* __restrict__ grad_output,
   const int strideW = (stride != 0) ? stride : strideWidth;
   const int strideH = (stride != 0) ? stride : strideHeight;
 
-  for (IndexT linearIndex = static_cast<IndexT>(
-           static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x);
+  for (int64_t linearIndex =
+           static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
        linearIndex < totalElements;
-       linearIndex +=
-       static_cast<IndexT>(static_cast<int64_t>(blockDim.x) * gridDim.x)) {
+       linearIndex += static_cast<int64_t>(blockDim.x) * gridDim.x) {
     int64_t indtmp1 = static_cast<int64_t>(linearIndex) / inputWidth;
     const int64_t w = static_cast<int64_t>(linearIndex) - indtmp1 * inputWidth;
     int64_t indtmp2 = indtmp1 / inputHeight;
@@ -355,7 +354,7 @@ void LaunchDepthwiseConv2dBackwardCompatible(const Context& dev_ctx,
     set_zero(dev_ctx, filter_grad_nchw_ptr, static_cast<T>(0));
 
     const int64_t blocks = outputChannels * kH * kW;
-    PADDLE_ENFORCE_LE_INT_MAX(blocks, "depthwise conv2d bias grad grid.x");
+    PADDLE_ENFORCE_LE_UINT32_MAX(blocks, "depthwise conv2d bias grad grid.x");
     dim3 grid(static_cast<uint32_t>(blocks));
     const int threads = GetGradParamsNumThreads(batchSize);
     dim3 block(threads);

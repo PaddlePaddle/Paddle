@@ -369,12 +369,11 @@ __device__ __inline__ void KernelDepthwiseConvCFilterNCHW(
           }
         }
       }
-      int64_t index = static_cast<int64_t>(
-                          (batch * static_cast<int64_t>(gridDim.x) + c_out) *
-                              output_height +
-                          h_out) *
-                          output_width +
-                      w_out;
+      const int64_t index =
+          ((static_cast<int64_t>(batch) * gridDim.x + c_out) * output_height +
+           h_out) *
+              output_width +
+          w_out;
       output_data[index] = value;
     }
   }
@@ -723,10 +722,9 @@ __device__ __inline__ void KernelDepthwiseConvInputGradCFilterNCHW(
           padding_width;
 
       T value(0);
-      int64_t index =
-          static_cast<int64_t>(
-              (batch * static_cast<int64_t>(gridDim.x) + c_in) * input_height +
-              h_in) *
+      const int64_t index =
+          ((static_cast<int64_t>(batch) * gridDim.x + c_in) * input_height +
+           h_in) *
               input_width +
           w_in;
       if (fuse_relu_before_conv) {

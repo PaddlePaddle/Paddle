@@ -58,11 +58,10 @@ __global__ void DWConv2dFwdKernel(const T* __restrict__ input,
   const int KW_LIMIT = (kSize != 0) ? kSize : kernelWidth;
   const int KH_LIMIT = (kSize != 0) ? kSize : kernelHeight;
 
-  for (IndexT linearIndex = static_cast<IndexT>(
-           static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x);
+  for (int64_t linearIndex =
+           static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
        linearIndex < totalElements;
-       linearIndex +=
-       static_cast<IndexT>(static_cast<int64_t>(blockDim.x) * gridDim.x)) {
+       linearIndex += static_cast<int64_t>(blockDim.x) * gridDim.x) {
     int64_t indtmp1 = static_cast<int64_t>(linearIndex) / outputWidth;
     const int64_t w = static_cast<int64_t>(linearIndex) - indtmp1 * outputWidth;
     int64_t indtmp2 = indtmp1 / outputHeight;
@@ -131,11 +130,10 @@ __global__ void DWConv2dFwdKernelGeneric(const T* __restrict__ input,
                                          const int dilationHeight) {
   using AccT = typename MPTypeTrait<T>::Type;
 
-  for (IndexT linearIndex = static_cast<IndexT>(
-           static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x);
+  for (int64_t linearIndex =
+           static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
        linearIndex < totalElements;
-       linearIndex +=
-       static_cast<IndexT>(static_cast<int64_t>(blockDim.x) * gridDim.x)) {
+       linearIndex += static_cast<int64_t>(blockDim.x) * gridDim.x) {
     int64_t indtmp1 = static_cast<int64_t>(linearIndex) / outputWidth;
     const int64_t w = static_cast<int64_t>(linearIndex) - indtmp1 * outputWidth;
     int64_t indtmp2 = indtmp1 / outputHeight;
