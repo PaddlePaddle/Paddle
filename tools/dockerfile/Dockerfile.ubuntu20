@@ -25,11 +25,11 @@ RUN apt-key adv --fetch-keys https://developer.download.nvidia.cn/compute/cuda/r
 
 RUN apt-get update --allow-unauthenticated && \
   apt-get install -y software-properties-common && \
-  add-apt-repository ppa:deadsnakes/ppa && \
-  apt-get update && \
   apt-get install -y curl wget vim git unzip pigz zstd unrar tar xz-utils libssl-dev bzip2 gzip \
     coreutils ntp language-pack-zh-hans libsm6 libxext6 libxrender-dev libgl1-mesa-glx \
-    bison graphviz libjpeg-dev zlib1g-dev automake locales swig net-tools libtool kmod
+    bison graphviz libjpeg-dev zlib1g-dev automake locales swig net-tools libtool kmod \
+    libbz2-dev libffi-dev libgdbm-dev liblzma-dev libncursesw5-dev libreadline-dev \
+    libsqlite3-dev pkg-config tk-dev uuid-dev
 <install_cpu_package>
 
 # Downgrade gcc&&g++
@@ -59,14 +59,28 @@ WORKDIR /home
 RUN wget -q https://cmake.org/files/v3.18/cmake-3.18.0-Linux-x86_64.tar.gz && tar -zxvf cmake-3.18.0-Linux-x86_64.tar.gz && rm cmake-3.18.0-Linux-x86_64.tar.gz
 ENV PATH=/home/cmake-3.18.0-Linux-x86_64/bin:$PATH
 
-RUN apt-get update && \
-  apt-get install -y python3.10 python3.10-dev python3.10-distutils \
-  python3.11 python3.11-dev python3.11-distutils \
-  python3.12 python3.12-dev \
-  python3.13 python3.13-dev python3.13-nogil && \
-  apt-get install python-is-python3
-RUN rm /usr/bin/python && ln -s /usr/bin/python3.10 /usr/bin/python && \
-    rm /usr/bin/python3 && ln -s /usr/bin/python3.10 /usr/bin/python3
+RUN set -eux; \
+  build_python() { \
+    py_ver="$1"; \
+    shift; \
+    wget -q "https://www.python.org/ftp/python/${py_ver}/Python-${py_ver}.tgz"; \
+    tar -xzf "Python-${py_ver}.tgz"; \
+    cd "Python-${py_ver}"; \
+    CFLAGS="-Wformat" ./configure --prefix=/usr/local --enable-shared "$@" > /dev/null; \
+    make -j"$(nproc)" > /dev/null; \
+    make altinstall > /dev/null; \
+    cd ..; \
+    rm -rf "Python-${py_ver}" "Python-${py_ver}.tgz"; \
+    ldconfig; \
+  }; \
+  build_python 3.10.0; \
+  build_python 3.11.0; \
+  build_python 3.12.0; \
+  build_python 3.13.0; \
+  build_python 3.13.0 --disable-gil --with-mimalloc
+ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
+RUN ln -sf /usr/local/bin/python3.10 /usr/bin/python && \
+    ln -sf /usr/local/bin/python3.10 /usr/bin/python3
 
 WORKDIR /home
 RUN wget -q https://bootstrap.pypa.io/get-pip.py
@@ -156,9 +170,6 @@ RUN pip3.10 --no-cache-dir install -r /root/requirements.txt && \
     python3.13t -m pip --no-cache-dir install -r /root/requirements.txt && \
     python3.13t -m pip --no-cache-dir install -r /home/compile_requirements.txt
     # python3.13t -m pip --no-cache-dir install -r /home/requirements.txt
-
-
-RUN apt-get install pkg-config -y
 
 # clang12
 RUN apt-get update &&\
