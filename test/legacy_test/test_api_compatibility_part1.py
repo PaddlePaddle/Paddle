@@ -1911,6 +1911,83 @@ class TestLdexpInplaceAPI(unittest.TestCase):
         paddle.enable_static()
 
 
+# Test imag property compatibility (PyTorch-style property access)
+class TestImagPropertyAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        np_x_real = np.random.randn(5, 6).astype('float32')
+        np_x_imag = np.random.randn(5, 6).astype('float32')
+        self.np_x = np_x_real + 1j * np_x_imag
+
+    # will support future
+    def _test_dygraph_Compatibility(self):
+        """Test imag as property (PyTorch style: x.imag)"""
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # PyTorch style: property access
+        imag_result = x.imag
+        self.assertIsInstance(imag_result, paddle.Tensor)
+        np.testing.assert_allclose(imag_result.numpy(), np.imag(self.np_x))
+
+        paddle.enable_static()
+
+    # will support future
+    def _test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[3], dtype='complex64')
+
+            out = x.imag
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out],
+            )
+            np.testing.assert_allclose(fetches[0], np.imag(self.np_x))
+
+
+# Test real property compatibility (PyTorch-style property access)
+class TestRealPropertyAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        np_x_real = np.random.randn(5, 6).astype('float32')
+        np_x_imag = np.random.randn(5, 6).astype('float32')
+        self.np_x = np_x_real + 1j * np_x_imag
+
+    # will support future
+    def _test_dygraph_Compatibility(self):
+        """Test real as property (PyTorch style: x.real)"""
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        real_result = x.real
+        self.assertIsInstance(real_result, paddle.Tensor)
+        np.testing.assert_allclose(real_result.numpy(), np.real(self.np_x))
+
+        paddle.enable_static()
+
+    # will support future
+    def _test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[3], dtype='complex64')
+            out = x.real
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out],
+            )
+            np.testing.assert_allclose(fetches[0], np.real(self.np_x))
+
+
 # Test baddbmm API compatibility (paddle.baddbmm and paddle.Tensor.baddbmm)
 class TestBaddbmmAPI(unittest.TestCase):
     def setUp(self):

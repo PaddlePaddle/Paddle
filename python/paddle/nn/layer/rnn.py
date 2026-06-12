@@ -17,7 +17,7 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from functools import partial, reduce
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, overload
 
 import numpy as np
 from typing_extensions import Self
@@ -38,6 +38,7 @@ from paddle.nn import (
     initializer as I,
 )
 from paddle.tensor.manipulation import tensor_array_to_tensor
+from paddle.utils.decorator_utils import gru_decorator
 
 from .container import LayerList
 from .layers import Layer
@@ -527,6 +528,10 @@ def split_states(
         hidden size of the RNN cell.
     """
     if state_components == 1:
+        # For state_components == 1 (GRU/SimpleRNN), states should be a tensor
+        # If it's a tuple/list with one element, extract it
+        if isinstance(states, (tuple, list)) and len(states) == 1:
+            states = states[0]
         states = paddle.unstack(states)
         if not bidirectional:
             return states
@@ -1285,13 +1290,7 @@ class GRUCell(RNNCellBase):
                 default_initializer=I.Uniform(-std, std),
             )
         else:
-            self.bias_ih = self.create_parameter(
-                (3 * hidden_size,),
-                None,
-                is_bias=True,
-                default_initializer=I.Constant(0.0),
-            )
-            self.bias_ih.stop_gradient = True
+            self.bias_ih = None
 
         if bias_hh_attr is not False:
             self.bias_hh = self.create_parameter(
@@ -1301,13 +1300,7 @@ class GRUCell(RNNCellBase):
                 default_initializer=I.Uniform(-std, std),
             )
         else:
-            self.bias_hh = self.create_parameter(
-                (3 * hidden_size,),
-                None,
-                is_bias=True,
-                default_initializer=I.Constant(0.0),
-            )
-            self.bias_hh.stop_gradient = True
+            self.bias_hh = None
 
         self.hidden_size = hidden_size
         self.input_size = input_size
@@ -1615,8 +1608,8 @@ class RNNBase(LayerList):
             )
 
         self.could_use_cudnn = True
-        self.could_use_cudnn &= len(self.parameters()) == num_layers * 4 * (
-            2 if direction in bidirectional_list else 1
+        self.could_use_cudnn &= (
+            len(self.parameters()) == 4 * num_layers * self.num_directions
         )
 
         # Expose params as RNN's attribute, which can make it compatible when
@@ -2202,8 +2195,11 @@ class GRU(RNNBase):
             `bias_ih` of each cells. Default: None.
         bias_hh_attr (ParamAttr|None, optional): The parameter attribute for the
             `bias_hh` of each cells. Default: None.
-        name (str|None, optional): Name for the operation (optional, default is
-            None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
+        bias (bool, optional): If False, then the layer does not use bias weights `bias_ih` and `bias_hh`. Default: True.
+        device (str, optional): The device to execute the layer. Default: None.
+        dtype (str, optional): The data type of the layer. Default: None.
 
     Inputs:
         - **inputs** (Tensor): the input sequence. If `time_major` is True, the shape is `[time_steps, batch_size, input_size]`, else, the shape is `[batch_size, time_steps, input_size]`. `time_steps` means the length of the input sequence.
@@ -2242,6 +2238,7 @@ class GRU(RNNBase):
 
     """
 
+    @overload
     def __init__(
         self,
         input_size: int,
@@ -2254,8 +2251,48 @@ class GRU(RNNBase):
         weight_hh_attr: ParamAttrLike | None = None,
         bias_ih_attr: ParamAttrLike | None = None,
         bias_hh_attr: ParamAttrLike | None = None,
-        name: str | None = None,
+        *,
+        bias: bool = True,
+        device=None,
+        dtype=None,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        input_size: int,
+        hidden_size: int,
+        num_layers: int,
+        bias: bool,
+        batch_first: bool,
+        dropout: float = 0.0,
+        bidirectional: bool = False,
+        device=None,
+        dtype=None,
+    ) -> None: ...
+
+    @gru_decorator()
+    def __init__(
+        self,
+        input_size: int,
+        hidden_size: int,
+        num_layers: int = 1,
+        direction: _DirectionType | str = "forward",
+        time_major: bool = False,
+        dropout: float = 0.0,
+        weight_ih_attr: ParamAttrLike | None = None,
+        weight_hh_attr: ParamAttrLike | None = None,
+        bias_ih_attr: ParamAttrLike | None = None,
+        bias_hh_attr: ParamAttrLike | None = None,
+        *,
+        bias: bool = True,
+        device=None,
+        dtype=None,
     ) -> None:
+        if not bias:
+            bias_ih_attr = False
+            bias_hh_attr = False
+
         super().__init__(
             "GRU",
             input_size,
@@ -2269,4 +2306,6 @@ class GRU(RNNBase):
             bias_ih_attr,
             bias_hh_attr,
             0,  # proj_size
+            device=device,
+            dtype=dtype,
         )

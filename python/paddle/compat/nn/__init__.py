@@ -744,7 +744,7 @@ class Softmax(nn.Layer):
         return functional.softmax(input, self._dim)
 
     def extra_repr(self) -> str:
-        return f"dim={self.dim}"
+        return f"dim={self._dim}"
 
 
 class SmoothL1Loss(nn.Layer):

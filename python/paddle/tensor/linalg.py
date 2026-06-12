@@ -36,6 +36,7 @@ from paddle.tensor.math import broadcast_shape
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     VariableArgsDecorator,
+    param_one_alias,
     param_two_alias,
     transpose_decorator,
 )
@@ -2302,6 +2303,7 @@ def histogram_bin_edges(
     return paddle.linspace(min, max, bins + 1, name=name)
 
 
+@param_one_alias(["x", "input"])
 def det(x: Tensor, name: str | None = None) -> Tensor:
     """
 
@@ -2310,7 +2312,7 @@ def det(x: Tensor, name: str | None = None) -> Tensor:
     Args:
         x (Tensor): the input matrix of size `(n, n)` or the
             batch of matrices of size `(*, n, n)` where `*` is one or more
-            batch dimensions.
+            batch dimensions. Alias: ``input``.
         name (str|None, optional): Name of the output.It's used to print debug info for
             developers. Details: :ref:`api_guide_Name`. Default is None.
 
@@ -3598,11 +3600,16 @@ def eigh(
         return out_value, out_vector
 
 
+@param_one_alias(["x", "input", "A"])
 def pinv(
     x: Tensor,
     rcond: float | Tensor = 1e-15,
     hermitian: bool = False,
     name: str | None = None,
+    *,
+    atol: float | Tensor | None = None,
+    rtol: float | Tensor | None = None,
+    out: Tensor | None = None,
 ) -> Tensor:
     r"""
     Calculate pseudo inverse via SVD(singular value decomposition)
@@ -3625,13 +3632,26 @@ def pinv(
             arbitrary positive number. The data type of x should be
             float32 or float64 or complex64 or complex128. When data
             type is complex64 or complex128, hermitian should be set
-            True.
+            True. Alias: ``input``.
         rcond (Tensor|float, optional): the tolerance value to determine
-            when is a singular value zero. Default:1e-15.
+            when is a singular value zero. This is used for backward
+            compatibility with NumPy. Prefer using ``rtol`` instead.
+            If ``rtol`` is specified, ``rcond`` is ignored.
+            Default:1e-15.
         hermitian (bool, optional): indicates whether x is Hermitian
             if complex or symmetric if real. Default: False.
         name (str|None, optional): The default value is None. Normally there is no need for user to set this
             property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
+        atol (float|Tensor|None, optional): the absolute tolerance value.
+            When None, it is considered to be zero. Default: None.
+        rtol (float|Tensor|None, optional): the relative tolerance value.
+            When both ``atol`` and ``rtol`` are None, ``rcond`` is used.
+            If ``rtol`` is specified, ``rcond`` is ignored.
+            Default: None.
+        out (Tensor|None, optional): output tensor. If provided, the result
+            will be assigned to this tensor. Default: None.
 
     Returns:
         Tensor: The tensor with same data type with x. it represents
@@ -3662,6 +3682,8 @@ def pinv(
             # one can verify : x * out * x = x ;
             # or              out * x * out = x ;
     """
+    use_atol_rtol = atol is not None or rtol is not None
+
     if in_dynamic_or_pir_mode():
         if not hermitian:
             # combine svd and matmul op
@@ -3670,8 +3692,31 @@ def pinv(
                 max_singular_val = s
             else:
                 max_singular_val = _C_ops.max(s, [-1], True)
-            rcond = paddle.to_tensor(rcond, dtype=x.dtype)
-            cutoff = rcond * max_singular_val
+
+            if use_atol_rtol:
+                # Compute cutoff using atol and rtol
+                atol_val = atol if atol is not None else 0.0
+                if not isinstance(atol_val, paddle.Tensor):
+                    atol_val = paddle.to_tensor(atol_val, dtype=x.dtype)
+                elif atol_val.dtype != x.dtype:
+                    atol_val = paddle.cast(atol_val, x.dtype)
+
+                if rtol is not None:
+                    rtol_val = rtol
+                    if not isinstance(rtol_val, paddle.Tensor):
+                        rtol_val = paddle.to_tensor(rtol_val, dtype=x.dtype)
+                    elif rtol_val.dtype != x.dtype:
+                        rtol_val = paddle.cast(rtol_val, x.dtype)
+                    cutoff = paddle.maximum(
+                        atol_val, max_singular_val * rtol_val
+                    )
+                else:
+                    cutoff = atol_val
+            else:
+                # Use rcond for backward compatibility
+                rcond = paddle.to_tensor(rcond, dtype=x.dtype)
+                cutoff = rcond * max_singular_val
+
             y = float('inf')
             y = paddle.to_tensor(y, dtype=x.dtype)
 
@@ -3684,6 +3729,9 @@ def pinv(
 
             out_1 = v * st
             out_2 = _C_ops.matmul(out_1, u, False, True)
+            if out is not None:
+                paddle.assign(out_2, out)
+                return out
             return out_2
         else:
             if in_dynamic_mode() and x.size == 0:
@@ -3695,8 +3743,31 @@ def pinv(
             s, u = _C_ops.eigh(x, 'L')
             s_abs = paddle.abs(s)
             max_singular_val = _C_ops.max(s_abs, [-1], True)
-            rcond = paddle.to_tensor(rcond, dtype=s.dtype)
-            cutoff = rcond * max_singular_val
+
+            if use_atol_rtol:
+                # Compute cutoff using atol and rtol
+                atol_val = atol if atol is not None else 0.0
+                if not isinstance(atol_val, paddle.Tensor):
+                    atol_val = paddle.to_tensor(atol_val, dtype=s.dtype)
+                elif atol_val.dtype != s.dtype:
+                    atol_val = paddle.cast(atol_val, s.dtype)
+
+                if rtol is not None:
+                    rtol_val = rtol
+                    if not isinstance(rtol_val, paddle.Tensor):
+                        rtol_val = paddle.to_tensor(rtol_val, dtype=s.dtype)
+                    elif rtol_val.dtype != s.dtype:
+                        rtol_val = paddle.cast(rtol_val, s.dtype)
+                    cutoff = paddle.maximum(
+                        atol_val, max_singular_val * rtol_val
+                    )
+                else:
+                    cutoff = atol_val
+            else:
+                # Use rcond for backward compatibility
+                rcond = paddle.to_tensor(rcond, dtype=s.dtype)
+                cutoff = rcond * max_singular_val
+
             y = float('inf')
             y = paddle.to_tensor(y, dtype=s.dtype)
 
@@ -3706,6 +3777,9 @@ def pinv(
             out_1 = u * st
             u_conj = _C_ops.conj(u)
             out_2 = _C_ops.matmul(out_1, u_conj, False, True)
+            if out is not None:
+                paddle.assign(out_2, out)
+                return out
             return out_2
     else:
         if not hermitian:

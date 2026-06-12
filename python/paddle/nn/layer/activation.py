@@ -1564,10 +1564,10 @@ class Softmax(Layer):
                          [0.72747516, 0.72747516, 0.72747516, 0.72747516]]]
 
     Parameters:
-        axis (int, optional): The axis along which to perform log_softmax
+        axis (int, optional): The axis along which to perform softmax
             calculations. It should be in range [-D, D), where D is the
             dimensions of ``x`` . If ``axis`` < 0, it works the same way as
-            :math:`axis + D` . Default is -1.
+            :math:`axis + D` . Default is -1. Alias: ``dim``.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
