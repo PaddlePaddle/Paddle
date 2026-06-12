@@ -731,13 +731,23 @@ class TestValidateAndReportKeysStandard(unittest.TestCase):
         )
         self.assertEqual(len(result.unexpected_keys), 0)
 
-    @patch("paddle.distributed.get_rank", return_value=1)
+    @patch(
+        "paddle.distributed.flex_checkpoint.dcp.key_validation._get_rank",
+        return_value=1,
+    )
     @patch("paddle.distributed.flex_checkpoint.dcp.key_validation._emit")
-    def test_non_rank0_no_print(self, mock_emit, mock_rank):
+    @patch("paddle.distributed.all_gather_object")
+    def test_non_rank0_no_print(self, mock_gather, mock_emit, mock_rank):
         metadata = self._make_metadata({"w1": (4,)})
         state_dict = {"w1": paddle.zeros([4])}
+
+        def gather_side_effect(out_list, obj, group=None):
+            out_list.clear()
+            out_list.append(obj)
+
+        mock_gather.side_effect = gather_side_effect
         validate_and_report_keys_standard(
-            [metadata], {"w1"}, None, False, "/tmp/ckpt", state_dict
+            [metadata], {"w1"}, None, True, "/tmp/ckpt", state_dict
         )
         mock_emit.assert_not_called()
 

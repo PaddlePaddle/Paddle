@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import paddle
+from paddle.distributed import get_rank as _get_rank
 from paddle.distributed.fleet.utils.log_util import logger
 
 if TYPE_CHECKING:
@@ -203,7 +204,7 @@ def validate_and_report_keys_standard(
     )
 
     # 5. Print on rank 0 (or always when not using dist)
-    if not use_dist or paddle.distributed.get_rank() == 0:
+    if not use_dist or _get_rank() == 0:
         _print_standard_report(result, checkpoint_path, len(global_dst_keys))
 
     return result
@@ -261,7 +262,7 @@ def validate_and_report_keys_aoa(
     )
 
     # 6. Print on rank 0 (or always when not using dist)
-    if not use_dist or paddle.distributed.get_rank() == 0:
+    if not use_dist or _get_rank() == 0:
         _print_aoa_report(
             result, aoa_mappings, explicitly_removed, checkpoint_path
         )
