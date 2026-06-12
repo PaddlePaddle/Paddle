@@ -179,8 +179,8 @@ FreeBlockInfoOfVmmAllocator(const GPUPlace& place) {
 }
 
 std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>
-AllBlockInfoOfVmmAllocator(const GPUPlace& place) {
-  VMMAllBlocksInfoVisitor all_blocks_info_visitor;
+AllBlockInfoOfAllocator(const GPUPlace& place) {
+  AllBlocksInfoVisitor all_blocks_info_visitor;
   allocation::AllocatorFacade::Instance().Accept(place,
                                                  &all_blocks_info_visitor);
   return all_blocks_info_visitor.GetAllBlocksInfo();
