@@ -80,8 +80,6 @@ class BatchNorm1D(nn.BatchNorm1D):
         track_running_stats: bool = True,
         device: PlaceLike | None = None,
         dtype: DTypeLike | None = None,
-        *,
-        bias: bool = True,
     ) -> None:
         super().__init__(
             num_features=num_features,
@@ -89,7 +87,6 @@ class BatchNorm1D(nn.BatchNorm1D):
             epsilon=eps,
             use_global_stats=None if track_running_stats else False,
             affine=affine,
-            bias=bias,
             device=device,
             dtype=dtype,
         )
@@ -109,8 +106,6 @@ class BatchNorm2D(nn.BatchNorm2D):
         track_running_stats: bool = True,
         device: PlaceLike | None = None,
         dtype: DTypeLike | None = None,
-        *,
-        bias: bool = True,
     ) -> None:
         super().__init__(
             num_features=num_features,
@@ -118,7 +113,6 @@ class BatchNorm2D(nn.BatchNorm2D):
             epsilon=eps,
             use_global_stats=None if track_running_stats else False,
             affine=affine,
-            bias=bias,
             device=device,
             dtype=dtype,
         )
@@ -138,8 +132,6 @@ class BatchNorm3D(nn.BatchNorm3D):
         track_running_stats: bool = True,
         device: PlaceLike | None = None,
         dtype: DTypeLike | None = None,
-        *,
-        bias: bool = True,
     ) -> None:
         super().__init__(
             num_features=num_features,
@@ -147,7 +139,6 @@ class BatchNorm3D(nn.BatchNorm3D):
             epsilon=eps,
             use_global_stats=None if track_running_stats else False,
             affine=affine,
-            bias=bias,
             device=device,
             dtype=dtype,
         )

@@ -777,7 +777,6 @@ class _BatchNormBase(Layer):
         name: str | None = None,
         *,
         affine: bool = True,
-        bias: bool = True,
         device: PlaceLike | None = None,
         dtype: DTypeLike | None = None,
     ) -> None:
@@ -785,8 +784,6 @@ class _BatchNormBase(Layer):
         self._num_features = num_features
         if not affine:
             weight_attr = False
-            bias_attr = False
-        elif not bias:
             bias_attr = False
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
@@ -1322,7 +1319,6 @@ class BatchNorm1D(_BatchNormBase):
         name: str | None = None,
         *,
         affine: bool = True,
-        bias: bool = True,
         device: PlaceLike | None = None,
         dtype: DTypeLike | None = None,
     ) -> None:
@@ -1336,7 +1332,6 @@ class BatchNorm1D(_BatchNormBase):
             use_global_stats=use_global_stats,
             name=name,
             affine=affine,
-            bias=bias,
             device=device,
             dtype=dtype,
         )
@@ -1541,7 +1536,6 @@ class BatchNorm3D(_BatchNormBase):
         name: str | None = None,
         *,
         affine: bool = True,
-        bias: bool = True,
         device: PlaceLike | None = None,
         dtype: DTypeLike | None = None,
     ) -> None:
@@ -1555,7 +1549,6 @@ class BatchNorm3D(_BatchNormBase):
             use_global_stats=use_global_stats,
             name=name,
             affine=affine,
-            bias=bias,
             device=device,
             dtype=dtype,
         )

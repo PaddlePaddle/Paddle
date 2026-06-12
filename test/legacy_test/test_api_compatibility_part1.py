@@ -2448,11 +2448,10 @@ class _CompatBatchNormBase:
             momentum=0.2,
             eps=self.eps,
             num_features=self.num_features,
-            bias=False,
         )
         out4 = layer4(x)
         # 5. Mixed arguments
-        layer5 = self.alias(self.num_features, eps=self.eps, bias=False)
+        layer5 = self.alias(self.num_features, eps=self.eps)
         out5 = layer5(x)
 
         self._check_outputs([out1, out2, out4, out5])
@@ -2464,7 +2463,7 @@ class _CompatBatchNormBase:
         self.assertIsNone(layer3.weight)
         self.assertIsNone(layer3.bias)
         self.assertIsNotNone(layer4.weight)
-        self.assertIsNone(layer4.bias)
+        self.assertIsNotNone(layer4.bias)
         self.assertEqual(layer4._momentum, 0.8)
         self.assertIs(self.api, self.alias)
 
@@ -2500,11 +2499,10 @@ class _CompatBatchNormBase:
         original_affine = self.original_api(self.num_features, affine=False)
         self.assertIsNone(original_affine.weight)
         self.assertIsNone(original_affine.bias)
-        original_bias = self.original_api(self.num_features, bias=False)
-        self.assertIsNotNone(original_bias.weight)
-        self.assertIsNone(original_bias.bias)
         original_dtype = self.original_api(self.num_features, dtype="float64")
         self.assertEqual(original_dtype._dtype, "float64")
+        with self.assertRaises(TypeError):
+            self.alias(self.num_features, bias=False)
         self.assertFalse(hasattr(paddle.nn, self.alias_name))
         paddle.enable_static()
 
@@ -2537,7 +2535,6 @@ class _CompatBatchNormBase:
                 momentum=0.2,
                 eps=self.eps,
                 num_features=self.num_features,
-                bias=False,
             )
             out4 = layer4(x)
             # 5. Mixed arguments
@@ -2546,7 +2543,6 @@ class _CompatBatchNormBase:
 
             self.assertIsNone(layer3.weight)
             self.assertIsNone(layer3.bias)
-            self.assertIsNone(layer4.bias)
             self.assertFalse(layer4._use_global_stats)
 
             exe = paddle.static.Executor()
