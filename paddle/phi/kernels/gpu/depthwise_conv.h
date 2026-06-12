@@ -2052,9 +2052,8 @@ class DepthwiseConvFilterGradFunctor<GPUContext, T, fuse_relu_before_conv> {
           static_cast<int64_t>(output_height) * output_width;
       if (output_hw < WARP_SIZE) {
         const int64_t block_x64 = batch_size * output_hw;
-        PADDLE_ENFORCE_LE_INT_MAX(
-            block_x64, "depthwise conv filter grad CUDA block x size");
-        const int block_x = std::min(block_size, static_cast<int>(block_x64));
+        const int block_x =
+            static_cast<int>(std::min<int64_t>(block_size, block_x64));
         threads = dim3(block_x);
       }
     } else {
