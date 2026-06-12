@@ -120,15 +120,6 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
     const int64_t axis_dim) {
   int64_t batch_size = prob->dims()[0];
   int64_t class_num = prob->dims()[1];
-  PADDLE_ENFORCE_EQ(
-      axis_dim,
-      class_num,
-      common::errors::InvalidArgument(
-          "The axis dimension must be equal to prob's class dimension in "
-          "GPU CrossEntropyFunctor. Expected axis_dim == class_num, but "
-          "received axis_dim = %ld and class_num = %ld.",
-          axis_dim,
-          class_num));
 
   // Handle zero-size tensor: early return to avoid invalid CUDA kernel launch
   if (batch_size == 0 || class_num == 0) {
