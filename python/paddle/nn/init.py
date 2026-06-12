@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
 
 import paddle
@@ -353,3 +355,20 @@ def orthogonal_(
     """
     init = Orthogonal(gain=gain)
     return init(tensor)
+
+
+def sparse_(
+    tensor: paddle.Tensor, sparsity: float, std: float = 0.01
+) -> paddle.Tensor:
+    if tensor.ndimension() != 2:
+        raise ValueError("Only tensors with 2 dimensions are supported")
+    rows, cols = tensor.shape
+    num_zeros = math.ceil(sparsity * rows)
+
+    with paddle.no_grad():
+        tensor = normal_(tensor, mean=0, std=std)
+        for col_idx in range(cols):
+            row_indices = paddle.randperm(rows)
+            zero_indices = row_indices[:num_zeros]
+            tensor[zero_indices, col_idx] = 0
+    return tensor

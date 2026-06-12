@@ -1199,6 +1199,57 @@ class Test_dirac_(unittest.TestCase):
             assert input_tensor.dtype == paddle.float16
 
 
+class Test_sparse_(unittest.TestCase):
+    def check(self, tensor, sparsity, std):
+        if isinstance(tensor, paddle.Tensor):
+            tensor_np = tensor.numpy()
+        else:
+            tensor_np = tensor
+
+        total_elements = tensor_np.size
+        zero_count = np.count_nonzero(tensor_np == 0)
+        actual_sparsity = zero_count / total_elements
+
+        self.assertGreaterEqual(actual_sparsity, sparsity - 0.01)
+        self.assertLessEqual(actual_sparsity, sparsity + 0.01)
+
+        # Check non-zero elements follow normal distribution
+        non_zero_elements = tensor_np[tensor_np != 0]
+        if len(non_zero_elements) > 0:
+            p_value = stats.kstest(non_zero_elements, "norm", args=(0.0, std))[
+                1
+            ]
+            self.assertGreater(p_value, 0.0001)
+
+    def test_dygraph(self):
+        with dygraph_guard():
+            for sparsity in [0.1, 0.5, 0.9]:
+                input_tensor = paddle.randn([100, 50])
+                paddle.nn.init.sparse_(
+                    input_tensor, sparsity=sparsity, std=0.01
+                )
+                self.check(input_tensor, sparsity, std=0.01)
+
+    def test_static_graph_case(self):
+        self.place = get_devices()
+        with static_guard():
+            for place in self.place:
+                x_np = np.random.randn(100, 50).astype('float32')
+                with paddle.static.program_guard(Program()):
+                    x = paddle.static.data(
+                        name="x", shape=[100, 50], dtype='float32'
+                    )
+                    out = paddle.nn.init.sparse_(x, sparsity=0.5, std=0.01)
+                    exe = paddle.static.Executor(place=place)
+                    feed_list = {"x": x_np}
+                    pd_res = exe.run(
+                        paddle.static.default_main_program(),
+                        feed=feed_list,
+                        fetch_list=[out],
+                    )[0]
+                    self.check(pd_res, sparsity=0.5, std=0.01)
+
+
 class Test_orthogonal_(unittest.TestCase):
     def check(self, tensor, gain):
         if isinstance(tensor, paddle.Tensor):
