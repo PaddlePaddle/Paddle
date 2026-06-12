@@ -17,7 +17,7 @@ from __future__ import annotations
 import copy
 import enum
 import os
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -29,13 +29,16 @@ from paddle.base.framework import (
     IrNode,
     Operator,
     OpProtoHolder,
-    convert_np_dtype_to_proto_type,
+    convert_nptype_to_vartype,
 )
 from paddle.static.log_helper import get_logger
 from paddle.static.quantization import (
     QuantizationFreezePass,
     QuantizationTransformPass,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 LOGLEVEL = os.environ.get("PADDLE_TEST_LOGLEVEL", "INFO").upper()
 logging = get_logger(
@@ -179,10 +182,10 @@ class BlockConfig:
                     var_desc.set_type(core.VarDesc.VarType.STEP_SCOPES)
                     continue
 
-            var_desc.set_dtype(convert_np_dtype_to_proto_type(np.float32))
+            var_desc.set_dtype(convert_nptype_to_vartype(np.float32))
             if self.vars_dtype is not None and name in self.vars_dtype.keys():
                 var_desc.set_dtype(
-                    convert_np_dtype_to_proto_type(self.vars_dtype[name])
+                    convert_nptype_to_vartype(self.vars_dtype[name])
                 )
 
         for op_config in self.ops:
@@ -223,15 +226,13 @@ class BlockConfig:
                         ):
                             var_desc.set_type(core.VarDesc.VarType.STEP_SCOPES)
                             continue
-                    var_desc.set_dtype(
-                        convert_np_dtype_to_proto_type(np.float32)
-                    )
+                    var_desc.set_dtype(convert_nptype_to_vartype(np.float32))
                     if (
                         op_config.outputs_dtype is not None
                         and v in op_config.outputs_dtype.keys()
                     ):
                         var_desc.set_dtype(
-                            convert_np_dtype_to_proto_type(
+                            convert_nptype_to_vartype(
                                 op_config.outputs_dtype[v]
                             )
                         )
@@ -376,9 +377,7 @@ def create_fake_model(program_config, run_pir=False, dynamic_shape=None):
         for name, tensor_config in program_config.inputs.items():
             var_desc = main_block_desc.var(name.encode())
             var_desc.set_type(core.VarDesc.VarType.DENSE_TENSOR)
-            var_desc.set_dtype(
-                convert_np_dtype_to_proto_type(tensor_config.dtype)
-            )
+            var_desc.set_dtype(convert_nptype_to_vartype(tensor_config.dtype))
             if dynamic_shape is not None:
                 dynamic_shape_copy = convert_to_dynamic_shape(
                     dynamic_shape, name
@@ -400,9 +399,7 @@ def create_fake_model(program_config, run_pir=False, dynamic_shape=None):
         for name, tensor_config in program_config.weights.items():
             var_desc = main_block_desc.var(name.encode())
             var_desc.set_type(core.VarDesc.VarType.DENSE_TENSOR)
-            var_desc.set_dtype(
-                convert_np_dtype_to_proto_type(tensor_config.dtype)
-            )
+            var_desc.set_dtype(convert_nptype_to_vartype(tensor_config.dtype))
             var_desc.set_shape(tensor_config.shape)
             var_desc.set_persistable(True)
 
@@ -476,18 +473,18 @@ def create_fake_model(program_config, run_pir=False, dynamic_shape=None):
                             continue
                     if run_pir:
                         var_desc.set_dtype(
-                            convert_np_dtype_to_proto_type(tensor_config.dtype)
+                            convert_nptype_to_vartype(tensor_config.dtype)
                         )
                     else:
                         var_desc.set_dtype(
-                            convert_np_dtype_to_proto_type(np.float32)
+                            convert_nptype_to_vartype(np.float32)
                         )
                     if (
                         op_config.outputs_dtype is not None
                         and v in op_config.outputs_dtype.keys()
                     ):
                         var_desc.set_dtype(
-                            convert_np_dtype_to_proto_type(
+                            convert_nptype_to_vartype(
                                 op_config.outputs_dtype[v]
                             )
                         )

@@ -14,9 +14,7 @@
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, NoReturn, Union
-
-from typing_extensions import TypeAlias
+from typing import TYPE_CHECKING, NoReturn, TypeAlias
 
 import paddle
 from paddle.base import core
@@ -29,12 +27,12 @@ if TYPE_CHECKING:
     from paddle import CUDAPlace, CustomPlace
     from paddle.base.libpaddle import _gpuDeviceProperties
 
-    _CudaPlaceLike: TypeAlias = Union[
-        CUDAPlace,
-        CustomPlace,
-        str,  # some string like "gpu:0", "custom_device:0", etc.
-        int,  # some int like 0, 1, etc.
-    ]
+    _CudaPlaceLike: TypeAlias = (
+        CUDAPlace
+        | CustomPlace
+        | str  # some string like "gpu:0", "custom_device:0", etc.
+        | int  # some int like 0, 1, etc.
+    )
 
 from .memory_analyzer import MemoryAnalysisTool
 

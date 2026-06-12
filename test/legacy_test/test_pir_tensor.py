@@ -69,5 +69,29 @@ class TestPirTensorNelement(unittest.TestCase):
             self.assertEqual(fetches[0], np.prod((2, 8, 4)))
 
 
+class TestPirTensorNbytes(unittest.TestCase):
+    def test_nbytes(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.assign(np.random.rand(2, 8, 4).astype("float32"))
+            exe = paddle.base.Executor(paddle.CPUPlace())
+            fetches = exe.run(main, fetch_list=[x.nbytes])
+            self.assertEqual(fetches[0], 2 * 8 * 4 * 4)
+
+    def test_sparse_coo_error(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            indices = paddle.assign([[0, 1, 2], [1, 0, 2]])
+            values = paddle.assign([1.0, 2.0, 3.0])
+            x = paddle.sparse.sparse_coo_tensor(indices, values, [3, 3])
+            exe = paddle.base.Executor(paddle.CPUPlace())
+            with self.assertRaises(RuntimeError):
+                fetches = exe.run(main, fetch_list=[x.nbytes])
+
+
 if __name__ == '__main__':
     unittest.main()

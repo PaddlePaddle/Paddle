@@ -158,8 +158,9 @@ static PyObject* eager_api_run_backward(PyObject* self,
   auto tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
   auto grad_tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 1), 1);
   bool retain_graph = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 2), 2);
+  bool create_graph = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 3), 3);
   std::string dump_backward_graph_path =
-      CastPyArg2AttrString(PyTuple_GET_ITEM(args, 3), 3);
+      CastPyArg2AttrString(PyTuple_GET_ITEM(args, 4), 4);
   const phi::distributed::ProcessMesh* mesh = nullptr;
   if (InputsContainDistTensor(&mesh, tensors, grad_tensors)) {
     tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0, mesh);
@@ -168,8 +169,11 @@ static PyObject* eager_api_run_backward(PyObject* self,
   {
     eager_gil_scoped_release guard;
     EagerSetDeviceId();
-    egr::Backward(
-        tensors, grad_tensors, retain_graph, dump_backward_graph_path);
+    egr::Backward(tensors,
+                  grad_tensors,
+                  retain_graph,
+                  create_graph,
+                  dump_backward_graph_path);
   }
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL

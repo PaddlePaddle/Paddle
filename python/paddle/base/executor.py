@@ -40,11 +40,11 @@ from .framework import (
     Operator,
     Program,
     Variable,
-    convert_np_dtype_to_dtype_,
+    convert_to_vartype,
+    datatype_to_vartype,
     default_main_program,
     get_flags,
     in_pir_mode,
-    paddle_type_to_proto_type,
     process_type_promotion,
     set_flags,
 )
@@ -203,9 +203,9 @@ def dtype_is_compatible_with(first, second):
         True if the two types are same.
     """
     if not isinstance(first, core.VarDesc.VarType):
-        first = convert_np_dtype_to_dtype_(first)
+        first = convert_to_vartype(first)
     if not isinstance(second, core.VarDesc.VarType):
-        second = convert_np_dtype_to_dtype_(second)
+        second = convert_to_vartype(second)
     return first == second
 
 
@@ -1226,7 +1226,7 @@ class _ExecutorCache:
         for op in global_block.ops:
             if op.name() == 'pd_op.data':
                 feed_target_name = op.attrs()["name"]
-                var_type = paddle_type_to_proto_type[op.attrs()["dtype"]]
+                var_type = datatype_to_vartype[op.attrs()["dtype"]]
                 var_shape = op.attrs()["shape"]
                 tup = (
                     feed_target_name,
@@ -1237,7 +1237,7 @@ class _ExecutorCache:
                 data_op_infos.append(tup)
             if op.name() == 'pd_op.feed':
                 feed_target_name = op.attrs()["name"]
-                var_type = paddle_type_to_proto_type[op.results()[0].dtype]
+                var_type = datatype_to_vartype[op.results()[0].dtype]
                 var_shape = op.results()[0].shape
                 tup = (
                     feed_target_name,

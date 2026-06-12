@@ -27,6 +27,9 @@ import numpy as np
 
 import paddle
 from paddle.distributed import fleet
+from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.hybrid_parallel_optimizer import (
+    ClipGradByAdaptiveNorm,
+)
 from paddle.distributed.fleet.meta_optimizers.muon_sharding_optimizer import (
     MuonShardingOptimizer,
 )
@@ -593,6 +596,94 @@ class TestDistShardingMuonTraining(unittest.TestCase):
 
         if failed:
             raise AssertionError(f"{len(failed)} test combinations failed")
+
+    def _run_smoke_test(self, ns_coeff, ns_coeffs=None):
+        """Smoke test: only verify AdaGC + MuonShardingOptimizer runs without error."""
+        weights = self._init_weights()
+        model = self._build_model(weights)
+
+        muon_param_info_map = {}
+        exclude_patterns = ["embed", "bias", "lm_head"]
+
+        for name, param in model.named_parameters():
+            use_muon = _default_should_use_muon(
+                name, param.shape, exclude_patterns
+            )
+            param_info = MuonParamInfo(
+                use_muon=use_muon, split_concat_func=None
+            )
+            muon_param_info_map[param.name] = param_info
+
+        kwargs = {}
+        if ns_coeffs is not None:
+            kwargs['ns_coeffs'] = ns_coeffs
+
+        grad_clip = ClipGradByAdaptiveNorm(
+            clip_ratio=1.04,
+            start_clip_steps=0,
+            shard_clip=False,
+            enable_record=1,
+            enable_record_clip_history=False,
+            verbose=1,
+        )
+
+        optimizer = paddle.optimizer.Muon(
+            parameters=model.parameters(),
+            learning_rate=0.001,
+            weight_decay=0.00001,
+            grad_clip=grad_clip,
+            muon_param_info_map=muon_param_info_map,
+            ns_steps=10 if ns_coeff == "deepseekv4" else 5,
+            ns_coeff_type=ns_coeff,
+            multi_precision=True,
+            **kwargs,
+        )
+
+        model = fleet.distributed_model(model)
+        optimizer = fleet.distributed_optimizer(optimizer)
+
+        hcg = fleet.get_hybrid_communicate_group()
+        sharding_rank = hcg.get_sharding_parallel_rank()
+        local_batch_size = batch_size // sharding_degree
+
+        for idx in range(STEPS):
+            start = sharding_rank * local_batch_size
+            batch = paddle.to_tensor(
+                self.data[idx][start : start + local_batch_size]
+            )
+            loss = self.train_batch(batch, model, optimizer)
+            print(f"  step {idx}: loss={loss.item():.6f}")
+
+    def test_adagc_muon_sharding_smoke(self):
+        """Smoke test: AdaGC + MuonShardingOptimizer runs without error.
+
+        Only checks that training loop completes successfully,
+        does NOT compare correctness against a reference model.
+        """
+        failed = []
+
+        # Phase: custom ns_coeffs
+        print("\n[Smoke Test] custom ns_coeffs")
+        try:
+            custom_coeffs = [(3.4445, -4.7750, 2.0315), (2.5, -2.0, 0.8)]
+            self._run_smoke_test("custom", ns_coeffs=custom_coeffs)
+            print("[PASS] custom ns_coeffs")
+        except Exception as e:
+            failed.append(("custom_ns_coeffs", str(e)))
+            print(f"[FAIL] custom ns_coeffs: {e}")
+
+        print(f"\n{'=' * 60}")
+        print("AdaGC+Muon Sharding Smoke Test: passed")
+        if failed:
+            print("Failed combinations:")
+            for ns, err in failed:
+                print(f"  - {ns}: {err[:100]}...")
+        print(f"{'=' * 60}")
+
+        if failed:
+            raise AssertionError(
+                f"{len(failed)} smoke test combinations failed"
+            )
 
 
 if __name__ == "__main__":

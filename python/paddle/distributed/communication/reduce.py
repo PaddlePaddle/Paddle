@@ -21,7 +21,7 @@ from paddle import framework
 from paddle.distributed.communication import stream
 
 if TYPE_CHECKING:
-    from typing_extensions import TypeAlias
+    from typing import TypeAlias
 
     from paddle import Tensor
     from paddle.base.core import task

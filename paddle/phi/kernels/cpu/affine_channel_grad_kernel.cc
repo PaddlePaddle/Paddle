@@ -70,7 +70,7 @@ void AffineChannelGradKernel(const Context& dev_ctx,
 
   if (layout == DataLayout::NCHW) {
     // compute dscale and dbias
-    int stride = C * HxW;
+    int64_t stride = static_cast<int64_t>(C) * HxW;
     auto* original_dy_d = dy_d;
     if (dscale && dbias) {
       auto* x_d = x->data<T>();
@@ -104,7 +104,7 @@ void AffineChannelGradKernel(const Context& dev_ctx,
       }
     }
   } else {
-    int num = N * HxW;
+    int64_t num = static_cast<int64_t>(N) * HxW;
     ConstEigenArrayMap<T> dy_e(dy_d, C, num);
     // compute dscale and dbias
     if (dscale && dbias) {

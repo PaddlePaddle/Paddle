@@ -626,7 +626,7 @@ class Optimizer:
                                 ]
                             else:
                                 _lr_dtype = (
-                                    paddle.pir.core.convert_np_dtype_to_dtype_(
+                                    paddle.pir.core.convert_nptype_to_datatype(
                                         _lr_dtype
                                     )
                                 )

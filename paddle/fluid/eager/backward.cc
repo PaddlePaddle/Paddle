@@ -746,6 +746,7 @@ std::vector<paddle::Tensor> RunBackward(
 void Backward(const std::vector<paddle::Tensor>& tensors,  // outputs
               const std::vector<paddle::Tensor>& grad_tensors,
               bool retain_graph,
+              bool create_graph,
               std::string dump_backward_graph_path) {
   VLOG(3) << "Run in Backward";
   phi::RecordEvent backward_record_event(
@@ -753,7 +754,7 @@ void Backward(const std::vector<paddle::Tensor>& tensors,  // outputs
   RunBackward(tensors,
               grad_tensors,
               retain_graph,
-              false,
+              create_graph,
               {},
               false,
               {},

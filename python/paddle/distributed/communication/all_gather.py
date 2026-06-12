@@ -91,6 +91,15 @@ def all_gather_object(
 
     Gather picklable objects from all participators and all get the result. Similar to all_gather(), but python object can be passed in.
 
+    After the call, ``object_list[i]`` holds the object gathered from rank ``i``. Both
+    initialization styles below are supported and produce the same result, which is
+    consistent with :func:`torch.distributed.all_gather_object`:
+
+    - Pre-allocated list of length ``world_size`` (PyTorch style):
+      ``object_list = [None for _ in range(dist.get_world_size())]``
+    - Empty list (Paddle legacy style): ``object_list = []`` - the list is extended in
+      place to hold ``world_size`` items.
+
     Args:
         object_list (list): A list of output object. The datatype of every element in the list is same as the input obj.
         obj (Any): The picklable object to send.

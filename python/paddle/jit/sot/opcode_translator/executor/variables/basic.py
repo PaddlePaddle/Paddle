@@ -34,7 +34,7 @@ from paddle.jit.dy2static.utils import (
     parameters_persistent_mode_is_enabled,
 )
 from paddle.jit.sot.opcode_translator.executor.pycode_generator import PyCodeGen
-from paddle.pir.core import _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE
+from paddle.pir.core import datatype_to_str
 
 from ....infer_meta import (
     DistInfo,
@@ -140,8 +140,9 @@ else:
     Template = None
 
 if TYPE_CHECKING:
+    from typing import TypeAlias
+
     import numpy.typing as npt
-    from typing_extensions import TypeAlias
 
     from ..function_graph import FunctionGraph
     from ..pycode_generator import PyCodeGen
@@ -1914,7 +1915,7 @@ class NumPyArrayVariable(NumPyVariable):
         )
         dtype_guard = paddle.framework.core.GuardNode(
             paddle.framework.core.NumPyDtypeMatchGuard(
-                np.dtype(_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[meta.dtype])
+                np.dtype(datatype_to_str[meta.dtype])
             ),
             [expr_node],
         )
@@ -1932,9 +1933,9 @@ class NumPyArrayVariable(NumPyVariable):
         meta = self.meta.unwrap_unsafe()
 
         dtype_guard = FasterStringifiedExpression(
-            f"{{}}.dtype == {NumPyVariable.format_dtype(np.dtype(_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[meta.dtype]))}",
+            f"{{}}.dtype == {NumPyVariable.format_dtype(np.dtype(datatype_to_str[meta.dtype]))}",
             paddle.framework.core.NumPyDtypeMatchGuard(
-                np.dtype(_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[meta.dtype])
+                np.dtype(datatype_to_str[meta.dtype])
             ),
             [frame_value_tracer],
             union_free_vars(frame_value_tracer.free_vars, {"np": np}),

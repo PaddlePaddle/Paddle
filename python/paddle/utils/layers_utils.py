@@ -17,16 +17,15 @@ from __future__ import annotations
 import copy
 import typing
 from collections import defaultdict
-from collections.abc import Sequence
-from typing import Any, Callable, TypeVar
+from collections.abc import Callable, Sequence
+from typing import Any, TypeGuard, TypeVar
 from uuid import uuid4
 from weakref import WeakKeyDictionary
 
 import numpy as np
-from typing_extensions import TypeGuard
 
 import paddle
-from paddle.pir.core import convert_np_dtype_to_dtype_
+from paddle.pir.core import convert_nptype_to_datatype
 
 from ..base.data_feeder import check_dtype, convert_dtype
 from ..base.framework import (
@@ -395,7 +394,7 @@ def get_int_tensor_list(ele_list, default_dtype='int64'):
         else:
             temp_out = paddle.tensor.fill_constant(
                 shape=[],
-                dtype=convert_np_dtype_to_dtype_(np.dtype(default_dtype)),
+                dtype=convert_nptype_to_datatype(np.dtype(default_dtype)),
                 value=ele,
                 force_cpu=True,
             )

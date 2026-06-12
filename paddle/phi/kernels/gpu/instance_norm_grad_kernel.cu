@@ -15,7 +15,6 @@
 #include "paddle/phi/kernels/instance_norm_grad_kernel.h"
 
 #include "glog/logging.h"
-
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -325,7 +324,9 @@ void InstanceNormGradKernel(const Context &dev_ctx,
 
   int N, C, H, W, D;
   funcs::ExtractNCWHD(x_dims, DataLayout::NCHW, &N, &C, &H, &W, &D);
-  int NxC = N * C;
+  const int64_t NxC64 = static_cast<int64_t>(N) * C;
+  PADDLE_ENFORCE_LE_INT_MAX(NxC64, "NxC");
+  const int NxC = static_cast<int>(NxC64);
 
   DenseTensor x_tmp, d_y_tmp;
   x_tmp.ShareDataWith(x).Resize({1, NxC, H, W, D});
@@ -399,8 +400,19 @@ void InstanceNormGradKernel(const Context &dev_ctx,
   }
   std::vector<int> dims;
   std::vector<int> strides;
+  const int64_t sample_size64 = static_cast<int64_t>(H) * W * D;
+  const int64_t stride0 = NxC64 * sample_size64;
+  const int64_t stride1 = sample_size64;
+  const int64_t stride2 = static_cast<int64_t>(W) * D;
+  PADDLE_ENFORCE_LE_INT_MAX(stride0, "cudnn tensor descriptor stride0");
+  PADDLE_ENFORCE_LE_INT_MAX(stride1, "cudnn tensor descriptor stride1");
+  PADDLE_ENFORCE_LE_INT_MAX(stride2, "cudnn tensor descriptor stride2");
   dims = {1, NxC, H, W, D};
-  strides = {NxC * H * W * D, H * W * D, W * D, D, 1};
+  strides = {static_cast<int>(stride0),
+             static_cast<int>(stride1),
+             static_cast<int>(stride2),
+             D,
+             1};
 
 #ifdef PADDLE_WITH_HIP
   miopenTensorDescriptor_t data_desc_;
@@ -497,15 +509,16 @@ void InstanceNormGradKernel(const Context &dev_ctx,
 #endif
   } else {
     if (d_x) {
-      GradComputeDX<T, block><<<NxC, block, 0, dev_ctx.stream()>>>(
-          d_y.data<T>(),
-          scale_tmp.data<BatchNormParamType<T>>(),
-          saved_mean_data,
-          x.data<T>(),
-          saved_var_data,
-          C,
-          H * W * D,
-          d_x->data<T>());
+      GradComputeDX<T, block>
+          <<<static_cast<int>(NxC), block, 0, dev_ctx.stream()>>>(
+              d_y.data<T>(),
+              scale_tmp.data<BatchNormParamType<T>>(),
+              saved_mean_data,
+              x.data<T>(),
+              saved_var_data,
+              C,
+              sample_size64,
+              d_x->data<T>());
     }
   }
   if (d_scale && d_bias) {
@@ -563,7 +576,9 @@ void InstanceNormDoubleGradKernel(const Context &dev_ctx,
   auto &x_dims = x.dims();
   int N, C, H, W, D;
   funcs::ExtractNCWHD(x_dims, DataLayout::NCHW, &N, &C, &H, &W, &D);
-  int NxC = N * C;
+  const int64_t NxC64 = static_cast<int64_t>(N) * C;
+  PADDLE_ENFORCE_LE_INT_MAX(NxC64, "NxC");
+  const int NxC = static_cast<int>(NxC64);
   const int64_t n = x.numel();
   int64_t sample_size = n / N / C;
 
@@ -577,7 +592,7 @@ void InstanceNormDoubleGradKernel(const Context &dev_ctx,
   const int block = 512;
   int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
   const int max_blocks = std::max(max_threads / block, 1);
-  const int grid = NxC;
+  const int grid = static_cast<int>(NxC);
   const int grid1 = (C + block - 1) / block;
 
   if (dx) {

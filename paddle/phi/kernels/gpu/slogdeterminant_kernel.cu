@@ -275,8 +275,8 @@ __global__ void GetSlogDetV2FromLU(const T* lu_data,
       static_cast<int64_t>(threadIdx.x) +
       static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   if (idx < batch_size) {
-    int offset_lu = idx * n * n;
-    int offset_ipiv = idx * n;
+    int64_t offset_lu = idx * n * n;
+    int64_t offset_ipiv = idx * n;
     T det_val = T(1.0);
     for (int i = 0; i < n; i++) {
       det_val *= lu_data[offset_lu + i * n + i];

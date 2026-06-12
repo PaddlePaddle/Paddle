@@ -13,9 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Union
-
-from typing_extensions import TypeAlias
+from typing import TYPE_CHECKING, TypeAlias
 
 import paddle
 from paddle.base import core
@@ -30,11 +28,11 @@ from .custom_streams import (  # noqa: F401
 if TYPE_CHECKING:
     from paddle import CustomPlace
 
-    _CustomPlaceLike: TypeAlias = Union[
-        CustomPlace,
-        str,  # some string like "iluvatar_gpu" "metax_gpu:0", etc.
-        int,  # some int like 0, 1, etc.
-    ]
+    _CustomPlaceLike: TypeAlias = (
+        CustomPlace
+        | str  # some string like "iluvatar_gpu" "metax_gpu:0", etc.
+        | int  # some int like 0, 1, etc.
+    )
 
 dev_types = core.get_all_custom_device_type()
 

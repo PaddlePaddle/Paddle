@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING, Any, TypeVar
 
 import paddle
 from paddle.base.data_feeder import convert_dtype
-from paddle.base.framework import convert_np_dtype_to_dtype_
+from paddle.base.framework import convert_nptype_to_datatype_or_vartype
 from paddle.base.unique_name import (
     UniqueNameGenerator,
     guard as UniqueNameGuard,
@@ -190,7 +190,7 @@ class MetaInfoOrNull:
     def from_numpy(
         nparray: npt.NDArray[Any], *, dynamic_axes: list[int] | None = None
     ) -> MetaInfoOrNull:
-        dtype = convert_np_dtype_to_dtype_(nparray.dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(nparray.dtype)
         dynamic_axes = dynamic_axes or []
         shape = [
             SymbolicInt() if i in dynamic_axes else dim

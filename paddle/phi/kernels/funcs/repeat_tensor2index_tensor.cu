@@ -48,6 +48,12 @@ void RepeatsTensor2IndexTensorFunctor<GPUContext, RepeatsT>::operator()(
   const RepeatsT *repeats_ptr = repeats.data<RepeatsT>();
   int64_t num_reps = repeats.dims()[0];
 
+  if (num_reps == 0) {
+    index->Resize({0});
+    dev_ctx.template Alloc<RepeatsT>(index);
+    return;
+  }
+
   // compute prefix sum of repeats to get start index of each repeat
   DenseTensor prefix;
   prefix.Resize({num_reps});

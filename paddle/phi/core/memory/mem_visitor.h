@@ -25,6 +25,7 @@ namespace memory {
 
 namespace allocation {
 class Allocator;
+class AutoGrowthBestFitAllocator;
 class RetryAllocator;
 class StatAllocator;
 class StreamSafeCUDAAllocator;
@@ -33,6 +34,7 @@ class VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator;
 }  // namespace allocation
 
 using allocation::Allocator;
+using allocation::AutoGrowthBestFitAllocator;
 using allocation::RetryAllocator;
 using allocation::StatAllocator;
 using allocation::StreamSafeCUDAAllocator;
@@ -51,6 +53,7 @@ using allocation::VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator;
 class AllocatorVisitorReqImpl {
  public:
   virtual ~AllocatorVisitorReqImpl() = default;
+  virtual void Visit(AutoGrowthBestFitAllocator* allocator) = 0;
   virtual void Visit(RetryAllocator* allocator) = 0;
   virtual void Visit(StatAllocator* allocator) = 0;
   virtual void Visit(Allocator* allocator) {}
@@ -74,6 +77,7 @@ class AllocatorVisitorReqImpl {
 class AllocatorVisitor : public AllocatorVisitorReqImpl {
  public:
   virtual ~AllocatorVisitor() = default;
+  virtual void Visit(AutoGrowthBestFitAllocator* allocator);
   virtual void Visit(RetryAllocator* allocator);
   virtual void Visit(StatAllocator* allocator);
   virtual void Visit(Allocator* allocator) {}
@@ -252,7 +256,7 @@ class VMMFreeBlocksInfoVisitor : public AllocatorComputeStreamVisitor {
  * internal state (the list of all memory blocks) and extract key information
  * (size, address and free_info) for external analysis or debugging.
  */
-class VMMAllBlocksInfoVisitor : public AllocatorComputeStreamVisitor {
+class AllBlocksInfoVisitor : public AllocatorComputeStreamVisitor {
   using AllocatorComputeStreamVisitor::Visit;
 
  public:
@@ -285,6 +289,7 @@ class VMMAllBlocksInfoVisitor : public AllocatorComputeStreamVisitor {
    * information is to be extracted.
    */
   void Visit(VirtualMemoryAutoGrowthBestFitAllocator* allocator) override;
+  void Visit(AutoGrowthBestFitAllocator* allocator) override;
 
  private:
   /**
@@ -332,7 +337,8 @@ class VMMAllocateCompactSizeVisitor : public AllocatorComputeStreamVisitor {
 class VmmTensorPartsVisitor : public AllocatorVisitor {
  public:
   using BlockPart = allocation::BlockPart;
-  explicit VmmTensorPartsVisitor(void* ptr) : target_ptr_(ptr) {}
+  explicit VmmTensorPartsVisitor(void* ptr, size_t size)
+      : target_ptr_(ptr), target_size_(size) {}
 
   void Visit(VirtualMemoryAutoGrowthBestFitAllocator* allocator) override;
 
@@ -341,6 +347,7 @@ class VmmTensorPartsVisitor : public AllocatorVisitor {
 
  private:
   void* target_ptr_{nullptr};
+  size_t target_size_{0};
   bool found_{false};
   std::vector<BlockPart> parts_;
 };

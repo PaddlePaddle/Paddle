@@ -193,6 +193,17 @@ class TestRawStream(unittest.TestCase):
             self.assertTrue(type(cuda_stream) is int)
             ptr = ctypes.c_void_p(cuda_stream)
 
+    def test_paddle_cuda_current_stream_cuda_stream(self):
+        if paddle.is_compiled_with_cuda() and paddle.cuda.is_available():
+            stream = paddle.cuda.current_stream()
+            cuda_stream = stream.cuda_stream
+            ptr = ctypes.c_void_p(cuda_stream)
+
+            self.assertTrue(type(cuda_stream) is int)
+            self.assertTrue(cuda_stream >= 0 or ptr.value is not None)
+            self.assertEqual(cuda_stream, stream.stream_base.cuda_stream)
+            self.assertEqual(cuda_stream, stream.stream_base.raw_stream)
+
 
 if __name__ == "__main__":
     unittest.main()

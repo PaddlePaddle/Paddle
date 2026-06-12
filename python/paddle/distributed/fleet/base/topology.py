@@ -93,7 +93,7 @@ def create_nccl_config(
             >>> import paddle.distributed as dist
             >>> from typing import Union
             >>> dist.init_parallel_env()
-            >>> nccl_config: dict[str, Union[int, str]] = {
+            >>> raw_nccl_config: dict[str, Union[int, str]] = {
             ...     "commName": "tp_comm",
             ...     "ll_buffsize": 0,
             ...     "ll128_buffsize": 0,
@@ -104,7 +104,7 @@ def create_nccl_config(
             ...     "protoStr": "Simple",
             ... }
             >>> ranks = [0, 1, 2, 3, 4, 5, 6, 7]
-            >>> nccl_config = dist.create_nccl_config(nccl_config)
+            >>> nccl_config = dist.create_nccl_config(raw_nccl_config)
             >>> pg = dist.new_group(ranks, nccl_config=nccl_config)
             >>> m, n = 4096, 8192
             >>> local_rank = dist.get_rank(pg)

@@ -406,6 +406,7 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
   }
   bool is_all_0d_tensor = true;
   DDim in_dim({0});
+  bool has_in_dim = false;
   for (size_t i = 0; i < x.size(); ++i) {
     auto x_dim = x[i]->dims();
     // x_dim.size() == 1 means the real dim of selected rows is [0]
@@ -418,8 +419,9 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
     }
     is_all_0d_tensor = false;
     // use the first dimension
-    if (common::product(in_dim) == 0) {
+    if (!has_in_dim) {
       in_dim = x_dim;
+      has_in_dim = true;
     } else {
       if (config.is_runtime) {
         PADDLE_ENFORCE_EQ(in_dim,
@@ -6582,6 +6584,17 @@ void MoeUnpermuteInferMeta(const MetaTensor& unzipped_tokens,
                           "unzipped_tokens.dims()[1] should be non-negative, "
                           "but got %ld.",
                           cols));
+  }
+  if (!common::contain_unknown_dim(unzipped_tokens.dims()) &&
+      !common::contain_unknown_dim(unzipped_token_probs.dims())) {
+    PADDLE_ENFORCE_EQ(
+        unzipped_token_probs.numel(),
+        unzipped_tokens.dims()[0],
+        common::errors::InvalidArgument(
+            "Input unzipped_token_probs's number of elements should be equal "
+            "to unzipped_tokens.dims()[0], but got %ld and %ld.",
+            unzipped_token_probs.numel(),
+            unzipped_tokens.dims()[0]));
   }
   if (!common::contain_unknown_dim(expert_routemap_topk.dims())) {
     PADDLE_ENFORCE_GE(topk,

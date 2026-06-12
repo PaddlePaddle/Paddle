@@ -27,10 +27,6 @@ limitations under the License. */
 #include <internal/pycore_interpframe.h>
 #endif
 
-#if !PY_3_10_PLUS
-#define Py_IsNone(x) ((x) == Py_None)
-#endif
-
 // check if the tensor is null, tensor is std::optional<paddle::Tensor>
 #define HANDLE_NULL_TENSOR(tensor) \
   {                                \

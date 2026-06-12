@@ -119,5 +119,17 @@ class TestAddnOp_ZeroSize(unittest.TestCase):
             np.testing.assert_allclose(x_g_np_32[i].shape, [0, 256])
 
 
+class TestAddnOpZeroSizeAndNonZeroSize(unittest.TestCase):
+    def test_add_n_zero_size_and_non_zero_size(self):
+        paddle.disable_static()
+        try:
+            with self.assertRaises(ValueError):
+                x0 = paddle.to_tensor([], dtype='float32')
+                x1 = paddle.to_tensor([1], dtype='float32')
+                out = paddle.add_n([x0, x1])
+        finally:
+            paddle.enable_static()
+
+
 if __name__ == "__main__":
     unittest.main()

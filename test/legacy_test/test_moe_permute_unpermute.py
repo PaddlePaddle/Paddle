@@ -614,6 +614,58 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
                 num_experts,
             )
 
+    def test_unpermute_invalid_token_probs(self):
+        (
+            unzipped_tokens,
+            zipped_expertwise_rowmap,
+            expert_routemap_topk,
+            token_prob_unzipped,
+            seq_len,
+            num_experts,
+        ) = self._build_small_unpermute_inputs()
+        # unzipped_token_probs must hold one probability per unzipped token row.
+        with self.assertRaisesRegex(Exception, "unzipped_token_probs"):
+            moe_unpermute(
+                unzipped_tokens,
+                zipped_expertwise_rowmap,
+                expert_routemap_topk,
+                paddle.zeros([0], dtype="float32"),
+                seq_len,
+                num_experts,
+            )
+        with self.assertRaisesRegex(Exception, "unzipped_token_probs"):
+            moe_unpermute(
+                unzipped_tokens,
+                zipped_expertwise_rowmap,
+                expert_routemap_topk,
+                token_prob_unzipped[:-1],
+                seq_len,
+                num_experts,
+            )
+
+    def test_permute_invalid_scale_rows(self):
+        (
+            hidden_states,
+            expert_routemap_topk,
+            expert_prob_topk,
+            num_experts,
+            tokens_per_expert,
+        ) = self._build_small_permute_inputs()
+        # XScale's first dimension must match X.dims()[0].
+        mismatched_scale = paddle.zeros(
+            [hidden_states.shape[0] + 1, 1], dtype="float32"
+        )
+        with self.assertRaisesRegex(Exception, "XScale"):
+            moe_permute(
+                hidden_states,
+                mismatched_scale,
+                expert_routemap_topk,
+                expert_prob_topk,
+                num_experts,
+                tokens_per_expert,
+                16,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -113,8 +113,8 @@ __global__ void GetDetFromLUComplex(const T* lu_data,
       static_cast<int64_t>(threadIdx.x) +
       static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   if (idx < batch_size) {
-    int offset_lu = idx * n * n;
-    int offset_ipiv = idx * n;
+    int64_t offset_lu = idx * n * n;
+    int64_t offset_ipiv = idx * n;
     T out_idx = T(1.0, 0.0);
     T negative = T(-1.0, 0.0);
     for (int i = 0; i < n; ++i) {
