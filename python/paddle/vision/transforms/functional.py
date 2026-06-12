@@ -33,11 +33,10 @@ from . import (
 )
 
 if TYPE_CHECKING:
-    from typing import Literal, TypeVar, Union
+    from typing import Literal, TypeAlias, TypeGuard, TypeVar
 
     import numpy.typing as npt
     from PIL.Image import Image as PILImage
-    from typing_extensions import TypeAlias, TypeGuard
 
     from paddle import Tensor
     from paddle._typing import DataLayoutImage, Size2, Size3, Size4
@@ -52,7 +51,7 @@ if TYPE_CHECKING:
         "constant", "edge", "reflect", "symmetric"
     ]
     _ImageDataT = TypeVar("_ImageDataT", Tensor, PILImage, npt.NDArray[Any])
-    _ImageDataType = Union[Tensor, PILImage, npt.NDArray[Any]]
+    _ImageDataType = Tensor | PILImage | npt.NDArray[Any]
 
 __all__ = []
 
@@ -437,12 +436,16 @@ def adjust_brightness(
             >>> fake_img = Image.fromarray(fake_img)
             >>> print(fake_img.size)
             (300, 256)
-            >>> print(fake_img.load()[1, 1])  # type: ignore[index]
+            >>> fake_img_pixels = fake_img.load()
+            >>> assert fake_img_pixels is not None
+            >>> print(fake_img_pixels[1, 1])
             (61, 155, 171)
             >>> converted_img = F.adjust_brightness(fake_img, 0.5)
             >>> print(converted_img.size)
             (300, 256)
-            >>> print(converted_img.load()[1, 1])
+            >>> converted_img_pixels = converted_img.load()
+            >>> assert converted_img_pixels is not None
+            >>> print(converted_img_pixels[1, 1])
             (30, 77, 85)
     """
     if not (

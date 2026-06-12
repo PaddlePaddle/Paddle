@@ -13,10 +13,9 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, Union
+from typing import TYPE_CHECKING, Literal, TypeAlias, Union
 
 import numpy as np
-from typing_extensions import TypeAlias
 
 if TYPE_CHECKING:
     from paddle import dtype
@@ -36,24 +35,22 @@ _DTypeLiteral: TypeAlias = Literal[
     "bool",
 ]
 
-_DTypeNumpy: TypeAlias = Union[
+_DTypeNumpy: TypeAlias = (
     type[
-        Union[
-            np.uint8,
-            np.int8,
-            np.int16,
-            np.int32,
-            np.int64,
-            np.float16,
-            np.float32,
-            np.float64,
-            np.complex64,
-            np.complex128,
-            np.bool_,
-        ]
-    ],
-    np.dtype,
-]
+        np.uint8
+        | np.int8
+        | np.int16
+        | np.int32
+        | np.int64
+        | np.float16
+        | np.float32
+        | np.float64
+        | np.complex64
+        | np.complex128
+        | np.bool_
+    ]
+    | np.dtype
+)
 
 
 DTypeLike: TypeAlias = Union["dtype", _DTypeNumpy, _DTypeLiteral]

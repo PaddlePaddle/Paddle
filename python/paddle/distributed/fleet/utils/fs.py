@@ -24,7 +24,7 @@ import re
 import shutil
 import subprocess
 import time
-from typing import TYPE_CHECKING, Callable, Literal, TypedDict, TypeVar
+from typing import TYPE_CHECKING, Literal, TypedDict, TypeVar
 
 # (TODO: GhostScreaming) It will be removed later.
 from paddle.base import core
@@ -32,6 +32,8 @@ from paddle.base import core
 from .log_util import logger
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from typing_extensions import ParamSpec
 
     _InputT = ParamSpec("_InputT")

@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle import base, in_dynamic_mode
@@ -28,7 +28,7 @@ from .. import functional as F
 from .layers import Layer
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
 
     from paddle import Tensor
     from paddle._typing import ParamAttrLike
@@ -405,7 +405,7 @@ class CrossEntropyLoss(Layer):
             >>> shape = [N, C]
             >>> label_smoothing = 0.4
             >>> reduction = 'mean'
-            >>> weight: Optional[paddle.Tensor] = None
+            >>> weight = None
             >>> logits = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
             >>> integer_labels = paddle.randint(low=0, high=C, size=[N], dtype='int64')
             >>> one_hot_labels = paddle.nn.functional.one_hot(integer_labels, C).astype('float32')

@@ -27,11 +27,7 @@ function run_mac_test() {
     ========================================
 EOF
 
-        if [ "$1" == "cp38-cp38" ]; then
-            pip3.8 uninstall -y paddlepaddle
-        elif [ "$1" == "cp39-cp39" ]; then
-            pip3.9 uninstall -y paddlepaddle
-        elif [ "$1" == "cp310-cp310" ]; then
+        if [ "$1" == "cp310-cp310" ]; then
             pip3.10 uninstall -y paddlepaddle
         elif [ "$1" == "cp311-cp311" ]; then
             pip3.11 uninstall -y paddlepaddle
@@ -43,13 +39,7 @@ EOF
             pip3.14 uninstall -y paddlepaddle
         fi
 
-        if [ "$1" == "cp38-cp38" ]; then
-            pip3.8 install --user ${PADDLE_ROOT}/dist/*.whl
-            pip3.8 install --user hypothesis
-        elif [ "$1" == "cp39-cp39" ]; then
-            pip3.9 install --user ${PADDLE_ROOT}/dist/*.whl
-            pip3.9 install --user hypothesis
-        elif [ "$1" == "cp310-cp310" ]; then
+        if [ "$1" == "cp310-cp310" ]; then
             pip3.10 install --user ${PADDLE_ROOT}/dist/*.whl
             pip3.10 install --user hypothesis
         elif [ "$1" == "cp311-cp311" ]; then
@@ -66,33 +56,7 @@ EOF
             pip3.14 install --user hypothesis
         fi
 
-        if [ "$1" == "cp38-cp38" ]; then
-            if [ -d "/Library/Frameworks/Python.framework/Versions/3.8" ]; then
-                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.8/lib/
-                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.8/lib/
-                export PATH=/Library/Frameworks/Python.framework/Versions/3.8/bin/:${PATH}
-                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
-                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.8/bin/python3
-                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.8/include/python3.8/
-                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.8/lib/libpython3.8.dylib
-                pip3.8 install --user -r ${PADDLE_ROOT}/python/requirements.txt
-            else
-                exit 1
-            fi
-        elif [ "$1" == "cp39-cp39" ]; then
-            if [ -d "/Library/Frameworks/Python.framework/Versions/3.9" ]; then
-                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.9/lib/
-                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.9/lib/
-                export PATH=/Library/Frameworks/Python.framework/Versions/3.9/bin/:${PATH}
-                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
-                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.9/bin/python3
-                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.9/include/python3.9/
-                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.9/lib/libpython3.9.dylib
-                pip3.9 install --user -r ${PADDLE_ROOT}/python/requirements.txt
-            else
-                exit 1
-            fi
-        elif [ "$1" == "cp310-cp310" ]; then
+        if [ "$1" == "cp310-cp310" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.10" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.10/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.10/lib/

@@ -125,3 +125,4 @@
 [submodule "third_party/sleef"]
 	path = third_party/sleef
 	url = https://github.com/shibatch/sleef.git
+	ignore = dirty

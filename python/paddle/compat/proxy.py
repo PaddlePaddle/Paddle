@@ -28,8 +28,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Iterable
-
-    from typing_extensions import TypeAlias
+    from typing import TypeAlias
 
     _ScopeType: TypeAlias = str | Iterable[str] | None
 

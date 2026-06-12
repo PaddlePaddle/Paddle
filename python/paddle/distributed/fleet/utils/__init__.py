@@ -13,7 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from paddle.distributed import fleet
 
@@ -28,6 +28,8 @@ from .fs import HDFSClient, LocalFS
 from .ps_util import DistributedInfer
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from paddle.nn import Layer
 
 __all__ = ["LocalFS", "recompute", "DistributedInfer", "HDFSClient"]

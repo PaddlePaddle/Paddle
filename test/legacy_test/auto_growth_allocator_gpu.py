@@ -52,6 +52,7 @@ def main():
         "reserved": [],
         "allocated": [],
         "try_alloc_ok": [],
+        "all_block_info": [],
     }
 
     if not base.is_compiled_with_cuda():
@@ -99,6 +100,16 @@ def main():
             except Exception:
                 ok = False
             result["try_alloc_ok"].append(ok)
+        elif op == "all_block_info":
+            from paddle.base import core
+            from paddle.device.cuda.memory_analyzer import MemoryAnalysisTool
+
+            if not hasattr(core, "all_block_info"):
+                result["all_block_info"].append(None)
+            else:
+                result["all_block_info"].append(
+                    MemoryAnalysisTool.all_block_info()
+                )
 
         r = max_reserved()
         a = max_allocated()

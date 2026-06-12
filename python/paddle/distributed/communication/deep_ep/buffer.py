@@ -19,7 +19,7 @@
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 import paddle
 import paddle.distributed as dist
@@ -32,6 +32,8 @@ from paddle.base.core import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from paddle.distributed.communication.group import Group
 
 from paddle.base.core import EventHandle

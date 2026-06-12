@@ -12,7 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <memory>
+
 #include "paddle/phi/core/memory/allocation/cuda_virtual_mem_allocator.h"
+
 // Expose internals for white-box testing.
 #define private public
 #include "paddle/phi/core/memory/allocation/virtual_memory_auto_growth_best_fit_allocator.h"
@@ -62,7 +65,7 @@ class ExposedVmmAllocator : public VirtualMemoryAutoGrowthBestFitAllocator {
       VirtualMemoryAutoGrowthBestFitAllocator;
 };
 
-TEST(test_vmm_allocator, free_impl_handles_stale_iterator) {
+TEST(test_vmm_allocator, free_impl_uses_allocation_block_iterator) {
   auto underlying = std::make_shared<DummyAllocator>();
   phi::GPUPlace place(0);
   ExposedVmmAllocator allocator(underlying, 256, place);
@@ -82,17 +85,14 @@ TEST(test_vmm_allocator, free_impl_handles_stale_iterator) {
   allocator.free_blocks_.emplace(std::make_pair(prev->size_, prev->ptr_), prev);
   allocator.free_blocks_.emplace(std::make_pair(next->size_, next->ptr_), next);
 
-  // Stale allocation keeps an iterator to the "target" block, which will be
-  // erased before calling FreeImpl to simulate a dangling iterator.
-  auto stale_allocation = new BlockAllocation(target, place);
+  auto allocation = std::make_unique<BlockAllocation>(target, place);
 
-  // Invalidate the iterator by erasing the target block (simulating previous
-  // merge/erase). free_blocks_ deliberately not updated to mimic the
-  // inconsistent state seen in the crash reports.
-  allocator.all_blocks_.erase(target);
-
-  // FreeImpl should not crash; it should detect the missing block and return.
-  EXPECT_NO_THROW(allocator.FreeImpl(stale_allocation));
+  EXPECT_NO_THROW(allocator.FreeImpl(allocation.release()));
+  EXPECT_EQ(allocator.all_blocks_.size(), 1UL);
+  EXPECT_EQ(allocator.all_blocks_.front().ptr_,
+            reinterpret_cast<void*>(0x1000));
+  EXPECT_EQ(allocator.all_blocks_.front().size_, 7168UL);
+  EXPECT_TRUE(allocator.all_blocks_.front().is_free_);
 }
 
 }  // namespace allocation

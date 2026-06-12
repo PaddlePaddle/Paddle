@@ -31,7 +31,9 @@ from paddle.utils import unique_name
 from ..layer.layers import Layer
 
 if TYPE_CHECKING:
-    from typing_extensions import Never, TypeAlias
+    from typing import TypeAlias
+
+    from typing_extensions import Never
 
     from paddle import Tensor
     from paddle._typing import DTypeLike, Size2

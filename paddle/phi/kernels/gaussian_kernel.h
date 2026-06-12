@@ -23,8 +23,8 @@ namespace phi {
 template <typename T, typename Context>
 PADDLE_API void GaussianKernel(const Context& dev_ctx,
                                const IntArray& shape,
-                               float mean,
-                               float std,
+                               double mean,
+                               double std,
                                int seed,
                                DataType dtype,
                                DenseTensor* out);
