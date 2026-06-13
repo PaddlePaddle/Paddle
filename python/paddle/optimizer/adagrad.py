@@ -151,6 +151,7 @@ class Adagrad(Optimizer):
         grad_clip: GradientClipBase | None = None,
         name: str | None = None,
         initial_accumulator_value: float = 0.0,
+        lr_decay: float = 0.0,
     ) -> None:
         assert learning_rate is not None
         assert epsilon is not None
@@ -166,9 +167,12 @@ class Adagrad(Optimizer):
         self._multi_precision = False
         self._master_weights = {}
         self.initial_accumulator_value = initial_accumulator_value
+        self._lr_decay = lr_decay
+        self._global_step = {}
         self._default_dict = {
             'epsilon': epsilon,
             'initial_accumulator_value': initial_accumulator_value,
+            'lr_decay': lr_decay,
         }
 
     def _create_accumulators(self, block, parameters):
@@ -224,12 +228,22 @@ class Adagrad(Optimizer):
             else None
         )
 
+        param_lr = self._create_param_lr(param_and_grad)
+        if self._lr_decay > 0.0:
+            param_name = param_and_grad[0].name
+            if param_name not in self._global_step:
+                self._global_step[param_name] = 0
+            self._global_step[param_name] += 1
+            param_lr = param_lr / (
+                1.0 + self._lr_decay * self._global_step[param_name]
+            )
+
         if in_dynamic_or_pir_mode():
             _, _, _ = _C_ops.adagrad_(
                 param_and_grad[0],
                 param_and_grad[1],
                 moment_acc,
-                self._create_param_lr(param_and_grad),
+                param_lr,
                 master_weight if find_master else None,
                 self._epsilon,
                 find_master,
@@ -241,7 +255,7 @@ class Adagrad(Optimizer):
                 "Param": param_and_grad[0],
                 "Grad": param_and_grad[1],
                 "Moment": moment_acc,
-                "LearningRate": self._create_param_lr(param_and_grad),
+                "LearningRate": param_lr,
             }
 
             outputs = {"ParamOut": param_and_grad[0], "MomentOut": moment_acc}
@@ -268,6 +282,9 @@ class Adagrad(Optimizer):
         self.initial_accumulator_value = parameters.get(
             'initial_accumulator_value',
             self._default_dict['initial_accumulator_value'],
+        )
+        self._lr_decay = parameters.get(
+            'lr_decay', self._default_dict['lr_decay']
         )
         parameters = parameters.get('params')
         return parameters

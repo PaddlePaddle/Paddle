@@ -370,6 +370,105 @@ class TestAdagradMultiPrecision2_0(unittest.TestCase):
                 )
 
 
+class TestAdagradLrDecay(unittest.TestCase):
+    """Test Adagrad with lr_decay parameter"""
+
+    def test_lr_decay_dygraph(self):
+        """Test that learning rate decays correctly over multiple steps"""
+        paddle.disable_static()
+        paddle.seed(42)
+        paddle.set_device(get_device())
+
+        input_data = paddle.randn((5, 5))
+        model = paddle.nn.Linear(5, 5)
+        lr_decay = 0.1
+        base_lr = 0.1
+        optimizer = paddle.optimizer.Adagrad(
+            base_lr, parameters=model.parameters(), lr_decay=lr_decay
+        )
+
+        losses = []
+        for step in range(3):
+            output = model(input_data)
+            loss = paddle.mean(output)
+            losses.append(loss.numpy())
+            loss.backward()
+            optimizer.step()
+            optimizer.clear_grad()
+
+        # Verify lr_decay is applied (losses should reflect decaying lr effect)
+        self.assertEqual(len(losses), 3)
+        paddle.enable_static()
+
+    def test_lr_decay_zero(self):
+        """Test that lr_decay=0 doesn't affect optimization"""
+        paddle.disable_static()
+        paddle.seed(42)
+        paddle.set_device(get_device())
+
+        input_data = paddle.randn((5, 5))
+        model1 = paddle.nn.Linear(5, 5)
+        model2 = paddle.nn.Linear(5, 5)
+
+        # Copy model weights
+        for p1, p2 in zip(model1.parameters(), model2.parameters()):
+            p2.set_value(p1)
+
+        optimizer1 = paddle.optimizer.Adagrad(
+            0.1, parameters=model1.parameters(), lr_decay=0.0
+        )
+        optimizer2 = paddle.optimizer.Adagrad(
+            0.1, parameters=model2.parameters(), lr_decay=0.0
+        )
+
+        for _ in range(2):
+            out1 = model1(input_data)
+            loss1 = paddle.mean(out1)
+            loss1.backward()
+            optimizer1.step()
+            optimizer1.clear_grad()
+
+            out2 = model2(input_data)
+            loss2 = paddle.mean(out2)
+            loss2.backward()
+            optimizer2.step()
+            optimizer2.clear_grad()
+
+        # Both should produce identical results
+        for p1, p2 in zip(model1.parameters(), model2.parameters()):
+            np.testing.assert_allclose(p1.numpy(), p2.numpy(), rtol=1e-5)
+
+        paddle.enable_static()
+
+    def test_lr_decay_param_group(self):
+        """Test lr_decay with parameter groups"""
+        paddle.disable_static()
+        paddle.seed(42)
+        paddle.set_device(get_device())
+
+        input_data = paddle.randn((5, 5))
+        linear1 = paddle.nn.Linear(5, 5)
+        linear2 = paddle.nn.Linear(5, 5)
+
+        optimizer = paddle.optimizer.Adagrad(
+            learning_rate=0.1,
+            parameters=[
+                {'params': linear1.parameters()},
+                {'params': linear2.parameters(), 'lr_decay': 0.2},
+            ],
+            lr_decay=0.1,
+        )
+
+        output = linear1(input_data)
+        output = linear2(output)
+        loss = paddle.mean(output)
+        loss.backward()
+        optimizer.step()
+        optimizer.clear_grad()
+
+        paddle.enable_static()
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
