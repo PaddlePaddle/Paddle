@@ -1221,6 +1221,11 @@ class Test_sparse_(unittest.TestCase):
             ]
             self.assertGreater(p_value, 0.0001)
 
+    def test_error(self):
+        input_tensor = paddle.randn([100, 50, 3])
+        with self.assertRaises(ValueError):
+            paddle.nn.init.sparse_(input_tensor, sparsity=0.2, std=0.01)
+
     def test_dygraph(self):
         with dygraph_guard():
             for sparsity in [0.1, 0.5, 0.9]:
