@@ -91,6 +91,12 @@ RUN python3.10 get-pip.py && \
 RUN python3.13t get-pip.py && \
   mv /usr/local/bin/pip3.13 /usr/local/bin/pip3.13t && \
   python3.13 get-pip.py
+RUN for py in 3.10 3.11 3.12 3.13 3.13t; do \
+      printf '#!/bin/sh\nexec /usr/local/bin/python%s -m pip "$@"\n' "$py" > "/usr/local/bin/pip${py}" && \
+      chmod +x "/usr/local/bin/pip${py}"; \
+    done && \
+    ln -sf /usr/local/bin/pip3.10 /usr/local/bin/pip && \
+    ln -sf /usr/local/bin/pip3.10 /usr/local/bin/pip3
 
 RUN python3.10 -m pip install setuptools==69.5.1 && \
   python3.11 -m pip install setuptools==69.5.1 && \
@@ -121,10 +127,6 @@ RUN git config --global credential.helper store
 
 # Fix locales to en_US.UTF-8
 RUN localedef -i en_US -f UTF-8 en_US.UTF-8
-
-#For pre-commit
-RUN rm -f /usr/local/bin/pip && ln -s /usr/local/bin/pip3.10 /usr/local/bin/pip && \
-    rm -f /usr/local/bin/pip3 && ln -s /usr/local/bin/pip3.10 /usr/local/bin/pip3
 
 RUN pip3.10 --no-cache-dir install ipython==5.3.0 && \
     pip3.10 --no-cache-dir install ipykernel==4.6.0 wheel && \
