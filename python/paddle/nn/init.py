@@ -360,6 +360,20 @@ def orthogonal_(
 def sparse_(
     tensor: paddle.Tensor, sparsity: float, std: float = 0.01
 ) -> paddle.Tensor:
+    """Fill the 2D input Tensor as a sparse matrix.
+
+    The non-zero elements will be drawn from the normal distribution.
+
+    Args:
+        tensor (Tensor): Paddle Tensor with 2 dimensions.
+        sparsity (float): The fraction of elements in each column to be set to zero.
+        std (float): the standard deviation of the normal distribution used to generate
+            the non-zero values. Default is 0.01.
+
+    Examples:
+        >>> tensor = paddle.empty(3, 5)
+        >>> result = paddle.nn.init.sparse_(tensor, sparsity=0.1)
+    """
     if tensor.ndimension() != 2:
         raise ValueError("Only tensors with 2 dimensions are supported")
     rows, cols = tensor.shape
