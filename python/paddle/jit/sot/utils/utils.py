@@ -22,10 +22,11 @@ import time
 import types
 import weakref
 from collections import OrderedDict
+from collections.abc import Callable
 from contextlib import contextmanager
 from dataclasses import is_dataclass
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, Callable, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 from weakref import WeakValueDictionary
 
 import numpy as np

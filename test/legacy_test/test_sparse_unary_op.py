@@ -65,6 +65,12 @@ class TestSparseUnary(unittest.TestCase):
             mask = paddle.randint(0, 2, [8, 16, 32]).astype(dtype)
             while paddle.sum(mask) == 0:
                 mask = paddle.randint(0, 2, [8, 16, 32]).astype(dtype)
+            # to_sparse_coo drops zero-valued elements, so sparse grad at those
+            # positions is always 0, while dense grad may be non-zero there
+            # (e.g. cos(0)=1), causing expect_grad to diverge from sp_x.grad.
+            # Under fp16, paddle.rand can produce exact zeros, so fold the
+            # origin_x==0 positions into mask to align with sparse semantics.
+            mask = mask * (origin_x != 0).astype(dtype)
 
         # --- check sparse coo with dense --- #
         dense_x = origin_x * mask

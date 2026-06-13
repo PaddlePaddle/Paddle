@@ -110,11 +110,11 @@ class MemoryAnalysisTool:
         return core.vmm_free_block_info(device_id)
 
     @classmethod
-    def vmm_all_block_info(
+    def all_block_info(
         self,
         device_id: int | None = None,
     ) -> list[list[tuple[int, int, bool]]]:
-        name = 'paddle.device.cuda.vmm_all_block_info'
+        name = 'paddle.device.cuda.all_block_info'
         if not (core.is_compiled_with_cuda()):
             raise ValueError(
                 f"The API {name} is not supported in CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU support to call this API."
@@ -124,7 +124,14 @@ class MemoryAnalysisTool:
             if device_id is not None
             else core.get_cuda_current_device_id()
         )
-        return core.vmm_all_block_info(device_id)
+        return core.all_block_info(device_id)
+
+    @classmethod
+    def vmm_all_block_info(
+        self,
+        device_id: int | None = None,
+    ) -> list[list[tuple[int, int, bool]]]:
+        return self.all_block_info(device_id)
 
     @classmethod
     def memory_summary(self, device_id: int | None = None) -> None:
@@ -170,7 +177,7 @@ class MemoryAnalysisTool:
             "[3G,+INF)",
         ]
 
-        allocator_lists = self.vmm_all_block_info(device_id=device_id)
+        allocator_lists = self.all_block_info(device_id=device_id)
         # --- Feature 1: Global Summary with NVML & Rates ---
 
         # 1.1 Get Paddle Stats

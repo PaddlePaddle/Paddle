@@ -24,7 +24,9 @@ from paddle.base import core
 from paddle.base.proto import data_feed_pb2
 
 if TYPE_CHECKING:
-    from typing_extensions import NotRequired, TypeAlias, Unpack
+    from typing import TypeAlias
+
+    from typing_extensions import NotRequired, Unpack
 
     from paddle import Tensor
     from paddle.distributed.fleet import Fleet

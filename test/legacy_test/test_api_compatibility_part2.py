@@ -19,6 +19,125 @@ import numpy as np
 import paddle
 
 
+# Test flex_attention mask helpers compatibility
+class TestFlexAttentionMasksAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_b = np.array([[0, 1, 0], [1, 0, 1]], dtype='int64')
+        self.np_h = np.array([[0, 1, 1], [0, 0, 1]], dtype='int64')
+        self.np_q_idx = np.array([[0, 2, 4], [3, 5, 7]], dtype='int64')
+        self.np_kv_idx = np.array([[1, 2, 3], [4, 4, 8]], dtype='int64')
+        self.ref_ge = self.np_q_idx >= self.np_kv_idx
+        self.ref_h_zero = self.np_h == 0
+
+    def mask_q_ge_kv(self, b, h, q_idx, kv_idx):
+        return q_idx >= kv_idx
+
+    def mask_h_zero(self, b, h, q_idx, kv_idx):
+        return h == 0
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        b = paddle.to_tensor(self.np_b)
+        h = paddle.to_tensor(self.np_h)
+        q_idx = paddle.to_tensor(self.np_q_idx)
+        kv_idx = paddle.to_tensor(self.np_kv_idx)
+
+        # 1. PyTorch positional arguments
+        out1 = paddle.nn.attention.flex_attention.or_masks(
+            self.mask_q_ge_kv, self.mask_h_zero
+        )(b, h, q_idx, kv_idx)
+        out2 = paddle.nn.attention.flex_attention.and_masks(
+            self.mask_q_ge_kv, self.mask_h_zero
+        )(b, h, q_idx, kv_idx)
+        out3 = paddle.nn.attention.flex_attention.or_masks(self.mask_q_ge_kv)(
+            b, h, q_idx, kv_idx
+        )
+        out4 = paddle.nn.attention.flex_attention.and_masks(self.mask_h_zero)(
+            b, h, q_idx, kv_idx
+        )
+        out5 = paddle.nn.attention.flex_attention.or_masks()(
+            b, h, q_idx, kv_idx
+        )
+        out6 = paddle.nn.attention.flex_attention.and_masks()(
+            b, h, q_idx, kv_idx
+        )
+
+        refs = [
+            np.logical_or(self.ref_ge, self.ref_h_zero),
+            np.logical_and(self.ref_ge, self.ref_h_zero),
+            self.ref_ge,
+            self.ref_h_zero,
+            np.array(False),
+            np.array(True),
+        ]
+        for out, ref in zip([out1, out2, out3, out4, out5, out6], refs):
+            np.testing.assert_array_equal(out.numpy(), ref)
+
+        with self.assertRaises(RuntimeError):
+            paddle.nn.attention.flex_attention.or_masks(self.mask_q_ge_kv, 1)
+        with self.assertRaises(RuntimeError):
+            paddle.nn.attention.flex_attention.and_masks(1, self.mask_h_zero)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            b = paddle.static.data(name="b", shape=[2, 3], dtype='int64')
+            h = paddle.static.data(name="h", shape=[2, 3], dtype='int64')
+            q_idx = paddle.static.data(
+                name="q_idx", shape=[2, 3], dtype='int64'
+            )
+            kv_idx = paddle.static.data(
+                name="kv_idx", shape=[2, 3], dtype='int64'
+            )
+
+            # 1. PyTorch positional arguments
+            out1 = paddle.nn.attention.flex_attention.or_masks(
+                self.mask_q_ge_kv, self.mask_h_zero
+            )(b, h, q_idx, kv_idx)
+            out2 = paddle.nn.attention.flex_attention.and_masks(
+                self.mask_q_ge_kv, self.mask_h_zero
+            )(b, h, q_idx, kv_idx)
+            out3 = paddle.nn.attention.flex_attention.or_masks(
+                self.mask_q_ge_kv
+            )(b, h, q_idx, kv_idx)
+            out4 = paddle.nn.attention.flex_attention.and_masks(
+                self.mask_h_zero
+            )(b, h, q_idx, kv_idx)
+            out5 = paddle.nn.attention.flex_attention.or_masks()(
+                b, h, q_idx, kv_idx
+            )
+            out6 = paddle.nn.attention.flex_attention.and_masks()(
+                b, h, q_idx, kv_idx
+            )
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={
+                    "b": self.np_b,
+                    "h": self.np_h,
+                    "q_idx": self.np_q_idx,
+                    "kv_idx": self.np_kv_idx,
+                },
+                fetch_list=[out1, out2, out3, out4, out5, out6],
+            )
+
+            refs = [
+                np.logical_or(self.ref_ge, self.ref_h_zero),
+                np.logical_and(self.ref_ge, self.ref_h_zero),
+                self.ref_ge,
+                self.ref_h_zero,
+                np.array(False),
+                np.array(True),
+            ]
+            for out, ref in zip(fetches, refs):
+                np.testing.assert_array_equal(out, ref)
+
+
 # Test block_diag compatibility
 class TestBlockDiagAPI(unittest.TestCase):
     def setUp(self):

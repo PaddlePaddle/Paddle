@@ -18,9 +18,8 @@ import hashlib
 from typing import (
     TYPE_CHECKING,
     Literal,
+    TypeAlias,
 )
-
-from typing_extensions import TypeAlias
 
 import paddle
 

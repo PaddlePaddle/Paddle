@@ -398,6 +398,56 @@ class TestHookWithKWArgs(unittest.TestCase):
             out.numpy(), (x * 4 + y).numpy(), rtol=1e-5, atol=1e-6
         )
 
+    def test_forward_hook_alias_and_prepend(self):
+        x = paddle.ones((2, 3))
+        y = paddle.ones((2, 3))
+        net = SimpleNetWithKWArgs()
+        hook_calls = []
+
+        def first_pre_hook(layer, args):
+            hook_calls.append("first_pre")
+            return (args[0] + 1, args[1])
+
+        def second_pre_hook(layer, args):
+            hook_calls.append("second_pre")
+            return (args[0] * 2, args[1])
+
+        def first_post_hook(layer, args, output):
+            hook_calls.append("first_post")
+            return output + 1
+
+        def second_post_hook(layer, args, output):
+            hook_calls.append("second_post")
+            return output * 2
+
+        net.register_forward_pre_hook(second_pre_hook)
+        net.register_forward_pre_hook(first_pre_hook, prepend=True)
+        net.register_forward_hook(second_post_hook)
+        net.register_forward_hook(first_post_hook, prepend=True)
+
+        out = net(x, y)
+
+        self.assertEqual(
+            hook_calls,
+            ["first_pre", "second_pre", "first_post", "second_post"],
+        )
+        np.testing.assert_allclose(out.numpy(), np.full((2, 3), 12.0))
+
+    def test_forward_pre_hook_with_kwargs_return_error(self):
+        x = paddle.randn((2, 3))
+        y = paddle.randn((2, 3))
+        net = SimpleNetWithKWArgs()
+
+        def invalid_pre_hook(layer, args, kwargs):
+            return args
+
+        net.register_forward_pre_hook(invalid_pre_hook, with_kwargs=True)
+
+        with self.assertRaisesRegex(
+            RuntimeError, "forward pre-hook must return None"
+        ):
+            net(x=x, y=y)
+
 
 class TestBackwardHook(unittest.TestCase):
     def test_backward_hooks(self):

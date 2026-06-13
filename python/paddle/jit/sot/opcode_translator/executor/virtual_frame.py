@@ -39,8 +39,7 @@ from .variables.basic import (
 
 if TYPE_CHECKING:
     import types
-
-    from typing_extensions import TypeAlias
+    from typing import TypeAlias
 
     from ..instruction_utils import Instruction
     from .function_graph import FunctionGraph

@@ -393,8 +393,7 @@ def relocate_jump_target(instructions: list[Instruction]) -> bool:
                 if instr.opname in REL_BWD_JUMP:
                     new_arg = -new_arg
 
-            if sys.version_info >= (3, 10):
-                new_arg //= 2
+            new_arg //= 2
             _, invert_jump = correct_jump_direction(instr, new_arg)
             has_inverted_jump = has_inverted_jump or invert_jump
             assert instr.arg is not None

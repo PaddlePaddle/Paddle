@@ -13,8 +13,10 @@
 # limitations under the License.
 from __future__ import annotations
 
+import os
 import pickle
 import tarfile
+from functools import lru_cache
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
@@ -22,7 +24,7 @@ import numpy.typing as npt
 from PIL import Image
 
 import paddle
-from paddle.dataset.common import _check_exists_and_download
+from paddle.dataset.common import _check_exists_and_download, md5file
 from paddle.io import Dataset
 
 if TYPE_CHECKING:
@@ -51,6 +53,22 @@ MODE_FLAG_MAP = {
 }
 
 
+@lru_cache(maxsize=8)
+def _cached_md5file(path, _mtime_ns, _size):
+    return md5file(path)
+
+
+def _check_local_cifar_md5(path, expected_md5):
+    path = os.path.abspath(path)
+    stat = os.stat(path)
+    file_md5 = _cached_md5file(path, stat.st_mtime_ns, stat.st_size)
+    if file_md5 != expected_md5:
+        raise ValueError(
+            "Loading unverified local CIFAR pickle archive is disabled. "
+            f"Please use the official archive with MD5 {expected_md5}."
+        )
+
+
 class Cifar10(Dataset[tuple["_ImageDataType", "npt.NDArray[Any]"]]):
     """
     Implementation of `Cifar-10 <https://www.cs.toronto.edu/~kriz/cifar.html>`_
@@ -76,6 +94,7 @@ class Cifar10(Dataset[tuple["_ImageDataType", "npt.NDArray[Any]"]]):
 
             >>> # doctest: +TIMEOUT(60)
             >>> import itertools
+            >>> import paddle
             >>> import paddle.vision.transforms as T
             >>> from paddle.vision.datasets import Cifar10
 
@@ -111,7 +130,8 @@ class Cifar10(Dataset[tuple["_ImageDataType", "npt.NDArray[Any]"]]):
 
             >>> for img, label in itertools.islice(iter(cifar10_test), 5):  # only show first 5 images
             ...     # do something with img and label
-            ...     print(type(img), img.shape, label)  # type: ignore
+            ...     assert isinstance(img, paddle.Tensor)
+            ...     print(type(img), img.shape, label)
             ...     # <class 'paddle.Tensor'> [3, 64, 64] 3
 
     """
@@ -154,6 +174,12 @@ class Cifar10(Dataset[tuple["_ImageDataType", "npt.NDArray[Any]"]]):
             self.data_file = _check_exists_and_download(
                 data_file, self.data_url, self.data_md5, 'cifar', download
             )
+        elif not os.path.exists(self.data_file):
+            raise ValueError(
+                f"Local CIFAR archive does not exist: {self.data_file}."
+            )
+        else:
+            _check_local_cifar_md5(self.data_file, self.data_md5)
 
         self.transform = transform
 
@@ -229,6 +255,7 @@ class Cifar100(Cifar10):
 
             >>> # doctest: +TIMEOUT(60)
             >>> import itertools
+            >>> import paddle
             >>> import paddle.vision.transforms as T
             >>> from paddle.vision.datasets import Cifar100
 
@@ -265,7 +292,8 @@ class Cifar100(Cifar10):
 
             >>> for img, label in itertools.islice(iter(cifar100_test), 5):  # only show first 5 images
             ...     # do something with img and label
-            ...     print(type(img), img.shape, label)  # type: ignore
+            ...     assert isinstance(img, paddle.Tensor)
+            ...     print(type(img), img.shape, label)
             ...     # <class 'paddle.Tensor'> [3, 64, 64] 49
 
     """

@@ -14,10 +14,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, Union
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 
 from PIL import Image
-from typing_extensions import TypeAlias
 
 from paddle.utils import try_import
 
@@ -28,7 +27,7 @@ if TYPE_CHECKING:
     from paddle import Tensor
 
     _ImageBackend: TypeAlias = Literal["pil", "cv2", "tensor"]
-    _ImageDataType: TypeAlias = Union[Tensor, PILImage, npt.NDArray[Any]]
+    _ImageDataType: TypeAlias = Tensor | PILImage | npt.NDArray[Any]
 
 __all__ = []
 

@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from ..utils import log
 from .compile_cache import CompileSIRCache
@@ -33,6 +33,8 @@ from .statement_ir import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from paddle.static import InputSpec
 
 

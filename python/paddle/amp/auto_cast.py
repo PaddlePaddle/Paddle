@@ -19,11 +19,9 @@ import warnings
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Literal,
     Protocol,
     TypeVar,
-    Union,
     overload,
 )
 
@@ -42,10 +40,9 @@ from paddle.static.amp.decorator import OptimizerWithMixedPrecision
 from .amp_lists import black_list, white_list
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Callable, Generator
     from contextlib import AbstractContextManager
-
-    from typing_extensions import TypeAlias, TypeGuard
+    from typing import TypeAlias, TypeGuard
 
     from paddle import Tensor
     from paddle._typing import PlaceLike
@@ -55,7 +52,7 @@ if TYPE_CHECKING:
     from paddle.static import Operator, Program
 
     _AmpLevelLiteral = Literal["O0", "OD", "O1", "O2"]
-    _CustomList: TypeAlias = Union[list[str], tuple[str, ...], set[str]]
+    _CustomList: TypeAlias = list[str] | tuple[str, ...] | set[str]
 
     class _OptimizerLike(Protocol):
         def minimize(
@@ -794,6 +791,8 @@ class StateDictHook:
         with paddle.base.framework._dygraph_guard(paddle.base.dygraph.Tracer()):
             for key in state_dict:
                 param = state_dict[key]
+                if not isinstance(param, paddle.Tensor):
+                    continue
                 if paddle.is_floating_point(param):
                     param_applied = paddle.cast(param, self._save_dtype)
                     param_applied.name = param.name

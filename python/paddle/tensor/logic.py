@@ -14,9 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
-
-from typing_extensions import TypeGuard
+from typing import TYPE_CHECKING, Any, TypeGuard
 
 import paddle
 from paddle import _C_ops

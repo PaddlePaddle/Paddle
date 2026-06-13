@@ -28,20 +28,18 @@ from paddle.tensor import random
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-    from typing import Union
-
-    from typing_extensions import TypeAlias
+    from typing import TypeAlias
 
     from paddle import Tensor
     from paddle._typing import NestedSequence
 
-    _UniformBoundary: TypeAlias = Union[
-        float,
-        Sequence[float],
-        NestedSequence[float],
-        npt.NDArray[Union[np.float32, np.float64]],
-        Tensor,
-    ]
+    _UniformBoundary: TypeAlias = (
+        float
+        | Sequence[float]
+        | NestedSequence[float]
+        | npt.NDArray[np.float32 | np.float64]
+        | Tensor
+    )
 
 
 class Uniform(distribution.Distribution):
@@ -93,8 +91,8 @@ class Uniform(distribution.Distribution):
             >>> u2 = Uniform(low=[1.0, 2.0], high=[3.0, 4.0])
             >>> # 4 distributions
             >>> u3 = Uniform(
-            ...     low=[[1.0, 2.0], [3.0, 4.0]],
-            ...     high=[[1.5, 2.5], [3.5, 4.5]],
+            ...     low=[[1.0, 2.0], [3.0, 4.0]],  # type: ignore[list-item]
+            ...     high=[[1.5, 2.5], [3.5, 4.5]],  # type: ignore[list-item]
             ... )
             >>> # With broadcasting:
             >>> u4 = Uniform(low=3.0, high=[5.0, 6.0, 7.0])

@@ -140,8 +140,9 @@ else:
     Template = None
 
 if TYPE_CHECKING:
+    from typing import TypeAlias
+
     import numpy.typing as npt
-    from typing_extensions import TypeAlias
 
     from ..function_graph import FunctionGraph
     from ..pycode_generator import PyCodeGen
