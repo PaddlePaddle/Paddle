@@ -37,10 +37,11 @@ class SGD(PaddleSGD):
         weight_decay: float | Tensor = 0,
         nesterov: bool = False,
     ) -> None:
-        warnings.warn(
-            "momentum, dampening, nesterov are currently not supported in SGD and will be ignored. "
-            "The parameters are reserved for future implementation."
-        )
+        if momentum != 0 or dampening != 0 or nesterov is True:
+            warnings.warn(
+                "momentum, dampening, nesterov are currently not supported in SGD and will be ignored. "
+                "The parameters are reserved for future implementation."
+            )
         super().__init__(
             learning_rate=lr,
             parameters=params,

@@ -38,10 +38,11 @@ class Adagrad(PaddleAdagrad):
         eps: float = 1e-10,
         foreach: bool | None = None,
     ) -> None:
-        warnings.warn(
-            "lr_decay, foreach are currently not supported in Adagrad and will be ignored. "
-            "The parameters are reserved for future implementation."
-        )
+        if lr_decay != 0 or foreach is True:
+            warnings.warn(
+                "lr_decay, foreach are currently not supported in Adagrad and will be ignored. "
+                "The parameters are reserved for future implementation."
+            )
         super().__init__(
             learning_rate=lr,
             epsilon=eps,
