@@ -18,7 +18,6 @@
 #include <cxxabi.h>  // for __cxa_demangle
 #endif               // __GNUC__
 #include <cinttypes>
-#include <cstdint>
 #include <exception>
 #include <iostream>
 #if !defined(_WIN32)
