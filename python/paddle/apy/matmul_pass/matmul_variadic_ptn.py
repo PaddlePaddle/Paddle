@@ -355,7 +355,6 @@ class MatmulEpilogueFusion(abstract_drr.DrrPass):
             index_program_translator_map=index_program_translator_map,
             op_translator_maker=op_compute_translator_maker,
         )
-        print('after translator')
 
         return program_translator
 
@@ -364,13 +363,11 @@ class MatmulEpilogueFusion(abstract_drr.DrrPass):
         mut_kernel_arg_id_registry = kernel_arg_id_util.KernelArgIdNameRegistry(
             code_gen_ctx=ctx, tensor_match_ctx=t, name_prefix=""
         )
-        print('after registry')
 
         template_module = matmul_variadic_tpl.MatmulVariadicTemplate(
             program_translator=program_translator,
             mut_kernel_arg_id_registry=mut_kernel_arg_id_registry,
         )
-        print('after module')
 
         def get_symbolic_shape_args_list(sym_dim):
             return ctx.dim_expr_kernel_arg_id(sym_dim)
@@ -381,7 +378,6 @@ class MatmulEpilogueFusion(abstract_drr.DrrPass):
         input1_shape_kargs = ap.map(
             get_symbolic_shape_args_list, t.input1.symbolic_shape_to_list()
         )
-        print('before compile')
         return template_module.compile(
             input0_karg=ctx.in_tensor_data_ptr_kernel_arg_id(t.input0),
             input1_karg=ctx.in_tensor_data_ptr_kernel_arg_id(t.input1),
@@ -668,7 +664,6 @@ def register_class(base_class, max_num_inputs, max_num_outputs):
             return register_drr_class(num_inputs + 2, num_outputs + 1)
 
         ap.map(register_num_outputs_drr_classes, range(max_num_outputs))
-        print('done max outputs')
 
     ap.map(register_num_inputs_drr_classes, range(max_num_inputs))
 

@@ -50,7 +50,7 @@ struct define<phi::bfloat16> {
 #include <cmath>
 #include <utility>
 #include <vector>
-#if defined(PADDLE_WITH_MKLML) && !defined(__HIPCC__)
+#ifdef PADDLE_WITH_MKLML
 #include <omp.h>
 #endif
 
@@ -97,7 +97,7 @@ static void GetMode(Type input_height,
                     const DenseTensor* input,
                     T* t_out,
                     Type* t_indices) {
-#if defined(PADDLE_WITH_MKLML) && !defined(__HIPCC__)
+#ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
   for (Type i = 0; i < input_height; ++i) {
@@ -148,7 +148,7 @@ static void ModeAssign(const Type& input_height,
                        const DenseTensor* input,
                        const DenseTensor* indices,
                        T* output_data) {
-#if defined(PADDLE_WITH_MKLML) && !defined(__HIPCC__)
+#ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
   for (Type i = 0; i < input_height; ++i) {
