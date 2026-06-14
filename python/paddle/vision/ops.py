@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Literal, overload
+from typing import TYPE_CHECKING, Literal, overload
 
 import numpy as np
 
@@ -27,7 +27,7 @@ from ..base import core
 from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..base.framework import (
     Variable,
-    convert_np_dtype_to_dtype_,
+    convert_nptype_to_datatype_or_vartype,
     in_dygraph_mode,
     in_dynamic_or_pir_mode,
     in_pir_mode,
@@ -38,7 +38,7 @@ from ..nn import BatchNorm2D, Conv2D, Layer, ReLU, Sequential
 from ..nn.initializer import Normal
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
 
     from paddle import Tensor, nn
     from paddle._typing import ParamAttrLike, Size2, Size4
@@ -1384,7 +1384,7 @@ def read_file(filename: str, name: str | None = None) -> Tensor:
             paddle.Size([142773])
     """
 
-    attr_dtype = convert_np_dtype_to_dtype_('uint8')
+    attr_dtype = convert_nptype_to_datatype_or_vartype('uint8')
     if in_dynamic_or_pir_mode():
         return _C_ops.read_file(filename, attr_dtype, paddle.CPUPlace())
     else:

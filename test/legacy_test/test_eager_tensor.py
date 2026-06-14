@@ -2226,6 +2226,33 @@ class TestEagerTensorNelement(unittest.TestCase):
         self.assertEqual(x_actual_nelement, x_expected_nelement)
 
 
+class TestEagerTensorNbytes(unittest.TestCase):
+    def test_nbytes(self):
+        paddle.disable_static()
+        np_x = np.random.random((3, 8, 4))
+        x = paddle.to_tensor(np_x, dtype="float64")
+        x_actual_nbytes = x.nbytes
+        x_expected_nbytes = 3 * 8 * 4 * 8
+        self.assertEqual(x_actual_nbytes, x_expected_nbytes)
+
+    def test_sparse_coo_error(self):
+        paddle.disable_static()
+        indices = paddle.to_tensor([[0, 1, 2], [1, 0, 2]])
+        values = paddle.to_tensor([1.0, 2.0, 3.0])
+        shape = [3, 3]
+        x = paddle.sparse.sparse_coo_tensor(indices, values, shape)
+        with self.assertRaises(RuntimeError):
+            y = x.nbytes
+
+    def test_sparse_csr_error(self):
+        crows = paddle.to_tensor([0, 1, 2, 3])
+        cols = paddle.to_tensor([1, 0, 3])
+        values = paddle.to_tensor([5.0, 3.0, 7.0])
+        x = paddle.sparse.sparse_csr_tensor(crows, cols, values, [3, 4])
+        with self.assertRaises(RuntimeError):
+            y = x.nbytes
+
+
 class TestEagerTensorStride(unittest.TestCase):
     def test_stride_no_dim(self):
         paddle.disable_static()

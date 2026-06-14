@@ -14,15 +14,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, TypeVar
-
-from typing_extensions import Concatenate
+from typing import TYPE_CHECKING, Any, Concatenate, TypeVar
 
 import paddle
 from paddle.base import core
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
 
     from paddle import Tensor
 

@@ -64,6 +64,7 @@ class MNIST(Dataset[tuple["_ImageDataType", "npt.NDArray[np.int64]"]]):
         .. code-block:: pycon
 
             >>> import itertools
+            >>> import paddle
             >>> import paddle.vision.transforms as T
             >>> from paddle.vision.datasets import MNIST
 
@@ -99,7 +100,8 @@ class MNIST(Dataset[tuple["_ImageDataType", "npt.NDArray[np.int64]"]]):
 
             >>> for img, label in itertools.islice(iter(mnist_test), 5):  # only show first 5 images
             ...     # do something with img and label
-            ...     print(type(img), img.shape, label)  # type: ignore
+            ...     assert isinstance(img, paddle.Tensor)
+            ...     print(type(img), img.shape, label)
             ...     # <class 'paddle.Tensor'> [1, 28, 28] [7]
     """
 
@@ -284,6 +286,7 @@ class FashionMNIST(MNIST):
         .. code-block:: pycon
 
             >>> import itertools
+            >>> import paddle
             >>> import paddle.vision.transforms as T
             >>> from paddle.vision.datasets import FashionMNIST
 
@@ -319,7 +322,8 @@ class FashionMNIST(MNIST):
 
             >>> for img, label in itertools.islice(iter(fashion_mnist_test), 5):  # only show first 5 images
             ...     # do something with img and label
-            ...     print(type(img), img.shape, label)  # type: ignore
+            ...     assert isinstance(img, paddle.Tensor)
+            ...     print(type(img), img.shape, label)
             ...     # <class 'paddle.Tensor'> [1, 28, 28] [9]
     """
 

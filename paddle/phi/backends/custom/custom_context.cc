@@ -433,10 +433,11 @@ struct CustomContext::Impl {
 
   const Attribute& GetDnnAttr(const std::string& attr_name) const {
     auto iter = dnn_attrs_.find(attr_name);
-    PADDLE_ENFORCE_NE(iter,
-                      dnn_attrs_.end(),
-                      common::errors::NotFound(
-                          "Attribute `%s` is not found in CustomContext."));
+    PADDLE_ENFORCE_NE(
+        iter,
+        dnn_attrs_.end(),
+        common::errors::NotFound(
+            "Attribute `%s` is not found in CustomContext.", attr_name));
     return iter->second;
   }
 

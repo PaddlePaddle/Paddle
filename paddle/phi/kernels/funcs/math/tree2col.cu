@@ -106,10 +106,19 @@ class Tree2ColFunctor<GPUContext, T> {
     phi::Copy(dev_ctx, eta_cpu, gpu_place, false, &eta_gpu);
     phi::Copy(dev_ctx, index_cpu, gpu_place, false, &index_gpu);
 
-    int elem_size = patch_size * feature_size;
-    int blocks = (elem_size + 1024 - 1) / 1024;
+    PADDLE_ENFORCE_LE_INT_MAX(feature_size, "tree2col kernel feature_size");
+    PADDLE_ENFORCE_LE_INT_MAX(static_cast<int64_t>(patch_size),
+                              "tree2col kernel patch_size");
+    const int feature_size_int = static_cast<int>(feature_size);
+    const int patch_size_int = static_cast<int>(patch_size);
+
+    int64_t elem_size = static_cast<int64_t>(patch_size) * feature_size;
+    int64_t blocks64 = (elem_size + 1024 - 1) / 1024;
+    PADDLE_ENFORCE_LE_INT_MAX(blocks64, "CUDA launch grid blocks");
     int block_x = 512;
-    int block_y = (blocks + 512 - 1) / 512;
+    int64_t block_y64 = (blocks64 + block_x - 1) / block_x;
+    PADDLE_ENFORCE_LE_INT_MAX(block_y64, "CUDA launch grid.y");
+    int block_y = static_cast<int>(block_y64);
     dim3 threads(1024, 1);
     dim3 grid(block_x, block_y);
 
@@ -122,8 +131,8 @@ class Tree2ColFunctor<GPUContext, T> {
                                               index_gpu.data<int>(),
                                               node_features.data<T>(),
                                               patch->data<T>(),
-                                              feature_size,
-                                              patch_size);
+                                              feature_size_int,
+                                              patch_size_int);
   }
 };
 template <typename T>
@@ -191,10 +200,19 @@ class Col2TreeFunctor<GPUContext, T> {
     phi::Copy(dev_ctx, eta_cpu, gpu_place, false, &eta_gpu);
     phi::Copy(dev_ctx, index_cpu, gpu_place, false, &index_gpu);
 
-    int elem_size = output_size * grad_size;
-    int blocks = (elem_size + 1024 - 1) / 1024;
+    PADDLE_ENFORCE_LE_INT_MAX(output_size, "tree2col kernel output_size");
+    PADDLE_ENFORCE_LE_INT_MAX(static_cast<int64_t>(grad_size),
+                              "tree2col kernel grad_size");
+    const int output_size_int = static_cast<int>(output_size);
+    const int grad_size_int = static_cast<int>(grad_size);
+
+    int64_t elem_size = static_cast<int64_t>(output_size) * grad_size;
+    int64_t blocks64 = (elem_size + 1024 - 1) / 1024;
+    PADDLE_ENFORCE_LE_INT_MAX(blocks64, "CUDA launch grid blocks");
     int block_x = 512;
-    int block_y = (blocks + 512 - 1) / 512;
+    int64_t block_y64 = (blocks64 + block_x - 1) / block_x;
+    PADDLE_ENFORCE_LE_INT_MAX(block_y64, "CUDA launch grid.y");
+    int block_y = static_cast<int>(block_y64);
     dim3 threads(1024, 1);
     dim3 grid(block_x, block_y);
 
@@ -208,8 +226,8 @@ class Col2TreeFunctor<GPUContext, T> {
                                               index_gpu.data<int>(),
                                               patch_grad.data<T>(),
                                               embedding_grad->data<T>(),
-                                              output_size,
-                                              grad_size);
+                                              output_size_int,
+                                              grad_size_int);
   }
 };
 

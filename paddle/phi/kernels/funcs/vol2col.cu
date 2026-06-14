@@ -56,7 +56,8 @@ __global__ void vol2col(int64_t num_kernels,
     int64_t h_out = (index / output_width) % output_height;
     int64_t d_out = (index / output_width / output_height) % output_detph;
     int channel_in = index / output_width / output_height / output_detph;
-    int channel_out = channel_in * filter_depth * filter_height * filter_width;
+    int64_t channel_out = static_cast<int64_t>(channel_in) * filter_depth *
+                          filter_height * filter_width;
     int64_t w_in = w_out * stride_width - padding_width;
     int64_t h_in = h_out * stride_height - padding_height;
     int64_t d_in = d_out * stride_depth - padding_depth;

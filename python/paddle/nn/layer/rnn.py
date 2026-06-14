@@ -1691,9 +1691,7 @@ class RNNBase(LayerList):
                 with paddle.no_grad():
                     dtype = params[0].dtype
                     if isinstance(dtype, core.DataType):
-                        dtype = paddle.base.framework.paddle_type_to_proto_type[
-                            dtype
-                        ]
+                        dtype = paddle.base.framework.datatype_to_vartype[dtype]
                     _legacy_C_ops.coalesce_tensor(
                         self._all_weights,
                         self._all_weights,

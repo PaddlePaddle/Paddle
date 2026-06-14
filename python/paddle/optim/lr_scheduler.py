@@ -12,21 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.optimizer.lr import (
-    CosineAnnealingDecay as CosineAnnealingLR,
-    CosineAnnealingWarmRestarts as CosineAnnealingWarmRestarts,
-    CyclicLR as CyclicLR,
-    ExponentialDecay as ExponentialLR,
-    LambdaDecay as LambdaLR,
-    LinearLR as LinearLR,
-    LRScheduler as LRScheduler,
-    MultiplicativeDecay as MultiplicativeLR,
-    MultiStepDecay as MultiStepLR,
-    OneCycleLR as OneCycleLR,
-    PiecewiseDecay as ConstantLR,
-    ReduceOnPlateau as ReduceLROnPlateau,
-    StepDecay as StepLR,
-)
+import paddle.optimizer.lr
+
+LambdaLR = paddle.optimizer.lr.LambdaDecay
+MultiplicativeLR = paddle.optimizer.lr.MultiplicativeDecay
+StepLR = paddle.optimizer.lr.StepDecay
+MultiStepLR = paddle.optimizer.lr.MultiStepDecay
+ConstantLR = paddle.optimizer.lr.PiecewiseDecay
+LinearLR = paddle.optimizer.lr.LinearLR
+ExponentialLR = paddle.optimizer.lr.ExponentialDecay
+CosineAnnealingLR = paddle.optimizer.lr.CosineAnnealingDecay
+ReduceLROnPlateau = paddle.optimizer.lr.ReduceOnPlateau
+CyclicLR = paddle.optimizer.lr.CyclicLR
+CosineAnnealingWarmRestarts = paddle.optimizer.lr.CosineAnnealingWarmRestarts
+OneCycleLR = paddle.optimizer.lr.OneCycleLR
+LRScheduler = paddle.optimizer.lr.LRScheduler
 
 __all__ = [
     "LambdaLR",

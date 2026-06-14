@@ -71,9 +71,8 @@ class WhileOp : public framework::OperatorBase {
         1,
         common::errors::InvalidArgument(
             "The numel of Input(Condition) of WhileOp must be 1. But now "
-            "the Condition's numel is ",
-            cond.numel(),
-            ".\n"));
+            "the Condition's numel is %d.",
+            cond.numel()));
 
 #ifdef PADDLE_WITH_DNNL
     // Executor on being destroyed clears oneDNN cache and resets

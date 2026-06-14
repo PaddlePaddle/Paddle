@@ -13,9 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/instance_norm_kernel.h"
-
 #include "glog/logging.h"
-
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -56,7 +54,9 @@ void InstanceNormKernel(const Context &dev_ctx,
                         x_dims.size()));
   int N, C, H, W, D;
   funcs::ExtractNCWHD(x_dims, DataLayout::NCHW, &N, &C, &H, &W, &D);
-  int NxC = N * C;
+  const int64_t NxC64 = static_cast<int64_t>(N) * C;
+  PADDLE_ENFORCE_LE_INT_MAX(NxC64, "NxC");
+  const int NxC = static_cast<int>(NxC64);
   DenseTensor x_tmp;
   x_tmp.ShareDataWith(x).Resize({1, NxC, H, W, D});
   dev_ctx.template Alloc<T>(y);
@@ -101,8 +101,18 @@ void InstanceNormKernel(const Context &dev_ctx,
   VLOG(3) << "Setting descriptors.";
   std::vector<int> dims;
   std::vector<int> strides;
+  const int64_t stride0 = NxC64 * H * W * D;
+  const int64_t stride1 = static_cast<int64_t>(H) * W * D;
+  const int64_t stride2 = static_cast<int64_t>(W) * D;
+  PADDLE_ENFORCE_LE_INT_MAX(stride0, "cudnn tensor descriptor stride0");
+  PADDLE_ENFORCE_LE_INT_MAX(stride1, "cudnn tensor descriptor stride1");
+  PADDLE_ENFORCE_LE_INT_MAX(stride2, "cudnn tensor descriptor stride2");
   dims = {1, NxC, H, W, D};
-  strides = {NxC * H * W * D, H * W * D, W * D, D, 1};
+  strides = {static_cast<int>(stride0),
+             static_cast<int>(stride1),
+             static_cast<int>(stride2),
+             D,
+             1};
 
 #ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_GPU_SUCCESS(

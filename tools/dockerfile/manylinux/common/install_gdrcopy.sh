@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,4 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.optimizer.adamax import Adamax  # noqa: F401
+set -e
+
+# install gdrcopy
+cd /usr/local
+wget -q https://paddle-ci.gz.bcebos.com/gdrcopy.tar
+tar xf gdrcopy.tar
+rm -f gdrcopy.tar
+ldconfig

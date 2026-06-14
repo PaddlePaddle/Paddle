@@ -93,6 +93,11 @@ endif()
 
 if(WITH_XPU)
   list(REMOVE_ITEM TEST_OPS test_max_pool_dilation)
+  list(REMOVE_ITEM TEST_OPS test_api_compatibility_part1)
+  list(REMOVE_ITEM TEST_OPS test_api_compatibility_part2)
+  list(REMOVE_ITEM TEST_OPS test_api_compatibility_part3)
+  list(REMOVE_ITEM TEST_OPS test_api_compatibility_part4)
+  list(REMOVE_ITEM TEST_OPS test_api_compatibility_part5)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_fused_attention_pass)
@@ -669,6 +674,11 @@ endif()
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach()
+if(WITH_COVERAGE)
+  if(TEST test_randperm_op)
+    set_tests_properties(test_randperm_op PROPERTIES TIMEOUT 500)
+  endif()
+endif()
 py_test_modules(
   test_imperative_ocr_attention_model MODULES
   test_imperative_ocr_attention_model ENVS FLAGS_cudnn_deterministic=1)

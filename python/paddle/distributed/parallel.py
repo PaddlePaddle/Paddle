@@ -1280,6 +1280,125 @@ def init_parallel_env(nccl_config: NCCLConfig | None = None) -> Group:
     return group
 
 
+def init_process_group(
+    backend: str | None = None,
+    init_method: str | None = None,
+    timeout: Any = None,
+    world_size: int = -1,
+    rank: int = -1,
+    store: Any = None,
+    group_name: str = '',
+    pg_options: Any = None,
+    device_id: Any = None,
+) -> None:
+    """
+
+    Compatibility wrapper around :func:`init_parallel_env` mirroring the
+    signature of :func:`torch.distributed.init_process_group` (which also
+    returns ``None``).
+
+    Paddle picks up ``world_size`` / ``rank`` / endpoints from the
+    ``PADDLE_*`` environment variables set by ``paddle.distributed.launch``;
+    ``torchrun`` is not currently auto-detected (its ``WORLD_SIZE`` /
+    ``RANK`` / ``MASTER_ADDR`` / ``MASTER_PORT`` are not mapped). Most
+    PyTorch arguments are accepted for source compatibility but only
+    ``backend``, ``world_size`` and ``rank`` are forwarded:
+
+    - ``backend``: written to ``PADDLE_DISTRI_BACKEND``.
+    - ``world_size``: when the env var ``PADDLE_TRAINERS_NUM`` is unset, it is
+      written from this value; if both are set and disagree, a
+      :class:`UserWarning` is emitted and the env value is preserved.
+    - ``rank``: same convention with ``PADDLE_TRAINER_ID``.
+
+    After this call, the default global group is reachable via
+    :attr:`paddle.distributed.group.WORLD`.
+
+    Args:
+        backend (str|None, optional): One of ``'nccl'``, ``'gloo'``,
+            ``'bkcl'``, ``'auto'``. Defaults to ``None`` (auto-detect).
+        init_method (str|None, optional): Accepted for PyTorch source
+            compatibility; not used.
+        timeout (Any, optional): Accepted for PyTorch source compatibility;
+            not used.
+        world_size (int, optional): Number of trainers. Forwarded to
+            ``PADDLE_TRAINERS_NUM`` when that env var is unset.
+        rank (int, optional): Rank of the current trainer. Forwarded to
+            ``PADDLE_TRAINER_ID`` when that env var is unset.
+        store (Any, optional): Accepted for PyTorch source compatibility; not
+            used.
+        group_name (str, optional): Accepted for PyTorch source compatibility;
+            not used.
+        pg_options (Any, optional): Accepted for PyTorch source compatibility;
+            not used.
+        device_id (Any, optional): Accepted for PyTorch source compatibility;
+            not used.
+
+    Returns:
+        None. Matches ``torch.distributed.init_process_group``; access the
+        default group via :attr:`paddle.distributed.group.WORLD`.
+
+    Raises:
+        RuntimeError: If the default process group has already been
+            initialized. Mirrors PyTorch, which raises
+            ``"trying to initialize the default process group twice!"``
+            on the same condition. Use :func:`destroy_process_group` first
+            if a re-init is intentional.
+
+    .. note::
+
+        Unlike :func:`init_parallel_env`, ``init_process_group`` is **not**
+        idempotent — calling it after the default group has been
+        initialized raises :exc:`RuntimeError` instead of silently
+        returning the existing group. This matches
+        ``torch.distributed.init_process_group`` semantics.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle.distributed as dist
+            >>> dist.init_process_group(backend='nccl')
+            >>> world = dist.group.WORLD
+            >>> # equivalent Paddle-native form:
+            >>> # dist.init_parallel_env()
+    """
+    if is_initialized():
+        raise RuntimeError(
+            "The default process group has already been initialized. "
+            "init_process_group() can only be called once; call "
+            "paddle.distributed.destroy_process_group() first if a re-init "
+            "is intentional."
+        )
+
+    if backend is not None:
+        os.environ['PADDLE_DISTRI_BACKEND'] = backend
+
+    if world_size != -1:
+        env_world_size = os.environ.get('PADDLE_TRAINERS_NUM')
+        if env_world_size is None:
+            os.environ['PADDLE_TRAINERS_NUM'] = str(world_size)
+        elif int(env_world_size) != world_size:
+            warnings.warn(
+                f"init_process_group(world_size={world_size}) disagrees with "
+                f"PADDLE_TRAINERS_NUM={env_world_size!r}; using the env value.",
+                UserWarning,
+                stacklevel=2,
+            )
+    if rank != -1:
+        env_rank = os.environ.get('PADDLE_TRAINER_ID')
+        if env_rank is None:
+            os.environ['PADDLE_TRAINER_ID'] = str(rank)
+        elif int(env_rank) != rank:
+            warnings.warn(
+                f"init_process_group(rank={rank}) disagrees with "
+                f"PADDLE_TRAINER_ID={env_rank!r}; using the env value.",
+                UserWarning,
+                stacklevel=2,
+            )
+
+    init_parallel_env()
+
+
 def get_rank(group: Group | None = None) -> int:
     """
     Returns the rank of current trainer in the given group, ranks are consecutive integers in [0, ``world_size``).

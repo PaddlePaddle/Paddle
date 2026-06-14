@@ -713,12 +713,15 @@ void FlashAttnV3VarlenGradKernel(const Context &dev_ctx,
       common::errors::InvalidArgument(
           "sm_margin is not supported, please set sm_margin to 0"));
 
-  PADDLE_ENFORCE_EQ(
-      q.dims()[q.dims().size() - 1],
-      v.dims()[v.dims().size() - 1],
-      common::errors::InvalidArgument("head_dim_q != head_dim_v (%d != %d)",
-                                      q.dims()[q.dims().size() - 1],
-                                      v.dims()[v.dims().size() - 1]));
+  const int64_t head_size = q.dims()[q.dims().size() - 1];
+  const int64_t head_size_v = v.dims()[v.dims().size() - 1];
+  PADDLE_ENFORCE_EQ(head_size,
+                    head_size_v,
+                    common::errors::InvalidArgument(
+                        "This kernel does not support headdim != headdim_v, "
+                        "but got headdim = %d and headdim_v = %d",
+                        head_size,
+                        head_size_v));
 
   // umiswing: fake grad tensor for FlashAttnV3GradBaseKernel
   DenseTensor softmax_d;

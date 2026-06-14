@@ -120,14 +120,15 @@ jobs:
             echo "${name}_image=${docker_image}" >> $GITHUB_OUTPUT
             set +e
             docker pull $docker_image
-            if [ $? -eq 0 ];then
+            pull_status=$?
+            set -e
+            if [ $pull_status -eq 0 ];then
               echo use docker cache
             else
               docker build -t $docker_image -f tools/dockerfile/${docker_files[$name]} .
               docker push $docker_image
               echo end docker build
             fi
-            set -e
           done
 
           # clean workspace

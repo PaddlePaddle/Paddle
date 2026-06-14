@@ -107,7 +107,7 @@ static void CalcGridLocations(const CPUContext& dev_ctx,
   T* grid_x_data = dev_ctx.Alloc<T>(grid_x);
   T* grid_y_data = dev_ctx.Alloc<T>(grid_y);
   const T* grid_data = grid.data<T>();
-  for (int i = 0; i < n * out_h * out_w; i++) {
+  for (int64_t i = 0; i < static_cast<int64_t>(n) * out_h * out_w; i++) {
     grid_x_data[i] = grid_data[2 * i];
     grid_y_data[i] = grid_data[(2 * i) + 1];
   }
@@ -143,7 +143,8 @@ static void Calc3DGridLocations(const CPUContext& dev_ctx,
   T* grid_y_data = dev_ctx.Alloc<T>(grid_y);
   T* grid_z_data = dev_ctx.Alloc<T>(grid_z);
   const T* grid_data = grid.data<T>();
-  for (int i = 0; i < n * out_d * out_h * out_w; i++) {
+  for (int64_t i = 0; i < static_cast<int64_t>(n) * out_d * out_h * out_w;
+       i++) {
     grid_x_data[i] = grid_data[3 * i];
     grid_y_data[i] = grid_data[(3 * i) + 1];
     grid_z_data[i] = grid_data[(3 * i) + 2];

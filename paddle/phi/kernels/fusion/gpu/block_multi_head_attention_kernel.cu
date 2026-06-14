@@ -827,7 +827,7 @@ void DispatchWithDtype(const Context& dev_ctx,
     dim3 grid(((n >> 2) + 63) / 64, (m + 7) / 8);
     dim3 block(64, 8);
 #else
-    dim3 grid((n >> 2 + 31) / 32, (m + 31) / 32);
+    dim3 grid(((n >> 2) + 31) / 32, (m + 31) / 32);
     dim3 block(32, 32);
 #endif
     if (out_shift && out_smooth) {

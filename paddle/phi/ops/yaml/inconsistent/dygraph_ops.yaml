@@ -220,6 +220,7 @@
     param : [x]
   kernel :
     func : hardswish
+  inplace : (x -> out)
   backward : hardswish_grad
 
 - op : less_equal
@@ -284,6 +285,16 @@
     func : minimum
   backward : minimum_grad
   traits : pir::BinaryElementWiseTrait
+
+- op : mm_out_dtype
+  args : (Tensor x, Tensor y, DataType out_dtype)
+  output : Tensor(out)
+  infer_meta :
+    func : MmOutDtypeInferMeta
+  kernel :
+    func : mm_out_dtype
+    data_type : x
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : multiply
   args : (Tensor x, Tensor y)

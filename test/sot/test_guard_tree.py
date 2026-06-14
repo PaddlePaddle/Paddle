@@ -15,13 +15,14 @@
 from __future__ import annotations
 
 import unittest
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle.jit.sot.opcode_translator.custom_code import CustomCode
 
 if TYPE_CHECKING:
     import types
+    from collections.abc import Callable
 
 z = paddle.to_tensor(1)
 

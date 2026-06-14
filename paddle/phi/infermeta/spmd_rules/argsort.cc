@@ -130,8 +130,8 @@ SpmdInfo ArgSortGradInferSpmd(const DistMetaTensor& indices,
     PADDLE_ENFORCE_EQ(
         x_dims_mapping[i] == ind_dims_mapping[i],
         1,
-        errors::InvalidArgument("ArgSortGrad x dims_mapping[%d]=[%d] should be "
-                                "equal to indices dims_mapping[%d]=[%d].",
+        errors::InvalidArgument("ArgSortGrad x dims_mapping[%d]=[%s] should be "
+                                "equal to indices dims_mapping[%d]=[%s].",
                                 i,
                                 str_join(x_dims_mapping[i]),
                                 i,

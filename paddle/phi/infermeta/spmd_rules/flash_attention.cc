@@ -464,7 +464,7 @@ SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
       batch_size,
       batch_size_2,
       common::errors::InvalidArgument(
-          "batch size of Tensor out and softmax_lse is not matched: [] vs []",
+          "batch size of Tensor out and softmax_lse is not matched: %d vs %d",
           batch_size,
           batch_size_2));
 
@@ -472,7 +472,7 @@ SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
       num_heads,
       num_heads_2,
       common::errors::InvalidArgument(
-          "num heads of Tensor out and softmax_lse is not matched: [] vs []",
+          "num heads of Tensor out and softmax_lse is not matched: %d vs %d",
           num_heads,
           num_heads_2));
 
@@ -480,7 +480,7 @@ SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
       seq_len_q,
       seq_len_q_2,
       common::errors::InvalidArgument(
-          "seq_len_q of Tensor out and softmax_lse is not matched: [] vs []",
+          "seq_len_q of Tensor out and softmax_lse is not matched: %d vs %d",
           seq_len_q,
           seq_len_q_2));
 

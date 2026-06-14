@@ -212,7 +212,7 @@ Json serializeAttrToJson<paddle::dialect::ScalarAttribute>(
     content.push_back(scalar.to<phi::dtype::complex<double>>().imag);
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "Invalid tensor data type `", dtype_, "`."));
+        "Invalid tensor data type `%s`.", dtype_));
   }
   json_obj[DATA] = content;
   return json_obj;
@@ -254,7 +254,8 @@ Json writeType(const pir::Type& type) {
   } else {
     PADDLE_ENFORCE(
         false,
-        common::errors::InvalidArgument("Unknown Type %s when write type"));
+        common::errors::InvalidArgument("Unknown Type %s when write type",
+                                        type.dialect().name()));
   }
   VLOG(8) << "Finish write Type ... ";
 
@@ -282,7 +283,8 @@ Json writeAttr(const pir::Attribute& attr) {
   } else {
     PADDLE_ENFORCE(
         false,
-        common::errors::InvalidArgument("Unknown Attr %s when write attr"));
+        common::errors::InvalidArgument("Unknown Attr %s when write attr",
+                                        attr.dialect().name()));
   }
 
   VLOG(8) << "Finish write attr ... ";
@@ -420,7 +422,8 @@ Json AttrTypeWriter::WriteBuiltInAttr(const pir::Attribute& attr) {
   } else {
     PADDLE_ENFORCE(false,
                    common::errors::InvalidArgument(
-                       "Unknown Attr %s when write Builtin dialect attr"));
+                       "Unknown Attr %s when write Builtin dialect attr",
+                       attr.dialect().name()));
   }
   return attr_json;
 }
@@ -667,10 +670,10 @@ Json AttrTypeWriter::WritePaddleOperatorAttr(const pir::Attribute& attr) {
     return pir::serializeAttrToJson<paddle::dialect::DataLayoutAttribute>(
         attr.dyn_cast<paddle::dialect::DataLayoutAttribute>());
   } else {
-    PADDLE_ENFORCE(
-        false,
-        common::errors::InvalidArgument(
-            "Unknown Attr %s when write paddle.operatordialect attr"));
+    PADDLE_ENFORCE(false,
+                   common::errors::InvalidArgument(
+                       "Unknown Attr %s when write paddle.operatordialect attr",
+                       attr.dialect().name()));
   }
   return Json::object();
 }
@@ -734,10 +737,10 @@ Json AttrTypeWriter::WritePaddleDistAttr(const pir::Attribute& attr) {
     return pir::serializeAttrToJson<paddle::dialect::OperationDistAttribute>(
         attr.dyn_cast<paddle::dialect::OperationDistAttribute>());
   } else {
-    PADDLE_ENFORCE(
-        false,
-        common::errors::InvalidArgument(
-            "Unknown Attr %s when write paddle.operatordialect attr"));
+    PADDLE_ENFORCE(false,
+                   common::errors::InvalidArgument(
+                       "Unknown Attr %s when write paddle.operatordialect attr",
+                       attr.dialect().name()));
   }
   return Json::object();
 }

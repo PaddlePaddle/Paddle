@@ -19,13 +19,16 @@ import os
 from collections import OrderedDict
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Callable
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle.incubate.cc.tools import apy_to_axpr_json
 from paddle.static import InputSpec
 
 from . import typing as pct
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 __all__ = ['compile']
 

@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <limits>
+
 #include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -200,8 +202,8 @@ __global__ __launch_bounds__(BLOCK_DIM_X) void permute_kernel(
         expert = shared_routemap[lane_id * topk + col];
         prob = shared_probs[lane_id * topk + col];
       } else {
-        expert = routemap_topk[global_row * topk + col];
-        prob = probs_topk[global_row * topk + col];
+        expert = routemap_topk[static_cast<int64_t>(global_row) * topk + col];
+        prob = probs_topk[static_cast<int64_t>(global_row) * topk + col];
       }
     }
     if (expert >= 0 && expert < num_experts) {
@@ -265,8 +267,9 @@ __global__ __launch_bounds__(BLOCK_DIM_X) void permute_kernel(
                       __popc((lane_id < 31) ? (mask >> (lane_id + 1)) : 0u);
         }
 
-        zipped_expertwise_rowmap[global_row * num_experts + expert_id] =
-            final_pos;
+        zipped_expertwise_rowmap[static_cast<int64_t>(global_row) *
+                                     num_experts +
+                                 expert_id] = final_pos;
 #pragma unroll
         for (int k = 0; k < TOPK; k++) {
           if (reg_expert[k] == expert_id) {
@@ -409,7 +412,23 @@ void launch_permute_kernel(const GPUContext &dev_ctx,
   constexpr int ROWS_PER_BLOCK = kPermuteBlockSize;
   constexpr int BLOCK_DIM_X = kPermuteBlockDimX;
 
-  dim3 grid((total_zipped_tokens_num + ROWS_PER_BLOCK - 1) / ROWS_PER_BLOCK);
+  PADDLE_ENFORCE_GE(
+      total_zipped_tokens_num,
+      0,
+      common::errors::InvalidArgument(
+          "total_zipped_tokens_num should be non-negative, but got %d.",
+          total_zipped_tokens_num));
+  if (total_zipped_tokens_num == 0) return;
+  const int64_t grid_x =
+      (static_cast<int64_t>(total_zipped_tokens_num) + ROWS_PER_BLOCK - 1) /
+      ROWS_PER_BLOCK;
+  PADDLE_ENFORCE_LE(
+      grid_x,
+      static_cast<int64_t>(std::numeric_limits<unsigned int>::max()),
+      common::errors::InvalidArgument(
+          "The grid size of moe_permute should be <= UINT_MAX, but got %ld.",
+          grid_x));
+  dim3 grid(static_cast<unsigned int>(grid_x));
   dim3 block(BLOCK_DIM_X);
 
   const TokenT *x_ptr = X.data<TokenT>();
@@ -630,6 +649,12 @@ void dispatch_preprocess_w_override(const Context &dev_ctx,
                                     DenseTensor *expert_offset_end,
                                     DenseTensor *expert_indices) {
   constexpr int BLOCK_SIZE = 1024;
+  PADDLE_ENFORCE_LE(
+      expert_routemap_topk.numel(),
+      static_cast<int64_t>(std::numeric_limits<int32_t>::max()),
+      common::errors::InvalidArgument(
+          "expert_routemap_topk.numel() should be <= INT_MAX, but got %ld.",
+          expert_routemap_topk.numel()));
 
   dispatch::Bools(
       [&](auto fill_expert_indices_tag) {
@@ -671,38 +696,132 @@ void MoePermuteKernel(const Context &dev_ctx,
                       DenseTensor *token_prob_unzipped,
                       DenseTensor *XScale_unzipped,
                       DenseTensor *expert_indices) {
+  PADDLE_ENFORCE_EQ(
+      X.dims().size(),
+      2,
+      common::errors::InvalidArgument("Input X's dims should be 2, but got %u.",
+                                      X.dims().size()));
+  PADDLE_ENFORCE_EQ(
+      expert_routemap_topk.dims().size(),
+      2,
+      common::errors::InvalidArgument(
+          "Input expert_routemap_topk's dims should be 2, but got %u.",
+          expert_routemap_topk.dims().size()));
+  PADDLE_ENFORCE_EQ(
+      expert_prob_topk.dims().size(),
+      2,
+      common::errors::InvalidArgument(
+          "Input expert_prob_topk's dims should be 2, but got %u.",
+          expert_prob_topk.dims().size()));
+  PADDLE_ENFORCE_EQ(expert_prob_topk.dims(),
+                    expert_routemap_topk.dims(),
+                    common::errors::InvalidArgument(
+                        "Input expert_prob_topk's dims should be equal to "
+                        "expert_routemap_topk's dims, but got %s and %s.",
+                        expert_prob_topk.dims(),
+                        expert_routemap_topk.dims()));
+
   const int64_t rows = X.dims()[0];
   const int64_t cols = X.dims()[1];
   const int64_t topk = expert_routemap_topk.dims()[1];
-  const int64_t quanted_cols = (XScale) ? XScale.get_ptr()->dims()[1] : 0;
-  const bool is_buffer_overridden = (override_buffer_size > -1);
-
+  PADDLE_ENFORCE_EQ(
+      expert_routemap_topk.dims()[0],
+      rows,
+      common::errors::InvalidArgument(
+          "Input expert_routemap_topk's first dimension should be equal to "
+          "X.dims()[0], but got %ld and %ld.",
+          expert_routemap_topk.dims()[0],
+          rows));
   PADDLE_ENFORCE_LE(
       rows,
-      std::numeric_limits<int32_t>::max(),
+      static_cast<int64_t>(std::numeric_limits<int32_t>::max()) -
+          static_cast<int64_t>(kPermuteBlockSize),
       common::errors::InvalidArgument(
-          "X.dims()[0] should be less than INT_MAX, received: (%ld)", rows));
+          "X.dims()[0] should be <= INT_MAX - %d, received: (%ld)",
+          kPermuteBlockSize,
+          rows));
   PADDLE_ENFORCE_LE(
       cols,
       std::numeric_limits<int32_t>::max(),
       common::errors::InvalidArgument(
           "X.dims()[1] should be less than INT_MAX, received: (%ld)", cols));
+  PADDLE_ENFORCE_GE(topk,
+                    1,
+                    common::errors::InvalidArgument(
+                        "topk should be > 0, received: (%ld)", topk));
   PADDLE_ENFORCE_LE(topk,
                     16,
                     common::errors::InvalidArgument(
                         "topk should be <= 16, received: (%ld)", topk));
+  PADDLE_ENFORCE_GE(
+      num_experts,
+      1,
+      common::errors::InvalidArgument(
+          "num_experts should be > 0, received: (%d)", num_experts));
   PADDLE_ENFORCE_LE(num_experts,
                     kMaxNumExperts,
                     common::errors::InvalidArgument(
                         "num_experts should be <= %d, received: (%d)",
                         kMaxNumExperts,
                         num_experts));
+  PADDLE_ENFORCE_GE(padding_alignment,
+                    1,
+                    common::errors::InvalidArgument(
+                        "padding_alignment should be > 0, received: (%d)",
+                        padding_alignment));
+  PADDLE_ENFORCE_GE(
+      override_buffer_size,
+      -1,
+      common::errors::InvalidArgument(
+          "override_buffer_size should be -1 or non-negative, received: (%d)",
+          override_buffer_size));
+  PADDLE_ENFORCE_LE(
+      rows,
+      static_cast<int64_t>(std::numeric_limits<int32_t>::max()) /
+          static_cast<int64_t>(num_experts),
+      common::errors::InvalidArgument(
+          "X.dims()[0] * num_experts should be <= INT_MAX, received: %ld * %d.",
+          rows,
+          num_experts));
+  PADDLE_ENFORCE_LE(
+      expert_routemap_topk.numel(),
+      static_cast<int64_t>(std::numeric_limits<int32_t>::max()),
+      common::errors::InvalidArgument(
+          "expert_routemap_topk.numel() should be <= INT_MAX, but got %ld.",
+          expert_routemap_topk.numel()));
+  if (X.dtype() == DataType::FLOAT8_E4M3FN && do_gather) {
+    PADDLE_ENFORCE_EQ(XScale.get_ptr() != nullptr,
+                      true,
+                      common::errors::InvalidArgument(
+                          "Input XScale should not be None when X's dtype is "
+                          "FLOAT8_E4M3FN and do_gather is True."));
+  }
+  if (XScale.get_ptr() != nullptr) {
+    PADDLE_ENFORCE_EQ(XScale.get_ptr()->dims().size(),
+                      2,
+                      common::errors::InvalidArgument(
+                          "Input XScale's dims should be 2, but got %u.",
+                          XScale.get_ptr()->dims().size()));
+    if (do_gather) {
+      PADDLE_ENFORCE_EQ(
+          XScale.get_ptr()->dims()[0],
+          rows,
+          common::errors::InvalidArgument(
+              "Input XScale's first dimension should be equal to X.dims()[0], "
+              "but got %ld and %ld.",
+              XScale.get_ptr()->dims()[0],
+              rows));
+    }
+  }
+  const int64_t quanted_cols =
+      (XScale.get_ptr() != nullptr) ? XScale.get_ptr()->dims()[1] : 0;
   PADDLE_ENFORCE_LE(
       quanted_cols,
       std::numeric_limits<int32_t>::max(),
       common::errors::InvalidArgument(
           "quanted_cols should be less than INT_MAX, received: (%ld)",
           quanted_cols));
+  const bool is_buffer_overridden = (override_buffer_size >= 0);
 
   // Output allocation
   void *XScale_unzipped_ptr = nullptr;
@@ -740,8 +859,18 @@ void MoePermuteKernel(const Context &dev_ctx,
 
   // Preprocess
   constexpr int kEffectiveBlockSize = kPermuteBlockSize;
-  const int cumsum_blocknum =
+  const int64_t cumsum_blocknum_i64 =
       (rows + kEffectiveBlockSize - 1) / kEffectiveBlockSize;
+  PADDLE_ENFORCE_LE(
+      cumsum_blocknum_i64 + 2,
+      static_cast<int64_t>(std::numeric_limits<int32_t>::max()) /
+          static_cast<int64_t>(num_experts),
+      common::errors::InvalidArgument(
+          "The cumsum buffer size of moe_permute should be <= INT_MAX, but got "
+          "(%ld + 2) * %d.",
+          cumsum_blocknum_i64,
+          num_experts));
+  const int cumsum_blocknum = static_cast<int>(cumsum_blocknum_i64);
 
   DenseTensor expert_offset_tensor;
   DenseTensor expert_offset_end_tensor;

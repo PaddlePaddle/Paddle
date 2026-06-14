@@ -20,7 +20,8 @@ import typing
 import warnings
 import weakref
 from collections import OrderedDict, namedtuple
-from typing import TYPE_CHECKING, Any, Callable, Union
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from typing_extensions import Self, overload
@@ -44,12 +45,12 @@ from paddle.base.framework import (
     Parameter,
     Program,
     _current_expected_place as _get_device,
-    convert_np_dtype_to_dtype_,
+    convert_nptype_to_datatype_or_vartype,
+    datatype_to_vartype,
     default_main_program,
     in_dygraph_mode,
     in_pir_mode,
     name_struct,
-    paddle_type_to_proto_type,
 )
 from paddle.base.layer_helper_base import LayerHelperBase
 from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
@@ -73,18 +74,24 @@ if TYPE_CHECKING:
 __all__ = []
 
 
-_ForwardPreHook = Union[
-    Callable[["Layer", Tensor], Tensor],  # (layer, input) -> transformed_input
-    Callable[["Layer", Tensor, dict[str, Any]], tuple[Tensor, dict[str, Any]]],
-]
-_ForwardPostHook = Union[
-    Callable[
-        ["Layer", Tensor, Tensor], Tensor
-    ],  # (layer, input, output) -> transformed_output
-    Callable[["Layer", Tensor, dict[str, Any], Tensor], Tensor],
-]
-_StateDict = Union[dict[str, Tensor], typing.OrderedDict[str, Tensor]]
+_ForwardPreHook = (
+    Callable[["Layer", tuple[Any, ...]], Any | None]
+    | Callable[
+        ["Layer", tuple[Any, ...], dict[str, Any]],
+        tuple[tuple[Any, ...], dict[str, Any]] | None,
+    ]
+)
+_ForwardPostHook = (
+    Callable[["Layer", tuple[Any, ...], Any], Any | None]
+    | Callable[
+        ["Layer", tuple[Any, ...], dict[str, Any], Any],
+        Any | None,
+    ]
+)
+_StateDict = dict[str, Any] | typing.OrderedDict[str, Any]
+_StateDictPreHook = Callable[["Layer", str, bool], None]
 _StateDictHook = Callable[[_StateDict], None]
+_EXTRA_STATE_KEY_SUFFIX = "_extra_state"
 
 _first_cap_re = re.compile('(.)([A-Z][a-z]+)')
 _all_cap_re = re.compile('([a-z])([A-Z])')
@@ -682,7 +689,9 @@ class Layer:
         self._state_dict_hooks: typing.OrderedDict[int, _StateDictHook] = (
             OrderedDict()
         )
-        self._state_dict_pre_hooks = OrderedDict()
+        self._state_dict_pre_hooks: typing.OrderedDict[
+            int, _StateDictPreHook
+        ] = OrderedDict()
         self._load_state_dict_pre_hooks = OrderedDict()
         self._load_state_dict_post_hooks = OrderedDict()
         # Records original functions after @to_static to support to rollback
@@ -1229,7 +1238,7 @@ class Layer:
 
         param: paddle.nn.Parameter = getattr(mod, param_name)
 
-        if not isinstance(param, (paddle.nn.Parameter, paddle.Tensor)):
+        if not isinstance(param, paddle.nn.Parameter):
             raise AttributeError("`" + param_name + "` is not an nn.Parameter")
 
         return param
@@ -1451,7 +1460,7 @@ class Layer:
             and dtype in valid_dtypes
         ):
             if isinstance(dtype, (str, np.dtype)):
-                dtype = framework.convert_np_dtype_to_dtype_(dtype)
+                dtype = framework.convert_nptype_to_datatype_or_vartype(dtype)
             self._dtype = dtype
             for layer in self.sublayers():
                 layer._dtype = dtype
@@ -2154,7 +2163,7 @@ class Layer:
     def backward(self, *inputs: Any) -> Any:
         raise ValueError("Layer shouldn't implement backward")
 
-    def add_sublayer(self, name: str, sublayer: Layer) -> Layer:
+    def add_sublayer(self, name: str, sublayer: Layer | None) -> Layer | None:
         """
 
         Adds a sub Layer instance.
@@ -2649,7 +2658,7 @@ class Layer:
     ) -> HookRemoveHelper:
         return self.register_state_dict_hook(hook)
 
-    def register_state_dict_pre_hook(self, hook: Callable[..., None]):
+    def register_state_dict_pre_hook(self, hook: _StateDictPreHook):
         hook_remove_helper = HookRemoveHelper(self._state_dict_pre_hooks)
         self._state_dict_pre_hooks[hook_remove_helper._hook_id] = hook
         return hook_remove_helper
@@ -2742,6 +2751,15 @@ class Layer:
                         buffer if keep_vars else buffer.detach()
                     )
 
+        extra_state_key = structured_name_prefix + _EXTRA_STATE_KEY_SUFFIX
+        if (
+            getattr(self.__class__, "get_extra_state", Layer.get_extra_state)
+            is not Layer.get_extra_state
+        ):
+            extra_state = self.get_extra_state()
+            if extra_state is not None:
+                destination[extra_state_key] = extra_state
+
         if include_sublayers:
             for layer_name, layer_item in self._sub_layers.items():
                 if layer_item is not None:
@@ -2755,8 +2773,17 @@ class Layer:
                     )
 
         if use_hook:
+            local_metadata: dict[str, Any] = {}
             for state_dict_hook in self._state_dict_hooks.values():
-                hook_result = state_dict_hook(destination)
+                try:
+                    hook_result = state_dict_hook(destination)
+                except TypeError:
+                    hook_result = state_dict_hook(
+                        self,
+                        destination,
+                        structured_name_prefix,
+                        local_metadata,
+                    )
                 if hook_result is not None:
                     destination = hook_result
 
@@ -2825,6 +2852,7 @@ class Layer:
     @overload
     def state_dict(
         self,
+        destination: None,
         *,
         prefix: str = ...,
         keep_vars: bool = ...,
@@ -2866,9 +2894,20 @@ class Layer:
                 raise TypeError(f"got multiple values for argument '{key}'")
             kwargs[key] = value
 
-        if (
-            len_args >= 2 and isinstance(args[1], str)
-        ) or 'prefix' in kwargs:  # Torch API
+        if len_args >= 2 and isinstance(args[1], bool):
+            return self._state_dict_impl(*args, **kwargs)
+
+        if any(
+            key in kwargs
+            for key in [
+                'include_sublayers',
+                'structured_name_prefix',
+                'use_hook',
+            ]
+        ):
+            return self._state_dict_impl(*args, **kwargs)
+
+        if (len_args >= 2 and isinstance(args[1], str)) or 'prefix' in kwargs:
             base_param_keys = ["destination", "prefix", "keep_vars"]
             for idx in range(min(len_args, len(base_param_keys))):
                 safe_set_param(base_param_keys[idx], args[idx])
@@ -2964,6 +3003,7 @@ class Layer:
         self,
         state_dict: _StateDict,
         use_structured_name: bool = True,
+        assign: bool = False,
     ) -> tuple[list[str], list[str]]:
         '''
         Set parameters and persistable buffers from state_dict. All the parameters and buffers will be reset by the tensor in the state_dict
@@ -2972,6 +3012,9 @@ class Layer:
             state_dict(dict) : Dict contains all the parameters and persistable buffers.
             use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter or buffer name as key.
                                                   Default: True.
+            assign(bool, optional): When set to ``False``, the properties of the tensors
+                in the current layer are preserved whereas setting it to ``True`` preserves
+                properties of the tensors in the state dict. Default: ``False``.
         Returns:
             missing_keys(list):A list of str containing the missing keys
             unexpected_keys(list):A list of str containing the unexpected keys
@@ -3024,19 +3067,31 @@ class Layer:
                 return param, state
 
         matched_param_state = []
-        for key, param in self._state_dict_impl(use_hook=False).items():
+        for key, param in self._obtain_parameters_buffers().items():
             key_name = key if use_structured_name else param.name
             try:
                 match_res = _check_match(key_name, param)
-                matched_param_state.append(match_res)
+                matched_param_state.append((key, *match_res))
             except ValueError as err:
                 warnings.warn(f"Skip loading for {key}. " + str(err))
         for key in state_dict.keys():
             if key not in match_keys:
                 unexpected_keys.append(key)
         if in_dygraph_mode():
-            for param, state in matched_param_state:
-                param.set_value(state)
+            for key, param, state in matched_param_state:
+                if assign and use_structured_name:
+                    module_path, _, param_name = key.rpartition(".")
+                    mod = self.get_sublayer(module_path)
+                    if isinstance(param, paddle.nn.Parameter):
+                        if isinstance(state, paddle.nn.Parameter):
+                            state.trainable = param.trainable
+                        else:
+                            state = paddle.nn.Parameter(
+                                state, trainable=param.trainable
+                            )
+                    setattr(mod, param_name, state)
+                else:
+                    param.set_value(state)
         else:
 
             def _set_var(var, ndarray):
@@ -3070,18 +3125,18 @@ class Layer:
                         paddle.base.framework._current_expected_place_()
                     )._default_executor
                     paddle.base.libpaddle.pir.create_loaded_parameter(
-                        [param for param, state in matched_param_state],
+                        [param for key, param, state in matched_param_state],
                         global_scope(),
                         executor,
                     )
                 else:
                     executor = Executor(_get_device())._default_executor
                     core._create_loaded_parameter(
-                        [param for param, state in matched_param_state],
+                        [param for key, param, state in matched_param_state],
                         global_scope(),
                         executor,
                     )
-                for param, state in matched_param_state:
+                for key, param, state in matched_param_state:
                     _set_var(param, state)
             except ValueError as e:
                 raise ValueError(
@@ -3167,10 +3222,33 @@ class Layer:
         visit_load_state_dict_hooks(self, "")
 
         load_missing_keys, load_unexpected_keys = self.set_state_dict(
-            state_dict, use_structured_name=True
+            state_dict, use_structured_name=True, assign=assign
         )
         missing_keys.extend(load_missing_keys)
         unexpected_keys.extend(load_unexpected_keys)
+
+        def load_extra_state(layer, prefix):
+            extra_state_key = prefix + _EXTRA_STATE_KEY_SUFFIX
+            if extra_state_key in unexpected_keys:
+                unexpected_keys.remove(extra_state_key)
+            if (
+                getattr(
+                    layer.__class__, "set_extra_state", Layer.set_extra_state
+                )
+                is not Layer.set_extra_state
+            ):
+                if extra_state_key in state_dict:
+                    layer.set_extra_state(state_dict[extra_state_key])
+                elif strict:
+                    missing_keys.append(extra_state_key)
+            elif strict and extra_state_key in state_dict:
+                unexpected_keys.append(extra_state_key)
+
+            for layer_name, layer_item in layer._sub_layers.items():
+                if layer_item is not None:
+                    load_extra_state(layer_item, prefix + layer_name + ".")
+
+        load_extra_state(self, "")
 
         visit_load_state_dict_hooks(self, "", is_post_hook=True)
 
@@ -3361,17 +3439,17 @@ class Layer:
             dtype = t.dtype
 
         if not isinstance(dtype, (VarDesc.VarType, core.DataType)):
-            dtype = convert_np_dtype_to_dtype_(dtype)
+            dtype = convert_nptype_to_datatype_or_vartype(dtype)
 
         # 1. gpu place need to determine whether the memory is sufficient for allocation:
         if t.place.is_gpu_place():
             # for gpu, minimum memory allocation unit is 256 bytes.
-            proto_dtype = (
-                paddle_type_to_proto_type[dtype]
+            var_dtype = (
+                datatype_to_vartype[dtype]
                 if isinstance(dtype, core.DataType)
                 else dtype
             )
-            size_dtype = core.size_of_dtype(proto_dtype)
+            size_dtype = core.size_of_dtype(var_dtype)
             # Note(zhangbo): Paddle GPU minimum memory allocation unit is 256 bytes, waiting_alloc_memory will compute ‘t’ occupied memory space.
             # Coefficient 1.2 is used to avoid OOM that may occur in this critical state when the memory is just enough.
             waiting_alloc_memory = (
@@ -3534,7 +3612,9 @@ class Layer:
             and dst_type in valid_dtypes
         ):
             if isinstance(dst_type, (str, np.dtype)):
-                dst_type = framework.convert_np_dtype_to_dtype_(dst_type)
+                dst_type = framework.convert_nptype_to_datatype_or_vartype(
+                    dst_type
+                )
 
             def layer_trans(layer):
                 layer._to_impl(
@@ -3814,6 +3894,11 @@ class Layer:
     def get_extra_state(self) -> Any:
         raise RuntimeError(
             "Reached a code path in Module.get_extra_state() that should never be called. "
+        )
+
+    def set_extra_state(self, state: Any) -> None:
+        raise RuntimeError(
+            "Reached a code path in Module.set_extra_state() that should never be called. "
         )
 
     def requires_grad_(self, requires_grad: bool = True) -> Self:

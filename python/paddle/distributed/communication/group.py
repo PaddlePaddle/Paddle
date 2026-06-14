@@ -123,6 +123,62 @@ class _GroupManager:
     group_map_by_id = {}
 
 
+class _DistGroupMeta(type):
+    """Metaclass exposing :attr:`group.WORLD` as a dynamic class property."""
+
+    @property
+    def WORLD(cls) -> Group | None:
+        try:
+            return _get_global_group()
+        except RuntimeError:
+            return None
+
+    @WORLD.setter
+    def WORLD(cls, value: Group | None) -> None:
+        # Validate before mutating any registry so a rejected assignment
+        # leaves the existing default group intact.
+        if value is not None:
+            if not isinstance(value, Group):
+                raise TypeError(
+                    "group.WORLD must be a Group instance or None, got "
+                    f"{type(value).__name__}"
+                )
+            if value.id != _GroupManager.global_group_id:
+                raise ValueError(
+                    f"group.WORLD expects a Group with id="
+                    f"{_GroupManager.global_group_id}, got id={value.id}"
+                )
+
+        # Lazy import: ``collective`` imports from this module at its top.
+        from paddle.distributed import collective as _coll
+
+        prev = _GroupManager.group_map_by_id.pop(
+            _GroupManager.global_group_id, None
+        )
+        _coll._group_map.pop(_coll._global_env_gid, None)
+        _coll._group_map_by_name.pop(_coll._default_group_name, None)
+        if prev is not None:
+            _coll._group_map_backend.pop(prev, None)
+
+        if value is None:
+            return
+
+        _GroupManager.group_map_by_id[_GroupManager.global_group_id] = value
+        _coll._group_map[_coll._global_env_gid] = value
+        _coll._group_map_by_name[_coll._default_group_name] = value
+        if value._pg is not None:
+            # ``ProcessGroup.name()`` returns the C++ backend name in upper
+            # case (e.g. ``NCCL``); the registry is keyed by the lower-case
+            # Python form used in ``_valid_backend_list``.
+            _coll._group_map_backend[value] = value._pg.name().lower()
+
+
+class _DistGroupNamespace(metaclass=_DistGroupMeta):
+    """Namespace exposing :attr:`WORLD`, re-exported as
+    :data:`paddle.distributed.group`.
+    """
+
+
 def _get_global_group():
     if _GroupManager.global_group_id not in _GroupManager.group_map_by_id:
         raise RuntimeError("The global group is not initialized.")
@@ -220,6 +276,15 @@ def destroy_process_group(group: Group | None = None) -> None:
     )
     if _is_global_group(group):
         _GroupManager.group_map_by_id.clear()
+        # The default group is also registered in the collective-layer
+        # registries by ``init_parallel_env``; clear those slots too so a
+        # follow-up ``init_process_group`` re-creates the default group
+        # rather than hitting ``init_parallel_env``'s early-return path.
+        from paddle.distributed import collective as _coll
+
+        _coll._group_map.pop(_coll._global_env_gid, None)
+        _coll._group_map_by_name.pop(_coll._default_group_name, None)
+        _coll._group_map_backend.pop(group, None)
     else:
         del _GroupManager.group_map_by_id[group.id]
 

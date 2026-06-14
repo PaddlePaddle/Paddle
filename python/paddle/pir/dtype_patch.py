@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from paddle.base.libpaddle import DataType
-from paddle.pir.core import _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE
+from paddle.pir.core import datatype_to_str
 
 _already_patch_dtype_repr = False
 
@@ -27,9 +27,9 @@ def monkey_patch_dtype():
         origin = DataType.__str__
 
         def dtype_str(dtype):
-            if dtype in _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE:
-                numpy_dtype = _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[dtype]
-                if numpy_dtype == 'uint16':
+            if dtype in datatype_to_str:
+                numpy_dtype = datatype_to_str[dtype]
+                if dtype == DataType.BFLOAT16:
                     numpy_dtype = 'bfloat16'
                 prefix = 'paddle.'
                 return prefix + numpy_dtype

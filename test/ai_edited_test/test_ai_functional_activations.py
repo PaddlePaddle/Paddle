@@ -95,7 +95,7 @@ class TestSigmoidFamily(unittest.TestCase):
         """测试Sigmoid / Test Sigmoid"""
         x = paddle.to_tensor([0.0])
         result = F.sigmoid(x)
-        self.assertAlmostEqual(float(result.numpy()), 0.5, places=5)
+        self.assertAlmostEqual(float(result.item()), 0.5, places=5)
 
     def test_tanh(self):
         """测试Tanh / Test Tanh"""

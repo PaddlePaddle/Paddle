@@ -174,13 +174,14 @@ function local_assemble() {
       cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xblas/dependency_so/libxpujitc.so xpu/lib/
       cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xblas/dependency_so/libLLVM-15.so xpu/lib/
       cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xblas/dependency_so/libclang-cpp.so* xpu/lib/
-      cp -r ${XHPC_DIR_NAME}/xblas/dependency_so/clang xpu/lib/
-      cp -r ${XHPC_DIR_NAME}/xblas/dependency_so/lld xpu/lib/
-      cp -r ${XHPC_DIR_NAME}/xblas/dependency_so/*.enc xpu/lib/
+      cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xblas/dependency_so/clang xpu/lib/
+      cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xblas/dependency_so/lld xpu/lib/
+      cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xblas/dependency_so/*.enc xpu/lib/
       ln -sf lld xpu/lib/ld.lld
 
       cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xfa/include/* xpu/include/xhpc/xfa
       cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xfa/so/libxpu_flash_attention.so xpu/lib/
+      cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xfa/include/xpu/internal/attention/attention_types.h xpu/include/xpu/internal/attention/attention_types.h
 
       cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xpudnn/include/* xpu/include/xhpc/xpudnn
       cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xpudnn/so/libxpu_dnn.so xpu/lib/

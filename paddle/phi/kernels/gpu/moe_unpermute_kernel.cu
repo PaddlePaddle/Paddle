@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/phi/kernels/gpu/moe_unpermute_kernel.h"
+
+#include <limits>
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
@@ -49,7 +52,9 @@ __global__ __launch_bounds__(256) void tokens_zip_kernel(
   // Strided load: blockDim.x may be < num_experts, so each thread
   // handles multiple slots to cover the full [0, num_experts) range.
   for (int i = threadIdx.x; i < num_experts; i += blockDim.x) {
-    const int fetch_row = zipped_expertwise_rowmap[this_row * num_experts + i];
+    const int fetch_row =
+        zipped_expertwise_rowmap[static_cast<int64_t>(this_row) * num_experts +
+                                 i];
     local_row_fetchlist[i] = fetch_row;
     if constexpr (WEIGHTED_TOKEN) {
       local_row_weight[i] =
@@ -61,11 +66,12 @@ __global__ __launch_bounds__(256) void tokens_zip_kernel(
 
 #pragma unroll
   for (int k = 0; k < topk; ++k) {
-    const int expert_idx = expert_routemap_topk[this_row * topk + k];
+    const int expert_idx =
+        expert_routemap_topk[static_cast<int64_t>(this_row) * topk + k];
     if (expert_idx < 0) [[likely]]
       continue;
     const int expert_fetch_row = local_row_fetchlist[expert_idx];
-    zipped_probs_topk[this_row * topk + k] =
+    zipped_probs_topk[static_cast<int64_t>(this_row) * topk + k] =
         unzipped_token_probs[expert_fetch_row];
   }
 
@@ -188,8 +194,15 @@ void dispatch_tokens_zip(const Context &dev_ctx,
                          const int topk,
                          const bool MP,
                          const bool using_weighted_combine) {
+  PADDLE_ENFORCE_GE(
+      total_zipped_tokens_num,
+      0,
+      common::errors::InvalidArgument(
+          "total_zipped_tokens_num should be non-negative, but got %d.",
+          total_zipped_tokens_num));
+  if (total_zipped_tokens_num == 0) return;
   dim3 grid, block;
-  grid.x = total_zipped_tokens_num;
+  grid.x = static_cast<unsigned int>(total_zipped_tokens_num);
   block.x = 256;
 
   if (unzipped_token_probs.dtype() != DataType::FLOAT32) return;
@@ -233,6 +246,74 @@ void MoeUnpermuteKernel(const Context &dev_ctx,
                         const bool using_weighted_combine,
                         DenseTensor *zipped_tokens,
                         DenseTensor *zipped_probs_topk) {
+  PADDLE_ENFORCE_EQ(unzipped_tokens.dims().size(),
+                    2,
+                    common::errors::InvalidArgument(
+                        "Input unzipped_tokens's dims should be 2, but got %u.",
+                        unzipped_tokens.dims().size()));
+  PADDLE_ENFORCE_EQ(
+      zipped_expertwise_rowmap.dims().size(),
+      2,
+      common::errors::InvalidArgument(
+          "Input zipped_expertwise_rowmap's dims should be 2, but got %u.",
+          zipped_expertwise_rowmap.dims().size()));
+  PADDLE_ENFORCE_EQ(
+      expert_routemap_topk.dims().size(),
+      2,
+      common::errors::InvalidArgument(
+          "Input expert_routemap_topk's dims should be 2, but got %u.",
+          expert_routemap_topk.dims().size()));
+  PADDLE_ENFORCE_GE(
+      total_zipped_tokens_num,
+      0,
+      common::errors::InvalidArgument(
+          "total_zipped_tokens_num should be non-negative, but got %d.",
+          total_zipped_tokens_num));
+  PADDLE_ENFORCE_GE(
+      num_experts,
+      1,
+      common::errors::InvalidArgument(
+          "num_experts should be > 0, received: (%d)", num_experts));
+  PADDLE_ENFORCE_LE(
+      num_experts,
+      kMaxNumExperts,
+      common::errors::InvalidArgument(
+          "Currently we support no more than (%ld), received num_expert: "
+          "(%ld). Please check input value.",
+          kMaxNumExperts,
+          num_experts));
+  PADDLE_ENFORCE_EQ(
+      zipped_expertwise_rowmap.dims()[0],
+      total_zipped_tokens_num,
+      common::errors::InvalidArgument(
+          "Input zipped_expertwise_rowmap's first dimension should be equal to "
+          "total_zipped_tokens_num, but got %ld and %d.",
+          zipped_expertwise_rowmap.dims()[0],
+          total_zipped_tokens_num));
+  PADDLE_ENFORCE_EQ(
+      zipped_expertwise_rowmap.dims()[1],
+      num_experts,
+      common::errors::InvalidArgument("Input zipped_expertwise_rowmap's second "
+                                      "dimension should be equal to "
+                                      "num_experts, but got %ld and %d.",
+                                      zipped_expertwise_rowmap.dims()[1],
+                                      num_experts));
+  PADDLE_ENFORCE_EQ(
+      expert_routemap_topk.dims()[0],
+      total_zipped_tokens_num,
+      common::errors::InvalidArgument(
+          "Input expert_routemap_topk's first dimension should be equal to "
+          "total_zipped_tokens_num, but got %ld and %d.",
+          expert_routemap_topk.dims()[0],
+          total_zipped_tokens_num));
+  PADDLE_ENFORCE_EQ(
+      unzipped_token_probs.numel(),
+      unzipped_tokens.dims()[0],
+      common::errors::InvalidArgument(
+          "Input unzipped_token_probs's number of elements should be equal to "
+          "unzipped_tokens.dims()[0], but got %ld and %ld.",
+          unzipped_token_probs.numel(),
+          unzipped_tokens.dims()[0]));
   const int64_t cols = unzipped_tokens.dims()[1];
   PADDLE_ENFORCE_LE(cols,
                     std::numeric_limits<int32_t>::max(),
@@ -240,31 +321,37 @@ void MoeUnpermuteKernel(const Context &dev_ctx,
                         "unzipped_tokens.dims()[1] should be less than "
                         "INT_MAX, received unzipped_tokens.dims()[1]: (%ld)",
                         cols));
-  PADDLE_ENFORCE_LE(
-      num_experts,
-      kMaxNumExperts,
-      common::errors::InvalidArgument(
-          "Currently we support no more than (%ld), received num_expert: "
-          "(%ld). Please check input "
-          "value.",
-          kMaxNumExperts,
-          num_experts));
   const int64_t topk = expert_routemap_topk.dims()[1];
+  PADDLE_ENFORCE_GE(topk,
+                    1,
+                    common::errors::InvalidArgument(
+                        "topk should be > 0, received topk: (%ld)", topk));
   PADDLE_ENFORCE_LE(
       topk,
       std::numeric_limits<int32_t>::max(),
       common::errors::InvalidArgument(
           "topk should be less than INT_MAX, received topk: (%ld)", topk));
+  PADDLE_ENFORCE_LE(
+      static_cast<int64_t>(total_zipped_tokens_num),
+      static_cast<int64_t>(std::numeric_limits<int32_t>::max()),
+      common::errors::InvalidArgument(
+          "total_zipped_tokens_num should be <= INT_MAX, but got %d.",
+          total_zipped_tokens_num));
   dev_ctx.template Alloc<T>(zipped_tokens);
   dev_ctx.template Alloc<float>(zipped_probs_topk);
-  if (unzipped_tokens.numel() == 0) return;  // 0-size tensor
+  if (unzipped_tokens.numel() == 0 || total_zipped_tokens_num == 0) return;
   void *zipped_probs_topk_ptr =
       reinterpret_cast<void *>(zipped_probs_topk->data<float>());
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      cudaMemsetAsync(zipped_probs_topk_ptr,
-                      0,
-                      sizeof(float) * int64_t(total_zipped_tokens_num) * topk,
-                      dev_ctx.stream()));
+  const int64_t probs_numel =
+      static_cast<int64_t>(total_zipped_tokens_num) * topk;
+  PADDLE_ENFORCE_LE(
+      probs_numel,
+      static_cast<int64_t>(std::numeric_limits<int64_t>::max() / sizeof(float)),
+      common::errors::InvalidArgument(
+          "The zipped_probs_topk memset size overflows, got %ld elements.",
+          probs_numel));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(
+      zipped_probs_topk_ptr, 0, sizeof(float) * probs_numel, dev_ctx.stream()));
 
   dispatch_tokens_zip<T, Context>(dev_ctx,
                                   unzipped_tokens,

@@ -17,7 +17,10 @@ import numpy as np
 from op_test import get_device, is_custom_device
 
 import paddle
-from paddle.base.framework import convert_np_dtype_to_dtype_, in_pir_mode
+from paddle.base.framework import (
+    convert_nptype_to_datatype_or_vartype,
+    in_pir_mode,
+)
 
 devices = ['cpu', get_device()]
 
@@ -62,6 +65,12 @@ class TestSparseUnary(unittest.TestCase):
             mask = paddle.randint(0, 2, [8, 16, 32]).astype(dtype)
             while paddle.sum(mask) == 0:
                 mask = paddle.randint(0, 2, [8, 16, 32]).astype(dtype)
+            # to_sparse_coo drops zero-valued elements, so sparse grad at those
+            # positions is always 0, while dense grad may be non-zero there
+            # (e.g. cos(0)=1), causing expect_grad to diverge from sp_x.grad.
+            # Under fp16, paddle.rand can produce exact zeros, so fold the
+            # origin_x==0 positions into mask to align with sparse semantics.
+            mask = mask * (origin_x != 0).astype(dtype)
 
         # --- check sparse coo with dense --- #
         dense_x = origin_x * mask
@@ -85,7 +94,7 @@ class TestSparseUnary(unittest.TestCase):
             if dense_func == paddle.cast:
                 dense_out = dense_func(dense_x, args[1])
 
-                int_dtype = convert_np_dtype_to_dtype_(args[0])
+                int_dtype = convert_nptype_to_datatype_or_vartype(args[0])
                 if sp_out.is_sparse_csr():
                     self.assertEqual(sp_out.crows().dtype, int_dtype)
                     self.assertEqual(sp_out.cols().dtype, int_dtype)
@@ -404,7 +413,7 @@ class TestSparseUnaryStatic(unittest.TestCase):
             if dense_func == paddle.cast:
                 dense_out = dense_func(dense_x, args[1])
 
-                int_dtype = convert_np_dtype_to_dtype_(args[0])
+                int_dtype = convert_nptype_to_datatype_or_vartype(args[0])
                 # only support coo format
                 self.assertEqual(sp_out.indices().dtype, int_dtype)
             else:

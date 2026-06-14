@@ -479,16 +479,17 @@ bool IsCompiledWithDIST() {
 }
 
 struct iinfo {
-  int64_t min, max;
+  int64_t min;
+  uint64_t max;
   int bits;
   std::string dtype;
 
-#define CASE_IINFO_BODY(type, ctype)         \
-  do {                                       \
-    min = std::numeric_limits<ctype>::min(); \
-    max = std::numeric_limits<ctype>::max(); \
-    bits = sizeof(ctype) * 8;                \
-    dtype = #type;                           \
+#define CASE_IINFO_BODY(type, ctype)                                \
+  do {                                                              \
+    min = static_cast<int64_t>(std::numeric_limits<ctype>::min());  \
+    max = static_cast<uint64_t>(std::numeric_limits<ctype>::max()); \
+    bits = sizeof(ctype) * 8;                                       \
+    dtype = #type;                                                  \
   } while (0)
 
   explicit iinfo(const DataType &type) {
@@ -520,7 +521,8 @@ struct iinfo {
       default:
         PADDLE_THROW(common::errors::InvalidArgument(
             "the argument of paddle.iinfo can only be paddle.int8, "
-            "paddle.int16, paddle.int32, paddle.int64, or paddle.uint8"));
+            "paddle.int16, paddle.int32, paddle.int64, paddle.uint8, "
+            "paddle.uint16, paddle.uint32, or paddle.uint64"));
         break;
     }
   }
@@ -1615,8 +1617,10 @@ PYBIND11_MODULE(libpaddle, m) {
 
   py::class_<iinfo>(m, "iinfo")
       .def(py::init<const DataType &>())
-      .def_readonly("min", &iinfo::min)
-      .def_readonly("max", &iinfo::max)
+      .def_property_readonly("min",
+                             [](const iinfo &a) { return py::int_(a.min); })
+      .def_property_readonly("max",
+                             [](const iinfo &a) { return py::int_(a.max); })
       .def_readonly("bits", &iinfo::bits)
       .def_readonly("dtype", &iinfo::dtype)
       .def("__repr__", [](const iinfo &a) {
@@ -3783,8 +3787,11 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("vmm_free_block_info", [](int device_id) {
     return paddle::memory::FreeBlockInfoOfVmmAllocator(GPUPlace(device_id));
   });
+  m.def("all_block_info", [](int device_id) {
+    return paddle::memory::AllBlockInfoOfAllocator(GPUPlace(device_id));
+  });
   m.def("vmm_all_block_info", [](int device_id) {
-    return paddle::memory::AllBlockInfoOfVmmAllocator(GPUPlace(device_id));
+    return paddle::memory::AllBlockInfoOfAllocator(GPUPlace(device_id));
   });
   m.def("get_allocate_record", [](int device_id) {
     return paddle::memory::GetAllocateEvent(GPUPlace(device_id));

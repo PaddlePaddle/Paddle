@@ -497,7 +497,8 @@ class ReadyGradVarInfoMap {
       PADDLE_ENFORCE_NOT_NULL(
           ready_var.var,
           common::errors::NotFound(
-              "%s is not found when reference count does not decreases to 0"));
+              "%s is not found when reference count does not decreases to 0",
+              var->Name()));
     }
 
     if (++ready_var.cur_ref_cnt == ready_var.total_ref_cnt) {

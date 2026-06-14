@@ -14,18 +14,18 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from types import EllipsisType
 from typing import (
     TYPE_CHECKING,
     Any,
+    TypeAlias,
     TypeVar,
     Union,
 )
 
 import numpy as np
 import numpy.typing as npt
-from typing_extensions import Never, TypeAlias
-
-from .backport import EllipsisType
+from typing_extensions import Never
 
 if TYPE_CHECKING:
     from paddle import ParamAttr, Tensor
@@ -38,20 +38,18 @@ TensorLike: TypeAlias = Union[npt.NDArray[Any], "Tensor", Numeric]
 _TensorIndexItem: TypeAlias = Union[
     None, bool, int, slice, "Tensor", EllipsisType
 ]
-TensorIndex: TypeAlias = Union[
-    _TensorIndexItem,
-    tuple[_TensorIndexItem, ...],
-    list[_TensorIndexItem],
-]
+TensorIndex: TypeAlias = (
+    _TensorIndexItem | tuple[_TensorIndexItem, ...] | list[_TensorIndexItem]
+)
 
 
 _T = TypeVar("_T")
 
-NestedSequence = Union[_T, Sequence["NestedSequence[_T]"]]
-NestedList = Union[_T, list["NestedList[_T]"]]
-NestedStructure = Union[
-    _T, dict[str, "NestedStructure[_T]"], Sequence["NestedStructure[_T]"]
-]
+NestedSequence = _T | Sequence["NestedSequence[_T]"]
+NestedList = _T | list["NestedList[_T]"]
+NestedStructure = (
+    _T | dict[str, "NestedStructure[_T]"] | Sequence["NestedStructure[_T]"]
+)
 NumericSequence = Sequence[Numeric]
 NestedNumericSequence: TypeAlias = NestedSequence[Numeric]
 TensorOrTensors: TypeAlias = Union["Tensor", Sequence["Tensor"]]

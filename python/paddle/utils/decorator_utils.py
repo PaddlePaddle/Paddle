@@ -17,8 +17,8 @@ from __future__ import annotations
 import functools
 import inspect
 import warnings
-from collections.abc import Iterable
-from typing import Any, Callable, TypeVar, cast
+from collections.abc import Callable, Iterable
+from typing import Any, TypeVar, cast
 
 from typing_extensions import ParamSpec, get_overloads
 
@@ -1189,6 +1189,44 @@ def batch_sampler_decorator() -> Callable[
     return decorator
 
 
+def lr_scheduler_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """
+    Usage Example:
+    PyTorch: __init__(self, optimizer, last_epoch) -> None:
+    Paddle: __init__(self, learning_rate, last_epoch, verbose) -> None:
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            opt = None
+            if "optimizer" in kwargs:
+                if "learning_rate" not in kwargs:
+                    opt = kwargs.pop("optimizer")
+                    kwargs["learning_rate"] = opt.get_lr()
+                else:
+                    raise ValueError(
+                        "Cannot specify both 'learning_rate' and 'optimizer'."
+                    )
+            elif len(args) > 1 and isinstance(
+                args[1], paddle.optimizer.Optimizer
+            ):
+                opt = args[1]
+                args_list = list(args)
+                args_list[1] = opt.get_lr()
+                args = tuple(args_list)
+            func(*args, **kwargs)
+            if opt is not None:
+                opt.set_lr_scheduler(args[0])
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
 def fill_diagonal_inplace_decorator() -> Callable[
     [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
 ]:
@@ -1219,6 +1257,134 @@ def fill_diagonal_inplace_decorator() -> Callable[
                         "fill_diagonal_() received too many arguments"
                     )
                 args = (args[0], args[1])
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def nansum_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """
+    Usage Example:
+    PyTorch: torch.nansum(input, dim=None, keepdim=False, *, dtype=None, out=None)
+    Paddle: paddle.nansum(x, axis=None, dtype=None, keepdim=False, name=None, *, out=None)
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if "input" in kwargs:
+                if "x" not in kwargs:
+                    kwargs["x"] = kwargs.pop("input")
+                else:
+                    raise ValueError(
+                        "Cannot specify both 'x' and its alias 'input'."
+                    )
+
+            if "dim" in kwargs:
+                if "axis" not in kwargs:
+                    kwargs["axis"] = kwargs.pop("dim")
+                else:
+                    raise ValueError(
+                        "Cannot specify both 'axis' and its alias 'dim'."
+                    )
+
+            # args[0] is x
+            # args[1] is axis
+            # args[2] is keepdim, use torch signature
+            if len(args) == 3 and isinstance(args[2], bool):
+                kwargs["keepdim"] = args[2]
+                args = (args[0], args[1])
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def _calc_end_from_shapes(x, value, axes, starts, strides):
+    """Calculate end values for slice_scatter from tensor shapes.
+
+    Supports multi-axis by calculating end for each axis.
+    """
+    ends = []
+    for i, ax in enumerate(axes):
+        dim_idx = ax if ax >= 0 else len(x.shape) + ax
+        value_size = value.shape[dim_idx] if dim_idx < len(value.shape) else 1
+        ends.append(starts[i] + value_size * strides[i])
+    return ends
+
+
+def slice_scatter_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """
+    Decorator for slice_scatter to support PyTorch signature.
+
+    PyTorch: torch.slice_scatter(input, src, dim=0, start=None, end=None, step=1)
+    Paddle: paddle.slice_scatter(x, value, axes, starts, ends, strides)
+
+    This decorator handles:
+    1. Parameter aliases: input->x, src->value, dim->axes, start->starts, end->ends, step->strides
+    2. Convert single int to list: PyTorch uses int, Paddle uses list
+    3. Handle PyTorch style positional args
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            # 1. Handle keyword argument aliases
+            if "input" in kwargs and "x" not in kwargs:
+                kwargs["x"] = kwargs.pop("input")
+            if "src" in kwargs and "value" not in kwargs:
+                kwargs["value"] = kwargs.pop("src")
+            if "dim" in kwargs and "axes" not in kwargs:
+                kwargs["axes"] = kwargs.pop("dim")
+            if "start" in kwargs and "starts" not in kwargs:
+                kwargs["starts"] = kwargs.pop("start")
+            if "end" in kwargs and "ends" not in kwargs:
+                kwargs["ends"] = kwargs.pop("end")
+            if "step" in kwargs and "strides" not in kwargs:
+                kwargs["strides"] = kwargs.pop("step")
+
+            # 2. Handle positional arguments
+            # PyTorch: (input, src, dim, start, end, step) - dim is int
+            # Paddle: (x, value, axes, starts, ends, strides) - axes is list
+            if len(args) >= 2:
+                kwargs["x"] = args[0]
+                kwargs["value"] = args[1]
+
+                if len(args) > 2:
+                    # Check if Paddle style (axes is list) or PyTorch style (dim is int)
+                    if isinstance(args[2], list):
+                        # Paddle style
+                        for i, key in enumerate(
+                            ["axes", "starts", "ends", "strides"]
+                        ):
+                            if len(args) > i + 2:
+                                kwargs[key] = args[i + 2]
+                    else:
+                        # PyTorch style: convert int to list
+                        if len(args) > 2:
+                            kwargs["axes"] = [args[2]]
+                        if len(args) > 3:
+                            kwargs["starts"] = [args[3]]
+                        if len(args) > 4:
+                            kwargs["ends"] = [args[4]]
+                        if len(args) > 5:
+                            kwargs["strides"] = [args[5]]
+                args = ()
+
+            # 3. Convert single int to list for keyword args
+            for key in ["axes", "starts", "ends", "strides"]:
+                if key in kwargs and isinstance(kwargs[key], int):
+                    kwargs[key] = [kwargs[key]]
+
             return func(*args, **kwargs)
 
         wrapper.__signature__ = inspect.signature(func)

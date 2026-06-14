@@ -79,8 +79,8 @@ PADDLE_API void EyeInferMeta(const Scalar& num_rows,
                              MetaConfig config = MetaConfig());
 
 PADDLE_API void GaussianInferMeta(const IntArray& shape,
-                                  float mean,
-                                  float std,
+                                  double mean,
+                                  double std,
                                   int seed,
                                   DataType dtype,
                                   MetaTensor* out);

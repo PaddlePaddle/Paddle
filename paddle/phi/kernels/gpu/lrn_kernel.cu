@@ -28,37 +28,41 @@ __global__ void KeCMRNormFillScale(int img_size,
                                    T k,
                                    T alpha,
                                    const DataLayout data_layout) {
-  const int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  const int64_t idx =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   if (idx < img_size) {
-    const int w = idx % W;
-    const int h = (idx / W) % H;
-    const int n = idx / W / H;
-    const int offset =
+    const int64_t w = idx % W;
+    const int64_t h = (idx / W) % H;
+    const int64_t n = idx / W / H;
+    const int64_t offset =
         (data_layout != DataLayout::NHWC ? (n * C * H + h) * W + w
                                          : ((n * H + h) * W + w) * C);
 
     in += offset;
     mid += offset;
-    const int step = H * W;
+    const int64_t step = static_cast<int64_t>(H) * W;
     const int pre_pad = (size - 1) / 2;
     const int post_pad = size - pre_pad - 1;
 
     T accum = 0;
-    int index = 0;
+    int64_t index = 0;
     while (index < C + post_pad) {
       if (index < C) {
-        int in_idx = (data_layout != DataLayout::NHWC ? index * step : index);
+        int64_t in_idx =
+            (data_layout != DataLayout::NHWC ? index * step : index);
         T val = in[in_idx];
         accum += val * val;
       }
       if (index >= size) {
-        int in_idx = (data_layout != DataLayout::NHWC ? (index - size) * step
-                                                      : index - size);
+        int64_t in_idx =
+            (data_layout != DataLayout::NHWC ? (index - size) * step
+                                             : index - size);
         T val = in[in_idx];
         accum -= val * val;
       }
       if (index >= post_pad) {
-        int mid_idx =
+        int64_t mid_idx =
             (data_layout != DataLayout::NHWC ? (index - post_pad) * step
                                              : index - post_pad);
         mid[mid_idx] = k + accum * alpha;
