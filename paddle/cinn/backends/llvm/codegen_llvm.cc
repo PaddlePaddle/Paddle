@@ -1520,11 +1520,13 @@ int GetNaiveVecAlignment(const Target &target) {
 }
 
 void CodeGenLLVM::InitTarget(const Target &target) {
-  llvm::InitializeAllTargetInfos();
-  llvm::InitializeAllTargets();
-  llvm::InitializeAllTargetMCs();
-  llvm::InitializeAllAsmParsers();
-  llvm::InitializeAllAsmPrinters();
+  // Keep this aligned with cmake/cinn/llvm.cmake: CINN JIT links only the
+  // native target. InitializeAll* references every configured target in LLVM's
+  // TargetSelect.h and needs the matching all-target libraries.
+  // https://github.com/llvm/llvm-project/blob/llvmorg-13.0.1/llvm/include/llvm/Support/TargetSelect.h
+  llvm::InitializeNativeTarget();
+  llvm::InitializeNativeTargetAsmPrinter();
+  llvm::InitializeNativeTargetAsmParser();
   naive_vec_alignment_ = GetNaiveVecAlignment(target);
 }
 

@@ -9,16 +9,14 @@ paddle_normalize_target_arch(PADDLE_TARGET_ARCH)
 
 if(PADDLE_TARGET_ARCH STREQUAL "aarch64")
   set(LLVM_DOWNLOAD_URL
-      "https://github.com/llvm/llvm-project/releases/download/llvmorg-13.0.1/clang%2Bllvm-13.0.1-aarch64-linux-gnu.tar.xz"
-  )
+      "https://xly-devops.bj.bcebos.com/gouzil/llvm13-aarch64-glibc2.27.tar.gz")
   set(LLVM_SHA256
-      15ff2db12683e69e552b6668f7ca49edaa01ce32cb1cbc8f8ed2e887ab291069)
+      6de076472823efa9266d669373b0de620e988a9dd241df94a319da06e7069958)
 else()
   set(LLVM_DOWNLOAD_URL
-      "https://github.com/llvm/llvm-project/releases/download/llvmorg-13.0.1/clang%2Bllvm-13.0.1-x86_64-linux-gnu-ubuntu-18.04.tar.xz"
-  )
+      "https://xly-devops.bj.bcebos.com/gouzil/llvm13-glibc2.27.tar.gz")
   set(LLVM_SHA256
-      84a54c69781ad90615d1b0276a83ff87daaeded99fbc64457c350679df7b4ff0)
+      8e6afb8f51baed5530b1757aff5761a65963a3bd2c76bdb7431967634277086e)
 endif()
 
 if(NOT LLVM_PATH)
@@ -67,27 +65,39 @@ message(STATUS "Found MLIR: ${MLIR_DIR}")
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
-# To build with MLIR, the LLVM is build from source code using the following flags:
+# The prebuilt LLVM 13.0.1 packages above were built on Ubuntu 18.04
+# (glibc 2.27) from source with the following core flags:
 
 #[==[
 cmake -G Ninja ../llvm \
   -DLLVM_ENABLE_PROJECTS="mlir;clang" \
   -DLLVM_BUILD_EXAMPLES=OFF \
-  -DLLVM_TARGETS_TO_BUILD="X86" \
+  -DLLVM_TARGETS_TO_BUILD="<X86 or AArch64>" \
   -DCMAKE_BUILD_TYPE=Release \
   -DLLVM_ENABLE_ASSERTIONS=ON \
   -DLLVM_ENABLE_ZLIB=OFF \
   -DLLVM_ENABLE_RTTI=ON \
   -DLLVM_ENABLE_TERMINFO=OFF \
+  -DLLVM_ENABLE_LIBEDIT=OFF \
+  -DLLVM_ENABLE_LIBXML2=OFF \
+  -DLLVM_ENABLE_BINDINGS=OFF \
+  -DLLVM_INSTALL_UTILS=ON \
   -DCMAKE_INSTALL_PREFIX=./install
 #]==]
 
-# Use the official LLVM 13.0.1 release package. LLVM 13 includes the
-# iterator constructor fix needed by C++20 builds:
+# Use the LLVM 13.0.1 glibc 2.27 package built with RTTI enabled. LLVM 13
+# includes the iterator constructor fix needed by C++20 builds:
 # https://github.com/llvm/llvm-project/commit/95d0d8e9e9d1
 
 add_definitions(${LLVM_DEFINITIONS})
 
+# CINN's LLVM backend is used as a host JIT, so keep target components scoped
+# to the native target. Calling InitializeAll* in TargetSelect.h would reference
+# every configured target and require the corresponding all-target libraries
+# from LLVM-Config.cmake, which is unnecessary for host JIT and expands the link
+# surface.
+# https://github.com/llvm/llvm-project/blob/llvmorg-13.0.1/llvm/include/llvm/Support/TargetSelect.h
+# https://github.com/llvm/llvm-project/blob/llvmorg-13.0.1/llvm/cmake/modules/LLVM-Config.cmake
 llvm_map_components_to_libnames(
   llvm_libs
   Support
