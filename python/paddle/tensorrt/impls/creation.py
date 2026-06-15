@@ -129,7 +129,14 @@ def arange_converter(network, paddle_op, inputs):
             name=[paddle_op.name(), 'quotient_tensor'],
         )
     else:
-        quotient_tensor = f_quotient_tensor
+        # zero_tensor (above) is int32; on TRT>=10 the integer quotient is int64,
+        # which would mismatch in the trt_sub below. Cast it to int32 too.
+        quotient_tensor = trt_cast(
+            network,
+            f_quotient_tensor,
+            trt.int32,
+            name=[paddle_op.name(), 'quotient_tensor'],
+        )
 
     delta_1 = trt_sub(
         network,
