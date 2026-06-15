@@ -15,16 +15,14 @@
 #pragma once
 
 #include "hytlass/epilogue/thread/linear_combination_bias_elementwise.h"
-#include "hytlass/util/device_memory.h"
-
 #include "hytlass/gemm/device/gemm_universal.h"
 #include "hytlass/gemm/device/gemm_universal_with_broadcast.h"
+#include "hytlass/util/device_memory.h"
 
+#include "cutlass_patch/batched_matrix_coord.h"
 #include "cutlass_patch/epilogue/thread/linear_combination_unary.h"
 #include "cutlass_patch/epilogue/thread/linear_combination_variadic.h"
 #include "cutlass_patch/gemm/device/gemm_universal_with_variadic.h"
-
-#include "cutlass_patch/batched_matrix_coord.h"
 #include "cutlass_patch/hip/all_tuning_configs.h"
 
 #include "params.h"  // NOLINT
@@ -153,20 +151,16 @@ template <typename ElementT,
 void MatmulAddVariadic(
     const GemmEpilogueParams &params,
     const typename VariadicFunctor<ElementComputeT>::Arguments &variadic_args) {
-  using ElementAccumulator =
-      typename HytlassDataType<ElementComputeT>::Type;  // <- data type of
-                                                        // accumulator
-  using ElementComputeEpilogue =
-      ElementAccumulator;  // <- data type of epilogue operations
-  using ElementInputA =
-      typename HytlassDataType<ElementT>::Type;  // <- data type of elements in
-                                                 // input matrix A
-  using ElementInputB =
-      typename HytlassDataType<ElementT>::Type;  // <- data type of elements in
-                                                 // input matrix B
-  using ElementOutput =
-      typename HytlassDataType<ElementT>::Type;  // <- data type of elements in
-                                                 // output matrix D
+  // <- data type of accumulator
+  using ElementAccumulator = typename HytlassDataType<ElementComputeT>::Type;
+  // <- data type of epilogue operations
+  using ElementComputeEpilogue = ElementAccumulator;
+  // <- data type of elements in input matrix A
+  using ElementInputA = typename HytlassDataType<ElementT>::Type;
+  // <- data type of elements in input matrix B
+  using ElementInputB = typename HytlassDataType<ElementT>::Type;
+  // <- data type of elements in output matrix D
+  using ElementOutput = typename HytlassDataType<ElementT>::Type;
 
   constexpr int AlignC = AlignB;
 
@@ -179,8 +173,7 @@ void MatmulAddVariadic(
           AlignC,
           ElementAccumulator,
           ElementComputeEpilogue,
-          hytlass::epilogue::thread::ScaleType::NoBetaScaling>;  // <- alpha x
-                                                                 // AB + bias
+          hytlass::epilogue::thread::ScaleType::NoBetaScaling>;
 
   using GemmFunc = cutlass_patch::gemm::device::GemmUniversalWithVariadic<
       ElementInputA,
@@ -251,9 +244,7 @@ void MatmulAddVariadic(
   CHECK_HYTLASS(device_gemm.can_implement(arguments));
   CHECK_HYTLASS(device_gemm.initialize(arguments, workspace, *stream_ptr));
 
-  //
   // Run the GEMM
-  //
   CHECK_HYTLASS(device_gemm(*stream_ptr));
 #if AP_ENABLE_DEBUG
   CHECK_HIP(hipStreamSynchronize(*stream_ptr));

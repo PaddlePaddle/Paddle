@@ -41,6 +41,9 @@
 #endif
 
 #ifdef __HIPCC__
+#include <hip/hip_bfloat16.h>
+#include <hip/hip_fp16.h>
+#include <hip/hip_runtime.h>
 
 #define CHECK_HIP(func)                                                       \
   {                                                                           \
@@ -55,5 +58,6 @@
   }
 
 #include "cutlass_patch/hip/hytlass_matmul.h"  // NOLINT
+#include "math_function.h"                     // NOLINT
 #include "profile.h"                           // NOLINT
 #endif

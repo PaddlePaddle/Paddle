@@ -21,7 +21,10 @@
 #include <cuda_profiler_api.h>
 
 #define GPUEvent_t cudaEvent_t
+
+#ifndef GPUStream_t
 #define GPUStream_t cudaStream_t
+#endif
 
 #define GPUEventCreate(e) cudaEventCreate(e)
 #define GPUEventDestroy(e) cudaEventDestroy(e)
@@ -39,7 +42,10 @@
 #include <hip/hip_runtime_api.h>
 
 #define GPUEvent_t hipEvent_t
+
+#ifndef GPUStream_t
 #define GPUStream_t hipStream_t
+#endif
 
 #define GPUEventCreate(e) hipEventCreate(e)
 #define GPUEventDestroy(e) hipEventDestroy(e)

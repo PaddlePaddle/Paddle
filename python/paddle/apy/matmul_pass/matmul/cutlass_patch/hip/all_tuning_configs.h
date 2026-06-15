@@ -36,12 +36,10 @@ struct SwizzleWrapper {
       return std::vector<std::function<FuncType>>{func<Is>...};               \
     }                                                                         \
     (std::make_index_sequence<count>());                                      \
-                                                                              \
     if (selected_config_id == -1) {                                           \
       selected_config_id =                                                    \
           ap::ProfileBestConfig(matmul_functions, stream_ptr, ##__VA_ARGS__); \
     }                                                                         \
-                                                                              \
     matmul_functions[selected_config_id](__VA_ARGS__);                        \
   }
 
