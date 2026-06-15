@@ -92,6 +92,7 @@ class Adagrad(Optimizer):
             The default value is None.
         initial_accumulator_value (float, optional): Initial value for moment accumulator.
             The default value is 0.0.
+        lr_decay (float, optional): Learning rate decay. The default value is 0.0.
 
     Examples:
         .. code-block:: pycon

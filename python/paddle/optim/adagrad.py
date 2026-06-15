@@ -38,10 +38,10 @@ class Adagrad(PaddleAdagrad):
         eps: float = 1e-10,
         foreach: bool | None = None,
     ) -> None:
-        if lr_decay != 0 or foreach is True:
+        if foreach is True:
             warnings.warn(
-                "lr_decay, foreach are currently not supported in Adagrad and will be ignored. "
-                "The parameters are reserved for future implementation."
+                "foreach is currently not supported in Adagrad and will be ignored. "
+                "The parameter is reserved for future implementation."
             )
         super().__init__(
             learning_rate=lr,
@@ -49,4 +49,5 @@ class Adagrad(PaddleAdagrad):
             parameters=params,
             weight_decay=weight_decay,
             initial_accumulator_value=initial_accumulator_value,
+            lr_decay=lr_decay,
         )
