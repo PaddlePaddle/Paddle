@@ -456,15 +456,16 @@ class TestAdagradLrDecay(unittest.TestCase):
                 {'params': linear1.parameters()},
                 {'params': linear2.parameters(), 'lr_decay': 0.2},
             ],
-            lr_decay=0.1,
+            lr_decay=0.0,
         )
 
-        output = linear1(input_data)
-        output = linear2(output)
-        loss = paddle.mean(output)
-        loss.backward()
-        optimizer.step()
-        optimizer.clear_grad()
+        for epoch in range(3):
+            output = linear1(input_data)
+            output = linear2(output)
+            loss = paddle.mean(output)
+            loss.backward()
+            optimizer.step()
+            optimizer.clear_grad()
 
         paddle.enable_static()
 
