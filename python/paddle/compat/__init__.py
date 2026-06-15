@@ -53,7 +53,6 @@ __all__ = [
     'median',
     'nanmedian',
     'seed',
-    'distributions',
 ]
 
 
