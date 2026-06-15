@@ -17,8 +17,7 @@ RUN yum -y install epel-release
 RUN yum install -y \
     sudo wget curl perl util-linux xz bzip2 git patch which zlib-devel openssl-devel \
     yum-utils autoconf automake make gcc-toolset-${DEVTOOLSET_VERSION}-toolchain \
-    unzip bison diffutils file vim libffi-devel ncurses-devel \
-    ncurses-compat-libs sqlite-devel \
+    unzip bison diffutils file vim libffi-devel ncurses-devel sqlite-devel \
     readline-devel tk-devel gdbm-devel glibc-devel libstdc++-devel glib2-devel \
     libX11-devel libXext-devel libXrender-devel mesa-libGL-devel libICE-devel \
     libSM-devel freetype-devel libpng-devel kernel-devel kmod \
