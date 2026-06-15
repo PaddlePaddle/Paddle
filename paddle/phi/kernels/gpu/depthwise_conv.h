@@ -1564,45 +1564,45 @@ class DepthwiseConvFunctor<GPUContext, T, fuse_relu_before_conv> {
                   DenseTensor* output,
                   const DataLayout data_layout = DataLayout::NCHW) {
     const int64_t batch_size = input.dims()[0];
-    const int64_t input_channels64 =
+    const int64_t input_channels_64 =
         (data_layout != DataLayout::NHWC ? input.dims()[1] : input.dims()[3]);
-    const int64_t input_height64 =
+    const int64_t input_height_64 =
         (data_layout != DataLayout::NHWC ? input.dims()[2] : input.dims()[1]);
-    const int64_t input_width64 =
+    const int64_t input_width_64 =
         (data_layout != DataLayout::NHWC ? input.dims()[3] : input.dims()[2]);
-    const int64_t output_channels64 =
+    const int64_t output_channels_64 =
         (data_layout != DataLayout::NHWC ? output->dims()[1]
                                          : output->dims()[3]);
-    const int64_t output_height64 =
+    const int64_t output_height_64 =
         (data_layout != DataLayout::NHWC ? output->dims()[2]
                                          : output->dims()[1]);
-    const int64_t output_width64 =
+    const int64_t output_width_64 =
         (data_layout != DataLayout::NHWC ? output->dims()[3]
                                          : output->dims()[2]);
-    const int64_t ksize_height64 = filter.dims()[2];
-    const int64_t ksize_width64 = filter.dims()[3];
+    const int64_t ksize_height_64 = filter.dims()[2];
+    const int64_t ksize_width_64 = filter.dims()[3];
 
     PADDLE_ENFORCE_LE_INT_MAX(batch_size, "depthwise conv batch size");
-    PADDLE_ENFORCE_LE_INT_MAX(input_channels64,
+    PADDLE_ENFORCE_LE_INT_MAX(input_channels_64,
                               "depthwise conv input channels");
-    PADDLE_ENFORCE_LE_INT_MAX(input_height64, "depthwise conv input height");
-    PADDLE_ENFORCE_LE_INT_MAX(input_width64, "depthwise conv input width");
-    PADDLE_ENFORCE_LE_INT_MAX(output_channels64,
+    PADDLE_ENFORCE_LE_INT_MAX(input_height_64, "depthwise conv input height");
+    PADDLE_ENFORCE_LE_INT_MAX(input_width_64, "depthwise conv input width");
+    PADDLE_ENFORCE_LE_INT_MAX(output_channels_64,
                               "depthwise conv output channels");
-    PADDLE_ENFORCE_LE_INT_MAX(output_height64, "depthwise conv output height");
-    PADDLE_ENFORCE_LE_INT_MAX(output_width64, "depthwise conv output width");
-    PADDLE_ENFORCE_LE_INT_MAX(ksize_height64, "depthwise conv kernel height");
-    PADDLE_ENFORCE_LE_INT_MAX(ksize_width64, "depthwise conv kernel width");
+    PADDLE_ENFORCE_LE_INT_MAX(output_height_64, "depthwise conv output height");
+    PADDLE_ENFORCE_LE_INT_MAX(output_width_64, "depthwise conv output width");
+    PADDLE_ENFORCE_LE_INT_MAX(ksize_height_64, "depthwise conv kernel height");
+    PADDLE_ENFORCE_LE_INT_MAX(ksize_width_64, "depthwise conv kernel width");
 
     const int batch_size_int = static_cast<int>(batch_size);
-    const int input_channels = static_cast<int>(input_channels64);
-    const int input_height = static_cast<int>(input_height64);
-    const int input_width = static_cast<int>(input_width64);
-    const int output_channels = static_cast<int>(output_channels64);
-    const int output_height = static_cast<int>(output_height64);
-    const int output_width = static_cast<int>(output_width64);
-    const int ksize_height = static_cast<int>(ksize_height64);
-    const int ksize_width = static_cast<int>(ksize_width64);
+    const int input_channels = static_cast<int>(input_channels_64);
+    const int input_height = static_cast<int>(input_height_64);
+    const int input_width = static_cast<int>(input_width_64);
+    const int output_channels = static_cast<int>(output_channels_64);
+    const int output_height = static_cast<int>(output_height_64);
+    const int output_width = static_cast<int>(output_width_64);
+    const int ksize_height = static_cast<int>(ksize_height_64);
+    const int ksize_width = static_cast<int>(ksize_width_64);
 
     const int stride_height = strides[0];
     const int stride_width = strides[1];
@@ -1644,12 +1644,12 @@ class DepthwiseConvFunctor<GPUContext, T, fuse_relu_before_conv> {
       threads = dim3(thread_x, blocks, 1);
       grid = dim3(output_channels, batch_size_int, 1);
     } else {
-      const int64_t block_y64 =
+      const int64_t block_y_64 =
           ((static_cast<int64_t>(output_width) + dilate_width - 1) /
            dilate_width) *
           dilate_width;
       blocks = static_cast<int>(
-          std::min<int64_t>(std::max(thread / output_channels, 1), block_y64));
+          std::min<int64_t>(std::max(thread / output_channels, 1), block_y_64));
       const int thread_x = std::min(output_channels, thread);
       const int64_t grid_x =
           (static_cast<int64_t>(output_height) + dilate_height - 1) /
@@ -1663,9 +1663,9 @@ class DepthwiseConvFunctor<GPUContext, T, fuse_relu_before_conv> {
     int filter_multiplier = output_channels / input_channels;
     int64_t nums_output = output->numel();
     int block_size = 512;
-    int64_t grid_size64 = (nums_output + block_size - 1) / block_size;
-    PADDLE_ENFORCE_LE_INT_MAX(grid_size64, "grid_size");
-    int grid_size = static_cast<int>(grid_size64);
+    int64_t grid_size_64 = (nums_output + block_size - 1) / block_size;
+    PADDLE_ENFORCE_LE_INT_MAX(grid_size_64, "grid_size");
+    int grid_size = static_cast<int>(grid_size_64);
 
 #define check_case(c_filter_multiplier, c_stride, c_filter)             \
   if (c_filter_multiplier == 0 ||                                       \
@@ -1765,52 +1765,52 @@ class DepthwiseConvInputGradFunctor<GPUContext, T, fuse_relu_before_conv> {
                   DenseTensor* input_grad,
                   const DataLayout data_layout = DataLayout::NCHW) {
     const int64_t batch_size = input.dims()[0];
-    const int64_t input_channels64 =
+    const int64_t input_channels_64 =
         (data_layout != DataLayout::NHWC ? input.dims()[1] : input.dims()[3]);
-    const int64_t input_height64 =
+    const int64_t input_height_64 =
         (data_layout != DataLayout::NHWC ? input.dims()[2] : input.dims()[1]);
-    const int64_t input_width64 =
+    const int64_t input_width_64 =
         (data_layout != DataLayout::NHWC ? input.dims()[3] : input.dims()[2]);
-    const int64_t output_channels64 =
+    const int64_t output_channels_64 =
         (data_layout != DataLayout::NHWC ? output_grad.dims()[1]
                                          : output_grad.dims()[3]);
-    const int64_t output_height64 =
+    const int64_t output_height_64 =
         (data_layout != DataLayout::NHWC ? output_grad.dims()[2]
                                          : output_grad.dims()[1]);
-    const int64_t output_width64 =
+    const int64_t output_width_64 =
         (data_layout != DataLayout::NHWC ? output_grad.dims()[3]
                                          : output_grad.dims()[2]);
-    const int64_t ksize_height64 = filter.dims()[2];
-    const int64_t ksize_width64 = filter.dims()[3];
+    const int64_t ksize_height_64 = filter.dims()[2];
+    const int64_t ksize_width_64 = filter.dims()[3];
 
     PADDLE_ENFORCE_LE_INT_MAX(batch_size,
                               "depthwise conv input grad batch size");
-    PADDLE_ENFORCE_LE_INT_MAX(input_channels64,
+    PADDLE_ENFORCE_LE_INT_MAX(input_channels_64,
                               "depthwise conv input grad input channels");
-    PADDLE_ENFORCE_LE_INT_MAX(input_height64,
+    PADDLE_ENFORCE_LE_INT_MAX(input_height_64,
                               "depthwise conv input grad input height");
-    PADDLE_ENFORCE_LE_INT_MAX(input_width64,
+    PADDLE_ENFORCE_LE_INT_MAX(input_width_64,
                               "depthwise conv input grad input width");
-    PADDLE_ENFORCE_LE_INT_MAX(output_channels64,
+    PADDLE_ENFORCE_LE_INT_MAX(output_channels_64,
                               "depthwise conv input grad output channels");
-    PADDLE_ENFORCE_LE_INT_MAX(output_height64,
+    PADDLE_ENFORCE_LE_INT_MAX(output_height_64,
                               "depthwise conv input grad output height");
-    PADDLE_ENFORCE_LE_INT_MAX(output_width64,
+    PADDLE_ENFORCE_LE_INT_MAX(output_width_64,
                               "depthwise conv input grad output width");
-    PADDLE_ENFORCE_LE_INT_MAX(ksize_height64,
+    PADDLE_ENFORCE_LE_INT_MAX(ksize_height_64,
                               "depthwise conv input grad kernel height");
-    PADDLE_ENFORCE_LE_INT_MAX(ksize_width64,
+    PADDLE_ENFORCE_LE_INT_MAX(ksize_width_64,
                               "depthwise conv input grad kernel width");
 
     const int batch_size_int = static_cast<int>(batch_size);
-    const int input_channels = static_cast<int>(input_channels64);
-    const int input_height = static_cast<int>(input_height64);
-    const int input_width = static_cast<int>(input_width64);
-    const int output_channels = static_cast<int>(output_channels64);
-    const int output_height = static_cast<int>(output_height64);
-    const int output_width = static_cast<int>(output_width64);
-    const int ksize_height = static_cast<int>(ksize_height64);
-    const int ksize_width = static_cast<int>(ksize_width64);
+    const int input_channels = static_cast<int>(input_channels_64);
+    const int input_height = static_cast<int>(input_height_64);
+    const int input_width = static_cast<int>(input_width_64);
+    const int output_channels = static_cast<int>(output_channels_64);
+    const int output_height = static_cast<int>(output_height_64);
+    const int output_width = static_cast<int>(output_width_64);
+    const int ksize_height = static_cast<int>(ksize_height_64);
+    const int ksize_width = static_cast<int>(ksize_width_64);
 
     const int stride_height = strides[0];
     const int stride_width = strides[1];
@@ -1854,12 +1854,12 @@ class DepthwiseConvInputGradFunctor<GPUContext, T, fuse_relu_before_conv> {
       threads = dim3(thread_x, blocks, 1);
       grid = dim3(input_channels, batch_size_int, 1);
     } else {
-      const int64_t block_y64 =
+      const int64_t block_y_64 =
           ((static_cast<int64_t>(input_width) + dilate_width - 1) /
            dilate_width) *
           dilate_width;
       blocks = static_cast<int>(
-          std::min<int64_t>(std::max(thread / input_channels, 1), block_y64));
+          std::min<int64_t>(std::max(thread / input_channels, 1), block_y_64));
       const int thread_x = std::min(input_channels, thread);
       const int64_t grid_x =
           (static_cast<int64_t>(input_height) + dilate_height - 1) /
@@ -1874,9 +1874,9 @@ class DepthwiseConvInputGradFunctor<GPUContext, T, fuse_relu_before_conv> {
     int filter_multiplier = output_channels / input_channels;
     int64_t nums_input = input_grad->numel();
     int block_size = 512;
-    int64_t grid_size64 = (nums_input + block_size - 1) / block_size;
-    PADDLE_ENFORCE_LE_INT_MAX(grid_size64, "grid_size");
-    int grid_size = static_cast<int>(grid_size64);
+    int64_t grid_size_64 = (nums_input + block_size - 1) / block_size;
+    PADDLE_ENFORCE_LE_INT_MAX(grid_size_64, "grid_size");
+    int grid_size = static_cast<int>(grid_size_64);
 
 #define check_case(c_filter_multiplier, c_stride, c_filter)             \
   if (c_filter_multiplier == 0 ||                                       \
@@ -1977,52 +1977,52 @@ class DepthwiseConvFilterGradFunctor<GPUContext, T, fuse_relu_before_conv> {
                   DenseTensor* filter_grad,
                   const DataLayout data_layout = DataLayout::NCHW) {
     const int64_t batch_size = input.dims()[0];
-    const int64_t input_channels64 =
+    const int64_t input_channels_64 =
         (data_layout != DataLayout::NHWC ? input.dims()[1] : input.dims()[3]);
-    const int64_t input_height64 =
+    const int64_t input_height_64 =
         (data_layout != DataLayout::NHWC ? input.dims()[2] : input.dims()[1]);
-    const int64_t input_width64 =
+    const int64_t input_width_64 =
         (data_layout != DataLayout::NHWC ? input.dims()[3] : input.dims()[2]);
-    const int64_t output_channels64 =
+    const int64_t output_channels_64 =
         (data_layout != DataLayout::NHWC ? output_grad.dims()[1]
                                          : output_grad.dims()[3]);
-    const int64_t output_height64 =
+    const int64_t output_height_64 =
         (data_layout != DataLayout::NHWC ? output_grad.dims()[2]
                                          : output_grad.dims()[1]);
-    const int64_t output_width64 =
+    const int64_t output_width_64 =
         (data_layout != DataLayout::NHWC ? output_grad.dims()[3]
                                          : output_grad.dims()[2]);
-    const int64_t ksize_height64 = filter_grad->dims()[2];
-    const int64_t ksize_width64 = filter_grad->dims()[3];
+    const int64_t ksize_height_64 = filter_grad->dims()[2];
+    const int64_t ksize_width_64 = filter_grad->dims()[3];
 
     PADDLE_ENFORCE_LE_INT_MAX(batch_size,
                               "depthwise conv filter grad batch size");
-    PADDLE_ENFORCE_LE_INT_MAX(input_channels64,
+    PADDLE_ENFORCE_LE_INT_MAX(input_channels_64,
                               "depthwise conv filter grad input channels");
-    PADDLE_ENFORCE_LE_INT_MAX(input_height64,
+    PADDLE_ENFORCE_LE_INT_MAX(input_height_64,
                               "depthwise conv filter grad input height");
-    PADDLE_ENFORCE_LE_INT_MAX(input_width64,
+    PADDLE_ENFORCE_LE_INT_MAX(input_width_64,
                               "depthwise conv filter grad input width");
-    PADDLE_ENFORCE_LE_INT_MAX(output_channels64,
+    PADDLE_ENFORCE_LE_INT_MAX(output_channels_64,
                               "depthwise conv filter grad output channels");
-    PADDLE_ENFORCE_LE_INT_MAX(output_height64,
+    PADDLE_ENFORCE_LE_INT_MAX(output_height_64,
                               "depthwise conv filter grad output height");
-    PADDLE_ENFORCE_LE_INT_MAX(output_width64,
+    PADDLE_ENFORCE_LE_INT_MAX(output_width_64,
                               "depthwise conv filter grad output width");
-    PADDLE_ENFORCE_LE_INT_MAX(ksize_height64,
+    PADDLE_ENFORCE_LE_INT_MAX(ksize_height_64,
                               "depthwise conv filter grad kernel height");
-    PADDLE_ENFORCE_LE_INT_MAX(ksize_width64,
+    PADDLE_ENFORCE_LE_INT_MAX(ksize_width_64,
                               "depthwise conv filter grad kernel width");
 
     const int batch_size_int = static_cast<int>(batch_size);
-    const int input_channels = static_cast<int>(input_channels64);
-    const int input_height = static_cast<int>(input_height64);
-    const int input_width = static_cast<int>(input_width64);
-    const int output_channels = static_cast<int>(output_channels64);
-    const int output_height = static_cast<int>(output_height64);
-    const int output_width = static_cast<int>(output_width64);
-    const int ksize_height = static_cast<int>(ksize_height64);
-    const int ksize_width = static_cast<int>(ksize_width64);
+    const int input_channels = static_cast<int>(input_channels_64);
+    const int input_height = static_cast<int>(input_height_64);
+    const int input_width = static_cast<int>(input_width_64);
+    const int output_channels = static_cast<int>(output_channels_64);
+    const int output_height = static_cast<int>(output_height_64);
+    const int output_width = static_cast<int>(output_width_64);
+    const int ksize_height = static_cast<int>(ksize_height_64);
+    const int ksize_width = static_cast<int>(ksize_width_64);
 
     const int stride_height = strides[0];
     const int stride_width = strides[1];
@@ -2051,20 +2051,20 @@ class DepthwiseConvFilterGradFunctor<GPUContext, T, fuse_relu_before_conv> {
       const int64_t output_hw =
           static_cast<int64_t>(output_height) * output_width;
       if (output_hw < WARP_SIZE) {
-        const int64_t block_x64 = batch_size * output_hw;
+        const int64_t block_x_64 = batch_size * output_hw;
         const int block_x =
-            static_cast<int>(std::min<int64_t>(block_size, block_x64));
+            static_cast<int>(std::min<int64_t>(block_size, block_x_64));
         threads = dim3(block_x);
       }
     } else {
       // Large block size may cause atomic dependence, reduce block size here.
       block_size = 256;
-      const int64_t block_y64 =
+      const int64_t block_y_64 =
           ((static_cast<int64_t>(output_width) + dilate_width - 1) /
            dilate_width) *
           dilate_width;
       blocks = static_cast<int>(std::min<int64_t>(
-          std::max(block_size / output_channels, 1), block_y64));
+          std::max(block_size / output_channels, 1), block_y_64));
       const int thread_x = std::min(output_channels, block_size);
       const int64_t grid_x =
           (static_cast<int64_t>(output_height) + dilate_height - 1) /
@@ -2078,10 +2078,11 @@ class DepthwiseConvFilterGradFunctor<GPUContext, T, fuse_relu_before_conv> {
       if (output_channels < SMALL_THRESHOLD) {
         const int64_t hwc_size =
             static_cast<int64_t>(ksize_height) * ksize_width * output_channels;
-        const int64_t blocks64 =
+        const int64_t blocks_64 =
             (hwc_size + static_cast<int64_t>(block_size) - 1) / block_size;
-        PADDLE_ENFORCE_LE_INT_MAX(blocks64, "CUDA launch grid filter_hwc_size");
-        grid = dim3(static_cast<int>(blocks64), batch_size, 1);
+        PADDLE_ENFORCE_LE_INT_MAX(blocks_64,
+                                  "CUDA launch grid filter_hwc_size");
+        grid = dim3(static_cast<int>(blocks_64), batch_size, 1);
         threads = dim3(static_cast<int>(
             std::min(static_cast<int64_t>(block_size), hwc_size)));
       }
