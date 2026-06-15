@@ -28,7 +28,7 @@ class TestDistributionsCategoricalAPI(unittest.TestCase):
             [[0.2, 0.3, 0.5], [2.0, 3.0, 5.0]], dtype="float32"
         )
         self.np_logits = np.array(
-            [[0.1, -0.2, 0.7], [1.5, 0.5, -0.5]], dtype="float32"
+            [[0.1, 0.2, 0.7], [1.5, 0.5, 0.25]], dtype="float32"
         )
         self.np_zero_probs = np.array(
             [[0.0, 1.0, 0.0], [0.5, 0.0, 0.5]], dtype="float32"
@@ -46,10 +46,12 @@ class TestDistributionsCategoricalAPI(unittest.TestCase):
             + max_value
         )
 
-    def _take_last_dim(self, x):
-        return np.take_along_axis(
-            x, self.np_value.reshape([-1, 1]), axis=-1
-        ).squeeze(-1)
+    def _take_torch_last_dim(self, x, value=None):
+        if value is None:
+            value = self.np_value
+        return np.take_along_axis(x, value.reshape([-1, 1]), axis=-1).squeeze(
+            -1
+        )
 
     def test_dygraph_Compatibility(self):
         import importlib
@@ -90,19 +92,23 @@ class TestDistributionsCategoricalAPI(unittest.TestCase):
         zero_probs_ref = self.np_zero_probs / self.np_zero_probs.sum(
             -1, keepdims=True
         )
+        paddle_probs_ref = self._take_torch_last_dim(np.log(probs_ref))
         eps = np.finfo(self.np_zero_probs.dtype).eps
         zero_logits_ref = np.log(np.clip(zero_probs_ref, eps, 1 - eps))
-        zero_log_prob_ref = np.take_along_axis(
-            zero_logits_ref, self.np_zero_value.reshape([-1, 1]), axis=-1
-        ).squeeze(-1)
+        zero_log_prob_ref = self._take_torch_last_dim(
+            zero_logits_ref, self.np_zero_value
+        )
         for out in [out1, out2]:
+            np.testing.assert_allclose(out.numpy(), paddle_probs_ref, rtol=1e-6)
+        for out in [out3, out4]:
             np.testing.assert_allclose(
-                out.numpy(), self._take_last_dim(np.log(probs_ref)), rtol=1e-6
+                out.numpy(),
+                self._take_torch_last_dim(logits_ref),
+                rtol=1e-6,
             )
-        for out in [out3, out4, out5]:
-            np.testing.assert_allclose(
-                out.numpy(), self._take_last_dim(logits_ref), rtol=1e-6
-            )
+        np.testing.assert_allclose(
+            out5.numpy(), self._take_torch_last_dim(logits_ref), rtol=1e-6
+        )
         np.testing.assert_allclose(dist1.probs.numpy(), probs_ref, rtol=1e-6)
         np.testing.assert_allclose(
             dist1.logits.numpy(), np.log(probs_ref), rtol=1e-6
@@ -237,19 +243,21 @@ class TestDistributionsCategoricalAPI(unittest.TestCase):
         zero_probs_ref = self.np_zero_probs / self.np_zero_probs.sum(
             -1, keepdims=True
         )
+        paddle_probs_ref = self._take_torch_last_dim(np.log(probs_ref))
         eps = np.finfo(self.np_zero_probs.dtype).eps
         zero_logits_ref = np.log(np.clip(zero_probs_ref, eps, 1 - eps))
-        zero_log_prob_ref = np.take_along_axis(
-            zero_logits_ref, self.np_zero_value.reshape([-1, 1]), axis=-1
-        ).squeeze(-1)
+        zero_log_prob_ref = self._take_torch_last_dim(
+            zero_logits_ref, self.np_zero_value
+        )
         for out in fetches[:2]:
+            np.testing.assert_allclose(out, paddle_probs_ref, rtol=1e-6)
+        for out in fetches[2:4]:
             np.testing.assert_allclose(
-                out, self._take_last_dim(np.log(probs_ref)), rtol=1e-6
+                out, self._take_torch_last_dim(logits_ref), rtol=1e-6
             )
-        for out in fetches[2:5]:
-            np.testing.assert_allclose(
-                out, self._take_last_dim(logits_ref), rtol=1e-6
-            )
+        np.testing.assert_allclose(
+            fetches[4], self._take_torch_last_dim(logits_ref), rtol=1e-6
+        )
         np.testing.assert_allclose(fetches[5], zero_log_prob_ref, rtol=1e-6)
         np.testing.assert_allclose(fetches[6], probs_ref, rtol=1e-6)
         np.testing.assert_allclose(fetches[7], np.log(probs_ref), rtol=1e-6)
@@ -334,8 +342,7 @@ class TestDistributionsPositiveDefiniteCheckAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_dygraph_Compatibility(self):
-        from paddle.distribution import constraint
-        from paddle.distributions import constraints
+        from paddle.distribution import constraint, constraints
 
         paddle.disable_static()
         x = paddle.to_tensor(self.np_x, place=self.place)
@@ -366,7 +373,7 @@ class TestDistributionsPositiveDefiniteCheckAPI(unittest.TestCase):
             np.testing.assert_array_equal(out.numpy(), np.array(False))
 
     def test_static_Compatibility(self):
-        from paddle.distributions import constraints
+        from paddle.distribution import constraints
 
         paddle.enable_static()
         main = paddle.static.Program()

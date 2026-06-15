@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import transform
+import sys as _sys
+
+from . import constraint as constraint, transform
 from .bernoulli import Bernoulli
 from .beta import Beta
 from .binomial import Binomial
@@ -55,6 +57,10 @@ from .transform import (  # noqa:F401
 from .transformed_distribution import TransformedDistribution
 from .uniform import Uniform
 
+constraints = constraint
+_sys.modules[__name__ + '.constraints'] = constraints
+_sys.modules['paddle.distributions.constraints'] = constraints
+
 __all__ = [
     'Bernoulli',
     'Beta',
@@ -83,6 +89,8 @@ __all__ = [
     'Binomial',
     'Poisson',
     'StudentT',
+    'constraint',
+    'constraints',
 ]
 
 __all__.extend(transform.__all__)

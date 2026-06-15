@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import importlib
 from typing import TYPE_CHECKING, Any, Literal, NamedTuple
 
 from typing_extensions import overload
@@ -28,7 +29,7 @@ from paddle.framework import (
 )
 from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
-from . import distributions as distributions, nn as nn
+from . import nn as nn
 from .proxy import (  # noqa: F401
     extend_torch_proxy_blocked_modules,
     paddle_triton_fun,
@@ -52,12 +53,16 @@ __all__ = [
     'median',
     'nanmedian',
     'seed',
+    'distributions',
 ]
 
 
 def __getattr__(name):
     if name == "paddle_triton":
         return paddle_triton_fun()
+    if name == "distributions":
+        return importlib.import_module(__name__ + ".distributions")
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 @ForbidKeywordsDecorator(
