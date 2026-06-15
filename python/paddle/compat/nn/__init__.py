@@ -70,7 +70,74 @@ def _ntuple(n, name="parse"):
 _single = _ntuple(1, "_single")
 
 
-class BatchNorm1D(nn.BatchNorm1D):
+class _BatchNormMixin:
+    def _init_compat_state(self, momentum, track_running_stats):
+        self.momentum = momentum
+        self.track_running_stats = track_running_stats
+        self._num_batches_tracked = 0
+
+    def _running_stats_axes(self, input: Tensor):
+        return tuple(i for i in range(len(input.shape)) if i != 1)
+
+    def _running_stats_factor(self):
+        if self.momentum is None:
+            return 1.0 / self._num_batches_tracked
+        return self.momentum
+
+    def _set_running_stats(self, input: Tensor, mean, variance):
+        factor = self._running_stats_factor()
+        axes = self._running_stats_axes(input)
+        stats_input = (
+            input
+            if input.dtype == paddle.float64
+            else paddle.cast(input, 'float64')
+        )
+        batch_mean = paddle.mean(stats_input, axis=axes).astype(mean.dtype)
+        batch_variance = paddle.var(
+            stats_input, axis=axes, unbiased=True
+        ).astype(variance.dtype)
+        with paddle.no_grad():
+            self._mean.set_value(mean * (1.0 - factor) + batch_mean * factor)
+            self._variance.set_value(
+                variance * (1.0 - factor) + batch_variance * factor
+            )
+
+    @property
+    def running_mean(self):
+        return self._mean if self.track_running_stats else None
+
+    @property
+    def running_var(self):
+        return self._variance if self.track_running_stats else None
+
+    @property
+    def num_batches_tracked(self):
+        if not self.track_running_stats:
+            return None
+        return paddle.to_tensor(self._num_batches_tracked, dtype='int64')
+
+    def forward(self, input: Tensor) -> Tensor:
+        if not (
+            paddle.in_dynamic_mode()
+            and self.training
+            and self.track_running_stats
+        ):
+            return super().forward(input)
+
+        mean = self._mean.clone()
+        variance = self._variance.clone()
+        self._num_batches_tracked += 1
+        if self.momentum is None:
+            self._momentum = 1.0 - 1.0 / self._num_batches_tracked
+        else:
+            self._momentum = 1.0 - self.momentum
+
+        out = super().forward(input)
+        self._set_running_stats(input, mean, variance)
+        return out
+
+
+class BatchNorm1D(_BatchNormMixin, nn.BatchNorm1D):
     def __init__(
         self,
         num_features: int,
@@ -91,12 +158,11 @@ class BatchNorm1D(nn.BatchNorm1D):
             dtype=dtype,
         )
         self.eps = eps
-        self.momentum = momentum
         self.affine = affine
-        self.track_running_stats = track_running_stats
+        self._init_compat_state(momentum, track_running_stats)
 
 
-class BatchNorm2D(nn.BatchNorm2D):
+class BatchNorm2D(_BatchNormMixin, nn.BatchNorm2D):
     def __init__(
         self,
         num_features: int,
@@ -117,12 +183,11 @@ class BatchNorm2D(nn.BatchNorm2D):
             dtype=dtype,
         )
         self.eps = eps
-        self.momentum = momentum
         self.affine = affine
-        self.track_running_stats = track_running_stats
+        self._init_compat_state(momentum, track_running_stats)
 
 
-class BatchNorm3D(nn.BatchNorm3D):
+class BatchNorm3D(_BatchNormMixin, nn.BatchNorm3D):
     def __init__(
         self,
         num_features: int,
@@ -143,9 +208,8 @@ class BatchNorm3D(nn.BatchNorm3D):
             dtype=dtype,
         )
         self.eps = eps
-        self.momentum = momentum
         self.affine = affine
-        self.track_running_stats = track_running_stats
+        self._init_compat_state(momentum, track_running_stats)
 
 
 BatchNorm1d = BatchNorm1D

@@ -2410,6 +2410,7 @@ class _CompatBatchNormBase:
         self.num_features = 3
         self.eps = 1e-5
         self.np_x = np.random.rand(*self.x_shape).astype("float32") * 2 - 1
+        self.np_x_alt = np.random.rand(*self.x_shape).astype("float32") * 2 - 1
 
     def _expected(self, x=None, eps=None):
         x = self.np_x if x is None else x
@@ -2422,6 +2423,24 @@ class _CompatBatchNormBase:
         expected = self._expected() if expected is None else expected
         for out in outputs:
             np.testing.assert_allclose(out.numpy(), expected, rtol=rtol)
+
+    def _expected_running_stats(self, xs, momentum):
+        running_mean = np.zeros([self.num_features], dtype="float32")
+        running_var = np.ones([self.num_features], dtype="float32")
+        for idx, x in enumerate(xs, start=1):
+            factor = 1.0 / idx if momentum is None else momentum
+            batch_mean = np.mean(x, axis=self.axes)
+            batch_var = np.var(x, axis=self.axes, ddof=1)
+            running_mean = running_mean * (1.0 - factor) + batch_mean * factor
+            running_var = running_var * (1.0 - factor) + batch_var * factor
+        return running_mean, running_var
+
+    def _expected_eval_output(self, x, running_mean, running_var):
+        shape = [1] * len(x.shape)
+        shape[1] = self.num_features
+        return (x - running_mean.reshape(shape)) / np.sqrt(
+            running_var.reshape(shape) + self.eps
+        )
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -2504,6 +2523,74 @@ class _CompatBatchNormBase:
         with self.assertRaises(TypeError):
             self.alias(self.num_features, bias=False)
         self.assertFalse(hasattr(paddle.nn, self.alias_name))
+        paddle.enable_static()
+
+    def test_dygraph_RunningStats(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        x_alt = paddle.to_tensor(self.np_x_alt)
+
+        layer1 = self.alias(self.num_features)
+        layer1(x)
+        layer1(x_alt)
+        expected_mean1, expected_var1 = self._expected_running_stats(
+            [self.np_x, self.np_x_alt], 0.1
+        )
+        np.testing.assert_allclose(
+            layer1.running_mean.numpy(),
+            expected_mean1,
+            rtol=1e-5,
+            atol=1e-8,
+        )
+        np.testing.assert_allclose(
+            layer1.running_var.numpy(),
+            expected_var1,
+            rtol=1e-5,
+            atol=1e-8,
+        )
+        np.testing.assert_array_equal(
+            layer1.num_batches_tracked.numpy(), np.array(2, dtype="int64")
+        )
+        layer1.eval()
+        out1 = layer1(x_alt)
+        np.testing.assert_allclose(
+            out1.numpy(),
+            self._expected_eval_output(
+                self.np_x_alt, expected_mean1, expected_var1
+            ),
+            rtol=1e-5,
+        )
+
+        layer2 = self.alias(self.num_features, momentum=None)
+        layer2(x)
+        layer2(x_alt)
+        expected_mean2, expected_var2 = self._expected_running_stats(
+            [self.np_x, self.np_x_alt], None
+        )
+        np.testing.assert_allclose(
+            layer2.running_mean.numpy(),
+            expected_mean2,
+            rtol=1e-5,
+            atol=1e-8,
+        )
+        np.testing.assert_allclose(
+            layer2.running_var.numpy(),
+            expected_var2,
+            rtol=1e-5,
+            atol=1e-8,
+        )
+        np.testing.assert_array_equal(
+            layer2.num_batches_tracked.numpy(), np.array(2, dtype="int64")
+        )
+        layer2.eval()
+        out2 = layer2(x_alt)
+        np.testing.assert_allclose(
+            out2.numpy(),
+            self._expected_eval_output(
+                self.np_x_alt, expected_mean2, expected_var2
+            ),
+            rtol=1e-5,
+        )
         paddle.enable_static()
 
     def test_static_Compatibility(self):
