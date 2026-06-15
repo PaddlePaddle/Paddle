@@ -19,6 +19,7 @@
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Operator.h>
 #include <llvm/Pass.h>
+#include <llvm/Target/TargetMachine.h>
 
 #include <functional>
 
@@ -29,12 +30,14 @@ namespace cinn::backends {
 // llvm module optimizer
 class LLVMModuleOptimizer final {
  public:
-  explicit LLVMModuleOptimizer(int opt_level,
+  explicit LLVMModuleOptimizer(llvm::TargetMachine *machine,
+                               int opt_level,
                                llvm::FastMathFlags fast_math_flags,
                                bool print_passes = false);
   void operator()(llvm::Module *m);
 
  private:
+  llvm::TargetMachine *machine_;
   int opt_level_{};
   bool print_passes_{};
 };

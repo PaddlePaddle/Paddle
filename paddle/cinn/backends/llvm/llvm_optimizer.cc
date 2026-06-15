@@ -118,10 +118,11 @@ using CustomFunctionPassManager =
 using CustomModulePassManager = CustomPassManager<llvm::legacy::PassManager>;
 }  // namespace
 
-LLVMModuleOptimizer::LLVMModuleOptimizer(int opt_level,
+LLVMModuleOptimizer::LLVMModuleOptimizer(llvm::TargetMachine *machine,
+                                         int opt_level,
                                          llvm::FastMathFlags fast_math_flags,
                                          bool print_passes)
-    : opt_level_(opt_level), print_passes_(print_passes) {}
+    : opt_level_(opt_level), print_passes_(print_passes), machine_(machine) {}
 
 void LLVMModuleOptimizer::operator()(llvm::Module *m) {
   auto machine = std::move(llvm::cantFail(

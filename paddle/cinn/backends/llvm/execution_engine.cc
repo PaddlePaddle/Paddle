@@ -191,7 +191,7 @@ void ExecutionEngine::Link(const ir::Module &module) {
   auto machine = std::move(llvm::cantFail(
       llvm::cantFail(llvm::orc::JITTargetMachineBuilder::detectHost())
           .createTargetMachine()));
-  LLVMModuleOptimizer optimize(3, {}, true);
+  LLVMModuleOptimizer optimize(machine.get(), 3, {}, true);
   optimize(m.get());
   PADDLE_ENFORCE_EQ(
       !llvm::verifyModule(*m, &llvm::errs()),
