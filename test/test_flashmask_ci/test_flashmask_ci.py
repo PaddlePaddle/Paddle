@@ -261,3 +261,192 @@ def test_flashmask(
     assert (v.grad - v_ref.grad).abs().max().item() <= rtol * (
         v_bf16.grad - v_ref.grad
     ).abs().max().item() + dv_atol
+
+
+@pytest.mark.parametrize("d, dv", [(192, 128), (256, 128)])
+@pytest.mark.parametrize("fa_version", [2, 3])
+@pytest.mark.parametrize(
+    "gen_startend_row_indices",
+    [
+        partial(generate_none_mask, causal=False),  # flash_attn path
+        partial(generate_sliding_window_mask),  # flashmask path
+    ],
+)
+def test_flashmask_forward_headdim_mismatch_raises(
+    d, dv, fa_version, gen_startend_row_indices
+):
+    """Test that headdim != headdim_v raises an error."""
+
+    if fa_version == 2:
+        paddle.set_flags({'FLAGS_flash_attn_version': 2})
+    elif fa_version == 3:
+        paddle.set_flags({'FLAGS_flash_attn_version': 3})
+    else:
+        raise ValueError(f"Invalid flash attention version: {fa_version}")
+
+    batch_size, seqlen_q, seqlen_k, nheads, nheads_startend_row_indices = (
+        1,
+        300,
+        300,
+        16,
+        16,
+    )
+    q = paddle.randn([batch_size, seqlen_q, nheads, d], dtype=paddle.bfloat16)
+    k = paddle.randn([batch_size, seqlen_k, nheads, d], dtype=paddle.bfloat16)
+    v = paddle.randn([batch_size, seqlen_k, nheads, dv], dtype=paddle.bfloat16)
+    startend_row_indices, causal = gen_startend_row_indices(
+        batch_size, seqlen_q, seqlen_k, nheads_startend_row_indices
+    )
+    if fa_version == 3:
+        if startend_row_indices is None:
+            # fallback to fa2
+            with pytest.raises(Exception, match="headdim != headdim_v"):
+                out, lse = flashmask_attention(
+                    q,
+                    k,
+                    v,
+                    startend_row_indices=startend_row_indices,
+                    causal=causal,
+                    return_softmax_lse=True,
+                )
+        else:
+            # flashmask v3
+            if not (
+                (d > 128 and d <= 192 and dv > 96 and dv <= 128)
+                or (d <= 64 and dv <= 512)
+            ):
+                with pytest.raises(
+                    Exception,
+                    match="headdim != headdim_v|V headdim is different from",
+                ):
+                    out, lse = flashmask_attention(
+                        q,
+                        k,
+                        v,
+                        startend_row_indices=startend_row_indices,
+                        causal=causal,
+                        return_softmax_lse=True,
+                    )
+    elif fa_version == 2:
+        with pytest.raises(Exception, match="headdim != headdim_v"):
+            out, lse = flashmask_attention(
+                q,
+                k,
+                v,
+                startend_row_indices=startend_row_indices,
+                causal=causal,
+                return_softmax_lse=True,
+            )
+    else:
+        raise ValueError(f"Invalid flash attention version: {fa_version}")
+
+
+@pytest.mark.parametrize("d, dv", [(192, 128), (256, 128)])
+@pytest.mark.parametrize("fa_version", [2, 3])
+def test_flashmask_backward_headdim_mismatch_raises(fa_version, d, dv):
+    """Test that backward kernel raises when headdim != headdim_v."""
+    from paddle import _C_ops
+
+    paddle.set_flags({'FLAGS_flash_attn_version': fa_version})
+    batch_size, seqlen_q, seqlen_k, nheads = 1, 300, 300, 16
+    softmax_scale = d ** (-0.5)
+
+    if fa_version == 2:
+        q = paddle.randn(
+            [batch_size, seqlen_q, nheads, d], dtype=paddle.bfloat16
+        )
+        k = paddle.randn(
+            [batch_size, seqlen_k, nheads, d], dtype=paddle.bfloat16
+        )
+        v = paddle.randn(
+            [batch_size, seqlen_k, nheads, dv], dtype=paddle.bfloat16
+        )
+        out = paddle.randn(
+            [batch_size, seqlen_q, nheads, dv], dtype=paddle.bfloat16
+        )
+        softmax_lse = paddle.randn(
+            [batch_size, nheads, seqlen_q], dtype=paddle.float32
+        )
+        seed_offset = paddle.to_tensor([0, 0], dtype=paddle.int64)
+        dout = paddle.randn(
+            [batch_size, seqlen_q, nheads, dv], dtype=paddle.bfloat16
+        )
+        with pytest.raises(Exception, match="headdim != headdim_v"):
+            _C_ops.flash_attn_grad(
+                q, k, v, out, softmax_lse, seed_offset, None, dout, 0.0, False
+            )
+    elif fa_version == 3:
+        total_q = batch_size * seqlen_q
+        total_k = batch_size * seqlen_k
+        q = paddle.randn([total_q, nheads, d], dtype=paddle.bfloat16)
+        k = paddle.randn([total_k, nheads, d], dtype=paddle.bfloat16)
+        v = paddle.randn([total_k, nheads, dv], dtype=paddle.bfloat16)
+        out = paddle.randn([total_q, nheads, dv], dtype=paddle.bfloat16)
+        softmax_lse = paddle.randn(
+            [batch_size, nheads, seqlen_q], dtype=paddle.float32
+        )
+        cu_seqlens_q = paddle.to_tensor([0, seqlen_q], dtype=paddle.int32)
+        cu_seqlens_k = paddle.to_tensor([0, seqlen_k], dtype=paddle.int32)
+        dout = paddle.randn([total_q, nheads, dv], dtype=paddle.bfloat16)
+        with pytest.raises(Exception, match="headdim != headdim_v"):
+            _C_ops.flash_attn_v3_varlen_grad(
+                q,
+                k,
+                v,
+                out,
+                softmax_lse,
+                cu_seqlens_q,
+                cu_seqlens_k,
+                None,
+                None,  # seqused_q, seqused_k
+                dout,
+                softmax_scale,
+                seqlen_q,
+                seqlen_k,
+                False,  # causal
+                -1,
+                -1,  # window_size_left, window_size_right
+                0.0,  # softcap
+                0,  # sm_margin
+            )
+
+
+@pytest.mark.parametrize("d, dv", [(192, 128), (256, 128)])
+def test_flash_attn_unpadded_grad_headdim_mismatch_raises(d, dv):
+    """Test that flash_attn_unpadded_grad raises when headdim != headdim_v."""
+    from paddle import _C_ops
+
+    paddle.set_flags({'FLAGS_flash_attn_version': 2})
+
+    batch_size, seqlen_q, seqlen_k, nheads = 1, 300, 300, 16
+    total_q = batch_size * seqlen_q
+    total_k = batch_size * seqlen_k
+    q = paddle.randn([total_q, nheads, d], dtype=paddle.bfloat16)
+    k = paddle.randn([total_k, nheads, d], dtype=paddle.bfloat16)
+    v = paddle.randn([total_k, nheads, dv], dtype=paddle.bfloat16)
+    out = paddle.randn([total_q, nheads, dv], dtype=paddle.bfloat16)
+    softmax_lse = paddle.randn(
+        [batch_size, nheads, seqlen_q], dtype=paddle.float32
+    )
+    seed_offset = paddle.to_tensor([0, 0], dtype=paddle.int64)
+    cu_seqlens_q = paddle.to_tensor([0, seqlen_q], dtype=paddle.int32)
+    cu_seqlens_k = paddle.to_tensor([0, seqlen_k], dtype=paddle.int32)
+    dout = paddle.randn([total_q, nheads, dv], dtype=paddle.bfloat16)
+    with pytest.raises(Exception, match="headdim != headdim_v"):
+        _C_ops.flash_attn_unpadded_grad(
+            q,
+            k,
+            v,
+            cu_seqlens_q,
+            cu_seqlens_k,
+            out,
+            softmax_lse,
+            seed_offset,
+            None,
+            dout,
+            seqlen_q,
+            seqlen_k,
+            d ** (-0.5),
+            0.0,
+            False,
+        )

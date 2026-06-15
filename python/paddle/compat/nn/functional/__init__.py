@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING, Literal
 
 import paddle
@@ -39,6 +40,7 @@ if TYPE_CHECKING:
     _PaddingTensorMode: TypeAlias = Literal[
         "zeros", "constant", "reflect", "replicate", "circular"
     ]
+    _ReduceMode: TypeAlias = Literal["mean", "sum", "none"]
 
 
 __all__ = [
@@ -48,6 +50,7 @@ __all__ = [
     'linear',
     'scaled_dot_product_attention',
     'unfold',
+    'smooth_l1_loss',
 ]
 
 
@@ -379,4 +382,91 @@ def unfold(
         strides=to_list_if_necessary(stride),
         paddings=to_list_if_necessary(padding),
         dilations=to_list_if_necessary(dilation),
+    )
+
+
+@ForbidKeywordsDecorator(
+    illegal_keys={"label", "delta", "is_huber", "name"},
+    func_name="paddle.compat.nn.functional.smooth_l1_loss",
+    correct_name="paddle.nn.functional.smooth_l1_loss",
+)
+def smooth_l1_loss(
+    input: Tensor,
+    target: Tensor,
+    size_average: bool | None = None,
+    reduce: bool | None = None,
+    reduction: _ReduceMode = 'mean',
+    beta: float = 1.0,
+) -> Tensor:
+    r"""
+
+    PyTorch compatible version of :ref:`api_paddle_nn_functional_smooth_l1_loss`.
+
+    Computes the Smooth L1 loss, aligned with ``torch.nn.functional.smooth_l1_loss``.
+    The per-element loss is:
+
+    .. math::
+
+        z_i = \left\{\begin{array}{rcl}
+            0.5 (x_i - y_i)^2 / beta & & {if |x_i - y_i| < beta} \\
+            |x_i - y_i| - 0.5 * beta & & {otherwise}
+        \end{array} \right.
+
+    This equals Paddle's Huber loss divided by ``beta`` (i.e. ``is_huber=False`` with
+    ``delta=beta``), which is the key difference from
+    :ref:`api_paddle_nn_functional_smooth_l1_loss` whose default ``is_huber=True``
+    returns the raw Huber loss.
+
+    Args:
+        input (Tensor): Input tensor, the data type is float32 or float64.
+        target (Tensor): Label tensor with the same shape as ``input``.
+        size_average (bool|None, optional): Deprecated (see ``reduction``). When
+            ``size_average`` or ``reduce`` is not ``None``, it is translated into
+            ``reduction`` with a ``DeprecationWarning``. Default is ``None``.
+        reduce (bool|None, optional): Deprecated (see ``reduction``). Default is ``None``.
+        reduction (str, optional): Indicate how to calculate the loss, the candidates
+            are ``'none'`` | ``'mean'`` | ``'sum'``. Default is ``'mean'``.
+        beta (float, optional): Specifies the threshold at which to change between L1
+            and L2 loss. The value must be non-negative. When ``beta == 0`` the loss
+            degrades to the L1 loss, matching PyTorch. Default is ``1.0``.
+
+    Returns:
+        Tensor, The tensor storing the smooth L1 loss of ``input`` and ``target``.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> input = paddle.to_tensor([[0.5, 1.5], [2.0, 0.0]], dtype='float32')
+            >>> target = paddle.to_tensor([[1.0, 1.0], [1.0, 0.5]], dtype='float32')
+            >>> output = paddle.compat.nn.functional.smooth_l1_loss(input, target, beta=1.0)
+            >>> print(output)
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   0.21875000)
+    """
+    # Translate PyTorch's deprecated size_average / reduce into reduction.
+    if size_average is not None or reduce is not None:
+        reduction = (
+            'none'
+            if reduce is False
+            else ('sum' if size_average is False else 'mean')
+        )
+        warnings.warn(
+            "'size_average' and 'reduce' args of 'smooth_l1_loss' will be "
+            f"deprecated, please use reduction='{reduction}' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+    if beta < 0:
+        raise ValueError(
+            f"smooth_l1_loss does not accept negative beta, but got beta={beta}."
+        )
+
+    if beta == 0:
+        return paddle.nn.functional.l1_loss(input, target, reduction=reduction)
+
+    return paddle.nn.functional.smooth_l1_loss(
+        input, target, reduction=reduction, delta=beta, is_huber=False
     )
