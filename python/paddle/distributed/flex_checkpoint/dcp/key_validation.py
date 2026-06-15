@@ -20,7 +20,6 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import paddle
-from paddle.distributed import get_rank as _get_rank
 from paddle.distributed.fleet.utils.log_util import logger
 
 if TYPE_CHECKING:
@@ -39,6 +38,11 @@ _MAX_SHAPE_MISMATCHES = 20
 _MAX_PATTERNS_SHOWN = 30
 _SRC_FOLD_THRESHOLD = 5
 _MAX_SLICE_DETAIL_KEYS = 5
+
+
+def _get_rank() -> int:
+    return paddle.distributed.get_rank()
+
 
 # ---------------------------------------------------------------------------
 # Color support (disabled by default)
@@ -340,9 +344,7 @@ def _print_standard_report(
             )
         )
     else:
-        matched = (
-            total_keys - len(result.missing_keys) - len(result.shape_mismatches)
-        )
+        matched = total_keys - len(result.missing_keys)
         lines.append(
             f"Matched: {matched}/{total_keys} keys | "
             f"Missing: {len(result.missing_keys)} | "
