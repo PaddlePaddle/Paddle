@@ -440,8 +440,6 @@ class Optimizer:
             if len(self._master_weights) != 0:
                 state_dict["master_weights"] = self._master_weights
         # global step if use lr decay
-        if hasattr(self, "_global_step"):
-            state_dict["global_step"] = self._global_step
         if isinstance(self._learning_rate, LRScheduler):
             state_dict["LR_Scheduler"] = self._learning_rate.state_dict()
         return state_dict
@@ -497,8 +495,6 @@ class Optimizer:
         state_dict = state_dict.copy()
         if "LR_Scheduler" in state_dict:
             state_dict.pop("LR_Scheduler")
-        if "global_step" in state_dict:
-            self._global_step = state_dict.pop("global_step")
         if "master_weights" in state_dict:
             if hasattr(self, "_master_weights"):
                 self._master_weights = state_dict["master_weights"]
