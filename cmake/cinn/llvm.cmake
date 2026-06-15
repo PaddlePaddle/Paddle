@@ -17,7 +17,6 @@ message(STATUS "set MLIR_DIR: ${MLIR_DIR}")
 find_package(LLVM REQUIRED CONFIG HINTS ${LLVM_DIR})
 find_package(MLIR REQUIRED CONFIG HINTS ${MLIR_DIR})
 find_package(ZLIB REQUIRED)
-paddle_fix_llvm_support_target()
 
 paddle_get_llvm_native_target(PADDLE_LLVM_NATIVE_TARGET)
 
@@ -85,10 +84,9 @@ get_property(mlir_libs GLOBAL PROPERTY MLIR_ALL_LIBS)
 add_definitions(${LLVM_DEFINITIONS})
 
 # The minimum needed libraries for MLIR IR parse and transform.
-paddle_select_mlir_standard_lib(PADDLE_MLIR_STANDARD_LIB)
 set(MLIR_IR_LIBS
     MLIRAnalysis
-    ${PADDLE_MLIR_STANDARD_LIB}
+    MLIRStandard
     MLIRPass
     MLIRParser
     MLIRDialect
