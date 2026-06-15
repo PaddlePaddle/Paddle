@@ -388,9 +388,10 @@ void LaunchDepthwiseConv2dBackwardCompatible(const Context& dev_ctx,
   // Launch Input Gradient Kernel (grad_input)
   if (input_grad_nchw_ptr) {
     int64_t totalElements = input_grad_nchw_ptr->numel();
-    uint32_t blocks = GET_BLOCKS(totalElements);
+    constexpr int INPUT_GRAD_NUM_THREADS = 256;
+    uint32_t blocks = GET_BLOCKS(totalElements, INPUT_GRAD_NUM_THREADS);
     dim3 grid(blocks);
-    dim3 block(CUDA_NUM_THREADS);
+    dim3 block(INPUT_GRAD_NUM_THREADS);
 
     const T* grad_output_ptr = out_grad_nchw.data<T>();
     T* grad_input_ptr = input_grad_nchw_ptr->data<T>();
