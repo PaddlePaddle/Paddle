@@ -15,7 +15,6 @@ import os
 import tempfile
 import unittest
 
-import numpy
 import numpy as np
 from op_test import is_custom_device
 
@@ -81,7 +80,7 @@ class TestMasterWeightSaveForFP16(unittest.TestCase):
 
     def check_with_opt_state_dict(self, use_save_load=True):
         paddle.seed(100)
-        numpy.random.seed(100)
+        np.random.seed(100)
 
         class SimpleNet(paddle.nn.Layer):
             def __init__(self, input_size, output_size):
@@ -108,8 +107,8 @@ class TestMasterWeightSaveForFP16(unittest.TestCase):
                 self.num_samples = num_samples
 
             def __getitem__(self, idx):
-                data = numpy.random.random([input_size]).astype('float16')
-                label = numpy.random.random([output_size]).astype('float16')
+                data = np.random.random([input_size]).astype('float16')
+                label = np.random.random([output_size]).astype('float16')
                 return data, label
 
             def __len__(self):
@@ -184,7 +183,7 @@ class TestOptimizerAPI(unittest.TestCase):
 
     def test_step_without_closure(self):
         paddle.seed(100)
-        numpy.random.seed(100)
+        np.random.seed(100)
         paddle.disable_static()
         x = paddle.arange(26, dtype="float32").reshape([2, 13])
         linear = paddle.nn.Linear(13, 5)
@@ -211,7 +210,7 @@ class TestOptimizerAPI(unittest.TestCase):
 
     def test_step_with_closure(self):
         paddle.seed(100)
-        numpy.random.seed(100)
+        np.random.seed(100)
         paddle.disable_static()
         x = paddle.arange(26, dtype="float32").reshape([2, 13])
         linear = paddle.nn.Linear(13, 5)
@@ -239,6 +238,25 @@ class TestOptimizerAPI(unittest.TestCase):
                 return loss
 
             loss = optimizer.step(closure)
+
+    def test_maximize_dygraph(self):
+        paddle.seed(100)
+        np.random.seed(100)
+        paddle.disable_static()
+        x = paddle.tensor([0.0, 0.0], dtype="float32")
+        x.stop_gradient = False
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=0.5,
+            parameters=[x],
+            maximize=True,
+        )
+        for epoch in range(5):
+            optimizer.clear_grad()
+            y = -((x[0] - 1) ** 2) - (x[1] - 4) ** 2
+            loss = paddle.sum(y)
+            loss.backward()
+            optimizer.step()
+        np.testing.assert_allclose(x.numpy(), [1.0, 4.0], atol=1e-5)
 
 
 if __name__ == '__main__':
