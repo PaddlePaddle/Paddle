@@ -170,10 +170,10 @@ class Adagrad(Optimizer):
         self._master_weights = {}
         self.initial_accumulator_value = initial_accumulator_value
         self._lr_decay = lr_decay
-        if lr_decay > 0.0:
-            self._lr_decay_scheduler = InverseTimeDecay(
-                learning_rate=1.0, gamma=lr_decay
-            )
+        self._lr_decay_schedulers = {
+            lr_decay: InverseTimeDecay(learning_rate=1.0, gamma=lr_decay)
+        }
+        self._current_lr_decay_scheduler = self._lr_decay_schedulers[lr_decay]
         self._default_dict = {
             'epsilon': epsilon,
             'initial_accumulator_value': initial_accumulator_value,
@@ -234,8 +234,7 @@ class Adagrad(Optimizer):
         )
 
         param_lr = self._create_param_lr(param_and_grad)
-        if self._lr_decay > 0.0:
-            param_lr = param_lr * self._lr_decay_scheduler.get_lr()
+        param_lr = param_lr * self._current_lr_decay_scheduler.get_lr()
 
         if in_dynamic_or_pir_mode():
             _, _, _ = _C_ops.adagrad_(
@@ -286,11 +285,18 @@ class Adagrad(Optimizer):
             'lr_decay', self._default_dict['lr_decay']
         )
         parameters = parameters.get('params')
+        if self._lr_decay not in self._lr_decay_schedulers.keys():
+            self._lr_decay_schedulers[self._lr_decay] = InverseTimeDecay(
+                learning_rate=1.0, gamma=self._lr_decay
+            )
+        self._current_lr_decay_scheduler = self._lr_decay_schedulers[
+            self._lr_decay
+        ]
         return parameters
 
     def step(
         self, closure: Callable[[], Tensor] | None = None
     ) -> Tensor | None:
-        if self._lr_decay > 0.0:
-            self._lr_decay_scheduler.step()
+        for scheduler in self._lr_decay_schedulers.values():
+            scheduler.step()
         return super().step(closure)
