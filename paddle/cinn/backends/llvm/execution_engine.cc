@@ -92,6 +92,26 @@ void InitializeLLVMPasses() {
   // llvm::initializeCodeGenPreparePass(registry);
 }
 }  // namespace
+void NaiveObjectCache::notifyObjectCompiled(const llvm::Module *m,
+                                            llvm::MemoryBufferRef obj_buffer) {
+  cached_objects_[m->getModuleIdentifier()] =
+      llvm::MemoryBuffer::getMemBufferCopy(obj_buffer.getBuffer(),
+                                           obj_buffer.getBufferIdentifier());
+}
+
+std::unique_ptr<llvm::MemoryBuffer> NaiveObjectCache::getObject(
+    const llvm::Module *m) {
+  auto it = cached_objects_.find(m->getModuleIdentifier());
+  if (it == cached_objects_.end()) {
+    VLOG(1) << "No object for " << m->getModuleIdentifier()
+            << " in cache. Compiling.";
+    return nullptr;
+  }
+
+  VLOG(3) << "Object for " << m->getModuleIdentifier() << " loaded from cache.";
+  return llvm::MemoryBuffer::getMemBuffer(it->second->getMemBufferRef());
+}
+
 /*static*/ std::unique_ptr<ExecutionEngine> ExecutionEngine::Create(
     const ExecutionOptions &config) {
   VLOG(6) << "===================== Create CINN ExecutionEngine begin "
@@ -104,6 +124,18 @@ void InitializeLLVMPasses() {
   std::call_once(flag, InitializeLLVMPasses);
 
   auto engine = std::make_unique<ExecutionEngine>(/*enable_object_cache=*/true);
+
+  auto compile_layer_creator =
+      [&engine](llvm::orc::JITTargetMachineBuilder jtmb)
+      -> llvm::Expected<
+          std::unique_ptr<llvm::orc::IRCompileLayer::IRCompiler>> {
+    auto machine = llvm::cantFail(jtmb.createTargetMachine());
+    VLOG(6) << "create llvm compile layer";
+    VLOG(6) << "Target Name: " << machine->getTarget().getName();
+    VLOG(6) << "Target CPU: " << machine->getTargetCPU().str() << std::endl;
+    return std::make_unique<llvm::orc::TMOwningSimpleCompiler>(
+        std::move(machine), engine->cache_.get());
+  };
 
   auto object_layer_creator = [&](llvm::orc::ExecutionSession &session,
                                   const llvm::Triple &triple) {
@@ -120,6 +152,7 @@ void InitializeLLVMPasses() {
   VLOG(6) << "create jit execution engine";
   engine->jit_ =
       llvm::cantFail(llvm::orc::LLJITBuilder()
+                         .setCompileFunctionCreator(compile_layer_creator)
                          .setObjectLinkingLayerCreator(object_layer_creator)
                          .create());
   engine->jit_->getMainJITDylib().addGenerator(llvm::cantFail(
