@@ -22,12 +22,12 @@ namespace phi {
 template <typename T, typename Context>
 void GaussianKernel(const Context& dev_ctx,
                     const IntArray& shape,
-                    float mean,
-                    float std,
+                    double mean,
+                    double std,
                     int seed,
                     DataType dtype,
                     DenseTensor* out) {
-  std::normal_distribution<T> dist(mean, std);
+  std::normal_distribution<T> dist(static_cast<T>(mean), static_cast<T>(std));
   std::shared_ptr<std::mt19937_64> engine;
   if (seed) {
     engine = std::make_shared<std::mt19937_64>();

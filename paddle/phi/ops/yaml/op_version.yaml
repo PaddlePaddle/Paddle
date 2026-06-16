@@ -310,6 +310,14 @@
         - modify_attr : shape
           comment : "The arg 'default_value' of attr 'shape' is changed: from 'None' to '{}'."
           default : std::vector<int64_t>{}
+    - checkpoint : Upgrade gaussian_random, change the type of attributes [mean] and [std] from float to double to avoid float32 truncation that breaks float64 output precision.
+      action :
+        - modify_attr : mean
+          comment : "The type of attr 'mean' is changed from float to double, so that the caller's double-precision value is no longer truncated to float32 before being used by the kernel. The numeric default value is unchanged (0.0)."
+          default : 0.0
+        - modify_attr : std
+          comment : "The type of attr 'std' is changed from float to double, so that the caller's double-precision value is no longer truncated to float32 before being used by the kernel. The numeric default value is unchanged (1.0)."
+          default : 1.0
 
 - op : generate_proposals
   version :
