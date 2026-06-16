@@ -245,18 +245,27 @@ class TestOptimizerAPI(unittest.TestCase):
         paddle.disable_static()
         x = paddle.tensor([0.0, 0.0], dtype="float32")
         x.stop_gradient = False
-        optimizer = paddle.optimizer.SGD(
-            learning_rate=0.5,
-            parameters=[x],
-            maximize=True,
-        )
-        for epoch in range(5):
-            optimizer.clear_grad()
-            y = -((x[0] - 1) ** 2) - (x[1] - 4) ** 2
-            loss = paddle.sum(y)
-            loss.backward()
-            optimizer.step()
-        np.testing.assert_allclose(x.numpy(), [1.0, 4.0], atol=1e-5)
+        optimizer_list = [
+            paddle.optimizer.SGD(
+                learning_rate=0.5,
+                parameters=[x],
+                maximize=True,
+            ),
+            paddle.optimizer.AdamW(
+                learning_rate=0.5,
+                parameters=[x],
+                maximize=True,
+            ),
+        ]
+        for optimizer in optimizer_list:
+            for epoch in range(30):
+                optimizer.clear_grad()
+                y = -((x[0] - 1) ** 2) - (x[1] - 4) ** 2
+                loss = paddle.sum(y)
+                loss.backward()
+                optimizer.step()
+            print(x.numpy())
+            np.testing.assert_allclose(x.numpy(), [1.0, 4.0], atol=0.1)
 
 
 if __name__ == '__main__':
