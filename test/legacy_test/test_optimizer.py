@@ -256,6 +256,11 @@ class TestOptimizerAPI(unittest.TestCase):
                 parameters=[x],
                 maximize=True,
             ),
+            paddle.optimizer.Adagrad(
+                learning_rate=0.5,
+                parameters=[x],
+                maximize=True,
+            ),
         ]
         for optimizer in optimizer_list:
             for epoch in range(30):
@@ -264,7 +269,6 @@ class TestOptimizerAPI(unittest.TestCase):
                 loss = paddle.sum(y)
                 loss.backward()
                 optimizer.step()
-            print(x.numpy())
             np.testing.assert_allclose(x.numpy(), [1.0, 4.0], atol=0.1)
 
 
