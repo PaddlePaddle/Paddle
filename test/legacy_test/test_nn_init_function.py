@@ -1227,6 +1227,8 @@ class Test_sparse_(unittest.TestCase):
             paddle.nn.init.sparse_(input_tensor, sparsity=0.2, std=0.01)
 
     def test_dygraph(self):
+        if paddle.is_compiled_with_xpu():
+            self.skipTest("sparsity is not supported on XPU")
         with dygraph_guard():
             for sparsity in [0.1, 0.5, 0.9]:
                 input_tensor = paddle.randn([100, 50])
