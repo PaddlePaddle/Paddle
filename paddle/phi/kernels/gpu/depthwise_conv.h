@@ -1633,6 +1633,7 @@ class DepthwiseConvFunctor<GPUContext, T, fuse_relu_before_conv> {
     int blocks;
     dim3 threads;
     dim3 grid;
+    const auto& max_grid_dim_size = dev_ctx.GetCUDAMaxGridDimSize();
 
     if (data_layout != DataLayout::NHWC) {
       if (output_width > 1024 && output_width <= 2048)
@@ -1642,6 +1643,14 @@ class DepthwiseConvFunctor<GPUContext, T, fuse_relu_before_conv> {
       blocks = std::min(std::max(thread / output_width, 1), output_height);
       const int thread_x = std::min(output_width, thread);
       threads = dim3(thread_x, blocks, 1);
+      PADDLE_ENFORCE_LE(output_channels,
+                        max_grid_dim_size[0],
+                        common::errors::InvalidArgument(
+                            "depthwise conv grid.x exceeds device limit."));
+      PADDLE_ENFORCE_LE(batch_size_int,
+                        max_grid_dim_size[1],
+                        common::errors::InvalidArgument(
+                            "depthwise conv grid.y exceeds device limit."));
       grid = dim3(output_channels, batch_size_int, 1);
     } else {
       const int64_t block_y_64 =
@@ -1655,6 +1664,18 @@ class DepthwiseConvFunctor<GPUContext, T, fuse_relu_before_conv> {
           (static_cast<int64_t>(output_height) + dilate_height - 1) /
           dilate_height;
       PADDLE_ENFORCE_LE_INT_MAX(grid_x, "depthwise conv CUDA grid x size");
+      PADDLE_ENFORCE_LE(grid_x,
+                        static_cast<int64_t>(max_grid_dim_size[0]),
+                        common::errors::InvalidArgument(
+                            "depthwise conv grid.x exceeds device limit."));
+      PADDLE_ENFORCE_LE(dilate_height,
+                        max_grid_dim_size[1],
+                        common::errors::InvalidArgument(
+                            "depthwise conv grid.y exceeds device limit."));
+      PADDLE_ENFORCE_LE(batch_size,
+                        static_cast<int64_t>(max_grid_dim_size[2]),
+                        common::errors::InvalidArgument(
+                            "depthwise conv grid.z exceeds device limit."));
       threads = dim3(thread_x, blocks, 1);
       grid = dim3(static_cast<uint32_t>(grid_x),
                   static_cast<uint32_t>(dilate_height),
@@ -1667,71 +1688,75 @@ class DepthwiseConvFunctor<GPUContext, T, fuse_relu_before_conv> {
     PADDLE_ENFORCE_LE_INT_MAX(grid_size_64, "grid_size");
     int grid_size = static_cast<int>(grid_size_64);
 
-#define check_case(c_filter_multiplier, c_stride, c_filter)             \
-  if (c_filter_multiplier == 0 ||                                       \
-      filter_multiplier == c_filter_multiplier &&                       \
-          stride_height == stride_width && stride_height == c_stride && \
-          (ksize_height == ksize_width && ksize_height == c_filter ||   \
-           c_filter == -1)) {                                           \
-    if (c_filter == -1) {                                               \
-      threads.x = block_size;                                           \
-      grid.x = grid_size;                                               \
-      threads.y = threads.z = grid.y = grid.z = 1;                      \
-    }                                                                   \
-    if (data_layout != DataLayout::NHWC) {                              \
-      KernelDepthwiseConvSp<T,                                          \
-                            c_filter_multiplier,                        \
-                            c_stride,                                   \
-                            c_filter,                                   \
-                            DataLayout::NCHW,                           \
-                            fuse_relu_before_conv>                      \
-          <<<grid, threads, 0, dev_ctx.stream()>>>(input_data,          \
-                                                   filter_data,         \
-                                                   batch_size_int,      \
-                                                   output_channels,     \
-                                                   output_height,       \
-                                                   output_width,        \
-                                                   input_channels,      \
-                                                   input_height,        \
-                                                   input_width,         \
-                                                   filter_multiplier,   \
-                                                   ksize_height,        \
-                                                   ksize_width,         \
-                                                   stride_height,       \
-                                                   stride_width,        \
-                                                   padding_height,      \
-                                                   padding_width,       \
-                                                   dilate_height,       \
-                                                   dilate_width,        \
-                                                   output_data);        \
-    } else {                                                            \
-      KernelDepthwiseConvSp<T,                                          \
-                            c_filter_multiplier,                        \
-                            c_stride,                                   \
-                            c_filter,                                   \
-                            DataLayout::NHWC,                           \
-                            fuse_relu_before_conv>                      \
-          <<<grid, threads, 0, dev_ctx.stream()>>>(input_data,          \
-                                                   filter_data,         \
-                                                   batch_size_int,      \
-                                                   output_channels,     \
-                                                   output_height,       \
-                                                   output_width,        \
-                                                   input_channels,      \
-                                                   input_height,        \
-                                                   input_width,         \
-                                                   filter_multiplier,   \
-                                                   ksize_height,        \
-                                                   ksize_width,         \
-                                                   stride_height,       \
-                                                   stride_width,        \
-                                                   padding_height,      \
-                                                   padding_width,       \
-                                                   dilate_height,       \
-                                                   dilate_width,        \
-                                                   output_data);        \
-    }                                                                   \
-    return;                                                             \
+#define check_case(c_filter_multiplier, c_stride, c_filter)                  \
+  if (c_filter_multiplier == 0 ||                                            \
+      filter_multiplier == c_filter_multiplier &&                            \
+          stride_height == stride_width && stride_height == c_stride &&      \
+          (ksize_height == ksize_width && ksize_height == c_filter ||        \
+           c_filter == -1)) {                                                \
+    if (c_filter == -1) {                                                    \
+      PADDLE_ENFORCE_LE(grid_size_64,                                        \
+                        static_cast<int64_t>(max_grid_dim_size[0]),          \
+                        common::errors::InvalidArgument(                     \
+                            "depthwise conv grid.x exceeds device limit.")); \
+      threads.x = block_size;                                                \
+      grid.x = grid_size;                                                    \
+      threads.y = threads.z = grid.y = grid.z = 1;                           \
+    }                                                                        \
+    if (data_layout != DataLayout::NHWC) {                                   \
+      KernelDepthwiseConvSp<T,                                               \
+                            c_filter_multiplier,                             \
+                            c_stride,                                        \
+                            c_filter,                                        \
+                            DataLayout::NCHW,                                \
+                            fuse_relu_before_conv>                           \
+          <<<grid, threads, 0, dev_ctx.stream()>>>(input_data,               \
+                                                   filter_data,              \
+                                                   batch_size_int,           \
+                                                   output_channels,          \
+                                                   output_height,            \
+                                                   output_width,             \
+                                                   input_channels,           \
+                                                   input_height,             \
+                                                   input_width,              \
+                                                   filter_multiplier,        \
+                                                   ksize_height,             \
+                                                   ksize_width,              \
+                                                   stride_height,            \
+                                                   stride_width,             \
+                                                   padding_height,           \
+                                                   padding_width,            \
+                                                   dilate_height,            \
+                                                   dilate_width,             \
+                                                   output_data);             \
+    } else {                                                                 \
+      KernelDepthwiseConvSp<T,                                               \
+                            c_filter_multiplier,                             \
+                            c_stride,                                        \
+                            c_filter,                                        \
+                            DataLayout::NHWC,                                \
+                            fuse_relu_before_conv>                           \
+          <<<grid, threads, 0, dev_ctx.stream()>>>(input_data,               \
+                                                   filter_data,              \
+                                                   batch_size_int,           \
+                                                   output_channels,          \
+                                                   output_height,            \
+                                                   output_width,             \
+                                                   input_channels,           \
+                                                   input_height,             \
+                                                   input_width,              \
+                                                   filter_multiplier,        \
+                                                   ksize_height,             \
+                                                   ksize_width,              \
+                                                   stride_height,            \
+                                                   stride_width,             \
+                                                   padding_height,           \
+                                                   padding_width,            \
+                                                   dilate_height,            \
+                                                   dilate_width,             \
+                                                   output_data);             \
+    }                                                                        \
+    return;                                                                  \
   }
     check_case(1, 1, 3);
     check_case(1, 1, 5);
@@ -1842,6 +1867,7 @@ class DepthwiseConvInputGradFunctor<GPUContext, T, fuse_relu_before_conv> {
     int blocks;
     dim3 threads;
     dim3 grid;
+    const auto& max_grid_dim_size = dev_ctx.GetCUDAMaxGridDimSize();
 
     if (data_layout != DataLayout::NHWC) {
       if (input_width > 1024 && input_width <= 2048) {
@@ -1852,6 +1878,16 @@ class DepthwiseConvInputGradFunctor<GPUContext, T, fuse_relu_before_conv> {
       blocks = std::min(std::max(thread / input_width, 1), input_height);
       const int thread_x = std::min(input_width, thread);
       threads = dim3(thread_x, blocks, 1);
+      PADDLE_ENFORCE_LE(
+          input_channels,
+          max_grid_dim_size[0],
+          common::errors::InvalidArgument(
+              "depthwise conv input grad grid.x exceeds device limit."));
+      PADDLE_ENFORCE_LE(
+          batch_size_int,
+          max_grid_dim_size[1],
+          common::errors::InvalidArgument(
+              "depthwise conv input grad grid.y exceeds device limit."));
       grid = dim3(input_channels, batch_size_int, 1);
     } else {
       const int64_t block_y_64 =
@@ -1866,6 +1902,21 @@ class DepthwiseConvInputGradFunctor<GPUContext, T, fuse_relu_before_conv> {
           dilate_height;
       PADDLE_ENFORCE_LE_INT_MAX(grid_x,
                                 "depthwise conv input grad CUDA grid x size");
+      PADDLE_ENFORCE_LE(
+          grid_x,
+          static_cast<int64_t>(max_grid_dim_size[0]),
+          common::errors::InvalidArgument(
+              "depthwise conv input grad grid.x exceeds device limit."));
+      PADDLE_ENFORCE_LE(
+          dilate_height,
+          max_grid_dim_size[1],
+          common::errors::InvalidArgument(
+              "depthwise conv input grad grid.y exceeds device limit."));
+      PADDLE_ENFORCE_LE(
+          batch_size,
+          static_cast<int64_t>(max_grid_dim_size[2]),
+          common::errors::InvalidArgument(
+              "depthwise conv input grad grid.z exceeds device limit."));
       threads = dim3(thread_x, blocks, 1);
       grid = dim3(static_cast<uint32_t>(grid_x),
                   static_cast<uint32_t>(dilate_height),
@@ -1878,73 +1929,78 @@ class DepthwiseConvInputGradFunctor<GPUContext, T, fuse_relu_before_conv> {
     PADDLE_ENFORCE_LE_INT_MAX(grid_size_64, "grid_size");
     int grid_size = static_cast<int>(grid_size_64);
 
-#define check_case(c_filter_multiplier, c_stride, c_filter)             \
-  if (c_filter_multiplier == 0 ||                                       \
-      filter_multiplier == c_filter_multiplier &&                       \
-          stride_height == stride_width && stride_height == c_stride && \
-          (ksize_height == ksize_width && ksize_height == c_filter ||   \
-           c_filter == -1)) {                                           \
-    if (data_layout != DataLayout::NHWC) {                              \
-      if (c_filter == -1) {                                             \
-        threads.x = block_size;                                         \
-        grid.x = grid_size;                                             \
-        threads.y = threads.z = grid.y = grid.z = 1;                    \
-      }                                                                 \
-      KernelDepthwiseConvInputGradSp<T,                                 \
-                                     c_filter_multiplier,               \
-                                     c_stride,                          \
-                                     c_filter,                          \
-                                     DataLayout::NCHW,                  \
-                                     fuse_relu_before_conv>             \
-          <<<grid, threads, 0, dev_ctx.stream()>>>(input_data,          \
-                                                   output_grad_data,    \
-                                                   filter_data,         \
-                                                   batch_size_int,      \
-                                                   output_channels,     \
-                                                   output_height,       \
-                                                   output_width,        \
-                                                   input_channels,      \
-                                                   input_height,        \
-                                                   input_width,         \
-                                                   filter_multiplier,   \
-                                                   ksize_height,        \
-                                                   ksize_width,         \
-                                                   stride_height,       \
-                                                   stride_width,        \
-                                                   padding_height,      \
-                                                   padding_width,       \
-                                                   dilate_height,       \
-                                                   dilate_width,        \
-                                                   input_grad_data);    \
-    } else {                                                            \
-      KernelDepthwiseConvInputGradSp<T,                                 \
-                                     c_filter_multiplier,               \
-                                     c_stride,                          \
-                                     c_filter,                          \
-                                     DataLayout::NHWC,                  \
-                                     fuse_relu_before_conv>             \
-          <<<grid, threads, 0, dev_ctx.stream()>>>(input_data,          \
-                                                   output_grad_data,    \
-                                                   filter_data,         \
-                                                   batch_size_int,      \
-                                                   output_channels,     \
-                                                   output_height,       \
-                                                   output_width,        \
-                                                   input_channels,      \
-                                                   input_height,        \
-                                                   input_width,         \
-                                                   filter_multiplier,   \
-                                                   ksize_height,        \
-                                                   ksize_width,         \
-                                                   stride_height,       \
-                                                   stride_width,        \
-                                                   padding_height,      \
-                                                   padding_width,       \
-                                                   dilate_height,       \
-                                                   dilate_width,        \
-                                                   input_grad_data);    \
-    }                                                                   \
-    return;                                                             \
+#define check_case(c_filter_multiplier, c_stride, c_filter)                 \
+  if (c_filter_multiplier == 0 ||                                           \
+      filter_multiplier == c_filter_multiplier &&                           \
+          stride_height == stride_width && stride_height == c_stride &&     \
+          (ksize_height == ksize_width && ksize_height == c_filter ||       \
+           c_filter == -1)) {                                               \
+    if (data_layout != DataLayout::NHWC) {                                  \
+      if (c_filter == -1) {                                                 \
+        PADDLE_ENFORCE_LE(                                                  \
+            grid_size_64,                                                   \
+            static_cast<int64_t>(max_grid_dim_size[0]),                     \
+            common::errors::InvalidArgument(                                \
+                "depthwise conv input grad grid.x exceeds device limit.")); \
+        threads.x = block_size;                                             \
+        grid.x = grid_size;                                                 \
+        threads.y = threads.z = grid.y = grid.z = 1;                        \
+      }                                                                     \
+      KernelDepthwiseConvInputGradSp<T,                                     \
+                                     c_filter_multiplier,                   \
+                                     c_stride,                              \
+                                     c_filter,                              \
+                                     DataLayout::NCHW,                      \
+                                     fuse_relu_before_conv>                 \
+          <<<grid, threads, 0, dev_ctx.stream()>>>(input_data,              \
+                                                   output_grad_data,        \
+                                                   filter_data,             \
+                                                   batch_size_int,          \
+                                                   output_channels,         \
+                                                   output_height,           \
+                                                   output_width,            \
+                                                   input_channels,          \
+                                                   input_height,            \
+                                                   input_width,             \
+                                                   filter_multiplier,       \
+                                                   ksize_height,            \
+                                                   ksize_width,             \
+                                                   stride_height,           \
+                                                   stride_width,            \
+                                                   padding_height,          \
+                                                   padding_width,           \
+                                                   dilate_height,           \
+                                                   dilate_width,            \
+                                                   input_grad_data);        \
+    } else {                                                                \
+      KernelDepthwiseConvInputGradSp<T,                                     \
+                                     c_filter_multiplier,                   \
+                                     c_stride,                              \
+                                     c_filter,                              \
+                                     DataLayout::NHWC,                      \
+                                     fuse_relu_before_conv>                 \
+          <<<grid, threads, 0, dev_ctx.stream()>>>(input_data,              \
+                                                   output_grad_data,        \
+                                                   filter_data,             \
+                                                   batch_size_int,          \
+                                                   output_channels,         \
+                                                   output_height,           \
+                                                   output_width,            \
+                                                   input_channels,          \
+                                                   input_height,            \
+                                                   input_width,             \
+                                                   filter_multiplier,       \
+                                                   ksize_height,            \
+                                                   ksize_width,             \
+                                                   stride_height,           \
+                                                   stride_width,            \
+                                                   padding_height,          \
+                                                   padding_width,           \
+                                                   dilate_height,           \
+                                                   dilate_width,            \
+                                                   input_grad_data);        \
+    }                                                                       \
+    return;                                                                 \
   }
     check_case(1, 1, 3);
     check_case(1, 1, 5);
@@ -2039,6 +2095,7 @@ class DepthwiseConvFilterGradFunctor<GPUContext, T, fuse_relu_before_conv> {
     int blocks;
     dim3 threads;
     dim3 grid;
+    const auto& max_grid_dim_size = dev_ctx.GetCUDAMaxGridDimSize();
     if (data_layout != DataLayout::NHWC) {
       if (output_width > 1024 && output_width <= 2048) {
         block_size = (output_width - 1) / 2 + 1;
@@ -2046,6 +2103,21 @@ class DepthwiseConvFilterGradFunctor<GPUContext, T, fuse_relu_before_conv> {
         block_size = output_width;
       }
       blocks = std::min(std::max(block_size / output_width, 1), output_height);
+      PADDLE_ENFORCE_LE(
+          ksize_width,
+          max_grid_dim_size[0],
+          common::errors::InvalidArgument(
+              "depthwise conv filter grad grid.x exceeds device limit."));
+      PADDLE_ENFORCE_LE(
+          ksize_height,
+          max_grid_dim_size[1],
+          common::errors::InvalidArgument(
+              "depthwise conv filter grad grid.y exceeds device limit."));
+      PADDLE_ENFORCE_LE(
+          output_channels,
+          max_grid_dim_size[2],
+          common::errors::InvalidArgument(
+              "depthwise conv filter grad grid.z exceeds device limit."));
       grid = dim3(ksize_width, ksize_height, output_channels);
       threads = dim3(std::min(output_width, block_size), blocks, 1);
       const int64_t output_hw =
@@ -2071,6 +2143,21 @@ class DepthwiseConvFilterGradFunctor<GPUContext, T, fuse_relu_before_conv> {
           dilate_height;
       PADDLE_ENFORCE_LE_INT_MAX(grid_x,
                                 "depthwise conv filter grad CUDA grid x size");
+      PADDLE_ENFORCE_LE(
+          grid_x,
+          static_cast<int64_t>(max_grid_dim_size[0]),
+          common::errors::InvalidArgument(
+              "depthwise conv filter grad grid.x exceeds device limit."));
+      PADDLE_ENFORCE_LE(
+          dilate_height,
+          max_grid_dim_size[1],
+          common::errors::InvalidArgument(
+              "depthwise conv filter grad grid.y exceeds device limit."));
+      PADDLE_ENFORCE_LE(
+          batch_size_int,
+          max_grid_dim_size[2],
+          common::errors::InvalidArgument(
+              "depthwise conv filter grad grid.z exceeds device limit."));
       const int grid_x_int = static_cast<int>(grid_x);
       grid = dim3(grid_x_int, dilate_height, batch_size_int);
       threads = dim3(thread_x, blocks, 1);
@@ -2082,6 +2169,16 @@ class DepthwiseConvFilterGradFunctor<GPUContext, T, fuse_relu_before_conv> {
             (hwc_size + static_cast<int64_t>(block_size) - 1) / block_size;
         PADDLE_ENFORCE_LE_INT_MAX(blocks_64,
                                   "CUDA launch grid filter_hwc_size");
+        PADDLE_ENFORCE_LE(
+            blocks_64,
+            static_cast<int64_t>(max_grid_dim_size[0]),
+            common::errors::InvalidArgument(
+                "depthwise conv filter grad grid.x exceeds device limit."));
+        PADDLE_ENFORCE_LE(
+            batch_size,
+            static_cast<int64_t>(max_grid_dim_size[1]),
+            common::errors::InvalidArgument(
+                "depthwise conv filter grad grid.y exceeds device limit."));
         grid = dim3(static_cast<int>(blocks_64), batch_size, 1);
         threads = dim3(static_cast<int>(
             std::min(static_cast<int64_t>(block_size), hwc_size)));
@@ -2146,6 +2243,21 @@ class DepthwiseConvFilterGradFunctor<GPUContext, T, fuse_relu_before_conv> {
         const int64_t ksize_area =                                             \
             static_cast<int64_t>(ksize_width) * ksize_height;                  \
         PADDLE_ENFORCE_LE_INT_MAX(ksize_area, "depthwise conv filter size");   \
+        PADDLE_ENFORCE_LE(                                                     \
+            ksize_area,                                                        \
+            static_cast<int64_t>(max_grid_dim_size[0]),                        \
+            common::errors::InvalidArgument(                                   \
+                "depthwise conv filter grad grid.x exceeds device limit."));   \
+        PADDLE_ENFORCE_LE(                                                     \
+            output_height,                                                     \
+            max_grid_dim_size[1],                                              \
+            common::errors::InvalidArgument(                                   \
+                "depthwise conv filter grad grid.y exceeds device limit."));   \
+        PADDLE_ENFORCE_LE(                                                     \
+            batch_size,                                                        \
+            static_cast<int64_t>(max_grid_dim_size[2]),                        \
+            common::errors::InvalidArgument(                                   \
+                "depthwise conv filter grad grid.z exceeds device limit."));   \
         grid = dim3(static_cast<uint32_t>(ksize_area),                         \
                     static_cast<uint32_t>(output_height),                      \
                     static_cast<uint32_t>(batch_size));                        \
