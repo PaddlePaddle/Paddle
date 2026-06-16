@@ -58,7 +58,7 @@ from .transformed_distribution import TransformedDistribution
 from .uniform import Uniform
 
 constraints = constraint
-_sys.modules[__name__ + '.constraints'] = constraints
+_sys.modules['paddle.distribution.constraints'] = constraints
 _sys.modules['paddle.distributions.constraints'] = constraints
 
 __all__ = [

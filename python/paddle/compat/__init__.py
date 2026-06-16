@@ -60,7 +60,7 @@ def __getattr__(name):
     if name == "paddle_triton":
         return paddle_triton_fun()
     if name == "distributions":
-        return importlib.import_module(__name__ + ".distributions")
+        return importlib.import_module("paddle.compat.distributions")
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
