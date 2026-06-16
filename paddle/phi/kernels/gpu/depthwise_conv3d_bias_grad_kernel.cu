@@ -559,6 +559,11 @@ void LaunchDepthwiseConv3dBackwardCompatible(const Context& dev_ctx,
     int64_t num_weights = filter_grad_ncdhw_ptr->numel();
     int block = 256;
     PADDLE_ENFORCE_LE_UINT32_MAX(num_weights, "num_weights");
+    PADDLE_ENFORCE_LE(
+        num_weights,
+        static_cast<int64_t>(dev_ctx.GetCUDAMaxGridDimSize()[0]),
+        common::errors::InvalidArgument(
+            "depthwise conv3d bias grad grid.x exceeds device limit."));
     dim3 grid(static_cast<unsigned int>(num_weights));
     dim3 block_dim(block);
     size_t smem = block * sizeof(T);

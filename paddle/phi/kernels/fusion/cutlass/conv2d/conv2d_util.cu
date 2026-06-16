@@ -184,8 +184,20 @@ float conv2d_diff_gpu(const ConvAllParams &params, OpType op_type, T a) {
   constexpr int blockN = 16;
   const int64_t grid_x = (M + blockM - 1) / blockM;
   const int64_t grid_y = (static_cast<int64_t>(N) + blockN - 1) / blockN;
-  PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "naive_conv2d_kernel grid.x");
-  PADDLE_ENFORCE_LE_UINT32_MAX(grid_y, "naive_conv2d_kernel grid.y");
+  int device_id = 0;
+  int max_grid_x = 0;
+  int max_grid_y = 0;
+  cudaGetDevice(&device_id);
+  cudaDeviceGetAttribute(&max_grid_x, cudaDevAttrMaxGridDimX, device_id);
+  cudaDeviceGetAttribute(&max_grid_y, cudaDevAttrMaxGridDimY, device_id);
+  PADDLE_ENFORCE_LE(grid_x,
+                    static_cast<int64_t>(max_grid_x),
+                    common::errors::InvalidArgument(
+                        "naive_conv2d_kernel grid.x exceeds device limit."));
+  PADDLE_ENFORCE_LE(grid_y,
+                    static_cast<int64_t>(max_grid_y),
+                    common::errors::InvalidArgument(
+                        "naive_conv2d_kernel grid.y exceeds device limit."));
   uint3 grid = {
       static_cast<unsigned int>(grid_x), static_cast<unsigned int>(grid_y), 1u};
   uint3 block = {blockM, blockN, 1};

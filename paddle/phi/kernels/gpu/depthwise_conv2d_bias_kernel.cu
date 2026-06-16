@@ -26,10 +26,17 @@ namespace phi {
 
 constexpr int CUDA_NUM_THREADS = 1024;
 
+template <typename Context>
 inline uint32_t GET_BLOCKS(
-    const int64_t N, const int64_t max_threads_per_block = CUDA_NUM_THREADS) {
+    const Context& dev_ctx,
+    const int64_t N,
+    const int64_t max_threads_per_block = CUDA_NUM_THREADS) {
   const int64_t block_num = (N - 1) / max_threads_per_block + 1;
   PADDLE_ENFORCE_LE_UINT32_MAX(block_num, "depthwise conv2d bias grid.x");
+  PADDLE_ENFORCE_LE(block_num,
+                    static_cast<int64_t>(dev_ctx.GetCUDAMaxGridDimSize()[0]),
+                    common::errors::InvalidArgument(
+                        "depthwise conv2d bias grid.x exceeds device limit."));
   return static_cast<uint32_t>(block_num);
 }
 
@@ -273,7 +280,7 @@ void LaunchDepthwiseConv2dCompatible(const Context& dev_ctx,
 
   // Launch Kernel
   int64_t totalElements = out_nchw.numel();
-  uint32_t blocks = GET_BLOCKS(totalElements);
+  uint32_t blocks = GET_BLOCKS(dev_ctx, totalElements);
   dim3 grid(blocks);
   dim3 block(CUDA_NUM_THREADS);
   auto stream = dev_ctx.stream();

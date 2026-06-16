@@ -31,10 +31,18 @@ namespace phi {
 constexpr int CUDA_NUM_THREADS = 1024;
 constexpr int CUDA_WARP_SIZE = 32;
 
+template <typename Context>
 inline uint32_t GET_BLOCKS(
-    const int64_t N, const int64_t max_threads_per_block = CUDA_NUM_THREADS) {
+    const Context& dev_ctx,
+    const int64_t N,
+    const int64_t max_threads_per_block = CUDA_NUM_THREADS) {
   const int64_t block_num = (N - 1) / max_threads_per_block + 1;
   PADDLE_ENFORCE_LE_UINT32_MAX(block_num, "block_num");
+  PADDLE_ENFORCE_LE(
+      block_num,
+      static_cast<int64_t>(dev_ctx.GetCUDAMaxGridDimSize()[0]),
+      common::errors::InvalidArgument(
+          "depthwise conv2d bias grad grid.x exceeds device limit."));
   return static_cast<uint32_t>(block_num);
 }
 
@@ -133,20 +141,20 @@ __global__ void DWConv2dBwdInputKernel(const T* __restrict__ grad_output,
        linearIndex < totalElements;
        linearIndex += static_cast<int64_t>(blockDim.x) * gridDim.x) {
     int64_t indtmp1 = static_cast<int64_t>(linearIndex) / inputWidth;
-    const int64_t w = static_cast<int64_t>(linearIndex) - indtmp1 * inputWidth;
+    const int w = static_cast<int>(linearIndex - indtmp1 * inputWidth);
     int64_t indtmp2 = indtmp1 / inputHeight;
-    const int64_t h = indtmp1 - indtmp2 * inputHeight;
+    const int h = static_cast<int>(indtmp1 - indtmp2 * inputHeight);
     indtmp1 = indtmp2;
     indtmp2 = indtmp1 / inputChannels;
-    const int64_t c = indtmp1 - indtmp2 * inputChannels;
+    const int c = static_cast<int>(indtmp1 - indtmp2 * inputChannels);
     const int64_t n = indtmp2;
 
     AccT value(0);
 
     for (int multiplier = 0; multiplier < depthwiseMultiplier; ++multiplier) {
-      const int64_t och =
-          static_cast<int64_t>(c) * depthwiseMultiplier + multiplier;
-      int64_t weightOffset = och * kernelHeight * kernelWidth;
+      const int och = c * depthwiseMultiplier + multiplier;
+      int64_t weightOffset =
+          static_cast<int64_t>(och) * kernelHeight * kernelWidth;
       for (int kh = 0; kh < KH_LIMIT; ++kh) {
         for (int kw = 0; kw < KW_LIMIT; ++kw) {
           int64_t h_out =
@@ -356,6 +364,11 @@ void LaunchDepthwiseConv2dBackwardCompatible(const Context& dev_ctx,
 
     const int64_t blocks = outputChannels * kH * kW;
     PADDLE_ENFORCE_LE_UINT32_MAX(blocks, "depthwise conv2d bias grad grid.x");
+    PADDLE_ENFORCE_LE(
+        blocks,
+        static_cast<int64_t>(dev_ctx.GetCUDAMaxGridDimSize()[0]),
+        common::errors::InvalidArgument(
+            "depthwise conv2d bias grad grid.x exceeds device limit."));
     dim3 grid(static_cast<uint32_t>(blocks));
     const int threads = GetGradParamsNumThreads(batchSize);
     dim3 block(threads);
@@ -388,8 +401,9 @@ void LaunchDepthwiseConv2dBackwardCompatible(const Context& dev_ctx,
   // Launch Input Gradient Kernel (grad_input)
   if (input_grad_nchw_ptr) {
     int64_t totalElements = input_grad_nchw_ptr->numel();
-    constexpr int INPUT_GRAD_NUM_THREADS = 256;
-    uint32_t blocks = GET_BLOCKS(totalElements, INPUT_GRAD_NUM_THREADS);
+    constexpr int INPUT_GRAD_NUM_THREADS = 1024;
+    uint32_t blocks =
+        GET_BLOCKS(dev_ctx, totalElements, INPUT_GRAD_NUM_THREADS);
     dim3 grid(blocks);
     dim3 block(INPUT_GRAD_NUM_THREADS);
 
