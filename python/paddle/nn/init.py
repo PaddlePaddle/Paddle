@@ -380,10 +380,7 @@ def sparse_(
     num_zeros = math.ceil(sparsity * rows)
 
     with paddle.no_grad():
-        if in_dygraph_mode():
-            normal_(tensor, mean=0, std=std)
-        else:
-            tensor = normal_(tensor, mean=0, std=std)
+        tensor = normal_(tensor, mean=0, std=std)
         for col_idx in range(cols):
             row_indices = paddle.randperm(rows)
             zero_indices = row_indices[:num_zeros]

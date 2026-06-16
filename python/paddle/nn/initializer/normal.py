@@ -106,7 +106,7 @@ class NormalInitializer(Initializer):
                 place,
             )
             out_var._share_underline_tensor_to(var)
-            return None
+            return out_var
         elif in_pir_mode():
             place = _current_expected_place()
             out_var = _C_ops.gaussian(
@@ -292,7 +292,7 @@ class TruncatedNormalInitializer(Initializer):
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
-            return None
+            return out_var
 
         elif in_pir_mode():
             out_var = _C_ops.truncated_gaussian_random(
