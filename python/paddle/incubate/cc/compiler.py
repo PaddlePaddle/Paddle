@@ -142,21 +142,22 @@ class InputSpecMakeCtx:
 @contextmanager
 def _ap_envs(ap_path, ap_workspace_dir, backend_device):
     old_ap_workspace_dir = os.environ.get('AP_WORKSPACE_DIR')
-    old_prim_all = os.environ.get('FLAGS_prim_all')
     new_ap_path, old_ap_path = _get_ap_path(ap_path, backend_device)
     _convert_apy_to_axpr(new_ap_path)
     os.environ['AP_PATH'] = new_ap_path
     os.environ['AP_WORKSPACE_DIR'] = ap_workspace_dir
-    os.environ['FLAGS_prim_all'] = 'True'
     new_flags, old_flags = _get_ap_flags()
     paddle.set_flags(new_flags)
-    yield
-    os.environ['AP_PATH'] = old_ap_path
-    if old_ap_workspace_dir is not None:
-        os.environ['AP_WORKSPACE_DIR'] = old_ap_workspace_dir
-    if old_prim_all is not None:
-        os.environ['FLAGS_prim_all'] = old_prim_all
-    paddle.set_flags(old_flags)
+    old_prim_all = paddle.base.core._is_all_prim_enabled()
+    paddle.base.core._set_prim_all_enabled(True)
+    try:
+        yield
+    finally:
+        os.environ['AP_PATH'] = old_ap_path
+        if old_ap_workspace_dir is not None:
+            os.environ['AP_WORKSPACE_DIR'] = old_ap_workspace_dir
+        paddle.set_flags(old_flags)
+        paddle.base.core._set_prim_all_enabled(old_prim_all)
 
 
 def _get_ap_path(ap_path, backend_device):
