@@ -161,6 +161,9 @@ class Optimizer:
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
 
+    Keyword Arguments:
+        differentiable (bool, optional): Whether autograd should occur through the optimizer step in training. Otherwise, the step() function runs in a paddle.autograd.no_grad() context. The default value is False.
+
     Returns:
        Base class for optimizer.
 

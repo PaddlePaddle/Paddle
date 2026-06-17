@@ -67,6 +67,9 @@ class SGD(Optimizer):
                 to set this property. For more information, please refer to
                 :ref:`api_guide_Name` .
 
+    Keyword Arguments:
+        differentiable (bool, optional): Whether autograd should occur through the optimizer step in training. Otherwise, the step() function runs in a paddle.autograd.no_grad() context. The default value is False.
+
     Examples:
         .. code-block:: pycon
 
