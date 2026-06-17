@@ -49,3 +49,7 @@ class Metadata:
     state_dict_metadata: dict[str, list[LocalTensorMetadata]] = None
     storage_metadata: dict[LocalTensorIndex, str] = None
     flat_mapping: dict[str, tuple[str]] = None
+    model_type: str | None = None
+    checkpoint_version: str | None = None
+    erniebot_commit_id: str | None = None
+    paddle_commit_id: str | None = None
