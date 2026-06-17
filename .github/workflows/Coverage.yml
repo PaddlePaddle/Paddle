@@ -98,7 +98,7 @@ jobs:
           FLAGS_fraction_of_gpu_memory_to_use: 0.15
           CTEST_PARALLEL_LEVEL: 2
           WITH_GPU: "ON"
-          CUDA_ARCH_NAME: Volta
+          CUDA_ARCH_NAME: Hopper
           WITH_AVX: "ON"
           WITH_COVERAGE: "ON"
           COVERALLS_UPLOAD: "ON"
@@ -282,7 +282,7 @@ jobs:
     needs: [build, build-docker]
     if: needs.build.outputs.can-skip != 'true'
     runs-on:
-      group: BD_BJ-V100
+      group: H-Coverage
     timeout-minutes: 240
     steps:
       - name: Check docker image and run container
@@ -292,7 +292,7 @@ jobs:
           FLAGS_fraction_of_gpu_memory_to_use: 0.15
           CTEST_PARALLEL_LEVEL: 2
           WITH_GPU: "ON"
-          CUDA_ARCH_NAME: Auto
+          CUDA_ARCH_NAME: Hopper
           WITH_AVX: "ON"
           WITH_COVERAGE: "ON"
           COVERALLS_UPLOAD: "ON"
