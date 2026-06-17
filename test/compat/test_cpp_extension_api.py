@@ -55,6 +55,14 @@ class TestGetCudaArchFlags(unittest.TestCase):
         self.assertIn("-gencode=arch=compute_90,code=sm_90", flags)
         self.assertIn("-gencode=arch=compute_90,code=compute_90", flags)
 
+    def test_with_env_blackwell(self):
+        os.environ["PADDLE_CUDA_ARCH_LIST"] = "Blackwell"
+        flags = _get_cuda_arch_flags()
+        # Blackwell -> 10.0;12.0+PTX -> sm_100 + sm_120 + compute_120
+        self.assertIn("-gencode=arch=compute_100,code=sm_100", flags)
+        self.assertIn("-gencode=arch=compute_120,code=sm_120", flags)
+        self.assertIn("-gencode=arch=compute_120,code=compute_120", flags)
+
     def test_with_env_multiple(self):
         os.environ["PADDLE_CUDA_ARCH_LIST"] = "8.6;9.0+PTX"
         flags = _get_cuda_arch_flags()
