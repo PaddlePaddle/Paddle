@@ -218,6 +218,8 @@ class Optimizer:
         weight_decay: float | WeightDecayRegularizer | None = None,
         grad_clip: GradientClipBase | None = None,
         name: str | None = None,
+        *,
+        differentiable: bool = False,
     ) -> None:
         if parameters is not None:
             # paddle.Tensor is also iterable, so here we don't check whether
@@ -330,6 +332,13 @@ class Optimizer:
         self.fusion_storage = None
         self._fuse_buffer_version = 0
         self.merged_model_params = None
+
+        grad_decorator = (
+            imperative_base.enable_grad()
+            if differentiable
+            else imperative_base.no_grad()
+        )
+        self.step = grad_decorator(self.step)
 
     def _create_master_grad_states(self):
         # master gradients states
@@ -2040,7 +2049,6 @@ class Optimizer:
         params_grads = [(param, param.grad) for param in parameters]
         optimize_ops = self.apply_gradients(params_grads)
 
-    @imperative_base.no_grad()
     @framework.non_static_only
     def step(
         self, closure: Callable[[], Tensor] | None = None

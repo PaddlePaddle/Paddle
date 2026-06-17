@@ -182,6 +182,24 @@ class TestOptimizerAPI(unittest.TestCase):
         adam.step()
         adam.zero_grad(False)
 
+    def test_differentiable(self):
+        paddle.seed(100)
+        numpy.random.seed(100)
+        paddle.disable_static()
+        x = paddle.arange(26, dtype="float32").reshape([2, 13])
+        x.stop_gradient = False
+        linear = paddle.nn.Linear(13, 5)
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=0.01,
+            parameters=linear.parameters(),
+            differentiable=True,
+        )
+        optimizer.zero_grad()
+        output = linear(x)
+        loss = paddle.mean(output)
+        loss.backward()
+        optimizer.step()
+
     def test_step_without_closure(self):
         paddle.seed(100)
         numpy.random.seed(100)

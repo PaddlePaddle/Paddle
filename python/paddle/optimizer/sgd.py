@@ -98,6 +98,8 @@ class SGD(Optimizer):
         grad_clip: GradientClipBase | None = None,
         multi_precision: bool = False,
         name: str | None = None,
+        *,
+        differentiable: bool = False,
     ) -> None:
         if learning_rate is None:
             raise ValueError("learning_rate is not set")
@@ -107,6 +109,7 @@ class SGD(Optimizer):
             weight_decay=weight_decay,
             grad_clip=grad_clip,
             name=name,
+            differentiable=differentiable,
         )
         self.type = "sgd"
         self._multi_precision = multi_precision
