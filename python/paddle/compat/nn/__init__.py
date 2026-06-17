@@ -76,6 +76,14 @@ class _BatchNormMixin:
         self.track_running_stats = track_running_stats
         self._num_batches_tracked = 0
 
+    @staticmethod
+    def _paddle_history_momentum(momentum, num_batches_tracked):
+        if momentum is None:
+            if num_batches_tracked == 0:
+                return 0.0
+            return 1.0 - 1.0 / num_batches_tracked
+        return 1.0 - momentum
+
     def _running_stats_axes(self, input: Tensor):
         return tuple(i for i in range(len(input.shape)) if i != 1)
 
@@ -127,10 +135,9 @@ class _BatchNormMixin:
         mean = self._mean.clone()
         variance = self._variance.clone()
         self._num_batches_tracked += 1
-        if self.momentum is None:
-            self._momentum = 1.0 - 1.0 / self._num_batches_tracked
-        else:
-            self._momentum = 1.0 - self.momentum
+        self._momentum = self._paddle_history_momentum(
+            self.momentum, self._num_batches_tracked
+        )
 
         out = super().forward(input)
         self._set_running_stats(input, mean, variance)
@@ -150,7 +157,7 @@ class BatchNorm1D(_BatchNormMixin, nn.BatchNorm1D):
     ) -> None:
         super().__init__(
             num_features=num_features,
-            momentum=0.0 if momentum is None else 1.0 - momentum,
+            momentum=self._paddle_history_momentum(momentum, 0),
             epsilon=eps,
             use_global_stats=None if track_running_stats else False,
             affine=affine,
@@ -175,7 +182,7 @@ class BatchNorm2D(_BatchNormMixin, nn.BatchNorm2D):
     ) -> None:
         super().__init__(
             num_features=num_features,
-            momentum=0.0 if momentum is None else 1.0 - momentum,
+            momentum=self._paddle_history_momentum(momentum, 0),
             epsilon=eps,
             use_global_stats=None if track_running_stats else False,
             affine=affine,
@@ -200,7 +207,7 @@ class BatchNorm3D(_BatchNormMixin, nn.BatchNorm3D):
     ) -> None:
         super().__init__(
             num_features=num_features,
-            momentum=0.0 if momentum is None else 1.0 - momentum,
+            momentum=self._paddle_history_momentum(momentum, 0),
             epsilon=eps,
             use_global_stats=None if track_running_stats else False,
             affine=affine,

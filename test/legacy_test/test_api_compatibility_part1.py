@@ -2491,6 +2491,9 @@ class _CompatBatchNormBase:
         out6 = layer6(x)
         self.assertFalse(layer6.track_running_stats)
         self.assertFalse(layer6._use_global_stats)
+        self.assertIsNone(layer6.running_mean)
+        self.assertIsNone(layer6.running_var)
+        self.assertIsNone(layer6.num_batches_tracked)
         self._check_outputs([out6])
 
         layer7 = self.alias(self.num_features, momentum=None)
