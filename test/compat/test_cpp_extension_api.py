@@ -55,9 +55,24 @@ class TestGetCudaArchFlags(unittest.TestCase):
         self.assertIn("-gencode=arch=compute_90,code=sm_90", flags)
         self.assertIn("-gencode=arch=compute_90,code=compute_90", flags)
 
-    def test_with_env_blackwell(self):
+    def test_with_env_blackwell_cuda_too_old(self):
         os.environ["PADDLE_CUDA_ARCH_LIST"] = "Blackwell"
-        flags = _get_cuda_arch_flags()
+        with (
+            mock.patch.object(
+                extension_utils,
+                "_get_cuda_version_from_nvcc",
+                return_value=(12, 4),
+            ),
+            self.assertRaisesRegex(ValueError, "requires CUDA 12.8"),
+        ):
+            _get_cuda_arch_flags()
+
+    def test_with_env_blackwell_cuda128(self):
+        os.environ["PADDLE_CUDA_ARCH_LIST"] = "Blackwell"
+        with mock.patch.object(
+            extension_utils, "_get_cuda_version_from_nvcc", return_value=(12, 8)
+        ):
+            flags = _get_cuda_arch_flags()
         # Blackwell -> 10.0;12.0+PTX -> sm_100 + sm_120 + compute_120
         self.assertIn("-gencode=arch=compute_100,code=sm_100", flags)
         self.assertIn("-gencode=arch=compute_120,code=sm_120", flags)

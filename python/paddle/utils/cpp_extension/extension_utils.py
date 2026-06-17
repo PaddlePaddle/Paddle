@@ -428,6 +428,51 @@ def add_std_without_repeat(cflags, compiler_type, use_std17=False):
         cflags.append(cpp_flag)
 
 
+_BLACKWELL_MIN_CUDA_VERSION = (12, 8)
+
+
+def _format_cuda_version(version):
+    return f"{version[0]}.{version[1]}"
+
+
+def _get_cuda_version_from_nvcc():
+    cuda_home = find_cuda_home()
+    if not cuda_home:
+        return None
+
+    nvcc = os.path.join(cuda_home, 'bin', 'nvcc')
+    if not os.path.exists(nvcc):
+        return None
+
+    try:
+        output = subprocess.check_output([nvcc, '--version'], stderr=DEVNULL)
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+    match = re.search(rb'release\s+(\d+)\.(\d+)', output)
+    if not match:
+        return None
+
+    return int(match.group(1)), int(match.group(2))
+
+
+def _check_blackwell_arch_support():
+    cuda_version = _get_cuda_version_from_nvcc()
+    if cuda_version is None:
+        raise ValueError(
+            "Blackwell CUDA arch requires CUDA 12.8 or newer, but nvcc "
+            "version could not be detected. Please set CUDA_HOME to a CUDA "
+            "12.8+ toolkit or choose a different PADDLE_CUDA_ARCH_LIST."
+        )
+
+    if cuda_version < _BLACKWELL_MIN_CUDA_VERSION:
+        raise ValueError(
+            "Blackwell CUDA arch requires CUDA 12.8 or newer, but nvcc "
+            f"reports CUDA {_format_cuda_version(cuda_version)}. Please "
+            "upgrade CUDA or choose a different PADDLE_CUDA_ARCH_LIST."
+        )
+
+
 def _get_cuda_arch_flags(cflags: list[str] | None = None) -> list[str]:
     """
     Determine CUDA arch flags to use.
@@ -524,6 +569,8 @@ def _get_cuda_arch_flags(cflags: list[str] | None = None) -> list[str]:
             )
     else:
         _arch_list = _arch_list.replace(' ', ';').replace(',', ';')
+        if 'Blackwell' in _arch_list.split(';'):
+            _check_blackwell_arch_support()
         for named_arch, archival in named_arches.items():
             _arch_list = _arch_list.replace(named_arch, archival)
         arch_list = _arch_list.split(';')
