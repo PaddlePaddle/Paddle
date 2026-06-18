@@ -99,6 +99,8 @@ class Square(Constraint):
 class Symmetric(Square):
     def __call__(self, value: Tensor) -> Tensor:
         square_check = super().__call__(value)
+        if value.dim() < 2:
+            return square_check
         if value.shape[-2] != value.shape[-1]:
             return square_check
         return square_check & paddle.isclose(value, value.mT, atol=1e-6).all(

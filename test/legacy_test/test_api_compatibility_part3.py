@@ -160,6 +160,44 @@ class TestDistributionsCategoricalAPI(unittest.TestCase):
         with self.assertRaises(ValueError):
             categorical.Categorical(logits=paddle.to_tensor(1.0))
 
+    def test_dygraph_validate_args(self):
+        import importlib
+
+        categorical = importlib.import_module(
+            "paddle.compat.distributions.categorical"
+        )
+
+        paddle.disable_static()
+        probs = paddle.to_tensor([0.2, 0.3, 0.5], place=self.place)
+        dist = categorical.Categorical(probs=probs, validate_args=True)
+
+        dist.log_prob(paddle.to_tensor([0, 2], place=self.place))
+        with self.assertRaises(ValueError):
+            dist.log_prob(paddle.to_tensor([3], place=self.place))
+
+    def test_dygraph_enumerate_support(self):
+        import importlib
+
+        categorical = importlib.import_module(
+            "paddle.compat.distributions.categorical"
+        )
+
+        paddle.disable_static()
+        probs = paddle.to_tensor(self.np_probs, place=self.place)
+        dist = categorical.Categorical(probs=probs)
+
+        es = dist.enumerate_support()
+        es0 = dist.enumerate_support(expand=False)
+
+        self.assertEqual(list(es.shape), [3, 2])
+        self.assertEqual(list(es0.shape), [3, 1])
+        np.testing.assert_array_equal(
+            es.numpy(), np.array([[0, 0], [1, 1], [2, 2]], dtype="int64")
+        )
+        np.testing.assert_array_equal(
+            es0.numpy(), np.array([[0], [1], [2]], dtype="int64")
+        )
+
     def test_static_Compatibility(self):
         import importlib
 
@@ -423,6 +461,62 @@ class TestDistributionsPositiveDefiniteCheckAPI(unittest.TestCase):
             np.testing.assert_array_equal(out, np.array(True))
         for out in fetches[2:]:
             np.testing.assert_array_equal(out, np.array(False))
+
+    def test_symmetric_low_rank_returns_false(self):
+        from paddle.distribution import constraint
+
+        paddle.disable_static()
+
+        out = constraint.symmetric.check(paddle.ones([2]))
+        self.assertFalse(bool(out))
+
+        symmetric_matrix = paddle.to_tensor(
+            [[1.0, 2.0], [2.0, 1.0]], place=self.place
+        )
+        self.assertTrue(bool(constraint.symmetric.check(symmetric_matrix)))
+
+        non_symmetric_matrix = paddle.to_tensor(
+            [[1.0, 2.0], [0.0, 1.0]], place=self.place
+        )
+        self.assertFalse(bool(constraint.symmetric.check(non_symmetric_matrix)))
+
+    def test_static_symmetric_low_rank_returns_false(self):
+        from paddle.distribution import constraints
+
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            vector = paddle.static.data(
+                name="vector", shape=self.np_vector.shape, dtype="float32"
+            )
+            symmetric_matrix = paddle.static.data(
+                name="symmetric_matrix", shape=self.np_x.shape, dtype="float32"
+            )
+            non_symmetric_matrix = paddle.static.data(
+                name="non_symmetric_matrix",
+                shape=self.np_not_positive.shape,
+                dtype="float32",
+            )
+
+            out1 = constraints.symmetric.check(vector)
+            out2 = constraints.symmetric.check(symmetric_matrix)
+            out3 = constraints.symmetric.check(non_symmetric_matrix)
+
+            exe = paddle.static.Executor(self.place)
+            fetches = exe.run(
+                main,
+                feed={
+                    "vector": self.np_vector,
+                    "symmetric_matrix": self.np_x,
+                    "non_symmetric_matrix": self.np_not_positive,
+                },
+                fetch_list=[out1, out2, out3],
+            )
+
+        np.testing.assert_array_equal(fetches[0], np.array(False))
+        np.testing.assert_array_equal(fetches[1], np.array(True))
+        np.testing.assert_array_equal(fetches[2], np.array(False))
 
 
 # Test mv compatibility

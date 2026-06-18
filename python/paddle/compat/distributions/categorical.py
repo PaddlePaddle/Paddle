@@ -88,7 +88,14 @@ class Categorical(distribution.Distribution):
         return samples_2d.reshape(sample_shape + self._batch_shape)
 
     def log_prob(self, value):
-        value = paddle.cast(value, dtype='int64').unsqueeze(-1)
+        int_value = paddle.cast(value, dtype='int64')
+        if self._validate_args_enabled and paddle.in_dynamic_mode():
+            if bool(((int_value < 0) | (int_value >= self._num_events)).any()):
+                raise ValueError(
+                    "Categorical.log_prob got a value outside the support "
+                    f"[0, {self._num_events})."
+                )
+        value = int_value.unsqueeze(-1)
         log_pmf = self.logits
         output_shape = paddle.broadcast_shape(value.shape, log_pmf.shape)
         value = paddle.broadcast_to(value, [*output_shape[:-1], 1])
@@ -99,3 +106,14 @@ class Categorical(distribution.Distribution):
         min_real = paddle.finfo(self.logits.dtype).min
         logits = paddle.clip(self.logits, min=min_real)
         return -(logits * self.probs).sum(-1)
+
+    def enumerate_support(self, expand=True):
+        values = paddle.arange(self._num_events, dtype='int64')
+        values = values.reshape(
+            [self._num_events] + [1] * len(self._batch_shape)
+        )
+        if expand:
+            values = paddle.broadcast_to(
+                values, [self._num_events, *self._batch_shape]
+            )
+        return values
