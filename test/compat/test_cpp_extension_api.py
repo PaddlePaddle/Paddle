@@ -248,6 +248,33 @@ class TestCppExtensionUtils(unittest.TestCase):
         for f in flags:
             self.assertIsInstance(f, str)
 
+    def test_get_cuda_version_from_nvcc_uses_windows_nvcc_exe(self):
+        cuda_home = os.path.join('C:\\', 'Program Files', 'NVIDIA GPU')
+        nvcc = os.path.join(cuda_home, 'bin', 'nvcc.exe')
+        nvcc_version_output = b'Cuda compilation tools, release 12.8, V12.8.93'
+
+        with (
+            mock.patch.object(extension_utils, 'IS_WINDOWS', True),
+            mock.patch.object(
+                extension_utils, 'find_cuda_home', return_value=cuda_home
+            ),
+            mock.patch.object(
+                extension_utils.os.path, 'exists', return_value=True
+            ),
+            mock.patch.object(
+                extension_utils.subprocess,
+                'check_output',
+                return_value=nvcc_version_output,
+            ) as check_output,
+        ):
+            self.assertEqual(
+                extension_utils._get_cuda_version_from_nvcc(), (12, 8)
+            )
+
+        check_output.assert_called_once_with(
+            [nvcc, '--version'], stderr=extension_utils.DEVNULL
+        )
+
     def test_get_num_workers_with_env_verbose_false(self):
         os.environ["MAX_JOBS"] = "8"
         num = _get_num_workers(verbose=False)

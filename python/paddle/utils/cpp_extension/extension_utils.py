@@ -440,7 +440,8 @@ def _get_cuda_version_from_nvcc():
     if not cuda_home:
         return None
 
-    nvcc = os.path.join(cuda_home, 'bin', 'nvcc')
+    nvcc_name = 'nvcc.exe' if IS_WINDOWS else 'nvcc'
+    nvcc = os.path.join(cuda_home, 'bin', nvcc_name)
     if not os.path.exists(nvcc):
         return None
 
