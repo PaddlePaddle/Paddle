@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys as _sys
-
 from . import constraint as constraint, transform
 from .bernoulli import Bernoulli
 from .beta import Beta
@@ -58,8 +56,6 @@ from .transformed_distribution import TransformedDistribution
 from .uniform import Uniform
 
 constraints = constraint
-_sys.modules['paddle.distribution.constraints'] = constraints
-_sys.modules['paddle.distributions.constraints'] = constraints
 
 __all__ = [
     'Bernoulli',
@@ -89,7 +85,6 @@ __all__ = [
     'Binomial',
     'Poisson',
     'StudentT',
-    'constraint',
     'constraints',
 ]
 

@@ -59,6 +59,10 @@ class TestDistributionsCategoricalAPI(unittest.TestCase):
         categorical = importlib.import_module(
             "paddle.compat.distributions.categorical"
         )
+        self.assertIs(
+            paddle.compat.distributions,
+            importlib.import_module("paddle.compat.distributions"),
+        )
 
         paddle.disable_static()
         probs = paddle.to_tensor(self.np_probs, place=self.place)
