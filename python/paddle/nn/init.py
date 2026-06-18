@@ -213,6 +213,9 @@ def normal_(
     """
     init = Normal(mean=mean, std=std)
 
+    if in_dygraph_mode():
+        init(tensor)
+        return tensor
     return init(tensor)
 
 
