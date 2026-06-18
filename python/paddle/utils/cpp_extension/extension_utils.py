@@ -429,6 +429,17 @@ def add_std_without_repeat(cflags, compiler_type, use_std17=False):
 
 
 _BLACKWELL_MIN_CUDA_VERSION = (12, 8)
+_BLACKWELL_CUDA_ARCHES = frozenset(
+    {
+        '10.0',
+        '10.0a',
+        '10.1',
+        '10.1a',
+        '10.3',
+        '12.0',
+        '12.0a',
+    }
+)
 
 
 def _format_cuda_version(version):
@@ -472,6 +483,15 @@ def _check_blackwell_arch_support():
             f"reports CUDA {_format_cuda_version(cuda_version)}. Please "
             "upgrade CUDA or choose a different PADDLE_CUDA_ARCH_LIST."
         )
+
+
+def _is_blackwell_cuda_arch(arch):
+    return arch.split('+')[0] in _BLACKWELL_CUDA_ARCHES
+
+
+def _check_blackwell_arch_list_support(arch_list):
+    if any(_is_blackwell_cuda_arch(arch) for arch in arch_list):
+        _check_blackwell_arch_support()
 
 
 def _get_cuda_arch_flags(cflags: list[str] | None = None) -> list[str]:
@@ -570,11 +590,11 @@ def _get_cuda_arch_flags(cflags: list[str] | None = None) -> list[str]:
             )
     else:
         _arch_list = _arch_list.replace(' ', ';').replace(',', ';')
-        if 'Blackwell' in _arch_list.split(';'):
-            _check_blackwell_arch_support()
         for named_arch, archival in named_arches.items():
             _arch_list = _arch_list.replace(named_arch, archival)
         arch_list = _arch_list.split(';')
+
+    _check_blackwell_arch_list_support(arch_list)
 
     flags = []
     for arch in arch_list:
