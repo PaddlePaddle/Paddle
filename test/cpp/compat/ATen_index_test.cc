@@ -22,7 +22,10 @@
 
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
+#include "paddle/common/macros.h"
 #include "torch/all.h"
+
+COMMON_DECLARE_bool(use_stride_kernel);
 
 // ======================== index tests ========================
 
@@ -53,6 +56,9 @@ TEST(TensorIndexTest, IndexWithSingleTensor) {
 }
 
 TEST(TensorIndexTest, SliceKeepsStrideWithoutContiguousCopy) {
+  if (!FLAGS_use_stride_kernel) {
+    return;
+  }
   at::Tensor base = at::arange(24, at::kFloat).reshape({4, 6});
   at::Tensor transposed = base.t();  // shape: [6, 4], strides: [1, 6]
   ASSERT_FALSE(transposed.is_contiguous());
@@ -70,11 +76,9 @@ TEST(TensorIndexTest, SliceKeepsStrideWithoutContiguousCopy) {
 TEST(TensorIndexTest, IndexWithEmptyInitializerListReturnsSelf) {
   at::Tensor t = at::arange(5, at::kFloat);
 
-  at::Tensor result =
-      at::index(t, std::initializer_list<at::indexing::TensorIndex>{});
-
-  ASSERT_EQ(result.numel(), t.numel());
-  ASSERT_EQ(result.data_ptr<float>(), t.data_ptr<float>());
+  // PyTorch throws for empty index list
+  ASSERT_THROW(at::index(t, std::initializer_list<at::indexing::TensorIndex>{}),
+               std::exception);
 }
 
 TEST(TensorIndexTest, IndexWithTensorInitializerList) {
@@ -96,6 +100,9 @@ TEST(TensorIndexTest, IndexWithTensorInitializerList) {
 }
 
 TEST(TensorIndexTest, MemberIndexWithArrayRefTensorIndices) {
+  if (!FLAGS_use_stride_kernel) {
+    return;
+  }
   at::Tensor base = at::arange(24, at::kFloat).reshape({4, 6});
   at::Tensor transposed = base.t();
   std::vector<at::indexing::TensorIndex> indices = {at::indexing::Slice(1, 5),

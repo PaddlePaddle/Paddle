@@ -170,11 +170,11 @@ void cuda_remove(const GPUContext& dev_ctx,
       n,
       out_num_ptr);
 
-  phi::backends::gpu::GpuMemcpyAsync(input.data<T>(),
-                                     out.data<T>(),
-                                     sizeof(T) * n,
-                                     gpuMemcpyDeviceToDevice,
-                                     dev_ctx.stream());
+  backends::gpu::GpuMemcpyAsync(input.data<T>(),
+                                out.data<T>(),
+                                sizeof(T) * n,
+                                gpuMemcpyDeviceToDevice,
+                                dev_ctx.stream());
 }
 
 template <int BS>
@@ -381,8 +381,7 @@ int ProductRuleBookWithBuffer(const Context& dev_ctx,
                               int* h_buffer) {
   DenseTensor d_buffer = Empty<int>(dev_ctx, {2 * kernel_size + 3});
   const bool is2D = out_dims.size() == 4 ? true : false;
-  auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
   ProductRuleBookKernel<IntT><<<config.block_per_grid.x,
                                 config.thread_per_block.x,
                                 kernel_size * sizeof(int),
@@ -424,9 +423,9 @@ int ProductRuleBookWithBuffer(const Context& dev_ctx,
   int* out_index_ptr = out_index->data<int>();
   int* unique_key_ptr = unique_key.data<int>();
 
-  phi::backends::gpu::GpuMemsetAsync(
+  backends::gpu::GpuMemsetAsync(
       unique_key_ptr, 0, sizeof(int), dev_ctx.stream());
-  config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, max_nnz, 1);
+  config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, max_nnz, 1);
   size_t cache_size = sizeof(int) * config.thread_per_block.x;
   int* index_flags_ptr = index_flags->data<int>();
   UniqueKernel<IntT><<<config.block_per_grid,
@@ -438,31 +437,31 @@ int ProductRuleBookWithBuffer(const Context& dev_ctx,
                                            out_index_ptr,
                                            unique_key_ptr);
 
-  phi::backends::gpu::GpuMemcpyAsync(d_buffer.data<int>(),
-                                     counter_ptr,
-                                     kernel_size * sizeof(int),
-                                     gpuMemcpyDeviceToDevice,
-                                     dev_ctx.stream());
-  phi::backends::gpu::GpuMemcpyAsync(d_buffer.data<int>() + kernel_size,
-                                     offsets_ptr,
-                                     kernel_size * sizeof(int),
-                                     gpuMemcpyDeviceToDevice,
-                                     dev_ctx.stream());
-  phi::backends::gpu::GpuMemcpyAsync(d_buffer.data<int>() + 2 * kernel_size + 1,
-                                     rulebook_len_tensor.data<int>(),
-                                     sizeof(int),
-                                     gpuMemcpyDeviceToDevice,
-                                     dev_ctx.stream());
-  phi::backends::gpu::GpuMemcpyAsync(d_buffer.data<int>() + 2 * kernel_size + 2,
-                                     unique_key_ptr,
-                                     sizeof(int),
-                                     gpuMemcpyDeviceToDevice,
-                                     dev_ctx.stream());
-  phi::backends::gpu::GpuMemcpyAsync(h_buffer,
-                                     d_buffer.data<int>(),
-                                     (2 * kernel_size + 3) * sizeof(int),
-                                     gpuMemcpyDeviceToHost,
-                                     dev_ctx.stream());
+  backends::gpu::GpuMemcpyAsync(d_buffer.data<int>(),
+                                counter_ptr,
+                                kernel_size * sizeof(int),
+                                gpuMemcpyDeviceToDevice,
+                                dev_ctx.stream());
+  backends::gpu::GpuMemcpyAsync(d_buffer.data<int>() + kernel_size,
+                                offsets_ptr,
+                                kernel_size * sizeof(int),
+                                gpuMemcpyDeviceToDevice,
+                                dev_ctx.stream());
+  backends::gpu::GpuMemcpyAsync(d_buffer.data<int>() + 2 * kernel_size + 1,
+                                rulebook_len_tensor.data<int>(),
+                                sizeof(int),
+                                gpuMemcpyDeviceToDevice,
+                                dev_ctx.stream());
+  backends::gpu::GpuMemcpyAsync(d_buffer.data<int>() + 2 * kernel_size + 2,
+                                unique_key_ptr,
+                                sizeof(int),
+                                gpuMemcpyDeviceToDevice,
+                                dev_ctx.stream());
+  backends::gpu::GpuMemcpyAsync(h_buffer,
+                                d_buffer.data<int>(),
+                                (2 * kernel_size + 3) * sizeof(int),
+                                gpuMemcpyDeviceToHost,
+                                dev_ctx.stream());
 
   dev_ctx.Wait();
   int rulebook_len = h_buffer[2 * kernel_size + 1] / 2;
@@ -512,7 +511,7 @@ int ProductRuleBookWithBuffer(const Context& dev_ctx,
 
   IntT* out_indices_ptr = out_indices.data<IntT>();
 
-  config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_nnz, 1);
+  config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_nnz, 1);
   GetOutIndexTable<IntT>
       <<<config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
           out_index_ptr,
@@ -522,7 +521,7 @@ int ProductRuleBookWithBuffer(const Context& dev_ctx,
           out_index_table_ptr,
           out_indices_ptr);
 
-  config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
+  config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
   unique_value->ResizeAndAllocate({static_cast<int>(out_nnz * kernel_size)});
   int* unique_value_ptr = unique_value->data<int>();
 

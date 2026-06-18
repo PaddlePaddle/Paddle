@@ -38,7 +38,7 @@ void FullKernel(const Context& dev_ctx,
                 const Scalar& val,
                 DataType dtype UNUSED,
                 DenseTensor* out) {
-  out->Resize(make_ddim(shape.GetData()));
+  out->Resize(shape.GetData());
   if (out->numel() == 0) {
     dev_ctx.template Alloc<T>(out);
     return;
@@ -128,6 +128,11 @@ template PADDLE_API void FullKernel<float, CPUContext>(const CPUContext&,
                                                        const Scalar&,
                                                        DataType dtype UNUSED,
                                                        DenseTensor*);
+template PADDLE_API void FullKernel<double, CPUContext>(const CPUContext&,
+                                                        const IntArray&,
+                                                        const Scalar&,
+                                                        DataType dtype UNUSED,
+                                                        DenseTensor*);
 #endif
 }  // namespace phi
 

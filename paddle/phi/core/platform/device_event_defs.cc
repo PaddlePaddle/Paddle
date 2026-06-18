@@ -18,7 +18,7 @@
 namespace paddle {
 namespace platform {
 
-DeviceEvent::DeviceEvent(const phi::Place& place, unsigned int flag)
+DeviceEvent::DeviceEvent(const Place& place, unsigned int flag)
     : event_(), place_(place), flag_(flag) {
   type_id_ = DeviceTypeToId(platform::Place2DeviceType(place));
   PADDLE_ENFORCE_LT(type_id_,

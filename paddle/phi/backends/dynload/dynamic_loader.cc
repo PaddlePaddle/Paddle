@@ -173,6 +173,9 @@ static constexpr char* win_cudnn_lib = "cudnn64_" CUDNN_MAJOR_VERSION ".dll";
 static constexpr char* win_cublas_lib =
     "cublas64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;cublas64_" CUDA_VERSION_MAJOR ".dll";
+static constexpr char* win_cublaslt_lib =
+    "cublasLt64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
+    ".dll;cublasLt64_" CUDA_VERSION_MAJOR ".dll";
 static constexpr char* win_curand_lib =
     "curand64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;curand64_" CUDA_VERSION_MAJOR ".dll;curand64_10.dll";
@@ -524,21 +527,21 @@ void* GetCublasLtDsoHandle() {
     return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "cublasLt64_11.dll");
 #else
     return GetDsoHandleFromSearchPath(
-        FLAGS_cuda_dir, win_cublas_lib, true, {cuda_lib_path});
+        FLAGS_cuda_dir, win_cublaslt_lib, true, {cuda_lib_path});
 #endif
   } else if (CUDA_VERSION >= 12000 && CUDA_VERSION < 13000) {
 #ifdef PADDLE_WITH_PIP_CUDA_LIBRARIES
     return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "cublasLt64_12.dll");
 #else
     return GetDsoHandleFromSearchPath(
-        FLAGS_cuda_dir, win_cublas_lib, true, {cuda_lib_path});
+        FLAGS_cuda_dir, win_cublaslt_lib, true, {cuda_lib_path});
 #endif
   } else if (CUDA_VERSION >= 13000 && CUDA_VERSION < 14000) {
 #ifdef PADDLE_WITH_PIP_CUDA_LIBRARIES
     return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "cublasLt64_13.dll");
 #else
     return GetDsoHandleFromSearchPath(
-        FLAGS_cuda_dir, win_cublas_lib, true, {cuda_lib_path});
+        FLAGS_cuda_dir, win_cublaslt_lib, true, {cuda_lib_path});
 #endif
   } else {
     std::string warning_msg(

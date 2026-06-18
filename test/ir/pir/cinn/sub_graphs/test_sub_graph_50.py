@@ -14,7 +14,7 @@
 
 # repo: PaddleDetection
 # model: configs^rotate^ppyoloe_r^ppyoloe_r_crn_s_3x_dota_single_dy2st_train
-# api:paddle.nn.functional.conv._conv_nd||api:paddle.tensor.ops.sigmoid||method:__mul__
+# api:paddle.nn.functional.conv._conv_nd||api:paddle.sigmoid||method:__mul__
 from base import *  # noqa: F403
 
 from paddle.static import InputSpec
@@ -51,7 +51,7 @@ class LayerCase(paddle.nn.Layer):
             op_type='conv2d',
             use_cudnn=True,
         )
-        var_3 = paddle.tensor.ops.sigmoid(var_2)
+        var_3 = paddle.sigmoid(var_2)
         var_4 = var_0 * var_3
         return var_4
 

@@ -228,8 +228,8 @@ void CPUPyramidHashOPKernel(const Context& dev_ctx,
   if (iter != iter_end) {
     exit(1);
   }
-  auto weight_type = TransToProtoVarType(_blobs_0->dtype());
-  if (_is_training == 0 && weight_type != ProtoDataType::INT8) {
+  auto weight_type = _blobs_0->dtype();
+  if (_is_training == 0 && weight_type != DataType::INT8) {
     funcs::axpy_noadd(
         top_data, top_data, top->dims()[0] * top->dims()[1], _drop_out_percent);
   }

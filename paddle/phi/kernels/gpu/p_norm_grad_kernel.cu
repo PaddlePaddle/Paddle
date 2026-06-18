@@ -73,7 +73,7 @@ __global__ void PNormGradP2Kernel(const T* x,
                                   int64_t post,
                                   int64_t total,
                                   bool reduce_all) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   CUDA_KERNEL_LOOP_TYPE(idx, total, int64_t) {
     int64_t norm_idx;
     if (reduce_all) {
@@ -109,7 +109,7 @@ __global__ void PNormGradPLessThan1Kernel(const T* x,
                                           int64_t total,
                                           bool reduce_all,
                                           double porder) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   double p_minus_1 = porder - 1.0;
   double one_minus_p = 1.0 - porder;
 
@@ -165,7 +165,7 @@ __global__ void PNormGradP1Kernel(const T* x,
                                   int64_t post,
                                   int64_t total,
                                   bool reduce_all) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   CUDA_KERNEL_LOOP_TYPE(idx, total, int64_t) {
     MT x_val = static_cast<MT>(x[idx]);
 
@@ -208,7 +208,7 @@ __global__ void PNormGradPBetween1And2Kernel(const T* x,
                                              int64_t total,
                                              bool reduce_all,
                                              double porder) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   double p_minus_1 = porder - 1.0;
 
   CUDA_KERNEL_LOOP_TYPE(idx, total, int64_t) {
@@ -273,7 +273,7 @@ __global__ void PNormGradPGreaterThan2Kernel(const T* x,
                                              int64_t total,
                                              bool reduce_all,
                                              double porder) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   double p_minus_2 = porder - 2.0;
   double p_minus_1 = porder - 1.0;
 
@@ -342,7 +342,7 @@ inline void GetPreAxisPost(const DDim& xdim,
 
 template <typename T>
 struct PNormGradFunctor {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   HOSTDEVICE explicit inline PNormGradFunctor(float porder, float eps) {
     this->porder = static_cast<MT>(porder - 1.0f);
     this->eps = static_cast<MT>(eps);
@@ -394,6 +394,10 @@ void PNormGradKernel(const Context& dev_ctx,
   auto* out_dx = x_grad;
   dev_ctx.template Alloc<T>(out_dx);
 
+  if (out_dx->numel() == 0) {
+    return;
+  }
+
   auto xdim = in_x->dims();
   bool reduce_all = (in_norm->numel() == 1);
   if (axis < 0) {
@@ -416,19 +420,19 @@ void PNormGradKernel(const Context& dev_ctx,
     DenseTensor x_abs;
     x_abs.Resize(in_x->dims());
     dev_ctx.template Alloc<T>(&x_abs);
-    phi::AbsKernel<T, Context>(dev_ctx, *in_x, &x_abs);
+    AbsKernel<T, Context>(dev_ctx, *in_x, &x_abs);
 
     DenseTensor amax_grad_out;
     amax_grad_out.Resize(in_x->dims());
     dev_ctx.template Alloc<T>(&amax_grad_out);
-    phi::ReduceAMaxGradKernel<T, Context>(dev_ctx,
-                                          x_abs,
-                                          *in_norm,
-                                          *in_norm_dy,
-                                          dims_for_amax,
-                                          keepdim,
-                                          reduce_all,
-                                          &amax_grad_out);
+    ReduceAMaxGradKernel<T, Context>(dev_ctx,
+                                     x_abs,
+                                     *in_norm,
+                                     *in_norm_dy,
+                                     dims_for_amax,
+                                     keepdim,
+                                     reduce_all,
+                                     &amax_grad_out);
     DenseTensor x_sign;
     x_sign.Resize(in_x->dims());
     dev_ctx.template Alloc<T>(&x_sign);
@@ -440,7 +444,7 @@ void PNormGradKernel(const Context& dev_ctx,
     GetPreAxisPost(xdim, axis, reduce_all, &pre, &axis_size, &post);
 
     int64_t total = in_x->numel();
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
+    auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
 
     PNormGradP1Kernel<T><<<config.block_per_grid,
                            config.thread_per_block,
@@ -459,7 +463,7 @@ void PNormGradKernel(const Context& dev_ctx,
     GetPreAxisPost(xdim, axis, reduce_all, &pre, &axis_size, &post);
 
     int64_t total = in_x->numel();
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
+    auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
 
     PNormGradP2Kernel<T><<<config.block_per_grid,
                            config.thread_per_block,
@@ -480,7 +484,7 @@ void PNormGradKernel(const Context& dev_ctx,
     GetPreAxisPost(xdim, axis, reduce_all, &pre, &axis_size, &post);
 
     int64_t total = in_x->numel();
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
+    auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
 
     PNormGradPLessThan1Kernel<T><<<config.block_per_grid,
                                    config.thread_per_block,
@@ -502,7 +506,7 @@ void PNormGradKernel(const Context& dev_ctx,
     GetPreAxisPost(xdim, axis, reduce_all, &pre, &axis_size, &post);
 
     int64_t total = in_x->numel();
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
+    auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
 
     PNormGradPBetween1And2Kernel<T><<<config.block_per_grid,
                                       config.thread_per_block,
@@ -524,7 +528,7 @@ void PNormGradKernel(const Context& dev_ctx,
     GetPreAxisPost(xdim, axis, reduce_all, &pre, &axis_size, &post);
 
     int64_t total = in_x->numel();
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
+    auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
 
     PNormGradPGreaterThan2Kernel<T><<<config.block_per_grid,
                                       config.thread_per_block,

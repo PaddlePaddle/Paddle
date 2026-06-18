@@ -16,6 +16,7 @@
 
 #include <string>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
@@ -76,8 +77,8 @@ struct BaseActivationFunctor {
 // For windows build
 template <typename T>
 struct CudaSwishFunctor : public BaseActivationFunctor<T> {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  MPType one = static_cast<MPType>(1.0f);
+  using MT = typename MPTypeTrait<T>::Type;
+  MT one = static_cast<MT>(1.0f);
   float beta = 1.0;
 
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
@@ -86,8 +87,8 @@ struct CudaSwishFunctor : public BaseActivationFunctor<T> {
 
   // swish(x) = x / (1 + exp(-beta * x))
   __device__ __forceinline__ T operator()(const T arg_x) const {
-    MPType x = static_cast<MPType>(arg_x);
-    MPType b = static_cast<MPType>(beta);
+    MT x = static_cast<MT>(arg_x);
+    MT b = static_cast<MT>(beta);
     return static_cast<T>(x / (one + exp(-b * x)));
   }
 };
@@ -116,16 +117,16 @@ inline gpuError_t GetNumBlocks(int64_t n, int *num_blocks) {
   constexpr int kBlockSize = 128;
   constexpr int kNumWaves = 16;
 
-  const int device_id = phi::backends::gpu::GetCurrentDeviceId();
-  const int sm_count = phi::backends::gpu::GetGPUMultiProcessors(device_id);
+  const int device_id = backends::gpu::GetCurrentDeviceId();
+  const int sm_count = backends::gpu::GetGPUMultiProcessors(device_id);
   const int max_thread_per_multiprocessor =
-      phi::backends::gpu::GetGPUMaxThreadsPerMultiProcessor(device_id);
+      backends::gpu::GetGPUMaxThreadsPerMultiProcessor(device_id);
 
-  *num_blocks =
-      std::max<int>(1,
-                    std::min<int64_t>((n + kBlockSize - 1) / kBlockSize,
-                                      sm_count * max_thread_per_multiprocessor /
-                                          kBlockSize * kNumWaves));
+  int64_t num_blocks_candidate = std::min<int64_t>(
+      (n + kBlockSize - 1) / kBlockSize,
+      sm_count * max_thread_per_multiprocessor / kBlockSize * kNumWaves);
+  PADDLE_ENFORCE_LE_INT_MAX(num_blocks_candidate, "num_blocks_candidate");
+  *num_blocks = std::max<int>(1, static_cast<int>(num_blocks_candidate));
   return gpuSuccess;
 }
 

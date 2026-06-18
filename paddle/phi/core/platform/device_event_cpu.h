@@ -23,7 +23,7 @@ namespace paddle {
 namespace platform {
 
 struct CPUDeviceEventWrapper {
-  explicit CPUDeviceEventWrapper(const phi::Place& place, unsigned int flag = 0)
+  explicit CPUDeviceEventWrapper(const Place& place, unsigned int flag = 0)
       : status_(EventStatus::INITIALIZED) {
     PADDLE_ENFORCE_EQ(
         phi::is_cpu_place(place),
@@ -36,10 +36,10 @@ struct CPUDeviceEventWrapper {
   std::atomic<int> status_;
 };
 
-void DeviceEventCreateCPU(DeviceEvent* event, const phi::Place& place);
+void DeviceEventCreateCPU(DeviceEvent* event, const Place& place);
 
 void DeviceEventRecordCPU(DeviceEvent* event,
-                          const phi::Place& place,
+                          const Place& place,
                           const DeviceContext* context);
 
 bool DeviceEventQueryCPU(const DeviceEvent* event);

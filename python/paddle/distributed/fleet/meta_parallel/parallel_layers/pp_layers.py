@@ -746,10 +746,9 @@ class PipelineLayer(nn.Layer):
                         group=comm['group'],
                     )
 
-            for param in comm['layer'].parameters():
-                if param.name in comm[
-                    'weight_attr'
-                ] and self.global_rank != min(comm['ranks']):
+            if self.global_rank != min(comm['ranks']):
+                for weight_attr in comm['weight_attr']:
+                    param = getattr(comm['layer'], weight_attr)
                     param.is_firstly_shared = False
 
     def allreduce_shared_weight_gradients(self):
@@ -1013,11 +1012,11 @@ class PipelineLayer(nn.Layer):
                 flush_into_run_function()
                 if layer.layer_name not in self.shared_layers:
                     self.shared_layers[layer.layer_name] = layer.build_layer()
-                    for param in self.shared_layers[
-                        layer.layer_name
-                    ].parameters():
-                        if param.name in layer.shared_weight_attr:
-                            param.is_firstly_shared = True
+                    for weight_attr in layer.shared_weight_attr:
+                        param = getattr(
+                            self.shared_layers[layer.layer_name], weight_attr
+                        )
+                        param.is_firstly_shared = True
 
                 if layer.forward_func is None:
                     run_function.append(self.shared_layers[layer.layer_name])

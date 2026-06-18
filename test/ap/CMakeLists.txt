@@ -11,7 +11,7 @@ if(WITH_GPU)
       COMMAND
         ${CMAKE_COMMAND} -E env
         PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-        python3 ${CMAKE_CURRENT_SOURCE_DIR}/${test_name}.py
+        ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/${test_name}.py
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   endforeach()
 

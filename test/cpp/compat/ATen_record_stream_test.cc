@@ -14,17 +14,17 @@
 
 #include <ATen/Functions.h>
 #include <ATen/core/TensorBody.h>
+#include <ATen/cuda/CUDAContext.h>
 #include <ATen/ops/record_stream.h>
 #include <c10/core/Device.h>
 #include <c10/core/Stream.h>
+#include "ATen/ATen.h"
+#include "gtest/gtest.h"
+#include "torch/all.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <c10/cuda/CUDAFunctions.h>
 #include <c10/cuda/CUDAStream.h>
 #endif
-#include "ATen/ATen.h"
-#include "gtest/gtest.h"
-#include "test/cpp/compat/cuda_test_utils.h"
-#include "torch/all.h"
 
 class RecordStreamTest : public ::testing::Test {
  protected:
@@ -32,7 +32,7 @@ class RecordStreamTest : public ::testing::Test {
     cpu_tensor =
         at::ones({4}, at::TensorOptions().dtype(at::kFloat).device(at::kCPU));
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (compat_test::CudaRuntimeAvailable()) {
+    if (at::cuda::is_available()) {
       cuda_tensor = at::ones(
           {4}, at::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
     }
@@ -51,12 +51,10 @@ using RecordCudaStreamMethod = void (at::Tensor::*)(at::cuda::CUDAStream) const;
 [[maybe_unused]] static RecordCudaStreamMethod g_record_cuda_stream_method =
     &at::Tensor::record_stream;
 
-using RecordRawCudaStreamMethod = void (at::Tensor::*)(cudaStream_t) const;
-[[maybe_unused]] static RecordRawCudaStreamMethod
-    g_record_raw_cuda_stream_method = &at::Tensor::record_stream;
-
 TEST_F(RecordStreamTest, CudaTensorCurrentCudaStream) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
+  if (!at::cuda::is_available()) {
+    return;
+  }
   auto stream = at::cuda::getCurrentCUDAStream();
   // record_stream should not throw
   EXPECT_NO_THROW(cuda_tensor.record_stream(stream));
@@ -64,16 +62,13 @@ TEST_F(RecordStreamTest, CudaTensorCurrentCudaStream) {
 
 // --- Happy path: CUDA tensor + default CUDA stream should succeed ---
 TEST_F(RecordStreamTest, CudaTensorDefaultCudaStream) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
+  if (!at::cuda::is_available()) {
+    return;
+  }
   c10::Stream default_stream = c10::cuda::getDefaultCUDAStream().unwrap();
   EXPECT_NO_THROW(cuda_tensor.record_stream(default_stream));
 }
 
-TEST_F(RecordStreamTest, CudaTensorRawCudaStream) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
-  auto stream = at::cuda::getCurrentCUDAStream();
-  EXPECT_NO_THROW(cuda_tensor.record_stream(stream.raw_stream()));
-}
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
 
 // --- Error path: CPU tensor + CPU stream (record_stream does not support CPU
@@ -88,7 +83,9 @@ TEST_F(RecordStreamTest, CpuTensorCpuStream) {
 // tensors) ---
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST_F(RecordStreamTest, CpuTensorCudaStream) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
+  if (!at::cuda::is_available()) {
+    return;
+  }
   auto cuda_stream = at::cuda::getCurrentCUDAStream();
   EXPECT_THROW(cpu_tensor.record_stream(cuda_stream), std::exception);
 }

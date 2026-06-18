@@ -3739,7 +3739,7 @@ struct MMHAStore {
     for (int i = 0; i < VecSize; i++) {
       src_vec[i] = static_cast<T>(static_cast<float>(src_vec[i]) * scale);
     }
-    phi::Store<T, VecSize>(src_vec, dst_ + idx);
+    Store<T, VecSize>(src_vec, dst_ + idx);
   }
 
   StoreT* dst_;
@@ -3759,15 +3759,15 @@ struct MMHAStore<T, T, true> {
     TVec smooth_vec;
 
     *reinterpret_cast<Vec*>(&src_vec) = src;
-    phi::Load<T, VecSize>(shift_ + idx % cols_, &shift_vec);
-    phi::Load<T, VecSize>(smooth_ + idx % cols_, &smooth_vec);
+    Load<T, VecSize>(shift_ + idx % cols_, &shift_vec);
+    Load<T, VecSize>(smooth_ + idx % cols_, &smooth_vec);
 
 #pragma unroll
     for (int i = 0; i < VecSize; i++) {
       src_vec[i] = (src_vec[i] + shift_vec[i]) * smooth_vec[i];
     }
 
-    phi::Store<T, VecSize>(src_vec, dst_ + idx);
+    Store<T, VecSize>(src_vec, dst_ + idx);
   }
 
   T* dst_;
@@ -3792,8 +3792,8 @@ struct MMHALoad<T, int32_t> {
     DstVec dst_vec;
     ScaleVec scale_vec;
 
-    phi::Load<int32_t, VecSize>(src_ + idx, &src_vec);
-    phi::Load<float, VecSize>(dequant_scales_ + idx % cols_, &scale_vec);
+    Load<int32_t, VecSize>(src_ + idx, &src_vec);
+    Load<float, VecSize>(dequant_scales_ + idx % cols_, &scale_vec);
 #pragma unroll
     for (int i = 0; i < VecSize; i++) {
       dst_vec[i] =
@@ -3840,7 +3840,7 @@ struct MMHAStore<T, int8_t> {
                                          quant_min_bound_);
     }
 
-    phi::Store<int8_t, VecSize>(dst_vec, dst_ + idx);
+    Store<int8_t, VecSize>(dst_vec, dst_ + idx);
   }
 
   int8_t* dst_;
@@ -3881,8 +3881,8 @@ struct MMHAStore<T, int8_t, true> {
     SrcVec smooth_vec;
 
     *reinterpret_cast<Vec*>(&src_vec) = src;
-    phi::Load<T, VecSize>(shift_ + idx % cols_, &shift_vec);
-    phi::Load<T, VecSize>(smooth_ + idx % cols_, &smooth_vec);
+    Load<T, VecSize>(shift_ + idx % cols_, &shift_vec);
+    Load<T, VecSize>(smooth_ + idx % cols_, &smooth_vec);
 
 #pragma unroll
     for (int i = 0; i < VecSize; i++) {
@@ -3895,7 +3895,7 @@ struct MMHAStore<T, int8_t, true> {
                                          quant_min_bound_);
     }
 
-    phi::Store<int8_t, VecSize>(dst_vec, dst_ + idx);
+    Store<int8_t, VecSize>(dst_vec, dst_ + idx);
   }
 
   int8_t* dst_;

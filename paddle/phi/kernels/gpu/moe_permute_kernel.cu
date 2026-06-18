@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <limits>
+
+#include "paddle/common/enforce.h"
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
@@ -199,8 +203,8 @@ __global__ __launch_bounds__(BLOCK_DIM_X) void permute_kernel(
         expert = shared_routemap[lane_id * topk + col];
         prob = shared_probs[lane_id * topk + col];
       } else {
-        expert = routemap_topk[global_row * topk + col];
-        prob = probs_topk[global_row * topk + col];
+        expert = routemap_topk[static_cast<int64_t>(global_row) * topk + col];
+        prob = probs_topk[static_cast<int64_t>(global_row) * topk + col];
       }
     }
     if (expert >= 0 && expert < num_experts) {
@@ -264,8 +268,9 @@ __global__ __launch_bounds__(BLOCK_DIM_X) void permute_kernel(
                       __popc((lane_id < 31) ? (mask >> (lane_id + 1)) : 0u);
         }
 
-        zipped_expertwise_rowmap[global_row * num_experts + expert_id] =
-            final_pos;
+        zipped_expertwise_rowmap[static_cast<int64_t>(global_row) *
+                                     num_experts +
+                                 expert_id] = final_pos;
 #pragma unroll
         for (int k = 0; k < TOPK; k++) {
           if (reg_expert[k] == expert_id) {
@@ -386,19 +391,19 @@ template <typename TokenT,
           bool DoGather,
           bool ReturnIndices,
           int TOPK>
-void launch_permute_kernel(const phi::GPUContext &dev_ctx,
-                           const phi::DenseTensor &X,
-                           const phi::DenseTensor &expert_routemap_topk,
-                           const phi::DenseTensor &expert_prob_topk,
-                           const paddle::optional<phi::DenseTensor> &XScale,
-                           const phi::DenseTensor &expert_offsets,
-                           const phi::DenseTensor &expert_offset_end,
-                           phi::DenseTensor *X_unzipped,
-                           phi::DenseTensor *zipped_expertwise_rowmap,
-                           phi::DenseTensor *token_prob_unzipped,
-                           phi::DenseTensor *XScale_unzipped,
-                           phi::DenseTensor *global_expertwise_block_cumsum,
-                           phi::DenseTensor *expert_indices,
+void launch_permute_kernel(const GPUContext &dev_ctx,
+                           const DenseTensor &X,
+                           const DenseTensor &expert_routemap_topk,
+                           const DenseTensor &expert_prob_topk,
+                           const paddle::optional<DenseTensor> &XScale,
+                           const DenseTensor &expert_offsets,
+                           const DenseTensor &expert_offset_end,
+                           DenseTensor *X_unzipped,
+                           DenseTensor *zipped_expertwise_rowmap,
+                           DenseTensor *token_prob_unzipped,
+                           DenseTensor *XScale_unzipped,
+                           DenseTensor *global_expertwise_block_cumsum,
+                           DenseTensor *expert_indices,
                            int total_zipped_tokens_num,
                            int token_length,
                            int scale_length,
@@ -408,7 +413,23 @@ void launch_permute_kernel(const phi::GPUContext &dev_ctx,
   constexpr int ROWS_PER_BLOCK = kPermuteBlockSize;
   constexpr int BLOCK_DIM_X = kPermuteBlockDimX;
 
-  dim3 grid((total_zipped_tokens_num + ROWS_PER_BLOCK - 1) / ROWS_PER_BLOCK);
+  PADDLE_ENFORCE_GE(
+      total_zipped_tokens_num,
+      0,
+      common::errors::InvalidArgument(
+          "total_zipped_tokens_num should be non-negative, but got %d.",
+          total_zipped_tokens_num));
+  if (total_zipped_tokens_num == 0) return;
+  const int64_t grid_x =
+      (static_cast<int64_t>(total_zipped_tokens_num) + ROWS_PER_BLOCK - 1) /
+      ROWS_PER_BLOCK;
+  PADDLE_ENFORCE_LE(
+      grid_x,
+      static_cast<int64_t>(std::numeric_limits<unsigned int>::max()),
+      common::errors::InvalidArgument(
+          "The grid size of moe_permute should be <= UINT_MAX, but got %ld.",
+          grid_x));
+  dim3 grid(static_cast<unsigned int>(grid_x));
   dim3 block(BLOCK_DIM_X);
 
   const TokenT *x_ptr = X.data<TokenT>();
@@ -488,18 +509,18 @@ void launch_permute_kernel(const phi::GPUContext &dev_ctx,
 // ============================================================================
 template <typename T, typename Context>
 void dispatch_permute_kernel(const Context &dev_ctx,
-                             const phi::DenseTensor &X,
-                             const phi::DenseTensor &expert_routemap_topk,
-                             const phi::DenseTensor &expert_prob_topk,
-                             const paddle::optional<phi::DenseTensor> &XScale,
-                             const phi::DenseTensor &expert_offsets,
-                             const phi::DenseTensor &expert_offset_end,
-                             phi::DenseTensor *X_unzipped,
-                             phi::DenseTensor *zipped_expertwise_rowmap,
-                             phi::DenseTensor *token_prob_unzipped,
-                             phi::DenseTensor *XScale_unzipped,
-                             phi::DenseTensor *global_expertwise_block_cumsum,
-                             phi::DenseTensor *expert_indices,
+                             const DenseTensor &X,
+                             const DenseTensor &expert_routemap_topk,
+                             const DenseTensor &expert_prob_topk,
+                             const paddle::optional<DenseTensor> &XScale,
+                             const DenseTensor &expert_offsets,
+                             const DenseTensor &expert_offset_end,
+                             DenseTensor *X_unzipped,
+                             DenseTensor *zipped_expertwise_rowmap,
+                             DenseTensor *token_prob_unzipped,
+                             DenseTensor *XScale_unzipped,
+                             DenseTensor *global_expertwise_block_cumsum,
+                             DenseTensor *expert_indices,
                              int total_zipped_tokens_num,
                              int token_length,
                              int topk,
@@ -582,13 +603,16 @@ void dispatch_preprocess(const Context &dev_ctx,
   padding_tokens_tensor.Resize({static_cast<int64_t>(padding_rows.size())});
   dev_ctx.template Alloc<int>(&padding_tokens_tensor);
 
+  auto *stable_padding_rows = backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      const_cast<int *>(padding_rows.data()), padding_rows.size());
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(padding_tokens_tensor.data<int>(),
-                                             padding_rows.data(),
+                                             stable_padding_rows,
                                              sizeof(int) * padding_rows.size(),
                                              cudaMemcpyHostToDevice,
                                              dev_ctx.stream()));
 
-  dim3 grid{static_cast<unsigned>(padding_rows.size())};
+  PADDLE_ENFORCE_LE_UINT32_MAX(padding_rows.size(), "padding_rows size");
+  dim3 grid{static_cast<uint32_t>(padding_rows.size())};
   dim3 block{512};
   const int *padding_ptr = padding_tokens_tensor.data<int>();
 
@@ -627,6 +651,12 @@ void dispatch_preprocess_w_override(const Context &dev_ctx,
                                     DenseTensor *expert_offset_end,
                                     DenseTensor *expert_indices) {
   constexpr int BLOCK_SIZE = 1024;
+  PADDLE_ENFORCE_LE(
+      expert_routemap_topk.numel(),
+      static_cast<int64_t>(std::numeric_limits<int32_t>::max()),
+      common::errors::InvalidArgument(
+          "expert_routemap_topk.numel() should be <= INT_MAX, but got %ld.",
+          expert_routemap_topk.numel()));
 
   dispatch::Bools(
       [&](auto fill_expert_indices_tag) {
@@ -668,38 +698,132 @@ void MoePermuteKernel(const Context &dev_ctx,
                       DenseTensor *token_prob_unzipped,
                       DenseTensor *XScale_unzipped,
                       DenseTensor *expert_indices) {
+  PADDLE_ENFORCE_EQ(
+      X.dims().size(),
+      2,
+      common::errors::InvalidArgument("Input X's dims should be 2, but got %u.",
+                                      X.dims().size()));
+  PADDLE_ENFORCE_EQ(
+      expert_routemap_topk.dims().size(),
+      2,
+      common::errors::InvalidArgument(
+          "Input expert_routemap_topk's dims should be 2, but got %u.",
+          expert_routemap_topk.dims().size()));
+  PADDLE_ENFORCE_EQ(
+      expert_prob_topk.dims().size(),
+      2,
+      common::errors::InvalidArgument(
+          "Input expert_prob_topk's dims should be 2, but got %u.",
+          expert_prob_topk.dims().size()));
+  PADDLE_ENFORCE_EQ(expert_prob_topk.dims(),
+                    expert_routemap_topk.dims(),
+                    common::errors::InvalidArgument(
+                        "Input expert_prob_topk's dims should be equal to "
+                        "expert_routemap_topk's dims, but got %s and %s.",
+                        expert_prob_topk.dims(),
+                        expert_routemap_topk.dims()));
+
   const int64_t rows = X.dims()[0];
   const int64_t cols = X.dims()[1];
   const int64_t topk = expert_routemap_topk.dims()[1];
-  const int64_t quanted_cols = (XScale) ? XScale.get_ptr()->dims()[1] : 0;
-  const bool is_buffer_overridden = (override_buffer_size > -1);
-
+  PADDLE_ENFORCE_EQ(
+      expert_routemap_topk.dims()[0],
+      rows,
+      common::errors::InvalidArgument(
+          "Input expert_routemap_topk's first dimension should be equal to "
+          "X.dims()[0], but got %ld and %ld.",
+          expert_routemap_topk.dims()[0],
+          rows));
   PADDLE_ENFORCE_LE(
       rows,
-      std::numeric_limits<int32_t>::max(),
+      static_cast<int64_t>(std::numeric_limits<int32_t>::max()) -
+          static_cast<int64_t>(kPermuteBlockSize),
       common::errors::InvalidArgument(
-          "X.dims()[0] should be less than INT_MAX, received: (%ld)", rows));
+          "X.dims()[0] should be <= INT_MAX - %d, received: (%ld)",
+          kPermuteBlockSize,
+          rows));
   PADDLE_ENFORCE_LE(
       cols,
       std::numeric_limits<int32_t>::max(),
       common::errors::InvalidArgument(
           "X.dims()[1] should be less than INT_MAX, received: (%ld)", cols));
+  PADDLE_ENFORCE_GE(topk,
+                    1,
+                    common::errors::InvalidArgument(
+                        "topk should be > 0, received: (%ld)", topk));
   PADDLE_ENFORCE_LE(topk,
                     16,
                     common::errors::InvalidArgument(
                         "topk should be <= 16, received: (%ld)", topk));
+  PADDLE_ENFORCE_GE(
+      num_experts,
+      1,
+      common::errors::InvalidArgument(
+          "num_experts should be > 0, received: (%d)", num_experts));
   PADDLE_ENFORCE_LE(num_experts,
                     kMaxNumExperts,
                     common::errors::InvalidArgument(
                         "num_experts should be <= %d, received: (%d)",
                         kMaxNumExperts,
                         num_experts));
+  PADDLE_ENFORCE_GE(padding_alignment,
+                    1,
+                    common::errors::InvalidArgument(
+                        "padding_alignment should be > 0, received: (%d)",
+                        padding_alignment));
+  PADDLE_ENFORCE_GE(
+      override_buffer_size,
+      -1,
+      common::errors::InvalidArgument(
+          "override_buffer_size should be -1 or non-negative, received: (%d)",
+          override_buffer_size));
+  PADDLE_ENFORCE_LE(
+      rows,
+      static_cast<int64_t>(std::numeric_limits<int32_t>::max()) /
+          static_cast<int64_t>(num_experts),
+      common::errors::InvalidArgument(
+          "X.dims()[0] * num_experts should be <= INT_MAX, received: %ld * %d.",
+          rows,
+          num_experts));
+  PADDLE_ENFORCE_LE(
+      expert_routemap_topk.numel(),
+      static_cast<int64_t>(std::numeric_limits<int32_t>::max()),
+      common::errors::InvalidArgument(
+          "expert_routemap_topk.numel() should be <= INT_MAX, but got %ld.",
+          expert_routemap_topk.numel()));
+  if (X.dtype() == DataType::FLOAT8_E4M3FN && do_gather) {
+    PADDLE_ENFORCE_EQ(XScale.get_ptr() != nullptr,
+                      true,
+                      common::errors::InvalidArgument(
+                          "Input XScale should not be None when X's dtype is "
+                          "FLOAT8_E4M3FN and do_gather is True."));
+  }
+  if (XScale.get_ptr() != nullptr) {
+    PADDLE_ENFORCE_EQ(XScale.get_ptr()->dims().size(),
+                      2,
+                      common::errors::InvalidArgument(
+                          "Input XScale's dims should be 2, but got %u.",
+                          XScale.get_ptr()->dims().size()));
+    if (do_gather) {
+      PADDLE_ENFORCE_EQ(
+          XScale.get_ptr()->dims()[0],
+          rows,
+          common::errors::InvalidArgument(
+              "Input XScale's first dimension should be equal to X.dims()[0], "
+              "but got %ld and %ld.",
+              XScale.get_ptr()->dims()[0],
+              rows));
+    }
+  }
+  const int64_t quanted_cols =
+      (XScale.get_ptr() != nullptr) ? XScale.get_ptr()->dims()[1] : 0;
   PADDLE_ENFORCE_LE(
       quanted_cols,
       std::numeric_limits<int32_t>::max(),
       common::errors::InvalidArgument(
           "quanted_cols should be less than INT_MAX, received: (%ld)",
           quanted_cols));
+  const bool is_buffer_overridden = (override_buffer_size >= 0);
 
   // Output allocation
   void *XScale_unzipped_ptr = nullptr;
@@ -737,8 +861,18 @@ void MoePermuteKernel(const Context &dev_ctx,
 
   // Preprocess
   constexpr int kEffectiveBlockSize = kPermuteBlockSize;
-  const int cumsum_blocknum =
+  const int64_t cumsum_blocknum_i64 =
       (rows + kEffectiveBlockSize - 1) / kEffectiveBlockSize;
+  PADDLE_ENFORCE_LE(
+      cumsum_blocknum_i64 + 2,
+      static_cast<int64_t>(std::numeric_limits<int32_t>::max()) /
+          static_cast<int64_t>(num_experts),
+      common::errors::InvalidArgument(
+          "The cumsum buffer size of moe_permute should be <= INT_MAX, but got "
+          "(%ld + 2) * %d.",
+          cumsum_blocknum_i64,
+          num_experts));
+  const int cumsum_blocknum = static_cast<int>(cumsum_blocknum_i64);
 
   DenseTensor expert_offset_tensor;
   DenseTensor expert_offset_end_tensor;
@@ -780,29 +914,40 @@ void MoePermuteKernel(const Context &dev_ctx,
                                    &expert_offset_end_tensor,
                                    expert_indices);
   } else {
-    int tokens_cumulated = 0;
+    int64_t tokens_cumulated = 0;
     std::vector<int> padding_rows;
     int expert_offset[kMaxNumExperts];
     int expert_offset_end[kMaxNumExperts];
     for (int i = 0; i < kMaxNumExperts; i++) {
       if (i < num_experts) {
-        expert_offset[i] = tokens_cumulated;
-        expert_offset_end[i] = expert_offset[i] + tokens_per_expert[i] - 1;
-        tokens_cumulated += ((tokens_per_expert[i] + padding_alignment - 1) /
-                             padding_alignment) *
-                            padding_alignment;
+        PADDLE_ENFORCE_LE_INT_MAX(tokens_cumulated, "expert offset");
+        expert_offset[i] = static_cast<int>(tokens_cumulated);
+        const int64_t tokens = tokens_per_expert[i];
+        const int64_t padded_tokens =
+            ((tokens + padding_alignment - 1) / padding_alignment) *
+            padding_alignment;
+        const int64_t expert_offset_end_64 = tokens_cumulated + tokens - 1;
+        PADDLE_ENFORCE_LE_INT_MAX(expert_offset_end_64, "expert offset end");
+        expert_offset_end[i] = static_cast<int>(expert_offset_end_64);
+        tokens_cumulated += padded_tokens;
       } else {
         expert_offset[i] = 0;
       }
     }
+    auto *stable_expert_offset =
+        backends::gpu::RestoreHostMemIfCapturingCUDAGraph(expert_offset,
+                                                          kMaxNumExperts);
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(expert_offset_tensor.data<int>(),
-                                               expert_offset,
+                                               stable_expert_offset,
                                                sizeof(int) * kMaxNumExperts,
                                                cudaMemcpyHostToDevice,
                                                dev_ctx.stream()));
+    auto *stable_expert_offset_end =
+        backends::gpu::RestoreHostMemIfCapturingCUDAGraph(expert_offset_end,
+                                                          kMaxNumExperts);
     PADDLE_ENFORCE_GPU_SUCCESS(
         cudaMemcpyAsync(expert_offset_end_tensor.data<int>(),
-                        expert_offset_end,
+                        stable_expert_offset_end,
                         sizeof(int) * kMaxNumExperts,
                         cudaMemcpyHostToDevice,
                         dev_ctx.stream()));
@@ -812,8 +957,12 @@ void MoePermuteKernel(const Context &dev_ctx,
       int64_t invalid_rows =
           next_expert_offset - expert_offset[i] - tokens_per_expert[i];
       int64_t cur_expert_end = expert_offset[i] + tokens_per_expert[i];
-      for (int j = 0; j < invalid_rows; ++j) {
-        padding_rows.push_back(cur_expert_end + j);
+      if (invalid_rows > 0) {
+        PADDLE_ENFORCE_LE_INT_MAX(cur_expert_end + invalid_rows - 1,
+                                  "padding row");
+      }
+      for (int64_t j = 0; j < invalid_rows; ++j) {
+        padding_rows.push_back(static_cast<int>(cur_expert_end + j));
       }
     }
     if (using_ue8m0_scale) {
@@ -822,8 +971,8 @@ void MoePermuteKernel(const Context &dev_ctx,
                           XScale ? XScale_unzipped->data<int32_t>() : nullptr,
                           token_prob_unzipped->data<float>(),
                           expert_indices->data<int>(),
-                          cols,
-                          quanted_cols,
+                          static_cast<int>(cols),
+                          static_cast<int>(quanted_cols),
                           padding_rows);
     } else {
       dispatch_preprocess(dev_ctx,
@@ -831,8 +980,8 @@ void MoePermuteKernel(const Context &dev_ctx,
                           XScale ? XScale_unzipped->data<float>() : nullptr,
                           token_prob_unzipped->data<float>(),
                           expert_indices->data<int>(),
-                          cols,
-                          quanted_cols,
+                          static_cast<int>(cols),
+                          static_cast<int>(quanted_cols),
                           padding_rows);
     }
   }

@@ -116,8 +116,8 @@ void Atan2GradKernel(const Context& dev_ctx,
                                      y_grad, size_t(y.numel() * sizeof(T)))
                                : nullptr;
 
-    phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
-    phi::Atan2GradFunctor<T> functor(
+    funcs::ForRange<Context> for_range(dev_ctx, numel);
+    Atan2GradFunctor<T> functor(
         x_data, y_data, out_grad_data, x_grad_data, y_grad_data, numel);
     for_range(functor);
   } else {
@@ -127,7 +127,7 @@ void Atan2GradKernel(const Context& dev_ctx,
 
     std::vector<const DenseTensor*> inputs = {&x, &y};
     std::vector<DenseTensor*> outputs = {&b_x, &b_y};
-    phi::BroadcastTensorsKernel<T, Context>(dev_ctx, inputs, outputs);
+    BroadcastTensorsKernel<T, Context>(dev_ctx, inputs, outputs);
 
     DenseTensor dx_b, dy_b;
     T* dx_b_data = nullptr;
@@ -173,24 +173,24 @@ void Atan2GradKernel(const Context& dev_ctx,
     }
 
     auto numel = out_grad.numel();
-    phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
-    phi::Atan2GradFunctor<T> functor(b_x.data<T>(),
-                                     b_y.data<T>(),
-                                     out_grad.data<T>(),
-                                     dx_b_data,
-                                     dy_b_data,
-                                     numel);
+    funcs::ForRange<Context> for_range(dev_ctx, numel);
+    Atan2GradFunctor<T> functor(b_x.data<T>(),
+                                b_y.data<T>(),
+                                out_grad.data<T>(),
+                                dx_b_data,
+                                dy_b_data,
+                                numel);
     for_range(functor);
 
     if (x_grad && !x_axes.empty()) {
-      phi::SumKernel<T, Context>(
-          dev_ctx, dx_b, phi::IntArray(x_axes), x_grad->dtype(), false, x_grad);
+      SumKernel<T, Context>(
+          dev_ctx, dx_b, IntArray(x_axes), x_grad->dtype(), false, x_grad);
       x_grad->Resize(x.dims());
     }
 
     if (y_grad && !y_axes.empty()) {
-      phi::SumKernel<T, Context>(
-          dev_ctx, dy_b, phi::IntArray(y_axes), y_grad->dtype(), false, y_grad);
+      SumKernel<T, Context>(
+          dev_ctx, dy_b, IntArray(y_axes), y_grad->dtype(), false, y_grad);
       y_grad->Resize(y.dims());
     }
   }

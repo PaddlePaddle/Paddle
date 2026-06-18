@@ -87,7 +87,7 @@ done
 
 CI_OLD_SCRIPTS_PADDLE_BUILD=$(git diff --name-only upstream/$BRANCH | grep -E "paddle/scripts/paddle_build.*")
 CI_OLD_SCRIPTS_COVERAGE=$(git diff --name-only upstream/$BRANCH | grep -E "tools/coverage")
-CI_OLD_SCRIPTS_TOOLS=$(git diff --name-only upstream/$BRANCH | grep -E "tools" | grep "check_")
+CI_OLD_SCRIPTS_TOOLS=$(git diff --name-only upstream/$BRANCH | grep -E "tools" | grep "check_" | grep -Ev "^tools/(test_)?check_abi_compatibility\.py$" || true)
 
 if [ -n "$CI_OLD_SCRIPTS_PADDLE_BUILD" ] || [ -n "$CI_OLD_SCRIPTS_COVERAGE" ] || [ -n "$CI_OLD_SCRIPTS_TOOLS" ]; then
     echo_line="You must have one RD (swgu98 or risemeup1) approval for the old CI scripts.\n"
@@ -609,7 +609,7 @@ if [ -n "${BIGTENSOR_CHANGED}" ]; then
 fi
 
 
-HAS_MODIFIED_PHI_DIR=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/" | grep -v "paddle/phi/api/" || grep -v "python_api_info.yaml" || true`
+HAS_MODIFIED_PHI_DIR=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/" | grep -v "paddle/phi/api/" | grep -v "python_api_info.yaml" || true`
 if [ "${HAS_MODIFIED_PHI_DIR}" != "" ] && [ "${PR_ID}" != "" ]; then
     echo_line="You modified files in paddle/phi/ directory. You must have one RD (wanghuancoder, zrr1999, DanielSun11) approval.\n"
     echo_line="${echo_line}[IMPORTANT] Please ensure you have run the following tests before merging:\n"

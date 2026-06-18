@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import subprocess
+import sys
+import textwrap
 import unittest
 
 import numpy as np
@@ -261,6 +265,225 @@ class TestIinfoAPI(unittest.TestCase):
             for out in [out1, out2, out3]:
                 assert out.min == -2147483648
                 assert out.max == 2147483647
+
+
+# Test additional paddle.dtype.itemsize compatibility.
+class TestDtypeItemsizeExtendedAPI(unittest.TestCase):
+    EXPECTED = (
+        'float16',
+        'bfloat16',
+        'float32',
+        'float64',
+        'complex64',
+        'complex128',
+        'int8',
+        'int16',
+        'int32',
+        'int64',
+        'uint8',
+        'uint16',
+        'uint32',
+        'uint64',
+        'bool',
+        'float8_e4m3fn',
+        'float8_e5m2',
+    )
+
+    def test_dtype_str(self):
+        for name in self.EXPECTED:
+            with self.subTest(dtype=name):
+                self.assertEqual(str(getattr(paddle, name)), f'paddle.{name}')
+
+    def test_int_alias_matches(self):
+        self.assertEqual(paddle.int.itemsize, paddle.int32.itemsize)
+
+
+class TestFloatingDtypeAPI(unittest.TestCase):
+    EXPECTED = {
+        'float16': (16, 0.0009765625, -65504.0, 65504.0, 6.103515625e-05),
+        'bfloat16': (
+            16,
+            0.0078125,
+            -3.3895313892515355e38,
+            3.3895313892515355e38,
+            1.1754943508222875e-38,
+        ),
+        'float32': (
+            32,
+            1.1920928955078125e-07,
+            -3.4028234663852886e38,
+            3.4028234663852886e38,
+            1.1754943508222875e-38,
+        ),
+        'float64': (
+            64,
+            2.220446049250313e-16,
+            -1.7976931348623157e308,
+            1.7976931348623157e308,
+            2.2250738585072014e-308,
+        ),
+        'float8_e4m3fn': (8, 0.125, -448.0, 448.0, 0.015625),
+        'float8_e5m2': (8, 0.25, -57344.0, 57344.0, 6.103515625e-05),
+    }
+
+    def check_finfo(self, info, name):
+        bits, eps, min_value, max_value, tiny = self.EXPECTED[name]
+        self.assertEqual(info.bits, bits)
+        self.assertEqual(str(info.dtype), name)
+        self.assertEqual(info.eps, eps)
+        self.assertEqual(info.min, min_value)
+        self.assertEqual(info.max, max_value)
+        self.assertEqual(info.smallest_normal, tiny)
+        self.assertEqual(info.tiny, tiny)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+
+        for name in self.EXPECTED:
+            dtype = getattr(paddle, name)
+            with self.subTest(dtype=name):
+                # 1. Paddle Positional arguments
+                out1 = paddle.finfo(dtype)
+                # 2. Paddle keyword arguments
+                out2 = paddle.finfo(dtype=dtype)
+                # 3. PyTorch keyword arguments (alias)
+                out3 = paddle.finfo(type=dtype)
+
+                # Verify all outputs
+                for out in [out1, out2, out3]:
+                    self.check_finfo(out, name)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            for name in self.EXPECTED:
+                dtype = getattr(paddle, name)
+                with self.subTest(dtype=name):
+                    # 1. Paddle Positional arguments
+                    out1 = paddle.finfo(dtype)
+                    # 2. Paddle keyword arguments
+                    out2 = paddle.finfo(dtype=dtype)
+                    # 3. PyTorch keyword arguments (alias)
+                    out3 = paddle.finfo(type=dtype)
+
+                    # Verify all outputs
+                    for out in [out1, out2, out3]:
+                        self.check_finfo(out, name)
+
+
+class TestIntegerDtypeAPI(unittest.TestCase):
+    EXPECTED = {
+        'uint8': (0, 255, 8),
+        'uint16': (0, 65535, 16),
+        'uint32': (0, 4294967295, 32),
+        'uint64': (0, 18446744073709551615, 64),
+        'int8': (-128, 127, 8),
+        'int16': (-32768, 32767, 16),
+        'int32': (-2147483648, 2147483647, 32),
+        'int64': (-9223372036854775808, 9223372036854775807, 64),
+    }
+
+    def check_iinfo(self, info, name):
+        min_value, max_value, bits = self.EXPECTED[name]
+        self.assertEqual(info.min, min_value)
+        self.assertEqual(info.max, max_value)
+        self.assertEqual(info.bits, bits)
+        self.assertEqual(str(info.dtype), name)
+        self.assertIn(f'max={max_value}', repr(info))
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+
+        for name in self.EXPECTED:
+            dtype = getattr(paddle, name)
+            with self.subTest(dtype=name):
+                # 1. Paddle Positional arguments
+                out1 = paddle.iinfo(dtype)
+                # 2. Paddle keyword arguments
+                out2 = paddle.iinfo(dtype=dtype)
+                # 3. PyTorch keyword arguments (alias)
+                out3 = paddle.iinfo(type=dtype)
+                out4 = paddle.iinfo(name)
+                out5 = paddle.iinfo(np.dtype(name))
+                out6 = paddle.iinfo(getattr(np, name))
+                out7 = paddle.iinfo(name.upper())
+                out8 = paddle.iinfo(f" {name} ")
+
+                # Verify all outputs
+                for out in [out1, out2, out3, out4, out5, out6, out7, out8]:
+                    self.check_iinfo(out, name)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            for name in self.EXPECTED:
+                dtype = getattr(paddle, name)
+                with self.subTest(dtype=name):
+                    # 1. Paddle Positional arguments
+                    out1 = paddle.iinfo(dtype)
+                    # 2. Paddle keyword arguments
+                    out2 = paddle.iinfo(dtype=dtype)
+                    # 3. PyTorch keyword arguments (alias)
+                    out3 = paddle.iinfo(type=dtype)
+                    out4 = paddle.iinfo(name)
+                    out5 = paddle.iinfo(np.dtype(name))
+                    out6 = paddle.iinfo(getattr(np, name))
+                    out7 = paddle.iinfo(name.upper())
+                    out8 = paddle.iinfo(f" {name} ")
+
+                    # Verify all outputs
+                    for out in [out1, out2, out3, out4, out5, out6, out7, out8]:
+                        self.check_iinfo(out, name)
+
+
+class TestLegacyVarTypeDtypeAPI(unittest.TestCase):
+    def test_uint_iinfo_with_pir_disabled(self):
+        code = textwrap.dedent(
+            """
+            import numpy as np
+            import paddle
+
+            expected = {
+                'uint16': (0, 65535, 16),
+                'uint32': (0, 4294967295, 32),
+                'uint64': (0, 18446744073709551615, 64),
+            }
+            assert str(paddle.bfloat16) == 'paddle.bfloat16'
+            for name, (min_value, max_value, bits) in expected.items():
+                dtype = getattr(paddle, name)
+                assert str(dtype) == f'paddle.{name}'
+                for arg in (
+                    dtype,
+                    name,
+                    np.dtype(name),
+                    getattr(np, name),
+                    name.upper(),
+                    f" {name} ",
+                ):
+                    info = paddle.iinfo(arg)
+                    assert info.min == min_value
+                    assert info.max == max_value
+                    assert info.bits == bits
+                    assert str(info.dtype) == name
+            """
+        )
+        env = os.environ.copy()
+        env["FLAGS_enable_pir_api"] = "0"
+        subprocess.run(
+            [sys.executable, "-c", code],
+            check=True,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
 
 
 # Test angle compatibility
@@ -2159,6 +2382,73 @@ class TestPixelShuffleAPI(unittest.TestCase):
             )
             for out in fetches[1:]:
                 np.testing.assert_array_equal(fetches[0], out)
+
+
+# Test paddle.set_rng_state compatibility
+class TestSetRngStateAPI(unittest.TestCase):
+    def test_Compatibility(self):
+        states = paddle.get_rng_state()
+        # 1. positional argument
+        paddle.set_rng_state(states)
+        # 2. paddle-style keyword argument
+        paddle.set_rng_state(state_list=states)
+        # 3. torch-style keyword argument
+        paddle.set_rng_state(new_state=states)
+
+
+# Test DistributedSampler compatibility
+class TestDistributedSamplerAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+
+        class SimpleDataset:
+            def __init__(self, size):
+                self.size = size
+
+            def __getitem__(self, idx):
+                x = idx
+                y = 2 * idx
+                return x, y
+
+            def __len__(self):
+                return self.size
+
+        self.dataset = SimpleDataset(100)
+
+    def test_dygraph_Compatibility(self):
+        """Test DistributedSampler as alias for DistributedBatchSampler"""
+        # 1. positional arguments
+        sampler1 = paddle.utils.data.DistributedSampler(
+            self.dataset, 2, 0, False, 2026, False
+        )
+        # 2. keyword arguments
+        sampler2 = paddle.utils.data.DistributedSampler(
+            dataset=self.dataset,
+            num_replicas=2,
+            rank=0,
+            shuffle=False,
+            seed=2026,
+            drop_last=False,
+        )
+        # Verify both samplers produce same batches
+        batches1 = list(sampler1)
+        batches2 = list(sampler2)
+        self.assertEqual(len(batches1), len(batches2))
+        for b1, b2 in zip(batches1, batches2):
+            self.assertEqual(b1, b2)
+
+    def test_set_epoch(self):
+        """Test set_epoch method"""
+        sampler = paddle.utils.data.DistributedSampler(
+            self.dataset, num_replicas=2, rank=0, shuffle=True
+        )
+        # Collect samples from epoch 0
+        sampler.set_epoch(0)
+        batches0 = list(sampler)
+        # Collect samples from epoch 1
+        sampler.set_epoch(1)
+        batches1 = list(sampler)
+        self.assertEqual(len(batches0), len(batches1))
 
 
 if __name__ == '__main__':

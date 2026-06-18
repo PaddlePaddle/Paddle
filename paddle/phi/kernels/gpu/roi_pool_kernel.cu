@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/roi_pool_kernel.h"
 
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/memory_utils.h"
@@ -183,8 +184,8 @@ void RoiPoolKernel(const Context& dev_ctx,
                       boxes_num_with_lod,
                       common::errors::InvalidArgument(
                           "The number of rois from input(ROIs) and its LOD "
-                          "must be the same. Received rois %d of input(ROIs) "
-                          "but the number of rois %d from its LOD is %d",
+                          "must be the same. Received rois %d of input(ROIs), "
+                          "but the number of rois from its LOD is %d.",
                           rois_num,
                           boxes_num_with_lod));
     for (int n = 0; n < boxes_batch_size; ++n) {
@@ -195,15 +196,18 @@ void RoiPoolKernel(const Context& dev_ctx,
   }
 
   int bytes = box_batch_id_list.numel() * sizeof(int);
-  auto box_ptr = phi::memory_utils::Alloc(
-      dev_ctx.GetPlace(),
-      bytes,
-      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  auto box_ptr =
+      memory_utils::Alloc(dev_ctx.GetPlace(),
+                          bytes,
+                          Stream(reinterpret_cast<StreamId>(dev_ctx.stream())));
   int* box_id_data = reinterpret_cast<int*>(box_ptr->ptr());
+  const int* stable_box_batch_id =
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          box_batch_id_data, static_cast<size_t>(bytes / sizeof(int)));
   memory_utils::Copy(gplace,
                      box_id_data,
                      CPUPlace(),
-                     box_batch_id_data,
+                     stable_box_batch_id,
                      bytes,
                      dev_ctx.stream());
 

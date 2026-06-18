@@ -110,7 +110,7 @@ void CSoftmaxWithMultiLabelCrossEntropyGradKernel(
   const int64_t start_index = rank * D;
   const int64_t end_index = start_index + D;
 
-  if (label_type == phi::DataType::INT32) {
+  if (label_type == DataType::INT32) {
     CalculateSoftLogitsGrad<T, int32_t>
         <<<blocks_cal, threads, 0, dev_ctx.stream()>>>(logit_grad_2d.data<T>(),
                                                        labels->data<int32_t>(),
@@ -129,7 +129,7 @@ void CSoftmaxWithMultiLabelCrossEntropyGradKernel(
                                                    D,
                                                    C,
                                                    sum_multi_label_loss);
-  } else if (label_type == phi::DataType::INT64) {
+  } else if (label_type == DataType::INT64) {
     CalculateSoftLogitsGrad<T, int64_t>
         <<<blocks_cal, threads, 0, dev_ctx.stream()>>>(logit_grad_2d.data<T>(),
                                                        labels->data<int64_t>(),

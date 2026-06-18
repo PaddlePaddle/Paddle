@@ -37,8 +37,7 @@ struct VarHandle;
 
 namespace ir {
 
-using GarbageCollectorMap =
-    std::map<phi::Place, std::unique_ptr<GarbageCollector>>;
+using GarbageCollectorMap = std::map<Place, std::unique_ptr<GarbageCollector>>;
 
 const char kMemOptVarInfoMapList[] = "mem_opt_var_info_map_list";
 const char kGarbageCollector[] = "garbage_collector";

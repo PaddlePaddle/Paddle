@@ -119,7 +119,7 @@ struct GCVarInfo {
 // Delete delete_lod_tensor_only is not used currently
 static OpToVarNameSetMap ShrinkGCVars(const OpToVarNameSetMap &m,
                                       const details::GraphVars &vars,
-                                      const std::vector<phi::Place> &places,
+                                      const std::vector<Place> &places,
                                       double fraction_of_memory_size,
                                       bool delete_lod_tensor_only = false) {
   // Do not perform gc when fraction_of_memory_size = 0
@@ -142,10 +142,10 @@ static OpToVarNameSetMap ShrinkGCVars(const OpToVarNameSetMap &m,
    */
 
   // place -> variable info (name, memory size, place, scope_idx)
-  std::map<phi::Place, std::vector<GCVarInfo>> place_to_vars;
+  std::map<Place, std::vector<GCVarInfo>> place_to_vars;
 
   // place -> total memory sizes
-  std::map<phi::Place, int64_t> place_to_size;
+  std::map<Place, int64_t> place_to_size;
   for (auto &op_vars_pair : lod_tensors) {
     auto *op = op_vars_pair.first;
     auto &var_names = op_vars_pair.second;
@@ -209,7 +209,7 @@ void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
   const auto &last_live_ops =
       Get<std::vector<LastLiveOpsOfVars>>(kLastLiveOpsOfVars);
   const auto &gcs = Get<GarbageCollectorMap>(kGarbageCollector);
-  const auto &places = Get<std::vector<phi::Place>>(kAllPlaces);
+  const auto &places = Get<std::vector<Place>>(kAllPlaces);
 
   // a reverse map of last_live_ops
   //   i.e., last op --> variable names which can be deleted.

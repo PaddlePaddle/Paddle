@@ -402,7 +402,7 @@ void OneBeamSizeFusePass::RemoveBeamSearchAssociatedOps(
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
         phi::DeviceContextPool::Instance().Get(CPUPlace()));
     not_equal_y_tensor->Resize({1});
-    not_equal_y_tensor->set_type(phi::DataType::INT64);
+    not_equal_y_tensor->set_type(DataType::INT64);
     auto* not_equal_y_data = cpu_ctx->Alloc<int64_t>(not_equal_y_tensor);
     not_equal_y_data[0] = beam_search->Op()->GetAttrIfExists<int>("end_id");
     IR_NODE_LINK_TO(not_equal_y, not_equal);
@@ -412,7 +412,7 @@ void OneBeamSizeFusePass::RemoveBeamSearchAssociatedOps(
     auto* cast_out_tensor =
         scope->Var(cast_out->Name())->GetMutable<DenseTensor>();
     cast_out_tensor->Resize({1});
-    cast_out_tensor->set_type(phi::DataType::INT64);
+    cast_out_tensor->set_type(DataType::INT64);
     auto* cast_out_data = cpu_ctx->Alloc<int64_t>(cast_out_tensor);
     cast_out_data[0] = 0;
 
@@ -546,7 +546,7 @@ void OneBeamSizeFusePass::RemoveGatherOps(ir::Graph* graph) const {
         scope->Var(gather_i->Name())->GetMutable<DenseTensor>();
     auto gather_i_dims = gather_i_tensor->dims();
     if (gather_i_dims.size() != 1 || gather_i_dims[0] != 1) return;
-    if (gather_i_tensor->dtype() == phi::DataType::INT32) {
+    if (gather_i_tensor->dtype() == DataType::INT32) {
       auto* i_data = gather_i_tensor->data<int>();
       if (i_data[0] != 0) return;
     } else {

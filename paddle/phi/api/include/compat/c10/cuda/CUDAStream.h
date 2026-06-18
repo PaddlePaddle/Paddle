@@ -24,6 +24,7 @@
 
 #include <ostream>
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/place.h"
 
@@ -55,7 +56,11 @@ class CUDAStream {
 
   StreamId id() const { return stream_.id(); }
 
+#ifdef PADDLE_WITH_HIP
+  operator hipStream_t() const { return stream(); }
+#else
   operator cudaStream_t() const { return stream(); }
+#endif
 
   operator Stream() const { return unwrap(); }
 
@@ -67,16 +72,26 @@ class CUDAStream {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     phi::backends::gpu::GPUDeviceGuard guard(device_index());
     int priority = 0;
+#ifdef PADDLE_WITH_HIP
+    C10_CUDA_CHECK(hipStreamGetPriority(stream(), &priority));
+#else
     C10_CUDA_CHECK(cudaStreamGetPriority(stream(), &priority));
+#endif
     return priority;
 #else
     return 0;
 #endif
   }
 
+#ifdef PADDLE_WITH_HIP
+  hipStream_t stream() const {
+    return reinterpret_cast<hipStream_t>(stream_.id());
+  }
+#else
   cudaStream_t stream() const {
     return reinterpret_cast<cudaStream_t>(stream_.id());
   }
+#endif
 
   Stream unwrap() const { return stream_; }
 
@@ -85,8 +100,6 @@ class CUDAStream {
   DeviceIndex device_index() const { return stream_.device_index(); }
 
   Device device() const { return Device(DeviceType::CUDA, device_index()); }
-
-  cudaStream_t raw_stream() const { return stream(); }
 
   struct c10::StreamData3 pack3() const {
     return stream_.pack3();
@@ -102,8 +115,13 @@ class CUDAStream {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     int least_priority = 0;
     int greatest_priority = 0;
+#ifdef PADDLE_WITH_HIP
+    C10_CUDA_CHECK(
+        hipDeviceGetStreamPriorityRange(&least_priority, &greatest_priority));
+#else
     C10_CUDA_CHECK(
         cudaDeviceGetStreamPriorityRange(&least_priority, &greatest_priority));
+#endif
     greatest_priority =
         std::max(-max_compile_time_stream_priorities + 1, greatest_priority);
     return std::make_tuple(least_priority, greatest_priority);
@@ -116,49 +134,44 @@ class CUDAStream {
   Stream stream_;
 };
 
-inline CUDAStream make_cuda_stream(cudaStream_t raw,
-                                   c10::DeviceIndex device_index) {
-  c10::StreamId sid =
-      static_cast<c10::StreamId>(reinterpret_cast<intptr_t>(raw));
-  return CUDAStream(
-      c10::Stream(c10::Stream::UNSAFE,
-                  c10::Device(c10::DeviceType::CUDA, device_index),
-                  sid));
-}
-
 /**
  * Get the current CUDA stream for the passed CUDA device, or for the
  * current device if no device index is passed.
  */
-CUDAStream getCurrentCUDAStream(c10::DeviceIndex device_index = -1);
+PADDLE_API CUDAStream getCurrentCUDAStream(c10::DeviceIndex device_index = -1);
 
 /**
  * Get a new stream from the CUDA stream pool.
  * Priority -1 is high priority, 0 is default/low priority.
  * Matches PyTorch behavior where negative priority = high priority.
  */
-CUDAStream getStreamFromPool(const int priority = 0,
-                             c10::DeviceIndex device_index = -1);
+PADDLE_API CUDAStream getStreamFromPool(const int priority = 0,
+                                        c10::DeviceIndex device_index = -1);
 
 /**
  * Get a new stream from the CUDA stream pool.
  * Bool overload: true = high priority (-1), false = default priority (0).
  */
-CUDAStream getStreamFromPool(const bool isHighPriority,
-                             c10::DeviceIndex device_index = -1);
+PADDLE_API CUDAStream getStreamFromPool(const bool isHighPriority,
+                                        c10::DeviceIndex device_index = -1);
 
-CUDAStream getStreamFromExternal(cudaStream_t ext_stream,
-                                 c10::DeviceIndex device_index);
+#ifdef PADDLE_WITH_HIP
+PADDLE_API CUDAStream getStreamFromExternal(hipStream_t ext_stream,
+                                            c10::DeviceIndex device_index);
+#else
+PADDLE_API CUDAStream getStreamFromExternal(cudaStream_t ext_stream,
+                                            c10::DeviceIndex device_index);
+#endif
 
 /**
- * Set the current CUDA stream for the device of the given stream in the
- * calling thread.
+ * Set the current CUDA stream for the device of the given stream.
  *
- * Implements per-thread, per-device current stream semantics.
+ * Keeps the compat c10 stream state aligned with Paddle's GPUContext so
+ * Paddle stream guards and c10 callers observe the same current stream.
  */
-void setCurrentCUDAStream(CUDAStream stream);
+PADDLE_API void setCurrentCUDAStream(CUDAStream stream);
 
-CUDAStream getDefaultCUDAStream(c10::DeviceIndex device_index = -1);
+PADDLE_API CUDAStream getDefaultCUDAStream(c10::DeviceIndex device_index = -1);
 
 inline std::ostream& operator<<(std::ostream& stream, const CUDAStream& s) {
   return stream << s.unwrap();

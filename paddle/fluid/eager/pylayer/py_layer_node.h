@@ -112,7 +112,7 @@ class GradNodePyLayer : public GradNodeBase {
         std::shared_ptr<GradNodePyLayer>(new GradNodePyLayer(*this));
     return copied_node;
   }
-  bool GradInDtypeConsistent() { return grad_in_dtype_consistent_; }
+  bool GradInDtypeConsistent() override { return grad_in_dtype_consistent_; }
   void SetGradInDtypeConsistent(bool value) {
     grad_in_dtype_consistent_ = value;
   }

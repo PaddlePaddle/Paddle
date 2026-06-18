@@ -75,8 +75,11 @@ add_doc_and_signature(
 
     Args:
         x (Tensor): Input of Acos operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
-            uint8, int8, int16, int32, int64, complex64 or complex128.
+            uint8, int8, int16, int32, int64, complex64 or complex128. Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
+        out (Tensor|optional): The output tensor. Default: None.
 
     Returns:
         Tensor. Output of Acos operator, a Tensor with shape same as input
@@ -113,8 +116,11 @@ add_doc_and_signature(
 
     Args:
         x (Tensor): Input of Acosh operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
-            uint8, int8, int16, int32, int64, complex64 or complex128.
+            uint8, int8, int16, int32, int64, complex64 or complex128. Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
+        out (Tensor|optional): The output tensor. Default: None.
 
     Returns:
         Tensor. Output of Acosh operator, a Tensor with shape same as input
@@ -151,8 +157,11 @@ add_doc_and_signature(
 
     Args:
         x (Tensor): Input of Sinh operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
-            uint8, int8, int16, int32, int64, complex64 or complex128.
+            uint8, int8, int16, int32, int64, complex64 or complex128. Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
+        out (Tensor|optional): The output tensor. Default: None.
 
     Returns:
         Tensor. Output of Sinh operator, a Tensor with shape same as input
@@ -317,6 +326,56 @@ def amin(
     *,
     out: Tensor | None = None,
 ) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "aminmax",
+    r"""
+    Computes both the minimum and maximum of tensor elements over the given axis.
+
+    Note:
+        Like amin and amax, if there are multiple minimum/maximum elements,
+        aminmax evenly distributes gradient between these equal values.
+
+    Args:
+        x (Tensor): A tensor, the data type is float32, float64, int32, int64.
+            Alias: ``input``.
+        axis (int|list|tuple|None, optional): The axis along which the minimum and maximum
+            are computed. If :attr:`None`, compute over all elements of
+            `x` and return Tensors with a single element,
+            otherwise must be in the range :math:`[-x.ndim, x.ndim)`.
+            If :math:`axis[i] < 0`, the axis to reduce is :math:`x.ndim + axis[i]`.
+            Alias: ``dim``.
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the
+            output Tensors. The result tensors will have one fewer dimension
+            than the `x` unless :attr:`keepdim` is true, default
+            value is False.
+
+    Keyword args:
+        out(tuple(Tensor, Tensor), optional): The output tensors.
+
+    Returns:
+        tuple(Tensor, Tensor), the minimum and maximum results on the specified axis
+        of input tensor, the data type is the same as `x`.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([[0.1, 0.9, 0.9, 0.9],
+            ...                       [0.9, 0.9, 0.6, 0.7]],
+            ...                       dtype='float64', stop_gradient=False)
+            >>> # min_val, max_val = paddle.aminmax(x)  # doctest to be enabled after API is merged
+""",
+    """
+def aminmax(
+    x: Tensor,
+    axis: int | Sequence[int] | None = None,
+    keepdim: bool = False,
+    *,
+    out: tuple[Tensor, Tensor] | None = None,
+) -> tuple[Tensor, Tensor]
 """,
 )
 
@@ -707,9 +766,11 @@ add_doc_and_signature(
 
     Args:
         x (Tensor): Input of Atan operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
-            uint8, int8, int16, int32, int64, complex64 or complex128.
+            uint8, int8, int16, int32, int64, complex64 or complex128. Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
+
+    Keyword Args:
+        out (Tensor|optional): The output tensor. Default: None.
 
     Returns:
         Tensor. Same shape and dtype as input x
@@ -746,8 +807,11 @@ add_doc_and_signature(
 
     Args:
         x (Tensor): Input of Atan operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
-            uint8, int8, int16, int32, int64, complex64 or complex128.
+            uint8, int8, int16, int32, int64, complex64 or complex128. Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
+        out (Tensor|optional): The output tensor. Default: None.
 
     Returns:
         Tensor. Output of Atanh operator, a Tensor with shape same as input
@@ -956,9 +1020,11 @@ add_doc_and_signature(
 
     Args:
         x (Tensor): Input of Asinh operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
-            uint8, int8, int16, int32, int64, complex64 or complex128.
+            uint8, int8, int16, int32, int64, complex64 or complex128. Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
+
+    Keyword Args:
+        out (Tensor|optional): The output tensor. Default: None.
 
     Returns:
         Tensor. Output of Asinh operator, a Tensor with shape same as input
@@ -995,9 +1061,11 @@ add_doc_and_signature(
 
     Args:
         x (Tensor): Input of Reciprocal operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
-            uint8, int8, int16, int32, int64.
+            uint8, int8, int16, int32, int64. Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
+
+    Keyword Args:
+        out (Tensor|optional): The output tensor. Default: None.
 
     Returns:
         Tensor. Output of Reciprocal operator, a Tensor with shape same as input
@@ -1033,9 +1101,11 @@ add_doc_and_signature(
        out = x^2
 
     Args:
-        x (Tensor): Input of Square operator, an N-D Tensor, with data type int32, int64, float32, float64, float16, complex64 or complex128.
+        x (Tensor): Input of Square operator, an N-D Tensor, with data type int32, int64, float32, float64, float16, complex64 or complex128. Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
+
+    Keyword Args:
+        out (Tensor|optional): The output tensor. Default: None.
 
     Returns:
         Tensor. Output of Square operator, a Tensor with shape same as input.
@@ -1073,9 +1143,11 @@ add_doc_and_signature(
 
     Args:
         x (Tensor): Input of Tan operator, an N-D Tensor, with data type float32, float64, float16,
-            bfloat16, uint8, int8, int16, int32, int64, complex64 or complex128.
+            bfloat16, uint8, int8, int16, int32, int64, complex64 or complex128. Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
+
+    Keyword Args:
+        out (Tensor|optional): The output tensor. Default: None.
 
     Returns:
         Tensor. Output of Tan operator, a Tensor with shape same as input
@@ -1744,10 +1816,11 @@ add_doc_and_signature(
 
     Args:
         x (Tensor): Input of Ceil operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
-            uint8, int8, int16, int32, int64.
-            alias: ``input``.
+            uint8, int8, int16, int32, int64. Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-        out (Tensor|None, optional): The output tensor. Default: None.
+
+    Keyword Args:
+        out (Tensor|optional): The output tensor. Default: None.
 
     Returns:
         Tensor. Output of Ceil operator, a Tensor with shape same as input
@@ -2334,8 +2407,9 @@ add_doc_and_signature(
         x (Tensor): Input of Sigmoid operator, an N-D Tensor, with data type bfloat16, float16, float32, float64,
             uint8, int8, int16, int32, int64, complex64 or complex128. Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
     Keyword Args:
-        out (Tensor|optional): The output tensor.
+        out (Tensor|optional): The output tensor. Default: None.
 
     Returns:
         Tensor. Output of Sigmoid operator, a Tensor with shape same as input
@@ -2418,7 +2492,9 @@ add_doc_and_signature(
         x (Tensor): Input of Sin operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
             uint8, int8, int16, int32, int64, complex64 or complex128. Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
+
+    Keyword Args:
+        out (Tensor|optional): The output tensor. Default: None.
 
     Returns:
         Tensor. Output of Sin operator, a Tensor with shape same as input
@@ -2575,7 +2651,9 @@ add_doc_and_signature(
         x (Tensor): Input of Rsqrt operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
             uint8, int8, int16, int32, int64. Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
+
+    Keyword Args:
+        out (Tensor|optional): The output tensor. Default: None.
 
     Returns:
         Tensor. Output of Rsqrt operator, a Tensor with shape same as input
@@ -2616,7 +2694,9 @@ add_doc_and_signature(
         x (Tensor): Input of Cos operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
             uint8, int8, int16, int32, int64, complex64, complex128. Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
+
+    Keyword Args:
+        out (Tensor|optional): The output tensor. Default: None.
 
     Returns:
         Tensor. Output of Cos operator, a Tensor with shape same as input
@@ -2655,9 +2735,11 @@ add_doc_and_signature(
 
     Args:
         x (Tensor): Input of Cosh operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
-            uint8, int8, int16, int32, int64, complex64 or complex128.
+            uint8, int8, int16, int32, int64, complex64 or complex128. Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
+
+    Keyword Args:
+        out (Tensor|optional): The output tensor. Default: None.
 
     Returns:
         Tensor. Output of Cosh operator, a Tensor with shape same as input
@@ -2696,7 +2778,9 @@ add_doc_and_signature(
         x (Tensor): Input of Floor operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
             uint8, int8, int16, int32, int64. Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
+
+    Keyword Args:
+        out (Tensor|optional): The output tensor. Default: None.
 
     Returns:
         Tensor. Output of Floor operator, a Tensor with shape same as input
@@ -2871,8 +2955,11 @@ add_doc_and_signature(
 
     Args:
         x (Tensor): Input of Sqrt operator, an N-D Tensor, with data type float32, float64, float16, bfloat16
-            uint8, int8, int16, int32, int64.
+            uint8, int8, int16, int32, int64. Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
+        out (Tensor|optional): The output tensor. Default: None.
 
     Returns:
         Tensor. Output of Sqrt operator, a Tensor with shape same as input
@@ -3401,7 +3488,9 @@ add_doc_and_signature(
         x (Tensor): Input of Exp operator, an N-D Tensor, with data type int32, int64, bfloat16, float16, float32, float64, complex64 or complex128.
             Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-        out (Tensor|None, optional): The output tensor. Default: None.
+
+    Keyword Args:
+        out (Tensor|optional): The output tensor. Default: None.
 
     Returns:
         Tensor. Output of Exp operator, a Tensor with shape same as input.
@@ -3440,7 +3529,9 @@ add_doc_and_signature(
         x (Tensor): Input of Expm1 operator, an N-D Tensor, with data type int32, int64, bfloat16, float16, float32, float64, complex64 or complex128.
             Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-        out (Tensor|None, optional): The output tensor. Default: None.
+
+    Keyword Args:
+        out (Tensor|optional): The output tensor. Default: None.
 
     Returns:
         Tensor. Output of Expm1 operator, a Tensor with shape same as input.
@@ -3481,9 +3572,11 @@ add_doc_and_signature(
     If ``offset`` < 0, it is subdiagonal.
 
     Args:
-        x (Tensor): The input tensor. Its shape is either 1-D or 2-D. Its data type should be float16, float32, float64, int32, int64, complex64, complex128. Alias: ``input``.
-        offset (int, optional): The diagonal offset. A positive value represents superdiagonal, 0 represents the main diagonal, and a negative value represents subdiagonal. Alias: ``diagonal``. Default: 0.
-        padding_value (int|float, optional): Use this value to fill the area outside the specified diagonal band. Only takes effect when the input is a 1-D Tensor. The default value is 0.
+        x (Tensor): The input tensor. Its shape is either 1-D or 2-D. Its data type should be float16, float32, float64, int32, int64, complex64, complex128.
+            Alias: ``input``.
+        offset (int, optional): The diagonal offset. A positive value represents superdiagonal, 0 represents the main diagonal, and a negative value represents subdiagonal. Default: 0.
+            Alias: ``diagonal``.
+        padding_value (int|float, optional): Use this value to fill the area outside the specified diagonal band. Only takes effect when the input is a 1-D Tensor. Default: 0.
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
         out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
 
@@ -3995,7 +4088,7 @@ add_doc_and_signature(
 
     Args:
         x (Tensor): Input of Asin operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
-            uint8, int8, int16, int32, int64, complex64 or complex128.
+            uint8, int8, int16, int32, int64, complex64 or complex128. Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4382,8 +4475,10 @@ add_doc_and_signature(
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
-        x (Tensor): Input Tensor of ``bitwise_or``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64. Alias: ``input``.
-        y (Tensor): Input Tensor of ``bitwise_or``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64. Alias: ``other``.
+        x (Tensor): Input Tensor of ``bitwise_or``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+            Alias: ``input``.
+        y (Tensor): Input Tensor of ``bitwise_or``. It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+            Alias: ``other``.
         name (str|None, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
     Keyword args:
@@ -5603,6 +5698,267 @@ add_doc_and_signature(
 """,
     """
 def erf_(
+    x: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+
+add_doc_and_signature(
+    "exp_",
+    r"""
+    Inplace version of ``exp`` API, the output Tensor will be inplaced with input ``x``.
+""",
+    """
+def exp_(
+    x: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "sqrt_",
+    r"""
+    Inplace version of ``sqrt`` API, the output Tensor will be inplaced with input ``x``.
+""",
+    """
+def sqrt_(
+    x: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "rsqrt_",
+    r"""
+    Inplace version of ``rsqrt`` API, the output Tensor will be inplaced with input ``x``.
+""",
+    """
+def rsqrt_(
+    x: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "ceil_",
+    r"""
+    Inplace version of ``ceil`` API, the output Tensor will be inplaced with input ``x``.
+""",
+    """
+def ceil_(
+    x: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "floor_",
+    r"""
+    Inplace version of ``floor`` API, the output Tensor will be inplaced with input ``x``.
+""",
+    """
+def floor_(
+    x: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "reciprocal_",
+    r"""
+    Inplace version of ``reciprocal`` API, the output Tensor will be inplaced with input ``x``.
+""",
+    """
+def reciprocal_(
+    x: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "sigmoid_",
+    r"""
+    Inplace version of ``sigmoid`` API, the output Tensor will be inplaced with input ``x``.
+""",
+    """
+def sigmoid_(
+    x: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "sin_",
+    r"""
+    Inplace version of ``sin`` API, the output Tensor will be inplaced with input ``x``.
+""",
+    """
+def sin_(
+    x: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "sinh_",
+    r"""
+    Inplace version of ``sinh`` API, the output Tensor will be inplaced with input ``x``.
+""",
+    """
+def sinh_(
+    x: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "asin_",
+    r"""
+    Inplace version of ``asin`` API, the output Tensor will be inplaced with input ``x``.
+""",
+    """
+def asin_(
+    x: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "asinh_",
+    r"""
+    Inplace version of ``asinh`` API, the output Tensor will be inplaced with input ``x``.
+""",
+    """
+def asinh_(
+    x: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "cos_",
+    r"""
+    Inplace version of ``cos`` API, the output Tensor will be inplaced with input ``x``.
+""",
+    """
+def cos_(
+    x: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "cosh_",
+    r"""
+    Inplace version of ``cosh`` API, the output Tensor will be inplaced with input ``x``.
+""",
+    """
+def cosh_(
+    x: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "acos_",
+    r"""
+    Inplace version of ``acos`` API, the output Tensor will be inplaced with input ``x``.
+""",
+    """
+def acos_(
+    x: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "acosh_",
+    r"""
+    Inplace version of ``acosh`` API, the output Tensor will be inplaced with input ``x``.
+""",
+    """
+def acosh_(
+    x: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "tan_",
+    r"""
+    Inplace version of ``tan`` API, the output Tensor will be inplaced with input ``x``.
+""",
+    """
+def tan_(
+    x: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "atan_",
+    r"""
+    Inplace version of ``atan`` API, the output Tensor will be inplaced with input ``x``.
+""",
+    """
+def atan_(
+    x: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "atanh_",
+    r"""
+    Inplace version of ``atanh`` API, the output Tensor will be inplaced with input ``x``.
+""",
+    """
+def atanh_(
+    x: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "expm1_",
+    r"""
+    Inplace version of ``expm1`` API, the output Tensor will be inplaced with input ``x``.
+""",
+    """
+def expm1_(
+    x: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "square_",
+    r"""
+    Inplace version of ``square`` API, the output Tensor will be inplaced with input ``x``.
+""",
+    """
+def square_(
     x: Tensor,
     name: str | None = None,
 ) -> Tensor

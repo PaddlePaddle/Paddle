@@ -33,7 +33,7 @@ void ReduceWrapper(const GPUContext &dev_ctx,
                    DenseTensor *dst) {
   std::vector<int> reduce_dims =
       funcs::GetReduceDim(dst->dims(), src->dims(), axis);
-  phi::SumKernel<T, GPUContext>(
+  SumKernel<T, GPUContext>(
       dev_ctx, *src, reduce_dims, src->dtype(), false, dst);
 }
 
@@ -228,7 +228,7 @@ void DefaultMixedPrecisionAddGrad(const GPUContext &dev_ctx,
       }
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(x.dims(), dout.dims(), axis);
-      phi::SumKernel<T_dout, GPUContext>(
+      SumKernel<T_dout, GPUContext>(
           dev_ctx, dout, reduce_dims, dout.dtype(), false, dx);
     }
   }
@@ -244,7 +244,7 @@ void DefaultMixedPrecisionAddGrad(const GPUContext &dev_ctx,
       dev_ctx.template Alloc<float>(&dy_fp32);
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(y.dims(), dout.dims(), axis);
-      phi::SumKernel<float, GPUContext>(
+      SumKernel<float, GPUContext>(
           dev_ctx, dout, reduce_dims, dout.dtype(), false, &dy_fp32);
       CastKernel<float>(dev_ctx, dy_fp32, dy->dtype(), dy);
     }
@@ -309,7 +309,7 @@ void DefaultElementwiseAddGrad(const GPUContext &dev_ctx,
       }
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(x.dims(), out.dims(), axis);
-      phi::SumKernel<T, GPUContext>(
+      SumKernel<T, GPUContext>(
           dev_ctx, dout, reduce_dims, dout.dtype(), false, dx);
     }
   }
@@ -323,7 +323,7 @@ void DefaultElementwiseAddGrad(const GPUContext &dev_ctx,
     } else {
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(y.dims(), out.dims(), axis);
-      phi::SumKernel<T, GPUContext>(
+      SumKernel<T, GPUContext>(
           dev_ctx, dout, reduce_dims, dout.dtype(), false, dy);
     }
   }
@@ -432,7 +432,7 @@ void default_elementwise_sub_grad(const GPUContext &dev_ctx,
       }
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(x.dims(), out.dims(), axis);
-      phi::SumKernel<T, GPUContext>(
+      SumKernel<T, GPUContext>(
           dev_ctx, dout, reduce_dims, dout.dtype(), false, dx);
     }
   }

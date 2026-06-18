@@ -11,8 +11,10 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include <type_traits>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -25,6 +27,11 @@ namespace funcs {
 template <typename Context, typename RepeatsT>
 void RepeatsTensor2IndexTensorFunctor<Context, RepeatsT>::operator()(
     const Context &dev_ctx, const DenseTensor &repeats, DenseTensor *index) {
+  if (repeats.dims()[0] == 0) {
+    index->Resize({0});
+    dev_ctx.template Alloc<RepeatsT>(index);
+    return;
+  }
   DenseTensor repeats_cpu_copy;
   if (repeats.place().GetType() != AllocationType::CPU) {
     phi::Copy(dev_ctx, repeats, CPUPlace(), true, &repeats_cpu_copy);
@@ -35,7 +42,7 @@ void RepeatsTensor2IndexTensorFunctor<Context, RepeatsT>::operator()(
           : repeats_cpu_copy.data<RepeatsT>();
 
   int64_t index_size = 0;
-  for (int i = 0; i < repeats.dims()[0]; i++) {
+  for (int64_t i = 0; i < repeats.dims()[0]; i++) {
     PADDLE_ENFORCE_GE(repeats_data[i],
                       0,
                       common::errors::InvalidArgument(
@@ -44,9 +51,13 @@ void RepeatsTensor2IndexTensorFunctor<Context, RepeatsT>::operator()(
     index_size += repeats_data[i];
   }
   std::vector<RepeatsT> index_vec(index_size);
-  int offset = 0;
-  for (int i = 0; i < repeats.dims()[0]; i++) {
-    std::fill_n(index_vec.begin() + offset, repeats_data[i], i);
+  if constexpr (std::is_same_v<RepeatsT, int>) {
+    PADDLE_ENFORCE_LE_INT_MAX(repeats.dims()[0] - 1, "repeat index");
+  }
+  int64_t offset = 0;
+  for (int64_t i = 0; i < repeats.dims()[0]; i++) {
+    std::fill_n(
+        index_vec.begin() + offset, repeats_data[i], static_cast<RepeatsT>(i));
     offset += repeats_data[i];
   }
   index->Resize({index_size});
@@ -57,10 +68,15 @@ void RepeatsTensor2IndexTensorFunctor<Context, RepeatsT>::operator()(
 template <typename RepeatsT>
 void RepeatsTensor2IndexTensorFunctor<CPUContext, RepeatsT>::operator()(
     const CPUContext &dev_ctx, const DenseTensor &repeats, DenseTensor *index) {
+  if (repeats.dims()[0] == 0) {
+    index->Resize({0});
+    dev_ctx.template Alloc<RepeatsT>(index);
+    return;
+  }
   const RepeatsT *repeats_data = repeats.data<RepeatsT>();
 
   int64_t index_size = 0;
-  for (int i = 0; i < repeats.dims()[0]; i++) {
+  for (int64_t i = 0; i < repeats.dims()[0]; i++) {
     PADDLE_ENFORCE_GE(repeats_data[i],
                       0,
                       common::errors::InvalidArgument(
@@ -69,9 +85,13 @@ void RepeatsTensor2IndexTensorFunctor<CPUContext, RepeatsT>::operator()(
     index_size += repeats_data[i];
   }
   std::vector<RepeatsT> index_vec(index_size);
-  int offset = 0;
-  for (int i = 0; i < repeats.dims()[0]; i++) {
-    std::fill_n(index_vec.begin() + offset, repeats_data[i], i);
+  if constexpr (std::is_same_v<RepeatsT, int>) {
+    PADDLE_ENFORCE_LE_INT_MAX(repeats.dims()[0] - 1, "repeat index");
+  }
+  int64_t offset = 0;
+  for (int64_t i = 0; i < repeats.dims()[0]; i++) {
+    std::fill_n(
+        index_vec.begin() + offset, repeats_data[i], static_cast<RepeatsT>(i));
     offset += repeats_data[i];
   }
   index->Resize({index_size});
@@ -86,12 +106,17 @@ template class RepeatsTensor2IndexTensorFunctor<CPUContext, int64_t>;
 template <typename RepeatsT>
 void RepeatsTensor2IndexTensorFunctor<XPUContext, RepeatsT>::operator()(
     const XPUContext &dev_ctx, const DenseTensor &repeats, DenseTensor *index) {
+  if (repeats.dims()[0] == 0) {
+    index->Resize({0});
+    dev_ctx.template Alloc<RepeatsT>(index);
+    return;
+  }
   DenseTensor repeats_cpu_copy;
   phi::Copy(dev_ctx, repeats, CPUPlace(), true, &repeats_cpu_copy);
   const RepeatsT *repeats_data = repeats_cpu_copy.data<RepeatsT>();
 
   int64_t index_size = 0;
-  for (int i = 0; i < repeats.dims()[0]; i++) {
+  for (int64_t i = 0; i < repeats.dims()[0]; i++) {
     PADDLE_ENFORCE_GE(repeats_data[i],
                       0,
                       common::errors::InvalidArgument(
@@ -100,9 +125,13 @@ void RepeatsTensor2IndexTensorFunctor<XPUContext, RepeatsT>::operator()(
     index_size += repeats_data[i];
   }
   std::vector<RepeatsT> index_vec(index_size);
-  int offset = 0;
-  for (int i = 0; i < repeats.dims()[0]; i++) {
-    std::fill_n(index_vec.begin() + offset, repeats_data[i], i);
+  if constexpr (std::is_same_v<RepeatsT, int>) {
+    PADDLE_ENFORCE_LE_INT_MAX(repeats.dims()[0] - 1, "repeat index");
+  }
+  int64_t offset = 0;
+  for (int64_t i = 0; i < repeats.dims()[0]; i++) {
+    std::fill_n(
+        index_vec.begin() + offset, repeats_data[i], static_cast<RepeatsT>(i));
     offset += repeats_data[i];
   }
   index->Resize({index_size});

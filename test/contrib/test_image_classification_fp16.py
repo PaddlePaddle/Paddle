@@ -353,7 +353,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
                     fetch_list=[scaled_loss, avg_cost],
                 )
                 print(
-                    f'PassID {pass_id:1}, BatchID {batch_id + 1:04}, train loss {float(loss):2.4}, scaled train loss {float(np_scaled_loss):2.4}'
+                    f'PassID {pass_id:1}, BatchID {batch_id + 1:04}, train loss {float(numpy.asarray(loss).item()):2.4}, scaled train loss {float(numpy.asarray(np_scaled_loss).item()):2.4}'
                 )
                 if (batch_id % 10) == 0:
                     acc_list = []
@@ -364,10 +364,12 @@ def train(net_type, use_cuda, save_dirname, is_local):
                             feed=feeder.feed(test_data),
                             fetch_list=fetch_list,
                         )
-                        if math.isnan(float(loss_t)):
+                        loss_t = float(numpy.asarray(loss_t).item())
+                        acc_t = float(numpy.asarray(acc_t).item())
+                        if math.isnan(loss_t):
                             sys.exit("got NaN loss, training failed.")
-                        acc_list.append(float(acc_t))
-                        avg_loss_list.append(float(loss_t))
+                        acc_list.append(acc_t)
+                        avg_loss_list.append(loss_t)
                         break  # Use 1 segment for speeding up CI
 
                     acc_value = numpy.array(acc_list).mean()

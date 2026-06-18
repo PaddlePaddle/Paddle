@@ -70,7 +70,7 @@ class AutoMixedPrecisionPass : public FusePassBase {
 
   mutable bool enable_low_precision_io_{false};
   // float16 or bfloat16 now
-  mutable phi::DataType low_precision_{phi::DataType::UNDEFINED};
+  mutable DataType low_precision_{DataType::UNDEFINED};
 
   mutable phi::Backend backend_{phi::Backend::UNDEFINED};
 
@@ -93,7 +93,7 @@ class AutoMixedPrecisionPass : public FusePassBase {
 
 bool OpSupportPrecision(const std::string& op_type,
                         phi::Backend backend,
-                        phi::DataType precision,
+                        DataType precision,
                         const std::unordered_set<std::string>& black_list,
                         const std::unordered_set<std::string>& white_list);
 

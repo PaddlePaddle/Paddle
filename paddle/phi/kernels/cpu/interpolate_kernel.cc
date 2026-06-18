@@ -49,7 +49,7 @@ static void LinearInterpolation(const DenseTensor& input,
   auto input_t = EigenTensor<T, 3>::From(input);
   auto output_t = EigenTensor<T, 3>::From(*output);
   bool align_flag = (align_mode == 0 && !align_corners);
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
 
   std::vector<int> vx_w, vx_e;
   std::vector<MT> vd_w, vd_e;
@@ -119,7 +119,7 @@ static void BilinearInterpolation(const DenseTensor& input,
   auto input_t = EigenTensor<T, 4>::From(input);
   auto output_t = EigenTensor<T, 4>::From(*output);
   bool align_flag = (align_mode == 0 && !align_corners);
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
 
   std::vector<int> vy_n, vy_s;
   std::vector<float> vd_n, vd_s;
@@ -271,7 +271,7 @@ static void BicubicInterpolation(const DenseTensor& input,
                                  const DataLayout data_layout) {
   auto input_t = EigenTensor<T, 4>::From(input);
   auto output_t = EigenTensor<T, 4>::From(*output);
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
 
   for (int k = 0; k < out_h; k++) {  // loop for images
     MT y_n = align_corners ? static_cast<MT>(ratio_h * static_cast<float>(k))
@@ -359,7 +359,7 @@ static void TrilinearInterpolation(const DenseTensor& input,
   auto input_t = EigenTensor<T, 5>::From(input);
   auto output_t = EigenTensor<T, 5>::From(*output);
   bool align_flag = (align_mode == 0 && !align_corners);
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
 
   std::vector<int> vt_f, vt_b;
   std::vector<float> vd_f, vd_b;
@@ -1364,7 +1364,7 @@ static void AAInterpolation2DCPU_NCHW(const T* input_data,
                                       const InterpFilter& filter) {
   // Use MPTypeTrait to match GPU: float for float/float16/bfloat16, double for
   // double
-  using WT = typename dtype::MPTypeTrait<T>::Type;
+  using WT = typename MPTypeTrait<T>::Type;
   WT scale_h = static_cast<WT>(ratio_h);
   WT scale_w = static_cast<WT>(ratio_w);
 
@@ -1491,7 +1491,7 @@ static void AAInterpolation2DCPU_NHWC(const T* input_data,
                                       const InterpFilter& filter) {
   // Use MPTypeTrait to match GPU: float for float/float16/bfloat16, double for
   // double
-  using WT = typename dtype::MPTypeTrait<T>::Type;
+  using WT = typename MPTypeTrait<T>::Type;
   WT scale_h = static_cast<WT>(ratio_h);
   WT scale_w = static_cast<WT>(ratio_w);
 
@@ -2125,7 +2125,7 @@ static void InterpolateAA2DCPUFwd(
   // Use conditional type: float for integral/half types, double for double
   using MT = typename std::conditional_t<std::is_integral<T>::value,
                                          float,
-                                         typename dtype::MPTypeTrait<T>::Type>;
+                                         typename MPTypeTrait<T>::Type>;
   MT ratio_h =
       funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h);
   MT ratio_w =

@@ -37,8 +37,8 @@ from .auto_cast import amp_global_state
 
 if TYPE_CHECKING:
     from paddle import Tensor
+    from paddle.optimizer.optimizer import Optimizer
     from paddle.static.amp.decorator import OptimizerWithMixedPrecision
-    from python.paddle.optimizer.optimizer import Optimizer
 
     class _ScaleStateDict(TypedDict):
         scale: Tensor

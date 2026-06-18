@@ -41,7 +41,7 @@ void dispatch_tokens_unzip_stable(const Context &dev_ctx,
                                   const int num_experts,
                                   const int scale_length,
                                   const bool do_gather) {
-#define DTYPE_CASE(dtype, type) dtype == phi::DataType::type
+#define DTYPE_CASE(dtype, type) dtype == DataType::type
 #define GET_DATA(tensor, type) tensor.data<type>()
 #define GET_XPU_DATA(tensor, type, xpu_type) \
   reinterpret_cast<const xpu_type *>(tensor.data<type>())

@@ -79,7 +79,7 @@ template <
     //  MaskedTileIterator)
     typename IteratorA_,
     /// Iterates over tiles of A operand in shared memory
-    /// (concept: WriteableTileIterator | RandomAccessTileIterator)
+    /// (concept: WritableTileIterator | RandomAccessTileIterator)
     typename SmemIteratorA_,
     /// Cache operation for operand A
     cutlass::arch::CacheOperation::Kind CacheOpA,
@@ -88,7 +88,7 @@ template <
     //  MaskedTileIterator)
     typename IteratorB_,
     /// Iterates over tiles of B operand in shared memory
-    /// (concept: WriteableTileIterator | RandomAccessTileIterator)
+    /// (concept: WritableTileIterator | RandomAccessTileIterator)
     typename SmemIteratorB_,
     /// Cache operation for operand B
     cutlass::arch::CacheOperation::Kind CacheOpB,

@@ -40,14 +40,14 @@ __global__ void InitializeHashTable(T* tensor, int len) {
 }
 
 template <typename T, typename Context>
-std::shared_ptr<phi::Allocation> FillHashTable(const Context& dev_ctx,
-                                               const T* input,
-                                               int num_input,
-                                               int64_t len_hashtable,
-                                               T* keys,
-                                               int* values,
-                                               int* key_index,
-                                               int* final_nodes_len) {
+std::shared_ptr<Allocation> FillHashTable(const Context& dev_ctx,
+                                          const T* input,
+                                          int num_input,
+                                          int64_t len_hashtable,
+                                          T* keys,
+                                          int* values,
+                                          int* key_index,
+                                          int* final_nodes_len) {
   const auto place = dev_ctx.GetPlace();
 
   int block = 1024;
@@ -73,7 +73,7 @@ std::shared_ptr<phi::Allocation> FillHashTable(const Context& dev_ctx,
 
   int total_unique_items = item_count[num_input];
   auto unique_items =
-      phi::memory_utils::AllocShared(place, total_unique_items * sizeof(T));
+      memory_utils::AllocShared(place, total_unique_items * sizeof(T));
   T* unique_items_data = reinterpret_cast<T*>(unique_items->ptr());
   *final_nodes_len = total_unique_items;
 
@@ -176,12 +176,11 @@ void Reindex(const Context& dev_ctx,
   int64_t log_num = 1 << static_cast<size_t>(1 + std::log2(num >> 1));
   int64_t table_size = log_num << 1;
 
-  auto keys =
-      phi::memory_utils::Alloc(dev_ctx.GetPlace(), table_size * sizeof(T));
+  auto keys = memory_utils::Alloc(dev_ctx.GetPlace(), table_size * sizeof(T));
   auto values =
-      phi::memory_utils::Alloc(dev_ctx.GetPlace(), table_size * sizeof(int));
+      memory_utils::Alloc(dev_ctx.GetPlace(), table_size * sizeof(int));
   auto key_index =
-      phi::memory_utils::Alloc(dev_ctx.GetPlace(), table_size * sizeof(int));
+      memory_utils::Alloc(dev_ctx.GetPlace(), table_size * sizeof(int));
   T* keys_ptr = reinterpret_cast<T*>(keys->ptr());
   int* values_ptr = reinterpret_cast<int*>(values->ptr());
   int* key_index_ptr = reinterpret_cast<int*>(key_index->ptr());
@@ -197,7 +196,7 @@ void Reindex(const Context& dev_ctx,
           key_index_ptr, table_size);
 
   int unique_len = 0;
-  std::shared_ptr<phi::Allocation> unique_items =
+  std::shared_ptr<Allocation> unique_items =
       FillHashTable<T, Context>(dev_ctx,
                                 thrust::raw_pointer_cast(out_nodes->data()),
                                 out_nodes->size(),

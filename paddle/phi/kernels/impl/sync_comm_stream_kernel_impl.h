@@ -41,7 +41,7 @@ void SyncCommStreamKernel(const Context &dev_ctx,
                           int ring_id UNUSED,
                           std::vector<DenseTensor *> out UNUSED) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  phi::backends::gpu::GpuStreamSync(dev_ctx.stream());
+  backends::gpu::GpuStreamSync(dev_ctx.stream());
 #elif defined(PADDLE_WITH_XPU_BKCL)
   XPUStreamSync(dev_ctx.stream());
 #else

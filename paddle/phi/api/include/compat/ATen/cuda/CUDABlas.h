@@ -31,6 +31,8 @@
 #include <ATen/OpMathType.h>
 #include <ATen/cuda/CUDAContext.h>
 
+#include "paddle/common/macros.h"
+
 namespace at::cuda::blas {
 
 /* LEVEL 3 BLAS FUNCTIONS */
@@ -54,16 +56,18 @@ inline void gemm(CUDABLAS_GEMM_ARGTYPES_AND_C_DTYPE(Dtype, C_Dtype)) {
 }
 
 template <>
-void gemm<double>(CUDABLAS_GEMM_ARGTYPES(double));
+PADDLE_API void gemm<double>(CUDABLAS_GEMM_ARGTYPES(double));
 template <>
-void gemm<float>(CUDABLAS_GEMM_ARGTYPES(float));
+PADDLE_API void gemm<float>(CUDABLAS_GEMM_ARGTYPES(float));
 template <>
-void gemm<c10::complex<double>>(CUDABLAS_GEMM_ARGTYPES(c10::complex<double>));
+PADDLE_API void gemm<c10::complex<double>>(
+    CUDABLAS_GEMM_ARGTYPES(c10::complex<double>));
 template <>
-void gemm<c10::complex<float>>(CUDABLAS_GEMM_ARGTYPES(c10::complex<float>));
+PADDLE_API void gemm<c10::complex<float>>(
+    CUDABLAS_GEMM_ARGTYPES(c10::complex<float>));
 template <>
-void gemm<at::Half>(CUDABLAS_GEMM_ARGTYPES(at::Half));
+PADDLE_API void gemm<at::Half>(CUDABLAS_GEMM_ARGTYPES(at::Half));
 template <>
-void gemm<at::BFloat16>(CUDABLAS_GEMM_ARGTYPES(at::BFloat16));
+PADDLE_API void gemm<at::BFloat16>(CUDABLAS_GEMM_ARGTYPES(at::BFloat16));
 
 }  // namespace at::cuda::blas

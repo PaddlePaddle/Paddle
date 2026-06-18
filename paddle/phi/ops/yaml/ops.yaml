@@ -124,7 +124,7 @@
   traits : pir::SideEffectTrait, paddle::dialect::ForwardOnlyTrait
 
 - op : adamw_
-  args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor moment2, Tensor moment2_max, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update, Scalar beta1 = 0.9f, Scalar beta2 = 0.999f, Scalar epsilon = 1.0e-8f, float lr_ratio = 1.0f, float coeff = 0.01f, bool with_decay = false, bool lazy_mode = false, int64_t min_row_size_to_use_multithread = 1000, bool multi_precision = false, bool use_global_beta_pow = false, bool amsgrad = false)
+  args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor moment2, Tensor moment2_max, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update, Scalar beta1 = 0.9f, Scalar beta2 = 0.999f, Scalar epsilon = 1.0e-8f, double lr_ratio = 1.0f, double coeff = 0.01f, bool with_decay = false, bool lazy_mode = false, int64_t min_row_size_to_use_multithread = 1000, bool multi_precision = false, bool use_global_beta_pow = false, bool amsgrad = false)
   output : Tensor(param_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(moment2_max_out), Tensor(beta1_pow_out), Tensor(beta2_pow_out), Tensor(master_param_out)
   infer_meta :
     func : AdamwInferMeta
@@ -257,6 +257,16 @@
     func : amin
   backward : amin_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+
+- op : aminmax
+  args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
+  output : Tensor(min), Tensor(max)
+  infer_meta :
+    func : AMinMaxInferMeta
+  kernel :
+    func : aminmax
+  backward : aminmax_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : angle
   args : (Tensor x)
@@ -2184,9 +2194,9 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : flashmask_attention_v2
-  args : (Tensor q, Tensor k, Tensor v, Tensor startend_row_indices, Tensor block_mask, float softmax_scale, bool is_causal)
+  args : (Tensor q, Tensor k, Tensor v, Tensor startend_row_indices, Tensor block_mask, Tensor unique_id, float softmax_scale, bool is_causal, int rank = 0, int nranks = 1)
   output : Tensor(out), Tensor(softmax_lse)
-  optional : block_mask
+  optional : block_mask, unique_id
   infer_meta :
     func : FlashMaskV2InferMeta
     param : [q, k, v]
@@ -2194,6 +2204,19 @@
     func : flashmask_attention_v2
     data_type : q
   backward : flashmask_attention_v2_grad
+
+- op : flashmask_get_unique_id
+  args: (Tensor x)
+  output: Tensor(out)
+  infer_meta:
+    func: FlashMaskGetUniqueIdInferMeta
+    param: [x]
+  kernel:
+    func: flashmask_get_unique_id
+    data_type: x
+    backend : x
+  inplace: (x -> out)
+  interfaces : paddle::dialect::ForwardOnlyTrait
 
 - op : flatten
   args : (Tensor x, int start_axis = 1, int stop_axis = 1)
@@ -2525,7 +2548,7 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : gaussian
-  args : (IntArray shape, float mean, float std, int seed, DataType dtype, Place place={})
+  args : (IntArray shape, double mean, double std, int seed, DataType dtype, Place place={})
   output: Tensor(out)
   infer_meta :
     func : GaussianInferMeta
@@ -4621,6 +4644,7 @@
     param : [x]
   kernel :
     func : relu6
+  inplace : (x -> out)
   backward : relu6_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
   traits: pir::UnaryElementWiseTrait
@@ -5002,8 +5026,6 @@
            sgd_dense_param_sparse_grad {dense, dense, selected_rows, dense -> dense, dense},
            sgd_sparse_param_sparse_grad {selected_rows, dense, selected_rows, selected_rows -> selected_rows, selected_rows}
     data_type : param
-  data_transform :
-    support_trans_dtype : learning_rate
   optional : master_param, master_param_out
   inplace : (param -> param_out), (master_param -> master_param_out)
   traits : pir::SideEffectTrait, paddle::dialect::ForwardOnlyTrait

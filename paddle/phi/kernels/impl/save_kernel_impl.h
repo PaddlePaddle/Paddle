@@ -40,8 +40,7 @@ void SaveKernel(const Context& dev_ctx,
       false,
       common::errors::PreconditionNotMet(
           "%s exists!, cannot save to it when overwrite is set to false.",
-          file_path,
-          overwrite));
+          file_path));
 
   MkDirRecursively(DirName(file_path).c_str());
 
@@ -54,13 +53,13 @@ void SaveKernel(const Context& dev_ctx,
                         "Cannot open %s to save variables.", file_path));
 
   auto in_dtype = x.dtype();
-  auto out_dtype = save_as_fp16 ? phi::DataType::FLOAT16 : in_dtype;
+  auto out_dtype = save_as_fp16 ? DataType::FLOAT16 : in_dtype;
 
   if (in_dtype != out_dtype) {
     auto out = Cast<T>(dev_ctx, x, out_dtype);
-    phi::SerializeToStream(fout, out, dev_ctx);
+    SerializeToStream(fout, out, dev_ctx);
   } else {
-    phi::SerializeToStream(fout, x, dev_ctx);
+    SerializeToStream(fout, x, dev_ctx);
   }
   fout.close();
 }

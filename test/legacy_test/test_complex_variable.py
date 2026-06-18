@@ -20,7 +20,7 @@ import paddle
 import paddle.base.dygraph as dg
 from paddle.base import core
 from paddle.base.data_feeder import convert_dtype
-from paddle.base.framework import convert_np_dtype_to_dtype_
+from paddle.base.framework import convert_nptype_to_datatype_or_vartype
 
 
 class TestComplexVariable(unittest.TestCase):
@@ -36,7 +36,9 @@ class TestComplexVariable(unittest.TestCase):
             out = paddle.add(x, y)
 
         np.testing.assert_allclose(out.numpy(), a + b, rtol=1e-05)
-        self.assertEqual(out.dtype, convert_np_dtype_to_dtype_(self._dtype))
+        self.assertEqual(
+            out.dtype, convert_nptype_to_datatype_or_vartype(self._dtype)
+        )
         self.assertEqual(out.shape, x.shape)
 
     def test_attrs(self):
@@ -45,23 +47,23 @@ class TestComplexVariable(unittest.TestCase):
         self._dtype = "complex128"
         self.compare()
 
-    def test_convert_np_dtype_to_dtype(self):
+    def test_convert_nptype_to_datatype_or_vartype(self):
         if paddle.framework.use_pir_api():
             self.assertEqual(
-                convert_np_dtype_to_dtype_(np.complex64),
+                convert_nptype_to_datatype_or_vartype(np.complex64),
                 core.DataType.COMPLEX64,
             )
             self.assertEqual(
-                convert_np_dtype_to_dtype_(np.complex64),
+                convert_nptype_to_datatype_or_vartype(np.complex64),
                 core.DataType.COMPLEX64,
             )
         else:
             self.assertEqual(
-                convert_np_dtype_to_dtype_(np.complex64),
+                convert_nptype_to_datatype_or_vartype(np.complex64),
                 core.VarDesc.VarType.COMPLEX64,
             )
             self.assertEqual(
-                convert_np_dtype_to_dtype_(np.complex64),
+                convert_nptype_to_datatype_or_vartype(np.complex64),
                 core.VarDesc.VarType.COMPLEX64,
             )
 

@@ -141,7 +141,7 @@ def send_object_list(
             ...     data = ["hello", {"key": 100}, [1, 2, 3]]
             ...     dist.send_object_list(data, dst=1)
             >>> else:
-            ...     data = [None] * 3  # type: ignore
+            ...     data = [None] * 3
             ...     dist.recv_object_list(data, src=0)
             >>> print(data)
             >>> # ["hello", {"key": 100}, [1, 2, 3]] (2 GPUs)

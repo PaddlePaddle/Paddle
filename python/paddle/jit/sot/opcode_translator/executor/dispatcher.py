@@ -18,11 +18,13 @@ import copy
 import inspect
 import operator
 from functools import cached_property, reduce
-from typing import TYPE_CHECKING, Any, Callable, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from ...utils import InnerError, NameGenerator, hashable
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     T = TypeVar("T")
     Args = tuple[T, ...]
     Kwargs = dict[str, T]

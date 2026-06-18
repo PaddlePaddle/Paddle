@@ -23,7 +23,7 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.base.framework import (
-    convert_np_dtype_to_dtype_,
+    convert_nptype_to_datatype_or_vartype,
 )
 from paddle.io import Dataset
 
@@ -51,7 +51,9 @@ class TestOptimizerDtype(unittest.TestCase):
             adam = paddle.optimizer.Adam(parameters=model.parameters())
             loss.backward()
             adam.step()
-            self.assertEqual(adam._dtype, convert_np_dtype_to_dtype_(dtype))
+            self.assertEqual(
+                adam._dtype, convert_nptype_to_datatype_or_vartype(dtype)
+            )
 
     def test_float64(self):
         self.check_with_dtype('float64')
@@ -179,6 +181,64 @@ class TestOptimizerAPI(unittest.TestCase):
         out.backward()
         adam.step()
         adam.zero_grad(False)
+
+    def test_step_without_closure(self):
+        paddle.seed(100)
+        numpy.random.seed(100)
+        paddle.disable_static()
+        x = paddle.arange(26, dtype="float32").reshape([2, 13])
+        linear = paddle.nn.Linear(13, 5)
+        optimizers = [
+            paddle.optimizer.Adam(
+                learning_rate=0.01,
+                parameters=linear.parameters(),
+            ),
+            paddle.optimizer.AdamW(
+                learning_rate=0.01,
+                parameters=linear.parameters(),
+            ),
+            paddle.optimizer.ASGD(
+                learning_rate=0.01,
+                parameters=linear.parameters(),
+            ),
+        ]
+        for optimizer in optimizers:
+            optimizer.zero_grad()
+            output = linear(x)
+            loss = paddle.mean(output)
+            loss.backward()
+            optimizer.step()
+
+    def test_step_with_closure(self):
+        paddle.seed(100)
+        numpy.random.seed(100)
+        paddle.disable_static()
+        x = paddle.arange(26, dtype="float32").reshape([2, 13])
+        linear = paddle.nn.Linear(13, 5)
+        optimizers = [
+            paddle.optimizer.Adam(
+                learning_rate=0.01,
+                parameters=linear.parameters(),
+            ),
+            paddle.optimizer.AdamW(
+                learning_rate=0.01,
+                parameters=linear.parameters(),
+            ),
+            paddle.optimizer.ASGD(
+                learning_rate=0.01,
+                parameters=linear.parameters(),
+            ),
+        ]
+        for optimizer in optimizers:
+
+            def closure():
+                optimizer.zero_grad()
+                output = linear(x)
+                loss = paddle.mean(output)
+                loss.backward()
+                return loss
+
+            loss = optimizer.step(closure)
 
 
 if __name__ == '__main__':

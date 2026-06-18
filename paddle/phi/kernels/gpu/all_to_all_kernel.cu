@@ -63,10 +63,9 @@ void AllToAllKernel(const Context& dev_ctx,
   const auto* send_buf = x.data<T>();
   auto* recv_buf = out->data<T>();
   for (auto i = 0; i < nranks; ++i) {
-    auto send_buf = phi::distributed::GetPartialTensor(x, offset, send_numel);
+    auto send_buf = distributed::GetPartialTensor(x, offset, send_numel);
     comm_ctx->Send(send_buf, send_numel, i, stream);
-    auto recv_buf =
-        phi::distributed::GetPartialTensor(*out, offset, send_numel);
+    auto recv_buf = distributed::GetPartialTensor(*out, offset, send_numel);
     comm_ctx->Recv(&recv_buf, send_numel, i, stream);
     offset += send_numel;
   }

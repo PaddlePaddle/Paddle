@@ -32,7 +32,7 @@ void FullKernel(const Context& dev_ctx,
                 DataType dtype,
                 DenseTensor* out) {
   using XPUInTDType = typename XPUTypeTrait<T>::Type;
-  out->Resize(make_ddim(shape.GetData()));
+  out->Resize(shape.GetData());
   dev_ctx.template Alloc<T>(out);
   if (out->numel() > 0) {
     auto out_data = reinterpret_cast<XPUInTDType*>(out->data<T>());
@@ -52,7 +52,7 @@ void FullKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
                                             DataType dtype,
                                             DenseTensor* out) {
   using T = phi::complex64;
-  out->Resize(make_ddim(shape.GetData()));
+  out->Resize(shape.GetData());
   dev_ctx.template Alloc<T>(out);
 
   T complex_val = val.to<T>();

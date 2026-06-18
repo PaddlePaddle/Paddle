@@ -19,6 +19,7 @@ limitations under the License. */
 #include <type_traits>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
@@ -112,7 +113,8 @@ struct IntDivider<unsigned int> {
 
     uint64_t one = 1;
     uint64_t magic = ((one << 32) * ((one << shift) - divisor)) / divisor + 1;
-    m1 = magic;
+    PADDLE_ENFORCE_LE_UINT32_MAX(magic, "IntDivider magic");
+    m1 = static_cast<unsigned int>(magic);
   }
 
   __host__ __device__ inline unsigned int div(unsigned int n) const {
@@ -121,7 +123,7 @@ struct IntDivider<unsigned int> {
     return (t + n) >> shift;
 #else
     uint64_t t = ((uint64_t)n * m1) >> 32;
-    return (t + n) >> shift;
+    return static_cast<unsigned int>((t + n) >> shift);
 #endif
   }
 
@@ -154,7 +156,7 @@ struct OffsetCalculator {
         dims,
         MAX_DIMS,
         common::errors::InvalidArgument(
-            "Tensor has too many dims. Maximum dim is d%.", MAX_DIMS));
+            "Tensor has too many dims. Maximum dim is %d.", MAX_DIMS));
     for (int i = 0; i < dims; i++) {
       shape_[i] = IntDivider<INDEX_T>(shape[i]);
       for (int arg = 0; arg < NARGS; arg++) {

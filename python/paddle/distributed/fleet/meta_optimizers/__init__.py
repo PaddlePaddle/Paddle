@@ -31,6 +31,7 @@ from .localsgd_optimizer import (  # noqa: F401
     AdaptiveLocalSGDOptimizer,
     LocalSGDOptimizer,
 )
+from .muon_sharding_optimizer import MuonShardingOptimizer  # noqa: F401
 from .pipeline_optimizer import PipelineOptimizer  # noqa: F401
 from .ps_optimizer import ParameterServerOptimizer  # noqa: F401
 from .qat_optimizer import QATOptimizer  # noqa: F401

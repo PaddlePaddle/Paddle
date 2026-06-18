@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <complex>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/cuda/cudnn_workspace_helper.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -59,17 +60,23 @@ void LstsqKernel(const Context& dev_ctx,
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   int dim_size = x_dims.size();
-  int m = x_dims[dim_size - 2];
-  int n = x_dims[dim_size - 1];
-  int nrhs = y_dims[dim_size - 1];
+  const int64_t m_64 = x_dims[dim_size - 2];
+  const int64_t n_64 = x_dims[dim_size - 1];
+  const int64_t nrhs_64 = y_dims[dim_size - 1];
+  PADDLE_ENFORCE_LE_INT_MAX(m_64, "lstsq m");
+  PADDLE_ENFORCE_LE_INT_MAX(n_64, "lstsq n");
+  PADDLE_ENFORCE_LE_INT_MAX(nrhs_64, "lstsq nrhs");
+  const int m = static_cast<int>(m_64);
+  const int n = static_cast<int>(n_64);
+  const int nrhs = static_cast<int>(nrhs_64);
   int min_mn = std::min(m, n);
   int max_mn = std::max(m, n);
   int k = min_mn;
 
-  int x_stride = phi::GetMatrixStride(x_dims);
-  int y_stride = phi::GetMatrixStride(y_dims);
+  int x_stride = GetMatrixStride(x_dims);
+  int y_stride = GetMatrixStride(y_dims);
   int tau_stride = min_mn;
-  int batch_count = phi::GetBatchCount(x_dims);
+  int batch_count = GetBatchCount(x_dims);
 
   T rcond = rcond_scalar.to<T>();
 
@@ -89,7 +96,7 @@ void LstsqKernel(const Context& dev_ctx,
   tau_dims_vec[tau_dims_vec.size() - 1] = min_mn;
 
   DenseTensor tau;
-  tau.Resize(make_ddim(tau_dims_vec));
+  tau.Resize(tau_dims_vec);
   auto tau_data = dev_ctx.template Alloc<T>(&tau);
 
   if (m >= n) {
@@ -123,14 +130,14 @@ void LstsqKernel(const Context& dev_ctx,
     DenseTensor res_r;
     res_r.Resize({batch_count, min_mn, min_mn});
     dev_ctx.template Alloc<T>(&res_r);
-    phi::TrilTriuKernel<T>(dev_ctx, slice_r, 0, false, &res_r);
+    TrilTriuKernel<T>(dev_ctx, slice_r, 0, false, &res_r);
 
     DenseTensor trans_y = TransposeLast2Dim<T>(dev_ctx, tmp_y);
     DenseTensor slice_y =
         funcs::Slice<T>(dev_ctx, trans_y, {-2}, {0}, {min_mn});
 
     // Step 3, solve R X = Y
-    phi::TriangularSolveKernel<T, Context>(
+    TriangularSolveKernel<T, Context>(
         dev_ctx, res_r, slice_y, true, false, false, solution);
 
   } else {
@@ -148,9 +155,9 @@ void LstsqKernel(const Context& dev_ctx,
     DenseTensor res_r;
     res_r.Resize({batch_count, min_mn, min_mn});
     dev_ctx.template Alloc<T>(&res_r);
-    phi::TrilTriuKernel<T>(dev_ctx, slice_r, 0, false, &res_r);
+    TrilTriuKernel<T>(dev_ctx, slice_r, 0, false, &res_r);
 
-    phi::TriangularSolveKernel<T, Context>(
+    TriangularSolveKernel<T, Context>(
         dev_ctx, res_r, new_y, true, true, false, solution);
 
     // Step 3, X <- Q Z
@@ -168,7 +175,7 @@ void LstsqKernel(const Context& dev_ctx,
     DenseTensor trans_q = TransposeLast2Dim<T>(dev_ctx, new_x);
     DenseTensor slice_q = funcs::Slice<T>(dev_ctx, trans_q, {-1}, {0}, {m});
     DenseTensor solu_tensor =
-        phi::Matmul<T>(dev_ctx, slice_q, *solution, false, false);
+        Matmul<T>(dev_ctx, slice_q, *solution, false, false);
     Copy<Context>(dev_ctx, solu_tensor, dev_ctx.GetPlace(), true, solution);
   }
   if (batch_count == 1) solution->Resize({n, nrhs});

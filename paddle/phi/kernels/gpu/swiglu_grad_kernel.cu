@@ -115,16 +115,15 @@ void SwiGLUGradKernelImpl(const Context &dev_ctx,
                           T *dy,
                           int64_t m,
                           int64_t n) {
-  int vec_size =
-      std::min(phi::GetVectorizedSize<T>(x), phi::GetVectorizedSize<T>(dz));
+  int vec_size = std::min(GetVectorizedSize<T>(x), GetVectorizedSize<T>(dz));
   if (y) {
-    vec_size = std::min(vec_size, phi::GetVectorizedSize<T>(y));
+    vec_size = std::min(vec_size, GetVectorizedSize<T>(y));
   }
   if (dx) {
-    vec_size = std::min(vec_size, phi::GetVectorizedSize<T>(dx));
+    vec_size = std::min(vec_size, GetVectorizedSize<T>(dx));
   }
   if (dy) {
-    vec_size = std::min(vec_size, phi::GetVectorizedSize<T>(dy));
+    vec_size = std::min(vec_size, GetVectorizedSize<T>(dy));
   }
 
 #define PD_LAUNCH_SWIGLU_GRAD_CUDA_KERNEL_BASE(                           \
@@ -157,8 +156,7 @@ void SwiGLUGradKernelImpl(const Context &dev_ctx,
   } while (0)
 
   if (y) {
-    auto config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, m * n, vec_size);
+    auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, m * n, vec_size);
     if (dx) {
       if (dy) {
         PD_LAUNCH_SWIGLU_GRAD_CUDA_KERNEL(false, true, true);
@@ -183,7 +181,7 @@ void SwiGLUGradKernelImpl(const Context &dev_ctx,
     y = x + n;
     dy = dx + n;
     auto config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, m * n / vec_size, 1);
+        backends::gpu::GetGpuLaunchConfig1D(dev_ctx, m * n / vec_size, 1);
     PD_LAUNCH_SWIGLU_GRAD_CUDA_KERNEL(true, true, true);
   }
 }

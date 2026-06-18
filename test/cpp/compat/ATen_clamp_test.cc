@@ -202,6 +202,7 @@ TEST_F(TensorOperatorIndexTest, OperatorIndexOutOfBounds) {
   }
   // Note: Depending on implementation, this may or may not throw
   // We accept either behavior (return empty/invalid tensor or throw)
+  (void)threw_exception;  // Silence unused variable warning
 }
 
 // ======================= Additional clamp edge case tests

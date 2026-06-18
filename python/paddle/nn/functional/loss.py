@@ -21,7 +21,7 @@ import paddle
 from paddle import _C_ops, base, in_dynamic_mode
 from paddle.static.nn.control_flow import Assert
 from paddle.utils import deprecated
-from paddle.utils.decorator_utils import param_one_alias, param_two_alias
+from paddle.utils.decorator_utils import legacy_reduction_decorator
 
 from ...base.data_feeder import check_type, check_variable_and_dtype
 from ...base.framework import (
@@ -35,8 +35,8 @@ from ...common_ops_import import Variable
 from ...tensor.manipulation import reshape
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-    from typing import Callable, TypeAlias
+    from collections.abc import Callable, Sequence
+    from typing import TypeAlias
 
     from paddle import Tensor
 
@@ -89,7 +89,7 @@ def dice_loss(
             >>> import paddle.nn.functional as F
 
             >>> x = paddle.randn((3,224,224,2))
-            >>> label = paddle.randint(high=2, shape=(3,224,224,1))
+            >>> label = paddle.randint(high=2, size=(3,224,224,1))
             >>> predictions = F.softmax(x)
             >>> loss = F.dice_loss(input=predictions, label=label)
     """
@@ -268,7 +268,7 @@ def base_softmax_with_cross_entropy(
             >>> paddle.seed(2023)
 
             >>> logits = paddle.to_tensor([0.4, 0.6, 0.9])
-            >>> label = paddle.randint(high=2, shape=[1], dtype="int64")
+            >>> label = paddle.randint(high=2, size=[1], dtype="int64")
 
             >>> out = paddle.nn.functional.softmax_with_cross_entropy(logits=logits, label=label)
             >>> print(out)
@@ -610,7 +610,17 @@ def edit_distance(
     return edit_distance_out, sequence_num
 
 
-@param_one_alias(["label", "target"])
+@legacy_reduction_decorator(
+    overload_args_list=[
+        'input',
+        'target',
+        'weight',
+        'size_average',
+        'reduce',
+        'reduction',
+    ],
+    alias_mapping={'target': 'label'},
+)
 def binary_cross_entropy(
     input: Tensor,
     label: Tensor,
@@ -745,7 +755,18 @@ def binary_cross_entropy(
             return out
 
 
-@param_two_alias(["logit", "input"], ["label", "target"])
+@legacy_reduction_decorator(
+    overload_args_list=[
+        'input',
+        'target',
+        'weight',
+        'size_average',
+        'reduce',
+        'reduction',
+        'pos_weight',
+    ],
+    alias_mapping={'input': 'logit', 'target': 'label'},
+)
 def binary_cross_entropy_with_logits(
     logit: Tensor,
     label: Tensor,
@@ -1138,6 +1159,16 @@ def hsigmoid_loss(
         return out
 
 
+@legacy_reduction_decorator(
+    overload_args_list=[
+        'input',
+        'target',
+        'size_average',
+        'reduce',
+        'reduction',
+    ],
+    alias_mapping={'target': 'label'},
+)
 def smooth_l1_loss(
     input: Tensor,
     label: Tensor,
@@ -1172,6 +1203,7 @@ def smooth_l1_loss(
             is (N, C, D1, D2,..., Dk), k >= 1.
         label (Tensor): Label tensor, the data type is float32 or float64. The shape of label
             is the same as the shape of input.
+            Alias: ``target``.
         reduction (str, optional): Indicate how to average the loss by batch_size,
             the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
@@ -1248,6 +1280,22 @@ def smooth_l1_loss(
         return paddle.sum(out)
 
 
+@legacy_reduction_decorator(
+    overload_args_list=[
+        'input1',
+        'input2',
+        'target',
+        'margin',
+        'size_average',
+        'reduce',
+        'reduction',
+    ],
+    alias_mapping={
+        'input1': 'input',
+        'input2': 'other',
+        'target': 'label',
+    },
+)
 def margin_ranking_loss(
     input: Tensor,
     other: Tensor,
@@ -1277,8 +1325,11 @@ def margin_ranking_loss(
 
     Parameters:
         input(Tensor): the first input tensor, it's data type should be float32, float64.
+            Alias: ``input1``.
         other(Tensor): the second input tensor, it's data type should be float32, float64.
+            Alias: ``input2``.
         label(Tensor): the label value corresponding to input, it's data type should be float32, float64.
+            Alias: ``target``.
         margin (float, optional): The margin value to add, default value is 0;
         reduction (str, optional): Indicate the reduction to apply to the loss, the candidates are ``'none'``, ``'mean'``, ``'sum'``.If :attr:`reduction` is ``'none'``, the unreduced loss is returned; If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned. If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned. Default is ``'mean'``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
@@ -1369,6 +1420,16 @@ def margin_ranking_loss(
             return result_out
 
 
+@legacy_reduction_decorator(
+    overload_args_list=[
+        'input',
+        'target',
+        'size_average',
+        'reduce',
+        'reduction',
+    ],
+    alias_mapping={'target': 'label'},
+)
 def l1_loss(
     input: Tensor,
     label: Tensor,
@@ -1398,6 +1459,7 @@ def l1_loss(
     Parameters:
         input (Tensor): The input tensor. The shapes is [N, `*`], where N is batch size and `*` means any number of additional dimensions. It's data type should be float32, float64, int32, int64.
         label (Tensor): label. The shapes is [N, `*`], same shape as ``input`` . It's data type should be float32, float64, int32, int64.
+            Alias: ``target``.
         reduction (str, optional): Indicate the reduction to apply to the loss,
             the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If `reduction` is ``'none'``, the unreduced loss is returned;
@@ -1475,7 +1537,18 @@ def l1_loss(
             return paddle.abs(paddle.subtract(x=input, y=label, name=name))
 
 
-@param_one_alias(["label", "target"])
+@legacy_reduction_decorator(
+    overload_args_list=[
+        'input',
+        'target',
+        'weight',
+        'size_average',
+        'ignore_index',
+        'reduce',
+        'reduction',
+    ],
+    alias_mapping={'target': 'label'},
+)
 def nll_loss(
     input: Tensor,
     label: Tensor,
@@ -1609,7 +1682,19 @@ def nll_loss(
         return out
 
 
-@param_two_alias(["label", "target"], ["epsilon", "eps"])
+@legacy_reduction_decorator(
+    overload_args_list=[
+        'input',
+        'target',
+        'log_input',
+        'full',
+        'size_average',
+        'eps',
+        'reduce',
+        'reduction',
+    ],
+    alias_mapping={'target': 'label', 'eps': 'epsilon'},
+)
 def poisson_nll_loss(
     input: Tensor,
     label: Tensor,
@@ -1729,6 +1814,17 @@ def poisson_nll_loss(
     return loss_out
 
 
+@legacy_reduction_decorator(
+    overload_args_list=[
+        'input',
+        'target',
+        'size_average',
+        'reduce',
+        'reduction',
+        'log_target',
+    ],
+    alias_mapping={'target': 'label'},
+)
 def kl_div(
     input: Tensor,
     label: Tensor,
@@ -1765,6 +1861,7 @@ def kl_div(
         input (Tensor): The input tensor. The shapes is [N, *], where N is batch size and `*` means
             any number of additional dimensions. It's data type should be float32, float64.
         label (Tensor): label. The shapes is [N, *], same shape as ``input`` . It's data type should be float32, float64.
+            Alias: ``target``.
         reduction (str, optional): Indicate how to average the loss,
             the candidates are ``'none'`` | ``'batchmean'`` | ``'mean'`` | ``'sum'``.
             If `reduction` is ``'mean'``, the reduced mean loss is returned;
@@ -1875,7 +1972,16 @@ def kl_div(
         return loss
 
 
-@param_one_alias(["label", "target"])
+@legacy_reduction_decorator(
+    overload_args_list=[
+        'input',
+        'target',
+        'size_average',
+        'reduce',
+        'reduction',
+    ],
+    alias_mapping={'target': 'label'},
+)
 def mse_loss(
     input: Tensor,
     label: Tensor,
@@ -2360,7 +2466,7 @@ def margin_cross_entropy(
             >>> feature_length = 4
             >>> num_classes = 4
 
-            >>> label = paddle.randint(low=0, high=num_classes, shape=[batch_size], dtype='int64')
+            >>> label = paddle.randint(low=0, high=num_classes, size=[batch_size], dtype='int64')
 
             >>> X = paddle.randn(
             ...     shape=[batch_size, feature_length],
@@ -2424,7 +2530,7 @@ def margin_cross_entropy(
             >>> num_class_per_card = [4, 8]
             >>> num_classes = paddle.sum(paddle.to_tensor(num_class_per_card))
 
-            >>> label = paddle.randint(low=0, high=num_classes.item(), shape=[batch_size], dtype='int64')  # type: ignore[arg-type]
+            >>> label = paddle.randint(low=0, high=int(num_classes.item()), size=[batch_size], dtype='int64')  # type: ignore[call-overload, arg-type]
             >>> label_list: List[paddle.Tensor] = []
             >>> dist.all_gather(label_list, label)
             >>> label = paddle.concat(label_list, axis=0)
@@ -2771,7 +2877,19 @@ def softmax_with_cross_entropy(
     )
 
 
-@param_one_alias(["label", "target"])
+@legacy_reduction_decorator(
+    overload_args_list=[
+        'input',
+        'target',
+        'weight',
+        'size_average',
+        'ignore_index',
+        'reduce',
+        'reduction',
+        'label_smoothing',
+    ],
+    alias_mapping={'target': 'label'},
+)
 def cross_entropy(
     input: Tensor,
     label: Tensor,
@@ -2972,7 +3090,7 @@ def cross_entropy(
             >>> C = 200
             >>> reduction = 'mean'
             >>> input = paddle.rand([N, C], dtype='float64')
-            >>> label = paddle.randint(0, C, shape=[N], dtype='int64')
+            >>> label = paddle.randint(0, C, size=[N], dtype='int64')
             >>> weight = paddle.rand([C], dtype='float64')
 
             >>> cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
@@ -3025,9 +3143,9 @@ def cross_entropy(
             >>> shape = [N, C]
             >>> label_smoothing = 0.4
             >>> reduction = 'mean'
-            >>> weight: Optional[paddle.Tensor] = None
+            >>> weight = None
             >>> logits = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
-            >>> integer_labels = paddle.randint(low=0, high=C, shape=[N], dtype='int64')
+            >>> integer_labels = paddle.randint(low=0, high=C, size=[N], dtype='int64')
             >>> one_hot_labels = paddle.nn.functional.one_hot(integer_labels, C).astype('float32')
 
             >>> # integer labels
@@ -3615,6 +3733,17 @@ def sigmoid_focal_loss(
         return loss
 
 
+@legacy_reduction_decorator(
+    overload_args_list=[
+        'input',
+        'target',
+        'weight',
+        'size_average',
+        'reduce',
+        'reduction',
+    ],
+    alias_mapping={'target': 'label'},
+)
 def multi_label_soft_margin_loss(
     input: Tensor,
     label: Tensor,
@@ -3638,6 +3767,7 @@ def multi_label_soft_margin_loss(
     Parameters:
         input (Tensor): Input tensor, the data type is float32 or float64. Shape is (N, C), where C is number of classes, and if shape is more than 2D, this is (N, C, D1, D2,..., Dk), k >= 1.
         label (Tensor): Label tensor, the data type is float32 or float64. The shape of label is the same as the shape of input.
+            Alias: ``target``.
         weight (Tensor, optional): a manual rescaling weight given to each class.
                 If given, has to be a Tensor of size C and the data type is float32, float64.
                 Default is ``'None'`` .
@@ -3728,6 +3858,17 @@ def multi_label_soft_margin_loss(
         return paddle.sum(loss)
 
 
+@legacy_reduction_decorator(
+    overload_args_list=[
+        'input',
+        'target',
+        'margin',
+        'size_average',
+        'reduce',
+        'reduction',
+    ],
+    alias_mapping={'target': 'label'},
+)
 def hinge_embedding_loss(
     input: Tensor,
     label: Tensor,
@@ -3763,6 +3904,7 @@ def hinge_embedding_loss(
             the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
         label (Tensor): Label tensor containing 1 or -1, the data type is float32 or float64.
             The shape of label is the same as the shape of input.
+            Alias: ``target``.
         margin (float, optional): Specifies the hyperparameter margin to be used.
             The value determines how large the input need to be to calculate in
             hinge_embedding_loss. When label is -1, Input smaller than margin are minimized with hinge_embedding_loss.
@@ -3837,6 +3979,18 @@ def hinge_embedding_loss(
         return loss
 
 
+@legacy_reduction_decorator(
+    overload_args_list=[
+        'input1',
+        'input2',
+        'target',
+        'margin',
+        'size_average',
+        'reduce',
+        'reduction',
+    ],
+    alias_mapping={'target': 'label'},
+)
 def cosine_embedding_loss(
     input1: Tensor,
     input2: Tensor,
@@ -3869,6 +4023,7 @@ def cosine_embedding_loss(
                          Available dtypes are float32, float64.
         label (Tensor): tensor with shape: [N] or [1], 'N' means the length of input array. The target labels values should be -1 or 1.
                          Available dtypes are int32, int64, float32, float64.
+                         Alias: ``target``.
         margin (float, optional): Should be a number from :math:`-1` to :math:`1`,
                          :math:`0` to :math:`0.5` is suggested. If :attr:`margin` is missing, the
                          default value is :math:`0`.
@@ -3957,6 +4112,7 @@ def cosine_embedding_loss(
         return paddle.sum(out, name=name)
 
 
+@legacy_reduction_decorator(alias_mapping={'anchor': 'input'})
 def triplet_margin_with_distance_loss(
     input: Tensor,
     positive: Tensor,
@@ -3994,6 +4150,7 @@ def triplet_margin_with_distance_loss(
 
         input (Tensor):Input tensor, the data type is float32 or float64.
             the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
+            Alias: ``anchor``.
 
         positive (Tensor):Positive tensor, the data type is float32 or float64.
             The shape of label is the same as the shape of input.
@@ -4111,6 +4268,21 @@ def triplet_margin_with_distance_loss(
         return loss
 
 
+@legacy_reduction_decorator(
+    overload_args_list=[
+        'anchor',
+        'positive',
+        'negative',
+        'margin',
+        'p',
+        'eps',
+        'swap',
+        'size_average',
+        'reduce',
+        'reduction',
+    ],
+    alias_mapping={'anchor': 'input', 'eps': 'epsilon'},
+)
 def triplet_margin_loss(
     input: Tensor,
     positive: Tensor,
@@ -4144,6 +4316,7 @@ def triplet_margin_loss(
     Parameters:
         input (Tensor): Input tensor, the data type is float32 or float64.
             the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
+            Alias: ``anchor``.
 
         positive (Tensor): Positive tensor, the data type is float32 or float64.
             The shape of label is the same as the shape of input.
@@ -4157,6 +4330,7 @@ def triplet_margin_loss(
 
         epsilon (float, optional): Add small value to avoid division by zero,
             default value is 1e-6.
+            Alias: ``eps``.
 
         swap (bool, optional): The distance swap change the negative distance to the distance between
             positive sample and negative sample. For more details, see `Learning shallow convolutional feature descriptors with triplet losses`.
@@ -4239,7 +4413,19 @@ def triplet_margin_loss(
         return loss
 
 
-@param_one_alias(["label", "target"])
+@legacy_reduction_decorator(
+    overload_args_list=[
+        'input',
+        'target',
+        'p',
+        'margin',
+        'weight',
+        'size_average',
+        'reduce',
+        'reduction',
+    ],
+    alias_mapping={'target': 'label'},
+)
 def multi_margin_loss(
     input: Tensor,
     label: Tensor,
@@ -4371,6 +4557,16 @@ def multi_margin_loss(
         return loss
 
 
+@legacy_reduction_decorator(
+    overload_args_list=[
+        'input',
+        'target',
+        'size_average',
+        'reduce',
+        'reduction',
+    ],
+    alias_mapping={'target': 'label'},
+)
 def multi_label_margin_loss(
     input: Tensor,
     label: Tensor,
@@ -4395,6 +4591,7 @@ def multi_label_margin_loss(
         label (Tensor): Label tensor, the data type is int32 or int64. Shape is (N, C), same shape as input.
             Label values should be class indices (non-negative values) and -1 values.
             The -1 values are ignored and stop processing for each sample.
+            Alias: ``target``.
         reduction (str, optional): Indicate how to calculate the loss by batch_size,
             the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
@@ -4490,6 +4687,16 @@ def multi_label_margin_loss(
         return losses
 
 
+@legacy_reduction_decorator(
+    overload_args_list=[
+        'input',
+        'target',
+        'size_average',
+        'reduce',
+        'reduction',
+    ],
+    alias_mapping={'target': 'label'},
+)
 def soft_margin_loss(
     input: Tensor,
     label: Tensor,
@@ -4513,6 +4720,7 @@ def soft_margin_loss(
         label (Tensor): The target labels tensor with the same shape as
             ``input``. The target labels which values should be numbers -1 or 1.
             Available dtype is int32, int64, float32, float64.
+            Alias: ``target``.
 
         reduction (str, optional): Indicate how to average the loss by batch_size,
             the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
@@ -4542,7 +4750,7 @@ def soft_margin_loss(
                    0.64022040)
 
             >>> input = paddle.uniform(shape=(5, 5), dtype="float32", min=0.1, max=0.8)
-            >>> label = paddle.randint(0, 2, shape=(5, 5), dtype="int64")
+            >>> label = paddle.randint(0, 2, size=(5, 5), dtype="int64")
             >>> label[label == 0] = -1
 
             >>> output = paddle.nn.functional.soft_margin_loss(input, label, reduction='none')
@@ -4586,6 +4794,9 @@ def soft_margin_loss(
         return out
 
 
+@legacy_reduction_decorator(
+    alias_mapping={'target': 'label', 'var': 'variance', 'eps': 'epsilon'},
+)
 def gaussian_nll_loss(
     input: Tensor,
     label: Tensor,
@@ -4621,14 +4832,17 @@ def gaussian_nll_loss(
             dimensions. Expectation of the Gaussian distribution, available dtype is float32, float64.
         label (Tensor): target label tensor, :math:`(N, *)` or :math:`(*)`, same shape as the input, or same shape as the input
             but with one dimension equal to 1 (to allow for broadcasting). Sample from the Gaussian distribution, available dtype is float32, float64.
+            Alias: ``target``.
         variance (Tensor): tensor of positive variance(s), :math:`(N, *)` or :math:`(*)`, same shape as the input, or same shape as the input but
             with one dimension equal to 1, or same shape as the input but with one fewer
             dimension (to allow for broadcasting). One for each of the expectations
             in the input (heteroscedastic), or a single one (homoscedastic), available dtype is float32, float64.
+            Alias: ``var``.
         full (bool, optional): include the constant term in the loss
             calculation. Default: ``False``.
         epsilon (float, optional): value used to clamp ``variance`` (see note below), for
             stability. Default: 1e-6.
+            Alias: ``eps``.
         reduction (str, optional): specifies the reduction to apply to the
             output:``'none'`` | ``'mean'`` | ``'sum'``. ``'none'``: no reduction
             will be applied, ``'mean'``: the output is the average of all batch
@@ -4856,7 +5070,7 @@ def adaptive_log_softmax_with_loss(
         if row_indices.dim() == 0:
             row_indices.unsqueeze_(0)
 
-        if row_indices.numel() == 0:
+        if 0 in row_indices.shape:
             continue
 
         if i == 0:

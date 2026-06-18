@@ -86,6 +86,25 @@ class TestLayerApply(unittest.TestCase):
                     np.testing.assert_allclose(layer.weight.numpy(), 0.7)
                     np.testing.assert_allclose(layer.bias.numpy(), -0.2)
 
+    def test_apply_order_and_return_self(self):
+        class ApplyOrderNet(paddle.nn.Layer):
+            def __init__(self):
+                super().__init__()
+                self.child1 = paddle.nn.Layer()
+                self.child2 = paddle.nn.Sequential(paddle.nn.Layer())
+
+        with base.dygraph.guard():
+            net = ApplyOrderNet()
+            visited_layers = []
+
+            result = net.apply(lambda layer: visited_layers.append(layer))
+
+            self.assertIs(result, net)
+            self.assertEqual(
+                visited_layers,
+                [net.child1, net.child2[0], net.child2, net],
+            )
+
 
 if __name__ == '__main__':
     unittest.main()

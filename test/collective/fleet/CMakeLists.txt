@@ -946,3 +946,19 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     test_schedule_node MODULES test_schedule_node ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()
+if(WITH_NCCL)
+  if((WITH_GPU) AND LOCAL_ALL_PLAT)
+    bash_test_modules(
+      test_parallel_dygraph_muon
+      START_BASH
+      ../../legacy_test/dist_test.sh
+      TIMEOUT
+      "400"
+      LABELS
+      "RUN_TYPE=DIST"
+      ENVS
+      "PADDLE_DIST_UT_PORT=22348;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    )
+    set_tests_properties(test_parallel_dygraph_muon PROPERTIES TIMEOUT "400")
+  endif()
+endif()

@@ -47,7 +47,7 @@ void EigKernel(const Context& dev_ctx,
     // the next half stores the imag part
     std::vector<int64_t> real_w_dims = vectorize<int64_t>(out_w->dims());
     real_w_dims.back() *= 2;
-    out_w_real.Resize(make_ddim(real_w_dims));
+    out_w_real.Resize(real_w_dims);
     dev_ctx.template Alloc<dtype::Real<T>>(&out_w_real);
     out_v_real.Resize(x.dims());
     dev_ctx.template Alloc<dtype::Real<T>>(&out_v_real);

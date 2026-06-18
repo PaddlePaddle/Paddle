@@ -71,9 +71,9 @@ struct SequenceExpandGradFunctor<GPUContext, T> {
     int block_x = static_cast<int>(ref_lod.size());
     dim3 block_size(thread_x, thread_y, thread_z);
     dim3 grid_size(block_x, 1);
-    phi::MixVector<size_t> mixv_ref_lod(&ref_lod);
-    phi::MixVector<size_t> mixv_x_lod(&x_lod);
-    phi::MixVector<size_t> mixv_out_offset(&out_offset);
+    MixVector<size_t> mixv_ref_lod(&ref_lod);
+    MixVector<size_t> mixv_x_lod(&x_lod);
+    MixVector<size_t> mixv_out_offset(&out_offset);
     sequence_expand_grad_kernel<<<grid_size, block_size, 0, dev_ctx.stream()>>>(
         dout.data<T>(),
         mixv_ref_lod.CUDAData(dev_ctx.GetPlace()),

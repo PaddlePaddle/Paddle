@@ -14,7 +14,7 @@
 
 # repo: PaddleDetection
 # model: configs^fcos^fcos_dcn_r50_fpn_1x_coco_single_dy2st_train
-# api:paddle.nn.functional.conv._conv_nd||api:paddle.tensor.manipulation.split||api:paddle.tensor.ops.sigmoid||api:paddle.vision.ops.deform_conv2d
+# api:paddle.nn.functional.conv._conv_nd||api:paddle.tensor.manipulation.split||api:paddle.sigmoid||api:paddle.vision.ops.deform_conv2d
 from base import *  # noqa: F403
 
 from paddle.static import InputSpec
@@ -61,7 +61,7 @@ class LayerCase(paddle.nn.Layer):
         var_2, var_3 = paddle.tensor.manipulation.split(
             var_1, num_or_sections=[18, 9], axis=1
         )
-        var_4 = paddle.tensor.ops.sigmoid(var_3)
+        var_4 = paddle.sigmoid(var_3)
         var_5 = paddle.vision.ops.deform_conv2d(
             x=var_0,
             offset=var_2,

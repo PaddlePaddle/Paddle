@@ -120,7 +120,7 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
     in_dims_vec[2] = input->dims()[1];
     in_dims_vec[3] = input->dims()[2];
     in_dims_vec[4] = input->dims()[3];
-    transformed_input.Resize(make_ddim(in_dims_vec));
+    transformed_input.Resize(in_dims_vec);
     dev_ctx.Alloc(&transformed_input, input->type());
 
     funcs::Transpose<Context, T, 5> trans5;
@@ -134,7 +134,7 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
     out_dims_vec[2] = output->dims()[1];
     out_dims_vec[3] = output->dims()[2];
     out_dims_vec[4] = output->dims()[3];
-    transformed_output.Resize(make_ddim(out_dims_vec));
+    transformed_output.Resize(out_dims_vec);
 #ifdef PADDLE_WITH_HIP
     // MIOPEN not support NHWC data layout
   } else if (data_format == str_NHWC) {
@@ -147,7 +147,7 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
     in_dims_vec[1] = input->dims()[3];
     in_dims_vec[2] = input->dims()[1];
     in_dims_vec[3] = input->dims()[2];
-    transformed_input.Resize(make_ddim(in_dims_vec));
+    transformed_input.Resize(in_dims_vec);
     dev_ctx.Alloc(&transformed_input, input->type());
 
     funcs::Transpose<Context, T, 4> trans;
@@ -158,7 +158,7 @@ void PoolRawGPUDNNKernel(const Context& dev_ctx,
     out_dims_vec[1] = output->dims()[3];
     out_dims_vec[2] = output->dims()[1];
     out_dims_vec[3] = output->dims()[2];
-    transformed_output.Resize(make_ddim(out_dims_vec));
+    transformed_output.Resize(out_dims_vec);
 #endif
   } else {
     layout = GetLayoutFromStr(data_format);

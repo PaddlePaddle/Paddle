@@ -20,10 +20,35 @@
 
 #include <c10/core/ScalarType.h>
 
+#if defined(PADDLE_WITH_HIP)
+#include <hip/hip_runtime.h>
+#include <hip/library_types.h>
+#elif defined(PADDLE_WITH_CUDA)
 #include <cuda.h>
 #include <library_types.h>
+#endif
 
 namespace at::cuda {
+
+#if defined(PADDLE_WITH_HIP)
+using cudaDataType = hipDataType;
+#define CUDA_R_16F HIP_R_16F
+#define CUDA_R_32F HIP_R_32F
+#define CUDA_R_64F HIP_R_64F
+#define CUDA_C_16F HIP_C_16F
+#define CUDA_C_32F HIP_C_32F
+#define CUDA_C_64F HIP_C_64F
+#define CUDA_R_8U HIP_R_8U
+#define CUDA_R_8I HIP_R_8I
+#define CUDA_R_32I HIP_R_32I
+#define CUDA_R_16I HIP_R_16I
+#define CUDA_R_64I HIP_R_64I
+#define CUDA_R_16BF HIP_R_16BF
+#define CUDA_R_8F_E4M3 HIP_R_8F_E4M3
+#define CUDA_R_8F_E5M2 HIP_R_8F_E5M2
+#elif defined(PADDLE_WITH_CUDA)
+using cudaDataType = cudaDataType;
+#endif
 
 template <typename scalar_t>
 cudaDataType getCudaDataType() {
@@ -110,17 +135,20 @@ inline cudaDataType ScalarTypeToCudaDataType(
       return CUDA_R_64I;
     case c10::ScalarType::BFloat16:
       return CUDA_R_16BF;
-#if !defined(USE_ROCM) || ROCM_VERSION >= 60300
+#if defined(PADDLE_WITH_HIP)
     case c10::ScalarType::Float8_e4m3fn:
       return CUDA_R_8F_E4M3;
     case c10::ScalarType::Float8_e5m2:
       return CUDA_R_8F_E5M2;
-#endif
-#if defined(USE_ROCM)
     case c10::ScalarType::Float8_e4m3fnuz:
       return HIP_R_8F_E4M3_FNUZ;
     case c10::ScalarType::Float8_e5m2fnuz:
       return HIP_R_8F_E5M2_FNUZ;
+#elif !defined(USE_ROCM) || ROCM_VERSION >= 60300
+    case c10::ScalarType::Float8_e4m3fn:
+      return CUDA_R_8F_E4M3;
+    case c10::ScalarType::Float8_e5m2:
+      return CUDA_R_8F_E5M2;
 #endif
       // #if (defined(CUDA_VERSION) && CUDA_VERSION >= 12080) ||
       // (defined(USE_ROCM) && ROCM_VERSION >= 70000)

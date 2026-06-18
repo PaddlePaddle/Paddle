@@ -165,7 +165,7 @@ bool IsGradOp(const std::string& op_name) {
   return paddle::string::ends_with(op_name, "_grad");
 }
 
-bool IsSupportedHeterPlace(const phi::Place& place) {
+bool IsSupportedHeterPlace(const Place& place) {
   return phi::is_gpu_place(place) || phi::is_xpu_place(place) ||
          phi::is_ipu_place(place) || phi::is_custom_place(place);
 }
@@ -279,7 +279,7 @@ GetUnusedVars(const BlockDesc& block,
 }
 
 OpFuncType AnalyseOpFuncType(const OpFuncNode& op_func_node,
-                             const phi::Place& place) {
+                             const Place& place) {
   if (phi::is_cpu_place(place)) {
     return OpFuncType::kCpuSync;
   }
@@ -394,7 +394,7 @@ std::tuple<VariableValueMap, VariableIdMap> BuildVariableMap(
 }
 
 void ApplyDeviceGuard(const OperatorBase* op_base,
-                      const phi::Place& place,
+                      const Place& place,
                       OpKernelType* expected_kernel_key) {
   bool need_change_place =
       (op_base->HasAttr("op_device") &&
@@ -476,7 +476,7 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
 }
 
 phi::DeviceContext* ConstructDeviceContext(const OperatorBase* op,
-                                           const phi::Place& place) {
+                                           const Place& place) {
   auto& pool = phi::DeviceContextPool::Instance();
   auto* default_dev_ctx = pool.Get(place);
 
@@ -526,7 +526,7 @@ phi::DeviceContext* ConstructDeviceContext(const OperatorBase* op,
 }
 
 void HandleOperatorBase(
-    const phi::Place& place,
+    const Place& place,
     std::shared_ptr<OperatorBase> op,
     OpFuncNode* op_func_node,
     Scope* scope,
@@ -551,7 +551,7 @@ void HandleOperatorBase(
   op_func_node->dev_ctx_ = dev_ctx;
 }
 
-void BuildOpFuncList(const phi::Place& place,
+void BuildOpFuncList(const Place& place,
                      const framework::BlockDesc& block,
                      const std::set<std::string>& skip_gc_vars,
                      std::vector<OpFuncNode>* vec_func_list,
@@ -951,7 +951,7 @@ void BuildOpFuncList(const phi::Place& place,
 
             // avoid overwriting valid data
             if (static_build && original_tensor->initialized()) {
-              const phi::Place& target_place = transformed_tensor->place();
+              const Place& target_place = transformed_tensor->place();
               phi::DeviceContext* dev_ctx_for_copy = nullptr;
               if (target_place.GetType() != AllocationType::CPU) {
                 dev_ctx_for_copy = pool.Get(target_place);
@@ -1467,14 +1467,18 @@ const std::vector<std::string> GetInstructionCallStack(
     PADDLE_ENFORCE(
         attr.isa<pir::ArrayAttribute>(),
         common::errors::InvalidArgument(
-            "%s: Callstack attributes of %s is not ArrayAttribute type", type));
+            "%s: Callstack attributes of %s is not ArrayAttribute type",
+            type,
+            OpProtoAndCheckerMaker::OpCreationCallstackAttrName()));
     pir::ArrayAttribute array_attribute = attr.dyn_cast<pir::ArrayAttribute>();
     std::vector<pir::Attribute> vec_attr = array_attribute.AsVector();
     for (auto value : vec_attr) {
       PADDLE_ENFORCE(
           value.isa<pir::StrAttribute>(),
           common::errors::InvalidArgument(
-              "%s: Callstack attributes of %s is not StrAttribute type", type));
+              "%s: Callstack attributes of %s is not StrAttribute type",
+              type,
+              OpProtoAndCheckerMaker::OpCreationCallstackAttrName()));
       vec_str.emplace_back(value.dyn_cast<pir::StrAttribute>().AsString());
     }
   }

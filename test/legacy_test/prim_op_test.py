@@ -30,9 +30,9 @@ from paddle.base.framework import (
     OpProtoHolder,
     _dygraph_tracer,
     canonicalize_attrs,
+    datatype_to_vartype,
     in_dygraph_mode,
     in_pir_mode,
-    paddle_type_to_proto_type,
     use_pir_api,
 )
 from paddle.decomposition import decompose
@@ -164,7 +164,7 @@ class OpTestUtils:
                 isinstance(dtype, paddle.pir.core.DataType)
                 and target_dtype is core.VarDesc.VarType
             ):
-                return paddle_type_to_proto_type[dtype]
+                return datatype_to_vartype[dtype]
             return dtype
 
         # NOTE(xiongkun): the logic of constructing parameters:

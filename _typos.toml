@@ -51,3 +51,6 @@ tood = 'tood'
 UNEXPECT = 'UNEXPECT'
 unpacket = "unpacket"
 vaccum = 'vaccum'
+
+[default.extend-identifiers]
+NPY_ARRAY_WRITEABLE_ = "NPY_ARRAY_WRITEABLE_"

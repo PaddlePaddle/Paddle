@@ -22,7 +22,7 @@ namespace phi {
 
 struct CacheAllocator {
   typedef char value_type;
-  explicit CacheAllocator(phi::Place place) {
+  explicit CacheAllocator(Place place) {
     VLOG(2) << "construct allocator";
     place_ = place;
   }
@@ -49,10 +49,10 @@ struct CacheAllocator {
   }
 
  private:
-  typedef std::unordered_map<char*, std::shared_ptr<phi::Allocation>>
+  typedef std::unordered_map<char*, std::shared_ptr<Allocation>>
       allocation_map_type;
   allocation_map_type busy_allocation_;
-  phi::Place place_;
+  Place place_;
 };
 
 template <typename T, bool kIsForward>

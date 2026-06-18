@@ -43,14 +43,18 @@ inline DDim GetOutputSqueezeShape(const std::vector<int> squeeze_dims,
             common::errors::InvalidArgument(
                 "For 0D Tensor, Each axis in Attr(axes) should be in the range "
                 "of [-1, 0]"
-                "But current axis is:%d, input tensor's shape = [%s]."));
+                "But current axis is:%d, input tensor's shape = [%s].",
+                squeeze_dims[i],
+                in_dims));
         PADDLE_ENFORCE_LE(
             squeeze_dims[i],
             0,
             common::errors::InvalidArgument(
                 "For 0D Tensor, Each axis in Attr(axes) should be in the range "
                 "of [-1, 0]"
-                "But current axis is:%d, input tensor's shape = [%s]."));
+                "But current axis is:%d, input tensor's shape = [%s].",
+                squeeze_dims[i],
+                in_dims));
         continue;
       }
 
@@ -164,7 +168,7 @@ inline const DenseTensor Unsqueeze(const DenseTensor& x, int axis = 0) {
     auto index = (out_shape.end() + axis + 1);
     out_shape.insert(index, 1);
   }
-  out.Resize(make_ddim(out_shape));
+  out.Resize(out_shape);
   return out;
 }
 

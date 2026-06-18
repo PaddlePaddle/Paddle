@@ -18,6 +18,10 @@ if(WITH_XPU)
        device/xpu/xpu_profiler.cc)
 endif()
 
+if(WITH_IPU)
+  list(APPEND DEVICE_SRCS device/ipu/ipu_device.cc device/ipu/ipu_info.cc)
+endif()
+
 if(WITH_CUSTOM_DEVICE)
   list(APPEND DEVICE_SRCS device/custom/custom_device_resource_pool.cc)
 endif()

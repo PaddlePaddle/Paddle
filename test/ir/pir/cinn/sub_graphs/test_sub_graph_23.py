@@ -14,7 +14,7 @@
 
 # repo: PaddleClas
 # model: ppcls^configs^ImageNet^EfficientNet^EfficientNetB0
-# api:paddle.tensor.attribute.shape||method:__getitem__||api:paddle.tensor.random.rand||method:__radd__||api:paddle.tensor.ops.floor||api:paddle.tensor.math.multiply||method:__truediv__||api:paddle.tensor.math.add
+# api:paddle.tensor.attribute.shape||method:__getitem__||api:paddle.tensor.random.rand||method:__radd__||api:paddle.floor||api:paddle.tensor.math.multiply||method:__truediv__||api:paddle.tensor.math.add
 from base import *  # noqa: F403
 
 from paddle.static import InputSpec
@@ -32,7 +32,7 @@ class LayerCase(paddle.nn.Layer):
         var_3 = var_0.shape[0]
         var_4 = paddle.tensor.random.rand(shape=[var_3, 1, 1, 1])
         var_5 = 0.975 + var_4
-        var_6 = paddle.tensor.ops.floor(var_5)
+        var_6 = paddle.floor(var_5)
         var_7 = paddle.tensor.math.multiply(var_0, var_6)
         var_8 = var_7 / 0.975
         var_9 = paddle.tensor.math.add(var_8, var_1)

@@ -35,6 +35,7 @@ import paddle
 from paddle.dataset.common import _check_exists_and_download
 from paddle.io import Dataset
 from paddle.utils import try_import
+from paddle.utils.download import _safe_extract_tar
 
 __all__ = []
 
@@ -80,6 +81,7 @@ class Flowers(Dataset[tuple["_ImageDataType", "npt.NDArray[np.int64]"]]):
 
             >>> # doctest: +TIMEOUT(60)
             >>> import itertools
+            >>> import paddle
             >>> import paddle.vision.transforms as T
             >>> from paddle.vision.datasets import Flowers
 
@@ -114,7 +116,8 @@ class Flowers(Dataset[tuple["_ImageDataType", "npt.NDArray[np.int64]"]]):
 
             >>> for img, label in itertools.islice(iter(flowers_test), 5):  # only show first 5 images
             ...     # do something with img and label
-            ...     print(type(img), img.shape, label)  # type: ignore
+            ...     assert isinstance(img, paddle.Tensor)
+            ...     print(type(img), img.shape, label)
             ...     # <class 'paddle.Tensor'> [3, 64, 96] [1]
     """
 
@@ -183,7 +186,7 @@ class Flowers(Dataset[tuple["_ImageDataType", "npt.NDArray[np.int64]"]]):
             os.mkdir(self.data_path)
         jpg_path = os.path.join(self.data_path, "jpg")
         if not os.path.exists(jpg_path):
-            data_tar.extractall(self.data_path)
+            _safe_extract_tar(data_tar, self.data_path, on_unsafe='raise')
 
         scio = try_import('scipy.io')
         self.labels = scio.loadmat(label_file)['labels'][0]

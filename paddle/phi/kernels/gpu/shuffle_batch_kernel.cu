@@ -78,8 +78,8 @@ void ShuffleBatchKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_CUDA
   // CacheAllocator allocator(dev_ctx.GetPlace());
-  phi::memory_utils::ThrustAllocator<cudaStream_t> allocator(dev_ctx.GetPlace(),
-                                                             dev_ctx.stream());
+  memory_utils::ThrustAllocator<cudaStream_t> allocator(dev_ctx.GetPlace(),
+                                                        dev_ctx.stream());
   const auto& exec_policy = thrust::cuda::par(allocator).on(dev_ctx.stream());
 #else
   const auto& exec_policy = thrust::hip::par.on(dev_ctx.stream());

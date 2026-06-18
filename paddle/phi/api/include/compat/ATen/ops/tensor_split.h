@@ -119,7 +119,7 @@ inline std::vector<at::Tensor> tensor_split_symint(const at::Tensor& self,
                                                    int64_t dim = 0) {
   return tensor_split(
       self,
-      at::IntArrayRef(static_cast<const int64_t*>(indices.data()),
+      at::IntArrayRef(reinterpret_cast<const int64_t*>(indices.data()),
                       indices.size()),
       dim);
 }

@@ -78,7 +78,7 @@ void BroadcastTensorsGradKernel(const Context& dev_ctx,
       num_ins,
       1,
       errors::InvalidArgument(
-          "Expected at least 2 input tensors, but only received d%.",
+          "Expected at least 2 input tensors, but only received %d.",
           in_tensors.size()));
 
   PADDLE_ENFORCE_EQ(num_ins,

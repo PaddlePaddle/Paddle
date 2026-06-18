@@ -114,7 +114,7 @@ struct DequantizeFunctor<GPUContext, T> {
   }
 };
 
-template struct DequantizeFunctor<GPUContext, phi::float16>;
+template struct DequantizeFunctor<GPUContext, float16>;
 template struct DequantizeFunctor<GPUContext, float>;
 template struct DequantizeFunctor<GPUContext, double>;
 template struct ChannelDequantizeFunctorV2<GPUContext, float16>;

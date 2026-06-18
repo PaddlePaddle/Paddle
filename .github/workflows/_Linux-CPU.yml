@@ -63,7 +63,7 @@ jobs:
           WITH_DISTRIBUTE: "ON"
           PREC_SUFFIX: .py3
           WITH_UNITY_BUILD: "ON"
-          PY_VERSION: 3.9
+          PY_VERSION: "3.10"
           PROC_RUN: 12
           FLAGS_enable_eager_mode: 1
           WITH_TENSORRT: "OFF"
@@ -172,7 +172,7 @@ jobs:
         env:
           home_path: ${{ github.workspace }}/..
           bos_file: ${{ github.workspace }}/../bos/BosClient.py
-          paddle_whl: paddlepaddle-0.0.0-cp39-cp39-linux_x86_64.whl
+          paddle_whl: paddlepaddle-0.0.0-cp310-cp310-linux_x86_64.whl
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           echo "::group::Install bce-python-sdk"
@@ -189,7 +189,7 @@ jobs:
           cd dist
           echo "Uploading paddle_whl to bos"
           source ${{ github.workspace }}/../../../unproxy
-          python3.9 ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/cpu_whl/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
+          python3.10 ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/cpu_whl/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
           '
 
       - name: Terminate and delete the container

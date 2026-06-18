@@ -50,7 +50,7 @@ __global__ void SparseAdamCUDAKernelREG(MT beta1,
                                         MT* mom2_out_,
                                         const MT* mom2_max_,
                                         MT* mom2_max_out_,
-                                        const MT* lr_,
+                                        const double* lr_,
                                         const T* grad_,
                                         const T* param_,
                                         T* param_out_,
@@ -65,7 +65,7 @@ __global__ void SparseAdamCUDAKernelREG(MT beta1,
   int64_t id =
       static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
       static_cast<int64_t>(threadIdx.x);
-  MT lr = *lr_;
+  MT lr = static_cast<MT>(*lr_);
 
   for (; id < ndim; id += blockDim.x * gridDim.x) {
     auto row_idx =
@@ -254,7 +254,7 @@ void AdamDenseParamSparseGradKernel(const Context& dev_ctx,
             dev_ctx.template Alloc<MT>(moment2_out),
             moment2_max_in_data,
             moment2_max_out_data,
-            learning_rate.data<MT>(),
+            learning_rate.data<double>(),
             grad_data,
             param.data<T>(),
             dev_ctx.template Alloc<T>(param_out),
@@ -286,7 +286,7 @@ void AdamDenseParamSparseGradKernel(const Context& dev_ctx,
         dev_ctx.template Alloc<MT>(moment2_out),
         moment2_max_in_data,
         moment2_max_out_data,
-        learning_rate.data<MT>(),
+        learning_rate.data<double>(),
         grad_data,
         param.data<T>(),
         dev_ctx.template Alloc<T>(param_out),

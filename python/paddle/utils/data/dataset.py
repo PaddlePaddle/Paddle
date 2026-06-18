@@ -18,5 +18,6 @@ from paddle.io import (
     Dataset as Dataset,
     IterableDataset as IterableDataset,
     Subset as Subset,
+    TensorDataset as TensorDataset,
     random_split as random_split,
 )

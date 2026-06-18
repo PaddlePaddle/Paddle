@@ -378,7 +378,7 @@ inline IdxVec ensure_nonempty_vec(IdxVec vec) {
 
 inline DDim ensure_nonempty_ddim(DDim dim) {
   if (dim.size() == 0) {
-    return phi::make_ddim({1});
+    return make_ddim({1});
   }
   return dim;
 }
@@ -389,7 +389,7 @@ inline DenseTensor as_strided(const DenseTensor& src,
   DenseTensor out;
   out.ShareDataWith(src);
   out.Resize(shape);
-  out.set_strides(phi::make_ddim(strides));
+  out.set_strides(make_ddim(strides));
   return out;
 }
 

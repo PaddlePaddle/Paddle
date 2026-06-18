@@ -155,7 +155,7 @@ class CoordinateManager {
     if (change_dim != src_dim) offset1 += strides1[change_dim];
     if constexpr (compute_both) offset2 += strides2->operator[](change_dim);
     for (int dim = change_dim + 1; dim < ndim; dim++) {
-      int dim_max_index = shape[dim] - 1;
+      int64_t dim_max_index = shape[dim] - 1;
       // clear the tail elements after the carrying dim
       if constexpr (compute_both)
         offset2 -= strides2->operator[](dim) * dim_max_index;
@@ -234,7 +234,7 @@ class ReversedCoordinateManager {
     if (change_dim != src_dim) offset1 -= strides1[change_dim];
     if constexpr (compute_both) offset2 -= strides2->operator[](change_dim);
     for (int dim = change_dim + 1; dim < ndim; dim++) {
-      int dim_max_index = shape[dim] - 1;
+      int64_t dim_max_index = shape[dim] - 1;
       // clear the tail elements after the carrying dim
       if constexpr (compute_both)
         offset2 += strides2->operator[](dim) * dim_max_index;
@@ -279,11 +279,11 @@ struct cpu_gather_scatter_functor {
           "self_size, src_size, index_size cannot be 0");
       return;
     }
-    int self_select_dim_size = self_dims[dim];
-    int src_select_dim_size = src_dims[dim];
+    int64_t self_select_dim_size = self_dims[dim];
+    int64_t src_select_dim_size = src_dims[dim];
 
     // gather and assign do not need nums_of_elements
-    std::vector<int> nums_of_elements;
+    std::vector<int64_t> nums_of_elements;
     if (!is_gather_or_scatter_assign) nums_of_elements.resize(self.numel(), 0);
 
     const int ndim = index.dims().size();
@@ -345,7 +345,7 @@ struct cpu_gather_scatter_functor {
 
     if (method_name == "mean") {
       if (include_self) {
-        for (int i = 0; i < self_size; i++) {
+        for (int64_t i = 0; i < self_size; i++) {
           if (!nums_of_elements[i]) continue;
           if constexpr (std::is_integral_v<std::decay_t<tensor_t>>) {
             self_data[i] = IntFloorDiv(
@@ -356,7 +356,7 @@ struct cpu_gather_scatter_functor {
           }
         }
       } else {
-        for (int i = 0; i < self_size; i++) {
+        for (int64_t i = 0; i < self_size; i++) {
           if (!nums_of_elements[i]) continue;
           if constexpr (std::is_integral_v<std::decay_t<tensor_t>>) {
             self_data[i] = IntFloorDiv(
@@ -516,9 +516,14 @@ void cpu_scatter_mul_min_max_input_grad_kernel(DenseTensor self UNUSED,
     cm.CalculateOffset(index);
     int64_t replace_index_grad = cm.offset1;
     if (is_mul && num_elements[replace_index_grad] == 0) {
-      grad_data[replace_index_grad] = static_cast<tensor_t>(
-          grad_data[replace_index_grad] * out_data[replace_index_grad] /
-          x_data[replace_index_grad]);
+      if (x_data[replace_index_grad] != static_cast<tensor_t>(0)) {
+        tensor_t val = grad_data[replace_index_grad];
+        val *= out_data[replace_index_grad];
+        val /= x_data[replace_index_grad];
+        grad_data[replace_index_grad] = static_cast<tensor_t>(val);
+      } else {
+        grad_data[replace_index_grad] = static_cast<tensor_t>(0);
+      }
       num_elements[replace_index_grad] += 1;
     } else if (!is_mul) {
       if (out_data[replace_index_grad] != x_data[replace_index_grad]) {
@@ -686,9 +691,13 @@ void cpu_scatter_mul_min_max_value_grad_kernel(DenseTensor self,
           out_data[replace_index_self] == value_data[replace_index_grad]) {
         num_elements[replace_index_self] += 1;
       } else if (!is_min_max) {
-        grad_data[replace_index_grad] =
-            self_data[replace_index_self] *
-            (out_data[replace_index_self] / value_data[replace_index_grad]);
+        if (value_data[replace_index_grad] != static_cast<tensor_t>(0)) {
+          grad_data[replace_index_grad] =
+              self_data[replace_index_self] *
+              (out_data[replace_index_self] / value_data[replace_index_grad]);
+        } else {
+          grad_data[replace_index_grad] = static_cast<tensor_t>(0);
+        }
       }
     }
   }

@@ -35,28 +35,28 @@ void CrossEntropy(const CPUContext& dev_ctx,
                   DenseTensor* out) {
   const int rank = x.dims().size();
   const int axis_v = funcs::CanonicalAxis(axis, rank);
-  int axis_dim = static_cast<int>(x.dims()[axis_v]);
+  const int64_t axis_dim = x.dims()[axis_v];
 
   PADDLE_ENFORCE_GT(
       axis_dim,
       0,
       common::errors::InvalidArgument(
           "The axis dimension should be larger than 0, but received "
-          "axis dimension is %d.",
+          "axis dimension is %ld.",
           axis_dim));
 
   dev_ctx.template Alloc<T>(out);
 
-  const int n = funcs::SizeToAxis(axis_v, x.dims());
+  const int64_t n = funcs::SizeToAxis(axis_v, x.dims());
   PADDLE_ENFORCE_GT(
       n,
       0,
       common::errors::InvalidArgument(
           "The size of axis should be larger than 0, but received "
-          "SizeToAxis of softmax is %d.",
+          "SizeToAxis of softmax is %ld.",
           n));
 
-  const int d = funcs::SizeFromAxis(axis_v, x.dims());
+  const int64_t d = funcs::SizeFromAxis(axis_v, x.dims());
 
   DenseTensor x_2d(x);
   x_2d.Resize({n, d});

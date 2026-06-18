@@ -16,6 +16,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import numpy as np
+
 import paddle
 from paddle.utils.decorator_utils import param_one_alias
 
@@ -25,6 +27,7 @@ from ..base.core import (
     VarDesc,
     finfo as core_finfo,
     iinfo as core_iinfo,
+    size_of_dtype,
 )
 
 if TYPE_CHECKING:
@@ -64,6 +67,10 @@ def bind_vartype():
     dtype = VarDesc.VarType
     dtype.__qualname__ = "dtype"
     dtype.__module__ = "paddle"
+    dtype.itemsize = property(
+        lambda self: size_of_dtype(self),
+        doc="The size in bytes of a single scalar value of this dtype.",
+    )
 
     uint8 = VarDesc.VarType.UINT8
     uint16 = VarDesc.VarType.UINT16
@@ -161,6 +168,10 @@ def bind_datatype():
     dtype = DataType
     dtype.__qualname__ = "dtype"
     dtype.__module__ = "paddle"
+    dtype.itemsize = property(
+        lambda self: size_of_dtype(self),
+        doc="The size in bytes of a single scalar value of this dtype.",
+    )
 
     uint8 = DataType.UINT8
     uint16 = DataType.UINT16
@@ -245,7 +256,8 @@ def iinfo(dtype: DTypeLike) -> core_iinfo:
     This is similar to `numpy.iinfo <https://numpy.org/doc/stable/reference/generated/numpy.iinfo.html#numpy-iinfo>`_.
 
     Args:
-        dtype(str|paddle.dtype|np.dtype):  One of paddle.uint8, paddle.int8, paddle.int16, paddle.int32, and paddle.int64. Alias: ``type``.
+        dtype(str|paddle.dtype|np.dtype):  One of paddle.uint8, paddle.uint16, paddle.uint32, paddle.uint64,
+            paddle.int8, paddle.int16, paddle.int32, and paddle.int64. Alias: ``type``.
 
     Returns:
         An iinfo object, which has the following 4 attributes:
@@ -273,12 +285,19 @@ def iinfo(dtype: DTypeLike) -> core_iinfo:
             uint8
 
     """
-    import paddle
-
-    if isinstance(dtype, paddle.core.VarDesc.VarType):
-        dtype = paddle.pir.core.vartype_to_datatype[dtype]
-    elif not isinstance(dtype, paddle.pir.core.DataType):
-        dtype = paddle.pir.core.convert_np_dtype_to_dtype_(dtype)
+    if isinstance(dtype, str):
+        if dtype.lower().strip() == "uint16":
+            dtype = DataType.UINT16
+        else:
+            dtype = framework.convert_to_datatype(dtype)
+    elif not isinstance(dtype, (DataType, VarDesc.VarType)):
+        np_dtype = np.dtype(dtype)
+        if np_dtype == np.dtype("uint16"):
+            dtype = DataType.UINT16
+        else:
+            dtype = framework.convert_to_datatype(np_dtype)
+    else:
+        dtype = framework.convert_to_datatype(dtype)
     return core_iinfo(dtype)
 
 
@@ -335,10 +354,5 @@ def finfo(dtype: DTypeLike) -> core_finfo:
             float32
 
     """
-    import paddle
-
-    if isinstance(dtype, paddle.core.VarDesc.VarType):
-        dtype = paddle.pir.core.vartype_to_datatype[dtype]
-    elif not isinstance(dtype, paddle.pir.core.DataType):
-        dtype = paddle.pir.core.convert_np_dtype_to_dtype_(dtype)
+    dtype = framework.convert_to_datatype(dtype)
     return core_finfo(dtype)

@@ -125,8 +125,8 @@ PADDLE_API void AdamDenseKernel(const Context& dev_ctx,
   T* mom2_max_out_ptr =
       amsgrad ? dev_ctx.template Alloc<T>(moment2_max_out) : nullptr;
 
-  T learning_rate_ =
-      learning_rate.data<T>()[0] * (sqrt(1 - beta2_p) / (1 - beta1_p));
+  T learning_rate_ = static_cast<T>(learning_rate.data<double>()[0]) *
+                     (sqrt(1 - beta2_p) / (1 - beta1_p));
   T eps = epsilon_ * sqrt(1 - beta2_p);
 
   jit::adam_attr_t attr(beta1_, beta2_, amsgrad);
@@ -276,6 +276,7 @@ void MergedAdamKernel(
     T* mom2_max_out_data =
         amsgrad ? dev_ctx.template Alloc<T>(moment2_max_out[idx]) : nullptr;
 
+    const T lr_val = static_cast<T>(learning_rate[idx]->data<double>()[0]);
     funcs::AdamFunctor<T, funcs::CPUAdam> functor(
         beta1_,
         beta2_,
@@ -288,7 +289,7 @@ void MergedAdamKernel(
         dev_ctx.template Alloc<T>(moment2_out[idx]),
         mom2_max_in_data,
         mom2_max_out_data,
-        learning_rate[idx]->data<T>(),
+        &lr_val,
         grad[idx]->data<T>(),
         param[idx]->data<T>(),
         dev_ctx.template Alloc<T>(param_out[idx]),
@@ -306,7 +307,10 @@ void MergedAdamKernel(
 }  // namespace phi
 
 PD_REGISTER_KERNEL(adam, CPU, ALL_LAYOUT, phi::AdamDenseKernel, float, double) {
+  kernel->InputAt(2).SetDataType(phi::DataType::FLOAT64);
 }
 
 PD_REGISTER_KERNEL(
-    merged_adam, CPU, ALL_LAYOUT, phi::MergedAdamKernel, float, double) {}
+    merged_adam, CPU, ALL_LAYOUT, phi::MergedAdamKernel, float, double) {
+  kernel->InputAt(2).SetDataType(phi::DataType::FLOAT64);
+}

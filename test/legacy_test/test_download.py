@@ -13,9 +13,15 @@
 # limitations under the License.
 
 import os
+import tempfile
 import unittest
+import zipfile
 
-from paddle.utils.download import get_path_from_url, get_weights_path_from_url
+from paddle.utils.download import (
+    _safe_extract_zip,
+    get_path_from_url,
+    get_weights_path_from_url,
+)
 
 
 class TestDownload(unittest.TestCase):
@@ -138,6 +144,25 @@ class TestDownload(unittest.TestCase):
                     url,
                     path='./test',
                     method=method,
+                )
+
+
+class TestSafeExtractZip(unittest.TestCase):
+    def test_path_traversal_error_message(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zip_path = os.path.join(tmpdir, "unsafe.zip")
+            extract_dir = os.path.join(tmpdir, "extract")
+
+            with zipfile.ZipFile(zip_path, "w") as archive:
+                archive.writestr("../evil.txt", "unsafe")
+
+            with zipfile.ZipFile(zip_path) as archive:
+                with self.assertRaises(ValueError) as cm:
+                    _safe_extract_zip(archive, extract_dir)
+
+                self.assertEqual(
+                    str(cm.exception),
+                    "Attempted path traversal in zip file: ../evil.txt",
                 )
 
 

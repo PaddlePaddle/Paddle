@@ -46,8 +46,10 @@ class XPUTestAssignValueOp(XPUOpTestWrapper):
             self.attrs = {}
             self.init_data()
             self.attrs["shape"] = self.value.shape
-            self.attrs["dtype"] = framework.convert_np_dtype_to_dtype_(
-                self.value.dtype
+            self.attrs["dtype"] = (
+                framework.convert_nptype_to_datatype_or_vartype(
+                    self.value.dtype
+                )
             )
             self.outputs = {"Out": self.value}
 

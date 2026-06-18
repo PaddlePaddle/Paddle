@@ -74,7 +74,7 @@ static bool IsNumpyArray(PyObject* obj) {
 }
 
 void InitTensorWithNumpyValue(const py::object& array,
-                              const phi::Place& place,
+                              const Place& place,
                               Tensor* self,
                               bool zero_copy = false) {
   PADDLE_ENFORCE_EQ(
@@ -143,7 +143,7 @@ std::set<DataType> _complex_dtypes{
 //     '__eq__',
 //     '__ne__'
 
-void SetDevice(phi::Place place) {
+void SetDevice(Place place) {
   if (phi::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     phi::backends::gpu::SetDeviceId(place.device);

@@ -23,8 +23,9 @@
 #include "ln_kernel_traits.h"  // NOLINT
 #include "ln_utils.h"          // NOLINT
 
-using namespace layer_norm;  // NOLINT
+using namespace phi::layer_norm;  // NOLINT
 
+namespace phi {
 template <typename weight_t,
           typename input_t,
           typename output_t,
@@ -272,3 +273,4 @@ REGISTER_BWD_LAUNCHER(65536, fp16, fp32, fp16, fp32, 8, 1, 8, 16, 4);
 REGISTER_BWD_LAUNCHER(65536, bf16, bf16, bf16, fp32, 8, 1, 8, 16, 4);
 REGISTER_BWD_LAUNCHER(65536, bf16, fp32, bf16, fp32, 8, 1, 8, 16, 4);
 #endif  // (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700)
+}  // namespace phi

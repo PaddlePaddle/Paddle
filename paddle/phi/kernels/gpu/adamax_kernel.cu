@@ -84,7 +84,7 @@ void AdamaxKernel(const Context& dev_ctx,
                   DenseTensor* moment_out,
                   DenseTensor* inf_norm_out,
                   DenseTensor* master_param_outs) {
-  using MT = typename phi::dtype::template MPTypeTrait<T>::Type;
+  using MT = typename dtype::template MPTypeTrait<T>::Type;
   T* param_out_data = dev_ctx.template Alloc<T>(param_out);
   MT* moment_out_data = dev_ctx.template Alloc<MT>(moment_out);
   MT* inf_norm_out_data = dev_ctx.template Alloc<MT>(inf_norm_out);
@@ -104,7 +104,7 @@ void AdamaxKernel(const Context& dev_ctx,
   MT epsilon_ = static_cast<MT>(epsilon);
 
   int64_t numel = param.numel();
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, 1);
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, 1);
   int grid = config.block_per_grid.x;
   int block = config.thread_per_block.x;
   auto stream = dev_ctx.stream();

@@ -1,4 +1,7 @@
 include(ExternalProject)
+include(${PROJECT_SOURCE_DIR}/cmake/architecture.cmake)
+
+paddle_normalize_target_arch(PADDLE_TARGET_ARCH)
 
 # isl https://github.com/inducer/ISL
 # commit-id 6a1760fe46967cda2a06387793a6b7d4a0876581
@@ -7,17 +10,30 @@ include(ExternalProject)
 # static build
 # CPPFLAGS="-fPIC -DPIC" ./configure --with-gmp-prefix=<gmp-install-path> --with-clang-prefix=<llvm-install-path> --enable-shared=no --enable-static=yes
 
-set(ISL_FILE
-    "isl-6a1760fe.tar.gz"
-    CACHE STRING "" FORCE)
-set(ISL_DOWNLOAD_URL
-    "https://paddle-inference-dist.bj.bcebos.com/CINN/${ISL_FILE}")
-set(ISL_URL_MD5 fff10083fb79d394b8a7b7b2089f6183)
+if(PADDLE_TARGET_ARCH STREQUAL "aarch64")
+  set(ISL_FILE
+      "isl-0.26-aarch64.tar.gz"
+      CACHE STRING "" FORCE)
+  set(ISL_DOWNLOAD_URL
+      "https://paddle-inference-dist.cdn.bcebos.com/CINN/${ISL_FILE}"
+      CACHE STRING "ARM ISL package URL")
+  set(ISL_URL_MD5
+      "092950d5944cbe8163413c740f0c611e"
+      CACHE STRING "ARM ISL package MD5")
+else()
+  set(ISL_FILE
+      "isl-6a1760fe.tar.gz"
+      CACHE STRING "" FORCE)
+  set(ISL_DOWNLOAD_URL
+      "https://paddle-inference-dist.bj.bcebos.com/CINN/${ISL_FILE}")
+  set(ISL_URL_MD5 fff10083fb79d394b8a7b7b2089f6183)
+endif()
 set(ISL_DOWNLOAD_DIR ${PADDLE_SOURCE_DIR}/third_party/isl)
 set(ISL_PREFIX_DIR ${THIRD_PARTY_PATH}/isl)
 set(ISL_INSTALL_DIR ${THIRD_PARTY_PATH}/install/isl)
 
 function(download_isl)
+  file(MAKE_DIRECTORY "${ISL_DOWNLOAD_DIR}")
   message(
     STATUS "Downloading ${ISL_DOWNLOAD_URL} to ${ISL_DOWNLOAD_DIR}/${ISL_FILE}")
   file(
@@ -36,9 +52,8 @@ endfunction()
 
 # Download and check isl.
 if(EXISTS ${ISL_DOWNLOAD_DIR}/${ISL_FILE})
-  file(MD5 ${ISL_DOWNLOAD_DIR}/${ISL_FILE} ISL_MD5)
-  if(NOT ISL_MD5 STREQUAL ISL_URL_MD5)
-    # clean build file
+  file(MD5 ${ISL_DOWNLOAD_DIR}/${ISL_FILE} ISL_HASH)
+  if(NOT ISL_HASH STREQUAL ISL_URL_MD5)
     file(REMOVE_RECURSE ${ISL_PREFIX_DIR})
     file(REMOVE_RECURSE ${ISL_INSTALL_DIR})
     download_isl()

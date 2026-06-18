@@ -19,7 +19,7 @@ import json
 import os
 import socket
 from enum import Enum
-from typing import TYPE_CHECKING, Callable, Literal
+from typing import TYPE_CHECKING, Literal
 from warnings import warn
 
 import paddle
@@ -44,7 +44,7 @@ from .timer import benchmark
 from .utils import RecordEvent, wrap_optimizers
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Callable, Iterable
     from types import TracebackType
 
     from typing_extensions import Self
@@ -442,7 +442,7 @@ class Profiler:
                 ...
                 ...     def __getitem__(self, idx):
                 ...         image = paddle.rand(shape=[100], dtype='float32')
-                ...         label = paddle.randint(0, 10, shape=[1], dtype='int64')
+                ...         label = paddle.randint(0, 10, size=[1], dtype='int64')
                 ...         return image, label
                 ...
                 ...     def __len__(self):

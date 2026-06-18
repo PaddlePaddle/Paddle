@@ -22,12 +22,12 @@ namespace phi {
 template <typename T, typename Context>
 PADDLE_API void GaussianKernel(const Context& dev_ctx,
                                const IntArray& shape,
-                               float mean,
-                               float std,
+                               double mean,
+                               double std,
                                int seed,
                                DataType dtype,
                                DenseTensor* out) {
-  out->Resize(make_ddim(shape.GetData()));
+  out->Resize(shape.GetData());
   int64_t size = out->numel();
   T* data = dev_ctx.template Alloc<T>(out);
   std::shared_ptr<std::mt19937_64> engine;
@@ -37,7 +37,8 @@ PADDLE_API void GaussianKernel(const Context& dev_ctx,
   } else {
     engine = dev_ctx.GetGenerator()->GetCPUEngine();
   }
-  NormalDistribution<T>(data, size, mean, std, engine);
+  NormalDistribution<T>(
+      data, size, static_cast<float>(mean), static_cast<float>(std), engine);
 }
 
 template <typename T, typename Context>

@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/im2col.h"
@@ -102,8 +103,8 @@ class ContextProjectFunctor {
     std::vector<int> stride({context_stride, 1});
 
     int input_row_begin, input_row_end;
-    int sequence_height, sequence_width;
-    sequence_width = in.dims()[1];
+    int sequence_height;
+    int64_t sequence_width = in.dims()[1];
 
     for (int i = 0; i < static_cast<int>(lod_level_0.size()) - 1; ++i) {
       if (lod_level_0[i] == lod_level_0[i + 1]) continue;
@@ -128,13 +129,13 @@ class ContextProjectFunctor {
              context_length,
              sequence_width});  // output_height, output_width,
         // input_channels, filter_height, filter_width
-        out_t.Resize(make_ddim(output_shape));
+        out_t.Resize(output_shape);
 
         std::vector<int64_t> input_shape(
             {1,
              input_row_end - input_row_begin,
              sequence_width});  // input_channels, input_height, input_width
-        in_t.Resize(make_ddim(input_shape));
+        in_t.Resize(input_shape);
         im2col_ocf(dev_ctx, in_t, dilation, stride, padding, &out_t);
         out_t.Resize({sequence_height, context_length * sequence_width});
       }
@@ -231,8 +232,8 @@ class ContextProjectGradFunctor {
     std::vector<int> stride({context_stride, 1});
 
     int input_row_begin, input_row_end;
-    int sequence_height, sequence_width;
-    sequence_width = in.dims()[1];
+    int sequence_height;
+    int64_t sequence_width = in.dims()[1];
     auto blas = funcs::GetBlas<DeviceContext, T>(dev_ctx);
 
     if (input_grad) {
@@ -259,13 +260,13 @@ class ContextProjectGradFunctor {
                context_length,
                sequence_width});  // output_height, output_width,
           // input_channels, filter_height, filter_width
-          out_t.Resize(make_ddim(output_shape));
+          out_t.Resize(output_shape);
 
           std::vector<int64_t> input_shape(
               {1,
                input_row_end - input_row_begin,
                sequence_width});  // input_channels, input_height, input_width
-          in_t.Resize(make_ddim(input_shape));
+          in_t.Resize(input_shape);
 
           col2im_ocf(dev_ctx, out_t, dilation, stride, padding, &in_t);
           out_t.Resize({sequence_height, context_length * sequence_width});
@@ -294,7 +295,9 @@ class ContextProjectGradFunctor {
               DenseTensor out_t_sub = out_t.Slice(
                   k * context_length, k * context_length + padding_size);
               DenseTensor w_sub = padding_data->Slice(k, k + padding_size);
-              blas.AXPY(w_sub.numel(),
+              PADDLE_ENFORCE_LE_INT_MAX(w_sub.numel(),
+                                        "context_project AXPY size");
+              blas.AXPY(static_cast<int>(w_sub.numel()),
                         static_cast<T>(1),
                         out_t_sub.data<T>(),
                         w_sub.data<T>());
@@ -328,7 +331,9 @@ class ContextProjectGradFunctor {
                   (down_pad_begin_row + t) * context_length);
               DenseTensor w_sub = padding_data->Slice(
                   up_pad + padding_idx, up_pad + padding_idx + padding_size);
-              blas.AXPY(w_sub.numel(),
+              PADDLE_ENFORCE_LE_INT_MAX(w_sub.numel(),
+                                        "context_project AXPY size");
+              blas.AXPY(static_cast<int>(w_sub.numel()),
                         static_cast<T>(1),
                         out_t_sub.data<T>(),
                         w_sub.data<T>());

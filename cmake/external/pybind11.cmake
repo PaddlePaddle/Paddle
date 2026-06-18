@@ -23,20 +23,22 @@ set(SOURCE_INCLUDE_DIR ${SOURCE_DIR}/include)
 include_directories(${PYBIND_INCLUDE_DIR})
 
 # It can be safely removed in gcc9.1+
+set(PYBIND_PREPARE_COMMAND "")
 set(PYBIND_PATCH_COMMAND "")
 if(LINUX
    AND (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
    AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
-  set(PYBIND_TAG v2.13.6)
+  set(PYBIND_TAG v3.0.4)
   file(TO_NATIVE_PATH
        ${PADDLE_SOURCE_DIR}/patches/pybind/detail/internals.h.patch native_dst)
-  # Note: [Why calling some `git` commands before `patch`?]
-  # Paddle's CI uses cache to accelerate the make process. However, error might raise when patch codes in two scenarios:
-  # 1. Patch to the wrong version: the tag version of CI's cache falls behind PYBIND_TAG, use `git checkout ${PYBIND_TAG}` to solve this.
-  # 2. Patch twice: the tag version of cache == PYBIND_TAG, but patch has already applied to cache.
-  set(PYBIND_PATCH_COMMAND
-      git checkout -- . && git checkout ${PYBIND_TAG} && patch -Nd
-      ${SOURCE_INCLUDE_DIR}/pybind11/detail < ${native_dst})
+  # Note: [Why calling some `git` commands before copying?]
+  # Paddle's CI uses cache to accelerate the make process. The cached submodule
+  # may be on an older tag or may have been patched by a previous build, so
+  # reset it to PYBIND_TAG before copying the include tree.
+  set(PYBIND_PREPARE_COMMAND git checkout -- . && git clean -fd && git checkout
+                             ${PYBIND_TAG})
+  set(PYBIND_PATCH_COMMAND COMMAND patch -N -p1 -d ${PYBIND_SOURCE_DIR} -i
+                           ${native_dst})
 endif()
 
 ExternalProject_Add(
@@ -50,7 +52,7 @@ ExternalProject_Add(
   # third-party library version changes cannot be incorporated.
   # reference: https://cmake.org/cmake/help/latest/module/ExternalProject.html
   UPDATE_COMMAND ""
-  PATCH_COMMAND ${PYBIND_PATCH_COMMAND}
+  PATCH_COMMAND ${PYBIND_PREPARE_COMMAND}
   CONFIGURE_COMMAND ""
   # I intentionally preserved an extern_pybind/include/pybind11 directory
   # to site-packages, so that you could discern that you intended to
@@ -59,7 +61,7 @@ ExternalProject_Add(
   COMMAND ${CMAKE_COMMAND} -E remove_directory ${PYBIND_SOURCE_DIR}
   COMMAND ${CMAKE_COMMAND} -E make_directory ${PYBIND_SOURCE_DIR}
   COMMAND ${CMAKE_COMMAND} -E copy_directory ${SOURCE_INCLUDE_DIR}
-          ${PYBIND_INCLUDE_DIR}
+          ${PYBIND_INCLUDE_DIR} ${PYBIND_PATCH_COMMAND}
   INSTALL_COMMAND ""
   TEST_COMMAND "")
 

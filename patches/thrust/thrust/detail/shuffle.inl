@@ -19,8 +19,9 @@
  */
 
 #include <thrust/detail/config.h>
-#include <thrust/detail/cpp11_required.h>
 
+// Note: ROCm 7.0+ rocThrust removed cpp11_required.h
+// The cpp dialect check is now handled by config/cpp_dialect.h which is included via config.h
 #if THRUST_CPP_DIALECT >= 2011
 
 #include <thrust/iterator/iterator_traits.h>

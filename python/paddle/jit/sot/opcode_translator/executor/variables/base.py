@@ -20,7 +20,7 @@ from contextlib import contextmanager
 from dataclasses import fields
 from functools import cached_property
 from queue import Queue
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from typing import TYPE_CHECKING, Any
 
 import paddle
 from paddle.jit.dy2static.utils import (
@@ -56,7 +56,8 @@ from ..tracker import (
 )
 
 if TYPE_CHECKING:
-    from typing_extensions import TypeAlias
+    from collections.abc import Callable
+    from typing import TypeAlias
 
     from ..function_graph import FunctionGraph
     from ..pycode_generator import PyCodeGen
@@ -64,7 +65,7 @@ if TYPE_CHECKING:
     # Each variable object should implement a method called `from_value`,
     # which should adhere to the FromValueFunc signature.
     FromValueFunc: TypeAlias = Callable[
-        [Any, FunctionGraph, Tracker], Optional["VariableBase"]
+        [Any, FunctionGraph, Tracker], "VariableBase | None"
     ]
 
 

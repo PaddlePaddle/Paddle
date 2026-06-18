@@ -193,7 +193,7 @@ class OptimizerWithMixedPrecision:
                 self._optimizer._learning_rate_map[
                     paddle.static.default_main_program()
                 ] = paddle.pir.core.create_persistable_value(
-                    dtype='float32',
+                    dtype=self._optimizer.get_lr_dtype(),
                     shape=[1],
                     name=unique_name.generate("learning_rate"),
                     initializer=paddle.nn.initializer.ConstantInitializer(
@@ -227,15 +227,16 @@ class OptimizerWithMixedPrecision:
                 persistable=True,
             )
 
-        # Ensure the data type of learning rate vars is float32 (same as the
-        # master parameter dtype)
+        # Ensure the data type of learning rate vars matches the optimizer's
+        # preferred dtype (e.g. float64 for AdamW, float32 for others).
         if isinstance(self._optimizer._learning_rate, float):
+            _lr_dtype = self._optimizer.get_lr_dtype()
             self._optimizer._learning_rate_map[default_main_program()] = (
                 paddle.static.create_global_var(
                     name=unique_name.generate("learning_rate"),
                     shape=[1],
                     value=float(self._optimizer._learning_rate),
-                    dtype='float32',
+                    dtype=_lr_dtype,
                     persistable=True,
                 )
             )

@@ -14,7 +14,7 @@
 
 # repo: PaddleClas
 # model: ppcls^configs^ImageNet^ResNeSt^ResNeSt50_fast_1s1x64d
-# api:paddle.tensor.ops.sigmoid
+# api:paddle.sigmoid
 from base import *  # noqa: F403
 
 from paddle.static import InputSpec
@@ -28,7 +28,7 @@ class SigmoidCase(paddle.nn.Layer):
         self,
         var_0,  # (shape: [10, 512, 1, 1], dtype: paddle.float32, stop_gradient: False)
     ):
-        var_1 = paddle.tensor.ops.sigmoid(var_0)
+        var_1 = paddle.sigmoid(var_0)
         return var_1
 
 

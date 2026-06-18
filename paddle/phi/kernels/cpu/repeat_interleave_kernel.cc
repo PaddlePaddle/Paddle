@@ -60,7 +60,7 @@ void RepeatInterleaveKernel(const Context& dev_ctx,
 
   auto output_dim = vectorize(x.dims());
   output_dim[dim] = index_size;
-  out->Resize(make_ddim(output_dim));
+  out->Resize(output_dim);
   IndexSelectInner<Context, T, int>(dev_ctx, &x_copy, index, out, dim);
 }
 
@@ -122,7 +122,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
     } else {
       output_dim[dim] = index.dims()[0];
     }
-    out->Resize(make_ddim(output_dim));
+    out->Resize(output_dim);
     dev_ctx.template Alloc<T>(out);
     return;
   }
@@ -145,7 +145,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
     } else {
       output_dim[dim] = index.dims()[0];
     }
-    out->Resize(make_ddim(output_dim));
+    out->Resize(output_dim);
     IndexSelectInner<Context, T, int>(dev_ctx, &x_copy, index, out, dim);
   } else if (index_type == DataType::INT64) {
     funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
@@ -165,7 +165,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
     } else {
       output_dim[dim] = index.dims()[0];
     }
-    out->Resize(make_ddim(output_dim));
+    out->Resize(output_dim);
     IndexSelectInner<Context, T, int64_t>(dev_ctx, &x_copy, index, out, dim);
   }
 }

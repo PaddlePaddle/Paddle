@@ -29,7 +29,7 @@ void ReduceAsKernel(const Context& dev_ctx,
   auto reduce_dim = funcs::GetReduceDims(x, target);
   dev_ctx.template Alloc<T>(out);
   if (reduce_dim.size() != 0) {
-    phi::SumKernel<T, Context>(dev_ctx, x, reduce_dim, out->type(), false, out);
+    SumKernel<T, Context>(dev_ctx, x, reduce_dim, out->type(), false, out);
   } else {
     Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   }

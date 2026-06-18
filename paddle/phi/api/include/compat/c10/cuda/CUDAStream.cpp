@@ -19,6 +19,8 @@
 #include <mutex>
 #include <vector>
 
+#include "paddle/phi/api/include/context_pool.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #endif
@@ -35,17 +37,19 @@ std::once_flag g_init_once;
 c10::DeviceIndex g_num_gpus = -1;
 
 struct DevicePools {
+#ifdef PADDLE_WITH_HIP
+  std::vector<hipStream_t> low_priority;
+  std::vector<hipStream_t> high_priority;
+#else
   std::vector<cudaStream_t> low_priority;
   std::vector<cudaStream_t> high_priority;
+#endif
   std::atomic<uint32_t> lp_counter{0};
   std::atomic<uint32_t> hp_counter{0};
   std::once_flag init_flag;
 };
 
 std::vector<std::unique_ptr<DevicePools>> g_pools;
-
-thread_local std::vector<cudaStream_t> tls_current_streams;
-thread_local bool tls_streams_initialized = false;
 
 void initGlobalState() {
   std::call_once(g_init_once, []() {
@@ -61,17 +65,28 @@ void initGlobalState() {
 void initDevicePools(c10::DeviceIndex device_index) {
   phi::backends::gpu::GPUDeviceGuard guard(device_index);
   int lo_pri = 0, hi_pri = 0;
+#ifdef PADDLE_WITH_HIP
+  C10_CUDA_CHECK(hipDeviceGetStreamPriorityRange(&lo_pri, &hi_pri));
+#else
   C10_CUDA_CHECK(cudaDeviceGetStreamPriorityRange(&lo_pri, &hi_pri));
+#endif
 
   auto& pool = *g_pools[device_index];
   pool.low_priority.resize(kStreamsPerPool);
   pool.high_priority.resize(kStreamsPerPool);
 
   for (int i = 0; i < kStreamsPerPool; ++i) {
+#ifdef PADDLE_WITH_HIP
+    C10_CUDA_CHECK(hipStreamCreateWithPriority(
+        &pool.low_priority[i], hipStreamNonBlocking, lo_pri));
+    C10_CUDA_CHECK(hipStreamCreateWithPriority(
+        &pool.high_priority[i], hipStreamNonBlocking, hi_pri));
+#else
     C10_CUDA_CHECK(cudaStreamCreateWithPriority(
         &pool.low_priority[i], cudaStreamNonBlocking, lo_pri));
     C10_CUDA_CHECK(cudaStreamCreateWithPriority(
         &pool.high_priority[i], cudaStreamNonBlocking, hi_pri));
+#endif
   }
 }
 
@@ -84,16 +99,44 @@ inline void check_gpu(c10::DeviceIndex device_index) {
               ")");
 }
 
-inline void initTLSCurrentStreams() {
-  if (!tls_streams_initialized) {
-    tls_current_streams.resize(g_num_gpus, nullptr);
-    tls_streams_initialized = true;
-  }
+inline phi::GPUContext* getMutableGPUContext(c10::DeviceIndex device_index) {
+  return static_cast<phi::GPUContext*>(
+      paddle::experimental::DeviceContextPool::Instance().GetMutable(
+          phi::GPUPlace(device_index)));
 }
+
+#ifdef PADDLE_WITH_HIP
+inline hipStream_t getPaddleCurrentStream(c10::DeviceIndex device_index) {
+  auto* current_stream =
+      paddle::GetCurrentCUDAStream(phi::GPUPlace(device_index));
+  return current_stream == nullptr ? nullptr : current_stream->raw_stream();
+}
+#else
+inline cudaStream_t getPaddleCurrentStream(c10::DeviceIndex device_index) {
+  auto* current_stream =
+      paddle::GetCurrentCUDAStream(phi::GPUPlace(device_index));
+  return current_stream == nullptr ? nullptr : current_stream->raw_stream();
+}
+#endif
 
 #endif  // defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 }  // namespace
+
+#ifdef PADDLE_WITH_HIP
+inline CUDAStream make_cuda_stream(hipStream_t raw,
+                                   c10::DeviceIndex device_index) {
+#else
+inline CUDAStream make_cuda_stream(cudaStream_t raw,
+                                   c10::DeviceIndex device_index) {
+#endif
+  c10::StreamId sid =
+      static_cast<c10::StreamId>(reinterpret_cast<intptr_t>(raw));
+  return CUDAStream(
+      c10::Stream(c10::Stream::UNSAFE,
+                  c10::Device(c10::DeviceType::CUDA, device_index),
+                  sid));
+}
 
 CUDAStream getStreamFromPool(const int priority,
                              c10::DeviceIndex device_index) {
@@ -111,8 +154,13 @@ CUDAStream getStreamFromPool(const int priority,
   const uint32_t idx = (priority < 0 ? g_pools[device_index]->hp_counter++
                                      : g_pools[device_index]->lp_counter++) %
                        kStreamsPerPool;
+#ifdef PADDLE_WITH_HIP
+  hipStream_t raw = (priority < 0 ? g_pools[device_index]->high_priority[idx]
+                                  : g_pools[device_index]->low_priority[idx]);
+#else
   cudaStream_t raw = (priority < 0 ? g_pools[device_index]->high_priority[idx]
                                    : g_pools[device_index]->low_priority[idx]);
+#endif
 
   return make_cuda_stream(raw, device_index);
 #else
@@ -126,6 +174,16 @@ CUDAStream getStreamFromPool(const bool isHighPriority,
   return getStreamFromPool(isHighPriority ? -1 : 0, device_index);
 }
 
+#ifdef PADDLE_WITH_HIP
+CUDAStream getStreamFromExternal(hipStream_t ext_stream,
+                                 c10::DeviceIndex device_index) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  initGlobalState();
+  check_gpu(device_index);
+#endif
+  return make_cuda_stream(ext_stream, device_index);
+}
+#else
 CUDAStream getStreamFromExternal(cudaStream_t ext_stream,
                                  c10::DeviceIndex device_index) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -134,6 +192,7 @@ CUDAStream getStreamFromExternal(cudaStream_t ext_stream,
 #endif
   return make_cuda_stream(ext_stream, device_index);
 }
+#endif
 
 CUDAStream getDefaultCUDAStream(c10::DeviceIndex device_index) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -156,8 +215,7 @@ CUDAStream getCurrentCUDAStream(c10::DeviceIndex device_index) {
         static_cast<c10::DeviceIndex>(phi::backends::gpu::GetCurrentDeviceId());
   }
   check_gpu(device_index);
-  initTLSCurrentStreams();
-  cudaStream_t raw = tls_current_streams[device_index];
+  auto raw = getPaddleCurrentStream(device_index);
   if (raw == nullptr) {
     return getDefaultCUDAStream(device_index);
   }
@@ -172,8 +230,7 @@ void setCurrentCUDAStream(CUDAStream stream) {
   initGlobalState();
   c10::DeviceIndex idx = stream.unwrap().device_index();
   check_gpu(idx);
-  initTLSCurrentStreams();
-  tls_current_streams[idx] = stream.stream();
+  getMutableGPUContext(idx)->SetStream(stream.stream());
 #else
   (void)stream;
 #endif

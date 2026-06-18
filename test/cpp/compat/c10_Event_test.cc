@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <ATen/cuda/CUDAContext.h>
 #include <c10/core/Event.h>
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <c10/cuda/CUDAFunctions.h>
-#include <c10/cuda/CUDAStream.h>
-#endif
 
 #include "gtest/gtest.h"
-#include "test/cpp/compat/cuda_test_utils.h"
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include <c10/cuda/CUDAStream.h>
+#endif
 
 TEST(EventTest, CpuEventDefaultProperties) {
   c10::Event event(c10::DeviceType::CPU);
@@ -40,15 +40,11 @@ TEST(EventTest, CpuEventRecordThrows) {
   EXPECT_THROW(event.recordOnce(stream), std::exception);
 }
 
-#ifdef PADDLE_WITH_CUDA
-using RawEventRecordMethod = void (c10::Event::*)(const cudaStream_t&);
-[[maybe_unused]] static RawEventRecordMethod g_raw_event_record_method =
-    &c10::Event::record;
-#endif
-
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(EventTest, CudaEventLazyCreateAndRecord) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
+  if (!at::cuda::is_available()) {
+    return;
+  }
   c10::Event event(c10::DeviceType::CUDA);
   auto stream = c10::cuda::getCurrentCUDAStream();
 
@@ -66,7 +62,9 @@ TEST(EventTest, CudaEventLazyCreateAndRecord) {
 }
 
 TEST(EventTest, CudaEventElapsedTimeRequiresTimingFlag) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
+  if (!at::cuda::is_available()) {
+    return;
+  }
   auto stream = c10::cuda::getCurrentCUDAStream();
   c10::Event start(c10::DeviceType::CUDA);
   c10::Event end(c10::DeviceType::CUDA);
@@ -79,7 +77,9 @@ TEST(EventTest, CudaEventElapsedTimeRequiresTimingFlag) {
 }
 
 TEST(EventTest, CudaEventElapsedTimeWithTimingEnabled) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
+  if (!at::cuda::is_available()) {
+    return;
+  }
   auto stream = c10::cuda::getCurrentCUDAStream();
   c10::Event start(c10::DeviceType::CUDA, c10::EventFlag::BACKEND_DEFAULT);
   c10::Event end(c10::DeviceType::CUDA, c10::EventFlag::BACKEND_DEFAULT);
@@ -93,19 +93,7 @@ TEST(EventTest, CudaEventElapsedTimeWithTimingEnabled) {
   EXPECT_GE(elapsed_ms, 0.0);
 }
 
-#ifdef PADDLE_WITH_CUDA
-TEST(EventTest, CudaEventRawStreamRecordCompatibility) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
-  auto stream = c10::cuda::getCurrentCUDAStream();
-  c10::Event event(c10::DeviceType::CUDA);
-  EXPECT_NO_THROW(event.record(stream.raw_stream()));
-  EXPECT_EQ(event.device_index(), stream.device_index());
-  EXPECT_TRUE(event.was_marked_for_recording());
-}
-#endif
-
 TEST(EventTest, CudaEventRejectsDifferentDeviceRecord) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   if (c10::cuda::device_count() < 2) {
     return;
   }

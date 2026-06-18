@@ -165,12 +165,12 @@ void RnnGradKernel(const Context& dev_ctx,
   bool has_seq_length = sequence_length.is_initialized();
   std::vector<int64_t> seq_len_tensor(batch_size, seq_len);
   if (has_seq_length) {
-    if (sequence_length->dtype() == phi::DataType::INT32) {
+    if (sequence_length->dtype() == DataType::INT32) {
       std::vector<int> tensor_int32 =
           phi::GetVectorFromTensor<int>(sequence_length.get_ptr());
       seq_len_tensor =
           std::vector<int64_t>(tensor_int32.begin(), tensor_int32.end());
-    } else {  // phi::DataType::INT64
+    } else {  // DataType::INT64
       seq_len_tensor =
           phi::GetVectorFromTensor<int64_t>(sequence_length.get_ptr());
     }

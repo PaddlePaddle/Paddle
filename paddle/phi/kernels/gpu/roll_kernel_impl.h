@@ -20,16 +20,14 @@
 
 namespace phi {
 
-using phi::PADDLE_CUDA_NUM_THREADS;
-
 template <typename T>
 __global__ void RollCudaKernel(const T* input,
                                T* output,
                                const int rank,
                                const int64_t numel,
-                               phi::Array<int64_t, DDim::kMaxRank> shifts,
-                               phi::Array<int64_t, DDim::kMaxRank> strides,
-                               phi::Array<int64_t, DDim::kMaxRank> sizes) {
+                               Array<int64_t, DDim::kMaxRank> shifts,
+                               Array<int64_t, DDim::kMaxRank> strides,
+                               Array<int64_t, DDim::kMaxRank> sizes) {
   int64_t idx =
       static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
       static_cast<int64_t>(threadIdx.x);
@@ -64,11 +62,9 @@ void LaunchRollKernel(const Context& dev_ctx,
                       const std::vector<int64_t> shifts,
                       const std::vector<int64_t> strides,
                       const std::vector<int64_t> sizes) {
-  using phi::PADDLE_CUDA_NUM_THREADS;
-
-  phi::Array<int64_t, DDim::kMaxRank> strides_array;
-  phi::Array<int64_t, DDim::kMaxRank> shifts_array;
-  phi::Array<int64_t, DDim::kMaxRank> sizes_array;
+  Array<int64_t, DDim::kMaxRank> strides_array;
+  Array<int64_t, DDim::kMaxRank> shifts_array;
+  Array<int64_t, DDim::kMaxRank> sizes_array;
   for (int i = 0; i < rank; ++i) {
     strides_array[i] = strides[i];
     shifts_array[i] = shifts[i];

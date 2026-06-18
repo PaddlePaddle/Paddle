@@ -93,6 +93,7 @@ from .flash_attention import (
     flash_attn_qkvpacked,
     flash_attn_varlen_qkvpacked,
     flashmask_attention,
+    flashmask_get_unique_id,
     sdp_kernel,  # noqa: F401
 )
 from .input import (
@@ -178,6 +179,8 @@ logsigmoid = log_sigmoid
 conv_transpose1d = conv1d_transpose
 conv_transpose2d = conv2d_transpose
 conv_transpose3d = conv3d_transpose
+multilabel_margin_loss = multi_label_margin_loss
+multilabel_soft_margin_loss = multi_label_soft_margin_loss
 __all__ = [
     'celu',
     'conv1d',
@@ -310,10 +313,13 @@ __all__ = [
     'adaptive_log_softmax_with_loss',
     'multi_margin_loss',
     'multi_label_margin_loss',
+    'multilabel_margin_loss',
+    'multilabel_soft_margin_loss',
     'soft_margin_loss',
     'gaussian_nll_loss',
     'scaled_dot_product_attention',
     'flashmask_attention',
+    'flashmask_get_unique_id',
     'flash_attn_qkvpacked',
     "flash_attention_v3_varlen",
     'flash_attn_varlen_qkvpacked',

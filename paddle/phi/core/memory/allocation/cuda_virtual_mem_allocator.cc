@@ -158,8 +158,7 @@ phi::Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
         place_.device,
         string::HumanReadableSize(virtual_mem_alloced_offset_),
         string::HumanReadableSize(virtual_mem_size_ -
-                                  virtual_mem_alloced_offset_),
-        place_.device));
+                                  virtual_mem_alloced_offset_)));
     return nullptr;
   }
 

@@ -19,15 +19,17 @@
 # implemented as independent modules with no runtime dependency on PyTorch.
 
 import math
+import sys as _sys
 import typing
 
 __is_metainfo_generated = False
 try:
     from paddle.cuda_env import *  # noqa: F403
-    from paddle.version import (  # noqa: F401
-        commit as __git_commit__,
-        full_version as __version__,
+    from paddle.paddle_version import (  # noqa: F401
+        PaddleVersion,
+        __version__,
     )
+    from paddle.version import commit as __git_commit__  # noqa: F401
 
     __is_metainfo_generated = True
 
@@ -53,11 +55,11 @@ def _preload_nvidia_lib(lib_glob, sub_dirs=None):
     import glob
     import os
 
-    from .version import cuda as cuda_version
+    from .version import cuda_version as _cuda_version
 
     pkg_dir = os.path.dirname(os.path.abspath(__file__))
     nvidia_dir = os.path.join(pkg_dir, '..', 'nvidia')
-    cuda_major = cuda_version().split('.')[0]
+    cuda_major = _cuda_version.split('.')[0]
 
     paths = glob.glob(
         os.path.join(nvidia_dir, f'cu{cuda_major}', 'lib', lib_glob)
@@ -70,13 +72,23 @@ def _preload_nvidia_lib(lib_glob, sub_dirs=None):
 
 
 if __is_metainfo_generated:
+    import builtins
     import platform
 
-    if platform.system() == 'Linux' and platform.machine() == 'x86_64':
+    if platform.system() == 'Linux':
         try:
-            from .version import with_pip_cuda_libraries
+            from .version import (
+                cuda_version as _cuda_version,
+                with_pip_cuda_libraries,
+            )
 
-            if with_pip_cuda_libraries == 'ON':
+            if with_pip_cuda_libraries == 'ON' and (
+                platform.machine() in ('x86_64', 'AMD64')
+                or (
+                    platform.machine() == 'aarch64'
+                    and builtins.float(_cuda_version) >= 13.0
+                )
+            ):
                 _preload_nvidia_lib('libcublasLt.so.*[0-9]', ['cublas'])
                 _preload_nvidia_lib('libcublas.so.*[0-9]', ['cublas'])
         except Exception:
@@ -235,6 +247,7 @@ from paddle import (
     metric as metric,
     nn as nn,
     onnx as onnx,
+    optim as optim,
     optimizer as optimizer,
     quantization as quantization,
     random as random,
@@ -246,6 +259,9 @@ from paddle import (
     testing as testing,
     vision as vision,
 )
+
+distributions = distribution
+_sys.modules['paddle.distributions'] = distribution
 
 # high-level api
 from . import (
@@ -282,15 +298,16 @@ from .audio.functional.window import (  # noqa: F401
 from .autograd import (
     enable_grad,
     grad,
+    inference_mode,
     is_grad_enabled,
     no_grad,
     set_grad_enabled,
 )
 from .base.core import Size
-from .compat import (
-    disable_torch_proxy as disable_compat,
-    enable_torch_proxy as enable_compat,
-    use_torch_proxy_guard as use_compat_guard,  # noqa: F401
+from .compat.proxy import (
+    disable_compat,
+    enable_compat,
+    use_compat_guard,
 )
 from .device import (  # noqa: F401
     Event,
@@ -353,6 +370,7 @@ from .nn.functional.distance import (
     pdist,
 )
 from .nn.initializer.lazy_init import LazyGuard
+from .random import initial_seed
 from .tensor.attribute import (
     imag,
     is_complex,
@@ -568,6 +586,10 @@ from .tensor.math import (  # noqa: F401
     add_n,
     addmm,
     addmm_,
+    addmv,
+    addmv_,
+    addr,
+    addr_,
     all,
     amax,
     amin,
@@ -624,7 +646,6 @@ from .tensor.math import (  # noqa: F401
     floor,
     floor_divide,
     floor_divide_,
-    floor_mod,
     fmax,
     fmin,
     frac,
@@ -639,6 +660,7 @@ from .tensor.math import (  # noqa: F401
     gcd,
     gcd_,
     heaviside,
+    histc,
     hypot,
     hypot_,
     i0,
@@ -682,7 +704,6 @@ from .tensor.math import (  # noqa: F401
     min,
     minimum,
     mm,
-    mod,
     mul,
     multigammaln,
     multigammaln_,
@@ -844,13 +865,22 @@ if is_compiled_with_cinn():
     os.environ['CINN_CONFIG_PATH'] = str(data_file_path)
 
 if __is_metainfo_generated and is_compiled_with_cuda():
+    import builtins
     import os
     import platform
 
+    from .version import cuda_version as _cuda_version, with_pip_cuda_libraries
+
     if (
         platform.system() == 'Linux'
-        and platform.machine() == 'x86_64'
-        and paddle.version.with_pip_cuda_libraries == 'ON'
+        and (
+            platform.machine() in ('x86_64', 'AMD64')
+            or (
+                platform.machine() == 'aarch64'
+                and builtins.float(_cuda_version) >= 13.0
+            )
+        )
+        and with_pip_cuda_libraries == 'ON'
     ):
         package_dir = os.path.dirname(os.path.abspath(__file__))
         nvidia_package_path = package_dir + "/.." + "/nvidia"
@@ -1030,6 +1060,14 @@ swapaxes = transpose
 manual_seed = seed
 sub = subtract
 sub_ = subtract_
+movedim = moveaxis
+mod = remainder
+floor_mod = remainder
+fix = trunc
+fix_ = trunc_
+mvlgamma = multigammaln
+mvlgamma_ = multigammaln_
+negative_ = neg_
 
 __all__ = [
     'block_diag',
@@ -1064,6 +1102,10 @@ __all__ = [
     'raw',
     'addmm',
     'addmm_',
+    'addmv',
+    'addmv_',
+    'addr',
+    'addr_',
     'baddbmm',
     'baddbmm_',
     'allclose',
@@ -1124,6 +1166,7 @@ __all__ = [
     'min',
     'narrow',
     'amin',
+    'aminmax',
     'any',
     'slice',
     'slice_scatter',
@@ -1220,6 +1263,7 @@ __all__ = [
     'histogram_bin_edges',
     'histogram',
     'histogramdd',
+    'histc',
     'multiplex',
     'CUDAPlace',
     'empty',
@@ -1253,6 +1297,7 @@ __all__ = [
     'enable_grad',
     'set_grad_enabled',
     'is_grad_enabled',
+    'inference_mode',
     'mod',
     'mod_',
     'abs',
@@ -1293,6 +1338,7 @@ __all__ = [
     'neg',
     'neg_',
     'negative',
+    'negative_',
     'lgamma',
     'lgamma_',
     'gammaincc',
@@ -1302,6 +1348,7 @@ __all__ = [
     'lerp',
     'erfinv',
     'inner',
+    'inverse',
     'outer',
     'ger',
     'square',
@@ -1432,6 +1479,8 @@ __all__ = [
     'check_shape',
     'trunc',
     'trunc_',
+    'fix',
+    'fix_',
     'frac',
     'frac_',
     'digamma',
@@ -1454,6 +1503,7 @@ __all__ = [
     'fmax',
     'fmin',
     'moveaxis',
+    'movedim',
     'repeat_interleave',
     'clone',
     'kthvalue',
@@ -1467,6 +1517,8 @@ __all__ = [
     'select_scatter',
     'multigammaln',
     'multigammaln_',
+    'mvlgamma',
+    'mvlgamma_',
     'nan_to_num',
     'nan_to_num_',
     'scatter_add_',
@@ -1542,6 +1594,7 @@ __all__ = [
     'layer_norm',
     'relu',
     'manual_seed',
+    'initial_seed',
     'softmax',
     'log_softmax',
     'Generator',
@@ -1549,6 +1602,7 @@ __all__ = [
     'autocast',
     'enable_compat',
     'disable_compat',
+    'use_compat_guard',
 ]
 import os
 

@@ -48,18 +48,18 @@ void SvdvalsGradKernel(const Context& dev_ctx,
   } else {
     MetaTensor meta_dX(&dX_term);
     DiagEmbedInferMeta(s_grad, 0, -1, -2, &meta_dX);
-    phi::DiagEmbedKernel<T, Context>(dev_ctx, s_grad, 0, -1, -2, &dX_term);
+    DiagEmbedKernel<T, Context>(dev_ctx, s_grad, 0, -1, -2, &dX_term);
   }
 
   DenseTensor U, VH, S_recomputed;
   MetaTensor meta_u(&U), meta_s(&S_recomputed), meta_vh(&VH);
   SvdInferMeta(x, false, &meta_u, &meta_s, &meta_vh);
-  phi::SvdKernel<T, Context>(dev_ctx,
-                             x,
-                             false,
-                             &U,
-                             &S_recomputed,
-                             &VH);  // Crucial: recomputing SVD
+  SvdKernel<T, Context>(dev_ctx,
+                        x,
+                        false,
+                        &U,
+                        &S_recomputed,
+                        &VH);  // Crucial: recomputing SVD
   *x_grad =
       Matmul<T, Context>(dev_ctx, Matmul<T, Context>(dev_ctx, U, dX_term), VH);
 }

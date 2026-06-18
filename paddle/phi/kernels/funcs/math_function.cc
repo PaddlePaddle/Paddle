@@ -46,8 +46,6 @@ limitations under the License. */
 
 namespace phi::funcs {
 
-using float16 = phi::float16;
-
 template struct SetConstant<CPUContext, phi::float8_e4m3fn>;
 template struct SetConstant<CPUContext, phi::float8_e5m2>;
 template struct SetConstant<CPUContext, phi::float16>;
@@ -196,9 +194,9 @@ struct TensorSetConstantCPU {
 };
 
 template <>
-void set_constant_with_place<phi::XPUPlace>(const DeviceContext& dev_ctx,
-                                            DenseTensor* tensor,
-                                            float value) {
+void set_constant_with_place<XPUPlace>(const DeviceContext& dev_ctx,
+                                       DenseTensor* tensor,
+                                       float value) {
 #ifdef PADDLE_WITH_XPU
   phi::VisitDataType(
       tensor->dtype(),
@@ -289,7 +287,7 @@ void set_constant(const DeviceContext& dev_ctx,
   phi::VisitPlace(tensor->place(), func);
 #elif defined(PADDLE_WITH_XPU)
   if (dev_ctx.GetPlace().GetType() == AllocationType::XPU) {
-    func(phi::XPUPlace());
+    func(XPUPlace());
     return;
   } else {
     func(CPUPlace());

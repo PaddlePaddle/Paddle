@@ -31,12 +31,12 @@ PADDLE_API const std::string& TransToPhiKernelName(
 PADDLE_API const std::string& TransToFluidOpName(
     const std::string& phi_kernel_name);
 
-PADDLE_API Backend TransToPhiBackend(const phi::Place& place);
-PADDLE_API phi::Place TransToPhiPlace(const Backend& backend,
-                                      bool set_device_id = true);
+PADDLE_API Backend TransToPhiBackend(const Place& place);
+PADDLE_API Place TransToPhiPlace(const Backend& backend,
+                                 bool set_device_id = true);
 
 #ifdef PADDLE_WITH_DNNL
-dnnl::memory::data_type TransToOneDNNDataType(const phi::DataType& dtype);
+dnnl::memory::data_type TransToOneDNNDataType(const DataType& dtype);
 #endif
 
 }  // namespace phi

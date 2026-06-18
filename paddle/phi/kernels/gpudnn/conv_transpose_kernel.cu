@@ -117,10 +117,17 @@ void ConvTransposeCudnnKernelImplV7(const DenseTensor* transformed_x,
 #endif
 
   // ------------------- cudnn conv transpose forward ---------------------
-  int x_offset = transformed_x->numel() / transformed_x->dims()[0] / groups;
-  int out_offset =
+  int64_t x_offset_64 =
+      transformed_x->numel() / transformed_x->dims()[0] / groups;
+  int64_t out_offset_64 =
       transformed_out->numel() / transformed_out->dims()[0] / groups;
-  int filter_offset = filter->numel() / groups;
+  int64_t filter_offset_64 = filter->numel() / groups;
+  PADDLE_ENFORCE_LE_INT_MAX(x_offset_64, "x_offset");
+  PADDLE_ENFORCE_LE_INT_MAX(out_offset_64, "out_offset");
+  PADDLE_ENFORCE_LE_INT_MAX(filter_offset_64, "filter_offset");
+  int x_offset = static_cast<int>(x_offset_64);
+  int out_offset = static_cast<int>(out_offset_64);
+  int filter_offset = static_cast<int>(filter_offset_64);
   ScalingParamType<T> alpha = 1.0f;
   ScalingParamType<T> beta = 0.0f;
   auto workspace_handle = dev_ctx.cudnn_workspace_handle();
@@ -379,12 +386,12 @@ void ConvTransposeRawGPUDNNKernel(const Context& dev_ctx,
 
   DenseTensor transformed_out;
   if (!is_sys_pad) {
-    transformed_out.Resize(make_ddim(transformed_out_vec));
+    transformed_out.Resize(transformed_out_vec);
     dev_ctx.template Alloc<T>(&transformed_out);
   } else {
     dev_ctx.template Alloc<T>(out);
     transformed_out.ShareDataWith(*out);
-    transformed_out.Resize(make_ddim(transformed_out_vec));
+    transformed_out.Resize(transformed_out_vec);
   }
 
   DataLayout layout;
@@ -448,7 +455,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& dev_ctx,
     DenseTensor out_transpose;
     DenseTensor out_nchw;
     out_nchw.ShareDataWith(*out);
-    out_nchw.Resize(make_ddim(out_vec));
+    out_nchw.Resize(out_vec);
 
     if (strides.size() == 2U) {
       out_transpose = Transpose<T, Context>(dev_ctx, out_nchw, {0, 2, 3, 1});

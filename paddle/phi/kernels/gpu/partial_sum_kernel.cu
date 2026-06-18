@@ -119,16 +119,16 @@ void PartialSumOpCUDAKernel(const Context &dev_ctx,
   }
 
   if (!in_data.empty()) {
-    auto tmp_in_array = phi::memory_utils::Alloc(
+    auto tmp_in_array = memory_utils::Alloc(
         dev_ctx.GetPlace(),
         in_data.size() * sizeof(T *),
-        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+        Stream(reinterpret_cast<StreamId>(dev_ctx.stream())));
 
-    phi::memory_utils::Copy(dev_ctx.GetPlace(),
-                            tmp_in_array->ptr(),
-                            CPUPlace(),
-                            reinterpret_cast<void *>(in_data.data()),
-                            in_data.size() * sizeof(T *));
+    memory_utils::Copy(dev_ctx.GetPlace(),
+                       tmp_in_array->ptr(),
+                       CPUPlace(),
+                       reinterpret_cast<void *>(in_data.data()),
+                       in_data.size() * sizeof(T *));
 
     T **in_array_data = reinterpret_cast<T **>(tmp_in_array->ptr());
     ComputeKernelParameter(lod_length);
@@ -200,16 +200,16 @@ void PartialSumGradOpCUDAKernel(const Context &dev_ctx,
   }
 
   if (!out_data.empty()) {
-    auto tmp_out_array = phi::memory_utils::Alloc(
+    auto tmp_out_array = memory_utils::Alloc(
         dev_ctx.GetPlace(),
         out_data.size() * sizeof(T *),
-        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+        Stream(reinterpret_cast<StreamId>(dev_ctx.stream())));
 
-    phi::memory_utils::Copy(dev_ctx.GetPlace(),
-                            tmp_out_array->ptr(),
-                            CPUPlace(),
-                            reinterpret_cast<void *>(out_data.data()),
-                            out_data.size() * sizeof(T *));
+    memory_utils::Copy(dev_ctx.GetPlace(),
+                       tmp_out_array->ptr(),
+                       CPUPlace(),
+                       reinterpret_cast<void *>(out_data.data()),
+                       out_data.size() * sizeof(T *));
 
     T **out_grad_data = reinterpret_cast<T **>(tmp_out_array->ptr());
     ComputeKernelParameter(lod_length);

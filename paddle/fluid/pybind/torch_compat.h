@@ -206,12 +206,11 @@ inline FunctionArgs OperationInvoker::convert_args_kwargs_to_function_args(
     function_args.add_arg(std::move(value));
   }
 
-  for (auto item : kwargs) {
-    py::str key = item.first.cast<py::str>();
-    py::object value_obj = item.second.cast<py::object>();
-
-    torch::IValue value = to_ivalue(value_obj);
-    function_args.add_arg(std::move(value));
+  for (const auto& item : kwargs) {
+    std::string key = py::cast<std::string>(item.first);
+    torch::arg keyword(std::move(key));
+    keyword = to_ivalue(item.second);
+    function_args.add_arg(std::move(keyword));
   }
 
   return function_args;
@@ -248,12 +247,18 @@ class CustomClassProxyInstance {
     if (ClassRegistry::instance().has_method(qualified_name_, method_name)) {
       return py::cpp_function(
           [this, method_name](py::args args, py::kwargs kwargs) -> py::object {
+            FunctionArgs converted =
+                OperationInvoker::convert_args_kwargs_to_function_args(args,
+                                                                       kwargs);
             FunctionArgs function_args;
             function_args.add_arg(instance_);  // this pointer
-            for (auto arg :
-                 OperationInvoker::convert_args_kwargs_to_function_args(
-                     args, kwargs)) {
-              function_args.add_arg(std::move(arg));
+            for (size_t i = 0; i < converted.size(); ++i) {
+              function_args.add_arg(converted.get_value(i));
+            }
+            for (const auto& [name, value] : converted.named_args()) {
+              torch::arg keyword(name);
+              keyword = value;
+              function_args.add_arg(std::move(keyword));
             }
 
             auto result = ClassRegistry::instance().call_method_with_args(

@@ -86,7 +86,7 @@ void FusedDotProductAttentionKernel(const Context &dev_ctx,
                         "This op only supports Ampere and later devices, "
                         "but got compute capability: %d.",
                         dev_ctx.GetComputeCapability()));
-  auto cudnn_version = phi::backends::gpu::DnnVersion();
+  auto cudnn_version = backends::gpu::DnnVersion();
   PADDLE_ENFORCE_GE(cudnn_version,
                     8906,
                     common::errors::PreconditionNotMet(
@@ -294,7 +294,7 @@ void FusedDotProductAttentionGradKernel(
                         "This op only supports Ampere and later devices, "
                         "but got compute capability: %d.",
                         dev_ctx.GetComputeCapability()));
-  auto cudnn_version = phi::backends::gpu::DnnVersion();
+  auto cudnn_version = backends::gpu::DnnVersion();
   PADDLE_ENFORCE_GE(cudnn_version,
                     8906,
                     common::errors::PreconditionNotMet(

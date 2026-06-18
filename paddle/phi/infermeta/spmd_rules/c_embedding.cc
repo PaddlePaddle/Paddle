@@ -26,15 +26,13 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 SpmdInfo CEmbeddingInferSpmd(const DistMetaTensor& weight,
                              const DistMetaTensor& x,
                              int start_index,
                              int vocab_size) {
   // Step0: Verify input args based on c_embedding logic
-  auto x_shape = common::vectorize(x.dims());
-  auto weight_shape = common::vectorize(weight.dims());
+  auto x_shape = vectorize(x.dims());
+  auto weight_shape = vectorize(weight.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   int weight_ndim = static_cast<int>(weight_shape.size());
   auto x_dist_attr_src = x.dist_attr();

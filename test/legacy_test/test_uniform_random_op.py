@@ -29,7 +29,7 @@ from utils import dygraph_guard
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
-from paddle.base.framework import convert_np_dtype_to_dtype_
+from paddle.base.framework import convert_nptype_to_datatype_or_vartype
 from paddle.tensor import random
 
 
@@ -171,7 +171,7 @@ class TestUniformRandomOp(OpTest):
             "shape": [1000, 784],
             "min": -5.0,
             "max": 10.0,
-            "dtype": convert_np_dtype_to_dtype_(self.dtype),
+            "dtype": convert_nptype_to_datatype_or_vartype(self.dtype),
         }
         self.output_hist = output_hist
 
@@ -659,8 +659,8 @@ class TestRandomValue(unittest.TestCase):
         paddle.set_device(get_device())
         paddle.seed(2021)
 
-        expect_mean = 0.50000454338820143895816272561205551028251647949218750
-        expect_std = 0.28867379167297479991560749112977646291255950927734375
+        expect_mean = 0.50000454338820199406967503819032572209835052490234375
+        expect_std = 0.288673791672975188493666109934565611183643341064453125
         expect = [
             0.55298901,
             0.65184678,
@@ -680,8 +680,8 @@ class TestRandomValue(unittest.TestCase):
             out[2, 1, 512, 1000:1010], expect, rtol=1e-05
         )
 
-        expect_mean = 0.50002604722976684570312500
-        expect_std = 0.2886914908885955810546875
+        expect_mean = 0.500025331974029541015625
+        expect_std = 0.2886916100978851318359375
         expect = [
             0.45320973,
             0.17582087,

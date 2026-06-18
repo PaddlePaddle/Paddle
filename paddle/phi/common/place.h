@@ -243,6 +243,8 @@ using GPUPlace = phi::GPUPlace;
 using GPUPinnedPlace = phi::GPUPinnedPlace;
 using XPUPlace = phi::XPUPlace;
 using XPUPinnedPlace = phi::XPUPinnedPlace;
+using IPUPlace = phi::IPUPlace;
+using CustomPlace = phi::CustomPlace;
 
 /* NOTE [ Why need to temporarily adapt to PlaceType? ]
 

@@ -25,14 +25,14 @@ bool ParsePlace(const pir::Type& type, OpFuncType* type_) {
   if (type.isa<paddle::dialect::AllocatedDenseTensorType>()) {
     auto place =
         type.dyn_cast<paddle::dialect::AllocatedDenseTensorType>().place();
-    if (place == phi::GPUPlace()) {
+    if (place == GPUPlace()) {
       *type_ = OpFuncType::kGpuAsync;
       return true;
     }
   } else if (type.isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
     auto place =
         type.dyn_cast<paddle::dialect::AllocatedDenseTensorArrayType>().place();
-    if (place == phi::GPUPlace()) {
+    if (place == GPUPlace()) {
       *type_ = OpFuncType::kGpuAsync;
       return true;
     }

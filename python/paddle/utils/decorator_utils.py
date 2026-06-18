@@ -17,8 +17,8 @@ from __future__ import annotations
 import functools
 import inspect
 import warnings
-from collections.abc import Iterable
-from typing import Any, Callable, TypeVar, cast
+from collections.abc import Callable, Iterable
+from typing import Any, TypeVar, cast
 
 from typing_extensions import ParamSpec, get_overloads
 
@@ -255,6 +255,46 @@ def lp_pool_function_decorator(
             )
             kwargs["ceil_mode"] = args[4]
             args = args[:4]
+        return func(*args, **kwargs)
+
+    wrapper.__signature__ = inspect.signature(func)
+    return wrapper
+
+
+def conv_transpose_layer_decorator(
+    func: Callable[_InputT, _RetT],
+) -> Callable[_InputT, _RetT]:
+    """Dispatch decorator for ``Conv{1,3}DTranspose.__init__``.
+
+    PyTorch's ``ConvTranspose{1,2,3}d`` places ``bias`` (``bool``) at the 9th
+    positional argument (index 8 when ``self`` is counted), while Paddle's
+    native signature places ``dilation`` (``int``) at the same position.
+    When ``args[8]`` is a ``bool`` we interpret the call as the PyTorch
+    convention and remap positional arguments ``args[8:13]`` to keyword
+    arguments ``bias``, ``dilation``, ``padding_mode``, ``device``, ``dtype``
+    so the call succeeds against Paddle's signature.
+    """
+
+    @functools.wraps(func)
+    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+        if len(args) >= 9 and isinstance(args[8], bool):
+            torch_names = (
+                "bias",
+                "dilation",
+                "padding_mode",
+                "device",
+                "dtype",
+            )
+            for i, name in enumerate(torch_names):
+                pos = 8 + i
+                if pos >= len(args):
+                    break
+                if name in kwargs:
+                    raise TypeError(
+                        f"__init__() got multiple values for argument '{name}'"
+                    )
+                kwargs[name] = args[pos]
+            args = args[:8]
         return func(*args, **kwargs)
 
     wrapper.__signature__ = inspect.signature(func)
@@ -640,6 +680,46 @@ def expand_decorator() -> Callable[
     return decorator
 
 
+def tile_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """
+    Usage Example:
+    paddle.tile(x=tensor_x, repeat_times=[2, 3], name=None)
+    paddle.tile(input=tensor_x, dims=[2, 3])
+    tensor_x.tile([2, 3]) -> paddle.tile(tensor_x, [2, 3])
+    tensor_x.tile(2, 3) -> paddle.tile(tensor_x, 2, 3)
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if "input" in kwargs:
+                if "x" in kwargs:
+                    raise ValueError(
+                        "Cannot specify both 'x' and its alias 'input'"
+                    )
+                kwargs["x"] = kwargs.pop("input")
+
+            if "dims" in kwargs:
+                if "repeat_times" in kwargs:
+                    raise ValueError(
+                        "Cannot specify both 'repeat_times' and its alias 'dims'"
+                    )
+                kwargs["repeat_times"] = kwargs.pop("dims")
+
+            if len(args) >= 2 and isinstance(args[1], int):
+                kwargs["x"] = args[0]
+                kwargs["repeat_times"] = list(args[1:])
+                args = ()
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
 def index_select_decorator() -> Callable[
     [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
 ]:
@@ -680,140 +760,96 @@ def index_select_decorator() -> Callable[
     return decorator
 
 
-_SA0_RD1 = {'size_average': 0, 'reduce': 1}
-_SA1_RD2 = {'size_average': 1, 'reduce': 2}
-_SA1_RD3 = {'size_average': 1, 'reduce': 3}
-_SA3_RD4 = {'size_average': 3, 'reduce': 4}
-_SA4_RD5 = {'size_average': 4, 'reduce': 5}
-_SA2_RD4 = {'size_average': 2, 'reduce': 4}
+def legacy_reduction_decorator(
+    *,
+    overload_args_list: list[str] | None = None,
+    alias_mapping: dict[str, str] | None = None,
+    is_method: bool = False,
+):
+    """One-shot PyTorch compatibility wrapper for a loss API.
 
-LEGACY_POS: dict[str, dict[str, int]] = {
-    **dict.fromkeys(
-        (
-            'L1Loss',
-            'MSELoss',
-            'KLDivLoss',
-            'SmoothL1Loss',
-            'SoftMarginLoss',
-            'MultiLabelMarginLoss',
-        ),
-        _SA0_RD1,
-    ),
-    **dict.fromkeys(
-        (
-            'BCELoss',
-            'BCEWithLogitsLoss',
-            'MultiLabelSoftMarginLoss',
-            'HingeEmbeddingLoss',
-            'CosineEmbeddingLoss',
-            'MarginRankingLoss',
-        ),
-        _SA1_RD2,
-    ),
-    'CrossEntropyLoss': _SA1_RD3,
-    'NLLLoss': _SA1_RD3,
-    'PoissonNLLLoss': _SA2_RD4,
-    'MultiMarginLoss': _SA3_RD4,
-    'TripletMarginLoss': _SA4_RD5,
-}
+    Each loss API declares its own PyTorch positional layout
+    (``overload_args_list``) and PyTorch-to-Paddle kwarg renames
+    (``alias_mapping``). When the call matches PyTorch's positional
+    layout, positional args are bound to their PyTorch names; the
+    deprecated ``size_average`` / ``reduce`` pair is translated into
+    Paddle's ``reduction`` with a ``DeprecationWarning``; remaining
+    PyTorch kwargs are renamed to their Paddle equivalents. Mirrors
+    PaConvert's ``SizeAverageMatcher`` so that one matcher / one
+    decorator covers the whole loss family.
 
-
-def compute_legacy_reduction(reduce_val, size_average_val):
-    if reduce_val is False:
-        return 'none'
-    if reduce_val is True:
-        return 'sum' if size_average_val is False else 'mean'
-    return 'sum' if size_average_val is False else 'mean'
-
-
-def get_legacy_reduce_and_size_average(cls_name, args, kwargs):
-    reduce_val = ''
-    size_avg_val = ''
-    pos = LEGACY_POS.get(cls_name)
-    idx = pos.get('size_average')
-    if 'size_average' in kwargs:
-        size_avg_val = kwargs.pop('size_average')
-    elif len(args) > idx:
-        v = args[idx]
-        if type(v) is bool:
-            size_avg_val = v
-    idx = pos.get('reduce')
-    if 'reduce' in kwargs:
-        reduce_val = kwargs.pop('reduce')
-    elif len(args) > idx:
-        v = args[idx]
-        if type(v) is bool:
-            reduce_val = v
-    return reduce_val, size_avg_val
-
-
-def raise_deprecated_error(cls_name, reduce_val, size_avg_val):
-    suggested = compute_legacy_reduction(reduce_val, size_avg_val)
-    reduce_val = None if reduce_val == '' else reduce_val
-    size_avg_val = None if size_avg_val == '' else size_avg_val
-    raise ValueError(
-        f"[Deprecated] '{cls_name}' no longer supports 'reduce' or 'size_average'."
-        f"\nDetected: reduce={reduce_val}, size_average={size_avg_val}"
-        f"\nPlease use: reduction='{suggested}' instead."
+    Args:
+        overload_args_list: PyTorch positional names (after ``self``
+            when ``is_method=True``). Positional translation is only
+            triggered when the ``size_average`` slot contains
+            ``bool`` / ``None`` -- a ``str`` reduction or non-bool
+            value there means the caller is using Paddle's positional
+            layout and we leave the call alone.
+        alias_mapping: ``{pytorch_name: paddle_name}`` kwarg renames.
+        is_method: ``True`` for class ``__init__``.
+    """
+    alias_mapping = alias_mapping or {}
+    sa_idx = (
+        overload_args_list.index('size_average')
+        if overload_args_list and 'size_average' in overload_args_list
+        else -1
     )
 
+    def decorate(f):
+        name = f.__qualname__.split(".")[0] if is_method else f.__name__
 
-def legacy_reduction_decorator(
-    init_func: Callable[_InputT, _RetT],
-) -> Callable[_InputT, _RetT]:
-    """
-    Function decorator for __init__: intercept deprecated 'reduce' and 'size_average'.
-    """
+        @functools.wraps(f)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if is_method:
+                self_args, use_args = args[:1], list(args[1:])
+            else:
+                self_args, use_args = (), list(args)
 
-    @functools.wraps(init_func)
-    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
-        # avoid subclass calling parent class init, causing cls_name to be inaccurate
-        cls_name = init_func.__qualname__.split(".")[0]
-        reduce_val, size_avg_val = get_legacy_reduce_and_size_average(
-            cls_name, args[1:], kwargs
-        )
-        if reduce_val != '' or size_avg_val != '':
-            raise_deprecated_error(cls_name, reduce_val, size_avg_val)
-
-        return init_func(*args, **kwargs)
-
-    wrapper.__signature__ = inspect.signature(init_func)
-    return wrapper
-
-
-def legacy_reduction_special_decorator(
-    init_func: Callable[_InputT, _RetT],
-) -> Callable[_InputT, _RetT]:
-    """
-    Specialized decorator: add CrossEntropyLoss / KLDivLoss special case judgment
-    based on the general legacy_reduction_decorator logic.
-    """
-
-    @functools.wraps(init_func)
-    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
-        cls_name = init_func.__qualname__.split(".")[0]
-        use_args = args[1:]
-        reduce_val, size_avg_val = get_legacy_reduce_and_size_average(
-            cls_name, use_args, kwargs
-        )
-        if reduce_val != '' or size_avg_val != '':
-            if not (
-                (
-                    cls_name == 'CrossEntropyLoss'
-                    and len(use_args) > 2
-                    and use_args[2] in {'mean', 'sum', 'none'}
-                )
-                or (
-                    cls_name == 'KLDivLoss'
-                    and len(use_args) > 0
-                    and use_args[0] in {'mean', 'sum', 'none', 'batchmean'}
-                )
+            # PyTorch positional layout: bool/None at the size_average
+            # slot is the unambiguous fingerprint; bind positional args
+            # to PyTorch names. Anything else (str reduction, int
+            # ignore_index, float eps) is the Paddle-positional shape.
+            if (
+                sa_idx >= 0
+                and len(use_args) > sa_idx
+                and (type(use_args[sa_idx]) is bool or use_args[sa_idx] is None)
             ):
-                raise_deprecated_error(cls_name, reduce_val, size_avg_val)
-        return init_func(*args, **kwargs)
+                for i, val in enumerate(use_args):
+                    if i < len(overload_args_list):
+                        kwargs.setdefault(overload_args_list[i], val)
+                use_args = []
 
-    wrapper.__signature__ = inspect.signature(init_func)
-    return wrapper
+            sa = kwargs.pop('size_average', None)
+            rd = kwargs.pop('reduce', None)
+            if sa is not None or rd is not None:
+                suggested = (
+                    'none'
+                    if rd is False
+                    else ('sum' if sa is False else 'mean')
+                )
+                kwargs['reduction'] = suggested
+                warnings.warn(
+                    f"'size_average' and 'reduce' args of '{name}' will be "
+                    f"deprecated, please use reduction='{suggested}' instead.",
+                    DeprecationWarning,
+                    stacklevel=3,
+                )
+
+            for torch_name, paddle_name in alias_mapping.items():
+                if torch_name in kwargs:
+                    if paddle_name in kwargs:
+                        raise ValueError(
+                            f"Cannot specify both '{paddle_name}' and "
+                            f"its alias '{torch_name}'"
+                        )
+                    kwargs[paddle_name] = kwargs.pop(torch_name)
+
+            return f(*self_args, *use_args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(f)
+        return wrapper
+
+    return decorate
 
 
 def index_add_decorator() -> Callable[
@@ -921,6 +957,7 @@ def use_first_signature(
 
 def variadic_tensor_decorator(
     param_name: str,
+    param_pos: int = 0,
 ) -> Callable[[Callable[_InputT, _RetT]], Callable[_InputT, _RetT]]:
     """
     Decorator to handle variadic tensor arguments.
@@ -938,14 +975,14 @@ def variadic_tensor_decorator(
         def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
             # PyTorch usage: variadic tensor arguments
             if len(args) >= 1 and isinstance(
-                args[0], (paddle.Tensor, paddle.pir.Value)
+                args[param_pos], (paddle.Tensor, paddle.pir.Value)
             ):
-                kwargs[param_name] = list(args)
-                args = ()
+                kwargs[param_name] = list(args[param_pos:])
+                args = args[:param_pos]
             # Paddle usage: list/tuple argument
-            elif len(args) >= 1 and isinstance(args[0], (list, tuple)):
-                kwargs[param_name] = args[0]
-                args = ()
+            elif len(args) >= 1 and isinstance(args[param_pos], (list, tuple)):
+                kwargs[param_name] = args[param_pos]
+                args = args[:param_pos]
             return func(*args, **kwargs)
 
         wrapper.__signature__ = inspect.signature(func)
@@ -1144,6 +1181,210 @@ def batch_sampler_decorator() -> Callable[
                         "BatchSampler() received too many arguments"
                     )
                 args = (args[0],)
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def lr_scheduler_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """
+    Usage Example:
+    PyTorch: __init__(self, optimizer, last_epoch) -> None:
+    Paddle: __init__(self, learning_rate, last_epoch, verbose) -> None:
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            opt = None
+            if "optimizer" in kwargs:
+                if "learning_rate" not in kwargs:
+                    opt = kwargs.pop("optimizer")
+                    kwargs["learning_rate"] = opt.get_lr()
+                else:
+                    raise ValueError(
+                        "Cannot specify both 'learning_rate' and 'optimizer'."
+                    )
+            elif len(args) > 1 and isinstance(
+                args[1], paddle.optimizer.Optimizer
+            ):
+                opt = args[1]
+                args_list = list(args)
+                args_list[1] = opt.get_lr()
+                args = tuple(args_list)
+            func(*args, **kwargs)
+            if opt is not None:
+                opt.set_lr_scheduler(args[0])
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def fill_diagonal_inplace_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """
+    Usage Example:
+    PyTorch: torch.Tensor.fill_diagonal_(fill_value, wrap=False)
+    Paddle: paddle.Tensor.fill_diagonal_(value, offset, wrap)
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if "fill_value" in kwargs:
+                if "value" not in kwargs:
+                    kwargs["value"] = kwargs.pop("fill_value")
+                else:
+                    raise ValueError(
+                        "Cannot specify both 'value' and its alias 'fill_value'."
+                    )
+
+            # args[0] is x (tensor)
+            # args[1] is fill_value
+            # args[2] is wrap, use torch signature
+            if len(args) >= 3 and isinstance(args[2], bool):
+                kwargs["wrap"] = args[2]
+                if len(args) > 3:
+                    raise TypeError(
+                        "fill_diagonal_() received too many arguments"
+                    )
+                args = (args[0], args[1])
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def nansum_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """
+    Usage Example:
+    PyTorch: torch.nansum(input, dim=None, keepdim=False, *, dtype=None, out=None)
+    Paddle: paddle.nansum(x, axis=None, dtype=None, keepdim=False, name=None, *, out=None)
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if "input" in kwargs:
+                if "x" not in kwargs:
+                    kwargs["x"] = kwargs.pop("input")
+                else:
+                    raise ValueError(
+                        "Cannot specify both 'x' and its alias 'input'."
+                    )
+
+            if "dim" in kwargs:
+                if "axis" not in kwargs:
+                    kwargs["axis"] = kwargs.pop("dim")
+                else:
+                    raise ValueError(
+                        "Cannot specify both 'axis' and its alias 'dim'."
+                    )
+
+            # args[0] is x
+            # args[1] is axis
+            # args[2] is keepdim, use torch signature
+            if len(args) == 3 and isinstance(args[2], bool):
+                kwargs["keepdim"] = args[2]
+                args = (args[0], args[1])
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def _calc_end_from_shapes(x, value, axes, starts, strides):
+    """Calculate end values for slice_scatter from tensor shapes.
+
+    Supports multi-axis by calculating end for each axis.
+    """
+    ends = []
+    for i, ax in enumerate(axes):
+        dim_idx = ax if ax >= 0 else len(x.shape) + ax
+        value_size = value.shape[dim_idx] if dim_idx < len(value.shape) else 1
+        ends.append(starts[i] + value_size * strides[i])
+    return ends
+
+
+def slice_scatter_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """
+    Decorator for slice_scatter to support PyTorch signature.
+
+    PyTorch: torch.slice_scatter(input, src, dim=0, start=None, end=None, step=1)
+    Paddle: paddle.slice_scatter(x, value, axes, starts, ends, strides)
+
+    This decorator handles:
+    1. Parameter aliases: input->x, src->value, dim->axes, start->starts, end->ends, step->strides
+    2. Convert single int to list: PyTorch uses int, Paddle uses list
+    3. Handle PyTorch style positional args
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            # 1. Handle keyword argument aliases
+            if "input" in kwargs and "x" not in kwargs:
+                kwargs["x"] = kwargs.pop("input")
+            if "src" in kwargs and "value" not in kwargs:
+                kwargs["value"] = kwargs.pop("src")
+            if "dim" in kwargs and "axes" not in kwargs:
+                kwargs["axes"] = kwargs.pop("dim")
+            if "start" in kwargs and "starts" not in kwargs:
+                kwargs["starts"] = kwargs.pop("start")
+            if "end" in kwargs and "ends" not in kwargs:
+                kwargs["ends"] = kwargs.pop("end")
+            if "step" in kwargs and "strides" not in kwargs:
+                kwargs["strides"] = kwargs.pop("step")
+
+            # 2. Handle positional arguments
+            # PyTorch: (input, src, dim, start, end, step) - dim is int
+            # Paddle: (x, value, axes, starts, ends, strides) - axes is list
+            if len(args) >= 2:
+                kwargs["x"] = args[0]
+                kwargs["value"] = args[1]
+
+                if len(args) > 2:
+                    # Check if Paddle style (axes is list) or PyTorch style (dim is int)
+                    if isinstance(args[2], list):
+                        # Paddle style
+                        for i, key in enumerate(
+                            ["axes", "starts", "ends", "strides"]
+                        ):
+                            if len(args) > i + 2:
+                                kwargs[key] = args[i + 2]
+                    else:
+                        # PyTorch style: convert int to list
+                        if len(args) > 2:
+                            kwargs["axes"] = [args[2]]
+                        if len(args) > 3:
+                            kwargs["starts"] = [args[3]]
+                        if len(args) > 4:
+                            kwargs["ends"] = [args[4]]
+                        if len(args) > 5:
+                            kwargs["strides"] = [args[5]]
+                args = ()
+
+            # 3. Convert single int to list for keyword args
+            for key in ["axes", "starts", "ends", "strides"]:
+                if key in kwargs and isinstance(kwargs[key], int):
+                    kwargs[key] = [kwargs[key]]
+
             return func(*args, **kwargs)
 
         wrapper.__signature__ = inspect.signature(func)

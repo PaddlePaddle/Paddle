@@ -30,11 +30,8 @@ from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
 from . import nn as nn
 from .proxy import (  # noqa: F401
-    disable_torch_proxy,
-    enable_torch_proxy,
     extend_torch_proxy_blocked_modules,
     paddle_triton_fun,
-    use_torch_proxy_guard,
 )
 from .utils import _check_out_status
 

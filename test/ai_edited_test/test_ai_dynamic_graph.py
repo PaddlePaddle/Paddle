@@ -77,7 +77,7 @@ class TestGradBasic(unittest.TestCase):
         z = y * y  # z = x^4
         dz_dx = paddle.grad(z, x)
         # dz/dx = 4x^3 = 4*8 = 32
-        self.assertAlmostEqual(float(dz_dx[0].numpy()), 32.0, places=4)
+        self.assertAlmostEqual(float(dz_dx[0].item()), 32.0, places=4)
 
     def test_retain_graph(self):
         """测试保留计算图 / Test retain_graph"""

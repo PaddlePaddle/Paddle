@@ -23,6 +23,9 @@ inline at::Tensor slice(const at::Tensor& self,
                         ::std::optional<int64_t> start = ::std::nullopt,
                         ::std::optional<int64_t> end = ::std::nullopt,
                         int64_t step = 1) {
+  // Materialize the compat StorageHolderView before creating the slice so the
+  // base tensor and its views observe the same shared storage during resize_.
+  (void)self.storage();
   return paddle::experimental::slice(
       self._PD_GetInner(),
       {dim},

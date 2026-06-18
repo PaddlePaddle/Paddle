@@ -85,7 +85,7 @@ void ExpandKernel(const Context& dev_ctx,
     }
   }
 
-  out->Resize(make_ddim(out_shape));
+  out->Resize(out_shape);
   dev_ctx.template Alloc<T>(out);
   if (has_zero_dim) {
     return;

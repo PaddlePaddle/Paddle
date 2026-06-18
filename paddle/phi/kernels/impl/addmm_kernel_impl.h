@@ -18,15 +18,13 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/addmm_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
 namespace phi {
-
-template <typename T, size_t D, int MajorType = Eigen::RowMajor>
-using PhiEigenTensor = EigenTensor<T, D, MajorType>;
 
 using Array1 = Eigen::DSizes<int64_t, 1>;
 using Array2 = Eigen::DSizes<int64_t, 2>;
@@ -105,8 +103,8 @@ void AddmmKernel(const Context& dev_ctx,
   VLOG(3) << "bcast_dims=[" << bcast_dims[0] << "," << bcast_dims[1] << "]";
   // broadcast using eigen
   const DenseTensor& const_ref_input = input_2d;
-  auto eigen_input = PhiEigenTensor<T, 2>::From(const_ref_input);
-  auto eigen_out = PhiEigenTensor<T, 2>::From(*out);
+  auto eigen_input = EigenTensor<T, 2>::From(const_ref_input);
+  auto eigen_out = EigenTensor<T, 2>::From(*out);
   auto& place = *dev_ctx.eigen_device();
   funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, 2>::Eval(
       place, eigen_out, eigen_input, bcast_dims);
@@ -118,21 +116,37 @@ void AddmmKernel(const Context& dev_ctx,
     return;
   }
 
-  T t_alpha = static_cast<T>(alpha);
-  T t_beta = static_cast<T>(beta);
-  blas.GEMM(false,
-            false,
-            x_dims[0],
-            y_dims[1],
-            x_dims[1],
-            t_alpha,
-            x.data<T>(),
-            x_dims[1],
-            y.data<T>(),
-            y_dims[1],
-            t_beta,
-            out->data<T>(),
-            y_dims[1]);
+  using MPType = typename MPTypeTrait<T>::Type;
+  if constexpr (std::is_same_v<MPType, float>) {
+    float t_alpha = alpha;
+    float t_beta = beta;
+    blas.GEMM(CblasNoTrans,
+              CblasNoTrans,
+              x_dims[0],
+              y_dims[1],
+              x_dims[1],
+              t_alpha,
+              x.data<T>(),
+              y.data<T>(),
+              t_beta,
+              out->data<T>());
+  } else {
+    T t_alpha = static_cast<T>(alpha);
+    T t_beta = static_cast<T>(beta);
+    blas.GEMM(false,
+              false,
+              x_dims[0],
+              y_dims[1],
+              x_dims[1],
+              t_alpha,
+              x.data<T>(),
+              x_dims[1],
+              y.data<T>(),
+              y_dims[1],
+              t_beta,
+              out->data<T>(),
+              y_dims[1]);
+  }
 }
 
 }  // namespace phi

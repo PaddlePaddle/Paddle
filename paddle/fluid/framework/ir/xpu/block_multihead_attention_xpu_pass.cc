@@ -79,7 +79,7 @@ void BlockMultiHeadAttentionXPUPass::InplaceBlockMultiHeadAttentionXPU(
       DenseTensor cpu_tensor;
       auto* cpu_ctx = static_cast<phi::CPUContext*>(
           phi::DeviceContextPool::Instance().Get(CPUPlace()));
-      cpu_tensor.set_type(phi::DataType::FLOAT32);
+      cpu_tensor.set_type(DataType::FLOAT32);
       cpu_tensor.Resize({max_batch_size, max_ptr_size});
       std::vector<float> tmp(max_batch_size * max_ptr_size, 0);
       memcpy(cpu_ctx->Alloc<float>(&cpu_tensor),

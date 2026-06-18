@@ -81,7 +81,11 @@ namespace string {
 
 template <typename... Args>
 void Fprintf(std::ostream& out, const char* fmt, const Args&... args) {
-  tinyformat::vformat(out, fmt, tinyformat::makeFormatList(args...));
+  try {
+    tinyformat::vformat(out, fmt, tinyformat::makeFormatList(args...));
+  } catch (const tinyformat::detail::FormatError&) {
+    out << fmt;
+  }
 }
 
 inline std::string Sprintf() { return ""; }
@@ -95,9 +99,13 @@ std::string Sprintf(const Args&... args) {
 
 template <typename... Args>
 std::string Sprintf(const char* fmt, const Args&... args) {
-  std::ostringstream oss;
-  Fprintf(oss, fmt, args...);
-  return oss.str();
+  try {
+    std::ostringstream oss;
+    Fprintf(oss, fmt, args...);
+    return oss.str();
+  } catch (const tinyformat::detail::FormatError&) {
+    return fmt;
+  }
 }
 
 template <typename... Args>

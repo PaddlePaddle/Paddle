@@ -91,9 +91,9 @@ class GPUParallelCopyer {
       PADDLE_WARN_GPU_SUCCESS(cudaStreamDestroy(streams_[i]));
     }
   }
-  void Copy(const phi::DenseTensor &src_tensor,
-            const phi::Place &dest_place,
-            phi::DenseTensor *dest_tensor) {
+  void Copy(const DenseTensor &src_tensor,
+            const Place &dest_place,
+            DenseTensor *dest_tensor) {
     size_t mem_len = src_tensor.memory_size();
     if (!dest_tensor->IsInitialized()) {
       dest_tensor->Resize(src_tensor.dims());
@@ -149,10 +149,10 @@ class GPUParallelCopyer {
 };
 #endif
 template <typename TStream>
-inline void Tensor2Pinned(phi::DenseTensor *tensor, const TStream &stream) {
+inline void Tensor2Pinned(DenseTensor *tensor, const TStream &stream) {
 #if defined(PADDLE_WITH_CUDA)
   const size_t mem_len = tensor->memory_size();
-  auto place = phi::GPUPinnedPlace();
+  auto place = GPUPinnedPlace();
   auto holder = memory::AllocShared(place, mem_len);
   memory::Copy(
       place, holder->ptr(), tensor->place(), tensor->data(), mem_len, stream);
@@ -161,7 +161,7 @@ inline void Tensor2Pinned(phi::DenseTensor *tensor, const TStream &stream) {
 }
 template <typename TCopyer>
 void HogwildWorker::OffLoadVarInfo::CopyInputs(const Scope *root,
-                                               const phi::Place &place,
+                                               const Place &place,
                                                Scope *scope,
                                                TCopyer *copyer) {
   if (!cast_vars.empty()) {
@@ -172,13 +172,13 @@ void HogwildWorker::OffLoadVarInfo::CopyInputs(const Scope *root,
           nullptr,
           common::errors::NotFound("root scope not found var name=%s",
                                    obj.second.c_str()));
-      auto &src_tensor = src_var->Get<phi::DenseTensor>();
+      auto &src_tensor = src_var->Get<DenseTensor>();
       auto dest_var = scope->FindLocalVar(obj.first);
       PADDLE_ENFORCE_NE(dest_var,
                         nullptr,
                         common::errors::NotFound("dest name=%s is nullptr",
                                                  obj.first.c_str()));
-      auto *dest_tensor = dest_var->GetMutable<phi::DenseTensor>();
+      auto *dest_tensor = dest_var->GetMutable<DenseTensor>();
       auto dtype = framework::TransToProtoVarType(dest_tensor->dtype());
       framework::TransDataType(src_tensor, dtype, dest_tensor);
     }
@@ -193,13 +193,13 @@ void HogwildWorker::OffLoadVarInfo::CopyInputs(const Scope *root,
                       nullptr,
                       common::errors::NotFound(
                           "root scope not found var name=%s", name.c_str()));
-    auto &src_tensor = src_var->Get<phi::DenseTensor>();
+    auto &src_tensor = src_var->Get<DenseTensor>();
     auto dest_var = scope->FindLocalVar(name);
     PADDLE_ENFORCE_NE(
         dest_var,
         nullptr,
         common::errors::NotFound("dest name=%s is nullptr", name.c_str()));
-    auto *dest_tensor = dest_var->GetMutable<phi::DenseTensor>();
+    auto *dest_tensor = dest_var->GetMutable<DenseTensor>();
     copyer->Copy(src_tensor, place, dest_tensor);
   }
   copyer->Wait();
@@ -218,15 +218,15 @@ void HogwildWorker::OffLoadVarInfo::BackUpInputs(Scope *root_scope,
     if (var == nullptr) {
       continue;
     }
-    auto src_tensor = var->Get<phi::DenseTensor>();
+    auto src_tensor = var->Get<DenseTensor>();
     auto root_var = root_scope->FindLocalVar(name);
     if (root_var == nullptr) {
       root_var = root_scope->Var(name);
-      auto root_tensor = root_var->GetMutable<phi::DenseTensor>();
-      auto place = phi::GPUPinnedPlace();
+      auto root_tensor = root_var->GetMutable<DenseTensor>();
+      auto place = GPUPinnedPlace();
       copyer->Copy(src_tensor, place, root_tensor);
     } else {
-      auto root_tensor = root_var->GetMutable<phi::DenseTensor>();
+      auto root_tensor = root_var->GetMutable<DenseTensor>();
       if (root_tensor->IsInitialized() &&
           !phi::is_gpu_place(root_tensor->place())) {
         copyer->Copy(src_tensor, root_tensor->place(), root_tensor);
@@ -948,13 +948,13 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
             root_var,
             common::errors::NotFound("Root scope should contain variable."));
 
-        auto root_tensor = root_var->Get<phi::DenseTensor>();
+        auto root_tensor = root_var->Get<DenseTensor>();
         if (root_tensor.place() == place_) {
           continue;
         }
         auto *ptr1 = thread_scope_->Var(name);
         InitializeVariable(ptr1, var->GetType());
-        phi::DenseTensor *thread_tensor = ptr1->GetMutable<phi::DenseTensor>();
+        DenseTensor *thread_tensor = ptr1->GetMutable<DenseTensor>();
 #define MemsetCallback(cpp_type, proto_type)                                 \
   do {                                                                       \
     if (framework::TransToProtoVarType(root_tensor.dtype()) == proto_type) { \
@@ -975,12 +975,11 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
             continue;
           }
           ++persist_param;
-          phi::DenseTensor *root_tensor =
-              root_var->GetMutable<phi::DenseTensor>();
+          DenseTensor *root_tensor = root_var->GetMutable<DenseTensor>();
           auto var_dtype =
               phi::TransToPhiDataType(static_cast<int>(var->GetDataType()));
           if (root_tensor->dtype() != var_dtype) {
-            phi::DenseTensor tmp_tensor;
+            DenseTensor tmp_tensor;
             tmp_tensor.Resize(root_tensor->dims());
             tmp_tensor.set_layout(root_tensor->layout());
             tmp_tensor.mutable_data(root_tensor->place(), var_dtype);
@@ -1029,8 +1028,7 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
                               common::errors::InvalidArgument(
                                   "The type of var should be DENSE_TENSOR."));
             InitializeVariable(ptr, var->GetType());
-            phi::DenseTensor *thread_tensor =
-                ptr->GetMutable<phi::DenseTensor>();
+            DenseTensor *thread_tensor = ptr->GetMutable<DenseTensor>();
             TensorCopy(*root_tensor, place_, thread_tensor);
             need_copy_vars_.push_back(name);
             //          VLOG(0) << "need copy var name=" << name;
@@ -1051,8 +1049,7 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
             auto dims = phi::make_ddim(var->GetShape());
             auto var_dtype =
                 phi::TransToPhiDataType(static_cast<int>(var->GetDataType()));
-            ptr->GetMutable<phi::DenseTensor>()->Resize(dims).set_type(
-                var_dtype);
+            ptr->GetMutable<DenseTensor>()->Resize(dims).set_type(var_dtype);
           }
         }
       }
@@ -1068,7 +1065,7 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
           auto dims = phi::make_ddim(desc_var->GetShape());
           auto var_dtype =
               phi::TransToPhiDataType(static_cast<int>(var->GetDataType()));
-          ptr->GetMutable<phi::DenseTensor>()->Resize(dims).set_type(var_dtype);
+          ptr->GetMutable<DenseTensor>()->Resize(dims).set_type(var_dtype);
           ++resize_var_cnt;
         }
       }
@@ -1097,17 +1094,17 @@ void HogwildWorker::Finalize() {
     if (root_var == nullptr) {
       continue;
     }
-    auto root_tensor = root_var->GetMutable<phi::DenseTensor>();
+    auto root_tensor = root_var->GetMutable<DenseTensor>();
     Variable *var = thread_scope_->FindVar(name);
-    auto tensor = var->Get<phi::DenseTensor>();
+    auto tensor = var->Get<DenseTensor>();
     TensorCopy(tensor, root_tensor->place(), root_tensor);
   }
   dev_ctx_->Wait();
 #endif
 }
 template <typename T>
-void HogwildWorker::SetZero(phi::DenseTensor *tensor,
-                            const phi::DenseTensor &root_tensor) {
+void HogwildWorker::SetZero(DenseTensor *tensor,
+                            const DenseTensor &root_tensor) {
   tensor->mutable_data<T>(root_tensor.dims(), place_);
   phi::funcs::set_constant(*dev_ctx_, tensor, 0.0);
 }
@@ -1410,7 +1407,7 @@ void HogwildWorker::TrainFiles() {
     //   if (var == nullptr) {
     //     continue;
     //   }
-    //   phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+    //   DenseTensor* tensor = var->GetMutable<DenseTensor>();
     //   if (tensor == nullptr || !tensor->IsInitialized()) {
     //     continue;
     //   }

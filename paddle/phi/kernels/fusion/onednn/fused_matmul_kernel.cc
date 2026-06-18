@@ -431,7 +431,7 @@ void CalculateMatrixDims(const std::vector<int64_t> &x_dims,
               (*y_bd_dims)[i]));
       (out_dims)[i] = std::max((*x_bd_dims)[i], (*y_bd_dims)[i]);
     }
-    out->Resize(make_ddim((out_dims)));
+    out->Resize((out_dims));
   }
 }
 

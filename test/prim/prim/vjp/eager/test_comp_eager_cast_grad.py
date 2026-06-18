@@ -67,14 +67,13 @@ class TestCastGradComp(unittest.TestCase):
 
         actual = actual(self.primal, self.cotangent)
         desired = desired(self.primal, self.cotangent)
-        from paddle.base.data_feeder import _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE
+        from paddle.base.data_feeder import vartype_to_str
+        from paddle.pir.core import datatype_to_str
 
-        if actual[0].dtype in _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE.keys():
-            TO_NUMPY_DTYPE = _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE
+        if actual[0].dtype in datatype_to_str:
+            TO_NUMPY_DTYPE = datatype_to_str
         else:
-            from paddle.base.data_feeder import _PADDLE_DTYPE_2_NUMPY_DTYPE
-
-            TO_NUMPY_DTYPE = _PADDLE_DTYPE_2_NUMPY_DTYPE
+            TO_NUMPY_DTYPE = vartype_to_str
 
         self.assertEqual(TO_NUMPY_DTYPE[actual[0].dtype], desired.dtype)
         np.testing.assert_allclose(

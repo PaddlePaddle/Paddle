@@ -161,10 +161,10 @@ void NCEKernel(const Context &dev_ctx,
         (num_true_classes == -1) ? -1 : (num_neg_samples + num_true_classes));
 
     sample_labels = &sample_labels_tmp;
-    sample_labels->Resize(make_ddim(sample_out_dims));
+    sample_labels->Resize(sample_out_dims);
 
     sample_out = &sample_out_tmp;
-    sample_out->Resize(make_ddim(sample_out_dims));
+    sample_out->Resize(sample_out_dims);
   } else {
     sample_labels = sample_labels_out;
     sample_out = sample_logits_out;

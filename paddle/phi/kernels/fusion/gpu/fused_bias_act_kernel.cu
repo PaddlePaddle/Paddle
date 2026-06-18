@@ -50,8 +50,8 @@ __global__ void ActFFNGlu(const T *bias,
     load_func.template load<VecSize>(&src_vec2, index + hid_dim);
 
     if (bias) {
-      phi::Load<T, VecSize>(&bias[idx], &bias_vec1);
-      phi::Load<T, VecSize>(&bias[idx + hid_dim], &bias_vec2);
+      Load<T, VecSize>(&bias[idx], &bias_vec1);
+      Load<T, VecSize>(&bias[idx + hid_dim], &bias_vec2);
     }
 #pragma unroll
     for (int j = 0; j < VecSize; j++) {
@@ -134,7 +134,7 @@ __global__ void BiasAct(const T *bias,
     int64_t linear_idx = row_idx * cols + col_idx;
     load_func.template load<VecSize>(&src_vec, linear_idx);
     if (bias) {
-      phi::Load<T, VecSize>(&bias[col_idx], &bias_vec);
+      Load<T, VecSize>(&bias[col_idx], &bias_vec);
     }
 #pragma unroll
     for (int j = 0; j < VecSize; j++) {

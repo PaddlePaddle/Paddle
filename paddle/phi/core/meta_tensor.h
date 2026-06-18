@@ -114,3 +114,7 @@ class PADDLE_API MetaTensor {
 };
 
 }  // namespace phi
+
+namespace paddle {
+using MetaTensor = phi::MetaTensor;
+}

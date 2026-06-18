@@ -112,6 +112,12 @@ class PADDLE_API StringTensor
 
   StringTensor& Resize(const DDim& dims);
 
+  StringTensor& Resize(const std::initializer_list<int64_t> dims);
+
+  StringTensor& Resize(const std::vector<int64_t>& dims);
+
+  StringTensor& Resize(const std::vector<int>& dims);
+
   /// \brief Returns the actual storage size occupied by tensor, may be larger
   /// than its shape dims.
   /// \return The actual storage size occupied by tensor.

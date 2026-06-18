@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import struct
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -23,7 +23,7 @@ import paddle
 from paddle import pir
 
 from ..pir import Value
-from ..pir.core import _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE, ParameterMeta
+from ..pir.core import ParameterMeta, datatype_to_str
 from . import core
 from .framework import (
     EagerParamBase,
@@ -36,16 +36,16 @@ from .framework import (
 )
 
 if TYPE_CHECKING:
-    from typing_extensions import TypeAlias
+    from typing import TypeAlias
 
     from paddle._typing import DTypeLike, ShapeLike
     from paddle._typing.dtype_like import _DTypeLiteral
 
-    _ClassInfo: TypeAlias = Union[type[Any], tuple["_ClassInfo", ...]]
+    _ClassInfo: TypeAlias = type[Any] | tuple["_ClassInfo", ...]
 
 __all__ = []
 
-_PADDLE_DTYPE_2_NUMPY_DTYPE = {
+vartype_to_str = {
     core.VarDesc.VarType.BOOL: 'bool',
     core.VarDesc.VarType.FP8_E4M3FN: 'float8_e4m3fn',
     core.VarDesc.VarType.FP8_E5M2: 'float8_e5m2',
@@ -58,6 +58,9 @@ _PADDLE_DTYPE_2_NUMPY_DTYPE = {
     core.VarDesc.VarType.INT32: 'int32',
     core.VarDesc.VarType.INT64: 'int64',
     core.VarDesc.VarType.UINT8: 'uint8',
+    core.VarDesc.VarType.UINT16: 'uint16',
+    core.VarDesc.VarType.UINT32: 'uint32',
+    core.VarDesc.VarType.UINT64: 'uint64',
     core.VarDesc.VarType.COMPLEX64: 'complex64',
     core.VarDesc.VarType.COMPLEX128: 'complex128',
     core.VarDesc.VarType.STRING: 'pstring',
@@ -136,11 +139,11 @@ def convert_uint16_to_float(data):
 
 def convert_dtype(dtype: DTypeLike) -> _DTypeLiteral:
     if isinstance(dtype, core.VarDesc.VarType):
-        if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
-            return _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
+        if dtype in vartype_to_str:
+            return vartype_to_str[dtype]
     if isinstance(dtype, core.DataType):
-        if dtype in _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE:
-            return _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[dtype]
+        if dtype in datatype_to_str:
+            return datatype_to_str[dtype]
     elif isinstance(dtype, type):
         # This branch is for NumPy scalar types
         if dtype in [

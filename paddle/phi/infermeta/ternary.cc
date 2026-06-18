@@ -622,9 +622,9 @@ void FastLayerNormInfermeta(const MetaTensor& x,
 
   auto row_shape = slice_ddim(x_dim, 0, x_dim.size() - 1);
   mean->set_dims({row_shape});
-  mean->set_dtype(paddle::DataType::FLOAT32);
+  mean->set_dtype(DataType::FLOAT32);
   invvar->set_dims({row_shape});
-  invvar->set_dtype(paddle::DataType::FLOAT32);
+  invvar->set_dtype(DataType::FLOAT32);
 }
 void FakeQuantizeRangeAbsMaxInferMeta(const MetaTensor& x,
                                       const MetaTensor& in_scale,
@@ -835,10 +835,10 @@ void FlashAttnV3VarlenInferMeta(const MetaTensor& q,
   softmax_lse->set_dtype(DataType::FLOAT32);
 }
 
-void ArangeTensorInferMeta(const MetaTensor& start,
-                           const MetaTensor& end,
-                           const MetaTensor& step,
-                           MetaTensor* out) {
+void ArangeTensorInferMetaLegacy(const MetaTensor& start,
+                                 const MetaTensor& end,
+                                 const MetaTensor& step,
+                                 MetaTensor* out) {
   PADDLE_ENFORCE_EQ(common::product(start.dims()),
                     1,
                     common::errors::InvalidArgument(
@@ -861,10 +861,10 @@ void ArangeTensorInferMeta(const MetaTensor& start,
   out->set_dtype(start.dtype());
 }
 
-void RangeTensorInferMeta(const MetaTensor& start,
-                          const MetaTensor& end,
-                          const MetaTensor& step,
-                          MetaTensor* out) {
+void RangeTensorInferMetaLegacy(const MetaTensor& start,
+                                const MetaTensor& end,
+                                const MetaTensor& step,
+                                MetaTensor* out) {
   PADDLE_ENFORCE_EQ(common::product(start.dims()),
                     1,
                     common::errors::InvalidArgument(
@@ -885,6 +885,59 @@ void RangeTensorInferMeta(const MetaTensor& start,
 
   out->set_dims({-1});
   out->set_dtype(start.dtype());
+}
+void ArangeTensorInferMeta(const MetaTensor& start,
+                           const MetaTensor& end,
+                           const MetaTensor& step,
+                           DataType dtype,
+                           MetaTensor* out) {
+  PADDLE_ENFORCE_EQ(common::product(start.dims()),
+                    1,
+                    common::errors::InvalidArgument(
+                        "The numel of Input(start) should be 1, but got %d",
+                        common::product(start.dims())));
+
+  PADDLE_ENFORCE_EQ(common::product(end.dims()),
+                    1,
+                    common::errors::InvalidArgument(
+                        "The numel of Input(end) should be 1, but got %d",
+                        common::product(end.dims())));
+
+  PADDLE_ENFORCE_EQ(common::product(step.dims()),
+                    1,
+                    common::errors::InvalidArgument(
+                        "The numel of Input(step) should be 1, but got %d",
+                        common::product(step.dims())));
+
+  out->set_dims({-1});
+  out->set_dtype(dtype);
+}
+
+void RangeTensorInferMeta(const MetaTensor& start,
+                          const MetaTensor& end,
+                          const MetaTensor& step,
+                          DataType dtype,
+                          MetaTensor* out) {
+  PADDLE_ENFORCE_EQ(common::product(start.dims()),
+                    1,
+                    common::errors::InvalidArgument(
+                        "The numel of Input(start) should be 1, but got %d",
+                        common::product(start.dims())));
+
+  PADDLE_ENFORCE_EQ(common::product(end.dims()),
+                    1,
+                    common::errors::InvalidArgument(
+                        "The numel of Input(end) should be 1, but got %d",
+                        common::product(end.dims())));
+
+  PADDLE_ENFORCE_EQ(common::product(step.dims()),
+                    1,
+                    common::errors::InvalidArgument(
+                        "The numel of Input(step) should be 1, but got %d",
+                        common::product(step.dims())));
+
+  out->set_dims({-1});
+  out->set_dtype(dtype);
 }
 
 void CollectFpnProposalsInferMeta(
@@ -2045,7 +2098,7 @@ void MoeGateDispatchPermuteInferMeta(const MetaTensor& x,
             corr_bias_dims.size()));
     PADDLE_ENFORCE_EQ(
         corr_bias.dtype(),
-        paddle::DataType::FLOAT32,
+        DataType::FLOAT32,
         common::errors::InvalidArgument(
             "The dtype of Input(corr_bias) must be FLOAT32, but received %s",
             corr_bias.dtype()));
@@ -2137,7 +2190,7 @@ void MoeGateDispatchAndQuantInferMeta(const MetaTensor& x,
             corr_bias_dims.size()));
     PADDLE_ENFORCE_EQ(
         corr_bias.dtype(),
-        paddle::DataType::FLOAT32,
+        DataType::FLOAT32,
         common::errors::InvalidArgument(
             "The dtype of Input(corr_bias) must be FLOAT32, but received %s",
             corr_bias.dtype()));
@@ -2153,10 +2206,10 @@ void MoeGateDispatchAndQuantInferMeta(const MetaTensor& x,
   }
 
   fp8_out->set_dims(make_ddim(fp8_out_dims));
-  fp8_out->set_dtype(paddle::DataType::FLOAT8_E4M3FN);
+  fp8_out->set_dtype(DataType::FLOAT8_E4M3FN);
 
   scale->set_dims(make_ddim(scale_dims));
-  scale->set_dtype(paddle::DataType::FLOAT32);
+  scale->set_dtype(DataType::FLOAT32);
 
   combine_weights->set_dims(make_ddim({num_rows, k}));
   combine_weights->set_dtype(DataType::FLOAT32);

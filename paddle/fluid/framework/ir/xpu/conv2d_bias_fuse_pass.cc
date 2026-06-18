@@ -277,7 +277,7 @@ void Conv2dBiasFusePass::FuseScaleOps(ir::Graph* graph) const {
     auto tensor_type = ele_mul_y_t->dtype();
     float scale_val_ = 1.f;
     float bias_val_ = 0.f;
-    if (tensor_type == phi::DataType::FLOAT16) {
+    if (tensor_type == DataType::FLOAT16) {
       CastToFp32(ele_mul_y_t, nullptr);
       CastToFp32(ele_add_y_t, nullptr);
     }

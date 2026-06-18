@@ -42,15 +42,14 @@ void ReduceAsGradKernel(const Context& dev_ctx,
 
   DenseTensor new_out_grad(out_grad.type());
   new_out_grad.ShareDataWith(out_grad);
-  new_out_grad.Resize(make_ddim(update_dims));
+  new_out_grad.Resize(update_dims);
 
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  phi::ReduceGrad<phi::kps::IdentityFunctor<T, MPType>>(
-      dev_ctx,
-      &new_out_grad,
-      x_grad,
-      out_grad.dtype(),
-      phi::kps::IdentityFunctor<T, MPType>());
+  using MT = typename MPTypeTrait<T>::Type;
+  ReduceGrad<kps::IdentityFunctor<T, MT>>(dev_ctx,
+                                          &new_out_grad,
+                                          x_grad,
+                                          out_grad.dtype(),
+                                          kps::IdentityFunctor<T, MT>());
 }
 
 }  // namespace phi

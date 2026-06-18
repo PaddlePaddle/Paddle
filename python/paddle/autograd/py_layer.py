@@ -14,15 +14,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, TypeVar
-
-from typing_extensions import Concatenate
+from typing import TYPE_CHECKING, Any, Concatenate, TypeVar
 
 import paddle
 from paddle.base import core
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
 
     from paddle import Tensor
 
@@ -201,6 +199,17 @@ class PyLayerContext:
                 ...         return grad
         """
         return self.container
+
+    @property
+    def saved_tensors(self):
+        """
+        Get the tensors stored by ``save_for_backward``. This attribute is an alias for the method ``saved_tensor()``.
+
+        Returns:
+            list of Tensors or None: If context contains tensors stored by `save_for_backward`,
+            then return these tensors, otherwise return None.
+        """
+        return self.saved_tensor()
 
     def mark_not_inplace(self, *args: Tensor) -> None:
         """

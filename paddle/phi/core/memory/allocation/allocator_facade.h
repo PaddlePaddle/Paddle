@@ -131,7 +131,7 @@ class AllocatorFacade {
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  uint64_t Release(const phi::CustomPlace& place, phi::stream::stream_t stream);
+  uint64_t Release(const CustomPlace& place, phi::stream::stream_t stream);
   bool RecordStream(std::shared_ptr<Allocation> allocation,
                     phi::stream::stream_t stream);
   void EraseStream(std::shared_ptr<Allocation> allocation,
@@ -140,8 +140,7 @@ class AllocatorFacade {
       const Place& place, phi::stream::stream_t stream);
   phi::stream::stream_t GetStream(
       const std::shared_ptr<Allocation>& allocation) const;
-  void SetDefaultStream(const phi::CustomPlace& place,
-                        phi::stream::stream_t stream);
+  void SetDefaultStream(const CustomPlace& place, phi::stream::stream_t stream);
 #endif
   // TODO(yy): Allocate a Copy-On-Write allocation?
  private:

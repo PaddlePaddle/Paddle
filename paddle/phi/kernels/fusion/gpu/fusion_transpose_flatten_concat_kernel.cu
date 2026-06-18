@@ -26,7 +26,7 @@ namespace phi {
 namespace fusion {
 
 template <typename T>
-using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
+using CudnnDataType = backends::gpu::CudnnDataType<T>;
 
 template <typename T, typename Context>
 void TransposeFlattenConcatFusionKernel(

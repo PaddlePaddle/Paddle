@@ -18,8 +18,12 @@ env:
 jobs:
   cancel:
     name: Cancel Coverage for ${{ github.event.pull_request.number }}
-    runs-on: ubuntu-latest
+    runs-on:
+      group: APPROVAL
     steps:
+      - name: Cleanup
+        run: |
+          rm -rf * .[^.]*
       - name: Cancel Coverage
         run: |
           exit 0

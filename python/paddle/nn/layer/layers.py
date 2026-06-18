@@ -20,13 +20,15 @@ import typing
 import warnings
 import weakref
 from collections import OrderedDict, namedtuple
-from typing import TYPE_CHECKING, Any, Callable, Union
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from typing_extensions import Self, overload
 
 import paddle
 from paddle import Tensor, dtype, nn, profiler
+from paddle.autograd import PyLayer
 from paddle.autograd.backward_utils import ValueSet
 from paddle.base import core, framework, unique_name
 from paddle.base.core import VarDesc
@@ -43,12 +45,12 @@ from paddle.base.framework import (
     Parameter,
     Program,
     _current_expected_place as _get_device,
-    convert_np_dtype_to_dtype_,
+    convert_nptype_to_datatype_or_vartype,
+    datatype_to_vartype,
     default_main_program,
     in_dygraph_mode,
     in_pir_mode,
     name_struct,
-    paddle_type_to_proto_type,
 )
 from paddle.base.layer_helper_base import LayerHelperBase
 from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
@@ -72,18 +74,24 @@ if TYPE_CHECKING:
 __all__ = []
 
 
-_ForwardPreHook = Union[
-    Callable[["Layer", Tensor], Tensor],  # (layer, input) -> transformed_input
-    Callable[["Layer", Tensor, dict[str, Any]], tuple[Tensor, dict[str, Any]]],
-]
-_ForwardPostHook = Union[
-    Callable[
-        ["Layer", Tensor, Tensor], Tensor
-    ],  # (layer, input, output) -> transformed_output
-    Callable[["Layer", Tensor, dict[str, Any], Tensor], Tensor],
-]
-_StateDict = Union[dict[str, Tensor], typing.OrderedDict[str, Tensor]]
+_ForwardPreHook = (
+    Callable[["Layer", tuple[Any, ...]], Any | None]
+    | Callable[
+        ["Layer", tuple[Any, ...], dict[str, Any]],
+        tuple[tuple[Any, ...], dict[str, Any]] | None,
+    ]
+)
+_ForwardPostHook = (
+    Callable[["Layer", tuple[Any, ...], Any], Any | None]
+    | Callable[
+        ["Layer", tuple[Any, ...], dict[str, Any], Any],
+        Any | None,
+    ]
+)
+_StateDict = dict[str, Any] | typing.OrderedDict[str, Any]
+_StateDictPreHook = Callable[["Layer", str, bool], None]
 _StateDictHook = Callable[[_StateDict], None]
+_EXTRA_STATE_KEY_SUFFIX = "_extra_state"
 
 _first_cap_re = re.compile('(.)([A-Z][a-z]+)')
 _all_cap_re = re.compile('([a-z])([A-Z])')
@@ -126,6 +134,65 @@ def set_op_customized_attrs_post_hook(layer, inputs, outputs):
         # remove pre-hook and post-hook
         for hook_helper in layer._op_recorder.hooks:
             hook_helper.remove()
+
+
+class _LayerBackwardInputHook(PyLayer):
+    @staticmethod
+    def forward(ctx, layer, *flat_inputs):
+        ctx.layer = layer
+        return tuple(inp.clone() for inp in flat_inputs)
+
+    @staticmethod
+    def backward(ctx, *grad_inputs):
+        layer = ctx.layer
+        grad_inputs = tuple(grad_inputs)
+        grad_outputs = getattr(layer, "_current_grad_outputs", ())
+
+        for hook in layer._get_backward_hooks():
+            hook_result = hook(layer, grad_inputs, grad_outputs)
+            if hook_result is not None:
+                if not isinstance(hook_result, tuple):
+                    hook_result = (hook_result,)
+                grad_inputs = hook_result
+
+        if hasattr(layer, "_current_grad_outputs"):
+            delattr(layer, "_current_grad_outputs")
+        if hasattr(layer, "_has_backward_input_hook"):
+            delattr(layer, "_has_backward_input_hook")
+        return grad_inputs
+
+
+class _LayerBackwardOutputHook(PyLayer):
+    @staticmethod
+    def forward(ctx, layer, *flat_outputs):
+        ctx.layer = layer
+        return tuple(out.clone() for out in flat_outputs)
+
+    @staticmethod
+    def backward(ctx, *grad_outputs):
+        layer = ctx.layer
+        grad_outputs = tuple(grad_outputs)
+
+        for hook in layer._get_backward_pre_hooks():
+            hook_result = hook(layer, grad_outputs)
+            if hook_result is not None:
+                if not isinstance(hook_result, tuple):
+                    hook_result = (hook_result,)
+                grad_outputs = hook_result
+
+        if not getattr(layer, "_has_backward_input_hook", False):
+            grad_inputs = ()
+            for hook in layer._get_backward_hooks():
+                hook_result = hook(layer, grad_inputs, grad_outputs)
+                if hook_result is not None:
+                    if not isinstance(hook_result, tuple):
+                        hook_result = (hook_result,)
+                    grad_inputs = hook_result
+            if hasattr(layer, "_has_backward_input_hook"):
+                delattr(layer, "_has_backward_input_hook")
+
+        layer._current_grad_outputs = grad_outputs
+        return grad_outputs
 
 
 def _scope_dist2single(dist_scope):
@@ -182,13 +249,28 @@ def _parse_to_args(*args, **kwargs):
         'bool',
     }
 
-    # Extract keyword-only parameter
-    non_blocking = kwargs.pop('non_blocking', None)
-    copy = kwargs.pop('copy', False)
+    valid_keys = {
+        'device',
+        'dtype',
+        'blocking',
+        'copy',
+        'non_blocking',
+        'other',
+        'tensor',
+    }
+    invalid_keys = set(kwargs.keys()) - valid_keys
+    if invalid_keys:
+        raise TypeError(
+            "to() got an unexpected keyword argument '"
+            + next(iter(invalid_keys))
+            + "'"
+        )
 
-    device = None
-    dtype = None
-    blocking = None
+    device = kwargs.get('device', None)
+    dtype = kwargs.get('dtype', None)
+    blocking = kwargs.get('blocking', None)
+    copy = kwargs.get('copy', False)
+    non_blocking = kwargs.pop('non_blocking', None)
 
     size_args = len(args)
     size_kwargs = len(kwargs)
@@ -201,27 +283,16 @@ def _parse_to_args(*args, **kwargs):
             "  to(tensor, blocking=True, copy=False, *, non_blocking=False)"
         )
 
-    valid_keys = {'device', 'dtype', 'blocking', 'other', 'tensor'}
-    invalid_keys = set(kwargs.keys()) - valid_keys
-    if invalid_keys:
-        raise TypeError(
-            "to() got an unexpected keyword argument '"
-            + next(iter(invalid_keys))
-            + "'"
-        )
-
     if size_args > 0:
         first = args[0]
         if isinstance(first, paddle.Tensor):
             # to(tensor, blocking=True, copy=False)
             device = first.place
             dtype = first.dtype
-            if size_args == 2:
+            if size_args >= 2:
                 blocking = args[1]
-            elif size_args == 3:
-                blocking, copy = args[1], args[2]
-            else:
-                blocking = kwargs.get('blocking')
+            if size_args >= 3:
+                copy = args[2]
         elif isinstance(first, (core.DataType, VarDesc.VarType, np.dtype)) or (
             isinstance(first, str) and first.lower() in valid_dtypes
         ):
@@ -229,8 +300,6 @@ def _parse_to_args(*args, **kwargs):
             dtype = first
             if size_args >= 2:
                 blocking = args[1]
-            else:
-                blocking = kwargs.get('blocking')
             if size_args >= 3:
                 copy = args[2]
         elif first is None or isinstance(first, (str, core.Place)):
@@ -242,10 +311,6 @@ def _parse_to_args(*args, **kwargs):
                 blocking = args[2]
             if size_args >= 4:
                 copy = args[3]
-            if size_args < 2:
-                dtype = kwargs.get('dtype')
-            if size_args < 3:
-                blocking = kwargs.get('blocking')
         else:
             raise ValueError(
                 f"device should be type of str, paddle.CPUPlace, paddle.CUDAPlace, "
@@ -259,34 +324,27 @@ def _parse_to_args(*args, **kwargs):
         if tensor_arg is not None:
             device = tensor_arg.place
             dtype = tensor_arg.dtype
-            blocking = kwargs.get('blocking')
-        else:
-            device = kwargs.get('device')
-            dtype = kwargs.get('dtype')
-            blocking = kwargs.get('blocking')
 
-    # Validate blocking / non_blocking types
-    if blocking is not None:
-        assert isinstance(blocking, bool), (
-            "blocking value error, must be the True, False or None"
-        )
-    if non_blocking is not None:
-        assert isinstance(non_blocking, bool), (
-            "non_blocking value error, must be the True or False"
-        )
-
-    # blocking and non_blocking cannot both be explicitly set
+    # Validate and resolve blocking / non_blocking
     if blocking is not None and non_blocking is not None:
         raise TypeError(
             "to() received both 'blocking' and 'non_blocking' arguments. "
             "These are mutually exclusive, please use only one of them."
         )
-
-    # Resolve blocking
     if non_blocking is not None:
+        if not isinstance(non_blocking, bool):
+            raise TypeError("non_blocking value error, must be True or False")
         blocking = not non_blocking
-    elif blocking is None:
+    elif blocking is not None:
+        if not isinstance(blocking, bool):
+            raise TypeError("blocking value error, must be True, False or None")
+    else:
         blocking = True
+
+    if copy is None:
+        copy = False
+    elif not isinstance(copy, bool):
+        raise TypeError("copy value error, must be True or False")
 
     return device, dtype, blocking, copy
 
@@ -610,18 +668,20 @@ class Layer:
         self._forward_pre_hooks: typing.OrderedDict[int, _ForwardPreHook] = (
             OrderedDict()
         )
-        self._forward_post_hooks: typing.OrderedDict[int, _ForwardPostHook] = (
+        self._forward_hooks: typing.OrderedDict[int, _ForwardPostHook] = (
             OrderedDict()
         )
-        self._forward_pre_hooks_with_kwargs_flag: typing.OrderedDict[
-            int, bool
-        ] = OrderedDict()
-        self._forward_post_hooks_with_kwargs_flag: typing.OrderedDict[
-            int, bool
-        ] = OrderedDict()
-        self._forward_post_hooks_always_called: typing.OrderedDict[
-            int, bool
-        ] = OrderedDict()
+        self._forward_pre_hooks_with_kwargs: typing.OrderedDict[int, bool] = (
+            OrderedDict()
+        )
+        self._forward_hooks_with_kwargs: typing.OrderedDict[int, bool] = (
+            OrderedDict()
+        )
+        self._forward_hooks_always_called: typing.OrderedDict[int, bool] = (
+            OrderedDict()
+        )
+        self._backward_pre_hooks = OrderedDict()
+        self._backward_hooks = OrderedDict()
 
         # only used in AMP Training
         self._cast_to_low_precision = True
@@ -629,6 +689,11 @@ class Layer:
         self._state_dict_hooks: typing.OrderedDict[int, _StateDictHook] = (
             OrderedDict()
         )
+        self._state_dict_pre_hooks: typing.OrderedDict[
+            int, _StateDictPreHook
+        ] = OrderedDict()
+        self._load_state_dict_pre_hooks = OrderedDict()
+        self._load_state_dict_post_hooks = OrderedDict()
         # Records original functions after @to_static to support to rollback
         self._original_funcs = OrderedDict()
 
@@ -642,6 +707,38 @@ class Layer:
             raise TypeError(f"_modules must be dict-like, got {type(value)}")
         self._sub_layers.clear()
         self._sub_layers.update(value)
+
+    @property
+    def _forward_post_hooks(self):
+        return self._forward_hooks
+
+    @_forward_post_hooks.setter
+    def _forward_post_hooks(self, value):
+        self._forward_hooks = value
+
+    @property
+    def _forward_post_hooks_with_kwargs_flag(self):
+        return self._forward_hooks_with_kwargs
+
+    @_forward_post_hooks_with_kwargs_flag.setter
+    def _forward_post_hooks_with_kwargs_flag(self, value):
+        self._forward_hooks_with_kwargs = value
+
+    @property
+    def _forward_post_hooks_always_called(self):
+        return self._forward_hooks_always_called
+
+    @_forward_post_hooks_always_called.setter
+    def _forward_post_hooks_always_called(self, value):
+        self._forward_hooks_always_called = value
+
+    @property
+    def _forward_pre_hooks_with_kwargs_flag(self):
+        return self._forward_pre_hooks_with_kwargs
+
+    @_forward_pre_hooks_with_kwargs_flag.setter
+    def _forward_pre_hooks_with_kwargs_flag(self, value):
+        self._forward_pre_hooks_with_kwargs = value
 
     @property
     def _non_persistent_buffers_set(self):
@@ -1024,6 +1121,42 @@ class Layer:
             )
         return hook_remove_helper
 
+    def register_full_backward_pre_hook(
+        self, hook: Callable[..., Any], prepend: bool = False
+    ) -> HookRemoveHelper:
+        hook_remove_helper = HookRemoveHelper(self._backward_pre_hooks)
+        self._backward_pre_hooks[hook_remove_helper._hook_id] = hook
+        if prepend:
+            self._backward_pre_hooks.move_to_end(
+                hook_remove_helper._hook_id, last=False
+            )
+        return hook_remove_helper
+
+    def register_backward_hook(
+        self, hook: Callable[..., Any]
+    ) -> HookRemoveHelper:
+        raise NotImplementedError(
+            "register_backward_hook is not supported. "
+            "Please use register_full_backward_hook instead."
+        )
+
+    def register_full_backward_hook(
+        self, hook: Callable[..., Any], prepend: bool = False
+    ) -> HookRemoveHelper:
+        hook_remove_helper = HookRemoveHelper(self._backward_hooks)
+        self._backward_hooks[hook_remove_helper._hook_id] = hook
+        if prepend:
+            self._backward_hooks.move_to_end(
+                hook_remove_helper._hook_id, last=False
+            )
+        return hook_remove_helper
+
+    def _get_backward_hooks(self):
+        return list(self._backward_hooks.values())
+
+    def _get_backward_pre_hooks(self):
+        return list(self._backward_pre_hooks.values())
+
     def create_parameter(
         self,
         shape: ShapeLike,
@@ -1105,7 +1238,7 @@ class Layer:
 
         param: paddle.nn.Parameter = getattr(mod, param_name)
 
-        if not isinstance(param, (paddle.nn.Parameter, paddle.Tensor)):
+        if not isinstance(param, paddle.nn.Parameter):
             raise AttributeError("`" + param_name + "` is not an nn.Parameter")
 
         return param
@@ -1327,7 +1460,7 @@ class Layer:
             and dtype in valid_dtypes
         ):
             if isinstance(dtype, (str, np.dtype)):
-                dtype = framework.convert_np_dtype_to_dtype_(dtype)
+                dtype = framework.convert_nptype_to_datatype_or_vartype(dtype)
             self._dtype = dtype
             for layer in self.sublayers():
                 layer._dtype = dtype
@@ -1867,6 +2000,13 @@ class Layer:
         def inner():
             nonlocal outputs, inputs, kwargs
 
+            backward_hooks = []
+            backward_pre_hooks = []
+            if self._backward_pre_hooks:
+                backward_pre_hooks = self._get_backward_pre_hooks()
+            if self._backward_hooks:
+                backward_hooks = self._get_backward_hooks()
+
             for hook_id, forward_pre_hook in self._forward_pre_hooks.items():
                 if hook_id in self._forward_pre_hooks_with_kwargs_flag:
                     args_kwargs_result = forward_pre_hook(self, inputs, kwargs)
@@ -1887,6 +2027,29 @@ class Layer:
                         if not isinstance(hook_result, tuple):
                             hook_result = (hook_result,)
                         inputs = hook_result
+
+            if in_dygraph_mode() and (backward_hooks or backward_pre_hooks):
+                flat_inputs = paddle.utils.flatten(inputs)
+                tensor_inputs = [
+                    inp
+                    for inp in flat_inputs
+                    if isinstance(inp, Tensor) and not inp.stop_gradient
+                ]
+                if tensor_inputs:
+                    self._has_backward_input_hook = True
+                    hooked_inputs = _LayerBackwardInputHook.apply(
+                        self, *tensor_inputs
+                    )
+                    if isinstance(hooked_inputs, Tensor):
+                        hooked_inputs = (hooked_inputs,)
+                    hooked_inputs = list(hooked_inputs)
+
+                    def replace_input(inp):
+                        if isinstance(inp, Tensor) and not inp.stop_gradient:
+                            return hooked_inputs.pop(0)
+                        return inp
+
+                    inputs = paddle.utils.map_structure(replace_input, inputs)
 
             if not self._built:
                 self._build_once(*inputs, **kwargs)
@@ -1916,6 +2079,30 @@ class Layer:
 
                 if hook_result is not None:
                     outputs = hook_result
+
+            if in_dygraph_mode() and (backward_hooks or backward_pre_hooks):
+                flat_outputs = paddle.utils.flatten(outputs)
+                tensor_outputs = [
+                    out
+                    for out in flat_outputs
+                    if isinstance(out, Tensor) and not out.stop_gradient
+                ]
+                if tensor_outputs:
+                    hooked_outputs = _LayerBackwardOutputHook.apply(
+                        self, *tensor_outputs
+                    )
+                    if isinstance(hooked_outputs, Tensor):
+                        hooked_outputs = (hooked_outputs,)
+                    hooked_outputs = list(hooked_outputs)
+
+                    def replace_output(out):
+                        if isinstance(out, Tensor) and not out.stop_gradient:
+                            return hooked_outputs.pop(0)
+                        return out
+
+                    outputs = paddle.utils.map_structure(
+                        replace_output, outputs
+                    )
 
             return outputs
 
@@ -1952,6 +2139,8 @@ class Layer:
             (not in_to_static_mode())
             and (not self._forward_pre_hooks)
             and (not self._forward_post_hooks)
+            and (not self._backward_pre_hooks)
+            and (not self._backward_hooks)
             and (self.__class__._build_once is Layer._build_once or self._built)
             and in_dygraph_mode()
             and (not in_profiler_mode() or in_sot_simulation_mode())
@@ -1974,7 +2163,7 @@ class Layer:
     def backward(self, *inputs: Any) -> Any:
         raise ValueError("Layer shouldn't implement backward")
 
-    def add_sublayer(self, name: str, sublayer: Layer) -> Layer:
+    def add_sublayer(self, name: str, sublayer: Layer | None) -> Layer | None:
         """
 
         Adds a sub Layer instance.
@@ -2464,6 +2653,26 @@ class Layer:
         self._state_dict_hooks[hook_remove_helper._hook_id] = hook
         return hook_remove_helper
 
+    def register_state_dict_post_hook(
+        self, hook: _StateDictHook
+    ) -> HookRemoveHelper:
+        return self.register_state_dict_hook(hook)
+
+    def register_state_dict_pre_hook(self, hook: _StateDictPreHook):
+        hook_remove_helper = HookRemoveHelper(self._state_dict_pre_hooks)
+        self._state_dict_pre_hooks[hook_remove_helper._hook_id] = hook
+        return hook_remove_helper
+
+    def register_load_state_dict_pre_hook(self, hook: Callable[..., None]):
+        hook_remove_helper = HookRemoveHelper(self._load_state_dict_pre_hooks)
+        self._load_state_dict_pre_hooks[hook_remove_helper._hook_id] = hook
+        return hook_remove_helper
+
+    def register_load_state_dict_post_hook(self, hook: Callable[..., None]):
+        hook_remove_helper = HookRemoveHelper(self._load_state_dict_post_hooks)
+        self._load_state_dict_post_hooks[hook_remove_helper._hook_id] = hook
+        return hook_remove_helper
+
     def _obtain_parameters_buffers(
         self,
         destination: _StateDict | None = None,
@@ -2519,6 +2728,9 @@ class Layer:
 
         if destination is None:
             destination = OrderedDict()
+        if use_hook:
+            for state_dict_pre_hook in self._state_dict_pre_hooks.values():
+                state_dict_pre_hook(self, structured_name_prefix, keep_vars)
         for name, data in self._parameters.items():
             if data is not None:
                 destination[structured_name_prefix + name] = (
@@ -2539,6 +2751,15 @@ class Layer:
                         buffer if keep_vars else buffer.detach()
                     )
 
+        extra_state_key = structured_name_prefix + _EXTRA_STATE_KEY_SUFFIX
+        if (
+            getattr(self.__class__, "get_extra_state", Layer.get_extra_state)
+            is not Layer.get_extra_state
+        ):
+            extra_state = self.get_extra_state()
+            if extra_state is not None:
+                destination[extra_state_key] = extra_state
+
         if include_sublayers:
             for layer_name, layer_item in self._sub_layers.items():
                 if layer_item is not None:
@@ -2552,8 +2773,17 @@ class Layer:
                     )
 
         if use_hook:
+            local_metadata: dict[str, Any] = {}
             for state_dict_hook in self._state_dict_hooks.values():
-                hook_result = state_dict_hook(destination)
+                try:
+                    hook_result = state_dict_hook(destination)
+                except TypeError:
+                    hook_result = state_dict_hook(
+                        self,
+                        destination,
+                        structured_name_prefix,
+                        local_metadata,
+                    )
                 if hook_result is not None:
                     destination = hook_result
 
@@ -2622,6 +2852,7 @@ class Layer:
     @overload
     def state_dict(
         self,
+        destination: None,
         *,
         prefix: str = ...,
         keep_vars: bool = ...,
@@ -2663,9 +2894,20 @@ class Layer:
                 raise TypeError(f"got multiple values for argument '{key}'")
             kwargs[key] = value
 
-        if (
-            len_args >= 2 and isinstance(args[1], str)
-        ) or 'prefix' in kwargs:  # Torch API
+        if len_args >= 2 and isinstance(args[1], bool):
+            return self._state_dict_impl(*args, **kwargs)
+
+        if any(
+            key in kwargs
+            for key in [
+                'include_sublayers',
+                'structured_name_prefix',
+                'use_hook',
+            ]
+        ):
+            return self._state_dict_impl(*args, **kwargs)
+
+        if (len_args >= 2 and isinstance(args[1], str)) or 'prefix' in kwargs:
             base_param_keys = ["destination", "prefix", "keep_vars"]
             for idx in range(min(len_args, len(base_param_keys))):
                 safe_set_param(base_param_keys[idx], args[idx])
@@ -2761,6 +3003,7 @@ class Layer:
         self,
         state_dict: _StateDict,
         use_structured_name: bool = True,
+        assign: bool = False,
     ) -> tuple[list[str], list[str]]:
         '''
         Set parameters and persistable buffers from state_dict. All the parameters and buffers will be reset by the tensor in the state_dict
@@ -2769,6 +3012,9 @@ class Layer:
             state_dict(dict) : Dict contains all the parameters and persistable buffers.
             use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter or buffer name as key.
                                                   Default: True.
+            assign(bool, optional): When set to ``False``, the properties of the tensors
+                in the current layer are preserved whereas setting it to ``True`` preserves
+                properties of the tensors in the state dict. Default: ``False``.
         Returns:
             missing_keys(list):A list of str containing the missing keys
             unexpected_keys(list):A list of str containing the unexpected keys
@@ -2821,19 +3067,31 @@ class Layer:
                 return param, state
 
         matched_param_state = []
-        for key, param in self._state_dict_impl(use_hook=False).items():
+        for key, param in self._obtain_parameters_buffers().items():
             key_name = key if use_structured_name else param.name
             try:
                 match_res = _check_match(key_name, param)
-                matched_param_state.append(match_res)
+                matched_param_state.append((key, *match_res))
             except ValueError as err:
                 warnings.warn(f"Skip loading for {key}. " + str(err))
         for key in state_dict.keys():
             if key not in match_keys:
                 unexpected_keys.append(key)
         if in_dygraph_mode():
-            for param, state in matched_param_state:
-                param.set_value(state)
+            for key, param, state in matched_param_state:
+                if assign and use_structured_name:
+                    module_path, _, param_name = key.rpartition(".")
+                    mod = self.get_sublayer(module_path)
+                    if isinstance(param, paddle.nn.Parameter):
+                        if isinstance(state, paddle.nn.Parameter):
+                            state.trainable = param.trainable
+                        else:
+                            state = paddle.nn.Parameter(
+                                state, trainable=param.trainable
+                            )
+                    setattr(mod, param_name, state)
+                else:
+                    param.set_value(state)
         else:
 
             def _set_var(var, ndarray):
@@ -2867,18 +3125,18 @@ class Layer:
                         paddle.base.framework._current_expected_place_()
                     )._default_executor
                     paddle.base.libpaddle.pir.create_loaded_parameter(
-                        [param for param, state in matched_param_state],
+                        [param for key, param, state in matched_param_state],
                         global_scope(),
                         executor,
                     )
                 else:
                     executor = Executor(_get_device())._default_executor
                     core._create_loaded_parameter(
-                        [param for param, state in matched_param_state],
+                        [param for key, param, state in matched_param_state],
                         global_scope(),
                         executor,
                     )
-                for param, state in matched_param_state:
+                for key, param, state in matched_param_state:
                     _set_var(param, state)
             except ValueError as e:
                 raise ValueError(
@@ -2924,10 +3182,75 @@ class Layer:
                     expected by this module but present in the provided ``state_dict``.
         """
         error_msgs: list[str] = []
+        missing_keys: list[str] = []
+        unexpected_keys: list[str] = []
 
-        missing_keys, unexpected_keys = self.set_state_dict(
-            state_dict, use_structured_name=True
+        def visit_load_state_dict_hooks(layer, prefix, is_post_hook=False):
+            if is_post_hook:
+                incompatible_keys = _IncompatibleKeys(
+                    missing_keys, unexpected_keys
+                )
+                for hook in layer._load_state_dict_post_hooks.values():
+                    hook_result = hook(layer, incompatible_keys)
+                    if hook_result is not None:
+                        raise AssertionError(
+                            "Hooks registered with ``register_load_state_dict_post_hook`` are not"
+                            "expected to return new values, if incompatible_keys need to be modified,"
+                            "it should be done inplace."
+                        )
+            else:
+                local_metadata: dict[str, Any] = {}
+                for hook in layer._load_state_dict_pre_hooks.values():
+                    hook(
+                        layer,
+                        state_dict,
+                        prefix,
+                        local_metadata,
+                        strict,
+                        missing_keys,
+                        unexpected_keys,
+                        error_msgs,
+                    )
+            for layer_name, layer_item in layer._sub_layers.items():
+                if layer_item is not None:
+                    visit_load_state_dict_hooks(
+                        layer_item,
+                        prefix + layer_name + ".",
+                        is_post_hook,
+                    )
+
+        visit_load_state_dict_hooks(self, "")
+
+        load_missing_keys, load_unexpected_keys = self.set_state_dict(
+            state_dict, use_structured_name=True, assign=assign
         )
+        missing_keys.extend(load_missing_keys)
+        unexpected_keys.extend(load_unexpected_keys)
+
+        def load_extra_state(layer, prefix):
+            extra_state_key = prefix + _EXTRA_STATE_KEY_SUFFIX
+            if extra_state_key in unexpected_keys:
+                unexpected_keys.remove(extra_state_key)
+            if (
+                getattr(
+                    layer.__class__, "set_extra_state", Layer.set_extra_state
+                )
+                is not Layer.set_extra_state
+            ):
+                if extra_state_key in state_dict:
+                    layer.set_extra_state(state_dict[extra_state_key])
+                elif strict:
+                    missing_keys.append(extra_state_key)
+            elif strict and extra_state_key in state_dict:
+                unexpected_keys.append(extra_state_key)
+
+            for layer_name, layer_item in layer._sub_layers.items():
+                if layer_item is not None:
+                    load_extra_state(layer_item, prefix + layer_name + ".")
+
+        load_extra_state(self, "")
+
+        visit_load_state_dict_hooks(self, "", is_post_hook=True)
 
         if strict:
             if len(unexpected_keys) > 0:
@@ -3012,9 +3335,6 @@ class Layer:
                 If ``False`` and the source is in pinned memory, the copy will be
                 asynchronous with respect to the host. Otherwise, the argument
                 has no effect. Default: ``True``.
-            tensor (Tensor, optional):
-                Tensor whose dtype and device are the desired dtype and device
-                for all parameters and buffers in this layer.
 
         Keyword args:
             non_blocking (bool, optional):
@@ -3072,7 +3392,7 @@ class Layer:
             dtype=dtype,
             blocking=blocking,
             include_sublayers=True,
-            floating_only=False,
+            floating_only=True,
         )
 
     def _apply(
@@ -3119,17 +3439,17 @@ class Layer:
             dtype = t.dtype
 
         if not isinstance(dtype, (VarDesc.VarType, core.DataType)):
-            dtype = convert_np_dtype_to_dtype_(dtype)
+            dtype = convert_nptype_to_datatype_or_vartype(dtype)
 
         # 1. gpu place need to determine whether the memory is sufficient for allocation:
         if t.place.is_gpu_place():
             # for gpu, minimum memory allocation unit is 256 bytes.
-            proto_dtype = (
-                paddle_type_to_proto_type[dtype]
+            var_dtype = (
+                datatype_to_vartype[dtype]
                 if isinstance(dtype, core.DataType)
                 else dtype
             )
-            size_dtype = core.size_of_dtype(proto_dtype)
+            size_dtype = core.size_of_dtype(var_dtype)
             # Note(zhangbo): Paddle GPU minimum memory allocation unit is 256 bytes, waiting_alloc_memory will compute ‘t’ occupied memory space.
             # Coefficient 1.2 is used to avoid OOM that may occur in this critical state when the memory is just enough.
             waiting_alloc_memory = (
@@ -3226,8 +3546,10 @@ class Layer:
             )
 
         def transform(t, device, dtype, blocking):
-            if floating_only and (not paddle.is_floating_point(t)):
-                return t
+            if floating_only and paddle.is_integer(t):
+                if device is None:
+                    return t
+                return self._transform(t, device, None, blocking)
             return self._transform(t, device, dtype, blocking)
 
         with warnings.catch_warnings():
@@ -3290,7 +3612,9 @@ class Layer:
             and dst_type in valid_dtypes
         ):
             if isinstance(dst_type, (str, np.dtype)):
-                dst_type = framework.convert_np_dtype_to_dtype_(dst_type)
+                dst_type = framework.convert_nptype_to_datatype_or_vartype(
+                    dst_type
+                )
 
             def layer_trans(layer):
                 layer._to_impl(
@@ -3570,6 +3894,11 @@ class Layer:
     def get_extra_state(self) -> Any:
         raise RuntimeError(
             "Reached a code path in Module.get_extra_state() that should never be called. "
+        )
+
+    def set_extra_state(self, state: Any) -> None:
+        raise RuntimeError(
+            "Reached a code path in Module.set_extra_state() that should never be called. "
         )
 
     def requires_grad_(self, requires_grad: bool = True) -> Self:

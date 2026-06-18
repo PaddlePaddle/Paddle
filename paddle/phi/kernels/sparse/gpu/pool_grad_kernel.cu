@@ -89,7 +89,7 @@ void MaxPoolCooGradGPUKernel(const GPUContext& dev_ctx,
       continue;
     }
 
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+    auto config = backends::gpu::GetGpuLaunchConfig1D(
         dev_ctx, counter_ptr[i] * in_channels, 1);
     MaxPoolGradCudaKernel<T, IntT>
         <<<config.block_per_grid.x,

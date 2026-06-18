@@ -58,6 +58,11 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/pybind/cuda_streams_py.h"
 #endif
 
+#if defined(PADDLE_WITH_CUDA)
+#include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
+#include "paddle/phi/kernels/legacy/gpu/tensor_debug.h"
+#endif
+
 #include "paddle/common/flags.h"
 #include "paddle/fluid/eager/custom_operator/custom_operator_utils.h"
 #include "paddle/phi/api/include/operants_manager.h"
@@ -153,8 +158,9 @@ static PyObject* eager_api_run_backward(PyObject* self,
   auto tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
   auto grad_tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 1), 1);
   bool retain_graph = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 2), 2);
+  bool create_graph = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 3), 3);
   std::string dump_backward_graph_path =
-      CastPyArg2AttrString(PyTuple_GET_ITEM(args, 3), 3);
+      CastPyArg2AttrString(PyTuple_GET_ITEM(args, 4), 4);
   const phi::distributed::ProcessMesh* mesh = nullptr;
   if (InputsContainDistTensor(&mesh, tensors, grad_tensors)) {
     tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0, mesh);
@@ -163,8 +169,11 @@ static PyObject* eager_api_run_backward(PyObject* self,
   {
     eager_gil_scoped_release guard;
     EagerSetDeviceId();
-    egr::Backward(
-        tensors, grad_tensors, retain_graph, dump_backward_graph_path);
+    egr::Backward(tensors,
+                  grad_tensors,
+                  retain_graph,
+                  create_graph,
+                  dump_backward_graph_path);
   }
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -1055,6 +1064,52 @@ static PyObject* eager_api_reset_saved_tensors_hooks(PyObject* self,
 }
 
 #if defined(PADDLE_WITH_CUDA)
+static PyObject* eager_api_print_tensor_in_gpu(PyObject* self,
+                                               PyObject* args,
+                                               PyObject* kwargs) {
+  EAGER_TRY
+  VLOG(4) << "Running in eager_api_print_tensor_in_gpu.";
+  auto tensor = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
+  PADDLE_ENFORCE_EQ(tensor.is_dense_tensor(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "_print_tensor_in_gpu only supports DenseTensor."));
+  const auto& dense =
+      *static_cast<const phi::DenseTensor*>(tensor.impl().get());
+  PADDLE_ENFORCE_EQ(dense.place().GetType() == phi::AllocationType::GPU,
+                    true,
+                    common::errors::InvalidArgument(
+                        "_print_tensor_in_gpu only supports GPU tensors. "
+                        "Please call tensor.cuda() first."));
+  // ----------------------------------------------------------------
+  // Stream selection: must use the CUDA Graph capturing stream when
+  // capture is in progress.  Using get_current_stream() (which may
+  // return the legacy stream 0) during capture would cause
+  // cudaErrorStreamCaptureImplicit (error 906) because CUDA forbids
+  // any operation on the legacy stream while another stream is being
+  // captured.
+  //
+  // When NOT capturing, get_current_stream gives the correct stream
+  // for ordering the debug kernel after preceding ops.
+  // ----------------------------------------------------------------
+  cudaStream_t stream = nullptr;
+  if (phi::backends::gpu::CUDAGraph::IsCapturing()) {
+    // During graph capture the DeviceContext stream IS the capturing
+    // stream (set in cuda_graph_with_memory_pool.cc:BeginCapture).
+    auto* dev_ctx = static_cast<phi::GPUContext*>(
+        phi::DeviceContextPool::Instance().Get(dense.place()));
+    stream = dev_ctx->stream();
+  } else {
+    const auto device_id = dense.place().GetDeviceId();
+    stream = paddle::platform::get_current_stream(device_id)->raw_stream();
+  }
+  phi::DebugPrintGPUTensor(dense, stream);
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+#endif
+
+#if defined(PADDLE_WITH_CUDA)
 static PyObject* eager_api_async_read(PyObject* self,
                                       PyObject* args,
                                       PyObject* kwargs) {
@@ -1214,9 +1269,10 @@ static PyObject* eager_api_async_read(PyObject* self,
       auto* src_data = src_tensor.data<float>();
       auto* index_data = index_tensor.data<int64_t>();
       auto* buffer_data = buffer_tensor->data<float>();
-      const int& slice_size =
-          src_tensor.numel() / src_tensor.dims()[0];       // NOLINT
-      const int& copy_bytes = slice_size * sizeof(float);  // NOLINT
+      const int64_t slice_size =
+          src_tensor.numel() / src_tensor.dims()[0];  // NOLINT
+      const size_t copy_bytes =
+          static_cast<size_t>(slice_size) * sizeof(float);  // NOLINT
       int64_t c = 0;
       for (int64_t i = 0; i < index_tensor.numel(); i++) {
         std::memcpy(buffer_data + c * slice_size,
@@ -1373,8 +1429,8 @@ static PyObject* eager_api_to_uva_tensor(PyObject* self,
     SetUVATensorFromPyArray<int8_t>(new_tensor, array, device_id);
   } else if (py::isinstance<py::array_t<int16_t>>(array)) {
     SetUVATensorFromPyArray<int16_t>(new_tensor, array, device_id);
-  } else if (py::isinstance<py::array_t<phi::dtype::float16>>(array)) {
-    SetUVATensorFromPyArray<phi::dtype::float16>(new_tensor, array, device_id);
+  } else if (py::isinstance<py::array_t<phi::float16>>(array)) {
+    SetUVATensorFromPyArray<phi::float16>(new_tensor, array, device_id);
   } else if (py::isinstance<py::array_t<bool>>(array)) {
     SetUVATensorFromPyArray<bool>(new_tensor, array, device_id);
   } else {
@@ -1686,6 +1742,10 @@ PyMethodDef variable_functions[] = {  // NOLINT
      nullptr},
     {"to_uva_tensor",
      (PyCFunction)(void (*)())eager_api_to_uva_tensor,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_print_tensor_in_gpu",
+     (PyCFunction)(void (*)())eager_api_print_tensor_in_gpu,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
 #endif

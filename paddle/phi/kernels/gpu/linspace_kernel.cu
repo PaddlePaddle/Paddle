@@ -72,9 +72,9 @@ T GetValueOfExpectedType(const Context& dev_ctx, const DenseTensor& x) {
     case DataType::INT64:
       return static_cast<T>(GetValue<int64_t, Context>(dev_ctx, x));
     case DataType::FLOAT16:
-      return static_cast<T>(GetValue<phi::float16, Context>(dev_ctx, x));
+      return static_cast<T>(GetValue<float16, Context>(dev_ctx, x));
     case DataType::BFLOAT16:
-      return static_cast<T>(GetValue<phi::bfloat16, Context>(dev_ctx, x));
+      return static_cast<T>(GetValue<bfloat16, Context>(dev_ctx, x));
     case DataType::BOOL:
       return static_cast<T>(GetValue<bool, Context>(dev_ctx, x));
     case DataType::INT16:
@@ -124,7 +124,9 @@ void LinspaceKernel(const Context& dev_ctx,
     LinspaceSpecialKernel<T><<<1, 1, 0, stream>>>(start_value, out_data);
   } else if (isIntegralType(dtype, true)) {
     int block = 512;
-    int grid = (num + block - 1) / block;
+    int64_t grid_64 = (num + block - 1) / block;
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "grid");
+    uint32_t grid = static_cast<uint32_t>(grid_64);
 
     float step =
         (static_cast<float>(stop_value) - static_cast<float>(start_value)) /
@@ -133,7 +135,9 @@ void LinspaceKernel(const Context& dev_ctx,
         start_value, stop_value, step, num, out_data);
   } else {
     int block = 512;
-    int grid = (num + block - 1) / block;
+    int64_t grid_64 = (num + block - 1) / block;
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "grid");
+    uint32_t grid = static_cast<uint32_t>(grid_64);
 
     T step = (static_cast<T>(stop_value) - static_cast<T>(start_value)) /
              static_cast<T>(num - 1);

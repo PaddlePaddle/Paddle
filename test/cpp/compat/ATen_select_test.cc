@@ -28,7 +28,6 @@
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
 #include "paddle/phi/common/float16.h"
-#include "test/cpp/compat/cuda_test_utils.h"
 #include "torch/all.h"
 
 // ==================== select tests ====================
@@ -380,7 +379,6 @@ TEST(MaskedSelectTest, MaskedSelectDifferentDtypes) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 // Test for select on CUDA
 TEST(SelectTest, SelectCUDA) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   auto tensor =
       at::arange(10, at::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
 
@@ -395,7 +393,6 @@ TEST(SelectTest, SelectCUDA) {
 
 // Test for index_select on CUDA
 TEST(IndexSelectTest, IndexSelectCUDA) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   auto tensor =
       at::arange(10, at::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
 
@@ -420,7 +417,6 @@ TEST(IndexSelectTest, IndexSelectCUDA) {
 
 // Test for masked_select on CUDA
 TEST(MaskedSelectTest, MaskedSelectCUDA) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   auto tensor =
       at::arange(10, at::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
 

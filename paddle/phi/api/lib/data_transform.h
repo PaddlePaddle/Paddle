@@ -181,8 +181,9 @@ inline bool NeedTransformPlace(const phi::Place& src_place,
               phi::TransToPhiBackend(src_place) !=
                   (target != Backend::GPUDNN ? target : Backend::GPU));
 #elif defined(PADDLE_WITH_XPU)
-  bool ret = target != Backend::ALL_BACKEND &&
-             phi::TransToPhiBackend(src_place) != target;
+  bool ret = src_place.GetType() == AllocationType::XPUPINNED ||
+             (target != Backend::ALL_BACKEND &&
+              phi::TransToPhiBackend(src_place) != target);
 #elif defined(PADDLE_WITH_IPU)
   bool ret = target != Backend::ALL_BACKEND &&
              phi::TransToPhiBackend(src_place) != target;

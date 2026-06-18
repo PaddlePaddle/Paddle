@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <vector>
 
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/memory_utils.h"
@@ -25,8 +26,6 @@
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
-
-using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T>
 __global__ void FillFirstRow(T* dist, const int N) {
@@ -64,9 +63,9 @@ __global__ void Levenshtein(T* dist,
   int col = index % (N + 1);
   if (row > 0 && col > 0 && row < M + 1 && col < N + 1) {
     int cost = x1[row - 1] == x2[col - 1] ? 0 : 1;
-    int dels = dist[(row - 1) * (N + 1) + col] + 1;
-    int ins = dist[row * (N + 1) + col - 1] + 1;
-    int subs = dist[(row - 1) * (N + 1) + (col - 1)] + cost;
+    int dels = dist[static_cast<int64_t>(row - 1) * (N + 1) + col] + 1;
+    int ins = dist[static_cast<int64_t>(row) * (N + 1) + col - 1] + 1;
+    int subs = dist[static_cast<int64_t>(row - 1) * (N + 1) + (col - 1)] + cost;
     dist[index] = min(dels, min(ins, subs));
   }
 }
@@ -143,10 +142,12 @@ void EditDistanceKernel(const Context& dev_ctx,
       if (normalized) {
         distance = distance / n;
       }
+      const T* stable_dist =
+          backends::gpu::RestoreHostMemIfCapturingCUDAGraph(&distance, 1);
       memory_utils::Copy(dev_ctx.GetPlace(),
                          out_data + num,
                          CPUPlace(),
-                         &distance,
+                         stable_dist,
                          sizeof(T),
                          stream);
     } else {

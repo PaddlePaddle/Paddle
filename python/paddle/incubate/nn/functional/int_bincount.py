@@ -16,7 +16,7 @@ import paddle
 from paddle import _C_ops
 from paddle.base.data_feeder import convert_dtype
 from paddle.base.framework import (
-    convert_np_dtype_to_dtype_,
+    convert_nptype_to_datatype_or_vartype,
     core,
     in_dynamic_or_pir_mode,
 )
@@ -82,7 +82,7 @@ def math_int_bincount(x, low, high, dtype):
 def int_bincount(x, low, high, dtype=None, name=None):
     if in_dynamic_or_pir_mode():
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-            dtype = convert_np_dtype_to_dtype_(dtype)
+            dtype = convert_nptype_to_datatype_or_vartype(dtype)
 
         if paddle.is_compiled_with_xpu():
             return math_int_bincount(x, low, high, dtype)

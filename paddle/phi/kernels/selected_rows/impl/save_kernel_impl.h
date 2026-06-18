@@ -41,8 +41,7 @@ void SaveSelectedRowsKernel(const Context& dev_ctx,
       false,
       common::errors::PreconditionNotMet(
           "%s exists!, cannot save to it when overwrite is set to false.",
-          file_path,
-          overwrite));
+          file_path));
   PADDLE_ENFORCE_EQ(save_as_fp16,
                     false,
                     common::errors::Unimplemented(

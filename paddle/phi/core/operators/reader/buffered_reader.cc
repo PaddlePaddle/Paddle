@@ -42,7 +42,7 @@ BufferedReader::~BufferedReader() {
 
 BufferedReader::BufferedReader(
     const std::shared_ptr<framework::ReaderBase> &reader,
-    const phi::Place &place,
+    const Place &place,
     size_t buffer_size,
     bool pin_memory)
     : framework::DecoratedReader(reader),
@@ -57,7 +57,7 @@ BufferedReader::BufferedReader(
       custom_device_buffer_() {
   VLOG(1) << "BufferedReader";
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (place_.GetType() == phi::AllocationType::GPU && !pin_memory) {
+  if (place_.GetType() == AllocationType::GPU && !pin_memory) {
     int dev_idx = place_.device;  // NOLINT
     compute_stream_ =
         ((phi::GPUContext *)(phi::DeviceContextPool::Instance().Get(place_)))
@@ -71,7 +71,7 @@ BufferedReader::BufferedReader(
 #endif
 
 #ifdef PADDLE_WITH_XPU
-  if (place_.GetType() == phi::AllocationType::XPU) {
+  if (place_.GetType() == AllocationType::XPU) {
     int dev_idx = place_.device;
     compute_stream_ =
         ((phi::XPUContext *)(phi::DeviceContextPool::Instance().Get(place_)))
@@ -85,7 +85,7 @@ BufferedReader::BufferedReader(
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  if (place_.GetType() == phi::AllocationType::CUSTOM) {
+  if (place_.GetType() == AllocationType::CUSTOM) {
     auto stream =
         ((phi::CustomContext *)(phi::DeviceContextPool::Instance().Get(place_)))
             ->stream();
@@ -125,7 +125,7 @@ void BufferedReader::ReadAsync(size_t i) {
     }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)  // @{ Group GPU Place
-    if (place_.GetType() == phi::AllocationType::GPU) {
+    if (place_.GetType() == AllocationType::GPU) {
       auto dev_ctx_gpu =
           (phi::GPUContext *)(phi::DeviceContextPool::Instance().Get(place_));
       TensorVec &cuda = cuda_buffer_[i];
@@ -160,7 +160,7 @@ void BufferedReader::ReadAsync(size_t i) {
         // If we don't set Device here, which will use CUDAPlace(0) default.
         platform::SetDeviceId(place_.device);
         for (size_t i = 0; i < cpu.size(); ++i) {
-          if (cpu[i].place().GetType() == phi::AllocationType::CPU) {
+          if (cpu[i].place().GetType() == AllocationType::CPU) {
             cuda[i].Resize(cpu[i].dims());
             cuda[i].set_layout(cpu[i].layout());
             cuda_pinned_ptrs[i] =
@@ -220,8 +220,8 @@ void BufferedReader::ReadAsync(size_t i) {
           auto cpu_ptr = cpu[i].data();
           auto gpu_ptr = gpu_ptrs[i];
           auto size = cpu[i].numel() * phi::SizeOf(cpu[i].dtype());
-          if (cpu_place.GetType() == phi::AllocationType::GPUPINNED ||
-              cpu_place.GetType() == phi::AllocationType::GPU) {
+          if (cpu_place.GetType() == AllocationType::GPUPINNED ||
+              cpu_place.GetType() == AllocationType::GPU) {
             phi::memory_utils::Copy(
                 place_, gpu_ptr, cpu_place, cpu_ptr, size, stream_.get());
           } else {
@@ -252,7 +252,7 @@ void BufferedReader::ReadAsync(size_t i) {
 #endif
 
 #ifdef PADDLE_WITH_XPU
-    if (place_.GetType() == phi::AllocationType::XPU) {
+    if (place_.GetType() == AllocationType::XPU) {
       auto dev_ctx_xpu =
           (phi::XPUContext *)(phi::DeviceContextPool::Instance().Get(place_));
       TensorVec &xpu = xpu_buffer_[i];
@@ -292,7 +292,7 @@ void BufferedReader::ReadAsync(size_t i) {
         auto size = cpu[i].numel() * phi::SizeOf(cpu[i].dtype());
         // TODO(zhanghuan) for now hardware not support xpu_memcpy_async, maybe
         // KL3
-        if ((cpu_place.GetType() == phi::AllocationType::XPU)) {
+        if ((cpu_place.GetType() == AllocationType::XPU)) {
           platform::XPUStreamSync(stream_.get());
           char *tmp = new char[size];
           PADDLE_ENFORCE_XPU_SUCCESS(xpu_memcpy(
@@ -310,7 +310,7 @@ void BufferedReader::ReadAsync(size_t i) {
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    if (place_.GetType() == phi::AllocationType::CUSTOM) {
+    if (place_.GetType() == AllocationType::CUSTOM) {
       auto dev_ctx_custom =
           (phi::CustomContext *)(phi::DeviceContextPool::Instance().Get(
               place_));
@@ -351,7 +351,7 @@ void BufferedReader::ReadAsync(size_t i) {
         auto cpu_ptr = cpu[i].data();
         auto custom_device_ptr = custom_device_ptrs[i];
         auto size = cpu[i].numel() * phi::SizeOf(cpu[i].dtype());
-        if ((cpu_place.GetType() == phi::AllocationType::CUSTOM)) {
+        if ((cpu_place.GetType() == AllocationType::CUSTOM)) {
           phi::memory_utils::Copy(
               place_, custom_device_ptr, cpu_place, cpu_ptr, size);
           custom_device_stream_->Synchronize();
@@ -395,11 +395,11 @@ void BufferedReader::ReadNextImpl(phi::TensorArray *out) {
     return;
   }
 
-  if (place_.GetType() == phi::AllocationType::GPU) {  // NOLINT
+  if (place_.GetType() == AllocationType::GPU) {  // NOLINT
     *out = std::move(cuda_buffer_[i]);
-  } else if (place_.GetType() == phi::AllocationType::XPU) {
+  } else if (place_.GetType() == AllocationType::XPU) {
     *out = std::move(xpu_buffer_[i]);
-  } else if (place_.GetType() == phi::AllocationType::CUSTOM) {
+  } else if (place_.GetType() == AllocationType::CUSTOM) {
     *out = std::move(custom_device_buffer_[i]);
   } else {
     *out = std::move(cpu_buffer_[i]);

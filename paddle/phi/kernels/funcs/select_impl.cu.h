@@ -24,8 +24,6 @@
 #include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
-namespace kps = phi::kps;
-
 namespace phi {
 namespace funcs {
 using Mode = kps::details::ReduceMode;
@@ -480,10 +478,10 @@ void SelectKernel(const KPDevice &dev_ctx,
   std::vector<int64_t> out_dim = {static_cast<int64_t>(total_true_num)};
 
   if (SelectData == 1) {
-    out->Resize(make_ddim(out_dim));
+    out->Resize(out_dim);
   } else if (SelectData == 0) {  // == 0 where_index
     out_dim.push_back(static_cast<int64_t>(rank));
-    out->Resize(make_ddim(out_dim));
+    out->Resize(out_dim);
   }
   auto out_data = dev_ctx.template Alloc<OutT>(out);
   // 3.2 get true data's index according to cond_data and cumsum_data
@@ -577,10 +575,10 @@ void RestrictSelectKernel(const KPDevice &dev_ctx,
   std::vector<int64_t> out_dim = {static_cast<int64_t>(total_true_num)};
 
   if (SelectData == 1) {
-    out->Resize(make_ddim(out_dim));
+    out->Resize(out_dim);
   } else if (SelectData == 0) {  // == 0 where_index
     out_dim.push_back(static_cast<int64_t>(rank));
-    out->Resize(make_ddim(out_dim));
+    out->Resize(out_dim);
   }
   auto out_data = dev_ctx.template Alloc<OutT>(out);
   // 3.2 get true data's index according to cond_data and cumsum_data

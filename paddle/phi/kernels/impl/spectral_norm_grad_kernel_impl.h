@@ -37,7 +37,7 @@ void SpectralNormGradKernel(const Context& dev_ctx,
   DenseTensor weight_mat, out_grad_mat;
   auto dims = weight.dims();
   const int rank = dims.size();
-  std::vector<int> real_dims;
+  std::vector<int64_t> real_dims;
   if (dim != 0) {
     std::vector<int> perm;
     perm.push_back(dim);
@@ -48,9 +48,9 @@ void SpectralNormGradKernel(const Context& dev_ctx,
         real_dims.push_back(dims[i]);
       }
     }
-    weight_mat.Resize(make_ddim(real_dims));
+    weight_mat.Resize(real_dims);
     dev_ctx.template Alloc<T>(&weight_mat);
-    out_grad_mat.Resize(make_ddim(real_dims));
+    out_grad_mat.Resize(real_dims);
     dev_ctx.template Alloc<T>(&out_grad_mat);
     TransCompute2DTo5D<Context, T>(dev_ctx, weight, rank, perm, &weight_mat);
     TransCompute2DTo5D<Context, T>(
@@ -112,11 +112,8 @@ void SpectralNormGradKernel(const Context& dev_ctx,
     }
     weight_grad->Resize(dims);
     dev_ctx.template Alloc<T>(weight_grad);
-    TransCompute2DTo5D<Context, T>(dev_ctx,
-                                   weight_grad_mat.Resize(make_ddim(real_dims)),
-                                   rank,
-                                   perm,
-                                   weight_grad);
+    TransCompute2DTo5D<Context, T>(
+        dev_ctx, weight_grad_mat.Resize(real_dims), rank, perm, weight_grad);
   } else {
     Copy(dev_ctx,
          weight_grad_mat.Resize(dims),

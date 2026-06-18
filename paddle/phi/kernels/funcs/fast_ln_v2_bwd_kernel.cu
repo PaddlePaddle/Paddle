@@ -236,10 +236,10 @@ __global__ __launch_bounds__(Ktraits::THREADS_PER_CTA) void ln_bwd_kernel(
 #endif
 }
 
-bool has_fast_ln_v2_bwd_kernel(phi::DataType weight_type,
-                               phi::DataType input_type,
-                               phi::DataType output_type,
-                               phi::DataType compute_type,
+bool has_fast_ln_v2_bwd_kernel(DataType weight_type,
+                               DataType input_type,
+                               DataType output_type,
+                               DataType compute_type,
                                uint32_t hidden_size) {
   auto iter = FAST_LN_V2_BWD_FUNCS.find(
       get_key(weight_type, input_type, output_type, compute_type, hidden_size));
@@ -567,10 +567,10 @@ REGISTER_BWD_LAUNCHER(10240, bf16, bf16, bf16, fp32, 2, 1, 4, 16, 4);
 REGISTER_BWD_LAUNCHER(10240, bf16, fp32, bf16, fp32, 2, 1, 4, 16, 4);
 #endif  // CUDNN_VERSION_MIN(8, 1, 0) && CUDA_VERSION >= 12000
 
-BwdFunction &get_bwd_launcher(phi::DataType weight_type,
-                              phi::DataType input_type,
-                              phi::DataType output_type,
-                              phi::DataType compute_type,
+BwdFunction &get_bwd_launcher(DataType weight_type,
+                              DataType input_type,
+                              DataType output_type,
+                              DataType compute_type,
                               uint32_t hidden_size) {
   auto iter = FAST_LN_V2_BWD_FUNCS.find(
       get_key(weight_type, input_type, output_type, compute_type, hidden_size));

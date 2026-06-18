@@ -2,7 +2,7 @@ name: Codestyle-Check
 
 on:
   pull_request:
-    branches: ["develop"]
+    branches: [develop, release/**]
 
 jobs:
   check-bypass:
@@ -10,7 +10,7 @@ jobs:
     if: ${{ github.repository_owner == 'PaddlePaddle' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
-      workflow-name: 'codestyle'
+      workflow-name: "codestyle"
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -18,13 +18,17 @@ jobs:
     name: Pre Commit
     if: ${{ github.repository_owner == 'PaddlePaddle' && needs.check-bypass.outputs.can-skip != 'true' }}
     needs: [check-bypass]
-    runs-on: ubuntu-latest
+    runs-on:
+      group: APPROVAL
     timeout-minutes: 10
     env:
       PR_ID: ${{ github.event.pull_request.number }}
       BRANCH: develop
 
     steps:
+      - name: Cleanup
+        run: |
+          rm -rf * .[^.]*
       - name: Checkout base repo
         uses: actions/checkout@v6
         with:
@@ -44,16 +48,14 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pre-commit==2.17.0 cpplint==1.6.0  clang-format==13.0.0
-          pip install ast-grep-cli==0.40.0 # This version should be consistent with the one in .pre-commit-config.yaml
+          pip install pre-commit==2.17.0
+          pip install ast-grep-cli==0.42.1 # This version should be consistent with the one in .pre-commit-config.yaml
 
       - name: Run ast-grep unit tests
         run: |
           ast-grep test
 
       - name: Check pre-commit
-        env:
-          SKIP_CLANG_TIDY_CHECK: "ON"
         run: |
           set +e
           bash -x tools/codestyle/pre_commit.sh;EXCODE=$?

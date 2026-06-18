@@ -25,14 +25,12 @@ limitations under the License. */
 namespace phi {
 namespace distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 SpmdInfo Conv2dInferSpmdBase(const DistMetaTensor& input,
                              const DistMetaTensor& filter) {
   // Step0: verify input args based on conv2d logic
   VLOG(4) << "step 0: verify input args based on conv2d logic";
-  auto original_input_shape = common::vectorize(input.dims());
-  auto original_filter_shape = common::vectorize(filter.dims());
+  auto original_input_shape = vectorize(input.dims());
+  auto original_filter_shape = vectorize(filter.dims());
   int input_ndim = static_cast<int>(original_input_shape.size());
   int filter_ndim = static_cast<int>(original_filter_shape.size());
   const auto& input_dist_attr_src = input.dist_attr();
@@ -80,9 +78,9 @@ SpmdInfo Conv2dInferSpmdBase(const DistMetaTensor& input,
                         "The Input channel's dims mapping must be equal to "
                         "filter channel's dims mapping in conv2d. "
                         "When shard channel dim to a mesh (multiple cards), "
-                        "each card will compute partial output, ",
+                        "each card will compute partial output, "
                         "otherwise, mark channel dim as replicate, each card "
-                        "will compute complete output.",
+                        "will compute complete output. "
                         "But now the Input channel's dims mapping is [%d], and "
                         "the filter channel's dims mapping is [%d].",
                         input_dims_mapping[channel_dim],
@@ -153,7 +151,7 @@ SpmdInfo Conv2dInferSpmdReverseBase(const DistMetaTensor& input,
                                     const DistMetaTensor& output) {
   // Step0: verify input args based on conv2d logic
   VLOG(4) << "step 0: verify args based on conv2d logic";
-  auto original_output_shape = common::vectorize(output.dims());
+  auto original_output_shape = vectorize(output.dims());
   int output_ndim = static_cast<int>(original_output_shape.size());
   PADDLE_ENFORCE_EQ(
       output_ndim,

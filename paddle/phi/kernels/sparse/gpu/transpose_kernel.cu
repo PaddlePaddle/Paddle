@@ -184,8 +184,7 @@ void TransposeCooKernel(const Context &dev_ctx,
                      perm.data(),
                      sizeof(int) * perm.size(),
                      dev_ctx.stream());
-  auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_nnz * n_dim, 1);
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_nnz * n_dim, 1);
   TransposeCooCudaKernel<<<config.block_per_grid.x,
                            config.thread_per_block.x,
                            0,
@@ -283,8 +282,7 @@ void TransposeCsrGpuKernel(const GPUContext &dev_ctx,
                      dev_ctx.stream());
 
   int64_t x_nnz = x.nnz();
-  auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_dims[0], 1);
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_dims[0], 1);
   if (perm.size() == 2) {
     TransposeCsr2DCudaKernel<T><<<config.block_per_grid.x,
                                   config.thread_per_block.x,

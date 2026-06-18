@@ -186,7 +186,7 @@ void CudnnLSTMKernel(
     if (seed == 0) {
       // If not specify seed, use global Generator to generate seed.
       int device_id = dev_ctx.GetPlace().GetDeviceId();
-      auto gen_cuda = phi::DefaultCUDAGenerator(device_id);
+      auto gen_cuda = DefaultCUDAGenerator(device_id);
       seed = static_cast<int>(gen_cuda->Random64());
     }
   }
@@ -195,7 +195,7 @@ void CudnnLSTMKernel(
   bool has_seq_length = running_sequence_length != nullptr;
   std::vector<int> SequenceLength;
   if (has_seq_length) {
-    SequenceLength = phi::GetVectorFromTensor<int>(running_sequence_length);
+    SequenceLength = GetVectorFromTensor<int>(running_sequence_length);
   }
 
   auto handle = dev_ctx.cudnn_handle();

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <iostream>
 #include <vector>
+#include "paddle/common/enforce.h"
 #include "paddle/phi/common/datatype_traits.h"
 #include "paddle/phi/kernels/funcs/cublaslt.h"
 #include "paddle/phi/kernels/funcs/quant_dequant.h"
@@ -486,7 +487,9 @@ void LaunchReduceAbsMaxQuantKernel(const T* x,
           row_ranges,
           outlier_idx);
 
-  const int32_t elem_cnt = rows * cols;
+  const int64_t elem_cnt_64 = static_cast<int64_t>(rows) * cols;
+  PADDLE_ENFORCE_LE_INT_MAX(elem_cnt_64, "llm_int8 quant elem_cnt");
+  const int32_t elem_cnt = static_cast<int32_t>(elem_cnt_64);
   const int32_t vectorized_elem_cnt = elem_cnt / VecSize;
   int32_t quant_kernel_num_blocks;
   PADDLE_ENFORCE_GPU_SUCCESS(
@@ -514,13 +517,20 @@ void LaunchSplitKernel(const T* x,
                        int kfp_num,
                        gpuStream_t stream) {
   int max_row = m > n ? m : n;
-  const int elem_cnt = max_row * kfp_num;
+  const int64_t elem_cnt = static_cast<int64_t>(max_row) * kfp_num;
   int num_blocks = 1;
   PADDLE_ENFORCE_GPU_SUCCESS(GetGridSize(elem_cnt, &num_blocks));
-  int64_t num_outlier_idx = (k + 31) / 32;
+  PADDLE_ENFORCE_LE_INT_MAX(elem_cnt, "elem_cnt");
+  int64_t num_outlier_idx = (static_cast<int64_t>(k) + 31) / 32;
+  PADDLE_ENFORCE_LE_INT_MAX(num_outlier_idx, "num_outlier_idx");
+  const int num_outlier_idx_int = static_cast<int>(num_outlier_idx);
 
-  const int32_t sub_x_elem_cnt = m * kfp_num;
-  const int32_t sub_w_elem_cnt = n * kfp_num;
+  const int64_t sub_x_elem_cnt_64 = static_cast<int64_t>(m) * kfp_num;
+  PADDLE_ENFORCE_LE_INT_MAX(sub_x_elem_cnt_64, "llm_int8 split sub_x elem_cnt");
+  const int32_t sub_x_elem_cnt = static_cast<int32_t>(sub_x_elem_cnt_64);
+  const int64_t sub_w_elem_cnt_64 = static_cast<int64_t>(n) * kfp_num;
+  PADDLE_ENFORCE_LE_INT_MAX(sub_w_elem_cnt_64, "llm_int8 split sub_w elem_cnt");
+  const int32_t sub_w_elem_cnt = static_cast<int32_t>(sub_w_elem_cnt_64);
 
   using DataT = typename PDDataTypeTraits<T>::DataType;
   SplitKernel<DataT>
@@ -534,11 +544,11 @@ void LaunchSplitKernel(const T* x,
           m,
           k,
           n,
-          num_outlier_idx,
+          num_outlier_idx_int,
           kfp_num,
           sub_x_elem_cnt,
           sub_w_elem_cnt,
-          elem_cnt);
+          static_cast<int>(elem_cnt));
 }
 
 template <typename T>
@@ -555,7 +565,9 @@ void LaunchDequantMergeKernel(const int32_t* x,
 
   using DataT = typename PDDataTypeTraits<T>::DataType;
 
-  DequantMergeKernel<DataT, VecSize><<<m, NumThreads, 0, stream>>>(
+  PADDLE_ENFORCE_LE_UINT32_MAX(m, "llm_int8 dequant merge grid.x");
+  const uint32_t grid = static_cast<uint32_t>(m);
+  DequantMergeKernel<DataT, VecSize><<<grid, NumThreads, 0, stream>>>(
       x,
       reinterpret_cast<const DataT*>(x_fp),
       reinterpret_cast<const float*>(input_range),
@@ -566,7 +578,7 @@ void LaunchDequantMergeKernel(const int32_t* x,
 }
 
 template <typename T>
-void LLMGemm(const phi::GPUContext& dev_ctx,
+void LLMGemm(const GPUContext& dev_ctx,
              const DenseTensor* weight,
              const DenseTensor* input,
              const DenseTensor* weight_scale,
@@ -578,7 +590,7 @@ void LLMGemm(const phi::GPUContext& dev_ctx,
              int k,
              int n) {
   // absmax, quant, outlier
-  int64_t num_outlier_idx = (k + 31) / 32;
+  int64_t num_outlier_idx = (static_cast<int64_t>(k) + 31) / 32;
   DenseTensor row_ranges, outlier_idx, quant_input;
   row_ranges.Resize({m});
   outlier_idx.Resize({num_outlier_idx});
@@ -606,8 +618,12 @@ void LLMGemm(const phi::GPUContext& dev_ctx,
 
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(
       kfp_num_tensor.data<int32_t>(), 0, sizeof(int32_t), dev_ctx.stream()));
-  UpdateOutlier<<<1, num_outlier_idx, 0, dev_ctx.stream()>>>(
-      outlier_idx.data<int32_t>(), kfp_num_tensor.data<int32_t>());
+  PADDLE_ENFORCE_LE_UINT32_MAX(num_outlier_idx, "num_outlier_idx");
+  UpdateOutlier<<<1,
+                  static_cast<uint32_t>(num_outlier_idx),
+                  0,
+                  dev_ctx.stream()>>>(outlier_idx.data<int32_t>(),
+                                      kfp_num_tensor.data<int32_t>());
   cudaMemcpy(&kfp_num,
              kfp_num_tensor.data<int32_t>(),
              sizeof(int32_t),
@@ -652,7 +668,7 @@ void LLMGemm(const phi::GPUContext& dev_ctx,
     T beta = static_cast<T>(0.0);
 
     // (m, n, k) = bsz_seq, output_size, input_size, (input, weight, out)
-    auto blas = funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
+    auto blas = funcs::GetBlas<GPUContext, T>(dev_ctx);
     blas.GEMM(transA,
               transB,
               m,

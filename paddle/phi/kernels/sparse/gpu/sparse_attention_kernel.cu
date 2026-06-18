@@ -656,7 +656,7 @@ std::vector<DenseTensor> GetSplitTensor(DenseTensor* input) {
   for (int i = 1; i < new_dims.size(); i++) {
     new_dims[i] = dims[i + 1];
   }
-  input->Resize(make_ddim(new_dims));
+  input->Resize(new_dims);
   return input->Split(1, 0);
 }
 

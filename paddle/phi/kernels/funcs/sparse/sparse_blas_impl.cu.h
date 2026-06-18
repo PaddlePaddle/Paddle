@@ -18,6 +18,9 @@
 
 #include "paddle/common/ddim.h"
 #include "paddle/phi/backends/dynload/cusparse.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
+#endif
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -506,7 +509,7 @@ void SparseBlas<GPUContext>::SPGEMM(bool transa,
   DenseTensor* mat_out_values = mat_out->mutable_values();
 
   MetaTensor out_crows_meta(mat_out_crows);
-  out_crows_meta.set_dtype(phi::DataType::INT32);
+  out_crows_meta.set_dtype(DataType::INT32);
   out_crows_meta.set_dims(mat_a.crows().dims());
   dev_ctx_.template Alloc<int32_t>(mat_out_crows);
 
@@ -530,41 +533,41 @@ void SparseBlas<GPUContext>::SPGEMM(bool transa,
   std::shared_ptr<DenseTensor> a_crows_int = nullptr, a_cols_int = nullptr,
                                b_crows_int = nullptr, b_cols_int = nullptr;
 
-  if (mat_a.crows().dtype() == phi::DataType::INT32) {
+  if (mat_a.crows().dtype() == DataType::INT32) {
     a_crows_data = mat_a.crows().data<int32_t>();
     a_cols_data = mat_a.cols().data<int32_t>();
   } else {
     a_crows_int = std::make_shared<DenseTensor>();
     a_cols_int = std::make_shared<DenseTensor>();
-    phi::MetaTensor crows_meta(a_crows_int.get());
+    MetaTensor crows_meta(a_crows_int.get());
     crows_meta.set_dims(mat_a.crows().dims());
-    phi::MetaTensor cols_meta(a_cols_int.get());
+    MetaTensor cols_meta(a_cols_int.get());
     cols_meta.set_dims(mat_a.cols().dims());
 
     CastKernel<int64_t>(
-        dev_ctx_, mat_a.crows(), phi::DataType::INT32, a_crows_int.get());
+        dev_ctx_, mat_a.crows(), DataType::INT32, a_crows_int.get());
     CastKernel<int64_t>(
-        dev_ctx_, mat_a.cols(), phi::DataType::INT32, a_cols_int.get());
+        dev_ctx_, mat_a.cols(), DataType::INT32, a_cols_int.get());
 
     a_crows_data = a_crows_int->data<int32_t>();
     a_cols_data = a_cols_int->data<int32_t>();
   }
 
-  if (mat_b.crows().dtype() == phi::DataType::INT32) {
+  if (mat_b.crows().dtype() == DataType::INT32) {
     b_crows_data = mat_b.crows().data<int32_t>();
     b_cols_data = mat_b.cols().data<int32_t>();
   } else {
     b_crows_int = std::make_shared<DenseTensor>();
     b_cols_int = std::make_shared<DenseTensor>();
-    phi::MetaTensor crows_meta(b_crows_int.get());
+    MetaTensor crows_meta(b_crows_int.get());
     crows_meta.set_dims(mat_b.crows().dims());
-    phi::MetaTensor cols_meta(b_cols_int.get());
+    MetaTensor cols_meta(b_cols_int.get());
     cols_meta.set_dims(mat_b.cols().dims());
 
     CastKernel<int64_t>(
-        dev_ctx_, mat_b.crows(), phi::DataType::INT32, b_crows_int.get());
+        dev_ctx_, mat_b.crows(), DataType::INT32, b_crows_int.get());
     CastKernel<int64_t>(
-        dev_ctx_, mat_b.cols(), phi::DataType::INT32, b_cols_int.get());
+        dev_ctx_, mat_b.cols(), DataType::INT32, b_cols_int.get());
 
     b_crows_data = b_crows_int->data<int32_t>();
     b_cols_data = b_cols_int->data<int32_t>();
@@ -590,6 +593,17 @@ void SparseBlas<GPUContext>::SPGEMM(bool transa,
 
     GetCsrBatchNnz<T><<<1, batch_size, 0, dev_ctx_.stream()>>>(
         a_crows_data, a_rows, static_cast<int32_t*>(tmp_buffer_ptr));
+#ifdef PADDLE_WITH_CUDA
+    PADDLE_ENFORCE_EQ(
+        phi::backends::gpu::IsCUDAGraphCapturing(),
+        false,
+        common::errors::InvalidArgument(
+            "SparseBlas CsrMM does not support CUDA Graph capture: async D2H "
+            "copy to local vectors 'a_batch_nnz_vec' / 'b_batch_nnz_vec' will "
+            "bake the destination addresses into the graph; on replay the "
+            "vectors are re-created at different addresses, causing "
+            "dangling-pointer writes."));
+#endif
     phi::backends::gpu::GpuMemcpyAsync(a_batch_nnz_vec.data(),
                                        tmp_buffer_ptr,
                                        batch_size * sizeof(int32_t),
@@ -813,12 +827,11 @@ void SparseBlas<GPUContext>::SPGEMM(bool transa,
     phi::ConcatKernel<T>(dev_ctx_, values_vec, 0, mat_out->mutable_values());
   }
 
-  if (mat_a.crows().dtype() == phi::DataType::INT64 ||
-      mat_b.crows().dtype() == phi::DataType::INT64) {
+  if (mat_a.crows().dtype() == DataType::INT64 ||
+      mat_b.crows().dtype() == DataType::INT64) {
     CastKernel<int32_t>(
-        dev_ctx_, *mat_out_crows, phi::DataType::INT64, mat_out_crows);
-    CastKernel<int32_t>(
-        dev_ctx_, *mat_out_cols, phi::DataType::INT64, mat_out_cols);
+        dev_ctx_, *mat_out_crows, DataType::INT64, mat_out_crows);
+    CastKernel<int32_t>(dev_ctx_, *mat_out_cols, DataType::INT64, mat_out_cols);
   }
 }
 }  // namespace sparse

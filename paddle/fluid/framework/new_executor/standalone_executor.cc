@@ -35,7 +35,7 @@ COMMON_DECLARE_bool(pir_apply_inplace_pass);
 COMMON_DECLARE_string(enable_custom_engine);
 
 namespace paddle::framework {
-StandaloneExecutor::StandaloneExecutor(const phi::Place& place,
+StandaloneExecutor::StandaloneExecutor(const Place& place,
                                        const interpreter::Plan& plan,
                                        Scope* scope)
     : place_(place),

@@ -117,7 +117,7 @@ inline std::vector<std::shared_ptr<phi::ThreadPool>>& GetThreadPool(
 }
 // call only after all resources are set in current trainer
 void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
-                                  const phi::Place& place) {
+                                  const Place& place) {
   // multi thread load
   auto pool = GetThreadPool(thread_num_);
   std::vector<std::future<void>> wait_futures;
@@ -195,8 +195,8 @@ void MultiTrainer::Run() {
 }
 
 template <typename T>
-void MultiTrainer::MergeToRootScope(phi::DenseTensor* root_tensor,
-                                    phi::DenseTensor* tensor) {
+void MultiTrainer::MergeToRootScope(DenseTensor* root_tensor,
+                                    DenseTensor* tensor) {
   DenseTensor tmp_root;
   TensorCopy(*root_tensor, CPUPlace(), &tmp_root);
   T* tmp_root_data = tmp_root.data<T>();
@@ -214,7 +214,7 @@ void MultiTrainer::MergeWorkerVars() {
     if (root_var == nullptr) {
       continue;
     }
-    phi::DenseTensor* root_tensor = root_var->GetMutable<DenseTensor>();
+    DenseTensor* root_tensor = root_var->GetMutable<DenseTensor>();
     for (int j = 1; j < thread_num_; j++) {
       Scope* cur_thread_scope = workers_[j]->GetThreadScope();
       Variable* thread_var =
@@ -222,7 +222,7 @@ void MultiTrainer::MergeWorkerVars() {
       if (thread_var == nullptr) {
         continue;
       }
-      phi::DenseTensor* thread_tensor = thread_var->GetMutable<DenseTensor>();
+      DenseTensor* thread_tensor = thread_var->GetMutable<DenseTensor>();
 #define MergeCallback(cpp_type, proto_type)                                    \
   do {                                                                         \
     if (framework::TransToProtoVarType(root_tensor->dtype()) == proto_type) {  \

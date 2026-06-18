@@ -187,10 +187,10 @@ void FlashAttnGradKernelBase(const Context& dev_ctx,
                             "flash_attn_bwd requires mask's shape "
                             "like [b,l,l] or [b, h, l, l]"));
     }
-    if (attn_mask->dtype() == phi::DataType::FLOAT32) {
+    if (attn_mask->dtype() == DataType::FLOAT32) {
       bias_data = attn_mask->data<float>();
-    } else if (attn_mask->dtype() == phi::DataType::FLOAT16 ||
-               attn_mask->dtype() == phi::DataType::BFLOAT16) {
+    } else if (attn_mask->dtype() == DataType::FLOAT16 ||
+               attn_mask->dtype() == DataType::BFLOAT16) {
       float* bias_tmp = RAII_GUARD.alloc_l3_or_gm<float>(attn_mask->numel());
       int r = xpu::cast<XPUType, float>(
           dev_ctx.x_context(),

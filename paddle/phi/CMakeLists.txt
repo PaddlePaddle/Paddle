@@ -123,6 +123,10 @@ if(WITH_XPU)
   endif()
 endif()
 
+if(WITH_IPU)
+  list(APPEND PHI_DEPS popart-only)
+endif()
+
 if(WITH_DGC)
   list(APPEND PHI_DEPS dgc)
 endif()
@@ -233,7 +237,10 @@ else()
   endif()
 endif()
 
-set(NVTX3_PATH "${CUDA_INCLUDE_DIRS}/../targets/x86_64-linux/include/nvtx3/")
+include(${PROJECT_SOURCE_DIR}/cmake/architecture.cmake)
+paddle_detect_cuda_target_dir(CUDA_TARGET_DIR)
+set(NVTX3_PATH
+    "${CUDA_TOOLKIT_ROOT_DIR}/targets/${CUDA_TARGET_DIR}/include/nvtx3")
 get_filename_component(NVTX3_PATH "${NVTX3_PATH}" ABSOLUTE)
 
 if(EXISTS "${NVTX3_PATH}")
@@ -369,9 +376,14 @@ if(WITH_CUTLASS)
   )# for memory_efficient_attention.h
 endif()
 # PADDLE_WARP_SIZE: warp size for the target GPU platform.
-# Default 32 (NVIDIA). Override via -DPADDLE_WARP_SIZE=64 for iluvatar (COREX).
+# Default 32 (NVIDIA). ROCm (AMD/Hygon) wavefront size is 64.
+# Override via -DPADDLE_WARP_SIZE for other platforms.
 if(NOT DEFINED PADDLE_WARP_SIZE)
-  set(PADDLE_WARP_SIZE 32)
+  if(WITH_ROCM)
+    set(PADDLE_WARP_SIZE 64)
+  else()
+    set(PADDLE_WARP_SIZE 32)
+  endif()
 endif()
 math(EXPR PADDLE_WARP_MASK "${PADDLE_WARP_SIZE} - 1")
 if(PADDLE_WARP_SIZE EQUAL 64)

@@ -31,9 +31,8 @@ void RandomKernel(const Context& dev_ctx,
   out->Resize(x.dims());
   T* data = dev_ctx.template Alloc<T>(out);
 
-  if constexpr (std::is_floating_point_v<T> ||
-                std::is_same_v<T, phi::float16> ||
-                std::is_same_v<T, phi::bfloat16>) {
+  if constexpr (std::is_floating_point_v<T> || std::is_same_v<T, float16> ||
+                std::is_same_v<T, bfloat16>) {
     from = update_from<T>(from);
     to = update_to<T>(to);
 

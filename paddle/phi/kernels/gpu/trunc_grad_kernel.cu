@@ -21,8 +21,6 @@
 
 namespace phi {
 
-using phi::PADDLE_CUDA_NUM_THREADS;
-
 template <typename T>
 __global__ void TruncGrad(T* dx, int64_t N) {
   CUDA_KERNEL_LOOP_TYPE(index, N, int64_t) { dx[index] = static_cast<T>(0.0); }

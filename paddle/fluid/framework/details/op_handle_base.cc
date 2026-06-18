@@ -135,25 +135,25 @@ void OpHandleBase::InitXPU() {
 
 void OpHandleBase::Run(DeviceType use_device) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (events_.empty() && use_device == p::kCUDA && !dev_ctxes_.empty()) {
+  if (events_.empty() && use_device == kCUDA && !dev_ctxes_.empty()) {
     InitCUDA();
   }
 #else
   PADDLE_ENFORCE_NE(
       use_device,
-      p::kCUDA,
+      kCUDA,
       common::errors::InvalidArgument(
           "Argument use_device should not be kCUDA when Paddle is not "
           "compiled with CUDA."));
 #endif
 
-  if (use_device == p::kXPU && !dev_ctxes_.empty()) {
+  if (use_device == kXPU && !dev_ctxes_.empty()) {
 #ifdef PADDLE_WITH_XPU
     InitXPU();
 #else
     PADDLE_ENFORCE_NE(
         use_device,
-        p::kXPU,
+        kXPU,
         common::errors::InvalidArgument(
             "Argument use_device should not be kXPU when Paddle is not "
             "compiled with XPU."));

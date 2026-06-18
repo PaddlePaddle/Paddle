@@ -58,7 +58,7 @@ void ClipGradKernel(const Context& dev_ctx,
   auto* d_x_data = dev_ctx.template Alloc<T>(x_grad);
   const T* d_out_data = out_grad.data<T>();
   const T* x_data = x.data<T>();
-  phi::Transform<Context> trans;
+  Transform<Context> trans;
   trans(dev_ctx,
         d_out_data,
         d_out_data + numel,

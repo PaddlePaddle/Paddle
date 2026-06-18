@@ -28,37 +28,41 @@ __global__ void KeCMRNormFillScale(int img_size,
                                    T k,
                                    T alpha,
                                    const DataLayout data_layout) {
-  const int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  const int64_t idx =
+      static_cast<int64_t>(threadIdx.x) +
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
   if (idx < img_size) {
-    const int w = idx % W;
-    const int h = (idx / W) % H;
-    const int n = idx / W / H;
-    const int offset =
+    const int64_t w = idx % W;
+    const int64_t h = (idx / W) % H;
+    const int64_t n = idx / W / H;
+    const int64_t offset =
         (data_layout != DataLayout::NHWC ? (n * C * H + h) * W + w
                                          : ((n * H + h) * W + w) * C);
 
     in += offset;
     mid += offset;
-    const int step = H * W;
+    const int64_t step = static_cast<int64_t>(H) * W;
     const int pre_pad = (size - 1) / 2;
     const int post_pad = size - pre_pad - 1;
 
     T accum = 0;
-    int index = 0;
+    int64_t index = 0;
     while (index < C + post_pad) {
       if (index < C) {
-        int in_idx = (data_layout != DataLayout::NHWC ? index * step : index);
+        int64_t in_idx =
+            (data_layout != DataLayout::NHWC ? index * step : index);
         T val = in[in_idx];
         accum += val * val;
       }
       if (index >= size) {
-        int in_idx = (data_layout != DataLayout::NHWC ? (index - size) * step
-                                                      : index - size);
+        int64_t in_idx =
+            (data_layout != DataLayout::NHWC ? (index - size) * step
+                                             : index - size);
         T val = in[in_idx];
         accum -= val * val;
       }
       if (index >= post_pad) {
-        int mid_idx =
+        int64_t mid_idx =
             (data_layout != DataLayout::NHWC ? (index - post_pad) * step
                                              : index - post_pad);
         mid[mid_idx] = k + accum * alpha;
@@ -91,29 +95,36 @@ void CrossMapNormal(const GPUContext& dev_ctx,
                     T alpha,
                     T beta,
                     const DataLayout data_layout) {
-  int64_t img_size = N * H * W;
+  const int64_t img_size = N * H * W;
+  const int64_t input_size = img_size * C;
+  PADDLE_ENFORCE_LE_INT_MAX(img_size, "lrn img_size");
+  PADDLE_ENFORCE_LE_INT_MAX(input_size, "lrn input_size");
+  PADDLE_ENFORCE_LE_INT_MAX(C, "lrn C");
+  PADDLE_ENFORCE_LE_INT_MAX(H, "lrn H");
+  PADDLE_ENFORCE_LE_INT_MAX(W, "lrn W");
+
   const int block_size = 1024;
-  int64_t grid_size = (img_size + block_size - 1) / block_size;
-  PADDLE_ENFORCE_LE_INT_MAX(grid_size * C, "grid_size*C");
+  const int64_t fill_grid_size = (img_size + block_size - 1) / block_size;
+  PADDLE_ENFORCE_LE_UINT32_MAX(fill_grid_size, "lrn fill grid");
+  const uint32_t fill_grid = static_cast<uint32_t>(fill_grid_size);
 
-  KeCMRNormFillScale<T>
-      <<<static_cast<int>(grid_size), block_size, 0, dev_ctx.stream()>>>(
-          static_cast<int>(img_size),
-          inputs,
-          mid,
-          static_cast<int>(C),
-          static_cast<int>(H),
-          static_cast<int>(W),
-          n,
-          k,
-          alpha,
-          data_layout);
+  KeCMRNormFillScale<T><<<fill_grid, block_size, 0, dev_ctx.stream()>>>(
+      static_cast<int>(img_size),
+      inputs,
+      mid,
+      static_cast<int>(C),
+      static_cast<int>(H),
+      static_cast<int>(W),
+      n,
+      k,
+      alpha,
+      data_layout);
 
-  int64_t input_size = N * H * W * C;
-  grid_size = (input_size + block_size - 1) / block_size;
-  KeCMRNormOutput<T>
-      <<<static_cast<int>(grid_size), block_size, 0, dev_ctx.stream()>>>(
-          static_cast<int>(input_size), inputs, mid, -beta, outputs);
+  const int64_t output_grid_size = (input_size + block_size - 1) / block_size;
+  PADDLE_ENFORCE_LE_UINT32_MAX(output_grid_size, "lrn output grid");
+  const uint32_t output_grid = static_cast<uint32_t>(output_grid_size);
+  KeCMRNormOutput<T><<<output_grid, block_size, 0, dev_ctx.stream()>>>(
+      static_cast<int>(input_size), inputs, mid, -beta, outputs);
 }
 
 template <typename T>

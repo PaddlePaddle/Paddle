@@ -199,12 +199,12 @@ int QuantLinearFusePass::ApplyQuantLinearFusePattern(Graph* graph,
                           "Input scale tensor's place should be CPU."));
 
     float input_scale = NAN;
-    if (input_scale_tensor.dtype() == phi::DataType::FLOAT32) {
+    if (input_scale_tensor.dtype() == DataType::FLOAT32) {
       const float* input_scale_data = input_scale_tensor.data<float>();
       input_scale = input_scale_data[0];
-    } else if (input_scale_tensor.dtype() == phi::DataType::FLOAT16) {
-      const phi::dtype::float16* input_scale_data =
-          input_scale_tensor.data<phi::dtype::float16>();
+    } else if (input_scale_tensor.dtype() == DataType::FLOAT16) {
+      const phi::float16* input_scale_data =
+          input_scale_tensor.data<phi::float16>();
       input_scale = static_cast<float>(input_scale_data[0]);
     } else {
       PADDLE_THROW(common::errors::Unimplemented(

@@ -132,13 +132,13 @@ class GEMMHelper {
     using NvType = typename phi::PDDataTypeTraits<T>::DataType;
 
     if (gemm_method_ == "None") {
-      auto ffn_linear_compute = phi::fusion::AttnMatMul<T>(dev_ctx_,
-                                                           false,
-                                                           transpose_weight_,
-                                                           token_num_,
-                                                           dim_ffn_,
-                                                           dim_embed_,
-                                                           compute_bias);
+      auto ffn_linear_compute = fusion::AttnMatMul<T>(dev_ctx_,
+                                                      false,
+                                                      transpose_weight_,
+                                                      token_num_,
+                                                      dim_ffn_,
+                                                      dim_embed_,
+                                                      compute_bias);
       ffn_linear_compute.ComputeForward(weight, input, bias, output, output);
     } else {
       PADDLE_THROW(common::errors::Unimplemented(
@@ -174,10 +174,9 @@ class NormHelper {
                               // Layernorm. Need support rmsnorm.
         layernorm_helper_(dev_ctx_, epsilon_, rows_, cols_) {
     // VLOG(0) << "NormHelper residual_alpha:" << residual_alpha_;
-    phi::fusion::DropoutParam dropout_param(
-        true, 0, true, true, 0.0, nullptr, 0);
+    fusion::DropoutParam dropout_param(true, 0, true, true, 0.0, nullptr, 0);
     residual_bias_add_layernorm_helper_ =
-        phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t>(
+        fusion::FusedDropoutLayerNormHelper<T, uint8_t>(
             dev_ctx, rows_, cols_, dropout_param, epsilon_);
   }
 
@@ -293,7 +292,7 @@ class NormHelper {
   int64_t cols_;
   float epsilon_;
   float residual_alpha_;
-  phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t>
+  fusion::FusedDropoutLayerNormHelper<T, uint8_t>
       residual_bias_add_layernorm_helper_;
   AttnLayerNorm<T> layernorm_helper_;
 };

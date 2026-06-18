@@ -172,7 +172,7 @@ void weight_permute_gpu_impl(const GPUContext& dev_ctx,
   auto total_k = shape[0];
   auto total_n = shape[1];
   auto numel = total_k * total_n;
-  auto gpu_config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, 1);
+  auto gpu_config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, 1);
   int grid_size = gpu_config.GetGridSize();
   int block_size = gpu_config.GetBlockSize();
   if ((arch == 100) || (arch == 90) || (arch == 89) || (arch == 86) ||
@@ -513,7 +513,7 @@ void weight_permute_gpu_w4a8(const GPUContext& dev_ctx,
   auto original_n = shape[1];
   auto original_numel = original_k * original_n;
   auto gpu_config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, original_numel, 1);
+      backends::gpu::GetGpuLaunchConfig1D(dev_ctx, original_numel, 1);
   int grid_size = gpu_config.GetGridSize();
   VLOG(2) << "weight_permute_gpu: original_k = " << original_k
           << "original_n = " << original_n << "grid size = " << grid_size;
@@ -591,7 +591,7 @@ void weight_permute_gpu_w4afp8(const GPUContext& dev_ctx,
   auto original_n = shape[1];
   auto original_numel = original_k * original_n;
   auto gpu_config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, original_numel, 1);
+      backends::gpu::GetGpuLaunchConfig1D(dev_ctx, original_numel, 1);
   int grid_size = gpu_config.GetGridSize();
   VLOG(2) << "weight_permute_gpu: original_k = " << original_k
           << "original_n = " << original_n << "grid size = " << grid_size;

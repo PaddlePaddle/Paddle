@@ -113,7 +113,7 @@ InterpreterCoreInfoCache &InterpreterCoreInfoCache::Instance() {
 
 std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
     const ProgramDesc &program_desc,
-    const phi::Place &place,
+    const Place &place,
     framework::Scope *scope,
     const InterpreterCoreInfoCacheKey &key) {
   auto &cache = framework::InterpreterCoreInfoCache::Instance();
@@ -138,7 +138,7 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
 
 std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
     std::unique_ptr<pir::Program> ir_program,
-    const phi::Place &place,
+    const Place &place,
     framework::Scope *scope,
     const InterpreterCoreInfoCacheKey &key,
     bool used_for_sot) {
@@ -170,7 +170,7 @@ bool TensorSortHelper(const paddle::Tensor &t1, const paddle::Tensor &t2) {
 
 std::unique_ptr<pir::Program> ApplyIrPass(
     pir::Program *program,
-    phi::Place place,
+    Place place,
     const std::set<std::string> &no_need_buffer_names) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
   if (!FLAGS_enable_custom_engine.empty()) {
@@ -210,7 +210,7 @@ std::unique_ptr<pir::Program> ApplyIrPass(
 std::unique_ptr<pir::Program> ApplyRemoveShadowFeedPass(
     std::unique_ptr<pir::Program> program,
     const pir::Block *block,
-    const phi::Place &place,
+    const Place &place,
     const paddle::framework::Scope *scope) {
   pir::PassManager pm(pir::IrContext::Instance(), 3);
   auto pass = pir::CreateRemoveShadowFeedPass();
@@ -236,7 +236,7 @@ std::unique_ptr<pir::Program> ConstructForwardIrProgram(
     const std::vector<paddle::Tensor> &x,
     const std::vector<std::string> &x_names,
     const std::vector<paddle::Tensor> &params,
-    const phi::Place &place) {
+    const Place &place) {
   std::set<std::string> set_output_names;
   auto local_program =
       paddle::framework::ProgramDesc(*(forward_global_block->Program()));
@@ -340,7 +340,7 @@ std::unique_ptr<pir::Program> ConstructBackwardIrProgram(
     const std::vector<paddle::Tensor *> &x_grad,
     const std::vector<paddle::Tensor *> &params_grad,
     const paddle::framework::Scope *scope,
-    const phi::Place &place) {
+    const Place &place) {
   auto local_program =
       paddle::framework::ProgramDesc(*(backward_global_block->Program()));
 

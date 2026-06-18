@@ -53,6 +53,38 @@ class TestFunction(unittest.TestCase):
             np.max(np.abs(input1.grad.numpy() - input2.grad.numpy())) < 1e-10
         )
 
+    def test_simple_function_saved_tensors_alias(self):
+        class tanh(Function):
+            @staticmethod
+            def forward(ctx, x1, x2, func1, func2=paddle.square):
+                ctx.func = func2
+                y1 = func1(x1)
+                y2 = func1(x2)
+                ctx.save_for_backward(y1, y2)
+                return y1, 1, y2, None
+
+            @staticmethod
+            def backward(ctx, dy1, dy2):
+                y1, y2 = ctx.saved_tensors
+                re1 = dy1 * (1 - ctx.func(y1))
+                re2 = dy2 * (1 - paddle.square(y2))
+                return re1, re2
+
+        input1 = paddle.randn([2, 3]).astype("float64")
+        input2 = input1.detach().clone()
+        input1.stop_gradient = False
+        input2.stop_gradient = False
+        z = tanh.apply(input1, input1, paddle.tanh, paddle.square)
+        z = z[0] + z[2]
+        z.mean().backward()
+
+        z2 = paddle.tanh(input2) + paddle.tanh(input2)
+        z2.mean().backward()
+
+        self.assertTrue(
+            np.max(np.abs(input1.grad.numpy() - input2.grad.numpy())) < 1e-10
+        )
+
     def test_simple_function_return_none_with_no_grad(self):
         class tanh(Function):
             @staticmethod

@@ -20,20 +20,19 @@
 namespace phi {
 namespace fusion {
 template <typename T>
-using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
+using CudnnDataType = backends::gpu::CudnnDataType<T>;
 namespace dynload = phi::dynload;
 template <typename T>
 using BatchNormParamType =
-    typename phi::backends::gpu::CudnnDataType<T>::BatchNormParamType;
+    typename backends::gpu::CudnnDataType<T>::BatchNormParamType;
 
 #if CUDNN_VERSION >= 8000
 
 template <typename T>
 struct ScaleBiasAddReluArgs {
   ScaleBiasAddReluArgs() {
-    dtype = phi::backends::gpu::CudnnDataType<T>::type;
-    param_dtype =
-        phi::backends::gpu::CudnnDataType<BatchNormParamType<T>>::type;
+    dtype = backends::gpu::CudnnDataType<T>::type;
+    param_dtype = backends::gpu::CudnnDataType<BatchNormParamType<T>>::type;
     format = CUDNN_TENSOR_NHWC;
   }
 
@@ -89,12 +88,12 @@ struct ScaleBiasAddReluArgs {
   cudnnDataType_t param_dtype;
   cudnnTensorFormat_t format;
 
-  phi::backends::gpu::TensorDescriptor in_desc;
-  phi::backends::gpu::TensorDescriptor out_desc;
-  phi::backends::gpu::TensorDescriptor equiv_scale_bias_desc;
-  phi::backends::gpu::TensorDescriptor scale_bias_mean_var_desc;
-  phi::backends::gpu::TensorDescriptor bitmask_desc;
-  phi::backends::gpu::ActivationDescriptor activation_desc;
+  backends::gpu::TensorDescriptor in_desc;
+  backends::gpu::TensorDescriptor out_desc;
+  backends::gpu::TensorDescriptor equiv_scale_bias_desc;
+  backends::gpu::TensorDescriptor scale_bias_mean_var_desc;
+  backends::gpu::TensorDescriptor bitmask_desc;
+  backends::gpu::ActivationDescriptor activation_desc;
 };
 
 template <typename T>

@@ -36,7 +36,7 @@ void dispatch_tokens_zip(const Context &dev_ctx,
                          const bool MP) {
   using XPU_BF16 = typename XPUTypeTrait<phi::bfloat16>::Type;
   // Map data types to C++ types
-  if (unzipped_token_probs.dtype() == paddle::DataType::FLOAT32) {
+  if (unzipped_token_probs.dtype() == DataType::FLOAT32) {
     int r = xpu::moe_unpermute(
         dev_ctx.x_context(),
         reinterpret_cast<const XPU_BF16 *>(

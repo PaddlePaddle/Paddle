@@ -130,7 +130,7 @@ TEST(Scalar, Equality) {
 TEST(Scalar, WrapAsScalars) {
   std::vector<int32_t> v{1, 2, 3};
   auto out = paddle::experimental::WrapAsScalars(v);
-  ASSERT_EQ(out[0].dtype(), phi::DataType::INT32);
+  ASSERT_EQ(out[0].dtype(), DataType::INT32);
   ASSERT_EQ(out[0].to<int32_t>(), 1);
   ASSERT_EQ(out[1].to<int32_t>(), 2);
   ASSERT_EQ(out[2].to<int32_t>(), 3);

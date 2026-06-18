@@ -386,8 +386,7 @@ static GPU(blasLtEpilogue_t)
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "The activation attribute of fused_gemm_epilogue op should be"
-        " one of {\"none\", \"relu\", \"gelu\"}. But received %s."
-        "But received activation=%s.",
+        " one of {\"none\", \"relu\", \"gelu\"}. But received %s.",
         activation));
   }
 }
@@ -405,7 +404,7 @@ void ComputeFusedGemmEpilogueForward(const GPUContext& dev_ctx,
                                      const std::string& activation,
                                      DenseTensor* out,
                                      DenseTensor* reserve_space) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
 
   VLOG(6) << "x.shape={" << x->dims() << "}, y.shape={" << y->dims()
           << "}, out.shape={" << out->dims() << "}, M=" << M << ", N=" << N
@@ -612,7 +611,7 @@ void ComputeFusedGemmEpilogueBackwardImpl(const GPUContext& dev_ctx,
                                           DenseTensor* dbias,
                                           bool use_addto_dx,
                                           bool use_addto_dy) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   constexpr bool kIsValidDataType =
       (std::is_same<DXT, T>::value || std::is_same<DXT, MT>::value) &&
       (std::is_same<DYT, T>::value || std::is_same<DYT, MT>::value);
@@ -688,8 +687,8 @@ static GPU(blasLtEpilogue_t)
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "The activation_grad attribute of fused_gemm_epilogue op should "
-        "be one of {\"none\", \"relu\", \"gelu\"}. But received %s."
-        "But received activation_grad=%s.",
+        "be one of {\"none\", \"relu\", \"gelu\"}. But received "
+        "activation_grad=%s.",
         activation_grad));
   }
 }
@@ -709,7 +708,7 @@ void ComputeFusedGemmEpilogueBackwardImplDev(const GPUContext& dev_ctx,
                                              DenseTensor* dbias,
                                              bool use_addto_dx,
                                              bool use_addto_dy) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   constexpr bool kIsValidDataType =
       (std::is_same<DXT, T>::value || std::is_same<DXT, MT>::value) &&
       (std::is_same<DYT, T>::value || std::is_same<DYT, MT>::value);

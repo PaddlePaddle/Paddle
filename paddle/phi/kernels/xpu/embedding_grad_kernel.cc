@@ -44,7 +44,7 @@ void EmbeddingGradKernel(const Context& dev_ctx,
 
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   const int64_t* ids_data;
-  if (ids_t->dtype() == phi::DataType::INT64) {
+  if (ids_t->dtype() == DataType::INT64) {
     ids_data = ids_t->data<int64_t>();
   } else {
     int64_t* ids_tt = RAII_GUARD.alloc_l3_or_gm<int64_t>(ids_t->numel());
@@ -90,12 +90,12 @@ void EmbeddingSparseGradKernel(const Context& dev_ctx,
   DenseTensor ids_cpu;
   ids_cpu.Resize(input.dims());
   dev_ctx.HostAlloc(&ids_cpu, input.dtype(), input.numel() * sizeof(int64_t));
-  if (input.dtype() == phi::DataType::INT64) {
+  if (input.dtype() == DataType::INT64) {
     Copy(dev_ctx, input, CPUPlace(), false, &ids_cpu);
 
     ids = CopyIdsToVector<int64_t, int64_t>(ids_cpu);
 
-  } else if (input.dtype() == phi::DataType::INT32) {
+  } else if (input.dtype() == DataType::INT32) {
     int64_t* id_t = RAII_GUARD.alloc_l3_or_gm<int64_t>(input.numel());
     int r = xpu::cast<int32_t, int64_t>(
         dev_ctx.x_context(), input.data<int>(), id_t, input.numel());

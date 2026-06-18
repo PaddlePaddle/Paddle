@@ -19,6 +19,7 @@
 #include <ATen/ops/ones.h>
 #include <ATen/ops/zeros.h>
 #include <c10/core/DefaultDtype.h>
+#include <c10/core/ScalarTypeToTypeMeta.h>
 #include <c10/core/SymIntArrayRef.h>
 #include <c10/core/TensorOptions.h>
 
@@ -29,14 +30,14 @@ namespace {
 class DefaultDtypeGuard {
  public:
   explicit DefaultDtypeGuard(c10::ScalarType dtype)
-      : previous_(c10::get_default_dtype_as_scalartype()) {
-    c10::set_default_dtype(dtype);
+      : previous_(c10::get_default_dtype()) {
+    c10::set_default_dtype(c10::scalarTypeToTypeMeta(dtype));
   }
 
   ~DefaultDtypeGuard() { c10::set_default_dtype(previous_); }
 
  private:
-  c10::ScalarType previous_;
+  caffe2::TypeMeta previous_;
 };
 
 }  // namespace

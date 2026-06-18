@@ -25,28 +25,30 @@
 #include <cstdio>
 #include <unordered_map>
 
+namespace phi {
+
 namespace layer_norm {
 // Create registries and provide runtime versions of config hash functions.
 
 FwdRegistry FWD_FUNCS;
 BwdRegistry BWD_FUNCS;
 
-uint32_t get_type_id(paddle::DataType dtype) {
-  if (dtype == paddle::DataType::FLOAT16) {
+uint32_t get_type_id(DataType dtype) {
+  if (dtype == DataType::FLOAT16) {
     return TypeToIdTrait<fp16>::Value;
-  } else if (dtype == paddle::DataType::BFLOAT16) {
+  } else if (dtype == DataType::BFLOAT16) {
     return TypeToIdTrait<bf16>::Value;
-  } else if (dtype == paddle::DataType::FLOAT32) {
+  } else if (dtype == DataType::FLOAT32) {
     return TypeToIdTrait<float>::Value;
   } else {
     PD_CHECK(false, "Type not supported: ", dtype);
   }
 }
 
-uint64_t get_key(paddle::DataType weight_type,
-                 paddle::DataType input_type,
-                 paddle::DataType output_type,
-                 paddle::DataType compute_type,
+uint64_t get_key(DataType weight_type,
+                 DataType input_type,
+                 DataType output_type,
+                 DataType compute_type,
                  uint64_t hidden_size) {
   uint64_t type_key =
       get_type_id(weight_type) | (get_type_id(input_type) << 2) |  // NOLINT
@@ -57,11 +59,10 @@ uint64_t get_key(paddle::DataType weight_type,
 
 }  // namespace layer_norm
 
-namespace phi {
-layer_norm::FwdFunction& get_fwd_launcher(paddle::DataType weight_type,
-                                          paddle::DataType input_type,
-                                          paddle::DataType output_type,
-                                          paddle::DataType compute_type,
+layer_norm::FwdFunction& get_fwd_launcher(DataType weight_type,
+                                          DataType input_type,
+                                          DataType output_type,
+                                          DataType compute_type,
                                           uint32_t hidden_size) {
   auto iter = layer_norm::FWD_FUNCS.find(layer_norm::get_key(
       weight_type, input_type, output_type, compute_type, hidden_size));
@@ -78,10 +79,10 @@ layer_norm::FwdFunction& get_fwd_launcher(paddle::DataType weight_type,
   }
 }
 
-layer_norm::BwdFunction& get_bwd_launcher(paddle::DataType weight_type,
-                                          paddle::DataType input_type,
-                                          paddle::DataType output_type,
-                                          paddle::DataType compute_type,
+layer_norm::BwdFunction& get_bwd_launcher(DataType weight_type,
+                                          DataType input_type,
+                                          DataType output_type,
+                                          DataType compute_type,
                                           uint32_t hidden_size) {
   auto iter = layer_norm::BWD_FUNCS.find(layer_norm::get_key(
       weight_type, input_type, output_type, compute_type, hidden_size));

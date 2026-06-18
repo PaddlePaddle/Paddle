@@ -16,6 +16,8 @@
 
 #include <algorithm>
 #include <vector>
+#include "paddle/common/enforce.h"
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -39,6 +41,7 @@ static void SortDescending(const GPUContext &dev_ctx,
                            const DenseTensor &value,
                            DenseTensor *value_out,
                            DenseTensor *index_out) {
+  PADDLE_ENFORCE_LE_INT_MAX(value.numel(), "generate_proposals sort num");
   int num = static_cast<int>(value.numel());
   DenseTensor index_in_t;
   index_in_t.Resize({num});
@@ -67,7 +70,7 @@ static void SortDescending(const GPUContext &dev_ctx,
                                                     dev_ctx.stream());
   // Allocate temporary storage
   auto place = dev_ctx.GetPlace();
-  auto d_temp_storage = phi::memory_utils::Alloc(place, temp_storage_bytes);
+  auto d_temp_storage = memory_utils::Alloc(place, temp_storage_bytes);
 
   // Run sorting operation
   cub::DeviceRadixSort::SortPairsDescending<T, int>(d_temp_storage->ptr(),
@@ -231,7 +234,7 @@ static __device__ float IoU(const float *a,
   return inter_s / (s_a + s_b - inter_s);
 }
 
-static __global__ void NMSKernel(const int n_boxes,
+static __global__ void NMSKernel(const int64_t n_boxes,
                                  const float nms_overlap_thresh,
                                  const float *dev_boxes,
                                  uint64_t *dev_mask,
@@ -239,10 +242,12 @@ static __global__ void NMSKernel(const int n_boxes,
   const int row_start = blockIdx.y;
   const int col_start = blockIdx.x;
 
-  const int row_size =
-      min(n_boxes - row_start * kThreadsPerBlock, kThreadsPerBlock);
-  const int col_size =
-      min(n_boxes - col_start * kThreadsPerBlock, kThreadsPerBlock);
+  const int row_size = static_cast<int>(
+      min(n_boxes - static_cast<int64_t>(row_start) * kThreadsPerBlock,
+          static_cast<int64_t>(kThreadsPerBlock)));
+  const int col_size = static_cast<int>(
+      min(n_boxes - static_cast<int64_t>(col_start) * kThreadsPerBlock,
+          static_cast<int64_t>(kThreadsPerBlock)));
 
   __shared__ float block_boxes[kThreadsPerBlock * 4];
   if (threadIdx.x < col_size) {
@@ -258,7 +263,8 @@ static __global__ void NMSKernel(const int n_boxes,
   __syncthreads();
 
   if (threadIdx.x < row_size) {
-    const int cur_box_idx = kThreadsPerBlock * row_start + threadIdx.x;
+    const int64_t cur_box_idx =
+        static_cast<int64_t>(kThreadsPerBlock) * row_start + threadIdx.x;
     const float *cur_box = dev_boxes + cur_box_idx * 4;
     int i = 0;
     uint64_t t = 0;
@@ -272,7 +278,7 @@ static __global__ void NMSKernel(const int n_boxes,
         t |= 1ULL << i;
       }
     }
-    const int col_blocks = DIVUP(n_boxes, kThreadsPerBlock);
+    const int64_t col_blocks = DIVUP(n_boxes, kThreadsPerBlock);
     dev_mask[cur_box_idx * col_blocks + col_start] = t;
   }
 }
@@ -286,16 +292,17 @@ static void NMS(const GPUContext &dev_ctx,
                 bool pixel_offset = true) {
   int64_t boxes_num = proposals.dims()[0];
   const int64_t col_blocks = DIVUP(boxes_num, kThreadsPerBlock);
-  dim3 blocks(DIVUP(boxes_num, kThreadsPerBlock),
-              DIVUP(boxes_num, kThreadsPerBlock));
+  PADDLE_ENFORCE_LE_UINT32_MAX(col_blocks, "generate_proposals NMS col_blocks");
+  const uint32_t col_blocks_32 = static_cast<uint32_t>(col_blocks);
+  dim3 blocks(col_blocks_32, col_blocks_32);
   dim3 threads(kThreadsPerBlock);
 
   const T *boxes = proposals.data<T>();
   auto place = dev_ctx.GetPlace();
-  auto mask_ptr = phi::memory_utils::Alloc(
-      place,
-      boxes_num * col_blocks * sizeof(uint64_t),
-      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  auto mask_ptr =
+      memory_utils::Alloc(place,
+                          boxes_num * col_blocks * sizeof(uint64_t),
+                          Stream(reinterpret_cast<StreamId>(dev_ctx.stream())));
   uint64_t *mask_dev = reinterpret_cast<uint64_t *>(mask_ptr->ptr());
 
   NMSKernel<<<blocks, threads, 0, dev_ctx.stream()>>>(
@@ -304,6 +311,14 @@ static void NMS(const GPUContext &dev_ctx,
   std::vector<uint64_t> remv(col_blocks);
   memset(&remv[0], 0, sizeof(uint64_t) * col_blocks);
 
+  PADDLE_ENFORCE_EQ(
+      backends::gpu::IsCUDAGraphCapturing(),
+      false,
+      common::errors::InvalidArgument(
+          "GenerateProposals does not support CUDA Graph capture: async D2H "
+          "copy to local vector 'mask_host' will bake the destination address "
+          "into the graph; on replay the vector is re-created at a different "
+          "address, causing a dangling-pointer write."));
   std::vector<uint64_t> mask_host(boxes_num * col_blocks);
   memory_utils::Copy(CPUPlace(),
                      mask_host.data(),
@@ -312,9 +327,10 @@ static void NMS(const GPUContext &dev_ctx,
                      boxes_num * col_blocks * sizeof(uint64_t),
                      dev_ctx.stream());
 
+  PADDLE_ENFORCE_LE_INT_MAX(boxes_num, "generate_proposals NMS boxes_num");
   std::vector<int> keep_vec;
   int num_to_keep = 0;
-  for (int i = 0; i < boxes_num; i++) {
+  for (int i = 0; i < static_cast<int>(boxes_num); i++) {
     int nblock = i / kThreadsPerBlock;
     int inblock = i % kThreadsPerBlock;
 
@@ -329,10 +345,12 @@ static void NMS(const GPUContext &dev_ctx,
   }
   keep_out->Resize({num_to_keep});
   int *keep = dev_ctx.template Alloc<int>(keep_out);
+  const int *stable_keep = backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      const_cast<int *>(keep_vec.data()), keep_vec.size());
   memory_utils::Copy(place,
                      keep,
                      CPUPlace(),
-                     keep_vec.data(),
+                     stable_keep,
                      sizeof(int) * num_to_keep,
                      dev_ctx.stream());
   dev_ctx.Wait();
@@ -356,8 +374,10 @@ static std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
   DenseTensor scores_sort, index_sort;
   SortDescending<T>(dev_ctx, scores, &scores_sort, &index_sort);
   int64_t num = scores.numel();
-  int pre_nms_num = (pre_nms_top_n <= 0 || pre_nms_top_n > num) ? scores.numel()
-                                                                : pre_nms_top_n;
+  int64_t pre_nms_num_64 =
+      (pre_nms_top_n <= 0 || pre_nms_top_n > num) ? num : pre_nms_top_n;
+  PADDLE_ENFORCE_LE_INT_MAX(pre_nms_num_64, "generate_proposals pre_nms_num");
+  int pre_nms_num = static_cast<int>(pre_nms_num_64);
   scores_sort.Resize({pre_nms_num, 1});
   index_sort.Resize({pre_nms_num, 1});
 
@@ -564,16 +584,20 @@ void GenerateProposalsKernel(const Context &dev_ctx,
     dev_ctx.Wait();
     num_proposals += proposals.dims()[0];
     offset.emplace_back(num_proposals);
-    tmp_num.push_back(proposals.dims()[0]);
+    PADDLE_ENFORCE_LE_INT_MAX(proposals.dims()[0],
+                              "generate_proposals rpn_rois_num");
+    tmp_num.push_back(static_cast<int>(proposals.dims()[0]));
   }
   if (rpn_rois_num != nullptr) {
     rpn_rois_num->Resize({num});
     dev_ctx.template Alloc<int>(rpn_rois_num);
     int *num_data = rpn_rois_num->data<int>();
+    const int *stable_num = backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+        const_cast<int *>(tmp_num.data()), num);
     memory_utils::Copy(place,
                        num_data,
                        cpu_place,
-                       &tmp_num[0],
+                       stable_num,
                        sizeof(int) * num,
                        dev_ctx.stream());
     rpn_rois_num->Resize({num});

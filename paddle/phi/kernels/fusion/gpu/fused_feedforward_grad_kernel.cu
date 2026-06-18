@@ -77,19 +77,19 @@ void FFNGrad(const GPUContext& dev_ctx,
              const int bsz_seq,
              const int d_model,
              const int dim_feedforward,
-             const phi::fusion::DropoutParam& dropout_param1,
-             const phi::fusion::DropoutParam& dropout_param2,
+             const fusion::DropoutParam& dropout_param1,
+             const fusion::DropoutParam& dropout_param2,
              const std::string& act_method,
              const bool pre_layer_norm,
              const float epsilon1,
              const float epsilon2,
              const bool add_residual,
              const int ring_id) {
-  phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t> pre_layernorm_helper(
+  fusion::FusedDropoutLayerNormHelper<T, uint8_t> pre_layernorm_helper(
       bsz_seq, d_model, epsilon1);
-  phi::fusion::FusedDropoutHelper<T, uint8_t> fused_act_dropout_helper(
+  fusion::FusedDropoutHelper<T, uint8_t> fused_act_dropout_helper(
       dev_ctx, bsz_seq, dim_feedforward, dropout_param1);
-  phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t>
+  fusion::FusedDropoutLayerNormHelper<T, uint8_t>
       fused_dropout_layernorm_helper(
           dev_ctx, bsz_seq, d_model, dropout_param2, epsilon2);
 
@@ -283,20 +283,20 @@ void FusedFeedForwardGradKernel(const Context& dev_ctx,
   bool is_upscale_in_train1 = dropout1_implementation == "upscale_in_train";
   bool is_upscale_in_train2 = dropout2_implementation == "upscale_in_train";
 
-  phi::fusion::DropoutParam dropout_param1(dropout1_fix_seed,
-                                           0,
-                                           is_test,
-                                           is_upscale_in_train1,
-                                           dropout1_prob,
-                                           nullptr,
-                                           dropout1_seed_val);
-  phi::fusion::DropoutParam dropout_param2(dropout2_fix_seed,
-                                           0,
-                                           is_test,
-                                           is_upscale_in_train2,
-                                           dropout2_prob,
-                                           nullptr,
-                                           dropout2_seed_val);
+  fusion::DropoutParam dropout_param1(dropout1_fix_seed,
+                                      0,
+                                      is_test,
+                                      is_upscale_in_train1,
+                                      dropout1_prob,
+                                      nullptr,
+                                      dropout1_seed_val);
+  fusion::DropoutParam dropout_param2(dropout2_fix_seed,
+                                      0,
+                                      is_test,
+                                      is_upscale_in_train2,
+                                      dropout2_prob,
+                                      nullptr,
+                                      dropout2_seed_val);
 
   dev_ctx.template Alloc<T>(d_x, d_x->numel() * sizeof(T));
   if (d_ln1_scale) {

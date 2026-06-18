@@ -23,12 +23,12 @@ namespace phi {
 template <typename T, typename Context>
 void GaussianKernel(const Context& dev_ctx,
                     const IntArray& shape,
-                    float mean,
-                    float std,
+                    double mean,
+                    double std,
                     int seed,
                     DataType dtype,
                     DenseTensor* out) {
-  out->Resize(make_ddim(shape.GetData()));
+  out->Resize(shape.GetData());
   T* data = dev_ctx.template Alloc<T>(out);
 
   if (out->numel() == 0) {
@@ -42,8 +42,8 @@ void GaussianKernel(const Context& dev_ctx,
   // seed);
   int r = xpu::normal_<XPUType>(dev_ctx.x_context(),
                                 reinterpret_cast<XPUType*>(data),
-                                mean,
-                                std,
+                                static_cast<float>(mean),
+                                static_cast<float>(std),
                                 out->numel(),
                                 real_seed);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "normal");

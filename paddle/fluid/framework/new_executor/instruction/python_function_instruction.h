@@ -52,7 +52,7 @@ class PythonFunctionInstruction : public InstructionBase {
       nullptr;  // Unused in runtime
 
   // use for update output
-  std::vector<phi::DenseTensor*> cache_out_ptrs_;
+  std::vector<DenseTensor*> cache_out_ptrs_;
 
   std::string python_op_name_;
 

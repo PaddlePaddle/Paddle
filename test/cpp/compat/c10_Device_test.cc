@@ -14,6 +14,13 @@
 
 #include <c10/core/Device.h>
 #include <c10/core/DeviceType.h>
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include <c10/cuda/CUDAFunctions.h>
+#include <c10/cuda/CUDAGuard.h>
+#endif
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/core/platform/device/xpu/xpu_info.h"
+#endif
 
 #include <sstream>
 #include <unordered_map>
@@ -108,11 +115,40 @@ TEST(DeviceCompatTest, DeviceParseAndPlaceBranches) {
   EXPECT_EQ(custom.str(), "privateuseone:5");
 
   c10::Device cuda_no_index(c10::DeviceType::CUDA);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  auto device_count = c10::cuda::device_count();
+  if (device_count == 0) {
+    return;
+  }
+  EXPECT_EQ(cuda_no_index._PD_GetInner().GetType(), phi::AllocationType::GPU);
+  if (device_count >= 2) {
+    c10::cuda::CUDAGuard guard(1);
+    EXPECT_EQ(c10::Device(c10::DeviceType::CUDA)._PD_GetInner().GetDeviceId(),
+              1);
+  } else {
+    EXPECT_EQ(cuda_no_index._PD_GetInner().GetDeviceId(), 0);
+  }
+#else
   EXPECT_EQ(cuda_no_index._PD_GetInner().GetType(), phi::AllocationType::GPU);
   EXPECT_EQ(cuda_no_index._PD_GetInner().GetDeviceId(), 0);
+#endif
   c10::Device xpu_no_index(c10::DeviceType::XPU);
+#ifdef PADDLE_WITH_XPU
+  auto xpu_device_count = paddle::platform::GetXPUDeviceCount();
+  if (xpu_device_count > 0) {
+    EXPECT_EQ(xpu_no_index._PD_GetInner().GetType(), phi::AllocationType::XPU);
+  }
+  if (xpu_device_count >= 2) {
+    paddle::platform::XPUDeviceGuard guard(1);
+    EXPECT_EQ(c10::Device(c10::DeviceType::XPU)._PD_GetInner().GetDeviceId(),
+              1);
+  } else if (xpu_device_count == 1) {
+    EXPECT_EQ(xpu_no_index._PD_GetInner().GetDeviceId(), 0);
+  }
+#else
   EXPECT_EQ(xpu_no_index._PD_GetInner().GetType(), phi::AllocationType::XPU);
   EXPECT_EQ(xpu_no_index._PD_GetInner().GetDeviceId(), 0);
+#endif
   c10::Device ipu_no_index(c10::DeviceType::IPU);
   EXPECT_EQ(ipu_no_index._PD_GetInner().GetType(), phi::AllocationType::IPU);
   EXPECT_EQ(ipu_no_index._PD_GetInner().GetDeviceId(), 0);

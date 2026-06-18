@@ -80,7 +80,7 @@ namespace paddle::pybind {
 
 extern void InitTensorWithNumpyValue(TensorObject* self,
                                      const pybind11::object& array,
-                                     const phi::Place& place,
+                                     const Place& place,
                                      bool zero_copy);
 
 extern PyTypeObject* p_tensor_type;
@@ -625,8 +625,8 @@ static PyObject* tensor_method__is_dense_tensor_hold_allocation(
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-static void IncreaseTensorReferenceCountUntilCopyComplete(
-    const Tensor& tensor, const phi::Place& place) {
+static void IncreaseTensorReferenceCountUntilCopyComplete(const Tensor& tensor,
+                                                          const Place& place) {
   auto place_ = phi::is_gpu_place(place) ? place : tensor.place();
 
   auto tracer = egr::Controller::Instance().GetCurrentTracer();
@@ -1453,7 +1453,7 @@ static PyObject* tensor_method_detach(TensorObject* self,
     auto v = reinterpret_cast<TensorObject*>(obj);
     new (&(v->tensor)) Tensor();
     v->tensor.set_impl(self->tensor.impl());
-    v->tensor.set_name(egr::Controller::Instance().GenerateUniqueName());
+    v->tensor.set_name(self->tensor.name());
     auto autograd_meta_src = egr::EagerUtils::autograd_meta(&(self->tensor));
     auto autograd_meta = egr::EagerUtils::autograd_meta(&(v->tensor));
     autograd_meta->SetPersistable(autograd_meta_src->Persistable());

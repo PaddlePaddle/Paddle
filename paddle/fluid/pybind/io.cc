@@ -152,7 +152,7 @@ void BindIO(pybind11::module *m) {
   m->def("load_func", &Load<phi::GPUPinnedPlace>);
   m->def("load_func", &Load<GPUPlace>);
   m->def("load_func", &Load<phi::IPUPlace>);
-  m->def("load_func", &Load<phi::Place>);
+  m->def("load_func", &Load<Place>);
   m->def("load_combine_func", &LoadCombine<CPUPlace>);
   m->def("load_combine_func", &LoadCombine<phi::CustomPlace>);
   m->def("load_combine_func", &LoadCombine<phi::XPUPinnedPlace>);
@@ -160,7 +160,7 @@ void BindIO(pybind11::module *m) {
   m->def("load_combine_func", &LoadCombine<phi::GPUPinnedPlace>);
   m->def("load_combine_func", &LoadCombine<GPUPlace>);
   m->def("load_combine_func", &LoadCombine<phi::IPUPlace>);
-  m->def("load_combine_func", &LoadCombine<phi::Place>);
+  m->def("load_combine_func", &LoadCombine<Place>);
 
   m->def("serialize_pir_program",
          &pir::WriteModule,

@@ -23,8 +23,6 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 ////////////////// Utils Functions //////////////////
 std::string GetInputBroadcastNotation(const std::vector<int64_t>& shape,
                                       const int max_ndim,
@@ -80,7 +78,7 @@ void GetBinaryNotations(const std::vector<int64_t>& x_shape,
 
 SpmdInfo ElementwiseUnaryInferSpmd(const DistMetaTensor& x) {
   // Step0: Verify Input Args Based on Elementwise Logic
-  auto x_shape = common::vectorize(x.dims());
+  auto x_shape = vectorize(x.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   TensorDistAttr x_dist_attr_src = x.dist_attr();
   std::vector<std::vector<int64_t>> x_dims_mapping =
@@ -134,7 +132,7 @@ SpmdInfo AssignInferSpmd(const DistMetaTensor& x) {
 // propagation
 SpmdInfo ElementwiseUnaryWithPartialInferSpmd(const DistMetaTensor& x) {
   // Step0: Verify Input Args Based on Elementwise Logic
-  auto x_shape = common::vectorize(x.dims());
+  auto x_shape = vectorize(x.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   TensorDistAttr x_dist_attr_src = x.dist_attr();
   std::vector<std::vector<int64_t>> x_dims_mapping =
@@ -186,9 +184,9 @@ SpmdInfo ElementwiseUnaryWithPartialInferSpmd(const DistMetaTensor& x) {
 SpmdInfo ElementwiseUnaryInferSpmdReverse(const DistMetaTensor& x,
                                           const DistMetaTensor& out) {
   // Step0: Verify Input Args Based on Elementwise Logic
-  auto x_shape = common::vectorize(x.dims());
+  auto x_shape = vectorize(x.dims());
   int x_ndim = static_cast<int>(x_shape.size());
-  auto out_shape = common::vectorize(out.dims());
+  auto out_shape = vectorize(out.dims());
   int out_ndim = static_cast<int>(out_shape.size());
   TensorDistAttr out_dist_attr_src = out.dist_attr();
   std::vector<std::vector<int64_t>> out_dims_mapping =
@@ -244,9 +242,9 @@ SpmdInfo ElementwiseUnaryInferSpmdReverse(const DistMetaTensor& x,
 SpmdInfo ElementwiseBinaryInferSpmd(const DistMetaTensor& x,
                                     const DistMetaTensor& y) {
   // Step0: Verify Input Args Based on Elementwise Logic
-  auto x_shape = common::vectorize(x.dims());
+  auto x_shape = vectorize(x.dims());
   int x_ndim = static_cast<int>(x_shape.size());
-  auto y_shape = common::vectorize(y.dims());
+  auto y_shape = vectorize(y.dims());
   int y_ndim = static_cast<int>(y_shape.size());
   TensorDistAttr x_dist_attr_src = x.dist_attr();
   TensorDistAttr y_dist_attr_src = y.dist_attr();
@@ -315,9 +313,9 @@ SpmdInfo ElementwiseBinaryInferSpmd(const DistMetaTensor& x,
 SpmdInfo ElementwiseBinaryWithPartialInferSpmd(const DistMetaTensor& x,
                                                const DistMetaTensor& y) {
   // Step0: Verify Input Args Based on Elementwise Logic
-  auto x_shape = common::vectorize(x.dims());
+  auto x_shape = vectorize(x.dims());
   int x_ndim = static_cast<int>(x_shape.size());
-  auto y_shape = common::vectorize(y.dims());
+  auto y_shape = vectorize(y.dims());
   int y_ndim = static_cast<int>(y_shape.size());
   TensorDistAttr x_dist_attr_src = x.dist_attr();
   TensorDistAttr y_dist_attr_src = y.dist_attr();
@@ -410,11 +408,11 @@ SpmdInfo ElementwiseBinaryInferSpmdReverse(const DistMetaTensor& x,
                                            const DistMetaTensor& y,
                                            const DistMetaTensor& out) {
   // Step0: Verify Input Args Based on Elementwise Logic
-  auto x_shape = common::vectorize(x.dims());
+  auto x_shape = vectorize(x.dims());
   int x_ndim = static_cast<int>(x_shape.size());
-  auto y_shape = common::vectorize(y.dims());
+  auto y_shape = vectorize(y.dims());
   int y_ndim = static_cast<int>(y_shape.size());
-  auto out_shape = common::vectorize(out.dims());
+  auto out_shape = vectorize(out.dims());
   int out_ndim = static_cast<int>(out_shape.size());
   int max_ndim = std::max(x_ndim, y_ndim);
   TensorDistAttr out_dist_attr = out.dist_attr();

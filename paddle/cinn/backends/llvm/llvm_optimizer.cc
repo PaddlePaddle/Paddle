@@ -24,7 +24,6 @@
 #include <llvm/ExecutionEngine/Orc/Core.h>
 #include <llvm/ExecutionEngine/Orc/ExecutionUtils.h>
 #include <llvm/ExecutionEngine/Orc/IRCompileLayer.h>
-#include <llvm/ExecutionEngine/Orc/LambdaResolver.h>
 #include <llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h>
 #include <llvm/ExecutionEngine/Orc/ThreadSafeModule.h>
 #include <llvm/ExecutionEngine/SectionMemoryManager.h>
@@ -158,9 +157,7 @@ void LLVMModuleOptimizer::operator()(llvm::Module *m) {
   builder->Inliner = llvm::createFunctionInliningPass();
   builder->LoopVectorize = true;
   builder->SLPVectorize = true;
-#if LLVM_VERSION_MAJOR >= 11
   machine->adjustPassManager(*builder);
-#endif
   builder->populateFunctionPassManager(*fpm);
   builder->populateModulePassManager(*mpm);
 

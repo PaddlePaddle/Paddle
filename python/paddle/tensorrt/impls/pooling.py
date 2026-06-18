@@ -24,7 +24,7 @@ from paddle.tensorrt.converter_utils import (
 from paddle.tensorrt.register import converter_registry
 
 
-@converter_registry.register("pd_op.pool2d", trt_version="trt_version_ge=8.0")
+@converter_registry.register("pd_op.pool2d")
 def pool2d_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
 
@@ -168,9 +168,6 @@ def pool2d_converter(network, paddle_op, inputs):
         real_paddings = paddings.copy()
 
     paddings = [paddings[i] for i in range(len(paddings)) if i % 2 == 0]
-
-    if padding_algorithm == "VALID":
-        read_paddings = [0] * len(real_paddings)
 
     if adaptive and pool_type == "avg":
         output_h, output_w = kernel_size

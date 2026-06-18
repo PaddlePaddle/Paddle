@@ -60,7 +60,7 @@ void PartialRecvKernel(const Context& dev_ctx,
   int64_t offset = recv_numel * id;
 
   gpuStream_t stream = nullptr;
-  phi::distributed::NCCLCommContext* comm_ctx = nullptr;
+  distributed::NCCLCommContext* comm_ctx = nullptr;
   int nranks = 0;
   int rank = 0;
 

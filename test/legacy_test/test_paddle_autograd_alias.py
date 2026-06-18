@@ -22,7 +22,7 @@ class TestAlias(unittest.TestCase):
         self.functionObject = paddle.autograd.function.FunctionCtx
 
     def test_compatibility(self):
-        self.assertTrue(type(self.autogradObject) == type(self.functionObject))
+        self.assertTrue(self.autogradObject is self.functionObject)
 
 
 class TestMarkNonDifferentiableAlias(TestAlias):

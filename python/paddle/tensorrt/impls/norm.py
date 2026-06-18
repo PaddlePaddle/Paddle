@@ -94,12 +94,8 @@ def layernorm_converter(network, paddle_op, inputs):
     return layer_norm.get_output(0)
 
 
-@converter_registry.register(
-    "pd_op.batch_norm", trt_version="trt_version_ge=8.0"
-)
-@converter_registry.register(
-    "pd_op.batch_norm_", trt_version="trt_version_ge=8.0"
-)
+@converter_registry.register("pd_op.batch_norm")
+@converter_registry.register("pd_op.batch_norm_")
 def batch_norm_converter(network, paddle_op, inputs):
     constant_manager = TensorRTConstantManager()
     refit_manager = RefitManager()
@@ -207,9 +203,7 @@ def batch_norm_converter(network, paddle_op, inputs):
     return batch_norm_layer.get_output(0)
 
 
-@converter_registry.register(
-    "pd_op.instance_norm", trt_version="trt_version_ge=8.0"
-)
+@converter_registry.register("pd_op.instance_norm")
 def instance_norm_converter(network, paddle_op, inputs):
     eps = paddle_op.attrs().get("epsilon", 1e-8)
     instance_norm_inputs = [inputs[0], inputs[1], inputs[2]]

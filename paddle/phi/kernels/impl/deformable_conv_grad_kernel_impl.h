@@ -275,7 +275,7 @@ void DeformableConvGradKernel(const Context& dev_ctx,
                   &col_buffer_3d_slice,
                   T(0.0));
     }
-    col_buffer.Resize(make_ddim(col_buffer_shape_vec));
+    col_buffer.Resize(col_buffer_shape_vec);
 
     T* col_buffer_ptr = col_buffer.data<T>();
     const T* input_ptr = x.data<T>();

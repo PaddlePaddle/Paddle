@@ -17,7 +17,11 @@
 #include "paddle/phi/backends/dynload/cusolver.h"
 #endif  // PADDLE_WITH_CUDA
 #ifdef PADDLE_WITH_HIP
+// thrust/device_vector.h requires hipcc
+// (rocThrust 7.0+ pulls in rocprim)
+#ifdef __HIPCC__
 #include <thrust/device_vector.h>
+#endif
 #include "paddle/phi/backends/dynload/rocsolver.h"
 #endif  // PADDLE_WITH_HIP
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -242,7 +246,7 @@ struct MatrixEighFunctor<CPUContext, T> {
     int dim_size = dims.size();
     int64_t batch_size = GetBatchSize(dims);
 
-    int vector_stride = dims[dim_size - 1] * dims[dim_size - 2];
+    int64_t vector_stride = dims[dim_size - 1] * dims[dim_size - 2];
     int values_stride = dims[dim_size - 1];
     char uplo = is_lower ? 'L' : 'U';
     char jobz = has_vectors ? 'V' : 'N';
@@ -281,8 +285,8 @@ struct MatrixEighFunctor<CPUContext, T> {
     ValueType *rwork_data = nullptr;
 
     // complex type
-    if (input.type() == phi::DataType::COMPLEX64 ||
-        input.type() == phi::DataType::COMPLEX128) {
+    if (input.type() == DataType::COMPLEX64 ||
+        input.type() == DataType::COMPLEX128) {
       lrwork = std::max<int>(1, static_cast<int>(rwork_opt));
 
       rwork_tensor.Resize({lrwork});
@@ -327,7 +331,9 @@ struct MatrixEighFunctor<CPUContext, T> {
   }
 };
 
-#ifdef PADDLE_WITH_HIP
+// HIP code using thrust::device_vector requires hipcc
+// (rocThrust 7.0+ pulls in rocprim)
+#if defined(PADDLE_WITH_HIP) && defined(__HIPCC__)
 #define ROCSOLVER_SYEVJ_BATCHED_ARGTYPES(scalar_t, value_t)            \
   solverHandle_t handle, rocblas_esort esort, rocblas_evect evect,     \
       rocblas_fill uplo, int n, scalar_t *const A[], int lda,          \
@@ -496,8 +502,8 @@ struct MatrixEighFunctor<GPUContext, T> {
     // well in Paddle(cuda10.2)
     use_cusolver_syevj_batched = (use_cusolver_syevj_batched) &&
                                  (batch_size > 1) &&
-                                 (input.dtype() != phi::DataType::COMPLEX128);
-    bool use_cusolver_syevj = (input.dtype() == phi::DataType::FLOAT32 &&
+                                 (input.dtype() != DataType::COMPLEX128);
+    bool use_cusolver_syevj = (input.dtype() == DataType::FLOAT32 &&
                                last_dim >= 32 && last_dim <= 512);
     auto handle = dev_ctx.cusolver_dn_handle();
 

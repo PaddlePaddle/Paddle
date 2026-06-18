@@ -127,8 +127,22 @@ op_patches:
         object : porder
         type : pir::DoubleAttribute
         data : 2
+  - op_name : pd_op.p_norm_grad
+    actions :
+      - action : modify_attr
+        object : porder
+        type : pir::DoubleAttribute
+        data : 2
   - op_name : pd_op.layer_norm
     actions:
       - action : modify_attr
         object : epsilon
+        type : pir::DoubleAttribute
+  - op_name : pd_op.gaussian
+    actions:
+      - action : modify_attr
+        object : mean
+        type : pir::DoubleAttribute
+      - action : modify_attr
+        object : std
         type : pir::DoubleAttribute

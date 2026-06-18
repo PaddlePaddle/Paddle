@@ -80,11 +80,11 @@ std::vector<std::vector<size_t>> Eager_AssignGroupBySize(
 
   // Key: the var type
   // Value: should use which index in group_size_limits for group size limit
-  std::map<phi::DataType, size_t> group_limit_index;
+  std::map<DataType, size_t> group_limit_index;
 
   // Key: the var type
   // Value: <the var index in input tensors, total numel in this group>
-  std::map<phi::DataType, std::pair<std::vector<size_t>, size_t>> next_group;
+  std::map<DataType, std::pair<std::vector<size_t>, size_t>> next_group;
 
   for (size_t i = 0; i < tensors.size(); ++i) {
     const auto &var = tensors[i];
@@ -257,21 +257,21 @@ static void ConcatTensorsWithType(
     const DeviceContext &context,
     const std::vector<DenseTensor> &dense_tensors_,
     Tensor *p_dense_contents,
-    phi::DataType type) {
+    DataType type) {
   switch (type) {
-    case phi::DataType::FLOAT16:
+    case DataType::FLOAT16:
       ConcatTensorsForAllReduce<DeviceContext, phi::dtype::float16>()(
           context, dense_tensors_, p_dense_contents);
       break;
-    case phi::DataType::FLOAT32:
+    case DataType::FLOAT32:
       ConcatTensorsForAllReduce<DeviceContext, float>()(
           context, dense_tensors_, p_dense_contents);
       break;
-    case phi::DataType::FLOAT64:
+    case DataType::FLOAT64:
       ConcatTensorsForAllReduce<DeviceContext, double>()(
           context, dense_tensors_, p_dense_contents);
       break;
-    case phi::DataType::BFLOAT16:
+    case DataType::BFLOAT16:
       ConcatTensorsForAllReduce<DeviceContext, phi::dtype::bfloat16>()(
           context, dense_tensors_, p_dense_contents);
       break;
@@ -288,21 +288,21 @@ template <typename DeviceContext>
 static void SplitTensorsWithType(const DeviceContext &context,
                                  Tensor *p_dense_contents,
                                  std::vector<DenseTensor> *p_dense_tensors,
-                                 phi::DataType type) {
+                                 DataType type) {
   switch (type) {
-    case phi::DataType::FLOAT16:
+    case DataType::FLOAT16:
       SplitTensorsForAllReduce<DeviceContext, phi::dtype::float16>()(
           context, p_dense_contents, p_dense_tensors);
       break;
-    case phi::DataType::FLOAT32:
+    case DataType::FLOAT32:
       SplitTensorsForAllReduce<DeviceContext, float>()(
           context, p_dense_contents, p_dense_tensors);
       break;
-    case phi::DataType::FLOAT64:
+    case DataType::FLOAT64:
       SplitTensorsForAllReduce<DeviceContext, double>()(
           context, p_dense_contents, p_dense_tensors);
       break;
-    case phi::DataType::BFLOAT16:
+    case DataType::BFLOAT16:
       SplitTensorsForAllReduce<DeviceContext, phi::dtype::bfloat16>()(
           context, p_dense_contents, p_dense_tensors);
       break;
@@ -321,17 +321,17 @@ void ConcatTensorsWithType<phi::XPUContext>(
     const phi::XPUContext &context,
     const std::vector<DenseTensor> &dense_tensors_,
     Tensor *p_dense_contents,
-    phi::DataType type) {
+    DataType type) {
   switch (type) {
-    case phi::DataType::FLOAT32:
+    case DataType::FLOAT32:
       ConcatTensorsForAllReduce<phi::XPUContext, float>()(
           context, dense_tensors_, p_dense_contents);
       break;
-    case phi::DataType::FLOAT16:
+    case DataType::FLOAT16:
       ConcatTensorsForAllReduce<phi::XPUContext, phi::dtype::float16>()(
           context, dense_tensors_, p_dense_contents);
       break;
-    case phi::DataType::BFLOAT16:
+    case DataType::BFLOAT16:
       ConcatTensorsForAllReduce<phi::XPUContext, phi::dtype::bfloat16>()(
           context, dense_tensors_, p_dense_contents);
       break;
@@ -349,17 +349,17 @@ void SplitTensorsWithType<phi::XPUContext>(
     const phi::XPUContext &context,
     Tensor *p_dense_contents,
     std::vector<DenseTensor> *p_dense_tensors,
-    phi::DataType type) {
+    DataType type) {
   switch (type) {
-    case phi::DataType::FLOAT32:
+    case DataType::FLOAT32:
       SplitTensorsForAllReduce<phi::XPUContext, float>()(
           context, p_dense_contents, p_dense_tensors);
       break;
-    case phi::DataType::FLOAT16:
+    case DataType::FLOAT16:
       SplitTensorsForAllReduce<phi::XPUContext, phi::dtype::float16>()(
           context, p_dense_contents, p_dense_tensors);
       break;
-    case phi::DataType::BFLOAT16:
+    case DataType::BFLOAT16:
       SplitTensorsForAllReduce<phi::XPUContext, phi::dtype::bfloat16>()(
           context, p_dense_contents, p_dense_tensors);
       break;

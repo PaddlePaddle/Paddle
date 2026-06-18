@@ -105,7 +105,7 @@ size_t HashTensor(const DenseTensor& in) {
   size_t ret = 0;
   auto in_dims = in.dims();
   HashCombine(&ret,
-              phi::DataTypeToString(in.dtype()),
+              DataTypeToString(in.dtype()),
               common::DataLayoutToString(in.layout()),
               in_dims.size());
   for (int i = 0; i < in_dims.size(); i++) {
@@ -130,9 +130,9 @@ size_t HashTensor<float16>(const DenseTensor& in) {
   auto* cpu_ctx = static_cast<phi::CPUContext*>(
       phi::DeviceContextPool::Instance().Get(CPUPlace()));
   dst_tensor.Resize(in.dims());
-  dst_tensor.set_type(phi::DataType::FLOAT32);
+  dst_tensor.set_type(DataType::FLOAT32);
   dst_tensor.set_layout(in.layout());
-  phi::CastKernel<float16>(*cpu_ctx, in, phi::DataType::FLOAT32, &dst_tensor);
+  phi::CastKernel<float16>(*cpu_ctx, in, DataType::FLOAT32, &dst_tensor);
   return HashTensor<float>(dst_tensor);
 }
 
@@ -173,13 +173,13 @@ void ConvertFromFp32ToFp16(DenseTensor* weight,
   int64_t size = weight_fp32.numel();
   float max_val = FindMaxAbs(weight_fp32.data<float>(), size);
   std::vector<float> max_vec(max_ptr_size, max_val);
-  weight_max->set_type(phi::DataType::FLOAT32);
+  weight_max->set_type(DataType::FLOAT32);
   weight_max->Resize({max_ptr_size});
   memcpy(cpu_ctx->Alloc<float>(weight_max),
          max_vec.data(),
          max_ptr_size * sizeof(float));
   weight->clear();
-  weight->set_type(phi::DataType::FLOAT16);
+  weight->set_type(DataType::FLOAT16);
   weight->Resize({size});
   memcpy(cpu_ctx->Alloc<float16>(weight),
          weight_fp16.data<float16>(),
@@ -378,7 +378,7 @@ void PrepareBias(
     Graph* graph, Scope* scope, BlockDesc* block, Node* src, Node** dst) {
   auto src_name = src->Name();
   auto* src_tensor = scope->Var(src_name)->GetMutable<DenseTensor>();
-  if (src_tensor->dtype() == phi::DataType::FLOAT32) {
+  if (src_tensor->dtype() == DataType::FLOAT32) {
     *dst = src;
   }
 

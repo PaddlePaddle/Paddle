@@ -42,17 +42,17 @@ class TestTorchProxyMixRealTorch(unittest.TestCase):
 
     def test_nested_torch_proxy(self):
         self.check_is_not_proxy()
-        with paddle.compat.use_torch_proxy_guard(enable=True):
+        with paddle.use_compat_guard(enable=True):
             self.check_is_proxy()
 
-            with paddle.compat.use_torch_proxy_guard(enable=False):
+            with paddle.use_compat_guard(enable=False):
                 self.check_is_not_proxy()
 
-                with paddle.compat.use_torch_proxy_guard(enable=True):
+                with paddle.use_compat_guard(enable=True):
                     self.check_is_proxy()
-                    with paddle.compat.use_torch_proxy_guard(enable=True):
+                    with paddle.use_compat_guard(enable=True):
                         self.check_is_proxy()
-                    with paddle.compat.use_torch_proxy_guard(enable=False):
+                    with paddle.use_compat_guard(enable=False):
                         self.check_is_not_proxy()
 
                 self.check_is_not_proxy()
@@ -63,7 +63,7 @@ class TestTorchProxyMixRealTorch(unittest.TestCase):
 
     def test_local_enabled_module_import(self):
         self.check_is_not_proxy()
-        with paddle.compat.use_torch_proxy_guard(
+        with paddle.use_compat_guard(
             enable=True, scope={"torch_proxy_local_enabled_module"}
         ):
             self.check_is_not_proxy()
@@ -74,7 +74,7 @@ class TestTorchProxyMixRealTorch(unittest.TestCase):
         paddle.compat.extend_torch_proxy_blocked_modules(
             {"torch_proxy_blocked_module"}
         )
-        with paddle.compat.use_torch_proxy_guard(enable=True):
+        with paddle.use_compat_guard(enable=True):
             import torch_proxy_blocked_module  # noqa: F401
 
             self.check_is_proxy()
@@ -85,7 +85,7 @@ class TestTorchProxyMixRealTorch(unittest.TestCase):
         paddle.compat.extend_torch_proxy_blocked_modules(
             {"torch_proxy_blocked_module"}
         )
-        with paddle.compat.use_torch_proxy_guard(
+        with paddle.use_compat_guard(
             enable=True, scope={"torch_proxy_local_enabled_module"}
         ):
             import torch_proxy_blocked_module  # noqa: F401

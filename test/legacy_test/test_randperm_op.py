@@ -525,14 +525,50 @@ class TestRandpermNewParams(unittest.TestCase):
                 self.assertEqual(result.dtype, out_tensor.dtype)
                 self.assertTrue(check_randperm_out(self.n, result.numpy()))
 
-    def test_pin_memory_error_cases(self):
-        """Test pin_memory error cases"""
+    def test_pin_memory_cpu_device(self):
+        """``device='cpu', pin_memory=True`` is relaxed to the available
+        pinned allocator (matches torch's pin_memory contract)."""
         if not paddle.device.is_compiled_with_cuda():
             return
 
-        with dygraph_guard(), self.assertRaises(RuntimeError):
-            # Test unsupported device with pin_memory=True
-            paddle.randperm([2, 3], device=paddle.CPUPlace(), pin_memory=True)
+        with dygraph_guard():
+            x = paddle.randperm(
+                self.n, device=paddle.CPUPlace(), pin_memory=True
+            )
+            self.assertIn("pinned", str(x.place).lower())
+
+
+class TestRandperm_compatible(unittest.TestCase):
+    """Test randperm with large n to cover the inside-out Fisher-Yates
+    path using 64-bit random values in CPU randperm_kernel.cc.
+    The threshold is uint32_max / 20 = 214748364, so n >= 214748365
+    triggers the large-n branch.
+    """
+
+    def test_small_n_cpu(self):
+        paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': 1})
+        n = 10
+        with dygraph_guard():
+            paddle.set_device("cpu")
+            x = paddle.randperm(n, dtype="int32")
+            data_np = x.numpy()
+            self.assertEqual(data_np.shape, (n,))
+            self.assertEqual(data_np.min(), 0)
+            self.assertEqual(data_np.max(), n - 1)
+            self.assertEqual(len(np.unique(data_np)), n)
+
+    def test_large_n_cpu(self):
+        paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': 1})
+        # uint32_max // 20 + 1 = 214748365, just exceeds the threshold
+        n = 214748365
+        with dygraph_guard():
+            paddle.set_device("cpu")
+            x = paddle.randperm(n, dtype="int32")
+            data_np = x.numpy()
+            self.assertEqual(data_np.shape, (n,))
+            self.assertEqual(data_np.min(), 0)
+            self.assertEqual(data_np.max(), n - 1)
+            self.assertEqual(len(np.unique(data_np)), n)
 
 
 if __name__ == "__main__":

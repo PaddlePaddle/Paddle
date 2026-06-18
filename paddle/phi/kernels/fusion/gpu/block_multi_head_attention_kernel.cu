@@ -22,13 +22,6 @@
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
 #include "paddle/utils/none.h"
 
-inline int getSMVersion() {
-  const int device = phi::backends::gpu::GetCurrentDeviceId();
-  const phi::gpuDeviceProp prop =
-      phi::backends::gpu::GetDeviceProperties(device);
-  return prop.major * 10 + prop.minor;
-}
-
 #if defined(__CUDACC__) && CUDA_VERSION >= 11000
 #define CUDA_BFLOAT16_AVAILABLE
 #include <cuda_bf16.h>
@@ -36,6 +29,12 @@ inline int getSMVersion() {
 
 namespace phi {
 namespace fusion {
+
+inline int getSMVersion() {
+  const int device = backends::gpu::GetCurrentDeviceId();
+  const phi::gpuDeviceProp prop = backends::gpu::GetDeviceProperties(device);
+  return prop.major * 10 + prop.minor;
+}
 
 int GetMaxLen(const GPUContext& dev_ctx,
               const DenseTensor& seq_lens_tensor,
@@ -281,8 +280,8 @@ __global__ void DequantKernel(T* output,
   AlignedVector<T, VecSize> out_vec;
 
   for (; idx < numel; idx += stride) {
-    phi::Load<int32_t, VecSize>(input + idx, &in_vec);
-    phi::Load<float, VecSize>(dequant_out_scale_data + col_id, &out_scale_vec);
+    Load<int32_t, VecSize>(input + idx, &in_vec);
+    Load<float, VecSize>(dequant_out_scale_data + col_id, &out_scale_vec);
 
 #pragma unroll
     for (int i = 0; i < VecSize; ++i) {
@@ -290,7 +289,7 @@ __global__ void DequantKernel(T* output,
           static_cast<T>(static_cast<float>(in_vec[i]) * out_scale_vec[i]);
     }
 
-    phi::Store<T, VecSize>(out_vec, output + idx);
+    Store<T, VecSize>(out_vec, output + idx);
   }
 }
 
@@ -828,7 +827,7 @@ void DispatchWithDtype(const Context& dev_ctx,
     dim3 grid(((n >> 2) + 63) / 64, (m + 7) / 8);
     dim3 block(64, 8);
 #else
-    dim3 grid((n >> 2 + 31) / 32, (m + 31) / 32);
+    dim3 grid(((n >> 2) + 31) / 32, (m + 31) / 32);
     dim3 block(32, 32);
 #endif
     if (out_shift && out_smooth) {

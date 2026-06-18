@@ -243,7 +243,7 @@ void FlashAttnUnpaddedGradBaseKernel(const Context& dev_ctx,
 
   const int64_t batch_size = cu_seqlens_q.numel() - 1;
   const int64_t num_heads = dims[1];
-  const int64_t head_size_og = dout.dims()[2];
+  const int64_t head_size_v = dout.dims()[2];
   const int64_t head_size = dims[2];
   const int64_t total_k = k.dims()[0];
   const int64_t num_heads_k = k.dims()[1];
@@ -286,11 +286,13 @@ void FlashAttnUnpaddedGradBaseKernel(const Context& dev_ctx,
   int num_splits = get_num_split();
 
   // TODO(umiswing): add shape check
-  PADDLE_ENFORCE_EQ(
-      head_size_og,
-      head_size,
-      common::errors::InvalidArgument(
-          "flash_attn_bwd receive input with head_size_og == head_size"));
+  PADDLE_ENFORCE_EQ(head_size,
+                    head_size_v,
+                    common::errors::InvalidArgument(
+                        "This kernel does not support headdim != headdim_v, "
+                        "but got headdim = %d and headdim_v = %d",
+                        head_size,
+                        head_size_v));
 
   int64_t max_seqlen_q = max_seqlen_q_.to<int64_t>();
   int64_t max_seqlen_k = max_seqlen_k_.to<int64_t>();
@@ -386,13 +388,13 @@ void FlashAttnUnpaddedGradBaseKernel(const Context& dev_ctx,
   if (!is_mha) {
     if (dk) {
       if (dk->meta().is_contiguous())
-        phi::SumKernel<T, Context>(dev_ctx, dk_tmp, {2}, dk->type(), false, dk);
+        SumKernel<T, Context>(dev_ctx, dk_tmp, {2}, dk->type(), false, dk);
       else
         kvReduceForGQA<T, Context>(dev_ctx, dk_tmp, dk);
     }
     if (dv) {
       if (dv->meta().is_contiguous())
-        phi::SumKernel<T, Context>(dev_ctx, dv_tmp, {2}, dv->type(), false, dv);
+        SumKernel<T, Context>(dev_ctx, dv_tmp, {2}, dv->type(), false, dv);
       else
         kvReduceForGQA<T, Context>(dev_ctx, dv_tmp, dv);
     }
@@ -581,7 +583,7 @@ void FlashAttnGradBaseKernel(const Context& dev_ctx,
   const int64_t batch_size = dims[0];
   const int64_t seqlen_q = dims[1];
   const int64_t num_heads = dims[2];
-  const int64_t head_size_og = dout.dims()[3];
+  const int64_t head_size_v = v.dims()[3];
   const int64_t head_size = dims[3];
   const int64_t seqlen_k = k.dims()[1];
   const int64_t num_heads_k = k.dims()[2];
@@ -621,11 +623,13 @@ void FlashAttnGradBaseKernel(const Context& dev_ctx,
 #endif
 
   // TODO(umiswing): add shape check
-  PADDLE_ENFORCE_EQ(
-      head_size_og,
-      head_size,
-      common::errors::InvalidArgument(
-          "flash_attn_bwd receive input with head_size_og == head_size"));
+  PADDLE_ENFORCE_EQ(head_size,
+                    head_size_v,
+                    common::errors::InvalidArgument(
+                        "This kernel does not support headdim != headdim_v, "
+                        "but got headdim = %d and headdim_v = %d",
+                        head_size,
+                        head_size_v));
 
   const float softmax_scale = 1.0f / std::sqrt(head_size);
   const float softmax_unscale = std::sqrt(head_size);
@@ -688,32 +692,32 @@ void FlashAttnGradBaseKernel(const Context& dev_ctx,
                           "mask_bounds must in [1,2,4]"));
     auto flashmask_maxmin_shape = params.startend_row_indices->dims();
     flashmask_maxmin_shape[2] = (flashmask_maxmin_shape[2] + 31) / 32 * 8;
-    flashmask_maxmin.set_type(phi::DataType::INT32);
+    flashmask_maxmin.set_type(DataType::INT32);
     flashmask_maxmin.Resize(flashmask_maxmin_shape);
     dev_ctx.template Alloc<T>(&flashmask_maxmin);
 
     downstart_row_indices =
-        phi::Slice<int32_t>(dev_ctx, startend_row_indices.get(), {3}, {0}, {1});
+        Slice<int32_t>(dev_ctx, startend_row_indices.get(), {3}, {0}, {1});
     downstart_row_indices_data = downstart_row_indices.data();
     if (startend_row_indices->dims()[3] == 2) {
       if (!causal) {
-        upend_row_indices = phi::Slice<int32_t>(
-            dev_ctx, startend_row_indices.get(), {3}, {1}, {2});
+        upend_row_indices =
+            Slice<int32_t>(dev_ctx, startend_row_indices.get(), {3}, {1}, {2});
         upend_row_indices_data = upend_row_indices.data();
       } else {
-        downend_row_indices = phi::Slice<int32_t>(
-            dev_ctx, startend_row_indices.get(), {3}, {1}, {2});
+        downend_row_indices =
+            Slice<int32_t>(dev_ctx, startend_row_indices.get(), {3}, {1}, {2});
         downend_row_indices_data = downend_row_indices.data();
       }
     } else if (startend_row_indices->dims()[3] == 4) {
-      upend_row_indices = phi::Slice<int32_t>(
-          dev_ctx, startend_row_indices.get(), {3}, {3}, {4});
+      upend_row_indices =
+          Slice<int32_t>(dev_ctx, startend_row_indices.get(), {3}, {3}, {4});
       upend_row_indices_data = upend_row_indices.data();
-      downend_row_indices = phi::Slice<int32_t>(
-          dev_ctx, startend_row_indices.get(), {3}, {1}, {2});
+      downend_row_indices =
+          Slice<int32_t>(dev_ctx, startend_row_indices.get(), {3}, {1}, {2});
       downend_row_indices_data = downend_row_indices.data();
-      upstart_row_indices = phi::Slice<int32_t>(
-          dev_ctx, startend_row_indices.get(), {3}, {2}, {3});
+      upstart_row_indices =
+          Slice<int32_t>(dev_ctx, startend_row_indices.get(), {3}, {2}, {3});
       upstart_row_indices_data = upstart_row_indices.data();
     }
   }
@@ -888,16 +892,14 @@ void FlashAttnGradBaseKernel(const Context& dev_ctx,
     if (!is_mha) {
       if (dk) {
         if (dk->meta().is_contiguous())
-          phi::SumKernel<T, Context>(
-              dev_ctx, dk_tmp, {3}, dk->type(), false, dk);
+          SumKernel<T, Context>(dev_ctx, dk_tmp, {3}, dk->type(), false, dk);
         else
           kvReduceBatchedForGQA<T, Context>(dev_ctx, dk_tmp, dk);
       }
 
       if (dv) {
         if (dv->meta().is_contiguous())
-          phi::SumKernel<T, Context>(
-              dev_ctx, dv_tmp, {3}, dv->type(), false, dv);
+          SumKernel<T, Context>(dev_ctx, dv_tmp, {3}, dv->type(), false, dv);
         else
           kvReduceBatchedForGQA<T, Context>(dev_ctx, dv_tmp, dv);
       }

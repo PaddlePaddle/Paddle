@@ -64,7 +64,7 @@ __global__ void KernelNanCounts(const T* input,
     }
 
     int len = stride > blockDim.x ? blockDim.x : stride;
-    num = phi::backends::gpu::reduceSum(num, tx, len);
+    num = backends::gpu::reduceSum(num, tx, len);
     if (tx == 0) {
       nan_counts[j] = num;
     }
@@ -278,8 +278,7 @@ void ProcessMedianKernel(const Context& dev_ctx,
   grid_size = std::min(grid_size, max_grid_dim);
   KernelNanCounts<T><<<grid_size, block_size, 0, stream>>>(
       x_data, numel, pre_dim, stride, nan_counts_ptr, nan_indices_ptr);
-  auto nan_stat_mem_cpu =
-      phi::memory_utils::Alloc(CPUPlace(), sizeof(int64_t) * 2);
+  auto nan_stat_mem_cpu = memory_utils::Alloc(CPUPlace(), sizeof(int64_t) * 2);
   int64_t* nan_stat_cpu_ptr =
       reinterpret_cast<int64_t*>(nan_stat_mem_cpu->ptr());
   int64_t sum =
@@ -324,7 +323,7 @@ void ProcessMedianKernel(const Context& dev_ctx,
       dev_ctx, x, Scalar(sort_k), -1, false, true, &sort_out, &sort_indices);
 
   T div_factor = static_cast<T>(2.0);
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, pre_dim);
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, pre_dim);
   if (ignore_nan) {
     if (mode == "avg") {
       CalcNanmedianMeanKernel<T>

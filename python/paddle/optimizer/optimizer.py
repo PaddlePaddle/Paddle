@@ -365,7 +365,10 @@ class Optimizer:
             return
 
         # TODO(@gexiao): support other optimizer if needed
-        if self.__class__.__name__ != "AdamW":
+        if (
+            self.__class__.__name__ != "AdamW"
+            and self.__class__.__name__ != "Muon"
+        ):
             return
 
         # add buffer check
@@ -521,28 +524,30 @@ class Optimizer:
     def get_opti_var_name_list(self) -> list[str]:
         return self._opti_name_list
 
+    def get_lr_dtype(self) -> paddle.dtype:
+        # lr var can't be float16 or bfloat16, for pure fp16 or bf16 training, should extra handle the dtype for lr
+        _lr_dtype = (
+            paddle.get_default_dtype() if self._dtype is None else self._dtype
+        )
+        _lr_dtype = (
+            paddle.float32
+            if (
+                (
+                    paddle.get_default_dtype() != "float16"
+                    and _lr_dtype == paddle.float16
+                )
+                or (
+                    paddle.get_default_dtype() != "bfloat16"
+                    and _lr_dtype == paddle.bfloat16
+                )
+            )
+            else _lr_dtype
+        )
+        return _lr_dtype
+
     def _create_global_learning_rate(self):
         def do_create():
-            # lr var can't be float16 or bfloat16, for pure fp16 or bf16 training, should extra handle the dtype for lr
-            _lr_dtype = (
-                paddle.get_default_dtype()
-                if self._dtype is None
-                else self._dtype
-            )
-            _lr_dtype = (
-                paddle.float32
-                if (
-                    (
-                        paddle.get_default_dtype() != "float16"
-                        and _lr_dtype == paddle.float16
-                    )
-                    or (
-                        paddle.get_default_dtype() != "bfloat16"
-                        and _lr_dtype == paddle.bfloat16
-                    )
-                )
-                else _lr_dtype
-            )
+            _lr_dtype = self.get_lr_dtype()
             if isinstance(self._learning_rate, LRScheduler):
                 lr_var = self._global_learning_rate()
                 # only create global lr_var once
@@ -621,7 +626,7 @@ class Optimizer:
                                 ]
                             else:
                                 _lr_dtype = (
-                                    paddle.pir.core.convert_np_dtype_to_dtype_(
+                                    paddle.pir.core.convert_nptype_to_datatype(
                                         _lr_dtype
                                     )
                                 )
@@ -789,7 +794,7 @@ class Optimizer:
                 >>> ## example1: LRScheduler is not used, return the same value is all the same
                 >>> adam = paddle.optimizer.Adam(0.01, parameters=emb.parameters())
                 >>> for batch in range(10):
-                ...     input = paddle.randint(low=0, high=5, shape=[5])
+                ...     input = paddle.randint(low=0, high=5, size=[5])
                 ...     out = emb(input)
                 ...     out.backward()
                 ...     print("Learning rate of step{}: {}".format(batch, adam.get_lr()))  # 0.01
@@ -809,7 +814,7 @@ class Optimizer:
                 >>> scheduler = paddle.optimizer.lr.StepDecay(learning_rate=0.5, step_size=2, gamma=0.1)
                 >>> adam = paddle.optimizer.Adam(scheduler, parameters=emb.parameters())
                 >>> for batch in range(10):
-                ...     input = paddle.randint(low=0, high=5, shape=[5])
+                ...     input = paddle.randint(low=0, high=5, size=[5])
                 ...     out = emb(input)
                 ...     out.backward()
                 ...     print("Learning rate of step{}: {}".format(batch, adam.get_lr()))  # 0.5->0.05...
@@ -2037,33 +2042,63 @@ class Optimizer:
 
     @imperative_base.no_grad()
     @framework.non_static_only
-    def step(self) -> None:
+    def step(
+        self, closure: Callable[[], Tensor] | None = None
+    ) -> Tensor | None:
         """
         Execute the optimizer and update parameters once.
 
+        Args:
+            closure (Callable|None, optional): A closure that reevaluates the model
+                and returns the loss. It should be a callable that takes no arguments
+                and returns a Tensor. This is useful for optimizers that need to
+                evaluate the loss multiple times (e.g., line search). Default is None.
+
         Returns:
-            None
+            Tensor|None: If closure is provided, returns the loss value computed by
+                the closure. Otherwise returns None.
 
         Examples:
             .. code-block:: pycon
 
                 >>> import paddle
 
-                >>> a = paddle.arange(26, dtype="float32").reshape([2, 13])
+                >>> x = paddle.arange(26, dtype="float32").reshape([2, 13])
                 >>> linear = paddle.nn.Linear(13, 5)
                 >>> # This can be any optimizer supported by dygraph.
                 >>> adam = paddle.optimizer.Adam(
                 ...     learning_rate=0.01,
                 ...     parameters=linear.parameters(),
                 ... )
-                >>> out = linear(a)
+                >>> out = linear(x)
                 >>> out.backward()
                 >>> adam.step()
                 >>> adam.clear_grad()
+
+                >>> # usage 1: not use closure
+                >>> adam.zero_grad()
+                >>> output = linear(x)
+                >>> loss = paddle.mean(output)
+                >>> loss.backward()
+                >>> adam.step()
+
+                >>> # usage 2: use closure
+                >>> def closure():
+                ...     adam.zero_grad()
+                ...     output = linear(x)
+                ...     loss = paddle.mean(output)
+                ...     loss.backward()
+                ...     return loss
+                >>> step_loss = adam.step(closure)
         """
+        loss = None
+        if closure is not None:
+            with imperative_base.enable_grad():
+                loss = closure()
+
         if paddle.base.dygraph.base.in_to_static_mode():
             self._declarative_step()
-            return
+            return loss
 
         if not isinstance(self._param_groups[0], dict):
             params_grads = []
@@ -2111,6 +2146,7 @@ class Optimizer:
                     params_grads=params_grads,
                     param_group_idx=idx,
                 )
+        return loss
 
     def _add_param_group(self, param_group):
         """

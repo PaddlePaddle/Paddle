@@ -489,14 +489,13 @@ void RunKernel(const phi::OneDNNContext& dev_ctx,
   std::shared_ptr<dnnl::memory> h0_memory_p, weight_h_memory_p,
       weight_x_memory_p;
 
-  if (phi::TransToProtoVarType(weight_h.dtype()) == phi::ProtoDataType::FP32) {
+  if (weight_h.dtype() == DataType::FLOAT32) {
     h0_memory_p = handler.template AcquireH0Memory<float>(h0.get_ptr());
     weight_x_memory_p =
         handler.template AcquireWeightXMemory<float>(&weight_x, origin_mode);
     weight_h_memory_p =
         handler.template AcquireWeightHMemory<float>(&weight_h, origin_mode);
-  } else if (phi::TransToProtoVarType(weight_h.dtype()) ==
-             phi::ProtoDataType::BF16) {
+  } else if (weight_h.dtype() == DataType::BFLOAT16) {
     h0_memory_p = handler.template AcquireH0Memory<phi::bfloat16>(h0.get_ptr());
     weight_x_memory_p = handler.template AcquireWeightXMemory<phi::bfloat16>(
         &weight_x, origin_mode);

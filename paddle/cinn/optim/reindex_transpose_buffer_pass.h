@@ -31,8 +31,9 @@ namespace optim {
  *       Store :  shm[y, x ^ y]
  *       Load  :  shm[x, y ^ x]
  *    So that we transpose shm[y][x] to shm[x][y], while neither the store nor
- *    the load cause bank conflict (because both `x ^ y` and `y ^ x` produce 32
- *    unique values within a warp of 32 threads).
+ *    the load cause bank conflict (because both `x ^ y` and `y ^ x` produce T
+ *    unique values within a warp/wavefront of T threads, where T = tile_size =
+ *    warp_size).
  *
  * 2. Replace multiple individual transpose buffers for each transpose with a
  *    single union buffer to save shared memory. This is valid because transpose
