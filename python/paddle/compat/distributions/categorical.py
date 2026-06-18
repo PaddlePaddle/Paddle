@@ -21,20 +21,6 @@ from paddle.distribution import constraint, distribution
 from paddle.tensor import multinomial
 
 
-class _IntegerInterval(constraint.Constraint):
-    event_dim = 0
-
-    def __init__(self, lower: int, upper: int) -> None:
-        self._lower = lower
-        self._upper = upper
-        super().__init__()
-
-    def __call__(self, value):
-        return (
-            (value >= self._lower) & (value <= self._upper) & (value % 1 == 0)
-        )
-
-
 class Categorical(distribution.Distribution):
     arg_constraints = {
         "probs": constraint.simplex,
@@ -101,7 +87,7 @@ class Categorical(distribution.Distribution):
 
     @property
     def support(self):
-        return _IntegerInterval(0, self._num_events - 1)
+        return constraint.integer_interval(0, self._num_events - 1)
 
     @property
     def logits(self):

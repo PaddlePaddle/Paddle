@@ -55,6 +55,21 @@ class Range(Constraint):
         return self._lower <= value <= self._upper
 
 
+class IntegerInterval(Constraint):
+    event_dim = 0
+    is_discrete = True
+
+    def __init__(self, lower: int, upper: int) -> None:
+        self._lower = lower
+        self._upper = upper
+        super().__init__()
+
+    def __call__(self, value: Tensor) -> Tensor:
+        return (
+            (value >= self._lower) & (value <= self._upper) & (value % 1 == 0)
+        )
+
+
 class Positive(Constraint):
     def __call__(self, value: Tensor) -> Tensor:
         return value >= 0.0
@@ -127,6 +142,7 @@ class Simplex(Constraint):
 
 real = Real()
 real_vector = RealVector()
+integer_interval = IntegerInterval
 positive = Positive()
 lower_triangular = LowerTriangular()
 lower_cholesky = LowerCholesky()

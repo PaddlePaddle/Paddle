@@ -63,6 +63,7 @@ class TestDistributionsCategoricalAPI(unittest.TestCase):
             paddle.compat.distributions,
             importlib.import_module("paddle.compat.distributions"),
         )
+        self.assertIs(paddle.compat.distributions, paddle.compat.distributions)
 
         paddle.disable_static()
         probs = paddle.to_tensor(self.np_probs, place=self.place)
@@ -220,6 +221,7 @@ class TestDistributionsCategoricalAPI(unittest.TestCase):
 
         es = dist.enumerate_support()
         es0 = dist.enumerate_support(expand=False)
+        support = dist.support
 
         self.assertEqual(list(es.shape), [3, 2])
         self.assertEqual(list(es0.shape), [3, 1])
@@ -228,6 +230,18 @@ class TestDistributionsCategoricalAPI(unittest.TestCase):
         )
         np.testing.assert_array_equal(
             es0.numpy(), np.array([[0], [1], [2]], dtype="int64")
+        )
+        np.testing.assert_array_equal(
+            support.check(paddle.to_tensor([0, 2], place=self.place)).numpy(),
+            np.array([True, True]),
+        )
+        np.testing.assert_array_equal(
+            support.check(
+                paddle.to_tensor(
+                    [-1, 1.5, 3], dtype="float32", place=self.place
+                )
+            ).numpy(),
+            np.array([False, False, False]),
         )
 
     def test_static_Compatibility(self):
