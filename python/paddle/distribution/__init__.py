@@ -85,7 +85,6 @@ __all__ = [
     'Binomial',
     'Poisson',
     'StudentT',
-    'constraints',
 ]
 
 __all__.extend(transform.__all__)
