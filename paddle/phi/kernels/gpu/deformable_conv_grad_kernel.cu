@@ -1,4 +1,7 @@
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// PADDLE_ENFORCE_LE_UINT32_MAX(blocks, "deformable_conv_grad coord grid.x");
+PADDLE_ENFORCE_LE_UINT32_MAX(threads, "deformable_conv_grad coord block.x");
+
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,6 +17,7 @@
 
 #include "paddle/phi/kernels/deformable_conv_grad_kernel.h"
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -132,28 +136,33 @@ void ModulatedDeformableCol2im(const Context& dev_ctx,
       col_shape[0] * col_shape[1] * col_shape[2] * col_shape[3];
   int64_t blocks = NumBlocks(num_kernels);
   int64_t threads = kNumCUDAThreads;
+  PADDLE_ENFORCE_LE_UINT32_MAX(blocks, "deformable_conv_grad col2im grid.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(threads, "deformable_conv_grad col2im block.x");
   ModulatedDeformableCol2imGpuKernel<T, IndexT>
-      <<<blocks, threads, 0, dev_ctx.stream()>>>(num_kernels,
-                                                 data_col,
-                                                 data_offset,
-                                                 data_mask,
-                                                 im_shape[0],
-                                                 im_shape[1],
-                                                 im_shape[2],
-                                                 kernel_shape[2],
-                                                 kernel_shape[3],
-                                                 pad[0],
-                                                 pad[1],
-                                                 stride[0],
-                                                 stride[1],
-                                                 dilation[0],
-                                                 dilation[1],
-                                                 channel_per_deformable_group,
-                                                 col_shape[1],
-                                                 deformable_group,
-                                                 col_shape[2],
-                                                 col_shape[3],
-                                                 grad_im);
+      <<<static_cast<uint32_t>(blocks),
+         static_cast<uint32_t>(threads),
+         0,
+         dev_ctx.stream()>>>(num_kernels_int,
+                             data_col,
+                             data_offset,
+                             data_mask,
+                             im_shape[0],
+                             im_shape[1],
+                             im_shape[2],
+                             kernel_shape[2],
+                             kernel_shape[3],
+                             pad[0],
+                             pad[1],
+                             stride[0],
+                             stride[1],
+                             dilation[0],
+                             dilation[1],
+                             channel_per_deformable_group,
+                             col_shape[1],
+                             deformable_group,
+                             col_shape[2],
+                             col_shape[3],
+                             grad_im);
 }
 
 template <typename T, typename IndexT>
@@ -298,8 +307,11 @@ void ModulatedDeformableCol2imCoord(const Context& dev_ctx,
   int64_t threads = kNumCUDAThreads;
 
   ModulatedDeformableCol2imCoordGpuKernel<T, IndexT>
-      <<<blocks, threads, 0, dev_ctx.stream()>>>(
-          num_kernels,
+      <<<static_cast<uint32_t>(blocks),
+         static_cast<uint32_t>(threads),
+         0,
+         dev_ctx.stream()>>>(
+          num_kernels_int,
           data_col,
           data_im,
           data_offset,
@@ -351,9 +363,14 @@ void FilterGradAddup(const Context& dev_ctx,
   const int64_t grid_size = std::min<int64_t>(
       (nthreads + kNumCUDAThreads - 1) / kNumCUDAThreads, max_grid_x);
 
-  FilterGradAddupGpuKernel<T, IndexT>
-      <<<grid_size, kNumCUDAThreads, 0, dev_ctx.stream()>>>(
-          nthreads, n, height, width, dweight_3d, filter_grad);
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_size, "deformable_conv_grad filter grid.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(kNumCUDAThreads,
+                               "deformable_conv_grad filter block.x");
+  FilterGradAddupGpuKernel<T, IndexT><<<static_cast<uint32_t>(grid_size),
+                                        static_cast<uint32_t>(kNumCUDAThreads),
+                                        0,
+                                        dev_ctx.stream()>>>(
+      nthreads, n, height, width, dweight_3d, filter_grad);
 }
 
 }  // namespace phi

@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+PADDLE_ENFORCE_LE_UINT32_MAX(gridx, "fp8 quant blockwise grid.x");
 #include "paddle/phi/kernels/legacy/gpu/fp8_quant_blockwise_kernel.h"
 #include <cuda_fp8.h>
 #include <cstdint>
@@ -19,12 +19,13 @@
 #include "paddle/common/flags.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/utils/data_type.h"
-
+PADDLE_ENFORCE_LE_UINT32_MAX(blockx, "fp8 quant blockwise block.x");
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/fusion/gpu/quant_utils.h"
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 
 namespace phi {
@@ -835,13 +836,17 @@ void FP8QuantBlockWiseKernelImpl(const Context &dev_ctx,
     const size_t min_block_x = 1024;
     const size_t gridx = std::min(min_grid_x, src_rows);
     const size_t blockx = std::min(min_block_x, src_cols / 128 * 32);
+    PADDLE_ENFORCE_LE_UINT32_MAX(gridx, "fp8 quant blockwise padding grid.x");
+    PADDLE_ENFORCE_LE_UINT32_MAX(blockx, "fp8 quant blockwise padding block.x");
+    const uint32_t grid_x = static_cast<uint32_t>(gridx);
+    const uint32_t block_x = static_cast<uint32_t>(blockx);
 
     quant_per_token_per_block_padding<NvType,
                                       ScaleT,
                                       output_scale_transpose,
                                       using_pow2_scale,
                                       using_ue8m0_scale>
-        <<<gridx, blockx, 0, dev_ctx.stream()>>>(
+        <<<grid_x, block_x, 0, dev_ctx.stream()>>>(
             reinterpret_cast<const NvType *>(X.data<T>()),
             reinterpret_cast<__nv_fp8_e4m3 *>(out->data<phi::float8_e4m3fn>()),
             reinterpret_cast<ScaleT *>(scale->data<ScaleT>()),
@@ -858,7 +863,9 @@ void FP8QuantBlockWiseKernelImpl(const Context &dev_ctx,
     } else {
       block.x = 256;
     }
-    grid.x = (src_cols / k_block_span) * (src_rows / k_block_span);
+    const size_t gridx = (src_cols / k_block_span) * (src_rows / k_block_span);
+    PADDLE_ENFORCE_LE_UINT32_MAX(gridx, "fp8 quant blockwise aligned grid.x");
+    grid.x = static_cast<uint32_t>(gridx);
 
     auto kernel = using_1x128_vec_quant
                       ? quantize_1x128_kernel<NvType,

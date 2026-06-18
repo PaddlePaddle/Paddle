@@ -11,12 +11,13 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+PADDLE_ENFORCE_LE_UINT32_MAX(levenshtein_grid64, "Levenshtein grid.x");
 #include "paddle/phi/kernels/edit_distance_kernel.h"
 
 #include <algorithm>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
@@ -160,15 +161,19 @@ void EditDistanceKernel(const Context& dev_ctx,
       auto x1 = hyps.data<int64_t>() + hyp_offset;
       auto x2 = refs.data<int64_t>() + ref_offset;
 
-      FillFirstColumn<T><<<1 + m / PADDLE_CUDA_NUM_THREADS,
-                           PADDLE_CUDA_NUM_THREADS,
-                           0,
-                           stream>>>(dist, m, n);
+      int64_t fill_column_grid64 = 1 + m / PADDLE_CUDA_NUM_THREADS;
+      PADDLE_ENFORCE_LE_UINT32_MAX(fill_column_grid64,
+                                   "FillFirstColumn grid.x");
+      uint32_t fill_column_grid = static_cast<uint32_t>(fill_column_grid64);
+      FillFirstColumn<T>
+          <<<fill_column_grid, PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+              dist, m_int, n_int);
 
-      FillFirstRow<T><<<1 + n / PADDLE_CUDA_NUM_THREADS,
-                        PADDLE_CUDA_NUM_THREADS,
-                        0,
-                        stream>>>(dist, n);
+      int64_t fill_row_grid64 = 1 + n / PADDLE_CUDA_NUM_THREADS;
+      PADDLE_ENFORCE_LE_UINT32_MAX(fill_row_grid64, "FillFirstRow grid.x");
+      uint32_t fill_row_grid = static_cast<uint32_t>(fill_row_grid64);
+      FillFirstRow<T>
+          <<<fill_row_grid, PADDLE_CUDA_NUM_THREADS, 0, stream>>>(dist, n_int);
 
       // Compute the elements of distance matrix in the anti-diagonal direction
       for (int64_t slice = 2; slice < m + n + 1; ++slice) {

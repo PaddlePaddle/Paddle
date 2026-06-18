@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/maxouting.h"
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 
@@ -126,7 +127,8 @@ void MaxOutFunctor<DeviceContext, T>::operator()(const DeviceContext& dev_ctx,
   int64_t nthreads = static_cast<int64_t>(output->numel());
   int64_t blocks = static_cast<int64_t>((nthreads + 1024 - 1) / 1024);
   dim3 threads(1024, 1);
-  dim3 grid(blocks, 1);
+  PADDLE_ENFORCE_LE_UINT32_MAX(blocks, "maxout grid.x");
+  dim3 grid(static_cast<uint32_t>(blocks), 1);
 
   KernelMaxOut<T><<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
                                                           input_data,
@@ -158,7 +160,8 @@ void MaxOutGradFunctor<DeviceContext, T>::operator()(
   int64_t nthreads = static_cast<int64_t>(output.numel());
   int64_t blocks = static_cast<int64_t>((nthreads + 1024 - 1) / 1024);
   dim3 threads(1024, 1);
-  dim3 grid(blocks, 1);
+  PADDLE_ENFORCE_LE_UINT32_MAX(blocks, "maxout grid.x");
+  dim3 grid(static_cast<uint32_t>(blocks), 1);
 
   KernelMaxoutGrad<T><<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
                                                               input_data,

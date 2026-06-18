@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/legacy/gpu/moe_combine_no_weight_kernel.h"
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -63,9 +64,10 @@ void moe_combine_no_weight_fwd(const T* x,
                                const int64_t hidden_size,
                                const float epsilon,
                                cudaStream_t stream) {
-  int threads_per_block = 1024;
+  constexpr uint32_t threads_per_block = 1024;
   dim3 blockDim(threads_per_block);
-  dim3 gridDim(seqlen);
+  PADDLE_ENFORCE_LE_UINT32_MAX(seqlen, "combine_no_weight_kernel grid.x");
+  dim3 gridDim(static_cast<uint32_t>(seqlen));
   size_t sharedMemSize = k * (sizeof(int64_t) + sizeof(T));
 
 #define CALL_KERNEL(K)                                          \

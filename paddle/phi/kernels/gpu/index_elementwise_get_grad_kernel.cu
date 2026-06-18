@@ -126,8 +126,9 @@ void GPUIndexElementwiseGetGrad(const GPUContext& dev_ctx,
       common::errors::InvalidArgument("grid_x (%d) is too large to be "
                                       "launched in a CUDA grid.",
                                       grid_x));
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "index elementwise get grad grid.x");
   const dim3 block(nt);
-  const dim3 grid(grid_x);
+  const dim3 grid(static_cast<uint32_t>(grid_x));
   auto stream = dev_ctx.stream();
 
   using dtype = funcs::OpaqueType<sizeof(T)>;
@@ -349,14 +350,24 @@ void IndexPutWithSortKernel(const GPUContext& dev_ctx,
     auto max_grid_size =
         backends::gpu::GetGpuMaxGridDimSize(dev_ctx.GetPlace().GetDeviceId());
 
-    dim3 grid(
+    const int64_t grid_x =
         std::min(static_cast<int64_t>(max_grid_size[0]),
-                 (num_indices + INDICES_PER_BLOCK - 1) / INDICES_PER_BLOCK),
+                 (num_indices + INDICES_PER_BLOCK - 1) / INDICES_PER_BLOCK);
+    const int64_t grid_y =
         std::min(static_cast<int64_t>(max_grid_size[1]),
-                 (sliceSize + WARP_SIZE * UNROLL - 1) / (WARP_SIZE * UNROLL)),
-        std::min(std::max(static_cast<int64_t>(1),
-                          static_cast<int64_t>(nElemBefore)),
-                 static_cast<int64_t>(max_grid_size[2])));
+                 (sliceSize + WARP_SIZE * UNROLL - 1) / (WARP_SIZE * UNROLL));
+    const int64_t grid_z = std::min(
+        std::max(static_cast<int64_t>(1), static_cast<int64_t>(nElemBefore)),
+        static_cast<int64_t>(max_grid_size[2]));
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_x,
+                                 "index elementwise get grad sort grid.x");
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_y,
+                                 "index elementwise get grad sort grid.y");
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_z,
+                                 "index elementwise get grad sort grid.z");
+    dim3 grid(static_cast<uint32_t>(grid_x),
+              static_cast<uint32_t>(grid_y),
+              static_cast<uint32_t>(grid_z));
     dim3 block(WARP_SIZE, INDICES_PER_BLOCK);
 
     IndexingBackwardKernel<T, UNROLL>

@@ -1,11 +1,13 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
+  PADDLE_ENFORCE_LE_UINT32_MAX(physical_grid_x,
+                               "batch transpose physical grid.x");
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
+  PADDLE_ENFORCE_LE_UINT32_MAX(physical_grid_y,
+                               "batch transpose physical grid.y");
     http://www.apache.org/licenses/LICENSE-2.0
-
+  dim3 physical_grid(static_cast<uint32_t>(physical_grid_x),
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -24,6 +26,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function_blas_impl.h"
 #else
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #endif
 
@@ -111,7 +114,15 @@ void BatchTranspose(T* output,
         "Unsupported input size, batch: %ld,m: %ld, n: %ld", batch, m, n));
   }
 
-  dim3 logical_grid((n + 31) / 32, (m + 31) / 32, batch);
+  int64_t logical_grid_x = (n + 31) / 32;
+  int64_t logical_grid_y = (m + 31) / 32;
+  int64_t logical_grid_z = batch;
+  PADDLE_ENFORCE_LE_UINT32_MAX(logical_grid_x, "batch transpose grid.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(logical_grid_y, "batch transpose grid.y");
+  PADDLE_ENFORCE_LE_UINT32_MAX(logical_grid_z, "batch transpose grid.z");
+  dim3 logical_grid(static_cast<uint32_t>(logical_grid_x),
+                    static_cast<uint32_t>(logical_grid_y),
+                    static_cast<uint32_t>(logical_grid_z));
   dim3 block(32, 8);
   // we set swizzle to 2 default.
   int swizzle = (logical_grid.y + max_grid_y - 1) / max_grid_y;

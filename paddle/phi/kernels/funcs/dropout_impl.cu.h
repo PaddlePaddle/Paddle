@@ -327,6 +327,11 @@ void DropoutFwGPUKernelDriver(
           ((x_numel - 1) / (grid_size * block_size * kVecSize) + 1) * kVecSize;
     }
 
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_limit, "dropout grid.x");
+    PADDLE_ENFORCE_LE_UINT32_MAX(block_size_limit, "dropout block.x");
+    uint32_t grid_size = static_cast<uint32_t>(grid_size_limit);
+    uint32_t block_size = static_cast<uint32_t>(block_size_limit);
+
     size_t main_offset =
         size / (block_size * kVecSize) * (block_size * kVecSize);
 

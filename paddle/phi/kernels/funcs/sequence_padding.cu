@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <algorithm>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/kernels/funcs/sequence_padding.h"
 
@@ -112,14 +113,20 @@ class PaddingDenseTensorFunctor<GPUContext, T> {
     /* At least use 32 threads to copy sequence_width elements,
      * and at least 8 elements for each thread.
      */
-    size_t block_dim_x =
+    size_t block_dim_x64 =
         std::min(((((step_width + 7) >> 3) + 31) >> 5) << 5, kBlockSize);
-    size_t block_dim_y = kBlockSize / block_dim_x;
-    dim3 threads(block_dim_x, block_dim_y);
+    size_t block_dim_y64 = kBlockSize / block_dim_x64;
+    PADDLE_ENFORCE_LE_UINT32_MAX(block_dim_x64, "sequence padding block.x");
+    PADDLE_ENFORCE_LE_UINT32_MAX(block_dim_y64, "sequence padding block.y");
+    dim3 threads(static_cast<uint32_t>(block_dim_x64),
+                 static_cast<uint32_t>(block_dim_y64));
 
-    size_t grid_dim_x = (pad_seq_len + block_dim_y - 1) / block_dim_y;
-    size_t grid_dim_y = seq_num;
-    dim3 grid(grid_dim_x, grid_dim_y);
+    size_t grid_dim_x64 = (pad_seq_len + block_dim_y64 - 1) / block_dim_y64;
+    size_t grid_dim_y64 = seq_num;
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_dim_x64, "sequence padding grid.x");
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_dim_y64, "sequence padding grid.y");
+    dim3 grid(static_cast<uint32_t>(grid_dim_x64),
+              static_cast<uint32_t>(grid_dim_y64));
 
     const T* seq_data = seq_tensor.data<T>();
     T* pad_data = pad_tensor->data<T>();
@@ -172,14 +179,20 @@ class UnpaddingDenseTensorFunctor<GPUContext, T> {
     /* At least use 32 threads to copy sequence_width elements,
      * and at least 8 elements for each thread.
      */
-    size_t block_dim_x =
+    size_t block_dim_x64 =
         std::min(((((step_width + 7) >> 3) + 31) >> 5) << 5, kBlockSize);
-    size_t block_dim_y = kBlockSize / block_dim_x;
-    dim3 threads(block_dim_x, block_dim_y);
+    size_t block_dim_y64 = kBlockSize / block_dim_x64;
+    PADDLE_ENFORCE_LE_UINT32_MAX(block_dim_x64, "sequence padding block.x");
+    PADDLE_ENFORCE_LE_UINT32_MAX(block_dim_y64, "sequence padding block.y");
+    dim3 threads(static_cast<uint32_t>(block_dim_x64),
+                 static_cast<uint32_t>(block_dim_y64));
 
-    size_t grid_dim_x = (pad_seq_len + block_dim_y - 1) / block_dim_y;
-    size_t grid_dim_y = seq_num;
-    dim3 grid(grid_dim_x, grid_dim_y);
+    size_t grid_dim_x64 = (pad_seq_len + block_dim_y64 - 1) / block_dim_y64;
+    size_t grid_dim_y64 = seq_num;
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_dim_x64, "sequence padding grid.x");
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_dim_y64, "sequence padding grid.y");
+    dim3 grid(static_cast<uint32_t>(grid_dim_x64),
+              static_cast<uint32_t>(grid_dim_y64));
 
     const T* pad_data = pad_tensor.data<T>();
     T* seq_data = seq_tensor->data<T>();

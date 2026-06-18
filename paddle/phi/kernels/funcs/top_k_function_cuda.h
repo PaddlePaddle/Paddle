@@ -24,6 +24,7 @@ limitations under the License. */
 #include <hipcub/hipcub.hpp>
 #include <rocprim/config.hpp>
 #endif
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
@@ -1133,6 +1134,8 @@ bool SortTopk(const GPUContext& dev_ctx,
   unsigned int grid_size = num_rows < maxGridDimX
                                ? static_cast<unsigned int>(num_rows)
                                : maxGridDimX;
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_size, "top_k init index grid.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(block_size, "top_k init index block.x");
   // Init a index array
   InitIndex<int64_t><<<grid_size, block_size, 0, cu_stream>>>(
       input_indices.data<int64_t>(), num_rows, num_cols);

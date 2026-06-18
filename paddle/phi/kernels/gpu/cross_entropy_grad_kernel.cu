@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/cross_entropy_grad_kernel.h"
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/common/amp_type_traits.h"
@@ -197,27 +198,35 @@ void CrossEntropyWithSoftmaxGradGPUKernel(const GPUContext& dev_ctx,
   if (!use_softmax) {
     if (soft_label) {
       int64_t grid = (n * d + block - 1) / block;
+      PADDLE_ENFORCE_LE_UINT32_MAX(grid,
+                                   "cross entropy grad soft label grid.x");
+      uint32_t grid_value = static_cast<uint32_t>(grid);
       const T* label_data = label.data<T>();
-      SoftLabelCrossEntropyGradientKernel<T><<<grid, block, 0, stream>>>(
+      SoftLabelCrossEntropyGradientKernel<T><<<grid_value, block, 0, stream>>>(
           logit_grad_data, loss_grad_data, label_data, n, d, remain);
     } else {
       DenseTensor logits_grad_2d(*logit_grad);
       logits_grad_2d.Resize({n, d});
       int64_t grid = (n * remain + block - 1) / block;
+      PADDLE_ENFORCE_LE_UINT32_MAX(grid,
+                                   "cross entropy grad hard label grid.x");
+      uint32_t grid_value = static_cast<uint32_t>(grid);
       const auto* label_data = label.data<LabelT>();
       HardLabelCrossEntropyGradientKernel<T, LabelT>
-          <<<grid, block, 0, stream>>>(
+          <<<grid_value, block, 0, stream>>>(
               logit_grad_data, label_data, n, d, remain, ignore_index);
       int64_t num = n * d;
       grid = (num + block - 1) / block;
+      PADDLE_ENFORCE_LE_UINT32_MAX(grid, "cross entropy grad scale grid.x");
+      grid_value = static_cast<uint32_t>(grid);
       ScaleCrossEntropyGradient<T, LabelT>
-          <<<grid, block, 0, stream>>>(logit_grad_data,
-                                       loss_grad_data,
-                                       num,
-                                       d,
-                                       remain,
-                                       label_data,
-                                       ignore_index);
+          <<<grid_value, block, 0, stream>>>(logit_grad_data,
+                                             loss_grad_data,
+                                             num,
+                                             d,
+                                             remain,
+                                             label_data,
+                                             ignore_index);
     }
 
     return;
@@ -227,22 +236,27 @@ void CrossEntropyWithSoftmaxGradGPUKernel(const GPUContext& dev_ctx,
 
   if (soft_label) {
     int64_t grid = (n * d + block - 1) / block;
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid, "cross entropy grad soft grid.x");
+    uint32_t grid_value = static_cast<uint32_t>(grid);
     const T* label_data = label.data<T>();
-    SoftCrossEntropyGradientKernel<T><<<grid, block, 0, stream>>>(
+    SoftCrossEntropyGradientKernel<T><<<grid_value, block, 0, stream>>>(
         logit_grad_data, loss_grad_data, label_data, n, d, remain);
   } else {
     const T* softmax_data = softmax.data<T>();
     const auto* label_data = label.data<LabelT>();
     int64_t grid = (n * d + block - 1) / block;
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid,
+                                 "cross entropy grad softmax hard grid.x");
+    uint32_t grid_value = static_cast<uint32_t>(grid);
     SoftmaxWithCrossEntropyGradHardLabel<T>
-        <<<grid, block, 0, stream>>>(logit_grad_data,
-                                     loss_grad_data,
-                                     softmax_data,
-                                     label_data,
-                                     n,
-                                     d / remain,
-                                     remain,
-                                     ignore_index);
+        <<<grid_value, block, 0, stream>>>(logit_grad_data,
+                                           loss_grad_data,
+                                           softmax_data,
+                                           label_data,
+                                           n,
+                                           d / remain,
+                                           remain,
+                                           ignore_index);
   }
 }
 

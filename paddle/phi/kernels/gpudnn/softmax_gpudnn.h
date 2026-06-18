@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
@@ -1321,8 +1322,10 @@ void LaunchKeMatrixSoftmaxForwardKernel(const GPUContext& dev_ctx,
   constexpr int kVecSize =
       MaxWithOne<MATRIX_SOFTMAX_ALIGN_BYTES / sizeof(T)>::kValue;
   int block_dim = CalcBlockSize(kVecSize, dim_size);
+  PADDLE_ENFORCE_LE_UINT32_MAX(N, "softmax grid.x");
   KeMatrixSoftmaxForward<T, AccT, IndexType, LogMode>
-      <<<N, block_dim, 0, dev_ctx.stream()>>>(out, input, dim_size);
+      <<<static_cast<uint32_t>(N), block_dim, 0, dev_ctx.stream()>>>(
+          out, input, dim_size);
 }
 
 #if CUDNN_VERSION < 8100

@@ -175,8 +175,8 @@ void FusedDropoutAddGradKernel(const Context& dev_ctx,
 
   const auto* out_grad_data = out_grad.data<T>();
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-  int blocks = NumBlocks(numel);
-  int threads = kNumCUDAThreads;
+  uint32_t blocks = NumBlocks(numel);
+  uint32_t threads = kNumCUDAThreads;
 
   if (is_test) {
     MT factor = static_cast<MT>(1.0f - dropout_rate);

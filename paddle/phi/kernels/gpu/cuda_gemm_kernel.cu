@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/gpu/cuda_gemm_kernel.h"
 #include <glog/logging.h>
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/enforce.h"
@@ -109,7 +110,11 @@ template <typename InputType,
           int32_t BLOCK_SIZE>
 void cudaCoreGemmKernel(GemmParams const& params) {
   dim3 block(BLOCK_SIZE);
-  dim3 grid(params.m / TILE_M, params.n / TILE_N);
+  int64_t grid_x64 = params.m / TILE_M;
+  int64_t grid_y64 = params.n / TILE_N;
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_x64, "cuda gemm grid.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_y64, "cuda gemm grid.y");
+  dim3 grid(static_cast<uint32_t>(grid_x64), static_cast<uint32_t>(grid_y64));
   int8_gemm<OutputType, TILE_M, TILE_N, BLOCK_SIZE>
       <<<grid, block, 0, params.stream>>>(
           reinterpret_cast<InputType const*>(params.act),

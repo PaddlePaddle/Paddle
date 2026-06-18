@@ -258,19 +258,21 @@ static void FusedElemwiseAndActBroadcast1CUDA(gpuStream_t stream,
                                               const T *x,
                                               const T *y,
                                               CompoundFunctor compound_functor,
-                                              int64_t h,
-                                              int64_t w,
+                                              int h,
+                                              int w,
                                               T *out,
                                               T *intermediate_out) {
-  int64_t block_size =
-      std::min(static_cast<int64_t>(ELEMWISE_MAX_BLOCK_DIM), w);
-  int64_t gird_size = h;
+  int64_t block_size = std::min(static_cast<int64_t>(ELEMWISE_MAX_BLOCK_DIM),
+                                static_cast<int64_t>(w));
+  PADDLE_ENFORCE_LE_UINT32_MAX(h, "fused elemwise activation grid.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(block_size, "fused elemwise activation block.x");
+  uint32_t grid_size = static_cast<uint32_t>(h);
   FusedElemwiseAndActBroadcast1CUDAKernel<T,
                                           CompoundFunctor,
                                           BcastY,
                                           KeepIntermediateOut,
                                           SameShapeOfIntermediateOutAndOut>
-      <<<gird_size, block_size, 0, stream>>>(
+      <<<grid_size, static_cast<uint32_t>(block_size), 0, stream>>>(
           x, y, h, w, compound_functor, out, intermediate_out);
 }
 
@@ -334,22 +336,24 @@ template <typename T,
 static void FusedElemwiseAndActBroadcast2CUDA(gpuStream_t stream,
                                               const T *x,
                                               const T *y,
-                                              int64_t pre,
-                                              int64_t n,
-                                              int64_t post,
+                                              int pre,
+                                              int n,
+                                              int post,
                                               CompoundFunctor compound_functor,
                                               T *out,
                                               T *intermediate_out) {
-  int64_t block_size =
-      std::min(static_cast<int64_t>(ELEMWISE_MAX_BLOCK_DIM), pre * post);
-  int64_t gird_size = n;
+  int64_t block_size = std::min(static_cast<int64_t>(ELEMWISE_MAX_BLOCK_DIM),
+                                static_cast<int64_t>(pre) * post);
+  PADDLE_ENFORCE_LE_UINT32_MAX(n, "fused elemwise activation grid.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(block_size, "fused elemwise activation block.x");
+  uint32_t grid_size = static_cast<uint32_t>(n);
 
   FusedElemwiseAndActBroadcast2CUDAKernel<T,
                                           CompoundFunctor,
                                           BcastY,
                                           KeepIntermediateOut,
                                           SameShapeOfIntermediateOutAndOut>
-      <<<gird_size, block_size, 0, stream>>>(
+      <<<grid_size, static_cast<uint32_t>(block_size), 0, stream>>>(
           x, y, compound_functor, pre, n, post, out, intermediate_out);
 }
 
@@ -1091,18 +1095,21 @@ static void FusedElemwiseAndActGradBroadcast2CUDA(
     const T *intermediate_out,
     const T *out,
     const T *dout,
-    int64_t pre,
-    int64_t n,
-    int64_t post,
+    int pre,
+    int n,
+    int post,
     DX_OP dx_op,
     DY_OP dy_op,
     DIntermediate_OP dintermediate_op,
     T *dx,
     T *dy,
     T *dintermediate) {
-  int64_t block_size =
-      std::min(static_cast<int64_t>(ELEMWISE_MAX_BLOCK_DIM), pre * post);
-  int64_t gird_size = n;
+  int64_t block_size = std::min(static_cast<int64_t>(ELEMWISE_MAX_BLOCK_DIM),
+                                static_cast<int64_t>(pre) * post);
+  PADDLE_ENFORCE_LE_UINT32_MAX(n, "fused elemwise activation grad grid.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(block_size,
+                               "fused elemwise activation grad block.x");
+  uint32_t grid_size = static_cast<uint32_t>(n);
   FusedElemwiseAndActGradBroadcast2CUDAKernel<T,
                                               DX_OP,
                                               DY_OP,
@@ -1110,20 +1117,21 @@ static void FusedElemwiseAndActGradBroadcast2CUDA(
                                               UseIntermediateOut,
                                               BcastY,
                                               SameShapeOfIntermediateOutAndOut>
-      <<<gird_size, block_size, 0, stream>>>(x,
-                                             y,
-                                             intermediate_out,
-                                             out,
-                                             dout,
-                                             pre,
-                                             n,
-                                             post,
-                                             dx_op,
-                                             dy_op,
-                                             dintermediate_op,
-                                             dx,
-                                             dy,
-                                             dintermediate);
+      <<<grid_size, static_cast<uint32_t>(block_size), 0, stream>>>(
+          x,
+          y,
+          intermediate_out,
+          out,
+          dout,
+          pre,
+          n,
+          post,
+          dx_op,
+          dy_op,
+          dintermediate_op,
+          dx,
+          dy,
+          dintermediate);
 }
 #endif
 

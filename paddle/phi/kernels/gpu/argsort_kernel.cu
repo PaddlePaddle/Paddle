@@ -31,6 +31,7 @@
 
 #ifdef __HIPCC__
 #include <rocprim/config.hpp>
+#include "paddle/common/enforce.h"
 #if defined(ROCPRIM_VERSION) && ROCPRIM_VERSION >= 400000
 // rocPRIM 4.x (ROCm 7.0+) replaces detail::radix_key_codec_base
 // with traits::define for non-builtin / wrapper types.
@@ -273,7 +274,9 @@ void ArgFullSort(const GPUContext& dev_ctx,
       input_indices.Resize({n_segments, segment_size});
       ind_ptr = dev_ctx.template Alloc<IndType>(&input_indices);
     }
-    const int64_t grid_size = std::min(n_segments, maxGridDimX);
+    const int64_t grid_size64 = std::min(n_segments, maxGridDimX);
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_size64, "FillIndex grid.x");
+    uint32_t grid_size = static_cast<uint32_t>(grid_size64);
     // Init a index array
     FillIndex<<<grid_size, block_size, 0, cu_stream>>>(
         ind_ptr, n_segments, segment_size);

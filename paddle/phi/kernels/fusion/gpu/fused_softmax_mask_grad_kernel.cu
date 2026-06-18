@@ -14,6 +14,7 @@
 
 #include <algorithm>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/fused_softmax_mask_grad_kernel.h"
@@ -150,7 +151,9 @@ void FusedSoftmaxMaskGradKernel(const Context& dev_ctx,
 
   int warps_per_block = (threads_per_block / warp_size);
   int batches_per_block = warps_per_block * batches_per_warp;
-  int64_t blocks = batch_count / batches_per_block;
+  int64_t blocks64 = batch_count / batches_per_block;
+  PADDLE_ENFORCE_LE_UINT32_MAX(blocks64, "fused softmax mask grad grid.x");
+  uint32_t blocks = static_cast<uint32_t>(blocks64);
   dim3 threads(warp_size, warps_per_block, 1);
 
   // launch the kernel based on the pow2_index

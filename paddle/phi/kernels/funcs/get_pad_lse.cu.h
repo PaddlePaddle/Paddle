@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_helper.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
@@ -84,9 +85,11 @@ DenseTensor get_pad_lse(const GPUContext& dev_ctx,
     auto in_data = lse->template data<T>();
     int stride = in_dim[0] * in_dim[1];
 
-    int block = PADDLE_CUDA_NUM_THREADS;
+    uint32_t block = PADDLE_CUDA_NUM_THREADS;
     int64_t n = lse->numel();
-    dim3 grid = dim3((n + block - 1) / block);
+    int64_t grid_x64 = (n + block - 1) / block;
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_x64, "pad lse grid.x");
+    dim3 grid(static_cast<uint32_t>(grid_x64));
     phi::backends::gpu::LimitGridDim(dev_ctx, &grid);
     ViewSliceHelper<T><<<grid, block, 0, dev_ctx.stream()>>>(
         in_data, stride, in_dim[2], out_second_dim);

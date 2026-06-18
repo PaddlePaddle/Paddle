@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/gpu/correlation_kernel.h"
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -144,53 +145,64 @@ void CorrelationCUDAKernel(const Context &dev_ctx,
 
   int64_t grid_size = (rinput1.numel() + 512 - 1) / 512;
   grid_size = std::min(static_cast<int64_t>(grid_size), max_grid_dim);
-  set_zero<<<grid_size, 512, 0, dev_ctx.stream()>>>(rinput1.data<T>(),
-                                                    rinput1.numel());
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_size, "correlation set zero grid.x");
+  uint32_t grid_size_value = static_cast<uint32_t>(grid_size);
+  set_zero<<<grid_size_value, 512, 0, dev_ctx.stream()>>>(rinput1.data<T>(),
+                                                          rinput1.numel());
 
   grid_size = std::min(static_cast<int64_t>((rinput2.numel() + 512 - 1) / 512),
                        max_grid_dim);
-  set_zero<<<grid_size, 512, 0, dev_ctx.stream()>>>(rinput2.data<T>(),
-                                                    rinput2.numel());
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_size, "correlation set zero grid.x");
+  grid_size_value = static_cast<uint32_t>(grid_size);
+  set_zero<<<grid_size_value, 512, 0, dev_ctx.stream()>>>(rinput2.data<T>(),
+                                                          rinput2.numel());
 
   grid_size = std::min(static_cast<int64_t>((out->numel() + 512 - 1) / 512),
                        max_grid_dim);
-  set_zero<<<grid_size, 512, 0, dev_ctx.stream()>>>(out->data<T>(),
-                                                    out->numel());
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_size, "correlation set zero grid.x");
+  grid_size_value = static_cast<uint32_t>(grid_size);
+  set_zero<<<grid_size_value, 512, 0, dev_ctx.stream()>>>(out->data<T>(),
+                                                          out->numel());
 
   auto out_dims = out->dims();
   int OC = out_dims[1];
   int OH = out_dims[2];
   int OW = out_dims[3];
 
-  int blocks_grid = std::min(static_cast<int64_t>(N) * H * W, max_grid_dim);
+  int64_t blocks_grid = std::min(static_cast<int64_t>(N) * H * W, max_grid_dim);
+  PADDLE_ENFORCE_LE_UINT32_MAX(blocks_grid, "correlation channel first grid.x");
+  uint32_t blocks_grid_value = static_cast<uint32_t>(blocks_grid);
   dim3 threads_block(THREADS_PER_BLOCK);
 
-  channel_first<T><<<blocks_grid, threads_block, 0, dev_ctx.stream()>>>(
+  channel_first<T><<<blocks_grid_value, threads_block, 0, dev_ctx.stream()>>>(
       input1.data<T>(), rinput1.data<T>(), N, C, H, W, pad_size);
-  channel_first<T><<<blocks_grid, threads_block, 0, dev_ctx.stream()>>>(
+  channel_first<T><<<blocks_grid_value, threads_block, 0, dev_ctx.stream()>>>(
       input2.data<T>(), rinput2.data<T>(), N, C, H, W, pad_size);
 
   dim3 threadsPerBlock(THREADS_PER_BLOCK);
   // dim3 totalBlocksCorr(N, OH, OW);
   grid_size = std::min(static_cast<int64_t>(N) * OH * OW, max_grid_dim);
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_size, "correlation forward grid.x");
+  grid_size_value = static_cast<uint32_t>(grid_size);
 
   correlation_forward<T>
-      <<<grid_size, threadsPerBlock, 0, dev_ctx.stream()>>>(out->data<T>(),
-                                                            OC,
-                                                            OH,
-                                                            OW,
-                                                            rinput1.data<T>(),
-                                                            C,
-                                                            H,
-                                                            W,
-                                                            rinput2.data<T>(),
-                                                            pad_size,
-                                                            kernel_size,
-                                                            max_displacement,
-                                                            stride1,
-                                                            stride2,
-                                                            OH,
-                                                            OW);
+      <<<grid_size_value, threadsPerBlock, 0, dev_ctx.stream()>>>(
+          out->data<T>(),
+          OC,
+          OH,
+          OW,
+          rinput1.data<T>(),
+          C,
+          H,
+          W,
+          rinput2.data<T>(),
+          pad_size,
+          kernel_size,
+          max_displacement,
+          stride1,
+          stride2,
+          OH,
+          OW);
 }
 
 }  // namespace phi

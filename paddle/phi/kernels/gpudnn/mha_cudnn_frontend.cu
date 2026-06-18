@@ -19,6 +19,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/core/enforce.h"
 
 #define CUDNN_FRONTEND_UNUSED(X) ((void)X)
@@ -593,8 +594,15 @@ void fused_attn_arbitrary_seqlen_fwd_impl(int64_t b,
     }
 
     if (is_padding) {
-      constexpr size_t nthreads_per_block = 128;
-      const size_t grid = (b + nthreads_per_block - 1) / nthreads_per_block;
+      constexpr size_t nthreads_per_block64 = 128;
+      const size_t grid64 =
+          (b + nthreads_per_block64 - 1) / nthreads_per_block64;
+      PADDLE_ENFORCE_LE_UINT32_MAX(grid64, "mha cudnn frontend grid.x");
+      PADDLE_ENFORCE_LE_UINT32_MAX(nthreads_per_block64,
+                                   "mha cudnn frontend block.x");
+      const uint32_t grid = static_cast<uint32_t>(grid64);
+      const uint32_t nthreads_per_block =
+          static_cast<uint32_t>(nthreads_per_block64);
       void *devActualSeqlenQ =
           static_cast<int8_t *>(workspace) + plan_workspace_size;
       void *devActualSeqlenKV =

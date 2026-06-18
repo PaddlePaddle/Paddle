@@ -178,10 +178,10 @@ void vol2col_slow(const Context& dev_ctx,
   Vol2colKernel<<<GET_BLOCKS(num_kernels), CUDA_NUM_THREADS, 0, stream>>>(
       num_kernels,
       data_vol,
-      depth,
-      height,
-      width,
-      ksize_t,
+      PADDLE_ENFORCE_LE_UINT32_MAX(vol2col_blocks, "vol2col grid.x");
+      PADDLE_ENFORCE_LE_UINT32_MAX(CUDA_NUM_THREADS, "vol2col block.x");
+      Vol2colKernel < < < static_cast<uint32_t>(vol2col_blocks),
+      static_cast<uint32_t>(CUDA_NUM_THREADS),
       ksize_h,
       ksize_w,
       pad_t,
@@ -225,28 +225,29 @@ void col2vol_slow(const Context& dev_ctx,
   auto stream = dev_ctx.stream();
   const auto num_kernels = channels * depth * height * width;
   Vol2imKernel<T, accT>
-      <<<GET_BLOCKS(num_kernels), CUDA_NUM_THREADS, 0, stream>>>(num_kernels,
-                                                                 data_col,
-                                                                 depth,
-                                                                 height,
-                                                                 width,
-                                                                 channels,
-                                                                 patch_t,
-                                                                 patch_h,
-                                                                 patch_w,
-                                                                 pad_t,
-                                                                 pad_h,
-                                                                 pad_w,
-                                                                 stride_t,
-                                                                 stride_h,
-                                                                 stride_w,
-                                                                 dilation_t,
-                                                                 dilation_h,
-                                                                 dilation_w,
-                                                                 output_depth,
-                                                                 output_height,
-                                                                 output_width,
-                                                                 data_vol);
+      <<<GET_BLOCKS(num_kernels), CUDA_NUM_THREADS, 0, stream>>>(
+          num_kernels,
+          data_col,
+          PADDLE_ENFORCE_LE_UINT32_MAX(vol2im_blocks, "vol2im grid.x");
+          PADDLE_ENFORCE_LE_UINT32_MAX(CUDA_NUM_THREADS, "vol2im block.x");
+          Vol2imKernel<T, accT> < < < static_cast<uint32_t>(vol2im_blocks),
+          static_cast<uint32_t>(CUDA_NUM_THREADS),
+          patch_t,
+          patch_h,
+          patch_w,
+          pad_t,
+          pad_h,
+          pad_w,
+          stride_t,
+          stride_h,
+          stride_w,
+          dilation_t,
+          dilation_h,
+          dilation_w,
+          output_depth,
+          output_height,
+          output_width,
+          data_vol);
 }
 #endif  // __CUDACC__
 
