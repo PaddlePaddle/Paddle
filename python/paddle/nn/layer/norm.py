@@ -880,8 +880,7 @@ class _BatchNormBase(Layer):
 
         self._data_format = data_format
         self._in_place = False
-        self._momentum_arg = momentum
-        self._momentum = 0.0 if momentum is None else momentum
+        self._momentum = momentum
         self._num_batches_tracked = 0
         self._epsilon = epsilon
         self._fuse_with_relu = False
@@ -898,14 +897,16 @@ class _BatchNormBase(Layer):
 
         self._check_input_dim(input)
 
+        batch_norm_momentum = self._momentum
         if self.training:
             warnings.warn(
                 "When training, we now always track global mean and variance."
             )
-            if in_dynamic_mode():
+            if self._momentum is None and in_dynamic_mode():
                 self._num_batches_tracked += 1
-                if self._momentum_arg is None:
-                    self._momentum = 1.0 - 1.0 / self._num_batches_tracked
+                batch_norm_momentum = 1.0 - 1.0 / self._num_batches_tracked
+        if batch_norm_momentum is None:
+            batch_norm_momentum = 0.0
 
         return batch_norm(
             input,
@@ -914,7 +915,7 @@ class _BatchNormBase(Layer):
             weight=self.weight,
             bias=self.bias,
             training=self.training,
-            momentum=self._momentum,
+            momentum=batch_norm_momentum,
             epsilon=self._epsilon,
             data_format=self._data_format,
             use_global_stats=self._use_global_stats,
