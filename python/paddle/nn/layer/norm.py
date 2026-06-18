@@ -768,7 +768,7 @@ class _BatchNormBase(Layer):
     def __init__(
         self,
         num_features: int,
-        momentum: float = 0.9,
+        momentum: float | None = 0.9,
         epsilon: float = 1e-05,
         weight_attr: ParamAttrLike | None = None,
         bias_attr: ParamAttrLike | None = None,
@@ -880,7 +880,9 @@ class _BatchNormBase(Layer):
 
         self._data_format = data_format
         self._in_place = False
-        self._momentum = momentum
+        self._momentum_arg = momentum
+        self._momentum = 0.0 if momentum is None else momentum
+        self._num_batches_tracked = 0
         self._epsilon = epsilon
         self._fuse_with_relu = False
         self._name = name
@@ -900,6 +902,10 @@ class _BatchNormBase(Layer):
             warnings.warn(
                 "When training, we now always track global mean and variance."
             )
+            if in_dynamic_mode():
+                self._num_batches_tracked += 1
+                if self._momentum_arg is None:
+                    self._momentum = 1.0 - 1.0 / self._num_batches_tracked
 
         return batch_norm(
             input,

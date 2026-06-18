@@ -82,7 +82,7 @@ class BatchNorm1D(nn.BatchNorm1D):
         dtype: DTypeLike | None = None,
     ) -> None:
         if momentum is None:
-            paddle_momentum = 0.0
+            paddle_momentum = None
         else:
             paddle_momentum = 1.0 - momentum
         super().__init__(
@@ -95,13 +95,6 @@ class BatchNorm1D(nn.BatchNorm1D):
             dtype=dtype,
         )
         self.momentum = momentum
-        self._num_batches_tracked = 0
-
-    def forward(self, input: Tensor) -> Tensor:
-        if paddle.in_dynamic_mode() and self.training and self.momentum is None:
-            self._num_batches_tracked += 1
-            self._momentum = 1.0 - 1.0 / self._num_batches_tracked
-        return super().forward(input)
 
 
 class BatchNorm2D(nn.BatchNorm2D):
@@ -116,7 +109,7 @@ class BatchNorm2D(nn.BatchNorm2D):
         dtype: DTypeLike | None = None,
     ) -> None:
         if momentum is None:
-            paddle_momentum = 0.0
+            paddle_momentum = None
         else:
             paddle_momentum = 1.0 - momentum
         super().__init__(
@@ -129,13 +122,6 @@ class BatchNorm2D(nn.BatchNorm2D):
             dtype=dtype,
         )
         self.momentum = momentum
-        self._num_batches_tracked = 0
-
-    def forward(self, input: Tensor) -> Tensor:
-        if paddle.in_dynamic_mode() and self.training and self.momentum is None:
-            self._num_batches_tracked += 1
-            self._momentum = 1.0 - 1.0 / self._num_batches_tracked
-        return super().forward(input)
 
 
 class BatchNorm3D(nn.BatchNorm3D):
@@ -150,7 +136,7 @@ class BatchNorm3D(nn.BatchNorm3D):
         dtype: DTypeLike | None = None,
     ) -> None:
         if momentum is None:
-            paddle_momentum = 0.0
+            paddle_momentum = None
         else:
             paddle_momentum = 1.0 - momentum
         super().__init__(
@@ -163,13 +149,6 @@ class BatchNorm3D(nn.BatchNorm3D):
             dtype=dtype,
         )
         self.momentum = momentum
-        self._num_batches_tracked = 0
-
-    def forward(self, input: Tensor) -> Tensor:
-        if paddle.in_dynamic_mode() and self.training and self.momentum is None:
-            self._num_batches_tracked += 1
-            self._momentum = 1.0 - 1.0 / self._num_batches_tracked
-        return super().forward(input)
 
 
 BatchNorm1d = BatchNorm1D
