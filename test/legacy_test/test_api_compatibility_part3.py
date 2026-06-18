@@ -130,7 +130,13 @@ class TestDistributionsCategoricalAPI(unittest.TestCase):
             -(zero_logits_ref * zero_probs_ref).sum(-1),
             rtol=1e-6,
         )
+        self.assertEqual(tuple(dist1.param_shape), self.np_probs.shape)
+        self.assertTrue(np.isnan(dist1.mean.numpy()).all())
+        self.assertTrue(np.isnan(dist1.variance.numpy()).all())
         np.testing.assert_array_equal(dist3.mode.numpy(), np.array([2, 0]))
+        np.testing.assert_array_equal(
+            dist1.support.check(value).numpy(), np.array([True, True])
+        )
         self.assertFalse(dist3._validate_args_enabled)
         self.assertFalse(dist4._validate_args_enabled)
         self.assertEqual(list(dist1.sample([2]).shape), [2, 2])
@@ -138,6 +144,18 @@ class TestDistributionsCategoricalAPI(unittest.TestCase):
         self.assertEqual(
             categorical.Categorical(paddle.to_tensor([0.4, 0.6])).batch_shape,
             (),
+        )
+        expanded = categorical.Categorical(
+            logits=paddle.to_tensor([0.1, 0.2, 0.7], place=self.place)
+        )
+        _ = expanded.probs
+        expanded = expanded.expand((4,))
+        self.assertEqual(expanded.batch_shape, (4,))
+        self.assertEqual(tuple(expanded.param_shape), (4, 3))
+        np.testing.assert_allclose(
+            expanded.probs.numpy(),
+            np.tile([[0.25462854, 0.28140804, 0.46396342]], (4, 1)),
+            rtol=1e-6,
         )
 
     def test_dygraph_Error(self):
@@ -170,10 +188,20 @@ class TestDistributionsCategoricalAPI(unittest.TestCase):
         paddle.disable_static()
         probs = paddle.to_tensor([0.2, 0.3, 0.5], place=self.place)
         dist = categorical.Categorical(probs=probs, validate_args=True)
+        batched_dist = categorical.Categorical(
+            probs=paddle.to_tensor(self.np_probs, place=self.place),
+            validate_args=True,
+        )
 
         dist.log_prob(paddle.to_tensor([0, 2], place=self.place))
         with self.assertRaises(ValueError):
             dist.log_prob(paddle.to_tensor([3], place=self.place))
+        with self.assertRaises(ValueError):
+            dist.log_prob(
+                paddle.to_tensor([1.5], dtype="float32", place=self.place)
+            )
+        with self.assertRaises(ValueError):
+            batched_dist.log_prob(paddle.to_tensor([0, 1, 2], place=self.place))
 
     def test_dygraph_enumerate_support(self):
         import importlib
@@ -271,6 +299,9 @@ class TestDistributionsCategoricalAPI(unittest.TestCase):
                     dist3.probs,
                     dist3.entropy(),
                     dist3.mode,
+                    dist1.mean,
+                    dist1.variance,
+                    dist1.support.check(value),
                     dist6.logits,
                     dist6.entropy(),
                 ],
@@ -304,9 +335,12 @@ class TestDistributionsCategoricalAPI(unittest.TestCase):
             fetches[9], -(logits_ref * np.exp(logits_ref)).sum(-1), rtol=1e-6
         )
         np.testing.assert_array_equal(fetches[10], np.array([2, 0]))
-        np.testing.assert_allclose(fetches[11], zero_logits_ref, rtol=1e-6)
+        self.assertTrue(np.isnan(fetches[11]).all())
+        self.assertTrue(np.isnan(fetches[12]).all())
+        np.testing.assert_array_equal(fetches[13], np.array([True, True]))
+        np.testing.assert_allclose(fetches[14], zero_logits_ref, rtol=1e-6)
         np.testing.assert_allclose(
-            fetches[12], -(zero_logits_ref * zero_probs_ref).sum(-1), rtol=1e-6
+            fetches[15], -(zero_logits_ref * zero_probs_ref).sum(-1), rtol=1e-6
         )
 
     def test_paddle_api_BackwardCompatibility(self):

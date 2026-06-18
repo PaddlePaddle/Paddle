@@ -17,11 +17,29 @@ from __future__ import annotations
 import numpy as np
 
 import paddle
-from paddle.distribution import distribution
+from paddle.distribution import constraint, distribution
 from paddle.tensor import multinomial
 
 
+class _IntegerInterval(constraint.Constraint):
+    event_dim = 0
+
+    def __init__(self, lower: int, upper: int) -> None:
+        self._lower = lower
+        self._upper = upper
+        super().__init__()
+
+    def __call__(self, value):
+        return (
+            (value >= self._lower) & (value <= self._upper) & (value % 1 == 0)
+        )
+
+
 class Categorical(distribution.Distribution):
+    arg_constraints = {
+        "probs": constraint.simplex,
+        "logits": constraint.real_vector,
+    }
     has_enumerate_support = True
 
     def __init__(
@@ -59,6 +77,32 @@ class Categorical(distribution.Distribution):
         )
         super().__init__(batch_shape, validate_args=validate_args)
 
+    def expand(self, batch_shape, _instance=None):
+        new = (
+            self.__class__.__new__(self.__class__)
+            if _instance is None
+            else _instance
+        )
+        batch_shape = tuple(batch_shape)
+        param_shape = (*batch_shape, self._num_events)
+        new._probs = (
+            self._probs.expand(param_shape) if self._probs is not None else None
+        )
+        new._logits = (
+            self._logits.expand(param_shape)
+            if self._logits is not None
+            else None
+        )
+        new._param = new._logits if new._logits is not None else new._probs
+        new._num_events = self._num_events
+        super(Categorical, new).__init__(batch_shape, validate_args=False)
+        new._validate_args_enabled = self._validate_args_enabled
+        return new
+
+    @property
+    def support(self):
+        return _IntegerInterval(0, self._num_events - 1)
+
     @property
     def logits(self):
         if self._logits is None:
@@ -74,28 +118,31 @@ class Categorical(distribution.Distribution):
         return self._probs
 
     @property
+    def param_shape(self):
+        return self._param.shape
+
+    @property
+    def mean(self):
+        return paddle.full_like(self.probs[..., 0], float('nan'))
+
+    @property
     def mode(self):
         return paddle.argmax(self.probs, axis=-1)
 
-    def sample(self, sample_shape=(), shape=None):
-        if shape is not None:
-            sample_shape = shape
+    @property
+    def variance(self):
+        return paddle.full_like(self.probs[..., 0], float('nan'))
+
+    def sample(self, sample_shape=()):
         sample_shape = tuple(sample_shape)
         probs_2d = self.probs.reshape([-1, self._num_events])
-        samples_2d = multinomial(
-            probs_2d, np.prod(np.array(sample_shape)), True
-        ).T
-        return samples_2d.reshape(sample_shape + self._batch_shape)
+        samples_2d = multinomial(probs_2d, int(np.prod(sample_shape)), True).T
+        return samples_2d.reshape(self._extend_shape(sample_shape))
 
     def log_prob(self, value):
-        int_value = paddle.cast(value, dtype='int64')
         if self._validate_args_enabled and paddle.in_dynamic_mode():
-            if bool(((int_value < 0) | (int_value >= self._num_events)).any()):
-                raise ValueError(
-                    "Categorical.log_prob got a value outside the support "
-                    f"[0, {self._num_events})."
-                )
-        value = int_value.unsqueeze(-1)
+            self._validate_sample(value)
+        value = paddle.cast(value, dtype='int64').unsqueeze(-1)
         log_pmf = self.logits
         output_shape = paddle.broadcast_shape(value.shape, log_pmf.shape)
         value = paddle.broadcast_to(value, [*output_shape[:-1], 1])
@@ -105,7 +152,8 @@ class Categorical(distribution.Distribution):
     def entropy(self):
         min_real = paddle.finfo(self.logits.dtype).min
         logits = paddle.clip(self.logits, min=min_real)
-        return -(logits * self.probs).sum(-1)
+        p_log_p = logits * self.probs
+        return -p_log_p.sum(-1)
 
     def enumerate_support(self, expand=True):
         values = paddle.arange(self._num_events, dtype='int64')
