@@ -16,7 +16,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Union
+from contextlib import contextmanager
+from typing import TYPE_CHECKING, Any
 
 import paddle
 from paddle import base, core, device as paddle_device, framework
@@ -53,7 +54,9 @@ from paddle.tensor.creation import (
 )
 
 if TYPE_CHECKING:
-    DeviceLike = Union[paddle.core.Place, int, str, None]
+    from collections.abc import Generator
+
+    DeviceLike = paddle.core.Place | int | str | None
 
 
 def is_available() -> bool:
@@ -345,6 +348,25 @@ def set_rng_state(
 
 class nvtx:
     """Namespace for NVTX marker operations."""
+
+    @staticmethod
+    @contextmanager
+    def range(
+        msg: str, *args: Any, **kwargs: Any
+    ) -> Generator[None, None, None]:
+        """
+        Context manager/decorator that pushes and pops an NVTX range.
+
+        Args:
+            msg (str): The name of the NVTX range.
+            *args: Arguments used to format ``msg``.
+            **kwargs: Keyword arguments used to format ``msg``.
+        """
+        nvtx.range_push(msg.format(*args, **kwargs))
+        try:
+            yield
+        finally:
+            nvtx.range_pop()
 
     @staticmethod
     def range_push(msg: str):

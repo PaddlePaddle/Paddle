@@ -155,7 +155,9 @@ void FusedRopeKernel(const Context& dev_ctx,
   // K
   int k_num_heads = -1;
   if (k && k->numel() > 0) {
-    k_num_heads = k->dims()[2];
+    int64_t k_num_heads_64 = k->dims()[2];
+    PADDLE_ENFORCE_LE_INT_MAX(k_num_heads_64, "k_num_heads");
+    k_num_heads = static_cast<int>(k_num_heads_64);
     auto k_batch_size = time_major ? k->dims()[1] : k->dims()[0];
     PADDLE_ENFORCE_LE(
         batch_size,

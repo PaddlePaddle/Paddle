@@ -17,10 +17,10 @@ from __future__ import annotations
 import inspect
 import sys
 import types
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from functools import cached_property, partial, wraps
-from typing import Any, Callable, Generic, TypeVar, overload
+from typing import Any, Generic, TypeVar, overload
 
 from typing_extensions import ParamSpec
 
@@ -114,9 +114,7 @@ def eliminate_positional_or_keyword_only(
             code.co_filename,
             code.co_name,
             code.co_firstlineno,
-            code.co_linetable
-            if sys.version_info >= (3, 10)
-            else code.co_lnotab,
+            code.co_linetable,
             code.co_freevars,
             code.co_cellvars,
         )

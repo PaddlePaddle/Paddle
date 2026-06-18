@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/index_add_grad_kernel.h"
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
@@ -97,7 +98,9 @@ void IndexAddGradKernel(const Context& dev_ctx,
     auto* output_grad_data = out_grad.data<T>();
     auto* add_value_grad_data = dev_ctx.template Alloc<T>(add_value_grad);
     unsigned int block_dim = PADDLE_CUDA_NUM_THREADS;
-    dim3 grid_dim = dim3((numel + block_dim - 1) / block_dim);
+    const uint64_t grid_x = (numel + block_dim - 1) / block_dim;
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "grid.x");
+    dim3 grid_dim = dim3(static_cast<uint32_t>(grid_x));
     backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
 
     if (index_type == DataType::INT64) {

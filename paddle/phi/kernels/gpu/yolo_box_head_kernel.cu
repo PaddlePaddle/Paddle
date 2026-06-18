@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/gpu/yolo_box_head_kernel.h"
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/memory_utils.h"
@@ -79,16 +80,21 @@ void YoloBoxHeadKernel(const Context& dev_ctx,
                        int class_num,
                        DenseTensor* out) {
   auto x_dims = x.dims();
-  const int batch_size = x_dims[0];
-  const int h = x_dims[2];
-  const int w = x_dims[3];
+  PADDLE_ENFORCE_LE_INT_MAX(x_dims[0], "batch_size");
+  PADDLE_ENFORCE_LE_INT_MAX(x_dims[2], "grid_size_y");
+  PADDLE_ENFORCE_LE_INT_MAX(x_dims[3], "grid_size_x");
+  const int batch_size = static_cast<int>(x_dims[0]);
+  const int h = static_cast<int>(x_dims[2]);
+  const int w = static_cast<int>(x_dims[3]);
   const int grid_size_x = w;
   const int grid_size_y = h;
   const int anchors_num = anchors.size() / 2;
   const T* input_data = x.data<T>();
   T* output_data = dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
   auto stream = dev_ctx.stream();
-  const int volume = x_dims[1] * h * w;
+  const int64_t volume_64 = x_dims[1] * h * w;
+  PADDLE_ENFORCE_LE_INT_MAX(volume_64, "volume");
+  const int volume = static_cast<int>(volume_64);
   dim3 block(16, 16, 4);
   dim3 grid((grid_size_x / block.x) + 1,
             (grid_size_y / block.y) + 1,

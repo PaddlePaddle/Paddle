@@ -23,24 +23,23 @@ import threading
 import types
 import warnings
 from collections import OrderedDict
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from contextlib import contextmanager
 from types import ModuleType
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
+    Literal,
     Protocol,
+    TypeAlias,
     TypedDict,
     TypeVar,
     overload,
 )
 
 from typing_extensions import (
-    Literal,
     NotRequired,
     ParamSpec,
-    TypeAlias,
     Unpack,
 )
 

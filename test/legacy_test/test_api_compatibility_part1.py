@@ -2396,5 +2396,60 @@ class TestSetRngStateAPI(unittest.TestCase):
         paddle.set_rng_state(new_state=states)
 
 
+# Test DistributedSampler compatibility
+class TestDistributedSamplerAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+
+        class SimpleDataset:
+            def __init__(self, size):
+                self.size = size
+
+            def __getitem__(self, idx):
+                x = idx
+                y = 2 * idx
+                return x, y
+
+            def __len__(self):
+                return self.size
+
+        self.dataset = SimpleDataset(100)
+
+    def test_dygraph_Compatibility(self):
+        """Test DistributedSampler as alias for DistributedBatchSampler"""
+        # 1. positional arguments
+        sampler1 = paddle.utils.data.DistributedSampler(
+            self.dataset, 2, 0, False, 2026, False
+        )
+        # 2. keyword arguments
+        sampler2 = paddle.utils.data.DistributedSampler(
+            dataset=self.dataset,
+            num_replicas=2,
+            rank=0,
+            shuffle=False,
+            seed=2026,
+            drop_last=False,
+        )
+        # Verify both samplers produce same batches
+        batches1 = list(sampler1)
+        batches2 = list(sampler2)
+        self.assertEqual(len(batches1), len(batches2))
+        for b1, b2 in zip(batches1, batches2):
+            self.assertEqual(b1, b2)
+
+    def test_set_epoch(self):
+        """Test set_epoch method"""
+        sampler = paddle.utils.data.DistributedSampler(
+            self.dataset, num_replicas=2, rank=0, shuffle=True
+        )
+        # Collect samples from epoch 0
+        sampler.set_epoch(0)
+        batches0 = list(sampler)
+        # Collect samples from epoch 1
+        sampler.set_epoch(1)
+        batches1 = list(sampler)
+        self.assertEqual(len(batches0), len(batches1))
+
+
 if __name__ == '__main__':
     unittest.main()

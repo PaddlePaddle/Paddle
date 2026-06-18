@@ -16,11 +16,13 @@ from __future__ import annotations
 
 import operator
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from .utils import hashable
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     BinaryOp = Callable[[Any, Any], Any]
     UnaryOp = Callable[[Any], Any]
 

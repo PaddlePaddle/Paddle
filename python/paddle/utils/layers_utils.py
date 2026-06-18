@@ -17,13 +17,12 @@ from __future__ import annotations
 import copy
 import typing
 from collections import defaultdict
-from collections.abc import Sequence
-from typing import Any, Callable, TypeVar
+from collections.abc import Callable, Sequence
+from typing import Any, TypeGuard, TypeVar
 from uuid import uuid4
 from weakref import WeakKeyDictionary
 
 import numpy as np
-from typing_extensions import TypeGuard
 
 import paddle
 from paddle.pir.core import convert_nptype_to_datatype

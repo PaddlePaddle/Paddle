@@ -21,6 +21,7 @@
 #include <hip/hip_fp16.h>
 #endif
 #include "paddle/common/ddim.h"
+#include "paddle/common/enforce.h"
 #include "paddle/phi/kernels/funcs/fast_divmod.h"
 
 namespace phi {
@@ -51,7 +52,8 @@ struct BroadcastConfig {
                   const std::vector<int64_t>& in_dims,
                   int dim_size) {
     for (int i = 0; i < dim_size; ++i) {
-      divmoders[i] = funcs::FastDivMod<int>(out_dims[i]);
+      PADDLE_ENFORCE_LE_INT_MAX(out_dims[i], "out_dim");
+      divmoders[i] = funcs::FastDivMod<int>(static_cast<int>(out_dims[i]));
     }
 
     for (int i = 0; i < dim_size; ++i) {

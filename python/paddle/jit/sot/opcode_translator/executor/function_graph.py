@@ -23,9 +23,7 @@ from contextlib import contextmanager
 from copy import deepcopy
 from enum import Enum
 from functools import reduce
-from typing import TYPE_CHECKING, Any, Callable, Union
-
-from typing_extensions import TypeAlias, TypeGuard
+from typing import TYPE_CHECKING, Any, TypeAlias, TypeGuard
 
 import paddle
 from paddle.jit.utils import OrderedSet
@@ -102,10 +100,11 @@ from .variables import (
 
 if TYPE_CHECKING:
     import types
+    from collections.abc import Callable
 
-    GraphNodeVariableType: TypeAlias = Union[
-        TensorVariable, SymbolicVariable, NumPyArrayVariable
-    ]
+    GraphNodeVariableType: TypeAlias = (
+        TensorVariable | SymbolicVariable | NumPyArrayVariable
+    )
 
     CompileGraphResult: TypeAlias = tuple[
         Callable[..., Any],

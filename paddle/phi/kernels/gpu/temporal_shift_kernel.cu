@@ -14,6 +14,9 @@
 
 #include "paddle/phi/kernels/temporal_shift_kernel.h"
 
+#include <cstdint>
+
+#include "paddle/common/enforce.h"
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -131,22 +134,58 @@ void TemporalShiftKernel(const Context& dev_ctx,
   int64_t grid = (pixelNum + threads - 1) / threads;
   int64_t blocks_per_sm = dev_ctx.GetMaxPhysicalThreadCount() / threads;
   grid = std::min(dev_ctx.GetSMCount() * blocks_per_sm, grid);
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid, "grid");
+  PADDLE_ENFORCE_LE_UINT32_MAX(threads, "threads");
+  const uint32_t grid_32 = static_cast<uint32_t>(grid);
+  const uint32_t threads_32 = static_cast<uint32_t>(threads);
 
   if (data_layout == DataLayout::NCHW) {
     if (x.numel() < std::numeric_limits<int32_t>::max()) {
-      KeTemporalShiftFwNCHW<T, int32_t><<<grid, threads, 0, dev_ctx.stream()>>>(
-          input_data, output_data, ntchw, tchw, chw, hw, t, c1, c2);
+      PADDLE_ENFORCE_LE_INT_MAX(ntchw, "ntchw");
+      PADDLE_ENFORCE_LE_INT_MAX(tchw, "tchw");
+      PADDLE_ENFORCE_LE_INT_MAX(chw, "chw");
+      PADDLE_ENFORCE_LE_INT_MAX(hw, "hw");
+      PADDLE_ENFORCE_LE_INT_MAX(c1, "c1");
+      PADDLE_ENFORCE_LE_INT_MAX(c2, "c2");
+      KeTemporalShiftFwNCHW<T, int32_t>
+          <<<grid_32, threads_32, 0, dev_ctx.stream()>>>(
+              input_data,
+              output_data,
+              static_cast<int32_t>(ntchw),
+              static_cast<int32_t>(tchw),
+              static_cast<int32_t>(chw),
+              static_cast<int32_t>(hw),
+              t,
+              static_cast<int32_t>(c1),
+              static_cast<int32_t>(c2));
     } else {
-      KeTemporalShiftFwNCHW<T, int64_t><<<grid, threads, 0, dev_ctx.stream()>>>(
-          input_data, output_data, ntchw, tchw, chw, hw, t, c1, c2);
+      KeTemporalShiftFwNCHW<T, int64_t>
+          <<<grid_32, threads_32, 0, dev_ctx.stream()>>>(
+              input_data, output_data, ntchw, tchw, chw, hw, t, c1, c2);
     }
   } else {
     if (x.numel() < std::numeric_limits<int32_t>::max()) {
-      KeTemporalShiftFwNHWC<T, int32_t><<<grid, threads, 0, dev_ctx.stream()>>>(
-          input_data, output_data, ntchw, tchw, chw, t, c, c1, c2);
+      PADDLE_ENFORCE_LE_INT_MAX(ntchw, "ntchw");
+      PADDLE_ENFORCE_LE_INT_MAX(tchw, "tchw");
+      PADDLE_ENFORCE_LE_INT_MAX(chw, "chw");
+      PADDLE_ENFORCE_LE_INT_MAX(c, "c");
+      PADDLE_ENFORCE_LE_INT_MAX(c1, "c1");
+      PADDLE_ENFORCE_LE_INT_MAX(c2, "c2");
+      KeTemporalShiftFwNHWC<T, int32_t>
+          <<<grid_32, threads_32, 0, dev_ctx.stream()>>>(
+              input_data,
+              output_data,
+              static_cast<int32_t>(ntchw),
+              static_cast<int32_t>(tchw),
+              static_cast<int32_t>(chw),
+              t,
+              static_cast<int32_t>(c),
+              static_cast<int32_t>(c1),
+              static_cast<int32_t>(c2));
     } else {
-      KeTemporalShiftFwNHWC<T, int64_t><<<grid, threads, 0, dev_ctx.stream()>>>(
-          input_data, output_data, ntchw, tchw, chw, t, c, c1, c2);
+      KeTemporalShiftFwNHWC<T, int64_t>
+          <<<grid_32, threads_32, 0, dev_ctx.stream()>>>(
+              input_data, output_data, ntchw, tchw, chw, t, c, c1, c2);
     }
   }
 }

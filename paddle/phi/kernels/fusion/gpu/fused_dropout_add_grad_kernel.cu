@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_dropout_add_utils.h"
@@ -194,8 +195,13 @@ void FusedDropoutAddGradKernel(const Context& dev_ctx,
       return;
     }
     auto random_prop = GetRandomCudaProp(numel, dev_ctx);
-    size_t grid_size = random_prop[0];
-    size_t block_size = random_prop[1];
+    size_t grid_size_64 = random_prop[0];
+    size_t block_size_64 = random_prop[1];
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_64, "fused_dropout_add_grad grid.x");
+    PADDLE_ENFORCE_LE_UINT32_MAX(block_size_64,
+                                 "fused_dropout_add_grad block.x");
+    uint32_t grid_size = static_cast<uint32_t>(grid_size_64);
+    uint32_t block_size = static_cast<uint32_t>(block_size_64);
     size_t offset = random_prop[2];
     size_t main_offset = random_prop[3];
     auto functor = upscale_in_train

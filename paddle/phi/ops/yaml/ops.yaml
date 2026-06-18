@@ -2548,7 +2548,7 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : gaussian
-  args : (IntArray shape, float mean, float std, int seed, DataType dtype, Place place={})
+  args : (IntArray shape, double mean, double std, int seed, DataType dtype, Place place={})
   output: Tensor(out)
   infer_meta :
     func : GaussianInferMeta

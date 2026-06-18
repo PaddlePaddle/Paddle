@@ -18,7 +18,7 @@ import abc
 import cmath
 import collections.abc
 import contextlib
-from typing import TYPE_CHECKING, Any, Callable, NoReturn
+from typing import TYPE_CHECKING, Any, NoReturn
 
 import numpy as np
 
@@ -26,7 +26,7 @@ import paddle
 from paddle.base.data_feeder import promote_types
 
 if TYPE_CHECKING:
-    from collections.abc import Collection, Sequence
+    from collections.abc import Callable, Collection, Sequence
 
 
 class ErrorMeta(Exception):

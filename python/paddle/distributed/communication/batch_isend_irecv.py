@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import contextlib
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 import paddle.distributed as dist
 from paddle import framework
@@ -24,7 +24,7 @@ from paddle.distributed.communication.group import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Generator, Sequence
+    from collections.abc import Callable, Generator, Sequence
 
     from paddle import Tensor
     from paddle.base.core import task

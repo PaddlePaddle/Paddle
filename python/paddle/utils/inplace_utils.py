@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import os
 import warnings
-from typing import TYPE_CHECKING, Callable, TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 from typing_extensions import ParamSpec
 
@@ -28,6 +28,8 @@ _InputT = ParamSpec("_InputT")
 _RetT = TypeVar("_RetT")
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from paddle.pir import Value
 
 

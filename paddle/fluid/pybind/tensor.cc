@@ -33,6 +33,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/data_layout.h"
@@ -200,7 +201,11 @@ namespace {
 void ShareTensorViaVmm(const DenseTensor &self, py::tuple *out) {
   auto *holder =
       dynamic_cast<memory::allocation::Allocation *>(self.Holder().get());
-  paddle::memory::VmmTensorPartsVisitor parts_visitor(holder->ptr());
+  size_t data_size =
+      self.numel() *
+      framework::SizeOfType(framework::TransToProtoVarType(self.type()));
+  paddle::memory::VmmTensorPartsVisitor parts_visitor(
+      const_cast<void *>(self.data()), data_size);
   paddle::memory::allocation::AllocatorFacade::Instance().Accept(
       holder->place(), &parts_visitor);
   PADDLE_ENFORCE_EQ(
@@ -226,7 +231,7 @@ void ShareTensorViaVmm(const DenseTensor &self, py::tuple *out) {
   header.flags = 0x1;
   header.pid = static_cast<uint32_t>(::getpid());
   header.num_entries = static_cast<uint32_t>(parts.size());
-  header.alloc_size = static_cast<uint64_t>(holder->size());
+  header.alloc_size = static_cast<uint64_t>(data_size);
   header.offset = parts[0].chunk_rel_off;
   header.reserved_size = 0;
   for (const auto &p : parts) {
@@ -804,8 +809,12 @@ void BindTensor(pybind11::module &m) {  // NOLINT
             LegacyLoD new_lod;
             new_lod.reserve(lod.size());
             std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
+            const int64_t tensor_height =
+                common::vectorize(self.dims()).front();
+            PADDLE_ENFORCE_LE_INT_MAX(tensor_height, "tensor height");
+            const int tensor_height_int = static_cast<int>(tensor_height);
             PADDLE_ENFORCE_EQ(
-                CheckLegacyLoD(new_lod, common::vectorize(self.dims()).front()),
+                CheckLegacyLoD(new_lod, tensor_height_int),
                 true,
                 common::errors::InvalidArgument(
                     "The provided LegacyLoD is invalid, the LegacyLoD is %s",
@@ -847,9 +856,12 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                       recursive_sequence_lengths.end(),
                       std::back_inserter(new_lod));
             LegacyLoD new_offset_lod = ConvertToOffsetBasedLegacyLoD(new_lod);
+            const int64_t tensor_height =
+                common::vectorize(self.dims()).front();
+            PADDLE_ENFORCE_LE_INT_MAX(tensor_height, "tensor height");
+            const int tensor_height_int = static_cast<int>(tensor_height);
             PADDLE_ENFORCE_EQ(
-                CheckLegacyLoD(new_offset_lod,
-                               common::vectorize(self.dims()).front()),
+                CheckLegacyLoD(new_offset_lod, tensor_height_int),
                 true,
                 common::errors::InvalidArgument(
                     "The provided recursive_sequence_lengths info is "

@@ -109,6 +109,15 @@ class TestStateDictReturn(unittest.TestCase):
         self.assertEqual(len(unexpected_keys), 1)
         self.assertEqual(unexpected_keys[0], "unexpected_keys")
 
+    def test_missing_keys_and_unexpected_keys_attr(self):
+        model1 = MyModel2()
+        tmp_dict = {}
+        tmp_dict["unexpected_keys"] = paddle.to_tensor([1])
+        result = model1.set_state_dict(tmp_dict)
+        self.assertIsInstance(result, tuple)
+        self.assertIs(result[0], result.missing_keys)
+        self.assertIs(result[1], result.unexpected_keys)
+
 
 class TestStateKeepVars(unittest.TestCase):
     def test_true(self):

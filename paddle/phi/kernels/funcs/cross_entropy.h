@@ -78,7 +78,7 @@ class CrossEntropyFunctor {
                   const DenseTensor* labels,
                   const bool softLabel,
                   const int ignore_index,
-                  const int axis_dim);
+                  const int64_t axis_dim);
 };
 }  // namespace funcs
 }  // namespace phi

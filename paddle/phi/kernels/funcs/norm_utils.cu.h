@@ -17,6 +17,7 @@ limitations under the License. */
 #include <cfloat>
 #include <string>
 #include <vector>
+#include "paddle/common/enforce.h"
 #include "paddle/common/layout.h"
 #include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -449,11 +450,17 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
   funcs::SetConstant<DeviceContext, T> set_constant;
 
   auto &x_dims = X->dims();
-  const int C =
+  const int64_t C_64 =
       (data_layout == DataLayout::NCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
-  const int N = x_dims[0];
+  const int64_t N_64 = x_dims[0];
   const int64_t num = X->numel();
-  const int sample_size = num / N / C;
+  const int64_t sample_size_64 = num / N_64 / C_64;
+  PADDLE_ENFORCE_LE_INT_MAX(C_64, "norm double grad C");
+  PADDLE_ENFORCE_LE_INT_MAX(N_64, "norm double grad N");
+  PADDLE_ENFORCE_LE_INT_MAX(sample_size_64, "norm double grad sample_size");
+  const int C = static_cast<int>(C_64);
+  const int N = static_cast<int>(N_64);
+  const int sample_size = static_cast<int>(sample_size_64);
   DenseTensor scale_tmp;
   if (!Scale) {
     scale_tmp.Resize({C});
@@ -461,12 +468,15 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
     set_constant(dev_ctx, &scale_tmp, static_cast<T>(1));
   }
   const T *scale_data = Scale ? Scale->data<T>() : scale_tmp.data<T>();
-  const int block = 512;
-  int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
-  const int max_blocks = std::max(max_threads / block, 1);
-  int grid = std::min(C, max_blocks);
-  int grid1 =
-      std::min((num + block - 1) / block, static_cast<int64_t>(max_blocks));
+  constexpr uint32_t block = 512;
+  const int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
+  const int64_t max_blocks =
+      std::max(static_cast<int64_t>(max_threads / static_cast<int>(block)),
+               static_cast<int64_t>(1));
+  const uint32_t channel_grid =
+      static_cast<uint32_t>(std::min(C_64, max_blocks));
+  const uint32_t element_grid =
+      static_cast<uint32_t>(std::min((num + block - 1) / block, max_blocks));
 
   const T *mean_data, *variance_data;
   if (use_global_stats) {
@@ -490,54 +500,54 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
     if (use_global_stats) {
       if (data_layout == DataLayout::NHWC) {
         DoubleGradComputeDXWithGlobal<T, DataLayout::NHWC>
-            <<<grid1, block, 0, dev_ctx.stream()>>>(dy_data,
-                                                    ddscale_data,
-                                                    variance_data,
-                                                    epsilon,
-                                                    C,
-                                                    sample_size,
-                                                    num,
-                                                    dx_data);
+            <<<element_grid, block, 0, dev_ctx.stream()>>>(dy_data,
+                                                           ddscale_data,
+                                                           variance_data,
+                                                           epsilon,
+                                                           C,
+                                                           sample_size,
+                                                           num,
+                                                           dx_data);
       } else {
         DoubleGradComputeDXWithGlobal<T, DataLayout::NCHW>
-            <<<grid1, block, 0, dev_ctx.stream()>>>(dy_data,
-                                                    ddscale_data,
-                                                    variance_data,
-                                                    epsilon,
-                                                    C,
-                                                    sample_size,
-                                                    num,
-                                                    dx_data);
+            <<<element_grid, block, 0, dev_ctx.stream()>>>(dy_data,
+                                                           ddscale_data,
+                                                           variance_data,
+                                                           epsilon,
+                                                           C,
+                                                           sample_size,
+                                                           num,
+                                                           dx_data);
       }
     } else {
       if (data_layout == DataLayout::NHWC) {
         DoubleGradComputeDX<T, block, DataLayout::NHWC>
-            <<<grid, block, 0, dev_ctx.stream()>>>(x_data,
-                                                   mean_data,
-                                                   variance_data,
-                                                   ddx_data,
-                                                   dy_data,
-                                                   scale_data,
-                                                   ddscale_data,
-                                                   N,
-                                                   C,
-                                                   sample_size,
-                                                   epsilon,
-                                                   dx_data);
+            <<<channel_grid, block, 0, dev_ctx.stream()>>>(x_data,
+                                                           mean_data,
+                                                           variance_data,
+                                                           ddx_data,
+                                                           dy_data,
+                                                           scale_data,
+                                                           ddscale_data,
+                                                           N,
+                                                           C,
+                                                           sample_size,
+                                                           epsilon,
+                                                           dx_data);
       } else {
         DoubleGradComputeDX<T, block, DataLayout::NCHW>
-            <<<grid, block, 0, dev_ctx.stream()>>>(x_data,
-                                                   mean_data,
-                                                   variance_data,
-                                                   ddx_data,
-                                                   dy_data,
-                                                   scale_data,
-                                                   ddscale_data,
-                                                   N,
-                                                   C,
-                                                   sample_size,
-                                                   epsilon,
-                                                   dx_data);
+            <<<channel_grid, block, 0, dev_ctx.stream()>>>(x_data,
+                                                           mean_data,
+                                                           variance_data,
+                                                           ddx_data,
+                                                           dy_data,
+                                                           scale_data,
+                                                           ddscale_data,
+                                                           N,
+                                                           C,
+                                                           sample_size,
+                                                           epsilon,
+                                                           dx_data);
       }
     }
   }
@@ -547,50 +557,50 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
     if (use_global_stats) {
       if (data_layout == DataLayout::NHWC) {
         DoubleGradComputeDScaleWithGlobal<T, block, DataLayout::NHWC>
-            <<<grid, block, 0, dev_ctx.stream()>>>(ddx_data,
-                                                   variance_data,
-                                                   dy_data,
-                                                   epsilon,
-                                                   N,
-                                                   C,
-                                                   sample_size,
-                                                   dscale_data);
+            <<<channel_grid, block, 0, dev_ctx.stream()>>>(ddx_data,
+                                                           variance_data,
+                                                           dy_data,
+                                                           epsilon,
+                                                           N,
+                                                           C,
+                                                           sample_size,
+                                                           dscale_data);
       } else {
         DoubleGradComputeDScaleWithGlobal<T, block, DataLayout::NCHW>
-            <<<grid, block, 0, dev_ctx.stream()>>>(ddx_data,
-                                                   variance_data,
-                                                   dy_data,
-                                                   epsilon,
-                                                   N,
-                                                   C,
-                                                   sample_size,
-                                                   dscale_data);
+            <<<channel_grid, block, 0, dev_ctx.stream()>>>(ddx_data,
+                                                           variance_data,
+                                                           dy_data,
+                                                           epsilon,
+                                                           N,
+                                                           C,
+                                                           sample_size,
+                                                           dscale_data);
       }
     } else {
       if (data_layout == DataLayout::NHWC) {
         DoubleGradComputeDScale<T, block, DataLayout::NHWC>
-            <<<grid, block, 0, dev_ctx.stream()>>>(x_data,
-                                                   mean_data,
-                                                   variance_data,
-                                                   ddx_data,
-                                                   dy_data,
-                                                   N,
-                                                   C,
-                                                   sample_size,
-                                                   epsilon,
-                                                   dscale_data);
+            <<<channel_grid, block, 0, dev_ctx.stream()>>>(x_data,
+                                                           mean_data,
+                                                           variance_data,
+                                                           ddx_data,
+                                                           dy_data,
+                                                           N,
+                                                           C,
+                                                           sample_size,
+                                                           epsilon,
+                                                           dscale_data);
       } else {
         DoubleGradComputeDScale<T, block, DataLayout::NCHW>
-            <<<grid, block, 0, dev_ctx.stream()>>>(x_data,
-                                                   mean_data,
-                                                   variance_data,
-                                                   ddx_data,
-                                                   dy_data,
-                                                   N,
-                                                   C,
-                                                   sample_size,
-                                                   epsilon,
-                                                   dscale_data);
+            <<<channel_grid, block, 0, dev_ctx.stream()>>>(x_data,
+                                                           mean_data,
+                                                           variance_data,
+                                                           ddx_data,
+                                                           dy_data,
+                                                           N,
+                                                           C,
+                                                           sample_size,
+                                                           epsilon,
+                                                           dscale_data);
       }
     }
   }
@@ -600,62 +610,62 @@ void NormDoubleGradFunctor(const DeviceContext &dev_ctx,
     if (use_global_stats) {
       if (data_layout == DataLayout::NHWC) {
         DoubleGradComputeDDYWithGlobal<T, DataLayout::NHWC>
-            <<<grid1, block, 0, dev_ctx.stream()>>>(ddx_data,
-                                                    scale_data,
-                                                    mean_data,
-                                                    variance_data,
-                                                    x_data,
-                                                    ddbias_data,
-                                                    ddscale_data,
-                                                    epsilon,
-                                                    C,
-                                                    sample_size,
-                                                    num,
-                                                    ddy_data);
+            <<<element_grid, block, 0, dev_ctx.stream()>>>(ddx_data,
+                                                           scale_data,
+                                                           mean_data,
+                                                           variance_data,
+                                                           x_data,
+                                                           ddbias_data,
+                                                           ddscale_data,
+                                                           epsilon,
+                                                           C,
+                                                           sample_size,
+                                                           num,
+                                                           ddy_data);
       } else {
         DoubleGradComputeDDYWithGlobal<T, DataLayout::NCHW>
-            <<<grid1, block, 0, dev_ctx.stream()>>>(ddx_data,
-                                                    scale_data,
-                                                    mean_data,
-                                                    variance_data,
-                                                    x_data,
-                                                    ddbias_data,
-                                                    ddscale_data,
-                                                    epsilon,
-                                                    C,
-                                                    sample_size,
-                                                    num,
-                                                    ddy_data);
+            <<<element_grid, block, 0, dev_ctx.stream()>>>(ddx_data,
+                                                           scale_data,
+                                                           mean_data,
+                                                           variance_data,
+                                                           x_data,
+                                                           ddbias_data,
+                                                           ddscale_data,
+                                                           epsilon,
+                                                           C,
+                                                           sample_size,
+                                                           num,
+                                                           ddy_data);
       }
     } else {
       if (data_layout == DataLayout::NHWC) {
         DoubleGradComputeDDY<T, block, DataLayout::NHWC>
-            <<<grid, block, 0, dev_ctx.stream()>>>(x_data,
-                                                   mean_data,
-                                                   variance_data,
-                                                   ddscale_data,
-                                                   ddbias_data,
-                                                   ddx_data,
-                                                   scale_data,
-                                                   N,
-                                                   C,
-                                                   sample_size,
-                                                   epsilon,
-                                                   ddy_data);
+            <<<channel_grid, block, 0, dev_ctx.stream()>>>(x_data,
+                                                           mean_data,
+                                                           variance_data,
+                                                           ddscale_data,
+                                                           ddbias_data,
+                                                           ddx_data,
+                                                           scale_data,
+                                                           N,
+                                                           C,
+                                                           sample_size,
+                                                           epsilon,
+                                                           ddy_data);
       } else {
         DoubleGradComputeDDY<T, block, DataLayout::NCHW>
-            <<<grid, block, 0, dev_ctx.stream()>>>(x_data,
-                                                   mean_data,
-                                                   variance_data,
-                                                   ddscale_data,
-                                                   ddbias_data,
-                                                   ddx_data,
-                                                   scale_data,
-                                                   N,
-                                                   C,
-                                                   sample_size,
-                                                   epsilon,
-                                                   ddy_data);
+            <<<channel_grid, block, 0, dev_ctx.stream()>>>(x_data,
+                                                           mean_data,
+                                                           variance_data,
+                                                           ddscale_data,
+                                                           ddbias_data,
+                                                           ddx_data,
+                                                           scale_data,
+                                                           N,
+                                                           C,
+                                                           sample_size,
+                                                           epsilon,
+                                                           ddy_data);
       }
     }
   }

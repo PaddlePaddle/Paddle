@@ -133,7 +133,6 @@ class TestDistCheckpointUtils(test_base.CommunicationTestDistBase):
         }
         (
             rank_to_files,
-            missing_keys,
             mw_name_compatibility_mapping,
         ) = get_rank_to_files(
             metadata_list,
@@ -144,7 +143,6 @@ class TestDistCheckpointUtils(test_base.CommunicationTestDistBase):
         )
         self.assertTrue(len(rank_to_files) == 1 and 0 in rank_to_files)
         self.assertTrue(rank_to_files[0] == ["0_0.distcp"])
-        self.assertTrue(len(missing_keys) == 0)
         self.assertTrue(len(mw_name_compatibility_mapping) == 0)
 
         new_state_dict = {
@@ -153,7 +151,6 @@ class TestDistCheckpointUtils(test_base.CommunicationTestDistBase):
         }
         (
             rank_to_files,
-            missing_keys,
             mw_name_compatibility_mapping,
         ) = get_rank_to_files(
             metadata_list,
@@ -164,9 +161,7 @@ class TestDistCheckpointUtils(test_base.CommunicationTestDistBase):
         )
         self.assertTrue(len(rank_to_files) == 1 and 0 in rank_to_files)
         self.assertTrue(rank_to_files[0] == ["0_0.distcp"])
-        self.assertTrue(len(missing_keys) == 1)
         self.assertTrue(len(mw_name_compatibility_mapping) == 0)
-        self.assertTrue("w3" in missing_keys)
 
         new_state_dict = {
             "w3": paddle.to_tensor([3, 4]),
@@ -174,7 +169,6 @@ class TestDistCheckpointUtils(test_base.CommunicationTestDistBase):
         }
         (
             rank_to_files,
-            missing_keys,
             mw_name_compatibility_mapping,
         ) = get_rank_to_files(
             metadata_list,
@@ -184,10 +178,7 @@ class TestDistCheckpointUtils(test_base.CommunicationTestDistBase):
             use_dist,
         )
         self.assertTrue(len(rank_to_files) == 0)
-        self.assertTrue(len(missing_keys) == 2)
         self.assertTrue(len(mw_name_compatibility_mapping) == 0)
-        self.assertTrue("w3" in missing_keys)
-        self.assertTrue("w4" in missing_keys)
 
         ckpt_dir_tmp.cleanup()
 

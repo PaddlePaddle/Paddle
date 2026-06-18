@@ -101,7 +101,9 @@ class TestResult:
     extra_info: dict[str, Any] = field(default_factory=dict)
 
 
-def pty_run(command: list[str]) -> subprocess.CompletedProcess[str]:
+def pty_run(
+    command: list[str], env: dict[str, str] | None = None
+) -> subprocess.CompletedProcess[str]:
     """Run a command in a pseudo-terminal to capture colored output."""
     master_fd, slave_fd = pty.openpty()
     try:
@@ -113,6 +115,7 @@ def pty_run(command: list[str]) -> subprocess.CompletedProcess[str]:
             stdout=slave_fd,
             stderr=slave_fd,
             close_fds=True,
+            env=env,
         )
 
         # Parent no longer needs the slave fd — close it so the child can
@@ -206,6 +209,14 @@ class MypyChecker(TypeChecker):
         assert summary, 'No summary found in mypy output'
         return results, summary
 
+    def _mypy_env(self) -> dict[str, str]:
+        env = os.environ.copy()
+        if 'MYPY_NUM_WORKERS' not in env:
+            num_workers = os.cpu_count()
+            if num_workers is not None:
+                env['MYPY_NUM_WORKERS'] = str(num_workers)
+        return env
+
     def run_on_directory(
         self,
         dir: pathlib.Path,
@@ -221,6 +232,7 @@ class MypyChecker(TypeChecker):
                 "--pretty",
                 str(dir),
             ],
+            env=self._mypy_env(),
         )
         if res.returncode == 0:
             print(f'No type errors found in directory {dir}')

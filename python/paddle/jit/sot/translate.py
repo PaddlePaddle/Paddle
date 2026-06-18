@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Callable, TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 from typing_extensions import ParamSpec
 
@@ -26,6 +26,9 @@ from .utils import (
     InfoCollector,
     StepInfoManager,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 P = ParamSpec("P")
 R = TypeVar("R")

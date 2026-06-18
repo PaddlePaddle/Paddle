@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/dot_kernel.h"
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
@@ -49,6 +50,8 @@ void DotKernel(const Context& dev_ctx,
       auto& dev = *dev_ctx.eigen_device();
       eigen_out.device(dev) = (eigen_x * eigen_y).sum();
     } else {
+      PADDLE_ENFORCE_LE_INT_MAX(x.numel(), "dot CUDOT n");
+      PADDLE_ENFORCE_LE_INT_MAX(x.strides()[0], "dot CUDOT incx");
       const int n = static_cast<int>(x.numel());
       int incx = static_cast<int>(x.strides()[0]);
       int incy = static_cast<int>(x.strides()[0]);

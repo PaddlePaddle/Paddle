@@ -16,6 +16,7 @@
 
 #include "glog/logging.h"
 
+#include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
@@ -151,8 +152,13 @@ static bool TryLaunchFP16FastGeluFwdVectorizeCUDAKernel(
       block = std::min<size_t>(block, dev_ctx.GetCUDAMaxGridDimSize()[0]);    \
       VLOG(10) << "Use FP16 fast gelu fwd kernel, block = " << block          \
                << " , thread = " << thread;                                   \
+      PADDLE_ENFORCE_LE_UINT32_MAX(block, "gelu fwd block");                  \
+      PADDLE_ENFORCE_LE_UINT32_MAX(thread, "gelu fwd thread");                \
       FP16FastGeluFwdCUDAKernel<__vec_size, __use_fast_math>                  \
-          <<<block, thread, 0, dev_ctx.stream()>>>(x, y, n);                  \
+          <<<static_cast<unsigned int>(block),                                \
+             static_cast<unsigned int>(thread),                               \
+             0,                                                               \
+             dev_ctx.stream()>>>(x, y, n);                                    \
       return true;                                                            \
     }                                                                         \
   } while (0)
@@ -188,8 +194,13 @@ static bool TryLaunchFP16FastGeluBwdVectorizeCUDAKernel(
       block = std::min<size_t>(block, dev_ctx.GetCUDAMaxGridDimSize()[0]);    \
       VLOG(10) << "Use FP16 fast gelu bwd kernel, block = " << block          \
                << " , thread = " << thread;                                   \
+      PADDLE_ENFORCE_LE_UINT32_MAX(block, "gelu bwd block");                  \
+      PADDLE_ENFORCE_LE_UINT32_MAX(thread, "gelu bwd thread");                \
       FP16FastGeluBwdCUDAKernel<__vec_size, __use_fast_math>                  \
-          <<<block, thread, 0, dev_ctx.stream()>>>(x, y_g, x_g, n);           \
+          <<<static_cast<unsigned int>(block),                                \
+             static_cast<unsigned int>(thread),                               \
+             0,                                                               \
+             dev_ctx.stream()>>>(x, y_g, x_g, n);                             \
       return true;                                                            \
     }                                                                         \
   } while (0)

@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/batch_norm_kernel.h"
 #include "glog/logging.h"
+#include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -1082,10 +1083,14 @@ void BatchNormKernel(const Context &dev_ctx,
                        static_cast<int64_t>(MAX_GRID_SIZE));
           int64_t grid_y = (C + block_y - 1) / block_y;
 
-          block.x = block_x;
-          block.y = block_y;
-          grid.x = grid_x;
-          grid.y = grid_y;
+          PADDLE_ENFORCE_LE_UINT32_MAX(block_x, "block.x");
+          PADDLE_ENFORCE_LE_UINT32_MAX(block_y, "block.y");
+          PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "grid.x");
+          PADDLE_ENFORCE_LE_UINT32_MAX(grid_y, "grid.y");
+          block.x = static_cast<uint32_t>(block_x);
+          block.y = static_cast<uint32_t>(block_y);
+          grid.x = static_cast<uint32_t>(grid_x);
+          grid.y = static_cast<uint32_t>(grid_y);
 
           if (grid.x > 1) {
             block_data_tensor = Empty<BatchNormParamType<T>, Context>(
@@ -1143,11 +1148,15 @@ void BatchNormKernel(const Context &dev_ctx,
           int64_t grid_y =
               std::min((N * H * W * D + block_y * 16 - 1) / (block_y * 16),
                        static_cast<int64_t>(MAX_GRID_SIZE));
+          PADDLE_ENFORCE_LE_UINT32_MAX(block_x, "block.x");
+          PADDLE_ENFORCE_LE_UINT32_MAX(block_y, "block.y");
+          PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "grid.x");
+          PADDLE_ENFORCE_LE_UINT32_MAX(grid_y, "grid.y");
 
-          block.x = block_x;
-          block.y = block_y;
-          grid.x = grid_x;
-          grid.y = grid_y;
+          block.x = static_cast<uint32_t>(block_x);
+          block.y = static_cast<uint32_t>(block_y);
+          grid.x = static_cast<uint32_t>(grid_x);
+          grid.y = static_cast<uint32_t>(grid_y);
 
           if (grid.y > 1) {
             block_data_tensor = Empty<BatchNormParamType<T>, Context>(

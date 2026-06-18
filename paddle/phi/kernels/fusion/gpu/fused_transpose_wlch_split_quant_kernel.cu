@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/fusion/gpu/fused_transpose_wlch_split_quant_kernel.h"
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -251,7 +252,13 @@ void FusedTransposeWLCHSplitQuantKernel(
 
   // Launch kernel
   auto stream = dev_ctx.stream();
-  dim3 grid(W * L * C / 128, (H + 127) / 128);
+  int64_t grid_x_64 = W * L * C / 128;
+  int64_t grid_y_64 = (H + 127) / 128;
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_x_64,
+                               "fused_transpose_wlch_split_quant grid.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_y_64,
+                               "fused_transpose_wlch_split_quant grid.y");
+  dim3 grid(static_cast<uint32_t>(grid_x_64), static_cast<uint32_t>(grid_y_64));
   dim3 block(32, 16);
 
   const __nv_bfloat16* x_ptr =

@@ -84,7 +84,7 @@ static std::vector<int64_t> GetAttnMaskDims(const DenseTensor* attn_mask) {
 }
 
 static std::vector<int64_t> GetAttnSparseMaskDims(
-    const DenseTensor* startend_row_indices, int max_seqlen_q) {
+    const DenseTensor* startend_row_indices, int64_t max_seqlen_q) {
   std::vector<int64_t> mask_dim_4d;
   if (startend_row_indices) {
     const auto& dtype = startend_row_indices->dtype();
@@ -186,7 +186,11 @@ struct FlashAttnParamsBase {
 
     // TODO(GuoxiaWang): check q, k, v dtype
 
-    auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
+    auto round_multiple = [](int64_t x, int m) {
+      int64_t rounded = (x + m - 1) / m * static_cast<int64_t>(m);
+      PADDLE_ENFORCE_LE_INT_MAX(rounded, "flash_attn rounded sequence length");
+      return static_cast<int>(rounded);
+    };
     // FLAGS_flash_attn_version
     if (_version == 3 && !_is_fwd) {
       kBlockM = head_size <= 64 ? 128 : (head_size < 256 ? 64 : 32);

@@ -16,6 +16,7 @@
 
 #include <string>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
@@ -121,11 +122,11 @@ inline gpuError_t GetNumBlocks(int64_t n, int *num_blocks) {
   const int max_thread_per_multiprocessor =
       backends::gpu::GetGPUMaxThreadsPerMultiProcessor(device_id);
 
-  *num_blocks =
-      std::max<int>(1,
-                    std::min<int64_t>((n + kBlockSize - 1) / kBlockSize,
-                                      sm_count * max_thread_per_multiprocessor /
-                                          kBlockSize * kNumWaves));
+  int64_t num_blocks_candidate = std::min<int64_t>(
+      (n + kBlockSize - 1) / kBlockSize,
+      sm_count * max_thread_per_multiprocessor / kBlockSize * kNumWaves);
+  PADDLE_ENFORCE_LE_INT_MAX(num_blocks_candidate, "num_blocks_candidate");
+  *num_blocks = std::max<int>(1, static_cast<int>(num_blocks_candidate));
   return gpuSuccess;
 }
 

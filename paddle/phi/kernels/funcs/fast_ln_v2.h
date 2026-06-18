@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/kernels/funcs/fast_ln_v2_common.h"
 
 namespace phi {
@@ -90,9 +91,11 @@ void LaunchNormFwd(const Context& dev_ctx,
   launcher(launch_params, true);
 
   // Set the kernel runtime parameters.
+  PADDLE_ENFORCE_LE_INT_MAX(rows, "fast_ln_v2 params require int rows");
+  PADDLE_ENFORCE_LE_INT_MAX(cols, "fast_ln_v2 params require int cols");
   FwdParams& params = launch_params.params;
-  params.rows = rows;
-  params.cols = cols;
+  params.rows = static_cast<int>(rows);
+  params.cols = static_cast<int>(cols);
   params.x = const_cast<void*>(x_ptr);
   params.scale = const_cast<void*>(scale_ptr);
   params.bias = const_cast<void*>(bias_ptr);
@@ -156,9 +159,11 @@ void LaunchNormBwd(const Context& dev_ctx,
                        static_cast<int64_t>(hidden_size)}));
   }
 
+  PADDLE_ENFORCE_LE_INT_MAX(rows, "fast_ln_v2 params require int rows");
+  PADDLE_ENFORCE_LE_INT_MAX(cols, "fast_ln_v2 params require int cols");
   BwdParams& params = launch_params.params;
-  params.rows = rows;
-  params.cols = cols;
+  params.rows = static_cast<int>(rows);
+  params.cols = static_cast<int>(cols);
   params.x = const_cast<void*>(x_ptr);
   params.scale = const_cast<void*>(scale_ptr);
   params.mean = const_cast<void*>(mean_ptr);

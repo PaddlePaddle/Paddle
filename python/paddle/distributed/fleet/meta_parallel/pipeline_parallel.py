@@ -21,7 +21,6 @@ from collections import defaultdict, deque
 from dataclasses import dataclass
 from enum import Enum
 from functools import partial
-from typing import Callable
 
 import paddle
 from paddle import framework
@@ -48,6 +47,8 @@ if _use_four_directions:
 else:
     from .pp_utils import p2p_communication as p2p
 
+from typing import TYPE_CHECKING
+
 from paddle.distributed import fleet
 from paddle.distributed.fleet.utils.tensor_fusion_helper import (
     HOOK_ACTION,
@@ -60,6 +61,9 @@ from .pipeline_hooks import (
 )
 from .pp_utils.utils import dict_to_tuple_helper, tuple_to_dict_helper
 from .zero_bubble_utils import WeightGradStore
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 g_profile_pipeline_details_steps = int(
     os.getenv("FLAGS_profile_pipeline_details_steps", "0")

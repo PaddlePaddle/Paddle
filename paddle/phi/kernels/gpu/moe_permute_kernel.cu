@@ -14,6 +14,7 @@
 
 #include <limits>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -610,7 +611,8 @@ void dispatch_preprocess(const Context &dev_ctx,
                                              cudaMemcpyHostToDevice,
                                              dev_ctx.stream()));
 
-  dim3 grid{static_cast<unsigned>(padding_rows.size())};
+  PADDLE_ENFORCE_LE_UINT32_MAX(padding_rows.size(), "padding_rows size");
+  dim3 grid{static_cast<uint32_t>(padding_rows.size())};
   dim3 block{512};
   const int *padding_ptr = padding_tokens_tensor.data<int>();
 
@@ -912,17 +914,22 @@ void MoePermuteKernel(const Context &dev_ctx,
                                    &expert_offset_end_tensor,
                                    expert_indices);
   } else {
-    int tokens_cumulated = 0;
+    int64_t tokens_cumulated = 0;
     std::vector<int> padding_rows;
     int expert_offset[kMaxNumExperts];
     int expert_offset_end[kMaxNumExperts];
     for (int i = 0; i < kMaxNumExperts; i++) {
       if (i < num_experts) {
-        expert_offset[i] = tokens_cumulated;
-        expert_offset_end[i] = expert_offset[i] + tokens_per_expert[i] - 1;
-        tokens_cumulated += ((tokens_per_expert[i] + padding_alignment - 1) /
-                             padding_alignment) *
-                            padding_alignment;
+        PADDLE_ENFORCE_LE_INT_MAX(tokens_cumulated, "expert offset");
+        expert_offset[i] = static_cast<int>(tokens_cumulated);
+        const int64_t tokens = tokens_per_expert[i];
+        const int64_t padded_tokens =
+            ((tokens + padding_alignment - 1) / padding_alignment) *
+            padding_alignment;
+        const int64_t expert_offset_end_64 = tokens_cumulated + tokens - 1;
+        PADDLE_ENFORCE_LE_INT_MAX(expert_offset_end_64, "expert offset end");
+        expert_offset_end[i] = static_cast<int>(expert_offset_end_64);
+        tokens_cumulated += padded_tokens;
       } else {
         expert_offset[i] = 0;
       }
@@ -950,8 +957,12 @@ void MoePermuteKernel(const Context &dev_ctx,
       int64_t invalid_rows =
           next_expert_offset - expert_offset[i] - tokens_per_expert[i];
       int64_t cur_expert_end = expert_offset[i] + tokens_per_expert[i];
-      for (int j = 0; j < invalid_rows; ++j) {
-        padding_rows.push_back(cur_expert_end + j);
+      if (invalid_rows > 0) {
+        PADDLE_ENFORCE_LE_INT_MAX(cur_expert_end + invalid_rows - 1,
+                                  "padding row");
+      }
+      for (int64_t j = 0; j < invalid_rows; ++j) {
+        padding_rows.push_back(static_cast<int>(cur_expert_end + j));
       }
     }
     if (using_ue8m0_scale) {
@@ -960,8 +971,8 @@ void MoePermuteKernel(const Context &dev_ctx,
                           XScale ? XScale_unzipped->data<int32_t>() : nullptr,
                           token_prob_unzipped->data<float>(),
                           expert_indices->data<int>(),
-                          cols,
-                          quanted_cols,
+                          static_cast<int>(cols),
+                          static_cast<int>(quanted_cols),
                           padding_rows);
     } else {
       dispatch_preprocess(dev_ctx,
@@ -969,8 +980,8 @@ void MoePermuteKernel(const Context &dev_ctx,
                           XScale ? XScale_unzipped->data<float>() : nullptr,
                           token_prob_unzipped->data<float>(),
                           expert_indices->data<int>(),
-                          cols,
-                          quanted_cols,
+                          static_cast<int>(cols),
+                          static_cast<int>(quanted_cols),
                           padding_rows);
     }
   }

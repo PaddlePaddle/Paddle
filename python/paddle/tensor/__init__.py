@@ -94,6 +94,7 @@ from .linalg import (  # noqa: F401
     lu_solve,
     lu_unpack,
     matmul,
+    matrix_exp,
     matrix_power,
     matrix_transpose,
     multi_dot,
@@ -203,6 +204,7 @@ from .manipulation import (  # noqa: F401
     repeat_interleave,
     reshape,
     reshape_,
+    reshape_as,
     roll,
     rot90,
     row_stack,
@@ -257,6 +259,10 @@ from .math import (  # noqa: F401
     add_n,
     addmm,
     addmm_,
+    addmv,
+    addmv_,
+    addr,
+    addr_,
     all,
     amax,
     amin,
@@ -316,7 +322,6 @@ from .math import (  # noqa: F401
     floor_,
     floor_divide,
     floor_divide_,
-    floor_mod,
     fmax,
     fmin,
     frac,
@@ -331,6 +336,7 @@ from .math import (  # noqa: F401
     gcd,
     gcd_,
     heaviside,
+    histc,
     hypot,
     hypot_,
     i0,
@@ -375,7 +381,6 @@ from .math import (  # noqa: F401
     min,
     minimum,
     mm,
-    mod,
     mul,
     multigammaln,
     multigammaln_,
@@ -515,6 +520,13 @@ sub = subtract
 sub_ = subtract_
 clamp_ = clip_
 movedim = moveaxis
+mod = remainder
+floor_mod = remainder
+fix = trunc
+fix_ = trunc_
+mvlgamma = multigammaln
+mvlgamma_ = multigammaln_
+negative_ = neg_
 
 # this list used in math_op_patch.py for _binary_creator_
 tensor_method_func = [
@@ -541,9 +553,11 @@ tensor_method_func = [
     'histogram',
     'histogram_bin_edges',
     'histogramdd',
+    'histc',
     'bincount',
     'mv',
     'matrix_power',
+    'matrix_exp',
     'matrix_transpose',
     'qr',
     'householder_product',
@@ -576,6 +590,8 @@ tensor_method_func = [
     'expm1',
     'floor',
     'floor_',
+    'fix',
+    'fix_',
     'increment',
     'logaddexp',
     'log',
@@ -610,6 +626,8 @@ tensor_method_func = [
     'reduce_as',
     'multigammaln',
     'multigammaln_',
+    'mvlgamma',
+    'mvlgamma_',
     'nan_to_num',
     'nan_to_num_',
     'hypot',
@@ -661,6 +679,10 @@ tensor_method_func = [
     'erf',
     'addmm',
     'addmm_',
+    'addmv',
+    'addmv_',
+    'addr',
+    'addr_',
     'baddbmm',
     'baddbmm_',
     'clip',
@@ -681,6 +703,7 @@ tensor_method_func = [
     'neg',
     'neg_',
     'negative',
+    'negative_',
     'lgamma',
     'lgamma_',
     'gammaincc',
@@ -727,6 +750,7 @@ tensor_method_func = [
     'gather',
     'gather_nd',
     'reshape',
+    'reshape_as',
     'reshape_',
     'scatter',
     'scatter_',

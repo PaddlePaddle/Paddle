@@ -480,6 +480,14 @@ void DistributedFusedLambInitOpKernel(
       ReorderParamGradInfoList(apply_weight_decay, &fp16_infos);
 
   auto param_num = fp32_infos.size() + fp16_infos.size();
+  PADDLE_ENFORCE_LE(
+      param_num,
+      static_cast<size_t>(std::numeric_limits<int16_t>::max()),
+      common::errors::InvalidArgument(
+          "The parameter count of distributed_fused_lamb must fit in int16_t. "
+          "Expected param_num <= %d, but received param_num = %zu.",
+          std::numeric_limits<int16_t>::max(),
+          param_num));
   param_order->Resize({static_cast<int16_t>(param_num)});
   auto *param_order_t = dev_ctx.template HostAlloc<int>(param_order);
   for (size_t i = 0; i < fp32_infos.size(); ++i) {
@@ -669,20 +677,22 @@ void DistributedFusedLambInitOpKernel(
 
   param_info->Resize({8});
   auto *param_info_t = dev_ctx.template HostAlloc<int>(param_info);
+  size_t fp32_wd_end = ClipByBound<size_t>(
+      fp32_wd_end_idx, fp32_start_idx, fp32_start_idx + fp32_local_param_num);
+  size_t fp16_wd_end = ClipByBound<size_t>(
+      fp16_wd_end_idx, fp16_start_idx, fp16_start_idx + fp16_local_param_num);
+  size_t fp32_wd_param_num = fp32_wd_end - fp32_start_idx;
+  size_t fp16_wd_param_num = fp16_wd_end - fp16_start_idx;
+  PADDLE_ENFORCE_LE_INT_MAX(fp32_wd_param_num, "fp32_wd_param_num");
+  PADDLE_ENFORCE_LE_INT_MAX(fp16_wd_param_num, "fp16_wd_param_num");
   param_info_t[0] = static_cast<int>(fp32_start_idx);
   param_info_t[1] = static_cast<int>(fp32_local_param_num);
   param_info_t[2] = static_cast<int>(fp32_infos.size());
-  param_info_t[3] = ClipByBound<int>(fp32_wd_end_idx,
-                                     fp32_start_idx,
-                                     fp32_start_idx + fp32_local_param_num) -
-                    static_cast<int>(fp32_start_idx);
+  param_info_t[3] = static_cast<int>(fp32_wd_param_num);
   param_info_t[4] = static_cast<int>(fp16_start_idx + fp32_infos.size());
   param_info_t[5] = static_cast<int>(fp16_local_param_num);
   param_info_t[6] = static_cast<int>(fp16_infos.size());
-  param_info_t[7] = ClipByBound<int>(fp16_wd_end_idx,
-                                     fp16_start_idx,
-                                     fp16_start_idx + fp16_local_param_num) -
-                    static_cast<int>(fp16_start_idx);
+  param_info_t[7] = static_cast<int>(fp16_wd_param_num);
 
   VLOG(10) << "Start FP32 idx: " << param_info_t[0];
   VLOG(10) << "Local FP32 param num: " << param_info_t[1];
