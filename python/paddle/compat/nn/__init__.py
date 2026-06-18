@@ -70,41 +70,41 @@ def _ntuple(n, name="parse"):
 _single = _ntuple(1, "_single")
 
 
-def _batch_norm_momentum(
-    momentum: float | None, num_batches_tracked: int = 0
-) -> float:
-    if momentum is None:
-        if num_batches_tracked == 0:
-            return 0.0
-        return 1.0 - 1.0 / num_batches_tracked
-    return 1.0 - momentum
-
-
-def _batch_norm_use_global_stats(track_running_stats: bool) -> bool | None:
-    return None if track_running_stats else False
-
-
-class _BatchNormMixin:
-    def _init_compat_state(
-        self, momentum: float | None, track_running_stats: bool
+class BatchNorm1D(nn.BatchNorm1D):
+    def __init__(
+        self,
+        num_features: int,
+        eps: float = 1e-5,
+        momentum: float | None = 0.1,
+        affine: bool = True,
+        track_running_stats: bool = True,
+        device: PlaceLike | None = None,
+        dtype: DTypeLike | None = None,
     ) -> None:
+        if momentum is None:
+            paddle_momentum = 0.0
+        else:
+            paddle_momentum = 1.0 - momentum
+        super().__init__(
+            num_features=num_features,
+            momentum=paddle_momentum,
+            epsilon=eps,
+            use_global_stats=None if track_running_stats else False,
+            affine=affine,
+            device=device,
+            dtype=dtype,
+        )
         self.momentum = momentum
         self._num_batches_tracked = 0
 
     def forward(self, input: Tensor) -> Tensor:
-        if not (
-            paddle.in_dynamic_mode() and self.training and self.momentum is None
-        ):
-            return super().forward(input)
-
-        self._num_batches_tracked += 1
-        self._momentum = _batch_norm_momentum(
-            self.momentum, self._num_batches_tracked
-        )
+        if paddle.in_dynamic_mode() and self.training and self.momentum is None:
+            self._num_batches_tracked += 1
+            self._momentum = 1.0 - 1.0 / self._num_batches_tracked
         return super().forward(input)
 
 
-class BatchNorm1D(_BatchNormMixin, nn.BatchNorm1D):
+class BatchNorm2D(nn.BatchNorm2D):
     def __init__(
         self,
         num_features: int,
@@ -115,19 +115,30 @@ class BatchNorm1D(_BatchNormMixin, nn.BatchNorm1D):
         device: PlaceLike | None = None,
         dtype: DTypeLike | None = None,
     ) -> None:
+        if momentum is None:
+            paddle_momentum = 0.0
+        else:
+            paddle_momentum = 1.0 - momentum
         super().__init__(
             num_features=num_features,
-            momentum=_batch_norm_momentum(momentum),
+            momentum=paddle_momentum,
             epsilon=eps,
-            use_global_stats=_batch_norm_use_global_stats(track_running_stats),
+            use_global_stats=None if track_running_stats else False,
             affine=affine,
             device=device,
             dtype=dtype,
         )
-        self._init_compat_state(momentum, track_running_stats)
+        self.momentum = momentum
+        self._num_batches_tracked = 0
+
+    def forward(self, input: Tensor) -> Tensor:
+        if paddle.in_dynamic_mode() and self.training and self.momentum is None:
+            self._num_batches_tracked += 1
+            self._momentum = 1.0 - 1.0 / self._num_batches_tracked
+        return super().forward(input)
 
 
-class BatchNorm2D(_BatchNormMixin, nn.BatchNorm2D):
+class BatchNorm3D(nn.BatchNorm3D):
     def __init__(
         self,
         num_features: int,
@@ -138,39 +149,27 @@ class BatchNorm2D(_BatchNormMixin, nn.BatchNorm2D):
         device: PlaceLike | None = None,
         dtype: DTypeLike | None = None,
     ) -> None:
+        if momentum is None:
+            paddle_momentum = 0.0
+        else:
+            paddle_momentum = 1.0 - momentum
         super().__init__(
             num_features=num_features,
-            momentum=_batch_norm_momentum(momentum),
+            momentum=paddle_momentum,
             epsilon=eps,
-            use_global_stats=_batch_norm_use_global_stats(track_running_stats),
+            use_global_stats=None if track_running_stats else False,
             affine=affine,
             device=device,
             dtype=dtype,
         )
-        self._init_compat_state(momentum, track_running_stats)
+        self.momentum = momentum
+        self._num_batches_tracked = 0
 
-
-class BatchNorm3D(_BatchNormMixin, nn.BatchNorm3D):
-    def __init__(
-        self,
-        num_features: int,
-        eps: float = 1e-5,
-        momentum: float | None = 0.1,
-        affine: bool = True,
-        track_running_stats: bool = True,
-        device: PlaceLike | None = None,
-        dtype: DTypeLike | None = None,
-    ) -> None:
-        super().__init__(
-            num_features=num_features,
-            momentum=_batch_norm_momentum(momentum),
-            epsilon=eps,
-            use_global_stats=_batch_norm_use_global_stats(track_running_stats),
-            affine=affine,
-            device=device,
-            dtype=dtype,
-        )
-        self._init_compat_state(momentum, track_running_stats)
+    def forward(self, input: Tensor) -> Tensor:
+        if paddle.in_dynamic_mode() and self.training and self.momentum is None:
+            self._num_batches_tracked += 1
+            self._momentum = 1.0 - 1.0 / self._num_batches_tracked
+        return super().forward(input)
 
 
 BatchNorm1d = BatchNorm1D
