@@ -68,6 +68,7 @@ class SendRecvMeta:
         self.recv_dtype_message = None
         self.recv_stop_gradient = None
         self.recv_key_message = None
+        self.recv_block_cache_meta = None
 
         self.has_send_meta = False
         self.has_recv_meta = False
@@ -131,6 +132,16 @@ class SendRecvMeta:
             stop_grads.append(stop_gradient)
             keys.append(key)
 
+        self.recv_block_cache_meta = None
+        if len(data) > 0:
+            marker = data.pop(0)
+            assert marker == -1, (
+                f"expected block_cache_meta marker -1, got {marker}"
+            )
+            meta_len = data.pop(0)
+            self.recv_block_cache_meta = data[:meta_len]
+            data = data[meta_len:]
+
         assert len(data) == 0, (
             f"send data must be parsed zero, now it is {data}"
         )
@@ -146,7 +157,9 @@ class SendRecvMeta:
             self.recv_stop_gradient = tuple(stop_grads)
             self.recv_key_message = tuple(keys)
 
-    def send_meta(self, tensor, group, reverse=False, broadcast=False):
+    def send_meta(
+        self, tensor, group, reverse=False, broadcast=False, block_cache_meta=None
+    ):
         if reverse:
             dst_rank = _hcg._get_p2p_prev_rank()
         else:
@@ -194,6 +207,13 @@ class SendRecvMeta:
                     *key_data,
                 ]
             )
+
+        # ------------------block cache meta send-------------
+        if block_cache_meta is not None:
+            data.append(-1)
+            data.append(len(block_cache_meta))
+            data.extend(block_cache_meta)
+        # ------------------block cache meta send-------------
 
         data_tensor = paddle.to_tensor(data).astype("int64")
         data_numel = np.prod(data_tensor.shape)
@@ -739,7 +759,14 @@ class P2pHelper:
             self._send_recv_meta_list = []
             self._dynamic_cnt = 0
 
-    def _send_meta(self, output_tensor, skip_check_meta=False, reverse=False):
+    def get_recv_block_cache_meta(self):
+        """Return the block_cache_meta received in the most recent _recv_meta call.
+        P2pHelper does NOT manage or merge this — it is raw pass-through."""
+        return self._send_recv_meta.recv_block_cache_meta
+
+    def _send_meta(
+        self, output_tensor, skip_check_meta=False, reverse=False, block_cache_meta=None
+    ):
         if not self._dynamic_shape:
             if not self._send_recv_meta.has_send_meta:
                 self._send_recv_meta.set_send_message(output_tensor)
@@ -747,6 +774,7 @@ class P2pHelper:
                     output_tensor,
                     _hcg.get_pipe_parallel_group(),
                     reverse=reverse,
+                    block_cache_meta=block_cache_meta,
                 )
                 self._send_recv_meta.has_send_meta = self._use_cache
             elif not skip_check_meta:
@@ -759,6 +787,7 @@ class P2pHelper:
                     output_tensor,
                     _hcg.get_pipe_parallel_group(),
                     reverse=reverse,
+                    block_cache_meta=block_cache_meta,
                 )
                 meta.has_send_meta = self._use_cache
                 self._send_recv_meta_list.append(meta)
@@ -769,6 +798,7 @@ class P2pHelper:
                     output_tensor,
                     _hcg.get_pipe_parallel_group(),
                     reverse=reverse,
+                    block_cache_meta=block_cache_meta,
                 )
                 meta.has_send_meta = self._use_cache
                 self._send_recv_meta = meta
@@ -885,13 +915,18 @@ class P2pHelper:
         pp_last_stage,
         batch_p2p_comm=True,
         skip_check_meta=False,
+        block_cache_meta=None,
     ):
         global _timers
         if _timers is not None:
             _timers("send_forward").start()
 
         if not pp_last_stage:
-            self._send_meta(output_tensor, skip_check_meta=skip_check_meta)
+            self._send_meta(
+                output_tensor,
+                skip_check_meta=skip_check_meta,
+                block_cache_meta=block_cache_meta,
+            )
             _p2p_helper(
                 tensor_send_next=output_tensor,
                 tensor_send_prev=None,
@@ -999,6 +1034,7 @@ class P2pHelper:
         recv_next,
         batch_p2p_comm=True,
         skip_check_meta=False,
+        block_cache_meta=None,
     ):
         # always have to send dtype info to downstream
         global _timers
@@ -1010,7 +1046,11 @@ class P2pHelper:
         )
 
         if output_tensor is not None:
-            self._send_meta(output_tensor, skip_check_meta=skip_check_meta)
+            self._send_meta(
+                output_tensor,
+                skip_check_meta=skip_check_meta,
+                block_cache_meta=block_cache_meta,
+            )
         if recv_prev:
             self._recv_meta()
 
@@ -1034,6 +1074,7 @@ class P2pHelper:
         batch_p2p_comm=True,
         overlap_p2p_comm=False,
         skip_check_meta=False,
+        block_cache_meta=None,
     ):
         # always have to send dtype info to downstream
         global _timers
@@ -1047,6 +1088,7 @@ class P2pHelper:
                 self._send_meta(
                     output_tensor,
                     skip_check_meta=skip_check_meta,
+                    block_cache_meta=block_cache_meta,
                 )
                 need_increase_cnt = True
 
@@ -1062,6 +1104,7 @@ class P2pHelper:
                 self._send_meta(
                     output_tensor,
                     skip_check_meta=skip_check_meta,
+                    block_cache_meta=block_cache_meta,
                 )
                 need_increase_cnt = True
 
