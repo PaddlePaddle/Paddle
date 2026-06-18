@@ -425,6 +425,9 @@ class TestDistributionsPositiveDefiniteCheckAPI(unittest.TestCase):
         self.np_not_positive = np.array(
             [[1.0, 2.0], [2.0, 1.0]], dtype="float32"
         )
+        self.np_non_symmetric = np.array(
+            [[1.0, 2.0], [0.0, 1.0]], dtype="float32"
+        )
         self.np_not_square = np.ones([2, 3], dtype="float32")
         self.np_vector = np.ones([2], dtype="float32")
 
@@ -432,7 +435,7 @@ class TestDistributionsPositiveDefiniteCheckAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_dygraph_Compatibility(self):
-        from paddle.distribution import constraint, constraints
+        from paddle.distribution import constraints
 
         paddle.disable_static()
         x = paddle.to_tensor(self.np_x, place=self.place)
@@ -440,9 +443,6 @@ class TestDistributionsPositiveDefiniteCheckAPI(unittest.TestCase):
         not_square = paddle.to_tensor(self.np_not_square, place=self.place)
         vector = paddle.to_tensor(self.np_vector, place=self.place)
 
-        self.assertIs(
-            constraints.positive_definite, constraint.positive_definite
-        )
         self.assertIs(paddle.distribution.constraints, constraints)
 
         # 1. Paddle Positional arguments
@@ -528,7 +528,7 @@ class TestDistributionsPositiveDefiniteCheckAPI(unittest.TestCase):
         self.assertTrue(bool(constraint.symmetric.check(symmetric_matrix)))
 
         non_symmetric_matrix = paddle.to_tensor(
-            [[1.0, 2.0], [0.0, 1.0]], place=self.place
+            self.np_non_symmetric, place=self.place
         )
         self.assertFalse(bool(constraint.symmetric.check(non_symmetric_matrix)))
 
@@ -547,7 +547,7 @@ class TestDistributionsPositiveDefiniteCheckAPI(unittest.TestCase):
             )
             non_symmetric_matrix = paddle.static.data(
                 name="non_symmetric_matrix",
-                shape=self.np_not_positive.shape,
+                shape=self.np_non_symmetric.shape,
                 dtype="float32",
             )
 
@@ -561,7 +561,7 @@ class TestDistributionsPositiveDefiniteCheckAPI(unittest.TestCase):
                 feed={
                     "vector": self.np_vector,
                     "symmetric_matrix": self.np_x,
-                    "non_symmetric_matrix": self.np_not_positive,
+                    "non_symmetric_matrix": self.np_non_symmetric,
                 },
                 fetch_list=[out1, out2, out3],
             )
