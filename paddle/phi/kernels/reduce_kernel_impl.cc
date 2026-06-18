@@ -63,7 +63,6 @@ bool ReduceCheckIfOneDNNSupport(const KernelContext* dev_ctx) {
 }
 
 bool ReduceMeanCheckIfOneDNNSupport(const KernelContext* dev_ctx) {
-  std::cout << "ReduceMeanCheckIfOneDNNSupport" << std::endl;
   if (dev_ctx->InputAt<DenseTensor>(0).dims().size() > 5 ||
       !HasOptimizedOneDNNKernel(dev_ctx)) {
     return false;
