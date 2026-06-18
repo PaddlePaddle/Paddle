@@ -2596,6 +2596,62 @@ class _CompatBatchNormBase:
         )
         paddle.enable_static()
 
+    def test_dygraph_IllegalThenLegal(self):
+        paddle.disable_static()
+        layer = self.alias(self.num_features, momentum=None)
+        bad_x = paddle.ones(self.invalid_shape, dtype="float32")
+        with self.assertRaises(ValueError):
+            layer(bad_x)
+        np.testing.assert_array_equal(
+            layer.num_batches_tracked.numpy(), np.array(0, dtype="int64")
+        )
+
+        good_x = paddle.to_tensor(self.np_x)
+        layer(good_x)
+        np.testing.assert_array_equal(
+            layer.num_batches_tracked.numpy(), np.array(1, dtype="int64")
+        )
+        expected_mean, expected_var = self._expected_running_stats(
+            [self.np_x], None
+        )
+        np.testing.assert_allclose(
+            layer.running_mean.numpy(), expected_mean, rtol=1e-5, atol=1e-8
+        )
+        np.testing.assert_allclose(
+            layer.running_var.numpy(), expected_var, rtol=1e-5, atol=1e-8
+        )
+        paddle.enable_static()
+
+    def test_dygraph_Reset(self):
+        paddle.disable_static()
+        layer = self.alias(self.num_features)
+        x = paddle.to_tensor(self.np_x)
+        x_alt = paddle.to_tensor(self.np_x_alt)
+
+        layer(x)
+        layer(x_alt)
+        layer.reset_running_stats()
+        np.testing.assert_array_equal(
+            layer.num_batches_tracked.numpy(), np.array(0, dtype="int64")
+        )
+        np.testing.assert_allclose(
+            layer.running_mean.numpy(),
+            np.zeros([self.num_features], dtype="float32"),
+        )
+        np.testing.assert_allclose(
+            layer.running_var.numpy(),
+            np.ones([self.num_features], dtype="float32"),
+        )
+
+        layer.reset_parameters()
+        np.testing.assert_allclose(
+            layer.weight.numpy(), np.ones([self.num_features], dtype="float32")
+        )
+        np.testing.assert_allclose(
+            layer.bias.numpy(), np.zeros([self.num_features], dtype="float32")
+        )
+        paddle.enable_static()
+
     def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()

@@ -132,16 +132,36 @@ class _BatchNormMixin:
         ):
             return super().forward(input)
 
+        # Preserve the original running stats so we can rewrite them with the
+        # torch-compatible update rule after the parent forward succeeds.
         mean = self._mean.clone()
         variance = self._variance.clone()
+
+        out = super().forward(input)
+
         self._num_batches_tracked += 1
         self._momentum = self._paddle_history_momentum(
             self.momentum, self._num_batches_tracked
         )
-
-        out = super().forward(input)
         self._set_running_stats(input, mean, variance)
         return out
+
+    def reset_running_stats(self) -> None:
+        if not self.track_running_stats:
+            return
+        with paddle.no_grad():
+            self._mean.set_value(paddle.zeros_like(self._mean))
+            self._variance.set_value(paddle.ones_like(self._variance))
+        self._num_batches_tracked = 0
+
+    def reset_parameters(self) -> None:
+        self.reset_running_stats()
+        if self.affine:
+            with paddle.no_grad():
+                if self.weight is not None:
+                    self.weight.set_value(paddle.ones_like(self.weight))
+                if self.bias is not None:
+                    self.bias.set_value(paddle.zeros_like(self.bias))
 
 
 class BatchNorm1D(_BatchNormMixin, nn.BatchNorm1D):
