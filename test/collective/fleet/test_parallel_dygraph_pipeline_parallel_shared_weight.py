@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 from legacy_test.test_parallel_dygraph_dataparallel import (
@@ -20,6 +21,14 @@ from legacy_test.test_parallel_dygraph_dataparallel import (
 
 
 class TestHybridPipeParallelSharedWeight(TestMultipleAccelerators):
+    def test_hybrid_parallel_shared_submodule_weight_only(self):
+        self.run_mnist_2accelerators(
+            os.path.join(
+                os.path.dirname(__file__),
+                'hybrid_parallel_shared_submodule_weight_only.py',
+            )
+        )
+
     def test_hybrid_parallel_shared_weight_with_multi_attrs_and_subset_all_on_one_stage(
         self,
     ):
