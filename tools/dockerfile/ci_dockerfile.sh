@@ -77,6 +77,9 @@ function make_ubuntu24_cu132_dockerfile(){
   dockerfile_name="Dockerfile.cuda117_cudnn8_gcc82_ubuntu18_coverage"
   sed "s#<baseimg>#nvcr.io/nvidia/cuda:13.2.0-cudnn-devel-ubuntu24.04#g" ./Dockerfile.ubuntu24 >${dockerfile_name}
   sed -i "s#<setcuda>#ENV LD_LIBRARY_PATH=/usr/local/cuda-13.2/compat:/usr/local/cuda-13.2/targets/x86_64-linux/lib:\$LD_LIBRARY_PATH #g" ${dockerfile_name}
+  sed -i '/RUN mv \/etc\/apt\/sources.list.d\/cuda.list \/etc\/apt\/sources.list.d\/cuda.list.bak/d' ${dockerfile_name}
+  sed -i '/RUN mv \/etc\/apt\/sources.list.d\/cuda.list.bak \/etc\/apt\/sources.list.d\/cuda.list/d' ${dockerfile_name}
+  sed -i '/RUN sed -i .*\/etc\/apt\/sources.list.d\/cuda.list/d' ${dockerfile_name}
   sed -i 's#<install_cpu_package>##g' ${dockerfile_name}
   sed -i "7i ENV TZ=Asia/Beijing" ${dockerfile_name}
   sed -i "8i RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone" ${dockerfile_name}

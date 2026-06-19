@@ -282,7 +282,7 @@ jobs:
     needs: [build, build-docker]
     if: needs.build.outputs.can-skip != 'true'
     runs-on:
-      group: H-Coverage
+      group: BD_BJ-V100
     timeout-minutes: 240
     steps:
       - name: Check docker image and run container
