@@ -58,7 +58,7 @@ function make_sot_dockerfile(){
 
 
 function make_ce_framework_dockerfile(){
-  dockerfile_name="Dockerfile.cuda11.2_cudnn8_gcc82_trt8"
+  dockerfile_name="Dockerfile.cuda11.8_cudnn8_gcc11_trt8"
   sed "s#<baseimg>#nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04#g" ./Dockerfile.ubuntu20 >${dockerfile_name}
   dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
   sed -i "s#<setcuda>#ENV LD_LIBRARY_PATH=/usr/local/cuda-11.8/targets/x86_64-linux/lib:\$LD_LIBRARY_PATH #g" ${dockerfile_name}
@@ -70,6 +70,10 @@ function make_ce_framework_dockerfile(){
   sed -i "${dockerfile_line}i RUN pip3.10 install wheel distro jinja2 bce-python-sdk==0.8.74" ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN pip3.10 install nvidia-cuda-cupti-cu11==11.8.87 nvidia-cuda-runtime-cu11==11.8.89 nvidia-cudnn-cu11==8.7.0.84 nvidia-cublas-cu11==11.11.3.6 nvidia-cufft-cu11==10.9.0.58 nvidia-curand-cu11==10.3.0.86 nvidia-cusolver-cu11==11.4.1.48 nvidia-cusparse-cu11==11.7.5.86 nvidia-nccl-cu11==2.19.3" ${dockerfile_name}
   sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh trt8531#g' ${dockerfile_name}
+  sed -i 's#RUN bash /build_scripts/install_gcc.sh gcc82#RUN add-apt-repository ppa:ubuntu-toolchain-r/test \&\& apt-get update \&\& apt-get install -y gcc-11 g++-11#g' ${dockerfile_name}
+  sed -i 's#/usr/local/gcc-8.2/bin/gcc#/usr/bin/gcc-11#g' ${dockerfile_name}
+  sed -i 's#/usr/local/gcc-8.2/bin/g++#/usr/bin/g++-11#g' ${dockerfile_name}
+  sed -i 's#ENV PATH=/usr/local/gcc-8.2/bin:$PATH##g' ${dockerfile_name}
 }
 
 
