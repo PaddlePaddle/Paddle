@@ -564,8 +564,15 @@ class TestRandperm_compatible(unittest.TestCase):
             self.assertEqual(data_np.max(), n - 1)
             self.assertEqual(len(np.unique(data_np)), n)
 
-    # Coverage CI runs under coverage.py, where this 214M-element
-    # allocation/check dominates test_randperm_op runtime.
+    # Coverage jobs are slower than ordinary CPU jobs: WITH_COVERAGE=ON
+    # builds C++ with gcov instrumentation (-O0, -fprofile-arcs,
+    # -ftest-coverage), and Python tests also run under coverage.py with
+    # COVERAGE_FILE set.
+    # test_large_n_cpu intentionally uses the real large-n threshold,
+    # n=214748365, which drives a 214M-iteration CPU randperm loop and
+    # materializes about 0.8 GiB of int32 data before NumPy uniqueness
+    # checks. Keep ordinary Linux CPU running it so the non-instrumented
+    # large-n branch stays covered.
     @unittest.skipIf(
         is_coverage_run(),
         "Skip oversized CPU randperm large-n test under Coverage CI.",
