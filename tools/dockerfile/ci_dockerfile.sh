@@ -57,6 +57,57 @@ function make_sot_dockerfile(){
 }
 
 
+function use_source_built_python(){
+  dockerfile_name=$1
+  awk '
+    /^RUN apt-get update && \\$/ {
+      first_line=$0
+      if ((getline second_line) > 0 && second_line ~ /^  apt-get install -y python3\.9 /) {
+        print "RUN apt-get update && apt-get install -y make build-essential libssl-dev zlib1g-dev libbz2-dev \\"
+        print "    libreadline-dev libsqlite3-dev libncursesw5-dev libffi-dev libgdbm-dev \\"
+        print "    libgdbm-compat-dev liblzma-dev libexpat1-dev tk-dev uuid-dev xz-utils"
+        print "RUN set -eux; \\"
+        print "    for PYTHON_SOURCE_VERSION in 3.9.0 3.10.0 3.11.0 3.12.0 3.13.0; do \\"
+        print "      wget -q https://www.python.org/ftp/python/${PYTHON_SOURCE_VERSION}/Python-${PYTHON_SOURCE_VERSION}.tgz && \\"
+        print "      tar -xzf Python-${PYTHON_SOURCE_VERSION}.tgz && \\"
+        print "      cd Python-${PYTHON_SOURCE_VERSION} && \\"
+        print "      CFLAGS=\"-Wformat\" ./configure --prefix=/usr/local --enable-shared --with-ensurepip=install > /dev/null && \\"
+        print "      make -j\"$(nproc)\" > /dev/null && make altinstall > /dev/null && ldconfig && \\"
+        print "      cd .. && rm -rf Python-${PYTHON_SOURCE_VERSION} Python-${PYTHON_SOURCE_VERSION}.tgz; \\"
+        print "    done && \\"
+        print "    PYTHON_SOURCE_VERSION=3.13.0; \\"
+        print "    wget -q https://www.python.org/ftp/python/${PYTHON_SOURCE_VERSION}/Python-${PYTHON_SOURCE_VERSION}.tgz && \\"
+        print "    tar -xzf Python-${PYTHON_SOURCE_VERSION}.tgz && \\"
+        print "    cd Python-${PYTHON_SOURCE_VERSION} && \\"
+        print "    CFLAGS=\"-Wformat\" ./configure --prefix=/usr/local --enable-shared --with-ensurepip=install --disable-gil > /dev/null && \\"
+        print "    make -j\"$(nproc)\" > /dev/null && make altinstall > /dev/null && ldconfig && \\"
+        print "    cd .. && rm -rf Python-${PYTHON_SOURCE_VERSION} Python-${PYTHON_SOURCE_VERSION}.tgz && \\"
+        print "    ln -sf /usr/local/bin/python3.9 /usr/local/bin/python3 && \\"
+        print "    ln -sf /usr/local/bin/python3 /usr/local/bin/python"
+        while ((getline) > 0) {
+          if ($0 ~ /^  apt-get install python-is-python3$/) {
+            break
+          }
+        }
+        next
+      }
+      print first_line
+      if (second_line != "") {
+        print second_line
+      }
+      next
+    }
+    /^RUN rm \/usr\/bin\/python && ln -s \/usr\/bin\/python3\.9 \/usr\/bin\/python && \\$/ {
+      print "RUN rm -f /usr/bin/python && ln -s /usr/local/bin/python3.9 /usr/bin/python && \\"
+      print "    rm -f /usr/bin/python3 && ln -s /usr/local/bin/python3.9 /usr/bin/python3"
+      getline
+      next
+    }
+    { print }
+  ' ${dockerfile_name} > ${dockerfile_name}.tmp && mv ${dockerfile_name}.tmp ${dockerfile_name}
+}
+
+
 function make_ce_framework_dockerfile(){
   dockerfile_name="Dockerfile.cuda11.8_cudnn8_gcc11_trt8"
   sed "s#<baseimg>#nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04#g" ./Dockerfile.ubuntu20 >${dockerfile_name}
@@ -74,6 +125,7 @@ function make_ce_framework_dockerfile(){
   sed -i 's#/usr/local/gcc-8.2/bin/gcc#/usr/bin/gcc-11#g' ${dockerfile_name}
   sed -i 's#/usr/local/gcc-8.2/bin/g++#/usr/bin/g++-11#g' ${dockerfile_name}
   sed -i 's#ENV PATH=/usr/local/gcc-8.2/bin:$PATH##g' ${dockerfile_name}
+  use_source_built_python ${dockerfile_name}
 }
 
 
