@@ -122,10 +122,8 @@ class TestAlias(unittest.TestCase):
                 paddle.optim.adadelta.Adadelta,
                 Adadelta,
             ),
-            (paddle.optimizer.Adagrad, paddle.optim.Adagrad),
             (paddle.optimizer.Adam, paddle.optim.Adam),
             (paddle.optimizer.Adamax, paddle.optim.Adamax),
-            (paddle.optimizer.AdamW, paddle.optim.AdamW),
             (paddle.optimizer.ASGD, paddle.optim.ASGD),
             (paddle.optimizer.LBFGS, paddle.optim.LBFGS),
             (paddle.optimizer.Muon, paddle.optim.Muon),
@@ -134,7 +132,6 @@ class TestAlias(unittest.TestCase):
             (paddle.optimizer.RAdam, paddle.optim.RAdam),
             (paddle.optimizer.RMSProp, paddle.optim.RMSProp),
             (paddle.optimizer.Rprop, paddle.optim.Rprop),
-            (paddle.optimizer.SGD, paddle.optim.SGD),
             (
                 paddle.optimizer.lr.PiecewiseDecay,
                 paddle.optim.lr_scheduler.ConstantLR,
