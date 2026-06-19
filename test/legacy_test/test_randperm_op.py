@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 from itertools import product
 
@@ -28,6 +29,12 @@ from utils import dygraph_guard
 
 import paddle
 from paddle.base import core
+
+
+def is_coverage_run():
+    return os.getenv("COVERAGE_FILE") is not None or (
+        os.getenv("WITH_COVERAGE", "OFF") == "ON"
+    )
 
 
 def check_randperm_out(n, data_np):
@@ -557,6 +564,12 @@ class TestRandperm_compatible(unittest.TestCase):
             self.assertEqual(data_np.max(), n - 1)
             self.assertEqual(len(np.unique(data_np)), n)
 
+    # Coverage CI runs under coverage.py, where this 214M-element
+    # allocation/check dominates test_randperm_op runtime.
+    @unittest.skipIf(
+        is_coverage_run(),
+        "Skip oversized CPU randperm large-n test under Coverage CI.",
+    )
     def test_large_n_cpu(self):
         paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': 1})
         # uint32_max // 20 + 1 = 214748365, just exceeds the threshold
