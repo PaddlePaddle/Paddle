@@ -1,7 +1,0 @@
-diff --git a/filters.h b/filters.h
-index 626622845..39665f1f9 100644
---- a/filters.h
-+++ b/filters.h
-@@ -1369 +1369 @@
--	SourceTemplate<T>(BufferedTransformation *attachment)
-+	SourceTemplate(BufferedTransformation *attachment)

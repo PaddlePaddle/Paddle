@@ -3171,6 +3171,60 @@ void MatmulInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void MmOutDtypeInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         DataType out_dtype,
+                         MetaTensor* out,
+                         MetaConfig config) {
+  PADDLE_ENFORCE_EQ(
+      out_dtype,
+      DataType::FLOAT32,
+      common::errors::InvalidArgument(
+          "The out_dtype of paddle.mm currently only supports float32."));
+  PADDLE_ENFORCE_EQ(
+      x.dtype(),
+      DataType::BFLOAT16,
+      common::errors::InvalidArgument(
+          "The out_dtype of paddle.mm currently only supports bfloat16 "
+          "Input(X)."));
+  PADDLE_ENFORCE_EQ(
+      y.dtype(),
+      DataType::BFLOAT16,
+      common::errors::InvalidArgument(
+          "The out_dtype of paddle.mm currently only supports bfloat16 "
+          "Input(Y)."));
+
+  auto dims_x = vectorize(x.dims());
+  auto dims_y = vectorize(y.dims());
+  PADDLE_ENFORCE_EQ(
+      dims_x.size(),
+      2UL,
+      common::errors::InvalidArgument(
+          "The out_dtype of paddle.mm currently only supports 2-D Input(X)."));
+  PADDLE_ENFORCE_EQ(
+      dims_y.size(),
+      2UL,
+      common::errors::InvalidArgument(
+          "The out_dtype of paddle.mm currently only supports 2-D Input(Y)."));
+  const int64_t K_lhs = dims_x[1];
+  const int64_t K_rhs = dims_y[0];
+  if (config.is_runtime || (K_lhs >= 0 && K_rhs >= 0)) {
+    PADDLE_ENFORCE_EQ(
+        K_lhs,
+        K_rhs,
+        common::errors::InvalidArgument(
+            "Input(X)'s width must equal Input(Y)'s height, but received %d "
+            "and %d.",
+            K_lhs,
+            K_rhs));
+  }
+
+  out->set_dims(make_ddim({dims_x[0], dims_y[1]}));
+  out->set_dtype(DataType::FLOAT32);
+  out->set_layout(x.layout());
+  out->share_lod(x);
+}
+
 void MatmulWithFlattenInferMeta(const MetaTensor& x,
                                 const MetaTensor& y,
                                 int x_num_col_dims,

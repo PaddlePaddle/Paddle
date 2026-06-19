@@ -117,7 +117,7 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
     const DenseTensor* labels,
     const bool softLabel,
     const int ignore_index,
-    const int axis_dim) {
+    const int64_t axis_dim) {
   int64_t batch_size = prob->dims()[0];
   int64_t class_num = prob->dims()[1];
 

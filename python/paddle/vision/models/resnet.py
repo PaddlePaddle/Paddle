@@ -13,13 +13,14 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle import nn
 from paddle.utils.download import get_weights_path_from_url
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from typing import Literal, TypedDict
 
     from typing_extensions import NotRequired, Unpack

@@ -308,15 +308,20 @@ def _uncompress_file_zip(filepath):
         return uncompressed_path
 
 
-def _safe_extract_tar(tar, path, members=None):
+def _safe_extract_tar(tar, path, members=None, on_unsafe='skip'):
     """
     Safely extract tar files to prevent path traversal attacks.
 
     Security measures:
     1. Verify resolved paths are within target directory
-    2. Skip symlinks, hardlinks and other special files
+    2. Skip or reject symlinks, hardlinks and other special files
     3. Only extract regular files and directories
     """
+    if on_unsafe not in ('skip', 'raise'):
+        raise ValueError(
+            f"on_unsafe must be one of 'skip' or 'raise', but got {on_unsafe!r}"
+        )
+
     members_to_check = members if members is not None else tar.getmembers()
     extract_members = []
 
@@ -326,8 +331,13 @@ def _safe_extract_tar(tar, path, members=None):
                 f"Attempted path traversal in tar file: {member.name}"
             )
 
-        # Skip symlinks, hardlinks, and other special files to prevent symlink attacks
+        # Skip or reject symlinks, hardlinks, and other special files to prevent symlink attacks
         if member.issym():
+            if on_unsafe == 'raise':
+                raise ValueError(
+                    "Unsafe tar member rejected for security: "
+                    f"{member.name} (symbolic link)"
+                )
             warnings.warn(
                 f"Skipping symbolic link in tar for security: {member.name}",
                 category=UserWarning,
@@ -335,6 +345,11 @@ def _safe_extract_tar(tar, path, members=None):
             )
             continue
         elif member.islnk():
+            if on_unsafe == 'raise':
+                raise ValueError(
+                    "Unsafe tar member rejected for security: "
+                    f"{member.name} (hard link)"
+                )
             warnings.warn(
                 f"Skipping hard link in tar for security: {member.name}",
                 category=UserWarning,
@@ -342,6 +357,11 @@ def _safe_extract_tar(tar, path, members=None):
             )
             continue
         elif not (member.isfile() or member.isdir()):
+            if on_unsafe == 'raise':
+                raise ValueError(
+                    "Unsafe tar member rejected for security: "
+                    f"{member.name} (special file)"
+                )
             warnings.warn(
                 f"Skipping special file in tar for security: {member.name}",
                 category=UserWarning,

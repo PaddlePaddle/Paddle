@@ -18,6 +18,7 @@
 #include <limits>
 #include <set>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -335,22 +336,29 @@ struct ReduceConfig {
 
   int SplitInput(int parallelism) {
     const int current_step = step_input;
-    step_input *= parallelism;
+    const int64_t next_step = static_cast<int64_t>(step_input) * parallelism;
+    PADDLE_ENFORCE_LE_INT_MAX(next_step, "reduce step_input");
+    step_input = static_cast<int>(next_step);
     return current_step;
   }
 
   int SplitOutput(int parallelism) {
     const int current_step = step_output;
-    step_output *= parallelism;
+    const int64_t next_step = static_cast<int64_t>(step_output) * parallelism;
+    PADDLE_ENFORCE_LE_INT_MAX(next_step, "reduce step_output");
+    step_output = static_cast<int>(next_step);
     return current_step;
   }
 
   dim3 GetBlockDim() const { return dim3(block_width, block_height); }
 
   dim3 GetGridDim() const {
-    return dim3(phi::backends::gpu::DivUp<int64_t>(
-                    num_outputs / output_vec_size, step_output),
-                ctas_per_output);
+    const int64_t grid_x = phi::backends::gpu::DivUp<int64_t>(
+        num_outputs / output_vec_size, step_output);
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "grid.x");
+    PADDLE_ENFORCE_LE_UINT32_MAX(ctas_per_output, "grid.y");
+    return dim3(static_cast<uint32_t>(grid_x),
+                static_cast<uint32_t>(ctas_per_output));
   }
 
   HOSTDEVICE bool ShouldReduceBlockX() const {
@@ -443,7 +451,8 @@ struct ReduceConfig {
       return 0;
     }
 
-    auto size = (int64_t)element_size_bytes * num_outputs * ctas_per_output;
+    int64_t size = static_cast<int64_t>(element_size_bytes) * num_outputs *
+                   ctas_per_output;
     if (!ShouldReduceBlockX()) {
       size *= GetBlockDim().x * output_vec_size;
     }
@@ -451,15 +460,17 @@ struct ReduceConfig {
     return size;
   }
 
-  int SemaphoreSize() const {
+  size_t SemaphoreSize() const {
     if (!ShouldReduceGlobal()) {
       return 0;
     }
-    return sizeof(int) * GetGridDim().x;
+    return sizeof(int) * static_cast<size_t>(GetGridDim().x);
   }
 
   int ValuesPerThread() const {
-    return phi::backends::gpu::DivUp<int64_t>(num_inputs, step_input);
+    int64_t val = phi::backends::gpu::DivUp<int64_t>(num_inputs, step_input);
+    PADDLE_ENFORCE_LE_INT_MAX(val, "values per thread");
+    return static_cast<int>(val);
   }
 };
 
@@ -581,19 +592,21 @@ ReduceConfig SetReduceConfig(const DenseTensorIterator& iter) {
       grid <= target_grid_size) {
     // Calculate optimal block splitting strategy.
     // Based on SM utilization.
-    int ctas_per_output1 =
+    const int64_t ctas_per_output1 =
         phi::backends::gpu::DivUp<int64_t>(target_grid_size, grid);
     // Based on min workload.
-    int ctas_per_output2 = phi::backends::gpu::DivUp<int64_t>(
+    const int64_t ctas_per_output2 = phi::backends::gpu::DivUp<int64_t>(
         config.ValuesPerThread(), min_values_per_thread);
     // Based on max workload.
-    int ctas_per_output3 = phi::backends::gpu::DivUp<int64_t>(
+    const int64_t ctas_per_output3 = phi::backends::gpu::DivUp<int64_t>(
         config.ValuesPerThread(), max_values_per_thread);
 
     // Choose best splitting strategy to balance parallelism and per-thread
     // workload.
-    config.ctas_per_output = std::max(
-        std::min<int>(ctas_per_output1, ctas_per_output2), ctas_per_output3);
+    const int64_t ctas_per_output = std::max(
+        std::min(ctas_per_output1, ctas_per_output2), ctas_per_output3);
+    PADDLE_ENFORCE_LE_INT_MAX(ctas_per_output, "reduce ctas_per_output");
+    config.ctas_per_output = static_cast<int>(ctas_per_output);
 
     if (config.ctas_per_output > 1) {
       // Case 3: Split input across blocks (requires global memory

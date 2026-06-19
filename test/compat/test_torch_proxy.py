@@ -15,6 +15,7 @@
 import pathlib
 import sys
 import unittest
+from typing import Optional
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -185,15 +186,17 @@ class TestFakeInterface(unittest.TestCase):
 class TestDeviceAsTypeHints(unittest.TestCase):
     @paddle.use_compat_guard()
     def test_device_as_type_hints(self):
-        from typing import Optional
-
         import torch
 
-        def fn(x: Optional[torch.device]):  # noqa: FA100
+        # TODO: Remove Optional[...] coverage once Python 3.10 support is dropped.
+        def fn(x: Optional[torch.device]):  # noqa: UP045
             return x
 
         self.assertTrue(callable(torch.device))
-        self.assertEqual(fn.__annotations__["x"], Optional[torch.device])
+        self.assertEqual(
+            fn.__annotations__["x"],
+            Optional[torch.device],  # noqa: UP045
+        )
         cpu_device = torch.device("cpu")
         self.assertEqual(str(cpu_device), "cpu")
         self.assertEqual(

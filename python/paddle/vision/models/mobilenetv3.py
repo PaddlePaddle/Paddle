@@ -17,7 +17,6 @@ from __future__ import annotations
 from functools import partial
 from typing import (
     TYPE_CHECKING,
-    Callable,
     TypedDict,
 )
 
@@ -31,6 +30,8 @@ from ..ops import ConvNormActivation
 from ._utils import _make_divisible
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from paddle import Tensor
 
     class _MobileNetV3Options(TypedDict):

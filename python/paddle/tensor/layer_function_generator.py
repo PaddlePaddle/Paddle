@@ -16,17 +16,12 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
-from paddle import _C_ops, _legacy_C_ops
-
-from ..base.data_feeder import check_variable_and_dtype
 from ..common_ops_import import Variable
 from ..framework import (
     LayerHelper,
     OpProtoHolder,
     convert_nptype_to_datatype_or_vartype,
     core,
-    in_dynamic_mode,
-    in_dynamic_or_pir_mode,
 )
 
 if TYPE_CHECKING:
@@ -162,87 +157,4 @@ def generate_layer_fn(op_type: str):
         return helper.append_activation(out_var)
 
     func.__name__ = op_type
-    return func
-
-
-def generate_activation_fn(op_type: str):
-    """Register the Python layer for an Operator without Attribute.
-
-    Args:
-       op_type: The name of the operator to be created.
-
-    This function takes in the operator type (sigmoid, exp , tanh etc) and
-    creates the operator functionality.
-
-    """
-
-    def func(x, name: str | None = None) -> Tensor:
-        if in_dynamic_or_pir_mode():
-            if hasattr(_C_ops, op_type):
-                op = getattr(_C_ops, op_type)
-                return op(x)
-            else:
-                # TODO(dev): Because some ops' yaml has not been migrated.
-                # Replace it with _C_ops while all yaml work is done.
-                op = getattr(_legacy_C_ops, op_type)
-                return op(x)
-        else:
-            if op_type not in ["abs", "exp", "square"]:
-                check_variable_and_dtype(
-                    x, 'x', ['float16', 'float32', 'float64'], op_type
-                )
-            else:
-                # abs exp square ops support dtype(int32, int64, float16, float32, float64)
-                check_variable_and_dtype(
-                    x,
-                    'x',
-                    [
-                        'int32',
-                        'int64',
-                        'float16',
-                        'float32',
-                        'float64',
-                        'complex64',
-                        'complex128',
-                        'uint16',
-                    ],
-                    op_type,
-                )
-
-            helper = LayerHelper(op_type, **locals())
-
-            output = helper.create_variable_for_type_inference(dtype=x.dtype)
-            helper.append_op(
-                type=op_type, inputs={"X": x}, outputs={"Out": output}
-            )
-            return output
-
-    return func
-
-
-def generate_inplace_fn(inplace_op_type):
-    """Register the Python layer for an Inplace Operator without Attribute.
-
-    Args:
-       inplace_op_type: The name of the inplace operator to be created.
-
-    This function takes in the inplace operator type (exp_ , ceil_ etc) and
-    creates the operator functionality.
-    """
-    origin_op_type = inplace_op_type[:-1]
-
-    def func(x, name=None):
-        if in_dynamic_mode():
-            if hasattr(_C_ops, inplace_op_type):
-                op = getattr(_C_ops, inplace_op_type)
-                return op(x)
-            else:
-                op = getattr(_legacy_C_ops, inplace_op_type)
-                return op(x)
-
-    func.__name__ = inplace_op_type
-    func.__doc__ = f"""
-Inplace version of ``{origin_op_type}`` API, the output Tensor will be inplaced with input ``x``.
-Please refer to :ref:`api_paddle_{origin_op_type}`.
-"""
     return func

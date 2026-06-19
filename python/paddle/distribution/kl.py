@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import functools
 import warnings
-from typing import TYPE_CHECKING, Callable, TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 import paddle
 from paddle.distribution.bernoulli import Bernoulli
@@ -40,6 +40,8 @@ from paddle.distribution.uniform import Uniform
 from paddle.framework import in_dynamic_mode
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from paddle import Tensor
 
     _T = TypeVar('_T')

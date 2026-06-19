@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/nanmedian_grad_kernel.h"
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
@@ -113,15 +114,20 @@ void CalcNanMedianGradKernel_GPU(const Context& dev_ctx,
   int64_t x_rank = x_dim.size();
   int64_t stride = x_dim[x_rank - 1];
   int64_t pre_dim = numel / stride;
+  PADDLE_ENFORCE_LE_INT_MAX(pre_dim, "nanmedian grad pre_dim");
   if (!evenly) {
     if (mode == "avg") {
       KernelNanmedianMeanGrad<T>
-          <<<GET_BLOCKS(pre_dim), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
-              m_index, out_grad_ptr, dx_data, stride, pre_dim);
+          <<<GET_BLOCKS(static_cast<int>(pre_dim)),
+             PADDLE_CUDA_NUM_THREADS,
+             0,
+             stream>>>(m_index, out_grad_ptr, dx_data, stride, pre_dim);
     } else {  // mode == "min"
       KernelNanmedianMinGrad<T>
-          <<<GET_BLOCKS(pre_dim), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
-              m_index, out_grad_ptr, dx_data, stride, pre_dim);
+          <<<GET_BLOCKS(static_cast<int>(pre_dim)),
+             PADDLE_CUDA_NUM_THREADS,
+             0,
+             stream>>>(m_index, out_grad_ptr, dx_data, stride, pre_dim);
     }
   } else {
     std::vector<int64_t> dims;
@@ -130,15 +136,11 @@ void CalcNanMedianGradKernel_GPU(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(&tmp_x);
     T* tmp_x_data = tmp_x.data<T>();
     if (mode == "avg") {
-      KernelNanmedianGradEvenly<T>
-          <<<GET_BLOCKS(pre_dim), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
-              m_data,
-              m_index,
-              out_grad_ptr,
-              tmp_x_data,
-              dx_data,
-              stride,
-              pre_dim);
+      KernelNanmedianGradEvenly<T><<<GET_BLOCKS(static_cast<int>(pre_dim)),
+                                     PADDLE_CUDA_NUM_THREADS,
+                                     0,
+                                     stream>>>(
+          m_data, m_index, out_grad_ptr, tmp_x_data, dx_data, stride, pre_dim);
     }
     auto grad_dim = x_grad->dims();
     x_grad->Resize(x.dims());

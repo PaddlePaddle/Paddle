@@ -16,6 +16,8 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/common/enforce.h"
+
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/jit/kernels.h"
@@ -377,14 +379,17 @@ class SequencePoolFunctor<CPUContext, T> {
               "Sequence_pool should run on CPU Device when pooltype is SUM"));
       const T* src = input.data<T>();
       T* dst = dev_ctx.template Alloc<T>(output);
-      phi::jit::seq_pool_attr_t attr(
-          static_cast<int>(input.numel() / input.dims()[0]),
-          phi::jit::SeqPoolType::kSum);
+      int64_t w_64 = input.numel() / input.dims()[0];
+      PADDLE_ENFORCE_LE_INT_MAX(w_64, "sequence_pooling SUM attr.w");
+      phi::jit::seq_pool_attr_t attr(static_cast<int>(w_64),
+                                     phi::jit::SeqPoolType::kSum);
       auto seqpool =
           phi::jit::KernelFuncs<phi::jit::SeqPoolTuple<T>, CPUPlace>::Cache()
               .At(attr);
       for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
-        attr.h = static_cast<int>(lod[i + 1] - lod[i]);
+        const size_t h_64 = lod[i + 1] - lod[i];
+        PADDLE_ENFORCE_LE_INT_MAX(h_64, "sequence_pooling SUM attr.h");
+        attr.h = static_cast<int>(h_64);
         if (attr.h == 0) {
           for (int j = 0; j < attr.w; ++j) {
             dst[j] = pad_value;

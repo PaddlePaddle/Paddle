@@ -180,8 +180,8 @@ __global__ void SoftmaxMaskFuseV2GPUKernel(const T* x_data,
                                            const MT* mask_data,
                                            T* y_data,
                                            int64_t batch_count,
-                                           uint32_t attn_heads,
-                                           uint32_t query_seqs,
+                                           int64_t attn_heads,
+                                           int64_t query_seqs,
                                            int key_seq_len) {
   // the forward gpu kernel
   constexpr int next_pow2 = 1 << pow2_index;
@@ -190,14 +190,13 @@ __global__ void SoftmaxMaskFuseV2GPUKernel(const T* x_data,
   constexpr int kLocalBatchSize = (next_pow2 <= 128) ? 2 : 1;
   constexpr int kOneLoadingCounts = 4;
 
-  uint32_t blockInGrid = blockIdx.x;
+  int64_t blockInGrid = static_cast<int64_t>(blockIdx.x);
+  int64_t indexInMaskDim0 = blockInGrid / (attn_heads * query_seqs);
+  int64_t indexInMaskDim2 = blockInGrid % query_seqs;
 
-  uint32_t indexInMaskDim0 = blockInGrid / (attn_heads * query_seqs);
-  uint32_t indexInMaskDim2 = blockInGrid % (query_seqs);
-
-  int64_t data_first_idx =
-      (blockDim.y * static_cast<int64_t>(blockInGrid) + threadIdx.y) *
-      kLocalBatchSize;
+  int64_t data_first_idx = (static_cast<int64_t>(blockDim.y) * blockInGrid +
+                            static_cast<int64_t>(threadIdx.y)) *
+                           kLocalBatchSize;
 
   // The original implementation was like this
   // int64_t mask_fist_idx =
@@ -568,7 +567,17 @@ void FusedSoftmaxMaskKernel(const Context& dev_ctx,
       attn_heads > dev_ctx.GetCUDAMaxGridDimSize()[1] ||
       batches > dev_ctx.GetCUDAMaxGridDimSize()[2]) {
     int64_t total_blocks = batch_count / batches_per_block;
-    dim3 blocks(total_blocks);
+    PADDLE_ENFORCE_LE(total_blocks,
+                      dev_ctx.GetCUDAMaxGridDimSize()[0],
+                      common::errors::InvalidArgument(
+                          "The grid.x of fused_softmax_mask CUDA kernel must "
+                          "not exceed the device limit. Expected total_blocks "
+                          "<= %d, but received total_blocks = %ld.",
+                          dev_ctx.GetCUDAMaxGridDimSize()[0],
+                          total_blocks));
+    PADDLE_ENFORCE_LE_UINT32_MAX(total_blocks,
+                                 "fused_softmax_mask CUDA launch grid.x");
+    dim3 blocks(static_cast<uint32_t>(total_blocks));
     int64_t query_seqs = query_seq_len / batches_per_block;
     CallSoftmaxMaskGPUKernelV2<T, Context>(dev_ctx,
                                            x,
@@ -582,7 +591,16 @@ void FusedSoftmaxMaskKernel(const Context& dev_ctx,
                                            blocks,
                                            threads);
   } else {
-    dim3 blocks(query_seq_len / batches_per_block, attn_heads, batches);
+    const int64_t query_seq_blocks = query_seq_len / batches_per_block;
+    PADDLE_ENFORCE_LE_UINT32_MAX(query_seq_blocks,
+                                 "fused_softmax_mask CUDA launch grid.x");
+    PADDLE_ENFORCE_LE_UINT32_MAX(attn_heads,
+                                 "fused_softmax_mask CUDA launch grid.y");
+    PADDLE_ENFORCE_LE_UINT32_MAX(batches,
+                                 "fused_softmax_mask CUDA launch grid.z");
+    dim3 blocks(static_cast<uint32_t>(query_seq_blocks),
+                static_cast<uint32_t>(attn_heads),
+                static_cast<uint32_t>(batches));
     CallSoftmaxMaskGPUKernelV1<T, Context>(dev_ctx,
                                            x,
                                            mask,
