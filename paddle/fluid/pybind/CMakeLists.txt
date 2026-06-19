@@ -645,6 +645,15 @@ if(WITH_PYTHON)
     target_compile_options(${SHARD_LIB_NAME} PRIVATE -Wno-maybe-uninitialized)
   endif()
 
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_CXX_COMPILER_ID STREQUAL
+                                            "GNU")
+    # Keep protobuf generated descriptor data in a regular loadable segment so
+    # post-link ELF rewriting preserves the relative relocations into it.
+    target_link_options(
+      ${SHARD_LIB_NAME} PRIVATE
+      "LINKER:-T,${PADDLE_SOURCE_DIR}/cmake/protobuf_protodesc_cold.ld")
+  endif()
+
   # cc_test do not respect deps, whole archive to link symbols that may need by test
   if(WITH_TESTING)
     #set_target_properties(${SHARD_LIB_NAME} PROPERTIES LINK_FLAGS "-Wl,--whole-archive")
