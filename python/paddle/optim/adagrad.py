@@ -17,7 +17,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
 
     from paddle import Tensor
     from paddle.optimizer.adagrad import _AdagradParameterConfig
@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 import warnings
 
 from paddle.optimizer import Adagrad as PaddleAdagrad
+from paddle.optimizer.lr import InverseTimeDecay
 
 
 class Adagrad(PaddleAdagrad):
@@ -42,16 +43,13 @@ class Adagrad(PaddleAdagrad):
         differentiable: bool = False,
         fused: bool | None = None,
     ) -> None:
-        if (
-            lr_decay != 0
-            or foreach is not None
-            or differentiable is True
-            or fused is not None
-        ):
+        if foreach is not None or differentiable is True or fused is not None:
             warnings.warn(
-                "lr_decay, foreach, differentiable, fused are currently not supported in Adagrad and will be ignored. "
+                "foreach, differentiable, fused are currently not supported in Adagrad and will be ignored. "
                 "The parameters are reserved for future implementation."
             )
+        if lr_decay != 0:
+            lr = InverseTimeDecay(learning_rate=lr, gamma=lr_decay)
         super().__init__(
             learning_rate=lr,
             epsilon=eps,
@@ -60,3 +58,10 @@ class Adagrad(PaddleAdagrad):
             initial_accumulator_value=initial_accumulator_value,
             maximize=maximize,
         )
+
+    def step(
+        self, closure: Callable[[], Tensor] | None = None
+    ) -> Tensor | None:
+        if isinstance(self._learning_rate, InverseTimeDecay):
+            self._learning_rate.step()
+        return super().step(closure)

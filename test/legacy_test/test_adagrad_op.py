@@ -370,6 +370,86 @@ class TestAdagradMultiPrecision2_0(unittest.TestCase):
                 )
 
 
+class TestAdagradLrDecay(unittest.TestCase):
+    """Test Adagrad with lr_decay parameter"""
+
+    def test_lr_decay_dygraph(self):
+        """Test that learning rate decays correctly over multiple steps"""
+        paddle.disable_static()
+        paddle.seed(42)
+        paddle.set_device(get_device())
+
+        input_data = paddle.randn((5, 5))
+        model = paddle.nn.Linear(5, 5)
+        lr_decay = 0.1
+        base_lr = 0.1
+        optimizer = paddle.optim.Adagrad(
+            model.parameters(), base_lr, lr_decay=lr_decay
+        )
+
+        losses = []
+        lrs = []
+        for step in range(5):
+            output = model(input_data)
+            loss = paddle.mean(output)
+            losses.append(loss.numpy())
+            lrs.append(optimizer.get_lr())
+            loss.backward()
+            optimizer.step()
+            optimizer.clear_grad()
+
+        lrs_ref = []
+        for step in range(5):
+            lrs_ref.append(base_lr / (1 + step * lr_decay))
+
+        self.assertEqual(len(losses), 5)
+        np.testing.assert_array_equal(lrs, lrs_ref)
+        self.assertIsInstance(
+            optimizer._learning_rate, paddle.optimizer.lr.InverseTimeDecay
+        )
+        paddle.enable_static()
+
+    def test_lr_decay_zero(self):
+        """Test that lr_decay=0 doesn't affect optimization"""
+        paddle.disable_static()
+        paddle.seed(42)
+        paddle.set_device(get_device())
+
+        input_data = paddle.randn((5, 5))
+        model1 = paddle.nn.Linear(5, 5)
+        model2 = paddle.nn.Linear(5, 5)
+
+        # Copy model weights
+        for p1, p2 in zip(model1.parameters(), model2.parameters()):
+            p2.set_value(p1)
+
+        optimizer1 = paddle.optim.Adagrad(
+            lr=0.1, params=model1.parameters(), lr_decay=0.0
+        )
+        optimizer2 = paddle.optim.Adagrad(
+            lr=0.1, params=model2.parameters(), lr_decay=0.0
+        )
+
+        for _ in range(2):
+            out1 = model1(input_data)
+            loss1 = paddle.mean(out1)
+            loss1.backward()
+            optimizer1.step()
+            optimizer1.clear_grad()
+
+            out2 = model2(input_data)
+            loss2 = paddle.mean(out2)
+            loss2.backward()
+            optimizer2.step()
+            optimizer2.clear_grad()
+
+        # Both should produce identical results
+        for p1, p2 in zip(model1.parameters(), model2.parameters()):
+            np.testing.assert_allclose(p1.numpy(), p2.numpy(), rtol=1e-5)
+
+        paddle.enable_static()
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
