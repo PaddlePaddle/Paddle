@@ -59,15 +59,29 @@ WORKDIR /home
 RUN wget -q https://cmake.org/files/v3.18/cmake-3.18.0-Linux-x86_64.tar.gz && tar -zxvf cmake-3.18.0-Linux-x86_64.tar.gz && rm cmake-3.18.0-Linux-x86_64.tar.gz
 ENV PATH=/home/cmake-3.18.0-Linux-x86_64/bin:$PATH
 
-RUN apt-get update && \
-  apt-get install -y python3.9 python3.9-dev python3.9-distutils \
-  python3.10 python3.10-dev python3.10-distutils \
-  python3.11 python3.11-dev python3.11-distutils \
-  python3.12 python3.12-dev \
-  python3.13 python3.13-dev python3.13-nogil && \
-  apt-get install python-is-python3
-RUN rm /usr/bin/python && ln -s /usr/bin/python3.9 /usr/bin/python && \
-    rm /usr/bin/python3 && ln -s /usr/bin/python3.9 /usr/bin/python3
+RUN apt-get update && apt-get install -y make libssl-dev zlib1g-dev libbz2-dev \
+    libreadline-dev libsqlite3-dev libncursesw5-dev libffi-dev libgdbm-dev \
+    libgdbm-compat-dev liblzma-dev libexpat1-dev tk-dev uuid-dev xz-utils
+RUN set -eux; \
+    for PYTHON_SOURCE_VERSION in 3.9.0 3.10.0 3.11.0 3.12.0 3.13.0; do \
+      wget -q https://www.python.org/ftp/python/${PYTHON_SOURCE_VERSION}/Python-${PYTHON_SOURCE_VERSION}.tgz && \
+      tar -xzf Python-${PYTHON_SOURCE_VERSION}.tgz && \
+      cd Python-${PYTHON_SOURCE_VERSION} && \
+      CFLAGS="-Wformat" ./configure --prefix=/usr/local --enable-shared --with-ensurepip=install > /dev/null && \
+      make -j"$(nproc)" > /dev/null && make altinstall > /dev/null && ldconfig && \
+      cd .. && rm -rf Python-${PYTHON_SOURCE_VERSION} Python-${PYTHON_SOURCE_VERSION}.tgz; \
+    done && \
+    PYTHON_SOURCE_VERSION=3.13.0; \
+    wget -q https://www.python.org/ftp/python/${PYTHON_SOURCE_VERSION}/Python-${PYTHON_SOURCE_VERSION}.tgz && \
+    tar -xzf Python-${PYTHON_SOURCE_VERSION}.tgz && \
+    cd Python-${PYTHON_SOURCE_VERSION} && \
+    CFLAGS="-Wformat" ./configure --prefix=/usr/local --enable-shared --with-ensurepip=install --disable-gil > /dev/null && \
+    make -j"$(nproc)" > /dev/null && make altinstall > /dev/null && ldconfig && \
+    cd .. && rm -rf Python-${PYTHON_SOURCE_VERSION} Python-${PYTHON_SOURCE_VERSION}.tgz && \
+    ln -sf /usr/local/bin/python3.9 /usr/local/bin/python3 && \
+    ln -sf /usr/local/bin/python3 /usr/local/bin/python
+RUN rm -f /usr/bin/python && ln -s /usr/local/bin/python3.9 /usr/bin/python && \
+    rm -f /usr/bin/python3 && ln -s /usr/local/bin/python3.9 /usr/bin/python3
 
 WORKDIR /home
 RUN wget -q https://bootstrap.pypa.io/get-pip.py
