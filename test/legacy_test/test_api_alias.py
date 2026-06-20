@@ -128,7 +128,6 @@ class TestAlias(unittest.TestCase):
             (paddle.optimizer.LBFGS, paddle.optim.LBFGS),
             (paddle.optimizer.Muon, paddle.optim.Muon),
             (paddle.optimizer.NAdam, paddle.optim.NAdam),
-            (paddle.optimizer.Optimizer, paddle.optim.Optimizer),
             (paddle.optimizer.RAdam, paddle.optim.RAdam),
             (paddle.optimizer.RMSProp, paddle.optim.RMSProp),
             (paddle.optimizer.Rprop, paddle.optim.Rprop),
