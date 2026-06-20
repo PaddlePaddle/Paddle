@@ -260,7 +260,8 @@ TEST(SparseConstructorTest, SparseCooTensorWithOptions) {
                                             at::kFloat,
                                             at::kSparse,
                                             at::kCPU,
-                                            /*pin_memory=*/false);
+                                            /*pin_memory=*/false,
+                                            std::nullopt);
 
   ASSERT_TRUE(sparse.is_sparse());
   ASSERT_EQ(sparse.layout(), c10::kSparse);
@@ -301,8 +302,8 @@ TEST(SparseConstructorTest, SparseCsrTensorBasic) {
   values_ptr[3] = 4.0f;
 
   // Create sparse CSR tensor
-  at::Tensor sparse =
-      at::sparse_csr_tensor(crow_indices, col_indices, values, {3, 4});
+  at::Tensor sparse = at::sparse_csr_tensor(
+      crow_indices, col_indices, values, {3, 4}, at::TensorOptions());
 
   ASSERT_TRUE(sparse.is_sparse_csr());
   ASSERT_TRUE(sparse.is_sparse());
@@ -470,8 +471,8 @@ TEST(SparseConstructorTest, SparseCsrTensorDouble) {
   values_ptr[0] = 1.5;
   values_ptr[1] = 2.5;
 
-  at::Tensor sparse =
-      at::sparse_csr_tensor(crow_indices, col_indices, values, {2, 2});
+  at::Tensor sparse = at::sparse_csr_tensor(
+      crow_indices, col_indices, values, {2, 2}, at::TensorOptions());
 
   ASSERT_TRUE(sparse.is_sparse_csr());
   ASSERT_TRUE(sparse.is_sparse());
@@ -513,8 +514,8 @@ TEST(SparseConstructorTest, SparseCsrTensorLarger) {
   values_ptr[4] = 5.0f;
   values_ptr[5] = 6.0f;
 
-  at::Tensor sparse =
-      at::sparse_csr_tensor(crow_indices, col_indices, values, {4, 5});
+  at::Tensor sparse = at::sparse_csr_tensor(
+      crow_indices, col_indices, values, {4, 5}, at::TensorOptions());
 
   ASSERT_TRUE(sparse.is_sparse_csr());
   ASSERT_TRUE(sparse.is_sparse());
@@ -536,8 +537,8 @@ TEST(SparseConstructorTest, SparseCsrTensorEmpty) {
 
   at::Tensor values = at::empty({0}, c10::TensorOptions().dtype(at::kFloat));
 
-  at::Tensor sparse =
-      at::sparse_csr_tensor(crow_indices, col_indices, values, {3, 3});
+  at::Tensor sparse = at::sparse_csr_tensor(
+      crow_indices, col_indices, values, {3, 3}, at::TensorOptions());
 
   ASSERT_TRUE(sparse.is_sparse_csr());
   ASSERT_TRUE(sparse.is_sparse());

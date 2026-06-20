@@ -54,6 +54,8 @@ using MemoryFormat = c10::MemoryFormat;
 using IntArrayRef = c10::IntArrayRef;
 using OptionalIntArrayRef = c10::OptionalIntArrayRef;
 using ScalarType = c10::ScalarType;
+using TensorList = c10::ArrayRef<Tensor>;
+using ITensorListRef = c10::ArrayRef<Tensor>;
 }  // namespace at
 
 namespace at {  // NOLINT(build/namespaces)
@@ -288,6 +290,7 @@ class Tensor : public TensorBase {
   Tensor std(at::OptionalIntArrayRef dim = ::std::nullopt,
              const ::std::optional<at::Scalar>& correction = ::std::nullopt,
              bool keepdim = false) const;
+  Tensor std(int dim) const { return std(at::IntArrayRef{dim}); }
 
   Tensor tensor_data() const {
     PaddleTensor result;

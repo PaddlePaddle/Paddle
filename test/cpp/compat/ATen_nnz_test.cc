@@ -72,7 +72,8 @@ TEST(TensorNNZTest, SparseCsr_NNZ_Correct) {
   at::Tensor crow = at::tensor({0, 1, 2, 3}, at::kInt);
   at::Tensor col = at::tensor({0, 1, 2}, at::kInt);
   at::Tensor vals = at::tensor({1.0f, 1.0f, 1.0f}, at::kFloat);
-  at::Tensor sparse_csr = at::sparse_csr_tensor(crow, col, vals, {3, 3});
+  at::Tensor sparse_csr =
+      at::sparse_csr_tensor(crow, col, vals, {3, 3}, at::TensorOptions());
 
   ASSERT_EQ(sparse_csr._nnz(), 3);
 }
@@ -82,7 +83,8 @@ TEST(TensorNNZTest, SparseCsr_NNZ_SingleRow) {
   at::Tensor crow = at::tensor({0, 2}, at::kInt);
   at::Tensor col = at::tensor({0, 2}, at::kInt);
   at::Tensor vals = at::tensor({5.0f, 7.0f}, at::kFloat);
-  at::Tensor sparse_csr = at::sparse_csr_tensor(crow, col, vals, {1, 3});
+  at::Tensor sparse_csr =
+      at::sparse_csr_tensor(crow, col, vals, {1, 3}, at::TensorOptions());
 
   ASSERT_EQ(sparse_csr._nnz(), 2);
 }

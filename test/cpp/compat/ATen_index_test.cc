@@ -77,7 +77,7 @@ TEST(TensorIndexTest, IndexWithEmptyInitializerListReturnsSelf) {
   at::Tensor t = at::arange(5, at::kFloat);
 
   // PyTorch throws for empty index list
-  ASSERT_THROW(at::index(t, std::initializer_list<at::indexing::TensorIndex>{}),
+  ASSERT_THROW(t.index(std::initializer_list<at::indexing::TensorIndex>{}),
                std::exception);
 }
 
@@ -90,7 +90,7 @@ TEST(TensorIndexTest, IndexWithTensorInitializerList) {
   idx_data[1] = 2;
   idx_data[2] = 4;
 
-  at::Tensor result = at::index(t, {idx});
+  at::Tensor result = t.index({idx});
 
   ASSERT_EQ(result.numel(), 3);
   float* result_data = result.data_ptr<float>();
@@ -121,7 +121,7 @@ TEST(TensorIndexTest, MixedSliceAndTensorIndicesThrows) {
   idx.data_ptr<int64_t>()[0] = 0;
   idx.data_ptr<int64_t>()[1] = 2;
 
-  ASSERT_THROW(at::index(t, {at::indexing::Slice(0, 2), idx}), std::exception);
+  ASSERT_THROW(t.index({at::indexing::Slice(0, 2), idx}), std::exception);
 }
 
 // ======================== index_put_ tests ========================
@@ -164,10 +164,7 @@ TEST(TensorIndexPutTest, IndexPutInplaceWithScalar) {
   idx_data[0] = 0;
   idx_data[1] = 4;
 
-  c10::List<::std::optional<at::Tensor>> indices;
-  indices.push_back(idx);
-
-  t.index_put_(indices, at::Scalar(7.0));
+  t.index_put_({idx}, at::Scalar(7.0));
 
   // Verify data pointer unchanged (inplace)
   ASSERT_EQ(t.data_ptr<float>(), original_data_ptr);
