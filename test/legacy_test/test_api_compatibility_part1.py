@@ -2333,6 +2333,66 @@ class TestRealAPI(unittest.TestCase):
                 np.testing.assert_allclose(ref_out, out, rtol=1e-6)
 
 
+# Test Optimizer API compatibility
+class TestOptimizerAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.params = [
+            paddle.to_tensor(
+                np.random.randn(3, 4).astype('float32'), stop_gradient=False
+            )
+        ]
+
+    def test_error(self):
+        paddle.disable_static()
+        with self.assertRaises(ValueError):
+            defaults = {
+                'lr': 0.01,
+                'learning_rate': 0.02,
+            }
+            optimizer = paddle.optim.Optimizer(self.params, defaults)
+        with self.assertRaises(TypeError):
+            defaults = {
+                'weight_decay': 0.01,
+                'grad_clip': 0.01,
+                'maximize': True,
+            }
+            optimizer = paddle.optim.Optimizer(self.params, defaults)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        # 1. positional arguments
+        defaults1 = {
+            'lr': 0.01,
+            'maximize': True,
+        }
+        optimizer1 = paddle.optim.Optimizer(self.params, defaults1)
+        # 2. keyword arguments
+        defaults2 = {
+            'learning_rate': 0.01,
+            'weight_decay': 0.01,
+        }
+        optimizer2 = paddle.optim.Optimizer(
+            params=self.params,
+            defaults=defaults2,
+        )
+        # 3. Mixed arguments
+        clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
+        defaults3 = {
+            'lr': 0.01,
+            'weight_decay': 0.01,
+            'grad_clip': clip,
+            'maximize': True,
+        }
+        optimizer3 = paddle.optim.Optimizer(self.params, defaults=defaults3)
+        # Verify all optimizers created successfully
+        self.assertIsNotNone(optimizer1)
+        self.assertIsNotNone(optimizer2)
+        self.assertIsNotNone(optimizer3)
+
+        paddle.enable_static()
+
+
 # Test SGD API compatibility
 class TestSGDAPI(unittest.TestCase):
     def setUp(self):

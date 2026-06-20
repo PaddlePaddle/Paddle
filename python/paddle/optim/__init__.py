@@ -22,7 +22,6 @@ from paddle.optimizer import (
     Adamax as Adamax,
     Muon as Muon,
     NAdam as NAdam,
-    Optimizer as Optimizer,
     RAdam as RAdam,
     RMSProp as RMSProp,
     Rprop as Rprop,
@@ -33,7 +32,6 @@ from paddle.optimizer import (
     lbfgs,
     muon,
     nadam,
-    optimizer,
     radam,
     rmsprop,
     rprop,
@@ -42,6 +40,7 @@ from paddle.optimizer import (
 from . import lr_scheduler  # noqa: F401
 from .adagrad import Adagrad
 from .adamw import AdamW
+from .optimizer import Optimizer
 from .sgd import SGD
 
 _sys.modules['paddle.optim.adadelta'] = adadelta
@@ -51,7 +50,6 @@ _sys.modules['paddle.optim.asgd'] = asgd
 _sys.modules['paddle.optim.lbfgs'] = lbfgs
 _sys.modules['paddle.optim.muon'] = muon
 _sys.modules['paddle.optim.nadam'] = nadam
-_sys.modules['paddle.optim.optimizer'] = optimizer
 _sys.modules['paddle.optim.radam'] = radam
 _sys.modules['paddle.optim.rmsprop'] = rmsprop
 _sys.modules['paddle.optim.rprop'] = rprop
