@@ -21,6 +21,7 @@ from check_aten_ops_signature import (
     discover_torch_include_dir,
     main,
     parse_paddle_header,
+    parse_paddle_tensor_body,
     run_check,
 )
 
@@ -117,6 +118,147 @@ class TestAtenOpsSignatureCheck(unittest.TestCase):
             TORCH_API Tensor foo(const Tensor& input, int64_t axis = 0);
             }  // namespace at
             """,
+        )
+        self.assertEqual(self.check(header), [])
+
+    def test_free_function_braced_default_value_match(self):
+        header = self.write_paddle_op(
+            "empty_strided.h",
+            """
+            namespace at {
+            inline Tensor empty_strided(IntArrayRef size,
+                                        IntArrayRef stride,
+                                        TensorOptions options = {}) {
+              return Tensor();
+            }
+            }  // namespace at
+            """,
+        )
+        self.write_torch(
+            "ATen/ops/empty_strided.h",
+            """
+            namespace at {
+            inline Tensor empty_strided(IntArrayRef size,
+                                        IntArrayRef stride,
+                                        TensorOptions options = {}) {
+              return Tensor();
+            }
+            }  // namespace at
+            """,
+        )
+        self.assertEqual(self.check(header), [])
+
+    def test_member_declaration_braced_default_value_match(self):
+        header = self.write_paddle_op(
+            "new_empty.h",
+            """
+            namespace at {
+            inline Tensor Tensor::new_empty(IntArrayRef size,
+                                            TensorOptions options) const {
+              return Tensor();
+            }
+            }  // namespace at
+            """,
+        )
+        self.write_paddle_tensor_body(
+            """
+            namespace at {
+            class Tensor {
+             public:
+              Tensor new_empty(IntArrayRef size,
+                               TensorOptions options = {}) const;
+            };
+            }  // namespace at
+            """,
+        )
+        self.write_torch(
+            "ATen/core/TensorBody.h",
+            """
+            namespace at {
+            class Tensor {
+             public:
+              Tensor new_empty(IntArrayRef size,
+                               TensorOptions options = {}) const;
+            };
+            }  // namespace at
+            """,
+        )
+        declarations = parse_paddle_tensor_body(
+            self.paddle_root
+            / "paddle/phi/api/include/compat/ATen/core/TensorBody.h"
+        )
+        self.assertTrue(
+            any(
+                "TensorOptions={}" in sig.canonical
+                for sig in declarations.values()
+            )
+        )
+        self.assertEqual(self.check(header), [])
+
+    def test_multiple_defaults_after_braced_default_value_match(self):
+        header = self.write_paddle_op(
+            "sparse_coo_tensor.h",
+            """
+            namespace at {
+            inline Tensor sparse_coo_tensor(
+                const Tensor& indices,
+                const Tensor& values,
+                IntArrayRef size,
+                TensorOptions options = {},
+                std::optional<bool> is_coalesced = std::nullopt) {
+              return Tensor();
+            }
+            }  // namespace at
+            """,
+        )
+        self.write_torch(
+            "ATen/ops/sparse_coo_tensor.h",
+            """
+            namespace at {
+            inline Tensor sparse_coo_tensor(
+                const Tensor& indices,
+                const Tensor& values,
+                IntArrayRef size,
+                TensorOptions options = {},
+                std::optional<bool> is_coalesced = std::nullopt) {
+              return Tensor();
+            }
+            }  // namespace at
+            """,
+        )
+        self.assertEqual(self.check(header), [])
+
+    def test_from_blob_overloads_with_braced_defaults_are_collected(self):
+        header = self.write_paddle_op(
+            "from_blob.h",
+            """
+            namespace at {
+            inline TensorMaker for_blob(void* data, IntArrayRef sizes) noexcept {
+              return TensorMaker();
+            }
+            inline Tensor from_blob(void* data,
+                                    IntArrayRef sizes,
+                                    IntArrayRef strides,
+                                    const TensorOptions& options = {}) {
+              return Tensor();
+            }
+            inline Tensor from_blob(void* data,
+                                    IntArrayRef sizes,
+                                    const TensorOptions& options = {}) {
+              return Tensor();
+            }
+            }  // namespace at
+            """,
+        )
+        self.write_torch(
+            "ATen/ops/from_blob.h",
+            header.read_text(),
+        )
+        signatures, errors = parse_paddle_header(header)
+        self.assertEqual(errors, [])
+        self.assertEqual(
+            sum(sig.name == "from_blob" for sig in signatures),
+            2,
         )
         self.assertEqual(self.check(header), [])
 

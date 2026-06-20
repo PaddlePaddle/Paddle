@@ -15,21 +15,12 @@
 #pragma once
 
 #include <ATen/core/Tensor.h>
+#include <ATen/ops/expand.h>
 
 namespace at {
 
-inline at::Tensor masked_select(const at::Tensor& self,
-                                const at::Tensor& mask) {
-  return Tensor(paddle::experimental::masked_select(self._PD_GetInner(),
-                                                    mask._PD_GetInner()));
-}
-
-}  // namespace at
-
-namespace at {
-
-inline at::Tensor Tensor::masked_select(const at::Tensor& mask) const {
-  return at::masked_select(*this, mask);
+inline Tensor Tensor::expand_as(const Tensor& other) const {
+  return at::expand(*this, other.sizes());
 }
 
 }  // namespace at

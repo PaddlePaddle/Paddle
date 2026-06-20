@@ -24,10 +24,10 @@
 namespace at {
 
 inline at::Tensor transpose(const at::Tensor& self,
-                            const at::Scalar& dim0,
-                            const at::Scalar& dim1) {
-  int d0 = dim0.to<int>();
-  int d1 = dim1.to<int>();
+                            int64_t dim0,
+                            int64_t dim1) {
+  int d0 = static_cast<int>(dim0);
+  int d1 = static_cast<int>(dim1);
   int64_t ndim = self.dim();
 
   if (d0 < 0) d0 += ndim;
@@ -42,20 +42,6 @@ inline at::Tensor transpose(const at::Tensor& self,
   }
   std::swap(perm[d0], perm[d1]);
 
-  return paddle::experimental::transpose(self._PD_GetInner(), perm);
-}
-
-inline at::Tensor transpose(const at::Tensor& self,
-                            int64_t dim0,
-                            int64_t dim1) {
-  int64_t ndim = self.dim();
-  if (dim0 < 0) dim0 += ndim;
-  if (dim1 < 0) dim1 += ndim;
-  std::vector<int> perm(self.dim());
-  for (size_t i = 0; i < perm.size(); i++) {
-    perm[i] = static_cast<int>(i);
-  }
-  std::swap(perm[dim0], perm[dim1]);
   return paddle::experimental::transpose(self._PD_GetInner(), perm);
 }
 

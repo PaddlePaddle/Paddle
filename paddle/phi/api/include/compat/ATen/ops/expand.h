@@ -125,11 +125,6 @@ inline Tensor expand(const Tensor& self,
   }
 }
 
-// expand_as - expands to same size as another tensor
-inline Tensor expand_as(const Tensor& self, const Tensor& other) {
-  return expand(self, other.sizes());
-}
-
 }  // namespace at
 
 namespace at {
@@ -140,8 +135,6 @@ inline Tensor Tensor::expand(at::IntArrayRef size, bool implicit) const {
 }
 
 // Member function: Tensor::expand_as
-inline Tensor Tensor::expand_as(const Tensor& other) const {
-  return at::expand_as(*this, other);
-}
-
 }  // namespace at
+
+#include "paddle/phi/api/include/compat/ATen/ops/expand_as.h"

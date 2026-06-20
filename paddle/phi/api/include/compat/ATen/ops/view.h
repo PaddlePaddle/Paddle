@@ -22,11 +22,6 @@ inline at::Tensor view(const at::Tensor& self, at::IntArrayRef size) {
   return paddle::experimental::view_shape(self._PD_GetInner(), size.vec());
 }
 
-inline at::Tensor view(const at::Tensor& self, at::ScalarType dtype) {
-  return paddle::experimental::view_dtype(
-      self._PD_GetInner(), compat::_PD_AtenScalarTypeToPhiDataType(dtype));
-}
-
 }  // namespace at
 
 namespace at {
@@ -36,7 +31,8 @@ inline at::Tensor Tensor::view(at::IntArrayRef size) const {
 }
 
 inline at::Tensor Tensor::view(at::ScalarType dtype) const {
-  return at::view(*this, dtype);
+  return paddle::experimental::view_dtype(
+      this->_PD_GetInner(), compat::_PD_AtenScalarTypeToPhiDataType(dtype));
 }
 
 }  // namespace at

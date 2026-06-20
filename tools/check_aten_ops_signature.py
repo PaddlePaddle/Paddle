@@ -146,13 +146,38 @@ def strip_comments_and_literals(text: str) -> str:
 
 def find_matching(text: str, open_pos: int, open_ch: str, close_ch: str) -> int:
     depth = 0
-    for pos in range(open_pos, len(text)):
-        if text[pos] == open_ch:
+    pos = open_pos
+    state = "normal"
+    while pos < len(text):
+        ch = text[pos]
+        nxt = text[pos + 1] if pos + 1 < len(text) else ""
+        if state == "normal":
+            if ch == '"':
+                state = "string"
+                pos += 1
+                continue
+            if ch == "'":
+                state = "char"
+                pos += 1
+                continue
+        elif state in ("string", "char"):
+            if ch == "\\" and nxt:
+                pos += 2
+                continue
+            if (state == "string" and ch == '"') or (
+                state == "char" and ch == "'"
+            ):
+                state = "normal"
+            pos += 1
+            continue
+
+        if ch == open_ch:
             depth += 1
-        elif text[pos] == close_ch:
+        elif ch == close_ch:
             depth -= 1
             if depth == 0:
                 return pos
+        pos += 1
     raise SignatureParseError(
         f"unmatched {open_ch!r} at character offset {open_pos}"
     )
@@ -213,7 +238,31 @@ def split_top_level(text: str, separator: str) -> list[str]:
     pieces: list[str] = []
     start = 0
     angle = paren = bracket = brace = 0
-    for pos, ch in enumerate(text):
+    pos = 0
+    state = "normal"
+    while pos < len(text):
+        ch = text[pos]
+        nxt = text[pos + 1] if pos + 1 < len(text) else ""
+        if state == "normal":
+            if ch == '"':
+                state = "string"
+                pos += 1
+                continue
+            if ch == "'":
+                state = "char"
+                pos += 1
+                continue
+        elif state in ("string", "char"):
+            if ch == "\\" and nxt:
+                pos += 2
+                continue
+            if (state == "string" and ch == '"') or (
+                state == "char" and ch == "'"
+            ):
+                state = "normal"
+            pos += 1
+            continue
+
         if ch == "<":
             angle += 1
         elif ch == ">" and angle > 0:
@@ -239,13 +288,38 @@ def split_top_level(text: str, separator: str) -> list[str]:
         ):
             pieces.append(text[start:pos])
             start = pos + 1
+        pos += 1
     pieces.append(text[start:])
     return pieces
 
 
 def split_default_value(param: str) -> tuple[str, str | None]:
     angle = paren = bracket = brace = 0
-    for pos, ch in enumerate(param):
+    pos = 0
+    state = "normal"
+    while pos < len(param):
+        ch = param[pos]
+        nxt = param[pos + 1] if pos + 1 < len(param) else ""
+        if state == "normal":
+            if ch == '"':
+                state = "string"
+                pos += 1
+                continue
+            if ch == "'":
+                state = "char"
+                pos += 1
+                continue
+        elif state in ("string", "char"):
+            if ch == "\\" and nxt:
+                pos += 2
+                continue
+            if (state == "string" and ch == '"') or (
+                state == "char" and ch == "'"
+            ):
+                state = "normal"
+            pos += 1
+            continue
+
         if ch == "<":
             angle += 1
         elif ch == ">" and angle > 0:
@@ -270,6 +344,7 @@ def split_default_value(param: str) -> tuple[str, str | None]:
             and brace == 0
         ):
             return param[:pos], param[pos + 1 :]
+        pos += 1
     return param, None
 
 
@@ -386,29 +461,69 @@ def top_level_function_definitions(
     signatures: list[CppSignature] = []
     start = 0
     pos = 0
+    angle = paren = bracket = brace = 0
+    state = "normal"
     while pos < len(block):
         ch = block[pos]
-        if ch == "{":
-            candidate = block[start:pos]
-            signature = parse_cpp_signature(
-                candidate,
-                include_member_defaults=include_member_defaults,
-            )
-            if signature is not None:
-                signatures.append(signature)
-            end = find_matching(block, pos, "{", "}")
-            pos = end + 1
-            start = pos
+        nxt = block[pos + 1] if pos + 1 < len(block) else ""
+        if state == "normal":
+            if ch == '"':
+                state = "string"
+                pos += 1
+                continue
+            if ch == "'":
+                state = "char"
+                pos += 1
+                continue
+        elif state in ("string", "char"):
+            if ch == "\\" and nxt:
+                pos += 2
+                continue
+            if (state == "string" and ch == '"') or (
+                state == "char" and ch == "'"
+            ):
+                state = "normal"
+            pos += 1
             continue
+
+        if ch == "<":
+            angle += 1
+        elif ch == ">" and angle > 0:
+            angle -= 1
+        elif ch == "(":
+            paren += 1
+        elif ch == ")" and paren > 0:
+            paren -= 1
+        elif ch == "[":
+            bracket += 1
+        elif ch == "]" and bracket > 0:
+            bracket -= 1
+        elif ch == "{":
+            if angle == 0 and paren == 0 and bracket == 0 and brace == 0:
+                candidate = block[start:pos]
+                signature = parse_cpp_signature(
+                    candidate,
+                    include_member_defaults=include_member_defaults,
+                )
+                if signature is not None:
+                    signatures.append(signature)
+                end = find_matching(block, pos, "{", "}")
+                pos = end + 1
+                start = pos
+                continue
+            brace += 1
+        elif ch == "}" and brace > 0:
+            brace -= 1
         if ch == ";":
-            candidate = block[start:pos]
-            signature = parse_cpp_signature(
-                candidate,
-                include_member_defaults=include_member_defaults,
-            )
-            if signature is not None:
-                signatures.append(signature)
-            start = pos + 1
+            if angle == 0 and paren == 0 and bracket == 0 and brace == 0:
+                candidate = block[start:pos]
+                signature = parse_cpp_signature(
+                    candidate,
+                    include_member_defaults=include_member_defaults,
+                )
+                if signature is not None:
+                    signatures.append(signature)
+                start = pos + 1
         pos += 1
     return signatures
 
@@ -482,23 +597,63 @@ def tensor_class_declarations(
     signatures: list[CppSignature] = []
     start = 0
     pos = 0
+    angle = paren = bracket = brace = 0
+    state = "normal"
     while pos < len(body):
         ch = body[pos]
-        if ch == "{":
-            end = find_matching(body, pos, "{", "}")
-            pos = end + 1
-            start = pos
+        nxt = body[pos + 1] if pos + 1 < len(body) else ""
+        if state == "normal":
+            if ch == '"':
+                state = "string"
+                pos += 1
+                continue
+            if ch == "'":
+                state = "char"
+                pos += 1
+                continue
+        elif state in ("string", "char"):
+            if ch == "\\" and nxt:
+                pos += 2
+                continue
+            if (state == "string" and ch == '"') or (
+                state == "char" and ch == "'"
+            ):
+                state = "normal"
+            pos += 1
             continue
+
+        if ch == "<":
+            angle += 1
+        elif ch == ">" and angle > 0:
+            angle -= 1
+        elif ch == "(":
+            paren += 1
+        elif ch == ")" and paren > 0:
+            paren -= 1
+        elif ch == "[":
+            bracket += 1
+        elif ch == "]" and bracket > 0:
+            bracket -= 1
+        elif ch == "{":
+            if angle == 0 and paren == 0 and bracket == 0 and brace == 0:
+                end = find_matching(body, pos, "{", "}")
+                pos = end + 1
+                start = pos
+                continue
+            brace += 1
+        elif ch == "}" and brace > 0:
+            brace -= 1
         if ch == ";":
-            candidate = body[start:pos]
-            signature = parse_cpp_signature(
-                candidate,
-                class_member=True,
-                include_member_defaults=include_member_defaults,
-            )
-            if signature is not None:
-                signatures.append(signature)
-            start = pos + 1
+            if angle == 0 and paren == 0 and bracket == 0 and brace == 0:
+                candidate = body[start:pos]
+                signature = parse_cpp_signature(
+                    candidate,
+                    class_member=True,
+                    include_member_defaults=include_member_defaults,
+                )
+                if signature is not None:
+                    signatures.append(signature)
+                start = pos + 1
         pos += 1
     return signatures
 

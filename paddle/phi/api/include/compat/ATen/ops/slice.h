@@ -44,7 +44,7 @@ namespace at {
 inline at::Tensor Tensor::slice(int64_t dim,
                                 ::std::optional<int64_t> start,
                                 ::std::optional<int64_t> end,
-                                int64_t step) {
+                                int64_t step) const {
   return at::slice(*this, dim, start, end, step);
 }
 

@@ -36,17 +36,6 @@
 #include <cuda_runtime_api.h>
 #endif
 
-// Forward declaration to allow record_stream(at::cuda::CUDAStream) overload
-// without pulling in the full CUDAStream header here.
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-namespace c10::cuda {
-class CUDAStream;
-}  // namespace c10::cuda
-namespace at::cuda {
-using c10::cuda::CUDAStream;
-}  // namespace at::cuda
-#endif
-
 #include <limits>
 #include <optional>
 #include <utility>
@@ -292,13 +281,12 @@ class Tensor : public TensorBase {
       ::std::optional<int64_t> storage_offset = ::std::nullopt) const;
 
   // Standard deviation functions
-  Tensor std(int dim) const;
-  Tensor std(bool unbiased = true) const;
+  Tensor std(bool unbiased) const;
   Tensor std(at::OptionalIntArrayRef dim,
-             bool unbiased = true,
+             bool unbiased,
              bool keepdim = false) const;
-  Tensor std(at::OptionalIntArrayRef dim,
-             const ::std::optional<at::Scalar>& correction,
+  Tensor std(at::OptionalIntArrayRef dim = ::std::nullopt,
+             const ::std::optional<at::Scalar>& correction = ::std::nullopt,
              bool keepdim = false) const;
 
   Tensor tensor_data() const {
@@ -349,11 +337,6 @@ class Tensor : public TensorBase {
                          const at::Tensor& values,
                          bool accumulate = false) const;
 
-  // index_put_: Set scalar value at specified indices in-place
-  at::Tensor& index_put_(const c10::List<::std::optional<at::Tensor>>& indices,
-                         const at::Scalar& v,
-                         bool accumulate = false) const;
-
   // index_put: Non-inplace version of index_put_
   at::Tensor index_put(const c10::List<::std::optional<at::Tensor>>& indices,
                        const at::Tensor& values,
@@ -399,7 +382,7 @@ class Tensor : public TensorBase {
     return compat::_PD_PhiDataTypeToAtenScalarType(tensor_.dtype());
   }
 
-  at::Tensor flatten(int64_t start_dim, int64_t end_dim) const;
+  at::Tensor flatten(int64_t start_dim = 0, int64_t end_dim = -1) const;
   at::Tensor unflatten(int64_t dim, at::IntArrayRef sizes) const;
   at::Tensor unflatten_symint(int64_t dim, c10::SymIntArrayRef sizes) const;
 
@@ -535,12 +518,8 @@ class Tensor : public TensorBase {
   at::Tensor& squeeze_(int64_t dim) const;
   at::Tensor& squeeze_(at::IntArrayRef dim) const;
 
-  at::Tensor unsqueeze() const;
   at::Tensor unsqueeze(int64_t dim) const;
-  at::Tensor unsqueeze(at::IntArrayRef dim) const;
-  at::Tensor& unsqueeze_() const;
   at::Tensor& unsqueeze_(int64_t dim) const;
-  at::Tensor& unsqueeze_(at::IntArrayRef dim) const;
 
   at::Tensor sum(::std::optional<at::ScalarType> dtype = ::std::nullopt) const;
   at::Tensor sum(at::OptionalIntArrayRef dim,
@@ -584,19 +563,20 @@ class Tensor : public TensorBase {
   std::vector<at::Tensor> split_symint(c10::SymIntArrayRef split_sizes,
                                        int64_t dim) const;
 
-  std::vector<at::Tensor> unsafe_split(int64_t split_size, int64_t dim) const;
+  std::vector<at::Tensor> unsafe_split(int64_t split_size,
+                                       int64_t dim = 0) const;
   std::vector<at::Tensor> unsafe_split_symint(c10::SymInt split_size,
-                                              int64_t dim) const;
+                                              int64_t dim = 0) const;
 
   std::vector<at::Tensor> split_with_sizes(at::IntArrayRef split_sizes,
-                                           int64_t dim) const;
+                                           int64_t dim = 0) const;
   std::vector<at::Tensor> split_with_sizes_symint(
-      c10::SymIntArrayRef split_sizes, int64_t dim) const;
+      c10::SymIntArrayRef split_sizes, int64_t dim = 0) const;
 
   std::vector<at::Tensor> unsafe_split_with_sizes(at::IntArrayRef split_sizes,
-                                                  int64_t dim) const;
+                                                  int64_t dim = 0) const;
   std::vector<at::Tensor> unsafe_split_with_sizes_symint(
-      c10::SymIntArrayRef split_sizes, int64_t dim) const;
+      c10::SymIntArrayRef split_sizes, int64_t dim = 0) const;
 
   std::vector<at::Tensor> hsplit(int64_t sections) const;
   std::vector<at::Tensor> hsplit(at::IntArrayRef indices) const;
@@ -615,13 +595,21 @@ class Tensor : public TensorBase {
   at::Tensor slice(int64_t dim = 0,
                    ::std::optional<int64_t> start = ::std::nullopt,
                    ::std::optional<int64_t> end = ::std::nullopt,
-                   int64_t step = 1);
+                   int64_t step = 1) const;
 
   at::Tensor index(ArrayRef<at::indexing::TensorIndex> indices) const;
   inline at::Tensor index(
       std::initializer_list<at::indexing::TensorIndex> indices) const {
     return index(ArrayRef<at::indexing::TensorIndex>(indices));
   }
+  Tensor& index_put_(ArrayRef<at::indexing::TensorIndex> indices,
+                     Tensor const& rhs);
+  Tensor& index_put_(ArrayRef<at::indexing::TensorIndex> indices,
+                     const Scalar& v);
+  Tensor& index_put_(std::initializer_list<at::indexing::TensorIndex> indices,
+                     Tensor const& rhs);
+  Tensor& index_put_(std::initializer_list<at::indexing::TensorIndex> indices,
+                     const Scalar& v);
 
   at::Tensor& floor_divide_(const at::Scalar& other) const {
     paddle::experimental::floor_divide_(
@@ -721,9 +709,6 @@ class Tensor : public TensorBase {
   }
 
   void record_stream(at::Stream s) const;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  void record_stream(at::cuda::CUDAStream s) const;
-#endif
 
   Tensor var(int dim) const { return var(at::IntArrayRef{dim}, true, false); }
 
