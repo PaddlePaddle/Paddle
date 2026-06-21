@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/llm_int8_linear_kernel.h"
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -39,9 +40,15 @@ void llm_int8_compute(const Context& dev_ctx,
   dev_ctx.template Alloc<int8_t>(&cublaslt_workspace);
   const auto x_dims = x.dims();
   const auto w_dims = weight.dims();
-  int k = w_dims[1];
-  int n = w_dims[0];
-  int m = x.numel() / k;
+  const int64_t k_64 = w_dims[1];
+  const int64_t n_64 = w_dims[0];
+  PADDLE_ENFORCE_LE_INT_MAX(k_64, "k");
+  PADDLE_ENFORCE_LE_INT_MAX(n_64, "n");
+  const int64_t m_64 = x.numel() / k_64;
+  PADDLE_ENFORCE_LE_INT_MAX(m_64, "m");
+  const int k = static_cast<int>(k_64);
+  const int n = static_cast<int>(n_64);
+  const int m = static_cast<int>(m_64);
   // mk * transpose(nk) = mn
   llm_int8::LLMGemm<T>(dev_ctx,
                        &weight,

@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -97,6 +98,23 @@ class CudnnRNNCache {
     seed_ = seed;
 
     const auto numDirections = is_bidirec_ ? 2 : 1;
+    const int64_t hidden_size_directions_64 =
+        static_cast<int64_t>(hidden_size_) * numDirections;
+    PADDLE_ENFORCE_LE_INT_MAX(hidden_size_directions_64,
+                              "RNN hidden size times directions");
+    const int hidden_size_directions =
+        static_cast<int>(hidden_size_directions_64);
+    const int64_t num_layers_directions_64 =
+        static_cast<int64_t>(num_layers_) * numDirections;
+    PADDLE_ENFORCE_LE_INT_MAX(num_layers_directions_64,
+                              "RNN num layers times directions");
+    const int num_layers_directions =
+        static_cast<int>(num_layers_directions_64);
+    const int64_t hidden_size_batch_64 =
+        static_cast<int64_t>(hidden_size_) * batch_size_;
+    PADDLE_ENFORCE_LE_INT_MAX(hidden_size_batch_64,
+                              "RNN hidden size times batch size");
+    const int hidden_size_batch = static_cast<int>(hidden_size_batch_64);
     auto cudnn_size =
         cudnn_type == CUDNN_DATA_FLOAT ? sizeof(float) : sizeof(double);
 #if CUDNN_VERSION >= 90000
@@ -105,16 +123,18 @@ class CudnnRNNCache {
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cudnnCreateRNNDataDescriptor(&y_desc_));
 
+    PADDLE_ENFORCE_LE_INT_MAX(seq_length_, "RNN sequence length");
+    const int seq_length_int = static_cast<int>(seq_length_);
     std::vector<int> seq_length_array(batch_size_);
     for (int i = 0; i < batch_size_; ++i) {
-      seq_length_array[i] = seq_length_;
+      seq_length_array[i] = seq_length_int;
     }
 
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetRNNDataDescriptor(
         x_desc_,
         cudnn_type,
         CUDNN_RNN_DATA_LAYOUT_BATCH_MAJOR_UNPACKED,
-        seq_length_,
+        seq_length_int,
         batch_size_,
         input_size_,
         reinterpret_cast<const int *>(seq_length_array.data()),
@@ -124,19 +144,21 @@ class CudnnRNNCache {
         y_desc_,
         cudnn_type,
         CUDNN_RNN_DATA_LAYOUT_BATCH_MAJOR_UNPACKED,
-        seq_length_,
+        seq_length_int,
         batch_size_,
-        hidden_size_ * numDirections,
+        hidden_size_directions,
         reinterpret_cast<const int *>(seq_length_array.data()),
         nullptr));
 #else
+    PADDLE_ENFORCE_LE_INT_MAX(seq_length_, "RNN sequence length");
+    const int seq_length_int = static_cast<int>(seq_length_);
     x_desc_ = new cudnnTensorDescriptor_t[seq_length_];
     y_desc_ = new cudnnTensorDescriptor_t[seq_length_];
     std::vector<int> dims = {batch_size_, input_size_, 1};
     std::vector<int> strides = {input_size_, 1, 1};
 
-    std::vector<int> dims_y = {batch_size_, hidden_size_ * numDirections, 1};
-    std::vector<int> strides_y = {hidden_size_ * numDirections, 1, 1};
+    std::vector<int> dims_y = {batch_size_, hidden_size_directions, 1};
+    std::vector<int> strides_y = {hidden_size_directions, 1, 1};
 
     for (size_t i = 0; i < seq_length_; ++i) {
       PADDLE_ENFORCE_GPU_SUCCESS(
@@ -153,8 +175,8 @@ class CudnnRNNCache {
 #endif
 
     std::vector<int> dims_hx = {
-        num_layers_ * numDirections, batch_size_, hidden_size_};
-    std::vector<int> strides_hx = {hidden_size_ * batch_size_, hidden_size_, 1};
+        num_layers_directions, batch_size_, hidden_size_};
+    std::vector<int> strides_hx = {hidden_size_batch, hidden_size_, 1};
 
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cudnnCreateTensorDescriptor(&hx_desc_));
@@ -270,8 +292,10 @@ class CudnnRNNCache {
         common::errors::InvalidArgument(
             "The cudnn lstm and setting weight size should be same."));
 
+    PADDLE_ENFORCE_LE_INT_MAX(weights_size_ / cudnn_size,
+                              "weights_size_ / cudnn_size");
     int dim_w[3];
-    dim_w[0] = weights_size_ / cudnn_size;
+    dim_w[0] = static_cast<int>(weights_size_ / cudnn_size);
     dim_w[1] = 1;
     dim_w[2] = 1;
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetFilterNdDescriptor(
@@ -288,9 +312,9 @@ class CudnnRNNCache {
                                                 reserve_size_));
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnGetRNNWorkspaceSize(
-        handle, rnn_desc_, seq_length_, x_desc_, &workspace_size_));
+        handle, rnn_desc_, seq_length_int, x_desc_, &workspace_size_));
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnGetRNNTrainingReserveSize(
-        handle, rnn_desc_, seq_length_, x_desc_, reserve_size_));
+        handle, rnn_desc_, seq_length_int, x_desc_, reserve_size_));
 #endif
     workspace_data_.Resize({static_cast<int64_t>(workspace_size_)});
     dev_ctx->Alloc<uint8_t>(&workspace_data_);

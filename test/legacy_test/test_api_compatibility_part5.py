@@ -2264,8 +2264,11 @@ class TestPackedSequenceAPI(unittest.TestCase):
         self.assertEqual(packed_byte.data.dtype, paddle.uint8)
 
         # 8. Test pin_memory
-        packed_pinned = packed1.pin_memory()
-        self.assertIsInstance(packed_pinned, paddle.nn.utils.rnn.PackedSequence)
+        if paddle.is_compiled_with_cuda():
+            packed_pinned = packed1.pin_memory()
+            self.assertIsInstance(
+                packed_pinned, paddle.nn.utils.rnn.PackedSequence
+            )
 
         paddle.enable_static()
 

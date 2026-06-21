@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/fusion/gpu/fused_transpose_split_quant_kernel.h"
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -290,7 +291,12 @@ void FusedTransposeSplitQuantKernel(
 
   // pre-compute on CPU to reduce size_t division cost in kernel
   const size_t k_scaled = (K + 127) / 128;
-  dim3 grid(M / 128, k_scaled);
+  const int64_t grid_x = M / 128;
+  PADDLE_ENFORCE_LE_UINT32_MAX(
+      grid_x, "fused_transpose_split_quant CUDA launch grid.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(
+      k_scaled, "fused_transpose_split_quant CUDA launch grid.y");
+  dim3 grid(static_cast<uint32_t>(grid_x), static_cast<uint32_t>(k_scaled));
   dim3 block(32, 16);
 
 #define DTYPE_CASE(dtype, type) dtype == phi::DataType::type

@@ -15,6 +15,7 @@
 #include "paddle/cinn/backends/llvm/llvm_util.h"
 
 #include <glog/logging.h>
+#include <llvm/IR/DerivedTypes.h>
 #include <llvm/Support/Alignment.h>
 
 #include <atomic>
@@ -106,7 +107,9 @@ llvm::Type *CinnTypeToLLVMType(cinn::common::Type type,
                       true,
                       ::common::errors::InvalidArgument(
                           "Customized type name should not be empty."));
-    ir_type = m->getTypeByName("struct." + type.customized_type());
+    const std::string struct_type_name = "struct." + type.customized_type();
+    ir_type =
+        llvm::StructType::getTypeByName(m->getContext(), struct_type_name);
   }
   PADDLE_ENFORCE_NOT_NULL(
       ir_type, ::common::errors::InvalidArgument("LLVM can't convert type."));

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
@@ -282,7 +283,9 @@ inline std::vector<int32_t> GetPermuteShape(const std::vector<int> &axis,
                                             const DDim &in_dims) {
   std::vector<int32_t> out_dims(in_dims.size());
   for (size_t i = 0; i < axis.size(); i++) {
-    out_dims[i] = in_dims[axis[i]];
+    const int64_t dim = in_dims[axis[i]];
+    PADDLE_ENFORCE_LE_INT_MAX(dim, "permuted dimension");
+    out_dims[i] = static_cast<int32_t>(dim);
   }
   return out_dims;
 }
@@ -297,9 +300,11 @@ inline std::vector<int32_t> GetFlattenShape(const int axis,
       inner *= in_dims[i];
     }
   }
+  PADDLE_ENFORCE_LE_INT_MAX(outer, "flatten outer dimension");
+  PADDLE_ENFORCE_LE_INT_MAX(inner, "flatten inner dimension");
   std::vector<int32_t> out_shape(2);
-  out_shape[0] = outer;
-  out_shape[1] = inner;
+  out_shape[0] = static_cast<int32_t>(outer);
+  out_shape[1] = static_cast<int32_t>(inner);
   return out_shape;
 }
 

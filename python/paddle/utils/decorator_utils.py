@@ -1402,6 +1402,7 @@ def resize__decorator() -> Callable[
         @functools.wraps(func)
         def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
             # Handle PyTorch-style variable args: x.resize_(2, 3, 4) -> x.resize_([2, 3, 4])
+            kwargs.pop('memory_format', None)
             if len(args) >= 2:
                 # args[0] is self (x), args[1:] are the sizes
                 x = args[0]

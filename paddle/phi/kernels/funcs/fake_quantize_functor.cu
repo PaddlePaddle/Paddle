@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/fake_quantize_functor.h"
+#include "paddle/common/enforce.h"
 
 namespace phi {
 namespace funcs {
@@ -195,12 +196,13 @@ void FindAbsMaxFunctor<Context, T>::operator()(const Context &dev_ctx,
                                                const T *in,
                                                const int64_t num,
                                                T *out) {
-  int block = 1024;
-  int64_t grid = (num + block - 1) / block;
-  grid = (grid > block) ? block : grid;
+  uint32_t block = 1024;
+  int64_t grid_64 = (num + block - 1) / block;
+  grid_64 = (grid_64 > block) ? block : grid_64;
+  uint32_t grid = static_cast<uint32_t>(grid_64);
 
   DenseTensor max;
-  max.Resize({grid});
+  max.Resize({grid_64});
   T *max_data = dev_ctx.template Alloc<T>(&max);
   FindAbsMaxKernel<T>
       <<<grid, block, 1024 * sizeof(T), dev_ctx.stream()>>>(in, num, max_data);
@@ -216,9 +218,11 @@ void ClipAndFakeQuantFunctor<Context, T>::operator()(const Context &dev_ctx,
                                                      const int round_type,
                                                      DenseTensor *out) {
   int64_t num = in.numel();
-  int block = 1024;
+  uint32_t block = 1024;
   int64_t max_grid = dev_ctx.GetCUDAMaxGridDimSize()[0];
-  int grid = std::min((num + block - 1) / block, max_grid);
+  int64_t grid_64 = std::min((num + block - 1) / block, max_grid);
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "fake_quantize grid.x");
+  uint32_t grid = static_cast<uint32_t>(grid_64);
 
   const T *in_data = in.data<T>();
   const T *scale_data = scale.data<T>();
@@ -496,25 +500,37 @@ void ChannelClipAndFakeQuantFunctor<Context, T>::operator()(
   T *out_data = dev_ctx.template Alloc<T>(out);
 
   if (quant_axis == 0) {
-    int grid = in_dims[0];
-    int block = 1024;
+    int64_t grid_64 = in_dims[0];
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "fake_quantize channel grid.x");
+    uint32_t grid = static_cast<uint32_t>(grid_64);
+    uint32_t block = 1024;
     ChannelClipAndQuantKernelQuantAxis0<T>
         <<<grid, block, 0, dev_ctx.stream()>>>(
             in_data, scale_data, qmax, round_type, num, in_dims[0], out_data);
   } else {
-    int quant_stride = 1;
+    int64_t quant_stride_64 = 1;
     for (int i = quant_axis + 1; i < in_dims.size(); i++) {
-      quant_stride *= in_dims[i];
+      quant_stride_64 *= in_dims[i];
     }
-    int64_t block_size = std::min(
+    PADDLE_ENFORCE_LE_INT_MAX(quant_stride_64, "fake_quantize quant_stride");
+    int quant_stride = static_cast<int>(quant_stride_64);
+    int64_t block_size_64 = std::min(
         num, static_cast<int64_t>(dev_ctx.GetMaxThreadsPerBlock() / 4));
     int64_t max_threads =
         dev_ctx.GetMaxPhysicalThreadCount();  // SM * block_per_SM
-    const int64_t max_blocks =
-        std::max(((max_threads - 1) / block_size + 1), static_cast<int64_t>(1));
+    const int64_t max_blocks = std::max(((max_threads - 1) / block_size_64 + 1),
+                                        static_cast<int64_t>(1));
 
-    const int64_t grid_size =
-        std::min(max_blocks, (num + block_size - 1) / block_size);
+    const int64_t grid_size_64 =
+        std::min(max_blocks, (num + block_size_64 - 1) / block_size_64);
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_64, "fake_quantize channel grid.x");
+    PADDLE_ENFORCE_LE_UINT32_MAX(block_size_64,
+                                 "fake_quantize channel block.x");
+    PADDLE_ENFORCE_LE_INT_MAX(in_dims[quant_axis],
+                              "fake_quantize channel nScale");
+    uint32_t grid_size = static_cast<uint32_t>(grid_size_64);
+    uint32_t block_size = static_cast<uint32_t>(block_size_64);
+    int nScale = static_cast<int>(in_dims[quant_axis]);
 
     ChannelClipAndQuantKernelQuantAxisN<T>
         <<<grid_size, block_size>>>(in_data,
@@ -522,7 +538,7 @@ void ChannelClipAndFakeQuantFunctor<Context, T>::operator()(
                                     qmax,
                                     round_type,
                                     num,
-                                    in_dims[quant_axis],
+                                    nScale,
                                     quant_stride,
                                     out_data);
   }
@@ -621,19 +637,30 @@ void ChannelClipFakeQuantDequantFunctor<Context, T>::operator()(
   const T *scale_data = scale.data<T>();
   T *out_data = dev_ctx.template Alloc<T>(out);
 
-  int64_t block_size =
+  int64_t block_size_64 =
       std::min(static_cast<int64_t>(num),
                static_cast<int64_t>(dev_ctx.GetMaxThreadsPerBlock() / 4));
 
   int64_t max_threads =
       dev_ctx.GetMaxPhysicalThreadCount();  // SM * block_per_SM
-  const int64_t max_blocks =
-      std::max(((max_threads - 1) / block_size + 1), static_cast<int64_t>(1));
-  const int64_t grid_size =
-      std::min(max_blocks, (num + block_size - 1) / block_size);
+  const int64_t max_blocks = std::max(((max_threads - 1) / block_size_64 + 1),
+                                      static_cast<int64_t>(1));
+  const int64_t grid_size_64 =
+      std::min(max_blocks, (num + block_size_64 - 1) / block_size_64);
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_64,
+                               "fake_quantize_dequant channel grid.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(block_size_64,
+                               "fake_quantize_dequant channel block.x");
+  uint32_t grid_size = static_cast<uint32_t>(grid_size_64);
+  uint32_t block_size = static_cast<uint32_t>(block_size_64);
 
   if (quant_axis == 0) {
-    const int window_size = num / in_dims[0];
+    int64_t window_size_64 = num / in_dims[0];
+    PADDLE_ENFORCE_LE_INT_MAX(window_size_64,
+                              "fake_quantize_dequant window_size");
+    PADDLE_ENFORCE_LE_INT_MAX(in_dims[0], "fake_quantize_dequant cout");
+    int window_size = static_cast<int>(window_size_64);
+    int cout = static_cast<int>(in_dims[0]);
     ChannelClipAndQuantDequantKernelQuantAxis0<T>
         <<<grid_size, block_size, 0, dev_ctx.stream()>>>(in_data,
                                                          scale_data,
@@ -641,10 +668,13 @@ void ChannelClipFakeQuantDequantFunctor<Context, T>::operator()(
                                                          round_type,
                                                          window_size,
                                                          num,
-                                                         in_dims[0],
+                                                         cout,
                                                          out_data);
   } else if (quant_axis == 1) {
-    const int window_size = num / (in_dims[0] * in_dims[1]);
+    int64_t window_size_64 = num / (in_dims[0] * in_dims[1]);
+    PADDLE_ENFORCE_LE_INT_MAX(window_size_64,
+                              "fake_quantize_dequant window_size");
+    int window_size = static_cast<int>(window_size_64);
 
     ChannelClipAndQuantDequantKernelQuantAxis1<T>
         <<<grid_size, block_size, 0, dev_ctx.stream()>>>(in_data,
@@ -718,9 +748,11 @@ void ClipAndFakeQuantDequantFunctor<Context, T>::operator()(
     int round_type,
     DenseTensor *out) {
   int64_t num = in.numel();
-  int block = 1024;
+  uint32_t block = 1024;
   int64_t max_grid = dev_ctx.GetCUDAMaxGridDimSize()[0];
-  int grid = std::min((num + block - 1) / block, max_grid);
+  int64_t grid_64 = std::min((num + block - 1) / block, max_grid);
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "fake_quantize_dequant grid.x");
+  uint32_t grid = static_cast<uint32_t>(grid_64);
 
   const T *in_data = in.data<T>();
   const T *scale_data = scale.data<T>();

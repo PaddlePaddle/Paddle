@@ -55,13 +55,12 @@ void SimpleJIT::AddModule(std::unique_ptr<llvm::Module> module, bool optimize) {
       ::common::errors::InvalidArgument(
           "Transformation resulted in an invalid module\n\nmodule:\n"));
 
-  bool debug = false;
   if (optimize) {
     llvm::PassBuilder pass_builder;
-    llvm::LoopAnalysisManager loop_analysis_manager(debug);
-    llvm::FunctionAnalysisManager function_analysis_manager(debug);
-    llvm::CGSCCAnalysisManager cgscc_analysis_manager(debug);
-    llvm::ModuleAnalysisManager module_analysis_manager(debug);
+    llvm::LoopAnalysisManager loop_analysis_manager;
+    llvm::FunctionAnalysisManager function_analysis_manager;
+    llvm::CGSCCAnalysisManager cgscc_analysis_manager;
+    llvm::ModuleAnalysisManager module_analysis_manager;
 
     pass_builder.registerModuleAnalyses(module_analysis_manager);
     pass_builder.registerCGSCCAnalyses(cgscc_analysis_manager);
@@ -84,22 +83,16 @@ void SimpleJIT::AddModule(std::unique_ptr<llvm::Module> module, bool optimize) {
 
   llvm::orc::ThreadSafeModule tsm(std::move(module), context_);
   llvm::cantFail(jit_->addIRModule(std::move(tsm)));
-
-  if (debug) {
-    std::string buffer;
-    llvm::raw_string_ostream os(buffer);
-    jit_->getExecutionSession().dump(os);
-    os.flush();
-    VLOG(3) << "compiled jit:\n" << buffer;
-  }
 }
 
 SimpleJIT::SimpleJIT() : context_(std::make_unique<llvm::LLVMContext>()) {
-  llvm::InitializeAllTargetInfos();
-  llvm::InitializeAllTargets();
-  llvm::InitializeAllTargetMCs();
-  llvm::InitializeAllAsmParsers();
-  llvm::InitializeAllAsmPrinters();
+  // Keep this aligned with cmake/cinn/llvm.cmake: CINN JIT links only the
+  // native target. InitializeAll* references every configured target in LLVM's
+  // TargetSelect.h and needs the matching all-target libraries.
+  // https://github.com/llvm/llvm-project/blob/llvmorg-13.0.1/llvm/include/llvm/Support/TargetSelect.h
+  llvm::InitializeNativeTarget();
+  llvm::InitializeNativeTargetAsmPrinter();
+  llvm::InitializeNativeTargetAsmParser();
 
   jit_ = llvm::cantFail(llvm::orc::LLJITBuilder().create());
   PADDLE_ENFORCE_NOT_NULL(
@@ -115,7 +108,7 @@ SimpleJIT::SimpleJIT() : context_(std::make_unique<llvm::LLVMContext>()) {
 
   for (auto &item : GlobalSymbolRegistry::Global().All()) {
     VLOG(2) << "Insert [" << item.first << "] to SimpleJIT";
-    llvm::cantFail(jit_->define(llvm::orc::absoluteSymbols(
+    llvm::cantFail(jit_->getMainJITDylib().define(llvm::orc::absoluteSymbols(
         {{mangle(item.first),
           {llvm::pointerToJITTargetAddress(item.second),
            llvm::JITSymbolFlags::None}}})));

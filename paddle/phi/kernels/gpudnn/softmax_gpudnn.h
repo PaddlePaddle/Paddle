@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/amp_type_traits.h"
@@ -860,7 +861,7 @@ __global__ void WarpSoftmaxBackward(T* dst,
   Wrapper of softmax forward with template instantiation on size of input.
 */
 template <typename T, typename VecT, typename IndexType, bool LogMode>
-void SwitchWarpSoftmaxForward(const IndexType blocks,
+void SwitchWarpSoftmaxForward(const IndexType blocks_64,
                               const dim3 threads,
                               const GPUContext& dev_ctx,
                               T* dst,
@@ -870,6 +871,8 @@ void SwitchWarpSoftmaxForward(const IndexType blocks,
                               const IndexType element_count,
                               IndexType log2_element_count) {
   using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
+  PADDLE_ENFORCE_LE_UINT32_MAX(blocks_64, "softmax blocks");
+  uint32_t blocks = static_cast<uint32_t>(blocks_64);
   switch (log2_element_count) {
     SOFTMAX_WARP_FORWARD_CASE(0, AccT);
     SOFTMAX_WARP_FORWARD_CASE(1, AccT);
@@ -901,7 +904,7 @@ void SwitchWarpSoftmaxForward(const IndexType blocks,
 Wrapper of softmax backward with template instantiation on size of input.
 */
 template <typename T, typename VecT, typename IndexType, bool LogMode>
-void SwitchWarpSoftmaxBackward(const IndexType blocks,
+void SwitchWarpSoftmaxBackward(const IndexType blocks_64,
                                const dim3 threads,
                                const GPUContext& dev_ctx,
                                T* dst,
@@ -912,6 +915,8 @@ void SwitchWarpSoftmaxBackward(const IndexType blocks,
                                const IndexType element_count,
                                IndexType log2_element_count) {
   using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
+  PADDLE_ENFORCE_LE_UINT32_MAX(blocks_64, "softmax blocks");
+  uint32_t blocks = static_cast<uint32_t>(blocks_64);
   switch (log2_element_count) {
     SOFTMAX_WARP_BACKWARD_CASE(0, AccT);
     SOFTMAX_WARP_BACKWARD_CASE(1, AccT);
@@ -955,17 +960,27 @@ static void GetGridDim(int64_t high_dim,
   grid_x = std::min(grid_x, max_num_blocks);
   int64_t grid_y = (max_num_blocks + grid_x - 1) / grid_x;
   grid_y = std::min(grid_y, high_dim);
-  grid->x = grid_x;
-  grid->y = grid_y;
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "softmax grid.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_y, "softmax grid.y");
+  grid->x = static_cast<uint32_t>(grid_x);
+  grid->y = static_cast<uint32_t>(grid_y);
 }
 
 static void GetBlockDim(int64_t mid_dim, int64_t low_dim, dim3* block) {
   constexpr int max_num_threads = 1024;
   int64_t block_x = int64_t(1) << Log2Ceil(low_dim);
   int64_t block_y = int64_t(1) << Log2Ceil(mid_dim);
-  block->x = std::min<int64_t>(block_x, PADDLE_WARP_SIZE);
-  block->y = std::min<int64_t>(block_y, max_num_threads / block->x);
-  block->x = std::min<int64_t>(block_x, max_num_threads / block->y);
+  int64_t block_x_min = std::min<int64_t>(block_x, PADDLE_WARP_SIZE);
+  PADDLE_ENFORCE_LE_UINT32_MAX(block_x_min, "softmax block.x");
+  block->x = static_cast<uint32_t>(block_x_min);
+  int64_t block_y_min = std::min<int64_t>(
+      block_y, max_num_threads / static_cast<int64_t>(block->x));
+  PADDLE_ENFORCE_LE_UINT32_MAX(block_y_min, "softmax block.y");
+  block->y = static_cast<uint32_t>(block_y_min);
+  block_x_min = std::min<int64_t>(
+      block_x, max_num_threads / static_cast<int64_t>(block->y));
+  PADDLE_ENFORCE_LE_UINT32_MAX(block_x_min, "softmax block.x");
+  block->x = static_cast<uint32_t>(block_x_min);
 }
 
 static void GetLaunchConfig(int64_t high_dim,
@@ -1447,14 +1462,17 @@ inline void SpatialSoftMaxGetGridSize(dim3* block,
                                       uint64_t D,
                                       dim3* grid) {
   // 1. Calculate the number of blocks required along the Y-axis to cover 'D'.
-  uint32_t inner_blocks = (D + block->y - 1) / block->y;
+  uint64_t inner_blocks_64 =
+      (D + static_cast<uint64_t>(block->y) - 1) / block->y;
+  PADDLE_ENFORCE_LE_UINT32_MAX(inner_blocks_64, "softmax inner blocks");
+  uint32_t inner_blocks = static_cast<uint32_t>(inner_blocks_64);
   if (inner_blocks > max_active_blocks) {
     inner_blocks = max_active_blocks;
   }
   // Fill the x axis with as many blocks as we can fit (a little more is ok too)
   uint32_t outer_blocks = (max_active_blocks + inner_blocks - 1) / inner_blocks;
   if (outer_blocks > N) {
-    outer_blocks = N;
+    outer_blocks = static_cast<uint32_t>(N);
   }
   grid->x = outer_blocks;
   grid->y = inner_blocks;
@@ -1463,8 +1481,9 @@ inline void SpatialSoftMaxGetGridSize(dim3* block,
 inline void SpatialSoftMaxGetBlockSize(uint64_t dim_size,
                                        uint64_t D,
                                        dim3* block) {
-  uint32_t inner_threads = D;
-  inner_threads = std::min(inner_threads, static_cast<uint32_t>(1024));
+  uint64_t inner_threads_64 = std::min(D, static_cast<uint64_t>(1024));
+  PADDLE_ENFORCE_LE_UINT32_MAX(inner_threads_64, "softmax inner threads");
+  uint32_t inner_threads = static_cast<uint32_t>(inner_threads_64);
   uint32_t dim_threads = 1;
   if (inner_threads <= 64 && dim_size >= 64) {
     while (inner_threads * dim_threads <= 1024 && dim_threads <= dim_size)
@@ -2442,8 +2461,15 @@ void dispatch_softmax_forward(const GPUContext& dev_ctx,
 
   IndexType warps_per_block = (threads_per_block / warp_size);
   IndexType batches_per_block = warps_per_block * batches_per_warp;
-  IndexType blocks = (batch_count + batches_per_block - 1) / batches_per_block;
-  dim3 threads(warp_size, warps_per_block, 1);
+  IndexType blocks_64 =
+      (batch_count + batches_per_block - 1) / batches_per_block;
+  PADDLE_ENFORCE_LE_UINT32_MAX(blocks_64, "softmax blocks");
+  PADDLE_ENFORCE_LE_UINT32_MAX(warp_size, "softmax warp size");
+  PADDLE_ENFORCE_LE_UINT32_MAX(warps_per_block, "softmax warps per block");
+  uint32_t blocks = static_cast<uint32_t>(blocks_64);
+  dim3 threads(static_cast<uint32_t>(warp_size),
+               static_cast<uint32_t>(warps_per_block),
+               1);
 
   switch (log2_elements) {
 #define LAUNCH_SOFTMAX_WARP_FORWARD(L2E)                                    \
@@ -2494,8 +2520,15 @@ void dispatch_softmax_backward(const GPUContext& dev_ctx,
 
   IndexType warps_per_block = (threads_per_block / warp_size);
   IndexType batches_per_block = warps_per_block * batches_per_warp;
-  IndexType blocks = (batch_count + batches_per_block - 1) / batches_per_block;
-  dim3 threads(warp_size, warps_per_block, 1);
+  IndexType blocks_64 =
+      (batch_count + batches_per_block - 1) / batches_per_block;
+  PADDLE_ENFORCE_LE_UINT32_MAX(blocks_64, "softmax blocks");
+  PADDLE_ENFORCE_LE_UINT32_MAX(warp_size, "softmax warp size");
+  PADDLE_ENFORCE_LE_UINT32_MAX(warps_per_block, "softmax warps per block");
+  uint32_t blocks = static_cast<uint32_t>(blocks_64);
+  dim3 threads(static_cast<uint32_t>(warp_size),
+               static_cast<uint32_t>(warps_per_block),
+               1);
 
   switch (log2_elements) {
 #define LAUNCH_SOFTMAX_WARP_BACKWARD(L2E)                                   \
@@ -2640,7 +2673,6 @@ void SoftmaxForwardCUDAKernelCompatible(const GPUContext& dev_ctx,
   IndexType D = tensor_dims[2];
 
   if (D == 1) {
-    dim3 grid(N);
     if (dim <= 2048 && dim * sizeof(T) <= 8192) {
       IndexType remaining = N;
       IndexType chunk_size = (1L << 30L) / dim;
@@ -2657,6 +2689,8 @@ void SoftmaxForwardCUDAKernelCompatible(const GPUContext& dev_ctx,
         remaining -= chunk_size;
       }
     } else {
+      PADDLE_ENFORCE_LE_UINT32_MAX(N, "softmax grid.x");
+      dim3 grid(static_cast<uint32_t>(N));
       dispatch_host_softmax_forward<T, AccT, IndexType, Function>(
           dev_ctx, dim, grid, input_data, out_data);
     }
@@ -2718,7 +2752,8 @@ void SoftmaxBackwardCUDAKernelCompatible(const GPUContext& dev_ctx,
         remaining -= chunk_size;
       }
     } else {
-      dim3 grid(N);
+      PADDLE_ENFORCE_LE_UINT32_MAX(N, "softmax grid.x");
+      dim3 grid(static_cast<uint32_t>(N));
       dispatch_host_softmax_backward<T, AccT, IndexType, LogMode, Function>(
           dev_ctx, dim, grid, dout_data, out_data, dx_data);
     }

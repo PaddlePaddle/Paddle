@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/gather_scatter_functor.h"
 #include <type_traits>
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
@@ -493,6 +494,12 @@ __global__ void ScatterWriteByWinnersKernel(
 namespace {
 template <typename T, typename U>
 constexpr bool is_same_type = std::is_same_v<std::decay_t<T>, std::decay_t<U>>;
+
+uint32_t GetCudaLaunchGrid(int64_t numel, int block, const char* name) {
+  const int64_t grid = (numel + block - 1) / block;
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid, name);
+  return static_cast<uint32_t>(grid);
+}
 }  // anonymous namespace
 
 template <typename tensor_t,
@@ -527,7 +534,8 @@ struct gpu_gather_scatter_functor {
     int64_t src_select_dim_size = src_dims[dim];
 
     constexpr int block = 512;
-    int64_t grid = (index_size + block - 1) / block;
+    const uint32_t grid = GetCudaLaunchGrid(
+        index_size, block, "gpu_gather_scatter_functor launch grid");
     auto stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
 
     int64_t ndim = index.dims().size();
@@ -558,6 +566,7 @@ struct gpu_gather_scatter_functor {
 
     DenseTensor aux_tensor;
     if (method_name == "assign") {
+      PADDLE_ENFORCE_LE_INT_MAX(index_size, "gather_scatter assign tid");
       aux_tensor.Resize({self_size});
       dev_ctx.Alloc<int>(&aux_tensor);
       funcs::set_constant(dev_ctx, &aux_tensor, 0);
@@ -629,7 +638,8 @@ struct gpu_gather_scatter_functor {
                                                     atomic_cnt_buffer);
     if (method_name == "mean") {
       constexpr int _block = 512;
-      int64_t grid = (self_size + _block - 1) / _block;
+      const uint32_t grid = GetCudaLaunchGrid(
+          self_size, _block, "CastDivKernel CUDA launch grid size");
       CastDivKernel<<<grid, _block, 0, stream>>>(
           self_data, atomic_cnt_buffer, self_size);
     }
@@ -780,7 +790,7 @@ void gpu_scatter_input_grad_kernel(DenseTensor self,
 
   int64_t inner_dim_size = 1;
   int64_t outer_dim_size = 1;
-  int select_dim_size = index_dims[dim];
+  int64_t select_dim_size = index_dims[dim];
   for (int64_t i = 0; i < dim; ++i) {
     inner_dim_size *= index_dims[i];
   }
@@ -791,7 +801,8 @@ void gpu_scatter_input_grad_kernel(DenseTensor self,
 
   constexpr int block = 512;
   int64_t n = inner_dim_size * select_dim_size * outer_dim_size;
-  int64_t grid = (n + block - 1) / block;
+  const uint32_t grid =
+      GetCudaLaunchGrid(n, block, "gpu_scatter_input_grad_kernel launch grid");
   auto stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
 
   int64_t ndim = index_dims.size();
@@ -820,12 +831,8 @@ void gpu_scatter_input_grad_kernel(DenseTensor self,
   const size_t shared_mem_bytes = sizeof(int64_t) * shape_stride_dev.numel();
 
   ScatterInputGradGPUKernel<tensor_t, index_t>
-      <<<grid, block, shared_mem_bytes, stream>>>(grad_data,
-                                                  index_data,
-                                                  shape_strides,
-                                                  dim,
-                                                  index_dims.size(),
-                                                  index_size);
+      <<<grid, block, shared_mem_bytes, stream>>>(
+          grad_data, index_data, shape_strides, dim, ndim, index_size);
 }
 
 namespace {
@@ -855,7 +862,7 @@ __global__ void ScatterGradPrePassKernel(
     bool include_self = true) {
   if constexpr (dispatch == GradDispatchTag::MulInputGrad) {
     COMPUTE_OFFSET_SINGLE_OUTPUT(replace_index, 1, tid, 2)
-    atomicMax(aux_buffer + replace_index, tid);
+    atomicMax(aux_buffer + replace_index, static_cast<int>(tid));
   } else if constexpr (dispatch == GradDispatchTag::MinMaxInputGrad) {
     // This is a special case, src is stored in shape_strides + 2 * dim but used
     // as the 2nd param for compute offset
@@ -864,11 +871,11 @@ __global__ void ScatterGradPrePassKernel(
       CudaAtomicAdd(aux_buffer + replace_index, 1);
   } else if constexpr (dispatch == GradDispatchTag::MeanInputGrad) {
     COMPUTE_OFFSET_SINGLE_OUTPUT(replace_index, 1, tid, 2)
-    atomicMax(aux_buffer + replace_index, tid);
+    atomicMax(aux_buffer + replace_index, static_cast<int>(tid));
     CudaAtomicAdd(aux_buffer + grad_numel + replace_index, 1);
   } else if constexpr (dispatch == GradDispatchTag::ValueGrad) {
     COMPUTE_OFFSET_SINGLE_OUTPUT(replace_index_self, 2, tid, 3)
-    atomicMax(aux_buffer + replace_index_self, tid);
+    atomicMax(aux_buffer + replace_index_self, static_cast<int>(tid));
   } else if constexpr (dispatch == GradDispatchTag::MeanValueGrad) {
     COMPUTE_OFFSET_SINGLE_OUTPUT(replace_index_self, 2, tid, 3)
     CudaAtomicAdd(aux_buffer + replace_index_self, 1);
@@ -951,7 +958,7 @@ void gpu_scatter_mul_min_max_input_grad_kernel(DenseTensor self,
   int64_t inner_dim_size = 1;
   int64_t outer_dim_size = 1;
   int64_t select_dim_size = index_dims[dim];
-  for (int i = 0; i < dim; ++i) {
+  for (int64_t i = 0; i < dim; ++i) {
     inner_dim_size *= index_dims[i];
   }
 
@@ -960,7 +967,8 @@ void gpu_scatter_mul_min_max_input_grad_kernel(DenseTensor self,
   }
   constexpr int block = 512;
   int64_t n = inner_dim_size * select_dim_size * outer_dim_size;
-  int64_t grid = (n + block - 1) / block;
+  const uint32_t grid = GetCudaLaunchGrid(
+      n, block, "gpu_scatter_mul_min_max_input_grad_kernel launch grid");
   auto stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
   DenseTensor aux_tensor;
   aux_tensor.Resize({grad.numel()});
@@ -996,6 +1004,7 @@ void gpu_scatter_mul_min_max_input_grad_kernel(DenseTensor self,
   size_t shared_mem_bytes = sizeof(int64_t) * ndim;
 
   if (reduce == "mul" || reduce == "multiply") {
+    PADDLE_ENFORCE_LE_INT_MAX(index.numel(), "gather_scatter input grad tid");
     funcs::set_constant(dev_ctx, &aux_tensor, 0);
     shared_mem_bytes *= 2;  // 1 stride, 1 shape
 
@@ -1024,6 +1033,8 @@ void gpu_scatter_mul_min_max_input_grad_kernel(DenseTensor self,
   } else if (reduce == "amin" || reduce == "amax") {
     funcs::set_constant(dev_ctx, &aux_tensor, 1);
     shared_mem_bytes *= 3;  // two strides, 1 shape
+    PADDLE_ENFORCE_LE_INT_MAX(index.numel(),
+                              "gather_scatter min_max input grad tid");
     ScatterGradPrePassKernel<tensor_t, index_t, MinMaxInputGrad>
         <<<grid, block, shared_mem_bytes, stream>>>(grad_data,
                                                     index_data,
@@ -1083,7 +1094,7 @@ void gpu_scatter_mean_input_grad_kernel(DenseTensor self,
   int64_t inner_dim_size = 1;
   int64_t outer_dim_size = 1;
   int64_t select_dim_size = index_dims[dim];
-  for (int i = 0; i < dim; ++i) {
+  for (int64_t i = 0; i < dim; ++i) {
     inner_dim_size *= index_dims[i];
   }
   for (int i = dim + 1; i < index_dims.size(); i++) {
@@ -1097,14 +1108,16 @@ void gpu_scatter_mean_input_grad_kernel(DenseTensor self,
   int* aux_buffer = aux_tensor.data<int>();
 
   constexpr int block = 512;
-  int64_t grid_memset = (grad_size + block - 1) / block;
+  const uint32_t grid_memset = GetCudaLaunchGrid(
+      grad_size, block, "gather_scatter memset CUDA launch grid size");
   auto stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
   // TODO(heqianyue): This kernel can be fused
   CudaMemsetAsync<<<grid_memset, block, 0, stream>>>(
       aux_buffer + grad_size, 1, sizeof(int) * grad_size);
 
   int64_t n = inner_dim_size * select_dim_size * outer_dim_size;
-  int64_t grid = (n + block - 1) / block;
+  const uint32_t grid = GetCudaLaunchGrid(
+      n, block, "gpu_scatter_mean_input_grad_kernel launch grid");
 
   int64_t ndim = index_dims.size();
 
@@ -1131,6 +1144,8 @@ void gpu_scatter_mean_input_grad_kernel(DenseTensor self,
   const int64_t* shape_strides = shape_stride_dev.data<int64_t>();
   size_t shared_mem_bytes = sizeof(int64_t) * ndim * 2;
 
+  PADDLE_ENFORCE_LE_INT_MAX(index.numel(),
+                            "gather_scatter mean input grad tid");
   ScatterGradPrePassKernel<tensor_t, index_t, MeanInputGrad>
       <<<grid, block, shared_mem_bytes, stream>>>(grad_data,
                                                   index_data,
@@ -1186,7 +1201,7 @@ void gpu_scatter_value_grad_kernel(DenseTensor self,
 
   int64_t inner_dim_size = 1;
   int64_t outer_dim_size = 1;
-  int select_dim_size = index_dims[dim];
+  int64_t select_dim_size = index_dims[dim];
   for (int64_t i = 0; i < dim; ++i) {
     inner_dim_size *= index_dims[i];
   }
@@ -1201,7 +1216,8 @@ void gpu_scatter_value_grad_kernel(DenseTensor self,
 
   constexpr int block = 512;
   int64_t n = inner_dim_size * select_dim_size * outer_dim_size;
-  int64_t grid = (n + block - 1) / block;
+  const uint32_t grid =
+      GetCudaLaunchGrid(n, block, "gpu_scatter_value_grad_kernel launch grid");
   auto stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
 
   int64_t ndim = index_dims.size();
@@ -1230,6 +1246,7 @@ void gpu_scatter_value_grad_kernel(DenseTensor self,
   const int64_t* shape_strides = shape_stride_dev.data<int64_t>();
   size_t shared_mem_bytes = sizeof(int64_t) * ndim * 3;
 
+  PADDLE_ENFORCE_LE_INT_MAX(index.numel(), "gather_scatter value grad tid");
   ScatterGradPrePassKernel<tensor_t, index_t, ValueGrad>
       <<<grid, block, shared_mem_bytes, stream>>>(grad_data,
                                                   index_data,
@@ -1305,7 +1322,7 @@ void gpu_scatter_add_mean_value_grad_kernel(DenseTensor self,
   int64_t inner_dim_size = 1;
   int64_t outer_dim_size = 1;
   int64_t select_dim_size = index_dims[dim];
-  for (int i = 0; i < dim; ++i) {
+  for (int64_t i = 0; i < dim; ++i) {
     inner_dim_size *= index_dims[i];
   }
   for (int i = dim + 1; i < index_dims.size(); i++) {
@@ -1313,10 +1330,12 @@ void gpu_scatter_add_mean_value_grad_kernel(DenseTensor self,
   }
 
   constexpr int block = 512;
-  int64_t ndim = index_dims.size();
   int64_t n = inner_dim_size * select_dim_size * outer_dim_size;
-  int64_t grid = (n + block - 1) / block;
+  const uint32_t grid = GetCudaLaunchGrid(
+      n, block, "gpu_scatter_add_mean_value_grad_kernel launch grid");
   auto stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
+
+  int64_t ndim = index_dims.size();
 
   DenseTensor shape_stride_dev;
   shape_stride_dev.Resize({3 * ndim});
@@ -1348,6 +1367,8 @@ void gpu_scatter_add_mean_value_grad_kernel(DenseTensor self,
     dev_ctx.Alloc<int>(&aux_tensor);
     funcs::set_constant(dev_ctx, &aux_tensor, include_self ? 1 : 0);
     int* aux_buffer = aux_tensor.data<int>();
+    PADDLE_ENFORCE_LE_INT_MAX(index.numel(),
+                              "gather_scatter mean value grad tid");
     ScatterGradPrePassKernel<tensor_t, index_t, MeanValueGrad>
         <<<grid, block, shared_mem_bytes, stream>>>(grad_data,
                                                     index_data,
@@ -1447,7 +1468,7 @@ void gpu_scatter_mul_min_max_value_grad_kernel(DenseTensor self,
   int64_t inner_dim_size = 1;
   int64_t outer_dim_size = 1;
   int64_t select_dim_size = index_dims[dim];
-  for (int i = 0; i < dim; ++i) {
+  for (int64_t i = 0; i < dim; ++i) {
     inner_dim_size *= index_dims[i];
   }
   for (int i = dim + 1; i < index_dims.size(); i++) {
@@ -1455,10 +1476,12 @@ void gpu_scatter_mul_min_max_value_grad_kernel(DenseTensor self,
   }
 
   constexpr int block = 512;
-  int64_t ndim = index_dims.size();
   int64_t n = inner_dim_size * select_dim_size * outer_dim_size;
-  int64_t grid = (n + block - 1) / block;
+  const uint32_t grid = GetCudaLaunchGrid(
+      n, block, "gpu_scatter_mul_min_max_value_grad_kernel launch grid");
   auto stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
+
+  int64_t ndim = index_dims.size();
 
   DenseTensor shape_stride_dev;
   shape_stride_dev.Resize({3 * ndim});
@@ -1502,6 +1525,8 @@ void gpu_scatter_mul_min_max_value_grad_kernel(DenseTensor self,
     funcs::set_constant(dev_ctx, &aux_tensor, 0);
 
     int* aux_buffer = aux_tensor.data<int>();
+    PADDLE_ENFORCE_LE_INT_MAX(index.numel(),
+                              "gather_scatter min_max value grad tid");
     ScatterGradPrePassKernel<tensor_t, index_t, MinMaxValueGrad>
         <<<grid, block, shared_mem_bytes, stream>>>(grad_data,
                                                     index_data,

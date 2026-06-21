@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/fusion/gpu/fused_partial_rope_utils.h"
 
+#include "paddle/common/enforce.h"
+
 namespace phi {
 namespace fusion {
 
@@ -106,7 +108,15 @@ void FusedPartialRoPEKernel(const Context& dev_ctx,
 
   // Launch kernel
   int64_t block_num = batch_size * seq_len * num_heads;
-  dim3 grid((block_num + 7) / 8);
+  int64_t grid_64 = (block_num + 7) / 8;
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "fused_partial_rope grid.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(seq_len, "fused_partial_rope seq_len");
+  PADDLE_ENFORCE_LE_UINT32_MAX(num_heads, "fused_partial_rope num_heads");
+  PADDLE_ENFORCE_LE_UINT32_MAX(nope_head_dim,
+                               "fused_partial_rope nope_head_dim");
+  PADDLE_ENFORCE_LE_UINT32_MAX(pe_head_dim, "fused_partial_rope pe_head_dim");
+  PADDLE_ENFORCE_LE_UINT32_MAX(block_num, "fused_partial_rope block_num");
+  dim3 grid(static_cast<uint32_t>(grid_64));
   dim3 block(32, 8);
   int64_t shm_size = block.y * pe_head_dim * sizeof(T);
 

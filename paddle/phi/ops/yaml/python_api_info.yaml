@@ -470,7 +470,7 @@
 - op : inverse
   name : [paddle.inverse, paddle.Tensor.inverse, paddle.linalg.inv]
   args_alias:
-    use_default_mapping : True
+    x : [input, A]
 
 - op : lgamma
   name : [paddle.lgamma, paddle.Tensor.lgamma]
@@ -573,7 +573,7 @@
 - op : nextafter
   name : [paddle.nextafter, paddle.Tensor.nextafter]
   args_alias :
-    use_default_mapping : Truefmod
+    use_default_mapping : True
 
 - op : real
   name : [paddle.real, paddle.Tensor.real]

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "paddle/common/enforce.h"
 #include "paddle/common/macros.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"

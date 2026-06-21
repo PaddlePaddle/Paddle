@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/complex_kernel.h"
@@ -99,8 +100,10 @@ void StftGradKernel(const Context& dev_ctx,
     DenseTensor full_dy;
     full_dy.Resize(d_frames_dims);
     dev_ctx.template Alloc<C>(&full_dy);
-    auto zero_length = static_cast<int>(full_dy.dims().at(axes.back()) -
-                                        dy->dims().at(axes.back()));
+    const int64_t zero_length_64 =
+        full_dy.dims().at(axes.back()) - dy->dims().at(axes.back());
+    PADDLE_ENFORCE_LE_INT_MAX(zero_length_64, "stft zero padding length");
+    auto zero_length = static_cast<int>(zero_length_64);
     auto rank = dy->dims().size();
 
     std::vector<int> pads(rank * 2, 0);

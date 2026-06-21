@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -87,12 +88,18 @@ inline void im2col_sh1sw1dh1dw1ph0pw0(
     const DenseTensor& im,
     DenseTensor* col,
     const DataLayout data_layout = DataLayout::NCHW) {
-  int im_channels =
+  int64_t im_channels_64 =
       (data_layout != DataLayout::NHWC ? im.dims()[0] : im.dims()[2]);
-  int im_height =
+  int64_t im_height_64 =
       (data_layout != DataLayout::NHWC ? im.dims()[1] : im.dims()[0]);
-  int im_width =
+  int64_t im_width_64 =
       (data_layout != DataLayout::NHWC ? im.dims()[2] : im.dims()[1]);
+  PADDLE_ENFORCE_LE_INT_MAX(im_channels_64, "im2col im_channels");
+  PADDLE_ENFORCE_LE_INT_MAX(im_height_64, "im2col im_height");
+  PADDLE_ENFORCE_LE_INT_MAX(im_width_64, "im2col im_width");
+  int im_channels = static_cast<int>(im_channels_64);
+  int im_height = static_cast<int>(im_height_64);
+  int im_width = static_cast<int>(im_width_64);
   int64_t filter_height = col->dims()[1];
   int64_t filter_width = col->dims()[2];
   int64_t output_height = col->dims()[3];
@@ -101,7 +108,7 @@ inline void im2col_sh1sw1dh1dw1ph0pw0(
   const T* im_data = im.data<T>();
   T* col_data = col->data<T>();
   int64_t col_matrix_width = output_width * output_height;
-  int64_t im_size = im_height * im_width;
+  int64_t im_size = static_cast<int64_t>(im_height) * im_width;
   size_t copy_size = sizeof(T) * output_width;
   const T* im_data_oh = im_data;
   T* dst_data_oh = col_data;
@@ -139,12 +146,18 @@ template <typename T>
 inline void im2col_sh1sw1dh1dw1ph1pw1(const DenseTensor& im,
                                       DenseTensor* col,
                                       const DataLayout data_layout) {
-  int im_channels =
+  int64_t im_channels_64 =
       (data_layout != DataLayout::NHWC ? im.dims()[0] : im.dims()[2]);
-  int im_height =
+  int64_t im_height_64 =
       (data_layout != DataLayout::NHWC ? im.dims()[1] : im.dims()[0]);
-  int im_width =
+  int64_t im_width_64 =
       (data_layout != DataLayout::NHWC ? im.dims()[2] : im.dims()[1]);
+  PADDLE_ENFORCE_LE_INT_MAX(im_channels_64, "im2col im_channels");
+  PADDLE_ENFORCE_LE_INT_MAX(im_height_64, "im2col im_height");
+  PADDLE_ENFORCE_LE_INT_MAX(im_width_64, "im2col im_width");
+  int im_channels = static_cast<int>(im_channels_64);
+  int im_height = static_cast<int>(im_height_64);
+  int im_width = static_cast<int>(im_width_64);
   int64_t filter_height = col->dims()[1];
   int64_t filter_width = col->dims()[2];
   int64_t output_height = col->dims()[3];
@@ -157,10 +170,10 @@ inline void im2col_sh1sw1dh1dw1ph1pw1(const DenseTensor& im,
 
   const T* im_data = im.data<T>();
   T* col_data = col->data<T>();
-  int64_t im_size = im_height * im_width;
-  int64_t col_matrix_width = output_width * output_height;
-  int64_t col_block_fh = filter_width * col_matrix_width;  // fw*oh*ow
-  int64_t col_block_ic = filter_height * col_block_fh;     // fh*fw*oh*ow
+  int64_t im_size = static_cast<int64_t>(im_height) * im_width;
+  int64_t col_matrix_width = static_cast<int64_t>(output_width) * output_height;
+  int64_t col_block_fh = static_cast<int64_t>(filter_width) * col_matrix_width;
+  int64_t col_block_ic = static_cast<int64_t>(filter_height) * col_block_fh;
 
   // fill height padding
   {
@@ -232,8 +245,11 @@ inline void im2col_sh1sw1dh1dw1ph1pw1(const DenseTensor& im,
               int im_col = kow;
               if (im_row >= 0 && im_row < im_height && im_col >= 0 &&
                   im_col < im_width) {
-                dst_data[plw + kow] =
-                    im_data[(im_row * im_width + im_col) * im_channels + ic];
+                const int64_t im_idx =
+                    (static_cast<int64_t>(im_row) * im_width + im_col) *
+                        im_channels +
+                    ic;
+                dst_data[plw + kow] = im_data[im_idx];
               } else {
                 dst_data[plw + kow] = static_cast<T>(0);
               }
@@ -307,8 +323,11 @@ inline void im2col_sh1sw1dh1dw1ph1pw1(const DenseTensor& im,
               int im_col = kow;
               if (im_row >= 0 && im_row < im_height && im_col >= 0 &&
                   im_col < im_width) {
-                dst_data[plw - kw + kow] =
-                    im_data[(im_row * im_width + im_col) * im_channels + ic];
+                const int64_t im_idx =
+                    (static_cast<int64_t>(im_row) * im_width + im_col) *
+                        im_channels +
+                    ic;
+                dst_data[plw - kw + kow] = im_data[im_idx];
               } else {
                 dst_data[plw - kw + kow] = static_cast<T>(0);
               }
@@ -335,8 +354,11 @@ inline void im2col_sh1sw1dh1dw1ph1pw1(const DenseTensor& im,
               int im_col = kw - plw + kow;
               if (im_row >= 0 && im_row < im_height && im_col >= 0 &&
                   im_col < im_width) {
-                dst_data[kow] =
-                    im_data[(im_row * im_width + im_col) * im_channels + ic];
+                const int64_t im_idx =
+                    (static_cast<int64_t>(im_row) * im_width + im_col) *
+                        im_channels +
+                    ic;
+                dst_data[kow] = im_data[im_idx];
               } else {
                 dst_data[kow] = static_cast<T>(0);
               }
@@ -364,8 +386,11 @@ inline void im2col_sh1sw1dh1dw1ph1pw1(const DenseTensor& im,
               int im_col = kw - plw + kow;
               if (im_row >= 0 && im_row < im_height && im_col >= 0 &&
                   im_col < im_width) {
-                dst_data[kow] =
-                    im_data[(im_row * im_width + im_col) * im_channels + ic];
+                const int64_t im_idx =
+                    (static_cast<int64_t>(im_row) * im_width + im_col) *
+                        im_channels +
+                    ic;
+                dst_data[kow] = im_data[im_idx];
               } else {
                 dst_data[kow] = static_cast<T>(0);
               }

@@ -161,11 +161,11 @@ static DDim BroadCastTensorsDims(
 
   std::vector<int64_t> target_dims(target_rank, 0);
   for (int index = 0; index < target_rank; index++) {
-    int target_dim_size = 1;
+    int64_t target_dim_size = 1;
     for (const auto& tensor : tensors) {
       auto input_ddim = tensor->dims();
       int axis = static_cast<int>(input_ddim.size()) - index - 1;
-      int dim_size = 1;
+      int64_t dim_size = 1;
       if (axis >= 0) {
         dim_size = input_ddim[axis];
       }

@@ -24,9 +24,12 @@
 #include "paddle/utils/optional.h"
 namespace phi {
 
-inline int Im2SeqOutputSize(
-    int input_size, int filter_size, int padding_0, int padding_1, int stride) {
-  const int output_size =
+inline int64_t Im2SeqOutputSize(int64_t input_size,
+                                int filter_size,
+                                int padding_0,
+                                int padding_1,
+                                int stride) {
+  const int64_t output_size =
       (input_size + padding_0 + padding_1 - filter_size) / stride + 1;
   return output_size;
 }
@@ -42,24 +45,25 @@ void Im2SequenceKernel(const Context& dev_ctx,
                        DenseTensor* out) {
   const DenseTensor* in = &x_in;
   auto in_dim = in->dims();
-  int batch_size = in_dim[0];
-  int img_channels = in_dim[1];
-  int img_height = in_dim[2];
-  int img_width = in_dim[3];
+  int64_t batch_size = in_dim[0];
+  int64_t img_channels = in_dim[1];
+  int64_t img_height = in_dim[2];
+  int64_t img_width = in_dim[3];
   if (y && batch_size > 1) {
     const DenseTensor* img_real_size = y.get_ptr();
 
     DenseTensor cpu_shape_tensor;
     Copy(dev_ctx, *img_real_size, CPUPlace(), true, &cpu_shape_tensor);
-    std::vector<int> img_real_h;
-    std::vector<int> img_real_w;
-    std::vector<int> output_height;
-    std::vector<int> output_width;
-    int result = 0;
-    for (int i = 0; i < batch_size; i++) {
-      int tmp_real_h = static_cast<int>((cpu_shape_tensor.data<T>())[2 * i]);
-      int tmp_real_w =
-          static_cast<int>((cpu_shape_tensor.data<T>())[2 * i + 1]);
+    std::vector<int64_t> img_real_h;
+    std::vector<int64_t> img_real_w;
+    std::vector<int64_t> output_height;
+    std::vector<int64_t> output_width;
+    int64_t result = 0;
+    for (int64_t i = 0; i < batch_size; i++) {
+      int64_t tmp_real_h =
+          static_cast<int64_t>((cpu_shape_tensor.data<T>())[2 * i]);
+      int64_t tmp_real_w =
+          static_cast<int64_t>((cpu_shape_tensor.data<T>())[2 * i + 1]);
       if (tmp_real_h % out_stride[0] == 0) {
         tmp_real_h = tmp_real_h / out_stride[0];
       } else {
@@ -83,8 +87,8 @@ void Im2SequenceKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(out);
 
     const std::vector<int> dilations({1, 1});
-    int offset_out = 0;
-    for (int i = 0; i < batch_size; i++) {
+    int64_t offset_out = 0;
+    for (int64_t i = 0; i < batch_size; i++) {
       const DenseTensor src =
           in->Slice(i, i + 1).Resize({img_channels, img_height, img_width});
       DenseTensor dst =
@@ -102,17 +106,17 @@ void Im2SequenceKernel(const Context& dev_ctx,
     }
     LegacyLoD lod(1);
     lod[0].reserve(batch_size + 1);
-    int offset = 0;
+    int64_t offset = 0;
     lod[0].push_back(offset);
-    for (int i = 0; i < batch_size; ++i) {
+    for (int64_t i = 0; i < batch_size; ++i) {
       offset += output_height[i] * output_width[i];
       lod[0].push_back(offset);
     }
     out->set_lod(lod);
   } else {
-    int output_height = Im2SeqOutputSize(
+    int64_t output_height = Im2SeqOutputSize(
         img_height, kernels[0], paddings[0], paddings[2], strides[0]);
-    int output_width = Im2SeqOutputSize(
+    int64_t output_width = Im2SeqOutputSize(
         img_width, kernels[1], paddings[1], paddings[3], strides[1]);
     out->Resize(
         {static_cast<int64_t>(batch_size) * output_height * output_width,
@@ -121,7 +125,7 @@ void Im2SequenceKernel(const Context& dev_ctx,
     const std::vector<int> dilations({1, 1});
     auto out_dims = out->dims();
     out->Resize({batch_size, out->numel() / batch_size});
-    for (int i = 0; i < batch_size; i++) {
+    for (int64_t i = 0; i < batch_size; i++) {
       const DenseTensor src =
           in->Slice(i, i + 1).Resize({img_channels, img_height, img_width});
       DenseTensor dst = out->Slice(i, i + 1).Resize(
@@ -133,9 +137,9 @@ void Im2SequenceKernel(const Context& dev_ctx,
     out->Resize(out_dims);
     LegacyLoD lod(1);
     lod[0].reserve(batch_size + 1);
-    int offset = 0;
+    int64_t offset = 0;
     lod[0].push_back(offset);
-    for (int i = 0; i < batch_size; ++i) {
+    for (int64_t i = 0; i < batch_size; ++i) {
       offset += output_height * output_width;
       lod[0].push_back(offset);
     }
@@ -165,21 +169,21 @@ void Im2SequenceGradKernel(const Context& dev_ctx,
       place, x_v, 0.0);
 
   auto in_dim = in->dims();
-  int batch_size = in_dim[0];
-  int img_channels = in_dim[1];
-  int img_height = in_dim[2];
-  int img_width = in_dim[3];
+  int64_t batch_size = in_dim[0];
+  int64_t img_channels = in_dim[1];
+  int64_t img_height = in_dim[2];
+  int64_t img_width = in_dim[3];
 
-  int output_height = Im2SeqOutputSize(
+  int64_t output_height = Im2SeqOutputSize(
       img_height, kernels[0], paddings[0], paddings[2], strides[0]);
-  int output_width = Im2SeqOutputSize(
+  int64_t output_width = Im2SeqOutputSize(
       img_width, kernels[1], paddings[1], paddings[3], strides[1]);
 
   const std::vector<int> dilations({1, 1});
 
   auto d_out_dims = d_out->dims();
   d_out->Resize({batch_size, d_out->numel() / batch_size});
-  for (int i = 0; i < batch_size; i++) {
+  for (int64_t i = 0; i < batch_size; i++) {
     DenseTensor dst =
         d_x->Slice(i, i + 1).Resize({img_channels, img_height, img_width});
     const DenseTensor src = d_out->Slice(i, i + 1).Resize(

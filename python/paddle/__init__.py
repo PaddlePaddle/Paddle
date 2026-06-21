@@ -373,10 +373,12 @@ from .nn.functional.distance import (
 from .nn.initializer.lazy_init import LazyGuard
 from .random import initial_seed
 from .tensor.attribute import (
+    imag,
     is_complex,
     is_floating_point,
     is_integer,
     rank,
+    real,
     shape,
 )
 from .tensor.compat_softmax import log_softmax, softmax
