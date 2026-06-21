@@ -214,6 +214,7 @@ jobs:
           mkdir -p ${CFS_DIR}/coverage_night/${coverage_tag}
           echo "Uploading coverage build size"
           python ${{ env.bos_file }} coverage_build_size paddle-github-action/night/coverage/${coverage_tag}
+          python ${{ env.bos_file }} coverage_build_size paddle-github-action/night/coverage
           echo "Uploading coverage wheel"
           python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/night/coverage/${coverage_tag}
           cd /
