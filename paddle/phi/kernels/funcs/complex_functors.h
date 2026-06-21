@@ -17,6 +17,7 @@ limitations under the License. */
 #define _USE_MATH_DEFINES
 #endif
 #include <cmath>
+#include <numbers>  // NOLINT(build/include_order)
 #include <type_traits>
 
 #include "paddle/common/hostdevice.h"
@@ -395,9 +396,9 @@ struct AngleFunctor<T, funcs::NoComplex<T, dtype::Real<T>>> {
       }
 #endif
     }
-    constexpr double kPi = 3.141592653589793238462643383279502884;
-    output_[idx] = input_[idx] < static_cast<T>(0) ? static_cast<T>(kPi)
-                                                   : static_cast<T>(0);
+    output_[idx] = input_[idx] < static_cast<T>(0)
+                       ? static_cast<T>(std::numbers::pi_v<double>)
+                       : static_cast<T>(0);
   }
 
   const T* input_;
