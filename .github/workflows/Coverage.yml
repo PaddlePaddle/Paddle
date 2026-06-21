@@ -98,7 +98,7 @@ jobs:
           FLAGS_fraction_of_gpu_memory_to_use: 0.15
           CTEST_PARALLEL_LEVEL: 2
           WITH_GPU: "ON"
-          CUDA_ARCH_NAME: Auto
+          CUDA_ARCH_NAME: Volta
           WITH_AVX: "ON"
           WITH_COVERAGE: "ON"
           COVERALLS_UPLOAD: "ON"
@@ -181,8 +181,6 @@ jobs:
           echo "Extracting Paddle.tar.gz"
           tar -xf Paddle.tar.gz --strip-components=1
           rm Paddle.tar.gz
-          git config --global --add safe.directory ${work_dir}
-          git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
           git remote -v
           set +e
           git remote add upstream https://github.com/PaddlePaddle/Paddle.git
