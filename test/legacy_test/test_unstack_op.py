@@ -340,5 +340,51 @@ class TestUnstackEmptyTensorInput(unittest.TestCase):
             self._test_unstack_with_static_empty_tensor_input(place)
 
 
+class TestUnstackGradPartiallyUsedOutputs(unittest.TestCase):
+    """When only part of unstack's outputs feed the loss, the gradients of the
+    unused outputs are undefined (null-impl) tensors. ``unstack_grad`` must
+    zero-fill them instead of dereferencing them (previously a SIGSEGV)."""
+
+    def _get_places(self):
+        places = [paddle.base.CPUPlace()]
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
+        return places
+
+    def _run_case(self, shape, axis, used_indices, place):
+        x = (
+            paddle.arange(int(np.prod(shape)), dtype='float32')
+            .reshape(shape)
+            .to(place)
+        )
+        x.stop_gradient = False
+        parts = paddle.unstack(x, axis=axis)
+        # loss = sum(part ** 2)
+        loss = paddle.add_n([parts[i] * parts[i] for i in used_indices]).sum()
+        dx = paddle.grad(loss, x)[0]
+
+        # grad is 2 * x on the used slices, and zero
+        # everywhere else (unused outputs contribute no gradient).
+        part_grads = [
+            (2.0 * p.numpy() if i in used_indices else np.zeros_like(p.numpy()))
+            for i, p in enumerate(parts)
+        ]
+        expected = np.stack(part_grads, axis=axis)
+        np.testing.assert_allclose(dx.numpy(), expected, rtol=1e-6, atol=1e-6)
+
+    def test_partially_used_outputs(self):
+        with dygraph_guard():
+            for place in self._get_places():
+                # Original repro: only the middle output of axis 0 is used.
+                self._run_case((3, 4), axis=0, used_indices=[1], place=place)
+                # First / last output unused.
+                self._run_case((3, 4), axis=0, used_indices=[0, 2], place=place)
+                # Non-zero / negative axis.
+                self._run_case((2, 3, 4), axis=1, used_indices=[1], place=place)
+                self._run_case(
+                    (2, 3, 4), axis=-1, used_indices=[0, 3], place=place
+                )
+
+
 if __name__ == '__main__':
     unittest.main()
