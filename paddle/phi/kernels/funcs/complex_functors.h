@@ -397,7 +397,11 @@ struct AngleFunctor<T, funcs::NoComplex<T, dtype::Real<T>>> {
 #endif
     }
     output_[idx] = input_[idx] < static_cast<T>(0)
+#if defined(__CUDACC__) || defined(__HIPCC__)
+                       ? static_cast<T>(M_PI)
+#else
                        ? static_cast<T>(std::numbers::pi_v<double>)
+#endif
                        : static_cast<T>(0);
   }
 
