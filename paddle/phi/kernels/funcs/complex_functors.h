@@ -395,7 +395,9 @@ struct AngleFunctor<T, funcs::NoComplex<T, dtype::Real<T>>> {
       }
 #endif
     }
-    output_[idx] = input_[idx] < static_cast<T>(0) ? M_PI : 0;
+    constexpr double kPi = 3.141592653589793238462643383279502884;
+    output_[idx] = input_[idx] < static_cast<T>(0) ? static_cast<T>(kPi)
+                                                   : static_cast<T>(0);
   }
 
   const T* input_;
