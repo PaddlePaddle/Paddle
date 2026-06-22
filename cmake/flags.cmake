@@ -34,6 +34,11 @@ if(NOT WIN32)
                                               VERSION_LESS 11)
     # TODO(toolchain-cxx20): Keep GCC < 11 builds on C++17 temporarily for
     # legacy CI images. Remove this fallback after those images are upgraded.
+    message(
+      DEPRECATION
+        "GCC ${CMAKE_CXX_COMPILER_VERSION} is temporarily downgraded to C++17. "
+        "Please upgrade to GCC >= 11 for the C++20 baseline; this fallback will "
+        "be removed after legacy CI images are upgraded.")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
   else()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
