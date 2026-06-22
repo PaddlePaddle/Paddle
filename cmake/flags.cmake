@@ -4,10 +4,10 @@ include(CheckCCompilerFlag)
 include(CheckCXXSymbolExists)
 include(CheckTypeSize)
 
-function(check_compiler_cxx20_flag)
+function(check_compiler_cxx_baseline_flag)
   if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    if(${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 11)
-      message(FATAL_ERROR "Unsupported GCC version. GCC >= 11 required.")
+    if(${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 8.2)
+      message(FATAL_ERROR "Unsupported GCC version. GCC >= 8.2 required.")
     endif()
   elseif(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang")
     # cmake >= 3.0 compiler id "AppleClang" on Mac OS X, otherwise "Clang"
@@ -27,10 +27,17 @@ function(check_compiler_cxx20_flag)
   endif()
 endfunction()
 
-check_compiler_cxx20_flag()
+check_compiler_cxx_baseline_flag()
 
 if(NOT WIN32)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION
+                                              VERSION_LESS 11)
+    # TODO(toolchain-cxx20): Keep GCC < 11 builds on C++17 temporarily for
+    # legacy CI images. Remove this fallback after those images are upgraded.
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+  else()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
+  endif()
 else()
   # TODO(windows-cxx20): Keep Windows builds on C++17 until the CI toolchain is
   # upgraded to a CUDA/MSVC combination where nvcc accepts C++20.
