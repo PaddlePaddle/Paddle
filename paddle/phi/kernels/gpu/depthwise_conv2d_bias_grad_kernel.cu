@@ -160,10 +160,10 @@ __global__ void DWConv2dBwdInputKernel(const T* __restrict__ grad_output,
           static_cast<IndexT>(och) * kernelHeight * kernelWidth;
       for (int kh = 0; kh < KH_LIMIT; ++kh) {
         for (int kw = 0; kw < KW_LIMIT; ++kw) {
-          IndexT h_out = static_cast<IndexT>(h) + padHeight -
-                         static_cast<IndexT>(kh) * dilationHeight;
-          IndexT w_out = static_cast<IndexT>(w) + padWidth -
-                         static_cast<IndexT>(kw) * dilationWidth;
+          int64_t h_out = static_cast<int64_t>(h) + padHeight -
+                          static_cast<int64_t>(kh) * dilationHeight;
+          int64_t w_out = static_cast<int64_t>(w) + padWidth -
+                          static_cast<int64_t>(kw) * dilationWidth;
 
           if ((h_out % strideH == 0) && (w_out % strideW == 0)) {
             h_out = h_out / strideH;
@@ -171,10 +171,10 @@ __global__ void DWConv2dBwdInputKernel(const T* __restrict__ grad_output,
 
             if ((h_out >= 0) && (h_out < outputHeight) && (w_out >= 0) &&
                 (w_out < outputWidth)) {
-              const IndexT offset =
-                  ((n * outputChannels + och) * outputHeight + h_out) *
-                      outputWidth +
-                  w_out;
+              const IndexT offset = ((n * outputChannels + och) * outputHeight +
+                                     static_cast<IndexT>(h_out)) *
+                                        outputWidth +
+                                    static_cast<IndexT>(w_out);
               value += (static_cast<AccT>(weight[weightOffset]) *
                         static_cast<AccT>(grad_output[offset]));
             }
