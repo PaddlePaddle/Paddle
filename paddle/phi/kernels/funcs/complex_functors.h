@@ -17,7 +17,10 @@ limitations under the License. */
 #define _USE_MATH_DEFINES
 #endif
 #include <cmath>
+// Windows builds are still kept on C++17 and may not provide <numbers>.
+#if !defined(_WIN32) && !defined(__CUDACC__) && !defined(__HIPCC__)
 #include <numbers>  // NOLINT(build/include_order)
+#endif
 #include <type_traits>
 
 #include "paddle/common/hostdevice.h"
@@ -397,7 +400,7 @@ struct AngleFunctor<T, funcs::NoComplex<T, dtype::Real<T>>> {
 #endif
     }
     output_[idx] = input_[idx] < static_cast<T>(0)
-#if defined(__CUDACC__) || defined(__HIPCC__)
+#if defined(_WIN32) || defined(__CUDACC__) || defined(__HIPCC__)
                        ? static_cast<T>(M_PI)
 #else
                        ? static_cast<T>(std::numbers::pi_v<double>)
