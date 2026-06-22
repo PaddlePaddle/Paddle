@@ -31,15 +31,7 @@ git remote add upstream https://github.com/PaddlePaddle/Paddle.git
 git --no-pager pull upstream %BRANCH% --no-edit
 if %errorlevel% NEQ 0 exit /b 1
 if exist .git\index.lock del .git\index.lock 2>NUL
-if not defined GENERATOR (
-    if exist "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat" (
-        echo GENERATOR="Visual Studio 17 2022">> %GITHUB_ENV%
-    ) else if exist "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat" (
-        echo GENERATOR="Visual Studio 16 2019">> %GITHUB_ENV%
-    ) else (
-        echo GENERATOR="Visual Studio 15 2017 Win64">> %GITHUB_ENV%
-    )
-)
+if not defined GENERATOR echo GENERATOR="Visual Studio 16 2019">> %GITHUB_ENV%
 if not defined WITH_TENSORRT echo WITH_TENSORRT=ON>> %GITHUB_ENV%
 if not defined TENSORRT_ROOT echo TENSORRT_ROOT=D:/TensorRT>> %GITHUB_ENV%
 if not defined WITH_GPU echo WITH_GPU=ON>> %GITHUB_ENV%
