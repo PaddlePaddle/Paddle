@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <cstdint>
+#include <limits>
 #include "paddle/common/enforce.h"
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -136,31 +137,33 @@ __global__ void DWConv2dBwdInputKernel(const T* __restrict__ grad_output,
   const int strideW = (stride != 0) ? stride : strideWidth;
   const int strideH = (stride != 0) ? stride : strideHeight;
 
-  for (int64_t linearIndex =
-           static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  for (IndexT linearIndex =
+           static_cast<IndexT>(blockIdx.x) * static_cast<IndexT>(blockDim.x) +
+           static_cast<IndexT>(threadIdx.x);
        linearIndex < totalElements;
-       linearIndex += static_cast<int64_t>(blockDim.x) * gridDim.x) {
-    int64_t indtmp1 = static_cast<int64_t>(linearIndex) / inputWidth;
+       linearIndex +=
+       static_cast<IndexT>(blockDim.x) * static_cast<IndexT>(gridDim.x)) {
+    IndexT indtmp1 = linearIndex / inputWidth;
     const int w = static_cast<int>(linearIndex - indtmp1 * inputWidth);
-    int64_t indtmp2 = indtmp1 / inputHeight;
+    IndexT indtmp2 = indtmp1 / inputHeight;
     const int h = static_cast<int>(indtmp1 - indtmp2 * inputHeight);
     indtmp1 = indtmp2;
     indtmp2 = indtmp1 / inputChannels;
     const int c = static_cast<int>(indtmp1 - indtmp2 * inputChannels);
-    const int64_t n = indtmp2;
+    const IndexT n = indtmp2;
 
     AccT value(0);
 
     for (int multiplier = 0; multiplier < depthwiseMultiplier; ++multiplier) {
       const int och = c * depthwiseMultiplier + multiplier;
-      int64_t weightOffset =
-          static_cast<int64_t>(och) * kernelHeight * kernelWidth;
+      IndexT weightOffset =
+          static_cast<IndexT>(och) * kernelHeight * kernelWidth;
       for (int kh = 0; kh < KH_LIMIT; ++kh) {
         for (int kw = 0; kw < KW_LIMIT; ++kw) {
-          int64_t h_out =
-              h + padHeight - static_cast<int64_t>(kh) * dilationHeight;
-          int64_t w_out =
-              w + padWidth - static_cast<int64_t>(kw) * dilationWidth;
+          IndexT h_out = static_cast<IndexT>(h) + padHeight -
+                         static_cast<IndexT>(kh) * dilationHeight;
+          IndexT w_out = static_cast<IndexT>(w) + padWidth -
+                         static_cast<IndexT>(kw) * dilationWidth;
 
           if ((h_out % strideH == 0) && (w_out % strideW == 0)) {
             h_out = h_out / strideH;
@@ -168,10 +171,8 @@ __global__ void DWConv2dBwdInputKernel(const T* __restrict__ grad_output,
 
             if ((h_out >= 0) && (h_out < outputHeight) && (w_out >= 0) &&
                 (w_out < outputWidth)) {
-              const int64_t offset =
-                  ((static_cast<int64_t>(n) * outputChannels + och) *
-                       outputHeight +
-                   h_out) *
+              const IndexT offset =
+                  ((n * outputChannels + och) * outputHeight + h_out) *
                       outputWidth +
                   w_out;
               value += (static_cast<AccT>(weight[weightOffset]) *
@@ -402,36 +403,70 @@ void LaunchDepthwiseConv2dBackwardCompatible(const Context& dev_ctx,
   if (input_grad_nchw_ptr) {
     int64_t totalElements = input_grad_nchw_ptr->numel();
     constexpr int INPUT_GRAD_NUM_THREADS = 1024;
-    uint32_t blocks =
-        GET_BLOCKS(dev_ctx, totalElements, INPUT_GRAD_NUM_THREADS);
+    constexpr int INPUT_GRAD_NUM_THREADS_INT64 = 512;
+    uint32_t blocks = GET_BLOCKS(dev_ctx, totalElements, CUDA_NUM_THREADS);
+    uint32_t blocks_int64 =
+        GET_BLOCKS(dev_ctx, totalElements, INPUT_GRAD_NUM_THREADS_INT64);
     dim3 grid(blocks);
     dim3 block(INPUT_GRAD_NUM_THREADS);
+    dim3 grid_int64(blocks_int64);
+    dim3 block_int64(INPUT_GRAD_NUM_THREADS_INT64);
 
     const T* grad_output_ptr = out_grad_nchw.data<T>();
     T* grad_input_ptr = input_grad_nchw_ptr->data<T>();
     const T* weight_ptr = filter_nchw.data<T>();
+    const int64_t input_grad_step =
+        static_cast<int64_t>(blocks) * INPUT_GRAD_NUM_THREADS;
+    const bool use_int32_input_kernel =
+        totalElements <= std::numeric_limits<int>::max() &&
+        out_grad_nchw.numel() <= std::numeric_limits<int>::max() &&
+        filter_nchw.numel() <= std::numeric_limits<int>::max() &&
+        input_grad_step <= std::numeric_limits<int>::max();
 
-#define LAUNCH_INPUT_KERNEL(K, S)                           \
-  DWConv2dBwdInputKernel<K, S, T, int64_t>                  \
-      <<<grid, block, 0, stream>>>(grad_output_ptr,         \
-                                   grad_input_ptr,          \
-                                   weight_ptr,              \
-                                   totalElements,           \
-                                   c_in_int,                \
-                                   depthwiseMultiplier_int, \
-                                   outputChannels_int,      \
-                                   w_in_int,                \
-                                   h_in_int,                \
-                                   w_out_int,               \
-                                   h_out_int,               \
-                                   kW_int,                  \
-                                   kH_int,                  \
-                                   strideW,                 \
-                                   strideH,                 \
-                                   padW,                    \
-                                   padH,                    \
-                                   dW,                      \
-                                   dH);
+#define LAUNCH_INPUT_KERNEL(K, S)                                         \
+  if (use_int32_input_kernel) {                                           \
+    DWConv2dBwdInputKernel<K, S, T, int>                                  \
+        <<<grid, block, 0, stream>>>(grad_output_ptr,                     \
+                                     grad_input_ptr,                      \
+                                     weight_ptr,                          \
+                                     static_cast<int>(totalElements),     \
+                                     c_in_int,                            \
+                                     depthwiseMultiplier_int,             \
+                                     outputChannels_int,                  \
+                                     w_in_int,                            \
+                                     h_in_int,                            \
+                                     w_out_int,                           \
+                                     h_out_int,                           \
+                                     kW_int,                              \
+                                     kH_int,                              \
+                                     strideW,                             \
+                                     strideH,                             \
+                                     padW,                                \
+                                     padH,                                \
+                                     dW,                                  \
+                                     dH);                                 \
+  } else {                                                                \
+    DWConv2dBwdInputKernel<K, S, T, int64_t>                              \
+        <<<grid_int64, block_int64, 0, stream>>>(grad_output_ptr,         \
+                                                 grad_input_ptr,          \
+                                                 weight_ptr,              \
+                                                 totalElements,           \
+                                                 c_in_int,                \
+                                                 depthwiseMultiplier_int, \
+                                                 outputChannels_int,      \
+                                                 w_in_int,                \
+                                                 h_in_int,                \
+                                                 w_out_int,               \
+                                                 h_out_int,               \
+                                                 kW_int,                  \
+                                                 kH_int,                  \
+                                                 strideW,                 \
+                                                 strideH,                 \
+                                                 padW,                    \
+                                                 padH,                    \
+                                                 dW,                      \
+                                                 dH);                     \
+  }
 
     if (kW == 5 && kH == 5) {
       if (dW == 1 && dH == 1)
