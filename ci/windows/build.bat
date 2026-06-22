@@ -55,7 +55,7 @@ mkdir %BUILD_DIR%
 rem set vs language to english to block showIncludes, this need vs has installed English language package.
 set VSLANG=1033
 rem Configure the environment for 64-bit builds. 'DISTUTILS_USE_SDK' indicates that the user has selected the compiler.
-if not defined vcvars64_dir set "vcvars64_dir=C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat" & echo vcvars64_dir=!vcvars64_dir!>> %GITHUB_ENV%
+if not defined vcvars64_dir set "vcvars64_dir=C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat" & echo vcvars64_dir=!vcvars64_dir!>> %GITHUB_ENV%
 echo %vcvars64_dir%
 call "%vcvars64_dir%"
 

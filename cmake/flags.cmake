@@ -32,6 +32,8 @@ check_compiler_cxx20_flag()
 if(NOT WIN32)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
 else()
+  # TODO(windows-cxx20): Keep Windows builds on C++17 until the CI toolchain is
+  # upgraded to a CUDA/MSVC combination where nvcc accepts C++20.
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -std=c++17")
   set(CMAKE_CXX_STANDARD 17)
 endif()
