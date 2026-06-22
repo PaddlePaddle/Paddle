@@ -430,22 +430,29 @@ class TestAdagradLrDecay(unittest.TestCase):
             lr=0.1, params=model2.parameters(), lr_decay=0.0
         )
 
+        lrs1 = []
+        lrs2 = []
         for _ in range(2):
             out1 = model1(input_data)
             loss1 = paddle.mean(out1)
             loss1.backward()
+            lrs1.append(optimizer1.get_lr())
             optimizer1.step()
             optimizer1.clear_grad()
 
             out2 = model2(input_data)
             loss2 = paddle.mean(out2)
             loss2.backward()
+            lrs2.append(optimizer2.get_lr())
             optimizer2.step()
             optimizer2.clear_grad()
 
         # Both should produce identical results
         for p1, p2 in zip(model1.parameters(), model2.parameters()):
             np.testing.assert_allclose(p1.numpy(), p2.numpy(), rtol=1e-5)
+        for lr1, lr2 in zip(lrs1, lrs2):
+            np.testing.assert_allclose(lr1, 0.1, rtol=1e-5)
+            np.testing.assert_allclose(lr2, 0.1, rtol=1e-5)
 
         paddle.enable_static()
 

@@ -275,6 +275,53 @@ class TestOptimizerAPI(unittest.TestCase):
                 optimizer.step()
             np.testing.assert_allclose(x.numpy(), [1.0, 4.0], atol=0.1)
 
+    def test_maximize_false_dygraph(self):
+        paddle.seed(100)
+        np.random.seed(100)
+        paddle.disable_static()
+        x = paddle.tensor([0.0, 0.0], dtype="float32")
+        optimizer_list = [
+            paddle.optimizer.SGD(
+                learning_rate=0.5,
+                parameters=[x],
+                maximize=False,
+            ),
+            paddle.optimizer.SGD(
+                learning_rate=0.5,
+                parameters=[x],
+            ),
+            paddle.optimizer.AdamW(
+                learning_rate=0.7,
+                parameters=[x],
+                maximize=False,
+            ),
+            paddle.optimizer.AdamW(
+                learning_rate=0.7,
+                parameters=[x],
+            ),
+            paddle.optimizer.Adagrad(
+                learning_rate=0.7,
+                parameters=[x],
+                maximize=False,
+            ),
+            paddle.optimizer.Adagrad(
+                learning_rate=0.7,
+                parameters=[x],
+            ),
+        ]
+        for optimizer in optimizer_list:
+            x.stop_gradient = True
+            x[0] = 0.0
+            x[1] = 0.0
+            x.stop_gradient = False
+            for epoch in range(60):
+                optimizer.clear_grad()
+                y = (x[0] + 3) ** 2 + (x[1] - 2) ** 2
+                loss = paddle.sum(y)
+                loss.backward()
+                optimizer.step()
+            np.testing.assert_allclose(x.numpy(), [-3.0, 2.0], atol=0.1)
+
 
 if __name__ == '__main__':
     paddle.enable_static()
