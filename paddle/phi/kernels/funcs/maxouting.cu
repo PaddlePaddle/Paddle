@@ -127,6 +127,10 @@ void MaxOutFunctor<DeviceContext, T>::operator()(const DeviceContext& dev_ctx,
   int64_t nthreads = static_cast<int64_t>(output->numel());
   int64_t blocks = static_cast<int64_t>((nthreads + 1024 - 1) / 1024);
   dim3 threads(1024, 1);
+  PADDLE_ENFORCE_LE(
+      blocks,
+      dev_ctx.GetCUDAMaxGridDimSize()[0],
+      common::errors::InvalidArgument("maxout grid.x exceeds device limit."));
   PADDLE_ENFORCE_LE_UINT32_MAX(blocks, "maxout grid.x");
   dim3 grid(static_cast<uint32_t>(blocks), 1);
 
@@ -160,6 +164,10 @@ void MaxOutGradFunctor<DeviceContext, T>::operator()(
   int64_t nthreads = static_cast<int64_t>(output.numel());
   int64_t blocks = static_cast<int64_t>((nthreads + 1024 - 1) / 1024);
   dim3 threads(1024, 1);
+  PADDLE_ENFORCE_LE(
+      blocks,
+      dev_ctx.GetCUDAMaxGridDimSize()[0],
+      common::errors::InvalidArgument("maxout grid.x exceeds device limit."));
   PADDLE_ENFORCE_LE_UINT32_MAX(blocks, "maxout grid.x");
   dim3 grid(static_cast<uint32_t>(blocks), 1);
 

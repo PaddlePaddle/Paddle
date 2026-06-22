@@ -63,9 +63,15 @@ void moe_combine_no_weight_fwd(const T* x,
                                const int64_t seqlen,
                                const int64_t hidden_size,
                                const float epsilon,
+                               int64_t max_grid_dim,
                                cudaStream_t stream) {
   constexpr uint32_t threads_per_block = 1024;
   dim3 blockDim(threads_per_block);
+  PADDLE_ENFORCE_LE(
+      seqlen,
+      max_grid_dim,
+      common::errors::InvalidArgument(
+          "combine_no_weight_kernel grid.x exceeds device limit."));
   PADDLE_ENFORCE_LE_UINT32_MAX(seqlen, "combine_no_weight_kernel grid.x");
   dim3 gridDim(static_cast<uint32_t>(seqlen));
   size_t sharedMemSize = k * (sizeof(int64_t) + sizeof(T));
@@ -130,6 +136,7 @@ void MoeCombineNoWeightKernel(const Context& dev_ctx,
                                seqlen,
                                hidden_size,
                                epsilon,
+                               dev_ctx.GetCUDAMaxGridDimSize()[0],
                                dev_ctx.stream());
 }
 

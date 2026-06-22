@@ -175,6 +175,9 @@ void MultinomialKernel(const Context& dev_ctx,
     return;
   }
 
+  PADDLE_ENFORCE_LE_INT_MAX(num_categories, "num_categories");
+  const int num_categories_int = static_cast<int>(num_categories);
+
   // Sum of input may not be 1. To get probability in range [0, 1], calculate
   // sum of each row of input, and then use the sum to normalize the input.
   // sum_row_data: sum of each row
@@ -209,8 +212,15 @@ void MultinomialKernel(const Context& dev_ctx,
   int block_size = num_categories_int < 512 ? num_categories_int : 512;
   PADDLE_ENFORCE_LE_UINT32_MAX(block_size, "multinomial normalize block.x");
   dim3 block_norm(static_cast<uint32_t>(block_size));
+  int64_t norm_numel = x.numel();
   int64_t grid_norm_x64 =
-      (num_distributions * num_categories - 1) / block_norm.x + 1;
+      norm_numel / block_norm.x + (norm_numel % block_norm.x != 0);
+  int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
+  const auto& prop = backends::gpu::GetDeviceProperties(device_id);
+  PADDLE_ENFORCE_LE(grid_norm_x64,
+                    prop.maxGridSize[0],
+                    common::errors::InvalidArgument(
+                        "multinomial normalize grid.x exceeds device limit."));
   PADDLE_ENFORCE_LE_UINT32_MAX(grid_norm_x64, "multinomial normalize grid.x");
   dim3 grid_norm(static_cast<uint32_t>(grid_norm_x64));
 
@@ -240,10 +250,12 @@ void MultinomialKernel(const Context& dev_ctx,
       dev_ctx);
   // Sample the multinomial distributions.
   dim3 block(128);
-  int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
-  const auto& prop = backends::gpu::GetDeviceProperties(device_id);
   int64_t grid_y64 = std::min<int64_t>(num_distributions, prop.maxGridSize[1]);
   int64_t grid_x64 = (int_num_samples - 1) / block.x + 1;
+  PADDLE_ENFORCE_LE(grid_x64,
+                    prop.maxGridSize[0],
+                    common::errors::InvalidArgument(
+                        "multinomial sample grid.x exceeds device limit."));
   PADDLE_ENFORCE_LE_UINT32_MAX(grid_x64, "multinomial sample grid.x");
   PADDLE_ENFORCE_LE_UINT32_MAX(grid_y64, "multinomial sample grid.y");
   dim3 grid(static_cast<uint32_t>(grid_x64), static_cast<uint32_t>(grid_y64));

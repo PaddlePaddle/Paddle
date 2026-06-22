@@ -16,6 +16,7 @@
 #include <glog/logging.h>
 #include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -112,6 +113,16 @@ void cudaCoreGemmKernel(GemmParams const& params) {
   dim3 block(BLOCK_SIZE);
   int64_t grid_x64 = params.m / TILE_M;
   int64_t grid_y64 = params.n / TILE_N;
+  const auto& prop =
+      backends::gpu::GetDeviceProperties(backends::gpu::GetCurrentDeviceId());
+  PADDLE_ENFORCE_LE(grid_x64,
+                    prop.maxGridSize[0],
+                    common::errors::InvalidArgument(
+                        "cuda gemm grid.x exceeds device limit."));
+  PADDLE_ENFORCE_LE(grid_y64,
+                    prop.maxGridSize[1],
+                    common::errors::InvalidArgument(
+                        "cuda gemm grid.y exceeds device limit."));
   PADDLE_ENFORCE_LE_UINT32_MAX(grid_x64, "cuda gemm grid.x");
   PADDLE_ENFORCE_LE_UINT32_MAX(grid_y64, "cuda gemm grid.y");
   dim3 grid(static_cast<uint32_t>(grid_x64), static_cast<uint32_t>(grid_y64));

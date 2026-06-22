@@ -428,6 +428,11 @@ void ComputeDDoutWithoutBroadcast(const GPUContext& dev_ctx UNUSED,
   auto* ddout_data = ddout->data<T>();
   int block = 512;
   int64_t grid = (out_numel + block - 1) / block;
+  auto max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  PADDLE_ENFORCE_LE(grid,
+                    max_grid_dim,
+                    common::errors::InvalidArgument(
+                        "elementwise ddout grid.x exceeds device limit."));
   PADDLE_ENFORCE_LE_UINT32_MAX(grid, "elementwise ddout grid.x");
   auto stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
   ComputeDDoutWithoutBroadcastGPUKernel<T, DDout_OP, T>
@@ -497,6 +502,11 @@ void ComputeDDoutWithBroadcast(const GPUContext& dev_ctx UNUSED,
 
   int block = 512;
   int64_t grid = (out_numel + block - 1) / block;
+  auto max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  PADDLE_ENFORCE_LE(grid,
+                    max_grid_dim,
+                    common::errors::InvalidArgument(
+                        "elementwise ddout grid.x exceeds device limit."));
   PADDLE_ENFORCE_LE_UINT32_MAX(grid, "elementwise ddout grid.x");
   auto stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
   ComputeDDoutWithBroadcastGPUKernel<T, DDout_OP, T>

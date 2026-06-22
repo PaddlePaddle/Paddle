@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <algorithm>
+
 #include "paddle/common/enforce.h"
 #include "paddle/common/macros.h"
 #include "paddle/phi/backends/all_context.h"
@@ -51,8 +53,12 @@ __global__ static void ForRangeElemwiseOpGridIsOne(Function func) {
 
 template <typename Function>
 __global__ static void ForRangeElemwiseOp(Function func, unsigned int limit) {
-  unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx < limit) {
+  size_t idx =
+      static_cast<size_t>(blockIdx.x) * static_cast<size_t>(blockDim.x) +
+      static_cast<size_t>(threadIdx.x);
+  size_t step =
+      static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x);
+  for (; idx < limit; idx += step) {
     func(idx);
   }
 }
@@ -63,7 +69,9 @@ __global__ static void ForRangeElemwiseOpLargeSize(Function func,
   size_t idx =
       static_cast<size_t>(blockIdx.x) * static_cast<size_t>(blockDim.x) +
       static_cast<size_t>(threadIdx.x);
-  if (idx < limit) {
+  size_t step =
+      static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x);
+  for (; idx < limit; idx += step) {
     func(idx);
   }
 }
@@ -88,7 +96,9 @@ struct ForRange<GPUContext> {
     constexpr int num_threads = 1024;
 #endif
     size_t block_size_64 = limit_ <= num_threads ? limit_ : num_threads;
-    size_t grid_size_64 = (limit_ + num_threads - 1) / num_threads;
+    size_t grid_size_64 = limit_ / num_threads + (limit_ % num_threads != 0);
+    grid_size_64 = std::min(
+        grid_size_64, static_cast<size_t>(dev_ctx_.GetCUDAMaxGridDimSize()[0]));
 
     PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_64, "grid_size");
     PADDLE_ENFORCE_LE_UINT32_MAX(block_size_64, "block_size");
@@ -98,8 +108,7 @@ struct ForRange<GPUContext> {
     if (grid_size == 1) {
       ForRangeElemwiseOpGridIsOne<<<1, block_size, 0, dev_ctx_.stream()>>>(
           func);
-    } else if (block_size * grid_size >
-               std::numeric_limits<unsigned int>::max()) {
+    } else if (limit_ > std::numeric_limits<unsigned int>::max()) {
       ForRangeElemwiseOpLargeSize<<<grid_size,
                                     block_size,
                                     0,

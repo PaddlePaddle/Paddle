@@ -88,9 +88,12 @@ DenseTensor get_pad_lse(const GPUContext& dev_ctx,
     uint32_t block = PADDLE_CUDA_NUM_THREADS;
     int64_t n = lse->numel();
     int64_t grid_x64 = (n + block - 1) / block;
+    PADDLE_ENFORCE_LE(grid_x64,
+                      dev_ctx.GetCUDAMaxGridDimSize()[0],
+                      common::errors::InvalidArgument(
+                          "pad lse grid.x exceeds device limit."));
     PADDLE_ENFORCE_LE_UINT32_MAX(grid_x64, "pad lse grid.x");
     dim3 grid(static_cast<uint32_t>(grid_x64));
-    phi::backends::gpu::LimitGridDim(dev_ctx, &grid);
     ViewSliceHelper<T><<<grid, block, 0, dev_ctx.stream()>>>(
         in_data, stride, in_dim[2], out_second_dim);
     return *lse;

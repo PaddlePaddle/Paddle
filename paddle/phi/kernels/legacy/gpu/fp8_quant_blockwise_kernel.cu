@@ -11,18 +11,16 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-PADDLE_ENFORCE_LE_UINT32_MAX(gridx, "fp8 quant blockwise grid.x");
 #include "paddle/phi/kernels/legacy/gpu/fp8_quant_blockwise_kernel.h"
 #include <cuda_fp8.h>
 #include <cstdint>
 #include <vector>
 #include "paddle/common/flags.h"
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/utils/data_type.h"
-PADDLE_ENFORCE_LE_UINT32_MAX(blockx, "fp8 quant blockwise block.x");
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/fusion/gpu/quant_utils.h"
 
 #include "paddle/common/enforce.h"

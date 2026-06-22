@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/group_norm_grad_kernel.h"
 
+#include <array>
+
 #include "paddle/common/enforce.h"
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -853,6 +855,18 @@ void GroupNormGradKernel(const Context& dev_ctx,
       {
         int64_t num_threads =
             D < kGradBlockReduceNumThreads ? 32 : kGradBlockReduceNumThreads;
+        std::array<unsigned int, 3> max_grid_dim =
+            dev_ctx.GetCUDAMaxGridDimSize();
+        PADDLE_ENFORCE_LE(N,
+                          max_grid_dim[0],
+                          common::errors::InvalidArgument(
+                              "group_norm grad fused params grid.x exceeds "
+                              "device limit."));
+        PADDLE_ENFORCE_LE(G,
+                          max_grid_dim[1],
+                          common::errors::InvalidArgument(
+                              "group_norm grad fused params grid.y exceeds "
+                              "device limit."));
         PADDLE_ENFORCE_LE_UINT32_MAX(N, "group_norm grad fused params grid.x");
         PADDLE_ENFORCE_LE_UINT32_MAX(G, "group_norm grad fused params grid.y");
         PADDLE_ENFORCE_LE_UINT32_MAX(num_threads,
@@ -1068,6 +1082,11 @@ void GroupNormGradKernel(const Context& dev_ctx,
       if (N <= 128) {
         constexpr int kNumThreads = 256;
         const int64_t B = (C + kNumThreads - 1) / kNumThreads;
+        PADDLE_ENFORCE_LE(
+            B,
+            max_grid_x,
+            common::errors::InvalidArgument(
+                "group_norm grad gamma beta grid.x exceeds device limit."));
         PADDLE_ENFORCE_LE_UINT32_MAX(B, "group_norm grad gamma beta grid.x");
         PADDLE_ENFORCE_LE_UINT32_MAX(kNumThreads,
                                      "group_norm grad gamma beta block.x");
@@ -1089,6 +1108,11 @@ void GroupNormGradKernel(const Context& dev_ctx,
         const int64_t B = (C + kGradReduceTileSize - 1) / kGradReduceTileSize;
         constexpr int kThreadX = kGradReduceTileSize;
         constexpr int kThreadY = kGradReduceTileSize / 2;
+        PADDLE_ENFORCE_LE(
+            B,
+            max_grid_x,
+            common::errors::InvalidArgument(
+                "group_norm grad gamma beta 2 grid.x exceeds device limit."));
         PADDLE_ENFORCE_LE_UINT32_MAX(B, "group_norm grad gamma beta 2 grid.x");
         PADDLE_ENFORCE_LE_UINT32_MAX(kThreadX,
                                      "group_norm grad gamma beta 2 block.x");
@@ -1117,9 +1141,14 @@ void GroupNormGradKernel(const Context& dev_ctx,
     // =========================================================
     int64_t block_size_64 = std::min(static_cast<int64_t>(1024), imsize);
     int64_t max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];
+    int64_t max_grid_y = dev_ctx.GetCUDAMaxGridDimSize()[1];
     int64_t max_grid_z = dev_ctx.GetCUDAMaxGridDimSize()[2];
     const int64_t grid_x = std::min(max_grid_x, group_size);
     const int64_t grid_z = std::min(max_grid_z, N);
+    PADDLE_ENFORCE_LE(groups,
+                      max_grid_y,
+                      common::errors::InvalidArgument(
+                          "group_norm grad grid.y exceeds device limit."));
     PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "group_norm grad grid.x");
     PADDLE_ENFORCE_LE_UINT32_MAX(groups, "group_norm grad grid.y");
     PADDLE_ENFORCE_LE_UINT32_MAX(grid_z, "group_norm grad grid.z");

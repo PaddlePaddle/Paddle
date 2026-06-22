@@ -327,10 +327,10 @@ void DropoutFwGPUKernelDriver(
           ((x_numel - 1) / (grid_size * block_size * kVecSize) + 1) * kVecSize;
     }
 
-    PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_limit, "dropout grid.x");
-    PADDLE_ENFORCE_LE_UINT32_MAX(block_size_limit, "dropout block.x");
-    uint32_t grid_size = static_cast<uint32_t>(grid_size_limit);
-    uint32_t block_size = static_cast<uint32_t>(block_size_limit);
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_size, "dropout grid.x");
+    PADDLE_ENFORCE_LE_UINT32_MAX(block_size, "dropout block.x");
+    uint32_t grid_size_u32 = static_cast<uint32_t>(grid_size);
+    uint32_t block_size_u32 = static_cast<uint32_t>(block_size);
 
     size_t main_offset =
         size / (block_size * kVecSize) * (block_size * kVecSize);
@@ -349,15 +349,15 @@ void DropoutFwGPUKernelDriver(
           copy_in_kernel ? seed->data<uint64_t>() : nullptr;
 
       VectorizedGeneratorMask<T>
-          <<<grid_size, block_size, 0, stream>>>(size,
-                                                 seed_data,
-                                                 dropout_prob,
-                                                 x_data,
-                                                 mask_data,
-                                                 increment,
-                                                 main_offset,
-                                                 mask_functor,
-                                                 seed_ptr);
+          <<<grid_size_u32, block_size_u32, 0, stream>>>(size,
+                                                         seed_data,
+                                                         dropout_prob,
+                                                         x_data,
+                                                         mask_data,
+                                                         increment,
+                                                         main_offset,
+                                                         mask_functor,
+                                                         seed_ptr);
       auto dst_functor =
           DstFunctor<T>(1.0f - dropout_prob, upscale_in_train, x_numel);
       std::vector<const DenseTensor*> ins = {&x, mask};
@@ -407,16 +407,16 @@ void DropoutFwGPUKernelDriver(
                      << " functionPtr = " << functionPtr;
 
             VectorizedRandomGenerator<T>
-                <<<grid_size, block_size, 0, stream>>>(id,
-                                                       size,
-                                                       seed_data,
-                                                       dropout_prob,
-                                                       x_data,
-                                                       mask_data,
-                                                       y_data,
-                                                       upscale_in_train,
-                                                       increment,
-                                                       main_offset);
+                <<<grid_size_u32, block_size_u32, 0, stream>>>(id,
+                                                               size,
+                                                               seed_data,
+                                                               dropout_prob,
+                                                               x_data,
+                                                               mask_data,
+                                                               y_data,
+                                                               upscale_in_train,
+                                                               increment,
+                                                               main_offset);
             return cudaFunc;
           };
       phi::backends::gpu::CUDAGraphNodeLauncher::Instance().KernelNodeLaunch(

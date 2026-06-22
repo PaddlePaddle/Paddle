@@ -11,9 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-PADDLE_ENFORCE_LE_UINT32_MAX(kGridSize, "weight_quant grid.x");
 #pragma once
-PADDLE_ENFORCE_LE_UINT32_MAX(kBlockSize, "weight_quant block.x");
 #include <cstdint>
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/dense_tensor.h"

@@ -31,7 +31,7 @@ namespace phi {
 
 constexpr int WARP_SIZE = 32;
 const int CUDA_NUM_THREADS = 512;
-inline int GET_BLOCKS(const int N) {
+inline int64_t GET_BLOCKS(const int64_t N) {
   return (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
 }
 
@@ -135,8 +135,12 @@ void ResetBufferHashTable(const Context& dev_ctx,
                           int* key_index) {
   int block = 1024;
   int max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
-  int grid_tmp = (unique_items->size() + block - 1) / block;
-  int grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
+  size_t unique_items_size = unique_items->size();
+  size_t grid_tmp = (unique_items_size + static_cast<size_t>(block) - 1) /
+                    static_cast<size_t>(block);
+  size_t grid = grid_tmp < static_cast<size_t>(max_grid_dimx)
+                    ? grid_tmp
+                    : static_cast<size_t>(max_grid_dimx);
   PADDLE_ENFORCE_LE_UINT32_MAX(grid, "graph_reindex reset grid.x");
   PADDLE_ENFORCE_LE_UINT32_MAX(block, "graph_reindex reset block.x");
   ResetHashTable<T>
@@ -196,42 +200,46 @@ void Reindex(const Context& dev_ctx,
   int* values_ptr = reinterpret_cast<int*>(values->ptr());
   int* key_index_ptr = reinterpret_cast<int*>(key_index->ptr());
 
-  InitializeHashTable<T> PADDLE_ENFORCE_LE_UINT32_MAX(
-      CUDA_NUM_THREADS, "graph_reindex init table block.x");
-          keys_ptr, table_size);
-          PADDLE_ENFORCE_LE_UINT32_MAX(table_blocks,
-                                       "graph_reindex init table grid.x");
-          const uint32_t table_block = static_cast<uint32_t>(CUDA_NUM_THREADS);
-          values_ptr, table_size);
-          InitializeHashTable<int>
-              <<<GET_BLOCKS(table_size),
-                 CUDA_NUM_THREADS,
-                 0,
-                 dev_ctx.stream()>>>(key_index_ptr, table_size);
+  int64_t table_blocks = GET_BLOCKS(table_size);
+  PADDLE_ENFORCE_LE(
+      table_blocks,
+      dev_ctx.GetCUDAMaxGridDimSize()[0],
+      common::errors::InvalidArgument(
+          "graph_reindex init table grid.x exceeds device limit."));
+  PADDLE_ENFORCE_LE_UINT32_MAX(table_blocks, "graph_reindex init table grid.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(CUDA_NUM_THREADS,
+                               "graph_reindex init table block.x");
+  const uint32_t table_grid = static_cast<uint32_t>(table_blocks);
+  const uint32_t table_block = static_cast<uint32_t>(CUDA_NUM_THREADS);
+  InitializeHashTable<T>
+      <<<table_grid, table_block, 0, dev_ctx.stream()>>>(keys_ptr, table_size);
+  InitializeHashTable<int><<<table_grid, table_block, 0, dev_ctx.stream()>>>(
+      values_ptr, table_size);
+  InitializeHashTable<int><<<table_grid, table_block, 0, dev_ctx.stream()>>>(
+      key_index_ptr, table_size);
 
-          int unique_len = 0;
-          std::shared_ptr<Allocation> unique_items = FillHashTable<T, Context>(
-              dev_ctx,
-              thrust::raw_pointer_cast(out_nodes->data()),
-              out_nodes->size(),
-              table_size,
-              keys_ptr,
-              values_ptr,
-              key_index_ptr,
-              &unique_len);
-          out_nodes->resize(unique_len);
-          T* unique_items_data = reinterpret_cast<T*>(unique_items->ptr());
-          thrust::copy(
-              thrust::device_pointer_cast(unique_items_data),
-              thrust::device_pointer_cast(unique_items_data) + unique_len,
-              out_nodes->begin());
+  int unique_len = 0;
+  std::shared_ptr<Allocation> unique_items =
+      FillHashTable<T, Context>(dev_ctx,
+                                thrust::raw_pointer_cast(out_nodes->data()),
+                                out_nodes->size(),
+                                table_size,
+                                keys_ptr,
+                                values_ptr,
+                                key_index_ptr,
+                                &unique_len);
+  out_nodes->resize(unique_len);
+  T* unique_items_data = reinterpret_cast<T*>(unique_items->ptr());
+  thrust::copy(thrust::device_pointer_cast(unique_items_data),
+               thrust::device_pointer_cast(unique_items_data) + unique_len,
+               out_nodes->begin());
 
-          ReindexSrc<T, Context>(dev_ctx,
-                                 thrust::raw_pointer_cast(src_outputs),
-                                 keys_ptr,
-                                 values_ptr,
-                                 num_edges,
-                                 table_size);
+  ReindexSrc<T, Context>(dev_ctx,
+                         thrust::raw_pointer_cast(src_outputs),
+                         keys_ptr,
+                         values_ptr,
+                         num_edges,
+                         table_size);
 }
 
 template <typename T, typename Context>

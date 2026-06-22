@@ -48,6 +48,11 @@ class AttnLayerNorm {
                       const float quant_max_bound = 127.0,
                       const float quant_min_bound = -127.0) {
     auto stream = dev_ctx_.stream();
+    auto max_grid_dim = dev_ctx_.GetCUDAMaxGridDimSize()[0];
+    PADDLE_ENFORCE_LE(batch_size_,
+                      max_grid_dim,
+                      common::errors::InvalidArgument(
+                          "attention layer norm grid.x exceeds device limit."));
     PADDLE_ENFORCE_LE_UINT32_MAX(batch_size_, "attention layer norm grid.x");
     PADDLE_ENFORCE_LE_INT_MAX(batch_size_, "batch_size");
 

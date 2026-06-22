@@ -592,6 +592,10 @@ void SparseBlas<GPUContext>::SPGEMM(bool transa,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx_.stream())));
     void* tmp_buffer_ptr = tmp_buffer->ptr();
 
+    PADDLE_ENFORCE_LE(batch_size,
+                      dev_ctx_.GetMaxThreadsPerBlock(),
+                      common::errors::InvalidArgument(
+                          "cusparse spgemm block.x exceeds device limit."));
     PADDLE_ENFORCE_LE_UINT32_MAX(batch_size, "cusparse spgemm block.x");
     const uint32_t block = static_cast<uint32_t>(batch_size);
 
@@ -614,7 +618,7 @@ void SparseBlas<GPUContext>::SPGEMM(bool transa,
                                        gpuMemcpyDeviceToHost,
                                        dev_ctx_.stream());
 
-    GetCsrBatchNnz<T><<<1, batch_size, 0, dev_ctx_.stream()>>>(
+    GetCsrBatchNnz<T><<<1, block, 0, dev_ctx_.stream()>>>(
         b_crows_data, b_rows, static_cast<int32_t*>(tmp_buffer_ptr));
     phi::backends::gpu::GpuMemcpyAsync(b_batch_nnz_vec.data(),
                                        tmp_buffer_ptr,

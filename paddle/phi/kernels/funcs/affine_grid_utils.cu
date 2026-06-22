@@ -167,6 +167,14 @@ void CreateBaseGridKernel_4D(const Context& dev_ctx,
   auto stream = dev_ctx.stream();
   constexpr uint32_t block_size = 512;
   int64_t grid_size64 = (total_elements + block_size - 1) / block_size;
+  int64_t max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  PADDLE_ENFORCE_LE(
+      grid_size64,
+      max_grid_dim,
+      common::errors::InvalidArgument(
+          "base grid 4D grid.x must be less than or equal to %d, but got %d.",
+          max_grid_dim,
+          grid_size64));
   PADDLE_ENFORCE_LE_UINT32_MAX(grid_size64, "base grid 4D grid.x");
   uint32_t grid_size = static_cast<uint32_t>(grid_size64);
   CreateBaseGridKernel_4D_Kernel<T><<<grid_size, block_size, 0, stream>>>(
@@ -185,6 +193,14 @@ void CreateBaseGridKernel_5D(const Context& dev_ctx,
   auto stream = dev_ctx.stream();
   constexpr uint32_t block_size = 512;
   int64_t grid_size64 = (total_elements + block_size - 1) / block_size;
+  int64_t max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  PADDLE_ENFORCE_LE(
+      grid_size64,
+      max_grid_dim,
+      common::errors::InvalidArgument(
+          "base grid 5D grid.x must be less than or equal to %d, but got %d.",
+          max_grid_dim,
+          grid_size64));
   PADDLE_ENFORCE_LE_UINT32_MAX(grid_size64, "base grid 5D grid.x");
   uint32_t grid_size = static_cast<uint32_t>(grid_size64);
   CreateBaseGridKernel_5D_Kernel<T><<<grid_size, block_size, 0, stream>>>(

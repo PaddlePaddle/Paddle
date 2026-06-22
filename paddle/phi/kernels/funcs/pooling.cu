@@ -1,9 +1,7 @@
 /* Copyright (c) 2022 paddlepaddle Authors. All Rights Reserved.
-      PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "pool2d grid.x");
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-      PADDLE_ENFORCE_LE_UINT32_MAX(grid_y, "pool2d grid.y");
     http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
@@ -586,6 +584,10 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
         static_cast<uint32_t>(thread_num), static_cast<uint32_t>(blocks), 1);
     const int64_t grid_x = std::max((output_channels + blocks - 1) / blocks,
                                     static_cast<int64_t>(1));
+    PADDLE_ENFORCE_LE(
+        grid_x,
+        max_grid_dim[0],
+        common::errors::InvalidArgument("pool2d grid.x exceeds device limit."));
     PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "pool2d grid.x");
     dim3 grid(static_cast<uint32_t>(grid_x),
               std::min(batch_size, static_cast<int>(max_grid_dim[1])),
@@ -617,9 +619,14 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
     thread_num = 512;
 #endif
     int64_t blocks = (nthreads + thread_num - 1) / thread_num;
+    auto max_grid_dim = backends::gpu::GetGpuMaxGridDimSize(
+        phi::backends::gpu::GetCurrentDeviceId());
+    PADDLE_ENFORCE_LE(
+        blocks,
+        max_grid_dim[0],
+        common::errors::InvalidArgument("pool2d grid.x exceeds device limit."));
     PADDLE_ENFORCE_LE_UINT32_MAX(blocks, "pool2d grid.x");
     dim3 threads(thread_num, 1);
-    PADDLE_ENFORCE_LE_UINT32_MAX(blocks, "pooling grid.x");
     dim3 grid(static_cast<uint32_t>(blocks), 1);
     KernelPool2D<PoolProcess, T, int>
         <<<grid, threads, 0, stream>>>(nthreads,
@@ -709,6 +716,11 @@ class Pool2dFunctor<GPUContext, PoolProcess, T> {
                                       static_cast<int64_t>(1));
       const int64_t grid_y =
           std::min(batch_size, static_cast<int64_t>(max_grid_dim[1]));
+      PADDLE_ENFORCE_LE(
+          grid_x,
+          max_grid_dim[0],
+          common::errors::InvalidArgument(
+              "max_pool2d_with_idx grid.x exceeds device limit."));
       PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "max_pool2d_with_idx grid.x");
       PADDLE_ENFORCE_LE_UINT32_MAX(grid_y, "max_pool2d_with_idx grid.y");
       dim3 grid(
@@ -766,6 +778,10 @@ class Pool2dFunctor<GPUContext, PoolProcess, T> {
       backends::gpu::ChangeThreadNum(dev_ctx, &thread_num);
 #endif
       int64_t blocks = (nthreads + thread_num - 1) / thread_num;
+      PADDLE_ENFORCE_LE(blocks,
+                        max_grid_dim[0],
+                        common::errors::InvalidArgument(
+                            "pooling grid.x exceeds device limit."));
       dim3 threads(thread_num, 1);
       PADDLE_ENFORCE_LE_UINT32_MAX(blocks, "pooling grid.x");
       dim3 grid(static_cast<uint32_t>(blocks), 1);
@@ -1006,6 +1022,20 @@ class MaxPool2dGradFunctor<GPUContext, T> {
       if (FLAGS_use_accuracy_compatible_kernel) {
         int64_t blocks =
             (input_width * input_height + kBlockThreads - 1) / kBlockThreads;
+        std::array<unsigned int, 3> max_grid_dim =
+            dev_ctx.GetCUDAMaxGridDimSize();
+        PADDLE_ENFORCE_LE(blocks,
+                          max_grid_dim[0],
+                          common::errors::InvalidArgument(
+                              "pooling grid.x exceeds device limit."));
+        PADDLE_ENFORCE_LE(batch_size,
+                          max_grid_dim[1],
+                          common::errors::InvalidArgument(
+                              "pooling grid.y exceeds device limit."));
+        PADDLE_ENFORCE_LE(input_channels,
+                          max_grid_dim[2],
+                          common::errors::InvalidArgument(
+                              "pooling grid.z exceeds device limit."));
         PADDLE_ENFORCE_LE_UINT32_MAX(blocks, "pooling grid.x");
         PADDLE_ENFORCE_LE_UINT32_MAX(batch_size, "pooling grid.y");
         PADDLE_ENFORCE_LE_UINT32_MAX(input_channels, "pooling grid.z");
@@ -1087,6 +1117,10 @@ class MaxPool2dGradFunctor<GPUContext, T> {
                                                      channel_last);
       } else {
         int64_t blocks = (nthreads + kBlockThreads - 1) / kBlockThreads;
+        PADDLE_ENFORCE_LE(blocks,
+                          dev_ctx.GetCUDAMaxGridDimSize()[0],
+                          common::errors::InvalidArgument(
+                              "pooling grid.x exceeds device limit."));
         PADDLE_ENFORCE_LE_UINT32_MAX(blocks, "pooling grid.x");
         dim3 grid(static_cast<uint32_t>(blocks), 1);
         KernelMaxPool2DGrad<T, int64_t>
@@ -1545,7 +1579,13 @@ void Pool3dDirectCUDAFunctor<PoolProcess, T>::operator()(
 #ifdef WITH_NV_JETSON
   thread_num = 512;
 #endif
-  int blocks = (nthreads + thread_num - 1) / thread_num;
+  int64_t blocks = (nthreads + thread_num - 1) / thread_num;
+  auto max_grid_dim = backends::gpu::GetGpuMaxGridDimSize(
+      phi::backends::gpu::GetCurrentDeviceId());
+  PADDLE_ENFORCE_LE(
+      blocks,
+      max_grid_dim[0],
+      common::errors::InvalidArgument("pooling grid.x exceeds device limit."));
   dim3 threads(thread_num, 1);
   PADDLE_ENFORCE_LE_UINT32_MAX(blocks, "pooling grid.x");
   dim3 grid(static_cast<uint32_t>(blocks), 1);
@@ -2292,57 +2332,66 @@ class MaxPool2dWithIndexFunctor<GPUContext, T1, T2> {
       int64_t blocks = std::min(max_threads / thread_num,
                                 static_cast<int64_t>(output_channels));
       PADDLE_ENFORCE_LE_UINT32_MAX(thread_num, "pool2d threads.x");
+      PADDLE_ENFORCE_LE_UINT32_MAX(blocks, "pool2d threads.y");
+      dim3 threads(
+          static_cast<uint32_t>(thread_num), static_cast<uint32_t>(blocks), 1);
       std::array<unsigned int, 3> max_grid_dim =
           dev_ctx.GetCUDAMaxGridDimSize();
-      PADDLE_ENFORCE_LE_UINT32_MAX(blocks, "pool2d threads.y");
-                         static_cast<int64_t>(1)),
-                std::min(batch_size, static_cast<int64_t>(max_grid_dim[1])),
-                1);
-                         if (input.numel() <= std::numeric_limits<int>::max()) {
-                           auto pool_divmods = FastDivModForPooling<int>(
-                               input_channels, output_width, output_height);
-                           AdaptiveKernelMaxPool2dWithIdx<T1, T2, int>
-                               <<<grid, threads, 0, dev_ctx.stream()>>>(
-                                   nthreads,
-                                   input_data,
-                                   input_channels,
-                                   input_height,
-                                   input_width,
-                                   output_height,
-                                   output_width,
-                                   ksize_height,
-                                   ksize_width,
-                                   stride_height,
-                                   stride_width,
-                                   padding_height,
-                                   padding_width,
-                                   batch_size,
-                                   output_data,
-                                   mask_data,
-                                   pool_divmods);
-                         } else {
-                           auto pool_divmods = FastDivModForPooling<int64_t>(
-                               input_channels, output_width, output_height);
-                           AdaptiveKernelMaxPool2dWithIdx<T1, T2, int64_t>
-                               <<<grid, threads, 0, dev_ctx.stream()>>>(
-                                   nthreads,
-                                   input_data,
-                                   input_channels,
-                                   input_height,
-                                   input_width,
-                                   output_height,
-                                   output_width,
-                                   ksize_height,
-                                   ksize_width,
-                                   stride_height,
-                                   stride_width,
-                                   padding_height,
-                                   padding_width,
-                                   batch_size,
-                                   output_data,
-                                   mask_data,
-                                   pool_divmods);
-                         }
+      int64_t grid_x = std::max((output_channels + blocks - 1) / blocks,
+                                static_cast<int64_t>(1));
+      int64_t grid_y =
+          std::min(batch_size, static_cast<int64_t>(max_grid_dim[1]));
+      PADDLE_ENFORCE_LE(grid_x,
+                        max_grid_dim[0],
+                        common::errors::InvalidArgument(
+                            "pool2d grid.x exceeds device limit."));
+      PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "pool2d grid.x");
+      PADDLE_ENFORCE_LE_UINT32_MAX(grid_y, "pool2d grid.y");
+      dim3 grid(
+          static_cast<uint32_t>(grid_x), static_cast<uint32_t>(grid_y), 1);
+      if (input.numel() <= std::numeric_limits<int>::max()) {
+        auto pool_divmods = FastDivModForPooling<int>(
+            input_channels, output_width, output_height);
+        AdaptiveKernelMaxPool2dWithIdx<T1, T2, int>
+            <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
+                                                     input_data,
+                                                     input_channels,
+                                                     input_height,
+                                                     input_width,
+                                                     output_height,
+                                                     output_width,
+                                                     ksize_height,
+                                                     ksize_width,
+                                                     stride_height,
+                                                     stride_width,
+                                                     padding_height,
+                                                     padding_width,
+                                                     batch_size,
+                                                     output_data,
+                                                     mask_data,
+                                                     pool_divmods);
+      } else {
+        auto pool_divmods = FastDivModForPooling<int64_t>(
+            input_channels, output_width, output_height);
+        AdaptiveKernelMaxPool2dWithIdx<T1, T2, int64_t>
+            <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
+                                                     input_data,
+                                                     input_channels,
+                                                     input_height,
+                                                     input_width,
+                                                     output_height,
+                                                     output_width,
+                                                     ksize_height,
+                                                     ksize_width,
+                                                     stride_height,
+                                                     stride_width,
+                                                     padding_height,
+                                                     padding_width,
+                                                     batch_size,
+                                                     output_data,
+                                                     mask_data,
+                                                     pool_divmods);
+      }
     } else {
       int thread_num = 1024;
 #ifdef WITH_NV_JETSON

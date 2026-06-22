@@ -1839,6 +1839,11 @@ void launch(TensorInfo<const T, IndexType> input,
       std::min(topk_ceil_div((int64_t)inputSliceSize, (int64_t)warp_size) *
                    (int64_t)warp_size,
                (int64_t)1024);
+  PADDLE_ENFORCE_GT(
+      block64,
+      0,
+      common::errors::InvalidArgument("topk block.x must be greater than 0."));
+  PADDLE_ENFORCE_LE_UINT32_MAX(block64, "topk block.x");
   dim3 block(static_cast<uint32_t>(block64));
   gatherTopK<T, IndexType, Dim, /*WithKthValues=*/false>
       <<<grid, block, 0, stream>>>(input,
@@ -2259,8 +2264,9 @@ void launch(TensorInfo<const T, IndexType> input,
   int items_per_block = items_per_thread * BLOCK_THREADS;
 
   using Bitwise = typename TopKTypeConfig<T>::RadixType;
-  uint32_t blocks_per_slice =
-      topk_ceil_div((int64_t)inputSliceSize, (int64_t)items_per_block);
+  int64_t blocks_per_slice64 =
+      topk_ceil_div(static_cast<int64_t>(inputSliceSize),
+                    static_cast<int64_t>(items_per_block));
   PADDLE_ENFORCE_LE_UINT32_MAX(blocks_per_slice64, "topk blocks_per_slice");
   uint32_t blocks_per_slice = static_cast<uint32_t>(blocks_per_slice64);
   uint64_t num_blocks64 = static_cast<uint64_t>(numInputSlices) *
@@ -2293,6 +2299,11 @@ void launch(TensorInfo<const T, IndexType> input,
   uint32_t k_to_find = static_cast<uint32_t>(k_to_find64);
   int64_t fill_grid64 =
       std::min(((int64_t)numInputSlices + 511) / 512, (int64_t)1073741824);
+  PADDLE_ENFORCE_LE(
+      fill_grid64,
+      phi::backends::gpu::GetDeviceProperties(device_id).maxGridSize[0],
+      common::errors::InvalidArgument(
+          "topk fill grid.x exceeds device limit."));
   PADDLE_ENFORCE_LE_UINT32_MAX(fill_grid64, "topk fill grid.x");
   uint32_t fill_grid = static_cast<uint32_t>(fill_grid64);
   fill<uint32_t>
@@ -2387,6 +2398,11 @@ void launch(TensorInfo<const T, IndexType> input,
 #if TOPK_CUB_SUPPORTS_SCAN_BY_KEY()
   int64_t kth_counts_grid64 =
       std::min(((int64_t)numInputSlices + 255) / 256, (int64_t)1073741824);
+  PADDLE_ENFORCE_LE(
+      kth_counts_grid64,
+      phi::backends::gpu::GetDeviceProperties(device_id).maxGridSize[0],
+      common::errors::InvalidArgument(
+          "topk kth counts grid.x exceeds device limit."));
   PADDLE_ENFORCE_LE_UINT32_MAX(kth_counts_grid64, "topk kth counts grid.x");
   uint32_t kth_counts_grid = static_cast<uint32_t>(kth_counts_grid64);
   computeBlockwiseKthCounts<Bitwise><<<kth_counts_grid, 256, 0, stream>>>(

@@ -193,11 +193,17 @@ void CrossEntropyWithSoftmaxGradGPUKernel(const GPUContext& dev_ctx,
 
   int block = 512;
   auto stream = dev_ctx.stream();
+  auto max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
 
   // do not with softmax op, and input is softmax
   if (!use_softmax) {
     if (soft_label) {
       int64_t grid = (n * d + block - 1) / block;
+      PADDLE_ENFORCE_LE(
+          grid,
+          max_grid_dim,
+          common::errors::InvalidArgument(
+              "cross entropy grad soft label grid.x exceeds device limit."));
       PADDLE_ENFORCE_LE_UINT32_MAX(grid,
                                    "cross entropy grad soft label grid.x");
       uint32_t grid_value = static_cast<uint32_t>(grid);
@@ -208,6 +214,11 @@ void CrossEntropyWithSoftmaxGradGPUKernel(const GPUContext& dev_ctx,
       DenseTensor logits_grad_2d(*logit_grad);
       logits_grad_2d.Resize({n, d});
       int64_t grid = (n * remain + block - 1) / block;
+      PADDLE_ENFORCE_LE(
+          grid,
+          max_grid_dim,
+          common::errors::InvalidArgument(
+              "cross entropy grad hard label grid.x exceeds device limit."));
       PADDLE_ENFORCE_LE_UINT32_MAX(grid,
                                    "cross entropy grad hard label grid.x");
       uint32_t grid_value = static_cast<uint32_t>(grid);
@@ -217,6 +228,11 @@ void CrossEntropyWithSoftmaxGradGPUKernel(const GPUContext& dev_ctx,
               logit_grad_data, label_data, n, d, remain, ignore_index);
       int64_t num = n * d;
       grid = (num + block - 1) / block;
+      PADDLE_ENFORCE_LE(
+          grid,
+          max_grid_dim,
+          common::errors::InvalidArgument(
+              "cross entropy grad scale grid.x exceeds device limit."));
       PADDLE_ENFORCE_LE_UINT32_MAX(grid, "cross entropy grad scale grid.x");
       grid_value = static_cast<uint32_t>(grid);
       ScaleCrossEntropyGradient<T, LabelT>
@@ -236,6 +252,11 @@ void CrossEntropyWithSoftmaxGradGPUKernel(const GPUContext& dev_ctx,
 
   if (soft_label) {
     int64_t grid = (n * d + block - 1) / block;
+    PADDLE_ENFORCE_LE(
+        grid,
+        max_grid_dim,
+        common::errors::InvalidArgument(
+            "cross entropy grad soft grid.x exceeds device limit."));
     PADDLE_ENFORCE_LE_UINT32_MAX(grid, "cross entropy grad soft grid.x");
     uint32_t grid_value = static_cast<uint32_t>(grid);
     const T* label_data = label.data<T>();
@@ -245,6 +266,11 @@ void CrossEntropyWithSoftmaxGradGPUKernel(const GPUContext& dev_ctx,
     const T* softmax_data = softmax.data<T>();
     const auto* label_data = label.data<LabelT>();
     int64_t grid = (n * d + block - 1) / block;
+    PADDLE_ENFORCE_LE(
+        grid,
+        max_grid_dim,
+        common::errors::InvalidArgument(
+            "cross entropy grad softmax hard grid.x exceeds device limit."));
     PADDLE_ENFORCE_LE_UINT32_MAX(grid,
                                  "cross entropy grad softmax hard grid.x");
     uint32_t grid_value = static_cast<uint32_t>(grid);

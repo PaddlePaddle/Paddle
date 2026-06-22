@@ -357,6 +357,11 @@ void ElementwiseAddGrad(const GPUContext &dev_ctx,
     int64_t grid_size_x =
         ((size + vec_size - 1) / vec_size + PREDEFINED_BLOCK_SIZE - 1) /
         PREDEFINED_BLOCK_SIZE;
+    auto max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
+    PADDLE_ENFORCE_LE(grid_size_x,
+                      max_grid_dim,
+                      common::errors::InvalidArgument(
+                          "elementwise add grad grid.x exceeds device limit."));
     PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_x, "elementwise add grad grid.x");
     dim3 grid_size(static_cast<uint32_t>(grid_size_x), 1);
     if (size < std::numeric_limits<int>::max()) {

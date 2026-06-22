@@ -1,5 +1,4 @@
 /* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-          uint32_t grid_x = static_cast<uint32_t>(batch_size);
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -1732,6 +1731,11 @@ static void LayerNormBackward(
   auto stream = dev_ctx.stream();
   const int kMaxBlockDim = 512;
   const int kMaxBlockNum = 128;
+  auto max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  PADDLE_ENFORCE_LE(batch_size,
+                    max_grid_dim,
+                    common::errors::InvalidArgument(
+                        "layer_norm grid.x exceeds device limit."));
   PADDLE_ENFORCE_LE_UINT32_MAX(batch_size, "layer_norm grid.x");
   PADDLE_ENFORCE_LE_INT_MAX(batch_size, "batch_size");
   int gradient_flag = ((d_x != nullptr ? 1 : 0) << 2) |
@@ -1740,31 +1744,34 @@ static void LayerNormBackward(
   if (gradient_flag == 0) return;
   if (batch_size == 1) {
     // TODO(large-tensor): batch_size==1 path uses int32 grid dim
+    const int64_t grid_x = (feature_size + kMaxBlockDim - 1) / kMaxBlockDim;
+    PADDLE_ENFORCE_LE(grid_x,
+                      max_grid_dim,
+                      common::errors::InvalidArgument(
+                          "layer_norm batch_one grid.x exceeds device limit."));
     PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "layer_norm batch_one grid.x");
-        (feature_size + kMaxBlockDim - 1) / kMaxBlockDim,
-        "(feature_size + kMaxBlockDim - 1) / kMaxBlockDim");
-        LayerNormBackwardWhenBatchSizeIsOne<T, U, ScaleBiasWithSameTypeX>
-            <<<static_cast<uint32_t>(grid_x), kMaxBlockDim, 0, stream>>>(
-                x,
-                d_y,
-                d_x,
-                d_scale,
-                d_bias,
-                mean,
-                var,
-                scale,
-                epsilon,
-                feature_size);
+    LayerNormBackwardWhenBatchSizeIsOne<T, U, ScaleBiasWithSameTypeX>
+        <<<static_cast<uint32_t>(grid_x), kMaxBlockDim, 0, stream>>>(
+            x,
+            d_y,
+            d_x,
+            d_scale,
+            d_bias,
+            mean,
+            var,
+            scale,
+            epsilon,
+            feature_size);
 
-        if (d_x != nullptr) {
-          switch (GetDesiredBlockDim(feature_size)) {
-            FIXED_BLOCK_DIM_CASE(
-                LayerNormBackwardPostProcessToCalculateDX<T, U, kBlockDim>
-                <<<1, kBlockDim, 0, stream>>>(
-                    x, d_x, mean, var, epsilon, feature_size));
-          }
-        }
-        return;
+    if (d_x != nullptr) {
+      switch (GetDesiredBlockDim(feature_size)) {
+        FIXED_BLOCK_DIM_CASE(
+            LayerNormBackwardPostProcessToCalculateDX<T, U, kBlockDim>
+            <<<1, kBlockDim, 0, stream>>>(
+                x, d_x, mean, var, epsilon, feature_size));
+      }
+    }
+    return;
   }
 
   auto block_dim = GetDesiredBlockDim(batch_size);
@@ -1959,6 +1966,11 @@ static void LayerNormBackward(
         constexpr int PartSize = BDIMY1 * VPT;
         dim3 threads2(BDIMX, BDIMY1, 1);
         int64_t blocks2_x = (feature_size + BDIMX - 1) / BDIMX;
+        PADDLE_ENFORCE_LE(
+            blocks2_x,
+            max_grid_dim,
+            common::errors::InvalidArgument(
+                "layer_norm part grad grid.x exceeds device limit."));
         PADDLE_ENFORCE_LE_UINT32_MAX(blocks2_x, "layer_norm part grad grid.x");
         dim3 blocks2(static_cast<uint32_t>(blocks2_x), PartSize, 1);
 
@@ -1985,6 +1997,11 @@ static void LayerNormBackward(
         constexpr int BDIMY2 = 8;
         dim3 threads3(BDIMX, BDIMY2, 1);
         int64_t blocks3_x = (feature_size + BDIMX - 1) / BDIMX;
+        PADDLE_ENFORCE_LE(
+            blocks3_x,
+            max_grid_dim,
+            common::errors::InvalidArgument(
+                "layer_norm sum grad grid.x exceeds device limit."));
         PADDLE_ENFORCE_LE_UINT32_MAX(blocks3_x, "layer_norm sum grad grid.x");
         const dim3 blocks3(static_cast<uint32_t>(blocks3_x), 1, 1);
         LayerNormBackwardSumGradGammaBeta<T, U, BDIMX, BDIMY2, ScaleT>

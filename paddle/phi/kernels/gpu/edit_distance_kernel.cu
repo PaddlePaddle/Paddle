@@ -11,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-PADDLE_ENFORCE_LE_UINT32_MAX(levenshtein_grid64, "Levenshtein grid.x");
 #include "paddle/phi/kernels/edit_distance_kernel.h"
 
 #include <algorithm>
@@ -156,6 +155,15 @@ void EditDistanceKernel(const Context& dev_ctx,
       dist_t.Resize({m + 1, n + 1});
       dev_ctx.template Alloc<T>(&dist_t);
       auto dist = dist_t.data<T>();
+      PADDLE_ENFORCE_LE_INT_MAX(m, "edit_distance m");
+      PADDLE_ENFORCE_LE_INT_MAX(n, "edit_distance n");
+      PADDLE_ENFORCE_LE(
+          m,
+          std::numeric_limits<int>::max() - n - 1,
+          common::errors::InvalidArgument(
+              "edit_distance anti-diagonal slice exceeds int limit."));
+      const int m_int = static_cast<int>(m);
+      const int n_int = static_cast<int>(n);
       auto hyp_offset = use_length ? num * hyps.dims()[1] : hyp_lod[num];
       auto ref_offset = use_length ? num * refs.dims()[1] : ref_lod[num];
       auto x1 = hyps.data<int64_t>() + hyp_offset;
@@ -186,9 +194,10 @@ void EditDistanceKernel(const Context& dev_ctx,
         Levenshtein<T><<<1 + (size - 1) / PADDLE_CUDA_NUM_THREADS,
                          PADDLE_CUDA_NUM_THREADS,
                          0,
-                         stream>>>(dist, x1, x2, m, n, start);
+                         stream>>>(dist, x1, x2, m_int, n_int, start);
       }
-      SetOutput<T><<<1, 1, 0, stream>>>(out_data + num, dist, m, n, normalized);
+      SetOutput<T>
+          <<<1, 1, 0, stream>>>(out_data + num, dist, m_int, n_int, normalized);
     }
   }
 }

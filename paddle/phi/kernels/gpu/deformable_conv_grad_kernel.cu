@@ -1,7 +1,4 @@
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-// PADDLE_ENFORCE_LE_UINT32_MAX(blocks, "deformable_conv_grad coord grid.x");
-PADDLE_ENFORCE_LE_UINT32_MAX(threads, "deformable_conv_grad coord block.x");
-
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,9 +25,9 @@ namespace phi {
 static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaximumNumBlocks = 4096;
 
-static inline int NumBlocks(const int N) {
+static inline int64_t NumBlocks(const int64_t N) {
   return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
-                  kNumMaximumNumBlocks);
+                  static_cast<int64_t>(kNumMaximumNumBlocks));
 }
 
 template <typename T, typename IndexT>
@@ -142,7 +139,7 @@ void ModulatedDeformableCol2im(const Context& dev_ctx,
       <<<static_cast<uint32_t>(blocks),
          static_cast<uint32_t>(threads),
          0,
-         dev_ctx.stream()>>>(num_kernels_int,
+         dev_ctx.stream()>>>(num_kernels,
                              data_col,
                              data_offset,
                              data_mask,
@@ -305,13 +302,15 @@ void ModulatedDeformableCol2imCoord(const Context& dev_ctx,
   int64_t channel_per_deformable_group = col_shape[0] / deformable_groups;
   int64_t blocks = NumBlocks(num_kernels);
   int64_t threads = kNumCUDAThreads;
+  PADDLE_ENFORCE_LE_UINT32_MAX(blocks, "deformable_conv_grad coord grid.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(threads, "deformable_conv_grad coord block.x");
 
   ModulatedDeformableCol2imCoordGpuKernel<T, IndexT>
       <<<static_cast<uint32_t>(blocks),
          static_cast<uint32_t>(threads),
          0,
          dev_ctx.stream()>>>(
-          num_kernels_int,
+          num_kernels,
           data_col,
           data_im,
           data_offset,

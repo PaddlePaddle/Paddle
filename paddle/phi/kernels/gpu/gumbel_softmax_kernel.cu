@@ -122,7 +122,8 @@ __global__ void AddGumbelNoiseCUDAKernel(const T* input_data,
   int64_t index =
       static_cast<int64_t>(threadIdx.x) +
       static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
-  int step = blockDim.x * gridDim.x;
+  int64_t step =
+      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(gridDim.x);
   for (int64_t i = index; i < n; i += step) {
     MT gumbel_noise = -log(-log(noise[i]));
     output_data[i] = static_cast<T>(
@@ -139,7 +140,7 @@ struct GumbleNoiseGenerator<GPUContext, T> {
                         int size_from_axis,
                         const float temperature) {
     DenseTensor random_tensor;
-    int64_t size = size_to_axis * size_from_axis;
+    int64_t size = static_cast<int64_t>(size_to_axis) * size_from_axis;
     random_tensor.Resize({size});
     using MT = typename MPTypeTrait<T>::Type;
     MT* random_data = dev_ctx.template Alloc<MT>(&random_tensor);
@@ -152,21 +153,18 @@ struct GumbleNoiseGenerator<GPUContext, T> {
     uint64_t seed = seed_offset.first;
     uint64_t offset = seed_offset.second;
     const uint64_t offset64 = size * offset;
-    PADDLE_ENFORCE_LE_UINT32_MAX(seed, "gumbel_softmax seed");
-    PADDLE_ENFORCE_LE_UINT32_MAX(offset64, "gumbel_softmax offset");
-    const uint32_t seed_u32 = static_cast<uint32_t>(seed);
-    const uint32_t offset_u32 = static_cast<uint32_t>(offset64);
 
     thrust::counting_iterator<int64_t> index_sequence_begin(0);
-    thrust::transform(
-        index_sequence_begin,
-        index_sequence_begin + size,
-        thrust::device_ptr<MT>(random_data),
-        UniformCUDAGenerator<MT>(0.00001, 1, seed_u32, offset_u32));
+    thrust::transform(index_sequence_begin,
+                      index_sequence_begin + size,
+                      thrust::device_ptr<MT>(random_data),
+                      UniformCUDAGenerator<MT>(0.00001, 1, seed, offset64));
 
     // add gumbel noise to X
     const int thread_size = 512;
-    int64_t block_size64 = (size + thread_size) / thread_size;
+    int64_t block_size64 = size / thread_size + (size % thread_size != 0);
+    int64_t max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
+    block_size64 = block_size64 < max_grid_dim ? block_size64 : max_grid_dim;
     PADDLE_ENFORCE_LE_UINT32_MAX(block_size64, "gumbel_softmax noise grid.x");
     const uint32_t block_size = static_cast<uint32_t>(block_size64);
     constexpr uint32_t thread_size_u32 = static_cast<uint32_t>(thread_size);
