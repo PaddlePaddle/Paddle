@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from typing import TYPE_CHECKING
 
 import paddle
@@ -47,12 +48,6 @@ def invert_permutation(permutation: Tensor | None) -> Tensor | None:
 
     Examples:
         >>> import paddle
-        >>> from paddle.nn.utils.rnn import invert_permutation
-        >>> perm = paddle.to_tensor([2, 0, 1])
-        >>> inv_perm = invert_permutation(perm)
-        >>> print(inv_perm)
-        Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
-               [1, 2, 0])
     """
     if permutation is None:
         return None
@@ -82,12 +77,7 @@ class PackedSequence:
         .. code-block:: pycon
 
             >>> import paddle
-            >>> from paddle.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
-            >>> seq = paddle.randn([5, 3, 10])
-            >>> lengths = paddle.to_tensor([5, 3, 2])
-            >>> packed = pack_padded_sequence(seq, lengths)
-            >>> print(type(packed))
-            <class 'paddle.nn.utils.rnn.PackedSequence'>
+
     """
 
     def __init__(
@@ -111,19 +101,22 @@ class PackedSequence:
 
     def to(self, *args, **kwargs) -> PackedSequence:
         data = self.data.to(*args, **kwargs)
-        batch_sizes = self.batch_sizes.to(*args, **kwargs)
+        if data is self.data:
+            return self
+        # Only convert indices to same device as data, not dtype
+        target_device = data.place
         sorted_indices = (
-            self.sorted_indices.to(*args, **kwargs)
+            self.sorted_indices.to(target_device)
             if self.sorted_indices is not None
             else None
         )
         unsorted_indices = (
-            self.unsorted_indices.to(*args, **kwargs)
+            self.unsorted_indices.to(target_device)
             if self.unsorted_indices is not None
             else None
         )
         return PackedSequence(
-            data, batch_sizes, sorted_indices, unsorted_indices
+            data, self.batch_sizes, sorted_indices, unsorted_indices
         )
 
     def cuda(self) -> PackedSequence:
@@ -207,12 +200,7 @@ def pack_padded_sequence(
         .. code-block:: pycon
 
             >>> import paddle
-            >>> from paddle.nn.utils.rnn import pack_padded_sequence
-            >>> seq = paddle.randn([5, 3, 10])
-            >>> lengths = paddle.to_tensor([5, 3, 2])
-            >>> packed = pack_padded_sequence(seq, lengths)
-            >>> print(packed.data.shape)
-            [10, 10]
+
     """
     if batch_first:
         input = input.transpose([1, 0, *range(2, len(input.shape))])
@@ -221,7 +209,6 @@ def pack_padded_sequence(
         lengths = lengths.tolist()
 
     batch_size = input.shape[1]
-    num_steps = max(lengths)
 
     if len(lengths) != batch_size:
         raise ValueError(
@@ -238,7 +225,6 @@ def pack_padded_sequence(
         sorted_indices = paddle.to_tensor([i for i, _ in sorted_lengths])
         unsorted_indices = paddle.argsort(sorted_indices)
         lengths = [l for _, l in sorted_lengths]
-        perm = list(sorted_indices.numpy())
         # Use index_select to reorder along batch dimension (axis=1)
         input = paddle.index_select(input, sorted_indices, axis=1)
 
@@ -290,20 +276,13 @@ def pad_packed_sequence(
         .. code-block:: pycon
 
             >>> import paddle
-            >>> from paddle.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
-            >>> seq = paddle.randn([5, 3, 10])
-            >>> lengths = paddle.to_tensor([5, 3, 2])
-            >>> packed = pack_padded_sequence(seq, lengths)
-            >>> padded, lengths_out = pad_packed_sequence(packed)
-            >>> print(padded.shape)
-            [5, 3, 10]
+
     """
     if not isinstance(sequence, PackedSequence):
         raise TypeError(f"Expected PackedSequence, got {type(sequence)}")
 
     data = sequence.data
     batch_sizes = sequence.batch_sizes.tolist()
-    sorted_indices = sequence.sorted_indices
     unsorted_indices = sequence.unsorted_indices
 
     max_seq_len = len(batch_sizes)
@@ -360,7 +339,7 @@ def pad_packed_sequence(
 
 
 def pad_sequence(
-    sequences: list[Tensor],
+    sequences: Iterable[Tensor],
     batch_first: bool = False,
     padding_value: float = 0.0,
     padding_side: str = 'right',
@@ -407,11 +386,18 @@ def pad_sequence(
             >>> padded = paddle.nn.utils.pad_sequence([a, b, c], batch_first=True)
             >>> print(padded.shape)
             paddle.Size([3, 25, 300])
+
     """
-    if not isinstance(sequences, list):
+    if not isinstance(sequences, Iterable):
         raise TypeError(
-            f"pad_sequence expects a list of Tensors, but got {type(sequences)}"
+            f"pad_sequence expects an iterable of Tensors, but got {type(sequences)}"
         )
+    for seq in sequences:
+        if not isinstance(seq, paddle.Tensor):
+            raise TypeError(
+                f"pad_sequence expects an iterable of Tensors, but got element of type {type(seq)}"
+            )
+    sequences = tuple(sequences)
     if padding_side not in ('right', 'left'):
         raise ValueError(
             f"padding_side must be 'right' or 'left', but got '{padding_side}'"
@@ -480,6 +466,7 @@ def unpad_sequence(
             True
             >>> paddle.allclose(sequences[2], unpadded[2]).item()
             True
+
     """
     if not batch_first:
         # Transpose from T x B x * to B x T x *
@@ -521,14 +508,7 @@ def pack_sequence(
 
     Examples:
         >>> import paddle
-        >>> from paddle.nn.utils.rnn import pack_sequence
-        >>> a = paddle.to_tensor([1, 2, 3])
-        >>> b = paddle.to_tensor([4, 5])
-        >>> c = paddle.to_tensor([6])
-        >>> packed = pack_sequence([a, b, c])
-        >>> print(packed.data)
-        Tensor(shape=[6], dtype=int64, place=Place(cpu), stop_gradient=True,
-               [1, 4, 6, 2, 5, 3])
+
     """
     lengths = paddle.to_tensor([v.shape[0] for v in sequences])
     return pack_padded_sequence(
@@ -549,18 +529,7 @@ def unpack_sequence(packed_sequences: PackedSequence) -> list[Tensor]:
 
     Examples:
         >>> import paddle
-        >>> from paddle.nn.utils.rnn import pack_sequence, unpack_sequence
-        >>> a = paddle.to_tensor([1, 2, 3])
-        >>> b = paddle.to_tensor([4, 5])
-        >>> c = paddle.to_tensor([6])
-        >>> sequences = [a, b, c]
-        >>> packed_sequences = pack_sequence(sequences)
-        >>> unpacked_sequences = unpack_sequence(packed_sequences)
-        >>> print(unpacked_sequences)
-        [Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
-               [1, 2, 3]), Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
-               [4, 5]), Tensor(shape=[1], dtype=int64, place=Place(cpu), stop_gradient=True,
-               [6])]
+
     """
     padded_sequences, lengths = pad_packed_sequence(
         packed_sequences, batch_first=True

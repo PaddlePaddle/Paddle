@@ -5849,7 +5849,7 @@ def resize_as_(
             >>> y = paddle.zeros([4, 5])
             >>> x.resize_as_(y)
             >>> print(x.shape)
-            [4, 5]
+            paddle.Size([4, 5])
     """
     return x.resize_(y.shape)
 

@@ -357,13 +357,26 @@ class TestSignToStatic(unittest.TestCase):
     def setUp(self):
         self.x_np = np.array([-1.0, 10.0, -10.0, 1.2, 1.5], dtype='float32')
 
-    def test_to_static_inplace_api(self):
+    def test_to_static_api(self):
         def sign_op(x):
             return paddle.sign(x)
 
         with dygraph_guard():
             x = paddle.to_tensor(self.x_np.copy().astype('float32'))
             st_f = paddle.jit.to_static(sign_op, full_graph=True, backend=None)
+            out = st_f(x)
+            out_ref = np.sign(self.x_np.astype('float32'))
+            np.testing.assert_allclose(out_ref, out.numpy())
+
+    def test_to_static_inplace_api(self):
+        def sign_inplace_op(x):
+            return x.sign_()
+
+        with dygraph_guard():
+            x = paddle.to_tensor(self.x_np.copy().astype('float32'))
+            st_f = paddle.jit.to_static(
+                sign_inplace_op, full_graph=True, backend=None
+            )
             out = st_f(x)
             out_ref = np.sign(self.x_np.astype('float32'))
             np.testing.assert_allclose(out_ref, out.numpy())

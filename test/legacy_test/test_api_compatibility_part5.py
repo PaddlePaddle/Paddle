@@ -1346,15 +1346,24 @@ class TestPinverseAPI(unittest.TestCase):
         out4 = paddle.empty([2, 3], dtype='float32')
         paddle.linalg.pinv(x, out=out4)
 
-        # 5. Tensor method - args
-        out5 = x.pinverse()
+        # 5. atol parameter test (keyword-only)
+        out5 = paddle.linalg.pinv(x, atol=1e-10)
 
-        # 6. Alias paddle.pinverse
-        out6 = paddle.pinverse(x)
+        # 6. rtol parameter test (keyword-only)
+        out6 = paddle.linalg.pinv(x, rtol=1e-10)
+
+        # 7. atol and rtol combined (keyword-only)
+        out7 = paddle.linalg.pinv(x, atol=1e-10, rtol=1e-10)
+
+        # 8. Tensor method - args
+        out8 = x.pinverse()
+
+        # 9. Alias paddle.pinverse
+        out9 = paddle.pinverse(x)
 
         # Verify all outputs
         expected = np.linalg.pinv(self.np_x)
-        for out in [out1, out2, out3, out4, out5, out6]:
+        for out in [out1, out2, out3, out4, out5, out6, out7, out8, out9]:
             np.testing.assert_allclose(out.numpy(), expected, rtol=1e-5)
 
         paddle.enable_static()
@@ -1940,6 +1949,22 @@ class TestAssertAllcloseAPI(unittest.TestCase):
         # 2. With tolerances
         paddle.testing.assert_allclose(x, y, rtol=1e-5, atol=1e-8)
 
+        # 4. Non-Tensor inputs (isinstance branches)
+        paddle.testing.assert_allclose(
+            paddle.to_tensor([1.0, 2.0, 3.0]).numpy(),  # actual is ndarray
+            paddle.to_tensor([1.0, 2.0, 3.0]).numpy(),  # expected is ndarray
+        )
+
+        # 5. Non-Tensor actual with list
+        paddle.testing.assert_allclose(
+            [1.0, 2.0, 3.0], paddle.to_tensor([1.0, 2.0, 3.0])
+        )
+
+        # 6. Non-Tensor expected with list
+        paddle.testing.assert_allclose(
+            paddle.to_tensor([1.0, 2.0, 3.0]), [1.0, 2.0, 3.0]
+        )
+
         # 3. Should raise on mismatch
         z = paddle.to_tensor([1.0, 2.0, 4.0])
         with self.assertRaises(AssertionError):
@@ -2168,6 +2193,15 @@ class TestSetDefaultTensorTypeAPI(unittest.TestCase):
         paddle.set_default_tensor_type("torch.cuda.BFloat16Tensor")
         self.assertEqual(paddle.get_default_dtype(), "bfloat16")
 
+        # ========== TypeError branches  ==========
+        # Invalid tensor type name (not in dtype_map)
+        with self.assertRaises(TypeError):
+            paddle.set_default_tensor_type("torch.IntTensor")
+
+        # Passing dtype instead of tensor type
+        with self.assertRaises(TypeError):
+            paddle.set_default_tensor_type(paddle.float32)
+
         # Restore original dtype
         paddle.set_default_dtype(original_dtype)
 
@@ -2234,9 +2268,12 @@ class TestPackedSequenceAPI(unittest.TestCase):
         self.assertIsInstance(packed1.is_pinned, bool)
 
         # 6. Test to() method
-        packed_cpu = packed1.to(device="cpu")
-        # Just verify that to() works without error
-        self.assertIsNotNone(packed_cpu.data)
+        # When called with dtype change, data dtype changes but indices stay int64
+        packed_dtype = packed4.to(dtype=paddle.float64)
+        self.assertEqual(packed_dtype.data.dtype, paddle.float64)
+        self.assertEqual(packed_dtype.sorted_indices.dtype, paddle.int64)
+        self.assertEqual(packed_dtype.unsorted_indices.dtype, paddle.int64)
+        self.assertEqual(packed_dtype.unsorted_indices.dtype, paddle.int64)
 
         # 7. Test dtype conversion methods
         packed_double = packed1.double()
@@ -2496,6 +2533,10 @@ class TestPadPackedSequenceAPI(unittest.TestCase):
             packed, batch_first=True
         )
 
+        # 9. TypeError when sequence is not PackedSequence
+        with self.assertRaises(TypeError):
+            paddle.nn.utils.rnn.pad_packed_sequence("not_a_packed_sequence")
+
         # Verify outputs numerical correctness
         # For default padding (0.0)
         expected_padded = self.np_seq.copy()
@@ -2581,6 +2622,21 @@ class TestPadSequenceAPI(unittest.TestCase):
         padded6 = paddle.nn.utils.rnn.pad_sequence(
             sequences, batch_first=True, padding_value=0.0
         )
+
+        # 7. TypeError when sequences is a string (not a valid iterable of Tensors)
+        with self.assertRaises(TypeError):
+            paddle.nn.utils.rnn.pad_sequence("not_a_valid_input")
+
+        # 8. ValueError for invalid padding_side
+        with self.assertRaises(ValueError):
+            paddle.nn.utils.rnn.pad_sequence(sequences, padding_side='invalid')
+
+        # 9. PyTorch-style tuple input (should work the same as list)
+        padded_tuple = paddle.nn.utils.rnn.pad_sequence(
+            (a, b, c), batch_first=True
+        )
+        self.assertEqual(padded_tuple.shape, [3, 25, 300])
+        np.testing.assert_allclose(padded_tuple.numpy(), padded3.numpy())
 
         # Verify outputs
         self.assertEqual(padded1.shape, [25, 3, 300])
