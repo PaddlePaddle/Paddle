@@ -746,8 +746,17 @@ function(nv_test TARGET_NAME)
                               -Wl,--no-as-needed)
       endif()
       if(WITH_CINN AND NOT WITH_SHARED_IR)
-        target_circle_link_libraries(${TARGET_NAME} op_registry type_info
-                                     op_dialect ap_pir pir)
+        target_circle_link_libraries(
+          ${TARGET_NAME}
+          op_registry
+          type_info
+          primitive_vjp_experimental
+          prim_utils
+          op_dialect
+          op_dialect_vjp
+          cinn_op_dialect
+          ap_pir
+          pir)
       endif()
     endif()
     add_dependencies(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main)

@@ -17,8 +17,9 @@ limitations under the License. */
 #define _USE_MATH_DEFINES
 #endif
 #include <cmath>
-// Windows builds are still kept on C++17 and may not provide <numbers>.
-#if !defined(_WIN32) && !defined(__CUDACC__) && !defined(__HIPCC__)
+// TODO(toolchain-cxx20): GCC < 11 and Windows builds are temporarily kept on
+// C++17. Remove this fallback after all build paths use C++20.
+#if __cplusplus >= 202002L && !defined(__CUDACC__) && !defined(__HIPCC__)
 #include <numbers>  // NOLINT(build/include_order)
 #endif
 #include <type_traits>
@@ -400,10 +401,10 @@ struct AngleFunctor<T, funcs::NoComplex<T, dtype::Real<T>>> {
 #endif
     }
     output_[idx] = input_[idx] < static_cast<T>(0)
-#if defined(_WIN32) || defined(__CUDACC__) || defined(__HIPCC__)
-                       ? static_cast<T>(M_PI)
-#else
+#if __cplusplus >= 202002L && !defined(__CUDACC__) && !defined(__HIPCC__)
                        ? static_cast<T>(std::numbers::pi_v<double>)
+#else
+                       ? static_cast<T>(M_PI)
 #endif
                        : static_cast<T>(0);
   }
