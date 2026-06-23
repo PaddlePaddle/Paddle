@@ -72,24 +72,6 @@ function(remove_gflags TARGET_NAME)
                                               ${TARGET_LIBRARIES})
 endfunction()
 
-function(link_cinn_test_static_ir_deps TARGET_NAME)
-  if(WITH_CINN AND NOT WITH_SHARED_IR)
-    # Static IR builds need these dialect libraries linked as one group because
-    # CINN tests may pull ap_pir through indirect dialect dependencies.
-    target_circle_link_libraries(
-      ${TARGET_NAME}
-      op_registry
-      type_info
-      primitive_vjp_experimental
-      prim_utils
-      op_dialect
-      op_dialect_vjp
-      cinn_op_dialect
-      ap_pir
-      pir)
-  endif()
-endfunction()
-
 function(cinn_cc_test TARGET_NAME)
   if(WITH_TESTING)
     set(options SERIAL)
@@ -105,7 +87,6 @@ function(cinn_cc_test TARGET_NAME)
       target_link_libraries(${TARGET_NAME} -Wl,--as-needed phi_core phi_gpu
                             -Wl,--no-as-needed)
     endif()
-    link_cinn_test_static_ir_deps(${TARGET_NAME})
     add_dependencies(${TARGET_NAME} paddle_gtest_main gtest glog
                      ${cinn_cc_test_DEPS})
 
@@ -201,7 +182,6 @@ function(cinn_nv_test TARGET_NAME)
       target_link_libraries(${TARGET_NAME} -Wl,--as-needed phi_core phi_gpu
                             -Wl,--no-as-needed)
     endif()
-    link_cinn_test_static_ir_deps(${TARGET_NAME})
     add_dependencies(${TARGET_NAME} ${cinn_nv_test_DEPS} paddle_gtest_main
                      gtest)
     common_link(${TARGET_NAME})
