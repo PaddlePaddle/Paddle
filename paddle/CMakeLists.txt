@@ -13,6 +13,15 @@ add_subdirectory(testing)
 add_subdirectory(phi)
 add_subdirectory(fluid)
 
+if(LINUX
+   AND WITH_TESTING
+   AND TARGET paddle_gtest_main)
+  # nv_test links paddle_gtest_main without libpaddle.so, so keep the
+  # imperative/framework static archives in one linker scan group.
+  target_circle_link_libraries(paddle_gtest_main layer op_registry var_helper
+                               type_info)
+endif()
+
 # NOTE(zhiqiu): The changes of cc tests
 # Before, (1) the source file of cc tests are distributed in different sub-directories,
 # (2) the tests are added and configured by calling `cc_test()` in each `CMakeLists.txt`,
