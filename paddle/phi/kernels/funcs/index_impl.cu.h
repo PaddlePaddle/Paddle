@@ -62,8 +62,6 @@ void IndexKernel(const KPDevice &dev_ctx, DenseTensor *out, Functor func) {
 #ifdef PADDLE_WITH_XPU_KP
   size_t block = 64;
   size_t grid = 8;
-  PADDLE_ENFORCE_LE_UINT32_MAX(grid, "index kernel grid.x");
-  PADDLE_ENFORCE_LE_UINT32_MAX(block, "index kernel block.x");
   auto stream = dev_ctx.x_context()->xpu_stream;
 #else
   auto config =

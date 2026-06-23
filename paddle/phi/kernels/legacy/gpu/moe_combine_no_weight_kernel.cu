@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/legacy/gpu/moe_combine_no_weight_kernel.h"
 #include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -63,13 +64,14 @@ void moe_combine_no_weight_fwd(const T* x,
                                const int64_t seqlen,
                                const int64_t hidden_size,
                                const float epsilon,
-                               int64_t max_grid_dim,
                                cudaStream_t stream) {
   constexpr uint32_t threads_per_block = 1024;
   dim3 blockDim(threads_per_block);
+  const int64_t max_grid_x = backends::gpu::GetGpuMaxGridDimSize(
+      backends::gpu::GetCurrentDeviceId())[0];
   PADDLE_ENFORCE_LE(
       seqlen,
-      max_grid_dim,
+      max_grid_x,
       common::errors::InvalidArgument(
           "combine_no_weight_kernel grid.x exceeds device limit."));
   PADDLE_ENFORCE_LE_UINT32_MAX(seqlen, "combine_no_weight_kernel grid.x");
@@ -136,7 +138,6 @@ void MoeCombineNoWeightKernel(const Context& dev_ctx,
                                seqlen,
                                hidden_size,
                                epsilon,
-                               dev_ctx.GetCUDAMaxGridDimSize()[0],
                                dev_ctx.stream());
 }
 
