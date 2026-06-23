@@ -97,6 +97,7 @@ class SendRecvMeta:
         data = data.numpy().tolist()
         # parse data
         tensor_type = data.pop(0)
+        has_block_cache_meta = data.pop(0)  # read has_block_cache_meta flag
 
         if tensor_type == 1:
             tensor_num = data.pop(0)
@@ -133,11 +134,7 @@ class SendRecvMeta:
             keys.append(key)
 
         self.recv_block_cache_meta = None
-        if len(data) > 0:
-            marker = data.pop(0)
-            assert marker == -1, (
-                f"expected block_cache_meta marker -1, got {marker}"
-            )
+        if has_block_cache_meta:
             meta_len = data.pop(0)
             self.recv_block_cache_meta = data[:meta_len]
             data = data[meta_len:]
@@ -181,6 +178,7 @@ class SendRecvMeta:
 
         # prepare data to send
         data = [tensor_type]
+        data.append(1 if block_cache_meta is not None else 0)  # has_block_cache_meta flag
 
         if tensor_type == 1:
             data.append(len(tensors_to_send))
@@ -210,7 +208,6 @@ class SendRecvMeta:
 
         # ------------------block cache meta send-------------
         if block_cache_meta is not None:
-            data.append(-1)
             data.append(len(block_cache_meta))
             data.extend(block_cache_meta)
         # ------------------block cache meta send-------------
