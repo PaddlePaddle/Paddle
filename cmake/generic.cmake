@@ -746,6 +746,9 @@ function(nv_test TARGET_NAME)
                               -Wl,--no-as-needed)
       endif()
       set(nv_test_registry_deps op_registry type_info)
+      if(TARGET var_helper)
+        list(APPEND nv_test_registry_deps var_helper)
+      endif()
       if(WITH_CINN AND NOT WITH_SHARED_IR)
         list(
           APPEND
@@ -759,7 +762,8 @@ function(nv_test TARGET_NAME)
           pir)
       endif()
       # nv_test may pull imperative layer objects through paddle_gtest_main or
-      # phi; keep registry/type-info archives after those dependencies.
+      # phi; keep registry/type-info archives and var_helper in one group when
+      # available.
       target_circle_link_libraries(${TARGET_NAME} ${nv_test_registry_deps})
     endif()
     add_dependencies(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main)
