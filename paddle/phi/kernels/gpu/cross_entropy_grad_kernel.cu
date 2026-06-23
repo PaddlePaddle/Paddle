@@ -193,7 +193,7 @@ void CrossEntropyWithSoftmaxGradGPUKernel(const GPUContext& dev_ctx,
 
   int block = 512;
   auto stream = dev_ctx.stream();
-  auto max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  uint32_t max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
 
   // do not with softmax op, and input is softmax
   if (!use_softmax) {

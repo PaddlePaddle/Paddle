@@ -18,6 +18,7 @@
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpu/group_norm_utils.h"
@@ -1392,9 +1393,11 @@ void GroupNormDirectCUDAFunctor<T, AccT>::operator()(
     }
   }
   int block_size = std::min(static_cast<int64_t>(1024), image_size);
-  int64_t max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];
-  int64_t max_grid_y = dev_ctx.GetCUDAMaxGridDimSize()[1];
-  int64_t max_grid_z = dev_ctx.GetCUDAMaxGridDimSize()[2];
+  const auto max_grid_dim =
+      backends::gpu::GetGpuMaxGridDimSize(backends::gpu::GetCurrentDeviceId());
+  int64_t max_grid_x = max_grid_dim[0];
+  int64_t max_grid_y = max_grid_dim[1];
+  int64_t max_grid_z = max_grid_dim[2];
   const int64_t grid_x = std::min(group_size, max_grid_x);
   const int64_t grid_z = std::min(input_ddim[0], max_grid_z);
   PADDLE_ENFORCE_LE(groups,
@@ -1634,6 +1637,8 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
       imsize *= x_dims[i];
     }
   }
+
+  const int64_t max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];
 
   if (data_layout == DataLayout::NCHW) {
     if (FLAGS_use_accuracy_compatible_kernel) {
@@ -1901,7 +1906,7 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
     set_zero_AccT(dev_ctx, mean, static_cast<AccT>(0));
     set_zero_AccT(dev_ctx, &temp_var, static_cast<AccT>(0));
 
-    int64_t block_size64 = std::min(static_cast<int64_t>(1024), imsize);
+    int64_t block_size_64 = std::min(static_cast<int64_t>(1024), imsize);
     int64_t max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];
     int64_t max_grid_y = dev_ctx.GetCUDAMaxGridDimSize()[1];
     int64_t max_grid_z = dev_ctx.GetCUDAMaxGridDimSize()[2];
@@ -1915,12 +1920,12 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "group_norm legacy forward grid.x");
     PADDLE_ENFORCE_LE_UINT32_MAX(groups, "group_norm legacy forward grid.y");
     PADDLE_ENFORCE_LE_UINT32_MAX(grid_z, "group_norm legacy forward grid.z");
-    PADDLE_ENFORCE_LE_UINT32_MAX(block_size64,
+    PADDLE_ENFORCE_LE_UINT32_MAX(block_size_64,
                                  "group_norm legacy forward block.x");
     dim3 grid(static_cast<uint32_t>(grid_x),
               static_cast<uint32_t>(groups),
               static_cast<uint32_t>(grid_z));
-    dim3 threads(static_cast<uint32_t>(block_size64), 1, 1);
+    dim3 threads(static_cast<uint32_t>(block_size_64), 1, 1);
 
     GroupNormForwardGetMeanAndVar<T,
                                   AccT><<<grid, threads, 0, dev_ctx.stream()>>>(

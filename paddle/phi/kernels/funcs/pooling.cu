@@ -576,8 +576,9 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
         funcs::details::GetLastPow2(output_height * output_width), max_threads);
     int64_t blocks = std::min(max_threads / thread_num,
                               static_cast<int64_t>(output_channels));
-    auto max_grid_dim = backends::gpu::GetGpuMaxGridDimSize(
-        phi::backends::gpu::GetCurrentDeviceId());
+    std::array<unsigned int, 3> max_grid_dim =
+        backends::gpu::GetGpuMaxGridDimSize(
+            phi::backends::gpu::GetCurrentDeviceId());
     PADDLE_ENFORCE_LE_UINT32_MAX(thread_num, "pool2d threads.x");
     PADDLE_ENFORCE_LE_UINT32_MAX(blocks, "pool2d threads.y");
     dim3 threads(
@@ -619,8 +620,9 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
     thread_num = 512;
 #endif
     int64_t blocks = (nthreads + thread_num - 1) / thread_num;
-    auto max_grid_dim = backends::gpu::GetGpuMaxGridDimSize(
-        phi::backends::gpu::GetCurrentDeviceId());
+    std::array<unsigned int, 3> max_grid_dim =
+        backends::gpu::GetGpuMaxGridDimSize(
+            phi::backends::gpu::GetCurrentDeviceId());
     PADDLE_ENFORCE_LE(
         blocks,
         max_grid_dim[0],
@@ -1580,8 +1582,9 @@ void Pool3dDirectCUDAFunctor<PoolProcess, T>::operator()(
   thread_num = 512;
 #endif
   int64_t blocks = (nthreads + thread_num - 1) / thread_num;
-  auto max_grid_dim = backends::gpu::GetGpuMaxGridDimSize(
-      phi::backends::gpu::GetCurrentDeviceId());
+  std::array<unsigned int, 3> max_grid_dim =
+      backends::gpu::GetGpuMaxGridDimSize(
+          phi::backends::gpu::GetCurrentDeviceId());
   PADDLE_ENFORCE_LE(
       blocks,
       max_grid_dim[0],

@@ -214,10 +214,10 @@ void LaunchIndexPutKernel_V2(const Context& dev_ctx,
   constexpr int nt = 128;
   constexpr int vt = 4;
   const dim3 block(nt);
-  int64_t grid64 = (N + static_cast<int64_t>(block.x) * vt - 1) /
-                   (static_cast<int64_t>(block.x) * vt);
-  PADDLE_ENFORCE_LE_UINT32_MAX(grid64, "index_put_kernel grid.x");
-  const dim3 grid(static_cast<uint32_t>(grid64));
+  int64_t grid_64 = (N + static_cast<int64_t>(block.x) * vt - 1) /
+                    (static_cast<int64_t>(block.x) * vt);
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "index_put_kernel grid.x");
+  const dim3 grid(static_cast<uint32_t>(grid_64));
   auto stream = dev_ctx.stream();
 
   auto* val_data = value.data<T>();

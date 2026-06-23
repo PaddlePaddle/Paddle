@@ -40,18 +40,18 @@ void DequantizeFunctor<Context, T>::operator()(const Context& dev_ctx,
   T* out_data = dev_ctx.template Alloc<T>(out);
 
   int64_t num = in->numel();
-  int64_t block_size64 =
+  int64_t block_size_64 =
       std::min(num, static_cast<int64_t>(dev_ctx.GetMaxThreadsPerBlock() / 4));
   int64_t max_threads =
       dev_ctx.GetMaxPhysicalThreadCount();  // SM * block_per_SM
-  const int64_t max_blocks =
-      std::max(((max_threads - 1) / block_size64 + 1), static_cast<int64_t>(1));
-  const int64_t grid_size64 =
-      std::min(max_blocks, (num + block_size64 - 1) / block_size64);
-  PADDLE_ENFORCE_LE_UINT32_MAX(grid_size64, "fake dequantize grid.x");
-  PADDLE_ENFORCE_LE_UINT32_MAX(block_size64, "fake dequantize block.x");
-  uint32_t grid_size = static_cast<uint32_t>(grid_size64);
-  uint32_t block_size = static_cast<uint32_t>(block_size64);
+  const int64_t max_blocks = std::max(((max_threads - 1) / block_size_64 + 1),
+                                      static_cast<int64_t>(1));
+  const int64_t grid_size_64 =
+      std::min(max_blocks, (num + block_size_64 - 1) / block_size_64);
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_64, "fake dequantize grid.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(block_size_64, "fake dequantize block.x");
+  uint32_t grid_size = static_cast<uint32_t>(grid_size_64);
+  uint32_t block_size = static_cast<uint32_t>(block_size_64);
   KeDequantize<T><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
       in_data, scale_factor, max_range, num, out_data);
 }

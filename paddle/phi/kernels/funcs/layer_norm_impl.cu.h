@@ -1731,13 +1731,12 @@ static void LayerNormBackward(
   auto stream = dev_ctx.stream();
   const int kMaxBlockDim = 512;
   const int kMaxBlockNum = 128;
-  auto max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  uint32_t max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
   PADDLE_ENFORCE_LE(batch_size,
                     max_grid_dim,
                     common::errors::InvalidArgument(
                         "layer_norm grid.x exceeds device limit."));
   PADDLE_ENFORCE_LE_UINT32_MAX(batch_size, "layer_norm grid.x");
-  PADDLE_ENFORCE_LE_INT_MAX(batch_size, "batch_size");
   int gradient_flag = ((d_x != nullptr ? 1 : 0) << 2) |
                       ((d_scale != nullptr ? 1 : 0) << 1) |
                       ((d_bias != nullptr ? 1 : 0));

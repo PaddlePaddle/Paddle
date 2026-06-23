@@ -169,17 +169,17 @@ void EditDistanceKernel(const Context& dev_ctx,
       auto x1 = hyps.data<int64_t>() + hyp_offset;
       auto x2 = refs.data<int64_t>() + ref_offset;
 
-      int64_t fill_column_grid64 = 1 + m / PADDLE_CUDA_NUM_THREADS;
-      PADDLE_ENFORCE_LE_UINT32_MAX(fill_column_grid64,
+      int64_t fill_column_grid_64 = 1 + m / PADDLE_CUDA_NUM_THREADS;
+      PADDLE_ENFORCE_LE_UINT32_MAX(fill_column_grid_64,
                                    "FillFirstColumn grid.x");
-      uint32_t fill_column_grid = static_cast<uint32_t>(fill_column_grid64);
+      uint32_t fill_column_grid = static_cast<uint32_t>(fill_column_grid_64);
       FillFirstColumn<T>
           <<<fill_column_grid, PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
               dist, m_int, n_int);
 
-      int64_t fill_row_grid64 = 1 + n / PADDLE_CUDA_NUM_THREADS;
-      PADDLE_ENFORCE_LE_UINT32_MAX(fill_row_grid64, "FillFirstRow grid.x");
-      uint32_t fill_row_grid = static_cast<uint32_t>(fill_row_grid64);
+      int64_t fill_row_grid_64 = 1 + n / PADDLE_CUDA_NUM_THREADS;
+      PADDLE_ENFORCE_LE_UINT32_MAX(fill_row_grid_64, "FillFirstRow grid.x");
+      uint32_t fill_row_grid = static_cast<uint32_t>(fill_row_grid_64);
       FillFirstRow<T>
           <<<fill_row_grid, PADDLE_CUDA_NUM_THREADS, 0, stream>>>(dist, n_int);
 

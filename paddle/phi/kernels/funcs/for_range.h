@@ -67,9 +67,7 @@ __global__ static void ForRangeElemwiseOpLargeSize(Function func,
   size_t idx =
       static_cast<size_t>(blockIdx.x) * static_cast<size_t>(blockDim.x) +
       static_cast<size_t>(threadIdx.x);
-  size_t step =
-      static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x);
-  for (; idx < limit; idx += step) {
+  if (idx < limit) {
     func(idx);
   }
 }

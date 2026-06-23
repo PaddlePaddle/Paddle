@@ -209,10 +209,11 @@ static void InclusiveScanInnerDim(const T *x,
   constexpr size_t kThreadNumX = 16;
   constexpr size_t kThreadNumY = 32;
 
-  size_t grid_dim64 = (outer_dim + kThreadNumY - 1) / kThreadNumY;
-  grid_dim64 = std::min<size_t>(grid_dim64, dev_ctx.GetCUDAMaxGridDimSize()[0]);
-  PADDLE_ENFORCE_LE_UINT32_MAX(grid_dim64, "inclusive scan grid.x");
-  uint32_t grid_dim = static_cast<uint32_t>(grid_dim64);
+  size_t grid_dim_64 = (outer_dim + kThreadNumY - 1) / kThreadNumY;
+  grid_dim_64 =
+      std::min<size_t>(grid_dim_64, dev_ctx.GetCUDAMaxGridDimSize()[0]);
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_dim_64, "inclusive scan grid.x");
+  uint32_t grid_dim = static_cast<uint32_t>(grid_dim_64);
   dim3 thread_dims(static_cast<uint32_t>(kThreadNumX),
                    static_cast<uint32_t>(kThreadNumY));
   if (reverse) {
@@ -391,9 +392,9 @@ void InclusiveScanInnerDimSklansky(const T *src,
 
   int64_t max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int64_t grid_y = CeilDiv(num_rows, int64_t{threads.y});
-  int64_t grid_x64 = std::min(max_grid_dim, grid_y);
-  PADDLE_ENFORCE_LE_UINT32_MAX(grid_x64, "inclusive scan sklansky grid.x");
-  dim3 grid(static_cast<uint32_t>(grid_x64));
+  int64_t grid_x_64 = std::min(max_grid_dim, grid_y);
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_x_64, "inclusive scan sklansky grid.x");
+  dim3 grid(static_cast<uint32_t>(grid_x_64));
 
   size_t shared_mem_bytes = num_threads_y * (num_threads_x * 2) * sizeof(T);
 

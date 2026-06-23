@@ -213,16 +213,16 @@ void MultinomialKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_LE_UINT32_MAX(block_size, "multinomial normalize block.x");
   dim3 block_norm(static_cast<uint32_t>(block_size));
   int64_t norm_numel = x.numel();
-  int64_t grid_norm_x64 =
+  int64_t grid_norm_x_64 =
       norm_numel / block_norm.x + (norm_numel % block_norm.x != 0);
   int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
   const auto& prop = backends::gpu::GetDeviceProperties(device_id);
-  PADDLE_ENFORCE_LE(grid_norm_x64,
+  PADDLE_ENFORCE_LE(grid_norm_x_64,
                     prop.maxGridSize[0],
                     common::errors::InvalidArgument(
                         "multinomial normalize grid.x exceeds device limit."));
-  PADDLE_ENFORCE_LE_UINT32_MAX(grid_norm_x64, "multinomial normalize grid.x");
-  dim3 grid_norm(static_cast<uint32_t>(grid_norm_x64));
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_norm_x_64, "multinomial normalize grid.x");
+  dim3 grid_norm(static_cast<uint32_t>(grid_norm_x_64));
 
   NormalizeProbability<T, MT>
       <<<grid_norm, block_norm, 0, dev_ctx.stream()>>>(norm_probs_data,
@@ -250,19 +250,19 @@ void MultinomialKernel(const Context& dev_ctx,
       dev_ctx);
   // Sample the multinomial distributions.
   dim3 block(128);
-  int64_t grid_y64 = std::min<int64_t>(num_distributions, prop.maxGridSize[1]);
-  int64_t grid_x64 = (int_num_samples - 1) / block.x + 1;
-  PADDLE_ENFORCE_LE(grid_x64,
+  int64_t grid_y_64 = std::min<int64_t>(num_distributions, prop.maxGridSize[1]);
+  int64_t grid_x_64 = (int_num_samples - 1) / block.x + 1;
+  PADDLE_ENFORCE_LE(grid_x_64,
                     prop.maxGridSize[0],
                     common::errors::InvalidArgument(
                         "multinomial sample grid.x exceeds device limit."));
-  PADDLE_ENFORCE_LE_UINT32_MAX(grid_x64, "multinomial sample grid.x");
-  PADDLE_ENFORCE_LE_UINT32_MAX(grid_y64, "multinomial sample grid.y");
-  dim3 grid(static_cast<uint32_t>(grid_x64), static_cast<uint32_t>(grid_y64));
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_x_64, "multinomial sample grid.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_y_64, "multinomial sample grid.y");
+  dim3 grid(static_cast<uint32_t>(grid_x_64), static_cast<uint32_t>(grid_y_64));
 
   auto gen_cuda = dev_ctx.GetGenerator();
   size_t curand4_loop_times =
-      (num_distributions + 4 * grid_y64 - 1) / (4 * grid_y64);
+      (num_distributions + 4 * grid_y_64 - 1) / (4 * grid_y_64);
   // 'increment' should be multiple of 4
   uint64_t increment = curand4_loop_times * 4;
   auto seed_offset = gen_cuda->IncrementOffset(increment);

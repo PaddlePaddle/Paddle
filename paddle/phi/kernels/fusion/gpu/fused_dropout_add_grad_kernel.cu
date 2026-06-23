@@ -28,8 +28,9 @@ static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaximumNumBlocks = 4096;
 
 static inline int NumBlocks(const int64_t N) {
-  return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
-                  kNumMaximumNumBlocks);
+  const int64_t blocks = (N + kNumCUDAThreads - 1) / kNumCUDAThreads;
+  return static_cast<int>(
+      std::min(blocks, static_cast<int64_t>(kNumMaximumNumBlocks)));
 }
 
 namespace phi {

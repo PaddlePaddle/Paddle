@@ -1880,7 +1880,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
                                           std::multiplies<int64_t>());
   int x_block_size =
       std::min(static_cast<int64_t>(ELEMWISE_MAX_BLOCK_DIM), x_threads);
-  auto max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  uint32_t max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
   PADDLE_ENFORCE_LE(x_blocks,
                     max_grid_dim,
                     common::errors::InvalidArgument(

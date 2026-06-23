@@ -357,7 +357,7 @@ void ElementwiseAddGrad(const GPUContext &dev_ctx,
     int64_t grid_size_x =
         ((size + vec_size - 1) / vec_size + PREDEFINED_BLOCK_SIZE - 1) /
         PREDEFINED_BLOCK_SIZE;
-    auto max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
+    uint32_t max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
     PADDLE_ENFORCE_LE(grid_size_x,
                       max_grid_dim,
                       common::errors::InvalidArgument(

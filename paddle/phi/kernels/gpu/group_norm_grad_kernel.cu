@@ -815,6 +815,7 @@ void GroupNormGradKernel(const Context& dev_ctx,
     // PyTorch-aligned NCHW backward path (optimized)
     // =========================================================
     const int64_t HxW = imsize;
+    const int64_t max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];
 
     // Stage 1: Compute internal gradients ds[n,c] = sum_hw(dY*X),
     //          db[n,c] = sum_hw(dY)
@@ -894,7 +895,6 @@ void GroupNormGradKernel(const Context& dev_ctx,
       }
 
       // Stage 4: dX = c1 * dY + c2 * X + c3 (optimized)
-      int64_t max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];
       constexpr int64_t kElemThreads = 256;
 
       if (scale_data != nullptr) {

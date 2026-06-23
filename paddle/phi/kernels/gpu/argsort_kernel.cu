@@ -278,13 +278,13 @@ void ArgFullSort(const GPUContext& dev_ctx,
       input_indices.Resize({n_segments, segment_size});
       ind_ptr = dev_ctx.template Alloc<IndType>(&input_indices);
     }
-    const int64_t grid_size64 = std::min(n_segments, maxGridDimX);
-    PADDLE_ENFORCE_LE(grid_size64,
+    const int64_t grid_size_64 = std::min(n_segments, maxGridDimX);
+    PADDLE_ENFORCE_LE(grid_size_64,
                       maxGridDimX,
                       common::errors::InvalidArgument(
                           "FillIndex grid.x exceeds device limit."));
-    PADDLE_ENFORCE_LE_UINT32_MAX(grid_size64, "FillIndex grid.x");
-    uint32_t grid_size = static_cast<uint32_t>(grid_size64);
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_64, "FillIndex grid.x");
+    uint32_t grid_size = static_cast<uint32_t>(grid_size_64);
     // Init a index array
     FillIndex<<<grid_size, block_size, 0, cu_stream>>>(
         ind_ptr, n_segments, segment_size);
