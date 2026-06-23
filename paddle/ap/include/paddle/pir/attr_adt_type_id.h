@@ -95,30 +95,6 @@ struct UnclassifiedAttribute {
   __macro(::cinn::dialect::GroupInfoAttribute)        \
   __macro(::cinn::dialect::CINNKernelInfoAttribute)
 
-// These attributes currently only have NotImplemented AP converters.  Do not
-// probe them in the generic dispatch path: isa<T>() requires their external
-// TypeId definitions and can pull op_dialect/cinn_op_dialect into unrelated
-// static-link tests.
-#define FOR_EACH_AP_MATCHABLE_PIR_ATTRIBUTE_TYPE(__macro) \
-  __macro(pir::BoolAttribute)                             \
-  __macro(pir::Complex64Attribute)                        \
-  __macro(pir::Complex128Attribute)                       \
-  __macro(pir::FloatAttribute)                            \
-  __macro(pir::DoubleAttribute)                           \
-  __macro(pir::Int32Attribute)                            \
-  __macro(pir::IndexAttribute)                            \
-  __macro(pir::Int64Attribute)                            \
-  __macro(pir::PointerAttribute)                          \
-  __macro(pir::TypeAttribute)                             \
-  __macro(pir::StrAttribute)                              \
-  __macro(pir::ArrayAttribute)                            \
-  __macro(pir::TensorNameAttribute)                       \
-  __macro(pir::shape::SymbolAttribute)                    \
-  __macro(::paddle::dialect::IntArrayAttribute)           \
-  __macro(::paddle::dialect::ScalarAttribute)             \
-  __macro(::paddle::dialect::DataTypeAttribute)           \
-  __macro(::paddle::dialect::PlaceAttribute)              \
-  __macro(::paddle::dialect::DataLayoutAttribute)
 // clang-format on
 
 using AttrAdtTypeIdBase = ::common::AdtBaseTypeId<
@@ -134,7 +110,7 @@ struct AttrAdtTypeId : public AttrAdtTypeIdBase {
 inline AttrAdtTypeId GetAttrAdtTypeId(const pir::Attribute& attr) {
 #define RETURN_ATTR_TYPE_ID_IF_MATCH(cls) \
   if (attr.isa<cls>()) return ::common::AdtTypeId<cls>{};
-  FOR_EACH_AP_MATCHABLE_PIR_ATTRIBUTE_TYPE(RETURN_ATTR_TYPE_ID_IF_MATCH)
+  FOR_EACH_PIR_ATTRIBUTE_TYPE(RETURN_ATTR_TYPE_ID_IF_MATCH)
 #undef RETURN_ATTR_TYPE_ID_IF_MATCH
   return ::common::AdtTypeId<UnclassifiedAttribute>{};
 }

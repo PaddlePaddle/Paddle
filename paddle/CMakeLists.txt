@@ -13,6 +13,14 @@ add_subdirectory(testing)
 add_subdirectory(phi)
 add_subdirectory(fluid)
 
+if(WITH_CINN)
+  # ap_pir is defined before op_dialect so op_dialect can compile AP
+  # infer-shape glue.  Link ap_pir back to the concrete dialect targets
+  # after they are defined, because AP attribute matching uses their
+  # externally-defined PIR TypeId symbols.
+  target_link_libraries(ap_pir op_dialect cinn_op_dialect)
+endif()
+
 # NOTE(zhiqiu): The changes of cc tests
 # Before, (1) the source file of cc tests are distributed in different sub-directories,
 # (2) the tests are added and configured by calling `cc_test()` in each `CMakeLists.txt`,
