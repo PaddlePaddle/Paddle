@@ -746,9 +746,6 @@ function(nv_test TARGET_NAME)
                               -Wl,--no-as-needed)
       endif()
       set(nv_test_registry_deps op_registry type_info)
-      if(TARGET var_helper)
-        list(APPEND nv_test_registry_deps var_helper)
-      endif()
       if(WITH_CINN AND NOT WITH_SHARED_IR)
         list(
           APPEND
@@ -762,9 +759,17 @@ function(nv_test TARGET_NAME)
           pir)
       endif()
       # nv_test may pull imperative layer objects through paddle_gtest_main or
-      # phi; keep registry/type-info archives and var_helper in one group when
-      # available.
+      # phi; keep registry/type-info archives after those dependencies.
       target_circle_link_libraries(${TARGET_NAME} ${nv_test_registry_deps})
+      if(TARGET var_helper)
+        # CMake may place var_helper's transitive static archive outside the
+        # registry group; keep var_helper followed by type_info as raw archive
+        # paths so FetchList TypeInfoTraits resolves under C++20.
+        add_dependencies(${TARGET_NAME} var_helper type_info)
+        target_link_libraries(
+          ${TARGET_NAME} -Wl,--start-group $<TARGET_LINKER_FILE:var_helper>
+          $<TARGET_LINKER_FILE:type_info> -Wl,--end-group)
+      endif()
     endif()
     add_dependencies(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main)
     common_link(${TARGET_NAME})
