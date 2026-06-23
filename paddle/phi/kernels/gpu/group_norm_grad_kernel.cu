@@ -831,6 +831,11 @@ void GroupNormGradKernel(const Context& dev_ctx,
         int64_t num_threads =
             HxW < kGradBlockReduceNumThreads ? 32 : kGradBlockReduceNumThreads;
         const int64_t internal_grad_blocks = N * C;
+        PADDLE_ENFORCE_LE(
+            internal_grad_blocks,
+            dev_ctx.GetCUDAMaxGridDimSize()[0],
+            common::errors::InvalidArgument(
+                "group_norm grad internal grid.x exceeds device limit."));
         PADDLE_ENFORCE_LE_UINT32_MAX(internal_grad_blocks,
                                      "group_norm grad internal grid.x");
         PADDLE_ENFORCE_LE_UINT32_MAX(num_threads,

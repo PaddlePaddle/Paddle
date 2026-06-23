@@ -324,6 +324,10 @@ void ReindexDst(const Context& dev_ctx,
   constexpr int BLOCK_WARPS = 128 / WARP_SIZE;
   constexpr int TILE_SIZE = BLOCK_WARPS * 16;
   const int grid_x = (node_len + TILE_SIZE - 1) / TILE_SIZE;
+  PADDLE_ENFORCE_LE(grid_x,
+                    dev_ctx.GetCUDAMaxGridDimSize()[0],
+                    common::errors::InvalidArgument(
+                        "graph_reindex dst grid.x exceeds device limit."));
   PADDLE_ENFORCE_LE_UINT32_MAX(WARP_SIZE, "graph_reindex dst block.x");
   PADDLE_ENFORCE_LE_UINT32_MAX(BLOCK_WARPS, "graph_reindex dst block.y");
   PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "graph_reindex dst grid.x");

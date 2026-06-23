@@ -181,7 +181,11 @@ void CorrelationCUDAKernel(const Context &dev_ctx,
 
   dim3 threadsPerBlock(THREADS_PER_BLOCK);
   // dim3 totalBlocksCorr(N, OH, OW);
-  grid_size = std::min(static_cast<int64_t>(N) * OH * OW, max_grid_dim);
+  grid_size = static_cast<int64_t>(N) * OH * OW;
+  PADDLE_ENFORCE_LE(grid_size,
+                    max_grid_dim,
+                    common::errors::InvalidArgument(
+                        "correlation forward grid.x exceeds device limit."));
   PADDLE_ENFORCE_LE_UINT32_MAX(grid_size, "correlation forward grid.x");
   grid_size_value = static_cast<uint32_t>(grid_size);
 

@@ -451,6 +451,11 @@ void default_elementwise_sub_grad(const GPUContext &dev_ctx,
         auto size = dy->numel();
         int64_t grid_size_x =
             (size + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE;
+        PADDLE_ENFORCE_LE(
+            grid_size_x,
+            dev_ctx.GetCUDAMaxGridDimSize()[0],
+            common::errors::InvalidArgument(
+                "elementwise sub grad grid.x exceeds device limit."));
         PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_x,
                                      "elementwise sub grad grid.x");
         dim3 grid_size(static_cast<uint32_t>(grid_size_x), 1);
@@ -479,6 +484,10 @@ void elementwise_sub_grad(const GPUContext &dev_ctx,
   auto size = x.numel();
   int64_t grid_size_x =
       (size + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE;
+  PADDLE_ENFORCE_LE(grid_size_x,
+                    dev_ctx.GetCUDAMaxGridDimSize()[0],
+                    common::errors::InvalidArgument(
+                        "elementwise sub grad grid.x exceeds device limit."));
   PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_x, "elementwise sub grad grid.x");
   dim3 grid_size(static_cast<uint32_t>(grid_size_x), 1);
   SimpleElemwiseSubGradCUDAKernel<T>

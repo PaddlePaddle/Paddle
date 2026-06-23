@@ -960,6 +960,15 @@ static void GetGridDim(int64_t high_dim,
   grid_x = std::min(grid_x, max_num_blocks);
   int64_t grid_y = (max_num_blocks + grid_x - 1) / grid_x;
   grid_y = std::min(grid_y, high_dim);
+  const auto& prop = phi::backends::gpu::GetDeviceProperties(device_id);
+  PADDLE_ENFORCE_LE(
+      grid_x,
+      prop.maxGridSize[0],
+      common::errors::InvalidArgument("softmax grid.x exceeds device limit."));
+  PADDLE_ENFORCE_LE(
+      grid_y,
+      prop.maxGridSize[1],
+      common::errors::InvalidArgument("softmax grid.y exceeds device limit."));
   PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "softmax grid.x");
   PADDLE_ENFORCE_LE_UINT32_MAX(grid_y, "softmax grid.y");
   grid->x = static_cast<uint32_t>(grid_x);

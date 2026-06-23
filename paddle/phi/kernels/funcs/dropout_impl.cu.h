@@ -327,6 +327,14 @@ void DropoutFwGPUKernelDriver(
           ((x_numel - 1) / (grid_size * block_size * kVecSize) + 1) * kVecSize;
     }
 
+    PADDLE_ENFORCE_LE(grid_size,
+                      dev_ctx.GetCUDAMaxGridDimSize()[0],
+                      common::errors::InvalidArgument(
+                          "dropout grid.x exceeds device limit."));
+    PADDLE_ENFORCE_LE(block_size,
+                      dev_ctx.GetMaxThreadsPerBlock(),
+                      common::errors::InvalidArgument(
+                          "dropout block.x exceeds device limit."));
     PADDLE_ENFORCE_LE_UINT32_MAX(grid_size, "dropout grid.x");
     PADDLE_ENFORCE_LE_UINT32_MAX(block_size, "dropout block.x");
     uint32_t grid_size_u32 = static_cast<uint32_t>(grid_size);

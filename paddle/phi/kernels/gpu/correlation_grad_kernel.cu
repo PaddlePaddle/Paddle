@@ -272,10 +272,13 @@ void CorrelationCUDAGradKernel(const Context &dev_ctx,
 
   dim3 threadsPerBlock(THREADS_PER_BLOCK);
   dim3 totalBlocksCorr(H, W, C);
-  grid_size =
-      std::min((static_cast<int64_t>(C) * H * W + THREADS_PER_BLOCK - 1) /
-                   THREADS_PER_BLOCK,
-               max_grid_dim);
+  grid_size = (static_cast<int64_t>(C) * H * W + THREADS_PER_BLOCK - 1) /
+              THREADS_PER_BLOCK;
+  PADDLE_ENFORCE_LE(
+      grid_size,
+      max_grid_dim,
+      common::errors::InvalidArgument(
+          "correlation backward input grid.x exceeds device limit."));
   PADDLE_ENFORCE_LE_UINT32_MAX(grid_size, "correlation backward input grid.x");
   grid_size_value = static_cast<uint32_t>(grid_size);
 
@@ -301,7 +304,7 @@ void CorrelationCUDAGradKernel(const Context &dev_ctx,
 
   for (int n = 0; n < N; n++) {
     correlation_backward_input2<T>
-        <<<grid_size, threadsPerBlock, 0, dev_ctx.stream()>>>(
+        <<<grid_size_value, threadsPerBlock, 0, dev_ctx.stream()>>>(
             n,
             grad_input2->data<T>(),
             C,

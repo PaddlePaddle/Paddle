@@ -862,6 +862,11 @@ void FP8QuantBlockWiseKernelImpl(const Context &dev_ctx,
       block.x = 256;
     }
     const size_t gridx = (src_cols / k_block_span) * (src_rows / k_block_span);
+    PADDLE_ENFORCE_LE(
+        gridx,
+        dev_ctx.GetCUDAMaxGridDimSize()[0],
+        common::errors::InvalidArgument(
+            "fp8 quant blockwise aligned grid.x exceeds device limit."));
     PADDLE_ENFORCE_LE_UINT32_MAX(gridx, "fp8 quant blockwise aligned grid.x");
     grid.x = static_cast<uint32_t>(gridx);
 

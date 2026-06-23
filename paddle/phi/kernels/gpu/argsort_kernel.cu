@@ -228,6 +228,10 @@ void ArgFullSort(const GPUContext& dev_ctx,
       return 128;
   };
   const int block_size = ComputeBlockSize(num_cols);
+  PADDLE_ENFORCE_LE(block_size,
+                    dev_ctx.GetMaxThreadsPerBlock(),
+                    common::errors::InvalidArgument(
+                        "FillIndex block.x exceeds device limit."));
   const int64_t maxGridDimX = dev_ctx.GetCUDAMaxGridDimSize()[0];
 
   const T* inp = input->data<T>();
@@ -275,6 +279,10 @@ void ArgFullSort(const GPUContext& dev_ctx,
       ind_ptr = dev_ctx.template Alloc<IndType>(&input_indices);
     }
     const int64_t grid_size64 = std::min(n_segments, maxGridDimX);
+    PADDLE_ENFORCE_LE(grid_size64,
+                      maxGridDimX,
+                      common::errors::InvalidArgument(
+                          "FillIndex grid.x exceeds device limit."));
     PADDLE_ENFORCE_LE_UINT32_MAX(grid_size64, "FillIndex grid.x");
     uint32_t grid_size = static_cast<uint32_t>(grid_size64);
     // Init a index array

@@ -34,6 +34,14 @@ static void VecCastKernel(const GPUContext &dev_ctx,
   auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n, VecSize);
   auto block = config.GetGridSize();
   auto thread = config.GetBlockSize();
+  PADDLE_ENFORCE_LE(block,
+                    dev_ctx.GetCUDAMaxGridDimSize()[0],
+                    common::errors::InvalidArgument(
+                        "cast_with_ptr grid.x exceeds device limit."));
+  PADDLE_ENFORCE_LE(thread,
+                    dev_ctx.GetMaxThreadsPerBlock(),
+                    common::errors::InvalidArgument(
+                        "cast_with_ptr block.x exceeds device limit."));
   PADDLE_ENFORCE_LE_UINT32_MAX(block, "cast_with_ptr grid.x");
   PADDLE_ENFORCE_LE_UINT32_MAX(thread, "cast_with_ptr block.x");
   auto main_offset = n / (VecSize * thread) * VecSize * thread;

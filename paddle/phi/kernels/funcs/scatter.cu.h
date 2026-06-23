@@ -215,12 +215,9 @@ void GPUScatterAssign(const GPUContext& dev_ctx,
   uint32_t block = 512;
   int64_t n = slice_size * index_size;
   int64_t grid_x64 = (n + block - 1) / block;
-  PADDLE_ENFORCE_LE(
-      grid_x64,
-      dev_ctx.GetCUDAMaxGridDimSize()[0],
-      common::errors::InvalidArgument("scatter grid.x exceeds device limit."));
   PADDLE_ENFORCE_LE_UINT32_MAX(grid_x64, "scatter grid.x");
   dim3 grid(static_cast<uint32_t>(grid_x64));
+  phi::backends::gpu::LimitGridDim(dev_ctx, &grid);
 
   // if not overwrite mode, init data
   if (!overwrite) {
@@ -287,12 +284,9 @@ void GPUScatterGradForX(const GPUContext& dev_ctx,
   uint32_t block = 512;
   int64_t n = slice_size * index_size;
   int64_t grid_x64 = (n + block - 1) / block;
-  PADDLE_ENFORCE_LE(grid_x64,
-                    dev_ctx.GetCUDAMaxGridDimSize()[0],
-                    common::errors::InvalidArgument(
-                        "scatter grad grid.x exceeds device limit."));
   PADDLE_ENFORCE_LE_UINT32_MAX(grid_x64, "scatter grad grid.x");
   dim3 grid(static_cast<uint32_t>(grid_x64));
+  phi::backends::gpu::LimitGridDim(dev_ctx, &grid);
 
   ScatterInitCUDAKernel<T, IndexT><<<grid, block, 0, dev_ctx.stream()>>>(
       p_index, p_output, dst_dims[0], index_size, slice_size);

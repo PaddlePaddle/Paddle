@@ -197,6 +197,16 @@ void FusedDropoutAddGradKernel(const Context& dev_ctx,
     auto random_prop = GetRandomCudaProp(numel, dev_ctx);
     size_t grid_size_64 = random_prop[0];
     size_t block_size_64 = random_prop[1];
+    PADDLE_ENFORCE_LE(
+        grid_size_64,
+        dev_ctx.GetCUDAMaxGridDimSize()[0],
+        common::errors::InvalidArgument(
+            "fused_dropout_add_grad grid.x exceeds device limit."));
+    PADDLE_ENFORCE_LE(
+        block_size_64,
+        dev_ctx.GetMaxThreadsPerBlock(),
+        common::errors::InvalidArgument(
+            "fused_dropout_add_grad block.x exceeds device limit."));
     PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_64, "fused_dropout_add_grad grid.x");
     PADDLE_ENFORCE_LE_UINT32_MAX(block_size_64,
                                  "fused_dropout_add_grad block.x");

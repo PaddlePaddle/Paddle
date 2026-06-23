@@ -2807,6 +2807,10 @@ class MaxPool3dWithIndexFunctor<GPUContext, T1, T2> {
     int64_t block_z = (ncd > max_grid_dim[2] * threads.z)
                           ? max_grid_dim[2]
                           : (ncd + threads.z - 1) / threads.z;
+    PADDLE_ENFORCE_LE(block_x,
+                      max_grid_dim[0],
+                      common::errors::InvalidArgument(
+                          "pooling grid.x exceeds device limit."));
     PADDLE_ENFORCE_LE_UINT32_MAX(block_x, "pooling grid.x");
     PADDLE_ENFORCE_LE_UINT32_MAX(block_y, "pooling grid.y");
     PADDLE_ENFORCE_LE_UINT32_MAX(block_z, "pooling grid.z");

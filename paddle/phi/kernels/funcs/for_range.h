@@ -56,9 +56,7 @@ __global__ static void ForRangeElemwiseOp(Function func, unsigned int limit) {
   size_t idx =
       static_cast<size_t>(blockIdx.x) * static_cast<size_t>(blockDim.x) +
       static_cast<size_t>(threadIdx.x);
-  size_t step =
-      static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x);
-  for (; idx < limit; idx += step) {
+  if (idx < limit) {
     func(idx);
   }
 }
@@ -97,9 +95,10 @@ struct ForRange<GPUContext> {
 #endif
     size_t block_size_64 = limit_ <= num_threads ? limit_ : num_threads;
     size_t grid_size_64 = limit_ / num_threads + (limit_ % num_threads != 0);
-    grid_size_64 = std::min(
-        grid_size_64, static_cast<size_t>(dev_ctx_.GetCUDAMaxGridDimSize()[0]));
-
+    PADDLE_ENFORCE_LE(grid_size_64,
+                      static_cast<size_t>(dev_ctx_.GetCUDAMaxGridDimSize()[0]),
+                      common::errors::InvalidArgument(
+                          "for_range grid.x exceeds device limit."));
     PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_64, "grid_size");
     PADDLE_ENFORCE_LE_UINT32_MAX(block_size_64, "block_size");
     const uint32_t grid_size = static_cast<uint32_t>(grid_size_64);

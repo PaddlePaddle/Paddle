@@ -1839,10 +1839,6 @@ void launch(TensorInfo<const T, IndexType> input,
       std::min(topk_ceil_div((int64_t)inputSliceSize, (int64_t)warp_size) *
                    (int64_t)warp_size,
                (int64_t)1024);
-  PADDLE_ENFORCE_GT(
-      block64,
-      0,
-      common::errors::InvalidArgument("topk block.x must be greater than 0."));
   PADDLE_ENFORCE_LE_UINT32_MAX(block64, "topk block.x");
   dim3 block(static_cast<uint32_t>(block64));
   gatherTopK<T, IndexType, Dim, /*WithKthValues=*/false>
@@ -2343,6 +2339,19 @@ void launch(TensorInfo<const T, IndexType> input,
   bool ok = getGridFromTiles(num_blocks, &grid);
   assert(ok);
   (void)ok;
+  const auto& device_prop = phi::backends::gpu::GetDeviceProperties(device_id);
+  PADDLE_ENFORCE_LE(
+      grid.x,
+      device_prop.maxGridSize[0],
+      common::errors::InvalidArgument("topk grid.x exceeds device limit."));
+  PADDLE_ENFORCE_LE(
+      grid.y,
+      device_prop.maxGridSize[1],
+      common::errors::InvalidArgument("topk grid.y exceeds device limit."));
+  PADDLE_ENFORCE_LE(
+      grid.z,
+      device_prop.maxGridSize[2],
+      common::errors::InvalidArgument("topk grid.z exceeds device limit."));
   dim3 block(BLOCK_THREADS);
 
   uint32_t* ks_to_find_in = ks_to_find;
@@ -2489,6 +2498,23 @@ void launch(TensorInfo<const T, IndexType> input,
         std::min(topk_ceil_div((int64_t)inputSliceSize, (int64_t)warp_size) *
                      (int64_t)warp_size,
                  (int64_t)1024);
+    PADDLE_ENFORCE_LE(grid2.x,
+                      device_prop.maxGridSize[0],
+                      common::errors::InvalidArgument(
+                          "topk fallback grid.x exceeds device limit."));
+    PADDLE_ENFORCE_LE(grid2.y,
+                      device_prop.maxGridSize[1],
+                      common::errors::InvalidArgument(
+                          "topk fallback grid.y exceeds device limit."));
+    PADDLE_ENFORCE_LE(grid2.z,
+                      device_prop.maxGridSize[2],
+                      common::errors::InvalidArgument(
+                          "topk fallback grid.z exceeds device limit."));
+    PADDLE_ENFORCE_LE(block64,
+                      device_prop.maxThreadsPerBlock,
+                      common::errors::InvalidArgument(
+                          "topk fallback block.x exceeds device limit."));
+    PADDLE_ENFORCE_LE_UINT32_MAX(block64, "topk fallback block.x");
     dim3 block2(static_cast<uint32_t>(block64));
     sbtopk::gatherTopK<T, IndexType, Dim, /*WithKthValues=*/true>
         <<<grid2, block2, 0, stream>>>(input,

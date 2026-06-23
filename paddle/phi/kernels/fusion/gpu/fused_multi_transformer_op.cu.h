@@ -1437,16 +1437,6 @@ inline size_t get_reduce_smem_size_in_bytes(
   kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                        \
       params, load_func, reduce_store_func);                                   \
                                                                                \
-  PADDLE_ENFORCE_LE(params.num_head,                                           \
-                    prop.maxGridSize[0],                                       \
-                    common::errors::InvalidArgument(                           \
-                        "mbmmha reduce grid.x exceeds device limit."));        \
-  PADDLE_ENFORCE_LE(params.batch_size,                                         \
-                    prop.maxGridSize[1],                                       \
-                    common::errors::InvalidArgument(                           \
-                        "mbmmha reduce grid.y exceeds device limit."));        \
-  PADDLE_ENFORCE_LE_UINT32_MAX(params.num_head, "mbmmha reduce grid.x");       \
-  PADDLE_ENFORCE_LE_UINT32_MAX(params.batch_size, "mbmmha reduce grid.y");     \
   dim3 reduce_kernel_grid(static_cast<uint32_t>(params.num_head),              \
                           static_cast<uint32_t>(params.batch_size),            \
                           1);                                                  \
@@ -1958,6 +1948,14 @@ void gqa_write_cachekv(
   int grid_size;
   GetNumBlocks(num_elems, &grid_size);
 
+  PADDLE_ENFORCE_LE(grid_size,
+                    dev_ctx.GetCUDAMaxGridDimSize()[0],
+                    common::errors::InvalidArgument(
+                        "gqa_write_cache grid.x exceeds device limit."));
+  PADDLE_ENFORCE_LE(block_sz,
+                    dev_ctx.GetMaxThreadsPerBlock(),
+                    common::errors::InvalidArgument(
+                        "gqa_write_cache block.x exceeds device limit."));
   PADDLE_ENFORCE_LE_UINT32_MAX(grid_size, "gqa_write_cache grid.x");
   PADDLE_ENFORCE_LE_UINT32_MAX(block_sz, "gqa_write_cache block.x");
   const uint32_t grid_size_u32 = static_cast<uint32_t>(grid_size);

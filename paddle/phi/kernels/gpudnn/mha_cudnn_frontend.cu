@@ -597,6 +597,10 @@ void fused_attn_arbitrary_seqlen_fwd_impl(int64_t b,
       constexpr size_t nthreads_per_block64 = 128;
       const size_t grid64 =
           (b + nthreads_per_block64 - 1) / nthreads_per_block64;
+      PADDLE_ENFORCE_LE(grid64,
+                        dev_ctx.GetCUDAMaxGridDimSize()[0],
+                        common::errors::InvalidArgument(
+                            "mha cudnn frontend grid.x exceeds device limit."));
       PADDLE_ENFORCE_LE_UINT32_MAX(grid64, "mha cudnn frontend grid.x");
       PADDLE_ENFORCE_LE_UINT32_MAX(nthreads_per_block64,
                                    "mha cudnn frontend block.x");

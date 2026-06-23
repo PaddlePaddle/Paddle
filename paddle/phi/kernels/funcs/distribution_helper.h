@@ -354,6 +354,14 @@ void distribution_and_transform(const GPUContext &dev_ctx,
   uint64_t seed = seed_offset.first;
   uint64_t offset = seed_offset.second;
 
+  PADDLE_ENFORCE_LE(grid_size,
+                    dev_ctx.GetCUDAMaxGridDimSize()[0],
+                    common::errors::InvalidArgument(
+                        "distribution kernel grid.x exceeds device limit."));
+  PADDLE_ENFORCE_LE(block_size,
+                    dev_ctx.GetMaxThreadsPerBlock(),
+                    common::errors::InvalidArgument(
+                        "distribution kernel block.x exceeds device limit."));
   PADDLE_ENFORCE_LE_UINT32_MAX(grid_size, "distribution kernel grid.x");
   PADDLE_ENFORCE_LE_UINT32_MAX(block_size, "distribution kernel block.x");
   uint32_t grid = static_cast<uint32_t>(grid_size);
