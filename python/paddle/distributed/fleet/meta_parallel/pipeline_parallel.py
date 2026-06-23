@@ -2246,6 +2246,64 @@ class PipelineParallelWithInterleave(PipelineParallel):
             if self._forward_only:
                 self.output_tensors[virtual_pp_rank].pop()
 
+    def _merge_block_cache(self, mb_idx, virtual_pp_rank, input_tensor_dict):
+        """Merge cached blocks with received blocks and update meta before forward."""
+        has_cached = mb_idx in self._block_cache
+        has_received = "blocks" in input_tensor_dict
+        if not (has_cached or has_received):
+            return
+
+        pp_size = self._hcg.get_pipe_parallel_world_size()
+        vpp_size = self.num_model_chunks
+        meta = self._block_cache_meta.setdefault(mb_idx, [0] * (pp_size * vpp_size))
+
+        cached_blocks = self._block_cache.get(mb_idx, [])
+        received_blocks = input_tensor_dict.get("blocks", [])
+
+        my_stage = self._hcg.get_stage_id()
+        received_meta = self._recv_block_cache_meta_for_vpp[virtual_pp_rank]
+
+        if received_meta is not None:
+            recv_counts = received_meta[1:]
+            for i in range(len(meta)):
+                if i % pp_size != my_stage:
+                    meta[i] = recv_counts[i]
+            for i in range(my_stage, len(meta), pp_size):
+                meta[i] += len(received_blocks)
+
+        input_tensor_dict["blocks"] = cached_blocks + received_blocks
+
+    def _update_block_cache(self, mb_idx, virtual_pp_rank, output_tensor, merged_len_pre):
+        """Update meta, cache blocks, and trim output blocks after forward. Returns meta_to_send."""
+        if not (isinstance(output_tensor, dict) and "blocks" in output_tensor):
+            return None
+
+        pp_size = self._hcg.get_pipe_parallel_world_size()
+        vpp_size = self.num_model_chunks
+        my_stage = self._hcg.get_stage_id()
+
+        meta = self._block_cache_meta.setdefault(mb_idx, [0] * (pp_size * vpp_size))
+
+        new_blocks = len(output_tensor["blocks"]) - merged_len_pre
+        for i in range(my_stage, len(meta), pp_size):
+            meta[i] += new_blocks
+
+        self._block_cache[mb_idx] = [
+            b.detach().clone() for b in output_tensor["blocks"]
+        ]
+
+        cur_chunk = virtual_pp_rank * pp_size + my_stage
+        next_chunk = cur_chunk + 1
+        if next_chunk < len(meta):
+            diff = meta[cur_chunk] - meta[next_chunk]
+            diff = max(0, min(diff, len(output_tensor["blocks"])))
+            if diff > 0:
+                output_tensor["blocks"] = output_tensor["blocks"][-diff:]
+            else:
+                output_tensor["blocks"] = []
+
+        return [mb_idx] + meta[:]
+
     def _forward_step_helper(
         self,
         micro_dataset,
@@ -2263,87 +2321,24 @@ class PipelineParallelWithInterleave(PipelineParallel):
         self._block_cache_mb_idx[virtual_pp_rank] += 1
 
         input_tensor = self._get_forward_input(virtual_pp_rank)
-
         input_tensor_dict, use_dict = tuple_to_dict_helper(input_tensor)
 
-        # ========== [A] BlockAttnRes: merge cached blocks + update meta ==========
         if use_dict:
-            has_cached = mb_idx in self._block_cache
-            has_received = "blocks" in input_tensor_dict
+            self._merge_block_cache(mb_idx, virtual_pp_rank, input_tensor_dict)
 
-            if has_cached or has_received:
-                pp_size = self._hcg.get_pipe_parallel_world_size()
-                vpp_size = self.num_model_chunks
-
-                meta = self._block_cache_meta.setdefault(
-                    mb_idx, [0] * (pp_size * vpp_size)
-                )
-
-                cached_blocks = self._block_cache.get(mb_idx, [])
-                received_blocks = input_tensor_dict.get("blocks", [])
-
-                my_stage = self._hcg.get_stage_id()
-                received_meta = self._recv_block_cache_meta_for_vpp[virtual_pp_rank]
-
-                if received_meta is not None:
-                    recv_counts = received_meta[1:]
-                    for i in range(len(meta)):
-                        if i % pp_size != my_stage:
-                            meta[i] = recv_counts[i]
-                    for i in range(my_stage, len(meta), pp_size):
-                        meta[i] += len(received_blocks)
-
-                input_tensor_dict["blocks"] = cached_blocks + received_blocks
-        # ======================================================================
-
-        # Capture merged_len BEFORE forward, since forward modifies
-        # input_tensor_dict["blocks"] IN PLACE (appending new blocks).
         merged_len_pre = len(input_tensor_dict.get("blocks", [])) if use_dict else 0
 
         output_tensor, schedule_chunk, loss_fn_node = self._forward_step(
             input_tensor_dict if use_dict else input_tensor,
             micro_dataset,
-            virtual_pp_rank,  # chunk_id
+            virtual_pp_rank,
             step_id=micro_step,
             overlap_schedule_mode=overlap_schedule_mode,
         )
 
-        # ========== [B] BlockAttnRes: update meta, cache, trim blocks ==========
-        meta_to_send = None
-        if isinstance(output_tensor, dict) and "blocks" in output_tensor:
-            pp_size = self._hcg.get_pipe_parallel_world_size()
-            vpp_size = self.num_model_chunks
-            my_stage = self._hcg.get_stage_id()
-
-            meta = self._block_cache_meta.setdefault(
-                mb_idx, [0] * (pp_size * vpp_size)
-            )
-
-            merged_len = merged_len_pre
-            new_blocks = len(output_tensor["blocks"]) - merged_len
-
-            for i in range(my_stage, len(meta), pp_size):
-                meta[i] += new_blocks
-
-            self._block_cache[mb_idx] = [
-                b.detach().clone() for b in output_tensor["blocks"]
-            ]
-
-            cur_chunk = virtual_pp_rank * pp_size + my_stage
-            next_chunk = cur_chunk + 1
-            if next_chunk < len(meta):
-                diff = meta[cur_chunk] - meta[next_chunk]
-                diff = max(0, min(diff, len(output_tensor["blocks"])))
-                if diff > 0:
-                    output_tensor["blocks"] = output_tensor["blocks"][-diff:]
-                else:
-                    output_tensor["blocks"] = []
-
-            meta_to_send = [mb_idx] + meta[:]
-        # ======================================================================
+        meta_to_send = self._update_block_cache(mb_idx, virtual_pp_rank, output_tensor, merged_len_pre)
 
         output_tensor_tuple = dict_to_tuple_helper(output_tensor)
-
         self._store_forward_outputs(
             virtual_pp_rank, output_tensor_tuple, schedule_chunk, loss_fn_node
         )
