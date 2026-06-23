@@ -745,11 +745,11 @@ function(nv_test TARGET_NAME)
         target_link_libraries(${TARGET_NAME} -Wl,--as-needed phi_core phi_gpu
                               -Wl,--no-as-needed)
       endif()
+      set(nv_test_registry_deps op_registry type_info)
       if(WITH_CINN AND NOT WITH_SHARED_IR)
-        target_circle_link_libraries(
-          ${TARGET_NAME}
-          op_registry
-          type_info
+        list(
+          APPEND
+          nv_test_registry_deps
           primitive_vjp_experimental
           prim_utils
           op_dialect
@@ -758,6 +758,9 @@ function(nv_test TARGET_NAME)
           ap_pir
           pir)
       endif()
+      # nv_test may pull imperative layer objects through paddle_gtest_main or
+      # phi; keep registry/type-info archives after those dependencies.
+      target_circle_link_libraries(${TARGET_NAME} ${nv_test_registry_deps})
     endif()
     add_dependencies(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main)
     common_link(${TARGET_NAME})
