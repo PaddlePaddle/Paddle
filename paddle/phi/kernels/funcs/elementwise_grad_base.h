@@ -1102,7 +1102,7 @@ static void ElemwiseGradBroadcast2CUDA(gpuStream_t stream,
         x, y, out, dout, pre, n, post, is_xsize_larger, dx_op, dy_op, dx, dy);
   } else {
     ElemwiseGradBroadcast2CUDAKernel<
-        int32_t><<<grid_size, block_size, 0, stream>>>(
+        uint32_t><<<grid_size, block_size, 0, stream>>>(
         x, y, out, dout, pre, n, post, is_xsize_larger, dx_op, dy_op, dx, dy);
   }
 }
