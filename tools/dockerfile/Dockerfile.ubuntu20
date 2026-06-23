@@ -28,7 +28,7 @@ RUN apt-get update --allow-unauthenticated && \
   apt-get install -y curl wget vim git unzip pigz zstd unrar tar xz-utils libssl-dev bzip2 gzip \
     coreutils ntp language-pack-zh-hans libsm6 libxext6 libxrender-dev libgl1-mesa-glx \
     bison graphviz libjpeg-dev zlib1g-dev automake locales swig net-tools libtool kmod \
-    libbz2-dev libffi-dev libgdbm-dev liblzma-dev libncursesw5-dev libreadline-dev \
+    libbz2-dev libexpat1-dev libffi-dev libgdbm-dev liblzma-dev libmpdec-dev libncursesw5-dev libreadline-dev \
     libsqlite3-dev pkg-config tk-dev uuid-dev
 <install_cpu_package>
 
@@ -67,7 +67,11 @@ RUN set -eux; \
     wget -q "https://www.python.org/ftp/python/${py_ver}/Python-${py_ver}.tgz"; \
     tar -xzf "Python-${py_ver}.tgz"; \
     cd "Python-${py_ver}"; \
-    CFLAGS="-Wformat" ./configure --prefix=/usr/local --enable-shared "$@" > /dev/null; \
+    configure_opts="--prefix=/usr/local --enable-shared --enable-optimizations --with-lto --with-system-expat --with-system-libmpdec --with-ensurepip=install"; \
+    if ./configure --help | grep -q -- "--with-system-ffi"; then \
+      configure_opts="${configure_opts} --with-system-ffi"; \
+    fi; \
+    CFLAGS="-Wformat" ./configure ${configure_opts} "$@" > /dev/null; \
     make -j"$(nproc)" > /dev/null; \
     make altinstall > /dev/null; \
     cd ..; \
@@ -83,15 +87,6 @@ ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
 RUN ln -sf /usr/local/bin/python3.10 /usr/bin/python && \
     ln -sf /usr/local/bin/python3.10 /usr/bin/python3
 
-WORKDIR /home
-RUN wget -q https://bootstrap.pypa.io/get-pip.py
-RUN python3.10 get-pip.py && \
-  python3.11 get-pip.py && \
-  python3.12 get-pip.py
-
-RUN python3.13t get-pip.py && \
-  mv /usr/local/bin/pip3.13 /usr/local/bin/pip3.13t && \
-  python3.13 get-pip.py
 RUN for py in 3.10 3.11 3.12 3.13 3.13t; do \
       printf '#!/bin/sh\nexec /usr/local/bin/python%s -m pip "$@"\n' "$py" > "/usr/local/bin/pip${py}" && \
       chmod +x "/usr/local/bin/pip${py}"; \
