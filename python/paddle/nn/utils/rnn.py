@@ -55,7 +55,12 @@ def invert_permutation(permutation: Tensor | None) -> Tensor | None:
     output = paddle.scatter(
         paddle.zeros_like(permutation),
         permutation,
-        paddle.arange(0, permutation.numel()),
+        paddle.arange(
+            0,
+            permutation.numel(),
+            dtype=permutation.dtype,
+            device=permutation.place,
+        ),
         overwrite=True,
     )
     return output
@@ -222,7 +227,9 @@ def pack_padded_sequence(
         sorted_lengths = sorted(
             enumerate(lengths), key=lambda x: x[1], reverse=True
         )
-        sorted_indices = paddle.to_tensor([i for i, _ in sorted_lengths])
+        sorted_indices = paddle.to_tensor(
+            [i for i, _ in sorted_lengths], place=input.place
+        )
         unsorted_indices = paddle.argsort(sorted_indices)
         lengths = [l for _, l in sorted_lengths]
         # Use index_select to reorder along batch dimension (axis=1)
@@ -301,12 +308,14 @@ def pad_packed_sequence(
             [total_length, max_batch_size, *trailing_dims],
             padding_value,
             dtype=data.dtype,
+            device=data.place,
         )
     else:
         output = paddle.full(
             [max_seq_len, max_batch_size, *trailing_dims],
             padding_value,
             dtype=data.dtype,
+            device=data.place,
         )
 
     data_offset = 0
@@ -326,7 +335,7 @@ def pad_packed_sequence(
         # It's the number of time steps where batch_sizes > i
         seq_len = sum(1 for bs in batch_sizes if bs > i)
         lengths_list.append(seq_len)
-    lengths = paddle.to_tensor(lengths_list, dtype="int64")
+    lengths = paddle.to_tensor(lengths_list, dtype="int64", place=data.place)
 
     if unsorted_indices is not None:
         output = output[:, unsorted_indices]
@@ -392,12 +401,12 @@ def pad_sequence(
         raise TypeError(
             f"pad_sequence expects an iterable of Tensors, but got {type(sequences)}"
         )
+    sequences = tuple(sequences)
     for seq in sequences:
         if not isinstance(seq, paddle.Tensor):
             raise TypeError(
                 f"pad_sequence expects an iterable of Tensors, but got element of type {type(seq)}"
             )
-    sequences = tuple(sequences)
     if padding_side not in ('right', 'left'):
         raise ValueError(
             f"padding_side must be 'right' or 'left', but got '{padding_side}'"
