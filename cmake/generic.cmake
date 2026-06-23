@@ -737,6 +737,13 @@ function(nv_test TARGET_NAME)
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
     target_link_libraries(${TARGET_NAME} ${nv_test_DEPS}
                           ${os_dependency_modules} paddle_gtest_main phi)
+    if(LINUX)
+      # GPU tests link static Paddle archives without libpaddle.so.  Keep this
+      # link group local to nv_test targets so the imperative/framework circular
+      # references are resolved without adding these archives to every gtest.
+      target_circle_link_libraries(${TARGET_NAME} layer op_registry var_helper
+                                   type_info)
+    endif()
     if(WIN32)
       target_link_libraries(${TARGET_NAME} ${PYTHON_LIBRARIES})
     else()
