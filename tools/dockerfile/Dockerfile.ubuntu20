@@ -104,7 +104,10 @@ RUN for py in 3.10 3.11 3.12 3.13 3.13t; do \
     ln -sf /usr/local/bin/pip3.10 /usr/local/bin/pip && \
     ln -sf /usr/local/bin/pip3.10 /usr/local/bin/pip3
 
-RUN python3.10 -m pip install setuptools==69.5.1 && \
+RUN for py in 3.10 3.11 3.12 3.13 3.13t; do \
+      python${py} -m pip install --no-cache-dir --upgrade pip; \
+    done && \
+  python3.10 -m pip install setuptools==69.5.1 && \
   python3.11 -m pip install setuptools==69.5.1 && \
   python3.12 -m pip install --break-system-packages setuptools==69.5.1 && \
   python3.13 -m pip install setuptools==69.5.1 && \
