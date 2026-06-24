@@ -581,6 +581,29 @@ class TestSign_InplaceAPI(unittest.TestCase):
 
         paddle.enable_static()
 
+    def test_static_pir_infer_symbolic_shape(self):
+        from paddle.base.libpaddle import pir
+
+        with paddle.pir_utils.IrGuard():
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                x = paddle.static.data(name="x", shape=[5], dtype="float32")
+                out = paddle.sign_(x)
+
+            pm = pir.PassManager()
+            pir.infer_symbolic_shape_pass(pm, main)
+            pm.run(main)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x.copy()},
+                fetch_list=[out],
+            )
+            out_ref = np.sign(self.np_x)
+            np.testing.assert_allclose(fetches[0], out_ref, rtol=1e-5)
+
 
 # Test linalg.pinv compatibility (atol, rtol, out parameters)
 class TestLinalgPinvAPI(unittest.TestCase):
@@ -619,10 +642,25 @@ class TestLinalgPinvAPI(unittest.TestCase):
         # 8. Alias paddle.pinverse
         out8 = paddle.pinverse(x)
 
+        # 9. hermitian=True with atol (need square matrix for hermitian)
+        x_sq = paddle.to_tensor(np.random.rand(3, 3).astype("float32"))
+        x_sym = x_sq @ x_sq.T + paddle.eye(3) * 0.5  # full rank
+        out9 = paddle.linalg.pinv(x_sym, hermitian=True, atol=1e-4)
+
+        # 10. hermitian=True with rtol
+        out10 = paddle.linalg.pinv(x_sym, hermitian=True, rtol=1e-4)
+
+        # 11. hermitian=True with both atol and rtol
+        out11 = paddle.linalg.pinv(x_sym, hermitian=True, atol=1e-4, rtol=1e-4)
+
         # Verify all outputs
         expected = np.linalg.pinv(self.np_x)
         for out in [out1, out2, out3, out4, out5, out6, out7, out8]:
             np.testing.assert_allclose(out.numpy(), expected, rtol=1e-5)
+
+        expected_sym = np.linalg.pinv(x_sym.numpy(), hermitian=True)
+        for out in [out9, out10, out11]:
+            np.testing.assert_allclose(out.numpy(), expected_sym, rtol=1e-5)
 
         paddle.enable_static()
 
@@ -644,16 +682,70 @@ class TestLinalgPinvAPI(unittest.TestCase):
             # 5. Alias paddle.pinverse
             out5 = paddle.pinverse(x)
 
+            # 6. atol parameter test (keyword-only)
+            out6 = paddle.linalg.pinv(x, atol=1e-10)
+
+            # 7. rtol parameter test (keyword-only)
+            out7 = paddle.linalg.pinv(x, rtol=1e-10)
+
+            # 8. atol and rtol combined (keyword-only)
+            out8 = paddle.linalg.pinv(x, atol=1e-10, rtol=1e-10)
+
+            # 9. out parameter test
+            out9 = paddle.static.data(
+                name="out9", shape=[5, 3], dtype="float32"
+            )
+            paddle.linalg.pinv(x, out=out9)
+
+            # 10. hermitian=True with atol (square matrix)
+            x_sym = paddle.static.data(
+                name="x_sym", shape=[3, 3], dtype="float32"
+            )
+            out10 = paddle.linalg.pinv(x_sym, hermitian=True, atol=1e-4)
+
+            # 11. hermitian=True with rtol
+            out11 = paddle.linalg.pinv(x_sym, hermitian=True, rtol=1e-4)
+
+            # 12. hermitian=True with both atol and rtol
+            out12 = paddle.linalg.pinv(
+                x_sym, hermitian=True, atol=1e-4, rtol=1e-4
+            )
+
             exe = paddle.static.Executor()
+            np_x_sym = (
+                self.np_x @ self.np_x.T
+                + np.eye(3, dtype=self.dtype) * 0.5  # full rank
+            )
             fetches = exe.run(
                 main,
-                feed={"x": self.np_x},
-                fetch_list=[out1, out2, out3, out4, out5],
+                feed={
+                    "x": self.np_x,
+                    "out9": np.empty([5, 3], dtype="float32"),
+                    "x_sym": np_x_sym,
+                },
+                fetch_list=[
+                    out1,
+                    out2,
+                    out3,
+                    out4,
+                    out5,
+                    out6,
+                    out7,
+                    out8,
+                    out9,
+                    out10,
+                    out11,
+                    out12,
+                ],
             )
 
             expected = np.linalg.pinv(self.np_x)
-            for out in fetches:
+            for out in fetches[:9]:
                 np.testing.assert_allclose(out, expected, rtol=1e-5)
+
+            expected_sym = np.linalg.pinv(np_x_sym, hermitian=True)
+            for out in fetches[9:]:
+                np.testing.assert_allclose(out, expected_sym, rtol=1e-5)
 
         paddle.disable_static()
 
@@ -1328,43 +1420,57 @@ class TestPinverseAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
         self.np_x = np.random.rand(3, 2).astype("float32")
+        self.shape = [3, 2]
+        self.dtype = "float32"
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
         x = paddle.to_tensor(self.np_x)
 
-        # 1. Paddle Positional arguments
-        out1 = paddle.linalg.pinv(x)
+        # 1. paddle.pinverse positional
+        out1 = paddle.pinverse(x)
 
-        # 2. Paddle keyword arguments
-        out2 = paddle.linalg.pinv(x=x)
+        # 2. paddle.pinverse keyword
+        out2 = paddle.pinverse(x=x)
 
-        # 3. PyTorch keyword arguments (alias)
-        out3 = paddle.linalg.pinv(input=x)
+        # 3. paddle.pinverse with input alias
+        out3 = paddle.pinverse(input=x)
 
         # 4. out parameter test
         out4 = paddle.empty([2, 3], dtype='float32')
-        paddle.linalg.pinv(x, out=out4)
+        paddle.pinverse(x, out=out4)
 
         # 5. atol parameter test (keyword-only)
-        out5 = paddle.linalg.pinv(x, atol=1e-10)
+        out5 = paddle.pinverse(x, atol=1e-10)
 
         # 6. rtol parameter test (keyword-only)
-        out6 = paddle.linalg.pinv(x, rtol=1e-10)
+        out6 = paddle.pinverse(x, rtol=1e-10)
 
         # 7. atol and rtol combined (keyword-only)
-        out7 = paddle.linalg.pinv(x, atol=1e-10, rtol=1e-10)
+        out7 = paddle.pinverse(x, atol=1e-10, rtol=1e-10)
 
         # 8. Tensor method - args
         out8 = x.pinverse()
 
-        # 9. Alias paddle.pinverse
-        out9 = paddle.pinverse(x)
+        # 9. hermitian=True with atol (need square matrix for hermitian)
+        x_sq = paddle.to_tensor(np.random.rand(3, 3).astype("float32"))
+        x_sym = x_sq @ x_sq.T + paddle.eye(3) * 0.5  # full rank
+        out9 = paddle.pinverse(x_sym, hermitian=True, atol=1e-4)
+
+        # 10. hermitian=True with rtol
+        out10 = paddle.pinverse(x_sym, hermitian=True, rtol=1e-4)
+
+        # 11. hermitian=True with both atol and rtol
+        out11 = paddle.pinverse(x_sym, hermitian=True, atol=1e-4, rtol=1e-4)
 
         # Verify all outputs
         expected = np.linalg.pinv(self.np_x)
-        for out in [out1, out2, out3, out4, out5, out6, out7, out8, out9]:
+        for out in [out1, out2, out3, out4, out5, out6, out7, out8]:
             np.testing.assert_allclose(out.numpy(), expected, rtol=1e-5)
+
+        expected_sym = np.linalg.pinv(x_sym.numpy(), hermitian=True)
+        for out in [out9, out10, out11]:
+            np.testing.assert_allclose(out.numpy(), expected_sym, rtol=1e-5)
 
         paddle.enable_static()
 
@@ -1373,23 +1479,74 @@ class TestPinverseAPI(unittest.TestCase):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(name="x", shape=[3, 2], dtype="float32")
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
 
-            # 1. Paddle Positional arguments
-            out1 = paddle.linalg.pinv(x)
-            # 2. Paddle keyword arguments
-            out2 = paddle.linalg.pinv(x=x)
-            # 3. PyTorch keyword arguments (alias)
-            out3 = paddle.linalg.pinv(input=x)
+            # 1. paddle.pinverse positional
+            out1 = paddle.pinverse(x)
+            # 2. paddle.pinverse keyword
+            out2 = paddle.pinverse(x=x)
+            # 3. paddle.pinverse with input alias
+            out3 = paddle.pinverse(input=x)
+            # 4. Tensor method
+            out4 = x.pinverse()
+            # 5. atol parameter test (keyword-only)
+            out5 = paddle.pinverse(x, atol=1e-10)
+            # 6. rtol parameter test (keyword-only)
+            out6 = paddle.pinverse(x, rtol=1e-10)
+            # 7. atol and rtol combined (keyword-only)
+            out7 = paddle.pinverse(x, atol=1e-10, rtol=1e-10)
+            # 8. out parameter test
+            out8 = paddle.static.data(
+                name="out8", shape=[2, 3], dtype="float32"
+            )
+            paddle.pinverse(x, out=out8)
+
+            # 9. hermitian=True with atol (square matrix)
+            x_sym = paddle.static.data(
+                name="x_sym", shape=[3, 3], dtype="float32"
+            )
+            out9 = paddle.pinverse(x_sym, hermitian=True, atol=1e-4)
+
+            # 10. hermitian=True with rtol
+            out10 = paddle.pinverse(x_sym, hermitian=True, rtol=1e-4)
+
+            # 11. hermitian=True with both atol and rtol
+            out11 = paddle.pinverse(x_sym, hermitian=True, atol=1e-4, rtol=1e-4)
 
             exe = paddle.static.Executor()
+            np_x_sym = (
+                self.np_x @ self.np_x.T
+                + np.eye(3, dtype=self.dtype) * 0.5  # full rank
+            )
             fetches = exe.run(
-                main, feed={"x": self.np_x}, fetch_list=[out1, out2, out3]
+                main,
+                feed={
+                    "x": self.np_x,
+                    "out8": np.empty([2, 3], dtype="float32"),
+                    "x_sym": np_x_sym,
+                },
+                fetch_list=[
+                    out1,
+                    out2,
+                    out3,
+                    out4,
+                    out5,
+                    out6,
+                    out7,
+                    out8,
+                    out9,
+                    out10,
+                    out11,
+                ],
             )
 
             expected = np.linalg.pinv(self.np_x)
-            for out in fetches:
+            for out in fetches[:8]:
                 np.testing.assert_allclose(out, expected, rtol=1e-5)
+
+            expected_sym = np.linalg.pinv(np_x_sym, hermitian=True)
+            for out in fetches[8:]:
+                np.testing.assert_allclose(out, expected_sym, rtol=1e-5)
 
         paddle.disable_static()
 
@@ -1652,8 +1809,19 @@ class TestRandintLikeAPI(unittest.TestCase):
         # 4. Mixed arguments
         out4 = paddle.randint_like(x, high=10)
 
+        # 5. pin_memory parameter (keyword-only)
+        out5 = paddle.randint_like(x, 0, 10, pin_memory=False)
+
+        # 6. requires_grad parameter (keyword-only)
+        out6 = paddle.randint_like(x, 0, 10, requires_grad=False)
+
+        # 7. Both pin_memory and requires_grad (keyword-only)
+        out7 = paddle.randint_like(
+            x, 0, 10, pin_memory=False, requires_grad=False
+        )
+
         # Verify all outputs
-        for out in [out1, out2, out3, out4]:
+        for out in [out1, out2, out3, out4, out5, out6, out7]:
             self.assertEqual(out.shape, x.shape)
 
         paddle.enable_static()
