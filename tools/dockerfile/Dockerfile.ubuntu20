@@ -28,7 +28,7 @@ RUN apt-get update --allow-unauthenticated && \
   apt-get install -y curl wget vim git unzip pigz zstd unrar tar xz-utils libssl-dev bzip2 gzip \
     coreutils ntp language-pack-zh-hans libsm6 libxext6 libxrender-dev libgl1-mesa-glx \
     bison graphviz libjpeg-dev zlib1g-dev automake locales swig net-tools libtool kmod \
-    libbz2-dev libexpat1-dev libffi-dev libgdbm-dev liblzma-dev libmpdec-dev libncursesw5-dev libreadline-dev \
+    libbz2-dev libexpat1-dev libffi-dev libgdbm-dev liblzma-dev libncursesw5-dev libreadline-dev \
     libsqlite3-dev pkg-config tk-dev uuid-dev
 <install_cpu_package>
 
@@ -59,6 +59,16 @@ WORKDIR /home
 RUN wget -q https://cmake.org/files/v3.18/cmake-3.18.0-Linux-x86_64.tar.gz && tar -zxvf cmake-3.18.0-Linux-x86_64.tar.gz && rm cmake-3.18.0-Linux-x86_64.tar.gz
 ENV PATH=/home/cmake-3.18.0-Linux-x86_64/bin:$PATH
 
+RUN wget -q https://www.bytereef.org/software/mpdecimal/releases/mpdecimal-2.5.1.tar.gz && \
+    tar -xzf mpdecimal-2.5.1.tar.gz && \
+    cd mpdecimal-2.5.1 && \
+    ./configure --prefix=/usr/local > /dev/null && \
+    make -j"$(nproc)" > /dev/null && \
+    make install > /dev/null && \
+    cd .. && \
+    rm -rf mpdecimal-2.5.1 mpdecimal-2.5.1.tar.gz && \
+    ldconfig
+
 # Build free-threaded 3.13 before normal 3.13 so python3.13 stays non-free-threaded.
 RUN set -eux; \
   build_python() { \
@@ -71,7 +81,7 @@ RUN set -eux; \
     if ./configure --help | grep -q -- "--with-system-ffi"; then \
       configure_opts="${configure_opts} --with-system-ffi"; \
     fi; \
-    CFLAGS="-Wformat" ./configure ${configure_opts} "$@" > /dev/null; \
+    CPPFLAGS="-I/usr/local/include" LDFLAGS="-L/usr/local/lib" CFLAGS="-Wformat" ./configure ${configure_opts} "$@" > /dev/null; \
     make -j"$(nproc)" > /dev/null; \
     make altinstall > /dev/null; \
     cd ..; \
