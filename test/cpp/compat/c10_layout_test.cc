@@ -267,6 +267,46 @@ TEST(SparseConstructorTest, SparseCooTensorWithOptions) {
   ASSERT_EQ(sparse.layout(), c10::kSparse);
 }
 
+TEST(SparseConstructorTest, SparseCooTensorWithCoalescedOptionTrue) {
+  at::Tensor indices = at::empty({2, 2}, c10::TensorOptions().dtype(at::kLong));
+  int64_t* indices_ptr = indices.data_ptr<int64_t>();
+  indices_ptr[0] = 0;
+  indices_ptr[1] = 1;
+  indices_ptr[2] = 0;
+  indices_ptr[3] = 1;
+
+  at::Tensor values = at::empty({2}, c10::TensorOptions().dtype(at::kFloat));
+  values.data_ptr<float>()[0] = 3.0f;
+  values.data_ptr<float>()[1] = 4.0f;
+
+  at::Tensor sparse =
+      at::sparse_coo_tensor(indices, values, {2, 2}, at::TensorOptions(), true);
+
+  ASSERT_TRUE(sparse.is_sparse());
+  ASSERT_EQ(sparse.layout(), c10::kSparse);
+  ASSERT_TRUE(sparse.is_coalesced());
+}
+
+TEST(SparseConstructorTest, SparseCooTensorWithCoalescedOptionFalse) {
+  at::Tensor indices = at::empty({2, 2}, c10::TensorOptions().dtype(at::kLong));
+  int64_t* indices_ptr = indices.data_ptr<int64_t>();
+  indices_ptr[0] = 0;
+  indices_ptr[1] = 1;
+  indices_ptr[2] = 0;
+  indices_ptr[3] = 1;
+
+  at::Tensor values = at::empty({2}, c10::TensorOptions().dtype(at::kFloat));
+  values.data_ptr<float>()[0] = 3.0f;
+  values.data_ptr<float>()[1] = 4.0f;
+
+  at::Tensor sparse = at::sparse_coo_tensor(
+      indices, values, {2, 2}, at::TensorOptions(), false);
+
+  ASSERT_TRUE(sparse.is_sparse());
+  ASSERT_EQ(sparse.layout(), c10::kSparse);
+  ASSERT_FALSE(sparse.is_coalesced());
+}
+
 // ============== at::sparse_csr_tensor tests ==============
 
 TEST(SparseConstructorTest, SparseCsrTensorBasic) {
@@ -404,6 +444,28 @@ TEST(SparseConstructorTest, SparseCooTensorInferSize) {
   ASSERT_EQ(sparse.dim(), 2);
   ASSERT_EQ(sparse.size(0), 3);
   ASSERT_EQ(sparse.size(1), 3);
+}
+
+TEST(SparseConstructorTest, SparseCooTensorInferSizeWithCoalescedOption) {
+  at::Tensor indices = at::empty({2, 2}, c10::TensorOptions().dtype(at::kLong));
+  int64_t* indices_ptr = indices.data_ptr<int64_t>();
+  indices_ptr[0] = 0;
+  indices_ptr[1] = 2;
+  indices_ptr[2] = 1;
+  indices_ptr[3] = 3;
+
+  at::Tensor values = at::empty({2}, c10::TensorOptions().dtype(at::kFloat));
+  values.data_ptr<float>()[0] = 1.0f;
+  values.data_ptr<float>()[1] = 2.0f;
+
+  at::Tensor sparse =
+      at::sparse_coo_tensor(indices, values, at::TensorOptions(), true);
+
+  ASSERT_TRUE(sparse.is_sparse());
+  ASSERT_EQ(sparse.layout(), c10::kSparse);
+  ASSERT_EQ(sparse.size(0), 3);
+  ASSERT_EQ(sparse.size(1), 4);
+  ASSERT_TRUE(sparse.is_coalesced());
 }
 
 TEST(SparseConstructorTest, SparseCooTensorDouble) {
