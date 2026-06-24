@@ -163,6 +163,8 @@ COPY ./python/requirements.txt  /root/
 COPY ./python/unittest_py/requirements.txt /home/
 COPY ./paddle/scripts/compile_requirements.txt /home/
 
+# Free-threaded Python 3.13 only installs compile helpers because broader
+# requirements currently pull packages without cp313t wheels.
 RUN pip3.10 --no-cache-dir install -r /root/requirements.txt && \
     pip3.10 --no-cache-dir install -r /home/requirements.txt && \
     pip3.10 --no-cache-dir install -r /home/compile_requirements.txt && \
@@ -175,9 +177,7 @@ RUN pip3.10 --no-cache-dir install -r /root/requirements.txt && \
     python3.13 -m pip --no-cache-dir install -r /root/requirements.txt && \
     python3.13 -m pip --no-cache-dir install -r /home/requirements.txt && \
     python3.13 -m pip --no-cache-dir install -r /home/compile_requirements.txt && \
-    python3.13t -m pip --no-cache-dir install -r /root/requirements.txt && \
     python3.13t -m pip --no-cache-dir install -r /home/compile_requirements.txt
-    # python3.13t -m pip --no-cache-dir install -r /home/requirements.txt
 
 # clang12
 RUN apt-get update &&\
