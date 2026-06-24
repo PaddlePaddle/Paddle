@@ -94,8 +94,8 @@ RUN set -eux; \
   build_python 3.13.0 --disable-gil --with-mimalloc; \
   build_python 3.13.0
 ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
-RUN ln -sf /usr/local/bin/python3.10 /usr/bin/python && \
-    ln -sf /usr/local/bin/python3.10 /usr/bin/python3
+# Keep Ubuntu's /usr/bin/python3 for system scripts such as lsb_release.
+RUN ln -sf /usr/local/bin/python3.10 /usr/bin/python
 
 RUN for py in 3.10 3.11 3.12 3.13 3.13t; do \
       printf '#!/bin/sh\nexec /usr/local/bin/python%s -m pip "$@"\n' "$py" > "/usr/local/bin/pip${py}" && \
