@@ -1731,19 +1731,22 @@ static void LayerNormBackward(
   auto stream = dev_ctx.stream();
   const int kMaxBlockDim = 512;
   const int kMaxBlockNum = 128;
-  uint32_t max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
-  PADDLE_ENFORCE_LE(batch_size,
-                    max_grid_dim,
-                    common::errors::InvalidArgument(
-                        "layer_norm grid.x exceeds device limit."));
-  PADDLE_ENFORCE_LE_UINT32_MAX(batch_size, "layer_norm grid.x");
   int gradient_flag = ((d_x != nullptr ? 1 : 0) << 2) |
                       ((d_scale != nullptr ? 1 : 0) << 1) |
                       ((d_bias != nullptr ? 1 : 0));
   if (gradient_flag == 0) return;
+  if (d_x != nullptr) {
+    const uint32_t max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
+    PADDLE_ENFORCE_LE(batch_size,
+                      max_grid_dim,
+                      common::errors::InvalidArgument(
+                          "layer_norm grid.x exceeds device limit."));
+    PADDLE_ENFORCE_LE_UINT32_MAX(batch_size, "layer_norm grid.x");
+  }
   if (batch_size == 1) {
     // TODO(large-tensor): batch_size==1 path uses int32 grid dim
     const int64_t grid_x = (feature_size + kMaxBlockDim - 1) / kMaxBlockDim;
+    const uint32_t max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
     PADDLE_ENFORCE_LE(grid_x,
                       max_grid_dim,
                       common::errors::InvalidArgument(
@@ -1964,6 +1967,7 @@ static void LayerNormBackward(
         constexpr int BDIMY1 = 4;
         constexpr int PartSize = BDIMY1 * VPT;
         dim3 threads2(BDIMX, BDIMY1, 1);
+        const uint32_t max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
         int64_t blocks2_x = (feature_size + BDIMX - 1) / BDIMX;
         PADDLE_ENFORCE_LE(
             blocks2_x,
@@ -2026,7 +2030,6 @@ static void LayerNormBackward(
           uint32_t warp_num =
               feature_size < data_per_warp ? 1 : (feature_size / data_per_warp);
           PADDLE_ENFORCE_LE_UINT32_MAX(warp_num, "layer_norm warp num");
-          uint32_t warp_count = static_cast<uint32_t>(warp_num);
 #if defined(__clang__) || defined(__GNUC__)
           int block_dim_y = std::min(8, 1 << (31 - __builtin_clz(warp_num)));
 #else

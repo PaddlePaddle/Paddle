@@ -96,7 +96,6 @@ struct OneHotGenerator<GPUContext, T> {
     PADDLE_ENFORCE_LE_UINT32_MAX(block_size_64,
                                  "gumbel_softmax one hot grid.x");
     const uint32_t block_size = static_cast<uint32_t>(block_size_64);
-    constexpr uint32_t thread_size_u32 = static_cast<uint32_t>(thread_size);
 
     DenseTensor input_tensor;
     input_tensor.Resize(out->dims());
@@ -104,13 +103,15 @@ struct OneHotGenerator<GPUContext, T> {
     Copy(dev_ctx, *out, dev_ctx.GetPlace(), false, &input_tensor);
     funcs::set_constant(dev_ctx, out, static_cast<T>(0.0));
     OneHotCUDAKernel<T, thread_size>
-        <<<block_size, thread_size, 0, dev_ctx.stream()>>>(
-            height,
-            size_from_axis / size_out_axis,
-            size_out_axis,
-            std::numeric_limits<T>::lowest(),
-            input_tensor.data<T>(),
-            out->data<T>());
+        <<<block_size,
+           static_cast<uint32_t>(thread_size),
+           0,
+           dev_ctx.stream()>>>(height,
+                               size_from_axis / size_out_axis,
+                               size_out_axis,
+                               std::numeric_limits<T>::lowest(),
+                               input_tensor.data<T>(),
+                               out->data<T>());
   }
 };
 

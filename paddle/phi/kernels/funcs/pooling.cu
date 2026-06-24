@@ -1097,7 +1097,26 @@ class MaxPool2dGradFunctor<GPUContext, T> {
       if (FLAGS_use_accuracy_compatible_kernel) {
         int64_t blocks =
             (input_width * input_height + kBlockThreads - 1) / kBlockThreads;
-        dim3 grid(blocks, batch_size, input_channels);
+        std::array<unsigned int, 3> max_grid_dim =
+            dev_ctx.GetCUDAMaxGridDimSize();
+        PADDLE_ENFORCE_LE(blocks,
+                          max_grid_dim[0],
+                          common::errors::InvalidArgument(
+                              "pooling grid.x exceeds device limit."));
+        PADDLE_ENFORCE_LE(batch_size,
+                          max_grid_dim[1],
+                          common::errors::InvalidArgument(
+                              "pooling grid.y exceeds device limit."));
+        PADDLE_ENFORCE_LE(input_channels,
+                          max_grid_dim[2],
+                          common::errors::InvalidArgument(
+                              "pooling grid.z exceeds device limit."));
+        PADDLE_ENFORCE_LE_UINT32_MAX(blocks, "pooling grid.x");
+        PADDLE_ENFORCE_LE_UINT32_MAX(batch_size, "pooling grid.y");
+        PADDLE_ENFORCE_LE_UINT32_MAX(input_channels, "pooling grid.z");
+        dim3 grid(static_cast<uint32_t>(blocks),
+                  static_cast<uint32_t>(batch_size),
+                  static_cast<uint32_t>(input_channels));
         KernelMaxPool2DGradCompatible<T, int64_t>
             <<<grid, threads, 0, dev_ctx.stream()>>>(input_data,
                                                      output_data,
