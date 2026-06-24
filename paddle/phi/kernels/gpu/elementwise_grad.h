@@ -436,25 +436,22 @@ void default_elementwise_sub_grad(const GPUContext &dev_ctx,
           dev_ctx, dout, reduce_dims, dout.dtype(), false, dx);
     }
   }
-  // dy
+  // dy = sum_to(-dout). Align with PyTorch's sub backward
+  // (other: maybe_multiply(-grad, alpha)): negate elementwise first, then
+  // reduce through the SAME sum path as dx (GetGradXOrYOut -> BroadcastKernel
+  // for the negation, then ReduceWrapper -> SumKernel for the reduction). This
+  // keeps the broadcast-grad reduction bitwise-aligned with torch. Folding the
+  // negation into the reduce as a reduce TransformOp would route dy through a
+  // different reduction implementation than dx and break bitwise alignment.
   if (dy != nullptr) {
-    auto *dy_data = dev_ctx.template Alloc<T>(dy);
-    if (dy->dims() == dout.dims()) {
-      if (dy_data != dout_data) {
-        dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);
-        auto size = dy->numel();
-        dim3 grid_size =
-            dim3((size + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE, 1);
-        SimpleElemwiseSubGradCUDAKernel<T>
-            <<<grid_size, block_size, 0, dev_ctx.stream()>>>(
-                dout.data<T>(), size, nullptr, dev_ctx.template Alloc<T>(dy));
-      }
-    } else {
-      std::vector<int> reduce_dims =
-          funcs::GetReduceDim(y.dims(), out.dims(), axis);
-      funcs::ReduceKernel<T, T, kps::AddFunctor, kps::InverseFunctor<T>>(
-          dev_ctx, dout, dy, kps::InverseFunctor<T>(), reduce_dims);
-    }
+    std::vector<const DenseTensor *> ins = {&dout};
+    GetGradXOrYOut<T>(dev_ctx,
+                      dev_ctx.GetPlace(),
+                      axis,
+                      ins,
+                      dout,
+                      dy,
+                      kps::InverseFunctor<T>());
   }
 }
 
