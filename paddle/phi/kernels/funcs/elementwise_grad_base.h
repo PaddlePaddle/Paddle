@@ -1641,11 +1641,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
       int64_t grid_size_64 = pre * post;
       auto *dev_ctx = funcs::GetCurrentContext();
       int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
-      PADDLE_ENFORCE_LE(
-          grid_size_64,
-          max_grid_dim,
-          common::errors::InvalidArgument(
-              "elementwise grad launch dim exceeds device limit."));
+      grid_size_64 = std::min(grid_size_64, max_grid_dim);
       PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_64, "elementwise grad launch dim");
       uint32_t grid_size = static_cast<uint32_t>(grid_size_64);
       // we need to calc y offset with blockid, so do x_pre/y_pre to get
@@ -1699,11 +1695,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
       int64_t grid_size_64 = pre * post;
       auto *dev_ctx = funcs::GetCurrentContext();
       int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
-      PADDLE_ENFORCE_LE(
-          grid_size_64,
-          max_grid_dim,
-          common::errors::InvalidArgument(
-              "elementwise grad launch dim exceeds device limit."));
+      grid_size_64 = std::min(grid_size_64, max_grid_dim);
       PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_64, "elementwise grad launch dim");
       uint32_t grid_size = static_cast<uint32_t>(grid_size_64);
       if (k_pre != pre) k_pre = pre / k_pre;

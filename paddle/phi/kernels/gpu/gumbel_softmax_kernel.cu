@@ -33,21 +33,18 @@ using KeyValuePair = cub::KeyValuePair<K, V>;
 template <typename T>
 struct UniformCUDAGenerator {
   T min_, max_;
-  unsigned int seed_;
-  unsigned int offset_ = 0;
-  HOSTDEVICE UniformCUDAGenerator(T min, T max, unsigned int seed)
+  uint32_t seed_;
+  uint64_t offset_ = 0;
+  HOSTDEVICE UniformCUDAGenerator(T min, T max, uint32_t seed)
       : min_(min), max_(max), seed_(seed) {}
-  HOSTDEVICE UniformCUDAGenerator(T min,
-                                  T max,
-                                  unsigned int seed,
-                                  unsigned int offset)
+  HOSTDEVICE UniformCUDAGenerator(T min, T max, uint32_t seed, uint64_t offset)
       : min_(min), max_(max), seed_(seed), offset_(offset) {}
 
-  HOSTDEVICE T operator()(const unsigned int n) const {
+  HOSTDEVICE T operator()(const int64_t n) const {
     thrust::minstd_rand rng;
     rng.seed(seed_);
     thrust::uniform_real_distribution<T> dist(min_, max_);
-    rng.discard(n + offset_);
+    rng.discard(static_cast<uint64_t>(n) + offset_);
     return dist(rng);
   }
 };
@@ -155,12 +152,15 @@ struct GumbleNoiseGenerator<GPUContext, T> {
     uint64_t seed = seed_offset.first;
     uint64_t offset = seed_offset.second;
     const uint64_t offset_64 = size * offset;
+    PADDLE_ENFORCE_LE_UINT32_MAX(seed, "gumbel_softmax random seed");
+    const uint32_t seed_u32 = static_cast<uint32_t>(seed);
 
     thrust::counting_iterator<int64_t> index_sequence_begin(0);
-    thrust::transform(index_sequence_begin,
-                      index_sequence_begin + size,
-                      thrust::device_ptr<MT>(random_data),
-                      UniformCUDAGenerator<MT>(0.00001, 1, seed, offset_64));
+    thrust::transform(
+        index_sequence_begin,
+        index_sequence_begin + size,
+        thrust::device_ptr<MT>(random_data),
+        UniformCUDAGenerator<MT>(0.00001, 1, seed_u32, offset_64));
 
     // add gumbel noise to X
     const int thread_size = 512;
