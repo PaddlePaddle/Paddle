@@ -798,9 +798,12 @@ class PipelineParallel(MetaParallelBase):
             "pp_configs"
         ].overlap_p2p_comm
 
-        self._block_atten_res_opt = getattr(
-            self._strategy.hybrid_configs["pp_configs"], "block_atten_res_opt", False
-        )
+
+        #暂时使用环境变量debug
+        if os.environ.get("BLOCK_ATTEN_RES_COMM_OPT", "1") == "1":
+            self._block_atten_res_opt = True
+        else:
+            self._block_atten_res_opt = False
 
         self._clear_every_step_cache = self._strategy.hybrid_configs[
             "pp_configs"
