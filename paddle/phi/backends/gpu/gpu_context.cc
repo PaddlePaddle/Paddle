@@ -330,8 +330,10 @@ struct GPUContext::Impl {
   // Returns {ptr, size}. Thread-safe via mutex for grow path.
   std::pair<void*, size_t> GetCublasLtWorkspace(size_t required_size) {
 #ifdef PADDLE_WITH_CUDA
-    required_size =
-        std::max(required_size, GetCublasWorkspaceSize(compute_capability_));
+    if (compute_capability_ / 10 >= 9) {
+      required_size =
+          std::max(required_size, GetCublasWorkspaceSize(compute_capability_));
+    }
     if (cublaslt_workspace_size_ >= required_size && cublaslt_workspace_) {
       return {cublaslt_workspace_, cublaslt_workspace_size_};
     }
