@@ -30,16 +30,14 @@ class CompileCommandGenerator:
     def generate_matmul_compile_command(self, tpl_dirname, library_name):
         matmul_source_dir = f"{tpl_dirname}/matmul"
 
-        compile_cmd = "nvcc -std=c++20 -O3 -Xcompiler=-fPIC -arch=sm_80 --expt-relaxed-constexpr"
+        compile_cmd = (
+            "hipcc -std=c++17 -O3 -fPIC --offload-arch=gfx928 -Wno-return-type"
+        )
         compile_cmd = compile_cmd + " -I ${AP_CUTLASS_DIR}/include"
         compile_cmd = compile_cmd + " -I ${AP_CUTLASS_DIR}/tools/util/include"
         compile_cmd = compile_cmd + " -I " + matmul_source_dir
         compile_cmd = (
-            compile_cmd
-            + " -DCUTLASS_ENABLE_TENSOR_CORE_MMA=1 -DCUTLASS_DEBUG_TRACE_LEVEL=0"
-        )
-        compile_cmd = (
-            compile_cmd + " -DAP_ENABLE_AUTOTUNE=1 -DAP_ENABLE_DEBUG=0"
+            compile_cmd + " -DAP_ENABLE_AUTOTUNE=0 -DAP_ENABLE_DEBUG=0"
         )
         compile_cmd = (
             compile_cmd

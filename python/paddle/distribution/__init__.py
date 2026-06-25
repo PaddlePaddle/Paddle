@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import transform
+from . import constraint as constraint, transform
 from .bernoulli import Bernoulli
 from .beta import Beta
 from .binomial import Binomial
@@ -54,6 +54,8 @@ from .transform import (  # noqa:F401
 )
 from .transformed_distribution import TransformedDistribution
 from .uniform import Uniform
+
+constraints = constraint
 
 __all__ = [
     'Bernoulli',

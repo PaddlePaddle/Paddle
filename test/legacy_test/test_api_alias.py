@@ -271,6 +271,12 @@ class TestAlias(unittest.TestCase):
         )
 
         self.assert_distribution_api_aliases()
+        self.assertIs(
+            paddle.distribution.constraints, paddle.distribution.constraint
+        )
+        self.assertIs(
+            paddle.distributions.constraints, paddle.distribution.constraint
+        )
 
         submodule_api_map = [
             ("bernoulli", "Bernoulli"),

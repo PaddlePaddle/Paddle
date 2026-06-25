@@ -14,7 +14,11 @@
 
 #pragma once
 
+#include <cstdint>
 #include <iostream>
+#include <limits>
+#include <stdexcept>
+#include <string>
 #include <vector>
 
 #define ASSERT_CHECK(__cond)                                            \
@@ -29,6 +33,12 @@
   } while (0)
 
 namespace ap {
+
+inline int CheckedCastToInt(int64_t value) {
+  ASSERT_CHECK(value >= 0);
+  ASSERT_CHECK(value <= static_cast<int64_t>(std::numeric_limits<int>::max()));
+  return static_cast<int>(value);
+}
 
 template <typename T, int Dim>
 struct Alignment {
@@ -104,29 +114,36 @@ struct GemmEpilogueParams {
     input0_shape = input_shape;
     input1_shape = weight_shape;
 
-    batch_count = 1;
+    int64_t batch_count_i64 = 1;
     for (size_t i = 0; i < input_shape.size() - 2; ++i) {
-      batch_count *= input_shape[i];
+      batch_count_i64 *= input_shape[i];
     }
+    batch_count = CheckedCastToInt(batch_count_i64);
 
+    int64_t m_i64;
+    int64_t n_i64;
+    int64_t k_i64;
     if (transpose_a) {
-      m = input_shape[input_shape.size() - 1];
-      k = input_shape[input_shape.size() - 2];
+      m_i64 = input_shape[input_shape.size() - 1];
+      k_i64 = input_shape[input_shape.size() - 2];
     } else {
-      m = input_shape[input_shape.size() - 2];
-      k = input_shape[input_shape.size() - 1];
+      m_i64 = input_shape[input_shape.size() - 2];
+      k_i64 = input_shape[input_shape.size() - 1];
     }
     if (transpose_b) {
-      ASSERT_CHECK(weight_shape[weight_shape.size() - 1] == k);
-      n = weight_shape[weight_shape.size() - 2];
+      ASSERT_CHECK(weight_shape[weight_shape.size() - 1] == k_i64);
+      n_i64 = weight_shape[weight_shape.size() - 2];
     } else {
-      ASSERT_CHECK(weight_shape[weight_shape.size() - 2] == k);
-      n = weight_shape[weight_shape.size() - 1];
+      ASSERT_CHECK(weight_shape[weight_shape.size() - 2] == k_i64);
+      n_i64 = weight_shape[weight_shape.size() - 1];
     }
+    m = CheckedCastToInt(m_i64);
+    n = CheckedCastToInt(n_i64);
+    k = CheckedCastToInt(k_i64);
 
     if (bias) {
       ASSERT_CHECK(bias_shape.size() >= 1U);
-      ASSERT_CHECK(bias_shape[bias_shape.size() - 1] == n);
+      ASSERT_CHECK(bias_shape[bias_shape.size() - 1] == n_i64);
     }
 
 #if AP_ENABLE_DEBUG
@@ -139,19 +156,19 @@ struct GemmEpilogueParams {
     std::cout << "-- [GemmEpilogueParams] stream: " << stream << std::endl;
 #endif
 
-    shape_args.batch_stride_A = m * k;
-    shape_args.batch_stride_B = (weight_shape.size() == 2) ? 0 : n * k;
-    shape_args.batch_stride_D = m * n;
+    shape_args.batch_stride_A = m_i64 * k_i64;
+    shape_args.batch_stride_B = (weight_shape.size() == 2) ? 0 : n_i64 * k_i64;
+    shape_args.batch_stride_D = m_i64 * n_i64;
 
-    shape_args.lda = transpose_a ? m : k;
-    shape_args.ldb = transpose_b ? k : n;
-    shape_args.ldd = n;
+    shape_args.lda = transpose_a ? m_i64 : k_i64;
+    shape_args.ldb = transpose_b ? k_i64 : n_i64;
+    shape_args.ldd = n_i64;
 
     bool is_C_bias = bias_shape.size() == 1UL;
 
     /// Only available in RRR format
-    shape_args.batch_stride_C = (!bias || is_C_bias) ? 0 : m * n;
-    shape_args.ldc_bias = (!bias || is_C_bias) ? 0 : n;
+    shape_args.batch_stride_C = (!bias || is_C_bias) ? 0 : m_i64 * n_i64;
+    shape_args.ldc_bias = (!bias || is_C_bias) ? 0 : n_i64;
   }
 
   void SetEpilogues(const std::vector<const void *> &in_ptrs,

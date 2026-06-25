@@ -48,6 +48,12 @@ __all__ = [
     'AvgPool1d',
     'AvgPool2d',
     'AvgPool3d',
+    'BatchNorm1D',
+    'BatchNorm2D',
+    'BatchNorm3D',
+    'BatchNorm1d',
+    'BatchNorm2d',
+    'BatchNorm3d',
     'MultiheadAttention',
     'SmoothL1Loss',
 ]
@@ -64,6 +70,92 @@ def _ntuple(n, name="parse"):
 
 
 _single = _ntuple(1, "_single")
+
+
+class BatchNorm1D(nn.BatchNorm1D):
+    def __init__(
+        self,
+        num_features: int,
+        eps: float = 1e-5,
+        momentum: float | None = 0.1,
+        affine: bool = True,
+        track_running_stats: bool = True,
+        device: PlaceLike | None = None,
+        dtype: DTypeLike | None = None,
+    ) -> None:
+        if momentum is None:
+            paddle_momentum = None
+        else:
+            paddle_momentum = 1.0 - momentum
+        super().__init__(
+            num_features=num_features,
+            momentum=paddle_momentum,
+            epsilon=eps,
+            use_global_stats=None if track_running_stats else False,
+            affine=affine,
+            device=device,
+            dtype=dtype,
+        )
+        self.momentum = momentum
+
+
+class BatchNorm2D(nn.BatchNorm2D):
+    def __init__(
+        self,
+        num_features: int,
+        eps: float = 1e-5,
+        momentum: float | None = 0.1,
+        affine: bool = True,
+        track_running_stats: bool = True,
+        device: PlaceLike | None = None,
+        dtype: DTypeLike | None = None,
+    ) -> None:
+        if momentum is None:
+            paddle_momentum = None
+        else:
+            paddle_momentum = 1.0 - momentum
+        super().__init__(
+            num_features=num_features,
+            momentum=paddle_momentum,
+            epsilon=eps,
+            use_global_stats=None if track_running_stats else False,
+            affine=affine,
+            device=device,
+            dtype=dtype,
+        )
+        self.momentum = momentum
+
+
+class BatchNorm3D(nn.BatchNorm3D):
+    def __init__(
+        self,
+        num_features: int,
+        eps: float = 1e-5,
+        momentum: float | None = 0.1,
+        affine: bool = True,
+        track_running_stats: bool = True,
+        device: PlaceLike | None = None,
+        dtype: DTypeLike | None = None,
+    ) -> None:
+        if momentum is None:
+            paddle_momentum = None
+        else:
+            paddle_momentum = 1.0 - momentum
+        super().__init__(
+            num_features=num_features,
+            momentum=paddle_momentum,
+            epsilon=eps,
+            use_global_stats=None if track_running_stats else False,
+            affine=affine,
+            device=device,
+            dtype=dtype,
+        )
+        self.momentum = momentum
+
+
+BatchNorm1d = BatchNorm1D
+BatchNorm2d = BatchNorm2D
+BatchNorm3d = BatchNorm3D
 
 
 class AvgPool1D(nn.Layer):

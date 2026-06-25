@@ -21,6 +21,556 @@ import numpy as np
 import paddle
 
 
+class TestDistributionsCategoricalAPI(unittest.TestCase):
+    def setUp(self):
+        self.place = paddle.CPUPlace()
+        self.np_probs = np.array(
+            [[0.2, 0.3, 0.5], [2.0, 3.0, 5.0]], dtype="float32"
+        )
+        self.np_logits = np.array(
+            [[0.1, 0.2, 0.7], [1.5, 0.5, 0.25]], dtype="float32"
+        )
+        self.np_zero_probs = np.array(
+            [[0.0, 1.0, 0.0], [0.5, 0.0, 0.5]], dtype="float32"
+        )
+        self.np_value = np.array([2, 0], dtype="int64")
+        self.np_zero_value = np.array([1, 1], dtype="int64")
+
+    def tearDown(self):
+        paddle.enable_static()
+
+    def _logsumexp(self, x):
+        max_value = np.max(x, axis=-1, keepdims=True)
+        return (
+            np.log(np.sum(np.exp(x - max_value), axis=-1, keepdims=True))
+            + max_value
+        )
+
+    def _take_torch_last_dim(self, x, value=None):
+        if value is None:
+            value = self.np_value
+        return np.take_along_axis(x, value.reshape([-1, 1]), axis=-1).squeeze(
+            -1
+        )
+
+    def test_dygraph_Compatibility(self):
+        import importlib
+
+        categorical = importlib.import_module(
+            "paddle.compat.distributions.categorical"
+        )
+        self.assertIs(
+            paddle.compat.distributions,
+            importlib.import_module("paddle.compat.distributions"),
+        )
+        self.assertIs(paddle.compat.distributions, paddle.compat.distributions)
+
+        paddle.disable_static()
+        probs = paddle.to_tensor(self.np_probs, place=self.place)
+        logits = paddle.to_tensor(self.np_logits, place=self.place)
+        zero_probs = paddle.to_tensor(self.np_zero_probs, place=self.place)
+        value = paddle.to_tensor(self.np_value, place=self.place)
+        zero_value = paddle.to_tensor(self.np_zero_value, place=self.place)
+
+        # 1. PyTorch Positional arguments
+        dist1 = categorical.Categorical(probs)
+        out1 = dist1.log_prob(value)
+        # 2. PyTorch keyword arguments
+        dist2 = categorical.Categorical(probs=probs)
+        out2 = dist2.log_prob(value)
+        # 3. PyTorch Positional arguments
+        dist3 = categorical.Categorical(None, logits, False)
+        out3 = dist3.log_prob(value)
+        # 4. PyTorch keyword arguments
+        dist4 = categorical.Categorical(
+            probs=None, logits=logits, validate_args=False
+        )
+        out4 = dist4.log_prob(value)
+        # 5. Mixed arguments
+        dist5 = categorical.Categorical(None, logits=logits)
+        out5 = dist5.log_prob(value)
+        dist6 = categorical.Categorical(probs=zero_probs)
+        out6 = dist6.log_prob(zero_value)
+
+        probs_ref = self.np_probs / self.np_probs.sum(-1, keepdims=True)
+        logits_ref = self.np_logits - self._logsumexp(self.np_logits)
+        zero_probs_ref = self.np_zero_probs / self.np_zero_probs.sum(
+            -1, keepdims=True
+        )
+        paddle_probs_ref = self._take_torch_last_dim(np.log(probs_ref))
+        eps = np.finfo(self.np_zero_probs.dtype).eps
+        zero_logits_ref = np.log(np.clip(zero_probs_ref, eps, 1 - eps))
+        zero_log_prob_ref = self._take_torch_last_dim(
+            zero_logits_ref, self.np_zero_value
+        )
+        for out in [out1, out2]:
+            np.testing.assert_allclose(out.numpy(), paddle_probs_ref, rtol=1e-6)
+        for out in [out3, out4]:
+            np.testing.assert_allclose(
+                out.numpy(),
+                self._take_torch_last_dim(logits_ref),
+                rtol=1e-6,
+            )
+        np.testing.assert_allclose(
+            out5.numpy(), self._take_torch_last_dim(logits_ref), rtol=1e-6
+        )
+        np.testing.assert_allclose(dist1.probs.numpy(), probs_ref, rtol=1e-6)
+        np.testing.assert_allclose(
+            dist1.logits.numpy(), np.log(probs_ref), rtol=1e-6
+        )
+        np.testing.assert_allclose(
+            dist3.probs.numpy(), np.exp(logits_ref), rtol=1e-6
+        )
+        np.testing.assert_allclose(
+            dist3.entropy().numpy(),
+            -(logits_ref * np.exp(logits_ref)).sum(-1),
+            rtol=1e-6,
+        )
+        np.testing.assert_allclose(out6.numpy(), zero_log_prob_ref, rtol=1e-6)
+        np.testing.assert_allclose(
+            dist6.logits.numpy(), zero_logits_ref, rtol=1e-6
+        )
+        np.testing.assert_allclose(
+            dist6.entropy().numpy(),
+            -(zero_logits_ref * zero_probs_ref).sum(-1),
+            rtol=1e-6,
+        )
+        self.assertEqual(tuple(dist1.param_shape), self.np_probs.shape)
+        self.assertTrue(np.isnan(dist1.mean.numpy()).all())
+        self.assertTrue(np.isnan(dist1.variance.numpy()).all())
+        np.testing.assert_array_equal(dist3.mode.numpy(), np.array([2, 0]))
+        np.testing.assert_array_equal(
+            dist1.support.check(value).numpy(), np.array([True, True])
+        )
+        self.assertFalse(dist3._validate_args_enabled)
+        self.assertFalse(dist4._validate_args_enabled)
+        self.assertEqual(list(dist1.sample([2]).shape), [2, 2])
+        self.assertEqual(list(dist1.sample(np.array([3])).shape), [3, 2])
+        self.assertEqual(
+            categorical.Categorical(paddle.to_tensor([0.4, 0.6])).batch_shape,
+            (),
+        )
+        expanded = categorical.Categorical(
+            logits=paddle.to_tensor([0.1, 0.2, 0.7], place=self.place)
+        )
+        _ = expanded.probs
+        expanded = expanded.expand((4,))
+        self.assertEqual(expanded.batch_shape, (4,))
+        self.assertEqual(tuple(expanded.param_shape), (4, 3))
+        np.testing.assert_allclose(
+            expanded.probs.numpy(),
+            np.tile([[0.25462854, 0.28140804, 0.46396342]], (4, 1)),
+            rtol=1e-6,
+        )
+
+    def test_dygraph_Error(self):
+        import importlib
+
+        categorical = importlib.import_module(
+            "paddle.compat.distributions.categorical"
+        )
+
+        paddle.disable_static()
+        probs = paddle.to_tensor(self.np_probs, place=self.place)
+        logits = paddle.to_tensor(self.np_logits, place=self.place)
+
+        with self.assertRaises(ValueError):
+            categorical.Categorical()
+        with self.assertRaises(ValueError):
+            categorical.Categorical(probs=probs, logits=logits)
+        with self.assertRaises(ValueError):
+            categorical.Categorical(paddle.to_tensor(1.0))
+        with self.assertRaises(ValueError):
+            categorical.Categorical(logits=paddle.to_tensor(1.0))
+
+    def test_dygraph_validate_args(self):
+        import importlib
+
+        categorical = importlib.import_module(
+            "paddle.compat.distributions.categorical"
+        )
+
+        paddle.disable_static()
+        probs = paddle.to_tensor([0.2, 0.3, 0.5], place=self.place)
+        dist = categorical.Categorical(probs=probs, validate_args=True)
+        batched_dist = categorical.Categorical(
+            probs=paddle.to_tensor(self.np_probs, place=self.place),
+            validate_args=True,
+        )
+
+        dist.log_prob(paddle.to_tensor([0, 2], place=self.place))
+        with self.assertRaises(ValueError):
+            dist.log_prob(paddle.to_tensor([3], place=self.place))
+        with self.assertRaises(ValueError):
+            dist.log_prob(
+                paddle.to_tensor([1.5], dtype="float32", place=self.place)
+            )
+        with self.assertRaises(ValueError):
+            batched_dist.log_prob(paddle.to_tensor([0, 1, 2], place=self.place))
+
+    def test_dygraph_enumerate_support(self):
+        import importlib
+
+        categorical = importlib.import_module(
+            "paddle.compat.distributions.categorical"
+        )
+
+        paddle.disable_static()
+        probs = paddle.to_tensor(self.np_probs, place=self.place)
+        dist = categorical.Categorical(probs=probs)
+
+        es = dist.enumerate_support()
+        es0 = dist.enumerate_support(expand=False)
+        support = dist.support
+
+        self.assertEqual(list(es.shape), [3, 2])
+        self.assertEqual(list(es0.shape), [3, 1])
+        np.testing.assert_array_equal(
+            es.numpy(), np.array([[0, 0], [1, 1], [2, 2]], dtype="int64")
+        )
+        np.testing.assert_array_equal(
+            es0.numpy(), np.array([[0], [1], [2]], dtype="int64")
+        )
+        np.testing.assert_array_equal(
+            support.check(paddle.to_tensor([0, 2], place=self.place)).numpy(),
+            np.array([True, True]),
+        )
+        np.testing.assert_array_equal(
+            support.check(
+                paddle.to_tensor(
+                    [-1, 1.5, 3], dtype="float32", place=self.place
+                )
+            ).numpy(),
+            np.array([False, False, False]),
+        )
+
+    def test_static_Compatibility(self):
+        import importlib
+
+        categorical = importlib.import_module(
+            "paddle.compat.distributions.categorical"
+        )
+
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            probs = paddle.static.data(
+                name="probs", shape=self.np_probs.shape, dtype="float32"
+            )
+            logits = paddle.static.data(
+                name="logits", shape=self.np_logits.shape, dtype="float32"
+            )
+            zero_probs = paddle.static.data(
+                name="zero_probs",
+                shape=self.np_zero_probs.shape,
+                dtype="float32",
+            )
+            value = paddle.static.data(
+                name="value", shape=self.np_value.shape, dtype="int64"
+            )
+            zero_value = paddle.static.data(
+                name="zero_value",
+                shape=self.np_zero_value.shape,
+                dtype="int64",
+            )
+
+            # 1. PyTorch Positional arguments
+            dist1 = categorical.Categorical(probs)
+            out1 = dist1.log_prob(value)
+            # 2. PyTorch keyword arguments
+            dist2 = categorical.Categorical(probs=probs)
+            out2 = dist2.log_prob(value)
+            # 3. PyTorch Positional arguments
+            dist3 = categorical.Categorical(None, logits, False)
+            out3 = dist3.log_prob(value)
+            # 4. PyTorch keyword arguments
+            dist4 = categorical.Categorical(
+                probs=None, logits=logits, validate_args=False
+            )
+            out4 = dist4.log_prob(value)
+            # 5. Mixed arguments
+            dist5 = categorical.Categorical(None, logits=logits)
+            out5 = dist5.log_prob(value)
+            dist6 = categorical.Categorical(probs=zero_probs)
+            out6 = dist6.log_prob(zero_value)
+
+            exe = paddle.static.Executor(self.place)
+            fetches = exe.run(
+                main,
+                feed={
+                    "probs": self.np_probs,
+                    "logits": self.np_logits,
+                    "zero_probs": self.np_zero_probs,
+                    "value": self.np_value,
+                    "zero_value": self.np_zero_value,
+                },
+                fetch_list=[
+                    out1,
+                    out2,
+                    out3,
+                    out4,
+                    out5,
+                    out6,
+                    dist1.probs,
+                    dist1.logits,
+                    dist3.probs,
+                    dist3.entropy(),
+                    dist3.mode,
+                    dist1.mean,
+                    dist1.variance,
+                    dist1.support.check(value),
+                    dist6.logits,
+                    dist6.entropy(),
+                ],
+            )
+
+        probs_ref = self.np_probs / self.np_probs.sum(-1, keepdims=True)
+        logits_ref = self.np_logits - self._logsumexp(self.np_logits)
+        zero_probs_ref = self.np_zero_probs / self.np_zero_probs.sum(
+            -1, keepdims=True
+        )
+        paddle_probs_ref = self._take_torch_last_dim(np.log(probs_ref))
+        eps = np.finfo(self.np_zero_probs.dtype).eps
+        zero_logits_ref = np.log(np.clip(zero_probs_ref, eps, 1 - eps))
+        zero_log_prob_ref = self._take_torch_last_dim(
+            zero_logits_ref, self.np_zero_value
+        )
+        for out in fetches[:2]:
+            np.testing.assert_allclose(out, paddle_probs_ref, rtol=1e-6)
+        for out in fetches[2:4]:
+            np.testing.assert_allclose(
+                out, self._take_torch_last_dim(logits_ref), rtol=1e-6
+            )
+        np.testing.assert_allclose(
+            fetches[4], self._take_torch_last_dim(logits_ref), rtol=1e-6
+        )
+        np.testing.assert_allclose(fetches[5], zero_log_prob_ref, rtol=1e-6)
+        np.testing.assert_allclose(fetches[6], probs_ref, rtol=1e-6)
+        np.testing.assert_allclose(fetches[7], np.log(probs_ref), rtol=1e-6)
+        np.testing.assert_allclose(fetches[8], np.exp(logits_ref), rtol=1e-6)
+        np.testing.assert_allclose(
+            fetches[9], -(logits_ref * np.exp(logits_ref)).sum(-1), rtol=1e-6
+        )
+        np.testing.assert_array_equal(fetches[10], np.array([2, 0]))
+        self.assertTrue(np.isnan(fetches[11]).all())
+        self.assertTrue(np.isnan(fetches[12]).all())
+        np.testing.assert_array_equal(fetches[13], np.array([True, True]))
+        np.testing.assert_allclose(fetches[14], zero_logits_ref, rtol=1e-6)
+        np.testing.assert_allclose(
+            fetches[15], -(zero_logits_ref * zero_probs_ref).sum(-1), rtol=1e-6
+        )
+
+    def test_paddle_api_BackwardCompatibility(self):
+        import importlib
+
+        categorical = importlib.import_module("paddle.distribution.categorical")
+
+        paddle.disable_static()
+        logits = paddle.to_tensor(self.np_probs, place=self.place)
+        value = paddle.to_tensor(self.np_value, place=self.place)
+
+        # 1. Paddle Positional arguments
+        dist1 = categorical.Categorical(logits)
+        out1 = dist1.log_prob(value)
+        # 2. Paddle keyword arguments
+        dist2 = categorical.Categorical(logits=logits)
+        out2 = dist2.log_prob(value)
+
+        probs_ref = self.np_probs / self.np_probs.sum(-1, keepdims=True)
+        ref_out = np.log(
+            np.take_along_axis(
+                probs_ref, self.np_value.reshape([1, -1]), axis=-1
+            )
+        )
+        for out in [out1, out2]:
+            np.testing.assert_allclose(out.numpy(), ref_out, rtol=1e-6)
+
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            logits = paddle.static.data(
+                name="paddle_logits",
+                shape=self.np_probs.shape,
+                dtype="float32",
+            )
+            value = paddle.static.data(
+                name="paddle_value", shape=self.np_value.shape, dtype="int64"
+            )
+
+            # 1. Paddle Positional arguments
+            out3 = categorical.Categorical(logits).log_prob(value)
+            # 2. Paddle keyword arguments
+            out4 = categorical.Categorical(logits=logits).log_prob(value)
+
+            exe = paddle.static.Executor(self.place)
+            fetches = exe.run(
+                main,
+                feed={
+                    "paddle_logits": self.np_probs,
+                    "paddle_value": self.np_value,
+                },
+                fetch_list=[out3, out4],
+            )
+
+        for out in fetches:
+            np.testing.assert_allclose(out, ref_out, rtol=1e-6)
+
+
+class TestDistributionsPositiveDefiniteCheckAPI(unittest.TestCase):
+    def setUp(self):
+        self.place = paddle.CPUPlace()
+        self.np_x = np.array([[2.0, 0.5], [0.5, 1.0]], dtype="float32")
+        self.np_not_positive = np.array(
+            [[1.0, 2.0], [2.0, 1.0]], dtype="float32"
+        )
+        self.np_non_symmetric = np.array(
+            [[1.0, 2.0], [0.0, 1.0]], dtype="float32"
+        )
+        self.np_not_square = np.ones([2, 3], dtype="float32")
+        self.np_vector = np.ones([2], dtype="float32")
+
+    def tearDown(self):
+        paddle.enable_static()
+
+    def test_dygraph_Compatibility(self):
+        from paddle.distribution import constraints
+
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x, place=self.place)
+        not_positive = paddle.to_tensor(self.np_not_positive, place=self.place)
+        not_square = paddle.to_tensor(self.np_not_square, place=self.place)
+        vector = paddle.to_tensor(self.np_vector, place=self.place)
+
+        self.assertIs(paddle.distribution.constraints, constraints)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.distribution.constraint.positive_definite.check(x)
+        # 2. Paddle keyword arguments
+        out2 = paddle.distribution.constraint.positive_definite.check(value=x)
+        # 3. PyTorch Positional arguments
+        out3 = constraints.positive_definite.check(x)
+        # 4. PyTorch keyword arguments
+        out4 = constraints.positive_definite.check(value=x)
+        out5 = constraints.positive_definite.check(not_positive)
+        out6 = constraints.positive_definite.check(not_square)
+        out7 = constraints.positive_definite.check(vector)
+
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_array_equal(out.numpy(), np.array(True))
+        for out in [out5, out6, out7]:
+            np.testing.assert_array_equal(out.numpy(), np.array(False))
+
+    def test_static_Compatibility(self):
+        from paddle.distribution import constraints
+
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=self.np_x.shape, dtype="float32"
+            )
+            not_positive = paddle.static.data(
+                name="not_positive",
+                shape=self.np_not_positive.shape,
+                dtype="float32",
+            )
+            not_square = paddle.static.data(
+                name="not_square",
+                shape=self.np_not_square.shape,
+                dtype="float32",
+            )
+            vector = paddle.static.data(
+                name="vector", shape=self.np_vector.shape, dtype="float32"
+            )
+
+            # 1. PyTorch Positional arguments
+            out1 = constraints.positive_definite.check(x)
+            # 2. PyTorch keyword arguments
+            out2 = constraints.positive_definite.check(value=x)
+            # 3. PyTorch Positional arguments
+            out3 = constraints.positive_definite.check(not_positive)
+            # 4. PyTorch Positional arguments
+            out4 = constraints.positive_definite.check(not_square)
+            # 5. PyTorch Positional arguments
+            out5 = constraints.positive_definite.check(vector)
+
+            exe = paddle.static.Executor(self.place)
+            fetches = exe.run(
+                main,
+                feed={
+                    "x": self.np_x,
+                    "not_positive": self.np_not_positive,
+                    "not_square": self.np_not_square,
+                    "vector": self.np_vector,
+                },
+                fetch_list=[out1, out2, out3, out4, out5],
+            )
+
+        for out in fetches[:2]:
+            np.testing.assert_array_equal(out, np.array(True))
+        for out in fetches[2:]:
+            np.testing.assert_array_equal(out, np.array(False))
+
+    def test_symmetric_low_rank_returns_false(self):
+        from paddle.distribution import constraint
+
+        paddle.disable_static()
+
+        out = constraint.symmetric.check(paddle.ones([2]))
+        self.assertFalse(bool(out))
+
+        symmetric_matrix = paddle.to_tensor(
+            [[1.0, 2.0], [2.0, 1.0]], place=self.place
+        )
+        self.assertTrue(bool(constraint.symmetric.check(symmetric_matrix)))
+
+        non_symmetric_matrix = paddle.to_tensor(
+            self.np_non_symmetric, place=self.place
+        )
+        self.assertFalse(bool(constraint.symmetric.check(non_symmetric_matrix)))
+
+    def test_static_symmetric_low_rank_returns_false(self):
+        from paddle.distribution import constraints
+
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            vector = paddle.static.data(
+                name="vector", shape=self.np_vector.shape, dtype="float32"
+            )
+            symmetric_matrix = paddle.static.data(
+                name="symmetric_matrix", shape=self.np_x.shape, dtype="float32"
+            )
+            non_symmetric_matrix = paddle.static.data(
+                name="non_symmetric_matrix",
+                shape=self.np_non_symmetric.shape,
+                dtype="float32",
+            )
+
+            out1 = constraints.symmetric.check(vector)
+            out2 = constraints.symmetric.check(symmetric_matrix)
+            out3 = constraints.symmetric.check(non_symmetric_matrix)
+
+            exe = paddle.static.Executor(self.place)
+            fetches = exe.run(
+                main,
+                feed={
+                    "vector": self.np_vector,
+                    "symmetric_matrix": self.np_x,
+                    "non_symmetric_matrix": self.np_non_symmetric,
+                },
+                fetch_list=[out1, out2, out3],
+            )
+
+        np.testing.assert_array_equal(fetches[0], np.array(False))
+        np.testing.assert_array_equal(fetches[1], np.array(True))
+        np.testing.assert_array_equal(fetches[2], np.array(False))
+
+
 # Test mv compatibility
 @unittest.skipIf(
     paddle.is_compiled_with_custom_device('iluvatar_gpu'),
