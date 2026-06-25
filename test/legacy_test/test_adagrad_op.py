@@ -383,19 +383,37 @@ class TestAdagradLrDecay(unittest.TestCase):
         model = paddle.nn.Linear(5, 5)
         lr_decay = 0.1
         base_lr = 0.1
+        eps = 1e-6
         optimizer = paddle.optim.Adagrad(
-            model.parameters(), base_lr, lr_decay=lr_decay
+            model.parameters(), base_lr, lr_decay=lr_decay, eps=eps
         )
 
         losses = []
         lrs = []
+        moment = [np.zeros(shape=(5, 5)), np.zeros(shape=(5))]
         for step in range(5):
             output = model(input_data)
             loss = paddle.mean(output)
             losses.append(loss.numpy())
-            lrs.append(optimizer.get_lr())
             loss.backward()
+            param_value = [param.numpy() for param in model.parameters()]
+            param_grad = [param.grad.numpy() for param in model.parameters()]
             optimizer.step()
+            new_param_value = [param.numpy() for param in model.parameters()]
+
+            actual_lr = np.array([])
+            for i in range(2):
+                moment[i] += param_grad[i] ** 2
+                actual_lr = np.append(
+                    actual_lr,
+                    (
+                        (param_value[i] - new_param_value[i])
+                        * (np.sqrt(moment[i]) + eps)
+                        / param_grad[i]
+                    ).flatten(),
+                )
+            np.testing.assert_allclose(actual_lr, actual_lr[0], atol=1e-4)
+            lrs.append(np.mean(actual_lr))
             optimizer.clear_grad()
 
         lrs_ref = []
@@ -403,10 +421,7 @@ class TestAdagradLrDecay(unittest.TestCase):
             lrs_ref.append(base_lr / (1 + step * lr_decay))
 
         self.assertEqual(len(losses), 5)
-        np.testing.assert_array_equal(lrs, lrs_ref)
-        self.assertIsInstance(
-            optimizer._learning_rate, paddle.optimizer.lr.InverseTimeDecay
-        )
+        np.testing.assert_allclose(lrs, lrs_ref, atol=1e-4)
         paddle.enable_static()
 
     def test_lr_decay_zero(self):

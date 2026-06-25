@@ -25,7 +25,6 @@ if TYPE_CHECKING:
 import warnings
 
 from paddle.optimizer import Adagrad as PaddleAdagrad
-from paddle.optimizer.lr import InverseTimeDecay
 
 
 class Adagrad(PaddleAdagrad):
@@ -48,8 +47,10 @@ class Adagrad(PaddleAdagrad):
                 "foreach, differentiable, fused are currently not supported in Adagrad and will be ignored. "
                 "The parameters are reserved for future implementation."
             )
-        if lr_decay != 0:
-            lr = InverseTimeDecay(learning_rate=lr, gamma=lr_decay)
+        self._lr_decay = None
+        if lr_decay != 0.0:
+            self._lr_decay = lr_decay
+            self._step = -1
         super().__init__(
             learning_rate=lr,
             epsilon=eps,
@@ -59,9 +60,15 @@ class Adagrad(PaddleAdagrad):
             maximize=maximize,
         )
 
+    def _create_param_lr(self, param_and_grad):
+        param_lr = super()._create_param_lr(param_and_grad)
+        if self._lr_decay is not None:
+            param_lr = param_lr / (1.0 + self._step * self._lr_decay)
+        return param_lr
+
     def step(
         self, closure: Callable[[], Tensor] | None = None
     ) -> Tensor | None:
-        if isinstance(self._learning_rate, InverseTimeDecay):
-            self._learning_rate.step()
+        if self._lr_decay is not None:
+            self._step += 1
         return super().step(closure)
