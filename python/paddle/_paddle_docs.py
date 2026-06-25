@@ -14,23 +14,18 @@
 
 from __future__ import annotations
 
-import importlib
 import inspect
 from typing import TYPE_CHECKING
-
-import paddle
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from typing import Literal
 
+    import paddle
     from paddle import Tensor
     from paddle._typing import DataLayout2D, DTypeLike
 
 from .base.dygraph.generated_tensor_methods_patch import _all_method_op_map
-
-# Add docstr for some C++ functions in paddle
-_add_docstr = paddle.base.core.eager._add_docstr
 
 
 def add_doc_and_signature(func_name: str):
@@ -47,31 +42,11 @@ def add_doc_and_signature(func_name: str):
     def _decorator(func_def):
         docstr = inspect.getdoc(func_def)
         signature = inspect.signature(func_def)
-        generated_funcs = {
-            generated_func
-            for _module_path, generated_name, generated_func in _all_method_op_map
-            if generated_name == func_name
-        }
-
-        for module_path, generated_name, generated_func in _all_method_op_map:
-            if generated_func not in generated_funcs:
-                continue
-
-            if module_path == "paddle.Tensor":
-                module = paddle.Tensor
-            else:
-                module = importlib.import_module(module_path)
-
-            func = getattr(module, generated_name, None)
-            if func is not None:
-                if inspect.isfunction(func):
-                    func.__doc__ = docstr
-                elif inspect.ismethod(func):
-                    func.__func__.__doc__ = docstr
-                elif inspect.isbuiltin(func):
-                    _add_docstr(func, docstr)
-
-            generated_func.__signature__ = signature
+        for _, generated_name, generated_func in _all_method_op_map:
+            if generated_name == func_name:
+                generated_func.__doc__ = docstr
+                generated_func.__signature__ = signature
+                break
         return func_def
 
     return _decorator
