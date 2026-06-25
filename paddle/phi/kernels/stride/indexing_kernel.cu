@@ -32,7 +32,6 @@
 #include "paddle/phi/kernels/stride/elementwise_stride_base.cu.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
-#include "paddle/common/enforce.h"
 #include "paddle/phi/kernels/funcs/dims_simplifier.h"
 
 #endif
@@ -214,14 +213,7 @@ void LaunchIndexPutKernel_V2(const Context& dev_ctx,
   constexpr int nt = 128;
   constexpr int vt = 4;
   const dim3 block(nt);
-  int64_t grid_64 = (N + static_cast<int64_t>(block.x) * vt - 1) /
-                    (static_cast<int64_t>(block.x) * vt);
-  PADDLE_ENFORCE_LE(grid_64,
-                    dev_ctx.GetCUDAMaxGridDimSize()[0],
-                    common::errors::InvalidArgument(
-                        "index_put_kernel grid.x exceeds device limit."));
-  PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "index_put_kernel grid.x");
-  const dim3 grid(static_cast<uint32_t>(grid_64));
+  const dim3 grid((N + block.x * vt - 1) / (block.x * vt));
   auto stream = dev_ctx.stream();
 
   auto* val_data = value.data<T>();

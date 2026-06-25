@@ -151,11 +151,9 @@ static void kvReduceForGQA(const Context& dev_ctx,
       1,
       common::errors::InvalidArgument("headdim dimension must be contiguous"));
   const int64_t reduceDimSize = dk_tmp.dims()[2];
-  const size_t blockNum_64 =
+  const size_t blockNum =
       std::min((static_cast<int64_t>(dk_tmp.dims()[0] + 31) / 32),
                static_cast<int64_t>(1024l));
-  PADDLE_ENFORCE_LE_UINT32_MAX(blockNum_64, "flash_attn gqa reduce grid.x");
-  const uint32_t blockNum = static_cast<uint32_t>(blockNum_64);
   const dim3 threadNum{32, 4, 1};
   auto sumkernel = selectSumkernel<T>(dk_tmp.dims()[3]);
   sumkernel<<<blockNum, threadNum, 0, dev_ctx.stream()>>>(
@@ -195,11 +193,9 @@ static void kvReduceBatchedForGQA(const Context& dev_ctx,
                     common::errors::InvalidArgument(
                         "batchsize dimension must be contiguous"));
   const int64_t reduceDimSize = dk_tmp.dims()[3];
-  const size_t blockNum_64 = std::min(
+  const size_t blockNum = std::min(
       (static_cast<int64_t>(dk_tmp.dims()[0] * dk_tmp.dims()[1] + 31) / 32),
       static_cast<int64_t>(1024l));
-  PADDLE_ENFORCE_LE_UINT32_MAX(blockNum_64, "flash_attn gqa reduce grid.x");
-  const uint32_t blockNum = static_cast<uint32_t>(blockNum_64);
   const dim3 threadNum{32, 4, 1};
   auto sumkernel = selectSumkernel<T>(dk_tmp.dims()[4]);
   // here implicitly flat [batch,seqlen], and require batch dim to be contiguous

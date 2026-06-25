@@ -14,11 +14,9 @@
 
 #include "paddle/phi/kernels/group_norm_kernel.h"
 
-#include "paddle/common/enforce.h"
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
-#include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpu/group_norm_utils.h"
@@ -1393,25 +1391,11 @@ void GroupNormDirectCUDAFunctor<T, AccT>::operator()(
     }
   }
   int block_size = std::min(static_cast<int64_t>(1024), image_size);
-  const auto max_grid_dim =
-      backends::gpu::GetGpuMaxGridDimSize(backends::gpu::GetCurrentDeviceId());
-  int64_t max_grid_x = max_grid_dim[0];
-  int64_t max_grid_y = max_grid_dim[1];
-  int64_t max_grid_z = max_grid_dim[2];
-  const int64_t grid_x = std::min(group_size, max_grid_x);
-  const int64_t grid_z = std::min(input_ddim[0], max_grid_z);
-  PADDLE_ENFORCE_LE(groups,
-                    max_grid_y,
-                    common::errors::InvalidArgument(
-                        "group_norm forward grid.y exceeds device limit."));
-  PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "group_norm forward grid.x");
-  PADDLE_ENFORCE_LE_UINT32_MAX(groups, "group_norm forward grid.y");
-  PADDLE_ENFORCE_LE_UINT32_MAX(grid_z, "group_norm forward grid.z");
-  PADDLE_ENFORCE_LE_UINT32_MAX(block_size, "group_norm forward block.x");
-  dim3 grid(static_cast<uint32_t>(grid_x),
-            static_cast<uint32_t>(groups),
-            static_cast<uint32_t>(grid_z));
-  dim3 threads(static_cast<uint32_t>(block_size), 1, 1);
+  int64_t max_grid_x = 65535;
+  dim3 grid(std::min(group_size, max_grid_x),
+            groups,
+            std::min(input_ddim[0], max_grid_x));
+  dim3 threads(block_size, 1, 1);
   if (data_layout == DataLayout::NCHW) {
     if (FLAGS_use_accuracy_compatible_kernel) {
       // =========================================================
@@ -1425,17 +1409,7 @@ void GroupNormDirectCUDAFunctor<T, AccT>::operator()(
           D_times_HxW < kBlockReduceNumThreads ? 32 : kBlockReduceNumThreads;
 
       // Phase 1: Welford moments -> mean and centered variance in temp_variance
-      const int64_t welford_blocks = N * G;
-      PADDLE_ENFORCE_LE(welford_blocks,
-                        max_grid_x,
-                        common::errors::InvalidArgument(
-                            "group_norm welford grid.x exceeds device limit."));
-      PADDLE_ENFORCE_LE_UINT32_MAX(welford_blocks, "group_norm welford grid.x");
-      PADDLE_ENFORCE_LE_UINT32_MAX(num_threads, "group_norm welford block.x");
-      WelfordMomentsCUDAKernel<T, AccT><<<static_cast<uint32_t>(welford_blocks),
-                                          static_cast<uint32_t>(num_threads),
-                                          0,
-                                          stream>>>(
+      WelfordMomentsCUDAKernel<T, AccT><<<N * G, num_threads, 0, stream>>>(
           D_times_HxW, static_cast<AccT>(eps), input, mean, temp_variance);
 
       // Phase 2: Fused normalization using mean/var on the fly
@@ -1444,45 +1418,31 @@ void GroupNormDirectCUDAFunctor<T, AccT>::operator()(
         const int64_t elem_threads = 256;
         const int64_t elem_blocks =
             std::min((total + elem_threads - 1) / elem_threads, max_grid_x);
-        PADDLE_ENFORCE_LE_UINT32_MAX(elem_blocks,
-                                     "group_norm forward fused grid.x");
-        PADDLE_ENFORCE_LE_UINT32_MAX(elem_threads,
-                                     "group_norm forward fused block.x");
         GroupNormForwardFusedNCHWKernel<T, AccT>
-            <<<static_cast<uint32_t>(elem_blocks),
-               static_cast<uint32_t>(elem_threads),
-               0,
-               stream>>>(N * C,
-                         image_size,
-                         C,
-                         G,
-                         input,
-                         mean,
-                         temp_variance,
-                         scale,
-                         bias,
-                         static_cast<AccT>(eps),
-                         output);
+            <<<elem_blocks, elem_threads, 0, stream>>>(N * C,
+                                                       image_size,
+                                                       C,
+                                                       G,
+                                                       input,
+                                                       mean,
+                                                       temp_variance,
+                                                       scale,
+                                                       bias,
+                                                       static_cast<AccT>(eps),
+                                                       output);
       } else {
         const int64_t total = N * G * D_times_HxW;
         const int64_t elem_threads = 256;
         const int64_t elem_blocks =
             std::min((total + elem_threads - 1) / elem_threads, max_grid_x);
-        PADDLE_ENFORCE_LE_UINT32_MAX(elem_blocks,
-                                     "group_norm forward no scale bias grid.x");
-        PADDLE_ENFORCE_LE_UINT32_MAX(
-            elem_threads, "group_norm forward no scale bias block.x");
         GroupNormForwardNoScaleBiasCUDAKernel<T, AccT>
-            <<<static_cast<uint32_t>(elem_blocks),
-               static_cast<uint32_t>(elem_threads),
-               0,
-               stream>>>(N * G,
-                         D_times_HxW,
-                         input,
-                         mean,
-                         temp_variance,
-                         static_cast<AccT>(eps),
-                         output);
+            <<<elem_blocks, elem_threads, 0, stream>>>(N * G,
+                                                       D_times_HxW,
+                                                       input,
+                                                       mean,
+                                                       temp_variance,
+                                                       static_cast<AccT>(eps),
+                                                       output);
       }
 
       // Copy centered variance to variance output
@@ -1514,12 +1474,8 @@ void GroupNormDirectCUDAFunctor<T, AccT>::operator()(
       }
       block_size_nchw = std::max(block_size_nchw, kps::details::kWarpSize);
       int64_t n_groups = input_ddim[0] * static_cast<int64_t>(groups);
-      const int64_t grids_x = std::min(max_grid_x, n_groups);
-      PADDLE_ENFORCE_LE_UINT32_MAX(grids_x, "group_norm mean var grid.x");
-      PADDLE_ENFORCE_LE_UINT32_MAX(block_size_nchw,
-                                   "group_norm mean var block.x");
-      dim3 grids(static_cast<uint32_t>(grids_x));
-      dim3 blocks(static_cast<uint32_t>(block_size_nchw));
+      dim3 grids(std::min(max_grid_x, n_groups));
+      dim3 blocks(block_size_nchw);
       if (size < vec_size * block_size_nchw) {
         ScalarGetMeanAndVarNCHW<T, AccT><<<grids, blocks, 0, stream>>>(
             input, mean, temp_variance, size, n_groups);
@@ -1638,8 +1594,6 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
     }
   }
 
-  const int64_t max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];
-
   if (data_layout == DataLayout::NCHW) {
     if (FLAGS_use_accuracy_compatible_kernel) {
       // =========================================================
@@ -1651,21 +1605,13 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
       const int64_t num_threads =
           D_times_HxW < kBlockReduceNumThreads ? 32 : kBlockReduceNumThreads;
 
-      const int64_t welford_blocks = N * G;
-      PADDLE_ENFORCE_LE(
-          welford_blocks,
-          max_grid_x,
-          common::errors::InvalidArgument(
-              "group_norm general welford grid.x exceeds device limit."));
-      PADDLE_ENFORCE_LE_UINT32_MAX(welford_blocks,
-                                   "group_norm general welford grid.x");
-      PADDLE_ENFORCE_LE_UINT32_MAX(num_threads,
-                                   "group_norm general welford block.x");
-      WelfordMomentsCUDAKernel<T, AccT><<<static_cast<uint32_t>(welford_blocks),
-                                          static_cast<uint32_t>(num_threads),
-                                          0,
-                                          dev_ctx.stream()>>>(
-          D_times_HxW, static_cast<AccT>(epsilon), x_data, mean_data, var_data);
+      WelfordMomentsCUDAKernel<T, AccT>
+          <<<N * G, num_threads, 0, dev_ctx.stream()>>>(
+              D_times_HxW,
+              static_cast<AccT>(epsilon),
+              x_data,
+              mean_data,
+              var_data);
 
       // Phase 2: Normalization
       if (scale_data != nullptr || bias_data != nullptr) {
@@ -1678,28 +1624,18 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
 
         constexpr int64_t kNumThreads = 256;
         const int64_t B = (N * C + kNumThreads - 1) / kNumThreads;
-        PADDLE_ENFORCE_LE(
-            B,
-            max_grid_x,
-            common::errors::InvalidArgument(
-                "group_norm fused params grid.x exceeds device limit."));
-        PADDLE_ENFORCE_LE_UINT32_MAX(B, "group_norm fused params grid.x");
-        PADDLE_ENFORCE_LE_UINT32_MAX(kNumThreads,
-                                     "group_norm fused params block.x");
         ComputeFusedParamsCUDAKernel<T, AccT>
-            <<<static_cast<uint32_t>(B),
-               static_cast<uint32_t>(kNumThreads),
-               0,
-               dev_ctx.stream()>>>(N,
-                                   C,
-                                   G,
-                                   static_cast<AccT>(epsilon),
-                                   mean_data,
-                                   var_data,
-                                   scale_data,
-                                   bias_data,
-                                   a_data,
-                                   b_data);
+            <<<B, kNumThreads, 0, dev_ctx.stream()>>>(
+                N,
+                C,
+                G,
+                static_cast<AccT>(epsilon),
+                mean_data,
+                var_data,
+                scale_data,
+                bias_data,
+                a_data,
+                b_data);
 
         // Phase 2b: Element-wise Y = a * X + b
         constexpr int64_t kElemThreads = 256;
@@ -1710,44 +1646,23 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
           const int64_t total_vec = N * C * HxW_vec;
           const int64_t elem_blocks = std::min(
               (total_vec + kElemThreads - 1) / kElemThreads, max_grid_x);
-          PADDLE_ENFORCE_LE_UINT32_MAX(elem_blocks,
-                                       "group_norm elementwise vec4 grid.x");
-          PADDLE_ENFORCE_LE_UINT32_MAX(kElemThreads,
-                                       "group_norm elementwise vec4 block.x");
           GroupNormForwardElementwiseVec4CUDAKernel<T, AccT>
-              <<<static_cast<uint32_t>(elem_blocks),
-                 static_cast<uint32_t>(kElemThreads),
-                 0,
-                 dev_ctx.stream()>>>(
+              <<<elem_blocks, kElemThreads, 0, dev_ctx.stream()>>>(
                   N * C, HxW_vec, x_data, a_data, b_data, y_data);
         } else if (std::is_same<T, double>::value && (imsize % 2 == 0)) {
           const int64_t HxW_vec = imsize / 2;
           const int64_t total_vec = N * C * HxW_vec;
           const int64_t elem_blocks = std::min(
               (total_vec + kElemThreads - 1) / kElemThreads, max_grid_x);
-          PADDLE_ENFORCE_LE_UINT32_MAX(elem_blocks,
-                                       "group_norm elementwise vec2 grid.x");
-          PADDLE_ENFORCE_LE_UINT32_MAX(kElemThreads,
-                                       "group_norm elementwise vec2 block.x");
           GroupNormForwardElementwiseVec2DoubleCUDAKernel<T, AccT>
-              <<<static_cast<uint32_t>(elem_blocks),
-                 static_cast<uint32_t>(kElemThreads),
-                 0,
-                 dev_ctx.stream()>>>(
+              <<<elem_blocks, kElemThreads, 0, dev_ctx.stream()>>>(
                   N * C, HxW_vec, x_data, a_data, b_data, y_data);
         } else {
           const int64_t total = N * C * imsize;
           const int64_t elem_blocks =
               std::min((total + kElemThreads - 1) / kElemThreads, max_grid_x);
-          PADDLE_ENFORCE_LE_UINT32_MAX(elem_blocks,
-                                       "group_norm elementwise grid.x");
-          PADDLE_ENFORCE_LE_UINT32_MAX(kElemThreads,
-                                       "group_norm elementwise block.x");
           GroupNormForwardElementwiseCUDAKernel<T, AccT>
-              <<<static_cast<uint32_t>(elem_blocks),
-                 static_cast<uint32_t>(kElemThreads),
-                 0,
-                 dev_ctx.stream()>>>(
+              <<<elem_blocks, kElemThreads, 0, dev_ctx.stream()>>>(
                   N * C, imsize, x_data, a_data, b_data, y_data);
         }
       } else {
@@ -1760,60 +1675,42 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
           const int64_t total_vec = N * G * D_HxW_vec;
           const int64_t elem_blocks = std::min(
               (total_vec + kElemThreads - 1) / kElemThreads, max_grid_x);
-          PADDLE_ENFORCE_LE_UINT32_MAX(elem_blocks,
-                                       "group_norm no scale bias vec4 grid.x");
-          PADDLE_ENFORCE_LE_UINT32_MAX(kElemThreads,
-                                       "group_norm no scale bias vec4 block.x");
           GroupNormForwardNoScaleBiasVec4CUDAKernel<T, AccT>
-              <<<static_cast<uint32_t>(elem_blocks),
-                 static_cast<uint32_t>(kElemThreads),
-                 0,
-                 dev_ctx.stream()>>>(N * G,
-                                     D_HxW_vec,
-                                     x_data,
-                                     mean_data,
-                                     var_data,
-                                     static_cast<AccT>(epsilon),
-                                     y_data);
+              <<<elem_blocks, kElemThreads, 0, dev_ctx.stream()>>>(
+                  N * G,
+                  D_HxW_vec,
+                  x_data,
+                  mean_data,
+                  var_data,
+                  static_cast<AccT>(epsilon),
+                  y_data);
         } else if (std::is_same<T, double>::value && (D_times_HxW % 2 == 0)) {
           const int64_t D_HxW_vec = D_times_HxW / 2;
           const int64_t total_vec = N * G * D_HxW_vec;
           const int64_t elem_blocks = std::min(
               (total_vec + kElemThreads - 1) / kElemThreads, max_grid_x);
-          PADDLE_ENFORCE_LE_UINT32_MAX(elem_blocks,
-                                       "group_norm no scale bias vec2 grid.x");
-          PADDLE_ENFORCE_LE_UINT32_MAX(kElemThreads,
-                                       "group_norm no scale bias vec2 block.x");
           GroupNormForwardNoScaleBiasVec2DoubleCUDAKernel<T, AccT>
-              <<<static_cast<uint32_t>(elem_blocks),
-                 static_cast<uint32_t>(kElemThreads),
-                 0,
-                 dev_ctx.stream()>>>(N * G,
-                                     D_HxW_vec,
-                                     x_data,
-                                     mean_data,
-                                     var_data,
-                                     static_cast<AccT>(epsilon),
-                                     y_data);
+              <<<elem_blocks, kElemThreads, 0, dev_ctx.stream()>>>(
+                  N * G,
+                  D_HxW_vec,
+                  x_data,
+                  mean_data,
+                  var_data,
+                  static_cast<AccT>(epsilon),
+                  y_data);
         } else {
           const int64_t D_total = N * G * D_times_HxW;
           const int64_t elem_blocks =
               std::min((D_total + kElemThreads - 1) / kElemThreads, max_grid_x);
-          PADDLE_ENFORCE_LE_UINT32_MAX(elem_blocks,
-                                       "group_norm no scale bias grid.x");
-          PADDLE_ENFORCE_LE_UINT32_MAX(kElemThreads,
-                                       "group_norm no scale bias block.x");
           GroupNormForwardNoScaleBiasCUDAKernel<T, AccT>
-              <<<static_cast<uint32_t>(elem_blocks),
-                 static_cast<uint32_t>(kElemThreads),
-                 0,
-                 dev_ctx.stream()>>>(N * G,
-                                     D_times_HxW,
-                                     x_data,
-                                     mean_data,
-                                     var_data,
-                                     static_cast<AccT>(epsilon),
-                                     y_data);
+              <<<elem_blocks, kElemThreads, 0, dev_ctx.stream()>>>(
+                  N * G,
+                  D_times_HxW,
+                  x_data,
+                  mean_data,
+                  var_data,
+                  static_cast<AccT>(epsilon),
+                  y_data);
         }
       }
     } else {
@@ -1837,13 +1734,8 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
       block_size_nchw = std::max(block_size_nchw, kps::details::kWarpSize);
       int64_t n_groups = N * static_cast<int64_t>(groups);
       int64_t max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];
-      const int64_t grids_x = std::min(max_grid_x, n_groups);
-      PADDLE_ENFORCE_LE_UINT32_MAX(grids_x,
-                                   "group_norm general mean var grid.x");
-      PADDLE_ENFORCE_LE_UINT32_MAX(block_size_nchw,
-                                   "group_norm general mean var block.x");
-      dim3 grids(static_cast<uint32_t>(grids_x));
-      dim3 blocks(static_cast<uint32_t>(block_size_nchw));
+      dim3 grids(std::min(max_grid_x, n_groups));
+      dim3 blocks(block_size_nchw);
       if (size < vec_size * block_size_nchw) {
         ScalarGetMeanAndVarNCHW<T, AccT>
             <<<grids, blocks, 0, dev_ctx.stream()>>>(
@@ -1854,25 +1746,11 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
                 x_data, mean_data, temp_var_data, size, n_groups);
       }
 
-      int64_t max_grid_y = dev_ctx.GetCUDAMaxGridDimSize()[1];
       int64_t max_grid_z = dev_ctx.GetCUDAMaxGridDimSize()[2];
       int block_size_orig = std::min(static_cast<int64_t>(1024), imsize);
-      const int64_t grid_x = std::min(max_grid_x, group_size);
-      const int64_t grid_z = std::min(max_grid_z, N);
-      PADDLE_ENFORCE_LE(groups,
-                        max_grid_y,
-                        common::errors::InvalidArgument(
-                            "group_norm general forward grid.y exceeds "
-                            "device limit."));
-      PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "group_norm general forward grid.x");
-      PADDLE_ENFORCE_LE_UINT32_MAX(groups, "group_norm general forward grid.y");
-      PADDLE_ENFORCE_LE_UINT32_MAX(grid_z, "group_norm general forward grid.z");
-      PADDLE_ENFORCE_LE_UINT32_MAX(block_size_orig,
-                                   "group_norm general forward block.x");
-      dim3 grid(static_cast<uint32_t>(grid_x),
-                static_cast<uint32_t>(groups),
-                static_cast<uint32_t>(grid_z));
-      dim3 threads(static_cast<uint32_t>(block_size_orig), 1, 1);
+      dim3 grid(
+          std::min(max_grid_x, group_size), groups, std::min(max_grid_z, N));
+      dim3 threads(block_size_orig, 1, 1);
       int flags = (scale_data != nullptr) * kHasScale +
                   (bias_data != nullptr) * kHasBias;
       UNROLL_ALL_CASES(flags,
@@ -1906,26 +1784,12 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
     set_zero_AccT(dev_ctx, mean, static_cast<AccT>(0));
     set_zero_AccT(dev_ctx, &temp_var, static_cast<AccT>(0));
 
-    int64_t block_size_64 = std::min(static_cast<int64_t>(1024), imsize);
+    int block_size = std::min(static_cast<int64_t>(1024), imsize);
     int64_t max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];
-    int64_t max_grid_y = dev_ctx.GetCUDAMaxGridDimSize()[1];
     int64_t max_grid_z = dev_ctx.GetCUDAMaxGridDimSize()[2];
-    const int64_t grid_x = std::min(max_grid_x, group_size);
-    const int64_t grid_z = std::min(max_grid_z, N);
-    PADDLE_ENFORCE_LE(groups,
-                      max_grid_y,
-                      common::errors::InvalidArgument(
-                          "group_norm legacy forward grid.y exceeds device "
-                          "limit."));
-    PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "group_norm legacy forward grid.x");
-    PADDLE_ENFORCE_LE_UINT32_MAX(groups, "group_norm legacy forward grid.y");
-    PADDLE_ENFORCE_LE_UINT32_MAX(grid_z, "group_norm legacy forward grid.z");
-    PADDLE_ENFORCE_LE_UINT32_MAX(block_size_64,
-                                 "group_norm legacy forward block.x");
-    dim3 grid(static_cast<uint32_t>(grid_x),
-              static_cast<uint32_t>(groups),
-              static_cast<uint32_t>(grid_z));
-    dim3 threads(static_cast<uint32_t>(block_size_64), 1, 1);
+    dim3 grid(
+        std::min(max_grid_x, group_size), groups, std::min(max_grid_z, N));
+    dim3 threads(block_size, 1, 1);
 
     GroupNormForwardGetMeanAndVar<T,
                                   AccT><<<grid, threads, 0, dev_ctx.stream()>>>(

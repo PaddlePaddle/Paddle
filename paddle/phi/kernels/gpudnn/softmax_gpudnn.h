@@ -960,15 +960,6 @@ static void GetGridDim(int64_t high_dim,
   grid_x = std::min(grid_x, max_num_blocks);
   int64_t grid_y = (max_num_blocks + grid_x - 1) / grid_x;
   grid_y = std::min(grid_y, high_dim);
-  const auto& prop = phi::backends::gpu::GetDeviceProperties(device_id);
-  PADDLE_ENFORCE_LE(
-      grid_x,
-      prop.maxGridSize[0],
-      common::errors::InvalidArgument("softmax grid.x exceeds device limit."));
-  PADDLE_ENFORCE_LE(
-      grid_y,
-      prop.maxGridSize[1],
-      common::errors::InvalidArgument("softmax grid.y exceeds device limit."));
   PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "softmax grid.x");
   PADDLE_ENFORCE_LE_UINT32_MAX(grid_y, "softmax grid.y");
   grid->x = static_cast<uint32_t>(grid_x);
@@ -1345,14 +1336,8 @@ void LaunchKeMatrixSoftmaxForwardKernel(const GPUContext& dev_ctx,
   constexpr int kVecSize =
       MaxWithOne<MATRIX_SOFTMAX_ALIGN_BYTES / sizeof(T)>::kValue;
   int block_dim = CalcBlockSize(kVecSize, dim_size);
-  PADDLE_ENFORCE_LE(
-      N,
-      dev_ctx.GetCUDAMaxGridDimSize()[0],
-      common::errors::InvalidArgument("softmax grid.x exceeds device limit."));
-  PADDLE_ENFORCE_LE_UINT32_MAX(N, "softmax grid.x");
   KeMatrixSoftmaxForward<T, AccT, IndexType, LogMode>
-      <<<static_cast<uint32_t>(N), block_dim, 0, dev_ctx.stream()>>>(
-          out, input, dim_size);
+      <<<N, block_dim, 0, dev_ctx.stream()>>>(out, input, dim_size);
 }
 
 #if CUDNN_VERSION < 8100
@@ -2704,10 +2689,6 @@ void SoftmaxForwardCUDAKernelCompatible(const GPUContext& dev_ctx,
         remaining -= chunk_size;
       }
     } else {
-      PADDLE_ENFORCE_LE(N,
-                        dev_ctx.GetCUDAMaxGridDimSize()[0],
-                        common::errors::InvalidArgument(
-                            "softmax grid.x exceeds device limit."));
       PADDLE_ENFORCE_LE_UINT32_MAX(N, "softmax grid.x");
       dim3 grid(static_cast<uint32_t>(N));
       dispatch_host_softmax_forward<T, AccT, IndexType, Function>(
@@ -2771,10 +2752,6 @@ void SoftmaxBackwardCUDAKernelCompatible(const GPUContext& dev_ctx,
         remaining -= chunk_size;
       }
     } else {
-      PADDLE_ENFORCE_LE(N,
-                        dev_ctx.GetCUDAMaxGridDimSize()[0],
-                        common::errors::InvalidArgument(
-                            "softmax grid.x exceeds device limit."));
       PADDLE_ENFORCE_LE_UINT32_MAX(N, "softmax grid.x");
       dim3 grid(static_cast<uint32_t>(N));
       dispatch_host_softmax_backward<T, AccT, IndexType, LogMode, Function>(

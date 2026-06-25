@@ -22,9 +22,6 @@ limitations under the License. */
 #include <fstream>
 #include <iomanip>
 
-#include "paddle/phi/backends/gpu/gpu_info.h"
-
-#include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/kernels/flash_attn_kernel.h"
 #include "paddle/phi/kernels/funcs/load_store_util.h"
@@ -599,45 +596,32 @@ inline size_t smem_size_in_bytes(
   return max(softmax_sz, red_sz);
 }
 
-#define MMHA_LAUNCH_KERNEL(T,                                                \
-                           Dh,                                               \
-                           Dh_MAX,                                           \
-                           THDS_PER_KEY,                                     \
-                           THDS_PER_VALUE,                                   \
-                           THDS_PER_BLOCK,                                   \
-                           stream,                                           \
-                           load_func,                                        \
-                           store_func)                                       \
-  size_t smem_sz =                                                           \
-      smem_size_in_bytes<T>(params, Dh, THDS_PER_VALUE, THDS_PER_BLOCK);     \
-  const auto &prop = phi::backends::gpu::GetDeviceProperties(                \
-      phi::backends::gpu::GetCurrentDeviceId());                             \
-  PADDLE_ENFORCE_LE(                                                         \
-      params.num_head,                                                       \
-      prop.maxGridSize[0],                                                   \
-      common::errors::InvalidArgument("mmha grid.x exceeds device limit.")); \
-  PADDLE_ENFORCE_LE(                                                         \
-      params.batch_size,                                                     \
-      prop.maxGridSize[1],                                                   \
-      common::errors::InvalidArgument("mmha grid.y exceeds device limit.")); \
-  PADDLE_ENFORCE_LE_UINT32_MAX(params.num_head, "mmha grid.x");              \
-  PADDLE_ENFORCE_LE_UINT32_MAX(params.batch_size, "mmha grid.y");            \
-  dim3 grid(static_cast<uint32_t>(params.num_head),                          \
-            static_cast<uint32_t>(params.batch_size));                       \
-  constexpr auto kernel_fn =                                                 \
-      masked_multihead_attention_kernel<T,                                   \
-                                        Dh,                                  \
-                                        Dh_MAX,                              \
-                                        THDS_PER_KEY,                        \
-                                        THDS_PER_VALUE,                      \
-                                        THDS_PER_BLOCK,                      \
-                                        decltype(load_func),                 \
-                                        decltype(store_func)>;               \
-  if (smem_sz > 0xc000) {                                                    \
-    cudaFuncSetAttribute(                                                    \
-        kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_sz);    \
-  }                                                                          \
-  kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                      \
+#define MMHA_LAUNCH_KERNEL(T,                                             \
+                           Dh,                                            \
+                           Dh_MAX,                                        \
+                           THDS_PER_KEY,                                  \
+                           THDS_PER_VALUE,                                \
+                           THDS_PER_BLOCK,                                \
+                           stream,                                        \
+                           load_func,                                     \
+                           store_func)                                    \
+  size_t smem_sz =                                                        \
+      smem_size_in_bytes<T>(params, Dh, THDS_PER_VALUE, THDS_PER_BLOCK);  \
+  dim3 grid(params.num_head, params.batch_size);                          \
+  constexpr auto kernel_fn =                                              \
+      masked_multihead_attention_kernel<T,                                \
+                                        Dh,                               \
+                                        Dh_MAX,                           \
+                                        THDS_PER_KEY,                     \
+                                        THDS_PER_VALUE,                   \
+                                        THDS_PER_BLOCK,                   \
+                                        decltype(load_func),              \
+                                        decltype(store_func)>;            \
+  if (smem_sz > 0xc000) {                                                 \
+    cudaFuncSetAttribute(                                                 \
+        kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_sz); \
+  }                                                                       \
+  kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                   \
       params, load_func, store_func);
 
 template <typename T,
@@ -1387,69 +1371,49 @@ inline size_t get_reduce_smem_size_in_bytes(
   return reduce_shared_mem_size;
 }
 
-#define MBMMHA_LAUNCH_KERNEL(T,                                                \
-                             Dh,                                               \
-                             Dh_MAX,                                           \
-                             THDS_PER_KEY,                                     \
-                             THDS_PER_VALUE,                                   \
-                             THDS_PER_BLOCK,                                   \
-                             stream,                                           \
-                             load_func,                                        \
-                             reduce_store_func)                                \
-  VLOG(1) << "THREADS_PER_VALUE is: " << THREADS_PER_VALUE                     \
-          << ", partition_size: " << params.partition_size;                    \
-  size_t smem_sz = multi_block_attn_smem_size_in_bytes<T>(                     \
-      params, Dh, THDS_PER_VALUE, THDS_PER_BLOCK);                             \
-  const auto &prop = phi::backends::gpu::GetDeviceProperties(                  \
-      phi::backends::gpu::GetCurrentDeviceId());                               \
-  int64_t grid_z = div_up(params.timestep, params.partition_size);             \
-  PADDLE_ENFORCE_LE(                                                           \
-      params.num_head,                                                         \
-      prop.maxGridSize[0],                                                     \
-      common::errors::InvalidArgument("mbmmha grid.x exceeds device limit.")); \
-  PADDLE_ENFORCE_LE(                                                           \
-      params.batch_size,                                                       \
-      prop.maxGridSize[1],                                                     \
-      common::errors::InvalidArgument("mbmmha grid.y exceeds device limit.")); \
-  PADDLE_ENFORCE_LE(                                                           \
-      grid_z,                                                                  \
-      prop.maxGridSize[2],                                                     \
-      common::errors::InvalidArgument("mbmmha grid.z exceeds device limit.")); \
-  PADDLE_ENFORCE_LE_UINT32_MAX(params.num_head, "mbmmha grid.x");              \
-  PADDLE_ENFORCE_LE_UINT32_MAX(params.batch_size, "mbmmha grid.y");            \
-  PADDLE_ENFORCE_LE_UINT32_MAX(grid_z, "mbmmha grid.z");                       \
-  dim3 grid(static_cast<uint32_t>(params.num_head),                            \
-            static_cast<uint32_t>(params.batch_size),                          \
-            static_cast<uint32_t>(grid_z));                                    \
-  constexpr auto kernel_fn = multi_block_masked_multihead_attention_kernel<    \
-      T,                                                                       \
-      Dh,                                                                      \
-      Dh_MAX,                                                                  \
-      THDS_PER_KEY,                                                            \
-      THDS_PER_VALUE,                                                          \
-      THDS_PER_BLOCK,                                                          \
-      decltype(load_func),                                                     \
-      decltype(reduce_store_func)>;                                            \
-  if (smem_sz > 0xc000) {                                                      \
-    cudaFuncSetAttribute(                                                      \
-        kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_sz);      \
-  }                                                                            \
-  kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                        \
-      params, load_func, reduce_store_func);                                   \
-                                                                               \
-  dim3 reduce_kernel_grid(static_cast<uint32_t>(params.num_head),              \
-                          static_cast<uint32_t>(params.batch_size),            \
-                          1);                                                  \
-  size_t reduce_smem_sz = get_reduce_smem_size_in_bytes<T>(params);            \
-  constexpr int MBLHA_REDUCE_BLOCK_SIZE = 256;                                 \
-  constexpr auto reduce_kernel_fn =                                            \
-      multi_block_attention_reduce_kernel<T,                                   \
-                                          Dh,                                  \
-                                          MBLHA_REDUCE_BLOCK_SIZE,             \
-                                          decltype(reduce_store_func)>;        \
-  reduce_kernel_fn<<<reduce_kernel_grid,                                       \
-                     MBLHA_REDUCE_BLOCK_SIZE,                                  \
-                     reduce_smem_sz,                                           \
+#define MBMMHA_LAUNCH_KERNEL(T,                                             \
+                             Dh,                                            \
+                             Dh_MAX,                                        \
+                             THDS_PER_KEY,                                  \
+                             THDS_PER_VALUE,                                \
+                             THDS_PER_BLOCK,                                \
+                             stream,                                        \
+                             load_func,                                     \
+                             reduce_store_func)                             \
+  VLOG(1) << "THREADS_PER_VALUE is: " << THREADS_PER_VALUE                  \
+          << ", partition_size: " << params.partition_size;                 \
+  size_t smem_sz = multi_block_attn_smem_size_in_bytes<T>(                  \
+      params, Dh, THDS_PER_VALUE, THDS_PER_BLOCK);                          \
+  dim3 grid(params.num_head,                                                \
+            params.batch_size,                                              \
+            div_up(params.timestep, params.partition_size));                \
+  constexpr auto kernel_fn = multi_block_masked_multihead_attention_kernel< \
+      T,                                                                    \
+      Dh,                                                                   \
+      Dh_MAX,                                                               \
+      THDS_PER_KEY,                                                         \
+      THDS_PER_VALUE,                                                       \
+      THDS_PER_BLOCK,                                                       \
+      decltype(load_func),                                                  \
+      decltype(reduce_store_func)>;                                         \
+  if (smem_sz > 0xc000) {                                                   \
+    cudaFuncSetAttribute(                                                   \
+        kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_sz);   \
+  }                                                                         \
+  kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                     \
+      params, load_func, reduce_store_func);                                \
+                                                                            \
+  dim3 reduce_kernel_grid(params.num_head, params.batch_size, 1);           \
+  size_t reduce_smem_sz = get_reduce_smem_size_in_bytes<T>(params);         \
+  constexpr int MBLHA_REDUCE_BLOCK_SIZE = 256;                              \
+  constexpr auto reduce_kernel_fn =                                         \
+      multi_block_attention_reduce_kernel<T,                                \
+                                          Dh,                               \
+                                          MBLHA_REDUCE_BLOCK_SIZE,          \
+                                          decltype(reduce_store_func)>;     \
+  reduce_kernel_fn<<<reduce_kernel_grid,                                    \
+                     MBLHA_REDUCE_BLOCK_SIZE,                               \
+                     reduce_smem_sz,                                        \
                      stream>>>(params, reduce_store_func);
 
 template <typename T,
@@ -1948,40 +1912,26 @@ void gqa_write_cachekv(
   int grid_size;
   GetNumBlocks(num_elems, &grid_size);
 
-  PADDLE_ENFORCE_LE(grid_size,
-                    dev_ctx.GetCUDAMaxGridDimSize()[0],
-                    common::errors::InvalidArgument(
-                        "gqa_write_cache grid.x exceeds device limit."));
-  PADDLE_ENFORCE_LE(block_sz,
-                    dev_ctx.GetMaxThreadsPerBlock(),
-                    common::errors::InvalidArgument(
-                        "gqa_write_cache block.x exceeds device limit."));
-  PADDLE_ENFORCE_LE_UINT32_MAX(grid_size, "gqa_write_cache grid.x");
-  PADDLE_ENFORCE_LE_UINT32_MAX(block_sz, "gqa_write_cache block.x");
-  const uint32_t grid_size_u32 = static_cast<uint32_t>(grid_size);
-  const uint32_t block_sz_u32 = static_cast<uint32_t>(block_sz);
-  gqa_write_cache_k_kernel<T, x>
-      <<<grid_size_u32, block_sz_u32, 0, dev_ctx.stream()>>>(
-          cache_k,
-          unpadding_k.data<T>(),
-          seq_lens.data<int>(),
-          padding_offsets.data<int>(),
-          gqa_group_size,
-          max_seq_len,
-          seq_len,
-          dim_head,
-          num_elems);
-  gqa_write_cache_v_kernel<T, x>
-      <<<grid_size_u32, block_sz_u32, 0, dev_ctx.stream()>>>(
-          cache_v,
-          unpadding_v.data<T>(),
-          seq_lens.data<int>(),
-          padding_offsets.data<int>(),
-          gqa_group_size,
-          max_seq_len,
-          seq_len,
-          dim_head,
-          num_elems);
+  gqa_write_cache_k_kernel<T, x><<<grid_size, block_sz, 0, dev_ctx.stream()>>>(
+      cache_k,
+      unpadding_k.data<T>(),
+      seq_lens.data<int>(),
+      padding_offsets.data<int>(),
+      gqa_group_size,
+      max_seq_len,
+      seq_len,
+      dim_head,
+      num_elems);
+  gqa_write_cache_v_kernel<T, x><<<grid_size, block_sz, 0, dev_ctx.stream()>>>(
+      cache_v,
+      unpadding_v.data<T>(),
+      seq_lens.data<int>(),
+      padding_offsets.data<int>(),
+      gqa_group_size,
+      max_seq_len,
+      seq_len,
+      dim_head,
+      num_elems);
 }
 
 template <typename T, int VecSize>

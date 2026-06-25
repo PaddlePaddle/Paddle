@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/funcs/math/unpooling.h"
-#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace phi {
@@ -148,14 +147,9 @@ class Unpool2dMaxFunctor<GPUContext, T> {
     const T* input_data = input.data<T>();
     const int* indices_data = indices.data<int>();
     T* output_data = context.template Alloc<T>(output);
-    uint32_t threads = 1024;
+    int threads = 1024;
     int64_t max_grid = context.GetCUDAMaxGridDimSize()[0];
-    int64_t grid_64 =
-        std::min((input.numel() + static_cast<int64_t>(threads) - 1) /
-                     static_cast<int64_t>(threads),
-                 max_grid);
-    PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "KernelUnpool2dMax grid.x");
-    uint32_t grid = static_cast<uint32_t>(grid_64);
+    int grid = std::min((input.numel() + threads - 1) / threads, max_grid);
     KernelUnpool2dMax<T>
         <<<grid, threads, 0, context.stream()>>>(input.numel(),
                                                  input_data,
@@ -211,12 +205,7 @@ class Unpool2dMaxGradFunctor<GPUContext, T> {
     T* input_grad_data = context.template Alloc<T>(input_grad);
     int threads = 1024;
     int64_t max_grid = context.GetCUDAMaxGridDimSize()[0];
-    int64_t grid_64 =
-        std::min((input.numel() + static_cast<int64_t>(threads) - 1) /
-                     static_cast<int64_t>(threads),
-                 max_grid);
-    PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "KernelUnpool2dMaxGrad grid.x");
-    uint32_t grid = static_cast<uint32_t>(grid_64);
+    int grid = std::min((input.numel() + threads - 1) / threads, max_grid);
     KernelUnpool2dMaxGrad<T>
         <<<grid, threads, 0, context.stream()>>>(input.numel(),
                                                  input_data,
@@ -276,12 +265,7 @@ class Unpool3dMaxFunctor<GPUContext, T> {
     T* output_data = context.template Alloc<T>(output);
     int threads = 1024;
     int64_t max_grid = context.GetCUDAMaxGridDimSize()[0];
-    int64_t grid_64 =
-        std::min((input.numel() + static_cast<int64_t>(threads) - 1) /
-                     static_cast<int64_t>(threads),
-                 max_grid);
-    PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "KernelUnpool3dMax grid.x");
-    uint32_t grid = static_cast<uint32_t>(grid_64);
+    int grid = std::min((input.numel() + threads - 1) / threads, max_grid);
     KernelUnpool3dMax<T>
         <<<grid, threads, 0, context.stream()>>>(input.numel(),
                                                  input_data,
@@ -347,12 +331,7 @@ class Unpool3dMaxGradFunctor<GPUContext, T> {
     T* input_grad_data = context.template Alloc<T>(input_grad);
     int threads = 1024;
     int64_t max_grid = context.GetCUDAMaxGridDimSize()[0];
-    int64_t grid_64 =
-        std::min((input.numel() + static_cast<int64_t>(threads) - 1) /
-                     static_cast<int64_t>(threads),
-                 max_grid);
-    PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "KernelUnpool3dMaxGrad grid.x");
-    uint32_t grid = static_cast<uint32_t>(grid_64);
+    int grid = std::min((input.numel() + threads - 1) / threads, max_grid);
     KernelUnpool3dMaxGrad<T>
         <<<grid, threads, 0, context.stream()>>>(input.numel(),
                                                  input_data,
