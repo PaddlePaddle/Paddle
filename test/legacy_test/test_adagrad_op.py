@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import math
+import os
+import tempfile
 import unittest
 
 import numpy as np
@@ -528,6 +530,48 @@ class TestAdagradLrDecay(unittest.TestCase):
             np.testing.assert_allclose(lr1, 0.1, rtol=1e-5)
             np.testing.assert_allclose(lr2, 0.1, rtol=1e-5)
 
+        paddle.enable_static()
+
+
+class TestAdagradSaveLoad(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def _run_epoch(self, input_data, model, optimizer):
+        for step in range(5):
+            output = model(input_data)
+            loss = paddle.mean(output)
+            loss.backward()
+            optimizer.step()
+            optimizer.clear_grad()
+
+    def test_save_load_with_step(self):
+        paddle.disable_static()
+        paddle.seed(42)
+        paddle.set_device(get_device())
+
+        input_data = paddle.randn((5, 5))
+        model = paddle.nn.Linear(5, 5)
+        lr_decay = 0.1
+        base_lr = 0.1
+        eps = 1e-6
+        optimizer = paddle.optim.Adagrad(
+            model.parameters(), base_lr, lr_decay=lr_decay, eps=eps
+        )
+
+        self._run_epoch(input_data, model, optimizer)
+        self.assertTrue("step" in optimizer.state_dict())
+        self.assertEqual(optimizer.state_dict()['step'], 4)
+        optimizer_path = os.path.join(self.temp_dir.name, "opt.pdopt")
+        paddle.save(optimizer.state_dict(), optimizer_path)
+
+        optimizer.set_state_dict(paddle.load(optimizer_path))
+        self.assertEqual(optimizer._step, 4)
+        self._run_epoch(input_data, model, optimizer)
+        self.assertEqual(optimizer._step, 9)
         paddle.enable_static()
 
 
