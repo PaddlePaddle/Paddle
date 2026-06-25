@@ -297,7 +297,7 @@ struct GPUContext::Impl {
   // Hopper (SM 9.x) and Blackwell (SM 10.x): 32 MiB, others: ~8.125 MiB
   static size_t GetCublasWorkspaceSize(int compute_capability) {
     int major = compute_capability / 10;
-    if (major == 9 || major == 10) {
+    if (major >= 9) {
       return 4096 * 8 * 1024;  // 32 MiB
     }
     return 4096 * 1024 * 2 + 16 * 1024 * 8;  // ~8.125 MiB
