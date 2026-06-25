@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 ATEN_OPS_DIR = Path("paddle/phi/api/include/compat/ATen/ops")
 ATEN_TENSOR_BODY = Path("paddle/phi/api/include/compat/ATen/core/TensorBody.h")
 TORCH_INSTALL_HINT = (
-    "pip install torch==2.9.1 --index-url https://download.pytorch.org/whl/cpu"
+    "pip install torch==2.12.1 --index-url https://download.pytorch.org/whl/cpu"
 )
 
 BUILTIN_TYPE_WORDS = {
