@@ -389,10 +389,10 @@ def pad_sequence(
             >>> a = paddle.ones([25, 300])
             >>> b = paddle.ones([22, 300])
             >>> c = paddle.ones([15, 300])
-            >>> padded = paddle.nn.utils.pad_sequence([a, b, c])
+            >>> padded = paddle.nn.utils.rnn.pad_sequence([a, b, c])
             >>> print(padded.shape)
             paddle.Size([25, 3, 300])
-            >>> padded = paddle.nn.utils.pad_sequence([a, b, c], batch_first=True)
+            >>> padded = paddle.nn.utils.rnn.pad_sequence([a, b, c], batch_first=True)
             >>> print(padded.shape)
             paddle.Size([3, 25, 300])
 
@@ -466,9 +466,9 @@ def unpad_sequence(
             >>> b = paddle.ones([22, 300])
             >>> c = paddle.ones([15, 300])
             >>> sequences = [a, b, c]
-            >>> padded = paddle.nn.utils.pad_sequence(sequences)
+            >>> padded = paddle.nn.utils.rnn.pad_sequence(sequences)
             >>> lengths = paddle.to_tensor([v.shape[0] for v in sequences])
-            >>> unpadded = paddle.nn.utils.unpad_sequence(padded, lengths)
+            >>> unpadded = paddle.nn.utils.rnn.unpad_sequence(padded, lengths)
             >>> paddle.allclose(sequences[0], unpadded[0]).item()
             True
             >>> paddle.allclose(sequences[1], unpadded[1]).item()
