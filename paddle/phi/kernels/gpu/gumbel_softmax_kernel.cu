@@ -152,7 +152,6 @@ struct GumbleNoiseGenerator<GPUContext, T> {
     uint64_t seed = seed_offset.first;
     uint64_t offset = seed_offset.second;
     const uint64_t offset_64 = size * offset;
-    PADDLE_ENFORCE_LE_UINT32_MAX(seed, "gumbel_softmax random seed");
     const uint32_t seed_u32 = static_cast<uint32_t>(seed);
 
     thrust::counting_iterator<int64_t> index_sequence_begin(0);
