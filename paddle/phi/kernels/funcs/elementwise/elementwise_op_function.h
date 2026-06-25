@@ -119,13 +119,13 @@ template <typename T,
 static void FusedElemwiseAndActBroadcast1CPU(const T *x,
                                              const T *y,
                                              CompoundFunctor compound_functor,
-                                             int h,
-                                             int w,
+                                             int64_t h,
+                                             int64_t w,
                                              T *out,
                                              T *intermediate_out) {
-  for (int i = 0; i < h; ++i) {
-    for (int j = 0; j < w; ++j) {
-      int64_t offset = static_cast<int64_t>(i) * w + j;
+  for (int64_t i = 0; i < h; ++i) {
+    for (int64_t j = 0; j < w; ++j) {
+      int64_t offset = i * w + j;
 
       T y_val = BcastY ? y[j] : y[offset];
       T x_val = BcastY ? x[offset] : x[j];
@@ -213,16 +213,16 @@ template <typename T,
 static __global__ void FusedElemwiseAndActBroadcast1CUDAKernel(
     const T *x,
     const T *y,
-    int h,
-    int w,
+    int64_t h,
+    int64_t w,
     CompoundFunctor compound_functor,
     T *out,
     T *intermediate_out) {
-  int i = blockIdx.x;
-  int j = threadIdx.x;
+  int64_t i = blockIdx.x;
+  int64_t j = threadIdx.x;
 
   while (j < w) {
-    int64_t offset = static_cast<int64_t>(i) * w + j;
+    int64_t offset = i * w + j;
 
     T y_val = BcastY ? y[j] : y[offset];
     T x_val = BcastY ? x[offset] : x[j];
@@ -423,8 +423,8 @@ void FusedElemwiseAndActComputeWithBroadcast(const DeviceContext &dev_ctx,
   funcs::GetMidDims(
       x_dim, y_dim, axis, &pre, &n, &post, &is_run_common_broadcast);
   if (post == 1) {
-    int h = pre;
-    int w = n;
+    int64_t h = static_cast<int64_t>(pre);
+    int64_t w = static_cast<int64_t>(n);
     if (dev_ctx.GetPlace().GetType() == AllocationType::GPU) {
 #if defined(__NVCC__) || defined(__HIPCC__)
       FusedElemwiseAndActBroadcast1CUDA<T,
@@ -603,8 +603,8 @@ static void FusedElemwiseAndActGradBroadcast1CPU(
     const T *intermediate_out,
     const T *out,
     const T *dout,
-    int h,
-    int w,
+    int64_t h,
+    int64_t w,
     DX_OP dx_op,
     DY_OP dy_op,
     DIntermediate_OP dintermediate_op,
@@ -613,9 +613,9 @@ static void FusedElemwiseAndActGradBroadcast1CPU(
     T *d_intermediate) {
   int64_t tmp_out_idx, x_idx, y_idx;
   T zero = static_cast<T>(0);
-  for (int i = 0; i < h; ++i) {
-    for (int j = 0; j < w; ++j) {
-      int64_t offset = static_cast<int64_t>(i) * w + j;
+  for (int64_t i = 0; i < h; ++i) {
+    for (int64_t j = 0; j < w; ++j) {
+      int64_t offset = i * w + j;
 
       tmp_out_idx = BcastY ? j : offset;
       y_idx = BcastY ? j : offset;
@@ -803,8 +803,8 @@ static __global__ void FusedElemwiseAndActGradBroadcast1CUDAKernel(
     const T *intermediate_out,
     const T *out,
     const T *dout,
-    int h,
-    int w,
+    int64_t h,
+    int64_t w,
     DX_OP dx_op,
     DY_OP dy_op,
     DIntermediate_OP dintermediate_op,
@@ -937,8 +937,8 @@ static void FusedElemwiseAndActGradBroadcast1CUDA(
     const T *intermediate_out,
     const T *out,
     const T *dout,
-    int h,
-    int w,
+    int64_t h,
+    int64_t w,
     DX_OP dx_op,
     DY_OP dy_op,
     DIntermediate_OP dintermediate_op,
@@ -950,8 +950,11 @@ static void FusedElemwiseAndActGradBroadcast1CUDA(
   dim3 blocks(BLOCK_X, BLOCK_Y);
   int max_gpu_threads = dev_ctx.GetMaxPhysicalThreadCount();
   int max_blocks = std::max(max_gpu_threads / (BLOCK_X * BLOCK_Y), 1);
-  int theory_block = (w + BLOCK_X - 1) / BLOCK_X;
-  dim3 grids(std::min(theory_block, max_blocks));
+  int64_t theory_block = (w + BLOCK_X - 1) / BLOCK_X;
+  int64_t grid_size = std::min(theory_block, static_cast<int64_t>(max_blocks));
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_size,
+                               "fused elemwise activation grad grid.x");
+  dim3 grids(static_cast<uint32_t>(grid_size));
 
   FusedElemwiseAndActGradBroadcast1CUDAKernel<T,
                                               DX_OP,
@@ -1192,8 +1195,8 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
   if (x->IsInitialized()) x_data = x->data<T>();
   if (y->IsInitialized()) y_data = y->data<T>();
   if (post == 1) {
-    int h = pre;
-    int w = n;
+    int64_t h = static_cast<int64_t>(pre);
+    int64_t w = static_cast<int64_t>(n);
 
     if (dev_ctx.GetPlace().GetType() == AllocationType::GPU) {
 #if defined(__NVCC__) || defined(__HIPCC__)
