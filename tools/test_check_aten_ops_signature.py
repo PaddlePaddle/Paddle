@@ -12,17 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 
 from check_aten_ops_signature import (
+    changed_aten_ops_headers,
     discover_torch_include_dir,
     main,
     parse_paddle_header,
     parse_paddle_tensor_body,
     run_check,
+    tensor_body_changed,
 )
 
 
@@ -333,7 +336,7 @@ class TestAtenOpsSignatureCheck(unittest.TestCase):
             namespace at {
             class Tensor {
              public:
-              at::Tensor foo(int64_t dim=0) const;
+              at::Tensor view(at::ScalarType dtype) const;
             };
             }  // namespace at
             """,
@@ -356,8 +359,32 @@ class TestAtenOpsSignatureCheck(unittest.TestCase):
             """,
         )
         errors = self.check(header)
-        self.assertEqual(len(errors), 1)
-        self.assertIn("signature does not match", errors[0].message)
+        self.assertTrue(errors)
+        self.assertTrue(
+            any("signature does not match" in error.message for error in errors)
+        )
+
+    def test_inline_member_declaration_is_collected_from_tensor_body(self):
+        self.write_paddle_tensor_body(
+            """
+            namespace at {
+            class Tensor {
+             public:
+              Tensor std(int dim) const { return Tensor(); }
+            };
+            }  // namespace at
+            """,
+        )
+        declarations = parse_paddle_tensor_body(
+            self.paddle_root
+            / "paddle/phi/api/include/compat/ATen/core/TensorBody.h"
+        )
+        self.assertTrue(
+            any(
+                signature.canonical == "Tensor Tensor::std(int)const"
+                for signature in declarations.values()
+            )
+        )
 
     def test_member_function_signature_match_from_tensor_body_declaration(self):
         header = self.write_paddle_op(
@@ -454,8 +481,10 @@ class TestAtenOpsSignatureCheck(unittest.TestCase):
             """,
         )
         errors = self.check(header)
-        self.assertEqual(len(errors), 1)
-        self.assertIn("signature does not match", errors[0].message)
+        self.assertTrue(errors)
+        self.assertTrue(
+            any("signature does not match" in error.message for error in errors)
+        )
 
     def test_free_function_string_default_value_mismatch_fails(self):
         header = self.write_paddle_op(
@@ -479,8 +508,102 @@ class TestAtenOpsSignatureCheck(unittest.TestCase):
             """,
         )
         errors = self.check(header)
-        self.assertEqual(len(errors), 1)
-        self.assertIn("signature does not match", errors[0].message)
+        self.assertTrue(errors)
+        self.assertTrue(
+            any("signature does not match" in error.message for error in errors)
+        )
+
+    def test_tensor_body_inline_member_mismatch_fails(self):
+        header = self.write_paddle_op(
+            "foo.h",
+            """
+            namespace at {
+            inline at::Tensor foo(const at::Tensor& self) {
+              return self;
+            }
+            }  // namespace at
+            """,
+        )
+        self.write_paddle_tensor_body(
+            """
+            namespace at {
+            class Tensor {
+             public:
+              at::Tensor foo(int64_t dim = 1) const {
+                return at::Tensor();
+              }
+            };
+            }  // namespace at
+            """,
+        )
+        self.write_torch(
+            "ATen/core/TensorBody.h",
+            """
+            namespace at {
+            class Tensor {
+             public:
+              at::Tensor foo(int64_t dim = 0) const;
+            };
+            }  // namespace at
+            """,
+        )
+        self.write_torch(
+            "ATen/ops/foo.h",
+            """
+            namespace at {
+            inline at::Tensor foo(const at::Tensor& self) {
+              return self;
+            }
+            }  // namespace at
+            """,
+        )
+        errors = self.check(header)
+        self.assertTrue(
+            any(
+                "TensorBody member signature" in error.message
+                for error in errors
+            )
+        )
+
+    def test_deprecated_attribute_and_macro_are_equivalent(self):
+        header = self.write_paddle_op("packed_accessor.h", "namespace at {}")
+        self.write_paddle_tensor_body(
+            """
+            namespace at {
+            class Tensor {
+             public:
+              template <typename T,
+                        size_t N,
+                        template <typename U> class PtrTraits = DefaultPtrTraits,
+                        typename index_t = int64_t>
+              [[deprecated("packed_accessor is deprecated,use packed_accessor32 "
+                           "or packed_accessor64 instead")]]
+              GenericPackedTensorAccessor<T, N, PtrTraits, index_t>
+              packed_accessor() && = delete;
+            };
+            }  // namespace at
+            """,
+        )
+        self.write_torch(
+            "ATen/core/TensorBody.h",
+            """
+            namespace at {
+            class Tensor {
+             public:
+              template <typename T,
+                        size_t N,
+                        template <typename U> class PtrTraits = DefaultPtrTraits,
+                        typename index_t = int64_t>
+              C10_DEPRECATED_MESSAGE(
+                  "packed_accessor is deprecated,use packed_accessor32 or "
+                  "packed_accessor64 instead")
+              GenericPackedTensorAccessor<T, N, PtrTraits, index_t>
+              packed_accessor() && = delete;
+            };
+            }  // namespace at
+            """,
+        )
+        self.assertEqual(self.check(header), [])
 
     def test_member_default_value_mismatch_fails(self):
         header = self.write_paddle_op(
@@ -515,8 +638,10 @@ class TestAtenOpsSignatureCheck(unittest.TestCase):
             """,
         )
         errors = self.check(header)
-        self.assertEqual(len(errors), 1)
-        self.assertIn("signature does not match", errors[0].message)
+        self.assertTrue(errors)
+        self.assertTrue(
+            any("signature does not match" in error.message for error in errors)
+        )
 
     def test_member_return_type_mismatch_fails(self):
         header = self.write_paddle_op(
@@ -551,8 +676,10 @@ class TestAtenOpsSignatureCheck(unittest.TestCase):
             """,
         )
         errors = self.check(header)
-        self.assertEqual(len(errors), 1)
-        self.assertIn("signature does not match", errors[0].message)
+        self.assertTrue(errors)
+        self.assertTrue(
+            any("signature does not match" in error.message for error in errors)
+        )
 
     def test_missing_torch_function_fails(self):
         header = self.write_paddle_op(
@@ -617,11 +744,87 @@ class TestAtenOpsSignatureCheck(unittest.TestCase):
                 discover_torch_include_dir(None), self.torch_include
             )
 
-    def test_no_added_headers_skips_torch_discovery(self):
+    def test_changed_aten_ops_headers_includes_modified_headers(self):
+        ops_dir = self.paddle_root / "paddle/phi/api/include/compat/ATen/ops"
+        ops_dir.mkdir(parents=True, exist_ok=True)
+        foo = ops_dir / "foo.h"
+        bar = ops_dir / "bar.h"
+        foo.write_text("namespace at {}\n")
+        subprocess.run(["git", "init"], cwd=self.paddle_root, check=True)
+        subprocess.run(
+            ["git", "config", "user.email", "test@example.com"],
+            cwd=self.paddle_root,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "test"],
+            cwd=self.paddle_root,
+            check=True,
+        )
+        subprocess.run(["git", "add", "."], cwd=self.paddle_root, check=True)
+        subprocess.run(
+            ["git", "commit", "-m", "base"],
+            cwd=self.paddle_root,
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
+        subprocess.run(
+            ["git", "branch", "develop"], cwd=self.paddle_root, check=True
+        )
+        foo.write_text(
+            "namespace at { inline Tensor foo() { return Tensor(); } }\n"
+        )
+        bar.write_text("namespace at {}\n")
+        subprocess.run(
+            ["git", "add", str(foo), str(bar)],
+            cwd=self.paddle_root,
+            check=True,
+        )
+
+        headers = changed_aten_ops_headers(self.paddle_root, "develop")
+
+        self.assertEqual(set(headers), {foo, bar})
+
+    def test_tensor_body_changed_detects_modified_tensor_body(self):
+        tensor_body = self.write_paddle_tensor_body(
+            "namespace at { class Tensor {}; }\n"
+        )
+        subprocess.run(["git", "init"], cwd=self.paddle_root, check=True)
+        subprocess.run(
+            ["git", "config", "user.email", "test@example.com"],
+            cwd=self.paddle_root,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "test"],
+            cwd=self.paddle_root,
+            check=True,
+        )
+        subprocess.run(["git", "add", "."], cwd=self.paddle_root, check=True)
+        subprocess.run(
+            ["git", "commit", "-m", "base"],
+            cwd=self.paddle_root,
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
+        subprocess.run(
+            ["git", "branch", "develop"], cwd=self.paddle_root, check=True
+        )
+        tensor_body.write_text(
+            "namespace at { class Tensor { public: Tensor foo() const; }; }\n"
+        )
+
+        self.assertTrue(tensor_body_changed(self.paddle_root, "develop"))
+
+    def test_no_changed_signature_inputs_skips_torch_discovery(self):
         with (
             mock.patch(
-                "check_aten_ops_signature.added_aten_ops_headers",
+                "check_aten_ops_signature.changed_aten_ops_headers",
                 return_value=[],
+            ),
+            mock.patch(
+                "check_aten_ops_signature.tensor_body_changed",
+                return_value=False,
             ),
             mock.patch(
                 "check_aten_ops_signature.discover_torch_include_dir",

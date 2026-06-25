@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
 ATEN_OPS_DIR = Path("paddle/phi/api/include/compat/ATen/ops")
+ATEN_TENSOR_BODY = Path("paddle/phi/api/include/compat/ATen/core/TensorBody.h")
 TORCH_INSTALL_HINT = (
     "pip install torch==2.9.1 --index-url https://download.pytorch.org/whl/cpu"
 )
@@ -185,6 +186,8 @@ def find_matching(text: str, open_pos: int, open_ch: str, close_ch: str) -> int:
 
 def normalize_punctuation(text: str) -> str:
     text = re.sub(r"\bat::", "", text)
+    text = re.sub(r"\bc10::", "", text)
+    text = re.sub(r"\bcaffe2::", "", text)
     text = text.replace("::std::", "std::")
     text = re.sub(r"\s+", " ", text.strip())
     text = re.sub(r"\s*::\s*", "::", text)
@@ -391,7 +394,10 @@ def parse_cpp_signature(
     templates, text = strip_leading_templates(text)
     export_macro_pattern = "|".join(re.escape(macro) for macro in EXPORT_MACROS)
     text = re.sub(rf"\b(?:{export_macro_pattern})\b\s*", "", text)
+    text = strip_leading_signature_annotations(text)
     text = re.sub(r"\binline\s+", "", text).strip()
+    if class_member and re.match(r"(?:explicit\s+)?~?Tensor\s*\(", text):
+        return None
     try:
         open_pos = find_function_paren(text)
         close_pos = find_matching(text, open_pos, "(", ")")
@@ -438,6 +444,28 @@ def parse_cpp_signature(
         name=name,
         is_member=is_member,
     )
+
+
+def strip_leading_signature_annotations(text: str) -> str:
+    rest = text.strip()
+    while True:
+        original = rest
+        while rest.startswith("[["):
+            end = rest.find("]]")
+            if end < 0:
+                break
+            rest = rest[end + 2 :].lstrip()
+        for macro in ("C10_DEPRECATED_MESSAGE", "C10_DEPRECATED"):
+            macro_match = re.match(rf"{macro}\b", rest)
+            if not macro_match:
+                continue
+            rest = rest[macro_match.end() :].lstrip()
+            if rest.startswith("("):
+                close_pos = find_matching(rest, 0, "(", ")")
+                rest = rest[close_pos + 1 :].lstrip()
+            break
+        if rest == original:
+            return rest
 
 
 def namespace_at_blocks(text: str) -> list[str]:
@@ -575,10 +603,10 @@ def signature_without_templates(signature: CppSignature) -> CppSignature:
     )
 
 
-def find_tensor_class_body(text: str) -> str | None:
+def find_tensor_class_body(text: str, class_name: str = "Tensor") -> str | None:
     clean = strip_comments_and_literals(text)
     match = re.search(
-        r"\bclass\s+(?:[A-Za-z_]\w*\s+)*Tensor\b[^;{]*\{",
+        rf"\bclass\s+(?:[A-Za-z_]\w*\s+)*{re.escape(class_name)}\b[^;{{]*\{{",
         clean,
     )
     if not match:
@@ -589,9 +617,11 @@ def find_tensor_class_body(text: str) -> str | None:
 
 
 def tensor_class_declarations(
-    text: str, include_member_defaults: bool = False
+    text: str,
+    include_member_defaults: bool = False,
+    class_name: str = "Tensor",
 ) -> list[CppSignature]:
-    body = find_tensor_class_body(text)
+    body = find_tensor_class_body(text, class_name)
     if body is None:
         return []
     signatures: list[CppSignature] = []
@@ -636,6 +666,14 @@ def tensor_class_declarations(
             bracket -= 1
         elif ch == "{":
             if angle == 0 and paren == 0 and bracket == 0 and brace == 0:
+                candidate = body[start:pos]
+                signature = parse_cpp_signature(
+                    candidate,
+                    class_member=True,
+                    include_member_defaults=include_member_defaults,
+                )
+                if signature is not None:
+                    signatures.append(signature)
                 end = find_matching(body, pos, "{", "}")
                 pos = end + 1
                 start = pos
@@ -673,6 +711,15 @@ def parse_torch_tensor_body(path: Path) -> list[CppSignature]:
                 block, include_member_defaults=True
             )
             if sig.is_member
+        )
+    tensor_base = path.with_name("TensorBase.h")
+    if tensor_base.is_file():
+        signatures.extend(
+            tensor_class_declarations(
+                tensor_base.read_text(),
+                include_member_defaults=True,
+                class_name="TensorBase",
+            )
         )
     deduped: dict[str, CppSignature] = {}
     for sig in signatures:
@@ -753,16 +800,22 @@ def choose_base_ref(paddle_root: Path, branch: str) -> str:
 
 
 def added_aten_ops_headers(paddle_root: Path, branch: str) -> list[Path]:
+    return changed_aten_ops_headers(paddle_root, branch)
+
+
+def changed_paths(
+    paddle_root: Path, branch: str, paths: Iterable[Path | str]
+) -> list[Path]:
     base_ref = choose_base_ref(paddle_root, branch)
     result = subprocess.run(
         [
             "git",
             "diff",
             "--name-only",
-            "--diff-filter=A",
+            "--diff-filter=AM",
             base_ref,
             "--",
-            str(ATEN_OPS_DIR),
+            *(str(path) for path in paths),
         ],
         cwd=paddle_root,
         text=True,
@@ -771,11 +824,22 @@ def added_aten_ops_headers(paddle_root: Path, branch: str) -> list[Path]:
     )
     if result.returncode != 0:
         raise RuntimeError(result.stderr.strip())
+    return [paddle_root / line.strip() for line in result.stdout.splitlines()]
+
+
+def changed_aten_ops_headers(paddle_root: Path, branch: str) -> list[Path]:
     return [
-        paddle_root / line.strip()
-        for line in result.stdout.splitlines()
-        if line.strip().endswith(".h")
+        path
+        for path in changed_paths(paddle_root, branch, [ATEN_OPS_DIR])
+        if path.suffix == ".h"
     ]
+
+
+def tensor_body_changed(paddle_root: Path, branch: str) -> bool:
+    return any(
+        path == paddle_root / ATEN_TENSOR_BODY
+        for path in changed_paths(paddle_root, branch, [ATEN_TENSOR_BODY])
+    )
 
 
 def all_aten_ops_headers(paddle_root: Path) -> list[Path]:
@@ -852,6 +916,41 @@ def check_header(
     return errors
 
 
+def check_tensor_body_members(
+    paddle_root: Path,
+    torch_include_dir: Path,
+    torch_member_signatures: list[CppSignature],
+    paddle_member_signatures: dict[str, CppSignature],
+) -> list[CheckError]:
+    tensor_body = paddle_root / ATEN_TENSOR_BODY
+    torch_header = torch_include_dir / "ATen/core/TensorBody.h"
+    torch_canonicals = {
+        signature.canonical for signature in torch_member_signatures
+    }
+    errors: list[CheckError] = []
+    for signature in paddle_member_signatures.values():
+        if is_paddle_internal_member(signature):
+            continue
+        if signature.canonical in torch_canonicals:
+            continue
+        errors.append(
+            CheckError(
+                header=tensor_body,
+                message="TensorBody member signature does not match libtorch",
+                signature=signature,
+                torch_header=torch_header,
+                candidates=same_name_candidates(
+                    torch_member_signatures, signature
+                ),
+            )
+        )
+    return errors
+
+
+def is_paddle_internal_member(signature: CppSignature) -> bool:
+    return signature.name.startswith("_PD_") or signature.name.endswith("_impl")
+
+
 def format_errors(errors: list[CheckError], paddle_root: Path) -> str:
     lines = ["ATen ops signature check failed:"]
     for idx, error in enumerate(errors, start=1):
@@ -878,11 +977,14 @@ def run_check(
 ) -> list[CheckError]:
     tensor_body = torch_include_dir / "ATen/core/TensorBody.h"
     torch_member_signatures = parse_torch_tensor_body(tensor_body)
-    paddle_tensor_body = (
-        paddle_root / "paddle/phi/api/include/compat/ATen/core/TensorBody.h"
-    )
+    paddle_tensor_body = paddle_root / ATEN_TENSOR_BODY
     paddle_member_signatures = parse_paddle_tensor_body(paddle_tensor_body)
-    errors: list[CheckError] = []
+    errors: list[CheckError] = check_tensor_body_members(
+        paddle_root=paddle_root,
+        torch_include_dir=torch_include_dir,
+        torch_member_signatures=torch_member_signatures,
+        paddle_member_signatures=paddle_member_signatures,
+    )
     for header in headers:
         errors.extend(
             check_header(
@@ -899,7 +1001,7 @@ def run_check(
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Check newly added Paddle compat ATen ops signatures against "
+            "Check changed Paddle compat ATen signatures against "
             "libtorch headers."
         )
     )
@@ -916,12 +1018,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--branch",
         default=os.environ.get("BRANCH", "develop"),
-        help="Base branch name used when collecting newly added files.",
+        help="Base branch name used when collecting changed files.",
     )
     parser.add_argument(
         "--all",
         action="store_true",
-        help="Check all compat ATen ops headers instead of only added files.",
+        help=(
+            "Check all compat ATen ops headers and TensorBody members instead "
+            "of only changed files."
+        ),
     )
     return parser.parse_args()
 
@@ -933,10 +1038,16 @@ def main() -> int:
         headers = (
             all_aten_ops_headers(paddle_root)
             if args.all
-            else added_aten_ops_headers(paddle_root, args.branch)
+            else changed_aten_ops_headers(paddle_root, args.branch)
         )
-        if not headers:
-            print("No newly added compat ATen ops headers found; skip check.")
+        check_tensor_body = args.all or tensor_body_changed(
+            paddle_root, args.branch
+        )
+        if not headers and not check_tensor_body:
+            print(
+                "No changed compat ATen ops headers or TensorBody.h found; "
+                "skip check."
+            )
             return 0
         torch_include_dir = discover_torch_include_dir(args.torch_include_dir)
         errors = run_check(paddle_root, torch_include_dir, headers)

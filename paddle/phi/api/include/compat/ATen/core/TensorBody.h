@@ -38,6 +38,7 @@
 
 #include <limits>
 #include <optional>
+#include <type_traits>
 #include <utility>
 #include <vector>
 #include "paddle/common/ddim.h"
@@ -124,7 +125,7 @@ class Tensor : public TensorBase {
   }
 
   template <typename T>
-  void* data() const {
+  T* data() const {
     return data_ptr<T>();
   }
 
@@ -643,7 +644,9 @@ class Tensor : public TensorBase {
     return static_cast<int64_t>(SizeOf(tensor_.dtype()));
   }
 
-  inline Tensor clone() const {
+  inline Tensor clone(
+      ::std::optional<at::MemoryFormat> memory_format = ::std::nullopt) const {
+    (void)memory_format;
     PaddleTensor cloned_tensor = paddle::experimental::assign(tensor_);
     return Tensor(cloned_tensor);
   }
@@ -715,14 +718,14 @@ class Tensor : public TensorBase {
 
   Tensor var(int dim) const { return var(at::IntArrayRef{dim}, true, false); }
 
-  Tensor var(bool unbiased = true) const {
+  Tensor var(bool unbiased) const {
     std::vector<int64_t> empty_dims;
     double correction = unbiased ? 1.0 : 0.0;
     return var_impl(empty_dims, correction, false);
   }
 
   Tensor var(at::OptionalIntArrayRef dim,
-             bool unbiased = true,
+             bool unbiased,
              bool keepdim = false) const {
     // Convert unbiased to correction: unbiased=True means correction=1
     double correction = unbiased ? 1.0 : 0.0;
@@ -733,8 +736,8 @@ class Tensor : public TensorBase {
     return var_impl(dims_vec, correction, keepdim);
   }
 
-  Tensor var(at::OptionalIntArrayRef dim,
-             const ::std::optional<at::Scalar>& correction,
+  Tensor var(at::OptionalIntArrayRef dim = ::std::nullopt,
+             const ::std::optional<at::Scalar>& correction = ::std::nullopt,
              bool keepdim = false) const {
     double correction_value = 1.0;
     if (correction.has_value()) {
@@ -838,10 +841,26 @@ class Tensor : public TensorBase {
                                                                  index_t>
   packed_accessor() && = delete;
 
+  template <typename T>
+  using hook_return_void_t =
+      std::enable_if_t<std::is_void_v<std::invoke_result_t<T&, Tensor>>,
+                       unsigned>;
+  template <typename T>
+  using hook_return_var_t =
+      std::enable_if_t<std::is_same_v<std::invoke_result_t<T&, Tensor>, Tensor>,
+                       unsigned>;
+
   // register_hook - throws exception for Paddle compatibility
   // Paddle does not support gradient hooks
   template <typename T>
-  unsigned register_hook(T&&) const {
+  hook_return_void_t<T> register_hook(T&&) const {
+    throw std::runtime_error(
+        "register_hook is not supported in Paddle, this is an ATen "
+        "compatibility API that is not available");
+  }
+
+  template <typename T>
+  hook_return_var_t<T> register_hook(T&&) const {
     throw std::runtime_error(
         "register_hook is not supported in Paddle, this is an ATen "
         "compatibility API that is not available");

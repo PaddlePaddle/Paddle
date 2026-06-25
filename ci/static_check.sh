@@ -193,11 +193,13 @@ if [ -z "${aten_ops_signature_base_ref}" ]; then
     exit 1
 fi
 
-aten_ops_signature_headers=$(
-    git -C "${PADDLE_ROOT}" diff --name-only --diff-filter=A "${aten_ops_signature_base_ref}" -- \
-        paddle/phi/api/include/compat/ATen/ops | grep -E '\.h$' || true
+aten_ops_signature_inputs=$(
+    git -C "${PADDLE_ROOT}" diff --name-only --diff-filter=AM "${aten_ops_signature_base_ref}" -- \
+        paddle/phi/api/include/compat/ATen/ops \
+        paddle/phi/api/include/compat/ATen/core/TensorBody.h |
+        grep -E '(^paddle/phi/api/include/compat/ATen/ops/.*\.h$|^paddle/phi/api/include/compat/ATen/core/TensorBody\.h$)' || true
 )
-if [ -n "${aten_ops_signature_headers}" ]; then
+if [ -n "${aten_ops_signature_inputs}" ]; then
     aten_ops_signature_torch_target=$(mktemp -d)
     pip install --target "${aten_ops_signature_torch_target}" \
         torch==2.9.1 --index-url https://download.pytorch.org/whl/cpu 1>nul
@@ -215,7 +217,7 @@ if [ -n "${aten_ops_signature_headers}" ]; then
         exit $torch_cleanup_error
     fi
 else
-    echo "No newly added compat ATen ops headers found; skip ATen ops signature check."
+    echo "No changed compat ATen ops headers or TensorBody.h found; skip ATen ops signature check."
 fi
 
 exec_samplecode_checking
