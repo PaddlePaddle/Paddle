@@ -27,9 +27,10 @@
 static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaximumNumBlocks = 4096;
 
-static inline int NumBlocks(const int N) {
-  return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
-                  kNumMaximumNumBlocks);
+static inline int NumBlocks(const int64_t N) {
+  const int64_t blocks = (N + kNumCUDAThreads - 1) / kNumCUDAThreads;
+  return static_cast<int>(
+      std::min(blocks, static_cast<int64_t>(kNumMaximumNumBlocks)));
 }
 
 namespace phi {
@@ -176,8 +177,8 @@ void FusedDropoutAddGradKernel(const Context& dev_ctx,
 
   const auto* out_grad_data = out_grad.data<T>();
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-  int blocks = NumBlocks(numel);
-  int threads = kNumCUDAThreads;
+  uint32_t blocks = NumBlocks(numel);
+  uint32_t threads = kNumCUDAThreads;
 
   if (is_test) {
     MT factor = static_cast<MT>(1.0f - dropout_rate);
@@ -197,6 +198,16 @@ void FusedDropoutAddGradKernel(const Context& dev_ctx,
     auto random_prop = GetRandomCudaProp(numel, dev_ctx);
     size_t grid_size_64 = random_prop[0];
     size_t block_size_64 = random_prop[1];
+    PADDLE_ENFORCE_LE(
+        grid_size_64,
+        dev_ctx.GetCUDAMaxGridDimSize()[0],
+        common::errors::InvalidArgument(
+            "fused_dropout_add_grad grid.x exceeds device limit."));
+    PADDLE_ENFORCE_LE(
+        block_size_64,
+        dev_ctx.GetMaxThreadsPerBlock(),
+        common::errors::InvalidArgument(
+            "fused_dropout_add_grad block.x exceeds device limit."));
     PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_64, "fused_dropout_add_grad grid.x");
     PADDLE_ENFORCE_LE_UINT32_MAX(block_size_64,
                                  "fused_dropout_add_grad block.x");

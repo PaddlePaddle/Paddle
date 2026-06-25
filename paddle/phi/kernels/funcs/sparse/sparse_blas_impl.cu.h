@@ -21,6 +21,7 @@
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #endif
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -591,7 +592,14 @@ void SparseBlas<GPUContext>::SPGEMM(bool transa,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx_.stream())));
     void* tmp_buffer_ptr = tmp_buffer->ptr();
 
-    GetCsrBatchNnz<T><<<1, batch_size, 0, dev_ctx_.stream()>>>(
+    PADDLE_ENFORCE_LE(batch_size,
+                      dev_ctx_.GetMaxThreadsPerBlock(),
+                      common::errors::InvalidArgument(
+                          "cusparse spgemm block.x exceeds device limit."));
+    PADDLE_ENFORCE_LE_UINT32_MAX(batch_size, "cusparse spgemm block.x");
+    const uint32_t block = static_cast<uint32_t>(batch_size);
+
+    GetCsrBatchNnz<T><<<1, block, 0, dev_ctx_.stream()>>>(
         a_crows_data, a_rows, static_cast<int32_t*>(tmp_buffer_ptr));
 #ifdef PADDLE_WITH_CUDA
     PADDLE_ENFORCE_EQ(
@@ -610,7 +618,7 @@ void SparseBlas<GPUContext>::SPGEMM(bool transa,
                                        gpuMemcpyDeviceToHost,
                                        dev_ctx_.stream());
 
-    GetCsrBatchNnz<T><<<1, batch_size, 0, dev_ctx_.stream()>>>(
+    GetCsrBatchNnz<T><<<1, block, 0, dev_ctx_.stream()>>>(
         b_crows_data, b_rows, static_cast<int32_t*>(tmp_buffer_ptr));
     phi::backends::gpu::GpuMemcpyAsync(b_batch_nnz_vec.data(),
                                        tmp_buffer_ptr,

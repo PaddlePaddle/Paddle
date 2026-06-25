@@ -428,9 +428,15 @@ void ComputeDDoutWithoutBroadcast(const GPUContext& dev_ctx UNUSED,
   auto* ddout_data = ddout->data<T>();
   int block = 512;
   int64_t grid = (out_numel + block - 1) / block;
+  uint32_t max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  PADDLE_ENFORCE_LE(grid,
+                    max_grid_dim,
+                    common::errors::InvalidArgument(
+                        "elementwise ddout grid.x exceeds device limit."));
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid, "elementwise ddout grid.x");
   auto stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
   ComputeDDoutWithoutBroadcastGPUKernel<T, DDout_OP, T>
-      <<<grid, block, 0, stream>>>(
+      <<<static_cast<uint32_t>(grid), block, 0, stream>>>(
           ddx_data, ddy_data, y_data, out_data, ddout_data, out_numel, dout_op);
 }
 
@@ -496,19 +502,26 @@ void ComputeDDoutWithBroadcast(const GPUContext& dev_ctx UNUSED,
 
   int block = 512;
   int64_t grid = (out_numel + block - 1) / block;
+  uint32_t max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  PADDLE_ENFORCE_LE(grid,
+                    max_grid_dim,
+                    common::errors::InvalidArgument(
+                        "elementwise ddout grid.x exceeds device limit."));
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid, "elementwise ddout grid.x");
   auto stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
   ComputeDDoutWithBroadcastGPUKernel<T, DDout_OP, T>
-      <<<grid, block, 0, stream>>>(ddx_data,
-                                   ddy_data,
-                                   y_data,
-                                   out_data,
-                                   ddout_data,
-                                   out_numel,
-                                   x_dims_array_gpu_data,
-                                   y_dims_array_gpu_data,
-                                   out_dims_array_gpu_data,
-                                   max_dim,
-                                   dout_op);
+      <<<static_cast<uint32_t>(grid), block, 0, stream>>>(
+          ddx_data,
+          ddy_data,
+          y_data,
+          out_data,
+          ddout_data,
+          out_numel,
+          x_dims_array_gpu_data,
+          y_dims_array_gpu_data,
+          out_dims_array_gpu_data,
+          max_dim,
+          dout_op);
 }
 
 #endif
