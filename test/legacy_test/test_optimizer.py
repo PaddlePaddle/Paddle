@@ -275,6 +275,56 @@ class TestOptimizerAPI(unittest.TestCase):
                 optimizer.step()
             np.testing.assert_allclose(x.numpy(), [1.0, 4.0], atol=0.1)
 
+    def test_maximize_param_group(self):
+        paddle.seed(100)
+        np.random.seed(100)
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = paddle.to_tensor(value)
+        linear = paddle.nn.Linear(13, 5)
+        optimizer_list = [
+            paddle.optimizer.SGD(
+                learning_rate=0.1,
+                parameters=[
+                    {
+                        'params': linear.parameters(),
+                        'learning_rate': 0.12,
+                    }
+                ],
+                maximize=True,
+            ),
+            paddle.optimizer.AdamW(
+                learning_rate=0.1,
+                parameters=[
+                    {
+                        'params': linear.parameters(),
+                        'learning_rate': 0.13,
+                    }
+                ],
+                maximize=True,
+            ),
+            paddle.optimizer.Adagrad(
+                learning_rate=0.1,
+                parameters=[
+                    {
+                        'params': linear.parameters(),
+                        'learning_rate': 0.14,
+                    }
+                ],
+                maximize=True,
+            ),
+        ]
+        for optimizer in optimizer_list:
+            losses = np.array([])
+            for epoch in range(5):
+                optimizer.clear_grad()
+                out = linear(a)
+                loss = paddle.sum(out)
+                losses = np.append(losses, loss.numpy())
+                loss.backward()
+                optimizer.step()
+            self.assertTrue(np.all(np.diff(losses) > 0))
+
     def test_maximize_false_dygraph(self):
         paddle.seed(100)
         np.random.seed(100)
