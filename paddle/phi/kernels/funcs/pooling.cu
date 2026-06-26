@@ -568,6 +568,7 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
   const int padding_width = paddings[1];
   int64_t nthreads = static_cast<int64_t>(batch_size) * output_channels *
                      output_height * output_width;
+  PADDLE_ENFORCE_LE_INT_MAX(nthreads, "pool2d nthreads");
   auto pool_divmods =
       FastDivModForPooling<int>(input_channels, output_width, output_height);
   if (adaptive) {
@@ -594,7 +595,7 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
               std::min(batch_size, static_cast<int>(max_grid_dim[1])),
               1);
     AdaptiveKernelPool2D<PoolProcess, T, int>
-        <<<grid, threads, 0, stream>>>(nthreads,
+        <<<grid, threads, 0, stream>>>(static_cast<int>(nthreads),
                                        input,
                                        input_channels,
                                        input_height,
@@ -631,7 +632,7 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
     dim3 threads(thread_num, 1);
     dim3 grid(static_cast<uint32_t>(blocks), 1);
     KernelPool2D<PoolProcess, T, int>
-        <<<grid, threads, 0, stream>>>(nthreads,
+        <<<grid, threads, 0, stream>>>(static_cast<int>(nthreads),
                                        input,
                                        input_channels,
                                        input_height,

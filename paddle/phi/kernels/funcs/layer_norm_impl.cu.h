@@ -1735,6 +1735,7 @@ static void LayerNormBackward(
                       ((d_scale != nullptr ? 1 : 0) << 1) |
                       ((d_bias != nullptr ? 1 : 0));
   if (gradient_flag == 0) return;
+  uint32_t batch_size_u32 = 0;
   if (d_x != nullptr) {
     const uint32_t max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
     PADDLE_ENFORCE_LE(batch_size,
@@ -1742,6 +1743,7 @@ static void LayerNormBackward(
                       common::errors::InvalidArgument(
                           "layer_norm grid.x exceeds device limit."));
     PADDLE_ENFORCE_LE_UINT32_MAX(batch_size, "layer_norm grid.x");
+    batch_size_u32 = static_cast<uint32_t>(batch_size);
   }
   if (batch_size == 1) {
     // TODO(large-tensor): batch_size==1 path uses int32 grid dim
@@ -1862,7 +1864,7 @@ static void LayerNormBackward(
                                             U,
                                             kBlockDim,
                                             ScaleBiasWithSameTypeX>
-            <<<static_cast<uint32_t>(batch_size), kBlockDim, 0, stream>>>(
+            <<<batch_size_u32, kBlockDim, 0, stream>>>(
                 x, d_y, d_x, mean, var, scale, epsilon, feature_size));
       }
       break;
@@ -1894,7 +1896,7 @@ static void LayerNormBackward(
       switch (GetDesiredBlockDim(feature_size)) {
         FIXED_BLOCK_DIM_CASE(
             LayerNormBackwardPostProcessToCalculateDX<T, U, kBlockDim>
-            <<<static_cast<uint32_t>(batch_size), kBlockDim, 0, stream>>>(
+            <<<batch_size_u32, kBlockDim, 0, stream>>>(
                 x, d_x, mean, var, epsilon, feature_size));
       }
       break;
@@ -1926,7 +1928,7 @@ static void LayerNormBackward(
       switch (GetDesiredBlockDim(feature_size)) {
         FIXED_BLOCK_DIM_CASE(
             LayerNormBackwardPostProcessToCalculateDX<T, U, kBlockDim>
-            <<<static_cast<uint32_t>(batch_size), kBlockDim, 0, stream>>>(
+            <<<batch_size_u32, kBlockDim, 0, stream>>>(
                 x, d_x, mean, var, epsilon, feature_size));
       }
       break;
@@ -2044,7 +2046,7 @@ static void LayerNormBackward(
           dim3 threads1(BDIMX, block_dim_y, 1);
 #define IMPL_BACKWARD_FOR_INPUT(num)                                       \
   LayerNormBackwardComputeGradInputWithSmallFeatureSize<T, U, ScaleT, num> \
-      <<<batch_size, threads1, 0, stream>>>(                               \
+      <<<batch_size_u32, threads1, 0, stream>>>(                           \
           d_y, x, batch_size, feature_size, mean, var, epsilon, scale, d_x);
 
           switch (real_vec) {
@@ -2066,16 +2068,15 @@ static void LayerNormBackward(
           PADDLE_ENFORCE_LE_UINT32_MAX(batch_size,
                                        "layer_norm grad input grid.x");
           LayerNormBackwardComputeGradInput<T, U, BDIMX, BDIMY3, ScaleT>
-              <<<static_cast<uint32_t>(batch_size), threads1, 0, stream>>>(
-                  d_y,
-                  x,
-                  batch_size,
-                  feature_size,
-                  mean,
-                  var,
-                  epsilon,
-                  scale,
-                  d_x);
+              <<<batch_size_u32, threads1, 0, stream>>>(d_y,
+                                                        x,
+                                                        batch_size,
+                                                        feature_size,
+                                                        mean,
+                                                        var,
+                                                        epsilon,
+                                                        scale,
+                                                        d_x);
         }
 #ifdef PADDLE_WITH_CUDA
       }
