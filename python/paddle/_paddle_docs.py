@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 from .base.dygraph.generated_tensor_methods_patch import _all_method_op_map
 
 
-def add_doc_and_signature(func_name: str):
+def add_doc_and_signature(func_def):
     """
     Decorator for documentation-only shell functions.
 
@@ -39,20 +39,18 @@ def add_doc_and_signature(func_name: str):
     The shell body is never executed.
     """
 
-    def _decorator(func_def):
-        docstr = inspect.getdoc(func_def)
-        signature = inspect.signature(func_def)
-        for _, generated_name, generated_func in _all_method_op_map:
-            if generated_name == func_name:
-                generated_func.__doc__ = docstr
-                generated_func.__signature__ = signature
-                break
-        return func_def
-
-    return _decorator
+    func_name = func_def.__name__
+    docstr = inspect.getdoc(func_def)
+    signature = inspect.signature(func_def)
+    for _, generated_name, generated_func in _all_method_op_map:
+        if generated_name == func_name:
+            generated_func.__doc__ = docstr
+            generated_func.__signature__ = signature
+            break
+    return func_def
 
 
-@add_doc_and_signature("acos")
+@add_doc_and_signature
 def acos(
     x: Tensor,
     name: str | None = None,
@@ -91,7 +89,7 @@ def acos(
     ...
 
 
-@add_doc_and_signature("acosh")
+@add_doc_and_signature
 def acosh(
     x: Tensor,
     name: str | None = None,
@@ -130,7 +128,7 @@ def acosh(
     ...
 
 
-@add_doc_and_signature("sinh")
+@add_doc_and_signature
 def sinh(
     x: Tensor,
     name: str | None = None,
@@ -169,7 +167,7 @@ def sinh(
     ...
 
 
-@add_doc_and_signature("amin")
+@add_doc_and_signature
 def amin(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
@@ -304,7 +302,7 @@ def amin(
     ...
 
 
-@add_doc_and_signature("aminmax")
+@add_doc_and_signature
 def aminmax(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
@@ -350,7 +348,7 @@ def aminmax(
     ...
 
 
-@add_doc_and_signature("amax")
+@add_doc_and_signature
 def amax(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
@@ -485,7 +483,7 @@ def amax(
     ...
 
 
-@add_doc_and_signature("all")
+@add_doc_and_signature
 def all(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
@@ -558,7 +556,7 @@ def all(
     ...
 
 
-@add_doc_and_signature("argmax")
+@add_doc_and_signature
 def argmax(
     x: Tensor,
     axis: int | None = None,
@@ -607,7 +605,7 @@ def argmax(
     ...
 
 
-@add_doc_and_signature("argmin")
+@add_doc_and_signature
 def argmin(
     x: Tensor,
     axis: int | None = None,
@@ -656,7 +654,7 @@ def argmin(
     ...
 
 
-@add_doc_and_signature("atan")
+@add_doc_and_signature
 def atan(
     x: Tensor,
     name: str | None = None,
@@ -695,7 +693,7 @@ def atan(
     ...
 
 
-@add_doc_and_signature("atanh")
+@add_doc_and_signature
 def atanh(
     x: Tensor,
     name: str | None = None,
@@ -734,7 +732,7 @@ def atanh(
     ...
 
 
-@add_doc_and_signature("atan2")
+@add_doc_and_signature
 def atan2(
     x: Tensor,
     y: Tensor,
@@ -791,7 +789,7 @@ def atan2(
     ...
 
 
-@add_doc_and_signature("log2")
+@add_doc_and_signature
 def log2(
     x: Tensor,
     name: str | None = None,
@@ -846,7 +844,7 @@ def log2(
     ...
 
 
-@add_doc_and_signature("log10")
+@add_doc_and_signature
 def log10(
     x: Tensor,
     name: str | None = None,
@@ -901,7 +899,7 @@ def log10(
     ...
 
 
-@add_doc_and_signature("asinh")
+@add_doc_and_signature
 def asinh(
     x: Tensor,
     name: str | None = None,
@@ -940,7 +938,7 @@ def asinh(
     ...
 
 
-@add_doc_and_signature("reciprocal")
+@add_doc_and_signature
 def reciprocal(
     x: Tensor,
     name: str | None = None,
@@ -979,7 +977,7 @@ def reciprocal(
     ...
 
 
-@add_doc_and_signature("square")
+@add_doc_and_signature
 def square(
     x: Tensor,
     name: str | None = None,
@@ -1016,7 +1014,7 @@ def square(
     ...
 
 
-@add_doc_and_signature("tan")
+@add_doc_and_signature
 def tan(
     x: Tensor,
     name: str | None = None,
@@ -1057,7 +1055,7 @@ def tan(
     ...
 
 
-@add_doc_and_signature("log1p")
+@add_doc_and_signature
 def log1p(
     x: Tensor,
     name: str | None = None,
@@ -1095,7 +1093,7 @@ def log1p(
     ...
 
 
-@add_doc_and_signature("matmul")
+@add_doc_and_signature
 def matmul(
     x: Tensor,
     y: Tensor,
@@ -1200,7 +1198,7 @@ def matmul(
     ...
 
 
-@add_doc_and_signature("multiply")
+@add_doc_and_signature
 def multiply(
     x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
 ) -> Tensor:
@@ -1251,7 +1249,7 @@ def multiply(
     ...
 
 
-@add_doc_and_signature("logsumexp")
+@add_doc_and_signature
 def logsumexp(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
@@ -1312,7 +1310,7 @@ def logsumexp(
     ...
 
 
-@add_doc_and_signature("softplus")
+@add_doc_and_signature
 def softplus(
     x: Tensor,
     beta: float = 1,
@@ -1352,7 +1350,7 @@ def softplus(
     ...
 
 
-@add_doc_and_signature("i0")
+@add_doc_and_signature
 def i0(
     x: Tensor,
     name: str | None = None,
@@ -1389,7 +1387,7 @@ def i0(
     ...
 
 
-@add_doc_and_signature("i0e")
+@add_doc_and_signature
 def i0e(
     x: Tensor,
     name: str | None = None,
@@ -1427,7 +1425,7 @@ def i0e(
     ...
 
 
-@add_doc_and_signature("isclose")
+@add_doc_and_signature
 def isclose(
     x: Tensor,
     y: Tensor,
@@ -1487,7 +1485,7 @@ def isclose(
 
 
 # zhengsheng
-@add_doc_and_signature("isfinite")
+@add_doc_and_signature
 def isfinite(
     x: Tensor,
     name: str | None = None,
@@ -1516,7 +1514,7 @@ def isfinite(
     ...
 
 
-@add_doc_and_signature("isinf")
+@add_doc_and_signature
 def isinf(
     x: Tensor,
     name: str | None = None,
@@ -1545,7 +1543,7 @@ def isinf(
     ...
 
 
-@add_doc_and_signature("isnan")
+@add_doc_and_signature
 def isnan(
     x: Tensor,
     name: str | None = None,
@@ -1575,7 +1573,7 @@ def isnan(
     ...
 
 
-@add_doc_and_signature("roll")
+@add_doc_and_signature
 def roll(
     x: Tensor,
     shifts: int | Sequence[int],
@@ -1630,7 +1628,7 @@ def roll(
     ...
 
 
-@add_doc_and_signature("ceil")
+@add_doc_and_signature
 def ceil(
     x: Tensor, name: str | None = None, *, out: Tensor | None = None
 ) -> Tensor:
@@ -1666,7 +1664,7 @@ def ceil(
     ...
 
 
-@add_doc_and_signature("sum")
+@add_doc_and_signature
 def sum(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
@@ -1771,7 +1769,7 @@ def sum(
     ...
 
 
-@add_doc_and_signature("index_put")
+@add_doc_and_signature
 def index_put(
     x: Tensor,
     indices: Sequence[Tensor],
@@ -1821,7 +1819,7 @@ def index_put(
     ...
 
 
-@add_doc_and_signature("index_put_")
+@add_doc_and_signature
 def index_put_(
     x: Tensor,
     indices: Sequence[Tensor],
@@ -1837,7 +1835,7 @@ def index_put_(
 
 
 # liuyi
-@add_doc_and_signature("any")
+@add_doc_and_signature
 def any(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
@@ -1913,7 +1911,7 @@ def any(
     ...
 
 
-@add_doc_and_signature("expand_as")
+@add_doc_and_signature
 def expand_as(
     x: Tensor,
     y: Tensor,
@@ -1957,7 +1955,7 @@ def expand_as(
 
 
 # shenwei
-@add_doc_and_signature("grid_sample")
+@add_doc_and_signature
 def grid_sample(
     x: Tensor,
     grid: Tensor,
@@ -2086,7 +2084,7 @@ def grid_sample(
     ...
 
 
-@add_doc_and_signature("pixel_shuffle")
+@add_doc_and_signature
 def pixel_shuffle(
     x: Tensor,
     upscale_factor: int,
@@ -2121,7 +2119,7 @@ def pixel_shuffle(
     ...
 
 
-@add_doc_and_signature("gelu")
+@add_doc_and_signature
 def gelu(
     x: Tensor,
     approximate: Literal["tanh", "none"] | bool = False,
@@ -2186,7 +2184,7 @@ def gelu(
     ...
 
 
-@add_doc_and_signature("sigmoid")
+@add_doc_and_signature
 def sigmoid(
     x: Tensor,
     name: str | None = None,
@@ -2227,7 +2225,7 @@ def sigmoid(
 
 
 # zhouxin
-@add_doc_and_signature("greater_than")
+@add_doc_and_signature
 def greater_than(
     x: Tensor,
     y: Tensor,
@@ -2267,7 +2265,7 @@ def greater_than(
     ...
 
 
-@add_doc_and_signature("sin")
+@add_doc_and_signature
 def sin(
     x: Tensor,
     name: str | None = None,
@@ -2306,7 +2304,7 @@ def sin(
     ...
 
 
-@add_doc_and_signature("sign")
+@add_doc_and_signature
 def sign(
     x: Tensor,
     name: str | None = None,
@@ -2338,7 +2336,7 @@ def sign(
     ...
 
 
-@add_doc_and_signature("lgamma")
+@add_doc_and_signature
 def lgamma(
     x: Tensor,
     name: str | None = None,
@@ -2377,7 +2375,7 @@ def lgamma(
     ...
 
 
-@add_doc_and_signature("log")
+@add_doc_and_signature
 def log(
     x: Tensor,
     name: str | None = None,
@@ -2416,7 +2414,7 @@ def log(
     ...
 
 
-@add_doc_and_signature("rsqrt")
+@add_doc_and_signature
 def rsqrt(
     x: Tensor,
     name: str | None = None,
@@ -2457,7 +2455,7 @@ def rsqrt(
     ...
 
 
-@add_doc_and_signature("cos")
+@add_doc_and_signature
 def cos(
     x: Tensor,
     name: str | None = None,
@@ -2498,7 +2496,7 @@ def cos(
     ...
 
 
-@add_doc_and_signature("cosh")
+@add_doc_and_signature
 def cosh(
     x: Tensor,
     name: str | None = None,
@@ -2539,7 +2537,7 @@ def cosh(
     ...
 
 
-@add_doc_and_signature("floor")
+@add_doc_and_signature
 def floor(
     x: Tensor,
     name: str | None = None,
@@ -2579,7 +2577,7 @@ def floor(
 
 
 # hehongyu
-@add_doc_and_signature("maximum")
+@add_doc_and_signature
 def maximum(
     x: Tensor,
     y: Tensor,
@@ -2646,7 +2644,7 @@ def maximum(
     ...
 
 
-@add_doc_and_signature("minimum")
+@add_doc_and_signature
 def minimum(
     x: Tensor,
     y: Tensor,
@@ -2713,7 +2711,7 @@ def minimum(
     ...
 
 
-@add_doc_and_signature("sqrt")
+@add_doc_and_signature
 def sqrt(
     x: Tensor,
     name: str | None = None,
@@ -2756,7 +2754,7 @@ def sqrt(
 
 
 # zhengshijie
-@add_doc_and_signature("tril")
+@add_doc_and_signature
 def tril(
     x: Tensor,
     diagonal: int = 0,
@@ -2825,7 +2823,7 @@ def tril(
     ...
 
 
-@add_doc_and_signature("triu")
+@add_doc_and_signature
 def triu(
     x: Tensor,
     diagonal: int = 0,
@@ -2895,7 +2893,7 @@ def triu(
     ...
 
 
-@add_doc_and_signature("bmm")
+@add_doc_and_signature
 def bmm(
     x: Tensor,
     y: Tensor,
@@ -2941,7 +2939,7 @@ def bmm(
 
 
 # lihaoyang
-@add_doc_and_signature("logical_and")
+@add_doc_and_signature
 def logical_and(
     x: Tensor,
     y: Tensor,
@@ -2988,7 +2986,7 @@ def logical_and(
     ...
 
 
-@add_doc_and_signature("logical_or")
+@add_doc_and_signature
 def logical_or(
     x: Tensor,
     y: Tensor,
@@ -3036,7 +3034,7 @@ def logical_or(
     ...
 
 
-@add_doc_and_signature("logical_not")
+@add_doc_and_signature
 def logical_not(
     x: Tensor,
     name: str | None = None,
@@ -3079,7 +3077,7 @@ def logical_not(
     ...
 
 
-@add_doc_and_signature("logical_xor")
+@add_doc_and_signature
 def logical_xor(
     x: Tensor,
     y: Tensor,
@@ -3127,7 +3125,7 @@ def logical_xor(
     ...
 
 
-@add_doc_and_signature("dot")
+@add_doc_and_signature
 def dot(
     x: Tensor,
     y: Tensor,
@@ -3180,7 +3178,7 @@ def dot(
     ...
 
 
-@add_doc_and_signature("tanh")
+@add_doc_and_signature
 def tanh(
     x: Tensor,
     name: str | None = None,
@@ -3218,7 +3216,7 @@ def tanh(
     ...
 
 
-@add_doc_and_signature("exp")
+@add_doc_and_signature
 def exp(
     x: Tensor,
     name: str | None = None,
@@ -3257,7 +3255,7 @@ def exp(
     ...
 
 
-@add_doc_and_signature("expm1")
+@add_doc_and_signature
 def expm1(
     x: Tensor,
     name: str | None = None,
@@ -3296,7 +3294,7 @@ def expm1(
     ...
 
 
-@add_doc_and_signature("diag")
+@add_doc_and_signature
 def diag(
     x: Tensor,
     offset: int = 0,
@@ -3401,7 +3399,7 @@ def diag(
     ...
 
 
-@add_doc_and_signature("diagonal")
+@add_doc_and_signature
 def diagonal(
     x: Tensor,
     offset: int = 0,
@@ -3477,7 +3475,7 @@ def diagonal(
     ...
 
 
-@add_doc_and_signature("round")
+@add_doc_and_signature
 def round(
     x: Tensor,
     decimals: int = 0,
@@ -3523,7 +3521,7 @@ def round(
     ...
 
 
-@add_doc_and_signature("round_")
+@add_doc_and_signature
 def round_(
     x: Tensor,
     decimals: int = 0,
@@ -3556,7 +3554,7 @@ def round_(
     ...
 
 
-@add_doc_and_signature("abs")
+@add_doc_and_signature
 def abs(
     x: Tensor,
     name: str | None = None,
@@ -3593,7 +3591,7 @@ def abs(
     ...
 
 
-@add_doc_and_signature("abs_")
+@add_doc_and_signature
 def abs_(
     x: Tensor,
     name: str | None = None,
@@ -3604,7 +3602,7 @@ def abs_(
     ...
 
 
-@add_doc_and_signature("nextafter")
+@add_doc_and_signature
 def nextafter(
     x: Tensor,
     y: Tensor,
@@ -3637,7 +3635,7 @@ def nextafter(
     ...
 
 
-@add_doc_and_signature("angle")
+@add_doc_and_signature
 def angle(
     x: Tensor,
     name: str | None = None,
@@ -3691,7 +3689,7 @@ def angle(
     ...
 
 
-@add_doc_and_signature("real")
+@add_doc_and_signature
 def real(
     x: Tensor,
     name: str | None = None,
@@ -3745,7 +3743,7 @@ def real(
     ...
 
 
-@add_doc_and_signature("imag")
+@add_doc_and_signature
 def imag(
     x: Tensor,
     name: str | None = None,
@@ -3797,7 +3795,7 @@ def imag(
     ...
 
 
-@add_doc_and_signature("heaviside")
+@add_doc_and_signature
 def heaviside(
     x: Tensor,
     y: Tensor,
@@ -3851,7 +3849,7 @@ def heaviside(
     ...
 
 
-@add_doc_and_signature("asin")
+@add_doc_and_signature
 def asin(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     Arcsine Operator.
@@ -3881,7 +3879,7 @@ def asin(x: Tensor, name: str | None = None) -> Tensor:
     ...
 
 
-@add_doc_and_signature("inverse")
+@add_doc_and_signature
 def inverse(
     x: Tensor,
     name: str | None = None,
@@ -3922,7 +3920,7 @@ def inverse(
     ...
 
 
-@add_doc_and_signature("allclose")
+@add_doc_and_signature
 def allclose(
     x: Tensor,
     y: Tensor,
@@ -3983,7 +3981,7 @@ def allclose(
     ...
 
 
-@add_doc_and_signature("fmax")
+@add_doc_and_signature
 def fmax(
     x: Tensor,
     y: Tensor,
@@ -4051,7 +4049,7 @@ def fmax(
     ...
 
 
-@add_doc_and_signature("fmin")
+@add_doc_and_signature
 def fmin(
     x: Tensor,
     y: Tensor,
@@ -4119,7 +4117,7 @@ def fmin(
     ...
 
 
-@add_doc_and_signature("bincount")
+@add_doc_and_signature
 def bincount(
     x: Tensor,
     weights: Tensor | None = None,
@@ -4158,7 +4156,7 @@ def bincount(
     ...
 
 
-@add_doc_and_signature("bitwise_and")
+@add_doc_and_signature
 def bitwise_and(
     x: Tensor,
     y: Tensor,
@@ -4202,7 +4200,7 @@ def bitwise_and(
     ...
 
 
-@add_doc_and_signature("bitwise_and_")
+@add_doc_and_signature
 def bitwise_and_(
     x: Tensor,
     y: Tensor,
@@ -4215,7 +4213,7 @@ def bitwise_and_(
     ...
 
 
-@add_doc_and_signature("bitwise_or")
+@add_doc_and_signature
 def bitwise_or(
     x: Tensor,
     y: Tensor,
@@ -4261,7 +4259,7 @@ def bitwise_or(
     ...
 
 
-@add_doc_and_signature("bitwise_or_")
+@add_doc_and_signature
 def bitwise_or_(
     x: Tensor,
     y: Tensor,
@@ -4274,7 +4272,7 @@ def bitwise_or_(
     ...
 
 
-@add_doc_and_signature("bitwise_xor")
+@add_doc_and_signature
 def bitwise_xor(
     x: Tensor,
     y: Tensor,
@@ -4318,7 +4316,7 @@ def bitwise_xor(
     ...
 
 
-@add_doc_and_signature("bitwise_xor_")
+@add_doc_and_signature
 def bitwise_xor_(
     x: Tensor,
     y: Tensor,
@@ -4331,7 +4329,7 @@ def bitwise_xor_(
     ...
 
 
-@add_doc_and_signature("bitwise_not")
+@add_doc_and_signature
 def bitwise_not(
     x: Tensor,
     name: str | None = None,
@@ -4372,7 +4370,7 @@ def bitwise_not(
     ...
 
 
-@add_doc_and_signature("bitwise_not_")
+@add_doc_and_signature
 def bitwise_not_(
     x: Tensor,
     name: str | None = None,
@@ -4384,7 +4382,7 @@ def bitwise_not_(
     ...
 
 
-@add_doc_and_signature("bitwise_left_shift")
+@add_doc_and_signature
 def bitwise_left_shift(
     x: Tensor,
     y: Tensor,
@@ -4463,7 +4461,7 @@ def bitwise_left_shift(
     ...
 
 
-@add_doc_and_signature("bitwise_left_shift_")
+@add_doc_and_signature
 def bitwise_left_shift_(
     x: Tensor,
     y: Tensor,
@@ -4477,7 +4475,7 @@ def bitwise_left_shift_(
     ...
 
 
-@add_doc_and_signature("bitwise_right_shift")
+@add_doc_and_signature
 def bitwise_right_shift(
     x: Tensor,
     y: Tensor,
@@ -4557,7 +4555,7 @@ def bitwise_right_shift(
     ...
 
 
-@add_doc_and_signature("bitwise_right_shift_")
+@add_doc_and_signature
 def bitwise_right_shift_(
     x: Tensor,
     y: Tensor,
@@ -4571,7 +4569,7 @@ def bitwise_right_shift_(
     ...
 
 
-@add_doc_and_signature("conj")
+@add_doc_and_signature
 def conj(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     This function computes the conjugate of the Tensor elementwisely.
@@ -4604,7 +4602,7 @@ def conj(x: Tensor, name: str | None = None) -> Tensor:
     ...
 
 
-@add_doc_and_signature("i1")
+@add_doc_and_signature
 def i1(
     x: Tensor, name: str | None = None, *, out: Tensor | None = None
 ) -> Tensor:
@@ -4635,7 +4633,7 @@ def i1(
     ...
 
 
-@add_doc_and_signature("i1e")
+@add_doc_and_signature
 def i1e(
     x: Tensor, name: str | None = None, *, out: Tensor | None = None
 ) -> Tensor:
@@ -4666,7 +4664,7 @@ def i1e(
     ...
 
 
-@add_doc_and_signature("addmm")
+@add_doc_and_signature
 def addmm(
     input: Tensor,
     x: Tensor,
@@ -4719,7 +4717,7 @@ def addmm(
     ...
 
 
-@add_doc_and_signature("addmm_")
+@add_doc_and_signature
 def addmm_(
     input: Tensor,
     x: Tensor,
@@ -4735,7 +4733,7 @@ def addmm_(
     ...
 
 
-@add_doc_and_signature("baddbmm")
+@add_doc_and_signature
 def baddbmm(
     input: Tensor,
     x: Tensor,
@@ -4791,7 +4789,7 @@ def baddbmm(
     ...
 
 
-@add_doc_and_signature("baddbmm_")
+@add_doc_and_signature
 def baddbmm_(
     input: Tensor,
     x: Tensor,
@@ -4808,7 +4806,7 @@ def baddbmm_(
     ...
 
 
-@add_doc_and_signature("cross")
+@add_doc_and_signature
 def cross(
     x: Tensor,
     y: Tensor,
@@ -4866,7 +4864,7 @@ def cross(
     ...
 
 
-@add_doc_and_signature("dist")
+@add_doc_and_signature
 def dist(x: Tensor, y: Tensor, p: float = 2, name: str | None = None) -> Tensor:
     r"""
     Returns the p-norm of (x - y). It is not a norm in a strict sense, only as a measure
@@ -4961,7 +4959,7 @@ def dist(x: Tensor, y: Tensor, p: float = 2, name: str | None = None) -> Tensor:
     ...
 
 
-@add_doc_and_signature("flip")
+@add_doc_and_signature
 def flip(
     x: Tensor, axis: Sequence[int] | int, name: str | None = None
 ) -> Tensor:
@@ -5015,7 +5013,7 @@ def flip(
     ...
 
 
-@add_doc_and_signature("renorm")
+@add_doc_and_signature
 def renorm(x: Tensor, p: float, axis: int, max_norm: float) -> Tensor:
     r"""
     This operator is used to calculate the p-norm along the axis,
@@ -5054,7 +5052,7 @@ def renorm(x: Tensor, p: float, axis: int, max_norm: float) -> Tensor:
     ...
 
 
-@add_doc_and_signature("renorm_")
+@add_doc_and_signature
 def renorm_(x: Tensor, p: float, axis: int, max_norm: float) -> Tensor:
     r"""
     Inplace version of ``renorm`` API, the output Tensor will be inplaced with input ``x``.
@@ -5063,7 +5061,7 @@ def renorm_(x: Tensor, p: float, axis: int, max_norm: float) -> Tensor:
     ...
 
 
-@add_doc_and_signature("poisson")
+@add_doc_and_signature
 def poisson(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     Returns a tensor filled with random number from a Poisson Distribution.
@@ -5099,7 +5097,7 @@ def poisson(x: Tensor, name: str | None = None) -> Tensor:
     ...
 
 
-@add_doc_and_signature("kthvalue")
+@add_doc_and_signature
 def kthvalue(
     x: Tensor,
     k: int,
@@ -5156,7 +5154,7 @@ def kthvalue(
     ...
 
 
-@add_doc_and_signature("kron")
+@add_doc_and_signature
 def kron(
     x: Tensor,
     y: Tensor,
@@ -5214,7 +5212,7 @@ def kron(
     ...
 
 
-@add_doc_and_signature("mv")
+@add_doc_and_signature
 def mv(
     x: Tensor,
     vec: Tensor,
@@ -5257,7 +5255,7 @@ def mv(
     ...
 
 
-@add_doc_and_signature("remainder_")
+@add_doc_and_signature
 def remainder_(
     x: Tensor,
     y: Tensor,
@@ -5278,7 +5276,7 @@ def remainder_(
     ...
 
 
-@add_doc_and_signature("mod_")
+@add_doc_and_signature
 def mod_(
     x: Tensor,
     y: Tensor,
@@ -5291,7 +5289,7 @@ def mod_(
     ...
 
 
-@add_doc_and_signature("floor_mod_")
+@add_doc_and_signature
 def floor_mod_(
     x: Tensor,
     y: Tensor,
@@ -5304,7 +5302,7 @@ def floor_mod_(
     ...
 
 
-@add_doc_and_signature("pow_")
+@add_doc_and_signature
 def pow_(
     x: Tensor,
     y: float,
@@ -5327,7 +5325,7 @@ def pow_(
     ...
 
 
-@add_doc_and_signature("floor_divide_")
+@add_doc_and_signature
 def floor_divide_(
     x: Tensor,
     y: Tensor | int,
@@ -5350,7 +5348,7 @@ def floor_divide_(
     ...
 
 
-@add_doc_and_signature("erf")
+@add_doc_and_signature
 def erf(
     x: Tensor,
     name: str | None = None,
@@ -5391,7 +5389,7 @@ def erf(
     ...
 
 
-@add_doc_and_signature("erf_")
+@add_doc_and_signature
 def erf_(
     x: Tensor,
     name: str | None = None,
@@ -5402,7 +5400,7 @@ def erf_(
     ...
 
 
-@add_doc_and_signature("exp_")
+@add_doc_and_signature
 def exp_(
     x: Tensor,
     name: str | None = None,
@@ -5413,7 +5411,7 @@ def exp_(
     ...
 
 
-@add_doc_and_signature("sqrt_")
+@add_doc_and_signature
 def sqrt_(
     x: Tensor,
     name: str | None = None,
@@ -5424,7 +5422,7 @@ def sqrt_(
     ...
 
 
-@add_doc_and_signature("rsqrt_")
+@add_doc_and_signature
 def rsqrt_(
     x: Tensor,
     name: str | None = None,
@@ -5435,7 +5433,7 @@ def rsqrt_(
     ...
 
 
-@add_doc_and_signature("ceil_")
+@add_doc_and_signature
 def ceil_(
     x: Tensor,
     name: str | None = None,
@@ -5446,7 +5444,7 @@ def ceil_(
     ...
 
 
-@add_doc_and_signature("floor_")
+@add_doc_and_signature
 def floor_(
     x: Tensor,
     name: str | None = None,
@@ -5457,7 +5455,7 @@ def floor_(
     ...
 
 
-@add_doc_and_signature("reciprocal_")
+@add_doc_and_signature
 def reciprocal_(
     x: Tensor,
     name: str | None = None,
@@ -5468,7 +5466,7 @@ def reciprocal_(
     ...
 
 
-@add_doc_and_signature("sigmoid_")
+@add_doc_and_signature
 def sigmoid_(
     x: Tensor,
     name: str | None = None,
@@ -5479,7 +5477,7 @@ def sigmoid_(
     ...
 
 
-@add_doc_and_signature("sin_")
+@add_doc_and_signature
 def sin_(
     x: Tensor,
     name: str | None = None,
@@ -5490,7 +5488,7 @@ def sin_(
     ...
 
 
-@add_doc_and_signature("sinh_")
+@add_doc_and_signature
 def sinh_(
     x: Tensor,
     name: str | None = None,
@@ -5501,7 +5499,7 @@ def sinh_(
     ...
 
 
-@add_doc_and_signature("asin_")
+@add_doc_and_signature
 def asin_(
     x: Tensor,
     name: str | None = None,
@@ -5512,7 +5510,7 @@ def asin_(
     ...
 
 
-@add_doc_and_signature("asinh_")
+@add_doc_and_signature
 def asinh_(
     x: Tensor,
     name: str | None = None,
@@ -5523,7 +5521,7 @@ def asinh_(
     ...
 
 
-@add_doc_and_signature("cos_")
+@add_doc_and_signature
 def cos_(
     x: Tensor,
     name: str | None = None,
@@ -5534,7 +5532,7 @@ def cos_(
     ...
 
 
-@add_doc_and_signature("cosh_")
+@add_doc_and_signature
 def cosh_(
     x: Tensor,
     name: str | None = None,
@@ -5545,7 +5543,7 @@ def cosh_(
     ...
 
 
-@add_doc_and_signature("acos_")
+@add_doc_and_signature
 def acos_(
     x: Tensor,
     name: str | None = None,
@@ -5556,7 +5554,7 @@ def acos_(
     ...
 
 
-@add_doc_and_signature("acosh_")
+@add_doc_and_signature
 def acosh_(
     x: Tensor,
     name: str | None = None,
@@ -5567,7 +5565,7 @@ def acosh_(
     ...
 
 
-@add_doc_and_signature("tan_")
+@add_doc_and_signature
 def tan_(
     x: Tensor,
     name: str | None = None,
@@ -5578,7 +5576,7 @@ def tan_(
     ...
 
 
-@add_doc_and_signature("atan_")
+@add_doc_and_signature
 def atan_(
     x: Tensor,
     name: str | None = None,
@@ -5589,7 +5587,7 @@ def atan_(
     ...
 
 
-@add_doc_and_signature("atanh_")
+@add_doc_and_signature
 def atanh_(
     x: Tensor,
     name: str | None = None,
@@ -5600,7 +5598,7 @@ def atanh_(
     ...
 
 
-@add_doc_and_signature("expm1_")
+@add_doc_and_signature
 def expm1_(
     x: Tensor,
     name: str | None = None,
@@ -5611,7 +5609,7 @@ def expm1_(
     ...
 
 
-@add_doc_and_signature("square_")
+@add_doc_and_signature
 def square_(
     x: Tensor,
     name: str | None = None,
