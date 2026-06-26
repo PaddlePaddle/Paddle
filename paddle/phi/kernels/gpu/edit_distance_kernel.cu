@@ -51,33 +51,34 @@ template <typename T>
 __global__ void Levenshtein(T* dist,
                             const int64_t* x1,
                             const int64_t* x2,
-                            const int M,
-                            const int N,
-                            const int start) {
+                            const int64_t M,
+                            const int64_t N,
+                            const int64_t start) {
   int64_t idx =
       static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
       static_cast<int64_t>(threadIdx.x);
-  int offset = N;
-  int index = start + idx * offset;
-  int row = index / (N + 1);
-  int col = index % (N + 1);
+  int64_t offset = N;
+  int64_t index = start + idx * offset;
+  int64_t row = index / (N + 1);
+  int64_t col = index % (N + 1);
   if (row > 0 && col > 0 && row < M + 1 && col < N + 1) {
     int cost = x1[row - 1] == x2[col - 1] ? 0 : 1;
-    int dels = dist[static_cast<int64_t>(row - 1) * (N + 1) + col] + 1;
-    int ins = dist[static_cast<int64_t>(row) * (N + 1) + col - 1] + 1;
-    int subs = dist[static_cast<int64_t>(row - 1) * (N + 1) + (col - 1)] + cost;
+    int dels = dist[(row - 1) * (N + 1) + col] + 1;
+    int ins = dist[row * (N + 1) + col - 1] + 1;
+    int subs = dist[(row - 1) * (N + 1) + (col - 1)] + cost;
     dist[index] = min(dels, min(ins, subs));
   }
 }
 
 template <typename T>
 __global__ void SetOutput(
-    T* out, const T* dist, const int M, const int N, bool normalized) {
+    T* out, const T* dist, const int64_t M, const int64_t N, bool normalized) {
   int64_t idx =
       static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
       static_cast<int64_t>(threadIdx.x);
   if (idx == 0) {
-    out[0] = normalized ? dist[M * (N + 1) + N] / N : dist[M * (N + 1) + N];
+    int64_t dist_idx = M * (N + 1) + N;
+    out[0] = normalized ? dist[dist_idx] / N : dist[dist_idx];
   }
 }
 
@@ -185,19 +186,27 @@ void EditDistanceKernel(const Context& dev_ctx,
 
       // Compute the elements of distance matrix in the anti-diagonal direction
       for (int64_t slice = 2; slice < m + n + 1; ++slice) {
-        int z_m = slice < m + 1 ? 0 : slice - m;
-        int z_n = slice < n + 1 ? 0 : slice - n;
-        int size = slice - (z_m + z_n) + 1;  // number of elements in the same
-                                             // anti-diagonal line to update
+        int64_t z_m = slice < m + 1 ? 0 : slice - m;
+        int64_t z_n = slice < n + 1 ? 0 : slice - n;
+        int64_t size =
+            slice - (z_m + z_n) + 1;  // number of elements in the same
+                                      // anti-diagonal line to update
         // the start index at which computes from
-        int start = slice < n + 1 ? slice : (z_n + 1) * (n + 1) - 1;
-        Levenshtein<T><<<1 + (size - 1) / PADDLE_CUDA_NUM_THREADS,
-                         PADDLE_CUDA_NUM_THREADS,
-                         0,
-                         stream>>>(dist, x1, x2, m_int, n_int, start);
+        int64_t start = slice < n + 1 ? slice : (z_n + 1) * (n + 1) - 1;
+        int64_t levenshtein_grid_64 = 1 + (size - 1) / PADDLE_CUDA_NUM_THREADS;
+        PADDLE_ENFORCE_LE(
+            levenshtein_grid_64,
+            dev_ctx.GetCUDAMaxGridDimSize()[0],
+            common::errors::InvalidArgument(
+                "edit_distance levenshtein grid.x exceeds device limit."));
+        PADDLE_ENFORCE_LE_UINT32_MAX(levenshtein_grid_64,
+                                     "edit_distance levenshtein grid.x");
+        uint32_t levenshtein_grid = static_cast<uint32_t>(levenshtein_grid_64);
+        Levenshtein<T>
+            <<<levenshtein_grid, PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+                dist, x1, x2, m, n, start);
       }
-      SetOutput<T>
-          <<<1, 1, 0, stream>>>(out_data + num, dist, m_int, n_int, normalized);
+      SetOutput<T><<<1, 1, 0, stream>>>(out_data + num, dist, m, n, normalized);
     }
   }
 }

@@ -53,16 +53,15 @@ __global__ void SoftLabelCrossEntropyGradientKernel(T* logit_grad,
 template <typename T, typename LabelT>
 __global__ void HardLabelCrossEntropyGradientKernel(T* logit_grad,
                                                     const LabelT* labels,
-                                                    const int n,
-                                                    const int d,
-                                                    const int remain,
+                                                    const int64_t n,
+                                                    const int64_t d,
+                                                    const int64_t remain,
                                                     const int ignore_index) {
-  CUDA_KERNEL_LOOP(index, static_cast<int64_t>(n) * remain) {
-    int idx_n = index / remain;
-    int idx_remain = index % remain;
-    int tmp = static_cast<int>(labels[index]);
-    int64_t idx = static_cast<int64_t>(idx_n) * d +
-                  static_cast<int64_t>(tmp) * remain + idx_remain;
+  CUDA_KERNEL_LOOP_TYPE(index, n * remain, int64_t) {
+    int64_t idx_n = index / remain;
+    int64_t idx_remain = index % remain;
+    int64_t tmp = static_cast<int64_t>(labels[index]);
+    int64_t idx = idx_n * d + tmp * remain + idx_remain;
     if (ignore_index != tmp) {
       using AccT = typename MPTypeTrait<T>::Type;
       AccT softmax_v = static_cast<AccT>(logit_grad[idx]);
@@ -75,16 +74,16 @@ __global__ void HardLabelCrossEntropyGradientKernel(T* logit_grad,
 template <typename T, typename LabelT>
 __global__ void ScaleCrossEntropyGradient(T* logit_grad,
                                           const T* loss_grad,
-                                          const int num,
-                                          const int d,
-                                          const int remain,
+                                          const int64_t num,
+                                          const int64_t d,
+                                          const int64_t remain,
                                           const LabelT* labels,
                                           const int ignore_index) {
-  CUDA_KERNEL_LOOP(index, num) {
-    int idx_n = index / d;
-    int idx_remain = index % remain;
-    int idx_lbl = idx_n * remain + idx_remain;
-    int k = (index % d) / remain;
+  CUDA_KERNEL_LOOP_TYPE(index, num, int64_t) {
+    int64_t idx_n = index / d;
+    int64_t idx_remain = index % remain;
+    int64_t idx_lbl = idx_n * remain + idx_remain;
+    int64_t k = (index % d) / remain;
     auto lbl = static_cast<int64_t>(labels[idx_lbl]);
     if (lbl == ignore_index || lbl != k) {
       logit_grad[index] = static_cast<T>(0.);
