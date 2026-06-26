@@ -1,10 +1,10 @@
 - op : abs
-  name : [paddle.abs, paddle.Tensor.abs]
+  name : [paddle.abs, paddle.Tensor.abs, paddle.absolute, paddle.Tensor.absolute]
   args_alias :
     use_default_mapping : True
 
 - op : abs_
-  name : [paddle.abs_, paddle.Tensor.abs_]
+  name : [paddle.abs_, paddle.Tensor.abs_, paddle.absolute_, paddle.Tensor.absolute_]
   args_alias :
     use_default_mapping : True
 
@@ -470,7 +470,7 @@
 - op : inverse
   name : [paddle.inverse, paddle.Tensor.inverse, paddle.linalg.inv]
   args_alias:
-    use_default_mapping : True
+    x : [input, A]
 
 - op : lgamma
   name : [paddle.lgamma, paddle.Tensor.lgamma]
@@ -580,6 +580,11 @@
   args_alias :
     use_default_mapping : True
 
+- op : imag
+  name : [paddle.imag, paddle.Tensor.imag]
+  args_alias :
+    use_default_mapping : True
+
 - op : pixel_shuffle
   name : [paddle.nn.functional.pixel_shuffle]
   args_alias :
@@ -598,7 +603,7 @@
     use_default_mapping : True
 
 - op : remainder_
-  name : [paddle.remainder_, paddle.Tensor.remainder_, paddle.mod_, paddle.Tensor.mod_, paddle.floor_mod_, paddle.Tensor.floor_mod_]
+  name : [paddle.remainder_, paddle.Tensor.remainder_, paddle.mod_, paddle.Tensor.mod_, paddle.floor_mod_, paddle.Tensor.floor_mod_, paddle.fmod_, paddle.Tensor.fmod_]
   args_alias :
     use_default_mapping : True
   pre_process :
@@ -644,6 +649,11 @@
 
 - op : sign
   name : [paddle.sign, paddle.Tensor.sign]
+  args_alias :
+    use_default_mapping : True
+
+- op : sign_
+  name : [paddle.sign_, paddle.Tensor.sign_]
   args_alias :
     use_default_mapping : True
 

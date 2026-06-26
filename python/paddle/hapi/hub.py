@@ -21,10 +21,8 @@ import shutil
 import sys
 import warnings
 import zipfile
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, TypeAlias
 from urllib.parse import urlparse
-
-from typing_extensions import TypeAlias
 
 import paddle
 from paddle.utils.download import (

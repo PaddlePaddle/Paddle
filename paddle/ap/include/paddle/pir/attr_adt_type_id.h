@@ -94,6 +94,7 @@ struct UnclassifiedAttribute {
   __macro(::paddle::dialect::DataLayoutAttribute)     \
   __macro(::cinn::dialect::GroupInfoAttribute)        \
   __macro(::cinn::dialect::CINNKernelInfoAttribute)
+
 // clang-format on
 
 using AttrAdtTypeIdBase = ::common::AdtBaseTypeId<

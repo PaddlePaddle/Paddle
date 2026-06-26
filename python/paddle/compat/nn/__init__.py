@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import collections
+import warnings
 from itertools import repeat
 from math import sqrt
 from typing import TYPE_CHECKING
@@ -47,7 +48,14 @@ __all__ = [
     'AvgPool1d',
     'AvgPool2d',
     'AvgPool3d',
+    'BatchNorm1D',
+    'BatchNorm2D',
+    'BatchNorm3D',
+    'BatchNorm1d',
+    'BatchNorm2d',
+    'BatchNorm3d',
     'MultiheadAttention',
+    'SmoothL1Loss',
 ]
 
 
@@ -62,6 +70,92 @@ def _ntuple(n, name="parse"):
 
 
 _single = _ntuple(1, "_single")
+
+
+class BatchNorm1D(nn.BatchNorm1D):
+    def __init__(
+        self,
+        num_features: int,
+        eps: float = 1e-5,
+        momentum: float | None = 0.1,
+        affine: bool = True,
+        track_running_stats: bool = True,
+        device: PlaceLike | None = None,
+        dtype: DTypeLike | None = None,
+    ) -> None:
+        if momentum is None:
+            paddle_momentum = None
+        else:
+            paddle_momentum = 1.0 - momentum
+        super().__init__(
+            num_features=num_features,
+            momentum=paddle_momentum,
+            epsilon=eps,
+            use_global_stats=None if track_running_stats else False,
+            affine=affine,
+            device=device,
+            dtype=dtype,
+        )
+        self.momentum = momentum
+
+
+class BatchNorm2D(nn.BatchNorm2D):
+    def __init__(
+        self,
+        num_features: int,
+        eps: float = 1e-5,
+        momentum: float | None = 0.1,
+        affine: bool = True,
+        track_running_stats: bool = True,
+        device: PlaceLike | None = None,
+        dtype: DTypeLike | None = None,
+    ) -> None:
+        if momentum is None:
+            paddle_momentum = None
+        else:
+            paddle_momentum = 1.0 - momentum
+        super().__init__(
+            num_features=num_features,
+            momentum=paddle_momentum,
+            epsilon=eps,
+            use_global_stats=None if track_running_stats else False,
+            affine=affine,
+            device=device,
+            dtype=dtype,
+        )
+        self.momentum = momentum
+
+
+class BatchNorm3D(nn.BatchNorm3D):
+    def __init__(
+        self,
+        num_features: int,
+        eps: float = 1e-5,
+        momentum: float | None = 0.1,
+        affine: bool = True,
+        track_running_stats: bool = True,
+        device: PlaceLike | None = None,
+        dtype: DTypeLike | None = None,
+    ) -> None:
+        if momentum is None:
+            paddle_momentum = None
+        else:
+            paddle_momentum = 1.0 - momentum
+        super().__init__(
+            num_features=num_features,
+            momentum=paddle_momentum,
+            epsilon=eps,
+            use_global_stats=None if track_running_stats else False,
+            affine=affine,
+            device=device,
+            dtype=dtype,
+        )
+        self.momentum = momentum
+
+
+BatchNorm1d = BatchNorm1D
+BatchNorm2d = BatchNorm2D
+BatchNorm3d = BatchNorm3D
 
 
 class AvgPool1D(nn.Layer):
@@ -742,7 +836,97 @@ class Softmax(nn.Layer):
         return functional.softmax(input, self._dim)
 
     def extra_repr(self) -> str:
-        return f"dim={self.dim}"
+        return f"dim={self._dim}"
+
+
+class SmoothL1Loss(nn.Layer):
+    r"""
+
+    PyTorch compatible version of :ref:`api_paddle_nn_SmoothL1Loss`, aligned with
+    ``torch.nn.SmoothL1Loss``. The per-element loss is
+
+    .. math::
+
+        z_i = \left\{\begin{array}{rcl}
+            0.5 (x_i - y_i)^2 / beta & & {if |x_i - y_i| < beta} \\
+            |x_i - y_i| - 0.5 * beta & & {otherwise}
+        \end{array} \right.
+
+    which equals Paddle's Huber loss divided by ``beta``. This differs from
+    :ref:`api_paddle_nn_SmoothL1Loss` whose default ``is_huber=True`` returns the
+    raw Huber loss.
+
+    Parameters:
+        size_average (bool|None, optional): Deprecated (see ``reduction``). When
+            ``size_average`` or ``reduce`` is not ``None``, it is translated into
+            ``reduction`` with a ``DeprecationWarning``. Default is ``None``.
+        reduce (bool|None, optional): Deprecated (see ``reduction``). Default is ``None``.
+        reduction (str, optional): Indicate how to calculate the loss, the candidates
+            are ``'none'`` | ``'mean'`` | ``'sum'``. Default is ``'mean'``.
+        beta (float, optional): Non-negative threshold at which to change between L1
+            and L2 loss. When ``beta == 0`` the loss degrades to the L1 loss, matching
+            PyTorch. Default is ``1.0``.
+
+    Call Parameters:
+        input (Tensor): Input tensor, the data type is float32 or float64.
+        target (Tensor): Label tensor with the same shape as ``input``.
+
+    Returns:
+        Tensor, The tensor storing the smooth L1 loss of ``input`` and ``target``.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> input = paddle.to_tensor([[0.5, 1.5], [2.0, 0.0]], dtype='float32')
+            >>> target = paddle.to_tensor([[1.0, 1.0], [1.0, 0.5]], dtype='float32')
+            >>> loss = paddle.compat.nn.SmoothL1Loss(beta=1.0)
+            >>> output = loss(input, target)
+            >>> print(output)
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   0.21875000)
+    """
+
+    __constants__ = ["reduction", "beta"]
+    reduction: str
+    beta: float
+
+    @ForbidKeywordsDecorator(
+        illegal_keys={"delta", "is_huber", "name", "label"},
+        func_name="paddle.compat.nn.SmoothL1Loss",
+        correct_name="paddle.nn.SmoothL1Loss",
+    )
+    def __init__(
+        self,
+        size_average: bool | None = None,
+        reduce: bool | None = None,
+        reduction: str = 'mean',
+        beta: float = 1.0,
+    ) -> None:
+        super().__init__()
+        if size_average is not None or reduce is not None:
+            reduction = (
+                'none'
+                if reduce is False
+                else ('sum' if size_average is False else 'mean')
+            )
+            warnings.warn(
+                "'size_average' and 'reduce' args of 'SmoothL1Loss' will be "
+                f"deprecated, please use reduction='{reduction}' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        self.reduction = reduction
+        self.beta = beta
+
+    def forward(self, input: Tensor, target: Tensor) -> Tensor:
+        return functional.smooth_l1_loss.__wrapped__(
+            input, target, reduction=self.reduction, beta=self.beta
+        )
+
+    def extra_repr(self) -> str:
+        return f"reduction={self.reduction}, beta={self.beta}"
 
 
 AvgPool1d = AvgPool1D

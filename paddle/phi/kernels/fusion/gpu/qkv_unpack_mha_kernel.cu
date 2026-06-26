@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/fusion/gpu/qkv_unpack_mha_kernel.h"
+#include "paddle/common/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/fusion/gpu/mmha_util.cu.h"
@@ -327,31 +328,37 @@ inline size_t smem_size_in_bytes(const QkvUnpackMhaParams<T> &params,
   return max(softmax_sz, red_sz);
 }
 
-#define MMHA_LAUNCH_KERNEL(T,                                             \
-                           Dh,                                            \
-                           Dh_MAX,                                        \
-                           THDS_PER_KEY,                                  \
-                           THDS_PER_VALUE,                                \
-                           THDS_PER_BLOCK,                                \
-                           stream,                                        \
-                           load_func,                                     \
-                           store_func)                                    \
-  size_t smem_sz =                                                        \
-      smem_size_in_bytes<T>(params, Dh, THDS_PER_VALUE, THDS_PER_BLOCK);  \
-  constexpr auto kernel_fn = qkv_attention_kernel<T,                      \
-                                                  Dh,                     \
-                                                  Dh_MAX,                 \
-                                                  THDS_PER_KEY,           \
-                                                  THDS_PER_VALUE,         \
-                                                  THDS_PER_BLOCK,         \
-                                                  decltype(load_func),    \
-                                                  decltype(store_func)>;  \
-  if (smem_sz > 0xc000) {                                                 \
-    cudaFuncSetAttribute(                                                 \
-        kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_sz); \
-  }                                                                       \
-  dim3 grid(params.num_head, params.batch_size);                          \
-  kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                   \
+#define MMHA_LAUNCH_KERNEL(T,                                               \
+                           Dh,                                              \
+                           Dh_MAX,                                          \
+                           THDS_PER_KEY,                                    \
+                           THDS_PER_VALUE,                                  \
+                           THDS_PER_BLOCK,                                  \
+                           stream,                                          \
+                           load_func,                                       \
+                           store_func)                                      \
+  size_t smem_sz_size =                                                     \
+      smem_size_in_bytes<T>(params, Dh, THDS_PER_VALUE, THDS_PER_BLOCK);    \
+  PADDLE_ENFORCE_LE_INT_MAX(smem_sz_size,                                   \
+                            "qkv_unpack_mha shared memory size");           \
+  int smem_sz = static_cast<int>(smem_sz_size);                             \
+  constexpr auto kernel_fn = qkv_attention_kernel<T,                        \
+                                                  Dh,                       \
+                                                  Dh_MAX,                   \
+                                                  THDS_PER_KEY,             \
+                                                  THDS_PER_VALUE,           \
+                                                  THDS_PER_BLOCK,           \
+                                                  decltype(load_func),      \
+                                                  decltype(store_func)>;    \
+  if (smem_sz > 0xc000) {                                                   \
+    cudaFuncSetAttribute(                                                   \
+        kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_sz);   \
+  }                                                                         \
+  PADDLE_ENFORCE_LE_UINT32_MAX(params.num_head, "qkv_unpack_mha grid.x");   \
+  PADDLE_ENFORCE_LE_UINT32_MAX(params.batch_size, "qkv_unpack_mha grid.y"); \
+  dim3 grid(static_cast<uint32_t>(params.num_head),                         \
+            static_cast<uint32_t>(params.batch_size));                      \
+  kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                     \
       params, load_func, store_func)
 
 template <typename T, int Dh, int Dh_MAX, typename LoadFunc, typename StoreFunc>
@@ -460,26 +467,27 @@ void QKVDispatchWithDtype(const Context &dev_ctx,
                           const optional<DenseTensor> &src_mask,
                           DenseTensor *out) {
   const auto &q_dims = q.dims();
-  int bsz = q_dims[0];
+  int64_t bsz_64 = q_dims[0];
+  PADDLE_ENFORCE_LE_INT_MAX(bsz_64, "qkv_unpack_mha batch_size");
+  int bsz = static_cast<int>(bsz_64);
   int64_t cache_bsz = q.dims()[0];
-  // TODO(large-tensor): downstream functors may still use int
+  PADDLE_ENFORCE_LE_INT_MAX(cache_bsz, "qkv_unpack_mha cache_batch_size");
 
   int64_t max_seq_len = v.dims()[1];
-  // TODO(large-tensor): downstream functors may still use int
+  PADDLE_ENFORCE_LE_INT_MAX(max_seq_len, "qkv_unpack_mha timestep");
 
   int64_t dim_head = v.dims()[3];
-  // TODO(large-tensor): downstream functors may still use int
 
-  int timestep = max_seq_len;
+  int timestep = static_cast<int>(max_seq_len);
   float inv_sqrt_dh = 1. / sqrt(dim_head);
 
   int64_t k_num_head = k.dims()[2];
-  // TODO(large-tensor): downstream functors may still use int
+  PADDLE_ENFORCE_LE_INT_MAX(k_num_head, "qkv_unpack_mha kv_num_head");
 
-  int v_num_head = k_num_head;
+  int v_num_head = static_cast<int>(k_num_head);
   // this num_head means query's head
   int64_t num_head = q.dims()[2];
-  // TODO(large-tensor): downstream functors may still use int
+  PADDLE_ENFORCE_LE_INT_MAX(num_head, "qkv_unpack_mha num_head");
 
   QkvUnpackMhaParams<T> params;
 
@@ -490,9 +498,9 @@ void QKVDispatchWithDtype(const Context &dev_ctx,
   params.v = v.data<T>();
 
   params.batch_size = bsz;
-  params.cache_batch_size = cache_bsz;
-  params.num_head = num_head;
-  params.kv_num_head = k_num_head;
+  params.cache_batch_size = static_cast<int>(cache_bsz);
+  params.num_head = static_cast<int>(num_head);
+  params.kv_num_head = static_cast<int>(k_num_head);
   params.timestep = timestep;
   params.inv_sqrt_dh = inv_sqrt_dh;
 

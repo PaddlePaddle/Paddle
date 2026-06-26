@@ -119,10 +119,11 @@ TensorDistAttribute TensorDistAttribute::get(
     const std::vector<int64_t>& dims_mapping,
     const flat_hash_map<int64_t, phi::ReduceType>& partial_status,
     const std::optional<PlacementsAttribute>& placements) {
-  PADDLE_ENFORCE_NOT_NULL(mesh,
-                          common::errors::PreconditionNotMet(
-                              "Building tensor_dist_attr through a nullptr "
-                              "mesh attribute is currently not supported."));
+  PADDLE_ENFORCE_EQ(static_cast<bool>(mesh),
+                    true,
+                    common::errors::PreconditionNotMet(
+                        "Building tensor_dist_attr through a nullptr "
+                        "mesh attribute is currently not supported."));
 
   if (!placements.has_value() && !mesh.empty()) {
     phi::distributed::Placements p =

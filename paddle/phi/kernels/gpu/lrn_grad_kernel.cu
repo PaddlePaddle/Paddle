@@ -98,24 +98,26 @@ void CrossMapNormalGrad(const GPUContext& dev_ctx,
 
   const int block_size = 1024;
   int64_t grid_size = (img_size + block_size - 1) / block_size;
-  PADDLE_ENFORCE_LE_INT_MAX(grid_size, "grid_size");
+  PADDLE_ENFORCE_LE_INT_MAX(img_size, "lrn_grad img_size");
   PADDLE_ENFORCE_LE_INT_MAX(C, "C");
+  PADDLE_ENFORCE_LE_INT_MAX(H, "lrn_grad H");
+  PADDLE_ENFORCE_LE_INT_MAX(W, "lrn_grad W");
+  const uint32_t grid = static_cast<uint32_t>(grid_size);
 
   KeCMRNormDiff<T>
-      <<<static_cast<int>(grid_size), block_size, 0, dev_ctx.stream()>>>(
-          static_cast<int>(img_size),
-          x,
-          out,
-          mid,
-          x_g,
-          out_g,
-          static_cast<int>(C),
-          static_cast<int>(H),
-          static_cast<int>(W),
-          n,
-          -beta,
-          2.0f * alpha * beta,
-          data_layout);
+      <<<grid, block_size, 0, dev_ctx.stream()>>>(static_cast<int>(img_size),
+                                                  x,
+                                                  out,
+                                                  mid,
+                                                  x_g,
+                                                  out_g,
+                                                  static_cast<int>(C),
+                                                  static_cast<int>(H),
+                                                  static_cast<int>(W),
+                                                  n,
+                                                  -beta,
+                                                  2.0f * alpha * beta,
+                                                  data_layout);
 }
 
 template <typename T>

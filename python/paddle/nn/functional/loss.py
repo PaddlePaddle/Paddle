@@ -21,7 +21,10 @@ import paddle
 from paddle import _C_ops, base, in_dynamic_mode
 from paddle.static.nn.control_flow import Assert
 from paddle.utils import deprecated
-from paddle.utils.decorator_utils import legacy_reduction_decorator
+from paddle.utils.decorator_utils import (
+    ParamAliasDecorator,
+    legacy_reduction_decorator,
+)
 
 from ...base.data_feeder import check_type, check_variable_and_dtype
 from ...base.framework import (
@@ -35,8 +38,8 @@ from ...common_ops_import import Variable
 from ...tensor.manipulation import reshape
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-    from typing import Callable, TypeAlias
+    from collections.abc import Callable, Sequence
+    from typing import TypeAlias
 
     from paddle import Tensor
 
@@ -2063,6 +2066,12 @@ def mse_loss(
         )
 
 
+@ParamAliasDecorator(
+    alias_mapping={
+        'labels': ['targets'],
+        'label_lengths': ['target_lengths'],
+    }
+)
 def ctc_loss(
     log_probs: Tensor,
     labels: Tensor,
@@ -3143,7 +3152,7 @@ def cross_entropy(
             >>> shape = [N, C]
             >>> label_smoothing = 0.4
             >>> reduction = 'mean'
-            >>> weight: Optional[paddle.Tensor] = None
+            >>> weight = None
             >>> logits = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
             >>> integer_labels = paddle.randint(low=0, high=C, size=[N], dtype='int64')
             >>> one_hot_labels = paddle.nn.functional.one_hot(integer_labels, C).astype('float32')

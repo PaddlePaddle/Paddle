@@ -30,6 +30,7 @@ from paddle.tensor import fill_constant
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     VariableArgsDecorator,
+    _calc_end_from_shapes,
     expand_decorator,
     fill_diagonal_inplace_decorator,
     index_add_decorator,
@@ -37,6 +38,7 @@ from paddle.utils.decorator_utils import (
     param_one_alias,
     param_two_alias,
     reshape_decorator,
+    slice_scatter_decorator,
     tile_decorator,
     variadic_tensor_decorator,
     view_decorator,
@@ -5654,6 +5656,31 @@ def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
         return out
 
 
+def reshape_as(x: Tensor, other: Tensor, name: str | None = None) -> Tensor:
+    r"""
+    Reshape the Tensor ``x`` to the same shape as ``other``.
+
+    Args:
+        x (Tensor): The input Tensor.
+        other (Tensor): The Tensor whose shape will be used.
+        name (str|None, optional): Name for the operation. Default: None.
+
+    Returns:
+        Tensor: A Tensor with the same shape as ``other``.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> x = paddle.arange(24, dtype='float32')
+            >>> other = paddle.zeros([2, 3, 4])
+            >>> out = x.reshape_as(other)
+            >>> print(out.shape)
+            paddle.Size([2, 3, 4])
+    """
+    return reshape(x, other.shape, name=name)
+
+
 def masked_scatter(
     x: Tensor, mask: Tensor, value: Tensor, name: str | None = None
 ) -> Tensor:
@@ -5793,6 +5820,38 @@ def reshape_(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
             )
 
         return out
+
+
+@inplace_apis_in_dygraph_only
+@param_one_alias(['y', 'the_template'])
+def resize_as_(
+    x: Tensor,
+    y: Tensor,
+) -> Tensor:
+    """
+    Resizes the tensor to be the same shape as the given tensor.
+
+    Note:
+        This API is ONLY available in Dygraph mode.
+
+    Args:
+        x (Tensor): The input tensor to be resized.
+        y (Tensor): The tensor whose shape will be used as the target shape.
+
+    Returns:
+        Tensor: The resized tensor with the same shape as y.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> x = paddle.ones([2, 3])
+            >>> y = paddle.zeros([4, 5])
+            >>> x.resize_as_(y)
+            >>> print(x.shape)
+            paddle.Size([4, 5])
+    """
+    return x.resize_(y.shape)
 
 
 @overload
@@ -6434,10 +6493,12 @@ def strided_slice(
         return out
 
 
+@ParamAliasDecorator({"x": ["a"], "y": ["b"], "axes": ["dims"]})
 def tensordot(
     x: Tensor,
     y: Tensor,
     axes: int | NestedSequence[int] | Tensor = 2,
+    out: Tensor | None = None,
     name: str | None = None,
 ) -> Tensor:
     r"""
@@ -6445,8 +6506,11 @@ def tensordot(
 
     Args:
         x (Tensor): The left tensor for contraction with data type ``float16`` or ``float32`` or ``float64``.
+            Alias: ``a``.
         y (Tensor): The right tensor for contraction with the same data type as ``x``.
+            Alias: ``b``.
         axes (int|tuple|list|Tensor, optional):  The axes to contract for ``x`` and ``y``, defaulted to integer ``2``.
+            Alias: ``dims``.
 
             1. It could be a non-negative integer ``n``,
                in which the function will sum over the last ``n`` axes of ``x`` and the first ``n`` axes of ``y`` in order.
@@ -6462,6 +6526,7 @@ def tensordot(
             4. It could be a tensor, in which the ``axes`` tensor will be translated to a python list
                and applied the same rules described above to determine the contraction axes.
                Note that the ``axes`` with Tensor type is ONLY available in Dygraph mode.
+        out (Tensor|None, optional): The output tensor. Default: None.
         name(str|None, optional): The default value is None.  Normally there is no need for user to set this property.
                              For more information, please refer to :ref:`api_guide_Name` .
 
@@ -6663,8 +6728,11 @@ def tensordot(
     y = y.transpose(perm=perm_y).reshape(
         [contraction_size, not_contraction_size_y]
     )
-    out = x.matmul(y).reshape(shape_out)
-    return out
+    result = x.matmul(y).reshape(shape_out)
+    if out is not None:
+        paddle.assign(result, out)
+        return out
+    return result
 
 
 def as_complex(x: Tensor, name: str | None = None) -> Tensor:
@@ -7471,6 +7539,28 @@ def scatter_reduce(
     if reduce == 'prod':
         reduce = 'multiply'
     return put_along_axis(
+        input, index, src, dim, reduce, include_self, broadcast=False
+    )
+
+
+def scatter_reduce_(
+    input: Tensor,
+    dim: int,
+    index: Tensor,
+    src: Tensor,
+    reduce: Literal['sum', 'prod', 'mean', 'amin', 'amax'],
+    *,
+    include_self: bool = True,
+) -> Tensor:
+    """
+    Inplace version of ``scatter_reduce`` API, the output Tensor will be inplaced with input ``input``.
+    Please refer to :ref:`api_paddle_scatter_reduce`.
+    """
+    if reduce == 'sum':
+        reduce = 'add'
+    if reduce == 'prod':
+        reduce = 'multiply'
+    return put_along_axis_(
         input, index, src, dim, reduce, include_self, broadcast=False
     )
 
@@ -8559,9 +8649,7 @@ def diagonal_scatter(
         "axis": ["dim"],
     }
 )
-def select_scatter(
-    x: Tensor, values: Tensor, axis: int, index: int, name: str | None = None
-) -> Tensor:
+def select_scatter(x: Tensor, values: Tensor, axis: int, index: int) -> Tensor:
     """
     Embeds the values of the values tensor into x at the given index of axis.
 
@@ -8570,7 +8658,6 @@ def select_scatter(
         values (Tensor) : The tensor to embed into x. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex128`. Alias: ``src``.
         axis (int) : the dimension to insert the slice into. Alias: ``dim``.
         index (int) : the index to select with.
-        name (str|None, optional): Name for the operation (optional, default is None).
 
     Returns:
         Tensor, same dtype and shape with x
@@ -8667,27 +8754,59 @@ def select_scatter(
         return output
 
 
+@overload
 def slice_scatter(
     x: Tensor,
     value: Tensor,
-    axes: Sequence[int],
-    starts: Sequence[int],
-    ends: Sequence[int],
-    strides: Sequence[int],
-    name: str | None = None,
+    axes: Sequence[int] = [0],
+    starts: Sequence[int] = [0],
+    ends: Sequence[int] | None = None,
+    strides: Sequence[int] = [1],
+) -> Tensor: ...
+
+
+@overload
+def slice_scatter(
+    input: Tensor,
+    src: Tensor,
+    dim: int = 0,
+    start: int | None = None,
+    end: int | None = None,
+    step: int = 1,
+) -> Tensor: ...
+
+
+@slice_scatter_decorator()
+def slice_scatter(
+    x: Tensor,
+    value: Tensor,
+    axes: Sequence[int] = [0],
+    starts: Sequence[int] = [0],
+    ends: Sequence[int] | None = None,
+    strides: Sequence[int] = [1],
 ) -> Tensor:
     """
-    Embeds the `value` tensor into `x` along multiple axes. Returns a new tensor instead of a view.
-    The size of `axes` must be equal to `starts` , `ends` and `strides`.
+    Note:
+        This API has two signatures:
+        1. ``paddle.slice_scatter(x, value, axes=[0], starts=[0], ends=None, strides=[1])`` (Paddle-style):
+            Embeds the `value` tensor into `x` along multiple axes. Returns a new tensor instead of a view.
+            The size of `axes` must be equal to `starts`, `ends` and `strides`.
+        2. ``paddle.slice_scatter(input, src, dim=0, start=None, end=None, step=1)`` (PyTorch-style):
+            Embeds the `src` tensor into `input` along a single axis.
 
     Args:
         x (Tensor) : The input Tensor. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex128`.
+            Alias: ``input``.
         value (Tensor) : The tensor to embed into x. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex128`.
-        axes (list|tuple) : the dimensions to insert the value.
-        starts (list|tuple) : the start indices of where to insert.
-        ends (list|tuple) : the stop indices of where to insert.
-        strides (list|tuple) : the steps for each insert.
-        name (str|None, optional): Name for the operation (optional, default is None).
+            Alias: ``src``.
+        axes (list|tuple): the dimensions to insert the value. Default: ``[0]``.
+            Alias: ``dim``.
+        starts (list|tuple): the start indices of where to insert. Default: ``[0]``.
+            Alias: ``start``.
+        ends (list|tuple|None): the stop indices of where to insert. Default: ``None``, auto-calculated based on value shape.
+            Alias: ``end``.
+        strides (list|tuple): the steps for each insert. Default: ``[1]``.
+            Alias: ``step``.
 
     Returns:
         Tensor, same dtype and shape with x
@@ -8733,6 +8852,10 @@ def slice_scatter(
               [1., 0., 1., 0., 0.]]])
 
     """
+    # Auto-calculate ends if not provided
+    if ends is None:
+        ends = _calc_end_from_shapes(x, value, axes, starts, strides)
+
     none_axes = []
     decrease_axes = []
     dtype = x.dtype

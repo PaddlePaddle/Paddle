@@ -21,11 +21,14 @@ import functools
 import inspect
 import sys
 import warnings
-from typing import Callable, TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 from typing_extensions import ParamSpec
 
 import paddle
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 _InputT = ParamSpec("_InputT")
 _RetT = TypeVar("_RetT")

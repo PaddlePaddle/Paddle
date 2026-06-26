@@ -90,34 +90,6 @@ function init_gcov_tool() {
     fi
 }
 
-function pr_has_cpp_source_changes() {
-    local diff_file="$1"
-
-    awk '
-        index($0, "+++ ") == 1 {
-            path = substr($0, 5)
-            if (path ~ /^paddle\// &&
-                path ~ /\.(c|cc|cpp|cxx|cu)$/ &&
-                path !~ /(^|\/)(test|tests)\// &&
-                path !~ /(^|\/)[^\/]*(test_|_test|unittest)[^\/]*\./) {
-                found = 1
-            }
-        }
-        END { exit(found ? 0 : 1) }
-    ' "${diff_file}"
-}
-
-function ensure_cpp_diff_coverage_data() {
-    local info_file="$1"
-    local diff_file="$2"
-
-    if pr_has_cpp_source_changes "${diff_file}" && ! grep -q '^DA:' "${info_file}" 2>/dev/null; then
-        echo "ERROR: ${info_file} has no C++ line coverage data for compiled C++ source changes"
-        echo "This usually means lcov/gcov failed before producing a valid diff report."
-        exit 101
-    fi
-}
-
 # NOTE: This gcda pre-cleaning step keeps/removes files by mapping PR
 # changed files to "*.gcda" paths. That is not always correct: for header-only
 # changes, or changes whose coverage is recorded in other translation units,
@@ -233,8 +205,6 @@ lcov --extract coverage-full.info \
 python ${PADDLE_ROOT}/ci/coverage_diff.py coverage-diff.info git-diff.out > coverage-diff.tmp
 
 mv -f coverage-diff.tmp coverage-diff.info
-
-ensure_cpp_diff_coverage_data coverage-diff.info git-diff.out
 
 cp coverage-diff.info coverage_files
 

@@ -15,7 +15,9 @@
 #include "paddle/phi/kernels/triu_indices_kernel.h"
 
 #include <algorithm>
+
 #include <tuple>
+#include "paddle/common/enforce.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
@@ -99,7 +101,8 @@ void TriuIndicesKernel(const Context& dev_ctx,
                        DenseTensor* out) {
   T* out_data = dev_ctx.template Alloc<T>(out);
   auto out_dims = out->dims();
-  int triu_size = out_dims[1];
+  PADDLE_ENFORCE_LE_INT_MAX(out_dims[1], "triu_size");
+  int triu_size = static_cast<int>(out_dims[1]);
   //  auto tensor = empty_cuda({2, triu_size}, dtype_opt, layout_opt,
   //  device_opt, pin_memory_opt);
 

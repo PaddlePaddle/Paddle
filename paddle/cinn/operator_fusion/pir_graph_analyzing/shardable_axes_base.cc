@@ -396,9 +396,10 @@ ShardableAxesSignature CreateSignatureForConcat(
 
   const auto axis_attr =
       op->attributes().at("axis").dyn_cast<::pir::Int32Attribute>();
-  PADDLE_ENFORCE_NOT_NULL(axis_attr,
-                          ::common::errors::InvalidArgument(
-                              "The axis attribute should be int32 type."));
+  PADDLE_ENFORCE_EQ(static_cast<bool>(axis_attr),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The axis attribute should be int32 type."));
   const int axis = axis_attr.data();
 
   const auto create_axes_fn = [&]() -> decltype(auto) {

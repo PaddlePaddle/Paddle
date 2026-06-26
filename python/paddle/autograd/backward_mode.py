@@ -35,6 +35,7 @@ def backward(
     tensors: Tensor | Sequence[Tensor],
     grad_tensors: Tensor | Sequence[Tensor | None] | None = None,
     retain_graph: bool = False,
+    create_graph: bool = False,
     *,
     dump_backward_graph_path: str | None = None,
 ) -> None:
@@ -143,5 +144,9 @@ def backward(
     assert isinstance(retain_graph, bool), "retain_graph must be True or False"
     check_and_create_dir(dump_backward_graph_path)
     core.eager.run_backward(
-        tensors, grad_tensors, retain_graph, dump_backward_graph_path
+        tensors,
+        grad_tensors,
+        retain_graph,
+        create_graph,
+        dump_backward_graph_path,
     )

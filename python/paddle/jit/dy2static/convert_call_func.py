@@ -22,7 +22,7 @@ import logging
 import os
 import pdb  # noqa: T100
 import re
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 import numpy
 
@@ -49,6 +49,7 @@ from .utils import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from types import ModuleType
 
 __all__ = []
@@ -122,8 +123,7 @@ def get_module_functions(module: ModuleType) -> list[Callable[..., Any]]:
 @functools.lru_cache
 def get_module_defining_path(module: ModuleType) -> str | None:
     def _remove_module_init_suffix(file_path: str) -> str:
-        # TODO(SigureMo): use removesuffix after Python 3.9
-        return re.sub(r"__init__.py$", "", file_path)
+        return file_path.removesuffix("__init__.py")
 
     if not hasattr(module, "__file__") or module.__file__ is None:
         return None

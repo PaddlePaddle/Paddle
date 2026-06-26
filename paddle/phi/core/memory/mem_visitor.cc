@@ -13,7 +13,11 @@
 // limitations under the License.
 
 #include "paddle/phi/core/memory/mem_visitor.h"
+
+#include <mutex>  // NOLINT
+
 #include "paddle/phi/core/memory/allocation/allocator.h"
+#include "paddle/phi/core/memory/allocation/auto_growth_best_fit_allocator.h"
 #include "paddle/phi/core/memory/allocation/retry_allocator.h"
 #include "paddle/phi/core/memory/allocation/spin_lock.h"
 #include "paddle/phi/core/memory/allocation/stat_allocator.h"
@@ -29,6 +33,8 @@ namespace memory {
 void allocation::Allocator::Accept(AllocatorVisitor* visitor) {
   visitor->Visit(this);
 }
+
+void AllocatorVisitor::Visit(AutoGrowthBestFitAllocator*) {}
 
 void AllocatorVisitor::Visit(RetryAllocator* allocator) {
   allocator->GetUnderLyingAllocator()->Accept(this);
@@ -102,7 +108,7 @@ void VMMFreeBlocksInfoVisitor::Visit(
   }
 }
 
-void VMMAllBlocksInfoVisitor::Visit(
+void AllBlocksInfoVisitor::Visit(
     VirtualMemoryAutoGrowthBestFitAllocator* allocator) {
   std::vector<std::tuple<size_t, uintptr_t, bool>> info;
   for (const auto& item : allocator->GetAllBlocks()) {
@@ -113,6 +119,20 @@ void VMMAllBlocksInfoVisitor::Visit(
   }
   if (!info.empty()) {
     all_blocks_info_.push_back(info);
+  }
+}
+
+void AllBlocksInfoVisitor::Visit(AutoGrowthBestFitAllocator* allocator) {
+  std::lock_guard<SpinLock> guard(allocator->spinlock_);
+  for (const auto& chunk : allocator->chunks_) {
+    std::vector<std::tuple<size_t, uintptr_t, bool>> info;
+    for (const auto& block : chunk.blocks_) {
+      info.emplace_back(
+          block.size_, reinterpret_cast<uintptr_t>(block.ptr_), block.is_free_);
+    }
+    if (!info.empty()) {
+      all_blocks_info_.push_back(std::move(info));
+    }
   }
 }
 

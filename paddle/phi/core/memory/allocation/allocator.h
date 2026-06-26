@@ -22,6 +22,7 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
@@ -161,12 +162,20 @@ static T&& FillValue(T&& allocation) {
         PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
       }
       if (FLAGS_alloc_fill_value >= 0) {
+        PADDLE_ENFORCE_LE(FLAGS_alloc_fill_value,
+                          255,
+                          common::errors::InvalidArgument(
+                              "The value of FLAGS_alloc_fill_value must be in "
+                              "range [0, 255]. Expected 0 <= "
+                              "FLAGS_alloc_fill_value <= 255, but received "
+                              "FLAGS_alloc_fill_value = %ld.",
+                              FLAGS_alloc_fill_value));
+        const int fill_value = static_cast<int>(FLAGS_alloc_fill_value);
         if (phi::is_gpu_place(allocation->place())) {
-          PADDLE_ENFORCE_GPU_SUCCESS(cudaMemset(
-              allocation->ptr(), FLAGS_alloc_fill_value, allocation->size()));
+          PADDLE_ENFORCE_GPU_SUCCESS(
+              cudaMemset(allocation->ptr(), fill_value, allocation->size()));
         } else {
-          std::memset(
-              allocation->ptr(), FLAGS_alloc_fill_value, allocation->size());
+          std::memset(allocation->ptr(), fill_value, allocation->size());
         }
         if (need_sync) {
           PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());

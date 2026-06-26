@@ -13,9 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import Literal, Union
-
-from typing_extensions import TypeAlias
+from typing import Literal, TypeAlias
 
 # Note: Do not conform to predefined naming style in pylint.
 DataLayout0D: TypeAlias = Literal["NC"]
@@ -23,12 +21,9 @@ DataLayout1D: TypeAlias = Literal["NCL", "NLC"]
 DataLayout2D: TypeAlias = Literal["NCHW", "NHWC"]
 DataLayout3D: TypeAlias = Literal["NCDHW", "NDHWC"]
 
-DataLayoutND: TypeAlias = Union[
-    DataLayout0D,
-    DataLayout1D,
-    DataLayout2D,
-    DataLayout3D,
-]
+DataLayoutND: TypeAlias = (
+    DataLayout0D | DataLayout1D | DataLayout2D | DataLayout3D
+)
 
 DataLayout1DVariant: TypeAlias = Literal["NCW", "NWC"]
 DataLayoutImage: TypeAlias = Literal["HWC", "CHW"]

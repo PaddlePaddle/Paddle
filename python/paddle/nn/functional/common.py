@@ -50,8 +50,7 @@ from ...tensor.manipulation import squeeze, unsqueeze
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-
-    from typing_extensions import TypeAlias
+    from typing import TypeAlias
 
     from paddle import Tensor
     from paddle._typing import (

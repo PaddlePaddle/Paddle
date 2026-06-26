@@ -379,7 +379,7 @@ void ExecutionEngine::RegisterModuleRuntimeSymbols(
   auto *session = &jit_->getExecutionSession();
   for (const auto &sym : module_symbols_.All()) {
     VLOG(3) << "Add symbol: {" << sym.first << ":" << sym.second << "}";
-    llvm::cantFail(jit_->define(llvm::orc::absoluteSymbols(
+    llvm::cantFail(jit_->getMainJITDylib().define(llvm::orc::absoluteSymbols(
         {{session->intern(sym.first),
           {llvm::pointerToJITTargetAddress(sym.second),
            llvm::JITSymbolFlags::Exported}}})));
@@ -416,7 +416,7 @@ void ExecutionEngine::RegisterGlobalRuntimeSymbols() {
   const auto &registry = GlobalSymbolRegistry::Global();
   auto *session = &jit_->getExecutionSession();
   for (const auto &sym : registry.All()) {
-    llvm::cantFail(jit_->define(llvm::orc::absoluteSymbols(
+    llvm::cantFail(jit_->getMainJITDylib().define(llvm::orc::absoluteSymbols(
         {{session->intern(sym.first),
           {llvm::pointerToJITTargetAddress(sym.second),
            llvm::JITSymbolFlags::None}}})));

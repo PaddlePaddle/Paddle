@@ -15,8 +15,8 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from functools import wraps
-from typing import Callable, Union
 
 import numpy as np
 
@@ -225,7 +225,7 @@ def compare_legacy_with_pt(fn):
 
 
 FuncType = Callable[[], bool]
-PlaceType = Union[paddle.CPUPlace, paddle.CUDAPlace, str]
+PlaceType = paddle.CPUPlace | paddle.CUDAPlace | str
 
 
 def convert_place(place: PlaceType) -> str:

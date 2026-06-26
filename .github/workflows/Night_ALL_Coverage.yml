@@ -175,8 +175,8 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ~/.bashrc
-          source ${ci_scripts}/utils.sh; clean_build_files
           Build_Size=$(du -h --max-depth=0 ${work_dir}/build |awk '"'"'{print $1}'"'"')
+          source ${ci_scripts}/utils.sh; clean_build_files
           echo "Build_Size=${Build_Size}" > ${work_dir}/dist/coverage_build_size
           find ./ -type f -size +200M | xargs du -lh
           rm -rf $(find . -name "*.a")
@@ -214,6 +214,7 @@ jobs:
           mkdir -p ${CFS_DIR}/coverage_night/${coverage_tag}
           echo "Uploading coverage build size"
           python ${{ env.bos_file }} coverage_build_size paddle-github-action/night/coverage/${coverage_tag}
+          python ${{ env.bos_file }} coverage_build_size paddle-github-action/night/coverage
           echo "Uploading coverage wheel"
           python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/night/coverage/${coverage_tag}
           cd /

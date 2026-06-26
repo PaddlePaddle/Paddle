@@ -288,10 +288,16 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& dev_ctx,
 
   // ------------------- cudnn conv backward data ---------------------
   // FIxME(typhoonzero): template type T may not be the same as cudnn call.
-  int x_offset = x.numel() / x.dims()[0] / groups;
-  int dout_offset =
+  int64_t x_offset_64 = x.numel() / x.dims()[0] / groups;
+  int64_t dout_offset_64 =
       transformed_dout.numel() / transformed_dout.dims()[0] / groups;
-  int filter_offset = filter.numel() / groups;
+  int64_t filter_offset_64 = filter.numel() / groups;
+  PADDLE_ENFORCE_LE_INT_MAX(x_offset_64, "x_offset");
+  PADDLE_ENFORCE_LE_INT_MAX(dout_offset_64, "dout_offset");
+  PADDLE_ENFORCE_LE_INT_MAX(filter_offset_64, "filter_offset");
+  int x_offset = static_cast<int>(x_offset_64);
+  int dout_offset = static_cast<int>(dout_offset_64);
+  int filter_offset = static_cast<int>(filter_offset_64);
   ScalingParamType<T> alpha = 1.0f;
   ScalingParamType<T> beta = 0.0f;
   auto workspace_handle = dev_ctx.cudnn_workspace_handle();
@@ -612,20 +618,35 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
     std::vector<int> new_input_shape_vec(data_dim + 2);
     std::vector<int> new_output_grad_shape_vec(data_dim + 2);
 
-    new_input_shape_vec[0] = transformed_x_channel.dims()[0];
-    new_input_shape_vec[1] = transformed_x_channel.dims()[1];
+    int64_t input_shape0 = transformed_x_channel.dims()[0];
+    int64_t input_shape1 = transformed_x_channel.dims()[1];
+    int64_t output_grad_shape0 = transformed_dout_channel.dims()[0];
+    int64_t output_grad_shape1 = transformed_dout_channel.dims()[1];
+    PADDLE_ENFORCE_LE_INT_MAX(input_shape0, "new_input_shape_vec[0]");
+    PADDLE_ENFORCE_LE_INT_MAX(input_shape1, "new_input_shape_vec[1]");
+    PADDLE_ENFORCE_LE_INT_MAX(output_grad_shape0,
+                              "new_output_grad_shape_vec[0]");
+    PADDLE_ENFORCE_LE_INT_MAX(output_grad_shape1,
+                              "new_output_grad_shape_vec[1]");
+    new_input_shape_vec[0] = static_cast<int>(input_shape0);
+    new_input_shape_vec[1] = static_cast<int>(input_shape1);
 
-    new_output_grad_shape_vec[0] = transformed_dout_channel.dims()[0];
-    new_output_grad_shape_vec[1] = transformed_dout_channel.dims()[1];
+    new_output_grad_shape_vec[0] = static_cast<int>(output_grad_shape0);
+    new_output_grad_shape_vec[1] = static_cast<int>(output_grad_shape1);
 
     for (size_t i = 0; i < data_dim; ++i) {
       padding_diff[i] = std::abs(paddings_[2 * i] - paddings_[2 * i + 1]);
       padding_common[i] = std::min(paddings_[2 * i], paddings_[2 * i + 1]);
-      new_input_shape_vec[i + 2] =
+      int64_t input_shape =
           transformed_x_channel.dims()[i + 2] + padding_diff[i];
-
-      new_output_grad_shape_vec[i + 2] =
+      int64_t output_grad_shape =
           transformed_dout_channel.dims()[i + 2] + padding_diff[i];
+      PADDLE_ENFORCE_LE_INT_MAX(input_shape, "new_input_shape_vec[i + 2]");
+      PADDLE_ENFORCE_LE_INT_MAX(output_grad_shape,
+                                "new_output_grad_shape_vec[i + 2]");
+      new_input_shape_vec[i + 2] = static_cast<int>(input_shape);
+
+      new_output_grad_shape_vec[i + 2] = static_cast<int>(output_grad_shape);
 
       input_pad[2 * i + 4] = paddings_[2 * i] - padding_common[i];
       input_pad[2 * i + 4 + 1] = paddings_[2 * i + 1] - padding_common[i];

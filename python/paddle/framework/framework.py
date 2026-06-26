@@ -77,6 +77,53 @@ def set_default_dtype(d: DTypeLike) -> None:
     LayerHelperBase.set_default_dtype(d)
 
 
+def set_default_tensor_type(t: DTypeLike | str, /) -> None:
+    """
+    Set the default tensor type.
+
+    .. warning::
+        This API is deprecated. Please use ``paddle.set_default_dtype`` instead.
+
+    Args:
+        t (dtype or str): The default tensor type. It can be a dtype like
+            ``paddle.float32`` or a string like ``"paddle.float32"`` or
+            ``"paddle.FloatTensor"``. Only float dtypes are supported.
+
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> paddle.set_default_tensor_type("paddle.FloatTensor")
+            >>> paddle.set_default_tensor_type(paddle.FloatTensor)
+    """
+    if isinstance(t, type):
+        t = t.__name__
+
+    if isinstance(t, str):
+        t = t.replace('torch.', '').replace('paddle.', '').replace('cuda.', '')
+        dtype_map = {
+            "FloatTensor": "float32",
+            "DoubleTensor": "float64",
+            "HalfTensor": "float16",
+            "BFloat16Tensor": "bfloat16",
+        }
+        if t in dtype_map:
+            t = dtype_map[t]
+        else:
+            raise TypeError(
+                f"set_default_tensor_type only supports DtypeTensor, but received {t}"
+            )
+    else:
+        raise TypeError(
+            f"set_default_tensor_type only supports DtypeTensor or str, but received {t}"
+        )
+
+    set_default_dtype(t)
+
+
 def get_default_dtype() -> _DTypeLiteral:
     """
     Get the current default dtype. The default dtype is initially float32.

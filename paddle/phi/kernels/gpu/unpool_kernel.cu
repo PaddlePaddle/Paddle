@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -104,19 +105,32 @@ class Unpool2dMaxFunctor {
     if (input.numel() == 0) {
       return;
     }
+    PADDLE_ENFORCE_LE_INT_MAX(input_height, "input_height");
+    PADDLE_ENFORCE_LE_INT_MAX(input_width, "input_width");
+    PADDLE_ENFORCE_LE_INT_MAX(output_channels, "output_channels");
+    PADDLE_ENFORCE_LE_INT_MAX(output_height, "output_height");
+    PADDLE_ENFORCE_LE_INT_MAX(output_width, "output_width");
+    int input_height_int = static_cast<int>(input_height);
+    int input_width_int = static_cast<int>(input_width);
+    int output_channels_int = static_cast<int>(output_channels);
+    int output_height_int = static_cast<int>(output_height);
+    int output_width_int = static_cast<int>(output_width);
     int threads = 1024;
     int64_t grid_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
-    int grid = std::min((input.numel() + threads - 1) / threads, grid_max);
+    int64_t grid_64 =
+        std::min((input.numel() + threads - 1) / threads, grid_max);
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "unpool grid.x");
+    uint32_t grid = static_cast<uint32_t>(grid_64);
     KernelUnpool2dMax<T, IndT>
         <<<grid, threads, 0, dev_ctx.stream()>>>(input.numel(),
                                                  input_data,
                                                  indices_data,
-                                                 input_height,
-                                                 input_width,
-                                                 output_channels,
+                                                 input_height_int,
+                                                 input_width_int,
+                                                 output_channels_int,
                                                  output_data,
-                                                 output_height,
-                                                 output_width);
+                                                 output_height_int,
+                                                 output_width_int);
   }
 };
 
@@ -166,21 +180,38 @@ class Unpool3dMaxFunctor {
     if (input.numel() == 0) {
       return;
     }
+    PADDLE_ENFORCE_LE_INT_MAX(input_depth, "input_depth");
+    PADDLE_ENFORCE_LE_INT_MAX(input_height, "input_height");
+    PADDLE_ENFORCE_LE_INT_MAX(input_width, "input_width");
+    PADDLE_ENFORCE_LE_INT_MAX(output_channels, "output_channels");
+    PADDLE_ENFORCE_LE_INT_MAX(output_depth, "output_depth");
+    PADDLE_ENFORCE_LE_INT_MAX(output_height, "output_height");
+    PADDLE_ENFORCE_LE_INT_MAX(output_width, "output_width");
+    int input_depth_int = static_cast<int>(input_depth);
+    int input_height_int = static_cast<int>(input_height);
+    int input_width_int = static_cast<int>(input_width);
+    int output_channels_int = static_cast<int>(output_channels);
+    int output_depth_int = static_cast<int>(output_depth);
+    int output_height_int = static_cast<int>(output_height);
+    int output_width_int = static_cast<int>(output_width);
     int threads = 1024;
     int64_t grid_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
-    int grid = std::min((input.numel() + threads - 1) / threads, grid_max);
+    int64_t grid_64 =
+        std::min((input.numel() + threads - 1) / threads, grid_max);
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "unpool grid.x");
+    uint32_t grid = static_cast<uint32_t>(grid_64);
     KernelUnpool3dMax<T, IndT>
         <<<grid, threads, 0, dev_ctx.stream()>>>(input.numel(),
                                                  input_data,
                                                  indices_data,
-                                                 input_depth,
-                                                 input_height,
-                                                 input_width,
-                                                 output_channels,
+                                                 input_depth_int,
+                                                 input_height_int,
+                                                 input_width_int,
+                                                 output_channels_int,
                                                  output_data,
-                                                 output_depth,
-                                                 output_height,
-                                                 output_width);
+                                                 output_depth_int,
+                                                 output_height_int,
+                                                 output_width_int);
   }
 };
 

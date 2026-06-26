@@ -19,6 +19,7 @@ limitations under the License. */
 #include <hiprand_kernel.h>
 #endif
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/amp_type_traits.h"
@@ -188,7 +189,9 @@ void BinomialKernel(const Context& dev_ctx,
 
   int block_size = std::min(kMaxBlockDim, dev_ctx.GetMaxThreadsPerBlock());
   dim3 dim_block(block_size);
-  dim3 dim_grid((size + block_size - 1) / block_size);
+  int64_t grid_64 = (size + block_size - 1) / block_size;
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "binomial grid.x");
+  dim3 dim_grid(static_cast<uint32_t>(grid_64));
   backends::gpu::LimitGridDim(dev_ctx, &dim_grid);
 
   auto gen_cuda = dev_ctx.GetGenerator();

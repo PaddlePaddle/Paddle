@@ -80,7 +80,11 @@ from ..base.layers.math_op_patch import monkey_patch_variable  # noqa: F401
 # isort: on
 from ..base.param_attr import ParamAttr  # noqa: F401
 from . import random  # noqa: F401
-from .framework import get_default_dtype, set_default_dtype  # noqa: F401
+from .framework import (  # noqa: F401
+    get_default_dtype,
+    set_default_dtype,
+    set_default_tensor_type,
+)
 from .io import load, save  # noqa: F401
 from .io_utils import (  # noqa: F401
     _clone_var_in_block_,

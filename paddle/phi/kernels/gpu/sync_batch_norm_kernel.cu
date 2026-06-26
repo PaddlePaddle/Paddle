@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/sync_batch_norm_kernel.h"
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -62,6 +63,7 @@ void SyncBatchNormKernel(const Context& dev_ctx,
   int N, C, H, W, D;
   funcs::ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
   int64_t x_numel = x.numel();
+  const int64_t fsize = static_cast<int64_t>(H) * W * D;
 
   const T* x_d = x.template data<T>();
   const auto* s_d = scale.template data<BatchNormParamType<T>>();
@@ -84,9 +86,10 @@ void SyncBatchNormKernel(const Context& dev_ctx,
   } else {
     // x, x^2, 1, here 1 is used to calc device num
     // device num also can be got from DeviceContextPool
-    const int bytes = (C * 2 + 1) * sizeof(BatchNormParamType<T>);
+    const int64_t bytes_64 =
+        (static_cast<int64_t>(C) * 2 + 1) * sizeof(BatchNormParamType<T>);
     DenseTensor stats_tensor;
-    stats_tensor.Resize({static_cast<int64_t>(bytes)});
+    stats_tensor.Resize({bytes_64});
     dev_ctx.template Alloc<BatchNormParamType<T>>(&stats_tensor);
     auto* stats_data = stats_tensor.data<BatchNormParamType<T>>();
     auto* stats = reinterpret_cast<BatchNormParamType<T>*>(stats_data);
@@ -94,10 +97,10 @@ void SyncBatchNormKernel(const Context& dev_ctx,
     int grid = std::min(C, (max_threads + threads - 1) / threads);
     if (layout == DataLayout::NCHW) {
       KeLocalStats<T, threads, DataLayout::NCHW>
-          <<<grid, threads, 0, stream>>>(x_d, N, H * W * D, C, stats);
+          <<<grid, threads, 0, stream>>>(x_d, N, fsize, C, stats);
     } else {
       KeLocalStats<T, threads, DataLayout::NHWC>
-          <<<grid, threads, 0, stream>>>(x_d, N, H * W * D, C, stats);
+          <<<grid, threads, 0, stream>>>(x_d, N, fsize, C, stats);
     }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -144,31 +147,16 @@ void SyncBatchNormKernel(const Context& dev_ctx,
     var_data = stats + C;
   }
 
-  int grid2 =
+  const int64_t grid2_64 =
       (std::min(x_numel, static_cast<int64_t>(max_threads)) + block - 1) /
       block;
+  uint32_t grid2 = static_cast<uint32_t>(grid2_64);
   if (layout == DataLayout::NCHW) {
-    KeNormAffine<T, DataLayout::NCHW><<<grid2, block, 0, stream>>>(x_d,
-                                                                   s_d,
-                                                                   b_d,
-                                                                   mean_data,
-                                                                   var_data,
-                                                                   epsilon,
-                                                                   C,
-                                                                   H * W * D,
-                                                                   x_numel,
-                                                                   y_d);
+    KeNormAffine<T, DataLayout::NCHW><<<grid2, block, 0, stream>>>(
+        x_d, s_d, b_d, mean_data, var_data, epsilon, C, fsize, x_numel, y_d);
   } else {
-    KeNormAffine<T, DataLayout::NHWC><<<grid2, block, 0, stream>>>(x_d,
-                                                                   s_d,
-                                                                   b_d,
-                                                                   mean_data,
-                                                                   var_data,
-                                                                   epsilon,
-                                                                   C,
-                                                                   H * W * D,
-                                                                   x_numel,
-                                                                   y_d);
+    KeNormAffine<T, DataLayout::NHWC><<<grid2, block, 0, stream>>>(
+        x_d, s_d, b_d, mean_data, var_data, epsilon, C, fsize, x_numel, y_d);
   }
 }
 

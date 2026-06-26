@@ -1259,37 +1259,18 @@ def get_paddle_extra_install_requirements():
                     "cuda-python==12.9.4; platform_system == 'Linux' and platform_machine == 'x86_64'"
                 ),
                 "13.0": (
-                    "nvidia-cuda-nvrtc==13.0.88; platform_system == 'Linux' | "
-                    "nvidia-cuda-runtime==13.0.88; platform_system == 'Linux' | "
-                    "nvidia-cuda-cupti==13.0.85; platform_system == 'Linux' | "
-                    "nvidia-cudnn-cu13==9.15.1.9; platform_system == 'Linux' | "
-                    "nvidia-cublas==13.1.0.3; platform_system == 'Linux' | "
-                    "nvidia-cufft==12.0.0.61; platform_system == 'Linux' | "
-                    "nvidia-curand==10.4.0.35; platform_system == 'Linux' | "
-                    "nvidia-cusolver==12.0.4.66; platform_system == 'Linux' | "
-                    "nvidia-cusparse==12.6.3.3; platform_system == 'Linux' | "
+                    "cuda-toolkit[cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink,nvrtc,nvtx]==13.0.2; platform_system == 'Linux' | "
+                    "nvidia-cublas<=13.1.1.3,>=13.1.0.3; platform_system == 'Linux' | "
+                    "nvidia-cudnn-cu13==9.20.0.48; platform_system == 'Linux' | "
                     "nvidia-cusparselt-cu13==0.8.1; platform_system == 'Linux' | "
-                    "nvidia-nccl-cu13==2.28.3; platform_system == 'Linux' | "
-                    "nvidia-nvtx==13.0.85; platform_system == 'Linux' | "
-                    "nvidia-nvjitlink==13.0.88; platform_system == 'Linux' | "
-                    "nvidia-cufile==1.15.1.6; platform_system == 'Linux' | "
+                    "nvidia-nccl-cu13==2.29.7; platform_system == 'Linux' | "
                     "cuda-python==13.0.3; platform_system == 'Linux'"
                 ),
                 "13.2": (
-                    "nvidia-cuda-nvrtc==13.2.78; platform_system == 'Linux' | "
-                    "nvidia-cuda-runtime==13.2.75; platform_system == 'Linux' | "
-                    "nvidia-cuda-cupti==13.2.75; platform_system == 'Linux' | "
-                    "nvidia-cudnn-cu13==9.21.0.82; platform_system == 'Linux' | "
-                    "nvidia-cublas==13.4.0.1; platform_system == 'Linux' | "
-                    "nvidia-cufft==12.2.0.46; platform_system == 'Linux' | "
-                    "nvidia-curand==10.4.2.55; platform_system == 'Linux' | "
-                    "nvidia-cusolver==12.2.0.1; platform_system == 'Linux' | "
-                    "nvidia-cusparse==12.7.10.1; platform_system == 'Linux' | "
-                    "nvidia-cusparselt-cu13==0.9.0; platform_system == 'Linux' | "
+                    "cuda-toolkit[cublas,cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink,nvrtc,nvtx]==13.2.1; platform_system == 'Linux' | "
+                    "nvidia-cudnn-cu13==9.20.0.48; platform_system == 'Linux' | "
+                    "nvidia-cusparselt-cu13==0.8.1; platform_system == 'Linux' | "
                     "nvidia-nccl-cu13==2.29.7; platform_system == 'Linux' | "
-                    "nvidia-nvtx==13.2.75; platform_system == 'Linux' | "
-                    "nvidia-nvjitlink==13.2.78; platform_system == 'Linux' | "
-                    "nvidia-cufile==1.17.1.22; platform_system == 'Linux' | "
                     "cuda-python==13.2.0; platform_system == 'Linux'"
                 ),
             }
@@ -1310,10 +1291,10 @@ def get_paddle_extra_install_requirements():
                     " | nvidia-cuda-cccl-cu12==12.9.27;platform_system == 'Linux' and platform_machine == 'x86_64' "
                 )
                 PADDLE_CUDA_INSTALL_REQUIREMENTS["13.0"] += (
-                    " | nvidia-cuda-cccl==13.0.85;platform_system == 'Linux' "
+                    " | cuda-toolkit[cccl]==13.0.2;platform_system == 'Linux' "
                 )
                 PADDLE_CUDA_INSTALL_REQUIREMENTS["13.2"] += (
-                    " | nvidia-cuda-cccl==13.2.75;platform_system == 'Linux' "
+                    " | cuda-toolkit[cccl]==13.2.1;platform_system == 'Linux' "
                 )
 
         elif platform.system() == 'Windows':

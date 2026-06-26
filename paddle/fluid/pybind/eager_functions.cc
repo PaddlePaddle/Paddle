@@ -158,8 +158,9 @@ static PyObject* eager_api_run_backward(PyObject* self,
   auto tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
   auto grad_tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 1), 1);
   bool retain_graph = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 2), 2);
+  bool create_graph = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 3), 3);
   std::string dump_backward_graph_path =
-      CastPyArg2AttrString(PyTuple_GET_ITEM(args, 3), 3);
+      CastPyArg2AttrString(PyTuple_GET_ITEM(args, 4), 4);
   const phi::distributed::ProcessMesh* mesh = nullptr;
   if (InputsContainDistTensor(&mesh, tensors, grad_tensors)) {
     tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0, mesh);
@@ -168,8 +169,11 @@ static PyObject* eager_api_run_backward(PyObject* self,
   {
     eager_gil_scoped_release guard;
     EagerSetDeviceId();
-    egr::Backward(
-        tensors, grad_tensors, retain_graph, dump_backward_graph_path);
+    egr::Backward(tensors,
+                  grad_tensors,
+                  retain_graph,
+                  create_graph,
+                  dump_backward_graph_path);
   }
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -1265,9 +1269,10 @@ static PyObject* eager_api_async_read(PyObject* self,
       auto* src_data = src_tensor.data<float>();
       auto* index_data = index_tensor.data<int64_t>();
       auto* buffer_data = buffer_tensor->data<float>();
-      const int& slice_size =
-          src_tensor.numel() / src_tensor.dims()[0];       // NOLINT
-      const int& copy_bytes = slice_size * sizeof(float);  // NOLINT
+      const int64_t slice_size =
+          src_tensor.numel() / src_tensor.dims()[0];  // NOLINT
+      const size_t copy_bytes =
+          static_cast<size_t>(slice_size) * sizeof(float);  // NOLINT
       int64_t c = 0;
       for (int64_t i = 0; i < index_tensor.numel(); i++) {
         std::memcpy(buffer_data + c * slice_size,

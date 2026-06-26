@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -85,12 +86,15 @@ void IndexSampleKernel(const Context& dev_ctx,
   }
   auto block_width = backends::gpu::RoundToPowerOfTwo(index_length);
   block_width = MIN(block_width, PREDEFINED_BLOCK_SIZE_X);
-  int block_height =
+  int64_t block_height =
       backends::gpu::RoundToPowerOfTwo(index_length * batch_size) / block_width;
   block_height = MIN(block_height, PREDEFINED_BLOCK_SIZE / block_width);
   dim3 block_dim(block_width, block_height);
-  dim3 grid_dim((index_length + block_dim.x - 1) / block_dim.x,
-                (batch_size + block_dim.y - 1) / block_dim.y);
+  const uint64_t grid_x = (index_length + block_dim.x - 1) / block_dim.x;
+  const uint64_t grid_y = (batch_size + block_dim.y - 1) / block_dim.y;
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "grid.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_y, "grid.y");
+  dim3 grid_dim(static_cast<uint32_t>(grid_x), static_cast<uint32_t>(grid_y));
   backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
   // choose the element index type ; uint32 or int64 based on the tensor size
   bool use_uint32 = true;

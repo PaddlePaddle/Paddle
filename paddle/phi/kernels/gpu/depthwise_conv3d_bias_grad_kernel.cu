@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/common/enforce.h"
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
@@ -75,22 +76,29 @@ __global__ void DWConv3dBwdInputKernel(const T* grad_output,
   const int stride_w = kKnownStrideW > 0 ? kKnownStrideW : stride_w_in;
 
   const int channel_multiplier = output_channels / input_channels;
-  const int num_input =
-      batch_size * input_channels * input_depth * input_height * input_width;
+  const int64_t num_input = static_cast<int64_t>(batch_size) * input_channels *
+                            input_depth * input_height * input_width;
 
-  const int i_stride_c = input_depth * input_height * input_width;
-  const int i_stride_d = input_height * input_width;
+  const int64_t i_stride_c =
+      static_cast<int64_t>(input_depth) * input_height * input_width;
+  const int64_t i_stride_d = static_cast<int64_t>(input_height) * input_width;
   const int i_stride_h = input_width;
 
-  const int o_stride_c = output_depth * output_height * output_width;
-  const int o_stride_d = output_height * output_width;
+  const int64_t o_stride_c =
+      static_cast<int64_t>(output_depth) * output_height * output_width;
+  const int64_t o_stride_d = static_cast<int64_t>(output_height) * output_width;
   const int o_stride_h = output_width;
 
-  const int w_stride_c = kernel_t * kernel_h * kernel_w;
+  const int64_t w_stride_c =
+      static_cast<int64_t>(kernel_t) * kernel_h * kernel_w;
 
-  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < num_input;
-       index += blockDim.x * gridDim.x) {
-    int temp = index;
+  for (int64_t index =
+           static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+           static_cast<int64_t>(threadIdx.x);
+       index < num_input;
+       index +=
+       static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(gridDim.x)) {
+    int64_t temp = index;
     const int in_col = temp % input_width;
     temp /= input_width;
     const int in_row = temp % input_height;
@@ -100,43 +108,50 @@ __global__ void DWConv3dBwdInputKernel(const T* grad_output,
     const int in_channel = temp % input_channels;
     const int batch = temp / input_channels;
 
-    const int out_col_end = in_col + padding_w;
-    const int out_row_end = in_row + padding_h;
-    const int out_frame_end = in_frame + padding_t;
+    const int64_t out_col_end = static_cast<int64_t>(in_col) + padding_w;
+    const int64_t out_row_end = static_cast<int64_t>(in_row) + padding_h;
+    const int64_t out_frame_end = static_cast<int64_t>(in_frame) + padding_t;
 
     AccT sum = 0;
-    const T* weight_ptr =
-        weight + (in_channel * channel_multiplier) * w_stride_c;
-    const T* gout_base = grad_output + batch * (output_channels * o_stride_c);
+    const T* weight_ptr = weight + static_cast<int64_t>(in_channel) *
+                                       channel_multiplier * w_stride_c;
+    const T* gout_base = grad_output + static_cast<int64_t>(batch) *
+                                           output_channels * o_stride_c;
 
     for (int k_chn = 0; k_chn < channel_multiplier; ++k_chn) {
       const T* gout_ptr =
-          gout_base + (in_channel * channel_multiplier + k_chn) * o_stride_c;
+          gout_base +
+          (static_cast<int64_t>(in_channel) * channel_multiplier + k_chn) *
+              o_stride_c;
 
       for (int k_frame = 0; k_frame < kernel_t; ++k_frame) {
-        const int out_frame_raw = out_frame_end - k_frame * dilation_t;
-        const int out_frame = out_frame_raw / stride_t;
+        const int64_t out_frame_raw =
+            out_frame_end - static_cast<int64_t>(k_frame) * dilation_t;
+        const int64_t out_frame = out_frame_raw / stride_t;
 
         if (out_frame * stride_t == out_frame_raw && out_frame >= 0 &&
             out_frame < output_depth) {
           for (int k_row = 0; k_row < kernel_h; ++k_row) {
-            const int out_row_raw = out_row_end - k_row * dilation_h;
-            const int out_row = out_row_raw / stride_h;
+            const int64_t out_row_raw =
+                out_row_end - static_cast<int64_t>(k_row) * dilation_h;
+            const int64_t out_row = out_row_raw / stride_h;
 
             if (out_row * stride_h == out_row_raw && out_row >= 0 &&
                 out_row < output_height) {
               for (int k_col = 0; k_col < kernel_w; ++k_col) {
-                const int out_col_raw = out_col_end - k_col * dilation_w;
-                const int out_col = out_col_raw / stride_w;
+                const int64_t out_col_raw =
+                    out_col_end - static_cast<int64_t>(k_col) * dilation_w;
+                const int64_t out_col = out_col_raw / stride_w;
 
                 if (out_col * stride_w == out_col_raw && out_col >= 0 &&
                     out_col < output_width) {
-                  int w_offset = k_chn * w_stride_c +
-                                 k_frame * kernel_h * kernel_w +
-                                 k_row * kernel_w + k_col;
+                  const int64_t w_offset =
+                      k_chn * w_stride_c +
+                      static_cast<int64_t>(k_frame) * kernel_h * kernel_w +
+                      static_cast<int64_t>(k_row) * kernel_w + k_col;
                   T val_w = weight_ptr[w_offset];
 
-                  int out_offset =
+                  const int64_t out_offset =
                       out_frame * o_stride_d + out_row * o_stride_h + out_col;
                   T val_go = gout_ptr[out_offset];
 
@@ -198,30 +213,34 @@ __global__ void DWConv3dBwdWeightKernel(const T* grad_output,
   const int warpid = threadIdx.x / CUDA_WARP_SIZE;
   const int nwarps = blockDim.x / CUDA_WARP_SIZE;
 
-  const int i_stride_c = input_depth * input_height * input_width;
-  const int i_stride_d = input_height * input_width;
+  const int64_t i_stride_c =
+      static_cast<int64_t>(input_depth) * input_height * input_width;
+  const int64_t i_stride_d = static_cast<int64_t>(input_height) * input_width;
   const int i_stride_h = input_width;
 
-  const int o_stride_c = output_depth * output_height * output_width;
-  const int o_stride_d = output_height * output_width;
+  const int64_t o_stride_c =
+      static_cast<int64_t>(output_depth) * output_height * output_width;
+  const int64_t o_stride_d = static_cast<int64_t>(output_height) * output_width;
   const int o_stride_h = output_width;
 
   AccT grad = 0;
 
-  int batch = warpid / output_depth;
-  int gout_frame = warpid - batch * output_depth;
+  int64_t batch = warpid / output_depth;
+  int64_t gout_frame = warpid - batch * output_depth;
 
-  const int total_outer_loops = batch_size * output_depth;
+  const int64_t total_outer_loops =
+      static_cast<int64_t>(batch_size) * output_depth;
 
-  for (int outer_pos = warpid; outer_pos < total_outer_loops;
+  for (int64_t outer_pos = warpid; outer_pos < total_outer_loops;
        outer_pos += nwarps, gout_frame += nwarps) {
     while (gout_frame >= output_depth) {
       gout_frame -= output_depth;
       batch++;
     }
 
-    const int in_frame =
-        (gout_frame * stride_t) + (k_frame * dilation_t) - padding_t;
+    const int64_t in_frame = gout_frame * stride_t +
+                             static_cast<int64_t>(k_frame) * dilation_t -
+                             padding_t;
 
     if (in_frame >= 0 && in_frame < input_depth) {
       const T* gout_ptr = grad_output + batch * (output_channels * o_stride_c) +
@@ -239,15 +258,18 @@ __global__ void DWConv3dBwdWeightKernel(const T* grad_output,
         const AccT op1 = static_cast<AccT>(*gout_ptr_lane);
         gout_ptr_lane += CUDA_WARP_SIZE;
 
-        const int in_col =
-            (gout_col * stride_w) + (k_col * dilation_w) - padding_w;
-        const int in_row =
-            (gout_row * stride_h) + (k_row * dilation_h) - padding_h;
+        const int64_t in_col = static_cast<int64_t>(gout_col) * stride_w +
+                               static_cast<int64_t>(k_col) * dilation_w -
+                               padding_w;
+        const int64_t in_row = static_cast<int64_t>(gout_row) * stride_h +
+                               static_cast<int64_t>(k_row) * dilation_h -
+                               padding_h;
 
         AccT op2 = 0;
         if (in_row >= 0 && in_row < input_height && in_col >= 0 &&
             in_col < input_width) {
-          const int in_pos = in_row * i_stride_h + in_col;
+          const int64_t in_pos =
+              static_cast<int64_t>(in_row) * i_stride_h + in_col;
           op2 = static_cast<AccT>(input_ptr[in_pos]);
         }
 
@@ -339,10 +361,6 @@ void LaunchDepthwiseConv3dBackwardCompatible(const Context& dev_ctx,
   const int64_t kernel_t = filter_ncdhw.dims()[2];
   const int64_t kernel_h = filter_ncdhw.dims()[3];
   const int64_t kernel_w = filter_ncdhw.dims()[4];
-  std::vector<int> kernel_size = {static_cast<int>(kernel_t),
-                                  static_cast<int>(kernel_h),
-                                  static_cast<int>(kernel_w)};
-
   std::vector<int> paddings_vec;
   if (paddings.size() == 6) {
     paddings_vec = {paddings[0], paddings[2], paddings[4]};
@@ -354,6 +372,32 @@ void LaunchDepthwiseConv3dBackwardCompatible(const Context& dev_ctx,
 
   auto stream = dev_ctx.stream();
   using AccT = typename MPTypeTrait<T>::Type;
+
+  PADDLE_ENFORCE_LE_INT_MAX(batch_size, "batch_size");
+  PADDLE_ENFORCE_LE_INT_MAX(in_channels, "in_channels");
+  PADDLE_ENFORCE_LE_INT_MAX(in_depth, "in_depth");
+  PADDLE_ENFORCE_LE_INT_MAX(in_height, "in_height");
+  PADDLE_ENFORCE_LE_INT_MAX(in_width, "in_width");
+  PADDLE_ENFORCE_LE_INT_MAX(out_channels, "out_channels");
+  PADDLE_ENFORCE_LE_INT_MAX(out_depth, "out_depth");
+  PADDLE_ENFORCE_LE_INT_MAX(out_height, "out_height");
+  PADDLE_ENFORCE_LE_INT_MAX(out_width, "out_width");
+  PADDLE_ENFORCE_LE_INT_MAX(kernel_t, "kernel_t");
+  PADDLE_ENFORCE_LE_INT_MAX(kernel_h, "kernel_h");
+  PADDLE_ENFORCE_LE_INT_MAX(kernel_w, "kernel_w");
+
+  const int batch_size_int = static_cast<int>(batch_size);
+  const int in_channels_int = static_cast<int>(in_channels);
+  const int in_depth_int = static_cast<int>(in_depth);
+  const int in_height_int = static_cast<int>(in_height);
+  const int in_width_int = static_cast<int>(in_width);
+  const int out_channels_int = static_cast<int>(out_channels);
+  const int out_depth_int = static_cast<int>(out_depth);
+  const int out_height_int = static_cast<int>(out_height);
+  const int out_width_int = static_cast<int>(out_width);
+  const int kernel_t_int = static_cast<int>(kernel_t);
+  const int kernel_h_int = static_cast<int>(kernel_h);
+  const int kernel_w_int = static_cast<int>(kernel_w);
 
   const T* input_ptr = input_ncdhw.data<T>();
   const T* grad_output_ptr = out_grad_ncdhw.data<T>();
@@ -368,7 +412,10 @@ void LaunchDepthwiseConv3dBackwardCompatible(const Context& dev_ctx,
   if (grad_input_ptr) {
     int64_t num_elements = input_grad_ncdhw_ptr->numel();
     int block = 256;
-    int grid = std::min((num_elements - 1) / block + 1, (int64_t)65536);
+    const int64_t grid_num =
+        std::min((num_elements - 1) / block + 1, static_cast<int64_t>(65536));
+    dim3 grid(static_cast<unsigned int>(grid_num));
+    dim3 block_dim(block);
 
     bool is_k3 = (kernel_t == 3 && kernel_h == 3 && kernel_w == 3);
     bool is_d1 = (dilations[0] == 1 && dilations[1] == 1 && dilations[2] == 1);
@@ -376,134 +423,134 @@ void LaunchDepthwiseConv3dBackwardCompatible(const Context& dev_ctx,
 
     if (is_k3 && is_d1 && is_s1) {
       DWConv3dBwdInputKernel<T, AccT, 3, 3, 3, 1, 1, 1, 1, 1, 1>
-          <<<grid, block, 0, stream>>>(grad_output_ptr,
-                                       grad_input_ptr,
-                                       filter_ptr,
-                                       static_cast<int>(batch_size),
-                                       static_cast<int>(in_channels),
-                                       static_cast<int>(in_depth),
-                                       static_cast<int>(in_height),
-                                       static_cast<int>(in_width),
-                                       static_cast<int>(out_channels),
-                                       static_cast<int>(out_depth),
-                                       static_cast<int>(out_height),
-                                       static_cast<int>(out_width),
-                                       static_cast<int>(kernel_t),
-                                       static_cast<int>(kernel_h),
-                                       static_cast<int>(kernel_w),
-                                       strides[0],
-                                       strides[1],
-                                       strides[2],
-                                       paddings_vec[0],
-                                       paddings_vec[1],
-                                       paddings_vec[2],
-                                       dilations[0],
-                                       dilations[1],
-                                       dilations[2]);
+          <<<grid, block_dim, 0, stream>>>(grad_output_ptr,
+                                           grad_input_ptr,
+                                           filter_ptr,
+                                           batch_size_int,
+                                           in_channels_int,
+                                           in_depth_int,
+                                           in_height_int,
+                                           in_width_int,
+                                           out_channels_int,
+                                           out_depth_int,
+                                           out_height_int,
+                                           out_width_int,
+                                           kernel_t_int,
+                                           kernel_h_int,
+                                           kernel_w_int,
+                                           strides[0],
+                                           strides[1],
+                                           strides[2],
+                                           paddings_vec[0],
+                                           paddings_vec[1],
+                                           paddings_vec[2],
+                                           dilations[0],
+                                           dilations[1],
+                                           dilations[2]);
     } else if (is_k3 && is_d1) {
       DWConv3dBwdInputKernel<T, AccT, 3, 3, 3, 1, 1, 1, -1, -1, -1>
-          <<<grid, block, 0, stream>>>(grad_output_ptr,
-                                       grad_input_ptr,
-                                       filter_ptr,
-                                       static_cast<int>(batch_size),
-                                       static_cast<int>(in_channels),
-                                       static_cast<int>(in_depth),
-                                       static_cast<int>(in_height),
-                                       static_cast<int>(in_width),
-                                       static_cast<int>(out_channels),
-                                       static_cast<int>(out_depth),
-                                       static_cast<int>(out_height),
-                                       static_cast<int>(out_width),
-                                       static_cast<int>(kernel_t),
-                                       static_cast<int>(kernel_h),
-                                       static_cast<int>(kernel_w),
-                                       strides[0],
-                                       strides[1],
-                                       strides[2],
-                                       paddings_vec[0],
-                                       paddings_vec[1],
-                                       paddings_vec[2],
-                                       dilations[0],
-                                       dilations[1],
-                                       dilations[2]);
+          <<<grid, block_dim, 0, stream>>>(grad_output_ptr,
+                                           grad_input_ptr,
+                                           filter_ptr,
+                                           batch_size_int,
+                                           in_channels_int,
+                                           in_depth_int,
+                                           in_height_int,
+                                           in_width_int,
+                                           out_channels_int,
+                                           out_depth_int,
+                                           out_height_int,
+                                           out_width_int,
+                                           kernel_t_int,
+                                           kernel_h_int,
+                                           kernel_w_int,
+                                           strides[0],
+                                           strides[1],
+                                           strides[2],
+                                           paddings_vec[0],
+                                           paddings_vec[1],
+                                           paddings_vec[2],
+                                           dilations[0],
+                                           dilations[1],
+                                           dilations[2]);
     } else if (is_k3 && is_s1) {
       DWConv3dBwdInputKernel<T, AccT, 3, 3, 3, -1, -1, -1, 1, 1, 1>
-          <<<grid, block, 0, stream>>>(grad_output_ptr,
-                                       grad_input_ptr,
-                                       filter_ptr,
-                                       static_cast<int>(batch_size),
-                                       static_cast<int>(in_channels),
-                                       static_cast<int>(in_depth),
-                                       static_cast<int>(in_height),
-                                       static_cast<int>(in_width),
-                                       static_cast<int>(out_channels),
-                                       static_cast<int>(out_depth),
-                                       static_cast<int>(out_height),
-                                       static_cast<int>(out_width),
-                                       static_cast<int>(kernel_t),
-                                       static_cast<int>(kernel_h),
-                                       static_cast<int>(kernel_w),
-                                       strides[0],
-                                       strides[1],
-                                       strides[2],
-                                       paddings_vec[0],
-                                       paddings_vec[1],
-                                       paddings_vec[2],
-                                       dilations[0],
-                                       dilations[1],
-                                       dilations[2]);
+          <<<grid, block_dim, 0, stream>>>(grad_output_ptr,
+                                           grad_input_ptr,
+                                           filter_ptr,
+                                           batch_size_int,
+                                           in_channels_int,
+                                           in_depth_int,
+                                           in_height_int,
+                                           in_width_int,
+                                           out_channels_int,
+                                           out_depth_int,
+                                           out_height_int,
+                                           out_width_int,
+                                           kernel_t_int,
+                                           kernel_h_int,
+                                           kernel_w_int,
+                                           strides[0],
+                                           strides[1],
+                                           strides[2],
+                                           paddings_vec[0],
+                                           paddings_vec[1],
+                                           paddings_vec[2],
+                                           dilations[0],
+                                           dilations[1],
+                                           dilations[2]);
     } else if (is_k3) {
       DWConv3dBwdInputKernel<T, AccT, 3, 3, 3, -1, -1, -1, -1, -1, -1>
-          <<<grid, block, 0, stream>>>(grad_output_ptr,
-                                       grad_input_ptr,
-                                       filter_ptr,
-                                       static_cast<int>(batch_size),
-                                       static_cast<int>(in_channels),
-                                       static_cast<int>(in_depth),
-                                       static_cast<int>(in_height),
-                                       static_cast<int>(in_width),
-                                       static_cast<int>(out_channels),
-                                       static_cast<int>(out_depth),
-                                       static_cast<int>(out_height),
-                                       static_cast<int>(out_width),
-                                       static_cast<int>(kernel_t),
-                                       static_cast<int>(kernel_h),
-                                       static_cast<int>(kernel_w),
-                                       strides[0],
-                                       strides[1],
-                                       strides[2],
-                                       paddings_vec[0],
-                                       paddings_vec[1],
-                                       paddings_vec[2],
-                                       dilations[0],
-                                       dilations[1],
-                                       dilations[2]);
+          <<<grid, block_dim, 0, stream>>>(grad_output_ptr,
+                                           grad_input_ptr,
+                                           filter_ptr,
+                                           batch_size_int,
+                                           in_channels_int,
+                                           in_depth_int,
+                                           in_height_int,
+                                           in_width_int,
+                                           out_channels_int,
+                                           out_depth_int,
+                                           out_height_int,
+                                           out_width_int,
+                                           kernel_t_int,
+                                           kernel_h_int,
+                                           kernel_w_int,
+                                           strides[0],
+                                           strides[1],
+                                           strides[2],
+                                           paddings_vec[0],
+                                           paddings_vec[1],
+                                           paddings_vec[2],
+                                           dilations[0],
+                                           dilations[1],
+                                           dilations[2]);
     } else {
       DWConv3dBwdInputKernel<T, AccT, -1, -1, -1, -1, -1, -1, -1, -1, -1>
-          <<<grid, block, 0, stream>>>(grad_output_ptr,
-                                       grad_input_ptr,
-                                       filter_ptr,
-                                       static_cast<int>(batch_size),
-                                       static_cast<int>(in_channels),
-                                       static_cast<int>(in_depth),
-                                       static_cast<int>(in_height),
-                                       static_cast<int>(in_width),
-                                       static_cast<int>(out_channels),
-                                       static_cast<int>(out_depth),
-                                       static_cast<int>(out_height),
-                                       static_cast<int>(out_width),
-                                       static_cast<int>(kernel_t),
-                                       static_cast<int>(kernel_h),
-                                       static_cast<int>(kernel_w),
-                                       strides[0],
-                                       strides[1],
-                                       strides[2],
-                                       paddings_vec[0],
-                                       paddings_vec[1],
-                                       paddings_vec[2],
-                                       dilations[0],
-                                       dilations[1],
-                                       dilations[2]);
+          <<<grid, block_dim, 0, stream>>>(grad_output_ptr,
+                                           grad_input_ptr,
+                                           filter_ptr,
+                                           batch_size_int,
+                                           in_channels_int,
+                                           in_depth_int,
+                                           in_height_int,
+                                           in_width_int,
+                                           out_channels_int,
+                                           out_depth_int,
+                                           out_height_int,
+                                           out_width_int,
+                                           kernel_t_int,
+                                           kernel_h_int,
+                                           kernel_w_int,
+                                           strides[0],
+                                           strides[1],
+                                           strides[2],
+                                           paddings_vec[0],
+                                           paddings_vec[1],
+                                           paddings_vec[2],
+                                           dilations[0],
+                                           dilations[1],
+                                           dilations[2]);
     }
   }
 
@@ -511,87 +558,94 @@ void LaunchDepthwiseConv3dBackwardCompatible(const Context& dev_ctx,
   if (grad_filter_ptr) {
     int64_t num_weights = filter_grad_ncdhw_ptr->numel();
     int block = 256;
-    int grid = num_weights;
+    PADDLE_ENFORCE_LE_UINT32_MAX(num_weights, "num_weights");
+    PADDLE_ENFORCE_LE(
+        num_weights,
+        static_cast<int64_t>(dev_ctx.GetCUDAMaxGridDimSize()[0]),
+        common::errors::InvalidArgument(
+            "depthwise conv3d bias grad grid.x exceeds device limit."));
+    dim3 grid(static_cast<unsigned int>(num_weights));
+    dim3 block_dim(block);
     size_t smem = block * sizeof(T);
 
     if (strides[1] == 1 && strides[2] == 1) {
       DWConv3dBwdWeightKernel<T, AccT, 1, 1>
-          <<<grid, block, smem, stream>>>(grad_output_ptr,
-                                          input_ptr,
-                                          grad_filter_ptr,
-                                          static_cast<int>(batch_size),
-                                          static_cast<int>(in_channels),
-                                          static_cast<int>(in_depth),
-                                          static_cast<int>(in_height),
-                                          static_cast<int>(in_width),
-                                          static_cast<int>(out_channels),
-                                          static_cast<int>(out_depth),
-                                          static_cast<int>(out_height),
-                                          static_cast<int>(out_width),
-                                          static_cast<int>(kernel_t),
-                                          static_cast<int>(kernel_h),
-                                          static_cast<int>(kernel_w),
-                                          strides[0],
-                                          strides[1],
-                                          strides[2],
-                                          paddings_vec[0],
-                                          paddings_vec[1],
-                                          paddings_vec[2],
-                                          dilations[0],
-                                          dilations[1],
-                                          dilations[2]);
+          <<<grid, block_dim, smem, stream>>>(grad_output_ptr,
+                                              input_ptr,
+                                              grad_filter_ptr,
+                                              batch_size_int,
+                                              in_channels_int,
+                                              in_depth_int,
+                                              in_height_int,
+                                              in_width_int,
+                                              out_channels_int,
+                                              out_depth_int,
+                                              out_height_int,
+                                              out_width_int,
+                                              kernel_t_int,
+                                              kernel_h_int,
+                                              kernel_w_int,
+                                              strides[0],
+                                              strides[1],
+                                              strides[2],
+                                              paddings_vec[0],
+                                              paddings_vec[1],
+                                              paddings_vec[2],
+                                              dilations[0],
+                                              dilations[1],
+                                              dilations[2]);
     } else if (strides[1] == 2 && strides[2] == 2) {
       DWConv3dBwdWeightKernel<T, AccT, 2, 2>
-          <<<grid, block, smem, stream>>>(grad_output_ptr,
-                                          input_ptr,
-                                          grad_filter_ptr,
-                                          static_cast<int>(batch_size),
-                                          static_cast<int>(in_channels),
-                                          static_cast<int>(in_depth),
-                                          static_cast<int>(in_height),
-                                          static_cast<int>(in_width),
-                                          static_cast<int>(out_channels),
-                                          static_cast<int>(out_depth),
-                                          static_cast<int>(out_height),
-                                          static_cast<int>(out_width),
-                                          static_cast<int>(kernel_t),
-                                          static_cast<int>(kernel_h),
-                                          static_cast<int>(kernel_w),
-                                          strides[0],
-                                          strides[1],
-                                          strides[2],
-                                          paddings_vec[0],
-                                          paddings_vec[1],
-                                          paddings_vec[2],
-                                          dilations[0],
-                                          dilations[1],
-                                          dilations[2]);
+          <<<grid, block_dim, smem, stream>>>(grad_output_ptr,
+                                              input_ptr,
+                                              grad_filter_ptr,
+                                              batch_size_int,
+                                              in_channels_int,
+                                              in_depth_int,
+                                              in_height_int,
+                                              in_width_int,
+                                              out_channels_int,
+                                              out_depth_int,
+                                              out_height_int,
+                                              out_width_int,
+                                              kernel_t_int,
+                                              kernel_h_int,
+                                              kernel_w_int,
+                                              strides[0],
+                                              strides[1],
+                                              strides[2],
+                                              paddings_vec[0],
+                                              paddings_vec[1],
+                                              paddings_vec[2],
+                                              dilations[0],
+                                              dilations[1],
+                                              dilations[2]);
     } else {
       DWConv3dBwdWeightKernel<T, AccT, -1, -1>
-          <<<grid, block, smem, stream>>>(grad_output_ptr,
-                                          input_ptr,
-                                          grad_filter_ptr,
-                                          static_cast<int>(batch_size),
-                                          static_cast<int>(in_channels),
-                                          static_cast<int>(in_depth),
-                                          static_cast<int>(in_height),
-                                          static_cast<int>(in_width),
-                                          static_cast<int>(out_channels),
-                                          static_cast<int>(out_depth),
-                                          static_cast<int>(out_height),
-                                          static_cast<int>(out_width),
-                                          static_cast<int>(kernel_t),
-                                          static_cast<int>(kernel_h),
-                                          static_cast<int>(kernel_w),
-                                          strides[0],
-                                          strides[1],
-                                          strides[2],
-                                          paddings_vec[0],
-                                          paddings_vec[1],
-                                          paddings_vec[2],
-                                          dilations[0],
-                                          dilations[1],
-                                          dilations[2]);
+          <<<grid, block_dim, smem, stream>>>(grad_output_ptr,
+                                              input_ptr,
+                                              grad_filter_ptr,
+                                              batch_size_int,
+                                              in_channels_int,
+                                              in_depth_int,
+                                              in_height_int,
+                                              in_width_int,
+                                              out_channels_int,
+                                              out_depth_int,
+                                              out_height_int,
+                                              out_width_int,
+                                              kernel_t_int,
+                                              kernel_h_int,
+                                              kernel_w_int,
+                                              strides[0],
+                                              strides[1],
+                                              strides[2],
+                                              paddings_vec[0],
+                                              paddings_vec[1],
+                                              paddings_vec[2],
+                                              dilations[0],
+                                              dilations[1],
+                                              dilations[2]);
     }
   }
 

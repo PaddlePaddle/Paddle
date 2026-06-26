@@ -95,29 +95,36 @@ void CrossMapNormal(const GPUContext& dev_ctx,
                     T alpha,
                     T beta,
                     const DataLayout data_layout) {
-  int64_t img_size = N * H * W;
+  const int64_t img_size = N * H * W;
+  const int64_t input_size = img_size * C;
+  PADDLE_ENFORCE_LE_INT_MAX(img_size, "lrn img_size");
+  PADDLE_ENFORCE_LE_INT_MAX(input_size, "lrn input_size");
+  PADDLE_ENFORCE_LE_INT_MAX(C, "lrn C");
+  PADDLE_ENFORCE_LE_INT_MAX(H, "lrn H");
+  PADDLE_ENFORCE_LE_INT_MAX(W, "lrn W");
+
   const int block_size = 1024;
-  int64_t grid_size = (img_size + block_size - 1) / block_size;
-  PADDLE_ENFORCE_LE_INT_MAX(grid_size * C, "grid_size*C");
+  const int64_t fill_grid_size = (img_size + block_size - 1) / block_size;
+  PADDLE_ENFORCE_LE_UINT32_MAX(fill_grid_size, "lrn fill grid");
+  const uint32_t fill_grid = static_cast<uint32_t>(fill_grid_size);
 
-  KeCMRNormFillScale<T>
-      <<<static_cast<int>(grid_size), block_size, 0, dev_ctx.stream()>>>(
-          static_cast<int>(img_size),
-          inputs,
-          mid,
-          static_cast<int>(C),
-          static_cast<int>(H),
-          static_cast<int>(W),
-          n,
-          k,
-          alpha,
-          data_layout);
+  KeCMRNormFillScale<T><<<fill_grid, block_size, 0, dev_ctx.stream()>>>(
+      static_cast<int>(img_size),
+      inputs,
+      mid,
+      static_cast<int>(C),
+      static_cast<int>(H),
+      static_cast<int>(W),
+      n,
+      k,
+      alpha,
+      data_layout);
 
-  int64_t input_size = N * H * W * C;
-  grid_size = (input_size + block_size - 1) / block_size;
-  KeCMRNormOutput<T>
-      <<<static_cast<int>(grid_size), block_size, 0, dev_ctx.stream()>>>(
-          static_cast<int>(input_size), inputs, mid, -beta, outputs);
+  const int64_t output_grid_size = (input_size + block_size - 1) / block_size;
+  PADDLE_ENFORCE_LE_UINT32_MAX(output_grid_size, "lrn output grid");
+  const uint32_t output_grid = static_cast<uint32_t>(output_grid_size);
+  KeCMRNormOutput<T><<<output_grid, block_size, 0, dev_ctx.stream()>>>(
+      static_cast<int>(input_size), inputs, mid, -beta, outputs);
 }
 
 template <typename T>

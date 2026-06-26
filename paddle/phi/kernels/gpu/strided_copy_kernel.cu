@@ -10,6 +10,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/strided_copy_kernel.h"
+
+#include <cstdint>
+
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -60,27 +64,33 @@ bool LaunchStridedCopyCaseZeroKernel(
   dim3 grid(1, 1, 1), block(1, 1, 1);
 
   if (rank >= 1) {
-    block.x = dims[rank - 1];
+    PADDLE_ENFORCE_LE_UINT32_MAX(dims[rank - 1], "strided_copy block.x");
+    block.x = static_cast<uint32_t>(dims[rank - 1]);
   }
 
   if (rank >= 2) {
-    block.y = dims[rank - 2];
+    PADDLE_ENFORCE_LE_UINT32_MAX(dims[rank - 2], "strided_copy block.y");
+    block.y = static_cast<uint32_t>(dims[rank - 2]);
   }
 
   if (rank >= 3) {
-    block.z = dims[rank - 3];
+    PADDLE_ENFORCE_LE_UINT32_MAX(dims[rank - 3], "strided_copy block.z");
+    block.z = static_cast<uint32_t>(dims[rank - 3]);
   }
 
   if (rank >= 4) {
-    grid.x = dims[rank - 4];
+    PADDLE_ENFORCE_LE_UINT32_MAX(dims[rank - 4], "strided_copy grid.x");
+    grid.x = static_cast<uint32_t>(dims[rank - 4]);
   }
 
   if (rank >= 5) {
-    grid.y = dims[rank - 5];
+    PADDLE_ENFORCE_LE_UINT32_MAX(dims[rank - 5], "strided_copy grid.y");
+    grid.y = static_cast<uint32_t>(dims[rank - 5]);
   }
 
   if (rank >= 6) {
-    grid.z = dims[rank - 6];
+    PADDLE_ENFORCE_LE_UINT32_MAX(dims[rank - 6], "strided_copy grid.z");
+    grid.z = static_cast<uint32_t>(dims[rank - 6]);
   }
 
   if (!VerifyStridedCopyThreadConfigurationParameters(block, grid)) {
@@ -225,7 +235,10 @@ bool LaunchStridedCopyCaseOneKernel(
   block.x = 512;
 
   if (rank >= 1) {
-    grid.x = (numel + block.x - 1) / block.x;
+    int64_t grid_x = (numel + static_cast<int64_t>(block.x) - 1) /
+                     static_cast<int64_t>(block.x);
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "strided_copy grid.x");
+    grid.x = static_cast<uint32_t>(grid_x);
     cur_dims[0] = dims[rank - 1];
   }
 
@@ -234,34 +247,47 @@ bool LaunchStridedCopyCaseOneKernel(
   }
 
   if (rank >= 4) {
-    grid.x = (dims[rank - 1] * dims[rank - 2] * dims[rank - 3] + block.x - 1) /
-             block.x;
-    grid.y = dims[rank - 4];
-    cur_dims[2] = dims[rank - 4];
-  }
-
-  if (rank >= 5) {
-    grid.y = dims[rank - 4] * dims[rank - 5];
-    cur_dims[2] = dims[rank - 4];
-    cur_dims[3] = dims[rank - 5];
+    int64_t grid_x = (dims[rank - 1] * dims[rank - 2] * dims[rank - 3] +
+                      static_cast<int64_t>(block.x) - 1) /
+                     static_cast<int64_t>(block.x);
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "strided_copy grid.x");
+    grid.x = static_cast<uint32_t>(grid_x);
   }
 
   if (rank >= 6) {
-    grid.y = dims[rank - 4] * dims[rank - 5] * dims[rank - 6];
-  }
-
-  if (rank >= 7) {
-    grid.z = dims[rank - 7];
-    cur_dims[4] = dims[rank - 7];
-  }
-
-  if (rank >= 8) {
-    grid.z = dims[rank - 7] * dims[rank - 8];
-    cur_dims[5] = dims[rank - 8];
+    int64_t grid_y = dims[rank - 4] * dims[rank - 5] * dims[rank - 6];
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_y, "strided_copy grid.y");
+    grid.y = static_cast<uint32_t>(grid_y);
+    cur_dims[2] = dims[rank - 4];
+    cur_dims[3] = dims[rank - 5];
+  } else if (rank >= 5) {
+    int64_t grid_y = dims[rank - 4] * dims[rank - 5];
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_y, "strided_copy grid.y");
+    grid.y = static_cast<uint32_t>(grid_y);
+    cur_dims[2] = dims[rank - 4];
+    cur_dims[3] = dims[rank - 5];
+  } else if (rank >= 4) {
+    PADDLE_ENFORCE_LE_UINT32_MAX(dims[rank - 4], "strided_copy grid.y");
+    grid.y = static_cast<uint32_t>(dims[rank - 4]);
+    cur_dims[2] = dims[rank - 4];
   }
 
   if (rank >= 9) {
-    grid.z = dims[rank - 7] * dims[rank - 8] * dims[rank - 9];
+    int64_t grid_z = dims[rank - 7] * dims[rank - 8] * dims[rank - 9];
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_z, "strided_copy grid.z");
+    grid.z = static_cast<uint32_t>(grid_z);
+    cur_dims[4] = dims[rank - 7];
+    cur_dims[5] = dims[rank - 8];
+  } else if (rank >= 8) {
+    int64_t grid_z = dims[rank - 7] * dims[rank - 8];
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_z, "strided_copy grid.z");
+    grid.z = static_cast<uint32_t>(grid_z);
+    cur_dims[4] = dims[rank - 7];
+    cur_dims[5] = dims[rank - 8];
+  } else if (rank >= 7) {
+    PADDLE_ENFORCE_LE_UINT32_MAX(dims[rank - 7], "strided_copy grid.z");
+    grid.z = static_cast<uint32_t>(dims[rank - 7]);
+    cur_dims[4] = dims[rank - 7];
   }
 
   if (!VerifyStridedCopyThreadConfigurationParameters(block, grid)) {
@@ -325,7 +351,8 @@ __global__ void StridedCopyDefaultFunc(
       static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
       static_cast<int64_t>(threadIdx.x);
 #pragma unroll
-  for (int64_t i = gid; i < numel; i += blockDim.x * gridDim.x) {
+  for (int64_t i = gid; i < numel; i += static_cast<int64_t>(blockDim.x) *
+                                        static_cast<int64_t>(gridDim.x)) {
     int64_t input_offset = 0;
     int64_t index_tmp = i;
 #pragma unroll
@@ -354,14 +381,17 @@ void LaunchStridedCopyDefaultKernel(
     const Array<int64_t, DDim::kMaxRank + 1>& dims,
     int rank,
     int64_t numel) {
-  int64_t block = 512;
-  int64_t grid = (numel + block - 1) / block;
+  constexpr uint32_t block = 512;
+  const int64_t grid_x = (numel + block - 1) / block;
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "strided_copy grid.x");
+  const dim3 grid(static_cast<uint32_t>(grid_x));
+  const dim3 block_dim(block);
 
   switch (rank) {
-#define CASE_RANK(__Rk)                                                     \
-  case __Rk:                                                                \
-    StridedCopyDefaultFunc<T, __Rk><<<grid, block, 0, dev_ctx.stream()>>>(  \
-        input_data, input_stride, output_data, output_stride, dims, numel); \
+#define CASE_RANK(__Rk)                                                        \
+  case __Rk:                                                                   \
+    StridedCopyDefaultFunc<T, __Rk><<<grid, block_dim, 0, dev_ctx.stream()>>>( \
+        input_data, input_stride, output_data, output_stride, dims, numel);    \
     break;
     CASE_RANK(1);
     CASE_RANK(2);
@@ -426,27 +456,33 @@ bool LaunchStrided2ContiguousCaseZeroKernel(
   dim3 grid(1, 1, 1), block(1, 1, 1);
 
   if (rank >= 1) {
-    block.x = dims[rank - 1];
+    PADDLE_ENFORCE_LE_UINT32_MAX(dims[rank - 1], "strided_copy block.x");
+    block.x = static_cast<uint32_t>(dims[rank - 1]);
   }
 
   if (rank >= 2) {
-    block.y = dims[rank - 2];
+    PADDLE_ENFORCE_LE_UINT32_MAX(dims[rank - 2], "strided_copy block.y");
+    block.y = static_cast<uint32_t>(dims[rank - 2]);
   }
 
   if (rank >= 3) {
-    block.z = dims[rank - 3];
+    PADDLE_ENFORCE_LE_UINT32_MAX(dims[rank - 3], "strided_copy block.z");
+    block.z = static_cast<uint32_t>(dims[rank - 3]);
   }
 
   if (rank >= 4) {
-    grid.x = dims[rank - 4];
+    PADDLE_ENFORCE_LE_UINT32_MAX(dims[rank - 4], "strided_copy grid.x");
+    grid.x = static_cast<uint32_t>(dims[rank - 4]);
   }
 
   if (rank >= 5) {
-    grid.y = dims[rank - 5];
+    PADDLE_ENFORCE_LE_UINT32_MAX(dims[rank - 5], "strided_copy grid.y");
+    grid.y = static_cast<uint32_t>(dims[rank - 5]);
   }
 
   if (rank >= 6) {
-    grid.z = dims[rank - 6];
+    PADDLE_ENFORCE_LE_UINT32_MAX(dims[rank - 6], "strided_copy grid.z");
+    grid.z = static_cast<uint32_t>(dims[rank - 6]);
   }
 
   if (!VerifyStridedCopyThreadConfigurationParameters(block, grid)) {
@@ -583,7 +619,10 @@ bool LaunchStrided2ContiguousCaseOneKernel(
   block.x = 512;
 
   if (rank >= 1) {
-    grid.x = (numel + block.x - 1) / block.x;
+    int64_t grid_x = (numel + static_cast<int64_t>(block.x) - 1) /
+                     static_cast<int64_t>(block.x);
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "strided_copy grid.x");
+    grid.x = static_cast<uint32_t>(grid_x);
     cur_dims[0] = dims[rank - 1];
   }
 
@@ -592,34 +631,47 @@ bool LaunchStrided2ContiguousCaseOneKernel(
   }
 
   if (rank >= 4) {
-    grid.x = (dims[rank - 1] * dims[rank - 2] * dims[rank - 3] + block.x - 1) /
-             block.x;
-    grid.y = dims[rank - 4];
-    cur_dims[2] = dims[rank - 4];
-  }
-
-  if (rank >= 5) {
-    grid.y = dims[rank - 4] * dims[rank - 5];
-    cur_dims[2] = dims[rank - 4];
-    cur_dims[3] = dims[rank - 5];
+    int64_t grid_x = (dims[rank - 1] * dims[rank - 2] * dims[rank - 3] +
+                      static_cast<int64_t>(block.x) - 1) /
+                     static_cast<int64_t>(block.x);
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "strided_copy grid.x");
+    grid.x = static_cast<uint32_t>(grid_x);
   }
 
   if (rank >= 6) {
-    grid.y = dims[rank - 4] * dims[rank - 5] * dims[rank - 6];
-  }
-
-  if (rank >= 7) {
-    grid.z = dims[rank - 7];
-    cur_dims[4] = dims[rank - 7];
-  }
-
-  if (rank >= 8) {
-    grid.z = dims[rank - 7] * dims[rank - 8];
-    cur_dims[5] = dims[rank - 8];
+    int64_t grid_y = dims[rank - 4] * dims[rank - 5] * dims[rank - 6];
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_y, "strided_copy grid.y");
+    grid.y = static_cast<uint32_t>(grid_y);
+    cur_dims[2] = dims[rank - 4];
+    cur_dims[3] = dims[rank - 5];
+  } else if (rank >= 5) {
+    int64_t grid_y = dims[rank - 4] * dims[rank - 5];
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_y, "strided_copy grid.y");
+    grid.y = static_cast<uint32_t>(grid_y);
+    cur_dims[2] = dims[rank - 4];
+    cur_dims[3] = dims[rank - 5];
+  } else if (rank >= 4) {
+    PADDLE_ENFORCE_LE_UINT32_MAX(dims[rank - 4], "strided_copy grid.y");
+    grid.y = static_cast<uint32_t>(dims[rank - 4]);
+    cur_dims[2] = dims[rank - 4];
   }
 
   if (rank >= 9) {
-    grid.z = dims[rank - 7] * dims[rank - 8] * dims[rank - 9];
+    int64_t grid_z = dims[rank - 7] * dims[rank - 8] * dims[rank - 9];
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_z, "strided_copy grid.z");
+    grid.z = static_cast<uint32_t>(grid_z);
+    cur_dims[4] = dims[rank - 7];
+    cur_dims[5] = dims[rank - 8];
+  } else if (rank >= 8) {
+    int64_t grid_z = dims[rank - 7] * dims[rank - 8];
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_z, "strided_copy grid.z");
+    grid.z = static_cast<uint32_t>(grid_z);
+    cur_dims[4] = dims[rank - 7];
+    cur_dims[5] = dims[rank - 8];
+  } else if (rank >= 7) {
+    PADDLE_ENFORCE_LE_UINT32_MAX(dims[rank - 7], "strided_copy grid.z");
+    grid.z = static_cast<uint32_t>(dims[rank - 7]);
+    cur_dims[4] = dims[rank - 7];
   }
 
   if (!VerifyStridedCopyThreadConfigurationParameters(block, grid)) {
@@ -676,7 +728,8 @@ __global__ void Strided2ContiguousDefaultFunc(
       static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
       static_cast<int64_t>(threadIdx.x);
 #pragma unroll
-  for (int64_t i = gid; i < numel; i += blockDim.x * gridDim.x) {
+  for (int64_t i = gid; i < numel; i += static_cast<int64_t>(blockDim.x) *
+                                        static_cast<int64_t>(gridDim.x)) {
     int64_t input_offset = 0;
     int64_t index_tmp = i;
 #pragma unroll
@@ -697,14 +750,17 @@ void LaunchStrided2ContiguousDefaultKernel(
     const Array<int64_t, DDim::kMaxRank + 1>& dims,
     int rank,
     int64_t numel) {
-  int64_t block = 512;
-  int64_t grid = (numel + block - 1) / block;
+  constexpr uint32_t block = 512;
+  const int64_t grid_x = (numel + block - 1) / block;
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "strided_copy grid.x");
+  const dim3 grid(static_cast<uint32_t>(grid_x));
+  const dim3 block_dim(block);
 
   switch (rank) {
 #define CASE_RANK(__Rk)                                          \
   case __Rk:                                                     \
     Strided2ContiguousDefaultFunc<T, __Rk>                       \
-        <<<grid, block, 0, dev_ctx.stream()>>>(                  \
+        <<<grid, block_dim, 0, dev_ctx.stream()>>>(              \
             input_data, input_stride, output_data, dims, numel); \
     break
     CASE_RANK(1);

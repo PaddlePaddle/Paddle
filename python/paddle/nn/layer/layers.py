@@ -20,7 +20,8 @@ import typing
 import warnings
 import weakref
 from collections import OrderedDict, namedtuple
-from typing import TYPE_CHECKING, Any, Callable, Optional, Union
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from typing_extensions import Self, overload
@@ -73,21 +74,21 @@ if TYPE_CHECKING:
 __all__ = []
 
 
-_ForwardPreHook = Union[
-    Callable[["Layer", tuple[Any, ...]], Optional[Any]],
-    Callable[
+_ForwardPreHook = (
+    Callable[["Layer", tuple[Any, ...]], Any | None]
+    | Callable[
         ["Layer", tuple[Any, ...], dict[str, Any]],
-        Optional[tuple[tuple[Any, ...], dict[str, Any]]],
-    ],
-]
-_ForwardPostHook = Union[
-    Callable[["Layer", tuple[Any, ...], Any], Optional[Any]],
-    Callable[
+        tuple[tuple[Any, ...], dict[str, Any]] | None,
+    ]
+)
+_ForwardPostHook = (
+    Callable[["Layer", tuple[Any, ...], Any], Any | None]
+    | Callable[
         ["Layer", tuple[Any, ...], dict[str, Any], Any],
-        Optional[Any],
-    ],
-]
-_StateDict = Union[dict[str, Any], typing.OrderedDict[str, Any]]
+        Any | None,
+    ]
+)
+_StateDict = dict[str, Any] | typing.OrderedDict[str, Any]
 _StateDictPreHook = Callable[["Layer", str, bool], None]
 _StateDictHook = Callable[[_StateDict], None]
 _EXTRA_STATE_KEY_SUFFIX = "_extra_state"
@@ -2772,8 +2773,17 @@ class Layer:
                     )
 
         if use_hook:
+            local_metadata: dict[str, Any] = {}
             for state_dict_hook in self._state_dict_hooks.values():
-                hook_result = state_dict_hook(destination)
+                try:
+                    hook_result = state_dict_hook(destination)
+                except TypeError:
+                    hook_result = state_dict_hook(
+                        self,
+                        destination,
+                        structured_name_prefix,
+                        local_metadata,
+                    )
                 if hook_result is not None:
                     destination = hook_result
 
@@ -2994,7 +3004,7 @@ class Layer:
         state_dict: _StateDict,
         use_structured_name: bool = True,
         assign: bool = False,
-    ) -> tuple[list[str], list[str]]:
+    ) -> _IncompatibleKeys:
         '''
         Set parameters and persistable buffers from state_dict. All the parameters and buffers will be reset by the tensor in the state_dict
 
@@ -3005,9 +3015,13 @@ class Layer:
             assign(bool, optional): When set to ``False``, the properties of the tensors
                 in the current layer are preserved whereas setting it to ``True`` preserves
                 properties of the tensors in the state dict. Default: ``False``.
+
         Returns:
-            missing_keys(list):A list of str containing the missing keys
-            unexpected_keys(list):A list of str containing the unexpected keys
+            ``NamedTuple`` with ``missing_keys`` and ``unexpected_keys`` fields:
+                * ``missing_keys`` is a list of str containing any keys that are expected
+                    by this module but missing from the provided ``state_dict``.
+                * ``unexpected_keys`` is a list of str containing the keys that are not
+                    expected by this module but present in the provided ``state_dict``.
 
         Examples:
             .. code-block:: pycon
@@ -3137,14 +3151,14 @@ class Layer:
                     "This error might happens in dy2static, while calling 'set_state_dict' dynamically in 'forward', which is not supported. If you only need call 'set_state_dict' once, move it to '__init__'."
                 )
 
-        return missing_keys, unexpected_keys
+        return _IncompatibleKeys(missing_keys, unexpected_keys)
 
     def load_state_dict(
         self,
         state_dict: Mapping[str, Any],
         strict: bool = True,
         assign: bool = False,
-    ):
+    ) -> _IncompatibleKeys:
         """
         Copy parameters and buffers from :attr:`state_dict` into this module and its descendants.
 

@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/fused_seqpool_cvm_kernel.h"
 #include <string>
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
@@ -300,7 +301,9 @@ void FusedSeqpoolCVMCUDAKernel(const Context &dev_ctx,
 
   auto padding_value = pad_value;
 
-  int embedding_size = inputs[0]->numel() / inputs[0]->dims()[0];
+  int64_t embedding_size_64 = inputs[0]->numel() / inputs[0]->dims()[0];
+  PADDLE_ENFORCE_LE_INT_MAX(embedding_size_64, "embedding_size");
+  int embedding_size = static_cast<int>(embedding_size_64);
   int batch_size = -1;
   std::vector<phi::MixVector<size_t> *> mix_lods_v(slot_size);
 

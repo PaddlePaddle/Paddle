@@ -16,8 +16,9 @@ from __future__ import annotations
 
 import types
 import weakref
+from collections.abc import Callable
 from functools import cached_property
-from typing import TYPE_CHECKING, Any, Callable, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import paddle
 

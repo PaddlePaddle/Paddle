@@ -1,4 +1,11 @@
 include(${PROJECT_SOURCE_DIR}/cmake/architecture.cmake)
+include(${PROJECT_SOURCE_DIR}/cmake/cinn/llvm_utils.cmake)
+
+if(LLVM_PATH)
+  paddle_resolve_llvm_path(LLVM_PATH)
+  set(LLVM_DIR ${LLVM_PATH}/lib/cmake/llvm)
+  set(MLIR_DIR ${LLVM_PATH}/lib/cmake/mlir)
+endif()
 
 if(${CMAKE_CXX_COMPILER} STREQUAL "clang++")
   set(CMAKE_EXE_LINKER_FLAGS
@@ -27,22 +34,38 @@ message(STATUS "Found MLIR: ${MLIR_DIR}")
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
-# To build with MLIR, the LLVM is build from source code using the following flags:
+# LLVM_PATH should point to an LLVM 13.0.1 package built with the following
+# core flags, matching the default CINN prebuilt package:
 
 #[==[
 cmake -G Ninja ../llvm \
-  -DLLVM_ENABLE_PROJECTS=mlir \
+  -DLLVM_ENABLE_PROJECTS="mlir;clang" \
   -DLLVM_BUILD_EXAMPLES=OFF \
-  -DLLVM_TARGETS_TO_BUILD="X86" \
+  -DLLVM_TARGETS_TO_BUILD="<X86 or AArch64>" \
   -DCMAKE_BUILD_TYPE=Release \
   -DLLVM_ENABLE_ASSERTIONS=ON \
   -DLLVM_ENABLE_ZLIB=OFF \
   -DLLVM_ENABLE_RTTI=ON \
+  -DLLVM_ENABLE_TERMINFO=OFF \
+  -DLLVM_ENABLE_LIBEDIT=OFF \
+  -DLLVM_ENABLE_LIBXML2=OFF \
+  -DLLVM_ENABLE_BINDINGS=OFF \
+  -DLLVM_INSTALL_UTILS=ON \
+  -DCMAKE_INSTALL_PREFIX=./install
 #]==]
-# The matched llvm-project version is f9dc2b7079350d0fed3bb3775f496b90483c9e42 (currently a temporary commit)
+# Use an LLVM 13.0.1 package built with RTTI enabled. LLVM 13 includes the
+# iterator constructor fix needed by C++20 builds:
+# https://github.com/llvm/llvm-project/commit/95d0d8e9e9d1
 
 add_definitions(${LLVM_DEFINITIONS})
 
+# CINN's LLVM backend is used as a host JIT, so keep target components scoped
+# to the native target. Calling InitializeAll* in TargetSelect.h would reference
+# every configured target and require the corresponding all-target libraries
+# from LLVM-Config.cmake, which is unnecessary for host JIT and expands the link
+# surface.
+# https://github.com/llvm/llvm-project/blob/llvmorg-13.0.1/llvm/include/llvm/Support/TargetSelect.h
+# https://github.com/llvm/llvm-project/blob/llvmorg-13.0.1/llvm/cmake/modules/LLVM-Config.cmake
 llvm_map_components_to_libnames(
   llvm_libs
   Support
@@ -63,7 +86,7 @@ add_definitions(${LLVM_DEFINITIONS})
 # The minimum needed libraries for MLIR IR parse and transform.
 set(MLIR_IR_LIBS
     MLIRAnalysis
-    MLIRStandardOps
+    MLIRStandard
     MLIRPass
     MLIRParser
     MLIRDialect
