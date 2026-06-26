@@ -1940,6 +1940,13 @@ void gqa_write_cachekv(
       common::errors::PreconditionNotMet(
           "dim_head=%d must be divisible by vec_size=%d", dim_head, x));
 
+  PADDLE_ENFORCE_LE_INT_MAX(gqa_group_size, "gqa_write_cache gqa_group_size");
+  PADDLE_ENFORCE_LE_INT_MAX(max_seq_len, "gqa_write_cache max_seq_len");
+  PADDLE_ENFORCE_LE_INT_MAX(dim_head, "gqa_write_cache dim_head");
+  const int gqa_group_size_int = static_cast<int>(gqa_group_size);
+  const int max_seq_len_int = static_cast<int>(max_seq_len);
+  const int dim_head_int = static_cast<int>(dim_head);
+
   const int64_t num_elems = unpadding_k.numel();
 
   T *cache_k = cache_kv_out->data<T>();
@@ -1966,10 +1973,10 @@ void gqa_write_cachekv(
           unpadding_k.data<T>(),
           seq_lens.data<int>(),
           padding_offsets.data<int>(),
-          gqa_group_size,
-          max_seq_len,
+          gqa_group_size_int,
+          max_seq_len_int,
           seq_len,
-          dim_head,
+          dim_head_int,
           num_elems);
   gqa_write_cache_v_kernel<T, x>
       <<<grid_size_u32, block_sz_u32, 0, dev_ctx.stream()>>>(
@@ -1977,10 +1984,10 @@ void gqa_write_cachekv(
           unpadding_v.data<T>(),
           seq_lens.data<int>(),
           padding_offsets.data<int>(),
-          gqa_group_size,
-          max_seq_len,
+          gqa_group_size_int,
+          max_seq_len_int,
           seq_len,
-          dim_head,
+          dim_head_int,
           num_elems);
 }
 

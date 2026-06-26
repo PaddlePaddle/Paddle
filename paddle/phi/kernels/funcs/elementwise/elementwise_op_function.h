@@ -218,8 +218,8 @@ static __global__ void FusedElemwiseAndActBroadcast1CUDAKernel(
     CompoundFunctor compound_functor,
     T *out,
     T *intermediate_out) {
-  int64_t i = blockIdx.x;
-  int64_t j = threadIdx.x;
+  int64_t i = static_cast<int64_t>(blockIdx.x);
+  int64_t j = static_cast<int64_t>(threadIdx.x);
 
   while (j < w) {
     int64_t offset = i * w + j;
@@ -298,8 +298,8 @@ static __global__ void FusedElemwiseAndActBroadcast2CUDAKernel(
     int64_t post,
     T *out,
     T *intermediate_out) {
-  int64_t tid = threadIdx.x;
-  int64_t j = blockIdx.x;
+  int64_t tid = static_cast<int64_t>(threadIdx.x);
+  int64_t j = static_cast<int64_t>(blockIdx.x);
 
   while (true) {
     int64_t i = tid / post;
@@ -1000,7 +1000,7 @@ static __global__ void FusedElemwiseAndActGradBroadcast2CUDAKernel(
     T *dy,
     T *d_intermediate) {
   int tid = threadIdx.x;
-  int64_t j = blockIdx.x;
+  int64_t j = static_cast<int64_t>(blockIdx.x);
 
   T val(0), inter_val(0);
   int64_t ttid = tid;
