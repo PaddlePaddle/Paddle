@@ -1871,20 +1871,16 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
                                           std::multiplies<int64_t>());
   int x_block_size =
       std::min(static_cast<int64_t>(ELEMWISE_MAX_BLOCK_DIM), x_threads);
-  uint32_t max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
-  PADDLE_ENFORCE_LE(x_blocks,
-                    max_grid_dim,
-                    common::errors::InvalidArgument(
-                        "elementwise grad x grid.x exceeds device limit."));
-  PADDLE_ENFORCE_LE(y_blocks,
-                    max_grid_dim,
-                    common::errors::InvalidArgument(
-                        "elementwise grad y grid.x exceeds device limit."));
-  PADDLE_ENFORCE_LE_UINT32_MAX(x_blocks, "elementwise grad x grid.x");
-  PADDLE_ENFORCE_LE_UINT32_MAX(y_blocks, "elementwise grad y grid.x");
   int y_block_size =
       std::min(static_cast<int64_t>(ELEMWISE_MAX_BLOCK_DIM), y_threads);
   if (dx) {
+    uint32_t max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
+    PADDLE_ENFORCE_LE(x_blocks,
+                      max_grid_dim,
+                      common::errors::InvalidArgument(
+                          "elementwise grad x grid.x exceeds device limit."));
+    PADDLE_ENFORCE_LE_UINT32_MAX(x_blocks, "elementwise grad x grid.x");
+
     size_t dx_total_bytes = bytes * 2;
     auto dx_tmp_buffer = phi::memory_utils::Alloc(
         dev_ctx.GetPlace(),
@@ -1956,6 +1952,13 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
     }
   }
   if (dy) {
+    uint32_t max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
+    PADDLE_ENFORCE_LE(y_blocks,
+                      max_grid_dim,
+                      common::errors::InvalidArgument(
+                          "elementwise grad y grid.x exceeds device limit."));
+    PADDLE_ENFORCE_LE_UINT32_MAX(y_blocks, "elementwise grad y grid.x");
+
     // One part buffer for y_strides_order_gpu, the other for y_dims_order_gpu
     size_t dy_total_bytes = bytes * 2;
     auto dy_tmp_buffer = phi::memory_utils::Alloc(
