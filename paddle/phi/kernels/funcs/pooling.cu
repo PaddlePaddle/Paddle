@@ -1594,8 +1594,10 @@ void Pool3dDirectCUDAFunctor<PoolProcess, T>::operator()(
   const int padding_height = paddings[1];
   const int padding_width = paddings[2];
 
-  int nthreads = batch_size * output_channels * output_depth * output_height *
-                 output_width;
+  int64_t nthreads = static_cast<int64_t>(batch_size) * output_channels *
+                     output_depth * output_height * output_width;
+  PADDLE_ENFORCE_LE_INT_MAX(nthreads, "pool3d nthreads");
+
   int thread_num = 1024;
 #ifdef WITH_NV_JETSON
   thread_num = 512;
@@ -1613,7 +1615,7 @@ void Pool3dDirectCUDAFunctor<PoolProcess, T>::operator()(
   dim3 grid(static_cast<uint32_t>(blocks), 1);
 
   KernelPool3D<PoolProcess, T, int>
-      <<<grid, threads, 0, stream>>>(nthreads,
+      <<<grid, threads, 0, stream>>>(static_cast<int>(nthreads),
                                      input,
                                      input_channels,
                                      input_depth,
