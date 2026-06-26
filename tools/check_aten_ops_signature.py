@@ -974,17 +974,22 @@ def run_check(
     paddle_root: Path,
     torch_include_dir: Path,
     headers: list[Path],
+    check_tensor_body: bool = True,
 ) -> list[CheckError]:
     tensor_body = torch_include_dir / "ATen/core/TensorBody.h"
     torch_member_signatures = parse_torch_tensor_body(tensor_body)
     paddle_tensor_body = paddle_root / ATEN_TENSOR_BODY
     paddle_member_signatures = parse_paddle_tensor_body(paddle_tensor_body)
-    errors: list[CheckError] = check_tensor_body_members(
-        paddle_root=paddle_root,
-        torch_include_dir=torch_include_dir,
-        torch_member_signatures=torch_member_signatures,
-        paddle_member_signatures=paddle_member_signatures,
-    )
+    errors: list[CheckError] = []
+    if check_tensor_body:
+        errors.extend(
+            check_tensor_body_members(
+                paddle_root=paddle_root,
+                torch_include_dir=torch_include_dir,
+                torch_member_signatures=torch_member_signatures,
+                paddle_member_signatures=paddle_member_signatures,
+            )
+        )
     for header in headers:
         errors.extend(
             check_header(
@@ -1050,7 +1055,12 @@ def main() -> int:
             )
             return 0
         torch_include_dir = discover_torch_include_dir(args.torch_include_dir)
-        errors = run_check(paddle_root, torch_include_dir, headers)
+        errors = run_check(
+            paddle_root,
+            torch_include_dir,
+            headers,
+            check_tensor_body=check_tensor_body,
+        )
     except Exception as exc:
         print(f"ATen ops signature check error: {exc}", file=sys.stderr)
         return 1

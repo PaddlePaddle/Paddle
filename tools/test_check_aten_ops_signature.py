@@ -74,6 +74,14 @@ class TestAtenOpsSignatureCheck(unittest.TestCase):
             [header],
         )
 
+    def check_changed_headers_only(self, header):
+        return run_check(
+            self.paddle_root,
+            self.torch_include,
+            [header],
+            check_tensor_body=False,
+        )
+
     def test_free_function_signature_match(self):
         header = self.write_paddle_op(
             "foo.h",
@@ -558,6 +566,107 @@ class TestAtenOpsSignatureCheck(unittest.TestCase):
             """,
         )
         errors = self.check(header)
+        self.assertTrue(
+            any(
+                "TensorBody member signature" in error.message
+                for error in errors
+            )
+        )
+
+    def test_changed_ops_header_does_not_check_unchanged_tensor_body(self):
+        header = self.write_paddle_op(
+            "foo.h",
+            """
+            namespace at {
+            inline at::Tensor foo(const at::Tensor& self) {
+              return self;
+            }
+            }  // namespace at
+            """,
+        )
+        self.write_paddle_tensor_body(
+            """
+            namespace at {
+            class Tensor {
+             public:
+              at::Tensor stale_member(int64_t dim = 1) const {
+                return at::Tensor();
+              }
+            };
+            }  // namespace at
+            """,
+        )
+        self.write_torch(
+            "ATen/core/TensorBody.h",
+            """
+            namespace at {
+            class Tensor {
+             public:
+              at::Tensor stale_member(int64_t dim = 0) const;
+            };
+            }  // namespace at
+            """,
+        )
+        self.write_torch(
+            "ATen/ops/foo.h",
+            """
+            namespace at {
+            inline at::Tensor foo(const at::Tensor& self) {
+              return self;
+            }
+            }  // namespace at
+            """,
+        )
+
+        self.assertEqual(self.check_changed_headers_only(header), [])
+
+    def test_tensor_body_check_still_fails_when_requested(self):
+        header = self.write_paddle_op(
+            "foo.h",
+            """
+            namespace at {
+            inline at::Tensor foo(const at::Tensor& self) {
+              return self;
+            }
+            }  // namespace at
+            """,
+        )
+        self.write_paddle_tensor_body(
+            """
+            namespace at {
+            class Tensor {
+             public:
+              at::Tensor stale_member(int64_t dim = 1) const {
+                return at::Tensor();
+              }
+            };
+            }  // namespace at
+            """,
+        )
+        self.write_torch(
+            "ATen/core/TensorBody.h",
+            """
+            namespace at {
+            class Tensor {
+             public:
+              at::Tensor stale_member(int64_t dim = 0) const;
+            };
+            }  // namespace at
+            """,
+        )
+        self.write_torch(
+            "ATen/ops/foo.h",
+            """
+            namespace at {
+            inline at::Tensor foo(const at::Tensor& self) {
+              return self;
+            }
+            }  // namespace at
+            """,
+        )
+
+        errors = self.check(header)
+
         self.assertTrue(
             any(
                 "TensorBody member signature" in error.message
