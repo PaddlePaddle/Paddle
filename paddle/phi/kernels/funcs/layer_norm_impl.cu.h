@@ -1735,6 +1735,7 @@ static void LayerNormBackward(
                       ((d_scale != nullptr ? 1 : 0) << 1) |
                       ((d_bias != nullptr ? 1 : 0));
   if (gradient_flag == 0) return;
+  PADDLE_ENFORCE_LE_INT_MAX(batch_size, "batch_size");
   uint32_t batch_size_u32 = 0;
   if (d_x != nullptr) {
     const uint32_t max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
