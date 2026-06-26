@@ -2423,8 +2423,15 @@ class MaxPool2dWithIndexFunctor<GPUContext, T1, T2> {
       backends::gpu::ChangeThreadNum(dev_ctx, &thread_num);
 #endif
       int64_t blocks = (nthreads + thread_num - 1) / thread_num;
+      std::array<unsigned int, 3> max_grid_dim =
+          dev_ctx.GetCUDAMaxGridDimSize();
+      PADDLE_ENFORCE_LE(blocks,
+                        max_grid_dim[0],
+                        common::errors::InvalidArgument(
+                            "pool2d grid.x exceeds device limit."));
+      PADDLE_ENFORCE_LE_UINT32_MAX(blocks, "pool2d grid.x");
       dim3 threads(thread_num, 1);
-      dim3 grid(blocks, 1);
+      dim3 grid(static_cast<uint32_t>(blocks), 1);
       if (input.numel() <= std::numeric_limits<int>::max()) {
         auto pool_divmods = FastDivModForPooling<int>(
             input_channels, output_width, output_height);
