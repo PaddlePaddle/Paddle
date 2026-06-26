@@ -49,7 +49,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install pre-commit==2.17.0
-          pip install ast-grep-cli==0.42.1 # This version should be consistent with the one in .pre-commit-config.yaml
+          pip install ast-grep-cli==0.44.0 # This version should be consistent with the one in .pre-commit-config.yaml
 
       - name: Run ast-grep unit tests
         run: |

@@ -42,7 +42,7 @@ repos:
         files: \.sh$
         args: [--whitespaces-count, '4']
   - repo: https://github.com/PFCCLab/ast-grep-pre-commit-mirror
-    rev: v0.42.1
+    rev: v0.44.0
     hooks:
       - id: ast-grep
   - repo: local
