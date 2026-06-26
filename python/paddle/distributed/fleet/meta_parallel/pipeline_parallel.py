@@ -2291,13 +2291,17 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         meta = self._block_cache_meta.setdefault(mb_idx, [0] * (pp_size * vpp_size))
 
-        new_blocks = len(output_tensor["blocks"]) - merged_len_pre
+        total_blocks = output_tensor["blocks"]
+        new_blocks = len(total_blocks) - merged_len_pre
         for i in range(my_stage, len(meta), pp_size):
             meta[i] += new_blocks
 
-        self._block_cache[mb_idx] = [
-            b.detach().clone() for b in output_tensor["blocks"]
-        ]
+        cached_blocks = self._block_cache.setdefault(mb_idx, [])
+        cache_len = len(cached_blocks)
+        blocks_to_cache = total_blocks[cache_len:]
+
+        if blocks_to_cache:
+            cached_blocks.extend(blocks_to_cache)
 
         cur_chunk = virtual_pp_rank * pp_size + my_stage
         next_chunk = cur_chunk + 1
