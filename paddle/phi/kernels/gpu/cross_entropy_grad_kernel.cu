@@ -213,27 +213,20 @@ void CrossEntropyWithSoftmaxGradGPUKernel(const GPUContext& dev_ctx,
       DenseTensor logits_grad_2d(*logit_grad);
       logits_grad_2d.Resize({n, d});
       int64_t grid = (n * remain + block - 1) / block;
-      PADDLE_ENFORCE_LE(
-          grid,
-          max_grid_dim,
-          common::errors::InvalidArgument(
-              "cross entropy grad hard label grid.x exceeds device limit."));
-      PADDLE_ENFORCE_LE_UINT32_MAX(grid,
+      int64_t launch_grid = std::min(grid, static_cast<int64_t>(max_grid_dim));
+      PADDLE_ENFORCE_LE_UINT32_MAX(launch_grid,
                                    "cross entropy grad hard label grid.x");
-      uint32_t grid_value = static_cast<uint32_t>(grid);
+      uint32_t grid_value = static_cast<uint32_t>(launch_grid);
       const auto* label_data = label.data<LabelT>();
       HardLabelCrossEntropyGradientKernel<T, LabelT>
           <<<grid_value, block, 0, stream>>>(
               logit_grad_data, label_data, n, d, remain, ignore_index);
       int64_t num = n * d;
       grid = (num + block - 1) / block;
-      PADDLE_ENFORCE_LE(
-          grid,
-          max_grid_dim,
-          common::errors::InvalidArgument(
-              "cross entropy grad scale grid.x exceeds device limit."));
-      PADDLE_ENFORCE_LE_UINT32_MAX(grid, "cross entropy grad scale grid.x");
-      grid_value = static_cast<uint32_t>(grid);
+      launch_grid = std::min(grid, static_cast<int64_t>(max_grid_dim));
+      PADDLE_ENFORCE_LE_UINT32_MAX(launch_grid,
+                                   "cross entropy grad scale grid.x");
+      grid_value = static_cast<uint32_t>(launch_grid);
       ScaleCrossEntropyGradient<T, LabelT>
           <<<grid_value, block, 0, stream>>>(logit_grad_data,
                                              loss_grad_data,

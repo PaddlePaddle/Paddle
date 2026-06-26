@@ -365,10 +365,7 @@ void Pad3dGradKernel(const Context& dev_ctx,
   const size_t in_size = d_in->numel();
   size_t grid_64 = (out_size + block - 1) / block;
   uint32_t max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
-  PADDLE_ENFORCE_LE(grid_64,
-                    max_grid_dim,
-                    common::errors::InvalidArgument(
-                        "pad3d grad grid.x exceeds device limit."));
+  grid_64 = std::min(grid_64, static_cast<size_t>(max_grid_dim));
   PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "pad3d grad grid.x");
   uint32_t grid = static_cast<uint32_t>(grid_64);
 
@@ -443,10 +440,7 @@ void Pad3dGradKernel(const Context& dev_ctx,
                                          d_out_data);
       } else {
         grid_64 = (in_size + block - 1) / block;
-        PADDLE_ENFORCE_LE(grid_64,
-                          max_grid_dim,
-                          common::errors::InvalidArgument(
-                              "pad3d grad const grid.x exceeds device limit."));
+        grid_64 = std::min(grid_64, static_cast<size_t>(max_grid_dim));
         PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "pad3d grad const grid.x");
         grid = static_cast<uint32_t>(grid_64);
         Pad3DGradConstNCDHW<T, int32_t><<<grid, block, 0, stream>>>(in_size,
@@ -522,10 +516,7 @@ void Pad3dGradKernel(const Context& dev_ctx,
                                          d_out_data);
       } else {
         grid_64 = (in_size + block - 1) / block;
-        PADDLE_ENFORCE_LE(grid_64,
-                          max_grid_dim,
-                          common::errors::InvalidArgument(
-                              "pad3d grad const grid.x exceeds device limit."));
+        grid_64 = std::min(grid_64, static_cast<size_t>(max_grid_dim));
         PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "pad3d grad const grid.x");
         grid = static_cast<uint32_t>(grid_64);
         Pad3DGradConstNDHWC<T, int32_t><<<grid, block, 0, stream>>>(in_size,
@@ -605,10 +596,7 @@ void Pad3dGradKernel(const Context& dev_ctx,
                                          d_out_data);
       } else {
         grid_64 = (in_size + block - 1) / block;
-        PADDLE_ENFORCE_LE(grid_64,
-                          max_grid_dim,
-                          common::errors::InvalidArgument(
-                              "pad3d grad const grid.x exceeds device limit."));
+        grid_64 = std::min(grid_64, static_cast<size_t>(max_grid_dim));
         PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "pad3d grad const grid.x");
         grid = static_cast<uint32_t>(grid_64);
         Pad3DGradConstNCDHW<T, int64_t><<<grid, block, 0, stream>>>(in_size,
@@ -684,10 +672,7 @@ void Pad3dGradKernel(const Context& dev_ctx,
                                          d_out_data);
       } else {
         grid_64 = (in_size + block - 1) / block;
-        PADDLE_ENFORCE_LE(grid_64,
-                          max_grid_dim,
-                          common::errors::InvalidArgument(
-                              "pad3d grad const grid.x exceeds device limit."));
+        grid_64 = std::min(grid_64, static_cast<size_t>(max_grid_dim));
         PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "pad3d grad const grid.x");
         grid = static_cast<uint32_t>(grid_64);
         Pad3DGradConstNDHWC<T, int64_t><<<grid, block, 0, stream>>>(in_size,
