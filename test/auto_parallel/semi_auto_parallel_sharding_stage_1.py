@@ -140,13 +140,15 @@ class TestSemiAutoParallelShardingStage1:
                 loss = dist_model(image, label)
 
     def test_pure_sharding_multi_mesh_stage_1_with_tensor_fusion(self):
-        def run_sharding_test(enable_tensor_fusion):
+        def run_sharding_test(enable_tensor_fusion, maximize=False):
             paddle.distributed.auto_parallel.set_mesh(self._multi_dim_mesh)
             self.set_random_seed()
             model = paddle.nn.Linear(10, 10)
             batch = paddle.rand(shape=[10, 10])
             batch = dist.shard_tensor(batch, self._mesh, [dist.Shard(0)])
-            opt = paddle.optimizer.AdamW(parameters=model.parameters())
+            opt = paddle.optimizer.AdamW(
+                parameters=model.parameters(), maximize=maximize
+            )
             opt = dist.shard_optimizer(
                 opt, dist.ShardingStage1(sharding_mesh_dim="dp")
             )
@@ -166,6 +168,13 @@ class TestSemiAutoParallelShardingStage1:
         dist.init_parallel_env()
         loss_disable = run_sharding_test(enable_tensor_fusion=False)
         loss_enable = run_sharding_test(enable_tensor_fusion=True)
+        self.check_tensor_eq(loss_disable, loss_enable)
+        loss_disable = run_sharding_test(
+            enable_tensor_fusion=False, maximize=True
+        )
+        loss_enable = run_sharding_test(
+            enable_tensor_fusion=True, maximize=True
+        )
         self.check_tensor_eq(loss_disable, loss_enable)
         os.environ['FLAGS_enable_tensor_fusion'] = '0'
 
