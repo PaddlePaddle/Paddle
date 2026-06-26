@@ -39,7 +39,7 @@ jobs:
     needs: [check-bypass]
     if: ${{ needs.check-bypass.outputs.can-skip != 'true' && inputs.clone-can-skip != 'true' }}
     runs-on:
-      group: win-infer
+      group: win-infer-test
     timeout-minutes: 240
     env:
       PADDLE_VERSION: 0.0.0
@@ -52,8 +52,8 @@ jobs:
       WITH_TESTING: "ON"
       PRECISION_TEST: "OFF"
       PYTHON_ROOT: C:\Python310
-      vcvars64_dir: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat'
-      CUDA_TOOLKIT_ROOT_DIR: 'C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.7'
+      vcvars64_dir: 'C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat'
+      CUDA_TOOLKIT_ROOT_DIR: 'C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v13.3'
       TENSORRT_ROOT: D:/TensorRT-8.0.1.6
       CTEST_PARALLEL_LEVEL: 1
       GENERATOR: "Ninja"
@@ -87,6 +87,7 @@ jobs:
         run: |
           call %ACTION_DIR%\proxy.bat
           call %ci_scripts%\config_env.bat
+          echo PATH=%CUDA_TOOLKIT_ROOT_DIR%\bin\x64;%PATH%>> %GITHUB_ENV%
 
       - name: Build paddle
         run: |
