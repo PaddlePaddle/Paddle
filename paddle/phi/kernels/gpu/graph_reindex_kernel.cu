@@ -386,6 +386,11 @@ void GraphReindexKernel(const Context& dev_ctx,
       bs,
       errors::InvalidArgument("The first of dims should not be equal to 0."));
   int64_t num_edges = neighbors.dims()[0];
+  PADDLE_ENFORCE_LE_INT_MAX(bs, "graph_reindex num_inputs");
+  PADDLE_ENFORCE_LE_INT_MAX(num_edges, "graph_reindex num_edges");
+
+  const int bs_int = static_cast<int>(bs);
+  const int num_edges_int = static_cast<int>(num_edges);
 
   reindex_src->Resize({num_edges});
 
@@ -411,13 +416,13 @@ void GraphReindexKernel(const Context& dev_ctx,
                               x_data,
                               src_outputs,
                               &unique_nodes,
-                              bs,
+                              bs_int,
                               hashtable_value_data,
                               hashtable_index_data,
-                              num_edges);
+                              num_edges_int);
   } else {
     Reindex<T, Context>(
-        dev_ctx, x_data, src_outputs, &unique_nodes, bs, num_edges);
+        dev_ctx, x_data, src_outputs, &unique_nodes, bs_int, num_edges_int);
   }
 
   // Get reindex dst edge.
