@@ -33,14 +33,14 @@ template <typename T>
 __global__ void SoftLabelCrossEntropyGradientKernel(T* logit_grad,
                                                     const T* loss_grad,
                                                     const T* labels,
-                                                    const int n,
-                                                    const int d,
-                                                    const int remain) {
+                                                    const int64_t n,
+                                                    const int64_t d,
+                                                    const int64_t remain) {
   int64_t ids = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  if (ids < static_cast<int64_t>(n) * d) {
-    int idx_n = ids / d;
-    int idx_remain = ids % remain;
-    int idx_loss = idx_n * remain + idx_remain;
+  if (ids < n * d) {
+    int64_t idx_n = ids / d;
+    int64_t idx_remain = ids % remain;
+    int64_t idx_loss = idx_n * remain + idx_remain;
     using AccT = typename MPTypeTrait<T>::Type;
     AccT loss_g = static_cast<AccT>(loss_grad[idx_loss]);
     AccT label_v = static_cast<AccT>(labels[ids]);
