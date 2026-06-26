@@ -61,15 +61,6 @@ __device__ __forceinline__ MT compute_pow_like_kernel(MT val, double exponent) {
   }
 }
 
-// Round an intermediate value (kept in compute type MT) back to the storage
-// dtype T and return it as MT again. This reproduces the rounding point of a
-// single torch elementwise kernel, whose output tensor is dtype T. For
-// fp32/fp64 (MT == T) this is the identity; only fp16/bf16 are affected.
-template <typename T, typename MT>
-__device__ __forceinline__ MT RoundToStorage(MT v) {
-  return static_cast<MT>(static_cast<T>(v));
-}
-
 // Fused CUDA kernel for p=2 norm gradient
 // dx = grad * (x / norm).masked_fill_(norm == 0, 0)
 template <typename T>
@@ -99,11 +90,7 @@ __global__ void PNormGradP2Kernel(const T* x,
     } else {
       MT x_val = static_cast<MT>(x[idx]);
       MT grad_val = static_cast<MT>(grad[norm_idx]);
-      // Match torch's two separate elementwise kernels (norm_backward p==2:
-      // `grad * (self / norm)`): each op stores back to dtype T, so for
-      // fp16/bf16 there are two rounding points. Round `self / norm` to T
-      // before the multiply to stay bitwise-aligned with torch.
-      MT x_div_norm = static_cast<MT>(static_cast<T>(x_val / norm_val));
+      MT x_div_norm = x_val / norm_val;
       dx[idx] = static_cast<T>(x_div_norm * grad_val);
     }
   }
@@ -150,18 +137,17 @@ __global__ void PNormGradPLessThan1Kernel(const T* x,
       MT abs_x = (x_val > static_cast<MT>(0)) ? x_val : -x_val;
 
       // |x|^(p-1)
-      MT abs_pow = RoundToStorage<T>(compute_pow_like_kernel(abs_x, p_minus_1));
+      MT abs_pow = compute_pow_like_kernel(abs_x, p_minus_1);
 
       // sign(x): 1 if x > 0, -1 if x < 0 (x != 0 already checked)
       MT sign_x = (x_val > static_cast<MT>(0)) ? static_cast<MT>(1)
                                                : static_cast<MT>(-1);
 
-      MT self_scaled = RoundToStorage<T>(sign_x * abs_pow);
-      MT temp1 = RoundToStorage<T>(self_scaled * grad_val);
+      MT self_scaled = sign_x * abs_pow;
+      MT temp1 = self_scaled * grad_val;
 
       // norm^(1-p)
-      MT norm_pow =
-          RoundToStorage<T>(compute_pow_like_kernel(norm_val, one_minus_p));
+      MT norm_pow = compute_pow_like_kernel(norm_val, one_minus_p);
 
       dx[idx] = static_cast<T>(temp1 * norm_pow);
     }
@@ -249,7 +235,7 @@ __global__ void PNormGradPBetween1And2Kernel(const T* x,
       MT abs_x = (x_val > static_cast<MT>(0)) ? x_val : -x_val;
 
       // |x|^(p-1)
-      MT abs_pow = RoundToStorage<T>(compute_pow_like_kernel(abs_x, p_minus_1));
+      MT abs_pow = compute_pow_like_kernel(abs_x, p_minus_1);
 
       // sign(x)
       MT sign_x;
@@ -261,14 +247,13 @@ __global__ void PNormGradPBetween1And2Kernel(const T* x,
         sign_x = static_cast<MT>(0);
       }
 
-      MT self_scaled = RoundToStorage<T>(sign_x * abs_pow);
+      MT self_scaled = sign_x * abs_pow;
 
       // norm^(p-1)
-      MT norm_pow =
-          RoundToStorage<T>(compute_pow_like_kernel(norm_val, p_minus_1));
+      MT norm_pow = compute_pow_like_kernel(norm_val, p_minus_1);
 
       // scale_v = grad / norm_pow
-      MT scale_v = RoundToStorage<T>(grad_val / norm_pow);
+      MT scale_v = grad_val / norm_pow;
 
       dx[idx] = static_cast<T>(self_scaled * scale_v);
     }
@@ -316,17 +301,16 @@ __global__ void PNormGradPGreaterThan2Kernel(const T* x,
       MT abs_x = (x_val > static_cast<MT>(0)) ? x_val : -x_val;
 
       // |x|^(p-2)
-      MT abs_pow = RoundToStorage<T>(compute_pow_like_kernel(abs_x, p_minus_2));
+      MT abs_pow = compute_pow_like_kernel(abs_x, p_minus_2);
 
       // self_scaled = x * |x|^(p-2)
-      MT self_scaled = RoundToStorage<T>(x_val * abs_pow);
+      MT self_scaled = x_val * abs_pow;
 
       // norm^(p-1)
-      MT norm_pow =
-          RoundToStorage<T>(compute_pow_like_kernel(norm_val, p_minus_1));
+      MT norm_pow = compute_pow_like_kernel(norm_val, p_minus_1);
 
       // scale_v = grad / norm_pow
-      MT scale_v = RoundToStorage<T>(grad_val / norm_pow);
+      MT scale_v = grad_val / norm_pow;
 
       dx[idx] = static_cast<T>(self_scaled * scale_v);
     }
