@@ -169,13 +169,8 @@ class Tensor : public TensorBase {
     return const_cast<void*>(tensor_.data());
   }
 
-  template <typename T, std::enable_if_t<!std::is_const_v<T>, int> = 0>
+  template <typename T>
   const T* const_data_ptr() const {
-    return TensorBase::const_data_ptr<T>();
-  }
-
-  template <typename T, std::enable_if_t<std::is_const_v<T>, int> = 0>
-  const std::remove_const_t<T>* const_data_ptr() const {
     return TensorBase::const_data_ptr<T>();
   }
 
