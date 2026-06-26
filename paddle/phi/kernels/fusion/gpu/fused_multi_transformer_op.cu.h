@@ -1831,10 +1831,10 @@ __global__ void gqa_write_cache_k_kernel(T *cache_k,
                                          const T *k,
                                          const int *seq_lens,
                                          const int *padding_offsets,
-                                         const int gqa_group_size,
-                                         const int max_seq_len,
-                                         const int seq_len,
-                                         const int dim_head,
+                                         const int64_t gqa_group_size,
+                                         const int64_t max_seq_len,
+                                         const int64_t seq_len,
+                                         const int64_t dim_head,
                                          const int64_t num_elems) {
   AlignedVector<T, X_ELEMS> in_vec;
 
@@ -1843,23 +1843,24 @@ __global__ void gqa_write_cache_k_kernel(T *cache_k,
                              static_cast<int64_t>(threadIdx.x)) *
                             X_ELEMS;
        linear_idx < num_elems;
-       linear_idx += blockDim.x * gridDim.x * X_ELEMS) {
-    const int hidden_size = gqa_group_size * dim_head;
-    const int token_idx = linear_idx / hidden_size;
-    const int head_idx = (linear_idx % hidden_size) / dim_head;
-    const int head_offset = linear_idx % dim_head;
-    const int head_vec_id = head_offset / X_ELEMS;
-    const int ori_token_id = token_idx + padding_offsets[token_idx];
-    const int ori_bi = ori_token_id / seq_len;
+       linear_idx += static_cast<int64_t>(blockDim.x) *
+                     static_cast<int64_t>(gridDim.x) * X_ELEMS) {
+    const int64_t hidden_size = gqa_group_size * dim_head;
+    const int64_t token_idx = linear_idx / hidden_size;
+    const int64_t head_idx = (linear_idx % hidden_size) / dim_head;
+    const int64_t head_offset = linear_idx % dim_head;
+    const int64_t head_vec_id = head_offset / X_ELEMS;
+    const int64_t ori_token_id = token_idx + padding_offsets[token_idx];
+    const int64_t ori_bi = ori_token_id / seq_len;
 
     if (seq_lens[ori_bi] == 0) continue;
 
-    const int local_token_id = ori_token_id % seq_len;
+    const int64_t local_token_id = ori_token_id % seq_len;
 
-    const int tgt_idx = ori_bi * gqa_group_size * max_seq_len * dim_head +
-                        head_idx * max_seq_len * dim_head +
-                        head_vec_id * max_seq_len * X_ELEMS +
-                        local_token_id * X_ELEMS;
+    const int64_t tgt_idx = ori_bi * gqa_group_size * max_seq_len * dim_head +
+                            head_idx * max_seq_len * dim_head +
+                            head_vec_id * max_seq_len * X_ELEMS +
+                            local_token_id * X_ELEMS;
 
     Load(&k[linear_idx], &in_vec);
     Store(in_vec, &cache_k[tgt_idx]);
@@ -1871,10 +1872,10 @@ __global__ void gqa_write_cache_v_kernel(T *cache_v,
                                          const T *v,
                                          const int *seq_lens,
                                          const int *padding_offsets,
-                                         const int gqa_group_size,
-                                         const int max_seq_len,
-                                         const int seq_len,
-                                         const int dim_head,
+                                         const int64_t gqa_group_size,
+                                         const int64_t max_seq_len,
+                                         const int64_t seq_len,
+                                         const int64_t dim_head,
                                          const int64_t num_elems) {
   AlignedVector<T, X_ELEMS> in_vec;
 
@@ -1883,21 +1884,22 @@ __global__ void gqa_write_cache_v_kernel(T *cache_v,
                              static_cast<int64_t>(threadIdx.x)) *
                             X_ELEMS;
        linear_idx < num_elems;
-       linear_idx += blockDim.x * gridDim.x * X_ELEMS) {
-    const int hidden_size = gqa_group_size * dim_head;
-    const int token_idx = linear_idx / hidden_size;
-    const int head_idx = (linear_idx % hidden_size) / dim_head;
-    const int head_offset = linear_idx % dim_head;
-    const int ori_token_id = token_idx + padding_offsets[token_idx];
-    const int ori_bi = ori_token_id / seq_len;
+       linear_idx += static_cast<int64_t>(blockDim.x) *
+                     static_cast<int64_t>(gridDim.x) * X_ELEMS) {
+    const int64_t hidden_size = gqa_group_size * dim_head;
+    const int64_t token_idx = linear_idx / hidden_size;
+    const int64_t head_idx = (linear_idx % hidden_size) / dim_head;
+    const int64_t head_offset = linear_idx % dim_head;
+    const int64_t ori_token_id = token_idx + padding_offsets[token_idx];
+    const int64_t ori_bi = ori_token_id / seq_len;
 
     if (seq_lens[ori_bi] == 0) continue;
 
-    const int local_token_id = ori_token_id % seq_len;
+    const int64_t local_token_id = ori_token_id % seq_len;
 
-    const int tgt_idx = ori_bi * gqa_group_size * max_seq_len * dim_head +
-                        head_idx * max_seq_len * dim_head +
-                        local_token_id * dim_head + head_offset;
+    const int64_t tgt_idx = ori_bi * gqa_group_size * max_seq_len * dim_head +
+                            head_idx * max_seq_len * dim_head +
+                            local_token_id * dim_head + head_offset;
 
     Load(&v[linear_idx], &in_vec);
     Store(in_vec, &cache_v[tgt_idx]);
@@ -1940,13 +1942,6 @@ void gqa_write_cachekv(
       common::errors::PreconditionNotMet(
           "dim_head=%d must be divisible by vec_size=%d", dim_head, x));
 
-  PADDLE_ENFORCE_LE_INT_MAX(gqa_group_size, "gqa_write_cache gqa_group_size");
-  PADDLE_ENFORCE_LE_INT_MAX(max_seq_len, "gqa_write_cache max_seq_len");
-  PADDLE_ENFORCE_LE_INT_MAX(dim_head, "gqa_write_cache dim_head");
-  const int gqa_group_size_int = static_cast<int>(gqa_group_size);
-  const int max_seq_len_int = static_cast<int>(max_seq_len);
-  const int dim_head_int = static_cast<int>(dim_head);
-
   const int64_t num_elems = unpadding_k.numel();
 
   T *cache_k = cache_kv_out->data<T>();
@@ -1973,10 +1968,10 @@ void gqa_write_cachekv(
           unpadding_k.data<T>(),
           seq_lens.data<int>(),
           padding_offsets.data<int>(),
-          gqa_group_size_int,
-          max_seq_len_int,
-          seq_len,
-          dim_head_int,
+          gqa_group_size,
+          max_seq_len,
+          static_cast<int64_t>(seq_len),
+          dim_head,
           num_elems);
   gqa_write_cache_v_kernel<T, x>
       <<<grid_size_u32, block_sz_u32, 0, dev_ctx.stream()>>>(
@@ -1984,10 +1979,10 @@ void gqa_write_cachekv(
           unpadding_v.data<T>(),
           seq_lens.data<int>(),
           padding_offsets.data<int>(),
-          gqa_group_size_int,
-          max_seq_len_int,
-          seq_len,
-          dim_head_int,
+          gqa_group_size,
+          max_seq_len,
+          static_cast<int64_t>(seq_len),
+          dim_head,
           num_elems);
 }
 
