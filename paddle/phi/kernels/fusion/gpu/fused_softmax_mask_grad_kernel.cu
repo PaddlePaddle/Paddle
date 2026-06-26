@@ -151,7 +151,7 @@ void FusedSoftmaxMaskGradKernel(const Context& dev_ctx,
 
   int warps_per_block = (threads_per_block / warp_size);
   int batches_per_block = warps_per_block * batches_per_warp;
-  int64_t blocks_64 = batch_count / batches_per_block;
+  int64_t blocks_64 = (batch_count + batches_per_block - 1) / batches_per_block;
   PADDLE_ENFORCE_LE(
       blocks_64,
       dev_ctx.GetCUDAMaxGridDimSize()[0],

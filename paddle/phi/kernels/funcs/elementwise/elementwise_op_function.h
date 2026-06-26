@@ -293,21 +293,20 @@ static __global__ void FusedElemwiseAndActBroadcast2CUDAKernel(
     const T *x,
     const T *y,
     CompoundFunctor compound_functor,
-    int pre,
-    int n,
-    int post,
+    int64_t pre,
+    int64_t n,
+    int64_t post,
     T *out,
     T *intermediate_out) {
-  int tid = threadIdx.x;
-  int j = blockIdx.x;
+  int64_t tid = threadIdx.x;
+  int64_t j = blockIdx.x;
 
   while (true) {
-    int i = tid / post;
-    int k = tid % post;
+    int64_t i = tid / post;
+    int64_t k = tid % post;
     if (i >= pre) break;
 
-    int64_t offset =
-        static_cast<int64_t>(i) * n * post + static_cast<int64_t>(j) * post + k;
+    int64_t offset = i * n * post + j * post + k;
 
     T y_val = BcastY ? y[j] : y[offset];
     T x_val = BcastY ? x[offset] : x[j];
@@ -991,9 +990,9 @@ static __global__ void FusedElemwiseAndActGradBroadcast2CUDAKernel(
     const T *intermediate_out,
     const T *out,
     const T *dout,
-    int pre,
-    int n,
-    int post,
+    int64_t pre,
+    int64_t n,
+    int64_t post,
     DX_OP dx_op,
     DY_OP dy_op,
     DIntermediate_OP dintermediate_op,
@@ -1001,19 +1000,18 @@ static __global__ void FusedElemwiseAndActGradBroadcast2CUDAKernel(
     T *dy,
     T *d_intermediate) {
   int tid = threadIdx.x;
-  int j = blockIdx.x;
+  int64_t j = blockIdx.x;
 
   T val(0), inter_val(0);
-  int ttid = tid;
+  int64_t ttid = tid;
   int64_t tmp_out_idx, x_idx, y_idx;
   T zero = static_cast<T>(0);
   while (true) {
-    int i = ttid / post;
-    int k = ttid % post;
+    int64_t i = ttid / post;
+    int64_t k = ttid % post;
     if (i >= pre) break;
 
-    int64_t offset =
-        static_cast<int64_t>(i) * n * post + static_cast<int64_t>(j) * post + k;
+    int64_t offset = i * n * post + j * post + k;
 
     tmp_out_idx = BcastY ? j : offset;
     y_idx = BcastY ? j : offset;
@@ -1071,8 +1069,8 @@ static __global__ void FusedElemwiseAndActGradBroadcast2CUDAKernel(
     ttid += ELEMWISE_MAX_BLOCK_DIM;
   }
 
-  int h = pre * post;
-  h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
+  int h = static_cast<int>(
+      std::min(pre * post, static_cast<int64_t>(ELEMWISE_MAX_BLOCK_DIM)));
   if (BcastY) {
     if (dy) {
       val = phi::backends::gpu::reduceSum(val, tid, h);
