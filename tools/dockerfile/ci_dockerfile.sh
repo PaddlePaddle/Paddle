@@ -72,10 +72,10 @@ function make_ce_framework_dockerfile(){
   sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh trt105018#g' ${dockerfile_name}
   sed -i 's#RUN bash /build_scripts/install_cudnn.sh cudnn841##g' ${dockerfile_name}
   sed -i 's#ENV CUDNN_VERSION=8.4.1#ENV CUDNN_VERSION=9.7.1#g' ${dockerfile_name}
-  sed -i 's#RUN bash /build_scripts/install_gcc.sh gcc82#RUN add-apt-repository ppa:ubuntu-toolchain-r/test \&\& apt-get update \&\& apt-get install -y gcc-11 g++-11#g' ${dockerfile_name}
-  sed -i 's#/usr/local/gcc-8.2/bin/gcc#/usr/bin/gcc-11#g' ${dockerfile_name}
-  sed -i 's#/usr/local/gcc-8.2/bin/g++#/usr/bin/g++-11#g' ${dockerfile_name}
-  sed -i 's#ENV PATH=/usr/local/gcc-8.2/bin:$PATH##g' ${dockerfile_name}
+  sed -i 's#RUN bash /build_scripts/install_gcc.sh gcc82#RUN bash /build_scripts/install_gcc.sh gcc11#g' ${dockerfile_name}
+  sed -i 's#/usr/local/gcc-8.2/bin/gcc#/usr/local/gcc-11.5/bin/gcc#g' ${dockerfile_name}
+  sed -i 's#/usr/local/gcc-8.2/bin/g++#/usr/local/gcc-11.5/bin/g++#g' ${dockerfile_name}
+  sed -i 's#ENV PATH=/usr/local/gcc-8.2/bin:$PATH#ENV PATH=/usr/local/gcc-11.5/bin:$PATH#g' ${dockerfile_name}
 }
 
 
