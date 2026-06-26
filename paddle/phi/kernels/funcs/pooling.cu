@@ -2532,9 +2532,17 @@ class MaxPool2dWithIndexGradFunctor<GPUContext, T1, T2> {
 
     int64_t nthreads = static_cast<int64_t>(batch_size) * input_channels *
                        input_height * input_width;
-    int64_t blocks = (nthreads + 1024 - 1) / 1024;
-    dim3 threads(1024, 1);
-    dim3 grid(blocks, 1);
+    uint32_t thread_num = 1024;
+    int64_t blocks = (nthreads + thread_num - 1) / thread_num;
+    std::array<unsigned int, 3> max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize();
+    PADDLE_ENFORCE_LE(blocks,
+                      max_grid_dim[0],
+                      common::errors::InvalidArgument(
+                          "pool2d grad grid.x exceeds device limit."));
+    PADDLE_ENFORCE_LE_UINT32_MAX(blocks, "pool2d grad grid.x");
+    PADDLE_ENFORCE_LE_UINT32_MAX(thread_num, "pool2d grad block.x");
+    dim3 threads(thread_num, 1);
+    dim3 grid(static_cast<uint32_t>(blocks), 1);
 
     if (nthreads <= std::numeric_limits<int>::max()) {
       auto pool_divmods =
