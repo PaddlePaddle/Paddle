@@ -32,7 +32,7 @@
 
 TEST(TensorBaseTest, IsSameAPI) {
   // Test is_same() API - checks if two tensors share the same underlying data
-  at::TensorBase tensor1 = at::ones({2, 3}, at::kFloat);
+  at::Tensor tensor1 = at::ones({2, 3}, at::kFloat);
   at::TensorBase tensor2 = tensor1;                       // Same tensor
   at::TensorBase tensor3 = at::ones({2, 3}, at::kFloat);  // Different tensor
 
@@ -61,7 +61,7 @@ TEST(TensorBaseTest, IsSameAPI) {
 
 TEST(TensorBaseTest, UseCountAPI) {
   // Test use_count() API - returns reference count of underlying tensor
-  at::TensorBase tensor1 = at::ones({2, 3}, at::kFloat);
+  at::Tensor tensor1 = at::ones({2, 3}, at::kFloat);
 
   // Initial reference count should be 1
   ASSERT_EQ(tensor1.use_count(), 1);

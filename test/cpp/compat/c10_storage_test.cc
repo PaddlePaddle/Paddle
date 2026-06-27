@@ -347,7 +347,7 @@ TEST(StorageTest, IsSharedStorageAliasFunction) {
 
 TEST(StorageTest, StorageIsAliasOfMethod) {
   // Test Storage::is_alias_of() method
-  at::TensorBase tensor1 = at::ones({2, 3}, at::kFloat);
+  at::Tensor tensor1 = at::ones({2, 3}, at::kFloat);
   at::TensorBase tensor2 = tensor1.view({3, 2});
   at::TensorBase tensor3 = at::ones({2, 3}, at::kFloat);
 
@@ -1009,7 +1009,7 @@ TEST(StorageTest, AliasWrapperDoesNotIncreaseTensorOwnedStorageCount) {
 }
 
 TEST(StorageTest, ViewTensorWrappersShareStorageImpl) {
-  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+  at::Tensor tensor = at::ones({2, 3}, at::kFloat);
   at::TensorBase alias = tensor.view({3, 2});
 
   c10::Storage tensor_storage = tensor.storage();

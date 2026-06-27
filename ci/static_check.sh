@@ -196,8 +196,9 @@ fi
 aten_ops_signature_inputs=$(
     git -C "${PADDLE_ROOT}" diff --name-only --diff-filter=AM "${aten_ops_signature_base_ref}" -- \
         paddle/phi/api/include/compat/ATen/ops \
-        paddle/phi/api/include/compat/ATen/core/TensorBody.h |
-        grep -E '(^paddle/phi/api/include/compat/ATen/ops/.*\.h$|^paddle/phi/api/include/compat/ATen/core/TensorBody\.h$)' || true
+        paddle/phi/api/include/compat/ATen/core/TensorBody.h \
+        paddle/phi/api/include/compat/ATen/core/TensorBase.h |
+        grep -E '(^paddle/phi/api/include/compat/ATen/ops/.*\.h$|^paddle/phi/api/include/compat/ATen/core/TensorBody\.h$|^paddle/phi/api/include/compat/ATen/core/TensorBase\.h$)' || true
 )
 if [ -n "${aten_ops_signature_inputs}" ]; then
     aten_ops_signature_torch_target=$(mktemp -d)
@@ -217,7 +218,7 @@ if [ -n "${aten_ops_signature_inputs}" ]; then
         exit $torch_cleanup_error
     fi
 else
-    echo "No changed compat ATen ops headers or TensorBody.h found; skip ATen ops signature check."
+    echo "No changed compat ATen ops headers, TensorBody.h, or TensorBase.h found; skip ATen ops signature check."
 fi
 
 exec_samplecode_checking
