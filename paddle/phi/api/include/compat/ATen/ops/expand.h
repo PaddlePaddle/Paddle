@@ -134,7 +134,4 @@ inline Tensor Tensor::expand(at::IntArrayRef size, bool implicit) const {
   return at::expand(*this, size, implicit);
 }
 
-// Member function: Tensor::expand_as
 }  // namespace at
-
-#include "paddle/phi/api/include/compat/ATen/ops/expand_as.h"
