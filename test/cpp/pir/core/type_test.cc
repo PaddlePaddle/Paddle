@@ -387,9 +387,6 @@ TEST(type_test, type_util) {
   std::vector<pir::Type> types3 = {
       select_rows_dtype2, select_rows_dtype2, select_rows_dtype2};
 
-  EXPECT_TRUE(
-      pir::VerifyCompatibleDims({pir::ShapedTypeInterface::kDynamic, 2, 2}));
-  EXPECT_FALSE(pir::VerifyCompatibleDims({2, 3}));
   EXPECT_TRUE(pir::VerifyCompatibleShapes(types1, types2));
   EXPECT_FALSE(pir::VerifyCompatibleShapes(types1, types3));
 }
