@@ -782,6 +782,86 @@ class TestAtenOpsSignatureCheck(unittest.TestCase):
             declarations,
         )
 
+    def test_tensor_body_does_not_match_inherited_tensor_base_member(self):
+        self.write_paddle_tensor_body(
+            """
+            namespace at {
+            class Tensor {
+             public:
+              const void* const_data_ptr() const;
+            };
+            }  // namespace at
+            """,
+        )
+        self.write_torch(
+            "ATen/core/TensorBody.h",
+            """
+            namespace at {
+            class Tensor {};
+            }  // namespace at
+            """,
+        )
+        self.write_torch(
+            "ATen/core/TensorBase.h",
+            """
+            namespace at {
+            class TensorBase {
+             public:
+              const void* const_data_ptr() const;
+            };
+            }  // namespace at
+            """,
+        )
+
+        errors = run_check(
+            self.paddle_root,
+            self.torch_include,
+            [],
+            check_tensor_body=True,
+            check_tensor_base=False,
+        )
+
+        self.assertTrue(
+            any(
+                "TensorBody member signature" in error.message
+                for error in errors
+            )
+        )
+
+    def test_tensor_base_member_still_matches_tensor_base(self):
+        self.write_paddle_tensor_base(
+            """
+            namespace at {
+            class TensorBase {
+             public:
+              const void* const_data_ptr() const;
+            };
+            }  // namespace at
+            """,
+        )
+        self.write_torch(
+            "ATen/core/TensorBase.h",
+            """
+            namespace at {
+            class TensorBase {
+             public:
+              const void* const_data_ptr() const;
+            };
+            }  // namespace at
+            """,
+        )
+
+        self.assertEqual(
+            run_check(
+                self.paddle_root,
+                self.torch_include,
+                [],
+                check_tensor_body=False,
+                check_tensor_base=True,
+            ),
+            [],
+        )
+
     def test_deprecated_attribute_and_macro_are_equivalent(self):
         header = self.write_paddle_op("packed_accessor.h", "namespace at {}")
         self.write_paddle_tensor_body(

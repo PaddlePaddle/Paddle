@@ -610,23 +610,6 @@ def signature_without_templates(signature: CppSignature) -> CppSignature:
     )
 
 
-def signature_with_class_name(
-    signature: CppSignature, class_name: str
-) -> CppSignature:
-    canonical = re.sub(
-        r"\b(?:Tensor|TensorBase)::",
-        f"{class_name}::",
-        signature.canonical,
-        count=1,
-    )
-    return CppSignature(
-        raw=signature.raw,
-        canonical=canonical,
-        name=signature.name,
-        is_member=signature.is_member,
-    )
-
-
 def find_tensor_class_body(text: str, class_name: str = "Tensor") -> str | None:
     clean = strip_comments_and_literals(text)
     match = re.search(
@@ -816,16 +799,6 @@ def parse_torch_tensor_body(path: Path) -> list[CppSignature]:
                 block, include_member_defaults=True
             )
             if sig.is_member
-        )
-    tensor_base = path.with_name("TensorBase.h")
-    if tensor_base.is_file():
-        signatures.extend(
-            signature_with_class_name(signature, "Tensor")
-            for signature in tensor_class_declarations(
-                tensor_base.read_text(),
-                include_member_defaults=True,
-                class_name="TensorBase",
-            )
         )
     deduped: dict[str, CppSignature] = {}
     for sig in signatures:

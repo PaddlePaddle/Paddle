@@ -118,12 +118,6 @@ class Tensor : public TensorBase {
     return *this;
   }
 
-  void* data_ptr() const { return const_cast<void*>(tensor_.data()); }
-  template <typename T>
-  T* data_ptr() const {
-    return const_cast<T*>(tensor_.data<T>());
-  }
-
   template <typename T>
   T* data() const {
     return data_ptr<T>();
@@ -165,33 +159,9 @@ class Tensor : public TensorBase {
 #endif
   }
 
-  const void* const_data_ptr() const {
-    return const_cast<void*>(tensor_.data());
-  }
-
-  template <typename T>
-  const T* const_data_ptr() const {
-    return TensorBase::const_data_ptr<T>();
-  }
-
-  void* mutable_data_ptr() const { return const_cast<void*>(tensor_.data()); }
-
-  template <typename T>
-  T* mutable_data_ptr() const {
-    return TensorBase::mutable_data_ptr<T>();
-  }
-
   using TensorBase::stride;
 
-  c10::IntArrayRef strides() const {
-    return compat::_PD_PhiDDimToIntArrayRef(tensor_.strides());
-  }
-
   using TensorBase::size;
-
-  c10::IntArrayRef sizes() const {
-    return compat::_PD_PhiDDimToIntArrayRef(tensor_.dims());
-  }
 
   at::Tensor to(
       at::TensorOptions options = {},
@@ -346,39 +316,12 @@ class Tensor : public TensorBase {
         tensor_, compat::_PD_AtenScalarTypeToPhiDataType(t)));
   }
 
-  int64_t numel() const { return tensor_.numel(); }
-
-  caffe2::TypeMeta dtype() const {
-    return caffe2::TypeMeta::fromScalarType(
-        compat::_PD_PhiDataTypeToAtenScalarType(tensor_.dtype()));
-  }
-
-  c10::Device device() const { return c10::Device(tensor_.place()); }
-  c10::DeviceIndex get_device() const {
-    return c10::Device(tensor_.place()).index();
-  }
-
-  int64_t dim() const { return tensor_.dims().size(); }
-  int64_t ndimension() const { return dim(); }
-
   at::Tensor contiguous(
       c10::MemoryFormat memory_format = c10::MemoryFormat::Contiguous) const {
     PD_CHECK(memory_format == c10::MemoryFormat::Contiguous,
              "`MemoryFormat` other than Contiguous");
 
     return tensor_.contiguous();
-  }
-
-  bool is_contiguous(
-      at::MemoryFormat memory_format = at::MemoryFormat::Contiguous) const {
-    PD_CHECK(memory_format == c10::MemoryFormat::Contiguous,
-             "`MemoryFormat` other than Contiguous");
-
-    return tensor_.is_contiguous();
-  }
-
-  c10::ScalarType scalar_type() const {
-    return compat::_PD_PhiDataTypeToAtenScalarType(tensor_.dtype());
   }
 
   at::Tensor flatten(int64_t start_dim = 0, int64_t end_dim = -1) const;
@@ -394,9 +337,6 @@ class Tensor : public TensorBase {
     paddle::experimental::fill_(const_cast<PaddleTensor&>(tensor_), 0.0);
     return const_cast<at::Tensor&>(*this);
   }
-
-  bool is_cpu() const { return phi::is_cpu_place(tensor_.place()); }
-  bool is_cuda() const { return phi::is_gpu_place(tensor_.place()); }
 
   bool is_pinned(::std::optional<c10::Device> device = ::std::nullopt) const {
     if (device.has_value()) {
@@ -620,24 +560,6 @@ class Tensor : public TensorBase {
   // Paddle Tensor has no storage_offset, so we add it here, and it is always
   // 0.
   //   int64_t storage_offset() const { return storage_offset_; }
-
-  inline size_t nbytes() const {
-    PD_CHECK(
-        ((tensor_.layout() != common::DataLayout::SPARSE_COO) &&
-         (tensor_.layout() != common::DataLayout::SPARSE_CSR)),
-        "nbytes is not defined for sparse tensors.  If you want the size of "
-        "the constituent "
-        "tensors, add the nbytes of the indices and values.  If you want the "
-        "size of the  "
-        "equivalent dense tensor, multiply numel() by element_size()");
-    return tensor_.numel() * SizeOf(tensor_.dtype());
-  }
-
-  size_t itemsize() const { return SizeOf(tensor_.dtype()); }
-
-  int64_t element_size() const {
-    return static_cast<int64_t>(SizeOf(tensor_.dtype()));
-  }
 
   inline Tensor clone(
       ::std::optional<at::MemoryFormat> memory_format = ::std::nullopt) const {
