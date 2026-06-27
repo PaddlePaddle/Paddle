@@ -1180,6 +1180,100 @@ class TestAtenOpsSignatureCheck(unittest.TestCase):
         self.assertFalse(run_check_mock.call_args.kwargs["check_tensor_body"])
         self.assertTrue(run_check_mock.call_args.kwargs["check_tensor_base"])
 
+    def test_tensor_body_change_runs_all_ops_headers(self):
+        foo = self.write_paddle_op("foo.h", "namespace at {}\n")
+        bar = self.write_paddle_op("bar.h", "namespace at {}\n")
+        with (
+            mock.patch(
+                "check_aten_ops_signature.tensor_body_changed",
+                return_value=True,
+            ),
+            mock.patch(
+                "check_aten_ops_signature.tensor_base_changed",
+                return_value=False,
+            ),
+            mock.patch(
+                "check_aten_ops_signature.changed_aten_ops_headers",
+                side_effect=AssertionError(
+                    "TensorBody changes must scan all ops headers"
+                ),
+            ),
+            mock.patch(
+                "check_aten_ops_signature.all_aten_ops_headers",
+                return_value=[foo, bar],
+            ),
+            mock.patch(
+                "check_aten_ops_signature.discover_torch_include_dir",
+                return_value=self.torch_include,
+            ),
+            mock.patch(
+                "check_aten_ops_signature.run_check",
+                return_value=[],
+            ) as run_check_mock,
+            mock.patch(
+                "sys.argv",
+                [
+                    "check_aten_ops_signature.py",
+                    "--paddle-root",
+                    str(self.paddle_root),
+                ],
+            ),
+        ):
+            self.assertEqual(main(), 0)
+        run_check_mock.assert_called_once()
+        self.assertEqual(run_check_mock.call_args.args[2], [foo, bar])
+        self.assertTrue(run_check_mock.call_args.kwargs["check_tensor_body"])
+        self.assertFalse(run_check_mock.call_args.kwargs["check_tensor_base"])
+
+    def test_existing_ops_member_mismatch_fails_when_scanned(self):
+        header = self.write_paddle_op(
+            "foo.h",
+            """
+            namespace at {
+            inline at::Tensor Tensor::foo(bool dim) const {
+              return at::Tensor();
+            }
+            }  // namespace at
+            """,
+        )
+        self.write_paddle_tensor_body(
+            """
+            namespace at {
+            class Tensor {
+             public:
+              at::Tensor foo(int64_t dim) const;
+            };
+            }  // namespace at
+            """
+        )
+        self.write_torch(
+            "ATen/core/TensorBody.h",
+            """
+            namespace at {
+            class Tensor {
+             public:
+              at::Tensor foo(int64_t dim) const;
+            };
+            }  // namespace at
+            """,
+        )
+
+        errors = run_check(
+            self.paddle_root,
+            self.torch_include,
+            [header],
+            check_tensor_body=True,
+            check_tensor_base=False,
+        )
+
+        self.assertTrue(errors)
+        self.assertTrue(
+            any(
+                "member function implementation is missing" in error.message
+                for error in errors
+            )
+        )
+
     def test_no_changed_signature_inputs_skips_torch_discovery(self):
         with (
             mock.patch(

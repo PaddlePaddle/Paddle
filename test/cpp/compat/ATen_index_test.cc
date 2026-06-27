@@ -403,3 +403,45 @@ TEST(TensorIndexPutTest, IndexPutArrayRefWithTensorValue) {
   ASSERT_FLOAT_EQ(t.data_ptr<float>()[2], 0.0f);
   ASSERT_FLOAT_EQ(t.data_ptr<float>()[4], 13.0f);
 }
+
+TEST(TensorIndexPutTest, IndexPutArrayRefWithNoneValue) {
+  at::Tensor t = at::zeros({2, 3}, at::kFloat);
+  at::Tensor values = at::full({1, 2, 3}, 6.0f, at::kFloat);
+
+  t.index_put_({at::indexing::None}, values);
+
+  ASSERT_EQ(t.sizes(), c10::IntArrayRef({2, 3}));
+  for (int i = 0; i < 6; ++i) {
+    ASSERT_FLOAT_EQ(t.data_ptr<float>()[i], 6.0f);
+  }
+}
+
+TEST(TensorIndexPutTest, IndexPutArrayRefWithTensorNoneAndSlice) {
+  at::Tensor t = at::zeros({3, 4}, at::kFloat);
+  at::Tensor idx = at::empty({2}, at::kLong);
+  idx.data_ptr<int64_t>()[0] = 2;
+  idx.data_ptr<int64_t>()[1] = 0;
+  at::Tensor values = at::full({2, 1, 4}, 8.0f, at::kFloat);
+
+  t.index_put_({idx, at::indexing::None, at::indexing::Slice()}, values);
+
+  ASSERT_EQ(t.sizes(), c10::IntArrayRef({3, 4}));
+  for (int i = 0; i < 4; ++i) {
+    ASSERT_FLOAT_EQ(t.data_ptr<float>()[i], 8.0f);
+    ASSERT_FLOAT_EQ(t.data_ptr<float>()[8 + i], 8.0f);
+  }
+  for (int i = 4; i < 8; ++i) {
+    ASSERT_FLOAT_EQ(t.data_ptr<float>()[i], 0.0f);
+  }
+}
+
+TEST(TensorIndexPutTest, IndexPutArrayRefWithNoneScalarValue) {
+  at::Tensor t = at::zeros({2, 3}, at::kFloat);
+
+  t.index_put_({at::indexing::None}, at::Scalar(4.0));
+
+  ASSERT_EQ(t.sizes(), c10::IntArrayRef({2, 3}));
+  for (int i = 0; i < 6; ++i) {
+    ASSERT_FLOAT_EQ(t.data_ptr<float>()[i], 4.0f);
+  }
+}

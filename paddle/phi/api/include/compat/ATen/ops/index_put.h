@@ -18,6 +18,7 @@
 #include <ATen/ops/index.h>
 #include <c10/core/List.h>
 #include <c10/core/Scalar.h>
+#include <vector>
 
 #include "paddle/phi/api/include/api.h"
 
@@ -42,14 +43,60 @@ inline c10::List<::std::optional<at::Tensor>> _PD_convert_tensor_index_list(
     PD_CHECK(!index.is_ellipsis(), "Ellipsis index is not supported yet.");
     PD_CHECK(!index.is_integer(), "Integer index is not supported yet.");
     PD_CHECK(!index.is_boolean(), "Boolean index is not supported yet.");
-    PD_CHECK(!index.is_slice(), "Slice index is not supported yet.");
-    if (index.is_none()) {
-      result.push_back(::std::nullopt);
+    if (index.is_slice()) {
+      PD_CHECK(_PD_is_full_slice(index.slice()),
+               "Only full Slice() is supported in index_put_ TensorIndex "
+               "paths.");
     } else if (index.is_tensor()) {
       result.push_back(index.tensor());
     }
   }
   return result;
+}
+
+inline at::Tensor _PD_squeeze_newaxis_value(
+    const at::Tensor& values, ArrayRef<at::indexing::TensorIndex> indices) {
+  std::vector<int64_t> value_shape(values.sizes().begin(),
+                                   values.sizes().end());
+  size_t value_dim = 0;
+  bool changed = false;
+
+  for (const auto& index : indices) {
+    if (index.is_none()) {
+      if (!value_shape.empty()) {
+        PD_CHECK(value_dim < value_shape.size(),
+                 "index_put_ value rank is too small for None index.");
+        PD_CHECK(value_shape[value_dim] == 1,
+                 "index_put_ expected value dimension inserted by None to "
+                 "have size 1, but got ",
+                 value_shape[value_dim],
+                 ".");
+        value_shape.erase(value_shape.begin() + value_dim);
+        changed = true;
+      }
+    } else if (index.is_tensor()) {
+      if (!value_shape.empty()) {
+        ++value_dim;
+      }
+    } else if (index.is_slice()) {
+      PD_CHECK(_PD_is_full_slice(index.slice()),
+               "Only full Slice() is supported in index_put_ TensorIndex "
+               "paths.");
+      if (!value_shape.empty()) {
+        ++value_dim;
+      }
+    } else {
+      PD_CHECK(!index.is_ellipsis(), "Ellipsis index is not supported yet.");
+      PD_CHECK(!index.is_integer(), "Integer index is not supported yet.");
+      PD_CHECK(!index.is_boolean(), "Boolean index is not supported yet.");
+    }
+  }
+
+  if (!changed) {
+    return values;
+  }
+  return paddle::experimental::reshape(values._PD_GetInner(),
+                                       phi::IntArray(value_shape));
 }
 
 }  // namespace at::detail
@@ -112,11 +159,26 @@ inline at::Tensor& Tensor::index_put_(
 
 inline at::Tensor& Tensor::index_put_(
     ArrayRef<at::indexing::TensorIndex> indices, Tensor const& rhs) {
-  return index_put_(detail::_PD_convert_tensor_index_list(indices), rhs);
+  auto tensor_indices = detail::_PD_convert_tensor_index_list(indices);
+  at::Tensor values = detail::_PD_squeeze_newaxis_value(rhs, indices);
+  if (tensor_indices.empty()) {
+    return copy_(values);
+  }
+  return index_put_(tensor_indices, values);
 }
 
 inline at::Tensor& Tensor::index_put_(
     ArrayRef<at::indexing::TensorIndex> indices, const Scalar& v) {
+  auto tensor_indices = detail::_PD_convert_tensor_index_list(indices);
+  if (tensor_indices.empty()) {
+    std::vector<int64_t> value_shape(this->sizes().begin(),
+                                     this->sizes().end());
+    auto scalar_tensor =
+        at::Tensor(paddle::experimental::full(phi::IntArray(value_shape),
+                                              phi::Scalar(v.to<double>()),
+                                              this->_PD_GetInner().dtype()));
+    return copy_(scalar_tensor);
+  }
   auto scalar_tensor = at::Tensor(paddle::experimental::full(
       {}, phi::Scalar(v.to<double>()), this->_PD_GetInner().dtype()));
   return index_put_(indices, scalar_tensor);

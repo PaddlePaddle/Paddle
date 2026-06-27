@@ -1179,8 +1179,8 @@ def parse_args() -> argparse.Namespace:
         "--all",
         action="store_true",
         help=(
-            "Check all compat ATen ops headers and TensorBody members instead "
-            "of only changed files."
+            "Check all compat ATen ops headers, TensorBody members, and "
+            "TensorBase members instead of only changed files."
         ),
     )
     return parser.parse_args()
@@ -1190,16 +1190,16 @@ def main() -> int:
     args = parse_args()
     paddle_root = Path(args.paddle_root).resolve()
     try:
-        headers = (
-            all_aten_ops_headers(paddle_root)
-            if args.all
-            else changed_aten_ops_headers(paddle_root, args.branch)
-        )
         check_tensor_body = args.all or tensor_body_changed(
             paddle_root, args.branch
         )
         check_tensor_base = args.all or tensor_base_changed(
             paddle_root, args.branch
+        )
+        headers = (
+            all_aten_ops_headers(paddle_root)
+            if args.all or check_tensor_body
+            else changed_aten_ops_headers(paddle_root, args.branch)
         )
         if not headers and not check_tensor_body and not check_tensor_base:
             print(
