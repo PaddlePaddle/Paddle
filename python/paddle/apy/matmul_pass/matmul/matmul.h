@@ -39,3 +39,25 @@
 #include "math_function.h"                        // NOLINT
 #include "profile.h"                              // NOLINT
 #endif
+
+#ifdef __HIPCC__
+#include <hip/hip_bfloat16.h>
+#include <hip/hip_fp16.h>
+#include <hip/hip_runtime.h>
+
+#define CHECK_HIP(func)                                                       \
+  {                                                                           \
+    hipError_t err = func;                                                    \
+    if (err != hipSuccess) {                                                  \
+      std::cerr << "[" << __FILE__ << ":" << __LINE__ << ", " << __FUNCTION__ \
+                << "] "                                                       \
+                << "HIP error(" << err << "), " << hipGetErrorString(err)     \
+                << " when call " << #func << std::endl;                       \
+      exit(EXIT_FAILURE);                                                     \
+    }                                                                         \
+  }
+
+#include "cutlass_patch/hip/hytlass_matmul.h"  // NOLINT
+#include "math_function.h"                     // NOLINT
+#include "profile.h"                           // NOLINT
+#endif

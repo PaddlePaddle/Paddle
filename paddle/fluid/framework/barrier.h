@@ -26,6 +26,7 @@
 #endif
 #include <condition_variable>
 #include <mutex>
+#include <type_traits>
 #include "paddle/common/enforce.h"
 #include "paddle/common/errors.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -108,8 +109,8 @@ class Barrier {
 };
 // Call func(args...). If interrupted by signal, recall the function.
 template <class FUNC, class... ARGS>
-auto ignore_signal_call(FUNC &&func, ARGS &&...args) ->
-    typename std::result_of<FUNC(ARGS...)>::type {
+auto ignore_signal_call(FUNC &&func, ARGS &&...args)
+    -> std::invoke_result_t<FUNC, ARGS...> {
   for (;;) {
     auto err = func(args...);
 

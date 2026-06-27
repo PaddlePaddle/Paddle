@@ -23,12 +23,10 @@ from .array import (  # noqa: F401
     create_array,
 )
 from .attribute import (  # noqa: F401
-    imag,
     is_complex,
     is_floating_point,
     is_integer,
     rank,
-    real,
     shape,
 )
 from .compat_softmax import log_softmax, softmax  # noqa: F401
@@ -78,6 +76,7 @@ from .linalg import (  # noqa: F401
     corrcoef,
     cov,
     cross,
+    det,
     diagonal,
     dist,
     dot,
@@ -205,6 +204,7 @@ from .manipulation import (  # noqa: F401
     reshape,
     reshape_,
     reshape_as,
+    resize_as_,
     roll,
     rot90,
     row_stack,
@@ -215,6 +215,7 @@ from .manipulation import (  # noqa: F401
     scatter_nd,
     scatter_nd_add,
     scatter_reduce,
+    scatter_reduce_,
     select_scatter,
     shard_index,
     slice,
@@ -257,6 +258,8 @@ from .math import (  # noqa: F401
     add,
     add_,
     add_n,
+    addcdiv,
+    addcdiv_,
     addmm,
     addmm_,
     addmv,
@@ -420,6 +423,7 @@ from .math import (  # noqa: F401
     sigmoid,
     sigmoid_,
     sign,
+    sign_,
     signbit,
     sin,
     sin_,
@@ -522,11 +526,13 @@ clamp_ = clip_
 movedim = moveaxis
 mod = remainder
 floor_mod = remainder
+fmod = remainder
 fix = trunc
 fix_ = trunc_
 mvlgamma = multigammaln
 mvlgamma_ = multigammaln_
 negative_ = neg_
+pinverse = pinv
 
 # this list used in math_op_patch.py for _binary_creator_
 tensor_method_func = [
@@ -585,6 +591,7 @@ tensor_method_func = [
     'logcumsumexp',
     'logit',
     'logit_',
+    'det',
     'exp',
     'exp_',
     'expm1',
@@ -614,6 +621,7 @@ tensor_method_func = [
     'scale',
     'scale_',
     'sign',
+    'sign_',
     'sin',
     'sinc',
     'sinh',
@@ -664,6 +672,7 @@ tensor_method_func = [
     'remainder',
     'remainder_',
     'mod',
+    'fmod',
     'floor_mod',
     'multiply',
     'multiply_',
@@ -677,6 +686,8 @@ tensor_method_func = [
     'log1p',
     'log1p_',
     'erf',
+    'addcdiv',
+    'addcdiv_',
     'addmm',
     'addmm_',
     'addmv',
@@ -752,6 +763,7 @@ tensor_method_func = [
     'reshape',
     'reshape_as',
     'reshape_',
+    'resize_as_',
     'scatter',
     'scatter_',
     'scatter_nd_add',
@@ -875,6 +887,7 @@ tensor_method_func = [
     'take_along_axis',
     'take_along_dim',
     'scatter_reduce',
+    'scatter_reduce_',
     'put_along_axis',
     'scatter_add',
     'select_scatter',
@@ -920,6 +933,7 @@ tensor_method_func = [
     'atan2',
     'diagflat',
     'multinomial',
+    'pinverse',
     'pinv',
     'renorm',
     'renorm_',

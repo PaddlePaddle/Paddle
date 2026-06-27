@@ -32,6 +32,7 @@ from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     param_one_alias,
     param_two_alias,
+    resize__decorator,
     size_args_decorator,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
@@ -4230,6 +4231,7 @@ def set_(
         return _C_ops.set_(x, source, shape, stride, offset)
 
 
+@resize__decorator()
 @inplace_apis_in_dygraph_only
 def resize_(
     x: paddle.Tensor,
@@ -4309,7 +4311,7 @@ def resize_(
         return x.set_(x, shape)
 
 
-def dtype_tensor_factory(dtype):
+def dtype_tensor_factory(dtype, _name='_DtypeTensorFactory'):
     class _DtypeTensorFactory:
         def __new__(cls, *args, **kwargs):
             if len(args) == 0:
@@ -4322,16 +4324,17 @@ def dtype_tensor_factory(dtype):
                 kwargs.setdefault('dtype', dtype)
                 return paddle.Tensor(*args, **kwargs)
 
+    _DtypeTensorFactory.__name__ = _name
     return _DtypeTensorFactory
 
 
-FloatTensor = dtype_tensor_factory('float32')
-DoubleTensor = dtype_tensor_factory('float64')
-HalfTensor = dtype_tensor_factory('float16')
-BFloat16Tensor = dtype_tensor_factory('bfloat16')
-ByteTensor = dtype_tensor_factory('uint8')
-CharTensor = dtype_tensor_factory('int8')
-ShortTensor = dtype_tensor_factory('int16')
-IntTensor = dtype_tensor_factory('int32')
-LongTensor = dtype_tensor_factory('int64')
-BoolTensor = dtype_tensor_factory('bool')
+FloatTensor = dtype_tensor_factory('float32', 'FloatTensor')
+DoubleTensor = dtype_tensor_factory('float64', 'DoubleTensor')
+HalfTensor = dtype_tensor_factory('float16', 'HalfTensor')
+BFloat16Tensor = dtype_tensor_factory('bfloat16', 'BFloat16Tensor')
+ByteTensor = dtype_tensor_factory('uint8', 'ByteTensor')
+CharTensor = dtype_tensor_factory('int8', 'CharTensor')
+ShortTensor = dtype_tensor_factory('int16', 'ShortTensor')
+IntTensor = dtype_tensor_factory('int32', 'IntTensor')
+LongTensor = dtype_tensor_factory('int64', 'LongTensor')
+BoolTensor = dtype_tensor_factory('bool', 'BoolTensor')

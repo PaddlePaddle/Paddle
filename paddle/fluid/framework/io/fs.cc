@@ -75,7 +75,7 @@ static std::shared_ptr<FILE> fs_open_internal(const std::string& path,
         setvbuf(&*fp, buffer, _IOFBF, buffer_size),
         common::errors::InvalidArgument("Set Buffer Failed, Please Check!"));
     fp = {&*fp, [fp, buffer](FILE*) mutable {  // NOLINT
-            PADDLE_ENFORCE_EQ(fp.unique(),
+            PADDLE_ENFORCE_EQ(fp.use_count() == 1,
                               true,
                               common::errors::PermissionDenied(
                                   "File Pointer is not unique!!!"));  // NOLINT

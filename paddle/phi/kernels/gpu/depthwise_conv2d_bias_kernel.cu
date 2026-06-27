@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -25,10 +26,18 @@ namespace phi {
 
 constexpr int CUDA_NUM_THREADS = 1024;
 
-inline int GET_BLOCKS(const int64_t N,
-                      const int64_t max_threads_per_block = CUDA_NUM_THREADS) {
-  int64_t block_num = (N - 1) / max_threads_per_block + 1;
-  return static_cast<int>(block_num);
+template <typename Context>
+inline uint32_t GET_BLOCKS(
+    const Context& dev_ctx,
+    const int64_t N,
+    const int64_t max_threads_per_block = CUDA_NUM_THREADS) {
+  const int64_t block_num = (N - 1) / max_threads_per_block + 1;
+  PADDLE_ENFORCE_LE_UINT32_MAX(block_num, "depthwise conv2d bias grid.x");
+  PADDLE_ENFORCE_LE(block_num,
+                    static_cast<int64_t>(dev_ctx.GetCUDAMaxGridDimSize()[0]),
+                    common::errors::InvalidArgument(
+                        "depthwise conv2d bias grid.x exceeds device limit."));
+  return static_cast<uint32_t>(block_num);
 }
 
 template <int kSize, typename T, typename IndexT>
@@ -56,38 +65,45 @@ __global__ void DWConv2dFwdKernel(const T* __restrict__ input,
   const int KW_LIMIT = (kSize != 0) ? kSize : kernelWidth;
   const int KH_LIMIT = (kSize != 0) ? kSize : kernelHeight;
 
-  for (IndexT linearIndex = blockIdx.x * blockDim.x + threadIdx.x;
+  for (int64_t linearIndex =
+           static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
        linearIndex < totalElements;
-       linearIndex += blockDim.x * gridDim.x) {
-    int indtmp1 = linearIndex / outputWidth;
-    const int w = linearIndex - indtmp1 * outputWidth;
-    int indtmp2 = indtmp1 / outputHeight;
-    const int h = indtmp1 - indtmp2 * outputHeight;
+       linearIndex += static_cast<int64_t>(blockDim.x) * gridDim.x) {
+    int64_t indtmp1 = static_cast<int64_t>(linearIndex) / outputWidth;
+    const int64_t w = static_cast<int64_t>(linearIndex) - indtmp1 * outputWidth;
+    int64_t indtmp2 = indtmp1 / outputHeight;
+    const int64_t h = indtmp1 - indtmp2 * outputHeight;
     indtmp1 = indtmp2;
     indtmp2 = indtmp1 / outputChannels;
-    const int c = indtmp1 - indtmp2 * outputChannels;
-    const int n = indtmp2;
+    const int64_t c = indtmp1 - indtmp2 * outputChannels;
+    const int64_t n = indtmp2;
 
-    int inputChannel = c;
-    int inputChannels = outputChannels;
+    int64_t inputChannel = c;
+    int64_t inputChannels = outputChannels;
     if (depthwiseMultiplier != 1) {
       inputChannel /= depthwiseMultiplier;
       inputChannels /= depthwiseMultiplier;
     }
 
-    int weightOffset = c * kernelHeight * kernelWidth;
+    int64_t weightOffset = static_cast<int64_t>(c) * kernelHeight * kernelWidth;
     AccT value = biasEnabled ? static_cast<AccT>(bias[c]) : AccT(0);
-    const IndexT offset0 =
-        (n * inputChannels + inputChannel) * inputHeight * inputWidth;
+    const int64_t offset0 =
+        (static_cast<int64_t>(n) * inputChannels + inputChannel) * inputHeight *
+        inputWidth;
 
     for (int kH = 0; kH < KH_LIMIT; ++kH) {
       for (int kW = 0; kW < KW_LIMIT; ++kW) {
-        const int h_in = -padHeight + h * strideHeight + kH * dilationHeight;
-        const int w_in = -padWidth + w * strideWidth + kW * dilationWidth;
+        const int64_t h_in = -static_cast<int64_t>(padHeight) +
+                             static_cast<int64_t>(h) * strideHeight +
+                             static_cast<int64_t>(kH) * dilationHeight;
+        const int64_t w_in = -static_cast<int64_t>(padWidth) +
+                             static_cast<int64_t>(w) * strideWidth +
+                             static_cast<int64_t>(kW) * dilationWidth;
 
         if ((h_in >= 0) && (h_in < inputHeight) && (w_in >= 0) &&
             (w_in < inputWidth)) {
-          const IndexT offset = offset0 + h_in * inputWidth + w_in;
+          const int64_t offset =
+              offset0 + static_cast<int64_t>(h_in) * inputWidth + w_in;
           value += (static_cast<AccT>(weight[weightOffset]) *
                     static_cast<AccT>(input[offset]));
         }
@@ -121,63 +137,75 @@ __global__ void DWConv2dFwdKernelGeneric(const T* __restrict__ input,
                                          const int dilationHeight) {
   using AccT = typename MPTypeTrait<T>::Type;
 
-  for (IndexT linearIndex = blockIdx.x * blockDim.x + threadIdx.x;
+  for (int64_t linearIndex =
+           static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
        linearIndex < totalElements;
-       linearIndex += blockDim.x * gridDim.x) {
-    int indtmp1 = linearIndex / outputWidth;
-    const int w = linearIndex - indtmp1 * outputWidth;
-    int indtmp2 = indtmp1 / outputHeight;
-    const int h = indtmp1 - indtmp2 * outputHeight;
+       linearIndex += static_cast<int64_t>(blockDim.x) * gridDim.x) {
+    int64_t indtmp1 = static_cast<int64_t>(linearIndex) / outputWidth;
+    const int64_t w = static_cast<int64_t>(linearIndex) - indtmp1 * outputWidth;
+    int64_t indtmp2 = indtmp1 / outputHeight;
+    const int64_t h = indtmp1 - indtmp2 * outputHeight;
     indtmp1 = indtmp2;
     indtmp2 = indtmp1 / outputChannels;
-    const int c = indtmp1 - indtmp2 * outputChannels;
-    const int n = indtmp2;
+    const int64_t c = indtmp1 - indtmp2 * outputChannels;
+    const int64_t n = indtmp2;
 
-    int inputChannel = c;
-    int inputChannels = outputChannels;
+    int64_t inputChannel = c;
+    int64_t inputChannels = outputChannels;
     if (depthwiseMultiplier != 1) {
       inputChannel /= depthwiseMultiplier;
       inputChannels /= depthwiseMultiplier;
     }
 
-    int weightOffset = c * kernelHeight * kernelWidth;
+    int64_t weightOffset = static_cast<int64_t>(c) * kernelHeight * kernelWidth;
     int kHmin = 0, kHmax = kernelHeight, kWmin = 0, kWmax = kernelWidth;
 
-    int h_in_min = -padHeight + h * strideHeight;
+    int64_t h_in_min = -static_cast<int64_t>(padHeight) +
+                       static_cast<int64_t>(h) * strideHeight;
     if (h_in_min < 0) {
       kHmin = -h_in_min / dilationHeight;
       if ((-h_in_min) % dilationHeight > 0) kHmin++;
     }
-    int h_in_max =
-        h_in_min + (kernelHeight - 1) * dilationHeight - inputHeight + 1;
+    int64_t h_in_max = h_in_min +
+                       static_cast<int64_t>(kernelHeight - 1) * dilationHeight -
+                       inputHeight + 1;
     if (h_in_max >= 0) {
       kHmax = kernelHeight - h_in_max / dilationHeight;
       if (h_in_max % dilationHeight > 0) kHmax--;
     }
-    int w_in_min = -padWidth + w * strideWidth;
+    int64_t w_in_min =
+        -static_cast<int64_t>(padWidth) + static_cast<int64_t>(w) * strideWidth;
     if (w_in_min < 0) {
       kWmin = -w_in_min / dilationWidth;
       if ((-w_in_min) % dilationWidth > 0) kWmin++;
     }
-    int w_in_max =
-        w_in_min + (kernelWidth - 1) * dilationWidth - inputWidth + 1;
+    int64_t w_in_max = w_in_min +
+                       static_cast<int64_t>(kernelWidth - 1) * dilationWidth -
+                       inputWidth + 1;
     if (w_in_max >= 0) {
       kWmax = kernelWidth - w_in_max / dilationWidth;
       if (w_in_max % dilationWidth > 0) kWmax--;
     }
 
     AccT value = biasEnabled ? static_cast<AccT>(bias[c]) : AccT(0);
-    const IndexT offset0 =
-        (n * inputChannels + inputChannel) * inputHeight * inputWidth;
+    const int64_t offset0 =
+        (static_cast<int64_t>(n) * inputChannels + inputChannel) * inputHeight *
+        inputWidth;
 
     for (int kH = kHmin; kH < kHmax; ++kH) {
-      const int h_in = -padHeight + h * strideHeight + kH * dilationHeight;
+      const int64_t h_in = -static_cast<int64_t>(padHeight) +
+                           static_cast<int64_t>(h) * strideHeight +
+                           static_cast<int64_t>(kH) * dilationHeight;
       for (int kW = kWmin; kW < kWmax; ++kW) {
-        const int w_in = -padWidth + w * strideWidth + kW * dilationWidth;
-        const IndexT offset = offset0 + h_in * inputWidth + w_in;
-        value +=
-            (static_cast<AccT>(weight[weightOffset + kH * kernelWidth + kW]) *
-             static_cast<AccT>(input[offset]));
+        const int64_t w_in = -static_cast<int64_t>(padWidth) +
+                             static_cast<int64_t>(w) * strideWidth +
+                             static_cast<int64_t>(kW) * dilationWidth;
+        const int64_t offset =
+            offset0 + static_cast<int64_t>(h_in) * inputWidth + w_in;
+        const int64_t kernel_offset =
+            weightOffset + static_cast<int64_t>(kH) * kernelWidth + kW;
+        value += (static_cast<AccT>(weight[kernel_offset]) *
+                  static_cast<AccT>(input[offset]));
       }
     }
     output[linearIndex] = static_cast<T>(value);
@@ -232,9 +260,27 @@ void LaunchDepthwiseConv2dCompatible(const Context& dev_ctx,
   int strideH = strides[0];
   int strideW = strides[1];
 
+  PADDLE_ENFORCE_LE_INT_MAX(outputChannels, "outputChannels");
+  PADDLE_ENFORCE_LE_INT_MAX(depthwiseMultiplier, "depthwiseMultiplier");
+  PADDLE_ENFORCE_LE_INT_MAX(w_in, "w_in");
+  PADDLE_ENFORCE_LE_INT_MAX(h_in, "h_in");
+  PADDLE_ENFORCE_LE_INT_MAX(w_out, "w_out");
+  PADDLE_ENFORCE_LE_INT_MAX(h_out, "h_out");
+  PADDLE_ENFORCE_LE_INT_MAX(kW, "kW");
+  PADDLE_ENFORCE_LE_INT_MAX(kH, "kH");
+
+  const int outputChannels_int = static_cast<int>(outputChannels);
+  const int depthwiseMultiplier_int = static_cast<int>(depthwiseMultiplier);
+  const int w_in_int = static_cast<int>(w_in);
+  const int h_in_int = static_cast<int>(h_in);
+  const int w_out_int = static_cast<int>(w_out);
+  const int h_out_int = static_cast<int>(h_out);
+  const int kW_int = static_cast<int>(kW);
+  const int kH_int = static_cast<int>(kH);
+
   // Launch Kernel
   int64_t totalElements = out_nchw.numel();
-  int blocks = GET_BLOCKS(totalElements);
+  uint32_t blocks = GET_BLOCKS(dev_ctx, totalElements);
   dim3 grid(blocks);
   dim3 block(CUDA_NUM_THREADS);
   auto stream = dev_ctx.stream();
@@ -258,15 +304,15 @@ void LaunchDepthwiseConv2dCompatible(const Context& dev_ctx,
                                      weight_ptr,
                                      bias_ptr,
                                      has_bias,
-                                     static_cast<int>(totalElements),
-                                     static_cast<int>(outputChannels),
-                                     static_cast<int>(depthwiseMultiplier),
-                                     static_cast<int>(w_in),
-                                     static_cast<int>(h_in),
-                                     static_cast<int>(w_out),
-                                     static_cast<int>(h_out),
-                                     static_cast<int>(kW),
-                                     static_cast<int>(kH),
+                                     totalElements,
+                                     outputChannels_int,
+                                     depthwiseMultiplier_int,
+                                     w_in_int,
+                                     h_in_int,
+                                     w_out_int,
+                                     h_out_int,
+                                     kW_int,
+                                     kH_int,
                                      strideW,
                                      strideH,
                                      padW,
@@ -280,15 +326,15 @@ void LaunchDepthwiseConv2dCompatible(const Context& dev_ctx,
                                      weight_ptr,
                                      bias_ptr,
                                      has_bias,
-                                     static_cast<int>(totalElements),
-                                     static_cast<int>(outputChannels),
-                                     static_cast<int>(depthwiseMultiplier),
-                                     static_cast<int>(w_in),
-                                     static_cast<int>(h_in),
-                                     static_cast<int>(w_out),
-                                     static_cast<int>(h_out),
-                                     static_cast<int>(kW),
-                                     static_cast<int>(kH),
+                                     totalElements,
+                                     outputChannels_int,
+                                     depthwiseMultiplier_int,
+                                     w_in_int,
+                                     h_in_int,
+                                     w_out_int,
+                                     h_out_int,
+                                     kW_int,
+                                     kH_int,
                                      strideW,
                                      strideH,
                                      padW,
@@ -302,15 +348,15 @@ void LaunchDepthwiseConv2dCompatible(const Context& dev_ctx,
                                      weight_ptr,
                                      bias_ptr,
                                      has_bias,
-                                     static_cast<int>(totalElements),
-                                     static_cast<int>(outputChannels),
-                                     static_cast<int>(depthwiseMultiplier),
-                                     static_cast<int>(w_in),
-                                     static_cast<int>(h_in),
-                                     static_cast<int>(w_out),
-                                     static_cast<int>(h_out),
-                                     static_cast<int>(kW),
-                                     static_cast<int>(kH),
+                                     totalElements,
+                                     outputChannels_int,
+                                     depthwiseMultiplier_int,
+                                     w_in_int,
+                                     h_in_int,
+                                     w_out_int,
+                                     h_out_int,
+                                     kW_int,
+                                     kH_int,
                                      strideW,
                                      strideH,
                                      padW,
@@ -324,15 +370,15 @@ void LaunchDepthwiseConv2dCompatible(const Context& dev_ctx,
                                      weight_ptr,
                                      bias_ptr,
                                      has_bias,
-                                     static_cast<int>(totalElements),
-                                     static_cast<int>(outputChannels),
-                                     static_cast<int>(depthwiseMultiplier),
-                                     static_cast<int>(w_in),
-                                     static_cast<int>(h_in),
-                                     static_cast<int>(w_out),
-                                     static_cast<int>(h_out),
-                                     static_cast<int>(kW),
-                                     static_cast<int>(kH),
+                                     totalElements,
+                                     outputChannels_int,
+                                     depthwiseMultiplier_int,
+                                     w_in_int,
+                                     h_in_int,
+                                     w_out_int,
+                                     h_out_int,
+                                     kW_int,
+                                     kH_int,
                                      strideW,
                                      strideH,
                                      padW,

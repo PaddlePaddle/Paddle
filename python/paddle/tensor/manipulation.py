@@ -5822,6 +5822,38 @@ def reshape_(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
         return out
 
 
+@inplace_apis_in_dygraph_only
+@param_one_alias(['y', 'the_template'])
+def resize_as_(
+    x: Tensor,
+    y: Tensor,
+) -> Tensor:
+    """
+    Resizes the tensor to be the same shape as the given tensor.
+
+    Note:
+        This API is ONLY available in Dygraph mode.
+
+    Args:
+        x (Tensor): The input tensor to be resized.
+        y (Tensor): The tensor whose shape will be used as the target shape.
+
+    Returns:
+        Tensor: The resized tensor with the same shape as y.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> x = paddle.ones([2, 3])
+            >>> y = paddle.zeros([4, 5])
+            >>> x.resize_as_(y)
+            >>> print(x.shape)
+            paddle.Size([4, 5])
+    """
+    return x.resize_(y.shape)
+
+
 @overload
 def atleast_1d(inputs: Tensor, name: str | None = ...) -> Tensor: ...
 
@@ -7507,6 +7539,28 @@ def scatter_reduce(
     if reduce == 'prod':
         reduce = 'multiply'
     return put_along_axis(
+        input, index, src, dim, reduce, include_self, broadcast=False
+    )
+
+
+def scatter_reduce_(
+    input: Tensor,
+    dim: int,
+    index: Tensor,
+    src: Tensor,
+    reduce: Literal['sum', 'prod', 'mean', 'amin', 'amax'],
+    *,
+    include_self: bool = True,
+) -> Tensor:
+    """
+    Inplace version of ``scatter_reduce`` API, the output Tensor will be inplaced with input ``input``.
+    Please refer to :ref:`api_paddle_scatter_reduce`.
+    """
+    if reduce == 'sum':
+        reduce = 'add'
+    if reduce == 'prod':
+        reduce = 'multiply'
+    return put_along_axis_(
         input, index, src, dim, reduce, include_self, broadcast=False
     )
 

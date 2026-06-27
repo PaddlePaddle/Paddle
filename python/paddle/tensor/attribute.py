@@ -20,14 +20,14 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
-from paddle._C_ops import real  # noqa: F401
+from paddle._C_ops import imag, real  # noqa: F401
 from paddle.utils.decorator_utils import param_one_alias
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..base.framework import in_dynamic_or_pir_mode, use_pir_api
 from ..common_ops_import import Variable
 from ..framework import LayerHelper, core
-from .creation import _complex_to_real_dtype, assign
+from .creation import assign
 
 if TYPE_CHECKING:
     from paddle import Tensor
@@ -289,55 +289,3 @@ def is_integer(x: Tensor) -> bool:
         )
 
     return is_int_dtype
-
-
-def imag(x: Tensor, name: str | None = None) -> Tensor:
-    """
-    Returns a new tensor containing imaginary values of input tensor.
-
-    Args:
-        x (Tensor): the input tensor, its data type could be complex64 or complex128.
-        name (str|None, optional): The default value is None. Normally there is no need for
-            user to set this property. For more information, please refer to :ref:`api_guide_Name` .
-
-    Returns:
-        Tensor: a tensor containing imaginary values of the input tensor.
-
-    Examples:
-        .. code-block:: pycon
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor(
-            ...     [
-            ...         [1 + 6j, 2 + 5j, 3 + 4j],
-            ...         [4 + 3j, 5 + 2j, 6 + 1j],
-            ...     ]
-            ... )
-            >>> print(x)
-            Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
-            [[(1.00000000+6.00000000j), (2.00000000+5.00000000j), (3.00000000+4.00000000j)],
-             [(4.00000000+3.00000000j), (5.00000000+2.00000000j), (6.00000000+1.00000000j)]])
-
-            >>> imag_res = paddle.imag(x)
-            >>> print(imag_res)
-            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[6., 5., 4.],
-             [3., 2., 1.]])
-
-            >>> imag_t = x.imag()
-            >>> print(imag_t)
-            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[6., 5., 4.],
-             [3., 2., 1.]])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.imag(x)
-    else:
-        check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'imag')
-        helper = LayerHelper('imag', **locals())
-        out = helper.create_variable_for_type_inference(
-            dtype=_complex_to_real_dtype(helper.input_dtype())
-        )
-        helper.append_op(type='imag', inputs={'X': x}, outputs={'Out': out})
-        return out

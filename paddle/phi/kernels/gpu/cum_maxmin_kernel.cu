@@ -289,12 +289,12 @@ void ScanWithIndicesKernel(const Context& dev_ctx,
         std::accumulate(sizes.begin(),
                         sizes.begin() + axis,
                         int64_t(1),
-                        [](int64_t& a, int64_t& b) { return a * b; });
+                        [](int64_t a, int64_t b) { return a * b; });
     const int64_t num_irows =
         std::accumulate(sizes.begin() + axis + 1,
                         sizes.end(),
                         int64_t(1),
-                        [](int64_t& a, int64_t& b) { return a * b; });
+                        [](int64_t a, int64_t b) { return a * b; });
 
     dim3 threads(std::min(512, static_cast<int>(num_irows)));
     int64_t maxGridDim = dev_ctx.GetCUDAMaxGridDimSize()[1];

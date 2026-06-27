@@ -3004,7 +3004,7 @@ class Layer:
         state_dict: _StateDict,
         use_structured_name: bool = True,
         assign: bool = False,
-    ) -> tuple[list[str], list[str]]:
+    ) -> _IncompatibleKeys:
         '''
         Set parameters and persistable buffers from state_dict. All the parameters and buffers will be reset by the tensor in the state_dict
 
@@ -3015,9 +3015,13 @@ class Layer:
             assign(bool, optional): When set to ``False``, the properties of the tensors
                 in the current layer are preserved whereas setting it to ``True`` preserves
                 properties of the tensors in the state dict. Default: ``False``.
+
         Returns:
-            missing_keys(list):A list of str containing the missing keys
-            unexpected_keys(list):A list of str containing the unexpected keys
+            ``NamedTuple`` with ``missing_keys`` and ``unexpected_keys`` fields:
+                * ``missing_keys`` is a list of str containing any keys that are expected
+                    by this module but missing from the provided ``state_dict``.
+                * ``unexpected_keys`` is a list of str containing the keys that are not
+                    expected by this module but present in the provided ``state_dict``.
 
         Examples:
             .. code-block:: pycon
@@ -3147,14 +3151,14 @@ class Layer:
                     "This error might happens in dy2static, while calling 'set_state_dict' dynamically in 'forward', which is not supported. If you only need call 'set_state_dict' once, move it to '__init__'."
                 )
 
-        return missing_keys, unexpected_keys
+        return _IncompatibleKeys(missing_keys, unexpected_keys)
 
     def load_state_dict(
         self,
         state_dict: Mapping[str, Any],
         strict: bool = True,
         assign: bool = False,
-    ):
+    ) -> _IncompatibleKeys:
         """
         Copy parameters and buffers from :attr:`state_dict` into this module and its descendants.
 

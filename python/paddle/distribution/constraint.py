@@ -55,6 +55,21 @@ class Range(Constraint):
         return self._lower <= value <= self._upper
 
 
+class IntegerInterval(Constraint):
+    event_dim = 0
+    is_discrete = True
+
+    def __init__(self, lower: int, upper: int) -> None:
+        self._lower = lower
+        self._upper = upper
+        super().__init__()
+
+    def __call__(self, value: Tensor) -> Tensor:
+        return (
+            (value >= self._lower) & (value <= self._upper) & (value % 1 == 0)
+        )
+
+
 class Positive(Constraint):
     def __call__(self, value: Tensor) -> Tensor:
         return value >= 0.0
@@ -99,9 +114,13 @@ class Square(Constraint):
 class Symmetric(Square):
     def __call__(self, value: Tensor) -> Tensor:
         square_check = super().__call__(value)
-        if not bool(square_check.all()):
+        if value.dim() < 2:
             return square_check
-        return paddle.isclose(value, value.mT, atol=1e-6).all(-2).all(-1)
+        if value.shape[-2] != value.shape[-1]:
+            return square_check
+        return square_check & paddle.isclose(value, value.mT, atol=1e-6).all(
+            -2
+        ).all(-1)
 
 
 class PositiveDefinite(Symmetric):
@@ -109,9 +128,9 @@ class PositiveDefinite(Symmetric):
         if value.dim() < 2:
             return paddle.zeros(value.shape[:-2], dtype='bool')
         sym_check = super().__call__(value)
-        if not bool(sym_check.all()):
+        if value.shape[-2] != value.shape[-1]:
             return sym_check
-        return (paddle.linalg.eigvalsh(value) > 0).all(-1)
+        return sym_check & (paddle.linalg.eigvalsh(value) > 0).all(-1)
 
 
 class Simplex(Constraint):
@@ -123,6 +142,7 @@ class Simplex(Constraint):
 
 real = Real()
 real_vector = RealVector()
+integer_interval = IntegerInterval
 positive = Positive()
 lower_triangular = LowerTriangular()
 lower_cholesky = LowerCholesky()

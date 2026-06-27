@@ -28,9 +28,10 @@ std::vector<int64_t> GetInt64ArrayAttributeData(
   std::vector<int64_t> data;
   for (int i = 0; i < array_attr.size(); ++i) {
     const auto& int64_attr = array_attr.at(i).dyn_cast<::pir::Int64Attribute>();
-    PADDLE_ENFORCE_NOT_NULL(int64_attr,
-                            ::common::errors::InvalidArgument(
-                                "The array element should be int64 type."));
+    PADDLE_ENFORCE_EQ(static_cast<bool>(int64_attr),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The array element should be int64 type."));
     data.push_back(int64_attr.data());
   }
   return data;
@@ -46,9 +47,10 @@ std::vector<int32_t> GetInt32ArrayAttributeData(
   std::vector<int32_t> data;
   for (int i = 0; i < array_attr.size(); ++i) {
     const auto& int32_attr = array_attr.at(i).dyn_cast<::pir::Int32Attribute>();
-    PADDLE_ENFORCE_NOT_NULL(int32_attr,
-                            ::common::errors::InvalidArgument(
-                                "The array element should be int32 type."));
+    PADDLE_ENFORCE_EQ(static_cast<bool>(int32_attr),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The array element should be int32 type."));
     data.push_back(int32_attr.data());
   }
   return data;

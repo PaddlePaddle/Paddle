@@ -14,8 +14,16 @@
 
 #pragma once
 
+#ifdef __NVCC__
 #include <cuda.h>
+#include <cuda_bf16.h>
 #include <cuda_fp16.h>
+#endif
+#ifdef __HIPCC__
+#include <hip/hip_bfloat16.h>
+#include <hip/hip_fp16.h>
+#include <hip/hip_runtime.h>
+#endif
 
 namespace ap {
 

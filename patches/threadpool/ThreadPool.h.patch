@@ -1,0 +1,25 @@
+diff --git a/ThreadPool.h b/ThreadPool.h
+index 4183203..5ea5fcb 100644
+--- a/ThreadPool.h
++++ b/ThreadPool.h
+@@ -10,5 +10,6 @@
+ #include <future>
+ #include <functional>
+ #include <stdexcept>
+-
++#include <type_traits>
++
+ class ThreadPool {
+@@ -19,2 +20,2 @@ public:
+-        -> std::future<typename std::result_of<F(Args...)>::type>;
++        -> std::future<std::invoke_result_t<F, Args...>>;
+     ~ThreadPool();
+@@ -64,5 +65,5 @@
+-    -> std::future<typename std::result_of<F(Args...)>::type>
++    -> std::future<std::invoke_result_t<F, Args...>>
+ {
+-    using return_type = typename std::result_of<F(Args...)>::type;
++    using return_type = std::invoke_result_t<F, Args...>;
+-
++
+     auto task = std::make_shared< std::packaged_task<return_type()> >(
