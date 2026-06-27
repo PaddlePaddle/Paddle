@@ -38,7 +38,7 @@ class DataLoader(PaddleDataLoader):
         self,
         dataset: Dataset[Any],
         batch_size: int | None = 1,
-        shuffle: bool | None = None,
+        shuffle: bool = False,
         sampler: BatchSampler | None = None,
         batch_sampler: BatchSampler | None = None,
         num_workers: int = 0,
