@@ -840,6 +840,9 @@ class Tensor : public TensorBase {
   // expand_as - expands to same size as another tensor
   Tensor expand_as(const Tensor& other) const;
 
+  // cholesky - Cholesky decomposition
+  Tensor cholesky(bool upper = false) const;
+
   PaddleTensor _PD_GetInner() const { return tensor_; }
   PaddleTensor& _PD_GetInner() { return tensor_; }
 };  // NOLINT(readability/braces)
