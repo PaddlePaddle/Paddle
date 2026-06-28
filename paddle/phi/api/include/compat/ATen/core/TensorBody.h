@@ -23,6 +23,7 @@
 #include <c10/core/Stream.h>
 #include <c10/core/SymIntArrayRef.h>
 #include <c10/util/OptionalArrayRef.h>
+#include <c10/util/string_view.h>
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/int_array.h"
@@ -38,6 +39,7 @@
 
 #include <limits>
 #include <optional>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -247,6 +249,20 @@ class Tensor : public TensorBase {
       at::IntArrayRef size,
       at::IntArrayRef stride,
       ::std::optional<int64_t> storage_offset = ::std::nullopt) const;
+
+  // scatter_reduce: Scatter and reduce values from src into self at indices
+  at::Tensor scatter_reduce(int64_t dim,
+                            const at::Tensor& index,
+                            const at::Tensor& src,
+                            c10::string_view reduce,
+                            bool include_self = true) const;
+
+  // scatter_reduce_: In-place version
+  at::Tensor& scatter_reduce_(int64_t dim,
+                              const at::Tensor& index,
+                              const at::Tensor& src,
+                              c10::string_view reduce,
+                              bool include_self = true) const;
 
   // Standard deviation functions
   Tensor std(bool unbiased) const;

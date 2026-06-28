@@ -58,6 +58,7 @@
 #include <ATen/ops/rename.h>
 #include <ATen/ops/reshape.h>
 #include <ATen/ops/resize.h>
+#include <ATen/ops/scatter_reduce.h>
 #include <ATen/ops/select.h>
 #include <ATen/ops/slice.h>
 #include <ATen/ops/sparse_coo_tensor.h>
