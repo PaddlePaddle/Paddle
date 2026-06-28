@@ -32,7 +32,7 @@
 
 TEST(TensorBaseTest, IsContiguousOrFalseAPI) {
   // Test with regular contiguous tensor
-  at::TensorBase contiguous_tensor = at::ones({2, 3, 4}, at::kFloat);
+  at::Tensor contiguous_tensor = at::ones({2, 3, 4}, at::kFloat);
   ASSERT_TRUE(contiguous_tensor.is_contiguous_or_false());
   ASSERT_EQ(contiguous_tensor.is_contiguous_or_false(),
             contiguous_tensor.is_contiguous());

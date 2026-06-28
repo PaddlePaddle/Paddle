@@ -3,7 +3,7 @@ coverage==7.10.7
 mock
 gymnasium>=1.1.1
 hypothesis<6.145.0
-opencv-python>= 4.10.0.84
+opencv-python>= 4.13.0.90
 visualdl==2.5.3
 paddle2onnx>=0.9.6; python_version < "3.12"
 triton ; platform_system == 'Linux' and platform_machine == 'x86_64'

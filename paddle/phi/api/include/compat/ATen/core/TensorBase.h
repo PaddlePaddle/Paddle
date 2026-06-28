@@ -71,11 +71,11 @@ class PADDLE_API TensorBase {
   TensorBase& operator=(const TensorBase&) && = delete;
   TensorBase& operator=(TensorBase&&) && noexcept = delete;
 
-  bool is_same(const TensorBase& other) const {
+  bool is_same(const TensorBase& other) const noexcept {
     return tensor_.impl().get() == other.tensor_.impl().get();
   }
-  size_t use_count() const { return tensor_.impl().use_count(); }
-  size_t weak_use_count() const {
+  size_t use_count() const noexcept { return tensor_.impl().use_count(); }
+  size_t weak_use_count() const noexcept {
     // PyTorch exposes an internal self weak-reference on live TensorImpls, so
     // the observable weak count starts at 1 even without user-created refs.
     return tensor_.defined() ? 1 : 0;
@@ -126,11 +126,8 @@ class PADDLE_API TensorBase {
 
   const void* const_data_ptr() const { return data_ptr(); }
 
-  template <typename T, std::enable_if_t<!std::is_const_v<T>, int> = 0>
+  template <typename T>
   const T* const_data_ptr() const;
-
-  template <typename T, std::enable_if_t<std::is_const_v<T>, int> = 0>
-  const std::remove_const_t<T>* const_data_ptr() const;
 
   void* mutable_data_ptr() const { return data_ptr(); }
 
@@ -315,27 +312,6 @@ class PADDLE_API TensorBase {
   }
 
   bool is_sparse_csr() const { return tensor_.is_sparse_csr_tensor(); }
-
-  at::TensorBase reshape(at::IntArrayRef shape) const {
-    return TensorBase(
-        paddle::experimental::reshape(tensor_, shape._PD_ToPaddleIntArray()));
-  }
-
-  at::TensorBase& copy_(const at::TensorBase& src,
-                        bool non_blocking = false) const {
-    const_cast<PaddleTensor&>(tensor_).copy_(
-        src._PD_GetInner(), tensor_.place(), /*blocking=*/!non_blocking);
-    return const_cast<at::TensorBase&>(*this);
-  }
-
-  at::TensorBase view(at::IntArrayRef size) const {
-    return TensorBase(paddle::experimental::view_shape(tensor_, size.vec()));
-  }
-
-  at::TensorBase view(at::ScalarType dtype) const {
-    return TensorBase(paddle::experimental::view_dtype(
-        tensor_, compat::_PD_AtenScalarTypeToPhiDataType(dtype)));
-  }
 
   inline size_t nbytes() const {
     PD_CHECK(
