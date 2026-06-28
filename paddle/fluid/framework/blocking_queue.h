@@ -93,7 +93,7 @@ class BlockingQueue {
 
   T Pop() {
     std::unique_lock<std::mutex> lock(mutex_);
-    cv_.wait(lock, [=] { return !q_.empty(); });
+    cv_.wait(lock, [this] { return !q_.empty(); });
     T rc(std::move(q_.front()));
     q_.pop_front();
     return rc;
@@ -101,7 +101,7 @@ class BlockingQueue {
 
   void Pop(T *t) {
     std::unique_lock<std::mutex> lock(mutex_);
-    cv_.wait(lock, [=] { return !q_.empty(); });
+    cv_.wait(lock, [this] { return !q_.empty(); });
     *t = std::move(q_.front());
     q_.pop_front();
   }

@@ -17,13 +17,13 @@
 namespace paddle::framework::ir {
 
 VarDesc *TryGetLatestVarDesc(const std::vector<details::VarHandle *> &vars) {
-  VarDesc *var_desc = nullptr;
-  std::find_if(
-      vars.rbegin(), vars.rend(), [&](details::VarHandle *var_handle) -> bool {
-        var_desc = var_handle->Node()->Var();
-        return var_desc != nullptr;
-      });
-  return var_desc;
+  for (auto iter = vars.rbegin(); iter != vars.rend(); ++iter) {
+    auto *var_desc = (*iter)->Node()->Var();
+    if (var_desc != nullptr) {
+      return var_desc;
+    }
+  }
+  return nullptr;
 }
 
 }  // namespace paddle::framework::ir
