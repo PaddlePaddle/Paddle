@@ -436,22 +436,38 @@ void default_elementwise_sub_grad(const GPUContext &dev_ctx,
           dev_ctx, dout, reduce_dims, dout.dtype(), false, dx);
     }
   }
-  // dy = sum_to(-dout). Align with PyTorch's sub backward
-  // (other: maybe_multiply(-grad, alpha)): negate elementwise first, then
-  // reduce through the SAME sum path as dx (GetGradXOrYOut -> BroadcastKernel
-  // for the negation, then ReduceWrapper -> SumKernel for the reduction). This
-  // keeps the broadcast-grad reduction bitwise-aligned with torch. Folding the
-  // negation into the reduce as a reduce TransformOp would route dy through a
-  // different reduction implementation than dx and break bitwise alignment.
+  // dy
   if (dy != nullptr) {
-    std::vector<const DenseTensor *> ins = {&dout};
-    GetGradXOrYOut<T>(dev_ctx,
-                      dev_ctx.GetPlace(),
-                      axis,
-                      ins,
-                      dout,
-                      dy,
-                      kps::InverseFunctor<T>());
+    auto *dy_data = dev_ctx.template Alloc<T>(dy);
+    if (dy->dims() == dout.dims()) {
+      if (dy_data != dout_data) {
+        dim3 block_size = dim3(PREDEFINED_BLOCK_SIZE, 1);
+        auto size = dy->numel();
+        dim3 grid_size =
+            dim3((size + PREDEFINED_BLOCK_SIZE - 1) / PREDEFINED_BLOCK_SIZE, 1);
+        SimpleElemwiseSubGradCUDAKernel<T>
+            <<<grid_size, block_size, 0, dev_ctx.stream()>>>(
+                dout.data<T>(), size, nullptr, dev_ctx.template Alloc<T>(dy));
+      }
+    } else {
+      // dy = sum_to(-dout). Negate first, then reduce via the SAME SumKernel
+      // path as dx to stay bitwise-aligned with torch's sub backward.
+      DenseTensor tmp_dy;
+      tmp_dy.Resize(dout.dims());
+      dev_ctx.template Alloc<T>(&tmp_dy);
+
+      // Step 1: tmp_dy = -dout (elementwise negation via broadcast).
+      std::vector<const DenseTensor *> ins = {&dout};
+      std::vector<DenseTensor *> outs = {&tmp_dy};
+      funcs::BroadcastKernel<T>(
+          dev_ctx, ins, &outs, kps::InverseFunctor<T>(), axis);
+
+      // Step 2: dy = sum_to(tmp_dy) (reduce over broadcast dims via SumKernel).
+      std::vector<int> reduce_dims =
+          funcs::GetReduceDim(dy->dims(), tmp_dy.dims(), axis);
+      SumKernel<T, GPUContext>(
+          dev_ctx, tmp_dy, reduce_dims, tmp_dy.dtype(), false, dy);
+    }
   }
 }
 
