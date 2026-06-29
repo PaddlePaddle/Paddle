@@ -68,6 +68,31 @@ TEST_F(ScatterReduceTest, ScatterReduceSum) {
   ASSERT_FLOAT_EQ(data[14], 0.0f);  // result[2,4]
 }
 
+TEST_F(ScatterReduceTest, ScatterReduceFreeFunctionSum) {
+  at::Tensor self = at::zeros({3, 5}, at::kFloat);
+  at::Tensor index = at::zeros({1, 5}, at::kLong);
+  index.data_ptr<int64_t>()[0] = 0;
+  index.data_ptr<int64_t>()[1] = 1;
+  index.data_ptr<int64_t>()[2] = 2;
+  index.data_ptr<int64_t>()[3] = 0;
+  index.data_ptr<int64_t>()[4] = 0;
+  at::Tensor src = at::full({1, 5}, 1.0f, at::kFloat);
+  src.data_ptr<float>()[0] = 1.0f;
+  src.data_ptr<float>()[1] = 2.0f;
+  src.data_ptr<float>()[2] = 3.0f;
+  src.data_ptr<float>()[3] = 4.0f;
+  src.data_ptr<float>()[4] = 5.0f;
+
+  at::Tensor result = at::scatter_reduce(self, 0, index, src, "sum");
+
+  float* data = result.data_ptr<float>();
+  ASSERT_FLOAT_EQ(data[0], 1.0f);
+  ASSERT_FLOAT_EQ(data[3], 4.0f);
+  ASSERT_FLOAT_EQ(data[4], 5.0f);
+  ASSERT_FLOAT_EQ(data[6], 2.0f);
+  ASSERT_FLOAT_EQ(data[12], 3.0f);
+}
+
 TEST_F(ScatterReduceTest, ScatterReduceReplace) {
   at::Tensor self = at::zeros({3, 5}, at::kFloat);
   at::Tensor index = at::zeros({1, 5}, at::kLong);
@@ -451,6 +476,39 @@ TEST_F(ScatterReduceTest, ScatterReduceInplaceNegativeIndex) {
   EXPECT_THROW(self.scatter_reduce_(1, index, src, "sum"), std::out_of_range);
 }
 
+TEST_F(ScatterReduceTest, ScatterReduceIndexUpperBound) {
+  at::Tensor self = at::zeros({2, 4}, at::kFloat);
+  at::Tensor index = at::zeros({2, 4}, at::kLong);
+  index.data_ptr<int64_t>()[0] = 0;
+  index.data_ptr<int64_t>()[1] = 4;
+  index.data_ptr<int64_t>()[2] = 2;
+  index.data_ptr<int64_t>()[3] = 1;
+  index.data_ptr<int64_t>()[4] = 3;
+  index.data_ptr<int64_t>()[5] = 0;
+  index.data_ptr<int64_t>()[6] = 1;
+  index.data_ptr<int64_t>()[7] = 2;
+  at::Tensor src = at::ones({2, 4}, at::kFloat);
+
+  EXPECT_THROW(self.scatter_reduce(1, index, src, "sum"), std::out_of_range);
+}
+
+TEST_F(ScatterReduceTest, ScatterReduceInplaceIndexUpperBound) {
+  at::Tensor self = at::zeros({2, 4}, at::kFloat);
+  at::Tensor index = at::zeros({2, 4}, at::kLong);
+  index.data_ptr<int64_t>()[0] = 0;
+  index.data_ptr<int64_t>()[1] = 4;
+  index.data_ptr<int64_t>()[2] = 2;
+  index.data_ptr<int64_t>()[3] = 1;
+  index.data_ptr<int64_t>()[4] = 3;
+  index.data_ptr<int64_t>()[5] = 0;
+  index.data_ptr<int64_t>()[6] = 1;
+  index.data_ptr<int64_t>()[7] = 2;
+  at::Tensor src = at::ones({2, 4}, at::kFloat);
+
+  EXPECT_THROW(self.scatter_reduce_(1, index, src, "sum"), std::out_of_range);
+}
+
+// Libtorch 2.12.1 C++ scatter_reduce accepts int32 index tensors.
 TEST_F(ScatterReduceTest, ScatterReduceIntIndex) {
   at::Tensor self = at::zeros({3, 5}, at::kFloat);
   at::Tensor index = at::zeros({1, 5}, at::kInt);
@@ -476,6 +534,7 @@ TEST_F(ScatterReduceTest, ScatterReduceIntIndex) {
   ASSERT_FLOAT_EQ(data[12], 3.0f);
 }
 
+// Libtorch 2.12.1 C++ scatter_reduce_ accepts int32 index tensors.
 TEST_F(ScatterReduceTest, ScatterReduceInplaceIntIndex) {
   at::Tensor self = at::zeros({3, 5}, at::kFloat);
   at::Tensor index = at::zeros({1, 5}, at::kInt);
@@ -519,6 +578,7 @@ TEST_F(ScatterReduceTest, ScatterReduceInplaceFloatIndexThrows) {
                std::invalid_argument);
 }
 
+// Libtorch 2.12.1 C++ accepts empty floating index tensors.
 TEST_F(ScatterReduceTest, ScatterReduceEmptyFloatIndex) {
   at::Tensor self = at::zeros({0, 2}, at::kFloat);
   at::Tensor index = at::empty({0, 2}, at::kFloat);

@@ -48,7 +48,9 @@ inline int _pd_normalize_dim(int64_t dim, int64_t rank) {
   return _pd_check_dim(dim);
 }
 
-inline void _pd_check_index(const at::Tensor& index) {
+inline void _pd_check_index(const at::Tensor& self,
+                            const at::Tensor& index,
+                            int64_t normalized_dim) {
   if (index.numel() == 0) {
     return;
   }
@@ -59,12 +61,21 @@ inline void _pd_check_index(const at::Tensor& index) {
   }
   auto min_index = paddle::experimental::min(index._PD_GetInner());
   auto min_index_tensor = at::Tensor(std::move(min_index));
+  auto max_index = paddle::experimental::max(index._PD_GetInner());
+  auto max_index_tensor = at::Tensor(std::move(max_index));
   int64_t min_index_value =
       index_type == at::kLong
           ? min_index_tensor.item<int64_t>()
           : static_cast<int64_t>(min_index_tensor.item<int>());
+  int64_t max_index_value =
+      index_type == at::kLong
+          ? max_index_tensor.item<int64_t>()
+          : static_cast<int64_t>(max_index_tensor.item<int>());
   if (min_index_value < 0) {
     throw std::out_of_range("scatter_reduce: index contains negative values.");
+  }
+  if (max_index_value >= self.size(normalized_dim)) {
+    throw std::out_of_range("scatter_reduce: index is out of bounds.");
   }
 }
 
@@ -117,21 +128,34 @@ inline std::string _pd_scatter_reduce_str(c10::string_view reduce) {
 
 // scatter_reduce: Scatter and reduce values from src into self at indices.
 // Maps to Paddle's put_along_axis with appropriate reduce mode conversion.
-inline at::Tensor Tensor::scatter_reduce(int64_t dim,
-                                         const at::Tensor& index,
-                                         const at::Tensor& src,
-                                         c10::string_view reduce,
-                                         bool include_self) const {
+inline at::Tensor scatter_reduce(const at::Tensor& self,
+                                 int64_t dim,
+                                 const at::Tensor& index,
+                                 const at::Tensor& src,
+                                 c10::string_view reduce,
+                                 bool include_self = true) {
   std::string paddle_reduce = detail::_pd_scatter_reduce_str(reduce);
-  int normalized_dim = detail::_pd_normalize_dim(dim, this->dim());
-  detail::_pd_check_scatter_reduce_shape(*this, index, src, normalized_dim);
-  detail::_pd_check_index(index);
-  return Tensor(paddle::experimental::put_along_axis(tensor_,
+  int normalized_dim = detail::_pd_normalize_dim(dim, self.dim());
+  detail::_pd_check_scatter_reduce_shape(self, index, src, normalized_dim);
+  detail::_pd_check_index(self, index, normalized_dim);
+  return Tensor(paddle::experimental::put_along_axis(self._PD_GetInner(),
                                                      index._PD_GetInner(),
                                                      src._PD_GetInner(),
                                                      normalized_dim,
                                                      paddle_reduce,
                                                      include_self));
+}
+
+}  // namespace at
+
+namespace at {
+
+inline at::Tensor Tensor::scatter_reduce(int64_t dim,
+                                         const at::Tensor& index,
+                                         const at::Tensor& src,
+                                         c10::string_view reduce,
+                                         bool include_self) const {
+  return at::scatter_reduce(*this, dim, index, src, reduce, include_self);
 }
 
 // scatter_reduce_: In-place version.
@@ -144,7 +168,7 @@ inline at::Tensor& Tensor::scatter_reduce_(int64_t dim,
   std::string paddle_reduce = detail::_pd_scatter_reduce_str(reduce);
   int normalized_dim = detail::_pd_normalize_dim(dim, this->dim());
   detail::_pd_check_scatter_reduce_shape(*this, index, src, normalized_dim);
-  detail::_pd_check_index(index);
+  detail::_pd_check_index(*this, index, normalized_dim);
   paddle::experimental::put_along_axis_(self.tensor_,
                                         index._PD_GetInner(),
                                         src._PD_GetInner(),
