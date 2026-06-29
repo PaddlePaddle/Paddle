@@ -15,6 +15,7 @@
 #pragma once
 
 #include <ATen/core/Tensor.h>
+#include <utils/scalar_type_conversion.h>
 #include <vector>
 
 #include "paddle/phi/api/include/api.h"
@@ -38,9 +39,12 @@ inline at::Tensor take(const at::Tensor& self, const at::Tensor& index) {
   TORCH_CHECK(self.numel() > 0 || index.numel() == 0,
               "take(): cannot take from an empty tensor with non-empty index");
 
+  auto contiguous_self = self.contiguous();
+  auto contiguous_index = index.contiguous();
+
   // Flatten self to 1D (treat as 1-D tensor for indexing).
-  auto flattened =
-      paddle::experimental::reshape(self._PD_GetInner(), phi::IntArray({-1}));
+  auto flattened = paddle::experimental::reshape(contiguous_self._PD_GetInner(),
+                                                 phi::IntArray({-1}));
 
   // Record the original index shape for reshaping the result
   auto index_sizes = index.sizes();
@@ -48,21 +52,28 @@ inline at::Tensor take(const at::Tensor& self, const at::Tensor& index) {
 
   // Flatten index to 1D. gather performs unified CPU/GPU bounds checking and
   // normalizes legal negative indices on device.
-  auto flattened_index =
-      paddle::experimental::reshape(index._PD_GetInner(), phi::IntArray({-1}));
+  auto flattened_index = paddle::experimental::reshape(
+      contiguous_index._PD_GetInner(), phi::IntArray({-1}));
 
-  // gather covers a wider dtype surface than take_along_axis. CPU Half is the
-  // only exposed take dtype missing from gather, so gather through Float32 and
-  // cast back to preserve the public ATen dtype.
+  auto self_dtype = self.scalar_type();
+  TORCH_CHECK(!(self.is_cpu() && (self_dtype == at::kFloat8_e5m2 ||
+                                  self_dtype == at::kFloat8_e4m3fn)),
+              "\"take_cpu\" not implemented for '",
+              self_dtype,
+              "'");
+  bool need_cast_gather =
+      (self.is_cpu() && self_dtype == at::kHalf) ||
+      (!self.is_cpu() &&
+       (self_dtype == at::kFloat8_e5m2 || self_dtype == at::kFloat8_e4m3fn));
   auto selected =
-      self.is_cpu() && self.scalar_type() == at::kHalf
+      need_cast_gather
           ? paddle::experimental::cast(
                 paddle::experimental::gather(
                     paddle::experimental::cast(flattened,
                                                phi::DataType::FLOAT32),
                     flattened_index,
                     0),
-                phi::DataType::FLOAT16)
+                compat::_PD_AtenScalarTypeToPhiDataType(self_dtype))
           : paddle::experimental::gather(flattened, flattened_index, 0);
 
   // Reshape result to match original index shape

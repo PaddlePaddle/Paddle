@@ -19,6 +19,7 @@
 #include "ATen/ATen.h"
 #include "ATen/Functions.h"
 #include "ATen/core/TensorBody.h"
+#include "ATen/ops/as_strided.h"
 #include "ATen/ops/full.h"
 #include "ATen/ops/take.h"
 #include "ATen/ops/tensor.h"
@@ -217,6 +218,44 @@ TEST(TakeTest, TakeExtendedDtypes) {
   EXPECT_DOUBLE_EQ(complex_double_1.imag(), -8.0);
   EXPECT_DOUBLE_EQ(complex_double_2.real(), -3.0);
   EXPECT_DOUBLE_EQ(complex_double_2.imag(), 4.0);
+}
+
+TEST(TakeTest, TakeCpuFloat8Throws) {
+  auto index = make_long_index({0, 3, 1});
+
+  auto tensor_float8_e5m2 =
+      make_float_tensor({1.0f, 2.0f, 4.0f, 8.0f}).to(at::kFloat8_e5m2);
+  EXPECT_THROW(at::take(tensor_float8_e5m2, index), std::exception);
+
+  auto tensor_float8_e4m3fn =
+      make_float_tensor({1.0f, 2.0f, 4.0f, 8.0f}).to(at::kFloat8_e4m3fn);
+  EXPECT_THROW(at::take(tensor_float8_e4m3fn, index), std::exception);
+}
+
+TEST(TakeTest, TakeNonContiguousInput) {
+  auto base = at::arange(6, at::TensorOptions().dtype(at::kFloat));
+  auto tensor = base.as_strided({3}, {2});
+  auto index = make_long_index({1});
+
+  auto result = at::take(tensor, index);
+
+  EXPECT_EQ(result.dim(), 1);
+  EXPECT_EQ(result.size(0), 1);
+  EXPECT_FLOAT_EQ(result[0].item<float>(), 2.0f);
+}
+
+TEST(TakeTest, TakeNonContiguousIndex) {
+  auto tensor = at::arange(6, at::TensorOptions().dtype(at::kFloat));
+  auto index_base = make_long_index({0, 1, 2, 3, 4, 5});
+  auto index = index_base.as_strided({3}, {2});
+
+  auto result = at::take(tensor, index);
+
+  EXPECT_EQ(result.dim(), 1);
+  EXPECT_EQ(result.size(0), 3);
+  EXPECT_FLOAT_EQ(result[0].item<float>(), 0.0f);
+  EXPECT_FLOAT_EQ(result[1].item<float>(), 2.0f);
+  EXPECT_FLOAT_EQ(result[2].item<float>(), 4.0f);
 }
 
 // Test for take on empty index
