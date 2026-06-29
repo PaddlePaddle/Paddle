@@ -1142,6 +1142,7 @@ class _ShardOptimizer(Optimizer):
             optimizer.__class__.__name__
         )
         self.__dict__["_inner_opt"] = optimizer
+        self._maximize = optimizer._maximize
         self._shard_clip = False
         if (
             hasattr(optimizer, "_grad_clip")
