@@ -809,6 +809,10 @@ def set_device(device: DeviceLike) -> None:
             device_str = f'{device_place.get_device_type()}:{device}'
         elif isinstance(device_place, core.XPUPlace):
             device_str = f'xpu:{device}'
+        elif core.is_compiled_with_cuda():
+            device_str = f'gpu:{device}'
+        elif core.is_compiled_with_xpu():
+            device_str = f'xpu:{device}'
         else:
             raise ValueError(
                 "Paddle-CPU is not supported. Please use PaddlePaddle with CUDA, XPU or Custom Device"
