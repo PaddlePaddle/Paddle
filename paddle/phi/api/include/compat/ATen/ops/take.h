@@ -46,14 +46,24 @@ inline at::Tensor take(const at::Tensor& self, const at::Tensor& index) {
   auto index_sizes = index.sizes();
   std::vector<int64_t> index_shape_vec(index_sizes.begin(), index_sizes.end());
 
-  // Flatten index to 1D. take_along_axis performs unified CPU/GPU bounds
-  // checking and normalizes legal negative indices on device.
+  // Flatten index to 1D. gather performs unified CPU/GPU bounds checking and
+  // normalizes legal negative indices on device.
   auto flattened_index =
       paddle::experimental::reshape(index._PD_GetInner(), phi::IntArray({-1}));
 
-  // Use take_along_axis along axis 0 to pick elements by index.
+  // gather covers a wider dtype surface than take_along_axis. CPU Half is the
+  // only exposed take dtype missing from gather, so gather through Float32 and
+  // cast back to preserve the public ATen dtype.
   auto selected =
-      paddle::experimental::take_along_axis(flattened, flattened_index, 0);
+      self.is_cpu() && self.scalar_type() == at::kHalf
+          ? paddle::experimental::cast(
+                paddle::experimental::gather(
+                    paddle::experimental::cast(flattened,
+                                               phi::DataType::FLOAT32),
+                    flattened_index,
+                    0),
+                phi::DataType::FLOAT16)
+          : paddle::experimental::gather(flattened, flattened_index, 0);
 
   // Reshape result to match original index shape
   if (index_shape_vec.empty()) {

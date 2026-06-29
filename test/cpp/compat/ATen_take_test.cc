@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <complex>
+#include <cstdint>
 #include <vector>
 
 #include "ATen/ATen.h"
@@ -20,6 +22,7 @@
 #include "ATen/ops/full.h"
 #include "ATen/ops/take.h"
 #include "ATen/ops/tensor.h"
+#include "c10/util/complex.h"
 #include "gtest/gtest.h"
 #include "torch/all.h"
 
@@ -28,6 +31,11 @@
 static at::Tensor make_long_index(const std::vector<int64_t>& values) {
   return at::tensor(at::ArrayRef<int64_t>(values),
                     at::TensorOptions().dtype(at::kLong));
+}
+
+static at::Tensor make_float_tensor(const std::vector<float>& values) {
+  return at::tensor(at::ArrayRef<float>(values),
+                    at::TensorOptions().dtype(at::kFloat));
 }
 
 // Test for take on 1D tensor
@@ -128,6 +136,87 @@ TEST(TakeTest, TakeDifferentDtypes) {
   EXPECT_DOUBLE_EQ(result_double[0].item<double>(), 1.0);
   EXPECT_DOUBLE_EQ(result_double[1].item<double>(), 3.0);
   EXPECT_DOUBLE_EQ(result_double[2].item<double>(), 8.0);
+}
+
+TEST(TakeTest, TakeExtendedDtypes) {
+  auto index = make_long_index({0, 3, 1});
+
+  auto tensor_bool = make_long_index({0, 1, 0, 1}).to(at::kBool);
+  auto result_bool = at::take(tensor_bool, index);
+  EXPECT_EQ(result_bool.scalar_type(), at::kBool);
+  EXPECT_FALSE(result_bool.data_ptr<bool>()[0]);
+  EXPECT_TRUE(result_bool.data_ptr<bool>()[1]);
+  EXPECT_TRUE(result_bool.data_ptr<bool>()[2]);
+
+  std::vector<int8_t> char_values = {-4, -2, 3, 7};
+  auto tensor_char = at::tensor(at::ArrayRef<int8_t>(char_values),
+                                at::TensorOptions().dtype(at::kChar));
+  auto result_char = at::take(tensor_char, index);
+  EXPECT_EQ(result_char.scalar_type(), at::kChar);
+  EXPECT_EQ(result_char.data_ptr<int8_t>()[0], static_cast<int8_t>(-4));
+  EXPECT_EQ(result_char.data_ptr<int8_t>()[1], static_cast<int8_t>(7));
+  EXPECT_EQ(result_char.data_ptr<int8_t>()[2], static_cast<int8_t>(-2));
+
+  auto tensor_half = make_float_tensor({1.5f, -2.0f, 0.5f, 4.0f}).to(at::kHalf);
+  auto result_half = at::take(tensor_half, index);
+  EXPECT_EQ(result_half.scalar_type(), at::kHalf);
+  auto result_half_float = result_half.to(at::kFloat);
+  EXPECT_FLOAT_EQ(result_half_float.data_ptr<float>()[0], 1.5f);
+  EXPECT_FLOAT_EQ(result_half_float.data_ptr<float>()[1], 4.0f);
+  EXPECT_FLOAT_EQ(result_half_float.data_ptr<float>()[2], -2.0f);
+
+  auto tensor_bfloat =
+      make_float_tensor({1.25f, -3.5f, 2.0f, 8.0f}).to(at::kBFloat16);
+  auto result_bfloat = at::take(tensor_bfloat, index);
+  EXPECT_EQ(result_bfloat.scalar_type(), at::kBFloat16);
+  auto result_bfloat_float = result_bfloat.to(at::kFloat);
+  EXPECT_FLOAT_EQ(result_bfloat_float.data_ptr<float>()[0], 1.25f);
+  EXPECT_FLOAT_EQ(result_bfloat_float.data_ptr<float>()[1], 8.0f);
+  EXPECT_FLOAT_EQ(result_bfloat_float.data_ptr<float>()[2], -3.5f);
+
+  std::vector<c10::complex<float>> complex_float_values = {
+      {1.0f, 2.0f}, {3.0f, -4.0f}, {-5.0f, 6.0f}, {7.0f, 8.0f}};
+  auto tensor_complex_float =
+      at::tensor(at::ArrayRef<c10::complex<float>>(complex_float_values),
+                 at::TensorOptions().dtype(at::kComplexFloat));
+  auto result_complex_float = at::take(tensor_complex_float, index);
+  EXPECT_EQ(result_complex_float.scalar_type(), at::kComplexFloat);
+  auto* complex_float_data =
+      result_complex_float.data_ptr<c10::complex<float>>();
+  auto complex_float_0 =
+      static_cast<std::complex<float>>(complex_float_data[0]);
+  auto complex_float_1 =
+      static_cast<std::complex<float>>(complex_float_data[1]);
+  auto complex_float_2 =
+      static_cast<std::complex<float>>(complex_float_data[2]);
+  EXPECT_FLOAT_EQ(complex_float_0.real(), 1.0f);
+  EXPECT_FLOAT_EQ(complex_float_0.imag(), 2.0f);
+  EXPECT_FLOAT_EQ(complex_float_1.real(), 7.0f);
+  EXPECT_FLOAT_EQ(complex_float_1.imag(), 8.0f);
+  EXPECT_FLOAT_EQ(complex_float_2.real(), 3.0f);
+  EXPECT_FLOAT_EQ(complex_float_2.imag(), -4.0f);
+
+  std::vector<c10::complex<double>> complex_double_values = {
+      {1.0, -2.0}, {-3.0, 4.0}, {5.0, -6.0}, {-7.0, -8.0}};
+  auto tensor_complex_double =
+      at::tensor(at::ArrayRef<c10::complex<double>>(complex_double_values),
+                 at::TensorOptions().dtype(at::kComplexDouble));
+  auto result_complex_double = at::take(tensor_complex_double, index);
+  EXPECT_EQ(result_complex_double.scalar_type(), at::kComplexDouble);
+  auto* complex_double_data =
+      result_complex_double.data_ptr<c10::complex<double>>();
+  auto complex_double_0 =
+      static_cast<std::complex<double>>(complex_double_data[0]);
+  auto complex_double_1 =
+      static_cast<std::complex<double>>(complex_double_data[1]);
+  auto complex_double_2 =
+      static_cast<std::complex<double>>(complex_double_data[2]);
+  EXPECT_DOUBLE_EQ(complex_double_0.real(), 1.0);
+  EXPECT_DOUBLE_EQ(complex_double_0.imag(), -2.0);
+  EXPECT_DOUBLE_EQ(complex_double_1.real(), -7.0);
+  EXPECT_DOUBLE_EQ(complex_double_1.imag(), -8.0);
+  EXPECT_DOUBLE_EQ(complex_double_2.real(), -3.0);
+  EXPECT_DOUBLE_EQ(complex_double_2.imag(), 4.0);
 }
 
 // Test for take on empty index
