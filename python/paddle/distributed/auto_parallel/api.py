@@ -1142,7 +1142,6 @@ class _ShardOptimizer(Optimizer):
             optimizer.__class__.__name__
         )
         self.__dict__["_inner_opt"] = optimizer
-        self._maximize = optimizer._maximize
         self._shard_clip = False
         if (
             hasattr(optimizer, "_grad_clip")
@@ -1721,6 +1720,8 @@ class _ShardOptimizer(Optimizer):
             )
             param.get_tensor()._share_data_with(tmp_param.get_tensor())
 
+            if self._maximize is True:
+                grad = -grad
             paddle.assign(
                 grad._local_value(),
                 grad_buffer._slice(
@@ -1869,6 +1870,8 @@ class _ShardOptimizer(Optimizer):
                 new_grad = _dtensor_from_local(
                     new_grad, param.process_mesh, [dist.Replicate()]
                 )
+                if self._maximize is True:
+                    new_grad = -new_grad
                 new_grads.append(new_grad)
 
             if self.enable_sharding_overlap:
