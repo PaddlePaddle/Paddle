@@ -80,8 +80,7 @@ elif [ "$1" == "gcc11" ]; then
   GCC_MAJOR_MINOR=$(echo ${GCC_VERSION} | cut -d. -f1,2)
   GCC_PREFIX=/usr/local/gcc-${GCC_MAJOR_MINOR}
   GCC_ARCHIVE=gcc-${GCC_VERSION}.tar.xz
-  wget -q --tries=5 https://mirrors.tuna.tsinghua.edu.cn/gnu/gcc/gcc-${GCC_VERSION}/${GCC_ARCHIVE} || \
-  wget -q --tries=5 https://ftp.gnu.org/gnu/gcc/gcc-${GCC_VERSION}/${GCC_ARCHIVE}
+  wget -q https://ftp.gnu.org/gnu/gcc/gcc-${GCC_VERSION}/${GCC_ARCHIVE}
   tar -xf ${GCC_ARCHIVE} && \
   cd gcc-${GCC_VERSION} && \
   unset LIBRARY_PATH CPATH C_INCLUDE_PATH PKG_CONFIG_PATH CPLUS_INCLUDE_PATH INCLUDE && \
