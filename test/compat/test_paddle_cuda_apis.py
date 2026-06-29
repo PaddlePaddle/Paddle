@@ -334,6 +334,30 @@ class TestSetDevice(TestCase):
                     f"set_device with int parameter raised an exception: {e}"
                 )
 
+    def test_set_device_int_after_cpu_place(self):
+        """ """
+        if not (
+            paddle.is_compiled_with_cuda() and paddle.cuda.device_count() > 0
+        ):
+            return
+        original_device = paddle.device.get_device()
+        try:
+            paddle.device.set_device('cpu')
+            paddle.cuda.set_device(0)
+            self.assertEqual(
+                paddle.cuda.current_device(),
+                0,
+                'cuda.set_device(0) should select GPU 0 even when the '
+                'current place is CPU',
+            )
+        except Exception as e:
+            self.fail(
+                f'cuda.set_device(int) after a CPU place raised an '
+                f'exception: {e}'
+            )
+        finally:
+            paddle.device.set_device(original_device)
+
     def test_set_device_with_str_param(self):
         """Test that set_device works with string parameter."""
         if paddle.is_compiled_with_cuda():
