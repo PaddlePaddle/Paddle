@@ -58,20 +58,20 @@ function make_sot_dockerfile(){
 
 
 function make_ce_framework_dockerfile(){
-  dockerfile_name="Dockerfile.cuda12.8_cudnn9_gcc11_trt10"
-  sed "s#<baseimg>#nvidia/cuda:12.8.1-cudnn-devel-ubuntu20.04#g" ./Dockerfile.ubuntu20 >${dockerfile_name}
+  dockerfile_name="Dockerfile.cuda12.6_cudnn9_gcc11_trt10"
+  sed "s#<baseimg>#nvidia/cuda:12.6.3-cudnn-devel-ubuntu20.04#g" ./Dockerfile.ubuntu20 >${dockerfile_name}
   dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
-  sed -i "s#<setcuda>#ENV LD_LIBRARY_PATH=/usr/local/cuda-12.8/targets/x86_64-linux/lib:\$LD_LIBRARY_PATH #g" ${dockerfile_name}
+  sed -i "s#<setcuda>#ENV LD_LIBRARY_PATH=/usr/local/cuda-12.6/targets/x86_64-linux/lib:\$LD_LIBRARY_PATH #g" ${dockerfile_name}
   sed -i 's#<install_cpu_package>##g' ${dockerfile_name}
   sed -i "7i RUN chmod 777 /tmp" ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN wget --no-check-certificate -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz \&\& \
      tar -xzf  hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/" ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN apt-get update && apt install -y zstd pigz libcurl4-openssl-dev gettext ninja-build" ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN pip3.10 install wheel distro jinja2 bce-python-sdk==0.8.74" ${dockerfile_name}
-  sed -i "${dockerfile_line}i RUN pip3.10 install nvidia-cuda-nvrtc-cu12==12.8.61 nvidia-cuda-runtime-cu12==12.8.57 nvidia-cuda-cupti-cu12==12.8.57 nvidia-cudnn-cu12==9.7.1.26 nvidia-cublas-cu12==12.8.3.14 nvidia-cufft-cu12==11.3.3.41 nvidia-curand-cu12==10.3.9.55 nvidia-cusolver-cu12==11.7.2.55 nvidia-cusparse-cu12==12.5.7.53 nvidia-cusparselt-cu12==0.6.3 nvidia-nccl-cu12==2.28.3 nvidia-nvtx-cu12==12.8.55 nvidia-nvjitlink-cu12==12.8.61 nvidia-cufile-cu12==1.13.0.11" ${dockerfile_name}
-  sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh trt105018#g' ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN pip3.10 install nvidia-cuda-nvrtc-cu12==12.6.77 nvidia-cuda-runtime-cu12==12.6.77 nvidia-cuda-cupti-cu12==12.6.80 nvidia-cudnn-cu12==9.5.1.17 nvidia-cublas-cu12==12.6.4.1 nvidia-cufft-cu12==11.3.0.4 nvidia-curand-cu12==10.3.7.77 nvidia-cusolver-cu12==11.7.1.2 nvidia-cusparse-cu12==12.5.4.2 nvidia-cusparselt-cu12==0.6.3 nvidia-nccl-cu12==2.25.1 nvidia-nvtx-cu12==12.6.77 nvidia-nvjitlink-cu12==12.6.85 nvidia-cufile-cu12==1.11.1.6" ${dockerfile_name}
+  sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh trt104026#g' ${dockerfile_name}
   sed -i 's#RUN bash /build_scripts/install_cudnn.sh cudnn841##g' ${dockerfile_name}
-  sed -i 's#ENV CUDNN_VERSION=8.4.1#ENV CUDNN_VERSION=9.7.1#g' ${dockerfile_name}
+  sed -i 's#ENV CUDNN_VERSION=8.4.1#ENV CUDNN_VERSION=9.5.1#g' ${dockerfile_name}
   sed -i 's#RUN bash /build_scripts/install_gcc.sh gcc82#RUN bash /build_scripts/install_gcc.sh gcc11#g' ${dockerfile_name}
   sed -i 's#/usr/local/gcc-8.2/bin/gcc#/usr/local/gcc-11.5/bin/gcc#g' ${dockerfile_name}
   sed -i 's#/usr/local/gcc-8.2/bin/g++#/usr/local/gcc-11.5/bin/g++#g' ${dockerfile_name}

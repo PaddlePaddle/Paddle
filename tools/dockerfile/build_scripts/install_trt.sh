@@ -61,6 +61,11 @@ elif [[ "$1" == "trt8531" ]];then
   tar -zxf TensorRT-8.5.3.1.Linux.x86_64-gnu.cuda-11.8.cudnn8.6.tar.gz -C /usr/local
   cp -rf /usr/local/TensorRT-8.5.3.1/include/* /usr/include/ && cp -rf /usr/local/TensorRT-8.5.3.1/lib/* /usr/lib/
   rm -f TensorRT-8.5.3.1.Linux.x86_64-gnu.cuda-11.8.cudnn8.6.tar.gz
+elif [[ "$1" == "trt104026" ]];then
+  wget -q https://developer.download.nvidia.com/compute/machine-learning/tensorrt/10.4.0/tars/TensorRT-10.4.0.26.Linux.x86_64-gnu.cuda-12.6.tar.gz --no-check-certificate
+  tar -zxf TensorRT-10.4.0.26.Linux.x86_64-gnu.cuda-12.6.tar.gz -C /usr/local
+  cp -rf /usr/local/TensorRT-10.4.0.26/include/* /usr/include/ && cp -rf /usr/local/TensorRT-10.4.0.26/lib/* /usr/lib/
+  rm -f TensorRT-10.4.0.26.Linux.x86_64-gnu.cuda-12.6.tar.gz
 elif [[ "$1" == "trt105018" ]];then
   wget -q https://paddle-qa.bj.bcebos.com/nvidia/trt/TensorRT-10.5.0.18-cuda12.tgz --no-check-certificate --no-proxy
   tar -zxf TensorRT-10.5.0.18-cuda12.tgz -C /usr/local
