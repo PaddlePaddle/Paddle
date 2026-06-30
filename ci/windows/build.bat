@@ -72,6 +72,17 @@ set start=%start:~4,10%
 if not defined CUDA_TOOLKIT_ROOT_DIR set "CUDA_TOOLKIT_ROOT_DIR=C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.2"
 set "CUDA_TOOLKIT_ROOT_DIR_WIN=%CUDA_TOOLKIT_ROOT_DIR:/=\%"
 set "TENSORRT_ROOT_WIN=%TENSORRT_ROOT:/=\%"
+if "%WITH_TENSORRT%"=="ON" (
+    if not exist "!TENSORRT_ROOT_WIN!" (
+        for %%D in ("D:\TensorRT" "C:\TensorRT" "D:\TensorRT-8.0.1.6" "C:\TensorRT-8.0.1.6") do (
+            if not exist "!TENSORRT_ROOT_WIN!" (
+                if exist "%%~D" set "TENSORRT_ROOT_WIN=%%~D"
+            )
+        )
+    )
+    set "TENSORRT_ROOT=!TENSORRT_ROOT_WIN!"
+    echo TENSORRT_ROOT=!TENSORRT_ROOT!>> %GITHUB_ENV%
+)
 set "PATH=%TENSORRT_ROOT_WIN%\lib;%CUDA_TOOLKIT_ROOT_DIR_WIN%\bin\x64;%CUDA_TOOLKIT_ROOT_DIR_WIN%\bin;%CUDA_TOOLKIT_ROOT_DIR_WIN%\libnvvp;%PATH%"
 
 if "%WITH_GPU%"=="ON" (
@@ -111,6 +122,7 @@ if "%WITH_TENSORRT%"=="ON" (
         dir /b /a "!TENSORRT_ROOT_WIN!" 2>NUL
     ) else (
         echo Missing TensorRT root: !TENSORRT_ROOT_WIN!
+        for /d %%D in ("D:\TensorRT*" "C:\TensorRT*") do echo Found TensorRT candidate: %%~D
     )
     set "TENSORRT_FOUND="
     for %%D in ("!TENSORRT_ROOT_WIN!\lib" "!TENSORRT_ROOT_WIN!\lib\x64" "!TENSORRT_ROOT_WIN!\bin" "!TENSORRT_ROOT_WIN!\bin\x64" "!TENSORRT_ROOT_WIN!") do (
