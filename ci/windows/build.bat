@@ -70,7 +70,7 @@ for /f "usebackq" %%i in (`powershell -NoProfile -Command "Get-Date -Format 'yyy
 set start=%start:~4,10%
 
 if not defined CUDA_TOOLKIT_ROOT_DIR set "CUDA_TOOLKIT_ROOT_DIR=C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.2"
-set "PATH=%TENSORRT_ROOT:/=\%\lib;%CUDA_TOOLKIT_ROOT_DIR:/=\%\bin;%CUDA_TOOLKIT_ROOT_DIR:/=\%\libnvvp;%PATH%"
+set "PATH=%TENSORRT_ROOT:/=\%\lib;%CUDA_TOOLKIT_ROOT_DIR:/=\%\bin\x64;%CUDA_TOOLKIT_ROOT_DIR:/=\%\bin;%CUDA_TOOLKIT_ROOT_DIR:/=\%\libnvvp;%PATH%"
 
 if "%WITH_GPU%"=="ON" (
     set cuda_version=%CUDA_TOOLKIT_ROOT_DIR:~-4%

@@ -87,7 +87,6 @@ jobs:
         run: |
           call %ACTION_DIR%\proxy.bat
           call %ci_scripts%\config_env.bat
-          echo PATH=%CUDA_TOOLKIT_ROOT_DIR%\bin\x64;%PATH%>> %GITHUB_ENV%
 
       - name: Build paddle
         run: |

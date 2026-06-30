@@ -162,6 +162,7 @@ static constexpr char cupti_lib_path[] = CUPTI_LIB_PATH;  // NOLINT
 // NOTE: In order to adapt to the default installation path of cuda
 #if defined(_WIN32) && defined(PADDLE_WITH_CUDA)
 static constexpr char cuda_lib_path[] = CUDA_TOOLKIT_ROOT_DIR "/bin";
+static constexpr char cuda_lib_x64_path[] = CUDA_TOOLKIT_ROOT_DIR "/bin/x64";
 #else
 static constexpr char cuda_lib_path[] = "/usr/local/cuda/lib64";  // NOLINT
 #endif
@@ -372,6 +373,10 @@ static inline void* GetDsoHandleFromSearchPath(
   }
 #endif
   std::vector<std::string> dso_names = split(dso_name, ";");
+  auto search_extra_paths = extra_paths;
+#if defined(_WIN32) && defined(PADDLE_WITH_CUDA)
+  search_extra_paths.emplace_back(cuda_lib_x64_path);
+#endif
   void* dso_handle = nullptr;
   for (auto const& dso : dso_names) {
     // 1. search in user config path by FLAGS
@@ -382,7 +387,7 @@ static inline void* GetDsoHandleFromSearchPath(
     }
     // 3. search in extra paths
     if (nullptr == dso_handle) {
-      for (auto const& path : extra_paths) {
+      for (auto const& path : search_extra_paths) {
         VLOG(3) << "extra_paths: " << path;
         dso_handle = GetDsoHandleFromSpecificPath(path, dso, dynload_flags);
       }
