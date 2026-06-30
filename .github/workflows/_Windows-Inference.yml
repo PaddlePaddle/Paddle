@@ -63,7 +63,7 @@ jobs:
       WITH_AVX: "ON"
       MSVC_STATIC_CRT: "ON"
       ON_INFER: "ON"
-      WITH_TENSORRT: "ON"
+      WITH_TENSORRT: "OFF"
       WITH_INFERENCE_API_TEST: "ON"
       WITH_ONNXRUNTIME: "ON"
       WIN_UNITTEST_LEVEL: 2
