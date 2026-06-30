@@ -87,8 +87,6 @@ class ConfigDump:
             result = (
                 "Tensor(" + str(item.shape) + ',"' + str(item.dtype)[7:] + '"'
             )
-            if paddle.is_compiled_with_xpu():
-                return result + ")"
             if item.place.is_cpu_place():
                 result = result + ",place=" + str(item.place)
             if not item.is_contiguous():
