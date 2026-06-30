@@ -191,6 +191,10 @@ static constexpr const char* win_cusolver_lib =
 static constexpr const char* win_cusparse_lib =
     "cusparse64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;cusparse64_" CUDA_VERSION_MAJOR ".dll;cusparse64_10.dll";
+// CUDA components are versioned independently; CUDA 13.x ships cuSPARSE 12.x.
+static constexpr const char* win_cusparse_cuda13_lib =
+    "cusparse64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
+    ".dll;cusparse64_" CUDA_VERSION_MAJOR ".dll;cusparse64_12.dll";
 static constexpr const char* win_cufft_lib =
     "cufft64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;cufft64_" CUDA_VERSION_MAJOR ".dll;cufft64_11.dll;cufft64_10.dll";
@@ -790,7 +794,7 @@ void* GetCusparseDsoHandle() {
     return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "cusparse64_12.dll");
 #else
     return GetDsoHandleFromSearchPath(
-        FLAGS_cuda_dir, win_cusparse_lib, true, {cuda_lib_path});
+        FLAGS_cuda_dir, win_cusparse_cuda13_lib, true, {cuda_lib_path});
 #endif
   } else {
     std::string warning_msg(
