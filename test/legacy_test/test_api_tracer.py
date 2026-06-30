@@ -53,12 +53,12 @@ class TestDumpTensor(unittest.TestCase):
     def test_non_contiguous_tensor_dumps_strides(self):
         dumper = ConfigDump()
         tensor = paddle.to_tensor(
-            [[1, 2, 3, 4], [5, 6, 7, 8]], place=paddle.CPUPlace()
-        )[:, ::2]
+            [[1, 2, 3], [4, 5, 6]], place=paddle.CPUPlace()
+        ).t()
         result = dumper.dump_item_str("test", tensor)
         expected = (
-            'Tensor(paddle.Size([2, 2]),"int64",place=Place(cpu),'
-            'is_contiguous=False,strides=[4, 2])'
+            'Tensor(paddle.Size([3, 2]),"int64",place=Place(cpu),'
+            'is_contiguous=False,strides=[1, 3])'
         )
         self.assertEqual(result, expected)
 
