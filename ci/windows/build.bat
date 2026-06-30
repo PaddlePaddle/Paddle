@@ -70,7 +70,9 @@ for /f "usebackq" %%i in (`powershell -NoProfile -Command "Get-Date -Format 'yyy
 set start=%start:~4,10%
 
 if not defined CUDA_TOOLKIT_ROOT_DIR set "CUDA_TOOLKIT_ROOT_DIR=C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.2"
-set "PATH=%TENSORRT_ROOT:/=\%\lib;%CUDA_TOOLKIT_ROOT_DIR:/=\%\bin\x64;%CUDA_TOOLKIT_ROOT_DIR:/=\%\bin;%CUDA_TOOLKIT_ROOT_DIR:/=\%\libnvvp;%PATH%"
+set "CUDA_TOOLKIT_ROOT_DIR_WIN=%CUDA_TOOLKIT_ROOT_DIR:/=\%"
+set "TENSORRT_ROOT_WIN=%TENSORRT_ROOT:/=\%"
+set "PATH=%TENSORRT_ROOT_WIN%\lib;%CUDA_TOOLKIT_ROOT_DIR_WIN%\bin\x64;%CUDA_TOOLKIT_ROOT_DIR_WIN%\bin;%CUDA_TOOLKIT_ROOT_DIR_WIN%\libnvvp;%PATH%"
 
 if "%WITH_GPU%"=="ON" (
     set cuda_version=%CUDA_TOOLKIT_ROOT_DIR:~-4%
@@ -79,6 +81,58 @@ if "%WITH_GPU%"=="ON" (
     )
 )
 echo %PATH%
+
+if "%WITH_GPU%"=="ON" (
+    echo    ----- CUDA dynamic library diagnostics -----
+    echo CUDA_TOOLKIT_ROOT_DIR=!CUDA_TOOLKIT_ROOT_DIR_WIN!
+    for %%D in ("!CUDA_TOOLKIT_ROOT_DIR_WIN!\bin\x64" "!CUDA_TOOLKIT_ROOT_DIR_WIN!\bin") do (
+        if exist "%%~D" (
+            echo Listing CUDA libraries in %%~D
+            dir /b "%%~D\cublas64*.dll" 2>NUL
+            dir /b "%%~D\cublasLt64*.dll" 2>NUL
+            dir /b "%%~D\cudnn64*.dll" 2>NUL
+            dir /b "%%~D\cudart64*.dll" 2>NUL
+            dir /b "%%~D\cusparse64*.dll" 2>NUL
+            dir /b "%%~D\cufft64*.dll" 2>NUL
+            dir /b "%%~D\curand64*.dll" 2>NUL
+            dir /b "%%~D\nvrtc64*.dll" 2>NUL
+        ) else (
+            echo Missing CUDA library directory: %%~D
+        )
+    )
+    where cublas64_13.dll 2>NUL || echo cublas64_13.dll not found in PATH
+)
+
+if "%WITH_TENSORRT%"=="ON" (
+    echo    ----- TensorRT dynamic library diagnostics -----
+    echo TENSORRT_ROOT=!TENSORRT_ROOT_WIN!
+    if exist "!TENSORRT_ROOT_WIN!" (
+        echo Listing TensorRT root:
+        dir /b /a "!TENSORRT_ROOT_WIN!" 2>NUL
+    ) else (
+        echo Missing TensorRT root: !TENSORRT_ROOT_WIN!
+    )
+    set "TENSORRT_FOUND="
+    for %%D in ("!TENSORRT_ROOT_WIN!\lib" "!TENSORRT_ROOT_WIN!\lib\x64" "!TENSORRT_ROOT_WIN!\bin" "!TENSORRT_ROOT_WIN!\bin\x64" "!TENSORRT_ROOT_WIN!") do (
+        if exist "%%~D" (
+            echo Listing TensorRT libraries in %%~D
+            dir /b "%%~D\nvinfer*.dll" 2>NUL
+            dir /b "%%~D\nvinfer*.lib" 2>NUL
+            dir /b "%%~D\nvinfer_plugin*.dll" 2>NUL
+            dir /b "%%~D\nvinfer_plugin*.lib" 2>NUL
+            if exist "%%~D\nvinfer*.dll" set "TENSORRT_FOUND=1"
+            if exist "%%~D\nvinfer*.lib" set "TENSORRT_FOUND=1"
+        ) else (
+            echo Missing TensorRT library directory: %%~D
+        )
+    )
+    where nvinfer.dll 2>NUL || echo nvinfer.dll not found in PATH
+    where nvinfer.lib 2>NUL || echo nvinfer.lib not found in PATH
+    if not defined TENSORRT_FOUND (
+        echo TensorRT requested but nvinfer.dll or nvinfer.lib was not found under TENSORRT_ROOT.
+        exit /b 7
+    )
+)
 
 rem CUDA_TOOLKIT_ROOT_DIR in cmake must use / rather than \
 set "TENSORRT_ROOT=%TENSORRT_ROOT:\=/%"
