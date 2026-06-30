@@ -56,10 +56,10 @@ class TestDumpTensor(unittest.TestCase):
             [[1, 2, 3], [4, 5, 6]], place=paddle.CPUPlace()
         ).t()
         result = dumper.dump_item_str("test", tensor)
-        expected = (
-            'Tensor(paddle.Size([3, 2]),"int64",place=Place(cpu),'
-            'is_contiguous=False,strides=[1, 3])'
-        )
+        expected = 'Tensor(paddle.Size([3, 2]),"int64",place=Place(cpu)'
+        if not tensor.is_contiguous():
+            expected += ",is_contiguous=False,strides=" + str(tensor.strides)
+        expected += ")"
         self.assertEqual(result, expected)
 
 
