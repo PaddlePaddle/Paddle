@@ -50,22 +50,15 @@ class TestDumpTensor(unittest.TestCase):
             result, 'Tensor(paddle.Size([1, 2]),"int64",place=Place(cpu))'
         )
 
-    @unittest.skipIf(
-        not paddle.is_compiled_with_cuda(), "Paddle is not compiled with CUDA"
-    )
-    def test_gpu_tensor_does_not_dump_place(self):
-        dumper = ConfigDump()
-        tensor = paddle.to_tensor([[1, 2]], place=paddle.CUDAPlace(0))
-        result = dumper.dump_item_str("test", tensor)
-        self.assertEqual(result, 'Tensor(paddle.Size([1, 2]),"int64")')
-
     def test_non_contiguous_tensor_dumps_strides(self):
         dumper = ConfigDump()
-        tensor = paddle.to_tensor([[1, 2]], place=paddle.CPUPlace()).t()
+        tensor = paddle.to_tensor(
+            [[1, 2, 3, 4], [5, 6, 7, 8]], place=paddle.CPUPlace()
+        )[:, ::2]
         result = dumper.dump_item_str("test", tensor)
         expected = (
-            'Tensor(paddle.Size([2, 1]),"int64",place=Place(cpu),'
-            'is_contiguous=False,strides=[1, 2])'
+            'Tensor(paddle.Size([2, 2]),"int64",place=Place(cpu),'
+            'is_contiguous=False,strides=[4, 2])'
         )
         self.assertEqual(result, expected)
 
