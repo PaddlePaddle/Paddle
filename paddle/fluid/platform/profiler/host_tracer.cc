@@ -22,6 +22,9 @@
 
 namespace paddle::platform {
 
+PADDLE_API HostEventSection<CommonEvent> GatherCommonHostEvents();
+PADDLE_API HostEventSection<CommonMemEvent> GatherCommonHostMemEvents();
+
 namespace {
 
 void ProcessHostEvents(const HostEventSection<CommonEvent>& host_events,
@@ -142,8 +145,8 @@ void HostTracer::StartTracing() {
       state_ == TracerState::READY || state_ == TracerState::STOPPED,
       true,
       common::errors::PreconditionNotMet("TracerState must be READY"));
-  HostEventRecorder<CommonEvent>::GetInstance().GatherEvents();
-  HostEventRecorder<CommonMemEvent>::GetInstance().GatherEvents();
+  GatherCommonHostEvents();
+  GatherCommonHostMemEvents();
   HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance()
       .GatherEvents();
   HostTraceLevel::GetInstance().SetLevel(options_.trace_level);
@@ -164,11 +167,10 @@ void HostTracer::CollectTraceData(TraceEventCollector* collector) {
       state_,
       TracerState::STOPPED,
       common::errors::PreconditionNotMet("TracerState must be STOPPED"));
-  HostEventSection<CommonEvent> host_events =
-      HostEventRecorder<CommonEvent>::GetInstance().GatherEvents();
+  HostEventSection<CommonEvent> host_events = GatherCommonHostEvents();
   ProcessHostEvents(host_events, collector);
   HostEventSection<CommonMemEvent> host_mem_events =
-      HostEventRecorder<CommonMemEvent>::GetInstance().GatherEvents();
+      GatherCommonHostMemEvents();
   ProcessHostMemEvents(host_mem_events, collector);
   HostEventSection<OperatorSupplementOriginEvent> op_supplement_events =
       HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance()

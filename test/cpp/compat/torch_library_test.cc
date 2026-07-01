@@ -965,6 +965,9 @@ TEST(test_torch_library, TestRegisterImplementationAtRuntime) {
 }
 
 TEST(test_torch_library, TestLibraryPrintInfoWithDispatchKey) {
+#ifdef _WIN32
+  GTEST_SKIP() << "CaptureStdout is unreliable across Windows DLL boundaries.";
+#endif
   torch::Library library(torch::Library::IMPL,
                          "runtime_library_info",
                          std::make_optional(c10::DispatchKey::CPU),

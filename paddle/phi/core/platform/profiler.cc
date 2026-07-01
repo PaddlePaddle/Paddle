@@ -62,6 +62,14 @@ namespace paddle::platform {
 
 MemEventRecorder MemEventRecorder::recorder;
 
+PADDLE_API HostEventSection<phi::CommonEvent> GatherCommonHostEvents() {
+  return HostEventRecorder<phi::CommonEvent>::GetInstance().GatherEvents();
+}
+
+PADDLE_API HostEventSection<phi::CommonMemEvent> GatherCommonHostMemEvents() {
+  return HostEventRecorder<phi::CommonMemEvent>::GetInstance().GatherEvents();
+}
+
 RecordInstantEvent::RecordInstantEvent(const char *name,
                                        phi::TracerEventType type,
                                        uint32_t level) {
@@ -807,8 +815,7 @@ void DisableMemoryRecorder() { FLAGS_enable_record_memory = false; }
 
 std::string PrintHostEvents() {
   std::ostringstream oss;
-  auto host_evt_sec =
-      HostEventRecorder<phi::CommonEvent>::GetInstance().GatherEvents();
+  auto host_evt_sec = GatherCommonHostEvents();
   for (const auto &thr_evt_sec : host_evt_sec.thr_sections) {
     oss << thr_evt_sec.thread_id << std::endl;
     for (const auto &evt : thr_evt_sec.events) {
@@ -899,8 +906,7 @@ static std::map<uint64_t, phi::ThreadEvents> DockHostEventRecorderHostPart() {
   if (FLAGS_enable_host_event_recorder_hook == false) {
     return thr_events;
   }
-  auto host_evt_sec =
-      HostEventRecorder<phi::CommonEvent>::GetInstance().GatherEvents();
+  auto host_evt_sec = GatherCommonHostEvents();
   EmulateEventPushAndPop(host_evt_sec, &thr_events);
   EmulateCPURecordsAdd(host_evt_sec);
   return thr_events;
