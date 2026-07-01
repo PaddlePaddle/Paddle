@@ -79,10 +79,15 @@ inline void _pd_check_index(const at::Tensor& self,
   }
 }
 
-inline void _pd_check_scatter_reduce_shape(const at::Tensor& self,
-                                           const at::Tensor& index,
-                                           const at::Tensor& src,
-                                           int64_t normalized_dim) {
+inline bool _pd_check_scatter_reduce_inputs(const at::Tensor& self,
+                                            const at::Tensor& index,
+                                            const at::Tensor& src,
+                                            int64_t normalized_dim) {
+  PD_CHECK(self.scalar_type() == src.scalar_type(),
+           "scatter_reduce: self and src must have the same dtype.");
+  if (index.numel() == 0) {
+    return true;
+  }
   PD_CHECK(index.dim() == src.dim(),
            "scatter_reduce: index and src must have the same rank.");
   PD_CHECK(index.dim() == self.dim(),
@@ -103,6 +108,8 @@ inline void _pd_check_scatter_reduce_shape(const at::Tensor& self,
                ") for dimensions other than dim.");
     }
   }
+  _pd_check_index(self, index, normalized_dim);
+  return false;
 }
 
 // Convert PyTorch scatter_reduce reduce string to Paddle put_along_axis
@@ -136,8 +143,10 @@ inline at::Tensor scatter_reduce(const at::Tensor& self,
                                  bool include_self = true) {
   std::string paddle_reduce = detail::_pd_scatter_reduce_str(reduce);
   int normalized_dim = detail::_pd_normalize_dim(dim, self.dim());
-  detail::_pd_check_scatter_reduce_shape(self, index, src, normalized_dim);
-  detail::_pd_check_index(self, index, normalized_dim);
+  if (detail::_pd_check_scatter_reduce_inputs(
+          self, index, src, normalized_dim)) {
+    return self.clone();
+  }
   return Tensor(paddle::experimental::put_along_axis(self._PD_GetInner(),
                                                      index._PD_GetInner(),
                                                      src._PD_GetInner(),
@@ -167,8 +176,10 @@ inline at::Tensor& Tensor::scatter_reduce_(int64_t dim,
   auto& self = const_cast<at::Tensor&>(*this);
   std::string paddle_reduce = detail::_pd_scatter_reduce_str(reduce);
   int normalized_dim = detail::_pd_normalize_dim(dim, this->dim());
-  detail::_pd_check_scatter_reduce_shape(*this, index, src, normalized_dim);
-  detail::_pd_check_index(*this, index, normalized_dim);
+  if (detail::_pd_check_scatter_reduce_inputs(
+          *this, index, src, normalized_dim)) {
+    return self;
+  }
   paddle::experimental::put_along_axis_(self.tensor_,
                                         index._PD_GetInner(),
                                         src._PD_GetInner(),

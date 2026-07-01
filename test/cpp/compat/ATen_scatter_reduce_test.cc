@@ -591,6 +591,56 @@ TEST_F(ScatterReduceTest, ScatterReduceEmptyFloatIndex) {
   ASSERT_EQ(result.numel(), 0);
 }
 
+TEST_F(ScatterReduceTest, ScatterReduceEmptyIndexRankMismatch) {
+  at::Tensor self = at::zeros({2, 2}, at::kFloat);
+  float* self_data = self.data_ptr<float>();
+  self_data[0] = 1.0f;
+  self_data[1] = 2.0f;
+  self_data[2] = 3.0f;
+  self_data[3] = 4.0f;
+  at::Tensor index = at::empty({0}, at::kLong);
+  at::Tensor src = at::empty({0}, at::kFloat);
+
+  at::Tensor result = self.scatter_reduce(0, index, src, "sum");
+
+  ASSERT_EQ(result.sizes()[0], 2);
+  ASSERT_EQ(result.sizes()[1], 2);
+  ASSERT_EQ(result.numel(), 4);
+  float* result_data = result.data_ptr<float>();
+  ASSERT_FLOAT_EQ(result_data[0], 1.0f);
+  ASSERT_FLOAT_EQ(result_data[1], 2.0f);
+  ASSERT_FLOAT_EQ(result_data[2], 3.0f);
+  ASSERT_FLOAT_EQ(result_data[3], 4.0f);
+}
+
+TEST_F(ScatterReduceTest, ScatterReduceInplaceEmptyIndexRankMismatch) {
+  at::Tensor self = at::zeros({2, 2}, at::kFloat);
+  float* self_data = self.data_ptr<float>();
+  self_data[0] = 1.0f;
+  self_data[1] = 2.0f;
+  self_data[2] = 3.0f;
+  self_data[3] = 4.0f;
+  at::Tensor index = at::empty({0}, at::kLong);
+  at::Tensor src = at::empty({0}, at::kFloat);
+
+  self.scatter_reduce_(0, index, src, "sum");
+
+  self_data = self.data_ptr<float>();
+  ASSERT_FLOAT_EQ(self_data[0], 1.0f);
+  ASSERT_FLOAT_EQ(self_data[1], 2.0f);
+  ASSERT_FLOAT_EQ(self_data[2], 3.0f);
+  ASSERT_FLOAT_EQ(self_data[3], 4.0f);
+}
+
+TEST_F(ScatterReduceTest, ScatterReduceEmptyIndexSrcDtypeMismatchThrows) {
+  at::Tensor self = at::zeros({2, 2}, at::kFloat);
+  at::Tensor index = at::empty({0}, at::kLong);
+  at::Tensor src = at::empty({0}, at::kInt);
+
+  EXPECT_THROW(self.scatter_reduce(0, index, src, "sum"), std::exception);
+  EXPECT_THROW(self.scatter_reduce_(0, index, src, "sum"), std::exception);
+}
+
 TEST_F(ScatterReduceTest, ScatterReduceRankMismatchThrows) {
   at::Tensor self = at::zeros({2, 2}, at::kFloat);
   at::Tensor index = at::zeros({2}, at::kLong);
