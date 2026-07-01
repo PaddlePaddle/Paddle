@@ -19,7 +19,10 @@
 
 #include <vector>
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/api/include/api.h"
+
+COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace at {
 namespace detail {
@@ -61,7 +64,9 @@ inline std::vector<int64_t> compute_expand_strides(
 // expand - expands tensor to new size
 // PyTorch's expand works by right-aligning dimensions and broadcasting
 // dimensions with size 1 to the target size.
-// The result is a VIEW with stride=0 for broadcast dimensions.
+// The result is a VIEW with stride=0 for broadcast dimensions when stride
+// kernels are enabled.  Otherwise materialize the broadcast because Paddle's
+// non-stride-kernel path cannot consume stride-0 tensors reliably.
 inline Tensor expand(const Tensor& self,
                      at::IntArrayRef size,
                      bool implicit = false) {
@@ -120,6 +125,19 @@ inline Tensor expand(const Tensor& self,
                i,
                ".");
     }
+  }
+
+  if (!FLAGS_use_stride_kernel) {
+    auto input = self._PD_GetInner();
+    if (input_rank < target_rank) {
+      std::vector<int64_t> reshape_size(target_rank - input_rank, 1);
+      reshape_size.insert(
+          reshape_size.end(), input_sizes.begin(), input_sizes.end());
+      input = paddle::experimental::reshape(
+          input, paddle::experimental::IntArray(reshape_size));
+    }
+    return Tensor(paddle::experimental::expand(
+        input, paddle::experimental::IntArray(target_size_vec)));
   }
 
   // Compute PyTorch-style strides and create a view via as_strided

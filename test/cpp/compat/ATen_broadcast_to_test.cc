@@ -33,6 +33,19 @@ class TensorBroadcastToTest : public ::testing::Test {
   static void SetUpTestSuite() { paddle::prim::InitTensorOperants(); }
 };
 
+class UseStrideKernelGuard {
+ public:
+  explicit UseStrideKernelGuard(bool value)
+      : previous_(FLAGS_use_stride_kernel) {
+    FLAGS_use_stride_kernel = value;
+  }
+
+  ~UseStrideKernelGuard() { FLAGS_use_stride_kernel = previous_; }
+
+ private:
+  bool previous_;
+};
+
 }  // namespace
 
 // Helper: compute linear offset from logical index using strides
@@ -93,6 +106,25 @@ TEST_F(TensorBroadcastToTest, BroadcastToPreservesValue) {
   ASSERT_FLOAT_EQ(data[compute_offset(1, result)], 7.0f);  // [0,1]
   ASSERT_FLOAT_EQ(data[compute_offset(2, result)], 3.0f);  // [1,0]
   ASSERT_FLOAT_EQ(data[compute_offset(5, result)], 7.0f);  // [2,1]
+}
+
+TEST_F(TensorBroadcastToTest, BroadcastToMaterializedWhenStrideKernelDisabled) {
+  UseStrideKernelGuard guard(false);
+  at::Tensor t = at::empty({1, 2}, at::kFloat);
+  float* input_data = t.data_ptr<float>();
+  input_data[0] = 3.0f;
+  input_data[1] = 7.0f;
+
+  at::Tensor result = t.broadcast_to({3, 2});
+
+  ASSERT_EQ(result.sizes()[0], 3);
+  ASSERT_EQ(result.sizes()[1], 2);
+  ASSERT_NE(result.strides()[0], 0);
+  float* data = result.data_ptr<float>();
+  ASSERT_FLOAT_EQ(data[0], 3.0f);
+  ASSERT_FLOAT_EQ(data[1], 7.0f);
+  ASSERT_FLOAT_EQ(data[2], 3.0f);
+  ASSERT_FLOAT_EQ(data[5], 7.0f);
 }
 
 TEST_F(TensorBroadcastToTest, BroadcastToRankLess) {

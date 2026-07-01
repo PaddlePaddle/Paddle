@@ -33,6 +33,19 @@ class TensorExpandTest : public ::testing::Test {
   static void SetUpTestSuite() { paddle::prim::InitTensorOperants(); }
 };
 
+class UseStrideKernelGuard {
+ public:
+  explicit UseStrideKernelGuard(bool value)
+      : previous_(FLAGS_use_stride_kernel) {
+    FLAGS_use_stride_kernel = value;
+  }
+
+  ~UseStrideKernelGuard() { FLAGS_use_stride_kernel = previous_; }
+
+ private:
+  bool previous_;
+};
+
 }  // namespace
 
 // ======================== expand tests ========================
@@ -93,6 +106,46 @@ TEST_F(TensorExpandTest, ExpandNegativeOneLeadingError) {
   at::Tensor t = at::full({3}, 7.0f, at::kFloat);
 
   ASSERT_THROW(t.expand({-1, 4}), std::exception);
+}
+
+TEST_F(TensorExpandTest, ExpandMaterializedWhenStrideKernelDisabled) {
+  UseStrideKernelGuard guard(false);
+  at::Tensor t = at::empty({1, 2}, at::kFloat);
+  float* input_data = t.data_ptr<float>();
+  input_data[0] = 3.0f;
+  input_data[1] = 7.0f;
+
+  at::Tensor result = t.expand({3, 2});
+
+  ASSERT_EQ(result.sizes()[0], 3);
+  ASSERT_EQ(result.sizes()[1], 2);
+  ASSERT_NE(result.strides()[0], 0);
+  float* data = result.data_ptr<float>();
+  ASSERT_FLOAT_EQ(data[0], 3.0f);
+  ASSERT_FLOAT_EQ(data[1], 7.0f);
+  ASSERT_FLOAT_EQ(data[2], 3.0f);
+  ASSERT_FLOAT_EQ(data[5], 7.0f);
+}
+
+TEST_F(TensorExpandTest, ExpandLowRankMaterializedWhenStrideKernelDisabled) {
+  UseStrideKernelGuard guard(false);
+  at::Tensor t = at::full({1}, 5.0f, at::kFloat);
+
+  at::Tensor result = t.expand({2, 3});
+
+  ASSERT_EQ(result.sizes()[0], 2);
+  ASSERT_EQ(result.sizes()[1], 3);
+  ASSERT_NE(result.strides()[0], 0);
+  float* data = result.data_ptr<float>();
+  ASSERT_FLOAT_EQ(data[0], 5.0f);
+  ASSERT_FLOAT_EQ(data[5], 5.0f);
+}
+
+TEST_F(TensorExpandTest, ExpandInvalidStillThrowsWhenStrideKernelDisabled) {
+  UseStrideKernelGuard guard(false);
+  at::Tensor t = at::full({2, 3}, 1.0f, at::kFloat);
+
+  ASSERT_THROW(t.expand({2, 4}), std::exception);
 }
 
 // ======================== expand_as tests ========================
