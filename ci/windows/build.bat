@@ -57,6 +57,7 @@ set VSLANG=1033
 rem Configure the toolchain - depending on architecture.
 rem Configure the environment for 64-bit builds. 'DISTUTILS_USE_SDK' indicates that the user has selected the compiler.
 set DISTUTILS_USE_SDK=1
+if not defined WITH_ARM set "WITH_ARM=OFF"
 set "CMAKE_EXTRA_ARGS=-DWITH_ARM=%WITH_ARM%"
 if "%WITH_ARM%"=="ON" (
     if not defined vcvars64_dir set "vcvars64_dir=C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsarm64.bat" & echo vcvars64_dir=!vcvars64_dir!>> %GITHUB_ENV%
