@@ -28,6 +28,7 @@
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/interface.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/ir_deserialize.h"
+#include "paddle/fluid/pir/serialize_deserialize/include/schema.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/version_compat.h"
 #include "paddle/phi/common/port.h"
 #include "paddle/phi/core/tensor_meta.h"
@@ -55,8 +56,17 @@
 #define TRAINABLE "trainable"
 #define PIR "pir"
 
+namespace {
+void RegisterTestDialectIdsForTest() {
+  auto *dialect_id_map = pir::DialectIdMap::Instance();
+  dialect_id_map->insert(test::TestDialect::name(), "-1");
+  dialect_id_map->insert(test1::Test1Dialect::name(), "-2");
+}
+}  // namespace
+
 // Test for building patches.
 TEST(save_load_version_compat, op_patch_test) {
+  RegisterTestDialectIdsForTest();
   // (1) Init environment.
   pir::IrContext *ctx = pir::IrContext::Instance();
 
@@ -106,6 +116,7 @@ bool ReadModuleForTest(const std::string &file_path,
 
 // Test for attribute patch and op attribute modification.
 TEST(save_load_version_compat, attribute_patch_test1) {
+  RegisterTestDialectIdsForTest();
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<test::TestDialect>();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -180,6 +191,7 @@ TEST(save_load_version_compat, attribute_patch_test1) {
 }
 
 TEST(save_load_version_compat, attribute_patch_test2) {
+  RegisterTestDialectIdsForTest();
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<test1::Test1Dialect>();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -259,6 +271,7 @@ TEST(save_load_version_compat, attribute_patch_test2) {
 
 // Test for op I/O and op attribute modification.
 TEST(save_load_version_compat, op_patch_test1) {
+  RegisterTestDialectIdsForTest();
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<test::TestDialect>();
   ctx->GetOrRegisterDialect<test1::Test1Dialect>();
@@ -317,6 +330,7 @@ TEST(save_load_version_compat, op_patch_test1) {
 
 // Test for the combination of op I/O and op_pair patch for deleting value.
 TEST(save_load_version_compat, op_patch_test2) {
+  RegisterTestDialectIdsForTest();
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<test::TestDialect>();
   ctx->GetOrRegisterDialect<test1::Test1Dialect>();
@@ -357,6 +371,7 @@ TEST(save_load_version_compat, op_patch_test2) {
 
 // Test for op_pair patch for adding value.
 TEST(save_load_version_compat, op_patch_test3) {
+  RegisterTestDialectIdsForTest();
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<test::TestDialect>();
   ctx->GetOrRegisterDialect<test1::Test1Dialect>();
