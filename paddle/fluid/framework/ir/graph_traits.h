@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <cstddef>
+#include <iterator>
 #include <stack>
 #include <unordered_set>
 #include <utility>
@@ -48,8 +50,13 @@ class iterator_range {
 };
 
 // DFS iterator on nodes.
-struct NodesDFSIterator
-    : public std::iterator<std::forward_iterator_tag, Node *> {
+struct NodesDFSIterator {
+  using iterator_category = std::forward_iterator_tag;
+  using value_type = Node;
+  using difference_type = std::ptrdiff_t;
+  using pointer = Node *;
+  using reference = Node &;
+
   NodesDFSIterator() = default;
   explicit NodesDFSIterator(const std::vector<Node *> &source);
   NodesDFSIterator(NodesDFSIterator &&other) noexcept;
@@ -71,8 +78,13 @@ struct NodesDFSIterator
 };
 
 // Topological sorting iterator on nodes.
-struct NodesTSIterator
-    : public std::iterator<std::forward_iterator_tag, Node *> {
+struct NodesTSIterator {
+  using iterator_category = std::forward_iterator_tag;
+  using value_type = Node;
+  using difference_type = std::ptrdiff_t;
+  using pointer = Node *;
+  using reference = Node &;
+
   NodesTSIterator() = default;
   explicit NodesTSIterator(const std::vector<Node *> &source);
   NodesTSIterator(NodesTSIterator &&other)
