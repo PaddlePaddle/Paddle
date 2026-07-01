@@ -40,6 +40,23 @@ class TestSemiAutoParallelShardingStage1:
     def check_tensor_eq(self, a, b, rtol=1e-05, atol=0, verbose=True):
         np.testing.assert_allclose(a, b, rtol=rtol, atol=atol, verbose=verbose)
 
+    def _get_loss_value(self, loss):
+        return float(np.asarray(loss.numpy()).sum())
+
+    def _assert_maximize_loss_increase(
+        self, loss_before, loss_after, enable_tensor_fusion, maximize
+    ):
+        if not maximize:
+            return
+        if not loss_after > loss_before:
+            raise AssertionError(
+                "maximize=True should increase the loss on the first step, "
+                f"but enable_tensor_fusion={enable_tensor_fusion} gave "
+                f"before={loss_before:.8f}, after={loss_after:.8f}. "
+                "This strongly suggests the fused path is not applying "
+                "the expected gradient sign flip for maximize."
+            )
+
     def get_single_card_rst(self):
         self.set_random_seed()
         linear = paddle.nn.Linear(10, 10)
@@ -157,12 +174,27 @@ class TestSemiAutoParallelShardingStage1:
             model, opt = paddle.amp.decorate(
                 model, optimizers=opt, level='O2', master_grad=True
             )
-            for _ in range(5):
+            loss_before_step = None
+            loss_after_step = None
+            for step_id in range(5):
                 with paddle.amp.auto_cast(level='O2'):
                     loss = model(batch)
                     loss.backward()
+                    if maximize and step_id == 0:
+                        with paddle.no_grad():
+                            loss_before_step = self._get_loss_value(loss)
                     opt.step()
                     opt.clear_grad()
+                    if maximize and step_id == 0:
+                        with paddle.no_grad():
+                            loss_after_step = self._get_loss_value(model(batch))
+            if maximize:
+                self._assert_maximize_loss_increase(
+                    loss_before_step,
+                    loss_after_step,
+                    enable_tensor_fusion,
+                    maximize,
+                )
             return loss.numpy()
 
         dist.init_parallel_env()
@@ -175,7 +207,14 @@ class TestSemiAutoParallelShardingStage1:
         loss_enable = run_sharding_test(
             enable_tensor_fusion=True, maximize=True
         )
-        self.check_tensor_eq(loss_disable, loss_enable)
+        try:
+            self.check_tensor_eq(loss_disable, loss_enable)
+        except AssertionError as e:
+            raise AssertionError(
+                "The fused and non-fused sharding paths diverged under "
+                "maximize=True. This is likely caused by a missing or "
+                "incorrect gradient sign flip in the tensor-fusion path."
+            ) from e
         os.environ['FLAGS_enable_tensor_fusion'] = '0'
 
     def test_pure_sharding_multi_mesh_stage_1_with_tensor_fusion_with_chip(
