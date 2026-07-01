@@ -16,48 +16,76 @@
 
 #if defined(PADDLE_WITH_CUDA)
 
-#include <mutex>
 #include <unordered_map>
 #include <vector>
 
 #include "paddle/phi/backends/dynload/cuda_driver.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/memory/allocation/allocator.h"
+#include "paddle/phi/core/memory/allocation/spin_lock.h"
 #include "paddle/phi/core/memory/allocation/vmm_allocator_v2_types.h"
+#include "paddle/phi/core/memory/allocation/vmm_backing_map.h"
 
 namespace paddle {
 namespace memory {
 namespace allocation {
 
 // Compared with CUDAVirtualMemAllocator, V2 does not expose a single
-// VA<->handle mapping per allocation. Instead it returns a lightweight
-// HandleLayout (a handle list) for one allocation. Upper layers later
-// transform that list into block-level BlockPartV2 state.
+// VA<->handle mapping per allocation. It keeps the handle layout registered in
+// the bottom allocator and hands upper layers either allocation-level layout
+// snapshots or materialized mapped-free BlockV2 views.
 class CUDAVirtualMemAllocatorV2 : public Allocator {
  public:
-  // Standalone use defaults to the transient pool. Upper layers may still
-  // override this explicitly when routing by lifecycle.
+  struct AllocationWithLayout {
+    DecoratedAllocationPtr allocation;
+    HandleLayout layout;
+  };
+
+  struct AllocationWithBlock {
+    bool HasAllocation() const { return allocation != nullptr; }
+    BlockV2 TakeBlock() { return std::move(block); }
+    DecoratedAllocationPtr TakeAllocation() { return std::move(allocation); }
+
+    DecoratedAllocationPtr allocation;
+    BlockV2 block;
+  };
+
+  struct AllocationLayoutRegistry {
+    void Add(void* ptr, const HandleLayout& layout);
+    bool Lookup(void* ptr, HandleLayout* layout) const;
+    void Remove(void* ptr);
+
+   private:
+    std::unordered_map<void*, HandleLayout> layouts_;
+    mutable SpinLock spinlock_;
+  };
+
+  // Standalone use defaults to the large pool. Upper layers may also choose
+  // explicit small/large pool types.
   CUDAVirtualMemAllocatorV2(const GPUPlace& place,
                             size_t handle_size,
-                            PoolType pool = PoolType::kTransient);
+                            PoolType pool = PoolType::kLarge);
 
   bool IsAllocThreadSafe() const override;
 
   size_t handle_size() const { return handle_size_; }
   PoolType pool_type() const { return pool_type_; }
-  VmmDevicePtr virtual_mem_base() const { return virtual_mem_base_; }
+  VMMDevicePtr virtual_mem_base() const { return virtual_mem_base_; }
   size_t virtual_mem_size() const { return virtual_mem_size_; }
   size_t tail_offset() const { return virtual_mem_alloced_offset_; }
-  // Best-fit/remap layers may consume VA from the reserved range incrementally.
-  // V2 keeps this as an explicit cursor instead of reusing V1's
+  // Best-fit layers may consume VA from the reserved range incrementally. V2
+  // keeps this as an explicit cursor instead of reusing V1's
   // virtual_2_physical_map_ bookkeeping.
   void AdvanceTailOffset(size_t bytes) { virtual_mem_alloced_offset_ += bytes; }
+  // Retreat the tail cursor after upper layers release tail-end backing.
+  void SetTailOffset(size_t offset) { virtual_mem_alloced_offset_ = offset; }
 
-  void UnmapHandle(VmmDevicePtr ptr, size_t size);
-  void MapHandlesToVA(VmmDevicePtr ptr, const std::vector<VmmAllocHandle>& hs);
-  // Exposes the allocation-level handle list for IPC/export queries. The key
-  // is the raw allocation ptr returned by this allocator.
-  bool CollectAllocationHandleLayout(void* ptr, HandleLayout* layout) const;
+  const GPUPlace& place() const { return place_; }
+  AllocationWithBlock AppendWithBlock(size_t size);
+  // Create fresh physical backing and map it at an existing reserved VA range.
+  // This is used by upper layers to reuse unmapped-free VA space in place.
+  AllocationWithBlock PlaceAtVAWithBlock(VMMDevicePtr ptr, size_t size);
+  bool IsRangeReleasable(VMMDevicePtr ptr, size_t size) const;
 
  protected:
   phi::Allocation* AllocateImpl(size_t size) override;
@@ -65,7 +93,29 @@ class CUDAVirtualMemAllocatorV2 : public Allocator {
 
  private:
   void InitOnce();
+  void RollbackCreatedHandles(const HandleLayout& layout) const;
+  void MarkLayoutMapped(const HandleLayout& layout);
+  AllocationWithLayout AppendWithLayout(size_t size);
+  AllocationWithLayout PlaceAtVAWithLayout(VMMDevicePtr ptr, size_t size);
+  HandleLayout CreateMappedHandleLayout(VMMDevicePtr ptr,
+                                        size_t aligned_size,
+                                        const char* context);
+  void SetAccessOrThrow(VMMDevicePtr ptr,
+                        size_t aligned_size,
+                        size_t num_handles,
+                        const char* context);
+  bool CollectAllocationHandleLayout(void* ptr, HandleLayout* layout) const;
+  AllocationWithLayout WrapTrackedAllocation(VMMDevicePtr ptr,
+                                             size_t size,
+                                             HandleLayout layout,
+                                             bool advance_tail);
+  AllocationWithBlock BuildAllocationWithBlock(
+      AllocationWithLayout allocation_with_layout);
+  Allocation* CreateTrackedAllocation(VMMDevicePtr ptr,
+                                      size_t size,
+                                      const HandleLayout& layout);
   void RegisterHandleLayout(void* ptr, const HandleLayout& layout);
+  HandleLayout RequireHandleLayout(void* ptr) const;
   void UnregisterHandleLayout(void* ptr);
 
   GPUPlace place_;
@@ -73,15 +123,15 @@ class CUDAVirtualMemAllocatorV2 : public Allocator {
   PoolType pool_type_;
   std::once_flag init_flag_;
 
-  VmmDevicePtr virtual_mem_base_{0};
+  VMMDevicePtr virtual_mem_base_{0};
   size_t virtual_mem_size_{0};
   size_t virtual_mem_alloced_offset_{0};
   size_t granularity_{0};
   CUmemAllocationProp prop_{};
   std::vector<CUmemAccessDesc> access_desc_;
 
-  mutable std::unordered_map<void*, HandleLayout> allocation_layout_map_;
-  mutable std::mutex allocation_layout_mu_;
+  AllocationLayoutRegistry allocation_layouts_;
+  VMMBackingMap backing_map_;
 };
 
 }  // namespace allocation
