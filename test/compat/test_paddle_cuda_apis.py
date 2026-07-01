@@ -14,7 +14,7 @@
 
 import sys
 import unittest
-from unittest import TestCase
+from unittest import TestCase, mock
 
 import paddle
 
@@ -357,6 +357,26 @@ class TestSetDevice(TestCase):
             )
         finally:
             paddle.device.set_device(original_device)
+
+    def test_set_device_int_xpu_fallback_when_place_is_cpu(self):
+        """cuda.set_device(int) falls back to 'xpu:{i}' when the current place
+        is CPU and Paddle is compiled with XPU (but not CUDA)
+        """
+        with (
+            mock.patch(
+                'paddle.cuda.framework._current_expected_place_',
+                return_value=paddle.CPUPlace(),
+            ),
+            mock.patch(
+                'paddle.cuda.core.is_compiled_with_cuda', return_value=False
+            ),
+            mock.patch(
+                'paddle.cuda.core.is_compiled_with_xpu', return_value=True
+            ),
+            mock.patch('paddle.cuda.paddle_device.set_device') as mock_set,
+        ):
+            paddle.cuda.set_device(0)
+            mock_set.assert_called_once_with('xpu:0')
 
     def test_set_device_with_str_param(self):
         """Test that set_device works with string parameter."""
