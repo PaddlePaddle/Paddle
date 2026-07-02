@@ -419,11 +419,14 @@ def greater_equal_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
 
 @inplace_apis_in_dygraph_only
+@param_two_alias(["x", "input"], ["y", "other"])
 def greater_than_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``greater_than`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_greater_than`.
     """
+    if not isinstance(y, paddle.Tensor):
+        y = paddle.to_tensor([y], dtype=x.dtype)
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
         raise ValueError(

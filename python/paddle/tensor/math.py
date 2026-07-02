@@ -3224,6 +3224,7 @@ def clip(
 
 
 @inplace_apis_in_dygraph_only
+@param_one_alias(["x", "input"])
 def clip_(
     x: Tensor,
     min: float | None = None,

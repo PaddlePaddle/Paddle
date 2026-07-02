@@ -2739,5 +2739,43 @@ class TestDistributedSamplerAPI(unittest.TestCase):
         self.assertEqual(len(batches0), len(batches1))
 
 
+# Edit By AI Agent
+# Test expand_copy compatibility
+class TestExpandCopyAPI(unittest.TestCase):
+    def setUp(self):
+        self.x = paddle.to_tensor([1, 2, 3], dtype='int32')
+
+    def test_dygraph(self):
+        paddle.disable_static()
+        # Test 1: positional arguments
+        out1 = paddle.expand_copy(self.x, shape=[2, 3])
+        self.assertEqual(out1.shape, [2, 3])
+
+        # Test 2: keyword arguments (PyTorch alias)
+        out2 = paddle.expand_copy(x=self.x, shape=[2, 3])
+        self.assertEqual(out2.shape, [2, 3])
+
+        # Test 3: Tensor method
+        out3 = self.x.expand_copy(shape=[2, 3])
+        self.assertEqual(out3.shape, [2, 3])
+
+        # Test 4: expand_copy with -1 (keep dim)
+        out4 = paddle.expand_copy(self.x, shape=[2, -1])
+        self.assertEqual(out4.shape, [2, 3])
+
+        # Test 5: expand_copy with same shape (no-op)
+        out5 = paddle.expand_copy(self.x, shape=[3])
+        self.assertEqual(out5.shape, [3])
+
+        # Verify that result equals expand
+        ref = paddle.expand(self.x, shape=[2, 3])
+        self.assertTrue(paddle.equal_all(out1, ref))
+
+        # Verify stop_gradient
+        x = paddle.to_tensor([1.0, 2.0, 3.0], stop_gradient=False)
+        out = paddle.expand_copy(x, shape=[2, 3])
+        self.assertFalse(out.stop_gradient)
+
+
 if __name__ == '__main__':
     unittest.main()

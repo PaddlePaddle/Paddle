@@ -2992,6 +2992,86 @@ class TestReLU6API(unittest.TestCase):
                 np.testing.assert_allclose(out, expected, rtol=1e-6)
 
 
+class TestELUAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-1.0, 0.0, 1.0, 2.0], dtype="float32")
+
+    def _expected(self):
+        return np.where(
+            self.np_x > 0, self.np_x, 1.0 * (np.exp(self.np_x) - 1.0)
+        )
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle keyword arguments
+        out1 = paddle.nn.ELU()(x)
+        # 2. PyTorch positional arguments
+        out2 = paddle.nn.ELU(1.0)(x)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.nn.ELU(alpha=1.0)(input=x)
+        # 4. Mixed arguments
+        out4 = paddle.nn.ELU(alpha=1.0)(x)
+        # 5. Functional Paddle positional arguments
+        out5 = paddle.nn.functional.elu(x)
+        # 6. Functional Paddle keyword arguments
+        out6 = paddle.nn.functional.elu(x=x, alpha=1.0)
+        # 7. Functional PyTorch keyword arguments (alias)
+        out7 = paddle.nn.functional.elu(input=x, alpha=1.0)
+
+        expected = self._expected()
+        for out in [out1, out2, out3, out4, out5, out6, out7]:
+            np.testing.assert_allclose(out.numpy(), expected, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_inplace(self):
+        paddle.disable_static()
+        expected = self._expected()
+
+        x = paddle.to_tensor(self.np_x)
+        out = paddle.nn.ELU(inplace=True)(x)
+        self.assertIs(out, x)
+        np.testing.assert_allclose(x.numpy(), expected, rtol=1e-6)
+
+        x = paddle.to_tensor(self.np_x)
+        out = paddle.nn.functional.elu(x, inplace=True)
+        self.assertIs(out, x)
+        np.testing.assert_allclose(x.numpy(), expected, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=self.np_x.shape, dtype=str(self.np_x.dtype)
+            )
+
+            # 1. Paddle keyword arguments
+            out1 = paddle.nn.ELU()(x)
+            # 2. PyTorch keyword arguments (alias)
+            out2 = paddle.nn.ELU(alpha=1.0)(input=x)
+            # 3. Functional Paddle positional arguments
+            out3 = paddle.nn.functional.elu(x)
+            # 4. Functional PyTorch keyword arguments (alias)
+            out4 = paddle.nn.functional.elu(input=x, alpha=1.0)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3, out4],
+            )
+
+            expected = self._expected()
+            for out in fetches:
+                np.testing.assert_allclose(out, expected, rtol=1e-6)
+
+
 class TestPReLUAPI(unittest.TestCase):
     def setUp(self):
         self.np_x = np.array(

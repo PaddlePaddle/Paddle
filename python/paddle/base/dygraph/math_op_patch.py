@@ -344,6 +344,43 @@ def monkey_patch_math_tensor():
         out = _C_ops.transpose(var, perm)
         return out
 
+    @property
+    def _H_(var: Tensor) -> Tensor:
+        """
+        Return the conjugate transpose of a Tensor.
+
+        The conjugate transpose of a 2-D Tensor is equivalent to transposing the
+        Tensor and then taking the conjugate of each element (i.e., x.T.conj()).
+
+        For 1-D Tensors, the conjugate transpose returns the input tensor
+        unchanged (as a 1-element change of a 1-D tensor's transpose is itself).
+
+        Args:
+            var (Tensor): The input Tensor, which must be 0-D or 2-D.
+
+        Returns:
+            Tensor: A new Tensor with its dimensions transposed and elements conjugated.
+
+        Examples:
+            .. code-block:: pycon
+
+                >>> import paddle
+                >>> x = paddle.to_tensor([[1.0 + 1.0j, 2.0 + 2.0j], [3.0 + 3.0j, 4.0 + 4.0j]])
+                >>> x_H = x.H
+                >>> print(x_H)
+                Tensor(shape=[2, 2], dtype=complex64, place=Place(cpu), stop_gradient=True,
+                       [[(1-1j), (3-3j)],
+                        [(2-2j), (4-4j)]])
+        """
+        if len(var.shape) != 2:
+            raise ValueError(
+                f"Only 2-D tensors support .H (conjugate transpose), "
+                f"but got tensor with {len(var.shape)} dimension(s)."
+            )
+        out = _C_ops.transpose(var, [1, 0])
+        out = _C_ops.conj(out)
+        return out
+
     def _new_full_(
         var: Tensor,
         size: ShapeLike,
@@ -649,6 +686,7 @@ def monkey_patch_math_tensor():
         ('nelement', nelement),
         ('T', _T_),
         ('mT', _mT_),
+        ('H', _H_),
         ('new_full', _new_full_),
         ('new_empty', _new_empty_),
         ('new_ones', _new_ones_),

@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING
 
 import paddle
@@ -37,6 +38,46 @@ if TYPE_CHECKING:
 
 
 __all__ = []
+
+
+class _Loss(Layer):
+    r"""
+    Base class for all loss functions.
+
+    Parameters:
+        size_average (bool|None, optional): Deprecated (see ``reduction``). Default is ``None``.
+        reduce (bool|None, optional): Deprecated (see ``reduction``). Default is ``None``.
+        reduction (str, optional): Indicate how to calculate the loss, the candidates
+            are ``'none'`` | ``'mean'`` | ``'sum'``. Default is ``'mean'``.
+    """
+
+    reduction: _ReduceMode
+
+    def __init__(
+        self,
+        size_average: bool | None = None,
+        reduce: bool | None = None,
+        reduction: str = 'mean',
+    ) -> None:
+        super().__init__()
+        if size_average is not None or reduce is not None:
+            reduction = (
+                'none'
+                if reduce is False
+                else ('sum' if size_average is False else 'mean')
+            )
+            warnings.warn(
+                "'size_average' and 'reduce' args will be deprecated, "
+                f"please use reduction='{reduction}' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        if reduction not in ['sum', 'mean', 'none']:
+            raise ValueError(
+                "'reduction' should be 'sum', 'mean' or 'none', "
+                f"but received {reduction}."
+            )
+        self.reduction = reduction
 
 
 class BCEWithLogitsLoss(Layer):
@@ -640,7 +681,7 @@ class HSigmoidLoss(Layer):
         return out
 
 
-class MSELoss(Layer):
+class MSELoss(_Loss):
     r"""
     **Mean Square Error Loss**
     Computes the mean square error (squared L2 norm) of given input and label.
@@ -690,21 +731,6 @@ class MSELoss(Layer):
 
     """
 
-    reduction: _ReduceMode
-
-    @legacy_reduction_decorator(
-        overload_args_list=['size_average', 'reduce', 'reduction'],
-        is_method=True,
-    )
-    def __init__(self, reduction: _ReduceMode = 'mean'):
-        super().__init__()
-        if reduction not in ['sum', 'mean', 'none']:
-            raise ValueError(
-                "'reduction' in 'MSELoss' should be 'sum', 'mean' or 'none', "
-                f"but received {reduction}."
-            )
-        self.reduction = reduction
-
     def forward(self, input: Tensor, label: Tensor) -> Tensor:
         if not in_dynamic_mode():
             base.data_feeder.check_variable_and_dtype(
@@ -729,7 +755,7 @@ class MSELoss(Layer):
         return paddle.mean(square_out)
 
 
-class L1Loss(Layer):
+class L1Loss(_Loss):
     r"""
 
     Construct a callable object of the ``L1Loss`` class.
@@ -796,29 +822,8 @@ class L1Loss(Layer):
 
     """
 
-    reduction: _ReduceMode
-    name: str | None
-
-    @legacy_reduction_decorator(
-        overload_args_list=['size_average', 'reduce', 'reduction'],
-        is_method=True,
-    )
-    def __init__(
-        self, reduction: _ReduceMode = 'mean', name: str | None = None
-    ) -> None:
-        if reduction not in ['sum', 'mean', 'none']:
-            raise ValueError(
-                "The value of 'reduction' in L1Loss should be 'sum', 'mean' or 'none', but "
-                f"received {reduction}, which is not allowed."
-            )
-        super().__init__()
-        self.reduction = reduction
-        self.name = name
-
     def forward(self, input: Tensor, label: Tensor) -> Tensor:
-        return paddle.nn.functional.l1_loss(
-            input, label, self.reduction, name=self.name
-        )
+        return paddle.nn.functional.l1_loss(input, label, self.reduction)
 
 
 class BCELoss(Layer):

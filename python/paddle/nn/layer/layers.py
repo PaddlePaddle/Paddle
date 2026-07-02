@@ -3932,5 +3932,42 @@ class Layer:
             if p.grad is not None:
                 p.clear_gradient(not set_to_none)
 
+    def to_empty(
+        self, device: PlaceLike | None = None, recurse: bool = True
+    ) -> Self:
+        """
+        Move the parameters and buffers to the specified device without copying storage.
+
+        Re-creates the parameters and buffers as empty tensors on the target device.
+
+        Args:
+            device (PlaceLike, optional): The device to move parameters and buffers to.
+                If None, the current device is used. Default: None.
+            recurse (bool, optional): Whether to recursively process sublayers.
+                Default: True.
+
+        Returns:
+            Layer: self
+        """
+        if recurse:
+            for layer in self.children():
+                layer.to_empty(device, recurse=True)
+
+        for key, param in self._parameters.items():
+            if param is not None:
+                with no_grad():
+                    empty_param = paddle.empty_like(param, device=device)
+                    self._parameters[key] = type(param)(
+                        empty_param,
+                        name=param.name,
+                        regularizer=param.regularizer,
+                    )
+
+        for key, buf in self._buffers.items():
+            if buf is not None:
+                self._buffers[key] = paddle.empty_like(buf, device=device)
+
+        return self
+
     def _get_name(self):
         return self.__class__.__name__

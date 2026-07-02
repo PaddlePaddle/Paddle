@@ -2478,9 +2478,13 @@ def hstack(
         arrays = [arrays]
 
     if arrays and arrays[0].ndim == 1:
-        return paddle.concat(arrays, axis=0, name=name)
+        result = paddle.concat(arrays, axis=0, name=name)
     else:
-        return paddle.concat(arrays, axis=1, name=name)
+        result = paddle.concat(arrays, axis=1, name=name)
+    if out is not None:
+        paddle.assign(result, out)
+        return out
+    return result
 
 
 @param_one_alias(["x", "tensors"])
@@ -2559,7 +2563,11 @@ def vstack(
     if not isinstance(arrays, list):
         arrays = [arrays]
 
-    return paddle.concat(arrays, axis=0, name=name)
+    result = paddle.concat(arrays, axis=0, name=name)
+    if out is not None:
+        paddle.assign(result, out)
+        return out
+    return result
 
 
 @param_one_alias(["x", "tensors"])
@@ -2622,7 +2630,11 @@ def dstack(
     if not isinstance(arrays, list):
         arrays = [arrays]
 
-    return paddle.concat(arrays, axis=2, name=name)
+    result = paddle.concat(arrays, axis=2, name=name)
+    if out is not None:
+        paddle.assign(result, out)
+        return out
+    return result
 
 
 @param_one_alias(["x", "tensors"])
@@ -5433,6 +5445,9 @@ def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
             type='expand_v2', inputs=inputs, outputs={'Out': out}, attrs=attrs
         )
         return out
+
+
+expand_copy = expand
 
 
 @overload

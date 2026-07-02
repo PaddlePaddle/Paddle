@@ -104,6 +104,7 @@ class ELU(Layer):
 
     Parameters:
         alpha (float, optional): The 'alpha' value of the ELU formulation. Default is 1.0.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -123,19 +124,33 @@ class ELU(Layer):
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-0.12642412,  6.        ],
              [ 1.        , 15.60000038]])
+            >>> m = paddle.nn.ELU(0.2, True)
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.12642412,  6.        ],
+             [ 1.        , 15.60000038]])
+            >>> print(x)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.12642412,  6.        ],
+             [ 1.        , 15.60000038]])
     """
 
-    def __init__(self, alpha: float = 1.0, name: str | None = None) -> None:
+    def __init__(
+        self, alpha: float = 1.0, inplace: bool = False, name: str | None = None
+    ) -> None:
         super().__init__()
         self._alpha = alpha
+        self._inplace = inplace
         self._name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
-        return F.elu(x, self._alpha, self._name)
+        return F.elu(x, self._alpha, self._inplace, self._name)
 
     def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
-        return f'alpha={self._alpha}{name_str}'
+        return f'alpha={self._alpha}, inplace={self._inplace}{name_str}'
 
 
 class GLU(Layer):

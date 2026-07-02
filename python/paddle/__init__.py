@@ -515,6 +515,7 @@ from .tensor.manipulation import (
     dstack,
     expand,
     expand_as,
+    expand_copy,
     flatten,
     flatten_,
     flip,
@@ -623,6 +624,7 @@ from .tensor.math import (  # noqa: F401
     cartesian_prod,
     ceil,
     clip,
+    clip_,
     combinations,
     conj,
     copysign,
@@ -768,6 +770,7 @@ from .tensor.math import (  # noqa: F401
     trace,
     trapezoid,
     true_divide,
+    true_divide_,
     trunc,
     trunc_,
     vander,
@@ -1055,6 +1058,7 @@ cat = concat
 concatenate = concat
 take_along_dim = take_along_axis
 clamp = clip
+clamp_ = clip_
 ger = outer
 div = divide
 div_ = divide_
@@ -1079,6 +1083,67 @@ mvlgamma = multigammaln
 mvlgamma_ = multigammaln_
 negative_ = neg_
 pinverse = pinv
+
+
+def clamp_max(x, max=None, *, out=None):
+    """
+    Clamps all elements in input into the range [min=None, max].
+
+    This is a wrapper around ``paddle.clip`` that only sets the upper bound.
+
+    Args:
+        x (Tensor): The input Tensor. Alias: input.
+        max (float|Tensor): The upper bound.
+        out (Tensor|None, optional): The output Tensor. Default: None.
+
+    Returns:
+        Tensor: The clamped Tensor.
+    """
+    return clip(x, min=None, max=max, name=None, out=out)
+
+
+def qr(input, some=True, *, out=None):
+    """
+    Computes the QR decomposition of one or a batch of matrices.
+
+    This is a wrapper around ``paddle.linalg.qr`` with PyTorch-compatible
+    ``some`` parameter.
+
+    Args:
+        input (Tensor): The input tensor of shape ``[*, M, N]``.
+        some (bool, optional): Controls the shape of Q and R. If ``True`` (default),
+            returns reduced QR (Q: ``[*, M, K]``, R: ``[*, K, N]`` where ``K = min(M, N)``).
+            If ``False``, returns complete QR (Q: ``[*, M, M]``, R: ``[*, M, N]``).
+        out (tuple[Tensor, Tensor]|None, optional): The output tuple of (Q, R). Default: None.
+
+    Returns:
+        tuple[Tensor, Tensor]: A tuple (Q, R).
+    """
+    return linalg.qr(
+        input,
+        mode='reduced' if some else 'complete',
+        out=out,
+    )
+
+
+def logdet(x, name=None):
+    """
+    Computes the natural logarithm of the determinant of a square matrix or
+    batches of square matrices.
+
+    For matrices with negative determinant, returns ``nan``.
+    For matrices with zero determinant, returns ``-inf``.
+
+    Args:
+        x (Tensor): The input tensor of shape ``[*, n, n]`` where ``*``
+            is zero or more batch dimensions.
+        name (str|None, optional): Name for the operation. Default: None.
+
+    Returns:
+        Tensor: The log-determinant of ``x``, with shape ``[*]``.
+    """
+    return linalg.det(x).log()
+
 
 __all__ = [
     'block_diag',
@@ -1215,7 +1280,10 @@ __all__ = [
     'less_',
     'kron',
     'clip',
+    'clip_',
     'clamp',
+    'clamp_',
+    'clamp_max',
     'Tensor',
     'FloatTensor',
     'DoubleTensor',
@@ -1329,6 +1397,7 @@ __all__ = [
     'CPUPlace',
     'matmul',
     'pinverse',
+    'qr',
     'seed',
     'acos',
     'acos_',
@@ -1377,6 +1446,7 @@ __all__ = [
     'sub',
     'sub_',
     'true_divide',
+    'true_divide_',
     'gammaln',
     'gammaln_',
     'ceil',
@@ -1457,6 +1527,7 @@ __all__ = [
     'set_default_tensor_type',
     'disable_signal_handler',
     'expand_as',
+    'expand_copy',
     'stack',
     'hstack',
     'vstack',
@@ -1488,6 +1559,7 @@ __all__ = [
     'cosh',
     'log',
     'log_',
+    'logdet',
     'log2',
     'log2_',
     'log10',

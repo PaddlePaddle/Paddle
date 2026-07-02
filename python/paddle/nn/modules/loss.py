@@ -12,8 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import (
-    loss,  # noqa: F401
-    utils,  # noqa: F401
-)
-from .module import Module  # noqa: F401
+from paddle.nn.layer.loss import _Loss  # noqa: F401

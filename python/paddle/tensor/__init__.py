@@ -81,7 +81,6 @@ from .linalg import (  # noqa: F401
     dist,
     dot,
     eig,
-    eigh,
     eigvals,
     eigvalsh,
     histogram,
@@ -176,6 +175,7 @@ from .manipulation import (  # noqa: F401
     dstack,
     expand,
     expand_as,
+    expand_copy,
     flatten,
     flatten_,
     flip,
@@ -523,6 +523,7 @@ ge = greater_equal
 sub = subtract
 sub_ = subtract_
 clamp_ = clip_
+true_divide_ = divide_
 movedim = moveaxis
 mod = remainder
 floor_mod = remainder
@@ -667,6 +668,7 @@ tensor_method_func = [
     'sub',
     'sub_',
     'true_divide',
+    'true_divide_',
     'floor_divide',
     'floor_divide_',
     'remainder',
@@ -755,6 +757,7 @@ tensor_method_func = [
     'expand',
     'broadcast_to',
     'expand_as',
+    'expand_copy',
     'ravel',
     'flatten',
     'flatten_',

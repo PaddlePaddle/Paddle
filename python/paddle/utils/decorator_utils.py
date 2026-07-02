@@ -301,6 +301,59 @@ def conv_transpose_layer_decorator(
     return wrapper
 
 
+def gumbel_softmax_decorator(
+    func: Callable[_InputT, _RetT],
+) -> Callable[_InputT, _RetT]:
+    """
+    Decorator for ``gumbel_softmax`` that handles parameter aliases
+    between PyTorch and Paddle signatures.
+
+    PyTorch: ``torch.nn.functional.gumbel_softmax(logits, tau=1, hard=False, eps=1e-10, dim=-1)``
+    Paddle:  ``paddle.nn.functional.gumbel_softmax(x, temperature=1.0, hard=False, axis=-1, name=None)``
+
+    This decorator handles:
+    - ``logits`` -> ``x``
+    - ``tau`` -> ``temperature``
+    - ``dim`` -> ``axis``
+    - ``eps`` is stripped (deprecated no-op in PyTorch)
+    """
+
+    @functools.wraps(func)
+    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+        # Strip eps (deprecated no-op parameter)
+        kwargs.pop("eps", None)
+
+        # Parameter alias mapping
+        if "logits" in kwargs and "x" not in kwargs:
+            kwargs["x"] = kwargs.pop("logits")
+        if "tau" in kwargs and "temperature" not in kwargs:
+            kwargs["temperature"] = kwargs.pop("tau")
+        if "dim" in kwargs and "axis" not in kwargs:
+            kwargs["axis"] = kwargs.pop("dim")
+
+        # Handle 5 positional args PyTorch style: (logits, tau, hard, eps, dim)
+        if len(args) == 5:
+            x, temperature, hard, _eps, axis = args
+            return func(x, temperature, hard, axis)
+
+        # Handle 4 positional args PyTorch style: (logits, tau, hard, eps)
+        # or (logits, tau, hard, dim).
+        # The 4th arg could be eps (float, strip it) or dim (int, map to axis).
+        if len(args) == 4:
+            x, temperature, hard, fourth = args
+            if isinstance(fourth, (int,)):
+                return func(x, temperature, hard, fourth)
+            else:
+                return func(x, temperature, hard)
+
+        # For all other cases (Paddle-style positional or keyword-only),
+        # pass through after alias mapping
+        return func(*args, **kwargs)
+
+    wrapper.__signature__ = inspect.signature(func)
+    return wrapper
+
+
 def param_two_alias_one_default(
     alias_list1: list[str], alias_list2: list[str], default_param: list[str]
 ) -> Callable[[Callable[_InputT, _RetT]], Callable[_InputT, _RetT]]:
