@@ -1383,7 +1383,7 @@ void ReduceGpuKernel(const KPDevice& dev_ctx,
   dense_iter_config.add_const_input(x);
   DenseTensorIterator iter = dense_iter_config.build();
 
-  using MPType = typename MPTypeTrait<Ty>::Type;
+  using MPType = typename phi::dtype::MPTypeTrait<Ty>::Type;
 
   // TODO(baoqiwen): When ReduceOp is WelfordOps, kVecSize is 2.
   constexpr int kVecSize = 4;
