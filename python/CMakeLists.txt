@@ -40,6 +40,10 @@ if(WIN32)
     DEPENDS libpaddle
     COMMENT "Copying ${TARGET_DIR}/${FLUID_CORE_NAME} to ${FLUID_CORE}")
   # generate new lib based on libpaddle.pyd
+  set(_LIBPADDLE_MACHINE x64)
+  if(WITH_ARM)
+    set(_LIBPADDLE_MACHINE arm64)
+  endif()
   add_custom_command(
     OUTPUT ${FLUID_CORE_LIB}
     COMMAND dumpbin /exports ${FLUID_CORE} > ${TARGET_DIR}/exports.txt
@@ -58,7 +62,7 @@ if(WIN32)
                    >>
                    ${TARGET_DIR}/libpaddle.def) && echo on
     COMMAND lib /def:${TARGET_DIR}/libpaddle.def /out:${FLUID_CORE_LIB}
-            /machine:x64
+            /machine:${_LIBPADDLE_MACHINE}
     COMMENT "Generate libpaddle.lib manually--->"
     DEPENDS ${FLUID_CORE}
     VERBATIM)
