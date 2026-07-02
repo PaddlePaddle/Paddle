@@ -99,15 +99,6 @@ jobs:
       can-skip: ${{ needs.clone.outputs.can-skip == 'true' }}
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
 
-  api-benchmark:
-    name: Api-Benchmark
-    uses: ./.github/workflows/_Api-Benchmark.yml
-    needs: [clone, build-docker, build]
-    with:
-      build-can-skip: ${{ needs.build.outputs.can-skip }}
-      can-skip: ${{ needs.clone.outputs.can-skip == 'true' }}
-      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
-
   # auto-parallel:
   #   name: Auto-Parallel
   #   uses: ./.github/workflows/_Auto-Parallel.yml

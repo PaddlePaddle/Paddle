@@ -286,16 +286,6 @@ jobs:
           REPO: ${{ github.event.repository.name }}
           JOB_NAME: 'CE-Framework / Test'
 
-      - name: Rerun Api-Benchmark
-        if: ${{ contains(github.event.comment.body, 'api-benchmark') }}
-        uses: ./.github/actions/rerun-workflow
-        with:
-          PR_ID: ${{ github.event.issue.number }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OWNER: ${{ github.repository_owner }}
-          REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Api-Benchmark / Check bypass / Check bypass'
-
       - name: Rerun Doc-Preview
         if: ${{ contains(github.event.comment.body, 'doc') && contains(github.event.comment.body, 'preview') }}
         uses: ./.github/actions/rerun-workflow
