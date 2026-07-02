@@ -39,6 +39,16 @@ inline at::Tensor take(const at::Tensor& self, const at::Tensor& index) {
   TORCH_CHECK(self.numel() > 0 || index.numel() == 0,
               "take(): cannot take from an empty tensor with non-empty index");
 
+  auto self_dtype = self.scalar_type();
+  TORCH_CHECK(!(self_dtype == at::kUInt16 || self_dtype == at::kUInt32 ||
+                (self.is_cpu() && (self_dtype == at::kFloat8_e5m2 ||
+                                   self_dtype == at::kFloat8_e4m3fn))),
+              "\"",
+              self.is_cpu() ? "take_cpu" : "take_cuda",
+              "\" not implemented for '",
+              self_dtype,
+              "'");
+
   auto contiguous_self = self.contiguous();
   auto contiguous_index = index.contiguous();
 
@@ -55,12 +65,6 @@ inline at::Tensor take(const at::Tensor& self, const at::Tensor& index) {
   auto flattened_index = paddle::experimental::reshape(
       contiguous_index._PD_GetInner(), phi::IntArray({-1}));
 
-  auto self_dtype = self.scalar_type();
-  TORCH_CHECK(!(self.is_cpu() && (self_dtype == at::kFloat8_e5m2 ||
-                                  self_dtype == at::kFloat8_e4m3fn)),
-              "\"take_cpu\" not implemented for '",
-              self_dtype,
-              "'");
   bool need_cast_gather =
       (self.is_cpu() && self_dtype == at::kHalf) ||
       (!self.is_cpu() &&

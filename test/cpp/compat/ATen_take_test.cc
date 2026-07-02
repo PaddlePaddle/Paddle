@@ -25,7 +25,10 @@
 #include "ATen/ops/tensor.h"
 #include "c10/util/complex.h"
 #include "gtest/gtest.h"
+#include "paddle/common/macros.h"
 #include "torch/all.h"
+
+COMMON_DECLARE_bool(use_stride_kernel);
 
 // ==================== take tests ====================
 
@@ -232,7 +235,20 @@ TEST(TakeTest, TakeCpuFloat8Throws) {
   EXPECT_THROW(at::take(tensor_float8_e4m3fn, index), std::exception);
 }
 
+TEST(TakeTest, TakeUIntDtypesThrow) {
+  auto index = make_long_index({0, 3, 1});
+
+  auto tensor_uint16 = make_long_index({2, 2, 2, 2}).to(at::kUInt16);
+  EXPECT_THROW(at::take(tensor_uint16, index), std::exception);
+
+  auto tensor_uint32 = make_long_index({2, 2, 2, 2}).to(at::kUInt32);
+  EXPECT_THROW(at::take(tensor_uint32, index), std::exception);
+}
+
 TEST(TakeTest, TakeNonContiguousInput) {
+  if (!FLAGS_use_stride_kernel) {
+    return;
+  }
   auto base = at::arange(6, at::TensorOptions().dtype(at::kFloat));
   auto tensor = base.as_strided({3}, {2});
   auto index = make_long_index({1});
@@ -245,6 +261,9 @@ TEST(TakeTest, TakeNonContiguousInput) {
 }
 
 TEST(TakeTest, TakeNonContiguousIndex) {
+  if (!FLAGS_use_stride_kernel) {
+    return;
+  }
   auto tensor = at::arange(6, at::TensorOptions().dtype(at::kFloat));
   auto index_base = make_long_index({0, 1, 2, 3, 4, 5});
   auto index = index_base.as_strided({3}, {2});
@@ -341,6 +360,16 @@ TEST(TakeTest, TakeCUDA) {
   EXPECT_FLOAT_EQ(cpu_result[0].item<float>(), 1.0f);
   EXPECT_FLOAT_EQ(cpu_result[1].item<float>(), 3.0f);
   EXPECT_FLOAT_EQ(cpu_result[2].item<float>(), 7.0f);
+}
+
+TEST(TakeTest, TakeCUDAUIntDtypesThrow) {
+  auto index = make_long_index({0, 3, 1}).cuda();
+
+  auto tensor_uint16 = make_long_index({2, 2, 2, 2}).to(at::kUInt16).cuda();
+  EXPECT_THROW((void)at::take(tensor_uint16, index).cpu(), std::exception);
+
+  auto tensor_uint32 = make_long_index({2, 2, 2, 2}).to(at::kUInt32).cuda();
+  EXPECT_THROW((void)at::take(tensor_uint32, index).cpu(), std::exception);
 }
 
 TEST(TakeTest, TakeCUDANegativeIndexAndOutOfRange) {
