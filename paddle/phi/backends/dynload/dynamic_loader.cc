@@ -1015,7 +1015,11 @@ void* GetLAPACKDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapack.3.dylib");
 #endif
 #elif defined(_WIN32)
+#if defined(_M_ARM64)
+  return GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "openblas.dll");
+#else
   return GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapack.dll");
+#endif
 #else
   return GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapack.so.3");
 #endif
