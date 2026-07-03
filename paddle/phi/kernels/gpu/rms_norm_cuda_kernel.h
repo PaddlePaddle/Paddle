@@ -22,6 +22,7 @@
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
@@ -1400,7 +1401,11 @@ void RMSNormBwdKernel(const Context& dev_ctx,
       dev_ctx.template Alloc<T>(dX);
     }
     if (dscale) {
-      dev_ctx.template Alloc<T_ACC>(dscale);
+      // When X is empty, no element contributes to dscale, so the gradient is
+      // exactly zero. We must fill it with 0 instead of leaving the allocated
+      // buffer uninitialized (which would otherwise inject random values into
+      // the gradient computation).
+      Full<T, Context>(dev_ctx, dscale->dims(), 0, dscale);
     }
     return;
   }
