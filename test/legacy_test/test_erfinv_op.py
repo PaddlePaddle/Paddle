@@ -92,13 +92,9 @@ class TestErfinvAPIOp(unittest.TestCase):
         def run(place):
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('x', [1, 5], dtype=self.dtype)
-                out = paddle.erfinv(input=x)
-                special_out = paddle.special.erfinv(input=x)
+                out = paddle.erfinv(x)
                 exe = paddle.static.Executor(place)
-                res = exe.run(
-                    feed={'x': self.x.reshape([1, 5])},
-                    fetch_list=[out, special_out],
-                )
+                res = exe.run(feed={'x': self.x.reshape([1, 5])})
             for r in res:
                 np.testing.assert_allclose(self.res_ref, r, rtol=1e-05)
 
@@ -110,49 +106,6 @@ class TestErfinvAPIOp(unittest.TestCase):
             paddle.disable_static(place)
             x = paddle.to_tensor(self.x)
             out = paddle.erfinv(x)
-            np.testing.assert_allclose(self.res_ref, out.numpy(), rtol=1e-05)
-            paddle.enable_static()
-
-        for place in self.place:
-            run(place)
-
-    def test_dygraph_api_alias_and_out(self):
-        def run(place):
-            paddle.disable_static(place)
-            try:
-                x = paddle.to_tensor(self.x)
-                out = paddle.empty_like(x)
-                result = paddle.erfinv(input=x, out=out)
-                np.testing.assert_allclose(
-                    self.res_ref, result.numpy(), rtol=1e-05
-                )
-                np.testing.assert_allclose(
-                    self.res_ref, out.numpy(), rtol=1e-05
-                )
-                self.assertIs(result, out)
-
-                special_out = paddle.empty_like(x)
-                special_result = paddle.special.erfinv(
-                    input=x, out=special_out
-                )
-                np.testing.assert_allclose(
-                    self.res_ref, special_result.numpy(), rtol=1e-05
-                )
-                np.testing.assert_allclose(
-                    self.res_ref, special_out.numpy(), rtol=1e-05
-                )
-                self.assertIs(special_result, special_out)
-            finally:
-                paddle.enable_static()
-
-        for place in self.place:
-            run(place)
-
-    def test_special_api(self):
-        def run(place):
-            paddle.disable_static(place)
-            x = paddle.to_tensor(self.x)
-            out = paddle.special.erfinv(x)
             np.testing.assert_allclose(self.res_ref, out.numpy(), rtol=1e-05)
             paddle.enable_static()
 

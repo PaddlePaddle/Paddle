@@ -386,5 +386,96 @@ class TestSparseMaskAPI(unittest.TestCase):
         paddle.enable_static()
 
 
+# Test erfinv compatibility
+class TestErfinvAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-0.75, -0.5, 0.0, 0.5, 0.75]).astype("float32")
+        self.expected = np.array(
+            [-0.8134199, -0.47693628, 0.0, 0.47693628, 0.8134199]
+        ).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.erfinv(x)
+        # 2. Paddle keyword arguments
+        out2 = paddle.erfinv(x=x)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.erfinv(input=x)
+        # 4. out parameter test
+        out4 = paddle.empty_like(x)
+        out5 = paddle.erfinv(x, out=out4)
+        # 5. paddle.special.erfinv positional arguments
+        out6 = paddle.special.erfinv(x)
+        # 6. paddle.special.erfinv Paddle keyword arguments
+        out7 = paddle.special.erfinv(x=x)
+        # 7. paddle.special.erfinv PyTorch keyword arguments
+        out8 = paddle.special.erfinv(input=x)
+        # 8. paddle.special.erfinv out parameter test
+        out9 = paddle.empty_like(x)
+        out10 = paddle.special.erfinv(input=x, out=out9)
+
+        # Verify all outputs
+        for out in [
+            out1,
+            out2,
+            out3,
+            out4,
+            out5,
+            out6,
+            out7,
+            out8,
+            out9,
+            out10,
+        ]:
+            np.testing.assert_allclose(
+                out.numpy(), self.expected, rtol=1e-5, atol=1e-6
+            )
+        self.assertIs(out5, out4)
+        self.assertIs(out10, out9)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=self.np_x.shape, dtype=str(self.np_x.dtype)
+            )
+
+            # 1. Paddle Positional arguments
+            out1 = paddle.erfinv(x)
+            # 2. Paddle keyword arguments
+            out2 = paddle.erfinv(x=x)
+            # 3. PyTorch keyword arguments (alias)
+            out3 = paddle.erfinv(input=x)
+            # 4. paddle.special.erfinv positional arguments
+            out4 = paddle.special.erfinv(x)
+            # 5. paddle.special.erfinv Paddle keyword arguments
+            out5 = paddle.special.erfinv(x=x)
+            # 6. paddle.special.erfinv PyTorch keyword arguments
+            out6 = paddle.special.erfinv(input=x)
+            # 7. Static out parameter implementation
+            out7 = paddle.empty_like(x)
+            out8 = paddle.erfinv(input=x, out=out7)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3, out4, out5, out6, out7, out8],
+            )
+
+            # Verify all outputs
+            for out in fetches:
+                np.testing.assert_allclose(
+                    out, self.expected, rtol=1e-5, atol=1e-6
+                )
+
+
 if __name__ == "__main__":
     unittest.main()
