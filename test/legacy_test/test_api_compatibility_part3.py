@@ -5672,6 +5672,73 @@ class TestNormalValidateArgsAPI(unittest.TestCase):
             np.testing.assert_allclose(out, ref_out, rtol=1e-6)
 
 
+class TestNormalSampleShapeAliasAPI(unittest.TestCase):
+    def setUp(self):
+        self.place = paddle.CPUPlace()
+        self.np_loc = np.array([0.0, 1.0], dtype="float32")
+        self.np_scale = np.array([1.0, 2.0], dtype="float32")
+
+    def tearDown(self):
+        paddle.enable_static()
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        loc = paddle.to_tensor(self.np_loc, place=self.place)
+        scale = paddle.to_tensor(self.np_scale, place=self.place)
+        dist = paddle.distributions.normal.Normal(loc, scale)
+
+        # 1. Paddle keyword arguments
+        out1 = dist.sample(shape=[2, 3])
+        # 2. PyTorch keyword arguments
+        out2 = dist.sample(sample_shape=[2, 3])
+        # 3. Paddle keyword arguments
+        out3 = dist.rsample(shape=[2, 3])
+        # 4. PyTorch keyword arguments
+        out4 = dist.rsample(sample_shape=[2, 3])
+
+        self.assertEqual(list(out1.shape), [2, 3, 2])
+        self.assertEqual(list(out2.shape), [2, 3, 2])
+        self.assertEqual(list(out3.shape), [2, 3, 2])
+        self.assertEqual(list(out4.shape), [2, 3, 2])
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            loc = paddle.static.data(
+                name="loc", shape=self.np_loc.shape, dtype="float32"
+            )
+            scale = paddle.static.data(
+                name="scale", shape=self.np_scale.shape, dtype="float32"
+            )
+            dist = paddle.distributions.normal.Normal(loc, scale)
+
+            # 1. Paddle keyword arguments
+            out1 = dist.sample(shape=[2, 3])
+            # 2. PyTorch keyword arguments
+            out2 = dist.sample(sample_shape=[2, 3])
+            # 3. Paddle keyword arguments
+            out3 = dist.rsample(shape=[2, 3])
+            # 4. PyTorch keyword arguments
+            out4 = dist.rsample(sample_shape=[2, 3])
+
+            exe = paddle.static.Executor(self.place)
+            fetches = exe.run(
+                main,
+                feed={
+                    "loc": self.np_loc,
+                    "scale": self.np_scale,
+                },
+                fetch_list=[out1, out2, out3, out4],
+            )
+
+        for out in fetches:
+            self.assertEqual(list(out.shape), [2, 3, 2])
+
+
 class TestTensorTransposeInplaceAPI(unittest.TestCase):
     def setUp(self):
         self.np_x = np.arange(24).reshape(2, 3, 4).astype("float32")

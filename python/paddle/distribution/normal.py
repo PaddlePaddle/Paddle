@@ -303,6 +303,7 @@ class Normal(distribution.Distribution):
 
         Args:
             shape (Sequence[int], optional): Shape of the generated samples.
+                Alias: ``sample_shape``.
             seed (int): Python integer number.
 
         Returns:
@@ -357,6 +358,7 @@ class Normal(distribution.Distribution):
 
         Args:
           shape (Sequence[int], optional): Shape of the generated samples.
+              Alias: ``sample_shape``.
 
         Returns:
           Tensor: A tensor with prepended dimensions shape.The data type is float32.
