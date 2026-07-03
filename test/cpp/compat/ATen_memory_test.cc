@@ -53,6 +53,22 @@ TEST(IsPinnedTest, MultiDimTensorNotPinned) {
   EXPECT_FALSE(tensor.is_pinned());
 }
 
+// ==================== data pointer tests ====================
+
+TEST(TensorDataPtrTest, ConstDataPtrSupportsConstAndNonConstElementTypes) {
+  auto tensor = at::ones({2, 3}, at::TensorOptions().dtype(at::kFloat));
+
+  const void* void_ptr = tensor.const_data_ptr();
+  const float* float_ptr = tensor.const_data_ptr<float>();
+  const float* const_float_ptr = tensor.const_data_ptr<const float>();
+
+  EXPECT_NE(void_ptr, nullptr);
+  EXPECT_EQ(static_cast<const void*>(float_ptr), void_ptr);
+  EXPECT_EQ(static_cast<const void*>(const_float_ptr), void_ptr);
+  EXPECT_FLOAT_EQ(float_ptr[0], 1.0f);
+  EXPECT_FLOAT_EQ(const_float_ptr[0], 1.0f);
+}
+
 // ==================== reciprocal tests ====================
 
 // Test reciprocal for simple values

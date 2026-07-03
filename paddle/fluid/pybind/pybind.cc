@@ -1619,8 +1619,9 @@ PYBIND11_MODULE(libpaddle, m) {
       .def(py::init<const DataType &>())
       .def_property_readonly("min",
                              [](const iinfo &a) { return py::int_(a.min); })
-      .def_property_readonly("max",
-                             [](const iinfo &a) { return py::int_(a.max); })
+      .def_property_readonly(
+          "max",
+          [](const iinfo &a) { return py::cast(static_cast<uint64_t>(a.max)); })
       .def_readonly("bits", &iinfo::bits)
       .def_readonly("dtype", &iinfo::dtype)
       .def("__repr__", [](const iinfo &a) {

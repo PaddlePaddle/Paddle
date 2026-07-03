@@ -22,9 +22,7 @@
 
 namespace at {
 
-// TODO(dev): The signature in PyTorch should be `at::Tensor cat(const
-// at::ITensorListRef & tensors, int64_t dim=0)`
-inline at::Tensor cat(const std::vector<at::Tensor>& tensors, int64_t dim = 0) {
+inline at::Tensor cat(const at::ITensorListRef& tensors, int64_t dim = 0) {
   std::vector<paddle::Tensor> pd_tensors;
   pd_tensors.reserve(tensors.size());
   for (const auto& t : tensors) {

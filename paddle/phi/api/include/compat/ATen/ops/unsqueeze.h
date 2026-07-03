@@ -18,48 +18,21 @@
 
 namespace at {
 
-inline at::Tensor unsqueeze(const at::Tensor& self) {
-  return paddle::experimental::unsqueeze(self._PD_GetInner(), {});
-}
-
 inline at::Tensor unsqueeze(const at::Tensor& self, int64_t dim) {
   return paddle::experimental::unsqueeze(self._PD_GetInner(), {dim});
-}
-
-inline at::Tensor unsqueeze(const at::Tensor& self, at::IntArrayRef dim) {
-  return paddle::experimental::unsqueeze(self._PD_GetInner(),
-                                         dim._PD_ToPaddleIntArray());
 }
 
 }  // namespace at
 
 namespace at {
 
-inline at::Tensor Tensor::unsqueeze() const { return at::unsqueeze(*this); }
-
 inline at::Tensor Tensor::unsqueeze(int64_t dim) const {
   return at::unsqueeze(*this, dim);
-}
-
-inline at::Tensor Tensor::unsqueeze(at::IntArrayRef dim) const {
-  return at::unsqueeze(*this, dim);
-}
-
-inline at::Tensor& Tensor::unsqueeze_() const {
-  PaddleTensor& inner = const_cast<PaddleTensor&>(tensor_);
-  paddle::experimental::unsqueeze_(inner, {});
-  return const_cast<at::Tensor&>(*this);
 }
 
 inline at::Tensor& Tensor::unsqueeze_(int64_t dim) const {
   PaddleTensor& inner = const_cast<PaddleTensor&>(tensor_);
   paddle::experimental::unsqueeze_(inner, {dim});
-  return const_cast<at::Tensor&>(*this);
-}
-
-inline at::Tensor& Tensor::unsqueeze_(at::IntArrayRef dim) const {
-  PaddleTensor& inner = const_cast<PaddleTensor&>(tensor_);
-  paddle::experimental::unsqueeze_(inner, dim._PD_ToPaddleIntArray());
   return const_cast<at::Tensor&>(*this);
 }
 

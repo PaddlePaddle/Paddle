@@ -2807,6 +2807,7 @@ def get_setup_parameters():
         'paddle.quantization.imperative',
         'paddle.tensor',
         'paddle.compat',
+        'paddle.compat.distributions',
         'paddle.compat.nn',
         'paddle.compat.nn.functional',
         'paddle.onnx',

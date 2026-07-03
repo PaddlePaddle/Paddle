@@ -12,24 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include <gtest/gtest.h>
 
-#include <ATen/core/Tensor.h>
+#include "paddle/pir/include/core/builtin_type_interfaces.h"
+#include "paddle/pir/include/core/type_utils.h"
 
-namespace at {
-
-inline at::Tensor masked_select(const at::Tensor& self,
-                                const at::Tensor& mask) {
-  return Tensor(paddle::experimental::masked_select(self._PD_GetInner(),
-                                                    mask._PD_GetInner()));
+TEST(type_util_test, verify_compatible_dims) {
+  EXPECT_TRUE(
+      pir::VerifyCompatibleDims({pir::ShapedTypeInterface::kDynamic, 2, 2}));
+  EXPECT_FALSE(pir::VerifyCompatibleDims({2, 3}));
 }
-
-}  // namespace at
-
-namespace at {
-
-inline at::Tensor Tensor::masked_select(const at::Tensor& mask) const {
-  return at::masked_select(*this, mask);
-}
-
-}  // namespace at

@@ -16,10 +16,6 @@
 #include <cstdlib>
 #include "paddle/fluid/pir/serialize_deserialize/include/third_party.h"
 #include "paddle/phi/core/enforce.h"
-#ifndef _WIN32
-#include "test/cpp/pir/tools/test1_dialect.h"
-#include "test/cpp/pir/tools/test_dialect.h"
-#endif
 namespace pir {
 
 std::pair<std::string, std::string> GetContentSplitByDot(
@@ -57,14 +53,6 @@ DialectIdMap::DialectIdMap() {
   insert(pir::ControlFlowDialect::name(), "2");
   insert(paddle::dialect::CustomOpDialect::name(), "3");
   insert(paddle::dialect::DistDialect::name(), "4");
-  // TestDialect for test use
-#ifdef _WIN32
-  insert("test", "-1");
-  insert("test1", "-2");
-#else
-  insert(test::TestDialect::name(), "-1");
-  insert(test1::Test1Dialect::name(), "-2");
-#endif
 }
 void DialectIdMap::insert(const std::string& key, const std::string& value) {
   CompressDialect[key] = value;

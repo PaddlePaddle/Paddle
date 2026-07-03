@@ -1463,6 +1463,24 @@ class TestLRSchedulerWithOptimizerArg(unittest.TestCase):
             )
         paddle.enable_static()
 
+    def test_lambda_decay(self):
+        paddle.disable_static()
+        linear = paddle.nn.Linear(10, 10)
+        base_lr = 0.5
+        lr_lambda = lambda epoch: 0.95**epoch
+        sgd = paddle.optimizer.SGD(
+            learning_rate=base_lr, parameters=linear.parameters()
+        )
+        scheduler = paddle.optimizer.lr.LambdaDecay(
+            optimizer=sgd, lr_lambda=lr_lambda
+        )
+        self.assertEqual(scheduler.base_lr, sgd.get_lr())
+        self.assertIs(sgd._learning_rate, scheduler)
+        lrs = self._test_network(linear, sgd, scheduler)
+        for i in range(len(lrs)):
+            np.testing.assert_allclose(lrs[i], base_lr * lr_lambda(i))
+        paddle.enable_static()
+
 
 if __name__ == '__main__':
     paddle.enable_static()

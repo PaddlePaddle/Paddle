@@ -56,7 +56,7 @@ bool VerifyCompatibleDims(const std::vector<int64_t> &dims) {
       dims.begin(), dims.end(), dims.front(), [](auto fold, auto dim) {
         return ShapedTypeInterface::IsDynamic(dim) ? fold : dim;
       });
-  return std::all_of(dims.begin(), dims.begin(), [&](auto dim) {
+  return std::all_of(dims.begin(), dims.end(), [&](auto dim) {
     return ShapedTypeInterface::IsDynamic(dim) || dim == static_dim;
   });
 }

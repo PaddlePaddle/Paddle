@@ -21,12 +21,12 @@ namespace at {
 
 inline std::vector<at::Tensor> split_with_sizes(const at::Tensor& self,
                                                 at::IntArrayRef split_sizes,
-                                                int64_t dim) {
+                                                int64_t dim = 0) {
   return at::split(self, split_sizes, dim);
 }
 
 inline std::vector<at::Tensor> split_with_sizes_symint(
-    const at::Tensor& self, c10::SymIntArrayRef split_sizes, int64_t dim) {
+    const at::Tensor& self, c10::SymIntArrayRef split_sizes, int64_t dim = 0) {
   return at::split_symint(self, split_sizes, dim);
 }
 
