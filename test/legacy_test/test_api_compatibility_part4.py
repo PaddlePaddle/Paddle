@@ -1353,5 +1353,54 @@ class TestDataLoaderAPI(unittest.TestCase):
         paddle.enable_static()
 
 
+# Test paddle.compat.logical_and_ compatibility
+class TestCompatLogicalAnd_(unittest.TestCase):
+    def test_dygraph(self):
+        """Test logical_and_ preserves input dtype (dygraph only)."""
+        paddle.disable_static()
+
+        # Test with int32 input
+        x = paddle.to_tensor([0, 1, 2, 3], dtype='int32')
+        y = paddle.to_tensor([0, 2, 0, 3], dtype='int32')
+        result = paddle.compat.logical_and_(x, y)
+        self.assertEqual(result.dtype, paddle.int32)
+        self.assertIs(result, x)
+        np.testing.assert_array_equal(result.numpy(), [0, 1, 0, 1])
+
+        # Test with float32 input
+        x = paddle.to_tensor([0.0, 1.0, 2.0, 3.0], dtype='float32')
+        y = paddle.to_tensor([0.0, 2.0, 0.0, 3.0], dtype='float32')
+        result = paddle.compat.logical_and_(x, y)
+        self.assertEqual(result.dtype, paddle.float32)
+        np.testing.assert_array_equal(result.numpy(), [0.0, 1.0, 0.0, 1.0])
+
+        # Test with int8 input
+        x = paddle.to_tensor([0, 1, 10, 0], dtype='int8')
+        y = paddle.to_tensor([4, 0, 1, 0], dtype='int8')
+        result = paddle.compat.logical_and_(x, y)
+        self.assertEqual(result.dtype, paddle.int8)
+        np.testing.assert_array_equal(result.numpy(), [0, 0, 1, 0])
+
+        # Test with bool input
+        x = paddle.to_tensor([True, False, True])
+        y = paddle.to_tensor([True, False, False])
+        result = paddle.compat.logical_and_(x, y)
+        self.assertEqual(result.dtype, paddle.bool)
+        np.testing.assert_array_equal(result.numpy(), [True, False, False])
+
+        # Test with scalar other
+        x = paddle.to_tensor([0, 1, 2, 3], dtype='int32')
+        result = paddle.compat.logical_and_(x, 0)
+        self.assertEqual(result.dtype, paddle.int32)
+        np.testing.assert_array_equal(result.numpy(), [0, 0, 0, 0])
+
+        # Test with float scalar other
+        x = paddle.to_tensor([0.0, 1.0, 2.0, 3.0], dtype='float32')
+        result = paddle.compat.logical_and_(x, 1.0)
+        self.assertEqual(result.dtype, paddle.float32)
+
+        paddle.enable_static()
+
+
 if __name__ == "__main__":
     unittest.main()

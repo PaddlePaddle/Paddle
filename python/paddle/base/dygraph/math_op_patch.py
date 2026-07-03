@@ -345,6 +345,41 @@ def monkey_patch_math_tensor():
         return out
 
     @property
+    def _mH_(var: Tensor) -> Tensor:
+        """
+        Return the conjugate transpose of the last two dimensions of a Tensor.
+
+        Accessing this property is equivalent to calling x.mT.conj().
+
+        Args:
+            var (Tensor): The input Tensor, which must have at least 2 dimensions.
+
+        Returns:
+            Tensor: A new Tensor with its last two dimensions swapped and
+                the elements conjugated.
+
+        Examples:
+            .. code-block:: pycon
+
+                >>> import paddle
+                >>> x = paddle.to_tensor([[1.0 + 1.0j, 2.0 + 2.0j], [3.0 + 3.0j, 4.0 + 4.0j]])
+                >>> x_mH = x.mH
+                >>> print(x_mH)
+                Tensor(shape=[2, 2], dtype=complex64, place=Place(cpu), stop_gradient=True,
+                       [[(1-1j), (3-3j)],
+                        [(2-2j), (4-4j)]])
+        """
+        if len(var.shape) < 2:
+            raise ValueError(
+                f"Tensor.ndim({var.ndim}) is required to be greater than or equal to 2."
+            )
+        perm = list(range(len(var.shape)))
+        perm[-1], perm[-2] = perm[-2], perm[-1]
+        out = _C_ops.transpose(var, perm)
+        out = _C_ops.conj(out)
+        return out
+
+    @property
     def _H_(var: Tensor) -> Tensor:
         """
         Return the conjugate transpose of a Tensor.
@@ -686,6 +721,7 @@ def monkey_patch_math_tensor():
         ('nelement', nelement),
         ('T', _T_),
         ('mT', _mT_),
+        ('mH', _mH_),
         ('H', _H_),
         ('new_full', _new_full_),
         ('new_empty', _new_empty_),

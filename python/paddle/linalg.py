@@ -14,6 +14,7 @@
 
 from .tensor import inverse as inv
 from .tensor.linalg import (
+    _qr as qr,
     cholesky,
     cholesky_inverse,
     cholesky_solve,
@@ -29,6 +30,7 @@ from .tensor.linalg import (
     eigvalsh,
     fp8_fp8_half_gemm_fused,
     householder_product,
+    logdet,
     lstsq,
     lu,
     lu_solve,
@@ -44,7 +46,6 @@ from .tensor.linalg import (
     ormqr,
     pca_lowrank,
     pinv,
-    qr,
     slogdet,
     solve,
     svd,
@@ -85,6 +86,7 @@ __all__ = [
     'matrix_exp',
     'matrix_power',
     'det',
+    'logdet',
     'slogdet',
     'eigh',
     'eigvalsh',

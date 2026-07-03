@@ -3534,7 +3534,7 @@ class TestClampMaxAPI(unittest.TestCase):
         # 1. Paddle Positional arguments
         out1 = paddle.clamp_max(x, 4.0)
         # 2. Paddle keyword arguments
-        out2 = paddle.clamp_max(x=x, max=4.0)
+        out2 = paddle.clamp_max(input=x, max=4.0)
         # 3. out parameter test
         out3 = paddle.empty_like(x)
         paddle.clamp_max(x, 4.0, out=out3)
@@ -3553,7 +3553,7 @@ class TestClampMaxAPI(unittest.TestCase):
             x = paddle.static.data(name="x", shape=[5], dtype="float32")
 
             out1 = paddle.clamp_max(x, 4.0)
-            out2 = paddle.clamp_max(x=x, max=4.0)
+            out2 = paddle.clamp_max(input=x, max=4.0)
 
             exe = paddle.static.Executor()
             fetches = exe.run(

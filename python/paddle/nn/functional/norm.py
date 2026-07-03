@@ -32,7 +32,6 @@ from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     param_two_alias,
 )
-from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ...base.data_feeder import check_type, check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
@@ -158,7 +157,7 @@ def normalize(
     return ret
 
 
-@ParamAliasDecorator({"x": ["input"], "epsilon": ["eps"]})
+@param_two_alias(["x", "input"], ["epsilon", "eps"])
 def batch_norm(
     x,
     running_mean: Tensor | None,
@@ -505,7 +504,6 @@ def rms_norm(
     return _C_ops.rms_norm(input, weight, normalized_shape, eps)[0]
 
 
-@inplace_apis_in_dygraph_only
 def instance_norm(
     x: Tensor,
     running_mean: Tensor | None = None,

@@ -30,6 +30,7 @@ from paddle._C_ops import (  # noqa: F401
     diagonal,
     dist,
     dot,
+    eigh,
     matmul,
     mv,
 )
@@ -2313,6 +2314,25 @@ def slogdet(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+def logdet(input, name=None):
+    """
+    Computes the natural logarithm of the determinant of a square matrix or
+    batches of square matrices.
+
+    For matrices with negative determinant, returns ``nan``.
+    For matrices with zero determinant, returns ``-inf``.
+
+    Args:
+        input (Tensor): The input tensor of shape ``[*, n, n]`` where ``*``
+            is zero or more batch dimensions.
+        name (str|None, optional): Name for the operation. Default: None.
+
+    Returns:
+        Tensor: The log-determinant of ``input``, with shape ``[*]``.
+    """
+    return det(input).log()
+
+
 def svd(
     x: Tensor,
     full_matrices: bool = False,
@@ -2766,7 +2786,7 @@ def matrix_power(
 
 
 @overload
-def qr(
+def _qr(
     x: Tensor,
     mode: Literal['reduced', 'complete', 'r'] = ...,
     name: str | None = ...,
@@ -2776,7 +2796,7 @@ def qr(
 
 
 @overload
-def qr(
+def _qr(
     input: Tensor,
     mode: Literal['reduced', 'complete', 'r'] = ...,
     name: str | None = ...,
@@ -2786,7 +2806,7 @@ def qr(
 
 
 @ParamAliasDecorator({"x": ["input", "A"]})
-def qr(
+def _qr(
     x,
     mode="reduced",
     name=None,
@@ -2855,8 +2875,6 @@ def qr(
             type='qr', inputs={'X': [x]}, outputs={'Q': q, 'R': r}, attrs=attrs
         )
     if mode == "r":
-        # For mode='r', _C_ops.qr returns Q as an unallocated empty tensor.
-        # We create a proper zero-size tensor for Q to avoid memory issues.
         q_empty = paddle.empty([0], dtype=x.dtype)
     if out is not None:
         if mode == "r":
@@ -2868,6 +2886,30 @@ def qr(
     if mode == "r":
         return q_empty, r
     return q, r
+
+
+def qr(input, some=True, *, out=None):
+    """
+    Computes the QR decomposition of one or a batch of matrices.
+
+    This is a wrapper around ``paddle.linalg.qr`` with PyTorch-compatible
+    ``some`` parameter.
+
+    Args:
+        input (Tensor): The input tensor of shape ``[*, M, N]``.
+        some (bool, optional): Controls the shape of Q and R. If ``True`` (default),
+            returns reduced QR (Q: ``[*, M, K]``, R: ``[*, K, N]`` where ``K = min(M, N)``).
+            If ``False``, returns complete QR (Q: ``[*, M, M]``, R: ``[*, M, N]``).
+        out (tuple[Tensor, Tensor]|None, optional): The output tuple of (Q, R). Default: None.
+
+    Returns:
+        tuple[Tensor, Tensor]: A tuple (Q, R).
+    """
+    return _qr(
+        input,
+        mode='reduced' if some else 'complete',
+        out=out,
+    )
 
 
 @overload

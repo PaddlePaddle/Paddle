@@ -444,12 +444,14 @@ from .tensor.linalg import (  # noqa: F401
     histogram,
     histogram_bin_edges,
     histogramdd,
+    logdet,
     matmul,
     matrix_transpose,
     mv,
     norm,
     permute,
     pinv,
+    qr,
     t,
     t_,
     transpose,
@@ -623,6 +625,7 @@ from .tensor.math import (  # noqa: F401
     broadcast_shapes,
     cartesian_prod,
     ceil,
+    clamp_max,
     clip,
     clip_,
     combinations,
@@ -1083,66 +1086,6 @@ mvlgamma = multigammaln
 mvlgamma_ = multigammaln_
 negative_ = neg_
 pinverse = pinv
-
-
-def clamp_max(x, max=None, *, out=None):
-    """
-    Clamps all elements in input into the range [min=None, max].
-
-    This is a wrapper around ``paddle.clip`` that only sets the upper bound.
-
-    Args:
-        x (Tensor): The input Tensor. Alias: input.
-        max (float|Tensor): The upper bound.
-        out (Tensor|None, optional): The output Tensor. Default: None.
-
-    Returns:
-        Tensor: The clamped Tensor.
-    """
-    return clip(x, min=None, max=max, name=None, out=out)
-
-
-def qr(input, some=True, *, out=None):
-    """
-    Computes the QR decomposition of one or a batch of matrices.
-
-    This is a wrapper around ``paddle.linalg.qr`` with PyTorch-compatible
-    ``some`` parameter.
-
-    Args:
-        input (Tensor): The input tensor of shape ``[*, M, N]``.
-        some (bool, optional): Controls the shape of Q and R. If ``True`` (default),
-            returns reduced QR (Q: ``[*, M, K]``, R: ``[*, K, N]`` where ``K = min(M, N)``).
-            If ``False``, returns complete QR (Q: ``[*, M, M]``, R: ``[*, M, N]``).
-        out (tuple[Tensor, Tensor]|None, optional): The output tuple of (Q, R). Default: None.
-
-    Returns:
-        tuple[Tensor, Tensor]: A tuple (Q, R).
-    """
-    return linalg.qr(
-        input,
-        mode='reduced' if some else 'complete',
-        out=out,
-    )
-
-
-def logdet(x, name=None):
-    """
-    Computes the natural logarithm of the determinant of a square matrix or
-    batches of square matrices.
-
-    For matrices with negative determinant, returns ``nan``.
-    For matrices with zero determinant, returns ``-inf``.
-
-    Args:
-        x (Tensor): The input tensor of shape ``[*, n, n]`` where ``*``
-            is zero or more batch dimensions.
-        name (str|None, optional): Name for the operation. Default: None.
-
-    Returns:
-        Tensor: The log-determinant of ``x``, with shape ``[*]``.
-    """
-    return linalg.det(x).log()
 
 
 __all__ = [

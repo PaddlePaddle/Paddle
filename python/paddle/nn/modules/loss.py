@@ -12,4 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.nn.layer.loss import _Loss  # noqa: F401
+from paddle.nn.layer.loss import (  # noqa: F401
+    BCELoss,
+    BCEWithLogitsLoss,
+    CosineEmbeddingLoss,
+    CrossEntropyLoss,
+    CTCLoss,
+    GaussianNLLLoss,
+    HingeEmbeddingLoss,
+    KLDivLoss,
+    L1Loss,
+    MarginRankingLoss,
+    MSELoss,
+    MultiLabelMarginLoss,
+    MultiLabelSoftMarginLoss,
+    MultiMarginLoss,
+    NLLLoss,
+    PoissonNLLLoss,
+    SmoothL1Loss,
+    SoftMarginLoss,
+    TripletMarginLoss,
+    TripletMarginWithDistanceLoss,
+    _Loss,
+)
