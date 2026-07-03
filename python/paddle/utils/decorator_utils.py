@@ -1533,3 +1533,41 @@ def gru_decorator() -> Callable[
         return wrapper
 
     return decorator
+
+
+def qr_decorator(func):
+    """
+    Decorator for ``qr`` that handles parameter aliases and type-based dispatch
+    between PyTorch and Paddle signatures.
+
+    This decorator handles:
+    - ``input`` -> ``x`` (parameter name alias)
+    - Type-based dispatch on the 2nd positional argument:
+      - If ``bool``, treat as ``some`` -> convert to ``mode`` (``True`` -> ``'reduced'``, ``False`` -> ``'complete'``)
+      - If ``str``, treat as ``mode`` (pass through)
+    - ``some`` keyword -> ``mode`` keyword conversion
+    """
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        # Handle parameter aliases for x
+        if "input" in kwargs:
+            kwargs["x"] = kwargs.pop("input")
+        if "A" in kwargs:
+            kwargs["x"] = kwargs.pop("A")
+
+        # Handle some -> mode keyword conversion
+        if "some" in kwargs:
+            some = kwargs.pop("some")
+            kwargs["mode"] = "reduced" if some else "complete"
+
+        # Type-based dispatch on 2nd positional argument
+        if len(args) >= 2 and isinstance(args[1], bool):
+            # PyTorch-style: args = (input, some, ...)
+            some = args[1]
+            mode = "reduced" if some else "complete"
+            args = (args[0], mode, *args[2:])
+
+        return func(*args, **kwargs)
+
+    return wrapper

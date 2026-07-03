@@ -14,7 +14,6 @@
 
 from .tensor import inverse as inv
 from .tensor.linalg import (
-    _qr as qr,
     cholesky,
     cholesky_inverse,
     cholesky_solve,
@@ -46,6 +45,7 @@ from .tensor.linalg import (
     ormqr,
     pca_lowrank,
     pinv,
+    qr,
     slogdet,
     solve,
     svd,

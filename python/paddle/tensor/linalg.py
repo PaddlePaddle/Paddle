@@ -41,6 +41,7 @@ from paddle.utils.decorator_utils import (
     VariableArgsDecorator,
     param_one_alias,
     param_two_alias,
+    qr_decorator,
     transpose_decorator,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
@@ -2786,7 +2787,7 @@ def matrix_power(
 
 
 @overload
-def _qr(
+def qr(
     x: Tensor,
     mode: Literal['reduced', 'complete', 'r'] = ...,
     name: str | None = ...,
@@ -2796,17 +2797,16 @@ def _qr(
 
 
 @overload
-def _qr(
+def qr(
     input: Tensor,
-    mode: Literal['reduced', 'complete', 'r'] = ...,
-    name: str | None = ...,
+    some: bool = ...,
     *,
     out: tuple[Tensor, Tensor] | None = ...,
 ) -> tuple[Tensor, Tensor]: ...
 
 
-@ParamAliasDecorator({"x": ["input", "A"]})
-def _qr(
+@qr_decorator
+def qr(
     x,
     mode="reduced",
     name=None,
@@ -2814,6 +2814,13 @@ def _qr(
     out=None,
 ) -> tuple[Tensor, Tensor]:
     r"""
+    Note:
+        This API supports two signatures:
+        1. ``paddle.linalg.qr(x, mode='reduced', name=None, *, out=None)`` (Paddle-style):
+           Computes the QR decomposition with a ``mode`` string parameter.
+        2. ``paddle.linalg.qr(input, some=True, *, out=None)`` (PyTorch-style):
+           Computes the QR decomposition with a ``some`` boolean parameter.
+
     Computes the QR decomposition of one matrix or batches of matrices (backward is unsupported now).
 
     Args:
@@ -2886,30 +2893,6 @@ def _qr(
     if mode == "r":
         return q_empty, r
     return q, r
-
-
-def qr(input, some=True, *, out=None):
-    """
-    Computes the QR decomposition of one or a batch of matrices.
-
-    This is a wrapper around ``paddle.linalg.qr`` with PyTorch-compatible
-    ``some`` parameter.
-
-    Args:
-        input (Tensor): The input tensor of shape ``[*, M, N]``.
-        some (bool, optional): Controls the shape of Q and R. If ``True`` (default),
-            returns reduced QR (Q: ``[*, M, K]``, R: ``[*, K, N]`` where ``K = min(M, N)``).
-            If ``False``, returns complete QR (Q: ``[*, M, M]``, R: ``[*, M, N]``).
-        out (tuple[Tensor, Tensor]|None, optional): The output tuple of (Q, R). Default: None.
-
-    Returns:
-        tuple[Tensor, Tensor]: A tuple (Q, R).
-    """
-    return _qr(
-        input,
-        mode='reduced' if some else 'complete',
-        out=out,
-    )
 
 
 @overload

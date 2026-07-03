@@ -81,6 +81,7 @@ from .linalg import (  # noqa: F401
     dist,
     dot,
     eig,
+    eigh,
     eigvals,
     eigvalsh,
     histogram,

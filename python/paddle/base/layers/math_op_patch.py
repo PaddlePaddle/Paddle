@@ -853,110 +853,6 @@ def monkey_patch_variable():
         )
         return out
 
-    def _H_(self):
-        """
-        Returns the conjugate transpose of the Tensor (only for 2-D tensors).
-
-        In static graph mode, this returns a symbolic Variable representing the
-        conjugate transpose. For non-2D tensors, an error is raised.
-
-        Returns:
-            Variable: The conjugate transpose of the Tensor.
-
-        Examples:
-            .. code-block:: pycon
-
-                >>> import paddle
-
-                >>> paddle.enable_static()
-
-                >>> x = paddle.static.data(name='x', shape=[2, 3], dtype='float32')
-                >>> x_H = x.H
-
-                >>> exe = paddle.static.Executor()
-                >>> x_H_np = exe.run(paddle.static.default_main_program(), feed={'x': [[1, 2, 3], [4, 5, 6]]}, fetch_list=[x_H])[0]
-                >>> print(x_H_np)
-                [[1., 4.],
-                 [2., 5.],
-                 [3., 6.]]
-        """
-        if len(self.shape) != 2:
-            raise ValueError(
-                f"Only 2-D tensors support .H (conjugate transpose), "
-                f"but got tensor with {len(self.shape)} dimension(s)."
-            )
-        block = current_block(self)
-        trans_out = create_new_tmp_var(block, self.dtype)
-        block.append_op(
-            type='transpose2',
-            inputs={'X': [self]},
-            outputs={'Out': [trans_out]},
-            attrs={'axis': [1, 0]},
-        )
-        if self.dtype in [
-            core.VarDesc.VarType.COMPLEX64,
-            core.VarDesc.VarType.COMPLEX128,
-        ]:
-            conj_out = create_new_tmp_var(block, self.dtype)
-            block.append_op(
-                type='conj',
-                inputs={'X': [trans_out]},
-                outputs={'Out': [conj_out]},
-            )
-            return conj_out
-        return trans_out
-
-    def _mH_(self):
-        """
-        Return the conjugate transpose of the last two dimensions of a Tensor.
-
-        Accessing this property is equivalent to calling x.mT.conj().
-
-        Returns:
-            Variable: The conjugate transpose with its last two dimensions swapped.
-
-        Examples:
-            .. code-block:: pycon
-
-                >>> import paddle
-
-                >>> paddle.enable_static()
-
-                >>> x = paddle.static.data(name='x', shape=[2, 3, 5], dtype='float32')
-                >>> x_mH = x.mH
-
-                >>> exe = paddle.static.Executor()
-                >>> x_mH_np = exe.run(paddle.static.default_main_program(), feed={'x': np.ones([2, 3, 5])}, fetch_list=[x_mH])[0]
-                >>> print(x_mH_np.shape)
-                (2, 5, 3)
-        """
-        if len(self.shape) < 2:
-            raise ValueError(
-                f"Tensor.ndim({len(self.shape)}) is required to be greater than or equal to 2."
-            )
-        block = current_block(self)
-        perm = list(range(len(self.shape)))
-        perm[-1], perm[-2] = perm[-2], perm[-1]
-        trans_out = create_new_tmp_var(block, self.dtype)
-        block.append_op(
-            type='transpose2',
-            inputs={'X': [self]},
-            outputs={'Out': [trans_out]},
-            attrs={'axis': perm},
-        )
-        if self.dtype in [
-            core.VarDesc.VarType.COMPLEX64,
-            core.VarDesc.VarType.COMPLEX128,
-        ]:
-            conj_out = create_new_tmp_var(block, self.dtype)
-            block.append_op(
-                type='conj',
-                inputs={'X': [trans_out]},
-                outputs={'Out': [conj_out]},
-            )
-            return conj_out
-        return trans_out
-
     variable_methods = [
         #   b=-a
         ('__neg__', _neg_),
@@ -974,8 +870,6 @@ def monkey_patch_variable():
         ('dim', dim),
         ('ndimension', ndimension),
         ('ndim', _ndim),
-        ('H', _H_),
-        ('mH', _mH_),
         ("requires_grad", requires_grad),
         ("requires_grad_", requires_grad_),
         (

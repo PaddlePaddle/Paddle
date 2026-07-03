@@ -773,7 +773,6 @@ from .tensor.math import (  # noqa: F401
     trace,
     trapezoid,
     true_divide,
-    true_divide_,
     trunc,
     trunc_,
     vander,
@@ -1062,6 +1061,7 @@ concatenate = concat
 take_along_dim = take_along_axis
 clamp = clip
 clamp_ = clip_
+true_divide_ = divide_
 ger = outer
 div = divide
 div_ = divide_

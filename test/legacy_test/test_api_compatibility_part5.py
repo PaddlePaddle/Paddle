@@ -3974,5 +3974,39 @@ class TestClamp_API(unittest.TestCase):
     # Inplace API no static graph test
 
 
+@unittest.skipIf(
+    not paddle.device.is_compiled_with_cuda()
+    and not paddle.device.is_compiled_with_xpu(),
+    "rms_norm kernel is only registered on GPU/XPU",
+)
+# Test rms_norm compatibility
+class TestRmsNormFnAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_x = np.random.rand(2, 3, 4).astype("float32")
+        self.np_weight = np.ones(4).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        weight = paddle.to_tensor(self.np_weight)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.nn.functional.rms_norm(x, [4], weight)
+        # 2. Paddle keyword arguments
+        out2 = paddle.nn.functional.rms_norm(
+            input=x, normalized_shape=[4], weight=weight
+        )
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.nn.functional.rms_norm(
+            input=x, weight=weight, normalized_shape=[4]
+        )
+
+        for out in [out1, out2, out3]:
+            self.assertEqual(out.shape, x.shape)
+
+        paddle.enable_static()
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -2743,6 +2743,7 @@ class TestDistributedSamplerAPI(unittest.TestCase):
 # Test expand_copy compatibility
 class TestExpandCopyAPI(unittest.TestCase):
     def setUp(self):
+        paddle.disable_static()
         self.x = paddle.to_tensor([1, 2, 3], dtype='int32')
 
     def test_dygraph(self):

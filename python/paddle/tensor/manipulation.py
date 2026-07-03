@@ -5447,7 +5447,74 @@ def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
         return out
 
 
-expand_copy = expand
+@overload
+def expand_copy(
+    x: Tensor,
+    shape: ShapeLike,
+    name: str | None = None,
+) -> Tensor: ...
+
+
+@overload
+def expand_copy(
+    input: Tensor,
+    *size: int,
+) -> Tensor: ...
+
+
+@expand_decorator()
+def expand_copy(
+    x: Tensor | None = None,
+    shape: ShapeLike | None = None,
+    name: str | None = None,
+    *,
+    size: ShapeLike | None = None,
+    input: Tensor | None = None,
+) -> Tensor:
+    """
+    Returns a new tensor with the expanded data, without memory sharing.
+
+    This function is the copying version of :ref:`api_paddle_expand`, which always
+    returns a new tensor with the expanded data instead of a view.
+
+    Note:
+        This API has two signatures:
+        1. ``paddle.expand_copy(x, shape, name=None)`` (Paddle-style):
+            Returns a new tensor with expanded data following broadcast semantics.
+        2. ``paddle.expand_copy(input, *size)`` (PyTorch-style):
+            Returns a new tensor with expanded data with variadic size arguments.
+
+    Args:
+        x (Tensor): The input tensor. Alias: ``input``.
+        shape (list|tuple|Tensor): The target shape to expand to. The number of
+            dimensions must be greater than or equal to the number of dimensions of ``x``.
+            Alias: ``size``.
+        name (str|None, optional): Name for the operation (optional, default is None).
+
+    Returns:
+        Tensor, A new tensor with the expanded data.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[1], [2], [3]], dtype='float32')
+            >>> out = paddle.expand_copy(x, shape=[3, 4])
+            >>> print(out)
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[1., 1., 1., 1.],
+                    [2., 2., 2., 2.],
+                    [3., 3., 3., 3.]])
+            >>> # verify it's a copy (not sharing memory)
+            >>> out[0] = 0
+            >>> print(x)
+            Tensor(shape=[3, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[1.],
+                    [2.],
+                    [3.]])
+    """
+    return expand(x, shape, name).clone()
 
 
 @overload
