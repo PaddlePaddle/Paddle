@@ -1103,3 +1103,73 @@ def _assert(condition, message=""):
     else:
         if not condition:
             raise AssertionError(message)
+
+
+def assert_allclose(
+    actual: Any,
+    expected: Any,
+    rtol: float | None = None,
+    atol: float | None = None,
+    equal_nan: bool = True,
+    msg: str = "",
+) -> None:
+    r"""
+    Asserts that ``actual`` and ``expected`` are close.
+
+    .. warning::
+        This API is deprecated. Please use ``paddle.testing.assert_allclose`` instead.
+
+    If ``actual`` and ``expected`` are real-valued, and finite, they are considered close if
+
+    .. math::
+
+        \lvert \text{actual} - \text{expected} \rvert \le \texttt{atol} + \texttt{rtol} \cdot \lvert \text{expected} \rvert
+
+    Non-finite values (``-inf`` and ``inf``) are only considered close if and only if they are equal.
+    ``NaN``'s are only considered equal to each other if ``equal_nan`` is ``True``.
+
+    Args:
+        actual (Any): The actual value.
+        expected (Any): The expected value.
+        rtol (float|None, optional): Relative tolerance. If None, uses default tolerances.
+            Default: None.
+        atol (float|None, optional): Absolute tolerance. If None, uses default tolerances.
+            Default: None.
+        equal_nan (bool, optional): If True, NaN values are considered equal. Default: True.
+        msg (str, optional): Custom error message. Default: "".
+
+    Raises:
+        AssertionError: If ``actual`` and ``expected`` are not close.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> paddle.testing.assert_allclose(paddle.to_tensor([1.0]), paddle.to_tensor([1.0]))
+    """
+    if not isinstance(actual, paddle.Tensor):
+        actual = paddle.to_tensor(actual)
+    if not isinstance(expected, paddle.Tensor):
+        expected = paddle.to_tensor(expected, dtype=actual.dtype)
+
+    if rtol is None and atol is None:
+        rtol, atol = default_tolerances(
+            actual,
+            expected,
+            dtype_precisions={
+                paddle.float16: (1e-3, 1e-3),
+                paddle.float32: (1e-4, 1e-5),
+                paddle.float64: (1e-5, 1e-8),
+            },
+        )
+
+    assert_close(
+        actual,
+        expected,
+        rtol=rtol,
+        atol=atol,
+        equal_nan=equal_nan,
+        check_device=True,
+        check_dtype=False,
+        msg=msg or None,
+    )

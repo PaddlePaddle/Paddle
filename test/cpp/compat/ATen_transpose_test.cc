@@ -107,3 +107,28 @@ TEST(TensorTransposeInplaceTest,
   t.transpose_(0, 1);
   ASSERT_EQ(t.sizes(), c10::IntArrayRef({5, 7}));
 }
+
+TEST(TensorTransposeTest, TransposeLargePositiveDimThrows) {
+  at::Tensor t = at::ones({2, 3}, at::kFloat);
+  ASSERT_ANY_THROW((void)at::transpose(t, 1LL << 32, 1));
+}
+
+TEST(TensorTransposeTest, TransposeLargeNegativeDimThrows) {
+  at::Tensor t = at::ones({2, 3}, at::kFloat);
+  ASSERT_ANY_THROW((void)t.transpose(0, -(1LL << 32)));
+}
+
+TEST(TensorTransposeInplaceTest, TransposeInplaceLargeDimThrowsUnchanged) {
+  at::Tensor t = at::ones({2, 3}, at::kFloat);
+  ASSERT_ANY_THROW((void)t.transpose_(1LL << 32, 1));
+  ASSERT_EQ(t.sizes(), c10::IntArrayRef({2, 3}));
+}
+
+TEST(TensorTransposeTest, TransposeLegalNegativeDims) {
+  at::Tensor t = at::ones({2, 3}, at::kFloat);
+  at::Tensor result = at::transpose(t, -1, -2);
+  ASSERT_EQ(result.sizes(), c10::IntArrayRef({3, 2}));
+
+  t.transpose_(-1, -2);
+  ASSERT_EQ(t.sizes(), c10::IntArrayRef({3, 2}));
+}

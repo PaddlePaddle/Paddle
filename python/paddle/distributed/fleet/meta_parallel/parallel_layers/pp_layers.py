@@ -111,12 +111,14 @@ class SharedLayerDesc(LayerDesc):
         layer_func,  # May be layer_func or layer_spec
         forward_func=None,
         shared_weight_attr='weight',
+        shared_submodule_weight_only=False,
         *inputs,
         **kwargs,
     ):
         super().__init__(layer_func, *inputs, **kwargs)
         self.layer_name = key
         self.forward_func = forward_func
+        self.shared_submodule_weight_only = shared_submodule_weight_only
         assert isinstance(shared_weight_attr, (str, list))
         if isinstance(shared_weight_attr, list):
             for weight_attr in shared_weight_attr:
@@ -740,65 +742,81 @@ class PipelineLayer(nn.Layer):
         for key, comm in self.shared_comm.items():
             with paddle.framework.no_grad():
                 for weight_attr in comm['weight_attr']:
-                    paddle.distributed.broadcast(
-                        getattr(comm['layer'], weight_attr),
-                        src=min(comm['ranks']),
-                        group=comm['group'],
-                    )
+                    obj = getattr(comm['layer'], weight_attr)
+                    if isinstance(obj, paddle.Tensor):
+                        paddle.distributed.broadcast(
+                            obj, src=min(comm['ranks']), group=comm['group']
+                        )
+                    else:
+                        # named_parameters() generator: (name, param) pairs
+                        for _, param in obj:
+                            paddle.distributed.broadcast(
+                                param,
+                                src=min(comm['ranks']),
+                                group=comm['group'],
+                            )
 
             if self.global_rank != min(comm['ranks']):
                 for weight_attr in comm['weight_attr']:
-                    param = getattr(comm['layer'], weight_attr)
-                    param.is_firstly_shared = False
+                    obj = getattr(comm['layer'], weight_attr)
+                    if isinstance(obj, paddle.Tensor):
+                        obj.is_firstly_shared = False
+                    else:
+                        for _, param in obj:
+                            param.is_firstly_shared = False
 
     def allreduce_shared_weight_gradients(self):
         for key, comm in self.shared_comm.items():
             for weight_attr in comm['weight_attr']:
-                param = getattr(comm['layer'], weight_attr)
-                # need use trace_op to allreduce weight
-                if framework.in_dynamic_mode():
-                    if hasattr(param, "main_grad"):
-                        if param.main_grad is None:
-                            warnings.warn(
-                                f"The param {param.name} doesn't contain main grad, "
-                                f"a zero tensor will be used for allreduce."
-                            )
-                            param.main_grad = core.eager.Tensor(
-                                value=paddle.zeros_like(
-                                    param, dtype='float32'
-                                ).value(),
-                                place=param.place,
-                                name="main_grad@" + param.name,
-                            )
-                        grad_var = param.main_grad
-                    else:
-                        if param.grad is None:
-                            warnings.warn(
-                                f"The param {param.name} doesn't contain grad, "
-                                f"a zero tensor will be used for allreduce."
-                            )
-                            param.grad = core.eager.Tensor(
-                                value=paddle.zeros_like(param).value(),
-                                place=param.place,
-                                name="grad@" + param.name,
-                            )
-                        grad_var = param.grad
-                    with paddle.framework.no_grad():
-                        paddle.distributed.all_reduce(
-                            grad_var.contiguous(),
-                            group=comm['group'],
-                        )
+                obj = getattr(comm['layer'], weight_attr)
+                if isinstance(obj, paddle.Tensor):
+                    params = [('', obj)]
                 else:
-                    with paddle.framework.no_grad():
-                        framework._dygraph_tracer().trace_op(
-                            type="all_reduce",
-                            inputs={'x': param._grad_ivar()},
-                            outputs={'out': param._grad_ivar()},
-                            attrs={
-                                'ring_id': comm['group'].id,
-                                'reduce_type': dist.ReduceOp.SUM,
-                            },
-                        )
+                    params = list(obj)
+                for _, param in params:
+                    if framework.in_dynamic_mode():
+                        if hasattr(param, "main_grad"):
+                            if param.main_grad is None:
+                                warnings.warn(
+                                    f"The param {param.name} doesn't contain main grad, "
+                                    f"a zero tensor will be used for allreduce."
+                                )
+                                param.main_grad = core.eager.Tensor(
+                                    value=paddle.zeros_like(
+                                        param, dtype='float32'
+                                    ).value(),
+                                    place=param.place,
+                                    name="main_grad@" + param.name,
+                                )
+                            grad_var = param.main_grad
+                        else:
+                            if param.grad is None:
+                                warnings.warn(
+                                    f"The param {param.name} doesn't contain grad, "
+                                    f"a zero tensor will be used for allreduce."
+                                )
+                                param.grad = core.eager.Tensor(
+                                    value=paddle.zeros_like(param).value(),
+                                    place=param.place,
+                                    name="grad@" + param.name,
+                                )
+                            grad_var = param.grad
+                        with paddle.framework.no_grad():
+                            paddle.distributed.all_reduce(
+                                grad_var.contiguous(),
+                                group=comm['group'],
+                            )
+                    else:
+                        with paddle.framework.no_grad():
+                            framework._dygraph_tracer().trace_op(
+                                type="all_reduce",
+                                inputs={'x': param._grad_ivar()},
+                                outputs={'out': param._grad_ivar()},
+                                attrs={
+                                    'ring_id': comm['group'].id,
+                                    'reduce_type': dist.ReduceOp.SUM,
+                                },
+                            )
 
     def _segment_network_for_interleave(self, seg_method):
         logger.info("start segment network for interleave scheduler")
@@ -963,6 +981,50 @@ class PipelineLayer(nn.Layer):
         paddle.set_rng_state(orig_rng_state)
         get_rng_state_tracker().set_states_tracker(orig_rng_tracker)
 
+    def _alias_shared_layer(self, dest_layer, src_layer):
+        """Alias parameters of layer to share weights with src_layer.
+
+        Replaces all parameters in layer.transformer_layer with the corresponding
+        parameters from src_layer, matched by name and shape. This makes both layers
+        share the same parameter memory. Asserts that all parameters are successfully
+        aliased.
+
+        Args:
+            layer: Destination layer whose transformer_layer parameters will be replaced.
+            src_layer: Source layer providing the shared parameters.
+        """
+        source_params = dict(src_layer.named_parameters())
+
+        dest_module = dest_layer.transformer_layer
+        dest_named_params = list(dest_module.named_parameters())
+        aliased_count = 0
+        shape_mismatch_count = 0
+        missing_count = 0
+        for param_name, dest_param in dest_named_params:
+            source_param = source_params.get(param_name)
+            if source_param is None:
+                missing_count += 1
+                continue
+            if tuple(source_param.shape) != tuple(dest_param.shape):
+                shape_mismatch_count += 1
+                continue
+
+            name_parts = param_name.split(".")
+            parent_module = dest_module
+            for submodule_name in name_parts[:-1]:
+                parent_module = getattr(parent_module, submodule_name)
+            leaf_param_name = name_parts[-1]
+            if leaf_param_name in parent_module._parameters:
+                parent_module._parameters[leaf_param_name] = source_param
+            else:
+                setattr(parent_module, leaf_param_name, source_param)
+            aliased_count += 1
+
+        total_params = len(dest_named_params)
+        assert total_params == aliased_count, (
+            f"{dest_layer} can't be aliased to {src_layer}, miss parameters:{missing_count}, wrong shape parameters:{shape_mismatch_count}"
+        )
+
     def _build_layer_impl(self, start, end):
         if self._num_virtual_pipeline_stages > 1 or self._use_dualpipev:
             # For interleave or dualpipev scheduler, all layers relating with one model chunk will be saved in PipelineLayerChunk
@@ -1010,32 +1072,58 @@ class PipelineLayer(nn.Layer):
                     "dualpipev scheduler does not support SharedLayerDesc yet"
                 )
                 flush_into_run_function()
-                if layer.layer_name not in self.shared_layers:
-                    self.shared_layers[layer.layer_name] = layer.build_layer()
-                    for weight_attr in layer.shared_weight_attr:
-                        param = getattr(
-                            self.shared_layers[layer.layer_name], weight_attr
+                if layer.shared_submodule_weight_only:
+                    instance = layer.build_layer()
+                    if layer.layer_name not in self.shared_layers:
+                        self.shared_layers[layer.layer_name] = instance
+                        for weight_attr in layer.shared_weight_attr:
+                            obj = getattr(instance, weight_attr)
+                            if isinstance(obj, paddle.Tensor):
+                                obj.is_firstly_shared = True
+                            else:
+                                for _, param in obj:
+                                    param.is_firstly_shared = True
+                    else:
+                        self.add_sublayer(str(layer_index), instance)
+                        self._alias_shared_layer(
+                            instance, self.shared_layers[layer.layer_name]
                         )
-                        param.is_firstly_shared = True
-
-                if layer.forward_func is None:
-                    run_function.append(self.shared_layers[layer.layer_name])
-
+                    run_function.append(instance)
                 else:
-                    run_function.append(
-                        partial(
-                            layer.forward_func,
-                            self.shared_layers[layer.layer_name],
+                    if layer.layer_name not in self.shared_layers:
+                        self.shared_layers[layer.layer_name] = (
+                            layer.build_layer()
                         )
-                    )
-                    # Note: the PipelineLayerChunk won't add the partial function to the sub layer,
-                    # will introduce error when calling chunk.parameters(). Have to manually add
-                    # this layer to the chunk's sub layer.
-                    if self._num_virtual_pipeline_stages > 1:
-                        run_function.add_sublayer(
-                            layer.layer_name,
-                            self.shared_layers[layer.layer_name],
+                        for weight_attr in layer.shared_weight_attr:
+                            obj = getattr(
+                                self.shared_layers[layer.layer_name],
+                                weight_attr,
+                            )
+                            if isinstance(obj, paddle.Tensor):
+                                obj.is_firstly_shared = True
+                            else:
+                                for _, param in obj:
+                                    param.is_firstly_shared = True
+
+                    if layer.forward_func is None:
+                        run_function.append(
+                            self.shared_layers[layer.layer_name]
                         )
+                    else:
+                        run_function.append(
+                            partial(
+                                layer.forward_func,
+                                self.shared_layers[layer.layer_name],
+                            )
+                        )
+                        # Note: the PipelineLayerChunk won't add the partial function to the sub layer,
+                        # will introduce error when calling chunk.parameters(). Have to manually add
+                        # this layer to the chunk's sub layer.
+                        if self._num_virtual_pipeline_stages > 1:
+                            run_function.add_sublayer(
+                                layer.layer_name,
+                                self.shared_layers[layer.layer_name],
+                            )
             elif isinstance(layer, LocalSharedLayerDesc):
                 assert self._use_dualpipev, (
                     "Only dualpipev is supported to use LocalSharedLayerDesc yet"

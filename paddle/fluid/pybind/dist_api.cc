@@ -160,10 +160,10 @@ std::vector<std::vector<size_t>> AssignValueGroupBySize(
   tensors.reserve(values.size());
   for (auto value : values) {
     auto x = value.type().dyn_cast<DenseTensorType>();
-    PADDLE_ENFORCE_NOT_NULL(
-        x,
-        common::errors::Fatal(
-            "Only support assign group for dense tensor value!"));
+    PADDLE_ENFORCE_NE(x.storage(),
+                      nullptr,
+                      common::errors::Fatal(
+                          "Only support assign group for dense tensor value!"));
     auto ir_tensor = std::make_shared<dialect::IrTensor>(
         dialect::TransToPhiDataType(x.dtype()),
         x.dims(),

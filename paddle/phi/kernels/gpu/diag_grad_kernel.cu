@@ -15,6 +15,8 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/diag_kernel.h"
+
+#include "paddle/common/enforce.h"
 #include "paddle/phi/kernels/funcs/diag_functor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -90,16 +92,19 @@ void DiagGradKernel(const Context& dev_ctx,
           (offset >= 0 ? offset * dout_stride_1 : -offset * dout_stride_0);
 
       std::tuple<int64_t, int64_t> block_grid_size = GetBlockGridSize(size);
+      const int64_t grid_64 = std::get<1>(block_grid_size);
+      const int64_t block_64 = std::get<0>(block_grid_size);
+      PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "grid");
+      PADDLE_ENFORCE_LE_UINT32_MAX(block_64, "block");
+      uint32_t grid = static_cast<uint32_t>(grid_64);
+      uint32_t block = static_cast<uint32_t>(block_64);
       ExtractDiagonalKernel<T>
-          <<<std::get<1>(block_grid_size),
-             std::get<0>(block_grid_size),
-             0,
-             dev_ctx.stream()>>>(dout_data,
-                                 dx_data,
-                                 start,
-                                 dx_length,
-                                 dout_stride_0 + dout_stride_1,
-                                 dx_stride);
+          <<<grid, block, 0, dev_ctx.stream()>>>(dout_data,
+                                                 dx_data,
+                                                 start,
+                                                 dx_length,
+                                                 dout_stride_0 + dout_stride_1,
+                                                 dx_stride);
     }
   } else {
     funcs::SetConstant<Context, T> set_padding_value;
@@ -119,15 +124,19 @@ void DiagGradKernel(const Context& dev_ctx,
           (offset >= 0 ? offset * dx_stride_1 : -offset * dx_stride_0);
       int64_t dout_stride_0 = funcs::ComputeStride(0, dout_dims);
       std::tuple<int64_t, int64_t> block_grid_size = GetBlockGridSize(size);
-      PasteDiagonalKernel<T><<<std::get<1>(block_grid_size),
-                               std::get<0>(block_grid_size),
-                               0,
-                               dev_ctx.stream()>>>(dout_data,
-                                                   dx_data,
-                                                   start,
-                                                   size,
-                                                   dx_stride_0 + dx_stride_1,
-                                                   dout_stride_0);
+      const int64_t grid_64 = std::get<1>(block_grid_size);
+      const int64_t block_64 = std::get<0>(block_grid_size);
+      PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "grid");
+      PADDLE_ENFORCE_LE_UINT32_MAX(block_64, "block");
+      uint32_t grid = static_cast<uint32_t>(grid_64);
+      uint32_t block = static_cast<uint32_t>(block_64);
+      PasteDiagonalKernel<T>
+          <<<grid, block, 0, dev_ctx.stream()>>>(dout_data,
+                                                 dx_data,
+                                                 start,
+                                                 size,
+                                                 dx_stride_0 + dx_stride_1,
+                                                 dout_stride_0);
     }
   }
 }

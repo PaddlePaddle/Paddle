@@ -21,7 +21,10 @@
 #include <cuda_profiler_api.h>
 
 #define GPUEvent_t cudaEvent_t
+
+#ifndef GPUStream_t
 #define GPUStream_t cudaStream_t
+#endif
 
 #define GPUEventCreate(e) cudaEventCreate(e)
 #define GPUEventDestroy(e) cudaEventDestroy(e)
@@ -32,6 +35,27 @@
 #define GPUProfilerStop() cudaProfilerStop()
 #define GPUStreamSynchronize(s) cudaStreamSynchronize(s)
 #define CHECK_GPU CHECK_CUDA
+#endif
+
+#ifdef __HIPCC__
+#include <hip/hip_runtime.h>
+#include <hip/hip_runtime_api.h>
+
+#define GPUEvent_t hipEvent_t
+
+#ifndef GPUStream_t
+#define GPUStream_t hipStream_t
+#endif
+
+#define GPUEventCreate(e) hipEventCreate(e)
+#define GPUEventDestroy(e) hipEventDestroy(e)
+#define GPUEventRecord(e, s) hipEventRecord(e, s)
+#define GPUEventSynchronize(e) hipEventSynchronize(e)
+#define GPUEventElapsedTime(ms, s, e) hipEventElapsedTime(ms, s, e)
+#define GPUProfilerStart() hipProfilerStart()
+#define GPUProfilerStop() hipProfilerStop()
+#define GPUStreamSynchronize(s) hipStreamSynchronize(s)
+#define CHECK_GPU CHECK_HIP
 #endif
 
 namespace ap {

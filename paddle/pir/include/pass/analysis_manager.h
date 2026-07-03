@@ -18,6 +18,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -225,16 +226,23 @@ class AnalysisMap {
   template <
       typename AnalysisT,
       typename OpT,
-      std::enable_if_t<std::is_constructible<AnalysisT, OpT>::value>* = nullptr>
+      std::enable_if_t<
+          std::is_constructible<AnalysisT, OpT>::value &&
+          !std::is_constructible<AnalysisT, OpT, AnalysisManager&>::value>* =
+          nullptr>
   static auto ConstructAnalysis(AnalysisManager&, OpT op) {
     return std::make_unique<AnalysisModel<AnalysisT>>(op);
   }
 
   /// Construct analysis using default constructor
-  template <typename AnalysisT,
-            typename OpT,
-            std::enable_if_t<std::is_default_constructible<AnalysisT>::value>* =
-                nullptr>
+  template <
+      typename AnalysisT,
+      typename OpT,
+      std::enable_if_t<
+          std::is_default_constructible<AnalysisT>::value &&
+          !std::is_constructible<AnalysisT, OpT>::value &&
+          !std::is_constructible<AnalysisT, OpT, AnalysisManager&>::value>* =
+          nullptr>
   static auto ConstructAnalysis(AnalysisManager&, OpT op) {
     return std::make_unique<AnalysisModel<AnalysisT>>();
   }

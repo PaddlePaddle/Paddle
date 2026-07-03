@@ -104,6 +104,7 @@ from paddle._C_ops import (  # noqa: F401
     sigmoid,
     sigmoid_,
     sign,
+    sign_,
     sin,
     sin_,
     sinh,
@@ -2329,7 +2330,6 @@ def addmv(
     vec: Tensor,
     beta: float = 1,
     alpha: float = 1,
-    name: str | None = None,
     *,
     out: Tensor | None = None,
 ) -> Tensor:
@@ -2378,7 +2378,6 @@ def addmv_(
     vec: Tensor,
     beta: float = 1,
     alpha: float = 1,
-    name: str | None = None,
 ) -> Tensor:
     """
     Inplace version of ``addmv`` API.
@@ -2393,7 +2392,6 @@ def addr(
     vec2: Tensor,
     beta: float = 1,
     alpha: float = 1,
-    name: str | None = None,
     *,
     out: Tensor | None = None,
 ) -> Tensor:
@@ -2439,12 +2437,68 @@ def addr_(
     vec2: Tensor,
     beta: float = 1,
     alpha: float = 1,
-    name: str | None = None,
 ) -> Tensor:
     """
     Inplace version of ``addr`` API.
     """
     addmm_(input, vec1.unsqueeze(-1), vec2.unsqueeze(0), beta=beta, alpha=alpha)
+    return input
+
+
+def addcdiv(
+    input: Tensor,
+    tensor1: Tensor,
+    tensor2: Tensor,
+    value: float = 1,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
+    """
+    Performs the element-wise division of `tensor1` by `tensor2`,
+    multiplies the result by the scalar `value` and adds it to `input`.
+
+    The formula is: out = input + value * (tensor1 / tensor2)
+
+    Args:
+        input (Tensor): The input tensor to be added.
+        tensor1 (Tensor): The numerator tensor.
+        tensor2 (Tensor): The denominator tensor.
+        value (float, optional): Multiplier for tensor1 / tensor2. Default: 1.
+        name (str|None, optional): Name for the operation. Default: None.
+
+    Keyword Args:
+        out (Tensor|None, optional): Output tensor. Default: None.
+
+    Returns:
+        Tensor: The result tensor.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> input = paddle.randn([3])
+            >>> tensor1 = paddle.randn([3])
+            >>> tensor2 = paddle.randn([3])
+            >>> out = paddle.addcdiv(input, tensor1, tensor2, value=0.5)
+    """
+    result = paddle.add(input, value * paddle.divide(tensor1, tensor2))
+    if out is not None:
+        paddle.assign(result, out)
+        return out
+    return result
+
+
+@inplace_apis_in_dygraph_only
+def addcdiv_(
+    input: Tensor,
+    tensor1: Tensor,
+    tensor2: Tensor,
+    value: float = 1,
+) -> Tensor:
+    """
+    Inplace version of ``addcdiv`` API.
+    """
+    input.add_(value * paddle.divide(tensor1, tensor2))
     return input
 
 

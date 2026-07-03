@@ -1391,3 +1391,92 @@ def slice_scatter_decorator() -> Callable[
         return wrapper
 
     return decorator
+
+
+def resize__decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """Decorator for resize_ to support PyTorch-style variable args (*sizes)."""
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            # Handle PyTorch-style variable args: x.resize_(2, 3, 4) -> x.resize_([2, 3, 4])
+            kwargs.pop('memory_format', None)
+            if len(args) >= 2:
+                # args[0] is self (x), args[1:] are the sizes
+                x = args[0]
+                sizes = args[1:]
+                # Check if all sizes are integers (variable args mode)
+                if all(isinstance(s, int) for s in sizes):
+                    kwargs['shape'] = list(sizes)
+                    args = (x,)
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
+def gru_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
+    """
+    Dispatch decorator for ``GRU.__init__``.
+
+    PyTorch's ``torch.nn.GRU`` places ``bias`` (``bool``) at the 4th
+    positional argument (index 4 when ``self`` is counted), while Paddle's
+    native signature places ``direction`` (``str``) at the same position.
+    When ``args[4]`` is a ``bool`` we interpret the call as the PyTorch
+    convention and remap positional arguments ``args[4:10]`` to keyword
+    arguments so the call succeeds against Paddle's signature.
+
+    Usage Example:
+    PyTorch: torch.nn.GRU(input_size, hidden_size, num_layers=1, bias=True, batch_first=False,
+                          dropout=0, bidirectional=False, device=None, dtype=None)
+    Paddle: paddle.nn.GRU(input_size, hidden_size, num_layers=1, direction='forward',
+                          time_major=False, dropout=0, ...)
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            # Detect PyTorch-style positional args: 4th param is bool (bias)
+            if len(args) >= 5 and isinstance(args[4], bool):
+                torch_names = (
+                    "bias",
+                    "batch_first",
+                    "dropout",
+                    "bidirectional",
+                    "device",
+                    "dtype",
+                )
+                for i, name in enumerate(torch_names):
+                    pos = 4 + i
+                    if pos >= len(args):
+                        break
+                    if name in kwargs:
+                        raise TypeError(
+                            f"__init__() got multiple values for argument '{name}'"
+                        )
+                    kwargs[name] = args[pos]
+                args = args[:4]
+
+            # Handle batch_first vs time_major (opposite meaning)
+            if "batch_first" in kwargs and "time_major" not in kwargs:
+                batch_first = kwargs.pop("batch_first")
+                kwargs["time_major"] = not batch_first
+
+            # Handle bidirectional vs direction
+            if "bidirectional" in kwargs and "direction" not in kwargs:
+                bidirectional = kwargs.pop("bidirectional")
+                kwargs["direction"] = (
+                    "bidirectional" if bidirectional else "forward"
+                )
+
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator

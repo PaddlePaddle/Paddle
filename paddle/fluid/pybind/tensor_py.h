@@ -704,13 +704,13 @@ void _sliceCompute(const DenseTensor *in,
     offsets[i] = 0;
     extents[i] = out_dims[i];
   }
-  int start;
+  int64_t start;
   for (size_t i = 0; i < axes.size(); ++i) {
     start = starts[i];
     if (start < 0) {
-      start = (start + in_dims[axes[i]]);
+      start += in_dims[axes[i]];
     }
-    start = std::max(start, 0);
+    start = std::max<int64_t>(start, 0);
     offsets[axes[i]] = start;
   }
   auto in_t = framework::EigenTensor<T, D, Eigen::RowMajor>::From(*in);

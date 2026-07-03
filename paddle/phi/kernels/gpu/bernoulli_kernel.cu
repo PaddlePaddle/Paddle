@@ -24,6 +24,7 @@
 #include <algorithm>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/amp_type_traits.h"
@@ -83,8 +84,12 @@ void BernoulliKernel(const Context& dev_ctx,
   uint64_t offset = seed_offset.second;
 
   auto gpu_config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, 4);
-  size_t grid_size = gpu_config.GetGridSize();
-  size_t block_size = gpu_config.GetBlockSize();
+  size_t grid_size_64 = gpu_config.GetGridSize();
+  size_t block_size_64 = gpu_config.GetBlockSize();
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_64, "bernoulli grid.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(block_size_64, "bernoulli block.x");
+  uint32_t grid_size = static_cast<uint32_t>(grid_size_64);
+  uint32_t block_size = static_cast<uint32_t>(block_size_64);
 
   bernoulli_cuda_kernel<<<grid_size, block_size, 0, dev_ctx.stream()>>>(
       numel, seed, offset, x_data, out_data);

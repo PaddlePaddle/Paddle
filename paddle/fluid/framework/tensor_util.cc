@@ -468,7 +468,7 @@ void TensorToStream(std::ostream& os,
     auto* pb_dims = desc.mutable_dims();
     pb_dims->Resize(static_cast<int>(dims.size()), 0);
     std::copy(dims.begin(), dims.end(), pb_dims->begin());
-    int32_t size = desc.ByteSize();
+    int32_t size = static_cast<int32_t>(desc.ByteSizeLong());
     os.write(reinterpret_cast<const char*>(&size), sizeof(size));
     auto out = desc.SerializeAsString();
     os.write(out.data(), size);

@@ -7,10 +7,10 @@ if(NOT STD_FLAG)
   if(NOT CMAKE_CXX_STANDARD)
     message(
       STATUS
-        "STD_FLAG and CMAKE_CXX_STANDARD not found, using default flag: -std=c++17"
+        "STD_FLAG and CMAKE_CXX_STANDARD not found, using default flag: -std=c++20"
     )
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
-    set(CMAKE_CXX_STANDARD 17)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
+    set(CMAKE_CXX_STANDARD 20)
   else()
     message(
       STATUS

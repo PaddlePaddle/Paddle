@@ -12,61 +12,51 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import inspect
-
-import paddle
-
-from .base.dygraph.generated_tensor_methods_patch import (
-    funcs_map,
-    methods_map,
-    nn_funcs_map,
-)
-
-# Add docstr for some C++ functions in paddle
-_add_docstr = paddle.base.core.eager._add_docstr
-_code_template = R"""
 from __future__ import annotations
 
-{}:
-    ...
+import inspect
+from typing import TYPE_CHECKING
 
-"""
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from typing import Literal
+
+    import paddle
+    from paddle import Tensor
+    from paddle._typing import DataLayout2D, DTypeLike
+
+from .base.dygraph.generated_tensor_methods_patch import _all_method_op_map
 
 
-def _parse_function_signature(func_name: str, code: str) -> inspect.Signature:
-    code = _code_template.format(code.strip())
-    code_obj = compile(code, "<string>", "exec")
-    globals = {}
-    eval(code_obj, globals)
-    return inspect.signature(globals[func_name])
-
-
-# sundong
-def add_doc_and_signature(func_name: str, docstr: str, func_def: str) -> None:
+def add_doc_and_signature(func_def):
     """
-    Add docstr for function (paddle.*) and method (paddle.Tensor.*) if method exists
+    Decorator for documentation-only shell functions.
+
+    The decorated function has no implementation (body is ``...``); its sole purpose
+    is to carry an API signature and a docstring, like a ``.pyi`` stub. At import time
+    this decorator copies that signature / docstring onto the real paddle objects
+    (``paddle.*`` / ``paddle.Tensor.*`` / ``paddle.nn.functional.*``) wherever they exist.
+    The shell body is never executed.
     """
-    python_api_sig = _parse_function_signature(func_name, func_def)
-    for module in [paddle, paddle.Tensor, paddle.nn.functional]:
-        if hasattr(module, func_name):
-            func = getattr(module, func_name)
-            if inspect.isfunction(func):
-                func.__doc__ = docstr
-            elif inspect.ismethod(func):
-                func.__func__.__doc__ = docstr
-            elif inspect.isbuiltin(func):
-                _add_docstr(func, docstr)
-    methods_dict = dict(methods_map)
-    funcs_dict = dict(funcs_map)
-    nn_funcs_dict = dict(nn_funcs_map)
-    all_funcs_dict = methods_dict | funcs_dict | nn_funcs_dict
-    if func_name in all_funcs_dict.keys():
-        tensor_func = all_funcs_dict[func_name]
-        tensor_func.__signature__ = python_api_sig
+
+    func_name = func_def.__name__
+    docstr = inspect.getdoc(func_def)
+    signature = inspect.signature(func_def)
+    for _, generated_name, generated_func in _all_method_op_map:
+        if generated_name == func_name:
+            generated_func.__doc__ = docstr
+            generated_func.__signature__ = signature
+            break
+    return func_def
 
 
-add_doc_and_signature(
-    "acos",
+@add_doc_and_signature
+def acos(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     r"""
     Acos Activation Operator.
 
@@ -95,19 +85,17 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [1.98231316, 1.77215421, 1.47062886, 1.26610363])
-""",
     """
-def acos(
+    ...
+
+
+@add_doc_and_signature
+def acosh(
     x: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "acosh",
+) -> Tensor:
     r"""
     Acosh Activation Operator.
 
@@ -131,24 +119,22 @@ add_doc_and_signature(
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([1., 3., 4., 5.])
+            >>> x = paddle.to_tensor([1.0, 3.0, 4.0, 5.0])
             >>> out = paddle.acosh(x)
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.        , 1.76274717, 2.06343699, 2.29243159])
-""",
     """
-def acosh(
+    ...
+
+
+@add_doc_and_signature
+def sinh(
     x: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "sinh",
+) -> Tensor:
     r"""
     Sinh Activation Operator.
 
@@ -177,19 +163,19 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.41075233, -0.20133601,  0.10016675,  0.30452031])
-""",
     """
-def sinh(
+    ...
+
+
+@add_doc_and_signature
+def amin(
     x: Tensor,
+    axis: int | Sequence[int] | None = None,
+    keepdim: bool = False,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "amin",
+) -> Tensor:
     r"""
     Computes the minimum of tensor elements over the given axis
 
@@ -227,9 +213,7 @@ add_doc_and_signature(
             >>> # data_x is a Tensor with shape [2, 4] with multiple minimum elements
             >>> # the axis is a int element
 
-            >>> x = paddle.to_tensor([[0.2, 0.1, 0.1, 0.1],
-            ...                         [0.1, 0.1, 0.6, 0.7]],
-            ...                         dtype='float64', stop_gradient=False)
+            >>> x = paddle.to_tensor([[0.2, 0.1, 0.1, 0.1], [0.1, 0.1, 0.6, 0.7]], dtype='float64', stop_gradient=False)
             >>> # There are 5 minimum elements:
             >>> # 1) amin evenly distributes gradient between these equal values,
             >>> #    thus the corresponding gradients are 1/5=0.2;
@@ -289,9 +273,7 @@ add_doc_and_signature(
 
             >>> # data_y is a Tensor with shape [2, 2, 2]
             >>> # the axis is list
-            >>> y = paddle.to_tensor([[[0.2, 0.1], [0.1, 0.1]],
-            ...                       [[0.1, 0.1], [0.6, 0.7]]],
-            ...                       dtype='float64', stop_gradient=False)
+            >>> y = paddle.to_tensor([[[0.2, 0.1], [0.1, 0.1]], [[0.1, 0.1], [0.6, 0.7]]], dtype='float64', stop_gradient=False)
             >>> result5 = paddle.amin(y, axis=[1, 2])
             >>> result5.backward()
             >>> result5
@@ -316,21 +298,18 @@ add_doc_and_signature(
               [0.50000000, 0.33333333]],
              [[0.50000000, 0.33333333],
               [0.        , 0.        ]]])
-""",
     """
-def amin(
+    ...
+
+
+@add_doc_and_signature
+def aminmax(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
     keepdim: bool = False,
-    name: str | None = None,
     *,
-    out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "aminmax",
+    out: tuple[Tensor, Tensor] | None = None,
+) -> tuple[Tensor, Tensor]:
     r"""
     Computes both the minimum and maximum of tensor elements over the given axis.
 
@@ -363,24 +342,21 @@ add_doc_and_signature(
         .. code-block:: pycon
 
             >>> import paddle
-            >>> x = paddle.to_tensor([[0.1, 0.9, 0.9, 0.9],
-            ...                       [0.9, 0.9, 0.6, 0.7]],
-            ...                       dtype='float64', stop_gradient=False)
+            >>> x = paddle.to_tensor([[0.1, 0.9, 0.9, 0.9], [0.9, 0.9, 0.6, 0.7]], dtype='float64', stop_gradient=False)
             >>> # min_val, max_val = paddle.aminmax(x)  # doctest to be enabled after API is merged
-""",
     """
-def aminmax(
+    ...
+
+
+@add_doc_and_signature
+def amax(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
     keepdim: bool = False,
+    name: str | None = None,
     *,
-    out: tuple[Tensor, Tensor] | None = None,
-) -> tuple[Tensor, Tensor]
-""",
-)
-
-add_doc_and_signature(
-    "amax",
+    out: Tensor | None = None,
+) -> Tensor:
     r"""
     Computes the maximum of tensor elements over the given axis.
 
@@ -418,9 +394,7 @@ add_doc_and_signature(
             >>> # data_x is a Tensor with shape [2, 4] with multiple maximum elements
             >>> # the axis is a int element
 
-            >>> x = paddle.to_tensor([[0.1, 0.9, 0.9, 0.9],
-            ...                         [0.9, 0.9, 0.6, 0.7]],
-            ...                         dtype='float64', stop_gradient=False)
+            >>> x = paddle.to_tensor([[0.1, 0.9, 0.9, 0.9], [0.9, 0.9, 0.6, 0.7]], dtype='float64', stop_gradient=False)
             >>> # There are 5 maximum elements:
             >>> # 1) amax evenly distributes gradient between these equal values,
             >>> #    thus the corresponding gradients are 1/5=0.2;
@@ -480,9 +454,7 @@ add_doc_and_signature(
 
             >>> # data_y is a Tensor with shape [2, 2, 2]
             >>> # the axis is list
-            >>> y = paddle.to_tensor([[[0.1, 0.9], [0.9, 0.9]],
-            ...                         [[0.9, 0.9], [0.6, 0.7]]],
-            ...                         dtype='float64', stop_gradient=False)
+            >>> y = paddle.to_tensor([[[0.1, 0.9], [0.9, 0.9]], [[0.9, 0.9], [0.6, 0.7]]], dtype='float64', stop_gradient=False)
             >>> result5 = paddle.amax(y, axis=[1, 2])
             >>> result5.backward()
             >>> result5
@@ -507,76 +479,19 @@ add_doc_and_signature(
               [0.50000000, 0.33333333]],
              [[0.50000000, 0.33333333],
               [0.        , 0.        ]]])
-""",
     """
-def amax(
+    ...
+
+
+@add_doc_and_signature
+def all(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
     keepdim: bool = False,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "angle",
-    r"""
-    Element-wise angle of complex numbers. For non-negative real numbers, the angle is 0 while
-    for negative real numbers, the angle is :math:`\pi`, and NaNs are propagated.
-
-    Equation:
-        .. math::
-
-            angle(x)=arctan2(x.imag, x.real)
-
-    Args:
-        x (Tensor): An N-D Tensor, the data type is complex64, complex128, or float32, float64 .
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: An N-D Tensor of real data type with the same precision as that of x's data type.
-
-    Examples:
-        .. code-block:: pycon
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([-2, -1, 0, 1]).unsqueeze(-1).astype('float32')
-            >>> y = paddle.to_tensor([-2, -1, 0, 1]).astype('float32')
-            >>> z = x + 1j * y
-            >>> z
-            Tensor(shape=[4, 4], dtype=complex64, place=Place(cpu), stop_gradient=True,
-            [[(-2.00000000-2.00000000j), (-2.00000000-1.00000000j),
-              (-2.00000000+0.00000000j), (-2.00000000+1.00000000j)],
-             [(-1.00000000-2.00000000j), (-1.00000000-1.00000000j),
-              (-1.00000000+0.00000000j), (-1.00000000+1.00000000j)],
-             [(0.00000000-2.00000000j) , (0.00000000-1.00000000j) ,
-               (0.00000000+0.00000000j),  (0.00000000+1.00000000j)],
-             [ (1.00000000-2.00000000j),  (1.00000000-1.00000000j),
-               (1.00000000+0.00000000j),  (1.00000000+1.00000000j)]])
-
-            >>> theta = paddle.angle(z)
-            >>> theta
-            Tensor(shape=[4, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[-2.35619450, -2.67794514,  3.14159274,  2.67794514],
-             [-2.03444386, -2.35619450,  3.14159274,  2.35619450],
-             [-1.57079637, -1.57079637,  0.        ,  1.57079637],
-             [-1.10714877, -0.78539819,  0.        ,  0.78539819]])
-""",
-    """
-def angle(
-    x: Tensor,
-    name: str | None = None,
-    *,
-    out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "all",
+) -> Tensor:
     r"""
     Computes the ``logical and`` of tensor elements over the given dimension.
 
@@ -637,21 +552,18 @@ add_doc_and_signature(
             Tensor(shape=[2, 1], dtype=bool, place=Place(cpu), stop_gradient=True,
             [[False],
              [True ]])
-""",
     """
-def all(
-    x: Tensor,
-    axis: int | Sequence[int] | None = None,
-    keepdim: bool = False,
-    name: str | None = None,
-    *,
-    out: Tensor | None = None,
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "argmax",
+
+@add_doc_and_signature
+def argmax(
+    x: Tensor,
+    axis: int | None = None,
+    keepdim: bool = False,
+    dtype: DTypeLike = "int64",
+    name: str | None = None,
+) -> Tensor:
     r"""
     Computes the indices of the max elements of the input tensor's
     element along the provided axis.
@@ -676,9 +588,7 @@ add_doc_and_signature(
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([[5,8,9,5],
-            ...                       [0,0,1,7],
-            ...                       [6,9,2,4]])
+            >>> x = paddle.to_tensor([[5, 8, 9, 5], [0, 0, 1, 7], [6, 9, 2, 4]])
             >>> out1 = paddle.argmax(x)
             >>> print(out1.numpy())
             2
@@ -691,20 +601,18 @@ add_doc_and_signature(
             >>> out4 = paddle.argmax(x, axis=0, keepdim=True)
             >>> print(out4.numpy())
             [[2 2 0 1]]
-""",
     """
-def argmax(
+    ...
+
+
+@add_doc_and_signature
+def argmin(
     x: Tensor,
     axis: int | None = None,
     keepdim: bool = False,
     dtype: DTypeLike = "int64",
     name: str | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "argmin",
+) -> Tensor:
     r"""
     Computes the indices of the min elements of the input tensor's
     element along the provided axis.
@@ -729,9 +637,7 @@ add_doc_and_signature(
 
             >>> import paddle
 
-            >>> x =  paddle.to_tensor([[5,8,9,5],
-            ...                        [0,0,1,7],
-            ...                        [6,9,2,4]])
+            >>> x = paddle.to_tensor([[5, 8, 9, 5], [0, 0, 1, 7], [6, 9, 2, 4]])
             >>> out1 = paddle.argmin(x)
             >>> print(out1.numpy())
             4
@@ -744,20 +650,17 @@ add_doc_and_signature(
             >>> out4 = paddle.argmin(x, axis=0, keepdim=True)
             >>> print(out4.numpy())
             [[1 1 1 2]]
-""",
     """
-def argmin(
-    x: Tensor,
-    axis: int | None = None,
-    keepdim: bool = False,
-    dtype: DTypeLike = "int64",
-    name: str | None = None,
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "atan",
+
+@add_doc_and_signature
+def atan(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     r"""
     Arctangent Operator.
 
@@ -786,19 +689,17 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.38050640, -0.19739556,  0.09966865,  0.29145682])
-""",
     """
-def atan(
+    ...
+
+
+@add_doc_and_signature
+def atanh(
     x: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "atanh",
+) -> Tensor:
     r"""
     Atanh Activation Operator.
 
@@ -827,19 +728,18 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.42364895, -0.20273255,  0.10033534,  0.30951962])
-""",
     """
-def atanh(
+    ...
+
+
+@add_doc_and_signature
+def atan2(
     x: Tensor,
+    y: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "atan2",
+) -> Tensor:
     r"""Element-wise arctangent of x/y with consideration of the quadrant.
 
     Equation:
@@ -885,20 +785,17 @@ add_doc_and_signature(
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-2.35619450,  2.35619450,  0.78539819, -0.78539819])
 
-""",
     """
-def atan2(
+    ...
+
+
+@add_doc_and_signature
+def log2(
     x: Tensor,
-    y: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "log2",
+) -> Tensor:
     r"""
     Calculates the log to the base 2 of the given input tensor, element-wise.
 
@@ -943,19 +840,17 @@ add_doc_and_signature(
             >>> res
             Tensor(shape=[1], dtype=float64, place=Place(cpu), stop_gradient=True,
             [1.])
-""",
     """
-def log2(
+    ...
+
+
+@add_doc_and_signature
+def log10(
     x: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "log10",
+) -> Tensor:
     r"""
     Calculates the log to the base 10 of the given input tensor, element-wise.
 
@@ -1000,18 +895,17 @@ add_doc_and_signature(
             >>> res
             Tensor(shape=[1], dtype=float64, place=Place(cpu), stop_gradient=True,
             [1.])
-""",
     """
-def log10(
+    ...
+
+
+@add_doc_and_signature
+def asinh(
     x: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-add_doc_and_signature(
-    "asinh",
+) -> Tensor:
     r"""
     Asinh Activation Operator.
 
@@ -1040,19 +934,17 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.39003533, -0.19869010,  0.09983408,  0.29567307])
-""",
     """
-def asinh(
+    ...
+
+
+@add_doc_and_signature
+def reciprocal(
     x: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "reciprocal",
+) -> Tensor:
     r"""
     Reciprocal Activation Operator.
 
@@ -1081,19 +973,17 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-2.50000000, -5.        ,  10.       ,  3.33333325])
-""",
     """
-def reciprocal(
+    ...
+
+
+@add_doc_and_signature
+def square(
     x: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "square",
+) -> Tensor:
     r"""
     Square each elements of the inputs.
 
@@ -1120,19 +1010,17 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.16000001, 0.04000000, 0.01000000, 0.09000000])
-""",
     """
-def square(
+    ...
+
+
+@add_doc_and_signature
+def tan(
     x: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "tan",
+) -> Tensor:
     r"""
     Tangent Operator. Computes tangent of x element-wise.
 
@@ -1163,19 +1051,17 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.42279324, -0.20271003,  0.10033467,  0.30933627])
-""",
     """
-def tan(
+    ...
+
+
+@add_doc_and_signature
+def log1p(
     x: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "log1p",
+) -> Tensor:
     r"""
     Calculates the natural log of the given input tensor plus 1, element-wise.
 
@@ -1203,19 +1089,20 @@ add_doc_and_signature(
             Tensor(shape=[2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0.        ],
              [0.69314718]])
-""",
     """
-def log1p(
+    ...
+
+
+@add_doc_and_signature
+def matmul(
     x: Tensor,
+    y: Tensor,
+    transpose_x: bool = False,
+    transpose_y: bool = False,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "matmul",
+) -> Tensor:
     r"""
     Applies matrix multiplication to two tensors. `matmul` follows
     the complete broadcast rules,
@@ -1307,22 +1194,14 @@ add_doc_and_signature(
             >>> z = paddle.matmul(x, y)
             >>> print(z.shape)
             paddle.Size([10, 3, 5, 5])
-""",
     """
-def matmul(
-    x: Tensor,
-    y: Tensor,
-    transpose_x: bool = False,
-    transpose_y: bool = False,
-    name: str | None = None,
-    *,
-    out: Tensor | None = None,
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "multiply",
+
+@add_doc_and_signature
+def multiply(
+    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     r"""
     multiply two tensors element-wise. The equation is:
 
@@ -1366,20 +1245,19 @@ add_doc_and_signature(
             [[[2, 4, 6],
               [2, 4, 6]]])
 
-""",
     """
-def multiply(
+    ...
+
+
+@add_doc_and_signature
+def logsumexp(
     x: Tensor,
-    y: Tensor,
+    axis: int | Sequence[int] | None = None,
+    keepdim: bool = False,
     name: str | None = None,
     *,
-    out: Tensor | None = None
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "logsumexp",
+    out: Tensor | None = None,
+) -> Tensor:
     r"""
     Calculates the log of the sum of exponential of ``x`` along ``axis`` .
 
@@ -1418,7 +1296,7 @@ add_doc_and_signature(
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([[-1.5, 0., 2.], [3., 1.2, -2.4]])
+            >>> x = paddle.to_tensor([[-1.5, 0.0, 2.0], [3.0, 1.2, -2.4]])
             >>> out1 = paddle.logsumexp(x)
             >>> out1
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -1428,21 +1306,17 @@ add_doc_and_signature(
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [2.15317822, 3.15684605])
 
-""",
     """
-def logsumexp(
-    x: Tensor,
-    axis: int | Sequence[int] | None = None,
-    keepdim: bool = False,
-    name: str | None = None,
-    *,
-    out: Tensor | None = None,
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "softplus",
+
+@add_doc_and_signature
+def softplus(
+    x: Tensor,
+    beta: float = 1,
+    threshold: float = 20,
+    name: str | None = None,
+) -> Tensor:
     r"""
     softplus activation
 
@@ -1472,19 +1346,17 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.51301527, 0.59813893, 0.74439669, 0.85435522])
-""",
     """
-def softplus(
-    x: Tensor,
-    beta: float = 1,
-    threshold: float = 20,
-    name: str | None = None,
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "i0",
+
+@add_doc_and_signature
+def i0(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     r"""
     The function used to calculate modified bessel function of order 0.
 
@@ -1511,19 +1383,17 @@ add_doc_and_signature(
             >>> paddle.i0(x)
             Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.99999994 , 1.26606596 , 2.27958512 , 4.88079262 , 11.30192089])
-""",
     """
-def i0(
+    ...
+
+
+@add_doc_and_signature
+def i0e(
     x: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "i0e",
+) -> Tensor:
     r"""
     The function used to calculate exponentially scaled modified Bessel function of order 0.
 
@@ -1551,19 +1421,19 @@ add_doc_and_signature(
             >>> print(paddle.i0e(x))
             Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.99999994, 0.46575963, 0.30850831, 0.24300036, 0.20700191])
-""",
     """
-def i0e(
-    x: Tensor,
-    name: str | None = None,
-    *,
-    out: Tensor | None = None,
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "isclose",
+
+@add_doc_and_signature
+def isclose(
+    x: Tensor,
+    y: Tensor,
+    rtol: float = 1e-05,
+    atol: float = 1e-08,
+    equal_nan: bool = False,
+    name: str | None = None,
+) -> Tensor:
     r"""
     Check if all :math:`x` and :math:`y` satisfy the condition:
 
@@ -1590,71 +1460,36 @@ add_doc_and_signature(
         .. code-block:: pycon
 
             >>> import paddle
-            >>> x = paddle.to_tensor([10000., 1e-07])
+            >>> x = paddle.to_tensor([10000.0, 1e-07])
             >>> y = paddle.to_tensor([10000.1, 1e-08])
-            >>> result1 = paddle.isclose(
-            ...     x,
-            ...     y,
-            ...     rtol=1e-05,
-            ...     atol=1e-08,
-            ...     equal_nan=False,
-            ...     name="ignore_nan"
-            ... )
+            >>> result1 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name="ignore_nan")
             >>> print(result1)
             Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
             [True , False])
-            >>> result2 = paddle.isclose(
-            ...     x,
-            ...     y,
-            ...     rtol=1e-05,
-            ...     atol=1e-08,
-            ...     equal_nan=True,
-            ...     name="equal_nan"
-            ... )
+            >>> result2 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=True, name="equal_nan")
             >>> print(result2)
             Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
             [True , False])
             >>> x = paddle.to_tensor([1.0, float('nan')])
             >>> y = paddle.to_tensor([1.0, float('nan')])
-            >>> result1 = paddle.isclose(
-            ...     x,
-            ...     y,
-            ...     rtol=1e-05,
-            ...     atol=1e-08,
-            ...     equal_nan=False,
-            ...     name="ignore_nan"
-            ... )
+            >>> result1 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name="ignore_nan")
             >>> print(result1)
             Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
             [True , False])
-            >>> result2 = paddle.isclose(
-            ...     x,
-            ...     y,
-            ...     rtol=1e-05,
-            ...     atol=1e-08,
-            ...     equal_nan=True,
-            ...     name="equal_nan"
-            ... )
+            >>> result2 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=True, name="equal_nan")
             >>> print(result2)
             Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
             [True, True])
-""",
     """
-def isclose(
-    x: Tensor,
-    y: Tensor,
-    rtol: float = 1e-05,
-    atol: float = 1e-08,
-    equal_nan: bool = False,
-    name: str | None = None,
-) -> Tensor
-""",
-)
+    ...
 
 
 # zhengsheng
-add_doc_and_signature(
-    "isfinite",
+@add_doc_and_signature
+def isfinite(
+    x: Tensor,
+    name: str | None = None,
+) -> Tensor:
     r"""
     Return whether every element of input tensor is finite number or not.
 
@@ -1675,17 +1510,15 @@ add_doc_and_signature(
             >>> out
             Tensor(shape=[7], dtype=bool, place=Place(cpu), stop_gradient=True,
             [False, True , True , False, True , False, False])
-""",
     """
-def isfinite(
+    ...
+
+
+@add_doc_and_signature
+def isinf(
     x: Tensor,
     name: str | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "isinf",
+) -> Tensor:
     r"""
     Return whether every element of input tensor is `+/-INF` or not.
 
@@ -1706,17 +1539,15 @@ add_doc_and_signature(
             >>> out
             Tensor(shape=[7], dtype=bool, place=Place(cpu), stop_gradient=True,
             [True , False, False, True , False, False, False])
-""",
     """
-def isinf(
+    ...
+
+
+@add_doc_and_signature
+def isnan(
     x: Tensor,
     name: str | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "isnan",
+) -> Tensor:
     r"""
     Return whether every element of input tensor is `NaN` or not.
 
@@ -1738,17 +1569,17 @@ add_doc_and_signature(
             >>> out
             Tensor(shape=[7], dtype=bool, place=Place(cpu), stop_gradient=True,
             [False, False, False, False, False, True , True ])
-""",
     """
-def isnan(
-    x: Tensor,
-    name: str | None = None,
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "roll",
+
+@add_doc_and_signature
+def roll(
+    x: Tensor,
+    shifts: int | Sequence[int],
+    axis: int | Sequence[int] | None = None,
+    name: str | None = None,
+) -> Tensor:
     r"""
     Roll the `x` tensor along the given axis(axes). With specific 'shifts', Elements that
     roll beyond the last position are re-introduced at the first according to 'shifts'.
@@ -1777,9 +1608,7 @@ add_doc_and_signature(
         .. code-block:: pycon
 
             >>> import paddle
-            >>> x = paddle.to_tensor([[1.0, 2.0, 3.0],
-            ...                       [4.0, 5.0, 6.0],
-            ...                       [7.0, 8.0, 9.0]])
+            >>> x = paddle.to_tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
             >>> out_z1 = paddle.roll(x, shifts=1)
             >>> print(out_z1.numpy())
             [[9. 1. 2.]
@@ -1795,19 +1624,14 @@ add_doc_and_signature(
             [[3. 1. 2.]
              [6. 4. 5.]
              [9. 7. 8.]]
-""",
     """
-def roll(
-    x: Tensor,
-    shifts: int | Sequence[int],
-    axis: int | Sequence[int] | None = None,
-    name: str | None = None,
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "ceil",
+
+@add_doc_and_signature
+def ceil(
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     r"""
     Ceil Operator. Computes ceil of x element-wise.
 
@@ -1836,19 +1660,20 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0., -0., 1. , 1. ])
-""",
     """
-def ceil(
+    ...
+
+
+@add_doc_and_signature
+def sum(
     x: Tensor,
+    axis: int | Sequence[int] | None = None,
+    dtype: DTypeLike | None = None,
+    keepdim: bool = False,
     name: str | None = None,
     *,
-    out: Tensor | None = None
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "sum",
+    out: Tensor | None = None,
+) -> Tensor:
     r"""
     Computes the sum of tensor elements over the given dimension.
 
@@ -1890,8 +1715,7 @@ add_doc_and_signature(
             >>> #    [[0.2, 0.3, 0.5, 0.9]
             >>> #     [0.1, 0.2, 0.6, 0.7]]
             >>> # Each example is followed by the corresponding output tensor.
-            >>> x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
-            ...                       [0.1, 0.2, 0.6, 0.7]])
+            >>> x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9], [0.1, 0.2, 0.6, 0.7]])
             >>> out1 = paddle.sum(x)
             >>> out1
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -1914,8 +1738,7 @@ add_doc_and_signature(
             >>> #      [[[1, 2], [3, 4]],
             >>> #      [[5, 6], [7, 8]]]
             >>> # Each example is followed by the corresponding output tensor.
-            >>> y = paddle.to_tensor([[[1, 2], [3, 4]],
-            ...                       [[5, 6], [7, 8]]])
+            >>> y = paddle.to_tensor([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
             >>> out5 = paddle.sum(y, axis=[1, 2])
             >>> out5
             Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
@@ -1929,8 +1752,7 @@ add_doc_and_signature(
             >>> #    [[True, True, True, True]
             >>> #     [False, False, False, False]]
             >>> # Each example is followed by the corresponding output tensor.
-            >>> x = paddle.to_tensor([[True, True, True, True],
-            ...                       [False, False, False, False]])
+            >>> x = paddle.to_tensor([[True, True, True, True], [False, False, False, False]])
             >>> out7 = paddle.sum(x)
             >>> out7
             Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,
@@ -1943,22 +1765,18 @@ add_doc_and_signature(
             >>> out9
             Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
             [4, 0])
-""",
     """
-def sum(
-    x: Tensor,
-    axis: int | Sequence[int] | None = None,
-    dtype: DTypeLike | None = None,
-    keepdim: bool = False,
-    name: str | None = None,
-    *,
-    out: Tensor | None = None,
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "index_put",
+
+@add_doc_and_signature
+def index_put(
+    x: Tensor,
+    indices: Sequence[Tensor],
+    value: Tensor,
+    accumulate: bool = False,
+    name: str | None = None,
+) -> Tensor:
     r"""
     Puts values from the tensor values into the tensor x using the indices specified in indices (which is a tuple of Tensors).
     The expression paddle.index_put_(x, indices, values) is equivalent to tensor[indices] = values. Returns x.
@@ -1982,11 +1800,11 @@ add_doc_and_signature(
 
             >>> x = paddle.zeros([3, 3])
             >>> value = paddle.ones([3])
-            >>> ix1 = paddle.to_tensor([0,1,2])
-            >>> ix2 = paddle.to_tensor([1,2,1])
-            >>> indices=(ix1,ix2)
+            >>> ix1 = paddle.to_tensor([0, 1, 2])
+            >>> ix2 = paddle.to_tensor([1, 2, 1])
+            >>> indices = (ix1, ix2)
 
-            >>> out = paddle.index_put(x,indices,value)
+            >>> out = paddle.index_put(x, indices, value)
             >>> print(x)
             Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0., 0., 0.],
@@ -1997,38 +1815,35 @@ add_doc_and_signature(
             [[0., 1., 0.],
              [0., 0., 1.],
              [0., 1., 0.]])
-""",
     """
-def index_put(
-    x: Tensor,
-    indices: Sequence[Tensor],
-    value: Tensor,
-    accumulate: bool = False,
-    name: str | None = None,
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "index_put_",
-    r"""
-    Inplace version of ``index_put`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_index_put`.
-""",
-    """
+
+@add_doc_and_signature
 def index_put_(
     x: Tensor,
     indices: Sequence[Tensor],
     value: Tensor,
     accumulate: bool = False,
     name: str | None = None,
-) -> Tensor
-""",
-)
+) -> Tensor:
+    r"""
+    Inplace version of ``index_put`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_index_put`.
+    """
+    ...
+
 
 # liuyi
-add_doc_and_signature(
-    "any",
+@add_doc_and_signature
+def any(
+    x: Tensor,
+    axis: int | Sequence[int] | None = None,
+    keepdim: bool = False,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     r"""
     Computes the ``logical or`` of tensor elements over the given dimension, and return the result.
 
@@ -2092,20 +1907,16 @@ add_doc_and_signature(
             [[True],
              [True]])
 
-""",
     """
-def any(
+    ...
+
+
+@add_doc_and_signature
+def expand_as(
     x: Tensor,
-    axis: int | Sequence[int] | None = None,
-    keepdim: bool = False,
+    y: Tensor,
     name: str | None = None,
-    *,
-    out: Tensor | None = None
-) -> Tensor
-""",
-)
-add_doc_and_signature(
-    "expand_as",
+) -> Tensor:
     r"""
 
     Expand the input tensor ``x`` to the same shape as the input tensor ``y``.
@@ -2139,19 +1950,20 @@ add_doc_and_signature(
             Tensor(shape=[2, 3], dtype=int32, place=Place(cpu), stop_gradient=True,
             [[1, 2, 3],
              [1, 2, 3]])
-""",
     """
-def expand_as(
-    x: Tensor,
-    y: Tensor,
-    name: str | None = None,
-) -> Tensor
-""",
-)
+    ...
+
 
 # shenwei
-add_doc_and_signature(
-    "grid_sample",
+@add_doc_and_signature
+def grid_sample(
+    x: Tensor,
+    grid: Tensor,
+    mode: str = 'bilinear',
+    padding_mode: Literal["zeros", "reflection", "border"] = 'zeros',
+    align_corners: bool = True,
+    name: str | None = None,
+) -> Tensor:
     r"""
     Sample input X by using bilinear interpolation or
     nearest interpolation based on flow field grid, which is usually
@@ -2250,49 +2062,35 @@ add_doc_and_signature(
             >>> import paddle.nn.functional as F
 
             >>> # x shape=[1, 1, 3, 3]
-            >>> x = paddle.to_tensor([[[[-0.6,  0.8, -0.5],
-            ...                         [-0.5,  0.2,  1.2],
-            ...                         [ 1.4,  0.3, -0.2]]]], dtype='float64')
+            >>> x = paddle.to_tensor([[[[-0.6, 0.8, -0.5], [-0.5, 0.2, 1.2], [1.4, 0.3, -0.2]]]], dtype='float64')
             >>> # grid.shape = [1, 3, 4, 2]
-            >>> grid = paddle.to_tensor([[[[ 0.2,  0.3],
-            ...                            [-0.4, -0.3],
-            ...                            [-0.9,  0.3],
-            ...                            [-0.9, -0.6]],
-            ...                           [[ 0.4,  0.1],
-            ...                            [ 0.9, -0.8],
-            ...                            [ 0.4,  0.5],
-            ...                            [ 0.5, -0.2]],
-            ...                           [[ 0.1, -0.8],
-            ...                            [-0.3, -1. ],
-            ...                            [ 0.7,  0.4],
-            ...                            [ 0.2,  0.8]]]], dtype='float64')
-            >>> y_t = F.grid_sample(
-            ...     x,
-            ...     grid,
-            ...     mode='bilinear',
-            ...     padding_mode='border',
-            ...     align_corners=True
+            >>> grid = paddle.to_tensor(
+            ...     [
+            ...         [
+            ...             [[0.2, 0.3], [-0.4, -0.3], [-0.9, 0.3], [-0.9, -0.6]],
+            ...             [[0.4, 0.1], [0.9, -0.8], [0.4, 0.5], [0.5, -0.2]],
+            ...             [[0.1, -0.8], [-0.3, -1.0], [0.7, 0.4], [0.2, 0.8]],
+            ...         ]
+            ...     ],
+            ...     dtype='float64',
             ... )
+            >>> y_t = F.grid_sample(x, grid, mode='bilinear', padding_mode='border', align_corners=True)
             >>> print(y_t)
             Tensor(shape=[1, 1, 3, 4], dtype=float64, place=Place(cpu), stop_gradient=True,
             [[[[ 0.34000000,  0.01600000,  0.08600000, -0.44800000],
                [ 0.55000000, -0.07600000,  0.35000000,  0.59000000],
                [ 0.59600000,  0.38000000,  0.52000000,  0.24000000]]]])
-""",
     """
-def grid_sample(
-    x: Tensor,
-    grid: Tensor,
-    mode: str = 'bilinear',
-    padding_mode: Literal["zeros", "reflection", "border"] = 'zeros',
-    align_corners: bool = True,
-    name: str | None = None,
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "pixel_shuffle",
+
+@add_doc_and_signature
+def pixel_shuffle(
+    x: Tensor,
+    upscale_factor: int,
+    data_format: DataLayout2D = 'NCHW',
+    name: str | None = None,
+) -> Tensor:
     r"""
     This API implements pixel shuffle operation.
     See more details in :ref:`PixelShuffle <api_paddle_nn_PixelShuffle>` .
@@ -2317,19 +2115,16 @@ add_doc_and_signature(
             >>> out_var = F.pixel_shuffle(x, 3)
             >>> print(out_var.shape)
             paddle.Size([2, 1, 12, 12])
-""",
     """
-def pixel_shuffle(
-    x: Tensor,
-    upscale_factor: int,
-    data_format: DataLayout2D = 'NCHW',
-    name: str | None = None,
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "gelu",
+
+@add_doc_and_signature
+def gelu(
+    x: Tensor,
+    approximate: Literal["tanh", "none"] | bool = False,
+    name: str | None = None,
+) -> Tensor:
     r"""
     gelu activation.
 
@@ -2385,18 +2180,17 @@ add_doc_and_signature(
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-0.15880796,  0.34571400],
              [ 0.84119201,  1.39957154]])
-""",
     """
-def gelu(
-    x: Tensor,
-    approximate: Literal["tanh", "none"] | bool = False,
-    name: str | None = None,
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "sigmoid",
+
+@add_doc_and_signature
+def sigmoid(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     r"""
     Sigmoid Activation.
 
@@ -2426,20 +2220,19 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.40131235, 0.45016602, 0.52497917, 0.57444251])
-""",
     """
-def sigmoid(
+    ...
+
+
+# zhouxin
+@add_doc_and_signature
+def greater_than(
     x: Tensor,
+    y: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-# zhouxin
-add_doc_and_signature(
-    "greater_than",
+) -> Tensor:
     r"""
     Returns the truth value of :math:`x > y` elementwise, which is equivalent function to the overloaded operator `>`.
 
@@ -2468,20 +2261,17 @@ add_doc_and_signature(
             >>> print(result1)
             Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
             [False, False, True ])
-""",
     """
-def greater_than(
+    ...
+
+
+@add_doc_and_signature
+def sin(
     x: Tensor,
-    y: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "sin",
+) -> Tensor:
     r"""
     Sine Activation Operator.
 
@@ -2510,19 +2300,17 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.38941833, -0.19866933,  0.09983342,  0.29552022])
-""",
     """
-def sin(
+    ...
+
+
+@add_doc_and_signature
+def sign(
     x: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "sign",
+) -> Tensor:
     r"""
     Returns sign of every element in `x`: For real numbers, 1 for positive, -1 for negative and 0 for zero. For complex numbers, the return value is a complex number with unit magnitude. If a complex number element is zero, the result is 0+0j.
 
@@ -2544,19 +2332,17 @@ add_doc_and_signature(
             >>> out
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [ 1.,  0., -1.,  1.])
-""",
     """
-def sign(
+    ...
+
+
+@add_doc_and_signature
+def lgamma(
     x: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "lgamma",
+) -> Tensor:
     r"""
     Calculates the lgamma of the given input tensor, element-wise.
 
@@ -2585,19 +2371,17 @@ add_doc_and_signature(
             >>> out
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [1.31452465, 1.76149750, 2.25271273, 1.09579802])
-""",
     """
-def lgamma(
+    ...
+
+
+@add_doc_and_signature
+def log(
     x: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "log",
+) -> Tensor:
     r"""
     Calculates the natural log of the given input Tensor, element-wise.
 
@@ -2626,19 +2410,17 @@ add_doc_and_signature(
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0.69314718, 1.09861231, 1.38629436],
              [1.94591010, 2.07944155, 2.19722462]])
-""",
     """
-def log(
+    ...
+
+
+@add_doc_and_signature
+def rsqrt(
     x: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "rsqrt",
+) -> Tensor:
     r"""
     Rsqrt Activation Operator.
 
@@ -2669,19 +2451,17 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [3.16227770, 2.23606801, 1.82574177, 1.58113885])
-""",
     """
-def rsqrt(
+    ...
+
+
+@add_doc_and_signature
+def cos(
     x: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "cos",
+) -> Tensor:
     r"""
     Cosine Operator. Computes cosine of x element-wise.
 
@@ -2712,19 +2492,17 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.92106098, 0.98006660, 0.99500418, 0.95533651])
-""",
     """
-def cos(
+    ...
+
+
+@add_doc_and_signature
+def cosh(
     x: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "cosh",
+) -> Tensor:
     r"""
     Cosh Activation Operator.
 
@@ -2755,19 +2533,17 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [1.08107233, 1.02006674, 1.00500417, 1.04533851])
-""",
     """
-def cosh(
+    ...
+
+
+@add_doc_and_signature
+def floor(
     x: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "floor",
+) -> Tensor:
     r"""
     Floor Activation Operator. Computes floor of x element-wise.
 
@@ -2796,19 +2572,19 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-1., -1.,  0.,  0.])
-""",
     """
-def floor(
+    ...
+
+
+# hehongyu
+@add_doc_and_signature
+def maximum(
     x: Tensor,
+    y: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-# hehongyu
-add_doc_and_signature(
-    "maximum",
+) -> Tensor:
     r"""
     Compare two tensors and returns a new tensor containing the element-wise maxima. The equation is:
 
@@ -2864,20 +2640,18 @@ add_doc_and_signature(
             >>> print(res)
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [5.  , 3.  , inf.])
-""",
     """
-def maximum(
+    ...
+
+
+@add_doc_and_signature
+def minimum(
     x: Tensor,
     y: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "minimum",
+) -> Tensor:
     r"""
     Compare two tensors and return a new tensor containing the element-wise minima. The equation is:
 
@@ -2933,20 +2707,17 @@ add_doc_and_signature(
             >>> print(res)
             Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
             [ 1.  , -inf.,  5.  ])
-""",
     """
-def minimum(
+    ...
+
+
+@add_doc_and_signature
+def sqrt(
     x: Tensor,
-    y: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "sqrt",
+) -> Tensor:
     r"""
     Sqrt Activation Operator.
 
@@ -2975,22 +2746,22 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.31622776, 0.44721359, 0.54772258, 0.63245553])
-""",
     """
-def sqrt(
-    x: Tensor,
-    name: str | None = None,
-    *,
-    out: Tensor | None = None,
-) -> Tensor
-""",
-)
+    ...
+
 
 # lousiyu
 
+
 # zhengshijie
-add_doc_and_signature(
-    "tril",
+@add_doc_and_signature
+def tril(
+    x: Tensor,
+    diagonal: int = 0,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     r"""
     Returns the lower triangular part of a matrix (2-D tensor) or batch
     of matrices :attr:`x`, the other elements of the result tensor are set
@@ -3019,7 +2790,7 @@ add_doc_and_signature(
 
             >>> import paddle
 
-            >>> data = paddle.arange(1, 13, dtype="int64").reshape([3,-1])
+            >>> data = paddle.arange(1, 13, dtype="int64").reshape([3, -1])
             >>> print(data)
             Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[1 , 2 , 3 , 4 ],
@@ -3048,21 +2819,18 @@ add_doc_and_signature(
             [[0 , 0 , 0 , 0 ],
              [5 , 0 , 0 , 0 ],
              [9 , 10, 0 , 0 ]])
-""",
     """
-def tril(
+    ...
+
+
+@add_doc_and_signature
+def triu(
     x: Tensor,
     diagonal: int = 0,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-
-add_doc_and_signature(
-    "triu",
+) -> Tensor:
     r"""
     Return the upper triangular part of a matrix (2-D tensor) or batch of matrices
     :attr:`x`, the other elements of the result tensor are set to 0.
@@ -3091,7 +2859,7 @@ add_doc_and_signature(
 
             >>> import paddle
 
-            >>> x = paddle.arange(1, 13, dtype="int64").reshape([3,-1])
+            >>> x = paddle.arange(1, 13, dtype="int64").reshape([3, -1])
             >>> print(x)
             Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[1 , 2 , 3 , 4 ],
@@ -3121,20 +2889,18 @@ add_doc_and_signature(
             [[1 , 2 , 3 , 4 ],
              [5 , 6 , 7 , 8 ],
              [0 , 10, 11, 12]])
-""",
     """
-def triu(
+    ...
+
+
+@add_doc_and_signature
+def bmm(
     x: Tensor,
-    diagonal: int = 0,
+    y: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "bmm",
+) -> Tensor:
     r"""
     Applies batched matrix multiplication to two tensors.
 
@@ -3159,12 +2925,8 @@ add_doc_and_signature(
 
             >>> # In imperative mode:
             >>> # size x: (2, 2, 3) and y: (2, 3, 2)
-            >>> x = paddle.to_tensor([[[1.0, 1.0, 1.0],
-            ...                     [2.0, 2.0, 2.0]],
-            ...                     [[3.0, 3.0, 3.0],
-            ...                     [4.0, 4.0, 4.0]]])
-            >>> y = paddle.to_tensor([[[1.0, 1.0],[2.0, 2.0],[3.0, 3.0]],
-            ...                     [[4.0, 4.0],[5.0, 5.0],[6.0, 6.0]]])
+            >>> x = paddle.to_tensor([[[1.0, 1.0, 1.0], [2.0, 2.0, 2.0]], [[3.0, 3.0, 3.0], [4.0, 4.0, 4.0]]])
+            >>> y = paddle.to_tensor([[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]], [[4.0, 4.0], [5.0, 5.0], [6.0, 6.0]]])
             >>> out = paddle.bmm(x, y)
             >>> print(out)
             Tensor(shape=[2, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -3172,22 +2934,19 @@ add_doc_and_signature(
               [12., 12.]],
              [[45., 45.],
               [60., 60.]]])
-""",
     """
-def bmm(
+    ...
+
+
+# lihaoyang
+@add_doc_and_signature
+def logical_and(
     x: Tensor,
     y: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-
-# lihaoyang
-add_doc_and_signature(
-    "logical_and",
+) -> Tensor:
     r"""
     Compute element-wise logical AND on ``x`` and ``y``, and return ``out``. ``out`` is N-dim boolean ``Tensor``.
     Each element of ``out`` is calculated by
@@ -3223,20 +2982,18 @@ add_doc_and_signature(
             >>> print(res)
             Tensor(shape=[4], dtype=bool, place=Place(cpu), stop_gradient=True,
             [True , False, True , False])
-""",
     """
-def logical_and(
+    ...
+
+
+@add_doc_and_signature
+def logical_or(
     x: Tensor,
     y: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "logical_or",
+) -> Tensor:
     r"""
     ``logical_or`` operator computes element-wise logical OR on ``x`` and ``y``, and returns ``out``. ``out`` is N-dim boolean ``Tensor``.
     Each element of ``out`` is calculated by
@@ -3273,20 +3030,17 @@ add_doc_and_signature(
             Tensor(shape=[2, 2], dtype=bool, place=Place(cpu), stop_gradient=True,
             [[True , True ],
              [True , False]])
-""",
     """
-def logical_or(
+    ...
+
+
+@add_doc_and_signature
+def logical_not(
     x: Tensor,
-    y: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "logical_not",
+) -> Tensor:
     r"""
     ``logical_not`` operator computes element-wise logical NOT on ``x``, and returns ``out``. ``out`` is N-dim boolean ``Variable``.
     Each element of ``out`` is calculated by
@@ -3319,19 +3073,18 @@ add_doc_and_signature(
             >>> print(res)
             Tensor(shape=[4], dtype=bool, place=Place(cpu), stop_gradient=True,
             [False, True , False, True ])
-""",
     """
-def logical_not(
+    ...
+
+
+@add_doc_and_signature
+def logical_xor(
     x: Tensor,
+    y: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "logical_xor",
+) -> Tensor:
     r"""
     ``logical_xor`` operator computes element-wise logical XOR on ``x`` and ``y``, and returns ``out``. ``out`` is N-dim boolean ``Tensor``.
     Each element of ``out`` is calculated by
@@ -3368,20 +3121,18 @@ add_doc_and_signature(
             Tensor(shape=[2, 2], dtype=bool, place=Place(cpu), stop_gradient=True,
             [[False, True ],
              [True , False]])
-""",
     """
-def logical_xor(
+    ...
+
+
+@add_doc_and_signature
+def dot(
     x: Tensor,
     y: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "dot",
+) -> Tensor:
     r"""
     This operator calculates inner product for vectors.
 
@@ -3423,20 +3174,17 @@ add_doc_and_signature(
             >>> print(z)
             Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
             [32, 64])
-""",
     """
-def dot(
+    ...
+
+
+@add_doc_and_signature
+def tanh(
     x: Tensor,
-    y: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "tanh",
+) -> Tensor:
     r"""
 
     Tanh Activation Operator.
@@ -3464,19 +3212,17 @@ add_doc_and_signature(
             >>> out
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.37994900, -0.19737528,  0.09966799,  0.29131261])
-""",
     """
-def tanh(
+    ...
+
+
+@add_doc_and_signature
+def exp(
     x: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "exp",
+) -> Tensor:
     r"""
 
     Computes exp of x element-wise with a natural number `e` as the base.
@@ -3505,19 +3251,17 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.67032003, 0.81873077, 1.10517097, 1.34985888])
-""",
     """
-def exp(
+    ...
+
+
+@add_doc_and_signature
+def expm1(
     x: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "expm1",
+) -> Tensor:
     r"""
 
     Expm1 Operator. Computes expm1 of x element-wise with a natural number :math:`e` as the base.
@@ -3546,18 +3290,19 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.32967997, -0.18126924,  0.10517092,  0.34985882])
-""",
     """
-def expm1(
+    ...
+
+
+@add_doc_and_signature
+def diag(
     x: Tensor,
+    offset: int = 0,
+    padding_value: int = 0,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-add_doc_and_signature(
-    "diag",
+) -> Tensor:
     r"""
     If ``x`` is a vector (1-D tensor), a 2-D square tensor with the elements of ``x`` as the diagonal is returned.
 
@@ -3650,20 +3395,18 @@ add_doc_and_signature(
             >>> print(y)
             Tensor(shape=[1], dtype=int64, place=Place(cpu), stop_gradient=True,
             [4])
-""",
     """
-def diag(
+    ...
+
+
+@add_doc_and_signature
+def diagonal(
     x: Tensor,
     offset: int = 0,
-    padding_value: int = 0,
+    axis1: int = 0,
+    axis2: int = 1,
     name: str | None = None,
-    *,
-    out: Tensor | None = None
-) -> Tensor
-""",
-)
-add_doc_and_signature(
-    "diagonal",
+) -> Tensor:
     r"""
 
     Computes the diagonals of the input tensor x.
@@ -3695,7 +3438,7 @@ add_doc_and_signature(
             >>> import paddle
 
             >>> paddle.seed(2023)
-            >>> x = paddle.rand([2, 2, 3],'float32')
+            >>> x = paddle.rand([2, 2, 3], 'float32')
             >>> print(x)
             Tensor(shape=[2, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[0.86583614, 0.52014720, 0.25960937],
@@ -3728,20 +3471,18 @@ add_doc_and_signature(
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0.86583614, 0.42400089],
              [0.97020894, 0.97786582]])
-""",
     """
-def diagonal(
-    x: Tensor,
-    offset: int = 0,
-    axis1: int = 0,
-    axis2: int = 1,
-    name: str | None = None,
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "round",
+
+@add_doc_and_signature
+def round(
+    x: Tensor,
+    decimals: int = 0,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     r"""
 
     Round the values in the input to the nearest integer value.
@@ -3776,20 +3517,16 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0., -0.,  1.,  2.])
-""",
     """
-def round(
+    ...
+
+
+@add_doc_and_signature
+def round_(
     x: Tensor,
     decimals: int = 0,
     name: str | None = None,
-    *,
-    out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "round_",
+) -> Tensor:
     r"""
 
     Inplace version of ``round`` API, output Tensor will be inplaced with input ``x``.
@@ -3813,18 +3550,17 @@ add_doc_and_signature(
             >>> print(x)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0., -0.,  1.,  2.])
-""",
     """
-def round_(
-    x: Tensor,
-    decimals: int = 0,
-    name: str | None = None,
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "abs",
+
+@add_doc_and_signature
+def abs(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     r"""
     Perform elementwise abs for input `x`.
 
@@ -3851,32 +3587,29 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.40000001, 0.20000000, 0.10000000, 0.30000001])
-""",
     """
-def abs(
-    x: Tensor,
-    name: str | None = None,
-    *,
-    out: Tensor | None = None,
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "abs_",
-    r"""
-    Inplace version of ``abs`` API, the output Tensor will be inplaced with input ``x``.
-""",
-    """
+
+@add_doc_and_signature
 def abs_(
     x: Tensor,
     name: str | None = None,
-) -> Tensor
-""",
-)
+) -> Tensor:
+    r"""
+    Inplace version of ``abs`` API, the output Tensor will be inplaced with input ``x``.
+    """
+    ...
 
-add_doc_and_signature(
-    "nextafter",
+
+@add_doc_and_signature
+def nextafter(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     r"""
     Return the next floating-point value after input towards other, elementwise.
     The shapes of input and other must be broadcastable.
@@ -3894,24 +3627,21 @@ add_doc_and_signature(
         .. code-block:: pycon
 
             >>> import paddle
-            >>> out = paddle.nextafter(paddle.to_tensor([1.0,2.0]),paddle.to_tensor([2.0,1.0]))
+            >>> out = paddle.nextafter(paddle.to_tensor([1.0, 2.0]), paddle.to_tensor([2.0, 1.0]))
             >>> out
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [1.00000012, 1.99999988])
-""",
     """
-def nextafter(
+    ...
+
+
+@add_doc_and_signature
+def angle(
     x: Tensor,
-    y: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "angle",
+) -> Tensor:
     r"""
     Element-wise angle of complex numbers. For non-negative real numbers, the angle is 0 while
     for negative real numbers, the angle is :math:`\pi`, and NaNs are propagated.
@@ -3955,19 +3685,17 @@ add_doc_and_signature(
              [-2.03444386, -2.35619450,  3.14159274,  2.35619450],
              [-1.57079637, -1.57079637,  0.        ,  1.57079637],
              [-1.10714877, -0.78539819,  0.        ,  0.78539819]])
-""",
     """
-def angle(
+    ...
+
+
+@add_doc_and_signature
+def real(
     x: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "real",
+) -> Tensor:
     r"""
     Returns a new Tensor containing real values of the input Tensor.
 
@@ -4011,19 +3739,70 @@ add_doc_and_signature(
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[1., 2., 3.],
              [4., 5., 6.]])
-""",
     """
-def real(
+    ...
+
+
+@add_doc_and_signature
+def imag(
     x: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
+) -> Tensor:
+    r"""
+    Returns a new tensor containing imaginary values of input tensor.
 
-add_doc_and_signature(
-    "heaviside",
+    Args:
+        x (Tensor): the input tensor, its data type could be complex64 or complex128.
+        name (str|None, optional): The default value is None. Normally there is no need for
+            user to set this property. For more information, please refer to :ref:`api_guide_Name` .
+
+    Keyword args:
+        out(Tensor, optional): The output tensor.
+
+    Returns:
+        Tensor: a tensor containing imaginary values of the input tensor.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor(
+            ...     [
+            ...         [1 + 6j, 2 + 5j, 3 + 4j],
+            ...         [4 + 3j, 5 + 2j, 6 + 1j],
+            ...     ]
+            ... )
+            >>> print(x)
+            Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
+            [[(1.00000000+6.00000000j), (2.00000000+5.00000000j), (3.00000000+4.00000000j)],
+             [(4.00000000+3.00000000j), (5.00000000+2.00000000j), (6.00000000+1.00000000j)]])
+
+            >>> imag_res = paddle.imag(x)
+            >>> print(imag_res)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[6., 5., 4.],
+             [3., 2., 1.]])
+
+            >>> imag_t = x.imag()
+            >>> print(imag_t)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[6., 5., 4.],
+             [3., 2., 1.]])
+    """
+    ...
+
+
+@add_doc_and_signature
+def heaviside(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     r"""
     Computes the Heaviside step function determined by corresponding element in y for each element in x. The equation is
 
@@ -4066,20 +3845,12 @@ add_doc_and_signature(
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0.        , 0.20000000, 1.        ],
              [0.        , 1.        , 0.30000001]])
-""",
     """
-def heaviside(
-    x: Tensor,
-    y: Tensor,
-    name: str | None = None,
-    *,
-    out: Tensor | None = None,
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "asin",
+
+@add_doc_and_signature
+def asin(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     Arcsine Operator.
 
@@ -4104,17 +3875,17 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.41151685, -0.20135793,  0.10016742,  0.30469266])
-""",
     """
-def asin(
-    x: Tensor,
-    name: str | None = None
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "inverse",
+
+@add_doc_and_signature
+def inverse(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     r"""
     Takes the inverse of the square matrix. A square matrix is a matrix with
     the same number of rows and columns. The input can be a square matrix
@@ -4145,19 +3916,19 @@ add_doc_and_signature(
             [[0.50000000, 0.        ],
              [0.        , 0.50000000]])
 
-""",
     """
-def inverse(
-    x: Tensor,
-    name: str | None = None,
-    *,
-    out: Tensor | None = None,
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "allclose",
+
+@add_doc_and_signature
+def allclose(
+    x: Tensor,
+    y: Tensor,
+    rtol: float = 1e-05,
+    atol: float = 1e-08,
+    equal_nan: bool = False,
+    name: str | None = None,
+) -> Tensor:
     r"""
     Check if all :math:`x` and :math:`y` satisfy the condition:
 
@@ -4186,7 +3957,7 @@ add_doc_and_signature(
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([10000., 1e-07])
+            >>> x = paddle.to_tensor([10000.0, 1e-07])
             >>> y = paddle.to_tensor([10000.1, 1e-08])
             >>> result1 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name="ignore_nan")
             >>> print(result1)
@@ -4206,21 +3977,18 @@ add_doc_and_signature(
             >>> print(result2)
             Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
             True)
-""",
     """
-def allclose(
+    ...
+
+
+@add_doc_and_signature
+def fmax(
     x: Tensor,
     y: Tensor,
-    rtol: float = 1e-05,
-    atol: float = 1e-08,
-    equal_nan: bool = False,
-    name: str | None = None
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "fmax",
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     r"""
     Compares elements at corresponding positions of two tensors and returns a new tensor containing maximum value of element.
     If one of them is a nan value, the other value is directly returned, if both are nan values, then the first nan value is returned.
@@ -4277,20 +4045,18 @@ add_doc_and_signature(
             >>> print(res)
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [5.  , 3.  , inf.])
-""",
     """
-def fmax(
+    ...
+
+
+@add_doc_and_signature
+def fmin(
     x: Tensor,
     y: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "fmin",
+) -> Tensor:
     r"""
     Compares elements at corresponding positions of two tensors and returns a new tensor containing minimum value of element.
     If one of them is a nan value, the other value is directly returned, if both are nan values, then the first nan value is returned.
@@ -4347,20 +4113,17 @@ add_doc_and_signature(
             >>> print(res)
             Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
             [ 1.  , -inf.,  5.  ])
-""",
     """
-def fmin(
-    x: Tensor,
-    y: Tensor,
-    name: str | None = None,
-    *,
-    out: Tensor | None = None,
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "bincount",
+
+@add_doc_and_signature
+def bincount(
+    x: Tensor,
+    weights: Tensor | None = None,
+    minlength: int = 0,
+    name: str | None = None,
+) -> Tensor:
     r"""
     Computes frequency of each value in the input tensor.
 
@@ -4389,19 +4152,18 @@ add_doc_and_signature(
             >>> print(result2)
             Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.        , 2.19999981, 0.40000001, 0.        , 0.50000000, 0.50000000])
-""",
     """
-def bincount(
-    x: Tensor,
-    weights: Tensor | None = None,
-    minlength: int = 0,
-    name: str | None = None,
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "bitwise_and",
+
+@add_doc_and_signature
+def bitwise_and(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     r"""
     Apply ``bitwise_and`` on Tensor ``X`` and ``Y``.
 
@@ -4429,40 +4191,36 @@ add_doc_and_signature(
 
             >>> import paddle
             >>> x = paddle.to_tensor([-5, -1, 1])
-            >>> y = paddle.to_tensor([4,  2, -3])
+            >>> y = paddle.to_tensor([4, 2, -3])
             >>> res = paddle.bitwise_and(x, y)
             >>> print(res)
             Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [0, 2, 1])
-""",
     """
-def bitwise_and(
+    ...
+
+
+@add_doc_and_signature
+def bitwise_and_(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+) -> Tensor:
+    r"""
+    Inplace version of ``bitwise_and`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_bitwise_and`.
+    """
+    ...
+
+
+@add_doc_and_signature
+def bitwise_or(
     x: Tensor,
     y: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "bitwise_and_",
-    r"""
-    Inplace version of ``bitwise_and`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_bitwise_and`.
-""",
-    """
-def bitwise_and_(
-    x: Tensor,
-    y: Tensor,
-    name: str | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "bitwise_or",
+) -> Tensor:
     r"""
     Apply ``bitwise_or`` on Tensor ``X`` and ``Y``.
 
@@ -4492,41 +4250,36 @@ add_doc_and_signature(
 
             >>> import paddle
             >>> x = paddle.to_tensor([-5, -1, 1])
-            >>> y = paddle.to_tensor([4,  2, -3])
+            >>> y = paddle.to_tensor([4, 2, -3])
             >>> res = paddle.bitwise_or(x, y)
             >>> print(res)
             Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [-1, -1, -3])
-""",
     """
-def bitwise_or(
+    ...
+
+
+@add_doc_and_signature
+def bitwise_or_(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+) -> Tensor:
+    r"""
+    Inplace version of ``bitwise_or`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_bitwise_or`.
+    """
+    ...
+
+
+@add_doc_and_signature
+def bitwise_xor(
     x: Tensor,
     y: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "bitwise_or_",
-    r"""
-    Inplace version of ``bitwise_or`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_bitwise_or`.
-""",
-    """
-def bitwise_or_(
-    x: Tensor,
-    y: Tensor,
-    name: str | None = None,
-) -> Tensor
-""",
-)
-
-
-add_doc_and_signature(
-    "bitwise_xor",
+) -> Tensor:
     r"""
     Apply ``bitwise_xor`` on Tensor ``X`` and ``Y``.
 
@@ -4554,40 +4307,35 @@ add_doc_and_signature(
 
             >>> import paddle
             >>> x = paddle.to_tensor([-5, -1, 1])
-            >>> y = paddle.to_tensor([4,  2, -3])
+            >>> y = paddle.to_tensor([4, 2, -3])
             >>> res = paddle.bitwise_xor(x, y)
             >>> print(res)
             Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [-1, -3, -4])
-""",
     """
-def bitwise_xor(
-    x: Tensor,
-    y: Tensor,
-    name: str | None = None,
-    *,
-    out: Tensor | None = None,
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "bitwise_xor_",
-    r"""
-    Inplace version of ``bitwise_xor`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_bitwise_xor`.
-""",
-    """
+
+@add_doc_and_signature
 def bitwise_xor_(
     x: Tensor,
     y: Tensor,
     name: str | None = None,
-) -> Tensor
-""",
-)
+) -> Tensor:
+    r"""
+    Inplace version of ``bitwise_xor`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_bitwise_xor`.
+    """
+    ...
 
-add_doc_and_signature(
-    "bitwise_not",
+
+@add_doc_and_signature
+def bitwise_not(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     r"""
     Apply ``bitwise_not`` on Tensor ``X``.
 
@@ -4618,33 +4366,31 @@ add_doc_and_signature(
             >>> print(res)
             Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [ 4,  0, -2])
-""",
     """
-def bitwise_not(
-    x: Tensor,
-    name: str | None = None,
-    *,
-    out: Tensor | None = None,
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "bitwise_not_",
-    r"""
-    Inplace version of ``bitwise_not`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_bitwise_not`.
-""",
-    """
+
+@add_doc_and_signature
 def bitwise_not_(
     x: Tensor,
     name: str | None = None,
-) -> Tensor
-""",
-)
+) -> Tensor:
+    r"""
+    Inplace version of ``bitwise_not`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_bitwise_not`.
+    """
+    ...
 
-add_doc_and_signature(
-    "bitwise_left_shift",
+
+@add_doc_and_signature
+def bitwise_left_shift(
+    x: Tensor,
+    y: Tensor,
+    is_arithmetic: bool = True,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     r"""
     Apply ``bitwise_left_shift`` on Tensor ``X`` and ``Y`` .
 
@@ -4674,8 +4420,18 @@ add_doc_and_signature(
             :name: bitwise_left_shift_example1
 
             >>> import paddle
-            >>> x = paddle.to_tensor([[1,2,4,8],[16,17,32,65]])
-            >>> y = paddle.to_tensor([[1,2,3,4,], [2,3,2,1]])
+            >>> x = paddle.to_tensor([[1, 2, 4, 8], [16, 17, 32, 65]])
+            >>> y = paddle.to_tensor(
+            ...     [
+            ...         [
+            ...             1,
+            ...             2,
+            ...             3,
+            ...             4,
+            ...         ],
+            ...         [2, 3, 2, 1],
+            ...     ]
+            ... )
             >>> paddle.bitwise_left_shift(x, y, is_arithmetic=True)
             Tensor(shape=[2, 4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                    [[2  , 8  , 32 , 128],
@@ -4685,43 +4441,49 @@ add_doc_and_signature(
             :name: bitwise_left_shift_example2
 
             >>> import paddle
-            >>> x = paddle.to_tensor([[1,2,4,8],[16,17,32,65]])
-            >>> y = paddle.to_tensor([[1,2,3,4,], [2,3,2,1]])
+            >>> x = paddle.to_tensor([[1, 2, 4, 8], [16, 17, 32, 65]])
+            >>> y = paddle.to_tensor(
+            ...     [
+            ...         [
+            ...             1,
+            ...             2,
+            ...             3,
+            ...             4,
+            ...         ],
+            ...         [2, 3, 2, 1],
+            ...     ]
+            ... )
             >>> paddle.bitwise_left_shift(x, y, is_arithmetic=False)
             Tensor(shape=[2, 4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                 [[2  , 8  , 32 , 128],
                     [64 , 136, 128, 130]])
-""",
     """
-def bitwise_left_shift(
+    ...
+
+
+@add_doc_and_signature
+def bitwise_left_shift_(
+    x: Tensor,
+    y: Tensor,
+    is_arithmetic: bool = True,
+    name: str | None = None,
+) -> Tensor:
+    r"""
+    Inplace version of ``bitwise_left_shift`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_bitwise_left_shift`.
+    """
+    ...
+
+
+@add_doc_and_signature
+def bitwise_right_shift(
     x: Tensor,
     y: Tensor,
     is_arithmetic: bool = True,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "bitwise_left_shift_",
-    r"""
-    Inplace version of ``bitwise_left_shift`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_bitwise_left_shift`.
-""",
-    """
-def bitwise_left_shift_(
-    x: Tensor,
-    y: Tensor,
-    is_arithmetic: bool = True,
-    name: str | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "bitwise_right_shift",
+) -> Tensor:
     r"""
     Apply ``bitwise_right_shift`` on Tensor ``X`` and ``Y`` .
 
@@ -4751,8 +4513,18 @@ add_doc_and_signature(
             :name: bitwise_right_shift_example1
 
             >>> import paddle
-            >>> x = paddle.to_tensor([[10,20,40,80],[16,17,32,65]])
-            >>> y = paddle.to_tensor([[1,2,3,4,], [2,3,2,1]])
+            >>> x = paddle.to_tensor([[10, 20, 40, 80], [16, 17, 32, 65]])
+            >>> y = paddle.to_tensor(
+            ...     [
+            ...         [
+            ...             1,
+            ...             2,
+            ...             3,
+            ...             4,
+            ...         ],
+            ...         [2, 3, 2, 1],
+            ...     ]
+            ... )
             >>> paddle.bitwise_right_shift(x, y, is_arithmetic=True)
             Tensor(shape=[2, 4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                    [[5 , 5 , 5 , 5 ],
@@ -4762,43 +4534,43 @@ add_doc_and_signature(
             :name: bitwise_right_shift_example2
 
             >>> import paddle
-            >>> x = paddle.to_tensor([[-10,-20,-40,-80],[-16,-17,-32,-65]], dtype=paddle.int8)
-            >>> y = paddle.to_tensor([[1,2,3,4,], [2,3,2,1]], dtype=paddle.int8)
+            >>> x = paddle.to_tensor([[-10, -20, -40, -80], [-16, -17, -32, -65]], dtype=paddle.int8)
+            >>> y = paddle.to_tensor(
+            ...     [
+            ...         [
+            ...             1,
+            ...             2,
+            ...             3,
+            ...             4,
+            ...         ],
+            ...         [2, 3, 2, 1],
+            ...     ],
+            ...     dtype=paddle.int8,
+            ... )
             >>> paddle.bitwise_right_shift(x, y, is_arithmetic=False)
             Tensor(shape=[2, 4], dtype=int8, place=Place(gpu:0), stop_gradient=True,
                 [[123, 59 , 27 , 11 ],
                     [60 , 29 , 56 , 95 ]])
-""",
     """
-def bitwise_right_shift(
-    x: Tensor,
-    y: Tensor,
-    is_arithmetic: bool = True,
-    name: str | None = None,
-    *,
-    out: Tensor | None = None,
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "bitwise_right_shift_",
-    r"""
-    Inplace version of ``bitwise_right_shift`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_bitwise_right_shift`.
-""",
-    """
+
+@add_doc_and_signature
 def bitwise_right_shift_(
     x: Tensor,
     y: Tensor,
     is_arithmetic: bool = True,
     name: str | None = None,
-) -> Tensor
-""",
-)
+) -> Tensor:
+    r"""
+    Inplace version of ``bitwise_right_shift`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_bitwise_right_shift`.
+    """
+    ...
 
-add_doc_and_signature(
-    "conj",
+
+@add_doc_and_signature
+def conj(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     This function computes the conjugate of the Tensor elementwisely.
 
@@ -4815,7 +4587,7 @@ add_doc_and_signature(
 
             >>> import paddle
 
-            >>> data = paddle.to_tensor([[1+1j, 2+2j, 3+3j], [4+4j, 5+5j, 6+6j]])
+            >>> data = paddle.to_tensor([[1 + 1j, 2 + 2j, 3 + 3j], [4 + 4j, 5 + 5j, 6 + 6j]])
             >>> data
             Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
             [[(1+1j), (2+2j), (3+3j)],
@@ -4826,17 +4598,14 @@ add_doc_and_signature(
             Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
             [[(1-1j), (2-2j), (3-3j)],
              [(4-4j), (5-5j), (6-6j)]])
-""",
     """
-def conj(
-    x: Tensor,
-    name: str | None = None
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "i1",
+
+@add_doc_and_signature
+def i1(
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     r"""
     The function is used to calculate modified bessel function of order 1.
 
@@ -4860,19 +4629,14 @@ add_doc_and_signature(
             >>> print(paddle.i1(x))
             Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.        , 0.56515908, 1.59063685, 3.95337057, 9.75946712])
-""",
     """
-def i1(
-    x: Tensor,
-    name: str | None = None,
-    *,
-    out: Tensor | None = None
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "i1e",
+
+@add_doc_and_signature
+def i1e(
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     r"""
     The function is used to calculate exponentially scaled modified Bessel function of order 1.
 
@@ -4896,19 +4660,21 @@ add_doc_and_signature(
             >>> print(paddle.i1e(x))
             Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.        , 0.20791042, 0.21526928, 0.19682673, 0.17875087])
-""",
     """
-def i1e(
+    ...
+
+
+@add_doc_and_signature
+def addmm(
+    input: Tensor,
     x: Tensor,
+    y: Tensor,
+    beta: float = 1.0,
+    alpha: float = 1.0,
     name: str | None = None,
     *,
-    out: Tensor | None = None
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "addmm",
+    out: Tensor | None = None,
+) -> Tensor:
     r"""
     Perform matrix multiplication for input $x$ and $y$.
     $input$ is added to the final result.
@@ -4947,28 +4713,11 @@ add_doc_and_signature(
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[10.50000000, 10.50000000],
              [10.50000000, 10.50000000]])
-""",
     """
-def addmm(
-    input: Tensor,
-    x: Tensor,
-    y: Tensor,
-    beta: float = 1.0,
-    alpha: float = 1.0,
-    name: str | None = None,
-    *,
-    out: Tensor | None = None,
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "addmm_",
-    r"""
-    Inplace version of ``addmm`` API, the output Tensor will be inplaced with input ``input``.
-    Please refer to :ref:`api_paddle_addmm`.
-""",
-    """
+
+@add_doc_and_signature
 def addmm_(
     input: Tensor,
     x: Tensor,
@@ -4976,12 +4725,26 @@ def addmm_(
     beta: float = 1.0,
     alpha: float = 1.0,
     name: str | None = None,
-) -> Tensor
-""",
-)
+) -> Tensor:
+    r"""
+    Inplace version of ``addmm`` API, the output Tensor will be inplaced with input ``input``.
+    Please refer to :ref:`api_paddle_addmm`.
+    """
+    ...
 
-add_doc_and_signature(
-    "baddbmm",
+
+@add_doc_and_signature
+def baddbmm(
+    input: Tensor,
+    x: Tensor,
+    y: Tensor,
+    beta: float = 1.0,
+    alpha: float = 1.0,
+    out_dtype: paddle.dtype | None = None,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     r"""
     Perform batch matrix multiplication for input :math:`x` and :math:`y`.
     :math:`input` is added to the final result.
@@ -5022,29 +4785,11 @@ add_doc_and_signature(
               [10.50000000, 10.50000000]],
              [[10.50000000, 10.50000000],
               [10.50000000, 10.50000000]]])
-""",
     """
-def baddbmm(
-    input: Tensor,
-    x: Tensor,
-    y: Tensor,
-    beta: float = 1.0,
-    alpha: float = 1.0,
-    out_dtype: paddle.dtype | None = None,
-    name: str | None = None,
-    *,
-    out: Tensor | None = None,
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "baddbmm_",
-    r"""
-    Inplace version of ``baddbmm`` API, the output Tensor will be inplaced with input ``input``.
-    Please refer to :ref:`api_paddle_baddbmm`.
-""",
-    """
+
+@add_doc_and_signature
 def baddbmm_(
     input: Tensor,
     x: Tensor,
@@ -5053,12 +4798,21 @@ def baddbmm_(
     alpha: float = 1.0,
     out_dtype: paddle.dtype | None = None,
     name: str | None = None,
-) -> Tensor
-""",
-)
+) -> Tensor:
+    r"""
+    Inplace version of ``baddbmm`` API, the output Tensor will be inplaced with input ``input``.
+    Please refer to :ref:`api_paddle_baddbmm`.
+    """
+    ...
 
-add_doc_and_signature(
-    "cross",
+
+@add_doc_and_signature
+def cross(
+    x: Tensor,
+    y: Tensor,
+    axis: int = 9,
+    name: str | None = None,
+) -> Tensor:
     r"""
     Computes the cross product between two tensors along an axis.
 
@@ -5106,19 +4860,12 @@ add_doc_and_signature(
             [[0., 0., 0.],
              [0., 0., 0.],
              [0., 0., 0.]])
-""",
     """
-def cross(
-    x: Tensor,
-    y: Tensor,
-    axis: int = 9,
-    name: str | None = None,
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "dist",
+
+@add_doc_and_signature
+def dist(x: Tensor, y: Tensor, p: float = 2, name: str | None = None) -> Tensor:
     r"""
     Returns the p-norm of (x - y). It is not a norm in a strict sense, only as a measure
     of distance. The shapes of x and y must be broadcastable. The definition is as follows, for
@@ -5208,19 +4955,14 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             0.)
-""",
     """
-def dist(
-    x: Tensor,
-    y: Tensor,
-    p: float = 2,
-    name: str | None = None
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "flip",
+
+@add_doc_and_signature
+def flip(
+    x: Tensor, axis: Sequence[int] | int, name: str | None = None
+) -> Tensor:
     r"""
     Reverse the order of a n-D tensor along given axis in axis.
 
@@ -5267,18 +5009,12 @@ add_doc_and_signature(
               [5 , 4 ]],
              [[3 , 2 ],
               [1 , 0 ]]])
-""",
     """
-def flip(
-    x: Tensor,
-    axis: Sequence[int] | int,
-    name: str | None = None
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "renorm",
+
+@add_doc_and_signature
+def renorm(x: Tensor, p: float, axis: int, max_norm: float) -> Tensor:
     r"""
     This operator is used to calculate the p-norm along the axis,
     suppose the input-shape on axis dimension has the value of T, then
@@ -5312,35 +5048,21 @@ add_doc_and_signature(
               [ 0.60891086,  0.04392857,  0.61500001]],
              [[ 0.40594056, -1.17142856,  0.41000000],
               [ 0.62920785,  0.54178572,  0.61500001]]])
-""",
     """
-def renorm(
-    x: Tensor,
-    p: float,
-    axis: int,
-    max_norm: float
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "renorm_",
+
+@add_doc_and_signature
+def renorm_(x: Tensor, p: float, axis: int, max_norm: float) -> Tensor:
     r"""
     Inplace version of ``renorm`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_renorm`.
-""",
     """
-def renorm_(
-    x: Tensor,
-    p: float,
-    axis: int,
-    max_norm: float
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "poisson",
+
+@add_doc_and_signature
+def poisson(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     Returns a tensor filled with random number from a Poisson Distribution.
 
@@ -5371,17 +5093,20 @@ add_doc_and_signature(
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[2., 5., 0.],
              [5., 1., 3.]])
-""",
     """
-def poisson(
-    x: Tensor,
-    name: str | None = None
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "kthvalue",
+
+@add_doc_and_signature
+def kthvalue(
+    x: Tensor,
+    k: int,
+    axis: int | None = None,
+    keepdim: bool = False,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> tuple[Tensor, Tensor]:
     r"""
     Find values and indices of the k-th smallest at the axis.
 
@@ -5425,22 +5150,18 @@ add_doc_and_signature(
             [[0, 1],
              [1, 1]]))
             >>> # doctest: -SKIP
-""",
     """
-def kthvalue(
+    ...
+
+
+@add_doc_and_signature
+def kron(
     x: Tensor,
-    k: int,
-    axis: int | None = None,
-    keepdim: bool = False,
+    y: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> tuple[Tensor, Tensor]
-""",
-)
-
-add_doc_and_signature(
-    "kron",
+) -> Tensor:
     r"""
     Compute the Kronecker product of two tensors, a
     composite tensor made of blocks of the second tensor scaled by the
@@ -5487,20 +5208,18 @@ add_doc_and_signature(
              [3 , 6 , 9 , 4 , 8 , 12],
              [12, 15, 18, 16, 20, 24],
              [21, 24, 27, 28, 32, 36]])
-""",
     """
-def kron(
+    ...
+
+
+@add_doc_and_signature
+def mv(
     x: Tensor,
-    y: Tensor,
+    vec: Tensor,
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "mv",
+) -> Tensor:
     r"""
     Performs a matrix-vector product of the matrix x and the vector vec.
 
@@ -5532,20 +5251,16 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[2], dtype=float64, place=Place(cpu), stop_gradient=True,
             [14., 10.])
-""",
     """
-def mv(
-    x: Tensor,
-    vec: Tensor,
-    name: str | None = None,
-    *,
-    out: Tensor | None = None,
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "remainder_",
+
+@add_doc_and_signature
+def remainder_(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+) -> Tensor:
     r"""
     Inplace version of ``remainder`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_remainder`.
@@ -5557,48 +5272,42 @@ add_doc_and_signature(
 
     Returns:
         Tensor: The output tensor with the same shape and dtype as x.
-""",
     """
-def remainder_(
-    x: Tensor,
-    y: Tensor,
-    name: str | None = None,
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "mod_",
-    r"""
-    Inplace version of ``mod`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_mod`.
-""",
-    """
+
+@add_doc_and_signature
 def mod_(
     x: Tensor,
     y: Tensor,
     name: str | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "floor_mod_",
+) -> Tensor:
     r"""
-    Inplace version of ``floor_mod`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_floor_mod_`.
-""",
+    Inplace version of ``mod`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_mod`.
     """
+    ...
+
+
+@add_doc_and_signature
 def floor_mod_(
     x: Tensor,
     y: Tensor,
     name: str | None = None,
-) -> Tensor
-""",
-)
+) -> Tensor:
+    r"""
+    Inplace version of ``floor_mod`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_floor_mod_`.
+    """
+    ...
 
-add_doc_and_signature(
-    "pow_",
+
+@add_doc_and_signature
+def pow_(
+    x: Tensor,
+    y: float,
+    name: str | None = None,
+) -> Tensor:
     r"""
     Inplace version of ``pow`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_pow`.
@@ -5612,18 +5321,16 @@ add_doc_and_signature(
 
     Returns:
         Tensor: The output tensor with the same shape and dtype as x.
-""",
     """
-def pow_(
-    x: Tensor,
-    y: float | int,
-    name: str | None = None,
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "floor_divide_",
+
+@add_doc_and_signature
+def floor_divide_(
+    x: Tensor,
+    y: Tensor | int,
+    name: str | None = None,
+) -> Tensor:
     r"""
     Inplace version of ``floor_divide`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_floor_divide`.
@@ -5637,18 +5344,17 @@ add_doc_and_signature(
 
     Returns:
         Tensor: The output tensor with the same shape and dtype as x.
-""",
     """
-def floor_divide_(
-    x: Tensor,
-    y: Tensor | int,
-    name: str | None = None,
-) -> Tensor
-""",
-)
+    ...
 
-add_doc_and_signature(
-    "erf",
+
+@add_doc_and_signature
+def erf(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     r"""
     The error function.
 
@@ -5679,288 +5385,236 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.42839241, -0.22270259,  0.11246292,  0.32862678])
-""",
     """
-def erf(
-    x: Tensor,
-    name: str | None = None,
-    *,
-    out: Tensor | None = None,
-) -> Tensor
-""",
-)
+    ...
 
 
-add_doc_and_signature(
-    "erf_",
-    r"""
-    Inplace version of ``erf`` API, the output Tensor will be inplaced with input ``x``.
-""",
-    """
+@add_doc_and_signature
 def erf_(
     x: Tensor,
     name: str | None = None,
-) -> Tensor
-""",
-)
-
-
-add_doc_and_signature(
-    "exp_",
+) -> Tensor:
     r"""
-    Inplace version of ``exp`` API, the output Tensor will be inplaced with input ``x``.
-""",
+    Inplace version of ``erf`` API, the output Tensor will be inplaced with input ``x``.
     """
+    ...
+
+
+@add_doc_and_signature
 def exp_(
     x: Tensor,
     name: str | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "sqrt_",
+) -> Tensor:
     r"""
-    Inplace version of ``sqrt`` API, the output Tensor will be inplaced with input ``x``.
-""",
+    Inplace version of ``exp`` API, the output Tensor will be inplaced with input ``x``.
     """
+    ...
+
+
+@add_doc_and_signature
 def sqrt_(
     x: Tensor,
     name: str | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "rsqrt_",
+) -> Tensor:
     r"""
-    Inplace version of ``rsqrt`` API, the output Tensor will be inplaced with input ``x``.
-""",
+    Inplace version of ``sqrt`` API, the output Tensor will be inplaced with input ``x``.
     """
+    ...
+
+
+@add_doc_and_signature
 def rsqrt_(
     x: Tensor,
     name: str | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "ceil_",
+) -> Tensor:
     r"""
-    Inplace version of ``ceil`` API, the output Tensor will be inplaced with input ``x``.
-""",
+    Inplace version of ``rsqrt`` API, the output Tensor will be inplaced with input ``x``.
     """
+    ...
+
+
+@add_doc_and_signature
 def ceil_(
     x: Tensor,
     name: str | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "floor_",
+) -> Tensor:
     r"""
-    Inplace version of ``floor`` API, the output Tensor will be inplaced with input ``x``.
-""",
+    Inplace version of ``ceil`` API, the output Tensor will be inplaced with input ``x``.
     """
+    ...
+
+
+@add_doc_and_signature
 def floor_(
     x: Tensor,
     name: str | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "reciprocal_",
+) -> Tensor:
     r"""
-    Inplace version of ``reciprocal`` API, the output Tensor will be inplaced with input ``x``.
-""",
+    Inplace version of ``floor`` API, the output Tensor will be inplaced with input ``x``.
     """
+    ...
+
+
+@add_doc_and_signature
 def reciprocal_(
     x: Tensor,
     name: str | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "sigmoid_",
+) -> Tensor:
     r"""
-    Inplace version of ``sigmoid`` API, the output Tensor will be inplaced with input ``x``.
-""",
+    Inplace version of ``reciprocal`` API, the output Tensor will be inplaced with input ``x``.
     """
+    ...
+
+
+@add_doc_and_signature
 def sigmoid_(
     x: Tensor,
     name: str | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "sin_",
+) -> Tensor:
     r"""
-    Inplace version of ``sin`` API, the output Tensor will be inplaced with input ``x``.
-""",
+    Inplace version of ``sigmoid`` API, the output Tensor will be inplaced with input ``x``.
     """
+    ...
+
+
+@add_doc_and_signature
 def sin_(
     x: Tensor,
     name: str | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "sinh_",
+) -> Tensor:
     r"""
-    Inplace version of ``sinh`` API, the output Tensor will be inplaced with input ``x``.
-""",
+    Inplace version of ``sin`` API, the output Tensor will be inplaced with input ``x``.
     """
+    ...
+
+
+@add_doc_and_signature
 def sinh_(
     x: Tensor,
     name: str | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "asin_",
+) -> Tensor:
     r"""
-    Inplace version of ``asin`` API, the output Tensor will be inplaced with input ``x``.
-""",
+    Inplace version of ``sinh`` API, the output Tensor will be inplaced with input ``x``.
     """
+    ...
+
+
+@add_doc_and_signature
 def asin_(
     x: Tensor,
     name: str | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "asinh_",
+) -> Tensor:
     r"""
-    Inplace version of ``asinh`` API, the output Tensor will be inplaced with input ``x``.
-""",
+    Inplace version of ``asin`` API, the output Tensor will be inplaced with input ``x``.
     """
+    ...
+
+
+@add_doc_and_signature
 def asinh_(
     x: Tensor,
     name: str | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "cos_",
+) -> Tensor:
     r"""
-    Inplace version of ``cos`` API, the output Tensor will be inplaced with input ``x``.
-""",
+    Inplace version of ``asinh`` API, the output Tensor will be inplaced with input ``x``.
     """
+    ...
+
+
+@add_doc_and_signature
 def cos_(
     x: Tensor,
     name: str | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "cosh_",
+) -> Tensor:
     r"""
-    Inplace version of ``cosh`` API, the output Tensor will be inplaced with input ``x``.
-""",
+    Inplace version of ``cos`` API, the output Tensor will be inplaced with input ``x``.
     """
+    ...
+
+
+@add_doc_and_signature
 def cosh_(
     x: Tensor,
     name: str | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "acos_",
+) -> Tensor:
     r"""
-    Inplace version of ``acos`` API, the output Tensor will be inplaced with input ``x``.
-""",
+    Inplace version of ``cosh`` API, the output Tensor will be inplaced with input ``x``.
     """
+    ...
+
+
+@add_doc_and_signature
 def acos_(
     x: Tensor,
     name: str | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "acosh_",
+) -> Tensor:
     r"""
-    Inplace version of ``acosh`` API, the output Tensor will be inplaced with input ``x``.
-""",
+    Inplace version of ``acos`` API, the output Tensor will be inplaced with input ``x``.
     """
+    ...
+
+
+@add_doc_and_signature
 def acosh_(
     x: Tensor,
     name: str | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "tan_",
+) -> Tensor:
     r"""
-    Inplace version of ``tan`` API, the output Tensor will be inplaced with input ``x``.
-""",
+    Inplace version of ``acosh`` API, the output Tensor will be inplaced with input ``x``.
     """
+    ...
+
+
+@add_doc_and_signature
 def tan_(
     x: Tensor,
     name: str | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "atan_",
+) -> Tensor:
     r"""
-    Inplace version of ``atan`` API, the output Tensor will be inplaced with input ``x``.
-""",
+    Inplace version of ``tan`` API, the output Tensor will be inplaced with input ``x``.
     """
+    ...
+
+
+@add_doc_and_signature
 def atan_(
     x: Tensor,
     name: str | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "atanh_",
+) -> Tensor:
     r"""
-    Inplace version of ``atanh`` API, the output Tensor will be inplaced with input ``x``.
-""",
+    Inplace version of ``atan`` API, the output Tensor will be inplaced with input ``x``.
     """
+    ...
+
+
+@add_doc_and_signature
 def atanh_(
     x: Tensor,
     name: str | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "expm1_",
+) -> Tensor:
     r"""
-    Inplace version of ``expm1`` API, the output Tensor will be inplaced with input ``x``.
-""",
+    Inplace version of ``atanh`` API, the output Tensor will be inplaced with input ``x``.
     """
+    ...
+
+
+@add_doc_and_signature
 def expm1_(
     x: Tensor,
     name: str | None = None,
-) -> Tensor
-""",
-)
-
-add_doc_and_signature(
-    "square_",
+) -> Tensor:
     r"""
-    Inplace version of ``square`` API, the output Tensor will be inplaced with input ``x``.
-""",
+    Inplace version of ``expm1`` API, the output Tensor will be inplaced with input ``x``.
     """
+    ...
+
+
+@add_doc_and_signature
 def square_(
     x: Tensor,
     name: str | None = None,
-) -> Tensor
-""",
-)
+) -> Tensor:
+    r"""
+    Inplace version of ``square`` API, the output Tensor will be inplaced with input ``x``.
+    """
+    ...

@@ -123,14 +123,6 @@ function make_ubuntu20_cu123_dockerfile(){
   sed -i 's#/usr/local/gcc-8.2/bin/g++#/usr/local/gcc-12.1/bin/g++#g' ${dockerfile_name}
   sed -i 's#/usr/local/gcc-8.2/bin/g++#/usr/local/gcc-12.1/bin/g++#g' ${dockerfile_name}
   sed -i 's#PATH=/usr/local/gcc-8.2/bin:$PATH#PATH=/usr/local/gcc-12.1/bin:$PATH#g' ${dockerfile_name}
-
-  sed -i "${dockerfile_line}i WORKDIR /home \n \
-    RUN git clone --depth=1 https://github.com/PaddlePaddle/PaddleNLP.git -b stable/paddle-ci \&\& cd PaddleNLP \&\& \
-    pip3.10 install -r requirements.txt \&\& \
-    pip3.10 install -r scripts/regression/requirements_ci.txt \&\& \
-    pip3.10 install -r csrc/requirements.txt \&\& \
-    pip3.10 install pytest-timeout \&\& \
-    cd /home \&\& rm -rf PaddleNLP" ${dockerfile_name}
 }
 
 function main() {

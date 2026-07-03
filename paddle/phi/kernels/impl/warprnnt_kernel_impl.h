@@ -16,6 +16,7 @@
 
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/dynload/warprnnt.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -133,6 +134,10 @@ class WarpRNNTFunctor {
                   T* cpu_loss) {
     // Init warp-rnnt options
     init(dev_ctx, maxT, maxU, blank, fastemit_lambda, num_threads);
+    PADDLE_ENFORCE_LE_INT_MAX(D, "warprnnt D");
+    PADDLE_ENFORCE_LE_INT_MAX(B, "warprnnt B");
+    const int D_int = static_cast<int>(D);
+    const int B_int = static_cast<int>(B);
 
     // Compute the required workspace size.
     // There is no memory allocated operations within warp-rnnt.
@@ -177,8 +182,8 @@ class WarpRNNTFunctor {
                                                   label,
                                                   label_lengths,
                                                   input_lengths,
-                                                  static_cast<int>(D),
-                                                  static_cast<int>(B),
+                                                  D_int,
+                                                  B_int,
                                                   cpu_loss,
                                                   workspace_data,
                                                   options_);
@@ -200,10 +205,13 @@ class WarpRNNTFunctor {
             const float fastemit_lambda,
             const int num_threads) {
     warprnnt_version_ = dynload::get_warprnnt_version();
+    PADDLE_ENFORCE_LE_INT_MAX(maxT, "warprnnt maxT");
+    PADDLE_ENFORCE_LE_INT_MAX(maxU, "warprnnt maxU");
+    PADDLE_ENFORCE_LE_INT_MAX(blank, "warprnnt blank_label");
 
-    options_.maxT = maxT;
-    options_.maxU = maxU;
-    options_.blank_label = blank;
+    options_.maxT = static_cast<int>(maxT);
+    options_.maxU = static_cast<int>(maxU);
+    options_.blank_label = static_cast<int>(blank);
     options_.fastemit_lambda = fastemit_lambda;
     options_.batch_first = true;
 

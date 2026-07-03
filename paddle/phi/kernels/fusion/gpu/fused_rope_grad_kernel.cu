@@ -67,8 +67,12 @@ void FusedRopeGradKernel(const Context& dev_ctx,
   }
 
   const int64_t warps_per_block = std::min(num_heads, static_cast<int64_t>(8));
-  dim3 grid(seq_len, batch_size);
-  dim3 block(32, warps_per_block);  // 32 threads per warp
+  PADDLE_ENFORCE_LE_UINT32_MAX(seq_len, "fused_rope_grad grid.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(batch_size, "fused_rope_grad grid.y");
+  PADDLE_ENFORCE_LE_UINT32_MAX(warps_per_block, "fused_rope_grad block.y");
+  dim3 grid(static_cast<uint32_t>(seq_len), static_cast<uint32_t>(batch_size));
+  dim3 block(32,
+             static_cast<uint32_t>(warps_per_block));  // 32 threads per warp
   size_t shared_mem_size = 2 * head_dim * sizeof(float);
 
   // Q

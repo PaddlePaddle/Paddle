@@ -21,7 +21,7 @@ import time
 
 from github import Github
 
-paddle_root = os.getenv('PADDLE_ROOT')
+paddle_root = os.getenv("PADDLE_ROOT")
 
 
 def get_pull(pull_id):
@@ -33,12 +33,12 @@ def get_pull(pull_id):
     Returns:
         github.PullRequest.PullRequest
     """
-    token = os.getenv('GITHUB_API_TOKEN')
+    token = os.getenv("GITHUB_API_TOKEN")
     github = Github(token, timeout=60)
     idx = 1
     while idx < 4:
         try:
-            repo = github.get_repo('PaddlePaddle/Paddle')
+            repo = github.get_repo("PaddlePaddle/Paddle")
         except Exception as e:
             print(e)
             print(f"get_repo error, retry {idx} times after {idx * 10} secs.")
@@ -66,6 +66,19 @@ def get_files(pull_id):
         yield file.filename
 
 
+def normalize_gcda_path(gcda_path):
+    """Map a generated gcda path back to the changed-source gcda path."""
+    parts = []
+    for part in gcda_path.split(os.sep):
+        if part == "CMakeFiles" or part.endswith(".dir"):
+            continue
+        if part == "__":
+            parts.append("..")
+        else:
+            parts.append(part)
+    return os.path.normpath(os.sep.join(parts))
+
+
 def clean(pull_id):
     """Clean.
 
@@ -75,36 +88,33 @@ def clean(pull_id):
     Returns:
         None.
     """
-    changed = []
+    changed = set()
 
     for file in get_files(pull_id):
-        changed.append(os.path.join(paddle_root, 'build', f'{file}.gcda'))
+        changed.add(
+            os.path.normpath(os.path.join(paddle_root, "build", f"{file}.gcda"))
+        )
 
-    for parent, dirs, files in os.walk(os.path.join(paddle_root, 'build')):
+    for parent, dirs, files in os.walk(os.path.join(paddle_root, "build")):
         for gcda in files:
-            if gcda.endswith('.gcda'):
-                trimmed = parent
-
-                # convert paddle/fluid/imperative/CMakeFiles/layer.dir/layer.cc.gcda
-                # to paddle/fluid/imperative/layer.cc.gcda
-                # modified to make it more robust
-                # convert /paddle/build/paddle/phi/backends/CMakeFiles/phi_backends.dir/gpu/cuda/cuda_info.cc.gcda
-                # to /paddle/build/paddle/phi/backends/gpu/cuda/cuda_info.cc.gcda
-                trimmed_tmp = []
-                for p in trimmed.split('/'):
-                    if p.endswith('.dir') or p.endswith('CMakeFiles'):
-                        continue
-                    trimmed_tmp.append(p)
-                trimmed = '/'.join(trimmed_tmp)
+            if gcda.endswith(".gcda"):
+                # Convert generated paths back to the source gcda path. For
+                # example:
+                #   paddle/fluid/pybind/CMakeFiles/paddle.dir/__/__/pir/src/core/type_util.cc.gcda
+                # becomes:
+                #   paddle/pir/src/core/type_util.cc.gcda
+                normalized_gcda = normalize_gcda_path(
+                    os.path.join(parent, gcda)
+                )
 
                 # remove no changed gcda
 
-                if os.path.join(trimmed, gcda) not in changed:
+                if normalized_gcda not in changed:
                     gcda = os.path.join(parent, gcda)
                     os.remove(gcda)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pull_id = sys.argv[1]
     pull_id = int(pull_id)
 

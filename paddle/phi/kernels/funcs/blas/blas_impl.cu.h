@@ -3005,9 +3005,9 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
 #if CUDA_VERSION >= 11000
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
-  int lda = (transA == CblasNoTrans) ? K : M;
-  int ldb = (transB == CblasNoTrans) ? N : K;
-  int ldc = N;
+  int64_t lda = (transA == CblasNoTrans) ? K : M;
+  int64_t ldb = (transB == CblasNoTrans) ? N : K;
+  int64_t ldc = N;
   cublasOperation_t cuTransA =
       (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
   cublasOperation_t cuTransB =

@@ -28,8 +28,8 @@ namespace funcs {
 template <typename Context, typename T, size_t D>
 void EigenSliceWrapper(const Context& dev_ctx,
                        const DenseTensor* in,
-                       const std::vector<int>& start,
-                       const std::vector<int>& end,
+                       const std::vector<int64_t>& start,
+                       const std::vector<int64_t>& end,
                        DenseTensor* out) {
   // Slice by call Eigen Tensor Function `.slice()`
   size_t rank = in->dims().size();
@@ -66,11 +66,11 @@ template <typename T, typename Context>
 DenseTensor Slice(const Context& dev_ctx,
                   const DenseTensor& x,
                   std::vector<int> axes,
-                  std::vector<int> starts,
-                  std::vector<int> ends) {
+                  std::vector<int64_t> starts,
+                  std::vector<int64_t> ends) {
   DenseTensor ret;
   std::vector<int> new_axes = axes;
-  std::vector<int> out_shape = vectorize<int>(x.dims());
+  std::vector<int64_t> out_shape = vectorize(x.dims());
   size_t rank = out_shape.size();
   PADDLE_ENFORCE_EQ(
       axes.size(),
@@ -84,15 +84,15 @@ DenseTensor Slice(const Context& dev_ctx,
     int axis = axes[i];
     if (axis < 0) axis = rank + axis;
     new_axes[i] = axis;  // change negative to positive
-    int st = starts[i];
-    int ed = ends[i];
+    int64_t st = starts[i];
+    int64_t ed = ends[i];
     PADDLE_ENFORCE_GT(
         ed,
         st,
         errors::InvalidArgument("C++ Slice Operation Not Support End < Start"));
     out_shape[axis] = ed - st;
   }
-  std::vector<int> offset(rank), extends(rank);
+  std::vector<int64_t> offset(rank), extends(rank);
   for (size_t i = 0; i < rank; ++i) {
     offset[i] = 0;
     extends[i] = x.dims()[i];

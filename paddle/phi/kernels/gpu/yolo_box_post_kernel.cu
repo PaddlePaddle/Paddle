@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/gpu/yolo_box_post_kernel.h"
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/memory_utils.h"
@@ -95,7 +96,8 @@ static float BoxIOU(Box a, Box b) {
 static void PostNMS(std::vector<Detection>* det_bboxes,
                     float thresh,
                     int classes) {
-  int total = det_bboxes->size();
+  PADDLE_ENFORCE_LE_INT_MAX(det_bboxes->size(), "detection boxes size");
+  int total = static_cast<int>(det_bboxes->size());
   if (total <= 0) {
     return;
   }
@@ -544,7 +546,9 @@ void YoloBoxPostKernel(const Context& dev_ctx,
       }
     }
     PostNMS(&bbox_det_vec, nms_threshold, class_num);
-    for (int i = 0; i < bbox_det_vec.size(); i++) {
+    PADDLE_ENFORCE_LE_INT_MAX(bbox_det_vec.size(), "bbox_det_num");
+    const int bbox_det_num = static_cast<int>(bbox_det_vec.size());
+    for (int i = 0; i < bbox_det_num; i++) {
       boxes_scores_data[boxes_scores_id++] =
           bbox_det_vec[i].max_prob_class_index;
       boxes_scores_data[boxes_scores_id++] = bbox_det_vec[i].objectness;
@@ -556,7 +560,7 @@ void YoloBoxPostKernel(const Context& dev_ctx,
           bbox_det_vec[i].bbox.h + bbox_det_vec[i].bbox.y;
       free(bbox_det_vec[i].prob);
     }
-    boxes_num_data[batch_id] = bbox_det_vec.size();
+    boxes_num_data[batch_id] = bbox_det_num;
   }
 
 #ifdef PADDLE_WITH_HIP

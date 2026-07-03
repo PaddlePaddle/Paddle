@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from .dataloader import (
+    DataLoader,
     default_collate,
     get_worker_info,
 )
@@ -39,6 +40,7 @@ __all__ = [
     'ChainDataset',
     'ConcatDataset',
     'Dataset',
+    'DataLoader',
     'IterableDataset',
     'Subset',
     'random_split',

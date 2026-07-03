@@ -1605,12 +1605,12 @@ bool OperatorWithKernel::CanONEDNNBeUsed(const framework::ExecutionContext& ctx,
 
 bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
                                         DataType data_type) const {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
   bool use_cudnn = ctx.HasAttr("use_cudnn") && ctx.Attr<bool>("use_cudnn") &&
                    (phi::is_gpu_place(ctx.GetPlace()) ||
                     phi::is_custom_place(ctx.GetPlace()));
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_CUSTOM_DEVICE)
   if (use_cudnn) {
     const auto& dev_ctx = ctx.device_context<phi::DeviceContext>();
     use_cudnn &= (dev_ctx.cudnn_handle() != nullptr);
@@ -1627,6 +1627,7 @@ bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
 #endif  // PADDLE_WITH_CUDA
   return use_cudnn && this->SupportsCUDNN(data_type);
 #endif
+  return false;
 }
 
 bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,

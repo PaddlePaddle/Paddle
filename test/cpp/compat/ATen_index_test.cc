@@ -77,7 +77,7 @@ TEST(TensorIndexTest, IndexWithEmptyInitializerListReturnsSelf) {
   at::Tensor t = at::arange(5, at::kFloat);
 
   // PyTorch throws for empty index list
-  ASSERT_THROW(at::index(t, std::initializer_list<at::indexing::TensorIndex>{}),
+  ASSERT_THROW(t.index(std::initializer_list<at::indexing::TensorIndex>{}),
                std::exception);
 }
 
@@ -90,7 +90,7 @@ TEST(TensorIndexTest, IndexWithTensorInitializerList) {
   idx_data[1] = 2;
   idx_data[2] = 4;
 
-  at::Tensor result = at::index(t, {idx});
+  at::Tensor result = t.index({idx});
 
   ASSERT_EQ(result.numel(), 3);
   float* result_data = result.data_ptr<float>();
@@ -121,7 +121,7 @@ TEST(TensorIndexTest, MixedSliceAndTensorIndicesThrows) {
   idx.data_ptr<int64_t>()[0] = 0;
   idx.data_ptr<int64_t>()[1] = 2;
 
-  ASSERT_THROW(at::index(t, {at::indexing::Slice(0, 2), idx}), std::exception);
+  ASSERT_THROW(t.index({at::indexing::Slice(0, 2), idx}), std::exception);
 }
 
 // ======================== index_put_ tests ========================
@@ -164,10 +164,7 @@ TEST(TensorIndexPutTest, IndexPutInplaceWithScalar) {
   idx_data[0] = 0;
   idx_data[1] = 4;
 
-  c10::List<::std::optional<at::Tensor>> indices;
-  indices.push_back(idx);
-
-  t.index_put_(indices, at::Scalar(7.0));
+  t.index_put_({idx}, at::Scalar(7.0));
 
   // Verify data pointer unchanged (inplace)
   ASSERT_EQ(t.data_ptr<float>(), original_data_ptr);
@@ -255,6 +252,69 @@ TEST(TensorIndexTest, IndexWithOptionalNone) {
   ASSERT_EQ(result.numel(), 6);
 }
 
+TEST(TensorIndexTest, FreeIndexWithAllNoneReturnsSelf) {
+  at::Tensor t = at::arange(6, at::kFloat).reshape({2, 3});
+  c10::List<::std::optional<at::Tensor>> indices;
+  indices.push_back(::std::nullopt);
+  indices.push_back(::std::nullopt);
+
+  at::Tensor result = at::index(t, indices);
+
+  ASSERT_EQ(result.sizes(), c10::IntArrayRef({2, 3}));
+  ASSERT_FLOAT_EQ(result.data_ptr<float>()[0], 0.0f);
+  ASSERT_FLOAT_EQ(result.data_ptr<float>()[5], 5.0f);
+}
+
+TEST(TensorIndexTest, FreeIndexWithSingleLeadingTensor) {
+  at::Tensor t = at::arange(9, at::kFloat).reshape({3, 3});
+  at::Tensor idx = at::empty({2}, at::kLong);
+  idx.data_ptr<int64_t>()[0] = 2;
+  idx.data_ptr<int64_t>()[1] = 0;
+
+  c10::List<::std::optional<at::Tensor>> indices;
+  indices.push_back(idx);
+
+  at::Tensor result = at::index(t, indices);
+
+  ASSERT_EQ(result.sizes(), c10::IntArrayRef({2, 3}));
+  ASSERT_FLOAT_EQ(result.data_ptr<float>()[0], 6.0f);
+  ASSERT_FLOAT_EQ(result.data_ptr<float>()[1], 7.0f);
+  ASSERT_FLOAT_EQ(result.data_ptr<float>()[2], 8.0f);
+  ASSERT_FLOAT_EQ(result.data_ptr<float>()[3], 0.0f);
+  ASSERT_FLOAT_EQ(result.data_ptr<float>()[4], 1.0f);
+  ASSERT_FLOAT_EQ(result.data_ptr<float>()[5], 2.0f);
+}
+
+TEST(TensorIndexTest, MixedTensorNoneFullSliceIndex) {
+  at::Tensor base = at::arange(12, at::kFloat).reshape({3, 4});
+  at::Tensor idx = at::empty({2}, at::kLong);
+  idx.data_ptr<int64_t>()[0] = 2;
+  idx.data_ptr<int64_t>()[1] = 0;
+
+  at::Tensor result =
+      base.index({idx, at::indexing::None, at::indexing::Slice()});
+
+  ASSERT_EQ(result.sizes(), c10::IntArrayRef({2, 1, 4}));
+  ASSERT_FLOAT_EQ(result.data_ptr<float>()[0], 8.0f);
+  ASSERT_FLOAT_EQ(result.data_ptr<float>()[1], 9.0f);
+  ASSERT_FLOAT_EQ(result.data_ptr<float>()[2], 10.0f);
+  ASSERT_FLOAT_EQ(result.data_ptr<float>()[3], 11.0f);
+  ASSERT_FLOAT_EQ(result.data_ptr<float>()[4], 0.0f);
+  ASSERT_FLOAT_EQ(result.data_ptr<float>()[7], 3.0f);
+}
+
+TEST(TensorIndexTest, MixedFullSliceWithMultipleTensorIndicesThrows) {
+  at::Tensor base = at::arange(12, at::kFloat).reshape({3, 4});
+  at::Tensor idx0 = at::empty({2}, at::kLong);
+  idx0.data_ptr<int64_t>()[0] = 0;
+  idx0.data_ptr<int64_t>()[1] = 1;
+  at::Tensor idx1 = at::empty({2}, at::kLong);
+  idx1.data_ptr<int64_t>()[0] = 0;
+  idx1.data_ptr<int64_t>()[1] = 1;
+
+  ASSERT_THROW(base.index({idx0, at::indexing::Slice(), idx1}), std::exception);
+}
+
 TEST(TensorIndexPutTest, IndexPutAccumulate) {
   // Test index_put_ with accumulate=true
   at::Tensor t = at::zeros({5}, at::kFloat);
@@ -326,4 +386,62 @@ TEST(TensorIndexPutTest, IndexPutNonInplaceAccumulate) {
   ASSERT_FLOAT_EQ(t.data_ptr<float>()[1], 0.0f);
   // Result has accumulated
   ASSERT_FLOAT_EQ(result.data_ptr<float>()[1], 6.0f);
+}
+
+TEST(TensorIndexPutTest, IndexPutArrayRefWithTensorValue) {
+  at::Tensor t = at::zeros({5}, at::kFloat);
+  at::Tensor idx = at::empty({2}, at::kLong);
+  idx.data_ptr<int64_t>()[0] = 1;
+  idx.data_ptr<int64_t>()[1] = 4;
+  at::Tensor values = at::full({2}, 13.0f, at::kFloat);
+
+  std::vector<at::indexing::TensorIndex> tensor_indices = {idx};
+  t.index_put_(at::ArrayRef<at::indexing::TensorIndex>(tensor_indices), values);
+
+  ASSERT_FLOAT_EQ(t.data_ptr<float>()[0], 0.0f);
+  ASSERT_FLOAT_EQ(t.data_ptr<float>()[1], 13.0f);
+  ASSERT_FLOAT_EQ(t.data_ptr<float>()[2], 0.0f);
+  ASSERT_FLOAT_EQ(t.data_ptr<float>()[4], 13.0f);
+}
+
+TEST(TensorIndexPutTest, IndexPutArrayRefWithNoneValue) {
+  at::Tensor t = at::zeros({2, 3}, at::kFloat);
+  at::Tensor values = at::full({1, 2, 3}, 6.0f, at::kFloat);
+
+  t.index_put_({at::indexing::None}, values);
+
+  ASSERT_EQ(t.sizes(), c10::IntArrayRef({2, 3}));
+  for (int i = 0; i < 6; ++i) {
+    ASSERT_FLOAT_EQ(t.data_ptr<float>()[i], 6.0f);
+  }
+}
+
+TEST(TensorIndexPutTest, IndexPutArrayRefWithTensorNoneAndSlice) {
+  at::Tensor t = at::zeros({3, 4}, at::kFloat);
+  at::Tensor idx = at::empty({2}, at::kLong);
+  idx.data_ptr<int64_t>()[0] = 2;
+  idx.data_ptr<int64_t>()[1] = 0;
+  at::Tensor values = at::full({2, 1, 4}, 8.0f, at::kFloat);
+
+  t.index_put_({idx, at::indexing::None, at::indexing::Slice()}, values);
+
+  ASSERT_EQ(t.sizes(), c10::IntArrayRef({3, 4}));
+  for (int i = 0; i < 4; ++i) {
+    ASSERT_FLOAT_EQ(t.data_ptr<float>()[i], 8.0f);
+    ASSERT_FLOAT_EQ(t.data_ptr<float>()[8 + i], 8.0f);
+  }
+  for (int i = 4; i < 8; ++i) {
+    ASSERT_FLOAT_EQ(t.data_ptr<float>()[i], 0.0f);
+  }
+}
+
+TEST(TensorIndexPutTest, IndexPutArrayRefWithNoneScalarValue) {
+  at::Tensor t = at::zeros({2, 3}, at::kFloat);
+
+  t.index_put_({at::indexing::None}, at::Scalar(4.0));
+
+  ASSERT_EQ(t.sizes(), c10::IntArrayRef({2, 3}));
+  for (int i = 0; i < 6; ++i) {
+    ASSERT_FLOAT_EQ(t.data_ptr<float>()[i], 4.0f);
+  }
 }

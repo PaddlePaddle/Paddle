@@ -489,34 +489,6 @@ struct AdamWLrAccessor<false> {
   }
 };
 
-// cpu
-template <typename MT, bool IsCpu>
-struct AdamWBiasCorrAccessor;
-
-template <typename MT>
-struct AdamWBiasCorrAccessor<MT, true> {
-  const double bc1;  // 1 - beta1_pow
-  const double bc2;  // 1 - beta2_pow
-
-  AdamWBiasCorrAccessor(double bc1, double bc2) : bc1(bc1), bc2(bc2) {}
-
-  __device__ __forceinline__ double GetBc1() const { return bc1; }
-  __device__ __forceinline__ double GetBc2() const { return bc2; }
-};
-
-// gpu
-template <typename MT>
-struct AdamWBiasCorrAccessor<MT, false> {
-  const MT* beta1_pow;
-  const MT* beta2_pow;
-
-  AdamWBiasCorrAccessor(const MT* bp1, const MT* bp2)
-      : beta1_pow(bp1), beta2_pow(bp2) {}
-
-  __device__ __forceinline__ double GetBc1() const { return 1.0 - *beta1_pow; }
-  __device__ __forceinline__ double GetBc2() const { return 1.0 - *beta2_pow; }
-};
-
 // Device-side pow matching torch's at::native::pow_ (promotes float exp to
 // double, then calls ::pow(double, double))
 template <typename Base_type, typename Exp_type>
@@ -526,7 +498,10 @@ static __device__ __forceinline__ Base_type torch_pow_(Base_type base,
 }
 
 // Accuracy-compatible bias correction: computes 1-beta^step_count on device,
-// matching torch's FusedAdamMathFunctor which passes state_steps as float.
+// matching torch's FusedAdamMathFunctor. After torch's "Use opmath_t and not
+// double compute" change, the bias correction is computed in opmath_t (float
+// for fp32/fp16/bf16, double for fp64), with beta and step_count both cast to
+// opmath_t before pow_. We therefore compute everything in MT (= opmath_t).
 template <typename MT, bool IsCpu>
 struct AdamWBiasCorrAccessorCompat;
 
@@ -540,11 +515,13 @@ struct AdamWBiasCorrAccessorCompat<MT, true> {
   AdamWBiasCorrAccessorCompat(double b1, double b2, float sc)
       : beta1(b1), beta2(b2), step_count(sc) {}
 
-  __device__ __forceinline__ double GetBc1() const {
-    return 1.0 - torch_pow_(beta1, step_count);
+  __device__ __forceinline__ MT GetBc1() const {
+    return static_cast<MT>(1) -
+           torch_pow_(static_cast<MT>(beta1), static_cast<MT>(step_count));
   }
-  __device__ __forceinline__ double GetBc2() const {
-    return 1.0 - torch_pow_(beta2, step_count);
+  __device__ __forceinline__ MT GetBc2() const {
+    return static_cast<MT>(1) -
+           torch_pow_(static_cast<MT>(beta2), static_cast<MT>(step_count));
   }
 };
 
@@ -558,15 +535,18 @@ struct AdamWBiasCorrAccessorCompat<MT, false> {
   AdamWBiasCorrAccessorCompat(double b1, double b2, const MT* bp1)
       : beta1(b1), beta2(b2), beta1_pow(bp1) {}
 
-  __device__ __forceinline__ double GetBc1() const {
-    const float sc = static_cast<float>(
+  __device__ __forceinline__ MT GetStepCount() const {
+    return static_cast<MT>(
         ::round(::log(static_cast<double>(*beta1_pow)) / ::log(beta1)));
-    return 1.0 - torch_pow_(beta1, sc);
   }
-  __device__ __forceinline__ double GetBc2() const {
-    const float sc = static_cast<float>(
-        ::round(::log(static_cast<double>(*beta1_pow)) / ::log(beta1)));
-    return 1.0 - torch_pow_(beta2, sc);
+
+  __device__ __forceinline__ MT GetBc1() const {
+    return static_cast<MT>(1) -
+           torch_pow_(static_cast<MT>(beta1), GetStepCount());
+  }
+  __device__ __forceinline__ MT GetBc2() const {
+    return static_cast<MT>(1) -
+           torch_pow_(static_cast<MT>(beta2), GetStepCount());
   }
 };
 
@@ -596,34 +576,33 @@ __global__ void AdamWStyleKernel(const double beta1,
                                  TM* __restrict__ moment2_max_out,
                                  int64_t ndim,
                                  bool amsgrad) {
-  __shared__ double one_minus_beta1_shared;
-  __shared__ double one_minus_beta2_shared;
-  __shared__ double lr_weight_decay_shared;
+  // Matches torch >= 2.12's fused Adam(W) math after PR#173224 (use fma) and
+  // PR#173227 (use opmath_t, not double): every scalar lives in opmath_t
+  // (== MT, float for fp32/fp16/bf16, double for fp64) and the moment updates
+  // use nested fma in opmath_t.
+  __shared__ MT lr_weight_decay_shared;
   __shared__ MT bias_correction2_sqrt_shared;
   __shared__ MT step_size_shared;
 
-  if (threadIdx.x == 0) {
-    const double lr_double = lr_accessor.GetLrDouble();
-    const double bc1_dbl = bias_corr_accessor.GetBc1();
-    const double bc2_dbl = bias_corr_accessor.GetBc2();
-    const double bc2_sqrt_dbl = ::sqrt(bc2_dbl);
+  const MT beta1_o = static_cast<MT>(beta1);
+  const MT beta2_o = static_cast<MT>(beta2);
+  const MT eps_o = static_cast<MT>(epsilon);
 
-    one_minus_beta1_shared = 1.0 - beta1;
-    one_minus_beta2_shared = 1.0 - beta2;
-    lr_weight_decay_shared = lr_double * weight_decay;
-    // Truncate to opmath_t (float) at the "adam_math call boundary", matching
-    // torch exactly.
-    const MT bias_correction1 = static_cast<MT>(bc1_dbl);
-    bias_correction2_sqrt_shared = static_cast<MT>(bc2_sqrt_dbl);
-    // Match torch: lr_double (double) / bias_correction1 (float) promotes to
-    // double, truncated to float on assignment.
-    step_size_shared = lr_double / bias_correction1;
+  if (threadIdx.x == 0) {
+    // lr cast to opmath_t (matches lr_opmath = static_cast<opmath_t>(lr)).
+    const MT lr_o = static_cast<MT>(lr_accessor.GetLrDouble());
+    // bias_correction{1,2} are computed in opmath_t inside the accessor.
+    const MT bias_correction1 = bias_corr_accessor.GetBc1();
+    const MT bias_correction2 = bias_corr_accessor.GetBc2();
+    bias_correction2_sqrt_shared = static_cast<MT>(sqrt(bias_correction2));
+    // step_size = lr / bias_correction1 (opmath_t / opmath_t).
+    step_size_shared = lr_o / bias_correction1;
+    // weight decay: param -= lr * weight_decay * param (all opmath_t).
+    lr_weight_decay_shared = lr_o * static_cast<MT>(weight_decay);
   }
   __syncthreads();
 
-  const double one_minus_beta1 = one_minus_beta1_shared;
-  const double one_minus_beta2 = one_minus_beta2_shared;
-  const double lr_weight_decay = lr_weight_decay_shared;
+  const MT lr_weight_decay = lr_weight_decay_shared;
   const MT bias_correction2_sqrt = bias_correction2_sqrt_shared;
   const MT step_size = step_size_shared;
 
@@ -637,32 +616,17 @@ __global__ void AdamWStyleKernel(const double beta1,
     MT g = static_cast<MT>(grad[id]);
     MT exp_avg = static_cast<MT>(moment1[id]);
     MT exp_avg_sq = static_cast<MT>(moment2[id]);
-    const double g_d = static_cast<double>(g);
 
     // Weight decay: param -= lr * weight_decay * param
     if (weight_decay != 0) {
       p -= lr_weight_decay * p;
     }
 
-    // exp_avg = beta1 * exp_avg + (1 - beta1) * grad
-    // Match torch's FMA behavior: NVCC fuses a*b + c*d into fma(a, b, c*d).
-    // We explicitly use __fma_rn to match: first compute (1-beta1)*g (rounded),
-    // then fma(beta1, exp_avg_double, rounded_result).
-    {
-      const double exp_avg_d = static_cast<double>(exp_avg);
-      const double one_minus_beta1_times_g = __dmul_rn(one_minus_beta1, g_d);
-      exp_avg =
-          static_cast<MT>(__fma_rn(beta1, exp_avg_d, one_minus_beta1_times_g));
-    }
-
-    // exp_avg_sq = beta2 * exp_avg_sq + (1 - beta2) * grad * grad
-    // Match torch: ((1-beta2)*g)*g is computed left-to-right, then fma'd.
-    {
-      const double exp_avg_sq_d = static_cast<double>(exp_avg_sq);
-      const double one_minus_beta2_times_g = __dmul_rn(one_minus_beta2, g_d);
-      const double grad_sq_term = __dmul_rn(one_minus_beta2_times_g, g_d);
-      exp_avg_sq = static_cast<MT>(__fma_rn(beta2, exp_avg_sq_d, grad_sq_term));
-    }
+    // exp_avg = fma(beta1, exp_avg, fma(-beta1, grad, grad))
+    exp_avg = fma(beta1_o, exp_avg, fma(-beta1_o, g, g));
+    // exp_avg_sq = fma(beta2, exp_avg_sq, fma(-beta2, grad*grad, grad*grad))
+    const MT g_sq = g * g;
+    exp_avg_sq = fma(beta2_o, exp_avg_sq, fma(-beta2_o, g_sq, g_sq));
 
     MT denom;
     if (amsgrad) {
@@ -670,17 +634,14 @@ __global__ void AdamWStyleKernel(const double beta1,
       max_exp_avg_sq_val =
           max_exp_avg_sq_val > exp_avg_sq ? max_exp_avg_sq_val : exp_avg_sq;
       moment2_max_out[id] = static_cast<TM>(max_exp_avg_sq_val);
-      // Match torch: sqrt(float)/float → float, + double(eps) → double,
-      // truncated to float.
-      denom = (sqrt(max_exp_avg_sq_val) / bias_correction2_sqrt) + epsilon;
+      denom = (sqrt(max_exp_avg_sq_val) / bias_correction2_sqrt) + eps_o;
     } else {
-      denom = (sqrt(exp_avg_sq) / bias_correction2_sqrt) + epsilon;
+      denom = (sqrt(exp_avg_sq) / bias_correction2_sqrt) + eps_o;
     }
 
     // param -= step_size * exp_avg / denom
     p -= step_size * exp_avg / denom;
 
-    // Store results
     moment1_out[id] = static_cast<TM>(exp_avg);
     moment2_out[id] = static_cast<TM>(exp_avg_sq);
     param_out[id] = static_cast<T>(p);
@@ -860,7 +821,6 @@ PADDLE_API void AdamwDenseKernel_compatible(
             amsgrad);                                                   \
   }
 
-  if (FLAGS_use_accuracy_compatible_kernel) {
 #define DISPATCH_ADAMW_STYLE_COMPAT_KERNEL(MOMENT_T)                          \
   if (lr_on_cpu) {                                                            \
     AdamWLrAccessor<true> lr_accessor(lr_double);                             \
@@ -893,48 +853,14 @@ PADDLE_API void AdamwDenseKernel_compatible(
     }                                                                         \
   }
 
-    if (use_bfloat16_moments) {
-      DISPATCH_ADAMW_STYLE_COMPAT_KERNEL(bfloat16)
-    } else {
-      DISPATCH_ADAMW_STYLE_COMPAT_KERNEL(MT)
-    }
-#undef DISPATCH_ADAMW_STYLE_COMPAT_KERNEL
+  // This function is only reached when FLAGS_use_accuracy_compatible_kernel is
+  // true (see AdamwDenseKernel), so only the torch-compatible dispatch exists.
+  if (use_bfloat16_moments) {
+    DISPATCH_ADAMW_STYLE_COMPAT_KERNEL(bfloat16)
   } else {
-#define DISPATCH_ADAMW_STYLE_KERNEL(MOMENT_T)                        \
-  if (lr_on_cpu) {                                                   \
-    AdamWLrAccessor<true> lr_accessor(lr_double);                    \
-    if (beta_pow_on_cpu) {                                           \
-      const double bc1 = 1.0 - beta1_pow.data<MT>()[0];              \
-      const double bc2 = 1.0 - beta2_pow.data<MT>()[0];              \
-      AdamWBiasCorrAccessor<MT, true> bias_corr_accessor(bc1, bc2);  \
-      LAUNCH_ADAMW_STYLE_KERNEL(MOMENT_T)                            \
-    } else {                                                         \
-      AdamWBiasCorrAccessor<MT, false> bias_corr_accessor(           \
-          beta1_pow.data<MT>(), beta2_pow.data<MT>());               \
-      LAUNCH_ADAMW_STYLE_KERNEL(MOMENT_T)                            \
-    }                                                                \
-  } else {                                                           \
-    AdamWLrAccessor<false> lr_accessor(learning_rate.data<double>(), \
-                                       lr_ratio);                    \
-    if (beta_pow_on_cpu) {                                           \
-      const double bc1 = 1.0 - beta1_pow.data<MT>()[0];              \
-      const double bc2 = 1.0 - beta2_pow.data<MT>()[0];              \
-      AdamWBiasCorrAccessor<MT, true> bias_corr_accessor(bc1, bc2);  \
-      LAUNCH_ADAMW_STYLE_KERNEL(MOMENT_T)                            \
-    } else {                                                         \
-      AdamWBiasCorrAccessor<MT, false> bias_corr_accessor(           \
-          beta1_pow.data<MT>(), beta2_pow.data<MT>());               \
-      LAUNCH_ADAMW_STYLE_KERNEL(MOMENT_T)                            \
-    }                                                                \
+    DISPATCH_ADAMW_STYLE_COMPAT_KERNEL(MT)
   }
-
-    if (use_bfloat16_moments) {
-      DISPATCH_ADAMW_STYLE_KERNEL(bfloat16)
-    } else {
-      DISPATCH_ADAMW_STYLE_KERNEL(MT)
-    }
-#undef DISPATCH_ADAMW_STYLE_KERNEL
-  }
+#undef DISPATCH_ADAMW_STYLE_COMPAT_KERNEL
 #undef LAUNCH_ADAMW_STYLE_KERNEL
 
   // Update beta_pow (same as original)

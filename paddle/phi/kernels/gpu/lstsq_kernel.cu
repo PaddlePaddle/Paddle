@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <complex>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/cuda/cudnn_workspace_helper.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -59,9 +60,15 @@ void LstsqKernel(const Context& dev_ctx,
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   int dim_size = x_dims.size();
-  int m = x_dims[dim_size - 2];
-  int n = x_dims[dim_size - 1];
-  int nrhs = y_dims[dim_size - 1];
+  const int64_t m_64 = x_dims[dim_size - 2];
+  const int64_t n_64 = x_dims[dim_size - 1];
+  const int64_t nrhs_64 = y_dims[dim_size - 1];
+  PADDLE_ENFORCE_LE_INT_MAX(m_64, "lstsq m");
+  PADDLE_ENFORCE_LE_INT_MAX(n_64, "lstsq n");
+  PADDLE_ENFORCE_LE_INT_MAX(nrhs_64, "lstsq nrhs");
+  const int m = static_cast<int>(m_64);
+  const int n = static_cast<int>(n_64);
+  const int nrhs = static_cast<int>(nrhs_64);
   int min_mn = std::min(m, n);
   int max_mn = std::max(m, n);
   int k = min_mn;

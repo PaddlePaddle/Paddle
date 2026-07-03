@@ -15,6 +15,9 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
+#include <functional>
+#include <numeric>
+
 #include "paddle/common/flags.h"
 #include "test/cpp/inference/api/tester_helper.h"
 
@@ -33,10 +36,8 @@ TEST(Predictor, use_gpu) {
   auto pred_clone = predictor->Clone();
 
   std::vector<int> in_shape = {1, 3, 318, 318};
-  int in_num =
-      std::accumulate(in_shape.begin(), in_shape.end(), 1, [](int &a, int &b) {
-        return a * b;
-      });
+  int in_num = std::accumulate(
+      in_shape.begin(), in_shape.end(), 1, std::multiplies<int>());
 
   std::vector<float> input(in_num, 0);
 
@@ -72,10 +73,8 @@ TEST(PredictorPool, basic) {
   auto pred = pred_pool.Retrieve(2);
 
   std::vector<int> in_shape = {1, 3, 318, 318};
-  int in_num =
-      std::accumulate(in_shape.begin(), in_shape.end(), 1, [](int &a, int &b) {
-        return a * b;
-      });
+  int in_num = std::accumulate(
+      in_shape.begin(), in_shape.end(), 1, std::multiplies<int>());
   std::vector<float> input(in_num, 0);
 
   auto in_names = pred->GetInputNames();

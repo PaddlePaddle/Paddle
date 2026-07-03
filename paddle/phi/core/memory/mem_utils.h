@@ -63,6 +63,8 @@ using allocation::BlockAllocation;
  */
 class MemoryCompactionStrategy {
  public:
+  virtual ~MemoryCompactionStrategy() = default;
+
   /*!
    * \brief TryFuse will create new IterMark and returns an aggregated IterSum
    * that only has one IterSplit with the new IterMark.

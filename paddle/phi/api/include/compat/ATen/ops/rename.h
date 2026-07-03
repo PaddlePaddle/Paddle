@@ -18,15 +18,6 @@
 
 namespace at {
 
-// rename - stub implementation for Paddle (Dimname not supported)
-inline Tensor rename(const Tensor& self, ::std::optional<at::DimnameList>) {
-  return self;
-}
-
-}  // namespace at
-
-namespace at {
-
 // Member function: Tensor::rename
 inline Tensor Tensor::rename(::std::optional<at::DimnameList>) const {
   return *this;

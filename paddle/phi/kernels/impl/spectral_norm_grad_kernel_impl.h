@@ -37,7 +37,7 @@ void SpectralNormGradKernel(const Context& dev_ctx,
   DenseTensor weight_mat, out_grad_mat;
   auto dims = weight.dims();
   const int rank = dims.size();
-  std::vector<int> real_dims;
+  std::vector<int64_t> real_dims;
   if (dim != 0) {
     std::vector<int> perm;
     perm.push_back(dim);

@@ -343,6 +343,7 @@ from .framework import (  # noqa: F401
     load,
     save,
     set_default_dtype,
+    set_default_tensor_type,
 )
 from .framework.random import (
     Generator,
@@ -435,6 +436,7 @@ from .tensor.linalg import (  # noqa: F401
     cdist,
     cholesky,
     cross,
+    det,
     diagonal,
     dist,
     dot,
@@ -447,6 +449,7 @@ from .tensor.linalg import (  # noqa: F401
     mv,
     norm,
     permute,
+    pinv,
     t,
     t_,
     transpose,
@@ -532,10 +535,12 @@ from .tensor.manipulation import (
     moveaxis,
     narrow,
     put_along_axis,
+    put_along_axis_,
     ravel,
     repeat_interleave,
     reshape,
     reshape_,
+    resize_as_,
     roll,
     rot90,
     row_stack,
@@ -546,6 +551,7 @@ from .tensor.manipulation import (
     scatter_nd,
     scatter_nd_add,
     scatter_reduce,
+    scatter_reduce_,
     select_scatter,
     shard_index,
     slice,
@@ -584,6 +590,8 @@ from .tensor.math import (  # noqa: F401
     acosh_,
     add,
     add_n,
+    addcdiv,
+    addcdiv_,
     addmm,
     addmm_,
     addmv,
@@ -737,6 +745,7 @@ from .tensor.math import (  # noqa: F401
     scale,
     sgn,
     sign,
+    sign_,
     signbit,
     sin,
     sin_,
@@ -1063,11 +1072,13 @@ sub_ = subtract_
 movedim = moveaxis
 mod = remainder
 floor_mod = remainder
+fmod = remainder
 fix = trunc
 fix_ = trunc_
 mvlgamma = multigammaln
 mvlgamma_ = multigammaln_
 negative_ = neg_
+pinverse = pinv
 
 __all__ = [
     'block_diag',
@@ -1100,6 +1111,8 @@ __all__ = [
     'complex128',
     'pstring',
     'raw',
+    'addcdiv',
+    'addcdiv_',
     'addmm',
     'addmm_',
     'addmv',
@@ -1115,6 +1128,7 @@ __all__ = [
     'add',
     'subtract',
     'subtract_',
+    'det',
     'diag',
     'diagflat',
     'diag_embed',
@@ -1300,6 +1314,8 @@ __all__ = [
     'inference_mode',
     'mod',
     'mod_',
+    'fmod',
+    'fmod_',
     'abs',
     'abs_',
     'tril',
@@ -1312,6 +1328,7 @@ __all__ = [
     'index_select',
     'CPUPlace',
     'matmul',
+    'pinverse',
     'seed',
     'acos',
     'acos_',
@@ -1437,6 +1454,7 @@ __all__ = [
     'enable_static',
     'scatter_nd',
     'set_default_dtype',
+    'set_default_tensor_type',
     'disable_signal_handler',
     'expand_as',
     'stack',
@@ -1451,6 +1469,7 @@ __all__ = [
     'logspace',
     'reshape',
     'reshape_',
+    'resize_as_',
     'atleast_1d',
     'atleast_2d',
     'atleast_3d',
@@ -1512,7 +1531,9 @@ __all__ = [
     'take_along_axis',
     'take_along_dim',
     'scatter_reduce',
+    'scatter_reduce_',
     'put_along_axis',
+    'put_along_axis_',
     'scatter_add',
     'select_scatter',
     'multigammaln',

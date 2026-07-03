@@ -358,10 +358,10 @@ void CombineOp::VerifySig() const {
 
   // output_type == Vector<Type>
   auto output_type = (*this)->result(0).type().dyn_cast<VectorType>();
-  PADDLE_ENFORCE_NOT_NULL(
-      output_type,
-      common::errors::InvalidArgument(
-          "The type of outputs[0] must be equal to VectorType."));
+  PADDLE_ENFORCE_EQ(static_cast<bool>(output_type),
+                    true,
+                    common::errors::InvalidArgument(
+                        "The type of outputs[0] must be equal to VectorType."));
 
   // inputs.size() == outputs[0].size()
   auto input_num = num_operands();
@@ -458,8 +458,9 @@ void SliceOp::VerifySig() const {
 
   // inputs[0].type == Vector<Type>
   auto input_type = (*this)->operand(0).type().dyn_cast<pir::VectorType>();
-  PADDLE_ENFORCE_NOT_NULL(
-      input_type,
+  PADDLE_ENFORCE_EQ(
+      static_cast<bool>(input_type),
+      true,
       common::errors::InvalidArgument(
           "The type %s of inputs[0] must be equal to VectorType.", input_type));
 
@@ -625,10 +626,10 @@ void SplitOp::VerifySig() const {
 
   // input_type == Vector<Type>
   auto input_type = (*this)->operand(0).type().dyn_cast<VectorType>();
-  PADDLE_ENFORCE_NOT_NULL(
-      input_type,
-      common::errors::InvalidArgument(
-          "The type of inputs[0] must be equal to VectorType."));
+  PADDLE_ENFORCE_EQ(static_cast<bool>(input_type),
+                    true,
+                    common::errors::InvalidArgument(
+                        "The type of inputs[0] must be equal to VectorType."));
 
   // inputs[0].size() == outputs.size()
   auto output_num = num_results();

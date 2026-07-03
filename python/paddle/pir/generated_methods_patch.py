@@ -14,14 +14,16 @@
 
 from paddle.tensor import magic_method_func
 
-from ..base.dygraph.generated_tensor_methods_patch import methods_map
+from ..base.dygraph.generated_tensor_methods_patch import _all_method_op_map
 from . import Value
 
 
 def monkey_patch_generated_methods_for_value():
     magic_method_dict = {v: k for k, v in magic_method_func}
 
-    for method_name, method in methods_map:
+    for module_path, method_name, method in _all_method_op_map:
+        if module_path != 'paddle.Tensor':
+            continue
         setattr(Value, method_name, method)
         magic_name = magic_method_dict.get(method_name)
         if magic_name:
