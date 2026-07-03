@@ -450,10 +450,23 @@ void default_elementwise_sub_grad(const GPUContext &dev_ctx,
                 dout.data<T>(), size, nullptr, dev_ctx.template Alloc<T>(dy));
       }
     } else {
+      // dy = sum_to(-dout). Negate first, then reduce via the SAME SumKernel
+      // path as dx to stay bitwise-aligned with torch's sub backward.
+      DenseTensor tmp_dy;
+      tmp_dy.Resize(dout.dims());
+      dev_ctx.template Alloc<T>(&tmp_dy);
+
+      // Step 1: tmp_dy = -dout (elementwise negation via broadcast).
+      std::vector<const DenseTensor *> ins = {&dout};
+      std::vector<DenseTensor *> outs = {&tmp_dy};
+      funcs::BroadcastKernel<T>(
+          dev_ctx, ins, &outs, kps::InverseFunctor<T>(), axis);
+
+      // Step 2: dy = sum_to(tmp_dy) (reduce over broadcast dims via SumKernel).
       std::vector<int> reduce_dims =
-          funcs::GetReduceDim(y.dims(), out.dims(), axis);
-      funcs::ReduceKernel<T, T, kps::AddFunctor, kps::InverseFunctor<T>>(
-          dev_ctx, dout, dy, kps::InverseFunctor<T>(), reduce_dims);
+          funcs::GetReduceDim(dy->dims(), tmp_dy.dims(), axis);
+      SumKernel<T, GPUContext>(
+          dev_ctx, tmp_dy, reduce_dims, tmp_dy.dtype(), false, dy);
     }
   }
 }

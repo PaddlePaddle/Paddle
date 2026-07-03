@@ -518,8 +518,7 @@ ReduceConfig SetReduceConfig(const DenseTensorIterator& iter) {
   // Case 2: "Vectorize along output" - when fastest dimension is not reduced,
   //         data in same vector corresponds to different outputs.
   if (fastest_moving_stride == sizeof(ScalarT)) {
-    if (reduce_fastest_dim && dim0 > 128 && iter.num_reduce_dims() == 1 &&
-        kVecSize >= kInputVecSize) {
+    if (reduce_fastest_dim && dim0 >= 128 && iter.num_reduce_dims() == 1) {
       // Case 1: Vectorize along input (load data for same output together).
       config.vectorize_input = true;
       dim0 /= kInputVecSize;
@@ -696,12 +695,15 @@ struct ReduceExecutor {
       value = ThreadReduce<kOutputVecSize>(input_slice);
     }
 
-    if (config.ShouldReduceBlockY()) {
-      value = BlockYReduce<kOutputVecSize>(value, shared_memory);
-    }
-
+    // Run BlockX reduction before BlockY to match PyTorch's accumulation
+    // order (>= 2.10, PR #165178), keeping broadcast-grad sum reductions
+    // bitwise-aligned with torch when vectorized loads are used.
     if (config.ShouldReduceBlockX()) {
       value = BlockXReduce<kOutputVecSize>(value, shared_memory);
+    }
+
+    if (config.ShouldReduceBlockY()) {
+      value = BlockYReduce<kOutputVecSize>(value, shared_memory);
     }
 
     using OutPtrVec = std::array<OutScalarT*, kOutputVecSize>;
@@ -949,7 +951,15 @@ struct ReduceExecutor {
 
     __syncthreads();
 
+    // Intra-warp reduction. Use decreasing offset on NVIDIA to match the
+    // accumulation order used by PyTorch (>= 2.10, PR #164790) and Triton,
+    // so that broadcast-grad sum reductions stay bitwise-aligned with torch.
+    // Keep the increasing-offset order on HIP/ROCm (matches torch's ROCm path).
+#if defined(PADDLE_WITH_HIP)
     for (int offset = 1; offset < dim_x; offset <<= 1) {
+#else
+    for (int offset = dim_x >> 1; offset > 0; offset >>= 1) {
+#endif
 #pragma unroll
       for (int i = 0; i < kOutputVecSize; i++) {
         MPType other = reducer.shfl_sync(mask, value[i], offset);
@@ -1154,7 +1164,7 @@ struct ReduceExecutor {
 
     return value;
   }
-};
+};  // NOLINT
 
 class AccumulationBuffer {
  public:
@@ -1373,10 +1383,19 @@ void ReduceGpuKernel(const KPDevice& dev_ctx,
   dense_iter_config.add_const_input(x);
   DenseTensorIterator iter = dense_iter_config.build();
 
+  using MPType = typename phi::dtype::MPTypeTrait<Ty>::Type;
+
   // TODO(baoqiwen): When ReduceOp is WelfordOps, kVecSize is 2.
   constexpr int kVecSize = 4;
-  constexpr int kInputVecSize = kVecSize;
-  using MPType = typename phi::dtype::MPTypeTrait<Ty>::Type;
+  // For 16-bit (fp16/bf16) sum/mean, vectorize input loads by 8 elements
+  // (DWORDX4) to match PyTorch's accumulation grouping (>= 2.10, PR #165055),
+  // keeping broadcast-grad sum reductions bitwise-aligned with torch. Other
+  // dtypes / reduce ops keep the default input vector width.
+  constexpr bool kIsSumOrMeanOp =
+      std::is_same_v<ReduceOp<Tx, MPType, Ty>, kps::SumOps<Tx, MPType, Ty>> ||
+      std::is_same_v<ReduceOp<Tx, MPType, Ty>, kps::MeanOps<Tx, MPType, Ty>>;
+  constexpr int kInputVecSize =
+      (kIsSumOrMeanOp && sizeof(Tx) == 2) ? 8 : kVecSize;
 
   // Initialize reducer.
   ReduceOp reducer = [&iter, &norm_p]() {
