@@ -69,10 +69,32 @@ class ParentWatchDog:
     def __init__(self):
         self._parent_pid = os.getppid()
         self._parent_alive = True
+        if sys.platform == 'win32':
+            self._parent_alive = self._parent_alive_win32()
+        else:
+            self._parent_alive = True
+
+    def _parent_alive_win32(self):
+        import ctypes
+        from ctypes import wintypes
+        PROCESS_QUERY_INFORMATION = 0x0400
+        STILL_ACTIVE = 259
+        handle = ctypes.windll.kernel32.OpenProcess(
+            PROCESS_QUERY_INFORMATION, False, self._parent_pid
+        )
+        if not handle:
+            return False
+        exit_code = wintypes.DWORD(0)
+        ctypes.windll.kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code))
+        ctypes.windll.kernel32.CloseHandle(handle)
+        return exit_code.value == STILL_ACTIVE
 
     def is_alive(self):
         if self._parent_alive:
-            self._parent_alive = os.getppid() == self._parent_pid
+            if sys.platform == 'win32':
+                self._parent_alive = self._parent_alive_win32()
+            else:
+                self._parent_alive = os.getppid() == self._parent_pid
         return self._parent_alive
 
 
@@ -292,6 +314,12 @@ def _worker_loop(
     shm_cache_size=0,
 ):
     try:
+        import faulthandler
+        faulthandler.enable()
+        # Register ForkingPickler handlers so DenseTensor can be serialized
+        from paddle.incubate.multiprocessing import init_reductions
+        init_reductions()
+
         # NOTE: [ mmap files clear ] When the child process exits unexpectedly,
         # some shared memory objects may have been applied for but have not yet
         # been put into the inter-process Queue. This part of the object needs
@@ -334,6 +362,11 @@ def _worker_loop(
         except:
             init_exception = _WorkerException(worker_id)
 
+        def numpy2lodtensor(arr):
+            lodtensor = core.DenseTensor()
+            lodtensor.set(arr, core.CPUPlace())
+            return lodtensor
+
         iterator_drained = False
         parent_watch_dog = ParentWatchDog()
 
@@ -343,36 +376,31 @@ def _worker_loop(
             except queue.Empty:
                 continue
 
-            if isinstance(data, _ResumeIteration):
-                out_queue.put((data, None, None))
-                iterator_drained = False
-                fetcher = _DatasetKind.create_fetcher(
-                    dataset_kind, dataset, auto_collate_batch, collate_fn, True
-                )
-                continue
-
-            # None as poison piil, so worker event should be set
-            if data is None:
-                assert done_event.is_set() or iterator_drained, (
-                    "get None when worker done_event set"
-                )
-                break
-            # If worker done event is set but get still get data in
-            # indices_queue, remaining data should be get and skipped.
-            if done_event.is_set() or iterator_drained:
-                continue
-
-            idx, indices = data
             try:
+                if isinstance(data, _ResumeIteration):
+                    out_queue.put((data, None, None))
+                    iterator_drained = False
+                    fetcher = _DatasetKind.create_fetcher(
+                        dataset_kind, dataset, auto_collate_batch, collate_fn, True
+                    )
+                    continue
+
+                # None as poison piil, so worker event should be set
+                if data is None:
+                    assert done_event.is_set() or iterator_drained, (
+                        "get None when worker done_event set"
+                    )
+                    break
+                # If worker done event is set but get still get data in
+                # indices_queue, remaining data should be get and skipped.
+                if done_event.is_set() or iterator_drained:
+                    continue
+
+                idx, indices = data
                 if init_exception is not None:
                     batch = init_exception
                     init_exception = None
                 else:
-                    # NOTE: GPU tensor operation is not supported in sub-process
-                    #       but default device is GPU in paddle-gpu version, which
-                    #       may copy CPU tensor to GPU even if users want to use
-                    #       CPU tensor operation, so we add CPUPlace guard here
-                    #       to make sure tensor will be operated only on CPU
                     with paddle.base.dygraph.guard(place=paddle.CPUPlace()):
                         batch = fetcher.fetch(indices)
             except Exception as e:
@@ -389,12 +417,6 @@ def _worker_loop(
                     out_queue.put((idx, batch, None))
                 batch, structure = _flatten_batch(batch)
                 if use_shared_memory:
-
-                    def numpy2lodtensor(arr):
-                        lodtensor = core.DenseTensor()
-                        lodtensor.set(arr, core.CPUPlace())
-                        return lodtensor
-
                     tensor_list = [
                         (
                             numpy2lodtensor(b)
@@ -410,10 +432,16 @@ def _worker_loop(
         # NOTE: Main process will raise KeyboardInterrupt anyways, ignore it in child process
         pass
     except:
-        raise
+        # Write to stderr (visible in parent console)
+        sys.stderr.write(
+            "[WORKER pid=%d] UNCAUGHT EXCEPTION\n%s\n" %
+            (os.getpid(), traceback.format_exc()))
+        sys.stderr.flush()
     finally:
         if use_shared_memory:
             _cleanup_mmap()
-    if done_event.is_set():
-        out_queue.cancel_join_thread()
-        out_queue.close()
+    # On Windows (spawn), skip queue cleanup that may fail during shutdown
+    if not sys.platform.startswith('win'):
+        if done_event.is_set():
+            out_queue.cancel_join_thread()
+            out_queue.close()

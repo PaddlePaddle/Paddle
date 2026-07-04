@@ -14,8 +14,6 @@
 
 #pragma once
 
-#ifndef _WIN32
-
 #include <atomic>
 #include <memory>
 #include <mutex>
@@ -24,12 +22,13 @@
 #include <utility>
 
 #include "paddle/phi/core/memory/allocation/allocator.h"
+#include "paddle/phi/api/include/dll_decl.h"
 
 namespace paddle {
 namespace memory {
 namespace allocation {
 
-std::string GetIPCName();
+PADDLE_API std::string GetIPCName();
 
 static constexpr int64_t mmap_alignment = 64;
 
@@ -42,7 +41,7 @@ enum MappedModes {
   MAPPED_UNLINK = 32
 };
 
-class MemoryMapAllocation : public Allocation {
+class PADDLE_API MemoryMapAllocation : public Allocation {
  public:
   explicit MemoryMapAllocation(void *ptr,
                                size_t size,
@@ -79,7 +78,7 @@ class MemoryMapAllocation : public Allocation {
   bool closed_fd_ = false;
 };
 
-class RefcountedMemoryMapAllocation : public MemoryMapAllocation {
+class PADDLE_API RefcountedMemoryMapAllocation : public MemoryMapAllocation {
  public:
   RefcountedMemoryMapAllocation(void *ptr,
                                 size_t size,
@@ -99,20 +98,20 @@ class RefcountedMemoryMapAllocation : public MemoryMapAllocation {
   void resetBaseptr();
 };
 
-void AllocateMemoryMap(std::string filename,
+PADDLE_API void AllocateMemoryMap(std::string &filename,
                        int *shared_fd,
                        int flags,
                        size_t size,
                        void **base_ptr_);
 
-std::shared_ptr<RefcountedMemoryMapAllocation>
+PADDLE_API std::shared_ptr<RefcountedMemoryMapAllocation>
 AllocateRefcountedMemoryMapAllocation(std::string filename,
                                       int shared_fd,
                                       int flags,
                                       size_t size,
                                       int buffer_id = -1);
 
-class MemoryMapWriterAllocation : public Allocation {
+class PADDLE_API MemoryMapWriterAllocation : public Allocation {
  public:
   explicit MemoryMapWriterAllocation(void *ptr,
                                      size_t size,
@@ -129,7 +128,7 @@ class MemoryMapWriterAllocation : public Allocation {
   int fd_ = -1;
 };
 
-class MemoryMapReaderAllocation : public Allocation {
+class PADDLE_API MemoryMapReaderAllocation : public Allocation {
  public:
   explicit MemoryMapReaderAllocation(void *ptr,
                                      size_t size,
@@ -146,13 +145,13 @@ class MemoryMapReaderAllocation : public Allocation {
   int fd_ = -1;
 };
 
-std::shared_ptr<MemoryMapWriterAllocation> AllocateMemoryMapWriterAllocation(
+PADDLE_API std::shared_ptr<MemoryMapWriterAllocation> AllocateMemoryMapWriterAllocation(
     size_t size);
 
-std::shared_ptr<MemoryMapReaderAllocation> RebuildMemoryMapReaderAllocation(
+PADDLE_API std::shared_ptr<MemoryMapReaderAllocation> RebuildMemoryMapReaderAllocation(
     const std::string &ipc_name, size_t size);
 
-class MemoryMapFdSet {
+class PADDLE_API MemoryMapFdSet {
  public:
   static MemoryMapFdSet &Instance();  // NOLINT
 
@@ -197,13 +196,11 @@ created by the _share_filename process will be cached and reused according to
 the data_size of shm, thus eliminating the problem of munmap blocking other
 threads
 */
-class MemoryMapAllocationPool {
+class PADDLE_API MemoryMapAllocationPool {
  public:
   static MemoryMapAllocationPool &Instance() {
-    if (pool_ == nullptr) {
-      pool_ = new MemoryMapAllocationPool();
-    }
-    return *pool_;
+    static MemoryMapAllocationPool pool;
+    return pool;
   }
 
   void Insert(const MemoryMapInfo &memory_map);
@@ -227,7 +224,8 @@ class MemoryMapAllocationPool {
 
  private:
   MemoryMapAllocationPool() = default;
-  static MemoryMapAllocationPool *pool_;
+  MemoryMapAllocationPool(const MemoryMapAllocationPool&) = delete;
+  MemoryMapAllocationPool& operator=(const MemoryMapAllocationPool&) = delete;
   std::vector<MemoryMapInfo> memory_map_allocations_;
   int max_pool_size_ = 0;
   std::mutex mtx_;
@@ -236,5 +234,3 @@ class MemoryMapAllocationPool {
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle
-
-#endif

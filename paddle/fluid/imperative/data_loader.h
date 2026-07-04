@@ -14,9 +14,13 @@
 
 #pragma once
 
-#ifndef _WIN32
-
+#ifdef _WIN32
+#include <Windows.h>
+// pid_t is not defined on Windows; use int (Python's os.getpid() returns int)
+using pid_t = int;
+#else
 #include <unistd.h>
+#endif
 
 #include <cstdint>
 #include <set>
@@ -31,5 +35,3 @@ extern void ThrowErrorIfLoadProcessFailed();
 
 }  // namespace imperative
 }  // namespace paddle
-
-#endif

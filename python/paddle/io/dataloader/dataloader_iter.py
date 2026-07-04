@@ -407,7 +407,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         # see _try_put_indices
         self._thread_lock = threading.Lock()
 
-        self._base_seed = np.random.randint(low=0, high=sys.maxsize)
+        self._base_seed = np.random.randint(
+            low=0, high=np.iinfo(np.int32).max
+        )
 
         # Note(zhangbo): shm_buffer_size is used for MemoryMapAllocationPool.
         # MemoryMapAllocationPool is used to cache and reuse shm, thus reducing munmap in dataloader.
@@ -486,6 +488,10 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             )
             worker.daemon = True
             worker.start()
+            # On Windows with spawn, each worker imports the full Paddle
+            # framework (~580 MB). Stagger to avoid memory exhaustion.
+            if sys.platform == 'win32' and self._num_workers > 4:
+                time.sleep(0.05)
             self._workers.append(worker)
             self._worker_status.append(True)
 

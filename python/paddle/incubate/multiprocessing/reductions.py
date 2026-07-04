@@ -14,6 +14,7 @@
 
 import copy
 import multiprocessing
+import sys
 
 # TODO: check the hooks of tensor
 # TODO: check serializing named tensor
@@ -25,6 +26,7 @@ from multiprocessing.reduction import ForkingPickler
 from multiprocessing.util import register_after_fork
 
 import paddle
+import paddle.base.core as core
 
 
 def _supported_check():
@@ -135,7 +137,7 @@ def _rebuild_lodtensor_filename(
     lod,
     dataloader_use_file_descriptor,
 ):
-    lodtensor = cls._new_shared_filename(
+    lodtensor = core._new_shared_filename(
         (
             ipc_name,
             shared_fd,
@@ -146,7 +148,7 @@ def _rebuild_lodtensor_filename(
             dataloader_use_file_descriptor,
         )
     )
-    lodtensor._shared_decref()
+    core._shared_decref(lodtensor)
     return lodtensor
 
 
@@ -161,7 +163,7 @@ def _rebuild_lodtensor_filedescriptor(
     dataloader_use_file_descriptor,
 ):
     shared_fd = shared_fd.detach()
-    lodtensor = cls._new_shared_filename(
+    lodtensor = core._new_shared_filename(
         (
             ipc_name,
             shared_fd,
@@ -172,7 +174,7 @@ def _rebuild_lodtensor_filedescriptor(
             dataloader_use_file_descriptor,
         )
     )
-    lodtensor._shared_decref()
+    core._shared_decref(lodtensor)
     return lodtensor
 
 
@@ -241,9 +243,17 @@ def _reduce_lodtensor(lodtensor):
             "FLAGS_dataloader_use_file_descriptor"
         ]
         # Default use share filename strategy
-        metadata = lodtensor._share_filename(
-            dataloader_use_file_descriptor
-        )  # ipc_name, fd, size, type_idx, dims, lod
+        try:
+            metadata = core._share_filename(
+                lodtensor, dataloader_use_file_descriptor
+            )  # ipc_name, fd, size, type_idx, dims, lod
+        except Exception as e:
+            # Log and re-raise. This exception happens in the Queue feeder
+            # thread; logging here helps diagnose intermittent crashes.
+            sys.stderr.write(
+                f"[REDUCE] _share_filename failed: {type(e).__name__}: {e}\n")
+            sys.stderr.flush()
+            raise
 
         if dataloader_use_file_descriptor:
             metalist = list(metadata)
@@ -252,8 +262,7 @@ def _reduce_lodtensor(lodtensor):
             rebuild = _rebuild_lodtensor_filedescriptor
         else:
             rebuild = _rebuild_lodtensor_filename
-        lodtensor._shared_incref()
-        # TODO, maintain reference for lodtensor
+        core._shared_incref(lodtensor)
     elif lodtensor._place().is_gpu_place():
         prev_id = paddle.base.core.get_cuda_current_device_id()
         cur_id = lodtensor._place().gpu_device_id()
@@ -280,9 +289,6 @@ def _reduce_lodtensor(lodtensor):
 
 
 def init_reductions() -> None:
-    if not _supported_check():
-        return
-
     ForkingPickler.register(paddle.Tensor, _reduce_tensor)
     ForkingPickler.register(paddle.base.core.eager.Tensor, _reduce_tensor)
     ForkingPickler.register(

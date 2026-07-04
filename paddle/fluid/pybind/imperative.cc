@@ -478,7 +478,6 @@ static void VarBaseCopy(std::shared_ptr<imperative::VarBase> &src,  // NOLINT
 void BindImperative(py::module *m_ptr) {
   auto &m = *m_ptr;
 
-#ifndef _WIN32
   // Dygraph DataLoader signal handler
   m.def("_set_process_pids", [](int64_t key, py::object &obj) {
     PADDLE_ENFORCE_EQ(
@@ -611,7 +610,6 @@ void BindImperative(py::module *m_ptr) {
     memory::allocation::MemoryMapAllocationPool::Instance().SetMaxPoolSize(
         size);
   });
-#endif
 
   m.def("start_imperative_gperf_profiler",
         []() { imperative::StartProfile(); });

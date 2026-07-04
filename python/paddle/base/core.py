@@ -362,18 +362,21 @@ try:
     # type promotion
 
     # isort: on
-    if sys.platform != 'win32':
-        from .libpaddle import (  # noqa: F401
-            _array_to_share_memory_tensor,
-            _cleanup_mmap_fds,
-            _convert_to_tensor_list,
-            _erase_process_pids,
-            _remove_tensor_list_mmap_fds,
-            _set_max_memory_map_allocation_pool_size,
-            _set_process_pids,
-            _set_process_signal_handler,
-            _throw_error_if_process_failed,
-        )
+    from .libpaddle import (  # noqa: F401
+        _array_to_share_memory_tensor,
+        _cleanup_mmap_fds,
+        _convert_to_tensor_list,
+        _erase_process_pids,
+        _remove_tensor_list_mmap_fds,
+        _set_max_memory_map_allocation_pool_size,
+        _set_process_pids,
+        _set_process_signal_handler,
+        _share_filename,
+        _new_shared_filename,
+        _shared_incref,
+        _shared_decref,
+        _throw_error_if_process_failed,
+    )
 
 except Exception as e:
     if has_paddle_dy_lib:

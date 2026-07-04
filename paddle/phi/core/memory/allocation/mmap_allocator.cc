@@ -12,12 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef _WIN32
-
 #include "paddle/phi/core/memory/allocation/mmap_allocator.h"
 
-#include <fcntl.h>
-#include <sys/mman.h>
 #include <cstdlib>
 
 #include <atomic>
@@ -27,6 +23,13 @@
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/core/enforce.h"
+
+#ifdef _WIN32
+#include <io.h>
+#else
+#include <fcntl.h>
+#include <sys/mman.h>
+#endif
 
 COMMON_DECLARE_bool(use_shm_cache);
 
@@ -52,12 +55,81 @@ struct CountInfo {
   std::atomic<int> refcount;
 };
 
-void AllocateMemoryMap(std::string filename,
+void AllocateMemoryMap(std::string& filename,
                        int *shared_fd,
                        int flags,
                        size_t size,
                        void **map_ptr_) {
-  // TODO(@ZHUI): support win32
+#ifdef _WIN32
+  DWORD protect = (flags & MAPPED_SHAREDMEM) ? PAGE_READWRITE : PAGE_READONLY;
+  // Retry loop for exclusive mode: on Windows, CreateFileMapping silently
+  // returns the existing mapping if the name already exists, unlike Linux's
+  // shm_open + O_EXCL which fails atomically. We must check explicitly.
+  for (int attempt = 0; attempt < 100; attempt++) {
+    HANDLE hMap = CreateFileMappingA(
+        INVALID_HANDLE_VALUE, NULL, protect, 0,
+        static_cast<DWORD>(size), filename.c_str());
+
+    if (hMap == NULL) {
+      DWORD err = GetLastError();
+      // Write diagnostic to stderr before throwing
+      fprintf(stderr,
+              "[PADDLE_MMAP] PID=%lu CreateFileMapping FAILED "
+              "name=%s size=%zu flags=0x%x attempt=%d err=%lu\n",
+              GetCurrentProcessId(), filename.c_str(), size, flags, attempt, err);
+      fflush(stderr);
+      PADDLE_THROW(common::errors::Unavailable(
+          "CreateFileMapping failed for %s, error: %lu",
+          filename.c_str(), err));
+    }
+
+    if ((flags & MAPPED_EXCLUSIVE) &&
+        GetLastError() == ERROR_ALREADY_EXISTS) {
+      CloseHandle(hMap);
+      VLOG(3) << "[PADDLE_MMAP] PID=" << GetCurrentProcessId()
+              << " name collision, retrying attempt=" << attempt
+              << " name=" << filename;
+      filename = GetIPCName();  // name collision; retry with fresh name
+      continue;
+    }
+
+    DWORD access = FILE_MAP_ALL_ACCESS;
+    *map_ptr_ = MapViewOfFile(hMap, access, 0, 0, size);
+    if (*map_ptr_ == nullptr) {
+      DWORD err = GetLastError();
+      CloseHandle(hMap);
+      fprintf(stderr,
+              "[PADDLE_MMAP] PID=%lu MapViewOfFile FAILED "
+              "name=%s size=%zu err=%lu\n",
+              GetCurrentProcessId(), filename.c_str(), size, err);
+      fflush(stderr);
+      PADDLE_THROW(common::errors::Unavailable(
+          "MapViewOfFile failed for %s, error: %lu",
+          filename.c_str(), err));
+    }
+
+    // On Windows, always keep the HANDLE so the section stays alive
+    // after the caller's MapViewOfFile. The handle is closed in
+    // RefcountedMemoryMapAllocation::close(). Without this, the section
+    // would be destroyed when the last view is unmapped (i.e. when the
+    // worker's tensor is GC'd), before the reader opens it — this is
+    // the root cause of "Blocking queue is killed" with large data.
+    // Linux doesn't have this issue because munmap never destroys the
+    // shared memory file (only shm_unlink does).
+    *shared_fd = reinterpret_cast<intptr_t>(hMap);
+
+    if (flags & MAPPED_UNLINK) {
+      VLOG(6) << "CreateFileMapping (unlink mode): " << filename;
+    }
+
+    // Caller (AllocateRefcountedMemoryMapAllocation) handles Insert
+    return;
+  }
+
+  PADDLE_THROW(common::errors::Unavailable(
+      "Failed to allocate exclusive shared memory after 100 retries"));
+#else
+  // Linux implementation using shm_open + mmap
   int file_flags = 0;
   int fd = *shared_fd;
   if (flags & MAPPED_SHAREDMEM) {
@@ -114,9 +186,9 @@ void AllocateMemoryMap(std::string filename,
                       -1,
                       common::errors::Unavailable(
                           "Error closing memory mapped file %s", filename));
-
     *shared_fd = -1;
   }
+#endif
 }
 
 std::shared_ptr<RefcountedMemoryMapAllocation>
@@ -136,6 +208,7 @@ AllocateRefcountedMemoryMapAllocation(std::string filename,
   }
   void *aligned_base_ptr =
       static_cast<void *>(static_cast<char *>(base_ptr) + mmap_alignment);
+  MemoryMapFdSet::Instance().Insert(filename);
   return std::make_shared<RefcountedMemoryMapAllocation>(
       aligned_base_ptr, size, filename, fd, flags, buffer_id);
 }
@@ -159,12 +232,21 @@ RefcountedMemoryMapAllocation::RefcountedMemoryMapAllocation(
 void MemoryMapAllocation::close() {
   if (!closed_fd_) {
     closed_fd_ = true;
+#ifdef _WIN32
+    // On Windows, the HANDLE from CreateFileMapping is always kept
+    // (never closed in AllocateMemoryMap). Close it unconditionally
+    // to prevent handle leaks.
+    if (fd_ != -1) {
+      CloseHandle(reinterpret_cast<HANDLE>(static_cast<intptr_t>(fd_)));
+    }
+#else
     if (flags_ & MAPPED_KEEPFD) {
       PADDLE_ENFORCE_NE(::close(fd_),
                         -1,
                         common::errors::Unavailable(
                             "Error closing file descriptor <%d>", fd_));
     }
+#endif
   }
   if (closed_) {
     return;
@@ -209,6 +291,17 @@ void RefcountedMemoryMapAllocation::close() {
   void *data = map_ptr_;
   CountInfo *info = reinterpret_cast<CountInfo *>(data);
   --info->refcount;
+
+#ifdef _WIN32
+  // On Windows, the HANDLE from CreateFileMapping is always kept by
+  // AllocateMemoryMap (never closed there). Close it unconditionally
+  // here, regardless of the MAPPED_KEEPFD flag.
+  if (fd_ != -1 && !closed_fd_) {
+    closed_fd_ = true;
+    CloseHandle(reinterpret_cast<HANDLE>(static_cast<intptr_t>(fd_)));
+    VLOG(6) << "close handle: " << fd_;
+  }
+#else
   if (flags_ & MAPPED_KEEPFD) {
     closed_fd_ = true;
     PADDLE_ENFORCE_NE(
@@ -217,6 +310,7 @@ void RefcountedMemoryMapAllocation::close() {
         common::errors::Unavailable("Error closing file descriptor <%d>", fd_));
     VLOG(6) << "close fd: " << fd_;
   }
+#endif
 
   if (FLAGS_use_shm_cache && buffer_id_ != -1) {
     return;
@@ -229,28 +323,51 @@ void RefcountedMemoryMapAllocation::close() {
           flags_, map_size_ - mmap_alignment, ipc_name_, map_ptr_));
     } else {
       if (info->refcount == 0) {
+#ifdef _WIN32
+        // Only unmap when refcount reaches 0 (all readers AND writers are
+        // done). When refcount > 0, the view must stay mapped on Windows
+        // to keep the named file mapping section alive so readers can open
+        // it. On Linux this is unnecessary because munmap doesn't destroy
+        // the shared memory file (only shm_unlink does).
+        VLOG(6) << "UnmapViewOfFile: " << ipc_name_;
+        UnmapViewOfFile(map_ptr_);
+#else
         shm_unlink(ipc_name_.c_str());
         VLOG(6) << "shm_unlink file: " << ipc_name_;
+#endif
       }
-
+#ifndef _WIN32
+      // On Linux, munmap is always safe since it only unmaps virtual memory;
+      // the shared memory file in /dev/shm persists until shm_unlink.
       PADDLE_ENFORCE_NE(munmap(map_ptr_, map_size_),
                         -1,
                         common::errors::Unavailable(
                             "could not unmap the shared memory file: %s (%d)",
                             strerror(errno),
                             errno));
+#endif
     }
   }
 }
 
 MemoryMapWriterAllocation::~MemoryMapWriterAllocation() {
+#ifdef _WIN32
+  UnmapViewOfFile(this->ptr());
+#else
   if (munmap(this->ptr(), this->size()) == -1) {
     common::errors::Unavailable("could not unmap the shared memory file %s",
                                 this->ipc_name());
   }
+#endif
 }
 
 MemoryMapReaderAllocation::~MemoryMapReaderAllocation() {
+#ifdef _WIN32
+  UnmapViewOfFile(this->ptr());
+  // On Windows, named file mapping is auto-destroyed when final handle is closed.
+  MemoryMapFdSet::Instance().Remove(this->ipc_name());
+  VLOG(3) << "~MemoryMapReaderAllocation: " << this->ipc_name();
+#else
   if (munmap(this->ptr(), this->size()) == -1) {
     common::errors::Unavailable("could not unmap the shared memory file %s",
                                 this->ipc_name());
@@ -276,11 +393,29 @@ MemoryMapReaderAllocation::~MemoryMapReaderAllocation() {
   shm_unlink(this->ipc_name().c_str());
   MemoryMapFdSet::Instance().Remove(this->ipc_name());
   VLOG(3) << "~MemoryMapReaderAllocation: " << this->ipc_name();
+#endif
 }
 
 std::shared_ptr<MemoryMapWriterAllocation> AllocateMemoryMapWriterAllocation(
     size_t size) {
   const std::string &ipc_name = GetIPCName();
+#ifdef _WIN32
+  HANDLE hMap = CreateFileMappingA(
+      INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, static_cast<DWORD>(size), ipc_name.c_str());
+  PADDLE_ENFORCE_NE(hMap,
+                    nullptr,
+                    common::errors::Unavailable(
+                        "CreateFileMapping for writer %s failed", ipc_name.c_str()));
+
+  void *ptr = MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0, 0, size);
+  PADDLE_ENFORCE_NE(ptr,
+                    nullptr,
+                    common::errors::Unavailable(
+                        "MapViewOfFile for writer %s failed", ipc_name.c_str()));
+  // Close the handle; the named section stays alive through MapViewOfFile.
+  CloseHandle(hMap);
+  return std::make_shared<MemoryMapWriterAllocation>(ptr, size, ipc_name);
+#else
   int flags = O_RDWR | O_CREAT;
   int fd = shm_open(ipc_name.c_str(), flags, 0600);
 
@@ -301,10 +436,34 @@ std::shared_ptr<MemoryMapWriterAllocation> AllocateMemoryMapWriterAllocation(
   close(fd);
 
   return std::make_shared<MemoryMapWriterAllocation>(ptr, size, ipc_name);
+#endif
 }
 
 std::shared_ptr<MemoryMapReaderAllocation> RebuildMemoryMapReaderAllocation(
     const std::string &ipc_name, size_t size) {
+#ifdef _WIN32
+  HANDLE hMap = OpenFileMappingA(FILE_MAP_ALL_ACCESS, FALSE, ipc_name.c_str());
+  if (!hMap) {
+    // Section doesn't exist yet; create it. This can happen in some edge cases
+    // where the writer's view is still alive but all handles were closed.
+    hMap = CreateFileMappingA(
+        INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, static_cast<DWORD>(size), ipc_name.c_str());
+  }
+  PADDLE_ENFORCE_NE(hMap,
+                    nullptr,
+                    common::errors::Unavailable(
+                        "CreateFileMapping/OpenFileMapping for reader %s failed, error: %lu",
+                        ipc_name.c_str(), GetLastError()));
+
+  void *ptr = MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0, 0, size);
+  PADDLE_ENFORCE_NE(ptr,
+                    nullptr,
+                    common::errors::Unavailable(
+                        "MapViewOfFile for reader %s failed, error: %lu",
+                        ipc_name.c_str(), GetLastError()));
+  CloseHandle(hMap);
+  return std::make_shared<MemoryMapReaderAllocation>(ptr, size, ipc_name);
+#else
   int flags = O_RDWR | O_CREAT;
   flags &= ~O_CREAT;
   int fd = shm_open(ipc_name.c_str(), flags, 0600);
@@ -319,6 +478,7 @@ std::shared_ptr<MemoryMapReaderAllocation> RebuildMemoryMapReaderAllocation(
                         "Memory map failed when rebuild shared memory."));
   close(fd);
   return std::make_shared<MemoryMapReaderAllocation>(ptr, size, ipc_name);
+#endif
 }
 
 MemoryMapFdSet &MemoryMapFdSet::Instance() {  // NOLINT
@@ -345,17 +505,21 @@ void MemoryMapFdSet::Clear() {
           << fd_set_.size();
   std::lock_guard<std::mutex> guard(mtx_);
   for (auto const &fd : fd_set_) {
+#ifdef _WIN32
+    // On Windows, named file mappings are auto-destroyed when the last view
+    // is unmapped. Nothing to unlink explicitly.
+    VLOG(7) << "PID: " << getpid() << ", MemoryMapFdSet: clear " << fd;
+#else
     int rlt = shm_unlink(fd.c_str());
     if (rlt == 0) {
       VLOG(7) << "PID: " << getpid() << ", MemoryMapFdSet: clear " << fd;
     }
+#endif
   }
   fd_set_.clear();
 }
 
 MemoryMapFdSet::~MemoryMapFdSet() { Clear(); }
-
-MemoryMapAllocationPool *MemoryMapAllocationPool::pool_ = nullptr;
 
 void MemoryMapAllocationPool::Insert(const MemoryMapInfo &memory_map) {
   std::lock_guard<std::mutex> guard(mtx_);
@@ -399,6 +563,10 @@ void MemoryMapAllocationPool::SetMaxPoolSize(const int &size) {
 void MemoryMapAllocationPool::Clear() {
   std::lock_guard<std::mutex> guard(mtx_);
   for (auto const &mmap : memory_map_allocations_) {
+#ifdef _WIN32
+    VLOG(4) << "MemoryMapAllocationPool: clear " << mmap.file_name_;
+    UnmapViewOfFile(mmap.mmap_ptr_);
+#else
     int rlt = shm_unlink(mmap.file_name_.c_str());
     if (rlt == 0) {
       VLOG(4) << "MemoryMapAllocationPool: clear " << mmap.file_name_;
@@ -409,6 +577,7 @@ void MemoryMapAllocationPool::Clear() {
                           "could not unmap the shared memory file: %s (%d)",
                           strerror(errno),
                           errno));
+#endif
   }
   memory_map_allocations_.clear();
 }
@@ -416,5 +585,3 @@ void MemoryMapAllocationPool::Clear() {
 MemoryMapAllocationPool::~MemoryMapAllocationPool() { Clear(); }  // NOLINT
 
 }  // namespace paddle::memory::allocation
-
-#endif
