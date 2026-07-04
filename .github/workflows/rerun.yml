@@ -345,7 +345,7 @@ jobs:
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
           JOB_NAME: 'Windows-OPENBLAS-x64 / Check bypass / Check bypass'
-          
+
       - name: Rerun Windows-OPENBLAS-ARM64
         if: ${{ contains(github.event.comment.body, 'win') && contains(github.event.comment.body, 'openblas') && contains(github.event.comment.body, 'arm64')}}
         uses: ./.github/actions/rerun-workflow
