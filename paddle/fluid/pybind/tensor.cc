@@ -1562,128 +1562,134 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 
   // Module-level wrappers for _share_filename etc.
   // These bypass a pybind11 class method registration issue on Windows.
-  m.def("_share_filename",
-       [](DenseTensor &self, bool use_file_descriptor) {
-         if (!self.IsInitialized() || self.numel() == 0)
-           throw std::runtime_error(
-               "Tensor not initialized or numel is 0. could not pass to "
-               "shared memory. ");
+  m.def("_share_filename", [](DenseTensor &self, bool use_file_descriptor) {
+    if (!self.IsInitialized() || self.numel() == 0)
+      throw std::runtime_error(
+          "Tensor not initialized or numel is 0. could not pass to "
+          "shared memory. ");
 
-         auto holder = self.Holder();
-         PADDLE_ENFORCE_EQ(
-             phi::is_cpu_place(holder->place()) ||
-                 phi::is_cuda_pinned_place(holder->place()),
-             true, common::errors::InvalidArgument(
-                       "Tensor is not on CPU. share_filename only "
-                       "support CPU Tensor."));
+    auto holder = self.Holder();
+    PADDLE_ENFORCE_EQ(phi::is_cpu_place(holder->place()) ||
+                          phi::is_cuda_pinned_place(holder->place()),
+                      true,
+                      common::errors::InvalidArgument(
+                          "Tensor is not on CPU. share_filename only "
+                          "support CPU Tensor."));
 
-         auto *mmap_allocation = dynamic_cast<
-             memory::allocation::RefcountedMemoryMapAllocation *>(
-             holder.get());
-         if (mmap_allocation == nullptr) {
-           void *data_ptr = self.data();
-           size_t data_size =
-               self.numel() *
-               framework::SizeOfType(
-                   framework::TransToProtoVarType(self.type()));
+    auto *mmap_allocation =
+        dynamic_cast<memory::allocation::RefcountedMemoryMapAllocation *>(
+            holder.get());
+    if (mmap_allocation == nullptr) {
+      void *data_ptr = self.data();
+      size_t data_size =
+          self.numel() *
+          framework::SizeOfType(framework::TransToProtoVarType(self.type()));
 
-           int flags = memory::allocation::MAPPED_SHAREDMEM |
-                       memory::allocation::MAPPED_EXCLUSIVE;
-           if (use_file_descriptor) {
-               flags = flags | memory::allocation::MAPPED_KEEPFD |
-                       memory::allocation::MAPPED_UNLINK;
-           }
-           std::string handle = memory::allocation::GetIPCName();
-           int find_id = -1;
-           if (FLAGS_use_shm_cache) {
-             find_id = memory::allocation::MemoryMapAllocationPool::Instance().FindFromCache(flags, data_size); // NOLINT
-           }
-           if (find_id != -1) {
-             handle = memory::allocation::MemoryMapAllocationPool::Instance().GetById(find_id).file_name_; // NOLINT
-           }
-           int shared_fd = -1;
-           auto shared_holder =
-               memory::allocation::AllocateRefcountedMemoryMapAllocation(
-                   handle, shared_fd, flags, data_size, find_id);
+      int flags = memory::allocation::MAPPED_SHAREDMEM |
+                  memory::allocation::MAPPED_EXCLUSIVE;
+      if (use_file_descriptor) {
+        flags = flags | memory::allocation::MAPPED_KEEPFD |
+                memory::allocation::MAPPED_UNLINK;
+      }
+      std::string handle = memory::allocation::GetIPCName();
+      int find_id = -1;
+      if (FLAGS_use_shm_cache) {
+        find_id = memory::allocation::MemoryMapAllocationPool::Instance()
+                      .FindFromCache(flags, data_size);  // NOLINT
+      }
+      if (find_id != -1) {
+        handle = memory::allocation::MemoryMapAllocationPool::Instance()
+                     .GetById(find_id)
+                     .file_name_;  // NOLINT
+      }
+      int shared_fd = -1;
+      auto shared_holder =
+          memory::allocation::AllocateRefcountedMemoryMapAllocation(
+              handle, shared_fd, flags, data_size, find_id);
 
-           // On Windows, GPUPinnedPlace copy is not needed (non-CUDA memory sharing)
+      // On Windows, GPUPinnedPlace copy is not needed (non-CUDA memory sharing)
 #ifndef _WIN32
-           if (phi::is_cuda_pinned_place(holder->place())) {
+      if (phi::is_cuda_pinned_place(holder->place())) {
 #ifdef PADDLE_WITH_CUDA
-             memory::Copy(CPUPlace(), shared_holder->ptr(),
-                          phi::GPUPinnedPlace(), data_ptr, data_size);
+        memory::Copy(CPUPlace(),
+                     shared_holder->ptr(),
+                     phi::GPUPinnedPlace(),
+                     data_ptr,
+                     data_size);
 #endif
-           } else
+      } else {
+        memory::Copy(
+            CPUPlace(), shared_holder->ptr(), CPUPlace(), data_ptr, data_size);
+      }
+#else
+      memory::Copy(
+          CPUPlace(), shared_holder->ptr(), CPUPlace(), data_ptr, data_size);
 #endif
-           {
-             memory::Copy(CPUPlace(), shared_holder->ptr(),
-                          CPUPlace(), data_ptr, data_size);
-           }
-           self.ResetHolder(shared_holder);
-           mmap_allocation = shared_holder.get();
-         }
-         int type_idx = static_cast<int>(self.type());
+      self.ResetHolder(shared_holder);
+      mmap_allocation = shared_holder.get();
+    }
+    int type_idx = static_cast<int>(self.type());
 
-         return py::make_tuple(mmap_allocation->ipc_name(),
-                               mmap_allocation->shared_fd(),
-                               mmap_allocation->size(), type_idx,
-                               common::vectorize(self.dims()), self.lod(),
-                               use_file_descriptor);
-       });
+    return py::make_tuple(mmap_allocation->ipc_name(),
+                          mmap_allocation->shared_fd(),
+                          mmap_allocation->size(),
+                          type_idx,
+                          common::vectorize(self.dims()),
+                          self.lod(),
+                          use_file_descriptor);
+  });
 
-  m.def("_new_shared_filename",
-       [](py::tuple t) {
-         if (t.size() != 7)
-           throw std::runtime_error("Invalid Tensor meta info state!");
+  m.def("_new_shared_filename", [](py::tuple t) {
+    if (t.size() != 7)
+      throw std::runtime_error("Invalid Tensor meta info state!");
 
-         DenseTensor tensor;
+    DenseTensor tensor;
 
-         const std::string &ipc_name = t[0].cast<std::string>();
-         const int shared_fd = t[1].cast<int>();
-         const bool use_file_descriptor = t[6].cast<bool>();
+    const std::string &ipc_name = t[0].cast<std::string>();
+    const int shared_fd = t[1].cast<int>();
+    const bool use_file_descriptor = t[6].cast<bool>();
 
-         size_t size = t[2].cast<size_t>();
-         int flags = memory::allocation::MAPPED_SHAREDMEM |
-                     memory::allocation::MAPPED_NOCREATE;
-         if (use_file_descriptor) {
-             flags = flags | memory::allocation::MAPPED_KEEPFD |
-                     memory::allocation::MAPPED_UNLINK;
-         }
-         int find_id = -1;
-         if (FLAGS_use_shm_cache) {
-           find_id = memory::allocation::MemoryMapAllocationPool::Instance().FindFromCache(flags, size, ipc_name, false); // NOLINT
-         }
-         auto shared_holder =
-             memory::allocation::AllocateRefcountedMemoryMapAllocation(
-                 ipc_name, shared_fd, flags, size, find_id);
+    size_t size = t[2].cast<size_t>();
+    int flags = memory::allocation::MAPPED_SHAREDMEM |
+                memory::allocation::MAPPED_NOCREATE;
+    if (use_file_descriptor) {
+      flags = flags | memory::allocation::MAPPED_KEEPFD |
+              memory::allocation::MAPPED_UNLINK;
+    }
+    int find_id = -1;
+    if (FLAGS_use_shm_cache) {
+      find_id =
+          memory::allocation::MemoryMapAllocationPool::Instance().FindFromCache(
+              flags, size, ipc_name, false);  // NOLINT
+    }
+    auto shared_holder =
+        memory::allocation::AllocateRefcountedMemoryMapAllocation(
+            ipc_name, shared_fd, flags, size, find_id);
 
-         tensor.ResetHolderWithType(
-             shared_holder,
-             static_cast<DataType>(t[3].cast<int>()));
-         tensor.Resize(common::make_ddim(t[4].cast<std::vector<int>>()));
+    tensor.ResetHolderWithType(shared_holder,
+                               static_cast<DataType>(t[3].cast<int>()));
+    tensor.Resize(common::make_ddim(t[4].cast<std::vector<int>>()));
 
-         return tensor;
-       });
+    return tensor;
+  });
 
-  m.def("_shared_incref",
-       [](DenseTensor &self) {
-         auto *mmap_allocation = dynamic_cast<
-             memory::allocation::RefcountedMemoryMapAllocation *>(
-             self.Holder().get());
-         if (mmap_allocation) {
-           mmap_allocation->incref();
-         }
-       });
+  m.def("_shared_incref", [](DenseTensor &self) {
+    auto *mmap_allocation =
+        dynamic_cast<memory::allocation::RefcountedMemoryMapAllocation *>(
+            self.Holder().get());
+    if (mmap_allocation) {
+      mmap_allocation->incref();
+    }
+  });
 
-  m.def("_shared_decref",
-       [](DenseTensor &self) {
-         auto *mmap_allocation = dynamic_cast<
-             memory::allocation::RefcountedMemoryMapAllocation *>(
-             self.Holder().get());
-         if (mmap_allocation) {
-           mmap_allocation->decref();
-         }
-       });
+  m.def("_shared_decref", [](DenseTensor &self) {
+    auto *mmap_allocation =
+        dynamic_cast<memory::allocation::RefcountedMemoryMapAllocation *>(
+            self.Holder().get());
+    if (mmap_allocation) {
+      mmap_allocation->decref();
+    }
+  });
 }
 
 }  // namespace paddle::pybind

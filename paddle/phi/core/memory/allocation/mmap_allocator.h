@@ -21,8 +21,8 @@
 #include <unordered_set>
 #include <utility>
 
-#include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/api/include/dll_decl.h"
+#include "paddle/phi/core/memory/allocation/allocator.h"
 
 namespace paddle {
 namespace memory {
@@ -98,11 +98,11 @@ class PADDLE_API RefcountedMemoryMapAllocation : public MemoryMapAllocation {
   void resetBaseptr();
 };
 
-PADDLE_API void AllocateMemoryMap(std::string &filename,
-                       int *shared_fd,
-                       int flags,
-                       size_t size,
-                       void **base_ptr_);
+PADDLE_API void AllocateMemoryMap(std::string *filename,
+                                  int *shared_fd,
+                                  int flags,
+                                  size_t size,
+                                  void **base_ptr_);
 
 PADDLE_API std::shared_ptr<RefcountedMemoryMapAllocation>
 AllocateRefcountedMemoryMapAllocation(std::string filename,
@@ -145,11 +145,11 @@ class PADDLE_API MemoryMapReaderAllocation : public Allocation {
   int fd_ = -1;
 };
 
-PADDLE_API std::shared_ptr<MemoryMapWriterAllocation> AllocateMemoryMapWriterAllocation(
-    size_t size);
+PADDLE_API std::shared_ptr<MemoryMapWriterAllocation>
+AllocateMemoryMapWriterAllocation(size_t size);
 
-PADDLE_API std::shared_ptr<MemoryMapReaderAllocation> RebuildMemoryMapReaderAllocation(
-    const std::string &ipc_name, size_t size);
+PADDLE_API std::shared_ptr<MemoryMapReaderAllocation>
+RebuildMemoryMapReaderAllocation(const std::string &ipc_name, size_t size);
 
 class PADDLE_API MemoryMapFdSet {
  public:
@@ -224,8 +224,8 @@ class PADDLE_API MemoryMapAllocationPool {
 
  private:
   MemoryMapAllocationPool() = default;
-  MemoryMapAllocationPool(const MemoryMapAllocationPool&) = delete;
-  MemoryMapAllocationPool& operator=(const MemoryMapAllocationPool&) = delete;
+  MemoryMapAllocationPool(const MemoryMapAllocationPool &) = delete;
+  MemoryMapAllocationPool &operator=(const MemoryMapAllocationPool &) = delete;
   std::vector<MemoryMapInfo> memory_map_allocations_;
   int max_pool_size_ = 0;
   std::mutex mtx_;

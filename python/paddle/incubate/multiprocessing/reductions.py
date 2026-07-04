@@ -19,14 +19,13 @@ import sys
 # TODO: check the hooks of tensor
 # TODO: check serializing named tensor
 # TODO: check influence on autograd
-import sys
 import threading
 from collections import OrderedDict
 from multiprocessing.reduction import ForkingPickler
 from multiprocessing.util import register_after_fork
 
 import paddle
-import paddle.base.core as core
+from paddle.base import core
 
 
 def _supported_check():
@@ -251,7 +250,8 @@ def _reduce_lodtensor(lodtensor):
             # Log and re-raise. This exception happens in the Queue feeder
             # thread; logging here helps diagnose intermittent crashes.
             sys.stderr.write(
-                f"[REDUCE] _share_filename failed: {type(e).__name__}: {e}\n")
+                f"[REDUCE] _share_filename failed: {type(e).__name__}: {e}\n"
+            )
             sys.stderr.flush()
             raise
 

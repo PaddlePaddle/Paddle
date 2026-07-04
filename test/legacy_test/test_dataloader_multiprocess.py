@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import sys
 import unittest
 
 import numpy as np
@@ -108,9 +106,7 @@ class TestDataLoaderWindowsMultiprocess(unittest.TestCase):
         Test multi-process DataLoader with use_shared_memory=True.
         """
         loss_single = self.run_simple_net(num_workers=0)
-        loss_multi = self.run_simple_net(
-            num_workers=2, use_shared_memory=True
-        )
+        loss_multi = self.run_simple_net(num_workers=2, use_shared_memory=True)
         diff = np.abs(loss_single - loss_multi) / np.abs(loss_single)
         self.assertLess(
             diff,

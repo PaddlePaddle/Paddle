@@ -407,9 +407,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         # see _try_put_indices
         self._thread_lock = threading.Lock()
 
-        self._base_seed = np.random.randint(
-            low=0, high=np.iinfo(np.int32).max
-        )
+        self._base_seed = np.random.randint(low=0, high=np.iinfo(np.int32).max)
 
         # Note(zhangbo): shm_buffer_size is used for MemoryMapAllocationPool.
         # MemoryMapAllocationPool is used to cache and reuse shm, thus reducing munmap in dataloader.

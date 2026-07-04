@@ -77,6 +77,7 @@ class ParentWatchDog:
     def _parent_alive_win32(self):
         import ctypes
         from ctypes import wintypes
+
         PROCESS_QUERY_INFORMATION = 0x0400
         STILL_ACTIVE = 259
         handle = ctypes.windll.kernel32.OpenProcess(
@@ -85,7 +86,9 @@ class ParentWatchDog:
         if not handle:
             return False
         exit_code = wintypes.DWORD(0)
-        ctypes.windll.kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code))
+        ctypes.windll.kernel32.GetExitCodeProcess(
+            handle, ctypes.byref(exit_code)
+        )
         ctypes.windll.kernel32.CloseHandle(handle)
         return exit_code.value == STILL_ACTIVE
 
@@ -315,9 +318,11 @@ def _worker_loop(
 ):
     try:
         import faulthandler
+
         faulthandler.enable()
         # Register ForkingPickler handlers so DenseTensor can be serialized
         from paddle.incubate.multiprocessing import init_reductions
+
         init_reductions()
 
         # NOTE: [ mmap files clear ] When the child process exits unexpectedly,
@@ -381,7 +386,11 @@ def _worker_loop(
                     out_queue.put((data, None, None))
                     iterator_drained = False
                     fetcher = _DatasetKind.create_fetcher(
-                        dataset_kind, dataset, auto_collate_batch, collate_fn, True
+                        dataset_kind,
+                        dataset,
+                        auto_collate_batch,
+                        collate_fn,
+                        True,
                     )
                     continue
 
@@ -434,8 +443,8 @@ def _worker_loop(
     except:
         # Write to stderr (visible in parent console)
         sys.stderr.write(
-            "[WORKER pid=%d] UNCAUGHT EXCEPTION\n%s\n" %
-            (os.getpid(), traceback.format_exc()))
+            f"[WORKER pid={os.getpid()}] UNCAUGHT EXCEPTION\n{traceback.format_exc()}\n"
+        )
         sys.stderr.flush()
     finally:
         if use_shared_memory:

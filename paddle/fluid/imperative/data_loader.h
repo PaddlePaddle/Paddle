@@ -17,7 +17,8 @@
 #ifdef _WIN32
 #include <Windows.h>
 // pid_t is not defined on Windows; use int as cross-platform alternative.
-// This is compatible with both getpid() (POSIX) and GetCurrentProcessId() (Win32).
+// This is compatible with both getpid() (POSIX) and GetCurrentProcessId()
+// (Win32).
 using pid_t = int;
 #else
 #include <unistd.h>

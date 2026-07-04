@@ -367,14 +367,14 @@ try:
         _cleanup_mmap_fds,
         _convert_to_tensor_list,
         _erase_process_pids,
+        _new_shared_filename,
         _remove_tensor_list_mmap_fds,
         _set_max_memory_map_allocation_pool_size,
         _set_process_pids,
         _set_process_signal_handler,
         _share_filename,
-        _new_shared_filename,
-        _shared_incref,
         _shared_decref,
+        _shared_incref,
         _throw_error_if_process_failed,
     )
 

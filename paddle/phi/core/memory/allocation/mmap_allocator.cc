@@ -55,7 +55,7 @@ struct CountInfo {
   std::atomic<int> refcount;
 };
 
-void AllocateMemoryMap(std::string& filename,
+void AllocateMemoryMap(std::string *filename,
                        int *shared_fd,
                        int flags,
                        size_t size,
@@ -66,9 +66,12 @@ void AllocateMemoryMap(std::string& filename,
   // returns the existing mapping if the name already exists, unlike Linux's
   // shm_open + O_EXCL which fails atomically. We must check explicitly.
   for (int attempt = 0; attempt < 100; attempt++) {
-    HANDLE hMap = CreateFileMappingA(
-        INVALID_HANDLE_VALUE, NULL, protect, 0,
-        static_cast<DWORD>(size), filename.c_str());
+    HANDLE hMap = CreateFileMappingA(INVALID_HANDLE_VALUE,
+                                     NULL,
+                                     protect,
+                                     0,
+                                     static_cast<DWORD>(size),
+                                     filename.c_str());
 
     if (hMap == NULL) {
       DWORD err = GetLastError();
@@ -76,15 +79,20 @@ void AllocateMemoryMap(std::string& filename,
       fprintf(stderr,
               "[PADDLE_MMAP] PID=%lu CreateFileMapping FAILED "
               "name=%s size=%zu flags=0x%x attempt=%d err=%lu\n",
-              GetCurrentProcessId(), filename.c_str(), size, flags, attempt, err);
+              GetCurrentProcessId(),
+              filename.c_str(),
+              size,
+              flags,
+              attempt,
+              err);
       fflush(stderr);
       PADDLE_THROW(common::errors::Unavailable(
           "CreateFileMapping failed for %s, error: %lu",
-          filename.c_str(), err));
+          filename.c_str(),
+          err));
     }
 
-    if ((flags & MAPPED_EXCLUSIVE) &&
-        GetLastError() == ERROR_ALREADY_EXISTS) {
+    if ((flags & MAPPED_EXCLUSIVE) && GetLastError() == ERROR_ALREADY_EXISTS) {
       CloseHandle(hMap);
       VLOG(3) << "[PADDLE_MMAP] PID=" << GetCurrentProcessId()
               << " name collision, retrying attempt=" << attempt
@@ -101,11 +109,13 @@ void AllocateMemoryMap(std::string& filename,
       fprintf(stderr,
               "[PADDLE_MMAP] PID=%lu MapViewOfFile FAILED "
               "name=%s size=%zu err=%lu\n",
-              GetCurrentProcessId(), filename.c_str(), size, err);
+              GetCurrentProcessId(),
+              filename.c_str(),
+              size,
+              err);
       fflush(stderr);
       PADDLE_THROW(common::errors::Unavailable(
-          "MapViewOfFile failed for %s, error: %lu",
-          filename.c_str(), err));
+          "MapViewOfFile failed for %s, error: %lu", filename.c_str(), err));
     }
 
     // On Windows, always keep the HANDLE so the section stays alive
@@ -200,7 +210,7 @@ AllocateRefcountedMemoryMapAllocation(std::string filename,
   int fd = shared_fd;
   void *base_ptr = nullptr;
   if (buffer_id == -1) {
-    AllocateMemoryMap(filename, &fd, flags, size + mmap_alignment, &base_ptr);
+    AllocateMemoryMap(&filename, &fd, flags, size + mmap_alignment, &base_ptr);
     VLOG(4) << "Create and mmap a new shm: " << filename;
   } else {
     base_ptr = MemoryMapAllocationPool::Instance().GetById(buffer_id).mmap_ptr_;
@@ -364,7 +374,8 @@ MemoryMapWriterAllocation::~MemoryMapWriterAllocation() {
 MemoryMapReaderAllocation::~MemoryMapReaderAllocation() {
 #ifdef _WIN32
   UnmapViewOfFile(this->ptr());
-  // On Windows, named file mapping is auto-destroyed when final handle is closed.
+  // On Windows, named file mapping is auto-destroyed when final handle is
+  // closed.
   MemoryMapFdSet::Instance().Remove(this->ipc_name());
   VLOG(3) << "~MemoryMapReaderAllocation: " << this->ipc_name();
 #else
@@ -400,18 +411,24 @@ std::shared_ptr<MemoryMapWriterAllocation> AllocateMemoryMapWriterAllocation(
     size_t size) {
   const std::string &ipc_name = GetIPCName();
 #ifdef _WIN32
-  HANDLE hMap = CreateFileMappingA(
-      INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, static_cast<DWORD>(size), ipc_name.c_str());
-  PADDLE_ENFORCE_NE(hMap,
-                    nullptr,
-                    common::errors::Unavailable(
-                        "CreateFileMapping for writer %s failed", ipc_name.c_str()));
+  HANDLE hMap = CreateFileMappingA(INVALID_HANDLE_VALUE,
+                                   NULL,
+                                   PAGE_READWRITE,
+                                   0,
+                                   static_cast<DWORD>(size),
+                                   ipc_name.c_str());
+  PADDLE_ENFORCE_NE(
+      hMap,
+      nullptr,
+      common::errors::Unavailable("CreateFileMapping for writer %s failed",
+                                  ipc_name.c_str()));
 
   void *ptr = MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0, 0, size);
-  PADDLE_ENFORCE_NE(ptr,
-                    nullptr,
-                    common::errors::Unavailable(
-                        "MapViewOfFile for writer %s failed", ipc_name.c_str()));
+  PADDLE_ENFORCE_NE(
+      ptr,
+      nullptr,
+      common::errors::Unavailable("MapViewOfFile for writer %s failed",
+                                  ipc_name.c_str()));
   // Close the handle; the named section stays alive through MapViewOfFile.
   CloseHandle(hMap);
   return std::make_shared<MemoryMapWriterAllocation>(ptr, size, ipc_name);
@@ -446,21 +463,28 @@ std::shared_ptr<MemoryMapReaderAllocation> RebuildMemoryMapReaderAllocation(
   if (!hMap) {
     // Section doesn't exist yet; create it. This can happen in some edge cases
     // where the writer's view is still alive but all handles were closed.
-    hMap = CreateFileMappingA(
-        INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, static_cast<DWORD>(size), ipc_name.c_str());
+    hMap = CreateFileMappingA(INVALID_HANDLE_VALUE,
+                              NULL,
+                              PAGE_READWRITE,
+                              0,
+                              static_cast<DWORD>(size),
+                              ipc_name.c_str());
   }
-  PADDLE_ENFORCE_NE(hMap,
-                    nullptr,
-                    common::errors::Unavailable(
-                        "CreateFileMapping/OpenFileMapping for reader %s failed, error: %lu",
-                        ipc_name.c_str(), GetLastError()));
+  PADDLE_ENFORCE_NE(
+      hMap,
+      nullptr,
+      common::errors::Unavailable(
+          "CreateFileMapping/OpenFileMapping for reader %s failed, error: %lu",
+          ipc_name.c_str(),
+          GetLastError()));
 
   void *ptr = MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0, 0, size);
   PADDLE_ENFORCE_NE(ptr,
                     nullptr,
                     common::errors::Unavailable(
                         "MapViewOfFile for reader %s failed, error: %lu",
-                        ipc_name.c_str(), GetLastError()));
+                        ipc_name.c_str(),
+                        GetLastError()));
   CloseHandle(hMap);
   return std::make_shared<MemoryMapReaderAllocation>(ptr, size, ipc_name);
 #else

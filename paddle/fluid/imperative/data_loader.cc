@@ -125,7 +125,8 @@ static inline void setSignalHandler(int signal,
 #endif
 
 #ifdef _WIN32
-// Last-chance exception filter: logs crash info before OS terminates the process.
+// Last-chance exception filter: logs crash info before OS terminates the
+// process.
 static LONG CALLBACK paddle_crash_filter(EXCEPTION_POINTERS *ep) {
   fprintf(stderr,
           "[PADDLE_CRASH] PID=%lu code=0x%08lX addr=%p\n",
@@ -167,9 +168,11 @@ void ThrowErrorIfLoadProcessFailed() {
       VLOG(3) << "DataLoader: monitor loader child process " << process_pid;
 
       HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | SYNCHRONIZE,
-                                    FALSE, static_cast<DWORD>(process_pid));
+                                    FALSE,
+                                    static_cast<DWORD>(process_pid));
       if (hProcess == NULL) {
-        // Process may have already exited; GetLastError() == ERROR_INVALID_PARAMETER
+        // Process may have already exited; GetLastError() ==
+        // ERROR_INVALID_PARAMETER
         continue;
       }
 
@@ -182,14 +185,19 @@ void ThrowErrorIfLoadProcessFailed() {
         if (exit_code != 0 && exit_code != STILL_ACTIVE) {
           // Exited with error (non-zero exit code)
           fprintf(stderr,
-              "[DL_WORKER_EXIT] pid=%lu exit_code=0x%08lX (%lu)\n",
-              process_pid, exit_code, exit_code);
+                  "[DL_WORKER_EXIT] pid=%lu exit_code=0x%08lX (%lu)\n",
+                  process_pid,
+                  exit_code,
+                  exit_code);
           fflush(stderr);
           pids_set->clear();
           PADDLE_THROW(common::errors::Fatal(
-              "DataLoader process (pid %ld) exited unexpectedly with code 0x%lX (%lu). "
+              "DataLoader process (pid %ld) exited unexpectedly with code "
+              "0x%lX (%lu). "
               "Rerunning with num_workers=0 may give better error trace.",
-              process_pid, exit_code, exit_code));
+              process_pid,
+              exit_code,
+              exit_code));
         }
       } else {
         CloseHandle(hProcess);
@@ -264,4 +272,3 @@ void ThrowErrorIfLoadProcessFailed() {
 }
 
 }  // namespace paddle::imperative
-  
