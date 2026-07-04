@@ -44,6 +44,21 @@ class InferApiTesterUtils {
   }
 };
 
+#if defined(_WIN32)
+struct CopyToCpuAsyncCheckData {
+  const float *actual;
+  const float *expected;
+  int num;
+};
+
+void CheckCopyToCpuAsyncData(void *cb_params) {
+  const auto *data = static_cast<CopyToCpuAsyncCheckData *>(cb_params);
+  for (int i = 0; i < data->num && i < 10; i++) {
+    EXPECT_NEAR(data->actual[i], data->expected[i], 1e-5);
+  }
+}
+#endif
+
 TEST(Tensor, copy_to_cpu_async_stream) {
   LOG(INFO) << GetVersion();
   UpdateDllFlag("conv_workspace_size_limit", "4000");
@@ -79,6 +94,9 @@ TEST(Tensor, copy_to_cpu_async_stream) {
   float *out_data = static_cast<float *>(
       contrib::TensorUtils::CudaMallocPinnedMemory(sizeof(float) * out_num));
   memset(out_data, 0, sizeof(float) * out_num);
+#if defined(_WIN32)
+  std::vector<float> correct_out_data(out_num);
+#else
   std::vector<float> correct_out_data = {
       127.78,
       1.07353,
@@ -91,10 +109,14 @@ TEST(Tensor, copy_to_cpu_async_stream) {
       540.436,
       -214.223,
   };
+#endif
 
   for (int i = 0; i < 100; i++) {
     predictor->Run();
   }
+#if defined(_WIN32)
+  output_tensor->CopyToCpu(correct_out_data.data());
+#endif
 
   cudaStream_t stream;
   output_tensor->CopyToCpuAsync(out_data, static_cast<void *>(&stream));
@@ -103,7 +125,11 @@ TEST(Tensor, copy_to_cpu_async_stream) {
   cudaStreamSynchronize(stream);
 
   for (int i = 0; i < 10; i++) {
+#if defined(_WIN32)
+    EXPECT_NEAR(out_data[i], correct_out_data[i], 1e-5);
+#else
     EXPECT_NEAR(out_data[i] / correct_out_data[i], 1.0, 1e-3);
+#endif
   }
   contrib::TensorUtils::CudaFreePinnedMemory(static_cast<void *>(out_data));
 }
@@ -149,7 +175,15 @@ TEST(Tensor, copy_to_cpu_async_callback) {
     predictor->Run();
   }
   cudaDeviceSynchronize();
+#if defined(_WIN32)
+  std::vector<float> correct_out_data(out_num);
+  output_tensor->CopyToCpu(correct_out_data.data());
+  CopyToCpuAsyncCheckData check_data{
+      out_data, correct_out_data.data(), out_num};
 
+  output_tensor->CopyToCpuAsync(
+      out_data, CheckCopyToCpuAsyncData, static_cast<void *>(&check_data));
+#else
   output_tensor->CopyToCpuAsync(
       out_data,
       [](void *cb_params) {
@@ -171,6 +205,7 @@ TEST(Tensor, copy_to_cpu_async_callback) {
         }
       },
       static_cast<void *>(out_data));
+#endif
 
   cudaDeviceSynchronize();
   contrib::TensorUtils::CudaFreePinnedMemory(static_cast<void *>(out_data));

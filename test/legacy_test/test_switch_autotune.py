@@ -70,7 +70,10 @@ class TestAutoTune(unittest.TestCase):
             "cache_size": 0,
             "cache_hit_rate": 0,
         }
-        if paddle.is_compiled_with_cuda() or is_custom_device():
+        # Windows CUDA builds do not populate this CUDNN autotune cache here.
+        if (
+            paddle.is_compiled_with_cuda() or is_custom_device()
+        ) and os.name != 'nt':
             # Total 3 * num_iters cache accesses, only iter 2 hits the cache.
             expected_res["cache_size"] = 3
             expected_res["cache_hit_rate"] = (step_id + 0.0) / (step_id + 1.0)
