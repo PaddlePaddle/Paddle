@@ -66,29 +66,36 @@ class _DatasetKind:
 
 
 class ParentWatchDog:
-    def __init__(self):
-        self._parent_pid = os.getppid()
+    def __init__(self, parent_pid=None):
+        self._parent_pid = parent_pid if parent_pid is not None else os.getppid()
         self._parent_alive = True
+        # On Windows, os.getppid() can return a stale PID from the spawn
+        # bootstrap process. Use OpenProcess + GetExitCodeProcess instead
+        # of PPID comparison to reliably detect parent death.
         if sys.platform == 'win32':
             self._parent_alive = self._parent_alive_win32()
         else:
             self._parent_alive = True
 
     def _parent_alive_win32(self):
+        """Check if parent process is alive using Windows API."""
         import ctypes
         from ctypes import wintypes
-
-        PROCESS_QUERY_INFORMATION = 0x0400
+        PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
         STILL_ACTIVE = 259
         handle = ctypes.windll.kernel32.OpenProcess(
-            PROCESS_QUERY_INFORMATION, False, self._parent_pid
+            PROCESS_QUERY_LIMITED_INFORMATION, False, self._parent_pid
         )
         if not handle:
-            return False
+            # Fallback: try PROCESS_QUERY_INFORMATION (might fail on some systems)
+            PROCESS_QUERY_INFORMATION = 0x0400
+            handle = ctypes.windll.kernel32.OpenProcess(
+                PROCESS_QUERY_INFORMATION, False, self._parent_pid
+            )
+        if not handle:
+            return True  # Can't check, assume alive
         exit_code = wintypes.DWORD(0)
-        ctypes.windll.kernel32.GetExitCodeProcess(
-            handle, ctypes.byref(exit_code)
-        )
+        ctypes.windll.kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code))
         ctypes.windll.kernel32.CloseHandle(handle)
         return exit_code.value == STILL_ACTIVE
 
@@ -301,6 +308,7 @@ def _generate_states(base_seed=0, worker_id=0):
 
 
 def _worker_loop(
+    parent_pid,
     dataset,
     dataset_kind,
     indices_queue,
@@ -318,11 +326,9 @@ def _worker_loop(
 ):
     try:
         import faulthandler
-
         faulthandler.enable()
         # Register ForkingPickler handlers so DenseTensor can be serialized
         from paddle.incubate.multiprocessing import init_reductions
-
         init_reductions()
 
         # NOTE: [ mmap files clear ] When the child process exits unexpectedly,
@@ -373,7 +379,7 @@ def _worker_loop(
             return lodtensor
 
         iterator_drained = False
-        parent_watch_dog = ParentWatchDog()
+        parent_watch_dog = ParentWatchDog(parent_pid)
 
         while parent_watch_dog.is_alive():
             try:
@@ -386,11 +392,7 @@ def _worker_loop(
                     out_queue.put((data, None, None))
                     iterator_drained = False
                     fetcher = _DatasetKind.create_fetcher(
-                        dataset_kind,
-                        dataset,
-                        auto_collate_batch,
-                        collate_fn,
-                        True,
+                        dataset_kind, dataset, auto_collate_batch, collate_fn, True
                     )
                     continue
 
@@ -443,7 +445,8 @@ def _worker_loop(
     except:
         # Write to stderr (visible in parent console)
         sys.stderr.write(
-            f"[WORKER pid={os.getpid()}] UNCAUGHT EXCEPTION\n{traceback.format_exc()}\n"
+            f"[WORKER pid={os.getpid()}] UNCAUGHT EXCEPTION\n"
+            f"{traceback.format_exc()}\n"
         )
         sys.stderr.flush()
     finally:

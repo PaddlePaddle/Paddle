@@ -15,6 +15,7 @@
 #pragma once
 
 #include <atomic>
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -46,14 +47,14 @@ class PADDLE_API MemoryMapAllocation : public Allocation {
   explicit MemoryMapAllocation(void *ptr,
                                size_t size,
                                std::string ipc_name,
-                               int fd)
+                               intptr_t fd)
       : Allocation(ptr, size, CPUPlace()),
         ipc_name_(std::move(ipc_name)),
         fd_(fd),
         map_ptr_(ptr),
         map_size_(size) {}
   explicit MemoryMapAllocation(
-      void *ptr, size_t size, std::string ipc_name, int fd, int flags)
+      void *ptr, size_t size, std::string ipc_name, intptr_t fd, int flags)
       : Allocation(ptr, size, CPUPlace()),
         ipc_name_(std::move(ipc_name)),
         fd_(fd),
@@ -62,7 +63,7 @@ class PADDLE_API MemoryMapAllocation : public Allocation {
         map_size_(size) {}
 
   inline const std::string &ipc_name() const { return ipc_name_; }
-  inline int shared_fd() const { return fd_; }
+  inline int shared_fd() const { return static_cast<int>(fd_); }
 
   virtual void close();
 
@@ -70,7 +71,7 @@ class PADDLE_API MemoryMapAllocation : public Allocation {
 
  protected:
   std::string ipc_name_;
-  int fd_ = -1;
+  intptr_t fd_ = -1;
   int flags_ = 0;
   void *map_ptr_ = nullptr;
   size_t map_size_ = 0;
@@ -99,14 +100,14 @@ class PADDLE_API RefcountedMemoryMapAllocation : public MemoryMapAllocation {
 };
 
 PADDLE_API void AllocateMemoryMap(std::string *filename,
-                                  int *shared_fd,
+                                  intptr_t *shared_fd,
                                   int flags,
                                   size_t size,
                                   void **base_ptr_);
 
 PADDLE_API std::shared_ptr<RefcountedMemoryMapAllocation>
 AllocateRefcountedMemoryMapAllocation(std::string filename,
-                                      int shared_fd,
+                                      intptr_t shared_fd,
                                       int flags,
                                       size_t size,
                                       int buffer_id = -1);

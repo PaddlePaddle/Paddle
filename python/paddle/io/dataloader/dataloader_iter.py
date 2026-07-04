@@ -468,6 +468,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             worker = multiprocessing.Process(
                 target=_worker_loop,
                 args=(
+                    os.getpid(),
                     self._dataset,
                     self._dataset_kind,
                     indices_queue,
@@ -486,8 +487,6 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             )
             worker.daemon = True
             worker.start()
-            # On Windows with spawn, each worker imports the full Paddle
-            # framework (~580 MB). Stagger to avoid memory exhaustion.
             if sys.platform == 'win32' and self._num_workers > 4:
                 time.sleep(0.05)
             self._workers.append(worker)
