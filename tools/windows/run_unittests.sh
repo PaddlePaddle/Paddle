@@ -291,6 +291,14 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_weight_decay$|\
 ^disable_wingpu_cuda12_test$"
 
+disable_wingpu_cuda133_test="^test_convert_mea_2_fa_pass$|\
+^test_fused_dot_product_attention_pass$|\
+^test_fused_flash_attn_pass$|\
+^test_flash_attention$|\
+^test_fused_dot_product_attention_op_static$|\
+^test_memory_efficient_attention$|\
+^test_switch_autotune$"
+
 # /*=================Fixed Disabled Windows TRT MKL unittests=======================*/
 # TODO: fix these unittest that is bound to fail
 disable_win_trt_test="^test_trt_convert_conv2d$|\
@@ -735,6 +743,11 @@ function run_unittest_gpu() {
     if nvcc --version | grep 12.0; then
         echo "CUDA version is 12.0, disable wingpu_cuda12_test"
         disable_wingpu_test=${disable_wingpu_cuda12_test}
+    fi
+
+    if nvcc --version | grep 13.3; then
+        echo "CUDA version is 13.3, disable wingpu_cuda133_test"
+        disable_wingpu_test=${disable_wingpu_cuda133_test}
     fi
 
     tmpfile=$tmp_dir/$RANDOM
