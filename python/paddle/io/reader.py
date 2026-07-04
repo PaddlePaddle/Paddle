@@ -497,6 +497,12 @@ class DataLoader:
         self.places = _convert_places(places)
 
         assert num_workers >= 0, "num_workers should be a non-negative value"
+        if num_workers > 0 and sys.platform == 'darwin':
+            warnings.warn(
+                "DataLoader with multi-process mode is not supported on MacOs currently."
+                " Please use single-process mode with num_workers = 0 instead"
+            )
+            num_workers = 0
         self.num_workers = num_workers
 
         assert prefetch_factor > 0, "prefetch_factor should be a positive value"
