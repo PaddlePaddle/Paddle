@@ -420,6 +420,7 @@ def _worker_loop(
                 continue
 
             try:
+                idx = None
                 if isinstance(data, _ResumeIteration):
                     out_queue.put((data, None, None))
                     iterator_drained = False
@@ -443,7 +444,6 @@ def _worker_loop(
                 if done_event.is_set() or iterator_drained:
                     continue
 
-                idx = None
                 idx, indices = data
                 if init_exception is not None:
                     batch = init_exception
