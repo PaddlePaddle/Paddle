@@ -69,22 +69,22 @@ struct CountInfo {
   std::atomic<int> refcount;
 };
 
-void AllocateMemoryMap(std::string filename,
+void AllocateMemoryMap(std::string *fname_ptr,
                        intptr_t *shared_fd,
                        int flags,
                        size_t size,
                        void **map_ptr_) {
+  std::string &fname = *fname_ptr;
 #ifdef _WIN32
   DWORD protect = (flags & MAPPED_SHAREDMEM) ? PAGE_READWRITE : PAGE_READONLY;
   // For reader path (MAPPED_NOCREATE): open existing section, never create.
   if (flags & MAPPED_NOCREATE) {
-    HANDLE hMap =
-        OpenFileMappingA(FILE_MAP_ALL_ACCESS, FALSE, filename.c_str());
+    HANDLE hMap = OpenFileMappingA(FILE_MAP_ALL_ACCESS, FALSE, fname.c_str());
     PADDLE_ENFORCE_NE(hMap,
                       nullptr,
                       common::errors::Unavailable(
                           "OpenFileMappingA failed for %s, error: %lu",
-                          filename.c_str(),
+                          fname.c_str(),
                           GetLastError()));
     void *ptr = MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0, 0, size);
     if (ptr == nullptr) {
@@ -92,7 +92,7 @@ void AllocateMemoryMap(std::string filename,
       CloseHandle(hMap);
       PADDLE_THROW(common::errors::Unavailable(
           "MapViewOfFile for reader %s failed, error: %lu",
-          filename.c_str(),
+          fname.c_str(),
           err));
     }
     *shared_fd = reinterpret_cast<intptr_t>(hMap);
@@ -108,7 +108,7 @@ void AllocateMemoryMap(std::string filename,
                                      protect,
                                      static_cast<DWORD>(size >> 32),
                                      static_cast<DWORD>(size & 0xffffffffULL),
-                                     filename.c_str());
+                                     fname.c_str());
 
     if (hMap == NULL) {
       DWORD err = GetLastError();
@@ -117,24 +117,22 @@ void AllocateMemoryMap(std::string filename,
               "[PADDLE_MMAP] PID=%lu CreateFileMapping FAILED "
               "name=%s size=%zu flags=0x%x attempt=%d err=%lu\n",
               GetCurrentProcessId(),
-              filename.c_str(),
+              fname.c_str(),
               size,
               flags,
               attempt,
               err);
       fflush(stderr);
       PADDLE_THROW(common::errors::Unavailable(
-          "CreateFileMapping failed for %s, error: %lu",
-          filename.c_str(),
-          err));
+          "CreateFileMapping failed for %s, error: %lu", fname.c_str(), err));
     }
 
     if ((flags & MAPPED_EXCLUSIVE) && GetLastError() == ERROR_ALREADY_EXISTS) {
       CloseHandle(hMap);
       VLOG(3) << "[PADDLE_MMAP] PID=" << GetCurrentProcessId()
               << " name collision, retrying attempt=" << attempt
-              << " name=" << filename;
-      filename = GetIPCName();  // name collision; retry with fresh name
+              << " name=" << fname;
+      fname = GetIPCName();  // name collision; retry with fresh name
       continue;
     }
 
@@ -147,12 +145,12 @@ void AllocateMemoryMap(std::string filename,
               "[PADDLE_MMAP] PID=%lu MapViewOfFile FAILED "
               "name=%s size=%zu err=%lu\n",
               GetCurrentProcessId(),
-              filename.c_str(),
+              fname.c_str(),
               size,
               err);
       fflush(stderr);
       PADDLE_THROW(common::errors::Unavailable(
-          "MapViewOfFile failed for %s, error: %lu", filename.c_str(), err));
+          "MapViewOfFile failed for %s, error: %lu", fname.c_str(), err));
     }
 
     // On Windows, always keep the HANDLE so the section stays alive
@@ -166,7 +164,7 @@ void AllocateMemoryMap(std::string filename,
     *shared_fd = reinterpret_cast<intptr_t>(hMap);
 
     if (flags & MAPPED_UNLINK) {
-      VLOG(6) << "CreateFileMapping (unlink mode): " << filename;
+      VLOG(6) << "CreateFileMapping (unlink mode): " << fname;
     }
 
     // Caller (AllocateRefcountedMemoryMapAllocation) handles Insert
@@ -193,15 +191,15 @@ void AllocateMemoryMap(std::string filename,
 
   if (!(flags & MAPPED_FROMFD) && fd == -1) {
     if (flags & MAPPED_SHAREDMEM) {
-      fd = shm_open(filename.c_str(), file_flags, (mode_t)0600);
+      fd = shm_open(fname.c_str(), file_flags, (mode_t)0600);
       PADDLE_ENFORCE_NE(
           fd,
           -1,
           common::errors::Unavailable(
               "File descriptor %s open failed, unable in read-write mode",
-              filename.c_str()));
-      VLOG(6) << "shm_open: " << filename;
-      MemoryMapFdSet::Instance().Insert(filename);
+              fname.c_str()));
+      VLOG(6) << "shm_open: " << fname;
+      MemoryMapFdSet::Instance().Insert(fname);
     }
   }
 
@@ -217,8 +215,8 @@ void AllocateMemoryMap(std::string filename,
   }
 
   if (flags & MAPPED_UNLINK) {
-    VLOG(6) << "shm_unlink: " << filename;
-    shm_unlink(filename.c_str());
+    VLOG(6) << "shm_unlink: " << fname;
+    shm_unlink(fname.c_str());
   }
 
   PADDLE_ENFORCE_NE(*map_ptr_,
@@ -232,14 +230,14 @@ void AllocateMemoryMap(std::string filename,
     PADDLE_ENFORCE_NE(::close(fd),
                       -1,
                       common::errors::Unavailable(
-                          "Error closing memory mapped file %s", filename));
+                          "Error closing memory mapped file %s", fname));
     *shared_fd = -1;
   }
 #endif
 }
 
 std::shared_ptr<RefcountedMemoryMapAllocation>
-AllocateRefcountedMemoryMapAllocation(std::string filename,
+AllocateRefcountedMemoryMapAllocation(std::string fname,
                                       intptr_t shared_fd,
                                       int flags,
                                       size_t size,
@@ -247,18 +245,18 @@ AllocateRefcountedMemoryMapAllocation(std::string filename,
   intptr_t fd = shared_fd;
   void *base_ptr = nullptr;
   if (buffer_id == -1) {
-    AllocateMemoryMap(filename, &fd, flags, size + mmap_alignment, &base_ptr);
-    VLOG(4) << "Create and mmap a new shm: " << filename;
+    AllocateMemoryMap(&fname, &fd, flags, size + mmap_alignment, &base_ptr);
+    VLOG(4) << "Create and mmap a new shm: " << fname;
   } else {
     base_ptr = MemoryMapAllocationPool::Instance().GetById(buffer_id).mmap_ptr_;
     fd = shared_fd;
-    VLOG(4) << "Get a cached shm " << filename;
+    VLOG(4) << "Get a cached shm " << fname;
   }
   void *aligned_base_ptr =
       static_cast<void *>(static_cast<char *>(base_ptr) + mmap_alignment);
-  MemoryMapFdSet::Instance().Insert(filename);
+  MemoryMapFdSet::Instance().Insert(fname);
   return std::make_shared<RefcountedMemoryMapAllocation>(
-      aligned_base_ptr, size, filename, fd, flags, buffer_id);
+      aligned_base_ptr, size, fname, fd, flags, buffer_id);
 }
 
 RefcountedMemoryMapAllocation::RefcountedMemoryMapAllocation(
