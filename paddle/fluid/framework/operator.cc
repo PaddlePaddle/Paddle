@@ -72,6 +72,12 @@ std::vector<std::tuple<Place, LibraryType>> kKernelPriority = {
     std::make_tuple(CPUPlace(), LibraryType::kPlain),
 };
 
+paddle::flat_hash_map<std::string, OperatorWithKernel::OpKernelMap>&
+OperatorWithKernel::AllOpKernels() {
+  static paddle::flat_hash_map<std::string, OpKernelMap> g_all_op_kernels;
+  return g_all_op_kernels;
+}
+
 static DDim GetDimsDebug(const Scope& scope,
                          const std::string& name,
                          bool get_actual_dim = false) {
