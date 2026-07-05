@@ -37,9 +37,7 @@ class RandomDataset(paddle.io.Dataset):
 
     def __getitem__(self, idx):
         image = np.random.random([self.image_size]).astype('float32')
-        label = np.random.randint(0, self.class_num - 1, (1,)).astype(
-            'int64'
-        )
+        label = np.random.randint(0, self.class_num - 1, (1,)).astype('int64')
         return image, label
 
     def __len__(self):
