@@ -119,15 +119,22 @@ class PADDLE_API MemoryMapWriterAllocation : public Allocation {
                                      size_t size,
                                      std::string ipc_name)
       : Allocation(ptr, size, CPUPlace()), ipc_name_(std::move(ipc_name)) {}
+  explicit MemoryMapWriterAllocation(void *ptr,
+                                     size_t size,
+                                     std::string ipc_name,
+                                     intptr_t fd)
+      : Allocation(ptr, size, CPUPlace()),
+        ipc_name_(std::move(ipc_name)),
+        fd_(fd) {}
 
   inline const std::string &ipc_name() const { return ipc_name_; }
-  inline int shared_fd() const { return fd_; }
+  inline intptr_t shared_fd() const { return fd_; }
 
   ~MemoryMapWriterAllocation() override;
 
  private:
   std::string ipc_name_;
-  int fd_ = -1;
+  intptr_t fd_ = -1;
 };
 
 class PADDLE_API MemoryMapReaderAllocation : public Allocation {

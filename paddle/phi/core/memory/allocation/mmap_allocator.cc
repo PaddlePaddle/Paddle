@@ -87,12 +87,14 @@ void AllocateMemoryMap(std::string filename,
                           filename.c_str(),
                           GetLastError()));
     void *ptr = MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0, 0, size);
-    PADDLE_ENFORCE_NE(ptr,
-                      nullptr,
-                      common::errors::Unavailable(
-                          "MapViewOfFile for reader %s failed, error: %lu",
-                          filename.c_str(),
-                          GetLastError()));
+    if (ptr == nullptr) {
+      DWORD err = GetLastError();
+      CloseHandle(hMap);
+      PADDLE_THROW(common::errors::Unavailable(
+          "MapViewOfFile for reader %s failed, error: %lu",
+          filename.c_str(),
+          err));
+    }
     *shared_fd = reinterpret_cast<intptr_t>(hMap);
     *map_ptr_ = ptr;
     return;
@@ -403,6 +405,9 @@ void RefcountedMemoryMapAllocation::close() {
 MemoryMapWriterAllocation::~MemoryMapWriterAllocation() {
 #ifdef _WIN32
   UnmapViewOfFile(this->ptr());
+  if (fd_ != -1) {
+    CloseHandle(reinterpret_cast<HANDLE>(fd_));
+  }
 #else
   if (munmap(this->ptr(), this->size()) == -1) {
     common::errors::Unavailable("could not unmap the shared memory file %s",
@@ -464,14 +469,20 @@ std::shared_ptr<MemoryMapWriterAllocation> AllocateMemoryMapWriterAllocation(
                                   ipc_name.c_str()));
 
   void *ptr = MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0, 0, size);
-  PADDLE_ENFORCE_NE(
-      ptr,
-      nullptr,
-      common::errors::Unavailable("MapViewOfFile for writer %s failed",
-                                  ipc_name.c_str()));
-  // Close the handle; the named section stays alive through MapViewOfFile.
-  CloseHandle(hMap);
-  return std::make_shared<MemoryMapWriterAllocation>(ptr, size, ipc_name);
+  if (ptr == nullptr) {
+    DWORD err = GetLastError();
+    CloseHandle(hMap);
+    PADDLE_THROW(common::errors::Unavailable(
+        "MapViewOfFile for writer %s failed, error: %lu",
+        ipc_name.c_str(),
+        err));
+  }
+  // Keep the HANDLE open until ~MemoryMapWriterAllocation (where
+  // UnmapViewOfFile runs first, then CloseHandle). Closing it here
+  // would destroy the named section as soon as the writer unmaps,
+  // before the reader has a chance to OpenFileMappingA it.
+  return std::make_shared<MemoryMapWriterAllocation>(
+      ptr, size, ipc_name, reinterpret_cast<intptr_t>(hMap));
 #else
   int flags = O_RDWR | O_CREAT;
   int fd = shm_open(ipc_name.c_str(), flags, 0600);
@@ -508,12 +519,14 @@ std::shared_ptr<MemoryMapReaderAllocation> RebuildMemoryMapReaderAllocation(
                         GetLastError()));
 
   void *ptr = MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0, 0, size);
-  PADDLE_ENFORCE_NE(ptr,
-                    nullptr,
-                    common::errors::Unavailable(
-                        "MapViewOfFile for reader %s failed, error: %lu",
-                        ipc_name.c_str(),
-                        GetLastError()));
+  if (ptr == nullptr) {
+    DWORD err = GetLastError();
+    CloseHandle(hMap);
+    PADDLE_THROW(common::errors::Unavailable(
+        "MapViewOfFile for reader %s failed, error: %lu",
+        ipc_name.c_str(),
+        err));
+  }
   CloseHandle(hMap);
   return std::make_shared<MemoryMapReaderAllocation>(ptr, size, ipc_name);
 #else
