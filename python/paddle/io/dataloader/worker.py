@@ -443,6 +443,7 @@ def _worker_loop(
                 if done_event.is_set() or iterator_drained:
                     continue
 
+                idx = None
                 idx, indices = data
                 if init_exception is not None:
                     batch = init_exception
