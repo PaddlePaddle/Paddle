@@ -338,26 +338,6 @@ void RefcountedMemoryMapAllocation::close() {
   CountInfo *info = reinterpret_cast<CountInfo *>(data);
   --info->refcount;
 
-#ifdef _WIN32
-  // On Windows, the HANDLE from CreateFileMapping is always kept by
-  // AllocateMemoryMap (never closed there). Close it unconditionally
-  // here, regardless of the MAPPED_KEEPFD flag.
-  if (fd_ != -1 && !closed_fd_) {
-    closed_fd_ = true;
-    CloseHandle(reinterpret_cast<HANDLE>(fd_));
-    VLOG(6) << "close handle: " << fd_;
-  }
-#else
-  if (flags_ & MAPPED_KEEPFD) {
-    closed_fd_ = true;
-    PADDLE_ENFORCE_NE(
-        ::close(fd_),
-        -1,
-        common::errors::Unavailable("Error closing file descriptor <%d>", fd_));
-    VLOG(6) << "close fd: " << fd_;
-  }
-#endif
-
   if (FLAGS_use_shm_cache && buffer_id_ != -1) {
     return;
   } else {
@@ -370,14 +350,26 @@ void RefcountedMemoryMapAllocation::close() {
     } else {
       if (info->refcount == 0) {
 #ifdef _WIN32
-        // Only unmap when refcount reaches 0 (all readers AND writers are
-        // done). When refcount > 0, the view must stay mapped on Windows
-        // to keep the named file mapping section alive so readers can open
-        // it. On Linux this is unnecessary because munmap doesn't destroy
-        // the shared memory file (only shm_unlink does).
+        // Only close the handle AND unmap when refcount reaches 0.
+        // On Windows, CloseHandle destroys the named file mapping section.
+        // Closing it early (while refcount > 0) would delete the section
+        // before the reader process has a chance to OpenFileMappingA it.
+        if (fd_ != -1 && !closed_fd_) {
+          closed_fd_ = true;
+          CloseHandle(reinterpret_cast<HANDLE>(fd_));
+          VLOG(6) << "close handle: " << fd_;
+        }
         VLOG(6) << "UnmapViewOfFile: " << ipc_name_;
         UnmapViewOfFile(map_ptr_);
 #else
+        if (flags_ & MAPPED_KEEPFD) {
+          closed_fd_ = true;
+          PADDLE_ENFORCE_NE(::close(fd_),
+                            -1,
+                            common::errors::Unavailable(
+                                "Error closing file descriptor <%d>", fd_));
+          VLOG(6) << "close fd: " << fd_;
+        }
         shm_unlink(ipc_name_.c_str());
         VLOG(6) << "shm_unlink file: " << ipc_name_;
 #endif
