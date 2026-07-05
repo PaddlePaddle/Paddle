@@ -899,10 +899,10 @@ class Optimizer:
         ):
             param_lr = param.optimize_attr['learning_rate']
             if isinstance(param_lr, (Variable, paddle.pir.Value)):
-                return param_lr
+                lr = param_lr
             else:
                 if param_lr == 1.0:
-                    return self._global_learning_rate()
+                    lr = self._global_learning_rate()
                 else:
                     with (
                         paddle.static.default_main_program()._lr_schedule_guard(
@@ -910,9 +910,12 @@ class Optimizer:
                         ),
                         framework.name_scope('scale_with_param_lr'),
                     ):
-                        return self._global_learning_rate() * param_lr
+                        lr = self._global_learning_rate() * param_lr
         else:
-            return self._global_learning_rate()
+            lr = self._global_learning_rate()
+        if self._maximize is True:
+            lr = lr * -1.0
+        return lr
 
     def _create_master_weight(self, param):
         if param.name in self._master_weights:

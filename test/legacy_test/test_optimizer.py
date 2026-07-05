@@ -267,13 +267,13 @@ class TestOptimizerAPI(unittest.TestCase):
             x[0] = 0.0
             x[1] = 0.0
             x.stop_gradient = False
-            for epoch in range(50):
+            for epoch in range(100):
                 optimizer.clear_grad()
                 y = -((x[0] - 1) ** 2) - (x[1] - 4) ** 2
                 loss = paddle.sum(y)
                 loss.backward()
                 optimizer.step()
-            np.testing.assert_allclose(x.numpy(), [1.0, 4.0], atol=0.1)
+            np.testing.assert_allclose(x.numpy(), [1.0, 4.0], atol=0.05)
 
     def test_maximize_param_group(self):
         paddle.seed(100)
