@@ -69,7 +69,7 @@ struct CountInfo {
   std::atomic<int> refcount;
 };
 
-void AllocateMemoryMap(std::string &filename,
+void AllocateMemoryMap(std::string filename,
                        intptr_t *shared_fd,
                        int flags,
                        size_t size,
@@ -157,7 +157,7 @@ void AllocateMemoryMap(std::string &filename,
     // after the caller's MapViewOfFile. The handle is closed in
     // RefcountedMemoryMapAllocation::close(). Without this, the section
     // would be destroyed when the last view is unmapped (i.e. when the
-    // worker's tensor is GC'd), before the reader opens it ¡ª this is
+    // worker's tensor is GC'd), before the reader opens it -- this is
     // the root cause of "Blocking queue is killed" with large data.
     // Linux doesn't have this issue because munmap never destroys the
     // shared memory file (only shm_unlink does).

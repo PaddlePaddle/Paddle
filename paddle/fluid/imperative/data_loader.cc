@@ -141,7 +141,7 @@ static LONG CALLBACK paddle_crash_filter(EXCEPTION_POINTERS *ep) {
 void SetLoadProcessSignalHandler() {
 #ifdef _WIN32
   // Last-chance filter: logs crash details before OS terminates the process.
-  // This is the ONLY handler on Windows ¡ª VEH is removed because it could
+  // This is the ONLY handler on Windows -- VEH is removed because it could
   // deadlock if MemoryMapFdSet::Clear() is called while the mutex is held.
   SetUnhandledExceptionFilter(&paddle_crash_filter);
   VLOG(3) << "DataLoader: crash handler registered";
