@@ -373,9 +373,8 @@ void RefcountedMemoryMapAllocation::close() {
         shm_unlink(ipc_name_.c_str());
         VLOG(6) << "shm_unlink file: " << ipc_name_;
 #endif
-      }
+      } else {
 #ifdef _WIN32
-      else {
         // Refcount > 0: prevent MemoryMapAllocation::close() (base class
         // destructor) from calling CloseHandle. On Windows, closing the
         // HANDLE destroys the named section, even when refcount > 0.
@@ -385,8 +384,8 @@ void RefcountedMemoryMapAllocation::close() {
         closed_fd_ = true;
         VLOG(6) << "UnmapViewOfFile (refcount>0): " << ipc_name_;
         UnmapViewOfFile(map_ptr_);
-      }
 #endif
+      }
 #ifndef _WIN32
       // On Linux, munmap is always safe since it only unmaps virtual memory;
       // the shared memory file in /dev/shm persists until shm_unlink.
