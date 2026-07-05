@@ -500,13 +500,12 @@ std::shared_ptr<MemoryMapReaderAllocation> RebuildMemoryMapReaderAllocation(
     const std::string &ipc_name, size_t size) {
 #ifdef _WIN32
   HANDLE hMap = OpenFileMappingA(FILE_MAP_ALL_ACCESS, FALSE, ipc_name.c_str());
-  PADDLE_ENFORCE_NE(
-      hMap,
-      nullptr,
-      common::errors::Unavailable(
-          "OpenFileMappingA for reader %s failed, error: %lu",
-          ipc_name.c_str(),
-          GetLastError()));
+  PADDLE_ENFORCE_NE(hMap,
+                    nullptr,
+                    common::errors::Unavailable(
+                        "OpenFileMappingA for reader %s failed, error: %lu",
+                        ipc_name.c_str(),
+                        GetLastError()));
 
   void *ptr = MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0, 0, size);
   PADDLE_ENFORCE_NE(ptr,
