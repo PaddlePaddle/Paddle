@@ -84,8 +84,8 @@ class PADDLE_API RefcountedMemoryMapAllocation : public MemoryMapAllocation {
   RefcountedMemoryMapAllocation(void *ptr,
                                 size_t size,
                                 std::string ipc_name,
-                                int flags,
                                 intptr_t fd,
+                                int flags,
                                 int buffer_id = -1);
 
   void incref();

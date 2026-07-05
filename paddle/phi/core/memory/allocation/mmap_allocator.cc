@@ -242,7 +242,7 @@ AllocateRefcountedMemoryMapAllocation(std::string filename,
                                       int flags,
                                       size_t size,
                                       int buffer_id) {
-  intptr_t fd = 0;
+  intptr_t fd = shared_fd;
   void *base_ptr = nullptr;
   if (buffer_id == -1) {
     AllocateMemoryMap(filename, &fd, flags, size + mmap_alignment, &base_ptr);
