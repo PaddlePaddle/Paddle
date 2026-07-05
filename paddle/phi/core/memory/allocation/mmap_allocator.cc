@@ -375,12 +375,12 @@ void RefcountedMemoryMapAllocation::close() {
 #endif
       } else {
 #ifdef _WIN32
-        // Refcount > 0: prevent MemoryMapAllocation::close() (base class
-        // destructor) from calling CloseHandle. On Windows, closing the
-        // HANDLE destroys the named section, even when refcount > 0.
-        // The HANDLE will be closed when refcount reaches 0, or when the
-        // process exits (OS cleanup).
-        // Also unmap the view to prevent mapped-view leak per batch.
+        // Refcount > 0: transfer the HANDLE to WindowsHandleKeeper so it
+        // stays open (keeping the named section alive for readers) but is
+        // properly closed during worker cleanup (CloseAll) rather than
+        // leaked until process exit.
+        WindowsHandleKeeper::Instance().Insert(ipc_name_, fd_);
+        fd_ = -1;
         closed_fd_ = true;
         VLOG(6) << "UnmapViewOfFile (refcount>0): " << ipc_name_;
         UnmapViewOfFile(map_ptr_);
@@ -580,6 +580,11 @@ void MemoryMapFdSet::Clear() {
 #endif
   }
   fd_set_.clear();
+#ifdef _WIN32
+  // Close pending HANDLEs that were kept open for cross-process section
+  // lifecycle (refcount > 0 path in RefcountedMemoryMapAllocation::close).
+  WindowsHandleKeeper::Instance().CloseAll();
+#endif
 }
 
 MemoryMapFdSet::~MemoryMapFdSet() { Clear(); }
@@ -646,5 +651,29 @@ void MemoryMapAllocationPool::Clear() {
 }
 
 MemoryMapAllocationPool::~MemoryMapAllocationPool() { Clear(); }  // NOLINT
+
+#ifdef _WIN32
+WindowsHandleKeeper &WindowsHandleKeeper::Instance() {
+  static WindowsHandleKeeper keeper;
+  return keeper;
+}
+
+void WindowsHandleKeeper::Insert(const std::string &ipc_name, intptr_t fd) {
+  std::lock_guard<std::mutex> lock(mtx_);
+  handles_[ipc_name] = fd;
+}
+
+void WindowsHandleKeeper::CloseAll() {
+  std::lock_guard<std::mutex> lock(mtx_);
+  for (auto &pair : handles_) {
+    if (pair.second != -1) {
+      CloseHandle(reinterpret_cast<HANDLE>(pair.second));
+    }
+  }
+  handles_.clear();
+}
+
+WindowsHandleKeeper::~WindowsHandleKeeper() { CloseAll(); }  // NOLINT
+#endif
 
 }  // namespace paddle::memory::allocation

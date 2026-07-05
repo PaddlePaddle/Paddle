@@ -19,6 +19,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 
@@ -170,6 +171,24 @@ class PADDLE_API MemoryMapFdSet {
   std::unordered_set<std::string> fd_set_;
   std::mutex mtx_;
 };
+
+#ifdef _WIN32
+// Tracks HANDLEs from CreateFileMappingA that must stay open (refcount > 0)
+// to keep the named section alive for readers. These HANDLEs are closed
+// during worker cleanup via MemoryMapFdSet::Clear() / _cleanup_mmap_fds.
+class PADDLE_API WindowsHandleKeeper {
+ public:
+  static WindowsHandleKeeper &Instance();  // NOLINT
+  void Insert(const std::string &ipc_name, intptr_t fd);
+  void CloseAll();
+  ~WindowsHandleKeeper();
+
+ private:
+  WindowsHandleKeeper() = default;
+  std::unordered_map<std::string, intptr_t> handles_;
+  std::mutex mtx_;
+};
+#endif
 
 class MemoryMapInfo {
  public:
