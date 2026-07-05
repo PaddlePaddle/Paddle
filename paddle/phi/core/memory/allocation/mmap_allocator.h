@@ -85,7 +85,7 @@ class PADDLE_API RefcountedMemoryMapAllocation : public MemoryMapAllocation {
                                 size_t size,
                                 std::string ipc_name,
                                 int flags,
-                                int fd,
+                                intptr_t fd,
                                 int buffer_id = -1);
 
   void incref();
@@ -99,7 +99,7 @@ class PADDLE_API RefcountedMemoryMapAllocation : public MemoryMapAllocation {
   void resetBaseptr();
 };
 
-PADDLE_API void AllocateMemoryMap(std::string *filename,
+PADDLE_API void AllocateMemoryMap(std::string &filename,
                                   intptr_t *shared_fd,
                                   int flags,
                                   size_t size,

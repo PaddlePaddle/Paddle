@@ -69,7 +69,7 @@ struct CountInfo {
   std::atomic<int> refcount;
 };
 
-void AllocateMemoryMap(std::string *filename,
+void AllocateMemoryMap(std::string &filename,
                        intptr_t *shared_fd,
                        int flags,
                        size_t size,
@@ -79,19 +79,19 @@ void AllocateMemoryMap(std::string *filename,
   // For reader path (MAPPED_NOCREATE): open existing section, never create.
   if (flags & MAPPED_NOCREATE) {
     HANDLE hMap =
-        OpenFileMappingA(FILE_MAP_ALL_ACCESS, FALSE, filename->c_str());
+        OpenFileMappingA(FILE_MAP_ALL_ACCESS, FALSE, filename.c_str());
     PADDLE_ENFORCE_NE(hMap,
                       nullptr,
                       common::errors::Unavailable(
                           "OpenFileMappingA failed for %s, error: %lu",
-                          filename->c_str(),
+                          filename.c_str(),
                           GetLastError()));
     void *ptr = MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0, 0, size);
     PADDLE_ENFORCE_NE(ptr,
                       nullptr,
                       common::errors::Unavailable(
                           "MapViewOfFile for reader %s failed, error: %lu",
-                          filename->c_str(),
+                          filename.c_str(),
                           GetLastError()));
     *shared_fd = reinterpret_cast<intptr_t>(hMap);
     *map_ptr_ = ptr;
@@ -106,7 +106,7 @@ void AllocateMemoryMap(std::string *filename,
                                      protect,
                                      static_cast<DWORD>(size >> 32),
                                      static_cast<DWORD>(size & 0xffffffffULL),
-                                     filename->c_str());
+                                     filename.c_str());
 
     if (hMap == NULL) {
       DWORD err = GetLastError();
@@ -115,7 +115,7 @@ void AllocateMemoryMap(std::string *filename,
               "[PADDLE_MMAP] PID=%lu CreateFileMapping FAILED "
               "name=%s size=%zu flags=0x%x attempt=%d err=%lu\n",
               GetCurrentProcessId(),
-              filename->c_str(),
+              filename.c_str(),
               size,
               flags,
               attempt,
@@ -123,7 +123,7 @@ void AllocateMemoryMap(std::string *filename,
       fflush(stderr);
       PADDLE_THROW(common::errors::Unavailable(
           "CreateFileMapping failed for %s, error: %lu",
-          filename->c_str(),
+          filename.c_str(),
           err));
     }
 
@@ -131,7 +131,7 @@ void AllocateMemoryMap(std::string *filename,
       CloseHandle(hMap);
       VLOG(3) << "[PADDLE_MMAP] PID=" << GetCurrentProcessId()
               << " name collision, retrying attempt=" << attempt
-              << " name=" << *filename;
+              << " name=" << filename;
       filename = GetIPCName();  // name collision; retry with fresh name
       continue;
     }
@@ -145,12 +145,12 @@ void AllocateMemoryMap(std::string *filename,
               "[PADDLE_MMAP] PID=%lu MapViewOfFile FAILED "
               "name=%s size=%zu err=%lu\n",
               GetCurrentProcessId(),
-              filename->c_str(),
+              filename.c_str(),
               size,
               err);
       fflush(stderr);
       PADDLE_THROW(common::errors::Unavailable(
-          "MapViewOfFile failed for %s, error: %lu", filename->c_str(), err));
+          "MapViewOfFile failed for %s, error: %lu", filename.c_str(), err));
     }
 
     // On Windows, always keep the HANDLE so the section stays alive
@@ -245,7 +245,7 @@ AllocateRefcountedMemoryMapAllocation(std::string filename,
   intptr_t fd = 0;
   void *base_ptr = nullptr;
   if (buffer_id == -1) {
-    AllocateMemoryMap(&filename, &fd, flags, size + mmap_alignment, &base_ptr);
+    AllocateMemoryMap(filename, &fd, flags, size + mmap_alignment, &base_ptr);
     VLOG(4) << "Create and mmap a new shm: " << filename;
   } else {
     base_ptr = MemoryMapAllocationPool::Instance().GetById(buffer_id).mmap_ptr_;
@@ -263,7 +263,7 @@ RefcountedMemoryMapAllocation::RefcountedMemoryMapAllocation(
     void *ptr,
     size_t size,
     std::string ipc_name,
-    int fd,
+    intptr_t fd,
     int flags,
     int buffer_id)
     : MemoryMapAllocation(ptr, size, ipc_name, fd, flags) {
