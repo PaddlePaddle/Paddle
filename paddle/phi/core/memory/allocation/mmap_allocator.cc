@@ -35,7 +35,7 @@
 #ifdef _WIN32
 static inline int GetPid() { return static_cast<int>(GetCurrentProcessId()); }
 #else
-static inline int GetPid() { return GetPid(); }
+static inline int GetPid() { return getpid(); }
 #endif
 
 #ifdef _WIN32
@@ -70,7 +70,7 @@ struct CountInfo {
 };
 
 void AllocateMemoryMap(std::string *filename,
-                       int *shared_fd,
+                       intptr_t *shared_fd,
                        int flags,
                        size_t size,
                        void **map_ptr_) {
@@ -238,20 +238,18 @@ void AllocateMemoryMap(std::string *filename,
 
 std::shared_ptr<RefcountedMemoryMapAllocation>
 AllocateRefcountedMemoryMapAllocation(std::string filename,
-                                      int shared_fd,
+                                      intptr_t shared_fd,
                                       int flags,
                                       size_t size,
                                       int buffer_id) {
-  int fd = shared_fd;
+  intptr_t fd = 0;
   void *base_ptr = nullptr;
   if (buffer_id == -1) {
-    intptr_t fd_ptr = 0;
-    AllocateMemoryMap(
-        &filename, &fd_ptr, flags, size + mmap_alignment, &base_ptr);
-    int fd = static_cast<int>(fd_ptr);
+    AllocateMemoryMap(&filename, &fd, flags, size + mmap_alignment, &base_ptr);
     VLOG(4) << "Create and mmap a new shm: " << filename;
   } else {
     base_ptr = MemoryMapAllocationPool::Instance().GetById(buffer_id).mmap_ptr_;
+    fd = shared_fd;
     VLOG(4) << "Get a cached shm " << filename;
   }
   void *aligned_base_ptr =

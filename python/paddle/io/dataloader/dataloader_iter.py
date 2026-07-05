@@ -468,7 +468,6 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             worker = multiprocessing.Process(
                 target=_worker_loop,
                 args=(
-                    os.getpid(),
                     self._dataset,
                     self._dataset_kind,
                     indices_queue,
@@ -483,6 +482,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     self._use_shared_memory,
                     self._base_seed,
                     self._worker_shm_buffer_size,
+                    os.getpid(),
                 ),
             )
             worker.daemon = True
