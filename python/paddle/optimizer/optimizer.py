@@ -2043,10 +2043,7 @@ class Optimizer:
                 parameters,
             )
         )
-        if self._maximize is True:
-            params_grads = [(param, -param.grad) for param in parameters]
-        else:
-            params_grads = [(param, param.grad) for param in parameters]
+        params_grads = [(param, param.grad) for param in parameters]
         optimize_ops = self.apply_gradients(params_grads)
 
     @imperative_base.no_grad()
@@ -2119,24 +2116,15 @@ class Optimizer:
                         hasattr(param, "main_grad")
                         and param.main_grad is not None
                     ):
-                        if self._maximize is True:
-                            params_grads.append((param, -param.main_grad))
-                        else:
-                            params_grads.append((param, param.main_grad))
+                        params_grads.append((param, param.main_grad))
                 elif (
                     hasattr(param, "main_grad") and param.main_grad is not None
                 ):
-                    if self._maximize is True:
-                        params_grads.append((param, -param.main_grad))
-                    else:
-                        params_grads.append((param, param.main_grad))
+                    params_grads.append((param, param.main_grad))
                 else:
                     if param._grad_ivar() is not None:
                         grad_var = param._grad_ivar()
-                        if self._maximize is True:
-                            params_grads.append((param, -grad_var))
-                        else:
-                            params_grads.append((param, grad_var))
+                        params_grads.append((param, grad_var))
 
             self._apply_optimize(
                 loss=None,
@@ -2154,10 +2142,7 @@ class Optimizer:
                         continue
                     if param._grad_ivar() is not None:
                         grad_var = param._grad_ivar()
-                        if self._maximize is True:
-                            params_grads['params'].append((param, -grad_var))
-                        else:
-                            params_grads['params'].append((param, grad_var))
+                        params_grads['params'].append((param, grad_var))
                 params_grads.update(
                     {k: v for k, v in param_group.items() if k != 'params'}
                 )

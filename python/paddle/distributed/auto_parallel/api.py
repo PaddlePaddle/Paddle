@@ -1868,8 +1868,6 @@ class _ShardOptimizer(Optimizer):
                 new_grad = _dtensor_from_local(
                     new_grad, param.process_mesh, [dist.Replicate()]
                 )
-                if self._maximize is True:
-                    new_grad = -new_grad
                 new_grads.append(new_grad)
 
             if self.enable_sharding_overlap:
