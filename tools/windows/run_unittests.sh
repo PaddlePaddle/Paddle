@@ -717,89 +717,6 @@ function run_unittest_cpu() {
     wait;
 }
 
-diagnosed_kernel_factory_loader=0
-
-function diagnose_test_kernel_factory_loader() {
-    set +e
-    echo "============================================================"
-    echo "Diagnose Windows loader state for test_kernel_factory"
-    echo "PWD=$(pwd)"
-    echo "CUDA_PATH=${CUDA_PATH}"
-    echo "CUDA_PATH_V13_3=${CUDA_PATH_V13_3}"
-    echo "CUDA_PATH_V11_7=${CUDA_PATH_V11_7}"
-    echo "PATH=${PATH}"
-    echo "------------------------------------------------------------"
-    echo "PATH entries from PowerShell:"
-    powershell -NoProfile -Command '$env:PATH -split ";" | ForEach-Object { "PATH> $_" }' || true
-    echo "------------------------------------------------------------"
-    echo "Tool versions and locations:"
-    nvcc --version || true
-    cmd.exe /c "where nvcc" || true
-    cmd.exe /c "where dumpbin" || true
-    echo "------------------------------------------------------------"
-    echo "CTest metadata for test_kernel_factory:"
-    ctest -N -R "^test_kernel_factory$" -V || true
-
-    echo "------------------------------------------------------------"
-    echo "Known test_kernel_factory binaries:"
-    find . -maxdepth 6 -iname "test_kernel_factory.exe" -print || true
-
-    local kernel_factory_exe="test/cpp/phi/core/test_kernel_factory.exe"
-    if [ -f "${kernel_factory_exe}" ]; then
-        ls -l "${kernel_factory_exe}" || true
-        dumpbin /dependents "${kernel_factory_exe}" || true
-    else
-        echo "${kernel_factory_exe} does not exist"
-    fi
-
-    echo "------------------------------------------------------------"
-    echo "Built Paddle DLL candidates:"
-    find . -maxdepth 6 \
-        \( -iname "phi.dll" \
-        -o -iname "common.dll" \
-        -o -iname "libpaddle.dll" \
-        -o -iname "paddle_inference.dll" \
-        -o -iname "paddle*.dll" \) \
-        -print || true
-
-    for dll in phi.dll common.dll libpaddle.dll paddle_inference.dll \
-        cudart64_*.dll cublas64_*.dll cublasLt64_*.dll cusparse64_*.dll \
-        cusparseLt64_*.dll cusolver64_*.dll cufft64_*.dll curand64_*.dll \
-        nvrtc64_*.dll cudnn*.dll onnxruntime.dll mkldnn.dll dnnl.dll \
-        libiomp5md.dll gflags.dll glog.dll; do
-        echo "------------------------------------------------------------"
-        echo "where ${dll}"
-        cmd.exe /c "where ${dll}" || true
-    done
-
-    for dir in \
-        "python/paddle/libs" \
-        "python/paddle/base" \
-        "paddle/fluid/pybind" \
-        "paddle/fluid/inference" \
-        "paddle/fluid/inference/capi_exp" \
-        "paddle/phi" \
-        "paddle/common" \
-        "third_party/install/onednn/lib" \
-        "third_party/install/mklml/lib" \
-        "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v13.3/bin" \
-        "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v13.3/bin/x64" \
-        "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v13.3/lib/x64" \
-        "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.7/bin"; do
-        echo "------------------------------------------------------------"
-        echo "Directory snapshot: ${dir}"
-        if [ -d "${dir}" ]; then
-            ls -1 "${dir}"/*.dll "${dir}"/*.lib 2>/dev/null | sed 's#^.*/##' | sort | head -200 || true
-        else
-            echo "missing"
-        fi
-    done
-
-    echo "End diagnose Windows loader state for test_kernel_factory"
-    echo "============================================================"
-    set -e
-}
-
 function run_unittest_gpu() {
     test_case=$1
     parallel_job=$2
@@ -838,10 +755,6 @@ function run_unittest_gpu() {
     if nvcc --version | grep 13.3; then
         echo "CUDA version is 13.3, disable wingpu_cuda133_test"
         disable_wingpu_test=${disable_wingpu_cuda133_test}
-        if [ "${diagnosed_kernel_factory_loader}" == "0" ]; then
-            diagnose_test_kernel_factory_loader
-            diagnosed_kernel_factory_loader=1
-        fi
     fi
 
     tmpfile=$tmp_dir/$RANDOM
