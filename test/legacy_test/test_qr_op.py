@@ -185,17 +185,19 @@ class TestQrAPI(unittest.TestCase):
             if core.is_compiled_with_cuda() or is_custom_device():
                 places.append(get_device())
             for place in places:
-                np_result = np.linalg.qr(a, mode=mode)
                 if mode == "r":
-                    np_r = np_result
-                    np_q = np.empty(0)
+                    np_r = np.linalg.qr(a, mode=mode)
                 else:
-                    np_q, np_r = np_result
+                    np_q, np_r = np.linalg.qr(a, mode=mode)
 
                 x = paddle.to_tensor(a, dtype=dtype, place=place)
-                q, r = paddle.linalg.qr(x, mode=mode)
-                np.testing.assert_allclose(q, np_q, rtol=1e-05, atol=1e-05)
-                np.testing.assert_allclose(r, np_r, rtol=1e-05, atol=1e-05)
+                if mode == "r":
+                    q, r = paddle.linalg.qr(x, mode=mode)
+                    np.testing.assert_allclose(r, np_r, rtol=1e-05, atol=1e-05)
+                else:
+                    q, r = paddle.linalg.qr(x, mode=mode)
+                    np.testing.assert_allclose(q, np_q, rtol=1e-05, atol=1e-05)
+                    np.testing.assert_allclose(r, np_r, rtol=1e-05, atol=1e-05)
 
         with dygraph_guard():
             np.random.seed(7)
@@ -241,51 +243,59 @@ class TestQrAPI(unittest.TestCase):
                 a = np.random.rand(*shape).astype(np_dtype)
             places = []
             places.append(paddle.CPUPlace())
-            if core.is_compiled_with_cuda() or is_custom_device():
-                if mode != "r":
-                    places.append(get_device_place())
+            if (
+                core.is_compiled_with_cuda() or is_custom_device()
+            ) or is_custom_device():
+                places.append(get_device_place())
 
             for place in places:
                 with static.program_guard(static.Program(), static.Program()):
-                    np_result = np.linalg.qr(a, mode=mode)
                     if mode == "r":
-                        np_r = np_result
-                        np_q = np.empty(0)
+                        np_r = np.linalg.qr(a, mode=mode)
                     else:
-                        np_q, np_r = np_result
+                        np_q, np_r = np.linalg.qr(a, mode=mode)
                     x = paddle.static.data(
                         name="input", shape=shape, dtype=dtype
                     )
-                    q, r = paddle.linalg.qr(x, mode=mode)
-                    exe = base.Executor(place=place)
-                    fetches = exe.run(
-                        feed={"input": a},
-                        fetch_list=[q, r],
-                    )
-                    np.testing.assert_allclose(
-                        fetches[0], np_q, rtol=1e-05, atol=1e-05
-                    )
-                    np.testing.assert_allclose(
-                        fetches[1], np_r, rtol=1e-05, atol=1e-05
-                    )
+                    if mode == "r":
+                        q, r = paddle.linalg.qr(x, mode=mode)
+                        exe = base.Executor(place=place)
+                        fetches = exe.run(
+                            feed={"input": a},
+                            fetch_list=[q, r],
+                        )
+                        np.testing.assert_allclose(
+                            fetches[1], np_r, rtol=1e-05, atol=1e-05
+                        )
+                    else:
+                        q, r = paddle.linalg.qr(x, mode=mode)
+                        exe = base.Executor(place=place)
+                        fetches = exe.run(
+                            feed={"input": a},
+                            fetch_list=[q, r],
+                        )
+                        np.testing.assert_allclose(
+                            fetches[0], np_q, rtol=1e-05, atol=1e-05
+                        )
+                        np.testing.assert_allclose(
+                            fetches[1], np_r, rtol=1e-05, atol=1e-05
+                        )
 
         with static_guard():
             np.random.seed(7)
             tensor_shapes = [
+                (0, 3),
                 (3, 5),
                 (5, 5),
                 (5, 3),  # 2-dim Tensors
-                (2, 3, 5),
-                (3, 5, 5),
+                (0, 3, 5),
+                (4, 0, 5),
+                (5, 4, 0),
                 (4, 5, 3),  # 3-dim Tensors
+                (0, 5, 3, 5),
                 (2, 5, 3, 5),
                 (3, 5, 5, 5),
-                (
-                    4,
-                    5,
-                    5,
-                    3,
-                ),  # 4-dim Tensors (skip zero-dim shapes due to kernel limitation)
+                (4, 5, 5, 3),  # 4-dim Tensors
             ]
             modes = ["reduced", "complete", "r"]
             dtypes = ["float32", "float64", 'complex64', 'complex128']
@@ -293,39 +303,6 @@ class TestQrAPI(unittest.TestCase):
                 tensor_shapes, modes, dtypes
             ):
                 run_qr_static(tensor_shape, mode, dtype)
-
-
-class TestQrAPICompatibility(unittest.TestCase):
-    def test_dygraph_compatibility(self):
-        paddle.disable_static()
-        x = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]).astype(
-            'float64'
-        )
-
-        # 1. Default mode (reduced)
-        q1, r1 = paddle.linalg.qr(x)
-        # 2. Paddle keyword arguments
-        q2, r2 = paddle.linalg.qr(x=x, mode='reduced')
-        # 3. PyTorch keyword arguments (alias)
-        q3, r3 = paddle.linalg.qr(input=x)
-        # 4. mode='r' always returns (Q, R) tuple
-        q4, r4 = paddle.linalg.qr(x, mode='r')
-        self.assertEqual(q4.shape, [0])
-        # 5. mode='complete'
-        q5, r5 = paddle.linalg.qr(x, mode='complete')
-        self.assertEqual(q5.shape, [3, 3])
-        self.assertEqual(r5.shape, [3, 2])
-        # 6. Tensor method
-        q6, r6 = x.qr()
-        # 7. Tensor method with mode='r'
-        q7, r7 = x.qr('r')
-        self.assertEqual(q7.shape, [0])
-        # 8. out parameter
-        q_out = paddle.empty([3, 2], dtype='float64')
-        r_out = paddle.empty([2, 2], dtype='float64')
-        result = paddle.linalg.qr(x, out=(q_out, r_out))
-        self.assertIs(result[0], q_out)
-        self.assertIs(result[1], r_out)
 
 
 if __name__ == "__main__":

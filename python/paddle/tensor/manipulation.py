@@ -1219,7 +1219,7 @@ def fill_diagonal_(
 
 
 @dygraph_only
-@fill_diagonal_inplace_decorator()
+@fill_diagonal_inplace_decorator
 def fill_diagonal_(
     x: Tensor,
     value: float,
@@ -5012,7 +5012,7 @@ def tile(
 ) -> Tensor: ...
 
 
-@tile_decorator()
+@tile_decorator
 def tile(
     x: Tensor,
     repeat_times: TensorOrTensors | Sequence[int],
@@ -5301,7 +5301,7 @@ def expand(
 ) -> Tensor: ...
 
 
-@expand_decorator()
+@expand_decorator
 def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
     """
 
@@ -5462,7 +5462,7 @@ def expand_copy(
 ) -> Tensor: ...
 
 
-@expand_decorator()
+@expand_decorator
 def expand_copy(
     x: Tensor | None = None,
     shape: ShapeLike | None = None,
@@ -5525,7 +5525,7 @@ def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor: ...
 def reshape(input: Tensor, *shape: int) -> Tensor: ...
 
 
-@reshape_decorator()
+@reshape_decorator
 def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
     """
     Changes the shape of ``x`` without changing its data.
@@ -7949,7 +7949,7 @@ def index_add(
 ) -> Tensor: ...
 
 
-@index_add_decorator()
+@index_add_decorator
 def index_add(
     x: Tensor,
     index: Tensor,
@@ -8057,7 +8057,7 @@ def index_add_(
 ) -> Tensor: ...
 
 
-@index_add_decorator()
+@index_add_decorator
 @inplace_apis_in_dygraph_only
 def index_add_(
     x: Tensor,
@@ -8327,7 +8327,7 @@ def view(
 
 
 @dygraph_only
-@view_decorator()
+@view_decorator
 def view(
     x: Tensor,
     shape_or_dtype: Sequence[int] | DTypeLike,
@@ -8583,7 +8583,7 @@ def index_fill(
 ) -> Tensor: ...
 
 
-@index_fill_decorator()
+@index_fill_decorator
 def index_fill(
     x: Tensor, index: Tensor, axis: int, value: float, name: str | None = None
 ):
@@ -8650,7 +8650,7 @@ def index_fill_(
 
 
 @inplace_apis_in_dygraph_only
-@index_fill_decorator()
+@index_fill_decorator
 def index_fill_(
     x: Tensor, index: Tensor, axis: int, value: float, name: str | None = None
 ):
@@ -8858,7 +8858,7 @@ def slice_scatter(
 ) -> Tensor: ...
 
 
-@slice_scatter_decorator()
+@slice_scatter_decorator
 def slice_scatter(
     x: Tensor,
     value: Tensor,

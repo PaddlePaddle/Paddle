@@ -149,8 +149,10 @@ class ELU(Layer):
         return F.elu(x, self._alpha, self._inplace, self._name)
 
     def extra_repr(self) -> str:
-        name_str = f', name={self._name}' if self._name else ''
-        return f'alpha={self._alpha}, inplace={self._inplace}{name_str}'
+        parts = [f'alpha={self._alpha}']
+        parts.append(f'inplace={self._inplace}') if self._inplace else None
+        parts.append(f'name={self._name}') if self._name else None
+        return ', '.join(parts)
 
 
 class GLU(Layer):

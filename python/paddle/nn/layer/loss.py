@@ -681,7 +681,7 @@ class HSigmoidLoss(Layer):
         return out
 
 
-class MSELoss(_Loss):
+class MSELoss(Layer):
     r"""
     **Mean Square Error Loss**
     Computes the mean square error (squared L2 norm) of given input and label.
@@ -731,6 +731,21 @@ class MSELoss(_Loss):
 
     """
 
+    reduction: _ReduceMode
+
+    @legacy_reduction_decorator(
+        overload_args_list=['size_average', 'reduce', 'reduction'],
+        is_method=True,
+    )
+    def __init__(self, reduction: _ReduceMode = 'mean'):
+        super().__init__()
+        if reduction not in ['sum', 'mean', 'none']:
+            raise ValueError(
+                "'reduction' in 'MSELoss' should be 'sum', 'mean' or 'none', "
+                f"but received {reduction}."
+            )
+        self.reduction = reduction
+
     def forward(self, input: Tensor, label: Tensor) -> Tensor:
         if not in_dynamic_mode():
             base.data_feeder.check_variable_and_dtype(
@@ -755,7 +770,7 @@ class MSELoss(_Loss):
         return paddle.mean(square_out)
 
 
-class L1Loss(_Loss):
+class L1Loss(Layer):
     r"""
 
     Construct a callable object of the ``L1Loss`` class.
@@ -822,8 +837,29 @@ class L1Loss(_Loss):
 
     """
 
+    reduction: _ReduceMode
+    name: str | None
+
+    @legacy_reduction_decorator(
+        overload_args_list=['size_average', 'reduce', 'reduction'],
+        is_method=True,
+    )
+    def __init__(
+        self, reduction: _ReduceMode = 'mean', name: str | None = None
+    ) -> None:
+        if reduction not in ['sum', 'mean', 'none']:
+            raise ValueError(
+                "The value of 'reduction' in L1Loss should be 'sum', 'mean' or 'none', but "
+                f"received {reduction}, which is not allowed."
+            )
+        super().__init__()
+        self.reduction = reduction
+        self.name = name
+
     def forward(self, input: Tensor, label: Tensor) -> Tensor:
-        return paddle.nn.functional.l1_loss(input, label, self.reduction)
+        return paddle.nn.functional.l1_loss(
+            input, label, self.reduction, name=self.name
+        )
 
 
 class BCELoss(Layer):

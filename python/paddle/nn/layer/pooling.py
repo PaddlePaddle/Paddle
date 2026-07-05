@@ -680,7 +680,7 @@ class MaxPool1D(Layer):
     dilation: Size1
     name: str | None
 
-    @maxpool_layer_decorator()
+    @maxpool_layer_decorator
     def __init__(
         self,
         kernel_size: Size1,
@@ -812,7 +812,7 @@ class MaxPool2D(Layer):
     data_format: DataLayout2D
     name: str | None
 
-    @maxpool_layer_decorator()
+    @maxpool_layer_decorator
     def __init__(
         self,
         kernel_size: Size2,
@@ -935,7 +935,7 @@ class MaxPool3D(Layer):
     data_format: DataLayout3D
     name: str | None
 
-    @maxpool_layer_decorator()
+    @maxpool_layer_decorator
     def __init__(
         self,
         kernel_size: Size3,

@@ -34,7 +34,13 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from paddle import Tensor
-    from paddle._typing import DTypeLike, PlaceLike, ShapeLike
+    from paddle._typing import (
+        DTypeLike,
+        NestedNumericSequence,
+        PlaceLike,
+        ShapeLike,
+        TensorLike,
+    )
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.UINT8,
@@ -467,6 +473,37 @@ def monkey_patch_math_tensor():
             pin_memory=pin_memory,
         )
 
+    def _new_tensor_(
+        var: Tensor,
+        data: TensorLike | NestedNumericSequence,
+        dtype: DTypeLike | None = None,
+        device: PlaceLike | None = None,
+        requires_grad: bool = False,
+    ) -> Tensor:
+        """
+        Creates a new tensor from ``data`` with the same device and dtype as this tensor.
+
+        Args:
+            var (Tensor): A reference Tensor for default dtype and device.
+            data: Data for the new tensor. Can be a list, numpy array, or Tensor.
+            dtype (DTypeLike|None, optional): Desired data type. If None, uses
+                the dtype of this tensor. Default: None.
+            device (PlaceLike|None, optional): Desired device. If None, uses
+                the place of this tensor. Default: None.
+            requires_grad (bool, optional): If True, gradient computation will
+                be enabled for the new tensor. Default: False.
+
+        Returns:
+            Tensor: A new tensor on the specified device.
+        """
+        if dtype is None:
+            dtype = var.dtype
+        if device is None:
+            device = var.place
+        return paddle.to_tensor(
+            data, dtype=dtype, place=device, stop_gradient=not requires_grad
+        )
+
     @size_args_decorator_patch
     def _new_empty_(
         var: Tensor,
@@ -724,6 +761,7 @@ def monkey_patch_math_tensor():
         ('mH', _mH_),
         ('H', _H_),
         ('new_full', _new_full_),
+        ('new_tensor', _new_tensor_),
         ('new_empty', _new_empty_),
         ('new_ones', _new_ones_),
         ('new_zeros', _new_zeros_),

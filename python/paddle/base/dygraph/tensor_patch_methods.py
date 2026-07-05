@@ -126,7 +126,9 @@ def monkey_patch_tensor():
         attr_not_need_keys = [
             'grad',
             'T',
+            'H',
             'mT',
+            'mH',
             'place',
             '_place_str',
             'data',
@@ -973,36 +975,6 @@ def monkey_patch_tensor():
         new_tensor.copy_(self, True)
         return new_tensor
 
-    def new_tensor(
-        self: Tensor,
-        data: Any,
-        dtype: DTypeLike | None = None,
-        device: PlaceLike | None = None,
-        requires_grad: bool = False,
-    ) -> Tensor:
-        """
-        Creates a new tensor from ``data`` with the same device and dtype as this tensor.
-
-        Args:
-            data: Data for the new tensor. Can be a list, numpy array, or Tensor.
-            dtype (DTypeLike|None, optional): Desired data type. If None, uses
-                the dtype of this tensor. Default: None.
-            device (PlaceLike|None, optional): Desired device. If None, uses
-                the place of this tensor. Default: None.
-            requires_grad (bool, optional): If True, gradient computation will
-                be enabled for the new tensor. Default: False.
-
-        Returns:
-            Tensor: A new tensor on the specified device.
-        """
-        if dtype is None:
-            dtype = self.dtype
-        if device is None:
-            device = self.place
-        return paddle.to_tensor(
-            data, dtype=dtype, place=device, stop_gradient=not requires_grad
-        )
-
     # TODO(cleanup-legacy-ir): This method is for dy2st in legacy ir only
     # and should be removed after legacy ir is removed.
     @property
@@ -1160,7 +1132,7 @@ def monkey_patch_tensor():
     ) -> Tensor: ...
 
     @framework.dygraph_only
-    @tensor_cuda_decorator()
+    @tensor_cuda_decorator
     def cuda(
         self: Tensor,
         device_id: DeviceLike = None,
@@ -1770,7 +1742,6 @@ def monkey_patch_tensor():
         ("__bool__", __bool__),
         ("__nonzero__", __nonzero__),
         ("_to_static_var", _to_static_var),
-        ("new_tensor", new_tensor),
         ("set_value", set_value),
         ("block", block),
         ("backward", backward),

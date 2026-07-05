@@ -1687,7 +1687,7 @@ def nansum(
 ) -> Tensor: ...
 
 
-@nansum_decorator()
+@nansum_decorator
 def nansum(
     x: Tensor,
     axis: int | Sequence[int] | None = None,

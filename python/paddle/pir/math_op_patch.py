@@ -34,7 +34,13 @@ from . import Value
 
 if TYPE_CHECKING:
     from paddle import Tensor
-    from paddle._typing import DTypeLike, PlaceLike, ShapeLike
+    from paddle._typing import (
+        DTypeLike,
+        NestedNumericSequence,
+        PlaceLike,
+        ShapeLike,
+        TensorLike,
+    )
 
 
 _already_patch_value = False
@@ -828,6 +834,50 @@ def monkey_patch_value():
             device=device,
             requires_grad=requires_grad,
             pin_memory=pin_memory,
+        )
+
+    def _new_tensor_(
+        self,
+        data: TensorLike | NestedNumericSequence,
+        dtype: DTypeLike | None = None,
+        device: PlaceLike | None = None,
+        requires_grad: bool = False,
+    ):
+        """
+        Creates a new tensor from ``data`` with the same device and dtype as this tensor.
+
+        Args:
+            data: Data for the new tensor. Can be a list, numpy array, or Tensor.
+            dtype (DTypeLike|None, optional): Desired data type. If None, uses
+                the dtype of this tensor. Default: None.
+            device (PlaceLike|None, optional): Desired device. If None, uses
+                the place of this tensor. Default: None.
+            requires_grad (bool, optional): If True, gradient computation will
+                be enabled for the new tensor. Default: False.
+
+        Returns:
+            Tensor: A new tensor on the specified device.
+
+        Examples:
+            .. code-block:: pycon
+
+                >>> import paddle
+                >>> paddle.enable_static()
+
+                >>> x = paddle.ones(shape=[2, 3])
+                >>> y = x.new_tensor([1, 2, 3], dtype="float64", device="cpu")
+
+                >>> exe = paddle.static.Executor()
+                >>> y_np = exe.run(paddle.static.default_main_program(), fetch_list=[y])[0]
+                >>> print(y_np)
+                [1. 2. 3.]
+        """
+        if dtype is None:
+            dtype = self.dtype
+        if device is None:
+            device = self.place
+        return paddle.to_tensor(
+            data, dtype=dtype, place=device, stop_gradient=not requires_grad
         )
 
     @size_args_decorator_patch
@@ -1637,6 +1687,7 @@ def monkey_patch_value():
         ('mH', _mH_),
         ('H', _H_),
         ('new_full', _new_full_),
+        ('new_tensor', _new_tensor_),
         ('new_empty', _new_empty_),
         ('new_ones', _new_ones_),
         ('new_zeros', _new_zeros_),

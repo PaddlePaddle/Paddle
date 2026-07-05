@@ -97,7 +97,7 @@ def transpose(
 ) -> Tensor: ...
 
 
-@transpose_decorator()
+@transpose_decorator
 def transpose(
     x: Tensor, perm: Sequence[int], name: str | None = None
 ) -> Tensor:
@@ -226,7 +226,7 @@ def transpose(
         return out
 
 
-@transpose_decorator()
+@transpose_decorator
 @inplace_apis_in_dygraph_only
 def transpose_(x, perm, name=None):
     r"""

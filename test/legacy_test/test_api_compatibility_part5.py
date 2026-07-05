@@ -3124,28 +3124,7 @@ class TestGumbelSoftmaxAPI(unittest.TestCase):
         # Verify hard=True returns one-hot
         self.assertTrue((out4.sum(axis=-1) == 1.0).all())
 
-        paddle.enable_static()
-
-
-# Test gt_ compatibility (inplace alias for greater_than_)
-class TestGtInplaceAPI(unittest.TestCase):
-    def setUp(self):
-        np.random.seed(2025)
-        self.np_x = np.array([1.0, 3.0, 2.0]).astype("float32")
-        self.np_y = np.array([2.0, 1.0, 2.0]).astype("float32")
-
-    def test_dygraph_Compatibility(self):
-        paddle.disable_static()
-
-        # Test gt_ as alias for greater_than_
-        x = paddle.to_tensor(self.np_x.copy())
-        y = paddle.to_tensor(self.np_y)
-        result = x.gt_(y)
-        np.testing.assert_allclose(
-            result.numpy(), (self.np_x > self.np_y).astype("float32"), rtol=1e-5
-        )
-
-        paddle.enable_static()
+    paddle.enable_static()
 
 
 # Test set_default_device compatibility
@@ -3214,6 +3193,29 @@ class TestNewTensorAPI(unittest.TestCase):
         out2 = x.new_tensor(self.np_data, requires_grad=False)
         self.assertTrue(out2.stop_gradient)
 
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[3], dtype="float32")
+
+            # Test new_tensor with data
+            out = x.new_tensor(self.np_data)
+            out2 = x.new_tensor(self.np_data, dtype="float64")
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                feed={"x": np.array([1, 2, 3], dtype="float32")},
+                fetch_list=[out, out2],
+            )
+        self.assertEqual(fetches[0].shape, (2, 3))
+        self.assertEqual(fetches[0].dtype, np.float32)
+        np.testing.assert_allclose(fetches[0], self.np_data, rtol=1e-5)
+
+        self.assertEqual(fetches[1].dtype, np.float64)
         paddle.enable_static()
 
 
@@ -3799,54 +3801,6 @@ class TestPreluAPI(unittest.TestCase):
                 np.testing.assert_allclose(out, expected)
 
 
-# Test nn.functional.instance_norm compatibility (input alias for x)
-class TestInstanceNormAPI(unittest.TestCase):
-    def setUp(self):
-        np.random.seed(2025)
-        self.np_x = np.random.rand(1, 2, 2, 3).astype("float32")
-
-    def test_dygraph_Compatibility(self):
-        paddle.disable_static()
-        x = paddle.to_tensor(self.np_x)
-
-        # 1. Paddle positional arguments
-        out1 = paddle.nn.functional.instance_norm(x)
-        # 2. Paddle keyword arguments
-        out2 = paddle.nn.functional.instance_norm(x=x)
-        # 3. PyTorch keyword arguments (input alias, momentum=0.1 means Paddle momentum=0.9)
-        out3 = paddle.nn.functional.instance_norm(input=x, momentum=0.1)
-
-        expected = out1.numpy()
-        np.testing.assert_allclose(out1.numpy(), expected)
-        np.testing.assert_allclose(out2.numpy(), expected)
-        np.testing.assert_allclose(out3.numpy(), expected)
-
-        paddle.enable_static()
-
-    def test_static_Compatibility(self):
-        paddle.enable_static()
-        main = paddle.static.Program()
-        startup = paddle.static.Program()
-        with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(
-                name="x", shape=[1, 2, 2, 3], dtype="float32"
-            )
-
-            out1 = paddle.nn.functional.instance_norm(x)
-            out2 = paddle.nn.functional.instance_norm(x=x)
-            out3 = paddle.nn.functional.instance_norm(input=x, momentum=0.1)
-
-            exe = paddle.static.Executor()
-            fetches = exe.run(
-                main,
-                feed={"x": self.np_x},
-                fetch_list=[out1, out2, out3],
-            )
-            expected = fetches[0]
-            for out in fetches:
-                np.testing.assert_allclose(out, expected)
-
-
 # Test linalg.qr compatibility (A alias for x)
 class TestLinalgQrAPI(unittest.TestCase):
     def setUp(self):
@@ -4006,6 +3960,102 @@ class TestRmsNormFnAPI(unittest.TestCase):
             self.assertEqual(out.shape, x.shape)
 
         paddle.enable_static()
+
+
+# Test instance_norm compatibility
+class TestInstanceNormFnAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_x = np.random.rand(2, 3, 4, 4).astype("float32")
+        self.np_weight = np.ones(3).astype("float32")
+        self.np_bias = np.zeros(3).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        weight = paddle.to_tensor(self.np_weight)
+        bias = paddle.to_tensor(self.np_bias)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.nn.functional.instance_norm(x, weight=weight, bias=bias)
+        # 2. Paddle keyword arguments
+        out2 = paddle.nn.functional.instance_norm(x=x, weight=weight, bias=bias)
+
+        for out in [out1, out2]:
+            self.assertEqual(out.shape, x.shape)
+            self.assertEqual(out.dtype, paddle.float32)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=self.np_x.shape, dtype="float32"
+            )
+            weight = paddle.static.data(
+                name="weight", shape=[3], dtype="float32"
+            )
+            bias = paddle.static.data(name="bias", shape=[3], dtype="float32")
+
+            # 1. Paddle positional arguments
+            out1 = paddle.nn.functional.instance_norm(
+                x, weight=weight, bias=bias
+            )
+            # 2. Paddle keyword arguments
+            out2 = paddle.nn.functional.instance_norm(
+                x=x, weight=weight, bias=bias
+            )
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                feed={
+                    "x": self.np_x,
+                    "weight": self.np_weight,
+                    "bias": self.np_bias,
+                },
+                fetch_list=[out1, out2],
+            )
+        for f in fetches:
+            self.assertEqual(f.shape, self.np_x.shape)
+            self.assertEqual(f.dtype, np.float32)
+
+        paddle.enable_static()
+
+
+class TestQrAPICompatibility(unittest.TestCase):
+    def test_dygraph_compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]).astype(
+            'float64'
+        )
+
+        # 1. Default mode (reduced)
+        q1, r1 = paddle.linalg.qr(x)
+        # 2. Paddle keyword arguments
+        q2, r2 = paddle.linalg.qr(x=x, mode='reduced')
+        # 3. PyTorch keyword arguments (alias)
+        q3, r3 = paddle.linalg.qr(input=x)
+        # 4. mode='r' always returns (Q, R) tuple
+        q4, r4 = paddle.linalg.qr(x, mode='r')
+        self.assertEqual(q4.shape, [0])
+        # 5. mode='complete'
+        q5, r5 = paddle.linalg.qr(x, mode='complete')
+        self.assertEqual(q5.shape, [3, 3])
+        self.assertEqual(r5.shape, [3, 2])
+        # 6. Tensor method
+        q6, r6 = x.qr()
+        # 7. Tensor method with mode='r'
+        q7, r7 = x.qr('r')
+        self.assertEqual(q7.shape, [0])
+        # 8. out parameter
+        q_out = paddle.empty([3, 2], dtype='float64')
+        r_out = paddle.empty([2, 2], dtype='float64')
+        result = paddle.linalg.qr(x, out=(q_out, r_out))
+        self.assertIs(result[0], q_out)
+        self.assertIs(result[1], r_out)
 
 
 if __name__ == "__main__":
