@@ -500,20 +500,11 @@ std::shared_ptr<MemoryMapReaderAllocation> RebuildMemoryMapReaderAllocation(
     const std::string &ipc_name, size_t size) {
 #ifdef _WIN32
   HANDLE hMap = OpenFileMappingA(FILE_MAP_ALL_ACCESS, FALSE, ipc_name.c_str());
-  if (!hMap) {
-    // Fallback: create new section (non-refcounted path only).
-    hMap = CreateFileMappingA(INVALID_HANDLE_VALUE,
-                              NULL,
-                              PAGE_READWRITE,
-                              static_cast<DWORD>(size >> 32),
-                              static_cast<DWORD>(size & 0xffffffffULL),
-                              ipc_name.c_str());
-  }
   PADDLE_ENFORCE_NE(
       hMap,
       nullptr,
       common::errors::Unavailable(
-          "CreateFileMapping/OpenFileMapping for reader %s failed, error: %lu",
+          "OpenFileMappingA for reader %s failed, error: %lu",
           ipc_name.c_str(),
           GetLastError()));
 
@@ -654,8 +645,12 @@ MemoryMapAllocationPool::~MemoryMapAllocationPool() { Clear(); }  // NOLINT
 
 #ifdef _WIN32
 WindowsHandleKeeper &WindowsHandleKeeper::Instance() {
-  static WindowsHandleKeeper keeper;
-  return keeper;
+  // Leaky singleton: heap-allocated, never destructed, to avoid static
+  // destruction ordering conflicts with MemoryMapFdSet. Normal cleanup
+  // is driven by MemoryMapFdSet::Clear() / _cleanup_mmap_fds(); on
+  // abnormal process exit the OS reclaims the memory.
+  static auto *keeper = new WindowsHandleKeeper();
+  return *keeper;
 }
 
 void WindowsHandleKeeper::Insert(const std::string &ipc_name, intptr_t fd) {

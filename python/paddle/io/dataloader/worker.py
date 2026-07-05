@@ -116,7 +116,12 @@ class ParentWatchDog:
                 wintypes.DWORD(self._parent_pid),
             )
         if not handle:
-            return True  # Can't check, assume alive
+            err = ctypes.windll.kernel32.GetLastError()
+            # ERROR_INVALID_PARAMETER (87) means PID doesn't exist.
+            # ERROR_ACCESS_DENIED (5) means process may exist but access denied.
+            if err == 5:  # ERROR_ACCESS_DENIED
+                return True
+            return False
         exit_code = wintypes.DWORD(0)
         ctypes.windll.kernel32.GetExitCodeProcess(
             handle, ctypes.byref(exit_code)
