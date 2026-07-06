@@ -4,7 +4,7 @@
 	ignore = dirty
 [submodule "third_party/pocketfft"]
 	path = third_party/pocketfft
-	url = https://gitlab.mpcdf.mpg.de/mtr/pocketfft.git
+	url = https://github.com/mreineck/pocketfft.git
 	ignore = dirty
 [submodule "third_party/gflags"]
 	path = third_party/gflags
