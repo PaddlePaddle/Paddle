@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,18 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
+#include <gtest/gtest.h>
 
-namespace paddle::framework::ir {
+#include "paddle/pir/include/core/builtin_type_interfaces.h"
+#include "paddle/pir/include/core/type_utils.h"
 
-VarDesc *TryGetLatestVarDesc(const std::vector<details::VarHandle *> &vars) {
-  for (auto iter = vars.rbegin(); iter != vars.rend(); ++iter) {
-    auto *var_desc = (*iter)->Node()->Var();
-    if (var_desc != nullptr) {
-      return var_desc;
-    }
-  }
-  return nullptr;
+TEST(type_util_test, verify_compatible_dims) {
+  EXPECT_TRUE(
+      pir::VerifyCompatibleDims({pir::ShapedTypeInterface::kDynamic, 2, 2}));
+  EXPECT_FALSE(pir::VerifyCompatibleDims({2, 3}));
 }
-
-}  // namespace paddle::framework::ir

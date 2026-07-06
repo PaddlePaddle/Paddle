@@ -310,7 +310,7 @@ class PADDLE_API MultiScalePoolAllocator : public Allocator {
   virtual bool IsSmallRequest(size_t size) = 0;
 
  private:
-  phi::Allocation* AllocateImpl(size_t UNUSED) { return nullptr; }
+  phi::Allocation* AllocateImpl(size_t UNUSED) override { return nullptr; }
   std::shared_ptr<Allocator> small_allocator_;
   std::shared_ptr<Allocator> large_allocator_;
   size_t alignment_;
