@@ -3023,7 +3023,7 @@ class TestVstackAPI(unittest.TestCase):
         paddle.enable_static()
 
 
-# Test batch_norm compatibility
+# Test batch_norm compatibility (compat version)
 class TestBatchNormFnAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -3041,34 +3041,36 @@ class TestBatchNormFnAPI(unittest.TestCase):
         weight = paddle.to_tensor(self.np_weight)
         bias = paddle.to_tensor(self.np_bias)
 
-        # 1. Paddle Positional arguments
-        out1 = paddle.nn.functional.batch_norm(
-            x, running_mean, running_var, weight, bias
-        )
-        # 2. Paddle keyword arguments
-        out2 = paddle.nn.functional.batch_norm(
-            x=x,
-            running_mean=running_mean,
-            running_var=running_var,
-            weight=weight,
-            bias=bias,
-        )
-        # 3. PyTorch keyword arguments (alias)
-        out3 = paddle.nn.functional.batch_norm(
+        compat_bn = paddle.compat.nn.functional.batch_norm
+
+        # 1. PyTorch-style positional arguments
+        out1 = compat_bn(x, running_mean, running_var, weight, bias)
+        # 2. PyTorch-style keyword arguments
+        out2 = compat_bn(
             input=x,
             running_mean=running_mean,
             running_var=running_var,
             weight=weight,
             bias=bias,
         )
+        # 3. Paddle-style positional (should also work via compat, as it is
+        #    a wrapper calling paddle.nn.functional.batch_norm internally)
+        out3 = paddle.nn.functional.batch_norm(
+            x, running_mean, running_var, weight, bias
+        )
 
-        for out in [out1, out2, out3]:
+        for out in [out1, out2]:
             self.assertEqual(out.shape, x.shape)
             self.assertEqual(out.dtype, paddle.float32)
 
-        # Test momentum conversion: torch momentum=0.1 -> paddle momentum=0.9
-        # With PyTorch-style kwargs, momentum should be converted
-        out_torch_momentum = paddle.nn.functional.batch_norm(
+        # Verify compat output is consistent with paddle's native result
+        np.testing.assert_allclose(
+            out1.numpy(), out3.numpy(), rtol=1e-5, atol=1e-5
+        )
+
+        # 4. Test momentum conversion: torch momentum=0.1 -> paddle momentum=0.9
+        #    This verifies the compat wrapper correctly transforms the parameter.
+        out_torch_momentum = compat_bn(
             input=x,
             running_mean=running_mean,
             running_var=running_var,
@@ -3076,10 +3078,30 @@ class TestBatchNormFnAPI(unittest.TestCase):
             bias=bias,
             momentum=0.1,
         )
+        out_paddle_momentum = paddle.nn.functional.batch_norm(
+            x,
+            running_mean,
+            running_var,
+            weight,
+            bias,
+            momentum=0.9,
+        )
+        np.testing.assert_allclose(
+            out_torch_momentum.numpy(),
+            out_paddle_momentum.numpy(),
+            rtol=1e-5,
+            atol=1e-5,
+        )
 
-        # Wait, I can't easily compare since same momentum would give same result
-        # Just verify it runs without error
-        self.assertIsNotNone(out_torch_momentum)
+        # 5. Verify result matches PyTorch numerical expectation
+        #    PyTorch: y = (x - mean) / sqrt(var + eps) * weight + bias
+        #    With running_mean=0, running_var=1, weight=1, bias=0, eps=1e-5:
+        mean = x.mean(axis=(0, 2, 3))
+        var = x.var(axis=(0, 2, 3), unbiased=False)
+        expected = (x - mean) / (var + 1e-5).sqrt()
+        np.testing.assert_allclose(
+            out1.numpy(), expected.numpy(), rtol=1e-4, atol=1e-4
+        )
 
         paddle.enable_static()
 
@@ -3962,7 +3984,7 @@ class TestRmsNormFnAPI(unittest.TestCase):
         paddle.enable_static()
 
 
-# Test instance_norm compatibility
+# Test instance_norm compatibility (compat version)
 class TestInstanceNormFnAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -3976,14 +3998,34 @@ class TestInstanceNormFnAPI(unittest.TestCase):
         weight = paddle.to_tensor(self.np_weight)
         bias = paddle.to_tensor(self.np_bias)
 
-        # 1. Paddle Positional arguments
-        out1 = paddle.nn.functional.instance_norm(x, weight=weight, bias=bias)
-        # 2. Paddle keyword arguments
-        out2 = paddle.nn.functional.instance_norm(x=x, weight=weight, bias=bias)
+        compat_in = paddle.compat.nn.functional.instance_norm
+
+        # 1. PyTorch-style positional arguments
+        out1 = compat_in(x, weight=weight, bias=bias)
+        # 2. PyTorch-style keyword arguments
+        out2 = compat_in(input=x, weight=weight, bias=bias)
+        # 3. Paddle-style positional
+        out3 = paddle.nn.functional.instance_norm(x, weight=weight, bias=bias)
 
         for out in [out1, out2]:
             self.assertEqual(out.shape, x.shape)
             self.assertEqual(out.dtype, paddle.float32)
+
+        # Verify compat output matches native paddle
+        np.testing.assert_allclose(
+            out1.numpy(), out3.numpy(), rtol=1e-5, atol=1e-5
+        )
+
+        # 4. Verify result matches PyTorch numerical expectation
+        #    Instance norm on [N,C,H,W]: compute mean/var per (N,C) plane
+        mean = x.mean(axis=(2, 3), keepdim=True)
+        var = x.var(axis=(2, 3), keepdim=True, unbiased=False)
+        expected = (x - mean) / (var + 1e-5).sqrt() * weight.reshape(
+            [1, 3, 1, 1]
+        ) + bias.reshape([1, 3, 1, 1])
+        np.testing.assert_allclose(
+            out1.numpy(), expected.numpy(), rtol=1e-4, atol=1e-4
+        )
 
         paddle.enable_static()
 
