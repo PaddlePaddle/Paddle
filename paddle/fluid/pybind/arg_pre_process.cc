@@ -579,8 +579,9 @@ void EighPreProcess(Tensor* x, std::string* UPLO) {
                         "The input matrix must be batches of square matrices. "
                         "But received x's dimension: [%s]",
                         x_shape));
-  PADDLE_ENFORCE(
+  PADDLE_ENFORCE_EQ(
       *UPLO == "L" || *UPLO == "U",
+      true,
       phi::errors::InvalidArgument(
           "UPLO must be L or U. But received UPLO is: %s", UPLO->c_str()));
 }
@@ -603,8 +604,9 @@ void EighPreProcess(Value* x, std::string* UPLO) {
             "The input matrix must be batches of square matrices. "
             "But received x's dimension."));
   }
-  PADDLE_ENFORCE(
+  PADDLE_ENFORCE_EQ(
       *UPLO == "L" || *UPLO == "U",
+      true,
       phi::errors::InvalidArgument(
           "UPLO must be L or U. But received UPLO is: %s", UPLO->c_str()));
 }

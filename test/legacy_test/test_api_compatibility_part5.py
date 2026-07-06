@@ -4031,14 +4031,14 @@ class TestClamp_API(unittest.TestCase):
     # Inplace API no static graph test
 
 
-@unittest.skipIf(
-    not paddle.device.is_compiled_with_cuda()
-    and not paddle.device.is_compiled_with_xpu(),
-    "rms_norm kernel is only registered on GPU/XPU",
-)
 # Test rms_norm compatibility
 class TestRmsNormFnAPI(unittest.TestCase):
     def setUp(self):
+        if (
+            not paddle.device.is_compiled_with_cuda()
+            and not paddle.device.is_compiled_with_xpu()
+        ):
+            self.skipTest("rms_norm kernel is only registered on GPU/XPU")
         np.random.seed(2025)
         self.np_x = np.random.rand(2, 3, 4).astype("float32")
         self.np_weight = np.ones(4).astype("float32")
