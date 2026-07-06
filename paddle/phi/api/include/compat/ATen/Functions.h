@@ -78,5 +78,6 @@
 #include <ATen/ops/view.h>
 #include <ATen/ops/view_as.h>
 #include <ATen/ops/vsplit.h>
+#include <ATen/ops/vstack.h>
 #include <ATen/ops/zeros.h>
 #include <ATen/ops/zeros_like.h>
