@@ -202,6 +202,8 @@ class PADDLE_API WindowsHandleKeeper {
 
  private:
   WindowsHandleKeeper() = default;
+  // Caller must hold mtx_ before calling this.
+  void SweepClosedMappingsLocked();
   std::unordered_map<std::string, PendingMapping> handles_;
   std::mutex mtx_;
 };

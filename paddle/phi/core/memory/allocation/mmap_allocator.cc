@@ -685,12 +685,11 @@ void WindowsHandleKeeper::Insert(const std::string &ipc_name,
                                  void *map_ptr,
                                  size_t map_size) {
   std::lock_guard<std::mutex> lock(mtx_);
-  SweepClosedMappings();
+  SweepClosedMappingsLocked();
   handles_[ipc_name] = {fd, map_ptr};
 }
 
-void WindowsHandleKeeper::SweepClosedMappings() {
-  std::lock_guard<std::mutex> lock(mtx_);
+void WindowsHandleKeeper::SweepClosedMappingsLocked() {
   for (auto it = handles_.begin(); it != handles_.end();) {
     // CountInfo::refcount is the first field at map_ptr. A value of 0 means
     // all references (including the reader's) have been released — the
@@ -706,6 +705,11 @@ void WindowsHandleKeeper::SweepClosedMappings() {
       ++it;
     }
   }
+}
+
+void WindowsHandleKeeper::SweepClosedMappings() {
+  std::lock_guard<std::mutex> lock(mtx_);
+  SweepClosedMappingsLocked();
 }
 
 void WindowsHandleKeeper::CloseAll() {
