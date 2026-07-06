@@ -4038,18 +4038,18 @@ class TestQrAPICompatibility(unittest.TestCase):
         q2, r2 = paddle.linalg.qr(x=x, mode='reduced')
         # 3. PyTorch keyword arguments (alias)
         q3, r3 = paddle.linalg.qr(input=x)
-        # 4. mode='r' always returns (Q, R) tuple
-        q4, r4 = paddle.linalg.qr(x, mode='r')
-        self.assertEqual(q4.shape, [0])
+        # 4. mode='r' returns single Tensor R
+        r4 = paddle.linalg.qr(x, mode='r')
+        self.assertEqual(r4.shape, [2, 2])
         # 5. mode='complete'
         q5, r5 = paddle.linalg.qr(x, mode='complete')
         self.assertEqual(q5.shape, [3, 3])
         self.assertEqual(r5.shape, [3, 2])
         # 6. Tensor method
         q6, r6 = x.qr()
-        # 7. Tensor method with mode='r'
-        q7, r7 = x.qr('r')
-        self.assertEqual(q7.shape, [0])
+        # 7. Tensor method with mode='r' returns single Tensor R
+        r7 = x.qr('r')
+        self.assertEqual(r7.shape, [2, 2])
         # 8. out parameter
         q_out = paddle.empty([3, 2], dtype='float64')
         r_out = paddle.empty([2, 2], dtype='float64')

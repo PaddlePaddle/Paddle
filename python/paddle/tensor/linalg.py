@@ -2794,11 +2794,21 @@ class QrRetType(NamedTuple):
 @overload
 def qr(
     x: Tensor,
-    mode: Literal['reduced', 'complete', 'r'] = ...,
+    mode: Literal['reduced', 'complete'] = ...,
     name: str | None = ...,
     *,
     out: tuple[Tensor, Tensor] | None = ...,
 ) -> QrRetType: ...
+
+
+@overload
+def qr(
+    x: Tensor,
+    mode: Literal['r'] = ...,
+    name: str | None = ...,
+    *,
+    out: Tensor | None = ...,
+) -> Tensor: ...
 
 
 @overload
@@ -2817,7 +2827,7 @@ def qr(
     name=None,
     *,
     out=None,
-) -> QrRetType:
+) -> QrRetType | Tensor:
     r"""
     Note:
         This API supports two signatures:
@@ -2845,11 +2855,14 @@ def qr(
             For more information, please refer to :ref:`api_guide_Name`.
 
     Keyword Args:
-        out (tuple[Tensor, Tensor]|None, optional): The output tuple of (Q, R) tensors.
+        out (tuple[Tensor, Tensor]|Tensor|None, optional): The output tensor(s).
+            If mode is "r", out must be a single Tensor to store R.
+            Otherwise, out must be a tuple of (Q, R) tensors.
             If set, the result will be stored in these Tensors. Default: None.
 
     Returns:
-        tuple[Tensor, Tensor]: A tuple of two tensors (Q, R). If mode="r", Q is an empty tensor.
+        QrRetType | Tensor: If mode="r", returns a single Tensor R.
+        Otherwise, returns a QrRetType named tuple (Q, R).
 
     Examples:
 
@@ -2887,16 +2900,14 @@ def qr(
             type='qr', inputs={'X': [x]}, outputs={'Q': q, 'R': r}, attrs=attrs
         )
     if mode == "r":
-        q_empty = paddle.empty([0], dtype=x.dtype)
+        if out is not None:
+            paddle.assign(r, out)
+            return out
+        return r
     if out is not None:
-        if mode == "r":
-            paddle.assign(q_empty, out[0])
-        else:
-            paddle.assign(q, out[0])
+        paddle.assign(q, out[0])
         paddle.assign(r, out[1])
         return QrRetType(Q=out[0], R=out[1])
-    if mode == "r":
-        return QrRetType(Q=q_empty, R=r)
     return QrRetType(Q=q, R=r)
 
 

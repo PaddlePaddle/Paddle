@@ -192,7 +192,7 @@ class TestQrAPI(unittest.TestCase):
 
                 x = paddle.to_tensor(a, dtype=dtype, place=place)
                 if mode == "r":
-                    q, r = paddle.linalg.qr(x, mode=mode)
+                    r = paddle.linalg.qr(x, mode=mode)
                     np.testing.assert_allclose(r, np_r, rtol=1e-05, atol=1e-05)
                 else:
                     q, r = paddle.linalg.qr(x, mode=mode)
@@ -258,14 +258,14 @@ class TestQrAPI(unittest.TestCase):
                         name="input", shape=shape, dtype=dtype
                     )
                     if mode == "r":
-                        q, r = paddle.linalg.qr(x, mode=mode)
+                        r = paddle.linalg.qr(x, mode=mode)
                         exe = base.Executor(place=place)
                         fetches = exe.run(
                             feed={"input": a},
-                            fetch_list=[q, r],
+                            fetch_list=[r],
                         )
                         np.testing.assert_allclose(
-                            fetches[1], np_r, rtol=1e-05, atol=1e-05
+                            fetches[0], np_r, rtol=1e-05, atol=1e-05
                         )
                     else:
                         q, r = paddle.linalg.qr(x, mode=mode)
