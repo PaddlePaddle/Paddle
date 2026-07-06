@@ -426,7 +426,7 @@ def greater_than_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     Please refer to :ref:`api_paddle_greater_than`.
     """
     if not isinstance(y, paddle.Tensor):
-        y = paddle.to_tensor([y], dtype=x.dtype)
+        y = paddle.to_tensor(y, dtype=x.dtype)
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
         raise ValueError(

@@ -595,11 +595,14 @@ void EighPreProcess(Value* x, std::string* UPLO) {
                         "Input(input) only support >=2 tensor, but received "
                         "length of Input(input) is %ld.",
                         rank));
-  PADDLE_ENFORCE_EQ(x_shape[rank - 1],
-                    x_shape[rank - 2],
-                    phi::errors::InvalidArgument(
-                        "The input matrix must be batches of square matrices. "
-                        "But received x's dimension."));
+  if (x_shape[rank - 1] > 0 && x_shape[rank - 2] > 0) {
+    PADDLE_ENFORCE_EQ(
+        x_shape[rank - 1],
+        x_shape[rank - 2],
+        phi::errors::InvalidArgument(
+            "The input matrix must be batches of square matrices. "
+            "But received x's dimension."));
+  }
   PADDLE_ENFORCE(
       *UPLO == "L" || *UPLO == "U",
       phi::errors::InvalidArgument(
@@ -634,11 +637,13 @@ void CholeskyPreProcess(Value* x, bool* upper) {
       phi::errors::InvalidArgument("Shape must have at least 2 dimensions. "
                                    "But received x's dimension: %ld.",
                                    rank));
-  PADDLE_ENFORCE_EQ(
-      x_shape[rank - 1],
-      x_shape[rank - 2],
-      phi::errors::InvalidArgument("The last two dimensions must be equal. "
-                                   "But received x's dimension."));
+  if (x_shape[rank - 1] > 0 && x_shape[rank - 2] > 0) {
+    PADDLE_ENFORCE_EQ(
+        x_shape[rank - 1],
+        x_shape[rank - 2],
+        phi::errors::InvalidArgument("The last two dimensions must be equal. "
+                                     "But received x's dimension."));
+  }
 }
 
 // Renorm preprocessing: handle negative axis

@@ -481,8 +481,8 @@ def smooth_l1_loss(
 )
 def batch_norm(
     input: Tensor,
-    running_mean: Tensor | None,
-    running_var: Tensor | None,
+    running_mean: Tensor,
+    running_var: Tensor,
     weight: Tensor | None = None,
     bias: Tensor | None = None,
     training: bool = False,

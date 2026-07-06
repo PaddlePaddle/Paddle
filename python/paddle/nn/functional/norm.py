@@ -504,6 +504,7 @@ def rms_norm(
     return _C_ops.rms_norm(input, weight, normalized_shape, eps)[0]
 
 
+@param_two_alias(["x", "input"], ["epsilon", "eps"])
 def instance_norm(
     x: Tensor,
     running_mean: Tensor | None = None,
