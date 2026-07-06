@@ -204,7 +204,13 @@ void GPUIndexElementwisePutWithTensorKernel(
   constexpr int nt = 128;
   constexpr int vt = 4;
   const dim3 block(nt);
-  const dim3 grid((N + block.x * vt - 1) / (block.x * vt));
+  const int64_t grid_x = (N + block.x * vt - 1) / (block.x * vt);
+  PADDLE_ENFORCE_LE(grid_x,
+                    dev_ctx.GetCUDAMaxGridDimSize()[0],
+                    common::errors::InvalidArgument(
+                        "index elementwise put grid.x exceeds device limit."));
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "index elementwise put grid.x");
+  const dim3 grid(static_cast<uint32_t>(grid_x));
   auto stream = dev_ctx.stream();
 
   using dtype = funcs::OpaqueType<sizeof(T)>;

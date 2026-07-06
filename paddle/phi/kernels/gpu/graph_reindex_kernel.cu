@@ -209,14 +209,16 @@ void Reindex(const Context& dev_ctx,
   PADDLE_ENFORCE_LE_UINT32_MAX(table_blocks, "graph_reindex init table grid.x");
   PADDLE_ENFORCE_LE_UINT32_MAX(CUDA_NUM_THREADS,
                                "graph_reindex init table block.x");
+  PADDLE_ENFORCE_LE_INT_MAX(table_size, "graph_reindex table_size");
   const uint32_t table_grid = static_cast<uint32_t>(table_blocks);
   const uint32_t table_block = static_cast<uint32_t>(CUDA_NUM_THREADS);
-  InitializeHashTable<T>
-      <<<table_grid, table_block, 0, dev_ctx.stream()>>>(keys_ptr, table_size);
+  const int table_size_int = static_cast<int>(table_size);
+  InitializeHashTable<T><<<table_grid, table_block, 0, dev_ctx.stream()>>>(
+      keys_ptr, table_size_int);
   InitializeHashTable<int><<<table_grid, table_block, 0, dev_ctx.stream()>>>(
-      values_ptr, table_size);
+      values_ptr, table_size_int);
   InitializeHashTable<int><<<table_grid, table_block, 0, dev_ctx.stream()>>>(
-      key_index_ptr, table_size);
+      key_index_ptr, table_size_int);
 
   int unique_len = 0;
   std::shared_ptr<Allocation> unique_items =
