@@ -64,7 +64,7 @@ class PADDLE_API MemoryMapAllocation : public Allocation {
         map_size_(size) {}
 
   inline const std::string &ipc_name() const { return ipc_name_; }
-  inline int shared_fd() const { return static_cast<int>(fd_); }
+  inline intptr_t shared_fd() const { return fd_; }
 
   virtual void close();
 

@@ -175,7 +175,3 @@ class TestDataLoaderWindowsMultiprocess(unittest.TestCase):
         for batch in loader():
             count += 1
         self.assertGreater(count, 0)
-
-
-if __name__ == '__main__':
-    unittest.main()
