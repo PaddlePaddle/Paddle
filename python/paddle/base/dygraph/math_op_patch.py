@@ -393,9 +393,6 @@ def monkey_patch_math_tensor():
         The conjugate transpose of a 2-D Tensor is equivalent to transposing the
         Tensor and then taking the conjugate of each element (i.e., x.T.conj()).
 
-        For 1-D Tensors, the conjugate transpose returns the input tensor
-        unchanged (as a 1-element change of a 1-D tensor's transpose is itself).
-
         Args:
             var (Tensor): The input Tensor, which must be 0-D or 2-D.
 

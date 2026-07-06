@@ -52,8 +52,6 @@ class TestHistcAPI(unittest.TestCase):
             else:
                 np.testing.assert_allclose(out.numpy(), expected, rtol=1e-5)
 
-        paddle.enable_static()
-
     def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -76,8 +74,10 @@ class TestHistcAPI(unittest.TestCase):
             for out in fetches:
                 np.testing.assert_allclose(out, expected, rtol=1e-5)
 
+        # Test mvlgamma compatibility (alias for multigammaln)
+        paddle.disable_static()
 
-# Test mvlgamma compatibility (alias for multigammaln)
+
 class TestMvlgammaAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -98,8 +98,6 @@ class TestMvlgammaAPI(unittest.TestCase):
         for out in [out1, out2, out3]:
             self.assertEqual(out.shape, (3,))
 
-        paddle.enable_static()
-
 
 # Test mvlgamma_ compatibility (inplace)
 class TestMvlgamma_InplaceAPI(unittest.TestCase):
@@ -116,8 +114,6 @@ class TestMvlgamma_InplaceAPI(unittest.TestCase):
 
         # Verify shape unchanged
         self.assertEqual(x.shape, (3,))
-
-        paddle.enable_static()
 
 
 # Test negative_ compatibility (alias for neg_)
@@ -136,16 +132,14 @@ class TestNegative_InplaceAPI(unittest.TestCase):
         expected = -self.np_x
         np.testing.assert_allclose(x.numpy(), expected, rtol=1e-5)
 
-        paddle.enable_static()
-
 
 # Test to_sparse compatibility (alias for to_sparse_coo)
 class TestToSparseAPI(unittest.TestCase):
     def test_dygraph_Compatibility(self):
+        paddle.disable_static()
         if paddle.is_compiled_with_xpu():
             self.skipTest("sparse ops are not supported on XPU")
 
-        paddle.disable_static()
         dense_x = paddle.to_tensor(
             [[0, 1, 0, 2], [0, 0, 3, 4]], dtype='float32'
         )
@@ -154,8 +148,6 @@ class TestToSparseAPI(unittest.TestCase):
         sparse_x = dense_x.to_sparse(sparse_dim=2)
 
         self.assertTrue(sparse_x.is_sparse_coo())
-
-        paddle.enable_static()
 
 
 # Test special.round compatibility
@@ -174,8 +166,6 @@ class TestSpecialRoundAPI(unittest.TestCase):
 
         np.testing.assert_allclose(out1.numpy(), out2.numpy(), rtol=1e-5)
 
-        paddle.enable_static()
-
 
 # Test autograd.enable_grad compatibility
 class TestAutogradEnableGradAPI(unittest.TestCase):
@@ -193,16 +183,13 @@ class TestAutogradEnableGradAPI(unittest.TestCase):
 
         np.testing.assert_allclose(y.numpy(), [2.0, 4.0], rtol=1e-5)
 
-        paddle.enable_static()
-
 
 # Test col_indices compatibility (alias for cols)
 class TestColIndicesAPI(unittest.TestCase):
     def test_dygraph_Compatibility(self):
+        paddle.disable_static()
         if paddle.is_compiled_with_xpu():
             self.skipTest("sparse ops are not supported on XPU")
-
-        paddle.disable_static()
 
         # Create a sparse CSR tensor
         crows = paddle.to_tensor([0, 2, 3, 5], dtype='int64')
@@ -218,16 +205,13 @@ class TestColIndicesAPI(unittest.TestCase):
 
         np.testing.assert_array_equal(result1.numpy(), result2.numpy())
 
-        paddle.enable_static()
-
 
 # Test crow_indices compatibility (alias for crows)
 class TestCrowIndicesAPI(unittest.TestCase):
     def test_dygraph_Compatibility(self):
+        paddle.disable_static()
         if paddle.is_compiled_with_xpu():
             self.skipTest("sparse ops are not supported on XPU")
-
-        paddle.disable_static()
 
         # Create a sparse CSR tensor
         crows = paddle.to_tensor([0, 2, 3, 5], dtype='int64')
@@ -242,8 +226,6 @@ class TestCrowIndicesAPI(unittest.TestCase):
         result2 = csr.crows()
 
         np.testing.assert_array_equal(result1.numpy(), result2.numpy())
-
-        paddle.enable_static()
 
 
 # Test take compatibility
@@ -277,8 +259,6 @@ class TestTakeAPI(unittest.TestCase):
         expected = self.np_x[self.np_indices]
         for out in [out1, out2, out3, out4, out5]:
             np.testing.assert_allclose(out.numpy(), expected, rtol=1e-5)
-
-        paddle.enable_static()
 
     def test_static_Compatibility(self):
         paddle.enable_static()
@@ -315,20 +295,20 @@ class TestTakeAPI(unittest.TestCase):
             for out in fetches:
                 np.testing.assert_allclose(out, expected, rtol=1e-5)
 
+        # Test matrix_exp compatibility
         paddle.disable_static()
 
 
-# Test matrix_exp compatibility
 class TestMatrixExpAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
         self.np_x = np.array([[1.0, 0.0], [0.0, 1.0]]).astype("float32")
 
     def test_dygraph_Compatibility(self):
+        paddle.disable_static()
         if paddle.is_compiled_with_rocm():
             self.skipTest("Skip on DCU due to kernel issue")
 
-        paddle.disable_static()
         x = paddle.to_tensor(self.np_x)
 
         # 1. paddle.linalg.matrix_exp
@@ -340,8 +320,6 @@ class TestMatrixExpAPI(unittest.TestCase):
         expected = np.exp(1.0) * np.eye(2)
         for out in [out1, out2]:
             np.testing.assert_allclose(out.numpy(), expected, rtol=1e-5)
-
-        paddle.enable_static()
 
     def test_static_Compatibility(self):
         if paddle.is_compiled_with_rocm():
@@ -367,10 +345,10 @@ class TestMatrixExpAPI(unittest.TestCase):
             expected = np.exp(1.0) * np.eye(2)
             np.testing.assert_allclose(fetches[0], expected, rtol=1e-5)
 
+        # Test retain_grad compatibility
         paddle.disable_static()
 
 
-# Test retain_grad compatibility
 class TestRetainGradAPI(unittest.TestCase):
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -397,17 +375,14 @@ class TestRetainGradAPI(unittest.TestCase):
         # b's gradient should be retained
         np.testing.assert_allclose(b.grad.numpy(), [2.0, 2.0], rtol=1e-5)
 
-        paddle.enable_static()
-
 
 # Test sparse_mask compatibility
 class TestSparseMaskAPI(unittest.TestCase):
     def test_dygraph_Compatibility(self):
+        paddle.disable_static()
         # Skip on XPU as sparse_mask is not supported
         if paddle.is_compiled_with_xpu():
             self.skipTest("sparse_mask is not supported on XPU")
-
-        paddle.disable_static()
 
         # Create dense tensor
         x = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0]])
@@ -424,8 +399,6 @@ class TestSparseMaskAPI(unittest.TestCase):
         np.testing.assert_allclose(
             result.values().numpy(), [1.0, 4.0], rtol=1e-5
         )
-
-        paddle.enable_static()
 
 
 # Test ParameterList compatibility (values -> parameters alias)
@@ -482,8 +455,6 @@ class TestParameterListAPI(unittest.TestCase):
         self.assertEqual(len(pl5), 1)
         self.assertEqual(len(pl6), 2)
 
-        paddle.enable_static()
-
 
 # Test scatter_reduce_ compatibility (inplace)
 class TestScatterReduce_InplaceAPI(unittest.TestCase):
@@ -527,8 +498,6 @@ class TestScatterReduce_InplaceAPI(unittest.TestCase):
         self.assertEqual(out1.shape, [2, 3])
         np.testing.assert_allclose(out1.numpy(), out2.numpy())
 
-        paddle.enable_static()
-
 
 # Test xavier_uniform compatibility (alias for xavier_uniform_)
 class TestXavierUniformAPI(unittest.TestCase):
@@ -556,8 +525,6 @@ class TestXavierUniformAPI(unittest.TestCase):
         self.assertEqual(x1.shape, x3.shape)
         self.assertEqual(x1.shape, x4.shape)
 
-        paddle.enable_static()
-
     def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -576,10 +543,10 @@ class TestXavierUniformAPI(unittest.TestCase):
             self.assertIsNotNone(x1)
             self.assertIsNotNone(x2)
 
+        # Test sign_ compatibility (inplace)
         paddle.disable_static()
 
 
-# Test sign_ compatibility (inplace)
 class TestSign_InplaceAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -608,8 +575,6 @@ class TestSign_InplaceAPI(unittest.TestCase):
         expected = np.sign(self.np_x)
         for out in [out1, out2, out3, out4]:
             np.testing.assert_allclose(out.numpy(), expected, rtol=1e-5)
-
-        paddle.enable_static()
 
     def test_static_pir_infer_symbolic_shape(self):
         from paddle.base.libpaddle import pir
@@ -691,8 +656,6 @@ class TestLinalgPinvAPI(unittest.TestCase):
         expected_sym = np.linalg.pinv(x_sym.numpy(), hermitian=True)
         for out in [out9, out10, out11]:
             np.testing.assert_allclose(out.numpy(), expected_sym, rtol=1e-5)
-
-        paddle.enable_static()
 
     def test_static_Compatibility(self):
         paddle.enable_static()
@@ -777,10 +740,10 @@ class TestLinalgPinvAPI(unittest.TestCase):
             for out in fetches[9:]:
                 np.testing.assert_allclose(out, expected_sym, rtol=1e-5)
 
+        # Test nll_loss compatibility (target -> label alias)
         paddle.disable_static()
 
 
-# Test nll_loss compatibility (target -> label alias)
 class TestNllLossAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -814,8 +777,6 @@ class TestNllLossAPI(unittest.TestCase):
         for out in [out1, out2, out3, out4]:
             np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-5)
 
-        paddle.enable_static()
-
     def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -845,10 +806,10 @@ class TestNllLossAPI(unittest.TestCase):
             for out in fetches:
                 self.assertEqual(out.shape, ())
 
+        # Test bernoulli_ compatibility (inplace)
         paddle.disable_static()
 
 
-# Test bernoulli_ compatibility (inplace)
 class TestBernoulli_InplaceAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -882,8 +843,6 @@ class TestBernoulli_InplaceAPI(unittest.TestCase):
         # Verify output contains only 0s and 1s
         for out in [out1, out2, out3, out4]:
             self.assertTrue(paddle.all((out == 0) | (out == 1)).item())
-
-        paddle.enable_static()
 
 
 # Test kl_div compatibility (target -> label alias)
@@ -919,8 +878,6 @@ class TestKlDivAPI(unittest.TestCase):
         for out in [out1, out2, out3, out4]:
             np.testing.assert_allclose(out.numpy(), out1.numpy(), rtol=1e-5)
 
-        paddle.enable_static()
-
     def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -950,10 +907,10 @@ class TestKlDivAPI(unittest.TestCase):
             for out in fetches:
                 self.assertEqual(out.shape, ())
 
+        # Test hann_window compatibility
         paddle.disable_static()
 
 
-# Test hann_window compatibility
 class TestHannWindowAPI(unittest.TestCase):
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -974,8 +931,6 @@ class TestHannWindowAPI(unittest.TestCase):
         for out in [out1, out2, out3, out4]:
             self.assertEqual(out.shape, [512])
 
-        paddle.enable_static()
-
     def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -994,10 +949,10 @@ class TestHannWindowAPI(unittest.TestCase):
             for out in fetches:
                 self.assertEqual(out.shape, (512,))
 
+        # Test paddle.float compatibility (dtype alias)
         paddle.disable_static()
 
 
-# Test paddle.float compatibility (dtype alias)
 class TestFloatDtypeAPI(unittest.TestCase):
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -1012,8 +967,6 @@ class TestFloatDtypeAPI(unittest.TestCase):
         # 3. Use in create_parameter
         param = paddle.create_parameter(shape=[2, 3], dtype=paddle.float)
         self.assertEqual(param.dtype, paddle.float32)
-
-        paddle.enable_static()
 
 
 # Test fmod_ compatibility (inplace)
@@ -1059,8 +1012,6 @@ class TestFmod_InplaceAPI(unittest.TestCase):
         for out in [out1, out2, out3, out4, out5]:
             np.testing.assert_allclose(out.numpy(), expected, rtol=1e-5)
 
-        paddle.enable_static()
-
 
 # Test fill_diagonal_ compatibility (inplace)
 class TestFillDiagonal_InplaceAPI(unittest.TestCase):
@@ -1094,8 +1045,6 @@ class TestFillDiagonal_InplaceAPI(unittest.TestCase):
             self.assertEqual(out[1, 1].item(), 1.0)
             self.assertEqual(out[2, 2].item(), 1.0)
 
-        paddle.enable_static()
-
 
 # Test weight_norm compatibility (module -> layer alias)
 class TestWeightNormAPI(unittest.TestCase):
@@ -1121,8 +1070,6 @@ class TestWeightNormAPI(unittest.TestCase):
         self.assertIsNotNone(wn2.weight_g)
         self.assertIsNotNone(wn3.weight_g)
 
-        paddle.enable_static()
-
     def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -1139,10 +1086,10 @@ class TestWeightNormAPI(unittest.TestCase):
             self.assertIsNotNone(wn1)
             self.assertIsNotNone(wn2)
 
+        # Test resize_ compatibility (variable args support)
         paddle.disable_static()
 
 
-# Test resize_ compatibility (variable args support)
 class TestResize_InplaceAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -1162,8 +1109,6 @@ class TestResize_InplaceAPI(unittest.TestCase):
         # Verify both produce same shape
         self.assertEqual(out1.shape, [2, 3])
         self.assertEqual(out2.shape, [2, 3])
-
-        paddle.enable_static()
 
 
 # Test Flatten compatibility (start_dim/end_dim -> start_axis/stop_axis)
@@ -1197,8 +1142,6 @@ class TestFlattenAPI(unittest.TestCase):
         for out in [out1, out2, out3, out4]:
             self.assertEqual(out.shape, [2, 60])
 
-        paddle.enable_static()
-
     def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -1228,10 +1171,10 @@ class TestFlattenAPI(unittest.TestCase):
             for out in fetches:
                 self.assertEqual(out.shape, (2, 60))
 
+        # Test L1Loss compatibility (size_average/reduce parameters)
         paddle.disable_static()
 
 
-# Test L1Loss compatibility (size_average/reduce parameters)
 class TestL1LossAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -1271,8 +1214,6 @@ class TestL1LossAPI(unittest.TestCase):
         self.assertEqual(out4.shape, [3, 5])
         self.assertEqual(out5.shape, [])
 
-        paddle.enable_static()
-
     def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -1303,10 +1244,10 @@ class TestL1LossAPI(unittest.TestCase):
             for out in fetches:
                 self.assertEqual(out.shape, ())
 
+        # Test linalg.inv compatibility (A -> x alias)
         paddle.disable_static()
 
 
-# Test linalg.inv compatibility (A -> x alias)
 class TestLinalgInvAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -1347,8 +1288,6 @@ class TestLinalgInvAPI(unittest.TestCase):
         for out in [out1, out2, out3, out4, out5, out6, out7]:
             np.testing.assert_allclose(out.numpy(), expected, rtol=1e-5)
 
-        paddle.enable_static()
-
     def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -1378,10 +1317,10 @@ class TestLinalgInvAPI(unittest.TestCase):
             for out in fetches:
                 np.testing.assert_allclose(out, expected, rtol=1e-5)
 
+        # Test det compatibility (paddle.det alias)
         paddle.disable_static()
 
 
-# Test det compatibility (paddle.det alias)
 class TestDetAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -1413,8 +1352,6 @@ class TestDetAPI(unittest.TestCase):
         for out in [out1, out2, out3, out4, out5]:
             np.testing.assert_allclose(out.numpy(), expected, rtol=1e-5)
 
-        paddle.enable_static()
-
     def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -1442,10 +1379,10 @@ class TestDetAPI(unittest.TestCase):
             for out in fetches:
                 np.testing.assert_allclose(out, expected, rtol=1e-5)
 
+        # Test pinverse compatibility (paddle.pinverse alias)
         paddle.disable_static()
 
 
-# Test pinverse compatibility (paddle.pinverse alias)
 class TestPinverseAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -1501,8 +1438,6 @@ class TestPinverseAPI(unittest.TestCase):
         expected_sym = np.linalg.pinv(x_sym.numpy(), hermitian=True)
         for out in [out9, out10, out11]:
             np.testing.assert_allclose(out.numpy(), expected_sym, rtol=1e-5)
-
-        paddle.enable_static()
 
     def test_static_Compatibility(self):
         paddle.enable_static()
@@ -1578,10 +1513,10 @@ class TestPinverseAPI(unittest.TestCase):
             for out in fetches[8:]:
                 np.testing.assert_allclose(out, expected_sym, rtol=1e-5)
 
+        # Test addcdiv_ compatibility
         paddle.disable_static()
 
 
-# Test addcdiv_ compatibility
 class TestAddcdiv_InplaceAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -1628,8 +1563,6 @@ class TestAddcdiv_InplaceAPI(unittest.TestCase):
         for out in [out1, out2, out3, out4, out5, out6, out7]:
             np.testing.assert_allclose(out.numpy(), expected, rtol=1e-5)
 
-        paddle.enable_static()
-
 
 # Test imag compatibility (compat function)
 class TestImagAPI(unittest.TestCase):
@@ -1658,8 +1591,6 @@ class TestImagAPI(unittest.TestCase):
             self.assertEqual(out.dtype, paddle.float32)
             np.testing.assert_allclose(out.numpy(), self.np_x.imag)
 
-        paddle.enable_static()
-
     def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -1686,10 +1617,10 @@ class TestImagAPI(unittest.TestCase):
             for out in fetches:
                 np.testing.assert_allclose(out, self.np_x.imag)
 
+        # Test real compatibility (compat function)
         paddle.disable_static()
 
 
-# Test real compatibility (compat function)
 class TestRealAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -1713,8 +1644,6 @@ class TestRealAPI(unittest.TestCase):
         # Verify outputs
         for out in [out1, out2, out3]:
             np.testing.assert_allclose(out.numpy(), self.np_x.real)
-
-        paddle.enable_static()
 
     def test_static_Compatibility(self):
         paddle.enable_static()
@@ -1742,10 +1671,10 @@ class TestRealAPI(unittest.TestCase):
             for out in fetches:
                 np.testing.assert_allclose(out, self.np_x.real)
 
+        # Test nan_to_num compatibility (PyTorch parameter alias)
         paddle.disable_static()
 
 
-# Test nan_to_num compatibility (PyTorch parameter alias)
 class TestNanToNumAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -1783,8 +1712,6 @@ class TestNanToNumAPI(unittest.TestCase):
         for out in [out1, out2, out3, out4, out5, out6, out7]:
             np.testing.assert_allclose(out.numpy(), out1.numpy())
 
-        paddle.enable_static()
-
     def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -1813,10 +1740,10 @@ class TestNanToNumAPI(unittest.TestCase):
             for out in fetches:
                 np.testing.assert_allclose(out, fetches[0])
 
+        # Test randint_like compatibility (PyTorch parameter alias and new params)
         paddle.disable_static()
 
 
-# Test randint_like compatibility (PyTorch parameter alias and new params)
 class TestRandintLikeAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -1854,8 +1781,6 @@ class TestRandintLikeAPI(unittest.TestCase):
         for out in [out1, out2, out3, out4, out5, out6, out7]:
             self.assertEqual(out.shape, x.shape)
 
-        paddle.enable_static()
-
     def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -1880,10 +1805,10 @@ class TestRandintLikeAPI(unittest.TestCase):
             for out in fetches:
                 self.assertEqual(out.shape, tuple(self.shape))
 
+        # Test resize_as_ compatibility
         paddle.disable_static()
 
 
-# Test resize_as_ compatibility
 class TestResizeAsAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -1913,8 +1838,6 @@ class TestResizeAsAPI(unittest.TestCase):
         # Verify all outputs
         for out in [out1, out2, out3, out4]:
             self.assertEqual(out.shape, y.shape)
-
-        paddle.enable_static()
 
 
 # Test huber_loss compatibility (alias for smooth_l1_loss)
@@ -1951,8 +1874,6 @@ class TestHuberLossAPI(unittest.TestCase):
         np.testing.assert_allclose(out1.numpy(), out4.numpy())
         np.testing.assert_allclose(out1.numpy(), out5.numpy())
 
-        paddle.enable_static()
-
     def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -1988,10 +1909,10 @@ class TestHuberLossAPI(unittest.TestCase):
             for out in fetches:
                 self.assertEqual(out.shape, (3, 5))
 
+        # Test fmod compatibility (alias for remainder/mod)
         paddle.disable_static()
 
 
-# Test fmod compatibility (alias for remainder/mod)
 class TestFmodAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -2031,8 +1952,6 @@ class TestFmodAPI(unittest.TestCase):
         for out in [out1, out2, out3, out4, out5, out6, out7]:
             np.testing.assert_allclose(out.numpy(), out1.numpy())
 
-        paddle.enable_static()
-
     def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -2062,10 +1981,10 @@ class TestFmodAPI(unittest.TestCase):
             for out in fetches:
                 np.testing.assert_allclose(out, fetches[0])
 
+        # Test absolute compatibility (alias for abs)
         paddle.disable_static()
 
 
-# Test absolute compatibility (alias for abs)
 class TestAbsoluteAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -2104,8 +2023,6 @@ class TestAbsoluteAPI(unittest.TestCase):
         for out in [out1, out2, out3, out4, out5, out6, out7]:
             np.testing.assert_allclose(out.numpy(), expected)
 
-        paddle.enable_static()
-
     def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -2131,10 +2048,10 @@ class TestAbsoluteAPI(unittest.TestCase):
             for out in fetches:
                 np.testing.assert_allclose(out, expected)
 
+        # Test assert_allclose compatibility
         paddle.disable_static()
 
 
-# Test assert_allclose compatibility
 class TestAssertAllcloseAPI(unittest.TestCase):
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -2167,8 +2084,6 @@ class TestAssertAllcloseAPI(unittest.TestCase):
         z = paddle.to_tensor([1.0, 2.0, 4.0])
         with self.assertRaises(AssertionError):
             paddle.testing.assert_allclose(x, z)
-
-        paddle.enable_static()
 
 
 # Test GRU compatibility
@@ -2264,8 +2179,6 @@ class TestGRUAPI(unittest.TestCase):
         # 7. dtype parameter test (constructor only)
         paddle.nn.GRU(self.input_size, self.hidden_size, dtype="float32")
 
-        paddle.enable_static()
-
     def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -2316,10 +2229,10 @@ class TestGRUAPI(unittest.TestCase):
                 (self.batch_size, self.seq_len, self.hidden_size),
             )
 
+        # Test set_default_tensor_type compatibility
         paddle.disable_static()
 
 
-# Test set_default_tensor_type compatibility
 class TestSetDefaultTensorTypeAPI(unittest.TestCase):
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -2402,8 +2315,6 @@ class TestSetDefaultTensorTypeAPI(unittest.TestCase):
 
         # Restore original dtype
         paddle.set_default_dtype(original_dtype)
-
-        paddle.enable_static()
 
 
 # Test PackedSequence compatibility
@@ -2505,8 +2416,6 @@ class TestPackedSequenceAPI(unittest.TestCase):
                 packed_pinned, paddle.nn.utils.rnn.PackedSequence
             )
 
-        paddle.enable_static()
-
     def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -2533,10 +2442,10 @@ class TestPackedSequenceAPI(unittest.TestCase):
             self.assertEqual(packed2.data.name, data.name)
             self.assertEqual(packed2.batch_sizes.name, batch_sizes.name)
 
+        # Test invert_permutation compatibility
         paddle.disable_static()
 
 
-# Test invert_permutation compatibility
 class TestInvertPermutationAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -2562,8 +2471,6 @@ class TestInvertPermutationAPI(unittest.TestCase):
         inv_perm3 = paddle.nn.utils.rnn.invert_permutation(perm2)
         np.testing.assert_array_equal(inv_perm3.numpy(), [0, 1, 2, 3])
 
-        paddle.enable_static()
-
     def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -2584,10 +2491,10 @@ class TestInvertPermutationAPI(unittest.TestCase):
             for out in fetches:
                 np.testing.assert_array_equal(out, [1, 2, 0])
 
+        # Test pack_padded_sequence compatibility
         paddle.disable_static()
 
 
-# Test pack_padded_sequence compatibility
 class TestPackPaddedSequenceAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -2671,8 +2578,6 @@ class TestPackPaddedSequenceAPI(unittest.TestCase):
         np.testing.assert_array_equal(
             packed6.batch_sizes.numpy(), expected_batch_sizes
         )
-
-        paddle.enable_static()
 
 
 # Test pad_packed_sequence compatibility
@@ -2781,8 +2686,6 @@ class TestPadPackedSequenceAPI(unittest.TestCase):
         self.assertEqual(padded8.shape, [3, 5, 10])
         np.testing.assert_allclose(padded8.numpy(), expected_padded_bf)
 
-        paddle.enable_static()
-
 
 # Test pad_sequence compatibility
 class TestPadSequenceAPI(unittest.TestCase):
@@ -2868,8 +2771,6 @@ class TestPadSequenceAPI(unittest.TestCase):
         np.testing.assert_allclose(padded5.numpy()[10:, 2, :], self.c)
         np.testing.assert_allclose(padded5.numpy()[:10, 2, :], 0.0)
 
-        paddle.enable_static()
-
 
 # Test unpad_sequence compatibility
 class TestUnpadSequenceAPI(unittest.TestCase):
@@ -2923,8 +2824,6 @@ class TestUnpadSequenceAPI(unittest.TestCase):
 
         for i, (original, unpadded) in enumerate(zip(sequences, unpadded4)):
             np.testing.assert_allclose(original.numpy(), unpadded.numpy())
-
-        paddle.enable_static()
 
 
 # Test pack_sequence compatibility
@@ -2985,8 +2884,6 @@ class TestPackSequenceAPI(unittest.TestCase):
         )
         np.testing.assert_array_equal(packed4.batch_sizes.numpy(), [2, 2, 1])
 
-        paddle.enable_static()
-
 
 # Test unpack_sequence compatibility
 class TestUnpackSequenceAPI(unittest.TestCase):
@@ -3024,8 +2921,6 @@ class TestUnpackSequenceAPI(unittest.TestCase):
         for i, (original, unpacked) in enumerate(zip(sequences, unpacked3)):
             np.testing.assert_array_equal(original.numpy(), unpacked.numpy())
 
-        paddle.enable_static()
-
 
 # Test vstack compatibility
 class TestVstackAPI(unittest.TestCase):
@@ -3054,8 +2949,6 @@ class TestVstackAPI(unittest.TestCase):
         out4 = paddle.empty([2, 3], dtype="float32")
         paddle.vstack([x1, x2], out=out4)
         np.testing.assert_allclose(out4.numpy(), expected)
-
-        paddle.enable_static()
 
 
 # Test batch_norm compatibility (compat version)
@@ -3135,8 +3028,6 @@ class TestBatchNormFnAPI(unittest.TestCase):
             out1.numpy(), x.numpy(), rtol=1e-4, atol=1e-4
         )
 
-        paddle.enable_static()
-
     def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -3185,8 +3076,10 @@ class TestBatchNormFnAPI(unittest.TestCase):
                 # output ≈ input
                 np.testing.assert_allclose(out, self.np_x, rtol=1e-4, atol=1e-4)
 
+        # Test gumbel_softmax compatibility
+        paddle.disable_static()
 
-# Test gumbel_softmax compatibility
+
 class TestGumbelSoftmaxAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -3226,8 +3119,6 @@ class TestGumbelSoftmaxAPI(unittest.TestCase):
         # Verify hard=True returns one-hot
         self.assertTrue((out4.sum(axis=-1) == 1.0).all())
 
-    paddle.enable_static()
-
 
 # Test set_default_device compatibility
 class TestSetDefaultDeviceAPI(unittest.TestCase):
@@ -3253,8 +3144,6 @@ class TestSetDefaultDeviceAPI(unittest.TestCase):
         if original_device is not None:
             paddle.set_device(str(original_device))
 
-        paddle.enable_static()
-
 
 # Test set_grad_enabled compatibility
 class TestSetGradEnabledAPI(unittest.TestCase):
@@ -3271,8 +3160,6 @@ class TestSetGradEnabledAPI(unittest.TestCase):
         with paddle.autograd.grad_mode.set_grad_enabled(True):
             z = x * 2
             self.assertFalse(z.stop_gradient)
-
-        paddle.enable_static()
 
 
 # Test new_tensor compatibility
@@ -3294,8 +3181,6 @@ class TestNewTensorAPI(unittest.TestCase):
         # Test new_tensor with requires_grad=False
         out2 = x.new_tensor(self.np_data, requires_grad=False)
         self.assertTrue(out2.stop_gradient)
-
-        paddle.enable_static()
 
     def test_static_Compatibility(self):
         paddle.enable_static()
@@ -3320,8 +3205,10 @@ class TestNewTensorAPI(unittest.TestCase):
         self.assertEqual(fetches[1].dtype, np.float64)
         paddle.enable_static()
 
+        # Test to_empty compatibility
+        paddle.disable_static()
 
-# Test to_empty compatibility
+
 class TestToEmptyAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -3339,8 +3226,6 @@ class TestToEmptyAPI(unittest.TestCase):
 
         # Test with recurse=False
         layer.to_empty(device="cpu", recurse=False)
-
-        paddle.enable_static()
 
 
 # Test _Loss base class compatibility
@@ -3370,12 +3255,11 @@ class TestLossBaseAPI(unittest.TestCase):
         loss_reduce_false = _Loss(size_average=True, reduce=False)
         self.assertEqual(loss_reduce_false.reduction, 'none')
 
-        paddle.enable_static()
-
 
 # Test _pair compatibility
 class TestPairAPI(unittest.TestCase):
     def test_dygraph_Compatibility(self):
+        paddle.disable_static()
         # Test _pair import from paddle.nn.modules.utils
         from paddle.nn.modules.utils import _pair
 
@@ -3417,8 +3301,6 @@ class TestGradScalerAPI(unittest.TestCase):
         )
         self.assertIsNotNone(scaler3)
 
-        paddle.enable_static()
-
 
 # Test hstack compatibility (out parameter fix)
 class TestHstackAPI(unittest.TestCase):
@@ -3444,8 +3326,6 @@ class TestHstackAPI(unittest.TestCase):
         np.testing.assert_allclose(out1.numpy(), out2.numpy())
         np.testing.assert_allclose(out1.numpy(), out3.numpy())
 
-        paddle.enable_static()
-
     def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -3464,8 +3344,10 @@ class TestHstackAPI(unittest.TestCase):
             )
             self.assertEqual(fetches[0].shape, (2, 6))
 
+        # Test nn.ELU compatibility (inplace parameter)
+        paddle.disable_static()
 
-# Test nn.ELU compatibility (inplace parameter)
+
 class TestELUAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -3501,8 +3383,6 @@ class TestELUAPI(unittest.TestCase):
         )
         np.testing.assert_allclose(out3.numpy(), expected, rtol=1e-5, atol=1e-5)
 
-        paddle.enable_static()
-
     def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -3526,8 +3406,10 @@ class TestELUAPI(unittest.TestCase):
                 fetches[0], expected, rtol=1e-5, atol=1e-5
             )
 
+        # Test linalg.cross compatibility (parameter aliases, out)
+        paddle.disable_static()
 
-# Test linalg.cross compatibility (parameter aliases, out)
+
 class TestLinalgCrossAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -3561,8 +3443,6 @@ class TestLinalgCrossAPI(unittest.TestCase):
                 out.numpy(), expected_np, rtol=1e-5, atol=1e-5
             )
 
-        paddle.enable_static()
-
     def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -3588,8 +3468,10 @@ class TestLinalgCrossAPI(unittest.TestCase):
                     out, expected_np, rtol=1e-5, atol=1e-5
                 )
 
+        # Test Tensor.true_divide_ compatibility (alias for divide_)
+        paddle.disable_static()
 
-# Test Tensor.true_divide_ compatibility (alias for divide_)
+
 class TestTrueDivide_InplaceAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -3604,8 +3486,6 @@ class TestTrueDivide_InplaceAPI(unittest.TestCase):
         x.true_divide_(other=y)
         expected = self.np_x / np.array([2.0, 4.0, 6.0])
         np.testing.assert_allclose(x.numpy(), expected, rtol=1e-5)
-
-        paddle.enable_static()
 
 
 # Test Tensor.H/mH/T compatibility (new properties)
@@ -3654,8 +3534,6 @@ class TestTensorHAPI(unittest.TestCase):
         expected_t_3d = self.np_3d.transpose(2, 1, 0)
         np.testing.assert_allclose(t_3d.numpy(), expected_t_3d, rtol=1e-5)
 
-        paddle.enable_static()
-
     def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -3676,8 +3554,10 @@ class TestTensorHAPI(unittest.TestCase):
             expected = self.np_2d.transpose()
             np.testing.assert_allclose(fetches[0], expected, rtol=1e-5)
 
+        # Test clamp_max compatibility (new API)
+        paddle.disable_static()
 
-# Test clamp_max compatibility (new API)
+
 class TestClampMaxAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -3699,8 +3579,6 @@ class TestClampMaxAPI(unittest.TestCase):
         for out in [out1, out2, out3]:
             np.testing.assert_allclose(out.numpy(), expected, rtol=1e-5)
 
-        paddle.enable_static()
-
     def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -3721,8 +3599,10 @@ class TestClampMaxAPI(unittest.TestCase):
             for out in fetches:
                 np.testing.assert_allclose(out, expected, rtol=1e-5)
 
+        # Test clamp_min compatibility (new API)
+        paddle.disable_static()
 
-# Test clamp_min compatibility (new API)
+
 class TestClampMinAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -3744,8 +3624,6 @@ class TestClampMinAPI(unittest.TestCase):
         for out in [out1, out2, out3]:
             np.testing.assert_allclose(out.numpy(), expected, rtol=1e-5)
 
-        paddle.enable_static()
-
     def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -3766,8 +3644,10 @@ class TestClampMinAPI(unittest.TestCase):
             for out in fetches:
                 np.testing.assert_allclose(out, expected, rtol=1e-5)
 
+        # Test qr compatibility (new API)
+        paddle.disable_static()
 
-# Test qr compatibility (new API)
+
 class TestQrAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -3811,8 +3691,6 @@ class TestQrAPI(unittest.TestCase):
         # mode='r' returns single Tensor
         self.assertEqual(len(R9.shape), 2)
 
-        paddle.enable_static()
-
     def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -3842,8 +3720,10 @@ class TestQrAPI(unittest.TestCase):
                 fetches[1], fetches[4], rtol=1e-5, atol=1e-5
             )
 
+        # Test logdet compatibility (new API)
+        paddle.disable_static()
 
-# Test logdet compatibility (new API)
+
 class TestLogdetAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -3858,8 +3738,6 @@ class TestLogdetAPI(unittest.TestCase):
         out1 = paddle.logdet(x)
         expected = np.log(np.linalg.det(self.np_x))
         np.testing.assert_allclose(out1.numpy(), expected, rtol=1e-5, atol=1e-5)
-
-        paddle.enable_static()
 
     def test_static_Compatibility(self):
         paddle.enable_static()
@@ -3881,8 +3759,10 @@ class TestLogdetAPI(unittest.TestCase):
                 fetches[0], expected, rtol=1e-5, atol=1e-5
             )
 
+        # Test linalg.eigh compatibility (out parameter, input alias)
+        paddle.disable_static()
 
-# Test linalg.eigh compatibility (out parameter, input alias)
+
 class TestEighAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -3902,8 +3782,6 @@ class TestEighAPI(unittest.TestCase):
         expected_w = np.linalg.eigh(self.np_x)[0]
         np.testing.assert_allclose(w1.numpy(), expected_w, rtol=1e-5, atol=1e-5)
         np.testing.assert_allclose(w2.numpy(), expected_w, rtol=1e-5, atol=1e-5)
-
-        paddle.enable_static()
 
     def test_static_Compatibility(self):
         paddle.enable_static()
@@ -3925,8 +3803,10 @@ class TestEighAPI(unittest.TestCase):
                 fetches[0], expected_w, rtol=1e-5, atol=1e-5
             )
 
+        # Test linalg.cholesky compatibility (out parameter, input alias)
+        paddle.disable_static()
 
-# Test linalg.cholesky compatibility (out parameter, input alias)
+
 class TestLinalgCholeskyAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -3952,8 +3832,6 @@ class TestLinalgCholeskyAPI(unittest.TestCase):
             out3.numpy(), expected_upper, rtol=1e-5, atol=1e-5
         )
 
-        paddle.enable_static()
-
     def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -3974,8 +3852,10 @@ class TestLinalgCholeskyAPI(unittest.TestCase):
             for out in fetches:
                 np.testing.assert_allclose(out, expected, rtol=1e-5, atol=1e-5)
 
+        # Test nn.functional.prelu compatibility (input alias for x)
+        paddle.disable_static()
 
-# Test nn.functional.prelu compatibility (input alias for x)
+
 class TestPreluAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -3999,8 +3879,6 @@ class TestPreluAPI(unittest.TestCase):
         np.testing.assert_allclose(out2.numpy(), expected)
         np.testing.assert_allclose(out3.numpy(), expected)
 
-        paddle.enable_static()
-
     def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -4023,8 +3901,10 @@ class TestPreluAPI(unittest.TestCase):
             for out in fetches:
                 np.testing.assert_allclose(out, expected)
 
+        # Test linalg.qr compatibility (A alias for x)
+        paddle.disable_static()
 
-# Test linalg.qr compatibility (A alias for x)
+
 class TestLinalgQrAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -4066,8 +3946,6 @@ class TestLinalgQrAPI(unittest.TestCase):
         np.testing.assert_allclose(r1.numpy(), r6.numpy())
         np.testing.assert_allclose(r1.numpy(), r7.numpy())
 
-        paddle.enable_static()
-
     def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -4099,8 +3977,10 @@ class TestLinalgQrAPI(unittest.TestCase):
             for i in range(1, len(fetches), 2):
                 np.testing.assert_allclose(fetches[1], fetches[i])
 
+        # Test clamp_ compatibility (functional inplace)
+        paddle.disable_static()
 
-# Test clamp_ compatibility (functional inplace)
+
 class TestClamp_API(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -4191,8 +4071,6 @@ class TestRmsNormFnAPI(unittest.TestCase):
                 out.numpy(), expected, rtol=1e-4, atol=1e-4
             )
 
-        paddle.enable_static()
-
     def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -4222,8 +4100,10 @@ class TestRmsNormFnAPI(unittest.TestCase):
             for out in fetches:
                 np.testing.assert_allclose(out, expected, rtol=1e-4, atol=1e-4)
 
+        # Test instance_norm compatibility (compat version)
+        paddle.disable_static()
 
-# Test instance_norm compatibility (compat version)
+
 class TestInstanceNormFnAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
@@ -4286,8 +4166,6 @@ class TestInstanceNormFnAPI(unittest.TestCase):
             atol=1e-5,
         )
 
-        paddle.enable_static()
-
     def test_static_Compatibility(self):
         paddle.enable_static()
         main = paddle.static.Program()
@@ -4324,6 +4202,8 @@ class TestInstanceNormFnAPI(unittest.TestCase):
             self.assertEqual(f.dtype, np.float32)
 
         paddle.enable_static()
+
+        paddle.disable_static()
 
 
 class TestQrAPICompatibility(unittest.TestCase):
@@ -4387,6 +4267,8 @@ class TestQrAPICompatibility(unittest.TestCase):
                 np.testing.assert_allclose(fetches[1], fetches[i])
             # Verify mode='r' gives R
             np.testing.assert_allclose(fetches[1], fetches[6])
+
+        paddle.disable_static()
 
 
 if __name__ == "__main__":

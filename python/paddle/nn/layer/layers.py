@@ -3957,11 +3957,7 @@ class Layer:
             if param is not None:
                 with no_grad():
                     empty_param = paddle.empty_like(param, device=device)
-                    self._parameters[key] = type(param)(
-                        empty_param,
-                        name=param.name,
-                        regularizer=param.regularizer,
-                    )
+                    param._set_impl(empty_param)
 
         for key, buf in self._buffers.items():
             if buf is not None:

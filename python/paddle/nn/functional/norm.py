@@ -30,6 +30,7 @@ from paddle.base.framework import (
 )
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
+    param_one_alias,
     param_two_alias,
 )
 
@@ -504,7 +505,7 @@ def rms_norm(
     return _C_ops.rms_norm(input, weight, normalized_shape, eps)[0]
 
 
-@param_two_alias(["x", "input"], ["eps", "epsilon"])
+@param_one_alias(["x", "input"])
 def instance_norm(
     x: Tensor,
     running_mean: Tensor | None = None,
