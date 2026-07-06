@@ -3587,6 +3587,51 @@ class TestClampMaxAPI(unittest.TestCase):
                 np.testing.assert_allclose(out, expected, rtol=1e-5)
 
 
+# Test clamp_min compatibility (new API)
+class TestClampMinAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_x = np.array([1.0, 5.0, 3.0, 8.0, 2.0]).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.clamp_min(x, 3.0)
+        # 2. Paddle keyword arguments
+        out2 = paddle.clamp_min(input=x, min=3.0)
+        # 3. out parameter test
+        out3 = paddle.empty_like(x)
+        paddle.clamp_min(x, 3.0, out=out3)
+
+        expected = np.maximum(self.np_x, 3.0)
+        for out in [out1, out2, out3]:
+            np.testing.assert_allclose(out.numpy(), expected, rtol=1e-5)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[5], dtype="float32")
+
+            out1 = paddle.clamp_min(x, 3.0)
+            out2 = paddle.clamp_min(input=x, min=3.0)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2],
+            )
+            expected = np.maximum(self.np_x, 3.0)
+            for out in fetches:
+                np.testing.assert_allclose(out, expected, rtol=1e-5)
+
+
 # Test qr compatibility (new API)
 class TestQrAPI(unittest.TestCase):
     def setUp(self):

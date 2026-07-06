@@ -3223,7 +3223,7 @@ def clip(
         return output
 
 
-def clamp_max(input, max=None, *, out=None):
+def clamp_max(input, max, *, out=None):
     """
     Clamps all elements in input into the range [min=None, max].
 
@@ -3237,7 +3237,24 @@ def clamp_max(input, max=None, *, out=None):
     Returns:
         Tensor: The clamped Tensor.
     """
-    return clip(input, min=None, max=max, name=None, out=out)
+    return clip(input, min=None, max=max, out=out)
+
+
+def clamp_min(input, min, *, out=None):
+    """
+    Clamps all elements in input into the range [min, max=None].
+
+    This is a wrapper around ``paddle.clip`` that only sets the lower bound.
+
+    Args:
+        input (Tensor): The input Tensor.
+        min (float|Tensor): The lower bound.
+        out (Tensor|None, optional): The output Tensor. Default: None.
+
+    Returns:
+        Tensor: The clamped Tensor.
+    """
+    return clip(input, min=min, max=None, out=out)
 
 
 @inplace_apis_in_dygraph_only
