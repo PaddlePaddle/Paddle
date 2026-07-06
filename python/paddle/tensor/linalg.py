@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, Literal, TypeAlias
+from typing import TYPE_CHECKING, Literal, NamedTuple, TypeAlias
 
 import numpy as np
 from typing_extensions import overload
@@ -2786,6 +2786,11 @@ def matrix_power(
         return out
 
 
+class QrRetType(NamedTuple):
+    Q: Tensor
+    R: Tensor
+
+
 @overload
 def qr(
     x: Tensor,
@@ -2793,7 +2798,7 @@ def qr(
     name: str | None = ...,
     *,
     out: tuple[Tensor, Tensor] | None = ...,
-) -> tuple[Tensor, Tensor]: ...
+) -> QrRetType: ...
 
 
 @overload
@@ -2802,7 +2807,7 @@ def qr(
     some: bool = ...,
     *,
     out: tuple[Tensor, Tensor] | None = ...,
-) -> tuple[Tensor, Tensor]: ...
+) -> QrRetType: ...
 
 
 @qr_decorator
@@ -2812,7 +2817,7 @@ def qr(
     name=None,
     *,
     out=None,
-) -> tuple[Tensor, Tensor]:
+) -> QrRetType:
     r"""
     Note:
         This API supports two signatures:
@@ -2889,10 +2894,10 @@ def qr(
         else:
             paddle.assign(q, out[0])
         paddle.assign(r, out[1])
-        return out
+        return QrRetType(Q=out[0], R=out[1])
     if mode == "r":
-        return q_empty, r
-    return q, r
+        return QrRetType(Q=q_empty, R=r)
+    return QrRetType(Q=q, R=r)
 
 
 @overload
