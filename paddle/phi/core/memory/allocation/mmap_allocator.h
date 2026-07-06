@@ -180,9 +180,11 @@ class PADDLE_API MemoryMapFdSet {
 };
 
 #ifdef _WIN32
-// Tracks HANDLEs from CreateFileMappingA that must stay open (refcount > 0)
-// to keep the named section alive for readers. These HANDLEs are closed
-// during worker cleanup via MemoryMapFdSet::Clear() / _cleanup_mmap_fds.
+// Tracks HANDLEs and mapped views from CreateFileMappingA that must stay
+// open (refcount == 1 at writer close time) to keep the named section alive
+// for readers. SweepClosedMappings is called on each Insert() and reclaims
+// entries whose refcount has reached 0. Remaining entries at process exit
+// are cleaned up by the OS (handle closure on process termination).
 class PADDLE_API WindowsHandleKeeper {
  public:
   static WindowsHandleKeeper &Instance();  // NOLINT
@@ -214,16 +216,30 @@ class MemoryMapInfo {
   explicit MemoryMapInfo(int flags,
                          size_t data_size,
                          std::string file_name,
-                         void *mmap_ptr)
+                         void *mmap_ptr
+#ifdef _WIN32
+                         ,
+                         intptr_t fd = -1
+#endif
+                         )
       : flags_(flags),
         data_size_(data_size),
         file_name_(file_name),
-        mmap_ptr_(mmap_ptr) {}
+        mmap_ptr_(mmap_ptr)
+#ifdef _WIN32
+        ,
+        fd_(fd)
+#endif
+  {
+  }
 
   int flags_ = 0;
   size_t data_size_ = 0;
   std::string file_name_;
   void *mmap_ptr_ = nullptr;
+#ifdef _WIN32
+  intptr_t fd_ = -1;
+#endif
 };
 
 /* Note(zhangbo):

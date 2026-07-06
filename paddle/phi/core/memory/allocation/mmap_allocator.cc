@@ -351,7 +351,15 @@ void RefcountedMemoryMapAllocation::close() {
             static_cast<size_t>(
                 MemoryMapAllocationPool::Instance().MaxPoolSize())) {
       MemoryMapAllocationPool::Instance().Insert(MemoryMapInfo(
-          flags_, map_size_ - mmap_alignment, ipc_name_, map_ptr_));
+          flags_,
+          map_size_ - mmap_alignment,
+          ipc_name_,
+          map_ptr_
+#ifdef _WIN32
+          ,
+          fd_
+#endif
+          ));
 #ifdef _WIN32
       // Prevent base class destructor from closing the HANDLE.
       // When the buffer is later retrieved, a new RefcountedMMap is
@@ -606,9 +614,12 @@ void MemoryMapFdSet::Clear() {
   }
   fd_set_.clear();
 #ifdef _WIN32
-  // Close pending HANDLEs that were kept open for cross-process section
-  // lifecycle (refcount > 0 path in RefcountedMemoryMapAllocation::close).
-  WindowsHandleKeeper::Instance().CloseAll();
+  // NOTE: Do NOT CloseAll() here. The keeper's SweepClosedMappings
+  // reclaims entries whose refcount has reached 0 during normal operation.
+  // HANDLEs still in the keeper at process exit are reclaimed by the OS.
+  // Calling CloseAll() here while batches are still in-flight in the
+  // multiprocessing queue would destroy named sections before the reader
+  // has a chance to OpenFileMappingA them.
 #endif
 }
 
@@ -659,6 +670,9 @@ void MemoryMapAllocationPool::Clear() {
 #ifdef _WIN32
     VLOG(4) << "MemoryMapAllocationPool: clear " << mmap.file_name_;
     UnmapViewOfFile(mmap.mmap_ptr_);
+    if (mmap.fd_ != -1) {
+      CloseHandle(reinterpret_cast<HANDLE>(mmap.fd_));
+    }
 #else
     int rlt = shm_unlink(mmap.file_name_.c_str());
     if (rlt == 0) {
