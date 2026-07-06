@@ -2777,6 +2777,26 @@ class TestExpandCopyAPI(unittest.TestCase):
         out = paddle.expand_copy(x, shape=[2, 3])
         self.assertFalse(out.stop_gradient)
 
+        # Test 6: expand_decorator alias: input -> x
+        out6 = paddle.expand_copy(input=self.x, shape=[2, 3])
+        self.assertEqual(out6.shape, [2, 3])
+        self.assertTrue(paddle.equal_all(out1, out6))
+
+        # Test 7: expand_decorator alias: size -> shape
+        out7 = paddle.expand_copy(self.x, size=[2, 3])
+        self.assertEqual(out7.shape, [2, 3])
+        self.assertTrue(paddle.equal_all(out1, out7))
+
+        # Test 8: expand_decorator alias: both input and size aliases
+        out8 = paddle.expand_copy(input=self.x, size=[2, 3])
+        self.assertEqual(out8.shape, [2, 3])
+        self.assertTrue(paddle.equal_all(out1, out8))
+
+        # Test 9: expand_decorator variable positional int args
+        out9 = paddle.expand_copy(self.x, 2, 3)
+        self.assertEqual(out9.shape, [2, 3])
+        self.assertTrue(paddle.equal_all(out1, out9))
+
 
 if __name__ == '__main__':
     unittest.main()

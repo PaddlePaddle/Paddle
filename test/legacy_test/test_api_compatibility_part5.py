@@ -3020,6 +3020,11 @@ class TestVstackAPI(unittest.TestCase):
         for out in [out1, out2, out3]:
             np.testing.assert_allclose(out.numpy(), expected)
 
+        # 4. out parameter test
+        out4 = paddle.empty([2, 3], dtype="float32")
+        paddle.vstack([x1, x2], out=out4)
+        np.testing.assert_allclose(out4.numpy(), expected)
+
         paddle.enable_static()
 
 
@@ -3277,6 +3282,16 @@ class TestLossBaseAPI(unittest.TestCase):
         loss_base_sum = _Loss(reduction='sum')
         self.assertEqual(loss_base_sum.reduction, 'sum')
 
+        # Test _Loss with size_average/reduce (PyTorch compatibility kwargs)
+        loss_sa = _Loss(size_average=True, reduce=True)
+        self.assertEqual(loss_sa.reduction, 'mean')
+
+        loss_sa_false = _Loss(size_average=False, reduce=True)
+        self.assertEqual(loss_sa_false.reduction, 'sum')
+
+        loss_reduce_false = _Loss(size_average=True, reduce=False)
+        self.assertEqual(loss_reduce_false.reduction, 'none')
+
         paddle.enable_static()
 
 
@@ -3515,11 +3530,12 @@ class TestTrueDivide_InplaceAPI(unittest.TestCase):
         paddle.enable_static()
 
 
-# Test Tensor.H compatibility (new property)
+# Test Tensor.H/mH/T compatibility (new properties)
 class TestTensorHAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
         self.np_2d = np.array([[1.0, 2.0], [3.0, 4.0]]).astype("float32")
+        self.np_3d = np.arange(24).reshape(2, 3, 4).astype("float32")
         self.np_complex = np.array([[1 + 2j, 3 + 4j], [5 + 6j, 7 + 8j]]).astype(
             "complex64"
         )
@@ -3527,19 +3543,60 @@ class TestTensorHAPI(unittest.TestCase):
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
 
-        # Test real 2D tensor
+        # Test .H on real 2D tensor
         x = paddle.to_tensor(self.np_2d)
         h = x.H
         expected = self.np_2d.transpose()
         np.testing.assert_allclose(h.numpy(), expected, rtol=1e-5)
 
-        # Test complex 2D tensor
+        # Test .H on complex 2D tensor
         x_c = paddle.to_tensor(self.np_complex)
         h_c = x_c.H
         expected_c = self.np_complex.transpose().conj()
         np.testing.assert_allclose(h_c.numpy(), expected_c, rtol=1e-5)
 
+        # Test .mH on 2D real tensor
+        mh = x.mH
+        expected_mh = self.np_2d.transpose().conj()
+        np.testing.assert_allclose(mh.numpy(), expected_mh, rtol=1e-5)
+
+        # Test .mH on 3D real tensor (last two dims swap + conj)
+        x_3d = paddle.to_tensor(self.np_3d)
+        mh_3d = x_3d.mH
+        expected_mh_3d = self.np_3d.transpose(0, 2, 1).conj()
+        np.testing.assert_allclose(mh_3d.numpy(), expected_mh_3d, rtol=1e-5)
+
+        # Test .T on 2D real tensor
+        t = x.T
+        expected_t = self.np_2d.T
+        np.testing.assert_allclose(t.numpy(), expected_t, rtol=1e-5)
+
+        # Test .T on 3D real tensor (reverses all dims)
+        t_3d = x_3d.T
+        expected_t_3d = self.np_3d.transpose(2, 1, 0)
+        np.testing.assert_allclose(t_3d.numpy(), expected_t_3d, rtol=1e-5)
+
         paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[2, 2], dtype="float32")
+
+            # .H is only available in dygraph mode (property)
+            # In static graph, use paddle.transpose instead
+            h = paddle.transpose(x, perm=[1, 0])
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_2d},
+                fetch_list=[h],
+            )
+            expected = self.np_2d.transpose()
+            np.testing.assert_allclose(fetches[0], expected, rtol=1e-5)
 
 
 # Test clamp_max compatibility (new API)
@@ -3646,12 +3703,25 @@ class TestQrAPI(unittest.TestCase):
         Q1, R1 = paddle.qr(x)
         Q2, R2 = paddle.qr(input=x, some=True)
         Q3, R3 = paddle.qr(x, some=False)
-        # 4. out parameter test
+        # 4. test mode keyword
         Q5, R5 = paddle.linalg.qr(x, mode='reduced')
+        # 5. some as positional bool (type-based dispatch)
+        Q6, R6 = paddle.qr(x, True)
+        Q7, R7 = paddle.qr(x, False)
+        # 6. A alias
+        Q8, R8 = paddle.qr(A=x, some=True)
+        # 7. mode='r' returns single Tensor R
+        R9 = paddle.qr(x, mode='r')
 
         # Verify some=True matches reduced mode
         np.testing.assert_allclose(Q1.numpy(), Q5.numpy(), rtol=1e-5, atol=1e-5)
         np.testing.assert_allclose(R1.numpy(), R5.numpy(), rtol=1e-5, atol=1e-5)
+        # Verify some=True and positional True match
+        np.testing.assert_allclose(Q1.numpy(), Q6.numpy(), rtol=1e-5, atol=1e-5)
+        # Verify some=False and positional False match
+        np.testing.assert_allclose(Q3.numpy(), Q7.numpy(), rtol=1e-5, atol=1e-5)
+        # Verify A alias
+        np.testing.assert_allclose(Q1.numpy(), Q8.numpy(), rtol=1e-5, atol=1e-5)
         # Verify reconstruction
         reconstr = Q1 @ R1
         np.testing.assert_allclose(
@@ -3660,6 +3730,8 @@ class TestQrAPI(unittest.TestCase):
 
         # some=False gives complete QR
         self.assertEqual(Q3.shape, (4, 4))
+        # mode='r' returns single Tensor
+        self.assertEqual(len(R9.shape), 2)
 
         paddle.enable_static()
 
@@ -3671,16 +3743,25 @@ class TestQrAPI(unittest.TestCase):
             x = paddle.static.data(name="x", shape=[4, 3], dtype="float32")
 
             Q1, R1 = paddle.qr(x)
+            Q2, R2 = paddle.qr(x, mode='reduced')
+            R3 = paddle.qr(x, mode='r')
 
             exe = paddle.static.Executor()
             fetches = exe.run(
                 main,
                 feed={"x": self.np_x},
-                fetch_list=[Q1, R1],
+                fetch_list=[Q1, R1, Q2, R2, R3],
             )
-            reconstr = fetches[0] @ fetches[1]
+            # Verify default and mode='reduced' match
             np.testing.assert_allclose(
-                reconstr, self.np_x, rtol=1e-5, atol=1e-5
+                fetches[0], fetches[2], rtol=1e-5, atol=1e-5
+            )
+            np.testing.assert_allclose(
+                fetches[1], fetches[3], rtol=1e-5, atol=1e-5
+            )
+            # Verify mode='r' returns R only
+            np.testing.assert_allclose(
+                fetches[1], fetches[4], rtol=1e-5, atol=1e-5
             )
 
 
@@ -4140,6 +4221,36 @@ class TestQrAPICompatibility(unittest.TestCase):
         result = paddle.linalg.qr(x, out=(q_out, r_out))
         self.assertIs(result[0], q_out)
         self.assertIs(result[1], r_out)
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[3, 2], dtype="float64")
+
+            q1, r1 = paddle.linalg.qr(x)
+            q2, r2 = paddle.linalg.qr(x, mode='reduced')
+            q3, r3 = paddle.linalg.qr(input=x)
+            r4 = paddle.linalg.qr(x, mode='r')
+
+            exe = paddle.static.Executor()
+            np_x = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]).astype(
+                "float64"
+            )
+            fetches = exe.run(
+                main,
+                feed={"x": np_x},
+                fetch_list=[q1, r1, q2, r2, q3, r3, r4],
+            )
+            # Verify all Q match
+            for i in range(0, 6, 2):
+                np.testing.assert_allclose(fetches[0], fetches[i])
+            # Verify all R match
+            for i in range(1, 6, 2):
+                np.testing.assert_allclose(fetches[1], fetches[i])
+            # Verify mode='r' gives R
+            np.testing.assert_allclose(fetches[1], fetches[6])
 
 
 if __name__ == "__main__":
