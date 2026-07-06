@@ -38,6 +38,7 @@
 
 #include <limits>
 #include <optional>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -586,6 +587,10 @@ class Tensor : public TensorBase {
   at::Tensor absolute() const { return abs(); }
 
   at::Tensor& absolute_() const { return abs_(); }
+
+  // svd: Singular Value Decomposition
+  std::tuple<at::Tensor, at::Tensor, at::Tensor> svd(
+      bool some = true, bool compute_uv = true) const;
 
   Tensor operator[](int64_t index) const {
     // Use as_strided to create a view (shares storage with original tensor)

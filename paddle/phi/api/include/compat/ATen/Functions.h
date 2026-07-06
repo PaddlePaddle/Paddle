@@ -67,6 +67,7 @@
 #include <ATen/ops/squeeze.h>
 #include <ATen/ops/std.h>
 #include <ATen/ops/sum.h>
+#include <ATen/ops/svd.h>
 #include <ATen/ops/t.h>
 #include <ATen/ops/tensor_split.h>
 #include <ATen/ops/to.h>
