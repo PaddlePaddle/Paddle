@@ -2309,26 +2309,30 @@ void launch(TensorInfo<const T, IndexType> input,
       place, 2 * numInputSlices * sizeof(Bitwise), phi_stream);
   Bitwise* desired = reinterpret_cast<Bitwise*>(desired_buffer->ptr());
 
-  auto counts_buffer = phi::memory_utils::Alloc(
-      place, num_blocks * RADIX_DIGITS * sizeof(int16_t), phi_stream);
+  size_t counts_bytes =
+      static_cast<size_t>(num_blocks) * RADIX_DIGITS * sizeof(int16_t);
+  auto counts_buffer =
+      phi::memory_utils::Alloc(place, counts_bytes, phi_stream);
   int16_t* counts = reinterpret_cast<int16_t*>(counts_buffer->ptr());
   static_assert(MAX_ITEMS_PER_THREAD * BLOCK_THREADS <
                     std::numeric_limits<int16_t>::max(),
                 "blockwise counter too large");
 
 #if TOPK_CUB_SUPPORTS_SCAN_BY_KEY()
-  auto withinKCounts_buffer = phi::memory_utils::Alloc(
-      place, num_blocks * sizeof(uint32_t), phi_stream);
+  size_t block_counts_bytes =
+      static_cast<size_t>(num_blocks) * sizeof(uint32_t);
+  auto withinKCounts_buffer =
+      phi::memory_utils::Alloc(place, block_counts_bytes, phi_stream);
   uint32_t* withinKCounts =
       reinterpret_cast<uint32_t*>(withinKCounts_buffer->ptr());
 #ifdef PADDLE_WITH_HIP
-  hipMemsetAsync(withinKCounts, 0, num_blocks * sizeof(uint32_t), stream);
+  hipMemsetAsync(withinKCounts, 0, block_counts_bytes, stream);
 #else
-  cudaMemsetAsync(withinKCounts, 0, num_blocks * sizeof(uint32_t), stream);
+  cudaMemsetAsync(withinKCounts, 0, block_counts_bytes, stream);
 #endif
 
-  auto kthCounts_buffer = phi::memory_utils::Alloc(
-      place, num_blocks * sizeof(uint32_t), phi_stream);
+  auto kthCounts_buffer =
+      phi::memory_utils::Alloc(place, block_counts_bytes, phi_stream);
   uint32_t* kthCounts = reinterpret_cast<uint32_t*>(kthCounts_buffer->ptr());
 #else
   uint32_t* withinKCounts = nullptr;
