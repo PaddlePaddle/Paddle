@@ -801,8 +801,8 @@ def set_device(device: DeviceLike) -> None:
     """
     # Convert CUDA device identifiers to paddle.device's GPU device string.
     if isinstance(device, int):
-        # An int index always refers to a CUDA GPU, matching torch.cuda.set_device.
-        # paddle.device.set_device() raises if Paddle is not compiled with CUDA.
+        # An int index always refers to a CUDA GPU.
+        # raises if Paddle is not compiled with CUDA.
         device_str = f'gpu:{device}'
     elif isinstance(device, str):
         # paddle.cuda only accepts CUDA/GPU device strings. Use
