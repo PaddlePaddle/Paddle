@@ -375,15 +375,28 @@ void RefcountedMemoryMapAllocation::close() {
 #endif
       } else {
 #ifdef _WIN32
-        // Refcount > 0: transfer the HANDLE to WindowsHandleKeeper so it
-        // stays open (keeping the named section alive for readers) but is
-        // properly closed during worker cleanup (CloseAll) rather than
-        // leaked until process exit.
-        WindowsHandleKeeper::Instance().Insert(ipc_name_, fd_);
-        fd_ = -1;
-        closed_fd_ = true;
-        VLOG(6) << "UnmapViewOfFile (refcount>0): " << ipc_name_;
-        UnmapViewOfFile(map_ptr_);
+        if (info->refcount > 1) {
+          // Refcount > 1 means the reader has already opened this section
+          // (initializeRefercount was called after MapViewOfFile). The
+          // reader's mapping keeps the section alive, so we can safely
+          // CloseHandle immediately — no accumulation needed.
+          VLOG(6) << "close handle (reader already opened): " << ipc_name_;
+          CloseHandle(reinterpret_cast<HANDLE>(fd_));
+          fd_ = -1;
+          closed_fd_ = true;
+          VLOG(6) << "UnmapViewOfFile: " << ipc_name_;
+          UnmapViewOfFile(map_ptr_);
+        } else {
+          // Refcount == 1: reader hasn't opened yet. Transfer the HANDLE to
+          // WindowsHandleKeeper so the named section stays alive until the
+          // reader opens it. The HANDLE is closed during worker cleanup
+          // (MemoryMapFdSet::Clear → CloseAll).
+          WindowsHandleKeeper::Instance().Insert(ipc_name_, fd_);
+          fd_ = -1;
+          closed_fd_ = true;
+          VLOG(6) << "UnmapViewOfFile (refcount>0): " << ipc_name_;
+          UnmapViewOfFile(map_ptr_);
+        }
 #endif
       }
 #ifndef _WIN32
