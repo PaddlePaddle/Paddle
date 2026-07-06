@@ -352,6 +352,13 @@ void RefcountedMemoryMapAllocation::close() {
                 MemoryMapAllocationPool::Instance().MaxPoolSize())) {
       MemoryMapAllocationPool::Instance().Insert(MemoryMapInfo(
           flags_, map_size_ - mmap_alignment, ipc_name_, map_ptr_));
+#ifdef _WIN32
+      // Prevent base class destructor from closing the HANDLE.
+      // When the buffer is later retrieved, a new RefcountedMMap is
+      // constructed from the same map_ptr_ and increments refcount — the
+      // HANDLE must stay alive so the named section survives until then.
+      closed_fd_ = true;
+#endif
     } else {
       if (info->refcount == 0) {
 #ifdef _WIN32
