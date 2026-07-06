@@ -725,6 +725,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     continue
 
                 # check failed workers
+                if sys.platform == 'win32':
+                    core._throw_error_if_process_failed()
                 failed_workers = []
                 for i, w in enumerate(self._workers):
                     if self._worker_status[i] and not w.is_alive():
