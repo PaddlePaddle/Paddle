@@ -20,7 +20,7 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any
 
 import paddle
-from paddle import base, core, device as paddle_device, framework
+from paddle import base, core, device as paddle_device
 from paddle.cuda.graphs import CUDAGraph, graph, graph_pool_handle
 from paddle.device import (
     Event,
@@ -801,22 +801,8 @@ def set_device(device: DeviceLike) -> None:
     # Convert device to string format if needed and call paddle.device.set_device()
     # This function supports multiple hardware types (CUDA, XPU, Custom devices)
     if isinstance(device, int):
-        # Convert int device index to string format (e.g., 0 -> 'gpu:0')
-        device_place = framework._current_expected_place_()
-        if isinstance(device_place, core.CUDAPlace):
-            device_str = f'gpu:{device}'
-        elif isinstance(device_place, core.CustomPlace):
-            device_str = f'{device_place.get_device_type()}:{device}'
-        elif isinstance(device_place, core.XPUPlace):
-            device_str = f'xpu:{device}'
-        elif core.is_compiled_with_cuda():
-            device_str = f'gpu:{device}'
-        elif core.is_compiled_with_xpu():
-            device_str = f'xpu:{device}'
-        else:
-            raise ValueError(
-                "Paddle-CPU is not supported. Please use PaddlePaddle with CUDA, XPU or Custom Device"
-            )
+        # An int index always refers to a CUDA GPU, matching torch.cuda.set_device.
+        device_str = f'gpu:{device}'
     elif isinstance(device, str):
         # Device is already in string format
         device_str = device
