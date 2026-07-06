@@ -43,8 +43,38 @@ class TestHistcAPI(unittest.TestCase):
         self.assertEqual(out1.dtype, paddle.float32)
         for out in [out1, out2, out3, out4]:
             self.assertEqual(out.dtype, paddle.float32)
+            # Verify numerical correctness
+            expected = np.histogram(self.np_x, bins=10, range=(0, 10))[
+                0
+            ].astype("float32")
+            if out is out4:
+                np.testing.assert_allclose(out.numpy(), expected, rtol=1e-5)
+            else:
+                np.testing.assert_allclose(out.numpy(), expected, rtol=1e-5)
 
         paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[100], dtype="float32")
+
+            out1 = paddle.histc(x, bins=10, min=0, max=10)
+            out2 = paddle.histc(input=x, bins=10, min=0, max=10)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2],
+            )
+            expected = np.histogram(self.np_x, bins=10, range=(0, 10))[
+                0
+            ].astype("float32")
+            for out in fetches:
+                np.testing.assert_allclose(out, expected, rtol=1e-5)
 
 
 # Test mvlgamma compatibility (alias for multigammaln)
@@ -3107,6 +3137,54 @@ class TestBatchNormFnAPI(unittest.TestCase):
 
         paddle.enable_static()
 
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=[2, 3, 4, 4], dtype="float32"
+            )
+            running_mean = paddle.static.data(
+                name="running_mean", shape=[3], dtype="float32"
+            )
+            running_var = paddle.static.data(
+                name="running_var", shape=[3], dtype="float32"
+            )
+            weight = paddle.static.data(
+                name="weight", shape=[3], dtype="float32"
+            )
+            bias = paddle.static.data(name="bias", shape=[3], dtype="float32")
+
+            compat_bn = paddle.compat.nn.functional.batch_norm
+
+            out1 = compat_bn(x, running_mean, running_var, weight, bias)
+            out2 = compat_bn(
+                input=x,
+                running_mean=running_mean,
+                running_var=running_var,
+                weight=weight,
+                bias=bias,
+            )
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={
+                    "x": self.np_x,
+                    "running_mean": self.np_running_mean,
+                    "running_var": self.np_running_var,
+                    "weight": self.np_weight,
+                    "bias": self.np_bias,
+                },
+                fetch_list=[out1, out2],
+            )
+            for out in fetches:
+                self.assertEqual(out.shape, (2, 3, 4, 4))
+                # In eval mode with running_mean=0, running_var=1, weight=1, bias=0
+                # output ≈ input
+                np.testing.assert_allclose(out, self.np_x, rtol=1e-4, atol=1e-4)
+
 
 # Test gumbel_softmax compatibility
 class TestGumbelSoftmaxAPI(unittest.TestCase):
@@ -4104,7 +4182,45 @@ class TestRmsNormFnAPI(unittest.TestCase):
         for out in [out1, out2, out3]:
             self.assertEqual(out.shape, x.shape)
 
+        # Numerical verification: rms_norm(x) = x / sqrt(mean(x^2) + eps) * weight
+        np_weight = self.np_weight.reshape(1, 1, 4)
+        np_rms = np.sqrt(np.mean(self.np_x**2, axis=2, keepdims=True) + 1e-5)
+        expected = self.np_x / np_rms * np_weight
+        for out in [out1, out2, out3]:
+            np.testing.assert_allclose(
+                out.numpy(), expected, rtol=1e-4, atol=1e-4
+            )
+
         paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[2, 3, 4], dtype="float32")
+            weight = paddle.static.data(
+                name="weight", shape=[4], dtype="float32"
+            )
+
+            out1 = paddle.nn.functional.rms_norm(x, [4], weight)
+            out2 = paddle.nn.functional.rms_norm(
+                input=x, normalized_shape=[4], weight=weight
+            )
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x, "weight": self.np_weight},
+                fetch_list=[out1, out2],
+            )
+            np_weight = self.np_weight.reshape(1, 1, 4)
+            np_rms = np.sqrt(
+                np.mean(self.np_x**2, axis=2, keepdims=True) + 1e-5
+            )
+            expected = self.np_x / np_rms * np_weight
+            for out in fetches:
+                np.testing.assert_allclose(out, expected, rtol=1e-4, atol=1e-4)
 
 
 # Test instance_norm compatibility (compat version)

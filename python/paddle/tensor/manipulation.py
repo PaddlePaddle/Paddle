@@ -5463,14 +5463,7 @@ def expand_copy(
 
 
 @expand_decorator
-def expand_copy(
-    x: Tensor | None = None,
-    shape: ShapeLike | None = None,
-    name: str | None = None,
-    *,
-    size: ShapeLike | None = None,
-    input: Tensor | None = None,
-) -> Tensor:
+def expand_copy(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
     """
     Returns a new tensor with the expanded data, without memory sharing.
 

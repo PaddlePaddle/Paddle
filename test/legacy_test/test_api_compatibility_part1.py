@@ -2797,6 +2797,28 @@ class TestExpandCopyAPI(unittest.TestCase):
         self.assertEqual(out9.shape, [2, 3])
         self.assertTrue(paddle.equal_all(out1, out9))
 
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[3], dtype="int32")
+
+            out1 = paddle.expand_copy(x, shape=[2, 3])
+            out2 = paddle.expand_copy(input=x, shape=[2, 3])
+            out3 = paddle.expand_copy(x, size=[2, 3])
+
+            exe = paddle.static.Executor()
+            np_x = np.array([1, 2, 3]).astype("int32")
+            fetches = exe.run(
+                main,
+                feed={"x": np_x},
+                fetch_list=[out1, out2, out3],
+            )
+            expected = np.broadcast_to(np_x, (2, 3))
+            for out in fetches:
+                np.testing.assert_array_equal(out, expected)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -2850,7 +2850,7 @@ def qr(
             If mode = "complete", qr op will return complete Q and R matrices,
             which means Q's shape is `[..., M, M]` and R's shape is `[..., M, N]`.
             If mode = "r", qr op will only compute reduced R matrix, which means
-            R's shape is `[..., K, N]` and Q will be an empty tensor. Default: "reduced".
+            R's shape is `[..., K, N]` and will not return Q. Default: "reduced".
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
