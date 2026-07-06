@@ -1310,7 +1310,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                if (find_id != -1) {
                  handle = memory::allocation::MemoryMapAllocationPool::Instance().GetById(find_id).file_name_; // NOLINT
                }
-               int shared_fd = -1;
+               intptr_t shared_fd = -1;
                auto shared_holder =
                    memory::allocation::AllocateRefcountedMemoryMapAllocation(
                        handle, shared_fd, flags, data_size, find_id);
@@ -1361,7 +1361,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 
              // 2. Rebuild Allocation
              const std::string &ipc_name = t[0].cast<std::string>();
-             const int shared_fd = t[1].cast<int>();
+             const intptr_t shared_fd = t[1].cast<intptr_t>();
              const bool use_file_descriptor = t[6].cast<bool>();
 
              size_t size = t[2].cast<size_t>();
@@ -1602,7 +1602,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                      .GetById(find_id)
                      .file_name_;  // NOLINT
       }
-      int shared_fd = -1;
+      intptr_t shared_fd = -1;
       auto shared_holder =
           memory::allocation::AllocateRefcountedMemoryMapAllocation(
               handle, shared_fd, flags, data_size, find_id);
@@ -1646,7 +1646,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
     DenseTensor tensor;
 
     const std::string &ipc_name = t[0].cast<std::string>();
-    const int shared_fd = t[1].cast<int>();
+    const intptr_t shared_fd = t[1].cast<intptr_t>();
     const bool use_file_descriptor = t[6].cast<bool>();
 
     size_t size = t[2].cast<size_t>();
