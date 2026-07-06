@@ -5672,7 +5672,7 @@ class TestNormalValidateArgsAPI(unittest.TestCase):
             np.testing.assert_allclose(out, ref_out, rtol=1e-6)
 
 
-class TestNormalSampleShapeAliasAPI(unittest.TestCase):
+class TestDistributionSampleShapeAliasAPI(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CPUPlace()
         self.np_loc = np.array([0.0, 1.0], dtype="float32")
@@ -5681,29 +5681,23 @@ class TestNormalSampleShapeAliasAPI(unittest.TestCase):
     def tearDown(self):
         paddle.enable_static()
 
-    def test_dygraph_Compatibility(self):
+    def _check_shape(self, tensor, expected):
+        self.assertEqual(list(tensor.shape), expected)
+
+    def test_normal_sample_shape_alias(self):
         paddle.disable_static()
         loc = paddle.to_tensor(self.np_loc, place=self.place)
         scale = paddle.to_tensor(self.np_scale, place=self.place)
-        dist = paddle.distributions.normal.Normal(loc, scale)
+        dist = paddle.distributions.Normal(loc, scale)
 
-        # 1. Paddle keyword arguments
-        out1 = dist.sample(shape=[2, 3])
-        # 2. PyTorch keyword arguments
-        out2 = dist.sample(sample_shape=[2, 3])
-        # 3. Paddle keyword arguments
-        out3 = dist.rsample(shape=[2, 3])
-        # 4. PyTorch keyword arguments
-        out4 = dist.rsample(sample_shape=[2, 3])
-
-        self.assertEqual(list(out1.shape), [2, 3, 2])
-        self.assertEqual(list(out2.shape), [2, 3, 2])
-        self.assertEqual(list(out3.shape), [2, 3, 2])
-        self.assertEqual(list(out4.shape), [2, 3, 2])
+        self._check_shape(dist.sample(shape=[2, 3]), [2, 3, 2])
+        self._check_shape(dist.sample(sample_shape=[2, 3]), [2, 3, 2])
+        self._check_shape(dist.rsample(shape=[2, 3]), [2, 3, 2])
+        self._check_shape(dist.rsample(sample_shape=[2, 3]), [2, 3, 2])
 
         paddle.enable_static()
 
-    def test_static_Compatibility(self):
+    def test_normal_sample_shape_alias_static(self):
         paddle.enable_static()
         main = paddle.static.Program()
         startup = paddle.static.Program()
@@ -5714,15 +5708,11 @@ class TestNormalSampleShapeAliasAPI(unittest.TestCase):
             scale = paddle.static.data(
                 name="scale", shape=self.np_scale.shape, dtype="float32"
             )
-            dist = paddle.distributions.normal.Normal(loc, scale)
+            dist = paddle.distributions.Normal(loc, scale)
 
-            # 1. Paddle keyword arguments
             out1 = dist.sample(shape=[2, 3])
-            # 2. PyTorch keyword arguments
             out2 = dist.sample(sample_shape=[2, 3])
-            # 3. Paddle keyword arguments
             out3 = dist.rsample(shape=[2, 3])
-            # 4. PyTorch keyword arguments
             out4 = dist.rsample(sample_shape=[2, 3])
 
             exe = paddle.static.Executor(self.place)
@@ -5736,7 +5726,130 @@ class TestNormalSampleShapeAliasAPI(unittest.TestCase):
             )
 
         for out in fetches:
-            self.assertEqual(list(out.shape), [2, 3, 2])
+            self._check_shape(out, [2, 3, 2])
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+
+        normal = paddle.distributions.Normal(
+            paddle.to_tensor([0.0, 1.0]),
+            paddle.to_tensor([1.0, 2.0]),
+        )
+        self._check_shape(normal.sample(sample_shape=[2, 3]), [2, 3, 2])
+        self._check_shape(normal.rsample(sample_shape=[2, 3]), [2, 3, 2])
+
+        cauchy = paddle.distributions.Cauchy(
+            paddle.to_tensor([0.0, 1.0]), paddle.to_tensor([1.0, 2.0])
+        )
+        self._check_shape(cauchy.sample(sample_shape=[2, 3]), [2, 3, 2])
+        self._check_shape(cauchy.rsample(sample_shape=[2, 3]), [2, 3, 2])
+
+        laplace = paddle.distributions.Laplace(
+            paddle.to_tensor([0.0, 1.0]), paddle.to_tensor([1.0, 2.0])
+        )
+        self._check_shape(laplace.sample(sample_shape=[2, 3]), [2, 3, 2])
+        self._check_shape(laplace.rsample(sample_shape=[2, 3]), [2, 3, 2])
+
+        exponential = paddle.distributions.Exponential(
+            paddle.to_tensor([1.0, 2.0])
+        )
+        self._check_shape(exponential.sample(sample_shape=[2, 3]), [2, 3, 2])
+        self._check_shape(exponential.rsample(sample_shape=[2, 3]), [2, 3, 2])
+
+        gamma = paddle.distributions.Gamma(
+            paddle.to_tensor([1.0, 2.0]), paddle.to_tensor([2.0, 3.0])
+        )
+        self._check_shape(gamma.sample(sample_shape=[2, 3]), [2, 3, 2])
+        self._check_shape(gamma.rsample(sample_shape=[2, 3]), [2, 3, 2])
+
+        geometric = paddle.distributions.Geometric(paddle.to_tensor([0.2, 0.7]))
+        self._check_shape(geometric.sample(sample_shape=[2, 3]), [2, 3, 2])
+        self._check_shape(geometric.rsample(sample_shape=[2, 3]), [2, 3, 2])
+
+        gumbel = paddle.distributions.Gumbel(
+            paddle.to_tensor([0.0, 1.0]), paddle.to_tensor([1.0, 2.0])
+        )
+        self._check_shape(gumbel.sample(sample_shape=[2, 3]), [2, 3, 2])
+        self._check_shape(gumbel.rsample(sample_shape=[2, 3]), [2, 3, 2])
+
+        continuous_bernoulli = paddle.distributions.ContinuousBernoulli(
+            paddle.to_tensor([0.3, 0.7])
+        )
+        self._check_shape(
+            continuous_bernoulli.sample(sample_shape=[2, 3]), [2, 3, 2]
+        )
+        self._check_shape(
+            continuous_bernoulli.rsample(sample_shape=[2, 3]), [2, 3, 2]
+        )
+
+        bernoulli = paddle.distributions.Bernoulli(paddle.to_tensor([0.3, 0.7]))
+        self._check_shape(bernoulli.sample(sample_shape=[2, 3]), [2, 3, 2])
+
+        binomial = paddle.distributions.Binomial(
+            10, paddle.to_tensor([0.3, 0.7])
+        )
+        self._check_shape(binomial.sample(sample_shape=[2, 3]), [2, 3, 2])
+
+        categorical = paddle.distributions.Categorical(
+            paddle.to_tensor([0.2, 0.3, 0.5])
+        )
+        self._check_shape(categorical.sample(sample_shape=[2, 3]), [2, 3])
+
+        dirichlet = paddle.distributions.Dirichlet(
+            paddle.to_tensor([1.0, 2.0, 3.0])
+        )
+        self._check_shape(dirichlet.sample(sample_shape=[2, 3]), [2, 3, 3])
+
+        independent = paddle.distributions.Independent(
+            paddle.distributions.Normal(
+                paddle.to_tensor([[0.0, 1.0], [2.0, 3.0]]),
+                paddle.to_tensor([[1.0, 1.0], [1.0, 1.0]]),
+            ),
+            1,
+        )
+        self._check_shape(independent.sample(sample_shape=[2, 3]), [2, 3, 2, 2])
+
+        multivariate_normal = paddle.distributions.MultivariateNormal(
+            paddle.to_tensor([0.0, 1.0]),
+            covariance_matrix=paddle.eye(2, dtype="float32"),
+        )
+        self._check_shape(
+            multivariate_normal.sample(sample_shape=[2, 3]), [2, 3, 2]
+        )
+        self._check_shape(
+            multivariate_normal.rsample(sample_shape=[2, 3]), [2, 3, 2]
+        )
+
+        poisson = paddle.distributions.Poisson(paddle.to_tensor([1.0, 2.0]))
+        self._check_shape(poisson.sample(sample_shape=[2, 3]), [2, 3, 2])
+
+        student_t = paddle.distributions.StudentT(
+            paddle.to_tensor([2.5, 3.5]),
+            paddle.to_tensor([0.0, 1.0]),
+            paddle.to_tensor([1.0, 1.5]),
+        )
+        self._check_shape(student_t.sample(sample_shape=[2, 3]), [2, 3, 2])
+
+        transformed = paddle.distributions.TransformedDistribution(
+            paddle.distributions.Normal(
+                paddle.to_tensor([0.0, 1.0]),
+                paddle.to_tensor([1.0, 2.0]),
+            ),
+            [
+                paddle.distributions.AffineTransform(
+                    loc=paddle.to_tensor(1.0), scale=paddle.to_tensor(2.0)
+                )
+            ],
+        )
+        self._check_shape(transformed.sample(sample_shape=[2, 3]), [2, 3, 2])
+        self._check_shape(transformed.rsample(sample_shape=[2, 3]), [2, 3, 2])
+
+        uniform = paddle.distributions.Uniform(
+            paddle.to_tensor([0.0, 1.0]), paddle.to_tensor([1.0, 2.0])
+        )
+        self._check_shape(uniform.sample(sample_shape=[2, 3]), [2, 3, 2])
+
+        paddle.enable_static()
 
 
 class TestTensorTransposeInplaceAPI(unittest.TestCase):
