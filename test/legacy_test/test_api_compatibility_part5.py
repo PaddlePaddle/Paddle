@@ -4031,17 +4031,16 @@ class TestClamp_API(unittest.TestCase):
     # Inplace API no static graph test
 
 
-@unittest.skipIf(
-    not paddle.device.is_compiled_with_cuda()
-    and not paddle.device.is_compiled_with_xpu(),
-    "rms_norm kernel is only registered on GPU/XPU",
-)
 # Test rms_norm compatibility
 class TestRmsNormFnAPI(unittest.TestCase):
     def setUp(self):
+        if not paddle.device.is_compiled_with_cuda():
+            self.skipTest("rms_norm fp16 test requires CUDA")
         np.random.seed(2025)
-        self.np_x = np.random.rand(2, 3, 4).astype("float32")
-        self.np_weight = np.ones(4).astype("float32")
+        self.np_x = np.random.rand(2, 3, 4).astype("float16")
+        self.np_weight = np.ones(4).astype("float16")
+        self.np_x_fp32 = self.np_x.astype("float32")
+        self.np_weight_fp32 = self.np_weight.astype("float32")
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -4061,14 +4060,17 @@ class TestRmsNormFnAPI(unittest.TestCase):
 
         for out in [out1, out2, out3]:
             self.assertEqual(out.shape, x.shape)
+            self.assertEqual(out.dtype, paddle.float16)
 
         # Numerical verification: rms_norm(x) = x / sqrt(mean(x^2) + eps) * weight
-        np_weight = self.np_weight.reshape(1, 1, 4)
-        np_rms = np.sqrt(np.mean(self.np_x**2, axis=2, keepdims=True) + 1e-5)
-        expected = self.np_x / np_rms * np_weight
+        np_weight = self.np_weight_fp32.reshape(1, 1, 4)
+        np_rms = np.sqrt(
+            np.mean(self.np_x_fp32**2, axis=2, keepdims=True) + 1e-5
+        )
+        expected = self.np_x_fp32 / np_rms * np_weight
         for out in [out1, out2, out3]:
             np.testing.assert_allclose(
-                out.numpy(), expected, rtol=1e-4, atol=1e-4
+                out.numpy(), expected, rtol=1e-2, atol=1e-2
             )
 
     def test_static_Compatibility(self):
@@ -4076,9 +4078,9 @@ class TestRmsNormFnAPI(unittest.TestCase):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(name="x", shape=[2, 3, 4], dtype="float32")
+            x = paddle.static.data(name="x", shape=[2, 3, 4], dtype="float16")
             weight = paddle.static.data(
-                name="weight", shape=[4], dtype="float32"
+                name="weight", shape=[4], dtype="float16"
             )
 
             out1 = paddle.nn.functional.rms_norm(x, [4], weight)
@@ -4092,15 +4094,14 @@ class TestRmsNormFnAPI(unittest.TestCase):
                 feed={"x": self.np_x, "weight": self.np_weight},
                 fetch_list=[out1, out2],
             )
-            np_weight = self.np_weight.reshape(1, 1, 4)
+            np_weight = self.np_weight_fp32.reshape(1, 1, 4)
             np_rms = np.sqrt(
-                np.mean(self.np_x**2, axis=2, keepdims=True) + 1e-5
+                np.mean(self.np_x_fp32**2, axis=2, keepdims=True) + 1e-5
             )
-            expected = self.np_x / np_rms * np_weight
+            expected = self.np_x_fp32 / np_rms * np_weight
             for out in fetches:
-                np.testing.assert_allclose(out, expected, rtol=1e-4, atol=1e-4)
+                np.testing.assert_allclose(out, expected, rtol=1e-2, atol=1e-2)
 
-        # Test instance_norm compatibility (compat version)
         paddle.disable_static()
 
 
