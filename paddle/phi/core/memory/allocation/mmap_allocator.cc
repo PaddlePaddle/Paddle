@@ -339,6 +339,11 @@ void RefcountedMemoryMapAllocation::close() {
   --info->refcount;
 
   if (FLAGS_use_shm_cache && buffer_id_ != -1) {
+#ifdef _WIN32
+    // Prevent base class MemoryMapAllocation::close() from closing the HANDLE
+    // (which would destroy the named section before the reader opens it).
+    closed_fd_ = true;
+#endif
     return;
   } else {
     if (FLAGS_use_shm_cache &&
@@ -387,15 +392,14 @@ void RefcountedMemoryMapAllocation::close() {
           VLOG(6) << "UnmapViewOfFile: " << ipc_name_;
           UnmapViewOfFile(map_ptr_);
         } else {
-          // Refcount == 1: reader hasn't opened yet. Transfer the HANDLE to
-          // WindowsHandleKeeper so the named section stays alive until the
-          // reader opens it. The HANDLE is closed during worker cleanup
-          // (MemoryMapFdSet::Clear → CloseAll).
-          WindowsHandleKeeper::Instance().Insert(ipc_name_, fd_);
+          // Refcount == 1: reader hasn't opened yet. Transfer both HANDLE
+          // and map_ptr_ to WindowsHandleKeeper so the named section stays
+          // alive until the reader opens it. The keeper will UnmapViewOfFile
+          // + CloseHandle when refcount reaches 0 (via SweepClosedMappings).
+          WindowsHandleKeeper::Instance().Insert(
+              ipc_name_, fd_, map_ptr_, map_size_);
           fd_ = -1;
           closed_fd_ = true;
-          VLOG(6) << "UnmapViewOfFile (refcount>0): " << ipc_name_;
-          UnmapViewOfFile(map_ptr_);
         }
 #endif
       }
@@ -676,16 +680,40 @@ WindowsHandleKeeper &WindowsHandleKeeper::Instance() {
   return *keeper;
 }
 
-void WindowsHandleKeeper::Insert(const std::string &ipc_name, intptr_t fd) {
+void WindowsHandleKeeper::Insert(const std::string &ipc_name,
+                                 intptr_t fd,
+                                 void *map_ptr,
+                                 size_t map_size) {
   std::lock_guard<std::mutex> lock(mtx_);
-  handles_[ipc_name] = fd;
+  SweepClosedMappings();
+  handles_[ipc_name] = {fd, map_ptr};
+}
+
+void WindowsHandleKeeper::SweepClosedMappings() {
+  std::lock_guard<std::mutex> lock(mtx_);
+  for (auto it = handles_.begin(); it != handles_.end();) {
+    // CountInfo::refcount is the first field at map_ptr. A value of 0 means
+    // all references (including the reader's) have been released — the
+    // section is no longer in use and can be cleaned up.
+    auto *refcnt =
+        static_cast<volatile std::atomic<uint32_t> *>(it->second.map_ptr);
+    if (refcnt->load(std::memory_order_acquire) == 0) {
+      VLOG(6) << "WindowsHandleKeeper sweeping: " << it->first;
+      UnmapViewOfFile(it->second.map_ptr);
+      CloseHandle(reinterpret_cast<HANDLE>(it->second.fd));
+      it = handles_.erase(it);
+    } else {
+      ++it;
+    }
+  }
 }
 
 void WindowsHandleKeeper::CloseAll() {
   std::lock_guard<std::mutex> lock(mtx_);
   for (auto &pair : handles_) {
-    if (pair.second != -1) {
-      CloseHandle(reinterpret_cast<HANDLE>(pair.second));
+    if (pair.second.fd != -1) {
+      UnmapViewOfFile(pair.second.map_ptr);
+      CloseHandle(reinterpret_cast<HANDLE>(pair.second.fd));
     }
   }
   handles_.clear();

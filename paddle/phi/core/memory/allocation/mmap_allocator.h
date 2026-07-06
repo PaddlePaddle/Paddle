@@ -186,13 +186,23 @@ class PADDLE_API MemoryMapFdSet {
 class PADDLE_API WindowsHandleKeeper {
  public:
   static WindowsHandleKeeper &Instance();  // NOLINT
-  void Insert(const std::string &ipc_name, intptr_t fd);
+
+  struct PendingMapping {
+    intptr_t fd;
+    void *map_ptr;
+  };
+
+  void Insert(const std::string &ipc_name,
+              intptr_t fd,
+              void *map_ptr,
+              size_t map_size);
+  void SweepClosedMappings();
   void CloseAll();
   ~WindowsHandleKeeper();
 
  private:
   WindowsHandleKeeper() = default;
-  std::unordered_map<std::string, intptr_t> handles_;
+  std::unordered_map<std::string, PendingMapping> handles_;
   std::mutex mtx_;
 };
 #endif
