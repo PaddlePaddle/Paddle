@@ -72,7 +72,7 @@ std::vector<std::tuple<Place, LibraryType>> kKernelPriority = {
     std::make_tuple(CPUPlace(), LibraryType::kPlain),
 };
 
-paddle::flat_hash_map<std::string, OperatorWithKernel::OpKernelMap>&
+TEST_API paddle::flat_hash_map<std::string, OperatorWithKernel::OpKernelMap>&
 OperatorWithKernel::AllOpKernels() {
   static paddle::flat_hash_map<std::string, OpKernelMap> g_all_op_kernels;
   return g_all_op_kernels;

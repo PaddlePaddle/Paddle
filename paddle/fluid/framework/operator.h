@@ -756,8 +756,7 @@ class OperatorWithKernel : public OperatorBase {
 
   PADDLE_API virtual ~OperatorWithKernel();
 
-  PADDLE_API static paddle::flat_hash_map<std::string /* op_type */,
-                                          OpKernelMap>&
+  TEST_API static paddle::flat_hash_map<std::string /* op_type */, OpKernelMap>&
   AllOpKernels();
 
   PADDLE_API bool SupportGPU() const override;
