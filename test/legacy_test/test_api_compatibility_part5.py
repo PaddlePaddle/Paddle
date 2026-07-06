@@ -4266,6 +4266,26 @@ class TestInstanceNormFnAPI(unittest.TestCase):
             out1.numpy(), expected.numpy(), rtol=1e-4, atol=1e-4
         )
 
+        # 5. Test momentum conversion: torch momentum=0.1 -> paddle momentum=0.9
+        out_torch_momentum = compat_in(
+            input=x,
+            weight=weight,
+            bias=bias,
+            momentum=0.1,
+        )
+        out_paddle_momentum = paddle.nn.functional.instance_norm(
+            x,
+            weight=weight,
+            bias=bias,
+            momentum=0.9,
+        )
+        np.testing.assert_allclose(
+            out_torch_momentum.numpy(),
+            out_paddle_momentum.numpy(),
+            rtol=1e-5,
+            atol=1e-5,
+        )
+
         paddle.enable_static()
 
     def test_static_Compatibility(self):
