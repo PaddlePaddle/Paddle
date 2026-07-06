@@ -3093,14 +3093,11 @@ class TestBatchNormFnAPI(unittest.TestCase):
             atol=1e-5,
         )
 
-        # 5. Verify result matches PyTorch numerical expectation
-        #    PyTorch: y = (x - mean) / sqrt(var + eps) * weight + bias
-        #    With running_mean=0, running_var=1, weight=1, bias=0, eps=1e-5:
-        mean = x.mean(axis=(0, 2, 3))
-        var = x.var(axis=(0, 2, 3), unbiased=False)
-        expected = (x - mean) / (var + 1e-5).sqrt()
+        # 5. Verify result matches numerical expectation in eval mode
+        #    batch_norm(x) = (x - running_mean) / sqrt(running_var + eps) * weight + bias
+        #    With running_mean=0, running_var=1, weight=1, bias=0: y ≈ x
         np.testing.assert_allclose(
-            out1.numpy(), expected.numpy(), rtol=1e-4, atol=1e-4
+            out1.numpy(), x.numpy(), rtol=1e-4, atol=1e-4
         )
 
         paddle.enable_static()
