@@ -543,7 +543,6 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_split_program_deprecated$|\
 ^test_trt_convert_multihead_matmul_roformer$|\
 ^test_cudnn_placement_pass$|\
-^operator_test$|\
 ^new_profiler_test$|\
 ^test_kernel_factory$|\
 ^save_load_version_compat_test$|\
