@@ -82,8 +82,8 @@ void AllocatorComputeStreamVisitor::Visit(StreamSafeCUDAAllocator* allocator) {
 
 void FreeMemoryMetricsVisitor::Visit(
     VirtualMemoryAutoGrowthBestFitAllocator* allocator) {
-  auto [large_size, sum_size] =
-      allocator->SumLargestFreeBlockSizes(nums_blocks_);
+  auto [large_size, sum_size] = allocator->SumLargestFreeBlockSizes(
+      static_cast<size_t>(std::max(nums_blocks_, 0)));
   large_size_ = std::max(large_size_, large_size);
   sum_size_ = std::max(sum_size_, sum_size);
 }
