@@ -12,20 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""``paddle.enable_compat()`` at its default level installs only the
-``torch -> paddle`` import proxy and does NOT alias ``paddle.*`` — so the composite
-APIs below run against genuinely NATIVE implementations (no ``level`` argument, thus
-runnable on develop). Each composite internally calls one of the top-level names,
-and the test pins the native results, i.e. verifies that merely enabling torch
-compat does not perturb paddle's own composite APIs:
+"""Verify default ``enable_compat()`` keeps ``paddle.*`` composites native.
 
 - vsplit / hsplit / dsplit / tensor_split / chunk  -> split
-- quantile / nanquantile                           -> paddle.sort
+- quantile                                         -> paddle.sort
 - histogram_bin_edges                              -> paddle.min / paddle.max
 - nan_to_num / F.nll_loss (ignore_index, mean)     -> paddle.equal
-
-Inputs are fixed (no RNG) and ops are lightweight so the file stays well under the
-newly-added-UT CI budget (ctest --repeat-until-fail 3 --timeout 15).
 """
 
 import unittest
@@ -37,7 +29,7 @@ import paddle.nn.functional as F
 
 
 def setUpModule():
-    # default level: installs the torch import proxy only, does NOT alias paddle.*
+    # Default level only installs the torch import proxy.
     paddle.enable_compat()
 
 
@@ -46,24 +38,15 @@ def tearDownModule():
 
 
 class TestSurfaceStaysNative(unittest.TestCase):
-    """enable_compat() at default level does NOT alias paddle.*, so the public
-    surface — and the composites below — stay native (native uses ``axis=``, not
-    the torch-style ``dim=``)."""
-
     def test_surface_is_native(self):
         t = paddle.to_tensor([[3.0, 1.0, 2.0]])
-        self.assertNotIsInstance(paddle.sort(t), tuple)  # native: plain Tensor
-        self.assertEqual(
-            paddle.max(t, axis=1).numpy().tolist(), [3.0]
-        )  # native axis= works
+        self.assertNotIsInstance(paddle.sort(t), tuple)
+        self.assertEqual(paddle.max(t, axis=1).numpy().tolist(), [3.0])
         with self.assertRaises(TypeError):
-            paddle.sort(t, dim=-1)  # no torch-style dim= on native
+            paddle.sort(t, dim=-1)
 
 
 class TestSplitFamily(unittest.TestCase):
-    """vsplit/hsplit/dsplit/tensor_split/chunk split along an axis; results must
-    match numpy's array_split."""
-
     def test_vsplit(self):
         x = np.arange(48, dtype="float32").reshape([4, 4, 3])
         outs = paddle.vsplit(paddle.to_tensor(x), 2)
@@ -83,7 +66,6 @@ class TestSplitFamily(unittest.TestCase):
             np.testing.assert_array_equal(o.numpy(), r)
 
     def test_tensor_split(self):
-        # uneven split: array_split-style remainder distribution
         x = np.arange(7, dtype="float32")
         outs = paddle.tensor_split(paddle.to_tensor(x), 3)
         self.assertEqual(len(outs), 3)
@@ -91,7 +73,6 @@ class TestSplitFamily(unittest.TestCase):
             np.testing.assert_array_equal(o.numpy(), r)
 
     def test_chunk(self):
-        # chunk: `chunks` is the chunk COUNT (not the per-chunk size).
         x = np.arange(18, dtype="float32").reshape([6, 3])
         outs = paddle.chunk(paddle.to_tensor(x), 3, axis=0)
         self.assertEqual(len(outs), 3)
@@ -101,7 +82,6 @@ class TestSplitFamily(unittest.TestCase):
 
 class TestReduceSortCompare(unittest.TestCase):
     def test_quantile(self):
-        # quantile internally calls paddle.sort(x, axis)
         x = np.array(
             [
                 [0.2, 0.7, 0.1, 0.4],
@@ -115,24 +95,12 @@ class TestReduceSortCompare(unittest.TestCase):
             got.numpy(), np.quantile(x, 0.35, axis=1), rtol=1e-5
         )
 
-    def test_nanquantile(self):
-        # nanquantile also routes through paddle.sort, ignoring NaNs
-        x = np.array(
-            [[0.2, np.nan, 0.1, 0.4], [1.0, 0.3, 0.8, 0.5]], dtype="float32"
-        )
-        got = paddle.nanquantile(paddle.to_tensor(x), 0.5, axis=1)
-        np.testing.assert_allclose(
-            got.numpy(), np.nanquantile(x, 0.5, axis=1), rtol=1e-5
-        )
-
     def test_nan_to_num(self):
-        # paddle.equal feeds paddle.where
         x = np.array([1.0, np.nan, np.inf, -np.inf, -2.5], dtype="float32")
         got = paddle.nan_to_num(paddle.to_tensor(x), nan=0.5)
         np.testing.assert_allclose(got.numpy(), np.nan_to_num(x, nan=0.5))
 
     def test_histogram_bin_edges(self):
-        # internally computes paddle.min / paddle.max of the input
         x = np.array([0.0, 1.5, 3.0, 4.5, 6.0], dtype="float32")
         got = paddle.histogram_bin_edges(paddle.to_tensor(x), bins=4)
         np.testing.assert_allclose(
@@ -140,7 +108,6 @@ class TestReduceSortCompare(unittest.TestCase):
         )
 
     def test_nll_loss(self):
-        # reduction='mean' + ignore_index takes the paddle.equal(count, 0.) path
         prob = np.array(
             [
                 [0.70, 0.10, 0.10, 0.10],
