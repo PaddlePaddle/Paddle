@@ -3557,19 +3557,54 @@ class TestTensorHAPI(unittest.TestCase):
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
             x = paddle.static.data(name="x", shape=[2, 2], dtype="float32")
+            x_c = paddle.static.data(
+                name="x_c", shape=[2, 2], dtype="complex64"
+            )
+            x_3d = paddle.static.data(
+                name="x_3d", shape=[2, 3, 4], dtype="float32"
+            )
+            x_0d = paddle.static.data(name="x_0d", shape=[], dtype="float32")
 
-            # .H is only available in dygraph mode (property)
-            # In static graph, use paddle.transpose instead
-            h = paddle.transpose(x, perm=[1, 0])
+            # Test .H on 2D real tensor
+            h = x.H
+            # Test .H on 2D complex tensor
+            h_c = x_c.H
+            # Test .mH on 2D real tensor
+            mh = x.mH
+            # Test .mH on 3D real tensor (last two dims swap + conj)
+            mh_3d = x_3d.mH
+            # Test .H on 0D tensor (returns self)
+            h_0d = x_0d.H
+            # Test .mH on 0D tensor (returns self)
+            mh_0d = x_0d.mH
 
             exe = paddle.static.Executor()
             fetches = exe.run(
                 main,
-                feed={"x": self.np_2d},
-                fetch_list=[h],
+                feed={
+                    "x": self.np_2d,
+                    "x_c": self.np_complex,
+                    "x_3d": self.np_3d,
+                    "x_0d": np.array(5.0).astype("float32"),
+                },
+                fetch_list=[h, h_c, mh, mh_3d, h_0d, mh_0d],
             )
-            expected = self.np_2d.transpose()
-            np.testing.assert_allclose(fetches[0], expected, rtol=1e-5)
+            np.testing.assert_allclose(
+                fetches[0], self.np_2d.transpose(), rtol=1e-5
+            )
+            np.testing.assert_allclose(
+                fetches[1], self.np_complex.transpose().conj(), rtol=1e-5
+            )
+            np.testing.assert_allclose(
+                fetches[2], self.np_2d.transpose().conj(), rtol=1e-5
+            )
+            np.testing.assert_allclose(
+                fetches[3], self.np_3d.transpose(0, 2, 1).conj(), rtol=1e-5
+            )
+            np.testing.assert_allclose(fetches[4], np.array(5.0), rtol=1e-5)
+            np.testing.assert_allclose(fetches[5], np.array(5.0), rtol=1e-5)
+
+        paddle.disable_static()
 
         # Test clamp_max compatibility (new API)
         paddle.disable_static()
