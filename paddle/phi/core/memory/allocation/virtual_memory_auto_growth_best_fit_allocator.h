@@ -58,7 +58,7 @@ class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
 
   const std::list<Block> &GetAllBlocks() const { return all_blocks_; }
 
-  std::pair<size_t, size_t> SumLargestFreeBlockSizes(int32_t n) const;
+  std::pair<size_t, size_t> SumLargestFreeBlockSizes(size_t n) const;
   void Accept(AllocatorVisitor *visitor) override { visitor->Visit(this); }
 
   bool IsAllocThreadSafe() const override { return true; }
