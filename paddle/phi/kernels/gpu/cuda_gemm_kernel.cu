@@ -184,8 +184,10 @@ void CudaGemm(const Context& dev_ctx,
 
   auto out_dims = output->dims();
 
-  const int m = input_dims[0];
-  const int n = weight_dims[0];
+  const int64_t m64 = input_dims[0];
+  const int64_t n64 = weight_dims[0];
+  PADDLE_ENFORCE_LE_INT_MAX(m64, "cuda gemm m");
+  PADDLE_ENFORCE_LE_INT_MAX(n64, "cuda gemm n");
 
   PADDLE_ENFORCE_EQ(
       input_dims[1],
@@ -194,7 +196,12 @@ void CudaGemm(const Context& dev_ctx,
           "The input dims[1] %d should be equal to weight dims[1] %d.",
           input_dims[1],
           weight_dims[1]));
-  const int k = weight_dims[1];
+  const int64_t k64 = weight_dims[1];
+  PADDLE_ENFORCE_LE_INT_MAX(k64, "cuda gemm k");
+
+  const int m = static_cast<int>(m64);
+  const int n = static_cast<int>(n64);
+  const int k = static_cast<int>(k64);
 
   GemmParams params = {
       reinterpret_cast<const void*>(input.data<T>()),
