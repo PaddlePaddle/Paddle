@@ -2315,7 +2315,7 @@ def slogdet(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
-def logdet(input, name=None):
+def logdet(input: Tensor, name: str | None = None) -> Tensor:
     """
     Computes the natural logarithm of the determinant of a square matrix or
     batches of square matrices.

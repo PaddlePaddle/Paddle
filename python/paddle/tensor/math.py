@@ -3223,7 +3223,9 @@ def clip(
         return output
 
 
-def clamp_max(input, max, *, out=None):
+def clamp_max(
+    input: Tensor, max: float, *, out: Tensor | None = None
+) -> Tensor:
     """
     Clamps all elements in input into the range [min=None, max].
 
@@ -3231,7 +3233,7 @@ def clamp_max(input, max, *, out=None):
 
     Args:
         input (Tensor): The input Tensor.
-        max (float|Tensor): The upper bound.
+        max (float): The upper bound.
         out (Tensor|None, optional): The output Tensor. Default: None.
 
     Returns:
@@ -3240,7 +3242,9 @@ def clamp_max(input, max, *, out=None):
     return clip(input, min=None, max=max, out=out)
 
 
-def clamp_min(input, min, *, out=None):
+def clamp_min(
+    input: Tensor, min: float, *, out: Tensor | None = None
+) -> Tensor:
     """
     Clamps all elements in input into the range [min, max=None].
 
@@ -3248,7 +3252,7 @@ def clamp_min(input, min, *, out=None):
 
     Args:
         input (Tensor): The input Tensor.
-        min (float|Tensor): The lower bound.
+        min (float): The lower bound.
         out (Tensor|None, optional): The output Tensor. Default: None.
 
     Returns:

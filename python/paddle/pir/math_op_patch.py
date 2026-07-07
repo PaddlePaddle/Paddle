@@ -745,7 +745,7 @@ def monkey_patch_value():
                 (2, 5, 3)
         """
         if len(self.shape) == 0:
-            return self
+            return _C_ops.conj(self)
         if len(self.shape) < 2:
             raise ValueError(
                 f"Tensor.ndim({len(self.shape)}) is required to be greater than or equal to 2 "
@@ -764,14 +764,14 @@ def monkey_patch_value():
 
         The conjugate transpose of a 2-D Tensor is equivalent to transposing the
         Tensor and then taking the conjugate of each element.
-        For 0-D Tensor, returns the Tensor itself.
+        For 0-D Tensor, returns the conjugated Tensor.
 
         Args:
             self: The input Tensor, which must be 0-D or 2-D.
 
         Returns:
             Tensor: A new Tensor with its dimensions transposed and elements conjugated.
-                If the input is 0-D, returns the Tensor itself.
+                If the input is 0-D, returns the conjugated Tensor.
 
         Examples:
             .. code-block:: pycon
@@ -789,7 +789,7 @@ def monkey_patch_value():
                  [(2-2j), (4-4j)]]
         """
         if len(self.shape) == 0:
-            return self
+            return _C_ops.conj(self)
         if len(self.shape) != 2:
             raise ValueError(
                 f"Only 0-D or 2-D tensors support .H (conjugate transpose), "

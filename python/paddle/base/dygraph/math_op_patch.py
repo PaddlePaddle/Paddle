@@ -382,7 +382,7 @@ def monkey_patch_math_tensor():
                        (1+1j))
         """
         if len(var.shape) == 0:
-            return var
+            return _C_ops.conj(var)
         if len(var.shape) < 2:
             raise ValueError(
                 f"Tensor.ndim({var.ndim}) is required to be greater than or equal to 2 "
@@ -401,14 +401,14 @@ def monkey_patch_math_tensor():
 
         The conjugate transpose of a 2-D Tensor is equivalent to transposing the
         Tensor and then taking the conjugate of each element (i.e., x.T.conj()).
-        For 0-D Tensor, returns the Tensor itself.
+        For 0-D Tensor, returns the conjugated Tensor.
 
         Args:
             var (Tensor): The input Tensor, which must be 0-D or 2-D.
 
         Returns:
             Tensor: A new Tensor with its dimensions transposed and elements conjugated.
-                If the input is 0-D, returns the Tensor itself.
+                If the input is 0-D, returns the conjugated Tensor.
 
         Examples:
             .. code-block:: pycon
@@ -427,7 +427,7 @@ def monkey_patch_math_tensor():
                        (1+1j))
         """
         if len(var.shape) == 0:
-            return var
+            return _C_ops.conj(var)
         if len(var.shape) != 2:
             raise ValueError(
                 f"Only 0-D or 2-D tensors support .H (conjugate transpose), "
