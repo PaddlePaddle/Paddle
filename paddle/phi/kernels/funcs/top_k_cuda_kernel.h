@@ -2265,8 +2265,8 @@ void launch(TensorInfo<const T, IndexType> input,
                     static_cast<int64_t>(items_per_block));
   PADDLE_ENFORCE_LE_UINT32_MAX(blocks_per_slice_64, "topk blocks_per_slice");
   uint32_t blocks_per_slice = static_cast<uint32_t>(blocks_per_slice_64);
-  uint64_t num_blocks_64 = static_cast<uint64_t>(numInputSlices) *
-                           static_cast<uint64_t>(blocks_per_slice);
+  int64_t num_blocks_64 = static_cast<int64_t>(numInputSlices) *
+                          static_cast<int64_t>(blocks_per_slice);
   PADDLE_ENFORCE_LE_UINT32_MAX(num_blocks_64, "topk num blocks");
   uint32_t num_blocks = static_cast<uint32_t>(num_blocks_64);
 
