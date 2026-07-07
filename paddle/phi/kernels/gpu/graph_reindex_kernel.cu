@@ -390,6 +390,7 @@ void GraphReindexKernel(const Context& dev_ctx,
   int64_t num_edges = neighbors.dims()[0];
   PADDLE_ENFORCE_LE_INT_MAX(bs, "graph_reindex num_inputs");
   PADDLE_ENFORCE_LE_INT_MAX(num_edges, "graph_reindex num_edges");
+  PADDLE_ENFORCE_LE_INT_MAX(bs + num_edges, "graph_reindex total nodes");
 
   const int bs_int = static_cast<int>(bs);
   const int num_edges_int = static_cast<int>(num_edges);

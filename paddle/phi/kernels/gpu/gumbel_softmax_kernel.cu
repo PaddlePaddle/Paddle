@@ -83,9 +83,9 @@ struct OneHotGenerator<GPUContext, T> {
                         const DenseTensor& X,
                         DenseTensor* out,
                         int axis) {
-    const int size_to_axis = funcs::SizeToAxis(axis, X.dims());
-    const int size_from_axis = funcs::SizeFromAxis(axis, X.dims());
-    const int size_out_axis = funcs::SizeOutAxis(axis, X.dims());
+    const int64_t size_to_axis = funcs::SizeToAxis(axis, X.dims());
+    const int64_t size_from_axis = funcs::SizeFromAxis(axis, X.dims());
+    const int64_t size_out_axis = funcs::SizeOutAxis(axis, X.dims());
     constexpr int thread_size = 512;
     int64_t max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
     int64_t height = static_cast<int64_t>(size_to_axis) * size_out_axis;
@@ -135,8 +135,8 @@ struct GumbleNoiseGenerator<GPUContext, T> {
   static void Transform(const GPUContext& dev_ctx,
                         const T* input_data,
                         T* output_data,
-                        int size_to_axis,
-                        int size_from_axis,
+                        int64_t size_to_axis,
+                        int64_t size_from_axis,
                         const float temperature) {
     DenseTensor random_tensor;
     int64_t size = static_cast<int64_t>(size_to_axis) * size_from_axis;
