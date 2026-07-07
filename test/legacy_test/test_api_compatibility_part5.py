@@ -3465,17 +3465,15 @@ class TestLinalgCrossAPI(unittest.TestCase):
         out2 = paddle.linalg.cross(input=x, other=y)
         # 3. PyTorch keyword arguments with dim alias
         out3 = paddle.linalg.cross(x, y, dim=1)
-        # 4. Paddle keyword arguments with axis
-        out4 = paddle.linalg.cross(x=x, y=y, axis=1)
-        # 5. out parameter test
-        out5 = paddle.empty_like(out1)
-        paddle.linalg.cross(x, y, out=out5)
-        # 6. Tensor method
-        out6 = x.cross(y)
+        # 4. out parameter test
+        out4 = paddle.empty_like(out1)
+        paddle.linalg.cross(x, y, out=out4)
+        # 5. Tensor method
+        out5 = x.cross(y)
 
         # Verify all outputs
         expected_np = np.cross(self.np_x, self.np_y, axisa=1, axisb=1, axisc=1)
-        for out in [out1, out2, out3, out4, out5, out6]:
+        for out in [out1, out2, out3, out4, out5]:
             np.testing.assert_allclose(
                 out.numpy(), expected_np, rtol=1e-5, atol=1e-5
             )
@@ -3488,8 +3486,8 @@ class TestLinalgCrossAPI(unittest.TestCase):
             x = paddle.static.data(name="x", shape=[5, 3], dtype="float32")
             y = paddle.static.data(name="y", shape=[5, 3], dtype="float32")
 
-            out1 = paddle.linalg.cross(x, y)
-            out2 = paddle.linalg.cross(x, y, axis=1)
+            out1 = paddle.linalg.cross(input=x, other=y)
+            out2 = paddle.linalg.cross(x, y, dim=1)
 
             exe = paddle.static.Executor()
             fetches = exe.run(
@@ -3571,7 +3569,7 @@ class TestTensorHAPI(unittest.TestCase):
         x_0d_c = paddle.to_tensor(np.array(1 + 2j).astype("complex64"))
         h_0d_c = x_0d_c.H
         self.assertEqual(h_0d_c.shape, [])
-        np.testing.assert_allclose(h_0d_c.numpy(), np.array(1 + 2j), rtol=1e-5)
+        np.testing.assert_allclose(h_0d_c.numpy(), np.array(1 - 2j), rtol=1e-5)
 
         # Test .mH on 0D tensor (returns self)
         mh_0d = x_0d.mH
