@@ -200,6 +200,17 @@ class MuonShardingOptimizer:
             "muon_sharding_optimizer do not support PP overlap"
         )
 
+        # Pipeline parallel schedules register_sharding_comm_overlap_hook /
+        # comm_grads / scale_grads itself per micro-batch. Registering our own
+        # backward hooks under PP would double-drive the comm buffers and race
+        # with the pipeline scheduler, so forbid the combination (mirrors
+        # DygraphShardingOptimizerV2).
+        self._use_pipeline_parallel = strategy.hybrid_configs["pp_degree"] > 1
+        if self._use_pipeline_parallel:
+            assert not self.comm_overlap, (
+                "You should not use pipeline parallel and comm_overlap at the same time"
+            )
+
         self._use_main_grad = hasattr(optimizer._parameter_list[0], "main_grad")
 
         # The full original parameter list
@@ -329,6 +340,32 @@ class MuonShardingOptimizer:
         self.param2bucket = {}
 
         self._build_1d_comm_buffers()
+
+        # ---- Expose the flat comm-buffer list for AMP GradScaler compat ----
+        # fleet.scaler.distributed_scaler()'s sharding-stage1 overlap branch
+        # waits on `optimizer._comm_buffers` (via HybridParallelOptimizer
+        # __getattr__ forwarding) before checking finite / unscaling. Muon only
+        # kept `comm_buffer_2d` / `_comm_buffer_list`, so expose the same union
+        # the overlap hook drives. group_call_opt reduces 2D buffers
+        # synchronously in reduce_gradients, so they are excluded here.
+        self._comm_buffers = []
+        if self._use_fuse_gradients and not self.use_group_call_opt:
+            self._comm_buffers.extend(self.comm_buffer_2d)
+        self._comm_buffers.extend(self._comm_buffer_list)
+
+        # ---- Register backward hooks for communication overlap ----
+        # When comm_overlap is enabled, each parameter's backward hook feeds its
+        # gradient into the owning comm buffer via add_grad. Once all of a
+        # buffer's params have checked in, the buffer launches its async reduce
+        # (2D) / reduce-scatter (1D), overlapping communication with the
+        # remaining backward compute. reduce_gradients then skips the manual
+        # _comm_grads() launch and only waits on the async task in scale_grads().
+        if self.comm_overlap and not self.pp_overlap:
+            assert self.accumulate_steps > 0, (
+                "accumulate_steps should be larger than 0 when using "
+                "comm_overlap in MuonShardingOptimizer"
+            )
+            self._register_reduce_overlap_hook()
 
         # ---- Step 4: Build the optimizer's parameter list ----
         # The optimizer should see:
@@ -672,6 +709,40 @@ class MuonShardingOptimizer:
     # Gradient communication
     # ------------------------------------------------------------------
 
+    def _register_reduce_overlap_hook(self):
+        """Register backward hooks so gradient communication overlaps backward.
+
+        Each param's backward hook routes its gradient into the owning
+        FusedCommBuffer via add_grad. When the last param of a buffer checks in,
+        the buffer launches its async reduce (2D) / reduce-scatter (1D). The
+        launched task is later waited on in reduce_gradients via scale_grads.
+
+        Notes:
+          - 2D buffers are only overlapped in the non group_call_opt path.
+            group_call_opt batches reduces through a coalescing manager in
+            reduce_gradients, which is incompatible with per-buffer async
+            launch, so those 2D grads keep the synchronous path.
+          - The hook order across params does not affect numerics: comm only
+            fires once all params of a buffer have checked in, and reduce /
+            reduce-scatter over the fused buffer are order-independent.
+        """
+        overlap_buffers = self._comm_buffers
+
+        for buffer in overlap_buffers:
+            for param in buffer.params:
+                param._register_backward_hook(
+                    self._create_backward_hook(buffer, param)
+                )
+
+    def _create_backward_hook(self, buffer, param):
+        """Create a backward hook that feeds a param's grad into its buffer."""
+
+        @paddle.autograd.no_grad()
+        def reduce_overlap(*_):
+            buffer.add_grad(param, use_comm=True)
+
+        return reduce_overlap
+
     def _get_param_grad(self, param):
         if not param.trainable:
             return None
@@ -733,7 +804,10 @@ class MuonShardingOptimizer:
                                 comm_buffer._copy_grad_to_buffer(param)
                 if not self.use_group_call_opt:
                     for comm_buffer in self.comm_buffer_2d:
-                        comm_buffer._comm_grads()
+                        # When comm_overlap is on, the reduce was already
+                        # launched by the backward hook; only wait in scale_grads.
+                        if not self.comm_overlap:
+                            comm_buffer._comm_grads()
                 else:
                     same_card_buffers = []
                     all_ring_buffers = []
