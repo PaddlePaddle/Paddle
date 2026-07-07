@@ -190,12 +190,15 @@ void Reindex(const Context& dev_ctx,
   int64_t num = out_nodes->size();
   int64_t log_num = 1 << static_cast<size_t>(1 + std::log2(num >> 1));
   int64_t table_size = log_num << 1;
+  PADDLE_ENFORCE_LE_INT_MAX(table_size, "graph_reindex table_size");
+  const size_t table_size_bytes = static_cast<size_t>(table_size);
 
-  auto keys = memory_utils::Alloc(dev_ctx.GetPlace(), table_size * sizeof(T));
+  auto keys =
+      memory_utils::Alloc(dev_ctx.GetPlace(), table_size_bytes * sizeof(T));
   auto values =
-      memory_utils::Alloc(dev_ctx.GetPlace(), table_size * sizeof(int));
+      memory_utils::Alloc(dev_ctx.GetPlace(), table_size_bytes * sizeof(int));
   auto key_index =
-      memory_utils::Alloc(dev_ctx.GetPlace(), table_size * sizeof(int));
+      memory_utils::Alloc(dev_ctx.GetPlace(), table_size_bytes * sizeof(int));
   T* keys_ptr = reinterpret_cast<T*>(keys->ptr());
   int* values_ptr = reinterpret_cast<int*>(values->ptr());
   int* key_index_ptr = reinterpret_cast<int*>(key_index->ptr());
@@ -209,7 +212,6 @@ void Reindex(const Context& dev_ctx,
   PADDLE_ENFORCE_LE_UINT32_MAX(table_blocks, "graph_reindex init table grid.x");
   PADDLE_ENFORCE_LE_UINT32_MAX(CUDA_NUM_THREADS,
                                "graph_reindex init table block.x");
-  PADDLE_ENFORCE_LE_INT_MAX(table_size, "graph_reindex table_size");
   const uint32_t table_grid = static_cast<uint32_t>(table_blocks);
   const uint32_t table_block = static_cast<uint32_t>(CUDA_NUM_THREADS);
   const int table_size_int = static_cast<int>(table_size);

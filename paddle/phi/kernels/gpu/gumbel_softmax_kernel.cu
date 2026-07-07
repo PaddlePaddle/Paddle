@@ -61,8 +61,8 @@ __global__ void OneHotCUDAKernel(const int64_t height,
 
   for (int64_t idx = blockIdx.x; idx < height; idx += gridDim.x) {
     KeyValuePair<int64_t, T> kv_pair = {-1, init};
-    int h = idx / size_out_axis;
-    int w = idx % size_out_axis;
+    int64_t h = idx / size_out_axis;
+    int64_t w = idx % size_out_axis;
     cub::ArgMax reducer;
     for (int64_t k = threadIdx.x; k < width; k += blockDim.x) {
       kv_pair = reducer(
@@ -70,7 +70,7 @@ __global__ void OneHotCUDAKernel(const int64_t height,
     }
     kv_pair = BlockReduce(temp_storage).Reduce(kv_pair, reducer);
     if (threadIdx.x == 0) {
-      int index = static_cast<int>(kv_pair.key);
+      int64_t index = kv_pair.key;
       out[h * width * size_out_axis + index * size_out_axis + w] = 1;
     }
     __syncthreads();
