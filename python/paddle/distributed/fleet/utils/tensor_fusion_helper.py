@@ -398,7 +398,7 @@ def build_reduce_scatter_buffer(
     grad_dtype = paddle.float32 if use_main_grad else dtype
 
     param_buffer = paddle.zeros(shape=[total_buffer_size], dtype=dtype)
-    param_buffer_ipc_meta = _share_tensor_ipc_meta(param_buffer)
+    param_buffer_ipc_meta = None
     grad_buffer = (
         paddle.zeros(shape=[total_buffer_size], dtype=grad_dtype)
         if not release_grad
@@ -514,6 +514,8 @@ class FusedCommBuffer:
         self._grads_to_addr = {}
 
         self._param_buffer_meta_tensor = None
+        self._param_buffer_ipc_meta = None
+        self._param_buffer_ipc_meta_ptr = None
 
         self._act = act
         if self._act == HOOK_ACTION.ALL_REDUCE:
@@ -587,9 +589,17 @@ class FusedCommBuffer:
             self._record_addr()
 
     def _refresh_param_buffer_ipc_meta(self):
-        if self._param_buffer_meta_tensor is None:
+        meta_tensor = self._param_buffer_meta_tensor
+        if meta_tensor is None:
             return None
-        return _share_tensor_ipc_meta(self._param_buffer_meta_tensor)
+        buffer_ptr = meta_tensor.data_ptr()
+        if (
+            getattr(self, "_param_buffer_ipc_meta", None) is None
+            or getattr(self, "_param_buffer_ipc_meta_ptr", None) != buffer_ptr
+        ):
+            self._param_buffer_ipc_meta = _share_tensor_ipc_meta(meta_tensor)
+            self._param_buffer_ipc_meta_ptr = buffer_ptr
+        return self._param_buffer_ipc_meta
 
     @property
     def param_buffer_ipc_meta(self):
@@ -602,6 +612,8 @@ class FusedCommBuffer:
             )
 
     def _clear_param_storage(self):
+        self._param_buffer_ipc_meta = None
+        self._param_buffer_ipc_meta_ptr = None
         self.param_storage._clear_to_zero_allocation()
         for param in self._params:
             self._sharding_param_grad_view[param.name]._clear_param_buffer()
@@ -612,6 +624,8 @@ class FusedCommBuffer:
         for param in self._params:
             grad_view = self._sharding_param_grad_view[param.name]
             grad_view._reset_param_buffer(new_param_storage)
+        self._param_buffer_ipc_meta = None
+        self._param_buffer_ipc_meta_ptr = None
 
     def _clear_grad_storage(self):
         self.grad_storage._clear_dataptr()

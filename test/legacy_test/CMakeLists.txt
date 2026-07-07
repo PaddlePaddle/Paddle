@@ -1088,6 +1088,12 @@ set_tests_properties(test_eigvals_op PROPERTIES TIMEOUT 400)
 set_tests_properties(
   test_cuda_memory_reserved PROPERTIES ENVIRONMENT
                                        "FLAGS_allocator_strategy=auto_growth")
+set_tests_properties(
+  test_cuda_vmm_v2_allocator
+  PROPERTIES
+    ENVIRONMENT
+    "FLAGS_allocator_strategy=auto_growth;FLAGS_use_virtual_memory_auto_growth=false;FLAGS_use_vmm_auto_growth_best_fit_allocator_v2=true;FLAGS_vmm_v2_large_pool_handle_size_in_mb=2"
+)
 if(WITH_GLOO)
   set_tests_properties(test_parallel_dygraph_dataparallel_cpuonly
                        PROPERTIES TIMEOUT 30)

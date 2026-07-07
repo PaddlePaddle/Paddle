@@ -17,9 +17,33 @@
 
 #include "glog/logging.h"
 
+#if defined(PADDLE_WITH_CUDA)
+#include "paddle/phi/core/memory/allocation/stream_safe_cuda_allocator.h"
+#endif
+
 COMMON_DECLARE_int64(offload_retry_times);
+COMMON_DECLARE_bool(vmm_v2_remap_on_oom);
 
 namespace paddle::memory::allocation {
+
+namespace {
+
+bool CanTryVMMV2Remap(const std::shared_ptr<Allocator>& allocator) {
+#if defined(PADDLE_WITH_CUDA)
+  if (!FLAGS_vmm_v2_remap_on_oom) {
+    return false;
+  }
+  auto* stream_safe_allocator =
+      dynamic_cast<StreamSafeCUDAAllocator*>(allocator.get());
+  return stream_safe_allocator != nullptr &&
+         stream_safe_allocator->GetVMMV2Allocator() != nullptr;
+#else
+  (void)allocator;
+  return false;
+#endif
+}
+
+}  // namespace
 
 static std::function<size_t(Place, size_t)> g_oom_callback;
 
@@ -61,24 +85,63 @@ phi::Allocation* RetryAllocator::AllocateImpl(size_t size) {
   auto alloc_func = [&, this]() {
     return underlying_allocator_->Allocate(size).release();
   };
+  auto try_remap = [&, this]() -> bool {
+    if (!CanTryVMMV2Remap(underlying_allocator_)) {
+      return false;
+    }
+    try {
+      const size_t remapped = underlying_allocator_->Compact(place_, size);
+      VLOG(4) << "RetryAllocator: VMM V2 compact returned " << remapped
+              << " bytes";
+      return remapped > 0;
+    } catch (const std::exception& e) {
+      VLOG(4) << "VMM V2 compact on " << place_
+              << " failed with exception: " << e.what();
+      return false;
+    } catch (...) {
+      VLOG(4) << "VMM V2 compact on " << place_
+              << " failed with unknown exception.";
+      return false;
+    }
+  };
   // In fact, we can unify the code of allocation success and failure
   // But it would add lock even when allocation success at the first time
   try {
     if (FLAGS_offload_retry_times <= 0 || g_oom_callback == nullptr) {
       return alloc_func();
-    } else {
-      bool has_offloaded = true;
-      for (int64_t i = 0; i < FLAGS_offload_retry_times && has_offloaded; ++i) {
+    }
+
+    bool has_offloaded = true;
+    for (int64_t i = 0; i < FLAGS_offload_retry_times && has_offloaded; ++i) {
+      try {
+        return alloc_func();
+      } catch (BadAlloc&) {
+        VLOG(10) << "Allocation " << size << " on " << place_
+                 << " failed, try offload on retry " << i;
+        has_offloaded = (g_oom_callback(place_, size) > 0);
+
+        if (!has_offloaded) {
+          continue;
+        }
+
+        // Offload may already have created a large enough free block. Retry
+        // allocation first. If it still fails, only a VMM V2-backed CUDA
+        // allocator may run one extra post-offload compact; other allocator
+        // stacks keep their legacy retry behavior.
         try {
           return alloc_func();
         } catch (BadAlloc&) {
-          VLOG(10) << "Allocation " << size << " on " << place_
-                   << " failed, try to run OOM callback " << i;
-          has_offloaded = (g_oom_callback(place_, size) > 0);
+        }
+
+        if (try_remap()) {
+          try {
+            return alloc_func();
+          } catch (BadAlloc&) {
+          }
         }
       }
-      return alloc_func();
     }
+    return alloc_func();
   } catch (BadAlloc&) {
     {
       WaitedAllocateSizeGuard guard(&waited_allocate_size_, size);

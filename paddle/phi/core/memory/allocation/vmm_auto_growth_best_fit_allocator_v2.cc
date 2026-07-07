@@ -16,17 +16,33 @@
 
 #if defined(PADDLE_WITH_CUDA)
 
+#include <algorithm>
+#include <atomic>
+#include <chrono>
 #include <exception>
+#include <limits>
 
 #include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/memory/allocation/free_block_remap_compactor.h"
 #include "paddle/phi/core/platform/cuda_device_guard.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 
 namespace paddle {
 namespace memory {
 namespace allocation {
 
 namespace {
+
+using Clock = std::chrono::steady_clock;
+
+std::atomic<uint64_t> g_vmm_v2_compact_seq{0};
+
+uint64_t ElapsedMicros(Clock::time_point start, Clock::time_point end) {
+  return static_cast<uint64_t>(
+      std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+          .count());
+}
 
 template <typename Map, typename Key, typename Value>
 void EmplaceOrEnforce(Map* map,
@@ -42,6 +58,25 @@ void EmplaceOrEnforce(Map* map,
       common::errors::AlreadyExists(
           "Duplicate key inserted into %s, allocator state is inconsistent.",
           map_name));
+}
+
+struct DriverMemoryStats {
+  size_t driver_actual_avail{0};
+  size_t driver_actual_total{0};
+  phi::gpuError_t mem_info_status{phi::gpuSuccess};
+};
+
+DriverMemoryStats CollectDriverMemoryStats(int device) {
+  DriverMemoryStats stats;
+  platform::CUDADeviceGuard guard(device);
+  stats.mem_info_status =
+      cudaMemGetInfo(&stats.driver_actual_avail, &stats.driver_actual_total);
+  if (stats.mem_info_status != phi::gpuSuccess) {
+    stats.driver_actual_avail = 0;
+    stats.driver_actual_total = 0;
+    (void)platform::GpuGetLastError();
+  }
+  return stats;
 }
 
 }  // namespace
@@ -103,6 +138,40 @@ bool VMMAutoGrowthBestFitAllocatorV2::UnderlyingAllocationRegistry::Overlaps(
   return HasOverlap(ptr, size);
 }
 
+bool VMMAutoGrowthBestFitAllocatorV2::UnderlyingAllocationRegistry::
+    AllOverlapsSatisfy(void* ptr,
+                       size_t size,
+                       const OverlapPredicate& predicate) const {
+  for (const auto& allocation : allocations_) {
+    if (!RangesOverlap(ptr, size, allocation->ptr(), allocation->size())) {
+      continue;
+    }
+    if (!predicate(allocation)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool VMMAutoGrowthBestFitAllocatorV2::UnderlyingAllocationRegistry::
+    EraseOverlapsIf(void* ptr, size_t size, const OverlapPredicate& predicate) {
+  bool ok = true;
+  for (auto it = allocations_.begin(); it != allocations_.end();) {
+    if (!RangesOverlap(ptr, size, (*it)->ptr(), (*it)->size())) {
+      ++it;
+      continue;
+    }
+    if (!predicate(*it)) {
+      ok = false;
+      ++it;
+      continue;
+    }
+    allocations_by_ptr_.erase(Begin(*it));
+    it = allocations_.erase(it);
+  }
+  return ok;
+}
+
 VMMAutoGrowthBestFitAllocatorV2::UnderlyingAllocationRegistry::iterator
 VMMAutoGrowthBestFitAllocatorV2::UnderlyingAllocationRegistry::Erase(
     iterator it) {
@@ -119,6 +188,16 @@ VMMAutoGrowthBestFitAllocatorV2::VMMAutoGrowthBestFitAllocatorV2(
       alignment_(alignment),
       place_(place),
       pool_type_(pool_type) {}
+
+bool VMMAutoGrowthBestFitBlockAllocationV2::SetVMMRemapEvent(
+    gpuStream_t stream, std::shared_ptr<CUDAEventGuard> event) {
+  if (owner_ == nullptr) {
+    return false;
+  }
+  remap_stream_ = stream;
+  remap_event_ = std::move(event);
+  return true;
+}
 
 phi::Allocation* VMMAutoGrowthBestFitAllocatorV2::AllocateImpl(size_t size) {
   std::lock_guard<SpinLock> guard(spinlock_);
@@ -162,8 +241,8 @@ phi::Allocation* VMMAutoGrowthBestFitAllocatorV2::AllocateImpl(size_t size) {
 
   // Grow: obtain a new raw allocation from the bottom VMM provider.
   // If cuMemCreate fails due to physical memory exhaustion (CU error 2),
-  // the driver-level allocator throws EnforceNotMet. Convert it to BadAlloc so
-  // the outer retry path can handle it.
+  // the driver-level allocator throws EnforceNotMet. Convert it to BadAlloc
+  // so outer allocator layers can run their generic OOM recovery path.
   CUDAVirtualMemAllocatorV2::AllocationWithBlock grow_alloc;
   if (grow_size > 0) {
     try {
@@ -220,7 +299,316 @@ phi::Allocation* VMMAutoGrowthBestFitAllocatorV2::AllocateImpl(size_t size) {
     InsertFreeBlock(remain_it);
   }
 
-  return new VMMAutoGrowthBestFitBlockAllocationV2(it, place_, this);  // NOLINT
+  return new VMMAutoGrowthBestFitBlockAllocationV2(  // NOLINT
+      it,
+      place_,
+      this);
+}
+
+size_t VMMAutoGrowthBestFitAllocatorV2::CompactImpl(const Place& place,
+                                                    size_t requested_size) {
+  const uint64_t compact_seq =
+      g_vmm_v2_compact_seq.fetch_add(1, std::memory_order_relaxed) + 1;
+  const auto compact_start = Clock::now();
+  // Defensive place validation: the call chain
+  // (RetryAllocator -> StreamSafe -> MultiPool -> SinglePool) guarantees
+  // place consistency.  Log a warning on mismatch but do not throw,
+  // since CompactImpl is called inside a try-catch that would silently
+  // swallow the exception and skip compaction.
+  if (UNLIKELY(place != Place(place_))) {
+    LOG(WARNING) << "CompactImpl place mismatch: got " << place.DebugString()
+                 << " but allocator serves " << Place(place_).DebugString();
+  }
+  const auto lock_start = Clock::now();
+  std::lock_guard<SpinLock> guard(spinlock_);
+  const uint64_t lock_wait_us = ElapsedMicros(lock_start, Clock::now());
+
+  const auto block_scan_start = Clock::now();
+  size_t total_free = 0;
+  size_t max_free = 0;
+  size_t tail_free = 0;
+  size_t mapped_free_blocks = 0;
+  size_t mapped_free_bytes = 0;
+  size_t largest_mapped_free = 0;
+  size_t indexable_mapped_free_blocks = 0;
+  size_t indexable_mapped_free_bytes = 0;
+  size_t unmapped_free_blocks_count = 0;
+  size_t unmapped_free_bytes = 0;
+  size_t largest_unmapped_free = 0;
+  std::vector<std::pair<VMMDevicePtr, size_t>> compact_source_ranges;
+  for (const auto& blk : all_blocks_) {
+    if (blk.IsMappedFree()) {
+      ++mapped_free_blocks;
+      mapped_free_bytes += blk.size_;
+      largest_mapped_free = std::max(largest_mapped_free, blk.size_);
+      total_free += blk.size_;
+      compact_source_ranges.emplace_back(blk.va_range());
+    }
+    if (CanIndexFreeBlock(blk)) {
+      ++indexable_mapped_free_blocks;
+      indexable_mapped_free_bytes += blk.size_;
+      max_free = std::max(max_free, blk.size_);
+    }
+    if (blk.IsUnmappedFree()) {
+      ++unmapped_free_blocks_count;
+      unmapped_free_bytes += blk.size_;
+      largest_unmapped_free = std::max(largest_unmapped_free, blk.size_);
+    }
+  }
+  const bool has_tail_block = !all_blocks_.empty();
+  const bool tail_is_indexable =
+      has_tail_block && CanIndexFreeBlock(all_blocks_.back());
+  const bool tail_is_unmapped =
+      has_tail_block && all_blocks_.back().IsUnmappedFree();
+  if (tail_is_indexable) {
+    tail_free = all_blocks_.back().size_;
+  }
+  const uint64_t block_scan_us = ElapsedMicros(block_scan_start, Clock::now());
+  uint64_t source_precheck_us = 0;
+  uint64_t driver_topup_us = 0;
+
+  auto log_compact_precheck_summary =
+      [&](const char* reason,
+          size_t current_compact_target,
+          size_t current_required_releasable_bytes,
+          size_t current_releasable_target_bytes,
+          size_t current_releasable_handles,
+          size_t current_releasable_bytes,
+          size_t bounded_source_page_count,
+          const DriverMemoryStats* driver_memory_stats = nullptr) {
+        const size_t missing_releasable_bytes =
+            current_required_releasable_bytes > current_releasable_bytes
+                ? current_required_releasable_bytes - current_releasable_bytes
+                : 0;
+        const size_t driver_topup_gap_bytes =
+            driver_memory_stats != nullptr &&
+                    missing_releasable_bytes >
+                        driver_memory_stats->driver_actual_avail
+                ? missing_releasable_bytes -
+                      driver_memory_stats->driver_actual_avail
+                : 0;
+
+        VLOG(3)
+            << "VMM V2 compact skip: seq=" << compact_seq
+            << " pool=" << static_cast<int>(pool_type_) << " action=skip"
+            << " reason=" << reason << " requested=" << requested_size
+            << " compact_target=" << current_compact_target
+            << " required_releasable_bytes="
+            << current_required_releasable_bytes
+            << " releasable_target_bytes=" << current_releasable_target_bytes
+            << " releasable_handles=" << current_releasable_handles
+            << " releasable_bytes=" << current_releasable_bytes
+            << " missing_releasable_bytes=" << missing_releasable_bytes
+            << " bounded_source_pages=" << bounded_source_page_count
+            << " source_ranges=" << compact_source_ranges.size()
+            << " mapped_free_blocks=" << mapped_free_blocks
+            << " mapped_free_bytes=" << mapped_free_bytes
+            << " largest_mapped_free=" << largest_mapped_free
+            << " indexable_mapped_free_blocks=" << indexable_mapped_free_blocks
+            << " indexable_mapped_free_bytes=" << indexable_mapped_free_bytes
+            << " largest_indexable_mapped_free=" << max_free
+            << " unmapped_free_blocks=" << unmapped_free_blocks_count
+            << " unmapped_free_bytes=" << unmapped_free_bytes
+            << " largest_unmapped_free=" << largest_unmapped_free
+            << " tail_free=" << tail_free
+            << " tail_is_indexable=" << tail_is_indexable
+            << " tail_is_unmapped=" << tail_is_unmapped
+            << " all_blocks=" << all_blocks_.size()
+            << " free_index_size=" << free_blocks_.size()
+            << " unmapped_free_index_size=" << unmapped_free_blocks_.size()
+            << " driver_actual_avail="
+            << (driver_memory_stats == nullptr
+                    ? 0UL
+                    : driver_memory_stats->driver_actual_avail)
+            << " driver_actual_total="
+            << (driver_memory_stats == nullptr
+                    ? 0UL
+                    : driver_memory_stats->driver_actual_total)
+            << " driver_topup_gap_bytes=" << driver_topup_gap_bytes
+            << " total_us=" << ElapsedMicros(compact_start, Clock::now())
+            << " lock_wait_us=" << lock_wait_us
+            << " block_scan_us=" << block_scan_us
+            << " source_precheck_us=" << source_precheck_us
+            << " driver_topup_us=" << driver_topup_us
+            << " driver_mem_info_collected=" << (driver_memory_stats != nullptr)
+            << " mem_info_status="
+            << static_cast<int>(driver_memory_stats == nullptr
+                                    ? phi::gpuSuccess
+                                    : driver_memory_stats->mem_info_status);
+      };
+
+  size_t compact_target = requested_size;
+  if (requested_size > 0) {
+    if (max_free >= requested_size) {
+      log_compact_precheck_summary(
+          "large_free_block_available", compact_target, 0, 0, 0, 0, 0);
+      VLOG(4) << "VMM V2 pool " << static_cast<int>(pool_type_)
+              << " compact skip: max_free=" << max_free
+              << " >= requested=" << requested_size;
+      return 0;
+    }
+
+    if (total_free < requested_size) {
+      if (total_free <= tail_free) {
+        log_compact_precheck_summary(
+            "insufficient_non_tail_mapped_free", compact_target, 0, 0, 0, 0, 0);
+        VLOG(4) << "VMM V2 pool " << static_cast<int>(pool_type_)
+                << " compact skip: total_free=" << total_free
+                << " < requested=" << requested_size
+                << " and no non-tail free bytes are available"
+                << " (tail_free=" << tail_free << ")";
+        return 0;
+      }
+      // Partial compact: under tight training pressure, mapped-free bytes may
+      // be insufficient to cover the whole request but still reduce the next
+      // grow attempt. Move the non-tail free backing to tail/gaps and let the
+      // following allocation retry grow only the remaining deficit.
+      compact_target = total_free;
+      VLOG(4) << "VMM V2 pool " << static_cast<int>(pool_type_)
+              << " compact partial: total_free=" << total_free
+              << " < requested=" << requested_size << " tail_free=" << tail_free
+              << " compact_target=" << compact_target;
+    }
+  }
+
+  // Count potentially movable source pages through the BackingMap mirror.
+  // Runtime event readiness remains in RemapTransaction; this precheck only
+  // verifies that free VA ranges fully cover mapped, reusable backing pages.
+  // The source ranges include all mapped-free blocks. BackingMap page state
+  // decides which individual handles are movable.
+  const size_t required_releasable_bytes =
+      compact_target > tail_free ? compact_target - tail_free : 0;
+  const size_t releasable_target_bytes =
+      requested_size > 0 ? required_releasable_bytes : compact_target;
+
+  const auto source_precheck_start = Clock::now();
+  auto source_pages = underlying_allocator_->CollectRemapSourcePages(
+      compact_source_ranges, releasable_target_bytes);
+  size_t releasable_handles = 0;
+  for (const auto& page : source_pages) {
+    if (page.remap_source_state == VMMBackingMap::RemapSourceState::kReady) {
+      ++releasable_handles;
+    }
+  }
+  source_precheck_us = ElapsedMicros(source_precheck_start, Clock::now());
+  const size_t releasable_bytes =
+      releasable_handles * underlying_allocator_->handle_size();
+  DriverMemoryStats topup_memory_stats;
+  const DriverMemoryStats* topup_memory_stats_ptr = nullptr;
+
+  if (requested_size > 0 && releasable_bytes < required_releasable_bytes) {
+    const auto driver_topup_start = Clock::now();
+    topup_memory_stats = CollectDriverMemoryStats(place_.device);
+    topup_memory_stats_ptr = &topup_memory_stats;
+    driver_topup_us = ElapsedMicros(driver_topup_start, Clock::now());
+    const size_t driver_topup_bytes =
+        required_releasable_bytes - releasable_bytes;
+    const bool driver_can_top_up =
+        topup_memory_stats.mem_info_status == phi::gpuSuccess &&
+        topup_memory_stats.driver_actual_avail >= driver_topup_bytes;
+    if (!driver_can_top_up) {
+      log_compact_precheck_summary("insufficient_releasable_mapped_free",
+                                   compact_target,
+                                   required_releasable_bytes,
+                                   releasable_target_bytes,
+                                   releasable_handles,
+                                   releasable_bytes,
+                                   source_pages.size(),
+                                   &topup_memory_stats);
+      VLOG(4) << "VMM V2 pool " << static_cast<int>(pool_type_)
+              << " compact skip: releasable_bytes=" << releasable_bytes
+              << " < required=" << required_releasable_bytes
+              << " and driver_actual_avail="
+              << topup_memory_stats.driver_actual_avail
+              << " < driver_topup_bytes=" << driver_topup_bytes
+              << " requested=" << requested_size << " total_free=" << total_free
+              << " max_free=" << max_free << " tail_free=" << tail_free
+              << " compact_target=" << compact_target
+              << " source_ranges=" << compact_source_ranges.size();
+      return 0;
+    }
+    compact_target = releasable_bytes;
+    VLOG(3) << "VMM V2 pool " << static_cast<int>(pool_type_)
+            << " compact partial with driver top-up: releasable_bytes="
+            << releasable_bytes
+            << " required_releasable_bytes=" << required_releasable_bytes
+            << " driver_actual_avail=" << topup_memory_stats.driver_actual_avail
+            << " driver_topup_bytes=" << driver_topup_bytes
+            << " requested=" << requested_size
+            << " compact_target=" << compact_target;
+  }
+
+  if (releasable_handles == 0) {
+    log_compact_precheck_summary("no_releasable_handles",
+                                 compact_target,
+                                 required_releasable_bytes,
+                                 releasable_target_bytes,
+                                 releasable_handles,
+                                 releasable_bytes,
+                                 source_pages.size(),
+                                 topup_memory_stats_ptr);
+    VLOG(4) << "VMM V2 pool " << static_cast<int>(pool_type_)
+            << " compact skip: no releasable handles"
+            << " (total_free=" << total_free << " max_free=" << max_free
+            << " tail_free=" << tail_free << " requested=" << requested_size
+            << " compact_target=" << compact_target
+            << " releasable_handles=" << releasable_handles
+            << " releasable_bytes=" << releasable_bytes
+            << " source_ranges=" << compact_source_ranges.size() << ")";
+    return 0;
+  }
+
+  const size_t driver_topup_bytes =
+      required_releasable_bytes > releasable_bytes
+          ? required_releasable_bytes - releasable_bytes
+          : 0;
+  VLOG(3) << "VMM V2 compact attempt: seq=" << compact_seq
+          << " pool=" << static_cast<int>(pool_type_)
+          << " requested=" << requested_size
+          << " compact_target=" << compact_target
+          << " partial=" << (compact_target < requested_size)
+          << " total_free=" << total_free << " max_free=" << max_free
+          << " tail_free=" << tail_free
+          << " required_releasable_bytes=" << required_releasable_bytes
+          << " releasable_handles=" << releasable_handles
+          << " releasable_bytes=" << releasable_bytes
+          << " driver_topup_bytes=" << driver_topup_bytes
+          << " source_pages=" << source_pages.size();
+
+  auto commit_synthetic_allocation = [this](DecoratedAllocationPtr allocation) {
+    TrackUnderlyingAllocation(std::move(allocation));
+  };
+  auto can_use_destination_range = [this](void* ptr, size_t size) {
+    return CanPrepareRemapDestinationRange(ptr, size);
+  };
+  auto release_stale_destination_allocations = [this](void* ptr, size_t size) {
+    return PrepareRemapDestinationRange(ptr, size);
+  };
+  FreeBlockRemapCompactor compactor(underlying_allocator_,
+                                    pool_type_,
+                                    commit_synthetic_allocation,
+                                    can_use_destination_range,
+                                    release_stale_destination_allocations);
+  const size_t remap_target = requested_size > 0 ? compact_target : 0;
+  const auto compactor_start = Clock::now();
+  const size_t remapped =
+      compactor.Compact(&all_blocks_, remap_target, compact_seq);
+  const uint64_t compactor_us = ElapsedMicros(compactor_start, Clock::now());
+  // Always rebuild: Phase 1 may have replaced FREE blocks with
+  // UNMAPPED-FREE/FREE
+  // segments before Phase 2 fails.  Without rebuild, free_blocks_ holds
+  // stale iterators to erased list nodes, causing use-after-free on next alloc.
+  const auto rebuild_index_start = Clock::now();
+  RebuildFreeBlockIndex();
+  const uint64_t rebuild_index_us =
+      ElapsedMicros(rebuild_index_start, Clock::now());
+  VLOG(3) << "VMM V2 compact finish: seq=" << compact_seq
+          << " pool=" << static_cast<int>(pool_type_)
+          << " requested=" << requested_size << " remapped_bytes=" << remapped
+          << " total_us=" << ElapsedMicros(compact_start, Clock::now())
+          << " compactor_us=" << compactor_us
+          << " rebuild_index_us=" << rebuild_index_us;
+  return remapped;
 }
 
 void VMMAutoGrowthBestFitAllocatorV2::FreeImpl(phi::Allocation* allocation) {
@@ -234,30 +622,158 @@ void VMMAutoGrowthBestFitAllocatorV2::FreeImpl(phi::Allocation* allocation) {
       common::errors::NotFound("Can not find active block for allocation %p in "
                                "VMMAutoGrowthBestFitAllocatorV2.",
                                allocation->ptr()));
+  auto remap_event = wrapped_allocation->TakeRemapEvent();
+  if (remap_event != nullptr) {
+    PADDLE_ENFORCE_EQ(
+        underlying_allocator_->SetBlockRemapEvent(
+            *it, wrapped_allocation->remap_stream(), remap_event),
+        true,
+        common::errors::InvalidArgument(
+            "Failed to attach explicit VMM V2 remap event for block %p.",
+            it->ptr_));
+  } else {
+    it->SetRemapSafety(wrapped_allocation->remap_stream(), nullptr);
+  }
   it->MarkFree();
   TryMerge(it);
   delete allocation;
 }
 
+void VMMAutoGrowthBestFitAllocatorV2::GetFreeBlockStats(size_t* total_free,
+                                                        size_t* max_free) {
+  std::lock_guard<SpinLock> guard(spinlock_);
+  size_t total = 0;
+  for (const auto& entry : free_blocks_) {
+    total += entry.first.first;
+  }
+  size_t max_sz = 0;
+  if (!free_blocks_.empty()) {
+    max_sz = free_blocks_.rbegin()->first.first;
+  }
+  *total_free = total;
+  *max_free = max_sz;
+}
+
+bool VMMAutoGrowthBestFitAllocatorV2::CollectTensorParts(
+    void* ptr,
+    size_t size,
+    std::vector<BlockPart>* parts,
+    bool mark_ipc_exported) {
+  std::lock_guard<SpinLock> guard(spinlock_);
+  auto target_va = reinterpret_cast<VMMDevicePtr>(ptr);
+  PADDLE_ENFORCE_LE(
+      size,
+      std::numeric_limits<VMMDevicePtr>::max() - target_va,
+      common::errors::InvalidArgument(
+          "Invalid VMM V2 tensor range: ptr %p plus size %zu overflows.",
+          ptr,
+          size));
+  BlockListIt block_it = all_blocks_.end();
+  for (auto it = all_blocks_.begin(); it != all_blocks_.end(); ++it) {
+    if (!it->IsActive()) {
+      continue;
+    }
+    if (it->ContainsVARange(target_va, size)) {
+      block_it = it;
+      break;
+    }
+  }
+  if (block_it == all_blocks_.end()) {
+    VLOG(8) << "[VMM-IPC/export] VMM v2 best-fit no active block for "
+            << "target_ptr=" << ptr << " target_size=" << size
+            << " pool=" << static_cast<int>(pool_type_)
+            << " block_count=" << all_blocks_.size();
+    return false;
+  }
+
+  std::vector<BlockPart> collected;
+  auto collect_ipc_parts = [&] {
+    return underlying_allocator_->CollectIPCParts(
+        target_va, size, parts != nullptr ? &collected : nullptr);
+  };
+  if (!collect_ipc_parts()) {
+    const size_t cleared =
+        underlying_allocator_->ClearRemapDestinationOwnershipInRange(target_va,
+                                                                     size);
+    if (cleared > 0) {
+      collected.clear();
+    }
+    if (cleared == 0 || !collect_ipc_parts()) {
+      VLOG(8) << "[VMM-IPC/export] VMM v2 best-fit failed to collect backing "
+              << "parts for active block ptr=" << block_it->ptr_
+              << " block_size=" << block_it->size_ << " target_ptr=" << ptr
+              << " target_size=" << size
+              << " pool=" << static_cast<int>(pool_type_);
+      return false;
+    }
+  }
+  if (mark_ipc_exported) {
+    if (!underlying_allocator_->MarkIPCExported(target_va, size)) {
+      VLOG(8) << "[VMM-IPC/export] VMM v2 best-fit failed to mark IPC exported "
+              << "for active block ptr=" << block_it->ptr_
+              << " block_size=" << block_it->size_ << " target_ptr=" << ptr
+              << " target_size=" << size
+              << " pool=" << static_cast<int>(pool_type_);
+      return false;
+    }
+    block_it->ipc_exported_ = true;
+  }
+  if (parts != nullptr) {
+    *parts = std::move(collected);
+  }
+  return true;
+}
+
+bool VMMAutoGrowthBestFitAllocatorV2::SetBlockRemapEvent(
+    void* ptr, gpuStream_t stream, std::shared_ptr<CUDAEventGuard> event) {
+  std::lock_guard<SpinLock> guard(spinlock_);
+  for (auto it = all_blocks_.begin(); it != all_blocks_.end(); ++it) {
+    if (!it->IsActive() || it->ptr_ != ptr) {
+      continue;
+    }
+    return underlying_allocator_->SetBlockRemapEvent(
+        *it, stream, std::move(event));
+  }
+  return false;
+}
+
+bool VMMAutoGrowthBestFitAllocatorV2::SetBlockRemapEvent(
+    BlockListIt block_it,
+    gpuStream_t stream,
+    std::shared_ptr<CUDAEventGuard> event) {
+  std::lock_guard<SpinLock> guard(spinlock_);
+  if (block_it == all_blocks_.end() || !block_it->IsActive()) {
+    return false;
+  }
+  return underlying_allocator_->SetBlockRemapEvent(
+      *block_it, stream, std::move(event));
+}
+
+BlockList VMMAutoGrowthBestFitAllocatorV2::SnapshotAllBlocks() const {
+  std::lock_guard<SpinLock> guard(spinlock_);
+  return all_blocks_;
+}
+
 phi::Allocation* VMMAutoGrowthBestFitAllocatorV2::AllocFromFreeBlocks(
     size_t size) {
   auto it = free_blocks_.lower_bound({size, nullptr});
+  while (it != free_blocks_.end() && !CanIndexFreeBlock(*it->second)) {
+    it = free_blocks_.erase(it);
+  }
   if (it == free_blocks_.end()) {
     return nullptr;
   }
 
   auto block_it = it->second;
-  PADDLE_ENFORCE_EQ(
-      CanIndexFreeBlock(*block_it),
-      true,
-      common::errors::PreconditionNotMet(
-          "VMM V2 free block index points to a non-reusable block."));
-  free_blocks_.erase(it);
+  EraseFreeBlock(block_it);
 
   if (block_it->size_ > size) {
     const size_t remaining_size = block_it->size_ - size;
     BlockV2 remaining_block =
         block_it->MakeMappedFreeSubBlock(size, remaining_size);
+    // The free remainder keeps the source block's remap-safety stream. The
+    // reused prefix is cleared by MarkActive().
+
     block_it->TrimToPrefix(size);
     auto remain_it =
         all_blocks_.insert(std::next(block_it), std::move(remaining_block));
@@ -265,8 +781,10 @@ phi::Allocation* VMMAutoGrowthBestFitAllocatorV2::AllocFromFreeBlocks(
   }
 
   block_it->MarkActive();
-  return new  // NOLINT
-      VMMAutoGrowthBestFitBlockAllocationV2(block_it, place_, this);
+  return new VMMAutoGrowthBestFitBlockAllocationV2(  // NOLINT
+      block_it,
+      place_,
+      this);  // NOLINT
 }
 
 phi::Allocation* VMMAutoGrowthBestFitAllocatorV2::AllocFromUnmappedFreeBlocks(
@@ -281,9 +799,9 @@ phi::Allocation* VMMAutoGrowthBestFitAllocatorV2::AllocFromUnmappedFreeBlocks(
       iter = unmapped_free_blocks_.erase(iter);
       continue;
     }
-    if (RangeOverlapsUnderlying(it->ptr_, backing_size)) {
-      VLOG(6) << "VMM V2 AllocFromUnmappedFreeBlocks skip ownership-overlapped "
-                 "unmapped-free ptr="
+    if (underlying_allocations_.Overlaps(it->ptr_, backing_size)) {
+      VLOG(6) << "VMM V2 AllocFromUnmappedFreeBlocks skip "
+                 "underlying-overlapped unmapped-free ptr="
               << it->ptr_ << " backing_size=" << backing_size
               << " block_size=" << it->size_;
       ++iter;
@@ -333,6 +851,9 @@ phi::Allocation* VMMAutoGrowthBestFitAllocatorV2::AllocFromUnmappedFreeBlocks(
   if (backing_size > size) {
     BlockV2 mapped_remain =
         mapped_block.MakeMappedFreeSubBlock(size, backing_size - size);
+    mapped_remain.owning_stream_ = nullptr;
+    mapped_remain.remap_safe_event_.reset();
+    mapped_remain.remap_pending_states_.clear();
     auto free_it = all_blocks_.insert(insert_pos, std::move(mapped_remain));
     InsertFreeBlock(free_it);
     insert_pos = std::next(free_it);
@@ -348,13 +869,63 @@ phi::Allocation* VMMAutoGrowthBestFitAllocatorV2::AllocFromUnmappedFreeBlocks(
     InsertUnmappedFreeBlock(tail_it);
   }
 
-  return new  // NOLINT
-      VMMAutoGrowthBestFitBlockAllocationV2(best, place_, this);
+  return new VMMAutoGrowthBestFitBlockAllocationV2(  // NOLINT
+      best,
+      place_,
+      this);  // NOLINT
 }
 
 void VMMAutoGrowthBestFitAllocatorV2::TrackUnderlyingAllocation(
     DecoratedAllocationPtr allocation) {
   underlying_allocations_.Add(std::move(allocation));
+}
+
+bool VMMAutoGrowthBestFitAllocatorV2::AllocationOwnedByRemapDestination(
+    const DecoratedAllocationPtr& allocation,
+    void* target_ptr,
+    size_t target_size) const {
+  if (!underlying_allocator_->IsAllocationOwnedByRemapDestination(
+          allocation->ptr())) {
+    VLOG(6) << "VMM V2 synthetic allocation preparation: target range "
+            << target_ptr << " size=" << target_size
+            << " overlaps non-remap-destination underlying allocation "
+            << allocation->ptr() << " size=" << allocation->size();
+    return false;
+  }
+  return true;
+}
+
+bool VMMAutoGrowthBestFitAllocatorV2::CanPrepareRemapDestinationRange(
+    void* ptr, size_t size) const {
+  if (underlying_allocations_.AllOverlapsSatisfy(
+          ptr,
+          size,
+          [this, ptr, size](const DecoratedAllocationPtr& allocation) {
+            return AllocationOwnedByRemapDestination(allocation, ptr, size);
+          })) {
+    return true;
+  }
+  return underlying_allocator_->IsRangeUnmapped(
+      reinterpret_cast<VMMDevicePtr>(ptr), size);
+}
+
+bool VMMAutoGrowthBestFitAllocatorV2::PrepareRemapDestinationRange(
+    void* ptr, size_t size) {
+  const bool released_owned_overlaps = underlying_allocations_.EraseOverlapsIf(
+      ptr, size, [this, ptr, size](const DecoratedAllocationPtr& allocation) {
+        if (!AllocationOwnedByRemapDestination(allocation, ptr, size)) {
+          return false;
+        }
+        VLOG(3) << "VMM V2 synthetic allocation preparation: releasing stale "
+                   "remap-destination allocation "
+                << allocation->ptr() << " size=" << allocation->size();
+        return true;
+      });
+  if (released_owned_overlaps) {
+    return true;
+  }
+  return underlying_allocator_->IsRangeUnmapped(
+      reinterpret_cast<VMMDevicePtr>(ptr), size);
 }
 
 BlockV2 VMMAutoGrowthBestFitAllocatorV2::AdoptBackingBlock(
@@ -370,9 +941,13 @@ BlockV2 VMMAutoGrowthBestFitAllocatorV2::AdoptBackingBlock(
   return block;
 }
 
-bool VMMAutoGrowthBestFitAllocatorV2::RangeOverlapsUnderlying(
-    void* ptr, size_t size) const {
-  return underlying_allocations_.Overlaps(ptr, size);
+bool VMMAutoGrowthBestFitAllocatorV2::CanReleaseIdleUnderlying(
+    uint8_t* base, size_t size) const {
+  if (!IsRangeEntirelyFree(base, size)) {
+    return false;
+  }
+  return underlying_allocator_->IsRangeReleasable(
+      reinterpret_cast<VMMDevicePtr>(base), size);
 }
 
 bool VMMAutoGrowthBestFitAllocatorV2::HasReleasableIdleUnderlying() const {
@@ -385,15 +960,6 @@ bool VMMAutoGrowthBestFitAllocatorV2::HasReleasableIdleUnderlying() const {
   return false;
 }
 
-bool VMMAutoGrowthBestFitAllocatorV2::CanReleaseIdleUnderlying(
-    uint8_t* base, size_t size) const {
-  if (!IsRangeEntirelyFree(base, size)) {
-    return false;
-  }
-  return underlying_allocator_->IsRangeReleasable(
-      reinterpret_cast<VMMDevicePtr>(base), size);
-}
-
 bool VMMAutoGrowthBestFitAllocatorV2::TryReleaseIdleUnderlying(
     UnderlyingAllocationRegistry::iterator* alloc_it, uint64_t* released) {
   auto* allocation = (**alloc_it).get();
@@ -403,6 +969,15 @@ bool VMMAutoGrowthBestFitAllocatorV2::TryReleaseIdleUnderlying(
     return false;
   }
 
+  if (underlying_allocator_->IsAllocationOwnedByRemapDestination(base)) {
+    const size_t cleared =
+        underlying_allocator_->ClearRemapDestinationOwnershipInRange(
+            reinterpret_cast<VMMDevicePtr>(base), alloc_size);
+    VLOG(5) << "VMM V2 pool " << static_cast<int>(pool_type_)
+            << " cleared remap-destination ownership for " << cleared
+            << " bytes before releasing idle chunk " << base
+            << " size=" << alloc_size;
+  }
   ReplaceRangeWithUnmappedFree(base, alloc_size);
   *released += alloc_size;
   VLOG(5) << "VMM V2 pool " << static_cast<int>(pool_type_)
@@ -442,9 +1017,22 @@ void VMMAutoGrowthBestFitAllocatorV2::EraseUnmappedFreeBlock(BlockListIt it) {
   unmapped_free_blocks_.erase({it->size_, it->ptr_});
 }
 
+void VMMAutoGrowthBestFitAllocatorV2::RebuildFreeBlockIndex() {
+  free_blocks_.clear();
+  unmapped_free_blocks_.clear();
+  for (auto it = all_blocks_.begin(); it != all_blocks_.end(); ++it) {
+    if (CanIndexFreeBlock(*it)) {
+      InsertFreeBlock(it);
+    }
+    if (it->IsUnmappedFree()) {
+      InsertUnmappedFreeBlock(it);
+    }
+  }
+}
+
 void VMMAutoGrowthBestFitAllocatorV2::TryMerge(BlockListIt it) {
   // Only adjacent FREE blocks are merged here. ACTIVE blocks are never touched,
-  // and unmapped-free blocks remain as explicit holes for later reuse.
+  // and unmapped-free blocks remain as explicit holes for later remap/reuse.
   // all_blocks_ is the full VA-ordered block list, so adjacency is checked
   // against neighboring entries in that list.
   if (it != all_blocks_.begin()) {
@@ -464,7 +1052,9 @@ void VMMAutoGrowthBestFitAllocatorV2::TryMerge(BlockListIt it) {
     all_blocks_.erase(next);
   }
 
-  InsertFreeBlock(it);
+  if (CanIndexFreeBlock(*it)) {
+    InsertFreeBlock(it);
+  }
 }
 
 void VMMAutoGrowthBestFitAllocatorV2::TryMergeUnmappedFree(BlockListIt it) {
@@ -570,8 +1160,14 @@ bool VMMAutoGrowthBestFitAllocatorV2::IsRangeEntirelyFree(uint8_t* base,
       return false;
     }
   }
-  // Return true when the range contains only FREE/unmapped-free blocks, or
-  // when blocks have already been removed by a prior FreeIdleChunks pass.
+  // Returns true when the range contains only FREE/unmapped-free blocks or
+  // when
+  // blocks have already been removed by a prior FreeIdleChunks pass
+  // (unmapped-free scatter / single-unmapped-free path case: the original
+  // allocation's cleanup removes
+  // blocks in the overlapping VA range before the synthetic allocation
+  // is processed).  FreeImpl handles this safely: original allocation
+  // skips remapped handles; synthetic allocation unmaps+releases its own.
   return true;
 }
 
@@ -635,10 +1231,13 @@ void VMMAutoGrowthBestFitAllocatorV2::ReplaceRangeWithUnmappedFree(
       const size_t left_size = static_cast<size_t>(base - bptr);
       const size_t right_offset = static_cast<size_t>(end - bptr);
       const size_t right_size = it->size_ - right_offset;
+      const bool unmapped_free = it->IsUnmappedFree();
       BlockV2 right =
-          it->IsUnmappedFree()
-              ? it->MakeUnmappedFreeSubBlock(right_offset, right_size)
-              : it->MakeMappedFreeSubBlock(right_offset, right_size);
+          unmapped_free ? it->MakeUnmappedFreeSubBlock(right_offset, right_size)
+                        : it->MakeMappedFreeSubBlock(right_offset, right_size);
+      if (!unmapped_free) {
+        right.CopyRemapSafetyFrom(*it);
+      }
 
       erase_free_index(it);
       it->TrimToPrefix(left_size);
