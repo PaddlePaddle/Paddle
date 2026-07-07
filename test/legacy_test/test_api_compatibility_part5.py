@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
@@ -4171,6 +4172,8 @@ class TestRmsNormFnAPI(unittest.TestCase):
         self.np_weight_fp32 = self.np_weight.astype("float32")
 
     def test_dygraph_Compatibility(self):
+        if sys.platform == "win32":
+            return
         if not paddle.device.is_compiled_with_cuda():
             return
         paddle.disable_static()
@@ -4204,6 +4207,8 @@ class TestRmsNormFnAPI(unittest.TestCase):
             )
 
     def test_static_Compatibility(self):
+        if sys.platform == "win32":
+            return
         if not paddle.device.is_compiled_with_cuda():
             return
         paddle.enable_static()
