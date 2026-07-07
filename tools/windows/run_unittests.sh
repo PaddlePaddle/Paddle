@@ -558,7 +558,6 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_split_program_deprecated$|\
 ^test_trt_convert_multihead_matmul_roformer$|\
 ^test_cudnn_placement_pass$|\
-^operator_test$|\
 ^new_profiler_test$|\
 ^test_kernel_factory$|\
 ^save_load_version_compat_test$|\
@@ -754,6 +753,7 @@ function run_unittest_gpu() {
 
     if nvcc --version | grep 13.3; then
         echo "CUDA version is 13.3, disable wingpu_cuda133_test"
+        echo "::warning::Skipping FlashAttention/Memory Efficient Attention Windows CI tests on CUDA 13.3 because the kernels are not registered or supported yet."
         disable_wingpu_test=${disable_wingpu_cuda133_test}
     fi
 

@@ -306,13 +306,13 @@ class TestMemoryReserved(TestCase):
 class TestSetDevice(TestCase):
     def test_set_device_return_type(self):
         """Test that set_device returns None."""
-        if paddle.cuda.device_count() > 0:
+        if paddle.is_compiled_with_cuda() and paddle.cuda.device_count() > 0:
             result = paddle.cuda.set_device(0)
             self.assertIsNone(result, "set_device should return None")
 
     def test_set_device_no_exception(self):
         """Test that set_device does not raise any exceptions."""
-        if paddle.cuda.device_count() > 0:
+        if paddle.is_compiled_with_cuda() and paddle.cuda.device_count() > 0:
             try:
                 paddle.cuda.set_device(0)
             except Exception as e:
@@ -320,7 +320,7 @@ class TestSetDevice(TestCase):
 
     def test_set_device_with_int_param(self):
         """Test that set_device works with integer parameter."""
-        if paddle.cuda.device_count() > 0:
+        if paddle.is_compiled_with_cuda() and paddle.cuda.device_count() > 0:
             try:
                 # Test with device index 0
                 paddle.cuda.set_device(0)
@@ -334,9 +334,33 @@ class TestSetDevice(TestCase):
                     f"set_device with int parameter raised an exception: {e}"
                 )
 
+    def test_set_device_int_after_cpu_place(self):
+        """Test int parameter after switching the expected place to CPU."""
+        if not (
+            paddle.is_compiled_with_cuda() and paddle.cuda.device_count() > 0
+        ):
+            return
+        original_device = paddle.device.get_device()
+        try:
+            paddle.device.set_device('cpu')
+            paddle.cuda.set_device(0)
+            self.assertEqual(
+                paddle.cuda.current_device(),
+                0,
+                'cuda.set_device(0) should select GPU 0 even when the '
+                'current place is CPU',
+            )
+        except Exception as e:
+            self.fail(
+                f'cuda.set_device(int) after a CPU place raised an '
+                f'exception: {e}'
+            )
+        finally:
+            paddle.device.set_device(original_device)
+
     def test_set_device_with_str_param(self):
         """Test that set_device works with string parameter."""
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() and paddle.cuda.device_count() > 0:
             try:
                 # Test with device string
                 paddle.cuda.set_device('gpu:0')
@@ -347,6 +371,16 @@ class TestSetDevice(TestCase):
                     0,
                     "set_device should set device to 0 with 'gpu:0'",
                 )
+                paddle.cuda.set_device('cuda:0')
+                current_device = paddle.cuda.current_device()
+                self.assertEqual(
+                    current_device,
+                    0,
+                    "set_device should set device to 0 with 'cuda:0'",
+                )
+                # bare 'gpu' / 'cuda' select the default GPU without raising
+                paddle.cuda.set_device('gpu')
+                paddle.cuda.set_device('cuda')
             except Exception as e:
                 self.fail(
                     f"set_device with string parameter raised an exception: {e}"
@@ -354,7 +388,7 @@ class TestSetDevice(TestCase):
 
     def test_set_device_with_cuda_place_param(self):
         """Test that set_device works with CUDAPlace parameter."""
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() and paddle.cuda.device_count() > 0:
             try:
                 # Test with CUDAPlace
                 place = paddle.CUDAPlace(0)
@@ -372,86 +406,27 @@ class TestSetDevice(TestCase):
                 )
 
     def test_set_device_with_xpu_place_param(self):
-        """Test that set_device works with XPUPlace parameter."""
+        """paddle.cuda.set_device rejects an XPUPlace; use paddle.device.set_device."""
         if paddle.is_compiled_with_xpu():
-            try:
-                # Test with XPUPlace
-                place = paddle.XPUPlace(0)
-                paddle.cuda.set_device(place)
-                # Verify device was set correctly
-                current_device = paddle.cuda.current_device()
-                # For XPU, we check if the device string contains 'xpu:0'
-                device_str = paddle.device.get_device()
-                self.assertEqual(
-                    device_str,
-                    'xpu:0',
-                    "set_device should set device to xpu:0 with XPUPlace",
-                )
-            except Exception as e:
-                self.fail(
-                    f"set_device with XPUPlace parameter raised an exception: {e}"
-                )
+            with self.assertRaises(ValueError):
+                paddle.cuda.set_device(paddle.XPUPlace(0))
 
     def test_set_device_with_xpu_str_param(self):
-        """Test that set_device works with XPU string parameter."""
-        if paddle.is_compiled_with_xpu():
-            try:
-                # Test with XPU device string
-                paddle.cuda.set_device('xpu:0')
-                # Verify device was set correctly
-                device_str = paddle.device.get_device()
-                self.assertEqual(
-                    device_str,
-                    'xpu:0',
-                    "set_device should set device to xpu:0 with 'xpu:0'",
-                )
-            except Exception as e:
-                self.fail(
-                    f"set_device with XPU string parameter raised an exception: {e}"
-                )
+        """paddle.cuda.set_device rejects an 'xpu:*' string; use paddle.device.set_device."""
+        with self.assertRaises(ValueError):
+            paddle.cuda.set_device('xpu:0')
 
     def test_set_device_with_custom_place_param(self):
-        """Test that set_device works with CustomPlace parameter."""
+        """paddle.cuda.set_device rejects a CustomPlace; use paddle.device.set_device."""
         custom_devices = paddle.device.get_all_custom_device_type()
         if custom_devices:
-            try:
-                # Test with CustomPlace
-                device_type = custom_devices[0]
-                place = paddle.CustomPlace(device_type, 0)
-                paddle.cuda.set_device(place)
-                # Verify device was set correctly
-                device_str = paddle.device.get_device()
-                expected_str = f'{device_type}:0'
-                self.assertEqual(
-                    device_str,
-                    expected_str,
-                    f"set_device should set device to {expected_str} with CustomPlace",
-                )
-            except Exception as e:
-                self.fail(
-                    f"set_device with CustomPlace parameter raised an exception: {e}"
-                )
+            with self.assertRaises(ValueError):
+                paddle.cuda.set_device(paddle.CustomPlace(custom_devices[0], 0))
 
     def test_set_device_with_custom_str_param(self):
-        """Test that set_device works with Custom device string parameter."""
-        custom_devices = paddle.device.get_all_custom_device_type()
-        if custom_devices:
-            try:
-                # Test with Custom device string
-                device_type = custom_devices[0]
-                paddle.cuda.set_device(f'{device_type}:0')
-                # Verify device was set correctly
-                device_str = paddle.device.get_device()
-                expected_str = f'{device_type}:0'
-                self.assertEqual(
-                    device_str,
-                    expected_str,
-                    f"set_device should set device to {expected_str} with custom device string",
-                )
-            except Exception as e:
-                self.fail(
-                    f"set_device with custom device string parameter raised an exception: {e}"
-                )
+        """paddle.cuda.set_device rejects a custom-device string; use paddle.device.set_device."""
+        with self.assertRaises(ValueError):
+            paddle.cuda.set_device('npu:0')
 
     def test_set_device_invalid_param(self):
         """Test that set_device raises ValueError for invalid parameter types."""
