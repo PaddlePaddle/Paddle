@@ -327,7 +327,8 @@ void ReindexDst(const Context& dev_ctx,
                 int node_len) {
   constexpr int BLOCK_WARPS = 128 / WARP_SIZE;
   constexpr int TILE_SIZE = BLOCK_WARPS * 16;
-  const int grid_x = (node_len + TILE_SIZE - 1) / TILE_SIZE;
+  const int64_t grid_x =
+      (static_cast<int64_t>(node_len) + TILE_SIZE - 1) / TILE_SIZE;
   PADDLE_ENFORCE_LE(grid_x,
                     dev_ctx.GetCUDAMaxGridDimSize()[0],
                     common::errors::InvalidArgument(
