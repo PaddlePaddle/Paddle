@@ -3524,6 +3524,23 @@ class TestTensorHAPI(unittest.TestCase):
         expected_mh_3d = self.np_3d.transpose(0, 2, 1).conj()
         np.testing.assert_allclose(mh_3d.numpy(), expected_mh_3d, rtol=1e-5)
 
+        # Test .H on 0D real tensor (returns self)
+        x_0d = paddle.to_tensor(np.array(5.0).astype("float32"))
+        h_0d = x_0d.H
+        self.assertEqual(h_0d.shape, [])
+        np.testing.assert_allclose(h_0d.numpy(), np.array(5.0), rtol=1e-5)
+
+        # Test .H on 0D complex tensor (returns self)
+        x_0d_c = paddle.to_tensor(np.array(1 + 2j).astype("complex64"))
+        h_0d_c = x_0d_c.H
+        self.assertEqual(h_0d_c.shape, [])
+        np.testing.assert_allclose(h_0d_c.numpy(), np.array(1 + 2j), rtol=1e-5)
+
+        # Test .mH on 0D tensor (returns self)
+        mh_0d = x_0d.mH
+        self.assertEqual(mh_0d.shape, [])
+        np.testing.assert_allclose(mh_0d.numpy(), np.array(5.0), rtol=1e-5)
+
         # Test .T on 2D real tensor
         t = x.T
         expected_t = self.np_2d.T
@@ -4034,8 +4051,6 @@ class TestClamp_API(unittest.TestCase):
 # Test rms_norm compatibility
 class TestRmsNormFnAPI(unittest.TestCase):
     def setUp(self):
-        if not paddle.device.is_compiled_with_cuda():
-            self.skipTest("rms_norm fp16 test requires CUDA")
         np.random.seed(2025)
         self.np_x = np.random.rand(2, 3, 4).astype("float16")
         self.np_weight = np.ones(4).astype("float16")
@@ -4043,6 +4058,8 @@ class TestRmsNormFnAPI(unittest.TestCase):
         self.np_weight_fp32 = self.np_weight.astype("float32")
 
     def test_dygraph_Compatibility(self):
+        if not paddle.device.is_compiled_with_cuda():
+            return
         paddle.disable_static()
         x = paddle.to_tensor(self.np_x)
         weight = paddle.to_tensor(self.np_weight)
@@ -4074,6 +4091,8 @@ class TestRmsNormFnAPI(unittest.TestCase):
             )
 
     def test_static_Compatibility(self):
+        if not paddle.device.is_compiled_with_cuda():
+            return
         paddle.enable_static()
         main = paddle.static.Program()
         startup = paddle.static.Program()

@@ -358,11 +358,12 @@ def monkey_patch_math_tensor():
         Accessing this property is equivalent to calling x.mT.conj().
 
         Args:
-            var (Tensor): The input Tensor, which must have at least 2 dimensions.
+            var (Tensor): The input Tensor, which must be at least 2-D or 0-D.
 
         Returns:
             Tensor: A new Tensor with its last two dimensions swapped and
-                the elements conjugated.
+                the elements conjugated. If the input is 0-D, returns the
+                Tensor itself.
 
         Examples:
             .. code-block:: pycon
@@ -374,10 +375,18 @@ def monkey_patch_math_tensor():
                 Tensor(shape=[2, 2], dtype=complex64, place=Place(cpu), stop_gradient=True,
                        [[(1-1j), (3-3j)],
                         [(2-2j), (4-4j)]])
+                >>> x_0d = paddle.to_tensor(1.0 + 1.0j)
+                >>> x_0d_mH = x_0d.mH
+                >>> print(x_0d_mH)
+                Tensor(shape=[], dtype=complex64, place=Place(cpu), stop_gradient=True,
+                       (1+1j))
         """
+        if len(var.shape) == 0:
+            return var
         if len(var.shape) < 2:
             raise ValueError(
-                f"Tensor.ndim({var.ndim}) is required to be greater than or equal to 2."
+                f"Tensor.ndim({var.ndim}) is required to be greater than or equal to 2 "
+                f"or 0-D."
             )
         perm = list(range(len(var.shape)))
         perm[-1], perm[-2] = perm[-2], perm[-1]
@@ -392,12 +401,14 @@ def monkey_patch_math_tensor():
 
         The conjugate transpose of a 2-D Tensor is equivalent to transposing the
         Tensor and then taking the conjugate of each element (i.e., x.T.conj()).
+        For 0-D Tensor, returns the Tensor itself.
 
         Args:
             var (Tensor): The input Tensor, which must be 0-D or 2-D.
 
         Returns:
             Tensor: A new Tensor with its dimensions transposed and elements conjugated.
+                If the input is 0-D, returns the Tensor itself.
 
         Examples:
             .. code-block:: pycon
@@ -409,10 +420,17 @@ def monkey_patch_math_tensor():
                 Tensor(shape=[2, 2], dtype=complex64, place=Place(cpu), stop_gradient=True,
                        [[(1-1j), (3-3j)],
                         [(2-2j), (4-4j)]])
+                >>> x_0d = paddle.to_tensor(1.0 + 1.0j)
+                >>> x_0d_H = x_0d.H
+                >>> print(x_0d_H)
+                Tensor(shape=[], dtype=complex64, place=Place(cpu), stop_gradient=True,
+                       (1+1j))
         """
+        if len(var.shape) == 0:
+            return var
         if len(var.shape) != 2:
             raise ValueError(
-                f"Only 2-D tensors support .H (conjugate transpose), "
+                f"Only 0-D or 2-D tensors support .H (conjugate transpose), "
                 f"but got tensor with {len(var.shape)} dimension(s)."
             )
         out = _C_ops.transpose(var, [1, 0])

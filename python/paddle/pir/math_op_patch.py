@@ -723,11 +723,12 @@ def monkey_patch_value():
         Accessing this property is equivalent to calling x.mT.conj().
 
         Args:
-            self: The input Tensor, which must have at least 2 dimensions.
+            self: The input Tensor, which must be at least 2-D or 0-D.
 
         Returns:
             Tensor: A new Tensor with its last two dimensions swapped and
-                the elements conjugated.
+                the elements conjugated. If the input is 0-D, returns the
+                Tensor itself.
 
         Examples:
             .. code-block:: pycon
@@ -743,9 +744,12 @@ def monkey_patch_value():
                 >>> print(x_mH_np.shape)
                 (2, 5, 3)
         """
+        if len(self.shape) == 0:
+            return self
         if len(self.shape) < 2:
             raise ValueError(
-                f"Tensor.ndim({len(self.shape)}) is required to be greater than or equal to 2."
+                f"Tensor.ndim({len(self.shape)}) is required to be greater than or equal to 2 "
+                f"or 0-D."
             )
 
         perm = list(range(len(self.shape)))
@@ -760,12 +764,14 @@ def monkey_patch_value():
 
         The conjugate transpose of a 2-D Tensor is equivalent to transposing the
         Tensor and then taking the conjugate of each element.
+        For 0-D Tensor, returns the Tensor itself.
 
         Args:
-            self: The input Tensor, which must be 2-D.
+            self: The input Tensor, which must be 0-D or 2-D.
 
         Returns:
             Tensor: A new Tensor with its dimensions transposed and elements conjugated.
+                If the input is 0-D, returns the Tensor itself.
 
         Examples:
             .. code-block:: pycon
@@ -782,9 +788,11 @@ def monkey_patch_value():
                 [[(1-1j), (3-3j)],
                  [(2-2j), (4-4j)]]
         """
+        if len(self.shape) == 0:
+            return self
         if len(self.shape) != 2:
             raise ValueError(
-                f"Only 2-D tensors support .H (conjugate transpose), "
+                f"Only 0-D or 2-D tensors support .H (conjugate transpose), "
                 f"but got tensor with {len(self.shape)} dimension(s)."
             )
         return _C_ops.conj(_C_ops.transpose(self, [1, 0]))
