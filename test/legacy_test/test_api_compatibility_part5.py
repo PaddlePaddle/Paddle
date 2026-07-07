@@ -3217,6 +3217,7 @@ class TestToEmptyAPI(unittest.TestCase):
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
 
+        # Test single layer with Parameters
         layer = paddle.nn.Linear(4, 2)
         layer.to_empty(device="cpu")
 
@@ -3226,6 +3227,41 @@ class TestToEmptyAPI(unittest.TestCase):
 
         # Test with recurse=False
         layer.to_empty(device="cpu", recurse=False)
+
+        # Test multi-layer (nested sublayers)
+        class NestedLayer(paddle.nn.Layer):
+            def __init__(self):
+                super().__init__()
+                self.fc1 = paddle.nn.Linear(4, 4)
+                self.fc2 = paddle.nn.Linear(4, 2)
+
+            def forward(self, x):
+                return self.fc2(self.fc1(x))
+
+        nested = NestedLayer()
+        nested.to_empty(device="cpu")
+        for param in nested.parameters():
+            self.assertTrue("cpu" in str(param.place).lower())
+        # Verify sublayer parameters are also moved
+        for param in nested.fc1.parameters():
+            self.assertTrue("cpu" in str(param.place).lower())
+        for param in nested.fc2.parameters():
+            self.assertTrue("cpu" in str(param.place).lower())
+
+        # Test with ordinary buffers (non-Parameter tensors)
+        class LayerWithBuf(paddle.nn.Layer):
+            def __init__(self):
+                super().__init__()
+                self.fc = paddle.nn.Linear(4, 2)
+                self.register_buffer(
+                    "my_buf", paddle.zeros([2, 3], dtype="float32")
+                )
+
+        layer_buf = LayerWithBuf()
+        layer_buf.to_empty(device="cpu")
+        self.assertTrue("cpu" in str(layer_buf.my_buf.place).lower())
+        for param in layer_buf.fc.parameters():
+            self.assertTrue("cpu" in str(param.place).lower())
 
 
 # Test _Loss base class compatibility
