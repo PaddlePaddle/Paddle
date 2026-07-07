@@ -340,32 +340,36 @@ void ReindexDst(const Context& dev_ctx,
                    static_cast<uint32_t>(BLOCK_WARPS));
   const dim3 grid(static_cast<uint32_t>(grid_x));
 
-  int begin = 0, count_i = 0;
-  thrust::device_vector<int> dst_ptr(node_len + 1, 0);
+  int64_t begin = 0;
+  int count_i = 0;
+  const int64_t node_len_64 = static_cast<int64_t>(node_len);
+  thrust::device_vector<int> dst_ptr(static_cast<size_t>(node_len_64) + 1, 0);
   for (int i = 0; i < num_edge_types; i++) {
+    const int64_t count_offset = static_cast<int64_t>(i) * node_len_64;
     thrust::inclusive_scan(
-        thrust::device_pointer_cast(count_data) + i * node_len,
-        thrust::device_pointer_cast(count_data) + (i + 1) * node_len,
+        thrust::device_pointer_cast(count_data) + count_offset,
+        thrust::device_pointer_cast(count_data) + count_offset + node_len_64,
         dst_ptr.begin() + 1);
     GetDstEdgeCUDAKernel<T, BLOCK_WARPS, TILE_SIZE>
         <<<grid, block, 0, dev_ctx.stream()>>>(
             node_len,
             scan_dst_data,
-            count_data + i * node_len,
+            count_data + count_offset,
             thrust::raw_pointer_cast(dst_ptr.data()),
             reindex_dst_data + begin);
 #ifdef PADDLE_WITH_HIP
     hipMemcpy(&count_i,
-              thrust::raw_pointer_cast(dst_ptr.data()) + node_len,
+              thrust::raw_pointer_cast(dst_ptr.data()) + node_len_64,
               sizeof(int),
               hipMemcpyDeviceToHost);
 #else
     cudaMemcpy(&count_i,
-               thrust::raw_pointer_cast(dst_ptr.data()) + node_len,
+               thrust::raw_pointer_cast(dst_ptr.data()) + node_len_64,
                sizeof(int),
                cudaMemcpyDeviceToHost);
 #endif
     begin += count_i;
+    PADDLE_ENFORCE_LE_INT_MAX(begin, "graph_reindex dst offset");
   }
 }
 
