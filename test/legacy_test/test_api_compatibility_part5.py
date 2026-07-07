@@ -3722,6 +3722,9 @@ class TestQrAPI(unittest.TestCase):
         Q8, R8 = paddle.qr(A=x, some=True)
         # 7. mode='r' returns single Tensor R
         R9 = paddle.qr(x, mode='r')
+        # 8. mode='r' with out parameter
+        R10 = paddle.empty(shape=[4, 3], dtype=x.dtype)
+        paddle.qr(x, mode='r', out=R10)
 
         # Verify some=True matches reduced mode
         np.testing.assert_allclose(Q1.numpy(), Q5.numpy(), rtol=1e-5, atol=1e-5)
@@ -3742,6 +3745,10 @@ class TestQrAPI(unittest.TestCase):
         self.assertEqual(Q3.shape, (4, 4))
         # mode='r' returns single Tensor
         self.assertEqual(len(R9.shape), 2)
+        # Verify mode='r' with out parameter
+        np.testing.assert_allclose(
+            R9.numpy(), R10.numpy(), rtol=1e-5, atol=1e-5
+        )
 
     def test_static_Compatibility(self):
         paddle.enable_static()
@@ -3749,16 +3756,24 @@ class TestQrAPI(unittest.TestCase):
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
             x = paddle.static.data(name="x", shape=[4, 3], dtype="float32")
+            r_out = paddle.static.data(
+                name="r_out", shape=[4, 3], dtype="float32"
+            )
 
             Q1, R1 = paddle.qr(x)
             Q2, R2 = paddle.qr(x, mode='reduced')
             R3 = paddle.qr(x, mode='r')
+            # mode='r' with out parameter
+            paddle.qr(x, mode='r', out=r_out)
 
             exe = paddle.static.Executor()
             fetches = exe.run(
                 main,
-                feed={"x": self.np_x},
-                fetch_list=[Q1, R1, Q2, R2, R3],
+                feed={
+                    "x": self.np_x,
+                    "r_out": np.zeros([4, 3], dtype="float32"),
+                },
+                fetch_list=[Q1, R1, Q2, R2, R3, r_out],
             )
             # Verify default and mode='reduced' match
             np.testing.assert_allclose(
@@ -3770,6 +3785,10 @@ class TestQrAPI(unittest.TestCase):
             # Verify mode='r' returns R only
             np.testing.assert_allclose(
                 fetches[1], fetches[4], rtol=1e-5, atol=1e-5
+            )
+            # Verify mode='r' with out parameter
+            np.testing.assert_allclose(
+                fetches[4], fetches[5], rtol=1e-5, atol=1e-5
             )
 
         # Test logdet compatibility (new API)
@@ -3978,6 +3997,11 @@ class TestLinalgQrAPI(unittest.TestCase):
         q5 = paddle.empty([3, 3], dtype='float64')
         r5 = paddle.empty([3, 3], dtype='float64')
         q_out, r_out = paddle.linalg.qr(x, mode='reduced', out=(q5, r5))
+        # 6. mode='r' returns single Tensor R
+        r6 = paddle.linalg.qr(x, mode='r')
+        # 7. mode='r' with out parameter (single tensor)
+        r7_out = paddle.empty([3, 3], dtype='float64')
+        paddle.linalg.qr(x, mode='r', out=r7_out)
 
         np.testing.assert_allclose(q1.numpy(), q2.numpy())
         np.testing.assert_allclose(q1.numpy(), q3.numpy())
@@ -3987,8 +4011,12 @@ class TestLinalgQrAPI(unittest.TestCase):
         np.testing.assert_allclose(r1.numpy(), r3.numpy())
         np.testing.assert_allclose(r1.numpy(), r4.numpy())
         np.testing.assert_allclose(r1.numpy(), r_out.numpy())
+        # Verify mode='r' returns matching R
+        np.testing.assert_allclose(r1.numpy(), r6.numpy())
+        # Verify mode='r' with out parameter
+        np.testing.assert_allclose(r6.numpy(), r7_out.numpy())
 
-        # 6. Tensor method - positional
+        # 8. Tensor method - positional
         q6, r6 = x.qr('reduced')
         # 7. Tensor method - kwargs
         q7, r7 = x.qr(mode='reduced')
@@ -4015,19 +4043,33 @@ class TestLinalgQrAPI(unittest.TestCase):
             q4, r4 = paddle.linalg.qr(A=x, mode='reduced')
             # 5. Tensor method
             q5, r5 = x.qr(mode='reduced')
+            # 6. mode='r' returns single Tensor R
+            r6 = paddle.linalg.qr(x, mode='r')
+            # 7. mode='r' with out parameter
+            r7_out = paddle.static.data(
+                name="r7_out", shape=[3, 3], dtype="float64"
+            )
+            paddle.linalg.qr(x, mode='r', out=r7_out)
 
             exe = paddle.static.Executor()
             fetches = exe.run(
                 main,
-                feed={"x": self.np_x},
-                fetch_list=[q1, r1, q2, r2, q3, r3, q4, r4, q5, r5],
+                feed={
+                    "x": self.np_x,
+                    "r7_out": np.zeros([3, 3], dtype="float64"),
+                },
+                fetch_list=[q1, r1, q2, r2, q3, r3, q4, r4, q5, r5, r6, r7_out],
             )
             # Verify Q matrices match
-            for i in range(0, len(fetches), 2):
+            for i in range(0, 10, 2):
                 np.testing.assert_allclose(fetches[0], fetches[i])
             # Verify R matrices match
-            for i in range(1, len(fetches), 2):
+            for i in range(1, 10, 2):
                 np.testing.assert_allclose(fetches[1], fetches[i])
+            # Verify mode='r' returns matching R
+            np.testing.assert_allclose(fetches[1], fetches[10])
+            # Verify mode='r' with out parameter
+            np.testing.assert_allclose(fetches[10], fetches[11])
 
         # Test clamp_ compatibility (functional inplace)
         paddle.disable_static()
