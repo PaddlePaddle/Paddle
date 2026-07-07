@@ -838,7 +838,10 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
-  // there is no scalar_div function for __rdiv__ and __rtruediv__
+  // Align with torch's Tensor.__rtruediv__: scalar / tensor is computed as
+  // tensor.reciprocal() * scalar. The scalar is kept in higher precision
+  // (MPType in ScaleFunctor, same as torch's opmath scalar) instead of being
+  // rounded to the tensor dtype by materializing a full tensor.
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
     if (_supported_int_dtype_.find(self_tensor.dtype()) !=
@@ -846,6 +849,18 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
       eager_gil_scoped_release guard;
       self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
     }
+    double other = CastPyArg2Double(other_obj, "__rdiv__", 0);
+    VLOG(6) << "Calling reciprocal_ad_func and scale_ad_func in "
+               "tensor__rdiv__method";
+    {
+      eager_gil_scoped_release guard;
+      Tensor recip = reciprocal_ad_func(self_tensor);
+      // bias is -0.0f so that `scale * x + bias` keeps the sign of negative
+      // zeros produced by the multiplication (a 0.0f bias would turn -0.0
+      // into +0.0), matching torch's `reciprocal() * scalar` bitwise.
+      ret = scale_ad_func(recip, phi::Scalar(other), -0.0f, true);
+    }
+    return ToPyObject(ret);
   } else if (PyComplex_Check(other_obj)) {
     if (is_support_complex(self_tensor.dtype()) == false) {
       eager_gil_scoped_release guard;
@@ -896,10 +911,23 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
   }
 
   // 3. calculation
-  VLOG(6) << "Calling divide_ad_func in tensor__rdiv__method";
+  // Align with torch's Tensor.__rtruediv__: other / self is computed as
+  // self.reciprocal() * other instead of a single divide.
+  VLOG(6) << "Calling reciprocal_ad_func and multiply_ad_func in "
+             "tensor__rdiv__method";
   {
     eager_gil_scoped_release guard;
-    ret = divide_ad_func(other_tensor, self_tensor);
+    if (_supported_int_dtype_.find(self_tensor.dtype()) !=
+        _supported_int_dtype_.end()) {
+      // torch's reciprocal promotes integral/bool tensors to float32.
+      self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+    }
+    Tensor recip = reciprocal_ad_func(self_tensor);
+    if (_supported_int_dtype_.find(other_tensor.dtype()) !=
+        _supported_int_dtype_.end()) {
+      other_tensor = cast_ad_func(other_tensor, recip.dtype());
+    }
+    ret = multiply_ad_func(recip, other_tensor);
   }
   return ToPyObject(ret);
   EAGER_CATCH_AND_THROW_RETURN_NULL
