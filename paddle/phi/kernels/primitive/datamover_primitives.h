@@ -40,7 +40,7 @@ struct alignas(sizeof(T) * VecSize) VectorType {
  * must be [dim1, dim0].
  */
 struct BroadcastConfig {
-  funcs::FastDivMod<int> divmoders[DDim::kMaxRank];
+  funcs::FastDivMod<int64_t> divmoders[DDim::kMaxRank];
   uint64_t strides[DDim::kMaxRank];
   int rank{0};
 
@@ -51,7 +51,7 @@ struct BroadcastConfig {
                   const std::vector<int64_t>& in_dims,
                   int dim_size) {
     for (int i = 0; i < dim_size; ++i) {
-      divmoders[i] = funcs::FastDivMod<int>(out_dims[i]);
+      divmoders[i] = funcs::FastDivMod<int64_t>(out_dims[i]);
     }
 
     for (int i = 0; i < dim_size; ++i) {
@@ -59,7 +59,7 @@ struct BroadcastConfig {
       strides[i] = (i != 0 && strides[i] != 0)
                        ? std::accumulate(in_dims.begin(),
                                          in_dims.begin() + i,
-                                         1,
+                                         int64_t{1},
                                          std::multiplies<int64_t>())
                        : strides[i];
     }
@@ -418,13 +418,15 @@ __device__ __forceinline__ void ReadDataBc(
     int stride_nx,
     int stride_ny) {
   uint32_t thread_offset = block_offset + threadIdx.x;
-  uint32_t index_src = 0;
+  int64_t index_src = 0;
 
 #pragma unroll
   for (int ny = 0; ny < NY; ++ny) {
 #pragma unroll
     for (uint32_t nx = 0; nx < NX; ++nx) {
-      uint32_t index_output = thread_offset + ny * stride_ny + nx * stride_nx;
+      int64_t index_output = thread_offset +
+                             static_cast<int64_t>(ny) * stride_ny +
+                             static_cast<int64_t>(nx) * stride_nx;
       index_src = 0;
       if (IsBoundary) {
         if (index_output >= total_num_output) {
@@ -753,11 +755,11 @@ __device__ __forceinline__ void ReadDataBc(
     int total_num_output,
     int read_lens = NX) {
   uint32_t thread_offset = block_offset + threadIdx.x * NX;
-  uint32_t index_src = 0;
+  int64_t index_src = 0;
 
 #pragma unroll
   for (uint32_t nx = 0; nx < NX; ++nx) {
-    uint32_t index_output = thread_offset + nx;
+    int64_t index_output = thread_offset + nx;
     index_src = 0;
     if (IsBoundary) {
       if (index_output >= total_num_output) {
@@ -814,11 +816,11 @@ __device__ __forceinline__ void ReadDataBc(
     int total_num_output,
     int read_lens = NX) {
   uint32_t thread_offset = block_offset + threadIdx.x * NX;
-  uint32_t index_src = 0;
+  int64_t index_src = 0;
 
 #pragma unroll
   for (uint32_t nx = 0; nx < NX; ++nx) {
-    uint32_t index_output = thread_offset + nx;
+    int64_t index_output = thread_offset + nx;
     index_src = 0;
     if (IsBoundary) {
       if (index_output >= total_num_output) {
