@@ -819,7 +819,8 @@ void DisableMemoryRecorder() { FLAGS_enable_record_memory = false; }
 
 std::string PrintHostEvents() {
   std::ostringstream oss;
-  auto host_evt_sec = GatherCommonHostEvents();
+  auto host_evt_sec =
+      HostEventRecorder<phi::CommonEvent>::GetInstance().GatherEvents();
   for (const auto &thr_evt_sec : host_evt_sec.thr_sections) {
     oss << thr_evt_sec.thread_id << std::endl;
     for (const auto &evt : thr_evt_sec.events) {
@@ -910,7 +911,8 @@ static std::map<uint64_t, phi::ThreadEvents> DockHostEventRecorderHostPart() {
   if (FLAGS_enable_host_event_recorder_hook == false) {
     return thr_events;
   }
-  auto host_evt_sec = GatherCommonHostEvents();
+  auto host_evt_sec =
+      HostEventRecorder<phi::CommonEvent>::GetInstance().GatherEvents();
   EmulateEventPushAndPop(host_evt_sec, &thr_events);
   EmulateCPURecordsAdd(host_evt_sec);
   return thr_events;
