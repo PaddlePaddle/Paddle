@@ -101,7 +101,9 @@ foreach(TEST_INFERENCE_IR_PASS ${TEST_TRT_IR_PASSES})
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES ${TEST_INFERENCE_IR_PASS})
 endforeach()
 
-if(WITH_GPU AND TENSORRT_FOUND)
+if(WITH_GPU
+   AND WITH_TENSORRT
+   AND TENSORRT_FOUND)
   list(REMOVE_ITEM TEST_TRT_IR_PASSES test_trt_multiclass_nms_op)
 
   foreach(TRT_CONVERT ${TEST_TRT_CONVERTER})
@@ -170,7 +172,9 @@ if(WITH_ONEDNN
   endforeach()
 endif()
 
-if(WITH_GPU AND TENSORRT_FOUND)
+if(WITH_GPU
+   AND WITH_TENSORRT
+   AND TENSORRT_FOUND)
   # longer timeout for trt_activation_pass for longer trt optimization time in trt 8
   #set_tests_properties(test_trt_multiclass_nms_op PROPERTIES TIMEOUT 200)
 
@@ -349,7 +353,9 @@ elseif(WITH_ONEDNN)
 
 endif()
 
-if(WITH_GPU AND TENSORRT_FOUND)
+if(WITH_GPU
+   AND WITH_TENSORRT
+   AND TENSORRT_FOUND)
   if(WITH_ONEDNN)
     py_test_modules(test_matmul_scale_fuse_pass_pir MODULES
                     test_matmul_scale_fuse_pass ENVS FLAGS_enable_pir_api=1)

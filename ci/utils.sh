@@ -436,7 +436,7 @@ function cmake_base() {
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release}
         ${PYTHON_FLAGS}
         -DWITH_GPU=${WITH_GPU:-OFF}
-        -DWITH_TENSORRT=${WITH_TENSORRT:-ON}
+        -DWITH_TENSORRT=${WITH_TENSORRT:-OFF}
         -DWITH_OPENVINO=${WITH_OPENVINO:-OFF}
         -DWITH_ROCM=${WITH_ROCM:-OFF}
         -DWITH_CINN=${WITH_CINN:-OFF}
@@ -489,7 +489,7 @@ EOF
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} \
         ${PYTHON_FLAGS} \
         -DWITH_GPU=${WITH_GPU:-OFF} \
-        -DWITH_TENSORRT=${WITH_TENSORRT:-ON} \
+        -DWITH_TENSORRT=${WITH_TENSORRT:-OFF} \
         -DWITH_OPENVINO=${WITH_OPENVINO:-OFF} \
         -DWITH_ROCM=${WITH_ROCM:-OFF} \
         -DWITH_CINN=${WITH_CINN:-OFF} \
@@ -1062,7 +1062,7 @@ EOF
     demo_ci_startTime_s=`date +%s`
     cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
     ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
-             ${WITH_TENSORRT:-ON} ${TENSORRT_ROOT_DIR:-/usr} ${WITH_ONNXRUNTIME:-ON}
+             ${WITH_TENSORRT:-OFF} ${TENSORRT_ROOT_DIR:-/usr} ${WITH_ONNXRUNTIME:-ON}
     DEMO_EXIT_CODE=$?
     ./clean.sh
     demo_ci_endTime_s=`date +%s`
