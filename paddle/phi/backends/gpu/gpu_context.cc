@@ -294,9 +294,10 @@ struct GPUContext::Impl {
 
   // Returns the cublas workspace size matching PyTorch's behavior
   // for different GPU architectures.
-  // Hopper (SM 9.0): 32 MiB, others: ~8.125 MiB
+  // SM 9.x and later: 32 MiB, others: ~8.125 MiB.
   static size_t GetCublasWorkspaceSize(int compute_capability) {
-    if (compute_capability == 90) {
+    int major = compute_capability / 10;
+    if (major >= 9) {
       return 4096 * 8 * 1024;  // 32 MiB
     }
     return 4096 * 1024 * 2 + 16 * 1024 * 8;  // ~8.125 MiB
@@ -329,6 +330,10 @@ struct GPUContext::Impl {
   // Returns {ptr, size}. Thread-safe via mutex for grow path.
   std::pair<void*, size_t> GetCublasLtWorkspace(size_t required_size) {
 #ifdef PADDLE_WITH_CUDA
+    if (compute_capability_ / 10 >= 9) {
+      required_size =
+          std::max(required_size, GetCublasWorkspaceSize(compute_capability_));
+    }
     if (cublaslt_workspace_size_ >= required_size && cublaslt_workspace_) {
       return {cublaslt_workspace_, cublaslt_workspace_size_};
     }
