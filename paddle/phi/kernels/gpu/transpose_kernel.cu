@@ -173,6 +173,14 @@ template void dispatch_fp8_fast_transpose_kernel<phi::float8_e4m3fn, int>(
     const uint32_t N,
     phi::float8_e4m3fn* output);
 
+template void dispatch_fp8_fast_transpose_kernel<phi::float8_e4m3fn, int64_t>(
+    const GPUContext& d,
+    const phi::float8_e4m3fn* input,
+    const uint32_t B,
+    const uint32_t M,
+    const uint32_t N,
+    phi::float8_e4m3fn* output);
+
 }  // namespace funcs
 
 template <typename T, typename Context>
