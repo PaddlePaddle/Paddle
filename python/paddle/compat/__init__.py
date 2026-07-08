@@ -381,6 +381,8 @@ def _min_max_param_checker(func_name: str, *args: Any, **kwargs: Any):
         else:
             if "dim" in kwargs:
                 dim_or_other = kwargs["dim"]
+                if isinstance(dim_or_other, (Variable, paddle.pir.Value)):
+                    raise invalid_arguments_exception()
             elif "other" in kwargs:
                 dim_or_other = kwargs["other"]
                 if not isinstance(dim_or_other, (Variable, paddle.pir.Value)):
