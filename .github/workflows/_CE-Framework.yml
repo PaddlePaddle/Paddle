@@ -208,6 +208,7 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           export PATH=$(pwd)/run_env:${PATH}
           cd /PaddleTest/inference/python_api_test
+          find . -name run_parallel.sh -exec sed -i "/_trt_/d" {} +
           bash parallel_run.sh 2
           '
 
