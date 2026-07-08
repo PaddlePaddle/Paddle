@@ -155,12 +155,15 @@ class TestSemiAutoParallelShardingStage1:
             model, opt = paddle.amp.decorate(
                 model, optimizers=opt, level='O2', master_grad=True
             )
+            losses = np.array([])
             for _ in range(5):
                 with paddle.amp.auto_cast(level='O2'):
                     loss = model(batch)
                     loss.backward()
                     opt.step()
                     opt.clear_grad()
+                    losses = np.append(losses, loss.numpy())
+            self.assertTrue(np.all(losses[:-1] >= losses[1:]))
             return loss.numpy()
 
         dist.init_parallel_env()
@@ -189,12 +192,15 @@ class TestSemiAutoParallelShardingStage1:
             model, opt = paddle.amp.decorate(
                 model, optimizers=opt, level='O2', master_grad=True
             )
+            losses = np.array([])
             for _ in range(5):
                 with paddle.amp.auto_cast(level='O2'):
                     loss = model(batch)
                     loss.backward()
                     opt.step()
                     opt.clear_grad()
+                    losses = np.append(losses, loss.numpy())
+            self.assertTrue(np.all(losses[:-1] <= losses[1:]))
             return loss.numpy()
 
         dist.init_parallel_env()
