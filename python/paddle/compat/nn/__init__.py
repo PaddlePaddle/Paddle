@@ -14,14 +14,13 @@
 
 from __future__ import annotations
 
-import collections
 import warnings
-from itertools import repeat
 from math import sqrt
 from typing import TYPE_CHECKING
 
 import paddle
 from paddle import nn
+from paddle.nn.modules.utils import _single
 from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
 from . import functional
@@ -57,19 +56,6 @@ __all__ = [
     'MultiheadAttention',
     'SmoothL1Loss',
 ]
-
-
-def _ntuple(n, name="parse"):
-    def parse(x):
-        if isinstance(x, collections.abc.Iterable):
-            return tuple(x)
-        return tuple(repeat(x, n))
-
-    parse.__name__ = name
-    return parse
-
-
-_single = _ntuple(1, "_single")
 
 
 class BatchNorm1D(nn.BatchNorm1D):

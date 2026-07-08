@@ -444,12 +444,14 @@ from .tensor.linalg import (  # noqa: F401
     histogram,
     histogram_bin_edges,
     histogramdd,
+    logdet,
     matmul,
     matrix_transpose,
     mv,
     norm,
     permute,
     pinv,
+    qr,
     t,
     t_,
     transpose,
@@ -515,6 +517,7 @@ from .tensor.manipulation import (
     dstack,
     expand,
     expand_as,
+    expand_copy,
     flatten,
     flatten_,
     flip,
@@ -622,7 +625,10 @@ from .tensor.math import (  # noqa: F401
     broadcast_shapes,
     cartesian_prod,
     ceil,
+    clamp_max,
+    clamp_min,
     clip,
+    clip_,
     combinations,
     conj,
     copysign,
@@ -1055,6 +1061,8 @@ cat = concat
 concatenate = concat
 take_along_dim = take_along_axis
 clamp = clip
+clamp_ = clip_
+true_divide_ = divide_
 ger = outer
 div = divide
 div_ = divide_
@@ -1079,6 +1087,7 @@ mvlgamma = multigammaln
 mvlgamma_ = multigammaln_
 negative_ = neg_
 pinverse = pinv
+
 
 __all__ = [
     'block_diag',
@@ -1215,7 +1224,11 @@ __all__ = [
     'less_',
     'kron',
     'clip',
+    'clip_',
     'clamp',
+    'clamp_',
+    'clamp_max',
+    'clamp_min',
     'Tensor',
     'FloatTensor',
     'DoubleTensor',
@@ -1329,6 +1342,7 @@ __all__ = [
     'CPUPlace',
     'matmul',
     'pinverse',
+    'qr',
     'seed',
     'acos',
     'acos_',
@@ -1377,6 +1391,7 @@ __all__ = [
     'sub',
     'sub_',
     'true_divide',
+    'true_divide_',
     'gammaln',
     'gammaln_',
     'ceil',
@@ -1457,6 +1472,7 @@ __all__ = [
     'set_default_tensor_type',
     'disable_signal_handler',
     'expand_as',
+    'expand_copy',
     'stack',
     'hstack',
     'vstack',
@@ -1488,6 +1504,7 @@ __all__ = [
     'cosh',
     'log',
     'log_',
+    'logdet',
     'log2',
     'log2_',
     'log10',

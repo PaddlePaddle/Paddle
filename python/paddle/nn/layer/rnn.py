@@ -2271,7 +2271,7 @@ class GRU(RNNBase):
         dtype=None,
     ) -> None: ...
 
-    @gru_decorator()
+    @gru_decorator
     def __init__(
         self,
         input_size: int,

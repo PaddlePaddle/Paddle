@@ -12,8 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import (
-    loss,  # noqa: F401
-    utils,  # noqa: F401
-)
-from .module import Module  # noqa: F401
+from paddle.base.dygraph.base import set_grad_enabled  # noqa: F401
