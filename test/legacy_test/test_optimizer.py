@@ -372,6 +372,31 @@ class TestOptimizerAPI(unittest.TestCase):
                 optimizer.step()
             np.testing.assert_allclose(x.numpy(), [-3.0, 2.0], atol=0.1)
 
+    def test_maximize_with_weight_decay_zero_grad(self):
+        x = paddle.tensor([1.0])
+        x.stop_gradient = False
+        learning_rate = 0.1
+        weight_decay = 0.1
+        opt = paddle.optimizer.AdamW(
+            parameters=[x],
+            learning_rate=learning_rate,
+            weight_decay=weight_decay,
+            maximize=True,
+        )
+        values = np.array([])
+        for epoch in range(5):
+            loss = (x * 0).sum()
+            loss.backward()
+            opt.step()
+            values = np.append(values, x.numpy())
+        values_ref = np.array([])
+        for epoch in range(5):
+            values_ref = np.append(
+                values_ref,
+                [(1.0 - learning_rate * weight_decay) ** (epoch + 1)],
+            )
+        np.testing.assert_allclose(values, values_ref)
+
 
 if __name__ == '__main__':
     paddle.enable_static()

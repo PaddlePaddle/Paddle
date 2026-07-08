@@ -899,10 +899,10 @@ class Optimizer:
         ):
             param_lr = param.optimize_attr['learning_rate']
             if isinstance(param_lr, (Variable, paddle.pir.Value)):
-                lr = param_lr
+                return param_lr
             else:
                 if param_lr == 1.0:
-                    lr = self._global_learning_rate()
+                    return self._global_learning_rate()
                 else:
                     with (
                         paddle.static.default_main_program()._lr_schedule_guard(
@@ -910,12 +910,9 @@ class Optimizer:
                         ),
                         framework.name_scope('scale_with_param_lr'),
                     ):
-                        lr = self._global_learning_rate() * param_lr
+                        return self._global_learning_rate() * param_lr
         else:
-            lr = self._global_learning_rate()
-        if self._maximize is True:
-            lr = lr * -1.0
-        return lr
+            return self._global_learning_rate()
 
     def _create_master_weight(self, param):
         if param.name in self._master_weights:
@@ -2046,7 +2043,10 @@ class Optimizer:
                 parameters,
             )
         )
-        params_grads = [(param, param.grad) for param in parameters]
+        if self._maximize is True:
+            params_grads = [(param, -param.grad) for param in parameters]
+        else:
+            params_grads = [(param, param.grad) for param in parameters]
         optimize_ops = self.apply_gradients(params_grads)
 
     @imperative_base.no_grad()
@@ -2119,15 +2119,24 @@ class Optimizer:
                         hasattr(param, "main_grad")
                         and param.main_grad is not None
                     ):
-                        params_grads.append((param, param.main_grad))
+                        if self._maximize is True:
+                            params_grads.append((param, -param.main_grad))
+                        else:
+                            params_grads.append((param, param.main_grad))
                 elif (
                     hasattr(param, "main_grad") and param.main_grad is not None
                 ):
-                    params_grads.append((param, param.main_grad))
+                    if self._maximize is True:
+                        params_grads.append((param, -param.main_grad))
+                    else:
+                        params_grads.append((param, param.main_grad))
                 else:
                     if param._grad_ivar() is not None:
                         grad_var = param._grad_ivar()
-                        params_grads.append((param, grad_var))
+                        if self._maximize is True:
+                            params_grads.append((param, -grad_var))
+                        else:
+                            params_grads.append((param, grad_var))
 
             self._apply_optimize(
                 loss=None,
@@ -2145,7 +2154,10 @@ class Optimizer:
                         continue
                     if param._grad_ivar() is not None:
                         grad_var = param._grad_ivar()
-                        params_grads['params'].append((param, grad_var))
+                        if self._maximize is True:
+                            params_grads['params'].append((param, -grad_var))
+                        else:
+                            params_grads['params'].append((param, grad_var))
                 params_grads.update(
                     {k: v for k, v in param_group.items() if k != 'params'}
                 )

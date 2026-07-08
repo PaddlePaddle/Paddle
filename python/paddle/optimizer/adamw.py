@@ -726,7 +726,10 @@ class AdamW(Optimizer):
                             raise RuntimeError(
                                 "AdamW don't support weight_decay with sparse parameters, please set it to None."
                             )
-                    params_grads.append((param, grad_var))
+                    if self._maximize is True:
+                        params_grads.append((param, -grad_var))
+                    else:
+                        params_grads.append((param, grad_var))
 
             optimize_ops = self._apply_optimize(
                 loss=None, startup_program=None, params_grads=params_grads
@@ -758,8 +761,10 @@ class AdamW(Optimizer):
                                 raise RuntimeError(
                                     "AdamW don't support weight_decay with sparse parameters, please set it to None."
                                 )
-
-                        params_grads['params'].append((param, grad_var))
+                        if self._maximize is True:
+                            params_grads['params'].append((param, -grad_var))
+                        else:
+                            params_grads['params'].append((param, grad_var))
                 params_grads.update(
                     {k: v for k, v in param_group.items() if k != 'params'}
                 )
