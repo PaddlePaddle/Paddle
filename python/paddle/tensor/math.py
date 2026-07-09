@@ -7096,7 +7096,8 @@ def sinc_(x: Tensor, name: str | None = None) -> Tensor:
     tmp = paddle.clone(x)
     paddle.sin_(x)
     paddle.divide_(x, tmp)
-    return paddle.where(zero_mask, paddle.full_like(x, 1.0), x)
+    paddle.where_(~zero_mask, x, paddle.full_like(x, 1.0))
+    return x
 
 
 @param_two_alias(["x", "elements"], ["test_x", "test_elements"])

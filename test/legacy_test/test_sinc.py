@@ -236,8 +236,9 @@ class TestSincInplaceAPI(unittest.TestCase):
                 )
                 x = paddle.to_tensor(x_data)
                 out = paddle.sinc_(x)
+                self.assertIs(out, x)
                 np.testing.assert_allclose(
-                    out.numpy(), np_sinc(x_data), rtol=1e-6, atol=1e-6
+                    x.numpy(), np_sinc(x_data), rtol=1e-6, atol=1e-6
                 )
 
         for place in self.place:
