@@ -414,7 +414,7 @@ __device__ __forceinline__ void ReadDataBc(
     const T* __restrict__ src,
     uint32_t block_offset,
     const details::BroadcastConfig& config,
-    int total_num_output,
+    uint64_t total_num_output,
     int stride_nx,
     int stride_ny) {
   uint32_t thread_offset = block_offset + threadIdx.x;
@@ -752,7 +752,7 @@ __device__ __forceinline__ void ReadDataBc(
     const T* __restrict__ src,
     uint32_t block_offset,
     const details::BroadcastConfig& config,
-    int total_num_output,
+    uint64_t total_num_output,
     int read_lens = NX) {
   uint32_t thread_offset = block_offset + threadIdx.x * NX;
   uint64_t index_src = 0;
@@ -813,7 +813,7 @@ __device__ __forceinline__ void ReadDataBc(
     const T* __restrict__ src,
     uint32_t block_offset,
     const details::BroadcastConfig& config,
-    int total_num_output,
+    uint64_t total_num_output,
     int read_lens = NX) {
   uint32_t thread_offset = block_offset + threadIdx.x * NX;
   uint64_t index_src = 0;
