@@ -23,6 +23,7 @@
 
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/memory/allocation/cuda_virtual_mem_allocator.h"
+#include "paddle/phi/core/memory/stats.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cuda_driver.h"
@@ -30,6 +31,8 @@
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 
 namespace paddle::memory::allocation {
+
+constexpr size_t kVirtualAddressSpaceSizeMultiplier = 2;
 
 std::mutex CUDAVirtualMemAllocator::base_ptr_handle_mu_;
 std::unordered_map<void*, CUmemGenericAllocationHandle>
@@ -85,12 +88,13 @@ void CUDAVirtualMemAllocator::InitOnce() {
             << "actual_total: " << static_cast<double>(actual_total) / (1 << 20)
             << " MB";
 
-    virtual_mem_size_ = AlignedSize(actual_total, granularity_);
+    virtual_mem_size_ = AlignedSize(
+        actual_total * kVirtualAddressSpaceSizeMultiplier, granularity_);
 
     // Reserve the required contiguous virtual address space for the allocations
-    // The maximum video memory size we can apply for is the video memory size
-    // of GPU, so the virtual address space size we reserve is equal to the GPU
-    // video memory size
+    // Reserving a larger VA range does not allocate physical memory up front.
+    // It leaves room for VMM pool fragmentation before physical memory is
+    // exhausted.
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cuMemAddressReserve(
         &virtual_mem_base_, virtual_mem_size_, 0, 0, 0));
 
@@ -176,11 +180,14 @@ phi::Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
       size_t actual_avail, actual_total;
       PADDLE_ENFORCE_GPU_SUCCESS(cudaMemGetInfo(&actual_avail, &actual_total));
       size_t actual_allocated = actual_total - actual_avail;
+      size_t actual_allocated_memory =
+          paddle::memory::DeviceMemoryStatCurrentValue("Allocated",
+                                                       place_.device);
 
       PADDLE_THROW_BAD_ALLOC(common::errors::ResourceExhausted(
           "\n\nOut of memory error on GPU %d. "
-          "Cannot allocate %s memory on GPU %d, %s memory has been allocated "
-          "and "
+          "Cannot allocate %s memory on GPU %d, %s memory has been "
+          "allocated(actual using allocated memory %s) and "
           "available memory is only %s.\n\n"
           "Please check whether there is any other process using GPU %d.\n"
           "1. If yes, please stop them, or start PaddlePaddle on another GPU.\n"
@@ -189,6 +196,7 @@ phi::Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
           string::HumanReadableSize(size),
           place_.device,
           string::HumanReadableSize(actual_allocated),
+          string::HumanReadableSize(actual_allocated_memory),
           string::HumanReadableSize(actual_avail),
           place_.device));
     } else {
