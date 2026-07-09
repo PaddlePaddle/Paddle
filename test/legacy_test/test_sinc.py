@@ -324,6 +324,24 @@ class TestSincAPIFP16(unittest.TestCase):
 
         run_static(self.place)
 
+    def test_non_finite(self):
+        paddle.enable_static()
+        x_data = np.asarray(
+            [[np.nan, np.inf, -np.inf], [0.0, -0.0, 1.0]],
+            dtype=self.dtype,
+        )
+        startup_program = paddle.static.Program()
+        main_program = paddle.static.Program()
+        exe = base.Executor(self.place)
+        with paddle.static.program_guard(main_program, startup_program):
+            x = paddle.static.data(name='x', shape=[2, 3], dtype=self.dtype)
+            res = paddle.sinc(x)
+            static_result = exe.run(feed={'x': x_data}, fetch_list=[res])[0]
+
+        np.testing.assert_allclose(
+            static_result, np_sinc(x_data), rtol=1e-6, atol=1e-6
+        )
+
 
 @unittest.skipIf(
     not (core.is_compiled_with_cuda() or is_custom_device())
@@ -405,6 +423,26 @@ class TestSincAPIBF16(unittest.TestCase):
                 )
 
         run(self.place)
+
+    def test_non_finite(self):
+        paddle.enable_static()
+        x_data_np = np.asarray(
+            [[np.nan, np.inf, -np.inf], [0.0, -0.0, 1.0]],
+            dtype='float32',
+        )
+        x_data = convert_float_to_uint16(x_data_np)
+        startup_program = paddle.static.Program()
+        main_program = paddle.static.Program()
+        exe = base.Executor(self.place)
+        with paddle.static.program_guard(main_program, startup_program):
+            x = paddle.static.data(name='x', shape=[2, 3], dtype=self.dtype)
+            res = paddle.sinc(x)
+            static_result = exe.run(feed={'x': x_data}, fetch_list=[res])[0]
+
+        result = convert_uint16_to_float(static_result)
+        np.testing.assert_allclose(
+            result, np_sinc(x_data_np), rtol=1e-3, atol=1e-2
+        )
 
 
 class TestSincAPI_ZeroSize(unittest.TestCase):
