@@ -72,13 +72,14 @@ else()
   cc_test(ATen_record_stream_test SRCS ATen_record_stream_test.cc)
   cc_test(ATen_select_test SRCS ATen_select_test.cc)
   cc_test(ATen_split_test SRCS ATen_split_test.cc)
-  cc_test(ATen_take_test SRCS ATen_take_test.cc)
 
   cc_test(ATen_CUDAContext_test SRCS ATen_CUDAContext_test.cc)
   cc_test(ATen_philox_test SRCS ATen_philox_test.cc)
   cc_test(c10_Event_test SRCS c10_Event_test.cc)
   cc_test(c10_Stream_test SRCS c10_Stream_test.cc)
 endif()
+
+cc_test(ATen_take_test SRCS ATen_take_test.cc)
 
 if(WITH_GPU)
   nv_test(ATen_CUDABlas_test SRCS ATen_CUDABlas_test.cc)
