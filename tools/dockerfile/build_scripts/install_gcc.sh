@@ -19,7 +19,7 @@
 # Stop at any error, show all commands
 set -ex
 
-if [ -d "/usr/lib/x86_64-linux-gnu" ];then
+if [ -e "/usr/lib/x86_64-linux-gnu/libstdc++.so.6" ];then
   lib_so_5=/usr/lib/x86_64-linux-gnu/libstdc++.so.5
   lib_so_6=/usr/lib/x86_64-linux-gnu/libstdc++.so.6
   lib_path=/usr/lib/x86_64-linux-gnu
