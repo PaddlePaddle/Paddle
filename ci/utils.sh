@@ -1095,6 +1095,7 @@ EOF
 
     # run go test
     cd ${PADDLE_ROOT}/paddle/fluid/inference/goapi
+    export WITH_TENSORRT=${WITH_TENSORRT:-OFF}
     bash test.sh
     EXIT_CODE=$?
     if [[ "$EXIT_CODE" != "0" ]]; then

@@ -14,7 +14,10 @@
 
 package paddle
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
 
 func TestNewConfig(t *testing.T) {
 	config := NewConfig()
@@ -37,30 +40,32 @@ func TestNewConfig(t *testing.T) {
 	t.Logf("use_gpu:%+v, gpu_id:%+v", config.UseGpu(), config.GpuDeviceId())
 	t.Logf("MemoryPoolInitSizeMb:%+v, FractionOfGpuMemoryForPool:%+v", config.MemoryPoolInitSizeMb(), config.FractionOfGpuMemoryForPool())
 
-	config.EnableTensorRtEngine(1024, 16, 3, PrecisionFloat32, false, false)
-	t.Logf("TensorRtEngineEnabled:%+v", config.TensorRtEngineEnabled())
+	if os.Getenv("WITH_TENSORRT") == "ON" {
+		config.EnableTensorRtEngine(1024, 16, 3, PrecisionFloat32, false, false)
+		t.Logf("TensorRtEngineEnabled:%+v", config.TensorRtEngineEnabled())
 
-	minInputShape := map[string][]int32{
-		"image": []int32{-1, 3, 100, 100},
-		"shape": []int32{-1, 2},
+		minInputShape := map[string][]int32{
+			"image": []int32{-1, 3, 100, 100},
+			"shape": []int32{-1, 2},
+		}
+		maxInputShape := map[string][]int32{
+			"image": []int32{-1, 3, 608, 608},
+			"shape": []int32{-1, 2},
+		}
+		optInputShape := map[string][]int32{
+			"image": []int32{-1, 3, 406, 406},
+			"shape": []int32{-1, 2},
+		}
+		config.SetTRTDynamicShapeInfo(minInputShape, maxInputShape, optInputShape, false)
+
+		config.EnableVarseqlen()
+		t.Logf("TensorrtOssEnabled:%+v", config.TensorrtOssEnabled())
+
+		config.EnableTensorRtDLA(0)
+		t.Logf("TensorrtDlaEnabled:%+v", config.TensorrtDlaEnabled())
+
+		config.DisableTensorRtOPs([]string{"mul", "fc"})
 	}
-	maxInputShape := map[string][]int32{
-		"image": []int32{-1, 3, 608, 608},
-		"shape": []int32{-1, 2},
-	}
-	optInputShape := map[string][]int32{
-		"image": []int32{-1, 3, 406, 406},
-		"shape": []int32{-1, 2},
-	}
-	config.SetTRTDynamicShapeInfo(minInputShape, maxInputShape, optInputShape, false)
-
-	config.EnableVarseqlen()
-	t.Logf("TensorrtOssEnabled:%+v", config.TensorrtOssEnabled())
-
-	config.EnableTensorRtDLA(0)
-	t.Logf("TensorrtDlaEnabled:%+v", config.TensorrtDlaEnabled())
-
-	config.DisableTensorRtOPs([]string{"mul", "fc"})
 
 	config.EnableGpuMultiStream()
 	t.Logf("ThreadLocalStreamEnabled:%+v", config.ThreadLocalStreamEnabled())
