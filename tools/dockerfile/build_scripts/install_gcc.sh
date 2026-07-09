@@ -19,14 +19,14 @@
 # Stop at any error, show all commands
 set -ex
 
-if [ -f "/etc/redhat-release" ];then
-  lib_so_5=/usr/lib64/libgfortran.so.5
-  lib_so_6=/usr/lib64/libstdc++.so.6
-  lib_path=/usr/lib64
-else
+if [ -d "/usr/lib/x86_64-linux-gnu" ];then
   lib_so_5=/usr/lib/x86_64-linux-gnu/libstdc++.so.5
   lib_so_6=/usr/lib/x86_64-linux-gnu/libstdc++.so.6
   lib_path=/usr/lib/x86_64-linux-gnu
+else
+  lib_so_5=/usr/lib64/libgfortran.so.5
+  lib_so_6=/usr/lib64/libstdc++.so.6
+  lib_path=/usr/lib64
 fi
 
 if [ "$1" == "gcc82" ]; then
@@ -43,7 +43,7 @@ if [ "$1" == "gcc82" ]; then
   ../gcc-8.2.0/configure --prefix=/usr/local/gcc-8.2 --enable-threads=posix --disable-checking --disable-multilib && \
   make -j8 && make install
   cd .. && rm -rf temp_gcc82 gcc-8.2.0 gcc-8.2.0.tar.xz
-  if [ -f "/etc/redhat-release" ];then
+  if [ "${lib_path}" == "/usr/lib64" ];then
     cp ${lib_so_6} ${lib_so_6}.bak  && rm -f ${lib_so_6} &&
     ln -s /usr/local/gcc-8.2/lib64/libgfortran.so.5 ${lib_so_5} && \
     ln -s /usr/local/gcc-8.2/lib64/libstdc++.so.6 ${lib_so_6} && \
