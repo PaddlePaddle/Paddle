@@ -29,7 +29,8 @@ from paddle.base import core
 
 
 def np_sinc(x: np.ndarray):
-    return np.sinc(x)
+    tmp = np.sinc(x)
+    return np.where(~np.isnan(tmp), tmp, np.full_like(x, 1.0))
 
 
 def np_sinc_gradient(x: np.ndarray):
