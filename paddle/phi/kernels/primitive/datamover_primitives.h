@@ -418,15 +418,15 @@ __device__ __forceinline__ void ReadDataBc(
     int stride_nx,
     int stride_ny) {
   uint32_t thread_offset = block_offset + threadIdx.x;
-  int64_t index_src = 0;
+  uint64_t index_src = 0;
 
 #pragma unroll
   for (int ny = 0; ny < NY; ++ny) {
 #pragma unroll
     for (uint32_t nx = 0; nx < NX; ++nx) {
-      int64_t index_output = thread_offset +
-                             static_cast<int64_t>(ny) * stride_ny +
-                             static_cast<int64_t>(nx) * stride_nx;
+      uint64_t index_output = thread_offset +
+                              static_cast<uint64_t>(ny) * stride_ny +
+                              static_cast<uint64_t>(nx) * stride_nx;
       index_src = 0;
       if (IsBoundary) {
         if (index_output >= total_num_output) {
@@ -755,11 +755,11 @@ __device__ __forceinline__ void ReadDataBc(
     int total_num_output,
     int read_lens = NX) {
   uint32_t thread_offset = block_offset + threadIdx.x * NX;
-  int64_t index_src = 0;
+  uint64_t index_src = 0;
 
 #pragma unroll
   for (uint32_t nx = 0; nx < NX; ++nx) {
-    int64_t index_output = thread_offset + nx;
+    uint64_t index_output = thread_offset + nx;
     index_src = 0;
     if (IsBoundary) {
       if (index_output >= total_num_output) {
@@ -816,11 +816,11 @@ __device__ __forceinline__ void ReadDataBc(
     int total_num_output,
     int read_lens = NX) {
   uint32_t thread_offset = block_offset + threadIdx.x * NX;
-  int64_t index_src = 0;
+  uint64_t index_src = 0;
 
 #pragma unroll
   for (uint32_t nx = 0; nx < NX; ++nx) {
-    int64_t index_output = thread_offset + nx;
+    uint64_t index_output = thread_offset + nx;
     index_src = 0;
     if (IsBoundary) {
       if (index_output >= total_num_output) {
