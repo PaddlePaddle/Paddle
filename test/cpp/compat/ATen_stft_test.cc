@@ -195,6 +195,42 @@ TEST(TensorStftTest, StftPyTorchStyleCenterFalseOverload) {
   ASSERT_EQ(result.sizes()[2], 3);
 }
 
+TEST(TensorStftTest, StftFreeFunctionLegacySchema) {
+  at::Tensor t = at::ones({1, 16}, at::kFloat);
+  at::Tensor result = at::stft(t,
+                               /*n_fft=*/8,
+                               /*hop_length=*/4,
+                               /*win_length=*/8,
+                               /*window=*/::std::nullopt,
+                               /*normalized=*/false,
+                               /*onesided=*/true,
+                               /*return_complex=*/true);
+
+  ASSERT_EQ(result.dim(), 3);
+  ASSERT_EQ(result.sizes()[0], 1);
+  ASSERT_EQ(result.sizes()[1], 5);
+  ASSERT_EQ(result.sizes()[2], 3);
+}
+
+TEST(TensorStftTest, StftFreeFunctionPyTorchStyleCenterFalseOverload) {
+  at::Tensor t = at::ones({1, 16}, at::kFloat);
+  at::Tensor result = at::stft(t,
+                               /*n_fft=*/8,
+                               /*hop_length=*/4,
+                               /*win_length=*/8,
+                               /*window=*/::std::nullopt,
+                               /*center=*/false,
+                               /*pad_mode=*/"reflect",
+                               /*normalized=*/true,
+                               /*onesided=*/true,
+                               /*return_complex=*/true);
+
+  ASSERT_EQ(result.dim(), 3);
+  ASSERT_EQ(result.sizes()[0], 1);
+  ASSERT_EQ(result.sizes()[1], 5);
+  ASSERT_EQ(result.sizes()[2], 3);
+}
+
 TEST(TensorStftTest, StftRealInputRequiresReturnComplex) {
   at::Tensor t = at::ones({1, 16}, at::kFloat);
   EXPECT_THROW(t.stft(/*n_fft=*/8,
