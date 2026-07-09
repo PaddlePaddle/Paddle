@@ -155,21 +155,26 @@ class TestSemiAutoParallelShardingStage1:
             model, opt = paddle.amp.decorate(
                 model, optimizers=opt, level='O2', master_grad=True
             )
-            losses = np.array([])
+            losses = []
             for _ in range(5):
                 with paddle.amp.auto_cast(level='O2'):
                     loss = model(batch)
                     loss.backward()
                     opt.step()
                     opt.clear_grad()
-                    losses = np.append(losses, loss.numpy())
-            self.assertTrue(np.all(losses[:-1] >= losses[1:]))
-            return loss.numpy()
+                    losses.append(loss.numpy())
+            return loss.numpy(), losses
 
         dist.init_parallel_env()
-        loss_disable = run_sharding_test(enable_tensor_fusion=False)
-        loss_enable = run_sharding_test(enable_tensor_fusion=True)
+        loss_disable, loss_list_disable = run_sharding_test(
+            enable_tensor_fusion=False
+        )
+        loss_enable, loss_list_enable = run_sharding_test(
+            enable_tensor_fusion=True
+        )
         self.check_tensor_eq(loss_disable, loss_enable)
+        assert np.all(np.diff(loss_list_disable, axis=0) < 0)
+        assert np.all(np.diff(loss_list_enable, axis=0) < 0)
         os.environ['FLAGS_enable_tensor_fusion'] = '0'
 
     def test_pure_sharding_multi_mesh_stage_1_with_tensor_fusion_with_optimizer_maximize(
@@ -192,24 +197,25 @@ class TestSemiAutoParallelShardingStage1:
             model, opt = paddle.amp.decorate(
                 model, optimizers=opt, level='O2', master_grad=True
             )
-            losses = np.array([])
+            losses = []
             for _ in range(5):
                 with paddle.amp.auto_cast(level='O2'):
                     loss = model(batch)
                     loss.backward()
                     opt.step()
                     opt.clear_grad()
-                    losses = np.append(losses, loss.numpy())
-            self.assertTrue(np.all(losses[:-1] <= losses[1:]))
-            return loss.numpy()
+                    losses.append(loss.numpy())
+            return loss.numpy(), losses
 
         dist.init_parallel_env()
-        loss_disable = run_sharding_test(
+        loss_disable, loss_list_disable = run_sharding_test(
             enable_tensor_fusion=False, maximize=True
         )
-        loss_enable = run_sharding_test(
+        loss_enable, loss_list_enable = run_sharding_test(
             enable_tensor_fusion=True, maximize=True
         )
+        assert np.all(np.diff(loss_list_disable, axis=0) > 0)
+        assert np.all(np.diff(loss_list_enable, axis=0) > 0)
         self.check_tensor_eq(loss_disable, loss_enable)
         os.environ['FLAGS_enable_tensor_fusion'] = '0'
 
