@@ -52,11 +52,11 @@ RUN pip3.10 install pre-commit==2.17.0 pylint pytest astroid isort coverage qtco
 RUN pip3.10 install attrs pyyaml pathlib2 scipy requests psutil Cython clang-format==13.0.0 PyGithub
 
 # install Paddle requirement
-COPY ./python/requirements.txt /root/
-COPY ./python/unittest_py/requirements.txt /home/
-RUN pip3.10 install -r /root/requirements.txt && \
-    pip3.10 install -r /home/requirements.txt && \
-    rm -rf /root/requirements.txt /home/requirements.txt
+RUN wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/requirements.txt -O requirements.txt && \
+    pip3.10 install -r requirements.txt && rm -rf requirements.txt
+
+RUN wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/unittest_py/requirements.txt -O requirements.txt && \
+    pip3.10 install -r requirements.txt && rm -rf requirements.txt
 
 # git credential to skip password typing
 RUN git config --global credential.helper store && \
