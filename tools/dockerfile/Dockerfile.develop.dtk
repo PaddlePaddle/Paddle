@@ -100,7 +100,7 @@ RUN yum clean all && \
     rm -rf /var/lib/yum/history
 
 # Install DTK
-RUN wget -q --no-proxy https://cancon.hpccube.com:65024/file/1/DTK-24.04.1/CentOS7.6/DTK-24.04.1-CentOS7.6-x86_64.tar.gz --no-check-certificate && \
+RUN wget -q --no-proxy https://download.sourcefind.cn:65024/file/1/DTK-24.04.1/CentOS7.6/DTK-24.04.1-CentOS7.6-x86_64.tar.gz --no-check-certificate && \
     tar zxf DTK-24.04.1-CentOS7.6-x86_64.tar.gz && rm -rf DTK-24.04.1-CentOS7.6-x86_64.tar.gz
 # Replace if you use other device type, e.g. Z100, Z100L, K100
 RUN wget -q https://paddle-device.bj.bcebos.com/dcu/hyhal-K100AI.tar.gz && \
