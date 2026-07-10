@@ -106,6 +106,14 @@ FreeBlockInfoOfVmmAllocator(const GPUPlace& place);
 PADDLE_API extern std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>
 AllBlockInfoOfAllocator(const GPUPlace& place);
 
+// Get large pool block info only (skip small pool traversal).
+PADDLE_API extern std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>
+LargePoolBlockInfo(const GPUPlace& place);
+
+// Get small pool block info only (skip large pool traversal).
+PADDLE_API extern std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>
+SmallPoolBlockInfo(const GPUPlace& place);
+
 // Get allocate event when start FLAGS_record_alloc_event.
 PADDLE_API extern std::vector<
     std::tuple<uintptr_t, bool, uint64_t, size_t, int64_t, int64_t>>
