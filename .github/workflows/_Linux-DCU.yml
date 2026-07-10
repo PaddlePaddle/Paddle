@@ -196,7 +196,7 @@ jobs:
     env:
       TASK: paddle-CI-${{ github.event.pull_request.number }}-dcu_test
     runs-on:
-      group: dcu-z100
+      group: test-safety
     timeout-minutes: 120
 
     steps:
