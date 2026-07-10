@@ -16,6 +16,7 @@ RUN ln -sf /usr/local/gcc-12.2/bin/g++ /usr/local/bin/g++
 RUN ln -sf /usr/local/gcc-12.2/bin/gcc /usr/bin/gcc
 RUN ln -sf /usr/local/gcc-12.2/bin/g++ /usr/bin/g++
 ENV PATH=/usr/local/gcc-12.2/bin:$PATH
+ENV LD_LIBRARY_PATH=/usr/local/gcc-12.2/lib64:/usr/local/gcc-12.2/lib:${LD_LIBRARY_PATH}
 
 # workdir
 WORKDIR /opt
