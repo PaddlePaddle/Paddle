@@ -50,29 +50,41 @@ class CudaGraphExtractPass : public Pass {
     auto IsSupportCudaGraph = [](const Operation& op) {
       static const std::unordered_set<std::string> UNSUPPORTED_OPS = {
           "pd_op.data", "builtin.shadow_output"};
-      static const std::vector<std::string> CUDA_GRAPH_BLACKLIST_PREFIXES = [] {
+      static const std::unordered_set<std::string> CUDA_GRAPH_BLACKLIST = [] {
         std::regex re(",");
         std::sregex_token_iterator it(FLAGS_cuda_graph_blacklist.begin(),
                                       FLAGS_cuda_graph_blacklist.end(),
                                       re,
                                       -1);
         std::sregex_token_iterator end;
-        return std::vector<std::string>(it, end);
+        return std::unordered_set<std::string>(it, end);
       }();
       if (UNSUPPORTED_OPS.count(op.name()) > 0) {
         return false;
       }
-      // Support both exact match and prefix match (entries ending with '_').
-      // e.g. "py_op.wfp8afp8_moe_apply_" matches
-      // "py_op.wfp8afp8_moe_apply_140250952363568".
-      for (const auto& entry : CUDA_GRAPH_BLACKLIST_PREFIXES) {
-        if (entry.empty()) continue;
-        if (entry.back() == '_') {
-          // prefix match
-          if (op.name().rfind(entry, 0) == 0) return false;
-        } else {
-          // exact match
-          if (op.name() == entry) return false;
+      // Keep the original exact-match behavior for regular ops.
+      if (CUDA_GRAPH_BLACKLIST.count(op.name()) > 0) {
+        return false;
+      }
+      // Additional handling for the "py_op." dialect only. A py_op runtime name
+      // appends a dynamic suffix to its stable base name:
+      // "_<python-object-id>", plus an extra trailing '_' for inplace ops, e.g.
+      // "py_op.flash_attn_forward_140250952363568". A blacklist entry may be
+      // written either as the base name ("py_op.flash_attn_forward") or with
+      // the trailing separator ("py_op.flash_attn_forward_"); both match the
+      // runtime name. The '_' boundary requirement keeps this scoped to the
+      // dynamic suffix, so "py_op.foo" never matches an unrelated op like
+      // "py_op.foobar_<id>". Regular ops are unaffected and still require an
+      // exact match (handled by CUDA_GRAPH_BLACKLIST above; many legitimately
+      // end with '_', e.g. inplace "pd_op.add_").
+      static const std::string kPyOpPrefix = "py_op.";
+      for (const auto& entry : CUDA_GRAPH_BLACKLIST) {
+        if (entry.rfind(kPyOpPrefix, 0) == 0 &&
+            op.name().rfind(entry, 0) == 0 &&
+            (op.name().size() == entry.size() ||  // exact
+             entry.back() == '_' ||               // separator is part of entry
+             op.name()[entry.size()] == '_')) {   // separator follows the entry
+          return false;
         }
       }
       return true;
