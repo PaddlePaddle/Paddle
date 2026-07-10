@@ -48,7 +48,7 @@ TEST(TensorStftTest, StftWithCustomHop) {
                              /*win_length=*/16,
                              /*window=*/::std::nullopt,
                              /*normalized=*/false,
-                             /*onesided=*/true,
+                             /*onesided=*/::std::optional<bool>{true},
                              /*return_complex=*/true);
 
   ASSERT_EQ(result.dim(), 3);
@@ -66,7 +66,7 @@ TEST(TensorStftTest, StftWithWindow) {
                              /*win_length=*/8,
                              /*window=*/window,
                              /*normalized=*/false,
-                             /*onesided=*/true,
+                             /*onesided=*/::std::optional<bool>{true},
                              /*return_complex=*/true);
 
   ASSERT_EQ(result.dim(), 3);
@@ -74,16 +74,21 @@ TEST(TensorStftTest, StftWithWindow) {
   ASSERT_EQ(result.sizes()[2], 3);
 }
 
-TEST(TensorStftTest, StftOnesidedFalseUnsupported) {
-  // onesided=false is explicitly unsupported in compat layer
+TEST(TensorStftTest, StftOnesidedFalse) {
   at::Tensor t = at::ones({1, 16}, at::kFloat);
-  EXPECT_THROW(t.stft(/*n_fft=*/8,
-                      /*hop_length=*/4,
-                      /*win_length=*/8,
-                      /*window=*/::std::nullopt,
-                      /*normalized=*/false,
-                      /*onesided=*/false),
-               std::exception);
+  at::Tensor result = t.stft(
+      /*n_fft=*/8,
+      /*hop_length=*/4,
+      /*win_length=*/8,
+      /*window=*/::std::nullopt,
+      /*normalized=*/false,
+      /*onesided=*/::std::optional<bool>{false},
+      /*return_complex=*/true);
+
+  ASSERT_EQ(result.dim(), 3);
+  ASSERT_EQ(result.sizes()[0], 1);
+  ASSERT_EQ(result.sizes()[1], 8);
+  ASSERT_EQ(result.sizes()[2], 3);
 }
 
 TEST(TensorStftTest, Stft1DInput) {
@@ -94,7 +99,7 @@ TEST(TensorStftTest, Stft1DInput) {
                              /*win_length=*/8,
                              /*window=*/::std::nullopt,
                              /*normalized=*/false,
-                             /*onesided=*/true,
+                             /*onesided=*/::std::optional<bool>{true},
                              /*return_complex=*/true);
 
   // Output should be 2D [freq, frames] after squeezing batch dim
@@ -110,7 +115,7 @@ TEST(TensorStftTest, StftDoubleDtype) {
                              /*win_length=*/8,
                              /*window=*/::std::nullopt,
                              /*normalized=*/false,
-                             /*onesided=*/true,
+                             /*onesided=*/::std::optional<bool>{true},
                              /*return_complex=*/true);
 
   ASSERT_EQ(result.dim(), 3);
@@ -126,7 +131,7 @@ TEST(TensorStftTest, StftReturnComplexFalse) {
                              /*win_length=*/8,
                              /*window=*/::std::nullopt,
                              /*normalized=*/false,
-                             /*onesided=*/true,
+                             /*onesided=*/::std::optional<bool>{true},
                              /*return_complex=*/false);
 
   ASSERT_EQ(result.dim(), 4);
@@ -146,7 +151,7 @@ TEST(TensorStftTest, StftWinLengthSmallerThanNFFT) {
                              /*win_length=*/4,
                              /*window=*/window,
                              /*normalized=*/false,
-                             /*onesided=*/true,
+                             /*onesided=*/::std::optional<bool>{true},
                              /*return_complex=*/true);
 
   ASSERT_EQ(result.dim(), 3);
@@ -162,7 +167,7 @@ TEST(TensorStftTest, StftInvalidHopLength) {
                       /*win_length=*/8,
                       /*window=*/::std::nullopt,
                       /*normalized=*/false,
-                      /*onesided=*/true),
+                      /*onesided=*/::std::optional<bool>{true}),
                std::exception);
 }
 
@@ -173,7 +178,7 @@ TEST(TensorStftTest, StftInvalidWinLength) {
                       /*win_length=*/10,  // > n_fft
                       /*window=*/::std::nullopt,
                       /*normalized=*/false,
-                      /*onesided=*/true),
+                      /*onesided=*/::std::optional<bool>{true}),
                std::exception);
 }
 
@@ -186,7 +191,7 @@ TEST(TensorStftTest, StftPyTorchStyleCenterFalseOverload) {
                              /*center=*/false,
                              /*pad_mode=*/"reflect",
                              /*normalized=*/true,
-                             /*onesided=*/true,
+                             /*onesided=*/::std::optional<bool>{true},
                              /*return_complex=*/true);
 
   ASSERT_EQ(result.dim(), 3);
@@ -203,7 +208,7 @@ TEST(TensorStftTest, StftFreeFunctionLegacySchema) {
                                /*win_length=*/8,
                                /*window=*/::std::nullopt,
                                /*normalized=*/false,
-                               /*onesided=*/true,
+                               /*onesided=*/::std::optional<bool>{true},
                                /*return_complex=*/true);
 
   ASSERT_EQ(result.dim(), 3);
@@ -222,7 +227,7 @@ TEST(TensorStftTest, StftFreeFunctionPyTorchStyleCenterFalseOverload) {
                                /*center=*/false,
                                /*pad_mode=*/"reflect",
                                /*normalized=*/true,
-                               /*onesided=*/true,
+                               /*onesided=*/::std::optional<bool>{true},
                                /*return_complex=*/true);
 
   ASSERT_EQ(result.dim(), 3);
@@ -238,22 +243,111 @@ TEST(TensorStftTest, StftRealInputRequiresReturnComplex) {
                       /*win_length=*/8,
                       /*window=*/::std::nullopt,
                       /*normalized=*/false,
-                      /*onesided=*/true),
+                      /*onesided=*/::std::optional<bool>{true}),
                std::exception);
 }
 
-TEST(TensorStftTest, StftCenterTrueUnsupported) {
+TEST(TensorStftTest, StftCenterReflect) {
   at::Tensor t = at::ones({1, 16}, at::kFloat);
+  at::Tensor result = t.stft(/*n_fft=*/8,
+                             /*hop_length=*/4,
+                             /*win_length=*/8,
+                             /*window=*/::std::nullopt,
+                             /*center=*/true,
+                             /*pad_mode=*/"reflect",
+                             /*normalized=*/false,
+                             /*onesided=*/::std::nullopt,
+                             /*return_complex=*/true);
+
+  ASSERT_EQ(result.dim(), 3);
+  ASSERT_EQ(result.sizes()[0], 1);
+  ASSERT_EQ(result.sizes()[1], 5);
+  ASSERT_EQ(result.sizes()[2], 5);
+}
+
+TEST(TensorStftTest, StftCenterConstant) {
+  at::Tensor t = at::ones({1, 16}, at::kFloat);
+  at::Tensor result = t.stft(/*n_fft=*/8,
+                             /*hop_length=*/4,
+                             /*win_length=*/8,
+                             /*window=*/::std::nullopt,
+                             /*center=*/true,
+                             /*pad_mode=*/"constant",
+                             /*normalized=*/false,
+                             /*onesided=*/::std::nullopt,
+                             /*return_complex=*/true);
+
+  ASSERT_EQ(result.dim(), 3);
+  ASSERT_EQ(result.sizes()[0], 1);
+  ASSERT_EQ(result.sizes()[1], 5);
+  ASSERT_EQ(result.sizes()[2], 5);
+}
+
+TEST(TensorStftTest, StftComplexFloatDefaultOnesided) {
+  at::Tensor t = at::ones({16}, at::kComplexFloat);
+  at::Tensor result = t.stft(
+      /*n_fft=*/8,
+      /*hop_length=*/4,
+      /*win_length=*/8,
+      /*window=*/::std::nullopt,
+      /*normalized=*/false,
+      /*onesided=*/::std::nullopt,
+      /*return_complex=*/::std::nullopt);
+
+  ASSERT_EQ(result.dim(), 2);
+  ASSERT_EQ(result.sizes()[0], 8);
+  ASSERT_EQ(result.sizes()[1], 3);
+  ASSERT_EQ(result.scalar_type(), at::kComplexFloat);
+}
+
+TEST(TensorStftTest, StftComplexDoubleCenterReflect) {
+  at::Tensor t = at::ones({16}, at::kComplexDouble);
+  at::Tensor result = t.stft(
+      /*n_fft=*/8,
+      /*hop_length=*/4,
+      /*win_length=*/8,
+      /*window=*/::std::nullopt,
+      /*center=*/true,
+      /*pad_mode=*/"reflect",
+      /*normalized=*/false,
+      /*onesided=*/::std::nullopt,
+      /*return_complex=*/::std::nullopt);
+
+  ASSERT_EQ(result.dim(), 2);
+  ASSERT_EQ(result.sizes()[0], 8);
+  ASSERT_EQ(result.sizes()[1], 5);
+  ASSERT_EQ(result.scalar_type(), at::kComplexDouble);
+}
+
+TEST(TensorStftTest, StftComplexOnesidedTrueThrows) {
+  at::Tensor t = at::ones({16}, at::kComplexFloat);
   EXPECT_THROW(t.stft(/*n_fft=*/8,
                       /*hop_length=*/4,
                       /*win_length=*/8,
                       /*window=*/::std::nullopt,
-                      /*center=*/true,
-                      /*pad_mode=*/"reflect",
                       /*normalized=*/false,
-                      /*onesided=*/true,
+                      /*onesided=*/::std::optional<bool>{true},
                       /*return_complex=*/true),
                std::exception);
+}
+
+TEST(TensorStftTest, StftComplexWindowDefaultOnesided) {
+  at::Tensor t = at::ones({1, 16}, at::kFloat);
+  at::Tensor window = at::ones({8}, at::kComplexFloat);
+  at::Tensor result = t.stft(
+      /*n_fft=*/8,
+      /*hop_length=*/4,
+      /*win_length=*/8,
+      /*window=*/window,
+      /*normalized=*/false,
+      /*onesided=*/::std::nullopt,
+      /*return_complex=*/::std::nullopt);
+
+  ASSERT_EQ(result.dim(), 3);
+  ASSERT_EQ(result.sizes()[0], 1);
+  ASSERT_EQ(result.sizes()[1], 8);
+  ASSERT_EQ(result.sizes()[2], 3);
+  ASSERT_EQ(result.scalar_type(), at::kComplexFloat);
 }
 
 TEST(TensorStftTest, StftAlignToWindowUnsupported) {
@@ -263,7 +357,7 @@ TEST(TensorStftTest, StftAlignToWindowUnsupported) {
                       /*win_length=*/8,
                       /*window=*/::std::nullopt,
                       /*normalized=*/false,
-                      /*onesided=*/true,
+                      /*onesided=*/::std::optional<bool>{true},
                       /*return_complex=*/true,
                       /*align_to_window=*/true),
                std::exception);
