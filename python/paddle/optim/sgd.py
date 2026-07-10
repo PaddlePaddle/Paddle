@@ -14,17 +14,16 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING
+
+from paddle.optimizer import SGD as PaddleSGD
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from paddle import Tensor
     from paddle.optimizer.optimizer import _ParameterConfig
-
-import warnings
-
-from paddle.optimizer import SGD as PaddleSGD
 
 
 class SGD(PaddleSGD):

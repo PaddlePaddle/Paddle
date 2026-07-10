@@ -14,17 +14,16 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING
+
+from paddle.optimizer import AdamW as PaddleAdamW
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from paddle import Tensor
     from paddle.optimizer.adam import _AdamParameterConfig
-
-import warnings
-
-from paddle.optimizer import AdamW as PaddleAdamW
 
 
 class AdamW(PaddleAdamW):

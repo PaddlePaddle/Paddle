@@ -38,10 +38,10 @@ from paddle.optimizer import (
 )
 
 from . import lr_scheduler  # noqa: F401
-from .adagrad import Adagrad
-from .adamw import AdamW
-from .optimizer import Optimizer
-from .sgd import SGD
+from .adagrad import Adagrad as Adagrad
+from .adamw import AdamW as AdamW
+from .optimizer import Optimizer as Optimizer
+from .sgd import SGD as SGD
 
 _sys.modules['paddle.optim.adadelta'] = adadelta
 _sys.modules['paddle.optim.adam'] = adam

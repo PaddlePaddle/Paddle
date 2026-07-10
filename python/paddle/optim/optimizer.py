@@ -16,13 +16,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from paddle.optimizer import Optimizer as PaddleOptimizer
+
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from paddle import Tensor
     from paddle.optimizer.optimizer import _ParameterConfig
-
-from paddle.optimizer import Optimizer as PaddleOptimizer
 
 
 class Optimizer(PaddleOptimizer):

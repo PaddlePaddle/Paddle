@@ -14,17 +14,16 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING
+
+from paddle.optimizer import Adagrad as PaddleAdagrad
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
     from paddle import Tensor
     from paddle.optimizer.adagrad import _AdagradParameterConfig
-
-import warnings
-
-from paddle.optimizer import Adagrad as PaddleAdagrad
 
 
 class Adagrad(PaddleAdagrad):
