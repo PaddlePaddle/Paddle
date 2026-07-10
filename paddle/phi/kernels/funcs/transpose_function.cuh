@@ -585,8 +585,32 @@ void SendSwapDim1And2InTranspose(const GPUContext& d,
   if constexpr (std::is_same<T, phi::float8_e4m3fn>::value) {
     if (input_dims[1] >= 128 && input_dims[2] >= 128 &&
         input_dims[1] % 128 == 0 && input_dims[2] % 128 == 0) {
+      const auto max_grid_dim = d.GetCUDAMaxGridDimSize();
+      const int64_t fp8_grid_x = static_cast<int64_t>(input_dims[2]) / 128;
+      const int64_t fp8_grid_y = static_cast<int64_t>(input_dims[1]) / 128;
+      const int64_t fp8_grid_z = static_cast<int64_t>(input_dims[0]);
+      PADDLE_ENFORCE_LE(fp8_grid_x,
+                        max_grid_dim[0],
+                        common::errors::InvalidArgument(
+                            "fp8 transpose grid.x exceeds device limit."));
+      PADDLE_ENFORCE_LE(fp8_grid_y,
+                        max_grid_dim[1],
+                        common::errors::InvalidArgument(
+                            "fp8 transpose grid.y exceeds device limit."));
+      PADDLE_ENFORCE_LE(fp8_grid_z,
+                        max_grid_dim[2],
+                        common::errors::InvalidArgument(
+                            "fp8 transpose grid.z exceeds device limit."));
+      PADDLE_ENFORCE_LE_UINT32_MAX(input_dims[0], "fp8 transpose batch");
+      PADDLE_ENFORCE_LE_UINT32_MAX(input_dims[1], "fp8 transpose M");
+      PADDLE_ENFORCE_LE_UINT32_MAX(input_dims[2], "fp8 transpose N");
       dispatch_fp8_fast_transpose_kernel<T, IndexType>(
-          d, input, input_dims[0], input_dims[1], input_dims[2], output);
+          d,
+          input,
+          static_cast<uint32_t>(input_dims[0]),
+          static_cast<uint32_t>(input_dims[1]),
+          static_cast<uint32_t>(input_dims[2]),
+          output);
       return;
     }
   }
