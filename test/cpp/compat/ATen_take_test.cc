@@ -19,6 +19,9 @@
 #include "ATen/ATen.h"
 #include "ATen/Functions.h"
 #include "ATen/core/TensorBody.h"
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "ATen/cuda/CUDAContext.h"
+#endif
 #include "ATen/ops/as_strided.h"
 #include "ATen/ops/full.h"
 #include "ATen/ops/take.h"
@@ -346,6 +349,10 @@ TEST(TakeTest, TakeMemberFunction) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 // Test for take on CUDA
 TEST(TakeTest, TakeCUDA) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
+
   auto tensor =
       at::arange(10, at::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
 
@@ -363,6 +370,10 @@ TEST(TakeTest, TakeCUDA) {
 }
 
 TEST(TakeTest, TakeCUDAUIntDtypesThrow) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
+
   auto index = make_long_index({0, 3, 1}).cuda();
 
   auto tensor_uint16 = make_long_index({2, 2, 2, 2}).to(at::kUInt16).cuda();
@@ -373,6 +384,10 @@ TEST(TakeTest, TakeCUDAUIntDtypesThrow) {
 }
 
 TEST(TakeTest, TakeCUDANegativeIndexAndOutOfRange) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
+
   auto tensor =
       at::arange(10, at::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
 
