@@ -22,6 +22,7 @@ import numpy as np
 import paddle
 from paddle.base import framework
 from paddle.distribution import distribution
+from paddle.utils.decorator_utils import param_one_alias
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -121,6 +122,7 @@ class Cauchy(distribution.Distribution):
         """Standard Deviation of Cauchy distribution."""
         raise ValueError("Cauchy distribution has no stddev.")
 
+    @param_one_alias(["shape", "sample_shape"])
     def sample(
         self, shape: Sequence[int] = [], name: str | None = None
     ) -> Tensor:
@@ -177,6 +179,7 @@ class Cauchy(distribution.Distribution):
         with paddle.no_grad():
             return self.rsample(shape, name)
 
+    @param_one_alias(["shape", "sample_shape"])
     def rsample(
         self, shape: Sequence[int] = [], name: str | None = None
     ) -> Tensor:

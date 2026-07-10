@@ -15,15 +15,16 @@
 #pragma once
 
 #include <ATen/core/Tensor.h>
+#include <ATen/ops/index.h>
 #include <c10/core/List.h>
 #include <c10/core/Scalar.h>
+#include <vector>
 
 #include "paddle/phi/api/include/api.h"
 
-namespace at {
+namespace at::detail {
 
-// Helper function to convert c10::List<optional<Tensor>> to vector<Tensor>
-inline std::vector<at::Tensor> convert_indices_list(
+inline std::vector<at::Tensor> _PD_convert_indices_list(
     const c10::List<::std::optional<at::Tensor>>& indices) {
   std::vector<at::Tensor> result;
   result.reserve(indices.size());
@@ -35,95 +36,79 @@ inline std::vector<at::Tensor> convert_indices_list(
   return result;
 }
 
-// index: Get values at specified indices
-inline at::Tensor index(const at::Tensor& self,
-                        const c10::List<::std::optional<at::Tensor>>& indices) {
-  // Handle empty indices - return self
-  if (indices.empty()) {
-    return self;
-  }
-
-  // Check if all indices are None (select all)
-  bool all_none = true;
-  for (const auto& idx : indices) {
-    if (idx.has_value()) {
-      all_none = false;
-      break;
+inline c10::List<::std::optional<at::Tensor>> _PD_convert_tensor_index_list(
+    ArrayRef<at::indexing::TensorIndex> indices) {
+  c10::List<::std::optional<at::Tensor>> result;
+  for (const auto& index : indices) {
+    PD_CHECK(!index.is_ellipsis(), "Ellipsis index is not supported yet.");
+    PD_CHECK(!index.is_integer(), "Integer index is not supported yet.");
+    PD_CHECK(!index.is_boolean(), "Boolean index is not supported yet.");
+    if (index.is_slice()) {
+      PD_CHECK(_PD_is_full_slice(index.slice()),
+               "Only full Slice() is supported in index_put_ TensorIndex "
+               "paths.");
+    } else if (index.is_tensor()) {
+      result.push_back(index.tensor());
     }
   }
-  if (all_none) {
-    return self;
-  }
-
-  // Build vector of indices while tracking which dimensions have None
-  std::vector<paddle::Tensor> pd_indices;
-  std::vector<bool> has_index(indices.size(), false);
-  pd_indices.reserve(indices.size());
-
-  for (size_t i = 0; i < indices.size(); ++i) {
-    if (indices[i].has_value()) {
-      pd_indices.push_back(indices[i].value()._PD_GetInner());
-      has_index[i] = true;
-    } else {
-      // None - will be handled as "select all"
-      pd_indices.push_back(paddle::Tensor());
-      has_index[i] = false;
-    }
-  }
-
-  // If only one non-None index at position 0, use index_select
-  int non_none_count = 0;
-  size_t first_non_none = 0;
-  for (size_t i = 0; i < has_index.size(); ++i) {
-    if (has_index[i]) {
-      non_none_count++;
-      first_non_none = i;
-    }
-  }
-
-  // Simple case: single index tensor
-  if (non_none_count == 1 && first_non_none == 0) {
-    return paddle::experimental::index_select(
-        self._PD_GetInner(), pd_indices[0], 0);
-  }
-
-  // Case: All indices are tensors (no None) - use gather_nd
-  if (non_none_count == static_cast<int>(indices.size())) {
-    auto stacked_indices = paddle::experimental::stack(pd_indices, -1);
-    return paddle::experimental::gather_nd(self._PD_GetInner(),
-                                           stacked_indices);
-  }
-
-  // Mixed case: some indices are None (select all) and some are tensors
-  // Handle by using a combination of operations
-  auto self_dims = self._PD_GetInner().dims();
-  int self_rank = self_dims.size();
-
-  // Build result by iterating over dimensions
-  // For dimensions with None, we select all; for dimensions with tensor, we use
-  // the index
-  at::Tensor result = self;
-
-  for (size_t i = 0; i < indices.size() && i < static_cast<size_t>(self_rank);
-       ++i) {
-    if (has_index[i]) {
-      // Use the index tensor for this dimension
-      paddle::Tensor pd_result = result._PD_GetInner();
-      result = paddle::experimental::index_select(
-          pd_result, pd_indices[i], static_cast<int>(i));
-    }
-    // If None, we select all along this dimension (do nothing)
-  }
-
   return result;
 }
+
+inline at::Tensor _PD_squeeze_newaxis_value(
+    const at::Tensor& values, ArrayRef<at::indexing::TensorIndex> indices) {
+  std::vector<int64_t> value_shape(values.sizes().begin(),
+                                   values.sizes().end());
+  size_t value_dim = 0;
+  bool changed = false;
+
+  for (const auto& index : indices) {
+    if (index.is_none()) {
+      if (!value_shape.empty()) {
+        PD_CHECK(value_dim < value_shape.size(),
+                 "index_put_ value rank is too small for None index.");
+        PD_CHECK(value_shape[value_dim] == 1,
+                 "index_put_ expected value dimension inserted by None to "
+                 "have size 1, but got ",
+                 value_shape[value_dim],
+                 ".");
+        value_shape.erase(value_shape.begin() + value_dim);
+        changed = true;
+      }
+    } else if (index.is_tensor()) {
+      if (!value_shape.empty()) {
+        ++value_dim;
+      }
+    } else if (index.is_slice()) {
+      PD_CHECK(_PD_is_full_slice(index.slice()),
+               "Only full Slice() is supported in index_put_ TensorIndex "
+               "paths.");
+      if (!value_shape.empty()) {
+        ++value_dim;
+      }
+    } else {
+      PD_CHECK(!index.is_ellipsis(), "Ellipsis index is not supported yet.");
+      PD_CHECK(!index.is_integer(), "Integer index is not supported yet.");
+      PD_CHECK(!index.is_boolean(), "Boolean index is not supported yet.");
+    }
+  }
+
+  if (!changed) {
+    return values;
+  }
+  return paddle::experimental::reshape(values._PD_GetInner(),
+                                       phi::IntArray(value_shape));
+}
+
+}  // namespace at::detail
+
+namespace at {
 
 // index_put_: Set values at specified indices (in-place)
 inline at::Tensor& index_put_(
     at::Tensor& self,  // NOLINT(runtime/references)
     const c10::List<::std::optional<at::Tensor>>& indices,
     const at::Tensor& values,
-    bool accumulate) {
+    bool accumulate = false) {
   std::vector<paddle::Tensor> pd_indices;
   pd_indices.reserve(indices.size());
   for (const auto& idx : indices) {
@@ -137,34 +122,12 @@ inline at::Tensor& index_put_(
   return self;
 }
 
-// index_put_: Set scalar value at specified indices (in-place)
-inline at::Tensor& index_put_(
-    at::Tensor& self,  // NOLINT(runtime/references)
-    const c10::List<::std::optional<at::Tensor>>& indices,
-    const at::Scalar& v,
-    bool accumulate) {
-  std::vector<paddle::Tensor> pd_indices;
-  pd_indices.reserve(indices.size());
-  for (const auto& idx : indices) {
-    if (idx.has_value()) {
-      pd_indices.push_back(idx.value()._PD_GetInner());
-    }
-  }
-
-  auto scalar_tensor = paddle::experimental::full(
-      {}, phi::Scalar(v.to<double>()), self._PD_GetInner().dtype());
-
-  paddle::experimental::index_put_(
-      self._PD_GetInner(), pd_indices, scalar_tensor, accumulate);
-  return self;
-}
-
 // index_put: Non-inplace version
 inline at::Tensor index_put(
     const at::Tensor& self,
     const c10::List<::std::optional<at::Tensor>>& indices,
     const at::Tensor& values,
-    bool accumulate) {
+    bool accumulate = false) {
   std::vector<paddle::Tensor> pd_indices;
   pd_indices.reserve(indices.size());
   for (const auto& idx : indices) {
@@ -195,10 +158,41 @@ inline at::Tensor& Tensor::index_put_(
 }
 
 inline at::Tensor& Tensor::index_put_(
-    const c10::List<::std::optional<at::Tensor>>& indices,
-    const at::Scalar& v,
-    bool accumulate) const {
-  return at::index_put_(const_cast<at::Tensor&>(*this), indices, v, accumulate);
+    ArrayRef<at::indexing::TensorIndex> indices, Tensor const& rhs) {
+  auto tensor_indices = detail::_PD_convert_tensor_index_list(indices);
+  at::Tensor values = detail::_PD_squeeze_newaxis_value(rhs, indices);
+  if (tensor_indices.empty()) {
+    return copy_(values);
+  }
+  return index_put_(tensor_indices, values);
+}
+
+inline at::Tensor& Tensor::index_put_(
+    ArrayRef<at::indexing::TensorIndex> indices, const Scalar& v) {
+  auto tensor_indices = detail::_PD_convert_tensor_index_list(indices);
+  if (tensor_indices.empty()) {
+    std::vector<int64_t> value_shape(this->sizes().begin(),
+                                     this->sizes().end());
+    auto scalar_tensor =
+        at::Tensor(paddle::experimental::full(phi::IntArray(value_shape),
+                                              phi::Scalar(v.to<double>()),
+                                              this->_PD_GetInner().dtype()));
+    return copy_(scalar_tensor);
+  }
+  auto scalar_tensor = at::Tensor(paddle::experimental::full(
+      {}, phi::Scalar(v.to<double>()), this->_PD_GetInner().dtype()));
+  return index_put_(indices, scalar_tensor);
+}
+
+inline at::Tensor& Tensor::index_put_(
+    std::initializer_list<at::indexing::TensorIndex> indices,
+    Tensor const& rhs) {
+  return index_put_(ArrayRef<at::indexing::TensorIndex>(indices), rhs);
+}
+
+inline at::Tensor& Tensor::index_put_(
+    std::initializer_list<at::indexing::TensorIndex> indices, const Scalar& v) {
+  return index_put_(ArrayRef<at::indexing::TensorIndex>(indices), v);
 }
 
 inline at::Tensor Tensor::index_put(

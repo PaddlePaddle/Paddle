@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_util.h"
+#include "paddle/common/enforce.h"
 
 namespace phi {
 namespace fusion {
@@ -27,9 +28,9 @@ struct logical_coord {
 };
 
 template <typename T>
-float diff(const T *c, const float *c_baseline, int n) {
+float diff(const T *c, const float *c_baseline, int64_t n) {
   float max_diff = -1.;
-  for (int i = 0; i < n; i++) {
+  for (int64_t i = 0; i < n; i++) {
     float c_value = static_cast<float>(c[i]);
     if (std::abs(c_baseline[i] - c_value) > max_diff) {
       max_diff = std::abs(c_baseline[i] - c_value);
@@ -38,10 +39,11 @@ float diff(const T *c, const float *c_baseline, int n) {
   return max_diff;
 }
 
-__device__ int gpu_nhwc(struct logical_coord shape,
-                        struct logical_coord index) {
-  return index.n * shape.h * shape.w * shape.c + index.h * shape.w * shape.c +
-         index.w * shape.c + index.c;
+__device__ int64_t gpu_nhwc(struct logical_coord shape,
+                            struct logical_coord index) {
+  return static_cast<int64_t>(index.n) * shape.h * shape.w * shape.c +
+         static_cast<int64_t>(index.h) * shape.w * shape.c +
+         static_cast<int64_t>(index.w) * shape.c + index.c;
 }
 template <typename T = half>
 __global__ void naive_conv2d_kernel(const T *input,
@@ -67,7 +69,7 @@ __global__ void naive_conv2d_kernel(const T *input,
                                     const T *residual,
                                     float alpha,  // for leaky_relu
                                     OpType op_type) {
-  int M = batch * oh * ow;
+  int64_t M = static_cast<int64_t>(batch) * oh * ow;
   int N = oc;
   int kc = ic / groups;
   int K = kc * kh * kw;
@@ -79,15 +81,16 @@ __global__ void naive_conv2d_kernel(const T *input,
       static_cast<int64_t>(blockIdx.y) * static_cast<int64_t>(blockDim.y);
   if (m_i >= M || n_i >= N) return;
 
-  int batch_i = m_i / (oh * ow);
-  int oh_i = (m_i % (oh * ow)) / ow;
-  int ow_i = (m_i % (oh * ow)) % ow;
-  int oc_i = n_i;
+  const int64_t output_hw = static_cast<int64_t>(oh) * ow;
+  int batch_i = static_cast<int>(m_i / output_hw);
+  int oh_i = static_cast<int>((m_i % output_hw) / ow);
+  int ow_i = static_cast<int>((m_i % output_hw) % ow);
+  int oc_i = static_cast<int>(n_i);
   int groups_i = (oc_i / (oc / groups));
 
   struct logical_coord weight_shape = {oc, kc, kh, kw};
   struct logical_coord input_shape = {batch, ic, ih, iw};
-  int out_offset = m_i * N + n_i;
+  int64_t out_offset = m_i * N + n_i;
   float *out_ptr = output + out_offset;
   float sum = 0.f;
 
@@ -174,15 +177,32 @@ float conv2d_diff_gpu(const ConvAllParams &params, OpType op_type, T a) {
 
   int oh = params.oh;
   int ow = params.ow;
-  int M = batch * oh * ow;
+  int64_t M = static_cast<int64_t>(batch) * oh * ow;
   int N = oc;
 
   constexpr int blockM = 16;
   constexpr int blockN = 16;
-  uint3 grid = {(M + blockM - 1) / blockM, (N + blockN - 1) / blockN, 1};
+  const int64_t grid_x = (M + blockM - 1) / blockM;
+  const int64_t grid_y = (static_cast<int64_t>(N) + blockN - 1) / blockN;
+  int device_id = 0;
+  int max_grid_x = 0;
+  int max_grid_y = 0;
+  cudaGetDevice(&device_id);
+  cudaDeviceGetAttribute(&max_grid_x, cudaDevAttrMaxGridDimX, device_id);
+  cudaDeviceGetAttribute(&max_grid_y, cudaDevAttrMaxGridDimY, device_id);
+  PADDLE_ENFORCE_LE(grid_x,
+                    static_cast<int64_t>(max_grid_x),
+                    common::errors::InvalidArgument(
+                        "naive_conv2d_kernel grid.x exceeds device limit."));
+  PADDLE_ENFORCE_LE(grid_y,
+                    static_cast<int64_t>(max_grid_y),
+                    common::errors::InvalidArgument(
+                        "naive_conv2d_kernel grid.y exceeds device limit."));
+  uint3 grid = {
+      static_cast<unsigned int>(grid_x), static_cast<unsigned int>(grid_y), 1u};
   uint3 block = {blockM, blockN, 1};
 
-  int output_size = batch * oc * oh * ow;
+  int64_t output_size = static_cast<int64_t>(batch) * oc * oh * ow;
   T *output_from_cutlass =
       reinterpret_cast<T *>(malloc(sizeof(T) * output_size));
   cudaMemcpy(output_from_cutlass,

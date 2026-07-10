@@ -93,6 +93,9 @@ endif()
 
 if(WITH_XPU)
   list(REMOVE_ITEM TEST_OPS test_max_pool_dilation)
+endif()
+
+if(WITH_XPU OR WITH_ROCM)
   list(REMOVE_ITEM TEST_OPS test_api_compatibility_part1)
   list(REMOVE_ITEM TEST_OPS test_api_compatibility_part2)
   list(REMOVE_ITEM TEST_OPS test_api_compatibility_part3)

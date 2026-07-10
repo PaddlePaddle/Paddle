@@ -77,7 +77,7 @@ struct ExportedStatValue {
 template <typename T>
 class StatRegistry {
  public:
-  ~StatRegistry<T>() {}
+  ~StatRegistry() {}
 
   static StatRegistry<T>& Instance() {
     static StatRegistry<T> r;

@@ -18,7 +18,6 @@ ARG TMP_DIR=patchelf_tmp
 ENV WITH_GPU=${WITH_GPU:-ON}
 ENV WITH_AVX=${WITH_AVX:-ON}
 ENV DEBIAN_FRONTEND=noninteractive
-ENV LD_LIBRARY_PATH=/usr/local/cuda-13.2/compat:$LD_LIBRARY_PATH
 ENV GDRCOPY_HOME=/usr/local/gdrcopy
 
 ENV HOME /root

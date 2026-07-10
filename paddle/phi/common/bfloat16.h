@@ -21,6 +21,7 @@
 #include <cstring>
 #include <iostream>
 #include <limits>
+#include <type_traits>
 #include "paddle/common/backend_header.h"
 #include "paddle/common/hostdevice.h"
 
@@ -30,8 +31,10 @@ namespace dtype {
 template <typename T, typename U>
 inline T bit_cast(U x) {
   static_assert(sizeof(T) == sizeof(U), "invalid sizeof");
-  static_assert(std::is_pod<T>::value, "invalid pod type T");
-  static_assert(std::is_pod<U>::value, "invalid pod type U");
+  static_assert(std::is_trivially_copyable<T>::value,
+                "invalid trivially copyable type T");
+  static_assert(std::is_trivially_copyable<U>::value,
+                "invalid trivially copyable type U");
   T y;
   std::memcpy(&y, &x, sizeof(T));
   return y;

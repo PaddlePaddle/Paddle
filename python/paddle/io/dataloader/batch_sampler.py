@@ -128,7 +128,7 @@ class BatchSampler(Sampler[Sequence[int]]):
         drop_last: bool = False,
     ) -> None: ...
 
-    @batch_sampler_decorator()
+    @batch_sampler_decorator
     def __init__(
         self,
         dataset: Sized | None = None,

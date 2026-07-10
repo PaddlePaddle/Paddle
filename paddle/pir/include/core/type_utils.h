@@ -46,7 +46,7 @@ bool VerifyCompatibleShape(Type lhs_type, Type rhs_type);
 ///
 /// \brief Dimensions are compatible if all non-dynamic dims are equal.
 ///
-bool VerifyCompatibleDims(const std::vector<int64_t>& dims);
+bool IR_API VerifyCompatibleDims(const std::vector<int64_t>& dims);
 
 ///
 /// \brief Returns true if the given two arrays have the same number of elements

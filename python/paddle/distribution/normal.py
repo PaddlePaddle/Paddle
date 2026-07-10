@@ -26,6 +26,7 @@ from paddle.base.framework import Variable
 from paddle.distribution import constraint, distribution
 from paddle.framework import in_dynamic_mode
 from paddle.tensor import random
+from paddle.utils.decorator_utils import param_one_alias
 
 if TYPE_CHECKING:
     from typing import TypeAlias
@@ -296,11 +297,13 @@ class Normal(distribution.Distribution):
         """
         return self.scale.pow(2)
 
+    @param_one_alias(["shape", "sample_shape"])
     def sample(self, shape: Sequence[int] = [], seed: int = 0) -> Tensor:
         """Generate samples of the specified shape.
 
         Args:
             shape (Sequence[int], optional): Shape of the generated samples.
+                Alias: ``sample_shape``.
             seed (int): Python integer number.
 
         Returns:
@@ -349,11 +352,13 @@ class Normal(distribution.Distribution):
             else:
                 return output
 
+    @param_one_alias(["shape", "sample_shape"])
     def rsample(self, shape: Sequence[int] = []) -> Tensor:
         """Generate reparameterized samples of the specified shape.
 
         Args:
           shape (Sequence[int], optional): Shape of the generated samples.
+              Alias: ``sample_shape``.
 
         Returns:
           Tensor: A tensor with prepended dimensions shape.The data type is float32.

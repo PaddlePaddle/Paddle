@@ -212,8 +212,9 @@ std::vector<std::vector<pir::Value>> ReshardOp::Vjp(
                         "reshard op's inputs[0]'s size should be 1"));
   auto dist_type = inputs_[0][0].type().dyn_cast<DistTypeInterface>();
 
-  PADDLE_ENFORCE_NOT_NULL(
-      dist_type,
+  PADDLE_ENFORCE_EQ(
+      static_cast<bool>(dist_type),
+      true,
       common::errors::InvalidArgument(
           "Currently, reshard op's inputs type must be dist type."));
 
@@ -387,8 +388,9 @@ std::vector<std::vector<pir::Value>> DtensorFromLocalOp::Vjp(
           "dtensor_from_local op's outputs[0]'s size should be 1"));
   auto dist_type = outputs[0][0].type().dyn_cast<DistTypeInterface>();
 
-  PADDLE_ENFORCE_NOT_NULL(
-      dist_type,
+  PADDLE_ENFORCE_EQ(
+      static_cast<bool>(dist_type),
+      true,
       common::errors::InvalidArgument("Currently, dtensor_from_local op's "
                                       "outputs type must be dist type."));
 
@@ -487,10 +489,11 @@ std::vector<std::vector<pir::Value>> DtensorToLocalOp::Vjp(
                         "dtensor_to_local op's outputs[0]'s size should be 1"));
   auto dist_type = inputs[0][0].type().dyn_cast<DistTypeInterface>();
 
-  PADDLE_ENFORCE_NOT_NULL(
-      dist_type,
-      common::errors::InvalidArgument(
-          "Currently, dtensor_to_local op's inputs type must be dist type."));
+  PADDLE_ENFORCE_EQ(static_cast<bool>(dist_type),
+                    true,
+                    common::errors::InvalidArgument(
+                        "Currently, dtensor_to_local op's inputs type must be "
+                        "dist type."));
 
   PADDLE_ENFORCE_EQ(
       out_grads.size(),
@@ -618,10 +621,11 @@ std::vector<std::vector<pir::Value>> MoESubMeshTensorsOp::Vjp(
           "moe_sub_mesh_tensors op's inputs[0]'s size should be 1"));
   auto dist_type = inputs_[0][0].type().dyn_cast<DistTypeInterface>();
 
-  PADDLE_ENFORCE_NOT_NULL(
-      dist_type,
-      common::errors::InvalidArgument(
-          "moe_sub_mesh_tensors op's inputs type must be dist type."));
+  PADDLE_ENFORCE_EQ(static_cast<bool>(dist_type),
+                    true,
+                    common::errors::InvalidArgument(
+                        "moe_sub_mesh_tensors op's inputs type must be dist "
+                        "type."));
 
   auto& builder = *ApiBuilder::Instance().GetBuilder();
 
@@ -777,8 +781,9 @@ std::vector<std::vector<pir::Value>> MoEGlobalMeshTensorOp::Vjp(
   std::vector<TensorDistAttribute> local_dist_attrs;
   for (size_t i = 0; i < inputs_.size(); i++) {
     auto dist_type = inputs_[i][0].type().dyn_cast<DistTypeInterface>();
-    PADDLE_ENFORCE_NOT_NULL(
-        dist_type,
+    PADDLE_ENFORCE_EQ(
+        static_cast<bool>(dist_type),
+        true,
         common::errors::InvalidArgument(
             "Currently, %s's inputs type must be dist type.", name()));
     local_dist_attrs.push_back(dist_type.tensor_dist_attr());
@@ -919,12 +924,13 @@ std::vector<std::vector<pir::Value>> DistReshapeOp::Vjp(
       inputs_[0][0].type().dyn_cast<DistDenseTensorType>();
   DistDenseTensorType out_grad_type =
       out_grads[0][0].type().dyn_cast<DistDenseTensorType>();
-  PADDLE_ENFORCE_NOT_NULL(
-      input_type,
-      common::errors::InvalidArgument(
-          "dist_reshape op's inputs type must be dist type."));
-  PADDLE_ENFORCE_NOT_NULL(
-      out_grad_type,
+  PADDLE_ENFORCE_EQ(static_cast<bool>(input_type),
+                    true,
+                    common::errors::InvalidArgument(
+                        "dist_reshape op's inputs type must be dist type."));
+  PADDLE_ENFORCE_EQ(
+      static_cast<bool>(out_grad_type),
+      true,
       common::errors::InvalidArgument(
           "dist_reshape op's outputs grad type must be dist type."));
 

@@ -53,8 +53,10 @@ struct CombineOpInferSymbolicShapeInterfaceModel
       const auto shape_data_list = [&] {
         symbol::TensorListShapeOrDataDimExprs shape_data_list;
         for (size_t i = 0; i < op->num_operands(); ++i) {
-          PADDLE_ENFORCE_NOT_NULL(
-              op->operand(i).type().dyn_cast<DenseTensorType>(),
+          PADDLE_ENFORCE_EQ(
+              static_cast<bool>(
+                  op->operand(i).type().dyn_cast<DenseTensorType>()),
+              true,
               common::errors::InvalidArgument(
                   "The operand at index %d must be a DenseTensorArray. "
                   "Currently InferSymbolicShape of CombineOp only accepts "
@@ -76,8 +78,10 @@ struct CombineOpInferSymbolicShapeInterfaceModel
       // TODO(ooooo): Actually RankedTensorArrayListShapeOrDataDimExprs is
       // better.
       for (size_t i = 0; i < op->num_operands(); ++i) {
-        PADDLE_ENFORCE_NOT_NULL(
-            op->operand(i).type().dyn_cast<DenseTensorArrayType>(),
+        PADDLE_ENFORCE_EQ(
+            static_cast<bool>(
+                op->operand(i).type().dyn_cast<DenseTensorArrayType>()),
+            true,
             common::errors::InvalidArgument(
                 "The operand at index %d must be a DenseTensorArray. Currently "
                 "InferSymbolicShape of CombineOp only accepts inputs that are "
@@ -100,8 +104,9 @@ struct ConstantOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
       pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
-    PADDLE_ENFORCE_NOT_NULL(
-        op->result(0).type().dyn_cast<DenseTensorType>(),
+    PADDLE_ENFORCE_EQ(
+        static_cast<bool>(op->result(0).type().dyn_cast<DenseTensorType>()),
+        true,
         common::errors::InvalidArgument(
             "Currently InferSymbolicShape of ConstantOp only support "
             "DenseTensorType result."));

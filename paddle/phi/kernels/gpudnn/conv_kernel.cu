@@ -142,9 +142,11 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
              &o_w);
   }
 
-  int group_offset_in = i_c / groups * i_h * i_w * i_d;
-  int group_offset_out = o_c / groups * o_h * o_w * o_d;
-  int group_offset_filter = transformed_filter_channel->numel() / groups;
+  int64_t group_offset_in =
+      static_cast<int64_t>(i_c) / groups * i_h * i_w * i_d;
+  int64_t group_offset_out =
+      static_cast<int64_t>(o_c) / groups * o_h * o_w * o_d;
+  int64_t group_offset_filter = transformed_filter_channel->numel() / groups;
   // ------------------- cudnn conv workspace ---------------------
   size_t workspace_size = 0;  // final workspace to allocate.
 // ------------------- cudnn conv algorithm ---------------------

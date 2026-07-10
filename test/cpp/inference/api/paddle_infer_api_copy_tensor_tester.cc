@@ -17,6 +17,7 @@ limitations under the License. */
 
 #include <array>
 #include <cstring>
+#include <functional>
 #include <numeric>
 
 #include "glog/logging.h"
@@ -56,10 +57,8 @@ TEST(Tensor, copy_to_cpu_async_stream) {
   auto pred_clone = predictor->Clone();
 
   std::vector<int> in_shape = {1, 3, 318, 318};
-  int in_num =
-      std::accumulate(in_shape.begin(), in_shape.end(), 1, [](int &a, int &b) {
-        return a * b;
-      });
+  int in_num = std::accumulate(
+      in_shape.begin(), in_shape.end(), 1, std::multiplies<int>());
 
   std::vector<float> input(in_num, 1.0);
 
@@ -123,10 +122,8 @@ TEST(Tensor, copy_to_cpu_async_callback) {
   auto pred_clone = predictor->Clone();
 
   std::vector<int> in_shape = {1, 3, 318, 318};
-  int in_num =
-      std::accumulate(in_shape.begin(), in_shape.end(), 1, [](int &a, int &b) {
-        return a * b;
-      });
+  int in_num = std::accumulate(
+      in_shape.begin(), in_shape.end(), 1, std::multiplies<int>());
 
   std::vector<float> input(in_num, 1.0);
 

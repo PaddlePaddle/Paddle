@@ -2459,6 +2459,20 @@ PHI_DEFINE_EXPORTED_bool(
 PHI_DEFINE_EXPORTED_bool(use_accuracy_compatible_kernel,
                          false,
                          "Whether use torch compatible version kernel.");
+
+/**
+ * LayerNorm Apex Compatible related FLAG
+ * Name: FLAGS_use_apex_layer_norm_kernel
+ * Since Version: 3.5.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Whether use apex compatible version LayerNorm kernel.
+ */
+PHI_DEFINE_EXPORTED_bool(
+    use_apex_layer_norm_kernel,
+    false,
+    "Whether use apex compatible version LayerNorm kernel.");
+
 /**
  * Legacy gemm related FLAG
  * Name: FLAGS_use_legacy_gemm

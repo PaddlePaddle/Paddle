@@ -39,7 +39,7 @@ COMMON_DECLARE_bool(use_stride_kernel);
 
 TEST(TensorBaseTest, DataPtrAPIs) {
   // Test data_ptr() and const_data_ptr() APIs
-  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+  at::Tensor tensor = at::ones({2, 3}, at::kFloat);
 
   // Test void* data_ptr()
   void* void_ptr = tensor.data_ptr();
@@ -88,7 +88,7 @@ TEST(TensorBaseTest, ModifyOperationAPIs) {
     return;
   }
   // Test modify operation related APIs
-  at::TensorBase tensor = at::ones({2, 3}, at::kFloat);
+  at::Tensor tensor = at::ones({2, 3}, at::kFloat);
 
   // Test is_contiguous()
   ASSERT_TRUE(tensor.is_contiguous());
@@ -110,7 +110,7 @@ TEST(TensorBaseTest, ModifyOperationAPIs) {
   }
 
   // Test copy_()
-  at::TensorBase src = at::ones({2, 3}, at::kFloat);
+  at::Tensor src = at::ones({2, 3}, at::kFloat);
   tensor.copy_(src);
   for (int i = 0; i < tensor.numel(); i++) {
     ASSERT_EQ(data[i], 1.0f);

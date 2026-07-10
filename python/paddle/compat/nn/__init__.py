@@ -14,14 +14,13 @@
 
 from __future__ import annotations
 
-import collections
 import warnings
-from itertools import repeat
 from math import sqrt
 from typing import TYPE_CHECKING
 
 import paddle
 from paddle import nn
+from paddle.nn.modules.utils import _single
 from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
 from . import functional
@@ -48,22 +47,101 @@ __all__ = [
     'AvgPool1d',
     'AvgPool2d',
     'AvgPool3d',
+    'BatchNorm1D',
+    'BatchNorm2D',
+    'BatchNorm3D',
+    'BatchNorm1d',
+    'BatchNorm2d',
+    'BatchNorm3d',
     'MultiheadAttention',
     'SmoothL1Loss',
 ]
 
 
-def _ntuple(n, name="parse"):
-    def parse(x):
-        if isinstance(x, collections.abc.Iterable):
-            return tuple(x)
-        return tuple(repeat(x, n))
+class BatchNorm1D(nn.BatchNorm1D):
+    def __init__(
+        self,
+        num_features: int,
+        eps: float = 1e-5,
+        momentum: float | None = 0.1,
+        affine: bool = True,
+        track_running_stats: bool = True,
+        device: PlaceLike | None = None,
+        dtype: DTypeLike | None = None,
+    ) -> None:
+        if momentum is None:
+            paddle_momentum = None
+        else:
+            paddle_momentum = 1.0 - momentum
+        super().__init__(
+            num_features=num_features,
+            momentum=paddle_momentum,
+            epsilon=eps,
+            use_global_stats=None if track_running_stats else False,
+            affine=affine,
+            device=device,
+            dtype=dtype,
+        )
+        self.momentum = momentum
 
-    parse.__name__ = name
-    return parse
+
+class BatchNorm2D(nn.BatchNorm2D):
+    def __init__(
+        self,
+        num_features: int,
+        eps: float = 1e-5,
+        momentum: float | None = 0.1,
+        affine: bool = True,
+        track_running_stats: bool = True,
+        device: PlaceLike | None = None,
+        dtype: DTypeLike | None = None,
+    ) -> None:
+        if momentum is None:
+            paddle_momentum = None
+        else:
+            paddle_momentum = 1.0 - momentum
+        super().__init__(
+            num_features=num_features,
+            momentum=paddle_momentum,
+            epsilon=eps,
+            use_global_stats=None if track_running_stats else False,
+            affine=affine,
+            device=device,
+            dtype=dtype,
+        )
+        self.momentum = momentum
 
 
-_single = _ntuple(1, "_single")
+class BatchNorm3D(nn.BatchNorm3D):
+    def __init__(
+        self,
+        num_features: int,
+        eps: float = 1e-5,
+        momentum: float | None = 0.1,
+        affine: bool = True,
+        track_running_stats: bool = True,
+        device: PlaceLike | None = None,
+        dtype: DTypeLike | None = None,
+    ) -> None:
+        if momentum is None:
+            paddle_momentum = None
+        else:
+            paddle_momentum = 1.0 - momentum
+        super().__init__(
+            num_features=num_features,
+            momentum=paddle_momentum,
+            epsilon=eps,
+            use_global_stats=None if track_running_stats else False,
+            affine=affine,
+            device=device,
+            dtype=dtype,
+        )
+        self.momentum = momentum
+
+
+BatchNorm1d = BatchNorm1D
+BatchNorm2d = BatchNorm2D
+BatchNorm3d = BatchNorm3D
 
 
 class AvgPool1D(nn.Layer):
@@ -744,7 +822,7 @@ class Softmax(nn.Layer):
         return functional.softmax(input, self._dim)
 
     def extra_repr(self) -> str:
-        return f"dim={self.dim}"
+        return f"dim={self._dim}"
 
 
 class SmoothL1Loss(nn.Layer):

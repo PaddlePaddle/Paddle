@@ -58,9 +58,6 @@ function do_cpython_build {
     find / -name 'libpython*.so*'
     rm -rf Python-$py_ver
     # Some python's install as bin/python3. Make them available as bin/python.
-    if [ -e ${prefix}/bin/python3.9 ]; then
-        ln -s python3.9 ${prefix}/bin/python
-    fi
     if [ -e ${prefix}/bin/python3.10 ]; then
         ln -s python3.10 ${prefix}/bin/python
     fi
@@ -118,43 +115,7 @@ function build_cpythons {
 
 PYTHON_DOWNLOAD_URL=https://www.python.org/ftp/python
 GET_PIP_URL=https://bootstrap.pypa.io/get-pip.py
-CPYTHON_VERSIONS="3.14.0 3.13.0 3.12.0 3.11.0 3.10.0 3.9.0"
+CPYTHON_VERSIONS="3.14.0 3.13.0 3.12.0 3.11.0 3.10.0"
 
 mkdir -p /opt/python
 build_cpythons $CPYTHON_VERSIONS
-
-
-mkdir -p /opt/python
-build_cpythons $CPYTHON_VERSIONS
-#PY39_BIN=/opt/python/cp39-cp39/bin
-#PY310_BIN=/opt/python/cp310-cp310/bin
-#PY311_BIN=/opt/python/cp311-cp311/bin
-#PY312_BIN=/opt/python/cp312-cp312/bin
-#PY313_BIN=/opt/python/cp313-cp313/bin
-#PY313T_BIN=/opt/python/cp313-cp313t/bin
-#
-#LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname ${PY38_BIN})/lib" $PY38_BIN/pip install certifi
-#ln -s $($PY38_BIN/python -c 'import certifi; print(certifi.where())') \
-#      /opt/_internal/certs.pem
-#
-#find /opt/_internal -name '*.a' -print0 | xargs -0 rm -f
-#find /opt/_internal -type f -print0 \
-#    | xargs -0 -n1 strip --strip-unneeded 2>/dev/null || true
-#
-#find /opt/_internal \
-#     \( -type d -a -name test -o -name tests \) \
-#  -o \( -type f -a -name '*.pyc' -o -name '*.pyo' \) \
-#  -print0 | xargs -0 rm -f
-#
-#for PYTHON in /opt/python/*/bin/python; do
-#    # Add matching directory of libpython shared library to library lookup path
-#    LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname $(dirname ${PYTHON}))/lib"
-#
-#    if [ "$(dirname $(dirname ${PYTHON}))" != "/opt/python/cp310-cp310" -a "$(dirname $(dirname ${PYTHON}))" != "/opt/python/cp311-cp311" ]; then
-#        # Smoke test to make sure that our Pythons work, and do indeed detect as
-#        # being manylinux compatible:
-#        LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname $(dirname ${PYTHON}))/lib" $PYTHON $MY_DIR/manylinux1-check.py
-#        # Make sure that SSL cert checking works
-#        LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname $(dirname ${PYTHON}))/lib"
-#    fi
-#done

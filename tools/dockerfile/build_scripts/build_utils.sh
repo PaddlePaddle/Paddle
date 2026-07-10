@@ -83,9 +83,6 @@ function do_cpython_build {
     rm -rf Python-$py_ver
     # Some python's install as bin/python3. Make them available as
     # bin/python.
-    if [ -e ${prefix}/bin/python3.9 ]; then
-        ln -s python3.9 ${prefix}/bin/python
-    fi
     if [ -e ${prefix}/bin/python3.10 ]; then
         ln -s python3.10 ${prefix}/bin/python
     fi

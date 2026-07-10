@@ -240,7 +240,7 @@ class TestCholeskyAPIError_ZeroSize(unittest.TestCase):
         paddle.linalg.cholesky(paddle.randn([0, 5]))
 
     def test_error(self):
-        self.assertRaises(AssertionError, self._test_case)
+        self.assertRaises(ValueError, self._test_case)
 
 
 if __name__ == "__main__":

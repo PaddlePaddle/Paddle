@@ -47,8 +47,8 @@ class RecordStreamTest : public ::testing::Test {
 
 // --- Happy path: CUDA tensor + current CUDA stream should succeed ---
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-using RecordCudaStreamMethod = void (at::Tensor::*)(at::cuda::CUDAStream) const;
-[[maybe_unused]] static RecordCudaStreamMethod g_record_cuda_stream_method =
+using RecordStreamMethod = void (at::Tensor::*)(at::Stream) const;
+[[maybe_unused]] static RecordStreamMethod g_record_stream_method =
     &at::Tensor::record_stream;
 
 TEST_F(RecordStreamTest, CudaTensorCurrentCudaStream) {

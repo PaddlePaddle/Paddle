@@ -34,6 +34,7 @@
 #include <ATen/ops/empty_strided.h>
 #include <ATen/ops/equal.h>
 #include <ATen/ops/expand.h>
+#include <ATen/ops/expand_as.h>
 #include <ATen/ops/eye.h>
 #include <ATen/ops/flatten.h>
 #include <ATen/ops/from_blob.h>

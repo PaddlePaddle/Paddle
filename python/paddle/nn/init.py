@@ -14,6 +14,20 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from typing import TypeVar
+
+    from typing_extensions import ParamSpec
+
+    _InputT = ParamSpec("_InputT")
+    _RetT = TypeVar("_RetT")
+
+import math
+import warnings
+
 import numpy as np
 
 import paddle
@@ -69,7 +83,7 @@ def kaiming_uniform_(
     a: float = 0,
     mode: str = "fan_in",
     nonlinearity: str = "leaky_relu",
-) -> paddle.Tensor | None:
+) -> paddle.Tensor:
     """Modify tensor inplace using Kaiming uniform method.
 
     Args:
@@ -89,6 +103,9 @@ def kaiming_uniform_(
         negative_slope=a, nonlinearity=nonlinearity, mode=mode
     )
 
+    if in_dygraph_mode():
+        init(tensor)
+        return tensor
     return init(tensor)
 
 
@@ -97,7 +114,7 @@ def kaiming_normal_(
     a: float = 0,
     mode: str = "fan_in",
     nonlinearity: str = "leaky_relu",
-) -> paddle.Tensor | None:
+) -> paddle.Tensor:
     """Modify tensor inplace using Kaiming normal method.
 
     Args:
@@ -115,6 +132,9 @@ def kaiming_normal_(
     """
     init = KaimingNormal(negative_slope=a, nonlinearity=nonlinearity, mode=mode)
 
+    if in_dygraph_mode():
+        init(tensor)
+        return tensor
     return init(tensor)
 
 
@@ -123,7 +143,7 @@ def xavier_uniform_(
     gain: float = 1.0,
     fan_in: float | None = None,
     fan_out: float | None = None,
-) -> paddle.Tensor | None:
+) -> paddle.Tensor:
     """Modify tensor inplace using Xavier uniform method.
 
     Args:
@@ -143,6 +163,9 @@ def xavier_uniform_(
         fan_out=fan_out,
     )
 
+    if in_dygraph_mode():
+        init(tensor)
+        return tensor
     return init(tensor)
 
 
@@ -151,7 +174,7 @@ def xavier_normal_(
     gain: float = 1.0,
     fan_in: float | None = None,
     fan_out: float | None = None,
-) -> paddle.Tensor | None:
+) -> paddle.Tensor:
     """Modify tensor inplace using Xavier normal method.
 
     Args:
@@ -171,6 +194,9 @@ def xavier_normal_(
         fan_out=fan_out,
     )
 
+    if in_dygraph_mode():
+        init(tensor)
+        return tensor
     return init(tensor)
 
 
@@ -178,7 +204,7 @@ def uniform_(
     tensor: paddle.Tensor,
     a: float = 0.0,
     b: float = 1.0,
-) -> paddle.Tensor | None:
+) -> paddle.Tensor:
     """Modify tensor inplace using uniform method.
 
     Args:
@@ -191,6 +217,9 @@ def uniform_(
     """
     init = Uniform(low=a, high=b)
 
+    if in_dygraph_mode():
+        init(tensor)
+        return tensor
     return init(tensor)
 
 
@@ -198,7 +227,7 @@ def normal_(
     tensor: paddle.Tensor,
     mean: float = 0.0,
     std: float = 1.0,
-) -> paddle.Tensor | None:
+) -> paddle.Tensor:
     """Modify tensor inplace using normal method.
 
     Args:
@@ -211,6 +240,9 @@ def normal_(
     """
     init = Normal(mean=mean, std=std)
 
+    if in_dygraph_mode():
+        init(tensor)
+        return tensor
     return init(tensor)
 
 
@@ -220,7 +252,7 @@ def trunc_normal_(
     std: float = 1.0,
     a: float = -2.0,
     b: float = 2.0,
-) -> paddle.Tensor | None:
+) -> paddle.Tensor:
     """Modify tensor inplace using truncated normal method.
 
     Args:
@@ -235,13 +267,16 @@ def trunc_normal_(
     """
     init = TruncatedNormal(mean=mean, std=std, a=a, b=b)
 
+    if in_dygraph_mode():
+        init(tensor)
+        return tensor
     return init(tensor)
 
 
 def constant_(
     tensor: paddle.Tensor,
     val: float,
-) -> paddle.Tensor | None:
+) -> paddle.Tensor:
     """Modify tensor inplace using constant method.
 
     Args:
@@ -253,12 +288,15 @@ def constant_(
     """
     init = Constant(value=val)
 
+    if in_dygraph_mode():
+        init(tensor)
+        return tensor
     return init(tensor)
 
 
 def ones_(
     tensor: paddle.Tensor,
-) -> paddle.Tensor | None:
+) -> paddle.Tensor:
     """Fill the input Tensor with the scalar value 1.
 
     Args:
@@ -269,12 +307,15 @@ def ones_(
     """
     init = Constant(value=1.0)
 
+    if in_dygraph_mode():
+        init(tensor)
+        return tensor
     return init(tensor)
 
 
 def zeros_(
     tensor: paddle.Tensor,
-) -> paddle.Tensor | None:
+) -> paddle.Tensor:
     """Fill the input Tensor with the scalar value 0.
 
     Args:
@@ -285,13 +326,16 @@ def zeros_(
     """
     init = Constant(value=0.0)
 
+    if in_dygraph_mode():
+        init(tensor)
+        return tensor
     return init(tensor)
 
 
 def dirac_(
     tensor: paddle.Tensor,
     groups: int = 1,
-) -> paddle.Tensor | None:
+) -> paddle.Tensor:
     """Initialize the 3D/4D/5D Tensor with Dirac delta function.
 
     Args:
@@ -303,12 +347,15 @@ def dirac_(
     """
     init = Dirac(groups=groups)
 
+    if in_dygraph_mode():
+        init(tensor)
+        return tensor
     return init(tensor)
 
 
 def eye_(
     tensor: paddle.Tensor,
-) -> paddle.Tensor | None:
+) -> paddle.Tensor:
     """Fill the 2-dimensional input Tensor with the identity matrix.
 
     Args:
@@ -327,7 +374,7 @@ def eye_(
             tensor.shape[0], tensor.shape[1], dtype=tensor.dtype
         )
         new_tensor._share_underline_tensor_to(tensor)
-        return None
+        return tensor
     elif in_pir_mode():
         new_tensor = paddle.eye(
             tensor.shape[0], tensor.shape[1], dtype=tensor.dtype
@@ -342,7 +389,7 @@ def eye_(
 def orthogonal_(
     tensor: paddle.Tensor,
     gain: float = 1,
-) -> paddle.Tensor | None:
+) -> paddle.Tensor:
     """Fill the input Tensor with a (semi) orthogonal matrix.
 
     Args:
@@ -352,4 +399,74 @@ def orthogonal_(
         Tensor: Initialized tensor.
     """
     init = Orthogonal(gain=gain)
+    if in_dygraph_mode():
+        init(tensor)
+        return tensor
     return init(tensor)
+
+
+def sparse_(
+    tensor: paddle.Tensor, sparsity: float, std: float = 0.01
+) -> paddle.Tensor:
+    """Fill the 2D input Tensor as a sparse matrix.
+
+    The non-zero elements will be drawn from the normal distribution.
+
+    Args:
+        tensor (Tensor): Paddle Tensor with 2 dimensions.
+        sparsity (float): The fraction of elements in each column to be set to zero.
+        std (float): the standard deviation of the normal distribution used to generate
+            the non-zero values. Default is 0.01.
+
+    Examples:
+        >>> tensor = paddle.empty(3, 5)
+        >>> result = paddle.nn.init.sparse_(tensor, sparsity=0.1)
+    """
+    if tensor.ndimension() != 2:
+        raise ValueError("Only tensors with 2 dimensions are supported")
+    rows, cols = tensor.shape
+    num_zeros = math.ceil(sparsity * rows)
+
+    with paddle.no_grad():
+        tensor = normal_(tensor, mean=0, std=std)
+        for col_idx in range(cols):
+            row_indices = paddle.randperm(rows)
+            zero_indices = row_indices[:num_zeros]
+            tensor[zero_indices, col_idx] = 0
+    return tensor
+
+
+def _make_deprecate(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+    new_name = func.__name__
+    old_name = new_name[:-1]
+
+    def deprecated_init(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+        warnings.warn(
+            f"`nn.init.{old_name}` is now deprecated in favor of `nn.init.{new_name}`.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return func(*args, **kwargs)
+
+    deprecated_init.__doc__ = rf"""
+    {old_name}(...)
+
+    .. warning::
+        This method is now deprecated in favor of :func:`paddle.nn.init.{new_name}`.
+
+    See :func:`~paddle.nn.init.{new_name}` for details."""
+    deprecated_init.__name__ = old_name
+    return deprecated_init
+
+
+uniform = _make_deprecate(uniform_)
+normal = _make_deprecate(normal_)
+constant = _make_deprecate(constant_)
+eye = _make_deprecate(eye_)
+dirac = _make_deprecate(dirac_)
+xavier_uniform = _make_deprecate(xavier_uniform_)
+xavier_normal = _make_deprecate(xavier_normal_)
+kaiming_uniform = _make_deprecate(kaiming_uniform_)
+kaiming_normal = _make_deprecate(kaiming_normal_)
+orthogonal = _make_deprecate(orthogonal_)
+sparse = _make_deprecate(sparse_)

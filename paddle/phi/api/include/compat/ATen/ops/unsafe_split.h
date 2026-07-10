@@ -21,13 +21,13 @@ namespace at {
 
 inline std::vector<at::Tensor> unsafe_split(const at::Tensor& self,
                                             int64_t split_size,
-                                            int64_t dim) {
+                                            int64_t dim = 0) {
   return at::split(self, split_size, dim);
 }
 
 inline std::vector<at::Tensor> unsafe_split_symint(const at::Tensor& self,
                                                    c10::SymInt split_size,
-                                                   int64_t dim) {
+                                                   int64_t dim = 0) {
   return at::split(self, static_cast<int64_t>(split_size), dim);
 }
 

@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 
 import paddle
 from paddle.distribution import categorical, distribution
+from paddle.utils.decorator_utils import param_one_alias
 
 if TYPE_CHECKING:
     from paddle import Tensor
@@ -150,6 +151,7 @@ class Multinomial(distribution.Distribution):
             + (value * logits).sum(-1)
         )
 
+    @param_one_alias(["shape", "sample_shape"])
     def sample(self, shape: Iterable[int] = []) -> Tensor:
         """draw sample data from multinomial distribution
 

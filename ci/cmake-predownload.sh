@@ -15,12 +15,31 @@
 set -e
 PREDOWNLOAD_DIR=${CACHE_DIR}/cmake-predownload
 
+compute_checksum() {
+    local CHECKSUM_ALGORITHM="$1"
+    local FILE_PATH="$2"
+
+    case "${CHECKSUM_ALGORITHM}" in
+        md5)
+            md5sum "${FILE_PATH}" | awk '{print $1}'
+            ;;
+        sha256)
+            sha256sum "${FILE_PATH}" | awk '{print $1}'
+            ;;
+        *)
+            echo "Unsupported checksum algorithm: ${CHECKSUM_ALGORITHM}" >&2
+            return 1
+            ;;
+    esac
+}
+
 download_and_verify() {
     local URL="$1"
-    local EXPECTED_MD5="$2"
+    local EXPECTED_CHECKSUM="$2"
     local TARGET_DIR=${PREDOWNLOAD_DIR}
     local TARGET_FILENAME="${3:-$(basename "${URL}")}"
     local MAX_RETRIES="${4:-3}"
+    local CHECKSUM_ALGORITHM="${5:-md5}"
     local FILE_PATH="${TARGET_DIR}/${TARGET_FILENAME}"
     local retries=0
 
@@ -46,15 +65,16 @@ download_and_verify() {
             continue
         fi
 
-        echo "Verifying MD5 checksum..."
-        local COMPUTED_MD5=$(md5sum "${TEMP_FILE_PATH}" | awk '{print $1}')
+        echo "Verifying ${CHECKSUM_ALGORITHM} checksum..."
+        local COMPUTED_CHECKSUM
+        COMPUTED_CHECKSUM=$(compute_checksum "${CHECKSUM_ALGORITHM}" "${TEMP_FILE_PATH}")
 
-        if [ "${COMPUTED_MD5}" = "${EXPECTED_MD5}" ]; then
+        if [ "${COMPUTED_CHECKSUM}" = "${EXPECTED_CHECKSUM}" ]; then
             mv "${TEMP_FILE_PATH}" "${FILE_PATH}"
-            echo "MD5 verification succeeded. File saved to: ${FILE_PATH}"
+            echo "${CHECKSUM_ALGORITHM} verification succeeded. File saved to: ${FILE_PATH}"
             return 0
         else
-            echo "MD5 verification failed. Expected: ${EXPECTED_MD5}, Got: ${COMPUTED_MD5}"
+            echo "${CHECKSUM_ALGORITHM} verification failed. Expected: ${EXPECTED_CHECKSUM}, Got: ${COMPUTED_CHECKSUM}"
             rm -f "${TEMP_FILE_PATH}"
             retries=$((retries + 1))
             sleep 1
@@ -65,26 +85,32 @@ download_and_verify() {
     exit 1
 }
 
-check_file_with_md5() {
+check_file_with_checksum() {
     local FILE_PATH="$1"
-    local EXPECTED_MD5="$2"
+    local EXPECTED_CHECKSUM="$2"
+    local CHECKSUM_ALGORITHM="${3:-md5}"
 
     if [ ! -f "${FILE_PATH}" ]; then
         echo "File not found: ${FILE_PATH}"
         return 1
     fi
 
-    echo "Verifying MD5 checksum for existing file..."
-    local COMPUTED_MD5=$(md5sum "${FILE_PATH}" | awk '{print $1}')
+    echo "Verifying ${CHECKSUM_ALGORITHM} checksum for existing file..."
+    local COMPUTED_CHECKSUM
+    COMPUTED_CHECKSUM=$(compute_checksum "${CHECKSUM_ALGORITHM}" "${FILE_PATH}")
 
-    if [ "${COMPUTED_MD5}" = "${EXPECTED_MD5}" ]; then
-        echo "MD5 verification succeeded for existing file: ${FILE_PATH}"
+    if [ "${COMPUTED_CHECKSUM}" = "${EXPECTED_CHECKSUM}" ]; then
+        echo "${CHECKSUM_ALGORITHM} verification succeeded for existing file: ${FILE_PATH}"
         return 0
     else
-        echo "MD5 verification failed. Expected: ${EXPECTED_MD5}, Got: ${COMPUTED_MD5}"
+        echo "${CHECKSUM_ALGORITHM} verification failed. Expected: ${EXPECTED_CHECKSUM}, Got: ${COMPUTED_CHECKSUM}"
         rm -f "${FILE_PATH}"
         return 1
     fi
+}
+
+check_file_with_md5() {
+    check_file_with_checksum "$1" "$2" md5
 }
 
 mkdir -p ${PREDOWNLOAD_DIR}
@@ -92,16 +118,22 @@ TARGET_DIR=/paddle/third_party
 
 echo "::group::Check cmake predownload files"
 # llvm.cmake
-filename=llvm11-glibc2.17.tar.gz
+# Keep this in sync with cmake/cinn/external/llvm.cmake.
+if [[ "$(uname -m)" == "aarch64" || "$(uname -m)" == "arm64" ]]; then
+    filename=llvm13-aarch64-glibc2.27.tar.gz
+    EXPECTED_SHA256=6de076472823efa9266d669373b0de620e988a9dd241df94a319da06e7069958
+else
+    filename=llvm13-glibc2.27.tar.gz
+    EXPECTED_SHA256=8e6afb8f51baed5530b1757aff5761a65963a3bd2c76bdb7431967634277086e
+fi
 filepath="${PREDOWNLOAD_DIR}/${filename}"
-URL=https://paddle-inference-dist.bj.bcebos.com/CINN/llvm11-glibc2.17.tar.gz
-EXPECTED_MD5=33c7d3cc6d370585381e8d90bd7c2198
+URL=https://xly-devops.bj.bcebos.com/gouzil/${filename}
 echo "check ${filename}"
-if check_file_with_md5 "${filepath}" "${EXPECTED_MD5}"; then
+if check_file_with_checksum "${filepath}" "${EXPECTED_SHA256}" sha256; then
     echo "use cfs cache"
 else
     echo "NO valid ${filename} in cache, try to download"
-    download_and_verify ${URL} ${EXPECTED_MD5} ${filename} || exit 1
+    download_and_verify ${URL} ${EXPECTED_SHA256} ${filename} 3 sha256 || exit 1
 fi
 mkdir -p /paddle/build/third_party/llvm/src
 cp ${PREDOWNLOAD_DIR}/${filename} /paddle/build/third_party/llvm/src/${filename}

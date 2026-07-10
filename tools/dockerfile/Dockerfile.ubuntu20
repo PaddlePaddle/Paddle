@@ -25,11 +25,11 @@ RUN apt-key adv --fetch-keys https://developer.download.nvidia.cn/compute/cuda/r
 
 RUN apt-get update --allow-unauthenticated && \
   apt-get install -y software-properties-common && \
-  add-apt-repository ppa:deadsnakes/ppa && \
-  apt-get update && \
   apt-get install -y curl wget vim git unzip pigz zstd unrar tar xz-utils libssl-dev bzip2 gzip \
     coreutils ntp language-pack-zh-hans libsm6 libxext6 libxrender-dev libgl1-mesa-glx \
-    bison graphviz libjpeg-dev zlib1g-dev automake locales swig net-tools libtool kmod
+    bison graphviz libjpeg-dev zlib1g-dev automake locales swig net-tools libtool kmod \
+    libbz2-dev libexpat1-dev libffi-dev libgdbm-dev liblzma-dev libncursesw5-dev libreadline-dev \
+    libsqlite3-dev pkg-config tk-dev uuid-dev
 <install_cpu_package>
 
 # Downgrade gcc&&g++
@@ -59,31 +59,56 @@ WORKDIR /home
 RUN wget -q https://cmake.org/files/v3.18/cmake-3.18.0-Linux-x86_64.tar.gz && tar -zxvf cmake-3.18.0-Linux-x86_64.tar.gz && rm cmake-3.18.0-Linux-x86_64.tar.gz
 ENV PATH=/home/cmake-3.18.0-Linux-x86_64/bin:$PATH
 
-RUN apt-get update && \
-  apt-get install -y python3.9 python3.9-dev python3.9-distutils \
-  python3.10 python3.10-dev python3.10-distutils \
-  python3.11 python3.11-dev python3.11-distutils \
-  python3.12 python3.12-dev \
-  python3.13 python3.13-dev python3.13-nogil && \
-  apt-get install python-is-python3
-RUN rm /usr/bin/python && ln -s /usr/bin/python3.9 /usr/bin/python && \
-    rm /usr/bin/python3 && ln -s /usr/bin/python3.9 /usr/bin/python3
+RUN wget -q https://www.bytereef.org/software/mpdecimal/releases/mpdecimal-2.5.1.tar.gz && \
+    tar -xzf mpdecimal-2.5.1.tar.gz && \
+    cd mpdecimal-2.5.1 && \
+    ./configure --prefix=/usr/local > /dev/null && \
+    make -j"$(nproc)" > /dev/null && \
+    make install > /dev/null && \
+    cd .. && \
+    rm -rf mpdecimal-2.5.1 mpdecimal-2.5.1.tar.gz && \
+    ldconfig
 
-WORKDIR /home
-RUN wget -q https://bootstrap.pypa.io/get-pip.py
-RUN python3.9 get-pip.py && \
-  python3.10 get-pip.py && \
-  python3.11 get-pip.py && \
-  python3.12 get-pip.py
+# Build free-threaded 3.13 before normal 3.13 so python3.13 stays non-free-threaded.
+RUN set -eux; \
+  build_python() { \
+    py_ver="$1"; \
+    shift; \
+    wget -q "https://www.python.org/ftp/python/${py_ver}/Python-${py_ver}.tgz"; \
+    tar -xzf "Python-${py_ver}.tgz"; \
+    cd "Python-${py_ver}"; \
+    configure_opts="--prefix=/usr/local --enable-shared --enable-optimizations --with-lto --with-system-expat --with-system-libmpdec --with-ensurepip=install"; \
+    if ./configure --help | grep -q -- "--with-system-ffi"; then \
+      configure_opts="${configure_opts} --with-system-ffi"; \
+    fi; \
+    CPPFLAGS="-I/usr/local/include" LDFLAGS="-L/usr/local/lib" CFLAGS="-Wformat" ./configure ${configure_opts} "$@" > /dev/null; \
+    make -j"$(nproc)" > /dev/null; \
+    make altinstall > /dev/null; \
+    cd ..; \
+    rm -rf "Python-${py_ver}" "Python-${py_ver}.tgz"; \
+    ldconfig; \
+  }; \
+  build_python 3.10.0; \
+  build_python 3.11.0; \
+  build_python 3.12.0; \
+  build_python 3.13.0 --disable-gil --with-mimalloc; \
+  build_python 3.13.0
+ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
+# Keep Ubuntu's /usr/bin/python3 for system scripts such as lsb_release.
+RUN ln -sf /usr/local/bin/python3.10 /usr/bin/python
 
-RUN python3.13t get-pip.py && \
-  mv /usr/local/bin/pip3.13 /usr/local/bin/pip3.13t && \
-  python3.13 get-pip.py
-
-RUN python3.9 -m pip install setuptools==69.5.1 && \
+RUN for py in 3.10 3.11 3.12 3.13 3.13t; do \
+      python${py} -m pip install --no-cache-dir --upgrade pip; \
+    done && \
   python3.10 -m pip install setuptools==69.5.1 && \
   python3.11 -m pip install setuptools==69.5.1 && \
   python3.12 -m pip install --break-system-packages setuptools==69.5.1 && \
+  for py in 3.10 3.11 3.12 3.13 3.13t; do \
+    printf '#!/bin/sh\nexec /usr/local/bin/python%s -m pip "$@"\n' "$py" > "/usr/local/bin/pip${py}" && \
+    chmod +x "/usr/local/bin/pip${py}"; \
+  done && \
+  ln -sf /usr/local/bin/pip3.10 /usr/local/bin/pip && \
+  ln -sf /usr/local/bin/pip3.10 /usr/local/bin/pip3 && \
   python3.13 -m pip install setuptools==69.5.1 && \
   python3.13t -m pip install setuptools==69.5.1
 
@@ -111,13 +136,7 @@ RUN git config --global credential.helper store
 # Fix locales to en_US.UTF-8
 RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 
-#For pre-commit
-RUN rm -f /usr/local/bin/pip && ln -s /usr/local/bin/pip3.9 /usr/local/bin/pip && \
-    rm -f /usr/local/bin/pip3 && ln -s /usr/local/bin/pip3.9 /usr/local/bin/pip3
-
-RUN pip3.9 --no-cache-dir install ipython==5.3.0 && \
-    pip3.9 --no-cache-dir install ipykernel==4.6.0 wheel && \
-    pip3.10 --no-cache-dir install ipython==5.3.0 && \
+RUN pip3.10 --no-cache-dir install ipython==5.3.0 && \
     pip3.10 --no-cache-dir install ipykernel==4.6.0 wheel && \
     pip3.11 --no-cache-dir install ipython==5.3.0 && \
     pip3.11 --no-cache-dir install ipykernel==4.6.0 wheel && \
@@ -126,19 +145,16 @@ RUN pip3.9 --no-cache-dir install ipython==5.3.0 && \
     python3.13 -m pip --no-cache-dir install ipython==5.3.0 && \
     python3.13 -m pip --no-cache-dir install ipykernel==4.6.0 wheel && \
     python3.13t -m pip --no-cache-dir install ipython==5.3.0 && \
-    python3.13 -m pip --no-cache-dir install ipykernel==4.6.0 wheel
+    python3.13t -m pip --no-cache-dir install ipykernel==4.6.0 wheel
 
 # For PaddleTest CE
-RUN pip3.9 --no-cache-dir install pytest && \
-    pip3.10 --no-cache-dir install pytest && \
+RUN pip3.10 --no-cache-dir install pytest && \
     pip3.11 --no-cache-dir install pytest && \
     pip3.12 --no-cache-dir install pytest && \
     python3.13 -m pip --no-cache-dir install pytest && \
     python3.13t -m pip --no-cache-dir install pytest
 
-RUN pip3.9 --no-cache-dir install pre-commit==2.17.0 && \
-    pip3.9 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
-    pip3.10 --no-cache-dir install pre-commit==2.17.0 && \
+RUN pip3.10 --no-cache-dir install pre-commit==2.17.0 && \
     pip3.10 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
     pip3.11 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
     pip3.12 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
@@ -149,10 +165,9 @@ COPY ./python/requirements.txt  /root/
 COPY ./python/unittest_py/requirements.txt /home/
 COPY ./paddle/scripts/compile_requirements.txt /home/
 
-RUN pip3.9 --no-cache-dir install -r /root/requirements.txt && \
-    pip3.9 --no-cache-dir install -r  /home/requirements.txt && \
-    pip3.9 --no-cache-dir install -r /home/compile_requirements.txt && \
-    pip3.10 --no-cache-dir install -r /root/requirements.txt && \
+# Free-threaded Python 3.13 only installs compile helpers because broader
+# requirements currently pull packages without cp313t wheels.
+RUN pip3.10 --no-cache-dir install -r /root/requirements.txt && \
     pip3.10 --no-cache-dir install -r /home/requirements.txt && \
     pip3.10 --no-cache-dir install -r /home/compile_requirements.txt && \
     pip3.11 --no-cache-dir install -r /root/requirements.txt && \
@@ -164,12 +179,7 @@ RUN pip3.9 --no-cache-dir install -r /root/requirements.txt && \
     python3.13 -m pip --no-cache-dir install -r /root/requirements.txt && \
     python3.13 -m pip --no-cache-dir install -r /home/requirements.txt && \
     python3.13 -m pip --no-cache-dir install -r /home/compile_requirements.txt && \
-    python3.13t -m pip --no-cache-dir install -r /root/requirements.txt && \
     python3.13t -m pip --no-cache-dir install -r /home/compile_requirements.txt
-    # python3.13t -m pip --no-cache-dir install -r /home/requirements.txt
-
-
-RUN apt-get install pkg-config -y
 
 # clang12
 RUN apt-get update &&\

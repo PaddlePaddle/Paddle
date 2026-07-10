@@ -16,4 +16,9 @@
 
 #ifdef __NVCC__
 #include "cutlass/cutlass.h"
+#define GPUStream_t cudaStream_t
+#elif defined(__HIPCC__)
+#include "hytlass/hytlass.h"
+namespace cutlass = hytlass;
+#define GPUStream_t hipStream_t
 #endif

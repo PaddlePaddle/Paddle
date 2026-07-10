@@ -253,13 +253,13 @@ if [ "${HAS_MODIFIED_OPERATOR_GENE}" != "" ] && [ "${PR_ID}" != "" ]; then
     check_approval 1 zhangbo9674 wanghuancoder
 fi
 
-HAS_MODIFIED_SETUP_IN=`git diff --name-only upstream/$BRANCH | grep "python/setup.py.in" || true`
+HAS_MODIFIED_SETUP_IN=`git diff --name-only upstream/$BRANCH | grep -E "^python/setup\.py\.in$" || true`
 if [ "${HAS_MODIFIED_SETUP_IN}" != "" ] && [ "${PR_ID}" != "" ]; then
     echo_line="You must have one RD (risemeup1, zhangbo9674) approval for file changes in python/setup.py.in, which manages the header files that can be used from outside of framework.\n"
     check_approval 1 risemeup1 zhangbo9674
 fi
 
-HAS_MODIFIED_SETUP=`git diff --name-only upstream/$BRANCH | grep "${PADDLE_ROOT}/setup.py" || true`
+HAS_MODIFIED_SETUP=`git diff --name-only upstream/$BRANCH | grep -E "^setup\.py$" || true`
 if [ "${HAS_MODIFIED_SETUP}" != "" ] || ([ "${HAS_MODIFIED_SETUP_IN}" != "" ] && [ "${HAS_MODIFIED_SETUP}" == "" ]); then
     echo_line="You must have one RD (risemeup1, zhangbo9674) approval for file changes in setup.py or setup.py and python/setup.py.in are not changed synchronously.\n"
     check_approval 1 risemeup1 zhangbo9674
@@ -607,7 +607,11 @@ if [ -n "${BIGTENSOR_CHANGED}" ]; then
     echo_line="You must have one RD (zrr1999(Recommend) or wanghuancoder) approval for modifying kernel code with threadIdx, blockDim or blockIdx multiplications assigned to int, int32_t, uint32_t, or auto type variables.\nThe following lines were found:\n${BIGTENSOR_CHANGED}\n"
     check_approval 1 zrr1999 wanghuancoder
 fi
-
+BIGTENSOR_CHANGED=$(git diff -U0 upstream/$BRANCH -- "${BIGTENSOR_GLOBS[@]}" | grep "^+" | grep -E '(^|[^[:alnum:]_])(auto|int32_t|uint32_t|int32|uint32|int)([^[:alnum:]_]|$)' || true)
+if [ -n "${BIGTENSOR_CHANGED}" ]; then
+    echo_line="You must have one RD (zrr1999(Recommend) or wanghuancoder) approval for modifying kernel code with int, int32_t, uint32_t, or auto type variables.\nThe following lines were found:\n${BIGTENSOR_CHANGED}\n"
+    check_approval 1 zrr1999 wanghuancoder
+fi
 
 HAS_MODIFIED_PHI_DIR=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/" | grep -v "paddle/phi/api/" | grep -v "python_api_info.yaml" || true`
 if [ "${HAS_MODIFIED_PHI_DIR}" != "" ] && [ "${PR_ID}" != "" ]; then

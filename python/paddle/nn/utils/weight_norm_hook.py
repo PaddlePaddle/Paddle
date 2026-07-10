@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 
 import paddle
 from paddle import _C_ops
+from paddle.utils.decorator_utils import param_one_alias
 
 from ...base.data_feeder import check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
@@ -175,6 +176,7 @@ class WeightNorm:
         setattr(layer, self.name, self.compute_weight(layer))
 
 
+@param_one_alias(["layer", "module"])
 def weight_norm(layer: Layer, name: str = 'weight', dim: int = 0) -> Layer:
     r"""
     Applies weight normalization to a parameter according to the
@@ -195,6 +197,7 @@ def weight_norm(layer: Layer, name: str = 'weight', dim: int = 0) -> Layer:
 
     Parameters:
         layer(Layer): Layer of paddle, which has weight.
+            Alias: ``module``.
         name(str, optional): Name of the weight parameter. Default: 'weight'.
         dim(int, optional): Dimension over which to compute the norm. Dim is a non-negative number
               which is less than the rank of weight Tensor. For Example, dim can be chosen from 0,

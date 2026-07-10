@@ -42,15 +42,6 @@ function run_sot_test() {
     run_and_check "Installing paddle wheel..." \
         $PYTHON_WITH_SPECIFY_VERSION -m pip install ${PADDLE_ROOT}/dist/paddlepaddle-0.0.0-cp${PY_VERSION_NO_DOT}-cp${PY_VERSION_NO_DOT}-linux_x86_64.whl
 
-    # Only python3.14 needs to install numpy>=2.3.5, because opencv-python will downgrade numpy to 2.2.6
-    # see: https://github.com/opencv/opencv-python/issues/1155
-    if [ "$PY_VERSION" == "3.14" ]; then
-        run_and_check "Uninstalling numpy for Python 3.14..." \
-            $PYTHON_WITH_SPECIFY_VERSION -m pip uninstall -y "numpy"
-        run_and_check "Installing numpy>=2.3.5 for Python 3.14..." \
-            $PYTHON_WITH_SPECIFY_VERSION -m pip install --force-reinstall --no-cache-dir "numpy>=2.3.5"
-    fi
-
     # cd to sot test dir
     cd $PADDLE_ROOT/test/sot/
 
