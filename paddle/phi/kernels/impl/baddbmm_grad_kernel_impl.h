@@ -186,9 +186,14 @@ void BaddbmmGradKernel(const Context& dev_ctx,
     } else {
       funcs::ForRange<Context> for_range(dev_ctx, total_elems);
       BCopyOrScaleFunctor<T> functor(
-          beta, out_grad.data<T>(), input_grad->data<T>(), total_elems);
+          1, out_grad.data<T>(), input_grad->data<T>(), total_elems);
       for_range(functor);
     }
+
+    funcs::ForRange<Context> for_range(dev_ctx, total_elems);
+    BCopyOrScaleFunctor<T> functor(
+        beta, input_grad->data<T>(), input_grad->data<T>(), total_elems);
+    for_range(functor);
   }
   if (x_grad) {
     dev_ctx.template Alloc<T>(x_grad);
