@@ -50,17 +50,32 @@ class CudaGraphExtractPass : public Pass {
     auto IsSupportCudaGraph = [](const Operation& op) {
       static const std::unordered_set<std::string> UNSUPPORTED_OPS = {
           "pd_op.data", "builtin.shadow_output"};
-      static const std::unordered_set<std::string> CUDA_GRAPH_BLACKLIST = [] {
+      static const std::vector<std::string> CUDA_GRAPH_BLACKLIST_PREFIXES = [] {
         std::regex re(",");
         std::sregex_token_iterator it(FLAGS_cuda_graph_blacklist.begin(),
                                       FLAGS_cuda_graph_blacklist.end(),
                                       re,
                                       -1);
         std::sregex_token_iterator end;
-        return std::unordered_set<std::string>(it, end);
+        return std::vector<std::string>(it, end);
       }();
-      return UNSUPPORTED_OPS.count(op.name()) == 0 &&
-             CUDA_GRAPH_BLACKLIST.count(op.name()) == 0;
+      if (UNSUPPORTED_OPS.count(op.name()) > 0) {
+        return false;
+      }
+      // Support both exact match and prefix match (entries ending with '_').
+      // e.g. "py_op.wfp8afp8_moe_apply_" matches
+      // "py_op.wfp8afp8_moe_apply_140250952363568".
+      for (const auto& entry : CUDA_GRAPH_BLACKLIST_PREFIXES) {
+        if (entry.empty()) continue;
+        if (entry.back() == '_') {
+          // prefix match
+          if (op.name().rfind(entry, 0) == 0) return false;
+        } else {
+          // exact match
+          if (op.name() == entry) return false;
+        }
+      }
+      return true;
     };
 
     std::vector<GroupOpsVec> groups =
