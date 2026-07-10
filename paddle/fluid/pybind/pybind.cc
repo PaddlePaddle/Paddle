@@ -260,6 +260,12 @@ PYBIND11_MAKE_OPAQUE(paddle::framework::FetchUnmergedList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchType);
 
+// Opaque type for AllBlockInfoOfAllocator — avoid full O(n) conversion
+// at pybind boundary; only convert on per-group access (__getitem__).
+using AllBlocksInfoType =
+    std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>;
+PYBIND11_MAKE_OPAQUE(AllBlocksInfoType);
+
 DECLARE_FILE_SYMBOLS(init_phi);
 DECLARE_FILE_SYMBOLS(kernel_dialect);
 #ifdef PADDLE_WITH_DISTRIBUTE
@@ -3779,6 +3785,24 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 #endif
 #if defined(PADDLE_WITH_CUDA)
+  // Register opaque AllBlocksInfo type — lazy per-group conversion
+  py::class_<AllBlocksInfoType>(m, "AllBlocksInfo")
+      .def("__len__", &AllBlocksInfoType::size)
+      .def("__getitem__",
+           [](const AllBlocksInfoType &self,
+              int64_t i) -> std::vector<std::tuple<size_t, uintptr_t, bool>> {
+             if (i < 0) i += static_cast<int64_t>(self.size());
+             if (i < 0 || static_cast<size_t>(i) >= self.size())
+               throw py::index_error();
+             return self[i];
+           })
+      .def(
+          "__iter__",
+          [](const AllBlocksInfoType &self) {
+            return py::make_iterator(self.begin(), self.end());
+          },
+          py::keep_alive<0, 1>());
+
   m.def("vmm_max_free_size", [](int device_id) {
     return memory::VmmMaxFreeSize(GPUPlace(device_id), 1);
   });
@@ -3788,12 +3812,30 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("vmm_free_block_info", [](int device_id) {
     return paddle::memory::FreeBlockInfoOfVmmAllocator(GPUPlace(device_id));
   });
-  m.def("all_block_info", [](int device_id) {
-    return paddle::memory::AllBlockInfoOfAllocator(GPUPlace(device_id));
-  });
-  m.def("vmm_all_block_info", [](int device_id) {
-    return paddle::memory::AllBlockInfoOfAllocator(GPUPlace(device_id));
-  });
+  m.def(
+      "all_block_info",
+      [](int device_id) -> AllBlocksInfoType {
+        return paddle::memory::AllBlockInfoOfAllocator(GPUPlace(device_id));
+      },
+      py::return_value_policy::move);
+  m.def(
+      "vmm_all_block_info",
+      [](int device_id) -> AllBlocksInfoType {
+        return paddle::memory::AllBlockInfoOfAllocator(GPUPlace(device_id));
+      },
+      py::return_value_policy::move);
+  m.def(
+      "large_pool_block_info",
+      [](int device_id) -> AllBlocksInfoType {
+        return paddle::memory::LargePoolBlockInfo(GPUPlace(device_id));
+      },
+      py::return_value_policy::move);
+  m.def(
+      "small_pool_block_info",
+      [](int device_id) -> AllBlocksInfoType {
+        return paddle::memory::SmallPoolBlockInfo(GPUPlace(device_id));
+      },
+      py::return_value_policy::move);
   m.def("get_allocate_record", [](int device_id) {
     return paddle::memory::GetAllocateEvent(GPUPlace(device_id));
   });

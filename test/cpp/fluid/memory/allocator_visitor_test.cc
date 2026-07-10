@@ -24,6 +24,8 @@
 #endif
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+
+PD_DECLARE_uint64(vmm_small_pool_size_in_mb);
 namespace paddle {
 namespace memory {
 namespace allocation {
@@ -49,7 +51,7 @@ TEST(VirtualMemoryAutoGrowthBestFitAllocator, TestAllBlocksInfoVisitor) {
   auto allocation = vma_allocator->Allocate(platform::GpuMinChunkSize());
   AllBlocksInfoVisitor visitor;
   vma_allocator->Accept(&visitor);
-  auto all_blocks_info = visitor.GetAllBlocksInfo();
+  auto all_blocks_info = std::move(visitor).GetAllBlocksInfo();
 
   ASSERT_EQ(all_blocks_info.size(), 1UL);
   ASSERT_GE(all_blocks_info[0].size(), 1UL);
@@ -75,7 +77,7 @@ TEST(VirtualMemoryAutoGrowthBestFitAllocator, TestAllBlocksInfoVisitor) {
   allocation.reset();
   AllBlocksInfoVisitor after_free_visitor;
   vma_allocator->Accept(&after_free_visitor);
-  auto after_free_info = after_free_visitor.GetAllBlocksInfo();
+  auto after_free_info = std::move(after_free_visitor).GetAllBlocksInfo();
 
   ASSERT_EQ(after_free_info.size(), 1UL);
   ASSERT_EQ(after_free_info[0].size(), 1UL);
@@ -96,7 +98,7 @@ TEST(AutoGrowthBestFitAllocator, TestAllBlocksInfoVisitor) {
   auto second = ag_allocator->Allocate(2048);
   AllBlocksInfoVisitor visitor;
   ag_allocator->Accept(&visitor);
-  auto all_blocks_info = visitor.GetAllBlocksInfo();
+  auto all_blocks_info = std::move(visitor).GetAllBlocksInfo();
 
   ASSERT_EQ(all_blocks_info.size(), 1UL);
   ASSERT_EQ(all_blocks_info[0].size(), 3UL);
@@ -127,7 +129,7 @@ TEST(AutoGrowthBestFitAllocator, TestAllBlocksInfoVisitor) {
   second.reset();
   AllBlocksInfoVisitor after_free_visitor;
   ag_allocator->Accept(&after_free_visitor);
-  auto after_free_info = after_free_visitor.GetAllBlocksInfo();
+  auto after_free_info = std::move(after_free_visitor).GetAllBlocksInfo();
 
   ASSERT_EQ(after_free_info.size(), 1UL);
   ASSERT_EQ(after_free_info[0].size(), 1UL);
@@ -135,6 +137,75 @@ TEST(AutoGrowthBestFitAllocator, TestAllBlocksInfoVisitor) {
   EXPECT_EQ(std::get<1>(after_free_info[0][0]),
             std::get<1>(all_blocks_info[0][0]));
   EXPECT_TRUE(std::get<2>(after_free_info[0][0]));
+}
+
+TEST(MultiScalePoolAllocator, TestPoolFilterLargeOnly) {
+  FLAGS_vmm_small_pool_size_in_mb = 20;
+
+  auto vmm_cuda_allocator_small =
+      std::make_shared<CUDAVirtualMemAllocator>(phi::GPUPlace(0));
+  auto vmm_cuda_allocator_large =
+      std::make_shared<CUDAVirtualMemAllocator>(phi::GPUPlace(0));
+  auto small_alloc = std::make_shared<VirtualMemoryAutoGrowthBestFitAllocator>(
+      vmm_cuda_allocator_small, platform::GpuMinChunkSize(), GPUPlace(0));
+  auto large_alloc = std::make_shared<VirtualMemoryAutoGrowthBestFitAllocator>(
+      vmm_cuda_allocator_large, platform::GpuMinChunkSize(), GPUPlace(0));
+  auto multi_scale =
+      std::make_shared<VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator>(
+          small_alloc, large_alloc, platform::GpuMinChunkSize(), GPUPlace(0));
+
+  // Allocate in small pool (< 20MB)
+  auto small_allocation = multi_scale->Allocate(1 << 20);  // 1MB
+  // Allocate in large pool (>= 20MB)
+  auto large_allocation = multi_scale->Allocate(30 << 20);  // 30MB
+
+  // Query all pools
+  AllBlocksInfoVisitor all_visitor;
+  multi_scale->Accept(&all_visitor);
+  auto all_info = std::move(all_visitor).GetAllBlocksInfo();
+  ASSERT_EQ(all_info.size(), 2UL);  // small + large
+
+  // Query large pool only
+  AllBlocksInfoVisitor large_visitor(
+      AllBlocksInfoVisitor::PoolFilter::kLargeOnly);
+  multi_scale->Accept(&large_visitor);
+  auto large_info = std::move(large_visitor).GetAllBlocksInfo();
+  ASSERT_EQ(large_info.size(), 1UL);  // only large
+
+  // Verify large pool contains allocated block
+  bool found_large = false;
+  for (const auto& block : large_info[0]) {
+    if (std::get<1>(block) ==
+        reinterpret_cast<uintptr_t>(large_allocation->ptr())) {
+      found_large = true;
+      EXPECT_FALSE(std::get<2>(block));  // not free
+    }
+  }
+  EXPECT_TRUE(found_large);
+
+  // Query small pool only
+  AllBlocksInfoVisitor small_visitor(
+      AllBlocksInfoVisitor::PoolFilter::kSmallOnly);
+  multi_scale->Accept(&small_visitor);
+  auto small_info = std::move(small_visitor).GetAllBlocksInfo();
+  ASSERT_EQ(small_info.size(), 1UL);  // only small
+
+  // Verify small pool contains allocated block
+  bool found_small = false;
+  for (const auto& block : small_info[0]) {
+    if (std::get<1>(block) ==
+        reinterpret_cast<uintptr_t>(small_allocation->ptr())) {
+      found_small = true;
+      EXPECT_FALSE(std::get<2>(block));  // not free
+    }
+  }
+  EXPECT_TRUE(found_small);
+
+  // Verify large pool does NOT contain small allocation
+  for (const auto& block : large_info[0]) {
+    EXPECT_NE(std::get<1>(block),
+              reinterpret_cast<uintptr_t>(small_allocation->ptr()));
+  }
 }
 
 }  // namespace allocation

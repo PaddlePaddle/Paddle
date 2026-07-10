@@ -82,8 +82,8 @@ void AllocatorComputeStreamVisitor::Visit(StreamSafeCUDAAllocator* allocator) {
 
 void FreeMemoryMetricsVisitor::Visit(
     VirtualMemoryAutoGrowthBestFitAllocator* allocator) {
-  auto [large_size, sum_size] = allocator->SumLargestFreeBlockSizes(
-      static_cast<size_t>(std::max(nums_blocks_, 0)));
+  const size_t num_blocks = static_cast<size_t>(std::max(nums_blocks_, 0));
+  auto [large_size, sum_size] = allocator->SumLargestFreeBlockSizes(num_blocks);
   large_size_ = std::max(large_size_, large_size);
   sum_size_ = std::max(sum_size_, sum_size);
 }
@@ -105,6 +105,18 @@ void VMMFreeBlocksInfoVisitor::Visit(
   }
   if (!keys.empty()) {
     free_blocks_info_.push_back(keys);
+  }
+}
+
+void AllBlocksInfoVisitor::Visit(
+    VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator* allocator) {
+  if (pool_filter_ != PoolFilter::kLargeOnly) {
+    if (allocator->GetSmallAllocator())
+      allocator->GetSmallAllocator()->Accept(this);
+  }
+  if (pool_filter_ != PoolFilter::kSmallOnly) {
+    if (allocator->GetLargeAllocator())
+      allocator->GetLargeAllocator()->Accept(this);
   }
 }
 
