@@ -130,8 +130,11 @@ if(WITH_GPU)
   if(WITH_TESTING AND TEST stream_safe_cuda_alloc_test)
     set_tests_properties(
       stream_safe_cuda_alloc_test
-      PROPERTIES ENVIRONMENT "FLAGS_use_stream_safe_cuda_allocator=true; \
-        FLAGS_allocator_strategy=auto_growth")
+      PROPERTIES
+        ENVIRONMENT
+        "FLAGS_use_stream_safe_cuda_allocator=true; \
+        FLAGS_allocator_strategy=auto_growth;FLAGS_use_virtual_memory_auto_growth=false"
+    )
   endif()
   if(WITH_TESTING AND TEST cuda_malloc_async_allocator_test)
     set_tests_properties(
@@ -168,8 +171,11 @@ if(WITH_GPU AND WITH_TESTING)
     DEPS phi common)
   set_tests_properties(
     get_base_ptr_test
-    PROPERTIES ENVIRONMENT "FLAGS_allocator_strategy=auto_growth;
-                                    FLAGS_use_stream_safe_cuda_allocator=true;")
+    PROPERTIES
+      ENVIRONMENT
+      "FLAGS_allocator_strategy=auto_growth;
+                                    FLAGS_use_stream_safe_cuda_allocator=true;FLAGS_use_virtual_memory_auto_growth=false"
+  )
 endif()
 
 if(WIN32)

@@ -107,6 +107,7 @@ class TestAllocatorFlagsWithSubprocess(unittest.TestCase):
                 {
                     'FLAGS_allocator_strategy': 'auto_growth',
                     'FLAGS_use_cuda_malloc_async_allocator': 0,
+                    'FLAGS_use_virtual_memory_auto_growth': 0,
                 }
             )
 
@@ -114,6 +115,7 @@ class TestAllocatorFlagsWithSubprocess(unittest.TestCase):
         if not (base.is_compiled_with_cuda() or is_custom_device()):
             return
         flags = {
+            "FLAGS_use_virtual_memory_auto_growth": 0,
             "FLAGS_small_pool_size_in_mb": 1,
             "FLAGS_auto_growth_chunk_size_in_mb": 10,  # ignored because FLAGS_small_pool_size_in_mb > 0
             "FLAGS_small_pool_auto_growth_chunk_size_in_mb": 2,
@@ -138,6 +140,7 @@ class TestAllocatorFlagsWithSubprocess(unittest.TestCase):
         if not (base.is_compiled_with_cuda() or is_custom_device()):
             return
         flags = {
+            "FLAGS_use_virtual_memory_auto_growth": 0,
             "FLAGS_small_pool_size_in_mb": 1,
             "FLAGS_small_pool_auto_growth_chunk_size_in_mb": 0,
             "FLAGS_large_pool_auto_growth_chunk_size_in_mb": 16,
@@ -157,6 +160,7 @@ class TestAllocatorFlagsWithSubprocess(unittest.TestCase):
         if not (base.is_compiled_with_cuda() or is_custom_device()):
             return
         flags = {
+            "FLAGS_use_virtual_memory_auto_growth": 0,
             "FLAGS_small_pool_size_in_mb": 0,
             "FLAGS_small_pool_auto_growth_chunk_size_in_mb": 2,
             "FLAGS_large_pool_auto_growth_chunk_size_in_mb": 4,
@@ -224,6 +228,7 @@ class TestAllocatorFlagsWithSubprocess(unittest.TestCase):
             return
         flags = {
             "FLAGS_gpu_memory_limit_mb": 10,
+            "FLAGS_use_virtual_memory_auto_growth": 0,
         }
         plan = [
             {"op": "try_alloc", "mb": 5},
@@ -239,6 +244,7 @@ class TestAllocatorFlagsWithSubprocess(unittest.TestCase):
         flags = {
             "FLAGS_use_auto_growth_v2": True,
             "FLAGS_large_pool_pre_alloc_in_mb": 6,
+            "FLAGS_use_virtual_memory_auto_growth": 0,
         }
         plan = [
             {"op": "init"},
@@ -252,6 +258,7 @@ class TestAllocatorFlagsWithSubprocess(unittest.TestCase):
         if not (base.is_compiled_with_cuda() or is_custom_device()):
             return
         flags = {
+            "FLAGS_use_virtual_memory_auto_growth": 0,
             "FLAGS_small_pool_size_in_mb": 1,
             "FLAGS_large_pool_pre_alloc_in_mb": 5,
             "FLAGS_free_idle_chunk": True,

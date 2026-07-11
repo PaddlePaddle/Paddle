@@ -87,7 +87,7 @@ PHI_DEFINE_EXPORTED_bool(
     "Only used for unittests.");
 
 PHI_DEFINE_EXPORTED_bool(use_virtual_memory_auto_growth,
-                         false,
+                         true,
                          "Use VirtualMemoryAutoGrowthBestFitAllocator.");
 
 // NOTE(Ruibiao): This FLAGS is just to be compatible with
@@ -1025,7 +1025,8 @@ class AllocatorFacadePrivate {
       val = 0;
     }
 
-    if (val > 0 && FLAGS_use_virtual_memory_auto_growth) {
+    if (val > 0 && FLAGS_use_virtual_memory_auto_growth &&
+        !FLAGS_use_cuda_managed_memory) {
       auto cuda_allocator_small =
           FLAGS_vmm_small_pool_size_in_mb
               ? std::make_shared<CUDAVirtualMemAllocator>(p)
@@ -1107,7 +1108,8 @@ class AllocatorFacadePrivate {
       val = 0;
     }
 
-    if (val > 0 && FLAGS_use_virtual_memory_auto_growth) {
+    if (val > 0 && FLAGS_use_virtual_memory_auto_growth &&
+        !FLAGS_use_cuda_managed_memory) {
       auto cuda_allocator_small =
           FLAGS_vmm_small_pool_size_in_mb
               ? std::make_shared<CUDAVirtualMemAllocator>(p)

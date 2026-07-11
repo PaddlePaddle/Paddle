@@ -21,6 +21,14 @@ from paddle.device.cuda import device_count, memory_reserved
 
 
 class TestMemoryreserved(unittest.TestCase):
+    def setUp(self):
+        if paddle.base.is_compiled_with_cuda():
+            paddle.set_flags(
+                {
+                    'FLAGS_use_virtual_memory_auto_growth': 0,
+                }
+            )
+
     def func_test_memory_reserved(self, device=None):
         if core.is_compiled_with_cuda() or is_custom_device():
             tensor = paddle.zeros(shape=[256])
