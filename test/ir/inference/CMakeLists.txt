@@ -101,6 +101,33 @@ foreach(TEST_INFERENCE_IR_PASS ${TEST_TRT_IR_PASSES})
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES ${TEST_INFERENCE_IR_PASS})
 endforeach()
 
+set(TEST_TRT_DEPENDENT_IR_PASSES
+    test_adaptive_pool2d_convert_global_pass_autoscan
+    test_conv_bn_fuse_pass
+    test_conv_elementwise_add_fuse_pass
+    test_delete_c_identity_op_pass
+    test_element_groupnorm_act_fuse_pass
+    test_fc_fuse_pass
+    test_forbid_dynamic_op_api
+    test_groupnorm_act_pass_fuse_pass
+    test_layernorm_shift_partition_pass
+    test_merge_layernorm_fuse_pass
+    test_multihead_matmul_roformer_fuse_pass
+    test_preln_groupnorm_act_fuse_pass
+    test_preln_layernorm_x_fuse_pass
+    test_reverse_roll_fuse_pass
+    test_shuffle_channel_detect_pass
+    test_simplify_with_basic_ops_pass_autoscan
+    test_skip_merge_layernorm_fuse_pass
+    test_split_layernorm_to_math_ops_pass)
+set(TEST_ENABLED_TRT_DEPENDENT_IR_PASSES "")
+foreach(target ${TEST_TRT_DEPENDENT_IR_PASSES})
+  if("${target}" IN_LIST TEST_INFERENCE_IR_PASSES)
+    list(APPEND TEST_ENABLED_TRT_DEPENDENT_IR_PASSES ${target})
+    list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES ${target})
+  endif()
+endforeach()
+
 if(WITH_GPU
    AND WITH_TENSORRT
    AND TENSORRT_FOUND)
@@ -163,18 +190,24 @@ if(WITH_XPU)
   endforeach()
 endif()
 
-if(WITH_ONEDNN
-   AND TENSORRT_FOUND
-   AND WITH_GPU)
+if(WITH_ONEDNN AND WITH_GPU)
   foreach(target ${TEST_INFERENCE_IR_PASSES})
     py_test_modules(${target} MODULES ${target})
     set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
   endforeach()
 endif()
 
-if(WITH_GPU
+if(WITH_ONEDNN
+   AND WITH_GPU
    AND WITH_TENSORRT
    AND TENSORRT_FOUND)
+  foreach(target ${TEST_ENABLED_TRT_DEPENDENT_IR_PASSES})
+    py_test_modules(${target} MODULES ${target})
+    set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
+  endforeach()
+endif()
+
+if(WITH_GPU)
   # longer timeout for trt_activation_pass for longer trt optimization time in trt 8
   #set_tests_properties(test_trt_multiclass_nms_op PROPERTIES TIMEOUT 200)
 
@@ -213,23 +246,36 @@ if(WITH_GPU
   endif()
 
   if(WITH_ONEDNN)
-    set_tests_properties(test_merge_layernorm_fuse_pass PROPERTIES TIMEOUT 300)
-    set_tests_properties(test_skip_merge_layernorm_fuse_pass PROPERTIES TIMEOUT
-                                                                        180)
+    if(TEST test_merge_layernorm_fuse_pass)
+      set_tests_properties(test_merge_layernorm_fuse_pass PROPERTIES TIMEOUT
+                                                                     300)
+    endif()
+    if(TEST test_skip_merge_layernorm_fuse_pass)
+      set_tests_properties(test_skip_merge_layernorm_fuse_pass
+                           PROPERTIES TIMEOUT 180)
+    endif()
     if(TEST test_trt_emb_eltwise_layernorm_fuse_pass)
       set_tests_properties(test_trt_emb_eltwise_layernorm_fuse_pass
                            PROPERTIES TIMEOUT 180)
     endif()
 
-    set_tests_properties(test_fc_fuse_pass PROPERTIES TIMEOUT 240)
-    set_tests_properties(test_reverse_roll_fuse_pass PROPERTIES TIMEOUT 120)
+    if(TEST test_fc_fuse_pass)
+      set_tests_properties(test_fc_fuse_pass PROPERTIES TIMEOUT 240)
+    endif()
+    if(TEST test_reverse_roll_fuse_pass)
+      set_tests_properties(test_reverse_roll_fuse_pass PROPERTIES TIMEOUT 120)
+    endif()
     set_tests_properties(test_inplace_op_pass PROPERTIES TIMEOUT 120)
     set_tests_properties(test_transfer_layout_elim_pass PROPERTIES TIMEOUT 300)
 
-    set_tests_properties(test_simplify_with_basic_ops_pass_autoscan
-                         PROPERTIES TIMEOUT 480)
-    set_tests_properties(test_adaptive_pool2d_convert_global_pass_autoscan
-                         PROPERTIES TIMEOUT 100)
+    if(TEST test_simplify_with_basic_ops_pass_autoscan)
+      set_tests_properties(test_simplify_with_basic_ops_pass_autoscan
+                           PROPERTIES TIMEOUT 480)
+    endif()
+    if(TEST test_adaptive_pool2d_convert_global_pass_autoscan)
+      set_tests_properties(test_adaptive_pool2d_convert_global_pass_autoscan
+                           PROPERTIES TIMEOUT 100)
+    endif()
     set_tests_properties(test_conv_act_onednn_fuse_pass PROPERTIES TIMEOUT 120)
     set_tests_properties(test_conv_elementwise_add2_act_fuse_pass
                          PROPERTIES TIMEOUT 120)
@@ -238,10 +284,14 @@ if(WITH_GPU
     set_tests_properties(test_flatten2_matmul_fuse_pass PROPERTIES TIMEOUT 240)
     set_tests_properties(test_squeeze2_matmul_fuse_pass PROPERTIES TIMEOUT 240)
     set_tests_properties(test_reshape2_matmul_fuse_pass PROPERTIES TIMEOUT 240)
-    set_tests_properties(test_preln_layernorm_x_fuse_pass PROPERTIES TIMEOUT
-                                                                     240)
-    set_tests_properties(test_shuffle_channel_detect_pass PROPERTIES TIMEOUT
-                                                                     120)
+    if(TEST test_preln_layernorm_x_fuse_pass)
+      set_tests_properties(test_preln_layernorm_x_fuse_pass PROPERTIES TIMEOUT
+                                                                       240)
+    endif()
+    if(TEST test_shuffle_channel_detect_pass)
+      set_tests_properties(test_shuffle_channel_detect_pass PROPERTIES TIMEOUT
+                                                                       120)
+    endif()
     set_tests_properties(test_conv_act_onednn_fuse_pass PROPERTIES TIMEOUT 120)
     set_tests_properties(test_conv_transpose_eltwiseadd_bn_fuse_pass
                          PROPERTIES TIMEOUT 250)
@@ -256,8 +306,10 @@ if(WITH_GPU
       set_tests_properties(test_map_matmul_v2_to_mul_pass PROPERTIES TIMEOUT
                                                                      360)
       set_tests_properties(test_map_matmul_to_mul_pass PROPERTIES TIMEOUT 360)
-      set_tests_properties(test_layernorm_shift_partition_pass
-                           PROPERTIES TIMEOUT 360)
+      if(TEST test_layernorm_shift_partition_pass)
+        set_tests_properties(test_layernorm_shift_partition_pass
+                             PROPERTIES TIMEOUT 360)
+      endif()
       if(WIN_UNITTEST_LEVEL EQUAL 2)
         set_tests_properties(test_onednn_conv_bias_fuse_pass PROPERTIES TIMEOUT
                                                                         300)
@@ -274,14 +326,22 @@ if(WITH_GPU
       set_tests_properties(test_map_matmul_v2_to_mul_pass PROPERTIES TIMEOUT
                                                                      120)
       set_tests_properties(test_map_matmul_to_mul_pass PROPERTIES TIMEOUT 120)
-      set_tests_properties(test_element_groupnorm_act_fuse_pass
-                           PROPERTIES TIMEOUT 120)
-      set_tests_properties(test_preln_groupnorm_act_fuse_pass PROPERTIES TIMEOUT
-                                                                         120)
-      set_tests_properties(test_groupnorm_act_pass_fuse_pass PROPERTIES TIMEOUT
-                                                                        120)
-      set_tests_properties(test_split_layernorm_to_math_ops_pass
-                           PROPERTIES TIMEOUT 240)
+      if(TEST test_element_groupnorm_act_fuse_pass)
+        set_tests_properties(test_element_groupnorm_act_fuse_pass
+                             PROPERTIES TIMEOUT 120)
+      endif()
+      if(TEST test_preln_groupnorm_act_fuse_pass)
+        set_tests_properties(test_preln_groupnorm_act_fuse_pass
+                             PROPERTIES TIMEOUT 120)
+      endif()
+      if(TEST test_groupnorm_act_pass_fuse_pass)
+        set_tests_properties(test_groupnorm_act_pass_fuse_pass
+                             PROPERTIES TIMEOUT 120)
+      endif()
+      if(TEST test_split_layernorm_to_math_ops_pass)
+        set_tests_properties(test_split_layernorm_to_math_ops_pass
+                             PROPERTIES TIMEOUT 240)
+      endif()
       set_tests_properties(test_inference_predictor_run_pir PROPERTIES TIMEOUT
                                                                        60)
     endif()
@@ -353,28 +413,29 @@ elseif(WITH_ONEDNN)
 
 endif()
 
-if(WITH_GPU
-   AND WITH_TENSORRT
-   AND TENSORRT_FOUND)
+if(WITH_GPU)
   if(WITH_ONEDNN)
     py_test_modules(test_matmul_scale_fuse_pass_pir MODULES
                     test_matmul_scale_fuse_pass ENVS FLAGS_enable_pir_api=1)
     py_test_modules(
       test_multihead_matmul_fuse_pass_v3_pir MODULES
       test_multihead_matmul_fuse_pass_v3 ENVS FLAGS_enable_pir_api=1)
-    py_test_modules(
-      test_multihead_matmul_roformer_fuse_pass_pir MODULES
-      test_multihead_matmul_roformer_fuse_pass ENVS FLAGS_enable_pir_api=1)
     py_test_modules(test_matmul_v2_scale_fuse_pass_pir MODULES
                     test_matmul_v2_scale_fuse_pass ENVS FLAGS_enable_pir_api=1)
     set_tests_properties(test_multihead_matmul_fuse_pass_v3_pir
                          PROPERTIES LABELS "RUN_TYPE=INFER")
-    set_tests_properties(test_multihead_matmul_roformer_fuse_pass_pir
-                         PROPERTIES LABELS "RUN_TYPE=INFER")
     set_tests_properties(test_multihead_matmul_fuse_pass_v3_pir
                          PROPERTIES TIMEOUT 300)
-    set_tests_properties(test_multihead_matmul_roformer_fuse_pass_pir
-                         PROPERTIES TIMEOUT 300)
+
+    if(WITH_TENSORRT AND TENSORRT_FOUND)
+      py_test_modules(
+        test_multihead_matmul_roformer_fuse_pass_pir MODULES
+        test_multihead_matmul_roformer_fuse_pass ENVS FLAGS_enable_pir_api=1)
+      set_tests_properties(test_multihead_matmul_roformer_fuse_pass_pir
+                           PROPERTIES LABELS "RUN_TYPE=INFER")
+      set_tests_properties(test_multihead_matmul_roformer_fuse_pass_pir
+                           PROPERTIES TIMEOUT 300)
+    endif()
 
     if(WIN32)
       set_tests_properties(test_matmul_scale_fuse_pass_pir PROPERTIES TIMEOUT

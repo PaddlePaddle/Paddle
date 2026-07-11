@@ -222,7 +222,7 @@ function install_123 {
 
 function install_124 {
     CUDNN_VERSION=9.1.1.17
-    NCCL=2.21.5
+    NCCL_VERSION=2.21.5
     echo "Installing CUDA 12.4.1 and cuDNN ${CUDNN_VERSION} and NCCL ${NCCL_VERSION} and cuSparseLt-0.6.2"
     rm -rf /usr/local/cuda-12.4 /usr/local/cuda
     # install CUDA 12.4.1 in the same container
