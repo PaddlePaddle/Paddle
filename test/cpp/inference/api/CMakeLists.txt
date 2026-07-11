@@ -641,9 +641,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
 
   endif()
 
-  if(WITH_GPU
-     AND WITH_TENSORRT
-     AND TENSORRT_FOUND)
+  if(WITH_GPU AND TENSORRT_FOUND)
     set(TRT_MODEL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/trt_models")
     if(NOT EXISTS ${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models.tar.gz)
       inference_download_and_uncompress(
@@ -1018,9 +1016,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
                                                                         300)
   endif()
 
-  if(WITH_GPU
-     AND WITH_TENSORRT
-     AND TENSORRT_FOUND)
+  if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(test_trt_dynamic_shape_ernie_ser_deser
                          PROPERTIES TIMEOUT 300)
     set_tests_properties(test_trt_dynamic_shape_ernie_fp16_ser_deser
@@ -1041,9 +1037,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
                          PROPERTIES TIMEOUT 120)
   endif()
 
-  if(WITH_GPU
-     AND WITH_TENSORRT
-     AND TENSORRT_FOUND)
+  if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(trt_mobilenet_test PROPERTIES TIMEOUT 240)
     if(NOT WIN32)
       set_tests_properties(trt_rebind_stream_test

@@ -1095,8 +1095,11 @@ EOF
 
     # run go test
     cd ${PADDLE_ROOT}/paddle/fluid/inference/goapi
-    export WITH_TENSORRT=${WITH_TENSORRT:-OFF}
-    bash test.sh
+    if [[ "${WITH_TENSORRT:-OFF}" == "ON" ]]; then
+        bash test.sh
+    else
+        GOFLAGS='-run=^(TestOnednn|TestONNXRuntime)$' bash test.sh
+    fi
     EXIT_CODE=$?
     if [[ "$EXIT_CODE" != "0" ]]; then
         exit 8;

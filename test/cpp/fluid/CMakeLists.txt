@@ -14,9 +14,7 @@ endif()
 
 add_subdirectory(reader)
 add_subdirectory(reduce_ops)
-if(WITH_GPU
-   AND WITH_TENSORRT
-   AND TENSORRT_FOUND)
+if(WITH_GPU AND TENSORRT_FOUND)
   add_subdirectory(tensorrt)
 endif()
 
