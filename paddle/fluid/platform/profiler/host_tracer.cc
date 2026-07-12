@@ -22,10 +22,6 @@
 
 namespace paddle::platform {
 
-PADDLE_API HostEventSection<CommonEvent> GatherCommonHostEvents();
-PADDLE_API HostEventSection<CommonMemEvent> GatherCommonHostMemEvents();
-PADDLE_API void SetHostTraceLevel(int64_t trace_level);
-
 namespace {
 
 void ProcessHostEvents(const HostEventSection<CommonEvent>& host_events,
