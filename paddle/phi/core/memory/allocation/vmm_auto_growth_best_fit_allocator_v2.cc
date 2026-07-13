@@ -303,10 +303,10 @@ phi::Allocation* VMMAutoGrowthBestFitAllocatorV2::AllocateImpl(size_t size) {
 }
 
 size_t VMMAutoGrowthBestFitAllocatorV2::CompactImpl(const Place& place) {
-  return CompactForAllocation(place, 0);
+  return RemapForAllocation(place, 0);
 }
 
-size_t VMMAutoGrowthBestFitAllocatorV2::CompactForAllocation(
+size_t VMMAutoGrowthBestFitAllocatorV2::RemapForAllocation(
     const Place& place, size_t requested_size) {
   const uint64_t compact_seq =
       g_vmm_v2_compact_seq.fetch_add(1, std::memory_order_relaxed) + 1;

@@ -915,6 +915,48 @@ TEST(CUDAVirtualMemAllocatorV2, RemapDriverFailureRecovery) {
   allocator.RollbackCreatedHandles(occupied_target);
 }
 
+TEST(CUDAVirtualMemAllocatorV2, RemapTargetAccessFailureRollsBackMappings) {
+  ScopedVLogLevel vlog_guard(6);
+  CUDAVirtualMemAllocatorV2 allocator(
+      phi::GPUPlace(), 2UL << 20, PoolType::kLarge);
+
+  auto source_allocation = allocator.AppendWithBlock(allocator.handle_size());
+  ASSERT_NE(source_allocation.allocation, nullptr);
+  const VMMDevicePtr source_va =
+      reinterpret_cast<VMMDevicePtr>(source_allocation.allocation->ptr());
+  const VMMDevicePtr target_va = source_va + allocator.handle_size();
+  const std::vector<std::pair<VMMDevicePtr, size_t>> source_range = {
+      {source_va, allocator.handle_size()}};
+  const std::vector<std::pair<VMMDevicePtr, size_t>> target_range = {
+      {target_va, allocator.handle_size()}};
+  auto source_pages =
+      allocator.CollectMappedPages(source_range, allocator.handle_size());
+  auto target_pages =
+      allocator.CollectUnmappedPages(target_range, allocator.handle_size());
+  ASSERT_EQ(source_pages.size(), 1UL);
+  ASSERT_EQ(target_pages.size(), 1UL);
+  ASSERT_NE(source_pages[0].meta, nullptr);
+
+  auto access_desc = allocator.access_desc_;
+  allocator.access_desc_.clear();
+  CUDAVirtualMemAllocatorV2::MoveBackingPageStats stats;
+  EXPECT_FALSE(
+      allocator.MoveBackingPage(source_pages[0], target_pages[0], &stats));
+  EXPECT_TRUE(allocator.IsRangeUnmapped(source_va, allocator.handle_size()));
+  EXPECT_TRUE(allocator.IsRangeUnmapped(target_va, allocator.handle_size()));
+
+  // Restore the source mapping so normal allocation cleanup remains valid.
+  allocator.access_desc_ = std::move(access_desc);
+  ASSERT_EQ(
+      phi::dynload::cuMemMap(
+          source_va, allocator.handle_size(), 0, source_pages[0].handle, 0),
+      CUDA_SUCCESS);
+  ASSERT_TRUE(allocator.SetAccessForMappedRange(
+      source_va, allocator.handle_size(), nullptr));
+  allocator.backing_map_.MarkMapped(
+      source_va, source_pages[0].meta, allocator.handle_size());
+}
+
 TEST(CUDAVirtualMemAllocatorV2, RemapHelperFallbacks) {
   ScopedVLogLevel vlog_guard(6);
   CUDAVirtualMemAllocatorV2 allocator(
@@ -1174,11 +1216,19 @@ TEST(CUDAVirtualMemAllocatorV2, StagedRemapDestinationBlocksSource) {
       staged.block.begin_va(), staged.block.size(), &ipc_parts));
   EXPECT_TRUE(ipc_parts.empty());
 
-  auto committed =
-      allocator.AdoptCommittedSyntheticAllocation(staged.allocation);
-  staged.allocation = nullptr;
-  EXPECT_TRUE(allocator.ClearRemapDestinationOwnership(
-      target_va, allocator.handle_size()));
+  auto destination_pages =
+      allocator.CollectMappedPages(target_ranges, allocator.handle_size());
+  ASSERT_EQ(destination_pages.size(), 1UL);
+  ASSERT_NE(destination_pages[0].meta, nullptr);
+  destination_pages[0].meta->RestoreOriginalOwnership();
+
+  // Finalizing the destination meta makes IPC exportable, while the page-level
+  // destination marker still prevents recursive remap before stale cleanup.
+  remap_sources =
+      allocator.CollectRemapSourcePages(target_ranges, allocator.handle_size());
+  ASSERT_EQ(remap_sources.size(), 1UL);
+  EXPECT_EQ(remap_sources[0].remap_source_state,
+            VMMBackingMap::RemapSourceState::kRemapDestinationOwned);
   EXPECT_TRUE(allocator.CollectIPCParts(
       staged.block.begin_va(), staged.block.size(), &ipc_parts));
   ASSERT_EQ(ipc_parts.size(), 1UL);
@@ -1186,6 +1236,10 @@ TEST(CUDAVirtualMemAllocatorV2, StagedRemapDestinationBlocksSource) {
   EXPECT_EQ(ipc_parts[0].chunk->base, target_va);
   EXPECT_EQ(ipc_parts[0].chunk_rel_off, 0UL);
   EXPECT_EQ(ipc_parts[0].len, allocator.handle_size());
+
+  auto committed =
+      allocator.AdoptCommittedSyntheticAllocation(staged.allocation);
+  staged.allocation = nullptr;
 }
 
 TEST(CUDAVirtualMemAllocatorV2,

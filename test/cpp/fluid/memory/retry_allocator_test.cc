@@ -15,18 +15,13 @@
 #include "paddle/phi/core/memory/allocation/retry_allocator.h"
 
 #include <thread>  // NOLINT
-#include <vector>
 
 #include "gtest/gtest.h"
-#include "paddle/common/flags.h"
 #include "paddle/phi/core/memory/allocation/best_fit_allocator.h"
 #include "paddle/phi/core/memory/allocation/cpu_allocator.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/core/memory/allocation/cuda_allocator.h"
 #endif
-
-COMMON_DECLARE_int64(offload_retry_times);
-COMMON_DECLARE_bool(vmm_v2_remap_on_oom);
 
 namespace paddle {
 namespace memory {
@@ -105,87 +100,6 @@ class DummyAllocator : public Allocator {
 
   void FreeImpl(phi::Allocation *) override {}
 };
-
-class OffloadRetryNoCompactAllocator : public Allocator {
- public:
-  explicit OffloadRetryNoCompactAllocator(size_t storage_size)
-      : storage_(storage_size) {}
-
-  bool IsAllocThreadSafe() const override { return true; }
-
-  size_t allocate_count() const { return allocate_count_; }
-  size_t compact_count() const { return compact_count_; }
-
- protected:
-  phi::Allocation *AllocateImpl(size_t size) override {
-    ++allocate_count_;
-    if (allocate_count_ < 3) {
-      PADDLE_THROW_BAD_ALLOC(common::errors::ResourceExhausted(
-          "test allocator fails before offload retry"));
-    }
-    PADDLE_ENFORCE_LE(
-        size,
-        storage_.size(),
-        common::errors::InvalidArgument("requested test allocation too large"));
-    return std::make_unique<Allocation>(storage_.data(), size, place_)
-        .release();
-  }
-
-  void FreeImpl(phi::Allocation *allocation) override { delete allocation; }
-
-  size_t CompactImpl(const Place &place) override {
-    (void)place;
-    ++compact_count_;
-    ADD_FAILURE() << "non-VMM allocator CompactImpl should not be called";
-    return 0;
-  }
-
- private:
-  size_t allocate_count_{0};
-  size_t compact_count_{0};
-  std::vector<char> storage_;
-  phi::CPUPlace place_;
-};
-
-class ScopedRetryAllocatorFlags {
- public:
-  ScopedRetryAllocatorFlags(int64_t retry_times, bool remap_on_oom)
-      : old_retry_times_(FLAGS_offload_retry_times),
-        old_remap_on_oom_(FLAGS_vmm_v2_remap_on_oom) {
-    FLAGS_offload_retry_times = retry_times;
-    FLAGS_vmm_v2_remap_on_oom = remap_on_oom;
-  }
-
-  ~ScopedRetryAllocatorFlags() {
-    RegisterOOMCallback(nullptr);
-    FLAGS_offload_retry_times = old_retry_times_;
-    FLAGS_vmm_v2_remap_on_oom = old_remap_on_oom_;
-  }
-
- private:
-  int64_t old_retry_times_;
-  bool old_remap_on_oom_;
-};
-
-TEST(RetryAllocator, OffloadRetryDoesNotCompactNonVMMAllocator) {
-  auto raw_allocator = std::make_shared<OffloadRetryNoCompactAllocator>(256);
-  RetryAllocator allocator(raw_allocator, phi::CPUPlace(), 10);
-
-  ScopedRetryAllocatorFlags flags_guard(/*retry_times=*/1,
-                                        /*remap_on_oom=*/true);
-  RegisterOOMCallback([](Place place, size_t size) -> size_t {
-    EXPECT_TRUE(phi::is_cpu_place(place));
-    EXPECT_EQ(size, 256UL);
-    return size;
-  });
-
-  auto allocation = allocator.Allocate(256);
-  EXPECT_NE(allocation->ptr(), nullptr);
-  allocation.reset();
-
-  EXPECT_EQ(raw_allocator->allocate_count(), 3UL);
-  EXPECT_EQ(raw_allocator->compact_count(), 0UL);
-}
 
 TEST(RetryAllocator, RetryAllocatorLastAllocFailure) {
   size_t retry_ms = 10;

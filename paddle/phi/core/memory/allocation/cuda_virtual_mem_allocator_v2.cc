@@ -50,14 +50,6 @@ bool IsCudaRuntimeDeinitialized(cudaError_t result) {
   return result == cudaErrorCudartUnloading;
 }
 
-void ClearGpuLastError() {
-  // cuMemCreate/cuMemSetAccess failures can leave a CUDA runtime error pending
-  // through helper calls such as cudaMemGetInfo. Allocation OOM is propagated
-  // as BadAlloc and may be caught by replay/training loops, so clear the
-  // runtime slot before returning control to user code.
-  (void)platform::GpuGetLastError();
-}
-
 size_t GetPoolVAMultiplier(PoolType pool_type) {
   switch (pool_type) {
     case PoolType::kSmall:
@@ -204,6 +196,9 @@ void CUDAVirtualMemAllocatorV2::MarkLayoutMapped(const HandleLayout& layout) {
 void CUDAVirtualMemAllocatorV2::MarkRemapDestinationLayoutMapped(
     const HandleLayout& layout) {
   for (const auto& meta : layout) {
+    // Keep the staged allocation from releasing a transferred handle if the
+    // ownership sink throws. Commit clears only this temporary meta marker;
+    // the BackingMap destination marker remains until stale-range cleanup.
     meta->MarkOwnedByRemapDestination();
     backing_map_.MarkRemapDestinationMapped(meta->base(), meta, meta->size());
   }
@@ -344,7 +339,9 @@ HandleLayout CUDAVirtualMemAllocatorV2::CreateMappedHandleLayout(
     if (ce != CUDA_SUCCESS) {
       RollbackCreatedHandles(layout);
       if (ce == CUDA_ERROR_OUT_OF_MEMORY) {
-        ClearGpuLastError();
+        // BadAlloc may be caught by a retry loop, so do not leave a stale CUDA
+        // OOM in the runtime error slot.
+        (void)platform::GpuGetLastError();
         PADDLE_THROW_BAD_ALLOC(common::errors::ResourceExhausted(
             "%s cuMemCreate failed: out of GPU memory at handle %zu/%zu "
             "(handle_size=%zu).",
@@ -390,7 +387,7 @@ void CUDAVirtualMemAllocatorV2::SetAccessOrThrow(VMMDevicePtr ptr,
   size_t actual_total = 0;
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemGetInfo(&actual_avail, &actual_total));
   if (access_result.status == CUDA_ERROR_OUT_OF_MEMORY) {
-    ClearGpuLastError();
+    (void)platform::GpuGetLastError();
     PADDLE_THROW_BAD_ALLOC(common::errors::ResourceExhausted(
         "%s cuMemSetAccess failed: out of GPU memory at offset %zu/%zu "
         "(failed_size=%zu, handle_size=%zu, handle_count=%zu, "

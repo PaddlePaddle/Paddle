@@ -1174,22 +1174,38 @@ void RemapTransaction::Commit() {
       auto* allocation = pending_synthetic_allocations_.back();
       pending_synthetic_allocations_.pop_back();
       try {
-        void* allocation_ptr = allocation->ptr();
+        const auto allocation_va =
+            reinterpret_cast<VMMDevicePtr>(allocation->ptr());
         const size_t allocation_size = allocation->size();
+        auto destination_pages = vmm_allocator_->CollectMappedPages(
+            {{allocation_va, allocation_size}}, allocation_size);
+        PADDLE_ENFORCE_EQ(
+            destination_pages.size(),
+            allocation_size / handle_size_,
+            common::errors::PreconditionNotMet(
+                "Committed VMM remap destination at %p has %zu mapped pages, "
+                "but %zu pages are required.",
+                allocation->ptr(),
+                destination_pages.size(),
+                allocation_size / handle_size_));
+        for (const auto& page : destination_pages) {
+          PADDLE_ENFORCE_NOT_NULL(
+              page.meta,
+              common::errors::PreconditionNotMet(
+                  "Committed VMM remap destination page at %p has no meta.",
+                  reinterpret_cast<void*>(page.va)));
+        }
         auto committed_allocation =
             vmm_allocator_->AdoptCommittedSyntheticAllocation(allocation);
         allocation = nullptr;
         commit_synthetic_allocation_(std::move(committed_allocation));
-        PADDLE_ENFORCE_EQ(
-            vmm_allocator_->ClearRemapDestinationOwnership(
-                reinterpret_cast<VMMDevicePtr>(allocation_ptr),
-                allocation_size),
-            true,
-            common::errors::PreconditionNotMet(
-                "Failed to clear committed VMM remap destination ownership "
-                "at %p for %zu bytes.",
-                allocation_ptr,
-                allocation_size));
+        // The new destination metas only need temporary ownership while the
+        // sink adopts the allocation. Keep the BackingMap destination marker
+        // so this synthetic range cannot become a remap source before stale
+        // destination cleanup releases its underlying allocation.
+        for (const auto& page : destination_pages) {
+          page.meta->RestoreOriginalOwnership();
+        }
       } catch (...) {
         if (allocation != nullptr) {
           vmm_allocator_->DestroyStagedSyntheticAllocation(allocation);

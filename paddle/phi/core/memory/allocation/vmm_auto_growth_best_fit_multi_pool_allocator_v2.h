@@ -48,7 +48,7 @@ class VMMAutoGrowthBestFitMultiPoolAllocatorV2 : public Allocator {
 
   // Compacts the large VMM pool for a failed allocation request. A zero
   // request performs explicit unbounded maintenance compaction.
-  size_t CompactForAllocation(const Place& place, size_t requested_size);
+  size_t RemapForAllocation(const Place& place, size_t requested_size);
 
   const std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2>& small_allocator()
       const {

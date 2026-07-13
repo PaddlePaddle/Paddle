@@ -70,6 +70,7 @@ void MarkVMMV2RemapPendingStream(StreamSafeCUDAAllocator* allocator,
           "VMM V2 allocation %p cannot record its remap-safety stream.",
           allocation->ptr()));
 }
+
 #else
 VMMAutoGrowthBestFitMultiPoolAllocatorV2* GetVMMV2MultiPoolAllocator(
     const std::shared_ptr<Allocator>& allocator) {
@@ -312,7 +313,9 @@ phi::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
             first_failure.c_str(),
             second_bad_alloc.what()));
       }
-    } else {
+    }
+#if defined(PADDLE_WITH_CUDA)
+    if (vmm != nullptr) {
       std::unique_lock<SpinLock> allocator_map_guard(allocator_map_lock_);
       for (auto* alloc : allocator_map_[place_]) {
         alloc->ProcessUnfreedAllocations();
@@ -323,21 +326,20 @@ phi::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
       } catch (const BadAlloc& second_bad_alloc) {
         const std::string second_failure = second_bad_alloc.what();
         if (FLAGS_vmm_v2_remap_on_oom) {
-          size_t compacted =
-              vmm_v2_allocator_->CompactForAllocation(place_, size);
-          if (compacted > 0) {
+          const size_t remapped_bytes = vmm->RemapForAllocation(place_, size);
+          if (remapped_bytes > 0) {
             try {
               underlying_allocation = underlying_allocator_->Allocate(size);
             } catch (const BadAlloc& final_bad_alloc) {
               ClearGpuLastError();
               PADDLE_THROW_BAD_ALLOC(common::errors::ResourceExhausted(
                   "Allocation of %zu bytes failed after compact "
-                  "(remap defrag, %zu bytes compacted).\n"
+                  "(remap defrag, %zu bytes remapped).\n"
                   "Initial allocation failure:\n%s\n"
                   "Retry allocation failure before compact:\n%s\n"
                   "Retry allocation failure after compact:\n%s",
                   size,
-                  compacted,
+                  remapped_bytes,
                   first_failure.c_str(),
                   second_failure.c_str(),
                   final_bad_alloc.what()));
@@ -365,6 +367,7 @@ phi::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
         }
       }
     }
+#endif
   }
   StreamSafeCUDAAllocation* allocation = new StreamSafeCUDAAllocation(
       static_unique_ptr_cast<Allocation>(std::move(underlying_allocation)),

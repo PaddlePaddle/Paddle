@@ -101,10 +101,9 @@ PHI_DEFINE_EXPORTED_bool(use_vmm_auto_growth_best_fit_allocator_v2,
 PHI_DEFINE_EXPORTED_bool(
     vmm_v2_remap_on_oom,
     true,
-    "Whether VMM V2 compact/remap recovery is enabled on OOM. When true, "
-    "StreamSafeCUDAAllocator may run the base fragmentation compact path, "
-    "and RetryAllocator may run one additional post-offload compact only "
-    "for a VMM V2-backed CUDA allocator.");
+    "Whether VMM V2 remap recovery is enabled on OOM. When true, "
+    "StreamSafeCUDAAllocator may run request-bounded remap before its final "
+    "allocation retry.");
 PHI_DEFINE_EXPORTED_uint64(vmm_v2_large_pool_handle_size_in_mb,
                            16,
                            "VMM V2 large-pool physical handle size in MiB.");

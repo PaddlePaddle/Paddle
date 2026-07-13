@@ -96,7 +96,7 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
 
   // Compacts mapped-free VMM backing for a failed allocation request. A zero
   // request performs explicit unbounded maintenance compaction.
-  size_t CompactForAllocation(const Place& place, size_t requested_size);
+  size_t RemapForAllocation(const Place& place, size_t requested_size);
 
  protected:
   phi::Allocation* AllocateImpl(size_t size) override;
