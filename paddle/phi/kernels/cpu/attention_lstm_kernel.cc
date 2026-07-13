@@ -169,7 +169,9 @@ void AttentionLSTMKernel(const Context& dev_ctx,
       bias_relu<T>(seq_len, cur_atten_x_data, &prev_cell_bias, fc_out_data);
       // 1c. fc scalar
       if (atten_scalar_data) {
-        blas.SCAL(seq_len, *atten_scalar_data, fc_out_data);
+        for (int j = 0; j < seq_len; ++j) {
+          fc_out_data[j] = fc_out_data[j] * (*atten_scalar_data);
+        }
         bias_relu<T>(seq_len, fc_out_data, atten_scalar_bias_data, fc_out_data);
       }
       // 1d. softmax

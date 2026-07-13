@@ -17,7 +17,6 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/embedding_kernel.h"
-#include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/embedding_util.h"
 
 namespace phi {
@@ -45,7 +44,6 @@ struct EmbeddingCPUSparseFunctor {
     int64_t row_width = table_t.value().dims()[1];
     const auto* table = table_t.value().template data<T>();
     auto* output = dev_ctx_.template Alloc<T>(output_t);
-    auto input_data_type = table_t.value().dtype();
 
     for (int64_t i = 0; i < ids_numel; ++i) {
       if (padding_idx_ != kNoPadding && ids[i] == padding_idx_) {
@@ -64,15 +62,9 @@ struct EmbeddingCPUSparseFunctor {
             common::errors::InvalidArgument(
                 "the input key should be exists. But received %d.", id_index));
 
-        if (input_data_type == DataType::BFLOAT16) {
-          memcpy(output + i * row_width,
-                 table + id_index * row_width,
-                 row_width * sizeof(T));
-        } else {
-          auto blas = funcs::GetBlas<CPUContext, T>(dev_ctx_);
-          blas.VCOPY(
-              row_width, table + id_index * row_width, output + i * row_width);
-        }
+        memcpy(output + i * row_width,
+               table + id_index * row_width,
+               static_cast<size_t>(row_width) * sizeof(T));
       }
     }
   }

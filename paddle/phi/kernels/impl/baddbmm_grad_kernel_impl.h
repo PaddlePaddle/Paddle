@@ -92,7 +92,6 @@ void BaddbmmGradKernel(const Context& dev_ctx,
   }
 
   auto blas = funcs::GetBlas<Context, T>(dev_ctx);
-  auto mt_blas = funcs::GetBlas<Context, MPType>(dev_ctx);
   if (input_grad) {
     dev_ctx.template Alloc<T>(input_grad);
     total_elems = in_dims[0] * in_dims[1] * in_dims[2];
@@ -184,27 +183,16 @@ void BaddbmmGradKernel(const Context& dev_ctx,
                                          .template cast<T>();
       }
     } else {
-      // The VCOPY does not support the float16, bfloat16
-      if (!is_float16_or_bfloat16) {
-        mt_blas.VCOPY(
-            total_elems, out_grad.data<MPType>(), input_grad->data<MPType>());
-      } else {
-        funcs::ForRange<Context> for_range(dev_ctx, total_elems);
-        BCopyOrScaleFunctor<T> functor(
-            1, out_grad.data<T>(), input_grad->data<T>(), total_elems);
-        for_range(functor);
-      }
-    }
-
-    // The SCAL does not support the float16, bfloat16
-    if (!is_float16_or_bfloat16) {
-      mt_blas.SCAL(total_elems, beta, input_grad->data<MPType>());
-    } else {
       funcs::ForRange<Context> for_range(dev_ctx, total_elems);
       BCopyOrScaleFunctor<T> functor(
-          beta, input_grad->data<T>(), input_grad->data<T>(), total_elems);
+          1, out_grad.data<T>(), input_grad->data<T>(), total_elems);
       for_range(functor);
     }
+
+    funcs::ForRange<Context> for_range(dev_ctx, total_elems);
+    BCopyOrScaleFunctor<T> functor(
+        beta, input_grad->data<T>(), input_grad->data<T>(), total_elems);
+    for_range(functor);
   }
   if (x_grad) {
     dev_ctx.template Alloc<T>(x_grad);
@@ -251,14 +239,10 @@ void BaddbmmGradKernel(const Context& dev_ctx,
                        K_dim * N_dim);
     }
     if (FLAGS_use_accuracy_compatible_kernel) {
-      if (!is_float16_or_bfloat16) {
-        mt_blas.SCAL(total_elems, alpha, x_grad->data<MPType>());
-      } else {
-        funcs::ForRange<Context> for_range(dev_ctx, total_elems);
-        BCopyOrScaleFunctor<T> functor(
-            alpha, x_grad->data<T>(), x_grad->data<T>(), total_elems);
-        for_range(functor);
-      }
+      funcs::ForRange<Context> for_range(dev_ctx, total_elems);
+      BCopyOrScaleFunctor<T> functor(
+          alpha, x_grad->data<T>(), x_grad->data<T>(), total_elems);
+      for_range(functor);
     }
   }
   if (y_grad) {
@@ -306,14 +290,10 @@ void BaddbmmGradKernel(const Context& dev_ctx,
                        M_dim * N_dim);
     }
     if (FLAGS_use_accuracy_compatible_kernel) {
-      if (!is_float16_or_bfloat16) {
-        mt_blas.SCAL(total_elems, alpha, y_grad->data<MPType>());
-      } else {
-        funcs::ForRange<Context> for_range(dev_ctx, total_elems);
-        BCopyOrScaleFunctor<T> functor(
-            alpha, y_grad->data<T>(), y_grad->data<T>(), total_elems);
-        for_range(functor);
-      }
+      funcs::ForRange<Context> for_range(dev_ctx, total_elems);
+      BCopyOrScaleFunctor<T> functor(
+          alpha, y_grad->data<T>(), y_grad->data<T>(), total_elems);
+      for_range(functor);
     }
   }
 }

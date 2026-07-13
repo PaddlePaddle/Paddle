@@ -108,7 +108,6 @@ void AddmmGradKernel(const Context& dev_ctx,
   }
 
   auto blas = funcs::GetBlas<Context, T>(dev_ctx);
-  auto mt_blas = funcs::GetBlas<Context, MPType>(dev_ctx);
   if (input_grad) {
     dev_ctx.template Alloc<T>(input_grad);
     total_elems = in_dims[0] * in_dims[1];
@@ -155,27 +154,16 @@ void AddmmGradKernel(const Context& dev_ctx,
                                          .template cast<T>();
       }
     } else {
-      // The VCOPY does not support the float16, bfloat16
-      if (!is_float16_or_bfloat16 && !is_big_tensor) {
-        mt_blas.VCOPY(
-            total_elems, out_grad.data<MPType>(), input_grad->data<MPType>());
-      } else {
-        funcs::ForRange<Context> for_range(dev_ctx, total_elems);
-        CopyOrScaleFunctor<T> functor(
-            1, out_grad.data<T>(), input_grad->data<T>(), total_elems);
-        for_range(functor);
-      }
-    }
-
-    // The SCAL does not support the float16, bfloat16
-    if (!is_float16_or_bfloat16 && !is_big_tensor) {
-      mt_blas.SCAL(total_elems, beta, input_grad->data<MPType>());
-    } else {
       funcs::ForRange<Context> for_range(dev_ctx, total_elems);
       CopyOrScaleFunctor<T> functor(
-          beta, input_grad->data<T>(), input_grad->data<T>(), total_elems);
+          1, out_grad.data<T>(), input_grad->data<T>(), total_elems);
       for_range(functor);
     }
+
+    funcs::ForRange<Context> for_range(dev_ctx, total_elems);
+    CopyOrScaleFunctor<T> functor(
+        beta, input_grad->data<T>(), input_grad->data<T>(), total_elems);
+    for_range(functor);
 
     if (input.dims().size() == 1) {
       input_grad->Resize(input.dims());
@@ -196,28 +184,20 @@ void AddmmGradKernel(const Context& dev_ctx,
     total_elems = x.dims()[0] * x.dims()[1];
     // x_grad = out_grad * y'. x_grad: M x K, out_grad : M x N, y : K x N
     blas.MatMul(out_grad, false, y, true, x_grad);
-    if (!is_float16_or_bfloat16 && !is_big_tensor) {
-      mt_blas.SCAL(total_elems, alpha, x_grad->data<MPType>());
-    } else {
-      funcs::ForRange<Context> for_range(dev_ctx, total_elems);
-      CopyOrScaleFunctor<T> functor(
-          alpha, x_grad->data<T>(), x_grad->data<T>(), total_elems);
-      for_range(functor);
-    }
+    funcs::ForRange<Context> for_range(dev_ctx, total_elems);
+    CopyOrScaleFunctor<T> functor(
+        alpha, x_grad->data<T>(), x_grad->data<T>(), total_elems);
+    for_range(functor);
   }
   if (y_grad) {
     dev_ctx.template Alloc<T>(y_grad);
     total_elems = x.dims()[1] * y.dims()[1];
     // y_grad = x' * out_grad. y_grad K x N, out_grad : M x N, x : M x K
     blas.MatMul(x, true, out_grad, false, y_grad);
-    if (!is_float16_or_bfloat16 && !is_big_tensor) {
-      mt_blas.SCAL(total_elems, alpha, y_grad->data<MPType>());
-    } else {
-      funcs::ForRange<Context> for_range(dev_ctx, total_elems);
-      CopyOrScaleFunctor<T> functor(
-          alpha, y_grad->data<T>(), y_grad->data<T>(), total_elems);
-      for_range(functor);
-    }
+    funcs::ForRange<Context> for_range(dev_ctx, total_elems);
+    CopyOrScaleFunctor<T> functor(
+        alpha, y_grad->data<T>(), y_grad->data<T>(), total_elems);
+    for_range(functor);
   }
 }
 
