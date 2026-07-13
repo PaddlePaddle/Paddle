@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING
 
 import paddle
 from paddle.distribution import distribution
+from paddle.utils.decorator_utils import param_one_alias
 
 if TYPE_CHECKING:
     from paddle import Tensor
@@ -126,6 +127,7 @@ class Binomial(distribution.Distribution):
         """
         return self.total_count * self.probs * (1 - self.probs)
 
+    @param_one_alias(["shape", "sample_shape"])
     def sample(self, shape: Sequence[int] = []) -> Tensor:
         """Generate binomial samples of the specified shape. The final shape would be ``shape+batch_shape`` .
 

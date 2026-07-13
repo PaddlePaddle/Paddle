@@ -268,6 +268,11 @@ class AllBlocksInfoVisitor : public AllocatorComputeStreamVisitor {
   using AllocatorComputeStreamVisitor::Visit;
 
  public:
+  enum class PoolFilter : int { kAll = 0, kSmallOnly = 1, kLargeOnly = 2 };
+
+  explicit AllBlocksInfoVisitor(PoolFilter filter = PoolFilter::kAll)
+      : pool_filter_(filter) {}
+
   /**
    * @brief Retrieves the collected information about the free memory blocks.
    *
@@ -280,10 +285,17 @@ class AllBlocksInfoVisitor : public AllocatorComputeStreamVisitor {
    * @return A nested vector structure containing the size, integer address,
    * free info of all blocks.
    */
-  std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>
-  GetAllBlocksInfo() const {
+  const std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>&
+  GetAllBlocksInfo() const& {
     return all_blocks_info_;
   }
+
+  std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>
+  GetAllBlocksInfo() && {
+    return std::move(all_blocks_info_);
+  }
+
+  PoolFilter GetPoolFilter() const { return pool_filter_; }
 
   /**
    * @brief Visits the VirtualMemoryAutoGrowthBestFitAllocator.
@@ -298,8 +310,12 @@ class AllBlocksInfoVisitor : public AllocatorComputeStreamVisitor {
    */
   void Visit(VirtualMemoryAutoGrowthBestFitAllocator* allocator) override;
   void Visit(AutoGrowthBestFitAllocator* allocator) override;
+  void Visit(VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator* allocator)
+      override;
 
  private:
+  PoolFilter pool_filter_ = PoolFilter::kAll;
+
   /**
    * @brief Stores the extracted all block information.
    *

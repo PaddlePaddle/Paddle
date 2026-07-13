@@ -731,15 +731,15 @@ def get_default_device() -> paddle.device:
     return paddle.device(dev)
 
 
-def set_default_device(device: PlaceLike | int) -> None:
+def set_default_device(device: PlaceLike | int | None = None) -> None:
     """
     Paddle supports running calculations on various types of devices, including CPU, GPU, XPU, NPU and IPU.
     This function can specify the global device which the OP will run.
 
     Args:
-        device(str, Place or int): This parameter determines the specific running device.
+        device(str | Place | paddle.device | int, optional): This parameter determines the specific running device.
             It can be ``cpu``, ``gpu``, ``xpu``, ``npu``, ``gpu:x``, ``xpu:x``, ``npu:x`` and ``ipu``,
-            where ``x`` is the index of the GPUs, XPUs or NPUs.
+            where ``x`` is the index of the GPUs, XPUs or NPUs. Defaults is ``None``, which means current device.
 
     Examples:
         .. code-block:: pycon

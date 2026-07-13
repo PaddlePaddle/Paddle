@@ -124,7 +124,8 @@ class MemoryAnalysisTool:
             if device_id is not None
             else core.get_cuda_current_device_id()
         )
-        return core.all_block_info(device_id)
+        info = core.all_block_info(device_id)
+        return [list(chunk) for chunk in info]
 
     @classmethod
     def vmm_all_block_info(
@@ -132,6 +133,40 @@ class MemoryAnalysisTool:
         device_id: int | None = None,
     ) -> list[list[tuple[int, int, bool]]]:
         return self.all_block_info(device_id)
+
+    @classmethod
+    def vmm_large_all_block_info(
+        self,
+        device_id: int | None = None,
+    ) -> list[list[tuple[int, int, bool]]]:
+        name = 'paddle.device.cuda.vmm_large_all_block_info'
+        if not (core.is_compiled_with_cuda()):
+            raise ValueError(
+                f"The API {name} is not supported in CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU support to call this API."
+            )
+        device_id = (
+            device_id
+            if device_id is not None
+            else core.get_cuda_current_device_id()
+        )
+        return core.large_pool_block_info(device_id)
+
+    @classmethod
+    def vmm_small_all_block_info(
+        self,
+        device_id: int | None = None,
+    ) -> list[list[tuple[int, int, bool]]]:
+        name = 'paddle.device.cuda.vmm_small_all_block_info'
+        if not (core.is_compiled_with_cuda()):
+            raise ValueError(
+                f"The API {name} is not supported in CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU support to call this API."
+            )
+        device_id = (
+            device_id
+            if device_id is not None
+            else core.get_cuda_current_device_id()
+        )
+        return core.small_pool_block_info(device_id)
 
     @classmethod
     def memory_summary(self, device_id: int | None = None) -> None:
