@@ -188,7 +188,9 @@ jobs:
       - name: Terminate and delete the container
         if: always()
         run: |
-          docker rm -f ${container_name}
+          if [[ -n "${container_name:-}" ]]; then
+            docker rm -f "${container_name}"
+          fi
 
   test:
     name: Test
@@ -232,6 +234,7 @@ jobs:
           GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           home_dir: ${{ github.workspace }}/../../../..
         run: |
+          docker ps -aq --filter "name=^/${TASK}-" | xargs -r docker rm -f
           container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
           docker run --ulimit nofile=102400 --ulimit core=-1 --shm-size=32g -d -t --name ${container_name} \
@@ -301,8 +304,9 @@ jobs:
       - name: Terminate and delete the container
         if: always()
         run: |
-          docker exec -t ${{ env.container_name }} /bin/bash -c '
-          rm -rf * .[^.]*
-          '
-          docker stop ${container_name}
-          docker rm ${container_name}
+          if [[ -n "${container_name:-}" ]]; then
+            timeout 10m docker exec -t "${container_name}" /bin/bash -c '
+            rm -rf * .[^.]*
+            ' || true
+            docker rm -f "${container_name}"
+          fi
