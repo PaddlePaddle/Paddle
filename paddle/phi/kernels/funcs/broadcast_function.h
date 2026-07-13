@@ -46,7 +46,12 @@ struct BroadcastTypeClassifier {
                           int axis) {
     numel = (*outs)[0]->numel();
 
-#ifndef PADDLE_WITH_XPU_KP
+#ifdef PADDLE_WITH_XPU_KP
+    // datamover_primitives_xpu2.h::BroadcastConfig (built inside
+    // InitBroadcastConfigs below) still computes strides/numel with 32-bit
+    // int, so the INT_MAX check must happen before that call, not after.
+    PADDLE_ENFORCE_LE_INT_MAX(numel, "BroadcastKernel numel (XPU)");
+#else
     for (size_t i = 0; i < ins.size(); ++i) {
       bool is_same_dim = ins[i]->numel() == numel;
       if (is_same_dim) {
@@ -312,7 +317,8 @@ __device__ void VectorizedBroadcastKernelImpl(
   if (LoadType == kBroadcast) {
     uint64_t index_bc[Arity][VecSize] = {0};
     Unroller<BroadcastDataInit, VecSize, Arity>::step(args);
-    uint64_t thread_offset = block_offset + threadIdx.x * VecSize;
+    uint64_t thread_offset =
+        block_offset + static_cast<uint64_t>(threadIdx.x) * VecSize;
 #pragma unroll
     for (int k = 0; k < VecSize; ++k) {
       uint64_t idx = thread_offset + k;
@@ -444,7 +450,6 @@ void LaunchBroadcastKernel(
     Functor func) {
 #ifdef PADDLE_WITH_XPU_KP
   const int64_t numel = classifier.numel;
-  PADDLE_ENFORCE_LE_INT_MAX(numel, "BroadcastKernel numel (XPU)");
   const int threads = 64;
   const int blocks = 8;
   int read_lens = configs[0].buf_len;

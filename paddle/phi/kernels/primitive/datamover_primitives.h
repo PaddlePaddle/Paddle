@@ -418,7 +418,7 @@ __device__ __forceinline__ void ReadDataBc(
     uint64_t total_num_output,
     int stride_nx,
     int stride_ny) {
-  uint64_t thread_offset = block_offset + threadIdx.x;
+  uint64_t thread_offset = block_offset + static_cast<uint64_t>(threadIdx.x);
   uint64_t index_src = 0;
 
 #pragma unroll
@@ -755,7 +755,8 @@ __device__ __forceinline__ void ReadDataBc(
     const details::BroadcastConfig& config,
     uint64_t total_num_output,
     int read_lens = NX) {
-  uint64_t thread_offset = block_offset + threadIdx.x * NX;
+  uint64_t thread_offset =
+      block_offset + static_cast<uint64_t>(threadIdx.x) * NX;
   uint64_t index_src = 0;
 
 #pragma unroll
@@ -816,7 +817,8 @@ __device__ __forceinline__ void ReadDataBc(
     const details::BroadcastConfig& config,
     uint64_t total_num_output,
     int read_lens = NX) {
-  uint64_t thread_offset = block_offset + threadIdx.x * NX;
+  uint64_t thread_offset =
+      block_offset + static_cast<uint64_t>(threadIdx.x) * NX;
   uint64_t index_src = 0;
 
 #pragma unroll
