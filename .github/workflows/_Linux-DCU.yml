@@ -189,10 +189,8 @@ jobs:
         if: always()
         run: |
           set -e
-          cleanup_status=0
-          docker exec -t "${container_name}" /bin/bash -c 'rm -rf * .[^.]*' || cleanup_status=$?
+          docker exec -t "${container_name}" /bin/bash -c 'rm -rf * .[^.]*'
           docker rm -f "${container_name}"
-          exit ${cleanup_status}
 
   test:
     name: Test
@@ -307,7 +305,5 @@ jobs:
         if: always()
         run: |
           set -e
-          cleanup_status=0
-          docker exec -t "${container_name}" /bin/bash -c 'rm -rf * .[^.]*' || cleanup_status=$?
+          docker exec -t "${container_name}" /bin/bash -c 'rm -rf * .[^.]*'
           docker rm -f "${container_name}"
-          exit ${cleanup_status}
