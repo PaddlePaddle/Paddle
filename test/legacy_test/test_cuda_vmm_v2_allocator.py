@@ -13,24 +13,11 @@
 # limitations under the License.
 
 import gc
-import platform
 import unittest
 
 import paddle
 
 
-def _skip_vmm_v2_tests() -> bool:
-    return (
-        (not paddle.is_compiled_with_cuda())
-        or paddle.is_compiled_with_rocm()
-        or platform.system() == "Windows"
-    )
-
-
-@unittest.skipIf(
-    _skip_vmm_v2_tests(),
-    "VMM v2 allocator is CUDA-only and is not enabled on Windows.",
-)
 class TestCUDAVMMV2Allocator(unittest.TestCase):
     def test_allocator_facade_creates_vmm_v2_allocator(self):
         flags = paddle.get_flags(
