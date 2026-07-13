@@ -412,12 +412,12 @@ template <typename T, int NX, int NY, bool IsBoundary = false>
 __device__ __forceinline__ void ReadDataBc(
     T* dst,
     const T* __restrict__ src,
-    uint32_t block_offset,
+    uint64_t block_offset,
     const details::BroadcastConfig& config,
     uint64_t total_num_output,
     int stride_nx,
     int stride_ny) {
-  uint32_t thread_offset = block_offset + threadIdx.x;
+  uint64_t thread_offset = block_offset + threadIdx.x;
   uint64_t index_src = 0;
 
 #pragma unroll
@@ -750,11 +750,11 @@ template <typename T, int NX, int NY, bool IsBoundary = false>
 __device__ __forceinline__ void ReadDataBc(
     T* dst,
     const T* __restrict__ src,
-    uint32_t block_offset,
+    uint64_t block_offset,
     const details::BroadcastConfig& config,
     uint64_t total_num_output,
     int read_lens = NX) {
-  uint32_t thread_offset = block_offset + threadIdx.x * NX;
+  uint64_t thread_offset = block_offset + threadIdx.x * NX;
   uint64_t index_src = 0;
 
 #pragma unroll
@@ -811,11 +811,11 @@ template <typename T,
 __device__ __forceinline__ void ReadDataBc(
     ArgsT* dst,
     const T* __restrict__ src,
-    uint32_t block_offset,
+    uint64_t block_offset,
     const details::BroadcastConfig& config,
     uint64_t total_num_output,
     int read_lens = NX) {
-  uint32_t thread_offset = block_offset + threadIdx.x * NX;
+  uint64_t thread_offset = block_offset + threadIdx.x * NX;
   uint64_t index_src = 0;
 
 #pragma unroll
