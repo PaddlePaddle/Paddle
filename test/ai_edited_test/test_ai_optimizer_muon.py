@@ -274,5 +274,38 @@ class TestZeropowerNewtonschulz5(unittest.TestCase):
         self.assertEqual(result.shape, [4, 4])
 
 
+class TestMuonLrRatio(unittest.TestCase):
+    """测试 Muon 优化器的 lr_ratio
+    Test lr_ratio in Muon optimizer"""
+
+    def test_freeze_parameter(self):
+        """测试 lr_ratio=0 时冻结指定的 Muon 参数
+        Test that lr_ratio=0 freezes the selected Muon parameter"""
+        paddle.seed(2026)
+        frozen = paddle.create_parameter(shape=[4, 4], dtype='float32')
+        trainable = paddle.create_parameter(shape=[4, 4], dtype='float32')
+
+        optimizer = Muon(
+            learning_rate=0.02,
+            parameters=[frozen, trainable],
+            lr_ratio=lambda param: 0.0 if param.name == frozen.name else 1.0,
+            weight_decay=0.01,
+            muon_param_info_map={
+                frozen.name: MuonParamInfo(use_muon=True),
+                trainable.name: MuonParamInfo(use_muon=True),
+            },
+            ns_matmul_dtype=paddle.float32,
+        )
+
+        frozen_before = frozen.numpy().copy()
+        trainable_before = trainable.numpy().copy()
+        loss = frozen.sum() + trainable.sum()
+        loss.backward()
+        optimizer.step()
+
+        np.testing.assert_array_equal(frozen.numpy(), frozen_before)
+        self.assertFalse(np.array_equal(trainable.numpy(), trainable_before))
+
+
 if __name__ == '__main__':
     unittest.main()
