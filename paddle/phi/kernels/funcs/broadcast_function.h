@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <sstream>
+#include "paddle/common/enforce.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
@@ -381,8 +382,8 @@ __global__ void VectorizedBroadcastKernel(
                                             read_lens,
                                             func);
   }
-  uint64_t num = numel - block_offset;
-  if (num > 0) {
+  if (block_offset < numel) {
+    uint64_t num = numel - block_offset;
     VectorizedBroadcastKernelImpl<OutT,
                                   Functor,
                                   Arity,
@@ -445,6 +446,7 @@ void LaunchBroadcastKernel(
     Functor func) {
 #ifdef PADDLE_WITH_XPU_KP
   const int64_t numel = classifier.numel;
+  PADDLE_ENFORCE_LE_INT_MAX(numel, "BroadcastKernel numel (XPU)");
   const int threads = 64;
   const int blocks = 8;
   int read_lens = configs[0].buf_len;
