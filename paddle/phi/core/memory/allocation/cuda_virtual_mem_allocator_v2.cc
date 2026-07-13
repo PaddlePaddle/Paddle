@@ -204,6 +204,7 @@ void CUDAVirtualMemAllocatorV2::MarkLayoutMapped(const HandleLayout& layout) {
 void CUDAVirtualMemAllocatorV2::MarkRemapDestinationLayoutMapped(
     const HandleLayout& layout) {
   for (const auto& meta : layout) {
+    meta->MarkOwnedByRemapDestination();
     backing_map_.MarkRemapDestinationMapped(meta->base(), meta, meta->size());
   }
 }
@@ -249,9 +250,6 @@ void CUDAVirtualMemAllocatorV2::InitOnce() {
     self.location.id = place_.device;
     self.flags = CU_MEM_ACCESS_FLAGS_PROT_READWRITE;
     access_desc_.push_back(self);
-    VLOG(1) << "VMM V2 InitOnce dev " << place_.device
-            << " pool=" << static_cast<int>(pool_type_)
-            << " access_desc_count=" << access_desc_.size();
   });
 }
 
@@ -762,7 +760,7 @@ bool CUDAVirtualMemAllocatorV2::SetAccessForMappedRange(
   auto op_start = Clock::now();
   auto access_result = SetAccessWholeRange(ptr, size, access_desc_);
   if (access_result.status != CUDA_SUCCESS) {
-    VLOG(1) << "SetAccessForMappedRange: whole-range cuMemSetAccess failed at "
+    VLOG(4) << "SetAccessForMappedRange: whole-range cuMemSetAccess failed at "
             << reinterpret_cast<void*>(ptr) << " size=" << size
             << " status=" << access_result.status
             << ", falling back to chunked access";
@@ -851,54 +849,6 @@ CUDAVirtualMemAllocatorV2::ForceReleaseRestoredRemapSourceMapping(
             << " failure returned status=" << release_status;
   }
   return RestoreRemapSourceResult::kForceReleased;
-}
-
-void CUDAVirtualMemAllocatorV2::MapHandlesToVA(
-    VMMDevicePtr ptr,
-    const std::vector<VMMAllocHandle>& hs,
-    const std::vector<std::shared_ptr<VMMHandleMeta>>* metas) {
-  platform::CUDADeviceGuard guard(place_.device);
-  // V2 currently assumes one uniform handle size per pool, so remap can
-  // re-materialize a contiguous VA range by replaying fixed-size mappings.
-  VLOG(10) << "MapHandlesToVA dst=" << reinterpret_cast<void*>(ptr)
-           << " handle_count=" << hs.size() << " handle_size=" << handle_size_
-           << " total_bytes=" << hs.size() * handle_size_
-           << " tail_offset=" << virtual_mem_alloced_offset_
-           << " virtual_mem_size=" << virtual_mem_size_;
-  size_t mapped_count = 0;
-  for (size_t i = 0; i < hs.size(); ++i) {
-    auto dst = ptr + i * handle_size_;
-    auto status = phi::dynload::cuMemMap(dst, handle_size_, 0, hs[i], 0);
-    if (status != CUDA_SUCCESS) {
-      VLOG(3) << "cuMemMap failed at index=" << i
-              << " dst=" << reinterpret_cast<void*>(dst)
-              << " handle_size=" << handle_size_
-              << " handle=" << reinterpret_cast<void*>(hs[i])
-              << " total_handles=" << hs.size();
-      RollbackMappedHandleRange(ptr, mapped_count);
-    }
-    PADDLE_ENFORCE_GPU_SUCCESS(status);
-    if (metas != nullptr && i < metas->size() && (*metas)[i] != nullptr) {
-      backing_map_.MarkMapped(dst, (*metas)[i], handle_size_);
-    } else {
-      backing_map_.MarkMapped(dst, hs[i], handle_size_);
-    }
-    ++mapped_count;
-  }
-  const size_t total_bytes = hs.size() * handle_size_;
-  auto access_result =
-      SetAccessInChunks(ptr, total_bytes, handle_size_, access_desc_);
-  if (access_result.status != CUDA_SUCCESS) {
-    VLOG(3) << "cuMemSetAccess failed dst=" << reinterpret_cast<void*>(ptr)
-            << " total_bytes=" << total_bytes
-            << " failed_offset=" << access_result.failed_offset
-            << " failed_size=" << access_result.failed_size
-            << " handle_size=" << handle_size_
-            << " access_desc_count=" << access_desc_.size()
-            << " status=" << access_result.status;
-    RollbackMappedHandleRange(ptr, mapped_count);
-  }
-  PADDLE_ENFORCE_GPU_SUCCESS(access_result.status);
 }
 
 CUDAVirtualMemAllocatorV2::AllocationWithLayout
@@ -1002,19 +952,9 @@ CUDAVirtualMemAllocatorV2::CreateStagedRemapDestination(
                                             result.bytes,
                                             pool_type);
     MarkRemapDestinationLayoutMapped(layout);
-  } catch (const std::exception& e) {
-    VLOG(3) << "CreateStagedRemapDestination: failed to "
-               "materialize destination, destroying staged allocation. dst="
-            << reinterpret_cast<void*>(ptr) << " bytes=" << result.bytes
-            << " start=" << start << " count=" << count
-            << " error=" << e.what();
-    DestroyStagedSyntheticAllocation(result.allocation);
-    result.allocation = nullptr;
-    throw;
   } catch (...) {
-    VLOG(3) << "CreateStagedRemapDestination: unknown "
-               "failure while materializing destination, destroying staged "
-               "allocation. dst="
+    VLOG(3) << "CreateStagedRemapDestination: failed to materialize "
+               "destination, destroying staged allocation. dst="
             << reinterpret_cast<void*>(ptr) << " bytes=" << result.bytes
             << " start=" << start << " count=" << count;
     DestroyStagedSyntheticAllocation(result.allocation);

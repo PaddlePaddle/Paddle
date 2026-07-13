@@ -14,7 +14,6 @@
 
 #include "paddle/phi/core/memory/allocation/free_block_remap_compactor.h"
 
-#include <exception>
 #include <utility>
 #include <vector>
 
@@ -25,8 +24,7 @@ namespace memory {
 namespace allocation {
 
 size_t FreeBlockRemapCompactor::Compact(std::list<BlockV2>* blocks,
-                                        size_t requested_size,
-                                        uint64_t compact_seq) {
+                                        size_t requested_size) {
   const size_t handle_size = vmm_allocator_->handle_size();
   RemapTransaction transaction(vmm_allocator_.get(),
                                handle_size,
@@ -39,32 +37,10 @@ size_t FreeBlockRemapCompactor::Compact(std::list<BlockV2>* blocks,
   // No cudaDeviceSynchronize here. Source collection uses per-event query
   // inside RemapTransaction to avoid a full pipeline stall.
 
-  // The entire compact is wrapped in try-catch.  If ANY CUDA API call
-  // fails (e.g. cuMemUnmap during Phase 1, cuMemMap during Phase 2),
-  // we rollback all unmapped handles via unmapped-free scatter so that the
-  // block
-  // list stays consistent for subsequent FreeImpl/TryMerge calls.
+  // Roll back transaction state before propagating unexpected allocator or
+  // CUDA failures. Expected inability to compact is returned in the result.
   try {
     // ---- Phase 1: Unmap fully-covered handles from FREE blocks ----
-    if (VLOG_IS_ON(4)) {
-      auto prescan = transaction.PreparePhase1Diagnostics(
-          blocks,
-          requested_size,
-          "FreeBlockRemapCompactor::pre_phase1",
-          "FreeBlockRemapCompactor::pre_phase1_target");
-      VLOG(4) << "VMM V2 compactor BackingMap pre-scan pool="
-              << static_cast<int>(pool_type_)
-              << " free_ranges=" << prescan.free_range_count
-              << " unmapped_free_ranges=" << prescan.unmapped_free_range_count
-              << " mapped_pages=" << prescan.mapped_page_count
-              << " mapped_bytes=" << prescan.mapped_page_count * handle_size
-              << " target_unmapped_pages=" << prescan.target_page_count
-              << " target_unmapped_bytes="
-              << prescan.target_page_count * handle_size
-              << " requested=" << requested_size
-              << " snapshot_ok=" << prescan.source_ok
-              << " target_snapshot_ok=" << prescan.target_ok;
-    }
     auto compact_result =
         transaction.CompactFreeBlocks(blocks, requested_size, pool_type_);
     const auto& stats = compact_result.source_stats;
@@ -85,32 +61,6 @@ size_t FreeBlockRemapCompactor::Compact(std::list<BlockV2>* blocks,
             << stats.unknown_safety_blocked_bytes
             << " remapped_blocked=" << stats.remapped_blocked_count
             << " remapped_blocked_bytes=" << stats.remapped_blocked_bytes;
-    if (!compact_result.success) {
-      VLOG(3) << "VMM V2 compact summary: seq=" << compact_seq
-              << " pool=" << static_cast<int>(pool_type_)
-              << " requested=" << requested_size
-              << " success=" << compact_result.success
-              << " remapped_handles=" << compact_result.remapped_handle_count
-              << " remapped_bytes=" << compact_result.remapped_bytes
-              << " used_tail=" << compact_result.used_tail
-              << " source_collect_us=" << compact_result.source_collect_us
-              << " destination_plan_us=" << compact_result.destination_plan_us
-              << " move_commit_us=" << compact_result.move_commit_us
-              << " free_blocks=" << stats.free_block_count
-              << " safe_blocks=" << stats.safe_block_count
-              << " fully_covered=" << stats.fully_covered_count
-              << " event_blocked=" << stats.event_blocked_count
-              << " unknown_safety_blocked="
-              << stats.unknown_safety_blocked_count
-              << " remapped_blocked=" << stats.remapped_blocked_count;
-    } else {
-      VLOG(3) << "VMM V2 compact summary: seq=" << compact_seq
-              << " pool=" << static_cast<int>(pool_type_)
-              << " requested=" << requested_size
-              << " remapped_handles=" << compact_result.remapped_handle_count
-              << " remapped_bytes=" << compact_result.remapped_bytes
-              << " move_commit_us=" << compact_result.move_commit_us;
-    }
     auto compact_cuda_err = cudaPeekAtLastError();
     PADDLE_ENFORCE_EQ(
         compact_cuda_err,
@@ -146,18 +96,9 @@ size_t FreeBlockRemapCompactor::Compact(std::list<BlockV2>* blocks,
       return 0;
     }
     return compact_result.remapped_bytes;
-  } catch (const std::exception& e) {
-    VLOG(3) << "VMM V2 compactor: exception caught during Compact: " << e.what()
-            << "; rolling back transaction";
-    transaction.Rollback();
-    return 0;
   } catch (...) {
-    auto eptr = std::current_exception();
-    VLOG(3) << "VMM V2 compactor: non-std exception caught during Compact, "
-               "rolling back transaction. exception_ptr="
-            << (eptr ? "set" : "null");
     transaction.Rollback();
-    return 0;
+    throw;
   }
 }
 

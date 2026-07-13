@@ -27,6 +27,7 @@
 #include "paddle/phi/core/memory/allocation/free_block_remap_compactor.h"
 #include "paddle/phi/core/platform/cuda_device_guard.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/scope_guard.h"
 
 namespace paddle {
 namespace memory {
@@ -86,12 +87,17 @@ void VMMAutoGrowthBestFitAllocatorV2::UnderlyingAllocationRegistry::Add(
   allocations_.emplace_back(std::move(allocation));
   auto it = std::prev(allocations_.end());
   auto* begin = Begin(*it);
-  PADDLE_ENFORCE_EQ(
-      allocations_by_ptr_.emplace(begin, it).second,
-      true,
-      common::errors::AlreadyExists(
-          "Duplicate underlying allocation base %p in VMM V2 registry.",
-          begin));
+  try {
+    PADDLE_ENFORCE_EQ(
+        allocations_by_ptr_.emplace(begin, it).second,
+        true,
+        common::errors::AlreadyExists(
+            "Duplicate underlying allocation base %p in VMM V2 registry.",
+            begin));
+  } catch (...) {
+    allocations_.erase(it);
+    throw;
+  }
 }
 
 namespace {
@@ -245,32 +251,23 @@ phi::Allocation* VMMAutoGrowthBestFitAllocatorV2::AllocateImpl(size_t size) {
   // so outer allocator layers can run their generic OOM recovery path.
   CUDAVirtualMemAllocatorV2::AllocationWithBlock grow_alloc;
   if (grow_size > 0) {
+    bool grow_completed = false;
+    DEFINE_PADDLE_SCOPE_GUARD([&] {
+      if (!grow_completed) {
+        restore_tail_free_block();
+      }
+    });
     try {
       grow_alloc = underlying_allocator_->AppendWithBlock(grow_size);
     } catch (const BadAlloc& bad_alloc) {
-      restore_tail_free_block();
       PADDLE_THROW_BAD_ALLOC(common::errors::ResourceExhausted(
           "VMM V2 best-fit allocator (pool %d) failed to grow by %zu bytes.\n"
           "Underlying VMM allocation failure:\n%s",
           static_cast<int>(pool_type_),
           grow_size,
           bad_alloc.what()));
-    } catch (const std::exception& e) {
-      restore_tail_free_block();
-      PADDLE_THROW_BAD_ALLOC(common::errors::ResourceExhausted(
-          "VMM V2 best-fit allocator (pool %d) failed to grow by %zu bytes.\n"
-          "Underlying VMM allocation exception:\n%s",
-          static_cast<int>(pool_type_),
-          grow_size,
-          e.what()));
-    } catch (...) {
-      restore_tail_free_block();
-      PADDLE_THROW_BAD_ALLOC(common::errors::ResourceExhausted(
-          "VMM V2 best-fit allocator (pool %d) failed to grow by %zu bytes "
-          "with an unknown underlying VMM allocation exception.",
-          static_cast<int>(pool_type_),
-          grow_size));
     }
+    grow_completed = true;
   }
 
   size_t total_new_size = tail_reuse_size;
@@ -305,20 +302,22 @@ phi::Allocation* VMMAutoGrowthBestFitAllocatorV2::AllocateImpl(size_t size) {
       this);
 }
 
-size_t VMMAutoGrowthBestFitAllocatorV2::CompactImpl(const Place& place,
-                                                    size_t requested_size) {
+size_t VMMAutoGrowthBestFitAllocatorV2::CompactImpl(const Place& place) {
+  return CompactForAllocation(place, 0);
+}
+
+size_t VMMAutoGrowthBestFitAllocatorV2::CompactForAllocation(
+    const Place& place, size_t requested_size) {
   const uint64_t compact_seq =
       g_vmm_v2_compact_seq.fetch_add(1, std::memory_order_relaxed) + 1;
   const auto compact_start = Clock::now();
-  // Defensive place validation: the call chain
-  // (RetryAllocator -> StreamSafe -> MultiPool -> SinglePool) guarantees
-  // place consistency.  Log a warning on mismatch but do not throw,
-  // since CompactImpl is called inside a try-catch that would silently
-  // swallow the exception and skip compaction.
-  if (UNLIKELY(place != Place(place_))) {
-    LOG(WARNING) << "CompactImpl place mismatch: got " << place.DebugString()
-                 << " but allocator serves " << Place(place_).DebugString();
-  }
+  PADDLE_ENFORCE_EQ(
+      place,
+      Place(place_),
+      common::errors::InvalidArgument(
+          "VMM V2 compact place %s does not match allocator place %s.",
+          place.DebugString(),
+          Place(place_).DebugString()));
   const auto lock_start = Clock::now();
   std::lock_guard<SpinLock> guard(spinlock_);
   const uint64_t lock_wait_us = ElapsedMicros(lock_start, Clock::now());
@@ -442,9 +441,6 @@ size_t VMMAutoGrowthBestFitAllocatorV2::CompactImpl(const Place& place,
     if (max_free >= requested_size) {
       log_compact_precheck_summary(
           "large_free_block_available", compact_target, 0, 0, 0, 0, 0);
-      VLOG(4) << "VMM V2 pool " << static_cast<int>(pool_type_)
-              << " compact skip: max_free=" << max_free
-              << " >= requested=" << requested_size;
       return 0;
     }
 
@@ -452,11 +448,6 @@ size_t VMMAutoGrowthBestFitAllocatorV2::CompactImpl(const Place& place,
       if (total_free <= tail_free) {
         log_compact_precheck_summary(
             "insufficient_non_tail_mapped_free", compact_target, 0, 0, 0, 0, 0);
-        VLOG(4) << "VMM V2 pool " << static_cast<int>(pool_type_)
-                << " compact skip: total_free=" << total_free
-                << " < requested=" << requested_size
-                << " and no non-tail free bytes are available"
-                << " (tail_free=" << tail_free << ")";
         return 0;
       }
       // Partial compact: under tight training pressure, mapped-free bytes may
@@ -464,10 +455,6 @@ size_t VMMAutoGrowthBestFitAllocatorV2::CompactImpl(const Place& place,
       // grow attempt. Move the non-tail free backing to tail/gaps and let the
       // following allocation retry grow only the remaining deficit.
       compact_target = total_free;
-      VLOG(4) << "VMM V2 pool " << static_cast<int>(pool_type_)
-              << " compact partial: total_free=" << total_free
-              << " < requested=" << requested_size << " tail_free=" << tail_free
-              << " compact_target=" << compact_target;
     }
   }
 
@@ -515,27 +502,9 @@ size_t VMMAutoGrowthBestFitAllocatorV2::CompactImpl(const Place& place,
                                    releasable_bytes,
                                    source_pages.size(),
                                    &topup_memory_stats);
-      VLOG(4) << "VMM V2 pool " << static_cast<int>(pool_type_)
-              << " compact skip: releasable_bytes=" << releasable_bytes
-              << " < required=" << required_releasable_bytes
-              << " and driver_actual_avail="
-              << topup_memory_stats.driver_actual_avail
-              << " < driver_topup_bytes=" << driver_topup_bytes
-              << " requested=" << requested_size << " total_free=" << total_free
-              << " max_free=" << max_free << " tail_free=" << tail_free
-              << " compact_target=" << compact_target
-              << " source_ranges=" << compact_source_ranges.size();
       return 0;
     }
     compact_target = releasable_bytes;
-    VLOG(3) << "VMM V2 pool " << static_cast<int>(pool_type_)
-            << " compact partial with driver top-up: releasable_bytes="
-            << releasable_bytes
-            << " required_releasable_bytes=" << required_releasable_bytes
-            << " driver_actual_avail=" << topup_memory_stats.driver_actual_avail
-            << " driver_topup_bytes=" << driver_topup_bytes
-            << " requested=" << requested_size
-            << " compact_target=" << compact_target;
   }
 
   if (releasable_handles == 0) {
@@ -547,14 +516,6 @@ size_t VMMAutoGrowthBestFitAllocatorV2::CompactImpl(const Place& place,
                                  releasable_bytes,
                                  source_pages.size(),
                                  topup_memory_stats_ptr);
-    VLOG(4) << "VMM V2 pool " << static_cast<int>(pool_type_)
-            << " compact skip: no releasable handles"
-            << " (total_free=" << total_free << " max_free=" << max_free
-            << " tail_free=" << tail_free << " requested=" << requested_size
-            << " compact_target=" << compact_target
-            << " releasable_handles=" << releasable_handles
-            << " releasable_bytes=" << releasable_bytes
-            << " source_ranges=" << compact_source_ranges.size() << ")";
     return 0;
   }
 
@@ -591,8 +552,7 @@ size_t VMMAutoGrowthBestFitAllocatorV2::CompactImpl(const Place& place,
                                     release_stale_destination_allocations);
   const size_t remap_target = requested_size > 0 ? compact_target : 0;
   const auto compactor_start = Clock::now();
-  const size_t remapped =
-      compactor.Compact(&all_blocks_, remap_target, compact_seq);
+  const size_t remapped = compactor.Compact(&all_blocks_, remap_target);
   const uint64_t compactor_us = ElapsedMicros(compactor_start, Clock::now());
   // Always rebuild: Phase 1 may have replaced FREE blocks with
   // UNMAPPED-FREE/FREE
@@ -699,21 +659,15 @@ bool VMMAutoGrowthBestFitAllocatorV2::CollectTensorParts(
       collected.clear();
     }
     if (cleared == 0 || !collect_ipc_parts()) {
-      VLOG(8) << "[VMM-IPC/export] VMM v2 best-fit failed to collect backing "
-              << "parts for active block ptr=" << block_it->ptr_
-              << " block_size=" << block_it->size_ << " target_ptr=" << ptr
-              << " target_size=" << size
-              << " pool=" << static_cast<int>(pool_type_);
+      VLOG(4) << "VMM V2 IPC backing lookup failed for " << ptr
+              << " size=" << size;
       return false;
     }
   }
   if (mark_ipc_exported) {
     if (!underlying_allocator_->MarkIPCExported(target_va, size)) {
-      VLOG(8) << "[VMM-IPC/export] VMM v2 best-fit failed to mark IPC exported "
-              << "for active block ptr=" << block_it->ptr_
-              << " block_size=" << block_it->size_ << " target_ptr=" << ptr
-              << " target_size=" << size
-              << " pool=" << static_cast<int>(pool_type_);
+      VLOG(4) << "VMM V2 IPC export marking failed for " << ptr
+              << " size=" << size;
       return false;
     }
     block_it->ipc_exported_ = true;

@@ -14,15 +14,29 @@
 
 #include "gtest/gtest.h"
 
+#include "paddle/common/flags.h"
+#include "paddle/phi/core/memory/allocation/cuda_allocator.h"
+#include "paddle/phi/core/memory/allocation/retry_allocator.h"
+#include "paddle/phi/core/memory/allocation/stat_allocator.h"
+#include "paddle/phi/core/memory/allocation/stream_safe_cuda_allocator.h"
 #include "paddle/phi/core/memory/allocation/vmm_auto_growth_best_fit_multi_pool_allocator_v2.h"
 
 #include "paddle/phi/core/memory/allocation/cuda_virtual_mem_allocator_v2.h"
+
+COMMON_DECLARE_int64(offload_retry_times);
+COMMON_DECLARE_bool(vmm_v2_remap_on_oom);
 
 namespace paddle {
 namespace memory {
 namespace allocation {
 
 namespace {
+
+__global__ void VMMStreamSafeBusyWait(uint64_t cycles) {
+  const auto start = clock64();
+  while (clock64() - start < cycles) {
+  }
+}
 
 std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2> CreatePoolAllocator(
     size_t handle_size, PoolType pool_type) {
@@ -66,6 +80,26 @@ class CountingV2AllocatorVisitor : public paddle::memory::AllocatorVisitor {
   int v2_pool_visits_{0};
 };
 
+class ScopedVMMRetryFlags {
+ public:
+  ScopedVMMRetryFlags(int64_t retry_times, bool remap_on_oom)
+      : retry_times_(FLAGS_offload_retry_times),
+        remap_on_oom_(FLAGS_vmm_v2_remap_on_oom) {
+    FLAGS_offload_retry_times = retry_times;
+    FLAGS_vmm_v2_remap_on_oom = remap_on_oom;
+  }
+
+  ~ScopedVMMRetryFlags() {
+    RegisterOOMCallback(nullptr);
+    FLAGS_offload_retry_times = retry_times_;
+    FLAGS_vmm_v2_remap_on_oom = remap_on_oom_;
+  }
+
+ private:
+  int64_t retry_times_;
+  bool remap_on_oom_;
+};
+
 }  // namespace
 
 TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2,
@@ -105,6 +139,15 @@ TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2, RouteSmallAndLarge) {
       *allocator->large_allocator(), large->ptr(), BlockType::kActive));
   EXPECT_FALSE(HasBlockWithPtr(
       *allocator->small_allocator(), large->ptr(), BlockType::kActive));
+
+  size_t total_free = 0;
+  size_t max_free = 0;
+  allocator->GetFreeBlockStats(&total_free, &max_free, 256UL);
+  EXPECT_GT(total_free, 0UL);
+  EXPECT_GT(max_free, 0UL);
+  allocator->GetFreeBlockStats(&total_free, &max_free, 0);
+  EXPECT_GT(total_free, 0UL);
+  EXPECT_GT(max_free, 0UL);
 }
 
 TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2, SetBlockRemapEventRoutesByPtr) {
@@ -153,13 +196,14 @@ TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2, CompactRoutesByRequestSize) {
 
   // Compact is only enabled for the large pool. Small requests keep using
   // normal mapped-free reuse/grow without remap overhead.
-  EXPECT_EQ(allocator->Compact(phi::GPUPlace(), 256UL), 0UL);
+  EXPECT_EQ(allocator->CompactForAllocation(phi::GPUPlace(), 256UL), 0UL);
   EXPECT_EQ(allocator->small_allocator()->all_blocks().front().type_,
             BlockType::kFree);
   EXPECT_EQ(allocator->large_allocator()->all_blocks().front().type_,
             BlockType::kFree);
 
-  EXPECT_EQ(allocator->Compact(phi::GPUPlace(), 4UL << 20), 2UL << 20);
+  EXPECT_EQ(allocator->CompactForAllocation(phi::GPUPlace(), 4UL << 20),
+            2UL << 20);
   EXPECT_EQ(allocator->small_allocator()->all_blocks().front().type_,
             BlockType::kFree);
   EXPECT_EQ(allocator->large_allocator()->all_blocks().front().type_,
@@ -187,7 +231,8 @@ TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2, CompactRoutesByRequestSize) {
 
   // Unbounded compact is an explicit maintenance path, but still only for the
   // large pool.
-  EXPECT_EQ(second_allocator->Compact(phi::GPUPlace(), 0), 2UL << 20);
+  EXPECT_EQ(second_allocator->CompactForAllocation(phi::GPUPlace(), 0),
+            2UL << 20);
   EXPECT_EQ(second_allocator->small_allocator()->all_blocks().front().type_,
             BlockType::kFree);
   EXPECT_EQ(second_allocator->large_allocator()->all_blocks().front().type_,
@@ -282,6 +327,96 @@ TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2,
 
   allocator->Accept(&large_visitor);
   ASSERT_TRUE(large_visitor.Found());
+
+  // A visitor that already found its allocation must remain a no-op when
+  // another pool is visited directly.
+  large_visitor.Visit(allocator->large_allocator().get());
+  ASSERT_TRUE(large_visitor.Found());
+}
+
+TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2,
+     StreamSafeRecordsRemapSafetyOnFree) {
+  const phi::GPUPlace place(0);
+  auto multi = std::shared_ptr<VMMAutoGrowthBestFitMultiPoolAllocatorV2>(
+      CreateAllocator().release());
+  auto stream_safe = std::make_shared<StreamSafeCUDAAllocator>(
+      multi, place, cudaStreamPerThread);
+  ScopedVMMRetryFlags flags(/*retry_times=*/0, /*remap_on_oom=*/true);
+
+  auto allocation = stream_safe->Allocate(2UL << 20);
+  ASSERT_NE(allocation, nullptr);
+  allocation.reset();
+  EXPECT_EQ(stream_safe->GetVMMV2Allocator(), multi.get());
+  EXPECT_GT(stream_safe->Compact(place), 0UL);
+
+  gpuStream_t stream;
+  ASSERT_EQ(cudaStreamCreate(&stream), cudaSuccess);
+  auto pending = stream_safe->Allocate(2UL << 20);
+  auto* stream_safe_allocation =
+      dynamic_cast<StreamSafeCUDAAllocation*>(pending.get());
+  ASSERT_NE(stream_safe_allocation, nullptr);
+  VMMStreamSafeBusyWait<<<1, 1, 0, stream>>>(500000000ULL);
+  ASSERT_EQ(cudaGetLastError(), cudaSuccess);
+  ASSERT_TRUE(stream_safe_allocation->RecordStream(stream));
+  pending.reset();
+  ASSERT_EQ(cudaStreamSynchronize(stream), cudaSuccess);
+  EXPECT_NO_THROW(stream_safe->Compact(place));
+  ASSERT_EQ(cudaStreamDestroy(stream), cudaSuccess);
+
+  auto retry = std::make_shared<RetryAllocator>(multi, place, 0);
+  auto retry_stream_safe = std::make_shared<StreamSafeCUDAAllocator>(
+      retry, place, cudaStreamPerThread);
+  EXPECT_EQ(retry_stream_safe->GetVMMV2Allocator(), multi.get());
+
+  auto stat = std::make_shared<StatAllocator>(multi);
+  auto stat_stream_safe = std::make_shared<StreamSafeCUDAAllocator>(
+      stat, place, cudaStreamPerThread);
+  EXPECT_EQ(stat_stream_safe->GetVMMV2Allocator(), multi.get());
+}
+
+TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2,
+     StreamSafeOOMDispatchesByAllocatorType) {
+  const phi::GPUPlace place(0);
+  constexpr size_t kImpossibleSize = 1ULL << 50;
+
+  {
+    auto multi = std::shared_ptr<VMMAutoGrowthBestFitMultiPoolAllocatorV2>(
+        CreateAllocator().release());
+    auto stream_safe = std::make_shared<StreamSafeCUDAAllocator>(
+        multi, place, cudaStreamPerThread);
+    ScopedVMMRetryFlags flags(/*retry_times=*/0, /*remap_on_oom=*/true);
+    EXPECT_THROW(stream_safe->Allocate(kImpossibleSize),
+                 common::enforce::EnforceNotMet);
+  }
+  {
+    auto multi = std::shared_ptr<VMMAutoGrowthBestFitMultiPoolAllocatorV2>(
+        CreateAllocator().release());
+    auto stream_safe = std::make_shared<StreamSafeCUDAAllocator>(
+        multi, place, cudaStreamPerThread);
+    ScopedVMMRetryFlags flags(/*retry_times=*/0, /*remap_on_oom=*/false);
+    EXPECT_THROW(stream_safe->Allocate(kImpossibleSize),
+                 common::enforce::EnforceNotMet);
+  }
+  {
+    auto cuda_allocator = std::make_shared<CUDAAllocator>(place);
+    auto stream_safe = std::make_shared<StreamSafeCUDAAllocator>(
+        cuda_allocator, place, cudaStreamPerThread);
+    EXPECT_THROW(stream_safe->Allocate(kImpossibleSize), BadAlloc);
+  }
+}
+
+TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2,
+     RetryAllocatorDispatchesPostOffloadCompact) {
+  const phi::GPUPlace place(0);
+  auto multi = std::shared_ptr<VMMAutoGrowthBestFitMultiPoolAllocatorV2>(
+      CreateAllocator().release());
+  auto stream_safe = std::make_shared<StreamSafeCUDAAllocator>(
+      multi, place, cudaStreamPerThread);
+  RetryAllocator retry(stream_safe, place, 0);
+  ScopedVMMRetryFlags flags(/*retry_times=*/1, /*remap_on_oom=*/true);
+  RegisterOOMCallback([](Place, size_t size) { return size; });
+
+  EXPECT_THROW(retry.Allocate(1ULL << 50), common::enforce::EnforceNotMet);
 }
 
 }  // namespace allocation

@@ -139,14 +139,6 @@ class RemapTransaction {
     std::vector<VMMBackingMap::MappedPage> source_pages;
     std::vector<PlannedSourceBlock> source_blocks;
   };
-  struct PreScanResult {
-    size_t free_range_count{0};
-    size_t unmapped_free_range_count{0};
-    size_t mapped_page_count{0};
-    size_t target_page_count{0};
-    bool source_ok{true};
-    bool target_ok{true};
-  };
   struct CompactResult {
     SourceCollectionStats source_stats;
     size_t remapped_handle_count{0};
@@ -176,10 +168,6 @@ class RemapTransaction {
             std::move(release_stale_destination_allocations)) {}
   ~RemapTransaction();
 
-  PreScanResult PreparePhase1Diagnostics(BlockList* blocks,
-                                         size_t requested_size,
-                                         const char* source_context,
-                                         const char* target_context);
   const VMMBackingMap::CompactCandidates& candidates() const {
     return candidates_;
   }

@@ -63,12 +63,12 @@ void MarkVMMV2RemapPendingStream(StreamSafeCUDAAllocator* allocator,
   if (allocator->GetVMMV2Allocator() == nullptr) {
     return;
   }
-  const bool ok = allocation->SetVMMV2RemapEvent();
-  if (!ok) {
-    VLOG(0) << "VMM V2 failed to mark remap pending stream for allocation "
-            << allocation->ptr()
-            << "; compact/remap safety may be incomplete for this block";
-  }
+  PADDLE_ENFORCE_EQ(
+      allocation->SetVMMV2RemapEvent(),
+      true,
+      common::errors::PreconditionNotMet(
+          "VMM V2 allocation %p cannot record its remap-safety stream.",
+          allocation->ptr()));
 }
 #else
 VMMAutoGrowthBestFitMultiPoolAllocatorV2* GetVMMV2MultiPoolAllocator(
@@ -313,22 +313,19 @@ phi::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
             second_bad_alloc.what()));
       }
     } else {
-      {
-        std::lock_guard<SpinLock> lock_guard(allocator_map_lock_);
-        for (auto* alloc : allocator_map_[place_]) {
-          alloc->ProcessUnfreedAllocations();
-        }
+      std::unique_lock<SpinLock> allocator_map_guard(allocator_map_lock_);
+      for (auto* alloc : allocator_map_[place_]) {
+        alloc->ProcessUnfreedAllocations();
       }
+      allocator_map_guard.unlock();
       try {
         underlying_allocation = underlying_allocator_->Allocate(size);
       } catch (const BadAlloc& second_bad_alloc) {
         const std::string second_failure = second_bad_alloc.what();
         if (FLAGS_vmm_v2_remap_on_oom) {
-          size_t compacted = CompactImpl(place_, size);
-          VLOG(3) << "OOM dispatch: requested=" << size << " compact returned "
-                  << compacted << " bytes";
+          size_t compacted =
+              vmm_v2_allocator_->CompactForAllocation(place_, size);
           if (compacted > 0) {
-            VLOG(3) << "OOM retry: compact returned " << compacted << " bytes";
             try {
               underlying_allocation = underlying_allocator_->Allocate(size);
             } catch (const BadAlloc& final_bad_alloc) {
@@ -414,8 +411,7 @@ uint64_t StreamSafeCUDAAllocator::ReleaseImpl(const Place& place) {
   return released_size;
 }
 
-size_t StreamSafeCUDAAllocator::CompactImpl(const Place& place,
-                                            size_t requested_size) {
+size_t StreamSafeCUDAAllocator::CompactImpl(const Place& place) {
   std::lock_guard<SpinLock> lock_guard(allocator_map_lock_);
   std::vector<StreamSafeCUDAAllocator*>& allocators = allocator_map_[place];
 
@@ -428,7 +424,7 @@ size_t StreamSafeCUDAAllocator::CompactImpl(const Place& place,
     allocator->ProcessUnfreedAllocations();
   }
 
-  return underlying_allocator_->Compact(place_, requested_size);
+  return underlying_allocator_->Compact(place_);
 }
 
 void StreamSafeCUDAAllocator::ProcessUnfreedAllocations() {

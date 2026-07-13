@@ -21,11 +21,16 @@
 #include "paddle/common/flags.h"
 #include "paddle/phi/core/memory/allocation/best_fit_allocator.h"
 #include "paddle/phi/core/memory/allocation/cpu_allocator.h"
+#include "paddle/phi/core/memory/allocation/stat_allocator.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/core/memory/allocation/cuda_allocator.h"
 #endif
 #if defined(PADDLE_WITH_CUDA)
+#include "glog/logging.h"
+#include "paddle/phi/core/memory/allocation/cuda_virtual_mem_allocator_v2.h"
 #include "paddle/phi/core/memory/allocation/stream_safe_cuda_allocator.h"
+#include "paddle/phi/core/memory/allocation/vmm_auto_growth_best_fit_allocator_v2.h"
+#include "paddle/phi/core/memory/allocation/vmm_auto_growth_best_fit_multi_pool_allocator_v2.h"
 #endif
 
 COMMON_DECLARE_int64(offload_retry_times);
@@ -109,14 +114,6 @@ class DummyAllocator : public Allocator {
   void FreeImpl(phi::Allocation *) override {}
 };
 
-class LegacyCompactAllocator : public DummyAllocator {
- protected:
-  size_t CompactImpl(const Place &place) override {
-    EXPECT_TRUE(phi::is_cpu_place(place));
-    return 123;
-  }
-};
-
 class OffloadRetryNoCompactAllocator : public Allocator {
  public:
   explicit OffloadRetryNoCompactAllocator(size_t storage_size)
@@ -144,9 +141,8 @@ class OffloadRetryNoCompactAllocator : public Allocator {
 
   void FreeImpl(phi::Allocation *allocation) override { delete allocation; }
 
-  size_t CompactImpl(const Place &place, size_t requested_size) override {
+  size_t CompactImpl(const Place &place) override {
     (void)place;
-    (void)requested_size;
     ++compact_count_;
     ADD_FAILURE() << "non-VMM allocator CompactImpl should not be called";
     return 0;
@@ -179,10 +175,32 @@ class ScopedRetryAllocatorFlags {
   bool old_remap_on_oom_;
 };
 
-TEST(Allocator, CompactWithRequestedSizeFallsBackToLegacyImpl) {
-  LegacyCompactAllocator allocator;
-  EXPECT_EQ(allocator.Compact(phi::CPUPlace(), 456), 123UL);
+#if defined(PADDLE_WITH_CUDA)
+class ScopedRetryVLogLevel {
+ public:
+  explicit ScopedRetryVLogLevel(int level) : old_level_(FLAGS_v) {
+    FLAGS_v = level;
+  }
+  ~ScopedRetryVLogLevel() { FLAGS_v = old_level_; }
+
+ private:
+  int old_level_;
+};
+
+std::shared_ptr<VMMAutoGrowthBestFitMultiPoolAllocatorV2>
+CreateRetryTestVMMAllocator(const phi::GPUPlace &place) {
+  auto small_vmm = std::make_shared<CUDAVirtualMemAllocatorV2>(
+      place, 2UL << 20, PoolType::kSmall);
+  auto large_vmm = std::make_shared<CUDAVirtualMemAllocatorV2>(
+      place, 16UL << 20, PoolType::kLarge);
+  auto small = std::make_shared<VMMAutoGrowthBestFitAllocatorV2>(
+      small_vmm, 256, place, PoolType::kSmall);
+  auto large = std::make_shared<VMMAutoGrowthBestFitAllocatorV2>(
+      large_vmm, 256, place, PoolType::kLarge);
+  return std::make_shared<VMMAutoGrowthBestFitMultiPoolAllocatorV2>(
+      small, large, 2UL << 20, place);
 }
+#endif
 
 TEST(RetryAllocator, OffloadRetryDoesNotCompactNonVMMAllocator) {
   auto raw_allocator = std::make_shared<OffloadRetryNoCompactAllocator>(256);
@@ -207,6 +225,49 @@ TEST(RetryAllocator, OffloadRetryDoesNotCompactNonVMMAllocator) {
   EXPECT_EQ(raw_allocator->allocate_count(), 3UL);
   EXPECT_EQ(raw_allocator->compact_count(), 0UL);
 }
+
+#if defined(PADDLE_WITH_CUDA)
+TEST(RetryAllocator, OffloadRetryDispatchesVMMCompact) {
+  ScopedRetryVLogLevel vlog_guard(4);
+  const phi::GPUPlace place(0);
+  auto multi = CreateRetryTestVMMAllocator(place);
+  auto stream_safe = std::make_shared<StreamSafeCUDAAllocator>(
+      multi, place, cudaStreamPerThread);
+  RetryAllocator allocator(stream_safe, place, 0);
+
+  ScopedRetryAllocatorFlags flags_guard(/*retry_times=*/1,
+                                        /*remap_on_oom=*/true);
+  RegisterOOMCallback([](Place, size_t size) { return size; });
+
+  EXPECT_THROW(allocator.Allocate(1ULL << 50), BadAlloc);
+}
+
+TEST(RetryAllocator, StreamSafeVMMOOMWithoutRemap) {
+  ScopedRetryVLogLevel vlog_guard(4);
+  const phi::GPUPlace place(0);
+  auto multi = CreateRetryTestVMMAllocator(place);
+  auto stream_safe = std::make_shared<StreamSafeCUDAAllocator>(
+      multi, place, cudaStreamPerThread);
+  ScopedRetryAllocatorFlags flags_guard(/*retry_times=*/0,
+                                        /*remap_on_oom=*/false);
+
+  EXPECT_THROW(stream_safe->Allocate(1ULL << 50), BadAlloc);
+}
+
+TEST(RetryAllocator, StreamSafeFindsWrappedVMMAllocator) {
+  const phi::GPUPlace place(0);
+  auto multi = CreateRetryTestVMMAllocator(place);
+  auto retry = std::make_shared<RetryAllocator>(multi, place, 0);
+  auto retry_stream_safe = std::make_shared<StreamSafeCUDAAllocator>(
+      retry, place, cudaStreamPerThread);
+  EXPECT_EQ(retry_stream_safe->GetVMMV2Allocator(), multi.get());
+
+  auto stat = std::make_shared<StatAllocator>(multi);
+  auto stat_stream_safe = std::make_shared<StreamSafeCUDAAllocator>(
+      stat, place, cudaStreamPerThread);
+  EXPECT_EQ(stat_stream_safe->GetVMMV2Allocator(), multi.get());
+}
+#endif
 
 TEST(RetryAllocator, RetryAllocatorLastAllocFailure) {
   size_t retry_ms = 10;

@@ -18,6 +18,7 @@
 #include <chrono>
 #include <limits>
 #include <list>
+#include <memory>
 #include <unordered_map>
 #include <utility>
 
@@ -53,18 +54,6 @@ std::vector<std::pair<VMMDevicePtr, size_t>> CollectFreeRanges(
   std::vector<std::pair<VMMDevicePtr, size_t>> ranges;
   for (const auto& block : blocks) {
     if (!block.IsMappedFree()) {
-      continue;
-    }
-    ranges.emplace_back(block.va_range());
-  }
-  return ranges;
-}
-
-std::vector<std::pair<VMMDevicePtr, size_t>> CollectUnmappedFreeRanges(
-    const std::list<BlockV2>& blocks) {
-  std::vector<std::pair<VMMDevicePtr, size_t>> ranges;
-  for (const auto& block : blocks) {
-    if (!block.IsUnmappedFree()) {
       continue;
     }
     ranges.emplace_back(block.va_range());
@@ -263,27 +252,6 @@ RemapTransaction::~RemapTransaction() {
   }
 }
 
-RemapTransaction::PreScanResult RemapTransaction::PreparePhase1Diagnostics(
-    BlockList* blocks,
-    size_t requested_size,
-    const char* source_context,
-    const char* target_context) {
-  PreScanResult result;
-  auto free_ranges = CollectFreeRanges(*blocks);
-  auto unmapped_free_ranges = CollectUnmappedFreeRanges(*blocks);
-  result.free_range_count = free_ranges.size();
-  result.unmapped_free_range_count = unmapped_free_ranges.size();
-  candidates_ = vmm_allocator_->CollectCompactCandidates(
-      free_ranges, unmapped_free_ranges, requested_size);
-  result.mapped_page_count = candidates_.source_pages.size();
-  result.target_page_count = candidates_.target_pages.size();
-  result.source_ok = vmm_allocator_->ValidateMappedPages(
-      candidates_.source_pages, source_context);
-  result.target_ok = vmm_allocator_->ValidateUnmappedPages(
-      candidates_.target_pages, target_context);
-  return result;
-}
-
 RemapTransaction::MaterializedRange RemapTransaction::MaterializeMappedRange(
     VMMDevicePtr dst,
     const std::vector<VMMAllocHandle>& handles,
@@ -291,41 +259,15 @@ RemapTransaction::MaterializedRange RemapTransaction::MaterializeMappedRange(
     size_t count,
     PoolType pool_type) {
   CUDAVirtualMemAllocatorV2::StagedRemapDestination staged;
-  try {
-    staged = vmm_allocator_->CreateStagedRemapDestination(
-        dst, handles, start, count, pool_type);
-  } catch (const std::exception& e) {
-    VLOG(3) << "VMM V2 remap transaction: materialize mapped range failed, "
-               "dst="
-            << reinterpret_cast<void*>(dst) << " start=" << start
-            << " count=" << count << " total_handles=" << handles.size()
-            << " error=" << e.what();
-    throw;
-  } catch (...) {
-    VLOG(3) << "VMM V2 remap transaction: materialize mapped range failed "
-               "with unknown exception, dst="
-            << reinterpret_cast<void*>(dst) << " start=" << start
-            << " count=" << count << " total_handles=" << handles.size();
-    throw;
-  }
-  try {
-    StageSyntheticAllocation(staged.allocation);
-  } catch (const std::exception& e) {
-    VLOG(3) << "VMM V2 remap transaction: failed to stage synthetic "
-               "allocation for rollback, destroying it. dst="
-            << reinterpret_cast<void*>(dst) << " bytes=" << staged.bytes
-            << " error=" << e.what();
-    vmm_allocator_->DestroyStagedSyntheticAllocation(staged.allocation);
-    staged.allocation = nullptr;
-    throw;
-  } catch (...) {
-    VLOG(3) << "VMM V2 remap transaction: unknown failure while staging "
-               "synthetic allocation for rollback, destroying it. dst="
-            << reinterpret_cast<void*>(dst) << " bytes=" << staged.bytes;
-    vmm_allocator_->DestroyStagedSyntheticAllocation(staged.allocation);
-    staged.allocation = nullptr;
-    throw;
-  }
+  staged = vmm_allocator_->CreateStagedRemapDestination(
+      dst, handles, start, count, pool_type);
+  auto destroy_staged = [this](Allocation* allocation) {
+    vmm_allocator_->DestroyStagedSyntheticAllocation(allocation);
+  };
+  std::unique_ptr<Allocation, decltype(destroy_staged)> staged_guard(
+      staged.allocation, destroy_staged);
+  StageSyntheticAllocation(staged.allocation);
+  staged_guard.release();
   MaterializedRange range;
   range.bytes = staged.bytes;
   range.free_block = std::move(staged.block);
@@ -628,38 +570,26 @@ RemapTransaction::DestinationPlan RemapTransaction::SelectDestinationPlan(
     return plan;
   }
   if (tail_driver_va_usable) {
-    VLOG(3) << "VMM V2 remap transaction: " << log_prefix
-            << " tail driver VA is usable but synthetic preparation rejected, "
-            << "trying unmapped-free destination";
+    VLOG(4) << "VMM V2 " << log_prefix
+            << " tail destination rejected; trying an unmapped range";
   }
 
   auto unmapped_free_plan = PlanUnmappedFreeDestinations(blocks, handle_count);
   if (unmapped_free_plan.single_it != blocks->end()) {
     BlockIterator unmapped_free_it = unmapped_free_plan.single_it;
     const VMMDevicePtr unmapped_free_va = unmapped_free_it->begin_va();
-    VLOG(10) << "VMM remap compact using " << log_prefix
-             << " unmapped-free path, dst_va="
-             << reinterpret_cast<void*>(unmapped_free_va)
-             << " unmapped_free_size=" << unmapped_free_it->size()
-             << " bytes=" << total_remapped;
     plan.kind = DestinationPlanKind::kSingleUnmappedFree;
     plan.placements.push_back(DestinationPlacement::UnmappedFree(
         unmapped_free_it, unmapped_free_va, 0, handle_count));
     return plan;
   }
 
-  VLOG(3) << "VMM V2 remap transaction: " << log_prefix
-          << " tail unavailable and no single unmapped-free block >= "
-          << total_remapped << " bytes, trying scatter";
   plan.kind = DestinationPlanKind::kScatterUnmappedFree;
   plan.placements = std::move(unmapped_free_plan.scatter_placements);
   if (unmapped_free_plan.scatter_handles == handle_count) {
     return plan;
   }
   if (unmapped_free_plan.total_capacity < total_remapped) {
-    VLOG(3) << "VMM V2 remap transaction: " << log_prefix
-            << " unmapped-free capacity " << unmapped_free_plan.total_capacity
-            << " < total_remapped " << total_remapped;
     plan.kind = DestinationPlanKind::kNone;
     plan.failure = DestinationPlanFailure::kInsufficientUnmappedFreeCapacity;
     return plan;
@@ -669,9 +599,8 @@ RemapTransaction::DestinationPlan RemapTransaction::SelectDestinationPlan(
   for (const auto& p : plan.placements) {
     planned_handles += p.count;
   }
-  VLOG(3) << "VMM V2 remap transaction " << log_prefix << " scatter: placed "
-          << planned_handles << " of " << handle_count
-          << " handles despite precheck";
+  VLOG(4) << "VMM V2 " << log_prefix << " scatter planned " << planned_handles
+          << "/" << handle_count << " handles";
   plan.kind = DestinationPlanKind::kNone;
   plan.failure = DestinationPlanFailure::kScatterPlanFailed;
   return plan;
@@ -1245,10 +1174,22 @@ void RemapTransaction::Commit() {
       auto* allocation = pending_synthetic_allocations_.back();
       pending_synthetic_allocations_.pop_back();
       try {
+        void* allocation_ptr = allocation->ptr();
+        const size_t allocation_size = allocation->size();
         auto committed_allocation =
             vmm_allocator_->AdoptCommittedSyntheticAllocation(allocation);
         allocation = nullptr;
         commit_synthetic_allocation_(std::move(committed_allocation));
+        PADDLE_ENFORCE_EQ(
+            vmm_allocator_->ClearRemapDestinationOwnership(
+                reinterpret_cast<VMMDevicePtr>(allocation_ptr),
+                allocation_size),
+            true,
+            common::errors::PreconditionNotMet(
+                "Failed to clear committed VMM remap destination ownership "
+                "at %p for %zu bytes.",
+                allocation_ptr,
+                allocation_size));
       } catch (...) {
         if (allocation != nullptr) {
           vmm_allocator_->DestroyStagedSyntheticAllocation(allocation);

@@ -19,6 +19,7 @@
 
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/phi/core/memory/allocation/stream_safe_cuda_allocator.h"
+#include "paddle/phi/core/memory/allocation/vmm_auto_growth_best_fit_multi_pool_allocator_v2.h"
 #endif
 
 COMMON_DECLARE_int64(offload_retry_times);
@@ -28,18 +29,20 @@ namespace paddle::memory::allocation {
 
 namespace {
 
-bool CanTryVMMV2Remap(const std::shared_ptr<Allocator>& allocator) {
+VMMAutoGrowthBestFitMultiPoolAllocatorV2* GetVMMV2Allocator(
+    const std::shared_ptr<Allocator>& allocator) {
 #if defined(PADDLE_WITH_CUDA)
   if (!FLAGS_vmm_v2_remap_on_oom) {
-    return false;
+    return nullptr;
   }
   auto* stream_safe_allocator =
       dynamic_cast<StreamSafeCUDAAllocator*>(allocator.get());
-  return stream_safe_allocator != nullptr &&
-         stream_safe_allocator->GetVMMV2Allocator() != nullptr;
+  return stream_safe_allocator == nullptr
+             ? nullptr
+             : stream_safe_allocator->GetVMMV2Allocator();
 #else
   (void)allocator;
-  return false;
+  return nullptr;
 #endif
 }
 
@@ -86,23 +89,16 @@ phi::Allocation* RetryAllocator::AllocateImpl(size_t size) {
     return underlying_allocator_->Allocate(size).release();
   };
   auto try_remap = [&, this]() -> bool {
-    if (!CanTryVMMV2Remap(underlying_allocator_)) {
+#if defined(PADDLE_WITH_CUDA)
+    auto* vmm_allocator = GetVMMV2Allocator(underlying_allocator_);
+    if (vmm_allocator == nullptr) {
       return false;
     }
-    try {
-      const size_t remapped = underlying_allocator_->Compact(place_, size);
-      VLOG(4) << "RetryAllocator: VMM V2 compact returned " << remapped
-              << " bytes";
-      return remapped > 0;
-    } catch (const std::exception& e) {
-      VLOG(4) << "VMM V2 compact on " << place_
-              << " failed with exception: " << e.what();
-      return false;
-    } catch (...) {
-      VLOG(4) << "VMM V2 compact on " << place_
-              << " failed with unknown exception.";
-      return false;
-    }
+    const size_t remapped = vmm_allocator->CompactForAllocation(place_, size);
+    return remapped > 0;
+#else
+    return false;
+#endif
   };
   // In fact, we can unify the code of allocation success and failure
   // But it would add lock even when allocation success at the first time
@@ -116,8 +112,6 @@ phi::Allocation* RetryAllocator::AllocateImpl(size_t size) {
       try {
         return alloc_func();
       } catch (BadAlloc&) {
-        VLOG(10) << "Allocation " << size << " on " << place_
-                 << " failed, try offload on retry " << i;
         has_offloaded = (g_oom_callback(place_, size) > 0);
 
         if (!has_offloaded) {
@@ -134,10 +128,7 @@ phi::Allocation* RetryAllocator::AllocateImpl(size_t size) {
         }
 
         if (try_remap()) {
-          try {
-            return alloc_func();
-          } catch (BadAlloc&) {
-          }
+          return alloc_func();
         }
       }
     }
@@ -166,16 +157,12 @@ phi::Allocation* RetryAllocator::AllocateImpl(size_t size) {
           VLOG(10) << "Allocation failed when retrying " << retry_time
                    << " times when allocating " << size
                    << " bytes. Wait still.";
-        } catch (...) {
-          throw;
         }
       }
     }
     VLOG(10) << "Allocation failed because of timeout when allocating " << size
              << " bytes.";
     return alloc_func();  // If timeout, try last allocation request.
-  } catch (...) {
-    throw;
   }
 }
 

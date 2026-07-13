@@ -778,14 +778,6 @@ bool VMMBackingMap::ValidateMappedPages(
       ok = false;
       continue;
     }
-    if (count != 1) {
-      VLOG(3) << "VMM V2 BackingMap invalid mapped page count in " << context
-              << ": va=" << reinterpret_cast<void*>(mapped_page.va)
-              << " count=" << count;
-      ok = false;
-      continue;
-    }
-
     const auto& page = pages_[start];
     if (!page.mapped) {
       VLOG(3) << "VMM V2 BackingMap mapped page became unmapped in " << context
@@ -827,14 +819,6 @@ bool VMMBackingMap::ValidateUnmappedPages(
       ok = false;
       continue;
     }
-    if (count != 1) {
-      VLOG(3) << "VMM V2 BackingMap invalid unmapped page count in " << context
-              << ": va=" << reinterpret_cast<void*>(unmapped_page.va)
-              << " count=" << count;
-      ok = false;
-      continue;
-    }
-
     const auto& page = pages_[start];
     if (page.mapped) {
       VLOG(3) << "VMM V2 BackingMap unmapped page became mapped in " << context

@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <stdexcept>
+
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 
@@ -20,6 +22,7 @@
 #undef private
 
 #include "paddle/phi/core/memory/allocation/cuda_virtual_mem_allocator_v2.h"
+#include "paddle/phi/core/memory/allocation/free_block_remap_compactor.h"
 #include "paddle/phi/core/memory/allocation/remap_transaction.h"
 
 namespace paddle {
@@ -135,6 +138,29 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, ReuseSmallestSufficientFreeBlock) {
   EXPECT_EQ(free_block_count, 1UL);
 }
 
+TEST(VMMAutoGrowthBestFitAllocatorV2, RejectsInvalidInternalOperations) {
+  ScopedVLogLevel vlog_guard(6);
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+  auto allocation = allocator.Allocate(underlying->handle_size());
+  ASSERT_NE(allocation, nullptr);
+
+  EXPECT_FALSE(allocator.SetBlockRemapEvent(
+      allocator.all_blocks_.end(), cudaStreamPerThread, nullptr));
+  ASSERT_NE(allocator.underlying_allocations_.begin(),
+            allocator.underlying_allocations_.end());
+  const auto& underlying_allocation =
+      *allocator.underlying_allocations_.begin();
+  EXPECT_FALSE(allocator.AllocationOwnedByRemapDestination(
+      underlying_allocation, allocation->ptr(), allocation->size()));
+
+  uint64_t released = 0;
+  auto underlying_it = allocator.underlying_allocations_.begin();
+  EXPECT_FALSE(allocator.TryReleaseIdleUnderlying(&underlying_it, &released));
+  EXPECT_EQ(released, 0UL);
+}
+
 TEST(VMMAutoGrowthBestFitAllocatorV2, SplitGrowBlockAcrossTwoHandles) {
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
@@ -214,6 +240,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, SplitFreeBlockAfterRemapEvent) {
 }
 
 TEST(VMMAutoGrowthBestFitAllocatorV2, MergeFreeBlocksWithDifferentStreams) {
+  ScopedVLogLevel vlog_guard(4);
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
       underlying, 256, phi::GPUPlace(), PoolType::kLarge);
@@ -227,6 +254,9 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, MergeFreeBlocksWithDifferentStreams) {
   gpuStream_t second_stream;
   ASSERT_EQ(cudaStreamCreate(&first_stream), cudaSuccess);
   ASSERT_EQ(cudaStreamCreate(&second_stream), cudaSuccess);
+  BusyWaitKernel<<<1, 1, 0, first_stream>>>(500000000ULL);
+  BusyWaitKernel<<<1, 1, 0, second_stream>>>(500000000ULL);
+  ASSERT_EQ(cudaGetLastError(), cudaSuccess);
 
   auto* first_remap = dynamic_cast<VMMRemapEventAllocation*>(first.get());
   auto* second_remap = dynamic_cast<VMMRemapEventAllocation*>(second.get());
@@ -244,6 +274,8 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, MergeFreeBlocksWithDifferentStreams) {
   EXPECT_EQ(merged.size_, 2UL * underlying->handle_size());
   EXPECT_EQ(merged.remap_pending_states_.size(), 1UL);
 
+  EXPECT_EQ(allocator.Compact(phi::GPUPlace()), 0UL);
+
   ASSERT_EQ(cudaStreamSynchronize(first_stream), cudaSuccess);
   ASSERT_EQ(cudaStreamSynchronize(second_stream), cudaSuccess);
   EXPECT_EQ(allocator.Compact(phi::GPUPlace()),
@@ -251,6 +283,35 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, MergeFreeBlocksWithDifferentStreams) {
 
   ASSERT_EQ(cudaStreamDestroy(first_stream), cudaSuccess);
   ASSERT_EQ(cudaStreamDestroy(second_stream), cudaSuccess);
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2, MergeCopiesRemapSafetyFromNextBlock) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+
+  auto first = allocator.Allocate(underlying->handle_size());
+  auto second = allocator.Allocate(underlying->handle_size());
+  ASSERT_NE(first, nullptr);
+  ASSERT_NE(second, nullptr);
+
+  gpuStream_t stream;
+  ASSERT_EQ(cudaStreamCreate(&stream), cudaSuccess);
+  BusyWaitKernel<<<1, 1, 0, stream>>>(500000000ULL);
+  ASSERT_EQ(cudaGetLastError(), cudaSuccess);
+  auto* remap_allocation = dynamic_cast<VMMRemapEventAllocation*>(second.get());
+  ASSERT_NE(remap_allocation, nullptr);
+  ASSERT_TRUE(remap_allocation->SetVMMRemapEvent(stream, nullptr));
+  first.reset();
+  second.reset();
+
+  ASSERT_EQ(allocator.all_blocks().size(), 1UL);
+  const auto& merged = allocator.all_blocks().front();
+  EXPECT_EQ(merged.size_, 2UL * underlying->handle_size());
+  EXPECT_TRUE(merged.owning_stream_ != nullptr ||
+              !merged.remap_pending_states_.empty());
+  ASSERT_EQ(cudaStreamSynchronize(stream), cudaSuccess);
+  ASSERT_EQ(cudaStreamDestroy(stream), cudaSuccess);
 }
 
 TEST(VMMAutoGrowthBestFitAllocatorV2, RestoreUnmappedRangeToMappedFreeBlock) {
@@ -701,8 +762,8 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, IPCExportKeepsReuse) {
   EXPECT_TRUE(underlying->HasIPCExportedRange(
       reinterpret_cast<VMMDevicePtr>(ptr), underlying->handle_size() * 2));
 
-  auto compacted =
-      allocator.Compact(phi::GPUPlace(), underlying->handle_size() * 2);
+  auto compacted = allocator.CompactForAllocation(
+      phi::GPUPlace(), underlying->handle_size() * 2);
   EXPECT_EQ(compacted, 0UL);
 
   auto next = allocator.Allocate(underlying->handle_size() * 2);
@@ -776,6 +837,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, IPCPinAllowsNeighborRelease) {
 }
 
 TEST(VMMAutoGrowthBestFitAllocatorV2, IPCPinAllowsNeighborCompact) {
+  ScopedVLogLevel vlog_guard(4);
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
       underlying, 256, phi::GPUPlace(), PoolType::kLarge);
@@ -806,8 +868,8 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, IPCPinAllowsNeighborCompact) {
   ExpectIndexedFreeStats(
       &allocator, underlying->handle_size() * 2, underlying->handle_size() * 2);
 
-  auto compacted =
-      allocator.Compact(phi::GPUPlace(), underlying->handle_size() * 3);
+  auto compacted = allocator.CompactForAllocation(
+      phi::GPUPlace(), underlying->handle_size() * 3);
   EXPECT_EQ(compacted, underlying->handle_size());
 
   const auto* exported_block = FindBlockByPtr(allocator, exported_ptr);
@@ -824,6 +886,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, IPCPinAllowsNeighborCompact) {
 }
 
 TEST(VMMAutoGrowthBestFitAllocatorV2, CompactMergesUnmappedSources) {
+  ScopedVLogLevel vlog_guard(4);
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
       underlying, 256, phi::GPUPlace(), PoolType::kLarge);
@@ -871,6 +934,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, CompactMergesUnmappedSources) {
 }
 
 TEST(VMMAutoGrowthBestFitAllocatorV2, CompactSkipsPartialFreeHandle) {
+  ScopedVLogLevel vlog_guard(4);
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
       underlying, 256, phi::GPUPlace(), PoolType::kLarge);
@@ -893,6 +957,33 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, CompactSkipsPartialFreeHandle) {
   ExpectBlockView(*it);
 }
 
+TEST(VMMAutoGrowthBestFitAllocatorV2, CompactRollsBackCommitException) {
+  ScopedVLogLevel vlog_guard(4);
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+  const size_t handle_size = underlying->handle_size();
+
+  auto first = allocator.Allocate(handle_size);
+  auto middle = allocator.Allocate(handle_size);
+  auto last = allocator.Allocate(handle_size);
+  ASSERT_NE(first, nullptr);
+  ASSERT_NE(middle, nullptr);
+  ASSERT_NE(last, nullptr);
+  MarkRemapSafeForTest(middle.get());
+  middle.reset();
+
+  FreeBlockRemapCompactor compactor(
+      underlying, PoolType::kLarge, [](DecoratedAllocationPtr) {
+        throw std::runtime_error("injected compact commit failure");
+      });
+  EXPECT_THROW(compactor.Compact(&allocator.all_blocks_, handle_size),
+               std::runtime_error);
+
+  auto reused = allocator.Allocate(handle_size);
+  ASSERT_NE(reused, nullptr);
+}
+
 TEST(VMMAutoGrowthBestFitAllocatorV2, BoundedCompactSkipsLargeFreeBlock) {
   ScopedVLogLevel vlog_guard(4);
   auto underlying = CreateUnderlyingAllocator();
@@ -904,7 +995,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, BoundedCompactSkipsLargeFreeBlock) {
   ASSERT_NE(allocation, nullptr);
   allocation.reset();
 
-  EXPECT_EQ(allocator.Compact(phi::GPUPlace(), handle_size), 0UL);
+  EXPECT_EQ(allocator.CompactForAllocation(phi::GPUPlace(), handle_size), 0UL);
   ASSERT_EQ(allocator.all_blocks().size(), 1UL);
   EXPECT_TRUE(allocator.all_blocks().front().IsMappedFree());
 }
@@ -922,7 +1013,8 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, BoundedCompactSkipsTailOnlyFree) {
   ASSERT_NE(tail, nullptr);
   tail.reset();
 
-  EXPECT_EQ(allocator.Compact(phi::GPUPlace(), handle_size + 1UL), 0UL);
+  EXPECT_EQ(allocator.CompactForAllocation(phi::GPUPlace(), handle_size + 1UL),
+            0UL);
   ASSERT_EQ(allocator.all_blocks().size(), 2UL);
   EXPECT_TRUE(allocator.all_blocks().back().IsMappedFree());
   EXPECT_EQ(allocator.all_blocks().back().size_, handle_size);
@@ -951,7 +1043,8 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, BoundedCompactSkipsInsufficientSource) {
   const size_t block_count_before = allocator.all_blocks().size();
   const size_t requested_size = underlying->handle_size() + 1UL;
 
-  const size_t remapped = allocator.Compact(phi::GPUPlace(), requested_size);
+  const size_t remapped =
+      allocator.CompactForAllocation(phi::GPUPlace(), requested_size);
   EXPECT_EQ(remapped, 0UL);
   EXPECT_EQ(allocator.all_blocks().size(), block_count_before);
   for (const auto& block : allocator.all_blocks()) {
@@ -977,7 +1070,8 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, BoundedCompactUsesDriverTopUp) {
   movable.reset();
 
   const size_t requested_size = 3UL * handle_size;
-  const size_t remapped = allocator.Compact(phi::GPUPlace(), requested_size);
+  const size_t remapped =
+      allocator.CompactForAllocation(phi::GPUPlace(), requested_size);
   EXPECT_EQ(remapped, handle_size);
 
   bool found_old_source = false;
@@ -1024,7 +1118,8 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, BoundedCompactCountsTailFree) {
   MarkRemapSafeForTest(movable.get());
   movable.reset();
   const size_t requested_size = 2UL * handle_size + 1UL;
-  const size_t remapped = allocator.Compact(phi::GPUPlace(), requested_size);
+  const size_t remapped =
+      allocator.CompactForAllocation(phi::GPUPlace(), requested_size);
   EXPECT_GE(remapped, handle_size);
   EXPECT_EQ(remapped % handle_size, 0UL);
 
@@ -1083,6 +1178,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, ExplicitCompactAll) {
 }
 
 TEST(VMMAutoGrowthBestFitAllocatorV2, CompactWaitsForBackingMapPendingEvent) {
+  ScopedVLogLevel vlog_guard(4);
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
       underlying, 256, phi::GPUPlace(), PoolType::kLarge);
@@ -1121,6 +1217,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, CompactWaitsForBackingMapPendingEvent) {
 }
 
 TEST(VMMAutoGrowthBestFitAllocatorV2, CompactWaitsForBlockOwningStream) {
+  ScopedVLogLevel vlog_guard(4);
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
       underlying, 256, phi::GPUPlace(), PoolType::kLarge);
@@ -1148,6 +1245,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, CompactWaitsForBlockOwningStream) {
 }
 
 TEST(VMMAutoGrowthBestFitAllocatorV2, CompactUsesBlockListTailPlacement) {
+  ScopedVLogLevel vlog_guard(4);
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
       underlying, 256, phi::GPUPlace(), PoolType::kLarge);
@@ -1186,7 +1284,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, CompactUsesBlockListTailPlacement) {
       underlying->handle_size());
   ASSERT_EQ(remap_sources.size(), 1UL);
   EXPECT_EQ(remap_sources[0].remap_source_state,
-            VMMBackingMap::RemapSourceState::kRemapDestinationOwned);
+            VMMBackingMap::RemapSourceState::kReady);
 
   auto remapped_active = allocator.Allocate(underlying->handle_size());
   ASSERT_NE(remapped_active, nullptr);
@@ -1236,6 +1334,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, CompactKeepsMappedFreeBlocksAsViews) {
 }
 
 TEST(VMMAutoGrowthBestFitAllocatorV2, CompactUsesUnmappedTargets) {
+  ScopedVLogLevel vlog_guard(4);
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
       underlying, 256, phi::GPUPlace(), PoolType::kLarge);
@@ -1269,7 +1368,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, CompactUsesUnmappedTargets) {
   MarkRemapSafeForTest(source_b.get());
   source_a.reset();
   source_b.reset();
-  EXPECT_EQ(allocator.Compact(phi::GPUPlace(), 2UL * handle_size),
+  EXPECT_EQ(allocator.CompactForAllocation(phi::GPUPlace(), 2UL * handle_size),
             2UL * handle_size);
 
   const auto* target_a_block = FindBlockByPtr(allocator, target_a_ptr);
@@ -1293,7 +1392,8 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, CompactUsesUnmappedTargets) {
   EXPECT_EQ(source_b_block->size(), handle_size);
 }
 
-TEST(VMMAutoGrowthBestFitAllocatorV2, RemapDestinationStaysBlocked) {
+TEST(VMMAutoGrowthBestFitAllocatorV2,
+     RemapDestinationOwnershipClearsAfterCommit) {
   ScopedVLogLevel vlog_guard(10);
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
@@ -1309,15 +1409,13 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, RemapDestinationStaysBlocked) {
   ASSERT_NE(target_b, nullptr);
   ASSERT_NE(source_b, nullptr);
   auto* target_a_ptr = target_a->ptr();
-  auto* source_a_ptr = source_a->ptr();
   auto* target_b_ptr = target_b->ptr();
-  auto* source_b_ptr = source_b->ptr();
 
   MarkRemapSafeForTest(target_a.get());
   MarkRemapSafeForTest(target_b.get());
   target_a.reset();
   target_b.reset();
-  ASSERT_EQ(allocator.Compact(phi::GPUPlace(), 2UL * handle_size),
+  ASSERT_EQ(allocator.CompactForAllocation(phi::GPUPlace(), 2UL * handle_size),
             2UL * handle_size);
 
   auto tail_active = allocator.Allocate(2UL * handle_size);
@@ -1329,7 +1427,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, RemapDestinationStaysBlocked) {
   MarkRemapSafeForTest(source_b.get());
   source_a.reset();
   source_b.reset();
-  ASSERT_EQ(allocator.Compact(phi::GPUPlace(), 2UL * handle_size),
+  ASSERT_EQ(allocator.CompactForAllocation(phi::GPUPlace(), 2UL * handle_size),
             2UL * handle_size);
 
   auto source_pages = underlying->CollectRemapSourcePages(
@@ -1338,40 +1436,12 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, RemapDestinationStaysBlocked) {
       2UL * handle_size);
   ASSERT_EQ(source_pages.size(), 2UL);
   EXPECT_EQ(source_pages[0].remap_source_state,
-            VMMBackingMap::RemapSourceState::kRemapDestinationOwned);
+            VMMBackingMap::RemapSourceState::kReady);
   EXPECT_EQ(source_pages[1].remap_source_state,
-            VMMBackingMap::RemapSourceState::kRemapDestinationOwned);
+            VMMBackingMap::RemapSourceState::kReady);
 
-  EXPECT_EQ(allocator.Compact(phi::GPUPlace(), 2UL * handle_size), 0UL);
-
-  auto remapped_active = allocator.Allocate(2UL * handle_size);
-  ASSERT_NE(remapped_active, nullptr);
-  std::vector<BlockPart> ipc_parts;
-  EXPECT_TRUE(allocator.CollectTensorParts(
-      remapped_active->ptr(), 2UL * handle_size, &ipc_parts));
-  ASSERT_EQ(ipc_parts.size(), 2UL);
-  remapped_active.reset();
-
-  source_pages = underlying->CollectRemapSourcePages(
-      {{reinterpret_cast<VMMDevicePtr>(target_a_ptr), handle_size},
-       {reinterpret_cast<VMMDevicePtr>(target_b_ptr), handle_size}},
-      2UL * handle_size);
-  ASSERT_EQ(source_pages.size(), 2UL);
-  EXPECT_EQ(source_pages[0].remap_source_state,
-            VMMBackingMap::RemapSourceState::kRemapDestinationOwned);
-  EXPECT_EQ(source_pages[1].remap_source_state,
-            VMMBackingMap::RemapSourceState::kRemapDestinationOwned);
-  EXPECT_EQ(allocator.Compact(phi::GPUPlace(), 2UL * handle_size), 0UL);
-
-  const auto* old_source_a = FindBlockByPtr(allocator, source_a_ptr);
-  ASSERT_NE(old_source_a, nullptr);
-  EXPECT_TRUE(old_source_a->IsUnmappedFree());
-  EXPECT_EQ(old_source_a->size(), handle_size);
-
-  const auto* old_source_b = FindBlockByPtr(allocator, source_b_ptr);
-  ASSERT_NE(old_source_b, nullptr);
-  EXPECT_TRUE(old_source_b->IsUnmappedFree());
-  EXPECT_EQ(old_source_b->size(), handle_size);
+  EXPECT_EQ(allocator.CompactForAllocation(phi::GPUPlace(), 2UL * handle_size),
+            2UL * handle_size);
 }
 
 TEST(VMMAutoGrowthBestFitAllocatorV2, RemapUsesStaleUnmappedRange) {
@@ -1399,7 +1469,8 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, RemapUsesStaleUnmappedRange) {
 
   MarkRemapSafeForTest(first_source.get());
   first_source.reset();
-  ASSERT_EQ(allocator.Compact(phi::GPUPlace(), handle_size + 1UL), handle_size);
+  ASSERT_EQ(allocator.CompactForAllocation(phi::GPUPlace(), handle_size + 1UL),
+            handle_size);
 
   auto consume_tail_destination = allocator.Allocate(handle_size);
   ASSERT_NE(consume_tail_destination, nullptr);
@@ -1408,7 +1479,8 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, RemapUsesStaleUnmappedRange) {
 
   MarkRemapSafeForTest(second_source.get());
   second_source.reset();
-  ASSERT_EQ(allocator.Compact(phi::GPUPlace(), handle_size + 1UL), handle_size);
+  ASSERT_EQ(allocator.CompactForAllocation(phi::GPUPlace(), handle_size + 1UL),
+            handle_size);
 
   const auto* first_source_block = FindBlockByPtr(allocator, first_source_ptr);
   ASSERT_NE(first_source_block, nullptr);

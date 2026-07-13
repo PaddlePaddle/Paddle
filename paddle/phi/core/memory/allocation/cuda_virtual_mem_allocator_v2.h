@@ -206,10 +206,6 @@ class CUDAVirtualMemAllocatorV2 : public Allocator {
                      size_t size,
                      gpuStream_t stream,
                      std::shared_ptr<CUDAEventGuard> event);
-  void MapHandlesToVA(
-      VMMDevicePtr ptr,
-      const std::vector<VMMAllocHandle>& hs,
-      const std::vector<std::shared_ptr<VMMHandleMeta>>* metas = nullptr);
   void RollbackCreatedHandles(const HandleLayout& layout) const;
   void MarkLayoutMapped(const HandleLayout& layout);
   void MarkRemapDestinationLayoutMapped(const HandleLayout& layout);

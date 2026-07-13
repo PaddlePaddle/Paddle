@@ -70,7 +70,7 @@ class AllocatorFacade {
   PADDLE_API AllocationPtr Alloc(const Place& place, size_t size);
   // Release unused memory pool.
   uint64_t Release(const Place& place);
-  // Compact memory of free blocks held by the VMMAllocator.
+  // Compact memory of free blocks held by the VmmAllocator.
   size_t Compact(const Place& place);
 
   /**
