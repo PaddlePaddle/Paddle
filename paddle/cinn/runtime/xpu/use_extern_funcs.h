@@ -1,4 +1,4 @@
-// Copyright (c) 2021 CINN Authors. All Rights Reserved.
+// Copyright (c) 2024 CINN Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,20 +13,12 @@
 // limitations under the License.
 
 #pragma once
-
-#include "paddle/cinn/runtime/cpu/use_extern_funcs.h"
-#ifdef CINN_WITH_CUDA
-#include "paddle/cinn/runtime/cuda/use_extern_funcs.h"
-#endif
-
-#ifdef CINN_WITH_HIP
-#include "paddle/cinn/runtime/hip/use_extern_funcs.h"
-#endif
-
-#ifdef CINN_WITH_SYCL
-#include "paddle/cinn/runtime/sycl/use_extern_funcs.h"
-#endif
+#include "paddle/cinn/backends/extern_func_jit_register.h"
 
 #ifdef CINN_WITH_XPU
-#include "paddle/cinn/runtime/xpu/use_extern_funcs.h"
+CINN_USE_REGISTER(cinn_xpu_host_api)
+CINN_USE_REGISTER(xpu_intrinsics)
+CINN_USE_REGISTER(xpu_intrinsics_reduce)
+CINN_USE_REGISTER(xpu_intrinsics_float16)
+CINN_USE_REGISTER(xpu_intrinsics_bfloat16)
 #endif

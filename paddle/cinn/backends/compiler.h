@@ -35,6 +35,9 @@
 #ifdef CINN_WITH_HIP
 #include "paddle/cinn/runtime/hip/hip_module.h"
 #endif
+#ifdef CINN_WITH_XPU
+#include "paddle/cinn/runtime/xpu/xpu_module.h"
+#endif
 #ifdef CINN_WITH_SYCL
 #include "paddle/cinn/runtime/sycl/sycl_module.h"
 #endif
@@ -181,6 +184,8 @@ class Compiler final {
 
   void RegisterHipModuleSymbol();
 
+  void RegisterXpuModuleSymbol();
+
   void RegisterSyclModuleSymbol();
 
   void CompileCudaModule(const ir::Module& module,
@@ -190,6 +195,8 @@ class Compiler final {
                                  const std::string& code = "");
 
   void CompileHipModule(const ir::Module& module, const std::string& code = "");
+
+  void CompileXpuModule(const ir::Module& module, const std::string& code = "");
 
   void CompileSyclModule(const ir::Module& module,
                          const std::string& code = "");
@@ -226,6 +233,9 @@ class Compiler final {
 
 #ifdef CINN_WITH_HIP
   std::unique_ptr<runtime::hip::HIPModule> hip_module_;
+#endif
+#ifdef CINN_WITH_XPU
+  std::unique_ptr<runtime::xpu::XpuModule> xpu_module_;
 #endif
 #ifdef CINN_WITH_SYCL
   std::unique_ptr<runtime::sycl::SYCLModule> sycl_module_;

@@ -40,6 +40,13 @@ if(NOT DEFINED ENV{runtime_include_dir})
     set(ENV{runtime_include_dir} "${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/hip")
     add_definitions(
       -DRUNTIME_INCLUDE_DIR="${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/hip")
+  elseif(WITH_XPU)
+    message(
+      STATUS
+        "set runtime_include_dir: ${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/xpu")
+    set(ENV{runtime_include_dir} "${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/xpu")
+    add_definitions(
+      -DRUNTIME_INCLUDE_DIR="${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/xpu")
   endif()
 endif()
 
@@ -152,6 +159,18 @@ if(WITH_ROCM)
   message(
     STATUS "copy paddle/cinn/common/float16.h to $ENV{runtime_include_dir}")
   file(COPY paddle/cinn/common/float16.h DESTINATION $ENV{runtime_include_dir})
+endif()
+
+if(WITH_XPU)
+  message(STATUS "CINN Compile with XPU support")
+  add_definitions(-DCINN_WITH_XPU)
+
+  message(
+    STATUS "copy paddle/cinn/common/float16.h to $ENV{runtime_include_dir}")
+  file(COPY paddle/cinn/common/float16.h DESTINATION $ENV{runtime_include_dir})
+  message(
+    STATUS "copy paddle/cinn/common/bfloat16.h to $ENV{runtime_include_dir}")
+  file(COPY paddle/cinn/common/bfloat16.h DESTINATION $ENV{runtime_include_dir})
 endif()
 
 if(WITH_CUSTOM_DEVICE)
