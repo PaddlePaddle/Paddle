@@ -188,9 +188,11 @@ jobs:
       - name: Terminate and delete the container
         if: always()
         run: |
-          if [[ -n "${container_name:-}" ]]; then
-            docker rm -f "${container_name}"
-          fi
+          set -e
+          cleanup_status=0
+          docker exec -t "${container_name}" /bin/bash -c 'rm -rf * .[^.]*' || cleanup_status=$?
+          docker rm -f "${container_name}"
+          exit ${cleanup_status}
 
   test:
     name: Test
@@ -304,9 +306,8 @@ jobs:
       - name: Terminate and delete the container
         if: always()
         run: |
-          if [[ -n "${container_name:-}" ]]; then
-            timeout 10m docker exec -t "${container_name}" /bin/bash -c '
-            rm -rf * .[^.]*
-            ' || true
-            docker rm -f "${container_name}"
-          fi
+          set -e
+          cleanup_status=0
+          docker exec -t "${container_name}" /bin/bash -c 'rm -rf * .[^.]*' || cleanup_status=$?
+          docker rm -f "${container_name}"
+          exit ${cleanup_status}
