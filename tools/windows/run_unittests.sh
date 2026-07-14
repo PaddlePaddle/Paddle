@@ -286,7 +286,6 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_trt_convert_clip$|\
 ^test_trt_convert_grid_sampler$|\
 ^test_trt_convert_p_norm$|\
-^new_profiler_test$|\
 ^save_load_version_compat_test$|\
 ^test_weight_decay$|\
 ^disable_wingpu_cuda12_test$"
@@ -543,7 +542,6 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_split_program_deprecated$|\
 ^test_trt_convert_multihead_matmul_roformer$|\
 ^test_cudnn_placement_pass$|\
-^new_profiler_test$|\
 ^test_kernel_factory$|\
 ^save_load_version_compat_test$|\
 ^trt_mobilenet_test$|\
@@ -571,7 +569,6 @@ disable_wincpu_test="^jit_kernel_test$|\
 ^test_build_strategy$|\
 ^test_se_resnet$|\
 ^operator_test|\
-^new_profiler_test$|\
 ^save_load_version_compat_test|\
 ^disable_wincpu_test$"
 
