@@ -347,7 +347,7 @@ __device__ void VectorizedBroadcastKernelImpl(
         block_offset + static_cast<IndexT>(threadIdx.x) * VecSize;
 #pragma unroll
     for (int k = 0; k < VecSize; ++k) {
-      uint64_t idx = static_cast<uint64_t>(thread_offset + k);
+      uint64_t idx = thread_offset + k;
       if (IsBoundary && idx == numel) break;
 #pragma unroll
       for (int i = 0; i < DDim::kMaxRank; ++i) {
@@ -425,26 +425,24 @@ __global__ void VectorizedBroadcastKernel(
                                             read_lens,
                                             func);
   }
-  if (block_offset < numel) {
-    int64_t num = numel - block_offset;
-    if (num > 0) {
-      VectorizedBroadcastKernelImpl<OutT,
-                                    Functor,
-                                    IndexT,
-                                    Arity,
-                                    NumOuts,
-                                    VecSize,
-                                    true,
-                                    LoadType>(ins,
-                                              outs,
-                                              use_broadcast,
-                                              numel,
-                                              configs,
-                                              static_cast<uint32_t>(num),
-                                              block_offset,
-                                              read_lens,
-                                              func);
-    }
+  int64_t num = numel - block_offset;
+  if (num > 0) {
+    VectorizedBroadcastKernelImpl<OutT,
+                                  Functor,
+                                  IndexT,
+                                  Arity,
+                                  NumOuts,
+                                  VecSize,
+                                  true,
+                                  LoadType>(ins,
+                                            outs,
+                                            use_broadcast,
+                                            numel,
+                                            configs,
+                                            static_cast<uint32_t>(num),
+                                            block_offset,
+                                            read_lens,
+                                            func);
   }
 #else
   IndexT block_offset = static_cast<IndexT>(BLOCK_ID_X) * BLOCK_NUM_X * VecSize;
@@ -467,26 +465,24 @@ __global__ void VectorizedBroadcastKernel(
                                             read_lens,
                                             func);
   }
-  if (block_offset < numel) {
-    int64_t num = numel - block_offset;
-    if (num > 0) {
-      VectorizedBroadcastKernelImpl<OutT,
-                                    Functor,
-                                    IndexT,
-                                    Arity,
-                                    NumOuts,
-                                    VecSize,
-                                    true,
-                                    LoadType>(ins,
-                                              outs,
-                                              use_broadcast,
-                                              numel,
-                                              configs,
-                                              static_cast<uint32_t>(num),
-                                              block_offset,
-                                              read_lens,
-                                              func);
-    }
+  int64_t num = numel - block_offset;
+  if (num > 0) {
+    VectorizedBroadcastKernelImpl<OutT,
+                                  Functor,
+                                  IndexT,
+                                  Arity,
+                                  NumOuts,
+                                  VecSize,
+                                  true,
+                                  LoadType>(ins,
+                                            outs,
+                                            use_broadcast,
+                                            numel,
+                                            configs,
+                                            static_cast<uint32_t>(num),
+                                            block_offset,
+                                            read_lens,
+                                            func);
   }
 #endif
 }
