@@ -4,6 +4,7 @@ name: Bot Approval Required
 #   1) AI review 机器人 risemeup1111 对当前 head commit 提交了 APPROVED 评审；或
 #   2) APPROVERS 名单中任意一个账号对当前 head commit 提交了 APPROVED 评审。
 # 推送新 commit（synchronize）或重开 PR 时自动复检；旧 commit 上的审批在 push 新提交后自动失效。
+# CI 团队成员可通过 check-bypass（skip-ci label / 评论）豁免本检查。
 on:
   pull_request:
     types: [opened, synchronize, reopened]
@@ -19,8 +20,19 @@ env:
   APPROVERS: "sneaxiy From00"
 
 jobs:
+  check-bypass:
+    name: Check bypass
+    if: ${{ github.repository_owner == 'PaddlePaddle' }}
+    uses: ./.github/workflows/check-bypass.yml
+    with:
+      workflow-name: 'bot-approval-required'
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
   check-bot-approval:
     name: Require review-bot approval
+    needs: [check-bypass]
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Verify approval status
