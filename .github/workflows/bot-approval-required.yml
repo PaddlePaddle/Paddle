@@ -17,12 +17,10 @@ name: Bot Approval Required
 # 合入门禁：满足以下任一条件本检查即通过（仅统计【当前 head commit】上的评审）——
 #   1) AI review 机器人 risemeup1111 对当前 head commit 提交了 APPROVED 评审；或
 #   2) sneaxiy 或 From00 任意一个账号对当前 head commit 提交了 APPROVED 评审。
-# 评审提交/修改/撤销或推送新 commit 时自动复检；旧 commit 上的审批在 push 新提交后自动失效。
+# 评审后推送新 commit（synchronize）或重开 PR 时自动复检；旧 commit 上的审批在 push 新提交后自动失效。
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-  pull_request_review:
-    types: [submitted, edited, dismissed]
 
 permissions:
   contents: read
