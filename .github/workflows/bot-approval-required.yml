@@ -15,7 +15,6 @@
 name: Bot Approval Required
 
 # 合入门禁：满足以下任一条件本检查即通过（仅统计【当前 head commit】上的评审）——
-#   0) PR 作者在豁免名单 BYPASS_AUTHORS 中，直接放行；或
 #   1) AI review 机器人 risemeup1111 对当前 head commit 提交了 APPROVED 评审；或
 #   2) sneaxiy 或 From00 任意一个账号对当前 head commit 提交了 APPROVED 评审。
 # 评审提交/修改/撤销或推送新 commit 时自动复检；旧 commit 上的审批在 push 新提交后自动失效。
@@ -35,8 +34,6 @@ env:
   # 机器人未 approve 时，任意一个账号 approve 即可放行的审批账号。
   HUMAN_APPROVER_1: sneaxiy
   HUMAN_APPROVER_2: From00
-  # 豁免作者名单（空格分隔）：这些作者提交的 PR 自动通过本门禁。
-  BYPASS_AUTHORS: liuhao2638
 
 jobs:
   check-bot-approval:
@@ -49,18 +46,9 @@ jobs:
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
           set -euo pipefail
           echo "AI review 机器人账号: ${REQUIRED_BOT_LOGIN}"
-
-          # 豁免名单：PR 作者在 BYPASS_AUTHORS 中则直接放行。
-          for a in ${BYPASS_AUTHORS}; do
-            if [ "${PR_AUTHOR}" = "$a" ]; then
-              echo "::notice::PR 作者 ${PR_AUTHOR} 在豁免名单中，跳过机器人审批门禁。"
-              exit 0
-            fi
-          done
 
           # 分页读取全部 reviews，避免超过 100 条时漏掉后续页面上的评审。
           reviews=$(gh api --paginate "repos/${REPO}/pulls/${PR_NUMBER}/reviews?per_page=100" | jq -s 'add')
