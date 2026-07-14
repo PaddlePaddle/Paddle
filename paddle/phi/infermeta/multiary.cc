@@ -6320,11 +6320,11 @@ void MoePermuteInferMeta(const MetaTensor& X,
         static_cast<int64_t>(std::numeric_limits<int32_t>::max()) - 32,
         common::errors::InvalidArgument(
             "X.dims()[0] should be <= INT_MAX - 32, but got %ld.", rows));
-    PADDLE_ENFORCE_GE(
+    PADDLE_ENFORCE_GT(
         cols,
         0,
         common::errors::InvalidArgument(
-            "X.dims()[1] should be non-negative, but got %ld.", cols));
+            "X.dims()[1] should be positive, but got %ld.", cols));
     PADDLE_ENFORCE_LE(
         cols,
         static_cast<int64_t>(std::numeric_limits<int32_t>::max()),
@@ -6578,12 +6578,12 @@ void MoeUnpermuteInferMeta(const MetaTensor& unzipped_tokens,
   const int64_t cols = unzipped_tokens.dims()[1];
   const int64_t topk = expert_routemap_topk.dims()[1];
   if (!common::contain_unknown_dim(unzipped_tokens.dims())) {
-    PADDLE_ENFORCE_GE(cols,
-                      0,
-                      common::errors::InvalidArgument(
-                          "unzipped_tokens.dims()[1] should be non-negative, "
-                          "but got %ld.",
-                          cols));
+    PADDLE_ENFORCE_GT(
+        cols,
+        0,
+        common::errors::InvalidArgument(
+            "unzipped_tokens.dims()[1] should be positive, but got %ld.",
+            cols));
   }
   if (!common::contain_unknown_dim(unzipped_tokens.dims()) &&
       !common::contain_unknown_dim(unzipped_token_probs.dims())) {
