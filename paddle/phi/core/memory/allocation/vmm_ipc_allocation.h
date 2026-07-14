@@ -194,7 +194,7 @@ inline void AppendBlockPartsTail(std::vector<BlockPart>* dst,
 }
 
 #pragma pack(push, 1)
-struct VmmIpcHeader {
+struct VMMIPCHeader {
   uint8_t version;
   uint16_t flags;
   uint32_t pid;
@@ -204,7 +204,7 @@ struct VmmIpcHeader {
   uint64_t reserved_size;
 };
 
-struct VmmIpcEntry {
+struct VMMIPCEntry {
   uint8_t handle_type;
   uint8_t reserved[7];
   uint64_t rel_offset;
@@ -213,8 +213,8 @@ struct VmmIpcEntry {
 };
 #pragma pack(pop)
 
-static_assert(sizeof(VmmIpcHeader) == 35, "VmmIpcHeader size changed");
-static_assert(sizeof(VmmIpcEntry) == 32, "VmmIpcEntry size changed");
+static_assert(sizeof(VMMIPCHeader) == 35, "VMMIPCHeader size changed");
+static_assert(sizeof(VMMIPCEntry) == 32, "VMMIPCEntry size changed");
 
 }  // namespace allocation
 }  // namespace memory
