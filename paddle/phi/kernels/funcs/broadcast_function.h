@@ -404,10 +404,11 @@ __global__ void VectorizedBroadcastKernel(
     int read_lens,
     Functor func) {
 #ifdef PADDLE_WITH_XPU_KP
-  IndexT block_offset =
-      static_cast<IndexT>(BLOCK_ID_X) * BLOCK_NUM_X * read_lens;
-  IndexT stride = static_cast<IndexT>(BLOCK_NUM_X) * GRID_NUM_X * read_lens;
-  for (; block_offset < main_offset; block_offset += stride) {
+  uint64_t block_offset =
+      static_cast<uint64_t>(BLOCK_ID_X) * BLOCK_NUM_X * read_lens;
+  uint64_t stride = static_cast<uint64_t>(BLOCK_NUM_X) * GRID_NUM_X * read_lens;
+  for (; block_offset < static_cast<uint64_t>(main_offset);
+       block_offset += stride) {
     VectorizedBroadcastKernelImpl<OutT,
                                   Functor,
                                   IndexT,
@@ -421,11 +422,12 @@ __global__ void VectorizedBroadcastKernel(
                                             numel,
                                             configs,
                                             BLOCK_NUM_X * read_lens,
-                                            block_offset,
+                                            static_cast<IndexT>(block_offset),
                                             read_lens,
                                             func);
   }
-  int64_t num = numel - block_offset;
+  int64_t num =
+      static_cast<int64_t>(numel) - static_cast<int64_t>(block_offset);
   if (num > 0) {
     VectorizedBroadcastKernelImpl<OutT,
                                   Functor,
@@ -440,14 +442,16 @@ __global__ void VectorizedBroadcastKernel(
                                             numel,
                                             configs,
                                             static_cast<uint32_t>(num),
-                                            block_offset,
+                                            static_cast<IndexT>(block_offset),
                                             read_lens,
                                             func);
   }
 #else
-  IndexT block_offset = static_cast<IndexT>(BLOCK_ID_X) * BLOCK_NUM_X * VecSize;
-  IndexT stride = static_cast<IndexT>(BLOCK_NUM_X) * GRID_NUM_X * VecSize;
-  for (; block_offset < main_offset; block_offset += stride) {
+  uint64_t block_offset =
+      static_cast<uint64_t>(BLOCK_ID_X) * BLOCK_NUM_X * VecSize;
+  uint64_t stride = static_cast<uint64_t>(BLOCK_NUM_X) * GRID_NUM_X * VecSize;
+  for (; block_offset < static_cast<uint64_t>(main_offset);
+       block_offset += stride) {
     VectorizedBroadcastKernelImpl<OutT,
                                   Functor,
                                   IndexT,
@@ -461,11 +465,12 @@ __global__ void VectorizedBroadcastKernel(
                                             numel,
                                             configs,
                                             BLOCK_NUM_X * VecSize,
-                                            block_offset,
+                                            static_cast<IndexT>(block_offset),
                                             read_lens,
                                             func);
   }
-  int64_t num = numel - block_offset;
+  int64_t num =
+      static_cast<int64_t>(numel) - static_cast<int64_t>(block_offset);
   if (num > 0) {
     VectorizedBroadcastKernelImpl<OutT,
                                   Functor,
@@ -480,7 +485,7 @@ __global__ void VectorizedBroadcastKernel(
                                             numel,
                                             configs,
                                             static_cast<uint32_t>(num),
-                                            block_offset,
+                                            static_cast<IndexT>(block_offset),
                                             read_lens,
                                             func);
   }
