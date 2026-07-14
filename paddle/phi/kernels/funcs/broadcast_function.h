@@ -492,6 +492,10 @@ void LaunchBroadcastKernel(
     const KPDevice &dev_ctx,
     const BroadcastTypeClassifier<OutT, Functor, Arity, NumOuts> &classifier,
     Functor func) {
+#ifndef PADDLE_WITH_XPU_KP
+  auto gpu_config = phi::backends::gpu::GetGpuLaunchConfig1D(
+      dev_ctx, classifier.numel, VecSize);
+#endif
   auto launch_with_index_t = [&](auto index_tag) {
     using IndexT = decltype(index_tag);
 #ifdef PADDLE_WITH_XPU_KP
@@ -522,8 +526,6 @@ void LaunchBroadcastKernel(
                                          func);
 #else
     const IndexT numel = static_cast<IndexT>(classifier.numel);
-    auto gpu_config = phi::backends::gpu::GetGpuLaunchConfig1D(
-        dev_ctx, classifier.numel, VecSize);
     auto stream = dev_ctx.stream();
     uint32_t threads = static_cast<uint32_t>(gpu_config.GetBlockSize());
     auto blocks = gpu_config.block_per_grid;
@@ -587,8 +589,20 @@ void LaunchBroadcastKernel(
 #endif
   };
 
-  if (classifier.numel <=
-      static_cast<int64_t>(std::numeric_limits<uint32_t>::max())) {
+#ifdef PADDLE_WITH_XPU_KP
+  bool use_uint32_index =
+      classifier.numel <=
+      static_cast<int64_t>(std::numeric_limits<uint32_t>::max());
+#else
+  const uint64_t index_limit = std::numeric_limits<uint32_t>::max();
+  const uint64_t grid_stride =
+      static_cast<uint64_t>(gpu_config.block_per_grid.x) *
+      static_cast<uint64_t>(gpu_config.GetBlockSize()) * VecSize;
+  bool use_uint32_index =
+      classifier.numel <= static_cast<int64_t>(index_limit) &&
+      grid_stride <= index_limit;
+#endif
+  if (use_uint32_index) {
     launch_with_index_t(uint32_t{0});
   } else {
     launch_with_index_t(uint64_t{0});
