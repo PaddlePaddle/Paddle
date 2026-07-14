@@ -471,6 +471,10 @@ __global__ void VectorizedBroadcastKernel(
   }
   int64_t num =
       static_cast<int64_t>(numel) - static_cast<int64_t>(block_offset);
+  // Tail block only: threads past `num` may have an out-of-range (and, when
+  // IndexT==uint32 and numel is near UINT32_MAX, wrapped) thread_offset, but
+  // their stores are masked out by `num` in WriteData, so the result stays
+  // correct.
   if (num > 0) {
     VectorizedBroadcastKernelImpl<OutT,
                                   Functor,
@@ -595,23 +599,25 @@ void LaunchBroadcastKernel(
   };
 
 #ifdef PADDLE_WITH_XPU_KP
-  bool use_uint32_index =
-      classifier.numel <=
-      static_cast<int64_t>(std::numeric_limits<uint32_t>::max());
+  // XPU's BroadcastConfig is 32-bit and numel is already capped at INT_MAX in
+  // BroadcastTypeClassifier, so only the uint32 path is ever reachable. Calling
+  // it explicitly avoids instantiating an unused uint64 XPU kernel.
+  launch_with_index_t(uint32_t{0});
 #else
+  // Use the cheaper uint32 indexing on GPU only when both the element count
+  // and the grid stride fit in uint32; otherwise fall back to uint64. The
+  // grid_stride bound mirrors `stride` inside the kernel.
   const uint64_t index_limit = std::numeric_limits<uint32_t>::max();
   const uint64_t grid_stride =
       static_cast<uint64_t>(gpu_config.block_per_grid.x) *
       static_cast<uint64_t>(gpu_config.GetBlockSize()) * VecSize;
-  bool use_uint32_index =
-      classifier.numel <= static_cast<int64_t>(index_limit) &&
-      grid_stride <= index_limit;
-#endif
-  if (use_uint32_index) {
+  if (static_cast<uint64_t>(classifier.numel) <= index_limit &&
+      grid_stride <= index_limit) {
     launch_with_index_t(uint32_t{0});
   } else {
     launch_with_index_t(uint64_t{0});
   }
+#endif
 }
 
 template <typename OutT, typename Functor, int Arity, int NumOuts = 1>
