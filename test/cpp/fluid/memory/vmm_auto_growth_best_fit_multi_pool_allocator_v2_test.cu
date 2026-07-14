@@ -379,7 +379,9 @@ TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2,
   ScopedVMMRetryFlags flags(/*retry_times=*/0, /*remap_on_oom=*/true);
 
   auto allocation = stream_safe->Allocate(2UL << 20);
+  auto anchor = stream_safe->Allocate(2UL << 20);
   ASSERT_NE(allocation, nullptr);
+  ASSERT_NE(anchor, nullptr);
   allocation.reset();
   EXPECT_EQ(stream_safe->GetVMMV2Allocator(), multi.get());
   EXPECT_GT(stream_safe->Compact(place), 0UL);

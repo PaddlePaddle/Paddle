@@ -24,6 +24,7 @@
 
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/phi/backends/dynload/cuda_driver.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_types.h"
 using VmmDevicePtr = CUdeviceptr;
 using VmmAllocHandle = CUmemGenericAllocationHandle;
 #else
@@ -39,37 +40,49 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-struct ImportedVmmMulti {
+struct VMMImportedMapping {
   VmmDevicePtr base{0};
   size_t reserved_size{0};
-  std::vector<VmmAllocHandle> hs;
+  int device{-1};
+  std::vector<VmmAllocHandle> handles;
+  std::vector<std::pair<VmmDevicePtr, size_t>> mapped_ranges;
 #if defined(PADDLE_WITH_CUDA)
-  ~ImportedVmmMulti() {
-    if (base && reserved_size) {
-      phi::dynload::cuMemUnmap(base, reserved_size);
+  ~VMMImportedMapping() {
+    int original_device = -1;
+    const bool has_device = cudaGetDevice(&original_device) == cudaSuccess;
+    const bool switched =
+        has_device && device >= 0 && original_device != device;
+    if (switched && cudaSetDevice(device) != cudaSuccess) {
+      return;
     }
-    for (auto h : hs) {
-      if (h) phi::dynload::cuMemRelease(h);
+    for (auto it = mapped_ranges.rbegin(); it != mapped_ranges.rend(); ++it) {
+      phi::dynload::cuMemUnmap(it->first, it->second);
+    }
+    for (auto handle : handles) {
+      if (handle) phi::dynload::cuMemRelease(handle);
     }
     if (base && reserved_size) {
       phi::dynload::cuMemAddressFree(base, reserved_size);
     }
+    if (switched) {
+      cudaSetDevice(original_device);
+    }
   }
 #else
-  ~ImportedVmmMulti() = default;
+  ~VMMImportedMapping() = default;
 #endif
 };
 
-class VmmImportedAllocation : public phi::Allocation {
+class VMMImportedAllocation : public phi::Allocation {
  public:
-  VmmImportedAllocation(void* ptr,
+  VMMImportedAllocation(void* ptr,
                         size_t bytes,
                         Place place,
-                        std::shared_ptr<ImportedVmmMulti> keep)
-      : Allocation(ptr, bytes, place), keep_(std::move(keep)) {}
+                        std::shared_ptr<VMMImportedMapping> mapping)
+      : Allocation(ptr, bytes, place), mapping_(std::move(mapping)) {}
 
  private:
-  std::shared_ptr<ImportedVmmMulti> keep_;
+  std::shared_ptr<VMMImportedMapping> mapping_;
 };
 
 struct VmmChunkMeta {
@@ -77,6 +90,7 @@ struct VmmChunkMeta {
   size_t size;
   VmmAllocHandle handle;
   int device;
+  int shared_fd{-1};
 };
 
 struct BlockPart {
