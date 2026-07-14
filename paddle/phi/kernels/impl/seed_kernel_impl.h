@@ -34,7 +34,7 @@ static int get_seed(int user_seed,
     }
   } else {
     std::string name = rng_name;
-    auto rng = phi::GetRandomSeedGenerator(name);
+    auto rng = GetRandomSeedGenerator(name);
     do {  // NOTE(wangxi): cpu dropout will use random seed if seed == 0
       seed = static_cast<int>(rng->Random64());
     } while (seed == 0);

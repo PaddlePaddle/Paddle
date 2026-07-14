@@ -34,7 +34,13 @@ from . import Value
 
 if TYPE_CHECKING:
     from paddle import Tensor
-    from paddle._typing import DTypeLike, PlaceLike, ShapeLike
+    from paddle._typing import (
+        DTypeLike,
+        NestedNumericSequence,
+        PlaceLike,
+        ShapeLike,
+        TensorLike,
+    )
 
 
 _already_patch_value = False
@@ -453,7 +459,7 @@ def monkey_patch_value():
         """
 
         if not isinstance(dtype, DataType):
-            dtype = paddle.pir.core.convert_np_dtype_to_dtype_(dtype)
+            dtype = paddle.pir.core.convert_nptype_to_datatype(dtype)
 
         if self.dtype == dtype:
             return self
@@ -709,6 +715,88 @@ def monkey_patch_value():
 
         return _C_ops.transpose(self, perm)
 
+    @property
+    def _mH_(self):
+        """
+        Return the conjugate transpose of the last two dimensions of a Tensor.
+
+        Accessing this property is equivalent to calling x.mT.conj().
+
+        Args:
+            self: The input Tensor, which must be at least 2-D or 0-D.
+
+        Returns:
+            Tensor: A new Tensor with its last two dimensions swapped and
+                the elements conjugated. If the input is 0-D, returns the
+                Tensor itself.
+
+        Examples:
+            .. code-block:: pycon
+
+                >>> import paddle
+                >>> paddle.enable_static()
+
+                >>> x = paddle.ones(shape=[2, 3, 5])
+                >>> x_mH = x.mH
+
+                >>> exe = paddle.static.Executor()
+                >>> x_mH_np = exe.run(paddle.static.default_main_program(), fetch_list=[x_mH])[0]
+                >>> print(x_mH_np.shape)
+                (2, 5, 3)
+        """
+        if len(self.shape) == 0:
+            return _C_ops.conj(self)
+        if len(self.shape) < 2:
+            raise ValueError(
+                f"Tensor.ndim({len(self.shape)}) is required to be greater than or equal to 2 "
+                f"or 0-D."
+            )
+
+        perm = list(range(len(self.shape)))
+        perm[-1], perm[-2] = perm[-2], perm[-1]
+
+        return _C_ops.conj(_C_ops.transpose(self, perm))
+
+    @property
+    def _H_(self):
+        """
+        Return the conjugate transpose of a Tensor.
+
+        The conjugate transpose of a 2-D Tensor is equivalent to transposing the
+        Tensor and then taking the conjugate of each element.
+        For 0-D Tensor, returns the conjugated Tensor.
+
+        Args:
+            self: The input Tensor, which must be 0-D or 2-D.
+
+        Returns:
+            Tensor: A new Tensor with its dimensions transposed and elements conjugated.
+                If the input is 0-D, returns the conjugated Tensor.
+
+        Examples:
+            .. code-block:: pycon
+
+                >>> import paddle
+                >>> paddle.enable_static()
+
+                >>> x = paddle.to_tensor([[1.0 + 1.0j, 2.0 + 2.0j], [3.0 + 3.0j, 4.0 + 4.0j]])
+                >>> x_H = x.H
+
+                >>> exe = paddle.static.Executor()
+                >>> x_H_np = exe.run(paddle.static.default_main_program(), fetch_list=[x_H])[0]
+                >>> print(x_H_np)
+                [[(1-1j), (3-3j)],
+                 [(2-2j), (4-4j)]]
+        """
+        if len(self.shape) == 0:
+            return _C_ops.conj(self)
+        if len(self.shape) != 2:
+            raise ValueError(
+                f"Only 0-D or 2-D tensors support .H (conjugate transpose), "
+                f"but got tensor with {len(self.shape)} dimension(s)."
+            )
+        return _C_ops.conj(_C_ops.transpose(self, [1, 0]))
+
     def _new_full_(
         self,
         size: ShapeLike,
@@ -754,6 +842,50 @@ def monkey_patch_value():
             device=device,
             requires_grad=requires_grad,
             pin_memory=pin_memory,
+        )
+
+    def _new_tensor_(
+        self,
+        data: TensorLike | NestedNumericSequence,
+        dtype: DTypeLike | None = None,
+        device: PlaceLike | None = None,
+        requires_grad: bool = False,
+    ):
+        """
+        Creates a new tensor from ``data`` with the same device and dtype as this tensor.
+
+        Args:
+            data: Data for the new tensor. Can be a list, numpy array, or Tensor.
+            dtype (DTypeLike|None, optional): Desired data type. If None, uses
+                the dtype of this tensor. Default: None.
+            device (PlaceLike|None, optional): Desired device. If None, uses
+                the place of this tensor. Default: None.
+            requires_grad (bool, optional): If True, gradient computation will
+                be enabled for the new tensor. Default: False.
+
+        Returns:
+            Tensor: A new tensor on the specified device.
+
+        Examples:
+            .. code-block:: pycon
+
+                >>> import paddle
+                >>> paddle.enable_static()
+
+                >>> x = paddle.ones(shape=[2, 3])
+                >>> y = x.new_tensor([1, 2, 3], dtype="float64", device="cpu")
+
+                >>> exe = paddle.static.Executor()
+                >>> y_np = exe.run(paddle.static.default_main_program(), fetch_list=[y])[0]
+                >>> print(y_np)
+                [1. 2. 3.]
+        """
+        if dtype is None:
+            dtype = self.dtype
+        if device is None:
+            device = self.place
+        return paddle.to_tensor(
+            data, dtype=dtype, place=device, stop_gradient=not requires_grad
         )
 
     @size_args_decorator_patch
@@ -1514,6 +1646,19 @@ def monkey_patch_value():
         """
         return self.element_size()
 
+    @property
+    def nbytes(self: Tensor) -> int:
+        """
+        Returns the number of bytes allocated for elements of the dense Tensor. Defined to be ``size`` * ``element_size()``
+        """
+        if self.is_sparse_coo_tensor_type() or self.is_sparse_csr_tensor_type():
+            raise RuntimeError(
+                "nbytes is not defined for sparse tensors. "
+                "Add nbytes of indices and values for sparse storage size, "
+                "or multiply numel by element_size for the equivalent dense tensor."
+            )
+        return self.size * self.element_size()
+
     import paddle
 
     def get_device(self) -> None:
@@ -1547,7 +1692,10 @@ def monkey_patch_value():
         ('nelement', nelement),
         ('T', _T_),
         ('mT', _mT_),
+        ('mH', _mH_),
+        ('H', _H_),
         ('new_full', _new_full_),
+        ('new_tensor', _new_tensor_),
         ('new_empty', _new_empty_),
         ('new_ones', _new_ones_),
         ('new_zeros', _new_zeros_),
@@ -1696,6 +1844,7 @@ def monkey_patch_value():
         ('__bool__', _bool_),
         ('__complex__', _complex_),
         ('itemsize', itemsize),
+        ('nbytes', nbytes),
     ]
     dtype_conversion_methods = _create_dtype_conversion_methods()
     value_methods.extend(dtype_conversion_methods)

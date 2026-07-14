@@ -20,6 +20,7 @@
 #include <cuda_fp16.h>
 #endif
 
+#include "paddle/common/enforce.h"
 #include "paddle/common/errors.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
@@ -30,8 +31,6 @@
 
 namespace phi {
 namespace fusion {
-
-using float16 = phi::float16;
 
 template <typename T>
 static __device__ __forceinline__ T Relu(T x) {
@@ -75,10 +74,11 @@ __global__ void InplaceAddReluAddLayerNormKernel(const T* y,
   __shared__ T shared_mem[BlockDim + 2];
 
   for (int i = blockIdx.x; i < M; i += gridDim.x) {
-    int index = i * N + threadIdx.x;
+    int64_t index =
+        static_cast<int64_t>(i) * N + static_cast<int64_t>(threadIdx.x);
 
     // The first BlockDim elements will be saved to shared memory.
-    int save_index = threadIdx.x;
+    int64_t save_index = threadIdx.x;
     T* save_ptr = shared_mem;
 
     T sum_i = 0;
@@ -124,7 +124,7 @@ __global__ void InplaceAddReluAddLayerNormKernel(const T* y,
     T mean_i = shared_mem[BlockDim];
     T std_i = static_cast<T>(RealSqrt(shared_mem[BlockDim + 1] + epsilon));
 
-    index = i * N + threadIdx.x;
+    index = static_cast<int64_t>(i) * N + threadIdx.x;
     // First BlockDim elements loading from shared memory.
     save_index = threadIdx.x;
     save_ptr = shared_mem;
@@ -179,10 +179,11 @@ __global__ void InplaceAddReluAddLayerNormKernel(const float16* y_data,
 #endif
 
   for (int i = blockIdx.x; i < M; i += gridDim.x) {
-    int index = i * N + threadIdx.x;
+    int64_t index =
+        static_cast<int64_t>(i) * N + static_cast<int64_t>(threadIdx.x);
 
     // The first BlockDim elements will be saved to shared memory.
-    int save_index = threadIdx.x;
+    int64_t save_index = threadIdx.x;
 #if defined(PADDLE_WITH_CUDA)
     half* save_ptr = shared_mem;
 #else
@@ -263,7 +264,7 @@ __global__ void InplaceAddReluAddLayerNormKernel(const float16* y_data,
         RealSqrt(static_cast<float>(shared_mem[BlockDim + 1]) + epsilon));
 #endif
 
-    index = i * N + threadIdx.x;
+    index = static_cast<int64_t>(i) * N + threadIdx.x;
     // First BlockDim elements loading from shared memory.
     save_index = threadIdx.x;
     save_ptr = shared_mem;
@@ -314,7 +315,7 @@ void AddReluAddLayerNorm(const Context& dev_ctx,
                          int N,
                          float epsilon) {
   if (with_relu) {
-    switch (phi::backends::gpu::RoundToPowerOfTwo(N)) {
+    switch (backends::gpu::RoundToPowerOfTwo(N)) {
       CUDA_LAUNCH_KERNEL_HELPER(
           InplaceAddReluAddLayerNormKernel<T, true, kPowerOfTwoDim>
           <<<std::max(max_threads / kPowerOfTwoDim, 1),
@@ -324,7 +325,7 @@ void AddReluAddLayerNorm(const Context& dev_ctx,
               y, bias_0, bias_1, scale, out, mean, variance, M, N, epsilon));
     }
   } else {
-    switch (phi::backends::gpu::RoundToPowerOfTwo(N)) {
+    switch (backends::gpu::RoundToPowerOfTwo(N)) {
       CUDA_LAUNCH_KERNEL_HELPER(
           InplaceAddReluAddLayerNormKernel<T, false, kPowerOfTwoDim>
           <<<std::max(max_threads / kPowerOfTwoDim, 1),
@@ -351,7 +352,7 @@ void AddReluAddLayerNorm(const Context& dev_ctx,
                          int N,
                          float epsilon) {
   if (with_relu) {
-    switch (phi::backends::gpu::RoundToPowerOfTwo(N)) {
+    switch (backends::gpu::RoundToPowerOfTwo(N)) {
       CUDA_LAUNCH_KERNEL_HELPER(
           InplaceAddReluAddLayerNormKernel<true, kPowerOfTwoDim>
           <<<std::max(max_threads / kPowerOfTwoDim, 1),
@@ -361,7 +362,7 @@ void AddReluAddLayerNorm(const Context& dev_ctx,
               y, bias_0, bias_1, scale, out, mean, variance, M, N, epsilon));
     }
   } else {
-    switch (phi::backends::gpu::RoundToPowerOfTwo(N)) {
+    switch (backends::gpu::RoundToPowerOfTwo(N)) {
       CUDA_LAUNCH_KERNEL_HELPER(
           InplaceAddReluAddLayerNormKernel<false, kPowerOfTwoDim>
           <<<std::max(max_threads / kPowerOfTwoDim, 1),
@@ -409,9 +410,15 @@ void FusedFCElementwiseLayerNormKernel(const Context& dev_ctx,
                         "'begin_norm_axis' should be greater than zero."));
 
   auto w_dims = w.dims();
-  int N = w_dims[1];
-  int K = w_dims[0];
-  int M = common::product(x.dims()) / K;
+  int64_t N_64 = w_dims[1];
+  int64_t K_64 = w_dims[0];
+  int64_t M_64 = common::product(x.dims()) / K_64;
+  PADDLE_ENFORCE_LE_INT_MAX(N_64, "fused_fc_elementwise_layernorm N");
+  PADDLE_ENFORCE_LE_INT_MAX(K_64, "fused_fc_elementwise_layernorm K");
+  PADDLE_ENFORCE_LE_INT_MAX(M_64, "fused_fc_elementwise_layernorm M");
+  int N = static_cast<int>(N_64);
+  int K = static_cast<int>(K_64);
+  int M = static_cast<int>(M_64);
 
   const T* x_data = x.data<T>();
   const T* w_data = w.data<T>();

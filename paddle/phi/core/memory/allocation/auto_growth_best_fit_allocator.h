@@ -22,11 +22,13 @@
 
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/core/memory/allocation/spin_lock.h"
+#include "paddle/phi/core/memory/mem_visitor.h"
 
 COMMON_DECLARE_bool(enable_auto_growth_allocator_add_lock);
 
 namespace paddle {
 namespace memory {
+class AllBlocksInfoVisitor;
 namespace allocation {
 
 class PADDLE_API AutoGrowthBestFitAllocator : public Allocator {
@@ -42,6 +44,8 @@ class PADDLE_API AutoGrowthBestFitAllocator : public Allocator {
   void DumpInfo() const;
 
   void PreAlloc() override;
+
+  void Accept(AllocatorVisitor *visitor) override { visitor->Visit(this); }
 
  protected:
   phi::Allocation *AllocateImpl(size_t size) override;
@@ -122,6 +126,8 @@ class PADDLE_API AutoGrowthBestFitAllocator : public Allocator {
   size_t total_free_size_;
 
   SpinLock spinlock_;
+
+  friend class paddle::memory::AllBlocksInfoVisitor;
 };
 
 }  // namespace allocation

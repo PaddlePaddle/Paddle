@@ -14,7 +14,7 @@
 
 # repo: diffusers_sub_graph
 # model: stable_diffusion
-# api:paddle.tensor.manipulation.chunk||api:paddle.tensor.math.clip||method:__rmul__||api:paddle.tensor.ops.exp||api:paddle.tensor.ops.exp
+# api:paddle.tensor.manipulation.chunk||api:paddle.tensor.math.clip||method:__rmul__||api:paddle.exp||api:paddle.exp
 import unittest
 
 import numpy as np
@@ -35,8 +35,8 @@ class LayerCase(paddle.nn.Layer):
         var_2 = out[1]
         var_3 = paddle.tensor.math.clip(var_2, -30.0, 20.0)
         var_4 = 0.5 * var_3
-        var_5 = paddle.tensor.ops.exp(var_4)
-        var_6 = paddle.tensor.ops.exp(var_3)
+        var_5 = paddle.exp(var_4)
+        var_6 = paddle.exp(var_3)
         return var_1, var_2, var_3, var_5, var_6
 
 

@@ -14,6 +14,7 @@
 
 #include <ATen/Functions.h>
 #include <ATen/core/TensorBody.h>
+#include <ATen/ops/as_strided.h>
 #include <ATen/ops/resize.h>
 #include <ATen/ops/tensor.h>
 #include <c10/core/ScalarType.h>
@@ -255,4 +256,33 @@ TEST(TensorResizeTest, ResizeChain) {
   t.resize_({3, 4});
   ASSERT_EQ(t.sizes()[0], 3);
   ASSERT_EQ(t.sizes()[1], 4);
+}
+
+// Test that resizing a view with shared storage copies data from the start of
+// the storage, not from the view's offset, to preserve the original data and
+// storage semantics.
+TEST(TensorResizeTest, ResizeSliceSharedStorageCopiesFromStorageStart) {
+  // ta = [1, 2, 3, 4], tb = [2, 3, 4]
+  // Build tb through as_strided so it is a view with a non-zero storage
+  // offset even when backend slice kernels materialize copies.
+  at::Tensor ta = at::tensor({1, 2, 3, 4}, at::kInt);
+  at::Tensor tb = ta.as_strided({3}, {1}, 1);
+
+  tb.resize_(4);
+
+  // After resize, tb[0] and ta[1] must point to the exact same address.
+  ASSERT_EQ(tb.data_ptr<int>(), ta.data_ptr<int>() + 1);
+
+  // The original storage contents should remain unchanged.
+  ASSERT_EQ(ta[0].item<int>(), 1);
+  ASSERT_EQ(ta[1].item<int>(), 2);
+  ASSERT_EQ(ta[2].item<int>(), 3);
+  ASSERT_EQ(ta[3].item<int>(), 4);
+
+  // PyTorch only preserves the pre-existing prefix here. The newly exposed
+  // tail element after resize_ is uninitialized and should not be asserted.
+  ASSERT_EQ(tb[0].item<int>(), 2);
+  ASSERT_EQ(tb[1].item<int>(), 3);
+  ASSERT_EQ(tb[2].item<int>(), 4);
+  ASSERT_EQ(tb.numel(), 4);
 }

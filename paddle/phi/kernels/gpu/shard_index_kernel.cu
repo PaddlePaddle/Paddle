@@ -20,8 +20,6 @@
 
 namespace phi {
 
-using phi::PADDLE_CUDA_NUM_THREADS;
-
 template <typename T>
 __global__ void ShardIndexInner(const T* in_data,
                                 T* out_data,

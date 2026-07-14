@@ -36,7 +36,7 @@ class Store;
 class CommTask {
  public:
   CommTask(const std::string& backend = "",
-           const phi::Place& place = phi::Place(),
+           const Place& place = Place(),
            const std::string& group_key = "",
            int rank = -1,
            int size = 0,
@@ -73,7 +73,7 @@ class CommTask {
 
   std::string GroupKey() { return group_key_; }
   std::string GetBackend() { return backend_; }
-  phi::Place GetPlace() { return place_; }
+  Place GetPlace() { return place_; }
   int GetGlobalRank() { return global_rank_; }
   int GetRank() { return rank_; }
   int GetSize() { return size_; }
@@ -152,7 +152,7 @@ class CommTask {
 
  protected:
   std::string backend_;
-  phi::Place place_;
+  Place place_;
   std::string group_key_;
   int global_rank_;
   int rank_;

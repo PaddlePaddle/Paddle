@@ -100,12 +100,12 @@ static void *init_bkcl_context_func(void *args) {
 struct BKCLContextMap {
   std::unordered_map<int, BKCLContext> contexts_;
   std::vector<int> order_;
-  std::vector<phi::Place> places_;
+  std::vector<Place> places_;
   size_t num_trainers_;
   size_t trainer_id_;
   BKCLUniqueId *bkcl_id_;
 
-  explicit BKCLContextMap(const std::vector<phi::Place> &places,
+  explicit BKCLContextMap(const std::vector<Place> &places,
                           BKCLUniqueId *bkcl_id = nullptr,
                           size_t num_trainers = 1,
                           size_t trainer_id = 0) {
@@ -189,9 +189,9 @@ struct BKCLContextMap {
 
   phi::XPUContext *DevCtx(int dev_id) const { return at(dev_id).ctx_.get(); }
 
-  phi::XPUContext *DevCtx(phi::Place p) const { return DevCtx(p.device); }
+  phi::XPUContext *DevCtx(Place p) const { return DevCtx(p.device); }
 
-  const BKCLContext &at(phi::Place p) const { return this->at(p.device); }
+  const BKCLContext &at(Place p) const { return this->at(p.device); }
 
   const BKCLContext &at(int dev_id) const { return contexts_.at(dev_id); }
 

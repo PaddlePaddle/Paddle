@@ -21,7 +21,6 @@ from collections import defaultdict, deque
 from dataclasses import dataclass
 from enum import Enum
 from functools import partial
-from typing import Callable
 
 import paddle
 from paddle import framework
@@ -48,6 +47,8 @@ if _use_four_directions:
 else:
     from .pp_utils import p2p_communication as p2p
 
+from typing import TYPE_CHECKING
+
 from paddle.distributed import fleet
 from paddle.distributed.fleet.utils.tensor_fusion_helper import (
     HOOK_ACTION,
@@ -59,6 +60,10 @@ from .pipeline_hooks import (
     PipelineHook,
 )
 from .pp_utils.utils import dict_to_tuple_helper, tuple_to_dict_helper
+from .zero_bubble_utils import WeightGradStore
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 g_profile_pipeline_details_steps = int(
     os.getenv("FLAGS_profile_pipeline_details_steps", "0")
@@ -612,7 +617,9 @@ class NoPipelineParallel(MetaParallelBase):
 
         return train_loss
 
-    def eval_batch(self, data, compute_loss=False, loss_fn_idx=0):
+    def eval_batch(
+        self, data, compute_loss=False, loss_fn_idx=0, return_host_tensor=False
+    ):
         # check loss_fn_idx is valid and loss_fn exists
         assert (
             loss_fn_idx in range(len(self._layers._loss_fn))
@@ -637,6 +644,7 @@ class NoPipelineParallel(MetaParallelBase):
             )
 
         loss_list = []
+        output_list = []
         for _ in range(self.accumulate_steps):
             # data prepare
             data_iter = next(micro_dataset)
@@ -648,43 +656,71 @@ class NoPipelineParallel(MetaParallelBase):
             # forward
             output_tensor = self._layers.forward(input_tensor)
 
-            # loss is loss_fn[loss_fn_idx]'s result
-            loss = None
-            # cal loss
-            for idx, loss_fn in enumerate(self._layers._loss_fn):
-                loss_tensor = loss_fn(output_tensor, label)
-                assert isinstance(loss_tensor, paddle.Tensor), (
-                    "Currently, loss_fn should obtain Paddle.Tensor dtype"
+            if compute_loss:
+                # loss is loss_fn[loss_fn_idx]'s result
+                loss = None
+
+                # cal loss
+                for idx, loss_fn in enumerate(self._layers._loss_fn):
+                    loss_tensor = loss_fn(output_tensor, label)
+                    assert isinstance(loss_tensor, paddle.Tensor), (
+                        "Currently, loss_fn should obtain Paddle.Tensor dtype"
+                    )
+                    if self.total_loss is None:
+                        self.total_loss = []
+                    # when self.total_loss length is less than idx, append a new tensor
+                    if len(self.total_loss) <= idx:
+                        self.total_loss.append([])
+
+                    self.total_loss[idx].append(loss_tensor.detach())
+
+                    if idx == self.loss_fn_idx:
+                        loss = loss_tensor
+
+                assert self.total_loss is not None, (
+                    "train_batch() in last stage should obtain valid loss"
                 )
+            else:
+                if return_host_tensor:
+                    self._offload_tensors(output_tensor)
+                output_list.append(output_tensor)
 
-                if self.total_loss is None:
-                    self.total_loss = []
-                # when self.total_loss length is less than idx, append a new tensor
-                if len(self.total_loss) <= idx:
-                    self.total_loss.append([])
-
-                self.total_loss[idx].append(loss_tensor.detach())
-
-                if idx == self.loss_fn_idx:
-                    loss = loss_tensor
-
-            assert self.total_loss is not None, (
-                "train_batch() in last stage should obtain valid loss"
-            )
-
-        losses = []
-        return_micro_batch_loss = False
-        for idx in range(len(self._layers._loss_fn)):
-            self.total_loss[idx] = paddle.to_tensor(self.total_loss[idx])
-            if not return_micro_batch_loss:
+        if compute_loss:
+            losses = []
+            return_micro_batch_loss = False
+            for idx in range(len(self._layers._loss_fn)):
+                self.total_loss[idx] = paddle.to_tensor(self.total_loss[idx])
+                # if not return_micro_batch_loss:
                 # TODO(shenliang03): it will use mean/sum to calculate loss
                 tmp = paddle.zeros_like(self.total_loss[idx][0])
                 for loss in self.total_loss[idx]:
                     tmp += loss.detach()
                 losses.append(tmp / self.accumulate_steps)
-            else:
-                losses.append(self.total_loss[idx].detach())
-        return losses[0] if len(losses) == 1 else losses
+                # else:
+                #     losses.append(self.total_loss[idx].detach())
+            res = losses[0] if len(losses) == 1 else losses
+        else:
+            res = output_list
+        return res
+
+    def _offload_tensors(self, output_tensor):
+        if isinstance(output_tensor, (tuple, list)):
+            for t in output_tensor:
+                if not isinstance(t, paddle.Tensor):
+                    continue
+                host_tensor = (
+                    t.pin_memory() if hasattr(t, "pin_memory") else t.cpu()
+                )
+                host_tensor._share_buffer_to(t)
+        else:
+            if not isinstance(output_tensor, paddle.Tensor):
+                return
+            host_tensor = (
+                output_tensor.pin_memory()
+                if hasattr(output_tensor, "pin_memory")
+                else output_tensor.cpu()
+            )
+            host_tensor._share_buffer_to(output_tensor)
 
 
 class PipelineParallel(MetaParallelBase):
@@ -3916,31 +3952,69 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
             self._record_stamp(
                 "B", backward_micro_step_id, '"E"', forward=False
             )
+            WeightGradStore.flush()
 
             # stash the input_tensor_grad and it will be sent to ths last stage later
             if self.is_pipeline_first_stage(ignore_virtual=True):
                 backward_send_recv_buffer_queue.put(input_tensor_grad)
 
             if not last_iter:
-                # NOTE: `send_backward_recv_forward` is intentionally unused to
-                # prevent hanging bugs in dynamic shape mode.
-                input_tensor = self._p2p_helper.recv_forward(
-                    self.is_pipeline_first_stage(ignore_virtual=True),
-                    batch_p2p_comm=self._use_batch_p2p_comm,
-                )
-                self._p2p_helper.send_backward(
-                    input_tensor_grad,
-                    self.is_pipeline_first_stage(ignore_virtual=True),
-                    batch_p2p_comm=self._use_batch_p2p_comm,
-                )
-                next_forward_virtual_pp_rank = self._get_virtual_pp_rank(
-                    forward_micro_step_id + 1, forward=True
-                )
-                if self.is_pipeline_first_stage(ignore_virtual=True):
-                    input_tensor = forward_send_recv_buffer_queue.get()
-                self.input_tensors[next_forward_virtual_pp_rank].append(
-                    input_tensor
-                )
+                if not WeightGradStore.funcs_queue.empty():
+                    # NOTE: `send_backward_recv_forward` is intentionally unused to
+                    # prevent hanging bugs in dynamic shape mode.
+                    input_tensor, fw_wait_handles = (
+                        self._p2p_helper.recv_forward(
+                            self.is_pipeline_first_stage(ignore_virtual=True),
+                            batch_p2p_comm=self._use_batch_p2p_comm,
+                            overlap_p2p_comm=True,
+                        )
+                    )
+                    bw_wait_handles = self._p2p_helper.send_backward(
+                        input_tensor_grad,
+                        self.is_pipeline_first_stage(ignore_virtual=True),
+                        batch_p2p_comm=self._use_batch_p2p_comm,
+                        overlap_p2p_comm=True,
+                    )
+
+                    # Execute weight grad computation while P2P communication is in progress
+                    WeightGradStore.pop()
+                    # Wait for P2P communication to complete
+                    if fw_wait_handles is not None:
+                        for fw_wait_handle in fw_wait_handles:
+                            fw_wait_handle.wait()
+                    if bw_wait_handles is not None:
+                        for bw_wait_handle in bw_wait_handles:
+                            bw_wait_handle.wait()
+
+                    next_forward_virtual_pp_rank = self._get_virtual_pp_rank(
+                        forward_micro_step_id + 1, forward=True
+                    )
+                    if self.is_pipeline_first_stage(ignore_virtual=True):
+                        input_tensor = forward_send_recv_buffer_queue.get()
+                    self.input_tensors[next_forward_virtual_pp_rank].append(
+                        input_tensor
+                    )
+
+                else:
+                    # NOTE: `send_backward_recv_forward` is intentionally unused to
+                    # prevent hanging bugs in dynamic shape mode.
+                    input_tensor = self._p2p_helper.recv_forward(
+                        self.is_pipeline_first_stage(ignore_virtual=True),
+                        batch_p2p_comm=self._use_batch_p2p_comm,
+                    )
+                    self._p2p_helper.send_backward(
+                        input_tensor_grad,
+                        self.is_pipeline_first_stage(ignore_virtual=True),
+                        batch_p2p_comm=self._use_batch_p2p_comm,
+                    )
+                    next_forward_virtual_pp_rank = self._get_virtual_pp_rank(
+                        forward_micro_step_id + 1, forward=True
+                    )
+                    if self.is_pipeline_first_stage(ignore_virtual=True):
+                        input_tensor = forward_send_recv_buffer_queue.get()
+                    self.input_tensors[next_forward_virtual_pp_rank].append(
+                        input_tensor
+                    )
             else:
                 for _ in range(self.num_stages - self.stage_id - 1):
                     if self.user_hooks_enabled:
@@ -3957,13 +4031,40 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
         # no more fwd, but we need to send the input_tensor_grad.
         if self.is_pipeline_first_stage(ignore_virtual=True):
             input_tensor_grad = backward_send_recv_buffer_queue.get()
-        self.output_tensor_grads[next_backward_virtual_pp_rank].append(
-            self._p2p_helper.send_backward_recv_backward(
-                input_tensor_grad,
-                recv_next=True,
-                batch_p2p_comm=self._use_batch_p2p_comm,
+
+        if not WeightGradStore.funcs_queue.empty():
+            output_tensor_grad, wait_handles = (
+                self._p2p_helper.send_backward_recv_backward(
+                    input_tensor_grad,
+                    recv_next=True,
+                    batch_p2p_comm=self._use_batch_p2p_comm,
+                    overlap_p2p_comm=True,
+                )
             )
-        )
+
+            # Execute weight grad computation while P2P communication is in progress
+            WeightGradStore.pop()
+
+            if wait_handles is not None:
+                for handle in wait_handles:
+                    handle.wait()
+
+            self.output_tensor_grads[next_backward_virtual_pp_rank].append(
+                output_tensor_grad
+            )
+        else:
+            self.output_tensor_grads[next_backward_virtual_pp_rank].append(
+                self._p2p_helper.send_backward_recv_backward(
+                    input_tensor_grad,
+                    recv_next=True,
+                    batch_p2p_comm=self._use_batch_p2p_comm,
+                )
+            )
+
+        # Flush any remaining deferred weight gradient computations
+        if not WeightGradStore.funcs_queue.empty():
+            raise AssertionError("WeightGradStore.funcs_queue should be empty")
+        WeightGradStore.clear()
 
         # run cooldown
         for micro_step in range(cooldown_steps):
@@ -3982,6 +4083,9 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
                 backward_micro_step_id + 1, forward=False
             )
 
+            # Flush deferred weight gradient computations to queue
+            WeightGradStore.flush()
+
             recv_next = True
             if backward_micro_step_id == (num_steps - 1):
                 recv_next = False
@@ -3998,13 +4102,42 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
                     input_tensor_grad = None
                 else:
                     input_tensor_grad = backward_send_recv_buffer_queue.get()
-            self.output_tensor_grads[next_backward_virtual_pp_rank].append(
-                self._p2p_helper.send_backward_recv_backward(
-                    input_tensor_grad,
-                    recv_next=recv_next,
-                    batch_p2p_comm=self._use_batch_p2p_comm,
+
+            if not WeightGradStore.funcs_queue.empty():
+                output_tensor_grad, wait_handles = (
+                    self._p2p_helper.send_backward_recv_backward(
+                        input_tensor_grad,
+                        recv_next=recv_next,
+                        batch_p2p_comm=self._use_batch_p2p_comm,
+                        overlap_p2p_comm=True,
+                    )
                 )
-            )
+                # Execute weight grad computation while P2P communication is in progress
+                WeightGradStore.pop()
+
+                if wait_handles is not None:
+                    for handle in wait_handles:
+                        handle.wait()
+
+                self.output_tensor_grads[next_backward_virtual_pp_rank].append(
+                    output_tensor_grad
+                )
+
+            else:
+                self.output_tensor_grads[next_backward_virtual_pp_rank].append(
+                    self._p2p_helper.send_backward_recv_backward(
+                        input_tensor_grad,
+                        recv_next=recv_next,
+                        batch_p2p_comm=self._use_batch_p2p_comm,
+                    )
+                )
+
+            # Flush any remaining deferred weight gradient computations
+            if not WeightGradStore.funcs_queue.empty():
+                raise AssertionError(
+                    "WeightGradStore.funcs_queue should be empty"
+                )
+            WeightGradStore.clear()
 
         assert backward_send_recv_buffer_queue.empty(), (
             "send_recv buffer should be empty"

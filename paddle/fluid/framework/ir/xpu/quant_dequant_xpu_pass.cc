@@ -416,9 +416,8 @@ void QuantDequantXPUPass::RestoreWeightsToInt8(
     auto* var = scope->FindVar(weight_var_name);
     PADDLE_ENFORCE_NOT_NULL(
         var,
-        common::errors::NotFound(
-            "The input persistable [%s] var of [%s] op is not found.",
-            weight_var_name));
+        common::errors::NotFound("The input persistable var [%s] is not found.",
+                                 weight_var_name));
     auto* weight_tensor = var->GetMutable<DenseTensor>();
     float* fp32_weight_data = weight_tensor->data<float>();
     std::vector<int8_t> weight_data;
@@ -428,7 +427,7 @@ void QuantDequantXPUPass::RestoreWeightsToInt8(
     }
     const auto weight_dims = weight_tensor->dims();
     weight_tensor->clear();  // clear int weight
-    weight_tensor->set_type(phi::DataType::INT8);
+    weight_tensor->set_type(DataType::INT8);
     weight_tensor->Resize(common::make_ddim(common::vectorize(weight_dims)));
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
         phi::DeviceContextPool::Instance().Get(CPUPlace()));

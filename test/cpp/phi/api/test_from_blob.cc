@@ -107,6 +107,15 @@ TEST(GetPlaceFromPtr, GPU) {
     ASSERT_EQ(gpu1_data_place, phi::GPUPlace(1));
     std::cout << "gpu1_data_place: " << gpu1_data_place << std::endl;
   }
+
+  // Test GPUPinnedPlace (cudaMemoryTypeHost)
+  auto pinned_alloc_ptr =
+      paddle::GetAllocator(phi::GPUPinnedPlace())->Allocate(sizeof(cpu_data));
+  float* pinned_data = static_cast<float*>(pinned_alloc_ptr->ptr());
+  auto pinned_data_place = GetPlaceFromPtr(pinned_data);
+  ASSERT_EQ(pinned_data_place, phi::GPUPinnedPlace());
+  std::cout << "pinned_data_place: " << pinned_data_place << std::endl;
+  pinned_alloc_ptr.release();
 }
 
 TEST(from_blob, GPU) {

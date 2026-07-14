@@ -73,15 +73,15 @@ inline IntT* SortedAndUniqueIndex(const Context& dev_ctx,
   phi::IndexKernel<int, kps::IdentityFunctor<int>>(
       dev_ctx, unique_value, kps::IdentityFunctor<int>());
 
-  phi::backends::gpu::GpuMemcpyAsync(unique_key->data<IntT>(),
-                                     rulebook_ptr,
-                                     sizeof(IntT) * len,
+  backends::gpu::GpuMemcpyAsync(unique_key->data<IntT>(),
+                                rulebook_ptr,
+                                sizeof(IntT) * len,
 #ifdef PADDLE_WITH_HIP
-                                     hipMemcpyDeviceToDevice,
+                                hipMemcpyDeviceToDevice,
 #else
-                                     cudaMemcpyDeviceToDevice,
+                                cudaMemcpyDeviceToDevice,
 #endif
-                                     dev_ctx.stream());
+                                dev_ctx.stream());
 // compared with thrust::sort_by_key, thrust::merge_by_key may achieved higher
 // performance, but thrust::merge_by_key limited by data size
 #ifdef PADDLE_WITH_HIP
@@ -325,8 +325,7 @@ int ProductRuleBook(const Context& dev_ctx,
   // 1. product rule book
   funcs::SetConstant<Context, int> set_zero;
   set_zero(dev_ctx, counter_per_kernel, 0);
-  auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
 
   ProductRuleBookKernel<IntT><<<config.block_per_grid.x,
                                 config.thread_per_block.x,
@@ -357,7 +356,7 @@ int ProductRuleBook(const Context& dev_ctx,
   funcs::sparse::DistanceKernel<IntT><<<1, 1, 0, dev_ctx.stream()>>>(
       rulebook_ptr, last, rulebook_ptr + 3 * kernel_size * non_zero_num - 1);
   IntT rulebook_len = 0;
-  phi::backends::gpu::GpuMemcpyAsync(
+  backends::gpu::GpuMemcpyAsync(
       &rulebook_len,
       rulebook_ptr + 3 * kernel_size * non_zero_num - 1,
       sizeof(IntT),
@@ -396,7 +395,7 @@ int ProductRuleBook(const Context& dev_ctx,
                         out_indices_ptr + rulebook_len,
                         bound_ptr);
 
-    config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
+    config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
 
     UpdateOutIndexAndCounterAfterLowerBound<<<config.block_per_grid,
                                               config.thread_per_block,
@@ -422,15 +421,15 @@ int ProductRuleBook(const Context& dev_ctx,
                                 -1);
     funcs::sparse::DistanceKernel<IntT>
         <<<1, 1, 0, dev_ctx.stream()>>>(rulebook_ptr, last, bound_ptr);
-    phi::backends::gpu::GpuMemcpyAsync(&rulebook_len,
-                                       bound_ptr,
-                                       sizeof(IntT),
+    backends::gpu::GpuMemcpyAsync(&rulebook_len,
+                                  bound_ptr,
+                                  sizeof(IntT),
 #ifdef PADDLE_WITH_HIP
-                                       hipMemcpyDeviceToHost,
+                                  hipMemcpyDeviceToHost,
 #else
-                                       cudaMemcpyDeviceToHost,
+                                  cudaMemcpyDeviceToHost,
 #endif
-                                       dev_ctx.stream());
+                                  dev_ctx.stream());
     dev_ctx.Wait();
     rulebook_len /= 3;
   }
@@ -444,25 +443,25 @@ int ProductRuleBook(const Context& dev_ctx,
                          counter_ptr + kernel_size,
                          offsets_ptr);
 
-  phi::backends::gpu::GpuMemcpyAsync(&(*h_counter)[0],
-                                     counter_ptr,
-                                     kernel_size * sizeof(int),
+  backends::gpu::GpuMemcpyAsync(&(*h_counter)[0],
+                                counter_ptr,
+                                kernel_size * sizeof(int),
 #ifdef PADDLE_WITH_HIP
-                                     hipMemcpyDeviceToHost,
+                                hipMemcpyDeviceToHost,
 #else
-                                     cudaMemcpyDeviceToHost,
+                                cudaMemcpyDeviceToHost,
 #endif
-                                     dev_ctx.stream());
+                                dev_ctx.stream());
 
-  phi::backends::gpu::GpuMemcpyAsync(&(*h_offsets)[0],
-                                     offsets_ptr,
-                                     kernel_size * sizeof(int),
+  backends::gpu::GpuMemcpyAsync(&(*h_offsets)[0],
+                                offsets_ptr,
+                                kernel_size * sizeof(int),
 #ifdef PADDLE_WITH_HIP
-                                     hipMemcpyDeviceToHost,
+                                hipMemcpyDeviceToHost,
 #else
-                                     cudaMemcpyDeviceToHost,
+                                cudaMemcpyDeviceToHost,
 #endif
-                                     dev_ctx.stream());
+                                dev_ctx.stream());
 
   rulebook->Resize({rulebook_rows, static_cast<int>(rulebook_len)});
 
@@ -494,14 +493,14 @@ int ProductRuleBook(const Context& dev_ctx,
         rulebook_ptr + rulebook_rows * rulebook_cols - 1);
     IntT out_non_zero_num = 0;
 #ifdef PADDLE_WITH_HIP
-    phi::backends::gpu::GpuMemcpyAsync(
+    backends::gpu::GpuMemcpyAsync(
         &out_non_zero_num,
         rulebook_ptr + rulebook_rows * rulebook_cols - 1,
         sizeof(IntT),
         hipMemcpyDeviceToHost,
         dev_ctx.stream());
 #else
-    phi::backends::gpu::GpuMemcpyAsync(
+    backends::gpu::GpuMemcpyAsync(
         &out_non_zero_num,
         rulebook_ptr + rulebook_rows * rulebook_cols - 1,
         sizeof(IntT),
@@ -521,8 +520,7 @@ int ProductRuleBook(const Context& dev_ctx,
 
     IntT* out_indices_ptr = out_indices.data<IntT>();
 
-    config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_non_zero_num, 1);
+    config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_non_zero_num, 1);
     UpdateIndexKernel<IntT>
         <<<config.block_per_grid.x,
            config.thread_per_block.x,

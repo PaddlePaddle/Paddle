@@ -1,4 +1,4 @@
-# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ from .functional import (
     mel_frequencies,
     mel_to_hz,
     power_to_db,
+    resample,
 )
 from .window import get_window
 
@@ -31,4 +32,5 @@ __all__ = [
     'mel_to_hz',
     'power_to_db',
     'get_window',
+    'resample',
 ]

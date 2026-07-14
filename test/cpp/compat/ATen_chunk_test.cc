@@ -58,7 +58,8 @@ TEST(TensorChunkTest, ChunkMoreChunksThanSize) {
 
   std::vector<at::Tensor> chunks = t.chunk(5, 0);
 
-  ASSERT_EQ(chunks.size(), 5);
+  // PyTorch returns at most dim_size non-empty chunks when chunks > dim_size
+  ASSERT_EQ(chunks.size(), 2);
 }
 
 TEST(TensorChunkTest, ChunkDefaultDim) {
@@ -77,4 +78,48 @@ TEST(TensorChunkTest, ChunkIntType) {
 
   ASSERT_EQ(chunks.size(), 3);
   ASSERT_EQ(chunks[0].dtype(), at::kInt);
+}
+
+TEST(TensorChunkTest, ChunkZeroDim) {
+  at::Tensor t = at::zeros({0, 4}, at::kFloat);
+
+  std::vector<at::Tensor> chunks = t.chunk(2, 0);
+
+  // PyTorch returns 'chunks' number of empty tensors when dim_size == 0
+  ASSERT_EQ(chunks.size(), 2);
+  ASSERT_EQ(chunks[0].size(0), 0);
+  ASSERT_EQ(chunks[1].size(0), 0);
+}
+
+TEST(TensorChunkTest, ChunkNegativeDim) {
+  at::Tensor t = at::arange(12, at::kFloat).reshape({3, 4});
+
+  // chunk(-1) should be equivalent to chunk(rank - 1) = chunk(1)
+  std::vector<at::Tensor> chunks_neg = t.chunk(2, -1);
+  std::vector<at::Tensor> chunks_pos = t.chunk(2, 1);
+
+  ASSERT_EQ(chunks_neg.size(), chunks_pos.size());
+  for (size_t i = 0; i < chunks_neg.size(); ++i) {
+    ASSERT_EQ(chunks_neg[i].sizes(), chunks_pos[i].sizes());
+  }
+}
+
+TEST(TensorChunkTest, ChunkOutOfRangeDim) {
+  at::Tensor t = at::arange(12, at::kFloat).reshape({3, 4});
+
+  ASSERT_THROW(t.chunk(2, 2), std::exception);   // dim >= rank
+  ASSERT_THROW(t.chunk(2, -3), std::exception);  // dim < -rank
+}
+
+TEST(TensorChunkTest, ChunkZeroRankTensor) {
+  at::Tensor t = at::empty({}, at::kFloat);  // 0-dim scalar tensor
+
+  ASSERT_THROW(t.chunk(2, 0), std::exception);
+}
+
+TEST(TensorChunkTest, ChunkZeroChunks) {
+  at::Tensor t = at::arange(12, at::kFloat).reshape({3, 4});
+
+  ASSERT_THROW(t.chunk(0, 0), std::exception);
+  ASSERT_THROW(t.chunk(-1, 0), std::exception);
 }

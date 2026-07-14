@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/layer_norm_grad_kernel.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cast_kernel.h"
@@ -26,22 +27,34 @@
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/kernels/gpu/rms_norm_cuda_kernel.h"
 #endif
+COMMON_DECLARE_bool(use_apex_layer_norm_kernel);
 
 namespace phi {
 enum class LayerNormGadKernelVariant { FAST_LN_V2, GENERIC };
 static inline LayerNormGadKernelVariant LayerNormGradKernelDispatch(
-    const paddle::DataType weight_type,
-    const paddle::DataType input_type,
-    const paddle::DataType output_type,
-    const paddle::DataType compute_type,
+    const DataType weight_type,
+    const DataType input_type,
+    const DataType output_type,
+    const DataType compute_type,
     const uint32_t hidden_size,
     const int64_t x_numel,
     const DenseTensor* scale,
     const DenseTensor* bias) {
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
-  if (scale != nullptr && bias != nullptr &&
-      input_type != paddle::DataType::FLOAT32 && hidden_size != 4096 &&
-      hidden_size > 1024 && hidden_size <= 10240 &&
+  if (FLAGS_use_apex_layer_norm_kernel) {
+    if (funcs::fast_ln_v2::has_fast_ln_v2_bwd_kernel(
+            weight_type, input_type, output_type, compute_type, hidden_size)) {
+      return LayerNormGadKernelVariant::FAST_LN_V2;
+    }
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "FLAGS_use_apex_layer_norm_kernel requires inputs supported by "
+        "fast_ln_v2 backward kernel."));
+  }
+  if (FLAGS_use_accuracy_compatible_kernel) {
+    return LayerNormGadKernelVariant::GENERIC;
+  }
+  if (scale != nullptr && bias != nullptr && input_type != DataType::FLOAT32 &&
+      hidden_size != 4096 && hidden_size > 1024 && hidden_size <= 10240 &&
       x_numel <= std::numeric_limits<uint32_t>::max()) {
     // using fast_ln_v2 only sm > 70 and x_numel <= uint32_max
     auto prop = funcs::fast_ln_v2::GetDeviceProp();
@@ -111,7 +124,7 @@ void LayerNormGradKernel(const Context& dev_ctx,
 
   auto x_dtype = x.dtype();
 
-  phi::DataType scale_bias_dtype;
+  DataType scale_bias_dtype;
   if (scale != nullptr) {
     scale_bias_dtype = scale->dtype();
   } else {
@@ -185,7 +198,7 @@ void LayerNormGradKernel(const Context& dev_ctx,
                                                  epsilon);                  \
   } while (0)
 
-  auto compute_dtype = phi::CppTypeToDataType<U>::Type();
+  auto compute_dtype = CppTypeToDataType<U>::Type();
   auto kernel_variant = LayerNormGradKernelDispatch(scale_bias_dtype,
                                                     x_dtype,
                                                     x_dtype,

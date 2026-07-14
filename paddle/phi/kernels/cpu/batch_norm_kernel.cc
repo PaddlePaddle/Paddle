@@ -85,10 +85,12 @@ void BatchNormKernel(const Context& dev_ctx,
           "The size of input X's dimensions should be less than 6."
           "But received: the size of input X's dimensions is [%d]",
           x_dims.size()));
-  const int N = static_cast<int>(x_dims[0]);
-  const int C = static_cast<int>(
-      data_layout == DataLayout::NCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
-  const int sample_size = static_cast<int>(x.numel() / N / C);
+  const int64_t N = x_dims[0];
+  const int64_t C =
+      data_layout == DataLayout::NCHW ? x_dims[1] : x_dims[x_dims.size() - 1];
+  const int64_t sample_size = x.numel() / N / C;
+  const int64_t num_batch_channels = static_cast<int64_t>(N) * C;
+  const int64_t num_batch_spatial = static_cast<int64_t>(N) * sample_size;
 
   // alloc memory
   dev_ctx.template Alloc<T>(y);
@@ -124,7 +126,7 @@ void BatchNormKernel(const Context& dev_ctx,
     EigenVectorArrayMap<T> running_var_arr(
         dev_ctx.template Alloc<T>(variance_out), C);
 
-    if ((N * sample_size) == 1) {
+    if (num_batch_spatial == 1) {
       // Only 1 element in normalization dimension,
       // we skip the batch norm calculation, let y = x.
       Copy(dev_ctx, x, dev_ctx.GetPlace(), false, y);
@@ -133,29 +135,30 @@ void BatchNormKernel(const Context& dev_ctx,
 
     switch (data_layout) {
       case DataLayout::NCHW: {
-        ConstEigenArrayMap<T> x_arr(x.data<T>(), sample_size, N * C);
-        for (int nc = 0; nc < N * C; ++nc) {
+        ConstEigenArrayMap<T> x_arr(
+            x.data<T>(), sample_size, num_batch_channels);
+        for (int64_t nc = 0; nc < num_batch_channels; ++nc) {
           saved_mean_e(nc % C) += x_arr.col(nc).sum();
         }
-        saved_mean_e /= N * sample_size;
-        for (int nc = 0; nc < N * C; ++nc) {
+        saved_mean_e /= num_batch_spatial;
+        for (int64_t nc = 0; nc < num_batch_channels; ++nc) {
           saved_variance_e(nc % C) +=
               (x_arr.col(nc) - saved_mean_e(nc % C)).matrix().squaredNorm();
         }
-        saved_variance_e /= N * sample_size;
+        saved_variance_e /= num_batch_spatial;
         break;
       }
       case DataLayout::NHWC: {
-        ConstEigenArrayMap<T> x_arr(x.data<T>(), C, N * sample_size);
-        for (int i = 0; i < N * sample_size; ++i) {
+        ConstEigenArrayMap<T> x_arr(x.data<T>(), C, num_batch_spatial);
+        for (int64_t i = 0; i < num_batch_spatial; ++i) {
           saved_mean_e += x_arr.col(i);
         }
-        saved_mean_e /= N * sample_size;
-        for (int i = 0; i < N * sample_size; ++i) {
+        saved_mean_e /= num_batch_spatial;
+        for (int64_t i = 0; i < num_batch_spatial; ++i) {
           saved_variance_e +=
               (x_arr.col(i) - saved_mean_e) * (x_arr.col(i) - saved_mean_e);
         }
-        saved_variance_e /= N * sample_size;
+        saved_variance_e /= num_batch_spatial;
         break;
       }
       default:
@@ -254,16 +257,17 @@ void BatchNormKernel(const Context& dev_ctx,
 
   switch (data_layout) {
     case DataLayout::NCHW: {
-      EigenArrayMap<T> y_arr(dev_ctx.template Alloc<T>(y), sample_size, N * C);
-      ConstEigenArrayMap<T> x_arr(x.data<T>(), sample_size, N * C);
-      for (int nc = 0; nc < N * C; ++nc) {
+      EigenArrayMap<T> y_arr(
+          dev_ctx.template Alloc<T>(y), sample_size, num_batch_channels);
+      ConstEigenArrayMap<T> x_arr(x.data<T>(), sample_size, num_batch_channels);
+      for (int64_t nc = 0; nc < num_batch_channels; ++nc) {
         y_arr.col(nc) = x_arr.col(nc) * new_scale(nc % C) + new_bias(nc % C);
       }
       break;
     }
     case DataLayout::NHWC: {
-      EigenArrayMap<T>(dev_ctx.template Alloc<T>(y), C, N * sample_size) =
-          (ConstEigenArrayMap<T>(x.data<T>(), C, N * sample_size).colwise() *
+      EigenArrayMap<T>(dev_ctx.template Alloc<T>(y), C, num_batch_spatial) =
+          (ConstEigenArrayMap<T>(x.data<T>(), C, num_batch_spatial).colwise() *
            new_scale)
               .colwise() +
           new_bias;

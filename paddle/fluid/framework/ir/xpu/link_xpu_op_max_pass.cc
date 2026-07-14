@@ -123,7 +123,7 @@ bool LinkXPUOpMaxPass::IsQuant(Node* weight_node) const {
                      ->FindVar(weight_node->Name())
                      ->GetMutable<DenseTensor>()
                      ->dtype();
-  return w_dtype == phi::DataType::INT8;
+  return w_dtype == DataType::INT8;
 }
 
 void LinkXPUOpMaxPass::LinkAddActMax(ir::Graph* graph) const {

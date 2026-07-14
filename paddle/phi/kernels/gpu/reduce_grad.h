@@ -70,7 +70,7 @@ void ReduceGradKernel(const Context& dev_ctx,
   // make new tensor
   DenseTensor new_d_out(d_out->dtype());
   new_d_out.ShareDataWith(*d_out);
-  new_d_out.Resize(make_ddim(update_dims));
+  new_d_out.Resize(update_dims);
 
   dev_ctx.Alloc(d_x, x.dtype());
 

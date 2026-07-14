@@ -25,19 +25,25 @@ namespace memory {
 
 namespace allocation {
 class Allocator;
+class AutoGrowthBestFitAllocator;
 class RetryAllocator;
 class StatAllocator;
 class StreamSafeCUDAAllocator;
 class VirtualMemoryAutoGrowthBestFitAllocator;
 class VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator;
+class VMMAutoGrowthBestFitAllocatorV2;
+class VMMAutoGrowthBestFitMultiPoolAllocatorV2;
 }  // namespace allocation
 
 using allocation::Allocator;
+using allocation::AutoGrowthBestFitAllocator;
 using allocation::RetryAllocator;
 using allocation::StatAllocator;
 using allocation::StreamSafeCUDAAllocator;
 using allocation::VirtualMemoryAutoGrowthBestFitAllocator;
 using allocation::VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator;
+using allocation::VMMAutoGrowthBestFitAllocatorV2;
+using allocation::VMMAutoGrowthBestFitMultiPoolAllocatorV2;
 
 /**
  * @brief AllocatorVisitorReqImpl serves as the Abstract Visitor interface in
@@ -51,6 +57,7 @@ using allocation::VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator;
 class AllocatorVisitorReqImpl {
  public:
   virtual ~AllocatorVisitorReqImpl() = default;
+  virtual void Visit(AutoGrowthBestFitAllocator* allocator) = 0;
   virtual void Visit(RetryAllocator* allocator) = 0;
   virtual void Visit(StatAllocator* allocator) = 0;
   virtual void Visit(Allocator* allocator) {}
@@ -59,6 +66,8 @@ class AllocatorVisitorReqImpl {
   virtual void Visit(VirtualMemoryAutoGrowthBestFitAllocator* allocator) = 0;
   virtual void Visit(
       VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator* allocator) = 0;
+  virtual void Visit(VMMAutoGrowthBestFitAllocatorV2* allocator) = 0;
+  virtual void Visit(VMMAutoGrowthBestFitMultiPoolAllocatorV2* allocator) = 0;
 #endif
 };
 
@@ -74,6 +83,7 @@ class AllocatorVisitorReqImpl {
 class AllocatorVisitor : public AllocatorVisitorReqImpl {
  public:
   virtual ~AllocatorVisitor() = default;
+  virtual void Visit(AutoGrowthBestFitAllocator* allocator);
   virtual void Visit(RetryAllocator* allocator);
   virtual void Visit(StatAllocator* allocator);
   virtual void Visit(Allocator* allocator) {}
@@ -82,6 +92,8 @@ class AllocatorVisitor : public AllocatorVisitorReqImpl {
   virtual void Visit(VirtualMemoryAutoGrowthBestFitAllocator* allocator);
   virtual void Visit(
       VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator* allocator);
+  virtual void Visit(VMMAutoGrowthBestFitAllocatorV2* allocator);
+  virtual void Visit(VMMAutoGrowthBestFitMultiPoolAllocatorV2* allocator);
 #endif
 };
 
@@ -252,10 +264,15 @@ class VMMFreeBlocksInfoVisitor : public AllocatorComputeStreamVisitor {
  * internal state (the list of all memory blocks) and extract key information
  * (size, address and free_info) for external analysis or debugging.
  */
-class VMMAllBlocksInfoVisitor : public AllocatorComputeStreamVisitor {
+class AllBlocksInfoVisitor : public AllocatorComputeStreamVisitor {
   using AllocatorComputeStreamVisitor::Visit;
 
  public:
+  enum class PoolFilter : int { kAll = 0, kSmallOnly = 1, kLargeOnly = 2 };
+
+  explicit AllBlocksInfoVisitor(PoolFilter filter = PoolFilter::kAll)
+      : pool_filter_(filter) {}
+
   /**
    * @brief Retrieves the collected information about the free memory blocks.
    *
@@ -268,10 +285,17 @@ class VMMAllBlocksInfoVisitor : public AllocatorComputeStreamVisitor {
    * @return A nested vector structure containing the size, integer address,
    * free info of all blocks.
    */
-  std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>
-  GetAllBlocksInfo() const {
+  const std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>&
+  GetAllBlocksInfo() const& {
     return all_blocks_info_;
   }
+
+  std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>
+  GetAllBlocksInfo() && {
+    return std::move(all_blocks_info_);
+  }
+
+  PoolFilter GetPoolFilter() const { return pool_filter_; }
 
   /**
    * @brief Visits the VirtualMemoryAutoGrowthBestFitAllocator.
@@ -285,8 +309,13 @@ class VMMAllBlocksInfoVisitor : public AllocatorComputeStreamVisitor {
    * information is to be extracted.
    */
   void Visit(VirtualMemoryAutoGrowthBestFitAllocator* allocator) override;
+  void Visit(AutoGrowthBestFitAllocator* allocator) override;
+  void Visit(VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator* allocator)
+      override;
 
  private:
+  PoolFilter pool_filter_ = PoolFilter::kAll;
+
   /**
    * @brief Stores the extracted all block information.
    *
@@ -332,15 +361,24 @@ class VMMAllocateCompactSizeVisitor : public AllocatorComputeStreamVisitor {
 class VmmTensorPartsVisitor : public AllocatorVisitor {
  public:
   using BlockPart = allocation::BlockPart;
-  explicit VmmTensorPartsVisitor(void* ptr) : target_ptr_(ptr) {}
+  explicit VmmTensorPartsVisitor(void* ptr,
+                                 size_t size,
+                                 bool mark_ipc_exported = true)
+      : target_ptr_(ptr),
+        target_size_(size),
+        mark_ipc_exported_(mark_ipc_exported) {}
 
   void Visit(VirtualMemoryAutoGrowthBestFitAllocator* allocator) override;
+  void Visit(VMMAutoGrowthBestFitAllocatorV2* allocator) override;
+  void Visit(VMMAutoGrowthBestFitMultiPoolAllocatorV2* allocator) override;
 
   bool Found() const { return found_; }
   const std::vector<BlockPart>& Parts() const { return parts_; }
 
  private:
   void* target_ptr_{nullptr};
+  size_t target_size_{0};
+  bool mark_ipc_exported_{true};
   bool found_{false};
   std::vector<BlockPart> parts_;
 };

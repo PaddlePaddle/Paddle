@@ -118,7 +118,7 @@ static void linalg_solve(const Context& dev_ctx,
   if (is_vector) {
     dev_ctx.Alloc(&tmp_y, y.dtype());
 
-    phi::Unsqueeze<T, Context>(dev_ctx, y, {-1}, &tmp_y, nullptr);
+    Unsqueeze<T, Context>(dev_ctx, y, {-1}, &tmp_y, nullptr);
   } else {
     tmp_y.Resize(y.dims());
     dev_ctx.Alloc(&tmp_y, y.dtype());
@@ -138,11 +138,11 @@ static void linalg_solve(const Context& dev_ctx,
 
   DenseTensor tmp_x_bc;
 
-  phi::ExpandAsKernel<T, Context>(
+  ExpandAsKernel<T, Context>(
       dev_ctx, tmp_x, nullptr, x_broadcast_dims, &tmp_x_bc);
 
   DenseTensor tmp_y_bc;
-  phi::ExpandAsKernel<T, Context>(
+  ExpandAsKernel<T, Context>(
       dev_ctx, tmp_y, nullptr, y_broadcast_dims, &tmp_y_bc);
 
   auto x_dim = x.dims();
@@ -158,7 +158,7 @@ static void linalg_solve(const Context& dev_ctx,
     out_tmp.Resize(out->dims());
     out_tmp = *out;
 
-    phi::Squeeze<T, Context>(dev_ctx, out_tmp, {-1}, out);
+    Squeeze<T, Context>(dev_ctx, out_tmp, {-1}, out);
   } else {
     PADDLE_ENFORCE_EQ(
         x_dim[x_dim_size - 1],

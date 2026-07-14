@@ -72,13 +72,12 @@ void SerializeCombineTensor(const Context& dev_ctx,
     // Serialize tensors one by one
     // Check types to see if a fp16 transformation is required
     auto in_dtype = tensor.dtype();
-    auto out_dtype = save_as_fp16 ? phi::DataType::FLOAT16 : in_dtype;
+    auto out_dtype = save_as_fp16 ? DataType::FLOAT16 : in_dtype;
     if (in_dtype != out_dtype) {
       auto place = dev_ctx.GetPlace();
-      auto in_kernel_type =
-          phi::KernelKey(place, DataLayout::ALL_LAYOUT, in_dtype);
+      auto in_kernel_type = KernelKey(place, DataLayout::ALL_LAYOUT, in_dtype);
       auto out_kernel_type =
-          phi::KernelKey(place, DataLayout::ALL_LAYOUT, out_dtype);
+          KernelKey(place, DataLayout::ALL_LAYOUT, out_dtype);
       DenseTensor out;
       TransDataType(in_kernel_type, out_kernel_type, tensor, &out);
       // copy LoD info to the new tensor
@@ -97,7 +96,7 @@ void SaveCombineTensorKernel(const Context& dev_ctx,
                              bool overwrite,
                              bool save_as_fp16,
                              bool save_to_memory,
-                             phi::ExtendedTensor* out) {
+                             ExtendedTensor* out) {
   std::string* y = nullptr;
   if (out != nullptr) {
     auto raw_out = static_cast<RawTensor*>(out);
@@ -109,8 +108,7 @@ void SaveCombineTensorKernel(const Context& dev_ctx,
     PADDLE_THROW(common::errors::PreconditionNotMet(
         "%s exists! Cannot save_combine to it when overwrite is set to "
         "false.",
-        file_path,
-        overwrite));
+        file_path));
   }
 
   if (save_to_memory) {
@@ -130,14 +128,13 @@ void SaveCombineTensorKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void SaveCombineVocabKernel(
-    const Context& dev_ctx UNUSED,
-    const std::vector<const phi::ExtendedTensor*>& inputs,
-    const std::string& file_path,
-    bool overwrite,
-    bool save_as_fp16 UNUSED,
-    bool save_to_memory,
-    phi::ExtendedTensor* out) {
+void SaveCombineVocabKernel(const Context& dev_ctx UNUSED,
+                            const std::vector<const ExtendedTensor*>& inputs,
+                            const std::string& file_path,
+                            bool overwrite,
+                            bool save_as_fp16 UNUSED,
+                            bool save_to_memory,
+                            ExtendedTensor* out) {
   std::string* y = nullptr;
   if (out != nullptr) {
     auto raw_out = static_cast<RawTensor*>(out);
@@ -154,8 +151,7 @@ void SaveCombineVocabKernel(
     PADDLE_THROW(common::errors::PreconditionNotMet(
         "%s exists! Cannot save_combine to it when overwrite is set to "
         "false.",
-        file_path,
-        overwrite));
+        file_path));
   }
 
   std::ostringstream ss;

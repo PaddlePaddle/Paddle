@@ -45,7 +45,7 @@ class CinnJitInstruction::FnPtrImpl {
   explicit FnPtrImpl(const CINNKernelInfo& cinn_kernel_info)
       : cinn_kernel_info_(cinn_kernel_info) {}
 
-  void InitFuncArgs(const std::vector<phi::DenseTensor*>& kernel_tensor_args) {
+  void InitFuncArgs(const std::vector<DenseTensor*>& kernel_tensor_args) {
     // 1. Create placeholders for tensor args
     for (size_t i = 0; i < kernel_tensor_args.size(); ++i) {
       auto* buffer = new cinn_buffer_t();
@@ -60,8 +60,8 @@ class CinnJitInstruction::FnPtrImpl {
                   binding_info.dim_idx));
         },
         [&](const CINNKernelInfo::ArgValueIdx& binding_info) -> int64_t {
-          const auto& tensor = [&]() -> phi::DenseTensor {
-            phi::DenseTensor new_tensor =
+          const auto& tensor = [&]() -> DenseTensor {
+            DenseTensor new_tensor =
                 *(kernel_tensor_args[binding_info.arg_idx]);
             if (new_tensor.place() == CPUPlace()) {
               return new_tensor;
@@ -72,11 +72,11 @@ class CinnJitInstruction::FnPtrImpl {
                 &new_tensor);
             return new_tensor;
           }();
-          if (tensor.dtype() == phi::DataType::INT32) {
+          if (tensor.dtype() == DataType::INT32) {
             std::vector<int> tensor_data;
             framework::TensorToVector(tensor, &tensor_data);
             return tensor_data[binding_info.value_idx];
-          } else if (tensor.dtype() == phi::DataType::INT64) {
+          } else if (tensor.dtype() == DataType::INT64) {
             std::vector<int64_t> tensor_data;
             framework::TensorToVector(tensor, &tensor_data);
             return tensor_data[binding_info.value_idx];
@@ -100,7 +100,7 @@ class CinnJitInstruction::FnPtrImpl {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_CUSTOM_DEVICE)
-  void Run(const std::vector<phi::DenseTensor*>& kernel_tensor_args,
+  void Run(const std::vector<DenseTensor*>& kernel_tensor_args,
            void* stream,
            bool is_gpu) {
     VLOG(6) << "Start Run: " << cinn_kernel_info_.fn_name;
@@ -174,8 +174,8 @@ class CinnJitInstruction::FnPtrImpl {
 #endif  // defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) ||
         // defined(PADDLE_WITH_CUSTOM_DEVICE)
 
-  void InferShape(const std::vector<phi::DenseTensor*>& kernel_tensor_args,
-                  const std::vector<phi::DDim>& ir_dim,
+  void InferShape(const std::vector<DenseTensor*>& kernel_tensor_args,
+                  const std::vector<DDim>& ir_dim,
                   int32_t input_tensor_size,
                   int32_t output_tensor_size) {
     VLOG(6) << "Start InferShape: " << cinn_kernel_info_.fn_name;
@@ -286,7 +286,7 @@ CinnJitInstruction::CinnJitInstruction(
     auto var_name = value_exec_info->GetVarName(in);
     auto tensor = value_exec_info->GetScope()
                       ->FindVar(var_name)
-                      ->GetMutable<phi::DenseTensor>();
+                      ->GetMutable<DenseTensor>();
     tensor_args_.push_back(tensor);
   }
 
@@ -308,9 +308,8 @@ CinnJitInstruction::CinnJitInstruction(
                           "cinn jit instruction only support DenseTensorType"));
     auto var_name = value_exec_info->GetVarName(result);
 
-    auto tensor = value_exec_info->GetScope()
-                      ->Var(var_name)
-                      ->GetMutable<phi::DenseTensor>();
+    auto tensor =
+        value_exec_info->GetScope()->Var(var_name)->GetMutable<DenseTensor>();
 
     ir_dims_.push_back(
         result.type().dyn_cast<paddle::dialect::DenseTensorType>().dims());
@@ -332,7 +331,7 @@ CinnJitInstruction::CinnJitInstruction(
   // prepare temp_space tensors
   for (int64_t size : jit_kernel_op.cinn_kernel_info().temp_space_sizes) {
     auto& tensor = temp_space_tensors_.emplace_back();
-    tensor.set_type(phi::DataType::UINT8);
+    tensor.set_type(DataType::UINT8);
     tensor.Resize({size});
     if (size < 0) {
       need_update_shape = true;

@@ -20,7 +20,7 @@ import numbers
 import os
 import re
 import warnings
-from typing import TYPE_CHECKING, overload
+from typing import TYPE_CHECKING, Any, overload
 
 import numpy as np
 
@@ -29,8 +29,10 @@ from paddle import _C_ops
 from paddle._C_ops import diag, tril, triu  # noqa: F401
 from paddle.utils import deprecated
 from paddle.utils.decorator_utils import (
+    ParamAliasDecorator,
     param_one_alias,
     param_two_alias,
+    resize__decorator,
     size_args_decorator,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
@@ -48,7 +50,8 @@ from ..framework import (
     _current_expected_place,
     _current_expected_place_,
     _get_paddle_place,
-    convert_np_dtype_to_dtype_,
+    _to_pinned_place,
+    convert_nptype_to_datatype_or_vartype,
     core,
     dygraph_only,
     in_dynamic_mode,
@@ -411,7 +414,7 @@ def linspace(
     if not isinstance(num, (Variable, paddle.pir.Value)):
         check_type(num, 'num', (int), 'linspace')
     if not isinstance(dtype, (core.VarDesc.VarType, paddle.pir.core.DataType)):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
     if not isinstance(start, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
             tensor_start = fill_constant([1], dtype, start, force_cpu=True)
@@ -553,6 +556,7 @@ def linspace(
         return out
 
 
+@ParamAliasDecorator({"stop": ["end"], "num": ["steps"]})
 def logspace(
     start: float | paddle.Tensor,
     stop: float | paddle.Tensor,
@@ -560,6 +564,10 @@ def logspace(
     base: float | paddle.Tensor = 10.0,
     dtype: DTypeLike | None = None,
     name: str | None = None,
+    *,
+    out: paddle.Tensor | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
 ) -> paddle.Tensor:
     r"""
     Return fixed number of logarithmically-evenly spaced values within the interval \
@@ -575,14 +583,21 @@ def logspace(
         stop(int|float|Tensor): The input :attr:`stop` is exponent of last entry in the \
             sequence. It is a scalar, or a 0-D Tensor of shape [] with input data \
             type int32, int64, float32 or float64.
+            Alias: ``end``.
         num(int|Tensor): The input :attr:`num` is given number of items in the sequence. \
             It is an int scalar, or a 0-D Tensor of shape [] with data type int32.
+            Alias: ``steps``.
         base(int|float|Tensor): The input :attr:`base` is base of the logarithm function. \
             It is a scalar, or a 0-D Tensor of shape [] with input data type int32, int64, \
             float32 or float64.
         dtype(str|paddle.dtype|np.dtype, optional): The data type of output tensor, it could be \
             int32, int64, float32 or float64. Default: if None, the data type is float32. \
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Keyword Args:
+        out (Tensor|None, optional): The output tensor. Default: None.
+        device (PlaceLike|None, optional): The device of the output tensor. Default: None.
+        requires_grad (bool, optional): Whether to compute gradient. Default: False.
 
     Returns:
         Tensor: The output data type will be float32, float64. The 1-D tensor with \
@@ -610,7 +625,7 @@ def logspace(
     if not isinstance(num, (Variable, paddle.pir.Value)):
         check_type(num, 'num', (int), 'logspace')
     if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
     if not isinstance(start, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
             tensor_start = fill_constant([1], dtype, start)
@@ -623,15 +638,26 @@ def logspace(
     if not isinstance(base, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
             tensor_base = fill_constant([1], dtype, base)
+
+    place = (
+        _current_expected_place()
+        if device is None
+        else _get_paddle_place(device)
+    )
+
     if in_dynamic_mode():
-        return _C_ops.logspace(
+        result = _C_ops.logspace(
             tensor_start,
             tensor_stop,
             tensor_num,
             tensor_base,
             dtype,
-            _current_expected_place(),
+            place,
+            out=out,
         )
+        if requires_grad:
+            result.stop_gradient = False
+        return result
     elif in_pir_mode():
         start_dtype = convert_dtype(tensor_start.dtype)
         stop_dtype = convert_dtype(tensor_stop.dtype)
@@ -659,14 +685,17 @@ def logspace(
         if isinstance(num, paddle.pir.Value):
             check_dtype(num.dtype, 'num', ['int32'], 'logspace')
 
-        return _C_ops.logspace(
+        result = _C_ops.logspace(
             tensor_start,
             tensor_stop,
             tensor_num,
             tensor_base,
             dtype,
-            _current_expected_place(),
+            place,
         )
+        if requires_grad:
+            result.stop_gradient = False
+        return result
     else:
         helper = LayerHelper("logspace", **locals())
 
@@ -1058,15 +1087,8 @@ def tensor(
     place = _get_paddle_place(device)
     if place is None:
         place = _current_expected_place_()
-    if pin_memory and not isinstance(
-        place, (core.CUDAPinnedPlace, core.XPUPinnedPlace)
-    ):
-        if isinstance(place, core.CUDAPlace):
-            place = core.CUDAPinnedPlace()
-        elif isinstance(place, core.XPUPlace):
-            place = core.XPUPinnedPlace()
-        else:
-            raise RuntimeError(f"Pinning memory is not supported for {place}.")
+    if pin_memory:
+        place = _to_pinned_place(place)
 
     if in_dynamic_mode():
         is_tensor = paddle.is_tensor(data)
@@ -1347,9 +1369,9 @@ class MmapStorage(paddle.base.core.MmapStorage):
         Returns:
             Tensor: The sliced tensor.
         """
-        proto_dtype = paddle.base.framework.convert_to_proto_type(dtype)
+        var_dtype = paddle.base.framework.convert_to_vartype(dtype)
         out: paddle.base.libpaddle.DenseTensor = super().get_slice(
-            proto_dtype, start, stop, step
+            var_dtype, start, stop, step
         )
         return out
 
@@ -1415,7 +1437,7 @@ def full_like(
         dtype = x.dtype
     else:
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-            dtype = convert_np_dtype_to_dtype_(dtype)
+            dtype = convert_nptype_to_datatype_or_vartype(dtype)
     if device is None:
         device = x.place
 
@@ -1425,26 +1447,8 @@ def full_like(
             if device is not None
             else _current_expected_place()
         )
-        if (
-            pin_memory
-            and in_dynamic_mode()
-            and device is not None
-            and not isinstance(
-                device, (core.CUDAPinnedPlace, core.XPUPinnedPlace)
-            )
-        ):
-            if isinstance(device, core.CUDAPlace) or (
-                isinstance(device, core.Place) and device.is_gpu_place()
-            ):
-                device = core.CUDAPinnedPlace()
-            elif isinstance(device, core.XPUPlace) or (
-                isinstance(device, core.Place) and device.is_xpu_place()
-            ):
-                device = core.XPUPinnedPlace()
-            else:
-                raise RuntimeError(
-                    f"Pinning memory is not supported for {device}"
-                )
+        if pin_memory and in_dynamic_mode() and device is not None:
+            device = _to_pinned_place(device)
 
         tensor = _C_ops.full_like(x, fill_value, dtype, device)
         if requires_grad is True:
@@ -1516,7 +1520,7 @@ def fill_constant(
             place = core.CPUPlace()
 
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-            dtype = convert_np_dtype_to_dtype_(dtype)
+            dtype = convert_nptype_to_datatype_or_vartype(dtype)
 
         if in_pir_mode() and isinstance(dtype, core.VarDesc.VarType):
             dtype = paddle.pir.core.vartype_to_datatype[dtype]
@@ -2017,7 +2021,7 @@ def eye(
     if dtype is None:
         dtype = paddle.get_default_dtype()
     if not isinstance(dtype, (core.VarDesc.VarType, paddle.pir.core.DataType)):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
     if num_columns is not None:
         _check_attr(num_columns, "num_columns")
     else:
@@ -2029,26 +2033,8 @@ def eye(
             if device is not None
             else _current_expected_place()
         )
-        if (
-            pin_memory
-            and in_dynamic_mode()
-            and device is not None
-            and not isinstance(
-                device, (core.CUDAPinnedPlace, core.XPUPinnedPlace)
-            )
-        ):
-            if isinstance(device, core.CUDAPlace) or (
-                isinstance(device, core.Place) and device.is_gpu_place()
-            ):
-                device = core.CUDAPinnedPlace()
-            elif isinstance(device, core.XPUPlace) or (
-                isinstance(device, core.Place) and device.is_xpu_place()
-            ):
-                device = core.XPUPinnedPlace()
-            else:
-                raise RuntimeError(
-                    f"Pinning memory is not supported for {device}"
-                )
+        if pin_memory and in_dynamic_mode() and device is not None:
+            device = _to_pinned_place(device)
         tensor = _C_ops.eye(
             num_rows,
             num_columns,
@@ -2197,26 +2183,8 @@ def full(
             if device is not None
             else _current_expected_place()
         )
-        if (
-            pin_memory
-            and in_dynamic_mode()
-            and device is not None
-            and not isinstance(
-                device, (core.CUDAPinnedPlace, core.XPUPinnedPlace)
-            )
-        ):
-            if isinstance(device, core.CUDAPlace) or (
-                isinstance(device, core.Place) and device.is_gpu_place()
-            ):
-                device = core.CUDAPinnedPlace()
-            elif isinstance(device, core.XPUPlace) or (
-                isinstance(device, core.Place) and device.is_xpu_place()
-            ):
-                device = core.XPUPinnedPlace()
-            else:
-                raise RuntimeError(
-                    f"Pinning memory is not supported for {device}"
-                )
+        if pin_memory and in_dynamic_mode() and device is not None:
+            device = _to_pinned_place(device)
 
     tensor = fill_constant(
         shape=shape,
@@ -2314,20 +2282,19 @@ def arange(
         end = start
         start = 0
 
+    is_all_integer = True
     if dtype is None:
+        # Check if start/end/step contain floating point values
         for val in [start, end, step]:
             if isinstance(val, (Variable, paddle.pir.Value)):
                 if not paddle.is_integer(val):
-                    dtype = paddle.get_default_dtype()
+                    is_all_integer = False
                     break
-                else:
-                    dtype = 'int64'
             else:
-                if not isinstance(val, np.integer) and not isinstance(val, int):
-                    dtype = paddle.get_default_dtype()
+                if isinstance(val, (float, np.floating)):
+                    is_all_integer = False
                     break
-                else:
-                    dtype = 'int64'
+        dtype = 'int64' if is_all_integer else paddle.get_default_dtype()
 
     out_shape = None
     is_value_input = (
@@ -2340,7 +2307,7 @@ def arange(
         out_shape = [int(math.ceil((end - start) / step))]
 
     if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
 
     if in_dynamic_or_pir_mode():
         device = (
@@ -2348,26 +2315,8 @@ def arange(
             if device is not None
             else _current_expected_place()
         )
-        if (
-            pin_memory
-            and in_dynamic_mode()
-            and device is not None
-            and not isinstance(
-                device, (core.CUDAPinnedPlace, core.XPUPinnedPlace)
-            )
-        ):
-            if isinstance(device, core.CUDAPlace) or (
-                isinstance(device, core.Place) and device.is_gpu_place()
-            ):
-                device = core.CUDAPinnedPlace()
-            elif isinstance(device, core.XPUPlace) or (
-                isinstance(device, core.Place) and device.is_xpu_place()
-            ):
-                device = core.XPUPinnedPlace()
-            else:
-                raise RuntimeError(
-                    f"Pinning memory is not supported for {device}"
-                )
+        if pin_memory and in_dynamic_mode() and device is not None:
+            device = _to_pinned_place(device)
 
     if is_value_input and in_pir_mode():
         tensor = _C_ops.arange(
@@ -2391,13 +2340,13 @@ def arange(
                 raise ValueError(
                     f"The value of start must be finite, but received: {start}."
                 )
-            start = fill_constant([1], dtype, start, force_cpu=True)
-    elif start.dtype != dtype:
+            start_dtype = np.array(start).dtype
+            start = fill_constant([1], start_dtype, start, force_cpu=True)
+    else:
         if in_dynamic_mode() and not paddle.isfinite(start):
             raise ValueError(
                 f"The value of start must be finite, but received: {start}."
             )
-        start = paddle.cast(start, dtype)
 
     if not isinstance(end, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
@@ -2405,19 +2354,23 @@ def arange(
                 raise ValueError(
                     f"The value of end must be finite, but received: {end}."
                 )
-            end = fill_constant([1], dtype, end, force_cpu=True)
-    elif end.dtype != dtype:
+            end_dtype = np.array(end).dtype
+            end = fill_constant([1], end_dtype, end, force_cpu=True)
+    else:
         if in_dynamic_mode() and not paddle.isfinite(end):
             raise ValueError(
                 f"The value of end must be finite, but received: {end}."
             )
-        end = paddle.cast(end, dtype)
 
     if not isinstance(step, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
-            step = fill_constant([1], dtype, step, force_cpu=True)
-    elif step.dtype != dtype:
-        step = paddle.cast(step, dtype)
+            step_dtype = np.array(step).dtype
+            step = fill_constant([1], step_dtype, step, force_cpu=True)
+    else:
+        if in_dynamic_mode() and not paddle.isfinite(step):
+            raise ValueError(
+                f"The value of step must be finite, but received: {step}."
+            )
 
     if in_dynamic_or_pir_mode():
         tensor = _C_ops.arange(
@@ -2557,7 +2510,7 @@ def range(
     )
 
     if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
 
     if is_value_input and in_pir_mode():
         tensor = _C_ops.range_v2(
@@ -2579,21 +2532,18 @@ def range(
 
     if not isinstance(start, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
-            start = fill_constant([1], dtype, start, force_cpu=True)
-    elif start.dtype != dtype:
-        start = paddle.cast(start, dtype)
+            start_dtype = np.array(start).dtype
+            start = fill_constant([1], start_dtype, start, force_cpu=True)
 
     if not isinstance(end, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
-            end = fill_constant([1], dtype, end, force_cpu=True)
-    elif end.dtype != dtype:
-        end = paddle.cast(end, dtype)
+            end_dtype = np.array(end).dtype
+            end = fill_constant([1], end_dtype, end, force_cpu=True)
 
     if not isinstance(step, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
-            step = fill_constant([1], dtype, step, force_cpu=True)
-    elif step.dtype != dtype:
-        step = paddle.cast(step, dtype)
+            step_dtype = np.array(step).dtype
+            step = fill_constant([1], step_dtype, step, force_cpu=True)
 
     tensor = _C_ops.range_v2(
         start,
@@ -2724,8 +2674,8 @@ def meshgrid(*args, **kwargs):
 
             >>> import paddle
 
-            >>> x = paddle.randint(low=0, high=100, shape=[100])
-            >>> y = paddle.randint(low=0, high=100, shape=[200])
+            >>> x = paddle.randint(low=0, high=100, size=[100])
+            >>> y = paddle.randint(low=0, high=100, size=[200])
 
             >>> grid_x, grid_y = paddle.meshgrid(x, y)
 
@@ -3246,29 +3196,11 @@ def empty(
             if device is not None
             else _current_expected_place()
         )
-        if (
-            pin_memory
-            and in_dynamic_mode()
-            and device is not None
-            and not isinstance(
-                device, (core.CUDAPinnedPlace, core.XPUPinnedPlace)
-            )
-        ):
-            if isinstance(device, core.CUDAPlace) or (
-                isinstance(device, core.Place) and device.is_gpu_place()
-            ):
-                device = core.CUDAPinnedPlace()
-            elif isinstance(device, core.XPUPlace) or (
-                isinstance(device, core.Place) and device.is_xpu_place()
-            ):
-                device = core.XPUPinnedPlace()
-            else:
-                raise RuntimeError(
-                    f"Pinning memory is not supported for {device}"
-                )
+        if pin_memory and in_dynamic_mode() and device is not None:
+            device = _to_pinned_place(device)
         tensor = _C_ops.empty(
             shape,
-            convert_np_dtype_to_dtype_(dtype),
+            convert_nptype_to_datatype_or_vartype(dtype),
             device,
             out=out,
         )
@@ -3313,7 +3245,7 @@ def empty(
         )
 
         out = helper.create_variable_for_type_inference(dtype=dtype)
-        attrs['dtype'] = convert_np_dtype_to_dtype_(dtype)
+        attrs['dtype'] = convert_nptype_to_datatype_or_vartype(dtype)
         helper.append_op(
             type='empty',
             inputs=inputs,
@@ -3384,26 +3316,8 @@ def empty_like(
             if device is not None
             else _current_expected_place()
         )
-        if (
-            pin_memory
-            and in_dynamic_mode()
-            and device is not None
-            and not isinstance(
-                device, (core.CUDAPinnedPlace, core.XPUPinnedPlace)
-            )
-        ):
-            if isinstance(device, core.CUDAPlace) or (
-                isinstance(device, core.Place) and device.is_gpu_place()
-            ):
-                device = core.CUDAPinnedPlace()
-            elif isinstance(device, core.XPUPlace) or (
-                isinstance(device, core.Place) and device.is_xpu_place()
-            ):
-                device = core.XPUPinnedPlace()
-            else:
-                raise RuntimeError(
-                    f"Pinning memory is not supported for {device}"
-                )
+        if pin_memory and in_dynamic_mode() and device is not None:
+            device = _to_pinned_place(device)
 
         if in_dynamic_mode():
             x_shape = x.shape
@@ -3412,7 +3326,7 @@ def empty_like(
 
         tensor = _C_ops.empty(
             x_shape,
-            convert_np_dtype_to_dtype_(dtype),
+            convert_nptype_to_datatype_or_vartype(dtype),
             device,
         )
         if requires_grad is True:
@@ -3463,7 +3377,7 @@ def empty_like(
 
         inputs = {}
         attrs = {}
-        attrs['dtype'] = convert_np_dtype_to_dtype_(dtype)
+        attrs['dtype'] = convert_nptype_to_datatype_or_vartype(dtype)
         shape = paddle.shape(x)
         paddle.utils.get_shape_tensor_inputs(
             inputs=inputs, attrs=attrs, shape=shape, op_type='empty_like'
@@ -3622,7 +3536,7 @@ def assign(x: TensorLike, output: paddle.Tensor | None = None) -> paddle.Tensor:
                 "The type of received input == `object`, it is not supported to convert to tensor, such as [[Var], [Var], [3], [4]]"
             )
 
-        dtype = convert_np_dtype_to_dtype_(input.dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(input.dtype)
         check_dtype(
             dtype,
             'input',
@@ -3876,7 +3790,12 @@ def complex(
 
 
 def tril_indices(
-    row: int, col: int, offset: int = 0, dtype='int64'
+    row: int,
+    col: int,
+    offset: int = 0,
+    dtype='int64',
+    *,
+    device: PlaceLike | None = None,
 ) -> paddle.Tensor:
     """
     Return the indices of the lower triangular part of the 2-D matrix
@@ -3894,6 +3813,9 @@ def tril_indices(
             - If offset < 0, excludes just as many diagonals below the main diagonal.
 
         dtype (str|core.VarDesc.VarType|core.DataType, optional): the data type of the output tensor, can be int32, int64.
+
+    Keyword Args:
+        device (PlaceLike|None, optional): The device of the output tensor. Default: None.
 
     Returns:
         Tensor: Results of the indices of lower triangular part of a row * col matrix,
@@ -3926,7 +3848,7 @@ def tril_indices(
              [0, 0, 1, 0, 1, 2]])
     """
     if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
     if not isinstance(row, int) or row < 0:
         raise TypeError("row should be a non-negative int")
 
@@ -3936,12 +3858,16 @@ def tril_indices(
     else:
         col = row
 
+    place = (
+        _current_expected_place()
+        if device is None
+        else _get_paddle_place(device)
+    )
+
     if in_dynamic_or_pir_mode():
         if col is None:
             col = row
-        out = _C_ops.tril_indices(
-            row, col, offset, dtype, _current_expected_place()
-        )
+        out = _C_ops.tril_indices(row, col, offset, dtype, place)
         return out
     else:
         if not isinstance(offset, int):
@@ -3961,7 +3887,12 @@ def tril_indices(
 
 
 def triu_indices(
-    row: int, col: int | None = None, offset: int = 0, dtype='int64'
+    row: int,
+    col: int | None = None,
+    offset: int = 0,
+    dtype='int64',
+    *,
+    device: PlaceLike | None = None,
 ) -> paddle.Tensor:
     """
     Return the indices of the upper triangular part of the 2-D matrix
@@ -3981,6 +3912,10 @@ def triu_indices(
 
         dtype (str|np.dtype|core.VarDesc.VarType|core.DataType, optional): the data type of the output tensor,
             can be int32, int64, default value is int64.
+
+    Keyword Args:
+        device (PlaceLike|None, optional): The device of the output tensor. Default: None.
+
     Returns:
         Tensor: Results of the indices of upper triangular part of a row * col matrix,
         where the first row contains row coordinates of and the second row contains column coordinates.
@@ -4007,7 +3942,7 @@ def triu_indices(
     """
 
     if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
 
     if not isinstance(row, int) or row < 0:
         raise TypeError("row should be a non-negative int")
@@ -4018,12 +3953,16 @@ def triu_indices(
     else:
         col = row
 
+    place = (
+        _current_expected_place()
+        if device is None
+        else _get_paddle_place(device)
+    )
+
     if in_dynamic_or_pir_mode():
         if col is None:
             col = row
-        out = _C_ops.triu_indices(
-            row, col, offset, dtype, _current_expected_place()
-        )
+        out = _C_ops.triu_indices(row, col, offset, dtype, place)
         return out
     else:
         if not isinstance(offset, int):
@@ -4292,6 +4231,7 @@ def set_(
         return _C_ops.set_(x, source, shape, stride, offset)
 
 
+@resize__decorator
 @inplace_apis_in_dygraph_only
 def resize_(
     x: paddle.Tensor,
@@ -4371,7 +4311,7 @@ def resize_(
         return x.set_(x, shape)
 
 
-def dtype_tensor_factory(dtype):
+def dtype_tensor_factory(dtype, _name='_DtypeTensorFactory'):
     class _DtypeTensorFactory:
         def __new__(cls, *args, **kwargs):
             if len(args) == 0:
@@ -4384,16 +4324,17 @@ def dtype_tensor_factory(dtype):
                 kwargs.setdefault('dtype', dtype)
                 return paddle.Tensor(*args, **kwargs)
 
+    _DtypeTensorFactory.__name__ = _name
     return _DtypeTensorFactory
 
 
-FloatTensor = dtype_tensor_factory('float32')
-DoubleTensor = dtype_tensor_factory('float64')
-HalfTensor = dtype_tensor_factory('float16')
-BFloat16Tensor = dtype_tensor_factory('bfloat16')
-ByteTensor = dtype_tensor_factory('uint8')
-CharTensor = dtype_tensor_factory('int8')
-ShortTensor = dtype_tensor_factory('int16')
-IntTensor = dtype_tensor_factory('int32')
-LongTensor = dtype_tensor_factory('int64')
-BoolTensor = dtype_tensor_factory('bool')
+FloatTensor = dtype_tensor_factory('float32', 'FloatTensor')
+DoubleTensor = dtype_tensor_factory('float64', 'DoubleTensor')
+HalfTensor = dtype_tensor_factory('float16', 'HalfTensor')
+BFloat16Tensor = dtype_tensor_factory('bfloat16', 'BFloat16Tensor')
+ByteTensor = dtype_tensor_factory('uint8', 'ByteTensor')
+CharTensor = dtype_tensor_factory('int8', 'CharTensor')
+ShortTensor = dtype_tensor_factory('int16', 'ShortTensor')
+IntTensor = dtype_tensor_factory('int32', 'IntTensor')
+LongTensor = dtype_tensor_factory('int64', 'LongTensor')
+BoolTensor = dtype_tensor_factory('bool', 'BoolTensor')

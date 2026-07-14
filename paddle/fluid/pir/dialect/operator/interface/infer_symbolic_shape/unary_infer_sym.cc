@@ -21,8 +21,8 @@ std::vector<symbol::DimExpr> GetRealPadding(
     const std::vector<int> &origin_paddings,
     const bool global_pooling,
     const bool adaptive,
-    const std::string padding_algorithm,
-    const std::vector<symbol::DimExpr> data_dims,
+    const std::string &padding_algorithm,
+    const std::vector<symbol::DimExpr> &data_dims,
     const std::vector<int> &strides,
     const std::vector<symbol::DimExpr> &kernel_size) {
   const auto &GetInitPadding = [&]() -> std::vector<symbol::DimExpr> {
@@ -51,7 +51,7 @@ std::vector<symbol::DimExpr> GetRealPadding(
 
   std::vector<symbol::DimExpr> real_padding = GetInitPadding();
 
-  const auto &UpdataPadding = [&]() {
+  const auto &UpdatePadding = [&]() {
     symbol::DimExpr one_dimexpr{1};
     symbol::DimExpr zero_dimexpr{0};
     // when padding_algorithm is "VALID" or "SAME"
@@ -81,7 +81,7 @@ std::vector<symbol::DimExpr> GetRealPadding(
     }
   };
 
-  UpdataPadding();
+  UpdatePadding();
   return real_padding;
 }
 
@@ -305,6 +305,24 @@ bool AminOpInferSymbolicShape(pir::Operation *op,
                                  axis,
                                  GetBoolAttr(op, "keepdim"), /*keepdim*/
                                  axis.size() == 0 /*reduce_all*/);
+}
+
+bool AminmaxOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &axis = details::GetVectorAttr(op, "axis");
+  bool keepdim = GetBoolAttr(op, "keepdim");
+  bool reduce_all = axis.size() == 0;
+
+  // ReduceInferDim only sets result(0). We need the same shape for both
+  // outputs, so call it for result(0) then copy to result(1).
+  bool ret =
+      details::ReduceInferDim(op, infer_context, axis, keepdim, reduce_all);
+  if (ret) {
+    const auto &out_shape =
+        infer_context->GetShapeOrDataForValue(op->result(0));
+    infer_context->SetShapeOrDataForValue(op->result(1), out_shape);
+  }
+  return ret;
 }
 
 bool AnyOpInferSymbolicShape(pir::Operation *op,
@@ -921,7 +939,7 @@ bool DecodeJpegOpInferSymbolicShape(
                  infer_context->GetNextSymName()};
   } else {
     PADDLE_THROW(common::errors::Fatal(
-        "The provided mode is not supported for JPEG files on GPU: ", mode));
+        "The provided mode is not supported for JPEG files on GPU: %s", mode));
   }
 
   infer_context->SetShapeOrDataForValue(

@@ -21,9 +21,8 @@ import os
 import re
 import sys
 import types
-from typing import TYPE_CHECKING, Union, overload
-
-from typing_extensions import TypeAlias
+from contextlib import contextmanager
+from typing import TYPE_CHECKING, Any, TypeAlias, overload
 
 import paddle
 from paddle.amp import autocast as _autocast
@@ -54,6 +53,7 @@ from . import (  # noqa: F401
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
     from contextlib import AbstractContextManager
     from types import TracebackType
 
@@ -61,22 +61,18 @@ if TYPE_CHECKING:
     from paddle._typing.device_like import PlaceLike
     from paddle.base.core import Place
 
-    _InitStreamBase = Union[
-        core.CUDAStream, core.CustomDeviceStream, core.XPUStream
-    ]
-    _InitEventBase = Union[
-        core.CUDAEvent, core.CustomDeviceEvent, core.XPUEvent
-    ]
+    _InitStreamBase = core.CUDAStream | core.CustomDeviceStream | core.XPUStream
+    _InitEventBase = core.CUDAEvent | core.CustomDeviceEvent | core.XPUEvent
 
     from paddle import CUDAPlace, CustomPlace
     from paddle.base.libpaddle import _customDeviceProperties
 
-    _CustomPlaceLike: TypeAlias = Union[
-        CUDAPlace,
-        CustomPlace,
-        str,  # some string like "iluvatar_gpu" "metax_gpu:0", etc.
-        int,  # some int like 0, 1, etc.
-    ]
+    _CustomPlaceLike: TypeAlias = (
+        CUDAPlace
+        | CustomPlace
+        | str  # some string like "iluvatar_gpu" "metax_gpu:0", etc.
+        | int  # some int like 0, 1, etc.
+    )
 
 # Dynamically import device functions based on available devices
 current_device_is_cpu = 0
@@ -644,6 +640,8 @@ def set_device(device: PlaceLike | int) -> PlaceLike:
     """
     place = device_to_place(device)
     framework._set_expected_place(place)
+    if framework.in_dygraph_mode():
+        core.eager_set_device_id()
     return place
 
 
@@ -733,15 +731,15 @@ def get_default_device() -> paddle.device:
     return paddle.device(dev)
 
 
-def set_default_device(device: PlaceLike | int) -> None:
+def set_default_device(device: PlaceLike | int | None = None) -> None:
     """
     Paddle supports running calculations on various types of devices, including CPU, GPU, XPU, NPU and IPU.
     This function can specify the global device which the OP will run.
 
     Args:
-        device(str, Place or int): This parameter determines the specific running device.
+        device(str | Place | paddle.device | int, optional): This parameter determines the specific running device.
             It can be ``cpu``, ``gpu``, ``xpu``, ``npu``, ``gpu:x``, ``xpu:x``, ``npu:x`` and ``ipu``,
-            where ``x`` is the index of the GPUs, XPUs or NPUs.
+            where ``x`` is the index of the GPUs, XPUs or NPUs. Defaults is ``None``, which means current device.
 
     Examples:
         .. code-block:: pycon
@@ -1495,6 +1493,13 @@ class Stream:
         else:
             return ctypes.c_void_p(self.stream_base.raw_stream)
 
+    @property
+    def cuda_stream(self) -> int:
+        assert isinstance(self.stream_base, core.CUDAStream), (
+            "cuda_stream is only available for CUDA streams"
+        )
+        return self.stream_base.cuda_stream
+
     def __cuda_stream__(self):
         """
         CUDA Stream protocol described at
@@ -2009,6 +2014,25 @@ class amp:
 
 class nvtx:
     """Namespace for NVTX marker operations."""
+
+    @staticmethod
+    @contextmanager
+    def range(
+        msg: str, *args: Any, **kwargs: Any
+    ) -> Generator[None, None, None]:
+        """
+        Context manager/decorator that pushes and pops an NVTX range.
+
+        Args:
+            msg (str): The name of the NVTX range.
+            *args: Arguments used to format ``msg``.
+            **kwargs: Keyword arguments used to format ``msg``.
+        """
+        nvtx.range_push(msg.format(*args, **kwargs))
+        try:
+            yield
+        finally:
+            nvtx.range_pop()
 
     @staticmethod
     def range_push(msg: str):

@@ -16,10 +16,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Union
+from contextlib import contextmanager
+from typing import TYPE_CHECKING, Any
 
 import paddle
-from paddle import base, core, device as paddle_device, framework
+from paddle import base, core, device as paddle_device
+from paddle.cuda.graphs import CUDAGraph, graph, graph_pool_handle
 from paddle.device import (
     Event,
     Stream,
@@ -52,7 +54,9 @@ from paddle.tensor.creation import (
 )
 
 if TYPE_CHECKING:
-    DeviceLike = Union[paddle.core.Place, int, str, None]
+    from collections.abc import Generator
+
+    DeviceLike = paddle.core.Place | int | str | None
 
 
 def is_available() -> bool:
@@ -346,6 +350,25 @@ class nvtx:
     """Namespace for NVTX marker operations."""
 
     @staticmethod
+    @contextmanager
+    def range(
+        msg: str, *args: Any, **kwargs: Any
+    ) -> Generator[None, None, None]:
+        """
+        Context manager/decorator that pushes and pops an NVTX range.
+
+        Args:
+            msg (str): The name of the NVTX range.
+            *args: Arguments used to format ``msg``.
+            **kwargs: Keyword arguments used to format ``msg``.
+        """
+        nvtx.range_push(msg.format(*args, **kwargs))
+        try:
+            yield
+        finally:
+            nvtx.range_pop()
+
+    @staticmethod
     def range_push(msg: str):
         """
         Push an NVTX range marker with the given message.
@@ -431,6 +454,13 @@ class CudaError(RuntimeError):
             base.libpaddle._cudart.cudaError(code)
         )
         super().__init__(f"{msg} ({code})")
+
+
+class OutOfMemoryError(RuntimeError):
+    """Exception raised when a CUDA operation fails due to running out of GPU memory."""
+
+    def __init__(self, msg: str) -> None:
+        super().__init__(msg)
 
 
 def check_error(res: int) -> None:
@@ -748,9 +778,10 @@ def set_device(device: DeviceLike) -> None:
     Set the current device.
 
     Args:
-        device (DeviceLike): The device to set as current.
-            Can be paddle.CUDAPlace, paddle.CustomPlace, paddle.XPUPlace,
-            int (device index), or str (device string).
+        device (DeviceLike): The CUDA device to set as current. Can be an int
+            (GPU index), a CUDA/GPU device string (e.g. 'gpu:0' or 'cuda:0'),
+            or a paddle.CUDAPlace. For XPU / custom devices, use
+            paddle.device.set_device().
 
     Returns:
         None
@@ -758,7 +789,7 @@ def set_device(device: DeviceLike) -> None:
     Examples:
         .. code-block:: pycon
 
-            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+            >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> # Set current device to GPU:0
             >>> paddle.cuda.set_device(0)
@@ -768,36 +799,35 @@ def set_device(device: DeviceLike) -> None:
             >>> place = paddle.CUDAPlace(0)
             >>> paddle.cuda.set_device(place)
     """
-    # Convert device to string format if needed and call paddle.device.set_device()
-    # This function supports multiple hardware types (CUDA, XPU, Custom devices)
+    # Convert CUDA device identifiers to paddle.device's GPU device string.
     if isinstance(device, int):
-        # Convert int device index to string format (e.g., 0 -> 'gpu:0')
-        device_place = framework._current_expected_place_()
-        if isinstance(device_place, core.CUDAPlace):
-            device_str = f'gpu:{device}'
-        elif isinstance(device_place, core.CustomPlace):
-            device_str = f'{device_place.get_device_type()}:{device}'
-        elif isinstance(device_place, core.XPUPlace):
-            device_str = f'xpu:{device}'
+        # An int index always refers to a CUDA GPU.
+        # raises if Paddle is not compiled with CUDA.
+        device_str = f'gpu:{device}'
+    elif isinstance(device, str):
+        # paddle.cuda only accepts CUDA/GPU device strings. Use
+        # paddle.device.set_device() for XPU / custom devices.
+        lower_device = device.lower()
+        if lower_device == 'gpu' or lower_device.startswith('gpu:'):
+            device_str = lower_device
+        elif lower_device == 'cuda':
+            device_str = 'gpu'
+        elif lower_device.startswith('cuda:'):
+            device_str = f"gpu:{lower_device.split(':', 1)[1]}"
         else:
             raise ValueError(
-                "Paddle-CPU is not supported. Please use PaddlePaddle with CUDA, XPU or Custom Device"
+                f"paddle.cuda.set_device only supports CUDA/GPU device strings "
+                f"(e.g. 'gpu', 'gpu:0', 'cuda:0'), but got '{device}'. "
+                f"Use paddle.device.set_device() for other devices."
             )
-    elif isinstance(device, str):
-        # Device is already in string format
-        device_str = device
     elif isinstance(device, core.CUDAPlace):
         # Convert CUDAPlace object to string format
         device_str = f'gpu:{device.get_device_id()}'
-    elif isinstance(device, core.CustomPlace):
-        # Convert CustomPlace object to string format
-        device_str = f'{device.get_device_type()}:{device.get_device_id()}'
-    elif isinstance(device, core.XPUPlace):
-        # Convert XPUPlace object to string format
-        device_str = f'xpu:{device.get_device_id()}'
     else:
         raise ValueError(
-            f"Unsupported device type: {type(device)}. Expected int, str, CUDAPlace, XPUPlace, or CustomPlace."
+            f"Unsupported device type: {type(device)}. paddle.cuda.set_device only "
+            f"supports int, a CUDA/GPU device string, or paddle.CUDAPlace. Use "
+            f"paddle.device.set_device() for XPU / custom devices."
         )
 
     # Call paddle.device.set_device() to set the current device
@@ -847,6 +877,8 @@ def get_stream_from_external(
 
 
 __all__ = [
+    "CudaError",
+    "OutOfMemoryError",
     "cudart",
     "check_error",
     "is_available",
@@ -890,4 +922,7 @@ __all__ = [
     "ipc_collect",
     "StreamContext",
     "amp",
+    "CUDAGraph",
+    "graph",
+    "graph_pool_handle",
 ]

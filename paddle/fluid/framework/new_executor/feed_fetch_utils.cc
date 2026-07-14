@@ -169,7 +169,7 @@ void MergeFetchTensors(const FetchUnmergedList& fetch_list,
 }
 
 void MergeTensors(const std::vector<const DenseTensor*>& tensors,
-                  const phi::Place dst_place,
+                  const Place dst_place,
                   DenseTensor* target) {
   PADDLE_ENFORCE_EQ(
       tensors.empty(),
@@ -178,7 +178,7 @@ void MergeTensors(const std::vector<const DenseTensor*>& tensors,
 
   DDim new_dim = tensors[0]->dims();
   proto::VarType::Type new_type = proto::VarType::FP32;
-  phi::DataLayout new_layout = tensors[0]->layout();
+  DataLayout new_layout = tensors[0]->layout();
   for (auto* t : tensors) {
     if (t->numel() && t->IsInitialized()) {
       new_dim = t->dims();

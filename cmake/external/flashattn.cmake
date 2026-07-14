@@ -147,6 +147,19 @@ else()
   endif()
 
   set(FLASHATTN_CMAKE_CUDA_FLAGS "-Xfatbin -compress-all")
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION
+                                              VERSION_GREATER_EQUAL 15.0)
+    # GCC 15 diagnoses template-body lookup failures in the vendored CUTLASS
+    # v2.9.0 matrix.h before the affected helpers are instantiated. Keep this
+    # warning local to FlashAttention until CUTLASS is upgraded or patched.
+    if(CMAKE_CUDA_COMPILER_ID STREQUAL "NVIDIA")
+      set(FLASHATTN_CMAKE_CUDA_FLAGS
+          "${FLASHATTN_CMAKE_CUDA_FLAGS} -Xcompiler=-Wno-template-body")
+    else()
+      set(FLASHATTN_CMAKE_CUDA_FLAGS
+          "${FLASHATTN_CMAKE_CUDA_FLAGS} -Wno-template-body")
+    endif()
+  endif()
   set(FA_NVCC_ARCH_BIN "")
   foreach(arch ${NVCC_ARCH_BIN})
     string(STRIP ${arch} arch)
@@ -274,6 +287,9 @@ else()
                -DCMAKE_CUDA_COMPILER_LAUNCHER=${CMAKE_CUDA_COMPILER_LAUNCHER}
                -DCMAKE_INSTALL_PREFIX=${FLASHATTN_INSTALL_DIR}
                -DWITH_GPU=${WITH_GPU}
+               -DWITH_DISTRIBUTED_OVERLAP=${WITH_NVSHMEM}
+               -DNVSHMEM_INSTALL_DIR=${NVSHMEM_INSTALL_DIR}
+               -DGDRCOPY_HOME=${GDRCOPY_HOME}
                -DCMAKE_CUDA_COMPILER=${CMAKE_CUDA_COMPILER}
                -DCMAKE_CUDA_FLAGS=${FLASHATTN_CMAKE_CUDA_FLAGS}
                -DWITH_ROCM=${WITH_ROCM}
@@ -295,6 +311,14 @@ else()
       -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
       -DCMAKE_INSTALL_PREFIX:PATH=${FLASHATTN_INSTALL_DIR}
     BUILD_BYPRODUCTS ${BUILD_BYPRODUCTS_LIST})
+
+  # WITH_NVSHMEM means overlap module is being compiled. Then flashmask will be dependent on NVSHMEM
+  if(WITH_NVSHMEM)
+    message(
+      STATUS
+        "flash-attn-v3 overlap depends on extern_nvshmem, adding dependency.")
+    add_dependencies(extern_flashattn extern_nvshmem)
+  endif()
 endif()
 
 message(STATUS "flash-attn library: ${FLASHATTN_LIBRARIES}")

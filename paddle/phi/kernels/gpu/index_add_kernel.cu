@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/index_add_kernel.h"
 
 #include "glog/logging.h"
+#include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
@@ -25,8 +26,6 @@
 COMMON_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
-
-using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T, typename IndexT>
 __global__ void index_add_cuda_kernel(const T* input,
@@ -124,10 +123,12 @@ void IndexAddKernel(const Context& dev_ctx,
     int64_t num_columns = pre_size * stride;
 
     unsigned int block_dim = PADDLE_CUDA_NUM_THREADS;
-    dim3 grid_dim = dim3((num_columns + block_dim - 1) / block_dim);
-    phi::backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
+    const uint64_t grid_x = (num_columns + block_dim - 1) / block_dim;
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "grid.x");
+    dim3 grid_dim = dim3(static_cast<uint32_t>(grid_x));
+    backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
 
-    if (index_type == phi::DataType::INT64) {
+    if (index_type == DataType::INT64) {
       const int64_t* index_data = index.data<int64_t>();
       index_add_deterministic_cuda_kernel<T, int64_t>
           <<<grid_dim, block_dim, 0, stream>>>(in_data,
@@ -152,10 +153,12 @@ void IndexAddKernel(const Context& dev_ctx,
     }
   } else {
     unsigned int block_dim = PADDLE_CUDA_NUM_THREADS;
-    dim3 grid_dim = dim3((numel + block_dim - 1) / block_dim);
-    phi::backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
+    const uint64_t grid_x = (numel + block_dim - 1) / block_dim;
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "grid.x");
+    dim3 grid_dim = dim3(static_cast<uint32_t>(grid_x));
+    backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
 
-    if (index_type == phi::DataType::INT64) {
+    if (index_type == DataType::INT64) {
       const int64_t* index_data = index.data<int64_t>();
       index_add_cuda_kernel<T, int64_t>
           <<<grid_dim, block_dim, 0, stream>>>(in_data,

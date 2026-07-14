@@ -189,7 +189,7 @@ void CastCooKernel(const Context& dev_ctx,
   if (index_dtype == DataType::UNDEFINED) {
     *out_indices = x_indices;
   } else {
-    phi::MetaTensor meta(out_indices);
+    MetaTensor meta(out_indices);
     meta.set_dims(x_indices.dims());
     meta.set_dtype(index_dtype);
 
@@ -201,7 +201,7 @@ void CastCooKernel(const Context& dev_ctx,
   if (value_dtype == DataType::UNDEFINED) {
     phi::Copy(dev_ctx, x_values, dev_ctx.GetPlace(), false, out_values);
   } else {
-    phi::MetaTensor meta(out_values);
+    MetaTensor meta(out_values);
     meta.set_dims(x_values.dims());
     CastKernel<T, Context>(dev_ctx, x_values, value_dtype, out_values);
   }
@@ -226,7 +226,7 @@ void CastCsrKernel(const Context& dev_ctx,
     *out_crows = x_crows;
     *out_cols = x_cols;
   } else {
-    phi::MetaTensor crows_meta(out_crows);
+    MetaTensor crows_meta(out_crows);
     crows_meta.set_dims(x_crows.dims());
     crows_meta.set_dtype(index_dtype);
 
@@ -234,7 +234,7 @@ void CastCsrKernel(const Context& dev_ctx,
       CastKernel<data_t, Context>(dev_ctx, x_crows, index_dtype, out_crows);
     });
 
-    phi::MetaTensor cols_meta(out_cols);
+    MetaTensor cols_meta(out_cols);
     cols_meta.set_dims(x_cols.dims());
     cols_meta.set_dtype(index_dtype);
 
@@ -246,7 +246,7 @@ void CastCsrKernel(const Context& dev_ctx,
   if (value_dtype == DataType::UNDEFINED) {
     phi::Copy(dev_ctx, x_values, dev_ctx.GetPlace(), false, out_values);
   } else {
-    phi::MetaTensor meta(out_values);
+    MetaTensor meta(out_values);
     meta.set_dims(x_values.dims());
     CastKernel<T, Context>(dev_ctx, x_values, value_dtype, out_values);
   }
@@ -260,7 +260,7 @@ void IsnanCooKernel(const Context& dev_ctx,
   const DenseTensor& x_values = x.non_zero_elements();
   DenseTensor* out_values = out->mutable_non_zero_elements();
 
-  phi::MetaTensor meta(out_values);
+  MetaTensor meta(out_values);
   meta.set_dims(x_values.dims());
   meta.set_dtype(DataType::BOOL);
 
@@ -284,7 +284,7 @@ void IsnanCsrKernel(const Context& dev_ctx,
   *out_crows = x_crows;
   *out_cols = x_cols;
 
-  phi::MetaTensor meta(out_values);
+  MetaTensor meta(out_values);
   meta.set_dims(x_values.dims());
   meta.set_dtype(DataType::BOOL);
 

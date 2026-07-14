@@ -25,7 +25,7 @@ import paddle
 from paddle.base import Variable, core
 from paddle.base.data_feeder import check_type
 from paddle.base.framework import (
-    convert_np_dtype_to_dtype_,
+    convert_nptype_to_datatype_or_vartype,
     in_pir_mode,
     static_only,
 )
@@ -187,7 +187,7 @@ def data(
     if in_pir_mode():
         ir_dtype = dtype
         if not isinstance(ir_dtype, DataType):
-            ir_dtype = paddle.pir.core.convert_np_dtype_to_dtype_(dtype)
+            ir_dtype = paddle.pir.core.convert_nptype_to_datatype(dtype)
         prev_insertion_point = get_current_insertion_point()
         _reset_data_op_insertion_point()
         out = paddle._pir_ops.data(name, shape, ir_dtype, core.Place())
@@ -209,7 +209,7 @@ def data(
     if evaluate_flag(is_pir_mode):
         helper = LayerHelper('data', **locals())
         if not isinstance(dtype, core.VarDesc.VarType):
-            dtype = convert_np_dtype_to_dtype_(dtype)
+            dtype = convert_nptype_to_datatype_or_vartype(dtype)
         helper.append_op(
             type='data',
             inputs={},
@@ -272,7 +272,7 @@ class InputSpec:
         # convert dtype into united representation
         if dtype is not None:
             if isinstance(dtype, (np.dtype, str)):
-                dtype = convert_np_dtype_to_dtype_(dtype)
+                dtype = convert_nptype_to_datatype_or_vartype(dtype)
 
         self.dtype = dtype
         self.name = name

@@ -92,27 +92,26 @@ void LaunchIndexFillGradCudaKernel(const Context& dev_ctx,
   DenseTensor index_int64;
   const DenseTensor* ptr_index = nullptr;
 
-  if (index.dtype() == phi::DataType::INT32) {
+  if (index.dtype() == DataType::INT32) {
     index_int64.Resize(index.dims());
     dev_ctx.template Alloc<int64_t>(&index_int64);
 
     int64_t index_numel = index.numel();
-    auto config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, index_numel);
+    auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, index_numel);
 
-    phi::funcs::CastToInt64Kernel<int32_t><<<config.block_per_grid,
-                                             config.thread_per_block,
-                                             0,
-                                             dev_ctx.stream()>>>(
+    funcs::CastToInt64Kernel<int32_t><<<config.block_per_grid,
+                                        config.thread_per_block,
+                                        0,
+                                        dev_ctx.stream()>>>(
         index.data<int32_t>(), index_int64.data<int64_t>(), index_numel);
 
     ptr_index = &index_int64;
-  } else if (index.dtype() == phi::DataType::INT64) {
+  } else if (index.dtype() == DataType::INT64) {
     ptr_index = &index;
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "The dtype of index must be int32 or int64, but received %s.",
-        phi::DataTypeToString(index.dtype())));
+        DataTypeToString(index.dtype())));
   }
 
   const int64_t* index_data = ptr_index->data<int64_t>();
@@ -136,7 +135,7 @@ void LaunchIndexFillGradCudaKernel(const Context& dev_ctx,
 
   // Step 2: launch kernel to zero out gradients at the filled positions.
   int64_t numel = outer_size * index_size * inner_size;
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
 
   T* x_grad_data = x_grad->data<T>();
 

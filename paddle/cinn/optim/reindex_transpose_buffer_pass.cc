@@ -33,14 +33,33 @@ using ir::stmt::Store;
 
 namespace {
 
-std::set<ir::Buffer> CollectTransposeBuffers(const BlockRef& body) {
+struct TransposeBufferInfo {
   std::set<ir::Buffer> buffers;
+  int tile_size = 32;  // default to 32 (CUDA) for backward compatibility
+};
+
+TransposeBufferInfo CollectTransposeBuffers(const BlockRef& body) {
+  TransposeBufferInfo info;
 
   const auto VisitFn = [&](const StmtRef& stmt) {
     if (!stmt.isa<Schedule>()) return;
     Schedule schedule = stmt.as<Schedule>();
     auto attr_it = schedule->attrs().find("transpose_stage");
     if (attr_it == schedule->attrs().end()) return;
+
+    // The transpose_stage annotation has format "write:tile_size" or
+    // "read:tile_size" (e.g. "write:64", "read:32"). Parse stage and
+    // tile_size from this single annotation.
+    std::string annotation = std::get<std::string>(attr_it->second);
+    std::string stage;
+    size_t colon_pos = annotation.find(':');
+    if (colon_pos != std::string::npos) {
+      stage = annotation.substr(0, colon_pos);
+      info.tile_size = std::stoi(annotation.substr(colon_pos + 1));
+    } else {
+      // Backward compatibility: old format "write" / "read" without tile_size
+      stage = annotation;
+    }
 
     StmtRef store = schedule->body()->stmts().front();
     PADDLE_ENFORCE(
@@ -54,14 +73,14 @@ std::set<ir::Buffer> CollectTransposeBuffers(const BlockRef& body) {
         ::common::errors::PreconditionNotMet(
             "The store value of transpose buffer must be a pure Load."));
 
-    if (attr_it->second == ir::attr_t(std::string("write"))) {
+    if (stage == "write") {
       ir::Buffer buffer = store_stmt->tensor().as_tensor()->buffer;
-      buffers.insert(buffer);
+      info.buffers.insert(buffer);
     }
   };
 
   ir::stmt::Visit(body, VisitFn, [](auto) {});
-  return buffers;
+  return info;
 }
 
 void ReplaceTransposeBuffersWithUnionBuffer(
@@ -78,8 +97,8 @@ void ReplaceTransposeBuffersWithUnionBuffer(
 }
 
 struct TransposeBufferIndicesMutator : public ir::stmt::StmtMutator<> {
-  explicit TransposeBufferIndicesMutator(ir::Buffer union_buffer)
-      : union_buffer_(union_buffer) {}
+  explicit TransposeBufferIndicesMutator(ir::Buffer union_buffer, int tile_size)
+      : union_buffer_(union_buffer), tile_size_(tile_size) {}
 
   void operator()(BlockRef block) { VisitBlock(block); }
 
@@ -95,12 +114,17 @@ struct TransposeBufferIndicesMutator : public ir::stmt::StmtMutator<> {
     StmtRef store = stmt->body()->stmts().front();
     Store store_stmt = store.as<Store>();
 
-    // Note: we currently use constant tiling configs for transpose, i.e.
-    // inner_loop = 4, blockDim.y = 8, blockDim.x = 32. Therefore, the shape
-    // and indices of the transpose buffer are also fixed.
-    std::vector<ir::Expr> shape = {ir::Expr(32), ir::Expr(32)};
+    // Note: the shape of the transpose shared memory tile is
+    // [tile_size, tile_size], where tile_size = warp_size (32 for CUDA,
+    // 64 for some custom devices). The tile_size is encoded in the
+    // "transpose_stage" annotation as "write:tile_size" or "read:tile_size".
+    std::vector<ir::Expr> shape = {ir::Expr(tile_size_), ir::Expr(tile_size_)};
 
-    if (attr_it->second == ir::attr_t(std::string("write"))) {
+    // Parse the stage from annotation (format: "write:64" or "read:32")
+    std::string annotation = std::get<std::string>(attr_it->second);
+    std::string stage = annotation.substr(0, annotation.find(':'));
+
+    if (stage == "write") {
       // at buffer write stage, re-index the store buffer
       store_stmt->set_indices({GetIndexY(), GetIndexX() ^ GetIndexY()});
       ir::Expr new_tensor = ir::ir_utils::IRCopy(store_stmt->tensor());
@@ -151,6 +175,7 @@ struct TransposeBufferIndicesMutator : public ir::stmt::StmtMutator<> {
  private:
   ir::Buffer union_buffer_;
   ir::Var inner_loop_var_;
+  int tile_size_;
 };
 
 }  // namespace
@@ -160,28 +185,31 @@ LogicalResult ReindexTransposeBufferPass::Run(ir::LoweredFunc func) {
 
   // Step 1. Collect all transpose buffers in the function, also verify that the
   // transpose buffers are used properly.
-  std::set<ir::Buffer> transpose_buffers = CollectTransposeBuffers(body);
-  if (transpose_buffers.empty()) {
+  TransposeBufferInfo info = CollectTransposeBuffers(body);
+  if (info.buffers.empty()) {
     return LogicalResult::success();
   }
 
+  int tile_size = info.tile_size;
+
   // Step 2. Create a union buffer to replace all transpose buffers.
   // The union buffer's size is the size of the largest data type among the
-  // transpose buffers multiplied by 1024 (the block size).
+  // transpose buffers multiplied by tile_size * tile_size (the tile area).
   int max_dtype_bytes = 0;
-  for (auto& buffer : transpose_buffers) {
+  for (auto& buffer : info.buffers) {
     max_dtype_bytes = std::max(max_dtype_bytes, buffer->dtype.bytes());
   }
 
-  ir::Buffer union_buffer = ir::_Buffer_::Make(
-      "transpose_union_shm", {ir::Expr(max_dtype_bytes * 1024)});
+  ir::Buffer union_buffer =
+      ir::_Buffer_::Make("transpose_union_shm",
+                         {ir::Expr(max_dtype_bytes * tile_size * tile_size)});
   union_buffer->dtype = common::UInt(8);
   union_buffer->memory_type = ir::MemoryType::GPUShared;
 
-  ReplaceTransposeBuffersWithUnionBuffer(func, transpose_buffers, union_buffer);
+  ReplaceTransposeBuffersWithUnionBuffer(func, info.buffers, union_buffer);
 
   // Step 3. Swizzle the load & store indices of transpose buffers.
-  TransposeBufferIndicesMutator mutator(union_buffer);
+  TransposeBufferIndicesMutator mutator(union_buffer, tile_size);
   mutator(body);
 
   return LogicalResult::success();

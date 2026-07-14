@@ -54,6 +54,8 @@ extern void *flashmaskv2_dso_handle;
   __macro(flashmaskv2_cast_to_fwd_params_handle); \
   __macro(flashmaskv2_run_mha_fwd_combine);       \
   __macro(flashmaskv2_run_mha_fwd);               \
+  __macro(flashmaskv2_get_nvshmem_unique_id);     \
+  __macro(flashmaskv2_get_num_chunks_per_stage);  \
   __macro(flashmaskv2_run_mha_bwd);               \
   __macro(flashmaskv2_get_pagedkv_tma);           \
   __macro(flashmaskv2_get_pack_gqa);              \
@@ -228,6 +230,11 @@ FLASHMASK_V2_HANDLE_ROUTINE(flashmask_maxmin_ptr)
 FLASHMASK_V2_HANDLE_ROUTINE(m_block_dim)
 FLASHMASK_V2_HANDLE_ROUTINE(n_block_dim)
 FLASHMASK_V2_HANDLE_ROUTINE(block_mask_ptr)
+FLASHMASK_V2_HANDLE_ROUTINE(unique_id_ptr)
+
+FLASHMASK_V2_HANDLE_ROUTINE(rank)
+FLASHMASK_V2_HANDLE_ROUTINE(nranks)
+FLASHMASK_V2_HANDLE_ROUTINE(write_ptr)
 
 #define FLASHMASK_V2_BWD_HANDLE_ROUTINE(type, member)                          \
   DECLARE_DYNAMIC_LOAD_FLASHMASK_V2_WRAP(flashmaskv2_bwd_params_get_##member); \

@@ -24,9 +24,24 @@ class TestCollectiveAllgatherObjectAPI(test_base.TestCollectiveAPIRunnerBase):
 
     def get_model(self, main_prog, startup_program, rank, indata=None):
         with base.program_guard(main_prog, startup_program):
-            object_list = []
-            paddle.distributed.all_gather_object(object_list, indata)
-            return object_list
+            # Run the collective twice, once per supported initialization
+            # style, and assert the results match. This locks in the
+            # alignment with torch.distributed.all_gather_object: both an
+            # empty list (Paddle legacy) and a pre-allocated [None]*world_size
+            # (PyTorch) must produce identical output. Doubles the comm cost
+            # for this test but stays well inside the 120s timeout.
+            paddle_style = []
+            paddle.distributed.all_gather_object(paddle_style, indata)
+
+            world_size = paddle.distributed.get_world_size()
+            torch_style = [None for _ in range(world_size)]
+            paddle.distributed.all_gather_object(torch_style, indata)
+
+            assert paddle_style == torch_style, (
+                f"all_gather_object initialization styles disagree: "
+                f"empty-list {paddle_style!r} vs pre-allocated {torch_style!r}"
+            )
+            return torch_style
 
 
 if __name__ == "__main__":

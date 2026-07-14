@@ -101,7 +101,7 @@ void QKVAttentionXPUKernelImpl(const Context& dev_ctx,
         } else {
           std::vector<int64_t> out_dims = vectorize(q.dims());
           out_dims.insert(out_dims.begin(), 3);
-          x_fp16.Resize(make_ddim(out_dims));
+          x_fp16.Resize(out_dims);
         }
         auto* x_fp16_data_t = reinterpret_cast<XPUTypeFP16*>(
             dev_ctx.template Alloc<phi::float16>(&x_fp16));

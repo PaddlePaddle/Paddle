@@ -49,7 +49,7 @@ __device__ __inline__ void CudaAtomicAddWithWarp(T* sum, T value) {
 }
 
 template <typename T, typename AccT, int VecSize, int Num>
-__device__ __forceinline__ void ThreadReduce(phi::Array<const T*, Num> arrs,
+__device__ __forceinline__ void ThreadReduce(Array<const T*, Num> arrs,
                                              int64_t size,
                                              const int offset,
                                              AccT* out_mean,
@@ -168,7 +168,7 @@ __global__ void VectorizedGetMeanAndVarNCHW(
     AccT x_var = static_cast<AccT>(0);
     x += i * size;
     const int input_offset = ((uint64_t)x) % ALIGN_BYTES / sizeof(T);
-    phi::Array<const T*, 1> ins;
+    Array<const T*, 1> ins;
     ins[0] = x;
     ThreadReduce<T, AccT, VecSize, 1>(ins, size, input_offset, &x_mean, &x_var);
     ReduceMeanAndVar<AccT>(mean, var, x_mean, x_var, size, i);

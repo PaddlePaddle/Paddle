@@ -20,6 +20,7 @@
 
 #include "paddle/phi/kernels/adam_kernel.h"
 #include "paddle/phi/kernels/adamw_kernel.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 
 namespace phi {
 
@@ -181,6 +182,7 @@ PADDLE_API void FusedAdamKernel(
 
 PD_REGISTER_KERNEL(
     fused_adam, CPU, ALL_LAYOUT, phi::FusedAdamKernel, float, double) {
+  kernel->InputAt(2).SetDataType(phi::DataType::FLOAT64);  // learning_rate
   kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(3).SetDataType(phi::DataType::UNDEFINED);

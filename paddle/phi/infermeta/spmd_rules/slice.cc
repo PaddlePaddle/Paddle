@@ -23,8 +23,6 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 std::vector<int64_t> BuildOutputAxisToInputAxisMap(
     const std::vector<int64_t>& decrease_axis, int input_ndim) {
   std::vector<int64_t> output_axis_to_input_axis(input_ndim -
@@ -47,7 +45,7 @@ SpmdInfo SliceInferSpmdBase(const DistMetaTensor& input,
                             const std::vector<int>& ends,
                             const std::vector<int>& strides) {
   // Step0: Verify input args based on slice logic
-  auto input_shape = common::vectorize(input.dims());
+  auto input_shape = vectorize(input.dims());
   int input_ndim = static_cast<int>(input_shape.size());
   int output_ndim = input_ndim - static_cast<int>(decrease_axis.size());
   auto input_dist_attr_src = input.dist_attr();
@@ -133,12 +131,12 @@ SpmdInfo SliceInferSpmdReverseBase(const DistMetaTensor& input,
                                    const std::vector<int>& starts,
                                    const std::vector<int>& ends,
                                    const std::vector<int>& strides) {
-  auto output_shape = common::vectorize(output.dims());
+  auto output_shape = vectorize(output.dims());
   int out_ndim = output_shape.size();
   auto out_dist_attr = output.dist_attr();
   int out_dims_mapping_size =
       static_cast<int>(out_dist_attr.dims_mapping().size());
-  auto input_shape = common::vectorize(input.dims());
+  auto input_shape = vectorize(input.dims());
   int input_ndim = static_cast<int>(input_shape.size());
   auto input_dist_attr = input.dist_attr();
   std::vector<int64_t> input_dims_mapping = input_dist_attr.dims_mapping();
@@ -226,7 +224,7 @@ SpmdInfo SliceInferSpmdReverseBase(const DistMetaTensor& input,
   VLOG(4) << "SliceInferSpmdReverse:";
   VLOG(4) << "Einsum Notation: " << input_axes << "-->" << out_axes;
   VLOG(4) << "Output"
-          << " shape: [" << str_join(common::vectorize(output.dims())) << "] "
+          << " shape: [" << str_join(vectorize(output.dims())) << "] "
           << "axes: [" << str_join(axes) << "] "
           << "src_dims_mapping: ["
           << str_join(output.dist_attr().dims_mapping()) << "] "
@@ -279,7 +277,7 @@ SpmdInfo SliceGradInferBase(const DistMetaTensor& input,
                             const std::vector<int64_t>& axes,
                             const std::vector<int64_t>& decrease_axis) {
   // Step0: Verify input args based on slice logic
-  auto input_shape = common::vectorize(input.dims());
+  auto input_shape = vectorize(input.dims());
   int input_ndim = static_cast<int>(input_shape.size());
   auto input_dist_attr = input.dist_attr();
 
@@ -302,7 +300,7 @@ SpmdInfo SliceGradInferBase(const DistMetaTensor& input,
   }
   auto out_dist_attr = out_grad.dist_attr();
   out_dist_attr = UnShardTensorDims(out_dist_attr, mapped_axes);
-  auto output_shape = common::vectorize(out_grad.dims());
+  auto output_shape = vectorize(out_grad.dims());
   int out_ndim = output_shape.size();
   int out_dims_mapping_size =
       static_cast<int>(out_dist_attr.dims_mapping().size());

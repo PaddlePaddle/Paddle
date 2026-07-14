@@ -21,11 +21,11 @@
 namespace phi {
 namespace funcs {
 inline int SetMeta(const DenseTensor& srcTensor, DenseTensor* dstTensor) {
-  if (srcTensor.dtype() == phi::DataType::INT32 ||
-      srcTensor.dtype() == phi::DataType::INT64 ||
-      srcTensor.dtype() == phi::DataType::FLOAT32 ||
-      srcTensor.dtype() == phi::DataType::FLOAT16 ||
-      srcTensor.dtype() == phi::DataType::FLOAT64) {
+  if (srcTensor.dtype() == DataType::INT32 ||
+      srcTensor.dtype() == DataType::INT64 ||
+      srcTensor.dtype() == DataType::FLOAT32 ||
+      srcTensor.dtype() == DataType::FLOAT16 ||
+      srcTensor.dtype() == DataType::FLOAT64) {
     const DenseTensorMeta meta_data(srcTensor.dtype(), srcTensor.dims());
     dstTensor->set_meta(meta_data);
   } else {
@@ -70,15 +70,15 @@ const int CopyTensorByType(const DenseTensor& srcTensor,
                            int flag,
                            const Place& place) {
   int r = 0;
-  if (srcTensor.dtype() == phi::DataType::FLOAT32)
+  if (srcTensor.dtype() == DataType::FLOAT32)
     r = CopyTensorByXPU<float>(srcTensor, dstTensor, flag, place);
-  else if (srcTensor.dtype() == phi::DataType::FLOAT16)
+  else if (srcTensor.dtype() == DataType::FLOAT16)
     r = CopyTensorByXPU<phi::float16>(srcTensor, dstTensor, flag, place);
-  else if (srcTensor.dtype() == phi::DataType::FLOAT64)
+  else if (srcTensor.dtype() == DataType::FLOAT64)
     r = CopyTensorByXPU<double>(srcTensor, dstTensor, flag, place);
-  else if (srcTensor.dtype() == phi::DataType::INT32)
+  else if (srcTensor.dtype() == DataType::INT32)
     r = CopyTensorByXPU<int>(srcTensor, dstTensor, flag, place);
-  else if (srcTensor.dtype() == phi::DataType::INT64)
+  else if (srcTensor.dtype() == DataType::INT64)
     r = CopyTensorByXPU<int64_t>(srcTensor, dstTensor, flag, place);
   else
     return xpu::Error_t::INVALID_PARAM;

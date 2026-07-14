@@ -23,6 +23,7 @@
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
 
+COMMON_DECLARE_string(check_nan_inf_blacklist);
 COMMON_DECLARE_int32(check_nan_inf_level);
 namespace egr {
 
@@ -82,6 +83,27 @@ bool CheckOp(const std::string& api_name) {
 }
 
 void CheckTensorHasNanOrInf(const std::string& api_name, const Tensor& tensor) {
+  if (api_name == "empty") {
+    VLOG(4) << "Current op is \"empty\", skip nan inf check.";
+    return;
+  }
+
+  if (api_name == "empty_like") {
+    VLOG(4) << "Current op is \"empty_like\", skip nan inf check.";
+    return;
+  }
+
+  if (!FLAGS_check_nan_inf_blacklist.empty()) {
+    std::stringstream blacklist_ss(FLAGS_check_nan_inf_blacklist);
+    std::string blacklisted_op;
+    while (std::getline(blacklist_ss, blacklisted_op, ',')) {
+      if (api_name == blacklisted_op) {
+        VLOG(4) << "Current op is in blacklist, skip nan inf check: "
+                << api_name;
+        return;
+      }
+    }
+  }
   auto op_name = phi::TransToFluidOpName(api_name);
   if (tensor.initialized() && CheckOp(op_name)) {
     auto& tensor_name = tensor.name();

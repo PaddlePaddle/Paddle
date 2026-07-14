@@ -79,7 +79,7 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
   if (!is_params_freezing) {
     *kernel_grad = EmptyLike<T>(dev_ctx, kernel);
     d_kernel_ptr = kernel_grad->data<T>();
-    phi::backends::gpu::GpuMemsetAsync(
+    backends::gpu::GpuMemsetAsync(
         d_kernel_ptr, 0, sizeof(T) * kernel_grad->numel(), dev_ctx.stream());
   }
 
@@ -88,11 +88,11 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
   DenseTensor x_grad_indices = EmptyLike<IntT>(dev_ctx, x.indices());
   DenseTensor x_grad_values = EmptyLike<T>(dev_ctx, x.values());
   T* x_grad_values_ptr = x_grad_values.data<T>();
-  phi::backends::gpu::GpuMemsetAsync(x_grad_values_ptr,
-                                     0,
-                                     sizeof(T) * x_grad_values.numel(),
-                                     dev_ctx.stream());
-  phi::backends::gpu::GpuMemsetAsync(
+  backends::gpu::GpuMemsetAsync(x_grad_values_ptr,
+                                0,
+                                sizeof(T) * x_grad_values.numel(),
+                                dev_ctx.stream());
+  backends::gpu::GpuMemsetAsync(
       d_x_features_ptr, 0, sizeof(T) * d_x_features.numel(), dev_ctx.stream());
   phi::Copy<GPUContext>(
       dev_ctx, x.indices(), dev_ctx.GetPlace(), false, &x_grad_indices);
@@ -125,14 +125,13 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
     }
   }
 
-  auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
   DenseTensor unique_value =
       Empty<int>(dev_ctx, {static_cast<int>(x_grad->nnz() * kernel_size * 2)});
   DenseTensor out_index = Empty<int>(dev_ctx, {static_cast<int>(x.nnz() * 2)});
   int* out_index_ptr = out_index.data<int>();
   int* unique_value_ptr = unique_value.data<int>();
-  phi::backends::gpu::GpuMemsetAsync(
+  backends::gpu::GpuMemsetAsync(
       out_index_ptr, 0, sizeof(int) * x.nnz() * 2, dev_ctx.stream());
 
   GroupIndicesV2<<<config.block_per_grid,

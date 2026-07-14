@@ -24,7 +24,7 @@
 namespace phi {
 namespace fusion {
 
-using phi::backends::gpu::GpuLaunchConfig;
+using backends::gpu::GpuLaunchConfig;
 
 constexpr int DequantKernelVecSize = 4;
 
@@ -93,7 +93,7 @@ void LaunchQuantKernel(const T* input,
   dim3 grid(((n >> 2) + 63) / 64, (m + 7) / 8);
   dim3 block(64, 8);
 #else
-  dim3 grid((n >> 2 + 31) / 32, (m + 31) / 32);
+  dim3 grid(((n >> 2) + 31) / 32, (m + 31) / 32);
   dim3 block(32, 32);
 #endif
 
@@ -127,8 +127,8 @@ __global__ void DequantKernel(T* output,
   AlignedVector<T, VecSize> out_vec;
 
   for (; idx < numel; idx += stride) {
-    phi::Load<int32_t, VecSize>(input + idx, &in_vec);
-    phi::Load<float, VecSize>(dequant_out_scale_data + col_id, &out_scale_vec);
+    Load<int32_t, VecSize>(input + idx, &in_vec);
+    Load<float, VecSize>(dequant_out_scale_data + col_id, &out_scale_vec);
 
 #pragma unroll
     for (int i = 0; i < VecSize; ++i) {
@@ -136,7 +136,7 @@ __global__ void DequantKernel(T* output,
           static_cast<T>(static_cast<float>(in_vec[i]) * out_scale_vec[i]);
     }
 
-    phi::Store<T, VecSize>(out_vec, output + idx);
+    Store<T, VecSize>(out_vec, output + idx);
   }
 }
 

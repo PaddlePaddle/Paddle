@@ -71,7 +71,7 @@ DenseTensor PerformTileAndReduction(const Context& dev_ctx,
       resize_dims[i] = 1;
     }
   }
-  t.Resize(make_ddim(resize_dims));
+  t.Resize(resize_dims);
   DenseTensor after_tile;
   if (std::all_of(repeat_times.begin(), repeat_times.end(), [](int64_t x) {
         return x == 1;
@@ -85,7 +85,7 @@ DenseTensor PerformTileAndReduction(const Context& dev_ctx,
   ret = after_tile;
   VLOG(5) << "PermformTileAndReduction: recover shape: "
           << paddle::string::join_strings(recover_shape, ",");
-  ret.Resize(make_ddim(recover_shape));
+  ret.Resize(recover_shape);
 
   // undiagonalize by einsum equation. only contain undiagonal operations.
   DenseTensor undiagonal_out;
@@ -116,8 +116,8 @@ DenseTensor PerformTileAndReduction(const Context& dev_ctx,
   }
   DenseTensor tmp_x;
   DenseTensor broadcast_out;
-  tmp_x.Resize(make_ddim(x_shape));
-  broadcast_out.Resize(make_ddim(x_shape));
+  tmp_x.Resize(x_shape);
+  broadcast_out.Resize(x_shape);
   TileGradKernel<T, Context>(
       dev_ctx, tmp_x, undiagonal_out, repeat_times, &broadcast_out);
   VLOG(5) << "After broadcast recover, we have tensor with shape: "

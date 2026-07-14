@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
+#include "paddle/common/enforce.h"
 
 namespace phi::funcs {
 
@@ -88,31 +89,33 @@ struct SplitFunctor<CPUContext, T> {
     // TODO(zcd): Add input data validity checking
     size_t num = outputs->size();
 
-    int input_rows = 1;
+    int64_t input_rows = 1;
     auto dim_0 = ref_inputs[0]->dims();
     for (int i = 0; i < axis; ++i) {
-      input_rows *= static_cast<int>(dim_0[i]);
+      input_rows *= dim_0[i];
     }
 
-    int input_cols = 0;
+    int64_t input_cols = 0;
 
     std::vector<int64_t> output_cols(outputs->size());
     for (size_t i = 0; i < num; ++i) {
-      int t_cols = static_cast<int>(ref_inputs[i]->numel() / input_rows);
+      int64_t t_cols = ref_inputs[i]->numel() / input_rows;
       input_cols += t_cols;
       output_cols[i] = t_cols;
     }
     auto cpu_place = context.GetPlace();
 
     // computation
-    for (int k = 0; k < input_rows; ++k) {
-      const T* src_ptr = input.data<T>() + k * input_cols;
-      int col_idx = 0;
+    for (int64_t k = 0; k < input_rows; ++k) {
+      const int64_t src_offset = k * input_cols;
+      const T* src_ptr = input.data<T>() + src_offset;
+      int64_t col_idx = 0;
       for (size_t j = 0; j < num; ++j) {
-        int col_len = static_cast<int>(output_cols[j]);
+        int64_t col_len = output_cols[j];
         auto* out_tensor = outputs->at(j);
         if (out_tensor != nullptr) {
-          T* dst_ptr = out_tensor->data<T>() + k * col_len;
+          const int64_t dst_offset = k * col_len;
+          T* dst_ptr = out_tensor->data<T>() + dst_offset;
           memory_utils::Copy(cpu_place,
                              dst_ptr,
                              cpu_place,

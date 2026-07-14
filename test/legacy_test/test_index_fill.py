@@ -600,5 +600,135 @@ class TestIndexFillGradInt32IndexAxis1(TestIndexFillGradBase):
         self.axis = 1
 
 
+class TestIndexFillOptimizationCorrectness(unittest.TestCase):
+    """Tests specifically targeting the optimization changes:
+    1. IndexT template (int32 vs int64 based on numel)
+    2. IndT template (int32/int64 index without CastToInt64)
+    3. Python-side value handling (no to_tensor roundtrip)
+    """
+
+    def _run_and_check(self, x_np, index_np, axis, value, dtype_np='float64'):
+        ref = compute_index_fill_ref(x_np, axis, index_np, value)
+        for place in get_all_devices():
+            paddle.device.set_device(place)
+            x_pd = paddle.to_tensor(x_np)
+            idx_pd = paddle.to_tensor(index_np)
+            res = paddle.index_fill(x_pd, idx_pd, axis, value)
+            np.testing.assert_allclose(res.numpy(), ref, rtol=1e-5)
+
+    def test_int32_index_direct_pass(self):
+        """IndT=int32: index with int32 dtype should work without cast."""
+        paddle.disable_static()
+        x_np = np.random.random((8, 10)).astype('float64')
+        index_np = np.array([1, 3, 5], dtype='int32')
+        self._run_and_check(x_np, index_np, axis=0, value=-1.0)
+        paddle.enable_static()
+
+    def test_int64_index_direct_pass(self):
+        """IndT=int64: index with int64 dtype should work directly."""
+        paddle.disable_static()
+        x_np = np.random.random((8, 10)).astype('float64')
+        index_np = np.array([0, 4, 7], dtype='int64')
+        self._run_and_check(x_np, index_np, axis=0, value=2.5)
+        paddle.enable_static()
+
+    def test_small_numel_int32_path(self):
+        """IndexT=int32: small tensor numel fits in int32."""
+        paddle.disable_static()
+        x_np = np.random.random((16, 32, 8)).astype('float64')
+        index_np = np.array([0, 5, 10, 15], dtype='int64')
+        self._run_and_check(x_np, index_np, axis=1, value=-0.5)
+        paddle.enable_static()
+
+    def test_value_python_float(self):
+        """Python float value should pass directly without to_tensor."""
+        paddle.disable_static()
+        x_np = np.random.random((4, 6)).astype('float32')
+        index_np = np.array([1, 3], dtype='int64')
+        self._run_and_check(x_np, index_np, axis=1, value=3.14)
+        paddle.enable_static()
+
+    def test_value_python_int(self):
+        """Python int value should pass directly."""
+        paddle.disable_static()
+        x_np = np.random.randint(0, 100, (5, 8)).astype('int64')
+        index_np = np.array([0, 2, 4], dtype='int64')
+        self._run_and_check(x_np, index_np, axis=0, value=999)
+        paddle.enable_static()
+
+    def test_value_python_bool(self):
+        """Python bool value should work with bool tensor."""
+        paddle.disable_static()
+        x_np = np.random.choice([True, False], size=(4, 6)).astype('bool')
+        index_np = np.array([1, 3], dtype='int64')
+        self._run_and_check(x_np, index_np, axis=0, value=True)
+        paddle.enable_static()
+
+    def test_value_zero_dim_tensor(self):
+        """0-D Tensor value should be extracted via .item()."""
+        paddle.disable_static()
+        for place in get_all_devices():
+            paddle.device.set_device(place)
+            x_np = np.random.random((6, 8)).astype('float64')
+            index_np = np.array([2, 5], dtype='int64')
+            x_pd = paddle.to_tensor(x_np)
+            idx_pd = paddle.to_tensor(index_np)
+            val_pd = paddle.to_tensor(-7.0)
+            res = paddle.index_fill(x_pd, idx_pd, axis=0, value=val_pd)
+            ref = compute_index_fill_ref(x_np, 0, index_np, -7.0)
+            np.testing.assert_allclose(res.numpy(), ref)
+        paddle.enable_static()
+
+    def test_inplace_with_scalar_value(self):
+        """Inplace variant should also work with scalar value."""
+        paddle.disable_static()
+        for place in get_all_devices():
+            paddle.device.set_device(place)
+            x_np = np.random.random((4, 5)).astype('float64')
+            index_np = np.array([0, 3], dtype='int32')
+            x_pd = paddle.to_tensor(x_np)
+            idx_pd = paddle.to_tensor(index_np)
+            paddle.index_fill_(x_pd, idx_pd, axis=1, value=-2.0)
+            ref = compute_index_fill_ref(x_np, 1, index_np, -2.0)
+            np.testing.assert_allclose(x_pd.numpy(), ref)
+        paddle.enable_static()
+
+    def test_int32_index_with_various_dtypes(self):
+        """int32 index with float16/float32/float64/int32/int64 tensors."""
+        paddle.disable_static()
+        index_np = np.array([0, 2], dtype='int32')
+        for dtype in ['float32', 'float64', 'int32', 'int64']:
+            if dtype.startswith('int'):
+                x_np = np.random.randint(0, 50, (5, 4)).astype(dtype)
+            else:
+                x_np = np.random.random((5, 4)).astype(dtype)
+            self._run_and_check(x_np, index_np, axis=0, value=-1)
+        paddle.enable_static()
+
+    def test_negative_axis(self):
+        """Negative axis with optimized kernel."""
+        paddle.disable_static()
+        x_np = np.random.random((3, 4, 5)).astype('float64')
+        index_np = np.array([1, 3], dtype='int64')
+        self._run_and_check(x_np, index_np, axis=-1, value=0.0)
+        paddle.enable_static()
+
+    def test_single_index(self):
+        """Single index element - minimal workload."""
+        paddle.disable_static()
+        x_np = np.random.random((10, 20)).astype('float64')
+        index_np = np.array([5], dtype='int32')
+        self._run_and_check(x_np, index_np, axis=0, value=42.0)
+        paddle.enable_static()
+
+    def test_full_dim_index(self):
+        """Index covers entire dimension."""
+        paddle.disable_static()
+        x_np = np.random.random((4, 6)).astype('float64')
+        index_np = np.arange(6, dtype='int64')
+        self._run_and_check(x_np, index_np, axis=1, value=-1.0)
+        paddle.enable_static()
+
+
 if __name__ == "__main__":
     unittest.main()

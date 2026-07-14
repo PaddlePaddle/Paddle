@@ -23,7 +23,7 @@
 
 namespace phi::distributed {
 
-NCCLCommTask::NCCLCommTask(const phi::Place& place,
+NCCLCommTask::NCCLCommTask(const Place& place,
                            const std::string& group_key,
                            int rank,
                            int size,

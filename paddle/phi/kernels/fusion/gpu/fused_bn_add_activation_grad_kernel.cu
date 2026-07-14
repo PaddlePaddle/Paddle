@@ -38,7 +38,7 @@ namespace phi {
 namespace fusion {
 
 template <typename T>
-using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
+using CudnnDataType = backends::gpu::CudnnDataType<T>;
 template <typename T>
 using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
@@ -141,7 +141,7 @@ void FusedBatchNormAddActGradKernel(const Context &dev_ctx,
   DenseTensor workspace_tensor;
   auto reserve_space_size = reserve_space_ptr->memory_size();
   cudnnBatchNormOps_t bnOps_ = CUDNN_BATCHNORM_OPS_BN_ADD_ACTIVATION;
-  phi::backends::gpu::ScopedActivationDescriptor scope_act_desc;
+  backends::gpu::ScopedActivationDescriptor scope_act_desc;
   cudnnActivationDescriptor_t activation_desc_ =
       scope_act_desc.descriptor<T>(act_type);
   // --------------- cudnn batchnorm workspace ---------------

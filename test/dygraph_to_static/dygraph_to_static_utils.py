@@ -23,8 +23,7 @@ from contextlib import contextmanager
 from enum import Flag, auto
 from functools import wraps
 from pathlib import Path
-
-from typing_extensions import TypeAlias
+from typing import TypeAlias
 
 import paddle
 from paddle import set_flags

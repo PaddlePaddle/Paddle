@@ -42,7 +42,7 @@ void BroadcastTensorsGradKernel(const Context& dev_ctx,
       num_ins,
       1,
       errors::InvalidArgument(
-          "Expected at least 2 input tensors, but only received d%.",
+          "Expected at least 2 input tensors, but only received %d.",
           in_tensors.size()));
 
   PADDLE_ENFORCE_EQ(
@@ -89,12 +89,12 @@ void BroadcastTensorsGradKernel(const Context& dev_ctx,
       Copy(dev_ctx, *input_tensor, dev_ctx.GetPlace(), false, output_tensor);
     } else {
       // reduce_sum implementation on CUDA
-      phi::SumKernel<T, Context>(dev_ctx,
-                                 *input_tensor,
-                                 reduce_dims_vec,
-                                 output_tensor->dtype(),
-                                 false,
-                                 output_tensor);
+      SumKernel<T, Context>(dev_ctx,
+                            *input_tensor,
+                            reduce_dims_vec,
+                            output_tensor->dtype(),
+                            false,
+                            output_tensor);
     }
   }
 }

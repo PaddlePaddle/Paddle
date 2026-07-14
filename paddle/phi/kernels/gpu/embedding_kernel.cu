@@ -116,11 +116,11 @@ void EmbeddingKernel(const Context &dev_ctx,
   EmbeddingCUDAFunctor<T, Context> functor(
       dev_ctx, input, weight, padding_idx, out);
 
-  if (input.dtype() == phi::DataType::INT32) {
+  if (input.dtype() == DataType::INT32) {
     functor.template apply<int32_t>();
-  } else if (input.dtype() == phi::DataType::INT64) {
+  } else if (input.dtype() == DataType::INT64) {
     functor.template apply<int64_t>();
-  } else if (input.dtype() == phi::DataType::INT16) {
+  } else if (input.dtype() == DataType::INT16) {
     functor.template apply<int16_t>();
   } else {
     PADDLE_THROW(common::errors::Unimplemented(

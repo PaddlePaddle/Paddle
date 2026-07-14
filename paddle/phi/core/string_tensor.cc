@@ -108,6 +108,19 @@ StringTensor& StringTensor::Resize(const DDim& dims) {
   meta_.dims = dims;
   return *this;
 }
+
+StringTensor& StringTensor::Resize(const std::initializer_list<int64_t> dims) {
+  return Resize(make_ddim(dims));
+}
+
+StringTensor& StringTensor::Resize(const std::vector<int64_t>& dims) {
+  return Resize(make_ddim(dims));
+}
+
+StringTensor& StringTensor::Resize(const std::vector<int>& dims) {
+  return Resize(make_ddim(dims));
+}
+
 // TODO(zhoushunjie): need to remove it for general space
 void StringTensor::init_holder() {
   void* ptr = holder_->ptr();
@@ -185,9 +198,8 @@ dtype::pstring* StringTensor::mutable_data(const Place& place,
       0,
       common::errors::PreconditionNotMet(
           "The Tensor's element number must be equal or greater than zero. "
-          "The Tensor's shape is [",
-          dims(),
-          "] now"));
+          "The Tensor's shape is %s now.",
+          dims()));
   size_t size = numel() * SizeOf(dtype());
   if (requested_size && (requested_size > size)) {
     size = requested_size;

@@ -64,7 +64,7 @@ class EagerGroup {
   size_t pending_ = -1;
 
   // external message of group
-  phi::DataType dtype_;
+  DataType dtype_;
 
   // help to sync
   std::shared_ptr<ProcessGroup::Task> task;

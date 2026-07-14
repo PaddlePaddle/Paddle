@@ -419,7 +419,7 @@ int FusedMultiTransformerInt8XPUQuantPass::FusedMultiTransformerInt8(
           tmp.push_back(1.0f / in_scale_data[i]);
         }
         DenseTensor dst_tensor;
-        dst_tensor.set_type(phi::DataType::FLOAT32);
+        dst_tensor.set_type(DataType::FLOAT32);
         dst_tensor.Resize({(int64_t)tmp.size()});
         memcpy(cpu_ctx->Alloc<float>(&dst_tensor),
                tmp.data(),
@@ -461,7 +461,7 @@ int FusedMultiTransformerInt8XPUQuantPass::FusedMultiTransformerInt8(
       };
       std::vector<float> max_bound_pow{127 * 127};  // int8_t
       DenseTensor max_bound_tensor;
-      max_bound_tensor.set_type(phi::DataType::FLOAT32);
+      max_bound_tensor.set_type(DataType::FLOAT32);
       max_bound_tensor.Resize({(int64_t)max_bound_pow.size()});
       memcpy(cpu_ctx->Alloc<float>(&max_bound_tensor),
              max_bound_pow.data(),
@@ -472,7 +472,7 @@ int FusedMultiTransformerInt8XPUQuantPass::FusedMultiTransformerInt8(
       int id = 0;
       for (auto name : names) {
         DenseTensor in_scale_tensor;
-        in_scale_tensor.set_type(phi::DataType::FLOAT32);
+        in_scale_tensor.set_type(DataType::FLOAT32);
         in_scale_tensor.Resize({1});
         memcpy(cpu_ctx->Alloc<float>(&in_scale_tensor),
                &(in_scale_data[id]),
@@ -508,7 +508,7 @@ int FusedMultiTransformerInt8XPUQuantPass::FusedMultiTransformerInt8(
           auto* dst_var = scope->FindVar(dst_name);
           if (dst_var == nullptr) {
             DenseTensor tmp_tensor;
-            tmp_tensor.set_type(phi::DataType::FLOAT32);
+            tmp_tensor.set_type(DataType::FLOAT32);
             tmp_tensor.Resize(curr_tensor->dims());
             memcpy(cpu_ctx->Alloc<float>(&tmp_tensor),
                    curr_tensor,
@@ -592,7 +592,7 @@ int FusedMultiTransformerInt8XPUQuantPass::FusedMultiTransformerInt8(
     int layer_num = fused_mt_int8->Op()->Input("QKVW").size();
     int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
     DenseTensor max_buffer_tensor;
-    max_buffer_tensor.set_type(phi::DataType::FLOAT32);
+    max_buffer_tensor.set_type(DataType::FLOAT32);
     int max_buffer_len = max_ptr_size * layer_num * 2;
     max_buffer_tensor.Resize({max_buffer_len});
     std::vector<float> ones_vec(max_buffer_len, 1.f);

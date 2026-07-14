@@ -35,7 +35,7 @@ void moe_dispatch_fwd(const Context &dev_ctx,
                       DenseTensor *expert_id,
                       bool use_pad) {
   PADDLE_ENFORCE_EQ(gate_logits.dtype(),
-                    paddle::DataType::FLOAT32,
+                    DataType::FLOAT32,
                     ::common::errors::InvalidArgument(
                         "Unsupported dtype for gate_logits, "
                         "currently only float32 is supported."));

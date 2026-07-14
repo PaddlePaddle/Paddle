@@ -143,11 +143,11 @@ void EmbeddingGradKernel(const Context& dev_ctx,
   EmbeddingGradCUDAFunctor<T, Context> functor(
       dev_ctx, input, weight, out_grad, padding_idx, weight_grad);
 
-  if (input.dtype() == phi::DataType::INT32) {
+  if (input.dtype() == DataType::INT32) {
     functor.template apply<int>();
-  } else if (input.dtype() == phi::DataType::INT64) {
+  } else if (input.dtype() == DataType::INT64) {
     functor.template apply<int64_t>();
-  } else if (input.dtype() == phi::DataType::INT16) {
+  } else if (input.dtype() == DataType::INT16) {
     functor.template apply<int16_t>();
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
@@ -187,7 +187,7 @@ struct EmbeddingSparseGradCUDAFunctor {
     new_rows.resize(ids_num);
     auto gpu_place = dev_ctx_.GetPlace();
 
-    phi::MixVector<int64_t> mixv_new_rows(&new_rows);
+    MixVector<int64_t> mixv_new_rows(&new_rows);
     if (!std::is_same<IdT, int64_t>::value) {
       InputTypeConvert<<<grids, threads, 0, stream>>>(
           ids_data, ids_num, mixv_new_rows.MutableData(gpu_place));
@@ -248,11 +248,11 @@ void EmbeddingSparseGradKernel(const Context& dev_ctx,
   EmbeddingSparseGradCUDAFunctor<T, Context> functor(
       dev_ctx, input, weight, out_grad, padding_idx, weight_grad);
 
-  if (input.dtype() == phi::DataType::INT32) {
+  if (input.dtype() == DataType::INT32) {
     functor.template apply<int>();
-  } else if (input.dtype() == phi::DataType::INT64) {
+  } else if (input.dtype() == DataType::INT64) {
     functor.template apply<int64_t>();
-  } else if (input.dtype() == phi::DataType::INT16) {
+  } else if (input.dtype() == DataType::INT16) {
     functor.template apply<int16_t>();
     PADDLE_THROW(common::errors::Unimplemented(
         "embedding input only support int16, int32 and int64"));

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/send_ue_recv_grad_kernel.h"
+#include "paddle/common/enforce.h"
 #include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -52,8 +53,11 @@ void CalculateXEGradForMinMax(const Context& dev_ctx,
   int64_t out_len = bcast_info.out_len;
   const int ntx = FindNumThreads(out_len, dev_ctx.GetMaxThreadsPerBlock());
   const int nty = dev_ctx.GetMaxThreadsPerBlock() / ntx;
-  const int nbx = (out_len + ntx - 1) / ntx;
-  const int nby = FindNumBlocks('y', (index_size + nty - 1) / nty);
+  const int64_t nbx_64 = (out_len + ntx - 1) / ntx;
+  PADDLE_ENFORCE_LE_INT_MAX(nbx_64, "grid.x");
+  const int nbx = static_cast<int>(nbx_64);
+  const int64_t nby_64 = (index_size + nty - 1) / nty;
+  const int nby = FindNumBlocks('y', nby_64);
   const dim3 grid(nbx, nby);
   const dim3 block(ntx, nty);
 
@@ -151,12 +155,11 @@ void CalculateXGrad(const Context& dev_ctx,
                                                    bcast_info.out_len,
                                                    functor);
         // Run reduce_sum
-        DenseTensor x_grad_out =
-            phi::Sum<T, Context>(dev_ctx,
-                                 x_grad_v2,
-                                 phi::IntArray(reduce_idx),
-                                 CppTypeToDataType<T>::Type(),
-                                 true);
+        DenseTensor x_grad_out = Sum<T, Context>(dev_ctx,
+                                                 x_grad_v2,
+                                                 IntArray(reduce_idx),
+                                                 CppTypeToDataType<T>::Type(),
+                                                 true);
 #ifdef PADDLE_WITH_HIP
         hipMemcpy(x_grad,
                   x_grad_out.data<T>(),
@@ -179,8 +182,11 @@ void CalculateXGrad(const Context& dev_ctx,
       int64_t out_len = bcast_info.out_len;
       const int ntx = FindNumThreads(out_len, dev_ctx.GetMaxThreadsPerBlock());
       const int nty = dev_ctx.GetMaxThreadsPerBlock() / ntx;
-      const int nbx = (out_len + ntx - 1) / ntx;
-      const int nby = FindNumBlocks('y', (index_size + nty - 1) / nty);
+      const int64_t nbx_64 = (out_len + ntx - 1) / ntx;
+      PADDLE_ENFORCE_LE_INT_MAX(nbx_64, "grid.x");
+      const int nbx = static_cast<int>(nbx_64);
+      const int64_t nby_64 = (index_size + nty - 1) / nty;
+      const int nby = FindNumBlocks('y', nby_64);
       const dim3 grid_(nbx, nby);
       const dim3 block_(ntx, nty);
       funcs::MultiplyFunctor<T> mul_functor;
@@ -228,12 +234,11 @@ void CalculateXGrad(const Context& dev_ctx,
                 bcast_info.use_bcast,
                 mul_functor,
                 sum_functor);
-        DenseTensor x_grad_out =
-            phi::Sum<T, Context>(dev_ctx,
-                                 x_grad_v2,
-                                 phi::IntArray(reduce_idx),
-                                 CppTypeToDataType<T>::Type(),
-                                 true);
+        DenseTensor x_grad_out = Sum<T, Context>(dev_ctx,
+                                                 x_grad_v2,
+                                                 IntArray(reduce_idx),
+                                                 CppTypeToDataType<T>::Type(),
+                                                 true);
 #ifdef PADDLE_WITH_HIP
         hipMemcpy(x_grad,
                   x_grad_out.data<T>(),
@@ -274,12 +279,11 @@ void CalculateXGrad(const Context& dev_ctx,
                                                    bcast_info.out_len,
                                                    s_count);
         // Run reduce_sum
-        DenseTensor x_grad_out =
-            phi::Sum<T, Context>(dev_ctx,
-                                 x_grad_v2,
-                                 phi::IntArray(reduce_idx),
-                                 CppTypeToDataType<T>::Type(),
-                                 true);
+        DenseTensor x_grad_out = Sum<T, Context>(dev_ctx,
+                                                 x_grad_v2,
+                                                 IntArray(reduce_idx),
+                                                 CppTypeToDataType<T>::Type(),
+                                                 true);
 #ifdef PADDLE_WITH_HIP
         hipMemcpy(x_grad,
                   x_grad_out.data<T>(),
@@ -302,8 +306,11 @@ void CalculateXGrad(const Context& dev_ctx,
       int64_t out_len = bcast_info.out_len;
       const int ntx = FindNumThreads(out_len, dev_ctx.GetMaxThreadsPerBlock());
       const int nty = dev_ctx.GetMaxThreadsPerBlock() / ntx;
-      const int nbx = (out_len + ntx - 1) / ntx;
-      const int nby = FindNumBlocks('y', (index_size + nty - 1) / nty);
+      const int64_t nbx_64 = (out_len + ntx - 1) / ntx;
+      PADDLE_ENFORCE_LE_INT_MAX(nbx_64, "grid.x");
+      const int nbx = static_cast<int>(nbx_64);
+      const int64_t nby_64 = (index_size + nty - 1) / nty;
+      const int nby = FindNumBlocks('y', nby_64);
       const dim3 grid_(nbx, nby);
       const dim3 block_(ntx, nty);
       if (!reduce) {
@@ -342,12 +349,11 @@ void CalculateXGrad(const Context& dev_ctx,
                 out_len,
                 bcast_info.use_bcast);
         // Run reduce_sum
-        DenseTensor x_grad_out =
-            phi::Sum<T, Context>(dev_ctx,
-                                 x_grad_v2,
-                                 phi::IntArray(reduce_idx),
-                                 CppTypeToDataType<T>::Type(),
-                                 true);
+        DenseTensor x_grad_out = Sum<T, Context>(dev_ctx,
+                                                 x_grad_v2,
+                                                 IntArray(reduce_idx),
+                                                 CppTypeToDataType<T>::Type(),
+                                                 true);
         // TODO(daisiming): Whether use x_grad instead.
 #ifdef PADDLE_WITH_HIP
         hipMemcpy(x_grad,
@@ -388,8 +394,11 @@ void CalculateEGrad(const Context& dev_ctx,
   int64_t out_len = bcast_info.out_len;
   const int ntx = FindNumThreads(out_len, dev_ctx.GetMaxThreadsPerBlock());
   const int nty = dev_ctx.GetMaxThreadsPerBlock() / ntx;
-  const int nbx = (out_len + ntx - 1) / ntx;
-  const int nby = FindNumBlocks('y', (index_size + nty - 1) / nty);
+  const int64_t nbx_64 = (out_len + ntx - 1) / ntx;
+  PADDLE_ENFORCE_LE_INT_MAX(nbx_64, "grid.x");
+  const int nbx = static_cast<int>(nbx_64);
+  const int64_t nby_64 = (index_size + nty - 1) / nty;
+  const int nby = FindNumBlocks('y', nby_64);
   const dim3 grid(nbx, nby);
   const dim3 block(ntx, nty);
   if (reduce_op == "SUM") {
@@ -576,7 +585,7 @@ void SendUERecvGradKernel(const Context& dev_ctx,
     return;
   }
 
-  if (index_type == phi::DataType::INT32) {
+  if (index_type == DataType::INT32) {
     GraphSendUERecvGradOpCUDAKernelLaunchHelper<Context, T, int32_t>(
         dev_ctx,
         out_grad,
@@ -590,7 +599,7 @@ void SendUERecvGradKernel(const Context& dev_ctx,
         y_grad,
         dst_count.get_ptr(),
         out.get_ptr());
-  } else if (index_type == phi::DataType::INT64) {
+  } else if (index_type == DataType::INT64) {
     GraphSendUERecvGradOpCUDAKernelLaunchHelper<Context, T, int64_t>(
         dev_ctx,
         out_grad,

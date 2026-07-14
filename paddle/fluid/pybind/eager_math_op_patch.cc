@@ -41,6 +41,7 @@ typedef SSIZE_T ssize_t;
 #include "pybind11/pybind11.h"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #include "paddle/common/ddim.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/python_headers.h"
@@ -49,6 +50,8 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/common/type_promotion.h"
 #include "paddle/phi/core/memory/allocation/mmap_allocator.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 using egr::ConvertAllInputsToDistTensor;
 using egr::InputsContainDistTensor;
@@ -74,7 +77,7 @@ static bool IsNumpyArray(PyObject* obj) {
 }
 
 void InitTensorWithNumpyValue(const py::object& array,
-                              const phi::Place& place,
+                              const Place& place,
                               Tensor* self,
                               bool zero_copy = false) {
   PADDLE_ENFORCE_EQ(
@@ -143,7 +146,7 @@ std::set<DataType> _complex_dtypes{
 //     '__eq__',
 //     '__ne__'
 
-void SetDevice(phi::Place place) {
+void SetDevice(Place place) {
   if (phi::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     phi::backends::gpu::SetDeviceId(place.device);
@@ -837,71 +840,173 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
   Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
-  // 1. scalar exists cases
-  // there is no scalar_div function for __rdiv__ and __rtruediv__
-  if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
-      IsNumpyType(other_obj)) {
-    if (_supported_int_dtype_.find(self_tensor.dtype()) !=
-        _supported_int_dtype_.end()) {
-      eager_gil_scoped_release guard;
-      self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
-    }
-  } else if (PyComplex_Check(other_obj)) {
-    if (is_support_complex(self_tensor.dtype()) == false) {
-      eager_gil_scoped_release guard;
-      self_tensor = cast_ad_func(
-          self_tensor, promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
-    }
-  }
-
-  // 2. create or get tensor for other_obj
-
-  Tensor other_tensor;
-  if (PyCheckTensor(other_obj)) {
-    auto& self_tensor_ref_addr = self->tensor;
-    auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(
-            &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
-      ConvertAllInputsToDistTensor(
-          mesh, self_tensor_ref_addr, other_tensor_ref_addr);
-    }
-    self_tensor = self_tensor_ref_addr;
-    other_tensor = other_tensor_ref_addr;
-  } else {
-    if (IsNumpyArray(other_obj)) {
-      py::object numpy_value =
-          py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::empty({}, DataType::FLOAT32, place);
-      InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
-    } else {
-      paddle::experimental::Scalar value =
-          CastPyArg2Scalar(other_obj, "__rdiv__", 0);
-      if (PyComplex_Check(other_obj)) {
+  // Use the torch-aligned rule (`other / self == self.reciprocal() * other`)
+  // only when FLAGS_use_accuracy_compatible_kernel is on and the backend is not
+  // XPU (XPU has no float reciprocal kernel). torch's Tensor.__rtruediv__ is
+  // `self.reciprocal() * other` on both CPU and GPU. Otherwise keep the
+  // original single-divide behavior. The two implementations are the two
+  // branches below.
+  if (FLAGS_use_accuracy_compatible_kernel && !phi::is_xpu_place(place)) {
+    // ===================== torch-aligned implementation =====================
+    // 1. scalar exists cases
+    // scalar / tensor is computed as tensor.reciprocal() * scalar. The scalar
+    // is kept in higher precision (MPType in ScaleFunctor, same as torch's
+    // opmath scalar) instead of being rounded to the tensor dtype by
+    // materializing a full tensor.
+    if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
+        IsNumpyType(other_obj)) {
+      if (_supported_int_dtype_.find(self_tensor.dtype()) !=
+          _supported_int_dtype_.end()) {
         eager_gil_scoped_release guard;
-        other_tensor =
-            full_ad_func({1}, value, DataType::COMPLEX64, self_tensor.place());
-      } else {
+        self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+      }
+      double other = CastPyArg2Double(other_obj, "__rdiv__", 0);
+      VLOG(6) << "Calling reciprocal_ad_func and scale_ad_func in "
+                 "tensor__rdiv__method";
+      {
         eager_gil_scoped_release guard;
-        other_tensor = full_ad_func(self_tensor.shape(),
-                                    value,
-                                    self_tensor.dtype(),
-                                    self_tensor.place());
+        Tensor recip = reciprocal_ad_func(self_tensor);
+        // bias is -0.0f so that `scale * x + bias` keeps the sign of negative
+        // zeros produced by the multiplication (a 0.0f bias would turn -0.0
+        // into +0.0), matching torch's `reciprocal() * scalar` bitwise.
+        ret = scale_ad_func(recip, phi::Scalar(other), -0.0f, true);
+      }
+      return ToPyObject(ret);
+    } else if (PyComplex_Check(other_obj)) {
+      if (is_support_complex(self_tensor.dtype()) == false) {
+        eager_gil_scoped_release guard;
+        self_tensor = cast_ad_func(
+            self_tensor,
+            promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
       }
     }
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
-    }
-  }
 
-  // 3. calculation
-  VLOG(6) << "Calling divide_ad_func in tensor__rdiv__method";
-  {
-    eager_gil_scoped_release guard;
-    ret = divide_ad_func(other_tensor, self_tensor);
+    // 2. create or get tensor for other_obj
+    Tensor other_tensor;
+    if (PyCheckTensor(other_obj)) {
+      auto& self_tensor_ref_addr = self->tensor;
+      auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
+      const phi::distributed::ProcessMesh* mesh = nullptr;
+      if (InputsContainDistTensor(
+              &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+        ConvertAllInputsToDistTensor(
+            mesh, self_tensor_ref_addr, other_tensor_ref_addr);
+      }
+      self_tensor = self_tensor_ref_addr;
+      other_tensor = other_tensor_ref_addr;
+    } else {
+      if (IsNumpyArray(other_obj)) {
+        py::object numpy_value =
+            py::reinterpret_borrow<py::object>(py::handle(other_obj));
+        other_tensor = paddle::empty({}, DataType::FLOAT32, place);
+        InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+      } else {
+        paddle::experimental::Scalar value =
+            CastPyArg2Scalar(other_obj, "__rdiv__", 0);
+        if (PyComplex_Check(other_obj)) {
+          eager_gil_scoped_release guard;
+          other_tensor = full_ad_func(
+              {1}, value, DataType::COMPLEX64, self_tensor.place());
+        } else {
+          eager_gil_scoped_release guard;
+          other_tensor = full_ad_func(self_tensor.shape(),
+                                      value,
+                                      self_tensor.dtype(),
+                                      self_tensor.place());
+        }
+      }
+      const phi::distributed::ProcessMesh* mesh = nullptr;
+      if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+        ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+      }
+    }
+
+    // 3. calculation: other / self == self.reciprocal() * other
+    VLOG(6) << "Calling reciprocal_ad_func and multiply_ad_func in "
+               "tensor__rdiv__method";
+    {
+      eager_gil_scoped_release guard;
+      if (_supported_int_dtype_.find(self_tensor.dtype()) !=
+          _supported_int_dtype_.end()) {
+        // torch's reciprocal promotes integral/bool tensors to float32.
+        self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+      }
+      Tensor recip = reciprocal_ad_func(self_tensor);
+      if (_supported_int_dtype_.find(other_tensor.dtype()) !=
+          _supported_int_dtype_.end()) {
+        other_tensor = cast_ad_func(other_tensor, recip.dtype());
+      }
+      ret = multiply_ad_func(recip, other_tensor);
+    }
+    return ToPyObject(ret);
+  } else {
+    // ======================= original implementation =======================
+    // 1. scalar exists cases
+    // there is no scalar_div function for __rdiv__ and __rtruediv__
+    if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
+        IsNumpyType(other_obj)) {
+      if (_supported_int_dtype_.find(self_tensor.dtype()) !=
+          _supported_int_dtype_.end()) {
+        eager_gil_scoped_release guard;
+        self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+      }
+    } else if (PyComplex_Check(other_obj)) {
+      if (is_support_complex(self_tensor.dtype()) == false) {
+        eager_gil_scoped_release guard;
+        self_tensor = cast_ad_func(
+            self_tensor,
+            promoteTypes(self_tensor.dtype(), DataType::COMPLEX64));
+      }
+    }
+
+    // 2. create or get tensor for other_obj
+    Tensor other_tensor;
+    if (PyCheckTensor(other_obj)) {
+      auto& self_tensor_ref_addr = self->tensor;
+      auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
+      const phi::distributed::ProcessMesh* mesh = nullptr;
+      if (InputsContainDistTensor(
+              &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+        ConvertAllInputsToDistTensor(
+            mesh, self_tensor_ref_addr, other_tensor_ref_addr);
+      }
+      self_tensor = self_tensor_ref_addr;
+      other_tensor = other_tensor_ref_addr;
+    } else {
+      if (IsNumpyArray(other_obj)) {
+        py::object numpy_value =
+            py::reinterpret_borrow<py::object>(py::handle(other_obj));
+        other_tensor = paddle::empty({}, DataType::FLOAT32, place);
+        InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+      } else {
+        paddle::experimental::Scalar value =
+            CastPyArg2Scalar(other_obj, "__rdiv__", 0);
+        if (PyComplex_Check(other_obj)) {
+          eager_gil_scoped_release guard;
+          other_tensor = full_ad_func(
+              {1}, value, DataType::COMPLEX64, self_tensor.place());
+        } else {
+          eager_gil_scoped_release guard;
+          other_tensor = full_ad_func(self_tensor.shape(),
+                                      value,
+                                      self_tensor.dtype(),
+                                      self_tensor.place());
+        }
+      }
+      const phi::distributed::ProcessMesh* mesh = nullptr;
+      if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+        ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+      }
+    }
+
+    // 3. calculation
+    VLOG(6) << "Calling divide_ad_func in tensor__rdiv__method";
+    {
+      eager_gil_scoped_release guard;
+      ret = divide_ad_func(other_tensor, self_tensor);
+    }
+    return ToPyObject(ret);
   }
-  return ToPyObject(ret);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 

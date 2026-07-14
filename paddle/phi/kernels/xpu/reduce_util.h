@@ -21,8 +21,8 @@ namespace phi {
 
 //////// Sum Functor ///////
 struct SumFunctor {
-  template <typename DeviceContext, typename X, typename Y>
-  void operator()(const DeviceContext& xpu_ctx,
+  template <typename Context, typename X, typename Y>
+  void operator()(const Context& xpu_ctx,
                   const X* x,
                   Y* y,
                   const std::vector<int64_t>& xdims,

@@ -36,7 +36,6 @@ from ...utils import (
     ResumeFnNameFactory,
     list_contain_by_id,
     list_find_index_by_id,
-    no_eval_frame,
 )
 from ..instruction_utils import (
     apply_instr_pass,
@@ -93,10 +92,7 @@ def get_pycode_attributes() -> list[str]:
     if sys.version_info >= (3, 11):
         pycode_attributes.append("co_qualname")
     pycode_attributes.append("co_firstlineno")
-    if sys.version_info >= (3, 10):
-        pycode_attributes.append("co_linetable")
-    else:
-        pycode_attributes.append("co_lnotab")
+    pycode_attributes.append("co_linetable")
     if sys.version_info >= (3, 11):
         pycode_attributes.append("co_exceptiontable")
     pycode_attributes += [
@@ -145,12 +141,9 @@ def gen_new_opcode(
     """
     bytecode, linetable = assemble(instrs, code_options["co_firstlineno"])
 
-    if sys.version_info >= (3, 10):
-        # Python deprecated co_lnotab in 3.10, use co_linetable instead
-        # https://peps.python.org/pep-0626/
-        code_options["co_linetable"] = linetable
-    else:
-        code_options["co_lnotab"] = linetable
+    # Python 3.10+ uses co_linetable.
+    # https://peps.python.org/pep-0626/
+    code_options["co_linetable"] = linetable
     code_options["co_code"] = bytecode
     code_options["co_nlocals"] = len(code_options["co_varnames"])
     code_options["co_stacksize"] = stacksize(instrs)
@@ -198,7 +191,7 @@ def assemble(
     if sys.version_info >= (3, 11):
         # End hook for Python 3.11
         linetable.extend(calc_linetable(None, len(code)))
-    elif sys.version_info >= (3, 10):
+    else:
         # End hook for Python 3.10
         linetable.extend(calc_linetable(0, len(code)))
 
@@ -239,31 +232,6 @@ def create_linetable_calculator(firstlineno: int):
         cur_bytecode = code_length
         if starts_line is not None:
             cur_lineno = starts_line
-
-    def calc_lnotab(starts_line: int, code_length: int):
-        """
-        Calculates the lnotab for Python 3.8 and 3.9.
-        https://github.com/python/cpython/blob/3.9/Objects/lnotab_notes.txt
-
-        Args:
-            starts_line (int): The line number where the instruction starts.
-            code_length (int): The length of the code.
-
-        Returns:
-            list[int]: The lnotab.
-        """
-        nonlocal cur_lineno, cur_bytecode
-        line_offset = starts_line - cur_lineno
-        byte_offset = code_length - cur_bytecode
-        result = []
-
-        while line_offset or byte_offset:
-            line_offset_step = min(max(line_offset, -128), 127)
-            byte_offset_step = min(max(byte_offset, 0), 255)
-            result.extend((byte_offset_step, to_byte(line_offset_step)))
-            line_offset -= line_offset_step
-            byte_offset -= byte_offset_step
-        return result
 
     def calc_linetable_py310(starts_line: int, code_length: int):
         """
@@ -337,10 +305,8 @@ def create_linetable_calculator(firstlineno: int):
 
     if sys.version_info >= (3, 11):
         return calc_linetable_py311, update_cursor
-    elif sys.version_info >= (3, 10):
-        return calc_linetable_py310, update_cursor
     else:
-        return calc_lnotab, update_cursor
+        return calc_linetable_py310, update_cursor
 
 
 def compile_exception_table():
@@ -872,26 +838,8 @@ class PyCodeGen:
         if sys.version_info >= (3, 11):
             for i in range(n, 1, -1):
                 self.add_instr("SWAP", arg=i)
-        elif sys.version_info >= (3, 10):
-            self.add_instr("ROT_N", arg=n)
         else:
-            if n <= 4:
-                self.add_instr("ROT_" + ["TWO", "THREE", "FOUR"][n - 2])
-            else:
-
-                def rot_n_fn(n):
-                    vars = [f"var{i}" for i in range(n)]
-                    rotated = reversed(vars[-1:] + vars[:-1])
-                    fn = eval(f"lambda {','.join(vars)}: ({','.join(rotated)})")
-                    fn = no_eval_frame(fn)
-                    fn.__name__ = f"rot_{n}_fn"
-                    return fn
-
-                self.gen_build_tuple(n)
-                self.gen_load_const(rot_n_fn(n))
-                self.gen_rot_n(2)
-                self.add_instr("CALL_FUNCTION_EX", arg=0)
-                self.gen_unpack_sequence(n)
+            self.add_instr("ROT_N", arg=n)
 
     def gen_shift_n(self, s: int, n: int):
         """

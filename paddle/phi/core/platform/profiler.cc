@@ -62,6 +62,18 @@ namespace paddle::platform {
 
 MemEventRecorder MemEventRecorder::recorder;
 
+PADDLE_API HostEventSection<phi::CommonEvent> GatherCommonHostEvents() {
+  return HostEventRecorder<phi::CommonEvent>::GetInstance().GatherEvents();
+}
+
+PADDLE_API HostEventSection<phi::CommonMemEvent> GatherCommonHostMemEvents() {
+  return HostEventRecorder<phi::CommonMemEvent>::GetInstance().GatherEvents();
+}
+
+PADDLE_API void SetHostTraceLevel(int64_t trace_level) {
+  phi::HostTraceLevel::GetInstance().SetLevel(trace_level);
+}
+
 RecordInstantEvent::RecordInstantEvent(const char *name,
                                        phi::TracerEventType type,
                                        uint32_t level) {
@@ -82,7 +94,7 @@ std::map<const char *, std::map<uint64_t, bool>>
     RecordMemEvent::has_initialized;
 
 RecordMemEvent::RecordMemEvent(const void *ptr,
-                               const phi::Place &place,
+                               const Place &place,
                                size_t size,
                                const phi::TracerMemEventType type) {
   if (phi::ProfilerHelper::g_state == ProfilerState::kDisabled &&

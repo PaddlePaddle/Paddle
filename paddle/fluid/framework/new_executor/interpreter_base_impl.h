@@ -97,7 +97,7 @@ class InterpreterBaseImpl {
 
   virtual const Scope* local_scope() const = 0;
 
-  virtual const phi::Place& GetPlace() const = 0;
+  virtual const Place& GetPlace() const = 0;
 
   virtual void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) = 0;
 
@@ -125,7 +125,7 @@ class InterpreterBaseImpl {
   virtual Variable* DebugVar(const std::string& name) const = 0;
 };
 
-inline void SetDeviceId(const phi::Place& place) {
+inline void SetDeviceId(const Place& place) {
   // TODO(zhiqiu): reduce the cost
   if (phi::is_gpu_place(place)) {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)

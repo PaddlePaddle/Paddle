@@ -152,7 +152,6 @@ jobs:
           '
 
       - name: Upload build.tar.gz
-        if: steps.check-bypass.outputs.can_skip != 'true'
         env:
           home_path: /action-runner
           bos_file: /action-runner/bos_retry/BosClient.py

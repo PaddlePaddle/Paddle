@@ -8,6 +8,7 @@ paddle_test(array_ref_test SRCS array_ref_test.cc)
 paddle_test(small_vector_test SRCS small_vector_test.cc)
 paddle_test(variant_test SRCS variant_test.cc)
 paddle_test(span_test SRCS span_test.cc)
+paddle_test(exception_test SRCS exception_test.cc)
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will

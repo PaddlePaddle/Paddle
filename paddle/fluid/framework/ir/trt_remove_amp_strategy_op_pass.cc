@@ -109,7 +109,7 @@ void TrtRemoveAMPStrategyOpPass::ApplyImpl(Graph *graph) const {
         op->Op()->Type() == "dequantize_linear") {
       auto *scale_tensor = scope->FindVar(op->Op()->Input("Scale").front())
                                ->GetMutable<DenseTensor>();
-      if (scale_tensor->dtype() == phi::DataType::FLOAT16) {
+      if (scale_tensor->dtype() == DataType::FLOAT16) {
         CastDataTypeInplace<float16, float>(scale_tensor);
       }
     }

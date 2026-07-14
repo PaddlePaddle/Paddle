@@ -21,6 +21,8 @@ import copy
 import concurrent
 import functools
 import re
+import shlex
+import subprocess
 import setuptools
 import sys
 import paddle
@@ -84,10 +86,17 @@ if TYPE_CHECKING:
 # The solution is: 1.User add function PyInit_[name] 2. set not to export
 # refer to https://stackoverflow.com/questions/34689210/error-exporting-symbol-when-building-python-c-extension-in-windows
 if IS_WINDOWS:
+    from setuptools import distutils
+    from setuptools._distutils._msvccompiler import _get_vc_env
     from distutils.command.build_ext import build_ext as _du_build_ext
     from unittest.mock import Mock
 
     _du_build_ext.get_export_symbols = Mock(return_value=None)
+
+    PLAT_TO_VCVARS = {
+        'win32': 'x86',
+        'win-amd64': 'x86_amd64',
+    }
 
 CUDA_HOME = find_cuda_home()
 if core.is_compiled_with_rocm():
@@ -416,6 +425,12 @@ class BuildExtension(build_ext):
         super().__init__(*args, **kwargs)
         self.no_python_abi_suffix = kwargs.get("no_python_abi_suffix", True)
         self.output_dir = kwargs.get("output_dir", None)
+        self.use_ninja = kwargs.get("use_ninja", True)
+        if self.use_ninja and not _is_ninja_available():
+            print(
+                "Ninja is not available, falling back to the distutils backend."
+            )
+            self.use_ninja = False
         # whether containing cuda source file in Extensions
         self.contain_cuda_file = False
         # Initialize ccache_home to avoid race condition in multi-thread compilation
@@ -702,6 +717,148 @@ class BuildExtension(build_ext):
             # Return *all* object filenames, not just the ones we just built.
             return objects
 
+        def unix_custom_ninja_compiler(
+            self,
+            sources,
+            output_dir=None,
+            macros=None,
+            include_dirs=None,
+            debug=False,
+            extra_preargs=None,
+            extra_postargs=None,
+            depends=None,
+        ):
+            macros, objects, extra_postargs, pp_opts, build = (
+                self._setup_compile(
+                    output_dir,
+                    macros,
+                    include_dirs,
+                    sources,
+                    depends,
+                    extra_postargs,
+                )
+            )
+            cc_args = self._get_cc_args(pp_opts, debug, extra_preargs)
+            build_work_directory = os.getcwd()
+            build_directory = os.path.dirname(objects[0]) if objects else "."
+            config = ['ninja_required_version = 1.5', '']
+            ccache_home = _get_ccache_home()
+            cxx = _as_command_list(self.compiler_so)
+            if ccache_home is not None:
+                cxx = [ccache_home, *cxx]
+            config.append(f'cxx = {_join_ninja_shell_list(cxx)}')
+
+            nvcc = None
+            if any(is_cuda_file(build[obj][0]) for obj in objects):
+                if core.is_compiled_with_rocm():
+                    assert ROCM_HOME is not None, (
+                        "Not found ROCM runtime, please use `export ROCM_PATH= XXX` to specify it."
+                    )
+                    nvcc = [os.path.join(ROCM_HOME, 'bin', 'hipcc')]
+                elif core.is_compiled_with_custom_device("iluvatar_gpu"):
+                    ixcc_cmd = os.path.join(
+                        os.getenv("COREX_HOME", "/usr/local/corex/"),
+                        'bin',
+                        'clang++',
+                    )
+                    if not os.path.isfile(ixcc_cmd):
+                        raise ValueError(
+                            "Corex compiler is unavailable, please set `COREX_HOME` to specify it."
+                        )
+                    nvcc = [ixcc_cmd]
+                else:
+                    assert CUDA_HOME is not None, (
+                        "Not found CUDA runtime, please use `export CUDA_HOME= XXX` to specify it."
+                    )
+                    nvcc = [os.path.join(CUDA_HOME, 'bin', 'nvcc')]
+                if ccache_home is not None:
+                    nvcc = [ccache_home, *nvcc]
+                config.append(f'nvcc = {_join_ninja_shell_list(nvcc)}')
+            config.append('')
+            config.extend(
+                [
+                    'rule compile',
+                    '  command = $cxx -MMD -MF $out.d $cflags -c $in -o $out $post_cflags',
+                    '  depfile = $out.d',
+                    '  deps = gcc',
+                ]
+            )
+            if nvcc is not None:
+                config.extend(
+                    [
+                        '',
+                        'rule cuda_compile',
+                        '  command = $nvcc $cuda_cflags -c $in -o $out $cuda_post_cflags',
+                    ]
+                )
+            config.append('')
+
+            for obj in objects:
+                src, _ = build[obj]
+                src = os.path.abspath(src)
+                obj = os.path.abspath(obj)
+                cflags = copy.deepcopy(extra_postargs)
+                if is_cuda_file(src):
+                    if isinstance(cflags, dict):
+                        if core.is_compiled_with_rocm():
+                            cflags = cflags['hipcc']
+                        else:
+                            cflags = cflags['nvcc']
+                    cuda_cflags = list(cc_args)
+                    cuda_post_cflags = prepare_unix_cudaflags(cflags)
+                    config.append(
+                        f'build {_ninja_escape_path(obj)}: cuda_compile {_ninja_escape_path(src)}'
+                    )
+                    config.append(
+                        f'  cuda_cflags = {_join_ninja_shell_list(cuda_cflags)}'
+                    )
+                    config.append(
+                        f'  cuda_post_cflags = {_join_ninja_shell_list(cuda_post_cflags)}'
+                    )
+                else:
+                    if isinstance(cflags, dict):
+                        cflags = cflags['cxx']
+                    cflags = list(cflags)
+                    if core.is_compiled_with_rocm():
+                        cflags.append('-D__HIP_PLATFORM_HCC__')
+                        cflags.append(
+                            '-DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_HIP'
+                        )
+                    add_compile_flag(cflags, ['-D_GLIBCXX_USE_CXX11_ABI=1'])
+                    if current_extension_builder.contain_cuda_file:
+                        if core.is_compiled_with_rocm():
+                            cflags.append('-DPADDLE_WITH_HIP')
+                        else:
+                            cflags.append('-DPADDLE_WITH_CUDA')
+                    add_std_without_repeat(
+                        cflags, self.compiler_type, use_std17=True
+                    )
+                    config.append(
+                        f'build {_ninja_escape_path(obj)}: compile {_ninja_escape_path(src)}'
+                    )
+                    config.append(
+                        f'  cflags = {_join_ninja_shell_list(cc_args)}'
+                    )
+                    config.append(
+                        f'  post_cflags = {_join_ninja_shell_list(cflags)}'
+                    )
+                config.append('')
+
+            config.append(
+                f'default {" ".join(_ninja_escape_path(obj) for obj in objects)}'
+            )
+            _write_ninja_file(
+                os.path.join(build_directory, 'build.ninja'),
+                '\n'.join(config),
+            )
+            _run_ninja_build(
+                build_directory,
+                verbose=bool(current_extension_builder.verbose),
+                error_prefix='Failed to compile C++ extension with ninja',
+                work_directory=build_work_directory,
+            )
+            return objects
+
         def win_custom_single_compiler(
             sources,
             output_dir=None,
@@ -802,6 +959,147 @@ class BuildExtension(build_ext):
             finally:
                 self.compiler.spawn = original_spawn
 
+        def win_custom_ninja_compiler(
+            sources,
+            output_dir=None,
+            macros=None,
+            include_dirs=None,
+            debug=0,
+            extra_preargs=None,
+            extra_postargs=None,
+            depends=None,
+        ):
+            if hasattr(self.compiler, 'initialize') and not getattr(
+                self.compiler, 'initialized', False
+            ):
+                self.compiler.initialize()
+            macros, objects, extra_postargs, pp_opts, build = (
+                self.compiler._setup_compile(
+                    output_dir,
+                    macros,
+                    include_dirs,
+                    sources,
+                    depends,
+                    extra_postargs,
+                )
+            )
+            build_work_directory = os.getcwd()
+            compile_opts = list(extra_preargs or [])
+            compile_opts.append('/c')
+            if debug:
+                compile_opts.extend(
+                    getattr(
+                        self.compiler,
+                        'compile_options_debug',
+                        ['/nologo', '/Od', '/MDd', '/Zi', '/W3', '/D_DEBUG'],
+                    )
+                )
+            else:
+                compile_opts.extend(
+                    getattr(
+                        self.compiler,
+                        'compile_options',
+                        ['/nologo', '/O2', '/W3', '/GL', '/DNDEBUG', '/MD'],
+                    )
+                )
+
+            config = [
+                'ninja_required_version = 1.5',
+                f'cxx = {_join_ninja_shell_list(_as_command_list(self.compiler.cc))}',
+            ]
+            if any(is_cuda_file(build[obj][0]) for obj in objects):
+                assert CUDA_HOME is not None, (
+                    "Not found CUDA runtime, please use `export CUDA_HOME= XXX` to specify it."
+                )
+                config.append(
+                    f'nvcc = {_join_ninja_shell_list([os.path.join(CUDA_HOME, "bin", "nvcc")])}'
+                )
+            config.extend(
+                [
+                    '',
+                    'rule compile',
+                    '  command = $cxx /showIncludes $cflags $source_file_flag $in /Fo$out $post_cflags',
+                    '  deps = msvc',
+                ]
+            )
+            if any(is_cuda_file(build[obj][0]) for obj in objects):
+                config.extend(
+                    [
+                        '',
+                        'rule cuda_compile',
+                        '  command = $nvcc $cuda_cflags -c $in -o $out $cuda_post_cflags',
+                    ]
+                )
+            config.append('')
+
+            for obj in objects:
+                src, ext = build[obj]
+                src = os.path.abspath(src)
+                obj = os.path.abspath(obj)
+                cflags = copy.deepcopy(extra_postargs)
+                if is_cuda_file(src):
+                    if isinstance(cflags, dict):
+                        cflags = cflags['nvcc']
+                    elif not isinstance(cflags, list):
+                        cflags = []
+                    cuda_post_cflags = [
+                        *prepare_win_cudaflags(list(cflags)),
+                        '--use-local-env',
+                    ]
+                    for flag in MSVC_COMPILE_FLAGS:
+                        cuda_post_cflags = [
+                            '-Xcompiler',
+                            flag,
+                            *cuda_post_cflags,
+                        ]
+                    config.append(
+                        f'build {_ninja_escape_path(obj)}: cuda_compile {_ninja_escape_path(src)}'
+                    )
+                    config.append(
+                        f'  cuda_cflags = {_join_ninja_shell_list(pp_opts)}'
+                    )
+                    config.append(
+                        f'  cuda_post_cflags = {_join_ninja_shell_list(cuda_post_cflags)}'
+                    )
+                else:
+                    if isinstance(cflags, dict):
+                        cflags = cflags['cxx']
+                    elif not isinstance(cflags, list):
+                        cflags = []
+                    post_cflags = [*MSVC_COMPILE_FLAGS, *cflags]
+                    if current_extension_builder.contain_cuda_file:
+                        post_cflags.append('/DPADDLE_WITH_CUDA')
+                    cflags = [*compile_opts, *pp_opts]
+                    config.append(
+                        f'build {_ninja_escape_path(obj)}: compile {_ninja_escape_path(src)}'
+                    )
+                    config.append(
+                        f'  cflags = {_join_ninja_shell_list(cflags)}'
+                    )
+                    config.append(
+                        f'  source_file_flag = {"/Tc" if ext == ".c" else "/Tp"}'
+                    )
+                    config.append(
+                        f'  post_cflags = {_join_ninja_shell_list(post_cflags)}'
+                    )
+                config.append('')
+
+            config.append(
+                f'default {" ".join(_ninja_escape_path(obj) for obj in objects)}'
+            )
+            build_directory = os.path.dirname(objects[0]) if objects else "."
+            _write_ninja_file(
+                os.path.join(build_directory, 'build.ninja'),
+                '\n'.join(config),
+            )
+            _run_ninja_build(
+                build_directory,
+                verbose=bool(current_extension_builder.verbose),
+                error_prefix='Failed to compile C++ extension with ninja',
+                work_directory=build_work_directory,
+            )
+            return objects
+
         def object_filenames_with_cuda(original_func, build_directory):
             """
             Decorated the function to add customized naming mechanism.
@@ -839,9 +1137,15 @@ class BuildExtension(build_ext):
 
         # customized compile process
         if self.compiler.compiler_type == 'msvc':
-            self.compiler.compile = win_custom_single_compiler
+            if self.use_ninja:
+                self.compiler.compile = win_custom_ninja_compiler
+            else:
+                self.compiler.compile = win_custom_single_compiler
         else:
-            self.compiler.__class__.compile = unix_custom_single_compiler
+            if self.use_ninja:
+                self.compiler.__class__.compile = unix_custom_ninja_compiler
+            else:
+                self.compiler.__class__.compile = unix_custom_single_compiler
 
         # Ensure object files are generated under build_temp, not build_lib,
         # to avoid accidental inclusion into wheel contents.
@@ -1476,6 +1780,84 @@ def load(
     custom_op_api = _import_module_from_library(name, build_base_dir, verbose)
 
     return custom_op_api
+
+
+def _is_ninja_available() -> bool:
+    try:
+        subprocess.check_output(['ninja', '--version'])
+    except Exception:
+        return False
+    return True
+
+
+def _ninja_escape_path(path: str) -> str:
+    return str(path).replace('$', '$$').replace(' ', '$ ').replace(':', '$:')
+
+
+def _join_ninja_shell_list(args: Sequence[str] | str) -> str:
+    if isinstance(args, str):
+        return args
+    items = [str(arg) for arg in args if str(arg)]
+    return subprocess.list2cmdline(items) if IS_WINDOWS else shlex.join(items)
+
+
+def _as_command_list(command: Sequence[str] | str) -> list[str]:
+    if isinstance(command, str):
+        return [command]
+    return [str(arg) for arg in command]
+
+
+def _write_ninja_file(path: str, content: str) -> None:
+    build_directory = os.path.dirname(path)
+    if build_directory and not os.path.exists(build_directory):
+        os.makedirs(build_directory)
+    if not content.endswith('\n'):
+        content += '\n'
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(content)
+
+
+def _run_ninja_build(
+    build_directory: str,
+    verbose: bool,
+    error_prefix: str,
+    work_directory: str | None = None,
+) -> None:
+    command = ['ninja', '-v']
+    cwd = build_directory if work_directory is None else work_directory
+    if os.path.abspath(cwd) != os.path.abspath(build_directory):
+        command.extend(['-f', os.path.join(build_directory, 'build.ninja')])
+    num_workers = _get_num_workers(verbose)
+    if num_workers is not None:
+        command.extend(['-j', str(num_workers)])
+
+    env = os.environ.copy()
+    if IS_WINDOWS and 'VSCMD_ARG_TGT_ARCH' not in env:
+        plat_name = distutils.util.get_platform()
+        plat_spec = PLAT_TO_VCVARS.get(plat_name)
+        if plat_spec is not None:
+            vc_env = {k.upper(): v for k, v in _get_vc_env(plat_spec).items()}
+            for k, v in env.items():
+                uk = k.upper()
+                if uk not in vc_env:
+                    vc_env[uk] = v
+            env = vc_env
+
+    try:
+        subprocess.run(
+            command,
+            cwd=cwd,
+            env=env,
+            check=True,
+            stdout=None if verbose else subprocess.PIPE,
+            stderr=None if verbose else subprocess.STDOUT,
+            text=not verbose,
+        )
+    except subprocess.CalledProcessError as error:
+        error_message = f"{error_prefix}: {error}"
+        if not verbose and error.output:
+            error_message = f"{error_message}\n{error.output.rstrip()}"
+        raise RuntimeError(error_message) from error
 
 
 def _get_pybind11_abi_build_flags():

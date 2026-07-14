@@ -103,9 +103,9 @@ void set_params_fprop(Flash_fwd_params *params_handle,
                       const float softcap,
                       const int sm_margin) {
   dynload::fa3_fwd_params_set_is_bf16(params_handle,
-                                      q.dtype() == phi::DataType::BFLOAT16);
-  dynload::fa3_fwd_params_set_is_e4m3(
-      params_handle, q.dtype() == phi::DataType::FLOAT8_E4M3FN);
+                                      q.dtype() == DataType::BFLOAT16);
+  dynload::fa3_fwd_params_set_is_e4m3(params_handle,
+                                      q.dtype() == DataType::FLOAT8_E4M3FN);
 
   // Set the pointers and strides.
   dynload::fa3_fwd_params_set_q_ptr(params_handle,
@@ -371,10 +371,10 @@ void set_flashmaskv2_params_fprop(Flash_fwd_params *params_handle,
                                   const gpuDeviceProp &dprops,
                                   const float softcap,
                                   const int sm_margin) {
-  dynload::flashmaskv2_fwd_params_set_is_bf16(
-      params_handle, q.dtype() == phi::DataType::BFLOAT16);
+  dynload::flashmaskv2_fwd_params_set_is_bf16(params_handle,
+                                              q.dtype() == DataType::BFLOAT16);
   dynload::flashmaskv2_fwd_params_set_is_e4m3(
-      params_handle, q.dtype() == phi::DataType::FLOAT8_E4M3FN);
+      params_handle, q.dtype() == DataType::FLOAT8_E4M3FN);
 
   // Set the pointers and strides.
   dynload::flashmaskv2_fwd_params_set_q_ptr(params_handle,

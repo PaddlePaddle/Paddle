@@ -87,11 +87,11 @@ done
 
 CI_OLD_SCRIPTS_PADDLE_BUILD=$(git diff --name-only upstream/$BRANCH | grep -E "paddle/scripts/paddle_build.*")
 CI_OLD_SCRIPTS_COVERAGE=$(git diff --name-only upstream/$BRANCH | grep -E "tools/coverage")
-CI_OLD_SCRIPTS_TOOLS=$(git diff --name-only upstream/$BRANCH | grep -E "tools" | grep "check_")
+CI_OLD_SCRIPTS_TOOLS=$(git diff --name-only upstream/$BRANCH | grep -E "tools" | grep "check_" | grep -Ev "^tools/(test_)?check_abi_compatibility\.py$" || true)
 
 if [ -n "$CI_OLD_SCRIPTS_PADDLE_BUILD" ] || [ -n "$CI_OLD_SCRIPTS_COVERAGE" ] || [ -n "$CI_OLD_SCRIPTS_TOOLS" ]; then
-    echo_line="You must have one RD (swgu98, ooooo-create) approval for the old CI scripts.\n"
-    check_approval 1 swgu98 ooooo-create
+    echo_line="You must have one RD (swgu98 or risemeup1) approval for the old CI scripts.\n"
+    check_approval 1 swgu98 risemeup1
 fi
 
 HAS_MODIFIED_LINUX_NPU_YML=$(git diff --name-only upstream/$BRANCH | grep ".github/workflows/_Linux-NPU.yml" || true)
@@ -253,13 +253,13 @@ if [ "${HAS_MODIFIED_OPERATOR_GENE}" != "" ] && [ "${PR_ID}" != "" ]; then
     check_approval 1 zhangbo9674 wanghuancoder
 fi
 
-HAS_MODIFIED_SETUP_IN=`git diff --name-only upstream/$BRANCH | grep "python/setup.py.in" || true`
+HAS_MODIFIED_SETUP_IN=`git diff --name-only upstream/$BRANCH | grep -E "^python/setup\.py\.in$" || true`
 if [ "${HAS_MODIFIED_SETUP_IN}" != "" ] && [ "${PR_ID}" != "" ]; then
     echo_line="You must have one RD (risemeup1, zhangbo9674) approval for file changes in python/setup.py.in, which manages the header files that can be used from outside of framework.\n"
     check_approval 1 risemeup1 zhangbo9674
 fi
 
-HAS_MODIFIED_SETUP=`git diff --name-only upstream/$BRANCH | grep "${PADDLE_ROOT}/setup.py" || true`
+HAS_MODIFIED_SETUP=`git diff --name-only upstream/$BRANCH | grep -E "^setup\.py$" || true`
 if [ "${HAS_MODIFIED_SETUP}" != "" ] || ([ "${HAS_MODIFIED_SETUP_IN}" != "" ] && [ "${HAS_MODIFIED_SETUP}" == "" ]); then
     echo_line="You must have one RD (risemeup1, zhangbo9674) approval for file changes in setup.py or setup.py and python/setup.py.in are not changed synchronously.\n"
     check_approval 1 risemeup1 zhangbo9674
@@ -351,8 +351,8 @@ if [ "${HAS_MODIFIED_PY_OR_CPP_FILES}" != "" ] && [ "${PR_ID}" != "" ]; then
         echo_line=${echo_line}${error_lines}"\n"
         echo_line=${echo_line}"You can run following command to fix the errors:\n"
         echo_line=${echo_line}"    python tools/check_code_block_format.py "$(echo ${HAS_MODIFIED_PY_OR_CPP_FILES} | tr "\n" " ")"\n"
-        echo_line=${echo_line}"If you believe this is a false positive, please request one of the RD (sunzhongkai588, SigureMo, ooooo-create) approval for the changes.\n"
-        check_approval 1 sunzhongkai588 SigureMo ooooo-create
+        echo_line=${echo_line}"If you believe this is a false positive, please request one of the RD (sunzhongkai588, SigureMo) approval for the changes.\n"
+        check_approval 1 sunzhongkai588 SigureMo
     fi
 fi
 
@@ -607,9 +607,13 @@ if [ -n "${BIGTENSOR_CHANGED}" ]; then
     echo_line="You must have one RD (zrr1999(Recommend) or wanghuancoder) approval for modifying kernel code with threadIdx, blockDim or blockIdx multiplications assigned to int, int32_t, uint32_t, or auto type variables.\nThe following lines were found:\n${BIGTENSOR_CHANGED}\n"
     check_approval 1 zrr1999 wanghuancoder
 fi
+BIGTENSOR_CHANGED=$(git diff -U0 upstream/$BRANCH -- "${BIGTENSOR_GLOBS[@]}" | grep "^+" | grep -E '(^|[^[:alnum:]_])(auto|int32_t|uint32_t|int32|uint32|int)([^[:alnum:]_]|$)' || true)
+if [ -n "${BIGTENSOR_CHANGED}" ]; then
+    echo_line="You must have one RD (zrr1999(Recommend) or wanghuancoder) approval for modifying kernel code with int, int32_t, uint32_t, or auto type variables.\nThe following lines were found:\n${BIGTENSOR_CHANGED}\n"
+    check_approval 1 zrr1999 wanghuancoder
+fi
 
-
-HAS_MODIFIED_PHI_DIR=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/" | grep -v "paddle/phi/api/" || grep -v "python_api_info.yaml" || true`
+HAS_MODIFIED_PHI_DIR=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/" | grep -v "paddle/phi/api/" | grep -v "python_api_info.yaml" || true`
 if [ "${HAS_MODIFIED_PHI_DIR}" != "" ] && [ "${PR_ID}" != "" ]; then
     echo_line="You modified files in paddle/phi/ directory. You must have one RD (wanghuancoder, zrr1999, DanielSun11) approval.\n"
     echo_line="${echo_line}[IMPORTANT] Please ensure you have run the following tests before merging:\n"

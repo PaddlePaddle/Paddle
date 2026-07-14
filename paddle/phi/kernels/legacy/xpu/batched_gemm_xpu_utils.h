@@ -178,6 +178,11 @@ static void KGroupedGemmXPUFunction(const DenseTensor &a,
                      scale_y,
                      scale_x_mode,
                      scale_y_mode);
+      } else {
+        xpu::constant(xpu_ctx,
+                      reinterpret_cast<XPUType *>(output_data),
+                      input_hidden_size * output_hidden_size,
+                      (XPUType)0);
       }
       a_data += expert_bs * input_hidden_size;
       b_data += expert_bs * output_hidden_size;

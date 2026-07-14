@@ -43,7 +43,7 @@ struct ExecutionConfig {
   std::set<std::string> jit_input_vars;
   std::set<std::string> skip_gc_vars;
 
-  void AnalyzeThreadPoolConfig(const phi::Place& place, size_t op_num);
+  void AnalyzeThreadPoolConfig(const Place& place, size_t op_num);
   void Log(int log_level);
 };
 

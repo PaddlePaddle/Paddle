@@ -23,7 +23,7 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.base.framework import (
-    convert_np_dtype_to_dtype_,
+    convert_nptype_to_datatype_or_vartype,
 )
 from paddle.io import Dataset
 
@@ -51,7 +51,9 @@ class TestOptimizerDtype(unittest.TestCase):
             adam = paddle.optimizer.Adam(parameters=model.parameters())
             loss.backward()
             adam.step()
-            self.assertEqual(adam._dtype, convert_np_dtype_to_dtype_(dtype))
+            self.assertEqual(
+                adam._dtype, convert_nptype_to_datatype_or_vartype(dtype)
+            )
 
     def test_float64(self):
         self.check_with_dtype('float64')
@@ -179,6 +181,221 @@ class TestOptimizerAPI(unittest.TestCase):
         out.backward()
         adam.step()
         adam.zero_grad(False)
+
+    def test_step_without_closure(self):
+        paddle.seed(100)
+        numpy.random.seed(100)
+        paddle.disable_static()
+        x = paddle.arange(26, dtype="float32").reshape([2, 13])
+        linear = paddle.nn.Linear(13, 5)
+        optimizers = [
+            paddle.optimizer.Adam(
+                learning_rate=0.01,
+                parameters=linear.parameters(),
+            ),
+            paddle.optimizer.AdamW(
+                learning_rate=0.01,
+                parameters=linear.parameters(),
+            ),
+            paddle.optimizer.ASGD(
+                learning_rate=0.01,
+                parameters=linear.parameters(),
+            ),
+        ]
+        for optimizer in optimizers:
+            optimizer.zero_grad()
+            output = linear(x)
+            loss = paddle.mean(output)
+            loss.backward()
+            optimizer.step()
+
+    def test_step_with_closure(self):
+        paddle.seed(100)
+        numpy.random.seed(100)
+        paddle.disable_static()
+        x = paddle.arange(26, dtype="float32").reshape([2, 13])
+        linear = paddle.nn.Linear(13, 5)
+        optimizers = [
+            paddle.optimizer.Adam(
+                learning_rate=0.01,
+                parameters=linear.parameters(),
+            ),
+            paddle.optimizer.AdamW(
+                learning_rate=0.01,
+                parameters=linear.parameters(),
+            ),
+            paddle.optimizer.ASGD(
+                learning_rate=0.01,
+                parameters=linear.parameters(),
+            ),
+        ]
+        for optimizer in optimizers:
+
+            def closure():
+                optimizer.zero_grad()
+                output = linear(x)
+                loss = paddle.mean(output)
+                loss.backward()
+                return loss
+
+            loss = optimizer.step(closure)
+
+    def test_maximize_dygraph(self):
+        paddle.seed(100)
+        np.random.seed(100)
+        paddle.disable_static()
+        x = paddle.tensor([0.0, 0.0], dtype="float32")
+        optimizer_list = [
+            paddle.optimizer.SGD(
+                learning_rate=0.5,
+                parameters=[x],
+                maximize=True,
+            ),
+            paddle.optimizer.AdamW(
+                learning_rate=0.6,
+                parameters=[x],
+                maximize=True,
+            ),
+            paddle.optimizer.Adagrad(
+                learning_rate=0.7,
+                parameters=[x],
+                maximize=True,
+            ),
+        ]
+        for optimizer in optimizer_list:
+            x.stop_gradient = True
+            x[0] = 0.0
+            x[1] = 0.0
+            x.stop_gradient = False
+            for epoch in range(100):
+                optimizer.clear_grad()
+                y = -((x[0] - 1) ** 2) - (x[1] - 4) ** 2
+                loss = paddle.sum(y)
+                loss.backward()
+                optimizer.step()
+            np.testing.assert_allclose(x.numpy(), [1.0, 4.0], atol=0.05)
+
+    def test_maximize_param_group(self):
+        paddle.seed(100)
+        np.random.seed(100)
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = paddle.to_tensor(value)
+        linear = paddle.nn.Linear(13, 5)
+        optimizer_list = [
+            paddle.optimizer.SGD(
+                learning_rate=0.1,
+                parameters=[
+                    {
+                        'params': linear.parameters(),
+                        'learning_rate': 0.12,
+                    }
+                ],
+                maximize=True,
+            ),
+            paddle.optimizer.AdamW(
+                learning_rate=0.1,
+                parameters=[
+                    {
+                        'params': linear.parameters(),
+                        'learning_rate': 0.13,
+                    }
+                ],
+                maximize=True,
+            ),
+            paddle.optimizer.Adagrad(
+                learning_rate=0.1,
+                parameters=[
+                    {
+                        'params': linear.parameters(),
+                        'learning_rate': 0.14,
+                    }
+                ],
+                maximize=True,
+            ),
+        ]
+        for optimizer in optimizer_list:
+            losses = np.array([])
+            for epoch in range(5):
+                optimizer.clear_grad()
+                out = linear(a)
+                loss = paddle.sum(out)
+                losses = np.append(losses, loss.numpy())
+                loss.backward()
+                optimizer.step()
+            self.assertTrue(np.all(np.diff(losses) > 0))
+
+    def test_maximize_false_dygraph(self):
+        paddle.seed(100)
+        np.random.seed(100)
+        paddle.disable_static()
+        x = paddle.tensor([0.0, 0.0], dtype="float32")
+        optimizer_list = [
+            paddle.optimizer.SGD(
+                learning_rate=0.5,
+                parameters=[x],
+                maximize=False,
+            ),
+            paddle.optimizer.SGD(
+                learning_rate=0.5,
+                parameters=[x],
+            ),
+            paddle.optimizer.AdamW(
+                learning_rate=0.7,
+                parameters=[x],
+                maximize=False,
+            ),
+            paddle.optimizer.AdamW(
+                learning_rate=0.7,
+                parameters=[x],
+            ),
+            paddle.optimizer.Adagrad(
+                learning_rate=0.7,
+                parameters=[x],
+                maximize=False,
+            ),
+            paddle.optimizer.Adagrad(
+                learning_rate=0.7,
+                parameters=[x],
+            ),
+        ]
+        for optimizer in optimizer_list:
+            x.stop_gradient = True
+            x[0] = 0.0
+            x[1] = 0.0
+            x.stop_gradient = False
+            for epoch in range(60):
+                optimizer.clear_grad()
+                y = (x[0] + 3) ** 2 + (x[1] - 2) ** 2
+                loss = paddle.sum(y)
+                loss.backward()
+                optimizer.step()
+            np.testing.assert_allclose(x.numpy(), [-3.0, 2.0], atol=0.1)
+
+    def test_maximize_with_weight_decay_zero_grad(self):
+        x = paddle.tensor([1.0])
+        x.stop_gradient = False
+        learning_rate = 0.1
+        weight_decay = 0.1
+        opt = paddle.optimizer.AdamW(
+            parameters=[x],
+            learning_rate=learning_rate,
+            weight_decay=weight_decay,
+            maximize=True,
+        )
+        values = np.array([])
+        for epoch in range(5):
+            loss = (x * 0).sum()
+            loss.backward()
+            opt.step()
+            values = np.append(values, x.numpy())
+        values_ref = np.array([])
+        for epoch in range(5):
+            values_ref = np.append(
+                values_ref,
+                [(1.0 - learning_rate * weight_decay) ** (epoch + 1)],
+            )
+        np.testing.assert_allclose(values, values_ref)
 
 
 if __name__ == '__main__':

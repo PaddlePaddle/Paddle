@@ -33,7 +33,7 @@ void ReduceScatter(const Context& dev_ctx,
   MetaTensor out_meta(*out);
   MetaTensor* out_meta_ptr = &out_meta;
 
-  ReduceScatterInferMeta(phi::MetaTensor(x), nranks, out_meta_ptr);
+  ReduceScatterInferMeta(MetaTensor(x), nranks, out_meta_ptr);
   if (x.initialized()) {
     ReduceScatterKernel<T, Context>(dev_ctx, x, nranks, out);
   }

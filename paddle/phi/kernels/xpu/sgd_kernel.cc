@@ -49,24 +49,12 @@ void SGDDenseKernel(const Context& dev_ctx,
                               grad.numel(),
                               sz));
 
-  const T* lr_t = learning_rate.data<T>();
+  const float* lr = learning_rate.data<float>();
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-  const float* lr = nullptr;
-  if (std::is_same<T, dtype::float16>::value) {
-    float* lr_float = RAII_GUARD.alloc_l3_or_gm<float>(learning_rate.numel());
-    int r = xpu::cast<XPUType, float>(dev_ctx.x_context(),
-                                      reinterpret_cast<const XPUType*>(lr_t),
-                                      lr_float,
-                                      learning_rate.numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
-    lr = lr_float;
-  } else {
-    lr = reinterpret_cast<const float*>(lr_t);
-  }
 
   const T* param_data = param.data<T>();
   const XPUType* grad_ptr = nullptr;
-  if (grad.dtype() == phi::DataType::FLOAT32 && grad.dtype() != param.dtype()) {
+  if (grad.dtype() == DataType::FLOAT32 && grad.dtype() != param.dtype()) {
     XPUType* grad_tmp = RAII_GUARD.alloc_l3_or_gm<XPUType>(sz);
     int r = xpu::cast<float, XPUType>(
         dev_ctx.x_context(), grad.data<float>(), grad_tmp, sz);

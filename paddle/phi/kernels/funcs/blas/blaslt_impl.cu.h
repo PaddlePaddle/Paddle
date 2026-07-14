@@ -151,7 +151,7 @@ struct MatmulPlanner {
                 const std::vector<int64_t>& y_dims,
                 const bool trans_x,
                 const bool trans_y,
-                phi::DataType dtype,
+                DataType dtype,
                 MatmulFusedType fused_type,
                 const void* bias_data = nullptr,
                 void* reserve_data = nullptr,  // Commonly for ReLu bit-mask.
@@ -259,7 +259,7 @@ struct MatmulDescriptor {
               const int64_t stride_y = 0,
               const int64_t stride_out = 0,
               bool grad_for_dx = true) {
-    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    using MT = typename MPTypeTrait<T>::Type;
     cudaDataType_t mat_type = phi::backends::gpu::ToCudaDataType<T>();
     cudaDataType_t out_mat_type = phi::backends::gpu::ToCudaDataType<T>();
     cudaDataType_t scale_type = phi::backends::gpu::ToCudaDataType<MT>();
@@ -407,7 +407,7 @@ struct MatmulGradDescriptor : MatmulDescriptor {
               int64_t stride_y = 0,
               int64_t stride_out = 0,
               bool grad_for_dx = true) {
-    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    using MT = typename MPTypeTrait<T>::Type;
     cudaDataType_t mat_type = phi::backends::gpu::ToCudaDataType<T>();
     cudaDataType_t scale_type = phi::backends::gpu::ToCudaDataType<MT>();
     cublasComputeType_t compute_type = GetCudaComputeType<T>();
@@ -444,7 +444,7 @@ struct MatmulGradDescriptor : MatmulDescriptor {
 template <typename T, typename OutT = T, class MatmulDescT = MatmulDescriptor>
 struct CublasLtBase {
  public:
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   static phi::Allocator::AllocationPtr GetWorkspace(const GPUContext& dev_ctx,
                                                     size_t workspace_size) {
     return phi::memory_utils::Alloc(
@@ -769,34 +769,38 @@ struct CublasLtBase<int8_t, int32_t, MatmulDescriptor> {
       phi::Allocator::AllocationPtr& workspace,  // NOLINT
       size_t& workspace_size) {                  // NOLINT
     void* bias_ptr = nullptr;
-    cublasLtMatmulAlgo_t* algo =
-        cublaslt_internal::CublasLtAlgoCache::Instance().CublasLtAlgoSelect(
-            lt_handle,
-            desc->M_,
-            desc->N_,
-            desc->K_,
-            1,
-            y_data,
-            x_data,
-            bias_ptr,
-            out_data,
-            const_cast<void*>(alpha),
-            const_cast<void*>(beta),
-            desc->op_desc,
-            desc->y_desc,
-            desc->x_desc,
-            desc->out_desc,
-            desc->out_desc,
-            desc->compute_type_,
-            desc->scale_type_,
-            desc->y_type_,
-            desc->x_type_,
-            desc->out_type_,
-            desc->out_type_,
-            dev_ctx.stream());
+    cublasLtMatmulAlgo_t* algo = nullptr;
+    const int64_t int_max = std::numeric_limits<int>::max();
+    if (desc->M_ <= int_max && desc->N_ <= int_max && desc->K_ <= int_max) {
+      algo =
+          cublaslt_internal::CublasLtAlgoCache::Instance().CublasLtAlgoSelect(
+              lt_handle,
+              static_cast<int>(desc->M_),
+              static_cast<int>(desc->N_),
+              static_cast<int>(desc->K_),
+              1,
+              y_data,
+              x_data,
+              bias_ptr,
+              out_data,
+              const_cast<void*>(alpha),
+              const_cast<void*>(beta),
+              desc->op_desc,
+              desc->y_desc,
+              desc->x_desc,
+              desc->out_desc,
+              desc->out_desc,
+              desc->compute_type_,
+              desc->scale_type_,
+              desc->y_type_,
+              desc->x_type_,
+              desc->out_type_,
+              desc->out_type_,
+              dev_ctx.stream());
+    }
     if (algo == nullptr) {
-      LOG(WARNING) << "CublasLtAlgoSelect failed, result is empty! We attempt "
-                      "to use Heuristic search.";
+      LOG(WARNING) << "CublasLtAlgoSelect is skipped or failed, result is "
+                      "empty! We attempt to use Heuristic search.";
       workspace_size = static_cast<size_t>(64) * 1024 * 1024;
       workspace = GetWorkspace(dev_ctx, workspace_size);
       SearchBestAlgo(dev_ctx,

@@ -1074,7 +1074,7 @@ static void Interpolate1DCUDAFwd(
 
   using MT = std::conditional_t<std::is_integral<T>::value,
                                 float,
-                                typename phi::dtype::MPTypeTrait<T>::Type>;
+                                typename MPTypeTrait<T>::Type>;
   MT ratio_w =
       funcs::AreaPixelComputeScale<MT>(in_w, out_w, align_corners, scale_w);
 
@@ -1219,7 +1219,7 @@ static void Interpolate2DCUDAFwd(
 
   using MT = std::conditional_t<std::is_integral<T>::value,
                                 float,
-                                typename phi::dtype::MPTypeTrait<T>::Type>;
+                                typename MPTypeTrait<T>::Type>;
   MT ratio_h =
       funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h);
   MT ratio_w =
@@ -1463,7 +1463,7 @@ static void InterpolateAA2DCUDAFwd(
     return;
   }
 
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   MT ratio_h =
       funcs::AreaPixelComputeScale<MT>(in_h, out_h, align_corners, scale_h);
   MT ratio_w =
@@ -1483,7 +1483,7 @@ static void InterpolateAA2DCUDAFwd(
   auto launch_aa_kernel = [&](auto filter) {
     int64_t nc = static_cast<int64_t>(n) * c;
     int device_id = dev_ctx.GetPlace().GetDeviceId();
-    auto& gpu_props = phi::backends::gpu::GetDeviceProperties(device_id);
+    auto& gpu_props = backends::gpu::GetDeviceProperties(device_id);
 
     // Use AAInterpLaunchConfig to compute block/grid dimensions with dynamic
     // adjustment for shared memory limits
@@ -1542,7 +1542,8 @@ static void InterpolateAA2DCUDAFwd(
       int block_y = std::min(256 / block_x, 8);
       int grid_x = (out_w + block_x - 1) / block_x;
       int grid_y = (out_h + block_y - 1) / block_y;
-      int grid_z = std::min(static_cast<int>(nc), gpu_props.maxGridSize[2]);
+      int grid_z = std::min(static_cast<int>(nc),
+                            static_cast<int>(gpu_props.maxGridSize[2]));
       dim3 block_noshmem(block_x, block_y);
       dim3 grid_noshmem(grid_x, grid_y, grid_z);
 
@@ -1724,7 +1725,7 @@ static void Interpolate3DCUDAFwd(
 
   using MT = std::conditional_t<std::is_integral<T>::value,
                                 float,
-                                typename phi::dtype::MPTypeTrait<T>::Type>;
+                                typename MPTypeTrait<T>::Type>;
   MT ratio_d =
       funcs::AreaPixelComputeScale<MT>(in_d, out_d, align_corners, scale_d);
   MT ratio_h =

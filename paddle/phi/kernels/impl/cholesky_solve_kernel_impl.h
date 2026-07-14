@@ -98,7 +98,7 @@ void CholeskySolveKernel(const Context& dev_ctx,
 
   // calculate out's conjugate for complex
   result = TransposeLast2Dim<T>(dev_ctx, result);
-  out->Resize(make_ddim(x_bst_dims_vec));
+  out->Resize(x_bst_dims_vec);
   ConjKernel<T, Context>(dev_ctx, result, out);
 }
 

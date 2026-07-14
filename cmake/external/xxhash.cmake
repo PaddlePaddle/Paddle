@@ -33,27 +33,6 @@ endif()
 
 include_directories(${XXHASH_INCLUDE_DIR})
 
-if(APPLE)
-  set(BUILD_CMD
-      sed
-      -i
-      \"\"
-      "s/-Wstrict-prototypes -Wundef/-Wstrict-prototypes -Wundef -fPIC/g"
-      ${SOURCE_DIR}/Makefile
-      &&
-      make
-      lib)
-elseif(UNIX)
-  set(BUILD_CMD
-      sed
-      -i
-      "s/-Wstrict-prototypes -Wundef/-Wstrict-prototypes -Wundef -fPIC/g"
-      ${SOURCE_DIR}/Makefile
-      &&
-      make
-      lib)
-endif()
-
 if(WIN32)
   set(XXHASH_LIBRARIES "${XXHASH_INSTALL_DIR}/lib/xxhash.lib")
   set(XXHASH_CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4710 /wd4711")
@@ -90,6 +69,17 @@ if(WIN32)
     TEST_COMMAND ""
     BUILD_BYPRODUCTS ${XXHASH_LIBRARIES})
 else()
+  set(XXHASH_INSTALLED_HEADER ${XXHASH_INCLUDE_DIR}/xxhash.h)
+  set(XXHASH_BUILD_DIR ${XXHASH_PREFIX_DIR}/build)
+  set(XXHASH_MAKEFILE ${XXHASH_PREFIX_DIR}/Makefile)
+  find_program(XXHASH_MAKE_EXECUTABLE make REQUIRED)
+  set(XXHASH_MAKE_C_FLAGS "${XXHASH_CMAKE_C_FLAGS} -fPIC")
+  string(STRIP "${XXHASH_MAKE_C_FLAGS}" XXHASH_MAKE_C_FLAGS)
+
+  file(MAKE_DIRECTORY ${XXHASH_PREFIX_DIR})
+  file(WRITE ${XXHASH_MAKEFILE}
+       "vpath %.c ${SOURCE_DIR}\ninclude ${SOURCE_DIR}/Makefile\n")
+
   ExternalProject_Add(
     extern_xxhash
     ${EXTERNAL_PROJECT_LOG_ARGS}
@@ -97,11 +87,18 @@ else()
     PREFIX ${XXHASH_PREFIX_DIR}
     UPDATE_COMMAND ""
     CONFIGURE_COMMAND ""
-    BUILD_IN_SOURCE 1
-    BUILD_COMMAND ${BUILD_CMD}
-    INSTALL_COMMAND make PREFIX=${XXHASH_INSTALL_DIR} install
+    BUILD_COMMAND ${CMAKE_COMMAND} -E make_directory ${XXHASH_BUILD_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${XXHASH_MAKEFILE}
+            ${XXHASH_BUILD_DIR}/Makefile
+    COMMAND ${CMAKE_COMMAND} -E create_symlink ${SOURCE_DIR}/xxhash.h
+            ${XXHASH_BUILD_DIR}/xxhash.h
+    COMMAND ${CMAKE_COMMAND} -E create_symlink ${SOURCE_DIR}/xxhsum.1
+            ${XXHASH_BUILD_DIR}/xxhsum.1
+    COMMAND ${XXHASH_MAKE_EXECUTABLE} -C ${XXHASH_BUILD_DIR}
+            "CFLAGS=${XXHASH_MAKE_C_FLAGS}" PREFIX=${XXHASH_INSTALL_DIR} install
+    INSTALL_COMMAND ""
     TEST_COMMAND ""
-    BUILD_BYPRODUCTS ${XXHASH_LIBRARIES})
+    BUILD_BYPRODUCTS ${XXHASH_LIBRARIES} ${XXHASH_INSTALLED_HEADER})
 endif()
 
 add_library(xxhash STATIC IMPORTED GLOBAL)

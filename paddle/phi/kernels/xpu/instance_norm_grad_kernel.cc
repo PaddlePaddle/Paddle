@@ -40,9 +40,9 @@ void InstanceNormGradKernel(const Context& dev_ctx,
       x_dims.size() <= 5 && D == 1,
       true,
       common::errors::InvalidArgument(
-          "The size of input's dimensions should be less equal than 5",
-          "and the dimension of D should be equal to 1",
-          "But received: the size of input's dimensions is [%d]",
+          "The size of input's dimensions should be less equal than 5 and "
+          "the dimension of D should be equal to 1. But received: the size "
+          "of input's dimensions is [%d]",
           x_dims.size()));
 
   dev_ctx.template Alloc<T>(d_x);

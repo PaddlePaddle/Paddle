@@ -12,13 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// The file has been adapted from pytorch project
+// Licensed under BSD-style license -
+// https://github.com/pytorch/pytorch/blob/main/LICENSE
+
 #include <c10/core/Stream.h>
 
-#ifdef PADDLE_WITH_CUDA
-#include <cuda_runtime.h>
-#endif
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
+#elif defined(PADDLE_WITH_CUDA)
+#include <cuda_runtime.h>
 #endif
 
 #include "paddle/common/enforce.h"
@@ -52,20 +55,20 @@ void* Stream::native_handle() const {
 }
 
 bool Stream::query() const {
-#if defined(PADDLE_WITH_CUDA)
-  if (device_type() == DeviceType::CUDA) {
-    cudaStream_t s = reinterpret_cast<cudaStream_t>(static_cast<intptr_t>(id_));
-    cudaError_t err = cudaStreamQuery(s);
-    if (err == cudaSuccess) return true;
-    if (err == cudaErrorNotReady) return false;
-    PADDLE_ENFORCE_GPU_SUCCESS(err);
-  }
-#elif defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_HIP)
   if (device_type() == DeviceType::CUDA) {
     hipStream_t s = reinterpret_cast<hipStream_t>(static_cast<intptr_t>(id_));
     hipError_t err = hipStreamQuery(s);
     if (err == hipSuccess) return true;
     if (err == hipErrorNotReady) return false;
+    PADDLE_ENFORCE_GPU_SUCCESS(err);
+  }
+#elif defined(PADDLE_WITH_CUDA)
+  if (device_type() == DeviceType::CUDA) {
+    cudaStream_t s = reinterpret_cast<cudaStream_t>(static_cast<intptr_t>(id_));
+    cudaError_t err = cudaStreamQuery(s);
+    if (err == cudaSuccess) return true;
+    if (err == cudaErrorNotReady) return false;
     PADDLE_ENFORCE_GPU_SUCCESS(err);
   }
 #endif
@@ -74,16 +77,16 @@ bool Stream::query() const {
 }
 
 void Stream::synchronize() const {
-#if defined(PADDLE_WITH_CUDA)
-  if (device_type() == DeviceType::CUDA) {
-    cudaStream_t s = reinterpret_cast<cudaStream_t>(static_cast<intptr_t>(id_));
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(s));
-    return;
-  }
-#elif defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_HIP)
   if (device_type() == DeviceType::CUDA) {
     hipStream_t s = reinterpret_cast<hipStream_t>(static_cast<intptr_t>(id_));
     PADDLE_ENFORCE_GPU_SUCCESS(hipStreamSynchronize(s));
+    return;
+  }
+#elif defined(PADDLE_WITH_CUDA)
+  if (device_type() == DeviceType::CUDA) {
+    cudaStream_t s = reinterpret_cast<cudaStream_t>(static_cast<intptr_t>(id_));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(s));
     return;
   }
 #endif

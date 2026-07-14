@@ -65,8 +65,8 @@ using InterpreterCore = framework::InterpreterCore;
 
 static VarMetaInfo GetVarMetaInfo(const Scope& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
-  phi::DataType dtype = phi::DataType::UNDEFINED;
-  phi::Place place = phi::Place();
+  DataType dtype = DataType::UNDEFINED;
+  Place place = Place();
   if (var == nullptr) {
     return VarMetaInfo(name, dtype, place);
   }
@@ -302,9 +302,9 @@ phi::TensorBase* GetTensorFormVar(framework::Variable* var) {
 
 template <class TensorType>
 void FakeInitializeTensor(const phi::DeviceContext& dev_ctx,
-                          const phi::Place& place,
-                          const phi::DataType& dtype,
-                          const phi::DataLayout& layout,
+                          const Place& place,
+                          const DataType& dtype,
+                          const DataLayout& layout,
                           TensorType* tensor) {
   PADDLE_ENFORCE_NE(
       place.GetType(),
@@ -313,12 +313,12 @@ void FakeInitializeTensor(const phi::DeviceContext& dev_ctx,
           "The place %s to fake initialize is not valid.", place));
   PADDLE_ENFORCE_NE(
       dtype,
-      phi::DataType::UNDEFINED,
+      DataType::UNDEFINED,
       common::errors::InvalidArgument(
           "The dtype %s to fake initialize is not valid.", dtype));
   PADDLE_ENFORCE_NE(
       layout,
-      phi::DataLayout::UNDEFINED,
+      DataLayout::UNDEFINED,
       common::errors::InvalidArgument(
           "The layout %s to fake initialize is not valid.", layout));
   PADDLE_ENFORCE_NOT_NULL(
@@ -372,9 +372,9 @@ void FakeInitializeTensor(const phi::DeviceContext& dev_ctx,
 }
 
 void FakeInitializeTensorBase(const phi::DeviceContext& dev_ctx,
-                              const phi::Place& place,
-                              const phi::DataType& dtype,
-                              const phi::DataLayout& layout,
+                              const Place& place,
+                              const DataType& dtype,
+                              const DataLayout& layout,
                               phi::TensorBase* tensor) {
   if (DenseTensor::classof(tensor)) {
     FakeInitializeTensor(
@@ -408,7 +408,7 @@ void FakeInitializeTensorBase(const phi::DeviceContext& dev_ctx,
 }
 
 void RunConditionalBlockPreStaticBuild(const framework::Scope& scope,
-                                       const phi::Place& dev_place,
+                                       const Place& dev_place,
                                        const OperatorBase& op) {
   auto* scope_var = scope.FindVar(op.Output("Scope"));
   PADDLE_ENFORCE_NOT_NULL(
@@ -456,7 +456,7 @@ void RunConditionalBlockPreStaticBuild(const framework::Scope& scope,
 }
 
 void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
-                                 const phi::Place& dev_place,
+                                 const Place& dev_place,
                                  const OperatorBase& op) {
   PADDLE_ENFORCE_NOT_NULL(
       scope.FindVar(op.Input("Condition")),
@@ -531,7 +531,7 @@ void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
   // lead to segmetation fault when it's used in a cpu kernel. Here we record
   // the place of every inputs and restore their place after
   // InterpreterCore.run().
-  std::map<std::string, phi::Place> input_var_original_places;
+  std::map<std::string, Place> input_var_original_places;
   for (const auto& in_name : op.Inputs("X")) {
     framework::Variable* var = scope.FindVar(in_name);
     if (var == nullptr) {
@@ -592,7 +592,7 @@ void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
     // restore inputs place
     for (const auto& n : input_var_original_places) {
       const std::string& in_name = n.first;
-      const phi::Place& original_place = n.second;
+      const Place& original_place = n.second;
       // input vars exist in `scope` not `current_scope`
       operators::TransferVariablePlace(
           &scope, in_name, original_place, dev_ctx);
@@ -642,7 +642,7 @@ void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
 
 void FakeInitializeOutputsForOperatorBase(
     const OperatorBase& op,
-    const phi::Place& place,
+    const Place& place,
     Scope* scope,
     std::vector<std::shared_ptr<OperatorBase>> following_ops) {
   const std::string& op_type = op.Type();
@@ -719,7 +719,7 @@ void FakeInitializeOutputsForOperatorBase(
     std::shared_ptr<operators::reader::BufferedReader> buffered_reader =
         std::dynamic_pointer_cast<operators::reader::BufferedReader>(
             reader->Get());
-    phi::Place target_place =
+    Place target_place =
         buffered_reader ? buffered_reader->GetPlace() : CPUPlace();
 
     auto& outputs = op.Outputs("Out");
@@ -737,7 +737,7 @@ void FakeInitializeOutputsForOperatorBase(
       phi::TensorBase* out_tensor =
           GetTensorFormVar(scope->FindVar(parameter_name));
       if (TensorShouldBeFakeInitialized(op, parameter_name, out_tensor)) {
-        phi::DataType dtype = phi::TransToPhiDataType(var_types[i]);
+        DataType dtype = phi::TransToPhiDataType(var_types[i]);
         FakeInitializeTensorBase(
             *dev_ctx, target_place, dtype, out_tensor->layout(), out_tensor);
       }
@@ -748,8 +748,8 @@ void FakeInitializeOutputsForOperatorBase(
   }
 }
 
-phi::DataType GetInputDType(const RuntimeContext& runtime_ctx,
-                            const std::string parameter_name) {
+DataType GetInputDType(const RuntimeContext& runtime_ctx,
+                       const std::string parameter_name) {
   phi::TensorBase* in_tensor =
       GetTensorFormVar(runtime_ctx.inputs.find(parameter_name)->second.at(0));
   return in_tensor->dtype();
@@ -764,9 +764,9 @@ bool InputExisted(const RuntimeContext& runtime_ctx,
   return true;
 }
 
-phi::DataType InferDTypeFromAttr(const framework::OperatorBase& op,
-                                 const RuntimeContext& runtime_ctx,
-                                 const std::string& attr_name) {
+DataType InferDTypeFromAttr(const framework::OperatorBase& op,
+                            const RuntimeContext& runtime_ctx,
+                            const std::string& attr_name) {
   int dtype_attr = op.Attr<int>(attr_name);
   if (dtype_attr == -1) {  // -1 means the dtype is same as input
     return GetInputDType(runtime_ctx, "X");
@@ -774,12 +774,11 @@ phi::DataType InferDTypeFromAttr(const framework::OperatorBase& op,
   return phi::TransToPhiDataType(dtype_attr);
 }
 
-phi::DataType InferMPDType(const RuntimeContext& runtime_ctx,
-                           const std::string parameter_name) {
-  phi::DataType in_dtype = GetInputDType(runtime_ctx, parameter_name);
-  return (in_dtype == phi::DataType::BFLOAT16 ||
-          in_dtype == phi::DataType::FLOAT16)
-             ? phi::DataType::FLOAT32
+DataType InferMPDType(const RuntimeContext& runtime_ctx,
+                      const std::string parameter_name) {
+  DataType in_dtype = GetInputDType(runtime_ctx, parameter_name);
+  return (in_dtype == DataType::BFLOAT16 || in_dtype == DataType::FLOAT16)
+             ? DataType::FLOAT32
              : in_dtype;
 }
 
@@ -852,12 +851,12 @@ void FakeInitializeOutputsForFunctionKernel(
                 parameter_name));
           }
         }
-        phi::Place place = backend == phi::Backend::CUSTOM
-                               ? dev_ctx.GetPlace()
-                               : phi::TransToPhiPlace(backend);
+        Place place = backend == phi::Backend::CUSTOM
+                          ? dev_ctx.GetPlace()
+                          : phi::TransToPhiPlace(backend);
 
         // analyze dtype
-        phi::DataType dtype = tensor_arg_def.dtype;
+        DataType dtype = tensor_arg_def.dtype;
         if (dtype == DataType::UNDEFINED) {
           // Some OP's InferMeta is sensitive to DDim, so we cannot get their
           // output dtype from InferMeta
@@ -876,13 +875,13 @@ void FakeInitializeOutputsForFunctionKernel(
           } else if (op_type == "lamb") {
             bool multi_precision = op.Attr<bool>("multi_precision");
             dtype = GetInputDType(runtime_ctx, "Moment1");
-            if (multi_precision && dtype == phi::DataType::FLOAT16) {
-              dtype = phi::DataType::FLOAT32;
+            if (multi_precision && dtype == DataType::FLOAT16) {
+              dtype = DataType::FLOAT32;
             }
           } else if (op_type == "layer_norm") {
             dtype = InferMPDType(runtime_ctx, "X");
           } else if (op_type == "reduce_sum") {
-            phi::DataType in_dtype = GetInputDType(runtime_ctx, "X");
+            DataType in_dtype = GetInputDType(runtime_ctx, "X");
             int dtype_attr = op.Attr<int>("out_dtype");
             if (dtype_attr != -1) {
               dtype = phi::TransToPhiDataType(dtype_attr);
@@ -927,7 +926,7 @@ void FakeInitializeOutputsForFunctionKernel(
         }
 
         // analyze layout
-        phi::DataLayout layout = tensor_arg_def.layout;
+        DataLayout layout = tensor_arg_def.layout;
         FakeInitializeTensorBase(dev_ctx, place, dtype, layout, out_tensor);
       }
     }
@@ -952,9 +951,8 @@ void FakeInitializeOutputsForStructureKernel(
       phi::TensorBase* out_tensor = GetTensorFormVar(var);
       if (TensorShouldBeFakeInitialized(
               op, output_parameter_name, out_tensor)) {
-        phi::Place place = execution_context->GetPlace();
-        phi::DataType dtype =
-            phi::TransToPhiDataType(op_kernel_type.data_type_);
+        Place place = execution_context->GetPlace();
+        DataType dtype = phi::TransToPhiDataType(op_kernel_type.data_type_);
         // temporarily hack for extern op fused_rms_norm
         if (op.Type() == "fused_rms_norm") {
           if (output_parameter_name == "invvar") {
@@ -975,7 +973,7 @@ void FakeInitializeOutputsForStructureKernel(
                   << " to " << dtype;
         }
 
-        phi::DataLayout layout = out_tensor->layout();
+        DataLayout layout = out_tensor->layout();
         FakeInitializeTensorBase(execution_context->device_context(),
                                  place,
                                  dtype,

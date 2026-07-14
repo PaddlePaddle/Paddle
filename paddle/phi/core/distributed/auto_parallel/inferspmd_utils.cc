@@ -17,8 +17,8 @@ limitations under the License. */
 namespace phi::distributed {
 
 InferSpmdContext::InferSpmdContext(
-    paddle::small_vector<DistMetaTensor, phi::kInputSmallVectorSize> inputs,
-    paddle::small_vector<Attribute, phi::kAttrSmallVectorSize> attrs) {
+    paddle::small_vector<DistMetaTensor, kInputSmallVectorSize> inputs,
+    paddle::small_vector<Attribute, kAttrSmallVectorSize> attrs) {
   for (size_t i = 0; i < inputs.size(); i++) {
     EmplaceBackInput(inputs[i]);
   }
@@ -34,7 +34,7 @@ void InferSpmdContext::EmplaceBackInput(DistMetaTensor input) {
 }
 
 void InferSpmdContext::EmplaceBackInputs(
-    paddle::small_vector<DistMetaTensor, phi::kInputSmallVectorSize> inputs) {
+    paddle::small_vector<DistMetaTensor, kInputSmallVectorSize> inputs) {
   int index = static_cast<int>(inputs_.size());
   input_range_.emplace_back(std::pair<int, int>(index, index + inputs.size()));
   inputs_.insert(inputs_.end(),

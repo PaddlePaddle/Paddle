@@ -69,7 +69,7 @@ PATH_TO_CHECKPOINT_FILES: dict[str, tuple[list, list]] = {}
 
 # When using the communication mode described below, newly created tensors will not be allocated GPU memory.
 # The allocation of GPU memory for these tensors will occur only when meaningful values are written to them.
-_UNINIT_TENSOR_MODES = ["send_recv", "grouped_send_recv", "parallel_broadcast"]
+_UNINIT_TENSOR_MODES = ["send_recv", "grouped_send_recv"]
 
 _metadata_manager = MetadataManager()
 
@@ -280,8 +280,7 @@ def get_rank_to_files(
         logger.warning(
             "No necessary data files found in the checkpoint directory. Please check the metadata."
         )
-        missing_keys = set(state_dict.keys())
-        return {}, missing_keys, mw_name_compatibility_mapping
+        return {}, mw_name_compatibility_mapping
 
     # allgather all accessible files
     global_data_files = []
@@ -311,20 +310,6 @@ def get_rank_to_files(
             mw_name_compatibility_mapping = _modify_mw_name_for_compatibility(
                 state_dict, missing_keys, tensor_key_list
             )
-            if len(missing_keys) > 0:
-                logger.warning(
-                    f"Missing keys:{missing_keys}, check whether the checkpoint is complete."
-                )
-        else:
-            logger.warning(
-                f"Missing keys:{missing_keys}, check whether the checkpoint is complete."
-            )
-
-    unexpected_keys = set(tensor_key_list) - set(state_dict_param_names)
-    if len(unexpected_keys) > 0:
-        logger.warning(
-            f"Unexpected keys:{unexpected_keys}, these keys exist in checkpoint but not in state_dict."
-        )
 
     rank_to_files = {}
     for rank, need_files in enumerate(all_necessary_files):
@@ -334,7 +319,7 @@ def get_rank_to_files(
         ]
         rank_to_files[rank] = unique_need_files
     logger.debug(f"mapping rank_to_files:{rank_to_files}")
-    return rank_to_files, missing_keys, mw_name_compatibility_mapping
+    return rank_to_files, mw_name_compatibility_mapping
 
 
 def _modify_mw_name_for_compatibility(
@@ -632,14 +617,16 @@ def _handle_aoa(
         ]
         for param_name, local_tensor_metas in state_dict_metadata.items()
     }
-    logger_missing_key_and_unexpected_keys_before_aoa(
-        metadata, load_dict, process_group, safetensors, use_dist
-    )
     aoa_engine = AOAEngine(
         source_state_shard_info=source_state_shard_info,
         destination_state_shard_info=destination_state_shard_info,
         aoa_config=aoa_config,
     )
+
+    # AOA key validation (after engine init)
+    from .key_validation import validate_and_report_keys_aoa
+
+    validate_and_report_keys_aoa(aoa_engine, metadata, path, use_dist=use_dist)
 
     src_desc_to_sharded_tensor = {}
     dst_to_src_desc_mapping = {}
@@ -711,6 +698,7 @@ def _handle_aoa(
         safetensors=safetensors,
         worker_groups=worker_groups,
         comm_method=comm_method,
+        skip_validation=True,
     )
 
     for dst_desc, src_desc in dst_to_src_desc_mapping.items():
@@ -999,12 +987,26 @@ def restore_unflattened_state_dict(
                 unflattened_local_shape
             )
             direct_reshape_metas[key] = unflattened_meta
+            if (
+                len(unflattened_local_shape) >= 2
+                and unflattened_local_shape[-1] == numel_in_slice
+            ):
+                reshard_needed_tensors[key] = local_tensor.reshape(
+                    (numel_in_slice,)
+                )
+                reshard_target_infos[key] = (
+                    numel_in_slice,
+                    slices,
+                    unflattened_meta,
+                    False,
+                )
         else:
             reshard_needed_tensors[key] = local_tensor
             reshard_target_infos[key] = (
                 numel_in_slice,
                 slices,
                 unflattened_meta,
+                True,
             )
 
     resharded_tensors = {}
@@ -1019,7 +1021,9 @@ def restore_unflattened_state_dict(
     for key, local_tensor in reshard_needed_tensors.items():
         tensor_name, file_name = key
         meta = _metadata_manager.local_tensor_metadata[key]
-        numel, slices, unflattened_meta = reshard_target_infos[key]
+        numel, slices, unflattened_meta, need_resharding = reshard_target_infos[
+            key
+        ]
         tensor_name_expand = f"{tensor_name}.global_offset.{meta.global_offset}"
 
         flat_start, flat_end = meta.flattened_range
@@ -1051,18 +1055,18 @@ def restore_unflattened_state_dict(
         global_offset_1d = (
             ravel_index(tuple(s[0] for s in slices), meta.local_shape),
         )
-
-        destination_sharded_state_dict[
-            (tensor_name_expand, global_offset_1d)
-        ] = ShardedWeight(
-            key=tensor_name_expand,
-            local_tensor=tmp_target_tensor,
-            local_shape=(numel,),
-            global_shape=(math.prod(meta.local_shape),),
-            global_offset=global_offset_1d,
-        )
-        name_mapping[key] = (tensor_name_expand, global_offset_1d)
-        force_gc.append(local_tensor)
+        if need_resharding:
+            destination_sharded_state_dict[
+                (tensor_name_expand, global_offset_1d)
+            ] = ShardedWeight(
+                key=tensor_name_expand,
+                local_tensor=tmp_target_tensor,
+                local_shape=(numel,),
+                global_shape=(math.prod(meta.local_shape),),
+                global_offset=global_offset_1d,
+            )
+            name_mapping[key] = (tensor_name_expand, global_offset_1d)
+            force_gc.append(local_tensor)
 
     global_state_dict_metadata, global_storage_metadata = [], []
     if use_dist:
@@ -1083,6 +1087,7 @@ def restore_unflattened_state_dict(
     tmp_metadata.storage_metadata = {
         k: v for d in global_storage_metadata for k, v in d.items()
     }
+
     _load_state_dict(
         target_state_dict=destination_sharded_state_dict,
         source_state_dict=source_state_dict_for_reshard,
@@ -1093,12 +1098,15 @@ def restore_unflattened_state_dict(
     )
 
     for key in reshard_needed_tensors:
-        target_key = name_mapping[key]
-        unflattened_meta = reshard_target_infos[key][2]
-
-        final_tensor = destination_sharded_state_dict[target_key].local_tensor
-        final_tensor.reshape_(unflattened_meta.local_shape)
-        resharded_tensors[key] = final_tensor
+        need_resharding = reshard_target_infos[key][3]
+        if need_resharding:
+            target_key = name_mapping[key]
+            unflattened_meta = reshard_target_infos[key][2]
+            final_tensor = destination_sharded_state_dict[
+                target_key
+            ].local_tensor
+            final_tensor.reshape_(unflattened_meta.local_shape)
+            resharded_tensors[key] = final_tensor
 
     final_unflattened_state_dict = defaultdict(dict)
     final_local_tensor_meta = defaultdict(list)
@@ -1181,6 +1189,7 @@ def load_state_dict_impl(
     safetensors: bool = False,
     worker_groups: list[Group] | None = None,
     comm_method: str = 'broadcast',
+    skip_validation: bool = False,
 ) -> None:
     with paddle.base.dygraph.guard():
         global _metadata_manager
@@ -1228,19 +1237,30 @@ def load_state_dict_impl(
                 metadata_list.append(paddle.load(os.path.join(path, file)))
             _metadata_manager.set_metadata_list(metadata_list)
 
-        rank_to_files, missing_keys, mw_name_compatibility_mapping = (
-            get_rank_to_files(
+        rank_to_files, mw_name_compatibility_mapping = get_rank_to_files(
+            _metadata_manager.get_metadata_list(),
+            local_data_files,
+            flat_state_dict,
+            process_group,
+            use_dist,
+            mw_name_compatibility,
+        )
+
+        # Key validation (global)
+        if not skip_validation:
+            from .key_validation import validate_and_report_keys_standard
+
+            state_dict_param_names = {
+                key if isinstance(key, str) else key[0]
+                for key in flat_state_dict.keys()
+            }
+            validate_and_report_keys_standard(
                 _metadata_manager.get_metadata_list(),
-                local_data_files,
-                flat_state_dict,
+                state_dict_param_names,
                 process_group,
                 use_dist,
-                mw_name_compatibility,
-            )
-        )
-        if len(missing_keys) > 0:
-            logger.warning(
-                f"The following keys:{missing_keys} are not found in checkpoint path: {path}."
+                path,
+                state_dict=flat_state_dict,
             )
 
         cur_rank = paddle.distributed.get_rank()
@@ -1769,57 +1789,6 @@ def merge_sharded_state_dict(
     SaveSafetensor.save_single_safetenors(
         local_state_dict_to_save, paddle.distributed.get_rank()
     )
-
-
-def logger_missing_key_and_unexpected_keys_before_aoa(
-    metadata: Metadata,
-    state_dict: dict[str, Tensor] | dict[str, ShardedWeight],
-    process_group: Group | None = None,
-    safetensors: bool = False,
-    use_dist: bool = False,
-):
-    first_key = next(iter(state_dict), None)
-    if isinstance(first_key, tuple):
-        flat_state_dict = state_dict
-    else:
-        flat_state_dict, mapping = flatten_state_dict(state_dict)
-
-    global_src_key_list = []
-    dst_key_list = [
-        key if isinstance(key, str) else key[0]
-        for key in flat_state_dict.keys()
-    ]
-    global_dst_key_list = []
-    if use_dist:
-        paddle.distributed.all_gather_object(
-            global_dst_key_list, dst_key_list, process_group
-        )
-        flatten_global_dst_key_list = [
-            item for sublist in global_dst_key_list for item in sublist
-        ]
-    else:
-        global_dst_key_list.extend(dst_key_list)
-        flatten_global_dst_key_list = global_dst_key_list
-
-    for local_tensor_index, file_name in metadata.storage_metadata.items():
-        if (
-            local_tensor_index.replica_id is not None
-            and local_tensor_index.replica_id != 0
-        ):
-            continue
-        global_src_key_list.append(local_tensor_index.tensor_key)
-    missing_keys = set(flatten_global_dst_key_list) - set(global_src_key_list)
-    unexpected_keys = set(global_src_key_list) - set(
-        flatten_global_dst_key_list
-    )
-    if len(missing_keys) > 0:
-        logger.warning(
-            f"Missing keys:{missing_keys}, check whether the checkpoint is complete and note whether the aoa_statements is complete."
-        )
-    if len(unexpected_keys) > 0:
-        logger.warning(
-            f"Unexpected keys:{unexpected_keys}, check whether the model is complete and note whether the aoa_statements is complete."
-        )
 
 
 class SavePartialSafetensors:

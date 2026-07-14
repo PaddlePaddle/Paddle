@@ -25,6 +25,11 @@
 
 #include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/common/target.h"
+#ifdef CINN_WITH_CUSTOM_DEVICE
+#include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/common/place.h"
+#endif
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/ir_visitor.h"
@@ -178,7 +183,45 @@ void SetCudaAxisInfo(ir::LoweredFunc lowered_func) {
     int min_blocks_per_sm = -1;
     info.set_max_threads_per_block(max_threads_per_block);
     if (!lowered_func->temp_spaces.empty()) {
+#ifdef CINN_WITH_CUSTOM_DEVICE
+      // Cap regs/thread via min_blocks_per_sm to keep occupancy:
+      //   target_threads_per_sm = reg_per_sm / 64
+      //   min_blocks_per_sm     = target_threads_per_sm / max_threads_per_block
+      // Scaling by RegistersPerSM (not MaxThreadsPerSM) avoids spill on
+      // wide-register devices (MetaX 2x, Iluvatar 4x NV regs).
+      // If RegistersPerSM is unavailable, leave min_blocks_per_sm = -1 and
+      // let the compiler pick its default occupancy, instead of using
+      // NV's 65536 which would under-tune wide-register devices.
+      // 64 is NV's typical regs/thread budget. On wide-register devices it
+      // is conservative -- yields a smaller min_blocks_per_sm, only relaxes
+      // the occupancy hint, never causes spill.
+      constexpr int kTargetRegPerThread = 64;
+      const auto& tgt = cinn::common::DefaultDeviceTarget();
+      int reg_per_sm = 0;
+      if (auto* arch = std::get_if<cinn::common::CustomDeviceArch>(
+              &tgt.arch.variant())) {
+        if (!arch->device_type.empty()) {
+          int v = phi::DeviceManager::GetMaxRegistersPerMultiProcessor(
+              phi::CustomPlace(arch->device_type, arch->device_id));
+          if (v > 0) reg_per_sm = v;
+        }
+      }
+      if (reg_per_sm > 0) {
+        int mtps = tgt.get_max_threads_per_sm();
+        int target_total = reg_per_sm / kTargetRegPerThread;
+        if (mtps > 0) target_total = std::min(target_total, mtps);
+        if (target_total > 0 && max_threads_per_block > 0) {
+          min_blocks_per_sm = target_total / max_threads_per_block;
+          int hw_max_bps = tgt.get_max_blocks_per_sm();
+          if (hw_max_bps > 0) {
+            min_blocks_per_sm = std::min(min_blocks_per_sm, hw_max_bps);
+          }
+        }
+      }
+      // Query failed: keep min_blocks_per_sm == -1 so it is not emitted.
+#else
       min_blocks_per_sm = 1024 / max_threads_per_block;
+#endif
       if (min_blocks_per_sm > 1) {
         info.set_min_blocks_per_sm(min_blocks_per_sm);
       }

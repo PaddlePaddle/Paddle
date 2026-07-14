@@ -154,7 +154,7 @@ class TestAdamW(OpTest):
             'Moment1': moment1,
             'Moment2': moment2,
             'Moment2Max': moment2_max,
-            'LearningRate': np.array([learning_rate]).astype("float32"),
+            'LearningRate': np.array([learning_rate]).astype("float64"),
             'Beta1Pow': np.array([beta1_pow]).astype("float32"),
             'Beta2Pow': np.array([beta2_pow]).astype("float32"),
         }
@@ -182,7 +182,9 @@ class TestAdamW(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=self.no_check_set, check_pir=True)
+        self.check_output(
+            no_check_set=self.no_check_set, check_pir=True, rtol=2e-4
+        )
 
 
 class TestAdamWAMSGrad(TestAdamW):
@@ -234,7 +236,7 @@ class TestAdamW2(OpTest):
             'Moment1': moment1,
             'Moment2': moment2,
             'Moment2Max': moment2_max,
-            'LearningRate': np.array([learning_rate]).astype("float32"),
+            'LearningRate': np.array([learning_rate]).astype("float64"),
             'Beta1Pow': np.array([beta1_pow]).astype("float32"),
             'Beta2Pow': np.array([beta2_pow]).astype("float32"),
         }
@@ -570,7 +572,7 @@ class TestAdamWOpMultiPrecisionWithMainGrad(unittest.TestCase):
         moment1 = paddle.randn(shape).astype(paddle.float32)
         moment2 = paddle.randn(shape).astype(paddle.float32).abs()
         moment2_max = paddle.zeros(shape).astype(paddle.float32)
-        lr = paddle.zeros([1]).astype(paddle.float32)
+        lr = paddle.zeros([1]).astype(paddle.float64)
         lr[0] = lr_rate
         beta1_pow_acc = paddle.ones([1]).astype(paddle.float32)
         beta1_pow_acc[0] = _beta1**10
@@ -998,7 +1000,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
                 'Moment1': moment1,
                 'Moment2': moment2,
                 'Moment2Max': moment2_max,
-                'LearningRate': np.array([learning_rate]).astype("float32"),
+                'LearningRate': np.array([learning_rate]).astype("float64"),
                 'Beta1Pow': np.array([beta1**t]).astype("float32"),
                 'Beta2Pow': np.array([beta2**t]).astype("float32"),
             }
@@ -1170,7 +1172,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
                     'Moment1': moment1,
                     'Moment2': moment2,
                     'Moment2Max': moment2_max,
-                    'LearningRate': np.array([learning_rate]).astype("float32"),
+                    'LearningRate': np.array([learning_rate]).astype("float64"),
                     'Beta1Pow': np.array([beta1**t]).astype("float32"),
                     'Beta2Pow': np.array([beta2**t]).astype("float32"),
                 }
@@ -1384,7 +1386,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
                     'Moment1': moment1,
                     'Moment2': moment2,
                     'Moment2Max': moment2_max,
-                    'LearningRate': np.array([learning_rate]).astype("float32"),
+                    'LearningRate': np.array([learning_rate]).astype("float64"),
                     'Beta1Pow': np.array([beta1**t]).astype("float32"),
                     'Beta2Pow': np.array([beta2**t]).astype("float32"),
                 }
@@ -1606,7 +1608,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
                 'Moment1': moment1,
                 'Moment2': moment2,
                 'Moment2Max': moment2_max,
-                'LearningRate': np.array([learning_rate]).astype("float32"),
+                'LearningRate': np.array([learning_rate]).astype("float64"),
                 'Beta1Pow': np.array([beta1**t]).astype("float32"),
                 'Beta2Pow': np.array([beta2**t]).astype("float32"),
             }
@@ -1812,7 +1814,7 @@ class TestAdamwMomentBfloat16Amp(unittest.TestCase):
         moment1 = paddle.randn(shape).astype(paddle.bfloat16)
         moment2 = paddle.randn(shape).astype(paddle.bfloat16).abs()
         moment2_max = paddle.zeros(shape).astype(paddle.bfloat16)
-        lr = paddle.zeros([1]).astype(paddle.float32)
+        lr = paddle.zeros([1]).astype(paddle.float64)
         lr[0] = lr_rate
         beta1_pow_acc = paddle.ones([1]).astype(paddle.float32)
         beta1_pow_acc[0] = _beta1**10

@@ -1,11 +1,16 @@
 add_definitions(${LLVM_DEFINITIONS})
 
+set(CINN_RUNTIME_LLVM_FLAGS -std=c++11 -S -emit-llvm -O3)
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64")
+  list(APPEND CINN_RUNTIME_LLVM_FLAGS -mavx2 -masm=intel)
+endif()
+
 # generate cinn_runtime.ll file
 
 add_custom_command(
   OUTPUT ${CMAKE_BINARY_DIR}/paddle/cinn/backends/llvm/cinn_runtime_llvm_ir.h
   COMMAND
-    ${LLVM_PATH}/bin/clang++ -mavx2 -std=c++11 -masm=intel -S -emit-llvm -O3
+    ${LLVM_CLANG_EXECUTABLE} ${CINN_RUNTIME_LLVM_FLAGS}
     ${PROJECT_SOURCE_DIR}/paddle/cinn/runtime/cinn_runtime.cc
     -I${PROJECT_SOURCE_DIR} -o
     ${CMAKE_BINARY_DIR}/paddle/cinn/runtime/cinn_runtime.ll
@@ -13,7 +18,7 @@ add_custom_command(
     ${PYTHON_EXECUTABLE} generate_runtime_llvm_ir.py
     ${CMAKE_BINARY_DIR}/paddle/cinn/runtime/cinn_runtime.ll
     ${CMAKE_BINARY_DIR}/paddle/cinn/backends/llvm/cinn_runtime_llvm_ir.h
-    ${LLVM_PATH}/bin/llvm-config
+    ${LLVM_CONFIG_EXECUTABLE}
   WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/paddle/cinn/backends/llvm
   DEPENDS ${PROJECT_SOURCE_DIR}/paddle/cinn/runtime/cinn_runtime.cc
           ${PROJECT_SOURCE_DIR}/paddle/cinn/runtime/cinn_runtime.h)

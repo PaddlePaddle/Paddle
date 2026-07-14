@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/amp_type_traits.h"
@@ -28,6 +29,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/get_current_context.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
@@ -65,7 +67,7 @@ void CommonGradBroadcastCPU(const DenseTensor &x,
                             const CPUContext &dev_ctx,
                             DX_OP dx_op,
                             DY_OP dy_op) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
 
   std::vector<int64_t> index_array(max_dim, 0);
   const T *x_data = x.data<T>();
@@ -74,19 +76,19 @@ void CommonGradBroadcastCPU(const DenseTensor &x,
   const Tout *dout_data = dout.data<Tout>();
 
   DenseTensor dx_mp, dy_mp;
-  MPType *dx_mp_data = nullptr;
-  MPType *dy_mp_data = nullptr;
+  MT *dx_mp_data = nullptr;
+  MT *dy_mp_data = nullptr;
   if (dx != nullptr) {
     dx_mp.Resize(dx->dims());
-    dev_ctx.Alloc<MPType>(&dx_mp);
-    dx_mp_data = dx_mp.data<MPType>();
-    memset(dx_mp_data, 0, dx->numel() * sizeof(MPType));
+    dev_ctx.Alloc<MT>(&dx_mp);
+    dx_mp_data = dx_mp.data<MT>();
+    memset(dx_mp_data, 0, dx->numel() * sizeof(MT));
   }
   if (dy != nullptr) {
     dy_mp.Resize(dy->dims());
-    dev_ctx.Alloc<MPType>(&dy_mp);
-    dy_mp_data = dy_mp.data<MPType>();
-    memset(dy_mp_data, 0, dy->numel() * sizeof(MPType));
+    dev_ctx.Alloc<MT>(&dy_mp);
+    dy_mp_data = dy_mp.data<MT>();
+    memset(dy_mp_data, 0, dy->numel() * sizeof(MT));
   }
   const int64_t out_size = std::accumulate(out_dims_array,
                                            out_dims_array + max_dim,
@@ -99,16 +101,16 @@ void CommonGradBroadcastCPU(const DenseTensor &x,
     y_index =
         GetElementwiseIndex<int64_t>(y_dims_array, max_dim, index_array.data());
     if (dx_mp_data != nullptr) {
-      dx_mp_data[x_index] += static_cast<MPType>(dx_op(x_data[x_index],
-                                                       y_data[y_index],
-                                                       out_data[out_index],
-                                                       dout_data[out_index]));
+      dx_mp_data[x_index] += static_cast<MT>(dx_op(x_data[x_index],
+                                                   y_data[y_index],
+                                                   out_data[out_index],
+                                                   dout_data[out_index]));
     }
     if (dy_mp_data != nullptr) {
-      dy_mp_data[y_index] += static_cast<MPType>(dy_op(x_data[x_index],
-                                                       y_data[y_index],
-                                                       out_data[out_index],
-                                                       dout_data[out_index]));
+      dy_mp_data[y_index] += static_cast<MT>(dy_op(x_data[x_index],
+                                                   y_data[y_index],
+                                                   out_data[out_index],
+                                                   dout_data[out_index]));
     }
 
     UpdateElementwiseIndexArray<int64_t>(
@@ -116,12 +118,12 @@ void CommonGradBroadcastCPU(const DenseTensor &x,
   }
   if (dx != nullptr) {
     dev_ctx.Alloc<T>(dx);
-    CastKernel<MPType, CPUContext>(
+    CastKernel<MT, CPUContext>(
         dev_ctx, dx_mp, CppTypeToDataType<T>::Type(), dx);
   }
   if (dy != nullptr) {
     dev_ctx.Alloc<T>(dy);
-    CastKernel<MPType, CPUContext>(
+    CastKernel<MT, CPUContext>(
         dev_ctx, dy_mp, CppTypeToDataType<T>::Type(), dy);
   }
 }
@@ -138,11 +140,11 @@ static void ElemwiseGradBroadcast1CPU(const T *x,
                                       DY_OP dy_op,
                                       T *dx,
                                       T *dy) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
 
   if (is_xsize_larger) {
     for (size_t j = 0; j < w; ++j) {
-      MPType sum_y = static_cast<MPType>(0);
+      MT sum_y = static_cast<MT>(0);
       for (size_t i = 0; i < h; ++i) {
         size_t x_offset = i * w + j;
         if (dx != nullptr) {
@@ -150,7 +152,7 @@ static void ElemwiseGradBroadcast1CPU(const T *x,
               dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
         }
         if (dy != nullptr) {
-          sum_y += static_cast<MPType>(
+          sum_y += static_cast<MT>(
               dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]));
         }
       }
@@ -160,7 +162,7 @@ static void ElemwiseGradBroadcast1CPU(const T *x,
     }
   } else {
     for (size_t j = 0; j < w; ++j) {
-      MPType sum_x = static_cast<MPType>(0);
+      MT sum_x = static_cast<MT>(0);
       for (size_t i = 0; i < h; ++i) {
         size_t y_offset = i * w + j;
         if (dy != nullptr) {
@@ -168,7 +170,7 @@ static void ElemwiseGradBroadcast1CPU(const T *x,
               dy_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
         }
         if (dx != nullptr) {
-          sum_x += static_cast<MPType>(
+          sum_x += static_cast<MT>(
               dx_op(x[j], y[y_offset], out[y_offset], dout[y_offset]));
         }
       }
@@ -192,11 +194,11 @@ static void ElemwiseGradBroadcast2CPU(const T *x,
                                       DY_OP dy_op,
                                       T *dx,
                                       T *dy) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
 
   if (is_xsize_larger) {
     for (size_t j = 0; j < n; ++j) {
-      MPType sum_y = static_cast<MPType>(0);
+      MT sum_y = static_cast<MT>(0);
       for (size_t i = 0; i < pre; ++i) {
         for (size_t k = 0; k < post; ++k) {
           size_t x_offset = i * n * post + j * post + k;
@@ -205,7 +207,7 @@ static void ElemwiseGradBroadcast2CPU(const T *x,
                 dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
           }
           if (dy != nullptr) {
-            sum_y += static_cast<MPType>(
+            sum_y += static_cast<MT>(
                 dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]));
           }
         }
@@ -216,7 +218,7 @@ static void ElemwiseGradBroadcast2CPU(const T *x,
     }
   } else {
     for (size_t j = 0; j < n; ++j) {
-      MPType sum_x = static_cast<MPType>(0);
+      MT sum_x = static_cast<MT>(0);
       for (size_t i = 0; i < pre; ++i) {
         for (size_t k = 0; k < post; ++k) {
           size_t y_offset = i * n * post + j * post + k;
@@ -225,7 +227,7 @@ static void ElemwiseGradBroadcast2CPU(const T *x,
                 dy_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
           }
           if (dx != nullptr) {
-            sum_x += static_cast<MPType>(
+            sum_x += static_cast<MT>(
                 dx_op(x[j], y[y_offset], out[y_offset], dout[y_offset]));
           }
         }
@@ -1031,11 +1033,14 @@ static void ElemwiseGradBroadcast1CUDA(gpuStream_t stream,
   // For small case use 1D block
   constexpr int half_walf = 16;
   if (w < half_walf || h < half_walf) {
-    int block_size = std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), h);
-    int64_t grid_size = w;
+    int block_size = static_cast<int>(
+        std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), h));
+    int64_t grid_size_64 = w;
     auto *dev_ctx = funcs::GetCurrentContext();
     int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
-    grid_size = std::min(grid_size, max_grid_dim);
+    grid_size_64 = std::min(grid_size_64, max_grid_dim);
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_64, "elementwise grad launch dim");
+    uint32_t grid_size = static_cast<uint32_t>(grid_size_64);
     if (h * w > std::numeric_limits<int>::max()) {
       ElemwiseGradBroadcast1CUDAKernel<int64_t>
           <<<grid_size, block_size, 0, stream>>>(
@@ -1049,10 +1054,12 @@ static void ElemwiseGradBroadcast1CUDA(gpuStream_t stream,
   } else {
     // suppose performance improves with h increased.
     dim3 block_size = dim3(BLOCK_X, BLOCK_Y);
-    int64_t grid_size = (w + BLOCK_X - 1) / BLOCK_X;
+    int64_t grid_size_64 = (w + BLOCK_X - 1) / BLOCK_X;
     auto *dev_ctx = funcs::GetCurrentContext();
     int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
-    grid_size = std::min(grid_size, max_grid_dim);
+    grid_size_64 = std::min(grid_size_64, max_grid_dim);
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_64, "elementwise grad launch dim");
+    uint32_t grid_size = static_cast<uint32_t>(grid_size_64);
     if (h * w > std::numeric_limits<int>::max()) {
       FastElemwiseGradBroadcast1CUDAKernel<int64_t>
           <<<grid_size, block_size, 0, stream>>>(
@@ -1080,12 +1087,14 @@ static void ElemwiseGradBroadcast2CUDA(gpuStream_t stream,
                                        T *dx,
                                        T *dy) {
   if (pre == 0 || n == 0 || post == 0) return;
-  int block_size =
-      std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), pre * post);
-  int64_t grid_size = n;
+  int block_size = static_cast<int>(
+      std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), pre * post));
+  int64_t grid_size_64 = n;
   auto *dev_ctx = funcs::GetCurrentContext();
   int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
-  grid_size = std::min(grid_size, max_grid_dim);
+  grid_size_64 = std::min(grid_size_64, max_grid_dim);
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_64, "elementwise grad launch dim");
+  uint32_t grid_size = static_cast<uint32_t>(grid_size_64);
 
   if (pre * n * post > std::numeric_limits<int>::max()) {
     ElemwiseGradBroadcast2CUDAKernel<
@@ -1286,12 +1295,15 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
 
     if (is_y) {
       if (w < 16 || h < 16) {
-        int block_size =
-            std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), h);
-        int64_t grid_size = w;
+        int block_size = static_cast<int>(
+            std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), h));
+        int64_t grid_size_64 = w;
         auto *dev_ctx = funcs::GetCurrentContext();
         int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
-        grid_size = std::min(grid_size, max_grid_dim);
+        grid_size_64 = std::min(grid_size_64, max_grid_dim);
+        PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_64,
+                                     "elementwise grad launch dim");
+        uint32_t grid_size = static_cast<uint32_t>(grid_size_64);
         if (use_int64_index) {
           CommonGradBroadcast1CUDAKernelHeight<int64_t>
               <<<grid_size, block_size, 0, stream>>>(x_data,
@@ -1322,10 +1334,13 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
 
       } else {
         dim3 block_size = dim3(BLOCK_X, BLOCK_Y);
-        int64_t grid_size = (w + BLOCK_X - 1) / BLOCK_X;
+        int64_t grid_size_64 = (w + BLOCK_X - 1) / BLOCK_X;
         auto *dev_ctx = funcs::GetCurrentContext();
         int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
-        grid_size = std::min(grid_size, max_grid_dim);
+        grid_size_64 = std::min(grid_size_64, max_grid_dim);
+        PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_64,
+                                     "elementwise grad launch dim");
+        uint32_t grid_size = static_cast<uint32_t>(grid_size_64);
         if (use_int64_index) {
           FastCommonGradBroadcastCUDAKernelHeight<int64_t>
               <<<grid_size, block_size, 0, stream>>>(x_data,
@@ -1356,12 +1371,15 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
       }
     } else {
       if (w < 16 || h < 16) {
-        int block_size =
-            std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), h);
-        int64_t grid_size = w;
+        int block_size = static_cast<int>(
+            std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), h));
+        int64_t grid_size_64 = w;
         auto *dev_ctx = funcs::GetCurrentContext();
         int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
-        grid_size = std::min(grid_size, max_grid_dim);
+        grid_size_64 = std::min(grid_size_64, max_grid_dim);
+        PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_64,
+                                     "elementwise grad launch dim");
+        uint32_t grid_size = static_cast<uint32_t>(grid_size_64);
         if (use_int64_index) {
           CommonGradBroadcast1CUDAKernelHeight<int64_t>
               <<<grid_size, block_size, 0, stream>>>(x_data,
@@ -1392,10 +1410,13 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
 
       } else {
         dim3 block_size = dim3(BLOCK_X, BLOCK_Y);
-        int64_t grid_size = (w + BLOCK_X - 1) / BLOCK_X;
+        int64_t grid_size_64 = (w + BLOCK_X - 1) / BLOCK_X;
         auto *dev_ctx = funcs::GetCurrentContext();
         int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
-        grid_size = std::min(grid_size, max_grid_dim);
+        grid_size_64 = std::min(grid_size_64, max_grid_dim);
+        PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_64,
+                                     "elementwise grad launch dim");
+        uint32_t grid_size = static_cast<uint32_t>(grid_size_64);
         if (use_int64_index) {
           FastCommonGradBroadcastCUDAKernelHeight<int64_t>
               <<<grid_size, block_size, 0, stream>>>(x_data,
@@ -1447,10 +1468,12 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
     if (w < 16 || h < 16) {
       int block_size =
           std::min(static_cast<int64_t>(ELEMWISE_MAX_BLOCK_DIM), h);
-      int64_t grid_size = w;
+      int64_t grid_size_64 = w;
       auto *dev_ctx = funcs::GetCurrentContext();
       int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
-      grid_size = std::min(grid_size, max_grid_dim);
+      grid_size_64 = std::min(grid_size_64, max_grid_dim);
+      PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_64, "elementwise grad launch dim");
+      uint32_t grid_size = static_cast<uint32_t>(grid_size_64);
       if (use_int64_index) {
         ElemwiseGradBroadcast1CUDAKernel<int64_t>
             <<<grid_size, block_size, 0, stream>>>(x_data,
@@ -1481,10 +1504,12 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
 
     } else {
       dim3 block_size = dim3(BLOCK_X, BLOCK_Y);
-      int64_t grid_size = (w + BLOCK_X - 1) / BLOCK_X;
+      int64_t grid_size_64 = (w + BLOCK_X - 1) / BLOCK_X;
       auto *dev_ctx = funcs::GetCurrentContext();
       int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
-      grid_size = std::min(grid_size, max_grid_dim);
+      grid_size_64 = std::min(grid_size_64, max_grid_dim);
+      PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_64, "elementwise grad launch dim");
+      uint32_t grid_size = static_cast<uint32_t>(grid_size_64);
       if (use_int64_index) {
         FastElemwiseGradBroadcast1CUDAKernel<int64_t>
             <<<grid_size, block_size, 0, stream>>>(x_data,
@@ -1544,11 +1569,14 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
     VLOG(3) << "FastBroadCastAllCUDAF pre:" << pre << " mid:" << mid
             << " post:" << post;
 
-    int block_size = std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), mid);
-    int64_t grid_size = pre * post;
+    int block_size = static_cast<int>(
+        std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), mid));
+    int64_t grid_size_64 = pre * post;
     auto *dev_ctx = funcs::GetCurrentContext();
     int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
-    grid_size = std::min(grid_size, max_grid_dim);
+    grid_size_64 = std::min(grid_size_64, max_grid_dim);
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_64, "elementwise grad launch dim");
+    uint32_t grid_size = static_cast<uint32_t>(grid_size_64);
     if (pre * mid * post > std::numeric_limits<int32_t>::max()) {
       FastCommonGradBroadcastAllCUDAKernel<int64_t>
           <<<grid_size, block_size, 0, stream>>>(x_data,
@@ -1580,129 +1608,134 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
     }
   };
 
-  auto FastBroadCastOneCUDAF =
-      [&](const std::vector<int64_t> &broadcast_pos, int max_dim, bool is_x) {
-        int axis = broadcast_pos[0];
-        size_t pre = std::accumulate(out_dims_array,
-                                     out_dims_array + axis,
-                                     static_cast<int64_t>(1),
-                                     std::multiplies<int64_t>());
-        size_t mid = out_dims_array[axis];
-        size_t post = std::accumulate(out_dims_array + axis + 1,
-                                      out_dims_array + max_dim,
-                                      static_cast<int64_t>(1),
-                                      std::multiplies<int64_t>());
-
-        size_t k_pre;
-        size_t k_mid;
-        size_t k_post;
-
-        if (is_x) {
-          k_pre = std::accumulate(y_dims_array,
-                                  y_dims_array + axis,
+  auto FastBroadCastOneCUDAF = [&](const std::vector<int64_t> &broadcast_pos,
+                                   int max_dim,
+                                   bool is_x) {
+    int axis = broadcast_pos[0];
+    size_t pre = std::accumulate(out_dims_array,
+                                 out_dims_array + axis,
+                                 static_cast<int64_t>(1),
+                                 std::multiplies<int64_t>());
+    size_t mid = out_dims_array[axis];
+    size_t post = std::accumulate(out_dims_array + axis + 1,
+                                  out_dims_array + max_dim,
                                   static_cast<int64_t>(1),
                                   std::multiplies<int64_t>());
-          k_mid = y_dims_array[axis];
-          k_post = std::accumulate(y_dims_array + axis + 1,
-                                   y_dims_array + max_dim,
-                                   static_cast<int64_t>(1),
-                                   std::multiplies<int64_t>());
-          int block_size =
-              std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), mid);
-          int64_t grid_size = pre * post;
-          auto *dev_ctx = funcs::GetCurrentContext();
-          int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
-          grid_size = std::min(grid_size, max_grid_dim);
-          // we need to calc y offset with blockid, so do x_pre/y_pre to get
-          // left size.
-          if (k_pre != pre) k_pre = pre / k_pre;
-          if (pre * mid * post > std::numeric_limits<int32_t>::max() ||
-              k_pre * k_mid * k_post > std::numeric_limits<int32_t>::max()) {
-            FastCommonGradBroadcastOneCUDAKernel<int64_t>
-                <<<grid_size, block_size, 0, stream>>>(x_data,
-                                                       y_data,
-                                                       out_data,
-                                                       dout_data,
-                                                       pre,
-                                                       mid,
-                                                       post,
-                                                       k_pre,
-                                                       k_mid,
-                                                       k_post,
-                                                       true,
-                                                       dx_op,
-                                                       dx_data);
-          } else {
-            FastCommonGradBroadcastOneCUDAKernel<uint32_t>
-                <<<grid_size, block_size, 0, stream>>>(x_data,
-                                                       y_data,
-                                                       out_data,
-                                                       dout_data,
-                                                       pre,
-                                                       mid,
-                                                       post,
-                                                       k_pre,
-                                                       k_mid,
-                                                       k_post,
-                                                       true,
-                                                       dx_op,
-                                                       dx_data);
-          }
 
-        } else {
-          k_pre = std::accumulate(x_dims_array,
-                                  x_dims_array + axis,
-                                  static_cast<int64_t>(1),
-                                  std::multiplies<int64_t>());
-          k_mid = x_dims_array[axis];
-          k_post = std::accumulate(x_dims_array + axis + 1,
-                                   x_dims_array + max_dim,
-                                   static_cast<int64_t>(1),
-                                   std::multiplies<int64_t>());
-          int block_size =
-              std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), mid);
-          int64_t grid_size = pre * post;
-          auto *dev_ctx = funcs::GetCurrentContext();
-          int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
-          grid_size = std::min(grid_size, max_grid_dim);
-          if (k_pre != pre) k_pre = pre / k_pre;
+    size_t k_pre;
+    size_t k_mid;
+    size_t k_post;
 
-          if (pre * mid * post > std::numeric_limits<int32_t>::max() ||
-              k_pre * k_mid * k_post > std::numeric_limits<int32_t>::max()) {
-            FastCommonGradBroadcastOneCUDAKernel<int64_t>
-                <<<grid_size, block_size, 0, stream>>>(x_data,
-                                                       y_data,
-                                                       out_data,
-                                                       dout_data,
-                                                       pre,
-                                                       mid,
-                                                       post,
-                                                       k_pre,
-                                                       k_mid,
-                                                       k_post,
-                                                       false,
-                                                       dy_op,
-                                                       dy_data);
-          } else {
-            FastCommonGradBroadcastOneCUDAKernel<uint32_t>
-                <<<grid_size, block_size, 0, stream>>>(x_data,
-                                                       y_data,
-                                                       out_data,
-                                                       dout_data,
-                                                       pre,
-                                                       mid,
-                                                       post,
-                                                       k_pre,
-                                                       k_mid,
-                                                       k_post,
-                                                       false,
-                                                       dy_op,
-                                                       dy_data);
-          }
-        }
-        VLOG(3) << "FastBroadCastOneCUDAF pre:" << pre << " mid:" << mid
-                << " post:" << post;
-      };
+    if (is_x) {
+      k_pre = std::accumulate(y_dims_array,
+                              y_dims_array + axis,
+                              static_cast<int64_t>(1),
+                              std::multiplies<int64_t>());
+      k_mid = y_dims_array[axis];
+      k_post = std::accumulate(y_dims_array + axis + 1,
+                               y_dims_array + max_dim,
+                               static_cast<int64_t>(1),
+                               std::multiplies<int64_t>());
+      int block_size = static_cast<int>(
+          std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), mid));
+      int64_t grid_size_64 = pre * post;
+      auto *dev_ctx = funcs::GetCurrentContext();
+      int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
+      grid_size_64 = std::min(grid_size_64, max_grid_dim);
+      PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_64, "elementwise grad launch dim");
+      uint32_t grid_size = static_cast<uint32_t>(grid_size_64);
+      // we need to calc y offset with blockid, so do x_pre/y_pre to get
+      // left size.
+      if (k_pre != pre) k_pre = pre / k_pre;
+      if (pre * mid * post > std::numeric_limits<int32_t>::max() ||
+          k_pre * k_mid * k_post > std::numeric_limits<int32_t>::max()) {
+        FastCommonGradBroadcastOneCUDAKernel<int64_t>
+            <<<grid_size, block_size, 0, stream>>>(x_data,
+                                                   y_data,
+                                                   out_data,
+                                                   dout_data,
+                                                   pre,
+                                                   mid,
+                                                   post,
+                                                   k_pre,
+                                                   k_mid,
+                                                   k_post,
+                                                   true,
+                                                   dx_op,
+                                                   dx_data);
+      } else {
+        FastCommonGradBroadcastOneCUDAKernel<uint32_t>
+            <<<grid_size, block_size, 0, stream>>>(x_data,
+                                                   y_data,
+                                                   out_data,
+                                                   dout_data,
+                                                   pre,
+                                                   mid,
+                                                   post,
+                                                   k_pre,
+                                                   k_mid,
+                                                   k_post,
+                                                   true,
+                                                   dx_op,
+                                                   dx_data);
+      }
+
+    } else {
+      k_pre = std::accumulate(x_dims_array,
+                              x_dims_array + axis,
+                              static_cast<int64_t>(1),
+                              std::multiplies<int64_t>());
+      k_mid = x_dims_array[axis];
+      k_post = std::accumulate(x_dims_array + axis + 1,
+                               x_dims_array + max_dim,
+                               static_cast<int64_t>(1),
+                               std::multiplies<int64_t>());
+      int block_size = static_cast<int>(
+          std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), mid));
+      int64_t grid_size_64 = pre * post;
+      auto *dev_ctx = funcs::GetCurrentContext();
+      int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
+      grid_size_64 = std::min(grid_size_64, max_grid_dim);
+      PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_64, "elementwise grad launch dim");
+      uint32_t grid_size = static_cast<uint32_t>(grid_size_64);
+      if (k_pre != pre) k_pre = pre / k_pre;
+
+      if (pre * mid * post > std::numeric_limits<int32_t>::max() ||
+          k_pre * k_mid * k_post > std::numeric_limits<int32_t>::max()) {
+        FastCommonGradBroadcastOneCUDAKernel<int64_t>
+            <<<grid_size, block_size, 0, stream>>>(x_data,
+                                                   y_data,
+                                                   out_data,
+                                                   dout_data,
+                                                   pre,
+                                                   mid,
+                                                   post,
+                                                   k_pre,
+                                                   k_mid,
+                                                   k_post,
+                                                   false,
+                                                   dy_op,
+                                                   dy_data);
+      } else {
+        FastCommonGradBroadcastOneCUDAKernel<uint32_t>
+            <<<grid_size, block_size, 0, stream>>>(x_data,
+                                                   y_data,
+                                                   out_data,
+                                                   dout_data,
+                                                   pre,
+                                                   mid,
+                                                   post,
+                                                   k_pre,
+                                                   k_mid,
+                                                   k_post,
+                                                   false,
+                                                   dy_op,
+                                                   dy_data);
+      }
+    }
+    VLOG(3) << "FastBroadCastOneCUDAF pre:" << pre << " mid:" << mid
+            << " post:" << post;
+  };
 
   // do fast elementwise if: 1. only one input need to do broadcast, we can
   // fallback
@@ -1802,22 +1835,33 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
   int64_t *out_dims_array_gpu =
       reinterpret_cast<int64_t *>(y_strides_array_gpu + max_dim);
 
+  const int64_t *stable_x_strides =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          reinterpret_cast<int64_t *>(x_strides_array.data()),
+          x_strides_array.size());
   memory_utils::Copy(gplace,
                      x_strides_array_gpu,
                      cplace,
-                     x_strides_array.data(),
+                     stable_x_strides,
                      bytes,
                      dev_ctx.stream());
+  const int64_t *stable_y_strides =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          reinterpret_cast<int64_t *>(y_strides_array.data()),
+          y_strides_array.size());
   memory_utils::Copy(gplace,
                      y_strides_array_gpu,
                      cplace,
-                     y_strides_array.data(),
+                     stable_y_strides,
                      bytes,
                      dev_ctx.stream());
+  const int64_t *stable_out_dims =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          out_dims_array, bytes / sizeof(int64_t));
   memory_utils::Copy(gplace,
                      out_dims_array_gpu,
                      cplace,
-                     out_dims_array,
+                     stable_out_dims,
                      bytes,
                      dev_ctx.stream());
 
@@ -1840,16 +1884,24 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
     int64_t *x_dims_order_gpu =
         reinterpret_cast<int64_t *>(x_strides_order_gpu + max_dim);
 
+    const int64_t *stable_x_strides_order =
+        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+            reinterpret_cast<int64_t *>(x_strides_order.data()),
+            x_strides_order.size());
     memory_utils::Copy(gplace,
                        x_strides_order_gpu,
                        cplace,
-                       x_strides_order.data(),
+                       stable_x_strides_order,
                        bytes,
                        dev_ctx.stream());
+    const int64_t *stable_x_dims_order =
+        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+            reinterpret_cast<int64_t *>(x_dims_order.data()),
+            x_dims_order.size());
     memory_utils::Copy(gplace,
                        x_dims_order_gpu,
                        cplace,
-                       x_dims_order.data(),
+                       stable_x_dims_order,
                        bytes,
                        dev_ctx.stream());
     if (out_size > std::numeric_limits<int32_t>::max()) {
@@ -1898,16 +1950,24 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
     int64_t *y_dims_order_gpu =
         reinterpret_cast<int64_t *>(y_strides_order_gpu + max_dim);
 
+    const int64_t *stable_y_strides_order =
+        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+            reinterpret_cast<int64_t *>(y_strides_order.data()),
+            y_strides_order.size());
     memory_utils::Copy(gplace,
                        y_strides_order_gpu,
                        cplace,
-                       y_strides_order.data(),
+                       stable_y_strides_order,
                        bytes,
                        dev_ctx.stream());
+    const int64_t *stable_y_dims_order =
+        phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+            reinterpret_cast<int64_t *>(y_dims_order.data()),
+            y_dims_order.size());
     memory_utils::Copy(gplace,
                        y_dims_order_gpu,
                        cplace,
-                       y_dims_order.data(),
+                       stable_y_dims_order,
                        bytes,
                        dev_ctx.stream());
     if (out_size > std::numeric_limits<int32_t>::max()) {

@@ -28,7 +28,6 @@
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
 #include "paddle/phi/common/float16.h"
-#include "test/cpp/compat/cuda_test_utils.h"
 #include "torch/all.h"
 
 // ==================== is_pinned tests ====================
@@ -52,6 +51,22 @@ TEST(IsPinnedTest, MultiDimTensorNotPinned) {
   auto tensor = at::empty({2, 3, 4}, at::TensorOptions().dtype(at::kFloat));
 
   EXPECT_FALSE(tensor.is_pinned());
+}
+
+// ==================== data pointer tests ====================
+
+TEST(TensorDataPtrTest, ConstDataPtrSupportsConstAndNonConstElementTypes) {
+  auto tensor = at::ones({2, 3}, at::TensorOptions().dtype(at::kFloat));
+
+  const void* void_ptr = tensor.const_data_ptr();
+  const float* float_ptr = tensor.const_data_ptr<float>();
+  const float* const_float_ptr = tensor.const_data_ptr<const float>();
+
+  EXPECT_NE(void_ptr, nullptr);
+  EXPECT_EQ(static_cast<const void*>(float_ptr), void_ptr);
+  EXPECT_EQ(static_cast<const void*>(const_float_ptr), void_ptr);
+  EXPECT_FLOAT_EQ(float_ptr[0], 1.0f);
+  EXPECT_FLOAT_EQ(const_float_ptr[0], 1.0f);
 }
 
 // ==================== reciprocal tests ====================
@@ -315,7 +330,6 @@ TEST(DetachInplaceTest, DetachInplaceChained) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 // Test reciprocal on CUDA
 TEST(ReciprocalTest, ReciprocalCUDA) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   auto tensor =
       at::empty({4}, at::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
   auto cpu_tensor = at::empty({4}, at::TensorOptions().dtype(at::kFloat));
@@ -338,7 +352,6 @@ TEST(ReciprocalTest, ReciprocalCUDA) {
 
 // Test detach on CUDA
 TEST(DetachTest, DetachCUDA) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   auto tensor =
       at::arange(5, at::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
 

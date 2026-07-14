@@ -25,6 +25,7 @@
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/var_handle.h"
 #include "paddle/fluid/framework/garbage_collector.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace framework {
@@ -37,8 +38,7 @@ struct VarHandle;
 
 namespace ir {
 
-using GarbageCollectorMap =
-    std::map<phi::Place, std::unique_ptr<GarbageCollector>>;
+using GarbageCollectorMap = std::map<Place, std::unique_ptr<GarbageCollector>>;
 
 const char kMemOptVarInfoMapList[] = "mem_opt_var_info_map_list";
 const char kGarbageCollector[] = "garbage_collector";
@@ -47,27 +47,28 @@ const char kUseCuda[] = "use_cuda";
 
 class LastLiveOpOfVarInfo {
  public:
-  details::VarHandle *var() { return var_; }
+  details::VarHandle* var() { return var_; }
 
-  void set_var(details::VarHandle *var) { var_ = var; }
+  void set_var(details::VarHandle* var) { var_ = var; }
 
-  const std::unordered_set<details::ComputationOpHandle *> &ops() const {
+  const std::unordered_set<details::ComputationOpHandle*>& ops() const {
     return ops_;
   }
 
-  std::unordered_set<details::ComputationOpHandle *> *mutable_ops() {
+  std::unordered_set<details::ComputationOpHandle*>* mutable_ops() {
     return &ops_;
   }
 
  private:
-  details::VarHandle *var_{nullptr};
-  std::unordered_set<details::ComputationOpHandle *> ops_;
+  details::VarHandle* var_{nullptr};
+  std::unordered_set<details::ComputationOpHandle*> ops_;
 };
 
 using LastLiveOpsOfVars = std::unordered_map<std::string, LastLiveOpOfVarInfo>;
 const char kLastLiveOpsOfVars[] = "last_live_ops_of_var";
 
-VarDesc *TryGetLatestVarDesc(const std::vector<details::VarHandle *> &vars);
+TEST_API VarDesc* TryGetLatestVarDesc(
+    const std::vector<details::VarHandle*>& vars);
 
 }  // namespace ir
 }  // namespace framework

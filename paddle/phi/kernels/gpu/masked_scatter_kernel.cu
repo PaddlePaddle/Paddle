@@ -155,7 +155,7 @@ void MaskedScatterKernel(const Context& dev_ctx,
       &prefix_sum_data[total - 1], &mask_bool_data[total - 1], value.numel());
 
   // Launch masked scatter kernel
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
   MaskedScatterCUDAKernel<T>
       <<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
           x_expand.data<T>(),

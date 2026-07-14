@@ -337,6 +337,8 @@ class DistributedStrategy:
         ]
         self.sync_param_name: list[str] = ["embedding", "layer_norm", ".b_"]
 
+        self.use_muon_sharding: bool = False
+
         self.__lock_attr = True
         logger.info("distributed strategy initialized")
 

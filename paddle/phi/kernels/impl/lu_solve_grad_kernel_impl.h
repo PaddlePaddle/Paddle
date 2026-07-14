@@ -29,8 +29,8 @@ namespace phi {
 template <typename T, typename Context>
 DenseTensor GetMH(const Context& dev_ctx, const DenseTensor x) {
   DenseTensor x_mH;
-  phi::Tensor_Conj<Context, T>(dev_ctx, x, &x_mH);
-  return phi::Transpose2DTo6D<Context, T>(dev_ctx, x_mH);
+  Tensor_Conj<Context, T>(dev_ctx, x, &x_mH);
+  return Transpose2DTo6D<Context, T>(dev_ctx, x_mH);
 }
 
 template <typename T, typename Context>
@@ -46,8 +46,7 @@ void LuSolveGradKernel(const Context& dev_ctx,
   if (b_grad != nullptr) {
     dev_ctx.template Alloc<T>(b_grad);
     std::string trans_t = (trans == "N") ? "T" : "N";
-    phi::LuSolveKernel<T, Context>(
-        dev_ctx, out_grad, lu, pivots, trans_t, b_grad);
+    LuSolveKernel<T, Context>(dev_ctx, out_grad, lu, pivots, trans_t, b_grad);
   }
 
   if (lu_grad != nullptr) {
@@ -60,7 +59,7 @@ void LuSolveGradKernel(const Context& dev_ctx,
     bool unpack_pivots = (trans == "N") ? false : true;
     LUUnpackInferMeta(
         lu, pivots, true, unpack_pivots, &meta_p, &meta_l, &meta_u);
-    phi::LUUnpackKernel<T, Context>(
+    LUUnpackKernel<T, Context>(
         dev_ctx, lu, pivots, true, unpack_pivots, &p, &l, &u);
     l_mH = GetMH<T, Context>(dev_ctx, l);
     u_mH = GetMH<T, Context>(dev_ctx, u);
@@ -83,7 +82,7 @@ void LuSolveGradKernel(const Context& dev_ctx,
                   static_cast<T>(-1),
                   &psi_tmp,
                   static_cast<T>(0));
-      phi::TriangularSolveKernel<T, Context>(
+      TriangularSolveKernel<T, Context>(
           dev_ctx, u_mH, psi_tmp, false, false, false, &gR);
 
       // gL = (L^{-H} gR U^H).tril(-1)
@@ -101,7 +100,7 @@ void LuSolveGradKernel(const Context& dev_ctx,
                   static_cast<T>(1),
                   &mul_tmp,
                   static_cast<T>(0));
-      phi::TriangularSolveKernel<T, Context>(
+      TriangularSolveKernel<T, Context>(
           dev_ctx, l_mH, mul_tmp, true, false, true, &gL);
 
       auto phil_rank = gL.dims().size();
@@ -174,7 +173,7 @@ void LuSolveGradKernel(const Context& dev_ctx,
                   &tem_out2,
                   static_cast<T>(0));
       // gR = gR L^{-H}
-      phi::TriangularSolveKernel<T, Context>(
+      TriangularSolveKernel<T, Context>(
           dev_ctx, l_mH, tem_out2, true, true, true, &gR);
       // gU = (L^H gR U^{-H}).triu()
       auto LmHdims = l_mH.dims();
@@ -190,7 +189,7 @@ void LuSolveGradKernel(const Context& dev_ctx,
                   static_cast<T>(1),
                   &tem_out3,
                   static_cast<T>(0));
-      phi::TriangularSolveKernel<T, Context>(
+      TriangularSolveKernel<T, Context>(
           dev_ctx, u_mH, tem_out3, false, true, false, &gU);
 
       auto phiu_rank = gU.dims().size();

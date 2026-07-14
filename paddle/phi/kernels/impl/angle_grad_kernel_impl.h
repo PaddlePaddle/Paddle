@@ -26,7 +26,7 @@ void AngleGradKernel(const Context& dev_ctx,
                      const DenseTensor& out_grad,
                      DenseTensor* x_grad) {
   auto numel = out_grad.numel();
-  auto* dout_data = out_grad.data<phi::dtype::Real<T>>();
+  auto* dout_data = out_grad.data<dtype::Real<T>>();
   auto* x_data = x.data<T>();
   x_grad->Resize(out_grad.dims());
   if (x_grad->numel() == 0) {

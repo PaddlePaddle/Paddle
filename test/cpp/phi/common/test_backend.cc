@@ -24,29 +24,29 @@ namespace tests {
 
 TEST(Backend, OStream) {
   std::ostringstream oss;
-  oss << phi::Backend::UNDEFINED;
+  oss << Backend::UNDEFINED;
   EXPECT_EQ(oss.str(), "Undefined");
   oss.str("");
-  oss << phi::Backend::CPU;
+  oss << Backend::CPU;
   EXPECT_EQ(oss.str(), "CPU");
   oss.str("");
-  oss << phi::Backend::GPU;
+  oss << Backend::GPU;
   EXPECT_EQ(oss.str(), "GPU");
   oss.str("");
-  oss << phi::Backend::XPU;
+  oss << Backend::XPU;
   EXPECT_EQ(oss.str(), "XPU");
   oss.str("");
-  oss << phi::Backend::ONEDNN;
+  oss << Backend::ONEDNN;
   EXPECT_EQ(oss.str(), "ONEDNN");
   oss.str("");
-  oss << phi::Backend::GPUDNN;
+  oss << Backend::GPUDNN;
   EXPECT_EQ(oss.str(), "GPUDNN");
   oss.str("");
-  oss << phi::Backend::KPS;
+  oss << Backend::KPS;
   EXPECT_EQ(oss.str(), "KPS");
   oss.str("");
   try {
-    oss << phi::Backend::NUM_BACKENDS;
+    oss << Backend::NUM_BACKENDS;
   } catch (const std::exception& exception) {
     std::string ex_msg = exception.what();
     EXPECT_TRUE(ex_msg.find("Invalid enum backend type") != std::string::npos);
@@ -54,23 +54,23 @@ TEST(Backend, OStream) {
 }
 
 TEST(Backend, StringToBackend) {
-  namespace pexp = paddle::experimental;
-  EXPECT_EQ(phi::Backend::UNDEFINED, pexp::StringToBackend("Undefined"));
-  EXPECT_EQ(phi::Backend::CPU, pexp::StringToBackend("CPU"));
-  EXPECT_EQ(phi::Backend::GPU, pexp::StringToBackend("GPU"));
-  EXPECT_EQ(phi::Backend::XPU, pexp::StringToBackend("XPU"));
-  EXPECT_EQ(phi::Backend::ONEDNN, pexp::StringToBackend("OneDNN"));
-  EXPECT_EQ(phi::Backend::GPUDNN, pexp::StringToBackend("GPUDNN"));
+  using paddle::experimental::StringToBackend;
+  EXPECT_EQ(Backend::UNDEFINED, StringToBackend("Undefined"));
+  EXPECT_EQ(Backend::CPU, StringToBackend("CPU"));
+  EXPECT_EQ(Backend::GPU, StringToBackend("GPU"));
+  EXPECT_EQ(Backend::XPU, StringToBackend("XPU"));
+  EXPECT_EQ(Backend::ONEDNN, StringToBackend("OneDNN"));
+  EXPECT_EQ(Backend::GPUDNN, StringToBackend("GPUDNN"));
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  EXPECT_EQ(phi::Backend::GPU, pexp::StringToBackend("KPS"));
+  EXPECT_EQ(Backend::GPU, StringToBackend("KPS"));
 #else
-  EXPECT_EQ(phi::Backend::KPS, pexp::StringToBackend("KPS"));
+  EXPECT_EQ(Backend::KPS, StringToBackend("KPS"));
 #endif
   EXPECT_EQ(static_cast<Backend>(
                 static_cast<size_t>(Backend::NUM_BACKENDS) +
                 phi::CustomRegisteredDeviceMap::Instance()
                     .GetOrRegisterGlobalDeviceTypeId("CustomBackend")),
-            pexp::StringToBackend("CustomBackend"));
+            StringToBackend("CustomBackend"));
 }
 
 }  // namespace tests

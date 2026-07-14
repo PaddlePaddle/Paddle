@@ -29,7 +29,7 @@ struct HardLabelCrossEntropyCPUFunctorImpl {
                                       const DenseTensor* prob,
                                       const DenseTensor* labels,
                                       const int ignore_index,
-                                      const int axis_dim)
+                                      const int64_t axis_dim)
       : out_(out),
         prob_(prob),
         labels_(labels),
@@ -42,15 +42,15 @@ struct HardLabelCrossEntropyCPUFunctorImpl {
 
     int64_t num_classes = prob_->dims()[1];
 
-    const int num_remain = num_classes / axis_dim_;
+    const int64_t num_remain = num_classes / axis_dim_;
 
     const T* prob_data = prob_->template data<T>();
     T* loss_data = out_->template data<T>();
 
     const auto* label_data = labels_->template data<U>();
     for (int64_t i = 0; i < batch_size; ++i) {
-      for (int j = 0; j < num_remain; j++) {
-        int lbl = static_cast<int>(label_data[i * num_remain + j]);  // NOLINT
+      for (int64_t j = 0; j < num_remain; j++) {
+        int64_t lbl = static_cast<int64_t>(label_data[i * num_remain + j]);
         if (lbl != ignore_index_) {
           PADDLE_ENFORCE_GE(lbl,
                             0,
@@ -66,7 +66,7 @@ struct HardLabelCrossEntropyCPUFunctorImpl {
                   "label value should less than the shape of axis dimension "
                   "when label value(%f) not equal to ignore_index(%f), But "
                   "received label value as %ld and shape of axis dimension "
-                  "is %d",
+                  "is %ld",
                   lbl,
                   ignore_index_,
                   lbl,
@@ -87,7 +87,7 @@ struct HardLabelCrossEntropyCPUFunctorImpl {
   const DenseTensor* prob_;
   const DenseTensor* labels_;
   const int ignore_index_;
-  const int axis_dim_;
+  const int64_t axis_dim_;
 };
 
 template <typename DeviceContext, typename T>
@@ -98,16 +98,19 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
     const DenseTensor* labels,
     const bool softLabel,
     const int ignore_index,
-    const int axis_dim) {
+    const int64_t axis_dim) {
   if (softLabel) {
     // TODO(large-tensor): Eigen::DSizes not support int64
     PADDLE_ENFORCE_LE_INT_MAX(prob->dims()[0], "prob->dims()[0]");
     PADDLE_ENFORCE_LE_INT_MAX(prob->dims()[1], "prob->dims()[1]");
+    PADDLE_ENFORCE_LE_INT_MAX(axis_dim, "axis_dim");
     const int batch_size = static_cast<const int>(prob->dims()[0]);
     const int num_classes = static_cast<const int>(prob->dims()[1]);
-    const int num_remain = num_classes / axis_dim;
+    const int axis_dim_int = static_cast<int>(axis_dim);
+    const int num_remain = num_classes / axis_dim_int;
 
-    Eigen::DSizes<int, 3> batch_axis_remain(batch_size, axis_dim, num_remain);
+    Eigen::DSizes<int, 3> batch_axis_remain(
+        batch_size, axis_dim_int, num_remain);
     auto in = EigenMatrix<T>::From(*prob);
     auto lbl = EigenMatrix<T>::From(*labels);
     auto loss = EigenMatrix<T>::From(*out);

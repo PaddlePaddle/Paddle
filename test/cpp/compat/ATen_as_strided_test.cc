@@ -20,7 +20,10 @@
 
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
+#include "paddle/common/macros.h"
 #include "torch/all.h"
+
+COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace {
 
@@ -84,6 +87,7 @@ TEST_F(TensorAsStridedTest, AsStridedInplaceWithOffset) {
   t.as_strided_({2, 3}, {3, 1}, 1);
 
   ASSERT_EQ(t.sizes(), c10::IntArrayRef({2, 3}));
+  ASSERT_NE(t.data_ptr<float>(), original_data_ptr);
 
   float* data = t.data_ptr<float>();
   ASSERT_FLOAT_EQ(data[0], 1.0f);
@@ -105,7 +109,7 @@ TEST_F(TensorAsStridedTest, AsStridedScatterBasic) {
   at::Tensor src = at::full({2, 3}, 99.0f, at::kFloat);
   at::Tensor result = t.as_strided_scatter(src, {2, 3}, {3, 1});
 
-  ASSERT_EQ(result.sizes(), c10::IntArrayRef({2, 3}));
+  ASSERT_EQ(result.sizes(), c10::IntArrayRef({12}));
   float* data = result.data_ptr<float>();
   for (int i = 0; i < 6; ++i) {
     ASSERT_FLOAT_EQ(data[i], 99.0f);
@@ -127,13 +131,16 @@ TEST_F(TensorAsStridedTest, AsStridedScatterWithOffset) {
   at::Tensor src = at::full({2, 2}, 88.0f, at::kFloat);
   at::Tensor result = t.as_strided_scatter(src, {2, 2}, {2, 1}, 2);
 
-  ASSERT_EQ(result.sizes(), c10::IntArrayRef({2, 2}));
+  ASSERT_EQ(result.sizes(), c10::IntArrayRef({12}));
   float* data = result.data_ptr<float>();
-  ASSERT_FLOAT_EQ(data[0], 88.0f);
-  ASSERT_FLOAT_EQ(data[3], 88.0f);
+  ASSERT_FLOAT_EQ(data[2], 88.0f);
+  ASSERT_FLOAT_EQ(data[5], 88.0f);
 }
 
 TEST_F(TensorAsStridedTest, AsStridedTranspose) {
+  if (!FLAGS_use_stride_kernel) {
+    return;
+  }
   // Transpose: shape {2,3} -> {3,2}, stride {1,2}
   // [[0,1,2],[3,4,5]] -> [[0,3],[1,4],[2,5]]
   at::Tensor t = at::arange(6, at::kFloat).view({2, 3});
@@ -146,6 +153,9 @@ TEST_F(TensorAsStridedTest, AsStridedTranspose) {
 }
 
 TEST_F(TensorAsStridedTest, AsStridedContiguous) {
+  if (!FLAGS_use_stride_kernel) {
+    return;
+  }
   at::Tensor t = at::arange(12, at::kFloat);
 
   // Contiguous: {2,6}, stride {6,1}

@@ -14,9 +14,11 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Generic, TypeVar, overload
+from typing import TYPE_CHECKING, Any, Generic, TypeVar, overload
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     ValidateValueFunc = Callable[[Any], None]
 
 

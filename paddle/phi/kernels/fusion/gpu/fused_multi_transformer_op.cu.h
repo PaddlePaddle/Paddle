@@ -37,8 +37,6 @@ namespace fusion {
 
 namespace {  // NOLINT
 
-using float16 = phi::float16;
-
 #define MMHA_USE_FP32_ACUM_FOR_LOGITS
 #define MMHA_USE_FP32_ACUM_FOR_OUT
 #define MMHA_USE_FP32_ACUM_FOR_FMA
@@ -1961,7 +1959,7 @@ __global__ void fusedQKV_transpose_split_kernel(T *q_buf,
                step = gridDim.x * blockDim.x * VecSize;
        linear_index < elem_cnt;
        linear_index += step) {
-    phi::Load<T, VecSize>(&qkv[linear_index], &src_vec);
+    Load<T, VecSize>(&qkv[linear_index], &src_vec);
     int32_t bias_idx = linear_index % fused_hidden_size;
     const int32_t token_idx = linear_index / fused_hidden_size;
     const int32_t ori_token_idx =
@@ -1976,11 +1974,11 @@ __global__ void fusedQKV_transpose_split_kernel(T *q_buf,
     const int32_t write_idx =
         token_idx * hidden_size + head_id * size_per_head + size_id;
     if (qkv_id == 0) {
-      phi::Store<T, VecSize>(src_vec, &q_buf[write_idx]);
+      Store<T, VecSize>(src_vec, &q_buf[write_idx]);
     } else if (qkv_id == 1) {
-      phi::Store<T, VecSize>(src_vec, &k_buf[write_idx]);
+      Store<T, VecSize>(src_vec, &k_buf[write_idx]);
     } else {
-      phi::Store<T, VecSize>(src_vec, &v_buf[write_idx]);
+      Store<T, VecSize>(src_vec, &v_buf[write_idx]);
     }
   }
 }
@@ -2052,10 +2050,10 @@ __global__ void add_fusedQKV_bias_transpose_split_kernel(
                step = gridDim.x * blockDim.x * VecSize;
        linear_index < elem_cnt;
        linear_index += step) {
-    phi::Load<T, VecSize>(&qkv[linear_index], &src_vec);
+    Load<T, VecSize>(&qkv[linear_index], &src_vec);
     int32_t bias_idx = linear_index % fused_hidden_size;
     if (ComputeBias) {
-      phi::Load<T, VecSize>(&qkv_bias[bias_idx], &bias_vec);
+      Load<T, VecSize>(&qkv_bias[bias_idx], &bias_vec);
 #pragma unroll
       for (int32_t unroll_idx = 0; unroll_idx < VecSize; unroll_idx++) {
         src_vec[unroll_idx] += bias_vec[unroll_idx];
@@ -2074,14 +2072,14 @@ __global__ void add_fusedQKV_bias_transpose_split_kernel(
     const int32_t size_id = linear_index % size_per_head;
 
     if (qkv_id == 0) {
-      phi::Store<T, VecSize>(
+      Store<T, VecSize>(
           src_vec,
           &q_buf[target_batch_id * head_num * seq_len * size_per_head +
                  head_id * seq_len * size_per_head + seq_id * size_per_head +
                  size_id]);
     } else {
       const int32_t kv_store_offset = (qkv_id - 1) * offset;
-      phi::Store<T, VecSize>(
+      Store<T, VecSize>(
           src_vec,
           &kv_buf[kv_store_offset +
                   target_batch_id * head_num * seq_len * size_per_head +
@@ -2095,10 +2093,10 @@ inline cudaError_t GetNumBlocks(int64_t n, int *num_blocks) {
   constexpr int kBlockSize = 128;
   constexpr int kNumWaves = 16;
 
-  const int device_id = phi::backends::gpu::GetCurrentDeviceId();
-  const int sm_count = phi::backends::gpu::GetGPUMultiProcessors(device_id);
+  const int device_id = backends::gpu::GetCurrentDeviceId();
+  const int sm_count = backends::gpu::GetGPUMultiProcessors(device_id);
   const int max_thread_per_multiprocessor =
-      phi::backends::gpu::GetGPUMaxThreadsPerMultiProcessor(device_id);
+      backends::gpu::GetGPUMaxThreadsPerMultiProcessor(device_id);
 
   *num_blocks =
       std::max<int>(1,
@@ -2188,7 +2186,7 @@ __global__ void gqa_fusedQKV_transpose_split_kernel(T *q_buf,
                step = gridDim.x * blockDim.x * VecSize;
        linear_index < elem_cnt;
        linear_index += step) {
-    phi::Load<T, VecSize>(&qkv[linear_index], &src_vec);
+    Load<T, VecSize>(&qkv[linear_index], &src_vec);
     int32_t bias_idx = linear_index % fused_hidden_size;
     const int32_t token_idx = linear_index / fused_hidden_size;
     const int32_t ori_token_idx =
@@ -2203,18 +2201,18 @@ __global__ void gqa_fusedQKV_transpose_split_kernel(T *q_buf,
     if (head_id < head_num) {
       const int32_t write_idx = token_idx * head_num * size_per_head +
                                 head_id * size_per_head + size_id;
-      phi::Store<T, VecSize>(src_vec, &q_buf[write_idx]);
+      Store<T, VecSize>(src_vec, &q_buf[write_idx]);
     } else {
       if (head_id < head_num + gqa_group_size) {
         const int32_t write_idx = token_idx * gqa_group_size * size_per_head +
                                   (head_id - head_num) * size_per_head +
                                   size_id;
-        phi::Store<T, VecSize>(src_vec, &k_buf[write_idx]);
+        Store<T, VecSize>(src_vec, &k_buf[write_idx]);
       } else {
         const int32_t write_idx =
             token_idx * gqa_group_size * size_per_head +
             (head_id - head_num - gqa_group_size) * size_per_head + size_id;
-        phi::Store<T, VecSize>(src_vec, &v_buf[write_idx]);
+        Store<T, VecSize>(src_vec, &v_buf[write_idx]);
       }
     }
   }
@@ -2592,16 +2590,16 @@ __global__ void ActFFNGlu(const T *bias,
     int idx = i % hid_dim;
     // const T *input_this_thread = input + bi * hid_dim * 2;
     // T *output_this_thread = output + bi * hid_dim;
-    // phi::Load<T, VecSize>(&input_this_thread[idx], &src_vec1);
-    // phi::Load<T, VecSize>(&input_this_thread[idx + hid_dim], &src_vec2);
+    // Load<T, VecSize>(&input_this_thread[idx], &src_vec1);
+    // Load<T, VecSize>(&input_this_thread[idx + hid_dim], &src_vec2);
 
     load_func.template load<VecSize>(&src_vec1, bi * hid_dim * 2 + idx);
     load_func.template load<VecSize>(&src_vec2,
                                      bi * hid_dim * 2 + idx + hid_dim);
 
     if (bias) {
-      phi::Load<T, VecSize>(&bias[idx], &bias_vec1);
-      phi::Load<T, VecSize>(&bias[idx + hid_dim], &bias_vec2);
+      Load<T, VecSize>(&bias[idx], &bias_vec1);
+      Load<T, VecSize>(&bias[idx + hid_dim], &bias_vec2);
     }
 #pragma unroll
     for (int j = 0; j < VecSize; j++) {
@@ -2612,7 +2610,7 @@ __global__ void ActFFNGlu(const T *bias,
       src_vec1[j] = act_functor(src_vec1[j]);
       src_vec1[j] *= src_vec2[j];
     }
-    // phi::Store<T, VecSize>(src_vec1, &output_this_thread[idx]);
+    // Store<T, VecSize>(src_vec1, &output_this_thread[idx]);
     store_func.template store<VecSize>(src_vec1, bi * hid_dim + idx);
   }
 }
@@ -2682,10 +2680,10 @@ __global__ void BiasAct(const T *bias,
     int row_idx = i / cols;
     int col_idx = i % cols;
     int linear_idx = row_idx * cols + col_idx;
-    // phi::Load<T, VecSize>(&input[linear_idx], &src_vec);
+    // Load<T, VecSize>(&input[linear_idx], &src_vec);
     load_func.template load<VecSize>(&src_vec, linear_idx);
     if (bias) {
-      phi::Load<T, VecSize>(&bias[col_idx], &bias_vec);
+      Load<T, VecSize>(&bias[col_idx], &bias_vec);
     }
 #pragma unroll
     for (int j = 0; j < VecSize; j++) {
@@ -2694,7 +2692,7 @@ __global__ void BiasAct(const T *bias,
       }
       src_vec[j] = act_functor(src_vec[j]);
     }
-    // phi::Store<T, VecSize>(src_vec, &output[linear_idx]);
+    // Store<T, VecSize>(src_vec, &output[linear_idx]);
     store_func.template store<VecSize>(src_vec, linear_idx);
   }
 }
@@ -2784,30 +2782,28 @@ __global__ void fused_transpose_split_kernel(
     const int32_t size_id = linear_index % size_per_head;
 
     if (qkv_id == 0) {  // read q
-      phi::Load<T, VecSize>(
-          &q_input[target_batch_id * head_num * max_len_this_time *
-                       size_per_head +
-                   head_id * max_len_this_time * size_per_head +
-                   seq_id * size_per_head + size_id],
-          &src_vec);
+      Load<T, VecSize>(&q_input[target_batch_id * head_num * max_len_this_time *
+                                    size_per_head +
+                                head_id * max_len_this_time * size_per_head +
+                                seq_id * size_per_head + size_id],
+                       &src_vec);
     } else {  // read k/v
       const int32_t kv_store_offset = (qkv_id - 1) * offset;
-      phi::Load<T, VecSize>(
-          &kv_input[kv_store_offset +
-                    target_batch_id * head_num * max_len_this_time *
-                        size_per_head +
-                    head_id * max_len_this_time * size_per_head +
-                    seq_id * size_per_head + size_id],
-          &src_vec);
+      Load<T, VecSize>(&kv_input[kv_store_offset +
+                                 target_batch_id * head_num *
+                                     max_len_this_time * size_per_head +
+                                 head_id * max_len_this_time * size_per_head +
+                                 seq_id * size_per_head + size_id],
+                       &src_vec);
     }
     int32_t write_index =
         linear_index - (qkv_id + 2 * current_token) * hidden_size;
     if (qkv_id == 0) {
-      phi::Store<T, VecSize>(src_vec, &q_out[write_index]);
+      Store<T, VecSize>(src_vec, &q_out[write_index]);
     } else if (qkv_id == 1) {
-      phi::Store<T, VecSize>(src_vec, &k_out[write_index]);
+      Store<T, VecSize>(src_vec, &k_out[write_index]);
     } else if (qkv_id == 2) {
-      phi::Store<T, VecSize>(src_vec, &v_out[write_index]);
+      Store<T, VecSize>(src_vec, &v_out[write_index]);
     }
   }
 }
@@ -2932,10 +2928,10 @@ __global__ void VariableLengthRotaryKernel(
         ori_bi * seq_len * last_dim + ori_seq_id * last_dim + h_bias;
     const int64_t bias_idx = qkv_id * hidden_size + hi * last_dim + h_bias;
     const int64_t base_idx = token_idx * 3 * hidden_size + bias_idx;
-    phi::Load<T, VecSize>(&qkv[base_idx], &src_vec);
-    phi::Load<T, VecSize>(&qkv_biases[bias_idx], &bias_vec);
-    phi::Load<float, VecSize>(&cos_emb[emb_idx], &cos_emb_vec);
-    phi::Load<float, VecSize>(&sin_emb[emb_idx], &sin_emb_vec);
+    Load<T, VecSize>(&qkv[base_idx], &src_vec);
+    Load<T, VecSize>(&qkv_biases[bias_idx], &bias_vec);
+    Load<float, VecSize>(&cos_emb[emb_idx], &cos_emb_vec);
+    Load<float, VecSize>(&sin_emb[emb_idx], &sin_emb_vec);
 #pragma unroll
     for (int i = 0; i < HalfVecSize; i++) {
       const float input_left =
@@ -2960,7 +2956,7 @@ __global__ void VariableLengthRotaryKernel(
         src_vec[2 * i + 1] = static_cast<T>(input_right);
       }
     }
-    phi::Store<T, VecSize>(src_vec, &qkv_out[base_idx]);
+    Store<T, VecSize>(src_vec, &qkv_out[base_idx]);
   }
 }
 
@@ -3047,10 +3043,10 @@ __global__ void GQAVariableLengthRotaryKernel(
         ori_bi * seq_len * last_dim + ori_seq_id * last_dim + h_bias;
     const int64_t bias_idx = hi * last_dim + h_bias;
     const int64_t base_idx = token_idx * offset + bias_idx;
-    phi::Load<T, VecSize>(&qkv[base_idx], &src_vec);
-    phi::Load<T, VecSize>(&qkv_biases[bias_idx], &bias_vec);
-    phi::Load<float, VecSize>(&cos_emb[emb_idx], &cos_emb_vec);
-    phi::Load<float, VecSize>(&sin_emb[emb_idx], &sin_emb_vec);
+    Load<T, VecSize>(&qkv[base_idx], &src_vec);
+    Load<T, VecSize>(&qkv_biases[bias_idx], &bias_vec);
+    Load<float, VecSize>(&cos_emb[emb_idx], &cos_emb_vec);
+    Load<float, VecSize>(&sin_emb[emb_idx], &sin_emb_vec);
 #pragma unroll
     for (int i = 0; i < HalfVecSize; i++) {
       const float input_left =
@@ -3075,7 +3071,7 @@ __global__ void GQAVariableLengthRotaryKernel(
         src_vec[2 * i + 1] = static_cast<T>(input_right);
       }
     }
-    phi::Store<T, VecSize>(src_vec, &qkv_out[base_idx]);
+    Store<T, VecSize>(src_vec, &qkv_out[base_idx]);
   }
 }
 

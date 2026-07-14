@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <llvm/ADT/SmallString.h>
 #include <llvm/ADT/StringMap.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ExecutionEngine/JITSymbol.h>
@@ -23,7 +24,6 @@
 #include <llvm/ExecutionEngine/Orc/ExecutionUtils.h>
 #include <llvm/ExecutionEngine/Orc/IRCompileLayer.h>
 #include <llvm/ExecutionEngine/Orc/LLJIT.h>
-#include <llvm/ExecutionEngine/Orc/LambdaResolver.h>
 #include <llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h>
 #include <llvm/ExecutionEngine/Orc/ThreadSafeModule.h>
 #include <llvm/ExecutionEngine/SectionMemoryManager.h>
@@ -32,7 +32,6 @@
 #include <llvm/IR/Module.h>
 #include <llvm/Support/Error.h>
 #include <llvm/Support/MemoryBuffer.h>
-#include <llvm/Support/SmallVectorMemoryBuffer.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/raw_ostream.h>
 

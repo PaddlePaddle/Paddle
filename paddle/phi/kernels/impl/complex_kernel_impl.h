@@ -43,13 +43,13 @@ void RealKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 DenseTensor* out) {
   if (out->numel() == 0) {
-    dev_ctx.template Alloc<phi::dtype::Real<T>>(out);
+    dev_ctx.template Alloc<dtype::Real<T>>(out);
     return;
   }
   auto numel = x.numel();
   auto* x_data = x.data<T>();
-  auto* out_data = dev_ctx.template Alloc<phi::dtype::Real<T>>(
-      out, static_cast<size_t>(numel * sizeof(phi::dtype::Real<T>)));
+  auto* out_data = dev_ctx.template Alloc<dtype::Real<T>>(
+      out, static_cast<size_t>(numel * sizeof(dtype::Real<T>)));
 
   funcs::ForRange<Context> for_range(dev_ctx, numel);
   funcs::RealFunctor<T> functor(x_data, out_data, numel);
@@ -61,13 +61,13 @@ void ImagKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 DenseTensor* out) {
   if (out->numel() == 0) {
-    dev_ctx.template Alloc<phi::dtype::Real<T>>(out);
+    dev_ctx.template Alloc<dtype::Real<T>>(out);
     return;
   }
   auto numel = x.numel();
   auto* x_data = x.data<T>();
-  auto* out_data = dev_ctx.template Alloc<phi::dtype::Real<T>>(
-      out, static_cast<size_t>(numel * sizeof(phi::dtype::Real<T>)));
+  auto* out_data = dev_ctx.template Alloc<dtype::Real<T>>(
+      out, static_cast<size_t>(numel * sizeof(dtype::Real<T>)));
 
   funcs::ForRange<Context> for_range(dev_ctx, numel);
   funcs::ImagFunctor<T> functor(x_data, out_data, numel);
@@ -77,15 +77,15 @@ void ImagKernel(const Context& dev_ctx,
 // functors to use with ElementwiseComputeEx
 template <typename T>
 struct RealAndImagToComplexFunctor {
-  inline HOSTDEVICE phi::dtype::complex<T> operator()(const T x, const T y) {
-    return phi::dtype::complex<T>(x, y);
+  inline HOSTDEVICE dtype::complex<T> operator()(const T x, const T y) {
+    return dtype::complex<T>(x, y);
   }
 };
 
 template <typename T>
 struct ImagAndRealToComplexFunctor {
-  inline HOSTDEVICE phi::dtype::complex<T> operator()(const T y, const T x) {
-    return phi::dtype::complex<T>(x, y);
+  inline HOSTDEVICE dtype::complex<T> operator()(const T y, const T x) {
+    return dtype::complex<T>(x, y);
   }
 };
 
@@ -94,7 +94,7 @@ void ComplexKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y,
                    DenseTensor* out) {
-  using C = phi::dtype::complex<T>;
+  using C = dtype::complex<T>;
   if (out->numel() == 0) {
     dev_ctx.template Alloc<C>(out);
     return;

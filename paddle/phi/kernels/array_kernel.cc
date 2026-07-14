@@ -114,7 +114,7 @@ void ArrayToTensorKernel(const Context& dev_ctx,
   if (use_stack) {
     auto vec = vectorize<int>(x[0].dims());
     vec.insert(vec.begin() + axis, x.size());  // NOLINT
-    out->Resize(make_ddim(vec));
+    out->Resize(vec);
     StackKernel<T, Context>(dev_ctx, inputs, axis, out);
   } else {
     auto out_dims = x[0].dims();
@@ -127,7 +127,7 @@ void ArrayToTensorKernel(const Context& dev_ctx,
       }
     }
     auto vec = vectorize<int>(out_dims);
-    out->Resize(make_ddim(vec));
+    out->Resize(vec);
     ConcatKernel<T, Context>(dev_ctx, inputs, axis, out);
   }
 

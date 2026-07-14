@@ -106,7 +106,7 @@ void IndexPutGradKernel(const Context& dev_ctx,
       funcs::CalCompressedDimsWith1AndWithout1(
           &value_shape_bd, &value_shape, &compress_dims, &dims_without_1);
       DenseTensor value_grad_bd(value_grad->dtype());
-      value_grad_bd.Resize(make_ddim(value_shape_bd));
+      value_grad_bd.Resize(value_shape_bd);
       dev_ctx.template Alloc<T>(&value_grad_bd);
       ret = xpu::gather_nd<XPUType, int64_t>(
           dev_ctx.x_context(),

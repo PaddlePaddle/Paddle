@@ -125,7 +125,7 @@ void CTCAlignOpCUDAKernel(const Context& dev_ctx,
     output->Resize({num_tokens, 1});
     T* output_data = dev_ctx.template Alloc<T>(output);
 
-    phi::MixVector<size_t> mixv_input_lod(&input_lod[level]);
+    MixVector<size_t> mixv_input_lod(&input_lod[level]);
     MergeAndDelCudaKernel<T><<<1, 1, 0, stream>>>(
         num_tokens,
         tokens,

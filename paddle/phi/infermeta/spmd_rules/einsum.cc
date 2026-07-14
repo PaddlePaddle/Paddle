@@ -23,7 +23,6 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
 void ParseEinsumEquation(const std::string& equation,
                          std::vector<std::string>* operands,
                          std::string* output) {

@@ -14,9 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Union
-
-from typing_extensions import TypeAlias
+from typing import TYPE_CHECKING, TypeAlias
 
 from paddle.base import core
 
@@ -30,11 +28,11 @@ from .custom_streams import (  # noqa: F401
 if TYPE_CHECKING:
     from paddle import CPUPlace
 
-    _CPUPlaceLike: TypeAlias = Union[
-        CPUPlace,
-        str,  # some string like "iluvatar_gpu" "metax_gpu:0", etc.
-        int,  # some int like 0, 1, etc.
-    ]
+    _CPUPlaceLike: TypeAlias = (
+        CPUPlace
+        | str  # some string like "iluvatar_gpu" "metax_gpu:0", etc.
+        | int  # some int like 0, 1, etc.
+    )
 
 
 def device_count() -> int:

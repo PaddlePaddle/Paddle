@@ -342,6 +342,44 @@ class TestPipeLayerAPI(unittest.TestCase):
             # The generator gets exhausted or other expected errors
             pass
 
+    def test_eval_batch_return_host_tensor(self):
+        """Test eval_batch with return_host_tensor=True, covering _offload_tensors."""
+        alex_desc = get_alex_spec()
+        pipe_model = build_spec_layer(alex_desc, num_stages=1)
+        pipe_model = NoPipelineParallel(pipe_model, self.strategy, self.hcg)
+
+        input = paddle.randn([256, 3, 224, 224])
+        label = paddle.randint(0, 10, [147, 1])
+        data = [[input, input, input, input], [label, label, label, label]]
+
+        # compute_loss=False, return_host_tensor=True → triggers _offload_tensors
+        # with a single Tensor output (lines 680, 710-718)
+        result = pipe_model.eval_batch(
+            data, compute_loss=False, return_host_tensor=True
+        )
+        self.assertIsInstance(result, list)
+        self.assertEqual(len(result), pipe_model.accumulate_steps)
+
+    def test_offload_tensors_branches(self):
+        """Directly test _offload_tensors covering all branches (lines 702-718)."""
+        alex_desc = get_alex_spec()
+        pipe_model = build_spec_layer(alex_desc, num_stages=1)
+        pipe_model = NoPipelineParallel(pipe_model, self.strategy, self.hcg)
+
+        t = paddle.randn([4, 4])
+
+        # Branch: single Tensor (lines 710-718)
+        pipe_model._offload_tensors(t)
+
+        # Branch: single non-Tensor → early return (line 712)
+        pipe_model._offload_tensors("not_a_tensor")
+
+        # Branch: tuple with Tensor elements (lines 702-709)
+        pipe_model._offload_tensors((t, paddle.randn([2, 2])))
+
+        # Branch: tuple containing a non-Tensor element → continue (lines 703-705)
+        pipe_model._offload_tensors((t, "not_a_tensor"))
+
 
 if __name__ == "__main__":
     unittest.main()

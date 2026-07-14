@@ -9,6 +9,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -43,12 +44,12 @@ void StridedElementwiseCopyKernel(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
     hipMemcpy(output_data,
               input_data,
-              phi::SizeOf(input.dtype()),
+              SizeOf(input.dtype()),
               hipMemcpyDeviceToDevice);
 #else
     cudaMemcpy(output_data,
                input_data,
-               phi::SizeOf(input.dtype()),
+               SizeOf(input.dtype()),
                cudaMemcpyDeviceToDevice);
 #endif
 
@@ -69,10 +70,10 @@ void StridedElementwiseCopyKernel(const Context& dev_ctx,
 
   funcs::CopyStride<2>(out_dims,
                        out_strides,
-                       phi::SizeOf(out->dtype()),
+                       SizeOf(out->dtype()),
                        vectorize<int64_t>(input.dims()),
                        vectorize<int64_t>(input.strides()),
-                       phi::SizeOf(input.dtype()),
+                       SizeOf(input.dtype()),
                        &desired_shape,
                        &strides_array,
                        &numel,
@@ -84,13 +85,16 @@ void StridedElementwiseCopyKernel(const Context& dev_ctx,
   constexpr int block_size = 128;
   constexpr int loop_size = 4;
   const dim3 block(block_size);
-  const dim3 grid((numel + block.x * loop_size - 1) / (block.x * loop_size));
+  const int64_t grid_x =
+      (numel + block.x * loop_size - 1) / (block.x * loop_size);
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "grid.x");
+  const dim3 grid(static_cast<uint32_t>(grid_x));
   auto stream = dev_ctx.stream();
   using dtype = funcs::OpaqueType<sizeof(T)>;
   const char* in_ptr = reinterpret_cast<const char*>(input.data<T>());
   char* out_ptr = reinterpret_cast<char*>(out->data<T>());
   funcs::index_elementwise_with_tensor_kernel<block_size, loop_size>
-      <<<grid, block, 0, stream>>>(numel, [=] __device__(int idx) {
+      <<<grid, block, 0, stream>>>(numel, [=] __device__(int64_t idx) {
         const auto offsets = offset_calc.get(idx);
         char* const out_data = out_ptr + offsets[0];
         const char* const in_data = in_ptr + offsets[1];

@@ -34,14 +34,13 @@ void EigvalshGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(x_grad);
     return;
   }
-  auto tV = TransposeLast2Dim<T>(dev_ctx, phi::Conj<T>(dev_ctx, out_v));
+  auto tV = TransposeLast2Dim<T>(dev_ctx, Conj<T>(dev_ctx, out_v));
 
   x_grad->Resize(out_v.dims());
   dev_ctx.template Alloc<T>(x_grad);
 
   auto output_v_vector = EigenVector<T>::Flatten(out_v);
-  auto output_w_grad_vector =
-      EigenVector<phi::dtype::Real<T>>::Flatten(out_w_grad);
+  auto output_w_grad_vector = EigenVector<dtype::Real<T>>::Flatten(out_w_grad);
   auto result_vector = EigenVector<T>::Flatten(*x_grad);
   auto& place = *dev_ctx.eigen_device();
   std::vector<int> broadcast_factor;
@@ -49,7 +48,7 @@ void EigvalshGradKernel(const Context& dev_ctx,
   result_vector.device(place) =
       output_v_vector * output_w_grad_vector.broadcast(broadcast_factor);
 
-  *x_grad = phi::Matmul<T>(dev_ctx, *x_grad, tV);
+  *x_grad = Matmul<T>(dev_ctx, *x_grad, tV);
 }
 
 }  // namespace phi

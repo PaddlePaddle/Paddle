@@ -81,8 +81,8 @@ class PruneGateByCapacityFunctor {
 };
 
 template <typename Visitor>
-static void VisitType(phi::DataType type, Visitor visitor) {
-  if (type == phi::DataType::INT64) {
+static void VisitType(DataType type, Visitor visitor) {
+  if (type == DataType::INT64) {
     visitor.template apply<int64_t>();
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(

@@ -195,30 +195,30 @@ proto::Scalar MakeScalarProto(const paddle::experimental::Scalar& v) {
   proto::Scalar s;
   auto data_type = v.dtype();
   switch (data_type) {
-    case phi::DataType::BOOL:
+    case DataType::BOOL:
       s.set_b(v.to<bool>());
       s.set_type(proto::Scalar_Type_BOOLEAN);
       break;
-    case phi::DataType::INT8:
-    case phi::DataType::UINT8:
-    case phi::DataType::INT16:
-    case phi::DataType::UINT16:
-    case phi::DataType::INT32:
-    case phi::DataType::UINT32:
-    case phi::DataType::INT64:
-    case phi::DataType::UINT64:
+    case DataType::INT8:
+    case DataType::UINT8:
+    case DataType::INT16:
+    case DataType::UINT16:
+    case DataType::INT32:
+    case DataType::UINT32:
+    case DataType::INT64:
+    case DataType::UINT64:
       s.set_i(v.to<int64_t>());
       s.set_type(proto::Scalar_Type_LONG);
       break;
-    case phi::DataType::FLOAT16:
-    case phi::DataType::BFLOAT16:
-    case phi::DataType::FLOAT32:
-    case phi::DataType::FLOAT64:
+    case DataType::FLOAT16:
+    case DataType::BFLOAT16:
+    case DataType::FLOAT32:
+    case DataType::FLOAT64:
       s.set_r(v.to<double>());
       s.set_type(proto::Scalar_Type_FLOAT64);
       break;
-    case phi::DataType::COMPLEX64:
-    case phi::DataType::COMPLEX128: {
+    case DataType::COMPLEX64:
+    case DataType::COMPLEX128: {
       auto value = v.to<phi::dtype::complex<double>>();
       auto* complex = s.mutable_c();
       complex->set_r(value.real);
@@ -226,9 +226,9 @@ proto::Scalar MakeScalarProto(const paddle::experimental::Scalar& v) {
       s.set_type(proto::Scalar_Type_COMPLEX128);
       break;
     }
-    case phi::DataType::UNDEFINED:
-    case phi::DataType::PSTRING:
-    case phi::DataType::NUM_DATA_TYPES:
+    case DataType::UNDEFINED:
+    case DataType::PSTRING:
+    case DataType::NUM_DATA_TYPES:
       PADDLE_THROW(common::errors::InvalidArgument(
           "Expected scalar of type boolean, "
           "integer, floating point or complex."));

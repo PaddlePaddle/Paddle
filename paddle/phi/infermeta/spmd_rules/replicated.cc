@@ -23,8 +23,6 @@ limitations under the License. */
 namespace phi {
 namespace distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 ////////////////// Utils Functions //////////////////
 std::vector<int64_t> GetReplicatedDimsMapping(const int ndim) {
   std::vector<int64_t> dims_mapping(ndim, -1);
@@ -72,7 +70,7 @@ SpmdInfo ReplicatedInferSpmd(const std::vector<const DistMetaTensor*>& ins,
       continue;
     }
     VLOG(4) << "Input" << std::to_string(i) << " shape: ["
-            << str_join(common::vectorize(ins[i]->dims())) << "] "
+            << str_join(vectorize(ins[i]->dims())) << "] "
             << "src_dims_mapping: ["
             << str_join(ins[i]->dist_attr().dims_mapping()) << "] "
             << "dst_dims_mapping: ["
@@ -81,7 +79,7 @@ SpmdInfo ReplicatedInferSpmd(const std::vector<const DistMetaTensor*>& ins,
 
   for (int64_t i = 0; i < noutputs; i++) {
     VLOG(4) << "Output" << std::to_string(i) << " shape: ["
-            << str_join(common::vectorize(outs[i]->dims())) << "] "
+            << str_join(vectorize(outs[i]->dims())) << "] "
             << "dst_dims_mapping: ["
             << str_join(output_dist_attrs[i].dims_mapping()) << "]";
   }
@@ -122,7 +120,7 @@ SpmdInfo ReplicatedInferSpmdReverse(
   VLOG(4) << "ReplicatedSpmd InferBackward:";
   for (int64_t i = 0; i < noutputs; i++) {
     VLOG(4) << "Output" << std::to_string(i) << " shape: ["
-            << str_join(common::vectorize(outs[i]->dims())) << "] "
+            << str_join(vectorize(outs[i]->dims())) << "] "
             << "src_dims_mapping: ["
             << str_join(outs[i]->dist_attr().dims_mapping()) << "] "
             << "dst_dims_mapping: ["
@@ -131,7 +129,7 @@ SpmdInfo ReplicatedInferSpmdReverse(
 
   for (int64_t i = 0; i < ninputs; i++) {
     VLOG(4) << "Input" << std::to_string(i) << " shape: ["
-            << str_join(common::vectorize(ins[i]->dims())) << "] "
+            << str_join(vectorize(ins[i]->dims())) << "] "
             << "dst_dims_mapping: ["
             << str_join(dst_input_dist_attrs[i].dims_mapping()) << "]";
   }

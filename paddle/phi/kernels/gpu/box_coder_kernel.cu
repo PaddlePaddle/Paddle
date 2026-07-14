@@ -17,6 +17,7 @@
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/memory_utils.h"
@@ -205,18 +206,23 @@ void BoxCoderKernel(const Context &dev_ctx,
   }
   int64_t len = prior_box.dims()[1];
   int block = 512;
-  int grid = (row * col + block - 1) / block;
+  int64_t grid64 = (row * col + block - 1) / block;
+  PADDLE_ENFORCE_LE_INT_MAX(grid64, "grid");
+  int grid = static_cast<int>(grid64);
 
   int64_t bytes = var_size * sizeof(float);
-  auto dev_var = phi::memory_utils::Alloc(
-      dev_ctx.GetPlace(),
-      bytes,
-      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  auto dev_var =
+      memory_utils::Alloc(dev_ctx.GetPlace(),
+                          bytes,
+                          Stream(reinterpret_cast<StreamId>(dev_ctx.stream())));
   float *dev_var_data = reinterpret_cast<float *>(dev_var->ptr());
   auto cplace = CPUPlace();
   const auto gplace = dev_ctx.GetPlace();
+  const float *stable_variance =
+      backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          const_cast<float *>(variance.data()), variance.size());
   memory_utils::Copy(
-      gplace, dev_var_data, cplace, &variance[0], bytes, dev_ctx.stream());
+      gplace, dev_var_data, cplace, stable_variance, bytes, dev_ctx.stream());
 
   output_box->Resize({row, col, len});
   dev_ctx.template Alloc<T>(output_box);

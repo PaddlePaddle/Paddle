@@ -26,8 +26,11 @@
 #endif
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/common/float16.h"
 #include "torch/all.h"
+
+COMMON_DECLARE_bool(use_stride_kernel);
 
 // ============================================================
 // Tests for at::Tensor::transpose_(int64_t dim0, int64_t dim1)
@@ -69,6 +72,9 @@ TEST(TensorTransposeInplaceTest, Transpose3D_SwapLastTwo) {
 }
 
 TEST(TensorTransposeInplaceTest, TransposeInplace_PreservesValues) {
+  if (!FLAGS_use_stride_kernel) {
+    return;
+  }
   // Verify values are correctly accessed after in-place transpose
   at::Tensor t = at::arange(6, at::kFloat).reshape({2, 3});
   // t = [[0,1,2],[3,4,5]]
@@ -100,4 +106,29 @@ TEST(TensorTransposeInplaceTest,
   ASSERT_EQ(t.sizes(), c10::IntArrayRef({7, 5}));
   t.transpose_(0, 1);
   ASSERT_EQ(t.sizes(), c10::IntArrayRef({5, 7}));
+}
+
+TEST(TensorTransposeTest, TransposeLargePositiveDimThrows) {
+  at::Tensor t = at::ones({2, 3}, at::kFloat);
+  ASSERT_ANY_THROW((void)at::transpose(t, 1LL << 32, 1));
+}
+
+TEST(TensorTransposeTest, TransposeLargeNegativeDimThrows) {
+  at::Tensor t = at::ones({2, 3}, at::kFloat);
+  ASSERT_ANY_THROW((void)t.transpose(0, -(1LL << 32)));
+}
+
+TEST(TensorTransposeInplaceTest, TransposeInplaceLargeDimThrowsUnchanged) {
+  at::Tensor t = at::ones({2, 3}, at::kFloat);
+  ASSERT_ANY_THROW((void)t.transpose_(1LL << 32, 1));
+  ASSERT_EQ(t.sizes(), c10::IntArrayRef({2, 3}));
+}
+
+TEST(TensorTransposeTest, TransposeLegalNegativeDims) {
+  at::Tensor t = at::ones({2, 3}, at::kFloat);
+  at::Tensor result = at::transpose(t, -1, -2);
+  ASSERT_EQ(result.sizes(), c10::IntArrayRef({3, 2}));
+
+  t.transpose_(-1, -2);
+  ASSERT_EQ(t.sizes(), c10::IntArrayRef({3, 2}));
 }

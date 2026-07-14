@@ -42,10 +42,6 @@ _all_method_op_map = [
 {}
 ]
 
-methods_map = [(name, func) for path, name, func in _all_method_op_map if path == 'paddle.Tensor']
-funcs_map = [(name, func) for path, name, func in _all_method_op_map if path == 'paddle']
-nn_funcs_map = [(name, func) for path, name, func in _all_method_op_map if path == 'paddle.nn.functional']
-
 def monkey_patch_generated_methods_for_tensor():
     # set methods and functions for all modules using unified approach
     local_tensor = core.eager.Tensor

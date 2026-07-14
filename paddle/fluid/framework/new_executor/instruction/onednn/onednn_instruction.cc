@@ -102,13 +102,28 @@ static phi::Attribute ConvertPirAttribute2RuntimeAttribute(
       }
     }
     return vec_res;
+  } else if (attr_type_name == "pir::ArrayAttribute<pir::DoubleAttribute>") {
+    auto array_list = attr.dyn_cast<pir::ArrayAttribute>().AsVector();
+    std::vector<double> vec_res;
+    if (array_list.size() > 0) {
+      if (array_list[0].isa<pir::DoubleAttribute>()) {
+        for (size_t i = 0; i < array_list.size(); ++i) {
+          vec_res.push_back(
+              array_list[i].dyn_cast<pir::DoubleAttribute>().data());
+        }
+      } else {
+        PADDLE_THROW(common::errors::Unimplemented(
+            "ConvertPirAttribute2RuntimeAttribute not support [%s] ",
+            attr_type_name));
+      }
+    }
+    return vec_res;
   } else if (attr_type_name == "paddle::dialect::IntArrayAttribute") {
     std::vector<int64_t> int_array =
         attr.dyn_cast<paddle::dialect::IntArrayAttribute>().data().GetData();
     return int_array;
   } else if (attr_type_name == "paddle::dialect::DataTypeAttribute") {
-    phi::DataType dtype =
-        attr.dyn_cast<paddle::dialect::DataTypeAttribute>().data();
+    DataType dtype = attr.dyn_cast<paddle::dialect::DataTypeAttribute>().data();
     return dtype;
   } else if (attr_type_name == "paddle::dialect::ScalarAttribute") {
     return attr.dyn_cast<dialect::ScalarAttribute>().data();
@@ -255,10 +270,10 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
   if (infer_meta_interface_) {
     BuildPhiContext<
         phi::InferMetaContext,
-        phi::MetaTensor,
-        phi::MetaTensor,
-        paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
-        paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
+        MetaTensor,
+        MetaTensor,
+        paddle::small_vector<MetaTensor, phi::kInputSmallVectorSize>,
+        paddle::small_vector<MetaTensor, phi::kInputSmallVectorSize>,
         false>(op, *value_exec_info_, yaml_info_parser, &infer_meta_context_);
   }
   VLOG(6) << "finish process infer meta context";
@@ -431,8 +446,8 @@ void OneDNNPhiKernelInstruction::Run() {
     }
     VLOG(6) << "input[" << i << "].layout() = " << input->layout()
             << ", shape = " << input->dims();
-    if (input->layout() != phi::DataLayout::ONEDNN) {
-      phi::DataLayout from_layout = input->layout();
+    if (input->layout() != DataLayout::ONEDNN) {
+      DataLayout from_layout = input->layout();
       tmp_holders.emplace_back(std::make_shared<DenseTensor>(*input));
       auto transed_tensor = tmp_holders.back().get();
 
@@ -443,18 +458,17 @@ void OneDNNPhiKernelInstruction::Run() {
 
       if (elementwise_kernels.count(phi_op_name_)) {
         if (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
-                phi::DataLayout::NHWC &&
-            !(kernel_key_.dtype() == phi::DataType::COMPLEX64 ||
-              kernel_key_.dtype() == phi::DataType::COMPLEX128)) {
-          from_layout = phi::DataLayout::NHWC;
+                DataLayout::NHWC &&
+            !(kernel_key_.dtype() == DataType::COMPLEX64 ||
+              kernel_key_.dtype() == DataType::COMPLEX128)) {
+          from_layout = DataLayout::NHWC;
           phi::funcs::MatchShapeToLayout(
-              transed_tensor, from_layout, phi::DataLayout::ONEDNN);
+              transed_tensor, from_layout, DataLayout::ONEDNN);
         }
       } else {
         //  Handle 'layout_transform' in
         //  ops_onednn_extra.yaml(GetKernelTypeForVar)
-        if (data_format_tensors_.count(i) &&
-            input_layout_ != phi::DataLayout::ANY) {
+        if (data_format_tensors_.count(i) && input_layout_ != DataLayout::ANY) {
           from_layout = input_layout_;
         }
         VLOG(6) << "from_layout = " << from_layout;
@@ -462,7 +476,7 @@ void OneDNNPhiKernelInstruction::Run() {
         if (from_layout == DataLayout::NHWC ||
             from_layout == DataLayout::NDHWC) {
           phi::funcs::MatchShapeToLayout(
-              transed_tensor, from_layout, phi::DataLayout::ONEDNN);
+              transed_tensor, from_layout, DataLayout::ONEDNN);
           // We register only NHWC assuming that model is consistent e.g. either
           // NHWC or NCHW
           phi::OneDNNContext::tls().set_cur_paddle_data_layout(from_layout);
@@ -477,8 +491,8 @@ void OneDNNPhiKernelInstruction::Run() {
           phi::funcs::make_memory_desc(*transed_tensor, from_layout);
       transed_tensor->set_mem_desc(out_mem_desc);
       tmp_kernel_context.UpdataInput(i, transed_tensor);
-      auto meta_tensor = phi::MetaTensor(transed_tensor);
-      auto input_meta_tensor = phi::MetaTensor(input);
+      auto meta_tensor = MetaTensor(transed_tensor);
+      auto input_meta_tensor = MetaTensor(input);
       if (tmp_infer_meta_context_.InputsSize() > i &&
           tmp_infer_meta_context_.InputAt(i).is_same_tensor(
               input_meta_tensor)) {

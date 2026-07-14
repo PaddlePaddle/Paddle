@@ -34,8 +34,7 @@ SpmdInfo DropoutFwdInferSpmd(const DistMetaTensor& x,
                              const std::string& mode,
                              int seed,
                              bool fix_seed) {
-  std::vector<int64_t> seed_tensor_shape =
-      common::vectorize(seed_tensor.dims());
+  std::vector<int64_t> seed_tensor_shape = vectorize(seed_tensor.dims());
   // seed_tensor is None currently
   PADDLE_ENFORCE_EQ(
       IsEmpty(seed_tensor_shape),

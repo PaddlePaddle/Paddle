@@ -15,10 +15,15 @@
 // Verify that including both headers in the same translation unit compiles
 // cleanly (no ODR violations) and that the canonical PhiloxCudaState
 // definition is consistent across both include paths.
-#include <ATen/cuda/CUDAGeneratorImpl.h>
-#include <ATen/cuda/PhiloxUtils.cuh>
 
 #include <gtest/gtest.h>
+
+#include <ATen/cuda/PhiloxCudaState.h>
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include <ATen/cuda/CUDAGeneratorImpl.h>
+#include <ATen/cuda/PhiloxUtils.cuh>
+#endif
 
 // offset_intragraph_ must be uint64_t to match PyTorch upstream.
 static_assert(std::is_same_v<decltype(at::PhiloxCudaState{}.offset_intragraph_),
@@ -31,6 +36,7 @@ TEST(ATenPhiloxTest, TypeConsistency) {
   EXPECT_EQ(sizeof(at::PhiloxCudaState{}.offset_intragraph_), sizeof(uint64_t));
 }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(ATenPhiloxTest, UnpackNonCaptured) {
   constexpr uint64_t kSeed = 42ULL;
   constexpr uint64_t kOffset = 100ULL;
@@ -55,3 +61,4 @@ TEST(ATenPhiloxTest, NonCapturedOffsetIntragraphIgnored) {
   EXPECT_EQ(seed, 7ULL);
   EXPECT_EQ(offset, 13ULL);
 }
+#endif

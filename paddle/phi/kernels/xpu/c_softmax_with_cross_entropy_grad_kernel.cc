@@ -56,7 +56,7 @@ void CSoftmaxWithCrossEntropyGradKernel(const Context& dev_ctx,
   const auto& label_type = labels->dtype();
 
   int ret = 0;
-  if (label_type == phi::DataType::INT32) {
+  if (label_type == DataType::INT32) {
     ret = xpu::mask_label_by_index_grad<XPUType, int32_t>(
         dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(loss_grad->data<T>()),
@@ -67,7 +67,7 @@ void CSoftmaxWithCrossEntropyGradKernel(const Context& dev_ctx,
         N,
         D,
         ignore_index);
-  } else if (label_type == phi::DataType::INT64) {
+  } else if (label_type == DataType::INT64) {
     ret = xpu::mask_label_by_index_grad<XPUType, int64_t>(
         dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(loss_grad->data<T>()),

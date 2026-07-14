@@ -30,7 +30,9 @@ void CodeGenCustomDevice::PrintIncludes() {
   // 1. Basic macro definitions
   str_ += "#define CINN_WITH_CUSTOM_DEVICE\n";
   str_ += "#include \"float16.h\"\n";
+  str_ += "#include \"bfloat16.h\"\n";
   str_ += "using cinn::common::float16;\n";
+  str_ += "using cinn::common::bfloat16;\n";
 
   // 2. Dynamically retrieve CustomDevice Runtime Source
   // Logic: Identify current system's Custom Device types -> Get Plugin ->

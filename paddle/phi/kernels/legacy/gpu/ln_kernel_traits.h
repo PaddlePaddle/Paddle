@@ -24,6 +24,7 @@
 #include "ln_fwd_kernels.h"  // NOLINT
 #include "ln_utils.h"        // NOLINT
 
+namespace phi {
 namespace layer_norm {
 template <uint32_t HIDDEN_SIZE_,
           typename weight_t_,
@@ -173,3 +174,4 @@ struct KernelTraits : public Base {
 };
 
 }  // namespace layer_norm
+}  // namespace phi

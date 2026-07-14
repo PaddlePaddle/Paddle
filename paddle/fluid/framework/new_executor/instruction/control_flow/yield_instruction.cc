@@ -98,9 +98,8 @@ void FullFakeTensor(const pir::Value &output_value, Variable *output_var) {
   }
 #ifdef PADDLE_WITH_CUDA
   phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
-  auto *dev_ctx = pool.Get(phi::GPUPlace());
-  phi::DataType dtype =
-      paddle::dialect::TransToPhiDataType(out_tensor_type.dtype());
+  auto *dev_ctx = pool.Get(GPUPlace());
+  DataType dtype = paddle::dialect::TransToPhiDataType(out_tensor_type.dtype());
   phi::FullKernel<float, phi::GPUContext>(
       *(static_cast<phi::GPUContext *>(dev_ctx)),
       phi::IntArray(common::vectorize(abs_dims)),

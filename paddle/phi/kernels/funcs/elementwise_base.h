@@ -29,7 +29,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 #define HOSTDEVICE __host__ __device__
-namespace kps = phi::kps;
 
 #endif
 

@@ -58,12 +58,12 @@ static inline common::DDim InferSizeSymdimvector(const common::DDim& a,
     PADDLE_ENFORCE_EQ(
         sizeA == sizeB || sizeA == 1 || sizeB == 1,
         true,
-        common::errors::Fatal("The size of tensor a (",
-                              sizeA,
-                              ") must match the size of tensor b (",
-                              sizeB,
-                              ") at non-singleton dimension ",
-                              i));
+        common::errors::Fatal(
+            "The size of tensor a (%d) must match the size of tensor b "
+            "(%d) at non-singleton dimension %d",
+            sizeA,
+            sizeB,
+            i));
 
     expandedSizes[i] = sizeA == 1 ? sizeB : sizeA;
   }
@@ -77,8 +77,8 @@ std::vector<DenseTensor*> ExpandTensors(
     const std::vector<std::unique_ptr<DenseTensor>>& indices) {
   std::vector<DenseTensor*> result;
   for (auto& index : indices) {
-    if (index->dtype() == paddle::DataType::BOOL) {
-      DenseTensor bool_2_idx(phi::DataType::INT64);
+    if (index->dtype() == DataType::BOOL) {
+      DenseTensor bool_2_idx(DataType::INT64);
       NonZeroKernel<bool, Context>(dev_ctx, *index, &bool_2_idx);
       if (bool_2_idx.numel() == 0) {
         std::vector<DenseTensor*> empty_result;
@@ -119,16 +119,16 @@ std::vector<DenseTensor*> ExpandOutplace(
     } else if (to_expand[i]->dims() == sizes) {
       result[i] = to_expand[i];
     } else {
-      if (to_expand[i]->dtype() == phi::DataType::INT32) {
-        DenseTensor tmp_idx(phi::DataType::INT64);
+      if (to_expand[i]->dtype() == DataType::INT32) {
+        DenseTensor tmp_idx(DataType::INT64);
         ExpandKernel<int32_t, Context>(dev_ctx,
                                        *(to_expand[i]),
                                        IntArray(vectorize<int32_t>(sizes)),
                                        &tmp_idx);
         *(to_expand[i]) = tmp_idx;
         result[i] = to_expand[i];
-      } else if (to_expand[i]->dtype() == phi::DataType::INT64) {
-        DenseTensor tmp_idx(phi::DataType::INT64);
+      } else if (to_expand[i]->dtype() == DataType::INT64) {
+        DenseTensor tmp_idx(DataType::INT64);
         ExpandKernel<int64_t, Context>(dev_ctx,
                                        *(to_expand[i]),
                                        IntArray(vectorize<int64_t>(sizes)),
@@ -194,7 +194,7 @@ inline static void ReshapeIndexer(DenseTensor* index,
   shape.insert(shape.end(), dims_before, 1);
   shape.insert(shape.end(), orig_shape.begin(), orig_shape.end());
   shape.insert(shape.end(), dims_after, 1);
-  index->Resize(make_ddim(shape));
+  index->Resize(shape);
 }
 
 template <typename T, typename Context>
@@ -220,8 +220,8 @@ inline AdvancedIndex<T, Context>::AdvancedIndex(
 
   std::vector<DenseTensor*> indices_int64;
   for (auto& indice : indices) {
-    if (indice && indice->dtype() == paddle::DataType::INT32) {
-      *indice = Cast<int, Context>(dev_ctx, *indice, phi::DataType::INT64);
+    if (indice && indice->dtype() == DataType::INT32) {
+      *indice = Cast<int, Context>(dev_ctx, *indice, DataType::INT64);
     }
     indices_int64.push_back(indice);
   }

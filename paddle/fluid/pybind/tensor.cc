@@ -33,6 +33,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/data_layout.h"
@@ -171,6 +172,7 @@ limitations under the License. */
 #include "pybind11/stl.h"
 
 PD_DECLARE_bool(use_virtual_memory_auto_growth);
+PHI_DECLARE_bool(use_vmm_auto_growth_best_fit_allocator_v2);
 
 COMMON_DECLARE_bool(use_mkldnn);
 COMMON_DECLARE_bool(use_onednn);
@@ -200,14 +202,31 @@ namespace {
 void ShareTensorViaVmm(const DenseTensor &self, py::tuple *out) {
   auto *holder =
       dynamic_cast<memory::allocation::Allocation *>(self.Holder().get());
-  paddle::memory::VmmTensorPartsVisitor parts_visitor(holder->ptr());
+  PADDLE_ENFORCE_NOT_NULL(
+      holder,
+      common::errors::InvalidArgument(
+          "Cannot export VMM tensor because tensor holder is not a memory "
+          "allocation."));
+  size_t data_size =
+      self.numel() *
+      framework::SizeOfType(framework::TransToProtoVarType(self.type()));
+  void *data_ptr = const_cast<void *>(self.data());
+  paddle::memory::VmmTensorPartsVisitor parts_visitor(data_ptr, data_size);
   paddle::memory::allocation::AllocatorFacade::Instance().Accept(
       holder->place(), &parts_visitor);
   PADDLE_ENFORCE_EQ(
       parts_visitor.Found(),
       true,
       common::errors::Unavailable(
-          "Failed to locate VMM allocation metadata for tensor."));
+          "Failed to locate VMM allocation metadata for tensor. "
+          "tensor_data=%p, data_size=%zu, holder_ptr=%p, holder_base=%p, "
+          "holder_size=%zu, place=%s.",
+          data_ptr,
+          data_size,
+          holder->ptr(),
+          holder->base_ptr(),
+          holder->size(),
+          holder->place().DebugString().c_str()));
   const auto &parts = parts_visitor.Parts();
   PADDLE_ENFORCE_GT(
       parts.size(),
@@ -219,14 +238,14 @@ void ShareTensorViaVmm(const DenseTensor &self, py::tuple *out) {
   auto stream = paddle::platform::get_current_stream(device_id);
   stream->Synchronize();
 
-  using paddle::memory::allocation::VmmIpcEntry;
-  using paddle::memory::allocation::VmmIpcHeader;
-  VmmIpcHeader header{};
+  using paddle::memory::allocation::VMMIPCEntry;
+  using paddle::memory::allocation::VMMIPCHeader;
+  VMMIPCHeader header{};
   header.version = 1;
   header.flags = 0x1;
   header.pid = static_cast<uint32_t>(::getpid());
   header.num_entries = static_cast<uint32_t>(parts.size());
-  header.alloc_size = static_cast<uint64_t>(holder->size());
+  header.alloc_size = static_cast<uint64_t>(data_size);
   header.offset = parts[0].chunk_rel_off;
   header.reserved_size = 0;
   for (const auto &p : parts) {
@@ -234,14 +253,14 @@ void ShareTensorViaVmm(const DenseTensor &self, py::tuple *out) {
   }
 
   std::string blob;
-  blob.reserve(sizeof(VmmIpcHeader) +
-               parts.size() * (sizeof(VmmIpcEntry) + sizeof(int)));
-  blob.resize(sizeof(VmmIpcHeader));
-  std::memcpy(blob.data(), &header, sizeof(VmmIpcHeader));
+  blob.reserve(sizeof(VMMIPCHeader) +
+               parts.size() * (sizeof(VMMIPCEntry) + sizeof(int)));
+  blob.resize(sizeof(VMMIPCHeader));
+  std::memcpy(blob.data(), &header, sizeof(VMMIPCHeader));
 
   uint64_t rel_offset = 0;
   for (const auto &p : parts) {
-    VmmIpcEntry entry{};
+    VMMIPCEntry entry{};
     entry.handle_type = 1;
     entry.rel_offset = rel_offset;
     entry.chunk_size = p.chunk->size;
@@ -262,9 +281,9 @@ void ShareTensorViaVmm(const DenseTensor &self, py::tuple *out) {
         &fd, p.chunk->handle, CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR, 0));
 
     const size_t old_size = blob.size();
-    blob.resize(old_size + sizeof(VmmIpcEntry) + sizeof(int));
-    std::memcpy(blob.data() + old_size, &entry, sizeof(VmmIpcEntry));
-    std::memcpy(blob.data() + old_size + sizeof(VmmIpcEntry), &fd, sizeof(int));
+    blob.resize(old_size + sizeof(VMMIPCEntry) + sizeof(int));
+    std::memcpy(blob.data() + old_size, &entry, sizeof(VMMIPCEntry));
+    std::memcpy(blob.data() + old_size + sizeof(VMMIPCEntry), &fd, sizeof(int));
 
     rel_offset += p.chunk->size;
   }
@@ -291,18 +310,18 @@ DenseTensor RebuildTensorFromVmmMeta(const py::tuple &meta) {
   std::vector<int64_t> dims_vec = meta[2].cast<std::vector<int64_t>>();
   int device_id = meta[4].cast<int>();
 
-  using paddle::memory::allocation::VmmIpcEntry;
-  using paddle::memory::allocation::VmmIpcHeader;
+  using paddle::memory::allocation::VMMIPCEntry;
+  using paddle::memory::allocation::VMMIPCHeader;
   PADDLE_ENFORCE_GE(
       blob.size(),
-      sizeof(VmmIpcHeader),
+      sizeof(VMMIPCHeader),
       common::errors::InvalidArgument(
           "Invalid VMM IPC payload: blob size %zu is smaller than header "
           "size %zu.",
           blob.size(),
-          sizeof(VmmIpcHeader)));
-  const VmmIpcHeader *header =
-      reinterpret_cast<const VmmIpcHeader *>(blob.data());
+          sizeof(VMMIPCHeader)));
+  const VMMIPCHeader *header =
+      reinterpret_cast<const VMMIPCHeader *>(blob.data());
   VLOG(10) << "[VMM-IPC] header: ver=" << static_cast<int>(header->version)
            << " pid=" << header->pid << " num_entries=" << header->num_entries
            << " alloc_size=" << header->alloc_size
@@ -328,16 +347,16 @@ DenseTensor RebuildTensorFromVmmMeta(const py::tuple &meta) {
       -1,
       common::errors::Unavailable(
           "pidfd_open failed while importing VMM tensor. errno=%d.", errno));
-  size_t off = sizeof(VmmIpcHeader);
+  size_t off = sizeof(VMMIPCHeader);
   for (uint32_t i = 0; i < header->num_entries; ++i) {
     PADDLE_ENFORCE_GE(
         blob.size() - off,
-        sizeof(VmmIpcEntry),
+        sizeof(VMMIPCEntry),
         common::errors::InvalidArgument(
             "Invalid VMM IPC payload: insufficient bytes for entry %u.", i));
-    const VmmIpcEntry *e =
-        reinterpret_cast<const VmmIpcEntry *>(blob.data() + off);
-    off += sizeof(VmmIpcEntry);
+    const VMMIPCEntry *e =
+        reinterpret_cast<const VMMIPCEntry *>(blob.data() + off);
+    off += sizeof(VMMIPCEntry);
     // Only support FD(handle_type==1)
     PADDLE_ENFORCE_GE(
         blob.size() - off,
@@ -400,7 +419,7 @@ DenseTensor RebuildTensorFromVmmMeta(const py::tuple &meta) {
       GPUPlace(device_id),
       keep);
   DenseTensor tensor;
-  tensor.Resize(phi::make_ddim(dims_vec));
+  tensor.Resize(dims_vec);
   tensor.ResetHolder(std::move(alloc));
   tensor.set_type(static_cast<DataType>(dtype_idx));
   return tensor;
@@ -429,7 +448,7 @@ std::tuple<phi::DenseTensor, bool> HandleTensorCopy(
   bool force_copy = copy.has_value() && copy.value();
   bool disallow_copy = copy.has_value() && !copy.value();
 
-  phi::Place dst_place = src.place();
+  Place dst_place = src.place();
   if (dl_device.has_value()) {
     ::DLDeviceType dl_type =
         static_cast<::DLDeviceType>(std::get<0>(dl_device.value()));
@@ -448,7 +467,7 @@ std::tuple<phi::DenseTensor, bool> HandleTensorCopy(
   }
 
   if (force_copy || src.place() != dst_place) {
-    phi::Place ctx_place = src.place() != CPUPlace() ? src.place() : dst_place;
+    Place ctx_place = src.place() != CPUPlace() ? src.place() : dst_place;
     DenseTensor dst(std::make_shared<phi::Allocation>(nullptr, 0, dst_place),
                     src.meta());
     const auto *dev_ctx = phi::DeviceContextPool::Instance().Get(ctx_place);
@@ -640,7 +659,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            py::arg("place"),
            py::arg("batch_size") = -1)
       .def("_copy_from",
-           &TensorCopyFrom<phi::Place>,
+           &TensorCopyFrom<Place>,
            py::arg("tensor"),
            py::arg("place"),
            py::arg("batch_size") = -1)
@@ -804,8 +823,12 @@ void BindTensor(pybind11::module &m) {  // NOLINT
             LegacyLoD new_lod;
             new_lod.reserve(lod.size());
             std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
+            const int64_t tensor_height =
+                common::vectorize(self.dims()).front();
+            PADDLE_ENFORCE_LE_INT_MAX(tensor_height, "tensor height");
+            const int tensor_height_int = static_cast<int>(tensor_height);
             PADDLE_ENFORCE_EQ(
-                CheckLegacyLoD(new_lod, common::vectorize(self.dims()).front()),
+                CheckLegacyLoD(new_lod, tensor_height_int),
                 true,
                 common::errors::InvalidArgument(
                     "The provided LegacyLoD is invalid, the LegacyLoD is %s",
@@ -847,9 +870,12 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                       recursive_sequence_lengths.end(),
                       std::back_inserter(new_lod));
             LegacyLoD new_offset_lod = ConvertToOffsetBasedLegacyLoD(new_lod);
+            const int64_t tensor_height =
+                common::vectorize(self.dims()).front();
+            PADDLE_ENFORCE_LE_INT_MAX(tensor_height, "tensor height");
+            const int tensor_height_int = static_cast<int>(tensor_height);
             PADDLE_ENFORCE_EQ(
-                CheckLegacyLoD(new_offset_lod,
-                               common::vectorize(self.dims()).front()),
+                CheckLegacyLoD(new_offset_lod, tensor_height_int),
                 true,
                 common::errors::InvalidArgument(
                     "The provided recursive_sequence_lengths info is "
@@ -924,7 +950,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              }
              return dst;
            })
-      .def("_copy", [](const DenseTensor &self, const phi::Place &place) {
+      .def("_copy", [](const DenseTensor &self, const Place &place) {
         // follow fetch_op's implementation
         DenseTensor dst;
         if (self.IsInitialized() && self.numel() > 0) {
@@ -986,7 +1012,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 
        )DOC")
       .def("_share_cuda",
-           [](DenseTensor self) {
+           [](DenseTensor self) -> py::tuple {
              if (!self.IsInitialized() || self.numel() == 0)
                throw std::runtime_error(
                    "Tensor not initialized or numel is 0.  could not pass "
@@ -1001,7 +1027,8 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                      "Tensor, share_filename is for CPU tensor."));
 
              // VMM IPC
-             if (FLAGS_use_virtual_memory_auto_growth) {
+             if (FLAGS_use_virtual_memory_auto_growth ||
+                 FLAGS_use_vmm_auto_growth_best_fit_allocator_v2) {
                py::tuple meta;
                ShareTensorViaVmm(self, &meta);
                return meta;
@@ -1053,7 +1080,9 @@ void BindTensor(pybind11::module &m) {  // NOLINT
       )DOC")
       .def("_new_shared_cuda",
            [](py::tuple t) {
-              if (FLAGS_use_virtual_memory_auto_growth && t.size() == 5) {
+              if ((FLAGS_use_virtual_memory_auto_growth ||
+                   FLAGS_use_vmm_auto_growth_best_fit_allocator_v2) &&
+                  t.size() == 5) {
                 return RebuildTensorFromVmmMeta(t);
               }
              if (t.size() != 7)

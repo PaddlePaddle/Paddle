@@ -14,23 +14,23 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, overload
 
 import paddle
 from paddle import _C_ops, in_dynamic_mode
 from paddle.framework import core, in_dynamic_or_pir_mode
 from paddle.utils.decorator_utils import (
+    gumbel_softmax_decorator,
     param_one_alias,
     param_two_alias,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ...base.data_feeder import check_dtype, check_variable_and_dtype
-from ...base.framework import convert_np_dtype_to_dtype_
+from ...base.framework import convert_nptype_to_datatype_or_vartype
 from ...base.layer_helper import LayerHelper
 from ...tensor.manipulation import chunk
-from ...tensor.math import tanh, tanh_  # noqa: F401
-from ...tensor.ops import sigmoid
+from ...tensor.math import sigmoid, tanh, tanh_  # noqa: F401
 
 if TYPE_CHECKING:
     from paddle import Tensor
@@ -110,7 +110,13 @@ def celu(
         return out
 
 
-def elu(x: Tensor, alpha: float = 1.0, name: str | None = None) -> Tensor:
+@param_one_alias(["x", "input"])
+def elu(
+    x: Tensor,
+    alpha: float = 1.0,
+    inplace: bool = False,
+    name: str | None = None,
+) -> Tensor:
     r"""
     elu activation.
 
@@ -126,7 +132,9 @@ def elu(x: Tensor, alpha: float = 1.0, name: str | None = None) -> Tensor:
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
+            Alias: ``input``.
         alpha (float, optional): The 'alpha' value of the ELU formulation. Default is 1.0.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -144,9 +152,20 @@ def elu(x: Tensor, alpha: float = 1.0, name: str | None = None) -> Tensor:
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-0.12642412,  6.        ],
              [ 1.        , 15.60000038]])
+            >>> out = F.elu(x, alpha=0.2, inplace=True)
+            >>> print(out)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.12642412,  6.        ],
+             [ 1.        , 15.60000038]])
+            >>> print(x)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.12642412,  6.        ],
+             [ 1.        , 15.60000038]])
     """
 
     if in_dynamic_or_pir_mode():
+        if inplace:
+            return _C_ops.elu_(x, alpha)
         return _C_ops.elu(x, alpha)
 
     else:
@@ -165,6 +184,7 @@ def elu(x: Tensor, alpha: float = 1.0, name: str | None = None) -> Tensor:
 
 
 @inplace_apis_in_dygraph_only
+@param_one_alias(["x", "input"])
 def elu_(x: Tensor, alpha: float = 1.0, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``elu`` API, the output Tensor will be inplaced with input ``x``.
@@ -376,7 +396,10 @@ def hardsigmoid(
         return out
 
 
-def hardswish(x: Tensor, name: str | None = None) -> Tensor:
+@param_one_alias(["x", "input"])
+def hardswish(
+    x: Tensor, inplace: bool = False, name: str | None = None
+) -> Tensor:
     r"""
     hardswish activation. hardswish is proposed in MobileNetV3, and performs
     better in computational stability and efficiency compared to swish function.
@@ -395,6 +418,8 @@ def hardswish(x: Tensor, name: str | None = None) -> Tensor:
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
+            Alias: ``input``.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -413,7 +438,7 @@ def hardswish(x: Tensor, name: str | None = None) -> Tensor:
             [-0.       , 5.        , 0.66666669])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.hardswish(x)
+        return _C_ops.hardswish_(x) if inplace else _C_ops.hardswish(x)
     else:
         check_variable_and_dtype(
             x,
@@ -519,6 +544,7 @@ def leaky_relu_(
     return _C_ops.leaky_relu_(x, negative_slope)
 
 
+@param_one_alias(['x', 'input'])
 def prelu(
     x: Tensor,
     weight: Tensor,
@@ -961,7 +987,8 @@ def maxout(
         return out
 
 
-def relu6(x: Tensor, name: str | None = None) -> Tensor:
+@param_one_alias(["x", "input"])
+def relu6(x: Tensor, inplace: bool = False, name: str | None = None) -> Tensor:
     """
     relu6 activation
 
@@ -971,6 +998,8 @@ def relu6(x: Tensor, name: str | None = None) -> Tensor:
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
+            Alias: ``input``.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -990,7 +1019,7 @@ def relu6(x: Tensor, name: str | None = None) -> Tensor:
     """
     threshold = 6.0
     if in_dynamic_or_pir_mode():
-        return _C_ops.relu6(x)
+        return _C_ops.relu6_(x) if inplace else _C_ops.relu6(x)
 
     check_variable_and_dtype(
         x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'relu6'
@@ -1305,7 +1334,7 @@ def softmax(
         and (not isinstance(dtype, core.VarDesc.VarType))
         and (not isinstance(dtype, core.DataType))
     ):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
     if in_dynamic_or_pir_mode():
         outs_cast = x if dtype is None else _C_ops.cast(x, dtype)
         return _C_ops.softmax(outs_cast, axis, out=out)
@@ -1360,7 +1389,7 @@ def softmax_(
     Please refer to :ref:`api_paddle_nn_functional_softmax`.
     """
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
     outs_cast = x if dtype is None else _C_ops.cast(x, dtype)
     return _C_ops.softmax_(outs_cast, axis)
 
@@ -1770,7 +1799,7 @@ def log_softmax(
               [-3.44018970 , -2.44018970 , -1.44018970 , -0.44018970 ]]])
     """
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
 
     if in_dynamic_or_pir_mode():
         if dtype is not None and x.dtype != dtype:
@@ -1872,6 +1901,27 @@ def glu(x: Tensor, axis: int = -1, name: str | None = None) -> Tensor:
     return out
 
 
+@overload
+def gumbel_softmax(
+    x: Tensor,
+    temperature: float = 1.0,
+    hard: bool = False,
+    axis: int = -1,
+    name: str | None = None,
+) -> Tensor: ...
+
+
+@overload
+def gumbel_softmax(
+    logits: Tensor,
+    tau: float = 1.0,
+    hard: bool = False,
+    eps: float = 1e-10,
+    dim: int = -1,
+) -> Tensor: ...
+
+
+@gumbel_softmax_decorator
 def gumbel_softmax(
     x: Tensor,
     temperature: float = 1.0,
@@ -1900,17 +1950,27 @@ def gumbel_softmax(
     .. math::
         gumbel\_softmax(v_i)=\frac{e^{v_i/t}}{\sum_{j=1}^n{e^{v_j/t}}},i=1,2,3...n
 
+    Note:
+        This API has two signatures:
+        1. ``paddle.nn.functional.gumbel_softmax(x, temperature=1.0, hard=False, axis=-1, name=None)`` (Paddle-style):
+            Standard Paddle API signature.
+        2. ``paddle.nn.functional.gumbel_softmax(logits, tau=1.0, hard=False, eps=1e-10, dim=-1)`` (PyTorch-style):
+            PyTorch-compatible signature where ``logits`` is an alias for ``x``,
+            ``tau`` is an alias for ``temperature``, ``dim`` is an alias for ``axis``,
+            and ``eps`` is accepted but ignored (deprecated).
+
     Parameters:
         x (Tensor): An N-D Tensor, the first N - 1 dimensions index into a batch
             of independent distributions and the last dimension represents
             a vector of probabilities with datatype float16, float32, float64.
+            Alias: ``logits``.
         temperature (float, optional): non-negative scalar temperature.
-            Default is 1.0.
+            Default is 1.0. Alias: ``tau``.
         hard (bool, optional): if True, the returned samples will be discretized as
             one-hot vectors, but will be differentiated as if it is the soft sample
             in autograd. Default is False.
         axis (int, optional): The axis along will be calculated softmax value.
-            Default is -1.
+            Default is -1. Alias: ``dim``.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:

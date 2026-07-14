@@ -102,7 +102,7 @@ void FusedBiasDropoutResidualLnGradKernel(
     bsz_seq *= input_x_dims[i];
   }
   int64_t dim_embed = input_x_dims[input_x_dims.size() - 1];
-  phi::fusion::DropoutParam dropout_param(
+  fusion::DropoutParam dropout_param(
       dropout_fix_seed,
       0,
       is_test,
@@ -110,7 +110,7 @@ void FusedBiasDropoutResidualLnGradKernel(
       dropout_rate,
       nullptr,
       dropout_seed);
-  phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t>
+  fusion::FusedDropoutLayerNormHelper<T, uint8_t>
       fused_dropout_layernorm_helper(
           dev_ctx, bsz_seq, dim_embed, dropout_param, ln_epsilon);
   fused_dropout_layernorm_helper.LayernormResidualDropoutBiasGrad(

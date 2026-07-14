@@ -33,14 +33,14 @@ namespace {
 class DefaultDtypeGuard {
  public:
   explicit DefaultDtypeGuard(c10::ScalarType dtype)
-      : previous_(c10::get_default_dtype_as_scalartype()) {
-    c10::set_default_dtype(dtype);
+      : previous_(c10::get_default_dtype()) {
+    c10::set_default_dtype(c10::scalarTypeToTypeMeta(dtype));
   }
 
   ~DefaultDtypeGuard() { c10::set_default_dtype(previous_); }
 
  private:
-  c10::ScalarType previous_;
+  caffe2::TypeMeta previous_;
 };
 
 }  // namespace
@@ -152,6 +152,32 @@ TEST(TensorOptionsTest, DtypeDefaultTracksGlobalDefaultDtype) {
             caffe2::TypeMeta::Make<double>());
   ASSERT_EQ(c10::dtype_or_default(std::optional<c10::ScalarType>{}),
             c10::kDouble);
+}
+
+TEST(TensorOptionsTest, DefaultComplexDtypeTracksGlobalDefaultDtype) {
+  {
+    DefaultDtypeGuard guard(c10::kHalf);
+
+    ASSERT_EQ(c10::get_default_dtype_as_scalartype(), c10::kHalf);
+    ASSERT_EQ(c10::get_default_complex_dtype().toScalarType(),
+              c10::ScalarType::ComplexHalf);
+  }
+
+  {
+    DefaultDtypeGuard guard(c10::kDouble);
+
+    ASSERT_EQ(c10::get_default_dtype_as_scalartype(), c10::kDouble);
+    ASSERT_EQ(c10::get_default_complex_dtype().toScalarType(),
+              c10::ScalarType::ComplexDouble);
+  }
+
+  {
+    DefaultDtypeGuard guard(c10::kFloat);
+
+    ASSERT_EQ(c10::get_default_dtype_as_scalartype(), c10::kFloat);
+    ASSERT_EQ(c10::get_default_complex_dtype().toScalarType(),
+              c10::ScalarType::ComplexFloat);
+  }
 }
 
 // ---- device ----

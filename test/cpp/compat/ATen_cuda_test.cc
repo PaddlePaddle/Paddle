@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
 #include <ATen/Functions.h>
 #include <ATen/core/TensorBody.h>
 #include <ATen/ops/tensor.h>
 #include <c10/core/Device.h>
 #include <c10/core/DeviceType.h>
 #include <c10/core/ScalarType.h>
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <c10/cuda/CUDAFunctions.h>
-#endif
+#include <c10/cuda/CUDAGuard.h>
 
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
-#include "test/cpp/compat/cuda_test_utils.h"
 #include "torch/all.h"
 
 // ============================================================
@@ -33,7 +33,6 @@
 
 // After cuda(), the tensor should reside on a GPU device.
 TEST(TensorCudaTest, CpuTensorMovesToCuda) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   at::Tensor cpu_t = at::tensor({1.0f, 2.0f, 3.0f}, at::kFloat);
   ASSERT_TRUE(cpu_t.is_cpu());
 
@@ -44,7 +43,6 @@ TEST(TensorCudaTest, CpuTensorMovesToCuda) {
 
 // dtype and numel must be preserved.
 TEST(TensorCudaTest, DtypeAndNumelPreserved) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   at::Tensor cpu_t = at::tensor({1, 2, 3, 4}, at::kInt);
   at::Tensor cuda_t = cpu_t.cuda();
 
@@ -54,7 +52,6 @@ TEST(TensorCudaTest, DtypeAndNumelPreserved) {
 
 // Values should round-trip back to CPU intact.
 TEST(TensorCudaTest, ValuesPreservedAfterRoundTrip) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   std::vector<float> data = {1.0f, 2.5f, -3.0f, 4.75f};
   at::Tensor cpu_t = at::tensor(data, at::kFloat);
   at::Tensor cuda_t = cpu_t.cuda();
@@ -68,7 +65,6 @@ TEST(TensorCudaTest, ValuesPreservedAfterRoundTrip) {
 
 // shape (sizes) should be preserved.
 TEST(TensorCudaTest, ShapePreserved) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   at::Tensor cpu_t = at::zeros({2, 3, 4}, at::kFloat);
   at::Tensor cuda_t = cpu_t.cuda();
 
@@ -80,7 +76,6 @@ TEST(TensorCudaTest, ShapePreserved) {
 
 // An already-CUDA tensor should still be CUDA after another cuda() call.
 TEST(TensorCudaTest, AlreadyCudaTensorStaysCuda) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   at::Tensor cpu_t = at::tensor({7.0f}, at::kFloat);
   at::Tensor cuda_t = cpu_t.cuda();
   at::Tensor cuda_t2 = cuda_t.cuda();
@@ -91,19 +86,31 @@ TEST(TensorCudaTest, AlreadyCudaTensorStaysCuda) {
 
 // device() should report a CUDA device.
 TEST(TensorCudaTest, DeviceIsCuda) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   at::Tensor cpu_t = at::tensor({0.0f}, at::kFloat);
   at::Tensor cuda_t = cpu_t.cuda();
 
   ASSERT_EQ(cuda_t.device().type(), c10::DeviceType::CUDA);
 }
 
+TEST(TensorCudaTest, DefaultCudaUsesCurrentDevice) {
+  if (c10::cuda::device_count() < 2) {
+    return;
+  }
+  c10::cuda::CUDAGuard guard(1);
+  at::Tensor cpu_t = at::tensor({1.0f}, at::kFloat);
+  at::Tensor cuda_t = cpu_t.cuda();
+
+  ASSERT_EQ(cuda_t.device().type(), c10::DeviceType::CUDA);
+  ASSERT_EQ(cuda_t.device().index(), 1);
+}
+
 // is_cuda() / is_cpu() are mutually exclusive.
 TEST(TensorCudaTest, IsCudaAndIsCpuMutuallyExclusive) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   at::Tensor cpu_t = at::tensor({1.0f, 2.0f}, at::kFloat);
   at::Tensor cuda_t = cpu_t.cuda();
 
   ASSERT_TRUE(cuda_t.is_cuda());
   ASSERT_FALSE(cuda_t.is_cpu());
 }
+
+#endif

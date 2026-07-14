@@ -99,7 +99,7 @@ void SumCooGradGPUKernel(const Context& dev_ctx,
     for (auto i = 1; i < x.values().dims().size(); ++i) {
       length *= x.values().dims()[i];
     }
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, length, 1);
+    auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, length, 1);
 
     SetValueCudaKernel<T>
         <<<config.block_per_grid.x,
@@ -153,8 +153,7 @@ void SumCsrGradKernel(const Context& dev_ctx,
   *dx_cols = x_cols;
 
   if (n_dim == 0) {
-    auto config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, dx->nnz(), 1);
+    auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, dx->nnz(), 1);
     SetValueCudaKernel<T>
         <<<config.block_per_grid.x,
            config.thread_per_block.x,
@@ -172,15 +171,14 @@ void SumCsrGradKernel(const Context& dev_ctx,
                         "`axis` of SumCsrKernel only support None or -1 now."
                         "More number will be supported in the future."));
   if (x.dims().size() == 2) {
-    auto config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x.dims()[0], 1);
+    auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x.dims()[0], 1);
     SumCsr2DGradCudaKernel<T><<<config.block_per_grid.x,
                                 config.thread_per_block.x,
                                 0,
                                 dev_ctx.stream()>>>(
         x_crows_data, dout_values_data, x.dims()[0], dx_values_data);
   } else {
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+    auto config = backends::gpu::GetGpuLaunchConfig1D(
         dev_ctx, x.dims()[0] * (x.dims()[1] + 1), 1);
     SumCsr3DGradCudaKernel<T><<<config.block_per_grid.x,
                                 config.thread_per_block.x,

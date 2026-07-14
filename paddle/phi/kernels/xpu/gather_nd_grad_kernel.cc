@@ -79,15 +79,15 @@ void GatherNdGradKernel(const Context &dev_ctx,
 
   auto index_type = index.dtype();
   bool index_type_match =
-      index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;
+      index_type == DataType::INT32 || index_type == DataType::INT64;
   PADDLE_ENFORCE_EQ(index_type_match,
                     true,
                     common::errors::InvalidArgument(
                         "Index holds the wrong type, it holds [%s],"
                         "but desires to be [%s] or [%s]",
                         index_type,
-                        phi::DataType::INT32,
-                        phi::DataType::INT64));
+                        DataType::INT32,
+                        DataType::INT64));
 
   auto x_shape = vectorize<int64_t>(x_grad->dims());
   auto index_shape = vectorize<int64_t>(index.dims());
@@ -98,7 +98,7 @@ void GatherNdGradKernel(const Context &dev_ctx,
       x_shape.data(), static_cast<int64_t>(x_shape.size()), nullptr};
 
   int64_t index_size = index.numel();
-  if (index_type == phi::DataType::INT32) {
+  if (index_type == DataType::INT32) {
     auto index_data = const_cast<int *>(index.data<int>());
     xpu::VectorParam<int> index_vec{nullptr, index_size, index_data};
     r = xpu::scatter_nd<XPUType, int>(

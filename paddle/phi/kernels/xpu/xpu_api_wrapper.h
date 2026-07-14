@@ -64,7 +64,10 @@ inline XPUFCCalcType FCCalcType() {
       {"XPU_PADDLE_FC_INT32_WITH_LL", XPUFCCalcType::FC_INT32_WITH_LL},
   };
 #ifdef PADDLE_WITH_XPU_XRE5
-  auto default_calc_type = XPUFCCalcType::FC_TF32;
+  // Use full float32 accumulation by default for better precision, matching
+  // the GPU default (FLAGS_cublas_allow_tf32=false). Users who need TF32
+  // performance can set env var XPU_PADDLE_FC_TF32.
+  auto default_calc_type = XPUFCCalcType::FC_FLOAT;
 #else
   auto default_calc_type = XPUFCCalcType::FC_INT16;
 #endif

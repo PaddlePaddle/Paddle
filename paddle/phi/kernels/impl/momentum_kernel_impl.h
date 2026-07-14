@@ -26,7 +26,7 @@
 namespace phi {
 
 template <typename T>
-using MultiPrecisionType = typename phi::dtype::MPTypeTrait<T>::Type;
+using MultiPrecisionType = typename MPTypeTrait<T>::Type;
 
 template <typename T>
 struct CPUDenseUpdater {
@@ -462,7 +462,7 @@ void MomentumDenseImpl(const Context& dev_ctx,
     funcs::ForRange<Context> for_range(dev_ctx, param.numel());
     const auto grad_type = grad.dtype();
 #define PADDLE_LAUNCH_DENSE_MOMENTUM_KERNEL(__nesterov, __reg_type)     \
-  if (grad_type == phi::DataType::FLOAT32) {                            \
+  if (grad_type == DataType::FLOAT32) {                                 \
     DenseMomentumFunctor<T, float, MT, __reg_type, __nesterov> functor( \
         param.data<T>(),                                                \
         grad.data<float>(),                                             \
@@ -572,7 +572,7 @@ void MomentumSparseImpl(const Context& dev_ctx,
   merge_func(dev_ctx, grad, merged_grad);
 
   auto* grad_merge_rows = merged_grad->mutable_rows();
-  phi::MixVector<int64_t> mixv_grad_merge_rows(grad_merge_rows);
+  MixVector<int64_t> mixv_grad_merge_rows(grad_merge_rows);
   const int64_t* rows = mixv_grad_merge_rows.Data(dev_ctx.GetPlace());
   int64_t row_numel = merged_grad->value().numel() / merged_grad->rows().size();
   funcs::ForRange<Context> for_range(dev_ctx, param.numel());
@@ -632,7 +632,7 @@ void MomentumDenseKernel(const Context& dev_ctx,
                          DenseTensor* param_out,
                          DenseTensor* velocity_out,
                          DenseTensor* master_param_out) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   if (multi_precision) {
     MomentumDenseImpl<T, MT>(dev_ctx,
                              param,
@@ -684,7 +684,7 @@ void MomentumSparseKernel(const Context& dev_ctx,
                           DenseTensor* param_out,
                           DenseTensor* velocity_out,
                           DenseTensor* master_param_out) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   if (multi_precision) {
     MomentumSparseImpl<T, MT>(dev_ctx,
                               param,

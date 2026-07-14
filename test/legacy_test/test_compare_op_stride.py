@@ -42,7 +42,6 @@ class TestBinaryElementwiseOp_Stride(unittest.TestCase):
         self.x_trans = np.transpose(self.x, self.perm)
 
     def test_dygraph_api_arithmetic(self):
-        paddle.disable_static()
         x_trans = paddle.to_tensor(self.x_trans, place=self.place)
         y = paddle.to_tensor(self.y, place=self.place)
         if self.strided_input_type == "transpose":
@@ -56,7 +55,6 @@ class TestBinaryElementwiseOp_Stride(unittest.TestCase):
         out = self.paddle_api(x_non_conti, y)
         out_ref = self.numpy_api(self.x, self.y)
         np.testing.assert_allclose(out_ref, out.numpy())
-        paddle.enable_static()
 
 
 def create_test_act_stride_class(base_class, api_name, paddle_api, numpy_api):
@@ -202,6 +200,42 @@ create_test_act_stride_class(
 create_test_act_stride_class(
     TestBinaryElementwiseOp_Stride, "Notequal", paddle.not_equal, np.not_equal
 )
+
+
+@unittest.skipIf(
+    not (paddle.core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
+)
+class TestCompareStridedSliceWithScalar(unittest.TestCase):
+    def setUp(self):
+        self.place = get_device_place()
+
+    def _make_label(self):
+        base = paddle.to_tensor(
+            np.arange(64, dtype=np.int64).reshape([1, 64, 1]),
+            place=self.place,
+        )
+        return base[:, :63, :]
+
+    def test_not_equal_with_size_one_dim_stride(self):
+        label = self._make_label()
+
+        self.assertEqual(list(label.shape), [1, 63, 1])
+        self.assertEqual(label.strides, [64, 1, 1])
+        self.assertFalse(label.is_contiguous())
+
+        out = label != -100
+        np.testing.assert_array_equal(
+            out.numpy(), np.ones([1, 63, 1], dtype=np.bool_)
+        )
+
+    def test_equal_with_size_one_dim_stride(self):
+        label = self._make_label()
+
+        out = label == 1
+        expected = np.arange(63, dtype=np.int64).reshape([1, 63, 1]) == 1
+        np.testing.assert_array_equal(out.numpy(), expected)
+
 
 if __name__ == "__main__":
     unittest.main()

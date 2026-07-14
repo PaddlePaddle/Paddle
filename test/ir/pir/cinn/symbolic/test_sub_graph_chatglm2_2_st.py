@@ -14,7 +14,7 @@
 
 # repo: llm_sub_graphs
 # model: chatglm2
-# method:astype||method:pow||method:mean||method:__add__||api:paddle.tensor.ops.rsqrt||method:__mul__||method:__mul__||method:astype
+# method:astype||method:pow||method:mean||method:__add__||api:paddle.rsqrt||method:__mul__||method:__mul__||method:astype
 import unittest
 
 import numpy as np
@@ -38,7 +38,7 @@ class LayerCase(paddle.nn.Layer):
         var_2 = var_1.pow(2)
         var_3 = var_2.mean(-1, keepdim=True)
         var_4 = var_3 + 1e-05
-        var_5 = paddle.tensor.ops.rsqrt(var_4)
+        var_5 = paddle.rsqrt(var_4)
         var_6 = var_5 * var_0
         var_7 = var_6 * self.parameter_0
         var_8 = var_7.astype('float32')

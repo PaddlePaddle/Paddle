@@ -27,14 +27,15 @@ from paddle.framework import (
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
+from paddle.utils.decorator_utils import param_one_alias
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-
-    from typing_extensions import TypeGuard
+    from typing import TypeGuard
 
     from paddle import Tensor
     from paddle._typing import NestedNumericSequence, TensorLike
+    from paddle.distribution.constraint import Constraint
 
 
 class Distribution:
@@ -51,8 +52,22 @@ class Distribution:
             multivariate distribution, the event shape is [n].
     """
 
+    has_rsample = False
+    has_enumerate_support = False
+    _default_validate_args = __debug__
+
+    @staticmethod
+    def set_default_validate_args(value: bool) -> None:
+        """Sets whether argument validation is enabled by default."""
+        if value not in [True, False]:
+            raise ValueError
+        Distribution._default_validate_args = value
+
     def __init__(
-        self, batch_shape: Sequence[int] = (), event_shape: Sequence[int] = ()
+        self,
+        batch_shape: Sequence[int] = (),
+        event_shape: Sequence[int] = (),
+        validate_args: bool | None = None,
     ) -> None:
         self._batch_shape = (
             batch_shape
@@ -63,6 +78,11 @@ class Distribution:
             event_shape
             if isinstance(event_shape, tuple)
             else tuple(event_shape)
+        )
+        self._validate_args_enabled = (
+            Distribution._default_validate_args
+            if validate_args is None
+            else validate_args
         )
 
         super().__init__()
@@ -86,22 +106,49 @@ class Distribution:
         return self._event_shape
 
     @property
+    def arg_constraints(self) -> dict[str, Constraint]:
+        """Returns constraints that should be satisfied by distribution arguments."""
+        raise NotImplementedError
+
+    @property
+    def support(self) -> Constraint | None:
+        """Returns a constraint object representing this distribution's support."""
+        raise NotImplementedError
+
+    @property
     def mean(self) -> Tensor:
         """Mean of distribution"""
         raise NotImplementedError
+
+    @property
+    def mode(self) -> Tensor:
+        """Mode of distribution"""
+        raise NotImplementedError(f"{self.__class__} does not implement mode")
 
     @property
     def variance(self) -> Tensor:
         """Variance of distribution"""
         raise NotImplementedError
 
+    @param_one_alias(["shape", "sample_shape"])
     def sample(self, shape: Sequence[int] = []) -> Tensor:
-        """Sampling from the distribution."""
+        """Sampling from the distribution.
+
+        Alias: ``sample_shape``.
+        """
         raise NotImplementedError
 
+    @param_one_alias(["shape", "sample_shape"])
     def rsample(self, shape: Sequence[int] = []) -> Tensor:
-        """reparameterized sample"""
+        """Reparameterized sample from the distribution.
+
+        Alias: ``sample_shape``.
+        """
         raise NotImplementedError
+
+    def sample_n(self, n: int) -> Tensor:
+        """Generates n samples from the distribution."""
+        return self.sample((n,))
 
     def entropy(self) -> Tensor:
         """The entropy of the distribution."""
@@ -122,6 +169,22 @@ class Distribution:
     def log_prob(self, value: Tensor) -> Tensor:
         """Log probability density/mass function."""
         raise NotImplementedError
+
+    def cdf(self, value: Tensor) -> Tensor:
+        """Cumulative density/mass function evaluated at value."""
+        raise NotImplementedError
+
+    def icdf(self, value: Tensor) -> Tensor:
+        """Inverse cumulative density/mass function evaluated at value."""
+        raise NotImplementedError
+
+    def enumerate_support(self, expand: bool = True) -> Tensor:
+        """Returns tensor containing all values supported by a discrete distribution."""
+        raise NotImplementedError
+
+    def perplexity(self) -> Tensor:
+        """Returns perplexity of the distribution."""
+        return paddle.exp(self.entropy())
 
     def probs(self, value: Tensor) -> Tensor:
         """Probability density/mass function.
@@ -147,6 +210,42 @@ class Distribution:
             + tuple(self._batch_shape)
             + tuple(self._event_shape)
         )
+
+    def _validate_sample(self, value: Tensor) -> None:
+        event_dim_start = len(value.shape) - len(self._event_shape)
+        if tuple(value.shape[event_dim_start:]) != self._event_shape:
+            raise ValueError(
+                f"The right-most size of value must match event_shape: {value.shape} vs {self._event_shape}."
+            )
+
+        actual_shape = tuple(value.shape)
+        expected_shape = self._batch_shape + self._event_shape
+        for i, j in zip(reversed(actual_shape), reversed(expected_shape)):
+            if i != 1 and j != 1 and i != j:
+                raise ValueError(
+                    f"Value is not broadcastable with batch_shape+event_shape: {actual_shape} vs {expected_shape}."
+                )
+        try:
+            support = self.support
+        except NotImplementedError:
+            warnings.warn(
+                f"{self.__class__} does not define `support` to enable "
+                + "sample validation. Please initialize the distribution with "
+                + "`validate_args=False` to turn off validation.",
+                stacklevel=2,
+            )
+            return
+        if support is None:
+            raise AssertionError("support is unexpectedly None")
+        valid = support.check(value)
+        if not bool(valid.all()):
+            raise ValueError(
+                "Expected value argument "
+                f"({type(value).__name__} of shape {tuple(value.shape)}) "
+                f"to be within the support ({support!r}) "
+                f"of the distribution {self!r}, "
+                f"but found invalid values:\n{value}"
+            )
 
     def _validate_args(
         self, *args: TensorLike | NestedNumericSequence

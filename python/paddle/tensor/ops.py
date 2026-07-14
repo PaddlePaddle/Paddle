@@ -17,69 +17,50 @@ from paddle._C_ops import (  # noqa: F401
     abs,
     abs_,
     acos,
+    acos_,
     acosh,
+    acosh_,
     asin,
+    asin_,
     asinh,
+    asinh_,
     atan,
+    atan_,
     atanh,
+    atanh_,
     ceil,
+    ceil_,
     cos,
+    cos_,
     cosh,
+    cosh_,
     erf,
     erf_,
     exp,
+    exp_,
     expm1,
+    expm1_,
     floor,
+    floor_,
     reciprocal,
+    reciprocal_,
     round,
     round_,
     rsqrt,
+    rsqrt_,
+    scale as _scale,
     sigmoid,
+    sigmoid_,
     sin,
+    sin_,
     sinh,
+    sinh_,
     sqrt,
+    sqrt_,
     square,
+    square_,
     tan,
+    tan_,
 )
-from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
-
-from .layer_function_generator import (
-    generate_inplace_fn,
-    generate_layer_fn,
-)
-
-__inplace_unary_func__ = [
-    'exp_',
-    'sqrt_',
-    'rsqrt_',
-    'ceil_',
-    'floor_',
-    'reciprocal_',
-    'sigmoid_',
-    'sin_',
-    'sinh_',
-    'asin_',
-    'asinh_',
-    'cos_',
-    'cosh_',
-    'acos_',
-    'acosh_',
-    'tan_',
-    'atan_',
-    'atanh_',
-    'expm1_',
-    'square_',
-]
 
 __all__ = []
-
-# It is a hot fix in some unittest using:
-#   paddle.scale(x=x, scale=10.0, out=out_var)
-# e.g.: test_program_code.py, test_dist_train.py
-globals()['_scale'] = generate_layer_fn('scale')
-
-for _OP in set(__inplace_unary_func__):
-    func = generate_inplace_fn(_OP)
-    func.__module__ = __name__
-    _func = inplace_apis_in_dygraph_only(func)
-    globals()[_OP] = _func

@@ -23,7 +23,7 @@ from paddle import base
 from paddle.base import core
 from paddle.base.framework import (
     Program,
-    convert_np_dtype_to_dtype_,
+    convert_nptype_to_datatype_or_vartype,
     default_main_program,
 )
 
@@ -35,7 +35,7 @@ class TestVariable(unittest.TestCase):
         np.random.seed(2022)
 
     def test_np_dtype_convert(self):
-        convert = convert_np_dtype_to_dtype_
+        convert = convert_nptype_to_datatype_or_vartype
         self.assertEqual(paddle.float32, convert(np.float32))
         self.assertEqual(paddle.float16, convert("float16"))
         self.assertEqual(paddle.float64, convert("float64"))

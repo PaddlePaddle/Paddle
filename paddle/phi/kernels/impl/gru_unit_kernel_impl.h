@@ -26,8 +26,7 @@ namespace phi {
 enum GRUActivationType { identity = 0, sigmoid = 1, tanh = 2, relu = 3 };
 
 template <typename T, typename Device, typename X, typename Y>
-void ActCompute(
-    const int act_type, const Device& d, X x, Y y, phi::Place place) {
+void ActCompute(const int act_type, const Device& d, X x, Y y, Place place) {
   if (act_type == identity) {
     y.device(d) = x;
   } else if (act_type == sigmoid) {

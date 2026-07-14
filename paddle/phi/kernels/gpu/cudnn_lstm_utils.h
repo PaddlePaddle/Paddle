@@ -53,7 +53,7 @@ inline int size_sum(const std::vector<const DenseTensor *> &weight_list) {
 
 template <typename T>
 inline void weight_to_tensor(
-    const phi::Place &place,
+    const Place &place,
     gpuStream_t stream,
     const std::vector<const DenseTensor *> &weight_list,
     DenseTensor *weight) {

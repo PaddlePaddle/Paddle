@@ -71,16 +71,14 @@ class PADDLE_API TensorBase {
   TensorBase& operator=(const TensorBase&) && = delete;
   TensorBase& operator=(TensorBase&&) && noexcept = delete;
 
-  bool is_same(const TensorBase& other) const {
+  bool is_same(const TensorBase& other) const noexcept {
     return tensor_.impl().get() == other.tensor_.impl().get();
   }
-  size_t use_count() const { return tensor_.impl().use_count(); }
-  size_t weak_use_count() const {
-    // TODO(youge325) : In PyTorch, weak pointer is defined and
-    // implemented in c10/util/intrusive_ptr.h, namely c10::intrusive_ptr;
-    // but in Paddle, we use std::shared_ptr, so here we just return 0
-    // temporarily.
-    return 0;
+  size_t use_count() const noexcept { return tensor_.impl().use_count(); }
+  size_t weak_use_count() const noexcept {
+    // PyTorch exposes an internal self weak-reference on live TensorImpls, so
+    // the observable weak count starts at 1 even without user-created refs.
+    return tensor_.defined() ? 1 : 0;
   }
 
   void print() const {
@@ -128,11 +126,8 @@ class PADDLE_API TensorBase {
 
   const void* const_data_ptr() const { return data_ptr(); }
 
-  template <typename T, std::enable_if_t<!std::is_const_v<T>, int> = 0>
+  template <typename T>
   const T* const_data_ptr() const;
-
-  template <typename T, std::enable_if_t<std::is_const_v<T>, int> = 0>
-  const std::remove_const_t<T>* const_data_ptr() const;
 
   void* mutable_data_ptr() const { return data_ptr(); }
 
@@ -155,7 +150,9 @@ class PADDLE_API TensorBase {
   }
 
   c10::SymIntArrayRef sym_strides() const {
-    return c10::SymIntArrayRef(strides());
+    return c10::SymIntArrayRef(
+        reinterpret_cast<const c10::SymInt*>(strides().data()),
+        strides().size());
   }
 
   int64_t size(int64_t dim) const {
@@ -173,7 +170,10 @@ class PADDLE_API TensorBase {
     return compat::_PD_PhiDDimToIntArrayRef(tensor_.dims());
   }
 
-  c10::SymIntArrayRef sym_sizes() const { return c10::SymIntArrayRef(sizes()); }
+  c10::SymIntArrayRef sym_sizes() const {
+    return c10::SymIntArrayRef(
+        reinterpret_cast<const c10::SymInt*>(sizes().data()), sizes().size());
+  }
 
   int64_t numel() const { return tensor_.numel(); }
 
@@ -313,27 +313,6 @@ class PADDLE_API TensorBase {
 
   bool is_sparse_csr() const { return tensor_.is_sparse_csr_tensor(); }
 
-  at::TensorBase reshape(at::IntArrayRef shape) const {
-    return TensorBase(
-        paddle::experimental::reshape(tensor_, shape._PD_ToPaddleIntArray()));
-  }
-
-  at::TensorBase& copy_(const at::TensorBase& src,
-                        bool non_blocking = false) const {
-    const_cast<PaddleTensor&>(tensor_).copy_(
-        src._PD_GetInner(), tensor_.place(), /*blocking=*/!non_blocking);
-    return const_cast<at::TensorBase&>(*this);
-  }
-
-  at::TensorBase view(at::IntArrayRef size) const {
-    return TensorBase(paddle::experimental::view_shape(tensor_, size.vec()));
-  }
-
-  at::TensorBase view(at::ScalarType dtype) const {
-    return TensorBase(paddle::experimental::view_dtype(
-        tensor_, compat::_PD_AtenScalarTypeToPhiDataType(dtype)));
-  }
-
   inline size_t nbytes() const {
     PD_CHECK(
         ((tensor_.layout() != common::DataLayout::SPARSE_COO) &&
@@ -421,7 +400,30 @@ class PADDLE_API TensorBase {
     dense->ResetHolder(holder);
   }
 
-  static void MaybeResetHolder(...) {}
+  static void MaybeResetHolder(phi::DenseTensor* dense,
+                               const std::shared_ptr<phi::Allocation>& holder,
+                               long) {  // NOLINT
+    TORCH_CHECK(dense != nullptr, "DenseTensor must not be null");
+
+    // External custom-kernel builds do not expose ResetHolder(), but Holder()
+    // still returns the live holder reference used by DenseTensor.
+    if (dense->numel() == 0) {
+      auto& meta = const_cast<phi::DenseTensorMeta&>(dense->meta());
+      meta.offset = 0;
+      const_cast<std::shared_ptr<phi::Allocation>&>(dense->Holder()) = holder;
+      return;
+    }
+
+    if (dense->Holder() && dense->meta().is_contiguous()) {
+      TORCH_CHECK(holder != nullptr, "Holder must not be null.");
+      const auto required_bytes =
+          dense->numel() * static_cast<int64_t>(phi::SizeOf(dense->dtype())) +
+          static_cast<int64_t>(dense->meta().offset);
+      TORCH_CHECK(required_bytes <= static_cast<int64_t>(holder->size()),
+                  "The size of Holder is not enough to store the Tensor.");
+    }
+    const_cast<std::shared_ptr<phi::Allocation>&>(dense->Holder()) = holder;
+  }
 
   void InitStorage() { SyncStorageFromTensor(); }
 

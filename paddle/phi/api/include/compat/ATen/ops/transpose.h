@@ -16,46 +16,54 @@
 
 #include <ATen/core/Tensor.h>
 #include <c10/core/TensorOptions.h>
+#include <limits>
 #include <optional>
 #include <string_view>
+#include <vector>
 
 #include "paddle/phi/api/include/api.h"
 
-namespace at {
+namespace at::detail {
 
-inline at::Tensor transpose(const at::Tensor& self,
-                            const at::Scalar& dim0,
-                            const at::Scalar& dim1) {
-  int d0 = dim0.to<int>();
-  int d1 = dim1.to<int>();
-  int64_t ndim = self.dim();
+inline int _PD_normalize_transpose_dim(int64_t dim,
+                                       int64_t ndim,
+                                       const char* name) {
+  int64_t normalized = dim;
+  if (normalized < 0) {
+    normalized += ndim;
+  }
 
-  if (d0 < 0) d0 += ndim;
-  if (d1 < 0) d1 += ndim;
+  PD_CHECK(normalized >= 0 && normalized < ndim, name, " out of range");
+  PD_CHECK(normalized <= static_cast<int64_t>(std::numeric_limits<int>::max()),
+           name,
+           " out of int range");
+  return static_cast<int>(normalized);
+}
 
-  PD_CHECK(d0 >= 0 && d0 < ndim, "dim0 out of range");
-  PD_CHECK(d1 >= 0 && d1 < ndim, "dim1 out of range");
+inline std::vector<int> _PD_make_transpose_perm(int64_t ndim, int d0, int d1) {
+  PD_CHECK(ndim <= static_cast<int64_t>(std::numeric_limits<int>::max()),
+           "tensor rank out of int range");
 
-  std::vector<int> perm(ndim);
-  for (int i = 0; i < ndim; ++i) {
-    perm[i] = i;
+  std::vector<int> perm(static_cast<size_t>(ndim));
+  for (int64_t i = 0; i < ndim; ++i) {
+    perm[static_cast<size_t>(i)] = static_cast<int>(i);
   }
   std::swap(perm[d0], perm[d1]);
-
-  return paddle::experimental::transpose(self._PD_GetInner(), perm);
+  return perm;
 }
+
+}  // namespace at::detail
+
+namespace at {
 
 inline at::Tensor transpose(const at::Tensor& self,
                             int64_t dim0,
                             int64_t dim1) {
   int64_t ndim = self.dim();
-  if (dim0 < 0) dim0 += ndim;
-  if (dim1 < 0) dim1 += ndim;
-  std::vector<int> perm(self.dim());
-  for (size_t i = 0; i < perm.size(); i++) {
-    perm[i] = static_cast<int>(i);
-  }
-  std::swap(perm[dim0], perm[dim1]);
+  int d0 = at::detail::_PD_normalize_transpose_dim(dim0, ndim, "dim0");
+  int d1 = at::detail::_PD_normalize_transpose_dim(dim1, ndim, "dim1");
+  auto perm = at::detail::_PD_make_transpose_perm(ndim, d0, d1);
+
   return paddle::experimental::transpose(self._PD_GetInner(), perm);
 }
 
@@ -69,13 +77,9 @@ inline at::Tensor Tensor::transpose(int64_t dim0, int64_t dim1) const {
 
 inline at::Tensor& Tensor::transpose_(int64_t dim0, int64_t dim1) const {
   int64_t ndim = this->dim();
-  if (dim0 < 0) dim0 += ndim;
-  if (dim1 < 0) dim1 += ndim;
-  std::vector<int> perm(this->dim());
-  for (size_t i = 0; i < perm.size(); i++) {
-    perm[i] = static_cast<int>(i);
-  }
-  std::swap(perm[dim0], perm[dim1]);
+  int d0 = at::detail::_PD_normalize_transpose_dim(dim0, ndim, "dim0");
+  int d1 = at::detail::_PD_normalize_transpose_dim(dim1, ndim, "dim1");
+  auto perm = at::detail::_PD_make_transpose_perm(ndim, d0, d1);
   PaddleTensor& inner = const_cast<PaddleTensor&>(tensor_);
   paddle::experimental::transpose_(inner, perm);
   return const_cast<at::Tensor&>(*this);

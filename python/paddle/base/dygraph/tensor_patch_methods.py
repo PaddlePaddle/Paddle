@@ -18,7 +18,7 @@ import copy
 import hashlib
 import inspect
 import warnings
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
@@ -26,14 +26,11 @@ from typing_extensions import overload
 
 import paddle
 from paddle import _C_ops, profiler
-from paddle.base.data_feeder import (
-    _PADDLE_DTYPE_2_NUMPY_DTYPE,
-    convert_uint16_to_float,
-)
+from paddle.base.data_feeder import convert_uint16_to_float, vartype_to_str
 from paddle.base.libpaddle import Place
 from paddle.profiler.utils import in_profiler_mode
 from paddle.utils import deprecated
-from paddle.utils.decorator_utils import tensor_cuda_decorator
+from paddle.utils.decorator_utils import param_one_alias, tensor_cuda_decorator
 from paddle.utils.dlpack import DLDeviceType
 from paddle.utils.download import check_and_create_dir
 
@@ -42,12 +39,13 @@ from ..framework import (
     EagerParamBase,
     Parameter,
     Variable,
-    convert_np_dtype_to_dtype_,
+    convert_nptype_to_datatype_or_vartype,
 )
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_tensor
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from enum import IntEnum
 
     from typing_extensions import CapsuleType
@@ -128,7 +126,9 @@ def monkey_patch_tensor():
         attr_not_need_keys = [
             'grad',
             'T',
+            'H',
             'mT',
+            'mH',
             'place',
             '_place_str',
             'data',
@@ -241,9 +241,9 @@ def monkey_patch_tensor():
             if isinstance(value, paddle.Tensor):
                 dtype = value.dtype
             elif paddle.framework.use_pir_api():
-                dtype = paddle.pir.core.convert_np_dtype_to_dtype_(value.dtype)
+                dtype = paddle.pir.core.convert_nptype_to_datatype(value.dtype)
             else:
-                dtype = convert_np_dtype_to_dtype_(value.dtype)
+                dtype = convert_nptype_to_datatype_or_vartype(value.dtype)
 
             assert self.dtype == dtype, (
                 f"Variable dtype not match, Variable [ {self.name} ] need tensor with dtype {self.dtype}  but load tensor with dtype {dtype}"
@@ -287,10 +287,12 @@ def monkey_patch_tensor():
                 )
 
     @framework.dygraph_only
+    @param_one_alias(["grad_tensor", "gradient"])
     def backward(
         self: Tensor,
         grad_tensor: Tensor | None = None,
         retain_graph: bool = False,
+        create_graph: bool = False,
         *,
         dump_backward_graph_path: str | None = None,
     ) -> None:
@@ -371,7 +373,11 @@ def monkey_patch_tensor():
                 self = _grad_scalar.scale(self)
             check_and_create_dir(dump_backward_graph_path)
             core.eager.run_backward(
-                [self], grad_tensor, retain_graph, dump_backward_graph_path
+                [self],
+                grad_tensor,
+                retain_graph,
+                create_graph,
+                dump_backward_graph_path,
             )
 
             if in_profiler_mode():
@@ -671,8 +677,8 @@ def monkey_patch_tensor():
                 not is_cuda_place(device)
                 or t.place.gpu_device_id() != get_device_id(device)
             ):
-                proto_dtype = framework.convert_to_proto_type(dtype)
-                size_dtype = core.size_of_dtype(proto_dtype)
+                var_dtype = framework.convert_to_vartype(dtype)
+                size_dtype = core.size_of_dtype(var_dtype)
                 # Note(weilong wu): Paddle GPU minimum memory allocation unit is 256 bytes,
                 # waiting_alloc_memory will compute the memory space occupied by 't'.
                 # Coefficient 1.2 is used to avoid OOM that may occur in this critical state when the memory is just enough.
@@ -721,36 +727,74 @@ def monkey_patch_tensor():
     @overload
     def to(
         self: Tensor,
-        device: PlaceLike,
+        device: PlaceLike | None = ...,
         dtype: DTypeLike | None = ...,
-        blocking: bool | None = ...,
+        blocking: bool = ...,
+        copy: bool = ...,
+        *,
+        non_blocking: bool = ...,
     ) -> Tensor: ...
 
     @overload
     def to(
-        self: Tensor, dtype: DTypeLike, blocking: bool | None = ...
+        self: Tensor,
+        dtype: DTypeLike,
+        blocking: bool = ...,
+        copy: bool = ...,
+        *,
+        non_blocking: bool = ...,
     ) -> Tensor: ...
 
     @overload
     def to(
-        self: Tensor, other: Tensor, blocking: bool | None = ...
+        self: Tensor,
+        other: Tensor,
+        blocking: bool = ...,
+        copy: bool = ...,
+        *,
+        non_blocking: bool = ...,
     ) -> Tensor: ...
 
     @framework.dygraph_only
     def to(self: Tensor, *args, **kwargs):
         """
         Performs Tensor dtype and/or device conversion. A paddle.dtype and place
-        are inferred from the arguments of ``self.to(*args, **kwargs)``.There are
-        three ways to call `to`:
+        are inferred from the arguments of ``self.to(*args, **kwargs)``.
 
-            1. to(dtype, blocking=True)
-            2. to(device, dtype=None, blocking=True)
-            3. to(other, blocking=True)
+        This API has three calling conventions:
 
-        **Notes**:
-            **If the self Tensor already has the correct dtype and device,
-            then self is returned. Otherwise, the returned tensor is a copy of self with
-            the desired dtype and device.**
+        1. ``to(device=None, dtype=None, blocking=True, copy=False, *, non_blocking=False)``:
+            Moves and/or casts the Tensor.
+
+        2. ``to(dtype, blocking=True, copy=False, *, non_blocking=False)``:
+            Equivalent to ``self.to(device=None, dtype=dtype, ...)``.
+
+        3. ``to(other, blocking=True, copy=False, *, non_blocking=False)``:
+            Equivalent to ``self.to(device=other.place, dtype=other.dtype, ...)``.
+
+        .. note::
+            If the self Tensor already has the correct dtype and device,
+            then self is returned. Otherwise, the returned tensor is a copy of
+            self with the desired dtype and device.
+
+        Args:
+            device (str|paddle.CPUPlace()|paddle.CUDAPlace()|paddle.CUDAPinnedPlace()|paddle.XPUPlace()|None, optional):
+                The device to move to. Default: ``None``.
+            dtype (str|numpy.dtype|paddle.dtype|None, optional):
+                The desired data type. Default: ``None``.
+            blocking (bool, optional):
+                If ``False`` and the source is in pinned memory, the copy will be
+                asynchronous with respect to the host. Default: ``True``.
+            copy (bool, optional):
+                If ``True``, a new Tensor is created even when the Tensor
+                already matches the desired conversion. Default: ``False``.
+
+        Keyword args:
+            non_blocking (bool, optional):
+                If ``True`` and the source is in pinned memory, the copy will be
+                asynchronous with respect to the host. Default: ``False``.
+                ``non_blocking`` and ``blocking`` are mutually exclusive
+                and cannot both be set at the same time.
 
         Returns:
             Tensor: self
@@ -786,95 +830,9 @@ def monkey_patch_tensor():
                 Tensor(shape=[3], dtype=int16, place=Place(gpu:0), stop_gradient=True,
                     [4, 5, 6])
         """
-        device = None
-        dtype = None
-        blocking = None
+        from paddle.nn.layer.layers import _parse_to_args
 
-        if "non_blocking" in kwargs:
-            non_blocking = kwargs.pop("non_blocking")
-        else:
-            non_blocking = False
-
-        if "copy" in kwargs:
-            copy_tensor = kwargs.pop("copy")
-        else:
-            copy_tensor = False
-
-        size_args = len(args)
-        size_kwargs = len(kwargs)
-
-        def get_device_dtype_from_tensor(other):
-            if other is not None:
-                device = str(other.place)[6:-1]
-                dtype = other.dtype
-                return device, dtype
-            else:
-                return None, None
-
-        if size_args + size_kwargs > 3 or size_args + size_kwargs == 0:
-            raise TypeError(
-                "to() received too many arguments - expected one of:\n  \
-                * (Union[str, paddle.CPUPlace(), paddle.CUDAPlace(), paddle.CUDAPinnedPlace(), paddle.XPUPlace(), paddle.CustomPlace()] \
-                device, Union[str, paddle.dtype, numpy.dtype] dtype, bool blocking)\n \
-                * (Union[str, paddle.dtype, numpy.dtype] dtype, bool blocking)\n \
-                * (paddle.Tensor other, bool blocking) "
-            )
-        valid_keys = {"device", "dtype", "blocking", "other"}
-        valid_dtypes = [
-            "bfloat16",
-            "float16",
-            "float32",
-            "float64",
-            "int8",
-            "int16",
-            "int32",
-            "int64",
-            "uint8",
-            "complex64",
-            "complex128",
-            "bool",
-        ]
-        invalid_keys = set(kwargs.keys()) - valid_keys
-        if len(invalid_keys) != 0:
-            raise TypeError(
-                "to() got an unexpected keyword argument "
-                + next(iter(invalid_keys))
-            )
-        if size_args > 0:
-            if isinstance(args[0], paddle.Tensor):
-                device, dtype = get_device_dtype_from_tensor(args[0])
-                if size_args == 2:
-                    blocking = args[1]
-                else:
-                    blocking = kwargs.get("blocking", None)
-            elif (
-                isinstance(args[0], (paddle.dtype, np.dtype))
-                or isinstance(args[0], str)
-                and args[0].lower() in valid_dtypes
-            ):
-                dtype = args[0]
-                if size_args == 2:
-                    blocking = args[1]
-                else:
-                    blocking = kwargs.get("blocking", None)
-            else:
-                device = args[0]
-                if size_args == 2:
-                    dtype = args[1]
-                elif size_args == 3:
-                    dtype, blocking = args[1], args[2]
-                else:
-                    dtype = kwargs.get("dtype", None)
-                    blocking = kwargs.get("blocking", None)
-        else:
-            device = kwargs.get("device", None)
-            dtype = kwargs.get("dtype", None)
-            blocking = kwargs.get("blocking", None)
-            if device is None and dtype is None:
-                device, dtype = get_device_dtype_from_tensor(
-                    kwargs.get("other", None)
-                )
-        blocking = False if not blocking or non_blocking else True
+        device, dtype, blocking, copy_tensor = _parse_to_args(*args, **kwargs)
         return self._to(device, dtype, blocking, copy_tensor)
 
     def clear_grad(self: Tensor) -> None:
@@ -1161,23 +1119,42 @@ def monkey_patch_tensor():
 
     @overload
     def cuda(
-        self: Tensor, device_id: DeviceLike = None, blocking: bool = True
+        self: Tensor,
+        device_id: Place | int | None = None,
+        blocking: bool = True,
     ) -> Tensor: ...
 
     @overload
     def cuda(
         self: Tensor,
-        device: DeviceLike = None,
+        device: str,
         non_blocking: bool = False,
     ) -> Tensor: ...
 
     @framework.dygraph_only
-    @tensor_cuda_decorator()
+    @tensor_cuda_decorator
     def cuda(
         self: Tensor,
         device_id: DeviceLike = None,
         blocking: bool = True,
     ) -> Tensor:
+        """
+        This API has two signatures:
+
+        1. ``paddle.Tensor.cuda(self, device_id=None, blocking=True)`` (Paddle-style):
+            Returns a copy of the current tensor on the specified device.
+
+        2. ``paddle.Tensor.cuda(self, device, *, non_blocking=False)`` (PyTorch-style):
+            Returns a copy of the current tensor on the specified device.
+
+        Args:
+            device_id (paddle.core.Place|int|str|None, optional): The destination place. Defaults to current expected place.
+                Alias: ``device``.
+            blocking (bool, optional): If ``True`` the copy will be asynchronous. Defaults to ``True``.
+
+        Returns:
+            Tensor: The copy of the current tensor on the specified device.
+        """
         device_type = paddle.device.get_all_device_type()
         if len(
             device_type
@@ -1225,11 +1202,41 @@ def monkey_patch_tensor():
 
     @property
     def is_cuda(self: Tensor) -> bool:
+        """
+        Is ``True`` if the Tensor is stored on the GPU, ``False`` otherwise.
+
+        Returns:
+            bool: ``True`` if the Tensor is stored on the GPU.
+        """
         return self.place.is_gpu_place()
 
     @property
     def is_cpu(self: Tensor) -> bool:
+        """
+        Is ``True`` if the Tensor is stored on the CPU, ``False`` otherwise.
+
+        Returns:
+            bool: ``True`` if the Tensor is stored on the CPU.
+        """
         return self.place.is_cpu_place()
+
+    @framework.dygraph_only
+    def col_indices(self: Tensor) -> Tensor:
+        """
+        Returns the column indices of a SparseCsrTensor.
+
+        Alias for cols() method.
+        """
+        return self.cols()
+
+    @framework.dygraph_only
+    def crow_indices(self: Tensor) -> Tensor:
+        """
+        Returns the compressed row indices of a SparseCsrTensor.
+
+        Alias for crows() method.
+        """
+        return self.crows()
 
     @framework.dygraph_only
     def pin_memory(self: Tensor, blocking: bool = True) -> Tensor:
@@ -1335,6 +1342,20 @@ def monkey_patch_tensor():
             return self
 
         return _C_ops.sparse_to_sparse_coo(self, sparse_dim)
+
+    @framework.dygraph_only
+    def to_sparse(self: Tensor, sparse_dim: int | None = None) -> Tensor:
+        """
+        Convert the tensor to sparse COO format.
+
+        Args:
+            sparse_dim: Number of sparse dimensions. If None, uses the tensor's rank.
+
+        See to_sparse_coo for details.
+        """
+        if sparse_dim is None:
+            sparse_dim = len(self.shape)
+        return self.to_sparse_coo(sparse_dim)
 
     @framework.dygraph_only
     def _md5sum(self: Tensor) -> str:
@@ -1746,6 +1767,7 @@ def monkey_patch_tensor():
         ("values", values),
         ("to_dense", to_dense),
         ("to_sparse_coo", to_sparse_coo),
+        ("to_sparse", to_sparse),
         ("coalesce", coalesce),
         ("sparse_mask", sparse_mask),
         ("_set_grad_ivar", _set_grad_ivar),
@@ -1770,6 +1792,8 @@ def monkey_patch_tensor():
         # For TVM FFI 0.1.5+
         ("__dlpack_c_exchange_api__", core.dlpack_exchange_api_pycapsule()),
         ("device", device),
+        ("col_indices", col_indices),
+        ("crow_indices", crow_indices),
     ):
         setattr(core.eager.Tensor, method_name, method)
 
@@ -1781,9 +1805,9 @@ def monkey_patch_tensor():
         origin = core.VarDesc.VarType.__str__
 
         def dtype_str(dtype):
-            if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
-                numpy_dtype = _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
-                if numpy_dtype == 'uint16':
+            if dtype in vartype_to_str:
+                numpy_dtype = vartype_to_str[dtype]
+                if dtype == core.VarDesc.VarType.BF16:
                     numpy_dtype = 'bfloat16'
                 prefix = 'paddle.'
                 return prefix + numpy_dtype

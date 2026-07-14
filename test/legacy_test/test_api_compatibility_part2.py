@@ -19,6 +19,125 @@ import numpy as np
 import paddle
 
 
+# Test flex_attention mask helpers compatibility
+class TestFlexAttentionMasksAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_b = np.array([[0, 1, 0], [1, 0, 1]], dtype='int64')
+        self.np_h = np.array([[0, 1, 1], [0, 0, 1]], dtype='int64')
+        self.np_q_idx = np.array([[0, 2, 4], [3, 5, 7]], dtype='int64')
+        self.np_kv_idx = np.array([[1, 2, 3], [4, 4, 8]], dtype='int64')
+        self.ref_ge = self.np_q_idx >= self.np_kv_idx
+        self.ref_h_zero = self.np_h == 0
+
+    def mask_q_ge_kv(self, b, h, q_idx, kv_idx):
+        return q_idx >= kv_idx
+
+    def mask_h_zero(self, b, h, q_idx, kv_idx):
+        return h == 0
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        b = paddle.to_tensor(self.np_b)
+        h = paddle.to_tensor(self.np_h)
+        q_idx = paddle.to_tensor(self.np_q_idx)
+        kv_idx = paddle.to_tensor(self.np_kv_idx)
+
+        # 1. PyTorch positional arguments
+        out1 = paddle.nn.attention.flex_attention.or_masks(
+            self.mask_q_ge_kv, self.mask_h_zero
+        )(b, h, q_idx, kv_idx)
+        out2 = paddle.nn.attention.flex_attention.and_masks(
+            self.mask_q_ge_kv, self.mask_h_zero
+        )(b, h, q_idx, kv_idx)
+        out3 = paddle.nn.attention.flex_attention.or_masks(self.mask_q_ge_kv)(
+            b, h, q_idx, kv_idx
+        )
+        out4 = paddle.nn.attention.flex_attention.and_masks(self.mask_h_zero)(
+            b, h, q_idx, kv_idx
+        )
+        out5 = paddle.nn.attention.flex_attention.or_masks()(
+            b, h, q_idx, kv_idx
+        )
+        out6 = paddle.nn.attention.flex_attention.and_masks()(
+            b, h, q_idx, kv_idx
+        )
+
+        refs = [
+            np.logical_or(self.ref_ge, self.ref_h_zero),
+            np.logical_and(self.ref_ge, self.ref_h_zero),
+            self.ref_ge,
+            self.ref_h_zero,
+            np.array(False),
+            np.array(True),
+        ]
+        for out, ref in zip([out1, out2, out3, out4, out5, out6], refs):
+            np.testing.assert_array_equal(out.numpy(), ref)
+
+        with self.assertRaises(RuntimeError):
+            paddle.nn.attention.flex_attention.or_masks(self.mask_q_ge_kv, 1)
+        with self.assertRaises(RuntimeError):
+            paddle.nn.attention.flex_attention.and_masks(1, self.mask_h_zero)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            b = paddle.static.data(name="b", shape=[2, 3], dtype='int64')
+            h = paddle.static.data(name="h", shape=[2, 3], dtype='int64')
+            q_idx = paddle.static.data(
+                name="q_idx", shape=[2, 3], dtype='int64'
+            )
+            kv_idx = paddle.static.data(
+                name="kv_idx", shape=[2, 3], dtype='int64'
+            )
+
+            # 1. PyTorch positional arguments
+            out1 = paddle.nn.attention.flex_attention.or_masks(
+                self.mask_q_ge_kv, self.mask_h_zero
+            )(b, h, q_idx, kv_idx)
+            out2 = paddle.nn.attention.flex_attention.and_masks(
+                self.mask_q_ge_kv, self.mask_h_zero
+            )(b, h, q_idx, kv_idx)
+            out3 = paddle.nn.attention.flex_attention.or_masks(
+                self.mask_q_ge_kv
+            )(b, h, q_idx, kv_idx)
+            out4 = paddle.nn.attention.flex_attention.and_masks(
+                self.mask_h_zero
+            )(b, h, q_idx, kv_idx)
+            out5 = paddle.nn.attention.flex_attention.or_masks()(
+                b, h, q_idx, kv_idx
+            )
+            out6 = paddle.nn.attention.flex_attention.and_masks()(
+                b, h, q_idx, kv_idx
+            )
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={
+                    "b": self.np_b,
+                    "h": self.np_h,
+                    "q_idx": self.np_q_idx,
+                    "kv_idx": self.np_kv_idx,
+                },
+                fetch_list=[out1, out2, out3, out4, out5, out6],
+            )
+
+            refs = [
+                np.logical_or(self.ref_ge, self.ref_h_zero),
+                np.logical_and(self.ref_ge, self.ref_h_zero),
+                self.ref_ge,
+                self.ref_h_zero,
+                np.array(False),
+                np.array(True),
+            ]
+            for out, ref in zip(fetches, refs):
+                np.testing.assert_array_equal(out, ref)
+
+
 # Test block_diag compatibility
 class TestBlockDiagAPI(unittest.TestCase):
     def setUp(self):
@@ -531,6 +650,85 @@ class TestCrossAPI(unittest.TestCase):
             ref_out = np.cross(self.np_x, self.np_y, axisa=1, axisb=1, axisc=1)
             for out in fetches:
                 np.testing.assert_allclose(out, ref_out, rtol=1e-5)
+
+
+class TestLinalgCrossAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        # Shape [3, 2, 3] ensures default dim=-1 (last dim=2) is distinct from auto-axis (first len-3 dim=0)
+        # Both dim 0 and dim 2 have size 3, so cross is valid on both
+        self.np_x = np.random.rand(3, 2, 3).astype('float32')
+        self.np_y = np.random.rand(3, 2, 3).astype('float32')
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        y = paddle.to_tensor(self.np_y)
+
+        # 1. linalg.cross with default dim=-1
+        out1 = paddle.linalg.cross(x, y)
+        # 2. linalg.cross with explicit dim=-1
+        out2 = paddle.linalg.cross(x, y, dim=-1)
+        # 3. linalg.cross using input/other/dim PyTorch-style keywords, dim=2
+        out3 = paddle.linalg.cross(input=x, other=y, dim=2)
+        # 4. Mixed arguments
+        out4 = paddle.linalg.cross(x, other=y, dim=0)
+
+        # Verify default is equivalent to dim=-1
+        ref_out_neg1 = np.cross(
+            self.np_x, self.np_y, axisa=-1, axisb=-1, axisc=-1
+        )
+        np.testing.assert_allclose(out1.numpy(), ref_out_neg1, rtol=1e-5)
+        np.testing.assert_allclose(out2.numpy(), ref_out_neg1, rtol=1e-5)
+
+        # Verify dim=2 is same as dim=-1 (last dim)
+        np.testing.assert_allclose(out3.numpy(), ref_out_neg1, rtol=1e-5)
+
+        # Verify dim=0 gives different result
+        ref_out_0 = np.cross(self.np_x, self.np_y, axisa=0, axisb=0, axisc=0)
+        np.testing.assert_allclose(out4.numpy(), ref_out_0, rtol=1e-5)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[3, 2, 3], dtype='float32')
+            y = paddle.static.data(name="y", shape=[3, 2, 3], dtype='float32')
+
+            # 1. linalg.cross with default dim=-1
+            out1 = paddle.linalg.cross(x, y)
+            # 2. linalg.cross with explicit dim=0
+            out2 = paddle.linalg.cross(x, y, dim=0)
+            # 3. linalg.cross using input/other/dim keywords with dim=2
+            out3 = paddle.linalg.cross(input=x, other=y, dim=2)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x, "y": self.np_y},
+                fetch_list=[out1, out2, out3],
+            )
+
+            # Verify default is equivalent to dim=-1
+            ref_out_neg1 = np.cross(
+                self.np_x, self.np_y, axisa=-1, axisb=-1, axisc=-1
+            )
+            np.testing.assert_allclose(fetches[0], ref_out_neg1, rtol=1e-5)
+
+            # Verify dim=0
+            ref_out_0 = np.cross(
+                self.np_x, self.np_y, axisa=0, axisb=0, axisc=0
+            )
+            np.testing.assert_allclose(fetches[1], ref_out_0, rtol=1e-5)
+
+            # Verify dim=2
+            ref_out_2 = np.cross(
+                self.np_x, self.np_y, axisa=2, axisb=2, axisc=2
+            )
+            np.testing.assert_allclose(fetches[2], ref_out_2, rtol=1e-5)
 
 
 # Test dist compatibility
@@ -2610,6 +2808,422 @@ class TestTopkAPI(unittest.TestCase):
             for i in range(0, len(fetches), 2):
                 np.testing.assert_array_equal(fetches[i], ref_values)
                 np.testing.assert_array_equal(fetches[i + 1], ref_indices)
+
+
+# Test nansum compatibility
+class TestNansumAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array(
+            [[float('nan'), 0.3, 0.5, 0.9], [0.1, 0.2, float('-nan'), 0.7]]
+        ).astype('float32')
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        ref_value = np.nansum(x, axis=1, keepdims=True)
+
+        # 1. Paddle positional arguments
+        out1 = paddle.nansum(x, 1, None, True)
+        # 2. Paddle keyword arguments
+        out2 = paddle.nansum(x=x, axis=1, keepdim=True)
+        # 3. PyTorch positional arguments
+        out3 = paddle.nansum(x, 1, True)
+        # 4. PyTorch keyword arguments
+        out4 = paddle.nansum(input=x, dim=1, keepdim=True)
+        # 5. Mixed arguments & out parameter
+        out5 = paddle.empty([])
+        out6 = paddle.nansum(input=x, axis=1, keepdim=True, out=out5)
+        # 7. Class method positional arguments
+        out7 = x.nansum(1, None, True)
+        # 8. Class method keyword arguments
+        out8 = x.nansum(axis=1, keepdim=True)
+
+        for out in [out1, out2, out3, out4, out5, out6, out7, out8]:
+            np.testing.assert_array_equal(out.numpy(), ref_value)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        ref_value = np.nansum(self.np_x, axis=1, keepdims=True)
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[2, 4], dtype='float32')
+
+            # 1. Paddle positional arguments
+            out1 = paddle.nansum(x, 1, None, True)
+            # 2. Paddle keyword arguments
+            out2 = paddle.nansum(x=x, axis=1, keepdim=True)
+            # 3. PyTorch positional arguments
+            out3 = paddle.nansum(x, 1, True)
+            # 4. PyTorch keyword arguments
+            out4 = paddle.nansum(input=x, dim=1, keepdim=True)
+            # 5. Mixed arguments
+            out5 = paddle.nansum(input=x, axis=1, keepdim=True)
+            # 6. Class method positional arguments
+            out6 = x.nansum(1, None, True)
+            # 7. Class method keyword arguments
+            out7 = x.nansum(axis=1, keepdim=True)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[
+                    out1,
+                    out2,
+                    out3,
+                    out4,
+                    out5,
+                    out6,
+                    out7,
+                ],
+            )
+            for i in range(0, len(fetches)):
+                np.testing.assert_array_equal(fetches[i], ref_value)
+
+    def test_nansum_compat_decorator_raise(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        with self.assertRaises(ValueError):
+            out1 = paddle.nansum(x=x, input=x)
+        with self.assertRaises(ValueError):
+            out2 = paddle.nansum(x, dim=1, axis=1)
+        paddle.enable_static()
+
+
+class TestHardswishAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array(
+            [[-4.0, -3.0, -1.5], [0.0, 2.5, 5.0]], dtype="float32"
+        )
+
+    def _expected(self):
+        return (
+            self.np_x * np.minimum(np.maximum(self.np_x + 3.0, 0.0), 6.0) / 6.0
+        )
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle keyword arguments
+        out1 = paddle.nn.Hardswish(name="hard_name")(x)
+        # 2. PyTorch Positional arguments
+        out2 = paddle.nn.Hardswish(False)(x)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.nn.Hardswish(inplace=False)(input=x)
+        # 4. Mixed arguments
+        out4 = paddle.nn.Hardswish(False, name="hard_name")(x)
+        # 5. Functional Paddle positional arguments
+        out5 = paddle.nn.functional.hardswish(x)
+        # 6. Functional Paddle keyword arguments
+        out6 = paddle.nn.functional.hardswish(x=x, name="hard_func")
+        # 7. Functional PyTorch keyword arguments (alias)
+        out7 = paddle.nn.functional.hardswish(input=x, inplace=False)
+
+        self.assertEqual(
+            paddle.nn.Hardswish(True, name="hard_name").extra_repr(),
+            "inplace=True, name=hard_name",
+        )
+        expected = self._expected()
+        for out in [out1, out2, out3, out4, out5, out6, out7]:
+            np.testing.assert_allclose(out.numpy(), expected, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_inplace(self):
+        paddle.disable_static()
+        expected = self._expected()
+
+        x = paddle.to_tensor(self.np_x)
+        out = paddle.nn.Hardswish(inplace=True)(x)
+        self.assertIs(out, x)
+        np.testing.assert_allclose(x.numpy(), expected, rtol=1e-6)
+
+        x = paddle.to_tensor(self.np_x)
+        out = paddle.nn.functional.hardswish(x, inplace=True)
+        self.assertIs(out, x)
+        np.testing.assert_allclose(x.numpy(), expected, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=self.np_x.shape, dtype=str(self.np_x.dtype)
+            )
+
+            # 1. Paddle keyword arguments
+            out1 = paddle.nn.Hardswish(name="hard_name")(x)
+            # 2. PyTorch Positional arguments
+            out2 = paddle.nn.Hardswish(False)(x)
+            # 3. PyTorch keyword arguments (alias)
+            out3 = paddle.nn.Hardswish(inplace=False)(input=x)
+            # 4. Functional Paddle positional arguments
+            out4 = paddle.nn.functional.hardswish(x)
+            # 5. Functional Paddle keyword arguments
+            out5 = paddle.nn.functional.hardswish(x=x, name="hard_func")
+            # 6. Functional PyTorch keyword arguments (alias)
+            out6 = paddle.nn.functional.hardswish(input=x, inplace=False)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3, out4, out5, out6],
+            )
+
+            expected = self._expected()
+            for out in fetches:
+                np.testing.assert_allclose(out, expected, rtol=1e-6)
+
+
+class TestReLU6API(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array(
+            [[-2.0, 0.0, 0.5], [5.0, 6.0, 7.5]], dtype="float32"
+        )
+
+    def _expected(self):
+        return np.minimum(np.maximum(self.np_x, 0.0), 6.0)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle keyword arguments
+        out1 = paddle.nn.ReLU6(name="relu_name")(x)
+        # 2. PyTorch Positional arguments
+        out2 = paddle.nn.ReLU6(False)(x)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.nn.ReLU6(inplace=False)(input=x)
+        # 4. Mixed arguments
+        out4 = paddle.nn.ReLU6(False, name="relu_name")(x)
+        # 5. Functional Paddle positional arguments
+        out5 = paddle.nn.functional.relu6(x)
+        # 6. Functional Paddle keyword arguments
+        out6 = paddle.nn.functional.relu6(x=x, name="relu_func")
+        # 7. Functional PyTorch keyword arguments (alias)
+        out7 = paddle.nn.functional.relu6(input=x, inplace=False)
+
+        self.assertEqual(
+            paddle.nn.ReLU6(True, name="relu_name").extra_repr(),
+            "inplace=True, name=relu_name",
+        )
+        expected = self._expected()
+        for out in [out1, out2, out3, out4, out5, out6, out7]:
+            np.testing.assert_allclose(out.numpy(), expected, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_inplace(self):
+        paddle.disable_static()
+        expected = self._expected()
+
+        x = paddle.to_tensor(self.np_x)
+        out = paddle.nn.ReLU6(inplace=True)(x)
+        self.assertIs(out, x)
+        np.testing.assert_allclose(x.numpy(), expected, rtol=1e-6)
+
+        x = paddle.to_tensor(self.np_x)
+        out = paddle.nn.functional.relu6(x, inplace=True)
+        self.assertIs(out, x)
+        np.testing.assert_allclose(x.numpy(), expected, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=self.np_x.shape, dtype=str(self.np_x.dtype)
+            )
+
+            # 1. Paddle keyword arguments
+            out1 = paddle.nn.ReLU6(name="relu_name")(x)
+            # 2. PyTorch Positional arguments
+            out2 = paddle.nn.ReLU6(False)(x)
+            # 3. PyTorch keyword arguments (alias)
+            out3 = paddle.nn.ReLU6(inplace=False)(input=x)
+            # 4. Functional Paddle positional arguments
+            out4 = paddle.nn.functional.relu6(x)
+            # 5. Functional Paddle keyword arguments
+            out5 = paddle.nn.functional.relu6(x=x, name="relu_func")
+            # 6. Functional PyTorch keyword arguments (alias)
+            out6 = paddle.nn.functional.relu6(input=x, inplace=False)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3, out4, out5, out6],
+            )
+
+            expected = self._expected()
+            for out in fetches:
+                np.testing.assert_allclose(out, expected, rtol=1e-6)
+
+
+class TestELUAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array([-1.0, 0.0, 1.0, 2.0], dtype="float32")
+
+    def _expected(self):
+        return np.where(
+            self.np_x > 0, self.np_x, 1.0 * (np.exp(self.np_x) - 1.0)
+        )
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle keyword arguments
+        out1 = paddle.nn.ELU()(x)
+        # 2. PyTorch positional arguments
+        out2 = paddle.nn.ELU(1.0)(x)
+        # 3. PyTorch keyword arguments (alias)
+        out3 = paddle.nn.ELU(alpha=1.0)(input=x)
+        # 4. Mixed arguments
+        out4 = paddle.nn.ELU(alpha=1.0)(x)
+        # 5. Functional Paddle positional arguments
+        out5 = paddle.nn.functional.elu(x)
+        # 6. Functional Paddle keyword arguments
+        out6 = paddle.nn.functional.elu(x=x, alpha=1.0)
+        # 7. Functional PyTorch keyword arguments (alias)
+        out7 = paddle.nn.functional.elu(input=x, alpha=1.0)
+
+        expected = self._expected()
+        for out in [out1, out2, out3, out4, out5, out6, out7]:
+            np.testing.assert_allclose(out.numpy(), expected, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_dygraph_inplace(self):
+        paddle.disable_static()
+        expected = self._expected()
+
+        x = paddle.to_tensor(self.np_x)
+        out = paddle.nn.ELU(inplace=True)(x)
+        self.assertIs(out, x)
+        np.testing.assert_allclose(x.numpy(), expected, rtol=1e-6)
+
+        x = paddle.to_tensor(self.np_x)
+        out = paddle.nn.functional.elu(x, inplace=True)
+        self.assertIs(out, x)
+        np.testing.assert_allclose(x.numpy(), expected, rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=self.np_x.shape, dtype=str(self.np_x.dtype)
+            )
+
+            # 1. Paddle keyword arguments
+            out1 = paddle.nn.ELU()(x)
+            # 2. PyTorch keyword arguments (alias)
+            out2 = paddle.nn.ELU(alpha=1.0)(input=x)
+            # 3. Functional Paddle positional arguments
+            out3 = paddle.nn.functional.elu(x)
+            # 4. Functional PyTorch keyword arguments (alias)
+            out4 = paddle.nn.functional.elu(input=x, alpha=1.0)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3, out4],
+            )
+
+            expected = self._expected()
+            for out in fetches:
+                np.testing.assert_allclose(out, expected, rtol=1e-6)
+
+
+class TestPReLUAPI(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.array(
+            [[[[-2.0, 3.0], [4.0, -5.0]], [[1.0, -2.0], [-3.0, 4.0]]]],
+            dtype="float32",
+        )
+        self.np_x64 = self.np_x.astype("float64")
+
+    def _expected(self, x):
+        return np.where(x >= 0, x, 0.5 * x)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle Positional arguments
+        out1 = paddle.nn.PReLU(2, 0.5)(x)
+        # 2. Paddle keyword arguments
+        out2 = paddle.nn.PReLU(num_parameters=2, init=0.5)(x)
+        # 3. PyTorch keyword arguments
+        out3 = paddle.nn.PReLU(
+            num_parameters=2, init=0.5, device="cpu", dtype="float32"
+        )(input=x)
+        # 4. Mixed arguments
+        out4 = paddle.nn.PReLU(2, init=0.5, device="cpu", dtype="float32")(x)
+
+        expected = self._expected(self.np_x)
+        for out in [out1, out2, out3, out4]:
+            np.testing.assert_allclose(out.numpy(), expected, rtol=1e-6)
+
+        x64 = paddle.to_tensor(self.np_x64)
+        layer64 = paddle.nn.PReLU(2, 0.5, device="cpu", dtype="float64")
+        out5 = layer64(input=x64)
+        self.assertEqual(layer64._weight.dtype, paddle.float64)
+        np.testing.assert_allclose(
+            out5.numpy(), self._expected(self.np_x64), rtol=1e-6
+        )
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=self.np_x.shape, dtype=str(self.np_x.dtype)
+            )
+
+            # 1. Paddle Positional arguments
+            out1 = paddle.nn.PReLU(2, 0.5)(x)
+            # 2. Paddle keyword arguments
+            out2 = paddle.nn.PReLU(num_parameters=2, init=0.5)(x)
+            # 3. PyTorch keyword arguments
+            out3 = paddle.nn.PReLU(
+                num_parameters=2, init=0.5, device="cpu", dtype="float32"
+            )(input=x)
+            # 4. Mixed arguments
+            out4 = paddle.nn.PReLU(2, init=0.5, device="cpu", dtype="float32")(
+                x
+            )
+
+            exe = paddle.static.Executor()
+            exe.run(startup)
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3, out4],
+            )
+
+            expected = self._expected(self.np_x)
+            for out in fetches:
+                np.testing.assert_allclose(out, expected, rtol=1e-6)
 
 
 if __name__ == '__main__':

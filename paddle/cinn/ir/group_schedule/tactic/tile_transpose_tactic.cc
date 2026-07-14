@@ -37,9 +37,10 @@ namespace {
  *    loop (~32) for better performance, while transpose prefers a smaller inner
  *    loop (~4) to restrict the shared memory size.
  * 2) All transposes in the graph must have the same permutation, because the
- *    size of the shared memory we need is 32^(n+1), where n is the number of
- *    different permutations. More than one permutation makes it impossible to
- *    allocate such a huge space.
+ *    size of the shared memory we need is T^(n+1) where T is the tile size
+ *    (= warp_size, 32 for CUDA, 64 for some custom devices), and n is the
+ *    number of different permutations. More than one permutation makes it
+ *    impossible to allocate such a huge space.
  *
  *
  * How does this tactic work:
@@ -50,11 +51,12 @@ namespace {
  * The rest `...` are called high_axis, which may contain any permutation, and
  * can be transposed by simple index mapping without impacting performance.
  *
- * Second, we split both src_low_axis and dst_low_axis into {-1, 32}:
- *    src [ ..., d_h, d32, ... s_h, s32 ]
- *    dst [ ..., s_h, s32, ... d_h, d32 ]
+ * Second, we split both src_low_axis and dst_low_axis into {-1, T} where
+ * T = tile_size = warp_size (32 for CUDA, 64 for custom devices, etc.):
+ *    src [ ..., d_h, dT, ... s_h, sT ]
+ *    dst [ ..., s_h, sT, ... d_h, dT ]
  *
- * Third, we create a shared memory of shape [32, 32], and bind (s32, d32) to
+ * Third, we create a shared memory of shape [T, T], and bind (sT, dT) to
  * (thread.y, thread.x) to transpose them in the shared memory. The (s_h, d_h)
  * also become high_axis. We transpose high_axis using (block.y, block.x).
  *    src [ block.x, thread.y, block.y, thread.x ]
@@ -75,7 +77,8 @@ namespace {
  *
  * Notes:
  * 1) For simplicity, the high_axis are actually all bound to block.x.
- * 2) For performance, thread.y is actually composed of 4 loops * 8 threads.
+ * 2) For performance, thread.y is actually composed of (T/8) loops * 8
+ *    threads, where T = tile_size = warp_size.
  * 3) To support multiple transpose inputs, we actually store the transposed
  *    value to a local buffer before later computation, so that all inputs can
  *    reuse the same shared memory.
@@ -120,10 +123,21 @@ class TileTransposeTactic final : public ScheduleTactic {
   void FuseAndBind(ir::IRSchedule* sch,
                    const std::string& block_id,
                    bool need_sync = false);
+  bool ValidateTileAlignment(ir::IRSchedule* sch);
 
  private:
   ScheduleContext* context_;
   bool can_apply_;
+
+  // Parameterized tile configuration derived from warp_size.
+  // tile_size = warp_size (32 for CUDA, 64 for custom device, etc.)
+  // thread_x = tile_size (one warp/wavefront handles one row)
+  // thread_y = 8 (fixed, controls total thread count)
+  // inner_loop = tile_size / thread_y (serial loop to cover full tile row)
+  int tile_size_;
+  int thread_x_;
+  int thread_y_;
+  int inner_loop_;
 
   // The sub iter space apart from the main iter space.
   std::vector<int> sub_iter_space_;
@@ -342,6 +356,26 @@ void TileTransposeTactic::Init(ScheduleContext* context, ir::IRSchedule* sch) {
   can_apply_ = false;
   if (!FLAGS_cinn_enable_tile_transpose) return;
 
+  // Initialize parameterized tile configuration from warp_size.
+  // tile_size = warp_size: each tile is a tile_size x tile_size square.
+  // thread_x = tile_size: one warp/wavefront covers one full tile row.
+  // thread_y = 8: fixed, balancing thread count and inner loop depth.
+  // inner_loop = tile_size / thread_y: serial iterations per thread in y.
+  //
+  // Currently only warp_size 32 (CUDA) and 64 (some custom devices) are
+  // validated. Other values need dedicated analysis before enabling.
+  int64_t warp_size = context->config.tile_config.warp_size;
+  PADDLE_ENFORCE_EQ(
+      warp_size == 32 || warp_size == 64,
+      true,
+      ::common::errors::InvalidArgument(
+          "TileTransposeTactic only supports warp_size 32 or 64, but got %d.",
+          warp_size));
+  tile_size_ = static_cast<int>(warp_size);
+  thread_x_ = tile_size_;
+  thread_y_ = 8;
+  inner_loop_ = tile_size_ / thread_y_;
+
   ir::Expr module_root = sch->GetModule().GetExprs().front();
   ir::Expr root_block = ir::analyzer::GetRootSBlock(module_root);
   auto* root_node = root_block.As<ir::ScheduleBlockRealize>()
@@ -350,7 +384,9 @@ void TileTransposeTactic::Init(ScheduleContext* context, ir::IRSchedule* sch) {
   if (root_node->attrs.count(kTileMethod) > 0) return;
   if (!context->config.base_info->reduce_axis.empty()) return;
 
-  // There must be at least 8 warps (256 threads) to perform this tactic.
+  // The transpose tactic uses thread_y * thread_x threads per block,
+  // which equals tile_size * 8 = warp_size * 8, i.e. 8 warps/wavefronts.
+  // Require warp_num >= 8 to ensure sufficient parallelism.
   if (context->config.tile_config.warp_num < 8) return;
 
   InitUnconditionalLoads(sch);
@@ -363,6 +399,20 @@ void TileTransposeTactic::Init(ScheduleContext* context, ir::IRSchedule* sch) {
   root_node->attrs[kTileMethod] = TacticName();
 
   InitAxisInfo();
+
+  // For non-standard warp_size (e.g. 64), validate that both src_low and
+  // dst_low axis products are divisible by tile_size. If not, fall back to
+  // 32x32 tile which is universally safe — CINN's Split predicate mechanism
+  // handles non-32-aligned cases reliably on all backends.
+  // For warp_size == 32 (CUDA), skip this check to preserve original behavior.
+  if (tile_size_ > 32 && !ValidateTileAlignment(sch)) {
+    VLOG(4) << "TileTransposeTactic: dimensions not aligned to tile_size="
+            << tile_size_ << ", falling back to 32x32 tile";
+    tile_size_ = 32;
+    thread_x_ = 32;
+    thread_y_ = 8;
+    inner_loop_ = 4;
+  }
 }
 
 void TileTransposeTactic::InitUnconditionalLoads(ir::IRSchedule* sch) {
@@ -471,6 +521,27 @@ void TileTransposeTactic::InitAxisInfo() {
   high_axis_.assign(high_axis.begin(), high_axis.end());
 }
 
+bool TileTransposeTactic::ValidateTileAlignment(ir::IRSchedule* sch) {
+  for (auto& block : sch->GetAllBlocks()) {
+    std::vector<ir::Expr> loops = sch->GetLoops(block);
+    int64_t src_low_prod = GetLoopRangeProduct(loops, src_low_axis_);
+    int64_t dst_low_prod = GetLoopRangeProduct(loops, dst_low_axis_);
+
+    // Dynamic shape or non-divisible by tile_size → fall back to general tactic
+    if (src_low_prod <= 0 || dst_low_prod <= 0) {
+      VLOG(4) << "TileTransposeTactic: dynamic shape detected, skipping";
+      return false;
+    }
+    if (src_low_prod % tile_size_ != 0 || dst_low_prod % tile_size_ != 0) {
+      VLOG(4) << "TileTransposeTactic: src_low_prod=" << src_low_prod
+              << " dst_low_prod=" << dst_low_prod
+              << " not aligned to tile_size=" << tile_size_ << ", skipping";
+      return false;
+    }
+  }
+  return true;
+}
+
 std::vector<int> TileTransposeTactic::GetSrcLowAxis(
     const std::vector<int>& iter_space) {
   std::set<int> src_low_axis{iter_space.back()};
@@ -528,7 +599,11 @@ std::string TileTransposeTactic::CreateCacheBlock(
   ir::Expr cache_block = sch->CacheRead(block, buffer_index, memory_type);
 
   std::string transpose_stage = (memory_type == "shared") ? "write" : "read";
-  sch->Annotate(cache_block, "transpose_stage", transpose_stage);
+  // Encode tile_size into the annotation string to avoid two Annotate calls
+  // (the second Annotate would fail because the first one replaces the block
+  // via IRCopy, making the original cache_block Expr stale).
+  std::string annotation = transpose_stage + ":" + std::to_string(tile_size_);
+  sch->Annotate(cache_block, "transpose_stage", annotation);
 
   // Mark the cache block as a virtual output to prevent inlining. This doesn't
   // affect the actual outputs of the graph.
@@ -552,30 +627,19 @@ void TileTransposeTactic::TileCacheBlock(ir::IRSchedule* sch,
   CanonicalizeLayout(sch, local_cache_block_id);
 
   // Step 3. Do inner-block transpose.
+  //   shared_cache (write shm): src split by {-1, thread_x}, dst split by
+  //     {-1, inner_loop, thread_y}. After reorder and bind, the access pattern
+  //     is shm[threadIdx.x][inner_loop * thread_y + threadIdx.y].
+  //   local_cache (read shm, transposed): src split by
+  //     {-1, inner_loop, thread_y}, dst split by {-1, thread_x}. After reorder
+  //     and bind, the access pattern is
+  //     shm[inner_loop * thread_y + threadIdx.y][threadIdx.x].
   int offset = high_axis_.size();
-#ifdef CINN_WITH_CUSTOM_DEVICE
-  sch->Split(
-      shared_cache_block_id,
-      offset + 1,
-      {-1, static_cast<int>(context_->config.tile_config.warp_size / 8), 8});
-  sch->Split(shared_cache_block_id,
-             offset,
-             {-1, static_cast<int>(context_->config.tile_config.warp_size)});
+  sch->Split(shared_cache_block_id, offset + 1, {-1, inner_loop_, thread_y_});
+  sch->Split(shared_cache_block_id, offset, {-1, thread_x_});
 
-  sch->Split(local_cache_block_id,
-             offset + 1,
-             {-1, static_cast<int>(context_->config.tile_config.warp_size)});
-  sch->Split(
-      local_cache_block_id,
-      offset,
-      {-1, static_cast<int>(context_->config.tile_config.warp_size / 8), 8});
-#else  // CINN_WITH_CUDA
-  sch->Split(shared_cache_block_id, offset + 1, {-1, 4, 8});
-  sch->Split(shared_cache_block_id, offset, {-1, 32});
-
-  sch->Split(local_cache_block_id, offset + 1, {-1, 32});
-  sch->Split(local_cache_block_id, offset, {-1, 4, 8});
-#endif
+  sch->Split(local_cache_block_id, offset + 1, {-1, thread_x_});
+  sch->Split(local_cache_block_id, offset, {-1, inner_loop_, thread_y_});
 
   sch->Reorder(shared_cache_block_id, OffsetVec({0, 2, 3, 4, 1}, offset));
   sch->Reorder(local_cache_block_id, OffsetVec({0, 3, 1, 2, 4}, offset));
@@ -590,18 +654,8 @@ void TileTransposeTactic::TileBlock(ir::IRSchedule* sch,
   CanonicalizeLayout(sch, block_id);
 
   int offset = high_axis_.size();
-#ifdef CINN_WITH_CUSTOM_DEVICE
-  sch->Split(block_id,
-             offset + 1,
-             {-1, static_cast<int>(context_->config.tile_config.warp_size)});
-  sch->Split(
-      block_id,
-      offset,
-      {-1, static_cast<int>(context_->config.tile_config.warp_size / 8), 8});
-#else  // CINN_WITH_CUDA
-  sch->Split(block_id, offset + 1, {-1, 32});
-  sch->Split(block_id, offset, {-1, 4, 8});
-#endif
+  sch->Split(block_id, offset + 1, {-1, thread_x_});
+  sch->Split(block_id, offset, {-1, inner_loop_, thread_y_});
 
   sch->Reorder(block_id, OffsetVec({0, 3, 1, 2, 4}, offset));
 

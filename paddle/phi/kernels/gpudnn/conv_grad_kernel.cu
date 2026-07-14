@@ -132,9 +132,11 @@ void ConvCudnnGradKernelImplV7(
              &o_w);
   }
 
-  int group_offset_in = i_c / groups * i_h * i_w * i_d;
-  int group_offset_out = o_c / groups * o_h * o_w * o_d;
-  int group_offset_filter = transformed_filter_channel->numel() / groups;
+  int64_t group_offset_in =
+      static_cast<int64_t>(i_c) / groups * i_h * i_w * i_d;
+  int64_t group_offset_out =
+      static_cast<int64_t>(o_c) / groups * o_h * o_w * o_d;
+  int64_t group_offset_filter = transformed_filter_channel->numel() / groups;
 
 // ------------------- cudnn backward algorithm ---------------------
 #ifdef PADDLE_WITH_HIP
@@ -1174,9 +1176,11 @@ void ConvCudnnGradGradKernel(const Context& dev_ctx,
            &o_h,
            &o_w);
 
-  int group_offset_in = i_c / groups * i_h * i_w * i_d;
-  int group_offset_out = o_c / groups * o_h * o_w * o_d;
-  int group_offset_filter = W->numel() / groups;
+  int64_t group_offset_in =
+      static_cast<int64_t>(i_c) / groups * i_h * i_w * i_d;
+  int64_t group_offset_out =
+      static_cast<int64_t>(o_c) / groups * o_h * o_w * o_d;
+  int64_t group_offset_filter = W->numel() / groups;
 
   ScalingParamType<T> alpha = 1.0f;
   ScalingParamType<T> beta = 0.0f;
@@ -1443,34 +1447,39 @@ PD_REGISTER_KERNEL(conv2d_grad,
                    ALL_LAYOUT,
                    phi::ConvCudnnGradKernel,
                    float,
-                   phi::float16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(conv3d_grad,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::Conv3DCudnnGradKernel,
                    float,
-                   phi::float16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 PD_REGISTER_KERNEL(conv2d_double_grad,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::ConvCudnnGradGradKernel,
                    float,
-                   phi::float16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(conv3d_double_grad,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::Conv3DCudnnDoubleGradKernel,
                    float,
-                   phi::float16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(depthwise_conv2d_double_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::DepthwiseConvDoubleGradGPUDNNKernel,
                    float,
-                   phi::float16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 #else
 #if CUDNN_VERSION_MIN(8, 1, 0)
 PD_REGISTER_KERNEL(conv2d_grad,

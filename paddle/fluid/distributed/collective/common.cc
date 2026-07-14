@@ -43,7 +43,7 @@ std::string GetKeyFromPlace(const Place& place) { return place.DebugString(); }
 
 bool CheckTensorsInCudaPlace(const std::vector<DenseTensor>& tensors) {
   return std::all_of(
-      tensors.cbegin(), tensors.cend(), [&](const phi::DenseTensor& t) {
+      tensors.cbegin(), tensors.cend(), [&](const DenseTensor& t) {
         return phi::is_gpu_place(t.place());
       });
 }
@@ -51,7 +51,7 @@ bool CheckTensorsInCudaPlace(const std::vector<DenseTensor>& tensors) {
 bool CheckTensorsInCustomPlace(const std::vector<DenseTensor>& tensors,
                                const std::string& dev_type) {
   return std::all_of(
-      tensors.cbegin(), tensors.cend(), [&](const phi::DenseTensor& t) {
+      tensors.cbegin(), tensors.cend(), [&](const DenseTensor& t) {
         return phi::places_are_same_class(t.place(),
                                           phi::CustomPlace(dev_type));
       });
@@ -59,7 +59,7 @@ bool CheckTensorsInCustomPlace(const std::vector<DenseTensor>& tensors,
 
 bool CheckTensorsInXPUPlace(const std::vector<DenseTensor>& tensors) {
   return std::all_of(
-      tensors.cbegin(), tensors.cend(), [&](const phi::DenseTensor& t) {
+      tensors.cbegin(), tensors.cend(), [&](const DenseTensor& t) {
         return phi::is_xpu_place(t.place());
       });
 }

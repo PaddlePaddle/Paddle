@@ -14,14 +14,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+import warnings
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle import base, in_dynamic_mode
 from paddle.base.framework import in_dynamic_or_pir_mode
 from paddle.utils.decorator_utils import (
     legacy_reduction_decorator,
-    legacy_reduction_special_decorator,
     param_one_alias,
 )
 
@@ -29,7 +29,7 @@ from .. import functional as F
 from .layers import Layer
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
 
     from paddle import Tensor
     from paddle._typing import ParamAttrLike
@@ -38,6 +38,46 @@ if TYPE_CHECKING:
 
 
 __all__ = []
+
+
+class _Loss(Layer):
+    r"""
+    Base class for all loss functions.
+
+    Parameters:
+        size_average (bool|None, optional): Deprecated (see ``reduction``). Default is ``None``.
+        reduce (bool|None, optional): Deprecated (see ``reduction``). Default is ``None``.
+        reduction (str, optional): Indicate how to calculate the loss, the candidates
+            are ``'none'`` | ``'mean'`` | ``'sum'``. Default is ``'mean'``.
+    """
+
+    reduction: _ReduceMode
+
+    def __init__(
+        self,
+        size_average: bool | None = None,
+        reduce: bool | None = None,
+        reduction: str = 'mean',
+    ) -> None:
+        super().__init__()
+        if size_average is not None or reduce is not None:
+            reduction = (
+                'none'
+                if reduce is False
+                else ('sum' if size_average is False else 'mean')
+            )
+            warnings.warn(
+                "'size_average' and 'reduce' args will be deprecated, "
+                f"please use reduction='{reduction}' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        if reduction not in ['sum', 'mean', 'none']:
+            raise ValueError(
+                "'reduction' should be 'sum', 'mean' or 'none', "
+                f"but received {reduction}."
+            )
+        self.reduction = reduction
 
 
 class BCEWithLogitsLoss(Layer):
@@ -124,7 +164,16 @@ class BCEWithLogitsLoss(Layer):
     pos_weight: Tensor | None
     name: str | None
 
-    @legacy_reduction_decorator
+    @legacy_reduction_decorator(
+        overload_args_list=[
+            'weight',
+            'size_average',
+            'reduce',
+            'reduction',
+            'pos_weight',
+        ],
+        is_method=True,
+    )
     def __init__(
         self,
         weight: Tensor | None = None,
@@ -346,7 +395,7 @@ class CrossEntropyLoss(Layer):
             >>> C = 200
             >>> reduction = 'mean'
             >>> input = paddle.rand([N, C], dtype='float64')
-            >>> label = paddle.randint(0, C, shape=[N], dtype='int64')
+            >>> label = paddle.randint(0, C, size=[N], dtype='int64')
             >>> weight = paddle.rand([C], dtype='float64')
 
             >>> cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
@@ -397,9 +446,9 @@ class CrossEntropyLoss(Layer):
             >>> shape = [N, C]
             >>> label_smoothing = 0.4
             >>> reduction = 'mean'
-            >>> weight: Optional[paddle.Tensor] = None
+            >>> weight = None
             >>> logits = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
-            >>> integer_labels = paddle.randint(low=0, high=C, shape=[N], dtype='int64')
+            >>> integer_labels = paddle.randint(low=0, high=C, size=[N], dtype='int64')
             >>> one_hot_labels = paddle.nn.functional.one_hot(integer_labels, C).astype('float32')
 
             >>> cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
@@ -431,7 +480,17 @@ class CrossEntropyLoss(Layer):
     label_smoothing: float
     name: str | None
 
-    @legacy_reduction_special_decorator
+    @legacy_reduction_decorator(
+        overload_args_list=[
+            'weight',
+            'size_average',
+            'ignore_index',
+            'reduce',
+            'reduction',
+            'label_smoothing',
+        ],
+        is_method=True,
+    )
     def __init__(
         self,
         weight: Tensor | None = None,
@@ -674,7 +733,10 @@ class MSELoss(Layer):
 
     reduction: _ReduceMode
 
-    @legacy_reduction_decorator
+    @legacy_reduction_decorator(
+        overload_args_list=['size_average', 'reduce', 'reduction'],
+        is_method=True,
+    )
     def __init__(self, reduction: _ReduceMode = 'mean'):
         super().__init__()
         if reduction not in ['sum', 'mean', 'none']:
@@ -778,7 +840,10 @@ class L1Loss(Layer):
     reduction: _ReduceMode
     name: str | None
 
-    @legacy_reduction_decorator
+    @legacy_reduction_decorator(
+        overload_args_list=['size_average', 'reduce', 'reduction'],
+        is_method=True,
+    )
     def __init__(
         self, reduction: _ReduceMode = 'mean', name: str | None = None
     ) -> None:
@@ -869,7 +934,10 @@ class BCELoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
-    @legacy_reduction_decorator
+    @legacy_reduction_decorator(
+        overload_args_list=['weight', 'size_average', 'reduce', 'reduction'],
+        is_method=True,
+    )
     def __init__(
         self,
         weight: Tensor | None = None,
@@ -982,7 +1050,16 @@ class NLLLoss(Layer):
 
     """
 
-    @legacy_reduction_decorator
+    @legacy_reduction_decorator(
+        overload_args_list=[
+            'weight',
+            'size_average',
+            'ignore_index',
+            'reduce',
+            'reduction',
+        ],
+        is_method=True,
+    )
     def __init__(
         self,
         weight: Tensor | None = None,
@@ -1042,6 +1119,7 @@ class PoissonNLLLoss(Layer):
          epsilon (float, optional):
             A small value to avoid evaluation of :math:`\log(0)` when ``log_input`` = ``False``. ``epsilon > 0``.
             Default: 1e-8.
+            Alias: ``eps``.
          reduction (str, optional):
             Indicate how to reduce the loss, the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If `reduction` is ``'mean'``, the reduced mean loss is returned;
@@ -1071,7 +1149,18 @@ class PoissonNLLLoss(Layer):
 
     """
 
-    @legacy_reduction_decorator
+    @legacy_reduction_decorator(
+        overload_args_list=[
+            'log_input',
+            'full',
+            'size_average',
+            'eps',
+            'reduce',
+            'reduction',
+        ],
+        alias_mapping={'eps': 'epsilon'},
+        is_method=True,
+    )
     def __init__(
         self,
         log_input: bool = True,
@@ -1203,7 +1292,15 @@ class KLDivLoss(Layer):
     reduction: _ReduceMode
     log_target: bool
 
-    @legacy_reduction_special_decorator
+    @legacy_reduction_decorator(
+        overload_args_list=[
+            'size_average',
+            'reduce',
+            'reduction',
+            'log_target',
+        ],
+        is_method=True,
+    )
     def __init__(
         self, reduction: _ReduceMode = 'mean', log_target: bool = False
     ) -> None:
@@ -1276,7 +1373,10 @@ class MarginRankingLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
-    @legacy_reduction_decorator
+    @legacy_reduction_decorator(
+        overload_args_list=['margin', 'size_average', 'reduce', 'reduction'],
+        is_method=True,
+    )
     def __init__(
         self,
         margin: float = 0.0,
@@ -1575,7 +1675,10 @@ class SmoothL1Loss(Layer):
     delta: float
     name: str | None
 
-    @legacy_reduction_decorator
+    @legacy_reduction_decorator(
+        overload_args_list=['size_average', 'reduce', 'reduction'],
+        is_method=True,
+    )
     def __init__(
         self,
         reduction: _ReduceMode = 'mean',
@@ -1665,7 +1768,10 @@ class MultiLabelSoftMarginLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
-    @legacy_reduction_decorator
+    @legacy_reduction_decorator(
+        overload_args_list=['weight', 'size_average', 'reduce', 'reduction'],
+        is_method=True,
+    )
     def __init__(
         self,
         weight: Tensor | None = None,
@@ -1778,7 +1884,10 @@ class HingeEmbeddingLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
-    @legacy_reduction_decorator
+    @legacy_reduction_decorator(
+        overload_args_list=['margin', 'size_average', 'reduce', 'reduction'],
+        is_method=True,
+    )
     def __init__(
         self,
         margin: float = 1.0,
@@ -1877,7 +1986,10 @@ class CosineEmbeddingLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
-    @legacy_reduction_decorator
+    @legacy_reduction_decorator(
+        overload_args_list=['margin', 'size_average', 'reduce', 'reduction'],
+        is_method=True,
+    )
     def __init__(
         self,
         margin: float = 0,
@@ -2066,6 +2178,7 @@ class TripletMarginLoss(Layer):
 
         epsilon (float, Optional):Add small value to avoid division by zero,
             default value is 1e-6.
+            Alias: ``eps``.
 
         swap (bool, Optional):The distance swap change the negative distance to the distance between
             positive sample and negative sample. For more details, see `Learning shallow convolutional feature descriptors with triplet losses`.
@@ -2123,7 +2236,19 @@ class TripletMarginLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
-    @legacy_reduction_decorator
+    @legacy_reduction_decorator(
+        overload_args_list=[
+            'margin',
+            'p',
+            'eps',
+            'swap',
+            'size_average',
+            'reduce',
+            'reduction',
+        ],
+        alias_mapping={'eps': 'epsilon'},
+        is_method=True,
+    )
     def __init__(
         self,
         margin: float = 1.0,
@@ -2240,7 +2365,17 @@ class MultiMarginLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
-    @legacy_reduction_decorator
+    @legacy_reduction_decorator(
+        overload_args_list=[
+            'p',
+            'margin',
+            'weight',
+            'size_average',
+            'reduce',
+            'reduction',
+        ],
+        is_method=True,
+    )
     def __init__(
         self,
         p: int = 1,
@@ -2336,7 +2471,10 @@ class MultiLabelMarginLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
-    @legacy_reduction_decorator
+    @legacy_reduction_decorator(
+        overload_args_list=['size_average', 'reduce', 'reduction'],
+        is_method=True,
+    )
     def __init__(
         self,
         reduction: _ReduceMode = 'mean',
@@ -2407,7 +2545,7 @@ class SoftMarginLoss(Layer):
             0.64022040)
 
             >>> input_np = paddle.uniform(shape=(5, 5), min=0.1, max=0.8, dtype="float64")
-            >>> label_np = paddle.randint(high=2, shape=(5, 5), dtype="int64")
+            >>> label_np = paddle.randint(high=2, size=(5, 5), dtype="int64")
             >>> label_np[label_np == 0] = -1
             >>> input = paddle.to_tensor(input_np)
             >>> label = paddle.to_tensor(label_np)
@@ -2425,7 +2563,10 @@ class SoftMarginLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
-    @legacy_reduction_decorator
+    @legacy_reduction_decorator(
+        overload_args_list=['size_average', 'reduce', 'reduction'],
+        is_method=True,
+    )
     def __init__(
         self, reduction: _ReduceMode = 'mean', name: str | None = None
     ) -> None:
@@ -2473,6 +2614,7 @@ class GaussianNLLLoss(Layer):
             calculation. Default: ``False``, means omit the constant term.
         epsilon (float, optional): value used to clamp ``variance`` (see note below), for
             stability. Default: 1e-6.
+            Alias: ``eps``.
         reduction (str, optional): specifies the reduction to apply to the
             output:``'none'`` | ``'mean'`` | ``'sum'``. ``'none'``: no reduction
             will be applied, ``'mean'``: the output is the average of all batch
@@ -2526,6 +2668,10 @@ class GaussianNLLLoss(Layer):
     reduction: _ReduceMode
     name: str | None
 
+    @legacy_reduction_decorator(
+        alias_mapping={'eps': 'epsilon'},
+        is_method=True,
+    )
     def __init__(
         self,
         full: bool = False,

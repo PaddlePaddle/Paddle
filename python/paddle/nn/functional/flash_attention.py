@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
     from paddle import Tensor
+    from paddle.distributed.communication.group import Group
 
 
 @signature_safe_contextmanager
@@ -1249,6 +1250,51 @@ def flash_attn_varlen_qkvpacked(
     return out, softmax if return_softmax else None
 
 
+# Global cache: group_id -> unique_id tensor (for NVSHMEM bootstrap).
+# Each distinct group needs its own unique_id, generated once by rank 0
+# and broadcast to all members via all_gather_object.
+_flashmask_unique_id_cache: dict[int, paddle.Tensor] = {}
+
+
+def _get_or_create_unique_id(group):
+    """Get or create the NVSHMEM unique_id for a communication group.
+
+    On first call for a given group: rank 0 generates the unique_id via
+    ``flashmask_get_unique_id()``, then broadcasts it to all group members
+    using ``all_gather_object`` (CPU tensor, so regular ``all_gather`` would
+    raise). The result is cached by ``group.id``.
+
+    On subsequent calls: returns the cached unique_id directly.
+
+    Args:
+        group: A ``paddle.distributed.Group`` instance.
+
+    Returns:
+        tuple[Tensor, bool]: ``(unique_id, is_new)`` where ``unique_id`` is
+        a 128-byte uint8 CPU tensor, and ``is_new`` indicates whether this
+        is the first time (True) or a cache hit (False).
+    """
+    import paddle.distributed as dist
+
+    gid = group.id
+    if gid in _flashmask_unique_id_cache:
+        return _flashmask_unique_id_cache[gid], False
+
+    # Rank 0 of this group generates the unique_id
+    if group.rank == 0:
+        unique_id = flashmask_get_unique_id()
+    else:
+        unique_id = paddle.zeros([128], dtype='uint8', device='cpu')
+
+    # Broadcast via all_gather_object (tensor is on CPU, dist env is GPU)
+    result_list = []
+    dist.all_gather_object(result_list, unique_id, group=group)
+    unique_id = result_list[0]
+
+    _flashmask_unique_id_cache[gid] = unique_id
+    return unique_id, True
+
+
 def flashmask_attention(
     query: Tensor,
     key: Tensor,
@@ -1266,7 +1312,8 @@ def flashmask_attention(
     name: str | None = None,
     softmax_scale: float | None = None,
     block_mask: Tensor | None = None,
-):
+    group: Group | None = None,
+) -> Tensor | list[Tensor]:
     r"""
     FlashMask: Official Implementation
 
@@ -1344,6 +1391,13 @@ def flashmask_attention(
             This argument must be provided together with flashmask.
             The mask will be applied at the block level: each [i, j] position in block_mask controls whether the corresponding [128 x 128] block in the attention matrix is masked.
             Any mismatch in expected shape or head dimension will raise an error.
+        group (paddle.distributed.Group, optional):
+            The communication group for distributed context parallelism (CP) overlap.
+            When provided, ``rank`` and ``nranks`` are automatically extracted from the group,
+            and the NVSHMEM unique_id is managed internally (generated once per group by rank 0,
+            broadcast to all members, and cached for subsequent calls). Users only need to pass
+            the CP group without worrying about low-level NVSHMEM initialization.
+            Default: None (no distributed overlap).
 
 
     Returns
@@ -1917,6 +1971,14 @@ def flashmask_attention(
                 startend_row_indices, min=0, max=sq
             ).repeat_interleave(bsz, 0)
 
+    # --- Distributed group resolution ---
+    if group is not None:
+        rank = group.rank
+        nranks = group.nranks
+    else:
+        rank = 0
+        nranks = 1
+
     if block_mask is not None:
         # xhy: can set a full startend_row_indices for block_mask_attn when using block_mask_attn?
         assert startend_row_indices is not None, (
@@ -1954,8 +2016,12 @@ def flashmask_attention(
             f"startend_row_indices.shape[0] must be equal to batch_size, but got {startend_row_indices.shape[0]} and {key.shape[0]}"
         )
 
-        assert startend_row_indices.shape[2] == key.shape[1], (
-            f"startend_row_indices.shape[2] must be equal to seqlen_k, but got {startend_row_indices.shape[2]} and {key.shape[2]}"
+        # for context parallel, seqlen of mask len can be cp_size * (local_key seqlen)
+        assert (
+            startend_row_indices.shape[2] == key.shape[1]
+            or startend_row_indices.shape[2] == key.shape[1] * nranks
+        ), (
+            f"startend_row_indices.shape[2] must be equal to seqlen_k or seqlen_k * world_size, but got {startend_row_indices.shape[2]} and {key.shape[2]}. World size: {nranks}"
         )
         assert startend_row_indices.shape[1] in [
             1,
@@ -2080,10 +2146,16 @@ def flashmask_attention(
             assert training, (
                 "flashmask_attention_v2 does not support setting training to False"
             )
-
             assert name is None, (
                 "flashmask_attention_v2 does not support setting name"
             )
+
+            # Obtain unique_id from group (first call per group triggers
+            # NVSHMEM bootstrap; subsequent calls reuse cached state).
+            unique_id = None
+            if group is not None and nranks > 1:
+                uid, is_new = _get_or_create_unique_id(group)
+                unique_id = uid if is_new else None
 
             if softmax_scale is None:
                 softmax_scale = query.shape[-1] ** (-0.5)
@@ -2097,8 +2169,11 @@ def flashmask_attention(
                 value,
                 startend_row_indices,
                 block_mask,
+                unique_id,
                 softmax_scale,
                 causal,
+                rank,
+                nranks,
             )
         else:
             raise ValueError(f"Invalid flash attention version: {fa_version}")
@@ -2112,6 +2187,22 @@ def flashmask_attention(
         return outputs[0]
     else:
         return outputs
+
+
+def flashmask_get_unique_id() -> Tensor:
+    """FlashMask distributed overlap: get the unique ID to initialize NVSHMEM.
+
+        Normally, this function only needs to be called once. After initializing NVSHMEM,
+        there is no need to pass the unique_id tensor again. Please refer to the doc of ``flashmask_attention``
+        and check the usage of ``unique_id`` for more detailed usage.
+
+    Return:
+        Tensor. CPU Tensor with exactly 128 uint8s (128B). If flashmask module is not compiled
+        with ``WITH_DISTRIBUTED_OVERLAP`` flag, this function returns a zero tensor.
+    """
+    output = paddle.zeros([128], dtype=paddle.uint8, device='cpu')
+    paddle._C_ops.flashmask_get_unique_id_(output)
+    return output
 
 
 def calc_reduced_attention_scores(

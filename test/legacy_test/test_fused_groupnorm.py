@@ -152,7 +152,7 @@ class TestGroupNormNHWC_StaticOp(unittest.TestCase):
         self, x_np, scale_np, bias_np, residual_np, activation, dtype
     ):
         paddle.disable_static()
-        navie_groupnorm_out = naive_residual_biasadd_layer_norm(
+        naive_groupnorm_out = naive_residual_biasadd_layer_norm(
             x_np,
             residual_np,
             scale_np,
@@ -162,7 +162,7 @@ class TestGroupNormNHWC_StaticOp(unittest.TestCase):
             self.data_layout,
             self.activation,
         )
-        navie_residual_out = naive_residual_add(x_np, residual_np)
+        naive_residual_out = naive_residual_add(x_np, residual_np)
         paddle.enable_static()
 
         with (
@@ -205,7 +205,7 @@ class TestGroupNormNHWC_StaticOp(unittest.TestCase):
                 },
                 fetch_list=[outs],
             )
-        return (out_s[0], out_s[1]), navie_groupnorm_out, navie_residual_out
+        return (out_s[0], out_s[1]), naive_groupnorm_out, naive_residual_out
 
     def test_residual_add_groupnorm_fp16(self):
         if not (paddle.is_compiled_with_cuda() or is_custom_device()):

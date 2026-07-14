@@ -50,7 +50,7 @@ class MaxPool {
 
 template <class T>
 class AvgPool {
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   MT intermediate_res;
 
  public:
@@ -70,7 +70,7 @@ class AvgPool {
 
 template <class T>
 class LPPool {
-  using MT = typename dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   MT intermediate_res;
   float norm_type;
 

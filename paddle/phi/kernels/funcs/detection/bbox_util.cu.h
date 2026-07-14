@@ -15,10 +15,14 @@
 #pragma once
 #include <algorithm>
 #include <cfloat>
+#include <limits>
 #include <string>
 #include <vector>
+
+#include "paddle/common/enforce.h"
 #ifdef __NVCC__
 #include "cub/cub.cuh"
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #endif
 #ifdef __HIPCC__
 #include <hipcub/hipcub.hpp>
@@ -50,6 +54,7 @@ static void SortDescending(const GPUContext &dev_ctx,
                            const DenseTensor &value,
                            DenseTensor *value_out,
                            DenseTensor *index_out) {
+  PADDLE_ENFORCE_LE_INT_MAX(value.numel(), "bbox_util sort num");
   int num = static_cast<int>(value.numel());
   DenseTensor index_in_t;
   index_in_t.Resize({num});
@@ -297,37 +302,50 @@ static void NMS(const GPUContext &dev_ctx,
                 bool pixel_offset = true) {
   // TODO(large-tensor): downstream functors may still use int
   int64_t boxes_num = proposals.dims()[0];
-
-  const int col_blocks = DIVUP(boxes_num, kThreadsPerBlock);
-  dim3 blocks(DIVUP(boxes_num, kThreadsPerBlock),
-              DIVUP(boxes_num, kThreadsPerBlock));
+  PADDLE_ENFORCE_LE_INT_MAX(boxes_num, "NMS boxes_num");
+  const int boxes_num_int = static_cast<int>(boxes_num);
+  const int col_blocks = DIVUP(boxes_num_int, kThreadsPerBlock);
+  dim3 blocks(static_cast<uint32_t>(col_blocks),
+              static_cast<uint32_t>(col_blocks));
   dim3 threads(kThreadsPerBlock);
 
   const T *boxes = proposals.data<T>();
   auto place = dev_ctx.GetPlace();
   auto mask_ptr = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
-      boxes_num * col_blocks * sizeof(uint64_t),
+      static_cast<size_t>(boxes_num_int) * col_blocks * sizeof(uint64_t),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   uint64_t *mask_dev = reinterpret_cast<uint64_t *>(mask_ptr->ptr());
 
   NMSKernel<<<blocks, threads, 0, dev_ctx.stream()>>>(
-      boxes_num, nms_threshold, boxes, mask_dev, pixel_offset);
+      boxes_num_int, nms_threshold, boxes, mask_dev, pixel_offset);
 
   std::vector<uint64_t> remv(col_blocks);
   memset(&remv[0], 0, sizeof(uint64_t) * col_blocks);
 
-  std::vector<uint64_t> mask_host(boxes_num * col_blocks);
-  phi::memory_utils::Copy(CPUPlace(),
-                          mask_host.data(),
-                          place,
-                          mask_dev,
-                          boxes_num * col_blocks * sizeof(uint64_t),
-                          dev_ctx.stream());
+#ifdef __NVCC__
+  PADDLE_ENFORCE_EQ(
+      phi::backends::gpu::IsCUDAGraphCapturing(),
+      false,
+      common::errors::InvalidArgument(
+          "NMSKernel (bbox_util) does not support CUDA Graph capture: async "
+          "D2H copy to local vector 'mask_host' will bake the destination "
+          "address into the graph; on replay the vector is re-created at a "
+          "different address, causing a dangling-pointer write."));
+#endif
+  std::vector<uint64_t> mask_host(static_cast<size_t>(boxes_num_int) *
+                                  col_blocks);
+  phi::memory_utils::Copy(
+      CPUPlace(),
+      mask_host.data(),
+      place,
+      mask_dev,
+      static_cast<size_t>(boxes_num_int) * col_blocks * sizeof(uint64_t),
+      dev_ctx.stream());
 
   std::vector<int> keep_vec;
   int num_to_keep = 0;
-  for (int i = 0; i < boxes_num; i++) {
+  for (int i = 0; i < boxes_num_int; i++) {
     int nblock = i / kThreadsPerBlock;
     int inblock = i % kThreadsPerBlock;
 
@@ -342,10 +360,16 @@ static void NMS(const GPUContext &dev_ctx,
   }
   keep_out->Resize({num_to_keep});
   int *keep = dev_ctx.Alloc<int>(keep_out);
+#ifdef __NVCC__
+  const int *stable_kv = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+      const_cast<int *>(keep_vec.data()), keep_vec.size());
+#else
+  const int *stable_kv = keep_vec.data();
+#endif
   phi::memory_utils::Copy(place,
                           keep,
                           CPUPlace(),
-                          keep_vec.data(),
+                          stable_kv,
                           sizeof(int) * num_to_keep,
                           dev_ctx.stream());
   dev_ctx.Wait();

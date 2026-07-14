@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/send_uv_grad_kernel.h"
 
+#include "paddle/common/enforce.h"
 #include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -77,8 +78,11 @@ void CalculateGrad(const Context& dev_ctx,
       const int ntx =
           FindNumThreads(slice_size, dev_ctx.GetMaxThreadsPerBlock());
       const int nty = dev_ctx.GetMaxThreadsPerBlock() / ntx;
-      const int nbx = (slice_size + ntx - 1) / ntx;
-      const int nby = FindNumBlocks('y', (index_size + nty - 1) / nty);
+      const int64_t nbx_64 = (slice_size + ntx - 1) / ntx;
+      PADDLE_ENFORCE_LE_INT_MAX(nbx_64, "grid.x");
+      const int nbx = static_cast<int>(nbx_64);
+      const int64_t nby_64 = (index_size + nty - 1) / nty;
+      const int nby = FindNumBlocks('y', nby_64);
       const dim3 grid_tmp(nbx, nby);
       const dim3 block_tmp(ntx, nty);
       GraphSendUVGradCUDAKernel<T, IndexT>
@@ -97,8 +101,11 @@ void CalculateGrad(const Context& dev_ctx,
       const int ntx =
           FindNumThreads(bcast_info.out_len, dev_ctx.GetMaxThreadsPerBlock());
       const int nty = dev_ctx.GetMaxThreadsPerBlock() / ntx;
-      const int nbx = (bcast_info.out_len + ntx - 1) / ntx;
-      const int nby = FindNumBlocks('y', (index_size + nty - 1) / nty);
+      const int64_t nbx_64 = (bcast_info.out_len + ntx - 1) / ntx;
+      PADDLE_ENFORCE_LE_INT_MAX(nbx_64, "grid.x");
+      const int nbx = static_cast<int>(nbx_64);
+      const int64_t nby_64 = (index_size + nty - 1) / nty;
+      const int nby = FindNumBlocks('y', nby_64);
       const dim3 grid_tmp(nbx, nby);
       const dim3 block_tmp(ntx, nty);
       GraphSendUVGradCUDAKernel<T, IndexT>
@@ -110,12 +117,11 @@ void CalculateGrad(const Context& dev_ctx,
                                                          x_grad_v2_data);
 
       // Run reduce sum
-      DenseTensor x_grad_out =
-          phi::Sum<T, Context>(dev_ctx,
-                               x_grad_v2,
-                               phi::IntArray(reduce_idx),
-                               CppTypeToDataType<T>::Type(),
-                               true);
+      DenseTensor x_grad_out = Sum<T, Context>(dev_ctx,
+                                               x_grad_v2,
+                                               IntArray(reduce_idx),
+                                               CppTypeToDataType<T>::Type(),
+                                               true);
 #ifdef PADDLE_WITH_HIP
       hipMemcpy(x_grad,
                 x_grad_out.data<T>(),
@@ -138,8 +144,11 @@ void CalculateGrad(const Context& dev_ctx,
     int64_t out_len = bcast_info.out_len;
     const int ntx = FindNumThreads(out_len, dev_ctx.GetMaxThreadsPerBlock());
     const int nty = dev_ctx.GetMaxThreadsPerBlock() / ntx;
-    const int nbx = (out_len + ntx - 1) / ntx;
-    const int nby = FindNumBlocks('y', (index_size + nty - 1) / nty);
+    const int64_t nbx_64 = (out_len + ntx - 1) / ntx;
+    PADDLE_ENFORCE_LE_INT_MAX(nbx_64, "grid.x");
+    const int nbx = static_cast<int>(nbx_64);
+    const int64_t nby_64 = (index_size + nty - 1) / nty;
+    const int nby = FindNumBlocks('y', nby_64);
     const dim3 grid_(nbx, nby);
     const dim3 block_(ntx, nty);
     funcs::MultiplyFunctor<T> mul_functor;
@@ -193,12 +202,11 @@ void CalculateGrad(const Context& dev_ctx,
               mul_functor,
               sum_functor);
       // Run reduce_sum
-      DenseTensor x_grad_out =
-          phi::Sum<T, Context>(dev_ctx,
-                               x_grad_v2,
-                               phi::IntArray(reduce_idx),
-                               CppTypeToDataType<T>::Type(),
-                               true);
+      DenseTensor x_grad_out = Sum<T, Context>(dev_ctx,
+                                               x_grad_v2,
+                                               IntArray(reduce_idx),
+                                               CppTypeToDataType<T>::Type(),
+                                               true);
 #ifdef PADDLE_WITH_HIP
       hipMemcpy(x_grad,
                 x_grad_out.data<T>(),
@@ -310,7 +318,7 @@ void SendUVGradKernel(const Context& dev_ctx,
     return;
   }
 
-  if (index_type == phi::DataType::INT32) {
+  if (index_type == DataType::INT32) {
     GraphSendUVGradOpCUDAKernelLaunchHelper<Context, T, int32_t>(dev_ctx,
                                                                  x,
                                                                  y,
@@ -320,7 +328,7 @@ void SendUVGradKernel(const Context& dev_ctx,
                                                                  message_op,
                                                                  x_grad,
                                                                  y_grad);
-  } else if (index_type == phi::DataType::INT64) {
+  } else if (index_type == DataType::INT64) {
     GraphSendUVGradOpCUDAKernelLaunchHelper<Context, T, int64_t>(dev_ctx,
                                                                  x,
                                                                  y,

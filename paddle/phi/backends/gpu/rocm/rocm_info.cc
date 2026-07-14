@@ -67,7 +67,12 @@ static int GetGPUDeviceCountImpl() {
     }
   }
   int count;
-  PADDLE_ENFORCE_GPU_SUCCESS(hipGetDeviceCount(&count));
+  status = hipGetDeviceCount(&count);
+  if (status != hipSuccess) {
+    VLOG(2) << "You have gpu driver and rocm installed, but the machine does "
+               "not have any visible gpu card.";
+    count = 0;
+  }
   return count;
 }
 

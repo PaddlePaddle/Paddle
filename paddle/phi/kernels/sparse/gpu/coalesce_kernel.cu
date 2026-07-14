@@ -53,14 +53,14 @@ void CoalesceCooGPUKernel(const GPUContext& dev_ctx,
       dev_ctx, DenseTensorMeta(x_indices.dtype(), {nnz}, x_indices.layout()));
   IntT* indices_ptr = indices.data<IntT>();
 
-  phi::backends::gpu::GpuMemcpyAsync(d_sparse_offsets.data<IntT>(),
-                                     sparse_offsets.data(),
-                                     sizeof(IntT) * sparse_dim,
-                                     gpuMemcpyHostToDevice,
-                                     dev_ctx.stream());
+  backends::gpu::GpuMemcpyAsync(d_sparse_offsets.data<IntT>(),
+                                sparse_offsets.data(),
+                                sizeof(IntT) * sparse_dim,
+                                gpuMemcpyHostToDevice,
+                                dev_ctx.stream());
 
   // 1. flatten indices
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, nnz, 1);
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, nnz, 1);
   funcs::sparse::FlattenIndicesKernel<<<config.block_per_grid,
                                         config.thread_per_block,
                                         0,
@@ -111,11 +111,11 @@ void CoalesceCooGPUKernel(const GPUContext& dev_ctx,
       indices_ptr, new_end.first, out_indices.data<IntT>());
 
   IntT out_nnz = 0;
-  phi::backends::gpu::GpuMemcpyAsync(&out_nnz,
-                                     out_indices.data<IntT>(),
-                                     sizeof(IntT),
-                                     gpuMemcpyDeviceToHost,
-                                     dev_ctx.stream());
+  backends::gpu::GpuMemcpyAsync(&out_nnz,
+                                out_indices.data<IntT>(),
+                                sizeof(IntT),
+                                gpuMemcpyDeviceToHost,
+                                dev_ctx.stream());
   dev_ctx.Wait();
 
   out_indices.Resize({x_indices.dims()[0], out_nnz});
@@ -128,8 +128,8 @@ void CoalesceCooGPUKernel(const GPUContext& dev_ctx,
   // 5. scatter the values
   const int VecSize = VecBytes / sizeof(T);
   if (stride % VecSize == 0) {
-    config = phi::backends::gpu::GetGpuLaunchConfig1D(
-        dev_ctx, nnz * stride / VecSize, 1);
+    config =
+        backends::gpu::GetGpuLaunchConfig1D(dev_ctx, nnz * stride / VecSize, 1);
     funcs::sparse::ScatterKernel<T, VecSize>
         <<<config.block_per_grid,
            config.thread_per_block,
@@ -142,7 +142,7 @@ void CoalesceCooGPUKernel(const GPUContext& dev_ctx,
                                stride,
                                out_values.data<T>());
   } else {
-    config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, nnz * stride, 1);
+    config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, nnz * stride, 1);
     funcs::sparse::ScatterKernel<T, 1>
         <<<config.block_per_grid,
            config.thread_per_block,
@@ -162,7 +162,7 @@ void CoalesceCooGPUKernel(const GPUContext& dev_ctx,
     const_dims[i] = x.dims()[i];
   }
 
-  config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_nnz, 1);
+  config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_nnz, 1);
   funcs::sparse::IndexToCoordinateKernel<<<config.block_per_grid,
                                            config.thread_per_block,
                                            0,

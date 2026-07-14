@@ -21,10 +21,9 @@
 
 std::vector<paddle::Tensor> ContextPoolTest(const paddle::Tensor& x) {
   // 1. test cpu context
-  paddle::Place cpu_place(paddle::experimental::AllocationType::CPU);
-  auto* cpu_ctx =
-      paddle::experimental::DeviceContextPool::Instance()
-          .Get<paddle::experimental::AllocationType::CPU>(cpu_place);
+  paddle::Place cpu_place(phi::AllocationType::CPU);
+  auto* cpu_ctx = paddle::experimental::DeviceContextPool::Instance()
+                      .Get<phi::AllocationType::CPU>(cpu_place);
   PD_CHECK(cpu_ctx->GetPlace() == cpu_place);
   // if want to use the eigen_device here, need to include eigen headers
   auto* cpu_eigen_device = cpu_ctx->eigen_device();
@@ -32,10 +31,9 @@ std::vector<paddle::Tensor> ContextPoolTest(const paddle::Tensor& x) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // 2. test gpu context
-  paddle::Place gpu_place(paddle::experimental::AllocationType::GPU);
-  auto* gpu_ctx =
-      paddle::experimental::DeviceContextPool::Instance()
-          .Get<paddle::experimental::AllocationType::GPU>(gpu_place);
+  paddle::Place gpu_place(phi::AllocationType::GPU);
+  auto* gpu_ctx = paddle::experimental::DeviceContextPool::Instance()
+                      .Get<phi::AllocationType::GPU>(gpu_place);
   PD_CHECK(gpu_ctx->GetPlace() == gpu_place);
   // if want to use the eigen_device here, need to include eigen headers
   auto* gpu_eigen_device = gpu_ctx->eigen_device();

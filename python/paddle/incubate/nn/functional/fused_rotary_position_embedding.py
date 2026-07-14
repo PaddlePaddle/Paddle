@@ -82,7 +82,7 @@ def fused_rotary_position_embedding(
             >>> cos = paddle.cos(y)
 
             >>> # position_ids: [batch_size, seq_len]
-            >>> position_ids = paddle.randint(high=2, shape=[2, 2], dtype='int64')
+            >>> position_ids = paddle.randint(high=2, size=[2, 2], dtype='int64')
 
             >>> # out_q, out_k, out_v: [batch_size, seq_len, num_heads, head_dim]
             >>> out_q, out_k, out_v = fused_rotary_position_embedding(

@@ -22,8 +22,6 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 SpmdInfo LinearV2InferSpmdBase(const DistMetaTensor& input,
                                const DistMetaTensor& weight,
                                const DistMetaTensor& bias,
@@ -35,9 +33,9 @@ SpmdInfo LinearV2InferSpmdBase(const DistMetaTensor& input,
                         "should be false, but got [%d].",
                         transpose_weight));
   // Step0: verify input args based on matmul logic
-  auto ori_input_shape = common::vectorize(input.dims());
-  auto ori_weight_shape = common::vectorize(weight.dims());
-  auto ori_bias_shape = common::vectorize(bias.dims());
+  auto ori_input_shape = vectorize(input.dims());
+  auto ori_weight_shape = vectorize(weight.dims());
+  auto ori_bias_shape = vectorize(bias.dims());
   int input_ndim = static_cast<int>(ori_input_shape.size());
   int weight_ndim = static_cast<int>(ori_weight_shape.size());
   int bias_ndim = static_cast<int>(ori_bias_shape.size());
@@ -103,8 +101,8 @@ SpmdInfo LinearV2InferSpmdBase(const DistMetaTensor& input,
   output_dist_attr_dst.set_dims_mapping(out_dims_mapping);
 
   // Step2.3: Merge and get Inputs' New Dims Mapping.
-  auto x_shape = common::vectorize(input.dims());
-  auto y_shape = common::vectorize(weight.dims());
+  auto x_shape = vectorize(input.dims());
+  auto y_shape = vectorize(weight.dims());
 
   TensorDistAttr x_dist_attr_dst = GetMatmulPartInferredDistAttr(
       input_dist_attr_src, x_shape, input_axes, axis_to_dim_map, false);

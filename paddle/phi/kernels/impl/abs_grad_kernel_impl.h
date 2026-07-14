@@ -39,14 +39,14 @@ struct AbsGradCUDAFunctor {
 };
 
 template <>
-struct AbsGradCUDAFunctor<phi::bfloat16> {
+struct AbsGradCUDAFunctor<bfloat16> {
   HOSTDEVICE inline AbsGradCUDAFunctor() {}
 
-  HOSTDEVICE inline phi::bfloat16 operator()(const phi::bfloat16 x,
-                                             const phi::bfloat16 dout) const {
-    phi::bfloat16 output;
-    if (x == phi::bfloat16(0)) {
-      output = static_cast<phi::bfloat16>(0);
+  HOSTDEVICE inline bfloat16 operator()(const bfloat16 x,
+                                        const bfloat16 dout) const {
+    bfloat16 output;
+    if (x == bfloat16(0)) {
+      output = static_cast<bfloat16>(0);
     } else {
       output = (dout) * (x / abs(x));
     }
@@ -55,30 +55,30 @@ struct AbsGradCUDAFunctor<phi::bfloat16> {
 };
 
 template <>
-struct AbsGradCUDAFunctor<phi::complex64> {
+struct AbsGradCUDAFunctor<complex64> {
   HOSTDEVICE inline AbsGradCUDAFunctor() {}
-  HOSTDEVICE inline phi::complex64 operator()(const phi::complex64 x,
-                                              const float dout) const {
-    phi::complex64 output;
-    if (x == phi::complex64(0)) {
-      output = phi::complex64(0);
+  HOSTDEVICE inline complex64 operator()(const complex64 x,
+                                         const float dout) const {
+    complex64 output;
+    if (x == complex64(0)) {
+      output = complex64(0);
     } else {
-      output = phi::complex64(dout) * (x / phi::complex64(abs(x)));
+      output = complex64(dout) * (x / complex64(abs(x)));
     }
     return output;
   }
 };
 
 template <>
-struct AbsGradCUDAFunctor<phi::complex128> {
+struct AbsGradCUDAFunctor<complex128> {
   HOSTDEVICE inline AbsGradCUDAFunctor() {}
-  HOSTDEVICE inline phi::complex128 operator()(const phi::complex128 x,
-                                               const double dout) const {
-    phi::complex128 output;
-    if (x == phi::complex128(0)) {
-      output = phi::complex128(0);
+  HOSTDEVICE inline complex128 operator()(const complex128 x,
+                                          const double dout) const {
+    complex128 output;
+    if (x == complex128(0)) {
+      output = complex128(0);
     } else {
-      output = phi::complex128(dout) * (x / phi::complex128(abs(x)));
+      output = complex128(dout) * (x / complex128(abs(x)));
     }
     return output;
   }
@@ -110,7 +110,7 @@ void AbsGradKernel(const Context& dev_ctx,
                    const DenseTensor& dout,
                    DenseTensor* dx) {
   auto numel = dout.numel();
-  auto* dout_data = dout.data<phi::dtype::Real<T>>();
+  auto* dout_data = dout.data<dtype::Real<T>>();
   auto* x_data = x.data<T>();
 
   dev_ctx.template Alloc<T>(dx, static_cast<size_t>(numel * sizeof(T)));

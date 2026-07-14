@@ -1,4 +1,5 @@
 paddle_test(type_test SRCS type_test.cc DEPS common)
+paddle_test(type_util_test SRCS type_util_test.cc DEPS pir common)
 paddle_test(ir_attribute_test SRCS ir_attribute_test.cc)
 paddle_test(ir_value_test SRCS ir_value_test.cc)
 paddle_test(ir_op_test SRCS ir_op_test.cc DEPS test_dialect)

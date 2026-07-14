@@ -51,15 +51,15 @@ void ScatterGradKernel(const Context &dev_ctx,
 
   const auto &index_type = index.dtype();
   bool index_type_match =
-      index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;
+      index_type == DataType::INT32 || index_type == DataType::INT64;
   PADDLE_ENFORCE_EQ(index_type_match,
                     true,
                     common::errors::InvalidArgument(
                         "scatter_op index holds the wrong type, it holds [%s],"
                         "but desires to be [%s] or [%s]",
                         index_type,
-                        phi::DataType::INT32,
-                        phi::DataType::INT64));
+                        DataType::INT32,
+                        DataType::INT64));
 
   T *x_grad_data = nullptr;
   T *updates_grad_data = nullptr;
@@ -81,7 +81,7 @@ void ScatterGradKernel(const Context &dev_ctx,
   int64_t index_size = index.numel();
 
   int r;
-  if (index_type == phi::DataType::INT32) {
+  if (index_type == DataType::INT32) {
     auto index_data = const_cast<int *>(index.data<int>());
     xpu::VectorParam<int> indices{nullptr, index_size, index_data};
     r = xpu::scatter_grad<XPUType, int>(
@@ -92,7 +92,7 @@ void ScatterGradKernel(const Context &dev_ctx,
         reinterpret_cast<XPUType *>(updates_grad_data),
         x_grad_shape,
         overwrite);
-  } else if (index_type == phi::DataType::INT64) {
+  } else if (index_type == DataType::INT64) {
     auto index_data = const_cast<int64_t *>(index.data<int64_t>());
     xpu::VectorParam<int64_t> indices{nullptr, index_size, index_data};
     r = xpu::scatter_grad<XPUType, int64_t>(

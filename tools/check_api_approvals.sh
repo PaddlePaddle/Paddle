@@ -63,14 +63,14 @@ fi
 
 op_type_spec_diff=`python ${PADDLE_ROOT}/tools/check_op_register_type.py ${PADDLE_ROOT}/paddle/fluid/OP_TYPE_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/OP_TYPE_PR.spec`
 if [ "$op_type_spec_diff" != "" ]; then
-    echo_line="You must have one RD (Aurelius84 (Recommend) or zhhsplendid)approval for the data_type registration of new operator. More data_type of new operator should be registered in your PR. Please make sure that both float/double (or int/int64_t) have been registered.\n For more details, please click [https://github.com/PaddlePaddle/Paddle/wiki/Data-types-of-generic-Op-must-be-fully-registered].\n"
-    check_approval 1 Aurelius84 zhhsplendid
+    echo_line="You must have one RD (wanghuancoder or SigureMo) approval for the data_type registration of new operator. More data_type of new operator should be registered in your PR. Please make sure that both float/double (or int/int64_t) have been registered.\n For more details, please click [https://github.com/PaddlePaddle/Paddle/wiki/Data-types-of-generic-Op-must-be-fully-registered].\n"
+    check_approval 1 wanghuancoder SigureMo
 fi
 
 op_kernel_dtype_spec_diff=`python ${PADDLE_ROOT}/tools/check_op_kernel_same_dtypes.py ${PADDLE_ROOT}/paddle/fluid/OP_KERNEL_DTYPE_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/OP_KERNEL_DTYPE_PR.spec`
 if [ "$op_kernel_dtype_spec_diff" != "" ]; then
-    echo_line="You have added or modified Op Kernel, resulting in inconsistent data types supported by the forward and backward kernels of the same op, such modifications are not allowed in principle. If it is a mismatch, please request one RD (Aurelius84 or zyfncg) review and approve. Including the following kernels:\n${op_kernel_dtype_spec_diff}\n"
-    check_approval 1 Aurelius84 zyfncg
+    echo_line="You have added or modified Op Kernel, resulting in inconsistent data types supported by the forward and backward kernels of the same op, such modifications are not allowed in principle. If it is a mismatch, please request one RD (wanghuancoder or SigureMo) review and approve. Including the following kernels:\n${op_kernel_dtype_spec_diff}\n"
+    check_approval 1 wanghuancoder SigureMo
 fi
 
 op_desc_diff=`python ${PADDLE_ROOT}/tools/check_op_desc.py ${PADDLE_ROOT}/paddle/fluid/OP_DESC_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/OP_DESC_PR.spec`

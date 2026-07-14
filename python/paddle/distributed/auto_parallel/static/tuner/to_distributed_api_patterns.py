@@ -312,7 +312,7 @@ class ApplyRotaryPosEmbPattern(BasePattern):
         cos = paddle.randn(self.shape_configs.cos_shape)
         sin = paddle.randn(self.shape_configs.sin_shape)
         position_ids = paddle.randint(
-            low=1, shape=self.shape_configs.input_shape
+            low=1, size=self.shape_configs.input_shape
         )
         # program construction
         with paddle.static.program_guard(main_program, start_program):
@@ -432,7 +432,7 @@ class QKVRopePattern(BasePattern):
         cos_cached = paddle.randn(self.shape_configs.cos_shape)
         sin_cached = paddle.randn(self.shape_configs.sin_shape)
         position_ids = paddle.randint(
-            low=1, shape=self.shape_configs.input_shape
+            low=1, size=self.shape_configs.input_shape
         )
         # program construction
         with paddle.static.program_guard(main_program, start_program):
@@ -606,7 +606,7 @@ class AttentionPattern(BasePattern):
         cos_cached = paddle.randn(self.shape_configs.cos_shape)
         sin_cached = paddle.randn(self.shape_configs.sin_shape)
         position_ids = paddle.randint(
-            low=1, shape=self.shape_configs.input_shape
+            low=1, size=self.shape_configs.input_shape
         )
         attention_mask = paddle.randn(self.shape_configs.attention_mask_shape)
         # program construction
@@ -783,7 +783,7 @@ class DecoderLayerPattern(BasePattern):
         cos_cached = paddle.randn(self.shape_configs.cos_shape)
         sin_cached = paddle.randn(self.shape_configs.sin_shape)
         position_ids = paddle.randint(
-            low=1, shape=self.shape_configs.input_shape
+            low=1, size=self.shape_configs.input_shape
         )
         attention_mask = paddle.randn(self.shape_configs.attention_mask_shape)
         # program construction

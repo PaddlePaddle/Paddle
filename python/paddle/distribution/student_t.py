@@ -22,6 +22,7 @@ from paddle.base.data_feeder import check_type
 from paddle.base.framework import Variable
 from paddle.distribution import Gamma, distribution
 from paddle.framework import in_dynamic_mode
+from paddle.utils.decorator_utils import param_one_alias
 
 if TYPE_CHECKING:
     from paddle import Tensor, dtype
@@ -192,6 +193,7 @@ class StudentT(distribution.Distribution):
         )
         return var
 
+    @param_one_alias(["shape", "sample_shape"])
     def sample(self, shape: Sequence[int] = []) -> Tensor:
         """Generate StudentT samples of the specified shape. The final shape would be ``shape+batch_shape`` .
 

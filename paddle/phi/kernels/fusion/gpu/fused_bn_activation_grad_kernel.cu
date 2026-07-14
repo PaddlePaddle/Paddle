@@ -55,7 +55,7 @@ void FusedBatchNormActGradKernel(const Context &dev_ctx,
                                  DenseTensor *bias_grad) {
 // Note(andsonder): Fused bn activation only used in the gpu place.
 #if defined(PADDLE_WITH_CUDA) and CUDNN_VERSION >= 7401
-  using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
+  using CudnnDataType = backends::gpu::CudnnDataType<T>;
   using BatchNormParamType = typename CudnnDataType::BatchNormParamType;
   double epsilon1 = static_cast<double>(epsilon);
 
@@ -147,7 +147,7 @@ void FusedBatchNormActGradKernel(const Context &dev_ctx,
   DenseTensor workspace_tensor;
   auto reserve_space_size = reserve_space.memory_size();
   cudnnBatchNormOps_t bnOps_ = CUDNN_BATCHNORM_OPS_BN_ACTIVATION;
-  phi::backends::gpu::ScopedActivationDescriptor scope_act_desc;
+  backends::gpu::ScopedActivationDescriptor scope_act_desc;
   cudnnActivationDescriptor_t activation_desc_ =
       scope_act_desc.descriptor<T>(act_type);
   // --------------- cudnn batchnorm workspace ---------------

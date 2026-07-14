@@ -33,7 +33,7 @@ void ReduceWrapper(const GPUContext &dev_ctx,
                    DenseTensor *dst) {
   std::vector<int> reduce_dims =
       funcs::GetReduceDim(dst->dims(), src->dims(), axis);
-  phi::SumKernel<T, GPUContext>(
+  SumKernel<T, GPUContext>(
       dev_ctx, *src, reduce_dims, src->dtype(), false, dst);
 }
 
@@ -228,7 +228,7 @@ void DefaultMixedPrecisionAddGrad(const GPUContext &dev_ctx,
       }
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(x.dims(), dout.dims(), axis);
-      phi::SumKernel<T_dout, GPUContext>(
+      SumKernel<T_dout, GPUContext>(
           dev_ctx, dout, reduce_dims, dout.dtype(), false, dx);
     }
   }
@@ -244,7 +244,7 @@ void DefaultMixedPrecisionAddGrad(const GPUContext &dev_ctx,
       dev_ctx.template Alloc<float>(&dy_fp32);
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(y.dims(), dout.dims(), axis);
-      phi::SumKernel<float, GPUContext>(
+      SumKernel<float, GPUContext>(
           dev_ctx, dout, reduce_dims, dout.dtype(), false, &dy_fp32);
       CastKernel<float>(dev_ctx, dy_fp32, dy->dtype(), dy);
     }
@@ -309,7 +309,7 @@ void DefaultElementwiseAddGrad(const GPUContext &dev_ctx,
       }
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(x.dims(), out.dims(), axis);
-      phi::SumKernel<T, GPUContext>(
+      SumKernel<T, GPUContext>(
           dev_ctx, dout, reduce_dims, dout.dtype(), false, dx);
     }
   }
@@ -323,7 +323,7 @@ void DefaultElementwiseAddGrad(const GPUContext &dev_ctx,
     } else {
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(y.dims(), out.dims(), axis);
-      phi::SumKernel<T, GPUContext>(
+      SumKernel<T, GPUContext>(
           dev_ctx, dout, reduce_dims, dout.dtype(), false, dy);
     }
   }
@@ -432,7 +432,7 @@ void default_elementwise_sub_grad(const GPUContext &dev_ctx,
       }
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(x.dims(), out.dims(), axis);
-      phi::SumKernel<T, GPUContext>(
+      SumKernel<T, GPUContext>(
           dev_ctx, dout, reduce_dims, dout.dtype(), false, dx);
     }
   }
@@ -450,10 +450,23 @@ void default_elementwise_sub_grad(const GPUContext &dev_ctx,
                 dout.data<T>(), size, nullptr, dev_ctx.template Alloc<T>(dy));
       }
     } else {
+      // dy = sum_to(-dout). Negate first, then reduce via the SAME SumKernel
+      // path as dx to stay bitwise-aligned with torch's sub backward.
+      DenseTensor tmp_dy;
+      tmp_dy.Resize(dout.dims());
+      dev_ctx.template Alloc<T>(&tmp_dy);
+
+      // Step 1: tmp_dy = -dout (elementwise negation via broadcast).
+      std::vector<const DenseTensor *> ins = {&dout};
+      std::vector<DenseTensor *> outs = {&tmp_dy};
+      funcs::BroadcastKernel<T>(
+          dev_ctx, ins, &outs, kps::InverseFunctor<T>(), axis);
+
+      // Step 2: dy = sum_to(tmp_dy) (reduce over broadcast dims via SumKernel).
       std::vector<int> reduce_dims =
-          funcs::GetReduceDim(y.dims(), out.dims(), axis);
-      funcs::ReduceKernel<T, T, kps::AddFunctor, kps::InverseFunctor<T>>(
-          dev_ctx, dout, dy, kps::InverseFunctor<T>(), reduce_dims);
+          funcs::GetReduceDim(dy->dims(), tmp_dy.dims(), axis);
+      SumKernel<T, GPUContext>(
+          dev_ctx, tmp_dy, reduce_dims, tmp_dy.dtype(), false, dy);
     }
   }
 }

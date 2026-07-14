@@ -24,7 +24,6 @@
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
-#include "test/cpp/compat/cuda_test_utils.h"
 
 // Helper: allocate three same-sized device buffers, copy host data in,
 // invoke a kernel via |fn|, copy results back, synchronize, then free.
@@ -73,7 +72,6 @@ class GemmTester {
   static double toDouble(T val) { return static_cast<double>(val); }
 
   void Run() {
-    SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
     std::vector<T> h_a = {T(1), T(3), T(2), T(4)};
     std::vector<T> h_b = {T(5), T(7), T(6), T(8)};
     std::vector<T> h_c(N * N, T(0));
@@ -95,7 +93,6 @@ class GemmTester {
   // transA='T': C = alpha * A^T * B + beta * C
   // A^T = [[1,3],[2,4]],  A^T * B = [[26,30],[38,44]]
   void RunTransA() {
-    SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
     std::vector<T> h_a = {T(1), T(3), T(2), T(4)};
     std::vector<T> h_b = {T(5), T(7), T(6), T(8)};
     std::vector<T> h_c(N * N, T(0));
@@ -136,7 +133,6 @@ TEST(CUDABlasTest, GemmFloatTransA) {
 }
 
 TEST(CUDABlasTest, GemmFloatTransALowercase) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   constexpr int64_t N = 2;
 
   std::vector<float> h_a = {1.F, 3.F, 2.F, 4.F};
@@ -181,7 +177,6 @@ TEST(CUDABlasTest, GemmBFloat16) {
 // A stored col-major: col0={1+i,2+2i}, col1={3+3i,4+4i}
 // A^H stored col-major: col0={1-i,3-3i}, col1={2-2i,4-4i}
 TEST(CUDABlasTest, GemmComplexFloatConjTrans) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   constexpr int64_t N = 2;
   using T = c10::complex<float>;
 
@@ -209,7 +204,6 @@ TEST(CUDABlasTest, GemmComplexFloatConjTrans) {
 
 // Same as above but uses lowercase 'c'/'n' to exercise that switch-case branch.
 TEST(CUDABlasTest, GemmComplexDoubleConjTransLower) {
-  SKIP_IF_CUDA_RUNTIME_UNAVAILABLE();
   constexpr int64_t N = 2;
   using T = c10::complex<double>;
 

@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING
 import paddle
 from paddle.base.data_feeder import convert_dtype
 from paddle.distribution import distribution
+from paddle.utils.decorator_utils import param_one_alias
 
 if TYPE_CHECKING:
     from paddle import Tensor
@@ -118,6 +119,7 @@ class Poisson(distribution.Distribution):
         """
         return self.rate
 
+    @param_one_alias(["shape", "sample_shape"])
     def sample(self, shape: Sequence[int] = []) -> Tensor:
         """Generate poisson samples of the specified shape. The final shape would be ``shape+batch_shape`` .
 

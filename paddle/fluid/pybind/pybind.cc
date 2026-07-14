@@ -260,6 +260,12 @@ PYBIND11_MAKE_OPAQUE(paddle::framework::FetchUnmergedList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchType);
 
+// Opaque type for AllBlockInfoOfAllocator — avoid full O(n) conversion
+// at pybind boundary; only convert on per-group access (__getitem__).
+using AllBlocksInfoType =
+    std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>;
+PYBIND11_MAKE_OPAQUE(AllBlocksInfoType);
+
 DECLARE_FILE_SYMBOLS(init_phi);
 DECLARE_FILE_SYMBOLS(kernel_dialect);
 #ifdef PADDLE_WITH_DISTRIBUTE
@@ -479,16 +485,17 @@ bool IsCompiledWithDIST() {
 }
 
 struct iinfo {
-  int64_t min, max;
+  int64_t min;
+  uint64_t max;
   int bits;
   std::string dtype;
 
-#define CASE_IINFO_BODY(type, ctype)         \
-  do {                                       \
-    min = std::numeric_limits<ctype>::min(); \
-    max = std::numeric_limits<ctype>::max(); \
-    bits = sizeof(ctype) * 8;                \
-    dtype = #type;                           \
+#define CASE_IINFO_BODY(type, ctype)                                \
+  do {                                                              \
+    min = static_cast<int64_t>(std::numeric_limits<ctype>::min());  \
+    max = static_cast<uint64_t>(std::numeric_limits<ctype>::max()); \
+    bits = sizeof(ctype) * 8;                                       \
+    dtype = #type;                                                  \
   } while (0)
 
   explicit iinfo(const DataType &type) {
@@ -520,7 +527,8 @@ struct iinfo {
       default:
         PADDLE_THROW(common::errors::InvalidArgument(
             "the argument of paddle.iinfo can only be paddle.int8, "
-            "paddle.int16, paddle.int32, paddle.int64, or paddle.uint8"));
+            "paddle.int16, paddle.int32, paddle.int64, paddle.uint8, "
+            "paddle.uint16, paddle.uint32, or paddle.uint64"));
         break;
     }
   }
@@ -552,16 +560,16 @@ struct finfo {
   explicit finfo(const DataType &type) {
     switch (type) {
       case DataType::FLOAT8_E4M3FN:
-        CASE_FINFO_BODY(float8_e4m3fn, phi::dtype::float8_e4m3fn);
+        CASE_FINFO_BODY(float8_e4m3fn, phi::float8_e4m3fn);
         break;
       case DataType::FLOAT8_E5M2:
-        CASE_FINFO_BODY(float8_e5m2, phi::dtype::float8_e5m2);
+        CASE_FINFO_BODY(float8_e5m2, phi::float8_e5m2);
         break;
       case DataType::FLOAT16:
-        CASE_FINFO_BODY(float16, phi::dtype::float16);
+        CASE_FINFO_BODY(float16, phi::float16);
         break;
       case DataType::BFLOAT16:
-        CASE_FINFO_BODY(bfloat16, phi::dtype::bfloat16);
+        CASE_FINFO_BODY(bfloat16, phi::bfloat16);
         break;
       case DataType::FLOAT32:
       case DataType::COMPLEX64:
@@ -825,7 +833,7 @@ int DLPackManagedTensorAllocator(::DLTensor *prototype,
                                                   const char *message)) {
   try {
     phi::IntArray shape(prototype->shape, prototype->ndim);
-    phi::Place place(paddle::framework::DLDeviceToPlace(prototype->device));
+    Place place(paddle::framework::DLDeviceToPlace(prototype->device));
     DataType dtype =
         paddle::framework::DLDataTypeToPhiDataType(prototype->dtype);
     Tensor tensor = paddle::empty(shape, dtype, place);
@@ -1615,8 +1623,11 @@ PYBIND11_MODULE(libpaddle, m) {
 
   py::class_<iinfo>(m, "iinfo")
       .def(py::init<const DataType &>())
-      .def_readonly("min", &iinfo::min)
-      .def_readonly("max", &iinfo::max)
+      .def_property_readonly("min",
+                             [](const iinfo &a) { return py::int_(a.min); })
+      .def_property_readonly(
+          "max",
+          [](const iinfo &a) { return py::cast(static_cast<uint64_t>(a.max)); })
       .def_readonly("bits", &iinfo::bits)
       .def_readonly("dtype", &iinfo::dtype)
       .def("__repr__", [](const iinfo &a) {
@@ -1785,7 +1796,9 @@ PYBIND11_MODULE(libpaddle, m) {
   m.def("is_cuda_graph_capturing", &platform::IsCUDAGraphCapturing);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_CUSTOM_DEVICE)
-  py::class_<phi::backends::gpu::CUDAGraph>(m, "CUDAGraph")
+  auto cuda_graph_class =
+      py::class_<phi::backends::gpu::CUDAGraph>(m, "CUDAGraph");
+  cuda_graph_class
       .def_static("begin_capture",
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
                   [](GPUPlace place, int mode) {
@@ -1799,22 +1812,29 @@ PYBIND11_MODULE(libpaddle, m) {
           }
 #endif
                   )
-      .def_static(
-          "begin_capture_with_pool_id",
+      .def_static("begin_capture_with_pool_id",
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-          [](GPUPlace place, int mode, std::optional<int64_t> pool_id) {
-            if (pool_id.has_value()) {
-              platform::BeginCUDAGraphCapture(
-                  place,
-                  static_cast<paddle::gpuStreamCaptureMode>(mode),
-                  pool_id.value());
-            } else {
-              platform::BeginCUDAGraphCapture(
-                  place, static_cast<paddle::gpuStreamCaptureMode>(mode));
-            }
-          }
+                  [](GPUPlace place,
+                     int mode,
+                     std::optional<int64_t> pool_id,
+                     bool enable_replace) {
+                    if (pool_id.has_value()) {
+                      platform::BeginCUDAGraphCapture(
+                          place,
+                          static_cast<paddle::gpuStreamCaptureMode>(mode),
+                          pool_id.value(),
+                          enable_replace);
+                    } else {
+                      platform::BeginCUDAGraphCapture(
+                          place,
+                          static_cast<paddle::gpuStreamCaptureMode>(mode),
+                          phi::backends::gpu::CUDAGraph::kInvalidPoolID,
+                          enable_replace);
+                    }
+                  }
 #else
-          [](phi::CustomPlace place, int mode, std::optional<int64_t> pool_id) {
+          [](phi::CustomPlace place, int mode, std::optional<int64_t> pool_id,
+             bool enable_replace) {
             if (pool_id.has_value()) {
               platform::BeginCUDAGraphCapture(
                   place,
@@ -1826,7 +1846,7 @@ PYBIND11_MODULE(libpaddle, m) {
             }
           }
 #endif
-          )
+                  )
       .def_static("end_capture", &platform::EndCUDAGraphCapture)
       .def_static("gen_new_memory_pool_id",
                   &phi::backends::gpu::CUDAGraph::UniqueMemoryPoolID)
@@ -1834,6 +1854,23 @@ PYBIND11_MODULE(libpaddle, m) {
       .def("reset", &phi::backends::gpu::CUDAGraph::Reset)
       .def("print_to_dot_files",
            &phi::backends::gpu::CUDAGraph::PrintToDotFiles);
+#if defined(PADDLE_WITH_CUDA)
+  cuda_graph_class.def(
+      "replace_input_ptrs",
+      [](phi::backends::gpu::CUDAGraph &self,
+         const std::vector<int64_t> &old_ptrs_int,
+         const std::vector<int64_t> &new_ptrs_int) {
+        std::vector<void *> old_ptrs(old_ptrs_int.size());
+        std::vector<void *> new_ptrs(new_ptrs_int.size());
+        for (size_t i = 0; i < old_ptrs_int.size(); ++i) {
+          old_ptrs[i] = reinterpret_cast<void *>(old_ptrs_int[i]);
+        }
+        for (size_t i = 0; i < new_ptrs_int.size(); ++i) {
+          new_ptrs[i] = reinterpret_cast<void *>(new_ptrs_int[i]);
+        }
+        self.ReplaceInputPtrs(old_ptrs, new_ptrs);
+      });
+#endif
 #endif
 
 #ifdef PADDLE_WITH_XPU
@@ -1847,7 +1884,10 @@ PYBIND11_MODULE(libpaddle, m) {
           })
       .def_static(
           "begin_capture_with_pool_id",
-          [](phi::XPUPlace place, int mode, std::optional<int64_t> pool_id) {
+          [](phi::XPUPlace place,
+             int mode,
+             std::optional<int64_t> pool_id,
+             bool enable_replace) {
             if (pool_id.has_value()) {
               platform::BeginCUDAGraphCapture(
                   place,
@@ -1869,7 +1909,7 @@ PYBIND11_MODULE(libpaddle, m) {
 
 #endif
 
-  m.def("wait_device", [](const phi::Place &place) {
+  m.def("wait_device", [](const Place &place) {
     phi::DeviceContextPool::Instance().Get(place)->Wait();
   });
   py::class_<MmapStorage, std::shared_ptr<MmapStorage>>(
@@ -1968,7 +2008,7 @@ PYBIND11_MODULE(libpaddle, m) {
       py::arg("count") = -1,
       py::arg("offset") = 0);
 
-  m.def("place_to_dl_device", [](const phi::Place &place) {
+  m.def("place_to_dl_device", [](const Place &place) {
     ::DLDevice dl_device = PlaceToDLDevice(place);
     return py::make_tuple(static_cast<int>(dl_device.device_type),
                           dl_device.device_id);
@@ -2119,7 +2159,7 @@ PYBIND11_MODULE(libpaddle, m) {
                              stridesIntArray,
                              dtype,
                              phi::DataLayout::NCHW,
-                             phi::Place(),
+                             Place(),
                              [obj](void *data) {
                                py::gil_scoped_acquire gil;
                                obj.dec_ref();
@@ -3083,7 +3123,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("_get_eager_deletion_vars", &framework::GetEagerDeletionCleanVars);
 
   py::class_<framework::Executor>(m, "Executor")
-      .def(py::init<const phi::Place &>())
+      .def(py::init<const Place &>())
       .def("close", &Executor::Close)
       .def("get_place", &Executor::GetPlace)
       .def("run_from_dataset",
@@ -3175,7 +3215,7 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   py::class_<framework::StandaloneExecutor>(m, "StandaloneExecutor")
-      .def(py::init<const phi::Place &, const interpreter::Plan &, Scope *>())
+      .def(py::init<const Place &, const interpreter::Plan &, Scope *>())
       .def("run",
            [](StandaloneExecutor &self,
               std::vector<std::string> feed_names,
@@ -3512,7 +3552,7 @@ All parameter, weight, gradient are variables in Paddle.
         });
   m.def("register_offload_callback", [] {
     paddle::memory::allocation::RegisterOOMCallback(
-        [](phi::Place place, size_t size) -> size_t {
+        [](Place place, size_t size) -> size_t {
           return egr::ActivationOffloader::Instance()->Offload(place, size);
         });
   });
@@ -3684,6 +3724,7 @@ All parameter, weight, gradient are variables in Paddle.
           py::return_value_policy::take_ownership);
 
   m.def("op_support_gpu", OpSupportGPU);
+  m.def("eager_set_device_id", &EagerSetDeviceId);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("get_cuda_device_count", platform::GetGPUDeviceCount);
   m.def("get_cuda_current_device_id", &platform::GetCurrentDeviceId);
@@ -3744,6 +3785,24 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 #endif
 #if defined(PADDLE_WITH_CUDA)
+  // Register opaque AllBlocksInfo type — lazy per-group conversion
+  py::class_<AllBlocksInfoType>(m, "AllBlocksInfo")
+      .def("__len__", &AllBlocksInfoType::size)
+      .def("__getitem__",
+           [](const AllBlocksInfoType &self,
+              int64_t i) -> std::vector<std::tuple<size_t, uintptr_t, bool>> {
+             if (i < 0) i += static_cast<int64_t>(self.size());
+             if (i < 0 || static_cast<size_t>(i) >= self.size())
+               throw py::index_error();
+             return self[i];
+           })
+      .def(
+          "__iter__",
+          [](const AllBlocksInfoType &self) {
+            return py::make_iterator(self.begin(), self.end());
+          },
+          py::keep_alive<0, 1>());
+
   m.def("vmm_max_free_size", [](int device_id) {
     return memory::VmmMaxFreeSize(GPUPlace(device_id), 1);
   });
@@ -3753,9 +3812,30 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("vmm_free_block_info", [](int device_id) {
     return paddle::memory::FreeBlockInfoOfVmmAllocator(GPUPlace(device_id));
   });
-  m.def("vmm_all_block_info", [](int device_id) {
-    return paddle::memory::AllBlockInfoOfVmmAllocator(GPUPlace(device_id));
-  });
+  m.def(
+      "all_block_info",
+      [](int device_id) -> AllBlocksInfoType {
+        return paddle::memory::AllBlockInfoOfAllocator(GPUPlace(device_id));
+      },
+      py::return_value_policy::move);
+  m.def(
+      "vmm_all_block_info",
+      [](int device_id) -> AllBlocksInfoType {
+        return paddle::memory::AllBlockInfoOfAllocator(GPUPlace(device_id));
+      },
+      py::return_value_policy::move);
+  m.def(
+      "large_pool_block_info",
+      [](int device_id) -> AllBlocksInfoType {
+        return paddle::memory::LargePoolBlockInfo(GPUPlace(device_id));
+      },
+      py::return_value_policy::move);
+  m.def(
+      "small_pool_block_info",
+      [](int device_id) -> AllBlocksInfoType {
+        return paddle::memory::SmallPoolBlockInfo(GPUPlace(device_id));
+      },
+      py::return_value_policy::move);
   m.def("get_allocate_record", [](int device_id) {
     return paddle::memory::GetAllocateEvent(GPUPlace(device_id));
   });

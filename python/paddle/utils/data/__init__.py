@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from .dataloader import (
+    DataLoader,
     default_collate,
     get_worker_info,
 )
@@ -22,8 +23,10 @@ from .dataset import (
     Dataset,
     IterableDataset,
     Subset,
+    TensorDataset,
     random_split,
 )
+from .distributed import DistributedSampler
 from .sampler import (
     BatchSampler,
     RandomSampler,
@@ -37,11 +40,14 @@ __all__ = [
     'ChainDataset',
     'ConcatDataset',
     'Dataset',
+    'DataLoader',
     'IterableDataset',
     'Subset',
     'random_split',
     'BatchSampler',
+    'DistributedSampler',
     'RandomSampler',
     'Sampler',
     'SequentialSampler',
+    'TensorDataset',
 ]

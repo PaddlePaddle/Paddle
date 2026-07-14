@@ -339,10 +339,10 @@ static void UniqueDim(const Context& dev_ctx,
   DenseTensor out_trans;
   std::vector<int64_t> out_trans_dims_vec = in_trans_dims_vec;
   out_trans_dims_vec[0] = input_unbind.size();
-  out_trans.Resize(make_ddim(out_trans_dims_vec));
+  out_trans.Resize(out_trans_dims_vec);
   dev_ctx.template Alloc<InT>(&out_trans);
   std::swap(out_trans_dims_vec[0], out_trans_dims_vec[axis]);
-  out->Resize(make_ddim(out_trans_dims_vec));
+  out->Resize(out_trans_dims_vec);
   dev_ctx.template Alloc<InT>(out);
   concat_functor(dev_ctx, input_unbind, 0, &out_trans);
   TransCompute<Context, InT>(

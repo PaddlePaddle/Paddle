@@ -15,21 +15,16 @@
 #pragma once
 
 #include <c10/core/ScalarType.h>
-#include <c10/util/typeid.h>
+
+#include "paddle/common/macros.h"
+
+namespace caffe2 {
+class TypeMeta;
+}  // namespace caffe2
 
 namespace c10 {
-static auto default_dtype = ScalarType::Float;
-static auto default_complex_dtype = ScalarType::ComplexFloat;
-
-void inline set_default_dtype(ScalarType dtype) { default_dtype = dtype; }
-
-ScalarType inline get_default_dtype_as_scalartype() { return default_dtype; }
-
-ScalarType inline get_default_complex_dtype() { return default_complex_dtype; }
-
-/// Returns default dtype as caffe2::TypeMeta (the canonical form, mirrors
-/// PyTorch).
-inline caffe2::TypeMeta get_default_dtype() {
-  return caffe2::TypeMeta::fromScalarType(default_dtype);
-}
+PADDLE_API void set_default_dtype(caffe2::TypeMeta dtype);
+PADDLE_API const caffe2::TypeMeta get_default_dtype();
+PADDLE_API ScalarType get_default_dtype_as_scalartype();
+PADDLE_API const caffe2::TypeMeta get_default_complex_dtype();
 }  // namespace c10

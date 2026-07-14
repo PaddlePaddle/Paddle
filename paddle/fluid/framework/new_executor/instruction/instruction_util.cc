@@ -59,14 +59,12 @@
 #define DEVICE_CONTEXT phi::GPUContext
 #define CREATE_COMM_CONTEXT \
   phi::distributed::CommContextManager::CreateNCCLCommContext
-#define PLATFORM_COMM_CONTEXT platform::NCCLCommContext
 #define PROCESS_GROUP paddle::distributed::ProcessGroupNCCL
 #elif (defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL))
 #define COMM_CONTEXT phi::distributed::BKCLCommContext
 #define DEVICE_CONTEXT phi::XPUContext
 #define CREATE_COMM_CONTEXT \
   phi::distributed::CommContextManager::CreateBKCLCommContext
-#define PLATFORM_COMM_CONTEXT platform::BKCLCommContext
 #define PROCESS_GROUP paddle::distributed::ProcessGroupBKCL
 #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
 #define COMM_CONTEXT phi::distributed::XCCLCommContext

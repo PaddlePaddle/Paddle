@@ -113,6 +113,7 @@ def flatten_state_dict(state_dict):
     mapping = {}
 
     def _flatten(key, value):
+        nonlocal _flatten
         if isinstance(value, dict):
             for k, v in value.items():
                 assert isinstance(k, str), f"The key should be str, but is {k}"
@@ -127,6 +128,7 @@ def flatten_state_dict(state_dict):
             )
 
     _flatten((), state_dict)
+    del _flatten  # force python gc of recursive closure
 
     return flatten_state_dict, mapping
 

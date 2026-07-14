@@ -72,7 +72,7 @@ void LayerNormKernel(const Context& dev_ctx,
   bool valid_bias = (bias.get_ptr() != nullptr);
 
   auto x_dtype = x.dtype();
-  phi::DataType scale_bias_dtype;
+  DataType scale_bias_dtype;
   if (valid_scale) {
     scale_bias_dtype = scale->dtype();
     if (valid_bias) {
@@ -89,7 +89,7 @@ void LayerNormKernel(const Context& dev_ctx,
   bool is_scale_bias_same_dtype_with_x = (x_dtype == scale_bias_dtype);
   if (!is_scale_bias_same_dtype_with_x) {
     PADDLE_ENFORCE_EQ(scale_bias_dtype,
-                      phi::DataType::FLOAT32,
+                      DataType::FLOAT32,
                       common::errors::InvalidArgument(
                           "Unsupported data type of Scale and Bias"));
   }

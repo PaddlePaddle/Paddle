@@ -61,7 +61,16 @@ class TestRegisteredPhiKernels(unittest.TestCase):
         self.forward_ops = []
         self.backward_ops = []
 
-        root_path = pathlib.Path(__file__).parents[3]
+        root_path = None
+        for parent in pathlib.Path(__file__).parents:
+            if parent.joinpath('paddle/phi/ops/yaml/ops.yaml').is_file():
+                root_path = parent
+                break
+        if root_path is None:
+            raise FileNotFoundError(
+                "Cannot locate repo root containing "
+                "paddle/phi/ops/yaml/ops.yaml"
+            )
 
         ops_yaml_path = [
             'paddle/phi/ops/yaml/ops.yaml',

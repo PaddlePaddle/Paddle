@@ -27,7 +27,7 @@ __global__ void CalculateGrad(T* logits_grad,
                               const int64_t N,
                               const int64_t D,
                               const int* class_interval_ptr) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   int start_index = class_interval_ptr[rank];
   CUDA_KERNEL_LOOP(i, N * D) {
     auto row = i / D;
@@ -35,13 +35,13 @@ __global__ void CalculateGrad(T* logits_grad,
     if ((col + start_index) == label[row]) {
       logits_grad[i] = (logits_grad[i] - static_cast<T>(1.0)) * loss_grad[row];
       if (fabs(margin1 - 1.0) > 1e-8 || fabs(margin2) > 1e-8) {
-        MPType dout = static_cast<MPType>(logits_grad[i]);
-        MPType one = static_cast<MPType>(1.0f);
-        MPType x = static_cast<MPType>(logits[i]);
-        MPType m1 = static_cast<MPType>(margin1);
-        MPType m2 = static_cast<MPType>(margin2);
+        MT dout = static_cast<MT>(logits_grad[i]);
+        MT one = static_cast<MT>(1.0f);
+        MT x = static_cast<MT>(logits[i]);
+        MT m1 = static_cast<MT>(margin1);
+        MT m2 = static_cast<MT>(margin2);
 
-        MPType d = m1 * sin(m1 * acos(x) + m2) / sqrt(one - x * x);
+        MT d = m1 * sin(m1 * acos(x) + m2) / sqrt(one - x * x);
         logits_grad[i] = static_cast<T>(dout * d);
       }
     } else {
@@ -93,7 +93,7 @@ void MarginCrossEntropyGradKernel(const Context& dev_ctx,
                                D,
                                &class_interval);
 
-  if (label_type == phi::DataType::INT32) {
+  if (label_type == DataType::INT32) {
     typedef int32_t LabelT;
     CalculateGrad<T, LabelT>
         <<<blocks, threads, 0, dev_ctx.stream()>>>(logits_grad->data<T>(),
@@ -107,7 +107,7 @@ void MarginCrossEntropyGradKernel(const Context& dev_ctx,
                                                    N,
                                                    D,
                                                    class_interval.data<int>());
-  } else if (label_type == phi::DataType::INT64) {
+  } else if (label_type == DataType::INT64) {
     typedef int64_t LabelT;
     CalculateGrad<T, LabelT>
         <<<blocks, threads, 0, dev_ctx.stream()>>>(logits_grad->data<T>(),

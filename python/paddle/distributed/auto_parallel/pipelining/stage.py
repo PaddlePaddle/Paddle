@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from functools import partial
-from typing import Any, Callable, Union
+from typing import TYPE_CHECKING, Any
 
 import paddle
 import paddle.distributed as dist
@@ -41,6 +41,9 @@ from .utils import (
     _zero_initialize_with_meta,
     map_structure,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -124,7 +127,7 @@ class _RecvInfo:
 
 
 # An input can be either a received activation or a model input
-InputInfo = Union[_RecvInfo, _RootArgPlaceholder]
+InputInfo = _RecvInfo | _RootArgPlaceholder
 
 
 def _make_tensor_from_meta(

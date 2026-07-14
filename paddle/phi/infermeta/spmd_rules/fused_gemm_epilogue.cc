@@ -23,8 +23,6 @@ limitations under the License. */
 
 namespace phi::distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 void FillMatmulPartOperandNotation(const int x_ndim,
                                    const int y_ndim,
                                    std::string* x_axes,
@@ -131,9 +129,9 @@ SpmdInfo FusedGemmEpilogueInferSpmdBase(const DistMetaTensor& x,
                                         bool trans_x,
                                         bool trans_y) {
   // Step0: verify input args based on matmul logic
-  auto ori_x_shape = common::vectorize(x.dims());
-  auto ori_y_shape = common::vectorize(y.dims());
-  auto ori_bias_shape = common::vectorize(bias.dims());
+  auto ori_x_shape = vectorize(x.dims());
+  auto ori_y_shape = vectorize(y.dims());
+  auto ori_bias_shape = vectorize(bias.dims());
   int x_ndim = static_cast<int>(ori_x_shape.size());
   int y_ndim = static_cast<int>(ori_y_shape.size());
   int bias_ndim = static_cast<int>(ori_bias_shape.size());
@@ -219,8 +217,8 @@ SpmdInfo FusedGemmEpilogueInferSpmdBase(const DistMetaTensor& x,
   output_dist_attr_dst.set_dims_mapping(out_dims_mapping);
 
   // Step2.3: Merge and get Inputs' New Dims Mapping.
-  auto x_shape = common::vectorize(x.dims());
-  auto y_shape = common::vectorize(y.dims());
+  auto x_shape = vectorize(x.dims());
+  auto y_shape = vectorize(y.dims());
   if (trans_x) {
     std::iter_swap(x_shape.end() - 2, x_shape.end() - 1);
   }

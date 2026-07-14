@@ -289,7 +289,7 @@ int Conv2dTransposeXPUFusePass::ApplyImpl(ir::Graph* graph,
         scope->FindVar(conv_filter->Name())->GetMutable<DenseTensor>();
     // conv_filter fp16 --> fp32
     auto tensor_type = filter_t->dtype();
-    if (tensor_type == phi::DataType::FLOAT16) {
+    if (tensor_type == DataType::FLOAT16) {
       CastToFp32(filter_t, nullptr);
     }
     auto filter_dims = filter_t->dims();

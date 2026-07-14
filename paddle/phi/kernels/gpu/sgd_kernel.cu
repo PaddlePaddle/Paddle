@@ -26,7 +26,7 @@ namespace phi {
 template <typename T, typename MT, typename GradT>
 __global__ void SGDKernelMT(const T* param,
                             const GradT* grad,
-                            const T* learning_rate,
+                            const MT* learning_rate,
                             const int64_t num,
                             T* param_out,
                             const MT* master_param,
@@ -43,13 +43,14 @@ __global__ void SGDKernelMT(const T* param,
   }
 }
 
-template <typename T>
+template <typename T, typename MT>
 __global__ void SparseSGDFunctorKernel(const T* selected_rows,
                                        const int64_t* rows,
-                                       const T* learning_rate,
+                                       const MT* learning_rate,
                                        T* tensor_out,
                                        int64_t row_numel,
                                        int64_t limit) {
+  MT lr = learning_rate[0];
   for (int64_t i = blockIdx.x; i < limit; i += gridDim.x) {
     const T* selected_rows_ptr = selected_rows + i * row_numel;
     T* tensor_out_ptr = tensor_out + rows[i] * row_numel;
@@ -58,7 +59,7 @@ __global__ void SparseSGDFunctorKernel(const T* selected_rows,
       // Atomic Operation to avoid concurrent write error.
       CudaAtomicAdd(
           tensor_out_ptr + index,
-          -static_cast<T>(1.0) * learning_rate[0] * selected_rows_ptr[index]);
+          static_cast<T>(-lr * static_cast<MT>(selected_rows_ptr[index])));
     }
   }
 }
@@ -72,7 +73,7 @@ void SGDDenseKernel(const Context& dev_ctx,
                     bool multi_precision,
                     DenseTensor* param_out,
                     DenseTensor* master_param_out) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   // do check here
   // if (multi_precision) {
   //   bool has_master =
@@ -84,7 +85,7 @@ void SGDDenseKernel(const Context& dev_ctx,
       multi_precision ? master_param->data<MT>() : nullptr;
   MT* master_out_data =
       multi_precision ? dev_ctx.template Alloc<MT>(master_param_out) : nullptr;
-  const bool use_float32_grad = grad.dtype() == phi::DataType::FLOAT32;
+  const bool use_float32_grad = grad.dtype() == DataType::FLOAT32;
 
   int block = 512;
   int64_t grid_max = dev_ctx.GetCUDAMaxGridDimSize()[0];
@@ -93,7 +94,7 @@ void SGDDenseKernel(const Context& dev_ctx,
     SGDKernelMT<T, MT, float><<<grid, block, 0, dev_ctx.stream()>>>(
         param.data<T>(),
         grad.data<float>(),
-        learning_rate.data<T>(),
+        learning_rate.data<MT>(),
         param.numel(),
         dev_ctx.template Alloc<T>(param_out),
         master_in_data,
@@ -102,7 +103,7 @@ void SGDDenseKernel(const Context& dev_ctx,
     SGDKernelMT<T, MT, T><<<grid, block, 0, dev_ctx.stream()>>>(
         param.data<T>(),
         grad.data<T>(),
-        learning_rate.data<T>(),
+        learning_rate.data<MT>(),
         param.numel(),
         dev_ctx.template Alloc<T>(param_out),
         master_in_data,
@@ -119,7 +120,7 @@ void SGDDenseParamSparseGradKernel(const Context& dev_ctx,
                                    bool multi_precision,
                                    DenseTensor* param_out,
                                    DenseTensor* master_param_out) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  using MT = typename MPTypeTrait<T>::Type;
   // do some check here
   // if (multi_precision) {
   //   bool has_master =
@@ -167,11 +168,11 @@ void SGDDenseParamSparseGradKernel(const Context& dev_ctx,
   int thread_x = kThreadsPerBlock;
   int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
   int max_blocks = std::max(max_threads / kThreadsPerBlock, 1);
-  phi::MixVector<int64_t> mixv_in_rows(&in_rows);
-  SparseSGDFunctorKernel<<<max_blocks, thread_x, 0, dev_ctx.stream()>>>(
+  MixVector<int64_t> mixv_in_rows(&in_rows);
+  SparseSGDFunctorKernel<T, MT><<<max_blocks, thread_x, 0, dev_ctx.stream()>>>(
       in_data,
       mixv_in_rows.CUDAData(dev_ctx.GetPlace()),
-      learning_rate.data<T>(),
+      learning_rate.data<MT>(),
       out_data,
       in_row_numel,
       in_rows.size());

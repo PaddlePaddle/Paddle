@@ -639,7 +639,8 @@ class OneDNNHandlerNoCachingT {
     // AcquireForwardPrimitiveDescriptor
     PADDLE_ENFORCE_NOT_NULL(
         fwd_pd_,
-        errors::Unavailable("Get oneDNN Forward primitive %s failed."));
+        errors::Unavailable("FWD PD should be set when getting backward "
+                            "primitive descriptor."));
     bwd_pd_ = std::make_shared<typename TBackward::primitive_desc>(
         engine_, std::forward<Args>(args)..., *fwd_pd_);
   }
@@ -650,7 +651,8 @@ class OneDNNHandlerNoCachingT {
     // AcquireForwardPrimitiveDescriptor
     PADDLE_ENFORCE_NOT_NULL(
         fwd_pd_,
-        errors::Unavailable("Get oneDNN Forward primitive %s failed."));
+        errors::Unavailable("FWD PD should be set when getting backward "
+                            "primitive descriptor."));
     auto bwd_desc =
         typename TBackward_params::desc(std::forward<Args>(args)...);
     bwd_w_pd_ = std::make_shared<typename TBackward_params::primitive_desc>(

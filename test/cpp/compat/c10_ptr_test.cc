@@ -32,7 +32,7 @@
 
 TEST(TensorBaseTest, IsSameAPI) {
   // Test is_same() API - checks if two tensors share the same underlying data
-  at::TensorBase tensor1 = at::ones({2, 3}, at::kFloat);
+  at::Tensor tensor1 = at::ones({2, 3}, at::kFloat);
   at::TensorBase tensor2 = tensor1;                       // Same tensor
   at::TensorBase tensor3 = at::ones({2, 3}, at::kFloat);  // Different tensor
 
@@ -61,7 +61,7 @@ TEST(TensorBaseTest, IsSameAPI) {
 
 TEST(TensorBaseTest, UseCountAPI) {
   // Test use_count() API - returns reference count of underlying tensor
-  at::TensorBase tensor1 = at::ones({2, 3}, at::kFloat);
+  at::Tensor tensor1 = at::ones({2, 3}, at::kFloat);
 
   // Initial reference count should be 1
   ASSERT_EQ(tensor1.use_count(), 1);
@@ -100,16 +100,15 @@ TEST(TensorBaseTest, UseCountAPI) {
 
 TEST(TensorBaseTest, WeakUseCountAPI) {
   // Test weak_use_count() API
-  // Note: Currently returns 0 as Paddle uses std::shared_ptr instead of
-  // c10::intrusive_ptr
+  // Compat exposes PyTorch-visible semantics: live TensorImpl wrappers report
+  // the self weak-reference count as 1.
   at::TensorBase tensor1 = at::ones({2, 3}, at::kFloat);
 
-  // Should return 0 (not implemented yet)
-  ASSERT_EQ(tensor1.weak_use_count(), 0);
+  ASSERT_EQ(tensor1.weak_use_count(), 1);
 
   at::TensorBase tensor2 = tensor1;
-  ASSERT_EQ(tensor1.weak_use_count(), 0);
-  ASSERT_EQ(tensor2.weak_use_count(), 0);
+  ASSERT_EQ(tensor1.weak_use_count(), 1);
+  ASSERT_EQ(tensor2.weak_use_count(), 1);
 
   // Test with undefined tensor
   at::TensorBase undefined_tensor;

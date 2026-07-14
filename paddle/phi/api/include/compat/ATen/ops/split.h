@@ -59,10 +59,11 @@ inline std::vector<at::Tensor> split(const at::Tensor& self,
 inline std::vector<at::Tensor> split_symint(const at::Tensor& self,
                                             c10::SymIntArrayRef split_sizes,
                                             int64_t dim = 0) {
-  return split(self,
-               at::IntArrayRef(static_cast<const int64_t*>(split_sizes.data()),
-                               split_sizes.size()),
-               dim);
+  return split(
+      self,
+      at::IntArrayRef(reinterpret_cast<const int64_t*>(split_sizes.data()),
+                      split_sizes.size()),
+      dim);
 }
 
 }  // namespace at

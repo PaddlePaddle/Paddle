@@ -25,13 +25,13 @@
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 
-namespace at {
+namespace at::detail {
 
 // Internal implementation for std (standard deviation = sqrt(variance))
-inline Tensor std_impl(const Tensor& self,
-                       const std::vector<int64_t>& dims_vec,
-                       double correction_value,
-                       bool keepdim) {
+inline Tensor _PD_std_impl(const Tensor& self,
+                           const std::vector<int64_t>& dims_vec,
+                           double correction_value,
+                           bool keepdim) {
   // Validate dimensions before processing
   int64_t ndim = self.dim();
   for (int64_t d : dims_vec) {
@@ -107,19 +107,14 @@ inline Tensor std_impl(const Tensor& self,
   return Tensor(result);
 }
 
-}  // namespace at
+}  // namespace at::detail
 
 namespace at {
-
-inline Tensor Tensor::std(int dim) const {
-  // Call the OptionalIntArrayRef version
-  return std(at::OptionalIntArrayRef(dim), true, false);
-}
 
 inline Tensor Tensor::std(bool unbiased) const {
   std::vector<int64_t> empty_dims;
   double correction = unbiased ? 1.0 : 0.0;
-  return std_impl(*this, empty_dims, correction, false);
+  return detail::_PD_std_impl(*this, empty_dims, correction, false);
 }
 
 inline Tensor Tensor::std(at::OptionalIntArrayRef dim,
@@ -130,7 +125,7 @@ inline Tensor Tensor::std(at::OptionalIntArrayRef dim,
   if (dim.has_value() && dim.value().size() > 0) {
     dims_vec.assign(dim.value().begin(), dim.value().end());
   }
-  return std_impl(*this, dims_vec, correction, keepdim);
+  return detail::_PD_std_impl(*this, dims_vec, correction, keepdim);
 }
 
 inline Tensor Tensor::std(at::OptionalIntArrayRef dim,
@@ -145,7 +140,7 @@ inline Tensor Tensor::std(at::OptionalIntArrayRef dim,
   if (dim.has_value() && dim.value().size() > 0) {
     dims_vec.assign(dim.value().begin(), dim.value().end());
   }
-  return std_impl(*this, dims_vec, correction_value, keepdim);
+  return detail::_PD_std_impl(*this, dims_vec, correction_value, keepdim);
 }
 
 }  // namespace at

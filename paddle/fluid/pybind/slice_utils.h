@@ -58,15 +58,14 @@ static inline common::DDim infer_size_symdimvector(common::DDim a,
     auto sizeA = (dimA >= 0) ? a[dimA] : 1;
     auto sizeB = (dimB >= 0) ? b[dimB] : 1;
 
-    PADDLE_ENFORCE_EQ(
-        sizeA == sizeB || sizeA == 1 || sizeB == 1,
-        true,
-        common::errors::Fatal("The size of tensor a (",
-                              sizeA,
-                              ") must match the size of tensor b (",
-                              sizeB,
-                              ") at non-singleton dimension ",
-                              i));
+    PADDLE_ENFORCE_EQ(sizeA == sizeB || sizeA == 1 || sizeB == 1,
+                      true,
+                      common::errors::Fatal("The size of tensor a (%d) must "
+                                            "match the size of tensor b (%d) "
+                                            "at non-singleton dimension %d",
+                                            sizeA,
+                                            sizeB,
+                                            i));
 
     // 1s map to the other size (even 0).
     expandedSizes[i] = sizeA == 1 ? sizeB : sizeA;
@@ -90,7 +89,7 @@ static inline std::vector<Tensor> expandTensors(std::vector<Tensor> indices) {
   // expands bool to int tensors;
   std::vector<Tensor> result;
   for (auto& index : indices) {
-    if (index.dtype() == paddle::DataType::BOOL) {
+    if (index.dtype() == DataType::BOOL) {
       auto bool_2_idx = nonzero_ad_func(index);
       for (int j = 0; j < index.dims().size(); j++) {
         Tensor sliced_tensor =
@@ -813,8 +812,8 @@ static Tensor getValueForBoolTensor(const Tensor& tensor,
 
     std::vector<Tensor> indices_int64;
     for (auto& indice : indices) {
-      if (indice.defined() && indice.dtype() == paddle::DataType::INT32) {
-        indice = indice.cast(paddle::DataType::INT64);  // int32 -> int64
+      if (indice.defined() && indice.dtype() == DataType::INT32) {
+        indice = indice.cast(DataType::INT64);  // int32 -> int64
       }
       indices_int64.push_back(indice);
     }
@@ -1030,8 +1029,8 @@ static void DealWithIndex(const int pos_of_new_dim,
                            reinterpret_cast<char*>(tensor->data()));
 
   for (auto& indice : *transed_index) {
-    if (indice.defined() && indice.dtype() == paddle::DataType::INT32) {
-      indice = indice.cast(paddle::DataType::INT64);  // int32 -> int64
+    if (indice.defined() && indice.dtype() == DataType::INT32) {
+      indice = indice.cast(DataType::INT64);  // int32 -> int64
     }
     transed_index_int64->push_back(indice);
   }

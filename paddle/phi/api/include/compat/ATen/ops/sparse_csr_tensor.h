@@ -31,17 +31,14 @@ inline at::Tensor sparse_csr_tensor(const at::Tensor& crow_indices,
                                     const at::Tensor& col_indices,
                                     const at::Tensor& values,
                                     at::IntArrayRef size,
-                                    at::TensorOptions options = {}) {
+                                    at::TensorOptions options) {
   paddle::Tensor crows = crow_indices._PD_GetInner();
   paddle::Tensor cols = col_indices._PD_GetInner();
   paddle::Tensor vals = values._PD_GetInner();
 
-  if (options.dtype_opt().has_value() &&
-      options.dtype_opt().value() != values.scalar_type()) {
-    vals = paddle::experimental::cast(
-        vals,
-        compat::_PD_AtenScalarTypeToPhiDataType(options.dtype_opt().value()));
-  }
+  // PyTorch ignores dtype mismatch between values and TensorOptions in
+  // sparse_csr_tensor; the resulting sparse tensor uses values' original dtype.
+  // Do not cast or throw here.
 
   if (options.pinned_memory()) {
     phi::Place base_place = options._PD_GetPlace();
@@ -95,7 +92,7 @@ inline at::Tensor sparse_csr_tensor(const at::Tensor& crow_indices,
 inline at::Tensor sparse_csr_tensor(const at::Tensor& crow_indices,
                                     const at::Tensor& col_indices,
                                     const at::Tensor& values,
-                                    at::TensorOptions options = {}) {
+                                    at::TensorOptions options) {
   // Infer size from crow_indices and col_indices:
   //   nrows = crow_indices.size(0) - 1
   //   ncols = max(col_indices) + 1

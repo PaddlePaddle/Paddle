@@ -15,15 +15,19 @@ on:
 jobs:
   check-bypass:
     name: Check bypass
-    runs-on: ubuntu-slim
+    runs-on:
+      group: APPROVAL
     permissions:
       contents: read
     env:
-      CI_TEAM_MEMBERS: '["swgu98", "risemeup1" , "XieYunshen", "luotao1", "ooooo-create", "SigureMo"]'
+      CI_TEAM_MEMBERS: '["swgu98", "risemeup1" , "XieYunshen", "luotao1", "SigureMo"]'
     outputs:
       can-skip: ${{ steps.check-bypass.outputs.can-skip }}
     timeout-minutes: 3
     steps:
+      - name: Cleanup
+        run: |
+          rm -rf * .[^.]*
       - id: check-bypass
         name: Check Bypass
         uses: PFCCLab/ci-bypass@v2

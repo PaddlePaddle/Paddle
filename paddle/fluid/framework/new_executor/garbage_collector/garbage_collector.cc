@@ -28,7 +28,7 @@ InterpreterCoreGarbageCollector::InterpreterCoreGarbageCollector()
 
 std::unique_ptr<InterpreterCoreGarbageCollector>
 CreateInterpreterCoreGarbageCollector(
-    const phi::Place& place,
+    const Place& place,
     const std::vector<std::unique_ptr<InstructionBase>>& vec_instruction) {
   if (phi::is_gpu_place(place)) {
     if (IsInterpretercoreFastGCEnabled()) {  // NOLINT
@@ -66,7 +66,7 @@ CreateInterpreterCoreGarbageCollector(
 
 std::unique_ptr<InterpreterCoreGarbageCollector>
 CreateInterpreterCoreGarbageCollector(
-    const phi::Place& place, const std::vector<Instruction>& vec_instruction) {
+    const Place& place, const std::vector<Instruction>& vec_instruction) {
   if (phi::is_gpu_place(place)) {
     if (IsInterpretercoreFastGCEnabled()) {  // NOLINT
       return std::unique_ptr<InterpreterCoreGarbageCollector>(

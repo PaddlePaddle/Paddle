@@ -107,7 +107,7 @@ class TestMNISTTest(unittest.TestCase):
         self.assertTrue(image.shape[1] == 28)
         self.assertTrue(image.shape[2] == 28)
         self.assertTrue(label.shape[0] == 1)
-        self.assertTrue(0 <= int(label) <= 9)
+        self.assertTrue(0 <= int(np.asarray(label).item()) <= 9)
 
 
 class TestMNISTTrain(unittest.TestCase):
@@ -122,7 +122,7 @@ class TestMNISTTrain(unittest.TestCase):
         self.assertTrue(image.shape[1] == 28)
         self.assertTrue(image.shape[2] == 28)
         self.assertTrue(label.shape[0] == 1)
-        self.assertTrue(0 <= int(label) <= 9)
+        self.assertTrue(0 <= int(np.asarray(label).item()) <= 9)
 
         # test cv2 backend
         mnist = MNIST(mode='train', transform=transform, backend='cv2')
@@ -134,7 +134,7 @@ class TestMNISTTrain(unittest.TestCase):
             self.assertTrue(image.shape[1] == 28)
             self.assertTrue(image.shape[2] == 28)
             self.assertTrue(label.shape[0] == 1)
-            self.assertTrue(0 <= int(label) <= 9)
+            self.assertTrue(0 <= int(np.asarray(label).item()) <= 9)
             break
 
         with self.assertRaises(ValueError):
@@ -153,7 +153,7 @@ class TestFASHIONMNISTTest(unittest.TestCase):
         self.assertTrue(image.shape[1] == 28)
         self.assertTrue(image.shape[2] == 28)
         self.assertTrue(label.shape[0] == 1)
-        self.assertTrue(0 <= int(label) <= 9)
+        self.assertTrue(0 <= int(np.asarray(label).item()) <= 9)
 
 
 class TestFASHIONMNISTTrain(unittest.TestCase):
@@ -168,7 +168,7 @@ class TestFASHIONMNISTTrain(unittest.TestCase):
         self.assertTrue(image.shape[1] == 28)
         self.assertTrue(image.shape[2] == 28)
         self.assertTrue(label.shape[0] == 1)
-        self.assertTrue(0 <= int(label) <= 9)
+        self.assertTrue(0 <= int(np.asarray(label).item()) <= 9)
 
         # test cv2 backend
         mnist = FashionMNIST(mode='train', transform=transform, backend='cv2')
@@ -180,7 +180,7 @@ class TestFASHIONMNISTTrain(unittest.TestCase):
             self.assertTrue(image.shape[1] == 28)
             self.assertTrue(image.shape[2] == 28)
             self.assertTrue(label.shape[0] == 1)
-            self.assertTrue(0 <= int(label) <= 9)
+            self.assertTrue(0 <= int(np.asarray(label).item()) <= 9)
             break
 
         with self.assertRaises(ValueError):

@@ -14,7 +14,7 @@
 
 # repo: PaddleDetection
 # model: configs^sparse_rcnn^sparse_rcnn_r50_fpn_3x_pro100_coco_single_dy2st_train
-# method:flatten||api:paddle.tensor.ops.sigmoid||method:flatten||api:paddle.tensor.manipulation.concat||method:__gt__||method:all
+# method:flatten||api:paddle.sigmoid||method:flatten||api:paddle.tensor.manipulation.concat||method:__gt__||method:all
 from base import *  # noqa: F403
 
 from paddle.static import InputSpec
@@ -31,7 +31,7 @@ class LayerCase(paddle.nn.Layer):
         var_2,  # (shape: [2], dtype: paddle.int32, stop_gradient: True)
     ):
         var_3 = var_0.flatten(start_axis=0, stop_axis=1)
-        var_4 = paddle.tensor.ops.sigmoid(var_3)
+        var_4 = paddle.sigmoid(var_3)
         var_5 = var_1.flatten(start_axis=0, stop_axis=1)
         # TODO(Aurelius84): concat compute logic does not support single element.
         # var_6 = paddle.tensor.manipulation.concat([var_2])

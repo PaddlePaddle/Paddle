@@ -57,7 +57,7 @@ void BeamSearchOpKernel(const Context &dev_ctx,
       common::errors::NotFound(
           "Output(selected_scores) of BeamSearchOp is not found."));
 
-  phi::math::BeamSearchFunctor<Context, T> alg;
+  math::BeamSearchFunctor<Context, T> alg;
   alg(dev_ctx,
       pre_ids,
       pre_scores,

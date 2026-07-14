@@ -382,6 +382,26 @@ struct L2NormOps {
 };
 
 template <typename InT, typename MPType = InT, typename OutT = MPType>
+struct SquaredL2NormOps {
+  inline DEVICE MPType compute(MPType a, InT b) const {
+    MPType b_ = static_cast<MPType>(b) * static_cast<MPType>(b);
+    return reduce(a, b_);
+  }
+
+  inline DEVICE MPType reduce(MPType a, MPType b) const { return (a + b); }
+
+  inline DEVICE OutT post_process(MPType a) const {
+    return static_cast<OutT>(a);
+  }
+
+  inline DEVICE MPType shfl_sync(unsigned mask, MPType data, int offset) const {
+    return phi::backends::gpu::CudaShuffleDownSync(mask, data, offset);
+  }
+
+  SquaredL2NormOps() {}
+};
+
+template <typename InT, typename MPType = InT, typename OutT = MPType>
 struct GenericPNormOps {
   MPType norm_;
 

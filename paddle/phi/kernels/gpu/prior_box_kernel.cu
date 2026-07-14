@@ -47,8 +47,8 @@ __global__ void GenPriorBox(T* out,
                             bool is_clip,
                             bool min_max_aspect_ratios_order) {
   int num_priors = max_sizes ? as_num * min_num + min_num : as_num * min_num;
-  int box_num = height * width * num_priors;
-  CUDA_KERNEL_LOOP(i, box_num) {
+  int64_t box_num = static_cast<int64_t>(height) * width * num_priors;
+  CUDA_KERNEL_LOOP_TYPE(i, box_num, int64_t) {
     int h = i / (num_priors * width);
     int w = (i / num_priors) % width;
     int p = i % num_priors;
@@ -156,10 +156,12 @@ void PriorBoxKernel(const Context& dev_ctx,
     num_priors += max_sizes.size();
   }
   int min_num = static_cast<int>(min_sizes.size());
-  int box_num = width * height * num_priors;
+  int64_t box_num = static_cast<int64_t>(width) * height * num_priors;
 
   int block = 512;
-  int grid = (box_num + block - 1) / block;
+  int64_t grid64 = (box_num + block - 1) / block;
+  PADDLE_ENFORCE_LE_INT_MAX(grid64, "grid");
+  int grid = static_cast<int>(grid64);
 
   auto stream = dev_ctx.stream();
 
@@ -197,9 +199,15 @@ void PriorBoxKernel(const Context& dev_ctx,
 
   DenseTensor v;
   TensorFromVector(variances, dev_ctx, &v);
-  grid = (box_num * 4 + block - 1) / block;
-  SetVariance<T><<<grid, block, 0, stream>>>(
-      var->data<T>(), v.data<T>(), variances.size(), box_num * 4);
+  int64_t var_num64 = box_num * 4;
+  PADDLE_ENFORCE_LE_INT_MAX(var_num64, "box_num * 4");
+  int64_t var_grid64 = (var_num64 + block - 1) / block;
+  PADDLE_ENFORCE_LE_INT_MAX(var_grid64, "grid");
+  grid = static_cast<int>(var_grid64);
+  SetVariance<T><<<grid, block, 0, stream>>>(var->data<T>(),
+                                             v.data<T>(),
+                                             variances.size(),
+                                             static_cast<int>(var_num64));
 }
 
 }  // namespace phi

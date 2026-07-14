@@ -335,6 +335,7 @@
     param : [x]
   kernel :
     func : hardswish
+  inplace : (x -> out)
   backward : hardswish_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 

@@ -487,6 +487,21 @@ TEST(Tensor, FromAndToStream) {
     EXPECT_EQ(dst_tensor.dims(), src_tensor.dims());
     delete place;
   }
+  {
+    phi::DenseTensor dst_tensor;
+    phi::CPUPlace place;
+    phi::CPUContext cpu_ctx(place);
+    std::ostringstream oss;
+    paddle::framework::TensorToStream(oss, src_tensor, cpu_ctx);
+
+    std::istringstream iss(oss.str());
+    paddle::framework::TensorFromStream(iss, &dst_tensor, cpu_ctx);
+    int* dst_ptr = dst_tensor.mutable_data<int>(phi::CPUPlace());
+    for (int i = 0; i < 6; ++i) {
+      EXPECT_EQ(dst_ptr[i], array[i]);
+    }
+    EXPECT_EQ(dst_tensor.dims(), src_tensor.dims());
+  }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   {
     phi::DenseTensor gpu_tensor;

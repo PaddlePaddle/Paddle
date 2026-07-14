@@ -36,6 +36,10 @@
 #endif
 #endif
 
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
+#endif
+
 namespace phi {
 
 namespace funcs {
@@ -58,7 +62,7 @@ DenseTensor GetReshapeAndExpandTensor(const Context& dev_ctx,
   }
 
   DenseTensor mid_tensor(tensor.dtype());
-  mid_tensor.Resize(make_ddim(mid_dims));
+  mid_tensor.Resize(mid_dims);
   ReshapeKernel<Context>(dev_ctx, tensor, IntArray(mid_dims), &mid_tensor);
 
   DenseTensor res_tensor(tensor.dtype());
@@ -77,7 +81,7 @@ std::vector<const DenseTensor*> DealWithBoolIndices(
 
   bool contains_bool_tensor = false;
   for (size_t i = 0; i < indices_v.size(); ++i) {
-    if (indices_v[i]->dtype() == phi::DataType::BOOL) {
+    if (indices_v[i]->dtype() == DataType::BOOL) {
       contains_bool_tensor = true;
       break;
     }
@@ -85,14 +89,14 @@ std::vector<const DenseTensor*> DealWithBoolIndices(
 
   if (contains_bool_tensor) {
     for (size_t i = 0; i < indices_v.size(); ++i) {
-      if (indices_v[i]->dtype() == phi::DataType::BOOL) {
+      if (indices_v[i]->dtype() == DataType::BOOL) {
         int rank = indices_v[i]->dims().size();
         PADDLE_ENFORCE_GE(rank,
                           1UL,
                           common::errors::InvalidArgument(
                               "the only bool tensor in indices should "
                               "have number of dimension at least 1"));
-        DenseTensor nonzero_indices(phi::DataType::INT64);
+        DenseTensor nonzero_indices(DataType::INT64);
         nonzero_indices.Resize({-1, rank});
         NonZeroKernel<bool, Context>(dev_ctx, *indices_v[i], &nonzero_indices);
 
@@ -104,8 +108,8 @@ std::vector<const DenseTensor*> DealWithBoolIndices(
         std::vector<DenseTensor*> integer_indices(rank, nullptr);
         const int tmp_ix = tmp_indices_v->size();
         for (int i = 0; i < rank; ++i) {
-          tmp_indices_v->emplace_back(DenseTensor(phi::DataType::INT64)
-                                          .Resize({nonzero_indices.dims()[0]}));
+          tmp_indices_v->emplace_back(
+              DenseTensor(DataType::INT64).Resize({nonzero_indices.dims()[0]}));
         }
         for (int i = 0; i < rank; ++i) {
           integer_indices[i] = &((*tmp_indices_v)[i + tmp_ix]);
@@ -123,8 +127,8 @@ std::vector<const DenseTensor*> DealWithBoolIndices(
         }
 #endif
 
-      } else if ((indices_v[i]->dtype() == phi::DataType::INT64) ||
-                 (indices_v[i]->dtype() == phi::DataType::INT32)) {
+      } else if ((indices_v[i]->dtype() == DataType::INT64) ||
+                 (indices_v[i]->dtype() == DataType::INT32)) {
         tmp_indices_v->emplace_back(*indices_v[i]);
       } else {
         PADDLE_THROW(common::errors::InvalidArgument(
@@ -157,11 +161,11 @@ static DDim BroadCastTensorsDims(
 
   std::vector<int64_t> target_dims(target_rank, 0);
   for (int index = 0; index < target_rank; index++) {
-    int target_dim_size = 1;
+    int64_t target_dim_size = 1;
     for (const auto& tensor : tensors) {
       auto input_ddim = tensor->dims();
       int axis = static_cast<int>(input_ddim.size()) - index - 1;
-      int dim_size = 1;
+      int64_t dim_size = 1;
       if (axis >= 0) {
         dim_size = input_ddim[axis];
       }
@@ -198,11 +202,19 @@ T** GetDevicePointerArray(const Context& dev_ctx,
       dev_ctx.GetPlace(),
       h_indices_v.size() * sizeof(T*),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  size_t nbytes_idx = h_indices_v.size() * sizeof(T*);
+#ifdef PADDLE_WITH_CUDA
+  const void* stable_idx =
+      phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+          reinterpret_cast<uint8_t*>(h_indices_v.data()), nbytes_idx);
+#else
+  const void* stable_idx = reinterpret_cast<const void*>(h_indices_v.data());
+#endif
   phi::memory_utils::Copy(dev_ctx.GetPlace(),
                           d_indices_data->ptr(),
                           CPUPlace(),
-                          reinterpret_cast<void*>(h_indices_v.data()),
-                          h_indices_v.size() * sizeof(T*),
+                          stable_idx,
+                          nbytes_idx,
                           dev_ctx.stream());
   return reinterpret_cast<T**>(d_indices_data->ptr());
 }
@@ -226,9 +238,9 @@ void DealWithIndices(const Context& dev_ctx,
     DDim res_dim = make_ddim(*res_dim_v);
     for (size_t i = 0; i < int_indices_v.size(); ++i) {
       DenseTensor index_tensor;
-      if (int_indices_v[i]->dtype() == phi::DataType::INT32) {
-        index_tensor = Cast<int, Context>(
-            dev_ctx, *int_indices_v[i], phi::DataType::INT64);
+      if (int_indices_v[i]->dtype() == DataType::INT32) {
+        index_tensor =
+            Cast<int, Context>(dev_ctx, *int_indices_v[i], DataType::INT64);
       } else {
         index_tensor = *int_indices_v[i];
       }
@@ -249,14 +261,14 @@ void DealWithIndices(const Context& dev_ctx,
     for (size_t i = 0; i < int_indices_v.size(); ++i) {
       DenseTensor index_tensor;
       DenseTensor expand_index;
-      if (int_indices_v[i]->dtype() == phi::DataType::INT32) {
-        index_tensor = Cast<int, Context>(
-            dev_ctx, *int_indices_v[i], phi::DataType::INT64);
+      if (int_indices_v[i]->dtype() == DataType::INT32) {
+        index_tensor =
+            Cast<int, Context>(dev_ctx, *int_indices_v[i], DataType::INT64);
       } else {
         index_tensor = *int_indices_v[i];
       }
       if (bd_dim != int_indices_v[i]->dims()) {
-        expand_index = DenseTensor(phi::DataType::INT64).Resize(bd_dim);
+        expand_index = DenseTensor(DataType::INT64).Resize(bd_dim);
         ExpandKernel<int64_t, Context>(dev_ctx,
                                        index_tensor,
                                        IntArray(vectorize<int64_t>(bd_dim)),
@@ -319,7 +331,7 @@ __global__ void range_cuda_kernel(int64_t N, T* out) {
 template <typename T, typename Context>
 DenseTensor GetRangeCudaTensor(const Context& dev_ctx,
                                int64_t N,
-                               phi::DataType dtype) {
+                               DataType dtype) {
   DenseTensor res(dtype);
   res.Resize({N});
   DenseTensor* p_res = &res;
@@ -340,9 +352,7 @@ void range_kernel(int64_t N, T* out) {
 }
 
 template <typename T, typename Context>
-DenseTensor GetRangeTensor(const Context& dev_ctx,
-                           int64_t N,
-                           phi::DataType dtype) {
+DenseTensor GetRangeTensor(const Context& dev_ctx, int64_t N, DataType dtype) {
   DenseTensor res(dtype);
   res.Resize({N});
   DenseTensor* p_res = &res;

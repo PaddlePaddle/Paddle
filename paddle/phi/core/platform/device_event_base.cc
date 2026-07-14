@@ -59,7 +59,7 @@ unsigned int GenerateDeviceEventFlag(bool enable_timing,
 }
 
 void DeviceEventCreateCPU(DeviceEvent* event,
-                          const phi::Place& place,
+                          const Place& place,
                           unsigned int flag) {
   event->InitEvent(std::make_shared<CPUDeviceEventWrapper>(place, flag));
 }

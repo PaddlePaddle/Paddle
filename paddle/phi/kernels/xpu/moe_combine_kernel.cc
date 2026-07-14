@@ -57,7 +57,7 @@ void MoeCombineKernel(const Context& dev_ctx,
   PD_CHECK(x.dims().size() == 2 && combine_weights.dims().size() == 2 &&
                scatter_index.dims().size() == 2,
            "The shape of X must be 2.");
-  PD_CHECK(scatter_index.dtype() == paddle::DataType::INT32,
+  PD_CHECK(scatter_index.dtype() == DataType::INT32,
            "MoE combine only supports int32 for scatter_index!");
 
   dev_ctx.template Alloc<T>(y);

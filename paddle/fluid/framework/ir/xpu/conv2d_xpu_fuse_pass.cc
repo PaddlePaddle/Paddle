@@ -548,7 +548,7 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
   auto filter_len = filter_t->numel();
   auto filter_dtype = filter_t->dtype();
   // transfilter fp16 --> fp32
-  if (filter_dtype == phi::DataType::FLOAT16) {
+  if (filter_dtype == DataType::FLOAT16) {
     CastToFp32(filter_t, nullptr);
   }
 
@@ -838,7 +838,7 @@ void Conv2dXPUFusePass::CreateFusionInputs(
     conv2d_xpu_input_max = graph->CreateVarNode(&conv_input_max_desc);
     auto input_max_tensor =
         scope->Var(conv_input_max_name)->GetMutable<DenseTensor>();
-    input_max_tensor->set_type(phi::DataType::FLOAT32);
+    input_max_tensor->set_type(DataType::FLOAT32);
     input_max_tensor->Resize({max_ptr_size});
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
         phi::DeviceContextPool::Instance().Get(CPUPlace()));
@@ -898,7 +898,7 @@ void Conv2dXPUFusePass::CreateFusionBranch(
           common::errors::InvalidArgument("conv node ptr can not be null"));
       auto ew_branch_add_max_tensor =
           scope->Var(ew_branch_add_max_name)->GetMutable<DenseTensor>();
-      ew_branch_add_max_tensor->set_type(phi::DataType::FLOAT32);
+      ew_branch_add_max_tensor->set_type(DataType::FLOAT32);
       ew_branch_add_max_tensor->Resize({max_ptr_size});
       auto* cpu_ctx = static_cast<phi::CPUContext*>(
           phi::DeviceContextPool::Instance().Get(CPUPlace()));
@@ -1024,7 +1024,7 @@ void Conv2dXPUFusePass::CreateFusionOutputs(
     DenseTensor out_max_in_cpu_tensor;
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
         phi::DeviceContextPool::Instance().Get(CPUPlace()));
-    out_max_in_cpu_tensor.set_type(phi::DataType::FLOAT32);
+    out_max_in_cpu_tensor.set_type(DataType::FLOAT32);
     out_max_in_cpu_tensor.Resize({max_ptr_size});
     std::vector<float> output_scales(max_ptr_size, output_scale);
     memcpy(cpu_ctx->Alloc<float>(&out_max_in_cpu_tensor),
@@ -1137,9 +1137,9 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
     auto filter_data_type =
         scope->FindVar(filter_name_0)->GetMutable<DenseTensor>()->dtype();
     std::string op_weights_precision = "float32";
-    if (filter_data_type == phi::DataType::INT8) {
+    if (filter_data_type == DataType::INT8) {
       op_weights_precision = "int8";
-    } else if (filter_data_type == phi::DataType::FLOAT16) {
+    } else if (filter_data_type == DataType::FLOAT16) {
       op_weights_precision = "float16";
     }
     VLOG(4) << "Conv2d fusion fuse pass is running on " << op_weights_precision

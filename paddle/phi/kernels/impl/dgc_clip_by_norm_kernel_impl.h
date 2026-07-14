@@ -44,6 +44,6 @@ void DGCClipByNormKernel(const Context& dev_ctx,
 
   auto* x = &x_in;
   auto* y = out;
-  return phi::ClipByNormKernel<T>(dev_ctx, *x, max_norm, y);
+  return ClipByNormKernel<T>(dev_ctx, *x, max_norm, y);
 }
 }  // namespace phi

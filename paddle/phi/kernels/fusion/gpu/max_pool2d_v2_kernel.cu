@@ -104,8 +104,8 @@ void MaxPoolV2CUDNNKernel(const Context& dev_ctx,
   auto workspace_handle = dev_ctx.cudnn_workspace_handle();
 
   auto layout = GetLayoutFromStr(data_format);
-  auto layout_format = phi::backends::gpu::GetCudnnTensorFormat(layout);
-  auto input_dtype = phi::backends::gpu::CudnnDataType<T1>::type;
+  auto layout_format = backends::gpu::GetCudnnTensorFormat(layout);
+  auto input_dtype = backends::gpu::CudnnDataType<T1>::type;
   auto saved_idx_dtype = CudnnIndexType<T2>::type;
 
   // Create plan and execute

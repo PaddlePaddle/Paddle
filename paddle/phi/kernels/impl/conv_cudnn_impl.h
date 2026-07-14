@@ -35,7 +35,7 @@ COMMON_DECLARE_bool(cudnn_exhaustive_search);
 
 namespace phi {
 
-static inline bool IsVoltaOrLater(const phi::GPUContext& dev_ctx) {
+static inline bool IsVoltaOrLater(const GPUContext& dev_ctx) {
   return dev_ctx.GetComputeCapability() >= 70;
 }
 

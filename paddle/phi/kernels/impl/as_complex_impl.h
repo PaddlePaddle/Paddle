@@ -35,12 +35,11 @@ template <typename T, typename Context>
 void AsComplexKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      DenseTensor* out) {
-  dev_ctx.template Alloc<phi::dtype::complex<T>>(out);
+  dev_ctx.template Alloc<dtype::complex<T>>(out);
   auto out_dims_original = out->dims();
   Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   out->Resize(out_dims_original);  // restored the shape.
-  out->set_type(
-      phi::CppTypeToDataType<phi::dtype::complex<T>>::Type());  // restored the
+  out->set_type(CppTypeToDataType<dtype::complex<T>>::Type());  // restored the
                                                                 // dtype.
 }
 

@@ -60,7 +60,9 @@ class TestRMSNormOp(OpTest):
         self.outputs = {'y': y_ref, 'invvar': invvar_ref}
 
         def rms_norm_wrapper(x, scale):
-            return rms_norm(x, scale.shape, scale, eps=self.epsilon)
+            from paddle import _C_ops
+
+            return _C_ops.rms_norm(x, scale, scale.shape, self.epsilon)
 
         self.python_api = rms_norm_wrapper
 
@@ -124,14 +126,11 @@ class TestRMSNormAPI(unittest.TestCase):
         scale.stop_gradient = False
 
         # Test forward
-        y_fused, invvar_fused = rms_norm(x, (cols,), scale)
-        y_ref, invvar_ref = self.rms_norm_reference(x, scale)
+        y_fused = rms_norm(x, (cols,), scale)
+        y_ref, _ = self.rms_norm_reference(x, scale)
 
         np.testing.assert_allclose(
             y_fused.numpy(), y_ref.numpy(), rtol=1e-5, atol=1e-5
-        )
-        np.testing.assert_allclose(
-            invvar_fused.numpy(), invvar_ref.numpy(), rtol=1e-5, atol=1e-5
         )
 
         # Test backward
@@ -172,6 +171,84 @@ class TestRMSNormValueError(unittest.TestCase):
         weight = paddle.randn([4])
         with self.assertRaises(ValueError):
             rms_norm(x, [3], weight=weight)
+
+
+class TestRMSNormEpsNone(unittest.TestCase):
+    """Tests that eps=None selects the correct machine epsilon per dtype."""
+
+    def _ref(self, x_np, scale_np, epsilon):
+        variance = np.mean(np.square(x_np), axis=-1, keepdims=True)
+        rms = np.sqrt(variance + epsilon)
+        return x_np / rms * scale_np
+
+    def test_eps_none_float32(self):
+        """eps=None with float32 input should use float machine epsilon."""
+
+        rows, cols = 8, 16
+        x_np = np.random.randn(rows, cols).astype("float32")
+        scale_np = np.ones(cols, dtype="float32")
+
+        x = paddle.to_tensor(x_np)
+        scale = paddle.to_tensor(scale_np)
+
+        y_none = rms_norm(x, (cols,), scale, eps=None)
+        float_eps = 1.1920929e-07
+        y_explicit = rms_norm(x, (cols,), scale, eps=float_eps)
+
+        np.testing.assert_array_equal(y_none.numpy(), y_explicit.numpy())
+
+        y_ref = self._ref(x_np, scale_np, float_eps)
+        np.testing.assert_allclose(
+            y_none.numpy(), y_ref.astype("float32"), rtol=1e-5, atol=1e-5
+        )
+
+    def test_eps_none_float64(self):
+        """eps=None with float64 input should use double machine epsilon."""
+        import sys
+
+        rows, cols = 8, 16
+        x_np = np.random.randn(rows, cols).astype("float64")
+        scale_np = np.ones(cols, dtype="float64")
+
+        x = paddle.to_tensor(x_np)
+        scale = paddle.to_tensor(scale_np)
+
+        y_none = rms_norm(x, (cols,), scale, eps=None)
+        double_eps = sys.float_info.epsilon  # ~2.22e-16
+        y_explicit = rms_norm(x, (cols,), scale, eps=double_eps)
+
+        np.testing.assert_array_equal(y_none.numpy(), y_explicit.numpy())
+
+        y_ref = self._ref(x_np, scale_np, double_eps)
+        np.testing.assert_allclose(
+            y_none.numpy(), y_ref, rtol=1e-12, atol=1e-12
+        )
+
+    def test_eps_none_float32_differs_from_float64(self):
+        """float32 and float64 defaults should be different epsilon values."""
+        import sys
+
+        float_eps = 1.1920929e-07
+        double_eps = sys.float_info.epsilon
+        self.assertNotAlmostEqual(float_eps, double_eps, places=10)
+
+    def test_eps_none_backward_float32(self):
+        """eps=None should work through backward pass for float32."""
+        rows, cols = 8, 16
+        x_np = np.random.randn(rows, cols).astype("float32")
+        scale_np = np.ones(cols, dtype="float32")
+
+        x = paddle.to_tensor(x_np)
+        x.stop_gradient = False
+        scale = paddle.to_tensor(scale_np)
+        scale.stop_gradient = False
+
+        y = rms_norm(x, (cols,), scale, eps=None)
+        loss = paddle.mean(y)
+        loss.backward()
+
+        self.assertIsNotNone(x.grad)
+        self.assertIsNotNone(scale.grad)
 
 
 if __name__ == '__main__':

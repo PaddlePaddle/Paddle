@@ -18,7 +18,7 @@
 # from paddle.tensorrt.register import converter_registry
 
 
-# @converter_registry.register("pd_op.mean", trt_version="trt_version_ge=8.0")
+# @converter_registry.register("pd_op.mean")
 # def mean_converter(network, paddle_op, inputs):
 #     input_tensor = inputs[0]
 #     keep_dim = paddle_op.attrs().get("keepdim")

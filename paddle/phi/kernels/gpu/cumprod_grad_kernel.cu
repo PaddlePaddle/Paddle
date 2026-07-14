@@ -169,15 +169,15 @@ void ReversedCumsum(const Context &dev_ctx,
   flipped_input.Resize(input.dims());
   dev_ctx.template Alloc<T>(&flipped_input);
   std::vector<int> axis = {dim};
-  phi::FlipKernel<T, Context>(dev_ctx, input, axis, &flipped_input);
+  FlipKernel<T, Context>(dev_ctx, input, axis, &flipped_input);
 
   DenseTensor cumsum_out;
   cumsum_out.Resize(input.dims());
   dev_ctx.template Alloc<T>(&cumsum_out);
-  phi::CumsumKernel<T, Context>(
+  CumsumKernel<T, Context>(
       dev_ctx, flipped_input, dim, false, false, false, &cumsum_out);
 
-  phi::FlipKernel<T, Context>(dev_ctx, cumsum_out, axis, output);
+  FlipKernel<T, Context>(dev_ctx, cumsum_out, axis, output);
 }
 
 template <typename T, typename Context>
@@ -195,7 +195,7 @@ bool CumprodGradCompatible(const Context &dev_ctx,
   bool is_trivial = (x.numel() <= 1) || (x_dims[wrap_dim] == 1);
   if (is_trivial) {
     dev_ctx.template Alloc<T>(dx);
-    phi::Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
+    Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
 
     return true;
   }
@@ -203,42 +203,40 @@ bool CumprodGradCompatible(const Context &dev_ctx,
   DenseTensor x_conj_tensor;
   DenseTensor out_conj_tensor;
 
-  if (phi::IsComplexType(x.dtype())) {
+  if (IsComplexType(x.dtype())) {
     x_conj_tensor.Resize(x.dims());
     out_conj_tensor.Resize(out.dims());
     dev_ctx.template Alloc<T>(&x_conj_tensor);
     dev_ctx.template Alloc<T>(&out_conj_tensor);
 
-    phi::ConjKernel<T, Context>(dev_ctx, x, &x_conj_tensor);
-    phi::ConjKernel<T, Context>(dev_ctx, out, &out_conj_tensor);
+    ConjKernel<T, Context>(dev_ctx, x, &x_conj_tensor);
+    ConjKernel<T, Context>(dev_ctx, out, &out_conj_tensor);
   }
 
-  const DenseTensor &x_ref = phi::IsComplexType(x.dtype()) ? x_conj_tensor : x;
-  const DenseTensor &out_ref =
-      phi::IsComplexType(x.dtype()) ? out_conj_tensor : out;
+  const DenseTensor &x_ref = IsComplexType(x.dtype()) ? x_conj_tensor : x;
+  const DenseTensor &out_ref = IsComplexType(x.dtype()) ? out_conj_tensor : out;
 
   DenseTensor zero_val;
   zero_val.Resize({1});
   dev_ctx.template Alloc<T>(&zero_val);
-  phi::FullKernel<T, Context>(
-      dev_ctx, {1}, static_cast<T>(0), x.dtype(), &zero_val);
+  FullKernel<T, Context>(dev_ctx, {1}, static_cast<T>(0), x.dtype(), &zero_val);
 
   DenseTensor is_zero_mask;
   is_zero_mask.Resize(x.dims());
   dev_ctx.template Alloc<bool>(&is_zero_mask);
-  phi::EqualKernel<T, Context>(dev_ctx, x, zero_val, &is_zero_mask);
+  EqualKernel<T, Context>(dev_ctx, x, zero_val, &is_zero_mask);
 
   DenseTensor any_zero;
   any_zero.Resize({1});
   dev_ctx.template Alloc<bool>(&any_zero);
 
-  phi::AnyKernel<bool, Context>(
+  AnyKernel<bool, Context>(
       dev_ctx, is_zero_mask, std::vector<int64_t>(), false, &any_zero);
 
   bool has_zero = false;
 #ifdef PADDLE_WITH_CUDA
   DenseTensor any_zero_cpu;
-  phi::Copy(dev_ctx, any_zero, CPUPlace(), true, &any_zero_cpu);
+  Copy(dev_ctx, any_zero, CPUPlace(), true, &any_zero_cpu);
   has_zero = *any_zero_cpu.data<bool>();
 #else
   has_zero = *any_zero.data<bool>();
@@ -253,7 +251,7 @@ bool CumprodGradCompatible(const Context &dev_ctx,
   DenseTensor w;
   w.Resize(out_ref.dims());
   dev_ctx.template Alloc<T>(&w);
-  phi::MultiplyKernel<T, Context>(dev_ctx, out_ref, dout, &w);
+  MultiplyKernel<T, Context>(dev_ctx, out_ref, dout, &w);
 
   DenseTensor w_flipped, w_cum, rc_w;
   w_flipped.Resize(w.dims());
@@ -265,14 +263,14 @@ bool CumprodGradCompatible(const Context &dev_ctx,
   dev_ctx.template Alloc<T>(&rc_w);
 
   std::vector<int> axis = {dim};
-  phi::FlipKernel<T, Context>(dev_ctx, w, axis, &w_flipped);
+  FlipKernel<T, Context>(dev_ctx, w, axis, &w_flipped);
 
-  phi::CumsumKernel<T, Context>(
+  CumsumKernel<T, Context>(
       dev_ctx, w_flipped, dim, false, false, false, &w_cum);
 
-  phi::FlipKernel<T, Context>(dev_ctx, w_cum, axis, &rc_w);
+  FlipKernel<T, Context>(dev_ctx, w_cum, axis, &rc_w);
 
-  phi::DivideKernel<T, Context>(dev_ctx, rc_w, x_ref, dx);
+  DivideKernel<T, Context>(dev_ctx, rc_w, x_ref, dx);
 
   return true;
 }
@@ -324,7 +322,7 @@ void CumprodGradKernel(const Context &dev_ctx,
   const T *y_data_deal;
   Allocator::AllocationPtr x_conj;
   Allocator::AllocationPtr y_conj;
-  if (phi::IsComplexType(x.dtype())) {
+  if (IsComplexType(x.dtype())) {
     x_conj = const_cast<Allocator &>(dev_ctx.GetAllocator())
                  .Allocate(numel * sizeof(T));
     auto *x_data_conj = reinterpret_cast<T *>(x_conj->ptr());

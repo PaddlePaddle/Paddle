@@ -14,7 +14,7 @@
 
 # repo: PaddleClas
 # model: ppcls^configs^ImageNet^EfficientNet^EfficientNetB0
-# api:paddle.nn.functional.activation.swish||api:paddle.nn.functional.pooling.adaptive_avg_pool2d||api:paddle.nn.functional.conv._conv_nd||api:paddle.nn.functional.activation.swish||api:paddle.nn.functional.conv._conv_nd||api:paddle.tensor.ops.sigmoid||api:paddle.tensor.math.multiply
+# api:paddle.nn.functional.activation.swish||api:paddle.nn.functional.pooling.adaptive_avg_pool2d||api:paddle.nn.functional.conv._conv_nd||api:paddle.nn.functional.activation.swish||api:paddle.nn.functional.conv._conv_nd||api:paddle.sigmoid||api:paddle.tensor.math.multiply
 from base import *  # noqa: F403
 
 from paddle.static import InputSpec
@@ -77,7 +77,7 @@ class LayerCase(paddle.nn.Layer):
             op_type='conv2d',
             use_cudnn=True,
         )
-        var_6 = paddle.tensor.ops.sigmoid(var_5)
+        var_6 = paddle.sigmoid(var_5)
         var_7 = paddle.tensor.math.multiply(var_1, var_6)
         return var_7
 

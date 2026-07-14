@@ -1169,6 +1169,14 @@ static PyObject *run_python_op(PyObject *self,
           input_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
       argument_inputs.push_back(input_value);
 
+      // NOTE: input_shapes / input_dtypes must be populated here so the
+      // inplace handling below (which indexes input_shapes[index] when an
+      // output carries an inplace_reverse_map entry) does not read an empty
+      // vector and crash. This mirrors static_api_run_custom_op.
+      input_shapes.push_back(phi::vectorize(input_tensor.dims()));
+      input_dtypes.push_back(
+          paddle::dialect::TransToPhiDataType(input_tensor.dtype()));
+
       inputs_meta.push_back(phi::NativeMetaTensor(
           paddle::dialect::TransToPhiDataType(input_tensor.dtype()),
           input_tensor.dims()));
@@ -1233,11 +1241,13 @@ static PyObject *run_python_op(PyObject *self,
       output_name2value_num[output] = vec_input_shape.size();
     } else {
       if (inplace_reverse_map.find(output) != inplace_reverse_map.end()) {
-        const auto &input = inplace_reverse_map.at(output);
-        auto index = input_name2id_map[input];
-        // input_shapes[index] is dim of tensor, if the dim doesn't have
-        // element, it must be a optional tensor that is None in custom operator
-        output_name2value_num[output] = input_shapes[index].size() == 0 ? 0 : 1;
+        // run_python_op rejects Py_None optional inputs above, so an inplace
+        // output always maps to a real input tensor and therefore holds exactly
+        // one value. Do NOT infer optional-None from the input rank here (as
+        // the general custom-op path does): a rank-0 scalar has an empty shape
+        // vector and would be misclassified as "no output", producing an
+        // invalid result type that cannot be fetched or consumed downstream.
+        output_name2value_num[output] = 1;
       } else {
         ++(output_name2value_num[output]);
       }
@@ -1488,7 +1498,7 @@ static PyObject *static_api_tensorrt_engine(PyObject *self,
     }
 
     PyObject *outputs_dtype_obj = PyTuple_GET_ITEM(args, 5);
-    std::vector<paddle::DataType> outputs_dtype;
+    std::vector<DataType> outputs_dtype;
     if (PyList_Check(outputs_dtype_obj)) {
       Py_ssize_t len = PyList_Size(outputs_dtype_obj);
       PyObject *item = nullptr;

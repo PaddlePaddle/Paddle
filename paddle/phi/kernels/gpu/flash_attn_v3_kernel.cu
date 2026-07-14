@@ -109,8 +109,8 @@ void FlashAttnV3BaseKernel(
 
   auto q_type = q.dtype();
   PADDLE_ENFORCE_EQ(
-      (q_type == phi::DataType::FLOAT16 || q_type == phi::DataType::BFLOAT16 ||
-       q_type == phi::DataType::FLOAT8_E4M3FN),
+      (q_type == DataType::FLOAT16 || q_type == DataType::BFLOAT16 ||
+       q_type == DataType::FLOAT8_E4M3FN),
       true,
       common::errors::InvalidArgument(
           "FlashAttention-3 only supports fp16, bf16, and fp8_e4m3 data type"));
@@ -149,7 +149,7 @@ void FlashAttnV3BaseKernel(
     page_table = page_table_.get();
     CHECK_DEVICE(page_table);
     PADDLE_ENFORCE_EQ(page_table.dtype(),
-                      phi::DataType::INT32,
+                      DataType::INT32,
                       common::errors::InvalidArgument(
                           "page_table must have dtype paddle.int32"));
     PADDLE_ENFORCE_EQ(page_table.strides()[page_table.strides().size() - 1],
@@ -170,7 +170,7 @@ void FlashAttnV3BaseKernel(
     CHECK_DEVICE(cu_seqlens_q);
     CHECK_CONTIGUOUS(cu_seqlens_q);
     PADDLE_ENFORCE_EQ(cu_seqlens_q.dtype(),
-                      phi::DataType::INT32,
+                      DataType::INT32,
                       common::errors::InvalidArgument(
                           "cu_seqlens_q must have dtype paddle.int32"));
     PADDLE_ENFORCE_NE(
@@ -187,7 +187,7 @@ void FlashAttnV3BaseKernel(
     CHECK_DEVICE(cu_seqlens_k);
     CHECK_CONTIGUOUS(cu_seqlens_k);
     PADDLE_ENFORCE_EQ(cu_seqlens_k.dtype(),
-                      phi::DataType::INT32,
+                      DataType::INT32,
                       common::errors::InvalidArgument(
                           "cu_seqlens_k must have dtype paddle.int32"));
     PADDLE_ENFORCE_NE(
@@ -259,11 +259,11 @@ void FlashAttnV3BaseKernel(
                       common::errors::InvalidArgument(
                           "Only Hopper supports different V headdim"));
     if (head_size_v > 256) {
-      PADDLE_ENFORCE_EQ((q_type == phi::DataType::FLOAT16 ||
-                         q_type == phi::DataType::BFLOAT16),
-                        true,
-                        common::errors::InvalidArgument(
-                            "HeaddimV > 256 requires fp16 and bf16 data type"));
+      PADDLE_ENFORCE_EQ(
+          (q_type == DataType::FLOAT16 || q_type == DataType::BFLOAT16),
+          true,
+          common::errors::InvalidArgument(
+              "HeaddimV > 256 requires fp16 and bf16 data type"));
     }
   }
 
@@ -317,7 +317,7 @@ void FlashAttnV3BaseKernel(
     auto seqused_q = seqused_q_.get();
     PADDLE_ENFORCE_EQ(
         seqused_q.dtype(),
-        phi::DataType::INT32,
+        DataType::INT32,
         common::errors::InvalidArgument("seqused_q must have dtype int32"));
     CHECK_DEVICE(seqused_q);
     CHECK_CONTIGUOUS(seqused_q);
@@ -327,7 +327,7 @@ void FlashAttnV3BaseKernel(
     auto seqused_k = seqused_k_.get();
     PADDLE_ENFORCE_EQ(
         seqused_k.dtype(),
-        phi::DataType::INT32,
+        DataType::INT32,
         common::errors::InvalidArgument("seqused_k must have dtype int32"));
     CHECK_DEVICE(seqused_k);
     CHECK_CONTIGUOUS(seqused_k);
@@ -338,7 +338,7 @@ void FlashAttnV3BaseKernel(
     auto leftpad_k = leftpad_k_.get();
     PADDLE_ENFORCE_EQ(
         leftpad_k.dtype(),
-        phi::DataType::INT32,
+        DataType::INT32,
         common::errors::InvalidArgument("leftpad_k must have dtype int32"));
     CHECK_DEVICE(leftpad_k);
     CHECK_CONTIGUOUS(leftpad_k);
@@ -356,7 +356,7 @@ void FlashAttnV3BaseKernel(
                         "This flash attention build does not support varlen."));
 #endif
 
-  int const alignment = q_type == phi::DataType::FLOAT8_E4M3FN ? 16 : 8;
+  int const alignment = q_type == DataType::FLOAT8_E4M3FN ? 16 : 8;
   PADDLE_ENFORCE_EQ(head_size % alignment,
                     0,
                     common::errors::InvalidArgument(
@@ -367,7 +367,7 @@ void FlashAttnV3BaseKernel(
                         "head_size_v should be a multiple of %d", alignment));
 
   auto out_type =
-      q_type == phi::DataType::FLOAT8_E4M3FN ? phi::DataType::BFLOAT16 : q_type;
+      q_type == DataType::FLOAT8_E4M3FN ? DataType::BFLOAT16 : q_type;
   if (out_.is_initialized()) {
     *out = out_.get();
     PADDLE_ENFORCE_EQ(
@@ -392,7 +392,7 @@ void FlashAttnV3BaseKernel(
     } else {
       out->Resize({total_q, num_heads, head_size_v});
     }
-    if (q_type == phi::DataType::FLOAT8_E4M3FN) {
+    if (q_type == DataType::FLOAT8_E4M3FN) {
       dev_ctx.template Alloc<phi::bfloat16>(out);
     } else {
       // umiswing: assuming T is Input Type
@@ -489,7 +489,7 @@ void FlashAttnV3BaseKernel(
       CHECK_DEVICE(cu_seqlens_k_new);
       CHECK_CONTIGUOUS(cu_seqlens_k_new);
       PADDLE_ENFORCE_EQ(cu_seqlens_k_new.dtype(),
-                        phi::DataType::INT32,
+                        DataType::INT32,
                         common::errors::InvalidArgument(
                             "cu_seqlens_k_new must have dtype paddle.int32"));
     }
@@ -605,7 +605,7 @@ void FlashAttnV3BaseKernel(
       CHECK_SHAPE(scheduler_metadata, metadata_size);
       CHECK_CONTIGUOUS(scheduler_metadata);
       PADDLE_ENFORCE_EQ(scheduler_metadata.dtype(),
-                        phi::DataType::INT32,
+                        DataType::INT32,
                         common::errors::InvalidArgument(
                             "scheduler_metadata must have dtype int32"));
       tile_count_semaphore = scheduler_metadata;
@@ -636,7 +636,7 @@ void FlashAttnV3BaseKernel(
                       common::errors::InvalidArgument(
                           "q_v is only supported for head_size <= 64"));
     PADDLE_ENFORCE_EQ(
-        (q_type == phi::DataType::FLOAT16 || q_type == phi::DataType::FLOAT16),
+        (q_type == DataType::FLOAT16 || q_type == DataType::FLOAT16),
         true,
         common::errors::InvalidArgument(
             "q_v is only supported for fp16 and bf16 data type"));
@@ -740,7 +740,7 @@ void FlashAttnV3BaseKernel(
     CHECK_CONTIGUOUS(kv_batch_idx);
     PADDLE_ENFORCE_EQ(
         kv_batch_idx.dtype(),
-        phi::DataType::INT32,
+        DataType::INT32,
         common::errors::InvalidArgument("kv_batch_idx must have dtype int32"));
     dynload::fa3_fwd_params_set_kv_batch_idx(
         params_handle, reinterpret_cast<int *>(kv_batch_idx.data()));
@@ -800,7 +800,7 @@ void FlashAttnV3BaseKernel(
         softmax_lse_accum->strides()[softmax_lse_accum->strides().size() - 2]);
   }
 
-  if (q_type == phi::DataType::FLOAT8_E4M3FN) {
+  if (q_type == DataType::FLOAT8_E4M3FN) {
     if (q_descale_.is_initialized()) {
       DenseTensor q_descale = q_descale_.get();
       CHECK_DEVICE(q_descale);
@@ -894,7 +894,7 @@ void FlashAttnV3BaseKernel(
       num_heads_k > 0) {
     dynload::fa3_run_mha_fwd(params_handle, dev_ctx.stream());
     if (dynload::fa3_fwd_params_get_num_splits(params_handle) > 1) {
-      if (out_type == phi::DataType::BFLOAT16) {
+      if (out_type == DataType::BFLOAT16) {
         // Since we want output in BF16. Otherwise fwd_combine will output to
         // FP16
         dynload::fa3_fwd_params_set_is_bf16(params_handle, true);
@@ -914,25 +914,25 @@ void FlashAttnV3BaseKernel(
     }
   } else if (total_q > 0 && num_heads_k > 0) {
     PADDLE_ENFORCE_EQ(
-        (out->dtype() == phi::DataType::BFLOAT16 ||
-         out->dtype() == phi::DataType::FLOAT16 ||
-         out->dtype() == phi::DataType::FLOAT8_E4M3FN),
+        (out->dtype() == DataType::BFLOAT16 ||
+         out->dtype() == DataType::FLOAT16 ||
+         out->dtype() == DataType::FLOAT8_E4M3FN),
         true,
         common::errors::InvalidArgument("flash attention 3 supports bfloat16, "
                                         "float16 and float8_e4m3fn only."));
     // If seqlen_k == 0, then we have an empty tensor. We need to set the output
     // to 0.
-    if (out->dtype() == phi::DataType::BFLOAT16) {
+    if (out->dtype() == DataType::BFLOAT16) {
       funcs::SetConstant<Context, phi::bfloat16> set_zero;
       set_zero(dev_ctx,
                out,
                phi::bfloat16{0});  // If varlen we'll manually do the zero-ing
-    } else if (out->dtype() == phi::DataType::FLOAT16) {
+    } else if (out->dtype() == DataType::FLOAT16) {
       funcs::SetConstant<Context, phi::float16> set_zero;
       set_zero(dev_ctx,
                out,
                phi::float16{0});  // If varlen we'll manually do the zero-ing
-    } else if (out->dtype() == phi::DataType::FLOAT8_E4M3FN) {
+    } else if (out->dtype() == DataType::FLOAT8_E4M3FN) {
       funcs::SetConstant<Context, phi::float8_e4m3fn> set_zero;
       set_zero(
           dev_ctx,
@@ -1219,6 +1219,9 @@ void FlashMaskV2BaseKernel(
     const optional<DenseTensor> &scheduler_metadata_,    // (b + 1)
     const optional<DenseTensor> &startend_row_indices_,  // （b,h,s_1,[1,2,4])
     const optional<DenseTensor> &block_mask_,  // （(b,h,s// 128,s // 128)
+    const optional<DenseTensor>
+        &unique_id_,  //  used in distributed overlap NVSHMEM init with
+                      //  unique_id (128B u8 CPU tensor)
     const int
         max_seqlen_q_,  // if max_seqlen_q_ is set to 0, it indicates that it is
                         // uninitialized and should not be referenced
@@ -1240,6 +1243,8 @@ void FlashMaskV2BaseKernel(
                     // set to True; otherwise, the internal heuristic
                     // get_pack_gqa() from fa3 will decide whether to pack gqa
     const int sm_margin,
+    const int rank,
+    const int nranks,
     DenseTensor *out,
     DenseTensor *softmax_lse,
     DenseTensor *out_accum,
@@ -1256,8 +1261,8 @@ void FlashMaskV2BaseKernel(
 
   auto q_type = q.dtype();
   PADDLE_ENFORCE_EQ(
-      (q_type == phi::DataType::FLOAT16 || q_type == phi::DataType::BFLOAT16 ||
-       q_type == phi::DataType::FLOAT8_E4M3FN),
+      (q_type == DataType::FLOAT16 || q_type == DataType::BFLOAT16 ||
+       q_type == DataType::FLOAT8_E4M3FN),
       true,
       common::errors::InvalidArgument(
           "FlashAttention-3 only supports fp16, bf16, and fp8_e4m3 data type"));
@@ -1296,7 +1301,7 @@ void FlashMaskV2BaseKernel(
     page_table = page_table_.get();
     CHECK_DEVICE(page_table);
     PADDLE_ENFORCE_EQ(page_table.dtype(),
-                      phi::DataType::INT32,
+                      DataType::INT32,
                       common::errors::InvalidArgument(
                           "page_table must have dtype paddle.int32"));
     PADDLE_ENFORCE_EQ(page_table.strides()[page_table.strides().size() - 1],
@@ -1317,7 +1322,7 @@ void FlashMaskV2BaseKernel(
     CHECK_DEVICE(cu_seqlens_q);
     CHECK_CONTIGUOUS(cu_seqlens_q);
     PADDLE_ENFORCE_EQ(cu_seqlens_q.dtype(),
-                      phi::DataType::INT32,
+                      DataType::INT32,
                       common::errors::InvalidArgument(
                           "cu_seqlens_q must have dtype paddle.int32"));
     PADDLE_ENFORCE_NE(
@@ -1334,7 +1339,7 @@ void FlashMaskV2BaseKernel(
     CHECK_DEVICE(cu_seqlens_k);
     CHECK_CONTIGUOUS(cu_seqlens_k);
     PADDLE_ENFORCE_EQ(cu_seqlens_k.dtype(),
-                      phi::DataType::INT32,
+                      DataType::INT32,
                       common::errors::InvalidArgument(
                           "cu_seqlens_k must have dtype paddle.int32"));
     PADDLE_ENFORCE_NE(
@@ -1406,11 +1411,11 @@ void FlashMaskV2BaseKernel(
                       common::errors::InvalidArgument(
                           "Only Hopper supports different V headdim"));
     if (head_size_v > 256) {
-      PADDLE_ENFORCE_EQ((q_type == phi::DataType::FLOAT16 ||
-                         q_type == phi::DataType::BFLOAT16),
-                        true,
-                        common::errors::InvalidArgument(
-                            "HeaddimV > 256 requires fp16 and bf16 data type"));
+      PADDLE_ENFORCE_EQ(
+          (q_type == DataType::FLOAT16 || q_type == DataType::BFLOAT16),
+          true,
+          common::errors::InvalidArgument(
+              "HeaddimV > 256 requires fp16 and bf16 data type"));
     }
   }
 
@@ -1467,7 +1472,7 @@ void FlashMaskV2BaseKernel(
     auto seqused_q = seqused_q_.get();
     PADDLE_ENFORCE_EQ(
         seqused_q.dtype(),
-        phi::DataType::INT32,
+        DataType::INT32,
         common::errors::InvalidArgument("seqused_q must have dtype int32"));
     CHECK_DEVICE(seqused_q);
     CHECK_CONTIGUOUS(seqused_q);
@@ -1477,7 +1482,7 @@ void FlashMaskV2BaseKernel(
     auto seqused_k = seqused_k_.get();
     PADDLE_ENFORCE_EQ(
         seqused_k.dtype(),
-        phi::DataType::INT32,
+        DataType::INT32,
         common::errors::InvalidArgument("seqused_k must have dtype int32"));
     CHECK_DEVICE(seqused_k);
     CHECK_CONTIGUOUS(seqused_k);
@@ -1488,7 +1493,7 @@ void FlashMaskV2BaseKernel(
     auto leftpad_k = leftpad_k_.get();
     PADDLE_ENFORCE_EQ(
         leftpad_k.dtype(),
-        phi::DataType::INT32,
+        DataType::INT32,
         common::errors::InvalidArgument("leftpad_k must have dtype int32"));
     CHECK_DEVICE(leftpad_k);
     CHECK_CONTIGUOUS(leftpad_k);
@@ -1506,7 +1511,7 @@ void FlashMaskV2BaseKernel(
                         "This flash attention build does not support varlen."));
 #endif
 
-  int const alignment = q_type == phi::DataType::FLOAT8_E4M3FN ? 16 : 8;
+  int const alignment = q_type == DataType::FLOAT8_E4M3FN ? 16 : 8;
   PADDLE_ENFORCE_EQ(head_size % alignment,
                     0,
                     common::errors::InvalidArgument(
@@ -1517,7 +1522,7 @@ void FlashMaskV2BaseKernel(
                         "head_size_v should be a multiple of %d", alignment));
 
   auto out_type =
-      q_type == phi::DataType::FLOAT8_E4M3FN ? phi::DataType::BFLOAT16 : q_type;
+      q_type == DataType::FLOAT8_E4M3FN ? DataType::BFLOAT16 : q_type;
   if (out_.is_initialized()) {
     *out = out_.get();
     PADDLE_ENFORCE_EQ(
@@ -1542,7 +1547,7 @@ void FlashMaskV2BaseKernel(
     } else {
       out->Resize({total_q, num_heads, head_size_v});
     }
-    if (q_type == phi::DataType::FLOAT8_E4M3FN) {
+    if (q_type == DataType::FLOAT8_E4M3FN) {
       dev_ctx.template Alloc<phi::bfloat16>(out);
     } else {
       // umiswing: assuming T is Input Type
@@ -1640,7 +1645,7 @@ void FlashMaskV2BaseKernel(
       CHECK_DEVICE(cu_seqlens_k_new);
       CHECK_CONTIGUOUS(cu_seqlens_k_new);
       PADDLE_ENFORCE_EQ(cu_seqlens_k_new.dtype(),
-                        phi::DataType::INT32,
+                        DataType::INT32,
                         common::errors::InvalidArgument(
                             "cu_seqlens_k_new must have dtype paddle.int32"));
     }
@@ -1754,7 +1759,7 @@ void FlashMaskV2BaseKernel(
       CHECK_SHAPE(scheduler_metadata, metadata_size);
       CHECK_CONTIGUOUS(scheduler_metadata);
       PADDLE_ENFORCE_EQ(scheduler_metadata.dtype(),
-                        phi::DataType::INT32,
+                        DataType::INT32,
                         common::errors::InvalidArgument(
                             "scheduler_metadata must have dtype int32"));
       tile_count_semaphore = scheduler_metadata;
@@ -1782,7 +1787,7 @@ void FlashMaskV2BaseKernel(
                       common::errors::InvalidArgument(
                           "q_v is only supported for head_size <= 64"));
     PADDLE_ENFORCE_EQ(
-        (q_type == phi::DataType::FLOAT16 || q_type == phi::DataType::FLOAT16),
+        (q_type == DataType::FLOAT16 || q_type == DataType::FLOAT16),
         true,
         common::errors::InvalidArgument(
             "q_v is only supported for fp16 and bf16 data type"));
@@ -1886,7 +1891,7 @@ void FlashMaskV2BaseKernel(
     CHECK_CONTIGUOUS(kv_batch_idx);
     PADDLE_ENFORCE_EQ(
         kv_batch_idx.dtype(),
-        phi::DataType::INT32,
+        DataType::INT32,
         common::errors::InvalidArgument("kv_batch_idx must have dtype int32"));
     dynload::flashmaskv2_fwd_params_set_kv_batch_idx(
         params_handle, reinterpret_cast<int *>(kv_batch_idx.data()));
@@ -1946,7 +1951,7 @@ void FlashMaskV2BaseKernel(
         softmax_lse_accum->strides()[softmax_lse_accum->strides().size() - 2]);
   }
 
-  if (q_type == phi::DataType::FLOAT8_E4M3FN) {
+  if (q_type == DataType::FLOAT8_E4M3FN) {
     if (q_descale_.is_initialized()) {
       DenseTensor q_descale = q_descale_.get();
       CHECK_DEVICE(q_descale);
@@ -2090,7 +2095,7 @@ void FlashMaskV2BaseKernel(
     }
     flashmask_maxmin_shape[3] = 8;
 
-    flashmask_maxmin.set_type(phi::DataType::INT32);
+    flashmask_maxmin.set_type(DataType::INT32);
     flashmask_maxmin.Resize(flashmask_maxmin_shape);
     dev_ctx.template Alloc<int32_t>(&flashmask_maxmin);
 
@@ -2189,6 +2194,30 @@ void FlashMaskV2BaseKernel(
         params_handle, startend_row_indices.dims()[1]);
     dynload::flashmaskv2_fwd_params_set_h_h_flashmask_ratio(
         params_handle, num_heads / startend_row_indices.dims()[1]);
+
+    // distributed settings
+#ifdef PADDLE_WITH_NVSHMEM
+    PADDLE_ENFORCE_LE(
+        nranks,
+        64,
+        common::errors::InvalidArgument(
+            "nranks for FlashMask overlap should <= 64, got: %d", nranks));
+    dynload::flashmaskv2_fwd_params_set_rank(params_handle, rank);
+    dynload::flashmaskv2_fwd_params_set_nranks(params_handle, nranks);
+    if (unique_id_.is_initialized()) {
+      dynload::flashmaskv2_fwd_params_set_unique_id_ptr(
+          params_handle, unique_id_.get().data<uint8_t>());
+      VLOG(6) << "FlashMask overlap debug: unique_id_ptr set.";
+    } else {
+      dynload::flashmaskv2_fwd_params_set_unique_id_ptr(params_handle, nullptr);
+    }
+
+    VLOG(6) << "FlashMask overlap debug (rank and nranks): " << rank << ", "
+            << nranks;
+#else
+    VLOG(6) << "FlashMask overlap is not being used since PADDLE_WITH_NVSHMEM "
+               "is not defined.";
+#endif  // PADDLE_WITH_NVSHMEM
   } else {
     dynload::flashmaskv2_fwd_params_set_lt_start_ptr(params_handle, nullptr);
     dynload::flashmaskv2_fwd_params_set_lt_end_ptr(params_handle, nullptr);
@@ -2206,7 +2235,7 @@ void FlashMaskV2BaseKernel(
       num_heads_k > 0) {
     dynload::flashmaskv2_run_mha_fwd(params_handle, dev_ctx.stream());
     if (dynload::flashmaskv2_fwd_params_get_num_splits(params_handle) > 1) {
-      if (out_type == phi::DataType::BFLOAT16) {
+      if (out_type == DataType::BFLOAT16) {
         // Since we want output in BF16. Otherwise fwd_combine will output to
         // FP16
         dynload::flashmaskv2_fwd_params_set_is_bf16(params_handle, true);
@@ -2226,25 +2255,25 @@ void FlashMaskV2BaseKernel(
     }
   } else if (total_q > 0 && num_heads_k > 0) {
     PADDLE_ENFORCE_EQ(
-        (out->dtype() == phi::DataType::BFLOAT16 ||
-         out->dtype() == phi::DataType::FLOAT16 ||
-         out->dtype() == phi::DataType::FLOAT8_E4M3FN),
+        (out->dtype() == DataType::BFLOAT16 ||
+         out->dtype() == DataType::FLOAT16 ||
+         out->dtype() == DataType::FLOAT8_E4M3FN),
         true,
         common::errors::InvalidArgument("flash attention 3 supports bfloat16, "
                                         "float16 and float8_e4m3fn only."));
     // If seqlen_k == 0, then we have an empty tensor. We need to set the output
     // to 0.
-    if (out->dtype() == phi::DataType::BFLOAT16) {
+    if (out->dtype() == DataType::BFLOAT16) {
       funcs::SetConstant<Context, phi::bfloat16> set_zero;
       set_zero(dev_ctx,
                out,
                phi::bfloat16{0});  // If varlen we'll manually do the zero-ing
-    } else if (out->dtype() == phi::DataType::FLOAT16) {
+    } else if (out->dtype() == DataType::FLOAT16) {
       funcs::SetConstant<Context, phi::float16> set_zero;
       set_zero(dev_ctx,
                out,
                phi::float16{0});  // If varlen we'll manually do the zero-ing
-    } else if (out->dtype() == phi::DataType::FLOAT8_E4M3FN) {
+    } else if (out->dtype() == DataType::FLOAT8_E4M3FN) {
       funcs::SetConstant<Context, phi::float8_e4m3fn> set_zero;
       set_zero(
           dev_ctx,
@@ -2267,8 +2296,11 @@ void FlashMaskV2Kernel(const Context &dev_ctx,
                        const DenseTensor &v,
                        const DenseTensor &startend_row_indices,
                        const optional<DenseTensor> &block_mask,
+                       const optional<DenseTensor> &unique_id,
                        const float softmax_scale,
                        bool is_causal,
+                       const int rank,
+                       const int nranks,
                        DenseTensor *out,
                        DenseTensor *softmax_lse) {
 #ifdef PADDLE_WITH_FLASHATTN_V3
@@ -2313,6 +2345,7 @@ void FlashMaskV2Kernel(const Context &dev_ctx,
                                     paddle::none,  // scheduler_metadata_
                                     startend_row_indices,
                                     block_mask,
+                                    unique_id,
                                     0,  // max_seqlen_q_
                                     0,  // max_seqlen_k_
                                     softmax_scale,
@@ -2325,6 +2358,8 @@ void FlashMaskV2Kernel(const Context &dev_ctx,
                                     false,     // manual_set_pack_gqa
                                     false,     // pack_gqa_
                                     0,         // sm_margin
+                                    rank,      // dist CP settings
+                                    nranks,    // dist CP settings
                                     out,
                                     softmax_lse,
                                     &out_accum,
@@ -2335,7 +2370,34 @@ void FlashMaskV2Kernel(const Context &dev_ctx,
 #endif
 }
 
+template <typename T, typename Context>
+void FlashMaskV2GetUniqueIdInplace(const Context &dev_ctx,
+                                   const DenseTensor &x,
+                                   DenseTensor *out) {
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_FLASHATTN_V3)
+  bool valid_unique_id =
+      dynload::flashmaskv2_get_nvshmem_unique_id(out->data<uint8_t>());
+  if (!valid_unique_id) {
+    // If FlashMask is not compiled with `WITH_DISTRIBUTED_OVERLAP` then this is
+    // a zero tensor
+    funcs::SetConstant<Context, uint8_t> set_zero;
+    set_zero(dev_ctx, out, uint8_t{0});
+  }
+#else
+  funcs::SetConstant<Context, uint8_t> set_zero;
+  set_zero(dev_ctx, out, uint8_t{0});
+#endif
+}
+
 }  // namespace phi
+
+PD_REGISTER_KERNEL(flashmask_get_unique_id,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::FlashMaskV2GetUniqueIdInplace,
+                   uint8_t) {
+  kernel->InputAt(0).SetBackend(phi::Backend::CPU);
+}
 
 PD_REGISTER_KERNEL(flash_attn_v3,
                    GPU,
@@ -2358,4 +2420,5 @@ PD_REGISTER_KERNEL(flashmask_attention_v2,
                    phi::float16,
                    phi::bfloat16) {
   kernel->InputAt(4).SetBackend(phi::Backend::ALL_BACKEND);  // block_mask
+  kernel->InputAt(5).SetBackend(phi::Backend::CPU);  // nvshmem unique_id
 }

@@ -32,13 +32,13 @@ class InterpreterCore {
   using HookFunc = std::function<void(OperatorBase*, Scope*)>;
 
  public:
-  InterpreterCore(const phi::Place& place,
+  InterpreterCore(const Place& place,
                   const BlockDesc& block,
                   Scope* scope,
                   const ExecutionConfig& execution_config = ExecutionConfig());
   // This constructor is for New IR.
   TEST_API InterpreterCore(
-      const phi::Place& place,
+      const Place& place,
       const std::vector<std::string>& fetch_var_names,
       const pir::Block* ir_prog,
       Scope* scope,
@@ -83,7 +83,7 @@ class InterpreterCore {
 
   PADDLE_API const Scope* local_scope() const;
 
-  PADDLE_API const phi::Place& GetPlace() const;
+  PADDLE_API const Place& GetPlace() const;
 
   PADDLE_API void SetOutputHooks(const std::vector<HookFunc>& hookfuncs);
 

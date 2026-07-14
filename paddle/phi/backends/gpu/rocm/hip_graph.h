@@ -188,7 +188,8 @@ class CUDAGraph {
   // Since the constructor would throw error is CUDA_VERSION < 10010.
   // The non-static method of CUDAGraph need not check CUDA_VERSION
   // again.
-  CUDAGraph() {
+  explicit CUDAGraph(bool enable_replace = false)
+      : enable_replace_(enable_replace) {
     ThrowErrorIfNotSupportCUDAGraph();
     id_ = UniqueID();
   }
@@ -244,7 +245,8 @@ class CUDAGraph {
 
   static void BeginCapture(phi::GPUPlace place,
                            gpuStream_t stream,
-                           gpuStreamCaptureMode mode);
+                           gpuStreamCaptureMode mode,
+                           bool enable_replace = false);
   static std::unique_ptr<CUDAGraph> EndCapture();
 
   static void BeginSegmentCapture();
@@ -307,6 +309,7 @@ class CUDAGraph {
   CUDAGraphID id_;
   int64_t pool_id_{kInvalidPoolID};
   bool is_reset_{false};
+  bool enable_replace_{false};
   std::mutex mtx_;
 
   std::vector<SetSeedFunc> set_seed_funcs_;

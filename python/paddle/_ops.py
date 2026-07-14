@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#  #The file has been adapted from pytorch project
-#  #Licensed under  BSD-style license -
-#  https://github.com/pytorch/pytorch/blob/main/LICENSE
+# The file has been adapted from pytorch project
+# Licensed under BSD-style license -
+# https://github.com/pytorch/pytorch/blob/main/LICENSE
 
 from __future__ import annotations
 
@@ -25,11 +25,14 @@ import os
 import sys
 import types
 from functools import cached_property
-from typing import Any, Callable, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from typing_extensions import ParamSpec
 
 import paddle
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 _InputT = ParamSpec("_InputT")
 _RetT = TypeVar("_RetT")

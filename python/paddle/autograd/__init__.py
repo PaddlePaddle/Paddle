@@ -15,6 +15,7 @@
 from ..base.dygraph.base import (  # noqa: F401
     enable_grad,
     grad,
+    inference_mode,
     is_grad_enabled,
     no_grad_ as no_grad,
     set_grad_enabled,
@@ -22,6 +23,7 @@ from ..base.dygraph.base import (  # noqa: F401
 from . import (  # noqa: F401
     backward_mode,
     function,
+    grad_mode,
     ir_backward,
 )
 from .autograd import hessian, jacobian

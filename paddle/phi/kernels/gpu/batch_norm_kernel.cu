@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/batch_norm_kernel.h"
 #include "glog/logging.h"
+#include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -42,7 +43,7 @@ COMMON_DECLARE_bool(batch_norm_use_miopen);
 namespace phi {
 
 template <typename T>
-using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
+using CudnnDataType = backends::gpu::CudnnDataType<T>;
 template <typename T>
 using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
@@ -588,7 +589,7 @@ void BatchNormKernel(const Context &dev_ctx,
   int N, C, H, W, D;
   funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
-  auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
+  auto dtype = backends::gpu::CudnnDataType<T>::type;
 
   auto *Scale = scale.get_ptr();
   auto *Bias = bias.get_ptr();
@@ -599,13 +600,13 @@ void BatchNormKernel(const Context &dev_ctx,
   if (Scale) {
     new_scale = scale.get();
   } else {
-    new_scale = phi::Full<T, Context>(dev_ctx, {C}, static_cast<T>(1));
+    new_scale = Full<T, Context>(dev_ctx, {C}, static_cast<T>(1));
   }
 
   if (Bias) {
     new_bias = bias.get();
   } else {
-    new_bias = phi::Full<T, Context>(dev_ctx, {C}, static_cast<T>(0));
+    new_bias = Full<T, Context>(dev_ctx, {C}, static_cast<T>(0));
   }
 
 #ifdef PADDLE_WITH_HIP
@@ -1082,10 +1083,14 @@ void BatchNormKernel(const Context &dev_ctx,
                        static_cast<int64_t>(MAX_GRID_SIZE));
           int64_t grid_y = (C + block_y - 1) / block_y;
 
-          block.x = block_x;
-          block.y = block_y;
-          grid.x = grid_x;
-          grid.y = grid_y;
+          PADDLE_ENFORCE_LE_UINT32_MAX(block_x, "block.x");
+          PADDLE_ENFORCE_LE_UINT32_MAX(block_y, "block.y");
+          PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "grid.x");
+          PADDLE_ENFORCE_LE_UINT32_MAX(grid_y, "grid.y");
+          block.x = static_cast<uint32_t>(block_x);
+          block.y = static_cast<uint32_t>(block_y);
+          grid.x = static_cast<uint32_t>(grid_x);
+          grid.y = static_cast<uint32_t>(grid_y);
 
           if (grid.x > 1) {
             block_data_tensor = Empty<BatchNormParamType<T>, Context>(
@@ -1143,11 +1148,15 @@ void BatchNormKernel(const Context &dev_ctx,
           int64_t grid_y =
               std::min((N * H * W * D + block_y * 16 - 1) / (block_y * 16),
                        static_cast<int64_t>(MAX_GRID_SIZE));
+          PADDLE_ENFORCE_LE_UINT32_MAX(block_x, "block.x");
+          PADDLE_ENFORCE_LE_UINT32_MAX(block_y, "block.y");
+          PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "grid.x");
+          PADDLE_ENFORCE_LE_UINT32_MAX(grid_y, "grid.y");
 
-          block.x = block_x;
-          block.y = block_y;
-          grid.x = grid_x;
-          grid.y = grid_y;
+          block.x = static_cast<uint32_t>(block_x);
+          block.y = static_cast<uint32_t>(block_y);
+          grid.x = static_cast<uint32_t>(grid_x);
+          grid.y = static_cast<uint32_t>(grid_y);
 
           if (grid.y > 1) {
             block_data_tensor = Empty<BatchNormParamType<T>, Context>(

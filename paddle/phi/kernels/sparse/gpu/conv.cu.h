@@ -104,7 +104,7 @@ inline void Gather(const GPUContext& dev_ctx,
                    T* output) {
   const int VecSize = VecBytes / sizeof(T);
   if (channels % VecSize == 0) {
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+    auto config = backends::gpu::GetGpuLaunchConfig1D(
         dev_ctx, indices_size * channels / VecSize, 1);
     GatherKernel<T, IntT, VecSize>
         <<<config.block_per_grid.x,
@@ -112,7 +112,7 @@ inline void Gather(const GPUContext& dev_ctx,
            0,
            dev_ctx.stream()>>>(inputs, indices, output, indices_size, channels);
   } else {
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+    auto config = backends::gpu::GetGpuLaunchConfig1D(
         dev_ctx, indices_size * channels, 1);
     GatherKernel<T, IntT, 1>
         <<<config.block_per_grid.x,
@@ -134,7 +134,7 @@ inline void GatherV2(const GPUContext& dev_ctx,
                      T* output) {
   const int VecSize = VecBytes / sizeof(T);
   if (channels % VecSize == 0) {
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+    auto config = backends::gpu::GetGpuLaunchConfig1D(
         dev_ctx, non_zero_num * channels / VecSize, 1);
     GatherKernelV2<T, IntT, VecSize><<<config.block_per_grid.x,
                                        config.thread_per_block.x,
@@ -148,7 +148,7 @@ inline void GatherV2(const GPUContext& dev_ctx,
                                                            buffer_count,
                                                            output);
   } else {
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+    auto config = backends::gpu::GetGpuLaunchConfig1D(
         dev_ctx, non_zero_num * channels, 1);
     GatherKernelV2<T, IntT, 1><<<config.block_per_grid.x,
                                  config.thread_per_block.x,
@@ -392,17 +392,17 @@ inline void CallThrustScan(const GPUContext& dev_ctx,
                          counter_ptr + kernel_size,
                          offsets_ptr);
 
-  phi::backends::gpu::GpuMemcpyAsync(h_counter_ptr,
-                                     counter_ptr,
-                                     kernel_size * sizeof(int),
-                                     gpuMemcpyDeviceToHost,
-                                     dev_ctx.stream());
+  backends::gpu::GpuMemcpyAsync(h_counter_ptr,
+                                counter_ptr,
+                                kernel_size * sizeof(int),
+                                gpuMemcpyDeviceToHost,
+                                dev_ctx.stream());
 
-  phi::backends::gpu::GpuMemcpyAsync(h_offsets_ptr,
-                                     offsets_ptr,
-                                     kernel_size * sizeof(int),
-                                     gpuMemcpyDeviceToHost,
-                                     dev_ctx.stream());
+  backends::gpu::GpuMemcpyAsync(h_offsets_ptr,
+                                offsets_ptr,
+                                kernel_size * sizeof(int),
+                                gpuMemcpyDeviceToHost,
+                                dev_ctx.stream());
 }
 
 // the basic algorithm can refer to convolution_kernel.cc or
@@ -494,12 +494,11 @@ int ProductRuleBook(const Context& dev_ctx,
   const Dims4D d_dilations(ddim0, ddim1, ddim2, ddim3);
 
   // 1. product rule book
-  phi::backends::gpu::GpuMemsetAsync(counter_ptr,
-                                     0,
-                                     sizeof(int) * counter_per_kernel->numel(),
-                                     dev_ctx.stream());
-  auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
+  backends::gpu::GpuMemsetAsync(counter_ptr,
+                                0,
+                                sizeof(int) * counter_per_kernel->numel(),
+                                dev_ctx.stream());
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
 
   const int rulebook_rows = 2;
   const int rulebook_cols = kernel_size * non_zero_num;
@@ -516,7 +515,7 @@ int ProductRuleBook(const Context& dev_ctx,
   int index_flags_size = (table_size + 31) / 32;
   DenseTensor index_flags = Empty<int>(dev_ctx, {index_flags_size});
   int* index_flags_ptr = index_flags.data<int>();
-  phi::backends::gpu::GpuMemsetAsync(
+  backends::gpu::GpuMemsetAsync(
       index_flags_ptr, 0, sizeof(int) * index_flags.numel(), dev_ctx.stream());
 
   if (subm) {
@@ -528,8 +527,7 @@ int ProductRuleBook(const Context& dev_ctx,
 
     phi::Copy(dev_ctx, x.indices(), dev_ctx.GetPlace(), false, &out_indices);
 
-    auto config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
+    auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
     GetOutIndexTable1<IntT><<<config.block_per_grid,
                               config.thread_per_block,
                               0,
@@ -581,7 +579,7 @@ int ProductRuleBook(const Context& dev_ctx,
     DenseTensor out_rulebook =
         Empty<IntT>(dev_ctx, {rulebook_rows, rulebook_len});
     IntT* out_rulebook_ptr = out_rulebook.data<IntT>();
-    config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
+    config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
     cache_size = kernel_size * 2 * sizeof(int);
     CopyRuleBook<IntT><<<config.block_per_grid,
                          config.thread_per_block,
@@ -667,10 +665,10 @@ int ProductRuleBook(const Context& dev_ctx,
     int* out_index_ptr = out_index->data<int>();
     int* unique_key_ptr = unique_key.data<int>();
 
-    phi::backends::gpu::GpuMemsetAsync(
+    backends::gpu::GpuMemsetAsync(
         unique_key_ptr, 0, sizeof(int), dev_ctx.stream());
 
-    config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
+    config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
     size_t cache_size = sizeof(int) * config.thread_per_block.x;
     UniqueKernel<IntT><<<config.block_per_grid,
                          config.thread_per_block,
@@ -682,11 +680,11 @@ int ProductRuleBook(const Context& dev_ctx,
                                              unique_key_ptr);
 
     int out_nnz = 0;
-    phi::backends::gpu::GpuMemcpyAsync(&out_nnz,
-                                       unique_key_ptr,
-                                       sizeof(int),
-                                       gpuMemcpyDeviceToHost,
-                                       dev_ctx.stream());
+    backends::gpu::GpuMemcpyAsync(&out_nnz,
+                                  unique_key_ptr,
+                                  sizeof(int),
+                                  gpuMemcpyDeviceToHost,
+                                  dev_ctx.stream());
     dev_ctx.Wait();
 
     const int threads = 256;
@@ -716,7 +714,7 @@ int ProductRuleBook(const Context& dev_ctx,
 
     IntT* out_indices_ptr = out_indices.data<IntT>();
 
-    config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_nnz, 1);
+    config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_nnz, 1);
     GetOutIndexTable<IntT><<<config.block_per_grid,
                              config.thread_per_block,
                              0,
@@ -726,7 +724,7 @@ int ProductRuleBook(const Context& dev_ctx,
                                                  is2D,
                                                  out_index_table_ptr,
                                                  out_indices_ptr);
-    config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
+    config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
     unique_value->ResizeAndAllocate({static_cast<int>(out_nnz * kernel_size)});
     int* unique_value_ptr = unique_value->data<int>();
 

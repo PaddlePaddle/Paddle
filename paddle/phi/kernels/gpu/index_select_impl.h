@@ -22,8 +22,6 @@
 
 namespace phi {
 
-using phi::PADDLE_CUDA_NUM_THREADS;
-
 template <typename T, typename IndexT>
 __global__ void index_select_cuda_kernel(const T* input,
                                          T* output,

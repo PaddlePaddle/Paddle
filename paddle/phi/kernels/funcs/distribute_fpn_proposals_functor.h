@@ -33,7 +33,7 @@ template <typename Context>
 inline std::vector<size_t> GetLodFromRoisNum(const Context& dev_ctx,
                                              const DenseTensor* rois_num) {
   std::vector<size_t> rois_lod;
-  if (rois_num->dtype() == phi::DataType::INT64) {
+  if (rois_num->dtype() == DataType::INT64) {
     auto* rois_num_data = rois_num->data<int64_t>();
     DenseTensor cpu_tensor;
     if (rois_num->place().GetType() == AllocationType::GPU ||
@@ -46,7 +46,7 @@ inline std::vector<size_t> GetLodFromRoisNum(const Context& dev_ctx,
       rois_lod.push_back(rois_lod.back() +
                          static_cast<size_t>(rois_num_data[i]));
     }
-  } else if (rois_num->dtype() == phi::DataType::INT32) {
+  } else if (rois_num->dtype() == DataType::INT32) {
     auto* rois_num_data = rois_num->data<int>();
     DenseTensor cpu_tensor;
     if (rois_num->place().GetType() == AllocationType::GPU ||

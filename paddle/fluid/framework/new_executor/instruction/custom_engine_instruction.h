@@ -58,7 +58,7 @@ class CustomEngineInstruction : public InstructionBase {
     return engine_outputs_;
   }
 
-  const std::unordered_map<pir::Value, std::vector<phi::DenseTensor*>>&
+  const std::unordered_map<pir::Value, std::vector<DenseTensor*>>&
   GetEngineValueToTensors() const {
     return engine_value_to_tensors_;
   }
@@ -91,7 +91,7 @@ class CustomEngineInstruction : public InstructionBase {
 
   std::vector<pir::Value> engine_inputs_;
   std::vector<pir::Value> engine_outputs_;
-  std::unordered_map<pir::Value, std::vector<phi::DenseTensor*>>
+  std::unordered_map<pir::Value, std::vector<DenseTensor*>>
       engine_value_to_tensors_;
   std::unordered_map<pir::Value, std::vector<std::string>>
       engine_value_to_var_names_;

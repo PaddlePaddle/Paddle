@@ -72,7 +72,7 @@ void HSigmoidLossKernel(const Context& dev_ctx,
   }
 
   std::vector<int64_t> sum_dims({batch_size, 1UL});
-  sum.Resize(make_ddim(sum_dims));
+  sum.Resize(sum_dims);
   dev_ctx.template Alloc<T>(&sum);
   auto sum_mat = EigenMatrix<T>::From(sum);
   dev_ctx.template Alloc<T>(out);

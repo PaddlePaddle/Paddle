@@ -21,7 +21,6 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
 namespace phi::distributed {
-using phi::distributed::auto_parallel::str_join;
 
 SpmdInfo NonZeroInferSpmd(const DistMetaTensor& x) {
   // Step0: Verify input args based on nonzero logic

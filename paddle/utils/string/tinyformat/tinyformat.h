@@ -119,9 +119,8 @@
 // Additional API information
 // --------------------------
 //
-// Error handling: Define TINYFORMAT_ERROR to customize the error handling for
-// format strings which are unsupported or have the wrong number of format
-// specifiers (calls assert() by default).
+// Error handling: Format errors throw detail::FormatError, which is caught
+// at the public API level to fall back to the raw format string.
 //
 // User defined types: Uses operator<< for user defined types by default.
 // Overload formatValue() for more control.
@@ -139,12 +138,13 @@ namespace paddle {
 namespace string {
 namespace tinyformat {
 
-#ifndef TINYFORMAT_ERROR
-#define TINYFORMAT_ERROR(reason) assert(0 && reason)
-#endif
-
 //------------------------------------------------------------------------------
 namespace detail {
+
+// Exception thrown on format errors instead of crashing via assert.
+// Caught at the public API level to fall back to returning the raw format
+// string, so that a wrong PADDLE_ENFORCE format never causes an abort.
+struct FormatError {};
 
 // Test whether type T1 is convertible to type T2
 template <typename T1, typename T2>
@@ -192,9 +192,7 @@ struct formatValueAsType<T, fmtT, true> {
 template <typename T, bool convertible = is_convertible<T, int>::value>
 struct convertToInt {
   static int invoke(const T & /*value*/) {
-    TINYFORMAT_ERROR(
-        "tinyformat: Cannot convert from argument type to "
-        "integer for use as variable width or precision");
+    throw FormatError();
     return 0;
   }
 };
@@ -579,8 +577,7 @@ inline const char *streamStateFromFormat(std::ostream &out,       // NOLINT
                                          int &argIndex,  // NOLINT
                                          int numFormatters) {
   if (*fmtStart != '%') {
-    TINYFORMAT_ERROR(
-        "tinyformat: Not enough conversion specifiers in format string");
+    throw FormatError();
     return fmtStart;
   }
   // Reset stream state to defaults.
@@ -639,8 +636,7 @@ inline const char *streamStateFromFormat(std::ostream &out,       // NOLINT
     if (argIndex < numFormatters)
       width = formatters[argIndex++].toInt();
     else
-      TINYFORMAT_ERROR(
-          "tinyformat: Not enough arguments to read variable width");
+      throw FormatError();
     if (width < 0) {
       // negative widths correspond to '-' flag set
       out.fill(' ');
@@ -659,8 +655,7 @@ inline const char *streamStateFromFormat(std::ostream &out,       // NOLINT
       if (argIndex < numFormatters)
         precision = formatters[argIndex++].toInt();
       else
-        TINYFORMAT_ERROR(
-            "tinyformat: Not enough arguments to read variable precision");
+        throw FormatError();
     } else {
       if (*c >= '0' && *c <= '9')
         precision = parseIntAndAdvance(c);
@@ -724,9 +719,7 @@ inline const char *streamStateFromFormat(std::ostream &out,       // NOLINT
       break;
     case 'a':
     case 'A':
-      TINYFORMAT_ERROR(
-          "tinyformat: the %a and %A conversion specs "
-          "are not supported");
+      throw FormatError();
       break;
     case 'c':
       // Handled as special case inside formatValue()
@@ -738,12 +731,10 @@ inline const char *streamStateFromFormat(std::ostream &out,       // NOLINT
       break;
     case 'n':
       // Not supported - will cause problems!
-      TINYFORMAT_ERROR("tinyformat: %n conversion spec not supported");
+      throw FormatError();
       break;
     case '\0':
-      TINYFORMAT_ERROR(
-          "tinyformat: Conversion spec incorrectly "
-          "terminated by end of string");
+      throw FormatError();
       return c;
     default:
       break;
@@ -785,7 +776,7 @@ inline void formatImpl(std::ostream &out,
                                                numFormatters);
     if (argIndex >= numFormatters) {
       // Check args remain after reading any variable width/precision
-      TINYFORMAT_ERROR("tinyformat: Not enough format arguments");
+      throw FormatError();
       return;
     }
     const FormatArg &arg = formatters[argIndex];
@@ -811,9 +802,7 @@ inline void formatImpl(std::ostream &out,
 
   // Print remaining part of format string.
   fmt = printFormatStringLiteral(out, fmt);
-  if (fmt != nullptr && *fmt != '\0' && *fmt != 0)
-    TINYFORMAT_ERROR(
-        "tinyformat: Too many conversion specifiers in format string");
+  if (fmt != nullptr && *fmt != '\0' && *fmt != 0) throw FormatError();
 
   // Restore stream state
   out.width(origWidth);

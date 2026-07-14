@@ -102,8 +102,7 @@ from .sharding import (
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
-
-    from typing_extensions import TypeAlias
+    from typing import TypeAlias
 
     from paddle import Tensor
     from paddle._typing import (
@@ -1194,6 +1193,9 @@ class _ShardOptimizer(Optimizer):
         self._strategy = Strategy()
         self.enable_tensor_fusion = False
         self.enable_sharding_overlap = False
+
+    def get_lr_dtype(self):
+        return self._inner_opt.get_lr_dtype()
 
     def _set_and_check_sharding_prop_from_param(self):
         global_mesh = fleet.auto.get_mesh()

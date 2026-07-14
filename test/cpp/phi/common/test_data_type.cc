@@ -26,50 +26,50 @@ namespace tests {
 
 TEST(DataType, OStream) {
   std::ostringstream oss;
-  oss << phi::DataType::UNDEFINED;
+  oss << DataType::UNDEFINED;
   EXPECT_EQ(oss.str(), "Undefined");
   oss.str("");
-  oss << phi::DataType::BOOL;
+  oss << DataType::BOOL;
   EXPECT_EQ(oss.str(), "bool");
   oss.str("");
-  oss << phi::DataType::INT8;
+  oss << DataType::INT8;
   EXPECT_EQ(oss.str(), "int8");
   oss.str("");
-  oss << phi::DataType::UINT8;
+  oss << DataType::UINT8;
   EXPECT_EQ(oss.str(), "uint8");
   oss.str("");
-  oss << phi::DataType::INT16;
+  oss << DataType::INT16;
   EXPECT_EQ(oss.str(), "int16");
   oss.str("");
-  oss << phi::DataType::INT32;
+  oss << DataType::INT32;
   EXPECT_EQ(oss.str(), "int32");
   oss.str("");
-  oss << phi::DataType::INT64;
+  oss << DataType::INT64;
   EXPECT_EQ(oss.str(), "int64");
   oss.str("");
-  oss << phi::DataType::BFLOAT16;
+  oss << DataType::BFLOAT16;
   EXPECT_EQ(oss.str(), "bfloat16");
   oss.str("");
-  oss << phi::DataType::FLOAT16;
+  oss << DataType::FLOAT16;
   EXPECT_EQ(oss.str(), "float16");
   oss.str("");
-  oss << phi::DataType::FLOAT32;
+  oss << DataType::FLOAT32;
   EXPECT_EQ(oss.str(), "float32");
   oss.str("");
-  oss << phi::DataType::FLOAT64;
+  oss << DataType::FLOAT64;
   EXPECT_EQ(oss.str(), "float64");
   oss.str("");
-  oss << phi::DataType::COMPLEX64;
+  oss << DataType::COMPLEX64;
   EXPECT_EQ(oss.str(), "complex64");
   oss.str("");
-  oss << phi::DataType::COMPLEX128;
+  oss << DataType::COMPLEX128;
   EXPECT_EQ(oss.str(), "complex128");
   oss.str("");
-  oss << phi::DataType::PSTRING;
+  oss << DataType::PSTRING;
   EXPECT_EQ(oss.str(), "pstring");
   oss.str("");
   try {
-    oss << phi::DataType::NUM_DATA_TYPES;
+    oss << DataType::NUM_DATA_TYPES;
   } catch (const std::exception& exception) {
     std::string ex_msg = exception.what();
     EXPECT_TRUE(ex_msg.find("Invalid enum data type") != std::string::npos);
@@ -77,18 +77,13 @@ TEST(DataType, OStream) {
 }
 
 TEST(TypeTraits, Complex) {
-  EXPECT_EQ(phi::dtype::ToReal(phi::DataType::COMPLEX64),
-            phi::DataType::FLOAT32);
-  EXPECT_EQ(phi::dtype::ToReal(phi::DataType::COMPLEX128),
-            phi::DataType::FLOAT64);
-  EXPECT_EQ(phi::dtype::ToReal(phi::DataType::FLOAT32), phi::DataType::FLOAT32);
+  EXPECT_EQ(dtype::ToReal(DataType::COMPLEX64), DataType::FLOAT32);
+  EXPECT_EQ(dtype::ToReal(DataType::COMPLEX128), DataType::FLOAT64);
+  EXPECT_EQ(dtype::ToReal(DataType::FLOAT32), DataType::FLOAT32);
 
-  EXPECT_EQ(phi::dtype::ToComplex(phi::DataType::FLOAT32),
-            phi::DataType::COMPLEX64);
-  EXPECT_EQ(phi::dtype::ToComplex(phi::DataType::FLOAT64),
-            phi::DataType::COMPLEX128);
-  EXPECT_EQ(phi::dtype::ToComplex(phi::DataType::COMPLEX64),
-            phi::DataType::COMPLEX64);
+  EXPECT_EQ(dtype::ToComplex(DataType::FLOAT32), DataType::COMPLEX64);
+  EXPECT_EQ(dtype::ToComplex(DataType::FLOAT64), DataType::COMPLEX128);
+  EXPECT_EQ(dtype::ToComplex(DataType::COMPLEX64), DataType::COMPLEX64);
 }
 
 }  // namespace tests

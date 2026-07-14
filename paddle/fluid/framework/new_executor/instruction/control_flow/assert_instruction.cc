@@ -60,7 +60,7 @@ void AssertInstruction::Run() {
   }
 
   DeviceContext().Wait();
-  const phi::DenseTensor& cond = cond_var_->Get<DenseTensor>();
+  const DenseTensor& cond = cond_var_->Get<DenseTensor>();
 
   PADDLE_ENFORCE_EQ(
       cond.numel(),
@@ -86,7 +86,7 @@ void AssertInstruction::Run() {
           .inputs();
   for (pir::Value val : inputs_data_val) {
     const std::string& name = value_exe_info_->GetVarName(val);
-    const phi::DenseTensor& tensor =
+    const DenseTensor& tensor =
         value_exe_info_->GetVarByValue(val)->Get<DenseTensor>();
     formatter.Print(tensor, name);
   }

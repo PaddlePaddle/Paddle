@@ -112,7 +112,7 @@ void CudnnLSTMGradKernel(
   bool has_seq_length = running_seq_length != nullptr;
   std::vector<int> SequenceLength;
   if (has_seq_length) {
-    SequenceLength = phi::GetVectorFromTensor<int>(running_seq_length);
+    SequenceLength = GetVectorFromTensor<int>(running_seq_length);
   }
 
   int seq_length = input_dims[0];

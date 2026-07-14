@@ -215,7 +215,7 @@ def index_select(
 ) -> Tensor: ...
 
 
-@index_select_decorator()
+@index_select_decorator
 def index_select(
     x: Tensor,
     index: Tensor,

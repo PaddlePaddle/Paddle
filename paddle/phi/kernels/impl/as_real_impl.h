@@ -40,8 +40,8 @@ void AsRealKernel(const Context& dev_ctx,
   Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   out->Resize(out_dims_original);  // restored the shape.
   out->set_type(
-      phi::CppTypeToDataType<typename T::value_type>::Type());  // restored the
-                                                                // dtype.
+      CppTypeToDataType<typename T::value_type>::Type());  // restored the
+                                                           // dtype.
 }
 
 }  // namespace phi

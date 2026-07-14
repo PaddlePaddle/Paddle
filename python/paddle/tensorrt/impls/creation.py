@@ -17,7 +17,7 @@ import numpy as np
 import tensorrt as trt
 
 import paddle
-from paddle.pir.core import _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE
+from paddle.pir.core import datatype_to_str
 from paddle.tensorrt.converter_utils import (
     add_1D_constant_layer,
     get_input_constant_value,
@@ -35,9 +35,7 @@ from paddle.tensorrt.converter_utils import (
 from paddle.tensorrt.register import converter_registry
 
 
-@converter_registry.register(
-    "pd_op.full_int_array", trt_version="trt_version_ge=8.0"
-)
+@converter_registry.register("pd_op.full_int_array")
 def full_int_array_converter(network, paddle_op, inputs):
     value = paddle_op.attrs()["value"]
     if len(value) == 0:
@@ -48,12 +46,12 @@ def full_int_array_converter(network, paddle_op, inputs):
     return full_int_array_layer.get_output(0)
 
 
-@converter_registry.register("pd_op.full", trt_version="trt_version_ge=8.0")
+@converter_registry.register("pd_op.full")
 def full_converter(network, paddle_op, inputs):
     shape = paddle_op.attrs()["shape"]
     value = paddle_op.attrs().get("value", 1.0)
     dtype = paddle_op.attrs().get("dtype")
-    out_dtype = np.dtype(_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[dtype])
+    out_dtype = np.dtype(datatype_to_str[dtype])
     if out_dtype == np.dtype("float64"):
         out_dtype = np.dtype("float32")
     if out_dtype == np.dtype("int64"):
@@ -293,19 +291,13 @@ def full_with_tensor_converter(network, paddle_op, inputs):
     shape_val = get_input_constant_value(paddle_op, inputs, 1)
     if shape_val is not None:
         shape_tensor = shape_val
-        is_static_shape = True
     else:
         shape_tensor = inputs[1]
-        is_static_shape = False
 
-    shape_nbDims = 0
     tensor_rank = 0
     if isinstance(shape_tensor, trt.ITensor):
-        shape_x = shape_tensor.shape
-        shape_nbDims = len(shape_x)
         shapes_tensor = shape_tensor
     elif isinstance(shape_tensor, (list, tuple)):
-        shape_nbDims = len(shape_tensor)
         shapes_tensor = shape_tensor
     else:
         raise TypeError(f"Unsupported shape_tensor type: {type(shape_tensor)}")

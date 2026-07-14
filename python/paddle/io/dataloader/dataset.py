@@ -20,19 +20,25 @@ import warnings
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Generic,
     TypeVar,
 )
 
-from typing_extensions import Never, TypeVarTuple, Unpack
+from typing_extensions import Never, TypeVarTuple, Unpack, overload
 
 import paddle
+from paddle.utils.decorator_utils import variadic_tensor_decorator
 
 from ... import framework
 
 if TYPE_CHECKING:
-    from collections.abc import Generator, Iterable, Iterator, Sequence
+    from collections.abc import (
+        Callable,
+        Generator,
+        Iterable,
+        Iterator,
+        Sequence,
+    )
 
     from paddle import Tensor
 
@@ -319,6 +325,13 @@ class TensorDataset(Dataset["Tensor"]):
 
     tensors: Sequence[Tensor]
 
+    @overload
+    def __init__(self, tensors: Sequence[Tensor]) -> None: ...
+
+    @overload
+    def __init__(self, *tensors: Tensor) -> None: ...
+
+    @variadic_tensor_decorator('tensors', 1)
     def __init__(self, tensors: Sequence[Tensor]) -> None:
         if not framework.in_dynamic_mode():
             raise RuntimeError(

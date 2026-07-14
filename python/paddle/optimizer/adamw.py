@@ -114,6 +114,10 @@ class AdamW(Optimizer):
         name (str|None, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
+
+    Keyword Args:
+        maximize (bool, optional): Maximize the objective with respect to the params, instead of minimizing. The default value is False.
+
     Notes:
         **Currently, AdamW doesn't support sparse parameter optimization.**
 
@@ -194,6 +198,8 @@ class AdamW(Optimizer):
         multi_precision: bool = False,
         amsgrad: bool = False,
         name: str | None = None,
+        *,
+        maximize: bool = False,
     ) -> None:
         assert learning_rate is not None
         assert beta1 is not None
@@ -295,6 +301,7 @@ class AdamW(Optimizer):
         self._lazy_mode = lazy_mode
         self._multi_precision = multi_precision
         self._master_weights = {}
+        self._maximize = maximize
         # whether to use AMSGrad
         self._amsgrad = amsgrad
 
@@ -335,6 +342,9 @@ class AdamW(Optimizer):
             return self._auxiliary_vars[key]
         else:
             return None
+
+    def get_lr_dtype(self) -> paddle.dtype:
+        return paddle.float64
 
     def _add_param_group(self, param_group):
         """
@@ -633,33 +643,63 @@ class AdamW(Optimizer):
 
     @imperative_base.no_grad
     @framework.non_static_only
-    def step(self) -> None:
+    def step(
+        self, closure: Callable[[], Tensor] | None = None
+    ) -> Tensor | None:
         """
         Execute the optimizer and update parameters once.
 
+        Args:
+            closure (Callable|None, optional): A closure that reevaluates the model
+                and returns the loss. It should be a callable that takes no arguments
+                and returns a Tensor. This is useful for optimizers that need to
+                evaluate the loss multiple times (e.g., line search). Default is None.
+
         Returns:
-            None
+            Tensor|None: If closure is provided, returns the loss value computed by
+                the closure. Otherwise returns None.
 
         Examples:
             .. code-block:: pycon
 
                 >>> import paddle
 
-                >>> a = paddle.rand([2, 13], dtype="float32")
+                >>> x = paddle.rand([2, 13], dtype="float32")
                 >>> linear = paddle.nn.Linear(13, 5)
                 >>> # This can be any optimizer supported by dygraph.
                 >>> opt = paddle.optimizer.AdamW(
                 ...     learning_rate=0.01,
                 ...     parameters=linear.parameters(),
                 ... )
-                >>> out = linear(a)
+                >>> out = linear(x)
                 >>> out.backward()
                 >>> opt.step()
                 >>> opt.clear_grad()
+
+                >>> # usage 1: not use closure
+                >>> opt.zero_grad()
+                >>> output = linear(x)
+                >>> loss = paddle.mean(output)
+                >>> loss.backward()
+                >>> opt.step()
+
+                >>> # usage 2: use closure
+                >>> def closure():
+                ...     opt.zero_grad()
+                ...     output = linear(x)
+                ...     loss = paddle.mean(output)
+                ...     loss.backward()
+                ...     return loss
+                >>> step_loss = opt.step(closure)
         """
+        loss = None
+        if closure is not None:
+            with imperative_base.enable_grad():
+                loss = closure()
+
         if paddle.base.dygraph.base.in_to_static_mode():
             self._declarative_step()
-            return
+            return loss
 
         if not isinstance(self._parameter_list[0], dict):
             params_grads = []
@@ -686,7 +726,10 @@ class AdamW(Optimizer):
                             raise RuntimeError(
                                 "AdamW don't support weight_decay with sparse parameters, please set it to None."
                             )
-                    params_grads.append((param, grad_var))
+                    if self._maximize is True:
+                        params_grads.append((param, -grad_var))
+                    else:
+                        params_grads.append((param, grad_var))
 
             optimize_ops = self._apply_optimize(
                 loss=None, startup_program=None, params_grads=params_grads
@@ -718,13 +761,17 @@ class AdamW(Optimizer):
                                 raise RuntimeError(
                                     "AdamW don't support weight_decay with sparse parameters, please set it to None."
                                 )
-                        params_grads['params'].append((param, grad_var))
+                        if self._maximize is True:
+                            params_grads['params'].append((param, -grad_var))
+                        else:
+                            params_grads['params'].append((param, grad_var))
                 params_grads.update(
                     {k: v for k, v in param_group.items() if k != 'params'}
                 )
                 self._apply_optimize(
                     loss=None, startup_program=None, params_grads=params_grads
                 )
+        return loss
 
     def _update_param_group(self, parameters):
         self._beta1 = parameters.get('beta1', self._default_dict['beta1'])

@@ -17,6 +17,8 @@
 #include <pybind11/stl.h>
 #include <torch/library.h>
 
+#include <vector>
+
 #include "paddle/common/exception.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/op_function_common.h"
@@ -82,11 +84,42 @@ OperationInvoker::get_op_with_args(const std::string& qualified_name,
         "Operator '%s' not found in the registry", qualified_name.c_str()));
   }
 
-  auto impl_it = op->implementations.find(DispatchKey::CPU);
+  auto impl_it = op->implementations.end();
+  const std::vector<c10::DispatchKey> preferred_keys = {
+      c10::DispatchKey::CPU,
+      c10::DispatchKey::BackendSelect,
+      c10::DispatchKey::CatchAll};
+  for (const auto& key : preferred_keys) {
+    impl_it = op->implementations.find(key);
+    if (impl_it != op->implementations.end()) {
+      break;
+    }
+  }
+
+  // If no preferred dispatch key was found, allow the call only when exactly
+  // one implementation is registered (deterministic). With multiple unknown
+  // keys the choice would be arbitrary (unordered_map has no stable iteration
+  // order), so we surface an Ambiguous error instead.
   if (impl_it == op->implementations.end()) {
-    PADDLE_THROW(common::errors::NotFound(
-        "No CPU implementation found for operator '%s'",
-        qualified_name.c_str()));
+    if (op->implementations.size() == 1) {
+      impl_it = op->implementations.begin();
+    } else if (op->implementations.empty()) {
+      PADDLE_THROW(common::errors::NotFound(
+          "No implementation found for operator '%s'", qualified_name.c_str()));
+    } else {
+      std::string available_keys;
+      for (const auto& kv : op->implementations) {
+        if (!available_keys.empty()) available_keys += ", ";
+        available_keys += c10::toString(kv.first);
+      }
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "Operator '%s' has multiple implementations [%s] but none matches "
+          "the preferred dispatch keys (CPU, BackendSelect, CatchAll). "
+          "Register under one of those keys to make the operator callable "
+          "from Python.",
+          qualified_name.c_str(),
+          available_keys.c_str()));
+    }
   }
 
   FunctionArgs function_args =
@@ -173,12 +206,11 @@ inline FunctionArgs OperationInvoker::convert_args_kwargs_to_function_args(
     function_args.add_arg(std::move(value));
   }
 
-  for (auto item : kwargs) {
-    py::str key = item.first.cast<py::str>();
-    py::object value_obj = item.second.cast<py::object>();
-
-    torch::IValue value = to_ivalue(value_obj);
-    function_args.add_arg(std::move(value));
+  for (const auto& item : kwargs) {
+    std::string key = py::cast<std::string>(item.first);
+    torch::arg keyword(std::move(key));
+    keyword = to_ivalue(item.second);
+    function_args.add_arg(std::move(keyword));
   }
 
   return function_args;
@@ -215,12 +247,18 @@ class CustomClassProxyInstance {
     if (ClassRegistry::instance().has_method(qualified_name_, method_name)) {
       return py::cpp_function(
           [this, method_name](py::args args, py::kwargs kwargs) -> py::object {
+            FunctionArgs converted =
+                OperationInvoker::convert_args_kwargs_to_function_args(args,
+                                                                       kwargs);
             FunctionArgs function_args;
             function_args.add_arg(instance_);  // this pointer
-            for (auto arg :
-                 OperationInvoker::convert_args_kwargs_to_function_args(
-                     args, kwargs)) {
-              function_args.add_arg(std::move(arg));
+            for (size_t i = 0; i < converted.size(); ++i) {
+              function_args.add_arg(converted.get_value(i));
+            }
+            for (const auto& [name, value] : converted.named_args()) {
+              torch::arg keyword(name);
+              keyword = value;
+              function_args.add_arg(std::move(keyword));
             }
 
             auto result = ClassRegistry::instance().call_method_with_args(
