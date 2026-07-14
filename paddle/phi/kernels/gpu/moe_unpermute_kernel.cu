@@ -319,8 +319,7 @@ void MoeUnpermuteKernel(const Context &dev_ctx,
       cols,
       0,
       common::errors::InvalidArgument(
-          "unzipped_tokens.dims()[1] should be positive, but got %ld.",
-          cols));
+          "unzipped_tokens.dims()[1] should be positive, but got %ld.", cols));
   PADDLE_ENFORCE_LE(cols,
                     std::numeric_limits<int32_t>::max(),
                     common::errors::InvalidArgument(
