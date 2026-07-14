@@ -12,6 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  HEAD_REF: ${{ github.head_ref }}
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   TASK: paddle-CI-${{ github.event.pull_request.number }}-coverage
@@ -543,7 +544,7 @@ jobs:
             -e PY_VERSION \
             -e work_dir \
             -e GITHUB_SHA="${{ github.event.pull_request.head.sha }}" \
-            -e GITHUB_HEAD_REF="${{ github.head_ref }}" \
+            -e GITHUB_HEAD_REF="${HEAD_REF}" \
             -e GITHUB_BASE_SHA="${{ github.event.pull_request.base.sha }}" \
             -e GITHUB_REPO_NAME="${{ github.repository }}" \
             -e GITHUB_EVENT_PULL_REQUEST_NUMBER="${{ github.event.pull_request.number }}" \
@@ -657,7 +658,7 @@ jobs:
             -e PY_VERSION \
             -e work_dir \
             -e GITHUB_SHA="${{ github.event.pull_request.head.sha }}" \
-            -e GITHUB_HEAD_REF="${{ github.head_ref }}" \
+            -e GITHUB_HEAD_REF="${HEAD_REF}" \
             -e GITHUB_BASE_SHA="${{ github.event.pull_request.base.sha }}" \
             -e GITHUB_REPO_NAME="${{ github.repository }}" \
             -e GITHUB_EVENT_NAME="${{ github.event_name }}" \
