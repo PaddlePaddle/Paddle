@@ -409,25 +409,25 @@ __device__ __forceinline__ void ReadData(ArgsT* dst,
  * stride_nx: Each read one element stride stride_nx elements in the last dim.
  * stride_ny: Each read one element stride stride_ny elements in the first dim.
  */
-template <typename T, int NX, int NY, bool IsBoundary = false>
+template <typename T, typename IndexT, int NX, int NY, bool IsBoundary = false>
 __device__ __forceinline__ void ReadDataBc(
     T* dst,
     const T* __restrict__ src,
-    uint64_t block_offset,
+    IndexT block_offset,
     const details::BroadcastConfig& config,
-    uint64_t total_num_output,
+    IndexT total_num_output,
     int stride_nx,
     int stride_ny) {
-  uint64_t thread_offset = block_offset + static_cast<uint64_t>(threadIdx.x);
+  IndexT thread_offset = block_offset + static_cast<IndexT>(threadIdx.x);
   uint64_t index_src = 0;
 
 #pragma unroll
   for (int ny = 0; ny < NY; ++ny) {
 #pragma unroll
     for (uint32_t nx = 0; nx < NX; ++nx) {
-      uint64_t index_output = thread_offset +
-                              static_cast<uint64_t>(ny) * stride_ny +
-                              static_cast<uint64_t>(nx) * stride_nx;
+      IndexT index_output = thread_offset +
+                            static_cast<IndexT>(ny) * stride_ny +
+                            static_cast<IndexT>(nx) * stride_nx;
       index_src = 0;
       if (IsBoundary) {
         if (index_output >= total_num_output) {
@@ -747,21 +747,20 @@ __device__ __forceinline__ void Init(T* dst, T* init_data, int num) {
  * coordinate mapping relationship between output data and input data.
  * total_num_output: Total number of original output.
  */
-template <typename T, int NX, int NY, bool IsBoundary = false>
+template <typename T, typename IndexT, int NX, int NY, bool IsBoundary = false>
 __device__ __forceinline__ void ReadDataBc(
     T* dst,
     const T* __restrict__ src,
-    uint64_t block_offset,
+    IndexT block_offset,
     const details::BroadcastConfig& config,
-    uint64_t total_num_output,
+    IndexT total_num_output,
     int read_lens = NX) {
-  uint64_t thread_offset =
-      block_offset + static_cast<uint64_t>(threadIdx.x) * NX;
+  IndexT thread_offset = block_offset + static_cast<IndexT>(threadIdx.x) * NX;
   uint64_t index_src = 0;
 
 #pragma unroll
   for (uint32_t nx = 0; nx < NX; ++nx) {
-    uint64_t index_output = thread_offset + nx;
+    IndexT index_output = thread_offset + nx;
     index_src = 0;
     if (IsBoundary) {
       if (index_output >= total_num_output) {
@@ -805,6 +804,7 @@ __device__ __forceinline__ void ReadDataBc(
  */
 
 template <typename T,
+          typename IndexT,
           int NX,
           int NY,
           typename ArgsT,
@@ -813,17 +813,16 @@ template <typename T,
 __device__ __forceinline__ void ReadDataBc(
     ArgsT* dst,
     const T* __restrict__ src,
-    uint64_t block_offset,
+    IndexT block_offset,
     const details::BroadcastConfig& config,
-    uint64_t total_num_output,
+    IndexT total_num_output,
     int read_lens = NX) {
-  uint64_t thread_offset =
-      block_offset + static_cast<uint64_t>(threadIdx.x) * NX;
+  IndexT thread_offset = block_offset + static_cast<IndexT>(threadIdx.x) * NX;
   uint64_t index_src = 0;
 
 #pragma unroll
   for (uint32_t nx = 0; nx < NX; ++nx) {
-    uint64_t index_output = thread_offset + nx;
+    IndexT index_output = thread_offset + nx;
     index_src = 0;
     if (IsBoundary) {
       if (index_output >= total_num_output) {
