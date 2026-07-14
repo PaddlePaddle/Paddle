@@ -280,10 +280,10 @@ void BatchCompute(const Context &dev_ctx,
     const T *c0_data = c0->data<T>();
     prev_h_data = reordered_h0_data;
     prev_c_data = reordered_c0_data;
-    size_t sz = sizeof(T) * D;
+    size_t sz_bytes = sizeof(T) * D;
     for (int i = 0; i < max_bs; ++i) {
-      std::memcpy(reordered_h0_data, h0_data + seq_order[i] * D, sz);
-      std::memcpy(reordered_c0_data, c0_data + seq_order[i] * D, sz);
+      std::memcpy(reordered_h0_data, h0_data + seq_order[i] * D, sz_bytes);
+      std::memcpy(reordered_c0_data, c0_data + seq_order[i] * D, sz_bytes);
       reordered_h0_data += D;
       reordered_c0_data += D;
     }

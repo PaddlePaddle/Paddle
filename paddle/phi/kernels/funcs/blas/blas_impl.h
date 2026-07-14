@@ -1693,7 +1693,9 @@ void Blas<CPUContext>::VADD(int n, const T *x, const T *y, T *z) const {
   if (x == z) {
     this->template AXPY<T>(n, (T)(1.), y, z);
   } else {
-    std::memcpy(z, y, n * sizeof(T));
+    if (y != z) {
+      std::memcpy(z, y, n * sizeof(T));
+    }
     this->template AXPY<T>(n, (T)(1.), x, z);
   }
 #endif
