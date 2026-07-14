@@ -222,8 +222,8 @@ struct BroadcastDataLoader<IndexT, Index, VecSize, false, kElementwise> {
     using VecType = phi::kps::details::VectorType<Type, VecSize>;
     VecType vec_temp;
 
-    IndexT thread_offset = static_cast<IndexT>(threadIdx.x) +
-                           static_cast<IndexT>(blockIdx.x) * blockDim.x;
+    IndexT thread_offset =
+        block_offset / VecSize + static_cast<IndexT>(threadIdx.x);
     const VecType *__restrict__ vec_input =
         reinterpret_cast<const VecType *__restrict__>(ins[Index]);
     vec_temp = vec_input[thread_offset];
@@ -426,27 +426,30 @@ __global__ void VectorizedBroadcastKernel(
                                             func);
   }
   if (block_offset < numel) {
-    uint32_t num = static_cast<uint32_t>(numel - block_offset);
-    VectorizedBroadcastKernelImpl<OutT,
-                                  Functor,
-                                  IndexT,
-                                  Arity,
-                                  NumOuts,
-                                  VecSize,
-                                  true,
-                                  LoadType>(ins,
-                                            outs,
-                                            use_broadcast,
-                                            numel,
-                                            configs,
-                                            num,
-                                            block_offset,
-                                            read_lens,
-                                            func);
+    int64_t num = numel - block_offset;
+    if (num > 0) {
+      VectorizedBroadcastKernelImpl<OutT,
+                                    Functor,
+                                    IndexT,
+                                    Arity,
+                                    NumOuts,
+                                    VecSize,
+                                    true,
+                                    LoadType>(ins,
+                                              outs,
+                                              use_broadcast,
+                                              numel,
+                                              configs,
+                                              static_cast<uint32_t>(num),
+                                              block_offset,
+                                              read_lens,
+                                              func);
+    }
   }
 #else
   IndexT block_offset = static_cast<IndexT>(BLOCK_ID_X) * BLOCK_NUM_X * VecSize;
-  if (block_offset < main_offset) {
+  IndexT stride = static_cast<IndexT>(BLOCK_NUM_X) * GRID_NUM_X * VecSize;
+  for (; block_offset < main_offset; block_offset += stride) {
     VectorizedBroadcastKernelImpl<OutT,
                                   Functor,
                                   IndexT,
@@ -463,23 +466,27 @@ __global__ void VectorizedBroadcastKernel(
                                             block_offset,
                                             read_lens,
                                             func);
-  } else {
-    VectorizedBroadcastKernelImpl<OutT,
-                                  Functor,
-                                  IndexT,
-                                  Arity,
-                                  NumOuts,
-                                  VecSize,
-                                  true,
-                                  LoadType>(ins,
-                                            outs,
-                                            use_broadcast,
-                                            numel,
-                                            configs,
-                                            tail_tid,
-                                            block_offset,
-                                            read_lens,
-                                            func);
+  }
+  if (block_offset < numel) {
+    int64_t num = numel - block_offset;
+    if (num > 0) {
+      VectorizedBroadcastKernelImpl<OutT,
+                                    Functor,
+                                    IndexT,
+                                    Arity,
+                                    NumOuts,
+                                    VecSize,
+                                    true,
+                                    LoadType>(ins,
+                                              outs,
+                                              use_broadcast,
+                                              numel,
+                                              configs,
+                                              static_cast<uint32_t>(num),
+                                              block_offset,
+                                              read_lens,
+                                              func);
+    }
   }
 #endif
 }
