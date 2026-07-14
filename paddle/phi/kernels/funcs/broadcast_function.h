@@ -484,129 +484,111 @@ __global__ void VectorizedBroadcastKernel(
 #endif
 }
 
-template <typename IndexT,
-          typename OutT,
-          typename Functor,
-          int Arity,
-          int NumOuts,
-          int VecSize>
-void LaunchBroadcastKernelWithIndexT(
-    const KPDevice &dev_ctx,
-    const BroadcastTypeClassifier<OutT, Functor, Arity, NumOuts> &classifier,
-    Functor func) {
-#ifdef PADDLE_WITH_XPU_KP
-  const IndexT numel = static_cast<IndexT>(classifier.numel);
-  const int threads = 64;
-  const int blocks = 8;
-  int read_lens = classifier.configs[0].buf_len;
-  auto stream = dev_ctx.x_context()->xpu_stream;
-  const IndexT block_len = static_cast<IndexT>(read_lens) * threads;
-  const IndexT main_offset = (numel / block_len) * block_len;
-  const IndexT tail_tid = numel % block_len;
-
-  VectorizedBroadcastKernel<Functor,
-                            OutT,
-                            IndexT,
-                            Arity,
-                            NumOuts,
-                            VecSize,
-                            false>
-      <<<blocks, threads, 0, stream>>>(classifier.ins_data,
-                                       classifier.outs_data,
-                                       classifier.use_broadcast,
-                                       numel,
-                                       classifier.configs,
-                                       main_offset,
-                                       tail_tid,
-                                       read_lens,
-                                       func);
-#else
-  const IndexT numel = static_cast<IndexT>(classifier.numel);
-  auto gpu_config = phi::backends::gpu::GetGpuLaunchConfig1D(
-      dev_ctx, classifier.numel, VecSize);
-  auto stream = dev_ctx.stream();
-  uint32_t threads = static_cast<uint32_t>(gpu_config.GetBlockSize());
-  auto blocks = gpu_config.block_per_grid;
-  const IndexT block_len = static_cast<IndexT>(VecSize) * threads;
-  const IndexT main_offset = (numel / block_len) * block_len;
-  const IndexT tail_tid = numel % block_len;
-
-  if (classifier.all_elementwise) {
-    VectorizedBroadcastKernel<Functor,
-                              OutT,
-                              IndexT,
-                              Arity,
-                              NumOuts,
-                              VecSize,
-                              kElementwise>
-        <<<blocks, threads, 0, stream>>>(classifier.ins_data,
-                                         classifier.outs_data,
-                                         classifier.use_broadcast,
-                                         numel,
-                                         classifier.configs,
-                                         main_offset,
-                                         tail_tid,
-                                         VecSize,
-                                         func);
-  } else if (classifier.broadcast_num > (Arity >> 1)) {
-    constexpr BroadcastType type_ = (Arity > 1) ? kBroadcast : kMixed;
-    VectorizedBroadcastKernel<Functor,
-                              OutT,
-                              IndexT,
-                              Arity,
-                              NumOuts,
-                              VecSize,
-                              type_>
-        <<<blocks, threads, 0, stream>>>(classifier.ins_data,
-                                         classifier.outs_data,
-                                         classifier.use_broadcast,
-                                         numel,
-                                         classifier.configs,
-                                         main_offset,
-                                         tail_tid,
-                                         VecSize,
-                                         func);
-  } else {
-    VectorizedBroadcastKernel<Functor,
-                              OutT,
-                              IndexT,
-                              Arity,
-                              NumOuts,
-                              VecSize,
-                              kMixed>
-        <<<blocks, threads, 0, stream>>>(classifier.ins_data,
-                                         classifier.outs_data,
-                                         classifier.use_broadcast,
-                                         numel,
-                                         classifier.configs,
-                                         main_offset,
-                                         tail_tid,
-                                         VecSize,
-                                         func);
-  }
-#endif
-}
-
 template <typename OutT, typename Functor, int Arity, int NumOuts, int VecSize>
 void LaunchBroadcastKernel(
     const KPDevice &dev_ctx,
     const BroadcastTypeClassifier<OutT, Functor, Arity, NumOuts> &classifier,
     Functor func) {
+  auto launch_with_index_t = [&](auto index_tag) {
+    using IndexT = decltype(index_tag);
+#ifdef PADDLE_WITH_XPU_KP
+    const IndexT numel = static_cast<IndexT>(classifier.numel);
+    const int threads = 64;
+    const int blocks = 8;
+    int read_lens = classifier.configs[0].buf_len;
+    auto stream = dev_ctx.x_context()->xpu_stream;
+    const IndexT block_len = static_cast<IndexT>(read_lens) * threads;
+    const IndexT main_offset = (numel / block_len) * block_len;
+    const IndexT tail_tid = numel % block_len;
+
+    VectorizedBroadcastKernel<Functor,
+                              OutT,
+                              IndexT,
+                              Arity,
+                              NumOuts,
+                              VecSize,
+                              false>
+        <<<blocks, threads, 0, stream>>>(classifier.ins_data,
+                                         classifier.outs_data,
+                                         classifier.use_broadcast,
+                                         numel,
+                                         classifier.configs,
+                                         main_offset,
+                                         tail_tid,
+                                         read_lens,
+                                         func);
+#else
+    const IndexT numel = static_cast<IndexT>(classifier.numel);
+    auto gpu_config = phi::backends::gpu::GetGpuLaunchConfig1D(
+        dev_ctx, classifier.numel, VecSize);
+    auto stream = dev_ctx.stream();
+    uint32_t threads = static_cast<uint32_t>(gpu_config.GetBlockSize());
+    auto blocks = gpu_config.block_per_grid;
+    const IndexT block_len = static_cast<IndexT>(VecSize) * threads;
+    const IndexT main_offset = (numel / block_len) * block_len;
+    const IndexT tail_tid = numel % block_len;
+
+    if (classifier.all_elementwise) {
+      VectorizedBroadcastKernel<Functor,
+                                OutT,
+                                IndexT,
+                                Arity,
+                                NumOuts,
+                                VecSize,
+                                kElementwise>
+          <<<blocks, threads, 0, stream>>>(classifier.ins_data,
+                                           classifier.outs_data,
+                                           classifier.use_broadcast,
+                                           numel,
+                                           classifier.configs,
+                                           main_offset,
+                                           tail_tid,
+                                           VecSize,
+                                           func);
+    } else if (classifier.broadcast_num > (Arity >> 1)) {
+      constexpr BroadcastType type_ = (Arity > 1) ? kBroadcast : kMixed;
+      VectorizedBroadcastKernel<Functor,
+                                OutT,
+                                IndexT,
+                                Arity,
+                                NumOuts,
+                                VecSize,
+                                type_>
+          <<<blocks, threads, 0, stream>>>(classifier.ins_data,
+                                           classifier.outs_data,
+                                           classifier.use_broadcast,
+                                           numel,
+                                           classifier.configs,
+                                           main_offset,
+                                           tail_tid,
+                                           VecSize,
+                                           func);
+    } else {
+      VectorizedBroadcastKernel<Functor,
+                                OutT,
+                                IndexT,
+                                Arity,
+                                NumOuts,
+                                VecSize,
+                                kMixed>
+          <<<blocks, threads, 0, stream>>>(classifier.ins_data,
+                                           classifier.outs_data,
+                                           classifier.use_broadcast,
+                                           numel,
+                                           classifier.configs,
+                                           main_offset,
+                                           tail_tid,
+                                           VecSize,
+                                           func);
+    }
+#endif
+  };
+
   if (classifier.numel <=
       static_cast<int64_t>(std::numeric_limits<uint32_t>::max())) {
-    LaunchBroadcastKernelWithIndexT<uint32_t,
-                                    OutT,
-                                    Functor,
-                                    Arity,
-                                    NumOuts,
-                                    VecSize>(dev_ctx, classifier, func);
+    launch_with_index_t(uint32_t{0});
   } else {
-    LaunchBroadcastKernelWithIndexT<uint64_t,
-                                    OutT,
-                                    Functor,
-                                    Arity,
-                                    NumOuts,
-                                    VecSize>(dev_ctx, classifier, func);
+    launch_with_index_t(uint64_t{0});
   }
 }
 
