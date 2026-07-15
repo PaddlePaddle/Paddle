@@ -929,9 +929,7 @@ if __is_metainfo_generated and is_compiled_with_cuda():
             cusparse_lib_path = package_dir + "/.." + "/nvidia/cusparse/lib"
             set_flags({"FLAGS_cusparse_dir": cusparse_lib_path})
 
-            cupti_dir_lib_path = (
-                package_dir + "/.." + "/nvidia/cuda_cupti/lib"
-            )
+            cupti_dir_lib_path = package_dir + "/.." + "/nvidia/cuda_cupti/lib"
             set_flags({"FLAGS_cupti_dir": cupti_dir_lib_path})
 
         cudnn_lib_path = package_dir + "/.." + "/nvidia/cudnn/lib"
