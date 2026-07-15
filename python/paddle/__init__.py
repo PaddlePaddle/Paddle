@@ -88,7 +88,7 @@ if __is_metainfo_generated:
                     platform.machine() in ('x86_64', 'AMD64')
                     or (
                         platform.machine() == 'aarch64'
-                        and int(_cuda_version.split('.')[0]) >= 13
+                        and builtins.int(_cuda_version.split('.')[0]) >= 13
                     )
                 )
             ):
@@ -892,7 +892,7 @@ if (
 
     from .version import cuda_version as _cuda_version, with_pip_cuda_libraries
 
-    cuda_major = int(_cuda_version.split('.')[0])
+    cuda_major = builtins.int(_cuda_version.split('.')[0])
 
     if (
         platform.system() == 'Linux'
