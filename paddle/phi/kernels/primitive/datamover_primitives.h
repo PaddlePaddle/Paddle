@@ -20,6 +20,8 @@
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_fp16.h>
 #endif
+#include <type_traits>
+
 #include "paddle/common/ddim.h"
 #include "paddle/common/enforce.h"
 #include "paddle/phi/kernels/funcs/fast_divmod.h"
@@ -40,9 +42,15 @@ struct alignas(sizeof(T) * VecSize) VectorType {
  * index of the output data. if input or output shape is [dim0, dim1] then dims
  * must be [dim1, dim0].
  */
+template <typename IndexT = int64_t>
 struct BroadcastConfig {
-  funcs::FastDivMod<int64_t> divmoders[DDim::kMaxRank];
-  uint64_t strides[DDim::kMaxRank];
+  // FastDivMod has a 32-bit primary template and a 64-bit int64_t
+  // specialization (there is no unsigned specialization), so pick the matching
+  // signed divmod type according to the index width.
+  using DivModT = std::conditional_t<(sizeof(IndexT) > 4), int64_t, int>;
+
+  funcs::FastDivMod<DivModT> divmoders[DDim::kMaxRank];
+  IndexT strides[DDim::kMaxRank];
   int rank{0};
 
   // BroadcastConfig should be defined on host used on device.
@@ -52,7 +60,7 @@ struct BroadcastConfig {
                   const std::vector<int64_t>& in_dims,
                   int dim_size) {
     for (int i = 0; i < dim_size; ++i) {
-      divmoders[i] = funcs::FastDivMod<int64_t>(out_dims[i]);
+      divmoders[i] = funcs::FastDivMod<DivModT>(out_dims[i]);
     }
 
     for (int i = 0; i < dim_size; ++i) {
@@ -60,8 +68,8 @@ struct BroadcastConfig {
       strides[i] = (i != 0 && strides[i] != 0)
                        ? std::accumulate(in_dims.begin(),
                                          in_dims.begin() + i,
-                                         int64_t{1},
-                                         std::multiplies<int64_t>())
+                                         IndexT{1},
+                                         std::multiplies<IndexT>())
                        : strides[i];
     }
     rank = dim_size;
@@ -414,12 +422,12 @@ __device__ __forceinline__ void ReadDataBc(
     T* dst,
     const T* __restrict__ src,
     IndexT block_offset,
-    const details::BroadcastConfig& config,
+    const details::BroadcastConfig<IndexT>& config,
     IndexT total_num_output,
     int stride_nx,
     int stride_ny) {
   IndexT thread_offset = block_offset + static_cast<IndexT>(threadIdx.x);
-  uint64_t index_src = 0;
+  IndexT index_src = 0;
 
 #pragma unroll
   for (int ny = 0; ny < NY; ++ny) {
@@ -752,11 +760,11 @@ __device__ __forceinline__ void ReadDataBc(
     T* dst,
     const T* __restrict__ src,
     IndexT block_offset,
-    const details::BroadcastConfig& config,
+    const details::BroadcastConfig<IndexT>& config,
     IndexT total_num_output,
     int read_lens = NX) {
   IndexT thread_offset = block_offset + static_cast<IndexT>(threadIdx.x) * NX;
-  uint64_t index_src = 0;
+  IndexT index_src = 0;
 
 #pragma unroll
   for (uint32_t nx = 0; nx < NX; ++nx) {
@@ -814,11 +822,11 @@ __device__ __forceinline__ void ReadDataBc(
     ArgsT* dst,
     const T* __restrict__ src,
     IndexT block_offset,
-    const details::BroadcastConfig& config,
+    const details::BroadcastConfig<IndexT>& config,
     IndexT total_num_output,
     int read_lens = NX) {
   IndexT thread_offset = block_offset + static_cast<IndexT>(threadIdx.x) * NX;
-  uint64_t index_src = 0;
+  IndexT index_src = 0;
 
 #pragma unroll
   for (uint32_t nx = 0; nx < NX; ++nx) {
