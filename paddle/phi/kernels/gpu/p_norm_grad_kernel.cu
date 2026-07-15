@@ -323,7 +323,7 @@ __global__ void PNormGradPBetween1And2Kernel(const T* x,
         scale_v = RoundToStorage<T>(grad_val / norm_pow);
       } else {
         abs_pow = compute_pow_like_kernel(abs_x, p_minus_1);
-        self_scaled = abs_x * abs_pow;
+        self_scaled = sign_x * abs_pow;
         norm_pow = compute_pow_like_kernel(norm_val, p_minus_1);
         scale_v = grad_val / norm_pow;
       }
