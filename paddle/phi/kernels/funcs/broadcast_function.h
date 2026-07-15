@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <limits>
 #include <sstream>
 #include "paddle/common/enforce.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
@@ -119,16 +120,20 @@ struct BroadcastTypeClassifier {
 };
 
 // Common broadcast/elementwise Loader.
-template <int Index, int VecSize, bool IsBoundary, int LoadType>
+template <typename IndexT,
+          int Index,
+          int VecSize,
+          bool IsBoundary,
+          int LoadType>
 struct BroadcastDataLoader {
   template <typename Array1, typename Array2, typename Array3, typename ArgsT>
   static __device__ __forceinline__ void Apply(const Array1 &ins,
                                                ArgsT *args,
                                                const Array2 &configs,
                                                const Array3 &use_broadcast,
-                                               uint64_t block_offset,
+                                               IndexT block_offset,
                                                const int num,
-                                               uint64_t numel,
+                                               IndexT numel,
                                                int read_lens) {
     using Type = std::tuple_element_t<Index, ArgsT>;
 #ifdef PADDLE_WITH_XPU_KP
@@ -152,7 +157,7 @@ struct BroadcastDataLoader {
 #else
     kps::Init<Type, ArgsT, Index, VecSize>(args, static_cast<Type>(1.0f));
     if (use_broadcast[Index]) {
-      kps::ReadDataBc<Type, VecSize, 1, ArgsT, Index, IsBoundary>(
+      kps::ReadDataBc<Type, IndexT, VecSize, 1, ArgsT, Index, IsBoundary>(
           args,
           reinterpret_cast<const _ptr_ Type *>(ins[Index]),
           block_offset,
@@ -177,24 +182,24 @@ struct BroadcastDataLoader {
 /* BroadcastDataLoaders Partial specialization */
 #ifndef PADDLE_WITH_XPU_KP
 // Scalar elementwise Loader with consideration of IsBoundary.
-template <int Index, int VecSize>
-struct BroadcastDataLoader<Index, VecSize, true, kElementwise> {
+template <typename IndexT, int Index, int VecSize>
+struct BroadcastDataLoader<IndexT, Index, VecSize, true, kElementwise> {
   template <typename Array1, typename Array2, typename Array3, typename ArgsT>
   static __device__ __forceinline__ void Apply(const Array1 &ins,
                                                ArgsT *args,
                                                const Array2 &configs,
                                                const Array3 &use_broadcast,
-                                               uint64_t block_offset,
+                                               IndexT block_offset,
                                                const int num,
-                                               uint64_t numel,
+                                               IndexT numel,
                                                int read_lens) {
     using Type = std::tuple_element_t<Index, ArgsT>;
-    uint64_t thread_offset =
-        static_cast<uint64_t>(threadIdx.x) * VecSize + block_offset;
+    IndexT thread_offset =
+        static_cast<IndexT>(threadIdx.x) * VecSize + block_offset;
 #pragma unroll
     for (int idx = 0; idx < VecSize; ++idx) {
       std::get<Index>(args[idx]) = static_cast<Type>(1);
-      uint64_t index = thread_offset + idx;
+      IndexT index = thread_offset + idx;
       if (index < numel) {
         std::get<Index>(args[idx]) =
             reinterpret_cast<const _ptr_ Type *>(ins[Index])[index];
@@ -204,24 +209,23 @@ struct BroadcastDataLoader<Index, VecSize, true, kElementwise> {
 };
 
 // Vectorized elementwise Loader without consideration of IsBoundary.
-template <int Index, int VecSize>
-struct BroadcastDataLoader<Index, VecSize, false, kElementwise> {
+template <typename IndexT, int Index, int VecSize>
+struct BroadcastDataLoader<IndexT, Index, VecSize, false, kElementwise> {
   template <typename Array1, typename Array2, typename Array3, typename ArgsT>
   static __device__ __forceinline__ void Apply(const Array1 &ins,
                                                ArgsT *args,
                                                const Array2 &configs,
                                                const Array3 &use_broadcast,
-                                               uint64_t block_offset,
+                                               IndexT block_offset,
                                                const int num,
-                                               uint64_t numel,
+                                               IndexT numel,
                                                int read_lens) {
     using Type = std::tuple_element_t<Index, ArgsT>;
     using VecType = phi::kps::details::VectorType<Type, VecSize>;
     VecType vec_temp;
 
-    int64_t thread_offset =
-        static_cast<int64_t>(threadIdx.x) +
-        static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x);
+    IndexT thread_offset =
+        block_offset / VecSize + static_cast<IndexT>(threadIdx.x);
     const VecType *__restrict__ vec_input =
         reinterpret_cast<const VecType *__restrict__>(ins[Index]);
     vec_temp = vec_input[thread_offset];
@@ -262,8 +266,13 @@ struct BroadcastDataSetter {
 #endif
 
 // static broadcast unroller
-template <template <int Index, int VecSize, bool IsBoundary, int LoadType>
+template <template <typename IndexT,
+                    int Index,
+                    int VecSize,
+                    bool IsBoundary,
+                    int LoadType>
           typename Func,
+          typename IndexT,
           bool IsBoundary,
           int LoadType,
           int VecSize,
@@ -272,26 +281,32 @@ template <template <int Index, int VecSize, bool IsBoundary, int LoadType>
 struct BcUnroller {
   template <typename... Args>
   static HOSTDEVICE inline void step(Args &&...args) {
-    Func<Begin, VecSize, IsBoundary, LoadType>::Apply(
+    Func<IndexT, Begin, VecSize, IsBoundary, LoadType>::Apply(
         std::forward<Args>(args)...);
-    BcUnroller<Func, IsBoundary, LoadType, VecSize, End, Begin + 1>::step(
-        args...);
+    BcUnroller<Func, IndexT, IsBoundary, LoadType, VecSize, End, Begin + 1>::
+        step(args...);
   }
 };
 
-template <template <int Index, int VecSize, bool IsBoundary, int LoadType>
+template <template <typename IndexT,
+                    int Index,
+                    int VecSize,
+                    bool IsBoundary,
+                    int LoadType>
           typename Func,
+          typename IndexT,
           bool IsBoundary,
           int LoadType,
           int VecSize,
           int End>
-struct BcUnroller<Func, IsBoundary, LoadType, VecSize, End, End> {
+struct BcUnroller<Func, IndexT, IsBoundary, LoadType, VecSize, End, End> {
   template <typename... Args>
   static HOSTDEVICE inline void step(Args &&...args) {}
 };
 
 template <typename OutT,
           typename Functor,
+          typename IndexT,
           int Arity,
           int NumOuts,
           int VecSize,
@@ -301,10 +316,10 @@ __device__ void VectorizedBroadcastKernelImpl(
     const Array<const _ptr_ char *__restrict__, Arity> &ins,
     Array<_ptr_ OutT *, NumOuts> outs,
     const Array<bool, Arity> &use_broadcast,
-    const uint64_t numel,
+    const IndexT numel,
     const Array<kps::details::BroadcastConfig, Arity> &configs,
     uint32_t num,
-    uint64_t block_offset,
+    IndexT block_offset,
     int read_lens,
     Functor func) {
   using Traits = funcs::FunctionTraits<Functor>;
@@ -313,14 +328,25 @@ __device__ void VectorizedBroadcastKernelImpl(
   __simd__ ConditionalT<OutT, NumOuts> result[VecSize];
 
 #ifdef PADDLE_WITH_XPU_KP
-  BcUnroller<BroadcastDataLoader, IsBoundary, LoadType, VecSize, Arity>::step(
-      ins, args, configs, use_broadcast, block_offset, num, numel, read_lens);
+  BcUnroller<BroadcastDataLoader,
+             IndexT,
+             IsBoundary,
+             LoadType,
+             VecSize,
+             Arity>::step(ins,
+                          args,
+                          configs,
+                          use_broadcast,
+                          block_offset,
+                          num,
+                          numel,
+                          read_lens);
 #else
   if (LoadType == kBroadcast) {
     uint64_t index_bc[Arity][VecSize] = {0};
     Unroller<BroadcastDataInit, VecSize, Arity>::step(args);
-    uint64_t thread_offset =
-        block_offset + static_cast<uint64_t>(threadIdx.x) * VecSize;
+    IndexT thread_offset =
+        block_offset + static_cast<IndexT>(threadIdx.x) * VecSize;
 #pragma unroll
     for (int k = 0; k < VecSize; ++k) {
       uint64_t idx = thread_offset + k;
@@ -338,8 +364,19 @@ __device__ void VectorizedBroadcastKernelImpl(
     }
     Unroller<BroadcastDataSetter, VecSize, Arity>::step(ins, args, index_bc);
   } else {
-    BcUnroller<BroadcastDataLoader, IsBoundary, LoadType, VecSize, Arity>::step(
-        ins, args, configs, use_broadcast, block_offset, num, numel, read_lens);
+    BcUnroller<BroadcastDataLoader,
+               IndexT,
+               IsBoundary,
+               LoadType,
+               VecSize,
+               Arity>::step(ins,
+                            args,
+                            configs,
+                            use_broadcast,
+                            block_offset,
+                            num,
+                            numel,
+                            read_lens);
   }
 #endif
   SameDimsElementwisePrimitiveCaller<ConditionalT<OutT, NumOuts>,
@@ -353,6 +390,7 @@ __device__ void VectorizedBroadcastKernelImpl(
 
 template <typename Functor,
           typename OutT,
+          typename IndexT,
           int Arity,
           int NumOuts,
           int VecSize,
@@ -361,19 +399,21 @@ __global__ void VectorizedBroadcastKernel(
     Array<const _ptr_ char *__restrict__, Arity> ins,
     Array<_ptr_ OutT *, NumOuts> outs,
     Array<bool, Arity> use_broadcast,
-    uint64_t numel,
+    IndexT numel,
     Array<kps::details::BroadcastConfig, Arity> configs,
-    uint64_t main_offset,
-    uint64_t tail_tid,
+    IndexT main_offset,
+    IndexT tail_tid,
     int read_lens,
     Functor func) {
 #ifdef PADDLE_WITH_XPU_KP
   uint64_t block_offset =
       static_cast<uint64_t>(BLOCK_ID_X) * BLOCK_NUM_X * read_lens;
   uint64_t stride = static_cast<uint64_t>(BLOCK_NUM_X) * GRID_NUM_X * read_lens;
-  for (; block_offset < main_offset; block_offset += stride) {
+  for (; block_offset < static_cast<uint64_t>(main_offset);
+       block_offset += stride) {
     VectorizedBroadcastKernelImpl<OutT,
                                   Functor,
+                                  IndexT,
                                   Arity,
                                   NumOuts,
                                   VecSize,
@@ -384,14 +424,16 @@ __global__ void VectorizedBroadcastKernel(
                                             numel,
                                             configs,
                                             BLOCK_NUM_X * read_lens,
-                                            block_offset,
+                                            static_cast<IndexT>(block_offset),
                                             read_lens,
                                             func);
   }
-  if (block_offset < numel) {
-    uint64_t num = numel - block_offset;
+  int64_t num =
+      static_cast<int64_t>(numel) - static_cast<int64_t>(block_offset);
+  if (num > 0) {
     VectorizedBroadcastKernelImpl<OutT,
                                   Functor,
+                                  IndexT,
                                   Arity,
                                   NumOuts,
                                   VecSize,
@@ -401,17 +443,20 @@ __global__ void VectorizedBroadcastKernel(
                                             use_broadcast,
                                             numel,
                                             configs,
-                                            num,
-                                            block_offset,
+                                            static_cast<uint32_t>(num),
+                                            static_cast<IndexT>(block_offset),
                                             read_lens,
                                             func);
   }
 #else
   uint64_t block_offset =
       static_cast<uint64_t>(BLOCK_ID_X) * BLOCK_NUM_X * VecSize;
-  if (block_offset < main_offset) {
+  uint64_t stride = static_cast<uint64_t>(BLOCK_NUM_X) * GRID_NUM_X * VecSize;
+  for (; block_offset < static_cast<uint64_t>(main_offset);
+       block_offset += stride) {
     VectorizedBroadcastKernelImpl<OutT,
                                   Functor,
+                                  IndexT,
                                   Arity,
                                   NumOuts,
                                   VecSize,
@@ -422,12 +467,16 @@ __global__ void VectorizedBroadcastKernel(
                                             numel,
                                             configs,
                                             BLOCK_NUM_X * VecSize,
-                                            block_offset,
+                                            static_cast<IndexT>(block_offset),
                                             read_lens,
                                             func);
-  } else {
+  }
+  int64_t num =
+      static_cast<int64_t>(numel) - static_cast<int64_t>(block_offset);
+  if (num > 0) {
     VectorizedBroadcastKernelImpl<OutT,
                                   Functor,
+                                  IndexT,
                                   Arity,
                                   NumOuts,
                                   VecSize,
@@ -437,8 +486,8 @@ __global__ void VectorizedBroadcastKernel(
                                             use_broadcast,
                                             numel,
                                             configs,
-                                            tail_tid,
-                                            block_offset,
+                                            static_cast<uint32_t>(num),
+                                            static_cast<IndexT>(block_offset),
                                             read_lens,
                                             func);
   }
@@ -450,44 +499,29 @@ void LaunchBroadcastKernel(
     const KPDevice &dev_ctx,
     const BroadcastTypeClassifier<OutT, Functor, Arity, NumOuts> &classifier,
     Functor func) {
+#ifndef PADDLE_WITH_XPU_KP
+  auto gpu_config = phi::backends::gpu::GetGpuLaunchConfig1D(
+      dev_ctx, classifier.numel, VecSize);
+#endif
+  auto launch_with_index_t = [&](auto index_tag) {
+    using IndexT = decltype(index_tag);
 #ifdef PADDLE_WITH_XPU_KP
-  const int64_t numel = classifier.numel;
-  const int threads = 64;
-  const int blocks = 8;
-  int read_lens = configs[0].buf_len;
-  auto stream = dev_ctx.x_context()->xpu_stream;
-  const int64_t block_len = static_cast<int64_t>(read_lens) * threads;
-  const int64_t main_offset = (numel / block_len) * block_len;
-  const int64_t tail_tid = numel % block_len;
+    const IndexT numel = static_cast<IndexT>(classifier.numel);
+    const int threads = 64;
+    const int blocks = 8;
+    int read_lens = classifier.configs[0].buf_len;
+    auto stream = dev_ctx.x_context()->xpu_stream;
+    const IndexT block_len = static_cast<IndexT>(read_lens) * threads;
+    const IndexT main_offset = (numel / block_len) * block_len;
+    const IndexT tail_tid = numel % block_len;
 
-  VectorizedBroadcastKernel<Functor, OutT, Arity, NumOuts, VecSize, false>
-      <<<blocks, threads, 0, stream>>>(classifier.ins_data,
-                                       classifier.outs_data,
-                                       classifier.use_broadcast,
-                                       numel,
-                                       classifier.configs,
-                                       main_offset,
-                                       tail_tid,
-                                       read_lens,
-                                       func);
-#else
-  const int64_t numel = classifier.numel;
-  auto gpu_config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, VecSize);
-  auto stream = dev_ctx.stream();
-  auto threads = gpu_config.GetBlockSize();
-  auto blocks = gpu_config.block_per_grid;
-  const int64_t block_len = static_cast<int64_t>(VecSize) * threads;
-  const int64_t main_offset = (numel / block_len) * block_len;
-  const int64_t tail_tid = numel % block_len;
-
-  if (classifier.all_elementwise) {
     VectorizedBroadcastKernel<Functor,
                               OutT,
+                              IndexT,
                               Arity,
                               NumOuts,
                               VecSize,
-                              kElementwise>
+                              false>
         <<<blocks, threads, 0, stream>>>(classifier.ins_data,
                                          classifier.outs_data,
                                          classifier.use_broadcast,
@@ -495,31 +529,79 @@ void LaunchBroadcastKernel(
                                          classifier.configs,
                                          main_offset,
                                          tail_tid,
-                                         VecSize,
+                                         read_lens,
                                          func);
-  } else if (classifier.broadcast_num > (Arity >> 1)) {
-    constexpr BroadcastType type_ = (Arity > 1) ? kBroadcast : kMixed;
-    VectorizedBroadcastKernel<Functor, OutT, Arity, NumOuts, VecSize, type_>
-        <<<blocks, threads, 0, stream>>>(classifier.ins_data,
-                                         classifier.outs_data,
-                                         classifier.use_broadcast,
-                                         numel,
-                                         classifier.configs,
-                                         main_offset,
-                                         tail_tid,
-                                         VecSize,
-                                         func);
+#else
+    const IndexT numel = static_cast<IndexT>(classifier.numel);
+    auto stream = dev_ctx.stream();
+    auto threads = gpu_config.GetBlockSize();
+    auto blocks = gpu_config.block_per_grid;
+    const IndexT block_len = static_cast<IndexT>(VecSize) * threads;
+    const IndexT main_offset = (numel / block_len) * block_len;
+    const IndexT tail_tid = numel % block_len;
+
+    if (classifier.all_elementwise) {
+      VectorizedBroadcastKernel<Functor,
+                                OutT,
+                                IndexT,
+                                Arity,
+                                NumOuts,
+                                VecSize,
+                                kElementwise>
+          <<<blocks, threads, 0, stream>>>(classifier.ins_data,
+                                           classifier.outs_data,
+                                           classifier.use_broadcast,
+                                           numel,
+                                           classifier.configs,
+                                           main_offset,
+                                           tail_tid,
+                                           VecSize,
+                                           func);
+    } else if (classifier.broadcast_num > (Arity >> 1)) {
+      constexpr BroadcastType type_ = (Arity > 1) ? kBroadcast : kMixed;
+      VectorizedBroadcastKernel<Functor, OutT, Arity, NumOuts, VecSize, type_>
+          <<<blocks, threads, 0, stream>>>(classifier.ins_data,
+                                           classifier.outs_data,
+                                           classifier.use_broadcast,
+                                           numel,
+                                           classifier.configs,
+                                           main_offset,
+                                           tail_tid,
+                                           VecSize,
+                                           func);
+    } else {
+      VectorizedBroadcastKernel<Functor,
+                                OutT,
+                                IndexT,
+                                Arity,
+                                NumOuts,
+                                VecSize,
+                                kMixed>
+          <<<blocks, threads, 0, stream>>>(classifier.ins_data,
+                                           classifier.outs_data,
+                                           classifier.use_broadcast,
+                                           numel,
+                                           classifier.configs,
+                                           main_offset,
+                                           tail_tid,
+                                           VecSize,
+                                           func);
+    }
+#endif
+  };
+
+#ifdef PADDLE_WITH_XPU_KP
+  launch_with_index_t(uint32_t{0});
+#else
+  const uint64_t index_limit = std::numeric_limits<uint32_t>::max();
+  const uint64_t grid_stride =
+      static_cast<uint64_t>(gpu_config.block_per_grid.x) *
+      static_cast<uint64_t>(gpu_config.GetBlockSize()) * VecSize;
+  if (static_cast<uint64_t>(classifier.numel) <= index_limit &&
+      grid_stride <= index_limit) {
+    launch_with_index_t(uint32_t{0});
   } else {
-    VectorizedBroadcastKernel<Functor, OutT, Arity, NumOuts, VecSize, kMixed>
-        <<<blocks, threads, 0, stream>>>(classifier.ins_data,
-                                         classifier.outs_data,
-                                         classifier.use_broadcast,
-                                         numel,
-                                         classifier.configs,
-                                         main_offset,
-                                         tail_tid,
-                                         VecSize,
-                                         func);
+    launch_with_index_t(uint64_t{0});
   }
 #endif
 }
