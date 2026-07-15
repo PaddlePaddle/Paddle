@@ -1385,6 +1385,23 @@ TEST(CUDAVirtualMemAllocatorV2, CollectsMetadataAndExportsIPCBlockBacking) {
   EXPECT_TRUE(allocator.ipc_export_fds_.empty());
 
   EXPECT_TRUE(allocator.IsRangeReleasable(block.begin_va(), block.size()));
+#if defined(__linux__)
+  const size_t second_page_index =
+      (pages[1].va - allocator.backing_map_.base_) /
+      allocator.backing_map_.page_size_;
+  auto second_page_meta = allocator.backing_map_.pages_[second_page_index].meta;
+  allocator.backing_map_.pages_[second_page_index].meta =
+      std::make_shared<VMMHandleMeta>(second_page_meta->base(),
+                                      second_page_meta->size(),
+                                      0,
+                                      second_page_meta->device());
+  EXPECT_ANY_THROW(
+      allocator.ExportIPCParts(block.begin_va(), block.size(), &ipc_parts));
+  EXPECT_FALSE(allocator.HasIPCExportedRange(block.begin_va(), block.size()));
+  EXPECT_TRUE(allocator.IsRangeReleasable(block.begin_va(), block.size()));
+  allocator.backing_map_.pages_[second_page_index].meta = second_page_meta;
+#endif
+
   ASSERT_TRUE(
       allocator.ExportIPCParts(block.begin_va(), block.size(), &ipc_parts));
   EXPECT_TRUE(allocator.HasIPCExportedRange(block.begin_va(), block.size()));

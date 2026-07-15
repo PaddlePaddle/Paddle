@@ -1031,10 +1031,13 @@ bool CUDAVirtualMemAllocatorV2::ExportIPCParts(
           ptr, size, ipc_parts != nullptr ? &descriptors : nullptr)) {
     return false;
   }
-  backing_map_.MarkIPCExported(ptr, size);
   if (ipc_parts != nullptr) {
     BuildIPCParts(descriptors, true, ipc_parts);
   }
+  // Pin the backing only after all fallible FD and metadata construction has
+  // completed. A failed export must not make the range permanently
+  // unreleasable when no IPC metadata was returned to the caller.
+  backing_map_.MarkIPCExported(ptr, size);
   return true;
 }
 
