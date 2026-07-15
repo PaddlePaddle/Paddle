@@ -18,6 +18,7 @@
 # parameter semantics. It is important to clarify that these APIs are
 # implemented as independent modules with no runtime dependency on PyTorch.
 
+import builtins as _builtins
 import math
 import sys as _sys
 import typing
@@ -88,7 +89,7 @@ if __is_metainfo_generated:
                     platform.machine() in ('x86_64', 'AMD64')
                     or (
                         platform.machine() == 'aarch64'
-                        and builtins.int(_cuda_version.split('.')[0]) >= 13
+                        and _builtins.int(_cuda_version.split('.')[0]) >= 13
                     )
                 )
             ):
@@ -167,8 +168,6 @@ from .framework.dtype import (
 if typing.TYPE_CHECKING:
     from .tensor.tensor import Tensor
 else:
-    import builtins
-
     Tensor = framework.core.eager.Tensor
     Tensor.__qualname__ = 'Tensor'
     original_init = Tensor.__init__
@@ -214,7 +213,7 @@ else:
                 place=device,
             )
         elif (
-            builtins.all(isinstance(arg, builtins.int) for arg in args)
+            _builtins.all(isinstance(arg, _builtins.int) for arg in args)
             and len(kwargs) == 0
         ):
             # case 3, 4
@@ -892,7 +891,7 @@ if (
 
     from .version import cuda_version as _cuda_version, with_pip_cuda_libraries
 
-    cuda_major = builtins.int(_cuda_version.split('.')[0])
+    cuda_major = _builtins.int(_cuda_version.split('.')[0])
 
     if (
         platform.system() == 'Linux'
