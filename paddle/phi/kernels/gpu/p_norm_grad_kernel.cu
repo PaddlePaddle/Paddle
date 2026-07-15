@@ -64,8 +64,13 @@ __device__ __forceinline__ MT compute_pow_like_kernel(MT val, double exponent) {
   }
 }
 
+// Torch-compatible pow: operates in storage type T (like a standalone torch
+// elementwise kernel whose output tensor is dtype T). The exponent is first
+// narrowed to T then promoted back to MT before calling pow(), matching the
+// truncation behavior of torch's type promotion for scalar exponents.
 template <typename T, typename MT>
-__device__ __forceinline__ T compute_pow_like_kernel_torch_compat(T val, double exponent) {
+__device__ __forceinline__ T
+compute_pow_like_kernel_torch_compat(T val, double exponent) {
   MT val_MT = static_cast<MT>(val);
   if (exponent == 0.5) {
     return static_cast<T>(sqrt(val_MT));
@@ -144,7 +149,7 @@ __global__ void PNormGradP2Kernel(const T* x,
 
 // Fused CUDA kernel for p < 1 norm gradient
 // dx = sign(x) * |x|^(p-1) * grad * norm^(1-p), masked_fill(x == 0, 0)
-template <typename T, bool Compat=false>
+template <typename T, bool Compat = false>
 __global__ void PNormGradPLessThan1Kernel(const T* x,
                                           const T* norm,
                                           const T* grad,
@@ -193,11 +198,12 @@ __global__ void PNormGradPLessThan1Kernel(const T* x,
       // norm^(1-p)
       MT norm_pow;
       if constexpr (Compat) {
-        abs_pow = static_cast<MT>(compute_pow_like_kernel_torch_compat<T,MT>(static_cast<T>(abs_x), p_minus_1));
+        abs_pow = static_cast<MT>(compute_pow_like_kernel_torch_compat<T, MT>(
+            static_cast<T>(abs_x), p_minus_1));
         self_scaled = RoundToStorage<T>(sign_x * abs_pow);
         temp1 = RoundToStorage<T>(self_scaled * grad_val);
-        norm_pow =
-          static_cast<MT>(compute_pow_like_kernel_torch_compat<T,MT>(static_cast<T>(norm_val), one_minus_p));
+        norm_pow = static_cast<MT>(compute_pow_like_kernel_torch_compat<T, MT>(
+            static_cast<T>(norm_val), one_minus_p));
       } else {
         abs_pow = compute_pow_like_kernel(abs_x, p_minus_1);
         self_scaled = sign_x * abs_pow;
@@ -309,11 +315,13 @@ __global__ void PNormGradPBetween1And2Kernel(const T* x,
       MT scale_v;
 
       if constexpr (Compat) {
-        abs_pow = static_cast<MT>(compute_pow_like_kernel_torch_compat<T,MT>(static_cast<T>(abs_x), p_minus_1));
+        abs_pow = static_cast<MT>(compute_pow_like_kernel_torch_compat<T, MT>(
+            static_cast<T>(abs_x), p_minus_1));
         self_scaled = RoundToStorage<T>(sign_x * abs_pow);
-        norm_pow = static_cast<MT>(compute_pow_like_kernel_torch_compat<T,MT>(static_cast<T>(norm_val), p_minus_1));
+        norm_pow = static_cast<MT>(compute_pow_like_kernel_torch_compat<T, MT>(
+            static_cast<T>(norm_val), p_minus_1));
         scale_v = RoundToStorage<T>(grad_val / norm_pow);
-      }else{
+      } else {
         abs_pow = compute_pow_like_kernel(abs_x, p_minus_1);
         self_scaled = abs_x * abs_pow;
         norm_pow = compute_pow_like_kernel(norm_val, p_minus_1);
@@ -327,7 +335,7 @@ __global__ void PNormGradPBetween1And2Kernel(const T* x,
 
 // Fused CUDA kernel for p > 2 norm gradient
 // dx = x * |x|^(p-2) * grad / norm^(p-1), masked_fill(norm==0, 0)
-template <typename T, bool Compat=false>
+template <typename T, bool Compat = false>
 __global__ void PNormGradPGreaterThan2Kernel(const T* x,
                                              const T* norm,
                                              const T* grad,
@@ -374,10 +382,11 @@ __global__ void PNormGradPGreaterThan2Kernel(const T* x,
       // scale_v = grad / norm_pow
       MT scale_v;
       if constexpr (Compat) {
-        abs_pow = static_cast<MT>(compute_pow_like_kernel_torch_compat<T,MT>(static_cast<T>(abs_x), p_minus_2));
+        abs_pow = static_cast<MT>(compute_pow_like_kernel_torch_compat<T, MT>(
+            static_cast<T>(abs_x), p_minus_2));
         self_scaled = RoundToStorage<T>(x_val * abs_pow);
-        norm_pow =
-          static_cast<MT>(compute_pow_like_kernel_torch_compat<T,MT>(static_cast<T>(norm_val), p_minus_1));
+        norm_pow = static_cast<MT>(compute_pow_like_kernel_torch_compat<T, MT>(
+            static_cast<T>(norm_val), p_minus_1));
         scale_v = RoundToStorage<T>(grad_val / norm_pow);
       } else {
         abs_pow = compute_pow_like_kernel(abs_x, p_minus_2);
@@ -539,32 +548,32 @@ void PNormGradKernel(const Context& dev_ctx,
     int64_t total = in_x->numel();
     auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
 
-    if(FLAGS_use_accuracy_compatible_kernel){
+    if (FLAGS_use_accuracy_compatible_kernel) {
       PNormGradP2Kernel<T, true><<<config.block_per_grid,
-                           config.thread_per_block,
-                           0,
-                           dev_ctx.stream()>>>(in_x->data<T>(),
-                                               in_norm->data<T>(),
-                                               in_norm_dy->data<T>(),
-                                               out_dx->data<T>(),
-                                               pre,
-                                               axis_size,
-                                               post,
-                                               total,
-                                               reduce_all);
-    }else{
-      PNormGradP2Kernel<T,false><<<config.block_per_grid,
-                           config.thread_per_block,
-                           0,
-                           dev_ctx.stream()>>>(in_x->data<T>(),
-                                               in_norm->data<T>(),
-                                               in_norm_dy->data<T>(),
-                                               out_dx->data<T>(),
-                                               pre,
-                                               axis_size,
-                                               post,
-                                               total,
-                                               reduce_all);
+                                   config.thread_per_block,
+                                   0,
+                                   dev_ctx.stream()>>>(in_x->data<T>(),
+                                                       in_norm->data<T>(),
+                                                       in_norm_dy->data<T>(),
+                                                       out_dx->data<T>(),
+                                                       pre,
+                                                       axis_size,
+                                                       post,
+                                                       total,
+                                                       reduce_all);
+    } else {
+      PNormGradP2Kernel<T, false><<<config.block_per_grid,
+                                    config.thread_per_block,
+                                    0,
+                                    dev_ctx.stream()>>>(in_x->data<T>(),
+                                                        in_norm->data<T>(),
+                                                        in_norm_dy->data<T>(),
+                                                        out_dx->data<T>(),
+                                                        pre,
+                                                        axis_size,
+                                                        post,
+                                                        total,
+                                                        reduce_all);
     }
   } else if (porder < 1.0) {
     // Fused kernel: dx = sign(x) * |x|^(p-1) * grad * norm^(1-p)
@@ -576,33 +585,35 @@ void PNormGradKernel(const Context& dev_ctx,
     auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
 
     if (FLAGS_use_accuracy_compatible_kernel) {
-      PNormGradPLessThan1Kernel<T,true><<<config.block_per_grid,
-                                   config.thread_per_block,
-                                   0,
-                                   dev_ctx.stream()>>>(in_x->data<T>(),
-                                                       in_norm->data<T>(),
-                                                       in_norm_dy->data<T>(),
-                                                       out_dx->data<T>(),
-                                                       pre,
-                                                       axis_size,
-                                                       post,
-                                                       total,
-                                                       reduce_all,
-                                                       porder);
-    }else{
-      PNormGradPLessThan1Kernel<T,false><<<config.block_per_grid,
-                                   config.thread_per_block,
-                                   0,
-                                   dev_ctx.stream()>>>(in_x->data<T>(),
-                                                       in_norm->data<T>(),
-                                                       in_norm_dy->data<T>(),
-                                                       out_dx->data<T>(),
-                                                       pre,
-                                                       axis_size,
-                                                       post,
-                                                       total,
-                                                       reduce_all,
-                                                       porder);
+      PNormGradPLessThan1Kernel<T, true>
+          <<<config.block_per_grid,
+             config.thread_per_block,
+             0,
+             dev_ctx.stream()>>>(in_x->data<T>(),
+                                 in_norm->data<T>(),
+                                 in_norm_dy->data<T>(),
+                                 out_dx->data<T>(),
+                                 pre,
+                                 axis_size,
+                                 post,
+                                 total,
+                                 reduce_all,
+                                 porder);
+    } else {
+      PNormGradPLessThan1Kernel<T, false>
+          <<<config.block_per_grid,
+             config.thread_per_block,
+             0,
+             dev_ctx.stream()>>>(in_x->data<T>(),
+                                 in_norm->data<T>(),
+                                 in_norm_dy->data<T>(),
+                                 out_dx->data<T>(),
+                                 pre,
+                                 axis_size,
+                                 post,
+                                 total,
+                                 reduce_all,
+                                 porder);
     }
   } else if (porder < 2.0) {
     // Fused kernel: dx = sign(x) * |x|^(p-1) * grad / norm^(p-1),
@@ -613,34 +624,36 @@ void PNormGradKernel(const Context& dev_ctx,
     int64_t total = in_x->numel();
     auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
 
-    if(FLAGS_use_accuracy_compatible_kernel) {
-      PNormGradPBetween1And2Kernel<T,true><<<config.block_per_grid,
-                                      config.thread_per_block,
-                                      0,
-                                      dev_ctx.stream()>>>(in_x->data<T>(),
-                                                          in_norm->data<T>(),
-                                                          in_norm_dy->data<T>(),
-                                                          out_dx->data<T>(),
-                                                          pre,
-                                                          axis_size,
-                                                          post,
-                                                          total,
-                                                          reduce_all,
-                                                          porder);
-    }else {
-      PNormGradPBetween1And2Kernel<T,false><<<config.block_per_grid,
-                                      config.thread_per_block,
-                                      0,
-                                      dev_ctx.stream()>>>(in_x->data<T>(),
-                                                          in_norm->data<T>(),
-                                                          in_norm_dy->data<T>(),
-                                                          out_dx->data<T>(),
-                                                          pre,
-                                                          axis_size,
-                                                          post,
-                                                          total,
-                                                          reduce_all,
-                                                          porder);
+    if (FLAGS_use_accuracy_compatible_kernel) {
+      PNormGradPBetween1And2Kernel<T, true>
+          <<<config.block_per_grid,
+             config.thread_per_block,
+             0,
+             dev_ctx.stream()>>>(in_x->data<T>(),
+                                 in_norm->data<T>(),
+                                 in_norm_dy->data<T>(),
+                                 out_dx->data<T>(),
+                                 pre,
+                                 axis_size,
+                                 post,
+                                 total,
+                                 reduce_all,
+                                 porder);
+    } else {
+      PNormGradPBetween1And2Kernel<T, false>
+          <<<config.block_per_grid,
+             config.thread_per_block,
+             0,
+             dev_ctx.stream()>>>(in_x->data<T>(),
+                                 in_norm->data<T>(),
+                                 in_norm_dy->data<T>(),
+                                 out_dx->data<T>(),
+                                 pre,
+                                 axis_size,
+                                 post,
+                                 total,
+                                 reduce_all,
+                                 porder);
     }
   } else {
     // Fused kernel: dx = x * |x|^(p-2) * grad / norm^(p-1),
@@ -652,33 +665,35 @@ void PNormGradKernel(const Context& dev_ctx,
     auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
 
     if (FLAGS_use_accuracy_compatible_kernel) {
-      PNormGradPGreaterThan2Kernel<T,true><<<config.block_per_grid,
-                                      config.thread_per_block,
-                                      0,
-                                      dev_ctx.stream()>>>(in_x->data<T>(),
-                                                          in_norm->data<T>(),
-                                                          in_norm_dy->data<T>(),
-                                                          out_dx->data<T>(),
-                                                          pre,
-                                                          axis_size,
-                                                          post,
-                                                          total,
-                                                          reduce_all,
-                                                          porder);
-    }else{
-      PNormGradPGreaterThan2Kernel<T,false><<<config.block_per_grid,
-                                      config.thread_per_block,
-                                      0,
-                                      dev_ctx.stream()>>>(in_x->data<T>(),
-                                                          in_norm->data<T>(),
-                                                          in_norm_dy->data<T>(),
-                                                          out_dx->data<T>(),
-                                                          pre,
-                                                          axis_size,
-                                                          post,
-                                                          total,
-                                                          reduce_all,
-                                                          porder);
+      PNormGradPGreaterThan2Kernel<T, true>
+          <<<config.block_per_grid,
+             config.thread_per_block,
+             0,
+             dev_ctx.stream()>>>(in_x->data<T>(),
+                                 in_norm->data<T>(),
+                                 in_norm_dy->data<T>(),
+                                 out_dx->data<T>(),
+                                 pre,
+                                 axis_size,
+                                 post,
+                                 total,
+                                 reduce_all,
+                                 porder);
+    } else {
+      PNormGradPGreaterThan2Kernel<T, false>
+          <<<config.block_per_grid,
+             config.thread_per_block,
+             0,
+             dev_ctx.stream()>>>(in_x->data<T>(),
+                                 in_norm->data<T>(),
+                                 in_norm_dy->data<T>(),
+                                 out_dx->data<T>(),
+                                 pre,
+                                 axis_size,
+                                 post,
+                                 total,
+                                 reduce_all,
+                                 porder);
     }
   }
 }
