@@ -64,6 +64,7 @@ Users can specify the following Docker build arguments with either "ON" or "OFF"
 | ------ | -------- | ----------- |
 | `WITH_GPU` | OFF | Generates NVIDIA CUDA GPU code and relies on CUDA libraries. |
 | `WITH_AVX` | OFF | Set to "ON" to enable AVX support. |
+| `WITH_RISCV` | OFF | Set to "ON" to build the CPU backend for RISC-V; this disables x86-only features such as AVX and MKL. |
 | `WITH_TESTING` | OFF | Build unit tests binaries. |
 | `WITH_MKL` | ON | Build with [Intel® oneMKL](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html) and [Intel® oneDNN](https://github.com/uxlfoundation/oneDNN) support. |
 | `WITH_PYTHON` | ON | Build with python support. Turn this off if build is only for capi. |

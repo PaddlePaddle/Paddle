@@ -1549,7 +1549,7 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
                 # change rpath of pir.ext for loading 3rd party lib
                 commands.append("patchelf --force-rpath --set-rpath '$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${IR_NAME}")
         # The sw_64 not support patchelf, so we just disable that.
-        if platform.machine() != 'sw_64' and platform.machine() != 'mips64':
+        if platform.machine() not in ('sw_64', 'mips64', 'riscv64'):
             for command in commands:
                 if os.system(command) != 0:
                     raise Exception("patch ${FLUID_CORE_NAME}.%s failed, command: %s" % (ext_name, command))

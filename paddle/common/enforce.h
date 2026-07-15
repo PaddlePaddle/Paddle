@@ -16,6 +16,7 @@
 
 #ifdef __GNUC__
 #include <cxxabi.h>  // for __cxa_demangle
+#include <cstdint>
 #endif               // __GNUC__
 #include <cinttypes>
 #include <exception>
