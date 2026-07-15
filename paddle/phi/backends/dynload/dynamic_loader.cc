@@ -1125,6 +1125,12 @@ void* GetCusparseLtDsoHandle() {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
   return GetDsoHandleFromSearchPath(FLAGS_cusparselt_dir, SPARSELT_LIB_NAME);
 #elif defined(PADDLE_WITH_CUDA)
+#ifdef PADDLE_WITH_PIP_CUDA_LIBRARIES
+  if (CUDA_VERSION >= 13000 && CUDA_VERSION < 14000) {
+    return GetDsoHandleFromSearchPath(FLAGS_cusparselt_dir,
+                                      "libcusparseLt.so.0;libcusparseLt.so");
+  }
+#endif
   return GetDsoHandleFromSearchPath(FLAGS_cusparselt_dir, "libcusparseLt.so");
 #else
   std::string warning_msg(

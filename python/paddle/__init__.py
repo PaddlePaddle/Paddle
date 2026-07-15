@@ -906,6 +906,9 @@ if __is_metainfo_generated and is_compiled_with_cuda():
             cuda_lib_path = os.path.join(
                 nvidia_package_path, f'cu{cuda_major}', 'lib'
             )
+            cusparselt_lib_path = os.path.join(
+                nvidia_package_path, 'cusparselt', 'lib'
+            )
             set_flags(
                 {
                     "FLAGS_cuda_dir": cuda_lib_path,
@@ -913,6 +916,7 @@ if __is_metainfo_generated and is_compiled_with_cuda():
                     "FLAGS_curand_dir": cuda_lib_path,
                     "FLAGS_cusolver_dir": cuda_lib_path,
                     "FLAGS_cusparse_dir": cuda_lib_path,
+                    "FLAGS_cusparselt_dir": cusparselt_lib_path,
                     "FLAGS_cupti_dir": cuda_lib_path,
                 }
             )
