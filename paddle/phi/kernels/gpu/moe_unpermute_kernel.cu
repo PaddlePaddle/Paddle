@@ -344,7 +344,23 @@ void MoeUnpermuteKernel(const Context &dev_ctx,
           total_zipped_tokens_num));
   dev_ctx.template Alloc<T>(zipped_tokens);
   dev_ctx.template Alloc<float>(zipped_probs_topk);
-  if (unzipped_tokens.numel() == 0 || total_zipped_tokens_num == 0) return;
+  if (unzipped_tokens.numel() == 0 || total_zipped_tokens_num == 0) {
+    if (zipped_tokens->numel() > 0) {
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          cudaMemsetAsync(zipped_tokens->data<T>(),
+                          0,
+                          zipped_tokens->numel() * sizeof(T),
+                          dev_ctx.stream()));
+    }
+    if (zipped_probs_topk->numel() > 0) {
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          cudaMemsetAsync(zipped_probs_topk->data<float>(),
+                          0,
+                          zipped_probs_topk->numel() * sizeof(float),
+                          dev_ctx.stream()));
+    }
+    return;
+  }
   void *zipped_probs_topk_ptr =
       reinterpret_cast<void *>(zipped_probs_topk->data<float>());
   const int64_t probs_numel =
