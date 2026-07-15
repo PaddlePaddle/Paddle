@@ -33,13 +33,33 @@ namespace funcs {
 
 enum BroadcastType { kMixed = 1, kBroadcast = 2, kElementwise = 3 };
 
+// On XPU the BroadcastConfig lives in datamover_primitives_xpu2.h and is not
+// templated; on GPU it is templated on the index type. This alias lets the
+// shared kernel signatures name the right type on each backend.
+#ifdef PADDLE_WITH_XPU_KP
+template <typename IndexT>
+using BroadcastConfigType = kps::details::BroadcastConfig;
+#else
+template <typename IndexT>
+using BroadcastConfigType = kps::details::BroadcastConfig<IndexT>;
+#endif
+
 template <typename OutT, typename Functor, int Arity, int NumOuts>
 struct BroadcastTypeClassifier {
   int64_t numel{0};
   int broadcast_num{0};              // Not used for XPU
   bool all_elementwise{true};        // Not used for XPU
   Array<bool, Arity> use_broadcast;  // Not used for XPU
+#ifdef PADDLE_WITH_XPU_KP
   Array<kps::details::BroadcastConfig, Arity> configs;
+#else
+  // The GPU BroadcastConfig is templated on the index type, which is only
+  // decided at launch time (uint32 vs uint64). Keep the simplified dims here
+  // and build the typed configs later in LaunchBroadcastKernel.
+  std::vector<int64_t> out_dims;
+  std::vector<std::vector<int64_t>> in_dims;
+  int rank{0};
+#endif
   Array<const _ptr_ char *__restrict__, Arity> ins_data;
   Array<_ptr_ OutT *, NumOuts> outs_data;
 
@@ -104,14 +124,17 @@ struct BroadcastTypeClassifier {
         DimsSimplifiedLogger<int64_t>::Log(
             ins, outs, dims_simplifier, "BroadcastKernel");
       }
+      // Store the simplified dims; the typed BroadcastConfig is built once the
+      // index type is chosen in LaunchBroadcastKernel. An empty in_dims[i]
+      // means "no config needed" (mirrors the old `ins[i]->numel()` guard).
+      out_dims = dims_simplifier.out_dims;
+      rank = dims_simplifier.rank;
+      in_dims.resize(Arity);
       for (int i = 0; i < Arity; ++i) {
         // if data shape is[m, n], then you should set data_dim = {n, m}
         // eg: out's shape [3, 45, 1]. then out_dims = {1, 45, 3}
-        // if (ins[i]->numel() != (*outs)[0]->numel()) {
         if (ins[i]->numel()) {
-          configs[i] = kps::details::BroadcastConfig(dims_simplifier.out_dims,
-                                                     dims_simplifier.in_dims[i],
-                                                     dims_simplifier.rank);
+          in_dims[i] = dims_simplifier.in_dims[i];
         }
       }
     }
@@ -250,10 +273,10 @@ struct BroadcastDataInit {
 
 template <int Index, int VecSize>
 struct BroadcastDataSetter {
-  template <typename Array, typename ArgsT>
+  template <typename Array, typename ArgsT, typename IndexT>
   static __device__ __forceinline__ void Apply(const Array &ins,
                                                ArgsT *args,
-                                               uint64_t index_bc[][VecSize]) {
+                                               IndexT index_bc[][VecSize]) {
     using Type = std::tuple_element_t<Index, ArgsT>;
 #pragma unroll
     for (int k = 0; k < VecSize; ++k) {
@@ -317,7 +340,7 @@ __device__ void VectorizedBroadcastKernelImpl(
     Array<_ptr_ OutT *, NumOuts> outs,
     const Array<bool, Arity> &use_broadcast,
     const IndexT numel,
-    const Array<kps::details::BroadcastConfig, Arity> &configs,
+    const Array<BroadcastConfigType<IndexT>, Arity> &configs,
     uint32_t num,
     IndexT block_offset,
     int read_lens,
@@ -343,13 +366,13 @@ __device__ void VectorizedBroadcastKernelImpl(
                           read_lens);
 #else
   if (LoadType == kBroadcast) {
-    uint64_t index_bc[Arity][VecSize] = {0};
+    IndexT index_bc[Arity][VecSize] = {0};
     Unroller<BroadcastDataInit, VecSize, Arity>::step(args);
     IndexT thread_offset =
         block_offset + static_cast<IndexT>(threadIdx.x) * VecSize;
 #pragma unroll
     for (int k = 0; k < VecSize; ++k) {
-      uint64_t idx = thread_offset + k;
+      IndexT idx = thread_offset + k;
       if (IsBoundary && idx == numel) break;
 #pragma unroll
       for (int i = 0; i < DDim::kMaxRank; ++i) {
@@ -400,7 +423,7 @@ __global__ void VectorizedBroadcastKernel(
     Array<_ptr_ OutT *, NumOuts> outs,
     Array<bool, Arity> use_broadcast,
     IndexT numel,
-    Array<kps::details::BroadcastConfig, Arity> configs,
+    Array<BroadcastConfigType<IndexT>, Arity> configs,
     IndexT main_offset,
     IndexT tail_tid,
     int read_lens,
@@ -540,6 +563,19 @@ void LaunchBroadcastKernel(
     const IndexT main_offset = (numel / block_len) * block_len;
     const IndexT tail_tid = numel % block_len;
 
+    // Build the index-typed configs now that IndexT is known. An empty
+    // in_dims[i] means the input needs no broadcast config (see
+    // InitBroadcastConfigs).
+    Array<BroadcastConfigType<IndexT>, Arity> configs;
+    if (!classifier.all_elementwise) {
+      for (int i = 0; i < Arity; ++i) {
+        if (!classifier.in_dims[i].empty()) {
+          configs[i] = kps::details::BroadcastConfig<IndexT>(
+              classifier.out_dims, classifier.in_dims[i], classifier.rank);
+        }
+      }
+    }
+
     if (classifier.all_elementwise) {
       VectorizedBroadcastKernel<Functor,
                                 OutT,
@@ -552,7 +588,7 @@ void LaunchBroadcastKernel(
                                            classifier.outs_data,
                                            classifier.use_broadcast,
                                            numel,
-                                           classifier.configs,
+                                           configs,
                                            main_offset,
                                            tail_tid,
                                            VecSize,
@@ -570,7 +606,7 @@ void LaunchBroadcastKernel(
                                            classifier.outs_data,
                                            classifier.use_broadcast,
                                            numel,
-                                           classifier.configs,
+                                           configs,
                                            main_offset,
                                            tail_tid,
                                            VecSize,
@@ -587,7 +623,7 @@ void LaunchBroadcastKernel(
                                            classifier.outs_data,
                                            classifier.use_broadcast,
                                            numel,
-                                           classifier.configs,
+                                           configs,
                                            main_offset,
                                            tail_tid,
                                            VecSize,
@@ -599,7 +635,13 @@ void LaunchBroadcastKernel(
 #ifdef PADDLE_WITH_XPU_KP
   launch_with_index_t(uint32_t{0});
 #else
-  const uint64_t index_limit = std::numeric_limits<uint32_t>::max();
+  // Use the cheaper uint32 indexing (and 32-bit FastDivMod inside
+  // BroadcastConfig) on GPU only when the element count and the grid stride
+  // both fit. The bound is INT_MAX rather than UINT32_MAX because the 32-bit
+  // FastDivMod constructor computes `1 << shift_val` in signed 32-bit and would
+  // overflow for a divisor (an out dim) larger than INT_MAX. The grid_stride
+  // bound mirrors `stride` inside the kernel.
+  const uint64_t index_limit = std::numeric_limits<int32_t>::max();
   const uint64_t grid_stride =
       static_cast<uint64_t>(gpu_config.block_per_grid.x) *
       static_cast<uint64_t>(gpu_config.GetBlockSize()) * VecSize;
