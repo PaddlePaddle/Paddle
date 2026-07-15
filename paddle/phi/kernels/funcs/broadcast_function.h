@@ -429,11 +429,10 @@ __global__ void VectorizedBroadcastKernel(
     int read_lens,
     Functor func) {
 #ifdef PADDLE_WITH_XPU_KP
-  uint64_t block_offset =
-      static_cast<uint64_t>(BLOCK_ID_X) * BLOCK_NUM_X * read_lens;
-  uint64_t stride = static_cast<uint64_t>(BLOCK_NUM_X) * GRID_NUM_X * read_lens;
-  for (; block_offset < static_cast<uint64_t>(main_offset);
-       block_offset += stride) {
+  IndexT block_offset =
+      static_cast<IndexT>(BLOCK_ID_X) * BLOCK_NUM_X * read_lens;
+  IndexT stride = static_cast<IndexT>(BLOCK_NUM_X) * GRID_NUM_X * read_lens;
+  for (; block_offset < main_offset; block_offset += stride) {
     VectorizedBroadcastKernelImpl<OutT,
                                   Functor,
                                   IndexT,
@@ -447,13 +446,16 @@ __global__ void VectorizedBroadcastKernel(
                                             numel,
                                             configs,
                                             BLOCK_NUM_X * read_lens,
-                                            static_cast<IndexT>(block_offset),
+                                            block_offset,
                                             read_lens,
                                             func);
   }
-  int64_t num =
-      static_cast<int64_t>(numel) - static_cast<int64_t>(block_offset);
-  if (num > 0) {
+  // `num` is the tail element count handled by a single block, always bounded
+  // by one block's span, so casting it to uint32 for the Impl is safe. Guard on
+  // `block_offset < numel` (not `num > 0`) so the subtraction never underflows
+  // when IndexT is unsigned.
+  if (block_offset < numel) {
+    IndexT num = numel - block_offset;
     VectorizedBroadcastKernelImpl<OutT,
                                   Functor,
                                   IndexT,
@@ -467,16 +469,14 @@ __global__ void VectorizedBroadcastKernel(
                                             numel,
                                             configs,
                                             static_cast<uint32_t>(num),
-                                            static_cast<IndexT>(block_offset),
+                                            block_offset,
                                             read_lens,
                                             func);
   }
 #else
-  uint64_t block_offset =
-      static_cast<uint64_t>(BLOCK_ID_X) * BLOCK_NUM_X * VecSize;
-  uint64_t stride = static_cast<uint64_t>(BLOCK_NUM_X) * GRID_NUM_X * VecSize;
-  for (; block_offset < static_cast<uint64_t>(main_offset);
-       block_offset += stride) {
+  IndexT block_offset = static_cast<IndexT>(BLOCK_ID_X) * BLOCK_NUM_X * VecSize;
+  IndexT stride = static_cast<IndexT>(BLOCK_NUM_X) * GRID_NUM_X * VecSize;
+  for (; block_offset < main_offset; block_offset += stride) {
     VectorizedBroadcastKernelImpl<OutT,
                                   Functor,
                                   IndexT,
@@ -490,13 +490,15 @@ __global__ void VectorizedBroadcastKernel(
                                             numel,
                                             configs,
                                             BLOCK_NUM_X * VecSize,
-                                            static_cast<IndexT>(block_offset),
+                                            block_offset,
                                             read_lens,
                                             func);
   }
-  int64_t num =
-      static_cast<int64_t>(numel) - static_cast<int64_t>(block_offset);
-  if (num > 0) {
+  // `num` is one block's tail element count, so casting to uint32 for the Impl
+  // is safe. Guard on `block_offset < numel` (not `num > 0`) so the subtraction
+  // never underflows when IndexT is unsigned.
+  if (block_offset < numel) {
+    IndexT num = numel - block_offset;
     VectorizedBroadcastKernelImpl<OutT,
                                   Functor,
                                   IndexT,
@@ -510,7 +512,7 @@ __global__ void VectorizedBroadcastKernel(
                                             numel,
                                             configs,
                                             static_cast<uint32_t>(num),
-                                            static_cast<IndexT>(block_offset),
+                                            block_offset,
                                             read_lens,
                                             func);
   }
@@ -528,6 +530,9 @@ void LaunchBroadcastKernel(
 #endif
   auto launch_with_index_t = [&](auto index_tag) {
     using IndexT = decltype(index_tag);
+    // Although this runs on the host and int64 would be numerically fine, we
+    // keep IndexT here so the offsets/main_offset/tail_tid passed to the kernel
+    // match the IndexT the device kernel is instantiated with.
 #ifdef PADDLE_WITH_XPU_KP
     const IndexT numel = static_cast<IndexT>(classifier.numel);
     const int threads = 64;
