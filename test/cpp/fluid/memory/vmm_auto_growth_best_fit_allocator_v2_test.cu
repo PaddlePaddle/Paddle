@@ -1350,6 +1350,45 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, OOMRemapSkipsPendingOwningStreamEvents) {
   ASSERT_EQ(cudaStreamDestroy(stream), cudaSuccess);
 }
 
+TEST(VMMAutoGrowthBestFitAllocatorV2,
+     BoundedRemapSkipsPendingBlockAndUsesLaterReadyBlock) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+  const size_t handle_size = underlying->handle_size();
+
+  auto pending = allocator.Allocate(handle_size);
+  auto separator = allocator.Allocate(handle_size);
+  auto ready = allocator.Allocate(handle_size);
+  auto tail_active = allocator.Allocate(256UL);
+  ASSERT_NE(pending, nullptr);
+  ASSERT_NE(separator, nullptr);
+  ASSERT_NE(ready, nullptr);
+  ASSERT_NE(tail_active, nullptr);
+
+  gpuStream_t stream;
+  ASSERT_EQ(cudaStreamCreate(&stream), cudaSuccess);
+  BusyWaitKernel<<<1, 1, 0, stream>>>(500000000ULL);
+  ASSERT_EQ(cudaGetLastError(), cudaSuccess);
+
+  auto* pending_remap = dynamic_cast<VMMRemapEventAllocation*>(pending.get());
+  ASSERT_NE(pending_remap, nullptr);
+  ASSERT_TRUE(pending_remap->SetVMMRemapEvent(stream, nullptr));
+  MarkRemapSafeForTest(ready.get());
+  pending.reset();
+  ready.reset();
+
+  // The partial tail leaves a 256-byte deficit beyond one handle. Rounded to
+  // backing granularity, bounded remap needs one source page. The earlier
+  // pending block must not consume that page budget before the later ready
+  // block is considered.
+  EXPECT_EQ(allocator.RemapForAllocation(phi::GPUPlace(), handle_size + 256UL),
+            handle_size);
+
+  ASSERT_EQ(cudaStreamSynchronize(stream), cudaSuccess);
+  ASSERT_EQ(cudaStreamDestroy(stream), cudaSuccess);
+}
+
 TEST(VMMAutoGrowthBestFitAllocatorV2, CompactUsesBlockListTailPlacement) {
   ScopedVLogLevel vlog_guard(4);
   auto underlying = CreateUnderlyingAllocator();

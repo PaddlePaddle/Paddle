@@ -86,19 +86,6 @@ struct VMMAutoGrowthBestFitAllocatorV2::CompactState {
   size_t total_free{0};
   size_t max_free{0};
   size_t tail_free{0};
-  size_t mapped_free_blocks{0};
-  size_t mapped_free_bytes{0};
-  size_t largest_mapped_free{0};
-  size_t indexable_mapped_free_blocks{0};
-  size_t indexable_mapped_free_bytes{0};
-  size_t unmapped_free_blocks{0};
-  size_t unmapped_free_bytes{0};
-  size_t largest_unmapped_free{0};
-  size_t all_blocks{0};
-  size_t free_index_size{0};
-  size_t unmapped_free_index_size{0};
-  bool tail_is_indexable{false};
-  bool tail_is_unmapped{false};
   std::vector<std::pair<VMMDevicePtr, size_t>> source_ranges;
 };
 
@@ -107,11 +94,7 @@ struct VMMAutoGrowthBestFitAllocatorV2::CompactContext {
   Clock::time_point start;
   size_t requested_size{0};
   size_t compact_target{0};
-  size_t required_releasable_bytes{0};
-  size_t releasable_target_bytes{0};
-  size_t releasable_handles{0};
-  size_t releasable_bytes{0};
-  size_t bounded_source_pages{0};
+  size_t ready_bytes{0};
   uint64_t lock_wait_us{0};
   uint64_t block_scan_us{0};
   uint64_t source_precheck_us{0};
@@ -382,47 +365,30 @@ phi::Allocation* VMMAutoGrowthBestFitAllocatorV2::AllocateImpl(size_t size) {
 }
 
 VMMAutoGrowthBestFitAllocatorV2::CompactState
-VMMAutoGrowthBestFitAllocatorV2::CollectCompactState() const {
+VMMAutoGrowthBestFitAllocatorV2::CollectCompactState() {
   CompactState state;
   const BlockV2* tail_free_block =
       !all_blocks_.empty() && CanIndexFreeBlock(all_blocks_.back())
           ? &all_blocks_.back()
           : nullptr;
-  for (const auto& block : all_blocks_) {
+  for (auto& block : all_blocks_) {
     if (block.IsMappedFree()) {
-      ++state.mapped_free_blocks;
-      state.mapped_free_bytes += block.size_;
-      state.largest_mapped_free =
-          std::max(state.largest_mapped_free, block.size_);
       state.total_free += block.size_;
       // Tail free already contributes to the contiguous allocation target.
       // Moving it only shifts the same free space to a higher VA.
-      if (&block != tail_free_block) {
+      if (&block != tail_free_block &&
+          RemapTransaction::CheckBlockRemapSafety(&block)) {
         state.source_ranges.emplace_back(block.va_range());
       }
     }
     if (CanIndexFreeBlock(block)) {
-      ++state.indexable_mapped_free_blocks;
-      state.indexable_mapped_free_bytes += block.size_;
       state.max_free = std::max(state.max_free, block.size_);
-    }
-    if (block.IsUnmappedFree()) {
-      ++state.unmapped_free_blocks;
-      state.unmapped_free_bytes += block.size_;
-      state.largest_unmapped_free =
-          std::max(state.largest_unmapped_free, block.size_);
     }
   }
 
-  state.tail_is_indexable = tail_free_block != nullptr;
-  state.tail_is_unmapped =
-      !all_blocks_.empty() && all_blocks_.back().IsUnmappedFree();
-  if (state.tail_is_indexable) {
+  if (tail_free_block != nullptr) {
     state.tail_free = all_blocks_.back().size_;
   }
-  state.all_blocks = all_blocks_.size();
-  state.free_index_size = free_blocks_.size();
-  state.unmapped_free_index_size = unmapped_free_blocks_.size();
   return state;
 }
 
@@ -430,45 +396,14 @@ void VMMAutoGrowthBestFitAllocatorV2::LogCompactSkip(
     const CompactState& state,
     const CompactContext& context,
     const char* reason) const {
-  const size_t missing_releasable_bytes =
-      context.required_releasable_bytes > context.releasable_bytes
-          ? context.required_releasable_bytes - context.releasable_bytes
-          : 0;
-  const size_t driver_topup_gap_bytes =
-      context.driver_memory_collected &&
-              missing_releasable_bytes >
-                  context.driver_memory.driver_actual_avail
-          ? missing_releasable_bytes - context.driver_memory.driver_actual_avail
-          : 0;
-
   VLOG(3) << "VMM V2 compact skip: seq=" << context.seq
           << " pool=" << static_cast<int>(pool_type_) << " action=skip"
           << " reason=" << reason << " requested=" << context.requested_size
           << " compact_target=" << context.compact_target
-          << " required_releasable_bytes=" << context.required_releasable_bytes
-          << " releasable_target_bytes=" << context.releasable_target_bytes
-          << " releasable_handles=" << context.releasable_handles
-          << " releasable_bytes=" << context.releasable_bytes
-          << " missing_releasable_bytes=" << missing_releasable_bytes
-          << " bounded_source_pages=" << context.bounded_source_pages
+          << " total_free=" << state.total_free
+          << " max_free=" << state.max_free << " tail_free=" << state.tail_free
+          << " ready_bytes=" << context.ready_bytes
           << " source_ranges=" << state.source_ranges.size()
-          << " mapped_free_blocks=" << state.mapped_free_blocks
-          << " mapped_free_bytes=" << state.mapped_free_bytes
-          << " largest_mapped_free=" << state.largest_mapped_free
-          << " indexable_mapped_free_blocks="
-          << state.indexable_mapped_free_blocks
-          << " indexable_mapped_free_bytes="
-          << state.indexable_mapped_free_bytes
-          << " largest_indexable_mapped_free=" << state.max_free
-          << " unmapped_free_blocks=" << state.unmapped_free_blocks
-          << " unmapped_free_bytes=" << state.unmapped_free_bytes
-          << " largest_unmapped_free=" << state.largest_unmapped_free
-          << " tail_free=" << state.tail_free
-          << " tail_is_indexable=" << state.tail_is_indexable
-          << " tail_is_unmapped=" << state.tail_is_unmapped
-          << " all_blocks=" << state.all_blocks
-          << " free_index_size=" << state.free_index_size
-          << " unmapped_free_index_size=" << state.unmapped_free_index_size
           << " driver_actual_avail="
           << (context.driver_memory_collected
                   ? context.driver_memory.driver_actual_avail
@@ -477,7 +412,6 @@ void VMMAutoGrowthBestFitAllocatorV2::LogCompactSkip(
           << (context.driver_memory_collected
                   ? context.driver_memory.driver_actual_total
                   : 0UL)
-          << " driver_topup_gap_bytes=" << driver_topup_gap_bytes
           << " total_us=" << ElapsedMicros(context.start, Clock::now())
           << " lock_wait_us=" << context.lock_wait_us
           << " block_scan_us=" << context.block_scan_us
@@ -559,9 +493,6 @@ size_t VMMAutoGrowthBestFitAllocatorV2::RemapForAllocation(
   const size_t releasable_target_bytes =
       requested_size > 0 ? required_releasable_bytes : compact_target;
   size_t remap_target = releasable_target_bytes;
-  compact_context.required_releasable_bytes = required_releasable_bytes;
-  compact_context.releasable_target_bytes = releasable_target_bytes;
-
   const auto source_precheck_start = Clock::now();
   auto source_pages = underlying_allocator_->CollectRemapSourcePages(
       compact_state.source_ranges, releasable_target_bytes);
@@ -575,9 +506,7 @@ size_t VMMAutoGrowthBestFitAllocatorV2::RemapForAllocation(
       ElapsedMicros(source_precheck_start, Clock::now());
   size_t releasable_bytes =
       releasable_handles * underlying_allocator_->handle_size();
-  compact_context.releasable_handles = releasable_handles;
-  compact_context.releasable_bytes = releasable_bytes;
-  compact_context.bounded_source_pages = source_pages.size();
+  compact_context.ready_bytes = releasable_bytes;
 
   if (requested_size > 0 && releasable_bytes < required_releasable_bytes) {
     const auto driver_topup_start = Clock::now();
@@ -612,13 +541,11 @@ size_t VMMAutoGrowthBestFitAllocatorV2::RemapForAllocation(
           << " requested=" << requested_size
           << " compact_target=" << compact_target
           << " remap_target=" << remap_target
-          << " partial=" << (remap_target < required_releasable_bytes)
-          << " total_free=" << compact_state.total_free
-          << " max_free=" << compact_state.max_free
           << " tail_free=" << compact_state.tail_free
-          << " required_releasable_bytes=" << required_releasable_bytes
-          << " releasable_handles=" << releasable_handles
-          << " releasable_bytes=" << releasable_bytes
+          << " ready_bytes=" << releasable_bytes << " driver_actual_avail="
+          << (compact_context.driver_memory_collected
+                  ? compact_context.driver_memory.driver_actual_avail
+                  : 0UL)
           << " driver_topup_bytes=" << driver_topup_bytes
           << " source_pages=" << source_pages.size();
 

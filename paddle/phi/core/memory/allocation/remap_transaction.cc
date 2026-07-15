@@ -104,37 +104,6 @@ bool RemapStateReady(VMMBlockRemapState* state) {
   return RecordRemapEvent(state) && QueryRemapEvent(state);
 }
 
-bool IsRemapSafe(BlockV2* block) {
-  if (!block->IsMappedFree()) {
-    return false;
-  }
-  if (block->HasUnknownRemapSafety()) {
-    return false;
-  }
-  bool ready = true;
-  VMMBlockRemapState primary{block->owning_stream_, block->remap_safe_event_};
-  if (!RemapStateReady(&primary)) {
-    ready = false;
-  }
-  block->owning_stream_ = primary.stream;
-  block->remap_safe_event_ = std::move(primary.event);
-
-  for (auto it = block->remap_pending_states_.begin();
-       it != block->remap_pending_states_.end();) {
-    if (!RemapStateReady(&*it)) {
-      ready = false;
-      ++it;
-      continue;
-    }
-    if (it->stream == nullptr && it->event == nullptr) {
-      it = block->remap_pending_states_.erase(it);
-    } else {
-      ++it;
-    }
-  }
-  return ready;
-}
-
 void AppendMappedFreeSubRange(std::vector<BlockV2>* segments,
                               const BlockV2& source,
                               VMMDevicePtr va,
@@ -191,6 +160,35 @@ RemapTransaction::~RemapTransaction() {
                "rolling back pending state";
     Rollback();
   }
+}
+
+bool RemapTransaction::CheckBlockRemapSafety(BlockV2* block) {
+  if (!block->IsMappedFree() || block->HasUnknownRemapSafety()) {
+    return false;
+  }
+
+  bool ready = true;
+  VMMBlockRemapState primary{block->owning_stream_, block->remap_safe_event_};
+  if (!RemapStateReady(&primary)) {
+    ready = false;
+  }
+  block->owning_stream_ = primary.stream;
+  block->remap_safe_event_ = std::move(primary.event);
+
+  for (auto it = block->remap_pending_states_.begin();
+       it != block->remap_pending_states_.end();) {
+    if (!RemapStateReady(&*it)) {
+      ready = false;
+      ++it;
+      continue;
+    }
+    if (it->stream == nullptr && it->event == nullptr) {
+      it = block->remap_pending_states_.erase(it);
+    } else {
+      ++it;
+    }
+  }
+  return ready;
 }
 
 BlockV2 RemapTransaction::MaterializeDestinationRange(
@@ -295,7 +293,7 @@ RemapTransaction::SourceMovePlan RemapTransaction::CollectRemapSourcePlan(
       plan.stats.unknown_safety_blocked_bytes += current->size();
       continue;
     }
-    if (!IsRemapSafe(&*current)) {
+    if (!CheckBlockRemapSafety(&*current)) {
       plan.stats.event_blocked_count +=
           (current->size() + handle_size_ - 1) / handle_size_;
       plan.stats.event_blocked_bytes += current->size();

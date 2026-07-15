@@ -159,6 +159,10 @@ class RemapTransaction {
         prepare_destination_range_(std::move(prepare_destination_range)) {}
   ~RemapTransaction();
 
+  // Checks whether a mapped-free block is safe to remap without waiting. The
+  // check may record a lazy event and remove completed pending states.
+  static bool CheckBlockRemapSafety(BlockV2* block);
+
   BlockV2 MaterializeDestinationRange(VMMDevicePtr dst,
                                       const SourcePages& source_pages,
                                       size_t start,

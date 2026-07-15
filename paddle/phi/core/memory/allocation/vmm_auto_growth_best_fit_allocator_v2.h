@@ -161,7 +161,7 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
   void InsertUnmappedFreeBlock(BlockListIt it);
   void EraseUnmappedFreeBlock(BlockListIt it);
   void RebuildFreeBlockIndex();
-  CompactState CollectCompactState() const;
+  CompactState CollectCompactState();
   void LogCompactSkip(const CompactState& state,
                       const CompactContext& context,
                       const char* reason) const;
