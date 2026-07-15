@@ -901,29 +901,54 @@ if __is_metainfo_generated and is_compiled_with_cuda():
         nvidia_package_path = package_dir + "/.." + "/nvidia"
         set_flags({"FLAGS_nvidia_package_dir": nvidia_package_path})
 
-        cublas_lib_path = package_dir + "/.." + "/nvidia/cublas/lib"
-        set_flags({"FLAGS_cublas_dir": cublas_lib_path})
+        if builtins.float(_cuda_version) >= 13.0:
+            cuda_major = _cuda_version.split('.')[0]
+            cuda_lib_path = os.path.join(
+                nvidia_package_path, f'cu{cuda_major}', 'lib'
+            )
+            set_flags(
+                {
+                    "FLAGS_cuda_dir": cuda_lib_path,
+                    "FLAGS_cublas_dir": cuda_lib_path,
+                    "FLAGS_curand_dir": cuda_lib_path,
+                    "FLAGS_cusolver_dir": cuda_lib_path,
+                    "FLAGS_cusparse_dir": cuda_lib_path,
+                    "FLAGS_cupti_dir": cuda_lib_path,
+                }
+            )
+        else:
+            cublas_lib_path = package_dir + "/.." + "/nvidia/cublas/lib"
+            set_flags({"FLAGS_cublas_dir": cublas_lib_path})
+
+            curand_lib_path = package_dir + "/.." + "/nvidia/curand/lib"
+            set_flags({"FLAGS_curand_dir": curand_lib_path})
+
+            cusolver_lib_path = package_dir + "/.." + "/nvidia/cusolver/lib"
+            set_flags({"FLAGS_cusolver_dir": cusolver_lib_path})
+
+            cusparse_lib_path = package_dir + "/.." + "/nvidia/cusparse/lib"
+            set_flags({"FLAGS_cusparse_dir": cusparse_lib_path})
+
+            cupti_dir_lib_path = (
+                package_dir + "/.." + "/nvidia/cuda_cupti/lib"
+            )
+            set_flags({"FLAGS_cupti_dir": cupti_dir_lib_path})
 
         cudnn_lib_path = package_dir + "/.." + "/nvidia/cudnn/lib"
         set_flags({"FLAGS_cudnn_dir": cudnn_lib_path})
 
-        curand_lib_path = package_dir + "/.." + "/nvidia/curand/lib"
-        set_flags({"FLAGS_curand_dir": curand_lib_path})
-
-        cusolver_lib_path = package_dir + "/.." + "/nvidia/cusolver/lib"
-        set_flags({"FLAGS_cusolver_dir": cusolver_lib_path})
-
-        cusparse_lib_path = package_dir + "/.." + "/nvidia/cusparse/lib"
-        set_flags({"FLAGS_cusparse_dir": cusparse_lib_path})
-
         nccl_lib_path = package_dir + "/.." + "/nvidia/nccl/lib"
         set_flags({"FLAGS_nccl_dir": nccl_lib_path})
 
-        cupti_dir_lib_path = package_dir + "/.." + "/nvidia/cuda_cupti/lib"
-        set_flags({"FLAGS_cupti_dir": cupti_dir_lib_path})
-
         if is_compiled_with_cinn():
-            cuda_cccl_path = package_dir + "/.." + "/nvidia/cuda_cccl/include/"
+            if builtins.float(_cuda_version) >= 13.0:
+                cuda_cccl_path = os.path.join(
+                    nvidia_package_path, f'cu{cuda_major}', 'include'
+                )
+            else:
+                cuda_cccl_path = (
+                    package_dir + "/.." + "/nvidia/cuda_cccl/include/"
+                )
             set_flags({"FLAGS_cuda_cccl_dir": cuda_cccl_path})
             _preload_nvidia_lib("libnvrtc-builtins.so.*", ['cuda_nvrtc'])
 
