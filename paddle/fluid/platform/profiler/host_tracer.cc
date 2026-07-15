@@ -136,7 +136,7 @@ void ProcessOperatorSupplementEvents(
 
 void HostTracer::PrepareTracing() {
   // warm up
-  HostTraceLevel::GetInstance().SetLevel(options_.trace_level);
+  SetHostTraceLevel(options_.trace_level);
   state_ = TracerState::READY;
 }
 
@@ -149,7 +149,7 @@ void HostTracer::StartTracing() {
   GatherCommonHostMemEvents();
   HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance()
       .GatherEvents();
-  HostTraceLevel::GetInstance().SetLevel(options_.trace_level);
+  SetHostTraceLevel(options_.trace_level);
   state_ = TracerState::STARTED;
 }
 
@@ -158,7 +158,7 @@ void HostTracer::StopTracing() {
       state_,
       TracerState::STARTED,
       common::errors::PreconditionNotMet("TracerState must be STARTED"));
-  HostTraceLevel::GetInstance().SetLevel(HostTraceLevel::kDisabled);
+  SetHostTraceLevel(HostTraceLevel::kDisabled);
   state_ = TracerState::STOPPED;
 }
 

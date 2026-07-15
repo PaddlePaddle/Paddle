@@ -86,6 +86,26 @@ class TestAllocatorVisitor(unittest.TestCase):
         self.assertEqual(len(y), 1)  # 1 allocators
         self.assertEqual(len(y[0]), 4)  # 4 blocks
 
+    def test_pool_filter_block_info(self):
+        """Test vmm_large_all_block_info and vmm_small_all_block_info."""
+        # Allocate in large pool (>= vmm_small_pool_size_in_mb)
+        params = self.allocate_cmds(self.cmds)
+
+        large_info = MemoryAnalysisTool.vmm_large_all_block_info()
+        small_info = MemoryAnalysisTool.vmm_small_all_block_info()
+        all_info = MemoryAnalysisTool.vmm_all_block_info()
+
+        # large_info should have blocks (our 1GB allocations go to large pool)
+        self.assertGreater(len(large_info), 0)
+        self.assertGreater(len(large_info[0]), 0)
+
+        # Total blocks from large + small should equal all
+        total_filtered = sum(len(g) for g in large_info) + sum(
+            len(g) for g in small_info
+        )
+        total_all = sum(len(g) for g in all_info)
+        self.assertEqual(total_filtered, total_all)
+
     def test_memory_summary(self):
         paddle.set_flags({'FLAGS_use_virtual_memory_auto_growth': True})
         paddle.device.cuda.memory_summary()

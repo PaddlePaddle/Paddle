@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <iostream>
 #include <memory>
+#include <string>
 
 #include "paddle/phi/core/memory/allocation/cuda_virtual_mem_allocator.h"
 
@@ -57,6 +59,18 @@ class DummyAllocator : public Allocator {
   void FreeImpl(phi::Allocation*) override {}
 };
 
+class AlwaysOOMAllocator : public Allocator {
+ public:
+  bool IsAllocThreadSafe() const override { return true; }
+
+ protected:
+  phi::Allocation* AllocateImpl(size_t size) override {
+    PADDLE_THROW_BAD_ALLOC(common::errors::ResourceExhausted(
+        "AlwaysOOMAllocator failed to allocate %zu bytes.", size));
+  }
+  void FreeImpl(phi::Allocation*) override {}
+};
+
 // Expose FreeImpl for testing.
 class ExposedVmmAllocator : public VirtualMemoryAutoGrowthBestFitAllocator {
  public:
@@ -93,6 +107,48 @@ TEST(test_vmm_allocator, free_impl_uses_allocation_block_iterator) {
             reinterpret_cast<void*>(0x1000));
   EXPECT_EQ(allocator.all_blocks_.front().size_, 7168UL);
   EXPECT_TRUE(allocator.all_blocks_.front().is_free_);
+}
+
+TEST(test_vmm_allocator, oom_error_prints_pool_stats) {
+  auto underlying = std::make_shared<AlwaysOOMAllocator>();
+  phi::GPUPlace place(0);
+  ExposedVmmAllocator allocator(underlying, 256, place);
+
+  auto used1 = allocator.all_blocks_.emplace(allocator.all_blocks_.end(),
+                                             reinterpret_cast<void*>(0x1000),
+                                             1UL << 20,
+                                             false);
+  auto free1 = allocator.all_blocks_.emplace(allocator.all_blocks_.end(),
+                                             reinterpret_cast<void*>(0x101000),
+                                             2UL << 20,
+                                             true);
+  auto used2 = allocator.all_blocks_.emplace(allocator.all_blocks_.end(),
+                                             reinterpret_cast<void*>(0x301000),
+                                             1UL << 20,
+                                             false);
+  auto free2 = allocator.all_blocks_.emplace(allocator.all_blocks_.end(),
+                                             reinterpret_cast<void*>(0x401000),
+                                             4UL << 20,
+                                             true);
+
+  allocator.free_blocks_.emplace(std::make_pair(free1->size_, free1->ptr_),
+                                 free1);
+  allocator.free_blocks_.emplace(std::make_pair(free2->size_, free2->ptr_),
+                                 free2);
+
+  try {
+    allocator.Allocate(5UL << 20);
+    FAIL() << "Expected VMM allocator OOM.";
+  } catch (const BadAlloc& ex) {
+    std::string message = ex.what();
+    std::cout << "\n[VMM OOM MESSAGE]\n" << message << std::endl;
+    EXPECT_NE(message.find("VMM allocator stats (pool): "
+                           "total_free=6.000000MB, max_free=4.000000MB."),
+              std::string::npos);
+  }
+
+  static_cast<void>(used1);
+  static_cast<void>(used2);
 }
 
 }  // namespace allocation

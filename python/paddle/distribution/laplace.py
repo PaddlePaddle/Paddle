@@ -21,6 +21,7 @@ import numpy as np
 import paddle
 from paddle.base import framework
 from paddle.distribution import distribution
+from paddle.utils.decorator_utils import param_one_alias
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -303,6 +304,7 @@ class Laplace(distribution.Distribution):
 
         return loc - scale * (term).sign() * paddle.log1p(-2 * term.abs())
 
+    @param_one_alias(["shape", "sample_shape"])
     def sample(self, shape: Sequence[int] = []) -> Tensor:
         r"""Generate samples of the specified shape.
 
@@ -327,6 +329,7 @@ class Laplace(distribution.Distribution):
         with paddle.no_grad():
             return self.rsample(shape)
 
+    @param_one_alias(["shape", "sample_shape"])
     def rsample(self, shape: Sequence[int] = []) -> Tensor:
         r"""Reparameterized sample.
 
