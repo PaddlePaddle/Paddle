@@ -559,7 +559,13 @@ void LaunchBroadcastKernel(
                                            func);
     } else if (classifier.broadcast_num > (Arity >> 1)) {
       constexpr BroadcastType type_ = (Arity > 1) ? kBroadcast : kMixed;
-      VectorizedBroadcastKernel<Functor, OutT, Arity, NumOuts, VecSize, type_>
+      VectorizedBroadcastKernel<Functor,
+                                OutT,
+                                IndexT,
+                                Arity,
+                                NumOuts,
+                                VecSize,
+                                type_>
           <<<blocks, threads, 0, stream>>>(classifier.ins_data,
                                            classifier.outs_data,
                                            classifier.use_broadcast,
