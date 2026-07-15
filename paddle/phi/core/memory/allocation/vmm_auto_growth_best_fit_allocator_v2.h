@@ -14,10 +14,13 @@
 
 #pragma once
 
+#include <cstdint>
 #include <functional>
 #include <list>
 #include <map>
 #include <memory>
+#include <tuple>
+#include <vector>
 
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/core/memory/allocation/cuda_virtual_mem_allocator_v2.h"
@@ -73,8 +76,12 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
   bool IsAllocThreadSafe() const override { return true; }
   void Accept(AllocatorVisitor* visitor) override { visitor->Visit(this); }
 
+  using FreeBlockInfo = std::pair<size_t, uintptr_t>;
+  using BlockInfo = std::tuple<size_t, uintptr_t, bool>;
+
   const BlockList& all_blocks() const { return all_blocks_; }
-  BlockList SnapshotAllBlocks() const;
+  std::vector<FreeBlockInfo> SnapshotFreeBlockInfo() const;
+  std::vector<BlockInfo> SnapshotBlockInfo() const;
   PoolType pool_type() const { return pool_type_; }
   size_t alignment() const { return alignment_; }
 
