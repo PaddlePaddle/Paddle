@@ -64,6 +64,15 @@ __device__ __forceinline__ MT compute_pow_like_kernel(MT val, double exponent) {
   }
 }
 
+// Round an intermediate value (kept in compute type MT) back to the storage
+// dtype T and return it as MT again. This reproduces the rounding point of a
+// single torch elementwise kernel, whose output tensor is dtype T. For
+// fp32/fp64 (MT == T) this is the identity; only fp16/bf16 are affected.
+template <typename T, typename MT>
+__device__ __forceinline__ MT RoundToStorage(MT v) {
+  return static_cast<MT>(static_cast<T>(v));
+}
+
 // Torch-compatible pow: operates in storage type T (like a standalone torch
 // elementwise kernel whose output tensor is dtype T). The exponent is first
 // narrowed to T then promoted back to MT before calling pow(), matching the
@@ -77,30 +86,22 @@ compute_pow_like_kernel_torch_compat(T val, double exponent) {
   } else if (exponent == -0.5) {
     return static_cast<T>(rsqrt(val_MT));
   } else if (exponent == -1.0) {
-    return static_cast<T>(1) / val;
+    return static_cast<T>(static_cast<MT>(1) / val_MT);
   } else if (exponent == -2.0) {
-    return static_cast<T>(1) / (val * val);
+    return static_cast<T>(static_cast<MT>(1) /
+                          RoundToStorage<T, MT>(val_MT * val_MT));
   } else if (exponent == 0.0) {
     return static_cast<T>(1);
   } else if (exponent == 1.0) {
     return val;
   } else if (exponent == 2.0) {
-    return val * val;
+    return static_cast<T>(val_MT * val_MT);
   } else if (exponent == 3.0) {
-    return val * val * val;
+    return static_cast<T>(RoundToStorage<T, MT>(val_MT * val_MT) * val_MT);
   } else {
     MT exponent_MT = static_cast<MT>(static_cast<T>(exponent));
     return static_cast<T>(pow(val_MT, exponent_MT));
   }
-}
-
-// Round an intermediate value (kept in compute type MT) back to the storage
-// dtype T and return it as MT again. This reproduces the rounding point of a
-// single torch elementwise kernel, whose output tensor is dtype T. For
-// fp32/fp64 (MT == T) this is the identity; only fp16/bf16 are affected.
-template <typename T, typename MT>
-__device__ __forceinline__ MT RoundToStorage(MT v) {
-  return static_cast<MT>(static_cast<T>(v));
 }
 
 // Fused CUDA kernel for p=2 norm gradient
