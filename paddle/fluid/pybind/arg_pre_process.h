@@ -82,6 +82,15 @@ void NegativeAxisPreProcess(Value* x, int* axis);
 
 void PixelShufflePreProcess(std::string* data_format);
 
+// Eigh input validation: check shape >= 2D, last two dims equal, UPLO is 'L' or
+// 'U'
+void EighPreProcess(Tensor* x, std::string* UPLO);
+void EighPreProcess(Value* x, std::string* UPLO);
+
+// Cholesky input validation: check shape >= 2D, last two dims equal
+void CholeskyPreProcess(Tensor* x, bool* upper);
+void CholeskyPreProcess(Value* x, bool* upper);
+
 // Inplace API broadcast validation for dygraph
 void InplaceShapePreProcess(Tensor* x, Tensor* y);
 

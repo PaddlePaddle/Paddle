@@ -168,7 +168,7 @@ if(WITH_GPU AND WITH_TESTING)
     DEPS phi common)
   set_tests_properties(
     get_base_ptr_test
-    PROPERTIES ENVIRONMENT "FLAGS_allocator_strategy=auto_growth;
+    PROPERTIES ENVIRONMENT "FLAGS_allocator_strategy=auto_growth; \
                                     FLAGS_use_stream_safe_cuda_allocator=true;")
 endif()
 
@@ -211,6 +211,10 @@ if(WITH_GPU)
     nv_test(
       vmm_auto_growth_best_fit_allocator_v2_test
       SRCS vmm_auto_growth_best_fit_allocator_v2_test.cu
+      DEPS phi common)
+    nv_test(
+      vmm_auto_growth_best_fit_multi_pool_allocator_v2_test
+      SRCS vmm_auto_growth_best_fit_multi_pool_allocator_v2_test.cu
       DEPS phi common)
     if(WITH_TESTING AND TEST vmm_auto_growth_best_fit_allocator_test)
       set_tests_properties(

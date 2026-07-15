@@ -287,6 +287,13 @@
   args_alias :
     use_default_mapping : True
 
+- op : cholesky
+  name : [paddle.cholesky, paddle.linalg.cholesky, paddle.Tensor.cholesky]
+  args_alias :
+    use_default_mapping : True
+  pre_process :
+    func : CholeskyPreProcess(x, upper)
+
 - op : conj
   name: [paddle.conj, paddle.Tensor.conj]
   args_alias :
@@ -325,11 +332,23 @@
     axis1 : [dim1]
     axis2 : [dim2]
 
+- op : det
+  name : [paddle.det, paddle.linalg.det, paddle.Tensor.det]
+  args_alias :
+    x : [input, A]
+
 - op : dot
   name : [paddle.dot, paddle.Tensor.dot]
   args_alias :
     x : [input]
     y : [tensor]
+
+- op : eigh
+  name : [paddle.linalg.eigh, paddle.Tensor.eigh]
+  args_alias :
+    use_default_mapping : True
+  pre_process :
+    func : EighPreProcess(x, UPLO)
 
 - op : erf
   name : [paddle.erf, paddle.Tensor.erf]

@@ -126,7 +126,9 @@ def monkey_patch_tensor():
         attr_not_need_keys = [
             'grad',
             'T',
+            'H',
             'mT',
+            'mH',
             'place',
             '_place_str',
             'data',
@@ -1130,7 +1132,7 @@ def monkey_patch_tensor():
     ) -> Tensor: ...
 
     @framework.dygraph_only
-    @tensor_cuda_decorator()
+    @tensor_cuda_decorator
     def cuda(
         self: Tensor,
         device_id: DeviceLike = None,

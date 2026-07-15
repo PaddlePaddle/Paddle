@@ -359,6 +359,41 @@ class TestCrossOpZeroSizeCPUTest2(TestCrossOpZeroSizeCPUTest):
         self.outputs = {'Out': np.array(z_list).reshape(self.shape)}
 
 
+class TestLinalgCrossDefaultDim(unittest.TestCase):
+    def test_linalg_cross_default_dim(self):
+        # Test that paddle.linalg.cross defaults to dim=-1, not axis=9 auto
+        # Using shape [3, 2, 3] where auto-axis picks dim 0, but dim=-1 picks dim 2
+        paddle.disable_static()
+        np_x = np.random.randn(3, 2, 3).astype('float32')
+        np_y = np.random.randn(3, 2, 3).astype('float32')
+
+        x = paddle.to_tensor(np_x)
+        y = paddle.to_tensor(np_y)
+
+        # linalg.cross with default (should use dim=-1)
+        out_default = paddle.linalg.cross(x, y)
+        # linalg.cross with explicit dim=-1
+        out_neg1 = paddle.linalg.cross(x, y, dim=-1)
+        # linalg.cross with explicit dim=2
+        out_dim2 = paddle.linalg.cross(x, y, dim=2)
+        # linalg.cross with explicit dim=0
+        out_dim0 = paddle.linalg.cross(x, y, dim=0)
+
+        np.testing.assert_allclose(
+            out_default.numpy(), out_neg1.numpy(), rtol=1e-5
+        )
+        np.testing.assert_allclose(
+            out_default.numpy(), out_dim2.numpy(), rtol=1e-5
+        )
+        # dim=0 should give different result when shape is [3, 2, 3]
+        with self.assertRaises(AssertionError):
+            np.testing.assert_allclose(
+                out_default.numpy(), out_dim0.numpy(), rtol=1e-5
+            )
+
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

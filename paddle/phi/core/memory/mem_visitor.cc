@@ -22,9 +22,13 @@
 #include "paddle/phi/core/memory/allocation/spin_lock.h"
 #include "paddle/phi/core/memory/allocation/stat_allocator.h"
 
+#include "glog/logging.h"
+
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/core/memory/allocation/stream_safe_cuda_allocator.h"
 #include "paddle/phi/core/memory/allocation/virtual_memory_auto_growth_best_fit_allocator.h"
+#include "paddle/phi/core/memory/allocation/vmm_auto_growth_best_fit_allocator_v2.h"
+#include "paddle/phi/core/memory/allocation/vmm_auto_growth_best_fit_multi_pool_allocator_v2.h"
 #endif
 
 namespace paddle {
@@ -66,6 +70,20 @@ void AllocatorVisitor::Visit(
     allocator->GetLargeAllocator()->Accept(this);
 }
 
+void AllocatorVisitor::Visit(VMMAutoGrowthBestFitAllocatorV2* allocator) {
+  (void)allocator;
+}
+
+void AllocatorVisitor::Visit(
+    VMMAutoGrowthBestFitMultiPoolAllocatorV2* allocator) {
+  if (allocator->small_allocator()) {
+    allocator->small_allocator()->Accept(this);
+  }
+  if (allocator->large_allocator()) {
+    allocator->large_allocator()->Accept(this);
+  }
+}
+
 void AllocatorComputeStreamVisitor::Visit(StreamSafeCUDAAllocator* allocator) {
   const std::vector<StreamSafeCUDAAllocator*>& allocators =
       allocator->GetAllocatorByPlace();
@@ -82,8 +100,8 @@ void AllocatorComputeStreamVisitor::Visit(StreamSafeCUDAAllocator* allocator) {
 
 void FreeMemoryMetricsVisitor::Visit(
     VirtualMemoryAutoGrowthBestFitAllocator* allocator) {
-  auto [large_size, sum_size] =
-      allocator->SumLargestFreeBlockSizes(nums_blocks_);
+  const size_t num_blocks = static_cast<size_t>(std::max(nums_blocks_, 0));
+  auto [large_size, sum_size] = allocator->SumLargestFreeBlockSizes(num_blocks);
   large_size_ = std::max(large_size_, large_size);
   sum_size_ = std::max(sum_size_, sum_size);
 }
@@ -105,6 +123,18 @@ void VMMFreeBlocksInfoVisitor::Visit(
   }
   if (!keys.empty()) {
     free_blocks_info_.push_back(keys);
+  }
+}
+
+void AllBlocksInfoVisitor::Visit(
+    VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator* allocator) {
+  if (pool_filter_ != PoolFilter::kLargeOnly) {
+    if (allocator->GetSmallAllocator())
+      allocator->GetSmallAllocator()->Accept(this);
+  }
+  if (pool_filter_ != PoolFilter::kSmallOnly) {
+    if (allocator->GetLargeAllocator())
+      allocator->GetLargeAllocator()->Accept(this);
   }
 }
 
@@ -158,6 +188,34 @@ void VmmTensorPartsVisitor::Visit(
     return;
   }
   allocator->GetUnderLyingAllocator()->Accept(this);
+}
+
+void VmmTensorPartsVisitor::Visit(VMMAutoGrowthBestFitAllocatorV2* allocator) {
+  if (found_) {
+    return;
+  }
+  std::vector<BlockPart> parts;
+  if (allocator->CollectTensorParts(
+          target_ptr_, target_size_, &parts, mark_ipc_exported_)) {
+    found_ = true;
+    parts_ = std::move(parts);
+  }
+}
+
+void VmmTensorPartsVisitor::Visit(
+    VMMAutoGrowthBestFitMultiPoolAllocatorV2* allocator) {
+  if (found_) {
+    return;
+  }
+  if (allocator->small_allocator()) {
+    allocator->small_allocator()->Accept(this);
+  }
+  if (found_) {
+    return;
+  }
+  if (allocator->large_allocator()) {
+    allocator->large_allocator()->Accept(this);
+  }
 }
 #endif
 }  // namespace memory
