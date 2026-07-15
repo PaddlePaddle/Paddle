@@ -356,6 +356,7 @@ TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2,
   ASSERT_TRUE(small_visitor.Found());
   ASSERT_EQ(small_visitor.Parts().size(), 1UL);
   EXPECT_EQ(small_visitor.Parts()[0].len, small->size());
+  EXPECT_EQ(small_visitor.Parts()[0].chunk->shared_fd, -1);
 
   paddle::memory::VmmTensorPartsVisitor large_visitor(
       large->ptr(), large->size(), false);
@@ -363,6 +364,7 @@ TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2,
   ASSERT_TRUE(large_visitor.Found());
   ASSERT_EQ(large_visitor.Parts().size(), 1UL);
   EXPECT_EQ(large_visitor.Parts()[0].len, large->size());
+  EXPECT_EQ(large_visitor.Parts()[0].chunk->shared_fd, -1);
 
   allocator->Accept(&large_visitor);
   ASSERT_TRUE(large_visitor.Found());

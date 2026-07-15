@@ -514,6 +514,7 @@ void CUDAVirtualMemAllocatorV2::FreeImpl(phi::Allocation* allocation) {
       continue;
     }
     PADDLE_ENFORCE_GPU_SUCCESS(release_status);
+    CloseIPCExportFD(handle->handle());
     backing_map_.MarkUnmapped(handle->base(), handle->size());
     backing_map_.MarkReleased(handle->base(), handle->handle(), handle->size());
   }
@@ -833,6 +834,7 @@ CUDAVirtualMemAllocatorV2::ForceReleaseRemapSource(
   auto release_status =
       platform::RecordedGpuMemRelease(handle, size, place_.device);
   if (release_status == CUDA_SUCCESS) {
+    CloseIPCExportFD(handle);
     backing_map_.MarkReleased(original_va, handle, size);
   } else {
     VLOG(3) << "RestoreRemapSourceMapping: force-release after "
@@ -1017,22 +1019,45 @@ bool CUDAVirtualMemAllocatorV2::CollectIPCParts(
     return false;
   }
   if (ipc_parts != nullptr) {
-    std::vector<BlockPart> collected;
-    collected.reserve(descriptors.size());
-    for (const auto& descriptor : descriptors) {
-      auto chunk = std::make_shared<VmmChunkMeta>(VmmChunkMeta{
-          descriptor.handle_base,
-          descriptor.handle_size,
-          descriptor.handle,
-          descriptor.device,
-          GetOrCreateIPCExportFD(descriptor.handle),
-      });
-      collected.push_back(BlockPart{
-          std::move(chunk), descriptor.handle_rel_off, descriptor.len});
-    }
-    *ipc_parts = std::move(collected);
+    BuildIPCParts(descriptors, false, ipc_parts);
   }
   return true;
+}
+
+bool CUDAVirtualMemAllocatorV2::ExportIPCParts(
+    VMMDevicePtr ptr, size_t size, std::vector<BlockPart>* ipc_parts) {
+  std::vector<IPCPartDescriptor> descriptors;
+  if (!backing_map_.CollectIPCPartDescriptors(
+          ptr, size, ipc_parts != nullptr ? &descriptors : nullptr)) {
+    return false;
+  }
+  backing_map_.MarkIPCExported(ptr, size);
+  if (ipc_parts != nullptr) {
+    BuildIPCParts(descriptors, true, ipc_parts);
+  }
+  return true;
+}
+
+void CUDAVirtualMemAllocatorV2::BuildIPCParts(
+    const std::vector<IPCPartDescriptor>& descriptors,
+    bool include_shared_fd,
+    std::vector<BlockPart>* ipc_parts) const {
+  std::vector<BlockPart> collected;
+  collected.reserve(descriptors.size());
+  for (const auto& descriptor : descriptors) {
+    const int shared_fd =
+        include_shared_fd ? GetOrCreateIPCExportFD(descriptor.handle) : -1;
+    auto chunk = std::make_shared<VmmChunkMeta>(VmmChunkMeta{
+        descriptor.handle_base,
+        descriptor.handle_size,
+        descriptor.handle,
+        descriptor.device,
+        shared_fd,
+    });
+    collected.push_back(
+        BlockPart{std::move(chunk), descriptor.handle_rel_off, descriptor.len});
+  }
+  *ipc_parts = std::move(collected);
 }
 
 int CUDAVirtualMemAllocatorV2::GetOrCreateIPCExportFD(
@@ -1058,12 +1083,24 @@ int CUDAVirtualMemAllocatorV2::GetOrCreateIPCExportFD(
 #endif
 }
 
-bool CUDAVirtualMemAllocatorV2::MarkIPCExported(VMMDevicePtr ptr, size_t size) {
-  if (!IsReservedVARange(ptr, size)) {
-    return false;
+void CUDAVirtualMemAllocatorV2::CloseIPCExportFD(VMMAllocHandle handle) const {
+#if defined(__linux__)
+  int fd = -1;
+  {
+    std::lock_guard<SpinLock> guard(ipc_export_lock_);
+    auto found = ipc_export_fds_.find(handle);
+    if (found == ipc_export_fds_.end()) {
+      return;
+    }
+    fd = found->second;
+    ipc_export_fds_.erase(found);
   }
-  backing_map_.MarkIPCExported(ptr, size);
-  return true;
+  if (fd >= 0) {
+    ::close(fd);
+  }
+#else
+  (void)handle;
+#endif
 }
 
 bool CUDAVirtualMemAllocatorV2::SetBlockRemapEvent(

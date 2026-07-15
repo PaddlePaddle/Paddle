@@ -663,8 +663,11 @@ bool VMMAutoGrowthBestFitAllocatorV2::CollectTensorParts(
 
   std::vector<BlockPart> collected;
   auto collect_ipc_parts = [&] {
-    return underlying_allocator_->CollectIPCParts(
-        target_va, size, parts != nullptr ? &collected : nullptr);
+    auto* output = parts != nullptr ? &collected : nullptr;
+    return mark_ipc_exported
+               ? underlying_allocator_->ExportIPCParts(target_va, size, output)
+               : underlying_allocator_->CollectIPCParts(
+                     target_va, size, output);
   };
   if (!collect_ipc_parts()) {
     const size_t cleared =
@@ -675,13 +678,6 @@ bool VMMAutoGrowthBestFitAllocatorV2::CollectTensorParts(
     }
     if (cleared == 0 || !collect_ipc_parts()) {
       VLOG(4) << "VMM V2 IPC backing lookup failed for " << ptr
-              << " size=" << size;
-      return false;
-    }
-  }
-  if (mark_ipc_exported) {
-    if (!underlying_allocator_->MarkIPCExported(target_va, size)) {
-      VLOG(4) << "VMM V2 IPC export marking failed for " << ptr
               << " size=" << size;
       return false;
     }

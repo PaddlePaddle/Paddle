@@ -1351,7 +1351,7 @@ TEST(CUDAVirtualMemAllocatorV2, RemapTransactionStateGuards) {
   EXPECT_EQ(merged->size(), 2UL * handle_size);
 }
 
-TEST(CUDAVirtualMemAllocatorV2, CollectsAndPinsIPCBlockBacking) {
+TEST(CUDAVirtualMemAllocatorV2, CollectsMetadataAndExportsIPCBlockBacking) {
   CUDAVirtualMemAllocatorV2 allocator(
       phi::GPUPlace(), 2UL << 20, PoolType::kLarge);
 
@@ -1375,18 +1375,33 @@ TEST(CUDAVirtualMemAllocatorV2, CollectsAndPinsIPCBlockBacking) {
   EXPECT_EQ(ipc_parts[0].chunk->base, pages[0].va);
   EXPECT_EQ(ipc_parts[0].chunk->size, allocator.handle_size());
   EXPECT_EQ(ipc_parts[0].chunk->handle, pages[0].handle);
+  EXPECT_EQ(ipc_parts[0].chunk->shared_fd, -1);
   EXPECT_EQ(ipc_parts[0].chunk_rel_off, 128UL);
   EXPECT_EQ(ipc_parts[0].len, allocator.handle_size() - 128);
   EXPECT_EQ(ipc_parts[1].chunk->base, pages[1].va);
+  EXPECT_EQ(ipc_parts[1].chunk->shared_fd, -1);
   EXPECT_EQ(ipc_parts[1].chunk_rel_off, 0UL);
   EXPECT_EQ(ipc_parts[1].len, 2048UL);
+  EXPECT_TRUE(allocator.ipc_export_fds_.empty());
 
   EXPECT_TRUE(allocator.IsRangeReleasable(block.begin_va(), block.size()));
-  ASSERT_TRUE(allocator.MarkIPCExported(block.begin_va(), block.size()));
+  ASSERT_TRUE(
+      allocator.ExportIPCParts(block.begin_va(), block.size(), &ipc_parts));
   EXPECT_TRUE(allocator.HasIPCExportedRange(block.begin_va(), block.size()));
   EXPECT_FALSE(allocator.IsRangeReleasable(block.begin_va(), block.size()));
   EXPECT_EQ(allocator.CountIPCExportedBytes({{block.begin_va(), block.size()}}),
             block.size());
+#if defined(__linux__)
+  ASSERT_EQ(allocator.ipc_export_fds_.size(), 2UL);
+  ASSERT_GE(ipc_parts[0].chunk->shared_fd, 0);
+  ASSERT_GE(ipc_parts[1].chunk->shared_fd, 0);
+  const int first_fd = ipc_parts[0].chunk->shared_fd;
+  const int second_fd = ipc_parts[1].chunk->shared_fd;
+  ASSERT_TRUE(
+      allocator.ExportIPCParts(block.begin_va(), block.size(), &ipc_parts));
+  EXPECT_EQ(ipc_parts[0].chunk->shared_fd, first_fd);
+  EXPECT_EQ(ipc_parts[1].chunk->shared_fd, second_fd);
+#endif
 
   ASSERT_NE(pages[0].meta, nullptr);
   pages[0].meta->MarkOwnedByRemapDestination();
@@ -1402,10 +1417,13 @@ TEST(CUDAVirtualMemAllocatorV2, CollectsAndPinsIPCBlockBacking) {
       PoolType::kLarge);
   EXPECT_FALSE(allocator.CollectIPCParts(
       invalid_block.begin_va(), invalid_block.size(), &ipc_parts));
-  EXPECT_FALSE(allocator.MarkIPCExported(invalid_block.begin_va(),
-                                         invalid_block.size()));
+  EXPECT_FALSE(allocator.ExportIPCParts(
+      invalid_block.begin_va(), invalid_block.size(), &ipc_parts));
   EXPECT_FALSE(allocator.HasIPCExportedRange(invalid_block.begin_va(),
                                              invalid_block.size()));
+
+  allocation_with_block.allocation.reset();
+  EXPECT_TRUE(allocator.ipc_export_fds_.empty());
 }
 
 TEST(CUDAVirtualMemAllocatorV2, LazyPendingStreamBlocksRemapAndRelease) {

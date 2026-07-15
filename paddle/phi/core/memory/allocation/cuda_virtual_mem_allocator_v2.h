@@ -168,10 +168,14 @@ class CUDAVirtualMemAllocatorV2 : public Allocator {
       const std::vector<std::pair<VMMDevicePtr, size_t>>& ranges) const;
   bool IsRangeUnmapped(VMMDevicePtr ptr, size_t size) const;
   bool IsRangeReleasable(VMMDevicePtr ptr, size_t size) const;
+  // Metadata-only lookup. This does not pin backing or create export FDs.
   bool CollectIPCParts(VMMDevicePtr ptr,
                        size_t size,
                        std::vector<BlockPart>* ipc_parts) const;
-  bool MarkIPCExported(VMMDevicePtr ptr, size_t size);
+  // Validate and pin the backing before creating reusable export FDs.
+  bool ExportIPCParts(VMMDevicePtr ptr,
+                      size_t size,
+                      std::vector<BlockPart>* ipc_parts);
   bool SetBlockRemapEvent(const BlockV2& block,
                           gpuStream_t stream,
                           std::shared_ptr<CUDAEventGuard> event);
@@ -197,7 +201,11 @@ class CUDAVirtualMemAllocatorV2 : public Allocator {
  private:
   void InitOnce();
   bool IsReservedVARange(VMMDevicePtr ptr, size_t size) const;
+  void BuildIPCParts(const std::vector<IPCPartDescriptor>& descriptors,
+                     bool include_shared_fd,
+                     std::vector<BlockPart>* ipc_parts) const;
   int GetOrCreateIPCExportFD(VMMAllocHandle handle) const;
+  void CloseIPCExportFD(VMMAllocHandle handle) const;
   bool SetRemapEvent(VMMDevicePtr ptr,
                      size_t size,
                      gpuStream_t stream,
