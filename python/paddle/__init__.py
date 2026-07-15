@@ -72,7 +72,6 @@ def _preload_nvidia_lib(lib_glob, sub_dirs=None):
 
 
 if __is_metainfo_generated:
-    import builtins
     import platform
 
     if platform.system() == 'Linux':
@@ -82,11 +81,15 @@ if __is_metainfo_generated:
                 with_pip_cuda_libraries,
             )
 
-            if with_pip_cuda_libraries == 'ON' and (
-                platform.machine() in ('x86_64', 'AMD64')
-                or (
-                    platform.machine() == 'aarch64'
-                    and builtins.float(_cuda_version) >= 13.0
+            if (
+                _cuda_version != 'False'
+                and with_pip_cuda_libraries == 'ON'
+                and (
+                    platform.machine() in ('x86_64', 'AMD64')
+                    or (
+                        platform.machine() == 'aarch64'
+                        and int(_cuda_version.split('.')[0]) >= 13
+                    )
                 )
             ):
                 _preload_nvidia_lib('libcublasLt.so.*[0-9]', ['cublas'])
@@ -879,21 +882,23 @@ if is_compiled_with_cinn():
     data_file_path = resources.files('paddle.cinn_config')
     os.environ['CINN_CONFIG_PATH'] = str(data_file_path)
 
-if __is_metainfo_generated and is_compiled_with_cuda():
-    import builtins
+if (
+    __is_metainfo_generated
+    and is_compiled_with_cuda()
+    and not is_compiled_with_rocm()
+):
     import os
     import platform
 
     from .version import cuda_version as _cuda_version, with_pip_cuda_libraries
 
+    cuda_major = int(_cuda_version.split('.')[0])
+
     if (
         platform.system() == 'Linux'
         and (
             platform.machine() in ('x86_64', 'AMD64')
-            or (
-                platform.machine() == 'aarch64'
-                and builtins.float(_cuda_version) >= 13.0
-            )
+            or (platform.machine() == 'aarch64' and cuda_major >= 13)
         )
         and with_pip_cuda_libraries == 'ON'
     ):
@@ -901,8 +906,7 @@ if __is_metainfo_generated and is_compiled_with_cuda():
         nvidia_package_path = package_dir + "/.." + "/nvidia"
         set_flags({"FLAGS_nvidia_package_dir": nvidia_package_path})
 
-        if builtins.float(_cuda_version) >= 13.0:
-            cuda_major = _cuda_version.split('.')[0]
+        if cuda_major >= 13:
             cuda_lib_path = os.path.join(
                 nvidia_package_path, f'cu{cuda_major}', 'lib'
             )
@@ -943,7 +947,7 @@ if __is_metainfo_generated and is_compiled_with_cuda():
         set_flags({"FLAGS_nccl_dir": nccl_lib_path})
 
         if is_compiled_with_cinn():
-            if builtins.float(_cuda_version) >= 13.0:
+            if cuda_major >= 13:
                 cuda_cccl_path = os.path.join(
                     nvidia_package_path, f'cu{cuda_major}', 'include'
                 )
