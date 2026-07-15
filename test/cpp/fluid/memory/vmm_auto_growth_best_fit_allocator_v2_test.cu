@@ -1018,17 +1018,24 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, CompactRollsBackCommitException) {
 
   auto first = allocator.Allocate(handle_size);
   auto middle = allocator.Allocate(handle_size);
+  auto separator = allocator.Allocate(handle_size);
   auto last = allocator.Allocate(handle_size);
   ASSERT_NE(first, nullptr);
   ASSERT_NE(middle, nullptr);
+  ASSERT_NE(separator, nullptr);
   ASSERT_NE(last, nullptr);
   MarkRemapSafeForTest(middle.get());
   auto* middle_ptr = middle->ptr();
+  auto* last_ptr = last->ptr();
   middle.reset();
+  last.reset();
 
   auto source_pages = underlying->CollectRemapSourcePages(
       {{reinterpret_cast<VMMDevicePtr>(middle_ptr), handle_size}}, handle_size);
   ASSERT_EQ(source_pages.size(), 1UL);
+  const VMMDevicePtr destination_va =
+      underlying->virtual_mem_base() + underlying->tail_offset();
+  const size_t tail_offset = underlying->tail_offset();
 
   FreeBlockRemapCompactor compactor(
       underlying, PoolType::kLarge, [](std::vector<DecoratedAllocationPtr>*) {
@@ -1038,8 +1045,82 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, CompactRollsBackCommitException) {
       compactor.Compact(&allocator.all_blocks_, handle_size, source_pages),
       std::runtime_error);
 
+  EXPECT_EQ(underlying->tail_offset(), tail_offset);
+  EXPECT_TRUE(underlying->IsRangeUnmapped(destination_va, handle_size));
+  for (const auto& block : allocator.all_blocks()) {
+    EXPECT_FALSE(block.ContainsVARange(destination_va, handle_size));
+  }
+  allocator.RebuildFreeBlockIndex();
+  ASSERT_EQ(allocator.free_blocks_.size(), 2UL);
+  EXPECT_TRUE(allocator.unmapped_free_blocks_.empty());
+  const auto* restored_source = FindBlockByPtr(allocator, middle_ptr);
+  ASSERT_NE(restored_source, nullptr);
+  EXPECT_TRUE(restored_source->IsMappedFree());
+  const auto* original_tail = FindBlockByPtr(allocator, last_ptr);
+  ASSERT_NE(original_tail, nullptr);
+  EXPECT_TRUE(original_tail->IsMappedFree());
+  EXPECT_EQ(original_tail->size_, handle_size);
+
   auto reused = allocator.Allocate(handle_size);
   ASSERT_NE(reused, nullptr);
+  EXPECT_EQ(reused->ptr(), middle_ptr);
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2,
+     CompactRestoresUnmappedGapAfterCommitException) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+  const size_t handle_size = underlying->handle_size();
+
+  auto source = allocator.Allocate(handle_size);
+  auto gap = allocator.Allocate(handle_size);
+  auto anchor = allocator.Allocate(handle_size);
+  ASSERT_NE(source, nullptr);
+  ASSERT_NE(gap, nullptr);
+  ASSERT_NE(anchor, nullptr);
+  auto* source_ptr = source->ptr();
+  auto* gap_ptr = gap->ptr();
+
+  gap.reset();
+  ASSERT_EQ(allocator.Release(phi::GPUPlace()), handle_size);
+  MarkRemapSafeForTest(source.get());
+  source.reset();
+
+  auto source_pages = underlying->CollectRemapSourcePages(
+      {{reinterpret_cast<VMMDevicePtr>(source_ptr), handle_size}}, handle_size);
+  ASSERT_EQ(source_pages.size(), 1UL);
+
+  const VMMDevicePtr terminal_va = underlying->virtual_mem_base() +
+                                   underlying->virtual_mem_size() - handle_size;
+  allocator.all_blocks_.push_back(
+      BlockV2::MakeMappedBlock(BlockType::kActive,
+                               reinterpret_cast<void*>(terminal_va),
+                               handle_size,
+                               PoolType::kLarge));
+
+  FreeBlockRemapCompactor compactor(
+      underlying, PoolType::kLarge, [](std::vector<DecoratedAllocationPtr>*) {
+        throw std::runtime_error("injected compact commit failure");
+      });
+  EXPECT_THROW(
+      compactor.Compact(&allocator.all_blocks_, handle_size, source_pages),
+      std::runtime_error);
+
+  EXPECT_TRUE(underlying->IsRangeUnmapped(
+      reinterpret_cast<VMMDevicePtr>(gap_ptr), handle_size));
+  const auto* restored_gap = FindBlockByPtr(allocator, gap_ptr);
+  ASSERT_NE(restored_gap, nullptr);
+  EXPECT_TRUE(restored_gap->IsUnmappedFree());
+  const auto* restored_source = FindBlockByPtr(allocator, source_ptr);
+  ASSERT_NE(restored_source, nullptr);
+  EXPECT_TRUE(restored_source->IsMappedFree());
+
+  allocator.RebuildFreeBlockIndex();
+  ASSERT_EQ(allocator.free_blocks_.size(), 1UL);
+  ASSERT_EQ(allocator.unmapped_free_blocks_.size(), 1UL);
+  EXPECT_EQ(allocator.free_blocks_.begin()->second->ptr_, source_ptr);
+  EXPECT_EQ(allocator.unmapped_free_blocks_.begin()->second->ptr_, gap_ptr);
 }
 
 TEST(VMMAutoGrowthBestFitAllocatorV2, BoundedCompactSkipsLargeFreeBlock) {

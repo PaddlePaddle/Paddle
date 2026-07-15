@@ -813,6 +813,7 @@ RemapTransaction::CompactResult RemapTransaction::CompactFreeBlocks(
     PoolType pool_type,
     const SourcePages& source_pages) {
   CompactResult result;
+  blocks_ = blocks;
   rollback_source_mappings_ = {};
 
   VMMDevicePtr tail_va = vmm_allocator_->virtual_mem_base();
@@ -912,7 +913,8 @@ RemapTransaction::ReplaceUnmappedRangeWithMappedFree(BlockList* blocks,
 void RemapTransaction::InstallDestination(BlockList* blocks,
                                           const DestinationPlacement& placement,
                                           BlockV2 mapped_free_block,
-                                          PoolType pool_type) const {
+                                          PoolType pool_type) {
+  RecordDestinationBlockRollbackRange(placement);
   if (placement.is_tail) {
     InstallTailFreeBlock(blocks, std::move(mapped_free_block));
     return;
@@ -1028,6 +1030,29 @@ bool RemapTransaction::ReplaceRangeWithUnmappedFree(BlockList* blocks,
   return false;
 }
 
+bool RemapTransaction::RemoveTailDestinationBlock(BlockList* blocks,
+                                                  VMMDevicePtr va,
+                                                  size_t size) {
+  const VMMDevicePtr end = va + size;
+  for (auto it = blocks->begin(); it != blocks->end(); ++it) {
+    if (it->end_va() <= va || it->begin_va() >= end) {
+      continue;
+    }
+    if (!it->IsMappedFree() || !it->ContainsVARange(va, size) ||
+        it->end_va() != end) {
+      return false;
+    }
+    if (it->begin_va() == va) {
+      blocks->erase(it);
+    } else {
+      it->TrimToPrefix(va - it->begin_va());
+    }
+    return true;
+  }
+  // Installation may have failed before the tail block view was added.
+  return true;
+}
+
 void RemapTransaction::RestoreRemappedSourcesToFreeBlocks(
     BlockList* blocks, const SourcePages& source_pages) {
   if (source_pages.empty()) {
@@ -1081,6 +1106,12 @@ void RemapTransaction::RecordDestinationRollbackRange(VMMDevicePtr dst,
   destination_rollback_ranges_.push_back({dst, handle_count});
 }
 
+void RemapTransaction::RecordDestinationBlockRollbackRange(
+    const DestinationPlacement& placement) {
+  destination_block_rollback_ranges_.push_back(
+      {placement.dst, placement.count * handle_size_, placement.is_tail});
+}
+
 void RemapTransaction::DiscardDestinationRollbackRange(VMMDevicePtr dst,
                                                        size_t size) {
   const VMMDevicePtr end = dst + size;
@@ -1093,6 +1124,13 @@ void RemapTransaction::DiscardDestinationRollbackRange(VMMDevicePtr dst,
                        return range.va >= dst && range_end <= end;
                      }),
       destination_rollback_ranges_.end());
+  destination_block_rollback_ranges_.erase(
+      std::remove_if(destination_block_rollback_ranges_.begin(),
+                     destination_block_rollback_ranges_.end(),
+                     [&](const DestinationBlockRollbackRange& range) {
+                       return range.va >= dst && range.va + range.size <= end;
+                     }),
+      destination_block_rollback_ranges_.end());
 }
 
 void RemapTransaction::Commit() {
@@ -1187,7 +1225,9 @@ void RemapTransaction::Commit() {
     }
   }
   destination_rollback_ranges_.clear();
+  destination_block_rollback_ranges_.clear();
   rollback_source_mappings_ = {};
+  blocks_ = nullptr;
   completed_ = true;
 }
 
@@ -1201,10 +1241,15 @@ void RemapTransaction::Rollback() {
     vmm_allocator_->DestroyStagedDestinationAllocation(allocation);
   }
   RollbackDestinations();
+  RollbackDestinationBlockViews();
   if (rollback_source_mappings_) {
     rollback_source_mappings_();
   }
+  if (blocks_ != nullptr) {
+    NormalizeBlocks(blocks_);
+  }
   rollback_source_mappings_ = {};
+  blocks_ = nullptr;
   completed_ = true;
 }
 
@@ -1217,6 +1262,33 @@ void RemapTransaction::RollbackDestinations() {
   destination_rollback_ranges_.clear();
 }
 
+void RemapTransaction::RollbackDestinationBlockViews() {
+  if (destination_block_rollback_ranges_.empty()) {
+    return;
+  }
+  PADDLE_ENFORCE_NOT_NULL(
+      blocks_,
+      common::errors::PreconditionNotMet(
+          "A VMM remap transaction has destination block views to roll back, "
+          "but its block list is unavailable."));
+  for (auto it = destination_block_rollback_ranges_.rbegin();
+       it != destination_block_rollback_ranges_.rend();
+       ++it) {
+    const bool restored =
+        it->is_tail ? RemoveTailDestinationBlock(blocks_, it->va, it->size)
+                    : ReplaceRangeWithUnmappedFree(blocks_, it->va, it->size);
+    PADDLE_ENFORCE_EQ(
+        restored,
+        true,
+        common::errors::PreconditionNotMet(
+            "The VMM remap destination block view at %p with size %zu could "
+            "not be restored during transaction rollback.",
+            reinterpret_cast<void*>(it->va),
+            it->size));
+  }
+  destination_block_rollback_ranges_.clear();
+}
+
 void RemapTransaction::StageDestinationAllocation(Allocation* allocation) {
   pending_destination_allocations_.emplace_back(allocation);
 }
@@ -1224,6 +1296,7 @@ void RemapTransaction::StageDestinationAllocation(Allocation* allocation) {
 bool RemapTransaction::HasPendingState() const {
   return !pending_destination_allocations_.empty() ||
          !destination_rollback_ranges_.empty() ||
+         !destination_block_rollback_ranges_.empty() ||
          static_cast<bool>(rollback_source_mappings_);
 }
 

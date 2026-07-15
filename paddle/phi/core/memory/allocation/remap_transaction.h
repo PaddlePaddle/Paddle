@@ -40,6 +40,11 @@ class RemapTransaction {
     VMMDevicePtr va{0};
     size_t handle_count{0};
   };
+  struct DestinationBlockRollbackRange {
+    VMMDevicePtr va{0};
+    size_t size{0};
+    bool is_tail{false};
+  };
   struct SourceCollectionStats {
     size_t free_block_count{0};
     size_t safe_block_count{0};
@@ -238,7 +243,7 @@ class RemapTransaction {
   void InstallDestination(BlockList* blocks,
                           const DestinationPlacement& placement,
                           BlockV2 mapped_free_block,
-                          PoolType pool_type) const;
+                          PoolType pool_type);
   void MergeAdjacentFreeBlocks(BlockList* blocks) const;
   void MergeAdjacentUnmappedFreeBlocks(BlockList* blocks) const;
   void NormalizeBlocks(BlockList* blocks) const;
@@ -248,6 +253,9 @@ class RemapTransaction {
   bool ReplaceRangeWithUnmappedFree(BlockList* blocks,
                                     VMMDevicePtr va,
                                     size_t size);
+  bool RemoveTailDestinationBlock(BlockList* blocks,
+                                  VMMDevicePtr va,
+                                  size_t size);
   void RestoreRemappedSourcesToFreeBlocks(BlockList* blocks,
                                           const SourcePages& source_pages);
   void Commit();
@@ -257,10 +265,13 @@ class RemapTransaction {
   // Record successfully mapped destination ranges so later bookkeeping
   // failures can still unmap every destination owned by this transaction.
   void RecordDestinationRollbackRange(VMMDevicePtr dst, size_t handle_count);
+  void RecordDestinationBlockRollbackRange(
+      const DestinationPlacement& placement);
   // Stop transaction rollback from unmapping a destination after its cleanup
   // ownership has been transferred to the underlying allocation registry.
   void DiscardDestinationRollbackRange(VMMDevicePtr dst, size_t size);
   void RollbackDestinations();
+  void RollbackDestinationBlockViews();
   void StageDestinationAllocation(Allocation* allocation);
   bool HasPendingState() const;
 
@@ -270,8 +281,10 @@ class RemapTransaction {
   CanPrepareDestinationRangeFn can_prepare_destination_range_;
   PrepareDestinationRangeFn prepare_destination_range_;
   std::vector<DestinationRollbackRange> destination_rollback_ranges_;
+  std::vector<DestinationBlockRollbackRange> destination_block_rollback_ranges_;
   RollbackSourceMappingsFn rollback_source_mappings_;
   std::vector<Allocation*> pending_destination_allocations_;
+  BlockList* blocks_{nullptr};
   bool completed_{false};
 };
 

@@ -565,8 +565,15 @@ size_t VMMAutoGrowthBestFitAllocatorV2::RemapForAllocation(
                                     can_prepare_destination_range,
                                     prepare_destination_range);
   const auto compactor_start = Clock::now();
-  const size_t remapped =
-      compactor.Compact(&all_blocks_, remap_target, source_pages);
+  size_t remapped = 0;
+  try {
+    remapped = compactor.Compact(&all_blocks_, remap_target, source_pages);
+  } catch (...) {
+    // Remap can replace list nodes before ownership commit. Rebuild both
+    // indexes after transaction rollback before propagating the failure.
+    RebuildFreeBlockIndex();
+    throw;
+  }
   const uint64_t compactor_us = ElapsedMicros(compactor_start, Clock::now());
   // Source movement may replace FREE blocks with UNMAPPED-FREE/FREE segments
   // before destination setup fails. Rebuild to avoid stale index iterators.
