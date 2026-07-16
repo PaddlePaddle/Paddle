@@ -20,6 +20,8 @@
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_fp16.h>
 #endif
+#include <type_traits>
+
 #include "paddle/common/ddim.h"
 #include "paddle/phi/kernels/funcs/fast_divmod.h"
 
@@ -39,9 +41,15 @@ struct alignas(sizeof(T) * VecSize) VectorType {
  * index of the output data. if input or output shape is [dim0, dim1] then dims
  * must be [dim1, dim0].
  */
+template <typename IndexT = int64_t>
 struct BroadcastConfig {
-  funcs::FastDivMod<int> divmoders[DDim::kMaxRank];
-  uint64_t strides[DDim::kMaxRank];
+  // FastDivMod has a 32-bit primary template and a 64-bit int64_t
+  // specialization (there is no unsigned specialization), so pick the matching
+  // signed divmod type according to the index width.
+  using DivModT = std::conditional_t<(sizeof(IndexT) > 4), int64_t, int>;
+
+  funcs::FastDivMod<DivModT> divmoders[DDim::kMaxRank];
+  IndexT strides[DDim::kMaxRank];
   int rank{0};
 
   // BroadcastConfig should be defined on host used on device.
@@ -51,7 +59,7 @@ struct BroadcastConfig {
                   const std::vector<int64_t>& in_dims,
                   int dim_size) {
     for (int i = 0; i < dim_size; ++i) {
-      divmoders[i] = funcs::FastDivMod<int>(out_dims[i]);
+      divmoders[i] = funcs::FastDivMod<DivModT>(out_dims[i]);
     }
 
     for (int i = 0; i < dim_size; ++i) {
@@ -59,8 +67,8 @@ struct BroadcastConfig {
       strides[i] = (i != 0 && strides[i] != 0)
                        ? std::accumulate(in_dims.begin(),
                                          in_dims.begin() + i,
-                                         1,
-                                         std::multiplies<int64_t>())
+                                         IndexT{1},
+                                         std::multiplies<IndexT>())
                        : strides[i];
     }
     rank = dim_size;
@@ -408,23 +416,25 @@ __device__ __forceinline__ void ReadData(ArgsT* dst,
  * stride_nx: Each read one element stride stride_nx elements in the last dim.
  * stride_ny: Each read one element stride stride_ny elements in the first dim.
  */
-template <typename T, int NX, int NY, bool IsBoundary = false>
+template <typename T, typename IndexT, int NX, int NY, bool IsBoundary = false>
 __device__ __forceinline__ void ReadDataBc(
     T* dst,
     const T* __restrict__ src,
-    uint32_t block_offset,
-    const details::BroadcastConfig& config,
-    int total_num_output,
+    IndexT block_offset,
+    const details::BroadcastConfig<IndexT>& config,
+    IndexT total_num_output,
     int stride_nx,
     int stride_ny) {
-  uint32_t thread_offset = block_offset + threadIdx.x;
-  uint32_t index_src = 0;
+  IndexT thread_offset = block_offset + static_cast<IndexT>(threadIdx.x);
+  IndexT index_src = 0;
 
 #pragma unroll
   for (int ny = 0; ny < NY; ++ny) {
 #pragma unroll
     for (uint32_t nx = 0; nx < NX; ++nx) {
-      uint32_t index_output = thread_offset + ny * stride_ny + nx * stride_nx;
+      IndexT index_output = thread_offset +
+                            static_cast<IndexT>(ny) * stride_ny +
+                            static_cast<IndexT>(nx) * stride_nx;
       index_src = 0;
       if (IsBoundary) {
         if (index_output >= total_num_output) {
@@ -744,20 +754,20 @@ __device__ __forceinline__ void Init(T* dst, T* init_data, int num) {
  * coordinate mapping relationship between output data and input data.
  * total_num_output: Total number of original output.
  */
-template <typename T, int NX, int NY, bool IsBoundary = false>
+template <typename T, typename IndexT, int NX, int NY, bool IsBoundary = false>
 __device__ __forceinline__ void ReadDataBc(
     T* dst,
     const T* __restrict__ src,
-    uint32_t block_offset,
-    const details::BroadcastConfig& config,
-    int total_num_output,
+    IndexT block_offset,
+    const details::BroadcastConfig<IndexT>& config,
+    IndexT total_num_output,
     int read_lens = NX) {
-  uint32_t thread_offset = block_offset + threadIdx.x * NX;
-  uint32_t index_src = 0;
+  IndexT thread_offset = block_offset + static_cast<IndexT>(threadIdx.x) * NX;
+  IndexT index_src = 0;
 
 #pragma unroll
   for (uint32_t nx = 0; nx < NX; ++nx) {
-    uint32_t index_output = thread_offset + nx;
+    IndexT index_output = thread_offset + nx;
     index_src = 0;
     if (IsBoundary) {
       if (index_output >= total_num_output) {
@@ -801,6 +811,7 @@ __device__ __forceinline__ void ReadDataBc(
  */
 
 template <typename T,
+          typename IndexT,
           int NX,
           int NY,
           typename ArgsT,
@@ -809,16 +820,16 @@ template <typename T,
 __device__ __forceinline__ void ReadDataBc(
     ArgsT* dst,
     const T* __restrict__ src,
-    uint32_t block_offset,
-    const details::BroadcastConfig& config,
-    int total_num_output,
+    IndexT block_offset,
+    const details::BroadcastConfig<IndexT>& config,
+    IndexT total_num_output,
     int read_lens = NX) {
-  uint32_t thread_offset = block_offset + threadIdx.x * NX;
-  uint32_t index_src = 0;
+  IndexT thread_offset = block_offset + static_cast<IndexT>(threadIdx.x) * NX;
+  IndexT index_src = 0;
 
 #pragma unroll
   for (uint32_t nx = 0; nx < NX; ++nx) {
-    uint32_t index_output = thread_offset + nx;
+    IndexT index_output = thread_offset + nx;
     index_src = 0;
     if (IsBoundary) {
       if (index_output >= total_num_output) {
