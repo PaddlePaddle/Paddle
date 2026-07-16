@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstdlib>
+#include <iostream>
+#include <string>
+
 #include "gtest/gtest.h"
 
 #include "paddle/common/flags.h"
@@ -352,6 +356,7 @@ TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2,
   ASSERT_TRUE(small_visitor.Found());
   ASSERT_EQ(small_visitor.Parts().size(), 1UL);
   EXPECT_EQ(small_visitor.Parts()[0].len, small->size());
+  EXPECT_EQ(small_visitor.Parts()[0].chunk->shared_fd, -1);
 
   paddle::memory::VmmTensorPartsVisitor large_visitor(
       large->ptr(), large->size(), false);
@@ -359,6 +364,7 @@ TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2,
   ASSERT_TRUE(large_visitor.Found());
   ASSERT_EQ(large_visitor.Parts().size(), 1UL);
   EXPECT_EQ(large_visitor.Parts()[0].len, large->size());
+  EXPECT_EQ(large_visitor.Parts()[0].chunk->shared_fd, -1);
 
   allocator->Accept(&large_visitor);
   ASSERT_TRUE(large_visitor.Found());
@@ -379,7 +385,9 @@ TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2,
   ScopedVMMRetryFlags flags(/*retry_times=*/0, /*remap_on_oom=*/true);
 
   auto allocation = stream_safe->Allocate(2UL << 20);
+  auto anchor = stream_safe->Allocate(2UL << 20);
   ASSERT_NE(allocation, nullptr);
+  ASSERT_NE(anchor, nullptr);
   allocation.reset();
   EXPECT_EQ(stream_safe->GetVMMV2Allocator(), multi.get());
   EXPECT_GT(stream_safe->Compact(place), 0UL);
@@ -421,7 +429,28 @@ TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2,
     auto stream_safe = std::make_shared<StreamSafeCUDAAllocator>(
         multi, place, cudaStreamPerThread);
     ScopedVMMRetryFlags flags(/*retry_times=*/0, /*remap_on_oom=*/true);
-    EXPECT_THROW(stream_safe->Allocate(4UL << 20), BadAlloc);
+    try {
+      stream_safe->Allocate(4UL << 20);
+      FAIL() << "Expected VMM V2 allocation to fail";
+    } catch (const BadAlloc& ex) {
+      const std::string message = ex.what();
+      if (std::getenv("PADDLE_TEST_PRINT_VMM_V2_OOM") != nullptr) {
+        std::cout << "OOM message sample:\n" << message << std::endl;
+      }
+      EXPECT_NE(message.find("Out of memory error on GPU"), std::string::npos);
+      EXPECT_NE(message.find("Memory pool state: total free="),
+                std::string::npos);
+      EXPECT_NE(message.find("largest free block="), std::string::npos);
+      EXPECT_NE(message.find("Paddle memory state: allocated="),
+                std::string::npos);
+      EXPECT_NE(message.find("GPU memory state: available="),
+                std::string::npos);
+      EXPECT_NE(message.find("Memory defragmentation: reclaimed"),
+                std::string::npos);
+      EXPECT_NE(message.find("2. Retry after memory defragmentation:"),
+                std::string::npos);
+      EXPECT_EQ(message.find("3. Retry"), std::string::npos);
+    }
     EXPECT_EQ(multi->allocation_attempts(), 3UL);
   }
   {
@@ -429,7 +458,16 @@ TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2,
     auto stream_safe = std::make_shared<StreamSafeCUDAAllocator>(
         multi, place, cudaStreamPerThread);
     ScopedVMMRetryFlags flags(/*retry_times=*/0, /*remap_on_oom=*/false);
-    EXPECT_THROW(stream_safe->Allocate(4UL << 20), BadAlloc);
+    try {
+      stream_safe->Allocate(4UL << 20);
+      FAIL() << "Expected VMM V2 allocation to fail";
+    } catch (const BadAlloc& ex) {
+      const std::string message = ex.what();
+      EXPECT_NE(message.find("Memory defragmentation: disabled"),
+                std::string::npos);
+      EXPECT_NE(message.find("2. Retry after reclaiming pending frees:"),
+                std::string::npos);
+    }
     EXPECT_EQ(multi->allocation_attempts(), 2UL);
   }
   {
@@ -437,7 +475,14 @@ TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2,
     auto stream_safe = std::make_shared<StreamSafeCUDAAllocator>(
         multi, place, cudaStreamPerThread);
     ScopedVMMRetryFlags flags(/*retry_times=*/0, /*remap_on_oom=*/true);
-    EXPECT_THROW(stream_safe->Allocate(4UL << 20), BadAlloc);
+    try {
+      stream_safe->Allocate(4UL << 20);
+      FAIL() << "Expected VMM V2 allocation to fail";
+    } catch (const BadAlloc& ex) {
+      const std::string message = ex.what();
+      EXPECT_NE(message.find("no releasable free memory was found"),
+                std::string::npos);
+    }
     EXPECT_EQ(multi->allocation_attempts(), 2UL);
   }
   {

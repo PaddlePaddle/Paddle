@@ -28,19 +28,22 @@ namespace allocation {
 
 class RemapTransaction {
  public:
-  using CommitSyntheticAllocationFn =
-      std::function<void(DecoratedAllocationPtr)>;
-  using CanUseDestinationRangeFn = std::function<bool(void*, size_t)>;
-  using ReleaseStaleDestinationAllocationsFn =
-      std::function<bool(void*, size_t)>;
-  using RollbackMappedDestinationFn = std::function<void()>;
+  using CommitDestinationAllocationsFn =
+      std::function<void(std::vector<DecoratedAllocationPtr>*)>;
+  using CanPrepareDestinationRangeFn = std::function<bool(void*, size_t)>;
+  using PrepareDestinationRangeFn = std::function<bool(void*, size_t)>;
   using RollbackSourceMappingsFn = std::function<void()>;
-  using VaRanges = std::vector<std::pair<VMMDevicePtr, size_t>>;
+  using SourcePages = std::vector<VMMBackingMap::MappedPage>;
   using BlockList = std::list<BlockV2>;
   using BlockIterator = BlockList::iterator;
-  struct MaterializedRange {
-    BlockV2 free_block;
-    size_t bytes{0};
+  struct DestinationRollbackRange {
+    VMMDevicePtr va{0};
+    size_t handle_count{0};
+  };
+  struct DestinationBlockRollbackRange {
+    VMMDevicePtr va{0};
+    size_t size{0};
+    bool is_tail{false};
   };
   struct SourceCollectionStats {
     size_t free_block_count{0};
@@ -57,7 +60,7 @@ class RemapTransaction {
     size_t remapped_blocked_bytes{0};
   };
   struct DestinationPlacement {
-    static DestinationPlacement Tail(VMMDevicePtr dst, size_t count) {
+    static DestinationPlacement AtTail(VMMDevicePtr dst, size_t count) {
       DestinationPlacement placement;
       placement.is_tail = true;
       placement.dst = dst;
@@ -65,12 +68,12 @@ class RemapTransaction {
       return placement;
     }
 
-    static DestinationPlacement UnmappedFree(BlockIterator unmapped_free_it,
-                                             VMMDevicePtr dst,
-                                             size_t handle_start_idx,
-                                             size_t count) {
+    static DestinationPlacement InUnmappedRange(BlockIterator unmapped_it,
+                                                VMMDevicePtr dst,
+                                                size_t handle_start_idx,
+                                                size_t count) {
       DestinationPlacement placement;
-      placement.unmapped_free_it = unmapped_free_it;
+      placement.unmapped_it = unmapped_it;
       placement.dst = dst;
       placement.handle_start_idx = handle_start_idx;
       placement.count = count;
@@ -78,7 +81,7 @@ class RemapTransaction {
     }
 
     bool is_tail{false};
-    BlockIterator unmapped_free_it;
+    BlockIterator unmapped_it;
     VMMDevicePtr dst{0};
     size_t handle_start_idx{0};
     size_t count{0};
@@ -86,22 +89,16 @@ class RemapTransaction {
   enum class DestinationPlanKind {
     kNone,
     kTail,
-    kSingleUnmappedFree,
-    kScatterUnmappedFree,
-  };
-  enum class DestinationPlanFailure {
-    kNone,
-    kInsufficientUnmappedFreeCapacity,
-    kScatterPlanFailed,
+    kSingleUnmappedRange,
+    kScatterUnmappedRanges,
   };
   struct DestinationPlan {
     DestinationPlanKind kind{DestinationPlanKind::kNone};
-    DestinationPlanFailure failure{DestinationPlanFailure::kNone};
     std::vector<DestinationPlacement> placements;
 
     bool HasPlacement() const { return kind != DestinationPlanKind::kNone; }
   };
-  struct UnmappedFreeDestinationPlan {
+  struct UnmappedDestinationPlan {
     BlockIterator single_it;
     std::vector<DestinationPlacement> scatter_placements;
     size_t total_capacity{0};
@@ -119,7 +116,7 @@ class RemapTransaction {
     size_t set_access_ranges{0};
     size_t set_access_calls{0};
   };
-  struct PlacementResult {
+  struct MoveResult {
     bool success{false};
     bool used_tail{false};
     uint64_t destination_plan_us{0};
@@ -134,8 +131,6 @@ class RemapTransaction {
   };
   struct SourceMovePlan {
     SourceCollectionStats stats;
-    std::vector<VMMAllocHandle> handles;
-    std::vector<std::shared_ptr<VMMHandleMeta>> metas;
     std::vector<VMMBackingMap::MappedPage> source_pages;
     std::vector<PlannedSourceBlock> source_blocks;
   };
@@ -154,137 +149,142 @@ class RemapTransaction {
     bool success{false};
     bool used_tail{false};
   };
-  RemapTransaction(CUDAVirtualMemAllocatorV2* vmm_allocator,
-                   size_t handle_size,
-                   CommitSyntheticAllocationFn commit_synthetic_allocation = {},
-                   CanUseDestinationRangeFn can_use_destination_range = {},
-                   ReleaseStaleDestinationAllocationsFn
-                       release_stale_destination_allocations = {})
+  RemapTransaction(
+      CUDAVirtualMemAllocatorV2* vmm_allocator,
+      size_t handle_size,
+      CommitDestinationAllocationsFn commit_destination_allocations = {},
+      CanPrepareDestinationRangeFn can_prepare_destination_range = {},
+      PrepareDestinationRangeFn prepare_destination_range = {})
       : vmm_allocator_(vmm_allocator),
         handle_size_(handle_size),
-        commit_synthetic_allocation_(std::move(commit_synthetic_allocation)),
-        can_use_destination_range_(std::move(can_use_destination_range)),
-        release_stale_destination_allocations_(
-            std::move(release_stale_destination_allocations)) {}
+        commit_destination_allocations_(
+            std::move(commit_destination_allocations)),
+        can_prepare_destination_range_(
+            std::move(can_prepare_destination_range)),
+        prepare_destination_range_(std::move(prepare_destination_range)) {}
   ~RemapTransaction();
 
-  const VMMBackingMap::CompactCandidates& candidates() const {
-    return candidates_;
-  }
+  // Checks whether a mapped-free block is safe to remap without waiting. The
+  // check may record a lazy event and remove completed pending states.
+  static bool CheckBlockRemapSafety(BlockV2* block);
 
-  MaterializedRange MaterializeMappedRange(
-      VMMDevicePtr dst,
-      const std::vector<VMMAllocHandle>& handles,
-      size_t start,
-      size_t count,
-      PoolType pool_type);
-  MaterializedRange MaterializeDestinationPlacement(
-      const DestinationPlacement& placement,
-      const std::vector<VMMAllocHandle>& handles,
-      PoolType pool_type);
+  BlockV2 MaterializeDestinationRange(VMMDevicePtr dst,
+                                      const SourcePages& source_pages,
+                                      size_t start,
+                                      size_t count,
+                                      PoolType pool_type);
+  BlockV2 MaterializeDestinationPlacement(const DestinationPlacement& placement,
+                                          const SourcePages& source_pages,
+                                          PoolType pool_type);
   bool CollectTargetPagesForRange(
       VMMDevicePtr dst,
       size_t handle_count,
       const char* context,
       std::vector<VMMBackingMap::UnmappedPage>* target_pages) const;
-  bool PrepareMoveDestinationPlacement(
+  bool PrepareDestinationPlacement(
       const DestinationPlacement& placement,
       const char* context,
       std::vector<VMMBackingMap::UnmappedPage>* target_pages) const;
-  bool CanUseDestinationRange(VMMDevicePtr dst, size_t size) const;
+  bool CanPrepareDestinationRange(VMMDevicePtr dst, size_t size) const;
   bool PrepareDestinationRange(VMMDevicePtr dst,
                                size_t size,
                                const char* context) const;
-  bool ReleaseStaleDestinationAllocations(VMMDevicePtr dst, size_t size) const;
   SourceMovePlan CollectRemapSourcePlan(BlockList* blocks,
                                         size_t requested_size,
-                                        PoolType pool_type);
+                                        PoolType pool_type,
+                                        const SourcePages& source_pages);
   void ApplyPlannedSourceBlocks(
       BlockList* blocks, std::vector<PlannedSourceBlock>* source_blocks) const;
   bool TailIsUsable(VMMDevicePtr tail_va,
                     size_t total_bytes,
                     VMMDevicePtr va_limit) const;
   size_t CountLeadingUnmappedBackingPages(VMMDevicePtr va, size_t size) const;
-  UnmappedFreeDestinationPlan PlanUnmappedFreeDestinations(
-      BlockList* blocks, size_t handle_count) const;
+  UnmappedDestinationPlan PlanUnmappedDestinations(BlockList* blocks,
+                                                   size_t handle_count) const;
   DestinationPlan SelectDestinationPlan(BlockList* blocks,
                                         VMMDevicePtr tail_va,
                                         VMMDevicePtr va_limit,
-                                        size_t handle_count,
-                                        const char* log_prefix) const;
-  bool TryCommitTailMovePlacement(BlockList* blocks,
-                                  VMMDevicePtr tail_va,
-                                  SourceMovePlan* plan,
-                                  PoolType pool_type,
-                                  MoveCommitStats* move_stats);
+                                        size_t handle_count) const;
+  bool TryMoveToTail(BlockList* blocks,
+                     VMMDevicePtr tail_va,
+                     SourceMovePlan* plan,
+                     PoolType pool_type,
+                     MoveCommitStats* move_stats);
   bool MovePlannedPagesToTargets(
       BlockList* blocks,
       SourceMovePlan* plan,
       const std::vector<VMMBackingMap::UnmappedPage>& target_pages,
       MoveCommitStats* move_stats);
-  bool TryCommitSingleUnmappedFreeMovePlacement(BlockList* blocks,
-                                                BlockIterator unmapped_free_it,
-                                                SourceMovePlan* plan,
-                                                PoolType pool_type,
-                                                MoveCommitStats* move_stats);
-  bool TryCommitUnmappedFreeMoveScatter(
+  bool TryMoveToUnmappedRange(BlockList* blocks,
+                              BlockIterator unmapped_it,
+                              SourceMovePlan* plan,
+                              PoolType pool_type,
+                              MoveCommitStats* move_stats);
+  bool TryMoveToUnmappedRanges(
       BlockList* blocks,
       SourceMovePlan* plan,
       const std::vector<DestinationPlacement>& placements,
       PoolType pool_type,
       MoveCommitStats* move_stats);
-  PlacementResult ExecuteMovePlacementStrategy(BlockList* blocks,
-                                               VMMDevicePtr tail_va,
-                                               VMMDevicePtr va_limit,
-                                               SourceMovePlan* plan,
-                                               PoolType pool_type);
+  MoveResult ExecuteDestinationPlan(BlockList* blocks,
+                                    VMMDevicePtr tail_va,
+                                    VMMDevicePtr va_limit,
+                                    SourceMovePlan* plan,
+                                    PoolType pool_type);
   CompactResult CompactFreeBlocks(BlockList* blocks,
                                   size_t requested_size,
-                                  PoolType pool_type);
+                                  PoolType pool_type,
+                                  const SourcePages& source_pages);
   void InstallTailFreeBlock(BlockList* blocks, BlockV2 free_block) const;
-  BlockIterator InstallMappedUnmappedFreeRange(BlockList* blocks,
-                                               BlockIterator unmapped_free_it,
-                                               BlockV2 free_block,
-                                               PoolType pool_type) const;
-  void InstallMappedDestinationRange(BlockList* blocks,
-                                     const DestinationPlacement& placement,
-                                     BlockV2 free_block,
-                                     PoolType pool_type) const;
-  BlockV2 MakeUnmappedFreeBlock(void* ptr,
-                                size_t size,
-                                PoolType pool_type) const;
+  BlockIterator ReplaceUnmappedRangeWithMappedFree(BlockList* blocks,
+                                                   BlockIterator unmapped_it,
+                                                   BlockV2 mapped_free_block,
+                                                   PoolType pool_type) const;
+  void InstallDestination(BlockList* blocks,
+                          const DestinationPlacement& placement,
+                          BlockV2 mapped_free_block,
+                          PoolType pool_type);
   void MergeAdjacentFreeBlocks(BlockList* blocks) const;
   void MergeAdjacentUnmappedFreeBlocks(BlockList* blocks) const;
   void NormalizeBlocks(BlockList* blocks) const;
-  bool RestoreUnmappedFreeRangeToMappedFreeBlock(
-      BlockList* blocks,
-      VMMDevicePtr va,
-      size_t size,
-      const std::shared_ptr<VMMHandleMeta>& meta);
-  bool RestoreRemappedSourcesToFreeBlocks(
-      BlockList* blocks,
-      const std::vector<VMMAllocHandle>& handles,
-      const std::vector<std::shared_ptr<VMMHandleMeta>>& metas);
+  bool RestoreRangeAsMappedFree(BlockList* blocks,
+                                VMMDevicePtr va,
+                                size_t size);
+  bool ReplaceRangeWithUnmappedFree(BlockList* blocks,
+                                    VMMDevicePtr va,
+                                    size_t size);
+  bool RemoveTailDestinationBlock(BlockList* blocks,
+                                  VMMDevicePtr va,
+                                  size_t size);
+  void RestoreRemappedSourcesToFreeBlocks(BlockList* blocks,
+                                          const SourcePages& source_pages);
   void Commit();
   void Rollback();
 
  private:
   // Record successfully mapped destination ranges so later bookkeeping
   // failures can still unmap every destination owned by this transaction.
-  void RecordMappedDestinationRange(VMMDevicePtr dst, size_t handle_count);
-  void RollbackMappedDestinations();
-  void StageSyntheticAllocation(Allocation* allocation);
+  void RecordDestinationRollbackRange(VMMDevicePtr dst, size_t handle_count);
+  void RecordDestinationBlockRollbackRange(
+      const DestinationPlacement& placement);
+  // Stop transaction rollback from unmapping a destination after its cleanup
+  // ownership has been transferred to the underlying allocation registry.
+  void DiscardDestinationRollbackRange(VMMDevicePtr dst, size_t size);
+  void RollbackDestinations();
+  void RollbackDestinationBlockViews();
+  void StageDestinationAllocation(Allocation* allocation);
   bool HasPendingState() const;
 
   CUDAVirtualMemAllocatorV2* vmm_allocator_;
   size_t handle_size_;
-  VMMBackingMap::CompactCandidates candidates_;
-  CommitSyntheticAllocationFn commit_synthetic_allocation_;
-  CanUseDestinationRangeFn can_use_destination_range_;
-  ReleaseStaleDestinationAllocationsFn release_stale_destination_allocations_;
-  std::vector<RollbackMappedDestinationFn> rollback_mapped_destinations_;
+  CommitDestinationAllocationsFn commit_destination_allocations_;
+  CanPrepareDestinationRangeFn can_prepare_destination_range_;
+  PrepareDestinationRangeFn prepare_destination_range_;
+  std::vector<DestinationRollbackRange> destination_rollback_ranges_;
+  std::vector<DestinationBlockRollbackRange> destination_block_rollback_ranges_;
   RollbackSourceMappingsFn rollback_source_mappings_;
-  std::vector<Allocation*> pending_synthetic_allocations_;
+  std::vector<Allocation*> pending_destination_allocations_;
+  BlockList* blocks_{nullptr};
   bool completed_{false};
 };
 

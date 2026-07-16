@@ -28,37 +28,40 @@ namespace allocation {
 
 class FreeBlockRemapCompactor {
  public:
-  using CommitSyntheticAllocationFn =
-      RemapTransaction::CommitSyntheticAllocationFn;
-  using CanUseDestinationRangeFn = RemapTransaction::CanUseDestinationRangeFn;
-  using ReleaseStaleDestinationAllocationsFn =
-      RemapTransaction::ReleaseStaleDestinationAllocationsFn;
+  using CommitDestinationAllocationsFn =
+      RemapTransaction::CommitDestinationAllocationsFn;
+  using CanPrepareDestinationRangeFn =
+      RemapTransaction::CanPrepareDestinationRangeFn;
+  using PrepareDestinationRangeFn = RemapTransaction::PrepareDestinationRangeFn;
   FreeBlockRemapCompactor(
       const std::shared_ptr<CUDAVirtualMemAllocatorV2>& vmm_allocator,
       PoolType pool_type,
-      CommitSyntheticAllocationFn commit_synthetic_allocation = {},
-      CanUseDestinationRangeFn can_use_destination_range = {},
-      ReleaseStaleDestinationAllocationsFn
-          release_stale_destination_allocations = {})
+      CommitDestinationAllocationsFn commit_destination_allocations = {},
+      CanPrepareDestinationRangeFn can_prepare_destination_range = {},
+      PrepareDestinationRangeFn prepare_destination_range = {})
       : vmm_allocator_(vmm_allocator),
         pool_type_(pool_type),
-        commit_synthetic_allocation_(std::move(commit_synthetic_allocation)),
-        can_use_destination_range_(std::move(can_use_destination_range)),
-        release_stale_destination_allocations_(
-            std::move(release_stale_destination_allocations)) {}
+        commit_destination_allocations_(
+            std::move(commit_destination_allocations)),
+        can_prepare_destination_range_(
+            std::move(can_prepare_destination_range)),
+        prepare_destination_range_(std::move(prepare_destination_range)) {}
 
   // Remap fully-covered handles from FREE blocks to consolidate fragmented VA.
   // If requested_size > 0, performs bounded compaction: stops collecting
   // handles once enough are gathered to satisfy the requested allocation size.
   // If requested_size == 0, compacts all eligible handles (unbounded).
-  size_t Compact(std::list<BlockV2>* blocks, size_t requested_size = 0);
+  // source_pages is the allocator precheck snapshot for this transaction.
+  size_t Compact(std::list<BlockV2>* blocks,
+                 size_t requested_size,
+                 const RemapTransaction::SourcePages& source_pages);
 
  private:
   std::shared_ptr<CUDAVirtualMemAllocatorV2> vmm_allocator_;
   PoolType pool_type_;
-  CommitSyntheticAllocationFn commit_synthetic_allocation_;
-  CanUseDestinationRangeFn can_use_destination_range_;
-  ReleaseStaleDestinationAllocationsFn release_stale_destination_allocations_;
+  CommitDestinationAllocationsFn commit_destination_allocations_;
+  CanPrepareDestinationRangeFn can_prepare_destination_range_;
+  PrepareDestinationRangeFn prepare_destination_range_;
 };
 
 }  // namespace allocation

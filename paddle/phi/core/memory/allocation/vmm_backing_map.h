@@ -51,11 +51,6 @@ class VMMBackingMap {
     VMMDevicePtr va{0};
     uint64_t epoch{0};
   };
-  struct CompactCandidates {
-    std::vector<MappedPage> source_pages;
-    std::vector<UnmappedPage> target_pages;
-  };
-
   void Configure(VMMDevicePtr base, size_t size, size_t page_size, int device);
 
   bool IsConfigured() const { return configured_; }
@@ -86,7 +81,7 @@ class VMMBackingMap {
   bool CollectIPCPartDescriptors(
       VMMDevicePtr va,
       size_t size,
-      std::vector<IPCBlockPartDescriptor>* descriptors) const;
+      std::vector<IPCPartDescriptor>* descriptors) const;
   bool IsRangeMapped(VMMDevicePtr va, size_t size) const;
   bool IsRangeUnmapped(VMMDevicePtr va, size_t size) const;
   bool IsRangeReleasable(VMMDevicePtr va, size_t size) const;
@@ -109,10 +104,6 @@ class VMMBackingMap {
   std::vector<UnmappedPage> CollectUnmappedPagesFullyInRange(
       const std::vector<std::pair<VMMDevicePtr, size_t>>& ranges,
       size_t target_bytes = 0) const;
-  CompactCandidates CollectCompactCandidates(
-      const std::vector<std::pair<VMMDevicePtr, size_t>>& source_ranges,
-      const std::vector<std::pair<VMMDevicePtr, size_t>>& target_ranges,
-      size_t target_bytes) const;
   bool ValidateMappedPages(const std::vector<MappedPage>& pages,
                            const char* context) const;
   bool ValidateUnmappedPages(const std::vector<UnmappedPage>& pages,
@@ -154,7 +145,7 @@ class VMMBackingMap {
   bool CollectIPCPartDescriptorsLocked(
       VMMDevicePtr va,
       size_t size,
-      std::vector<IPCBlockPartDescriptor>* descriptors) const;
+      std::vector<IPCPartDescriptor>* descriptors) const;
   void AppendMappedPagesFullyInRangeLocked(
       VMMDevicePtr va,
       size_t size,
@@ -169,6 +160,9 @@ class VMMBackingMap {
       const char* context,
       size_t max_pages,
       std::vector<UnmappedPage>* pages) const;
+  void RefreshPendingEvents(
+      const std::vector<std::pair<VMMDevicePtr, size_t>>& ranges,
+      const char* context) const;
   bool PageEventsReadyLocked(Page* page, const char* context) const;
   bool PageCanUseBackingLocked(Page* page, const char* context) const;
   RemapSourceState GetRemapSourceStateLocked(Page* page,
