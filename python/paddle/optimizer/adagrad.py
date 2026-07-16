@@ -92,6 +92,9 @@ class Adagrad(Optimizer):
         initial_accumulator_value (float, optional): Initial value for moment accumulator.
             The default value is 0.0.
 
+    Keyword Args:
+        maximize (bool, optional): Maximize the objective with respect to the params, instead of minimizing. The default value is False.
+
     Examples:
         .. code-block:: pycon
 
@@ -151,6 +154,8 @@ class Adagrad(Optimizer):
         grad_clip: GradientClipBase | None = None,
         name: str | None = None,
         initial_accumulator_value: float = 0.0,
+        *,
+        maximize: bool = False,
     ) -> None:
         assert learning_rate is not None
         assert epsilon is not None
@@ -160,6 +165,7 @@ class Adagrad(Optimizer):
             weight_decay=weight_decay,
             grad_clip=grad_clip,
             name=name,
+            maximize=maximize,
         )
         self.type = "adagrad"
         self._epsilon = epsilon

@@ -27,6 +27,7 @@ from paddle.framework import (
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
+from paddle.utils.decorator_utils import param_one_alias
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -129,12 +130,20 @@ class Distribution:
         """Variance of distribution"""
         raise NotImplementedError
 
+    @param_one_alias(["shape", "sample_shape"])
     def sample(self, shape: Sequence[int] = []) -> Tensor:
-        """Sampling from the distribution."""
+        """Sampling from the distribution.
+
+        Alias: ``sample_shape``.
+        """
         raise NotImplementedError
 
+    @param_one_alias(["shape", "sample_shape"])
     def rsample(self, shape: Sequence[int] = []) -> Tensor:
-        """reparameterized sample"""
+        """Reparameterized sample from the distribution.
+
+        Alias: ``sample_shape``.
+        """
         raise NotImplementedError
 
     def sample_n(self, n: int) -> Tensor:

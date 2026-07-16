@@ -4231,7 +4231,7 @@ def set_(
         return _C_ops.set_(x, source, shape, stride, offset)
 
 
-@resize__decorator()
+@resize__decorator
 @inplace_apis_in_dygraph_only
 def resize_(
     x: paddle.Tensor,

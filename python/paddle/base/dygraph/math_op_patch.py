@@ -34,7 +34,13 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from paddle import Tensor
-    from paddle._typing import DTypeLike, PlaceLike, ShapeLike
+    from paddle._typing import (
+        DTypeLike,
+        NestedNumericSequence,
+        PlaceLike,
+        ShapeLike,
+        TensorLike,
+    )
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.UINT8,
@@ -344,6 +350,93 @@ def monkey_patch_math_tensor():
         out = _C_ops.transpose(var, perm)
         return out
 
+    @property
+    def _mH_(var: Tensor) -> Tensor:
+        """
+        Return the conjugate transpose of the last two dimensions of a Tensor.
+
+        Accessing this property is equivalent to calling x.mT.conj().
+
+        Args:
+            var (Tensor): The input Tensor, which must be at least 2-D or 0-D.
+
+        Returns:
+            Tensor: A new Tensor with its last two dimensions swapped and
+                the elements conjugated. If the input is 0-D, returns the
+                Tensor itself.
+
+        Examples:
+            .. code-block:: pycon
+
+                >>> import paddle
+                >>> x = paddle.to_tensor([[1.0 + 1.0j, 2.0 + 2.0j], [3.0 + 3.0j, 4.0 + 4.0j]])
+                >>> x_mH = x.mH
+                >>> print(x_mH)
+                Tensor(shape=[2, 2], dtype=complex64, place=Place(cpu), stop_gradient=True,
+                       [[(1-1j), (3-3j)],
+                        [(2-2j), (4-4j)]])
+                >>> x_0d = paddle.to_tensor(1.0 + 1.0j)
+                >>> x_0d_mH = x_0d.mH
+                >>> print(x_0d_mH)
+                Tensor(shape=[], dtype=complex64, place=Place(cpu), stop_gradient=True,
+                       (1+1j))
+        """
+        if len(var.shape) == 0:
+            return _C_ops.conj(var)
+        if len(var.shape) < 2:
+            raise ValueError(
+                f"Tensor.ndim({var.ndim}) is required to be greater than or equal to 2 "
+                f"or 0-D."
+            )
+        perm = list(range(len(var.shape)))
+        perm[-1], perm[-2] = perm[-2], perm[-1]
+        out = _C_ops.transpose(var, perm)
+        out = _C_ops.conj(out)
+        return out
+
+    @property
+    def _H_(var: Tensor) -> Tensor:
+        """
+        Return the conjugate transpose of a Tensor.
+
+        The conjugate transpose of a 2-D Tensor is equivalent to transposing the
+        Tensor and then taking the conjugate of each element (i.e., x.T.conj()).
+        For 0-D Tensor, returns the conjugated Tensor.
+
+        Args:
+            var (Tensor): The input Tensor, which must be 0-D or 2-D.
+
+        Returns:
+            Tensor: A new Tensor with its dimensions transposed and elements conjugated.
+                If the input is 0-D, returns the conjugated Tensor.
+
+        Examples:
+            .. code-block:: pycon
+
+                >>> import paddle
+                >>> x = paddle.to_tensor([[1.0 + 1.0j, 2.0 + 2.0j], [3.0 + 3.0j, 4.0 + 4.0j]])
+                >>> x_H = x.H
+                >>> print(x_H)
+                Tensor(shape=[2, 2], dtype=complex64, place=Place(cpu), stop_gradient=True,
+                       [[(1-1j), (3-3j)],
+                        [(2-2j), (4-4j)]])
+                >>> x_0d = paddle.to_tensor(1.0 + 1.0j)
+                >>> x_0d_H = x_0d.H
+                >>> print(x_0d_H)
+                Tensor(shape=[], dtype=complex64, place=Place(cpu), stop_gradient=True,
+                       (1+1j))
+        """
+        if len(var.shape) == 0:
+            return _C_ops.conj(var)
+        if len(var.shape) != 2:
+            raise ValueError(
+                f"Only 0-D or 2-D tensors support .H (conjugate transpose), "
+                f"but got tensor with {len(var.shape)} dimension(s)."
+            )
+        out = _C_ops.transpose(var, [1, 0])
+        out = _C_ops.conj(out)
+        return out
+
     def _new_full_(
         var: Tensor,
         size: ShapeLike,
@@ -393,6 +486,37 @@ def monkey_patch_math_tensor():
             device=device,
             requires_grad=requires_grad,
             pin_memory=pin_memory,
+        )
+
+    def _new_tensor_(
+        var: Tensor,
+        data: TensorLike | NestedNumericSequence,
+        dtype: DTypeLike | None = None,
+        device: PlaceLike | None = None,
+        requires_grad: bool = False,
+    ) -> Tensor:
+        """
+        Creates a new tensor from ``data`` with the same device and dtype as this tensor.
+
+        Args:
+            var (Tensor): A reference Tensor for default dtype and device.
+            data: Data for the new tensor. Can be a list, numpy array, or Tensor.
+            dtype (DTypeLike|None, optional): Desired data type. If None, uses
+                the dtype of this tensor. Default: None.
+            device (PlaceLike|None, optional): Desired device. If None, uses
+                the place of this tensor. Default: None.
+            requires_grad (bool, optional): If True, gradient computation will
+                be enabled for the new tensor. Default: False.
+
+        Returns:
+            Tensor: A new tensor on the specified device.
+        """
+        if dtype is None:
+            dtype = var.dtype
+        if device is None:
+            device = var.place
+        return paddle.to_tensor(
+            data, dtype=dtype, place=device, stop_gradient=not requires_grad
         )
 
     @size_args_decorator_patch
@@ -649,7 +773,10 @@ def monkey_patch_math_tensor():
         ('nelement', nelement),
         ('T', _T_),
         ('mT', _mT_),
+        ('mH', _mH_),
+        ('H', _H_),
         ('new_full', _new_full_),
+        ('new_tensor', _new_tensor_),
         ('new_empty', _new_empty_),
         ('new_ones', _new_ones_),
         ('new_zeros', _new_zeros_),

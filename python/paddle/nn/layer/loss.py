@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING
 
 import paddle
@@ -37,6 +38,46 @@ if TYPE_CHECKING:
 
 
 __all__ = []
+
+
+class _Loss(Layer):
+    r"""
+    Base class for all loss functions.
+
+    Parameters:
+        size_average (bool|None, optional): Deprecated (see ``reduction``). Default is ``None``.
+        reduce (bool|None, optional): Deprecated (see ``reduction``). Default is ``None``.
+        reduction (str, optional): Indicate how to calculate the loss, the candidates
+            are ``'none'`` | ``'mean'`` | ``'sum'``. Default is ``'mean'``.
+    """
+
+    reduction: _ReduceMode
+
+    def __init__(
+        self,
+        size_average: bool | None = None,
+        reduce: bool | None = None,
+        reduction: str = 'mean',
+    ) -> None:
+        super().__init__()
+        if size_average is not None or reduce is not None:
+            reduction = (
+                'none'
+                if reduce is False
+                else ('sum' if size_average is False else 'mean')
+            )
+            warnings.warn(
+                "'size_average' and 'reduce' args will be deprecated, "
+                f"please use reduction='{reduction}' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        if reduction not in ['sum', 'mean', 'none']:
+            raise ValueError(
+                "'reduction' should be 'sum', 'mean' or 'none', "
+                f"but received {reduction}."
+            )
+        self.reduction = reduction
 
 
 class BCEWithLogitsLoss(Layer):

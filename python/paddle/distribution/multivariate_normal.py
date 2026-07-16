@@ -21,6 +21,7 @@ import paddle
 from paddle.base.data_feeder import convert_dtype
 from paddle.distribution import constraint, distribution
 from paddle.framework import in_dynamic_mode
+from paddle.utils.decorator_utils import param_one_alias
 
 if TYPE_CHECKING:
     from paddle import Tensor
@@ -330,6 +331,7 @@ class MultivariateNormal(distribution.Distribution):
     def mode(self, value: Tensor) -> None:
         self.loc = value
 
+    @param_one_alias(["shape", "sample_shape"])
     def sample(self, shape: Sequence[int] = []) -> Tensor:
         """Generate Multivariate Normal samples of the specified shape. The final shape would be ``sample_shape + batch_shape + event_shape``.
 
@@ -342,6 +344,7 @@ class MultivariateNormal(distribution.Distribution):
         with paddle.no_grad():
             return self.rsample(shape)
 
+    @param_one_alias(["shape", "sample_shape"])
     def rsample(self, shape: Sequence[int] = []) -> Tensor:
         """Generate Multivariate Normal samples of the specified shape. The final shape would be ``sample_shape + batch_shape + event_shape``.
 

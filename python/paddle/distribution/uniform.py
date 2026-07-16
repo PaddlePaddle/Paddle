@@ -25,6 +25,7 @@ from paddle.base.framework import Variable
 from paddle.distribution import distribution
 from paddle.framework import in_dynamic_mode
 from paddle.tensor import random
+from paddle.utils.decorator_utils import param_one_alias
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -193,6 +194,7 @@ class Uniform(distribution.Distribution):
 
         super().__init__(self.low.shape)
 
+    @param_one_alias(["shape", "sample_shape"])
     def sample(self, shape: Sequence[int] = [], seed: int = 0) -> Tensor:
         """Generate samples of the specified shape.
 

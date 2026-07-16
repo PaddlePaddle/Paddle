@@ -760,7 +760,7 @@ class GradScaler(AmpScaler):
         enabled: bool = True,
     ) -> None: ...
 
-    @grad_scaler_decorator()
+    @grad_scaler_decorator
     def __init__(
         self,
         enable: bool = True,

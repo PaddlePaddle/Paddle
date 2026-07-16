@@ -22,6 +22,7 @@ from paddle.base.data_feeder import check_type, convert_dtype
 from paddle.base.framework import Variable
 from paddle.distribution import exponential_family
 from paddle.framework import in_dynamic_mode
+from paddle.utils.decorator_utils import param_one_alias
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -177,6 +178,7 @@ class Gamma(exponential_family.ExponentialFamily):
             + (1.0 - self.concentration) * paddle.digamma(self.concentration)
         )
 
+    @param_one_alias(["shape", "sample_shape"])
     def sample(self, shape: Sequence[int] = []) -> Tensor:
         """Generate samples of the specified shape.
 
@@ -189,6 +191,7 @@ class Gamma(exponential_family.ExponentialFamily):
         with paddle.no_grad():
             return self.rsample(shape)
 
+    @param_one_alias(["shape", "sample_shape"])
     def rsample(self, shape: Sequence[int] = []) -> Tensor:
         """Generate reparameterized samples of the specified shape.
 
