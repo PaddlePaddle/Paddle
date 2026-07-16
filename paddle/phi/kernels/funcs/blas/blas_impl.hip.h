@@ -44,16 +44,6 @@ struct CUBlas<float> {
   }
 
   template <typename... ARGS>
-  static void SCAL(ARGS... args) {
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_sscal(args...));
-  }
-
-  template <typename... ARGS>
-  static void VCOPY(ARGS... args) {
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_scopy(args...));
-  }
-
-  template <typename... ARGS>
   static void GEMV(ARGS... args) {
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_sgemv(args...));
   }
@@ -116,16 +106,6 @@ struct CUBlas<double> {
   template <typename... ARGS>
   static void AXPY(ARGS... args) {
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_daxpy(args...));
-  }
-
-  template <typename... ARGS>
-  static void SCAL(ARGS... args) {
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_dscal(args...));
-  }
-
-  template <typename... ARGS>
-  static void VCOPY(ARGS... args) {
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_dcopy(args...));
   }
 
   template <typename... ARGS>
@@ -1272,20 +1252,6 @@ void Blas<GPUContext>::AXPY(int n, T alpha, const T *x, T *y) const {
   dev_ctx_.CublasCall([&](rocblas_handle handle) {
     CUBlas<T>::AXPY(handle, n, &alpha, x, 1, y, 1);
   });
-}
-
-template <>
-template <typename T>
-void Blas<GPUContext>::SCAL(int n, const T alpha, T *x) const {
-  dev_ctx_.CublasCall(
-      [&](rocblas_handle handle) { CUBlas<T>::SCAL(handle, n, &alpha, x, 1); });
-}
-
-template <>
-template <typename T>
-void Blas<GPUContext>::VCOPY(int n, const T *x, T *y) const {
-  dev_ctx_.CublasCall(
-      [&](rocblas_handle handle) { CUBlas<T>::VCOPY(handle, n, x, 1, y, 1); });
 }
 
 template <>

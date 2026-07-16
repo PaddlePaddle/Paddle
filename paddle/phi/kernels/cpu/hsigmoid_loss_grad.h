@@ -81,7 +81,9 @@ void HSigmoidLossGradKernelImpl(const Context& dev_ctx,
   int64_t dim1 = pre_out_grad.dims()[1];
   for (int64_t i = 0; i < dim0; ++i) {
     T tmp = out_grad_data[i];
-    blas.SCAL(dim1, tmp, pre_out_grad_data + i * dim1);
+    for (int64_t j = 0; j < dim1; ++j) {
+      pre_out_grad_data[i * dim1 + j] = pre_out_grad_data[i * dim1 + j] * tmp;
+    }
   }
   // TODO(guosheng): multiply pre_out_grad with subgradient of clipping to
   // be consistent with the clipping in forward.
