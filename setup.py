@@ -1945,7 +1945,7 @@ def get_package_data_and_package_dir():
                     < (14, 0)
                 ):
                     commands = [
-                        "patchelf --force-rpath --set-rpath '$ORIGIN/../../nvidia/cu13/lib:$ORIGIN/../../nvidia/cudnn/lib:$ORIGIN/../../nvidia/nccl/lib:$ORIGIN/../../cusparselt/lib:$ORIGIN/../libs/' "
+                        "patchelf --force-rpath --set-rpath '$ORIGIN/../../nvidia/cu13/lib:$ORIGIN/../../nvidia/cudnn/lib:$ORIGIN/../../nvidia/nccl/lib:$ORIGIN/../../nvidia/cusparselt/lib:$ORIGIN/../libs/' "
                         + env_dict.get("PADDLE_BINARY_DIR")
                         + '/python/paddle/base/'
                         + env_dict.get("FLUID_CORE_NAME")
