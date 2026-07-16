@@ -69,50 +69,79 @@ def _is_trainable(param):
     return not param.stop_gradient
 
 
-def get_same_card_rank(moe_sharding_group_ranks, rank):
+def get_gpus_per_node():
+    """
+    Get the number of GPUs (processes) per node/machine.
+
+    The group_call_opt communication assumes every machine hosts the same
+    number of cards ("a trainer"). Instead of hard-coding 8, derive this from
+    the launcher-provided ``PADDLE_LOCAL_SIZE`` env var (set to the per-node
+    process count by ``paddle.distributed.launch``). Fall back to the visible
+    CUDA device count when the env var is absent.
+
+    Returns:
+        int: number of GPUs per node.
+    """
+    local_size = os.getenv("PADDLE_LOCAL_SIZE")
+    if local_size is not None and int(local_size) > 0:
+        return int(local_size)
+    device_count = paddle.device.cuda.device_count()
+    assert device_count > 0, (
+        "Cannot determine GPUs per node: PADDLE_LOCAL_SIZE is unset and "
+        "paddle.device.cuda.device_count() returned 0."
+    )
+    return device_count
+
+
+def get_same_card_rank(moe_sharding_group_ranks, rank, gpus_per_node):
     """
     Get the MoE sharding group rank within the same trainer as the specified rank.
 
     Args:
         moe_sharding_group_ranks (set): Set of ranks in the MoE sharding group
         rank (int): Current rank
+        gpus_per_node (int): Number of GPUs (cards) per trainer/machine
 
     Returns:
         int: The rank within the same trainer that belongs to the MoE sharding group;
              returns -1 if not found
     """
-    trainer = rank // 8
-    for i in range(trainer * 8, (trainer + 1) * 8):
+    trainer = rank // gpus_per_node
+    for i in range(trainer * gpus_per_node, (trainer + 1) * gpus_per_node):
         if i in moe_sharding_group_ranks:
             return i
     return -1
 
 
-def get_trainer_ranks(rank):
+def get_trainer_ranks(rank, gpus_per_node):
     """
     Get the trainer ID and all ranks belonging to that trainer.
 
-    In distributed training, every 8 GPUs form a "trainer". This function computes:
+    In distributed training, every ``gpus_per_node`` GPUs form a "trainer".
+    This function computes:
       1. The trainer number for the given rank.
-      2. The range of all 8 ranks within that same trainer.
+      2. The range of all ranks within that same trainer.
 
     Args:
         rank (int): The global rank ID of the current process
+        gpus_per_node (int): Number of GPUs (cards) per trainer/machine
 
     Returns:
         tuple:
             - train_id (int): The trainer index (0, 1, 2...)
-            - Ranks iterable: All 8 ranks in this trainer,
-              e.g., if rank=10 returns (1, range(8, 16))
+            - Ranks iterable: All ranks in this trainer,
+              e.g., if rank=10, gpus_per_node=8 returns (1, range(8, 16))
 
     Example:
-        >>> get_trainer_ranks(5)
+        >>> get_trainer_ranks(5, 8)
         (0, range(0, 8))
-        >>> get_trainer_ranks(12)
+        >>> get_trainer_ranks(12, 8)
         (1, range(8, 16))
     """
-    trainer = rank // 8
-    return trainer, range(trainer * 8, (trainer + 1) * 8)
+    trainer = rank // gpus_per_node
+    return trainer, range(
+        trainer * gpus_per_node, (trainer + 1) * gpus_per_node
+    )
 
 
 class MuonShardingOptimizer:
@@ -179,9 +208,31 @@ class MuonShardingOptimizer:
             else 1
         )
         moe_sharding_degree = hcg.get_moe_sharding_parallel_world_size()
+        tp_degree = hcg.get_model_parallel_world_size()
+        self._gpus_per_node = None
         if self.use_group_call_opt:
-            assert ep_degree == 8 and moe_sharding_degree != 1, (
-                "comm_group_call_opt should be enabled when ep_degree is 8 and moe_sharding_degree is not 1"
+            self._gpus_per_node = get_gpus_per_node()
+            assert (
+                self._gpus_per_node > 1
+                and ep_degree % self._gpus_per_node == 0
+                and moe_sharding_degree > 1
+                and tp_degree == 1
+            ), (
+                f"comm_group_call_opt should be enabled when gpus_per_node > 1, "
+                f"ep_degree is a multiple of gpus_per_node ({self._gpus_per_node}) and "
+                f"moe_sharding_degree is larger than 1 and tp_degree is 1"
+            )
+
+            assert self._hcg._moe_topo._parallel_names == [
+                "moe_sharding",
+                "pipe",
+                "expert",
+            ], (
+                "trainer_same_card_comms rank layout assumes MoE topology order "
+                "['moe_sharding', 'pipe', 'expert'], but got "
+                f"{self._hcg._moe_topo._parallel_names}. Please set "
+                "hybrid_parallel_order so that moe_sharding precedes pipe, or "
+                "derive ranks from self._hcg._moe_topo.get_rank(...)."
             )
 
         if self.enable_fuse_optimizer_states:
@@ -398,12 +449,53 @@ class MuonShardingOptimizer:
             )
         if self.use_group_call_opt:
             self.trainer_comms = {}
+            self.trainer_same_card_comms = {}
+            gpus_per_node = self._gpus_per_node
             world_size = paddle.distributed.get_world_size()
-            num_trainers = world_size // 8
+            num_trainers = world_size // gpus_per_node
             for i in range(num_trainers):
-                ranks = range(i * 8, (i + 1) * 8)
+                ranks = range(i * gpus_per_node, (i + 1) * gpus_per_node)
                 group = paddle.distributed.new_group(ranks)
                 self.trainer_comms[i] = group
+
+            expert_parallel_degree = self._hcg.get_expert_parallel_world_size()
+            pp_degree = self._hcg.get_pipe_parallel_world_size()
+            moe_sharding_degree = (
+                self._hcg.get_moe_sharding_parallel_world_size()
+            )
+
+            # The hardcoded rank formula below assumes the MoE topology axes are
+            # ordered as moe_sharding -> pipe -> expert (moe_sharding varies
+            # slowest, expert fastest). _moe_topo is built by filtering the
+            # user's hybrid_parallel_order, so a different order (e.g. the
+            # default pipe -> moe_sharding -> expert) would silently produce
+            # wrong communication groups. Guard against that here.
+
+            # trainer_same_card_comms[pp_idx][card_idx] contains ranks with the
+            # same card_idx across all MoE sharding groups and all trainers inside
+            # each expert-parallel group. Rank layout:
+            # rank = moe_sd_idx * (pp_degree * ep_degree) + pp_idx * ep_degree + ep_idx
+            for pp_idx in range(pp_degree):
+                self.trainer_same_card_comms[pp_idx] = {}
+                for card_idx in range(gpus_per_node):
+                    ranks = []
+                    for moe_sd_idx in range(moe_sharding_degree):
+                        for trainer_in_ep in range(
+                            expert_parallel_degree // gpus_per_node
+                        ):
+                            ep_idx = trainer_in_ep * gpus_per_node + card_idx
+                            rank = (
+                                moe_sd_idx * pp_degree * expert_parallel_degree
+                                + pp_idx * expert_parallel_degree
+                                + ep_idx
+                            )
+                            ranks.append(rank)
+                    logger.info(
+                        f"trainer_same_card_comms init, "
+                        f"pp_idx: {pp_idx}, card_idx: {card_idx}, ranks: {ranks}"
+                    )
+                    group = paddle.distributed.new_group(ranks)
+                    self.trainer_same_card_comms[pp_idx][card_idx] = group
 
     # ------------------------------------------------------------------
     # 2D partition (V1-style greedy)
@@ -747,25 +839,82 @@ class MuonShardingOptimizer:
                             same_card_buffers.append(comm_buffer)
                         else:
                             raise ValueError("Unknown comm group")
+
+                    rank = paddle.distributed.get_rank()
+                    gpus_per_node = self._gpus_per_node
+                    trainer_idx = rank // gpus_per_node
+                    card_idx = rank % gpus_per_node
+                    pp_idx = self._hcg.get_stage_id()
+                    trainer_comm_group = self.trainer_comms[trainer_idx]
+                    trainer_same_card_group = self.trainer_same_card_comms[
+                        pp_idx
+                    ][card_idx]
                     tasks = []
-                    with _coalescing_manager(moe_sharding_group, tasks):
+                    with _coalescing_manager(trainer_comm_group, tasks):
+                        # trainer inner reduce (intra-machine, over NVLink):
+                        # every machine combines its cards onto the rank that
+                        # matches the owner's card index. Done first so the
+                        # cross-machine step below only carries one copy per
+                        # machine instead of all cards.
                         for comm_buffer in all_ring_buffers:
-                            dst_rank = get_same_card_rank(
-                                list(moe_sharding_group.ranks), comm_buffer._dst
-                            )
-                            assert dst_rank != -1, "Please check you dst_rank!"
                             assert comm_buffer._use_reduce_avg, (
                                 "Only support for reduce avg now"
                             )
+                            owner_same_card_group = (
+                                self.trainer_same_card_comms[pp_idx][
+                                    comm_buffer._dst % gpus_per_node
+                                ]
+                            )
+                            owner_group_ranks = list(
+                                owner_same_card_group.ranks
+                            )
+                            assert comm_buffer._dst in owner_group_ranks, (
+                                "owner rank must belong to its same-card group"
+                            )
+                            inner_dst = get_same_card_rank(
+                                owner_group_ranks,
+                                rank,
+                                gpus_per_node,
+                            )
+                            assert inner_dst != -1, (
+                                "Please check you inner_dst!"
+                            )
                             paddle.distributed.stream.reduce(
                                 comm_buffer.grad_storage,
-                                dst=dst_rank,
+                                dst=inner_dst,
                                 op=paddle.distributed.ReduceOp.AVG,
-                                group=moe_sharding_group,
+                                group=trainer_comm_group,
                                 sync_op=True,
                                 use_calc_stream=True,
                             )
 
+                    with _coalescing_manager(trainer_same_card_group, tasks):
+                        # trainer same card reduce (cross-machine, over network):
+                        # reduce the per-machine partial sums onto the owner,
+                        # so only ranks on the owner's card index participate.
+                        for comm_buffer in all_ring_buffers:
+                            if card_idx != comm_buffer._dst % gpus_per_node:
+                                continue
+                            assert comm_buffer._use_reduce_avg, (
+                                "Only support for reduce avg now"
+                            )
+                            # card_idx == _dst % gpus_per_node here, so _dst is
+                            # exactly this rank's same-card group member on the
+                            # owner machine.
+                            assert comm_buffer._dst in list(
+                                trainer_same_card_group.ranks
+                            ), "owner rank must belong to this same-card group"
+                            paddle.distributed.stream.reduce(
+                                comm_buffer.grad_storage,
+                                dst=comm_buffer._dst,
+                                op=paddle.distributed.ReduceOp.AVG,
+                                group=trainer_same_card_group,
+                                sync_op=True,
+                                use_calc_stream=True,
+                            )
+
+                    with _coalescing_manager(moe_sharding_group, tasks):
+                        # MOE same card reduce
                         for comm_buffer in same_card_buffers:
                             assert (
                                 comm_buffer._comm_group == moe_sharding_group
@@ -781,31 +930,6 @@ class MuonShardingOptimizer:
                                 sync_op=True,
                                 use_calc_stream=True,
                             )
-
-                    rank = paddle.distributed.get_rank()
-                    trainer_idx = rank // 8
-                    trainer_comm_group = self.trainer_comms[trainer_idx]
-                    with _coalescing_manager(trainer_comm_group, tasks):
-                        for comm_buffer in all_ring_buffers:
-                            trainer, trainer_ranks = get_trainer_ranks(
-                                comm_buffer._dst
-                            )
-                            if rank in trainer_ranks:
-                                comm_group = self.trainer_comms[trainer]
-                                assert comm_group == trainer_comm_group, (
-                                    "Please check comm group"
-                                )
-                                assert comm_buffer._use_reduce_avg, (
-                                    "Only support for reduce avg now"
-                                )
-                                paddle.distributed.stream.reduce(
-                                    comm_buffer.grad_storage,
-                                    dst=comm_buffer._dst,
-                                    op=paddle.distributed.ReduceOp.AVG,
-                                    group=comm_group,
-                                    sync_op=True,
-                                    use_calc_stream=True,
-                                )
 
             else:
                 # --- 2D params: reduce to owner rank via each color's group ---
@@ -1003,49 +1127,70 @@ class MuonShardingOptimizer:
                 same_card_reorder_params_list = self.reorder_params(
                     same_card_list
                 )
-                rank = paddle.distributed.get_rank()
 
-                # trainer inner broadcast
                 rank = paddle.distributed.get_rank()
-                trainer_idx = rank // 8
+                gpus_per_node = self._gpus_per_node
+                trainer_idx = rank // gpus_per_node
+                card_idx = rank % gpus_per_node
+                pp_idx = self._hcg.get_stage_id()
                 trainer_comm_group = self.trainer_comms[trainer_idx]
+                trainer_same_card_group = self.trainer_same_card_comms[pp_idx][
+                    card_idx
+                ]
                 tasks = []
-                with _coalescing_manager(trainer_comm_group, tasks):
+                with _coalescing_manager(trainer_same_card_group, tasks):
+                    # trainer same card broadcast (cross-machine, over network):
+                    # the owner sends one copy per machine to the matching card
+                    # index, so only ranks on that card index participate.
                     for reorder_params_item in all_ring_reorder_params_list:
                         param_buffer = reorder_params_item["param_buffer"]
                         src_rank = reorder_params_item["src_rank"]
-                        trainer, trainer_ranks = get_trainer_ranks(src_rank)
-                        if rank in trainer_ranks:
-                            comm_group = self.trainer_comms[trainer]
-                            assert comm_group == trainer_comm_group, (
-                                "Please check comm group"
-                            )
-                            paddle.distributed.stream.broadcast(
-                                param_buffer,
-                                src=src_rank,
-                                group=comm_group,
-                                sync_op=True,
-                                use_calc_stream=True,
-                            )
-
-                # same card broadcast
-                with _coalescing_manager(moe_sharding_group, tasks):
-                    for reorder_params_item in all_ring_reorder_params_list:
-                        param_buffer = reorder_params_item["param_buffer"]
-                        src_rank = reorder_params_item["src_rank"]
-                        same_card_src_rank = get_same_card_rank(
-                            list(moe_sharding_group.ranks), src_rank
-                        )
-                        assert same_card_src_rank != -1, (
-                            "Please check your same_card_src_rank in broadcast!"
-                        )
+                        if card_idx != src_rank % gpus_per_node:
+                            continue
+                        # card_idx == src_rank % gpus_per_node here, so src_rank
+                        # is exactly this rank's same-card group member on the
+                        # owner machine.
+                        assert src_rank in list(
+                            trainer_same_card_group.ranks
+                        ), "src rank must belong to this same-card group"
                         paddle.distributed.stream.broadcast(
                             param_buffer,
-                            src=same_card_src_rank,
-                            group=moe_sharding_group,
+                            src=src_rank,
+                            group=trainer_same_card_group,
                             sync_op=True,
                             use_calc_stream=True,
                         )
+
+                with _coalescing_manager(trainer_comm_group, tasks):
+                    # trainer inner broadcast (intra-machine, over NVLink):
+                    # every machine fans the param out from the rank matching the
+                    # owner's card index to its other cards.
+                    for reorder_params_item in all_ring_reorder_params_list:
+                        param_buffer = reorder_params_item["param_buffer"]
+                        src_rank = reorder_params_item["src_rank"]
+                        owner_same_card_group = self.trainer_same_card_comms[
+                            pp_idx
+                        ][src_rank % gpus_per_node]
+                        owner_group_ranks = list(owner_same_card_group.ranks)
+                        assert src_rank in owner_group_ranks, (
+                            "src rank must belong to its same-card group"
+                        )
+                        inner_src = get_same_card_rank(
+                            owner_group_ranks,
+                            rank,
+                            gpus_per_node,
+                        )
+                        assert inner_src != -1, "Please check you inner_src!"
+                        paddle.distributed.stream.broadcast(
+                            param_buffer,
+                            src=inner_src,
+                            group=trainer_comm_group,
+                            sync_op=True,
+                            use_calc_stream=True,
+                        )
+
+                with _coalescing_manager(moe_sharding_group, tasks):
+                    # MOE same card broadcast
                     for same_card_item in same_card_reorder_params_list:
                         param_buffer = same_card_item["param_buffer"]
                         src_rank = same_card_item["src_rank"]
