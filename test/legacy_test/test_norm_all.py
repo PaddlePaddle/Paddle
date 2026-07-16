@@ -1857,33 +1857,49 @@ class TestPnormGradCompatKernel(unittest.TestCase):
     @staticmethod
     def _round_to_storage(val, dtype):
         """Simulate RoundToStorage: round float32 intermediate to dtype and back."""
+        if dtype == "bfloat16":
+            # Use round-to-nearest-even (RNE) matching CUDA __float2bfloat16.
+            # NOTE: convert_float_to_uint16 uses truncation which does NOT
+            # match the kernel's rounding behavior.
+            arr = np.asarray(val, dtype=np.float32)
+            bits = arr.view(np.uint32)
+            rounding_bias = np.uint32(0x7FFF) + (
+                (bits >> np.uint32(16)) & np.uint32(1)
+            )
+            rounded_bits = bits + rounding_bias
+            bf16_uint16 = (rounded_bits >> np.uint32(16)).astype(np.uint16)
+            result_bits = bf16_uint16.astype(np.uint32) << np.uint32(16)
+            result = result_bits.view(np.float32).copy()
+            result[np.isnan(arr)] = np.float32(np.nan)
+            result[np.isinf(arr)] = arr[np.isinf(arr)]
+            result[arr == 0] = arr[arr == 0]
+            return result
         return val.astype(dtype).astype("float32")
 
-    @staticmethod
-    def _pow_like_torch(val_f32, exponent, dtype):
+    def _pow_like_torch(self, val_f32, exponent, dtype):
         """Simulate torch's pow kernel for half/bf16: compute in float32,
         truncate result to storage dtype."""
         if exponent == 2.0:
             result = val_f32 * val_f32
         elif exponent == 3.0:
-            tmp = (val_f32 * val_f32).astype(dtype).astype("float32")
+            tmp = self._round_to_storage(val_f32 * val_f32, dtype)
             result = tmp * val_f32
         elif exponent == -1.0:
             result = np.float32(1.0) / val_f32
         elif exponent == -2.0:
-            sq = (val_f32 * val_f32).astype(dtype).astype("float32")
+            sq = self._round_to_storage(val_f32 * val_f32, dtype)
             result = np.float32(1.0) / sq
         else:
             result = np.power(val_f32, np.float32(exponent))
-        return result.astype(dtype).astype("float32")
+        return self._round_to_storage(result, dtype)
 
     def _reference_p2_grad(self, x_np, norm_np, grad_np, dtype):
         """Reference for p=2: grad * (x / norm), masked where norm==0."""
         x_f = x_np.astype("float32")
         norm_f = norm_np.astype("float32")
         grad_f = grad_np.astype("float32")
-        x_div_norm = (x_f / norm_f).astype(dtype).astype("float32")
-        dx = (grad_f * x_div_norm).astype(dtype)
+        x_div_norm = self._round_to_storage(x_f / norm_f, dtype)
+        dx = self._round_to_storage(grad_f * x_div_norm, dtype)
         # Broadcast norm_f == 0 mask to match dx shape
         mask = np.broadcast_to(norm_f == 0, dx.shape)
         dx[mask] = 0
@@ -1900,7 +1916,7 @@ class TestPnormGradCompatKernel(unittest.TestCase):
         self_scaled = self._round_to_storage(x_f * abs_pow, dtype)
         norm_pow = self._pow_like_torch(norm_f, porder - 1, dtype)
         scale_v = self._round_to_storage(grad_f / norm_pow, dtype)
-        dx = (self_scaled * scale_v).astype(dtype)
+        dx = self._round_to_storage(self_scaled * scale_v, dtype)
         mask = np.broadcast_to(norm_f == 0, dx.shape)
         dx[mask] = 0
         return dx
@@ -1919,51 +1935,55 @@ class TestPnormGradCompatKernel(unittest.TestCase):
         self_scaled = self._round_to_storage(sign_x * abs_pow, dtype)
         norm_pow = self._pow_like_torch(norm_f, porder - 1, dtype)
         scale_v = self._round_to_storage(grad_f / norm_pow, dtype)
-        dx = (self_scaled * scale_v).astype(dtype)
+        dx = self._round_to_storage(self_scaled * scale_v, dtype)
         mask = np.broadcast_to(norm_f == 0, dx.shape)
         dx[mask] = 0
         return dx
 
     def _run_compat_test(self, shape, porder, axis, dtype_str):
         """Run paddle backward and compare against reference with rounding."""
-        import ml_dtypes  # noqa: F401  # registers bfloat16 with numpy
-
         np.random.seed(2024)
-        # Generate in float32 then cast to storage dtype for numpy reference
         x_f32 = ((np.random.random(shape) - 0.5) * 1.2).astype("float32")
-        x_np = x_f32.astype(dtype_str)
+        # Round to storage dtype for numpy reference
+        x_np = self._round_to_storage(x_f32, dtype_str)
 
-        # Create paddle tensor: bf16 needs special handling
+        # Create paddle tensor
         if dtype_str == "bfloat16":
-            x = paddle.to_tensor(
-                x_np.astype("float32"), place=paddle.CUDAPlace(0)
-            ).cast("bfloat16")
+            x = paddle.to_tensor(x_np, place=paddle.CUDAPlace(0)).cast(
+                "bfloat16"
+            )
         else:
-            x = paddle.to_tensor(x_np, place=paddle.CUDAPlace(0))
+            x_np_stored = x_np.astype(dtype_str)
+            x = paddle.to_tensor(x_np_stored, place=paddle.CUDAPlace(0))
         x.stop_gradient = False
         out = paddle.linalg.vector_norm(x=x, p=porder, axis=axis, keepdim=True)
 
         np.random.seed(100)
         grad_f32 = ((np.random.random(out.shape) - 0.5) * 0.8).astype("float32")
-        grad_np = grad_f32.astype(dtype_str)
+        grad_np = self._round_to_storage(grad_f32, dtype_str)
         if dtype_str == "bfloat16":
             grad_tensor = paddle.to_tensor(
-                grad_np.astype("float32"), place=paddle.CUDAPlace(0)
+                grad_np, place=paddle.CUDAPlace(0)
             ).cast("bfloat16")
         else:
-            grad_tensor = paddle.to_tensor(grad_np, place=paddle.CUDAPlace(0))
+            grad_np_stored = grad_np.astype(dtype_str)
+            grad_tensor = paddle.to_tensor(
+                grad_np_stored, place=paddle.CUDAPlace(0)
+            )
 
         paddle_grad = paddle.grad(
             outputs=[out], inputs=[x], grad_outputs=[grad_tensor]
         )
         if dtype_str == "bfloat16":
-            paddle_dx = (
-                paddle_grad[0].cast("float32").numpy().astype("bfloat16")
-            )
-            norm_np = out.cast("float32").numpy().astype("bfloat16")
+            paddle_dx = paddle_grad[0].cast("float32").numpy()
+            norm_np = out.cast("float32").numpy()
         else:
-            paddle_dx = paddle_grad[0].numpy()
-            norm_np = out.numpy()
+            paddle_dx = paddle_grad[0].numpy().astype("float32")
+            norm_np = out.numpy().astype("float32")
+
+        # Round paddle results to storage precision for comparison
+        paddle_dx = self._round_to_storage(paddle_dx, dtype_str)
+        norm_np = self._round_to_storage(norm_np, dtype_str)
 
         # Build reference
         if porder == 2.0:
@@ -1990,7 +2010,11 @@ class TestPnormGradCompatKernel(unittest.TestCase):
     def test_p2_fp16_compat(self):
         self._run_compat_test((4, 8, 16), 2.0, -1, "float16")
 
-    @unittest.skipIf(not core.is_compiled_with_cuda(), "CUDA not available")
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda()
+        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        "CUDA bf16 not available",
+    )
     def test_p2_bf16_compat(self):
         self._run_compat_test((4, 8, 16), 2.0, -1, "bfloat16")
 
@@ -1998,7 +2022,11 @@ class TestPnormGradCompatKernel(unittest.TestCase):
     def test_p4_fp16_compat(self):
         self._run_compat_test((4, 5, 32), 4.0, -1, "float16")
 
-    @unittest.skipIf(not core.is_compiled_with_cuda(), "CUDA not available")
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda()
+        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        "CUDA bf16 not available",
+    )
     def test_p4_bf16_compat(self):
         self._run_compat_test((4, 5, 32), 4.0, -1, "bfloat16")
 
@@ -2010,7 +2038,11 @@ class TestPnormGradCompatKernel(unittest.TestCase):
     def test_p1_5_fp16_compat(self):
         self._run_compat_test((4, 8, 16), 1.5, -1, "float16")
 
-    @unittest.skipIf(not core.is_compiled_with_cuda(), "CUDA not available")
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda()
+        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        "CUDA bf16 not available",
+    )
     def test_p1_5_bf16_compat(self):
         self._run_compat_test((4, 8, 16), 1.5, -1, "bfloat16")
 
