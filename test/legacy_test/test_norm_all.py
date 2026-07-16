@@ -1940,6 +1940,26 @@ class TestPnormGradCompatKernel(unittest.TestCase):
         dx[mask] = 0
         return dx
 
+    def _reference_p_less_than_1_grad(
+        self, x_np, norm_np, grad_np, porder, dtype
+    ):
+        """Reference for p<1: sign(x)*|x|^(p-1) * grad * norm^(1-p), masked x==0."""
+        x_f = x_np.astype("float32")
+        norm_f = norm_np.astype("float32")
+        grad_f = grad_np.astype("float32")
+        abs_x = np.abs(x_f)
+        sign_x = np.sign(x_f)
+
+        abs_pow = self._pow_like_torch(abs_x, porder - 1, dtype)
+        self_scaled = self._round_to_storage(sign_x * abs_pow, dtype)
+        temp1 = self._round_to_storage(self_scaled * grad_f, dtype)
+        norm_pow = self._pow_like_torch(norm_f, 1.0 - porder, dtype)
+        dx = self._round_to_storage(temp1 * norm_pow, dtype)
+        # mask: x == 0 → dx = 0
+        mask = np.broadcast_to(x_f == 0, dx.shape)
+        dx[mask] = 0
+        return dx
+
     def _run_compat_test(self, shape, porder, axis, dtype_str):
         """Run paddle backward and compare against reference with rounding."""
         np.random.seed(2024)
@@ -1996,6 +2016,10 @@ class TestPnormGradCompatKernel(unittest.TestCase):
             ref_dx = self._reference_p_between_1_and_2_grad(
                 x_np, norm_np, grad_np, porder, dtype_str
             )
+        elif 0 < porder < 1.0:
+            ref_dx = self._reference_p_less_than_1_grad(
+                x_np, norm_np, grad_np, porder, dtype_str
+            )
         else:
             return  # skip unsupported ranges in this helper
 
@@ -2045,6 +2069,18 @@ class TestPnormGradCompatKernel(unittest.TestCase):
     )
     def test_p1_5_bf16_compat(self):
         self._run_compat_test((4, 8, 16), 1.5, -1, "bfloat16")
+
+    @unittest.skipIf(not core.is_compiled_with_cuda(), "CUDA not available")
+    def test_p0_5_fp16_compat(self):
+        self._run_compat_test((4, 8, 16), 0.5, -1, "float16")
+
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda()
+        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        "CUDA bf16 not available",
+    )
+    def test_p0_5_bf16_compat(self):
+        self._run_compat_test((4, 8, 16), 0.5, -1, "bfloat16")
 
     @unittest.skipIf(not core.is_compiled_with_cuda(), "CUDA not available")
     def test_p2_fp16_axis0_compat(self):
