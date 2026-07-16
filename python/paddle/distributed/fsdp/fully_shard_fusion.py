@@ -504,6 +504,8 @@ class FSDPCommManager:
             tmp_buffer = grads_buffer.get_tmp_buffer()
             shard_size = grads_buffer.data_buffer.shape[0]
             grad_buffer_shard = tmp_buffer._slice(0, shard_size)
+            if fsdp_group.nranks > 1:
+                tmp_buffer.scale_(1.0 / fsdp_group.nranks)
             if self.enable_overlap:
                 # Comm grads async and check all comm_task before optimizer update
                 grads_buffer.comm_task = paddle.distributed.reduce_scatter(

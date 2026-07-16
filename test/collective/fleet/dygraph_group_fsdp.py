@@ -27,19 +27,8 @@ class Model(nn.Layer):
     def __init__(self):
         super().__init__()
         self.first_stage = nn.Linear(4096, 4096, bias_attr=False)
-        self.center_stage = nn.Linear(4096, 4096)
-        self.center_stage.weight.stop_gradient = True
-        self.center_stage.bias.stop_gradient = True
+        self.center_stage = nn.Linear(4096, 4096, bias_attr=False)
         self.final_stage = nn.Linear(4096, 2, bias_attr=False)
-        paddle.distributed.init_parallel_env()
-        dist_strategy = fleet.DistributedStrategy()
-        dist_strategy.hybrid_configs = {
-            "sharding_degree": 2,
-            "dp_degree": 1,
-            "mp_degree": 1,
-            "pp_degree": 1,
-        }
-        fleet.init(is_collective=True, strategy=dist_strategy)
 
     def forward(self, x):
         x = self.first_stage(x)
@@ -54,23 +43,21 @@ def train_mlp(
     data=None,
     use_pure_bf16=True,
 ):
+    if use_fsdp:
+        model = fully_shard(model)
     model = mix_precision_utils.MixPrecisionLayer(model, dtype="bfloat16")
-    clip = paddle.nn.ClipGradByGlobalNorm(0.5)
-    optimizer = optimizer = paddle.optimizer.AdamW(
+    optimizer = paddle.optimizer.AdamW(
         learning_rate=0.001,
         parameters=model.parameters(),
-        grad_clip=clip,
         multi_precision=use_pure_bf16,
     )
     optimizer = mix_precision_utils.MixPrecisionOptimizer(optimizer)
 
-    if use_fsdp:
-        model = fully_shard(model)
-    else:
+    if not use_fsdp:
         model, optimizer, _ = group_sharded_parallel(
             model=model,
             optimizer=optimizer,
-            level="p_g_os",
+            level="os",
             sync_buffers=False,
         )
 
@@ -93,22 +80,25 @@ def test_fsdp_api():
     # test sharding with fsdp api
     paddle.seed(2025)
     np.random.seed(2025)
-    data = [paddle.randn([8, 4096]) for i in range(20)]
-    model = Model()
-    loss_fsdp = train_mlp(model, use_fsdp=True, data=data)
+    paddle.distributed.init_parallel_env()
+    strategy = fleet.DistributedStrategy()
+    strategy.hybrid_configs = {
+        "sharding_degree": 2,
+        "dp_degree": 1,
+        "mp_degree": 1,
+        "pp_degree": 1,
+    }
+    fleet.init(is_collective=True, strategy=strategy)
 
-    # test sharding with group_sharded_parallel
-    paddle.seed(2025)
-    np.random.seed(2025)
     data = [paddle.randn([8, 4096]) for i in range(20)]
-    model = Model()
-    loss = train_mlp(model, use_fsdp=False, data=data)
-    assert loss == loss_fsdp
+    sharding_model = Model()
+    fsdp_model = Model()
+    sharding_model.set_state_dict(fsdp_model.state_dict())
 
+    sharding_loss = train_mlp(sharding_model, use_fsdp=False, data=data)
+    fsdp_loss = train_mlp(fsdp_model, use_fsdp=True, data=data)
+    assert fsdp_loss == sharding_loss
     # test sharding with fsdp api with fp32
-    paddle.seed(2025)
-    np.random.seed(2025)
-    data = [paddle.randn([8, 4096]) for i in range(20)]
     model = Model()
     loss = train_mlp(model, use_fsdp=True, data=data, use_pure_bf16=False)
 
