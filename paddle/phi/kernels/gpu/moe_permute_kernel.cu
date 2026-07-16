@@ -742,6 +742,11 @@ void MoePermuteKernel(const Context &dev_ctx,
           "X.dims()[0] should be <= INT_MAX - %d, received: (%ld)",
           kPermuteBlockSize,
           rows));
+  PADDLE_ENFORCE_GT(
+      cols,
+      0,
+      common::errors::InvalidArgument(
+          "X.dims()[1] should be positive, received: (%ld)", cols));
   PADDLE_ENFORCE_LE(
       cols,
       std::numeric_limits<int32_t>::max(),
