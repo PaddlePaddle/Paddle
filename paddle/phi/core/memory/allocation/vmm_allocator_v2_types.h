@@ -100,7 +100,7 @@ struct VMMHandleMeta {
 
 using HandleLayout = std::vector<std::shared_ptr<VMMHandleMeta>>;
 
-struct IPCBlockPartDescriptor {
+struct IPCPartDescriptor {
   VMMDevicePtr handle_base;
   size_t handle_size;
   VMMAllocHandle handle;
@@ -170,7 +170,6 @@ struct BlockV2 {
   BlockV2 MakeMappedFreeSubBlock(size_t offset, size_t len) const {
     auto block = MakeMappedBlock(
         BlockType::kFree, begin_ptr() + offset, len, pool_type_);
-    block.ipc_exported_ = ipc_exported_;
 #if defined(PADDLE_WITH_CUDA)
     block.CopyRemapSafetyFrom(*this);
 #endif
@@ -179,7 +178,6 @@ struct BlockV2 {
   BlockV2 MakeMappedActiveSubBlock(size_t offset, size_t len) const {
     auto block = MakeMappedBlock(
         BlockType::kActive, begin_ptr() + offset, len, pool_type_);
-    block.ipc_exported_ = ipc_exported_;
 #if defined(PADDLE_WITH_CUDA)
     block.ClearRemapSafety();
 #endif
@@ -189,10 +187,7 @@ struct BlockV2 {
     return MakeUnmappedFreeBlock(begin_ptr() + offset, len, pool_type_);
   }
   BlockRestoreMappedFreeResult BuildRestoreMappedFreeSegments(
-      VMMDevicePtr va,
-      size_t size,
-      const std::shared_ptr<VMMHandleMeta>& meta,
-      std::vector<BlockV2>* segments) const {
+      VMMDevicePtr va, size_t size, std::vector<BlockV2>* segments) const {
     if (!IsUnmappedFree() || va < begin_va() || va >= end_va()) {
       return BlockRestoreMappedFreeResult::kOutside;
     }
@@ -206,7 +201,6 @@ struct BlockV2 {
     if (prefix > 0) {
       segments->push_back(MakeUnmappedFreeSubBlock(0, prefix));
     }
-    (void)meta;
     segments->push_back(MakeMappedBlock(
         BlockType::kFree, reinterpret_cast<void*>(va), size, pool_type_));
     if (suffix > 0) {
@@ -227,7 +221,6 @@ struct BlockV2 {
     size_ = size;
     type_ = type;
     pool_type_ = pool_type;
-    ipc_exported_ = false;
 #if defined(PADDLE_WITH_CUDA)
     ClearRemapSafety();
 #endif
@@ -239,7 +232,6 @@ struct BlockV2 {
   }
   void MergeAdjacentBlock(const BlockV2& src) {
     size_ += src.size_;
-    ipc_exported_ = ipc_exported_ || src.ipc_exported_;
 #if defined(PADDLE_WITH_CUDA)
     AppendRemapSafetyFrom(src);
 #endif
@@ -251,7 +243,6 @@ struct BlockV2 {
   void* ptr_{nullptr};
   size_t size_{0};
   BlockType type_{BlockType::kUnmappedFree};
-  bool ipc_exported_{false};
   PoolType pool_type_{PoolType::kLarge};
 
 #if defined(PADDLE_WITH_CUDA)

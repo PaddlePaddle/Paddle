@@ -13,7 +13,10 @@
 # limitations under the License.
 
 import gc
+import struct
 import unittest
+
+import numpy as np
 
 import paddle
 
@@ -61,6 +64,46 @@ class TestCUDAVMMV2Allocator(unittest.TestCase):
         y = paddle.zeros([1024 * 1024], dtype="float32")
         paddle.device.synchronize()
         self.assertEqual(y.shape, [1024 * 1024])
+
+    def test_ipc_round_trip_reuses_export_fd(self):
+        tensor = paddle.arange(64, dtype="float32").reshape([8, 8])
+        dense = tensor.value().get_tensor()
+        first_meta = dense._share_cuda()
+        second_meta = dense._share_cuda()
+
+        # VMM v2 caches one exported FD per backing handle. Re-exporting the
+        # same live tensor must produce the same descriptor payload.
+        self.assertEqual(first_meta[0], second_meta[0])
+        rebuilt = paddle.base.core.DenseTensor._new_shared_cuda(first_meta)
+        np.testing.assert_array_equal(
+            paddle.to_tensor(rebuilt).numpy(), tensor.numpy()
+        )
+
+    def test_ipc_rejects_malformed_payload(self):
+        tensor = paddle.arange(16, dtype="float32")
+        meta = list(tensor.value().get_tensor()._share_cuda())
+
+        header = bytearray(meta[0])
+        header[0] = 0xFF
+        invalid_version = (bytes(header), *meta[1:])
+        with self.assertRaises(ValueError):
+            paddle.base.core.DenseTensor._new_shared_cuda(invalid_version)
+
+        truncated = (meta[0][:-1], *meta[1:])
+        with self.assertRaises(ValueError):
+            paddle.base.core.DenseTensor._new_shared_cuda(truncated)
+
+        invalid_dims = (meta[0], meta[1], [1024], *meta[3:])
+        with self.assertRaises(ValueError):
+            paddle.base.core.DenseTensor._new_shared_cuda(invalid_dims)
+
+        version, flags, pid, entries, _, _, _ = struct.unpack_from(
+            "<BHIIQQQ", meta[0], 0
+        )
+        self.assertEqual(version, 1)
+        self.assertEqual(flags, 1)
+        self.assertGreater(pid, 0)
+        self.assertGreater(entries, 0)
 
 
 if __name__ == "__main__":

@@ -108,25 +108,6 @@ PHI_DEFINE_EXPORTED_uint64(vmm_v2_large_pool_handle_size_in_mb,
                            16,
                            "VMM V2 large-pool physical handle size in MiB.");
 
-COMMON_DECLARE_bool(use_cuda_malloc_async_allocator);
-COMMON_DECLARE_bool(use_cuda_managed_memory);
-COMMON_DECLARE_bool(use_auto_growth_v2);
-
-namespace {
-
-bool UseVMMV2AutoGrowthAllocator() {
-#if defined(PADDLE_WITH_CUDA)
-  return FLAGS_use_vmm_auto_growth_best_fit_allocator_v2 &&
-         !FLAGS_use_cuda_managed_memory &&
-         !FLAGS_use_cuda_malloc_async_allocator && !FLAGS_use_auto_growth_v2 &&
-         !FLAGS_use_virtual_memory_auto_growth;
-#else
-  return false;
-#endif
-}
-
-}  // namespace
-
 // NOTE(Ruibiao): This FLAGS is just to be compatible with
 // the old single-stream CUDA allocator. It will be removed
 // after StreamSafeCudaAllocator has been fully tested.
@@ -153,7 +134,23 @@ COMMON_DECLARE_uint64(vmm_small_pool_size_in_mb);
 COMMON_DECLARE_uint64(vmm_v2_large_pool_handle_size_in_mb);
 COMMON_DECLARE_uint64(small_pool_size_in_mb);
 COMMON_DECLARE_bool(use_auto_growth_pinned_allocator);
+COMMON_DECLARE_bool(use_cuda_malloc_async_allocator);
 COMMON_DECLARE_bool(auto_free_cudagraph_allocations_on_launch);
+
+namespace {
+
+bool UseVMMV2AutoGrowthAllocator() {
+#if defined(PADDLE_WITH_CUDA)
+  return FLAGS_use_vmm_auto_growth_best_fit_allocator_v2 &&
+         !FLAGS_use_cuda_managed_memory &&
+         !FLAGS_use_cuda_malloc_async_allocator && !FLAGS_use_auto_growth_v2 &&
+         !FLAGS_use_virtual_memory_auto_growth;
+#else
+  return false;
+#endif
+}
+
+}  // namespace
 
 namespace paddle::memory::allocation {
 namespace {
