@@ -191,13 +191,19 @@ static constexpr const char* win_cusolver_lib =
 static constexpr const char* win_cusparse_lib =
     "cusparse64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;cusparse64_" CUDA_VERSION_MAJOR ".dll;cusparse64_10.dll";
-// CUDA components are versioned independently; CUDA 13.x ships cuSPARSE 12.x.
+// CUDA components are versioned independently; CUDA 13.x ships some 12.x DLLs.
+static constexpr const char* win_cusolver_cuda13_lib =
+    "cusolver64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
+    ".dll;cusolver64_" CUDA_VERSION_MAJOR ".dll;cusolver64_12.dll";
 static constexpr const char* win_cusparse_cuda13_lib =
     "cusparse64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;cusparse64_" CUDA_VERSION_MAJOR ".dll;cusparse64_12.dll";
 static constexpr const char* win_cufft_lib =
     "cufft64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;cufft64_" CUDA_VERSION_MAJOR ".dll;cufft64_11.dll;cufft64_10.dll";
+static constexpr const char* win_cufft_cuda13_lib =
+    "cufft64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
+    ".dll;cufft64_" CUDA_VERSION_MAJOR ".dll;cufft64_12.dll";
 #endif
 
 static inline std::string join(const std::string& part1,
@@ -394,6 +400,7 @@ static inline void* GetDsoHandleFromSearchPath(
       for (auto const& path : search_extra_paths) {
         VLOG(3) << "extra_paths: " << path;
         dso_handle = GetDsoHandleFromSpecificPath(path, dso, dynload_flags);
+        if (nullptr != dso_handle) break;
       }
     }
     if (nullptr != dso_handle) break;
@@ -745,7 +752,7 @@ void* GetCusolverDsoHandle() {
         FLAGS_cuda_dir, "cusolver64_12.dll", true, {cuda_lib_path});
 #else
     return GetDsoHandleFromSearchPath(
-        FLAGS_cuda_dir, win_cusolver_lib, true, {cuda_lib_path});
+        FLAGS_cuda_dir, win_cusolver_cuda13_lib, true, {cuda_lib_path});
 #endif
   }
 #elif defined(PADDLE_WITH_HIP)
@@ -1101,7 +1108,7 @@ void* GetCUFFTDsoHandle() {
     return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "cufft64_12.dll");
 #else
     return GetDsoHandleFromSearchPath(
-        FLAGS_cuda_dir, win_cufft_lib, true, {cuda_lib_path});
+        FLAGS_cuda_dir, win_cufft_cuda13_lib, true, {cuda_lib_path});
 #endif
   } else {
     std::string warning_msg(

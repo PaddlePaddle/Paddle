@@ -293,7 +293,6 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 disable_wingpu_cuda133_test="^test_convert_mea_2_fa_pass$|\
 ^test_sequence_pool$|\
 ^test_cudnn_bn_add_relu$|\
-^new_profiler_test$|\
 ^test_fuse_bn_add_act_pass$|\
 ^test_py_reader_combination$|\
 ^test_multiprocess_dataloader_iterable_dataset_dynamic$|\
