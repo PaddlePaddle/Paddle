@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/elementwise_grad_base.h"
 
@@ -90,13 +90,20 @@ ElementwiseAddGrad(const CPUContext& dev_ctx,
                    DenseTensor* dx,
                    DenseTensor* dy,
                    int axis = -1) {
-  auto blas = funcs::GetBlas<CPUContext, T>(dev_ctx);
   if (dx) {
-    blas.VCOPY(dout.numel(), dout.data<T>(), dev_ctx.template Alloc<T>(dx));
+    memory_utils::Copy(dev_ctx.GetPlace(),
+                       dev_ctx.template Alloc<T>(dx),
+                       dev_ctx.GetPlace(),
+                       dout.data<T>(),
+                       static_cast<size_t>(dout.numel()) * sizeof(T));
   }
 
   if (dy) {
-    blas.VCOPY(dout.numel(), dout.data<T>(), dev_ctx.template Alloc<T>(dy));
+    memory_utils::Copy(dev_ctx.GetPlace(),
+                       dev_ctx.template Alloc<T>(dy),
+                       dev_ctx.GetPlace(),
+                       dout.data<T>(),
+                       static_cast<size_t>(dout.numel()) * sizeof(T));
   }
 }
 

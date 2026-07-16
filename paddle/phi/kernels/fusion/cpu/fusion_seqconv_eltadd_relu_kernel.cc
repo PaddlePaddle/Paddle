@@ -77,7 +77,6 @@ void FusionSeqConvEltAddReluKernel(const Context& dev_ctx,
       dst_data = dst_data + up_pad * src_mat_w;
       int copy_size = col_mat_w_sz - up_pad * src_mat_w_sz;
       for (int j = 0; j < up_pad; ++j) {
-        // blas.VCOPY?
         std::memcpy(dst_data, src_data, copy_size);
         dst_data += (col_mat_w - src_mat_w);
         copy_size += src_mat_w_sz;
