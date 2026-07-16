@@ -14,6 +14,8 @@
 
 #pragma once
 
+#if defined(PADDLE_WITH_CUDA)
+
 #include <functional>
 #include <list>
 #include <memory>
@@ -67,3 +69,5 @@ class FreeBlockRemapCompactor {
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle
+
+#endif

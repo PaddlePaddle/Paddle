@@ -14,6 +14,8 @@
 
 #include "paddle/phi/core/memory/allocation/vmm_auto_growth_best_fit_multi_pool_allocator_v2.h"
 
+#if defined(PADDLE_WITH_CUDA)
+
 #include "paddle/phi/core/enforce.h"
 
 namespace paddle {
@@ -164,3 +166,5 @@ VMMAutoGrowthBestFitMultiPoolAllocatorV2::RouteAllocation(size_t size) const {
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle
+
+#endif

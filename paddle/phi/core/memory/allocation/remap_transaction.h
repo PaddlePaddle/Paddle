@@ -14,6 +14,8 @@
 
 #pragma once
 
+#if defined(PADDLE_WITH_CUDA)
+
 #include <cstddef>
 #include <functional>
 #include <list>
@@ -291,3 +293,5 @@ class RemapTransaction {
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle
+
+#endif
