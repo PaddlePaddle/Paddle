@@ -200,9 +200,7 @@ if(APPLE)
     message(FATAL_ERROR "install_name_tool not found, please check.\n")
   endif()
 endif()
-if(LINUX
-   AND NOT WITH_SW
-   AND NOT WITH_ARM)
+if(LINUX AND NOT WITH_SW)
   find_program(PATCHELF_EXECUTABLE patchelf)
   if(NOT PATCHELF_EXECUTABLE)
     message(
