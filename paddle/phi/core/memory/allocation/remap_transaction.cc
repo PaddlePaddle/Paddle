@@ -14,6 +14,8 @@
 
 #include "paddle/phi/core/memory/allocation/remap_transaction.h"
 
+#if defined(PADDLE_WITH_CUDA)
+
 #include <algorithm>
 #include <chrono>
 #include <limits>
@@ -1303,3 +1305,5 @@ bool RemapTransaction::HasPendingState() const {
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle
+
+#endif

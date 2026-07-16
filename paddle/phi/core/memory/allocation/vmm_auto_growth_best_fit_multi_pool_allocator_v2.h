@@ -14,6 +14,8 @@
 
 #pragma once
 
+#if defined(PADDLE_WITH_CUDA)
+
 #include <memory>
 
 #include "paddle/phi/core/memory/allocation/vmm_allocator_v2_types.h"
@@ -83,3 +85,5 @@ class VMMAutoGrowthBestFitMultiPoolAllocatorV2 : public Allocator {
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle
+
+#endif

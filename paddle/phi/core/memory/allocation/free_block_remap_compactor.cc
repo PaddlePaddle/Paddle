@@ -14,6 +14,8 @@
 
 #include "paddle/phi/core/memory/allocation/free_block_remap_compactor.h"
 
+#if defined(PADDLE_WITH_CUDA)
+
 #include <utility>
 #include <vector>
 
@@ -92,3 +94,5 @@ size_t FreeBlockRemapCompactor::Compact(
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle
+
+#endif
