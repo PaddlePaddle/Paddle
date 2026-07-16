@@ -1838,6 +1838,348 @@ class API_PnormGradTest_ZeroSize(unittest.TestCase):
                 self._run_pnorm_backward(shape, axis, p)
 
 
+class TestPnormGradFusedKernels(unittest.TestCase):
+    """Unit tests targeting the fused CUDA grad kernels in p_norm_grad_kernel.cu.
+
+    Each sub-test covers a distinct dispatch branch:
+      p == 0           -> SetConstant (dx = 0)
+      p == 1           -> PNormGradP1Kernel    (dx = sign(x) * grad)
+      p == 2           -> PNormGradP2Kernel    (dx = grad * x / norm, masked)
+      0 < p < 1        -> PNormGradPLessThan1Kernel
+      1 < p < 2        -> PNormGradPBetween1And2Kernel
+      p > 2            -> PNormGradPGreaterThan2Kernel
+      p = inf/-inf     -> ReduceAMaxGrad path
+      reduce_all=True  -> asvector flag
+      zero elements    -> masked_fill / early-return branch
+      fp16 / bf16      -> reduced-precision dtype on GPU
+    """
+
+    def setUp(self):
+        paddle.disable_static()
+
+    # ------------------------------------------------------------------
+    # Helper: compute numerical grad reference with numpy
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _numpy_pnorm_grad(x_np, porder, axis, keepdim=False):
+        """Return analytical gradient of ||x||_p w.r.t. x (upstream grad=1)."""
+        norm = np.linalg.norm(x_np, ord=porder, axis=axis, keepdims=True)
+        if porder == 0:
+            return np.zeros_like(x_np)
+        elif porder == float("inf"):
+            x_abs = np.abs(x_np)
+            norm_bcast = norm
+            grad = np.sign(x_np)
+            grad[x_abs != norm_bcast] = 0.0
+            return grad
+        elif porder == float("-inf"):
+            x_abs = np.abs(x_np)
+            norm_bcast = norm
+            grad = np.sign(x_np)
+            grad[x_abs != norm_bcast] = 0.0
+            return grad
+        else:
+            eps = 1e-12
+            norm_safe = np.where(np.abs(norm) < eps, eps, norm)
+            grad = (
+                np.power(np.abs(norm_safe), 1.0 - porder)
+                * np.power(np.abs(x_np) + eps, porder - 1.0)
+                * np.sign(x_np)
+            )
+            return grad
+
+    def _check_grad(
+        self,
+        x_np,
+        porder,
+        axis,
+        asvector=False,
+        rtol=1e-5,
+        atol=1e-6,
+        dtype="float64",
+        gpu_only=False,
+    ):
+        if gpu_only and not core.is_compiled_with_cuda():
+            return
+        x = paddle.to_tensor(x_np.astype(dtype))
+        x.stop_gradient = False
+        out = paddle.linalg.vector_norm(x=x, p=porder, axis=axis, keepdim=False)
+        loss = paddle.sum(out)
+        loss.backward()
+        grad_paddle = x.grad.numpy().astype("float64")
+
+        # numerical reference via finite diff on float64
+        x64 = x_np.astype("float64")
+        eps_fd = 1e-5
+        grad_ref = np.zeros_like(x64)
+        for idx in np.ndindex(*x64.shape):
+            xp = x64.copy()
+            xp[idx] += eps_fd
+            xm = x64.copy()
+            xm[idx] -= eps_fd
+            fp = np.linalg.norm(
+                xp.ravel() if asvector else xp, ord=porder, axis=axis
+            )
+            fm = np.linalg.norm(
+                xm.ravel() if asvector else xm, ord=porder, axis=axis
+            )
+            fp_sum = np.sum(fp)
+            fm_sum = np.sum(fm)
+            grad_ref[idx] = (fp_sum - fm_sum) / (2 * eps_fd)
+
+        np.testing.assert_allclose(
+            grad_paddle,
+            grad_ref,
+            rtol=rtol,
+            atol=atol,
+            err_msg=f"p={porder}, axis={axis}, dtype={dtype}",
+        )
+
+    # ------------------------------------------------------------------
+    # p == 0  ->  dx = 0 everywhere
+    # ------------------------------------------------------------------
+    def test_p0_grad_is_zero(self):
+        x_np = np.random.randn(3, 4).astype("float64") + 1.0
+        x = paddle.to_tensor(x_np)
+        x.stop_gradient = False
+        out = paddle.linalg.vector_norm(x=x, p=0, axis=1, keepdim=False)
+        loss = paddle.sum(out)
+        loss.backward()
+        np.testing.assert_array_equal(x.grad.numpy(), np.zeros_like(x_np))
+
+    # ------------------------------------------------------------------
+    # p == 1  ->  PNormGradP1Kernel
+    # ------------------------------------------------------------------
+    def test_p1_grad_cpu(self):
+        x_np = np.random.randn(4, 5).astype("float64") + 0.5
+        self._check_grad(x_np, porder=1.0, axis=1)
+
+    def test_p1_grad_axis0(self):
+        x_np = np.random.randn(4, 5).astype("float64") + 0.5
+        self._check_grad(x_np, porder=1.0, axis=0)
+
+    def test_p1_grad_negative_axis(self):
+        x_np = np.random.randn(2, 3, 4).astype("float64") + 0.5
+        self._check_grad(x_np, porder=1.0, axis=-1)
+
+    def test_p1_grad_with_zeros_in_x(self):
+        """sign(0) = 0 branch."""
+        x_np = np.array([[1.0, 0.0, -2.0], [0.0, 3.0, 0.0]])
+        x = paddle.to_tensor(x_np)
+        x.stop_gradient = False
+        out = paddle.linalg.vector_norm(x=x, p=1, axis=1, keepdim=False)
+        loss = paddle.sum(out)
+        loss.backward()
+        expected = np.sign(x_np)
+        np.testing.assert_array_equal(x.grad.numpy(), expected)
+
+    # ------------------------------------------------------------------
+    # p == 2  ->  PNormGradP2Kernel
+    # ------------------------------------------------------------------
+    def test_p2_grad_cpu(self):
+        x_np = np.random.randn(3, 4, 5).astype("float64") + 1.0
+        self._check_grad(x_np, porder=2.0, axis=1)
+
+    def test_p2_grad_norm_zero_masked(self):
+        """When entire slice is zero, norm=0 and dx should be 0 (masked_fill)."""
+        x_np = np.zeros((2, 3), dtype="float64")
+        x_np[0, 0] = 1.0  # only first row non-zero
+        x = paddle.to_tensor(x_np)
+        x.stop_gradient = False
+        out = paddle.linalg.vector_norm(x=x, p=2, axis=1, keepdim=False)
+        loss = paddle.sum(out)
+        loss.backward()
+        grad = x.grad.numpy()
+        # second row is all-zero -> norm=0 -> masked to 0
+        np.testing.assert_array_equal(grad[1], np.zeros(3))
+
+    def test_p2_grad_3d_axis2(self):
+        x_np = np.random.randn(2, 3, 4).astype("float64") + 1.0
+        self._check_grad(x_np, porder=2.0, axis=2)
+
+    # ------------------------------------------------------------------
+    # p < 1  ->  PNormGradPLessThan1Kernel
+    # ------------------------------------------------------------------
+    def test_p_0_5_grad_cpu(self):
+        x_np = np.random.rand(3, 5).astype("float64") + 0.5
+        self._check_grad(x_np, porder=0.5, axis=1, rtol=1e-4, atol=1e-5)
+
+    def test_p_0_5_zeros_masked(self):
+        """When x[i]=0 the kernel sets dx[i]=0 (masked_fill branch)."""
+        x_np = np.array([[2.0, 0.0, 1.0]], dtype="float64")
+        x = paddle.to_tensor(x_np)
+        x.stop_gradient = False
+        out = paddle.linalg.vector_norm(x=x, p=0.5, axis=1, keepdim=False)
+        loss = paddle.sum(out)
+        loss.backward()
+        np.testing.assert_equal(float(x.grad.numpy()[0, 1]), 0.0)
+
+    def test_p_neg_0_5_grad_cpu(self):
+        x_np = np.random.rand(3, 5).astype("float64") + 1.0
+        self._check_grad(x_np, porder=-0.5, axis=1, rtol=1e-4, atol=1e-5)
+
+    # ------------------------------------------------------------------
+    # 1 < p < 2  ->  PNormGradPBetween1And2Kernel
+    # ------------------------------------------------------------------
+    def test_p_1_5_grad_cpu(self):
+        x_np = np.random.rand(4, 6).astype("float64") + 0.5
+        self._check_grad(x_np, porder=1.5, axis=1, rtol=1e-4, atol=1e-5)
+
+    def test_p_1_5_norm_zero_masked(self):
+        """Slice with all zeros -> norm=0 -> dx=0."""
+        x_np = np.zeros((2, 4), dtype="float64")
+        x_np[0, :] = np.random.rand(4) + 0.5
+        x = paddle.to_tensor(x_np)
+        x.stop_gradient = False
+        out = paddle.linalg.vector_norm(x=x, p=1.5, axis=1, keepdim=False)
+        loss = paddle.sum(out)
+        loss.backward()
+        np.testing.assert_array_equal(x.grad.numpy()[1], np.zeros(4))
+
+    # ------------------------------------------------------------------
+    # p > 2  ->  PNormGradPGreaterThan2Kernel
+    # ------------------------------------------------------------------
+    def test_p3_grad_cpu(self):
+        x_np = np.random.rand(3, 5).astype("float64") + 0.5
+        self._check_grad(x_np, porder=3.0, axis=1, rtol=1e-4, atol=1e-5)
+
+    def test_p4_grad_cpu(self):
+        x_np = np.random.rand(2, 4).astype("float64") + 0.5
+        self._check_grad(x_np, porder=4.0, axis=1, rtol=1e-4, atol=1e-5)
+
+    def test_p3_norm_zero_masked(self):
+        x_np = np.zeros((2, 3), dtype="float64")
+        x_np[0, :] = 1.0
+        x = paddle.to_tensor(x_np)
+        x.stop_gradient = False
+        out = paddle.linalg.vector_norm(x=x, p=3, axis=1, keepdim=False)
+        loss = paddle.sum(out)
+        loss.backward()
+        np.testing.assert_array_equal(x.grad.numpy()[1], np.zeros(3))
+
+    # ------------------------------------------------------------------
+    # p = inf / -inf  ->  ReduceAMaxGrad path
+    # ------------------------------------------------------------------
+    def test_p_inf_grad_cpu(self):
+        x_np = np.random.randn(3, 5).astype("float64") + 1.0
+        self._check_grad(x_np, porder=float("inf"), axis=1, rtol=1e-5)
+
+    def test_p_neg_inf_grad_cpu(self):
+        x_np = np.random.rand(3, 5).astype("float64") + 1.0
+        self._check_grad(x_np, porder=float("-inf"), axis=1, rtol=1e-5)
+
+    # ------------------------------------------------------------------
+    # reduce_all  (asvector=True / axis covers full tensor)
+    # ------------------------------------------------------------------
+    def test_p2_reduce_all(self):
+        """reduce_all=True path: norm_idx is always 0."""
+        x_np = np.random.randn(2, 3, 4).astype("float64") + 1.0
+        x = paddle.to_tensor(x_np)
+        x.stop_gradient = False
+        # vector_norm with no axis reduces all elements
+        out = paddle.linalg.vector_norm(x=x, p=2)
+        out.backward()
+        # reference: x / ||x||_2
+        norm_ref = np.linalg.norm(x_np.ravel())
+        grad_ref = x_np / norm_ref
+        np.testing.assert_allclose(
+            x.grad.numpy(), grad_ref, rtol=1e-6, atol=1e-7
+        )
+
+    def test_p1_reduce_all(self):
+        x_np = np.random.randn(2, 4).astype("float64") + 1.0
+        x = paddle.to_tensor(x_np)
+        x.stop_gradient = False
+        out = paddle.linalg.vector_norm(x=x, p=1)
+        out.backward()
+        grad_ref = np.sign(x_np)
+        np.testing.assert_array_equal(x.grad.numpy(), grad_ref)
+
+    # ------------------------------------------------------------------
+    # GPU-specific fp16 / bf16 tests (skipped if no CUDA)
+    # ------------------------------------------------------------------
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(),
+        "CUDA not available",
+    )
+    def test_p2_grad_fp16_gpu(self):
+        x_np = np.random.rand(4, 8).astype("float32") + 1.0
+        x = paddle.to_tensor(x_np.astype("float16"), place=paddle.CUDAPlace(0))
+        x.stop_gradient = False
+        out = paddle.linalg.vector_norm(x=x, p=2, axis=1, keepdim=False)
+        loss = paddle.sum(out)
+        loss.backward()
+        self.assertEqual(x.grad.dtype, paddle.float16)
+        self.assertEqual(x.grad.shape, x.shape)
+
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(),
+        "CUDA not available",
+    )
+    def test_p1_grad_fp16_gpu(self):
+        x_np = np.random.rand(4, 8).astype("float32") + 0.5
+        x = paddle.to_tensor(x_np.astype("float16"), place=paddle.CUDAPlace(0))
+        x.stop_gradient = False
+        out = paddle.linalg.vector_norm(x=x, p=1, axis=1, keepdim=False)
+        loss = paddle.sum(out)
+        loss.backward()
+        self.assertEqual(x.grad.dtype, paddle.float16)
+
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(),
+        "CUDA not available",
+    )
+    def test_p3_grad_fp16_gpu(self):
+        x_np = np.random.rand(3, 6).astype("float32") + 0.5
+        x = paddle.to_tensor(x_np.astype("float16"), place=paddle.CUDAPlace(0))
+        x.stop_gradient = False
+        out = paddle.linalg.vector_norm(x=x, p=3, axis=1, keepdim=False)
+        loss = paddle.sum(out)
+        loss.backward()
+        self.assertEqual(x.grad.dtype, paddle.float16)
+
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(),
+        "CUDA not available",
+    )
+    def test_p2_grad_bf16_gpu(self):
+        x_np = np.random.rand(4, 8).astype("float32") + 1.0
+        x = paddle.to_tensor(x_np, place=paddle.CUDAPlace(0)).cast("bfloat16")
+        x.stop_gradient = False
+        out = paddle.linalg.vector_norm(x=x, p=2, axis=1, keepdim=False)
+        loss = paddle.sum(out)
+        loss.backward()
+        self.assertEqual(x.grad.dtype, paddle.bfloat16)
+
+    # ------------------------------------------------------------------
+    # keepdim variant
+    # ------------------------------------------------------------------
+    def test_p2_keepdim_grad(self):
+        x_np = np.random.randn(3, 4).astype("float64") + 1.0
+        x = paddle.to_tensor(x_np)
+        x.stop_gradient = False
+        out = paddle.linalg.vector_norm(x=x, p=2, axis=1, keepdim=True)
+        loss = paddle.sum(out)
+        loss.backward()
+        # reference: x / ||x||_2 (same numerics, keepdim shouldn't change grad)
+        norm_ref = np.linalg.norm(x_np, ord=2, axis=1, keepdims=True)
+        grad_ref = x_np / norm_ref
+        np.testing.assert_allclose(
+            x.grad.numpy(), grad_ref, rtol=1e-6, atol=1e-7
+        )
+
+    # ------------------------------------------------------------------
+    # 3-D tensor: verify broadcasting over pre / post dimensions
+    # ------------------------------------------------------------------
+    def test_p2_3d_broadcast(self):
+        x_np = np.random.randn(2, 5, 3).astype("float64") + 1.0
+        self._check_grad(x_np, porder=2.0, axis=1, rtol=1e-5)
+
+    def test_p1_5_3d_broadcast(self):
+        x_np = np.random.rand(2, 5, 3).astype("float64") + 0.5
+        self._check_grad(x_np, porder=1.5, axis=1, rtol=1e-4, atol=1e-5)
+
+
 class API_NormTest_Alias(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
