@@ -2072,7 +2072,7 @@ def get_package_data_and_package_dir():
                                 + '/python/paddle/libs/'
                                 + env_dict.get("PHI_GPU_NAME")
                             )
-                else:
+                elif env_dict.get("WITH_GPU") == "ON":
                     commands = [
                         "patchelf --force-rpath --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN/../../nvidia/cuda_nvrtc/lib:$ORIGIN/../../nvidia/cublas/lib:$ORIGIN/../../nvidia/cudnn/lib:$ORIGIN/../../nvidia/curand/lib:$ORIGIN/../../nvidia/cusparse/lib:$ORIGIN/../../nvidia/nvjitlink/lib:$ORIGIN/../../nvidia/cuda_cupti/lib:$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN/../../nvidia/cufft/lib:$ORIGIN/../../nvidia/cufft/lib:$ORIGIN/../../nvidia/cusolver/lib:$ORIGIN/../../nvidia/nccl/lib:$ORIGIN/../../nvidia/nvtx/lib:$ORIGIN/../libs/' "
                         + env_dict.get("PADDLE_BINARY_DIR")
@@ -2099,6 +2099,37 @@ def get_package_data_and_package_dir():
                         ):
                             commands.append(
                                 "patchelf --force-rpath --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' "
+                                + env_dict.get("PADDLE_BINARY_DIR")
+                                + '/python/paddle/libs/'
+                                + env_dict.get("PHI_GPU_NAME")
+                            )
+                else:
+                    commands = [
+                        "patchelf --force-rpath --set-rpath '$ORIGIN/../libs/' "
+                        + env_dict.get("PADDLE_BINARY_DIR")
+                        + '/python/paddle/base/'
+                        + env_dict.get("FLUID_CORE_NAME")
+                        + '.so'
+                    ]
+                    if env_dict.get("WITH_SHARED_PHI") == "ON":
+                        commands.append(
+                            "patchelf --force-rpath --set-rpath '$ORIGIN:$ORIGIN/../libs' "
+                            + env_dict.get("PADDLE_BINARY_DIR")
+                            + '/python/paddle/libs/'
+                            + env_dict.get("PHI_NAME")
+                        )
+                        commands.append(
+                            "patchelf --force-rpath --set-rpath '$ORIGIN:$ORIGIN/../libs' "
+                            + env_dict.get("PADDLE_BINARY_DIR")
+                            + '/python/paddle/libs/'
+                            + env_dict.get("PHI_CORE_NAME")
+                        )
+                        if (
+                            env_dict.get("WITH_GPU") == "ON"
+                            or env_dict.get("WITH_ROCM") == "ON"
+                        ):
+                            commands.append(
+                                "patchelf --force-rpath --set-rpath '$ORIGIN:$ORIGIN/../libs' "
                                 + env_dict.get("PADDLE_BINARY_DIR")
                                 + '/python/paddle/libs/'
                                 + env_dict.get("PHI_GPU_NAME")
