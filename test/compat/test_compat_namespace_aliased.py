@@ -61,10 +61,15 @@ class CompatNamespaceAliasBase(unittest.TestCase):
         (paddle, "equal"),
         (paddle, "seed"),
     ]
-    # symbols that do NOT exist natively and are created by aliasing.
-    NEW = [
+    # Compat-only symbols must not be added to the paddle namespace.
+    COMPAT_ONLY = [
         (paddle, "slogdet"),
         (paddle.nn, "AvgPool1d"),
+        (paddle.nn, "AvgPool2d"),
+        (paddle.nn, "AvgPool3d"),
+        (paddle.nn, "BatchNorm1d"),
+        (paddle.nn, "BatchNorm2d"),
+        (paddle.nn, "BatchNorm3d"),
         (paddle.nn, "MultiheadAttention"),
     ]
 
@@ -91,15 +96,13 @@ class CompatNamespaceAliasBase(unittest.TestCase):
             self.assertIs(
                 getattr(m, a), native, f"{m.__name__}.{a} not restored"
             )
-        for m, a in self.NEW:
+        for m, a in self.COMPAT_ONLY:
             self.assertFalse(
-                hasattr(m, a), f"{m.__name__}.{a} should be gone after disable"
+                hasattr(m, a), f"{m.__name__}.{a} should not be added"
             )
 
     def assertAliased(self, paddle_attr, compat_attr):
-        """``paddle.*`` resolves to ``paddle.compat.*``: an existing function is a
-        dispatcher with ``__compat_fn__``; an existing class is a caller-aware
-        proxy with ``__compat_cls__``; a new symbol is the compat object itself."""
+        """Check the dispatcher or class proxy points to the compat API."""
         target = getattr(
             paddle_attr,
             "__compat_fn__",
@@ -181,40 +184,23 @@ class TestTopLevelAlias(CompatNamespaceAliasBase):
             inspect.signature(paddle.compat.nn.Linear),
         )
 
-    def test_new_symbols_created_then_removed(self):
-        for m, a in self.NEW:
-            self.assertFalse(hasattr(m, a))
-        paddle.enable_compat(level=2)
-        self.assertIs(paddle.slogdet, paddle.compat.slogdet)
-        self.assertIs(paddle.nn.AvgPool1d, paddle.compat.nn.AvgPool1d)
-        self.assertIs(
-            paddle.nn.MultiheadAttention, paddle.compat.nn.MultiheadAttention
-        )
-        paddle.disable_compat()
-        self.assertNativeRestored()
-
-    def test_all_avgpool_aliases(self):
-        """Every AvgPool alias is aliased; the lowercase variants are new symbols
-        that appear on enable and are removed on disable."""
-        for a in ("AvgPool1d", "AvgPool2d", "AvgPool3d"):
-            self.assertFalse(hasattr(paddle.nn, a))
+    def test_compat_only_symbols_are_not_added(self):
         paddle.enable_compat(level=2)
         try:
-            for a in (
-                "AvgPool1D",
-                "AvgPool2D",
-                "AvgPool3D",
-                "AvgPool1d",
-                "AvgPool2d",
-                "AvgPool3d",
-            ):
+            for module, name in self.COMPAT_ONLY:
+                self.assertFalse(hasattr(module, name))
+        finally:
+            paddle.disable_compat()
+
+    def test_all_avgpool_aliases(self):
+        paddle.enable_compat(level=2)
+        try:
+            for a in ("AvgPool1D", "AvgPool2D", "AvgPool3D"):
                 self.assertAliased(
                     getattr(paddle.nn, a), getattr(paddle.compat.nn, a)
                 )
         finally:
             paddle.disable_compat()
-        for a in ("AvgPool1d", "AvgPool2d", "AvgPool3d"):
-            self.assertFalse(hasattr(paddle.nn, a))
 
     @with_level2
     def test_all_nn_functional_aliases(self):
@@ -273,18 +259,6 @@ class TestAliasBehavior(CompatNamespaceAliasBase):
         self.assertIsInstance(s, int)
 
     @with_level2
-    def test_multihead_attention_forward_under_compat(self):
-        """MHA forward chains F.linear, sdpa and F.softmax without recursion."""
-        mha = paddle.nn.MultiheadAttention(8, 2, batch_first=True)
-        x = paddle.randn([2, 5, 8])
-        out, weights = mha(x, x, x, need_weights=False)  # sdpa path
-        self.assertEqual(out.shape, [2, 5, 8])
-        self.assertIsNone(weights)
-        out2, weights2 = mha(x, x, x, need_weights=True)  # softmax path
-        self.assertEqual(out2.shape, [2, 5, 8])
-        self.assertIsNotNone(weights2)
-
-    @with_level2
     def test_aliased_wrappers_execute(self):
         """Broader behavioral coverage of the self-ref-fixed / aliased wrappers
         that were previously only checked by identity."""
@@ -300,9 +274,6 @@ class TestAliasBehavior(CompatNamespaceAliasBase):
         self.assertEqual(len(parts), 2)
         # equal returns a python bool (like allclose)
         self.assertIsInstance(paddle.equal(t, t), bool)
-        # slogdet returns a (sign, logabsdet) namedtuple
-        sd = paddle.slogdet(paddle.to_tensor([[1.0, 0.0], [0.0, 2.0]]))
-        self.assertTrue(hasattr(sd, "sign"))
         # nn.functional: pad / linear / unfold
         self.assertEqual(paddle.nn.functional.pad(t, [1, 1]).shape, [2, 5])
         y = paddle.nn.functional.linear(
@@ -359,7 +330,6 @@ class TestScopeAndLifecycle(CompatNamespaceAliasBase):
         paddle.enable_compat(scope={"triton"}, level=2, silent=True)
         try:
             self.assertAliased(paddle.sort, paddle.compat.sort)
-            self.assertIs(paddle.slogdet, paddle.compat.slogdet)
         finally:
             paddle.disable_compat()
         self.assertNativeRestored()
