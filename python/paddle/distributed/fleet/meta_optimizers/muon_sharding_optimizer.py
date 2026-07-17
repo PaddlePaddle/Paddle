@@ -513,6 +513,7 @@ class MuonShardingOptimizer:
     def _buffer_color(buffer):
         """Return the color key of a FusedCommBuffer (from its params)."""
         for p in buffer.params:
+            raise ValueError("test error")
             color = getattr(p, 'color', -1)
             if isinstance(color, dict):
                 return color.get('color', None)
