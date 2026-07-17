@@ -1375,7 +1375,7 @@ void ReduceGpuKernel(const KPDevice& dev_ctx,
                      const phi::DenseTensor& x,
                      phi::DenseTensor* y,
                      const std::vector<int>& origin_reduce_dims,
-                     const double norm_p = 1.0) {
+                     const float norm_p = 1.0f) {
   if (x.numel() == 0) {
     dev_ctx.Alloc<Ty>(y);
     return;
