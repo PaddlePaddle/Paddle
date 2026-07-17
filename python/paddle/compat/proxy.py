@@ -26,6 +26,12 @@ from contextlib import contextmanager
 from functools import cache
 from typing import TYPE_CHECKING, Any, Literal
 
+from .api_dispatch import (
+    _apply_paddle_namespace_aliases,
+    _is_paddle_namespace_aliased,
+    _restore_paddle_namespace_aliases,
+)
+
 if TYPE_CHECKING:
     from collections.abc import Generator, Iterable
     from typing import TypeAlias
@@ -479,6 +485,7 @@ def enable_compat(
     blocked_modules: _ScopeType = None,
     backend: Literal["torch"] = "torch",
     silent: bool = False,
+    level: int = 1,
 ) -> None:
     """
     Enable the PyTorch compat by adding the TorchProxyMetaFinder to sys.meta_path.
@@ -493,6 +500,9 @@ def enable_compat(
             "torch" is supported. Defaults to "torch".
         silent (bool, optional): If True, suppresses warnings about scope changes.
             Defaults to False.
+        level (int, optional): The compatibility level. ``1`` (default) preserves the
+            original ``torch -> paddle`` proxy behavior. ``2`` aliases the torch-aligned
+            ``paddle.compat.*`` APIs onto ``paddle.*`` and ``paddle.Tensor```. Defaults to 1.
 
     Example:
         .. code-block:: pycon
@@ -517,6 +527,10 @@ def enable_compat(
             >>> paddle.disable_compat()  # Disable torch compat
     """
     assert backend == "torch", f"Unsupported backend: {backend}"
+
+    if level not in {1, 2}:
+        raise ValueError(f"Unsupported level: {level}. It should be 1 or 2.")
+
     blocked_modules = _parse_scope(blocked_modules)
     if blocked_modules is not None:
         extend_torch_proxy_blocked_modules(blocked_modules)
@@ -525,6 +539,9 @@ def enable_compat(
     _swap_torch_modules_to_cache()
     _modify_scope_of_torch_proxy(scope, silent=silent)
     sys.meta_path.insert(0, TORCH_PROXY_FINDER)
+
+    if level == 2:
+        _apply_paddle_namespace_aliases()
 
 
 def disable_compat() -> None:
@@ -547,6 +564,7 @@ def disable_compat() -> None:
     """
     if TORCH_PROXY_FINDER in sys.meta_path:
         sys.meta_path.remove(TORCH_PROXY_FINDER)
+        _restore_paddle_namespace_aliases()
         _clear_torch_proxy_modules()
         _copy_torch_modules_from_cache()
         return
@@ -601,6 +619,7 @@ def use_compat_guard(
     already_has_torch_proxy = TORCH_PROXY_FINDER in sys.meta_path
     original_local_enabled_scope = set(TORCH_PROXY_FINDER._local_enabled_scope)
     original_globally_enabled = TORCH_PROXY_FINDER._globally_enabled
+    restore_namespace_aliases = _is_paddle_namespace_aliased()
     if enable == already_has_torch_proxy and (
         (original_globally_enabled and scope is None)
         or (original_local_enabled_scope == (scope or set()))
@@ -617,6 +636,8 @@ def use_compat_guard(
             )
             TORCH_PROXY_FINDER._globally_enabled = original_globally_enabled
             disable_compat()
+            if restore_namespace_aliases:
+                _apply_paddle_namespace_aliases()
     else:
         disable_compat()
         try:
@@ -627,6 +648,8 @@ def use_compat_guard(
                 original_local_enabled_scope
             )
             TORCH_PROXY_FINDER._globally_enabled = original_globally_enabled
+            if restore_namespace_aliases:
+                _apply_paddle_namespace_aliases()
 
 
 def extend_torch_proxy_blocked_modules(modules: Iterable[str]) -> None:
