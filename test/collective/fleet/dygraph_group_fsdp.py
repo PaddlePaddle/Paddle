@@ -42,9 +42,13 @@ def train_mlp(
     use_fsdp=True,
     data=None,
     use_pure_bf16=True,
+    enable_tensor_fusion_and_overlap=True,
 ):
     if use_fsdp:
-        model = fully_shard(model)
+        model = fully_shard(
+            model,
+            enable_tensor_fusion_and_overlap=enable_tensor_fusion_and_overlap,
+        )
     model = mix_precision_utils.MixPrecisionLayer(model, dtype="bfloat16")
     optimizer = paddle.optimizer.AdamW(
         learning_rate=0.001,
@@ -76,6 +80,48 @@ def train_mlp(
     return losses
 
 
+class TransformerLayer(nn.Layer):
+    def __init__(self, hidden_size):
+        super().__init__()
+        self.linear = nn.Linear(hidden_size, hidden_size, bias_attr=False)
+
+    def forward(self, x):
+        return self.linear(x)
+
+
+class SharedLinear(nn.Layer):
+    def __init__(self, weight):
+        super().__init__()
+        self.weight = weight
+
+    def forward(self, x):
+        return paddle.matmul(x, self.weight)
+
+
+class TestModel(nn.Layer):
+    def __init__(self, hidden_size=16, num_layers=4):
+        super().__init__()
+        self.input_embeddings = nn.Linear(
+            hidden_size, hidden_size, bias_attr=False
+        )
+        self.layers = nn.LayerList(
+            [TransformerLayer(hidden_size) for _ in range(num_layers)]
+        )
+        self.shared_linear = SharedLinear(self.input_embeddings.weight)
+        self.final_stage = nn.Linear(hidden_size, 2, bias_attr=False)
+
+    def get_input_embeddings(self):
+        return self.input_embeddings
+
+    def forward(self, x):
+        x = self.input_embeddings(x)
+        for layer in self.layers:
+            x = layer(x)
+        x = self.shared_linear(x)
+        x = self.final_stage(x)
+        return x
+
+
 def test_fsdp_api():
     # test sharding with fsdp api
     paddle.seed(2025)
@@ -98,9 +144,16 @@ def test_fsdp_api():
     sharding_loss = train_mlp(sharding_model, use_fsdp=False, data=data)
     fsdp_loss = train_mlp(fsdp_model, use_fsdp=True, data=data)
     assert fsdp_loss == sharding_loss
-    # test sharding with fsdp api with fp32
-    model = Model()
-    loss = train_mlp(model, use_fsdp=True, data=data, use_pure_bf16=False)
+    # test sharding with fsdp api with fp32 and without overlap and tie_weight
+    data = [paddle.randn([8, 16]) for i in range(20)]
+    model = TestModel()
+    loss = train_mlp(
+        model,
+        use_fsdp=True,
+        data=data,
+        use_pure_bf16=False,
+        enable_tensor_fusion_and_overlap=False,
+    )
 
 
 if __name__ == '__main__':

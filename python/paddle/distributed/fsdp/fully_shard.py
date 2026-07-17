@@ -55,7 +55,10 @@ def _fully_shard_manual_parallel(
     ignored_params,
     enable_tensor_fusion_and_overlap,
 ):
-    FullyShardFusion(module)
+    FullyShardFusion(
+        module,
+        enable_tensor_fusion_and_overlap=enable_tensor_fusion_and_overlap,
+    )
     return module
 
 

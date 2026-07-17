@@ -210,9 +210,12 @@ class FSDPBufferManager:
 
         # Get tie_param_name if using tie_weights
         self.tie_param_name = None
-        # Note: need add get_input_embeddings in fleet modeling
-        # if hasattr(self.model, "get_input_embeddings"):
-        #     self.tie_param_name = self.model.get_input_embeddings().weight.name
+        if hasattr(self.model, "get_input_embeddings"):
+            input_embeddings = self.model.get_input_embeddings()
+            if input_embeddings is not None and hasattr(
+                input_embeddings, "weight"
+            ):
+                self.tie_param_name = input_embeddings.weight.name
 
         # Create buffer_groups
         grouped_params, group_is_expert = self._build_groups()
@@ -596,12 +599,21 @@ class FusionForwardHook(PyLayer):
 
 
 class FullyShardFusion:
-    def __init__(self, model, fsdp_unit_layers=None, moe_layers_name=None):
+    def __init__(
+        self,
+        model,
+        fsdp_unit_layers=None,
+        moe_layers_name=None,
+        enable_tensor_fusion_and_overlap=True,
+    ):
         self.model = model
         self.buffer_manager = FSDPBufferManager(
             self.model, fsdp_unit_layers, moe_layers_name
         )
-        self.comm_manager = FSDPCommManager(self.buffer_manager)
+        self.comm_manager = FSDPCommManager(
+            self.buffer_manager,
+            enable_overlap=enable_tensor_fusion_and_overlap,
+        )
         self.register_tensor_fusion_hooks(self.model)
         register_fsdp_context(self)
 
