@@ -43,13 +43,13 @@ struct AbsFunctor {
 
 template <typename T>
 struct UnsignedPowFunctor {
-  HOSTDEVICE explicit inline UnsignedPowFunctor(double porder) {
+  HOSTDEVICE explicit inline UnsignedPowFunctor(float porder) {
     this->porder = porder;
   }
   HOSTDEVICE inline T operator()(const T x) const {
     return static_cast<T>(inline_pow(inline_abs(x), static_cast<T>(porder)));
   }
-  double porder;
+  float porder;
 };
 
 #ifndef _WIN32
