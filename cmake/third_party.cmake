@@ -605,7 +605,7 @@ if(WITH_GPU
   if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 12.3
      AND ${CMAKE_CUDA_COMPILER_VERSION} LESS_EQUAL 13.0)
     foreach(arch ${NVCC_ARCH_BIN})
-      if(${arch} EQUAL 90 AND NOT 100 IN_LIST NVCC_ARCH_BIN)
+      if(${arch} EQUAL 90)
         set(WITH_FLASHATTN_V3 ON)
         break()
       endif()
