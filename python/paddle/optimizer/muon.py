@@ -606,6 +606,9 @@ class Muon(Optimizer):
                 self._master_weights[param.name] if find_master else None
             )
 
+            lr_ratio = 1.0 if self._lr_ratio is None else self._lr_ratio(param)
+            effective_lr = lr * lr_ratio
+
             with_decay = True
             if (
                 self._apply_decay_param_fun is not None
@@ -614,11 +617,11 @@ class Muon(Optimizer):
                 with_decay = False
             if with_decay and weight_decay > 0:
                 if find_master:
-                    master_weight.scale_(1.0 - lr * weight_decay)
+                    master_weight.scale_(1.0 - effective_lr * weight_decay)
                 else:
-                    param.scale_(1.0 - lr * weight_decay)
+                    param.scale_(1.0 - effective_lr * weight_decay)
 
-            final_step = orthogonal_update * lr
+            final_step = orthogonal_update * effective_lr
 
             if find_master:
                 master_weight.subtract_(final_step)
