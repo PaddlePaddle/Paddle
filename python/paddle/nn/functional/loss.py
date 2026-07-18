@@ -3051,8 +3051,8 @@ def cross_entropy(
             If given, has to be a Tensor of size C and the data type is float32, float64.
             Default is ``'None'`` .
         ignore_index (int64, optional): Specifies a target value that is ignored
-            and does not contribute to the loss. A negative value means that no label
-            value needs to be ignored. Only valid when soft_label = False.
+            and does not contribute to the loss. When reduction='mean', the loss is
+            averaged over non-ignored targets.  Only valid when soft_label = False.
             Default is ``-100`` .
         reduction (str, optional): Indicate how to average the loss by batch_size,
             the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
@@ -3190,7 +3190,7 @@ def cross_entropy(
             "The value of 'reduction' in softmax_cross_entropy"
             f"should be 'sum', 'mean' or 'none', but received {reduction}, which is not allowed."
         )
-    if ignore_index > 0 and soft_label:
+    if ignore_index >= 0 and soft_label:
         raise ValueError(
             "When soft_label == True, the value of 'ignore_index' in softmax_cross_entropy"
             f"should be '-100', but received {ignore_index}, which is not allowed."
@@ -3375,7 +3375,7 @@ def cross_entropy(
             # 2. else
             #     numerator: loss's weighted sum
             #     denominator: cal the sum of weight where the sample's class_index!=ignore_index
-            if ignore_index >= 0:  # ignore label
+            if not soft_label:
                 if out.dtype == paddle.float16:
                     out_sum = _C_ops.sum(out, [], paddle.float32, False)
                 else:
@@ -3531,7 +3531,7 @@ def cross_entropy(
         if reduction == "sum":
             return paddle.sum(out, name=name)
         elif reduction == "mean":
-            if ignore_index >= 0:
+            if not soft_label:
                 out_sum = paddle.sum(out, name=name)
                 # for each label[i],set 1 or 0, according to ignore_index
                 # mask[i]=0, if label[i]==ignore_index

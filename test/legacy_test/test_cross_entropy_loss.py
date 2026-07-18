@@ -1819,6 +1819,59 @@ class CrossEntropyLoss(unittest.TestCase):
 
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
+    def test_cross_entropy_loss_1d_with_mean_ignore_negative_100(self):
+        N = 100
+        C = 200
+        ignore_index = -100
+        input_np = np.random.random([N, C]).astype(self.dtype)
+
+        valid_labels = np.random.randint(0, C, size=(N // 2)).astype(np.int64)
+        ignored_labels = np.full((N - (N // 2),), ignore_index).astype(np.int64)
+        label_np = np.concatenate((valid_labels, ignored_labels))
+
+        paddle.enable_static()
+        prog = base.Program()
+        startup_prog = base.Program()
+        place = get_device_place()
+        with base.program_guard(prog, startup_prog):
+            input = paddle.static.data(
+                name='input', shape=[N, C], dtype=self.dtype
+            )
+            label = paddle.static.data(name='label', shape=[N], dtype='int64')
+            cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
+                ignore_index=ignore_index
+            )
+            ret = cross_entropy_loss(input, label)
+            exe = base.Executor(place)
+            static_ret = exe.run(
+                prog,
+                feed={
+                    'input': input_np,
+                    'label': label_np,
+                },
+                fetch_list=[ret],
+            )
+            self.assertIsNotNone(static_ret)
+
+        with base.dygraph.guard():
+            cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
+                axis=1, ignore_index=ignore_index
+            )
+            dy_ret = cross_entropy_loss(
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
+            )
+            dy_ret_value = dy_ret.numpy()
+            self.assertIsNotNone(dy_ret_value)
+
+        expected = cross_entropy_loss_1d(
+            input_np, label_np, ignore_index=ignore_index
+        )[0]
+
+        np.testing.assert_allclose(static_ret[0], dy_ret_value, rtol=1e-05)
+        np.testing.assert_allclose(static_ret[0], expected, rtol=1e-05)
+        np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
+
     def test_cross_entropy_loss_1d_with_weight_mean(self):
         input_np = np.random.random([2, 4]).astype(self.dtype)
         label_np = np.random.randint(0, 4, size=(2)).astype(np.int64)
@@ -2771,6 +2824,23 @@ class TestCrossEntropyFAPIError(unittest.TestCase):
                     self.assertIsNotNone(static_ret)
 
             self.assertRaises(ValueError, static_test_WeightLength_NotEqual)
+
+            def test_IgnoreIndex_SoftTarget():
+                input_data = paddle.rand(shape=[20, 100])
+                label_data = paddle.rand_like(input_data)
+                label_data = label_data / paddle.sum(
+                    label_data, axis=-1, keepdim=True
+                )
+                weight_data = paddle.rand([100])
+                paddle.nn.functional.cross_entropy(
+                    input=input_data,
+                    label=label_data,
+                    soft_label=True,
+                    weight=weight_data,
+                    ignore_index=19,
+                )
+
+            self.assertRaises(ValueError, test_IgnoreIndex_SoftTarget)
 
 
 class CrossEntropyLossCompatible(unittest.TestCase):
