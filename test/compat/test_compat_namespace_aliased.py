@@ -425,14 +425,38 @@ class TestTorchSurfaceUnderCompat(CompatNamespaceAliasBase):
             self._drop_torch_modules()
             import torch
 
-            # Root functions have no dedicated torch override; at level=2 the
-            # paddle.* alias carries them through: torch.sort -> paddle.sort ->
-            # paddle.compat.sort.
+            # Root functions with native Paddle counterparts carry through the
+            # paddle.* aliases: torch.sort -> paddle.sort -> paddle.compat.sort.
             self.assertAliased(torch.sort, paddle.compat.sort)
             self.assertAliased(torch.min, paddle.compat.min)
             self.assertAliased(torch.unique, paddle.compat.unique)
             # nn.* overrides reach compat regardless of the alias.
             self.assertIs(torch.nn.Linear, paddle.compat.nn.Linear)
+        finally:
+            self._drop_torch_modules()
+            paddle.disable_compat()
+
+    def test_root_compat_only_api_is_level2_only(self):
+        paddle.enable_compat(level=2)
+        try:
+            self._drop_torch_modules()
+            import torch
+
+            self.assertFalse(hasattr(paddle, "slogdet"))
+            self.assertIs(torch.slogdet, paddle.compat.slogdet)
+            result = torch.slogdet(paddle.eye(2))
+            self.assertEqual(result.sign.item(), 1.0)
+            self.assertEqual(result.logabsdet.item(), 0.0)
+        finally:
+            self._drop_torch_modules()
+            paddle.disable_compat()
+
+        paddle.enable_compat()
+        try:
+            self._drop_torch_modules()
+            import torch
+
+            self.assertFalse(hasattr(torch, "slogdet"))
         finally:
             self._drop_torch_modules()
             paddle.disable_compat()

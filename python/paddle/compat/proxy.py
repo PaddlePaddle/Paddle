@@ -30,6 +30,7 @@ from .api_dispatch import (
     _PADDLE_NAMESPACE_SAVED,
     _apply_paddle_namespace_aliases,
     _restore_paddle_namespace_aliases,
+    is_compat_api_enabled,
 )
 
 if TYPE_CHECKING:
@@ -360,6 +361,17 @@ class TorchProxyMetaFinder:
             for k, v in GLOBAL_OVERRIDES.items()
             if k.startswith(f"{fullname}.")
         }
+        if fullname == "torch" and is_compat_api_enabled():
+            compat_root = importlib.import_module("paddle.compat")
+            overrides.update(
+                {
+                    attr_name: RawOverriddenAttribute(
+                        getattr(compat_root, attr_name)
+                    )
+                    for attr_name in getattr(compat_root, "__all__", ())
+                    if not hasattr(source_module, attr_name)
+                }
+            )
 
         is_pkg = hasattr(source_module, "__path__")
 
