@@ -283,7 +283,8 @@ CUDAVirtualMemAllocatorV2::AppendWithLayout(size_t size) {
                                         place_));
   VMMDevicePtr ptr = virtual_mem_base_ + virtual_mem_alloced_offset_;
 
-  auto layout = CreateMappedHandleLayout(ptr, aligned, "AppendWithLayout");
+  auto layout =
+      CreateMappedHandleLayout(ptr, aligned, "AppendWithLayout", true);
 
   MarkLayoutMapped(layout);
   return WrapTrackedAllocation(ptr, aligned, std::move(layout), true);
@@ -324,7 +325,8 @@ CUDAVirtualMemAllocatorV2::PlaceAtVAWithLayout(VMMDevicePtr ptr, size_t size) {
       common::errors::ResourceExhausted(
           "VMMAllocatorV2 PlaceAtVA range exceeds reserved VA space."));
 
-  auto layout = CreateMappedHandleLayout(ptr, aligned, "PlaceAtVAWithLayout");
+  auto layout =
+      CreateMappedHandleLayout(ptr, aligned, "PlaceAtVAWithLayout", false);
 
   MarkLayoutMapped(layout);
   return WrapTrackedAllocation(ptr, aligned, std::move(layout), false);
@@ -336,7 +338,7 @@ CUDAVirtualMemAllocatorV2::PlaceAtVAWithBlock(VMMDevicePtr ptr, size_t size) {
 }
 
 HandleLayout CUDAVirtualMemAllocatorV2::CreateMappedHandleLayout(
-    VMMDevicePtr ptr, size_t aligned_size, const char* context) {
+    VMMDevicePtr ptr, size_t aligned_size, const char* context, bool is_grow) {
   platform::CUDADeviceGuard guard(place_.device);
   const size_t num_handles = aligned_size / handle_size_;
   HandleLayout layout;
@@ -351,13 +353,22 @@ HandleLayout CUDAVirtualMemAllocatorV2::CreateMappedHandleLayout(
         // BadAlloc may be caught by a retry loop, so do not leave a stale CUDA
         // OOM in the runtime error slot.
         (void)platform::GpuGetLastError();
-        PADDLE_THROW_BAD_ALLOC(common::errors::ResourceExhausted(
+        auto error = common::errors::ResourceExhausted(
             "%s cuMemCreate failed: out of GPU memory at handle %zu/%zu "
             "(handle_size=%zu).",
             context,
             i,
             num_handles,
-            handle_size_));
+            handle_size_);
+        if (is_grow) {
+          throw VMMGrowOOM(
+              error.to_string(),
+              __FILE__,
+              __LINE__,
+              VMMGrowOOMInfo{
+                  num_handles, i, handle_size_, place_.device, pool_type_});
+        }
+        PADDLE_THROW_BAD_ALLOC(error);
       }
       PADDLE_ENFORCE_GPU_SUCCESS(ce);
     }

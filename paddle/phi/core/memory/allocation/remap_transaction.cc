@@ -466,17 +466,50 @@ RemapTransaction::DestinationPlan RemapTransaction::SelectDestinationPlan(
     BlockList* blocks,
     VMMDevicePtr tail_va,
     VMMDevicePtr va_limit,
-    size_t handle_count) const {
+    size_t handle_count,
+    DestinationPolicy policy) const {
   DestinationPlan plan;
   const size_t total_remapped = handle_count * handle_size_;
 
-  const bool tail_driver_va_usable =
-      TailIsUsable(tail_va, total_remapped, va_limit);
-  if (tail_driver_va_usable &&
-      CanPrepareDestinationRange(tail_va, total_remapped)) {
+  auto select_tail = [&]() {
+    if (!TailIsUsable(tail_va, total_remapped, va_limit) ||
+        !CanPrepareDestinationRange(tail_va, total_remapped)) {
+      return false;
+    }
     plan.kind = DestinationPlanKind::kTail;
     plan.placements.push_back(
         DestinationPlacement::AtTail(tail_va, handle_count));
+    return true;
+  };
+
+  auto select_single_gap = [&]() {
+    const size_t required_bytes = handle_count * handle_size_;
+    for (auto it = blocks->begin(); it != blocks->end(); ++it) {
+      if (!it->IsUnmappedFree() || it->size() < required_bytes) {
+        continue;
+      }
+      const size_t capacity =
+          CountLeadingUnmappedBackingPages(it->begin_va(), it->size());
+      if (capacity < handle_count ||
+          !CanPrepareDestinationRange(it->begin_va(), required_bytes)) {
+        continue;
+      }
+      plan.kind = DestinationPlanKind::kSingleUnmappedRange;
+      plan.placements.push_back(DestinationPlacement::InUnmappedRange(
+          it, it->begin_va(), 0, handle_count));
+      return true;
+    }
+    return false;
+  };
+
+  if (policy == DestinationPolicy::kDirectGapThenTail) {
+    if (!select_single_gap()) {
+      select_tail();
+    }
+    return plan;
+  }
+
+  if (select_tail() || policy == DestinationPolicy::kTailOnly) {
     return plan;
   }
 
@@ -758,11 +791,12 @@ RemapTransaction::MoveResult RemapTransaction::ExecuteDestinationPlan(
     VMMDevicePtr tail_va,
     VMMDevicePtr va_limit,
     SourceMovePlan* plan,
-    PoolType pool_type) {
+    PoolType pool_type,
+    DestinationPolicy policy) {
   MoveResult result;
   auto plan_start = Clock::now();
   auto destination = SelectDestinationPlan(
-      blocks, tail_va, va_limit, plan->source_pages.size());
+      blocks, tail_va, va_limit, plan->source_pages.size(), policy);
   result.destination_plan_us = ElapsedMicros(plan_start, Clock::now());
   if (!destination.HasPlacement()) {
     return result;
@@ -813,7 +847,8 @@ RemapTransaction::CompactResult RemapTransaction::CompactFreeBlocks(
     BlockList* blocks,
     size_t requested_size,
     PoolType pool_type,
-    const SourcePages& source_pages) {
+    const SourcePages& source_pages,
+    DestinationPolicy policy) {
   CompactResult result;
   blocks_ = blocks;
   rollback_source_mappings_ = {};
@@ -845,8 +880,8 @@ RemapTransaction::CompactResult RemapTransaction::CompactFreeBlocks(
   if (move_plan.source_pages.empty()) {
     return result;
   }
-  auto move_placement =
-      ExecuteDestinationPlan(blocks, tail_va, va_limit, &move_plan, pool_type);
+  auto move_placement = ExecuteDestinationPlan(
+      blocks, tail_va, va_limit, &move_plan, pool_type, policy);
   result.success = move_placement.success;
   result.used_tail = move_placement.used_tail;
   result.destination_plan_us = move_placement.destination_plan_us;

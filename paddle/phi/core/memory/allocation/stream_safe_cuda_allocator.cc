@@ -425,7 +425,10 @@ phi::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
         underlying_allocation = underlying_allocator_->Allocate(size);
       } catch (const BadAlloc& second_bad_alloc) {
         if (FLAGS_vmm_v2_remap_on_oom) {
-          const size_t remapped_bytes = vmm->RemapForAllocation(place_, size);
+          const auto* grow_oom =
+              dynamic_cast<const VMMGrowOOM*>(&second_bad_alloc);
+          const size_t remapped_bytes = vmm->RemapForAllocation(
+              place_, size, grow_oom == nullptr ? nullptr : &grow_oom->info());
           if (remapped_bytes > 0) {
             try {
               underlying_allocation = underlying_allocator_->Allocate(size);

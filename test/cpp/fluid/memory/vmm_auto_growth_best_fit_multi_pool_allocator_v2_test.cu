@@ -73,8 +73,14 @@ class FailingMultiPoolAllocator
  protected:
   phi::Allocation* AllocateImpl(size_t) override {
     ++allocation_attempts_;
-    PADDLE_THROW_BAD_ALLOC(common::errors::ResourceExhausted(
-        "deterministic VMM stream-safe allocation failure"));
+    throw VMMGrowOOM("deterministic VMM stream-safe allocation failure",
+                     __FILE__,
+                     __LINE__,
+                     VMMGrowOOMInfo{/*requested_handles=*/2,
+                                    /*created_handles=*/1,
+                                    /*handle_size=*/2UL << 20,
+                                    /*device=*/0,
+                                    PoolType::kLarge});
   }
 
  private:

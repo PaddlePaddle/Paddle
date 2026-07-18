@@ -80,6 +80,29 @@ DriverMemoryStats CollectDriverMemoryStats(int device) {
   return stats;
 }
 
+size_t FullyCoveredBackingBytes(const std::pair<VMMDevicePtr, size_t>& range,
+                                size_t handle_size) {
+  if (handle_size == 0) {
+    return 0;
+  }
+  const size_t remainder = range.first % handle_size;
+  const size_t prefix = remainder == 0 ? 0 : handle_size - remainder;
+  if (range.second <= prefix) {
+    return 0;
+  }
+  return ((range.second - prefix) / handle_size) * handle_size;
+}
+
+void PrioritizeContiguousSourceRanges(
+    std::vector<std::pair<VMMDevicePtr, size_t>>* ranges, size_t handle_size) {
+  std::stable_sort(ranges->begin(),
+                   ranges->end(),
+                   [handle_size](const auto& lhs, const auto& rhs) {
+                     return FullyCoveredBackingBytes(lhs, handle_size) >
+                            FullyCoveredBackingBytes(rhs, handle_size);
+                   });
+}
+
 }  // namespace
 
 struct VMMAutoGrowthBestFitAllocatorV2::CompactState {
@@ -308,9 +331,6 @@ phi::Allocation* VMMAutoGrowthBestFitAllocatorV2::AllocateImpl(size_t size) {
   };
 
   // Grow: obtain a new raw allocation from the bottom VMM provider.
-  // If cuMemCreate fails due to physical memory exhaustion (CU error 2),
-  // the driver-level allocator throws EnforceNotMet. Convert it to BadAlloc
-  // so outer allocator layers can run their generic OOM recovery path.
   CUDAVirtualMemAllocatorV2::AllocationWithBlock grow_alloc;
   if (grow_size > 0) {
     bool grow_completed = false;
@@ -319,16 +339,7 @@ phi::Allocation* VMMAutoGrowthBestFitAllocatorV2::AllocateImpl(size_t size) {
         restore_tail_free_block();
       }
     });
-    try {
-      grow_alloc = underlying_allocator_->AppendWithBlock(grow_size);
-    } catch (const BadAlloc& bad_alloc) {
-      PADDLE_THROW_BAD_ALLOC(common::errors::ResourceExhausted(
-          "VMM V2 best-fit allocator (pool %d) failed to grow by %zu bytes.\n"
-          "Underlying VMM allocation failure:\n%s",
-          static_cast<int>(pool_type_),
-          grow_size,
-          bad_alloc.what()));
-    }
+    grow_alloc = underlying_allocator_->AppendWithBlock(grow_size);
     grow_completed = true;
   }
 
@@ -429,7 +440,7 @@ size_t VMMAutoGrowthBestFitAllocatorV2::CompactImpl(const Place& place) {
 }
 
 size_t VMMAutoGrowthBestFitAllocatorV2::RemapForAllocation(
-    const Place& place, size_t requested_size) {
+    const Place& place, size_t requested_size, const VMMGrowOOMInfo* grow_oom) {
   const uint64_t compact_seq =
       g_vmm_v2_compact_seq.fetch_add(1, std::memory_order_relaxed) + 1;
   const auto compact_start = Clock::now();
@@ -446,7 +457,7 @@ size_t VMMAutoGrowthBestFitAllocatorV2::RemapForAllocation(
   const uint64_t lock_wait_us = ElapsedMicros(lock_start, Clock::now());
 
   const auto block_scan_start = Clock::now();
-  const CompactState compact_state = CollectCompactState();
+  CompactState compact_state = CollectCompactState();
   const uint64_t block_scan_us = ElapsedMicros(block_scan_start, Clock::now());
   CompactContext compact_context;
   compact_context.seq = compact_seq;
@@ -457,6 +468,7 @@ size_t VMMAutoGrowthBestFitAllocatorV2::RemapForAllocation(
 
   size_t compact_target = requested_size;
   compact_context.compact_target = compact_target;
+  bool use_grow_oom = false;
   if (requested_size > 0) {
     if (compact_state.max_free >= requested_size) {
       LogCompactSkip(
@@ -464,20 +476,41 @@ size_t VMMAutoGrowthBestFitAllocatorV2::RemapForAllocation(
       return 0;
     }
 
-    if (compact_state.total_free < requested_size) {
-      if (compact_state.total_free <= compact_state.tail_free) {
-        LogCompactSkip(compact_state,
-                       compact_context,
-                       "insufficient_non_tail_mapped_free");
-        return 0;
-      }
-      // Partial compact: under tight training pressure, mapped-free bytes may
-      // be insufficient to cover the whole request but still reduce the next
-      // grow attempt. Move the non-tail free backing to tail/gaps and let the
-      // following allocation retry grow only the remaining deficit.
-      compact_target = compact_state.total_free;
-      compact_context.compact_target = compact_target;
+    if (compact_state.total_free <= compact_state.tail_free) {
+      LogCompactSkip(
+          compact_state, compact_context, "insufficient_non_tail_mapped_free");
+      return 0;
     }
+
+    if (grow_oom != nullptr) {
+      const size_t handle_size = underlying_allocator_->handle_size();
+      const size_t aligned_request = AlignedSize(requested_size, alignment_);
+      const size_t grow_bytes = aligned_request > compact_state.tail_free
+                                    ? aligned_request - compact_state.tail_free
+                                    : 0;
+      const size_t expected_grow_handles =
+          grow_bytes / handle_size + (grow_bytes % handle_size != 0);
+      use_grow_oom = grow_oom->device == place_.device &&
+                     grow_oom->pool_type == pool_type_ &&
+                     grow_oom->handle_size == handle_size &&
+                     grow_oom->requested_handles == expected_grow_handles &&
+                     grow_oom->created_handles < grow_oom->requested_handles;
+      if (use_grow_oom) {
+        const size_t required_handles =
+            grow_oom->requested_handles - grow_oom->created_handles;
+        compact_target =
+            compact_state.tail_free + required_handles * handle_size;
+        compact_context.compact_target = compact_target;
+      }
+    }
+  }
+
+  if (requested_size > 0) {
+    // Prefer obtaining the bounded source budget from as few contiguous free
+    // ranges as possible. This reduces the number of source VA gaps without
+    // adding work to successful allocation/free paths.
+    PrioritizeContiguousSourceRanges(&compact_state.source_ranges,
+                                     underlying_allocator_->handle_size());
   }
 
   // Count potentially movable source pages through the BackingMap mirror.
@@ -508,7 +541,22 @@ size_t VMMAutoGrowthBestFitAllocatorV2::RemapForAllocation(
       releasable_handles * underlying_allocator_->handle_size();
   compact_context.ready_bytes = releasable_bytes;
 
-  if (requested_size > 0 && releasable_bytes < required_releasable_bytes) {
+  if (use_grow_oom && releasable_bytes < required_releasable_bytes) {
+    // A training allocation must either recover immediately or leave the
+    // allocator unchanged. The failed grow already measured how many handles
+    // the driver could create; moving fewer than the remaining deficit cannot
+    // make the retry succeed. RetryAllocator will reevaluate after a real free
+    // notification instead of paying for speculative remap work here.
+    LogCompactSkip(compact_state,
+                   compact_context,
+                   "insufficient_releasable_for_failed_grow");
+    return 0;
+  }
+
+  if (requested_size > 0 && !use_grow_oom &&
+      releasable_bytes < required_releasable_bytes) {
+    // Without a structured grow snapshot, use the current driver capacity to
+    // decide whether remap plus a grow can satisfy the complete request.
     const auto driver_topup_start = Clock::now();
     compact_context.driver_memory = CollectDriverMemoryStats(place_.device);
     compact_context.driver_memory_collected = true;
@@ -530,6 +578,19 @@ size_t VMMAutoGrowthBestFitAllocatorV2::RemapForAllocation(
   if (releasable_handles == 0) {
     LogCompactSkip(compact_state, compact_context, "no_releasable_handles");
     return 0;
+  }
+
+  auto destination_policy =
+      RemapTransaction::DestinationPolicy::kTailThenAnyGap;
+  if (requested_size > 0) {
+    const size_t handle_size = underlying_allocator_->handle_size();
+    const size_t destination_bytes = AlignedSize(remap_target, handle_size);
+    const size_t request_backing_bytes =
+        AlignedSize(requested_size, handle_size);
+    destination_policy =
+        destination_bytes >= request_backing_bytes
+            ? RemapTransaction::DestinationPolicy::kDirectGapThenTail
+            : RemapTransaction::DestinationPolicy::kTailOnly;
   }
 
   const size_t driver_topup_bytes =
@@ -567,7 +628,8 @@ size_t VMMAutoGrowthBestFitAllocatorV2::RemapForAllocation(
   const auto compactor_start = Clock::now();
   size_t remapped = 0;
   try {
-    remapped = compactor.Compact(&all_blocks_, remap_target, source_pages);
+    remapped = compactor.Compact(
+        &all_blocks_, remap_target, source_pages, destination_policy);
   } catch (...) {
     // Remap can replace list nodes before ownership commit. Rebuild both
     // indexes after transaction rollback before propagating the failure.

@@ -1227,6 +1227,70 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, BoundedCompactUsesDriverTopUp) {
   EXPECT_TRUE(found_tail_free);
 }
 
+TEST(VMMAutoGrowthBestFitAllocatorV2, BoundedCompactUsesFailedGrowProgress) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+
+  const size_t handle_size = underlying->handle_size();
+  auto movable = allocator.Allocate(handle_size);
+  auto tail_guard = allocator.Allocate(handle_size);
+  ASSERT_NE(movable, nullptr);
+  ASSERT_NE(tail_guard, nullptr);
+
+  MarkRemapSafeForTest(movable.get());
+  movable.reset();
+
+  const size_t requested_size = 3UL * handle_size;
+  VMMGrowOOMInfo grow_oom{/*requested_handles=*/3,
+                          /*created_handles=*/1,
+                          handle_size,
+                          /*device=*/0,
+                          PoolType::kLarge};
+
+  // Two handles are required, but only one source handle is ready. Partial
+  // remap cannot make this failed grow succeed, so it must not mutate blocks.
+  EXPECT_EQ(
+      allocator.RemapForAllocation(phi::GPUPlace(), requested_size, &grow_oom),
+      0UL);
+  EXPECT_EQ(CountBlocksOfType(allocator, BlockType::kUnmappedFree), 0UL);
+
+  // The same grow had capacity for two handles, so moving exactly one existing
+  // handle is sufficient to reduce the retry grow from three handles to two.
+  grow_oom.created_handles = 2;
+  EXPECT_EQ(
+      allocator.RemapForAllocation(phi::GPUPlace(), requested_size, &grow_oom),
+      handle_size);
+  EXPECT_EQ(CountBlocksOfType(allocator, BlockType::kUnmappedFree), 1UL);
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2,
+     BoundedCompactIgnoresMismatchedGrowProgress) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+
+  const size_t handle_size = underlying->handle_size();
+  auto movable = allocator.Allocate(handle_size);
+  auto tail_guard = allocator.Allocate(handle_size);
+  ASSERT_NE(movable, nullptr);
+  ASSERT_NE(tail_guard, nullptr);
+
+  MarkRemapSafeForTest(movable.get());
+  movable.reset();
+
+  // This snapshot describes another pool. It must not affect this request;
+  // the normal driver-memory fallback still permits the one-handle remap.
+  const VMMGrowOOMInfo mismatched_grow_oom{/*requested_handles=*/3,
+                                           /*created_handles=*/1,
+                                           handle_size,
+                                           /*device=*/0,
+                                           PoolType::kSmall};
+  EXPECT_EQ(allocator.RemapForAllocation(
+                phi::GPUPlace(), 3UL * handle_size, &mismatched_grow_oom),
+            handle_size);
+}
+
 TEST(VMMAutoGrowthBestFitAllocatorV2, BoundedCompactCountsTailFree) {
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
@@ -1559,7 +1623,102 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, CompactKeepsMappedFreeBlocksAsViews) {
   EXPECT_TRUE(underlying->CollectMappedPages(released_range, 0).empty());
 }
 
-TEST(VMMAutoGrowthBestFitAllocatorV2, CompactUsesUnmappedTargets) {
+TEST(VMMAutoGrowthBestFitAllocatorV2, BoundedCompactPrefersDirectGap) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+
+  const size_t handle_size = underlying->handle_size();
+  auto target = allocator.Allocate(2UL * handle_size);
+  auto source_a = allocator.Allocate(handle_size);
+  auto separator = allocator.Allocate(handle_size);
+  auto source_b = allocator.Allocate(handle_size);
+  auto tail_guard = allocator.Allocate(handle_size);
+  ASSERT_NE(target, nullptr);
+  ASSERT_NE(source_a, nullptr);
+  ASSERT_NE(separator, nullptr);
+  ASSERT_NE(source_b, nullptr);
+  ASSERT_NE(tail_guard, nullptr);
+  auto* target_ptr = target->ptr();
+
+  target.reset();
+  ASSERT_EQ(allocator.Release(phi::GPUPlace()), 2UL * handle_size);
+  const auto* target_gap = FindBlockByPtr(allocator, target_ptr);
+  ASSERT_NE(target_gap, nullptr);
+  ASSERT_TRUE(target_gap->IsUnmappedFree());
+
+  MarkRemapSafeForTest(source_a.get());
+  MarkRemapSafeForTest(source_b.get());
+  source_a.reset();
+  source_b.reset();
+  const size_t tail_offset = underlying->tail_offset();
+
+  EXPECT_EQ(allocator.RemapForAllocation(phi::GPUPlace(), 2UL * handle_size),
+            2UL * handle_size);
+  EXPECT_EQ(underlying->tail_offset(), tail_offset);
+
+  auto recovered = allocator.Allocate(2UL * handle_size);
+  ASSERT_NE(recovered, nullptr);
+  EXPECT_EQ(recovered->ptr(), target_ptr);
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2, BoundedCompactPrefersContiguousSources) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+
+  const size_t handle_size = underlying->handle_size();
+  auto target = allocator.Allocate(3UL * handle_size);
+  auto scattered_a = allocator.Allocate(handle_size);
+  auto separator_a = allocator.Allocate(handle_size);
+  auto scattered_b = allocator.Allocate(handle_size);
+  auto separator_b = allocator.Allocate(handle_size);
+  auto contiguous = allocator.Allocate(2UL * handle_size);
+  auto tail_guard = allocator.Allocate(handle_size);
+  ASSERT_NE(target, nullptr);
+  ASSERT_NE(scattered_a, nullptr);
+  ASSERT_NE(separator_a, nullptr);
+  ASSERT_NE(scattered_b, nullptr);
+  ASSERT_NE(separator_b, nullptr);
+  ASSERT_NE(contiguous, nullptr);
+  ASSERT_NE(tail_guard, nullptr);
+
+  auto* target_ptr = target->ptr();
+  auto* scattered_a_ptr = scattered_a->ptr();
+  auto* scattered_b_ptr = scattered_b->ptr();
+  auto* contiguous_ptr = contiguous->ptr();
+
+  target.reset();
+  ASSERT_EQ(allocator.Release(phi::GPUPlace()), 3UL * handle_size);
+
+  MarkRemapSafeForTest(scattered_a.get());
+  MarkRemapSafeForTest(scattered_b.get());
+  MarkRemapSafeForTest(contiguous.get());
+  scattered_a.reset();
+  scattered_b.reset();
+  contiguous.reset();
+
+  EXPECT_EQ(allocator.RemapForAllocation(phi::GPUPlace(), 3UL * handle_size),
+            3UL * handle_size);
+
+  const auto* contiguous_gap = FindBlockByPtr(allocator, contiguous_ptr);
+  ASSERT_NE(contiguous_gap, nullptr);
+  EXPECT_TRUE(contiguous_gap->IsUnmappedFree());
+  EXPECT_EQ(contiguous_gap->size(), 2UL * handle_size);
+
+  const auto* scattered_a_block = FindBlockByPtr(allocator, scattered_a_ptr);
+  ASSERT_NE(scattered_a_block, nullptr);
+  EXPECT_TRUE(scattered_a_block->IsUnmappedFree());
+  const auto* scattered_b_block = FindBlockByPtr(allocator, scattered_b_ptr);
+  ASSERT_NE(scattered_b_block, nullptr);
+  EXPECT_TRUE(scattered_b_block->IsMappedFree());
+
+  auto recovered = allocator.Allocate(3UL * handle_size);
+  ASSERT_NE(recovered, nullptr);
+  EXPECT_EQ(recovered->ptr(), target_ptr);
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2, BoundedCompactRequiresTail) {
   ScopedVLogLevel vlog_guard(4);
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
@@ -1595,7 +1754,8 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, CompactUsesUnmappedTargets) {
   source_a.reset();
   source_b.reset();
   EXPECT_EQ(allocator.RemapForAllocation(phi::GPUPlace(), 2UL * handle_size),
-            2UL * handle_size);
+            0UL);
+  EXPECT_EQ(allocator.Compact(phi::GPUPlace()), 2UL * handle_size);
 
   const auto* target_a_block = FindBlockByPtr(allocator, target_a_ptr);
   ASSERT_NE(target_a_block, nullptr);
@@ -1654,7 +1814,8 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, RemapUsesStaleUnmappedRange) {
   MarkRemapSafeForTest(second_source.get());
   second_source.reset();
   ASSERT_EQ(allocator.RemapForAllocation(phi::GPUPlace(), handle_size + 1UL),
-            handle_size);
+            0UL);
+  ASSERT_EQ(allocator.Compact(phi::GPUPlace()), handle_size);
 
   const auto* first_source_block = FindBlockByPtr(allocator, first_source_ptr);
   ASSERT_NE(first_source_block, nullptr);
