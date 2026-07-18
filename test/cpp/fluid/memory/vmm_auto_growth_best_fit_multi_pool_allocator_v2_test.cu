@@ -444,15 +444,17 @@ TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2,
         std::cout << "OOM message sample:\n" << message << std::endl;
       }
       EXPECT_NE(message.find("Out of memory error on GPU"), std::string::npos);
-      EXPECT_NE(message.find("Memory pool state: total free="),
+      EXPECT_NE(message.find("Paddle allocator memory:"), std::string::npos);
+      EXPECT_NE(message.find("Allocated (in use):"), std::string::npos);
+      EXPECT_NE(message.find("Free in Paddle memory pool:"), std::string::npos);
+      EXPECT_NE(message.find("Largest contiguous free block:"),
                 std::string::npos);
-      EXPECT_NE(message.find("largest free block="), std::string::npos);
-      EXPECT_NE(message.find("Paddle memory state: allocated="),
-                std::string::npos);
-      EXPECT_NE(message.find("GPU memory state: available="),
-                std::string::npos);
+      EXPECT_NE(message.find("CUDA driver memory:"), std::string::npos);
+      EXPECT_NE(message.find("Free on device:"), std::string::npos);
+      EXPECT_NE(message.find("Total device capacity:"), std::string::npos);
       EXPECT_NE(message.find("Memory defragmentation: reclaimed"),
                 std::string::npos);
+      EXPECT_EQ(message.find("Please stop other processes"), std::string::npos);
       EXPECT_NE(message.find("2. Retry after memory defragmentation:"),
                 std::string::npos);
       EXPECT_EQ(message.find("3. Retry"), std::string::npos);

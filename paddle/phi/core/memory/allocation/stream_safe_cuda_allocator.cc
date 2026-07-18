@@ -15,6 +15,7 @@
 #include "paddle/phi/core/memory/allocation/stream_safe_cuda_allocator.h"
 
 #include <algorithm>
+#include <chrono>
 #include <thread>
 
 #include "glog/logging.h"
@@ -136,23 +137,25 @@ std::string BuildVMMV2OOMSummary(
 
   return string::Sprintf(
       "\n\nOut of memory error on GPU %d. Cannot allocate %s memory.\n"
-      "Memory pool state: total free=%s, largest free block=%s.\n"
-      "Paddle memory state: allocated=%s, reserved=%s.\n"
-      "GPU memory state: available=%s, total=%s.%s\n"
-      "Memory defragmentation: %s.\n"
-      "Please stop other processes using GPU %d or use another GPU; "
-      "otherwise, decrease the model batch size.\n",
+      "Paddle allocator memory:\n"
+      "  Allocated (in use): %s\n"
+      "  Reserved by Paddle: %s\n"
+      "  Free in Paddle memory pool: %s\n"
+      "  Largest contiguous free block: %s\n"
+      "CUDA driver memory:\n"
+      "  Free on device: %s\n"
+      "  Total device capacity: %s%s\n"
+      "Memory defragmentation: %s.\n",
       place.device,
       string::HumanReadableSize(requested_size),
-      string::HumanReadableSize(total_free),
-      string::HumanReadableSize(largest_free_block),
       string::HumanReadableSize(std::max<int64_t>(paddle_allocated, 0)),
       string::HumanReadableSize(std::max<int64_t>(paddle_reserved, 0)),
+      string::HumanReadableSize(total_free),
+      string::HumanReadableSize(largest_free_block),
       string::HumanReadableSize(driver_available),
       string::HumanReadableSize(driver_total),
       configured_limit,
-      remap_result,
-      place.device);
+      remap_result);
 }
 
 void MarkVMMV2RemapPendingStream(StreamSafeCUDAAllocator* allocator,
@@ -427,12 +430,28 @@ phi::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
         if (FLAGS_vmm_v2_remap_on_oom) {
           const auto* grow_oom =
               dynamic_cast<const VMMGrowOOM*>(&second_bad_alloc);
+          const auto remap_start = std::chrono::steady_clock::now();
           const size_t remapped_bytes = vmm->RemapForAllocation(
               place_, size, grow_oom == nullptr ? nullptr : &grow_oom->info());
+          const auto remap_us =
+              std::chrono::duration_cast<std::chrono::microseconds>(
+                  std::chrono::steady_clock::now() - remap_start)
+                  .count();
           if (remapped_bytes > 0) {
             try {
               underlying_allocation = underlying_allocator_->Allocate(size);
+              LOG(INFO) << "Recovered the " << string::HumanReadableSize(size)
+                        << " allocation on GPU "
+                        << static_cast<int>(place_.device) << " after moving "
+                        << string::HumanReadableSize(remapped_bytes) << " in "
+                        << static_cast<double>(remap_us) / 1000.0 << " ms.";
             } catch (const BadAlloc& final_bad_alloc) {
+              LOG(INFO) << "Failed to recover the "
+                        << string::HumanReadableSize(size)
+                        << " allocation on GPU "
+                        << static_cast<int>(place_.device) << " after moving "
+                        << string::HumanReadableSize(remapped_bytes) << " in "
+                        << static_cast<double>(remap_us) / 1000.0 << " ms.";
               const std::string oom_summary =
                   BuildVMMV2OOMSummary(vmm,
                                        place_,
