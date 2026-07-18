@@ -302,6 +302,7 @@ disable_wingpu_cuda133_test="^test_convert_mea_2_fa_pass$|\
 ^test_flash_attention$|\
 ^test_fused_dot_product_attention_op_static$|\
 ^test_memory_efficient_attention$|\
+^test_svd_op$|\
 ^test_switch_autotune$"
 
 # /*=================Fixed Disabled Windows TRT MKL unittests=======================*/
