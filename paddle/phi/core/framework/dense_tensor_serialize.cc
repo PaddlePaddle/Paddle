@@ -14,9 +14,30 @@
 
 #include "paddle/phi/core/framework/dense_tensor_serialize.h"
 #include <cstdint>
+#include <limits>
 #include "paddle/phi/core/framework/convert_utils.h"
 
 namespace phi {
+
+namespace {
+// Returns the number of bytes remaining to be read from a seekable stream, or
+// -1 if the stream does not support seeking (e.g. a pure input pipe). Used to
+// bound attacker-controlled length fields before allocating, so a malformed
+// serialized tensor cannot force a huge allocation (OOM).
+int64_t GetRemainingStreamBytes(std::istream &is) {
+  const std::istream::pos_type cur = is.tellg();
+  if (cur == std::istream::pos_type(-1)) {
+    return -1;
+  }
+  is.seekg(0, std::ios::end);
+  const std::istream::pos_type end = is.tellg();
+  is.seekg(cur);
+  if (end == std::istream::pos_type(-1)) {
+    return -1;
+  }
+  return static_cast<int64_t>(end - cur);
+}
+}  // namespace
 
 void SerializeToStream(std::ostream &os,
                        const DenseTensor &tensor,
@@ -84,6 +105,32 @@ void DeserializeFromStream(std::istream &is,
     // the 2nd field, LoD information
     uint64_t lod_level = 0;
     is.read(reinterpret_cast<char *>(&lod_level), sizeof(lod_level));
+    // `lod_level` is attacker-controlled. Ensure the header was fully read and
+    // bound it by the number of LoD levels the remaining stream could hold
+    // (each level needs at least one uint64_t) before `resize` allocates, so a
+    // crafted file cannot force a huge allocation (OOM).
+    PADDLE_ENFORCE_EQ(
+        static_cast<uint64_t>(is.gcount()),
+        sizeof(lod_level),
+        common::errors::InvalidArgument(
+            "Deserialize LoD information failed, expected to read %zu bytes "
+            "for the LoD level count but only %lld bytes were available. The "
+            "input stream may be truncated or corrupted.",
+            sizeof(lod_level),
+            static_cast<int64_t>(is.gcount())));
+    const int64_t remaining_bytes = GetRemainingStreamBytes(is);
+    if (remaining_bytes >= 0) {
+      PADDLE_ENFORCE_LE(
+          lod_level,
+          static_cast<uint64_t>(remaining_bytes) / sizeof(uint64_t),
+          common::errors::InvalidArgument(
+              "Deserialize LoD information failed, the declared LoD level "
+              "count (%llu) exceeds what the remaining %lld bytes of the input "
+              "stream can hold. The input stream may be corrupted or "
+              "malicious.",
+              lod_level,
+              static_cast<int64_t>(remaining_bytes)));
+    }
     auto &lod = *tensor->mutable_lod();
     lod.resize(lod_level);
   }
@@ -112,17 +159,51 @@ void DeserializeFromStream(std::istream &is,
     // the 2nd field, LoD information
     uint64_t lod_level = 0;
     is.read(reinterpret_cast<char *>(&lod_level), sizeof(lod_level));
+    // `lod_level` is attacker-controlled. Ensure the header was fully read and
+    // bound it by the number of LoD levels the remaining stream could hold
+    // (each level needs at least one uint64_t size field) before `resize`
+    // allocates, so a crafted file cannot force a huge allocation (OOM).
+    PADDLE_ENFORCE_EQ(
+        static_cast<uint64_t>(is.gcount()),
+        sizeof(lod_level),
+        common::errors::InvalidArgument(
+            "Deserialize LoD information failed, expected to read %zu bytes "
+            "for the LoD level count but only %lld bytes were available. The "
+            "input stream may be truncated or corrupted.",
+            sizeof(lod_level),
+            static_cast<int64_t>(is.gcount())));
+    const int64_t remaining_bytes = GetRemainingStreamBytes(is);
+    if (remaining_bytes >= 0) {
+      PADDLE_ENFORCE_LE(
+          lod_level,
+          static_cast<uint64_t>(remaining_bytes) / sizeof(uint64_t),
+          common::errors::InvalidArgument(
+              "Deserialize LoD information failed, the declared LoD level "
+              "count (%llu) exceeds what the remaining %lld bytes of the input "
+              "stream can hold. The input stream may be corrupted or "
+              "malicious.",
+              lod_level,
+              static_cast<int64_t>(remaining_bytes)));
+    }
     auto &lod = *tensor->mutable_lod();
     lod.resize(lod_level);
     for (uint64_t i = 0; i < lod_level; ++i) {
       uint64_t size = 0;
       is.read(reinterpret_cast<char *>(&size), sizeof(size));
-      // `size` is an attacker-controlled byte count read from the stream. The
-      // destination buffer holds `size / sizeof(size_t)` elements, i.e.
-      // `(size / sizeof(size_t)) * sizeof(size_t)` bytes, but the read below
-      // consumes the full `size` bytes. If `size` is not a multiple of
-      // `sizeof(size_t)`, the read writes past the allocation (CWE-787 / heap
-      // buffer overflow). Reject such sizes before allocating/reading.
+      PADDLE_ENFORCE_EQ(
+          static_cast<uint64_t>(is.gcount()),
+          sizeof(size),
+          common::errors::InvalidArgument(
+              "Deserialize LoD information failed, expected to read %zu bytes "
+              "for the byte size of LoD level %llu but only %lld bytes were "
+              "available. The input stream may be truncated or corrupted.",
+              sizeof(size),
+              i,
+              static_cast<int64_t>(is.gcount())));
+      // The destination buffer holds `size / sizeof(size_t)` elements, i.e.
+      // exactly `size` bytes only when `size` is a multiple of `sizeof(size_t)`.
+      // Otherwise the read below would write past the allocation (CWE-787 /
+      // heap buffer overflow), so reject such sizes.
       PADDLE_ENFORCE_EQ(
           size % sizeof(size_t),
           0,
@@ -133,6 +214,30 @@ void DeserializeFromStream(std::istream &is,
               i,
               size,
               sizeof(size_t)));
+      // Bound `size` before allocating so a crafted file cannot force a huge
+      // allocation (OOM), and guard the `std::streamsize` cast used by `read`.
+      PADDLE_ENFORCE_LE(
+          size,
+          static_cast<uint64_t>(std::numeric_limits<std::streamsize>::max()),
+          common::errors::InvalidArgument(
+              "Deserialize LoD information failed, the byte size of LoD level "
+              "%llu (%llu) exceeds the maximum readable stream size. The input "
+              "stream may be corrupted or malicious.",
+              i,
+              size));
+      const int64_t level_remaining_bytes = GetRemainingStreamBytes(is);
+      if (level_remaining_bytes >= 0) {
+        PADDLE_ENFORCE_LE(
+            size,
+            static_cast<uint64_t>(level_remaining_bytes),
+            common::errors::InvalidArgument(
+                "Deserialize LoD information failed, the byte size of LoD "
+                "level %llu (%llu) exceeds the remaining %lld bytes of the "
+                "input stream. The input stream may be corrupted or malicious.",
+                i,
+                size,
+                static_cast<int64_t>(level_remaining_bytes)));
+      }
       std::vector<size_t> tmp(size / sizeof(size_t));
       is.read(reinterpret_cast<char *>(tmp.data()),
               static_cast<std::streamsize>(size));
