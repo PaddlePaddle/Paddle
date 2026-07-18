@@ -244,6 +244,7 @@ class VMMFreeBlocksInfoVisitor : public AllocatorComputeStreamVisitor {
    * information is to be extracted.
    */
   void Visit(VirtualMemoryAutoGrowthBestFitAllocator* allocator) override;
+  void Visit(VMMAutoGrowthBestFitAllocatorV2* allocator) override;
 
  private:
   /**
@@ -312,6 +313,8 @@ class AllBlocksInfoVisitor : public AllocatorComputeStreamVisitor {
   void Visit(AutoGrowthBestFitAllocator* allocator) override;
   void Visit(VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator* allocator)
       override;
+  void Visit(VMMAutoGrowthBestFitAllocatorV2* allocator) override;
+  void Visit(VMMAutoGrowthBestFitMultiPoolAllocatorV2* allocator) override;
 
  private:
   PoolFilter pool_filter_ = PoolFilter::kAll;

@@ -126,6 +126,14 @@ void VMMFreeBlocksInfoVisitor::Visit(
   }
 }
 
+void VMMFreeBlocksInfoVisitor::Visit(
+    VMMAutoGrowthBestFitAllocatorV2* allocator) {
+  auto info = allocator->SnapshotFreeBlockInfo();
+  if (!info.empty()) {
+    free_blocks_info_.push_back(std::move(info));
+  }
+}
+
 void AllBlocksInfoVisitor::Visit(
     VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator* allocator) {
   if (pool_filter_ != PoolFilter::kLargeOnly) {
@@ -135,6 +143,16 @@ void AllBlocksInfoVisitor::Visit(
   if (pool_filter_ != PoolFilter::kSmallOnly) {
     if (allocator->GetLargeAllocator())
       allocator->GetLargeAllocator()->Accept(this);
+  }
+}
+
+void AllBlocksInfoVisitor::Visit(
+    VMMAutoGrowthBestFitMultiPoolAllocatorV2* allocator) {
+  if (pool_filter_ != PoolFilter::kLargeOnly && allocator->small_allocator()) {
+    allocator->small_allocator()->Accept(this);
+  }
+  if (pool_filter_ != PoolFilter::kSmallOnly && allocator->large_allocator()) {
+    allocator->large_allocator()->Accept(this);
   }
 }
 
@@ -149,6 +167,13 @@ void AllBlocksInfoVisitor::Visit(
   }
   if (!info.empty()) {
     all_blocks_info_.push_back(info);
+  }
+}
+
+void AllBlocksInfoVisitor::Visit(VMMAutoGrowthBestFitAllocatorV2* allocator) {
+  auto info = allocator->SnapshotBlockInfo();
+  if (!info.empty()) {
+    all_blocks_info_.push_back(std::move(info));
   }
 }
 

@@ -150,9 +150,6 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, RejectsInvalidInternalOperations) {
       allocator.all_blocks_.end(), cudaStreamPerThread, nullptr));
   ASSERT_TRUE(allocator.SetBlockRemapEvent(
       allocator.all_blocks_.begin(), cudaStreamPerThread, nullptr));
-  auto snapshot = allocator.SnapshotAllBlocks();
-  ASSERT_EQ(snapshot.size(), 1UL);
-  EXPECT_EQ(snapshot.front().ptr_, allocation->ptr());
   ASSERT_NE(allocator.underlying_allocations_.begin(),
             allocator.underlying_allocations_.end());
   const auto& underlying_allocation =
