@@ -201,9 +201,9 @@ void DeserializeFromStream(std::istream &is,
               i,
               static_cast<int64_t>(is.gcount())));
       // The destination buffer holds `size / sizeof(size_t)` elements, i.e.
-      // exactly `size` bytes only when `size` is a multiple of `sizeof(size_t)`.
-      // Otherwise the read below would write past the allocation (CWE-787 /
-      // heap buffer overflow), so reject such sizes.
+      // exactly `size` bytes only when `size` is a multiple of
+      // `sizeof(size_t)`. Otherwise the read below would write past the
+      // allocation (CWE-787 / heap buffer overflow), so reject such sizes.
       PADDLE_ENFORCE_EQ(
           size % sizeof(size_t),
           0,
