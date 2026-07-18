@@ -117,9 +117,35 @@ void DeserializeFromStream(std::istream &is,
     for (uint64_t i = 0; i < lod_level; ++i) {
       uint64_t size = 0;
       is.read(reinterpret_cast<char *>(&size), sizeof(size));
+      // `size` is an attacker-controlled byte count read from the stream. The
+      // destination buffer holds `size / sizeof(size_t)` elements, i.e.
+      // `(size / sizeof(size_t)) * sizeof(size_t)` bytes, but the read below
+      // consumes the full `size` bytes. If `size` is not a multiple of
+      // `sizeof(size_t)`, the read writes past the allocation (CWE-787 / heap
+      // buffer overflow). Reject such sizes before allocating/reading.
+      PADDLE_ENFORCE_EQ(
+          size % sizeof(size_t),
+          0,
+          common::errors::InvalidArgument(
+              "Deserialize LoD information failed, the byte size of LoD level "
+              "%llu is %llu, which is not a multiple of sizeof(size_t) (%zu). "
+              "The input stream may be corrupted or malicious.",
+              i,
+              size,
+              sizeof(size_t)));
       std::vector<size_t> tmp(size / sizeof(size_t));
       is.read(reinterpret_cast<char *>(tmp.data()),
               static_cast<std::streamsize>(size));
+      PADDLE_ENFORCE_EQ(
+          static_cast<uint64_t>(is.gcount()),
+          size,
+          common::errors::InvalidArgument(
+              "Deserialize LoD information failed, expected to read %llu bytes "
+              "for LoD level %llu but only %lld bytes were available. The "
+              "input stream may be truncated or corrupted.",
+              size,
+              i,
+              static_cast<int64_t>(is.gcount())));
       lod[i] = tmp;
     }
   }
