@@ -30,7 +30,6 @@ from .api_dispatch import (
     _PADDLE_NAMESPACE_SAVED,
     _apply_paddle_namespace_aliases,
     _restore_paddle_namespace_aliases,
-    is_compat_api_enabled,
 )
 
 if TYPE_CHECKING:
@@ -361,7 +360,7 @@ class TorchProxyMetaFinder:
             for k, v in GLOBAL_OVERRIDES.items()
             if k.startswith(f"{fullname}.")
         }
-        if fullname == "torch" and is_compat_api_enabled():
+        if fullname == "torch" and len(_PADDLE_NAMESPACE_SAVED) > 0:
             compat_root = importlib.import_module("paddle.compat")
             overrides.update(
                 {
@@ -631,7 +630,6 @@ def use_compat_guard(
     already_has_torch_proxy = TORCH_PROXY_FINDER in sys.meta_path
     original_local_enabled_scope = set(TORCH_PROXY_FINDER._local_enabled_scope)
     original_globally_enabled = TORCH_PROXY_FINDER._globally_enabled
-    restore_namespace_aliases = bool(_PADDLE_NAMESPACE_SAVED)
     if enable == already_has_torch_proxy and (
         (original_globally_enabled and scope is None)
         or (original_local_enabled_scope == (scope or set()))
@@ -648,8 +646,6 @@ def use_compat_guard(
             )
             TORCH_PROXY_FINDER._globally_enabled = original_globally_enabled
             disable_compat()
-            if restore_namespace_aliases:
-                _apply_paddle_namespace_aliases()
     else:
         disable_compat()
         try:
@@ -660,8 +656,6 @@ def use_compat_guard(
                 original_local_enabled_scope
             )
             TORCH_PROXY_FINDER._globally_enabled = original_globally_enabled
-            if restore_namespace_aliases:
-                _apply_paddle_namespace_aliases()
 
 
 def extend_torch_proxy_blocked_modules(modules: Iterable[str]) -> None:

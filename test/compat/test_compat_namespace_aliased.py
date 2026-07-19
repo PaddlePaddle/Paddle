@@ -351,18 +351,6 @@ class TestScopeAndLifecycle(CompatNamespaceAliasBase):
         paddle.disable_compat()
         self.assertEqual(len(_PADDLE_NAMESPACE_SAVED), 0)
 
-    def test_use_compat_guard_nested(self):
-        native_sort = self._native[(paddle, "sort")]
-        paddle.enable_compat(level=2)
-        try:
-            self.assertAliased(paddle.sort, paddle.compat.sort)
-            with paddle.use_compat_guard(enable=False):
-                self.assertIs(paddle.sort, native_sort)
-            self.assertAliased(paddle.sort, paddle.compat.sort)
-        finally:
-            paddle.disable_compat()
-        self.assertIs(paddle.sort, native_sort)
-
     def test_bare_guard_keeps_level2_alias(self):
         t = paddle.to_tensor([[3.0, 1.0, 2.0]])
         paddle.enable_compat(level=2)
@@ -373,20 +361,6 @@ class TestScopeAndLifecycle(CompatNamespaceAliasBase):
             # the level in effect survives the guard
             self.assertAliased(paddle.sort, paddle.compat.sort)
             self.assertTrue(hasattr(paddle.sort(t, dim=-1), "values"))
-        finally:
-            paddle.disable_compat()
-        self.assertNativeRestored()
-
-    def test_scoped_guard_restores_level2_alias(self):
-        native_sort = self._native[(paddle, "sort")]
-        paddle.enable_compat(scope={"triton"}, level=2, silent=True)
-        try:
-            self.assertAliased(paddle.sort, paddle.compat.sort)
-            with paddle.use_compat_guard(enable=False):
-                self.assertIs(paddle.sort, native_sort)
-            self.assertFalse(TORCH_PROXY_FINDER._globally_enabled)
-            self.assertAliased(paddle.sort, paddle.compat.sort)
-            self.assertGreater(len(_PADDLE_NAMESPACE_SAVED), 0)
         finally:
             paddle.disable_compat()
         self.assertNativeRestored()
@@ -459,29 +433,6 @@ class TestTorchSurfaceUnderCompat(CompatNamespaceAliasBase):
             self.assertFalse(hasattr(torch, "slogdet"))
         finally:
             self._drop_torch_modules()
-            paddle.disable_compat()
-
-    def test_scoped_enable_survives_scoped_module_import(self):
-        """A scoped torch proxy and the level-2 paddle aliases are independent."""
-        mod = "torch_proxy_root_api_module"
-        sys.modules.pop(mod, None)
-        self._drop_torch_modules()
-        paddle.enable_compat(scope=mod, level=2, silent=True)
-        try:
-            import torch_proxy_root_api_module  # noqa: F401  (imports torch inside)
-
-            self.assertAliased(paddle.sort, paddle.compat.sort)
-            self.assertIn(TORCH_PROXY_FINDER, sys.meta_path)
-            self.assertFalse(TORCH_PROXY_FINDER._globally_enabled)
-            self.assertGreater(len(_PADDLE_NAMESPACE_SAVED), 0)
-            sys.modules.pop(mod, None)
-            self._drop_torch_modules()
-            __import__(mod)
-        finally:
-            sys.modules.pop(mod, None)
-            self._drop_torch_modules()
-            TORCH_PROXY_FINDER._globally_enabled = False
-            TORCH_PROXY_FINDER._local_enabled_scope = set()
             paddle.disable_compat()
 
 

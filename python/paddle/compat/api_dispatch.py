@@ -38,13 +38,6 @@ if TYPE_CHECKING:
 # symbol, so ``disable_compat()`` can restore the paddle namespace.
 _PADDLE_NAMESPACE_SAVED: dict[tuple[types.ModuleType, str], Any] = {}
 
-_COMPAT_ENABLED = False
-
-
-def is_compat_api_enabled() -> bool:
-    """Whether ``paddle.*`` currently dispatches to compat APIs."""
-    return _COMPAT_ENABLED
-
 
 def _caller_is_paddle_internal() -> bool:
     """True when the caller of the dispatched ``paddle.*`` API is a ``paddle``
@@ -68,7 +61,10 @@ def dispatch_compat_api(compat_fn: Any) -> Any:
     def decorator(native_fn: Any) -> Any:
         @wraps(native_fn)
         def dispatcher(*args: Any, **kwargs: Any) -> Any:
-            if is_compat_api_enabled() and not _caller_is_paddle_internal():
+            if (
+                len(_PADDLE_NAMESPACE_SAVED) > 0
+                and not _caller_is_paddle_internal()
+            ):
                 return compat_fn(*args, **kwargs)
             return native_fn(*args, **kwargs)
 
@@ -81,19 +77,23 @@ def dispatch_compat_api(compat_fn: Any) -> Any:
 
 
 def _iter_compat_modules() -> Generator[types.ModuleType, None, None]:
-    """Yield every ``paddle.compat`` (sub)module, root package included.
+    """Yield ``paddle.compat`` modules that declare ``__all__``.
 
     ``pkgutil.walk_packages`` skips the starting package, so the root
     ``paddle.compat`` (holding the top-level functions) is yielded explicitly.
     """
     import paddle.compat
 
-    yield paddle.compat
+    if hasattr(paddle.compat, "__all__"):
+        yield paddle.compat
     for module_info in pkgutil.walk_packages(
         paddle.compat.__path__,
         paddle.compat.__name__ + ".",
     ):
-        yield importlib.import_module(module_info.name)
+        compat_module = importlib.import_module(module_info.name)
+        if not hasattr(compat_module, "__all__"):
+            continue
+        yield compat_module
 
 
 def _make_caller_aware_class_proxy(native_cls: type, compat_cls: type) -> type:
@@ -102,7 +102,10 @@ def _make_caller_aware_class_proxy(native_cls: type, compat_cls: type) -> type:
     class _CompatAwareMeta(type(compat_cls)):
         def __call__(cls, *args: Any, **kwargs: Any) -> Any:
             if cls is proxy:
-                if is_compat_api_enabled() and not _caller_is_paddle_internal():
+                if (
+                    len(_PADDLE_NAMESPACE_SAVED) > 0
+                    and not _caller_is_paddle_internal()
+                ):
                     return compat_cls(*args, **kwargs)
                 return native_cls(*args, **kwargs)
             return super().__call__(*args, **kwargs)
@@ -141,7 +144,7 @@ def _patch_tensor_methods() -> None:
 
     for attr_name in getattr(compat_root, "__all__", ()):
         native_method = getattr(paddle.Tensor, attr_name, None)
-        if native_method is None or not callable(native_method):
+        if native_method is None:
             continue
         compat_fn = getattr(compat_root, attr_name)
         _PADDLE_NAMESPACE_SAVED[(paddle.Tensor, attr_name)] = native_method
@@ -158,8 +161,6 @@ def _apply_paddle_namespace_aliases() -> None:
     if _PADDLE_NAMESPACE_SAVED:
         return
 
-    global _COMPAT_ENABLED
-
     for compat_module in _iter_compat_modules():
         target_name = compat_module.__name__.replace(
             "paddle.compat", "paddle", 1
@@ -168,7 +169,7 @@ def _apply_paddle_namespace_aliases() -> None:
             target_module = importlib.import_module(target_name)
         except ModuleNotFoundError:
             continue
-        for attr_name in getattr(compat_module, "__all__", ()):
+        for attr_name in compat_module.__all__:
             compat_attr = getattr(compat_module, attr_name)
             current = getattr(target_module, attr_name, None)
             if current is None or current is compat_attr:
@@ -187,13 +188,10 @@ def _apply_paddle_namespace_aliases() -> None:
                     dispatch_compat_api(compat_attr)(current),
                 )
     _patch_tensor_methods()
-    _COMPAT_ENABLED = True
 
 
 def _restore_paddle_namespace_aliases() -> None:
     """Undo :func:`_apply_paddle_namespace_aliases`, restoring the paddle namespace."""
-    global _COMPAT_ENABLED
     for (target_module, attr_name), original in _PADDLE_NAMESPACE_SAVED.items():
         setattr(target_module, attr_name, original)
     _PADDLE_NAMESPACE_SAVED.clear()
-    _COMPAT_ENABLED = False
