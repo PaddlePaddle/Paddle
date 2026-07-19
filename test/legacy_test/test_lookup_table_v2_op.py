@@ -310,6 +310,47 @@ class TestLookupTableOp_ZeroSize2(TestLookupTableOp_ZeroSize):
         self.outputs = {'Out': table[ids.flatten()].reshape((0, 1, 10))}
 
 
+class TestEmbeddingCPUOutOfRangeError(unittest.TestCase):
+    def test_embedding_out_of_range(self):
+        paddle.disable_static()
+        paddle.set_device('cpu')
+        try:
+            weight = paddle.randn([4, 3], dtype='float32')
+            cases = [(-1, None), (-1, 0), (4, 0)]
+            for invalid_id, padding_idx in cases:
+                with self.subTest(
+                    invalid_id=invalid_id, padding_idx=padding_idx
+                ):
+                    ids = paddle.to_tensor([invalid_id], dtype='int64')
+                    with self.assertRaisesRegex(
+                        Exception, r'expected >= 0 and < 4'
+                    ):
+                        paddle.nn.functional.embedding(
+                            ids, weight, padding_idx=padding_idx
+                        )
+        finally:
+            paddle.enable_static()
+
+
+class TestEmbeddingOutOfRangeError(unittest.TestCase):
+    def test_embedding_out_of_range(self):
+        paddle.disable_static()
+        device = 'gpu' if paddle.is_compiled_with_cuda() else 'cpu'
+        paddle.set_device(device)
+        try:
+            weight = paddle.randn([0, 7168], dtype='float32')
+            ids = paddle.to_tensor([0], dtype='int64')
+            error_pattern = (
+                r'Input\(Weight\) in OP\(embedding\).*Input\(Ids\) is not empty'
+                if device == 'gpu'
+                else r'expected >= 0 and < 0'
+            )
+            with self.assertRaisesRegex(Exception, error_pattern):
+                paddle.nn.functional.embedding(ids, weight)
+        finally:
+            paddle.enable_static()
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

@@ -50,7 +50,7 @@ struct EmbeddingCPUFunctor {
     auto* output = out_->data<T>();
 
     for (int64_t i = 0; i < ids_numel; ++i) {
-      if (padding_idx_ == kNoPadding && ids[i] != padding_idx_) {
+      if (padding_idx_ == kNoPadding || ids[i] != padding_idx_) {
         PADDLE_ENFORCE_LT(
             ids[i],
             row_number,

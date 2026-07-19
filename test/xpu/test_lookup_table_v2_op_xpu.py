@@ -23,6 +23,7 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
+from paddle import base
 
 paddle.enable_static()
 
@@ -99,6 +100,27 @@ class XPUTestLookupTableOP(XPUOpTestWrapper):
             self.outputs['Out'][np.squeeze(ids == padding_idx)] = np.zeros(31)
             self.attrs = {'padding_idx': padding_idx}
             self.check_output_with_place(self.place)
+
+
+class TestEmbeddingInvalidInput(unittest.TestCase):
+    def test_empty_weight_with_nonempty_ids(self):
+        with base.dygraph.guard(paddle.XPUPlace(0)):
+            weight = paddle.empty([0, 8], dtype='float32')
+            for dtype in ['int32', 'int64']:
+                with self.subTest(dtype=dtype):
+                    ids = paddle.zeros([1], dtype=dtype)
+                    with self.assertRaisesRegex(
+                        Exception,
+                        r'Input\(Weight\) in OP\(embedding\).*Input\(Ids\) is not empty',
+                    ):
+                        paddle.nn.functional.embedding(ids, weight)
+
+    def test_empty_weight_with_empty_ids(self):
+        with base.dygraph.guard(paddle.XPUPlace(0)):
+            weight = paddle.empty([0, 8], dtype='float32')
+            ids = paddle.empty([0], dtype='int64')
+            out = paddle.nn.functional.embedding(ids, weight)
+            self.assertEqual(out.shape, [0, 8])
 
 
 support_types = get_xpu_op_support_types('lookup_table_v2')
