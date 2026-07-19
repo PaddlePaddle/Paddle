@@ -156,8 +156,7 @@ jobs:
           bash ${ci_scripts}/run_setup.sh bdist_wheel
           EXCODE=$?
           python -m pip install bce-python-sdk==0.8.74
-          rm -rf `find . -name "*.a"`
-          rm -rf `find . -name "*.o"`
+          find . -type f \( -name "*.a" -o -name "*.o" \) -delete
           exit $EXCODE
           '
 
@@ -170,14 +169,16 @@ jobs:
           paddle_whl: paddlepaddle_dcu-0.0.0-cp310-cp310-linux_x86_64.whl
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          set -e
           if [ ! -f "${{ env.bos_file }}" ]; then
             wget -q --no-proxy -O ${{ env.home_path }}/bos_new.tar.gz https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz --no-check-certificate
-            mkdir ${{ env.home_path }}/bos
+            mkdir -p ${{ env.home_path }}/bos
             tar xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
           fi
           apt install zstd -y
-          cd ..
-          tar --use-compress-program="pzstd -5" -cf build.tar.gz paddle
+          cd "${{ env.home_path }}"
+          trap "rm -f build.tar.gz ${{ env.paddle_whl }}" EXIT
+          tar --use-compress-program="pzstd -5" -cf build.tar.gz -C / paddle
           echo "Uploading build.tar.gz"
           python ${{ env.bos_file }} build.tar.gz paddle-github-action/PR/dcu/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
           echo "Uploading paddle_whl"
