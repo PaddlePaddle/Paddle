@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// The linked phi library owns backend-specific flag registration.
+#undef PADDLE_WITH_FLAGCX
+#undef PADDLE_WITH_HIP
+#undef PADDLE_WITH_XPU
 #include "paddle/phi/backends/dynload/dynamic_loader.cc"  // NOLINT(build/include)
 
 #include <dlfcn.h>
