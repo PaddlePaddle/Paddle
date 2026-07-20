@@ -18,7 +18,6 @@ limitations under the License. */
 
 #include "paddle/common/enforce.h"
 
-#include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/jit/kernels.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -323,7 +322,6 @@ class SumSeqPoolGradFunctor {
                           out_w));
     const T* out_g_data = out_grad.data<T>();
     T* in_g_data = dev_ctx.template Alloc<T>(in_grad);
-    auto blas = funcs::GetBlas<CPUContext, T>(dev_ctx);
     for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
       int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
       if (h == 0) continue;
@@ -331,7 +329,8 @@ class SumSeqPoolGradFunctor {
       const T* out_pos = out_g_data + i * out_w;
       T* in_pos = in_g_data + in_offset;
       for (int r = 0; r != h; ++r) {
-        blas.VCOPY(in_w, out_pos, in_pos + r * in_w);
+        std::memcpy(
+            in_pos + r * in_w, out_pos, static_cast<size_t>(in_w) * sizeof(T));
       }
     }
   }

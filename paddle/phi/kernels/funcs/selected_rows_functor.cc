@@ -272,13 +272,16 @@ struct SelectedRowsSumTo<CPUContext, T> {
 
     auto* in2_value = input2->mutable_value();
     auto* in2_data = in2_value->data<T>();
-    auto blas = phi::funcs::GetBlas<CPUContext, T>(dev_ctx);
     size_t offset = 0u;
     for (size_t i = 0u; i != input1.size(); ++i) {
       auto& in_value = input1[i]->value();
       const auto* in_data = in_value.data<T>();
       offset += input2_offsets[i];
-      blas.VCOPY(in_value.numel(), in_data, in2_data + offset);
+      memory_utils::Copy(input2->place(),
+                         in2_data + offset,
+                         input1[i]->place(),
+                         in_data,
+                         static_cast<size_t>(in_value.numel()) * sizeof(T));
     }
   }
 };

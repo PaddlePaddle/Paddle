@@ -17,6 +17,7 @@
 #include <mutex>
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/memory/allocation/aligned_allocator.h"
 #include "paddle/phi/core/memory/allocation/cuda_virtual_mem_allocator.h"
 
@@ -302,7 +303,23 @@ void VirtualMemoryAutoGrowthBestFitAllocator::ExtendOrCompact(size_t size) {
              std::to_string(size));
   }
 
-  auto allocateptr = AllocateOrCompact(size).value_or(nullptr);
+  std::optional<AllocationPtr> allocate_result;
+  try {
+    allocate_result = AllocateOrCompact(size);
+  } catch (const paddle::memory::allocation::BadAlloc &e) {
+    auto stats = SumLargestFreeBlockSizes(free_blocks_.size());
+    PADDLE_THROW_BAD_ALLOC(common::errors::ResourceExhausted(
+        "%s\n"
+        "VMM allocator stats (pool): total_free=%s, max_free=%s.\n",
+        e.what(),
+        string::HumanReadableSize(stats.second),
+        string::HumanReadableSize(stats.first)));
+  }
+
+  AllocationPtr allocateptr = nullptr;
+  if (allocate_result.has_value()) {
+    allocateptr = std::move(allocate_result.value());
+  }
   if (!allocateptr) {
     // Allocate failed and Compact success branch.
     free_blocks_.clear();
@@ -450,12 +467,12 @@ bool VirtualMemoryAutoGrowthBestFitAllocator::TryAllocateBatch(
 
 std::pair<size_t, size_t>
 VirtualMemoryAutoGrowthBestFitAllocator::SumLargestFreeBlockSizes(
-    int32_t n) const {
-  if (n <= 0 || free_blocks_.empty()) return std::make_pair(0, 0);
+    size_t n) const {
+  if (n == 0 || free_blocks_.empty()) return std::make_pair(0, 0);
 
   size_t large_size = free_blocks_.rbegin()->first.first;
   size_t total_size = 0;
-  int32_t count = 0;
+  size_t count = 0;
 
   for (auto it = free_blocks_.rbegin(); it != free_blocks_.rend() && count < n;
        ++it, ++count) {

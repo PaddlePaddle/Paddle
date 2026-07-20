@@ -2410,6 +2410,174 @@ class TestRealAPI(unittest.TestCase):
                 np.testing.assert_allclose(ref_out, out, rtol=1e-6)
 
 
+# Test Optimizer API compatibility
+class TestOptimizerAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.params = [
+            paddle.to_tensor(
+                np.random.randn(3, 4).astype('float32'), stop_gradient=False
+            )
+        ]
+
+    def test_error(self):
+        paddle.disable_static()
+        with self.assertRaises(ValueError):
+            defaults = {
+                'lr': 0.01,
+                'learning_rate': 0.02,
+            }
+            optimizer = paddle.optim.Optimizer(self.params, defaults)
+        with self.assertRaises(TypeError):
+            defaults = {
+                'weight_decay': 0.01,
+                'grad_clip': 0.01,
+                'maximize': True,
+            }
+            optimizer = paddle.optim.Optimizer(self.params, defaults)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        # 1. positional arguments
+        defaults1 = {
+            'lr': 0.01,
+            'maximize': True,
+        }
+        optimizer1 = paddle.optim.Optimizer(self.params, defaults1)
+        # 2. keyword arguments
+        defaults2 = {
+            'learning_rate': 0.01,
+            'weight_decay': 0.01,
+        }
+        optimizer2 = paddle.optim.Optimizer(
+            params=self.params,
+            defaults=defaults2,
+        )
+        # 3. Mixed arguments
+        clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
+        defaults3 = {
+            'lr': 0.01,
+            'weight_decay': 0.01,
+            'grad_clip': clip,
+            'maximize': True,
+        }
+        optimizer3 = paddle.optim.Optimizer(self.params, defaults=defaults3)
+        # Verify all optimizers created successfully
+        self.assertIsNotNone(optimizer1)
+        self.assertIsNotNone(optimizer2)
+        self.assertIsNotNone(optimizer3)
+
+        paddle.enable_static()
+
+
+# Test SGD API compatibility
+class TestSGDAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.params = [
+            paddle.to_tensor(
+                np.random.randn(3, 4).astype('float32'), stop_gradient=False
+            )
+        ]
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        # 1. positional arguments
+        sgd1 = paddle.optim.SGD(self.params, 0.01, 0, 0, 1e-4, maximize=False)
+        # 2. keyword arguments
+        sgd2 = paddle.optim.SGD(
+            params=self.params,
+            lr=0.01,
+            momentum=0.9,
+            weight_decay=1e-4,
+            maximize=False,
+        )
+        # 3. Mixed arguments
+        sgd3 = paddle.optim.SGD(
+            self.params, 0.01, momentum=0.9, weight_decay=1e-4
+        )
+        # Verify all optimizers created successfully
+        self.assertIsNotNone(sgd1)
+        self.assertIsNotNone(sgd2)
+        self.assertIsNotNone(sgd3)
+
+        paddle.enable_static()
+
+
+# Test Adagrad API compatibility
+class TestAdagradAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.params = [
+            paddle.to_tensor(
+                np.random.randn(3, 4).astype('float32'), stop_gradient=False
+            )
+        ]
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        # 1. positional arguments
+        adagrad1 = paddle.optim.Adagrad(
+            self.params, 1e-2, 0, 0, 0, maximize=False
+        )
+        # 2. keyword arguments
+        adagrad2 = paddle.optim.Adagrad(
+            params=self.params,
+            lr=1e-2,
+            lr_decay=0,
+            weight_decay=0,
+            initial_accumulator_value=0,
+            maximize=False,
+        )
+        # 3. Mixed arguments
+        adagrad3 = paddle.optim.Adagrad(
+            self.params, 1e-2, lr_decay=0, weight_decay=0
+        )
+        # Verify all optimizers created successfully
+        self.assertIsNotNone(adagrad1)
+        self.assertIsNotNone(adagrad2)
+        self.assertIsNotNone(adagrad3)
+
+        paddle.enable_static()
+
+
+# Test AdamW API compatibility
+class TestAdamWAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.params = [
+            paddle.to_tensor(
+                np.random.randn(3, 4).astype('float32'), stop_gradient=False
+            )
+        ]
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        # 1. positional arguments
+        adamw1 = paddle.optim.AdamW(
+            self.params, 1e-3, (0.9, 0.999), 1e-8, 1e-2, maximize=False
+        )
+        # 2. keyword arguments
+        adamw2 = paddle.optim.AdamW(
+            params=self.params,
+            lr=1e-3,
+            betas=(0.9, 0.999),
+            eps=1e-8,
+            weight_decay=1e-2,
+            maximize=False,
+        )
+        # 3. Mixed arguments
+        adamw3 = paddle.optim.AdamW(
+            self.params, 1e-3, betas=(0.9, 0.999), weight_decay=1e-2
+        )
+        # Verify all optimizers created successfully
+        self.assertIsNotNone(adamw1)
+        self.assertIsNotNone(adamw2)
+        self.assertIsNotNone(adamw3)
+
+        paddle.enable_static()
+
+
 # Test pixel_shuffle compatibility
 class TestPixelShuffleAPI(unittest.TestCase):
     def setUp(self):

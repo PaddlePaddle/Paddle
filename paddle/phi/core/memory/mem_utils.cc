@@ -183,7 +183,21 @@ AllBlockInfoOfAllocator(const GPUPlace& place) {
   AllBlocksInfoVisitor all_blocks_info_visitor;
   allocation::AllocatorFacade::Instance().Accept(place,
                                                  &all_blocks_info_visitor);
-  return all_blocks_info_visitor.GetAllBlocksInfo();
+  return std::move(all_blocks_info_visitor).GetAllBlocksInfo();
+}
+
+std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>
+LargePoolBlockInfo(const GPUPlace& place) {
+  AllBlocksInfoVisitor visitor(AllBlocksInfoVisitor::PoolFilter::kLargeOnly);
+  allocation::AllocatorFacade::Instance().Accept(place, &visitor);
+  return std::move(visitor).GetAllBlocksInfo();
+}
+
+std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>
+SmallPoolBlockInfo(const GPUPlace& place) {
+  AllBlocksInfoVisitor visitor(AllBlocksInfoVisitor::PoolFilter::kSmallOnly);
+  allocation::AllocatorFacade::Instance().Accept(place, &visitor);
+  return std::move(visitor).GetAllBlocksInfo();
 }
 
 std::vector<std::tuple<uintptr_t, bool, uint64_t, size_t, int64_t, int64_t>>
