@@ -76,8 +76,8 @@ class TestMuonParallel(TestMultipleAccelerators):
     def test_muon_sharding_multi_precision(self):
         """MuonSharding test with multi_precision=True.
 
-        Covers muon.py L575 (master_weight.scale_ with weight_decay),
-        L582-583 (master_weight.subtract_ + assign back to param).
+        Covers master_weight.scale_ with weight_decay and
+        master_weight.subtract_ + assign back to param in _muon_update_group.
         """
         self.run_mnist_2accelerators(
             'hybrid_parallel_sharding_muon_model.py',
