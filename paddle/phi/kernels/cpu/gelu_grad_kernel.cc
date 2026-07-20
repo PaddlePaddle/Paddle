@@ -83,19 +83,19 @@ struct GeluGradFunctor {
       }
 
       // second = (0.5 * 2/sqrt(pi) * 1/sqrt(2) * x * exp(-0.5 * x^2))
-      funcs::CBlas<T>::VSQUARE(n, x_data, second);
-      for (int i = 0; i < n; i++) {
-        second[i] = second[i] * -static_cast<T>(0.5);
-      }
-      funcs::CBlas<T>::VEXP(n, second, second);
-      funcs::CBlas<T>::VMUL(n, x_data, second, second);
-      for (int i = 0; i < n; i++) {
-        second[i] = second[i] * static_cast<T>(0.5 * M_2_SQRTPI * M_SQRT1_2);
-      }
+      Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, 1>> second_map(second, n);
+      Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, 1>> x_map(x_data, n);
+      second_map = (x_map.cwiseAbs2() * static_cast<T>(-0.5)).array().exp() *
+                   x_map.array();
+      second_map *= static_cast<T>(0.5 * M_2_SQRTPI * M_SQRT1_2);
 
       // dx = dout * (first + second);
       funcs::CBlas<T>::VADD(n, first, second, first);
-      funcs::CBlas<T>::VMUL(n, dout_data, first, dx_data);
+      Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, 1>> dx_map(dx_data, n);
+      Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, 1>> dout_map(dout_data,
+                                                                     n);
+      Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, 1>> first_map(first, n);
+      dx_map = dout_map.array() * first_map.array();
 
       std::free(first);
       std::free(second);

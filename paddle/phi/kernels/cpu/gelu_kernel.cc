@@ -65,10 +65,9 @@ struct GeluFunctor {
       for (int i = 0; i < n; i++) {
         out_data[i] += static_cast<T>(1);
       }
-      funcs::CBlas<T>::VMUL(n, x_data, out_data, out_data);
-      for (int i = 0; i < n; i++) {
-        out_data[i] *= static_cast<T>(0.5);
-      }
+      Eigen::Map<Eigen::Array<T, Eigen::Dynamic, 1>> out_map(out_data, n);
+      Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, 1>> x_map(x_data, n);
+      out_map = x_map * out_map * static_cast<T>(0.5);
 #else
       // gelu(x) = 0.5 * x *  (1 + erf(x / sqrt(2)))
       if (std::is_same<T, dtype::float16>::value) {
