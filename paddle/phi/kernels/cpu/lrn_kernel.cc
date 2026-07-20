@@ -21,6 +21,7 @@
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -82,7 +83,12 @@ struct LRNFunctor<CPUContext, T> {
     int pre_pad = (n - 1) / 2;
     // compute batches one by one
     for (int64_t i = 0; i < N; ++i) {
-      blas.VSQUARE(fea_size, idata + i * fea_size, sdata + pre_pad * img_size);
+      Eigen::Index fea_numel = static_cast<Eigen::Index>(fea_size);
+      Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, 1>> squared_dst(
+          sdata + pre_pad * img_size, fea_numel);
+      Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, 1>> input_src(
+          idata + i * fea_size, fea_numel);
+      squared_dst = input_src.cwiseAbs2();
       // init the first channel of mid
       for (int c = 0; c < n; ++c) {
         blas.AXPY(img_size, alpha, sdata + c * img_size, mdata + i * fea_size);
@@ -104,8 +110,13 @@ struct LRNFunctor<CPUContext, T> {
       }
     }
     // compute the final output
-    blas.VPOW(mid->numel(), mdata, -beta, odata);
-    blas.VMUL(mid->numel(), odata, idata, odata);
+    int64_t total_numel = mid->numel();
+    Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, 1>> o_map(odata, total_numel);
+    Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, 1>> m_map(mdata,
+                                                                total_numel);
+    Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, 1>> i_map(idata,
+                                                                total_numel);
+    o_map = m_map.array().pow(-beta) * i_map.array();
 
     // if channel_last, transpose the output(NCHW) to channel_last
     if (data_layout == DataLayout::NHWC) {

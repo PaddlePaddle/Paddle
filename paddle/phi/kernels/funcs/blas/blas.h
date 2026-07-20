@@ -279,24 +279,6 @@ class Blas {
   void VADD(int n, const T* x, const T* y, T* z) const;
 
   template <typename T>
-  void VSUB(int n, const T* x, const T* y, T* z) const;
-
-  template <typename T>
-  void VMUL(int n, const T* x, const T* y, T* z) const;
-
-  template <typename T>
-  void VDIV(int n, const T* x, const T* y, T* z) const;
-
-  template <typename T>
-  void VEXP(int n, const T* x, T* y) const;
-
-  template <typename T>
-  void VSQUARE(int n, const T* x, T* y) const;
-
-  template <typename T>
-  void VPOW(int n, const T* x, T alpha, T* y) const;
-
-  template <typename T>
   void GEMV(bool trans_a,
             int M,
             int N,
@@ -552,36 +534,6 @@ class BlasT : private Blas<DeviceContext> {
   template <typename... ARGS>
   void VADD(ARGS... args) const {
     Base()->template VADD<T>(args...);
-  }
-
-  template <typename... ARGS>
-  void VSUB(ARGS... args) const {
-    Base()->template VSUB<T>(args...);
-  }
-
-  template <typename... ARGS>
-  void VMUL(ARGS... args) const {
-    Base()->template VMUL<T>(args...);
-  }
-
-  template <typename... ARGS>
-  void VDIV(ARGS... args) const {
-    Base()->template VDIV<T>(args...);
-  }
-
-  template <typename... ARGS>
-  void VEXP(ARGS... args) const {
-    Base()->template VEXP<T>(args...);
-  }
-
-  template <typename... ARGS>
-  void VSQUARE(ARGS... args) const {
-    Base()->template VSQUARE<T>(args...);
-  }
-
-  template <typename... ARGS>
-  void VPOW(ARGS... args) const {
-    Base()->template VPOW<T>(args...);
   }
 
   template <typename... ARGS>
