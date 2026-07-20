@@ -517,6 +517,24 @@ class TestAddMMAPI(unittest.TestCase):
 
         paddle.enable_static()
 
+    def test_1d_input_without_input_grad(self):
+        paddle.disable_static()
+        paddle.set_device('cpu')
+
+        input = paddle.ones([4], dtype=paddle.float32)
+        x = paddle.ones([2, 3], dtype=paddle.float32)
+        y = paddle.ones([3, 4], dtype=paddle.float32)
+        x.stop_gradient = False
+        y.stop_gradient = False
+
+        paddle.addmm(input, x, y).sum().backward()
+
+        self.assertIsNone(input.grad)
+        np.testing.assert_array_equal(x.grad.numpy(), np.full([2, 3], 4.0))
+        np.testing.assert_array_equal(y.grad.numpy(), np.full([3, 4], 2.0))
+
+        paddle.enable_static()
+
 
 class TestAddmmOp_ZeroSize(OpTest):
     def setUp(self):

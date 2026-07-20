@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include <type_traits>
+#include <vector>
 
 #include "glog/logging.h"
 
@@ -22,9 +22,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/addmm_grad_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 namespace phi {
 
@@ -46,12 +45,6 @@ struct CopyOrScaleFunctor {
   T* output_;
   int64_t numel_;
 };
-
-template <typename T, size_t D, int MajorType = Eigen::RowMajor>
-using PhiEigenTensor = EigenTensor<T, D, MajorType>;
-
-using Array1 = Eigen::DSizes<int64_t, 1>;
-using Array2 = Eigen::DSizes<int64_t, 2>;
 
 template <typename T, typename Context>
 void AddmmGradKernel(const Context& dev_ctx,
@@ -76,22 +69,12 @@ void AddmmGradKernel(const Context& dev_ctx,
     }
     return;
   }
-  using MPType = typename dtype::MPTypeTrait<T>::Type;
-  bool is_float16_or_bfloat16 = false;
-  bool is_big_tensor = false;
-  if (input.numel() * input.dims()[1] > std::numeric_limits<int>::max() ||
-      x.numel() > std::numeric_limits<int>::max() ||
-      y.numel() * y.dims()[1] > std::numeric_limits<int>::max()) {
-    is_big_tensor = true;
-  }
-  if (std::is_same<T, float16>::value || std::is_same<T, bfloat16>::value) {
-    is_float16_or_bfloat16 = true;
-  }
-
   auto in_dims = input.dims();
   if (input.dims().size() == 1) {
     in_dims = {1, input.dims()[0]};
-    input_grad->Resize(in_dims);
+    if (input_grad) {
+      input_grad->Resize(in_dims);
+    }
   }
   int64_t total_elems = 0;
 
@@ -111,48 +94,23 @@ void AddmmGradKernel(const Context& dev_ctx,
   if (input_grad) {
     dev_ctx.template Alloc<T>(input_grad);
     total_elems = in_dims[0] * in_dims[1];
-    auto& place = *dev_ctx.eigen_device();
-    auto eigen_dout = PhiEigenTensor<T, 2>::From(out_grad);
-    auto eigen_dinput = PhiEigenTensor<T, 2>::From(*input_grad);
-
     bool row_compress = in_dims[0] != out_grad.dims()[0];
     bool col_compress = in_dims[1] != out_grad.dims()[1];
-    auto eigen_dinput_shape =
-        Array2(input_grad->dims()[0], input_grad->dims()[1]);
+    std::vector<int64_t> reduce_dims;
+    if (row_compress) {
+      reduce_dims.push_back(0);
+    }
+    if (col_compress) {
+      reduce_dims.push_back(1);
+    }
 
-    if (row_compress && col_compress) {
-      if (!is_float16_or_bfloat16 && !is_big_tensor) {
-        eigen_dinput.device(place) =
-            eigen_dout.sum().eval().reshape(eigen_dinput_shape);
-      } else {
-        eigen_dinput.device(place) = eigen_dout.template cast<MPType>()
-                                         .sum()
-                                         .eval()
-                                         .reshape(eigen_dinput_shape)
-                                         .template cast<T>();
-      }
-    } else if (row_compress) {
-      if (!is_float16_or_bfloat16 && !is_big_tensor) {
-        eigen_dinput.device(place) =
-            eigen_dout.sum(Array1(0)).eval().reshape(eigen_dinput_shape);
-      } else {
-        eigen_dinput.device(place) = eigen_dout.template cast<MPType>()
-                                         .sum(Array1(0))
-                                         .eval()
-                                         .reshape(eigen_dinput_shape)
-                                         .template cast<T>();
-      }
-    } else if (col_compress) {
-      if (!is_float16_or_bfloat16 && !is_big_tensor) {
-        eigen_dinput.device(place) =
-            eigen_dout.sum(Array1(1)).eval().reshape(eigen_dinput_shape);
-      } else {
-        eigen_dinput.device(place) = eigen_dout.template cast<MPType>()
-                                         .sum(Array1(1))
-                                         .eval()
-                                         .reshape(eigen_dinput_shape)
-                                         .template cast<T>();
-      }
+    if (!reduce_dims.empty()) {
+      SumKernel<T, Context>(dev_ctx,
+                            out_grad,
+                            IntArray(reduce_dims),
+                            out_grad.dtype(),
+                            true,
+                            input_grad);
     } else {
       funcs::ForRange<Context> for_range(dev_ctx, total_elems);
       CopyOrScaleFunctor<T> functor(
@@ -169,14 +127,18 @@ void AddmmGradKernel(const Context& dev_ctx,
       input_grad->Resize(input.dims());
     }
   }
-  if (x_grad && x_grad->numel() == 0) {
-    dev_ctx.template Alloc<T>(x_grad);
-    Full<T, Context>(dev_ctx, y_grad->dims(), 0, y_grad);
-    return;
-  }
-  if (y_grad && y_grad->numel() == 0) {
-    dev_ctx.template Alloc<T>(y_grad);
-    Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
+  if ((x_grad && x_grad->numel() == 0) || (y_grad && y_grad->numel() == 0)) {
+    // K == 0: both x_grad ([M,0]) and y_grad ([0,N]) are empty tensors, so
+    // there is nothing to compute via GEMM (which would also choke on K == 0).
+    // Only allocate the grads that are actually requested; do NOT dereference
+    // the opposite grad pointer, which may be null when a single-side gradient
+    // is requested.
+    if (x_grad) {
+      dev_ctx.template Alloc<T>(x_grad);
+    }
+    if (y_grad) {
+      dev_ctx.template Alloc<T>(y_grad);
+    }
     return;
   }
   if (x_grad) {

@@ -252,8 +252,11 @@
   infer_meta :
     func : GeneralTernaryGradInferMeta
     param : [input, x, y]
+  data_transform :
+    support_trans_dtype : out_grad
   kernel :
     func : baddbmm_grad
+    data_type : x
 
 - backward_op : batch_fc_grad
   forward : batch_fc (Tensor input, Tensor w, Tensor bias) -> Tensor(out)
