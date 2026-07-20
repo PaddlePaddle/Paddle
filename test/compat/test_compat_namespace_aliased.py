@@ -161,10 +161,54 @@ class TestTopLevelAlias(CompatNamespaceAliasBase):
             paddle.disable_compat()
         self.assertNativeRestored()
 
-    def test_linear_type_compatibility_without_alias(self):
-        native = paddle.nn.Linear(2, 2)
-        self.assertIsInstance(native, paddle.compat.nn.Linear)
-        self.assertTrue(issubclass(paddle.nn.Linear, paddle.compat.nn.Linear))
+    def test_class_type_compatibility_without_alias(self):
+        constructor_args = {
+            "Unfold": (1,),
+            "Linear": (2, 2),
+            "Softmax": (),
+            "AvgPool1D": (1,),
+            "AvgPool2D": (1,),
+            "AvgPool3D": (1,),
+            "BatchNorm1D": (2,),
+            "BatchNorm2D": (2,),
+            "BatchNorm3D": (2,),
+            "SmoothL1Loss": (),
+            "MultiheadAttention": (4, 1),
+            "Categorical": (paddle.to_tensor([0.5, 0.5]),),
+        }
+        native_classes = {
+            "Unfold": paddle.nn.Unfold,
+            "Linear": paddle.nn.Linear,
+            "Softmax": paddle.nn.Softmax,
+            "AvgPool1D": paddle.nn.AvgPool1D,
+            "AvgPool2D": paddle.nn.AvgPool2D,
+            "AvgPool3D": paddle.nn.AvgPool3D,
+            "BatchNorm1D": paddle.nn.BatchNorm1D,
+            "BatchNorm2D": paddle.nn.BatchNorm2D,
+            "BatchNorm3D": paddle.nn.BatchNorm3D,
+            "SmoothL1Loss": paddle.nn.SmoothL1Loss,
+            "MultiheadAttention": paddle.nn.MultiHeadAttention,
+            "Categorical": paddle.distributions.Categorical,
+        }
+        compat_modules = (paddle.compat.nn, paddle.compat.distributions)
+        compat_classes = {
+            getattr(module, name)
+            for module in compat_modules
+            for name in module.__all__
+            if isinstance(getattr(module, name), type)
+        }
+        self.assertEqual(
+            {compat_cls.__name__ for compat_cls in compat_classes},
+            set(native_classes),
+        )
+
+        for compat_cls in compat_classes:
+            name = compat_cls.__name__
+            with self.subTest(name=name):
+                native_cls = native_classes[name]
+                compat = compat_cls(*constructor_args[name])
+                self.assertIsInstance(compat, native_cls)
+                self.assertTrue(issubclass(compat_cls, native_cls))
 
     @with_level2
     def test_submodule_symbols_aliased(self):
@@ -501,6 +545,9 @@ class TestLevel2InternalCallersUseNative(CompatNamespaceAliasBase):
         ns = {"__name__": "paddle.fake_internal", "paddle": paddle}
         exec("obj = paddle.nn.Linear(2, 2, weight_attr=False)", ns)
         self.assertIsNot(type(ns["obj"]), paddle.compat.nn.Linear)
+        # isinstance / issubclass accept both forms
+        self.assertIsInstance(paddle.nn.Linear(2, 2), paddle.nn.Linear)
+        self.assertTrue(issubclass(paddle.compat.nn.Linear, paddle.nn.Linear))
 
     @with_level2
     def test_aliased_class_subclassing_is_torch_style(self):
