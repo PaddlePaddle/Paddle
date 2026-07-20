@@ -648,9 +648,9 @@ class TestBaddBmmAPI(unittest.TestCase):
 
         paddle.disable_static()
 
-        x = paddle.to_tensor(data_x)
-        y = paddle.to_tensor(data_y)
-        input = paddle.to_tensor(data_input)
+        x = paddle.to_tensor(data_x, stop_gradient=False)
+        y = paddle.to_tensor(data_y, stop_gradient=False)
+        input = paddle.to_tensor(data_input, stop_gradient=False)
 
         # Test with out_dtype=float64
         paddle_output = paddle.tensor.baddbmm(
@@ -671,6 +671,14 @@ class TestBaddBmmAPI(unittest.TestCase):
         np.testing.assert_allclose(
             numpy_output, paddle_output.numpy(), rtol=1e-05
         )
+
+        paddle_output.sum().backward()
+        self.assertEqual(input.grad.dtype, paddle.float32)
+        self.assertEqual(x.grad.dtype, paddle.float32)
+        self.assertEqual(y.grad.dtype, paddle.float32)
+        np.testing.assert_allclose(input.grad.numpy(), data_beta)
+        np.testing.assert_allclose(x.grad.numpy(), data_alpha * 2)
+        np.testing.assert_allclose(y.grad.numpy(), data_alpha * 2)
 
         # Test with out_dtype=None (should use input dtype)
         paddle_output_none = paddle.tensor.baddbmm(
@@ -701,9 +709,9 @@ class TestBaddBmmAPI(unittest.TestCase):
         paddle.disable_static()
         paddle.set_device('gpu')
 
-        x = paddle.to_tensor(data_x)
-        y = paddle.to_tensor(data_y)
-        input = paddle.to_tensor(data_input)
+        x = paddle.to_tensor(data_x, stop_gradient=False)
+        y = paddle.to_tensor(data_y, stop_gradient=False)
+        input = paddle.to_tensor(data_input, stop_gradient=False)
 
         # Test with out_dtype=float16
         paddle_output = paddle.tensor.baddbmm(
@@ -724,6 +732,78 @@ class TestBaddBmmAPI(unittest.TestCase):
         np.testing.assert_allclose(
             numpy_output, paddle_output.numpy(), rtol=1e-02, atol=1e-02
         )
+
+        paddle_output.sum().backward()
+        self.assertEqual(input.grad.dtype, paddle.float32)
+        self.assertEqual(x.grad.dtype, paddle.float32)
+        self.assertEqual(y.grad.dtype, paddle.float32)
+
+        fp16_input = paddle.ones([2, 2, 2], dtype=paddle.float16)
+        fp16_x = paddle.ones([2, 2, 2], dtype=paddle.float16)
+        fp16_y = paddle.ones([2, 2, 2], dtype=paddle.float16)
+        fp16_input.stop_gradient = False
+        fp16_x.stop_gradient = False
+        fp16_y.stop_gradient = False
+        fp32_output = paddle.tensor.baddbmm(
+            input=fp16_input,
+            x=fp16_x,
+            y=fp16_y,
+            beta=data_beta,
+            alpha=data_alpha,
+            out_dtype=paddle.float32,
+        )
+        fp32_output.sum().backward()
+        self.assertEqual(fp16_input.grad.dtype, paddle.float16)
+        self.assertEqual(fp16_x.grad.dtype, paddle.float16)
+        self.assertEqual(fp16_y.grad.dtype, paddle.float16)
+
+        paddle.enable_static()
+
+    def test_2d_input_without_input_grad(self):
+        paddle.disable_static()
+        paddle.set_device('cpu')
+
+        input = paddle.ones([1, 4], dtype=paddle.float32)
+        x = paddle.ones([1, 2, 3], dtype=paddle.float32)
+        y = paddle.ones([1, 3, 4], dtype=paddle.float32)
+        x.stop_gradient = False
+        y.stop_gradient = False
+
+        paddle.baddbmm(input, x, y).sum().backward()
+
+        self.assertIsNone(input.grad)
+        np.testing.assert_array_equal(x.grad.numpy(), np.full([1, 2, 3], 4.0))
+        np.testing.assert_array_equal(y.grad.numpy(), np.full([1, 3, 4], 2.0))
+
+        paddle.enable_static()
+
+    def test_zero_scale_backward_special_values(self):
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
+            self.skipTest("CUDA is not available")
+
+        paddle.disable_static()
+        paddle.set_device('gpu')
+
+        for value in (float('nan'), float('inf')):
+            input = paddle.ones([1, 2, 2], dtype=paddle.float32)
+            x = paddle.full([1, 2, 3], value, dtype=paddle.float32)
+            y = paddle.full([1, 3, 2], value, dtype=paddle.float32)
+            x.stop_gradient = False
+            y.stop_gradient = False
+
+            out = paddle.baddbmm(input, x, y, beta=1.0, alpha=0.0)
+            out.backward(paddle.ones_like(out))
+            self.assertTrue(bool(paddle.isnan(x.grad).all()))
+            self.assertTrue(bool(paddle.isnan(y.grad).all()))
+
+            input = paddle.ones([1, 2, 2], dtype=paddle.float32)
+            x = paddle.ones([1, 2, 3], dtype=paddle.float32)
+            y = paddle.ones([1, 3, 2], dtype=paddle.float32)
+            input.stop_gradient = False
+
+            out = paddle.baddbmm(input, x, y, beta=0.0, alpha=1.0)
+            out.backward(paddle.full(out.shape, value, dtype=paddle.float32))
+            self.assertTrue(bool(paddle.isnan(input.grad).all()))
 
         paddle.enable_static()
 
