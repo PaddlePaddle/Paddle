@@ -422,6 +422,30 @@ class TestPnormOp6(TestPnormOp):
         )
 
 
+# Regression test: porder=2.3 (not exactly representable in float32) with float64
+# input to verify that the GPU kernel uses double precision for porder without
+# truncating it to float, which would cause forward output mismatch.
+class TestPnormOp7(TestPnormOp):
+    def init_test_case(self):
+        self.shape = [3, 20, 3]
+        self.axis = 2
+        self.epsilon = 1e-12
+        self.porder = 2.3
+        self.keepdim = True
+        self.asvector = False
+
+    def init_dtype(self):
+        self.dtype = "float64"
+
+    def test_check_output(self):
+        self.check_output(atol=1e-12, rtol=1e-12, check_prim_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'], 'Out', user_defined_grads=self.gradient, check_prim_pir=True
+        )
+
+
 class TestPnormOpZeroSize(TestPnormOp):
     def init_test_case(self):
         self.shape = [0, 20, 3]
