@@ -97,17 +97,25 @@ size_t VMMAutoGrowthBestFitMultiPoolAllocatorV2::CompactImpl(
 }
 
 size_t VMMAutoGrowthBestFitMultiPoolAllocatorV2::RemapForAllocation(
-    const Place& place, size_t requested_size, const VMMGrowOOMInfo* grow_oom) {
+    const Place& place,
+    size_t requested_size,
+    const VMMGrowOOMInfo* grow_oom,
+    VMMRemapAttemptResult* attempt_result) {
+  if (attempt_result != nullptr) {
+    *attempt_result = VMMRemapAttemptResult{};
+  }
   if (requested_size > 0) {
     const auto route = RouteAllocation(requested_size);
     if (route.pool_type == PoolType::kSmall) {
       return 0;
     }
-    return route.allocator->RemapForAllocation(place, requested_size, grow_oom);
+    return route.allocator->RemapForAllocation(
+        place, requested_size, grow_oom, attempt_result);
   }
   // Compact/remap targets the large pool only. Small-pool requests are cheap
   // to satisfy through normal reuse/grow and do not justify remap overhead.
-  return large_allocator_->RemapForAllocation(place, requested_size);
+  return large_allocator_->RemapForAllocation(
+      place, requested_size, grow_oom, attempt_result);
 }
 
 void VMMAutoGrowthBestFitMultiPoolAllocatorV2::FreeImpl(

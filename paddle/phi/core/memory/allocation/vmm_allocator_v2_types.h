@@ -72,6 +72,19 @@ enum class PoolType : uint8_t {
   kLarge = 1,
 };
 
+enum class VMMRemapAttemptStatus : uint8_t {
+  kNotAttempted = 0,
+  kInsufficientMovableMemory,
+  kNoMovableMemory,
+  kAttempted,
+};
+
+struct VMMRemapAttemptResult {
+  VMMRemapAttemptStatus status{VMMRemapAttemptStatus::kNotAttempted};
+  size_t movable_bytes{0};
+  size_t required_bytes{0};
+};
+
 struct VMMHandleMeta {
   VMMHandleMeta() = default;
 

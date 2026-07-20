@@ -81,11 +81,12 @@ DriverMemoryStats CollectDriverMemoryStats(int device) {
 }
 
 size_t FullyCoveredBackingBytes(const std::pair<VMMDevicePtr, size_t>& range,
+                                VMMDevicePtr virtual_mem_base,
                                 size_t handle_size) {
   if (handle_size == 0) {
     return 0;
   }
-  const size_t remainder = range.first % handle_size;
+  const size_t remainder = (range.first - virtual_mem_base) % handle_size;
   const size_t prefix = remainder == 0 ? 0 : handle_size - remainder;
   if (range.second <= prefix) {
     return 0;
@@ -94,13 +95,16 @@ size_t FullyCoveredBackingBytes(const std::pair<VMMDevicePtr, size_t>& range,
 }
 
 void PrioritizeContiguousSourceRanges(
-    std::vector<std::pair<VMMDevicePtr, size_t>>* ranges, size_t handle_size) {
-  std::stable_sort(ranges->begin(),
-                   ranges->end(),
-                   [handle_size](const auto& lhs, const auto& rhs) {
-                     return FullyCoveredBackingBytes(lhs, handle_size) >
-                            FullyCoveredBackingBytes(rhs, handle_size);
-                   });
+    std::vector<std::pair<VMMDevicePtr, size_t>>* ranges,
+    VMMDevicePtr virtual_mem_base,
+    size_t handle_size) {
+  std::stable_sort(
+      ranges->begin(),
+      ranges->end(),
+      [virtual_mem_base, handle_size](const auto& lhs, const auto& rhs) {
+        return FullyCoveredBackingBytes(lhs, virtual_mem_base, handle_size) >
+               FullyCoveredBackingBytes(rhs, virtual_mem_base, handle_size);
+      });
 }
 
 }  // namespace
@@ -440,7 +444,13 @@ size_t VMMAutoGrowthBestFitAllocatorV2::CompactImpl(const Place& place) {
 }
 
 size_t VMMAutoGrowthBestFitAllocatorV2::RemapForAllocation(
-    const Place& place, size_t requested_size, const VMMGrowOOMInfo* grow_oom) {
+    const Place& place,
+    size_t requested_size,
+    const VMMGrowOOMInfo* grow_oom,
+    VMMRemapAttemptResult* attempt_result) {
+  if (attempt_result != nullptr) {
+    *attempt_result = VMMRemapAttemptResult{};
+  }
   const uint64_t compact_seq =
       g_vmm_v2_compact_seq.fetch_add(1, std::memory_order_relaxed) + 1;
   const auto compact_start = Clock::now();
@@ -479,6 +489,9 @@ size_t VMMAutoGrowthBestFitAllocatorV2::RemapForAllocation(
     if (compact_state.total_free <= compact_state.tail_free) {
       LogCompactSkip(
           compact_state, compact_context, "insufficient_non_tail_mapped_free");
+      if (attempt_result != nullptr) {
+        attempt_result->status = VMMRemapAttemptStatus::kNoMovableMemory;
+      }
       return 0;
     }
 
@@ -510,6 +523,7 @@ size_t VMMAutoGrowthBestFitAllocatorV2::RemapForAllocation(
     // ranges as possible. This reduces the number of source VA gaps without
     // adding work to successful allocation/free paths.
     PrioritizeContiguousSourceRanges(&compact_state.source_ranges,
+                                     underlying_allocator_->virtual_mem_base(),
                                      underlying_allocator_->handle_size());
   }
 
@@ -540,6 +554,10 @@ size_t VMMAutoGrowthBestFitAllocatorV2::RemapForAllocation(
   size_t releasable_bytes =
       releasable_handles * underlying_allocator_->handle_size();
   compact_context.ready_bytes = releasable_bytes;
+  if (attempt_result != nullptr) {
+    attempt_result->movable_bytes = releasable_bytes;
+    attempt_result->required_bytes = required_releasable_bytes;
+  }
 
   if (use_grow_oom && releasable_bytes < required_releasable_bytes) {
     // A training allocation must either recover immediately or leave the
@@ -550,6 +568,10 @@ size_t VMMAutoGrowthBestFitAllocatorV2::RemapForAllocation(
     LogCompactSkip(compact_state,
                    compact_context,
                    "insufficient_releasable_for_failed_grow");
+    if (attempt_result != nullptr) {
+      attempt_result->status =
+          VMMRemapAttemptStatus::kInsufficientMovableMemory;
+    }
     return 0;
   }
 
@@ -570,6 +592,20 @@ size_t VMMAutoGrowthBestFitAllocatorV2::RemapForAllocation(
       LogCompactSkip(compact_state,
                      compact_context,
                      "insufficient_releasable_mapped_free");
+      if (attempt_result != nullptr) {
+        const size_t driver_available =
+            compact_context.driver_memory.mem_info_status == phi::gpuSuccess
+                ? compact_context.driver_memory.driver_actual_avail
+                : 0;
+        const size_t required_after_driver =
+            required_releasable_bytes > driver_available
+                ? required_releasable_bytes - driver_available
+                : 0;
+        attempt_result->status =
+            VMMRemapAttemptStatus::kInsufficientMovableMemory;
+        attempt_result->required_bytes = AlignedSize(
+            required_after_driver, underlying_allocator_->handle_size());
+      }
       return 0;
     }
     remap_target = releasable_bytes;
@@ -577,6 +613,9 @@ size_t VMMAutoGrowthBestFitAllocatorV2::RemapForAllocation(
 
   if (releasable_handles == 0) {
     LogCompactSkip(compact_state, compact_context, "no_releasable_handles");
+    if (attempt_result != nullptr) {
+      attempt_result->status = VMMRemapAttemptStatus::kNoMovableMemory;
+    }
     return 0;
   }
 
@@ -625,6 +664,9 @@ size_t VMMAutoGrowthBestFitAllocatorV2::RemapForAllocation(
                                     commit_destination_allocations,
                                     can_prepare_destination_range,
                                     prepare_destination_range);
+  if (attempt_result != nullptr) {
+    attempt_result->status = VMMRemapAttemptStatus::kAttempted;
+  }
   const auto compactor_start = Clock::now();
   size_t remapped = 0;
   try {

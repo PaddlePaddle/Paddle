@@ -246,9 +246,8 @@ void CUDAVirtualMemAllocatorV2::InitOnce() {
                           "VA multiplier %d for pool %d overflows size_t.",
                           va_multiplier,
                           static_cast<int>(pool_type_)));
-    // Reserves VA by pool to leave room for later split/remap growth.  The
-    // backing map is indexed by handle-sized pages, so the reserved VA range
-    // must be aligned to handle_size_ rather than only the CUDA granularity.
+    // Reserve VA by pool to leave room for later split/remap growth. The
+    // backing map anchors its handle-sized page grid at the returned base.
     virtual_mem_size_ = AlignedSize(actual_total * va_multiplier, handle_size_);
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cuMemAddressReserve(
         &virtual_mem_base_, virtual_mem_size_, 0, 0, 0));

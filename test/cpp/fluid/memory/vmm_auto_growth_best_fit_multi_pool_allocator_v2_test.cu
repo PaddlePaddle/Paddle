@@ -61,12 +61,15 @@ std::unique_ptr<VMMAutoGrowthBestFitMultiPoolAllocatorV2> CreateAllocator() {
 class FailingMultiPoolAllocator
     : public VMMAutoGrowthBestFitMultiPoolAllocatorV2 {
  public:
-  FailingMultiPoolAllocator()
+  explicit FailingMultiPoolAllocator(size_t requested_handles = 2,
+                                     size_t created_handles = 1)
       : VMMAutoGrowthBestFitMultiPoolAllocatorV2(
             CreatePoolAllocator(2UL << 20, PoolType::kSmall),
             CreatePoolAllocator(2UL << 20, PoolType::kLarge),
             2UL << 20,
-            phi::GPUPlace()) {}
+            phi::GPUPlace()),
+        requested_handles_(requested_handles),
+        created_handles_(created_handles) {}
 
   size_t allocation_attempts() const { return allocation_attempts_; }
 
@@ -76,8 +79,8 @@ class FailingMultiPoolAllocator
     throw VMMGrowOOM("deterministic VMM stream-safe allocation failure",
                      __FILE__,
                      __LINE__,
-                     VMMGrowOOMInfo{/*requested_handles=*/2,
-                                    /*created_handles=*/1,
+                     VMMGrowOOMInfo{/*requested_handles=*/requested_handles_,
+                                    /*created_handles=*/created_handles_,
                                     /*handle_size=*/2UL << 20,
                                     /*device=*/0,
                                     PoolType::kLarge});
@@ -85,6 +88,8 @@ class FailingMultiPoolAllocator
 
  private:
   size_t allocation_attempts_{0};
+  size_t requested_handles_;
+  size_t created_handles_;
 };
 
 void PrepareRemapSource(FailingMultiPoolAllocator* allocator,
@@ -452,12 +457,14 @@ TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2,
       EXPECT_NE(message.find("CUDA driver memory:"), std::string::npos);
       EXPECT_NE(message.find("Free on device:"), std::string::npos);
       EXPECT_NE(message.find("Total device capacity:"), std::string::npos);
-      EXPECT_NE(message.find("Memory defragmentation: reclaimed"),
+      EXPECT_NE(message.find("Memory defragmentation: remap moved"),
                 std::string::npos);
+      EXPECT_NE(message.find("Allocation failure summary:"), std::string::npos);
       EXPECT_EQ(message.find("Please stop other processes"), std::string::npos);
-      EXPECT_NE(message.find("2. Retry after memory defragmentation:"),
+      EXPECT_NE(message.find("2. Retry after reclaiming pending frees:"),
                 std::string::npos);
-      EXPECT_EQ(message.find("3. Retry"), std::string::npos);
+      EXPECT_NE(message.find("3. Retry after memory defragmentation:"),
+                std::string::npos);
     }
     EXPECT_EQ(multi->allocation_attempts(), 3UL);
   }
@@ -471,9 +478,29 @@ TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2,
       FAIL() << "Expected VMM V2 allocation to fail";
     } catch (const BadAlloc& ex) {
       const std::string message = ex.what();
-      EXPECT_NE(message.find("Memory defragmentation: disabled"),
+      EXPECT_NE(message.find("remap was not attempted because memory "
+                             "defragmentation is disabled"),
                 std::string::npos);
       EXPECT_NE(message.find("2. Retry after reclaiming pending frees:"),
+                std::string::npos);
+    }
+    EXPECT_EQ(multi->allocation_attempts(), 2UL);
+  }
+  {
+    auto multi = std::make_shared<FailingMultiPoolAllocator>(
+        /*requested_handles=*/2, /*created_handles=*/0);
+    AllocationPtr anchor;
+    PrepareRemapSource(multi.get(), &anchor);
+    auto stream_safe = std::make_shared<StreamSafeCUDAAllocator>(
+        multi, place, cudaStreamPerThread);
+    ScopedVMMRetryFlags flags(/*retry_times=*/0, /*remap_on_oom=*/true);
+    try {
+      stream_safe->Allocate(4UL << 20);
+      FAIL() << "Expected VMM V2 allocation to fail";
+    } catch (const BadAlloc& ex) {
+      const std::string message = ex.what();
+      EXPECT_NE(message.find("remap was not attempted; 2.000000MB could be "
+                             "safely moved, but 4.000000MB was required"),
                 std::string::npos);
     }
     EXPECT_EQ(multi->allocation_attempts(), 2UL);
@@ -488,7 +515,8 @@ TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2,
       FAIL() << "Expected VMM V2 allocation to fail";
     } catch (const BadAlloc& ex) {
       const std::string message = ex.what();
-      EXPECT_NE(message.find("no releasable free memory was found"),
+      EXPECT_NE(message.find("remap was not attempted because no safely "
+                             "movable free memory was available"),
                 std::string::npos);
     }
     EXPECT_EQ(multi->allocation_attempts(), 2UL);

@@ -48,11 +48,13 @@ class VMMAutoGrowthBestFitMultiPoolAllocatorV2 : public Allocator {
                           gpuStream_t stream,
                           std::shared_ptr<CUDAEventGuard> event);
 
-  // Compacts the large VMM pool for a failed allocation request. A zero
-  // request performs explicit unbounded maintenance compaction.
+  // Compacts the large VMM pool for a failed allocation request and optionally
+  // reports whether remap was attempted. A zero request performs explicit
+  // unbounded maintenance compaction.
   size_t RemapForAllocation(const Place& place,
                             size_t requested_size,
-                            const VMMGrowOOMInfo* grow_oom = nullptr);
+                            const VMMGrowOOMInfo* grow_oom = nullptr,
+                            VMMRemapAttemptResult* attempt_result = nullptr);
 
   const std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2>& small_allocator()
       const {

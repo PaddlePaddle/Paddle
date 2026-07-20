@@ -1250,17 +1250,23 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, BoundedCompactUsesFailedGrowProgress) {
 
   // Two handles are required, but only one source handle is ready. Partial
   // remap cannot make this failed grow succeed, so it must not mutate blocks.
-  EXPECT_EQ(
-      allocator.RemapForAllocation(phi::GPUPlace(), requested_size, &grow_oom),
-      0UL);
+  VMMRemapAttemptResult attempt_result;
+  EXPECT_EQ(allocator.RemapForAllocation(
+                phi::GPUPlace(), requested_size, &grow_oom, &attempt_result),
+            0UL);
+  EXPECT_EQ(attempt_result.status,
+            VMMRemapAttemptStatus::kInsufficientMovableMemory);
+  EXPECT_EQ(attempt_result.movable_bytes, handle_size);
+  EXPECT_EQ(attempt_result.required_bytes, 2UL * handle_size);
   EXPECT_EQ(CountBlocksOfType(allocator, BlockType::kUnmappedFree), 0UL);
 
   // The same grow had capacity for two handles, so moving exactly one existing
   // handle is sufficient to reduce the retry grow from three handles to two.
   grow_oom.created_handles = 2;
-  EXPECT_EQ(
-      allocator.RemapForAllocation(phi::GPUPlace(), requested_size, &grow_oom),
-      handle_size);
+  EXPECT_EQ(allocator.RemapForAllocation(
+                phi::GPUPlace(), requested_size, &grow_oom, &attempt_result),
+            handle_size);
+  EXPECT_EQ(attempt_result.status, VMMRemapAttemptStatus::kAttempted);
   EXPECT_EQ(CountBlocksOfType(allocator, BlockType::kUnmappedFree), 1UL);
 }
 

@@ -101,11 +101,13 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
                           gpuStream_t stream,
                           std::shared_ptr<CUDAEventGuard> event);
 
-  // Compacts mapped-free VMM backing for a failed allocation request. A zero
-  // request performs explicit unbounded maintenance compaction.
+  // Compacts mapped-free VMM backing for a failed allocation request and
+  // optionally reports whether remap was attempted. A zero request performs
+  // explicit unbounded maintenance compaction.
   size_t RemapForAllocation(const Place& place,
                             size_t requested_size,
-                            const VMMGrowOOMInfo* grow_oom = nullptr);
+                            const VMMGrowOOMInfo* grow_oom = nullptr,
+                            VMMRemapAttemptResult* attempt_result = nullptr);
 
  protected:
   phi::Allocation* AllocateImpl(size_t size) override;
