@@ -2036,8 +2036,9 @@ class TestPnormGradCompatKernel(unittest.TestCase):
 
     @unittest.skipIf(
         not core.is_compiled_with_cuda()
-        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-        "CUDA bf16 not available",
+        or not core.is_bfloat16_supported(core.CUDAPlace(0))
+        or core.is_compiled_with_rocm(),
+        "CUDA bf16 not available or running on ROCm/DCU",
     )
     def test_p2_bf16_compat(self):
         self._run_compat_test((4, 8, 16), 2.0, -1, "bfloat16")
@@ -2048,8 +2049,9 @@ class TestPnormGradCompatKernel(unittest.TestCase):
 
     @unittest.skipIf(
         not core.is_compiled_with_cuda()
-        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-        "CUDA bf16 not available",
+        or not core.is_bfloat16_supported(core.CUDAPlace(0))
+        or core.is_compiled_with_rocm(),
+        "CUDA bf16 not available or running on ROCm/DCU",
     )
     def test_p4_bf16_compat(self):
         self._run_compat_test((4, 5, 32), 4.0, -1, "bfloat16")
@@ -2064,8 +2066,9 @@ class TestPnormGradCompatKernel(unittest.TestCase):
 
     @unittest.skipIf(
         not core.is_compiled_with_cuda()
-        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-        "CUDA bf16 not available",
+        or not core.is_bfloat16_supported(core.CUDAPlace(0))
+        or core.is_compiled_with_rocm(),
+        "CUDA bf16 not available or running on ROCm/DCU",
     )
     def test_p1_5_bf16_compat(self):
         self._run_compat_test((4, 8, 16), 1.5, -1, "bfloat16")
@@ -2076,8 +2079,9 @@ class TestPnormGradCompatKernel(unittest.TestCase):
 
     @unittest.skipIf(
         not core.is_compiled_with_cuda()
-        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-        "CUDA bf16 not available",
+        or not core.is_bfloat16_supported(core.CUDAPlace(0))
+        or core.is_compiled_with_rocm(),
+        "CUDA bf16 not available or running on ROCm/DCU",
     )
     def test_p0_5_bf16_compat(self):
         self._run_compat_test((4, 8, 16), 0.5, -1, "bfloat16")
