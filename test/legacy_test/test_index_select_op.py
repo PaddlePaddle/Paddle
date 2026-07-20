@@ -251,15 +251,18 @@ class TestIndexSelectInvalidIndexCPU(unittest.TestCase):
         paddle.disable_static()
         paddle.set_device('cpu')
         try:
-            for shape, axis in [([1, 0], -1), ([0, 0], 0)]:
-                with self.subTest(shape=shape, axis=axis):
-                    x = paddle.empty(shape, dtype='float32')
-                    index = paddle.to_tensor([0], dtype='int64')
-                    with self.assertRaisesRegex(
-                        Exception,
-                        r'select axis in OP\(index_select\).*Input\(Index\) is not empty',
+            for index_dtype in ['int32', 'int64']:
+                for shape, axis in [([1, 0], -1), ([0, 0], 0)]:
+                    with self.subTest(
+                        index_dtype=index_dtype, shape=shape, axis=axis
                     ):
-                        paddle.index_select(x, index, axis=axis)
+                        x = paddle.empty(shape, dtype='float32')
+                        index = paddle.to_tensor([0], dtype=index_dtype)
+                        with self.assertRaisesRegex(
+                            Exception,
+                            r'select axis in OP\(index_select\).*Input\(Index\) is not empty',
+                        ):
+                            paddle.index_select(x, index, axis=axis)
 
             x = paddle.empty([0, 0], dtype='float32')
             index = paddle.empty([0], dtype='int64')
