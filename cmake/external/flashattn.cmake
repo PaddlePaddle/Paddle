@@ -171,6 +171,9 @@ else()
   set(CACHE_TAR_DIR "${FA_BUILD_DIR}/flashattn_libs_${FLASHATTN_TAG}")
 
   set(SKIP_BUILD_FA OFF)
+  if(WITH_ARM)
+    set(WITH_FA_BUILD_WITH_CACHE OFF)
+  endif()
   if(WITH_FA_BUILD_WITH_CACHE)
 
     message(STATUS "Downloading ${TAR_FILE_URL} to ${CACHE_TAR_PATH}")
