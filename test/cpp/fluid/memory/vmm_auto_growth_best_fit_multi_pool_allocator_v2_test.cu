@@ -92,6 +92,50 @@ class FailingMultiPoolAllocator
   size_t created_handles_;
 };
 
+class RetryWithoutRemapMultiPoolAllocator
+    : public VMMAutoGrowthBestFitMultiPoolAllocatorV2 {
+ public:
+  explicit RetryWithoutRemapMultiPoolAllocator(bool third_attempt_succeeds)
+      : VMMAutoGrowthBestFitMultiPoolAllocatorV2(
+            CreatePoolAllocator(2UL << 20, PoolType::kSmall),
+            CreatePoolAllocator(2UL << 20, PoolType::kLarge),
+            2UL << 20,
+            phi::GPUPlace()),
+        third_attempt_succeeds_(third_attempt_succeeds) {}
+
+  void PrepareRetryBlock(size_t size) {
+    retry_block_ = large_allocator()->Allocate(size);
+  }
+
+  size_t allocation_attempts() const { return allocation_attempts_; }
+
+ protected:
+  phi::Allocation* AllocateImpl(size_t size) override {
+    ++allocation_attempts_;
+    if (allocation_attempts_ == 2) {
+      // Simulate another thread freeing a reusable block after the second
+      // allocation failure and before OOM remap precheck.
+      retry_block_.reset();
+    }
+    if (allocation_attempts_ <= 2 || !third_attempt_succeeds_) {
+      throw VMMGrowOOM("deterministic concurrent-free allocation failure",
+                       __FILE__,
+                       __LINE__,
+                       VMMGrowOOMInfo{/*requested_handles=*/2,
+                                      /*created_handles=*/0,
+                                      /*handle_size=*/2UL << 20,
+                                      /*device=*/0,
+                                      PoolType::kLarge});
+    }
+    return VMMAutoGrowthBestFitMultiPoolAllocatorV2::AllocateImpl(size);
+  }
+
+ private:
+  AllocationPtr retry_block_;
+  size_t allocation_attempts_{0};
+  bool third_attempt_succeeds_;
+};
+
 void PrepareRemapSource(FailingMultiPoolAllocator* allocator,
                         AllocationPtr* anchor) {
   auto source = allocator->large_allocator()->Allocate(2UL << 20);
@@ -526,6 +570,46 @@ TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2,
     auto stream_safe = std::make_shared<StreamSafeCUDAAllocator>(
         cuda_allocator, place, cudaStreamPerThread);
     EXPECT_THROW(stream_safe->Allocate(kImpossibleSize), BadAlloc);
+  }
+}
+
+TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2,
+     StreamSafeRetriesWhenFreeBlockAppearsBeforeRemap) {
+  const phi::GPUPlace place(0);
+  constexpr size_t kRequestSize = 4UL << 20;
+  ScopedVMMRetryFlags flags(/*retry_times=*/0, /*remap_on_oom=*/true);
+
+  {
+    auto multi = std::make_shared<RetryWithoutRemapMultiPoolAllocator>(true);
+    multi->PrepareRetryBlock(kRequestSize);
+    auto stream_safe = std::make_shared<StreamSafeCUDAAllocator>(
+        multi, place, cudaStreamPerThread);
+
+    auto allocation = stream_safe->Allocate(kRequestSize);
+    ASSERT_NE(allocation, nullptr);
+    EXPECT_EQ(multi->allocation_attempts(), 3UL);
+  }
+
+  {
+    auto multi = std::make_shared<RetryWithoutRemapMultiPoolAllocator>(false);
+    multi->PrepareRetryBlock(kRequestSize);
+    auto stream_safe = std::make_shared<StreamSafeCUDAAllocator>(
+        multi, place, cudaStreamPerThread);
+
+    try {
+      stream_safe->Allocate(kRequestSize);
+      FAIL() << "Expected the third allocation attempt to fail";
+    } catch (const BadAlloc& ex) {
+      const std::string message = ex.what();
+      EXPECT_NE(message.find("remap was skipped because a sufficiently large "
+                             "free block was available"),
+                std::string::npos);
+      EXPECT_NE(
+          message.find("3. Retry after detecting an available free block:"),
+          std::string::npos);
+      EXPECT_EQ(message.find("remap moved 0.000000B"), std::string::npos);
+    }
+    EXPECT_EQ(multi->allocation_attempts(), 3UL);
   }
 }
 

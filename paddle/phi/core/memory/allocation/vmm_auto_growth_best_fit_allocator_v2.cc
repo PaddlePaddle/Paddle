@@ -478,11 +478,16 @@ size_t VMMAutoGrowthBestFitAllocatorV2::RemapForAllocation(
 
   size_t compact_target = requested_size;
   compact_context.compact_target = compact_target;
+  const size_t aligned_request =
+      requested_size > 0 ? AlignedSize(requested_size, alignment_) : 0;
   bool use_grow_oom = false;
   if (requested_size > 0) {
-    if (compact_state.max_free >= requested_size) {
+    if (compact_state.max_free >= aligned_request) {
       LogCompactSkip(
           compact_state, compact_context, "large_free_block_available");
+      if (attempt_result != nullptr) {
+        attempt_result->status = VMMRemapAttemptStatus::kRetryWithoutRemap;
+      }
       return 0;
     }
 
@@ -497,7 +502,6 @@ size_t VMMAutoGrowthBestFitAllocatorV2::RemapForAllocation(
 
     if (grow_oom != nullptr) {
       const size_t handle_size = underlying_allocator_->handle_size();
-      const size_t aligned_request = AlignedSize(requested_size, alignment_);
       const size_t grow_bytes = aligned_request > compact_state.tail_free
                                     ? aligned_request - compact_state.tail_free
                                     : 0;

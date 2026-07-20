@@ -68,6 +68,7 @@ enum class VMMV2RemapOutcome {
   kInsufficientMovableMemory,
   kNoMovableMemory,
   kAttemptedNoProgress,
+  kRetryWithoutRemapFailed,
   kRetryFailed,
 };
 
@@ -141,6 +142,11 @@ std::string BuildVMMV2OOMSummary(
       break;
     case VMMV2RemapOutcome::kAttemptedNoProgress:
       remap_result = "remap was attempted, but no memory was moved";
+      break;
+    case VMMV2RemapOutcome::kRetryWithoutRemapFailed:
+      remap_result =
+          "remap was skipped because a sufficiently large free block was "
+          "available, but the allocation retry still failed";
       break;
     case VMMV2RemapOutcome::kRetryFailed:
       remap_result = string::Sprintf(
@@ -463,68 +469,94 @@ phi::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
               std::chrono::duration_cast<std::chrono::microseconds>(
                   std::chrono::steady_clock::now() - remap_start)
                   .count();
-          if (remapped_bytes > 0) {
+          VMMV2RemapOutcome remap_status_outcome =
+              VMMV2RemapOutcome::kNotAttempted;
+          switch (remap_result.status) {
+            case VMMRemapAttemptStatus::kNotAttempted:
+              break;
+            case VMMRemapAttemptStatus::kRetryWithoutRemap:
+              remap_status_outcome =
+                  VMMV2RemapOutcome::kRetryWithoutRemapFailed;
+              break;
+            case VMMRemapAttemptStatus::kInsufficientMovableMemory:
+              remap_status_outcome =
+                  VMMV2RemapOutcome::kInsufficientMovableMemory;
+              break;
+            case VMMRemapAttemptStatus::kNoMovableMemory:
+              remap_status_outcome = VMMV2RemapOutcome::kNoMovableMemory;
+              break;
+            case VMMRemapAttemptStatus::kAttempted:
+              remap_status_outcome = VMMV2RemapOutcome::kAttemptedNoProgress;
+              break;
+          }
+          const bool retry_without_remap =
+              remap_result.status == VMMRemapAttemptStatus::kRetryWithoutRemap;
+          if (remapped_bytes > 0 || retry_without_remap) {
             try {
               underlying_allocation = underlying_allocator_->Allocate(size);
-              LOG(INFO) << "Recovered the " << string::HumanReadableSize(size)
+              if (remapped_bytes > 0) {
+                LOG(INFO)
+                    << "Recovered the " << string::HumanReadableSize(size)
+                    << " allocation on GPU " << static_cast<int>(place_.device)
+                    << " after memory defragmentation; the remap phase moved "
+                    << string::HumanReadableSize(remapped_bytes) << " and took "
+                    << static_cast<double>(remap_us) / 1000.0 << " ms.";
+              } else {
+                VLOG(3) << "Recovered the " << string::HumanReadableSize(size)
                         << " allocation on GPU "
                         << static_cast<int>(place_.device)
-                        << " after memory defragmentation; the remap phase "
-                           "moved "
-                        << string::HumanReadableSize(remapped_bytes)
-                        << " and took "
-                        << static_cast<double>(remap_us) / 1000.0 << " ms.";
+                        << " after a sufficiently large free block became "
+                           "available during OOM recovery.";
+              }
             } catch (const BadAlloc& final_bad_alloc) {
-              VLOG(3) << "The remap phase moved "
-                      << string::HumanReadableSize(remapped_bytes) << " in "
-                      << static_cast<double>(remap_us) / 1000.0
-                      << " ms, but the " << string::HumanReadableSize(size)
-                      << " allocation retry still failed on GPU "
-                      << static_cast<int>(place_.device) << ".";
-              const std::string oom_summary =
-                  BuildVMMV2OOMSummary(vmm,
-                                       place_,
-                                       size,
-                                       VMMV2RemapOutcome::kRetryFailed,
-                                       remapped_bytes);
+              if (remapped_bytes > 0) {
+                VLOG(3) << "The remap phase moved "
+                        << string::HumanReadableSize(remapped_bytes) << " in "
+                        << static_cast<double>(remap_us) / 1000.0
+                        << " ms, but the " << string::HumanReadableSize(size)
+                        << " allocation retry still failed on GPU "
+                        << static_cast<int>(place_.device) << ".";
+              } else {
+                VLOG(3) << "A sufficiently large free block was detected "
+                           "during OOM recovery, but the "
+                        << string::HumanReadableSize(size)
+                        << " allocation retry still failed on GPU "
+                        << static_cast<int>(place_.device) << ".";
+              }
+              const auto remap_outcome = remapped_bytes > 0
+                                             ? VMMV2RemapOutcome::kRetryFailed
+                                             : remap_status_outcome;
+              const std::string oom_summary = BuildVMMV2OOMSummary(
+                  vmm, place_, size, remap_outcome, remapped_bytes);
               const std::string initial_summary =
                   ExtractAllocationFailureSummary(first_bad_alloc);
               const std::string reclaim_retry_summary =
                   ExtractAllocationFailureSummary(second_bad_alloc);
               const std::string final_summary =
                   ExtractAllocationFailureSummary(final_bad_alloc);
+              const char* final_retry_label =
+                  retry_without_remap
+                      ? "Retry after detecting an available free block"
+                      : "Retry after memory defragmentation";
               ClearGpuLastError();
               PADDLE_THROW_BAD_ALLOC(common::errors::ResourceExhausted(
                   "%s"
                   "Allocation failure summary:\n"
                   "1. Initial attempt: %s\n"
                   "2. Retry after reclaiming pending frees: %s\n"
-                  "3. Retry after memory defragmentation: %s",
+                  "3. %s: %s",
                   oom_summary,
                   initial_summary.c_str(),
                   reclaim_retry_summary.c_str(),
+                  final_retry_label,
                   final_summary.c_str()));
             }
           } else {
-            VMMV2RemapOutcome remap_outcome = VMMV2RemapOutcome::kNotAttempted;
-            switch (remap_result.status) {
-              case VMMRemapAttemptStatus::kNotAttempted:
-                break;
-              case VMMRemapAttemptStatus::kInsufficientMovableMemory:
-                remap_outcome = VMMV2RemapOutcome::kInsufficientMovableMemory;
-                break;
-              case VMMRemapAttemptStatus::kNoMovableMemory:
-                remap_outcome = VMMV2RemapOutcome::kNoMovableMemory;
-                break;
-              case VMMRemapAttemptStatus::kAttempted:
-                remap_outcome = VMMV2RemapOutcome::kAttemptedNoProgress;
-                break;
-            }
             const std::string oom_summary =
                 BuildVMMV2OOMSummary(vmm,
                                      place_,
                                      size,
-                                     remap_outcome,
+                                     remap_status_outcome,
                                      0,
                                      remap_result.movable_bytes,
                                      remap_result.required_bytes);

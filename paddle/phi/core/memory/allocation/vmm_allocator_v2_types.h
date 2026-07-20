@@ -74,6 +74,7 @@ enum class PoolType : uint8_t {
 
 enum class VMMRemapAttemptStatus : uint8_t {
   kNotAttempted = 0,
+  kRetryWithoutRemap,
   kInsufficientMovableMemory,
   kNoMovableMemory,
   kAttempted,
