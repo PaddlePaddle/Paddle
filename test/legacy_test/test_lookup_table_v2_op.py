@@ -328,6 +328,14 @@ class TestEmbeddingCPUOutOfRangeError(unittest.TestCase):
                         paddle.nn.functional.embedding(
                             ids, weight, padding_idx=padding_idx
                         )
+
+            weight = paddle.empty([0, 3], dtype='float32')
+            ids = paddle.to_tensor([0], dtype='int64')
+            with self.assertRaisesRegex(
+                Exception,
+                r'Input\(Weight\) in OP\(embedding\).*Input\(Ids\) is not empty',
+            ):
+                paddle.nn.functional.embedding(ids, weight, padding_idx=0)
         finally:
             paddle.enable_static()
 
@@ -342,8 +350,6 @@ class TestEmbeddingOutOfRangeError(unittest.TestCase):
             ids = paddle.to_tensor([0], dtype='int64')
             error_pattern = (
                 r'Input\(Weight\) in OP\(embedding\).*Input\(Ids\) is not empty'
-                if device == 'gpu'
-                else r'expected >= 0 and < 0'
             )
             with self.assertRaisesRegex(Exception, error_pattern):
                 paddle.nn.functional.embedding(ids, weight)

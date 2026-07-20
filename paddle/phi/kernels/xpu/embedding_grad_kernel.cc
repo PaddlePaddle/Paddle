@@ -44,6 +44,7 @@ void EmbeddingGradKernel(const Context& dev_ctx,
 
   T* d_table_data = dev_ctx.template Alloc<T>(d_table_t);
   int64_t xm = d_table_t->dims()[0];
+  int64_t ym = ids_numel;
   int64_t n = d_table_t->dims()[1];
 
   if (xm == 0 || n == 0) {
@@ -78,7 +79,7 @@ void EmbeddingGradKernel(const Context& dev_ctx,
       reinterpret_cast<XPUType*>(d_table_data),
       xm,
       n,
-      ids_numel,
+      ym,
       padding_idx);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "embedding_grad");
 }
