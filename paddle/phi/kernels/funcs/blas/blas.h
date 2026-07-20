@@ -188,23 +188,6 @@ class Blas {
   template <typename T>
   void GEMM_FREE(T* data) const;
 
-  template <typename T>
-  void CSRMM(const char* transa,
-             const int* m,
-             const int* n,
-             const int* k,
-             const T* alpha,
-             const char* matdescra,
-             const T* val,
-             const int* index,
-             const int* pntrb,
-             const int* pntre,
-             const T* b,
-             const int* ldb,
-             const T* beta,
-             T* c,
-             const int* ldc) const;
-
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
   template <typename T>
   void MatMulWithHead(const DenseTensor& mat_a,
@@ -294,9 +277,6 @@ class Blas {
   template <typename T>
   void CUDOT(
       int n, const T* x, int incx, const T* y, int incy, T* result) const;
-
-  template <typename T>
-  T ASUM(int n, T* x, int inc) const;
 
   template <typename T>
   void BatchedGEMM(CBLAS_TRANSPOSE transA,
@@ -402,12 +382,6 @@ class Blas {
               T beta) const;
 
   template <typename T>
-  void VINV(int n, const T* a, T* y) const;
-
-  template <typename T>
-  void VMERF(int n, const T* a, T* y, int64_t mode) const;
-
-  template <typename T>
   void TRSM(CBLAS_SIDE side,
             CBLAS_UPLO uplo,
             CBLAS_TRANSPOSE transA,
@@ -500,11 +474,6 @@ class BlasT : private Blas<DeviceContext> {
     Base()->template GEMM_FREE<T>(args...);
   }
 
-  template <typename... ARGS>
-  void CSRMM(ARGS... args) const {
-    Base()->template CSRMM<T>(args...);
-  }
-
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
   template <typename... ARGS>
   void MatMulWithHead(ARGS... args) const {
@@ -552,23 +521,8 @@ class BlasT : private Blas<DeviceContext> {
   }
 
   template <typename... ARGS>
-  T ASUM(ARGS... args) const {
-    return Base()->template ASUM<T>(args...);
-  }
-
-  template <typename... ARGS>
   void BatchedGEMM(ARGS... args) const {
     Base()->template BatchedGEMM<T>(args...);
-  }
-
-  template <typename... ARGS>
-  void VINV(ARGS... args) const {
-    Base()->template VINV<T>(args...);
-  }
-
-  template <typename... ARGS>
-  void VMERF(ARGS... args) const {
-    Base()->template VMERF<T>(args...);
   }
 
   template <typename... ARGS>

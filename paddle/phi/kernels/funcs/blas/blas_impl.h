@@ -1698,21 +1698,6 @@ T Blas<CPUContext>::DOT(int n, const T *x, const T *y) const {
 
 template <>
 template <typename T>
-T Blas<CPUContext>::ASUM(int n, T *x, int inc) const {
-  auto sum = static_cast<T>(0.0);
-#if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
-  sum = CBlas<T>::ASUM(n, x, inc);
-#else
-  // TODO(jczaja): check if openblas does provide cblas_sasum/cblas_dasum
-  for (int c = 0; c < n; ++c) {
-    sum += x[c];
-  }
-#endif
-  return sum;
-}
-
-template <>
-template <typename T>
 void Blas<CPUContext>::GEMV(bool trans_a,
                             int M,
                             int N,
@@ -2604,66 +2589,6 @@ void Blas<DeviceContext>::MatMulWithHead(const DenseTensor &mat_a,
   }
 }
 #endif  // @} End Group Blas HML: MatMulWithHead
-
-template <typename DeviceContext>
-template <typename T>
-void Blas<DeviceContext>::VINV(int n, const T *a, T *y) const {
-#if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
-  CBlas<T>::VINV(n, a, y);
-#else
-  for (int i = 0; i < n; ++i) {
-    y[i] = 1.0 / a[i];
-  }
-#endif
-}
-
-template <>
-template <typename T>
-void Blas<CPUContext>::VMERF(int n, const T *a, T *y, int64_t mode) const {
-#ifdef PADDLE_WITH_MKLML
-  CBlas<T>::VMERF(n, a, y, mode);
-#else
-  for (int i = 0; i < n; ++i) {
-    y[i] = std::erf(a[i]);
-  }
-#endif
-}
-
-#ifdef PADDLE_WITH_MKLML
-template <>
-template <typename T>
-void Blas<CPUContext>::CSRMM(const char *transa,
-                             const int *m,
-                             const int *n,
-                             const int *k,
-                             const T *alpha,
-                             const char *matdescra,
-                             const T *val,
-                             const int *index,
-                             const int *pntrb,
-                             const int *pntre,
-                             const T *b,
-                             const int *ldb,
-                             const T *beta,
-                             T *c,
-                             const int *ldc) const {
-  CBlas<T>::CSRMM(transa,
-                  m,
-                  n,
-                  k,
-                  alpha,
-                  matdescra,
-                  val,
-                  index,
-                  pntrb,
-                  pntre,
-                  b,
-                  ldb,
-                  beta,
-                  c,
-                  ldc);
-}
-#endif
 
 template <>
 template <typename T>

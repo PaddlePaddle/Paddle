@@ -61,13 +61,10 @@ struct GeluFunctor {
       std::memset(out_data, 0, n * sizeof(T));
       funcs::CBlas<T>::AXPY(
           n, static_cast<T>(M_SQRT1_2), x_data, 1, out_data, 1);
-      funcs::CBlas<T>::VMERF(n, out_data, out_data, VML_LA);
-      for (int i = 0; i < n; i++) {
-        out_data[i] += static_cast<T>(1);
-      }
       Eigen::Map<Eigen::Array<T, Eigen::Dynamic, 1>> out_map(out_data, n);
       Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, 1>> x_map(x_data, n);
-      out_map = x_map * out_map * static_cast<T>(0.5);
+      out_map = (x_map * static_cast<T>(M_SQRT1_2)).erf();
+      out_map = x_map * (static_cast<T>(1) + out_map) * static_cast<T>(0.5);
 #else
       // gelu(x) = 0.5 * x *  (1 + erf(x / sqrt(2)))
       if (std::is_same<T, dtype::float16>::value) {
