@@ -110,14 +110,6 @@ def _make_caller_aware_class_proxy(native_cls: type, compat_cls: type) -> type:
                 return native_cls(*args, **kwargs)
             return super().__call__(*args, **kwargs)
 
-        def __instancecheck__(cls, instance: Any) -> bool:
-            return isinstance(instance, (native_cls, compat_cls))
-
-        def __subclasscheck__(cls, subclass: Any) -> bool:
-            return issubclass(subclass, native_cls) or issubclass(
-                subclass, compat_cls
-            )
-
     proxy = _CompatAwareMeta(
         native_cls.__name__,
         (compat_cls,),

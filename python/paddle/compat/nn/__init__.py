@@ -547,7 +547,22 @@ class Unfold(nn.Unfold):
         )
 
 
-class Linear(nn.Layer):
+_NATIVE_LINEAR = nn.Linear
+
+
+class _LinearMeta(type):
+    def __instancecheck__(cls, instance: object) -> bool:
+        if cls is Linear and isinstance(instance, _NATIVE_LINEAR):
+            return True
+        return super().__instancecheck__(instance)
+
+    def __subclasscheck__(cls, subclass: type) -> bool:
+        if cls is Linear and issubclass(subclass, _NATIVE_LINEAR):
+            return True
+        return super().__subclasscheck__(subclass)
+
+
+class Linear(nn.Layer, metaclass=_LinearMeta):
     r"""
 
     Python compatible fully-connected linear transformation layer. For each input :math:`X` ,

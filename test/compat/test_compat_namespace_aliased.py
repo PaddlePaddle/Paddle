@@ -161,6 +161,11 @@ class TestTopLevelAlias(CompatNamespaceAliasBase):
             paddle.disable_compat()
         self.assertNativeRestored()
 
+    def test_linear_type_compatibility_without_alias(self):
+        native = paddle.nn.Linear(2, 2)
+        self.assertIsInstance(native, paddle.compat.nn.Linear)
+        self.assertTrue(issubclass(paddle.nn.Linear, paddle.compat.nn.Linear))
+
     @with_level2
     def test_submodule_symbols_aliased(self):
         self.assertAliased(paddle.nn.Linear, paddle.compat.nn.Linear)
@@ -487,7 +492,7 @@ class TestLevel2InternalCallersUseNative(CompatNamespaceAliasBase):
     def test_aliased_class_caller_aware(self):
         """Existing classes (Linear/...) become caller-aware proxies: external
         callers get the torch-aligned compat class, paddle-internal callers get
-        native; isinstance/issubclass accept either form."""
+        native."""
         # external (this module) -> compat class (torch-style)
         self.assertIs(type(paddle.nn.Linear(2, 2)), paddle.compat.nn.Linear)
         with self.assertRaises(TypeError):
@@ -496,9 +501,6 @@ class TestLevel2InternalCallersUseNative(CompatNamespaceAliasBase):
         ns = {"__name__": "paddle.fake_internal", "paddle": paddle}
         exec("obj = paddle.nn.Linear(2, 2, weight_attr=False)", ns)
         self.assertIsNot(type(ns["obj"]), paddle.compat.nn.Linear)
-        # isinstance / issubclass accept both forms
-        self.assertIsInstance(paddle.nn.Linear(2, 2), paddle.nn.Linear)
-        self.assertTrue(issubclass(paddle.compat.nn.Linear, paddle.nn.Linear))
 
     @with_level2
     def test_aliased_class_subclassing_is_torch_style(self):
