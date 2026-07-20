@@ -77,7 +77,9 @@ struct GeluGradFunctor {
 
       // first = (0.5 * (1 + erf(x / sqrt(2))))
       funcs::CBlas<T>::AXPY(n, static_cast<T>(M_SQRT1_2), x_data, 1, first, 1);
-      funcs::CBlas<T>::VMERF(n, first, first, VML_LA);
+      Eigen::Map<Eigen::Array<T, Eigen::Dynamic, 1>> first_erf_map(first, n);
+      Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, 1>> x_erf_map(x_data, n);
+      first_erf_map = (x_erf_map * static_cast<T>(M_SQRT1_2)).erf();
       for (int i = 0; i < n; i++) {
         first[i] = (first[i] + static_cast<T>(1)) * static_cast<T>(0.5);
       }

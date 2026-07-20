@@ -64,8 +64,6 @@ void HSigmoidLossGradKernelImpl(const Context& dev_ctx,
 
   // softrelu derivative
 
-  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
-
   auto* pre_out_grad_data = pre_out_grad.data<T>();
   auto* pre_out_data = pre_out.template data<T>();
   auto n = pre_out.numel();
@@ -73,8 +71,7 @@ void HSigmoidLossGradKernelImpl(const Context& dev_ctx,
       pre_out_grad_data, n);
   Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, 1>> pre_out_map(
       pre_out_data, n);
-  pre_out_grad_map = pre_out_map.array().exp();
-  blas.VINV(n, pre_out_grad_data, pre_out_grad_data);
+  pre_out_grad_map = pre_out_map.array().exp().cwiseInverse();
   for (int64_t i = 0; i < n; ++i) {
     pre_out_grad_data[i] = 1.0 - pre_out_grad_data[i];
   }
