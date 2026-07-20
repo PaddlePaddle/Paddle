@@ -713,9 +713,32 @@ bool VMMAutoGrowthBestFitAllocatorV2::SetBlockRemapEvent(
       *block_it, stream, std::move(event));
 }
 
-BlockList VMMAutoGrowthBestFitAllocatorV2::SnapshotAllBlocks() const {
+std::vector<VMMAutoGrowthBestFitAllocatorV2::FreeBlockInfo>
+VMMAutoGrowthBestFitAllocatorV2::SnapshotFreeBlockInfo() const {
   std::lock_guard<SpinLock> guard(spinlock_);
-  return all_blocks_;
+  std::vector<FreeBlockInfo> info;
+  info.reserve(free_blocks_.size());
+  for (const auto& entry : free_blocks_) {
+    info.emplace_back(entry.first.first,
+                      reinterpret_cast<uintptr_t>(entry.first.second));
+  }
+  return info;
+}
+
+std::vector<VMMAutoGrowthBestFitAllocatorV2::BlockInfo>
+VMMAutoGrowthBestFitAllocatorV2::SnapshotBlockInfo() const {
+  std::lock_guard<SpinLock> guard(spinlock_);
+  std::vector<BlockInfo> info;
+  info.reserve(all_blocks_.size());
+  for (const auto& block : all_blocks_) {
+    if (block.IsUnmappedFree()) {
+      continue;
+    }
+    info.emplace_back(block.size(),
+                      reinterpret_cast<uintptr_t>(block.ptr()),
+                      !block.IsActive());
+  }
+  return info;
 }
 
 phi::Allocation* VMMAutoGrowthBestFitAllocatorV2::AllocFromFreeBlocks(

@@ -19,9 +19,18 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.device.cuda.memory_analyzer import MemoryAnalysisTool
 
 
 class TestCUDAVMMV2Allocator(unittest.TestCase):
+    @staticmethod
+    def _contains_ptr(blocks, ptr, is_free=None):
+        return any(
+            address <= ptr < address + size
+            and (is_free is None or free == is_free)
+            for size, address, free in blocks
+        )
+
     def test_allocator_facade_creates_vmm_v2_allocator(self):
         flags = paddle.get_flags(
             [
@@ -104,6 +113,64 @@ class TestCUDAVMMV2Allocator(unittest.TestCase):
         self.assertEqual(flags, 1)
         self.assertGreater(pid, 0)
         self.assertGreater(entries, 0)
+
+    def test_vmm_v2_block_info(self):
+        small = paddle.zeros([1024], dtype="float32")
+        large = paddle.zeros([1024 * 1024], dtype="float32")
+        paddle.device.synchronize()
+        small_ptr = small.data_ptr()
+        large_ptr = large.data_ptr()
+
+        small_info = MemoryAnalysisTool.vmm_small_all_block_info()
+        large_info = MemoryAnalysisTool.vmm_large_all_block_info()
+        all_info = MemoryAnalysisTool.vmm_all_block_info()
+
+        self.assertEqual(len(small_info), 1)
+        self.assertEqual(len(large_info), 1)
+        self.assertEqual(len(all_info), 2)
+        self.assertTrue(self._contains_ptr(small_info[0], small_ptr, False))
+        self.assertTrue(self._contains_ptr(large_info[0], large_ptr, False))
+        self.assertFalse(self._contains_ptr(small_info[0], large_ptr))
+        self.assertFalse(self._contains_ptr(large_info[0], small_ptr))
+
+        del small
+        del large
+        gc.collect()
+        paddle.device.synchronize()
+
+        free_info = MemoryAnalysisTool.vmm_free_block_info()
+        self.assertEqual(len(free_info), 2)
+        self.assertTrue(
+            any(
+                address <= small_ptr < address + size
+                for pool in free_info
+                for size, address in pool
+            )
+        )
+        self.assertTrue(
+            any(
+                address <= large_ptr < address + size
+                for pool in free_info
+                for size, address in pool
+            )
+        )
+
+    def test_vmm_v2_all_block_info_excludes_unmapped_ranges(self):
+        tensors = [
+            paddle.zeros([1024 * 1024], dtype="float32") for _ in range(3)
+        ]
+        paddle.device.synchronize()
+        hole_ptr = tensors[1].data_ptr()
+
+        del tensors[1]
+        gc.collect()
+        paddle.device.synchronize()
+        paddle.device.cuda.empty_cache()
+
+        all_info = MemoryAnalysisTool.vmm_all_block_info()
+        self.assertFalse(
+            any(self._contains_ptr(pool, hole_ptr) for pool in all_info)
+        )
 
 
 if __name__ == "__main__":
