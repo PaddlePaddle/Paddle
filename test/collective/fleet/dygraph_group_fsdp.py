@@ -27,7 +27,9 @@ class Model(nn.Layer):
     def __init__(self):
         super().__init__()
         self.first_stage = nn.Linear(4096, 4096, bias_attr=False)
-        self.center_stage = nn.Linear(4096, 4096, bias_attr=False)
+        self.center_stage = nn.Linear(4096, 4096)
+        self.center_stage.weight.stop_gradient = True
+        self.center_stage.bias.stop_gradient = True
         self.final_stage = nn.Linear(4096, 2, bias_attr=False)
 
     def forward(self, x):
