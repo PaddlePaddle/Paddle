@@ -136,7 +136,7 @@ TEST(VMMBackingMap, TracksMappedAndUnmappedRanges) {
   EXPECT_FALSE(map.HasIPCExportedPages(base, page_size));
   EXPECT_TRUE(map.HasIPCExportedPages(base + page_size, page_size));
   EXPECT_TRUE(map.HasIPCExportedPages(base, page_size * 2));
-  EXPECT_FALSE(map.IsRangeReleasable(base, page_size * 2));
+  EXPECT_TRUE(map.IsRangeReleasable(base, page_size * 2));
   mapped_pages = map.CollectMappedPagesFullyInRange(unaligned_free_ranges);
   EXPECT_TRUE(mapped_pages.empty());
   EXPECT_FALSE(map.IsRangeMapped(base, page_size * 2));
@@ -275,7 +275,7 @@ TEST(VMMBackingMap, ValidateMappedPagesDetectsMissingAndMismatchedPages) {
       "handle mismatch"));
 }
 
-TEST(VMMBackingMap, MarkReleasedAllowsMismatchAndIPCBlocksReleasableRange) {
+TEST(VMMBackingMap, MarkReleasedAllowsMismatchAndIPCDoesNotBlockRelease) {
   ScopedVLogLevel vlog_guard(6);
   VMMBackingMap map;
   const VMMDevicePtr base = 0x24000000;
@@ -286,7 +286,7 @@ TEST(VMMBackingMap, MarkReleasedAllowsMismatchAndIPCBlocksReleasableRange) {
   EXPECT_TRUE(map.IsRangeMapped(base, page_size));
   EXPECT_TRUE(map.IsRangeReleasable(base, page_size));
   map.MarkIPCExported(base, page_size);
-  EXPECT_FALSE(map.IsRangeReleasable(base, page_size));
+  EXPECT_TRUE(map.IsRangeReleasable(base, page_size));
 
   auto meta = std::make_shared<VMMHandleMeta>(
       base + page_size, page_size, static_cast<VMMAllocHandle>(0x241), 0);
@@ -318,7 +318,7 @@ TEST(VMMBackingMap, CanReleaseHandleChecksPageState) {
       map.CanReleaseHandle(base, meta->handle(), other_meta, page_size));
 
   map.MarkIPCExported(base, page_size);
-  EXPECT_FALSE(map.CanReleaseHandle(base, meta->handle(), meta, page_size));
+  EXPECT_TRUE(map.CanReleaseHandle(base, meta->handle(), meta, page_size));
 
   map.MarkReleased(base, meta->handle(), page_size);
   map.MarkMapped(base, meta, page_size);
@@ -1433,7 +1433,7 @@ TEST(CUDAVirtualMemAllocatorV2, CollectsMetadataAndExportsIPCBlockBacking) {
   ASSERT_TRUE(
       allocator.ExportIPCParts(block.begin_va(), block.size(), &ipc_parts));
   EXPECT_TRUE(allocator.HasIPCExportedRange(block.begin_va(), block.size()));
-  EXPECT_FALSE(allocator.IsRangeReleasable(block.begin_va(), block.size()));
+  EXPECT_TRUE(allocator.IsRangeReleasable(block.begin_va(), block.size()));
   EXPECT_EQ(allocator.CountIPCExportedBytes({{block.begin_va(), block.size()}}),
             block.size());
 #if defined(__linux__)

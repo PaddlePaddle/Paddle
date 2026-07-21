@@ -162,6 +162,30 @@ class TestCUDAVMMV2Allocator(unittest.TestCase):
                 process.join()
         self.assertEqual(process.exitcode, 0)
 
+    def test_ipc_import_survives_exporter_empty_cache(self):
+        gc.collect()
+        paddle.device.synchronize()
+        paddle.device.cuda.empty_cache()
+
+        source = paddle.arange(1024 * 1024, dtype="float32")
+        expected = source.numpy()
+        source_ptr = source.data_ptr()
+        meta = source.value().get_tensor()._share_cuda()
+        imported_dense = paddle.base.core.DenseTensor._new_shared_cuda(meta)
+        imported = paddle.to_tensor(imported_dense)
+        np.testing.assert_array_equal(imported.numpy(), expected)
+
+        del source
+        gc.collect()
+        paddle.device.synchronize()
+        paddle.device.cuda.empty_cache()
+
+        all_info = MemoryAnalysisTool.vmm_all_block_info()
+        self.assertFalse(
+            any(self._contains_ptr(pool, source_ptr) for pool in all_info)
+        )
+        np.testing.assert_array_equal(imported.numpy(), expected)
+
     def test_ipc_rejects_malformed_payload(self):
         tensor = paddle.arange(16, dtype="float32")
         meta = list(tensor.value().get_tensor()._share_cuda())

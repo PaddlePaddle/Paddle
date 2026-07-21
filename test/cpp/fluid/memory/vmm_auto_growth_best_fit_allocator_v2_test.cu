@@ -751,7 +751,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, ReleaseWaitsBeforeUnmappingBacking) {
   EXPECT_EQ(cudaDeviceSynchronize(), cudaSuccess);
 }
 
-TEST(VMMAutoGrowthBestFitAllocatorV2, IPCExportKeepsReuse) {
+TEST(VMMAutoGrowthBestFitAllocatorV2, IPCExportAllowsRelease) {
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
       underlying, 256, phi::GPUPlace(), PoolType::kLarge);
@@ -791,9 +791,10 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, IPCExportKeepsReuse) {
       &allocator, underlying->handle_size() * 2, underlying->handle_size() * 2);
 
   auto released = allocator.Release(phi::GPUPlace());
-  EXPECT_EQ(released, 0UL);
-  ASSERT_EQ(allocator.all_blocks().size(), 1UL);
-  EXPECT_TRUE(underlying->HasIPCExportedRange(
+  EXPECT_EQ(released, underlying->handle_size() * 2);
+  EXPECT_TRUE(allocator.all_blocks().empty());
+  EXPECT_EQ(underlying->tail_offset(), 0UL);
+  EXPECT_FALSE(underlying->HasIPCExportedRange(
       reinterpret_cast<VMMDevicePtr>(ptr), underlying->handle_size() * 2));
 
   auto remapped = allocator.RemapForAllocation(phi::GPUPlace(),
@@ -823,7 +824,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, CollectTensorPartsRejectsFreeRange) {
   EXPECT_TRUE(parts.empty());
 }
 
-TEST(VMMAutoGrowthBestFitAllocatorV2, IPCPinAllowsNeighborRelease) {
+TEST(VMMAutoGrowthBestFitAllocatorV2, IPCExportAllowsNeighborRelease) {
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
       underlying, 256, phi::GPUPlace(), PoolType::kLarge);
@@ -854,14 +855,10 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, IPCPinAllowsNeighborRelease) {
       &allocator, underlying->handle_size() * 2, underlying->handle_size() * 2);
 
   auto released = allocator.Release(phi::GPUPlace());
-  EXPECT_EQ(released, underlying->handle_size());
-  ASSERT_EQ(allocator.all_blocks().size(), 1UL);
-  auto block_it = allocator.all_blocks().begin();
-  ASSERT_TRUE(block_it->IsFree());
-  EXPECT_EQ(block_it->ptr_, exported_ptr);
-  EXPECT_EQ(block_it->size_, underlying->handle_size());
-  EXPECT_EQ(underlying->tail_offset(), underlying->handle_size());
-  EXPECT_TRUE(underlying->HasIPCExportedRange(
+  EXPECT_EQ(released, underlying->handle_size() * 2);
+  EXPECT_TRUE(allocator.all_blocks().empty());
+  EXPECT_EQ(underlying->tail_offset(), 0UL);
+  EXPECT_FALSE(underlying->HasIPCExportedRange(
       reinterpret_cast<VMMDevicePtr>(exported_ptr), underlying->handle_size()));
 
   auto next = allocator.Allocate(underlying->handle_size());
