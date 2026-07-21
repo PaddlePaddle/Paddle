@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <cstdint>
+#include <limits>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -681,6 +682,33 @@ TEST(CUDAVirtualMemAllocatorV2, AllocateImplReturnsTrackedAllocation) {
   EXPECT_TRUE(
       allocator.CollectAllocationHandleLayout(allocation->ptr(), &layout));
   EXPECT_EQ(layout.size(), 1UL);
+}
+
+TEST(CUDAVirtualMemAllocatorV2, GrowOOMReportsHandleCreationProgress) {
+  size_t available = 0;
+  size_t total = 0;
+  ASSERT_EQ(cudaMemGetInfo(&available, &total), cudaSuccess);
+  ASSERT_LE(total, std::numeric_limits<size_t>::max() / 2);
+  const size_t impossible_handle_size = total * 2;
+
+  CUDAVirtualMemAllocatorV2 allocator(
+      phi::GPUPlace(), impossible_handle_size, PoolType::kLarge);
+  try {
+    allocator.AppendWithBlock(impossible_handle_size);
+    FAIL() << "Expected a handle larger than total device memory to fail";
+  } catch (const VMMGrowOOM& oom) {
+    EXPECT_EQ(oom.info().requested_handles, 1UL);
+    EXPECT_EQ(oom.info().created_handles, 0UL);
+    EXPECT_EQ(oom.info().handle_size, allocator.handle_size());
+    EXPECT_EQ(oom.info().device, 0);
+    EXPECT_EQ(oom.info().pool_type, PoolType::kLarge);
+  }
+
+  EXPECT_THROW(allocator.CreateMappedHandleLayout(allocator.virtual_mem_base(),
+                                                  allocator.handle_size(),
+                                                  "test non-grow OOM",
+                                                  false),
+               BadAlloc);
 }
 
 TEST(CUDAVirtualMemAllocatorV2, RollbackCreatedHandlesReleasesLayout) {

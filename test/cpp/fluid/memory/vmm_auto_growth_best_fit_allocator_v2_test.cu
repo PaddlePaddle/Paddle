@@ -977,8 +977,11 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, CompactSkipsPartialFreeHandle) {
   ASSERT_NE(allocation, nullptr);
 
   ASSERT_EQ(allocator.all_blocks().size(), 2UL);
-  const size_t remapped = allocator.Compact(phi::GPUPlace());
+  VMMRemapAttemptResult attempt_result;
+  const size_t remapped = allocator.RemapForAllocation(
+      phi::GPUPlace(), 0, nullptr, &attempt_result);
   EXPECT_EQ(remapped, 0UL);
+  EXPECT_EQ(attempt_result.status, VMMRemapAttemptStatus::kNoMovableMemory);
 
   ASSERT_EQ(allocator.all_blocks().size(), 2UL);
   auto it = allocator.all_blocks().begin();
@@ -1225,6 +1228,33 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, BoundedCompactUsesDriverTopUp) {
   }
   EXPECT_TRUE(found_old_source);
   EXPECT_TRUE(found_tail_free);
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2,
+     BoundedCompactReportsInsufficientDriverTopUp) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+
+  const size_t handle_size = underlying->handle_size();
+  auto movable = allocator.Allocate(handle_size);
+  auto tail_guard = allocator.Allocate(handle_size);
+  ASSERT_NE(movable, nullptr);
+  ASSERT_NE(tail_guard, nullptr);
+  MarkRemapSafeForTest(movable.get());
+  movable.reset();
+
+  VMMRemapAttemptResult attempt_result;
+  EXPECT_EQ(allocator.RemapForAllocation(phi::GPUPlace(),
+                                         underlying->virtual_mem_size(),
+                                         nullptr,
+                                         &attempt_result),
+            0UL);
+  EXPECT_EQ(attempt_result.status,
+            VMMRemapAttemptStatus::kInsufficientMovableMemory);
+  EXPECT_EQ(attempt_result.movable_bytes, handle_size);
+  EXPECT_GT(attempt_result.required_bytes, handle_size);
+  EXPECT_EQ(CountBlocksOfType(allocator, BlockType::kUnmappedFree), 0UL);
 }
 
 TEST(VMMAutoGrowthBestFitAllocatorV2, BoundedCompactUsesFailedGrowProgress) {
