@@ -90,7 +90,13 @@ def restruct_io(op):
 SPARSE_OP_PREFIX = 'sparse_'
 
 
-def main(op_yaml_path, backward_yaml_path, output_op_path, output_arg_map_path):
+def main(
+    op_yaml_path,
+    backward_yaml_path,
+    op_version_yaml_path,
+    output_op_path,
+    output_arg_map_path,
+):
     with open(op_yaml_path, "rt") as f:
         ops = yaml.safe_load(f)
         ops = [restruct_io(op) for op in ops]
@@ -100,6 +106,14 @@ def main(op_yaml_path, backward_yaml_path, output_op_path, output_arg_map_path):
         backward_ops = yaml.safe_load(f)
         backward_ops = [restruct_io(op) for op in backward_ops]
     backward_op_dict = to_named_dict(backward_ops)
+    with open(op_version_yaml_path, "rt") as f:
+        op_versions = yaml.safe_load(f)
+    for op_version in op_versions:
+        sparse_op_name = op_version['op']
+        if sparse_op_name.startswith(SPARSE_OP_PREFIX):
+            op_name = sparse_op_name[len(SPARSE_OP_PREFIX) :]
+            if op_name in forward_op_dict:
+                forward_op_dict[op_name]['version'] = op_version['version']
 
     for op in ops:
         if op['name'][-1] == '_':
@@ -219,6 +233,9 @@ if __name__ == "__main__":
         help="parsed backward sparse ops yaml file.",
     )
     parser.add_argument(
+        '--op_version_yaml_path', type=str, help="ops version yaml file."
+    )
+    parser.add_argument(
         "--output_op_path", type=str, help="path to save generated operators."
     )
     parser.add_argument(
@@ -231,6 +248,7 @@ if __name__ == "__main__":
     main(
         args.ops_yaml_path,
         args.backward_ops_yaml_path,
+        args.op_version_yaml_path,
         args.output_op_path,
         args.output_arg_map_path,
     )
