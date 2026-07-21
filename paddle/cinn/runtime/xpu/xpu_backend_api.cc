@@ -41,28 +41,25 @@ int XpuBackendAPI::get_device_property(DeviceProperty device_property,
   int rv = -1;
   switch (device_property) {
     case DeviceProperty::MaxBlockDimX:
-      XPU_CHECK(cudaDeviceGetAttribute(
-          &rv, cudaDevAttrMaxBlockDimX, dev_index));
+      XPU_CHECK(
+          cudaDeviceGetAttribute(&rv, cudaDevAttrMaxBlockDimX, dev_index));
       break;
     case DeviceProperty::MaxBlockDimY:
-      XPU_CHECK(cudaDeviceGetAttribute(
-          &rv, cudaDevAttrMaxBlockDimY, dev_index));
+      XPU_CHECK(
+          cudaDeviceGetAttribute(&rv, cudaDevAttrMaxBlockDimY, dev_index));
       break;
     case DeviceProperty::MaxBlockDimZ:
-      XPU_CHECK(cudaDeviceGetAttribute(
-          &rv, cudaDevAttrMaxBlockDimZ, dev_index));
+      XPU_CHECK(
+          cudaDeviceGetAttribute(&rv, cudaDevAttrMaxBlockDimZ, dev_index));
       break;
     case DeviceProperty::MaxGridDimX:
-      XPU_CHECK(cudaDeviceGetAttribute(
-          &rv, cudaDevAttrMaxGridDimX, dev_index));
+      XPU_CHECK(cudaDeviceGetAttribute(&rv, cudaDevAttrMaxGridDimX, dev_index));
       break;
     case DeviceProperty::MaxGridDimY:
-      XPU_CHECK(cudaDeviceGetAttribute(
-          &rv, cudaDevAttrMaxGridDimY, dev_index));
+      XPU_CHECK(cudaDeviceGetAttribute(&rv, cudaDevAttrMaxGridDimY, dev_index));
       break;
     case DeviceProperty::MaxGridDimZ:
-      XPU_CHECK(cudaDeviceGetAttribute(
-          &rv, cudaDevAttrMaxGridDimZ, dev_index));
+      XPU_CHECK(cudaDeviceGetAttribute(&rv, cudaDevAttrMaxGridDimZ, dev_index));
       break;
     case DeviceProperty::MaxSharedMemoryPerBlock:
       XPU_CHECK(cudaDeviceGetAttribute(

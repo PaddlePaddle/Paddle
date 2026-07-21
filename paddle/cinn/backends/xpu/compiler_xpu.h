@@ -17,46 +17,64 @@
 #include <string>
 #include <vector>
 
+#ifdef CINN_WITH_XPU
+#include "xpu/xpurtc.h"
+#endif
+
 namespace cinn {
 namespace backends {
 namespace xpurtc {
 
 /**
- * Helper class to compile XPU (CUDA-compatible) device source code using
- * NVRTC. Input is CUDA device source code; output is a PTX or CUBIN string.
+ * Compiles XPU (M100/Houyi) device source code using the XTDK xpurtc JIT
+ * compiler (libxpujitc.so).  The source is treated as Houyi kernel code
+ * (equivalent to -x houyi --offload-arch=xcn).  Returns the compiled kernel
+ * binary blob wrapped in an xpurtc::Kernel object.
+ *
+ * The corresponding XpuModule stores the Kernel and launches it via
+ * xpurtc::launch_kernel().
  */
 class Compiler {
  public:
   Compiler() {}
 
   /**
-   * Compile \p code and return PTX string.
-   * @param code  XPU/CUDA device source code.
-   * @param include_headers  Whether to inject CINN runtime headers.
-   * @return Compiled PTX code string.
+   * Compile \p code and return the compiled kernel blob as a raw binary
+   * string (kernel.code() / kernel.size() packed together).
+   *
+   * Internally calls xpurtc::CompileContext::add_source() then get_kernel().
+   *
+   * @param code            XPU/Houyi device source (includes xtdk.h etc.)
+   * @param include_headers Whether to inject CINN runtime include paths via
+   *                        preprocessor defines.  (Reserved; include paths are
+   *                        set through environment / SDK layout.)
+   * @return Compiled kernel binary as std::string (binary blob).
    */
   std::string operator()(const std::string& code, bool include_headers = true);
 
  private:
   /**
-   * Get the CUDA include directories.
+   * Find the XTDK clang kernel include directories
+   * (lib/clang/19/include/ under XTDK_PATH).
    */
-  std::vector<std::string> FindCUDAIncludePaths();
+  std::vector<std::string> FindXtdkIncludePaths();
 
   /**
-   * Get the CINN runtime include directories.
+   * Find the CINN runtime include directory (runtime_include_dir).
    */
   std::vector<std::string> FindCINNRuntimeIncludePaths();
 
   /**
-   * Compile using NVRTC.
+   * Perform the actual compilation through xpurtc::CompileContext.
    */
-  std::string CompileWithNvrtc(const std::string& code, bool include_headers);
+  std::string CompileWithXpurtc(const std::string& code, bool include_headers);
 
   /**
-   * Query the SM architecture string for the current device (e.g. "sm_80").
+   * Query the XPU architecture integer for the current device.
+   * Returned value is passed to xpurtc::CompileContext(xpu_arch).
+   * For M100 (XCN/Houyi) this is typically 4.
    */
-  std::string GetDeviceArch();
+  int GetDeviceArch();
 
   std::string prefix_name_{""};
 };

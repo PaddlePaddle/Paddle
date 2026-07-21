@@ -29,14 +29,14 @@
 
 #include <cmath>
 
-#ifdef CINN_WITH_CUDA
+#if defined(CINN_WITH_CUDA) || defined(CINN_WITH_XPU)
 #include <cuda.h>
 
 #if (defined(__CUDACC__) || defined(__CUDACC_RTC__))
 #define CINN_CUDA_FP16
 #include <cuda_fp16.h>
 #endif  // __CUDACC__
-#endif  // CINN_WITH_CUDA
+#endif  // CINN_WITH_CUDA || CINN_WITH_XPU
 
 #ifdef CINN_WITH_HIP
 #include <hip/hip_runtime.h>

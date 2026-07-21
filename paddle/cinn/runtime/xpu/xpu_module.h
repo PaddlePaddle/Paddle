@@ -15,13 +15,12 @@
 #pragma once
 
 #ifdef CINN_WITH_XPU
-#include <cuda.h>
-#include <cuda_runtime.h>
+#include "cuda_runtime_api.h"
+#include "xpu/xpurtc.h"
 #endif
 
 #include <mutex>
 #include <string>
-#include <vector>
 
 #include "paddle/cinn/runtime/xpu/xpu_util.h"
 
@@ -29,39 +28,63 @@ namespace cinn {
 namespace runtime {
 namespace xpu {
 
-const int kXpuMaxCards{8};
-
 /**
- * XpuModule wraps a compiled PTX/CUBIN blob and manages per-card CUmodule
- * handles.  The CUDA driver API is used to load kernels, mirroring the
- * CUDAModule design.
+ * XpuModule wraps a compiled kernel binary blob produced by
+ * xpurtc::CompileContext.  Launching is done via xpurtc::launch_kernel(),
+ * which accepts the raw binary (code + size + hash) together with the
+ * mangled entry name.
+ *
+ * This replaces the previous CUDA-driver-API approach (CUmodule / CUfunction).
+ * The XTDK runtime (libxpujitc.so + XRE xcuda) manages caching and loading
+ * of the binary on the device internally.
  */
 class XpuModule {
  public:
-  enum class Kind {
-    PTX = 0,
-    CUBIN = 1,
-  };
+  /**
+   * Construct from a compiled kernel binary blob.
+   *
+   * @param data        Raw binary bytes returned by xpurtc::Kernel::code().
+   * @param size        Byte length of \p data.
+   * @param hash        Hash from xpurtc::Kernel::hash(), used by the runtime
+   *                    to avoid redundant re-uploads.
+   * @param mangled_name The mangled C++ entry name from
+   *                    xpurtc::Kernel::mangled_name().
+   * @param is_cdnn     Whether the kernel uses cdnn instructions
+   *                    (xpurtc::Kernel::is_cdnn_kernel()).
+   */
+  XpuModule(const std::string& data,
+            uint64_t hash,
+            const std::string& mangled_name,
+            bool is_cdnn = false);
 
-  XpuModule(const std::string& data, Kind kind);
+  /**
+   * Launch the kernel on \p stream with the given grid/block dimensions and
+   * serialised parameter buffer.
+   *
+   * This is a thin wrapper around xpurtc::launch_kernel().
+   *
+   * @param ncluster         Grid X dimension (number of clusters / blocks).
+   * @param ncore            Block X dimension (threads per block).
+   * @param stream           XPUStream (cudaStream_t cast to void*).
+   * @param params           Serialised argument buffer (layout matches
+   *                         xpurtc::detail::SafeParamSerializer).
+   * @param param_byte_size  Byte size of \p params.
+   */
+  void Launch(int ncluster,
+              int ncore,
+              void* stream,
+              const void* params,
+              uint32_t param_byte_size) const;
 
-  //! Get a kernel function handle for the given device and function name.
-  CUfunction GetFunction(int device_id, const std::string& func_name);
-
-  //! Convenience overload using the currently active CUDA device.
-  CUfunction GetFunction(const std::string& func_name);
-
-  ~XpuModule();
+  const std::string& mangled_name() const { return mangled_name_; }
+  uint64_t hash() const { return hash_; }
 
  private:
-  std::string data_;
-  Kind kind_;
-  std::vector<CUmodule> module_per_card_{kXpuMaxCards, nullptr};
-  std::mutex mutex_;
-
-  CUdevice device_;
-  CUcontext context_;
-  int num_devices_{0};
+  std::string data_;  // raw binary blob
+  uint32_t size_;     // byte length
+  uint64_t hash_;     // kernel hash for runtime caching
+  std::string mangled_name_;
+  bool is_cdnn_;
 };
 
 }  // namespace xpu

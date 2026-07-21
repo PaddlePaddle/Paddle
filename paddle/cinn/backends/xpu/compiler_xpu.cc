@@ -20,9 +20,8 @@
 #include <glog/logging.h>
 
 #ifdef CINN_WITH_XPU
-#include <cuda.h>
-#include <cuda_runtime_api.h>
-#include <nvrtc.h>
+#include "cuda_runtime_api.h"
+#include "xpu/xpurtc.h"
 #endif
 
 #include "paddle/cinn/common/common.h"
@@ -33,128 +32,94 @@ namespace cinn {
 namespace backends {
 namespace xpurtc {
 
-#ifdef CINN_WITH_XPU
-#define NVRTC_CHECK(expr)                                                     \
-  {                                                                           \
-    nvrtcResult status = (expr);                                              \
-    if (status != NVRTC_SUCCESS) {                                            \
-      PADDLE_THROW(::common::errors::Fatal(                                   \
-          "NVRTC Error in XPU CINN: %s", nvrtcGetErrorString(status)));       \
-    }                                                                         \
-  }
-
-#define CUDA_CHECK(expr)                                                      \
-  {                                                                           \
-    cudaError_t status = (expr);                                              \
-    if (status != cudaSuccess) {                                              \
-      PADDLE_THROW(::common::errors::Fatal(                                   \
-          "CUDA Error in XPU CINN: %s", cudaGetErrorString(status)));         \
-    }                                                                         \
-  }
-#endif  // CINN_WITH_XPU
-
 std::string Compiler::operator()(const std::string& code,
                                  bool include_headers) {
-  return CompileWithNvrtc(code, include_headers);
+  return CompileWithXpurtc(code, include_headers);
 }
 
-std::vector<std::string> Compiler::FindCUDAIncludePaths() {
-  const std::string delimiter = "/";
-  std::string cuda_include_path;
-  const char* cuda_path_env = std::getenv("CUDA_PATH");
-  if (cuda_path_env != nullptr) {
-    cuda_include_path = std::string(cuda_path_env) + delimiter + "include";
-    return {cuda_include_path};
+std::vector<std::string> Compiler::FindXtdkIncludePaths() {
+  // XTDK_PATH env var, e.g. /path/to/xtdk-llvm19-ubuntu2004_x86_64
+  const char* xtdk_path = std::getenv("XTDK_PATH");
+  if (xtdk_path != nullptr) {
+    // Kernel device headers are under lib/clang/19/include/
+    std::string clang_inc = std::string(xtdk_path) + "/lib/clang/19/include";
+    return {clang_inc};
   }
-
 #if defined(__linux__)
+  // Fallback: try a well-known install location
   struct stat st;
-  cuda_include_path = "/usr/local/cuda/include";
-  if (stat(cuda_include_path.c_str(), &st) == 0) {
-    return {cuda_include_path};
+  const std::string fallback = "/usr/local/xtdk/lib/clang/19/include";
+  if (stat(fallback.c_str(), &st) == 0) {
+    return {fallback};
   }
 #endif
   PADDLE_THROW(::common::errors::Fatal(
-      "Cannot find CUDA include path. CUDA_PATH is not set or CUDA is not "
-      "installed in the default path. Set CUDA_PATH to your CUDA installation "
-      "directory."));
-  return {cuda_include_path};
+      "Cannot find XTDK include path. Set XTDK_PATH to the XTDK installation "
+      "directory (e.g. /opt/xtdk-llvm19-ubuntu2004_x86_64)."));
+  return {};
 }
 
 std::vector<std::string> Compiler::FindCINNRuntimeIncludePaths() {
   return {Context::Global().runtime_include_dir()};
 }
 
-std::string Compiler::CompileWithNvrtc(const std::string& code,
-                                       bool include_headers) {
+std::string Compiler::CompileWithXpurtc(const std::string& code,
+                                        bool include_headers) {
 #ifndef CINN_WITH_XPU
   PADDLE_THROW(::common::errors::Unimplemented(
-      "CompileWithNvrtc requires CINN_WITH_XPU to be enabled."));
+      "CompileWithXpurtc requires CINN_WITH_XPU to be enabled."));
   return "";
 #else
-  std::vector<std::string> compile_options;
-  std::vector<const char*> param_cstrings{};
-
-  compile_options.push_back(std::string("-arch=") + GetDeviceArch());
-  compile_options.push_back("-std=c++17");
-  compile_options.push_back("--use_fast_math");
-
+  // Build source preamble: inject include paths as #include directives so
+  // that xpurtc::CompileContext can resolve headers at JIT compile time.
+  std::string full_source;
   if (include_headers) {
-    std::vector<std::string> cuda_headers = FindCUDAIncludePaths();
-    std::vector<std::string> cinn_headers = FindCINNRuntimeIncludePaths();
-    for (const auto& header : cuda_headers) {
-      compile_options.push_back("--include-path=" + header);
+    for (const auto& path : FindXtdkIncludePaths()) {
+      full_source += "#pragma clang include_dir \"" + path + "\"\n";
     }
-    for (const auto& header : cinn_headers) {
-      compile_options.push_back("--include-path=" + header);
+    for (const auto& path : FindCINNRuntimeIncludePaths()) {
+      full_source += "#pragma clang include_dir \"" + path + "\"\n";
     }
   }
+  full_source += code;
 
-  for (const auto& option : compile_options) {
-    param_cstrings.push_back(option.c_str());
-  }
-  VLOG(5) << "xpu (nvrtc) compile options: "
-          << utils::Join(compile_options, " ");
+  VLOG(5) << "xpu (xpurtc) CompileWithXpurtc, source length="
+          << full_source.size() << ", xpu_arch=" << GetDeviceArch();
 
-  nvrtcProgram prog;
-  NVRTC_CHECK(
-      nvrtcCreateProgram(&prog, code.c_str(), nullptr, 0, nullptr, nullptr));
-  nvrtcResult compile_res =
-      nvrtcCompileProgram(prog, param_cstrings.size(), param_cstrings.data());
+  ::xpurtc::CompileContext ctx(GetDeviceArch());
+  // add_source returns a key string; SourceKind::XPU = 0 (enum value 1 in
+  // xpurtc.h maps to the Houyi/XCN source kind).
+  ctx.add_source(full_source, ::xpurtc::SourceKind::XPU, "cinn_xpu_kernel");
 
-  {
-    size_t log_size;
-    NVRTC_CHECK(nvrtcGetProgramLogSize(prog, &log_size));
-    std::string log;
-    log.resize(log_size);
-    NVRTC_CHECK(nvrtcGetProgramLog(prog, &log[0]));
-    PADDLE_ENFORCE_EQ(
-        compile_res,
-        NVRTC_SUCCESS,
-        ::common::errors::External("NVRTC compilation error (XPU): %s", log));
-  }
+  ::xpurtc::Kernel kernel = ctx.get_kernel();
+  PADDLE_ENFORCE_EQ(
+      kernel.is_valid(),
+      true,
+      ::common::errors::External(
+          "xpurtc compilation failed: kernel is not valid after compilation."));
 
-  size_t ptx_size;
-  NVRTC_CHECK(nvrtcGetPTXSize(prog, &ptx_size));
-  std::string ptx;
-  ptx.resize(ptx_size);
-  NVRTC_CHECK(nvrtcGetPTX(prog, &ptx[0]));
-  NVRTC_CHECK(nvrtcDestroyProgram(&prog));
-  return ptx;
+  // Pack the binary blob into a std::string so XpuModule can store it.
+  // XpuModule will later call xpurtc::launch_kernel with code() + size().
+  const uint8_t* data = kernel.code();
+  uint32_t size = kernel.size();
+  VLOG(3) << "xpurtc compiled kernel: size=" << size
+          << " hash=" << kernel.hash()
+          << " mangled_name=" << kernel.mangled_name();
+  return std::string(reinterpret_cast<const char*>(data), size);
 #endif  // CINN_WITH_XPU
 }
 
-std::string Compiler::GetDeviceArch() {
-#ifndef CINN_WITH_XPU
-  return "sm_80";
-#else
-  int major = 0, minor = 0;
-  CUDA_CHECK(cudaDeviceGetAttribute(
-      &major, cudaDevAttrComputeCapabilityMajor, 0));
-  CUDA_CHECK(cudaDeviceGetAttribute(
-      &minor, cudaDevAttrComputeCapabilityMinor, 0));
-  return "sm_" + std::to_string(major) + std::to_string(minor);
+int Compiler::GetDeviceArch() {
+#ifdef CINN_WITH_XPU
+  // xpurtc::CompileContext(int xpu_arch): 0 = auto-detect, 4 = M100/Houyi
+  // Query from env var if set; otherwise default to M100.
+  const char* arch_env = std::getenv("XPU_ARCH");
+  if (arch_env != nullptr) {
+    return std::atoi(arch_env);
+  }
 #endif
+  // Default: M100 (XCN generation = 4)
+  return 4;
 }
 
 }  // namespace xpurtc

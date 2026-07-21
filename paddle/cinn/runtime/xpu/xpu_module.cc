@@ -14,71 +14,76 @@
 
 #include "paddle/cinn/runtime/xpu/xpu_module.h"
 
+#include <glog/logging.h>
+
+#ifdef CINN_WITH_XPU
+#include "xpu/xpurtc.h"
+#endif
+
 #include "paddle/cinn/utils/profiler.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace runtime {
 namespace xpu {
 
-XpuModule::XpuModule(const std::string& data, Kind kind)
-    : data_(data), kind_(kind) {
+XpuModule::XpuModule(const std::string& data,
+                     uint64_t hash,
+                     const std::string& mangled_name,
+                     bool is_cdnn)
+    : data_(data),
+      size_(static_cast<uint32_t>(data.size())),
+      hash_(hash),
+      mangled_name_(mangled_name),
+      is_cdnn_(is_cdnn) {
   PADDLE_ENFORCE_EQ(
       data.empty(),
       false,
-      ::common::errors::PreconditionNotMet("XpuModule: data is empty."));
+      ::common::errors::PreconditionNotMet("XpuModule: kernel data is empty."));
+  VLOG(3) << "XpuModule created: size=" << size_ << " hash=" << hash_
+          << " mangled_name=" << mangled_name_;
+}
 
-  XPU_DRIVER_CHECK(cuDeviceGetCount(&num_devices_));
-  PADDLE_ENFORCE_GT(
-      num_devices_,
+void XpuModule::Launch(int ncluster,
+                       int ncore,
+                       void* stream,
+                       const void* params,
+                       uint32_t param_byte_size) const {
+#ifndef CINN_WITH_XPU
+  PADDLE_THROW(::common::errors::Unimplemented(
+      "XpuModule::Launch requires CINN_WITH_XPU."));
+#else
+  cinn::utils::RecordEvent record_run("xpurtc::launch_kernel",
+                                      cinn::utils::EventType::kInstruction);
+  VLOG(3) << "XpuModule::Launch ncluster=" << ncluster << " ncore=" << ncore
+          << " param_bytes=" << param_byte_size << " mangled=" << mangled_name_;
+
+  // xpurtc::launch_kernel signature:
+  //   int launch_kernel(const void* kernel_code, uint32_t kernel_len,
+  //                     uint64_t kernel_hash,
+  //                     int ncluster, int ncore, XPUStream stream,
+  //                     const void* params, uint32_t param_byte_size,
+  //                     bool kernel_use_cdnn,
+  //                     const char* kernel_mangled_entry);
+  int ret =
+      ::xpurtc::launch_kernel(reinterpret_cast<const void*>(data_.c_str()),
+                              size_,
+                              hash_,
+                              ncluster,
+                              ncore,
+                              static_cast<XPUStream>(stream),
+                              params,
+                              param_byte_size,
+                              is_cdnn_,
+                              mangled_name_.c_str());
+  PADDLE_ENFORCE_EQ(
+      ret,
       0,
-      ::common::errors::Fatal("XpuModule: No available CUDA devices."));
-
-  int current_device_id = 0;
-  XPU_CHECK(cudaGetDevice(&current_device_id));
-  XPU_DRIVER_CHECK(cuDeviceGet(&device_, current_device_id));
-  XPU_DRIVER_CHECK(cuDevicePrimaryCtxRetain(&context_, device_));
-}
-
-CUfunction XpuModule::GetFunction(int device_id,
-                                  const std::string& func_name) {
-  VLOG(3) << "XpuModule::GetFunction: " << func_name
-          << " device_id=" << device_id;
-  cinn::utils::RecordEvent record_run("xpuGetFunction",
-                                      cinn::utils::EventType::kOrdinary);
-  if (!module_per_card_[device_id]) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (!module_per_card_[device_id]) {
-      XPU_DRIVER_CHECK(cuCtxSetCurrent(context_));
-      if (kind_ == Kind::PTX) {
-        XPU_DRIVER_CHECK(cuModuleLoadDataEx(
-            &module_per_card_[device_id], data_.c_str(), 0, nullptr, nullptr));
-      } else {
-        // CUBIN: load from raw bytes
-        XPU_DRIVER_CHECK(cuModuleLoadData(&module_per_card_[device_id],
-                                          data_.c_str()));
-      }
-    }
-  }
-
-  CUfunction func;
-  XPU_DRIVER_CHECK(cuModuleGetFunction(
-      &func, module_per_card_[device_id], func_name.c_str()));
-  return func;
-}
-
-CUfunction XpuModule::GetFunction(const std::string& func_name) {
-  int device_id = 0;
-  XPU_CHECK(cudaGetDevice(&device_id));
-  return GetFunction(device_id, func_name);
-}
-
-XpuModule::~XpuModule() {
-  for (int i = 0; i < static_cast<int>(module_per_card_.size()); ++i) {
-    if (module_per_card_[i]) {
-      XPU_CHECK(cudaSetDevice(i));
-      XPU_DRIVER_CHECK(cuModuleUnload(module_per_card_[i]));
-    }
-  }
+      ::common::errors::External(
+          "xpurtc::launch_kernel failed with code %d for kernel %s",
+          ret,
+          mangled_name_.c_str()));
+#endif
 }
 
 }  // namespace xpu

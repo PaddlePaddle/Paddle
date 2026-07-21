@@ -165,12 +165,32 @@ if(WITH_XPU)
   message(STATUS "CINN Compile with XPU support")
   add_definitions(-DCINN_WITH_XPU)
 
+  # XTDK_PATH / XRE_PATH and their libraries are resolved by cmake/xtdk.cmake
+  # which is included from the top-level CMakeLists.txt before cinn.cmake is
+  # processed (mirrors the hip.cmake -> cinn.cmake pattern for HygonDCU).
+  # At this point XTDK_PATH, XRE_PATH, and XPU_XTDK_LIBS are already set.
+
+  # Expose XTDK_PATH and XRE_PATH as preprocessor strings so that C++ code
+  # (compiler_xpu.cc, xpu_util.cc) can use them as fallback paths at runtime
+  # when the corresponding environment variables are not set.
+  add_definitions(-DXTDK_PATH="${XTDK_PATH}")
+  add_definitions(-DXRE_PATH="${XRE_PATH}")
+
+  # Link all XPU libraries (libxpujitc.so, libxpucuda.so, libcudart.so).
+  # This mirrors: link_libraries(${ROCM_HIPRTC_LIB}) in the WITH_ROCM block.
+  link_libraries(${XPU_XTDK_LIBS})
+
   message(
     STATUS "copy paddle/cinn/common/float16.h to $ENV{runtime_include_dir}")
   file(COPY paddle/cinn/common/float16.h DESTINATION $ENV{runtime_include_dir})
   message(
     STATUS "copy paddle/cinn/common/bfloat16.h to $ENV{runtime_include_dir}")
   file(COPY paddle/cinn/common/bfloat16.h DESTINATION $ENV{runtime_include_dir})
+  # Copy the device-side preamble header used by xpurtc JIT compilation
+  message(
+    STATUS "copy cinn_xpu_runtime_source.cuh to $ENV{runtime_include_dir}")
+  file(COPY paddle/cinn/runtime/xpu/cinn_xpu_runtime_source.cuh
+       DESTINATION $ENV{runtime_include_dir})
 endif()
 
 if(WITH_CUSTOM_DEVICE)

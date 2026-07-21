@@ -73,10 +73,10 @@ CINN_REGISTER_HELPER(xpu_intrinsics_float16) {
   REGISTER_EXTERN_FUNC_1_IN_1_FP16_OUT_BOOL(isfinite)
 #undef REGISTER_EXTERN_FUNC_1_IN_1_FP16_OUT_BOOL
 
-#define REGISTER_CINN_XPU_GT_NUM(TYPE_SUFFIX, TYPE)                       \
+#define REGISTER_CINN_XPU_GT_NUM(TYPE_SUFFIX, TYPE)                         \
   REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_xpu_gt_num_##TYPE_SUFFIX, target) \
       .SetRetType<int>()                                                    \
-      .AddInputType<cinn_buffer_t*>()                                      \
+      .AddInputType<cinn_buffer_t*>()                                       \
       .AddInputType<int>()                                                  \
       .AddInputType<TYPE>()                                                 \
       .AddInputType<int>()                                                  \
@@ -86,10 +86,10 @@ CINN_REGISTER_HELPER(xpu_intrinsics_float16) {
   REGISTER_CINN_XPU_GT_NUM(fp16, float16);
 #undef REGISTER_CINN_XPU_GT_NUM
 
-#define REGISTER_CINN_XPU_LT_NUM(TYPE_SUFFIX, TYPE)                       \
+#define REGISTER_CINN_XPU_LT_NUM(TYPE_SUFFIX, TYPE)                         \
   REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_xpu_lt_num_##TYPE_SUFFIX, target) \
       .SetRetType<int>()                                                    \
-      .AddInputType<cinn_buffer_t*>()                                      \
+      .AddInputType<cinn_buffer_t*>()                                       \
       .AddInputType<int>()                                                  \
       .AddInputType<TYPE>()                                                 \
       .AddInputType<int>()                                                  \
@@ -99,15 +99,15 @@ CINN_REGISTER_HELPER(xpu_intrinsics_float16) {
   REGISTER_CINN_XPU_LT_NUM(fp16, float16);
 #undef REGISTER_CINN_XPU_LT_NUM
 
-#define REGISTER_CINN_XPU_INDEX_ADD(TYPE_SUFFIX, TYPE)                       \
+#define REGISTER_CINN_XPU_INDEX_ADD(TYPE_SUFFIX, TYPE)                         \
   REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_xpu_index_add_##TYPE_SUFFIX, target) \
       .SetRetType<TYPE>()                                                      \
       .AddInputType<TYPE>()                                                    \
       .AddInputType<int>()                                                     \
-      .AddInputType<cinn_buffer_t*>()                                         \
+      .AddInputType<cinn_buffer_t*>()                                          \
       .AddInputType<int>()                                                     \
       .AddInputType<int>()                                                     \
-      .AddInputType<cinn_buffer_t*>()                                         \
+      .AddInputType<cinn_buffer_t*>()                                          \
       .AddInputType<int>()                                                     \
       .End();
 

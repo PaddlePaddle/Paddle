@@ -27,17 +27,17 @@ CINN_REGISTER_HELPER(cinn_xpu_host_api) {
   REGISTER_EXTERN_FUNC_HELPER(cinn_call_xpu_kernel,
                               cinn::common::DefaultHostTarget())
       .SetRetType<void>()
-      .AddInputType<void*>()   // kernel_fn
-      .AddInputType<void*>()   // args
-      .AddInputType<int>()     // num_args
-      .AddInputType<int>()     // grid_x
-      .AddInputType<int>()     // grid_y
-      .AddInputType<int>()     // grid_z
-      .AddInputType<int>()     // block_x
-      .AddInputType<int>()     // block_y
-      .AddInputType<int>()     // block_z
-      .AddInputType<int>()     // shared_memory_bytes
-      .AddInputType<void*>()   // stream
+      .AddInputType<void*>()  // kernel_fn
+      .AddInputType<void*>()  // args
+      .AddInputType<int>()    // num_args
+      .AddInputType<int>()    // grid_x
+      .AddInputType<int>()    // grid_y
+      .AddInputType<int>()    // grid_z
+      .AddInputType<int>()    // block_x
+      .AddInputType<int>()    // block_y
+      .AddInputType<int>()    // block_z
+      .AddInputType<int>()    // shared_memory_bytes
+      .AddInputType<void*>()  // stream
       .End();
 
   using cinn::runtime::xpu::infer_shape_set_value;
@@ -330,10 +330,10 @@ CINN_REGISTER_HELPER(xpu_intrinsics) {
       .AddInputType<int>()
       .End();
 
-#define _REGISTER_CINN_XPU_LT_NUM(TYPE_SUFFIX, TYPE)                      \
+#define _REGISTER_CINN_XPU_LT_NUM(TYPE_SUFFIX, TYPE)                        \
   REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_xpu_lt_num_##TYPE_SUFFIX, target) \
       .SetRetType<int>()                                                    \
-      .AddInputType<cinn_buffer_t*>()                                      \
+      .AddInputType<cinn_buffer_t*>()                                       \
       .AddInputType<int>()                                                  \
       .AddInputType<TYPE>()                                                 \
       .AddInputType<int>()                                                  \
@@ -348,10 +348,10 @@ CINN_REGISTER_HELPER(xpu_intrinsics) {
   _REGISTER_CINN_XPU_LT_NUM(int64, int64_t);
 #undef _REGISTER_CINN_XPU_LT_NUM
 
-#define _REGISTER_CINN_XPU_GT_NUM(TYPE_SUFFIX, TYPE)                      \
+#define _REGISTER_CINN_XPU_GT_NUM(TYPE_SUFFIX, TYPE)                        \
   REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_xpu_gt_num_##TYPE_SUFFIX, target) \
       .SetRetType<int>()                                                    \
-      .AddInputType<cinn_buffer_t*>()                                      \
+      .AddInputType<cinn_buffer_t*>()                                       \
       .AddInputType<int>()                                                  \
       .AddInputType<TYPE>()                                                 \
       .AddInputType<int>()                                                  \
@@ -366,15 +366,15 @@ CINN_REGISTER_HELPER(xpu_intrinsics) {
   _REGISTER_CINN_XPU_GT_NUM(int64, int64_t);
 #undef _REGISTER_CINN_XPU_GT_NUM
 
-#define _REGISTER_CINN_XPU_INDEX_ADD(TYPE_SUFFIX, TYPE)                      \
+#define _REGISTER_CINN_XPU_INDEX_ADD(TYPE_SUFFIX, TYPE)                        \
   REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_xpu_index_add_##TYPE_SUFFIX, target) \
       .SetRetType<TYPE>()                                                      \
       .AddInputType<TYPE>()                                                    \
       .AddInputType<int>()                                                     \
-      .AddInputType<cinn_buffer_t*>()                                         \
+      .AddInputType<cinn_buffer_t*>()                                          \
       .AddInputType<int>()                                                     \
       .AddInputType<int>()                                                     \
-      .AddInputType<cinn_buffer_t*>()                                         \
+      .AddInputType<cinn_buffer_t*>()                                          \
       .AddInputType<int>()                                                     \
       .End();
 

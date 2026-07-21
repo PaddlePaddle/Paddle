@@ -235,7 +235,9 @@ class Compiler final {
   std::unique_ptr<runtime::hip::HIPModule> hip_module_;
 #endif
 #ifdef CINN_WITH_XPU
-  std::unique_ptr<runtime::xpu::XpuModule> xpu_module_;
+  // One XpuModule per kernel (unlike HIP which has one module for all kernels).
+  // Owned by fn_ptr_ via reinterpret_cast; destroyed when fn_ptr_ is cleared.
+  std::vector<runtime::xpu::XpuModule*> xpu_kernels_;
 #endif
 #ifdef CINN_WITH_SYCL
   std::unique_ptr<runtime::sycl::SYCLModule> sycl_module_;

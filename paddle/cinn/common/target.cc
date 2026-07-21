@@ -453,8 +453,7 @@ const Target &DefaultHygonDcuSyclTarget() {
 }
 
 const Target &DefaultXpuTarget() {
-  static Target target(
-      Target::OS::Linux, XpuArch{}, Target::Bit::k64, {}, {});
+  static Target target(Target::OS::Linux, XpuArch{}, Target::Bit::k64, {}, {});
   return target;
 }
 

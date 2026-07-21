@@ -568,6 +568,10 @@ if(WITH_ROCM)
   include(cupti)
 endif()
 
+if(WITH_XPU)
+  include(xtdk) # XTDK compiler toolchain + XRE runtime for M100
+endif()
+
 if(WITH_XPU_KP)
   include(xpu_kp)
 endif()
