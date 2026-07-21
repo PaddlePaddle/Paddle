@@ -57,7 +57,7 @@ void BaddbmmKernel(const Context& dev_ctx,
 
   DenseTensor input_3d(input);
   if (input.dims().size() == 2) {
-    input_dims = {input.dims()[0], 1, input.dims()[1]};
+    input_dims = {1, input.dims()[0], input.dims()[1]};
     input_3d.Resize(input_dims);
   }
 
@@ -144,9 +144,6 @@ void BaddbmmKernel(const Context& dev_ctx,
   // return before the bcast_dims integer division below, which would divide by
   // zero (SIGFPE) when a broadcast input dim is 0.
   if (out->numel() == 0) {
-    if (out_dtype != DataType::UNDEFINED && out_dtype != out->dtype()) {
-      CastKernel<T>(dev_ctx, *out, out_dtype, out);
-    }
     return;
   }
   auto blas = funcs::GetBlas<Context, T>(dev_ctx);
@@ -164,9 +161,6 @@ void BaddbmmKernel(const Context& dev_ctx,
     funcs::ForRange<Context> for_range(dev_ctx, out->numel());
     BaddbmmScaleFunctor<T> functor(beta, out->data<T>());
     for_range(functor);
-    if (out_dtype != DataType::UNDEFINED && out_dtype != out->dtype()) {
-      CastKernel<T>(dev_ctx, *out, out_dtype, out);
-    }
     return;
   }
 
