@@ -299,6 +299,7 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           export PATH=$(pwd)/run_env:${PATH}
+          export PYTHONFAULTHANDLER=1
           cd /PaddleTest/framework/api
           rm ./device/test_cuda_get_device_capability.py
           bash run_paddle_ci.sh
