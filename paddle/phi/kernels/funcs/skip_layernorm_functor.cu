@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/skip_layernorm_functor.h"
+
+#include "paddle/common/enforce.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 namespace phi {
 namespace funcs {
@@ -27,8 +29,8 @@ __device__ __forceinline__ half local_rsqrt(half num) { return hrsqrt(num); }
 
 template <typename T, int TPB>
 __device__ inline void LayerNorm(const funcs::kvp<T> &thread_data,
-                                 const int ld,
-                                 const int offset,
+                                 const int64_t ld,
+                                 const int64_t offset,
                                  const T *bias,
                                  const T *scale,
                                  T *output,
@@ -46,8 +48,8 @@ __device__ inline void LayerNorm(const funcs::kvp<T> &thread_data,
   }
   __syncthreads();
 
-  for (int i = threadIdx.x; i < ld; i += TPB) {
-    const int idx = offset + i;
+  for (int64_t i = threadIdx.x; i < ld; i += TPB) {
+    const int64_t idx = offset + i;
     const T val = output[idx];
     const T g(scale[i]);
     const T b(bias[i]);
@@ -56,8 +58,8 @@ __device__ inline void LayerNorm(const funcs::kvp<T> &thread_data,
 }
 
 template <typename T, unsigned TPB>
-__global__ void SkipLayerNormKernel(int num,
-                                    int hidden,
+__global__ void SkipLayerNormKernel(int64_t num,
+                                    int64_t hidden,
                                     const T *input1,
                                     const T *input2,
                                     T *output,
@@ -70,7 +72,7 @@ __global__ void SkipLayerNormKernel(int num,
   cub::Sum pair_sum;
   funcs::kvp<T> thread_data(0, 0);
 
-  for (int it = threadIdx.x; it < hidden; it += TPB) {
+  for (int64_t it = threadIdx.x; it < hidden; it += TPB) {
     const int64_t idx = offset + it;
     const T val = input1[idx] + input2[idx];
     const T rldval = rld * val;
@@ -83,8 +85,8 @@ __global__ void SkipLayerNormKernel(int num,
 // HIP defined __HIP_NO_HALF_CONVERSIONS__ in hip.cmake
 #ifndef __HIPCC__  // @{ Half kernel: SkipLayerNormKernel
 template <>
-__global__ void SkipLayerNormKernel<half, 256>(int num,
-                                               int hidden,
+__global__ void SkipLayerNormKernel<half, 256>(int64_t num,
+                                               int64_t hidden,
                                                const half *input1,
                                                const half *input2,
                                                half *output,
@@ -98,7 +100,7 @@ __global__ void SkipLayerNormKernel<half, 256>(int num,
   cub::Sum pair_sum;
   funcs::kvp<half> thread_data(0, 0);
 
-  for (int it = threadIdx.x; it < hidden; it += 256) {
+  for (int64_t it = threadIdx.x; it < hidden; it += 256) {
     const int64_t idx = offset + it;
     const half val = input1[idx] + input2[idx];
     const half rldval = rld * val;
@@ -112,8 +114,8 @@ __global__ void SkipLayerNormKernel<half, 256>(int num,
 
 template <typename T, typename T2, int TPB>
 __device__ inline void LayerNorm2(const funcs::kvp<T> &thread_data,
-                                  const int ld,
-                                  const int offset,
+                                  const int64_t ld,
+                                  const int64_t offset,
                                   const T2 *bias,
                                   const T2 *scale,
                                   T2 *output,
@@ -131,8 +133,8 @@ __device__ inline void LayerNorm2(const funcs::kvp<T> &thread_data,
   }
   __syncthreads();
 
-  for (int i = threadIdx.x; i < ld; i += TPB) {
-    const int idx = offset + i;
+  for (int64_t i = threadIdx.x; i < ld; i += TPB) {
+    const int64_t idx = offset + i;
     T2 val = output[idx];
     const T2 g = scale[i];
     const T2 b = bias[i];
@@ -143,8 +145,8 @@ __device__ inline void LayerNorm2(const funcs::kvp<T> &thread_data,
 }
 
 template <typename T, typename T2, unsigned TPB>
-__global__ void SkipLayerNormKernel2(int num,
-                                     int hidden,
+__global__ void SkipLayerNormKernel2(int64_t num,
+                                     int64_t hidden,
                                      const T2 *input1,
                                      const T2 *input2,
                                      T2 *output,
@@ -157,7 +159,7 @@ __global__ void SkipLayerNormKernel2(int num,
   cub::Sum pair_sum;
   funcs::kvp<T> thread_data(0, 0);
 
-  for (int it = threadIdx.x; it < hidden; it += TPB) {
+  for (int64_t it = threadIdx.x; it < hidden; it += TPB) {
     const int64_t idx = offset + it;
     const T2 val2 = input1[idx] + input2[idx];
     thread_data =
@@ -172,8 +174,8 @@ __global__ void SkipLayerNormKernel2(int num,
 // HIP defined __HIP_NO_HALF_CONVERSIONS__ in hip.cmake
 #ifndef __HIPCC__  // @{ Half kernel: SkipLayerNormKernel2
 template <>
-__global__ void SkipLayerNormKernel2<half, half2, 256>(int num,
-                                                       int hidden,
+__global__ void SkipLayerNormKernel2<half, half2, 256>(int64_t num,
+                                                       int64_t hidden,
                                                        const half2 *input1,
                                                        const half2 *input2,
                                                        half2 *output,
@@ -187,7 +189,7 @@ __global__ void SkipLayerNormKernel2<half, half2, 256>(int num,
   cub::Sum pair_sum;
   funcs::kvp<half> thread_data(0, 0);
 
-  for (int it = threadIdx.x; it < hidden; it += 256) {
+  for (int64_t it = threadIdx.x; it < hidden; it += 256) {
     const int64_t idx = offset + it;
     const half2 val2 = input1[idx] + input2[idx];
     thread_data = pair_sum(
@@ -205,8 +207,8 @@ __global__ void SkipLayerNormKernel2<half, half2, 256>(int num,
 template <typename T, int TPB>
 __device__ inline void LayerNormSmall(T val,
                                       const funcs::kvp<T> &thread_data,
-                                      const int ld,
-                                      const int idx,
+                                      const int64_t ld,
+                                      const int64_t idx,
                                       const T *bias,
                                       const T *scale,
                                       T *output,
@@ -232,8 +234,8 @@ __device__ inline void LayerNormSmall(T val,
 }
 
 template <typename T, unsigned TPB>
-__global__ void SkipLayerNormSmallKernel(int num,
-                                         int hidden,
+__global__ void SkipLayerNormSmallKernel(int64_t num,
+                                         int64_t hidden,
                                          const T *input1,
                                          const T *input2,
                                          T *output,
@@ -259,8 +261,8 @@ __global__ void SkipLayerNormSmallKernel(int num,
 // HIP defined __HIP_NO_HALF_CONVERSIONS__ in hip.cmake
 #ifndef __HIPCC__  // @{ Half kernel: SkipLayerNormSmallKernel
 template <>
-__global__ void SkipLayerNormSmallKernel<half, 32>(int num,
-                                                   int hidden,
+__global__ void SkipLayerNormSmallKernel<half, 32>(int64_t num,
+                                                   int64_t hidden,
                                                    const half *input1,
                                                    const half *input2,
                                                    half *output,
@@ -286,8 +288,8 @@ __global__ void SkipLayerNormSmallKernel<half, 32>(int num,
 }
 
 template <>
-__global__ void SkipLayerNormSmallKernel<half, 128>(int num,
-                                                    int hidden,
+__global__ void SkipLayerNormSmallKernel<half, 128>(int64_t num,
+                                                    int64_t hidden,
                                                     const half *input1,
                                                     const half *input2,
                                                     half *output,
@@ -313,8 +315,8 @@ __global__ void SkipLayerNormSmallKernel<half, 128>(int num,
 }
 
 template <>
-__global__ void SkipLayerNormSmallKernel<half, 384>(int num,
-                                                    int hidden,
+__global__ void SkipLayerNormSmallKernel<half, 384>(int64_t num,
+                                                    int64_t hidden,
                                                     const half *input1,
                                                     const half *input2,
                                                     half *output,
@@ -341,8 +343,8 @@ __global__ void SkipLayerNormSmallKernel<half, 384>(int num,
 #endif  // @} End Half kernel: SkipLayerNormSmallKernel
 
 template <typename T>
-void SkipLayerNormFunctor<T>::operator()(const int num,
-                                         const int hidden,
+void SkipLayerNormFunctor<T>::operator()(const int64_t num,
+                                         const int64_t hidden,
                                          const T *input1,
                                          const T *input2,
                                          const T *scale,
@@ -350,25 +352,27 @@ void SkipLayerNormFunctor<T>::operator()(const int num,
                                          T *output,
                                          float eps,
                                          gpuStream_t stream) {
-  int block = num / hidden;
+  const int64_t block = num / hidden;
+  PADDLE_ENFORCE_LE_UINT32_MAX(block, "skip_layernorm grid.x");
+  const uint32_t grid = static_cast<uint32_t>(block);
   if (hidden <= WARP_SIZE) {
     const int threads = WARP_SIZE;
-    SkipLayerNormSmallKernel<T, threads><<<block, threads, 0, stream>>>(
+    SkipLayerNormSmallKernel<T, threads><<<grid, threads, 0, stream>>>(
         num, hidden, input1, input2, output, scale, bias, eps);
   } else if (hidden <= 128) {
     const int threads = 128;
-    SkipLayerNormSmallKernel<T, threads><<<block, threads, 0, stream>>>(
+    SkipLayerNormSmallKernel<T, threads><<<grid, threads, 0, stream>>>(
         num, hidden, input1, input2, output, scale, bias, eps);
   } else if (hidden == 384) {
     const int threads = 384;
-    SkipLayerNormSmallKernel<T, threads><<<block, threads, 0, stream>>>(
+    SkipLayerNormSmallKernel<T, threads><<<grid, threads, 0, stream>>>(
         num, hidden, input1, input2, output, scale, bias, eps);
   } else {
     const int threads = 256;
     if (hidden % 2 == 0) {
       if (std::is_same<T, float>::value) {
         SkipLayerNormKernel2<float, float2, threads>
-            <<<block, threads, 0, stream>>>(
+            <<<grid, threads, 0, stream>>>(
                 num,
                 hidden / 2,
                 reinterpret_cast<const float2 *>(input1),
@@ -381,7 +385,7 @@ void SkipLayerNormFunctor<T>::operator()(const int num,
 #ifndef __HIPCC__
       } else if (std::is_same<T, __half>::value) {
         SkipLayerNormKernel2<__half, __half2, threads>
-            <<<block, threads, 0, stream>>>(
+            <<<grid, threads, 0, stream>>>(
                 num,
                 hidden / 2,
                 reinterpret_cast<const __half2 *>(input1),
@@ -396,7 +400,7 @@ void SkipLayerNormFunctor<T>::operator()(const int num,
         // should not be here
       }
     } else {
-      SkipLayerNormKernel<T, threads><<<block, threads, 0, stream>>>(
+      SkipLayerNormKernel<T, threads><<<grid, threads, 0, stream>>>(
           num, hidden, input1, input2, output, scale, bias, eps);
     }
   }

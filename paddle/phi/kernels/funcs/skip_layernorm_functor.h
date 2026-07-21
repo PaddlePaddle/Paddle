@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include <cstdint>
+
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -57,8 +59,8 @@ struct CUDATypeTraits<float> {
 template <typename T>
 class SkipLayerNormFunctor {
  public:
-  void operator()(const int num,
-                  const int hidden,
+  void operator()(const int64_t num,
+                  const int64_t hidden,
                   const T *input1,
                   const T *input2,
                   const T *scale,
