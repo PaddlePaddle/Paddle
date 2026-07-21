@@ -38,12 +38,8 @@ void SkipLayerNormKernel(const Context &dev_ctx,
   out->Resize(x.dims());
   auto *output_d = dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
 
-  size_t num = 1;
-  for (size_t i = 0; i < x.dims().size(); i++) {
-    num *= x.dims()[i];
-  }
-  int64_t hidden = x.dims()[2];
-  // TODO(large-tensor): downstream functors may still use int
+  const int64_t num = x.numel();
+  const int64_t hidden = x.dims()[2];
 
   funcs::SkipLayerNormFunctor<T> skip_layer_norm_func;
 

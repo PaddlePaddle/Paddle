@@ -451,8 +451,8 @@ __device__ void cuApplyLayerNorm_(T* __restrict__ output_vals,
                                   U* __restrict__ mean,
                                   U* __restrict__ invvar,
                                   const T* __restrict__ vals,
-                                  const int n1,
-                                  const int n2,
+                                  const int64_t n1,
+                                  const int64_t n2,
                                   const U epsilon,
                                   const V* __restrict__ gamma,
                                   const V* __restrict__ beta,
@@ -470,10 +470,11 @@ __device__ void cuApplyLayerNorm_(T* __restrict__ output_vals,
     const T* lvals = vals + i1 * n2;
     T* ovals = output_vals + i1 * n2;
     U c_invvar = rsqrt(sigma2 + epsilon);
-    const int numx = blockDim.x * blockDim.y;
-    const int thrx = threadIdx.x + threadIdx.y * blockDim.x;
+    const int64_t numx = static_cast<int64_t>(blockDim.x) * blockDim.y;
+    const int64_t thrx = static_cast<int64_t>(threadIdx.x) +
+                         static_cast<int64_t>(threadIdx.y) * blockDim.x;
     if (gamma != NULL && (beta != NULL || rms_only)) {
-      for (int i = thrx; i < n2; i += numx) {
+      for (int64_t i = thrx; i < n2; i += numx) {
         U curr = static_cast<U>(lvals[i]);
         if (!rms_only) {
           ovals[i] = static_cast<T>(
@@ -483,7 +484,7 @@ __device__ void cuApplyLayerNorm_(T* __restrict__ output_vals,
         }
       }
     } else {
-      for (int i = thrx; i < n2; i += numx) {
+      for (int64_t i = thrx; i < n2; i += numx) {
         U curr = static_cast<U>(lvals[i]);
         if (!rms_only) {
           ovals[i] = static_cast<T>(c_invvar * (curr - mu));
@@ -506,8 +507,8 @@ template <typename T, typename U, typename V = T>
 __global__ void cuApplyRMSNorm(T* __restrict__ output_vals,
                                U* __restrict__ invvar,
                                const T* __restrict__ vals,
-                               const int n1,
-                               const int n2,
+                               const int64_t n1,
+                               const int64_t n2,
                                const U epsilon,
                                const V* __restrict__ gamma) {
   cuApplyLayerNorm_<T, U, V>(

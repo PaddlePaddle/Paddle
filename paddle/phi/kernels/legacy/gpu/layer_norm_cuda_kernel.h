@@ -481,17 +481,17 @@ __global__ void cuApplyRMSNorm(V* __restrict__ output_vals,
 }
 
 template <typename T, typename U, typename V>
-__device__ void cuLoadWriteStridedInputs(const int i1_block,
-                                         const int thr_load_row_off,
-                                         const int thr_load_col_off,
-                                         const int i2_off,
-                                         const int row_stride,
+__device__ void cuLoadWriteStridedInputs(const int64_t i1_block,
+                                         const int64_t thr_load_row_off,
+                                         const int64_t thr_load_col_off,
+                                         const int64_t i2_off,
+                                         const int64_t row_stride,
                                          U* warp_buf1,
                                          U* warp_buf2,
                                          const T* input,
                                          const V* dout,
-                                         const int i1_end,
-                                         const int n2,
+                                         const int64_t i1_end,
+                                         const int64_t n2,
                                          const U* __restrict__ mean,
                                          const U* __restrict__ invvar,
                                          bool rms_only) {
@@ -502,11 +502,10 @@ __device__ void cuLoadWriteStridedInputs(const int i1_block,
       curr_mean = mean[i1];
     }
     U curr_invvar = invvar[i1];
-    for (int k = 0; k < blockDim.y; ++k) {
-      int i2 = i2_off + k;
+    for (int64_t k = 0; k < blockDim.y; ++k) {
+      int64_t i2 = i2_off + k;
       int64_t load_idx = i1 * n2 + i2;
-      int64_t write_idx = static_cast<int64_t>(thr_load_row_off) * row_stride +
-                          thr_load_col_off + k;
+      int64_t write_idx = thr_load_row_off * row_stride + thr_load_col_off + k;
       if (i2 < n2) {
         U curr_input = static_cast<U>(input[load_idx]);
         U curr_dout = static_cast<U>(dout[load_idx]);
@@ -525,9 +524,8 @@ __device__ void cuLoadWriteStridedInputs(const int i1_block,
       }
     }
   } else {
-    for (int k = 0; k < blockDim.y; ++k) {
-      int64_t write_idx = static_cast<int64_t>(thr_load_row_off) * row_stride +
-                          thr_load_col_off + k;
+    for (int64_t k = 0; k < blockDim.y; ++k) {
+      int64_t write_idx = thr_load_row_off * row_stride + thr_load_col_off + k;
       if (!rms_only) {
         warp_buf1[write_idx] = U(0);
       }
@@ -537,17 +535,17 @@ __device__ void cuLoadWriteStridedInputs(const int i1_block,
 }
 
 template <typename T, typename U, typename V>
-__device__ void cuLoadAddStridedInputs(const int i1_block,
-                                       const int thr_load_row_off,
-                                       const int thr_load_col_off,
-                                       const int i2_off,
-                                       const int row_stride,
+__device__ void cuLoadAddStridedInputs(const int64_t i1_block,
+                                       const int64_t thr_load_row_off,
+                                       const int64_t thr_load_col_off,
+                                       const int64_t i2_off,
+                                       const int64_t row_stride,
                                        U* warp_buf1,
                                        U* warp_buf2,
                                        const T* input,
                                        const V* dout,
-                                       const int i1_end,
-                                       const int n2,
+                                       const int64_t i1_end,
+                                       const int64_t n2,
                                        const U* __restrict__ mean,
                                        const U* __restrict__ invvar,
                                        bool rms_only) {
@@ -558,11 +556,10 @@ __device__ void cuLoadAddStridedInputs(const int i1_block,
       curr_mean = mean[i1];
     }
     U curr_invvar = invvar[i1];
-    for (int k = 0; k < blockDim.y; ++k) {
-      int i2 = i2_off + k;
+    for (int64_t k = 0; k < blockDim.y; ++k) {
+      int64_t i2 = i2_off + k;
       int64_t load_idx = i1 * n2 + i2;
-      int64_t write_idx = static_cast<int64_t>(thr_load_row_off) * row_stride +
-                          thr_load_col_off + k;
+      int64_t write_idx = thr_load_row_off * row_stride + thr_load_col_off + k;
       if (i2 < n2) {
         U curr_input = static_cast<U>(input[load_idx]);
         U curr_dout = static_cast<U>(dout[load_idx]);
