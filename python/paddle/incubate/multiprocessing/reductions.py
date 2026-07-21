@@ -14,6 +14,8 @@
 
 import copy
 import multiprocessing
+import os
+import struct
 
 # TODO: check the hooks of tensor
 # TODO: check serializing named tensor
@@ -93,6 +95,11 @@ def _rebuild_tensor(cls, lodtensor, metadata):
 
 
 _CUDA_IPC_HANDLE_SIZE = 64
+# Mirror the packed VMMIPCHeader and VMMIPCEntry payload. Their sizes are part
+# of the versioned VMM IPC protocol consumed by DenseTensor._new_shared_cuda.
+_VMM_IPC_HEADER = struct.Struct("=BHIIQQQ")
+_VMM_IPC_ENTRY = struct.Struct("=B7xQQQ")
+_VMM_IPC_FD = struct.Struct("=i")
 
 
 def _is_vmm_ipc_metadata(metadata) -> bool:
@@ -102,6 +109,64 @@ def _is_vmm_ipc_metadata(metadata) -> bool:
 def _rebuild_vmm_tensor(cls, *metadata):
     lodtensor = cls._new_shared_cuda(tuple(metadata))
     return lodtensor
+
+
+def _vmm_ipc_fds(metadata):
+    blob = metadata[0]
+    if len(blob) < _VMM_IPC_HEADER.size:
+        raise RuntimeError("VMM IPC metadata is smaller than its header.")
+
+    header = _VMM_IPC_HEADER.unpack_from(blob)
+    num_entries = header[3]
+    entry_stride = _VMM_IPC_ENTRY.size + _VMM_IPC_FD.size
+    expected_size = _VMM_IPC_HEADER.size + num_entries * entry_stride
+    if len(blob) != expected_size:
+        raise RuntimeError(
+            f"VMM IPC metadata has {len(blob)} bytes, but {expected_size} "
+            "bytes are required by its entry count."
+        )
+
+    return [
+        _VMM_IPC_FD.unpack_from(
+            blob,
+            _VMM_IPC_HEADER.size + i * entry_stride + _VMM_IPC_ENTRY.size,
+        )[0]
+        for i in range(num_entries)
+    ]
+
+
+def _rebuild_vmm_tensor_from_fds(cls, metadata, shared_fds):
+    expected_fds = _vmm_ipc_fds(metadata)
+    if len(shared_fds) != len(expected_fds):
+        raise RuntimeError(
+            f"VMM IPC metadata contains {len(expected_fds)} entries, but "
+            f"{len(shared_fds)} file descriptors were received."
+        )
+
+    local_fds = []
+    try:
+        local_fds = [shared_fd.detach() for shared_fd in shared_fds]
+        blob = bytearray(metadata[0])
+        header = list(_VMM_IPC_HEADER.unpack_from(blob))
+        header[2] = os.getpid()
+        _VMM_IPC_HEADER.pack_into(blob, 0, *header)
+
+        entry_stride = _VMM_IPC_ENTRY.size + _VMM_IPC_FD.size
+        for i, fd in enumerate(local_fds):
+            _VMM_IPC_FD.pack_into(
+                blob,
+                _VMM_IPC_HEADER.size + i * entry_stride + _VMM_IPC_ENTRY.size,
+                fd,
+            )
+
+        local_metadata = list(metadata)
+        local_metadata[0] = bytes(blob)
+        return cls._new_shared_cuda(tuple(local_metadata))
+    finally:
+        # The C++ importer duplicates each descriptor before importing the
+        # CUDA handle, so ownership of the received descriptors ends here.
+        for fd in local_fds:
+            os.close(fd)
 
 
 def _reduce_tensor(tensor):
@@ -267,7 +332,14 @@ def _reduce_lodtensor(lodtensor):
         try:
             metadata = lodtensor._share_cuda()
             if _is_vmm_ipc_metadata(metadata):
-                rebuild = _rebuild_vmm_tensor
+                shared_fds = [
+                    multiprocessing.reduction.DupFd(fd)
+                    for fd in _vmm_ipc_fds(metadata)
+                ]
+                return (
+                    _rebuild_vmm_tensor_from_fds,
+                    (type(lodtensor), metadata, shared_fds),
+                )
             else:
                 rebuild = _rebuild_cuda_tensor
         finally:

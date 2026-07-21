@@ -121,7 +121,7 @@ class TestCUDAVMMV2Allocator(unittest.TestCase):
             paddle.base.core.DenseTensor._new_shared_cuda(obsolete_meta)
 
         rebuild, rebuild_args = reductions._reduce_lodtensor(dense)
-        self.assertIs(rebuild, reductions._rebuild_vmm_tensor)
+        self.assertIs(rebuild, reductions._rebuild_vmm_tensor_from_fds)
         multiprocessing_rebuilt = rebuild(*rebuild_args)
         np.testing.assert_array_equal(
             paddle.to_tensor(multiprocessing_rebuilt).numpy(), tensor.numpy()
