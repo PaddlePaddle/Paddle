@@ -251,6 +251,17 @@ class MuonShardingOptimizer:
             "muon_sharding_optimizer do not support PP overlap"
         )
 
+        # Pipeline parallel schedules register_sharding_comm_overlap_hook /
+        # comm_grads / scale_grads itself per micro-batch. Registering our own
+        # backward hooks under PP would double-drive the comm buffers and race
+        # with the pipeline scheduler, so forbid the combination (mirrors
+        # DygraphShardingOptimizerV2).
+        self._use_pipeline_parallel = strategy.hybrid_configs["pp_degree"] > 1
+        if self._use_pipeline_parallel:
+            assert not self.comm_overlap, (
+                "You should not use pipeline parallel and comm_overlap at the same time"
+            )
+
         self._use_main_grad = hasattr(optimizer._parameter_list[0], "main_grad")
 
         # The full original parameter list
@@ -380,6 +391,58 @@ class MuonShardingOptimizer:
         self.param2bucket = {}
 
         self._build_1d_comm_buffers()
+
+        # ---- Shared-param color: re-color params without hook for overlap ----
+        # Which param colors are not hooked (shared weights are re-colored to
+        # distinguish their communication); filter to keep only the no-hook
+        # colors actually held by the current rank.
+        self._shared_colors = self._compute_shared_colors(self._parameter_list)
+
+        # ---- Shared-param buffers: reduce synchronously, never overlap ----
+        # Params with a no-hook color are not driven by a backward hook; their
+        # gradients are reduced synchronously in the non-overlap call path of
+        # reduce_gradients().
+        self._sync_only_buffers = []
+        if self._use_fuse_gradients:
+            self._sync_only_buffers.extend(
+                self._select_sync_only_buffers(
+                    self.comm_buffer_2d, self._shared_colors
+                )
+            )
+        self._sync_only_buffers.extend(
+            self._select_sync_only_buffers(
+                self._comm_buffer_list, self._shared_colors
+            )
+        )
+        # Record the ids of the sync-only buffers, used by reduce_gradients().
+        self._sync_only_buffer_ids = {id(b) for b in self._sync_only_buffers}
+
+        self._overlap_comm_buffers = []  # overlap buffers, filtered via _sync_only_buffer_ids
+        if self._use_fuse_gradients and not self.use_group_call_opt:
+            self._overlap_comm_buffers.extend(
+                b
+                for b in self.comm_buffer_2d
+                if id(b) not in self._sync_only_buffer_ids
+            )
+        self._overlap_comm_buffers.extend(
+            b
+            for b in self._comm_buffer_list
+            if id(b) not in self._sync_only_buffer_ids
+        )
+
+        # ---- Register backward hooks for communication overlap ----
+        # When comm_overlap is enabled, each parameter's backward hook feeds its
+        # gradient into the owning comm buffer via add_grad. Once all of a
+        # buffer's params have checked in, the buffer launches its async reduce
+        # (2D) / reduce-scatter (1D), overlapping communication with the
+        # remaining backward compute. reduce_gradients then skips the manual
+        # _comm_grads() launch and only waits on the async task in scale_grads().
+        if self.comm_overlap and not self.pp_overlap:
+            assert self.accumulate_steps > 0, (
+                "accumulate_steps should be larger than 0 when using "
+                "comm_overlap in MuonShardingOptimizer"
+            )
+            self._register_reduce_overlap_hook()
 
         # ---- Step 4: Build the optimizer's parameter list ----
         # The optimizer should see:
@@ -537,6 +600,45 @@ class MuonShardingOptimizer:
                         'rank': group.rank if group else 0,
                     }
         return color_to_info
+
+    @staticmethod
+    def _buffer_color(buffer):
+        """Return the color key of a FusedCommBuffer (from its params)."""
+        for p in buffer.params:
+            color = getattr(p, 'color', -1)
+            if isinstance(color, dict):
+                return color.get('color', None)
+            return None if color in (-1, None) else color
+        return None
+
+    # no-hook colors (used after shared weights are re-colored); no overlap
+    # hook is registered for them, so they take the synchronous reduce path.
+    _NO_HOOK_COLORS = frozenset({'dense_weight_no_hook', 'moe_weight_no_hook'})
+
+    @classmethod
+    def _compute_shared_colors(cls, parameter_list):
+        """Return the set of no-hook shared colors actually present in params.
+
+        Scans ``parameter_list`` for dict-form ``color`` attributes and keeps
+        only those that fall into ``_NO_HOOK_COLORS``. When MTP weight sharing is
+        off, no param carries these colors so the result is an empty set and all
+        downstream sync-only logic is a no-op.
+        """
+        present = set()
+        for p in parameter_list:
+            color = getattr(p, 'color', -1)
+            if isinstance(color, dict):
+                present.add(color.get('color', None))
+        return {c for c in cls._NO_HOOK_COLORS if c in present}
+
+    @classmethod
+    def _select_sync_only_buffers(cls, buffers, shared_colors):
+        """Pick buffers whose color is a shared (no-hook) color.
+
+        These buffers hold the MTP-shared params; they must be reduced
+        synchronously in ``reduce_gradients`` instead of via the overlap hook.
+        """
+        return [b for b in buffers if cls._buffer_color(b) in shared_colors]
 
     def _partition_2d_parameters(self, params, world_size, label=""):
         """Partition 2D parameters among ranks using greedy bin-packing.
@@ -764,6 +866,38 @@ class MuonShardingOptimizer:
     # Gradient communication
     # ------------------------------------------------------------------
 
+    def _register_reduce_overlap_hook(self):
+        """Register backward hooks so gradient communication overlaps backward.
+
+        Each param's backward hook routes its gradient into the owning
+        FusedCommBuffer via add_grad. When the last param of a buffer checks in,
+        the buffer launches its async reduce (2D) / reduce-scatter (1D). The
+        launched task is later waited on in reduce_gradients via scale_grads.
+
+        Notes:
+          - 2D buffers are only overlapped in the non group_call_opt path.
+            group_call_opt batches reduces through a coalescing manager in
+            reduce_gradients, which is incompatible with per-buffer async
+            launch, so those 2D grads keep the synchronous path.
+          - The hook order across params does not affect numerics: comm only
+            fires once all params of a buffer have checked in, and reduce /
+            reduce-scatter over the fused buffer are order-independent.
+        """
+        for buffer in self._overlap_comm_buffers:
+            for param in buffer.params:
+                param._register_backward_hook(
+                    self._create_backward_hook(buffer, param)
+                )
+
+    def _create_backward_hook(self, buffer, param):
+        """Create a backward hook that feeds a param's grad into its buffer."""
+
+        @paddle.autograd.no_grad()
+        def reduce_overlap(*_):
+            buffer.add_grad(param, use_comm=True)
+
+        return reduce_overlap
+
     def _get_param_grad(self, param):
         if not param.trainable:
             return None
@@ -825,7 +959,14 @@ class MuonShardingOptimizer:
                                 comm_buffer._copy_grad_to_buffer(param)
                 if not self.use_group_call_opt:
                     for comm_buffer in self.comm_buffer_2d:
-                        comm_buffer._comm_grads()
+                        # When comm_overlap is on, the reduce was already
+                        # launched by the backward hook; only wait in scale_grads.
+                        # Shared buffers have no overlap hook, so launch here.
+                        if (
+                            not self.comm_overlap
+                            or id(comm_buffer) in self._sync_only_buffer_ids
+                        ):
+                            comm_buffer._comm_grads()
                 else:
                     same_card_buffers = []
                     all_ring_buffers = []
@@ -953,7 +1094,10 @@ class MuonShardingOptimizer:
                         for param in comm_buffer.params:
                             comm_buffer._copy_grad_to_buffer(param)
 
-                if not self.comm_overlap:
+                if (
+                    not self.comm_overlap
+                    or id(comm_buffer) in self._sync_only_buffer_ids
+                ):
                     comm_buffer._comm_grads()
 
             # wait for all comm_buffer tasks to finish
