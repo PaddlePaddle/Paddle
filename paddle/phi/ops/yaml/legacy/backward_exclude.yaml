@@ -76,3 +76,4 @@
 - trilinear_interp_grad
 - layer_norm_grad
 - baddbmm_grad
+- addmm_grad

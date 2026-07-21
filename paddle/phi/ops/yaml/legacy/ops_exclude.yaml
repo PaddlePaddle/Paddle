@@ -111,3 +111,4 @@
 - top_p_sampling
 - layer_norm
 - baddbmm
+- addmm

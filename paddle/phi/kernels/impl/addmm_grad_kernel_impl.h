@@ -29,7 +29,7 @@ namespace phi {
 
 template <typename T>
 struct CopyOrScaleFunctor {
-  CopyOrScaleFunctor(const float scale, const T* x, T* output, int64_t numel)
+  CopyOrScaleFunctor(const double scale, const T* x, T* output, int64_t numel)
       : scale_(scale), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
@@ -40,7 +40,7 @@ struct CopyOrScaleFunctor {
   }
 
  private:
-  const float scale_;
+  const double scale_;
   const T* x_;
   T* output_;
   int64_t numel_;
@@ -52,8 +52,8 @@ void AddmmGradKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y,
                      const DenseTensor& out_grad,
-                     float alpha,
-                     float beta,
+                     double alpha,
+                     double beta,
                      DenseTensor* input_grad,
                      DenseTensor* x_grad,
                      DenseTensor* y_grad) {

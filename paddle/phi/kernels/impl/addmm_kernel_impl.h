@@ -28,7 +28,7 @@ namespace phi {
 
 template <typename T>
 struct AddmmScaleFunctor {
-  AddmmScaleFunctor(float scale, T* output) : scale_(scale), output_(output) {}
+  AddmmScaleFunctor(double scale, T* output) : scale_(scale), output_(output) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
     output_[idx] = scale_ == 0.0f ? static_cast<T>(0)
@@ -36,7 +36,7 @@ struct AddmmScaleFunctor {
   }
 
  private:
-  float scale_;
+  double scale_;
   T* output_;
 };
 
@@ -45,8 +45,8 @@ void AddmmKernel(const Context& dev_ctx,
                  const DenseTensor& input,
                  const DenseTensor& x,
                  const DenseTensor& y,
-                 float beta,
-                 float alpha,
+                 double beta,
+                 double alpha,
                  DenseTensor* out) {
   auto input_dims = input.dims();
   auto x_dims = x.dims();
@@ -124,8 +124,8 @@ void AddmmKernel(const Context& dev_ctx,
 
   using MPType = typename dtype::MPTypeTrait<T>::Type;
   if constexpr (std::is_same_v<MPType, float>) {
-    float t_alpha = alpha;
-    float t_beta = beta;
+    float t_alpha = static_cast<float>(alpha);
+    float t_beta = static_cast<float>(beta);
     blas.GEMM(CblasNoTrans,
               CblasNoTrans,
               x_dims[0],

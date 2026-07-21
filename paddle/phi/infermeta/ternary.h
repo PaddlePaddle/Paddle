@@ -44,8 +44,8 @@ PADDLE_API void AccuracyInferMeta(const MetaTensor& out,
 PADDLE_API void AddmmInferMeta(const MetaTensor& input,
                                const MetaTensor& x,
                                const MetaTensor& y,
-                               float beta,
-                               float alpha,
+                               double beta,
+                               double alpha,
                                MetaTensor* out);
 
 PADDLE_API void BaddbmmInferMeta(const MetaTensor& input,

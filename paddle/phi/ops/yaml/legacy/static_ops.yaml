@@ -1,3 +1,15 @@
+- op : addmm
+  args : (Tensor input, Tensor x, Tensor y, float beta=1.0, float alpha=1.0)
+  output : Tensor(out)
+  infer_meta :
+    func : AddmmInferMeta
+  kernel :
+    func : addmm
+    data_type : x
+  inplace: (input -> out)
+  backward : addmm_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : all
   args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
   output : Tensor(out)

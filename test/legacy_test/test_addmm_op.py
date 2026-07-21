@@ -389,6 +389,35 @@ class TestAddMMOp5(unittest.TestCase):
 
 
 class TestAddMMAPI(unittest.TestCase):
+    def test_float64_scale_precision(self):
+        paddle.disable_static()
+
+        input = paddle.ones([1, 1], dtype=paddle.float64)
+        x = paddle.ones([1, 1], dtype=paddle.float64)
+        y = paddle.ones([1, 1], dtype=paddle.float64)
+        input.stop_gradient = False
+        x.stop_gradient = False
+        y.stop_gradient = False
+        beta = 1.0000000000000002
+        alpha = 1.0000000000000004
+
+        out = paddle.addmm(input, x, y, beta=beta, alpha=alpha)
+        expected = np.array([[beta + alpha]], dtype=np.float64)
+        np.testing.assert_array_equal(out.numpy(), expected)
+
+        out.backward()
+        np.testing.assert_array_equal(
+            input.grad.numpy(), np.array([[beta]], dtype=np.float64)
+        )
+        np.testing.assert_array_equal(
+            x.grad.numpy(), np.array([[alpha]], dtype=np.float64)
+        )
+        np.testing.assert_array_equal(
+            y.grad.numpy(), np.array([[alpha]], dtype=np.float64)
+        )
+
+        paddle.enable_static()
+
     def test_api_error(self):
         data_x = np.ones((2, 2)).astype(np.float32)
         data_y = np.ones((2, 2)).astype(np.float32)
