@@ -15,8 +15,8 @@
 #pragma once
 
 #ifdef CINN_WITH_XPU
-#include "cuda_runtime_api.h"
-#include "xpu/xpurtc.h"
+#include <cuda_runtime_api.h>
+#include <xpu/xpurtc.h>
 #endif
 
 #include <mutex>

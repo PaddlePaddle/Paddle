@@ -15,7 +15,7 @@
 #pragma once
 
 #ifdef CINN_WITH_XPU
-#include "cuda_runtime_api.h"
+#include <cuda_runtime_api.h>
 #endif
 
 #include "paddle/cinn/runtime/cinn_runtime.h"

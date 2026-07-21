@@ -20,8 +20,8 @@
 #include <glog/logging.h>
 
 #ifdef CINN_WITH_XPU
-#include "cuda_runtime_api.h"
-#include "xpu/xpurtc.h"
+#include <cuda_runtime_api.h>
+#include <xpu/xpurtc.h>
 #endif
 
 #include "paddle/cinn/common/common.h"

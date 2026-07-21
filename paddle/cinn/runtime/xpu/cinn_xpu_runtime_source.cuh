@@ -36,9 +36,9 @@
 #pragma once
 
 // XTDK kernel device headers (from XTDK_PATH/lib/clang/19/include/)
-#include "xpu/kernel/xtdk.h"
+#include <xpu/kernel/xtdk.h>
 // CUDA-compatible runtime type declarations (from XRE)
-#include "cuda_runtime_api.h"
+#include <cuda_runtime_api.h>
 extern "C" {
 
 #define CINN_UINT8_MIN 0
