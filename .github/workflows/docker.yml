@@ -75,7 +75,7 @@ jobs:
           docker_cpu_file: Dockerfile.cuda9_cudnn7_gcc48_py35_centos6
           docker_sot_file: Dockerfile.gcc133_ubuntu24_cpu_sot
           docker_coverage_file: Dockerfile.cuda117_cudnn8_gcc82_ubuntu18_coverage
-          docker_build_file: Dockerfile.cuda12.4_cudnn9_gcc11_trt8
+          docker_build_file: Dockerfile.cuda12.8_cudnn9_gcc11
           docker_distribute_file: Dockerfile.cuda123_cudnn9_gcc122_ubuntu20
           docker_xpu_file: Dockerfile.develop.xre.ubuntu22
           docker_npu_file: Dockerfile.develop.npu
