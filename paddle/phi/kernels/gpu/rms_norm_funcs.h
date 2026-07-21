@@ -461,7 +461,8 @@ __device__ void cuApplyLayerNorm_(T* __restrict__ output_vals,
   // 1) blockDim.x == WARP_SIZE
   // 2) Tensors are contiguous
   //
-  for (auto i1 = blockIdx.y; i1 < n1; i1 += gridDim.y) {
+  for (int64_t i1 = static_cast<int64_t>(blockIdx.y); i1 < n1;
+       i1 += gridDim.y) {
     SharedMemory<U> shared;
     U* buf = shared.getPointer();
     U mu, sigma2;
