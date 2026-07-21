@@ -365,7 +365,7 @@ __global__ void vectorized_rms_norm_kernel(const int N,
   extern __shared__ char s_data_raw[];
   T_ACC* s_data = reinterpret_cast<T_ACC*>(s_data_raw);
 
-  auto i1 = blockIdx.x;
+  const int64_t i1 = static_cast<int64_t>(blockIdx.x);
   const T* block_row = X + i1 * N;
 
   // Compute stats
@@ -551,7 +551,7 @@ __global__ void vectorized_layer_norm_kernel(const int N,
   extern __shared__ char s_data_raw[];
   T_ACC* s_data = reinterpret_cast<T_ACC*>(s_data_raw);
 
-  auto i1 = blockIdx.x;
+  const int64_t i1 = static_cast<int64_t>(blockIdx.x);
   const T* block_row = X + i1 * N;
 
   // Compute stats using Welford algorithm
@@ -821,7 +821,7 @@ __device__ __inline__ void compute_gI(const T* __restrict__ dY,
                                       T* dX,
                                       const int N,
                                       T_ACC* buf) {
-  const auto i1 = blockIdx.x;
+  const int64_t i1 = static_cast<int64_t>(blockIdx.x);
   const T_ACC rstd_val = rstd[i1];
   T_ACC stats_x2{0};
   constexpr int unroll = 4;
@@ -895,7 +895,7 @@ __global__ void rms_norm_grad_input_kernel_vectorized(
   alignas(sizeof(double)) extern __shared__ char shared_data[];
   T_ACC* reduce_buf = reinterpret_cast<T_ACC*>(&shared_data);
 
-  const auto bIdx = blockIdx.x;
+  const int64_t bIdx = static_cast<int64_t>(blockIdx.x);
   const T_ACC rstd_val = rstd[bIdx];
   const T* X_i = X + bIdx * N;
   const T* dY_i = dY + bIdx * N;
@@ -1624,7 +1624,7 @@ __device__ __inline__ void layer_norm_compute_gI(const T* __restrict__ dY,
                                                  T* dX,
                                                  const int N,
                                                  T_ACC* buf) {
-  const auto i1 = blockIdx.x;
+  const int64_t i1 = static_cast<int64_t>(blockIdx.x);
   T_ACC mean_val = mean[i1];
   const T_ACC rstd_val = rstd[i1];
   T_ACC stats_x1{0}, stats_x2{0};
@@ -1710,7 +1710,7 @@ __global__ void layer_norm_grad_input_kernel_vectorized(
   alignas(sizeof(double)) extern __shared__ char shared_data[];
   T_ACC* reduce_buf = reinterpret_cast<T_ACC*>(&shared_data);
 
-  const auto bIdx = blockIdx.x;
+  const int64_t bIdx = static_cast<int64_t>(blockIdx.x);
   T_ACC mean_val = mean[bIdx];
   const T_ACC rstd_val = rstd[bIdx];
   const T* X_i = X + bIdx * N;
