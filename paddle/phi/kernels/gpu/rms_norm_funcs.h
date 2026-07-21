@@ -161,9 +161,9 @@ __device__ void cuChanRMSOnlineSum(const U sigma2B, U& sigma2) {  // NOLINT
 
 template <typename T, typename U>
 __device__ void cuWelfordMuSigma2(const T* __restrict__ vals,
-                                  const int n1,
-                                  const int n2,
-                                  const int i1,
+                                  const int64_t n1,
+                                  const int64_t n2,
+                                  const int64_t i1,
                                   U& mu,      // NOLINT
                                   U& sigma2,  // NOLINT
                                   U* buf,
@@ -271,9 +271,9 @@ __device__ void cuWelfordMuSigma2(const T* __restrict__ vals,
 
 template <>
 __device__ void cuWelfordMuSigma2(const float16* __restrict__ vals,
-                                  const int n1,
-                                  const int n2,
-                                  const int i1,
+                                  const int64_t n1,
+                                  const int64_t n2,
+                                  const int64_t i1,
                                   float& mu,      // NOLINT
                                   float& sigma2,  // NOLINT
                                   float* buf,
