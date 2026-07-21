@@ -152,6 +152,11 @@ void MoePermuteKernel(const Context &dev_ctx,
           "moe_permute on XPU does not support override_buffer_size yet."));
   const int64_t rows = X.dims()[0];
   const int64_t cols = X.dims()[1];
+  PADDLE_ENFORCE_GT(
+      cols,
+      0,
+      common::errors::InvalidArgument(
+          "X.dims()[1] should be positive, received X.dims()[1]: (%ld)", cols));
   PADDLE_ENFORCE_LE(
       rows,
       std::numeric_limits<int32_t>::max(),

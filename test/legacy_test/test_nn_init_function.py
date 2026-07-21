@@ -1256,6 +1256,18 @@ class Test_sparse_(unittest.TestCase):
                 self.assertIs(output, input_tensor)
                 self.check(input_tensor, sparsity, std=0.01)
 
+    def test_alias(self):
+        if paddle.is_compiled_with_xpu():
+            self.skipTest("sparsity is not supported on XPU")
+        with dygraph_guard():
+            for sparsity in [0.1, 0.5, 0.9]:
+                input_tensor = paddle.randn([100, 50])
+                output = paddle.nn.init.sparse(
+                    input_tensor, sparsity=sparsity, std=0.01
+                )
+                self.assertIs(output, input_tensor)
+                self.check(input_tensor, sparsity, std=0.01)
+
     def test_static_graph_case(self):
         self.place = get_devices()
         with static_guard():

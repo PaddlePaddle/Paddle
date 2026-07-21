@@ -22,6 +22,21 @@ if(WITH_ONNXRUNTIME AND WIN32)
   copy_onnx(test_paddle_inference_api)
 endif()
 
+if(WITH_TESTING
+   AND WITH_ONNXRUNTIME
+   AND NOT APPLE
+   AND NOT WIN32)
+  inference_analysis_test(
+    test_onnxruntime_predictor
+    SRCS
+    onnxruntime_predictor_tester.cc
+    EXTRA_DEPS
+    common
+    paddle_inference_shared
+    ARGS
+    --dirname=${MOBILENETV2_MODEL_DIR})
+endif()
+
 if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   function(download_data install_dir data_file check_sum)
     string(REGEX MATCH "[^/\\]+$" file_name ${data_file})

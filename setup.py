@@ -1643,12 +1643,15 @@ def get_package_data_and_package_dir():
         os.path.basename(env_dict.get("LAPACK_LIB")),
         os.path.basename(env_dict.get("BLAS_LIB")),
         os.path.basename(env_dict.get("GFORTRAN_LIB")),
-        os.path.basename(env_dict.get("GNU_RT_LIB_1")),
     ]
     shutil.copy(env_dict.get("BLAS_LIB"), libs_path)
     shutil.copy(env_dict.get("LAPACK_LIB"), libs_path)
     shutil.copy(env_dict.get("GFORTRAN_LIB"), libs_path)
-    shutil.copy(env_dict.get("GNU_RT_LIB_1"), libs_path)
+    if env_dict.get("GNU_RT_LIB_1"):
+        package_data['paddle.libs'] += [
+            os.path.basename(env_dict.get("GNU_RT_LIB_1"))
+        ]
+        shutil.copy(env_dict.get("GNU_RT_LIB_1"), libs_path)
     if env_dict.get("WITH_MAGMA") == 'ON':
         package_data['paddle.libs'] += [
             os.path.basename('MAGMA_LIB'),
@@ -2043,7 +2046,7 @@ def get_package_data_and_package_dir():
                     < (14, 0)
                 ):
                     commands = [
-                        "patchelf --force-rpath --set-rpath '$ORIGIN/../../nvidia/cu13/lib:$ORIGIN/../../nvidia/cudnn/lib:$ORIGIN/../../nvidia/nccl/lib:$ORIGIN/../../cusparselt/lib:$ORIGIN/../libs/' "
+                        "patchelf --force-rpath --set-rpath '$ORIGIN/../../nvidia/cu13/lib:$ORIGIN/../../nvidia/cudnn/lib:$ORIGIN/../../nvidia/nccl/lib:$ORIGIN/../../nvidia/cusparselt/lib:$ORIGIN/../libs/' "
                         + env_dict.get("PADDLE_BINARY_DIR")
                         + '/python/paddle/base/'
                         + env_dict.get("FLUID_CORE_NAME")
@@ -2807,6 +2810,7 @@ def get_setup_parameters():
         'paddle.quantization.imperative',
         'paddle.tensor',
         'paddle.compat',
+        'paddle.compat.distributions',
         'paddle.compat.nn',
         'paddle.compat.nn.functional',
         'paddle.onnx',

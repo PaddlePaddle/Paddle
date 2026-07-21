@@ -191,9 +191,10 @@ nvinfer1::DimsExprs Pad3dInferMeta(
   if (paddings_iter != op_attributes.end()) {
     auto paddings_attr =
         paddings_iter->second.dyn_cast<::pir::ArrayAttribute>();
-    PADDLE_ENFORCE_NOT_NULL(paddings_attr,
-                            common::errors::InvalidArgument(
-                                "paddings_values must be an array attribute."));
+    PADDLE_ENFORCE_EQ(static_cast<bool>(paddings_attr),
+                      true,
+                      common::errors::InvalidArgument(
+                          "paddings_values must be an array attribute."));
     PADDLE_ENFORCE_EQ(paddings_attr.size(),
                       6,
                       common::errors::InvalidArgument(
@@ -203,10 +204,10 @@ nvinfer1::DimsExprs Pad3dInferMeta(
     std::vector<int64_t> paddings(6);
     for (size_t i = 0; i < 6; ++i) {
       auto int_attr = paddings_attr[i].dyn_cast<::pir::Int64Attribute>();
-      PADDLE_ENFORCE_NOT_NULL(
-          int_attr,
-          common::errors::InvalidArgument(
-              "paddings_values must contain int64 attributes."));
+      PADDLE_ENFORCE_EQ(static_cast<bool>(int_attr),
+                        true,
+                        common::errors::InvalidArgument(
+                            "paddings_values must contain int64 attributes."));
       paddings[i] = int_attr.data();
     }
 

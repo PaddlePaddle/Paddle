@@ -164,7 +164,7 @@ class LRScheduler:
         verbose: bool = False,
     ) -> None: ...
 
-    @lr_scheduler_decorator()
+    @lr_scheduler_decorator
     def __init__(
         self,
         learning_rate: float = 0.1,
@@ -1128,7 +1128,7 @@ class ExponentialDecay(LRScheduler):
         verbose: bool = False,
     ) -> None: ...
 
-    @lr_scheduler_decorator()
+    @lr_scheduler_decorator
     def __init__(
         self,
         learning_rate: float,
@@ -1256,7 +1256,7 @@ class MultiStepDecay(LRScheduler):
         verbose: bool = False,
     ) -> None: ...
 
-    @lr_scheduler_decorator()
+    @lr_scheduler_decorator
     def __init__(
         self,
         learning_rate: float,
@@ -1398,7 +1398,7 @@ class StepDecay(LRScheduler):
         verbose: bool = False,
     ) -> None: ...
 
-    @lr_scheduler_decorator()
+    @lr_scheduler_decorator
     def __init__(
         self,
         learning_rate: float,
@@ -1509,6 +1509,25 @@ class LambdaDecay(LRScheduler):
 
     lr_lambda: Callable[[int], float]
 
+    @overload
+    def __init__(
+        self,
+        learning_rate: float,
+        lr_lambda: Callable[[int], float],
+        last_epoch: int = -1,
+        verbose: bool = False,
+    ): ...
+
+    @overload
+    def __init__(
+        self,
+        optimizer: paddle.optimizer.Optimizer,
+        lr_lambda: Callable[[int], float],
+        last_epoch: int = -1,
+        verbose: bool = False,
+    ): ...
+
+    @lr_scheduler_decorator
     def __init__(
         self,
         learning_rate: float,
@@ -1660,7 +1679,7 @@ class ReduceOnPlateau(LRScheduler):
         verbose: bool = False,
     ) -> None: ...
 
-    @lr_scheduler_decorator()
+    @lr_scheduler_decorator
     @param_one_alias(["epsilon", "eps"])
     def __init__(
         self,
@@ -1911,7 +1930,7 @@ class CosineAnnealingDecay(LRScheduler):
         verbose: bool = False,
     ) -> None: ...
 
-    @lr_scheduler_decorator()
+    @lr_scheduler_decorator
     def __init__(
         self,
         learning_rate: float,
@@ -2730,7 +2749,7 @@ class CosineAnnealingWarmRestarts(LRScheduler):
         verbose: bool = False,
     ) -> None: ...
 
-    @lr_scheduler_decorator()
+    @lr_scheduler_decorator
     def __init__(
         self,
         learning_rate: float,

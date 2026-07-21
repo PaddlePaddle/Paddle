@@ -469,6 +469,7 @@ class ParameterList(Layer):
 
     Parameters:
         parameters (iterable, optional): Iterable Parameters to be added.
+            Alias: ``values``.
 
     Examples:
         .. code-block:: pycon
@@ -508,6 +509,7 @@ class ParameterList(Layer):
             paddle.Size([5, 4])
     """
 
+    @param_one_alias(["parameters", "values"])
     def __init__(self, parameters: Iterable[Tensor] | None = None) -> None:
         super().__init__()
         if parameters is not None:
@@ -533,15 +535,32 @@ class ParameterList(Layer):
         with param_guard(self._parameters):
             return iter(self._parameters.values())
 
+    @param_one_alias(["parameter", "value"])
     def append(self, parameter: Tensor) -> Self:
         """Appends a given parameter at the end of the list.
 
         Parameters:
-            parameter (Parameter): parameter to append
+            parameter (Parameter): parameter to append.
+                Alias: ``value``.
         """
         idx = len(self._parameters)
         self.add_parameter(str(idx), parameter)
         return self
+
+    @param_one_alias(["parameters", "values"])
+    def extend(self, parameters: Iterable[Tensor]) -> Self:
+        """Append values from a Python iterable to the end of the list.
+
+        Parameters:
+            parameters (iterable): iterable of values to append.
+                Alias: ``values``.
+        """
+        for v in parameters:
+            self.append(v)
+        return self
+
+    def __iadd__(self, parameters: Iterable[Tensor]) -> Self:
+        return self.extend(parameters)
 
 
 class LayerList(Layer):

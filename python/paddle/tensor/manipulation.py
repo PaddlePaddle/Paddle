@@ -1219,7 +1219,7 @@ def fill_diagonal_(
 
 
 @dygraph_only
-@fill_diagonal_inplace_decorator()
+@fill_diagonal_inplace_decorator
 def fill_diagonal_(
     x: Tensor,
     value: float,
@@ -2478,9 +2478,13 @@ def hstack(
         arrays = [arrays]
 
     if arrays and arrays[0].ndim == 1:
-        return paddle.concat(arrays, axis=0, name=name)
+        result = paddle.concat(arrays, axis=0, name=name)
     else:
-        return paddle.concat(arrays, axis=1, name=name)
+        result = paddle.concat(arrays, axis=1, name=name)
+    if out is not None:
+        paddle.assign(result, out)
+        return out
+    return result
 
 
 @param_one_alias(["x", "tensors"])
@@ -2559,7 +2563,11 @@ def vstack(
     if not isinstance(arrays, list):
         arrays = [arrays]
 
-    return paddle.concat(arrays, axis=0, name=name)
+    result = paddle.concat(arrays, axis=0, name=name)
+    if out is not None:
+        paddle.assign(result, out)
+        return out
+    return result
 
 
 @param_one_alias(["x", "tensors"])
@@ -2622,7 +2630,11 @@ def dstack(
     if not isinstance(arrays, list):
         arrays = [arrays]
 
-    return paddle.concat(arrays, axis=2, name=name)
+    result = paddle.concat(arrays, axis=2, name=name)
+    if out is not None:
+        paddle.assign(result, out)
+        return out
+    return result
 
 
 @param_one_alias(["x", "tensors"])
@@ -5000,7 +5012,7 @@ def tile(
 ) -> Tensor: ...
 
 
-@tile_decorator()
+@tile_decorator
 def tile(
     x: Tensor,
     repeat_times: TensorOrTensors | Sequence[int],
@@ -5289,7 +5301,7 @@ def expand(
 ) -> Tensor: ...
 
 
-@expand_decorator()
+@expand_decorator
 def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
     """
 
@@ -5436,6 +5448,69 @@ def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
 
 
 @overload
+def expand_copy(
+    x: Tensor,
+    shape: ShapeLike,
+    name: str | None = None,
+) -> Tensor: ...
+
+
+@overload
+def expand_copy(
+    input: Tensor,
+    *size: int,
+) -> Tensor: ...
+
+
+@expand_decorator
+def expand_copy(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
+    """
+    Returns a new tensor with the expanded data, without memory sharing.
+
+    This function is the copying version of :ref:`api_paddle_expand`, which always
+    returns a new tensor with the expanded data instead of a view.
+
+    Note:
+        This API has two signatures:
+        1. ``paddle.expand_copy(x, shape, name=None)`` (Paddle-style):
+            Returns a new tensor with expanded data following broadcast semantics.
+        2. ``paddle.expand_copy(input, *size)`` (PyTorch-style):
+            Returns a new tensor with expanded data with variadic size arguments.
+
+    Args:
+        x (Tensor): The input tensor. Alias: ``input``.
+        shape (list|tuple|Tensor): The target shape to expand to. The number of
+            dimensions must be greater than or equal to the number of dimensions of ``x``.
+            Alias: ``size``.
+        name (str|None, optional): Name for the operation (optional, default is None).
+
+    Returns:
+        Tensor, A new tensor with the expanded data.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[1], [2], [3]], dtype='float32')
+            >>> out = paddle.expand_copy(x, shape=[3, 4])
+            >>> print(out)
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[1., 1., 1., 1.],
+                    [2., 2., 2., 2.],
+                    [3., 3., 3., 3.]])
+            >>> # verify it's a copy (not sharing memory)
+            >>> out[0] = 0
+            >>> print(x)
+            Tensor(shape=[3, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[1.],
+                    [2.],
+                    [3.]])
+    """
+    return expand(x, shape, name).clone()
+
+
+@overload
 def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor: ...
 
 
@@ -5443,7 +5518,7 @@ def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor: ...
 def reshape(input: Tensor, *shape: int) -> Tensor: ...
 
 
-@reshape_decorator()
+@reshape_decorator
 def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
     """
     Changes the shape of ``x`` without changing its data.
@@ -5820,6 +5895,38 @@ def reshape_(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
             )
 
         return out
+
+
+@inplace_apis_in_dygraph_only
+@param_one_alias(['y', 'the_template'])
+def resize_as_(
+    x: Tensor,
+    y: Tensor,
+) -> Tensor:
+    """
+    Resizes the tensor to be the same shape as the given tensor.
+
+    Note:
+        This API is ONLY available in Dygraph mode.
+
+    Args:
+        x (Tensor): The input tensor to be resized.
+        y (Tensor): The tensor whose shape will be used as the target shape.
+
+    Returns:
+        Tensor: The resized tensor with the same shape as y.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> x = paddle.ones([2, 3])
+            >>> y = paddle.zeros([4, 5])
+            >>> x.resize_as_(y)
+            >>> print(x.shape)
+            paddle.Size([4, 5])
+    """
+    return x.resize_(y.shape)
 
 
 @overload
@@ -7511,6 +7618,28 @@ def scatter_reduce(
     )
 
 
+def scatter_reduce_(
+    input: Tensor,
+    dim: int,
+    index: Tensor,
+    src: Tensor,
+    reduce: Literal['sum', 'prod', 'mean', 'amin', 'amax'],
+    *,
+    include_self: bool = True,
+) -> Tensor:
+    """
+    Inplace version of ``scatter_reduce`` API, the output Tensor will be inplaced with input ``input``.
+    Please refer to :ref:`api_paddle_scatter_reduce`.
+    """
+    if reduce == 'sum':
+        reduce = 'add'
+    if reduce == 'prod':
+        reduce = 'multiply'
+    return put_along_axis_(
+        input, index, src, dim, reduce, include_self, broadcast=False
+    )
+
+
 def put_along_axis(
     arr: Tensor,
     indices: Tensor,
@@ -7813,7 +7942,7 @@ def index_add(
 ) -> Tensor: ...
 
 
-@index_add_decorator()
+@index_add_decorator
 def index_add(
     x: Tensor,
     index: Tensor,
@@ -7921,7 +8050,7 @@ def index_add_(
 ) -> Tensor: ...
 
 
-@index_add_decorator()
+@index_add_decorator
 @inplace_apis_in_dygraph_only
 def index_add_(
     x: Tensor,
@@ -8191,7 +8320,7 @@ def view(
 
 
 @dygraph_only
-@view_decorator()
+@view_decorator
 def view(
     x: Tensor,
     shape_or_dtype: Sequence[int] | DTypeLike,
@@ -8447,7 +8576,7 @@ def index_fill(
 ) -> Tensor: ...
 
 
-@index_fill_decorator()
+@index_fill_decorator
 def index_fill(
     x: Tensor, index: Tensor, axis: int, value: float, name: str | None = None
 ):
@@ -8514,7 +8643,7 @@ def index_fill_(
 
 
 @inplace_apis_in_dygraph_only
-@index_fill_decorator()
+@index_fill_decorator
 def index_fill_(
     x: Tensor, index: Tensor, axis: int, value: float, name: str | None = None
 ):
@@ -8722,7 +8851,7 @@ def slice_scatter(
 ) -> Tensor: ...
 
 
-@slice_scatter_decorator()
+@slice_scatter_decorator
 def slice_scatter(
     x: Tensor,
     value: Tensor,

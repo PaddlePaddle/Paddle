@@ -53,10 +53,10 @@ bool VerifyCompatibleShape(Type lhs_type, Type rhs_type) {
 bool VerifyCompatibleDims(const std::vector<int64_t> &dims) {
   if (dims.empty()) return true;
   auto static_dim = std::accumulate(
-      dims.begin(), dims.end(), dims.front(), [](auto &fold, auto &dim) {
+      dims.begin(), dims.end(), dims.front(), [](auto fold, auto dim) {
         return ShapedTypeInterface::IsDynamic(dim) ? fold : dim;
       });
-  return std::all_of(dims.begin(), dims.begin(), [&](auto dim) {
+  return std::all_of(dims.begin(), dims.end(), [&](auto dim) {
     return ShapedTypeInterface::IsDynamic(dim) || dim == static_dim;
   });
 }

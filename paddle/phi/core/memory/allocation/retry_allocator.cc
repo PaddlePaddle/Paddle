@@ -32,13 +32,11 @@ class WaitedAllocateSizeGuard {
   WaitedAllocateSizeGuard(std::atomic<size_t>* waited_size,
                           size_t requested_size)
       : waited_size_(waited_size), requested_size_(requested_size) {
-    waited_size_->fetch_add(requested_size_,
-                            std::memory_order::memory_order_relaxed);
+    waited_size_->fetch_add(requested_size_, std::memory_order_relaxed);
   }
 
   ~WaitedAllocateSizeGuard() {
-    waited_size_->fetch_sub(requested_size_,
-                            std::memory_order::memory_order_relaxed);
+    waited_size_->fetch_sub(requested_size_, std::memory_order_relaxed);
   }
 
  private:

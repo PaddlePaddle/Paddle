@@ -21,7 +21,10 @@ import paddle
 from paddle import _C_ops, base, in_dynamic_mode
 from paddle.static.nn.control_flow import Assert
 from paddle.utils import deprecated
-from paddle.utils.decorator_utils import legacy_reduction_decorator
+from paddle.utils.decorator_utils import (
+    ParamAliasDecorator,
+    legacy_reduction_decorator,
+)
 
 from ...base.data_feeder import check_type, check_variable_and_dtype
 from ...base.framework import (
@@ -2063,6 +2066,12 @@ def mse_loss(
         )
 
 
+@ParamAliasDecorator(
+    alias_mapping={
+        'labels': ['targets'],
+        'label_lengths': ['target_lengths'],
+    }
+)
 def ctc_loss(
     log_probs: Tensor,
     labels: Tensor,

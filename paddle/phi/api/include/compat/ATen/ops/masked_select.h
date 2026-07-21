@@ -18,7 +18,8 @@
 
 namespace at {
 
-inline at::Tensor masked_select(const at::Tensor self, const at::Tensor& mask) {
+inline at::Tensor masked_select(const at::Tensor& self,
+                                const at::Tensor& mask) {
   return Tensor(paddle::experimental::masked_select(self._PD_GetInner(),
                                                     mask._PD_GetInner()));
 }

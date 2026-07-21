@@ -4522,6 +4522,245 @@ class TestExpm1InplaceAPI(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestInvertPermutationAPI(unittest.TestCase):
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        perm = paddle.to_tensor([2, 0, 1])
+
+        # 1. Paddle positional arguments
+        out1 = paddle.nn.utils.rnn.invert_permutation(perm)
+        # 2. Paddle keyword arguments
+        out2 = paddle.nn.utils.rnn.invert_permutation(permutation=perm)
+        # 3. None input
+        out3 = paddle.nn.utils.rnn.invert_permutation(None)
+
+        expected = np.array([1, 2, 0])
+        np.testing.assert_array_equal(out1.numpy(), expected)
+        np.testing.assert_array_equal(out2.numpy(), expected)
+        self.assertIsNone(out3)
+
+        paddle.enable_static()
+
+
+class TestPackPaddedSequenceAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_seq = np.array(
+            [[4, 5, 6], [1, 2, 0], [3, 0, 0]], dtype=np.float32
+        )
+        self.lengths = [3, 2, 1]
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        seq = paddle.to_tensor(self.np_seq)
+        lengths = paddle.to_tensor(self.lengths)
+
+        # 1. Paddle positional arguments
+        out1 = paddle.nn.utils.rnn.pack_padded_sequence(
+            seq, lengths, batch_first=True
+        )
+        # 2. Paddle keyword arguments
+        out2 = paddle.nn.utils.rnn.pack_padded_sequence(
+            input=seq, lengths=lengths, batch_first=True
+        )
+        # 3. Mixed arguments
+        out3 = paddle.nn.utils.rnn.pack_padded_sequence(
+            seq, lengths, batch_first=True
+        )
+        # 4. enforce_sorted=False
+        out4 = paddle.nn.utils.rnn.pack_padded_sequence(
+            seq, lengths, batch_first=True, enforce_sorted=False
+        )
+
+        expected_data = np.array(
+            [4.0, 1.0, 3.0, 5.0, 2.0, 6.0], dtype=np.float32
+        )
+        expected_batch_sizes = np.array([3, 2, 1], dtype=np.int64)
+
+        for out in [out1, out2, out3]:
+            np.testing.assert_allclose(out.data.numpy(), expected_data)
+            np.testing.assert_array_equal(
+                out.batch_sizes.numpy(), expected_batch_sizes
+            )
+
+        paddle.enable_static()
+
+
+class TestPadPackedSequenceAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_seq = np.array(
+            [[4, 5, 6], [1, 2, 0], [3, 0, 0]], dtype=np.float32
+        )
+        self.lengths = [3, 2, 1]
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        seq = paddle.to_tensor(self.np_seq)
+        lengths = paddle.to_tensor(self.lengths)
+
+        packed = paddle.nn.utils.rnn.pack_padded_sequence(
+            seq, lengths, batch_first=True
+        )
+
+        # 1. Paddle positional arguments
+        out1, lengths1 = paddle.nn.utils.rnn.pad_packed_sequence(
+            packed, batch_first=True
+        )
+        # 2. Paddle keyword arguments
+        out2, lengths2 = paddle.nn.utils.rnn.pad_packed_sequence(
+            sequence=packed, batch_first=True
+        )
+        # 3. Mixed arguments
+        out3, lengths3 = paddle.nn.utils.rnn.pad_packed_sequence(
+            packed, batch_first=True, padding_value=0.0
+        )
+
+        for out, lens in [(out1, lengths1), (out2, lengths2), (out3, lengths3)]:
+            np.testing.assert_allclose(out.numpy(), self.np_seq)
+            np.testing.assert_array_equal(
+                lens.numpy(), np.array(self.lengths, dtype=np.int64)
+            )
+
+        paddle.enable_static()
+
+
+class TestPadSequenceAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.seq1 = np.random.rand(5, 10).astype(np.float32)
+        self.seq2 = np.random.rand(3, 10).astype(np.float32)
+        self.seq3 = np.random.rand(2, 10).astype(np.float32)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        seq1 = paddle.to_tensor(self.seq1)
+        seq2 = paddle.to_tensor(self.seq2)
+        seq3 = paddle.to_tensor(self.seq3)
+        sequences = [seq1, seq2, seq3]
+
+        # 1. Paddle positional arguments
+        out1 = paddle.nn.utils.rnn.pad_sequence(sequences)
+        # 2. Paddle keyword arguments
+        out2 = paddle.nn.utils.rnn.pad_sequence(sequences=sequences)
+        # 3. batch_first=True
+        out3 = paddle.nn.utils.rnn.pad_sequence(sequences, batch_first=True)
+        # 4. padding_value
+        out4 = paddle.nn.utils.rnn.pad_sequence(sequences, padding_value=-1.0)
+        # 5. padding_side='left'
+        out5 = paddle.nn.utils.rnn.pad_sequence(sequences, padding_side='left')
+
+        self.assertEqual(out1.shape, [5, 3, 10])
+        self.assertEqual(out3.shape, [3, 5, 10])
+        np.testing.assert_allclose(out1.numpy(), out2.numpy())
+
+        paddle.enable_static()
+
+
+class TestUnpadSequenceAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.seq1 = np.random.rand(5, 10).astype(np.float32)
+        self.seq2 = np.random.rand(3, 10).astype(np.float32)
+        self.seq3 = np.random.rand(2, 10).astype(np.float32)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        seq1 = paddle.to_tensor(self.seq1)
+        seq2 = paddle.to_tensor(self.seq2)
+        seq3 = paddle.to_tensor(self.seq3)
+        sequences = [seq1, seq2, seq3]
+
+        padded = paddle.nn.utils.rnn.pad_sequence(sequences)
+        lengths = paddle.to_tensor([5, 3, 2])
+
+        # 1. Paddle positional arguments
+        out1 = paddle.nn.utils.rnn.unpad_sequence(padded, lengths)
+        # 2. Paddle keyword arguments
+        out2 = paddle.nn.utils.rnn.unpad_sequence(
+            padded_sequences=padded, lengths=lengths
+        )
+        # 3. batch_first=True
+        padded_bf = paddle.nn.utils.rnn.pad_sequence(
+            sequences, batch_first=True
+        )
+        out3 = paddle.nn.utils.rnn.unpad_sequence(
+            padded_bf, lengths, batch_first=True
+        )
+
+        for i, seq in enumerate(sequences):
+            np.testing.assert_allclose(out1[i].numpy(), seq.numpy())
+            np.testing.assert_allclose(out2[i].numpy(), seq.numpy())
+            np.testing.assert_allclose(out3[i].numpy(), seq.numpy())
+
+        paddle.enable_static()
+
+
+class TestPackSequenceAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.seq1 = np.array([1, 2, 3], dtype=np.float32)
+        self.seq2 = np.array([4, 5], dtype=np.float32)
+        self.seq3 = np.array([6], dtype=np.float32)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        seq1 = paddle.to_tensor(self.seq1)
+        seq2 = paddle.to_tensor(self.seq2)
+        seq3 = paddle.to_tensor(self.seq3)
+        sequences = [seq1, seq2, seq3]
+
+        # 1. Paddle positional arguments
+        out1 = paddle.nn.utils.rnn.pack_sequence(sequences)
+        # 2. Paddle keyword arguments
+        out2 = paddle.nn.utils.rnn.pack_sequence(sequences=sequences)
+        # 3. enforce_sorted=False
+        out3 = paddle.nn.utils.rnn.pack_sequence(
+            sequences, enforce_sorted=False
+        )
+
+        expected_data = np.array(
+            [1.0, 4.0, 6.0, 2.0, 5.0, 3.0], dtype=np.float32
+        )
+        expected_batch_sizes = np.array([3, 2, 1], dtype=np.int64)
+
+        np.testing.assert_allclose(out1.data.numpy(), expected_data)
+        np.testing.assert_array_equal(
+            out1.batch_sizes.numpy(), expected_batch_sizes
+        )
+        np.testing.assert_allclose(out2.data.numpy(), expected_data)
+
+        paddle.enable_static()
+
+
+class TestUnpackSequenceAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.seq1 = np.array([1, 2, 3], dtype=np.float32)
+        self.seq2 = np.array([4, 5], dtype=np.float32)
+        self.seq3 = np.array([6], dtype=np.float32)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        seq1 = paddle.to_tensor(self.seq1)
+        seq2 = paddle.to_tensor(self.seq2)
+        seq3 = paddle.to_tensor(self.seq3)
+        sequences = [seq1, seq2, seq3]
+
+        packed = paddle.nn.utils.rnn.pack_sequence(sequences)
+
+        # 1. Paddle positional arguments
+        out1 = paddle.nn.utils.rnn.unpack_sequence(packed)
+        # 2. Paddle keyword arguments
+        out2 = paddle.nn.utils.rnn.unpack_sequence(packed_sequences=packed)
+
+        for i, seq in enumerate(sequences):
+            np.testing.assert_allclose(out1[i].numpy(), seq)
+            np.testing.assert_allclose(out2[i].numpy(), seq)
+
+        paddle.enable_static()
+
+
 class TestSquareInplaceAPI(unittest.TestCase):
     def setUp(self):
         self.np_x = np.array([-0.7, -0.2, 0.3, 0.9], dtype="float32")
@@ -5431,6 +5670,186 @@ class TestNormalValidateArgsAPI(unittest.TestCase):
         ref_out = self._expected_log_prob()
         for out in fetches:
             np.testing.assert_allclose(out, ref_out, rtol=1e-6)
+
+
+class TestDistributionSampleShapeAliasAPI(unittest.TestCase):
+    def setUp(self):
+        self.place = paddle.CPUPlace()
+        self.np_loc = np.array([0.0, 1.0], dtype="float32")
+        self.np_scale = np.array([1.0, 2.0], dtype="float32")
+
+    def tearDown(self):
+        paddle.enable_static()
+
+    def _check_shape(self, tensor, expected):
+        self.assertEqual(list(tensor.shape), expected)
+
+    def test_normal_sample_shape_alias(self):
+        paddle.disable_static()
+        loc = paddle.to_tensor(self.np_loc, place=self.place)
+        scale = paddle.to_tensor(self.np_scale, place=self.place)
+        dist = paddle.distributions.Normal(loc, scale)
+
+        self._check_shape(dist.sample(shape=[2, 3]), [2, 3, 2])
+        self._check_shape(dist.sample(sample_shape=[2, 3]), [2, 3, 2])
+        self._check_shape(dist.rsample(shape=[2, 3]), [2, 3, 2])
+        self._check_shape(dist.rsample(sample_shape=[2, 3]), [2, 3, 2])
+
+        paddle.enable_static()
+
+    def test_normal_sample_shape_alias_static(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            loc = paddle.static.data(
+                name="loc", shape=self.np_loc.shape, dtype="float32"
+            )
+            scale = paddle.static.data(
+                name="scale", shape=self.np_scale.shape, dtype="float32"
+            )
+            dist = paddle.distributions.Normal(loc, scale)
+
+            out1 = dist.sample(shape=[2, 3])
+            out2 = dist.sample(sample_shape=[2, 3])
+            out3 = dist.rsample(shape=[2, 3])
+            out4 = dist.rsample(sample_shape=[2, 3])
+
+            exe = paddle.static.Executor(self.place)
+            fetches = exe.run(
+                main,
+                feed={
+                    "loc": self.np_loc,
+                    "scale": self.np_scale,
+                },
+                fetch_list=[out1, out2, out3, out4],
+            )
+
+        for out in fetches:
+            self._check_shape(out, [2, 3, 2])
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+
+        normal = paddle.distributions.Normal(
+            paddle.to_tensor([0.0, 1.0]),
+            paddle.to_tensor([1.0, 2.0]),
+        )
+        self._check_shape(normal.sample(sample_shape=[2, 3]), [2, 3, 2])
+        self._check_shape(normal.rsample(sample_shape=[2, 3]), [2, 3, 2])
+
+        cauchy = paddle.distributions.Cauchy(
+            paddle.to_tensor([0.0, 1.0]), paddle.to_tensor([1.0, 2.0])
+        )
+        self._check_shape(cauchy.sample(sample_shape=[2, 3]), [2, 3, 2])
+        self._check_shape(cauchy.rsample(sample_shape=[2, 3]), [2, 3, 2])
+
+        laplace = paddle.distributions.Laplace(
+            paddle.to_tensor([0.0, 1.0]), paddle.to_tensor([1.0, 2.0])
+        )
+        self._check_shape(laplace.sample(sample_shape=[2, 3]), [2, 3, 2])
+        self._check_shape(laplace.rsample(sample_shape=[2, 3]), [2, 3, 2])
+
+        exponential = paddle.distributions.Exponential(
+            paddle.to_tensor([1.0, 2.0])
+        )
+        self._check_shape(exponential.sample(sample_shape=[2, 3]), [2, 3, 2])
+        self._check_shape(exponential.rsample(sample_shape=[2, 3]), [2, 3, 2])
+
+        gamma = paddle.distributions.Gamma(
+            paddle.to_tensor([1.0, 2.0]), paddle.to_tensor([2.0, 3.0])
+        )
+        self._check_shape(gamma.sample(sample_shape=[2, 3]), [2, 3, 2])
+        self._check_shape(gamma.rsample(sample_shape=[2, 3]), [2, 3, 2])
+
+        geometric = paddle.distributions.Geometric(paddle.to_tensor([0.2, 0.7]))
+        self._check_shape(geometric.sample(sample_shape=[2, 3]), [2, 3, 2])
+        self._check_shape(geometric.rsample(sample_shape=[2, 3]), [2, 3, 2])
+
+        gumbel = paddle.distributions.Gumbel(
+            paddle.to_tensor([0.0, 1.0]), paddle.to_tensor([1.0, 2.0])
+        )
+        self._check_shape(gumbel.sample(sample_shape=[2, 3]), [2, 3, 2])
+        self._check_shape(gumbel.rsample(sample_shape=[2, 3]), [2, 3, 2])
+
+        continuous_bernoulli = paddle.distributions.ContinuousBernoulli(
+            paddle.to_tensor([0.3, 0.7])
+        )
+        self._check_shape(
+            continuous_bernoulli.sample(sample_shape=[2, 3]), [2, 3, 2]
+        )
+        self._check_shape(
+            continuous_bernoulli.rsample(sample_shape=[2, 3]), [2, 3, 2]
+        )
+
+        bernoulli = paddle.distributions.Bernoulli(paddle.to_tensor([0.3, 0.7]))
+        self._check_shape(bernoulli.sample(sample_shape=[2, 3]), [2, 3, 2])
+
+        binomial = paddle.distributions.Binomial(
+            10, paddle.to_tensor([0.3, 0.7])
+        )
+        self._check_shape(binomial.sample(sample_shape=[2, 3]), [2, 3, 2])
+
+        categorical = paddle.distributions.Categorical(
+            paddle.to_tensor([0.2, 0.3, 0.5])
+        )
+        self._check_shape(categorical.sample(sample_shape=[2, 3]), [2, 3])
+
+        dirichlet = paddle.distributions.Dirichlet(
+            paddle.to_tensor([1.0, 2.0, 3.0])
+        )
+        self._check_shape(dirichlet.sample(sample_shape=[2, 3]), [2, 3, 3])
+
+        independent = paddle.distributions.Independent(
+            paddle.distributions.Normal(
+                paddle.to_tensor([[0.0, 1.0], [2.0, 3.0]]),
+                paddle.to_tensor([[1.0, 1.0], [1.0, 1.0]]),
+            ),
+            1,
+        )
+        self._check_shape(independent.sample(sample_shape=[2, 3]), [2, 3, 2, 2])
+
+        multivariate_normal = paddle.distributions.MultivariateNormal(
+            paddle.to_tensor([0.0, 1.0]),
+            covariance_matrix=paddle.eye(2, dtype="float32"),
+        )
+        self._check_shape(
+            multivariate_normal.sample(sample_shape=[2, 3]), [2, 3, 2]
+        )
+        self._check_shape(
+            multivariate_normal.rsample(sample_shape=[2, 3]), [2, 3, 2]
+        )
+
+        poisson = paddle.distributions.Poisson(paddle.to_tensor([1.0, 2.0]))
+        self._check_shape(poisson.sample(sample_shape=[2, 3]), [2, 3, 2])
+
+        student_t = paddle.distributions.StudentT(
+            paddle.to_tensor([2.5, 3.5]),
+            paddle.to_tensor([0.0, 1.0]),
+            paddle.to_tensor([1.0, 1.5]),
+        )
+        self._check_shape(student_t.sample(sample_shape=[2, 3]), [2, 3, 2])
+
+        transformed = paddle.distributions.TransformedDistribution(
+            paddle.distributions.Normal(
+                paddle.to_tensor([0.0, 1.0]),
+                paddle.to_tensor([1.0, 2.0]),
+            ),
+            [
+                paddle.distributions.AffineTransform(
+                    loc=paddle.to_tensor(1.0), scale=paddle.to_tensor(2.0)
+                )
+            ],
+        )
+        self._check_shape(transformed.sample(sample_shape=[2, 3]), [2, 3, 2])
+        self._check_shape(transformed.rsample(sample_shape=[2, 3]), [2, 3, 2])
+
+        uniform = paddle.distributions.Uniform(
+            paddle.to_tensor([0.0, 1.0]), paddle.to_tensor([1.0, 2.0])
+        )
+        self._check_shape(uniform.sample(sample_shape=[2, 3]), [2, 3, 2])
+
+        paddle.enable_static()
 
 
 class TestTensorTransposeInplaceAPI(unittest.TestCase):

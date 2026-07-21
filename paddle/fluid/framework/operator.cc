@@ -72,6 +72,12 @@ std::vector<std::tuple<Place, LibraryType>> kKernelPriority = {
     std::make_tuple(CPUPlace(), LibraryType::kPlain),
 };
 
+TEST_API paddle::flat_hash_map<std::string, OperatorWithKernel::OpKernelMap>&
+OperatorWithKernel::AllOpKernels() {
+  static paddle::flat_hash_map<std::string, OpKernelMap> g_all_op_kernels;
+  return g_all_op_kernels;
+}
+
 static DDim GetDimsDebug(const Scope& scope,
                          const std::string& name,
                          bool get_actual_dim = false) {
@@ -1605,12 +1611,12 @@ bool OperatorWithKernel::CanONEDNNBeUsed(const framework::ExecutionContext& ctx,
 
 bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
                                         DataType data_type) const {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
   bool use_cudnn = ctx.HasAttr("use_cudnn") && ctx.Attr<bool>("use_cudnn") &&
                    (phi::is_gpu_place(ctx.GetPlace()) ||
                     phi::is_custom_place(ctx.GetPlace()));
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_CUSTOM_DEVICE)
   if (use_cudnn) {
     const auto& dev_ctx = ctx.device_context<phi::DeviceContext>();
     use_cudnn &= (dev_ctx.cudnn_handle() != nullptr);
@@ -1627,6 +1633,7 @@ bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
 #endif  // PADDLE_WITH_CUDA
   return use_cudnn && this->SupportsCUDNN(data_type);
 #endif
+  return false;
 }
 
 bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,

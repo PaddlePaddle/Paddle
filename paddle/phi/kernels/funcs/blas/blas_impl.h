@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <limits>
 #include <vector>
 
@@ -44,35 +45,16 @@ template <typename T>
 struct CBlas;
 
 template <>
-struct CBlas<int8_t> {
-  template <typename... ARGS>
-  static void VCOPY(ARGS... args) {
-    PADDLE_THROW(common::errors::Unimplemented(
-        "Blas VCOPY do not supported on CPU, please check your code"));
-  }
-};
+struct CBlas<int8_t> {};
 
 template <>
-struct CBlas<int16_t> {
-  template <typename... ARGS>
-  static void VCOPY(ARGS... args) {
-    PADDLE_THROW(common::errors::Unimplemented(
-        "Blas VCOPY do not supported on CPU, please check your code"));
-  }
-};
+struct CBlas<int16_t> {};
 
 template <>
 struct CBlas<phi::bfloat16> {
   template <typename... ARGS>
   static void AXPY(ARGS... args) {
     detail::axpy(args...);
-  }
-
-  template <typename... ARGS>
-  static void VCOPY(ARGS... args UNUSED) {
-    PADDLE_THROW(common::errors::Unimplemented(
-        "Blas VCOPY do not supported on CPU with bfloat16,"
-        " please check your code"));
   }
 
   template <typename... ARGS>
@@ -147,11 +129,6 @@ struct CBlas<float> {
   }
 
   template <typename... ARGS>
-  static void VCOPY(ARGS... args) {
-    phi::dynload::cblas_scopy(args...);
-  }
-
-  template <typename... ARGS>
   static void GEMV(ARGS... args) {
     phi::dynload::cblas_sgemv(args...);
   }
@@ -159,11 +136,6 @@ struct CBlas<float> {
   template <typename... ARGS>
   static float DOT(ARGS... args) {
     return phi::dynload::cblas_sdot(args...);
-  }
-
-  template <typename... ARGS>
-  static void SCAL(ARGS... args) {
-    phi::dynload::cblas_sscal(args...);
   }
 
   template <typename... ARGS>
@@ -273,11 +245,6 @@ struct CBlas<double> {
   }
 
   template <typename... ARGS>
-  static void VCOPY(ARGS... args) {
-    phi::dynload::cblas_dcopy(args...);
-  }
-
-  template <typename... ARGS>
   static void GEMV(ARGS... args) {
     phi::dynload::cblas_dgemv(args...);
   }
@@ -285,11 +252,6 @@ struct CBlas<double> {
   template <typename... ARGS>
   static double DOT(ARGS... args) {
     return phi::dynload::cblas_ddot(args...);
-  }
-
-  template <typename... ARGS>
-  static void SCAL(ARGS... args) {
-    phi::dynload::cblas_dscal(args...);
   }
 
   template <typename... ARGS>
@@ -369,11 +331,6 @@ struct CBlas<phi::complex64> {
                    phi::complex64 *Y,
                    const int incY) {
     phi::dynload::cblas_caxpy(n, &alpha, X, incX, Y, incY);
-  }
-
-  template <typename... ARGS>
-  static void VCOPY(ARGS... args) {
-    phi::dynload::cblas_ccopy(args...);
   }
 
   // the libmklml_intel.so paddle used has no vcAdd, vcSub,
@@ -567,11 +524,6 @@ struct CBlas<phi::complex128> {
                    phi::complex128 *Y,
                    const int incY) {
     phi::dynload::cblas_zaxpy(n, &alpha, X, incX, Y, incY);
-  }
-
-  template <typename... ARGS>
-  static void VCOPY(ARGS... args) {
-    phi::dynload::cblas_zcopy(args...);
   }
 
   // the libmklml_intel.so paddle used has no vzAdd, vzSub,
@@ -769,11 +721,6 @@ struct CBlas<float> {
   }
 
   template <typename... ARGS>
-  static void VCOPY(ARGS... args) {
-    phi::dynload::cblas_scopy(args...);
-  }
-
-  template <typename... ARGS>
   static void GEMV(ARGS... args) {
     phi::dynload::cblas_sgemv(args...);
   }
@@ -781,11 +728,6 @@ struct CBlas<float> {
   template <typename... ARGS>
   static float DOT(ARGS... args) {
     return phi::dynload::cblas_sdot(args...);
-  }
-
-  template <typename... ARGS>
-  static void SCAL(ARGS... args) {
-    phi::dynload::cblas_sscal(args...);
   }
 
   template <typename... ARGS>
@@ -857,11 +799,6 @@ struct CBlas<double> {
   }
 
   template <typename... ARGS>
-  static void VCOPY(ARGS... args) {
-    phi::dynload::cblas_dcopy(args...);
-  }
-
-  template <typename... ARGS>
   static void GEMV(ARGS... args) {
     phi::dynload::cblas_dgemv(args...);
   }
@@ -869,11 +806,6 @@ struct CBlas<double> {
   template <typename... ARGS>
   static double DOT(ARGS... args) {
     return phi::dynload::cblas_ddot(args...);
-  }
-
-  template <typename... ARGS>
-  static void SCAL(ARGS... args) {
-    phi::dynload::cblas_dscal(args...);
   }
 
   template <typename... ARGS>
@@ -942,11 +874,6 @@ struct CBlas<phi::complex64> {
                    phi::complex64 *Y,
                    const int incY) {
     phi::dynload::cblas_caxpy(n, &alpha, X, incX, Y, incY);
-  }
-
-  template <typename... ARGS>
-  static void VCOPY(ARGS... args) {
-    phi::dynload::cblas_ccopy(args...);
   }
 
   template <typename... ARGS>
@@ -1115,11 +1042,6 @@ struct CBlas<phi::complex128> {
                    phi::complex128 *Y,
                    const int incY) {
     phi::dynload::cblas_zaxpy(n, &alpha, X, incX, Y, incY);
-  }
-
-  template <typename... ARGS>
-  static void VCOPY(ARGS... args) {
-    phi::dynload::cblas_zcopy(args...);
   }
 
   template <typename... ARGS>
@@ -1293,11 +1215,6 @@ struct CBlas<float> {
   }
 
   template <typename... ARGS>
-  static void VCOPY(ARGS... args) {
-    cblas_scopy(args...);
-  }
-
-  template <typename... ARGS>
   static void GEMV(ARGS... args) {
     cblas_sgemv(args...);
   }
@@ -1321,11 +1238,6 @@ struct CBlas<double> {
   }
 
   template <typename... ARGS>
-  static void VCOPY(ARGS... args) {
-    cblas_dcopy(args...);
-  }
-
-  template <typename... ARGS>
   static void GEMV(ARGS... args) {
     cblas_dgemv(args...);
   }
@@ -1338,11 +1250,6 @@ struct CBlas<double> {
 
 template <>
 struct CBlas<phi::complex64> {
-  template <typename... ARGS>
-  static void VCOPY(ARGS... args) {
-    cblas_ccopy(args...);
-  }
-
   template <typename... ARGS>
   static void AXPY(int n,
                    const phi::complex64 alpha,
@@ -1406,11 +1313,6 @@ struct CBlas<phi::complex64> {
 
 template <>
 struct CBlas<phi::complex128> {
-  template <typename... ARGS>
-  static void VCOPY(ARGS... args) {
-    cblas_zcopy(args...);
-  }
-
   template <typename... ARGS>
   static void AXPY(int n,
                    const phi::complex128 alpha,
@@ -1504,10 +1406,6 @@ struct CBlas<phi::float16> {
   static void DOT(...) {
     PADDLE_THROW(common::errors::Unimplemented(
         "float16 DOT not supported on CPU, please check your code"));
-  };
-  static void SCAL(...) {
-    PADDLE_THROW(common::errors::Unimplemented(
-        "float16 SCAL not supported on CPU, please check your code"));
   };
   static void ASUM(...) {
     PADDLE_THROW(common::errors::Unimplemented(
@@ -1788,12 +1686,6 @@ void Blas<CPUContext>::AXPY(int n, T alpha, const T *x, T *y) const {
 
 template <>
 template <typename T>
-void Blas<CPUContext>::VCOPY(int n, const T *x, T *y) const {
-  CBlas<T>::VCOPY(n, x, 1, y, 1);
-}
-
-template <>
-template <typename T>
 void Blas<CPUContext>::VADD(int n, const T *x, const T *y, T *z) const {
 #if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
   CBlas<T>::VADD(n, x, y, z);
@@ -1801,7 +1693,9 @@ void Blas<CPUContext>::VADD(int n, const T *x, const T *y, T *z) const {
   if (x == z) {
     this->template AXPY<T>(n, (T)(1.), y, z);
   } else {
-    this->template VCOPY<T>(n, y, z);
+    if (y != z) {
+      std::memcpy(z, y, n * sizeof(T));
+    }
     this->template AXPY<T>(n, (T)(1.), x, z);
   }
 #endif
@@ -1895,19 +1789,6 @@ T Blas<CPUContext>::DOT(int n, const T *x, const T *y) const {
     sum += x[i] * y[i];
   }
   return sum;
-#endif
-}
-
-template <>
-template <typename T>
-void Blas<CPUContext>::SCAL(int n, const T a, T *x) const {
-#if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
-  CBlas<T>::SCAL(n, a, x, 1);
-#else
-  // try to find if openblas support cblas_scal
-  for (int i = 0; i < n; ++i) {
-    x[i] = a * x[i];
-  }
 #endif
 }
 

@@ -16,6 +16,7 @@
 
 #include <ATen/TensorIndexing.h>
 #include <ATen/core/Tensor.h>
+#include <c10/core/List.h>
 
 namespace at::indexing {
 
@@ -27,10 +28,47 @@ inline const at::Tensor& TensorIndex::tensor() const { return *tensor_; }
 
 }  // namespace at::indexing
 
-namespace at {
+namespace at::detail {
 
-inline at::Tensor index(const at::Tensor& self,
-                        ArrayRef<at::indexing::TensorIndex> indices) {
+inline bool _PD_is_full_slice(const at::indexing::Slice& slice) {
+  return static_cast<int64_t>(slice.start()) == 0 &&
+         static_cast<int64_t>(slice.stop()) == at::indexing::INDEX_MAX &&
+         static_cast<int64_t>(slice.step()) == 1;
+}
+
+inline at::Tensor _PD_apply_tensor_index(
+    const at::Tensor& self, ArrayRef<at::indexing::TensorIndex> indices) {
+  int64_t output_dim = 0;
+  int tensor_index_count = 0;
+  at::Tensor result = self;
+
+  for (const auto& index : indices) {
+    if (index.is_tensor()) {
+      ++tensor_index_count;
+      PD_CHECK(tensor_index_count == 1,
+               "Multiple tensor indices mixed with None/Slice are not "
+               "supported yet.");
+      result = paddle::experimental::index_select(
+          result._PD_GetInner(), index.tensor()._PD_GetInner(), output_dim);
+      ++output_dim;
+    } else if (index.is_none()) {
+      result =
+          paddle::experimental::unsqueeze(result._PD_GetInner(), {output_dim});
+      ++output_dim;
+    } else if (index.is_slice()) {
+      const auto& slice = index.slice();
+      PD_CHECK(_PD_is_full_slice(slice),
+               "Only full Slice() is supported when mixed with tensor/None "
+               "indices.");
+      ++output_dim;
+    }
+  }
+
+  return result;
+}
+
+inline at::Tensor _PD_index_tensor_indices(
+    const at::Tensor& self, ArrayRef<at::indexing::TensorIndex> indices) {
   if (indices.size() == 0) {
     PD_THROW("index() cannot be called with an empty index list");
   }
@@ -68,8 +106,10 @@ inline at::Tensor index(const at::Tensor& self,
         self._PD_GetInner(), axes, starts, ends, strides, {});
   }
 
-  PD_CHECK(!has_slice,
-           "Mixed slice and tensor/None indexing is not supported yet.");
+  if (has_slice) {
+    return _PD_apply_tensor_index(self, indices);
+  }
+
   c10::List<::std::optional<at::Tensor>> tensor_indices;
   for (const auto& index : indices) {
     if (index.is_none()) {
@@ -81,10 +121,74 @@ inline at::Tensor index(const at::Tensor& self,
   return self.index(tensor_indices);
 }
 
-inline at::Tensor index(
-    const at::Tensor& self,
-    std::initializer_list<at::indexing::TensorIndex> indices) {
-  return at::index(self, ArrayRef<at::indexing::TensorIndex>(indices));
+}  // namespace at::detail
+
+namespace at {
+
+inline at::Tensor index(const at::Tensor& self,
+                        const c10::List<::std::optional<at::Tensor>>& indices) {
+  if (indices.empty()) {
+    return self;
+  }
+
+  bool all_none = true;
+  for (const auto& idx : indices) {
+    if (idx.has_value()) {
+      all_none = false;
+      break;
+    }
+  }
+  if (all_none) {
+    return self;
+  }
+
+  std::vector<paddle::Tensor> pd_indices;
+  std::vector<bool> has_index(indices.size(), false);
+  pd_indices.reserve(indices.size());
+
+  for (size_t i = 0; i < indices.size(); ++i) {
+    if (indices[i].has_value()) {
+      pd_indices.push_back(indices[i].value()._PD_GetInner());
+      has_index[i] = true;
+    } else {
+      pd_indices.push_back(paddle::Tensor());
+    }
+  }
+
+  int non_none_count = 0;
+  size_t first_non_none = 0;
+  for (size_t i = 0; i < has_index.size(); ++i) {
+    if (has_index[i]) {
+      non_none_count++;
+      first_non_none = i;
+    }
+  }
+
+  if (non_none_count == 1 && first_non_none == 0) {
+    return paddle::experimental::index_select(
+        self._PD_GetInner(), pd_indices[0], 0);
+  }
+
+  if (non_none_count == static_cast<int>(indices.size())) {
+    auto stacked_indices = paddle::experimental::stack(pd_indices, -1);
+    return paddle::experimental::gather_nd(self._PD_GetInner(),
+                                           stacked_indices);
+  }
+
+  auto self_dims = self._PD_GetInner().dims();
+  int self_rank = self_dims.size();
+  at::Tensor result = self;
+
+  for (size_t i = 0; i < indices.size() && i < static_cast<size_t>(self_rank);
+       ++i) {
+    if (has_index[i]) {
+      paddle::Tensor pd_result = result._PD_GetInner();
+      result = paddle::experimental::index_select(
+          pd_result, pd_indices[i], static_cast<int>(i));
+    }
+  }
+
+  return result;
 }
 
 }  // namespace at
@@ -93,7 +197,7 @@ namespace at {
 
 inline at::Tensor Tensor::index(
     ArrayRef<at::indexing::TensorIndex> indices) const {
-  return at::index(*this, indices);
+  return at::detail::_PD_index_tensor_indices(*this, indices);
 }
 
 }  // namespace at

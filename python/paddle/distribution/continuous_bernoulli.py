@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING
 
 import paddle
 from paddle.distribution import distribution
+from paddle.utils.decorator_utils import param_one_alias
 
 if TYPE_CHECKING:
     from paddle import Tensor, dtype
@@ -245,6 +246,7 @@ class ContinuousBernoulli(distribution.Distribution):
             self._cut_support_region(), propose, taylor_expansion
         )
 
+    @param_one_alias(["shape", "sample_shape"])
     def sample(self, shape: Sequence[int] = []) -> Tensor:
         """Generate Continuous Bernoulli samples of the specified shape. The final shape would be ``sample_shape + batch_shape``.
 
@@ -257,6 +259,7 @@ class ContinuousBernoulli(distribution.Distribution):
         with paddle.no_grad():
             return self.rsample(shape)
 
+    @param_one_alias(["shape", "sample_shape"])
     def rsample(self, shape: Sequence[int] = []) -> Tensor:
         """Generate Continuous Bernoulli samples of the specified shape. The final shape would be ``sample_shape + batch_shape``.
 

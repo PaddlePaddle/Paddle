@@ -17,6 +17,7 @@ import typing
 from typing import TYPE_CHECKING
 
 from paddle.distribution import distribution, independent, transform
+from paddle.utils.decorator_utils import param_one_alias
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -106,6 +107,7 @@ class TransformedDistribution(distribution.Distribution):
             ],
         )
 
+    @param_one_alias(["shape", "sample_shape"])
     def sample(self, shape: Sequence[int] = []) -> Tensor:
         """Sample from ``TransformedDistribution``.
 
@@ -120,6 +122,7 @@ class TransformedDistribution(distribution.Distribution):
             x = t.forward(x)
         return x
 
+    @param_one_alias(["shape", "sample_shape"])
     def rsample(self, shape: Sequence[int] = []) -> Tensor:
         """Reparameterized sample from ``TransformedDistribution``.
 

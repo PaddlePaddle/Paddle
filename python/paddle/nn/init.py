@@ -14,7 +14,19 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from typing import TypeVar
+
+    from typing_extensions import ParamSpec
+
+    _InputT = ParamSpec("_InputT")
+    _RetT = TypeVar("_RetT")
+
 import math
+import warnings
 
 import numpy as np
 
@@ -422,3 +434,39 @@ def sparse_(
             zero_indices = row_indices[:num_zeros]
             tensor[zero_indices, col_idx] = 0
     return tensor
+
+
+def _make_deprecate(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+    new_name = func.__name__
+    old_name = new_name[:-1]
+
+    def deprecated_init(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+        warnings.warn(
+            f"`nn.init.{old_name}` is now deprecated in favor of `nn.init.{new_name}`.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return func(*args, **kwargs)
+
+    deprecated_init.__doc__ = rf"""
+    {old_name}(...)
+
+    .. warning::
+        This method is now deprecated in favor of :func:`paddle.nn.init.{new_name}`.
+
+    See :func:`~paddle.nn.init.{new_name}` for details."""
+    deprecated_init.__name__ = old_name
+    return deprecated_init
+
+
+uniform = _make_deprecate(uniform_)
+normal = _make_deprecate(normal_)
+constant = _make_deprecate(constant_)
+eye = _make_deprecate(eye_)
+dirac = _make_deprecate(dirac_)
+xavier_uniform = _make_deprecate(xavier_uniform_)
+xavier_normal = _make_deprecate(xavier_normal_)
+kaiming_uniform = _make_deprecate(kaiming_uniform_)
+kaiming_normal = _make_deprecate(kaiming_normal_)
+orthogonal = _make_deprecate(orthogonal_)
+sparse = _make_deprecate(sparse_)

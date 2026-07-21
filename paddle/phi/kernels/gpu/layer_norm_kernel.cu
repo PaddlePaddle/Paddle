@@ -26,6 +26,7 @@
 #include "paddle/phi/kernels/gpu/rms_norm_cuda_kernel.h"
 #endif
 COMMON_DECLARE_bool(use_fast_math);
+COMMON_DECLARE_bool(use_apex_layer_norm_kernel);
 
 namespace phi {
 
@@ -512,6 +513,17 @@ static inline LayerNormKernelVariant LayerNormKernelDispatch(
   if (scale == nullptr || bias == nullptr) {
     return LayerNormKernelVariant::GENERIC;
   }
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
+  if (FLAGS_use_apex_layer_norm_kernel) {
+    if (funcs::fast_ln_v2::has_fast_ln_v2_fwd_kernel(
+            weight_type, input_type, output_type, compute_type, hidden_size)) {
+      return LayerNormKernelVariant::FAST_LN_V2;
+    }
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "FLAGS_use_apex_layer_norm_kernel requires inputs supported by "
+        "fast_ln_v2 forward kernel."));
+  }
+#endif
 #ifdef PADDLE_WITH_CUDA
   if (FLAGS_use_accuracy_compatible_kernel) {
     return LayerNormKernelVariant::GENERIC;

@@ -18,6 +18,7 @@
 # parameter semantics. It is important to clarify that these APIs are
 # implemented as independent modules with no runtime dependency on PyTorch.
 
+import builtins as _builtins
 import math
 import sys as _sys
 import typing
@@ -72,7 +73,6 @@ def _preload_nvidia_lib(lib_glob, sub_dirs=None):
 
 
 if __is_metainfo_generated:
-    import builtins
     import platform
 
     if platform.system() == 'Linux':
@@ -82,11 +82,15 @@ if __is_metainfo_generated:
                 with_pip_cuda_libraries,
             )
 
-            if with_pip_cuda_libraries == 'ON' and (
-                platform.machine() in ('x86_64', 'AMD64')
-                or (
-                    platform.machine() == 'aarch64'
-                    and builtins.float(_cuda_version) >= 13.0
+            if (
+                _cuda_version != 'False'
+                and with_pip_cuda_libraries == 'ON'
+                and (
+                    platform.machine() in ('x86_64', 'AMD64')
+                    or (
+                        platform.machine() == 'aarch64'
+                        and _builtins.int(_cuda_version.split('.')[0]) >= 13
+                    )
                 )
             ):
                 _preload_nvidia_lib('libcublasLt.so.*[0-9]', ['cublas'])
@@ -164,8 +168,6 @@ from .framework.dtype import (
 if typing.TYPE_CHECKING:
     from .tensor.tensor import Tensor
 else:
-    import builtins
-
     Tensor = framework.core.eager.Tensor
     Tensor.__qualname__ = 'Tensor'
     original_init = Tensor.__init__
@@ -211,7 +213,7 @@ else:
                 place=device,
             )
         elif (
-            builtins.all(isinstance(arg, builtins.int) for arg in args)
+            _builtins.all(isinstance(arg, _builtins.int) for arg in args)
             and len(kwargs) == 0
         ):
             # case 3, 4
@@ -343,6 +345,7 @@ from .framework import (  # noqa: F401
     load,
     save,
     set_default_dtype,
+    set_default_tensor_type,
 )
 from .framework.random import (
     Generator,
@@ -435,6 +438,7 @@ from .tensor.linalg import (  # noqa: F401
     cdist,
     cholesky,
     cross,
+    det,
     diagonal,
     dist,
     dot,
@@ -442,11 +446,14 @@ from .tensor.linalg import (  # noqa: F401
     histogram,
     histogram_bin_edges,
     histogramdd,
+    logdet,
     matmul,
     matrix_transpose,
     mv,
     norm,
     permute,
+    pinv,
+    qr,
     t,
     t_,
     transpose,
@@ -512,6 +519,7 @@ from .tensor.manipulation import (
     dstack,
     expand,
     expand_as,
+    expand_copy,
     flatten,
     flatten_,
     flip,
@@ -532,10 +540,12 @@ from .tensor.manipulation import (
     moveaxis,
     narrow,
     put_along_axis,
+    put_along_axis_,
     ravel,
     repeat_interleave,
     reshape,
     reshape_,
+    resize_as_,
     roll,
     rot90,
     row_stack,
@@ -546,6 +556,7 @@ from .tensor.manipulation import (
     scatter_nd,
     scatter_nd_add,
     scatter_reduce,
+    scatter_reduce_,
     select_scatter,
     shard_index,
     slice,
@@ -584,6 +595,8 @@ from .tensor.math import (  # noqa: F401
     acosh_,
     add,
     add_n,
+    addcdiv,
+    addcdiv_,
     addmm,
     addmm_,
     addmv,
@@ -614,7 +627,10 @@ from .tensor.math import (  # noqa: F401
     broadcast_shapes,
     cartesian_prod,
     ceil,
+    clamp_max,
+    clamp_min,
     clip,
+    clip_,
     combinations,
     conj,
     copysign,
@@ -737,6 +753,7 @@ from .tensor.math import (  # noqa: F401
     scale,
     sgn,
     sign,
+    sign_,
     signbit,
     sin,
     sin_,
@@ -864,21 +881,23 @@ if is_compiled_with_cinn():
     data_file_path = resources.files('paddle.cinn_config')
     os.environ['CINN_CONFIG_PATH'] = str(data_file_path)
 
-if __is_metainfo_generated and is_compiled_with_cuda():
-    import builtins
+if (
+    __is_metainfo_generated
+    and is_compiled_with_cuda()
+    and not is_compiled_with_rocm()
+):
     import os
     import platform
 
     from .version import cuda_version as _cuda_version, with_pip_cuda_libraries
 
+    cuda_major = _builtins.int(_cuda_version.split('.')[0])
+
     if (
         platform.system() == 'Linux'
         and (
             platform.machine() in ('x86_64', 'AMD64')
-            or (
-                platform.machine() == 'aarch64'
-                and builtins.float(_cuda_version) >= 13.0
-            )
+            or (platform.machine() == 'aarch64' and cuda_major >= 13)
         )
         and with_pip_cuda_libraries == 'ON'
     ):
@@ -886,29 +905,55 @@ if __is_metainfo_generated and is_compiled_with_cuda():
         nvidia_package_path = package_dir + "/.." + "/nvidia"
         set_flags({"FLAGS_nvidia_package_dir": nvidia_package_path})
 
-        cublas_lib_path = package_dir + "/.." + "/nvidia/cublas/lib"
-        set_flags({"FLAGS_cublas_dir": cublas_lib_path})
+        if cuda_major >= 13:
+            cuda_lib_path = os.path.join(
+                nvidia_package_path, f'cu{cuda_major}', 'lib'
+            )
+            cusparselt_lib_path = os.path.join(
+                nvidia_package_path, 'cusparselt', 'lib'
+            )
+            set_flags(
+                {
+                    "FLAGS_cuda_dir": cuda_lib_path,
+                    "FLAGS_cublas_dir": cuda_lib_path,
+                    "FLAGS_curand_dir": cuda_lib_path,
+                    "FLAGS_cusolver_dir": cuda_lib_path,
+                    "FLAGS_cusparse_dir": cuda_lib_path,
+                    "FLAGS_cusparselt_dir": cusparselt_lib_path,
+                    "FLAGS_cupti_dir": cuda_lib_path,
+                }
+            )
+        else:
+            cublas_lib_path = package_dir + "/.." + "/nvidia/cublas/lib"
+            set_flags({"FLAGS_cublas_dir": cublas_lib_path})
+
+            curand_lib_path = package_dir + "/.." + "/nvidia/curand/lib"
+            set_flags({"FLAGS_curand_dir": curand_lib_path})
+
+            cusolver_lib_path = package_dir + "/.." + "/nvidia/cusolver/lib"
+            set_flags({"FLAGS_cusolver_dir": cusolver_lib_path})
+
+            cusparse_lib_path = package_dir + "/.." + "/nvidia/cusparse/lib"
+            set_flags({"FLAGS_cusparse_dir": cusparse_lib_path})
+
+            cupti_dir_lib_path = package_dir + "/.." + "/nvidia/cuda_cupti/lib"
+            set_flags({"FLAGS_cupti_dir": cupti_dir_lib_path})
 
         cudnn_lib_path = package_dir + "/.." + "/nvidia/cudnn/lib"
         set_flags({"FLAGS_cudnn_dir": cudnn_lib_path})
 
-        curand_lib_path = package_dir + "/.." + "/nvidia/curand/lib"
-        set_flags({"FLAGS_curand_dir": curand_lib_path})
-
-        cusolver_lib_path = package_dir + "/.." + "/nvidia/cusolver/lib"
-        set_flags({"FLAGS_cusolver_dir": cusolver_lib_path})
-
-        cusparse_lib_path = package_dir + "/.." + "/nvidia/cusparse/lib"
-        set_flags({"FLAGS_cusparse_dir": cusparse_lib_path})
-
         nccl_lib_path = package_dir + "/.." + "/nvidia/nccl/lib"
         set_flags({"FLAGS_nccl_dir": nccl_lib_path})
 
-        cupti_dir_lib_path = package_dir + "/.." + "/nvidia/cuda_cupti/lib"
-        set_flags({"FLAGS_cupti_dir": cupti_dir_lib_path})
-
         if is_compiled_with_cinn():
-            cuda_cccl_path = package_dir + "/.." + "/nvidia/cuda_cccl/include/"
+            if cuda_major >= 13:
+                cuda_cccl_path = os.path.join(
+                    nvidia_package_path, f'cu{cuda_major}', 'include'
+                )
+            else:
+                cuda_cccl_path = (
+                    package_dir + "/.." + "/nvidia/cuda_cccl/include/"
+                )
             set_flags({"FLAGS_cuda_cccl_dir": cuda_cccl_path})
             _preload_nvidia_lib("libnvrtc-builtins.so.*", ['cuda_nvrtc'])
 
@@ -1046,6 +1091,8 @@ cat = concat
 concatenate = concat
 take_along_dim = take_along_axis
 clamp = clip
+clamp_ = clip_
+true_divide_ = divide_
 ger = outer
 div = divide
 div_ = divide_
@@ -1063,11 +1110,14 @@ sub_ = subtract_
 movedim = moveaxis
 mod = remainder
 floor_mod = remainder
+fmod = remainder
 fix = trunc
 fix_ = trunc_
 mvlgamma = multigammaln
 mvlgamma_ = multigammaln_
 negative_ = neg_
+pinverse = pinv
+
 
 __all__ = [
     'block_diag',
@@ -1100,6 +1150,8 @@ __all__ = [
     'complex128',
     'pstring',
     'raw',
+    'addcdiv',
+    'addcdiv_',
     'addmm',
     'addmm_',
     'addmv',
@@ -1115,6 +1167,7 @@ __all__ = [
     'add',
     'subtract',
     'subtract_',
+    'det',
     'diag',
     'diagflat',
     'diag_embed',
@@ -1201,7 +1254,11 @@ __all__ = [
     'less_',
     'kron',
     'clip',
+    'clip_',
     'clamp',
+    'clamp_',
+    'clamp_max',
+    'clamp_min',
     'Tensor',
     'FloatTensor',
     'DoubleTensor',
@@ -1300,6 +1357,8 @@ __all__ = [
     'inference_mode',
     'mod',
     'mod_',
+    'fmod',
+    'fmod_',
     'abs',
     'abs_',
     'tril',
@@ -1312,6 +1371,8 @@ __all__ = [
     'index_select',
     'CPUPlace',
     'matmul',
+    'pinverse',
+    'qr',
     'seed',
     'acos',
     'acos_',
@@ -1360,6 +1421,7 @@ __all__ = [
     'sub',
     'sub_',
     'true_divide',
+    'true_divide_',
     'gammaln',
     'gammaln_',
     'ceil',
@@ -1437,8 +1499,10 @@ __all__ = [
     'enable_static',
     'scatter_nd',
     'set_default_dtype',
+    'set_default_tensor_type',
     'disable_signal_handler',
     'expand_as',
+    'expand_copy',
     'stack',
     'hstack',
     'vstack',
@@ -1451,6 +1515,7 @@ __all__ = [
     'logspace',
     'reshape',
     'reshape_',
+    'resize_as_',
     'atleast_1d',
     'atleast_2d',
     'atleast_3d',
@@ -1469,6 +1534,7 @@ __all__ = [
     'cosh',
     'log',
     'log_',
+    'logdet',
     'log2',
     'log2_',
     'log10',
@@ -1512,7 +1578,9 @@ __all__ = [
     'take_along_axis',
     'take_along_dim',
     'scatter_reduce',
+    'scatter_reduce_',
     'put_along_axis',
+    'put_along_axis_',
     'scatter_add',
     'select_scatter',
     'multigammaln',

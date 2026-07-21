@@ -79,17 +79,19 @@ struct GeluGradFunctor {
       funcs::CBlas<T>::AXPY(n, static_cast<T>(M_SQRT1_2), x_data, 1, first, 1);
       funcs::CBlas<T>::VMERF(n, first, first, VML_LA);
       for (int i = 0; i < n; i++) {
-        first[i] += static_cast<T>(1);
+        first[i] = (first[i] + static_cast<T>(1)) * static_cast<T>(0.5);
       }
-      funcs::CBlas<T>::SCAL(n, static_cast<T>(0.5), first, 1);
 
       // second = (0.5 * 2/sqrt(pi) * 1/sqrt(2) * x * exp(-0.5 * x^2))
       funcs::CBlas<T>::VSQUARE(n, x_data, second);
-      funcs::CBlas<T>::SCAL(n, -static_cast<T>(0.5), second, 1);
+      for (int i = 0; i < n; i++) {
+        second[i] = second[i] * -static_cast<T>(0.5);
+      }
       funcs::CBlas<T>::VEXP(n, second, second);
       funcs::CBlas<T>::VMUL(n, x_data, second, second);
-      funcs::CBlas<T>::SCAL(
-          n, static_cast<T>(0.5 * M_2_SQRTPI * M_SQRT1_2), second, 1);
+      for (int i = 0; i < n; i++) {
+        second[i] = second[i] * static_cast<T>(0.5 * M_2_SQRTPI * M_SQRT1_2);
+      }
 
       // dx = dout * (first + second);
       funcs::CBlas<T>::VADD(n, first, second, first);

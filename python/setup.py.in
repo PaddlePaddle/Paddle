@@ -1095,6 +1095,7 @@ packages=['paddle',
           'paddle.quantization.imperative',
           'paddle.tensor',
           'paddle.compat',
+          'paddle.compat.distributions',
           'paddle.compat.nn',
           'paddle.compat.nn.functional',
           'paddle.onnx',
@@ -1277,12 +1278,14 @@ shutil.copy('${WARPRNNT_LIBRARIES}', libs_path)
 package_data['paddle.libs']+=[
     os.path.basename('${LAPACK_LIB}'),
     os.path.basename('${BLAS_LIB}'),
-    os.path.basename('${GFORTRAN_LIB}'),
-    os.path.basename('${GNU_RT_LIB_1}')]
+    os.path.basename('${GFORTRAN_LIB}')]
 shutil.copy('${BLAS_LIB}', libs_path)
 shutil.copy('${LAPACK_LIB}', libs_path)
 shutil.copy('${GFORTRAN_LIB}', libs_path)
-shutil.copy('${GNU_RT_LIB_1}', libs_path)
+if len('${GNU_RT_LIB_1}') > 1:
+    package_data['paddle.libs'] += [
+        os.path.basename('${GNU_RT_LIB_1}')]
+    shutil.copy('${GNU_RT_LIB_1}', libs_path)
 if('${WITH_MAGMA}' == 'ON'):
     package_data['paddle.libs']+=[
         os.path.basename('${MAGMA_LIB}')]
@@ -1529,13 +1532,13 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
                 commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${IR_NAME}")
         else:
             if ('@WITH_GPU@' == 'ON' and tuple(map(int, '@CUDA_VERSION@'.split('.'))) >= (13, 0) and tuple(map(int, '@CUDA_VERSION@'.split('.'))) < (14, 0)):
-                commands = ["patchelf --force-rpath --set-rpath '$ORIGIN/../../nvidia/cu13/lib:$ORIGIN/../../nvidia/cudnn/lib:$ORIGIN/../../nvidia/nccl/lib:$ORIGIN/../../cusparselt/lib:$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so']
+                commands = ["patchelf --force-rpath --set-rpath '$ORIGIN/../../nvidia/cu13/lib:$ORIGIN/../../nvidia/cudnn/lib:$ORIGIN/../../nvidia/nccl/lib:$ORIGIN/../../nvidia/cusparselt/lib:$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so']
                 if('${WITH_SHARED_PHI}' == 'ON'):
                     # change rpath of phi.ext for loading 3rd party lib
-                    commands.append("patchelf --force-rpath --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib/:$ORIGIN/../../nvidia/cu13/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
-                    commands.append("patchelf --force-rpath --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib/:$ORIGIN/../../nvidia/cu13/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_CORE_NAME}")
+                    commands.append("patchelf --force-rpath --set-rpath '$ORIGIN/../../nvidia/cu13/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
+                    commands.append("patchelf --force-rpath --set-rpath '$ORIGIN/../../nvidia/cu13/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_CORE_NAME}")
                     if('${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON'):
-                        commands.append("patchelf --force-rpath --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib/:$ORIGIN/../../nvidia/cu13/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_GPU_NAME}")
+                        commands.append("patchelf --force-rpath --set-rpath '$ORIGIN/../../nvidia/cu13/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_GPU_NAME}")
             else:
                 commands = ["patchelf --force-rpath --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN/../../nvidia/cuda_nvrtc/lib:$ORIGIN/../../nvidia/cublas/lib:$ORIGIN/../../nvidia/cudnn/lib:$ORIGIN/../../nvidia/curand/lib:$ORIGIN/../../nvidia/cusparse/lib:$ORIGIN/../../nvidia/nvjitlink/lib:$ORIGIN/../../nvidia/cuda_cupti/lib:$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN/../../nvidia/cufft/lib:$ORIGIN/../../nvidia/cufft/lib:$ORIGIN/../../nvidia/cusolver/lib:$ORIGIN/../../nvidia/nccl/lib:$ORIGIN/../../nvidia/nvtx/lib:$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so']
                 if('${WITH_SHARED_PHI}' == 'ON'):

@@ -49,9 +49,4 @@ inline void Tensor::record_stream(at::Stream s) const {
 #endif
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-inline void Tensor::record_stream(at::cuda::CUDAStream s) const {
-  record_stream(static_cast<at::Stream>(s));
-}
-#endif
 }  // namespace at

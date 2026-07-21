@@ -18,7 +18,11 @@ from typing import TYPE_CHECKING, Any, TypeVar, overload
 
 import paddle
 from paddle import in_dynamic_mode
-from paddle.utils.decorator_utils import ParamAliasDecorator, param_one_alias
+from paddle.utils.decorator_utils import (
+    ParamAliasDecorator,
+    param_one_alias,
+    param_two_alias,
+)
 
 from .. import functional as F
 from .layers import Layer
@@ -2764,7 +2768,9 @@ class Flatten(Layer):
 
     Parameters:
         start_axis(int): first dim to flatten (default = 1)
+            Alias: ``start_dim``.
         stop_axis(int): last dim to flatten (default = -1).
+            Alias: ``end_dim``.
 
     Returns:
         None
@@ -2786,6 +2792,7 @@ class Flatten(Layer):
     start_axis: int
     stop_axis: int
 
+    @param_two_alias(["start_axis", "start_dim"], ["stop_axis", "end_dim"])
     def __init__(self, start_axis: int = 1, stop_axis: int = -1) -> None:
         super().__init__()
         self.start_axis = start_axis

@@ -24,6 +24,7 @@ from paddle.base.framework import Variable
 from paddle.distribution import distribution
 from paddle.framework import in_dynamic_mode
 from paddle.tensor import multinomial
+from paddle.utils.decorator_utils import param_one_alias
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -148,6 +149,7 @@ class Categorical(distribution.Distribution):
         dist_sum = paddle.sum(self.logits, axis=-1, keepdim=True)
         self._prob = self.logits / dist_sum
 
+    @param_one_alias(["shape", "sample_shape"])
     def sample(self, shape: Sequence[int] = []) -> Tensor:
         """Generate samples of the specified shape.
 

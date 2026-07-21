@@ -19,8 +19,8 @@
 namespace at {
 
 inline at::Tensor flatten(const at::Tensor& self,
-                          int64_t start_dim,
-                          int64_t end_dim) {
+                          int64_t start_dim = 0,
+                          int64_t end_dim = -1) {
   return Tensor(paddle::experimental::flatten(self._PD_GetInner(),
                                               static_cast<int>(start_dim),
                                               static_cast<int>(end_dim)));

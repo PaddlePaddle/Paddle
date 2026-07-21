@@ -84,9 +84,16 @@ class ConfigDump:
                 break
 
         if isinstance(item, paddle.Tensor):
-            return (
-                "Tensor(" + str(item.shape) + ',"' + str(item.dtype)[7:] + '")'
+            result = (
+                "Tensor(" + str(item.shape) + ',"' + str(item.dtype)[7:] + '"'
             )
+            if item.place.is_cpu_place():
+                result = result + ",place=" + str(item.place)
+            if not item.is_contiguous():
+                result = (
+                    result + ",is_contiguous=False,strides=" + str(item.strides)
+                )
+            return result + ")"
         elif isinstance(item, paddle.base.core.DataType):
             return "Dtype(" + str(item)[7:] + ")"
         elif isinstance(item, paddle.base.core.VarDesc.VarType):

@@ -63,6 +63,8 @@ using allocation::BlockAllocation;
  */
 class MemoryCompactionStrategy {
  public:
+  virtual ~MemoryCompactionStrategy() = default;
+
   /*!
    * \brief TryFuse will create new IterMark and returns an aggregated IterSum
    * that only has one IterSplit with the new IterMark.
@@ -105,6 +107,14 @@ FreeBlockInfoOfVmmAllocator(const GPUPlace& place);
 // Get allocator all block info.
 PADDLE_API extern std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>
 AllBlockInfoOfAllocator(const GPUPlace& place);
+
+// Get large pool block info only (skip small pool traversal).
+PADDLE_API extern std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>
+LargePoolBlockInfo(const GPUPlace& place);
+
+// Get small pool block info only (skip large pool traversal).
+PADDLE_API extern std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>
+SmallPoolBlockInfo(const GPUPlace& place);
 
 // Get allocate event when start FLAGS_record_alloc_event.
 PADDLE_API extern std::vector<

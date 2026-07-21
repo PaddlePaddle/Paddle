@@ -36,19 +36,9 @@
 #include <cuda_runtime_api.h>
 #endif
 
-// Forward declaration to allow record_stream(at::cuda::CUDAStream) overload
-// without pulling in the full CUDAStream header here.
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-namespace c10::cuda {
-class CUDAStream;
-}  // namespace c10::cuda
-namespace at::cuda {
-using c10::cuda::CUDAStream;
-}  // namespace at::cuda
-#endif
-
 #include <limits>
 #include <optional>
+#include <type_traits>
 #include <utility>
 #include <vector>
 #include "paddle/common/ddim.h"
@@ -65,6 +55,8 @@ using MemoryFormat = c10::MemoryFormat;
 using IntArrayRef = c10::IntArrayRef;
 using OptionalIntArrayRef = c10::OptionalIntArrayRef;
 using ScalarType = c10::ScalarType;
+using TensorList = c10::ArrayRef<Tensor>;
+using ITensorListRef = c10::ArrayRef<Tensor>;
 }  // namespace at
 
 namespace at {  // NOLINT(build/namespaces)
@@ -126,14 +118,8 @@ class Tensor : public TensorBase {
     return *this;
   }
 
-  void* data_ptr() const { return const_cast<void*>(tensor_.data()); }
   template <typename T>
-  T* data_ptr() const {
-    return const_cast<T*>(tensor_.data<T>());
-  }
-
-  template <typename T>
-  void* data() const {
+  T* data() const {
     return data_ptr<T>();
   }
 
@@ -173,38 +159,9 @@ class Tensor : public TensorBase {
 #endif
   }
 
-  const void* const_data_ptr() const {
-    return const_cast<void*>(tensor_.data());
-  }
-
-  template <typename T, std::enable_if_t<!std::is_const_v<T>, int> = 0>
-  const T* const_data_ptr() const {
-    return TensorBase::const_data_ptr<T>();
-  }
-
-  template <typename T, std::enable_if_t<std::is_const_v<T>, int> = 0>
-  const std::remove_const_t<T>* const_data_ptr() const {
-    return TensorBase::const_data_ptr<T>();
-  }
-
-  void* mutable_data_ptr() const { return const_cast<void*>(tensor_.data()); }
-
-  template <typename T>
-  T* mutable_data_ptr() const {
-    return TensorBase::mutable_data_ptr<T>();
-  }
-
   using TensorBase::stride;
 
-  c10::IntArrayRef strides() const {
-    return compat::_PD_PhiDDimToIntArrayRef(tensor_.strides());
-  }
-
   using TensorBase::size;
-
-  c10::IntArrayRef sizes() const {
-    return compat::_PD_PhiDDimToIntArrayRef(tensor_.dims());
-  }
 
   at::Tensor to(
       at::TensorOptions options = {},
@@ -292,14 +249,14 @@ class Tensor : public TensorBase {
       ::std::optional<int64_t> storage_offset = ::std::nullopt) const;
 
   // Standard deviation functions
-  Tensor std(int dim) const;
-  Tensor std(bool unbiased = true) const;
+  Tensor std(bool unbiased) const;
   Tensor std(at::OptionalIntArrayRef dim,
-             bool unbiased = true,
+             bool unbiased,
              bool keepdim = false) const;
-  Tensor std(at::OptionalIntArrayRef dim,
-             const ::std::optional<at::Scalar>& correction,
+  Tensor std(at::OptionalIntArrayRef dim = ::std::nullopt,
+             const ::std::optional<at::Scalar>& correction = ::std::nullopt,
              bool keepdim = false) const;
+  Tensor std(int dim) const { return std(at::IntArrayRef{dim}); }
 
   Tensor tensor_data() const {
     PaddleTensor result;
@@ -349,11 +306,6 @@ class Tensor : public TensorBase {
                          const at::Tensor& values,
                          bool accumulate = false) const;
 
-  // index_put_: Set scalar value at specified indices in-place
-  at::Tensor& index_put_(const c10::List<::std::optional<at::Tensor>>& indices,
-                         const at::Scalar& v,
-                         bool accumulate = false) const;
-
   // index_put: Non-inplace version of index_put_
   at::Tensor index_put(const c10::List<::std::optional<at::Tensor>>& indices,
                        const at::Tensor& values,
@@ -364,21 +316,6 @@ class Tensor : public TensorBase {
         tensor_, compat::_PD_AtenScalarTypeToPhiDataType(t)));
   }
 
-  int64_t numel() const { return tensor_.numel(); }
-
-  caffe2::TypeMeta dtype() const {
-    return caffe2::TypeMeta::fromScalarType(
-        compat::_PD_PhiDataTypeToAtenScalarType(tensor_.dtype()));
-  }
-
-  c10::Device device() const { return c10::Device(tensor_.place()); }
-  c10::DeviceIndex get_device() const {
-    return c10::Device(tensor_.place()).index();
-  }
-
-  int64_t dim() const { return tensor_.dims().size(); }
-  int64_t ndimension() const { return dim(); }
-
   at::Tensor contiguous(
       c10::MemoryFormat memory_format = c10::MemoryFormat::Contiguous) const {
     PD_CHECK(memory_format == c10::MemoryFormat::Contiguous,
@@ -387,19 +324,7 @@ class Tensor : public TensorBase {
     return tensor_.contiguous();
   }
 
-  bool is_contiguous(
-      at::MemoryFormat memory_format = at::MemoryFormat::Contiguous) const {
-    PD_CHECK(memory_format == c10::MemoryFormat::Contiguous,
-             "`MemoryFormat` other than Contiguous");
-
-    return tensor_.is_contiguous();
-  }
-
-  c10::ScalarType scalar_type() const {
-    return compat::_PD_PhiDataTypeToAtenScalarType(tensor_.dtype());
-  }
-
-  at::Tensor flatten(int64_t start_dim, int64_t end_dim) const;
+  at::Tensor flatten(int64_t start_dim = 0, int64_t end_dim = -1) const;
   at::Tensor unflatten(int64_t dim, at::IntArrayRef sizes) const;
   at::Tensor unflatten_symint(int64_t dim, c10::SymIntArrayRef sizes) const;
 
@@ -412,9 +337,6 @@ class Tensor : public TensorBase {
     paddle::experimental::fill_(const_cast<PaddleTensor&>(tensor_), 0.0);
     return const_cast<at::Tensor&>(*this);
   }
-
-  bool is_cpu() const { return phi::is_cpu_place(tensor_.place()); }
-  bool is_cuda() const { return phi::is_gpu_place(tensor_.place()); }
 
   bool is_pinned(::std::optional<c10::Device> device = ::std::nullopt) const {
     if (device.has_value()) {
@@ -535,12 +457,8 @@ class Tensor : public TensorBase {
   at::Tensor& squeeze_(int64_t dim) const;
   at::Tensor& squeeze_(at::IntArrayRef dim) const;
 
-  at::Tensor unsqueeze() const;
   at::Tensor unsqueeze(int64_t dim) const;
-  at::Tensor unsqueeze(at::IntArrayRef dim) const;
-  at::Tensor& unsqueeze_() const;
   at::Tensor& unsqueeze_(int64_t dim) const;
-  at::Tensor& unsqueeze_(at::IntArrayRef dim) const;
 
   at::Tensor sum(::std::optional<at::ScalarType> dtype = ::std::nullopt) const;
   at::Tensor sum(at::OptionalIntArrayRef dim,
@@ -584,19 +502,20 @@ class Tensor : public TensorBase {
   std::vector<at::Tensor> split_symint(c10::SymIntArrayRef split_sizes,
                                        int64_t dim) const;
 
-  std::vector<at::Tensor> unsafe_split(int64_t split_size, int64_t dim) const;
+  std::vector<at::Tensor> unsafe_split(int64_t split_size,
+                                       int64_t dim = 0) const;
   std::vector<at::Tensor> unsafe_split_symint(c10::SymInt split_size,
-                                              int64_t dim) const;
+                                              int64_t dim = 0) const;
 
   std::vector<at::Tensor> split_with_sizes(at::IntArrayRef split_sizes,
-                                           int64_t dim) const;
+                                           int64_t dim = 0) const;
   std::vector<at::Tensor> split_with_sizes_symint(
-      c10::SymIntArrayRef split_sizes, int64_t dim) const;
+      c10::SymIntArrayRef split_sizes, int64_t dim = 0) const;
 
   std::vector<at::Tensor> unsafe_split_with_sizes(at::IntArrayRef split_sizes,
-                                                  int64_t dim) const;
+                                                  int64_t dim = 0) const;
   std::vector<at::Tensor> unsafe_split_with_sizes_symint(
-      c10::SymIntArrayRef split_sizes, int64_t dim) const;
+      c10::SymIntArrayRef split_sizes, int64_t dim = 0) const;
 
   std::vector<at::Tensor> hsplit(int64_t sections) const;
   std::vector<at::Tensor> hsplit(at::IntArrayRef indices) const;
@@ -615,13 +534,21 @@ class Tensor : public TensorBase {
   at::Tensor slice(int64_t dim = 0,
                    ::std::optional<int64_t> start = ::std::nullopt,
                    ::std::optional<int64_t> end = ::std::nullopt,
-                   int64_t step = 1);
+                   int64_t step = 1) const;
 
   at::Tensor index(ArrayRef<at::indexing::TensorIndex> indices) const;
   inline at::Tensor index(
       std::initializer_list<at::indexing::TensorIndex> indices) const {
     return index(ArrayRef<at::indexing::TensorIndex>(indices));
   }
+  Tensor& index_put_(ArrayRef<at::indexing::TensorIndex> indices,
+                     Tensor const& rhs);
+  Tensor& index_put_(ArrayRef<at::indexing::TensorIndex> indices,
+                     const Scalar& v);
+  Tensor& index_put_(std::initializer_list<at::indexing::TensorIndex> indices,
+                     Tensor const& rhs);
+  Tensor& index_put_(std::initializer_list<at::indexing::TensorIndex> indices,
+                     const Scalar& v);
 
   at::Tensor& floor_divide_(const at::Scalar& other) const {
     paddle::experimental::floor_divide_(
@@ -634,25 +561,9 @@ class Tensor : public TensorBase {
   // 0.
   //   int64_t storage_offset() const { return storage_offset_; }
 
-  inline size_t nbytes() const {
-    PD_CHECK(
-        ((tensor_.layout() != common::DataLayout::SPARSE_COO) &&
-         (tensor_.layout() != common::DataLayout::SPARSE_CSR)),
-        "nbytes is not defined for sparse tensors.  If you want the size of "
-        "the constituent "
-        "tensors, add the nbytes of the indices and values.  If you want the "
-        "size of the  "
-        "equivalent dense tensor, multiply numel() by element_size()");
-    return tensor_.numel() * SizeOf(tensor_.dtype());
-  }
-
-  size_t itemsize() const { return SizeOf(tensor_.dtype()); }
-
-  int64_t element_size() const {
-    return static_cast<int64_t>(SizeOf(tensor_.dtype()));
-  }
-
-  inline Tensor clone() const {
+  inline Tensor clone(
+      ::std::optional<at::MemoryFormat> memory_format = ::std::nullopt) const {
+    (void)memory_format;
     PaddleTensor cloned_tensor = paddle::experimental::assign(tensor_);
     return Tensor(cloned_tensor);
   }
@@ -721,20 +632,17 @@ class Tensor : public TensorBase {
   }
 
   void record_stream(at::Stream s) const;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  void record_stream(at::cuda::CUDAStream s) const;
-#endif
 
   Tensor var(int dim) const { return var(at::IntArrayRef{dim}, true, false); }
 
-  Tensor var(bool unbiased = true) const {
+  Tensor var(bool unbiased) const {
     std::vector<int64_t> empty_dims;
     double correction = unbiased ? 1.0 : 0.0;
     return var_impl(empty_dims, correction, false);
   }
 
   Tensor var(at::OptionalIntArrayRef dim,
-             bool unbiased = true,
+             bool unbiased,
              bool keepdim = false) const {
     // Convert unbiased to correction: unbiased=True means correction=1
     double correction = unbiased ? 1.0 : 0.0;
@@ -745,8 +653,8 @@ class Tensor : public TensorBase {
     return var_impl(dims_vec, correction, keepdim);
   }
 
-  Tensor var(at::OptionalIntArrayRef dim,
-             const ::std::optional<at::Scalar>& correction,
+  Tensor var(at::OptionalIntArrayRef dim = ::std::nullopt,
+             const ::std::optional<at::Scalar>& correction = ::std::nullopt,
              bool keepdim = false) const {
     double correction_value = 1.0;
     if (correction.has_value()) {
@@ -850,10 +758,26 @@ class Tensor : public TensorBase {
                                                                  index_t>
   packed_accessor() && = delete;
 
+  template <typename T>
+  using hook_return_void_t =
+      std::enable_if_t<std::is_void_v<std::invoke_result_t<T&, Tensor>>,
+                       unsigned>;
+  template <typename T>
+  using hook_return_var_t =
+      std::enable_if_t<std::is_same_v<std::invoke_result_t<T&, Tensor>, Tensor>,
+                       unsigned>;
+
   // register_hook - throws exception for Paddle compatibility
   // Paddle does not support gradient hooks
   template <typename T>
-  unsigned register_hook(T&&) const {
+  hook_return_void_t<T> register_hook(T&&) const {
+    throw std::runtime_error(
+        "register_hook is not supported in Paddle, this is an ATen "
+        "compatibility API that is not available");
+  }
+
+  template <typename T>
+  hook_return_var_t<T> register_hook(T&&) const {
     throw std::runtime_error(
         "register_hook is not supported in Paddle, this is an ATen "
         "compatibility API that is not available");

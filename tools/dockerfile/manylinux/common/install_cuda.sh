@@ -167,8 +167,7 @@ function install_trt_101339 {
 function install_118 {
     CUDNN_VERSION=8.9.7.29
     NCCL_VERSION=2.16.5
-    TensorRT_VERSION=8.6.1.6
-    echo "Installing CUDA 11.8 and cuDNN ${CUDNN_VERSION} and NCCL ${NCCL_VERSION} and TensorRT ${TensorRT_VERSION} and cuSparseLt-0.4.0"
+    echo "Installing CUDA 11.8 and cuDNN ${CUDNN_VERSION} and NCCL ${NCCL_VERSION} and cuSparseLt-0.4.0"
     rm -rf /usr/local/cuda-11.8 /usr/local/cuda
     # install CUDA 11.8.0 in the same container
     wget -q https://developer.download.nvidia.com/compute/cuda/11.8.0/local_installers/cuda_11.8.0_520.61.05_linux.run
@@ -188,7 +187,6 @@ function install_118 {
     rm -rf tmp_cudnn
 
     install_nccl_2162
-    install_trt_8616
     install_cusparselt_040
 
     ldconfig
@@ -197,8 +195,7 @@ function install_118 {
 function install_123 {
     CUDNN_VERSION=9.1.1.17
     NCCL_VERSION=2.20.3
-    TensorRT_VERSION=10.5
-    echo "Installing CUDA 12.3 and cuDNN ${CUDNN_VERSION} and NCCL ${NCCL_VERSION} and TensorRT ${TensorRT_VERSION} and cuSparseLt-0.5.2"
+    echo "Installing CUDA 12.3 and cuDNN ${CUDNN_VERSION} and NCCL ${NCCL_VERSION} and cuSparseLt-0.5.2"
     rm -rf /usr/local/cuda-12.3 /usr/local/cuda
     # install CUDA 12.3.0 in the same container
     wget -q https://developer.download.nvidia.com/compute/cuda/12.3.2/local_installers/cuda_12.3.2_545.23.08_linux.run
@@ -218,7 +215,6 @@ function install_123 {
     rm -rf tmp_cudnn
 
     install_nccl_2203
-    install_trt_105018
     install_cusparselt_052
 
     ldconfig
@@ -226,9 +222,8 @@ function install_123 {
 
 function install_124 {
     CUDNN_VERSION=9.1.1.17
-    NCCL=2.21.5
-    TensorRT_VERSION=10.5
-    echo "Installing CUDA 12.4.1 and cuDNN ${CUDNN_VERSION} and NCCL ${NCCL_VERSION} and TensorRT ${TensorRT_VERSION} and cuSparseLt-0.6.2"
+    NCCL_VERSION=2.21.5
+    echo "Installing CUDA 12.4.1 and cuDNN ${CUDNN_VERSION} and NCCL ${NCCL_VERSION} and cuSparseLt-0.6.2"
     rm -rf /usr/local/cuda-12.4 /usr/local/cuda
     # install CUDA 12.4.1 in the same container
     wget -q https://developer.download.nvidia.com/compute/cuda/12.4.1/local_installers/cuda_12.4.1_550.54.15_linux.run
@@ -248,7 +243,6 @@ function install_124 {
     rm -rf tmp_cudnn
 
     install_nccl_2215
-    install_trt_105018
     install_cusparselt_062
 
     ldconfig
@@ -257,8 +251,7 @@ function install_124 {
 function install_126 {
     CUDNN_VERSION=9.5.1.17
     NCCL_VERSION=2.23.4
-    TensorRT_VERSION=10.5
-    echo "Installing CUDA 12.6.3 and cuDNN ${CUDNN_VERSION} and NCCL ${NCCL_VERSION} and TensorRT ${TensorRT_VERSION} and cuSparseLt-0.6.3"
+    echo "Installing CUDA 12.6.3 and cuDNN ${CUDNN_VERSION} and NCCL ${NCCL_VERSION} and cuSparseLt-0.6.3"
     rm -rf /usr/local/cuda-12.6 /usr/local/cuda
     # install CUDA 12.6.3 in the same container
     wget -q https://developer.download.nvidia.com/compute/cuda/12.6.3/local_installers/cuda_12.6.3_560.35.05_linux.run
@@ -278,7 +271,6 @@ function install_126 {
     rm -rf tmp_cudnn
 
     install_nccl_2234
-    install_trt_105018
     install_cusparselt_063
 
     ldconfig
@@ -288,8 +280,7 @@ function install_126 {
 function install_129 {
     CUDNN_VERSION=9.9.0.52
     NCCL_VERSION=2.23.4
-    TensorRT_VERSION=10.5
-    echo "Installing CUDA 12.9.0 and cuDNN ${CUDNN_VERSION} and NCCL ${NCCL_VERSION} and TensorRT ${TensorRT_VERSION} and cuSparseLt-0.6.3"
+    echo "Installing CUDA 12.9.0 and cuDNN ${CUDNN_VERSION} and NCCL ${NCCL_VERSION} and cuSparseLt-0.6.3"
     rm -rf /usr/local/cuda-12.9 /usr/local/cuda
     # install CUDA 12.9.0 in the same container
     wget -q https://developer.download.nvidia.com/compute/cuda/12.9.0/local_installers/cuda_12.9.0_575.51.03_linux.run
@@ -309,7 +300,6 @@ function install_129 {
     rm -rf tmp_cudnn
 
     install_nccl_2234
-    install_trt_105018
     install_cusparselt_063
 
     ldconfig
@@ -318,8 +308,7 @@ function install_129 {
 function install_130 {
     CUDNN_VERSION=9.13.0.50
     NCCL_VERSION=2.28.3
-    TensorRT_VERSION=10.13
-    echo "Installing CUDA 13.0.1 and cuDNN ${CUDNN_VERSION} and NCCL ${NCCL_VERSION} and TensorRT ${TensorRT_VERSION} and cuSparseLt-0.8.1"
+    echo "Installing CUDA 13.0.1 and cuDNN ${CUDNN_VERSION} and NCCL ${NCCL_VERSION} and cuSparseLt-0.8.1"
     rm -rf /usr/local/cuda-13.0 /usr/local/cuda
     # install CUDA 13.0.1 in the same container
     wget -q https://developer.download.nvidia.com/compute/cuda/13.0.1/local_installers/cuda_13.0.1_580.82.07_linux.run
@@ -339,7 +328,6 @@ function install_130 {
     rm -rf tmp_cudnn
 
     install_nccl_2283
-    install_trt_101339
     install_cusparselt_081
 
     ldconfig
@@ -348,8 +336,7 @@ function install_130 {
 function install_132 {
     CUDNN_VERSION=9.20.0.48
     NCCL_VERSION=2.29.7
-    TensorRT_VERSION=10.16.1.11
-    echo "Installing CUDA 13.2.0 and cuDNN ${CUDNN_VERSION} and NCCL ${NCCL_VERSION} and TensorRT ${TensorRT_VERSION} and cuSparseLt-0.9.0"
+    echo "Installing CUDA 13.2.0 and cuDNN ${CUDNN_VERSION} and NCCL ${NCCL_VERSION} and cuSparseLt-0.9.0"
     rm -rf /usr/local/cuda-13.2 /usr/local/cuda
     # install CUDA 13.2.0 in the same container
     wget -q https://developer.download.nvidia.com/compute/cuda/13.2.0/local_installers/cuda_13.2.0_595.45.04_linux.run
@@ -369,7 +356,6 @@ function install_132 {
     rm -rf tmp_cudnn
 
     install_nccl_2297_cuda132
-    install_trt_1016111
     install_cusparselt_090_cuda13
 
     ldconfig

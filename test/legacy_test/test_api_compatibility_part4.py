@@ -1283,5 +1283,75 @@ class TestFix_InplaceAPI(unittest.TestCase):
         paddle.enable_static()
 
 
+class RandomDataset(paddle.utils.data.Dataset):
+    def __init__(self, num_samples):
+        self.num_samples = num_samples
+
+    def __getitem__(self, idx):
+        image = np.random.random([784]).astype('float32')
+        label = np.random.randint(0, 10 - 1, (1,)).astype('int64')
+        return image, label
+
+    def __len__(self):
+        return self.num_samples
+
+
+class TestDataLoaderAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(255)
+        self.batch_num = 4
+        self.batch_size = 8
+        self.dataset = RandomDataset(self.batch_num * self.batch_size)
+        self.batch_sampler = paddle.utils.data.BatchSampler(
+            self.dataset,
+            batch_size=self.batch_size,
+            shuffle=True,
+            drop_last=True,
+        )
+
+    def iter_loader_data(self, loader):
+        for _ in range(3):
+            for image, label in loader():
+                relu = paddle.nn.functional.relu(image)
+                self.assertEqual(image.shape, [self.batch_size, 784])
+                self.assertEqual(label.shape, [self.batch_size, 1])
+                self.assertEqual(relu.shape, [self.batch_size, 784])
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        # case 1
+        loader = paddle.utils.data.DataLoader(
+            self.dataset,
+            self.batch_size,
+            shuffle=True,
+            num_workers=0,
+            drop_last=True,
+        )
+        self.iter_loader_data(loader)
+        # case 2
+        loader = paddle.utils.data.dataloader.DataLoader(
+            dataset=self.dataset,
+            batch_sampler=self.batch_sampler,
+        )
+        self.iter_loader_data(loader)
+        # case 3
+        loader = paddle.utils.data.DataLoader(
+            dataset=self.dataset,
+            sampler=self.batch_sampler,
+        )
+        self.iter_loader_data(loader)
+        paddle.enable_static()
+
+    def test_error(self):
+        paddle.disable_static()
+        with self.assertRaises(ValueError):
+            loader = paddle.utils.data.dataloader.DataLoader(
+                dataset=self.dataset,
+                sampler=self.batch_sampler,
+                batch_sampler=self.batch_sampler,
+            )
+        paddle.enable_static()
+
+
 if __name__ == "__main__":
     unittest.main()
