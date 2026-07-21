@@ -4122,7 +4122,7 @@ struct SoftPlusOpTranscriber : public OpTranscriber {
   }
 };
 
-struct BaddbmmOpTranscriber : public OpTranscriber {
+struct AddmmLikeOpTranscriber : public OpTranscriber {
   pir::AttributeMap TranslateOpAttribute(
       pir::IrContext* ctx,
       const std::string& normalized_op_name,
@@ -4408,8 +4408,10 @@ OpTranslator::OpTranslator() {
       WithXShapeAndAxisGradOpTranscriber<dialect::UnsqueezeGradOp>();
 
   special_handlers["c_sync_comm_stream"] = SyncCommStreamOpTranscriber();
-  special_handlers["baddbmm"] = BaddbmmOpTranscriber();
-  special_handlers["baddbmm_grad"] = BaddbmmOpTranscriber();
+  special_handlers["addmm"] = AddmmLikeOpTranscriber();
+  special_handlers["addmm_grad"] = AddmmLikeOpTranscriber();
+  special_handlers["baddbmm"] = AddmmLikeOpTranscriber();
+  special_handlers["baddbmm_grad"] = AddmmLikeOpTranscriber();
   special_handlers["softplus"] = SoftPlusOpTranscriber();
   special_handlers["softplus_grad"] = SoftPlusOpTranscriber();
   special_handlers["logit"] = LogitOpTranscriber();

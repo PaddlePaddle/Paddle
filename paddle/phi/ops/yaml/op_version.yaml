@@ -19,6 +19,17 @@
         - add_input : SkipUpdate
           comment : If the value is true, Adam will skip the update.
 
+- op : addmm
+  version :
+    - checkpoint : Upgrade addmm, change the type of attributes [beta] and [alpha] from float to double to avoid float32 truncation that breaks float64 output precision.
+      action :
+        - modify_attr : beta
+          comment : "The type of attr 'beta' is changed from float to double. The numeric default value is unchanged (1.0)."
+          default : 1.0
+        - modify_attr : alpha
+          comment : "The type of attr 'alpha' is changed from float to double. The numeric default value is unchanged (1.0)."
+          default : 1.0
+
 - op : affine_grid
   version :
     - checkpoint : Compatible upgrade of affine_grid, add a new attribute [align_corners].

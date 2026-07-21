@@ -154,3 +154,11 @@ op_patches:
       - action : modify_attr
         object : alpha
         type : pir::DoubleAttribute
+  - op_name : pd_op.addmm
+    actions:
+      - action : modify_attr
+        object : beta
+        type : pir::DoubleAttribute
+      - action : modify_attr
+        object : alpha
+        type : pir::DoubleAttribute
