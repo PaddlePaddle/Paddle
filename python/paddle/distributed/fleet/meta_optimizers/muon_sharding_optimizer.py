@@ -418,7 +418,9 @@ class MuonShardingOptimizer:
         self._sync_only_buffer_ids = {id(b) for b in self._sync_only_buffers}
 
         self._overlap_comm_buffers = []  # overlap buffers, filtered via _sync_only_buffer_ids
-        if self._use_fuse_gradients and not self.use_group_call_opt:
+        if self._use_fuse_gradients and (
+            not self.use_group_call_opt or self.comm_overlap
+        ):
             self._overlap_comm_buffers.extend(
                 b
                 for b in self.comm_buffer_2d
@@ -875,10 +877,13 @@ class MuonShardingOptimizer:
         launched task is later waited on in reduce_gradients via scale_grads.
 
         Notes:
-          - 2D buffers are only overlapped in the non group_call_opt path.
-            group_call_opt batches reduces through a coalescing manager in
-            reduce_gradients, which is incompatible with per-buffer async
-            launch, so those 2D grads keep the synchronous path.
+          - 2D buffers are overlapped whenever comm_overlap is on, including
+            the group_call_opt + comm_overlap combination. In that case the
+            per-buffer async reduce replaces the hierarchical coalescing reduce
+            in reduce_gradients, while group_call_opt still drives parameter
+            sync after the optimizer step. Pure group_call_opt (comm_overlap
+            off) keeps the synchronous coalescing-manager reduce and therefore
+            skips these hooks.
           - The hook order across params does not affect numerics: comm only
             fires once all params of a buffer have checked in, and reduce /
             reduce-scatter over the fused buffer are order-independent.
@@ -957,16 +962,16 @@ class MuonShardingOptimizer:
                         if comm_buffer.need_reduce_scale_sync():
                             for param in comm_buffer.params:
                                 comm_buffer._copy_grad_to_buffer(param)
-                if not self.use_group_call_opt:
+
+                if self.comm_overlap:
+                    # Overlap drives the non-sync-only 2D buffers. Shared
+                    # buffers have no overlap hook, so reduce them here.
                     for comm_buffer in self.comm_buffer_2d:
-                        # When comm_overlap is on, the reduce was already
-                        # launched by the backward hook; only wait in scale_grads.
-                        # Shared buffers have no overlap hook, so launch here.
-                        if (
-                            not self.comm_overlap
-                            or id(comm_buffer) in self._sync_only_buffer_ids
-                        ):
+                        if id(comm_buffer) in self._sync_only_buffer_ids:
                             comm_buffer._comm_grads()
+                elif not self.use_group_call_opt:
+                    for comm_buffer in self.comm_buffer_2d:
+                        comm_buffer._comm_grads()
                 else:
                     same_card_buffers = []
                     all_ring_buffers = []
@@ -1102,7 +1107,7 @@ class MuonShardingOptimizer:
 
             # wait for all comm_buffer tasks to finish
             if self._use_fuse_gradients:
-                if not self.use_group_call_opt:
+                if not self.use_group_call_opt or self.comm_overlap:
                     for comm_buffer in self.comm_buffer_2d:
                         comm_buffer.scale_grads()
 
