@@ -51,7 +51,7 @@ def _caller_is_paddle_internal() -> bool:
     return name == "paddle" or name.startswith("paddle.")
 
 
-def dispatch_compat_api(compat_fn: Any) -> Any:
+def dispatch_function(compat_fn: Any) -> Any:
     """Wrap a native ``paddle`` callable to route external callers to
     ``compat_fn`` while compat is enabled; paddle-internal callers and the
     disabled state get the native callable. Installed only under
@@ -96,7 +96,7 @@ def _iter_compat_modules() -> Generator[types.ModuleType, None, None]:
         yield compat_module
 
 
-def _make_caller_aware_class_proxy(native_cls: type, compat_cls: type) -> type:
+def dispatch_class(native_cls: type, compat_cls: type) -> type:
     """Create a class proxy that selects compat only for external callers."""
 
     class _CompatAwareMeta(type(compat_cls)):
@@ -143,7 +143,7 @@ def _patch_tensor_methods() -> None:
         setattr(
             paddle.Tensor,
             attr_name,
-            dispatch_compat_api(compat_fn)(native_method),
+            dispatch_function(compat_fn)(native_method),
         )
 
 
@@ -171,13 +171,13 @@ def _apply_paddle_namespace_aliases() -> None:
                 setattr(
                     target_module,
                     attr_name,
-                    _make_caller_aware_class_proxy(current, compat_attr),
+                    dispatch_class(current, compat_attr),
                 )
             else:
                 setattr(
                     target_module,
                     attr_name,
-                    dispatch_compat_api(compat_attr)(current),
+                    dispatch_function(compat_attr)(current),
                 )
     _patch_tensor_methods()
 

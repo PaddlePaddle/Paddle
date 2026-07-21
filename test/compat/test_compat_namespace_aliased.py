@@ -209,6 +209,8 @@ class TestTopLevelAlias(CompatNamespaceAliasBase):
                 compat = compat_cls(*constructor_args[name])
                 self.assertIsInstance(compat, native_cls)
                 self.assertTrue(issubclass(compat_cls, native_cls))
+                native = native_cls(*constructor_args[name])
+                self.assertNotIsInstance(native, compat_cls)
 
     @with_level2
     def test_submodule_symbols_aliased(self):
