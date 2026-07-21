@@ -208,10 +208,17 @@ class RemapTransaction {
   size_t CountLeadingUnmappedBackingPages(VMMDevicePtr va, size_t size) const;
   UnmappedDestinationPlan PlanUnmappedDestinations(BlockList* blocks,
                                                    size_t handle_count) const;
+  bool ScatterPlanCreatesContiguousFreeRange(
+      const BlockList& blocks,
+      const std::vector<DestinationPlacement>& placements,
+      const SourcePages& source_pages,
+      size_t required_bytes) const;
   DestinationPlan SelectDestinationPlan(BlockList* blocks,
                                         VMMDevicePtr tail_va,
                                         VMMDevicePtr va_limit,
                                         size_t handle_count,
+                                        size_t required_contiguous_bytes,
+                                        const SourcePages& source_pages,
                                         DestinationPolicy policy) const;
   bool TryMoveToTail(BlockList* blocks,
                      VMMDevicePtr tail_va,
@@ -238,6 +245,7 @@ class RemapTransaction {
                                     VMMDevicePtr tail_va,
                                     VMMDevicePtr va_limit,
                                     SourceMovePlan* plan,
+                                    size_t required_contiguous_bytes,
                                     PoolType pool_type,
                                     DestinationPolicy policy);
   CompactResult CompactFreeBlocks(

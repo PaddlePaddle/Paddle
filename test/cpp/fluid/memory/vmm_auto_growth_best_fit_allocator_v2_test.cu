@@ -1698,6 +1698,56 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, BoundedCompactPrefersDirectGap) {
   EXPECT_EQ(recovered->ptr(), target_ptr);
 }
 
+TEST(VMMAutoGrowthBestFitAllocatorV2, BoundedCompactFallsBackToUsefulScatter) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+
+  const size_t handle_size = underlying->handle_size();
+  auto target_a = allocator.Allocate(handle_size);
+  auto mapped_bridge = allocator.Allocate(handle_size);
+  auto target_b = allocator.Allocate(2UL * handle_size);
+  auto separator_a = allocator.Allocate(handle_size);
+  auto source_a = allocator.Allocate(2UL * handle_size);
+  auto separator_b = allocator.Allocate(handle_size);
+  auto source_b = allocator.Allocate(handle_size);
+  auto tail_guard = allocator.Allocate(handle_size);
+  ASSERT_NE(target_a, nullptr);
+  ASSERT_NE(mapped_bridge, nullptr);
+  ASSERT_NE(target_b, nullptr);
+  ASSERT_NE(separator_a, nullptr);
+  ASSERT_NE(source_a, nullptr);
+  ASSERT_NE(separator_b, nullptr);
+  ASSERT_NE(source_b, nullptr);
+  ASSERT_NE(tail_guard, nullptr);
+  auto* target_ptr = target_a->ptr();
+
+  target_a.reset();
+  target_b.reset();
+  ASSERT_EQ(allocator.Release(phi::GPUPlace()), 3UL * handle_size);
+
+  // Keep the bridge mapped-free but ineligible as a remap source. Filling the
+  // one- and two-handle gaps around it will form one four-handle free range.
+  mapped_bridge.reset();
+  MarkRemapSafeForTest(source_a.get());
+  MarkRemapSafeForTest(source_b.get());
+  source_a.reset();
+  source_b.reset();
+
+  // Advance the underlying tail outside the block view so neither target gap
+  // nor the allocator tail can hold the complete three-handle destination.
+  auto hidden_tail_mapping = underlying->AppendWithBlock(handle_size);
+  ASSERT_TRUE(hidden_tail_mapping.HasAllocation());
+
+  const size_t requested_size = 3UL * handle_size;
+  EXPECT_EQ(allocator.RemapForAllocation(phi::GPUPlace(), requested_size),
+            requested_size);
+
+  auto recovered = allocator.Allocate(requested_size);
+  ASSERT_NE(recovered, nullptr);
+  EXPECT_EQ(recovered->ptr(), target_ptr);
+}
+
 TEST(VMMAutoGrowthBestFitAllocatorV2, BoundedCompactPrefersContiguousSources) {
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
