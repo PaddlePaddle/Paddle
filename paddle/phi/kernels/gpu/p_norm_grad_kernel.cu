@@ -16,6 +16,7 @@
 
 #include <vector>
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -34,6 +35,8 @@
 #include "paddle/phi/kernels/sign_kernel.h"
 #include "paddle/phi/kernels/unsqueeze_kernel.h"
 #include "paddle/phi/kernels/where_kernel.h"
+
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 namespace phi {
 
@@ -61,9 +64,49 @@ __device__ __forceinline__ MT compute_pow_like_kernel(MT val, double exponent) {
   }
 }
 
+// Round an intermediate value (kept in compute type MT) back to the storage
+// dtype T and return it as MT again. This reproduces the rounding point of a
+// single torch elementwise kernel, whose output tensor is dtype T. For
+// fp32/fp64 (MT == T) this is the identity; only fp16/bf16 are affected.
+template <typename T, typename MT>
+__device__ __forceinline__ MT RoundToStorage(MT v) {
+  return static_cast<MT>(static_cast<T>(v));
+}
+
+// Torch-compatible pow: operates in storage type T (like a standalone torch
+// elementwise kernel whose output tensor is dtype T). The exponent is first
+// narrowed to T then promoted back to MT before calling pow(), matching the
+// truncation behavior of torch's type promotion for scalar exponents.
+template <typename T, typename MT>
+__device__ __forceinline__ T
+compute_pow_like_kernel_torch_compat(T val, double exponent) {
+  MT val_MT = static_cast<MT>(val);
+  if (exponent == 0.5) {
+    return static_cast<T>(sqrt(val_MT));
+  } else if (exponent == -0.5) {
+    return static_cast<T>(rsqrt(val_MT));
+  } else if (exponent == -1.0) {
+    return static_cast<T>(static_cast<MT>(1) / val_MT);
+  } else if (exponent == -2.0) {
+    return static_cast<T>(static_cast<MT>(1) /
+                          RoundToStorage<T, MT>(val_MT * val_MT));
+  } else if (exponent == 0.0) {
+    return static_cast<T>(1);
+  } else if (exponent == 1.0) {
+    return val;
+  } else if (exponent == 2.0) {
+    return static_cast<T>(val_MT * val_MT);
+  } else if (exponent == 3.0) {
+    return static_cast<T>(RoundToStorage<T, MT>(val_MT * val_MT) * val_MT);
+  } else {
+    MT exponent_MT = static_cast<MT>(static_cast<T>(exponent));
+    return static_cast<T>(pow(val_MT, exponent_MT));
+  }
+}
+
 // Fused CUDA kernel for p=2 norm gradient
 // dx = grad * (x / norm).masked_fill_(norm == 0, 0)
-template <typename T>
+template <typename T, bool Compat = false>
 __global__ void PNormGradP2Kernel(const T* x,
                                   const T* norm,
                                   const T* grad,
@@ -90,15 +133,24 @@ __global__ void PNormGradP2Kernel(const T* x,
     } else {
       MT x_val = static_cast<MT>(x[idx]);
       MT grad_val = static_cast<MT>(grad[norm_idx]);
-      MT x_div_norm = x_val / norm_val;
-      dx[idx] = static_cast<T>(x_div_norm * grad_val);
+      if constexpr (Compat) {
+        // Match torch's two separate elementwise kernels (norm_backward p==2:
+        // `grad * (self / norm)`): each op stores back to dtype T, so for
+        // fp16/bf16 there are two rounding points. Round `self / norm` to T
+        // before the multiply to stay bitwise-aligned with torch.
+        MT x_div_norm = RoundToStorage<T>(x_val / norm_val);
+        dx[idx] = static_cast<T>(grad_val * x_div_norm);
+      } else {
+        MT x_div_norm = x_val / norm_val;
+        dx[idx] = static_cast<T>(x_div_norm * grad_val);
+      }
     }
   }
 }
 
 // Fused CUDA kernel for p < 1 norm gradient
 // dx = sign(x) * |x|^(p-1) * grad * norm^(1-p), masked_fill(x == 0, 0)
-template <typename T>
+template <typename T, bool Compat = false>
 __global__ void PNormGradPLessThan1Kernel(const T* x,
                                           const T* norm,
                                           const T* grad,
@@ -136,18 +188,29 @@ __global__ void PNormGradPLessThan1Kernel(const T* x,
       // abs(x)
       MT abs_x = (x_val > static_cast<MT>(0)) ? x_val : -x_val;
 
-      // |x|^(p-1)
-      MT abs_pow = compute_pow_like_kernel(abs_x, p_minus_1);
-
       // sign(x): 1 if x > 0, -1 if x < 0 (x != 0 already checked)
       MT sign_x = (x_val > static_cast<MT>(0)) ? static_cast<MT>(1)
                                                : static_cast<MT>(-1);
 
-      MT self_scaled = sign_x * abs_pow;
-      MT temp1 = self_scaled * grad_val;
-
+      // |x|^(p-1)
+      MT abs_pow;
+      MT self_scaled;
+      MT temp1;
       // norm^(1-p)
-      MT norm_pow = compute_pow_like_kernel(norm_val, one_minus_p);
+      MT norm_pow;
+      if constexpr (Compat) {
+        abs_pow = static_cast<MT>(compute_pow_like_kernel_torch_compat<T, MT>(
+            static_cast<T>(abs_x), p_minus_1));
+        self_scaled = RoundToStorage<T>(sign_x * abs_pow);
+        temp1 = RoundToStorage<T>(self_scaled * grad_val);
+        norm_pow = static_cast<MT>(compute_pow_like_kernel_torch_compat<T, MT>(
+            static_cast<T>(norm_val), one_minus_p));
+      } else {
+        abs_pow = compute_pow_like_kernel(abs_x, p_minus_1);
+        self_scaled = sign_x * abs_pow;
+        temp1 = self_scaled * grad_val;
+        norm_pow = compute_pow_like_kernel(norm_val, one_minus_p);
+      }
 
       dx[idx] = static_cast<T>(temp1 * norm_pow);
     }
@@ -197,7 +260,7 @@ __global__ void PNormGradP1Kernel(const T* x,
 
 // Fused CUDA kernel for 1 < p < 2 norm gradient
 // dx = sign(x) * |x|^(p-1) * grad / norm^(p-1), masked_fill(norm==0, 0)
-template <typename T>
+template <typename T, bool Compat = false>
 __global__ void PNormGradPBetween1And2Kernel(const T* x,
                                              const T* norm,
                                              const T* grad,
@@ -234,9 +297,6 @@ __global__ void PNormGradPBetween1And2Kernel(const T* x,
       // abs(x)
       MT abs_x = (x_val > static_cast<MT>(0)) ? x_val : -x_val;
 
-      // |x|^(p-1)
-      MT abs_pow = compute_pow_like_kernel(abs_x, p_minus_1);
-
       // sign(x)
       MT sign_x;
       if (x_val > static_cast<MT>(0)) {
@@ -247,13 +307,27 @@ __global__ void PNormGradPBetween1And2Kernel(const T* x,
         sign_x = static_cast<MT>(0);
       }
 
-      MT self_scaled = sign_x * abs_pow;
-
+      // |x|^(p-1)
+      MT abs_pow;
+      MT self_scaled;
       // norm^(p-1)
-      MT norm_pow = compute_pow_like_kernel(norm_val, p_minus_1);
-
+      MT norm_pow;
       // scale_v = grad / norm_pow
-      MT scale_v = grad_val / norm_pow;
+      MT scale_v;
+
+      if constexpr (Compat) {
+        abs_pow = static_cast<MT>(compute_pow_like_kernel_torch_compat<T, MT>(
+            static_cast<T>(abs_x), p_minus_1));
+        self_scaled = RoundToStorage<T>(sign_x * abs_pow);
+        norm_pow = static_cast<MT>(compute_pow_like_kernel_torch_compat<T, MT>(
+            static_cast<T>(norm_val), p_minus_1));
+        scale_v = RoundToStorage<T>(grad_val / norm_pow);
+      } else {
+        abs_pow = compute_pow_like_kernel(abs_x, p_minus_1);
+        self_scaled = sign_x * abs_pow;
+        norm_pow = compute_pow_like_kernel(norm_val, p_minus_1);
+        scale_v = grad_val / norm_pow;
+      }
 
       dx[idx] = static_cast<T>(self_scaled * scale_v);
     }
@@ -262,7 +336,7 @@ __global__ void PNormGradPBetween1And2Kernel(const T* x,
 
 // Fused CUDA kernel for p > 2 norm gradient
 // dx = x * |x|^(p-2) * grad / norm^(p-1), masked_fill(norm==0, 0)
-template <typename T>
+template <typename T, bool Compat = false>
 __global__ void PNormGradPGreaterThan2Kernel(const T* x,
                                              const T* norm,
                                              const T* grad,
@@ -301,16 +375,26 @@ __global__ void PNormGradPGreaterThan2Kernel(const T* x,
       MT abs_x = (x_val > static_cast<MT>(0)) ? x_val : -x_val;
 
       // |x|^(p-2)
-      MT abs_pow = compute_pow_like_kernel(abs_x, p_minus_2);
-
+      MT abs_pow;
       // self_scaled = x * |x|^(p-2)
-      MT self_scaled = x_val * abs_pow;
-
+      MT self_scaled;
       // norm^(p-1)
-      MT norm_pow = compute_pow_like_kernel(norm_val, p_minus_1);
-
+      MT norm_pow;
       // scale_v = grad / norm_pow
-      MT scale_v = grad_val / norm_pow;
+      MT scale_v;
+      if constexpr (Compat) {
+        abs_pow = static_cast<MT>(compute_pow_like_kernel_torch_compat<T, MT>(
+            static_cast<T>(abs_x), p_minus_2));
+        self_scaled = RoundToStorage<T>(x_val * abs_pow);
+        norm_pow = static_cast<MT>(compute_pow_like_kernel_torch_compat<T, MT>(
+            static_cast<T>(norm_val), p_minus_1));
+        scale_v = RoundToStorage<T>(grad_val / norm_pow);
+      } else {
+        abs_pow = compute_pow_like_kernel(abs_x, p_minus_2);
+        self_scaled = x_val * abs_pow;
+        norm_pow = compute_pow_like_kernel(norm_val, p_minus_1);
+        scale_v = grad_val / norm_pow;
+      }
 
       dx[idx] = static_cast<T>(self_scaled * scale_v);
     }
@@ -465,28 +549,8 @@ void PNormGradKernel(const Context& dev_ctx,
     int64_t total = in_x->numel();
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
 
-    PNormGradP2Kernel<T><<<config.block_per_grid,
-                           config.thread_per_block,
-                           0,
-                           dev_ctx.stream()>>>(in_x->data<T>(),
-                                               in_norm->data<T>(),
-                                               in_norm_dy->data<T>(),
-                                               out_dx->data<T>(),
-                                               pre,
-                                               axis_size,
-                                               post,
-                                               total,
-                                               reduce_all);
-  } else if (porder < 1.0) {
-    // Fused kernel: dx = sign(x) * |x|^(p-1) * grad * norm^(1-p)
-    // masked_fill(x == 0, 0)
-    int64_t pre, axis_size, post;
-    GetPreAxisPost(xdim, axis, reduce_all, &pre, &axis_size, &post);
-
-    int64_t total = in_x->numel();
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
-
-    PNormGradPLessThan1Kernel<T><<<config.block_per_grid,
+    if (FLAGS_use_accuracy_compatible_kernel) {
+      PNormGradP2Kernel<T, true><<<config.block_per_grid,
                                    config.thread_per_block,
                                    0,
                                    dev_ctx.stream()>>>(in_x->data<T>(),
@@ -497,8 +561,61 @@ void PNormGradKernel(const Context& dev_ctx,
                                                        axis_size,
                                                        post,
                                                        total,
-                                                       reduce_all,
-                                                       porder);
+                                                       reduce_all);
+    } else {
+      PNormGradP2Kernel<T, false><<<config.block_per_grid,
+                                    config.thread_per_block,
+                                    0,
+                                    dev_ctx.stream()>>>(in_x->data<T>(),
+                                                        in_norm->data<T>(),
+                                                        in_norm_dy->data<T>(),
+                                                        out_dx->data<T>(),
+                                                        pre,
+                                                        axis_size,
+                                                        post,
+                                                        total,
+                                                        reduce_all);
+    }
+  } else if (porder < 1.0) {
+    // Fused kernel: dx = sign(x) * |x|^(p-1) * grad * norm^(1-p)
+    // masked_fill(x == 0, 0)
+    int64_t pre, axis_size, post;
+    GetPreAxisPost(xdim, axis, reduce_all, &pre, &axis_size, &post);
+
+    int64_t total = in_x->numel();
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
+
+    if (FLAGS_use_accuracy_compatible_kernel) {
+      PNormGradPLessThan1Kernel<T, true>
+          <<<config.block_per_grid,
+             config.thread_per_block,
+             0,
+             dev_ctx.stream()>>>(in_x->data<T>(),
+                                 in_norm->data<T>(),
+                                 in_norm_dy->data<T>(),
+                                 out_dx->data<T>(),
+                                 pre,
+                                 axis_size,
+                                 post,
+                                 total,
+                                 reduce_all,
+                                 porder);
+    } else {
+      PNormGradPLessThan1Kernel<T, false>
+          <<<config.block_per_grid,
+             config.thread_per_block,
+             0,
+             dev_ctx.stream()>>>(in_x->data<T>(),
+                                 in_norm->data<T>(),
+                                 in_norm_dy->data<T>(),
+                                 out_dx->data<T>(),
+                                 pre,
+                                 axis_size,
+                                 post,
+                                 total,
+                                 reduce_all,
+                                 porder);
+    }
   } else if (porder < 2.0) {
     // Fused kernel: dx = sign(x) * |x|^(p-1) * grad / norm^(p-1),
     // masked_fill(norm==0, 0)
@@ -508,19 +625,37 @@ void PNormGradKernel(const Context& dev_ctx,
     int64_t total = in_x->numel();
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
 
-    PNormGradPBetween1And2Kernel<T><<<config.block_per_grid,
-                                      config.thread_per_block,
-                                      0,
-                                      dev_ctx.stream()>>>(in_x->data<T>(),
-                                                          in_norm->data<T>(),
-                                                          in_norm_dy->data<T>(),
-                                                          out_dx->data<T>(),
-                                                          pre,
-                                                          axis_size,
-                                                          post,
-                                                          total,
-                                                          reduce_all,
-                                                          porder);
+    if (FLAGS_use_accuracy_compatible_kernel) {
+      PNormGradPBetween1And2Kernel<T, true>
+          <<<config.block_per_grid,
+             config.thread_per_block,
+             0,
+             dev_ctx.stream()>>>(in_x->data<T>(),
+                                 in_norm->data<T>(),
+                                 in_norm_dy->data<T>(),
+                                 out_dx->data<T>(),
+                                 pre,
+                                 axis_size,
+                                 post,
+                                 total,
+                                 reduce_all,
+                                 porder);
+    } else {
+      PNormGradPBetween1And2Kernel<T, false>
+          <<<config.block_per_grid,
+             config.thread_per_block,
+             0,
+             dev_ctx.stream()>>>(in_x->data<T>(),
+                                 in_norm->data<T>(),
+                                 in_norm_dy->data<T>(),
+                                 out_dx->data<T>(),
+                                 pre,
+                                 axis_size,
+                                 post,
+                                 total,
+                                 reduce_all,
+                                 porder);
+    }
   } else {
     // Fused kernel: dx = x * |x|^(p-2) * grad / norm^(p-1),
     // masked_fill(norm==0, 0)
@@ -530,19 +665,37 @@ void PNormGradKernel(const Context& dev_ctx,
     int64_t total = in_x->numel();
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total);
 
-    PNormGradPGreaterThan2Kernel<T><<<config.block_per_grid,
-                                      config.thread_per_block,
-                                      0,
-                                      dev_ctx.stream()>>>(in_x->data<T>(),
-                                                          in_norm->data<T>(),
-                                                          in_norm_dy->data<T>(),
-                                                          out_dx->data<T>(),
-                                                          pre,
-                                                          axis_size,
-                                                          post,
-                                                          total,
-                                                          reduce_all,
-                                                          porder);
+    if (FLAGS_use_accuracy_compatible_kernel) {
+      PNormGradPGreaterThan2Kernel<T, true>
+          <<<config.block_per_grid,
+             config.thread_per_block,
+             0,
+             dev_ctx.stream()>>>(in_x->data<T>(),
+                                 in_norm->data<T>(),
+                                 in_norm_dy->data<T>(),
+                                 out_dx->data<T>(),
+                                 pre,
+                                 axis_size,
+                                 post,
+                                 total,
+                                 reduce_all,
+                                 porder);
+    } else {
+      PNormGradPGreaterThan2Kernel<T, false>
+          <<<config.block_per_grid,
+             config.thread_per_block,
+             0,
+             dev_ctx.stream()>>>(in_x->data<T>(),
+                                 in_norm->data<T>(),
+                                 in_norm_dy->data<T>(),
+                                 out_dx->data<T>(),
+                                 pre,
+                                 axis_size,
+                                 post,
+                                 total,
+                                 reduce_all,
+                                 porder);
+    }
   }
 }
 }  // namespace phi
