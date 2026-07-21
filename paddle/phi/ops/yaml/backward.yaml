@@ -264,6 +264,7 @@
     param : [input, x, y]
   kernel :
     func : baddbmm_grad
+    data_type: input
 
 - backward_op : batch_fc_grad
   forward : batch_fc (Tensor input, Tensor w, Tensor bias) -> Tensor(out)
