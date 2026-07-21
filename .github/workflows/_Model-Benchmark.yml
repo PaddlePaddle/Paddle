@@ -22,6 +22,7 @@ env:
   BRANCH: ${{ github.event.pull_request.base.ref }}
   TASK: paddle-CI-${{ github.event.pull_request.number }}-Model-benchmark
   CI_name: model-benchmark
+  CFS_DIR: /home/data/cfs
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
 defaults:
@@ -88,6 +89,7 @@ jobs:
             -e bos_path \
             -e ROOT_DIR \
             -e CACHE_DIR \
+            -e CFS_DIR \
             -e work_dir \
             -e AGILE_COMMENTS \
             -w /workspace --network host ${docker_image}
@@ -101,8 +103,12 @@ jobs:
           DEVICE_ID=$(cat /sys/class/dmi/id/product_uuid |awk -F "-" "{print \$5}")
           echo "export DEVICE_ID=$DEVICE_ID" >> ~/.bashrc
           echo $DEVICE_ID
-          echo "Downloading build.tar.gz"
-          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+          echo "Downloading build.tar.gz from cfs"
+          cp ${CFS_DIR}/build_bos/${PR_ID}/${COMMIT_ID}/build.tar.gz . || true
+          if [ ! -f build.tar.gz ]; then
+            echo "Downloading build.tar.gz from bos"
+            wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+          fi
           echo "Extracting build.tar.gz"
           tar --use-compress-program="pzstd -1" -xpf build.tar.gz
           rm build.tar.gz
