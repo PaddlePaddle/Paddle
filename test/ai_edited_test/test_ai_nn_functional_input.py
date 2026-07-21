@@ -134,6 +134,27 @@ class TestEmbedding(unittest.TestCase):
         with self.assertRaises(ValueError):
             paddle.nn.functional.embedding(x, weight, padding_idx=10)
 
+    def test_embedding_out_of_range_id_with_padding_idx(self):
+        """测试设置 padding_idx 时越界输入 id 会报错（CPU 内核越界读回归）
+        When padding_idx is set, an out-of-range input id must raise instead
+        of reading out of bounds (CWE-125 regression for the CPU kernel).
+        Forces the CPU place so the test is independent of the build target."""
+        orig_device = paddle.device.get_device()
+        paddle.set_device('cpu')
+        try:
+            weight = paddle.randn([16, 8])
+            # id 40 is out of range for a 16-row table; padding_idx=0 must not
+            # cause the range check to be skipped.
+            x = paddle.to_tensor([0, 40], dtype='int64')
+            with self.assertRaises(ValueError):
+                paddle.nn.functional.embedding(x, weight, padding_idx=0)
+            # A negative out-of-range id must also raise.
+            x_neg = paddle.to_tensor([0, -3], dtype='int64')
+            with self.assertRaises(ValueError):
+                paddle.nn.functional.embedding(x_neg, weight, padding_idx=0)
+        finally:
+            paddle.set_device(orig_device)
+
     def test_embedding_sparse(self):
         """测试 sparse 模式的 embedding
         Test embedding in sparse mode"""
