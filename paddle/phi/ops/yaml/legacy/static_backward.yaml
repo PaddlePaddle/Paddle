@@ -27,6 +27,19 @@
   composite: assign_grad(out_grad, x_grad)
   invoke : assign(out_grad)
 
+- backward_op : baddbmm_grad
+  forward : baddbmm (Tensor input, Tensor x, Tensor y, float beta=1.0, float alpha=1.0, DataType out_dtype=DataType::UNDEFINED) -> Tensor(out)
+  args : (Tensor input, Tensor x, Tensor y, Tensor out_grad, float alpha, float beta)
+  output : Tensor(input_grad), Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralTernaryGradInferMeta
+    param : [input, x, y]
+  data_transform :
+    support_trans_dtype : out_grad
+  kernel :
+    func : baddbmm_grad
+    data_type : x
+
 - backward_op : conv2d_transpose_double_grad
   forward : conv2d_transpose_grad(Tensor x, Tensor filter, Tensor bias, Tensor grad_out, int[] strides, int[] paddings, int[] output_padding, IntArray output_size, str padding_algorithm, int groups, int[] dilations, str data_format) -> Tensor(grad_x), Tensor(grad_filter)
   args : (Tensor x, Tensor filter, Tensor grad_out, Tensor grad_x_grad, Tensor grad_filter_grad, int[] strides, int[] paddings, int[] output_padding, IntArray output_size, str padding_algorithm, int groups, int[] dilations, str data_format)

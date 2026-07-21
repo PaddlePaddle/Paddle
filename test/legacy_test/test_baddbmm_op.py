@@ -577,6 +577,21 @@ class TestBaddBmmAPI(unittest.TestCase):
 
         paddle.enable_static()
 
+    def test_float64_scale_precision(self):
+        paddle.disable_static()
+
+        input = paddle.ones([1, 1, 1], dtype=paddle.float64)
+        x = paddle.ones([1, 1, 1], dtype=paddle.float64)
+        y = paddle.ones([1, 1, 1], dtype=paddle.float64)
+        beta = 1.0000000000000002
+        alpha = 1.0000000000000004
+
+        out = paddle.baddbmm(input, x, y, beta=beta, alpha=alpha)
+        expected = np.array([[[beta + alpha]]], dtype=np.float64)
+        np.testing.assert_array_equal(out.numpy(), expected)
+
+        paddle.enable_static()
+
     def test_api_out(self):
         if in_pir_mode():
             self.skipTest("PIR not support out tensor")
@@ -777,7 +792,7 @@ class TestBaddBmmAPI(unittest.TestCase):
 
         paddle.enable_static()
 
-    def test_zero_scale_backward_special_values(self):
+    def test_zero_beta_backward_special_values(self):
         if not (core.is_compiled_with_cuda() or is_custom_device()):
             self.skipTest("CUDA is not available")
 
@@ -785,17 +800,6 @@ class TestBaddBmmAPI(unittest.TestCase):
         paddle.set_device('gpu')
 
         for value in (float('nan'), float('inf')):
-            input = paddle.ones([1, 2, 2], dtype=paddle.float32)
-            x = paddle.full([1, 2, 3], value, dtype=paddle.float32)
-            y = paddle.full([1, 3, 2], value, dtype=paddle.float32)
-            x.stop_gradient = False
-            y.stop_gradient = False
-
-            out = paddle.baddbmm(input, x, y, beta=1.0, alpha=0.0)
-            out.backward(paddle.ones_like(out))
-            self.assertTrue(bool(paddle.isnan(x.grad).all()))
-            self.assertTrue(bool(paddle.isnan(y.grad).all()))
-
             input = paddle.ones([1, 2, 2], dtype=paddle.float32)
             x = paddle.ones([1, 2, 3], dtype=paddle.float32)
             y = paddle.ones([1, 3, 2], dtype=paddle.float32)

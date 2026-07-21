@@ -135,9 +135,11 @@ void AddmmGradKernel(const Context& dev_ctx,
     // is requested.
     if (x_grad) {
       dev_ctx.template Alloc<T>(x_grad);
+      if (y_grad) Full<T, Context>(dev_ctx, y_grad->dims(), 0, y_grad);
     }
     if (y_grad) {
       dev_ctx.template Alloc<T>(y_grad);
+      if (x_grad) Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
     }
     return;
   }
