@@ -792,6 +792,75 @@ class TestBaddBmmAPI(unittest.TestCase):
 
         paddle.enable_static()
 
+    def test_2d_input_with_input_grad(self):
+        paddle.disable_static()
+        paddle.set_device('cpu')
+
+        input = paddle.ones([3, 4], dtype=paddle.float32)
+        x = paddle.ones([2, 3, 5], dtype=paddle.float32)
+        y = paddle.ones([2, 5, 4], dtype=paddle.float32)
+        input.stop_gradient = False
+
+        out = paddle.baddbmm(input, x, y, beta=2.0)
+        out.sum().backward()
+
+        self.assertEqual(input.grad.shape, [3, 4])
+        np.testing.assert_array_equal(input.grad.numpy(), np.full([3, 4], 4.0))
+
+        paddle.enable_static()
+
+    def test_zero_k(self):
+        paddle.disable_static()
+        paddle.set_device('cpu')
+
+        input = paddle.ones([2, 3, 4], dtype=paddle.float32)
+        x = paddle.empty([2, 3, 0], dtype=paddle.float32)
+        y = paddle.empty([2, 0, 4], dtype=paddle.float32)
+        input.stop_gradient = False
+        x.stop_gradient = False
+        y.stop_gradient = False
+
+        out = paddle.baddbmm(input, x, y, beta=2.0)
+        np.testing.assert_array_equal(out.numpy(), np.full([2, 3, 4], 2.0))
+
+        out.sum().backward()
+        np.testing.assert_array_equal(
+            input.grad.numpy(), np.full([2, 3, 4], 2.0)
+        )
+        self.assertEqual(x.grad.shape, [2, 3, 0])
+        self.assertEqual(y.grad.shape, [2, 0, 4])
+
+        paddle.enable_static()
+
+    def test_empty_output(self):
+        paddle.disable_static()
+        paddle.set_device('cpu')
+
+        cases = [
+            ([0, 3, 4], [0, 3, 5], [0, 5, 4]),
+            ([2, 0, 4], [2, 0, 5], [2, 5, 4]),
+            ([2, 3, 0], [2, 3, 5], [2, 5, 0]),
+        ]
+        for input_shape, x_shape, y_shape in cases:
+            with self.subTest(input_shape=input_shape):
+                input = paddle.empty(input_shape, dtype=paddle.float32)
+                x = paddle.empty(x_shape, dtype=paddle.float32)
+                y = paddle.empty(y_shape, dtype=paddle.float32)
+                input.stop_gradient = False
+                x.stop_gradient = False
+                y.stop_gradient = False
+
+                out = paddle.baddbmm(input, x, y)
+                self.assertEqual(out.shape, input_shape)
+                self.assertEqual(out.numel(), 0)
+
+                out.sum().backward()
+                self.assertEqual(input.grad.shape, input_shape)
+                self.assertEqual(x.grad.shape, x_shape)
+                self.assertEqual(y.grad.shape, y_shape)
+
+        paddle.enable_static()
+
     def test_zero_beta_backward_special_values(self):
         if not (core.is_compiled_with_cuda() or is_custom_device()):
             self.skipTest("CUDA is not available")
