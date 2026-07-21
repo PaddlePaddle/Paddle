@@ -112,9 +112,9 @@ __device__ void cuChanRMSOnlineSum(const U sigma2B, U& sigma2) {  // NOLINT
 
 template <typename T, typename U>
 __device__ void cuWelfordMuSigma2(const T* __restrict__ vals,
-                                  const int n1,
-                                  const int n2,
-                                  const int i1,
+                                  const int64_t n1,
+                                  const int64_t n2,
+                                  const int64_t i1,
                                   U& mu,      // NOLINT
                                   U& sigma2,  // NOLINT
                                   U* buf,
@@ -132,10 +132,14 @@ __device__ void cuWelfordMuSigma2(const T* __restrict__ vals,
     // one warp normalizes one n1 index,
     // synchronization is implicit
     // initialize with standard Welford algorithm
-    const int numx = blockDim.x * blockDim.y;
-    const int thrx = threadIdx.x + threadIdx.y * blockDim.x;
-    const T* lvals = vals + i1 * n2;
-    int l = 4 * thrx;
+    const int64_t numx =
+        static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockDim.y);
+    const int64_t thrx =
+        static_cast<int64_t>(threadIdx.x) +
+        static_cast<int64_t>(threadIdx.y) * static_cast<int64_t>(blockDim.x);
+    const int64_t row_offset = i1 * n2;
+    const T* lvals = vals + row_offset;
+    int64_t l = 4 * thrx;
     for (; l + 3 < n2; l += 4 * numx) {
       for (int k = 0; k < 4; ++k) {
         U curr = static_cast<U>(lvals[l + k]);
@@ -221,9 +225,9 @@ __device__ void cuWelfordMuSigma2(const T* __restrict__ vals,
 
 template <>
 __device__ void cuWelfordMuSigma2(const phi::float16* __restrict__ vals,
-                                  const int n1,
-                                  const int n2,
-                                  const int i1,
+                                  const int64_t n1,
+                                  const int64_t n2,
+                                  const int64_t i1,
                                   float& mu,      // NOLINT
                                   float& sigma2,  // NOLINT
                                   float* buf,
@@ -241,10 +245,14 @@ __device__ void cuWelfordMuSigma2(const phi::float16* __restrict__ vals,
     // one warp normalizes one n1 index,
     // synchronization is implicit
     // initialize with standard Welford algorithm
-    const int numx = blockDim.x * blockDim.y;
-    const int thrx = threadIdx.x + threadIdx.y * blockDim.x;
-    const auto* lvals = vals + i1 * n2;
-    int l = 8 * thrx;
+    const int64_t numx =
+        static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockDim.y);
+    const int64_t thrx =
+        static_cast<int64_t>(threadIdx.x) +
+        static_cast<int64_t>(threadIdx.y) * static_cast<int64_t>(blockDim.x);
+    const int64_t row_offset = i1 * n2;
+    const auto* lvals = vals + row_offset;
+    int64_t l = 8 * thrx;
     if ((((size_t)lvals) & 3) != 0) {  // NOLINT
       // 16 bit alignment
       // first thread consumes first point
@@ -390,7 +398,7 @@ __device__ void cuApplyLayerNorm_(V* __restrict__ output_vals,
                                   U* __restrict__ mean,
                                   U* __restrict__ invvar,
                                   const T* __restrict__ vals,
-                                  const int n1,
+                                  const int64_t n1,
                                   const int n2,
                                   const U epsilon,
                                   const V* __restrict__ gamma,
@@ -400,13 +408,15 @@ __device__ void cuApplyLayerNorm_(V* __restrict__ output_vals,
   // 1) blockDim.x == WARP_SIZE
   // 2) Tensors are contiguous
   //
-  for (auto i1 = blockIdx.y; i1 < n1; i1 += gridDim.y) {
+  for (int64_t i1 = static_cast<int64_t>(blockIdx.y); i1 < n1;
+       i1 += gridDim.y) {
     SharedMemory<U> shared;
     U* buf = shared.getPointer();
     U mu, sigma2;
     cuWelfordMuSigma2(vals, n1, n2, i1, mu, sigma2, buf, rms_only);
-    const T* lvals = vals + i1 * n2;
-    V* ovals = output_vals + i1 * n2;
+    const int64_t row_offset = i1 * static_cast<int64_t>(n2);
+    const T* lvals = vals + row_offset;
+    V* ovals = output_vals + row_offset;
     U c_invvar = rsqrt(sigma2 + epsilon);
     const int numx = blockDim.x * blockDim.y;
     const int thrx = threadIdx.x + threadIdx.y * blockDim.x;
@@ -446,7 +456,7 @@ __global__ void cuApplyLayerNorm(V* __restrict__ output_vals,
                                  U* __restrict__ mean,
                                  U* __restrict__ invvar,
                                  const T* __restrict__ vals,
-                                 const int n1,
+                                 const int64_t n1,
                                  const int n2,
                                  const U epsilon,
                                  const V* __restrict__ gamma,
@@ -459,7 +469,7 @@ template <typename T, typename U, typename V = T>
 __global__ void cuApplyRMSNorm(V* __restrict__ output_vals,
                                U* __restrict__ invvar,
                                const T* __restrict__ vals,
-                               const int n1,
+                               const int64_t n1,
                                const int n2,
                                const U epsilon,
                                const V* __restrict__ gamma) {
@@ -565,7 +575,7 @@ __device__ void cuLoadAddStridedInputs(const int i1_block,
 template <typename T, typename U, typename V>
 __global__ void cuComputePartGradGammaBeta(const V* __restrict__ dout,
                                            const T* __restrict__ input,
-                                           const int n1,
+                                           const int64_t n1,
                                            const int n2,
                                            const U* __restrict__ mean,
                                            const U* __restrict__ invvar,
@@ -674,7 +684,7 @@ template <typename U, typename V>
 __global__ void cuComputeGradGammaBeta(const U* part_grad_gamma,
                                        const U* part_grad_beta,
                                        const int part_size,
-                                       const int n1,
+                                       const int64_t n1,
                                        const int n2,
                                        V* grad_gamma,
                                        V* grad_beta,
@@ -734,7 +744,7 @@ __global__ void cuComputeGradGammaBeta(const U* part_grad_gamma,
 template <typename T, typename U, typename V>
 __global__ void cuComputeGradInput(const V* __restrict__ dout,
                                    const T* __restrict__ input,
-                                   const int n1,
+                                   const int64_t n1,
                                    const int n2,
                                    const U* __restrict__ mean,
                                    const U* __restrict__ invvar,
@@ -742,7 +752,8 @@ __global__ void cuComputeGradInput(const V* __restrict__ dout,
                                    const V* gamma,
                                    T* grad_input,
                                    bool rms_only) {
-  for (auto i1 = blockIdx.y; i1 < n1; i1 += gridDim.y) {
+  for (int64_t i1 = static_cast<int64_t>(blockIdx.y); i1 < n1;
+       i1 += gridDim.y) {
     U sum_loss1 = U(0);
     U sum_loss2 = U(0);
     U c_mean;
@@ -750,10 +761,14 @@ __global__ void cuComputeGradInput(const V* __restrict__ dout,
       c_mean = mean[i1];
     }
     const U c_invvar = invvar[i1];
-    const T* k_input = input + i1 * n2;
-    const V* k_dout = dout + i1 * n2;
-    const int numx = blockDim.x * blockDim.y;
-    const int thrx = threadIdx.x + threadIdx.y * blockDim.x;
+    const int64_t row_offset = i1 * static_cast<int64_t>(n2);
+    const T* k_input = input + row_offset;
+    const V* k_dout = dout + row_offset;
+    const int64_t numx =
+        static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockDim.y);
+    const int64_t thrx =
+        static_cast<int64_t>(threadIdx.x) +
+        static_cast<int64_t>(threadIdx.y) * static_cast<int64_t>(blockDim.x);
     if (gamma != NULL) {
       int l = 4 * thrx;
       for (; l + 3 < n2; l += 4 * numx) {
@@ -853,7 +868,7 @@ __global__ void cuComputeGradInput(const V* __restrict__ dout,
     // all threads now have the two sums over l
     U fH = (U)n2;
     U term1 = (U(1) / fH) * c_invvar;
-    T* k_grad_input = grad_input + i1 * n2;
+    T* k_grad_input = grad_input + row_offset;
     if (gamma != NULL) {
       for (int l = thrx; l < n2; l += numx) {
         const U c_h = static_cast<U>(k_input[l]);
@@ -906,7 +921,7 @@ void HostApplyLayerNorm(V* output,
                         U* mean,
                         U* invvar,
                         const T* input,
-                        int n1,
+                        int64_t n1,
                         int n2,
                         double epsilon,
                         const V* gamma,
@@ -925,7 +940,7 @@ template <typename T, typename U, typename V = T>
 void HostApplyRMSNorm(V* output,
                       U* invvar,
                       const T* input,
-                      int n1,
+                      int64_t n1,
                       int n2,
                       double epsilon,
                       const V* gamma,
@@ -946,7 +961,7 @@ template <typename T, typename Context>
 void cuda_rms_norm(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& scale,
-                   int rows,
+                   int64_t rows,
                    int cols,
                    float epsilon,
                    DenseTensor* y,
@@ -975,7 +990,7 @@ void HostRMSNormGradient(const Context& dev_ctx,
                          const V* dout,
                          const U* invvar,
                          const DenseTensor& input,
-                         int n1,
+                         int64_t n1,
                          int n2,
                          const V* gamma,
                          double epsilon,
@@ -1043,7 +1058,7 @@ void cuda_rms_norm_gradient(const Context& dev_ctx,
                             const DenseTensor& scale,
                             const DenseTensor& invvar,
                             const DenseTensor& dy,
-                            int rows,
+                            int64_t rows,
                             int cols,
                             float epsilon,
                             DenseTensor* grad_x,

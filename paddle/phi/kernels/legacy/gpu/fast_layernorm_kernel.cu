@@ -44,7 +44,7 @@ void LnFwdKernel(const Context& dev_ctx,
   PD_CHECK(sizes.size() >= 2);
 
   const int cols = sizes[sizes.size() - 1];
-  const int rows = x.numel() / cols;
+  const int64_t rows = x.numel() / cols;
   auto hidden_size = scale.numel();
 
   PD_CHECK(scale.dims() == bias.dims());

@@ -65,12 +65,13 @@ __global__ void SkipLayerNormKernel(int num,
                                     const T *bias,
                                     T eps) {
   const T rld = T(1) / T(hidden);
-  const int offset = blockIdx.x * hidden;
+  const int64_t offset =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(hidden);
   cub::Sum pair_sum;
   funcs::kvp<T> thread_data(0, 0);
 
   for (int it = threadIdx.x; it < hidden; it += TPB) {
-    const int idx = offset + it;
+    const int64_t idx = offset + it;
     const T val = input1[idx] + input2[idx];
     const T rldval = rld * val;
     thread_data = pair_sum(thread_data, funcs::kvp<T>(rldval, rldval * val));
@@ -92,12 +93,13 @@ __global__ void SkipLayerNormKernel<half, 256>(int num,
                                                half eps) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   const half rld = half(1) / half(hidden);
-  const int offset = blockIdx.x * hidden;
+  const int64_t offset =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(hidden);
   cub::Sum pair_sum;
   funcs::kvp<half> thread_data(0, 0);
 
   for (int it = threadIdx.x; it < hidden; it += 256) {
-    const int idx = offset + it;
+    const int64_t idx = offset + it;
     const half val = input1[idx] + input2[idx];
     const half rldval = rld * val;
     thread_data = pair_sum(thread_data, funcs::kvp<half>(rldval, rldval * val));
@@ -150,12 +152,13 @@ __global__ void SkipLayerNormKernel2(int num,
                                      const T2 *bias,
                                      float eps) {
   const T rld = T(0.5f / hidden);  // because hidden is hidden/2
-  const int offset = blockIdx.x * hidden;
+  const int64_t offset =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(hidden);
   cub::Sum pair_sum;
   funcs::kvp<T> thread_data(0, 0);
 
   for (int it = threadIdx.x; it < hidden; it += TPB) {
-    const int idx = offset + it;
+    const int64_t idx = offset + it;
     const T2 val2 = input1[idx] + input2[idx];
     thread_data =
         pair_sum(thread_data,
@@ -179,12 +182,13 @@ __global__ void SkipLayerNormKernel2<half, half2, 256>(int num,
                                                        float eps) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   const half rld = half(0.5f / hidden);  // because hidden is hidden/2
-  const int offset = blockIdx.x * hidden;
+  const int64_t offset =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(hidden);
   cub::Sum pair_sum;
   funcs::kvp<half> thread_data(0, 0);
 
   for (int it = threadIdx.x; it < hidden; it += 256) {
-    const int idx = offset + it;
+    const int64_t idx = offset + it;
     const half2 val2 = input1[idx] + input2[idx];
     thread_data = pair_sum(
         thread_data,
@@ -237,10 +241,11 @@ __global__ void SkipLayerNormSmallKernel(int num,
                                          const T *bias,
                                          T eps) {
   const T rld = T(1) / T(hidden);
-  const int offset = blockIdx.x * hidden;
+  const int64_t offset =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(hidden);
   cub::Sum pair_sum;
   funcs::kvp<T> thread_data(0, 0);
-  const int idx = offset + threadIdx.x;
+  const int64_t idx = offset + threadIdx.x;
   T val = 0;
   if (threadIdx.x < hidden) {
     val = input1[idx] + input2[idx];
@@ -264,10 +269,11 @@ __global__ void SkipLayerNormSmallKernel<half, 32>(int num,
                                                    half eps) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   const half rld = half(1) / half(hidden);
-  const int offset = blockIdx.x * hidden;
+  const int64_t offset =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(hidden);
   cub::Sum pair_sum;
   funcs::kvp<half> thread_data(0, 0);
-  const int idx = offset + threadIdx.x;
+  const int64_t idx = offset + threadIdx.x;
   half val = 0;
   if (threadIdx.x < hidden) {
     val = input1[idx] + input2[idx];
@@ -290,10 +296,11 @@ __global__ void SkipLayerNormSmallKernel<half, 128>(int num,
                                                     half eps) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   const half rld = half(1) / half(hidden);
-  const int offset = blockIdx.x * hidden;
+  const int64_t offset =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(hidden);
   cub::Sum pair_sum;
   funcs::kvp<half> thread_data(0, 0);
-  const int idx = offset + threadIdx.x;
+  const int64_t idx = offset + threadIdx.x;
   half val = 0;
   if (threadIdx.x < hidden) {
     val = input1[idx] + input2[idx];
@@ -316,10 +323,11 @@ __global__ void SkipLayerNormSmallKernel<half, 384>(int num,
                                                     half eps) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   const half rld = half(1) / half(hidden);
-  const int offset = blockIdx.x * hidden;
+  const int64_t offset =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(hidden);
   cub::Sum pair_sum;
   funcs::kvp<half> thread_data(0, 0);
-  const int idx = offset + threadIdx.x;
+  const int64_t idx = offset + threadIdx.x;
   half val = 0;
   if (threadIdx.x < hidden) {
     val = input1[idx] + input2[idx];
