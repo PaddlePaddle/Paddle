@@ -29,7 +29,7 @@ namespace phi {
 
 template <typename T>
 struct BaddbmmScaleFunctor {
-  BaddbmmScaleFunctor(float scale, T* output)
+  BaddbmmScaleFunctor(double scale, T* output)
       : scale_(scale), output_(output) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
@@ -38,7 +38,7 @@ struct BaddbmmScaleFunctor {
   }
 
  private:
-  float scale_;
+  double scale_;
   T* output_;
 };
 
@@ -47,8 +47,8 @@ void BaddbmmKernel(const Context& dev_ctx,
                    const DenseTensor& input,
                    const DenseTensor& x,
                    const DenseTensor& y,
-                   float beta,
-                   float alpha,
+                   double beta,
+                   double alpha,
                    DataType out_dtype,
                    DenseTensor* out) {
   auto input_dims = input.dims();
@@ -176,8 +176,8 @@ void BaddbmmKernel(const Context& dev_ctx,
   if constexpr (std::is_same_v<MPType, float>) {
     VLOG(4) << "Function: baddbmm, Type of T: " << typeid(T).name();
     VLOG(4) << "Function: baddbmm, Type of MPType: " << typeid(MPType).name();
-    float t_alpha = alpha;
-    float t_beta = beta;
+    float t_alpha = static_cast<float>(alpha);
+    float t_beta = static_cast<float>(beta);
     if (x_dims[0] == 1) {
       blas.GEMM(CblasNoTrans,
                 CblasNoTrans,

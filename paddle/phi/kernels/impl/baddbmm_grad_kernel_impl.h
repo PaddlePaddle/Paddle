@@ -30,7 +30,7 @@ namespace phi {
 
 template <typename T>
 struct BCopyOrScaleFunctor {
-  BCopyOrScaleFunctor(const float scale, const T* x, T* output, int64_t numel)
+  BCopyOrScaleFunctor(const double scale, const T* x, T* output, int64_t numel)
       : scale_(scale), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
@@ -45,7 +45,7 @@ struct BCopyOrScaleFunctor {
   }
 
  private:
-  const float scale_;
+  const double scale_;
   const T* x_;
   T* output_;
   int64_t numel_;
@@ -57,8 +57,8 @@ void BaddbmmGradKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& y,
                        const DenseTensor& out_grad,
-                       float alpha,
-                       float beta,
+                       double alpha,
+                       double beta,
                        DenseTensor* input_grad,
                        DenseTensor* x_grad,
                        DenseTensor* y_grad) {
@@ -146,9 +146,9 @@ void BaddbmmGradKernel(const Context& dev_ctx,
           0, nullptr, x_grad->data<T>(), total_elems);
       for_range(functor);
     } else if constexpr (std::is_same_v<MPType, float>) {
-      float gemm_alpha = (FLAGS_use_accuracy_compatible_kernel || alpha == 0.0f)
+      float gemm_alpha = FLAGS_use_accuracy_compatible_kernel
                              ? 1.0f
-                             : alpha;
+                             : static_cast<float>(alpha);
       float zero = 0.0f;
       blas.BatchedGEMM(CblasNoTrans,
                        CblasTrans,
@@ -164,7 +164,7 @@ void BaddbmmGradKernel(const Context& dev_ctx,
                        M_dim * N_dim,
                        K_dim * N_dim);
     } else {
-      T gemm_alpha = (FLAGS_use_accuracy_compatible_kernel || alpha == 0.0f)
+      T gemm_alpha = FLAGS_use_accuracy_compatible_kernel
                          ? static_cast<T>(1)
                          : static_cast<T>(alpha);
       T zero = static_cast<T>(0);
@@ -182,7 +182,7 @@ void BaddbmmGradKernel(const Context& dev_ctx,
                        M_dim * N_dim,
                        K_dim * N_dim);
     }
-    if (FLAGS_use_accuracy_compatible_kernel || alpha == 0.0f) {
+    if (FLAGS_use_accuracy_compatible_kernel) {
       funcs::ForRange<Context> for_range(dev_ctx, total_elems);
       BCopyOrScaleFunctor<T> functor(
           alpha, x_grad->data<T>(), x_grad->data<T>(), total_elems);
@@ -204,9 +204,9 @@ void BaddbmmGradKernel(const Context& dev_ctx,
           0, nullptr, y_grad->data<T>(), total_elems);
       for_range(functor);
     } else if constexpr (std::is_same_v<MPType, float>) {
-      float gemm_alpha = (FLAGS_use_accuracy_compatible_kernel || alpha == 0.0f)
+      float gemm_alpha = FLAGS_use_accuracy_compatible_kernel
                              ? 1.0f
-                             : alpha;
+                             : static_cast<float>(alpha);
       float zero = 0.0f;
       blas.BatchedGEMM(CblasTrans,
                        CblasNoTrans,
@@ -222,7 +222,7 @@ void BaddbmmGradKernel(const Context& dev_ctx,
                        M_dim * K_dim,
                        M_dim * N_dim);
     } else {
-      T gemm_alpha = (FLAGS_use_accuracy_compatible_kernel || alpha == 0.0f)
+      T gemm_alpha = FLAGS_use_accuracy_compatible_kernel
                          ? static_cast<T>(1)
                          : static_cast<T>(alpha);
       T zero = static_cast<T>(0);
@@ -240,7 +240,7 @@ void BaddbmmGradKernel(const Context& dev_ctx,
                        M_dim * K_dim,
                        M_dim * N_dim);
     }
-    if (FLAGS_use_accuracy_compatible_kernel || alpha == 0.0f) {
+    if (FLAGS_use_accuracy_compatible_kernel) {
       funcs::ForRange<Context> for_range(dev_ctx, total_elems);
       BCopyOrScaleFunctor<T> functor(
           alpha, y_grad->data<T>(), y_grad->data<T>(), total_elems);

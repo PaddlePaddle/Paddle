@@ -1417,8 +1417,8 @@ template <typename T>
 Tensor baddbmm_decomp(const Tensor& input,
                       const Tensor& x,
                       const Tensor& y,
-                      const float beta,
-                      const float alpha,
+                      const double beta,
+                      const double alpha,
                       const DataType out_dtype) {
   int64_t batch_size = x.shape()[0];
   std::vector<Tensor> batch_results;
