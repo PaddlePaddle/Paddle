@@ -418,9 +418,7 @@ class TestScopeAndLifecycle(CompatNamespaceAliasBase):
 
 
 class TestTorchSurfaceUnderCompat(CompatNamespaceAliasBase):
-    """torch.* still reaches the compat implementations: at level=2 the paddle.*
-    alias carries through the torch proxy (torch.sort -> paddle.sort ->
-    paddle.compat.sort)."""
+    """torch.* reaches the public compat implementations at both levels."""
 
     @staticmethod
     def _drop_torch_modules():
@@ -431,15 +429,15 @@ class TestTorchSurfaceUnderCompat(CompatNamespaceAliasBase):
         ]:
             del sys.modules[name]
 
-    def test_level1_root_torch_apis_keep_native_mapping(self):
+    def test_level1_root_torch_apis_resolve_to_compat(self):
         paddle.enable_compat()
         try:
             self._drop_torch_modules()
             import torch
 
-            self.assertIs(torch.sort, self._native[(paddle, "sort")])
-            self.assertIs(torch.min, self._native[(paddle, "min")])
-            self.assertIs(torch.unique, self._native[(paddle, "unique")])
+            self.assertIs(torch.sort, paddle.compat.sort)
+            self.assertIs(torch.min, paddle.compat.min)
+            self.assertIs(torch.unique, paddle.compat.unique)
         finally:
             self._drop_torch_modules()
             paddle.disable_compat()
@@ -450,41 +448,31 @@ class TestTorchSurfaceUnderCompat(CompatNamespaceAliasBase):
             self._drop_torch_modules()
             import torch
 
-            # Root functions with native Paddle counterparts carry through the
-            # paddle.* aliases: torch.sort -> paddle.sort -> paddle.compat.sort.
-            self.assertAliased(torch.sort, paddle.compat.sort)
-            self.assertAliased(torch.min, paddle.compat.min)
-            self.assertAliased(torch.unique, paddle.compat.unique)
+            self.assertIs(torch.sort, paddle.compat.sort)
+            self.assertIs(torch.min, paddle.compat.min)
+            self.assertIs(torch.unique, paddle.compat.unique)
             # nn.* overrides reach compat regardless of the alias.
             self.assertIs(torch.nn.Linear, paddle.compat.nn.Linear)
         finally:
             self._drop_torch_modules()
             paddle.disable_compat()
 
-    def test_root_compat_only_api_is_level2_only(self):
-        paddle.enable_compat(level=2)
-        try:
-            self._drop_torch_modules()
-            import torch
+    def test_root_compat_only_api_is_registered_at_both_levels(self):
+        for level in (1, 2):
+            with self.subTest(level=level):
+                paddle.enable_compat(level=level)
+                try:
+                    self._drop_torch_modules()
+                    import torch
 
-            self.assertFalse(hasattr(paddle, "slogdet"))
-            self.assertIs(torch.slogdet, paddle.compat.slogdet)
-            result = torch.slogdet(paddle.eye(2))
-            self.assertEqual(result.sign.item(), 1.0)
-            self.assertEqual(result.logabsdet.item(), 0.0)
-        finally:
-            self._drop_torch_modules()
-            paddle.disable_compat()
-
-        paddle.enable_compat()
-        try:
-            self._drop_torch_modules()
-            import torch
-
-            self.assertFalse(hasattr(torch, "slogdet"))
-        finally:
-            self._drop_torch_modules()
-            paddle.disable_compat()
+                    self.assertFalse(hasattr(paddle, "slogdet"))
+                    self.assertIs(torch.slogdet, paddle.compat.slogdet)
+                    result = torch.slogdet(paddle.eye(2))
+                    self.assertEqual(result.sign.item(), 1.0)
+                    self.assertEqual(result.logabsdet.item(), 0.0)
+                finally:
+                    self._drop_torch_modules()
+                    paddle.disable_compat()
 
 
 class TestLevel2InternalCallersUseNative(CompatNamespaceAliasBase):

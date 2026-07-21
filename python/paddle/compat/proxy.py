@@ -18,7 +18,6 @@ import importlib
 import importlib.abc
 import importlib.util
 import inspect
-import pkgutil
 import sys
 import types
 import warnings
@@ -27,8 +26,8 @@ from functools import cache
 from typing import TYPE_CHECKING, Any, Literal
 
 from .api_dispatch import (
-    _PADDLE_NAMESPACE_SAVED,
     _apply_paddle_namespace_aliases,
+    _iter_compat_modules,
     _restore_paddle_namespace_aliases,
 )
 
@@ -153,31 +152,17 @@ def _extend_torch_proxy_overrides(
 
 @cache
 def _register_compat_override():
-    import paddle.compat
-
-    PADDLE_PREFIX = "paddle.compat"
-    TORCH_PREFIX = "torch"
-    PUBLIC_ATTR_DECLARATION = "__all__"
-
     compat_overrides = {}
-    for module_info in pkgutil.walk_packages(
-        paddle.compat.__path__,
-        paddle.compat.__name__ + ".",
-    ):
-        module = importlib.import_module(module_info.name)
-        if hasattr(module, PUBLIC_ATTR_DECLARATION):
-            public_attrs = getattr(module, PUBLIC_ATTR_DECLARATION)
-            torch_module_name = module_info.name.replace(
-                PADDLE_PREFIX, TORCH_PREFIX, 1
+    for module in _iter_compat_modules():
+        torch_module_name = module.__name__.replace("paddle.compat", "torch", 1)
+        for attr_name in module.__all__:
+            if attr_name.startswith("_"):
+                continue
+            paddle_attr = getattr(module, attr_name)
+            torch_attr_name = f"{torch_module_name}.{attr_name}"
+            compat_overrides[torch_attr_name] = RawOverriddenAttribute(
+                paddle_attr
             )
-            for attr_name in public_attrs:
-                if attr_name.startswith("_"):
-                    continue
-                paddle_attr = getattr(module, attr_name)
-                torch_attr_name = f"{torch_module_name}.{attr_name}"
-                compat_overrides[torch_attr_name] = RawOverriddenAttribute(
-                    paddle_attr
-                )
     _extend_torch_proxy_overrides(compat_overrides)
 
 
@@ -360,17 +345,6 @@ class TorchProxyMetaFinder:
             for k, v in GLOBAL_OVERRIDES.items()
             if k.startswith(f"{fullname}.")
         }
-        if fullname == "torch" and len(_PADDLE_NAMESPACE_SAVED) > 0:
-            compat_root = importlib.import_module("paddle.compat")
-            overrides.update(
-                {
-                    attr_name: RawOverriddenAttribute(
-                        getattr(compat_root, attr_name)
-                    )
-                    for attr_name in getattr(compat_root, "__all__", ())
-                    if not hasattr(source_module, attr_name)
-                }
-            )
 
         is_pkg = hasattr(source_module, "__path__")
 
