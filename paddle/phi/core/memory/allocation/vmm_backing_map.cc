@@ -520,8 +520,11 @@ bool VMMBackingMap::IsRangeReleasable(VMMDevicePtr va, size_t size) const {
     return false;
   }
   for (size_t i = 0; i < count; ++i) {
-    if (pages_[start + i].ipc_exported ||
-        !PageCanUseBackingLocked(&pages_[start + i], "IsRangeReleasable")) {
+    // An imported CUDA VMM handle keeps the backing alive through its own
+    // driver reference. Once the exporter range is idle, release its local
+    // mapping and handle like a regular allocation. Remap eligibility keeps
+    // its separate IPC-export check.
+    if (!PageCanUseBackingLocked(&pages_[start + i], "IsRangeReleasable")) {
       return false;
     }
   }
@@ -542,7 +545,6 @@ bool VMMBackingMap::CanReleaseHandle(VMMDevicePtr va,
   for (size_t i = 0; i < count; ++i) {
     auto& page = pages_[start + i];
     if (!page.mapped || page.handle != handle || page.meta != meta ||
-        page.ipc_exported ||
         !PageEventsReadyLocked(&page, "CanReleaseHandle")) {
       return false;
     }

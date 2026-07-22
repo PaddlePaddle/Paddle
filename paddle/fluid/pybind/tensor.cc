@@ -190,6 +190,17 @@ PyTypeObject *g_framework_tensor_pytype = nullptr;
 
 namespace {
 
+#if defined(PADDLE_WITH_CUDA)
+bool IsVMMIPCMeta(const py::tuple &meta) {
+  if (meta.size() != 7) {
+    return false;
+  }
+  // A CUDA IPC handle is always CUDA_IPC_HANDLE_SIZE bytes. A valid VMM
+  // payload contains a header, at least one entry, and its shared FD.
+  return meta[0].cast<std::string>().size() != CUDA_IPC_HANDLE_SIZE;
+}
+#endif
+
 #if defined(PADDLE_WITH_CUDA) && defined(__linux__)
 #ifndef SYS_pidfd_open
 #define SYS_pidfd_open 434
@@ -298,6 +309,8 @@ bool TryShareTensorViaVMM(const DenseTensor &self, py::tuple *out) {
 
   int dtype_idx = static_cast<int>(self.type());
   *out = py::make_tuple(py::bytes(blob),
+                        static_cast<py::size_t>(header.offset),
+                        data_size,
                         dtype_idx,
                         common::vectorize(self.dims()),
                         self.lod(),
@@ -306,18 +319,10 @@ bool TryShareTensorViaVMM(const DenseTensor &self, py::tuple *out) {
 }
 
 DenseTensor RebuildTensorFromVMMMeta(const py::tuple &meta) {
-  PADDLE_ENFORCE_EQ(
-      meta.size(),
-      5,
-      common::errors::InvalidArgument(
-          "VMM IPC metadata must contain 5 elements, but received %d. "
-          "Please make sure the tuple returned by _share_vmm is passed "
-          "unchanged.",
-          meta.size()));
   std::string blob = meta[0].cast<py::bytes>();
-  int dtype_idx = meta[1].cast<int>();
-  std::vector<int64_t> dims_vec = meta[2].cast<std::vector<int64_t>>();
-  int device_id = meta[4].cast<int>();
+  int dtype_idx = meta[3].cast<int>();
+  std::vector<int64_t> dims_vec = meta[4].cast<std::vector<int64_t>>();
+  int device_id = meta[6].cast<int>();
 
   using paddle::memory::allocation::VMMIPCEntry;
   using paddle::memory::allocation::VMMIPCHeader;
@@ -331,6 +336,26 @@ DenseTensor RebuildTensorFromVMMMeta(const py::tuple &meta) {
           sizeof(VMMIPCHeader)));
   VMMIPCHeader header{};
   std::memcpy(&header, blob.data(), sizeof(header));
+  const uint64_t outer_offset = meta[1].cast<uint64_t>();
+  const uint64_t outer_size = meta[2].cast<uint64_t>();
+  PADDLE_ENFORCE_EQ(
+      outer_offset,
+      header.offset,
+      common::errors::InvalidArgument(
+          "The VMM IPC metadata offset must match the offset stored in the "
+          "VMM payload header. The outer tuple contains offset %" PRIu64
+          ", but the payload header contains offset %" PRIu64 ".",
+          outer_offset,
+          header.offset));
+  PADDLE_ENFORCE_EQ(
+      outer_size,
+      header.alloc_size,
+      common::errors::InvalidArgument(
+          "The VMM IPC metadata size must match the allocation size stored "
+          "in the VMM payload header. The outer tuple contains size %" PRIu64
+          ", but the payload header contains size %" PRIu64 ".",
+          outer_size,
+          header.alloc_size));
   PADDLE_ENFORCE_EQ(
       header.version,
       1,
@@ -1211,10 +1236,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
       )DOC")
       .def("_new_shared_cuda",
            [](py::tuple t) {
-              // The tuple shape identifies the VMM protocol. Import must not
-              // depend on the receiver selecting the same allocator flags as
-              // the exporting process.
-              if (t.size() == 5) {
+              if (IsVMMIPCMeta(t)) {
 #if defined(__linux__)
                 return RebuildTensorFromVMMMeta(t);
 #else
@@ -1222,9 +1244,9 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                     "VMM tensor IPC is only supported on Linux."));
 #endif
               }
-             if (t.size() != 7)
-               throw std::runtime_error(
-                   "Invalid Tensor meta info for shared cuda tensor!");
+              if (t.size() != 7)
+                throw std::runtime_error(
+                    "Invalid Tensor meta info for shared cuda tensor!");
 
              // 1. Create a new C++ instance
              DenseTensor tensor;

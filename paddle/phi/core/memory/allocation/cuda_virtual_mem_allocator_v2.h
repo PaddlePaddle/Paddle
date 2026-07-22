@@ -31,6 +31,31 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
+struct VMMGrowOOMInfo {
+  size_t requested_handles{0};
+  size_t created_handles{0};
+  size_t handle_size{0};
+  int device{-1};
+  PoolType pool_type{PoolType::kLarge};
+};
+
+// Carries the exact handle-creation progress from a failed VMM allocation.
+// OOM recovery can use this immutable per-request snapshot without consulting
+// shared "last failure" state.
+class VMMGrowOOM : public BadAlloc {
+ public:
+  VMMGrowOOM(std::string message,
+             const char* file,
+             int line,
+             VMMGrowOOMInfo info)
+      : BadAlloc(std::move(message), file, line), info_(info) {}
+
+  const VMMGrowOOMInfo& info() const { return info_; }
+
+ private:
+  VMMGrowOOMInfo info_;
+};
+
 // Compared with CUDAVirtualMemAllocator, V2 does not expose a single
 // VA<->handle mapping per allocation. It keeps the handle layout registered in
 // the bottom allocator and hands upper layers either allocation-level layout
@@ -217,7 +242,8 @@ class CUDAVirtualMemAllocatorV2 : public Allocator {
   AllocationWithLayout PlaceAtVAWithLayout(VMMDevicePtr ptr, size_t size);
   HandleLayout CreateMappedHandleLayout(VMMDevicePtr ptr,
                                         size_t aligned_size,
-                                        const char* context);
+                                        const char* context,
+                                        bool is_grow = false);
   void SetAccessOrThrow(VMMDevicePtr ptr,
                         size_t aligned_size,
                         size_t num_handles,
