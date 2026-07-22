@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import logging
+import math
 import os
 from typing import TYPE_CHECKING
 
@@ -245,6 +246,7 @@ class Muon(Optimizer):
         ns_matmul_dtype=None,
         multi_precision=False,
         name=None,
+        muon_max_group_bytes=2 * 1024 * 1024 * 1024,  # Max 2GB per group
         **kwargs,
     ):
         if parameters is None:
@@ -304,6 +306,11 @@ class Muon(Optimizer):
             )
             self._ns_coeffs = _NS_COEFFICIENT_SETS[ns_coeff_type]
         self._muon_param_info_map = muon_param_info_map or {}
+        # Optional cap on the total size (in bytes) of a batched Muon group.
+        # When set, a group whose parameters sum to more than this many bytes
+        # is further split into sub-groups so each batched Newton-Schulz call
+        # stays under the limit, avoiding OOM. None disables splitting.
+        self._muon_max_group_bytes = muon_max_group_bytes
         # Dtype for Newton-Schulz matmul.
         # None = auto: bfloat16 on Ampere+ (capability >= 8.0), float32 on older.
         if ns_matmul_dtype is None:
@@ -532,6 +539,35 @@ class Muon(Optimizer):
             False,  # amsgrad
         )
 
+    def _split_group_by_bytes(self, group_params_grads):
+        """Split a batched Muon group so each sub-group stays under the byte cap.
+
+        The batched Newton-Schulz update stacks every parameter's momentum
+        buffer (float32) into one tensor, so peak memory scales with the total
+        size of the group. When ``self._muon_max_group_bytes`` is set, greedily
+        pack parameters into sub-groups whose cumulative size does not exceed
+        the cap. A single parameter larger than the cap forms its own sub-group.
+        """
+        max_bytes = self._muon_max_group_bytes
+        if not max_bytes:
+            yield group_params_grads
+            return
+
+        # Momentum buffer / batched matrix are float32 (see _ensure_accumulators).
+        elem_size = 4
+        sub_group = []
+        sub_bytes = 0
+        for param, grad in group_params_grads:
+            param_bytes = math.prod(param.shape) * elem_size
+            if sub_group and sub_bytes + param_bytes > max_bytes:
+                yield sub_group
+                sub_group = []
+                sub_bytes = 0
+            sub_group.append((param, grad))
+            sub_bytes += param_bytes
+        if sub_group:
+            yield sub_group
+
     def _muon_update_group(
         self,
         group_params_grads,
@@ -754,16 +790,17 @@ class Muon(Optimizer):
             muon_groups[key].append((param, grad))
 
         for key, group_params in muon_groups.items():
-            self._muon_update_group(
-                group_params,
-                lr_tensor,
-                group.get("momentum", 0.95),
-                group.get("ns_steps", 5),
-                group.get("nesterov", True),
-                group.get("epsilon", 1e-9),
-                wd,
-                version=group.get("muon_version", 3),
-            )
+            for sub_group in self._split_group_by_bytes(group_params):
+                self._muon_update_group(
+                    sub_group,
+                    lr_tensor,
+                    group.get("momentum", 0.95),
+                    group.get("ns_steps", 5),
+                    group.get("nesterov", True),
+                    group.get("epsilon", 1e-9),
+                    wd,
+                    version=group.get("muon_version", 3),
+                )
 
         # --- Pass 3: AdamW updates ---
         for param, grad in adamw_params:

@@ -48,6 +48,18 @@ g_enable_fuse_optimizer_states = int(
 g_release_gradients = int(os.environ.get("RELEASE_GRADIENTS", "0"))
 g_multi_precision = int(os.environ.get("MULTI_PRECISION", "0"))
 
+# Test-controlled Muon group-splitting threshold (bytes), consumed in
+# _build_muon_optimizer. Controls Muon._split_group_by_bytes coverage:
+#   unset -> use optimizer default (no override)
+#   "0"   -> pass None, exercising the split-disabled early-return path
+#   >0    -> pass value; a small value forces a group to be split
+_muon_mgb_env = os.environ.get("MUON_MAX_GROUP_BYTES", "")
+if _muon_mgb_env == "":
+    g_muon_max_group_bytes = "unset"
+else:
+    _v = int(_muon_mgb_env)
+    g_muon_max_group_bytes = None if _v == 0 else _v
+
 # Parameter combinations
 NS_COEFF_TYPES = ["simple", "quintic", "polar_express", "aol", "deepseekv4"]
 
@@ -367,6 +379,8 @@ class TestDistShardingMuonTraining(unittest.TestCase):
             kwargs['ns_matmul_dtype'] = ns_matmul_dtype
         if ns_coeffs is not None:
             kwargs['ns_coeffs'] = ns_coeffs
+        if g_muon_max_group_bytes != "unset":
+            kwargs['muon_max_group_bytes'] = g_muon_max_group_bytes
 
         return paddle.optimizer.Muon(
             parameters=model.parameters(),
