@@ -232,6 +232,19 @@ function(select_nvcc_arch_flags out_variable out_arch_bin)
   list(REMOVE_DUPLICATES cuda_arch_bin)
   list(REMOVE_DUPLICATES cuda_arch_ptx)
 
+  if(${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 12.8)
+    set(resolved_cuda_archs ${cuda_arch_bin} ${cuda_arch_ptx})
+    foreach(arch ${resolved_cuda_archs})
+      string(REGEX REPLACE "\\." "" resolved_arch "${arch}")
+      if("${resolved_arch}" MATCHES "^(100|101|103|120)(\\(|$)")
+        message(
+          FATAL_ERROR "Blackwell CUDA arch requires CUDA 12.8 or newer. "
+                      "Please upgrade CUDA or choose a different "
+                      "CUDA_ARCH_NAME/CUDA_ARCH_BIN/CUDA_ARCH_PTX.")
+      endif()
+    endforeach()
+  endif()
+
   set(nvcc_flags "")
   set(nvcc_archs_readable "")
   set(nvcc_archs_bin_list "")
