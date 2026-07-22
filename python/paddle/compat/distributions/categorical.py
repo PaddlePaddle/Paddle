@@ -20,8 +20,10 @@ import paddle
 from paddle.distribution import constraint, distribution
 from paddle.tensor import multinomial
 
+from ..utils import _CompatClassMeta
 
-class Categorical(distribution.Distribution):
+
+class Categorical(distribution.Distribution, metaclass=_CompatClassMeta):
     arg_constraints = {
         "probs": constraint.simplex,
         "logits": constraint.real_vector,
@@ -61,7 +63,9 @@ class Categorical(distribution.Distribution):
         batch_shape = (
             tuple(self._param.shape[:-1]) if self._param.dim() > 1 else ()
         )
-        super().__init__(batch_shape, validate_args=validate_args)
+        distribution.Distribution.__init__(
+            self, batch_shape, validate_args=validate_args
+        )
 
     def expand(self, batch_shape, _instance=None):
         new = (
@@ -81,7 +85,9 @@ class Categorical(distribution.Distribution):
         )
         new._param = new._logits if new._logits is not None else new._probs
         new._num_events = self._num_events
-        super(Categorical, new).__init__(batch_shape, validate_args=False)
+        distribution.Distribution.__init__(
+            new, batch_shape, validate_args=False
+        )
         new._validate_args_enabled = self._validate_args_enabled
         return new
 
