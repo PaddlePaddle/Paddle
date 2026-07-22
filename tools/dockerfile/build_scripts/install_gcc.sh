@@ -89,9 +89,6 @@ elif [ "$1" == "gcc11" ]; then
   ../gcc-${GCC_VERSION}/configure --prefix=${GCC_PREFIX} --enable-checking=release --enable-languages=c,c++ --disable-multilib && \
   make -j$(nproc) && make install
   cd .. && rm -rf temp_gcc11 gcc-${GCC_VERSION} ${GCC_ARCHIVE}
-  cp ${lib_so_6} ${lib_so_6}.bak  && rm -f ${lib_so_6} &&
-  ln -s ${GCC_PREFIX}/lib64/libstdc++.so.6 ${lib_so_6} && \
-  cp ${GCC_PREFIX}/lib64/libstdc++.so.6.* ${lib_path}
 elif [ "$1" == "gcc152" ]; then
   GCC_VERSION=${GCC_VERSION:-15.2.0}
   GCC_MAJOR_MINOR=$(echo ${GCC_VERSION} | cut -d. -f1,2)
