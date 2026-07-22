@@ -13,13 +13,23 @@
 # limitations under the License.
 
 import gc
+import json
 import struct
 import unittest
 
 import numpy as np
 
 import paddle
+import paddle.incubate.multiprocessing as mp
 from paddle.device.cuda.memory_analyzer import MemoryAnalysisTool
+from paddle.incubate.multiprocessing import reductions
+
+
+def send_vmm_tensor(queue, release_event, device):
+    paddle.set_device(device)
+    tensor = paddle.arange(64, dtype="float32").reshape([8, 8])
+    queue.put(tensor)
+    release_event.wait(30)
 
 
 class TestCUDAVMMV2Allocator(unittest.TestCase):
@@ -80,6 +90,17 @@ class TestCUDAVMMV2Allocator(unittest.TestCase):
         first_meta = dense._share_cuda()
         second_meta = dense._share_cuda()
 
+        self.assertEqual(len(first_meta), 7)
+        self.assertEqual(first_meta[2], tensor.numel() * tensor.element_size())
+        self.assertEqual(first_meta[4], list(tensor.shape))
+        self.assertEqual(first_meta[6], tensor.place.gpu_device_id())
+        self.assertTrue(reductions._is_vmm_ipc_metadata(first_meta))
+        self.assertFalse(
+            reductions._is_vmm_ipc_metadata(
+                (bytes(64), 0, 0, 0, [], [], first_meta[6])
+            )
+        )
+
         # VMM v2 caches one exported FD per backing handle. Re-exporting the
         # same live tensor must produce the same descriptor payload.
         self.assertEqual(first_meta[0], second_meta[0])
@@ -87,6 +108,83 @@ class TestCUDAVMMV2Allocator(unittest.TestCase):
         np.testing.assert_array_equal(
             paddle.to_tensor(rebuilt).numpy(), tensor.numpy()
         )
+
+        obsolete_meta = (
+            first_meta[0],
+            first_meta[3],
+            first_meta[4],
+            first_meta[5],
+            first_meta[6],
+        )
+        self.assertFalse(reductions._is_vmm_ipc_metadata(obsolete_meta))
+        with self.assertRaises(RuntimeError):
+            paddle.base.core.DenseTensor._new_shared_cuda(obsolete_meta)
+
+        rebuild, rebuild_args = reductions._reduce_lodtensor(dense)
+        self.assertIs(rebuild, reductions._rebuild_vmm_tensor_from_fds)
+        multiprocessing_rebuilt = rebuild(*rebuild_args)
+        np.testing.assert_array_equal(
+            paddle.to_tensor(multiprocessing_rebuilt).numpy(), tensor.numpy()
+        )
+
+        serialized_meta = list(first_meta)
+        serialized_meta[0] = serialized_meta[0].decode("latin-1")
+        received_meta = json.loads(json.dumps(serialized_meta))
+        received_meta[0] = received_meta[0].encode("latin-1")
+        received_meta[6] = tensor.place.gpu_device_id()
+        json_rebuilt = paddle.base.core.DenseTensor._new_shared_cuda(
+            tuple(received_meta)
+        )
+        np.testing.assert_array_equal(
+            paddle.to_tensor(json_rebuilt).numpy(), tensor.numpy()
+        )
+
+    def test_ipc_cross_process_round_trip(self):
+        ctx = mp.get_context("spawn")
+        queue = ctx.Queue()
+        release_event = ctx.Event()
+        process = ctx.Process(
+            target=send_vmm_tensor,
+            args=(queue, release_event, paddle.device.get_device()),
+        )
+        process.start()
+        try:
+            received = queue.get(timeout=30)
+            np.testing.assert_array_equal(
+                received.numpy(),
+                np.arange(64, dtype="float32").reshape([8, 8]),
+            )
+        finally:
+            release_event.set()
+            process.join(30)
+            if process.is_alive():
+                process.terminate()
+                process.join()
+        self.assertEqual(process.exitcode, 0)
+
+    def test_ipc_import_survives_exporter_empty_cache(self):
+        gc.collect()
+        paddle.device.synchronize()
+        paddle.device.cuda.empty_cache()
+
+        source = paddle.arange(1024 * 1024, dtype="float32")
+        expected = source.numpy()
+        source_ptr = source.data_ptr()
+        meta = source.value().get_tensor()._share_cuda()
+        imported_dense = paddle.base.core.DenseTensor._new_shared_cuda(meta)
+        imported = paddle.to_tensor(imported_dense)
+        np.testing.assert_array_equal(imported.numpy(), expected)
+
+        del source
+        gc.collect()
+        paddle.device.synchronize()
+        paddle.device.cuda.empty_cache()
+
+        all_info = MemoryAnalysisTool.vmm_all_block_info()
+        self.assertFalse(
+            any(self._contains_ptr(pool, source_ptr) for pool in all_info)
+        )
+        np.testing.assert_array_equal(imported.numpy(), expected)
 
     def test_ipc_rejects_malformed_payload(self):
         tensor = paddle.arange(16, dtype="float32")
@@ -102,9 +200,20 @@ class TestCUDAVMMV2Allocator(unittest.TestCase):
         with self.assertRaises(ValueError):
             paddle.base.core.DenseTensor._new_shared_cuda(truncated)
 
-        invalid_dims = (meta[0], meta[1], [1024], *meta[3:])
+        with self.assertRaises(RuntimeError):
+            paddle.base.core.DenseTensor._new_shared_cuda(tuple(meta[:6]))
+
+        invalid_dims = (*meta[:4], [1024], *meta[5:])
         with self.assertRaises(ValueError):
             paddle.base.core.DenseTensor._new_shared_cuda(invalid_dims)
+
+        invalid_offset = (meta[0], meta[1] + 1, *meta[2:])
+        with self.assertRaises(ValueError):
+            paddle.base.core.DenseTensor._new_shared_cuda(invalid_offset)
+
+        invalid_size = (meta[0], meta[1], meta[2] + 1, *meta[3:])
+        with self.assertRaises(ValueError):
+            paddle.base.core.DenseTensor._new_shared_cuda(invalid_size)
 
         version, flags, pid, entries, _, _, _ = struct.unpack_from(
             "<BHIIQQQ", meta[0], 0

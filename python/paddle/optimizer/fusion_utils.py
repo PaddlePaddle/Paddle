@@ -255,7 +255,8 @@ class FusionStorageHelper:
             "buffer_ipc_meta must be a tuple"
         )
         assert len(buffer_ipc_meta) in (5, 7), (
-            "buffer_ipc_meta must be a tuple with length 5 when FLAGS_use_virtual_memory_auto_growth is True or 7 when FLAGS_use_virtual_memory_auto_growth is False."
+            "buffer_ipc_meta must contain 7 elements, or 5 elements when "
+            "reading legacy VMM IPC metadata."
         )
 
         if paddle.is_compiled_with_xpu():
