@@ -18,10 +18,19 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/cpu_vec.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/sequence2batch.h"
 #include "paddle/utils/optional.h"
 
 namespace phi {
+
+template <typename T>
+inline void EigenVecMul(int n, const T* x, const T* y, T* z) {
+  Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, 1>> z_map(z, n);
+  Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, 1>> x_map(x, n);
+  Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, 1>> y_map(y, n);
+  z_map = x_map.array() * y_map.array();
+}
 
 #define OP_PARAM                                                             \
   dev_ctx, ids_in, embeddings_in, weight_h_in, bias_in, h0_in, c0_in,        \
@@ -113,23 +122,23 @@ class FusedEmbeddingFCLSTMKernel {
             D4)
 
 // gates: W_ch, W_ih, W_fh, W_oh
-#define GET_Ct(ct_1, gates, ct)                   \
-  /* C_t = C_t-1 * fgated + cand_gated * igated*/ \
-  act_cand(D, gates, gates);                      \
-  blas.VMUL(D, gates, gates + D, gates + D);      \
-  blas.VMUL(D, ct_1, gates + D2, gates + D2);     \
+#define GET_Ct(ct_1, gates, ct)                    \
+  /* C_t = C_t-1 * fgated + cand_gated * igated*/  \
+  act_cand(D, gates, gates);                       \
+  EigenVecMul<T>(D, gates, gates + D, gates + D);  \
+  EigenVecMul<T>(D, ct_1, gates + D2, gates + D2); \
   blas.VADD(D, gates + D, gates + D2, ct)
 
 #define GET_Ht(ct, gates, ht)        \
   /* H_t = act_cell(C_t) * ogated */ \
   act_cell(D, ct, gates + D2);       \
-  blas.VMUL(D, gates + D2, gates + D3, ht)
+  EigenVecMul<T>(D, gates + D2, gates + D3, ht)
 
 #define GET_Ct_NOH0C0(gates, ct)     \
   /* C_t = igated * cgated*/         \
   act_gate(D, gates + D, gates + D); \
   act_cand(D, gates, gates);         \
-  blas.VMUL(D, gates, gates + D, ct)
+  EigenVecMul<T>(D, gates, gates + D, ct)
 
 #define COMPUTE_CtHt_NOH0C0(gates, ct, ht) \
   GET_Ct_NOH0C0(gates, ct);                \
@@ -139,7 +148,7 @@ class FusedEmbeddingFCLSTMKernel {
 #define COMPUTE_CtHt_PEEPHOLE_NOH0C0(gates, ct, ht) \
   GET_Ct_NOH0C0(gates, ct);                         \
   /* get outgated, put W_oc * C_t on igated */      \
-  blas.VMUL(D, wc_data + D2, ct, gates + D);        \
+  EigenVecMul<T>(D, wc_data + D2, ct, gates + D);   \
   blas.VADD(D, gates + D, gates + D3, gates + D3);  \
   act_gate(D, gates + D3, gates + D3);              \
   GET_Ht(ct, gates, ht)
@@ -149,17 +158,17 @@ class FusedEmbeddingFCLSTMKernel {
   GET_Ct(ct_1, gates, ct);                \
   GET_Ht(ct, gates, ht)
 
-#define COMPUTE_CtHt_PEEPHOLE(gates, ct_1, ct, ht)        \
-  /* get fgated and igated*/                              \
-  blas.VMUL(D, wc_data, ct_1, checked_cell_data);         \
-  blas.VMUL(D, wc_data + D, ct_1, checked_cell_data + D); \
-  blas.VADD(D2, checked_cell_data, gates + D, gates + D); \
-  act_gate(D2, gates + D, gates + D);                     \
-  GET_Ct(ct_1, gates, ct);                                \
-  /* get ogated*/                                         \
-  blas.VMUL(D, wc_data + D2, ct, gates + D);              \
-  blas.VADD(D, gates + D, gates + D3, gates + D3);        \
-  act_gate(D, gates + D3, gates + D3);                    \
+#define COMPUTE_CtHt_PEEPHOLE(gates, ct_1, ct, ht)             \
+  /* get fgated and igated*/                                   \
+  EigenVecMul<T>(D, wc_data, ct_1, checked_cell_data);         \
+  EigenVecMul<T>(D, wc_data + D, ct_1, checked_cell_data + D); \
+  blas.VADD(D2, checked_cell_data, gates + D, gates + D);      \
+  act_gate(D2, gates + D, gates + D);                          \
+  GET_Ct(ct_1, gates, ct);                                     \
+  /* get ogated*/                                              \
+  EigenVecMul<T>(D, wc_data + D2, ct, gates + D);              \
+  blas.VADD(D, gates + D, gates + D3, gates + D3);             \
+  act_gate(D, gates + D3, gates + D3);                         \
   GET_Ht(ct, gates, ht)
 
   void SeqCompute(OP_PARAM_DECLARE) const {
@@ -340,7 +349,7 @@ class FusedEmbeddingFCLSTMKernel {
       for (int i = 0; i < max_bs; ++i) {
         GET_Ct_NOH0C0(cur_in_data, cur_c_out_data);
         if (use_peepholes) {
-          blas.VMUL(D, wc_data + D2, cur_c_out_data, cur_in_data + D);
+          EigenVecMul<T>(D, wc_data + D2, cur_c_out_data, cur_in_data + D);
           blas.VADD(D, cur_in_data + D, cur_in_data + D3, cur_in_data + D3);
         }
         act_gate(D, cur_in_data + D3, cur_in_data + D3);
