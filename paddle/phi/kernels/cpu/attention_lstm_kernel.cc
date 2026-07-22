@@ -201,7 +201,9 @@ void AttentionLSTMKernel(const Context& dev_ctx,
                   D4);
       }
       // since input is 1xM, so can use add bias
-      blas.VADD(D4, lstm_b_data, lstm_out_data, lstm_out_data);
+      for (int j = 0; j < D4; ++j) {
+        lstm_out_data[j] += lstm_b_data[j];
+      }
 
       // gate act: sigmoid
       act_gate(D3, lstm_out_data, lstm_out_data);
@@ -227,7 +229,9 @@ void AttentionLSTMKernel(const Context& dev_ctx,
       input_tilde = input_gate.array() * tilde.array();
 
       // cell_out = a + b
-      blas.VADD(D, lstm_out_data, lstm_out_data + D, cur_cell_out_data);
+      for (int j = 0; j < D; ++j) {
+        cur_cell_out_data[j] = lstm_out_data[j] + lstm_out_data[D + j];
+      }
 
       // state act tanh(cell_out) * output_gate
       act_cell(D, cur_cell_out_data, lstm_out_data);

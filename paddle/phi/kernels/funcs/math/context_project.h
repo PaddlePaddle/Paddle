@@ -295,9 +295,7 @@ class ContextProjectGradFunctor {
               DenseTensor out_t_sub = out_t.Slice(
                   k * context_length, k * context_length + padding_size);
               DenseTensor w_sub = padding_data->Slice(k, k + padding_size);
-              PADDLE_ENFORCE_LE_INT_MAX(w_sub.numel(),
-                                        "context_project AXPY size");
-              blas.AXPY(static_cast<int>(w_sub.numel()),
+              blas.AXPY(w_sub.numel(),
                         static_cast<T>(1),
                         out_t_sub.data<T>(),
                         w_sub.data<T>());
@@ -331,9 +329,7 @@ class ContextProjectGradFunctor {
                   (down_pad_begin_row + t) * context_length);
               DenseTensor w_sub = padding_data->Slice(
                   up_pad + padding_idx, up_pad + padding_idx + padding_size);
-              PADDLE_ENFORCE_LE_INT_MAX(w_sub.numel(),
-                                        "context_project AXPY size");
-              blas.AXPY(static_cast<int>(w_sub.numel()),
+              blas.AXPY(w_sub.numel(),
                         static_cast<T>(1),
                         out_t_sub.data<T>(),
                         w_sub.data<T>());
