@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/layer_norm_kernel.h"
+#include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -398,7 +399,7 @@ void LaunchLayerNormKernel(const Context& dev_ctx,
         addr = valid_bias ? (addr | reinterpret_cast<uint64_t>(void_bias_data))
                           : addr;
         data_vec_size =
-            std::min(4, phi::GetVectorizedSize<T>(reinterpret_cast<T*>(addr)));
+            std::min(4, GetVectorizedSize<T>(reinterpret_cast<T*>(addr)));
       } else {
         uint64_t bias_addr = reinterpret_cast<uint64_t>(void_bias_data);
         uint64_t attr_addr = valid_scale
@@ -407,9 +408,9 @@ void LaunchLayerNormKernel(const Context& dev_ctx,
         attr_addr = valid_bias
                         ? (valid_scale ? (attr_addr | bias_addr) : attr_addr)
                         : attr_addr;
-        data_vec_size = std::min(
-            phi::GetVectorizedSize<T>(reinterpret_cast<T*>(addr)),
-            phi::GetVectorizedSize<U>(reinterpret_cast<U*>(attr_addr)));
+        data_vec_size =
+            std::min(GetVectorizedSize<T>(reinterpret_cast<T*>(addr)),
+                     GetVectorizedSize<U>(reinterpret_cast<U*>(attr_addr)));
         data_vec_size = std::min(4, data_vec_size);
       }
     }
@@ -421,22 +422,23 @@ void LaunchLayerNormKernel(const Context& dev_ctx,
     }
   }
 
-#define IMPL_LAYER_NORM_WELFORD_CASE(index_t, scale_t, is_same_, vec_size_) \
-  case (vec_size_): {                                                       \
-    LayerNormFwdWithWelford<index_t, T, U, is_same_, vec_size_>             \
-        <<<block_size, threads, 0, dev_ctx.stream()>>>(                     \
-            x_data,                                                         \
-            y_data,                                                         \
-            static_cast<const scale_t*>(void_scale_data),                   \
-            static_cast<const scale_t*>(void_bias_data),                    \
-            mean_data,                                                      \
-            var_data,                                                       \
-            static_cast<const U>(epsilon),                                  \
-            rows,                                                           \
-            cols,                                                           \
-            cols_per_thread,                                                \
-            valid_scale,                                                    \
-            valid_bias);                                                    \
+#define IMPL_LAYER_NORM_WELFORD_CASE(index_t, scale_t, is_same_, vec_size_)    \
+  case (vec_size_): {                                                          \
+    PADDLE_ENFORCE_LE_INT_MAX(block_size, "grid.x");                           \
+    LayerNormFwdWithWelford<index_t, T, U, is_same_, vec_size_>                \
+        <<<static_cast<uint32_t>(block_size), threads, 0, dev_ctx.stream()>>>( \
+            x_data,                                                            \
+            y_data,                                                            \
+            static_cast<const scale_t*>(void_scale_data),                      \
+            static_cast<const scale_t*>(void_bias_data),                       \
+            mean_data,                                                         \
+            var_data,                                                          \
+            static_cast<const U>(epsilon),                                     \
+            rows,                                                              \
+            cols,                                                              \
+            cols_per_thread,                                                   \
+            valid_scale,                                                       \
+            valid_bias);                                                       \
   } break
 
 #define IMPL_LAYER_NORM_WELFORD(index_t, scale_t, is_same_)    \
@@ -479,11 +481,12 @@ void LayerNormDirectCUDAFunctor<T, U>::operator()(
   int64_t batch_size = matrix_dim[0];
   int64_t feature_size = matrix_dim[1];
   // TODO(large-tensor): generic kernel launch uses int32 grid dim
-  PADDLE_ENFORCE_LE_INT_MAX(batch_size, "batch_size");
+  PADDLE_ENFORCE_LE_INT_MAX(batch_size,
+                            "Kernel launch requires int32 for grid dim");
   switch (funcs::GetDesiredBlockDim(feature_size)) {
     FIXED_BLOCK_DIM_CASE(
         funcs::LayerNormForward<T, U, kBlockDim>
-        <<<batch_size, kBlockDim, 0, stream>>>(
+        <<<static_cast<uint32_t>(batch_size), kBlockDim, 0, stream>>>(
             input, scale, bias, output, mean, variance, eps, feature_size));
     default:
       PADDLE_THROW(common::errors::InvalidArgument(
@@ -499,11 +502,11 @@ template class PADDLE_API LayerNormDirectCUDAFunctor<double, double>;
 template class PADDLE_API LayerNormDirectCUDAFunctor<half, float>;
 #endif
 static inline LayerNormKernelVariant LayerNormKernelDispatch(
-    const paddle::DataType weight_type,
-    const paddle::DataType input_type,
-    const paddle::DataType output_type,
-    const paddle::DataType compute_type,
-    const uint32_t hidden_size,
+    const DataType weight_type,
+    const DataType input_type,
+    const DataType output_type,
+    const DataType compute_type,
+    const int64_t hidden_size,
     const int64_t x_numel,
     const DenseTensor* scale,
     const DenseTensor* bias) {
@@ -512,8 +515,13 @@ static inline LayerNormKernelVariant LayerNormKernelDispatch(
   }
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
   if (FLAGS_use_apex_layer_norm_kernel) {
-    if (funcs::fast_ln_v2::has_fast_ln_v2_fwd_kernel(
-            weight_type, input_type, output_type, compute_type, hidden_size)) {
+    if (hidden_size <= std::numeric_limits<uint32_t>::max() &&
+        funcs::fast_ln_v2::has_fast_ln_v2_fwd_kernel(
+            weight_type,
+            input_type,
+            output_type,
+            compute_type,
+            static_cast<uint32_t>(hidden_size))) {
       return LayerNormKernelVariant::FAST_LN_V2;
     }
     PADDLE_THROW(common::errors::InvalidArgument(
@@ -527,14 +535,19 @@ static inline LayerNormKernelVariant LayerNormKernelDispatch(
   }
 #endif
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
-  if (input_type != paddle::DataType::FLOAT32 && hidden_size != 4096 &&
+  if (hidden_size <= std::numeric_limits<uint32_t>::max() &&
+      input_type != DataType::FLOAT32 && hidden_size != 4096 &&
       hidden_size > 1024 && hidden_size <= 10240 &&
       x_numel <= std::numeric_limits<uint32_t>::max()) {
     // using fast_ln_v2 only sm > 70 and x_numel <= uint32_max
     auto prop = funcs::fast_ln_v2::GetDeviceProp();
+    uint32_t hidden_size_32 = static_cast<uint32_t>(hidden_size);
     if (prop->major > 7 &&
-        funcs::fast_ln_v2::has_fast_ln_v2_fwd_kernel(
-            weight_type, input_type, output_type, compute_type, hidden_size)) {
+        funcs::fast_ln_v2::has_fast_ln_v2_fwd_kernel(weight_type,
+                                                     input_type,
+                                                     output_type,
+                                                     compute_type,
+                                                     hidden_size_32)) {
       return LayerNormKernelVariant::FAST_LN_V2;
     }
   }
@@ -594,7 +607,7 @@ void LayerNormKernel(const Context& dev_ctx,
   bool is_scale_bias_same_dtype_with_x = x_dtype == scale_bias_dtype;
   if (!is_scale_bias_same_dtype_with_x) {
     PADDLE_ENFORCE_EQ(scale_bias_dtype,
-                      phi::CppTypeToDataType<U>::Type(),
+                      CppTypeToDataType<U>::Type(),
                       common::errors::InvalidArgument(
                           "Unsupported data type of Scale and Bias"));
   }
@@ -602,7 +615,8 @@ void LayerNormKernel(const Context& dev_ctx,
   auto matrix_dim = common::flatten_to_2d(x_dims, begin_norm_axis);
   int64_t batch_size = matrix_dim[0];
   // TODO(large-tensor): generic kernel launch uses int32 grid dim
-  PADDLE_ENFORCE_LE_INT_MAX(batch_size, "batch_size");
+  PADDLE_ENFORCE_LE_INT_MAX(batch_size,
+                            "Kernel launch requires int32 for grid dim");
   int64_t feature_size = matrix_dim[1];
   auto stream = dev_ctx.stream();
   auto place = x.place();
@@ -612,7 +626,7 @@ void LayerNormKernel(const Context& dev_ctx,
     switch (funcs::GetDesiredBlockDim(feature_size)) {                        \
       FIXED_BLOCK_DIM_CASE(                                                   \
           funcs::LayerNormForward<T, U, kBlockDim, IsScaleBiasSameDTypeWithX> \
-          <<<batch_size, kBlockDim, 0, stream>>>(                             \
+          <<<static_cast<uint32_t>(batch_size), kBlockDim, 0, stream>>>(      \
               x_data,                                                         \
               static_cast<const ScaleBiasT*>(void_scale_data),                \
               static_cast<const ScaleBiasT*>(void_bias_data),                 \
@@ -637,8 +651,9 @@ void LayerNormKernel(const Context& dev_ctx,
     const int VecSize = BYTES_PER_LDG / sizeof(T);                           \
     const int THREADS_PER_CTA = WARPS_N * THREADS_PER_WARP * WARPS_M;        \
     const int ROWS_PER_CTA = WARPS_M;                                        \
-    const int grid = static_cast<int>(                                       \
-        std::ceil(batch_size / static_cast<float>(ROWS_PER_CTA)));           \
+    const int64_t grid = (batch_size + ROWS_PER_CTA - 1) / ROWS_PER_CTA;     \
+    PADDLE_ENFORCE_LE_INT_MAX(grid, "layer_norm fast v1 grid");              \
+    PADDLE_ENFORCE_LE_INT_MAX(batch_size, "layer_norm fast v1 batch_size");  \
     funcs::fast_ln_v1::fast_ln_v1_fwd_kernel<T,                              \
                                              U,                              \
                                              ScaleT,                         \
@@ -647,8 +662,8 @@ void LayerNormKernel(const Context& dev_ctx,
                                              WARPS_N,                        \
                                              BYTES_PER_LDG,                  \
                                              feature_size>                   \
-        <<<grid, THREADS_PER_CTA, 0, stream>>>(                              \
-            batch_size,                                                      \
+        <<<static_cast<uint32_t>(grid), THREADS_PER_CTA, 0, stream>>>(       \
+            static_cast<int>(batch_size),                                    \
             feature_size,                                                    \
             epsilon,                                                         \
             x_data,                                                          \
@@ -667,7 +682,7 @@ void LayerNormKernel(const Context& dev_ctx,
   PADDLE_LAUNCH_FAST_LAYERNORM_V1_FWD_BASE(ScaleT, 1792); \
   PADDLE_LAUNCH_FAST_LAYERNORM_V1_FWD_BASE(ScaleT, 2048); \
   PADDLE_LAUNCH_FAST_LAYERNORM_V1_FWD_BASE(ScaleT, 4096)
-  auto compute_dtype = phi::CppTypeToDataType<U>::Type();
+  auto compute_dtype = CppTypeToDataType<U>::Type();
   auto kernel_variant = LayerNormKernelDispatch(scale_bias_dtype,
                                                 x_dtype,
                                                 y_dtype,
@@ -679,7 +694,8 @@ void LayerNormKernel(const Context& dev_ctx,
 
   switch (kernel_variant) {
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
-    case LayerNormKernelVariant::FAST_LN_V2:
+    case LayerNormKernelVariant::FAST_LN_V2: {
+      uint32_t hidden_size = static_cast<uint32_t>(feature_size);
       funcs::fast_ln_v2::LaunchNormFwd<T, Context>(dev_ctx,
                                                    stream,
                                                    place,
@@ -693,11 +709,12 @@ void LayerNormKernel(const Context& dev_ctx,
                                                    x_dtype,
                                                    y_dtype,
                                                    compute_dtype,
-                                                   feature_size,
+                                                   hidden_size,
                                                    batch_size,
                                                    feature_size,
                                                    epsilon);
       break;
+    }
 #endif
     case LayerNormKernelVariant::FAST_LN_V1:
       if (is_scale_bias_same_dtype_with_x) {
@@ -718,6 +735,7 @@ void LayerNormKernel(const Context& dev_ctx,
     default:
 #ifdef PADDLE_WITH_CUDA
       if ((x_dtype == scale_bias_dtype) &&
+          feature_size <= std::numeric_limits<int32_t>::max() &&
           (FLAGS_use_accuracy_compatible_kernel ||
            (!isPowerOfTwo(feature_size) && feature_size > 1024))) {
         LayerNormFwdCompatKernel<T, Context>(
@@ -774,7 +792,7 @@ template PADDLE_API void LayerNormKernel<float, GPUContext>(
     DenseTensor* y,
     DenseTensor* mean,
     DenseTensor* var);
-template PADDLE_API void LayerNormKernel<phi::dtype::float16, GPUContext>(
+template PADDLE_API void LayerNormKernel<dtype::float16, GPUContext>(
     const GPUContext& dev_ctx,
     const DenseTensor& x,
     const optional<DenseTensor>& scale_opt,
