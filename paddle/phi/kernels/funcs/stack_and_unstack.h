@@ -95,7 +95,7 @@ void StackRawKernel(const Context& dev_ctx,
   int64_t x_col = x[0]->numel() / x_row_bak;
   int64_t out_col = x_col * num;
 
-  if (out->numel() < std::numeric_limits<int32_t>::max()) {
+  if (out->numel() < std::numeric_limits<int32_t>::max() / 2) {
     switch (CalcArraySize(num)) {
       SEGMENTED_ARRAY_KERNEL_HELPER(
           LaunchStackKernel<Context, T, int32_t, kArraySize>(
@@ -127,9 +127,10 @@ __global__ void UnStackCudaKernel(const T* __restrict__ input,
   IndexT each_dim_size = split_dim / num_splits;
   IndexT split_dim_with_out_col = split_dim * out_col;
 
-  IndexT offset = blockIdx.x * blockDim.x + threadIdx.x;
+  IndexT offset = static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
+  IndexT stride = static_cast<IndexT>(blockDim.x) * gridDim.x;
   if (each_dim_size == 1) {
-    for (; offset < numel; offset += blockDim.x * gridDim.x) {
+    for (; offset < numel; offset += stride) {
       auto col_divmod_rslt = col_divmoder.Divmod(offset);
 
       IndexT i = offset / split_dim_with_out_col;
@@ -143,7 +144,7 @@ __global__ void UnStackCudaKernel(const T* __restrict__ input,
       }
     }
   } else {
-    for (; offset < numel; offset += blockDim.x * gridDim.x) {
+    for (; offset < numel; offset += stride) {
       auto col_divmod_rslt = col_divmoder.Divmod(offset);
 
       IndexT i = offset / split_dim_with_out_col;
@@ -281,7 +282,7 @@ void UnStackRawKernel(const Context& dev_ctx,
 
   int64_t out_col = x.numel() / (split_dim * out_row);
 
-  if (x.numel() < std::numeric_limits<int32_t>::max()) {
+  if (x.numel() < std::numeric_limits<int32_t>::max() / 2) {
     switch (CalcArraySize(split_dim)) {
       SEGMENTED_ARRAY_KERNEL_HELPER(
           LaunchUnStackKernel<Context, T, int32_t, kArraySize>(
