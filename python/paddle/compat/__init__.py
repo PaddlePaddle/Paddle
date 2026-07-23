@@ -1175,3 +1175,9 @@ def split(
                     split_size_or_sections
                 )
             return tuple(_C_ops.split(tensor, split_size_or_sections, dim))
+
+
+def _tensor_method_split(
+    self: Tensor, split_size: int | Sequence[int], dim: int = 0
+) -> tuple[Tensor, ...]:
+    return split(self, split_size, dim)

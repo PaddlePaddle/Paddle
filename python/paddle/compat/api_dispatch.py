@@ -130,6 +130,8 @@ def _patch_tensor_methods() -> None:
     The dispatcher is patched directly like any paddle Tensor method: the
     descriptor protocol forwards the tensor as the first positional argument,
     which is exactly the compat function's ``input`` parameter.
+    A private ``_tensor_method_<name>`` adapter can provide a method-specific
+    signature when it differs from the root compat API.
     """
     import paddle
     import paddle.compat as compat_root
@@ -138,7 +140,11 @@ def _patch_tensor_methods() -> None:
         native_method = getattr(paddle.Tensor, attr_name, None)
         if native_method is None:
             continue
-        compat_fn = getattr(compat_root, attr_name)
+        compat_fn = getattr(
+            compat_root,
+            f"_tensor_method_{attr_name}",
+            getattr(compat_root, attr_name),
+        )
         _PADDLE_NAMESPACE_SAVED[(paddle.Tensor, attr_name)] = native_method
         setattr(
             paddle.Tensor,
