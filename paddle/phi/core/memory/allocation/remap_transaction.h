@@ -94,6 +94,11 @@ class RemapTransaction {
     kSingleUnmappedRange,
     kScatterUnmappedRanges,
   };
+  enum class DestinationPolicy {
+    kTailThenAnyGap,
+    kTailOnly,
+    kDirectGapThenTail,
+  };
   struct DestinationPlan {
     DestinationPlanKind kind{DestinationPlanKind::kNone};
     std::vector<DestinationPlacement> placements;
@@ -203,10 +208,18 @@ class RemapTransaction {
   size_t CountLeadingUnmappedBackingPages(VMMDevicePtr va, size_t size) const;
   UnmappedDestinationPlan PlanUnmappedDestinations(BlockList* blocks,
                                                    size_t handle_count) const;
+  bool ScatterPlanCreatesContiguousFreeRange(
+      const BlockList& blocks,
+      const std::vector<DestinationPlacement>& placements,
+      const SourcePages& source_pages,
+      size_t required_bytes) const;
   DestinationPlan SelectDestinationPlan(BlockList* blocks,
                                         VMMDevicePtr tail_va,
                                         VMMDevicePtr va_limit,
-                                        size_t handle_count) const;
+                                        size_t handle_count,
+                                        size_t required_contiguous_bytes,
+                                        const SourcePages& source_pages,
+                                        DestinationPolicy policy) const;
   bool TryMoveToTail(BlockList* blocks,
                      VMMDevicePtr tail_va,
                      SourceMovePlan* plan,
@@ -232,11 +245,15 @@ class RemapTransaction {
                                     VMMDevicePtr tail_va,
                                     VMMDevicePtr va_limit,
                                     SourceMovePlan* plan,
-                                    PoolType pool_type);
-  CompactResult CompactFreeBlocks(BlockList* blocks,
-                                  size_t requested_size,
-                                  PoolType pool_type,
-                                  const SourcePages& source_pages);
+                                    size_t required_contiguous_bytes,
+                                    PoolType pool_type,
+                                    DestinationPolicy policy);
+  CompactResult CompactFreeBlocks(
+      BlockList* blocks,
+      size_t requested_size,
+      PoolType pool_type,
+      const SourcePages& source_pages,
+      DestinationPolicy policy = DestinationPolicy::kTailThenAnyGap);
   void InstallTailFreeBlock(BlockList* blocks, BlockV2 free_block) const;
   BlockIterator ReplaceUnmappedRangeWithMappedFree(BlockList* blocks,
                                                    BlockIterator unmapped_it,

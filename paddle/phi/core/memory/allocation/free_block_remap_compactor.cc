@@ -28,7 +28,8 @@ namespace allocation {
 size_t FreeBlockRemapCompactor::Compact(
     std::list<BlockV2>* blocks,
     size_t requested_size,
-    const RemapTransaction::SourcePages& source_pages) {
+    const RemapTransaction::SourcePages& source_pages,
+    RemapTransaction::DestinationPolicy destination_policy) {
   const size_t handle_size = vmm_allocator_->handle_size();
   RemapTransaction transaction(vmm_allocator_.get(),
                                handle_size,
@@ -45,7 +46,7 @@ size_t FreeBlockRemapCompactor::Compact(
   // CUDA failures. Expected inability to compact is returned in the result.
   try {
     auto compact_result = transaction.CompactFreeBlocks(
-        blocks, requested_size, pool_type_, source_pages);
+        blocks, requested_size, pool_type_, source_pages, destination_policy);
     const auto& stats = compact_result.source_stats;
 
     auto compact_cuda_err = cudaPeekAtLastError();

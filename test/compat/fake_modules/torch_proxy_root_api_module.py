@@ -1,4 +1,4 @@
-# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,5 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import conv2d_variadic_ptn  # noqa: F401
-import matmul_variadic_ptn  # noqa: F401
+
+def capture_root_apis():
+    import torch
+
+    return {"sort": torch.sort, "min": torch.min, "unique": torch.unique}
+
+
+captured = capture_root_apis()

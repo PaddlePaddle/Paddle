@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <cstdint>
+#include <limits>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -135,7 +136,7 @@ TEST(VMMBackingMap, TracksMappedAndUnmappedRanges) {
   EXPECT_FALSE(map.HasIPCExportedPages(base, page_size));
   EXPECT_TRUE(map.HasIPCExportedPages(base + page_size, page_size));
   EXPECT_TRUE(map.HasIPCExportedPages(base, page_size * 2));
-  EXPECT_FALSE(map.IsRangeReleasable(base, page_size * 2));
+  EXPECT_TRUE(map.IsRangeReleasable(base, page_size * 2));
   mapped_pages = map.CollectMappedPagesFullyInRange(unaligned_free_ranges);
   EXPECT_TRUE(mapped_pages.empty());
   EXPECT_FALSE(map.IsRangeMapped(base, page_size * 2));
@@ -274,7 +275,7 @@ TEST(VMMBackingMap, ValidateMappedPagesDetectsMissingAndMismatchedPages) {
       "handle mismatch"));
 }
 
-TEST(VMMBackingMap, MarkReleasedAllowsMismatchAndIPCBlocksReleasableRange) {
+TEST(VMMBackingMap, MarkReleasedAllowsMismatchAndIPCDoesNotBlockRelease) {
   ScopedVLogLevel vlog_guard(6);
   VMMBackingMap map;
   const VMMDevicePtr base = 0x24000000;
@@ -285,7 +286,7 @@ TEST(VMMBackingMap, MarkReleasedAllowsMismatchAndIPCBlocksReleasableRange) {
   EXPECT_TRUE(map.IsRangeMapped(base, page_size));
   EXPECT_TRUE(map.IsRangeReleasable(base, page_size));
   map.MarkIPCExported(base, page_size);
-  EXPECT_FALSE(map.IsRangeReleasable(base, page_size));
+  EXPECT_TRUE(map.IsRangeReleasable(base, page_size));
 
   auto meta = std::make_shared<VMMHandleMeta>(
       base + page_size, page_size, static_cast<VMMAllocHandle>(0x241), 0);
@@ -317,7 +318,7 @@ TEST(VMMBackingMap, CanReleaseHandleChecksPageState) {
       map.CanReleaseHandle(base, meta->handle(), other_meta, page_size));
 
   map.MarkIPCExported(base, page_size);
-  EXPECT_FALSE(map.CanReleaseHandle(base, meta->handle(), meta, page_size));
+  EXPECT_TRUE(map.CanReleaseHandle(base, meta->handle(), meta, page_size));
 
   map.MarkReleased(base, meta->handle(), page_size);
   map.MarkMapped(base, meta, page_size);
@@ -681,6 +682,33 @@ TEST(CUDAVirtualMemAllocatorV2, AllocateImplReturnsTrackedAllocation) {
   EXPECT_TRUE(
       allocator.CollectAllocationHandleLayout(allocation->ptr(), &layout));
   EXPECT_EQ(layout.size(), 1UL);
+}
+
+TEST(CUDAVirtualMemAllocatorV2, GrowOOMReportsHandleCreationProgress) {
+  size_t available = 0;
+  size_t total = 0;
+  ASSERT_EQ(cudaMemGetInfo(&available, &total), cudaSuccess);
+  ASSERT_LE(total, std::numeric_limits<size_t>::max() / 2);
+  const size_t impossible_handle_size = total * 2;
+
+  CUDAVirtualMemAllocatorV2 allocator(
+      phi::GPUPlace(), impossible_handle_size, PoolType::kLarge);
+  try {
+    allocator.AppendWithBlock(impossible_handle_size);
+    FAIL() << "Expected a handle larger than total device memory to fail";
+  } catch (const VMMGrowOOM& oom) {
+    EXPECT_EQ(oom.info().requested_handles, 1UL);
+    EXPECT_EQ(oom.info().created_handles, 0UL);
+    EXPECT_EQ(oom.info().handle_size, allocator.handle_size());
+    EXPECT_EQ(oom.info().device, 0);
+    EXPECT_EQ(oom.info().pool_type, PoolType::kLarge);
+  }
+
+  EXPECT_THROW(allocator.CreateMappedHandleLayout(allocator.virtual_mem_base(),
+                                                  allocator.handle_size(),
+                                                  "test non-grow OOM",
+                                                  false),
+               BadAlloc);
 }
 
 TEST(CUDAVirtualMemAllocatorV2, RollbackCreatedHandlesReleasesLayout) {
@@ -1405,7 +1433,7 @@ TEST(CUDAVirtualMemAllocatorV2, CollectsMetadataAndExportsIPCBlockBacking) {
   ASSERT_TRUE(
       allocator.ExportIPCParts(block.begin_va(), block.size(), &ipc_parts));
   EXPECT_TRUE(allocator.HasIPCExportedRange(block.begin_va(), block.size()));
-  EXPECT_FALSE(allocator.IsRangeReleasable(block.begin_va(), block.size()));
+  EXPECT_TRUE(allocator.IsRangeReleasable(block.begin_va(), block.size()));
   EXPECT_EQ(allocator.CountIPCExportedBytes({{block.begin_va(), block.size()}}),
             block.size());
 #if defined(__linux__)

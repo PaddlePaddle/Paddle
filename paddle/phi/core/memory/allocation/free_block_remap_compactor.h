@@ -56,7 +56,9 @@ class FreeBlockRemapCompactor {
   // source_pages is the allocator precheck snapshot for this transaction.
   size_t Compact(std::list<BlockV2>* blocks,
                  size_t requested_size,
-                 const RemapTransaction::SourcePages& source_pages);
+                 const RemapTransaction::SourcePages& source_pages,
+                 RemapTransaction::DestinationPolicy destination_policy =
+                     RemapTransaction::DestinationPolicy::kTailThenAnyGap);
 
  private:
   std::shared_ptr<CUDAVirtualMemAllocatorV2> vmm_allocator_;

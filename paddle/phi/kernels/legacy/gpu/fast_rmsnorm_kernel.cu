@@ -38,8 +38,8 @@ void RMSLnFwdKernel(const Context& dev_ctx,
   auto sizes = x.dims();
   PD_CHECK(sizes.size() >= 2);
 
-  const int cols = sizes[sizes.size() - 1];
-  const int rows = x.numel() / cols;
+  const int64_t cols = sizes[sizes.size() - 1];
+  const int64_t rows = x.numel() / cols;
   auto hidden_size = scale.numel();
 
   PD_CHECK(hidden_size == cols);

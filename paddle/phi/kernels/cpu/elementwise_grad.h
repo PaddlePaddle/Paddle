@@ -90,20 +90,27 @@ ElementwiseAddGrad(const CPUContext& dev_ctx,
                    DenseTensor* dx,
                    DenseTensor* dy,
                    int axis = -1) {
+  auto* dout_data = dout.data<T>();
   if (dx) {
-    memory_utils::Copy(dev_ctx.GetPlace(),
-                       dev_ctx.template Alloc<T>(dx),
-                       dev_ctx.GetPlace(),
-                       dout.data<T>(),
-                       static_cast<size_t>(dout.numel()) * sizeof(T));
+    auto* dx_data = dev_ctx.template Alloc<T>(dx);
+    if (dx_data != dout_data) {
+      memory_utils::Copy(dev_ctx.GetPlace(),
+                         dx_data,
+                         dev_ctx.GetPlace(),
+                         dout_data,
+                         static_cast<size_t>(dout.numel()) * sizeof(T));
+    }
   }
 
   if (dy) {
-    memory_utils::Copy(dev_ctx.GetPlace(),
-                       dev_ctx.template Alloc<T>(dy),
-                       dev_ctx.GetPlace(),
-                       dout.data<T>(),
-                       static_cast<size_t>(dout.numel()) * sizeof(T));
+    auto* dy_data = dev_ctx.template Alloc<T>(dy);
+    if (dy_data != dout_data) {
+      memory_utils::Copy(dev_ctx.GetPlace(),
+                         dy_data,
+                         dev_ctx.GetPlace(),
+                         dout_data,
+                         static_cast<size_t>(dout.numel()) * sizeof(T));
+    }
   }
 }
 

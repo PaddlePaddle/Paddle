@@ -89,13 +89,15 @@ class Conv2dVariadicTemplate:
                 compute_dtype=ap.DataType.float
             )
         )
-        self.program_translator.translate(
-            mut_kernel_arg_id_registry=self.mut_kernel_arg_id_registry,
-            mut_lir_code_gen_ctx=mut_lir_code_gen_ctx,
-        )
-        trivial_code_str = mut_lir_code_gen_ctx.get_stmts_joined_str(
-            indent="    "
-        )
+        # self.program_translator.translate(
+        #     mut_kernel_arg_id_registry=self.mut_kernel_arg_id_registry,
+        #     mut_lir_code_gen_ctx=mut_lir_code_gen_ctx,
+        # )
+        # trivial_code_str = mut_lir_code_gen_ctx.get_stmts_joined_str(
+        #     indent="    "
+        # )
+        trivial_code_str = ""
+        print("trivial_code_str: ", trivial_code_str)
 
         project_module = self.make_project(
             trivial_code_str,
@@ -243,7 +245,7 @@ struct VariadicEpilogueFunctor {
 
 template <int TuningConfigId>
 static void RunConv2dWithVariadicKernel(const Conv2dEpilogueParams &params, ${AP_KERNEL_ARGS_DECLARE}) {
-  // TODO: implement conv2d variadic kernel launch
+  // TODO(Xreki): implement conv2d variadic kernel launch
 }
 
 } // namespace ap
@@ -251,7 +253,7 @@ static void RunConv2dWithVariadicKernel(const Conv2dEpilogueParams &params, ${AP
 extern "C" {
 
 void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
-  // TODO: implement conv2d variadic kernel entry
+  // TODO(Xreki): implement conv2d variadic kernel entry
 }
 }
   """

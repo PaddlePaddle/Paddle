@@ -1230,6 +1230,16 @@ void CrossEntropyWithSoftmaxInferMeta(const MetaTensor& logits,
                                           "the axis dimension of "
                                           "Input(Label) should be 1."));
     }
+    if (config.is_runtime || logits_dims[axis] >= 0) {
+      PADDLE_ENFORCE_GT(
+          logits_dims[axis],
+          0,
+          common::errors::InvalidArgument(
+              "If Attr(soft_label) == false, the axis dimension of "
+              "Input(Logits), which represents the number of classes, "
+              "should be greater than 0, but received %ld.",
+              logits_dims[axis]));
+    }
   }
 
   softmax->set_dims(logits_dims);

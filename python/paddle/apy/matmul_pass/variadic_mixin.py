@@ -228,7 +228,6 @@ def get_mixin_class(
         NumberOfInputsTrait1,
         NumberOfInputsTrait2,
         NumberOfInputsTrait3,
-        NumberOfInputsTrait3,
         NumberOfInputsTrait4,
         NumberOfInputsTrait5,
         NumberOfInputsTrait6,
