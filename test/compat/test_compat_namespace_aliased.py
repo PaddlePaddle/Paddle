@@ -265,6 +265,7 @@ class TestTopLevelAlias(CompatNamespaceAliasBase):
         )
 
         for alias, native, _ in aliases:
+            self.assertIn(alias, paddle.nn.__all__)
             self.assertIs(getattr(paddle.nn, alias), getattr(paddle.nn, native))
 
         with level2_guard():
@@ -537,16 +538,31 @@ class TestLevel2InternalCallersUseNative(CompatNamespaceAliasBase):
         level=2 ``x.max(dim=1)`` is torch-style for external callers and native
         for paddle-internal ``x.max(axis=1)``; restored on disable."""
         native_max = paddle.Tensor.max
+        native_split = paddle.Tensor.split
         t = paddle.to_tensor([[3.0, 1.0, 2.0], [6.0, 5.0, 4.0]])
         with level2_guard():
             r = t.max(dim=1)  # external -> compat namedtuple
             self.assertTrue(hasattr(r, "values"))
             self.assertEqual(r.values.tolist(), [3.0, 6.0])
             self.assertIsInstance(t.split(1, dim=0), tuple)
+            self.assertEqual(len(t.split(split_size=1, dim=0)), 2)
+            self.assertEqual(
+                len(t.split(split_size=[1, 1], dim=0)),
+                2,
+            )
+            with self.assertRaises(TypeError):
+                t.split(split_size_or_sections=1, dim=0)
+            with self.assertRaises(TypeError):
+                paddle.split(t, split_size=1, dim=0)
             # paddle-internal native-style call (simulated) stays native
             ns = {"__name__": "paddle.fake_internal", "t": t}
-            exec("internal = t.max(axis=1)", ns)  # native accepts axis=
+            exec(
+                "internal_max = t.max(axis=1)\n"
+                "internal_split = t.split(num_or_sections=2, axis=0)",
+                ns,
+            )
         self.assertIs(paddle.Tensor.max, native_max)  # restored on disable
+        self.assertIs(paddle.Tensor.split, native_split)
 
     @with_level2
     def test_aliased_class_caller_aware(self):

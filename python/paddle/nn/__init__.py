@@ -443,4 +443,11 @@ __all__ = [
     'MaxPool3d',
     'FractionalMaxPool2d',
     'FractionalMaxPool3d',
+    'AvgPool1d',
+    'AvgPool2d',
+    'AvgPool3d',
+    'BatchNorm1d',
+    'BatchNorm2d',
+    'BatchNorm3d',
+    'MultiheadAttention',
 ]
