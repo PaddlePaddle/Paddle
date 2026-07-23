@@ -60,10 +60,6 @@ class CompatNamespaceAliasBase(unittest.TestCase):
         (paddle, "allclose"),
         (paddle, "equal"),
         (paddle, "seed"),
-    ]
-    # Compat-only symbols must not be added to the paddle namespace.
-    COMPAT_ONLY = [
-        (paddle, "slogdet"),
         (paddle.nn, "AvgPool1d"),
         (paddle.nn, "AvgPool2d"),
         (paddle.nn, "AvgPool3d"),
@@ -71,6 +67,10 @@ class CompatNamespaceAliasBase(unittest.TestCase):
         (paddle.nn, "BatchNorm2d"),
         (paddle.nn, "BatchNorm3d"),
         (paddle.nn, "MultiheadAttention"),
+    ]
+    # Compat-only symbols must not be added to the paddle namespace.
+    COMPAT_ONLY = [
+        (paddle, "slogdet"),
     ]
 
     def setUp(self):
@@ -252,6 +252,32 @@ class TestTopLevelAlias(CompatNamespaceAliasBase):
                 )
         finally:
             paddle.disable_compat()
+
+    def test_torch_style_nn_class_aliases(self):
+        aliases = (
+            ("AvgPool1d", "AvgPool1D", (1,)),
+            ("AvgPool2d", "AvgPool2D", (1,)),
+            ("AvgPool3d", "AvgPool3D", (1,)),
+            ("BatchNorm1d", "BatchNorm1D", (2,)),
+            ("BatchNorm2d", "BatchNorm2D", (2,)),
+            ("BatchNorm3d", "BatchNorm3D", (2,)),
+            ("MultiheadAttention", "MultiHeadAttention", (4, 1)),
+        )
+
+        for alias, native, _ in aliases:
+            self.assertIs(getattr(paddle.nn, alias), getattr(paddle.nn, native))
+
+        with level2_guard():
+            for alias, _, args in aliases:
+                compat_cls = getattr(paddle.compat.nn, alias)
+                self.assertAliased(getattr(paddle.nn, alias), compat_cls)
+                self.assertIs(
+                    type(getattr(paddle.nn, alias)(*args)),
+                    compat_cls,
+                )
+
+        for alias, native, _ in aliases:
+            self.assertIs(getattr(paddle.nn, alias), getattr(paddle.nn, native))
 
     @with_level2
     def test_all_nn_functional_aliases(self):

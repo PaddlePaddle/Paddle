@@ -2756,7 +2756,7 @@ class _CompatBatchNormBase:
         self.assertIsNone(original_affine.bias)
         original_dtype = self.original_api(self.num_features, dtype="float64")
         self.assertEqual(original_dtype._dtype, "float64")
-        self.assertFalse(hasattr(paddle.nn, self.alias_name))
+        self.assertIs(getattr(paddle.nn, self.alias_name), self.original_api)
         paddle.enable_static()
 
     def test_static_Compatibility(self):
