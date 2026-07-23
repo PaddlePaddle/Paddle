@@ -193,6 +193,68 @@ class TestCompatPad(unittest.TestCase):
         result = F.pad(x, mode='replicate', pad=paddle.tensor([]))
         np.testing.assert_allclose(result.numpy(), x.numpy())
 
+    def test_negative_padding_and_none_value(self):
+        input_np = np.arange(1, 13, dtype=np.float32).reshape([1, 3, 4])
+        cropped = input_np[..., 1:]
+        mode_map = {
+            "constant": "constant",
+            "reflect": "reflect",
+            "replicate": "edge",
+            "circular": "wrap",
+        }
+        x = paddle.to_tensor(input_np, place=paddle.CPUPlace())
+        for mode, np_mode in mode_map.items():
+            out = F.pad(x, (-1, 2), mode=mode, value=None)
+            expected = np.pad(
+                cropped,
+                ((0, 0), (0, 0), (0, 2)),
+                mode=np_mode,
+            )
+            np.testing.assert_array_equal(out.numpy(), expected)
+
+    def test_cpu_low_precision_and_integer_dtypes(self):
+        input_np = np.arange(1, 7, dtype=np.float32).reshape([1, 2, 3])
+        expected = np.pad(
+            input_np[..., 1:],
+            ((0, 0), (0, 0), (0, 1)),
+            mode="constant",
+        )
+        for dtype in (
+            paddle.float16,
+            paddle.bfloat16,
+            paddle.uint8,
+            paddle.int8,
+            paddle.int16,
+            paddle.bool,
+        ):
+            data = input_np if dtype != paddle.bool else input_np % 2 == 0
+            x = paddle.to_tensor(data, dtype=dtype, place=paddle.CPUPlace())
+            out = F.pad(x, (-1, 1), value=None)
+            self.assertEqual(out.dtype, dtype)
+            actual = (
+                out.astype("float32").numpy()
+                if dtype == paddle.bfloat16
+                else out.numpy()
+            )
+            expected_for_dtype = (
+                np.pad(
+                    data[..., 1:],
+                    ((0, 0), (0, 0), (0, 1)),
+                    mode="constant",
+                )
+                if dtype == paddle.bool
+                else expected
+            )
+            np.testing.assert_array_equal(actual, expected_for_dtype)
+
+        bool_x = paddle.to_tensor(
+            [True, False], dtype="bool", place=paddle.CPUPlace()
+        )
+        self.assertEqual(
+            F.pad(bool_x, (1, 1), value=0.5).tolist(),
+            [True, True, False, True],
+        )
+
     def test_error_handling(self):
         dummy_x = paddle.arange(3)
 

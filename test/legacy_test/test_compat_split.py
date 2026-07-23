@@ -109,8 +109,43 @@ class TestCompatSplit(unittest.TestCase):
     def test_split_with_one_block(self):
         """Resulting tuple should be of length 1"""
         in_tensor = paddle.arange(60, dtype=paddle.float32).reshape([3, 4, 5])
-        self._compare_with_origin(in_tensor, 5, paddle.to_tensor([-1]))
+        self._compare_with_origin(in_tensor, 5, paddle.to_tensor(-1))
         self._compare_with_origin(in_tensor, [5], paddle.to_tensor(2))
+
+    def test_tensor_sections_low_dtype_and_view(self):
+        for dtype in ('bool', 'float16', 'int8'):
+            x = paddle.to_tensor([1, 0, 1, 0], dtype=dtype)
+            parts = split(x, paddle.to_tensor([2]))
+            self.assertEqual([part.dtype for part in parts], [x.dtype, x.dtype])
+
+        x = paddle.arange(5)
+        parts = split(x, (paddle.to_tensor(2), paddle.to_tensor(3)))
+        parts[0][0] = 99
+        np.testing.assert_array_equal(x.numpy(), [99, 1, 2, 3, 4])
+
+        empty = paddle.empty([2, 0])
+        self.assertEqual(len(split(empty, [], dim=1)), 0)
+        self.assertEqual(split(empty, 1, dim=1)[0].shape, [2, 0])
+        with self.assertRaises(TypeError):
+            split(x, True)
+
+        matrix = paddle.arange(6).reshape([2, 3])
+        for dtype in ('uint8', 'int8', 'int16'):
+            dim = paddle.to_tensor(1, dtype=dtype)
+            self.assertEqual(
+                [part.shape for part in split(matrix, 2, dim)], [[2, 2], [2, 1]]
+            )
+        self.assertEqual(
+            [part.shape for part in split(matrix, 2, np.int32(1))],
+            [[2, 2], [2, 1]],
+        )
+        self.assertEqual(
+            [
+                part.shape
+                for part in split(matrix, (np.int32(1), np.int64(2)), 1)
+            ],
+            [[2, 1], [2, 2]],
+        )
 
     def test_edge_cases(self):
         """Test edge cases and error handling"""
@@ -124,7 +159,7 @@ class TestCompatSplit(unittest.TestCase):
         self.assertEqual(a.shape, [2, 2, 1])
 
         # invalid split sections
-        with self.assertRaises(ValueError):
+        with self.assertRaises(RuntimeError):
             split(x, [3, 1], 1)
 
         # invalid split axis
@@ -146,12 +181,6 @@ class TestCompatSplit(unittest.TestCase):
         msg_gt_3 = "(InvalidArgument) The dim is expected to be in range of [-3, 3), but got 3"
         msg_gt_4 = "paddle.compat.split expects split_sizes have only non-negative entries, but got size = -5 on dim 2"
 
-        split_size = paddle.to_tensor([3])
-        msg_gt_5 = (
-            "The type of 'split_size_or_sections' in split must be int, list or tuple in imperative mode, but "
-            f"received {type(split_size)}."
-        )
-
         with self.assertRaises(TypeError) as cm:
             tensors = paddle.split(tensor=x, split_size_or_sections=3, dim=0)
         self.assertEqual(str(cm.exception), msg_gt_1)
@@ -168,9 +197,8 @@ class TestCompatSplit(unittest.TestCase):
             tensors = split(x, [3, 3, -5], -2)
         self.assertEqual(str(cm.exception), msg_gt_4)
 
-        with self.assertRaises(TypeError) as cm:
-            tensors = split(x, split_size, 1)
-        self.assertEqual(str(cm.exception), msg_gt_5)
+        tensors = split(x, paddle.to_tensor([3]), 1)
+        self.assertEqual([tensor.shape[1] for tensor in tensors], [3, 3, 3])
 
 
 class TestFunctionalSplit(unittest.TestCase):

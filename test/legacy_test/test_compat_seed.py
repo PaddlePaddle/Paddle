@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+from unittest import mock
 
 import paddle
 from paddle.base import core
@@ -45,6 +46,15 @@ class TestCompatSeed(unittest.TestCase):
         assert seed_cpu_random != compat_seed_cpu_random, (
             "CPU Random Seed Not Change!"
         )
+
+    def test_full_uint64_seed(self):
+        expected = 2**64 - 1
+        with mock.patch(
+            'paddle.compat.secrets.randbits', return_value=expected
+        ):
+            actual = compat_seed()
+        self.assertEqual(actual, expected)
+        self.assertEqual(core.default_cpu_generator().initial_seed(), expected)
 
 
 if __name__ == '__main__':

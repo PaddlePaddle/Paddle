@@ -16,10 +16,101 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import paddle
 import paddle.nn.functional as F
 
 if TYPE_CHECKING:
     from paddle import Tensor
+
+
+def _math_scaled_dot_product_attention(
+    query,
+    key,
+    value,
+    attn_mask,
+    dropout_p,
+    is_causal,
+    scale,
+    enable_gqa,
+):
+    output_dtype = query.dtype
+    if (
+        hasattr(query, "place")
+        and query.place.is_cpu_place()
+        and query.dtype in (paddle.float16, paddle.bfloat16)
+    ):
+        query = query.astype(paddle.float32)
+        key = key.astype(paddle.float32)
+        value = value.astype(paddle.float32)
+        if attn_mask is not None and attn_mask.dtype != paddle.bool:
+            attn_mask = attn_mask.astype(paddle.float32)
+
+    if enable_gqa:
+        query_heads = query.shape[-3]
+        key_heads = key.shape[-3]
+        value_heads = value.shape[-3]
+        if (
+            key_heads == 0
+            or value_heads == 0
+            or query_heads % key_heads != 0
+            or query_heads % value_heads != 0
+        ):
+            raise ValueError(
+                "The number of query heads must be divisible by the number "
+                "of key/value heads when enable_gqa=True."
+            )
+        key_repeats = query_heads // key_heads
+        value_repeats = query_heads // value_heads
+        if key_repeats != 1:
+            key = paddle.repeat_interleave(key, key_repeats, axis=-3)
+        if value_repeats != 1:
+            value = paddle.repeat_interleave(value, value_repeats, axis=-3)
+
+    head_dim = query.shape[-1]
+    scale_factor = head_dim**-0.5 if scale is None and head_dim != 0 else scale
+    if scale_factor is None:
+        scale_factor = 1.0
+    scores = paddle.matmul(query, key, transpose_y=True) * scale_factor
+
+    if is_causal:
+        causal_mask = paddle.ones(
+            [query.shape[-2], key.shape[-2]], dtype=paddle.bool
+        ).tril()
+        scores = paddle.where(
+            causal_mask,
+            scores,
+            paddle.full_like(scores, -float("inf")),
+        )
+    if attn_mask is not None:
+        if attn_mask.dtype == paddle.bool:
+            scores = paddle.where(
+                attn_mask,
+                scores,
+                paddle.full_like(scores, -float("inf")),
+            )
+        else:
+            scores = paddle.where(
+                attn_mask != -float("inf"),
+                scores + attn_mask,
+                paddle.full_like(scores, -float("inf")),
+            )
+
+    has_unmasked_score = paddle.any(
+        scores != -float("inf"), axis=-1, keepdim=True
+    )
+    safe_scores = paddle.where(
+        has_unmasked_score, scores, paddle.zeros_like(scores)
+    )
+    weights = F.softmax(safe_scores, axis=-1)
+    weights = paddle.where(
+        paddle.logical_and(has_unmasked_score, scores != -float("inf")),
+        weights,
+        paddle.zeros_like(weights),
+    )
+    if dropout_p > 0.0:
+        weights = F.dropout(weights, p=dropout_p, training=True)
+    out = paddle.matmul(weights, value)
+    return out if out.dtype == output_dtype else out.astype(output_dtype)
 
 
 def scaled_dot_product_attention(
@@ -100,9 +191,38 @@ def scaled_dot_product_attention(
             >>> print(output)
             >>> # doctest: -SKIP
     """
+    if not 0.0 <= dropout_p <= 1.0:
+        raise ValueError(
+            f"dropout probability has to be between 0 and 1, but got {dropout_p}"
+        )
+
     if is_causal and attn_mask is not None:
         raise RuntimeError(
             "Explicit attn_mask should not be set when is_causal=True"
+        )
+
+    use_math_fallback = (
+        query.ndim not in (3, 4)
+        or scale == 0
+        or (
+            hasattr(query, "place")
+            and query.place.is_cpu_place()
+            and (
+                query.dtype in (paddle.float16, paddle.bfloat16)
+                or attn_mask is not None
+            )
+        )
+    )
+    if use_math_fallback:
+        return _math_scaled_dot_product_attention(
+            query,
+            key,
+            value,
+            attn_mask,
+            dropout_p,
+            is_causal,
+            scale,
+            enable_gqa,
         )
 
     query, key, value = (

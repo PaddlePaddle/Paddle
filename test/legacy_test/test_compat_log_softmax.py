@@ -321,6 +321,22 @@ class TestCompatLogSoftmaxDtype(unittest.TestCase):
         )
         self.assertEqual(out.dtype, paddle.float64)
 
+    def test_cpu_low_precision(self):
+        input_np = np.array(
+            [[1.0, -2.0, 3.0], [0.5, 2.0, -1.0]], dtype=np.float32
+        )
+        expected = scipy_log_softmax(input_np, axis=1)
+        for dtype in (paddle.float16, paddle.bfloat16):
+            x = paddle.to_tensor(input_np, dtype=dtype, place=paddle.CPUPlace())
+            out = paddle.compat.nn.functional.log_softmax(x, dim=1)
+            self.assertEqual(out.dtype, dtype)
+            np.testing.assert_allclose(
+                out.astype("float32").numpy(),
+                expected,
+                rtol=2e-2,
+                atol=2e-3,
+            )
+
 
 class TestCompatLogSoftmaxStacklevel(unittest.TestCase):
     """Test that _stacklevel is silently ignored (torch compat)."""

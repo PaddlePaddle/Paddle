@@ -215,6 +215,17 @@ class TestCompatSort(unittest.TestCase):
                             np.ones_like(actual_arr, dtype=actual_arr.dtype),
                         )
 
+    def test_bool_int8_and_out_identity(self):
+        for dtype in ('bool', 'int8'):
+            x = paddle.to_tensor([1, 0, 1], dtype=dtype)
+            values = paddle.empty([3], dtype=dtype)
+            indices = paddle.empty([3], dtype='int64')
+            result = compat_sort(x, out=(values, indices))
+            np.testing.assert_array_equal(result.values.numpy(), [0, 1, 1])
+            np.testing.assert_array_equal(result.indices.numpy(), [1, 0, 2])
+            self.assertIs(result.values, values)
+            self.assertIs(result.indices, indices)
+
     def test_edge_cases(self):
         """Test edge cases and error handling"""
         x = paddle.to_tensor([])

@@ -71,6 +71,19 @@ class TestCompatUnfold(unittest.TestCase):
         input_tensor = paddle.ones(input_shape, dtype=paddle.float64)
         self._compare_with_origin(input_tensor, 3, 2, 1, (1, 1))
 
+    def test_public_attributes_drive_forward(self):
+        layer = paddle.compat.nn.Unfold(1, dilation=1, padding=0, stride=1)
+        self.assertEqual(layer.kernel_size, 1)
+        self.assertEqual(layer.dilation, 1)
+        self.assertEqual(layer.padding, 0)
+        self.assertEqual(layer.stride, 1)
+        self.assertIn("kernel_size=1", repr(layer))
+
+        layer.kernel_size = 2
+        x = paddle.arange(12, dtype="float32").reshape([1, 3, 4])
+        expected = F_compat.unfold(x, kernel_size=2)
+        np.testing.assert_array_equal(layer(x).numpy(), expected.numpy())
+
     def test_error_handling(self):
         """Test whether there will be correct exception when users pass paddle.split kwargs in paddle.compat.split, vice versa."""
         x = paddle.randn([3, 9, 5])
@@ -163,6 +176,44 @@ class TestCompatFunctionalUnfold(unittest.TestCase):
         input_shape = (12, 4, 10, 10)
         input_tensor = paddle.ones(input_shape, dtype=paddle.float64)
         self._compare_with_origin(input_tensor, 3, 2, 1, (1, 1))
+
+    def test_unbatched_cpu_dtypes(self):
+        base = np.arange(12).reshape([1, 3, 4])
+
+        def expected_unfold(array):
+            return np.stack(
+                [
+                    array[:, i : i + 2, j : j + 2].reshape(-1)
+                    for i in range(2)
+                    for j in range(3)
+                ],
+                axis=-1,
+            )
+
+        cases = (
+            (paddle.float16, base.astype(np.float32)),
+            (paddle.bfloat16, base.astype(np.float32)),
+            (paddle.bool, (base % 2).astype(bool)),
+            (
+                paddle.complex64,
+                base.astype(np.complex64)
+                + 1j * (base + 1).astype(np.complex64),
+            ),
+            (
+                paddle.complex128,
+                base.astype(np.complex128)
+                + 1j * (base + 1).astype(np.complex128),
+            ),
+        )
+        for dtype, input_np in cases:
+            x = paddle.to_tensor(input_np, dtype=dtype, place=paddle.CPUPlace())
+            out = F_compat.unfold(x, kernel_size=2)
+            self.assertEqual(out.dtype, dtype)
+            if dtype == paddle.bfloat16:
+                actual = out.astype("float32").numpy()
+            else:
+                actual = out.numpy()
+            np.testing.assert_allclose(actual, expected_unfold(input_np))
 
     def test_error_handling(self):
         """Test whether there will be correct exception when users pass incorrect kwargs."""
