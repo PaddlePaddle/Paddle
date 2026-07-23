@@ -13,7 +13,10 @@
 # limitations under the License.
 
 import access_topo_drr
+import ap
+import ir_tools
 import pir
+import topo_drr_pass
 
 
 class RemoveDataOpPairPass(access_topo_drr.DrrPass):
@@ -138,3 +141,83 @@ class RemoveOutputIndexPass(access_topo_drr.DrrPass):
 
     def result_pattern(self, o, t):
         pass
+
+
+def simplify_epilogue_program(
+    program, anchor_data_op_name, number_of_inputs, number_of_outputs
+):
+    print("before-umprime: ", program)
+    # umprime passes
+    pass_manager = ir_tools.create_pass_manager()
+    pass_manager.add_pass(ir_tools.create_access_topo_drr_pass("umprime"))
+    pass_manager.add_pass(ir_tools.create_dce_pass())
+    pass_manager.run(program)
+    print("before-access_topo_pass", program)
+    init_pass_manager = ir_tools.create_pass_manager()
+    init_down_spider = topo_drr_pass.InitDownSpiderAccessTopoPass(
+        anchor_data_op_name
+    )
+    init_pass_manager.add_pass(
+        ir_tools.create_access_topo_drr_one_step_pass(init_down_spider)
+    )
+    outputs_name_list = ap.map(lambda i: f"output{i}", range(number_of_outputs))
+    inputs_name_list = (
+        ap.map(lambda i: f"input{i + 2}", range(number_of_inputs - 2))
+        if number_of_inputs > 2
+        else []
+    )
+    print('inputs_name_list: ', ', '.join(inputs_name_list))
+    init_fake_data_for_yield_input = (
+        topo_drr_pass.FakeDataForYieldAccessTopoPass(outputs_name_list)
+    )
+    init_pass_manager.add_pass(
+        ir_tools.create_access_topo_drr_one_step_pass(
+            init_fake_data_for_yield_input
+        )
+    )
+    init_pass_manager.run(program)
+    print("after-init-access_topo_pass", program)
+    pass_manager = ir_tools.create_pass_manager()
+    pass_manager.add_pass(ir_tools.create_access_topo_drr_pass("default"))
+    pass_manager.add_pass(ir_tools.create_dce_pass())
+    pass_manager.run(program)
+    print("after-apply-access_topo_pass", program)
+    pass_manager = ir_tools.create_pass_manager()
+    ap.map(
+        lambda dst_name: pass_manager.add_pass(
+            ir_tools.create_access_topo_drr_one_step_pass(
+                RemoveDataOpPairPass(
+                    src_data_op_name=anchor_data_op_name,
+                    dst_data_op_name=dst_name,
+                )
+            )
+        ),
+        inputs_name_list,
+    )
+    ap.map(
+        lambda dst_name: pass_manager.add_pass(
+            ir_tools.create_access_topo_drr_one_step_pass(
+                RemoveDataOp2SumOp2DataOpPass(
+                    src_data_op_name=anchor_data_op_name,
+                    dst_data_op_name=dst_name,
+                )
+            )
+        ),
+        inputs_name_list,
+    )
+
+    ap.map(
+        lambda dst_name: pass_manager.add_pass(
+            ir_tools.create_access_topo_drr_one_step_pass(
+                RemoveDataOpPairPass(
+                    src_data_op_name=anchor_data_op_name,
+                    dst_data_op_name=dst_name,
+                )
+            )
+        ),
+        outputs_name_list,
+    )
+    pass_manager.add_pass(ir_tools.create_dce_pass())
+    pass_manager.run(program)
+    print("after-remove-input-output-access_topo_pass", program)
+    return program
