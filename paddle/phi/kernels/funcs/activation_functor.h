@@ -5542,12 +5542,11 @@ __device__ __forceinline__
   static_assert(!std::is_same<T, double>::value,
                 "this template must be used with float or less precise type");
 
-#if defined(__CUDA_ARCH__) || defined(__HIP_ARCH__)
-  // use __logf fast approximation for peak bandwidth
-  return __log2f(x);
-#else
+  // Use the standard implementation rather than the faster but lower-precision
+  // __log2f intrinsic, so that the floating-point results match PyTorch's
+  // bit-for-bit. For peak bandwidth at the cost of accuracy, switch to the
+  // __log2f intrinsic to obtain an approximate value.
   return ::log2(x);
-#endif
 }
 
 template <>
@@ -5581,11 +5580,14 @@ struct CudaLog2Functor<ComplexType<T>>
 template <typename T>
 struct CudaLog2GradFunctor : public BaseActivationFunctor<T> {
   using MT = typename MPTypeTrait<T>::Type;
-  T log_two = static_cast<T>(log(static_cast<MT>(2.0f)));
+  MT ln_two = static_cast<MT>(log(static_cast<MT>(2.0f)));
 
-  // dx = dout / (x * log(2))
+  // dx = dout / (x * ln(2))
   __device__ __forceinline__ T operator()(const T dout, const T x) const {
-    return dout / (x * log_two);
+    // Compute the product in the promoted type before casting it back so that
+    // float16 and bfloat16 gradients match PyTorch 2.12.0's rounding behavior.
+    T denominator = static_cast<T>(static_cast<MT>(x) * ln_two);
+    return dout / denominator;
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
