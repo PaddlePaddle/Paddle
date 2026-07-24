@@ -21,7 +21,7 @@ namespace operators {
 using paddle::framework::GradVarName;
 
 {% for op in ops %}
-  {% if op is base_op %}
+  {% if op is base_op and op["name"] not in excluded_fluid_ops %}
 
 {{op_maker(op)}}
 
@@ -30,13 +30,15 @@ using paddle::framework::GradVarName;
 {% endfor %}
 
 {% for op in backward_ops %}
-  {% if op is base_op %}
+  {% if op["name"] not in excluded_fluid_backward_ops %}
+    {% if op is base_op %}
 
 {{backward_op_maker(op, op_dict[op["forward"]["name"]])}}
 
 {{operator(op)}}
- {% else %}
+    {% else %}
 {{backward_op_reused_maker(op, op_dict[op["forward"]["name"]], op["invoke"])}}
+    {% endif %}
   {% endif %}
 {% endfor %}
 }  // namespace operators
@@ -44,11 +46,13 @@ using paddle::framework::GradVarName;
 
 namespace ops = paddle::operators;
 {% for op in ops + backward_ops %}
-{% if op is base_op %}
+{% if op is base_op and op["name"] not in excluded_fluid_ops and op["name"] not in excluded_fluid_backward_ops %}
 {{register_op_with_components(op)}}
 {% endif %}
 {% endfor %}
 
 {% for op in ops %}
+{% if op["name"] not in excluded_fluid_ops %}
 {{register_op_version(op)}}
+{% endif %}
 {% endfor %}

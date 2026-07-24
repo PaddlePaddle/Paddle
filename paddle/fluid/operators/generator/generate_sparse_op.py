@@ -94,6 +94,8 @@ def main(
     op_yaml_path,
     backward_yaml_path,
     op_version_yaml_path,
+    fluid_ops_exclude,
+    fluid_backward_ops_exclude,
     output_op_path,
     output_arg_map_path,
 ):
@@ -114,6 +116,26 @@ def main(
             op_name = sparse_op_name[len(SPARSE_OP_PREFIX) :]
             if op_name in forward_op_dict:
                 forward_op_dict[op_name]['version'] = op_version['version']
+
+    for op_name in fluid_ops_exclude:
+        if op_name not in forward_op_dict:
+            raise ValueError(
+                f"Excluded sparse op '{op_name}' does not exist in "
+                "sparse_ops.yaml."
+            )
+    for op_name in fluid_backward_ops_exclude:
+        if op_name not in backward_op_dict:
+            raise ValueError(
+                f"Excluded sparse backward op '{op_name}' does not exist in "
+                "sparse_backward.yaml."
+            )
+
+    excluded_fluid_ops = {
+        SPARSE_OP_PREFIX + op_name for op_name in fluid_ops_exclude
+    }
+    excluded_fluid_backward_ops = {
+        SPARSE_OP_PREFIX + op_name for op_name in fluid_backward_ops_exclude
+    }
 
     for op in ops:
         if op['name'][-1] == '_':
@@ -211,6 +233,8 @@ def main(
             ops=ops,
             backward_ops=backward_ops,
             op_dict=op_dict,
+            excluded_fluid_ops=excluded_fluid_ops,
+            excluded_fluid_backward_ops=excluded_fluid_backward_ops,
         )
         f.write(msg)
 
@@ -236,6 +260,18 @@ if __name__ == "__main__":
         '--op_version_yaml_path', type=str, help="ops version yaml file."
     )
     parser.add_argument(
+        '--fluid_ops_exclude',
+        nargs='*',
+        default=[],
+        help="sparse ops registered by the legacy static generator.",
+    )
+    parser.add_argument(
+        '--fluid_backward_ops_exclude',
+        nargs='*',
+        default=[],
+        help="sparse backward ops registered by the legacy static generator.",
+    )
+    parser.add_argument(
         "--output_op_path", type=str, help="path to save generated operators."
     )
     parser.add_argument(
@@ -249,6 +285,8 @@ if __name__ == "__main__":
         args.ops_yaml_path,
         args.backward_ops_yaml_path,
         args.op_version_yaml_path,
+        args.fluid_ops_exclude,
+        args.fluid_backward_ops_exclude,
         args.output_op_path,
         args.output_arg_map_path,
     )

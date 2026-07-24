@@ -654,6 +654,19 @@
   backward : softplus_double_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : sparse_addmm_grad
+  forward : sparse_addmm(Tensor input, Tensor x, Tensor y, float beta=1.0, float alpha=1.0) -> Tensor(out)
+  args : (Tensor input, Tensor x, Tensor y, Tensor out_grad, float alpha=1.0, float beta=1.0)
+  output : Tensor(input_grad), Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralTernaryGradInferMeta
+    param : [input, x, y]
+  kernel :
+    func : addmm_csr_dense_grad {dense, sparse_csr, dense, dense -> dense, sparse_csr, dense},
+           addmm_csr_csr_grad {sparse_csr, sparse_csr, sparse_csr, sparse_csr -> sparse_csr, sparse_csr, sparse_csr},
+           addmm_coo_dense_grad {dense, sparse_coo, dense, dense -> dense, sparse_coo, dense},
+           addmm_coo_coo_grad {sparse_coo, sparse_coo, sparse_coo, sparse_coo -> sparse_coo, sparse_coo, sparse_coo}
+
 - backward_op : squeeze_double_grad
   forward : squeeze_grad(Tensor xshape, Tensor grad_out, IntArray axis) -> Tensor(grad_x)
   args : (Tensor grad_x_grad, IntArray axis)
