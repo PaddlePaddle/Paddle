@@ -282,10 +282,6 @@ class TestCompatMinMaxBase(unittest.TestCase):
             f"{self.test_op_name}() received unexpected keyword argument 'axis'. "
             f"\nDid you mean to use {self.origin_op_name}() instead?"
         )
-        err_msg4 = (
-            "Non-CUDA GPU placed Tensor does not have 'paddle.float16' op registered.\n"
-            "Paddle support following DataTypes: int32, int64, float64, float32, uint8"
-        )
         err_msg5 = (
             "input should be a tensor, but got an instance with type 'list'"
         )
@@ -336,9 +332,8 @@ class TestCompatMinMaxBase(unittest.TestCase):
         with self.assertRaises(TypeError) as cm:
             self.test_op(input_ts, dim=paddle.to_tensor([0]))
 
-        # Tensor input for dim case 2
-        with self.assertRaises(TypeError) as cm:
-            self.test_op(input_ts, dim=paddle.to_tensor(0))
+        # 0-D integral Tensor is accepted as dim
+        self.test_op(input_ts, dim=paddle.to_tensor(0))
 
         # Tensor input for dim case 3
         with self.assertRaises(TypeError) as cm:
@@ -370,12 +365,9 @@ class TestCompatMinMaxBase(unittest.TestCase):
             self.test_op(input_ts, axis=0)
         self.assertEqual(str(cm.exception), err_msg3)
 
-        # Rejected on CPU types
-        with self.assertRaises(TypeError) as cm:
-            tensor = paddle.to_tensor([1, 2, 3], dtype="float16")
-            cpu_tensor = tensor.to("cpu")
-            self.test_op(cpu_tensor, dim=0)
-        self.assertEqual(str(cm.exception), err_msg4)
+        # Supported on CPU through the compatibility fallback
+        tensor = paddle.to_tensor([1, 2, 3], dtype="float16")
+        self.test_op(tensor.to("cpu"), dim=0)
 
         # Wrong input type
         with self.assertRaises(TypeError) as cm:

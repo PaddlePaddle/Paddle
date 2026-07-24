@@ -66,6 +66,52 @@ def _check_valid_pad_len(pad_len, x_dim, is_constant):
         )
 
 
+def _crop_negative_padding(input, pad):
+    if not isinstance(pad, (list, tuple)) or len(pad) > input.ndim * 2:
+        return input, pad
+
+    normalized_pad = []
+    for value in pad:
+        if (
+            in_dynamic_mode()
+            and isinstance(value, paddle.Tensor)
+            and value.numel() == 1
+        ):
+            value = int(value.item())
+        normalized_pad.append(value)
+
+    if not any(
+        isinstance(value, int) and not isinstance(value, bool) and value < 0
+        for value in normalized_pad
+    ):
+        return input, pad
+
+    slices = [slice(None)] * input.ndim
+    for pair_idx in range(len(normalized_pad) // 2):
+        left, right = normalized_pad[2 * pair_idx : 2 * pair_idx + 2]
+        if not isinstance(left, int) or not isinstance(right, int):
+            continue
+        axis = input.ndim - pair_idx - 1
+        crop_left = max(-left, 0)
+        crop_right = max(-right, 0)
+        if (
+            input.shape[axis] >= 0
+            and crop_left + crop_right > input.shape[axis]
+        ):
+            raise RuntimeError("narrow(): length must be non-negative.")
+        slices[axis] = slice(
+            crop_left,
+            None if crop_right == 0 else -crop_right,
+        )
+        normalized_pad[2 * pair_idx] = max(left, 0)
+        normalized_pad[2 * pair_idx + 1] = max(right, 0)
+
+    input = input[tuple(slices)]
+    if isinstance(pad, tuple):
+        normalized_pad = tuple(normalized_pad)
+    return input, normalized_pad
+
+
 @ForbidKeywordsDecorator(
     illegal_keys={"x", "name", "data_format", "pad_from_left_axis"},
     func_name="paddle.compat.nn.functional.pad",
@@ -75,7 +121,7 @@ def pad(
     input: Tensor,
     pad: ShapeLike,
     mode: _PaddingTensorMode = 'constant',
-    value: float = 0.0,
+    value: float | None = None,
 ) -> Tensor:
     """
 
@@ -138,6 +184,31 @@ def pad(
         if isinstance(pad, (Variable, paddle.Tensor)) and pad.size == 0:
             return input.clone()
 
+    if value is None:
+        value = 0.0
+
+    if mode in ("constant", "circular"):
+        input, pad = _crop_negative_padding(input, pad)
+    original_dtype = input.dtype
+    fallback_dtype = None
+    if in_dynamic_mode():
+        if input.dtype in (paddle.uint8, paddle.int8, paddle.int16) or (
+            input.dtype == paddle.bool and mode in ("constant", "circular")
+        ):
+            fallback_dtype = paddle.int32
+        elif not input.place.is_gpu_place() and input.dtype in (
+            paddle.float16,
+            paddle.bfloat16,
+        ):
+            fallback_dtype = paddle.float32
+    if fallback_dtype is not None:
+        if original_dtype == paddle.bool and mode == "constant":
+            value = float(bool(value))
+        input = input.cast(fallback_dtype)
+
+    def restore_dtype(out):
+        return out.cast(original_dtype) if fallback_dtype is not None else out
+
     if (
         mode == "constant"
         and isinstance(pad, (list, tuple))
@@ -164,7 +235,7 @@ def pad(
             if isinstance(pad_value, paddle.pir.Value)
             else float(pad_value)
         )
-        return _C_ops.pad(input, paddings, pad_val)
+        return restore_dtype(_C_ops.pad(input, paddings, pad_val))
 
     assert x_dim >= 1 and x_dim <= 5, (
         f"Input tensor dimension must be in [1-5] but got {x_dim}"
@@ -204,8 +275,8 @@ def pad(
         "NCDHW",
     )
     if ndim_to_unsqueeze:
-        return out.squeeze(axis=ndim_to_unsqueeze)
-    return out
+        out = out.squeeze(axis=ndim_to_unsqueeze)
+    return restore_dtype(out)
 
 
 @ForbidKeywordsDecorator(
@@ -277,9 +348,38 @@ def linear(input: Tensor, weight: Tensor, bias: Tensor | None = None) -> Tensor:
                     [5.50000000, 5.50000000, 5.50000000, 5.50000000]])
     """
     if (
+        in_dynamic_mode()
+        and input.dtype == weight.dtype
+        and (bias is None or input.dtype == bias.dtype)
+        and (
+            input.dtype in (paddle.uint8, paddle.int8, paddle.int16)
+            or (
+                not input.place.is_gpu_place()
+                and input.dtype in (paddle.float16, paddle.bfloat16)
+            )
+        )
+    ):
+        output_dtype = input.dtype
+        compute_dtype = (
+            paddle.float32
+            if input.dtype in (paddle.float16, paddle.bfloat16)
+            else paddle.int32
+        )
+        out = _C_ops.matmul(
+            input.cast(compute_dtype),
+            weight.cast(compute_dtype),
+            False,
+            True,
+        )
+        if bias is not None:
+            out = _C_ops.add(out, bias.cast(compute_dtype))
+        return out.cast(output_dtype)
+
+    if (
         paddle.get_flags("FLAGS_use_legacy_linear")["FLAGS_use_legacy_linear"]
         or not paddle.is_compiled_with_cuda()
         or not paddle.framework.in_dynamic_or_pir_mode()
+        or input.dtype in (paddle.complex64, paddle.complex128)
     ):
         # Fallback to old logic when in non-cuda or legacy mode.
         out = _C_ops.matmul(input, weight, False, True)
@@ -293,6 +393,51 @@ def linear(input: Tensor, weight: Tensor, bias: Tensor | None = None) -> Tensor:
             return _C_ops.linear_v2(input, weight.contiguous(), bias, True)
         else:
             return _C_ops.matmul(input, weight.contiguous(), False, True)
+
+
+def _unfold(
+    input: Tensor,
+    kernel_size: Size2,
+    dilation: Size2 = 1,
+    padding: Size2 = 0,
+    stride: Size2 = 1,
+) -> Tensor:
+    def to_list_if_necessary(x):
+        if isinstance(x, (paddle.pir.Value, paddle.Tensor)):
+            return x.tolist()
+        return x
+
+    def native_unfold(x):
+        return paddle.nn.functional.unfold(
+            x=x,
+            kernel_sizes=to_list_if_necessary(kernel_size),
+            strides=to_list_if_necessary(stride),
+            paddings=to_list_if_necessary(padding),
+            dilations=to_list_if_necessary(dilation),
+        )
+
+    is_unbatched = input.ndim == 3
+    if is_unbatched:
+        input = input.unsqueeze(0)
+
+    if in_dynamic_mode():
+        output_dtype = input.dtype
+        if output_dtype in (paddle.complex64, paddle.complex128):
+            out = paddle.complex(
+                native_unfold(paddle.real(input)),
+                native_unfold(paddle.imag(input)),
+            )
+        elif output_dtype == paddle.bool or (
+            not input.place.is_gpu_place()
+            and output_dtype in (paddle.float16, paddle.bfloat16)
+        ):
+            out = native_unfold(input.cast(paddle.float32)).cast(output_dtype)
+        else:
+            out = native_unfold(input)
+    else:
+        out = native_unfold(input)
+
+    return out.squeeze(0) if is_unbatched else out
 
 
 @ForbidKeywordsDecorator(
@@ -373,18 +518,7 @@ def unfold(
             >>> y = F.unfold(x, [3, 3], 1, 1, 1)
     """
 
-    def to_list_if_necessary(x):
-        if isinstance(x, (paddle.pir.Value, paddle.Tensor)):
-            x = x.tolist()
-        return x
-
-    return paddle.nn.functional.unfold(
-        x=input,
-        kernel_sizes=to_list_if_necessary(kernel_size),
-        strides=to_list_if_necessary(stride),
-        paddings=to_list_if_necessary(padding),
-        dilations=to_list_if_necessary(dilation),
-    )
+    return _unfold(input, kernel_size, dilation, padding, stride)
 
 
 @ForbidKeywordsDecorator(
