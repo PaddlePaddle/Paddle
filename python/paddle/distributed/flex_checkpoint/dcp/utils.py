@@ -268,6 +268,122 @@ def get_overlap_region(desc_offset, desc_shape, shard_offset, shard_shape):
 def assign_sharded_slice(
     src_desc, src_shard, dst_desc, dst_shard, postprocess_list=None
 ):
+    # Leading-block reshape between an N-D canonical layout and its 2-D
+    # flattened form: canonical [d0, d1, *rest] <-> flattened [d0*d1, prod(rest)].
+    # "reshape:" maps flattened(2-D) -> canonical(N-D); "flatten:" the reverse.
+    reshape_marker = next(
+        (
+            item
+            for item in (postprocess_list or [])
+            if isinstance(item, str)
+            and (item.startswith("reshape:") or item.startswith("flatten:"))
+        ),
+        None,
+    )
+    if reshape_marker is not None:
+        _is_forward = reshape_marker.startswith("reshape:")
+        canonical_shape = tuple(
+            ast.literal_eval(reshape_marker.split(":", 1)[1])
+        )
+        block_width = canonical_shape[1]
+        src_starts = [
+            offset - shard_offset
+            for offset, shard_offset in zip(
+                src_desc.global_offset, src_shard.global_offset
+            )
+        ]
+        src_tensor_slice = paddle.slice(
+            src_shard.local_tensor,
+            axes=list(range(len(src_desc.local_shape))),
+            starts=src_starts,
+            ends=[
+                start + size
+                for start, size in zip(src_starts, src_desc.local_shape)
+            ],
+        )
+        if _is_forward:
+            if (
+                src_desc.local_shape[0] % block_width != 0
+                or src_desc.global_offset[0] % block_width != 0
+                or src_desc.local_shape[1] != int(np.prod(canonical_shape[2:]))
+                or src_desc.global_offset[1] != 0
+            ):
+                raise ValueError(
+                    "reshape requires block-aligned full-row source shards, "
+                    f"but got local_shape={src_desc.local_shape}, "
+                    f"global_offset={src_desc.global_offset}, "
+                    f"canonical_shape={canonical_shape}."
+                )
+            local_blocks = src_desc.local_shape[0] // block_width
+            src_tensor_slice = src_tensor_slice.reshape(
+                (local_blocks, *canonical_shape[1:])
+            )
+            source_block_offset = src_desc.global_offset[0] // block_width
+            target_starts = [
+                dst_desc.global_offset[0] - source_block_offset,
+                *dst_desc.global_offset[1:],
+            ]
+        else:
+            if (
+                len(src_desc.local_shape) != len(canonical_shape)
+                or src_desc.local_shape[1:] != canonical_shape[1:]
+                or src_desc.global_offset[1:]
+                != (0,) * (len(canonical_shape) - 1)
+            ):
+                raise ValueError(
+                    "flatten requires complete trailing-dim source shards, "
+                    f"but got local_shape={src_desc.local_shape}, "
+                    f"global_offset={src_desc.global_offset}, "
+                    f"canonical_shape={canonical_shape}."
+                )
+            source_block_offset = src_desc.global_offset[0]
+            src_tensor_slice = src_tensor_slice.reshape(
+                (
+                    src_desc.local_shape[0] * block_width,
+                    int(np.prod(canonical_shape[2:])),
+                )
+            )
+            target_starts = [
+                dst_desc.global_offset[0] - source_block_offset * block_width,
+                dst_desc.global_offset[1],
+            ]
+        src_tensor_slice = paddle.slice(
+            src_tensor_slice,
+            axes=list(range(len(dst_desc.local_shape))),
+            starts=target_starts,
+            ends=[
+                start + size
+                for start, size in zip(target_starts, dst_desc.local_shape)
+            ],
+        )
+
+        for operation in postprocess_list:
+            if operation == reshape_marker:
+                continue
+            is_list, result = is_list_string(operation)
+            if is_list:
+                src_tensor_slice = paddle.transpose(src_tensor_slice, result)
+            elif isinstance(operation, str):
+                src_tensor_slice = paddle.cast(src_tensor_slice, operation)
+
+        dst_starts = [
+            offset - shard_offset
+            for offset, shard_offset in zip(
+                dst_desc.global_offset, dst_shard.global_offset
+            )
+        ]
+        dst_tensor_slice = paddle.slice(
+            dst_shard.local_tensor,
+            axes=list(range(len(dst_desc.local_shape))),
+            starts=dst_starts,
+            ends=[
+                start + size
+                for start, size in zip(dst_starts, dst_desc.local_shape)
+            ],
+        )
+        paddle.assign(src_tensor_slice, dst_tensor_slice)
+        return
+
     src_has, _, overlap_shape, src_desc_starts, src_shard_starts = (
         get_overlap_region(
             src_desc.global_offset,
