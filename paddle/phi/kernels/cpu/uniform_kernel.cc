@@ -55,9 +55,11 @@ void UniformKernel(const Context &dev_ctx,
         data, size, min.to<double>(), max.to<double>(), &engine);
   }
 
-  if (seed == 0) {
+  if (seed == 0 && size > 0) {
     // Advance the global RNG state so that consecutive calls produce
     // different sequences (same convention as cpu/randperm_kernel.cc).
+    // Skipped for 0-size outputs: torch draws nothing from the generator
+    // there, so the global state must stay untouched.
     dev_ctx.GetGenerator()->SetCurrentSeed(engine());
   }
 }
