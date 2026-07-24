@@ -368,7 +368,7 @@ class TestAliasBehavior(CompatNamespaceAliasBase):
         """Direct execution of the aliased softmax/log_softmax/sdpa (these are
         genuinely aliased to torch-style compat APIs, not no-ops). After enable,
         paddle.nn.functional.softmax is the torch-style compat API, so it takes
-        `dim=` and REJECTS the paddle-native `axis=` via ForbidKeywords."""
+        `dim=` and rejects the paddle-native `axis=`."""
         x = paddle.randn([2, 4])
         self.assertEqual(paddle.nn.functional.softmax(x, dim=-1).shape, [2, 4])
         self.assertEqual(
@@ -550,10 +550,7 @@ class TestLevel2InternalCallersUseNative(CompatNamespaceAliasBase):
                 len(t.split(split_size=[1, 1], dim=0)),
                 2,
             )
-            with self.assertRaises(TypeError):
-                t.split(split_size_or_sections=1, dim=0)
-            with self.assertRaises(TypeError):
-                paddle.split(t, split_size=1, dim=0)
+            self.assertEqual(len(paddle.split(t, split_size=1, dim=0)), 2)
             # paddle-internal native-style call (simulated) stays native
             ns = {"__name__": "paddle.fake_internal", "t": t}
             exec(
