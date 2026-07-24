@@ -1705,12 +1705,18 @@ class Optimizer:
                 paddle.static.default_startup_program(),
             ):
                 auto_dp = paddle.distributed.auto_parallel.auto_dp_utils.in_auto_dp_mode()
-                from paddle.distributed.auto_parallel.fully_shard_fusion import (
+                from paddle.distributed.fsdp._fsdp_context import (
                     get_fsdp_context,
                 )
 
                 fsdp_context = get_fsdp_context()
                 if fsdp_context is not None:
+                    if self._param_groups and isinstance(
+                        self._param_groups[0], dict
+                    ):
+                        raise NotImplementedError(
+                            "FSDP does not support optimizer parameter groups."
+                        )
                     fsdp_context.comm_sync_and_reset_status()
                     new_params_grads = []
                     for group in fsdp_context.buffer_manager.buffer_groups:
