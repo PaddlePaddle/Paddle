@@ -78,13 +78,21 @@ inline at::Tensor empty_strided(at::IntArrayRef size,
               "empty_strided only supports strided layout, got: ",
               options.layout());
 
-  int64_t storage_elems = 1;
+  // Match PyTorch's `_empty_strided_generic`, which runs
+  // `check_size_nonnegative` over every dimension before the storage
+  // computation. The 0-size fast path below breaks out early, so folding
+  // this check into that loop would let inputs like size={0, -1} slip
+  // through unvalidated.
   for (size_t i = 0; i < size.size(); ++i) {
     TORCH_CHECK(size[i] >= 0,
                 "Trying to create tensor with negative dimension ",
                 size[i],
                 ": ",
                 size);
+  }
+
+  int64_t storage_elems = 1;
+  for (size_t i = 0; i < size.size(); ++i) {
     if (size[i] == 0) {
       storage_elems = 0;
       break;
