@@ -27,25 +27,6 @@ if TYPE_CHECKING:
     from paddle._typing import DTypeLike
 
 
-def _softmax_cpu_fallback(op, input, dim, out):
-    if (
-        hasattr(input, "place")
-        and input.place.is_cpu_place()
-        and input.dtype
-        in (
-            core.DataType.FLOAT16,
-            core.DataType.BFLOAT16,
-            core.VarDesc.VarType.FP16,
-            core.VarDesc.VarType.BF16,
-        )
-    ):
-        output_dtype = input.dtype
-        result = op(_C_ops.cast(input, core.DataType.FLOAT32), dim)
-        result = _C_ops.cast(result, output_dtype)
-        return result if out is None else _C_ops.assign_out_(result, out)
-    return op(input, dim, out=out)
-
-
 @ForbidKeywordsIgnoreOneParamDecorator(
     illegal_keys={"x", "axis", "name"},
     ignore_param=('_stacklevel', 2, int),
@@ -196,7 +177,7 @@ def softmax(
         dtype = convert_nptype_to_datatype_or_vartype(dtype)
     if in_dynamic_or_pir_mode():
         outs_cast = input if dtype is None else _C_ops.cast(input, dtype)
-        return _softmax_cpu_fallback(_C_ops.softmax, outs_cast, dim, out)
+        return _C_ops.softmax(outs_cast, dim, out=out)
 
 
 @ForbidKeywordsIgnoreOneParamDecorator(
@@ -277,4 +258,4 @@ def log_softmax(
 
     if in_dynamic_or_pir_mode():
         outs_cast = input if dtype is None else _C_ops.cast(input, dtype)
-        return _softmax_cpu_fallback(_C_ops.log_softmax, outs_cast, dim, out)
+        return _C_ops.log_softmax(outs_cast, dim, out=out)

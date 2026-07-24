@@ -482,17 +482,6 @@ class TestCompatLinearLayer(unittest.TestCase):
         linear.train()
         self.assertTrue(linear.training)
 
-    def test_complex_dtype(self):
-        for dtype in ('complex64', 'complex128'):
-            linear = Linear(2, 2, dtype=dtype)
-            x = paddle.to_tensor(
-                [[1 + 2j, 3 - 1j]], dtype=dtype, stop_gradient=False
-            )
-            result = linear(x)
-            self.assertEqual(result.dtype, x.dtype)
-            paddle.real(result).sum().backward()
-            self.assertIsNotNone(x.grad)
-
 
 if __name__ == "__main__":
     unittest.main()

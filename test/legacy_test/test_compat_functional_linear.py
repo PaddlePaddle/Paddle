@@ -192,40 +192,6 @@ class TestCompatLinear(unittest.TestCase):
             self._compare_forward(x_np, weight_np, bias_np)
             self._compare_backward(x_np, weight_np, bias_np)
 
-    def test_cpu_low_precision_and_integer_dtypes(self):
-        x_np = np.array([[1, -2, 3], [4, 2, -1]], dtype=np.float32)
-        weight_np = np.array([[2, -1, 1], [1, 3, -2]], dtype=np.float32)
-        bias_np = np.array([1, -2], dtype=np.float32)
-        expected = np.matmul(x_np, weight_np.T) + bias_np
-
-        for dtype in (
-            paddle.float16,
-            paddle.bfloat16,
-            paddle.uint8,
-            paddle.int8,
-            paddle.int16,
-        ):
-            x = paddle.to_tensor(x_np, dtype=dtype, place=paddle.CPUPlace())
-            weight = paddle.to_tensor(
-                weight_np, dtype=dtype, place=paddle.CPUPlace()
-            )
-            bias = paddle.to_tensor(
-                bias_np, dtype=dtype, place=paddle.CPUPlace()
-            )
-            out = F.linear(x, weight, bias)
-            self.assertEqual(out.dtype, dtype)
-            expected_for_dtype = (
-                expected.astype(np.uint8).astype(np.float32)
-                if dtype == paddle.uint8
-                else expected
-            )
-            np.testing.assert_allclose(
-                out.astype("float32").numpy(),
-                expected_for_dtype,
-                rtol=0,
-                atol=0,
-            )
-
     def test_static_graph_simple(self):
         if not paddle.base.is_compiled_with_cuda():
             return

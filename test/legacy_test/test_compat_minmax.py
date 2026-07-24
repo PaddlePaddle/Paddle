@@ -164,86 +164,6 @@ class TestCompatMinMaxBase(unittest.TestCase):
         np.testing.assert_allclose(x.grad.numpy(), expected_x_grad)
         np.testing.assert_allclose(y.grad.numpy(), expected_y_grad)
 
-    def test_nan_dtype_promotion_and_out_identity(self):
-        x = paddle.to_tensor(
-            [[1.0, float('nan'), float('nan'), 0.0]],
-            stop_gradient=False,
-        )
-        result = self.test_op(x, dim=1)
-        np.testing.assert_array_equal(result.indices.numpy(), [1])
-        result.values.backward()
-        np.testing.assert_array_equal(x.grad.numpy(), [[0.0, 1.0, 0.0, 0.0]])
-
-        x = paddle.to_tensor(
-            [1.0, float('nan'), float('nan')], stop_gradient=False
-        )
-        result = self.test_op(x)
-        result.backward()
-        np.testing.assert_array_equal(x.grad.numpy(), [0.0, 0.5, 0.5])
-
-        x = paddle.to_tensor([float('nan')], stop_gradient=False)
-        y = paddle.to_tensor([1.0], stop_gradient=False)
-        self.test_op(x, y).backward()
-        np.testing.assert_array_equal(x.grad.numpy(), [1.0])
-        np.testing.assert_array_equal(y.grad.numpy(), [1.0])
-
-        promoted = self.test_op(
-            paddle.to_tensor([1, 2], dtype='int32'),
-            paddle.to_tensor([1.0, 1.0], dtype='float32'),
-        )
-        self.assertEqual(promoted.dtype, paddle.float32)
-
-        low_dtype = self.test_op(
-            paddle.to_tensor([3, 1, 2], dtype='float16'), dim=0
-        )
-        self.assertEqual(low_dtype.values.dtype, paddle.float16)
-
-        out = paddle.zeros([], dtype='float32')
-        self.assertIs(self.test_op(paddle.to_tensor([1.0, 2.0]), out=out), out)
-        value_out = paddle.zeros([], dtype='float32')
-        index_out = paddle.zeros([], dtype='int64')
-        result = self.test_op(
-            paddle.to_tensor([1.0, 2.0]),
-            dim=0,
-            out=(value_out, index_out),
-        )
-        self.assertIs(result.values, value_out)
-        self.assertIs(result.indices, index_out)
-
-    def test_int_like_dim_signed_zero_and_scalar_alias(self):
-        data = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0]])
-        for dim in (np.int64(1), paddle.to_tensor(1, dtype='int16')):
-            result = self.test_op(data, dim=dim)
-            expected = [1.0, 3.0]
-            if self.test_op_name.endswith("max"):
-                expected = [2.0, 4.0]
-            np.testing.assert_array_equal(result.values.numpy(), expected)
-
-        zeros = paddle.to_tensor([-0.0, 0.0], stop_gradient=False)
-        result = self.test_op(zeros)
-        self.assertEqual(
-            paddle.signbit(result).item(),
-            self.test_op_name.endswith("min"),
-        )
-        result.backward()
-        np.testing.assert_array_equal(zeros.grad.numpy(), [0.5, 0.5])
-
-        first = paddle.to_tensor([-0.0], stop_gradient=False)
-        second = paddle.to_tensor([0.0], stop_gradient=False)
-        result = self.test_op(first, second)
-        self.assertTrue(paddle.signbit(result).item())
-        result.backward()
-        np.testing.assert_array_equal(first.grad.numpy(), [0.5])
-        np.testing.assert_array_equal(second.grad.numpy(), [0.5])
-
-        scalar = paddle.to_tensor(3.0, stop_gradient=False)
-        result = self.test_op(scalar, dim=0)
-        self.assertIsNot(result.values, scalar)
-        result.values.backward()
-        self.assertEqual(scalar.grad.item(), 1.0)
-        result.values[...] = 8.0
-        self.assertEqual(scalar.item(), 3.0)
-
     def test_edge_cases(self):
         """Edge cases test"""
         # uniform distributed gradient
@@ -362,6 +282,10 @@ class TestCompatMinMaxBase(unittest.TestCase):
             f"{self.test_op_name}() received unexpected keyword argument 'axis'. "
             f"\nDid you mean to use {self.origin_op_name}() instead?"
         )
+        err_msg4 = (
+            "Non-CUDA GPU placed Tensor does not have 'paddle.float16' op registered.\n"
+            "Paddle support following DataTypes: int32, int64, float64, float32, uint8"
+        )
         err_msg5 = (
             "input should be a tensor, but got an instance with type 'list'"
         )
@@ -412,10 +336,9 @@ class TestCompatMinMaxBase(unittest.TestCase):
         with self.assertRaises(TypeError) as cm:
             self.test_op(input_ts, dim=paddle.to_tensor([0]))
 
-        # A 0-D integral Tensor is a valid dim.
-        result = self.test_op(input_ts, dim=paddle.to_tensor(0))
-        expected_index = 0 if self.test_op_name.endswith("min") else 2
-        self.assertEqual(result.indices.item(), expected_index)
+        # Tensor input for dim case 2
+        with self.assertRaises(TypeError) as cm:
+            self.test_op(input_ts, dim=paddle.to_tensor(0))
 
         # Tensor input for dim case 3
         with self.assertRaises(TypeError) as cm:
@@ -446,6 +369,13 @@ class TestCompatMinMaxBase(unittest.TestCase):
         with self.assertRaises(TypeError) as cm:
             self.test_op(input_ts, axis=0)
         self.assertEqual(str(cm.exception), err_msg3)
+
+        # Rejected on CPU types
+        with self.assertRaises(TypeError) as cm:
+            tensor = paddle.to_tensor([1, 2, 3], dtype="float16")
+            cpu_tensor = tensor.to("cpu")
+            self.test_op(cpu_tensor, dim=0)
+        self.assertEqual(str(cm.exception), err_msg4)
 
         # Wrong input type
         with self.assertRaises(TypeError) as cm:

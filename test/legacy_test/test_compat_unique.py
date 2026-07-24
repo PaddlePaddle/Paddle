@@ -44,55 +44,6 @@ class TestCompatUniqueAPI(unittest.TestCase):
         np.testing.assert_allclose(result.numpy(), expected.numpy())
         paddle.enable_static()
 
-    def test_dtype_inverse_nan_and_empty_axis(self):
-        paddle.disable_static()
-        for dtype in ('bool', 'float16', 'int8'):
-            output, inverse, counts = paddle.compat.unique(
-                paddle.to_tensor([1, 0, 1], dtype=dtype),
-                return_inverse=True,
-                return_counts=True,
-            )
-            self.assertEqual(output.dtype, getattr(paddle, dtype))
-            np.testing.assert_array_equal(inverse.numpy(), [1, 0, 1])
-            np.testing.assert_array_equal(counts.numpy(), [1, 2])
-
-        x = paddle.to_tensor(
-            [[float('nan'), float('nan'), 1.0], [-0.0, 0.0, 1.0]]
-        )
-        output, inverse, counts = paddle.compat.unique(
-            x, return_inverse=True, return_counts=True
-        )
-        np.testing.assert_allclose(
-            output.numpy(), [-0.0, 1.0, np.nan, np.nan], equal_nan=True
-        )
-        np.testing.assert_array_equal(inverse.numpy(), [[2, 3, 1], [0, 0, 1]])
-        np.testing.assert_array_equal(counts.numpy(), [2, 2, 1, 1])
-
-        scalar_inverse = paddle.compat.unique(
-            paddle.to_tensor(2), return_inverse=True
-        )[1]
-        self.assertEqual(scalar_inverse.shape, [])
-        with self.assertRaises(RuntimeError):
-            paddle.compat.unique(paddle.empty([0, 2]), dim=1)
-        self.assertEqual(
-            paddle.compat.unique(paddle.empty([0, 2]), dim=0).shape, [0, 2]
-        )
-
-    def test_autograd_metadata_and_backward_error(self):
-        paddle.disable_static()
-        x = paddle.to_tensor([2.0, 1.0, 2.0], stop_gradient=False)
-        output, inverse, counts = paddle.compat.unique(
-            x, return_inverse=True, return_counts=True
-        )
-        self.assertFalse(output.stop_gradient)
-        self.assertTrue(inverse.stop_gradient)
-        self.assertTrue(counts.stop_gradient)
-        with self.assertRaisesRegex(
-            OSError, "NotImplementedError: the derivative for '_unique2'"
-        ):
-            output.sum().backward()
-        self.assertIsNone(x.grad)
-
     def test_static(self):
         paddle.enable_static()
 

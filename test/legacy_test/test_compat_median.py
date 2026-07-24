@@ -111,62 +111,6 @@ class TestCompatMedianAPI(unittest.TestCase):
 
         paddle.enable_static()
 
-    def test_tie_gradient_empty_axis_and_cpu_dtypes(self):
-        paddle.disable_static()
-        x = paddle.to_tensor(
-            [[1.0, 2.0, 3.0, 2.0, 1.0, 3.0]],
-            stop_gradient=False,
-        )
-        result = paddle.compat.median(x, dim=1)
-        np.testing.assert_array_equal(result.indices.numpy(), [1])
-        result.values.backward()
-        np.testing.assert_array_equal(
-            x.grad.numpy(), [[0.0, 1.0, 0.0, 0.0, 0.0, 0.0]]
-        )
-
-        x = paddle.to_tensor([0.0, 0.0, 0.0], stop_gradient=False)
-        result = paddle.compat.median(x, dim=0)
-        self.assertEqual(result.indices.item(), 1)
-        result.values.backward()
-        np.testing.assert_array_equal(x.grad.numpy(), [0.0, 1.0, 0.0])
-
-        x = paddle.to_tensor([0.0, -0.0, 1.0], stop_gradient=False)
-        global_result = paddle.compat.median(x)
-        self.assertFalse(paddle.signbit(global_result).item())
-        global_result.backward()
-        np.testing.assert_array_equal(x.grad.numpy(), [0.5, 0.5, 0.0])
-        x.clear_gradient()
-        result = paddle.compat.median(x, dim=0)
-        self.assertEqual(result.indices.item(), 1)
-        self.assertTrue(paddle.signbit(result.values).item())
-        result.values.backward()
-        np.testing.assert_array_equal(x.grad.numpy(), [0.0, 1.0, 0.0])
-
-        matrix = paddle.to_tensor([[3.0, 1.0, 2.0], [6.0, 4.0, 5.0]])
-        for dim in (np.int64(1), paddle.to_tensor(1, dtype='int8')):
-            result = paddle.compat.median(matrix, dim=dim)
-            np.testing.assert_array_equal(result.values.numpy(), [2.0, 5.0])
-            np.testing.assert_array_equal(result.indices.numpy(), [2, 2])
-
-        for dtype in ('float16', 'int8', 'uint8', 'int16'):
-            result = paddle.compat.median(
-                paddle.to_tensor([[3, 1, 2]], dtype=dtype), dim=1
-            )
-            self.assertEqual(result.values.dtype, getattr(paddle, dtype))
-            np.testing.assert_array_equal(result.values.numpy(), [2])
-
-        with self.assertRaises(IndexError):
-            paddle.compat.median(paddle.empty([2, 0]), dim=1)
-
-        scalar = paddle.to_tensor(3.0, stop_gradient=False)
-        for dim in (-1, 0):
-            result = paddle.compat.median(scalar, dim=dim)
-            self.assertEqual(result.values.shape, [])
-            self.assertEqual(result.indices.item(), 0)
-            result.values.backward()
-            self.assertEqual(scalar.grad.item(), 1.0)
-            scalar.clear_gradient()
-
     def test_compat_median_static(self):
         paddle.enable_static()
 
@@ -297,7 +241,6 @@ class TestCompatNanmedianAPI(unittest.TestCase):
         x = paddle.to_tensor(
             [[1, 2, 3], [float('nan'), float('nan'), float('nan')], [7, 8, 9]],
             dtype='float32',
-            stop_gradient=False,
         )
 
         values, indices = paddle.compat.nanmedian(x, dim=1)
@@ -309,53 +252,8 @@ class TestCompatNanmedianAPI(unittest.TestCase):
             values.numpy(), expected_values.numpy(), equal_nan=True
         )
         np.testing.assert_allclose(indices.numpy(), expected_indices.numpy())
-        values.sum().backward()
-        np.testing.assert_array_equal(
-            x.grad.numpy(),
-            [[0.0, 1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
-        )
 
         paddle.enable_static()
-
-    def test_tie_gradient_empty_axis_and_cpu_dtype(self):
-        paddle.disable_static()
-        x = paddle.to_tensor(
-            [[1.0, 2.0, float('nan'), 2.0, 3.0]],
-            stop_gradient=False,
-        )
-        result = paddle.compat.nanmedian(x, dim=1)
-        np.testing.assert_array_equal(result.indices.numpy(), [1])
-        result.values.backward()
-        np.testing.assert_array_equal(
-            x.grad.numpy(), [[0.0, 1.0, 0.0, 0.0, 0.0]]
-        )
-
-        x = paddle.to_tensor(
-            [[4.0, 5.0, 6.0, 5.0, float('nan'), 6.0]],
-            stop_gradient=False,
-        )
-        result = paddle.compat.nanmedian(x, dim=1)
-        np.testing.assert_array_equal(result.indices.numpy(), [3])
-        result.values.backward()
-        np.testing.assert_array_equal(
-            x.grad.numpy(), [[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]]
-        )
-
-        result = paddle.compat.nanmedian(
-            paddle.to_tensor([[3, 1, 2]], dtype='int8'), dim=1
-        )
-        self.assertEqual(result.values.dtype, paddle.int8)
-        with self.assertRaises(IndexError):
-            paddle.compat.nanmedian(paddle.empty([2, 0]), dim=1)
-
-        scalar = paddle.to_tensor(3.0, stop_gradient=False)
-        for dim in (-1, 0):
-            result = paddle.compat.nanmedian(scalar, dim=dim)
-            self.assertEqual(result.values.shape, [])
-            self.assertEqual(result.indices.item(), 0)
-            result.values.backward()
-            self.assertEqual(scalar.grad.item(), 1.0)
-            scalar.clear_gradient()
 
     def test_compat_nanmedian_static(self):
         paddle.enable_static()

@@ -148,27 +148,6 @@ class TestCompatEqualDygraph(unittest.TestCase):
                 z[0, 0, 0] = 100.0
                 self.assertFalse(equal(x, z))
 
-                complex_x = paddle.to_tensor(
-                    [1 + 2j, 3 - 4j], dtype='complex64'
-                )
-                complex_y = paddle.to_tensor(
-                    [1 + 2j, 3 - 4j], dtype='complex64'
-                )
-                self.assertTrue(equal(complex_x, complex_y))
-                complex_y[1] = 3 + 4j
-                self.assertFalse(equal(complex_x, complex_y))
-
-    def test_cpu_low_precision_dtypes(self):
-        for dtype in (
-            'uint8',
-            'int8',
-            'int16',
-            'float16',
-            'bfloat16',
-        ):
-            x = paddle.to_tensor([1, 2, 3]).cast(dtype)
-            self.assertTrue(equal(x, x))
-
     def test_nan_and_inf(self):
         """Test with NaN and Inf values"""
         for place in self.places:

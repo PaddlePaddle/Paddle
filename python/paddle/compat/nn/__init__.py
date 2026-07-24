@@ -18,7 +18,8 @@ import warnings
 from math import sqrt
 from typing import TYPE_CHECKING
 
-from paddle import complex64, complex128, nn
+import paddle
+from paddle import nn
 from paddle.nn.modules.utils import _single
 from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
@@ -531,24 +532,19 @@ class Unfold(nn.Unfold, metaclass=_CompatClassMeta):
         stride: Size2 = 1,
     ) -> None:
         super().__init__(kernel_size, dilation, padding, stride)
-        self.kernel_size = kernel_size
-        self.dilation = dilation
-        self.padding = padding
-        self.stride = stride
 
     def forward(self, input: Tensor) -> Tensor:
-        return functional._unfold(
-            input,
-            self.kernel_size,
-            self.dilation,
-            self.padding,
-            self.stride,
-        )
+        def to_list_if_necessary(x):
+            if isinstance(x, (paddle.pir.Value, paddle.Tensor)):
+                x = x.tolist()
+            return x
 
-    def extra_repr(self) -> str:
-        return (
-            f"kernel_size={self.kernel_size}, dilation={self.dilation}, "
-            f"padding={self.padding}, stride={self.stride}"
+        return nn.functional.unfold(
+            input,
+            kernel_sizes=to_list_if_necessary(self.kernel_sizes),
+            strides=to_list_if_necessary(self.strides),
+            paddings=to_list_if_necessary(self.paddings),
+            dilations=to_list_if_necessary(self.dilations),
         )
 
 
@@ -650,18 +646,12 @@ class Linear(nn.Layer, metaclass=_CompatClassMeta):
         )
         self.in_features = in_features
         self.out_features = out_features
-        default_initializer = (
-            nn.initializer.Constant(0.0)
-            if self._dtype in ('complex64', 'complex128', complex64, complex128)
-            else None
-        )
         self.weight = self.create_parameter(
             shape=[out_features, in_features],
             attr=None,
             dtype=self._dtype,
             is_bias=False,
             device=device,
-            default_initializer=default_initializer,
         )
         self.bias = None
         if bias:
@@ -671,7 +661,6 @@ class Linear(nn.Layer, metaclass=_CompatClassMeta):
                 dtype=self._dtype,
                 is_bias=True,
                 device=device,
-                default_initializer=default_initializer,
             )
         # The same parameter initialization as PyTorch
         self.reset_parameters()
@@ -827,15 +816,14 @@ class Softmax(nn.Layer, metaclass=_CompatClassMeta):
     )
     def __init__(self, dim: int | None = None) -> None:
         nn.Layer.__init__(self)
-        self.dim = dim
         self._dim = dim
         self._dtype = None
 
     def forward(self, input: Tensor) -> Tensor:
-        return functional.softmax(input, self.dim)
+        return functional.softmax(input, self._dim)
 
     def extra_repr(self) -> str:
-        return f"dim={self.dim}"
+        return f"dim={self._dim}"
 
 
 class SmoothL1Loss(nn.Layer, metaclass=_CompatClassMeta):

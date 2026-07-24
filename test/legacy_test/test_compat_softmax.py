@@ -61,31 +61,6 @@ class TestCompatSoftmax(unittest.TestCase):
             atol=1e-6,
         )
 
-    def test_public_dim_and_cpu_low_precision(self):
-        input_np = np.array(
-            [[1.0, -2.0, 3.0], [0.5, 2.0, -1.0]], dtype=np.float32
-        )
-        expected = np.exp(input_np - input_np.max(axis=1, keepdims=True))
-        expected /= expected.sum(axis=1, keepdims=True)
-
-        layer = paddle.compat.nn.Softmax(dim=0)
-        self.assertEqual(layer.dim, 0)
-        layer.dim = 1
-
-        for dtype in (paddle.float16, paddle.bfloat16):
-            x = paddle.to_tensor(input_np, dtype=dtype, place=paddle.CPUPlace())
-            for out in (
-                layer(x),
-                paddle.compat.nn.functional.softmax(x, dim=1),
-            ):
-                self.assertEqual(out.dtype, dtype)
-                np.testing.assert_allclose(
-                    out.astype("float32").numpy(),
-                    expected,
-                    rtol=2e-2,
-                    atol=2e-3,
-                )
-
     def test_error_handling(self):
         x = paddle.randn([3, 9, 5])
 

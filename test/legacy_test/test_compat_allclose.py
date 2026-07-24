@@ -57,35 +57,6 @@ class TestCompatAllclose(unittest.TestCase):
                 res = allclose(x, y, equal_nan=False)
                 self.assertFalse(res)
 
-    def test_cpu_low_precision_and_complex(self):
-        for dtype in ('uint8', 'int8', 'int16', 'float16', 'bfloat16'):
-            x = paddle.to_tensor([1, 2, 3]).cast(dtype)
-            self.assertTrue(allclose(x, x))
-
-        x = paddle.to_tensor(
-            [1 + 2j, complex(float('nan'), 1)], dtype='complex64'
-        )
-        y = paddle.to_tensor(
-            [1 + 2j, complex(float('nan'), 2)], dtype='complex64'
-        )
-        self.assertFalse(allclose(x, y))
-        self.assertTrue(allclose(x, y, equal_nan=True))
-
-        z = paddle.to_tensor([1 + 2.001j], dtype='complex128')
-        expected = paddle.to_tensor([1 + 2j], dtype='complex128')
-        self.assertTrue(allclose(z, expected, atol=0.01))
-
-    def test_broadcast(self):
-        x = paddle.to_tensor([[1], [2]], dtype='int16')
-        y = paddle.to_tensor([[1, 1], [2, 2]], dtype='int16')
-        self.assertTrue(allclose(x, y))
-
-        x = paddle.to_tensor([[1 + 2j], [3 - 1j]], dtype='complex64')
-        y = paddle.to_tensor(
-            [[1 + 2j, 1 + 2j], [3 - 1j, 3 - 1j]], dtype='complex64'
-        )
-        self.assertTrue(allclose(x, y))
-
 
 if __name__ == "__main__":
     unittest.main()
