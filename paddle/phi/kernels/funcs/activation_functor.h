@@ -5546,7 +5546,11 @@ __device__ __forceinline__
   // __log2f intrinsic, so that the floating-point results match PyTorch's
   // bit-for-bit. For peak bandwidth at the cost of accuracy, switch to the
   // __log2f intrinsic to obtain an approximate value.
-  return ::log2(x);
+  if constexpr (std::is_integral<T>::value) {
+    return ::log2f(static_cast<float>(x));
+  } else {
+    return ::log2f(x);  // T == float
+  }
 }
 
 template <>
