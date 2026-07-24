@@ -300,8 +300,22 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           export PATH=$(pwd)/run_env:${PATH}
           export PYTHONFAULTHANDLER=1
+          export FLAGS_call_stack_level=2
           cd /PaddleTest/framework/api
           rm ./device/test_cuda_get_device_capability.py
+          echo "::group::Debug saveload test_model1"
+          cd saveload
+          python -X faulthandler -m pytest -s test_model1.py
+          debug_status=$?
+          if [ ${debug_status} -ne 0 ]; then
+            if command -v gdb >/dev/null 2>&1; then
+              gdb --batch -ex run -ex "thread apply all bt" --args python -m pytest -s test_model1.py || true
+            else
+              echo "gdb not found"
+            fi
+          fi
+          cd ..
+          echo "::endgroup::"
           bash run_paddle_ci.sh
           '
 
