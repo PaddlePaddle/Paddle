@@ -16,7 +16,6 @@
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/funcs/uniform_real_distribution.h"
 
 namespace phi {
@@ -33,42 +32,33 @@ void UniformKernel(const Context &dev_ctx,
   T *data = dev_ctx.template Alloc<T>(out);
   auto size = out->numel();
 
-  std::shared_ptr<std::mt19937_64> engine;
-  if (seed) {
-    engine = std::make_shared<std::mt19937_64>();
-    engine->seed(seed);
-  } else {
-    engine = dev_ctx.GetGenerator()->GetCPUEngine();
-  }
+  // Bit-for-bit aligned with PyTorch's CPU `Tensor.uniform_`: with the same
+  // seed, torch.Generator().manual_seed(seed) on the torch side produces an
+  // identical bit pattern.
+  funcs::TorchMT19937Engine engine(
+      seed ? static_cast<uint64_t>(seed)
+           : dev_ctx.GetGenerator()->GetCurrentSeed());
 
-  // Handle complex types separately
   if constexpr (std::is_same_v<T, dtype::complex<float>> ||
                 std::is_same_v<T, dtype::complex<double>>) {
+    // torch fills a complex tensor through view_as_real: an interleaved
+    // re/im sequence of 2 * numel real samples drawn from the same stream.
     using RealType = dtype::Real<T>;  // float or double
-    RealType min_val = min.to<RealType>();
-    RealType max_val = max.to<RealType>();
-
-    // Generate random values for real and imaginary parts separately
-    DenseTensor real_part, imag_part;
-    real_part.Resize(out->dims());
-    imag_part.Resize(out->dims());
-    RealType *real_data = dev_ctx.template Alloc<RealType>(&real_part);
-    RealType *imag_data = dev_ctx.template Alloc<RealType>(&imag_part);
-
-    // Generate real part
-    UniformRealDistribution<RealType>(
-        real_data, size, min_val, max_val, engine);
-
-    // Generate imaginary part
-    UniformRealDistribution<RealType>(
-        imag_data, size, min_val, max_val, engine);
-
-    // Combine real and imaginary parts using ComplexKernel
-    ComplexKernel<RealType, Context>(dev_ctx, real_part, imag_part, out);
+    funcs::UniformRealDistributionTorchAligned<RealType>(
+        reinterpret_cast<RealType *>(data),
+        size * 2,
+        min.to<double>(),
+        max.to<double>(),
+        &engine);
   } else {
-    // Original implementation for non-complex types
-    UniformRealDistribution<T>(
-        data, size, min.to<float>(), max.to<float>(), engine);
+    funcs::UniformRealDistributionTorchAligned<T>(
+        data, size, min.to<double>(), max.to<double>(), &engine);
+  }
+
+  if (seed == 0) {
+    // Advance the global RNG state so that consecutive calls produce
+    // different sequences (same convention as cpu/randperm_kernel.cc).
+    dev_ctx.GetGenerator()->SetCurrentSeed(engine());
   }
 }
 
