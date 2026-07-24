@@ -5588,10 +5588,13 @@ struct CudaLog2GradFunctor : public BaseActivationFunctor<T> {
 
   // dx = dout / (x * ln(2))
   __device__ __forceinline__ T operator()(const T dout, const T x) const {
-    // Compute the product in the promoted type before casting it back so that
-    // float16 and bfloat16 gradients match PyTorch 2.12.0's rounding behavior.
+    // Both the multiplication and division are performed in the math type (MT,
+    // i.e. float for fp16/bf16) rather than in T.  This matches Torch2.12.0's
+    // type-promotion behaviour for low-precision dtypes and ensures identical
+    // rounding on all devices (CUDA, ROCm/HIP), independent of how each
+    // platform overloads operator/ for fp16/bf16.
     T denominator = static_cast<T>(static_cast<MT>(x) * ln_two);
-    return dout / denominator;
+    return static_cast<T>(static_cast<MT>(dout) / static_cast<MT>(denominator));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
