@@ -17,13 +17,45 @@
 #include <ATen/core/Tensor.h>
 #include <c10/core/TensorOptions.h>
 #include <c10/util/ArrayRef.h>
+#include <utils/pinned_place.h>
+
 #include <limits>
 #include <optional>
 #include <string_view>
 
 #include "paddle/phi/api/include/api.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/place.h"
 
 namespace at {
+
+namespace detail {
+
+// PyTorch's `empty_strided_cpu` forwards `options.pinned_memory_opt()` into
+// `GetCPUAllocatorMaybePinned`, so `pin_memory=true` yields page-locked
+// memory. Paddle's `empty` API has no allocator hook, so follow the
+// `empty_like.h` convention instead: allocate on CPU first and move the
+// storage to the pinned place.
+inline paddle::Tensor _PD_EmptyStridedFlatTensor(
+    int64_t storage_elems,
+    phi::DataType dtype,
+    const at::TensorOptions& options) {
+  const paddle::experimental::IntArray shape(
+      std::vector<int64_t>{storage_elems});
+  if (!options.pinned_memory()) {
+    return paddle::experimental::empty(shape, dtype, options._PD_GetPlace());
+  }
+  // Pinning memory is only supported for CPU tensors.
+  TORCH_CHECK(
+      !options.has_device() || options.device().is_cpu(),
+      "pin_memory=true requires device to be CPU, but got non-CPU device");
+  auto flat_cpu = paddle::experimental::empty(shape, dtype, phi::CPUPlace());
+  const phi::Place pinned_place =
+      compat::_PD_GetCreatePinnedPlace(options._PD_GetPlace());
+  return flat_cpu.copy_to(pinned_place, /*blocking=*/true);
+}
+
+}  // namespace detail
 
 inline at::Tensor empty_strided(at::IntArrayRef size,
                                 at::IntArrayRef stride,
@@ -40,6 +72,11 @@ inline at::Tensor empty_strided(at::IntArrayRef size,
               ") must match dimensionality of strides (",
               stride.size(),
               ")");
+
+  // PyTorch's `empty_strided` only supports the strided layout.
+  TORCH_CHECK(options.layout() == at::kStrided,
+              "empty_strided only supports strided layout, got: ",
+              options.layout());
 
   int64_t storage_elems = 1;
   for (size_t i = 0; i < size.size(); ++i) {
@@ -74,10 +111,20 @@ inline at::Tensor empty_strided(at::IntArrayRef size,
     storage_elems += strided_elems;
   }
 
-  auto flat_tensor = paddle::experimental::empty(
-      paddle::experimental::IntArray(std::vector<int64_t>{storage_elems}),
-      compat::_PD_AtenScalarTypeToPhiDataType(options.dtype()),
-      options._PD_GetPlace());
+  // The allocator sizes the buffer as `storage_elems * itemsize` bytes; make
+  // sure that product cannot wrap around `size_t` either.
+  const auto dtype = compat::_PD_AtenScalarTypeToPhiDataType(options.dtype());
+  const size_t itemsize = phi::SizeOf(dtype);
+  TORCH_CHECK(
+      itemsize == 0 || static_cast<size_t>(storage_elems) <=
+                           std::numeric_limits<size_t>::max() / itemsize,
+      "Storage size calculation overflowed with sizes=",
+      size,
+      " and strides=",
+      stride);
+
+  auto flat_tensor =
+      detail::_PD_EmptyStridedFlatTensor(storage_elems, dtype, options);
 
   return paddle::experimental::as_strided(
       flat_tensor,
