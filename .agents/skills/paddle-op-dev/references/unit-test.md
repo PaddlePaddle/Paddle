@@ -88,7 +88,12 @@ def test_check_grad(self):
 
 ```python
 def test_check_grad_no_x(self):
-    self.check_grad(['Y'], 'Out', no_grad_set=set("X"), check_pir=True)
+    self.check_grad(
+        ['Y'],
+        'Out',
+        no_grad_set=set("X"),
+        check_pir=True,
+    )
 ```
 
 ## 完整测试示例
