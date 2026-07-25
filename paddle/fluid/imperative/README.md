@@ -47,28 +47,37 @@ Current: Python Variable -> C++ VarBase -> C++ Variable -> C++ Tensor
 
 Longer term.
 ```python
-
 # Parent class.
 class PyVarBase:
-  pass
+    pass
+
 
 # Current python variable.
 class Variable(PyVarBase):
-  pass
+    pass
+
 
 class IVariable(PyVarBase):
-  def __init__(self):
-    self._ivar = core.VarBase()
+    def __init__(self):
+        self._ivar = core.VarBase()
 
-  # Move var to a device.
-  def to(device): pass
-  # Get var value.
-  def value(): pass
-  # Trigger backward.
-  def backward(): pass
-  # Get var's gradient value.
-  def gradient_value(): pass
-  # operators to override.
+    # Move var to a device.
+    def to(device):
+        pass
+
+    # Get var value.
+    def value():
+        pass
+
+    # Trigger backward.
+    def backward():
+        pass
+
+    # Get var's gradient value.
+    def gradient_value():
+        pass
+
+    # operators to override.
 ```
 
 

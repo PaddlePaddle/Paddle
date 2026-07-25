@@ -102,15 +102,15 @@ Paddle 的创建与拷贝路径显式支持 `gpu_pinned` / `CUDAPinnedPlace`，�
 
 ```python
 def dump_tensor(tag, tensor):
-   print(
-      tag,
-      {
-         "shape": list(tensor.shape),
-         "dtype": str(tensor.dtype),
-         "place": str(tensor.place),
-         "stop_gradient": tensor.stop_gradient,
-      },
-   )
+    print(
+        tag,
+        {
+            "shape": list(tensor.shape),
+            "dtype": str(tensor.dtype),
+            "place": str(tensor.place),
+            "stop_gradient": tensor.stop_gradient,
+        },
+    )
 
 
 print("expected_place", paddle.framework._current_expected_place_())
