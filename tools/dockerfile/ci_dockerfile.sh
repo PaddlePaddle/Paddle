@@ -68,7 +68,7 @@ function make_ce_framework_dockerfile(){
      tar -xzf  hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/" ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN apt-get update && apt install -y zstd pigz libcurl4-openssl-dev gettext ninja-build" ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN pip3.10 install wheel distro jinja2 bce-python-sdk==0.8.74" ${dockerfile_name}
-  sed -i "${dockerfile_line}i RUN pip3.10 install nvidia-cuda-cccl-cu12==12.8.55 nvidia-cuda-nvrtc-cu12==12.8.61 nvidia-cuda-runtime-cu12==12.8.57 nvidia-cuda-cupti-cu12==12.8.57 nvidia-cudnn-cu12==9.7.1.26 nvidia-cublas-cu12==12.8.3.14 nvidia-cufft-cu12==11.3.3.41 nvidia-curand-cu12==10.3.9.55 nvidia-cusolver-cu12==11.7.2.55 nvidia-cusparse-cu12==12.5.7.53 nvidia-cusparselt-cu12==0.6.3 nvidia-nccl-cu12==2.28.3 nvidia-nvtx-cu12==12.8.55 nvidia-nvjitlink-cu12==12.8.61 nvidia-cufile-cu12==1.13.0.11" ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN pip3.10 install nvidia-cuda-cccl-cu12==12.8.90 nvidia-cuda-nvrtc-cu12==12.8.61 nvidia-cuda-runtime-cu12==12.8.57 nvidia-cuda-cupti-cu12==12.8.57 nvidia-cudnn-cu12==9.7.1.26 nvidia-cublas-cu12==12.8.3.14 nvidia-cufft-cu12==11.3.3.41 nvidia-curand-cu12==10.3.9.55 nvidia-cusolver-cu12==11.7.2.55 nvidia-cusparse-cu12==12.5.7.53 nvidia-cusparselt-cu12==0.6.3 nvidia-nccl-cu12==2.28.3 nvidia-nvtx-cu12==12.8.55 nvidia-nvjitlink-cu12==12.8.61 nvidia-cufile-cu12==1.13.0.11" ${dockerfile_name}
   sed -i 's#RUN bash /build_scripts/install_trt.sh##g' ${dockerfile_name}
   sed -i 's#RUN bash /build_scripts/install_cudnn.sh cudnn841##g' ${dockerfile_name}
   sed -i 's#ENV CUDNN_VERSION=8.4.1#ENV CUDNN_VERSION=9.7.1#g' ${dockerfile_name}
