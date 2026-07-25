@@ -26,6 +26,7 @@
 
 ```python
 import paddle.distributed.fleet as fleet
+
 fleet.init(is_collective=True)
 strategy = fleet.DistributedStrategy()
 strategy.tensor_parallel = True
@@ -38,6 +39,7 @@ strategy.tensor_parallel_configs = {"tensor_parallel_degree": 2}
 
 ```python
 import paddle.distributed as dist
+
 mesh = dist.ProcessMesh([0, 1, 2, 3], dim_names=["x"])
 x = dist.shard_tensor(x, mesh, [dist.Shard(0)])  # 沿 dim 0 切分
 ```
@@ -48,6 +50,7 @@ x = dist.shard_tensor(x, mesh, [dist.Shard(0)])  # 沿 dim 0 切分
 
 ```python
 from paddle.distributed.auto_parallel import Engine
+
 engine = Engine(model, loss, optimizer, strategy=strategy)
 engine.fit(train_dataset)
 ```
