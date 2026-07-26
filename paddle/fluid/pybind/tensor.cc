@@ -543,12 +543,18 @@ static py::tuple ShareDenseTensorFilename(DenseTensor &self,  // NOLINT
 
     // copy data & reset holder
     if (phi::is_cuda_pinned_place(holder->place())) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
       memory::Copy(CPUPlace(),
                    shared_holder->ptr(),
                    phi::GPUPinnedPlace(),
                    data_ptr,
                    data_size);
+#else
+      // The GPUPinnedPlace Copy specialization is not built on Windows
+      // (see memcpy.cc); pinned memory is host memory, so a plain CPU
+      // copy is equivalent.
+      memory::Copy(
+          CPUPlace(), shared_holder->ptr(), CPUPlace(), data_ptr, data_size);
 #endif
     } else {
       memory::Copy(
