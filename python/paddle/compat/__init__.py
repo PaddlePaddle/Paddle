@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import importlib
+import operator
 from typing import TYPE_CHECKING, Any, Literal, NamedTuple
 
 from typing_extensions import overload
@@ -114,6 +115,41 @@ def allclose(
             >>> print(result2)
             False
     """
+    if input.dtype != other.dtype:
+        return paddle.allclose(
+            input,
+            other,
+            rtol=rtol,
+            atol=atol,
+            equal_nan=equal_nan,
+            name=name,
+        ).item()
+
+    if input.dtype in (
+        paddle.float16,
+        paddle.bfloat16,
+        paddle.uint8,
+        paddle.int8,
+        paddle.int16,
+    ):
+        input = input.cast(paddle.float32)
+        other = other.cast(paddle.float32)
+
+    if input.shape != other.shape:
+        input, other = paddle.broadcast_tensors([input, other])
+
+    if input.dtype in (paddle.complex64, paddle.complex128):
+        close = paddle.logical_or(
+            paddle.equal(input, other),
+            paddle.abs(input - other) <= atol + rtol * paddle.abs(other),
+        )
+        if equal_nan:
+            close = paddle.logical_or(
+                close,
+                paddle.logical_and(paddle.isnan(input), paddle.isnan(other)),
+            )
+        return paddle.all(close).item()
+
     return paddle.allclose(
         input, other, rtol=rtol, atol=atol, equal_nan=equal_nan, name=name
     ).item()
@@ -153,8 +189,8 @@ def equal(
             >>> print(result1)
             False
     """
-    if input.dtype == other.dtype:
-        return paddle.equal_all(input, other).item()
+    if input.shape != other.shape:
+        return False
 
     common_dtype = promote_types(input.dtype, other.dtype)
     if input.dtype != common_dtype:
@@ -162,12 +198,115 @@ def equal(
     if other.dtype != common_dtype:
         other = other.cast(common_dtype)
 
-    return paddle.equal_all(input, other).item()
+    return paddle.all(paddle.equal(input, other)).item()
 
 
 class MedianRetType(NamedTuple):
     values: Tensor
     indices: Tensor
+
+
+class _ReplaceForwardValue(paddle.autograd.PyLayer):
+    @staticmethod
+    def forward(ctx, source, value):
+        return value.clone()
+
+    @staticmethod
+    def backward(ctx, grad):
+        return grad, None
+
+
+def _replace_forward_value(source: Tensor, value: Tensor) -> Tensor:
+    if not in_dynamic_mode() or source.stop_gradient:
+        return value
+    return _ReplaceForwardValue.apply(source, value.detach())
+
+
+def _cast_reduction_input(input: Tensor, include_bool: bool = False) -> Tensor:
+    if input.dtype in (paddle.float16, paddle.bfloat16):
+        return input.cast(paddle.float32)
+    integral_dtypes = (paddle.uint8, paddle.int8, paddle.int16)
+    if include_bool:
+        integral_dtypes += (paddle.bool,)
+    if input.dtype in integral_dtypes:
+        return input.cast(paddle.int32)
+    return input
+
+
+def _normalize_reduction_dim(dim: Any) -> int:
+    if isinstance(dim, Variable):
+        if dim.ndim != 0 or dim.dtype not in (
+            paddle.uint8,
+            paddle.int8,
+            paddle.int16,
+            paddle.int32,
+            paddle.int64,
+        ):
+            raise TypeError("dim must be a 0-D integral tensor")
+    if type(dim) is bool:
+        raise TypeError("dim must be an int, but got bool")
+    try:
+        return operator.index(dim)
+    except TypeError:
+        raise TypeError(
+            f"dim must be an int, but got {type(dim).__name__}"
+        ) from None
+
+
+def _median_with_index(
+    input: Tensor, dim: int, keepdim: bool, ignore_nan: bool = False
+) -> MedianRetType:
+    work_input = _cast_reduction_input(input)
+    if input.ndim == 0:
+        values = input.clone()
+        return MedianRetType(
+            values=values,
+            indices=paddle.zeros([], dtype=paddle.int64, device=input.place),
+        )
+
+    axis = dim + input.ndim if dim < 0 else dim
+    if in_dynamic_mode() and input.shape[axis] == 0:
+        raise IndexError(
+            f"median(): Expected reduction dim {dim} to have non-zero size."
+        )
+
+    _, sorted_indices = _C_ops.argsort(work_input, axis, False, True)
+    is_floating = work_input.dtype in (paddle.float32, paddle.float64)
+    if ignore_nan and is_floating:
+        valid_count = paddle.sum(
+            paddle.logical_not(paddle.isnan(work_input)).cast(paddle.int64),
+            axis=axis,
+            keepdim=True,
+        )
+        offset = paddle.floor_divide(
+            paddle.maximum(valid_count - 1, paddle.zeros_like(valid_count)),
+            paddle.full_like(valid_count, 2),
+        )
+        indices = paddle.take_along_axis(sorted_indices, offset, axis=axis)
+    else:
+        offset = (input.shape[axis] - 1) // 2
+        indices = paddle.slice(
+            sorted_indices,
+            axes=[axis],
+            starts=[offset],
+            ends=[offset + 1],
+        )
+    if is_floating and not ignore_nan:
+        nan_mask = paddle.isnan(work_input)
+        indices = paddle.where(
+            paddle.any(nan_mask, axis=axis, keepdim=True),
+            paddle.argmax(nan_mask.cast(paddle.int32), axis=axis, keepdim=True),
+            indices,
+        )
+
+    indices.stop_gradient = True
+    values = paddle.take_along_axis(work_input, indices, axis=axis)
+    if values.dtype != input.dtype:
+        values = values.cast(input.dtype)
+    if not keepdim:
+        values = paddle.squeeze(values, axis=axis)
+        indices = paddle.squeeze(indices, axis=axis)
+    return MedianRetType(values=values, indices=indices)
 
 
 @ForbidKeywordsDecorator(
@@ -222,17 +361,41 @@ def median(
     """
     if dim is None:
         _check_out_status(out, False)
-        result = paddle.median(input, axis=dim, keepdim=keepdim, mode='min')
+        work_input = _cast_reduction_input(input)
+        result = paddle.median(
+            work_input, axis=dim, keepdim=keepdim, mode='min'
+        )
+        if in_dynamic_mode():
+            flat_input = paddle.reshape(work_input, [-1])
+            flat_result = paddle.reshape(result, [-1])[0]
+            matches = flat_input == flat_result
+            if work_input.dtype in (paddle.float32, paddle.float64):
+                matches = paddle.logical_or(
+                    matches,
+                    paddle.logical_and(
+                        paddle.isnan(flat_input), paddle.isnan(flat_result)
+                    ),
+                )
+            selected = flat_input[
+                paddle.argmax(matches.cast(paddle.int32))
+            ].reshape(paddle.shape(result))
+            result = _replace_forward_value(result, selected)
+        if result.dtype != input.dtype:
+            result = result.cast(input.dtype)
         if out is not None:
             paddle.assign(result, out)
             return out
         return result
     else:
         _check_out_status(out, True)
-        values, indices = paddle.median(
-            input, axis=dim, keepdim=keepdim, mode='min', out=out
+        values, indices = _median_with_index(
+            input,
+            _normalize_reduction_dim(dim),
+            keepdim,
         )
         if out is not None:
+            paddle.assign(values, out[0])
+            paddle.assign(indices, out[1])
             return MedianRetType(values=out[0], indices=out[1])
         return MedianRetType(values=values, indices=indices)
 
@@ -290,19 +453,24 @@ def nanmedian(
     """
     if dim is None:
         _check_out_status(out, False)
-        result = paddle.nanmedian(input, axis=dim, keepdim=keepdim, mode='min')
+        work_input = _cast_reduction_input(input)
+        result = paddle.nanmedian(
+            work_input, axis=dim, keepdim=keepdim, mode='min'
+        )
+        if result.dtype != input.dtype:
+            result = result.cast(input.dtype)
         if out is not None:
             paddle.assign(result, out)
             return out
         return result
     else:
         _check_out_status(out, True)
-        values, indices = paddle.nanmedian(
-            input, axis=dim, keepdim=keepdim, mode='min'
+        values, indices = _median_with_index(
+            input,
+            _normalize_reduction_dim(dim),
+            keepdim,
+            ignore_nan=True,
         )
-        # This conversion is needed because PyTorch returns index 0 for all-nan rows,
-        # while PaddlePaddle returns index -1 for all-nan rows
-        indices = paddle.maximum(indices, paddle.zeros_like(indices))
 
         if out is not None:
             paddle.assign(values, out[0])
@@ -360,6 +528,7 @@ def _min_max_param_checker(func_name: str, *args: Any, **kwargs: Any):
 
     num_args = len(args)
     total_arg_num = num_args + len(kwargs)
+    dim_overload = total_arg_num == 2 or "dim" in kwargs or "keepdim" in kwargs
     if total_arg_num > 2:
         raise invalid_arguments_exception()
     elif total_arg_num == 2:
@@ -371,9 +540,7 @@ def _min_max_param_checker(func_name: str, *args: Any, **kwargs: Any):
         else:
             dim_or_other = try_get_keys("dim")
             keepdim = try_get_keys("keepdim")
-        if dim_or_other is None or isinstance(
-            dim_or_other, (Variable, paddle.pir.Value)
-        ):
+        if dim_or_other is None:
             raise invalid_arguments_exception()
     elif total_arg_num == 1:
         if num_args:
@@ -388,14 +555,14 @@ def _min_max_param_checker(func_name: str, *args: Any, **kwargs: Any):
         if dim_or_other is None:
             raise invalid_arguments_exception()
 
-    if (
-        dim_or_other is not None
-        and not isinstance(dim_or_other, (Variable, paddle.pir.Value))
-        and type(dim_or_other) is not int
-    ):
-        raise invalid_arguments_exception(
-            f"The second input must be int or Tensor or implicit None in compat.{func_name}, but received {type(dim_or_other)}.\n"
-        )
+    is_tensor = isinstance(dim_or_other, (Variable, paddle.pir.Value))
+    if dim_or_other is not None and not dim_overload and not is_tensor:
+        dim_overload = True
+    if dim_overload:
+        try:
+            dim_or_other = _normalize_reduction_dim(dim_or_other)
+        except TypeError as error:
+            raise invalid_arguments_exception(str(error)) from None
 
     return dim_or_other, keepdim
 
@@ -404,7 +571,9 @@ def _min_max_tensor_allow_grad(input: Tensor):
     """Prevent integral input tensor type to have `stop_gradient=False`"""
     in_dtype = input.dtype
     if (
-        in_dtype == paddle.int32
+        in_dtype == paddle.bool
+        or in_dtype == paddle.int8
+        or in_dtype == paddle.int32
         or in_dtype == paddle.int64
         or in_dtype == paddle.uint8
         or in_dtype == paddle.int16
@@ -415,18 +584,115 @@ def _min_max_tensor_allow_grad(input: Tensor):
             )
 
 
-def _min_max_allow_cpu_composite(input: Tensor):
-    """paddle.min/argmin(max/argmax), paddle.take_along_axis reject the following types"""
-    in_dtype = input.dtype
-    if (
-        in_dtype == paddle.float16
-        or in_dtype == paddle.bfloat16
-        or in_dtype == paddle.int16
-    ):
-        raise TypeError(
-            f"Non-CUDA GPU placed Tensor does not have '{in_dtype}' op registered.\n"
-            "Paddle support following DataTypes: int32, int64, float64, float32, uint8"
+class _MinMaxReduceAll(paddle.autograd.PyLayer):
+    @staticmethod
+    def forward(ctx, input, is_min):
+        result = paddle.min(input) if is_min else paddle.max(input)
+        if input.dtype in (paddle.float32, paddle.float64):
+            zero_mask = input == 0
+            if is_min:
+                signed_zero_mask = paddle.logical_and(
+                    zero_mask, paddle.signbit(input)
+                )
+            else:
+                signed_zero_mask = paddle.logical_and(
+                    zero_mask, paddle.logical_not(paddle.signbit(input))
+                )
+            signed_zero = paddle.copysign(
+                paddle.zeros_like(result),
+                paddle.full_like(result, -1.0 if is_min else 1.0),
+            )
+            result = paddle.where(
+                paddle.logical_and(result == 0, paddle.any(signed_zero_mask)),
+                signed_zero,
+                result,
+            )
+        ctx.save_for_backward(input, result)
+        return result
+
+    @staticmethod
+    def backward(ctx, grad):
+        input, result = ctx.saved_tensor()
+        mask = input == result
+        if input.dtype in (paddle.float32, paddle.float64):
+            mask = paddle.where(paddle.isnan(result), paddle.isnan(input), mask)
+        mask = mask.cast(input.dtype)
+        return grad * mask / paddle.sum(mask)
+
+
+def _min_max_reduce_all(input: Tensor, is_min: bool) -> Tensor:
+    work_input = _cast_reduction_input(input, include_bool=True)
+    if in_dynamic_mode():
+        result = _MinMaxReduceAll.apply(work_input, is_min)
+    else:
+        result = paddle.min(work_input) if is_min else paddle.max(work_input)
+    return result.cast(input.dtype) if result.dtype != input.dtype else result
+
+
+def _min_max_reduce_dim_fallback(
+    input: Tensor, dim: int, keepdim: bool, is_min: bool
+) -> MinMaxRetType:
+    axis = dim + input.ndim if dim < 0 else dim
+    if input.shape[axis] == 0:
+        raise IndexError(
+            f"{'min' if is_min else 'max'}(): Expected reduction dim "
+            f"{dim} to have non-zero size."
         )
+
+    work_input = _cast_reduction_input(input, include_bool=True)
+    index_op = paddle.argmin if is_min else paddle.argmax
+    indices = index_op(work_input, axis=axis, keepdim=True)
+    if work_input.dtype in (paddle.float32, paddle.float64):
+        nan_mask = paddle.isnan(work_input)
+        indices = paddle.where(
+            paddle.any(nan_mask, axis=axis, keepdim=True),
+            paddle.argmax(nan_mask.cast(paddle.int32), axis=axis, keepdim=True),
+            indices,
+        )
+    indices.stop_gradient = True
+    values = paddle.take_along_axis(work_input, indices, axis=axis)
+    if values.dtype != input.dtype:
+        values = values.cast(input.dtype)
+    if not keepdim:
+        values = paddle.squeeze(values, axis=axis)
+        indices = paddle.squeeze(indices, axis=axis)
+    return MinMaxRetType(values=values, indices=indices)
+
+
+def _min_max_elementwise(input: Tensor, other: Tensor, is_min: bool) -> Tensor:
+    common_dtype = promote_types(input.dtype, other.dtype)
+    if input.dtype != common_dtype:
+        input = input.cast(common_dtype)
+    if other.dtype != common_dtype:
+        other = other.cast(common_dtype)
+
+    work_input = _cast_reduction_input(input, include_bool=True)
+    work_other = (
+        other.cast(work_input.dtype)
+        if other.dtype != work_input.dtype
+        else other
+    )
+    op = _C_ops.minimum if is_min else _C_ops.maximum
+    result = op(work_input, work_other)
+    if work_input.dtype in (paddle.float32, paddle.float64):
+        nan_mask = paddle.logical_or(
+            paddle.isnan(work_input), paddle.isnan(work_other)
+        )
+        result = paddle.where(nan_mask, work_input + work_other, result)
+        if in_dynamic_mode():
+            broadcast_input, broadcast_other = paddle.broadcast_tensors(
+                [work_input, work_other]
+            )
+            zero_tie = paddle.logical_and(
+                broadcast_input == 0, broadcast_other == 0
+            )
+            signed_zero = paddle.copysign(
+                paddle.zeros_like(result), broadcast_input
+            )
+            result = _replace_forward_value(
+                result, paddle.where(zero_tie, signed_zero, result)
+            )
+    return result.cast(common_dtype) if result.dtype != common_dtype else result
 
 
 @ForbidKeywordsDecorator(
@@ -548,25 +814,14 @@ def min(
     if dim_or_other is None:
         # paddle.min and paddle.amin actually shares the same grad op (ReduceAminKernel)
         _check_out_status(out, False)
-        ret = paddle.min(input)
+        ret = _min_max_reduce_all(input, is_min=True)
     elif isinstance(dim_or_other, int):
         _check_out_status(out, True)
         if input.ndim:
             if in_dynamic_mode() and not input.place.is_gpu_place():
-                _min_max_allow_cpu_composite(input)
-                # CPUPlace and other placements are implemented by composition
-
-                indices = paddle.argmin(input, axis=dim_or_other, keepdim=True)
-                values = paddle.take_along_axis(
-                    input, indices, axis=dim_or_other
+                ret = _min_max_reduce_dim_fallback(
+                    input, dim_or_other, keepdim, is_min=True
                 )
-                if keepdim:
-                    ret = MinMaxRetType(values=values, indices=indices)
-                else:
-                    ret = MinMaxRetType(
-                        values=values.squeeze_(axis=dim_or_other),
-                        indices=indices.squeeze_(axis=dim_or_other),
-                    )
             else:
                 vals, inds = _C_ops.min_with_index(
                     input, dim_or_other, keepdim, False
@@ -575,21 +830,23 @@ def min(
                 ret = MinMaxRetType(values=vals, indices=inds)
         else:
             ret = MinMaxRetType(
-                values=input,
+                values=input.clone(),
                 indices=paddle.zeros(
                     [], dtype=paddle.int64, device=input.place
                 ),
             )
     else:
         _check_out_status(out, False)
-        ret = _C_ops.minimum(input, dim_or_other)
+        ret = _min_max_elementwise(input, dim_or_other, is_min=True)
 
     if out is not None:
         if isinstance(ret, MinMaxRetType):
             paddle.assign(ret.values, out[0])
             paddle.assign(ret.indices, out[1])
+            return MinMaxRetType(values=out[0], indices=out[1])
         else:
             paddle.assign(ret, out)
+            return out
     return ret
 
 
@@ -711,23 +968,14 @@ def max(
     ret = None
     if dim_or_other is None:
         _check_out_status(out, False)
-        ret = paddle.max(input)
+        ret = _min_max_reduce_all(input, is_min=False)
     elif isinstance(dim_or_other, int):
         _check_out_status(out, True)
         if input.ndim:
             if in_dynamic_mode() and not input.place.is_gpu_place():
-                _min_max_allow_cpu_composite(input)
-                indices = paddle.argmax(input, axis=dim_or_other, keepdim=True)
-                values = paddle.take_along_axis(
-                    input, indices, axis=dim_or_other
+                ret = _min_max_reduce_dim_fallback(
+                    input, dim_or_other, keepdim, is_min=False
                 )
-                if keepdim:
-                    ret = MinMaxRetType(values=values, indices=indices)
-                else:
-                    ret = MinMaxRetType(
-                        values=values.squeeze_(axis=dim_or_other),
-                        indices=indices.squeeze_(axis=dim_or_other),
-                    )
             else:
                 vals, inds = _C_ops.max_with_index(
                     input, dim_or_other, keepdim, False
@@ -736,21 +984,23 @@ def max(
                 ret = MinMaxRetType(values=vals, indices=inds)
         else:
             ret = MinMaxRetType(
-                values=input,
+                values=input.clone(),
                 indices=paddle.zeros(
                     [], dtype=paddle.int64, device=input.place
                 ),
             )
     else:
         _check_out_status(out, False)
-        ret = _C_ops.maximum(input, dim_or_other)
+        ret = _min_max_elementwise(input, dim_or_other, is_min=False)
 
     if out is not None:
         if isinstance(ret, MinMaxRetType):
             paddle.assign(ret.values, out[0])
             paddle.assign(ret.indices, out[1])
+            return MinMaxRetType(values=out[0], indices=out[1])
         else:
             paddle.assign(ret, out)
+            return out
     return ret
 
 
@@ -881,11 +1131,33 @@ def sort(
                     [1, 0, 3, 2]]))
     """
     _check_out_status(out, expect_multiple=True)
-    outputs, indices = _C_ops.argsort(input, dim, descending, stable)
+    work_input = (
+        input.cast(paddle.int16)
+        if input.dtype in (paddle.bool, paddle.int8)
+        else input
+    )
+    outputs, indices = _C_ops.argsort(work_input, dim, descending, stable)
+    indices.stop_gradient = True
+    if outputs.dtype != input.dtype:
+        outputs = outputs.cast(input.dtype)
     if out is not None:
         paddle.assign(outputs, out[0])
         paddle.assign(indices, out[1])
+        return SortRetType(values=out[0], indices=out[1])
     return SortRetType(values=outputs, indices=indices)
+
+
+class _UniqueBackwardNotImplemented(paddle.autograd.PyLayer):
+    @staticmethod
+    def forward(ctx, input, output, op_name):
+        ctx.op_name = op_name
+        return output.clone()
+
+    @staticmethod
+    def backward(ctx, grad):
+        raise NotImplementedError(
+            f"the derivative for '{ctx.op_name}' is not implemented."
+        )
 
 
 @overload
@@ -988,13 +1260,73 @@ def unique(
             [[2, 1, 3],
              [3, 0, 1]])
     """
-    return paddle.unique(
-        input,
+    work_input = _cast_reduction_input(input, include_bool=True)
+    result = paddle.unique(
+        work_input,
         return_inverse=return_inverse,
         return_counts=return_counts,
         axis=dim,
         sorted=sorted,
     )
+
+    if return_inverse and return_counts:
+        output, inverse, counts = result
+    elif return_inverse:
+        output, inverse = result
+        counts = None
+    elif return_counts:
+        output, counts = result
+        inverse = None
+    else:
+        output = result
+        inverse = counts = None
+
+    if dim is None and inverse is not None:
+        inverse = inverse.reshape(input.shape)
+
+    if (
+        dim is None
+        and (inverse is not None or counts is not None)
+        and work_input.dtype in (paddle.float32, paddle.float64)
+    ):
+        flat_input = work_input.reshape([-1])
+        nan_mask = paddle.isnan(flat_input)
+        nan_count = paddle.sum(nan_mask.cast(paddle.int64))
+        non_nan_count = paddle.shape(output)[0] - nan_count
+        if inverse is not None:
+            nan_inverse = (
+                non_nan_count + paddle.cumsum(nan_mask.cast(paddle.int64)) - 1
+            )
+            inverse = paddle.where(nan_mask, nan_inverse, inverse.reshape([-1]))
+            inverse = inverse.reshape(input.shape)
+        if counts is not None:
+            counts = paddle.where(
+                paddle.arange(paddle.shape(output)[0]) >= non_nan_count,
+                paddle.ones_like(counts),
+                counts,
+            )
+
+    if output.dtype != input.dtype:
+        output = output.cast(input.dtype)
+    if (
+        in_dynamic_mode()
+        and not input.stop_gradient
+        and input.dtype
+        in (paddle.float16, paddle.float32, paddle.float64, paddle.bfloat16)
+    ):
+        output = _UniqueBackwardNotImplemented.apply(
+            input,
+            output.detach(),
+            'unique_dim' if dim is not None else '_unique2',
+        )
+
+    if return_inverse and return_counts:
+        return output, inverse, counts
+    if return_inverse:
+        return output, inverse
+    if return_counts:
+        return output, counts
+    return output
 
 
 @ForbidKeywordsDecorator(
@@ -1089,48 +1421,84 @@ def split(
                 shape_val = int(section_size.item(0))
             else:
                 shape_val = section_size
-            if section_size < 0:
+            if shape_val < 0:
                 raise ValueError(
                     f"paddle.compat.split expects split_sizes have only non-negative entries, but got size = {section_size} on dim {i}"
                 )
 
     if in_dynamic_mode():
-        if isinstance(dim, Variable):
-            dim = dim.item(0)
-        assert dim + len(tensor.shape) >= 0, "(rank(x) + dim) must >= 0"
-        dim = (dim + len(tensor.shape)) if dim < 0 else dim
+        integral_dtypes = (
+            paddle.uint8,
+            paddle.int8,
+            paddle.int16,
+            paddle.int32,
+            paddle.int64,
+        )
+
+        def to_index(value, argument_name):
+            if isinstance(value, Variable):
+                if (
+                    int(value.numel().item()) != 1
+                    or value.dtype not in integral_dtypes
+                ):
+                    raise TypeError(f"{argument_name} must be an integer")
+                return int(value.item())
+            if type(value) is bool:
+                raise TypeError(f"{argument_name} must be an integer")
+            try:
+                return operator.index(value)
+            except TypeError:
+                raise TypeError(f"{argument_name} must be an integer") from None
+
+        if tensor.ndim == 0:
+            raise RuntimeError("split expects at least a 1-dimensional tensor")
+        if isinstance(dim, Variable) and dim.ndim != 0:
+            raise TypeError("dim tensor must be a 0-D integral tensor")
+        dim = to_index(dim, "dim")
+        shape_on_dim = GetShapeOnDimInRange(tensor.shape, dim)
+        dim = dim + tensor.ndim if dim < 0 else dim
 
         if isinstance(split_size_or_sections, (list, tuple)):
-            if paddle.utils._contain_var(split_size_or_sections):
-                for index, item in enumerate(split_size_or_sections):
-                    if isinstance(item, Variable):
-                        split_size_or_sections[index] = split_size_or_sections[
-                            index
-                        ].item()
-        elif not isinstance(split_size_or_sections, int):
-            raise TypeError(
-                "The type of 'split_size_or_sections' in split must be int, list or tuple in imperative mode, but "
-                f"received {type(split_size_or_sections)}."
+            split_size_or_sections = [
+                to_index(item, "split_sizes") for item in split_size_or_sections
+            ]
+        else:
+            split_size_or_sections = to_index(
+                split_size_or_sections, "split_size_or_sections"
             )
 
         if isinstance(split_size_or_sections, int):
-            # check whether shape is divisible
-            assert split_size_or_sections > 0, (
-                'split_size_or_sections must be greater than 0.'
-            )
-
-            split_size_or_sections = GetSplitSize(
-                split_size_or_sections, GetShapeOnDimInRange(tensor.shape, dim)
-            )
-
-            if isinstance(split_size_or_sections, list):
-                return tuple(_C_ops.split(tensor, split_size_or_sections, dim))
-            else:
-                return tuple(
-                    _C_ops.split_with_num(tensor, split_size_or_sections, dim)
+            if split_size_or_sections < 0 or (
+                split_size_or_sections == 0 and shape_on_dim != 0
+            ):
+                raise RuntimeError(
+                    "split_size can only be 0 if dimension size is 0"
                 )
-        else:
-            return tuple(_C_ops.split(tensor, split_size_or_sections, dim))
+            if shape_on_dim == 0:
+                split_size_or_sections = [0]
+            else:
+                num_complete_sections, remaining_num = divmod(
+                    shape_on_dim, split_size_or_sections
+                )
+                split_size_or_sections = [
+                    split_size_or_sections for _ in range(num_complete_sections)
+                ]
+                if remaining_num:
+                    split_size_or_sections.append(remaining_num)
+        elif sum(split_size_or_sections) != shape_on_dim:
+            raise RuntimeError(
+                "split_sizes must sum exactly to the selected dimension "
+                f"size {shape_on_dim}, but got {split_size_or_sections}"
+            )
+
+        outputs = []
+        start = 0
+        for section_size in split_size_or_sections:
+            slices = [slice(None)] * tensor.ndim
+            slices[dim] = slice(start, start + section_size)
+            outputs.append(tensor[tuple(slices)])
+            start += section_size
+        return tuple(outputs)
     else:
         if isinstance(dim, paddle.pir.Value):
             raise TypeError(

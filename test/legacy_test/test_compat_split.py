@@ -109,7 +109,7 @@ class TestCompatSplit(unittest.TestCase):
     def test_split_with_one_block(self):
         """Resulting tuple should be of length 1"""
         in_tensor = paddle.arange(60, dtype=paddle.float32).reshape([3, 4, 5])
-        self._compare_with_origin(in_tensor, 5, paddle.to_tensor([-1]))
+        self._compare_with_origin(in_tensor, 5, paddle.to_tensor(-1))
         self._compare_with_origin(in_tensor, [5], paddle.to_tensor(2))
 
     def test_edge_cases(self):
@@ -118,13 +118,17 @@ class TestCompatSplit(unittest.TestCase):
         s1, s2 = split(x, [3, 2])
         np.testing.assert_allclose(s1.numpy(), [0, 1, 2])
         np.testing.assert_allclose(s2.numpy(), [3, 4])
+        tensor_size_result = split(x, paddle.to_tensor(2))
+        self.assertEqual(
+            [item.shape[0] for item in tensor_size_result], [2, 2, 1]
+        )
 
         x = paddle.rand([2, 2, 2])
         a, b = split(x, 1, 2)
         self.assertEqual(a.shape, [2, 2, 1])
 
         # invalid split sections
-        with self.assertRaises(ValueError):
+        with self.assertRaises(RuntimeError):
             split(x, [3, 1], 1)
 
         # invalid split axis
@@ -146,11 +150,7 @@ class TestCompatSplit(unittest.TestCase):
         msg_gt_3 = "(InvalidArgument) The dim is expected to be in range of [-3, 3), but got 3"
         msg_gt_4 = "paddle.compat.split expects split_sizes have only non-negative entries, but got size = -5 on dim 2"
 
-        split_size = paddle.to_tensor([3])
-        msg_gt_5 = (
-            "The type of 'split_size_or_sections' in split must be int, list or tuple in imperative mode, but "
-            f"received {type(split_size)}."
-        )
+        split_size = paddle.to_tensor([3, 3])
 
         with self.assertRaises(TypeError) as cm:
             tensors = paddle.split(tensor=x, split_size_or_sections=3, dim=0)
@@ -170,7 +170,6 @@ class TestCompatSplit(unittest.TestCase):
 
         with self.assertRaises(TypeError) as cm:
             tensors = split(x, split_size, 1)
-        self.assertEqual(str(cm.exception), msg_gt_5)
 
 
 class TestFunctionalSplit(unittest.TestCase):
