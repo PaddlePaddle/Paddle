@@ -158,7 +158,9 @@ class TestAOAEngineReshape(unittest.TestCase):
             ]
         }
         dest_desc = {
-            "d": [ShardedWeightDesc("d", FLATTENED, FLATTENED, (0, 0), "float32")]
+            "d": [
+                ShardedWeightDesc("d", FLATTENED, FLATTENED, (0, 0), "float32")
+            ]
         }
         engine = _build_engine(
             source_desc, dest_desc, [f"s0 -> d, reshape = '{CANONICAL_STR}'"]
@@ -243,7 +245,9 @@ class TestAOAEngineReshape(unittest.TestCase):
 class TestGetDestinationGlobalShape(unittest.TestCase):
     def _engine(self, dest_desc):
         source_desc = {
-            "s0": [ShardedWeightDesc("s0", FLATTENED, FLATTENED, (0, 0), "float32")]
+            "s0": [
+                ShardedWeightDesc("s0", FLATTENED, FLATTENED, (0, 0), "float32")
+            ]
         }
         return _build_engine(
             source_desc, dest_desc, [f"s0 -> d, reshape = '{CANONICAL_STR}'"]
@@ -251,25 +255,37 @@ class TestGetDestinationGlobalShape(unittest.TestCase):
 
     def test_returns_none_without_destination_info(self):
         engine = self._engine(
-            {"d": [ShardedWeightDesc("d", CANONICAL, CANONICAL, (0, 0, 0, 0), "float32")]}
+            {
+                "d": [
+                    ShardedWeightDesc(
+                        "d", CANONICAL, CANONICAL, (0, 0, 0, 0), "float32"
+                    )
+                ]
+            }
         )
         engine.destination_state_shard_info = None
         self.assertIsNone(engine.get_destination_global_shape("d"))
 
     def test_direct_key_hit(self):
         engine = self._engine(
-            {"d": [ShardedWeightDesc("d", CANONICAL, CANONICAL, (0, 0, 0, 0), "float32")]}
+            {
+                "d": [
+                    ShardedWeightDesc(
+                        "d", CANONICAL, CANONICAL, (0, 0, 0, 0), "float32"
+                    )
+                ]
+            }
         )
-        self.assertEqual(
-            engine.get_destination_global_shape("d"), CANONICAL
-        )
+        self.assertEqual(engine.get_destination_global_shape("d"), CANONICAL)
 
     def test_resolves_unique_shape_via_optimizer_state_keys(self):
         # "d" is not a direct key, but both optimizer-state keys strip to "d"
         # and share a single global shape.
         dest_desc = {
             "d.w_0": [
-                ShardedWeightDesc("d.w_0", CANONICAL, CANONICAL, (0, 0, 0, 0), "float32")
+                ShardedWeightDesc(
+                    "d.w_0", CANONICAL, CANONICAL, (0, 0, 0, 0), "float32"
+                )
             ],
             "d.moment1_0": [
                 ShardedWeightDesc(
@@ -285,11 +301,19 @@ class TestGetDestinationGlobalShape(unittest.TestCase):
         # ambiguous metadata after a valid build so the failure is isolated to
         # get_destination_global_shape rather than shape propagation at build.
         engine = self._engine(
-            {"d": [ShardedWeightDesc("d", CANONICAL, CANONICAL, (0, 0, 0, 0), "float32")]}
+            {
+                "d": [
+                    ShardedWeightDesc(
+                        "d", CANONICAL, CANONICAL, (0, 0, 0, 0), "float32"
+                    )
+                ]
+            }
         )
         engine.destination_state_shard_info = {
             "d.w_0": [
-                ShardedWeightDesc("d.w_0", CANONICAL, CANONICAL, (0, 0, 0, 0), "float32")
+                ShardedWeightDesc(
+                    "d.w_0", CANONICAL, CANONICAL, (0, 0, 0, 0), "float32"
+                )
             ],
             "d.moment1_0": [
                 ShardedWeightDesc(
@@ -315,8 +339,12 @@ class TestAOAEngineReshapeMultiSource(unittest.TestCase):
         shard_shape = (1, H, TWO, I)
         dest_desc = {
             "d": [
-                ShardedWeightDesc("d", shard_shape, CANONICAL, (0, 0, 0, 0), "float32"),
-                ShardedWeightDesc("d", shard_shape, CANONICAL, (1, 0, 0, 0), "float32"),
+                ShardedWeightDesc(
+                    "d", shard_shape, CANONICAL, (0, 0, 0, 0), "float32"
+                ),
+                ShardedWeightDesc(
+                    "d", shard_shape, CANONICAL, (1, 0, 0, 0), "float32"
+                ),
             ]
         }
         engine = _build_engine(
@@ -342,6 +370,7 @@ class TestAOAEngineReshapeMultiSource(unittest.TestCase):
                 (expert, 0, 0, 0),
             )
 
+
 class TestAssignShardedSliceReshapeMultiPostprocess(unittest.TestCase):
     def test_reshape_then_transpose_then_cast(self):
         # A reshape marker followed by two more operations exercises the
@@ -349,7 +378,9 @@ class TestAssignShardedSliceReshapeMultiPostprocess(unittest.TestCase):
         source = paddle.arange(
             int(np.prod(FLATTENED)), dtype="float32"
         ).reshape(list(FLATTENED))
-        src_desc = ShardedWeightDesc("s", FLATTENED, FLATTENED, (0, 0), "float32")
+        src_desc = ShardedWeightDesc(
+            "s", FLATTENED, FLATTENED, (0, 0), "float32"
+        )
         src_shard = ShardedWeight("s", source, FLATTENED, FLATTENED, (0, 0))
         out = paddle.zeros(list(CANONICAL), dtype="float16")
         dst_desc = ShardedWeightDesc(
@@ -398,7 +429,9 @@ class TestAOAEngineReshapeErrors(unittest.TestCase):
         }
         with self.assertRaises(ValueError):
             self._build(
-                source_desc, dest_desc, [f"s0 -> d, reshape = '{CANONICAL_STR}'"]
+                source_desc,
+                dest_desc,
+                [f"s0 -> d, reshape = '{CANONICAL_STR}'"],
             )
 
     def test_flatten_query_not_block_aligned(self):
@@ -413,7 +446,9 @@ class TestAOAEngineReshapeErrors(unittest.TestCase):
             ]
         }
         dest_desc = {
-            "d": [ShardedWeightDesc("d", FLATTENED, FLATTENED, (0, 0), "float32")]
+            "d": [
+                ShardedWeightDesc("d", FLATTENED, FLATTENED, (0, 0), "float32")
+            ]
         }
         engine = _build_engine(
             source_desc, dest_desc, [f"s0 -> d, reshape = '{CANONICAL_STR}'"]
@@ -428,7 +463,11 @@ class TestAssignShardedSliceReshapeErrors(unittest.TestCase):
     def test_forward_source_not_block_aligned(self):
         src_desc = ShardedWeightDesc("s", (2, 4), FLATTENED, (0, 0), "float32")
         src_shard = ShardedWeight(
-            "s", paddle.zeros([2, 4], dtype="float32"), (2, 4), FLATTENED, (0, 0)
+            "s",
+            paddle.zeros([2, 4], dtype="float32"),
+            (2, 4),
+            FLATTENED,
+            (0, 0),
         )
         dst_desc = ShardedWeightDesc(
             "d", CANONICAL, CANONICAL, (0, 0, 0, 0), "float32"
@@ -513,11 +552,21 @@ class TestAOAEngineReshapeMisalignedSlices(unittest.TestCase):
         # concat along a trailing dim leaves canonical slices that are not
         # complete on that dim, so the flatten direction must reject them.
         source_desc = {
-            "a": [ShardedWeightDesc("a", (2, 3, 1, 2), (2, 3, 1, 2), (0, 0, 0, 0), "float32")],
-            "b": [ShardedWeightDesc("b", (2, 3, 1, 2), (2, 3, 1, 2), (0, 0, 0, 0), "float32")],
+            "a": [
+                ShardedWeightDesc(
+                    "a", (2, 3, 1, 2), (2, 3, 1, 2), (0, 0, 0, 0), "float32"
+                )
+            ],
+            "b": [
+                ShardedWeightDesc(
+                    "b", (2, 3, 1, 2), (2, 3, 1, 2), (0, 0, 0, 0), "float32"
+                )
+            ],
         }
         dest_desc = {
-            "d": [ShardedWeightDesc("d", FLATTENED, FLATTENED, (0, 0), "float32")]
+            "d": [
+                ShardedWeightDesc("d", FLATTENED, FLATTENED, (0, 0), "float32")
+            ]
         }
         with self.assertRaises(ValueError):
             _build_engine(
@@ -537,17 +586,15 @@ class TestAssignShardedSliceReshapePostprocess(unittest.TestCase):
         source = paddle.arange(
             int(np.prod(FLATTENED)), dtype="float32"
         ).reshape(list(FLATTENED))
-        src_desc = ShardedWeightDesc("s", FLATTENED, FLATTENED, (0, 0), "float32")
-        src_shard = ShardedWeight(
-            "s", source, FLATTENED, FLATTENED, (0, 0)
+        src_desc = ShardedWeightDesc(
+            "s", FLATTENED, FLATTENED, (0, 0), "float32"
         )
+        src_shard = ShardedWeight("s", source, FLATTENED, FLATTENED, (0, 0))
         out = paddle.zeros(list(CANONICAL), dtype=dtype)
         dst_desc = ShardedWeightDesc(
             "d", CANONICAL, CANONICAL, (0, 0, 0, 0), dtype
         )
-        dst_shard = ShardedWeight(
-            "d", out, CANONICAL, CANONICAL, (0, 0, 0, 0)
-        )
+        dst_shard = ShardedWeight("d", out, CANONICAL, CANONICAL, (0, 0, 0, 0))
         return source, src_desc, src_shard, dst_desc, dst_shard, out
 
     def test_reshape_then_cast(self):
@@ -580,6 +627,89 @@ class TestAssignShardedSliceReshapePostprocess(unittest.TestCase):
             source.reshape(list(CANONICAL)), [2, 1, 0, 3]
         )
         np.testing.assert_allclose(out.numpy(), expected.numpy())
+
+
+class TestAOAEngineReshapeThenPermute(unittest.TestCase):
+    """reshape marker followed by a permute: the destination lives in a permuted
+    layout, so the leading block axis is no longer axis 0. Both find_shard_sources
+    and assign_sharded_slice must undo the trailing permute before mapping shards
+    back onto the flattened source rows."""
+
+    # flattened [6, 4] -> canonical [2, 3, 4] --permute[1,0,2]--> [3, 2, 4]
+    RESHAPE_STR = "[2, 3, 4]"
+    PERMUTE = "[1, 0, 2]"
+
+    def _engine(self, dest_desc):
+        source_desc = {
+            "s0": [ShardedWeightDesc("s0", (6, 4), (6, 4), (0, 0), "float32")]
+        }
+        return _build_engine(
+            source_desc,
+            dest_desc,
+            [
+                f"s0 -> tmp, reshape = '{self.RESHAPE_STR}'",
+                f"tmp -> d, permute = '{self.PERMUTE}'",
+            ],
+        )
+
+    def test_find_sources_maps_permuted_block_axis(self):
+        # d has shape [3, 2, 4]; axis 1 is the block/expert axis after permute.
+        # Sharding along axis 1 must route each destination block to the matching
+        # source block (rows [0:3] vs [3:6]), not always block 0.
+        dest_desc = {
+            "d": [
+                ShardedWeightDesc(
+                    "d", (3, 1, 4), (3, 2, 4), (0, 0, 0), "float32"
+                ),
+                ShardedWeightDesc(
+                    "d", (3, 1, 4), (3, 2, 4), (0, 1, 0), "float32"
+                ),
+            ]
+        }
+        engine = self._engine(dest_desc)
+        expected_rows = {0: (0, 3), 1: (3, 6)}
+        for block in range(2):
+            tgt = ShardedWeightDesc(
+                "d", (3, 1, 4), (3, 2, 4), (0, block, 0), "float32"
+            )
+            mappings = engine.find_shard_sources(tgt)
+            self.assertEqual(len(mappings), 1)
+            src = mappings[0].source_slice
+            self.assertEqual(src.key, "s0")
+            self.assertEqual(
+                (
+                    src.global_offset[0],
+                    src.global_offset[0] + src.local_shape[0],
+                ),
+                expected_rows[block],
+            )
+
+    def test_assign_sharded_slice_writes_correct_block(self):
+        # End-to-end check through assign_sharded_slice: each permuted block must
+        # contain the data of the corresponding flattened source block.
+        s0 = paddle.arange(24, dtype="float32").reshape([6, 4])
+        expected = paddle.transpose(
+            s0.reshape([2, 3, 4]), [1, 0, 2]
+        )  # [3, 2, 4]
+        dest_desc = {
+            "d": [
+                ShardedWeightDesc(
+                    "d", (3, 1, 4), (3, 2, 4), (0, 0, 0), "float32"
+                ),
+                ShardedWeightDesc(
+                    "d", (3, 1, 4), (3, 2, 4), (0, 1, 0), "float32"
+                ),
+            ]
+        }
+        engine = self._engine(dest_desc)
+        for block in range(2):
+            tgt = ShardedWeightDesc(
+                "d", (3, 1, 4), (3, 2, 4), (0, block, 0), "float32"
+            )
+            out = _fill_target(engine, {"s0": s0}, tgt)
+            np.testing.assert_allclose(
+                out.numpy(), expected.numpy()[:, block : block + 1, :]
+            )
 
 
 if __name__ == '__main__':

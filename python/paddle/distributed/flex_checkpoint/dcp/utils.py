@@ -286,6 +286,19 @@ def assign_sharded_slice(
             ast.literal_eval(reshape_marker.split(":", 1)[1])
         )
         block_width = canonical_shape[1]
+        # Transposes that follow the reshape/flatten marker permute the
+        # destination layout. The reshape/flatten itself must be applied in the
+        # reshape-output axis order, so express the destination region in that
+        # pre-transpose coordinate system, slice there, and only then replay the
+        # trailing transpose/cast operations to reach the final layout.
+        marker_index = postprocess_list.index(reshape_marker)
+        remaining_pp = postprocess_list[marker_index + 1 :]
+        pre_pp_offset = postprocess_transpose(
+            list(dst_desc.global_offset), remaining_pp, reverse=True
+        )
+        pre_pp_shape = postprocess_transpose(
+            list(dst_desc.local_shape), remaining_pp, reverse=True
+        )
         src_starts = [
             offset - shard_offset
             for offset, shard_offset in zip(
@@ -320,8 +333,8 @@ def assign_sharded_slice(
             )
             source_block_offset = src_desc.global_offset[0] // block_width
             target_starts = [
-                dst_desc.global_offset[0] - source_block_offset,
-                *dst_desc.global_offset[1:],
+                pre_pp_offset[0] - source_block_offset,
+                *pre_pp_offset[1:],
             ]
         else:
             if (
@@ -344,16 +357,15 @@ def assign_sharded_slice(
                 )
             )
             target_starts = [
-                dst_desc.global_offset[0] - source_block_offset * block_width,
-                dst_desc.global_offset[1],
+                pre_pp_offset[0] - source_block_offset * block_width,
+                pre_pp_offset[1],
             ]
         src_tensor_slice = paddle.slice(
             src_tensor_slice,
-            axes=list(range(len(dst_desc.local_shape))),
+            axes=list(range(len(pre_pp_shape))),
             starts=target_starts,
             ends=[
-                start + size
-                for start, size in zip(target_starts, dst_desc.local_shape)
+                start + size for start, size in zip(target_starts, pre_pp_shape)
             ],
         )
 

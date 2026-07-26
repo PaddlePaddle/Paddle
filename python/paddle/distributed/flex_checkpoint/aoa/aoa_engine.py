@@ -516,6 +516,11 @@ class AOAEngine:
             for destination_key, shards in self.destination_state_shard_info.items()
             if split_optimizer_state_key(destination_key)[0] == key
         }
+        if len(shapes) == 0:
+            # An intermediate variable (e.g. the ``tmp`` produced by a reshape
+            # that is later permuted) has no destination metadata; let the
+            # caller fall back to the canonical shape.
+            return None
         if len(shapes) != 1:
             raise ValueError(
                 f"Cannot determine a unique destination shape for {key}: "
@@ -882,10 +887,23 @@ class AOAEngine:
                         ast.literal_eval(reshape_marker.split(":", 1)[1])
                     )
                     block_width = canonical_shape[1]
+                    # Transposes that follow the reshape/flatten marker express
+                    # the destination in a permuted layout, so ``intersection``
+                    # (and ``sl_dst``) are no longer in the reshape-output axis
+                    # order. Undo those transposes first, then map the leading
+                    # block axis back onto the flattened source rows.
+                    marker_index = pp_list.index(reshape_marker)
+                    remaining_pp = pp_list[marker_index + 1 :]
+                    pre_pp_intersection = postprocess_transpose(
+                        list(intersection), remaining_pp, reverse=True
+                    )
+                    pre_pp_sl_dst = postprocess_transpose(
+                        list(sl_dst), remaining_pp, reverse=True
+                    )
                     if reshape_marker.startswith("reshape:"):
-                        block_base = sl_dst[0].start or 0
-                        block_start = intersection[0].start - block_base
-                        block_stop = intersection[0].stop - block_base
+                        block_base = pre_pp_sl_dst[0].start or 0
+                        block_start = pre_pp_intersection[0].start - block_base
+                        block_stop = pre_pp_intersection[0].stop - block_base
                         source_row_start = sl_src[0].start or 0
                         src_slice = list(sl_src)
                         src_slice[0] = slice(
@@ -894,8 +912,8 @@ class AOAEngine:
                             1,
                         )
                     else:
-                        row_start = intersection[0].start
-                        row_stop = intersection[0].stop
+                        row_start = pre_pp_intersection[0].start
+                        row_stop = pre_pp_intersection[0].stop
                         if (
                             row_start % block_width != 0
                             or row_stop % block_width != 0
