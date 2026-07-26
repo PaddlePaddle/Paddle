@@ -8,6 +8,7 @@
 import paddle
 from paddle.autograd import PyLayer
 
+
 class SquaredReLU(PyLayer):
     @staticmethod
     def forward(ctx, x):
@@ -17,8 +18,9 @@ class SquaredReLU(PyLayer):
 
     @staticmethod
     def backward(ctx, dy):
-        y, = ctx.saved_tensor()
+        (y,) = ctx.saved_tensor()
         return dy * 2 * y
+
 
 x = paddle.randn([3, 4], dtype='float32')
 x.stop_gradient = False

@@ -21,6 +21,40 @@ from paddle.framework import (
 )
 
 
+class _CompatClassMeta(type):
+    """Keep compat classes recognizable as native classes across dispatch."""
+
+    def __new__(mcls, name, bases, namespace, *, native_cls=None, **kwargs):
+        if native_cls is None:
+            module_parts = namespace.get('__module__', '').split('.')
+            if (
+                module_parts[:2] == ['paddle', 'compat']
+                and len(module_parts) > 2
+            ):
+                native_module = getattr(paddle, module_parts[2], None)
+                native_cls = getattr(native_module, name, None)
+        if isinstance(native_cls, type) and not any(
+            issubclass(base, native_cls) for base in bases
+        ):
+            bases = tuple(
+                native_cls if issubclass(native_cls, base) else base
+                for base in bases
+            )
+        return super().__new__(mcls, name, bases, namespace, **kwargs)
+
+    def __instancecheck__(cls, instance: object) -> bool:
+        native_cls = cls.__dict__.get('__native_cls__')
+        if native_cls is not None:
+            return isinstance(instance, native_cls)
+        return super().__instancecheck__(instance)
+
+    def __subclasscheck__(cls, subclass: type) -> bool:
+        native_cls = cls.__dict__.get('__native_cls__')
+        if native_cls is not None:
+            return issubclass(subclass, native_cls)
+        return super().__subclasscheck__(subclass)
+
+
 def _check_out_status(
     out: Tensor | tuple[Tensor, Tensor] | list[Tensor],
     expect_multiple: bool = False,

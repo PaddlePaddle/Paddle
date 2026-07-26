@@ -70,6 +70,20 @@ def fn_with_constant(x: paddle.Tensor, c: int):
     return paddle.to_tensor(x.flatten() + c)
 
 
+@paddle.static.register_op(
+    name="fn_inplace_add_y",
+    infer_meta=lambda x, y: paddle.static.MetaTensor(
+        dtype=x.dtype, shape=x.shape
+    ),
+    input_names=["x", "y"],
+    output_names=["out"],
+    inplace_map={"x": "out"},  # output "out" reuses the buffer of input "x"
+)
+def fn_inplace_add_y(x: Tensor, y: Tensor) -> Tensor:
+    x.add_(y)  # modify input in place
+    return x
+
+
 class PythonOpTestMixin:
     inputs: dict[str, paddle.Tensor]
     constants: dict[str, object]
@@ -135,6 +149,74 @@ class TestFnWithConstant2(unittest.TestCase, PythonOpTestMixin):
             "x": paddle.randn([4, 5, 6]),
         }
         self.constants = {"c": -2}  # Note that hash(-1) == hash(-2)
+
+
+class TestFnInplaceOutput(unittest.TestCase):
+    """Regression test for the inplace result remap of Python custom ops.
+
+    Exercises both PR fixes together: ``run_python_op`` must populate
+    ``input_shapes``/``input_dtypes`` for the inplace output, and the PIR
+    lowering must remap ``map_value_pair[result]`` back to the input value so
+    that downstream ops (out + 1) and ``fetch_list=[out]`` observe the correct
+    inplace output. The ``shape=[]`` case guards the rank-0 scalar path, which
+    must not be misclassified as an optional-None output.
+    """
+
+    # Include a rank-0 scalar (shape=[]) to cover the empty-shape edge case.
+    shapes = [[2, 3, 4], []]
+
+    @staticmethod
+    def _randn(shape):
+        arr = np.random.randn(*shape) if shape else np.random.randn()
+        return np.array(arr, dtype="float32")
+
+    def run_in_dygraph(self, x_np, y_np):
+        x = paddle.to_tensor(x_np)
+        y = paddle.to_tensor(y_np)
+        out = fn_inplace_add_y(x, y)
+        consumed = out + 1  # continue consuming the inplace output
+        return out.numpy(), consumed.numpy()
+
+    @static_guard()
+    def run_in_static(self, x_np, y_np):
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
+            x = paddle.static.data(name="x", shape=x_np.shape, dtype="float32")
+            y = paddle.static.data(name="y", shape=y_np.shape, dtype="float32")
+            out = fn_inplace_add_y(x, y)
+            consumed = out + 1  # continue consuming the inplace output
+            exe = paddle.static.Executor()
+        # fetch the inplace output directly and the downstream consumer
+        out_val, consumed_val = exe.run(
+            main_program,
+            feed={"x": x_np, "y": y_np},
+            fetch_list=[out, consumed],
+        )
+        return out_val, consumed_val
+
+    def test_inplace_output_semantics(self):
+        for shape in self.shapes:
+            with self.subTest(shape=shape):
+                x_np = self._randn(shape)
+                y_np = self._randn(shape)
+                expected_out = x_np + y_np
+                expected_consumed = expected_out + 1
+
+                st_out, st_consumed = self.run_in_static(x_np, y_np)
+                np.testing.assert_allclose(
+                    st_out, expected_out, rtol=1e-6, atol=1e-6
+                )
+                np.testing.assert_allclose(
+                    st_consumed, expected_consumed, rtol=1e-6, atol=1e-6
+                )
+
+                dy_out, dy_consumed = self.run_in_dygraph(x_np, y_np)
+                np.testing.assert_allclose(
+                    dy_out, expected_out, rtol=1e-6, atol=1e-6
+                )
+                np.testing.assert_allclose(
+                    dy_consumed, expected_consumed, rtol=1e-6, atol=1e-6
+                )
 
 
 def fn_use_2_register_op(x: Tensor, y: Tensor) -> Tensor:

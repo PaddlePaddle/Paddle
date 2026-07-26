@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <limits>
 #include <vector>
 
@@ -44,35 +45,16 @@ template <typename T>
 struct CBlas;
 
 template <>
-struct CBlas<int8_t> {
-  template <typename... ARGS>
-  static void VCOPY(ARGS... args) {
-    PADDLE_THROW(common::errors::Unimplemented(
-        "Blas VCOPY do not supported on CPU, please check your code"));
-  }
-};
+struct CBlas<int8_t> {};
 
 template <>
-struct CBlas<int16_t> {
-  template <typename... ARGS>
-  static void VCOPY(ARGS... args) {
-    PADDLE_THROW(common::errors::Unimplemented(
-        "Blas VCOPY do not supported on CPU, please check your code"));
-  }
-};
+struct CBlas<int16_t> {};
 
 template <>
 struct CBlas<phi::bfloat16> {
   template <typename... ARGS>
   static void AXPY(ARGS... args) {
     detail::axpy(args...);
-  }
-
-  template <typename... ARGS>
-  static void VCOPY(ARGS... args UNUSED) {
-    PADDLE_THROW(common::errors::Unimplemented(
-        "Blas VCOPY do not supported on CPU with bfloat16,"
-        " please check your code"));
   }
 
   template <typename... ARGS>
@@ -147,11 +129,6 @@ struct CBlas<float> {
   }
 
   template <typename... ARGS>
-  static void VCOPY(ARGS... args) {
-    phi::dynload::cblas_scopy(args...);
-  }
-
-  template <typename... ARGS>
   static void GEMV(ARGS... args) {
     phi::dynload::cblas_sgemv(args...);
   }
@@ -159,11 +136,6 @@ struct CBlas<float> {
   template <typename... ARGS>
   static float DOT(ARGS... args) {
     return phi::dynload::cblas_sdot(args...);
-  }
-
-  template <typename... ARGS>
-  static void SCAL(ARGS... args) {
-    phi::dynload::cblas_sscal(args...);
   }
 
   template <typename... ARGS>
@@ -273,11 +245,6 @@ struct CBlas<double> {
   }
 
   template <typename... ARGS>
-  static void VCOPY(ARGS... args) {
-    phi::dynload::cblas_dcopy(args...);
-  }
-
-  template <typename... ARGS>
   static void GEMV(ARGS... args) {
     phi::dynload::cblas_dgemv(args...);
   }
@@ -285,11 +252,6 @@ struct CBlas<double> {
   template <typename... ARGS>
   static double DOT(ARGS... args) {
     return phi::dynload::cblas_ddot(args...);
-  }
-
-  template <typename... ARGS>
-  static void SCAL(ARGS... args) {
-    phi::dynload::cblas_dscal(args...);
   }
 
   template <typename... ARGS>
@@ -369,11 +331,6 @@ struct CBlas<phi::complex64> {
                    phi::complex64 *Y,
                    const int incY) {
     phi::dynload::cblas_caxpy(n, &alpha, X, incX, Y, incY);
-  }
-
-  template <typename... ARGS>
-  static void VCOPY(ARGS... args) {
-    phi::dynload::cblas_ccopy(args...);
   }
 
   // the libmklml_intel.so paddle used has no vcAdd, vcSub,
@@ -567,11 +524,6 @@ struct CBlas<phi::complex128> {
                    phi::complex128 *Y,
                    const int incY) {
     phi::dynload::cblas_zaxpy(n, &alpha, X, incX, Y, incY);
-  }
-
-  template <typename... ARGS>
-  static void VCOPY(ARGS... args) {
-    phi::dynload::cblas_zcopy(args...);
   }
 
   // the libmklml_intel.so paddle used has no vzAdd, vzSub,
@@ -769,11 +721,6 @@ struct CBlas<float> {
   }
 
   template <typename... ARGS>
-  static void VCOPY(ARGS... args) {
-    phi::dynload::cblas_scopy(args...);
-  }
-
-  template <typename... ARGS>
   static void GEMV(ARGS... args) {
     phi::dynload::cblas_sgemv(args...);
   }
@@ -781,11 +728,6 @@ struct CBlas<float> {
   template <typename... ARGS>
   static float DOT(ARGS... args) {
     return phi::dynload::cblas_sdot(args...);
-  }
-
-  template <typename... ARGS>
-  static void SCAL(ARGS... args) {
-    phi::dynload::cblas_sscal(args...);
   }
 
   template <typename... ARGS>
@@ -857,11 +799,6 @@ struct CBlas<double> {
   }
 
   template <typename... ARGS>
-  static void VCOPY(ARGS... args) {
-    phi::dynload::cblas_dcopy(args...);
-  }
-
-  template <typename... ARGS>
   static void GEMV(ARGS... args) {
     phi::dynload::cblas_dgemv(args...);
   }
@@ -869,11 +806,6 @@ struct CBlas<double> {
   template <typename... ARGS>
   static double DOT(ARGS... args) {
     return phi::dynload::cblas_ddot(args...);
-  }
-
-  template <typename... ARGS>
-  static void SCAL(ARGS... args) {
-    phi::dynload::cblas_dscal(args...);
   }
 
   template <typename... ARGS>
@@ -942,11 +874,6 @@ struct CBlas<phi::complex64> {
                    phi::complex64 *Y,
                    const int incY) {
     phi::dynload::cblas_caxpy(n, &alpha, X, incX, Y, incY);
-  }
-
-  template <typename... ARGS>
-  static void VCOPY(ARGS... args) {
-    phi::dynload::cblas_ccopy(args...);
   }
 
   template <typename... ARGS>
@@ -1115,11 +1042,6 @@ struct CBlas<phi::complex128> {
                    phi::complex128 *Y,
                    const int incY) {
     phi::dynload::cblas_zaxpy(n, &alpha, X, incX, Y, incY);
-  }
-
-  template <typename... ARGS>
-  static void VCOPY(ARGS... args) {
-    phi::dynload::cblas_zcopy(args...);
   }
 
   template <typename... ARGS>
@@ -1293,11 +1215,6 @@ struct CBlas<float> {
   }
 
   template <typename... ARGS>
-  static void VCOPY(ARGS... args) {
-    cblas_scopy(args...);
-  }
-
-  template <typename... ARGS>
   static void GEMV(ARGS... args) {
     cblas_sgemv(args...);
   }
@@ -1321,11 +1238,6 @@ struct CBlas<double> {
   }
 
   template <typename... ARGS>
-  static void VCOPY(ARGS... args) {
-    cblas_dcopy(args...);
-  }
-
-  template <typename... ARGS>
   static void GEMV(ARGS... args) {
     cblas_dgemv(args...);
   }
@@ -1338,11 +1250,6 @@ struct CBlas<double> {
 
 template <>
 struct CBlas<phi::complex64> {
-  template <typename... ARGS>
-  static void VCOPY(ARGS... args) {
-    cblas_ccopy(args...);
-  }
-
   template <typename... ARGS>
   static void AXPY(int n,
                    const phi::complex64 alpha,
@@ -1406,11 +1313,6 @@ struct CBlas<phi::complex64> {
 
 template <>
 struct CBlas<phi::complex128> {
-  template <typename... ARGS>
-  static void VCOPY(ARGS... args) {
-    cblas_zcopy(args...);
-  }
-
   template <typename... ARGS>
   static void AXPY(int n,
                    const phi::complex128 alpha,
@@ -1504,10 +1406,6 @@ struct CBlas<phi::float16> {
   static void DOT(...) {
     PADDLE_THROW(common::errors::Unimplemented(
         "float16 DOT not supported on CPU, please check your code"));
-  };
-  static void SCAL(...) {
-    PADDLE_THROW(common::errors::Unimplemented(
-        "float16 SCAL not supported on CPU, please check your code"));
   };
   static void ASUM(...) {
     PADDLE_THROW(common::errors::Unimplemented(
@@ -1788,12 +1686,6 @@ void Blas<CPUContext>::AXPY(int n, T alpha, const T *x, T *y) const {
 
 template <>
 template <typename T>
-void Blas<CPUContext>::VCOPY(int n, const T *x, T *y) const {
-  CBlas<T>::VCOPY(n, x, 1, y, 1);
-}
-
-template <>
-template <typename T>
 void Blas<CPUContext>::VADD(int n, const T *x, const T *y, T *z) const {
 #if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
   CBlas<T>::VADD(n, x, y, z);
@@ -1801,84 +1693,10 @@ void Blas<CPUContext>::VADD(int n, const T *x, const T *y, T *z) const {
   if (x == z) {
     this->template AXPY<T>(n, (T)(1.), y, z);
   } else {
-    this->template VCOPY<T>(n, y, z);
+    if (y != z) {
+      std::memcpy(z, y, n * sizeof(T));
+    }
     this->template AXPY<T>(n, (T)(1.), x, z);
-  }
-#endif
-}
-
-template <>
-template <typename T>
-void Blas<CPUContext>::VSUB(int n, const T *x, const T *y, T *z) const {
-#if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
-  CBlas<T>::VSUB(n, x, y, z);
-#else
-  // try to find if openblas support vsub
-  for (int i = 0; i < n; ++i) {
-    z[i] = x[i] - y[i];
-  }
-#endif
-}
-
-template <>
-template <typename T>
-void Blas<CPUContext>::VMUL(int n, const T *x, const T *y, T *z) const {
-#if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
-  CBlas<T>::VMUL(n, x, y, z);
-#else
-  // try to find if openblas support vmul
-  for (int i = 0; i < n; ++i) {
-    z[i] = x[i] * y[i];
-  }
-#endif
-}
-
-template <>
-template <typename T>
-void Blas<CPUContext>::VDIV(int n, const T *x, const T *y, T *z) const {
-#if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
-  CBlas<T>::VDIV(n, x, y, z);
-#else
-  // try to find if openblas support vdiv
-  for (int i = 0; i < n; ++i) {
-    z[i] = x[i] / y[i];
-  }
-#endif
-}
-
-template <>
-template <typename T>
-void Blas<CPUContext>::VEXP(int n, const T *x, T *y) const {
-#if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
-  CBlas<T>::VEXP(n, x, y);
-#else
-  // try to find if openblas support vexp
-  for (int i = 0; i < n; ++i) {
-    y[i] = std::exp(x[i]);
-  }
-#endif
-}
-
-template <>
-template <typename T>
-void Blas<CPUContext>::VSQUARE(int n, const T *x, T *y) const {
-#if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
-  CBlas<T>::VSQUARE(n, x, y);
-#else
-  for (int i = 0; i < n; ++i) {
-    y[i] = x[i] * x[i];
-  }
-#endif
-}
-
-template <>
-template <typename T>
-void Blas<CPUContext>::VPOW(int n, const T *x, T a, T *y) const {
-#if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
-  CBlas<T>::VPOW(n, x, a, y);
-#else
-  for (int i = 0; i < n; ++i) {
-    y[i] = std::pow(x[i], a);
   }
 #endif
 }
@@ -1896,34 +1714,6 @@ T Blas<CPUContext>::DOT(int n, const T *x, const T *y) const {
   }
   return sum;
 #endif
-}
-
-template <>
-template <typename T>
-void Blas<CPUContext>::SCAL(int n, const T a, T *x) const {
-#if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
-  CBlas<T>::SCAL(n, a, x, 1);
-#else
-  // try to find if openblas support cblas_scal
-  for (int i = 0; i < n; ++i) {
-    x[i] = a * x[i];
-  }
-#endif
-}
-
-template <>
-template <typename T>
-T Blas<CPUContext>::ASUM(int n, T *x, int inc) const {
-  auto sum = static_cast<T>(0.0);
-#if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
-  sum = CBlas<T>::ASUM(n, x, inc);
-#else
-  // TODO(jczaja): check if openblas does provide cblas_sasum/cblas_dasum
-  for (int c = 0; c < n; ++c) {
-    sum += x[c];
-  }
-#endif
-  return sum;
 }
 
 template <>
@@ -2836,66 +2626,6 @@ void Blas<DeviceContext>::MatMulWithHead(const DenseTensor &mat_a,
   }
 }
 #endif  // @} End Group Blas HML: MatMulWithHead
-
-template <typename DeviceContext>
-template <typename T>
-void Blas<DeviceContext>::VINV(int n, const T *a, T *y) const {
-#if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
-  CBlas<T>::VINV(n, a, y);
-#else
-  for (int i = 0; i < n; ++i) {
-    y[i] = 1.0 / a[i];
-  }
-#endif
-}
-
-template <>
-template <typename T>
-void Blas<CPUContext>::VMERF(int n, const T *a, T *y, int64_t mode) const {
-#ifdef PADDLE_WITH_MKLML
-  CBlas<T>::VMERF(n, a, y, mode);
-#else
-  for (int i = 0; i < n; ++i) {
-    y[i] = std::erf(a[i]);
-  }
-#endif
-}
-
-#ifdef PADDLE_WITH_MKLML
-template <>
-template <typename T>
-void Blas<CPUContext>::CSRMM(const char *transa,
-                             const int *m,
-                             const int *n,
-                             const int *k,
-                             const T *alpha,
-                             const char *matdescra,
-                             const T *val,
-                             const int *index,
-                             const int *pntrb,
-                             const int *pntre,
-                             const T *b,
-                             const int *ldb,
-                             const T *beta,
-                             T *c,
-                             const int *ldc) const {
-  CBlas<T>::CSRMM(transa,
-                  m,
-                  n,
-                  k,
-                  alpha,
-                  matdescra,
-                  val,
-                  index,
-                  pntrb,
-                  pntre,
-                  b,
-                  ldb,
-                  beta,
-                  c,
-                  ldc);
-}
-#endif
 
 template <>
 template <typename T>

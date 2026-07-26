@@ -100,7 +100,11 @@ Guard 是一个 `Callable[[FrameType], bool]`，判断当前帧的输入是否�
 # 概念示例
 def guard(frame: FrameType) -> bool:
     x = frame.f_locals["x"]
-    return isinstance(x, paddle.Tensor) and x.shape == [2, 3] and x.dtype == paddle.float32
+    return (
+        isinstance(x, paddle.Tensor)
+        and x.shape == [2, 3]
+        and x.dtype == paddle.float32
+    )
 ```
 
 ### Guard 生成
@@ -139,12 +143,14 @@ Python 代码可能修改全局变量、修改可变对象（list.append 等）�
 ```python
 import paddle
 
+
 @paddle.jit.to_static  # 默认 full_graph=False，启用 SOT 模式
 def train_step(net, x, label):
     pred = net(x)
     loss = paddle.nn.functional.cross_entropy(pred, label)
     loss.backward()
     return loss
+
 
 # full_graph=False（默认）：SOT 模式（字节码级别转换 + 自动 fallback）
 # full_graph=True：传统 AST Transformer（要求整图可转）

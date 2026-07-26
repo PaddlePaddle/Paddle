@@ -17,6 +17,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/cpu_vec.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/fc_functor.h"
 #include "paddle/utils/optional.h"
 
@@ -169,7 +170,9 @@ void AttentionLSTMKernel(const Context& dev_ctx,
       bias_relu<T>(seq_len, cur_atten_x_data, &prev_cell_bias, fc_out_data);
       // 1c. fc scalar
       if (atten_scalar_data) {
-        blas.SCAL(seq_len, *atten_scalar_data, fc_out_data);
+        for (int j = 0; j < seq_len; ++j) {
+          fc_out_data[j] = fc_out_data[j] * (*atten_scalar_data);
+        }
         bias_relu<T>(seq_len, fc_out_data, atten_scalar_bias_data, fc_out_data);
       }
       // 1d. softmax
@@ -206,17 +209,36 @@ void AttentionLSTMKernel(const Context& dev_ctx,
       act_cand(D, lstm_out_data + D3, lstm_out_data + D3);
 
       // a = forget * prev_cell
-      blas.VMUL(D, lstm_out_data, prev_cell_data, lstm_out_data);
+      Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, 1>> forget_cell(lstm_out_data,
+                                                                  D);
+      Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, 1>> forget_gate(
+          lstm_out_data, D);
+      Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, 1>> prev_cell(
+          prev_cell_data, D);
+      forget_cell = forget_gate.array() * prev_cell.array();
 
       // b = input * tilde
-      blas.VMUL(D, lstm_out_data + D, lstm_out_data + D3, lstm_out_data + D);
+      Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, 1>> input_tilde(
+          lstm_out_data + D, D);
+      Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, 1>> input_gate(
+          lstm_out_data + D, D);
+      Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, 1>> tilde(
+          lstm_out_data + D3, D);
+      input_tilde = input_gate.array() * tilde.array();
 
       // cell_out = a + b
       blas.VADD(D, lstm_out_data, lstm_out_data + D, cur_cell_out_data);
 
       // state act tanh(cell_out) * output_gate
       act_cell(D, cur_cell_out_data, lstm_out_data);
-      blas.VMUL(D, lstm_out_data, lstm_out_data + D2, cur_hidden_out_data);
+
+      Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, 1>> hidden_map(
+          cur_hidden_out_data, D);
+      Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, 1>> act_cell_map(
+          lstm_out_data, D);
+      Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, 1>> output_gate(
+          lstm_out_data + D2, D);
+      hidden_map = act_cell_map.array() * output_gate.array();
 
       prev_hidden_data = cur_hidden_out_data;
       prev_cell_data = cur_cell_out_data;

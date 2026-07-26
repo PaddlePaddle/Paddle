@@ -1687,7 +1687,7 @@ def nansum(
 ) -> Tensor: ...
 
 
-@nansum_decorator()
+@nansum_decorator
 def nansum(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
@@ -3223,7 +3223,46 @@ def clip(
         return output
 
 
+def clamp_max(
+    input: Tensor, max: float, *, out: Tensor | None = None
+) -> Tensor:
+    """
+    Clamps all elements in input into the range [min=None, max].
+
+    This is a wrapper around ``paddle.clip`` that only sets the upper bound.
+
+    Args:
+        input (Tensor): The input Tensor.
+        max (float): The upper bound.
+        out (Tensor|None, optional): The output Tensor. Default: None.
+
+    Returns:
+        Tensor: The clamped Tensor.
+    """
+    return clip(input, min=None, max=max, out=out)
+
+
+def clamp_min(
+    input: Tensor, min: float, *, out: Tensor | None = None
+) -> Tensor:
+    """
+    Clamps all elements in input into the range [min, max=None].
+
+    This is a wrapper around ``paddle.clip`` that only sets the lower bound.
+
+    Args:
+        input (Tensor): The input Tensor.
+        min (float): The lower bound.
+        out (Tensor|None, optional): The output Tensor. Default: None.
+
+    Returns:
+        Tensor: The clamped Tensor.
+    """
+    return clip(input, min=min, max=None, out=out)
+
+
 @inplace_apis_in_dygraph_only
+@param_one_alias(["x", "input"])
 def clip_(
     x: Tensor,
     min: float | None = None,

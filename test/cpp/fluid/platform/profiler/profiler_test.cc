@@ -14,6 +14,7 @@
 
 #include <set>
 #include <string>
+#include <utility>
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
@@ -100,6 +101,7 @@ TEST(ProfilerTest, TestCudaTracer) {
 
 TEST(ProfilerTest, TestHostTracerForMem) {
   using paddle::platform::EnableHostEventRecorder;
+  using paddle::platform::EnableMemoryRecorder;
   using paddle::platform::MemTraceEventNode;
   using paddle::platform::Profiler;
   using paddle::platform::ProfilerOptions;
@@ -116,6 +118,7 @@ TEST(ProfilerTest, TestHostTracerForMem) {
   auto profiler = Profiler::Create(options);
   EXPECT_TRUE(profiler);
   EnableHostEventRecorder();
+  EnableMemoryRecorder();
   profiler->Prepare();
   profiler->Start();
   {
@@ -141,5 +144,21 @@ TEST(ProfilerTest, TestHostTracerForMem) {
                    TracerMemEventType::Free);
   }
   auto profiler_result = profiler->Stop();
+  paddle::platform::DisableMemoryRecorder();
   auto nodetree = profiler_result->GetNodeTrees();
+  std::set<std::pair<uint64_t, TracerMemEventType>> mem_events;
+  for (const auto& pair : nodetree->Traverse(true)) {
+    for (const auto host_node : pair.second) {
+      for (const auto mem_node : host_node->GetMemTraceEventNodes()) {
+        if (mem_node->Addr() == 0 || mem_node->Addr() == 1024) {
+          mem_events.emplace(mem_node->Addr(), mem_node->Type());
+        }
+      }
+    }
+  }
+  EXPECT_EQ(mem_events.size(), 4u);
+  EXPECT_EQ(mem_events.count({0, TracerMemEventType::Allocate}), 1u);
+  EXPECT_EQ(mem_events.count({0, TracerMemEventType::Free}), 1u);
+  EXPECT_EQ(mem_events.count({1024, TracerMemEventType::Allocate}), 1u);
+  EXPECT_EQ(mem_events.count({1024, TracerMemEventType::Free}), 1u);
 }
