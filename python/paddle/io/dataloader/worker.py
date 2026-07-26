@@ -70,21 +70,25 @@ class ParentWatchDog:
         self._parent_pid = (
             parent_pid if parent_pid is not None else os.getppid()
         )
-        self._parent_alive = True
         # On Windows, os.getppid() can return a stale PID from the spawn
         # bootstrap process. Use OpenProcess + GetExitCodeProcess instead
         # of PPID comparison to reliably detect parent death.
         if sys.platform == 'win32':
+            self._kernel32 = self._load_kernel32()
             self._parent_alive = self._parent_alive_win32()
         else:
             self._parent_alive = True
 
-    def _parent_alive_win32(self):
-        """Check if parent process is alive using Windows API."""
+    @staticmethod
+    def _load_kernel32():
         import ctypes
         from ctypes import wintypes
 
-        kernel32 = ctypes.windll.kernel32
+        # use_last_error=True is required for ctypes.get_last_error() to
+        # return the error code of our own calls reliably; reading
+        # windll.kernel32.GetLastError() may observe errors from ctypes
+        # internals instead.
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
         # Set proper argument/return types for Win64 HANDLE compatibility
         kernel32.OpenProcess.argtypes = [
             wintypes.DWORD,
@@ -99,35 +103,43 @@ class ParentWatchDog:
         kernel32.GetExitCodeProcess.restype = wintypes.BOOL
         kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
         kernel32.CloseHandle.restype = wintypes.BOOL
+        return kernel32
 
+    def _parent_alive_win32(self):
+        """Check if parent process is alive using Windows API."""
+        import ctypes
+        from ctypes import wintypes
+
+        kernel32 = self._kernel32
         PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+        PROCESS_QUERY_INFORMATION = 0x0400
+        ERROR_ACCESS_DENIED = 5
         STILL_ACTIVE = 259
         handle = kernel32.OpenProcess(
             PROCESS_QUERY_LIMITED_INFORMATION,
             False,
-            wintypes.DWORD(self._parent_pid),
+            self._parent_pid,
         )
         if not handle:
             # Fallback: try PROCESS_QUERY_INFORMATION (might fail on some systems)
-            PROCESS_QUERY_INFORMATION = 0x0400
             handle = kernel32.OpenProcess(
                 PROCESS_QUERY_INFORMATION,
                 False,
-                wintypes.DWORD(self._parent_pid),
+                self._parent_pid,
             )
         if not handle:
-            err = ctypes.windll.kernel32.GetLastError()
-            # ERROR_INVALID_PARAMETER (87) means PID doesn't exist.
-            # ERROR_ACCESS_DENIED (5) means process may exist but access denied.
-            if err == 5:  # ERROR_ACCESS_DENIED
-                return True
-            return False
+            # ERROR_ACCESS_DENIED means the process exists but we may not
+            # query it, so treat it as alive; any other error (e.g.
+            # ERROR_INVALID_PARAMETER, PID doesn't exist) means it is gone.
+            return ctypes.get_last_error() == ERROR_ACCESS_DENIED
         exit_code = wintypes.DWORD(0)
-        ctypes.windll.kernel32.GetExitCodeProcess(
-            handle, ctypes.byref(exit_code)
-        )
-        ctypes.windll.kernel32.CloseHandle(handle)
-        return exit_code.value == STILL_ACTIVE
+        # If GetExitCodeProcess fails we cannot tell, so keep the worker
+        # running instead of treating the parent as dead.
+        alive = True
+        if kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code)):
+            alive = exit_code.value == STILL_ACTIVE
+        kernel32.CloseHandle(handle)
+        return alive
 
     def is_alive(self):
         if self._parent_alive:
@@ -415,7 +427,7 @@ def _worker_loop(
 
         while parent_watch_dog.is_alive():
             try:
-                data = indices_queue.get(MP_STATUS_CHECK_INTERVAL)
+                data = indices_queue.get(timeout=MP_STATUS_CHECK_INTERVAL)
             except queue.Empty:
                 continue
 

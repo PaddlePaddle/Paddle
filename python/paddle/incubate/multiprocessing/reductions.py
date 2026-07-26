@@ -29,8 +29,8 @@ from paddle.base import core
 
 
 def _supported_check():
-    if sys.platform != "linux":
-        # warnings.warn("`paddle.multiprocessing` only support linux for now, "
+    if sys.platform not in ("linux", "win32"):
+        # warnings.warn("`paddle.multiprocessing` only support linux/windows for now, "
         #               " import this will not take any effect !")
 
         return False
@@ -289,6 +289,9 @@ def _reduce_lodtensor(lodtensor):
 
 
 def init_reductions() -> None:
+    if not _supported_check():
+        return
+
     ForkingPickler.register(paddle.Tensor, _reduce_tensor)
     ForkingPickler.register(paddle.base.core.eager.Tensor, _reduce_tensor)
     ForkingPickler.register(

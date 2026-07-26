@@ -712,12 +712,11 @@ void WindowsHandleKeeper::Insert(const std::string &ipc_name,
 
 void WindowsHandleKeeper::SweepClosedMappingsLocked() {
   for (auto it = handles_.begin(); it != handles_.end();) {
-    // CountInfo::refcount is the first field at map_ptr. A value of 0 means
+    // CountInfo::refcount is the first field at map_ptr. A value <= 0 means
     // all references (including the reader's) have been released — the
     // section is no longer in use and can be cleaned up.
-    auto *refcnt =
-        static_cast<volatile std::atomic<uint32_t> *>(it->second.map_ptr);
-    if (refcnt->load(std::memory_order_acquire) == 0) {
+    auto *refcnt = static_cast<std::atomic<int> *>(it->second.map_ptr);
+    if (refcnt->load(std::memory_order_acquire) <= 0) {
       VLOG(6) << "WindowsHandleKeeper sweeping: " << it->first;
       UnmapViewOfFile(it->second.map_ptr);
       CloseHandle(reinterpret_cast<HANDLE>(it->second.fd));

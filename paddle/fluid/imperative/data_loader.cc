@@ -157,7 +157,6 @@ void ThrowErrorIfLoadProcessFailed() {
 #ifdef _WIN32
   // On Windows, use WaitForSingleObject + GetExitCodeProcess
   // to check for crashed workers. This is called periodically from Python.
-  int error = 0;
   std::set<pid_t> *pids_set = nullptr;
   pid_t process_pid = 0;
 
