@@ -24,7 +24,6 @@
 
 #ifdef _WIN32
 #include <processthreadsapi.h>
-#include <tlhelp32.h>
 #else
 #include <sys/wait.h>
 #include <unistd.h>
@@ -183,12 +182,6 @@ void ThrowErrorIfLoadProcessFailed() {
 
         if (exit_code != 0 && exit_code != STILL_ACTIVE) {
           // Exited with error (non-zero exit code)
-          fprintf(stderr,
-                  "[DL_WORKER_EXIT] pid=%lu exit_code=0x%08lX (%lu)\n",
-                  process_pid,
-                  exit_code,
-                  exit_code);
-          fflush(stderr);
           pids_set->clear();
           PADDLE_THROW(common::errors::Fatal(
               "DataLoader process (pid %ld) exited unexpectedly with code "

@@ -112,19 +112,14 @@ void AllocateMemoryMap(std::string *fname_ptr,
 
     if (hMap == NULL) {
       DWORD err = GetLastError();
-      // Write diagnostic to stderr before throwing
-      fprintf(stderr,
-              "[PADDLE_MMAP] PID=%lu CreateFileMapping FAILED "
-              "name=%s size=%zu flags=0x%x attempt=%d err=%lu\n",
-              GetCurrentProcessId(),
-              fname.c_str(),
-              size,
-              flags,
-              attempt,
-              err);
-      fflush(stderr);
       PADDLE_THROW(common::errors::Unavailable(
-          "CreateFileMapping failed for %s, error: %lu", fname.c_str(), err));
+          "CreateFileMapping failed for %s (size %zu, flags 0x%x, attempt "
+          "%d), error: %lu",
+          fname.c_str(),
+          size,
+          flags,
+          attempt,
+          err));
     }
 
     if ((flags & MAPPED_EXCLUSIVE) && GetLastError() == ERROR_ALREADY_EXISTS) {
@@ -141,16 +136,11 @@ void AllocateMemoryMap(std::string *fname_ptr,
     if (*map_ptr_ == nullptr) {
       DWORD err = GetLastError();
       CloseHandle(hMap);
-      fprintf(stderr,
-              "[PADDLE_MMAP] PID=%lu MapViewOfFile FAILED "
-              "name=%s size=%zu err=%lu\n",
-              GetCurrentProcessId(),
-              fname.c_str(),
-              size,
-              err);
-      fflush(stderr);
       PADDLE_THROW(common::errors::Unavailable(
-          "MapViewOfFile failed for %s, error: %lu", fname.c_str(), err));
+          "MapViewOfFile failed for %s (size %zu), error: %lu",
+          fname.c_str(),
+          size,
+          err));
     }
 
     // On Windows, always keep the HANDLE so the section stays alive
@@ -411,8 +401,7 @@ void RefcountedMemoryMapAllocation::close() {
           // and map_ptr_ to WindowsHandleKeeper so the named section stays
           // alive until the reader opens it. The keeper will UnmapViewOfFile
           // + CloseHandle when refcount reaches 0 (via SweepClosedMappings).
-          WindowsHandleKeeper::Instance().Insert(
-              ipc_name_, fd_, map_ptr_, map_size_);
+          WindowsHandleKeeper::Instance().Insert(ipc_name_, fd_, map_ptr_);
           fd_ = -1;
           closed_fd_ = true;
         }
@@ -614,12 +603,13 @@ void MemoryMapFdSet::Clear() {
   }
   fd_set_.clear();
 #ifdef _WIN32
-  // NOTE: Do NOT CloseAll() here. The keeper's SweepClosedMappings
-  // reclaims entries whose refcount has reached 0 during normal operation.
-  // HANDLEs still in the keeper at process exit are reclaimed by the OS.
-  // Calling CloseAll() here while batches are still in-flight in the
-  // multiprocessing queue would destroy named sections before the reader
-  // has a chance to OpenFileMappingA them.
+  // NOTE: Do NOT CloseAll() here. Closing all keeper entries while batches
+  // are still in-flight in the multiprocessing queue would destroy named
+  // sections before the reader has a chance to OpenFileMappingA them.
+  // Sweeping is safe: it only reclaims entries whose refcount has reached 0
+  // (i.e. the reader has already consumed and released them). Remaining
+  // HANDLEs at process exit are reclaimed by the OS.
+  WindowsHandleKeeper::Instance().SweepClosedMappings();
 #endif
 }
 
@@ -703,8 +693,7 @@ WindowsHandleKeeper &WindowsHandleKeeper::Instance() {
 
 void WindowsHandleKeeper::Insert(const std::string &ipc_name,
                                  intptr_t fd,
-                                 void *map_ptr,
-                                 size_t map_size) {
+                                 void *map_ptr) {
   std::lock_guard<std::mutex> lock(mtx_);
   SweepClosedMappingsLocked();
   handles_[ipc_name] = {fd, map_ptr};

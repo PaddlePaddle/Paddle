@@ -1025,6 +1025,9 @@ set_tests_properties(test_translated_layer PROPERTIES TIMEOUT 120)
 set_tests_properties(test_pir_translated_layer PROPERTIES TIMEOUT 120)
 set_tests_properties(test_mean_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dataloader PROPERTIES TIMEOUT 120)
+# Spawns worker processes repeatedly (slow on Windows where each worker
+# re-imports paddle), so it needs a generous timeout.
+set_tests_properties(test_dataloader_multiprocess PROPERTIES TIMEOUT 300)
 set_tests_properties(test_pool3d_api PROPERTIES TIMEOUT 120)
 
 set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 120)

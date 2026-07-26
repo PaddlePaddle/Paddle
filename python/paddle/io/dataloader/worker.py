@@ -429,6 +429,11 @@ def _worker_loop(
             try:
                 data = indices_queue.get(timeout=MP_STATUS_CHECK_INTERVAL)
             except queue.Empty:
+                if sys.platform == 'win32' and use_shared_memory:
+                    # Reclaim shared-memory sections of already-consumed
+                    # batches while idle (e.g. between epochs); during
+                    # active loading this happens on every batch.
+                    core._sweep_mmap_handles()
                 continue
 
             try:
@@ -491,14 +496,6 @@ def _worker_loop(
     except KeyboardInterrupt:
         # NOTE: Main process will raise KeyboardInterrupt anyways, ignore it in child process
         pass
-    except:
-        # Write to stderr (visible in parent console)
-        sys.stderr.write(
-            f"[WORKER pid={os.getpid()}] UNCAUGHT EXCEPTION\n"
-            f"{traceback.format_exc()}\n"
-        )
-        sys.stderr.flush()
-        raise
     finally:
         if use_shared_memory:
             _cleanup_mmap()

@@ -242,18 +242,9 @@ def _reduce_lodtensor(lodtensor):
             "FLAGS_dataloader_use_file_descriptor"
         ]
         # Default use share filename strategy
-        try:
-            metadata = core._share_filename(
-                lodtensor, dataloader_use_file_descriptor
-            )  # ipc_name, fd, size, type_idx, dims, lod
-        except Exception as e:
-            # Log and re-raise. This exception happens in the Queue feeder
-            # thread; logging here helps diagnose intermittent crashes.
-            sys.stderr.write(
-                f"[REDUCE] _share_filename failed: {type(e).__name__}: {e}\n"
-            )
-            sys.stderr.flush()
-            raise
+        metadata = core._share_filename(
+            lodtensor, dataloader_use_file_descriptor
+        )  # ipc_name, fd, size, type_idx, dims, lod
 
         if dataloader_use_file_descriptor:
             metalist = list(metadata)

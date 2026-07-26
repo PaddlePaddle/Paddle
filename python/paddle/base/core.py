@@ -375,6 +375,7 @@ try:
         _share_filename,
         _shared_decref,
         _shared_incref,
+        _sweep_mmap_handles,
         _throw_error_if_process_failed,
     )
 

@@ -606,6 +606,17 @@ void BindImperative(py::module *m_ptr) {
   m.def("_cleanup_mmap_fds",
         []() { memory::allocation::MemoryMapFdSet::Instance().Clear(); });
 
+  m.def("_sweep_mmap_handles", []() {
+#ifdef _WIN32
+    // Reclaim pending shared-memory HANDLEs whose refcount reached 0.
+    // Normally swept on every keeper Insert (i.e. every batch); this hook
+    // lets idle workers (e.g. between epochs) release the last batches'
+    // sections without waiting for the next Insert. No-op on other
+    // platforms.
+    memory::allocation::WindowsHandleKeeper::Instance().SweepClosedMappings();
+#endif
+  });
+
   m.def("_set_max_memory_map_allocation_pool_size", [](int32_t size) {
     memory::allocation::MemoryMapAllocationPool::Instance().SetMaxPoolSize(
         size);

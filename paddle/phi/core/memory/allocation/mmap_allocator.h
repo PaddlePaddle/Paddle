@@ -194,10 +194,7 @@ class PADDLE_API WindowsHandleKeeper {
     void *map_ptr;
   };
 
-  void Insert(const std::string &ipc_name,
-              intptr_t fd,
-              void *map_ptr,
-              size_t map_size);
+  void Insert(const std::string &ipc_name, intptr_t fd, void *map_ptr);
   void SweepClosedMappings();
   void CloseAll();
   ~WindowsHandleKeeper();

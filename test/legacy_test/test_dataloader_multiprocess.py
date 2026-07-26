@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import subprocess
+import sys
 import unittest
 
 import numpy as np
@@ -175,6 +178,95 @@ class TestDataLoaderWindowsMultiprocess(unittest.TestCase):
         for batch in loader():
             count += 1
         self.assertGreater(count, 0)
+
+
+@unittest.skipIf(
+    sys.platform not in ('linux', 'win32'),
+    "shared-memory tensor reduction only supported on Linux/Windows",
+)
+class TestDenseTensorReduction(unittest.TestCase):
+    """Covers the ForkingPickler reducers used by the DataLoader worker
+    result queue: _share_filename / _new_shared_filename / incref / decref."""
+
+    def test_reducer_registered(self):
+        from multiprocessing.reduction import ForkingPickler
+
+        from paddle.incubate.multiprocessing import init_reductions
+
+        init_reductions()
+        self.assertIn(
+            paddle.base.core.DenseTensor, ForkingPickler._extra_reducers
+        )
+
+    def test_share_filename_roundtrip(self):
+        import pickle
+        from multiprocessing.reduction import ForkingPickler
+
+        from paddle.incubate.multiprocessing import init_reductions
+
+        init_reductions()
+        arr = np.arange(64, dtype='float32').reshape(8, 8)
+        tensor = paddle.base.core.DenseTensor()
+        tensor.set(arr, paddle.base.core.CPUPlace())
+
+        data = bytes(ForkingPickler.dumps(tensor))
+        rebuilt = pickle.loads(data)
+        np.testing.assert_array_equal(np.array(rebuilt), arr)
+
+    def test_share_filename_roundtrip_multiple(self):
+        # Repeated roundtrips exercise handle/section reclamation
+        # (WindowsHandleKeeper sweep on Windows, shm_unlink on Linux).
+        import pickle
+        from multiprocessing.reduction import ForkingPickler
+
+        from paddle.incubate.multiprocessing import init_reductions
+
+        init_reductions()
+        for i in range(20):
+            arr = np.full([16], i, dtype='int64')
+            tensor = paddle.base.core.DenseTensor()
+            tensor.set(arr, paddle.base.core.CPUPlace())
+            rebuilt = pickle.loads(bytes(ForkingPickler.dumps(tensor)))
+            np.testing.assert_array_equal(np.array(rebuilt), arr)
+
+    def test_sweep_mmap_handles_smoke(self):
+        # No-op on Linux; on Windows reclaims refcount==0 keeper entries.
+        # Must be callable at any time without pending mappings.
+        paddle.base.core._sweep_mmap_handles()
+
+
+class TestParentWatchDog(unittest.TestCase):
+    def test_alive_parent(self):
+        from paddle.io.dataloader.worker import ParentWatchDog
+
+        # On POSIX is_alive() compares os.getppid() against the stored pid,
+        # so use the real parent; on Windows it queries the process state,
+        # so our own (running) pid works.
+        parent = os.getpid() if sys.platform == 'win32' else os.getppid()
+        wd = ParentWatchDog(parent)
+        self.assertTrue(wd.is_alive())
+
+    @unittest.skipIf(
+        sys.platform != 'win32', "Windows-specific parent liveness check"
+    )
+    def test_dead_parent(self):
+        from paddle.io.dataloader.worker import ParentWatchDog
+
+        p = subprocess.Popen([sys.executable, '-c', 'pass'])
+        p.wait()
+        # p's handle is still open, so the pid is not reused yet and
+        # OpenProcess sees an exited process.
+        wd = ParentWatchDog(p.pid)
+        self.assertFalse(wd.is_alive())
+
+    @unittest.skipIf(
+        sys.platform != 'win32', "Windows-specific parent liveness check"
+    )
+    def test_nonexistent_parent(self):
+        from paddle.io.dataloader.worker import ParentWatchDog
+
+        wd = ParentWatchDog(0x7FFFFFF)
+        self.assertFalse(wd.is_alive())
 
 
 if __name__ == '__main__':
