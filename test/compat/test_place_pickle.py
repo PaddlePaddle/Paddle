@@ -19,6 +19,7 @@ import pickle
 import unittest
 
 import paddle
+from paddle.base import core
 
 
 def _device_count(device_name: str) -> int:
@@ -26,6 +27,8 @@ def _device_count(device_name: str) -> int:
         return paddle.device.cuda.device_count()
     if device_name == "xpu":
         return paddle.device.xpu.device_count()
+    if device_name == "ipu":
+        return core.get_ipu_device_count()
     return 0
 
 
