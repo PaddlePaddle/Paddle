@@ -1746,8 +1746,8 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
       dev_ctx_.GetComputeCapability(),
       53,
       common::errors::InvalidArgument(
-          "cublas fp16 gemm with fp32 output requires GPU compute capability "
-          ">= 53, but received %d",
+          "The GPU compute capability for FP16 GEMM with FP32 output must be "
+          ">= 53, but received %d.",
           dev_ctx_.GetComputeCapability()));
 
   auto &cuda_ctx = const_cast<phi::GPUContext &>(dev_ctx_);
@@ -1773,7 +1773,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                      CUDA_R_32F);
 #else
     PADDLE_THROW(common::errors::Unimplemented(
-        "GEMM_EX_64 is not supported on cuda < 12.3"));
+        "64-bit FP16 GEMM_EX requires CUDA 12.3 or later on Linux."));
 #endif  // CUDA_VERSION >= 12030
   } else {
     CheckGEMMNSize(N);
@@ -1798,7 +1798,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   }
 #else
   PADDLE_THROW(common::errors::Unimplemented(
-      "cublasGemmEx with float16 is not supported on cuda <= 7.5"));
+      "FP16 GEMM_EX requires CUDA 8.0 or later."));
 #endif  // CUDA_VERSION >= 8000
 }
 

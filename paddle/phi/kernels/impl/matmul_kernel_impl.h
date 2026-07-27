@@ -2096,14 +2096,16 @@ void MmOutDtypeKernel(const Context& dev_ctx,
       x.dtype() == DataType::FLOAT16 || x.dtype() == DataType::BFLOAT16,
       true,
       common::errors::InvalidArgument(
-          "The out_dtype of paddle.mm currently only supports float16 or "
-          "bfloat16 Input(X)."));
+          "The dtype of Input(X) must be FLOAT16 or BFLOAT16, but received "
+          "%s.",
+          x.dtype()));
   PADDLE_ENFORCE_EQ(
       y.dtype() == DataType::FLOAT16 || y.dtype() == DataType::BFLOAT16,
       true,
       common::errors::InvalidArgument(
-          "The out_dtype of paddle.mm currently only supports float16 or "
-          "bfloat16 Input(Y)."));
+          "The dtype of Input(Y) must be FLOAT16 or BFLOAT16, but received "
+          "%s.",
+          y.dtype()));
   PADDLE_ENFORCE_EQ(
       x.dtype(),
       y.dtype(),
