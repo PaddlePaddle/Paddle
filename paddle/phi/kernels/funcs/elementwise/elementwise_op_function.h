@@ -21,6 +21,7 @@
 #include <iterator>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/transform.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -39,6 +40,7 @@
 #endif
 #include <thrust/iterator/iterator_adaptor.h>
 
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/elementwise/elementwise_op_broadcast.cu.h"
@@ -117,13 +119,13 @@ template <typename T,
 static void FusedElemwiseAndActBroadcast1CPU(const T *x,
                                              const T *y,
                                              CompoundFunctor compound_functor,
-                                             int h,
-                                             int w,
+                                             int64_t h,
+                                             int64_t w,
                                              T *out,
                                              T *intermediate_out) {
-  for (int i = 0; i < h; ++i) {
-    for (int j = 0; j < w; ++j) {
-      int64_t offset = static_cast<int64_t>(i) * w + j;
+  for (int64_t i = 0; i < h; ++i) {
+    for (int64_t j = 0; j < w; ++j) {
+      int64_t offset = i * w + j;
 
       T y_val = BcastY ? y[j] : y[offset];
       T x_val = BcastY ? x[offset] : x[j];
@@ -211,16 +213,16 @@ template <typename T,
 static __global__ void FusedElemwiseAndActBroadcast1CUDAKernel(
     const T *x,
     const T *y,
-    int h,
-    int w,
+    int64_t h,
+    int64_t w,
     CompoundFunctor compound_functor,
     T *out,
     T *intermediate_out) {
-  int i = blockIdx.x;
-  int j = threadIdx.x;
+  int64_t i = static_cast<int64_t>(blockIdx.x);
+  int64_t j = static_cast<int64_t>(threadIdx.x);
 
   while (j < w) {
-    int64_t offset = static_cast<int64_t>(i) * w + j;
+    int64_t offset = i * w + j;
 
     T y_val = BcastY ? y[j] : y[offset];
     T x_val = BcastY ? x[offset] : x[j];
@@ -254,7 +256,7 @@ template <typename T,
           bool BcastY,
           bool KeepIntermediateOut,
           bool SameShapeOfIntermediateOutAndOut>
-static void FusedElemwiseAndActBroadcast1CUDA(gpuStream_t stream,
+static void FusedElemwiseAndActBroadcast1CUDA(const GPUContext &dev_ctx,
                                               const T *x,
                                               const T *y,
                                               CompoundFunctor compound_functor,
@@ -264,13 +266,21 @@ static void FusedElemwiseAndActBroadcast1CUDA(gpuStream_t stream,
                                               T *intermediate_out) {
   int64_t block_size =
       std::min(static_cast<int64_t>(ELEMWISE_MAX_BLOCK_DIM), w);
-  int64_t gird_size = h;
+  PADDLE_ENFORCE_LE(
+      h,
+      dev_ctx.GetCUDAMaxGridDimSize()[0],
+      common::errors::InvalidArgument(
+          "fused elemwise activation grid.x exceeds device limit."));
+  PADDLE_ENFORCE_LE_UINT32_MAX(h, "fused elemwise activation grid.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(block_size, "fused elemwise activation block.x");
+  uint32_t grid_size = static_cast<uint32_t>(h);
+  gpuStream_t stream = dev_ctx.stream();
   FusedElemwiseAndActBroadcast1CUDAKernel<T,
                                           CompoundFunctor,
                                           BcastY,
                                           KeepIntermediateOut,
                                           SameShapeOfIntermediateOutAndOut>
-      <<<gird_size, block_size, 0, stream>>>(
+      <<<grid_size, static_cast<uint32_t>(block_size), 0, stream>>>(
           x, y, h, w, compound_functor, out, intermediate_out);
 }
 
@@ -283,21 +293,20 @@ static __global__ void FusedElemwiseAndActBroadcast2CUDAKernel(
     const T *x,
     const T *y,
     CompoundFunctor compound_functor,
-    int pre,
-    int n,
-    int post,
+    int64_t pre,
+    int64_t n,
+    int64_t post,
     T *out,
     T *intermediate_out) {
-  int tid = threadIdx.x;
-  int j = blockIdx.x;
+  int64_t tid = static_cast<int64_t>(threadIdx.x);
+  int64_t j = static_cast<int64_t>(blockIdx.x);
 
   while (true) {
-    int i = tid / post;
-    int k = tid % post;
+    int64_t i = tid / post;
+    int64_t k = tid % post;
     if (i >= pre) break;
 
-    int64_t offset =
-        static_cast<int64_t>(i) * n * post + static_cast<int64_t>(j) * post + k;
+    int64_t offset = i * n * post + j * post + k;
 
     T y_val = BcastY ? y[j] : y[offset];
     T x_val = BcastY ? x[offset] : x[j];
@@ -331,7 +340,7 @@ template <typename T,
           bool BcastY,
           bool KeepIntermediateOut,
           bool SameShapeOfIntermediateOutAndOut>
-static void FusedElemwiseAndActBroadcast2CUDA(gpuStream_t stream,
+static void FusedElemwiseAndActBroadcast2CUDA(const GPUContext &dev_ctx,
                                               const T *x,
                                               const T *y,
                                               int64_t pre,
@@ -342,14 +351,22 @@ static void FusedElemwiseAndActBroadcast2CUDA(gpuStream_t stream,
                                               T *intermediate_out) {
   int64_t block_size =
       std::min(static_cast<int64_t>(ELEMWISE_MAX_BLOCK_DIM), pre * post);
-  int64_t gird_size = n;
+  PADDLE_ENFORCE_LE(
+      n,
+      dev_ctx.GetCUDAMaxGridDimSize()[0],
+      common::errors::InvalidArgument(
+          "fused elemwise activation grid.x exceeds device limit."));
+  PADDLE_ENFORCE_LE_UINT32_MAX(n, "fused elemwise activation grid.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(block_size, "fused elemwise activation block.x");
+  uint32_t grid_size = static_cast<uint32_t>(n);
+  gpuStream_t stream = dev_ctx.stream();
 
   FusedElemwiseAndActBroadcast2CUDAKernel<T,
                                           CompoundFunctor,
                                           BcastY,
                                           KeepIntermediateOut,
                                           SameShapeOfIntermediateOutAndOut>
-      <<<gird_size, block_size, 0, stream>>>(
+      <<<grid_size, static_cast<uint32_t>(block_size), 0, stream>>>(
           x, y, compound_functor, pre, n, post, out, intermediate_out);
 }
 
@@ -405,8 +422,8 @@ void FusedElemwiseAndActComputeWithBroadcast(const DeviceContext &dev_ctx,
   funcs::GetMidDims(
       x_dim, y_dim, axis, &pre, &n, &post, &is_run_common_broadcast);
   if (post == 1) {
-    int h = pre;
-    int w = n;
+    int64_t h = static_cast<int64_t>(pre);
+    int64_t w = static_cast<int64_t>(n);
     if (dev_ctx.GetPlace().GetType() == AllocationType::GPU) {
 #if defined(__NVCC__) || defined(__HIPCC__)
       FusedElemwiseAndActBroadcast1CUDA<T,
@@ -414,7 +431,7 @@ void FusedElemwiseAndActComputeWithBroadcast(const DeviceContext &dev_ctx,
                                         BcastY,
                                         KeepIntermediateOut,
                                         SameShapeOfIntermediateOutAndOut>(
-          dev_ctx.stream(),
+          reinterpret_cast<const GPUContext &>(dev_ctx),
           x.data<T>(),
           y.data<T>(),
           compound_functor,
@@ -449,7 +466,7 @@ void FusedElemwiseAndActComputeWithBroadcast(const DeviceContext &dev_ctx,
                                         BcastY,
                                         KeepIntermediateOut,
                                         SameShapeOfIntermediateOutAndOut>(
-          dev_ctx.stream(),
+          reinterpret_cast<const GPUContext &>(dev_ctx),
           x.data<T>(),
           y.data<T>(),
           pre,
@@ -585,8 +602,8 @@ static void FusedElemwiseAndActGradBroadcast1CPU(
     const T *intermediate_out,
     const T *out,
     const T *dout,
-    int h,
-    int w,
+    int64_t h,
+    int64_t w,
     DX_OP dx_op,
     DY_OP dy_op,
     DIntermediate_OP dintermediate_op,
@@ -595,9 +612,9 @@ static void FusedElemwiseAndActGradBroadcast1CPU(
     T *d_intermediate) {
   int64_t tmp_out_idx, x_idx, y_idx;
   T zero = static_cast<T>(0);
-  for (int i = 0; i < h; ++i) {
-    for (int j = 0; j < w; ++j) {
-      int64_t offset = static_cast<int64_t>(i) * w + j;
+  for (int64_t i = 0; i < h; ++i) {
+    for (int64_t j = 0; j < w; ++j) {
+      int64_t offset = i * w + j;
 
       tmp_out_idx = BcastY ? j : offset;
       y_idx = BcastY ? j : offset;
@@ -785,8 +802,8 @@ static __global__ void FusedElemwiseAndActGradBroadcast1CUDAKernel(
     const T *intermediate_out,
     const T *out,
     const T *dout,
-    int h,
-    int w,
+    int64_t h,
+    int64_t w,
     DX_OP dx_op,
     DY_OP dy_op,
     DIntermediate_OP dintermediate_op,
@@ -919,8 +936,8 @@ static void FusedElemwiseAndActGradBroadcast1CUDA(
     const T *intermediate_out,
     const T *out,
     const T *dout,
-    int h,
-    int w,
+    int64_t h,
+    int64_t w,
     DX_OP dx_op,
     DY_OP dy_op,
     DIntermediate_OP dintermediate_op,
@@ -932,8 +949,11 @@ static void FusedElemwiseAndActGradBroadcast1CUDA(
   dim3 blocks(BLOCK_X, BLOCK_Y);
   int max_gpu_threads = dev_ctx.GetMaxPhysicalThreadCount();
   int max_blocks = std::max(max_gpu_threads / (BLOCK_X * BLOCK_Y), 1);
-  int theory_block = (w + BLOCK_X - 1) / BLOCK_X;
-  dim3 grids(std::min(theory_block, max_blocks));
+  int64_t theory_block = (w + BLOCK_X - 1) / BLOCK_X;
+  int64_t grid_size = std::min(theory_block, static_cast<int64_t>(max_blocks));
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_size,
+                               "fused elemwise activation grad grid.x");
+  dim3 grids(static_cast<uint32_t>(grid_size));
 
   FusedElemwiseAndActGradBroadcast1CUDAKernel<T,
                                               DX_OP,
@@ -970,9 +990,9 @@ static __global__ void FusedElemwiseAndActGradBroadcast2CUDAKernel(
     const T *intermediate_out,
     const T *out,
     const T *dout,
-    int pre,
-    int n,
-    int post,
+    int64_t pre,
+    int64_t n,
+    int64_t post,
     DX_OP dx_op,
     DY_OP dy_op,
     DIntermediate_OP dintermediate_op,
@@ -980,19 +1000,18 @@ static __global__ void FusedElemwiseAndActGradBroadcast2CUDAKernel(
     T *dy,
     T *d_intermediate) {
   int tid = threadIdx.x;
-  int j = blockIdx.x;
+  int64_t j = static_cast<int64_t>(blockIdx.x);
 
   T val(0), inter_val(0);
-  int ttid = tid;
+  int64_t ttid = tid;
   int64_t tmp_out_idx, x_idx, y_idx;
   T zero = static_cast<T>(0);
   while (true) {
-    int i = ttid / post;
-    int k = ttid % post;
+    int64_t i = ttid / post;
+    int64_t k = ttid % post;
     if (i >= pre) break;
 
-    int64_t offset =
-        static_cast<int64_t>(i) * n * post + static_cast<int64_t>(j) * post + k;
+    int64_t offset = i * n * post + j * post + k;
 
     tmp_out_idx = BcastY ? j : offset;
     y_idx = BcastY ? j : offset;
@@ -1050,8 +1069,8 @@ static __global__ void FusedElemwiseAndActGradBroadcast2CUDAKernel(
     ttid += ELEMWISE_MAX_BLOCK_DIM;
   }
 
-  int h = pre * post;
-  h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
+  int h = static_cast<int>(
+      std::min(pre * post, static_cast<int64_t>(ELEMWISE_MAX_BLOCK_DIM)));
   if (BcastY) {
     if (dy) {
       val = phi::backends::gpu::reduceSum(val, tid, h);
@@ -1085,7 +1104,7 @@ template <typename T,
           bool BcastY,
           bool SameShapeOfIntermediateOutAndOut>
 static void FusedElemwiseAndActGradBroadcast2CUDA(
-    gpuStream_t stream,
+    const GPUContext &dev_ctx,
     const T *x,
     const T *y,
     const T *intermediate_out,
@@ -1102,7 +1121,16 @@ static void FusedElemwiseAndActGradBroadcast2CUDA(
     T *dintermediate) {
   int64_t block_size =
       std::min(static_cast<int64_t>(ELEMWISE_MAX_BLOCK_DIM), pre * post);
-  int64_t gird_size = n;
+  PADDLE_ENFORCE_LE(
+      n,
+      dev_ctx.GetCUDAMaxGridDimSize()[0],
+      common::errors::InvalidArgument(
+          "fused elemwise activation grad grid.x exceeds device limit."));
+  PADDLE_ENFORCE_LE_UINT32_MAX(n, "fused elemwise activation grad grid.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(block_size,
+                               "fused elemwise activation grad block.x");
+  uint32_t grid_size = static_cast<uint32_t>(n);
+  gpuStream_t stream = dev_ctx.stream();
   FusedElemwiseAndActGradBroadcast2CUDAKernel<T,
                                               DX_OP,
                                               DY_OP,
@@ -1110,20 +1138,21 @@ static void FusedElemwiseAndActGradBroadcast2CUDA(
                                               UseIntermediateOut,
                                               BcastY,
                                               SameShapeOfIntermediateOutAndOut>
-      <<<gird_size, block_size, 0, stream>>>(x,
-                                             y,
-                                             intermediate_out,
-                                             out,
-                                             dout,
-                                             pre,
-                                             n,
-                                             post,
-                                             dx_op,
-                                             dy_op,
-                                             dintermediate_op,
-                                             dx,
-                                             dy,
-                                             dintermediate);
+      <<<grid_size, static_cast<uint32_t>(block_size), 0, stream>>>(
+          x,
+          y,
+          intermediate_out,
+          out,
+          dout,
+          pre,
+          n,
+          post,
+          dx_op,
+          dy_op,
+          dintermediate_op,
+          dx,
+          dy,
+          dintermediate);
 }
 #endif
 
@@ -1164,8 +1193,8 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
   if (x->IsInitialized()) x_data = x->data<T>();
   if (y->IsInitialized()) y_data = y->data<T>();
   if (post == 1) {
-    int h = pre;
-    int w = n;
+    int64_t h = static_cast<int64_t>(pre);
+    int64_t w = static_cast<int64_t>(n);
 
     if (dev_ctx.GetPlace().GetType() == AllocationType::GPU) {
 #if defined(__NVCC__) || defined(__HIPCC__)
@@ -1225,7 +1254,7 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
                                             UseIntermediateOut,
                                             BcastY,
                                             SameShapeOfIntermediateOutAndOut>(
-          reinterpret_cast<const GPUContext &>(dev_ctx).stream(),
+          reinterpret_cast<const GPUContext &>(dev_ctx),
           x_data,
           y_data,
           intermediate_out == nullptr ? nullptr : intermediate_out->data<T>(),

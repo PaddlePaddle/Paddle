@@ -48,8 +48,12 @@ class AttnLayerNorm {
                       const float quant_max_bound = 127.0,
                       const float quant_min_bound = -127.0) {
     auto stream = dev_ctx_.stream();
-    // TODO(large-tensor): generic kernel launch uses int32 grid dim
-    PADDLE_ENFORCE_LE_INT_MAX(batch_size_, "batch_size");
+    uint32_t max_grid_dim = dev_ctx_.GetCUDAMaxGridDimSize()[0];
+    PADDLE_ENFORCE_LE(batch_size_,
+                      max_grid_dim,
+                      common::errors::InvalidArgument(
+                          "attention layer norm grid.x exceeds device limit."));
+    PADDLE_ENFORCE_LE_UINT32_MAX(batch_size_, "attention layer norm grid.x");
 
     switch (funcs::GetDesiredBlockDim(feature_size_)) {
       FIXED_BLOCK_DIM_CASE(
@@ -59,20 +63,21 @@ class AttnLayerNorm {
                                   false,
                                   InType,
                                   OutType>
-          <<<batch_size_, kBlockDim, 0, stream>>>(x_data,
-                                                  scale_data,
-                                                  bias_data,
-                                                  y_data,
-                                                  mean_data,
-                                                  var_data,
-                                                  epsilon_,
-                                                  feature_size_,
-                                                  dequant_out_scale_data,
-                                                  quant_out_scale_offset,
-                                                  quant_in_scale,
-                                                  quant_round_type,
-                                                  quant_max_bound,
-                                                  quant_min_bound));
+          <<<static_cast<uint32_t>(batch_size_), kBlockDim, 0, stream>>>(
+              x_data,
+              scale_data,
+              bias_data,
+              y_data,
+              mean_data,
+              var_data,
+              epsilon_,
+              feature_size_,
+              dequant_out_scale_data,
+              quant_out_scale_offset,
+              quant_in_scale,
+              quant_round_type,
+              quant_max_bound,
+              quant_min_bound));
       default:
         PADDLE_THROW(common::errors::InvalidArgument(
             "Feature_size must be larger than 1"));

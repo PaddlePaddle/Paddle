@@ -22,6 +22,7 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/kernels/funcs/isfinite_functor.h"
 #include "paddle/phi/kernels/isfinite_kernel.h"
 
@@ -493,12 +494,18 @@ struct IsfiniteFunctor<GPUContext, T> {
     int64_t block = 1024;
     int64_t grid = (block - 1 + num) / block;
     grid = (grid > block) ? block : grid;
+    PADDLE_ENFORCE_LE_UINT32_MAX(block, "isfinite launch block.x");
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid, "isfinite launch grid.x");
+    uint32_t block_value = static_cast<uint32_t>(block);
+    uint32_t grid_value = static_cast<uint32_t>(grid);
     if (num + block * grid + 1 > std::numeric_limits<unsigned int>::max()) {
       IsfiniteCUDAKernel<T, int64_t>
-          <<<grid, block, 0, dev_ctx.stream()>>>(in_data, num, out_data);
+          <<<grid_value, block_value, 0, dev_ctx.stream()>>>(
+              in_data, num, out_data);
     } else {
       IsfiniteCUDAKernel<T, unsigned int>
-          <<<grid, block, 0, dev_ctx.stream()>>>(in_data, num, out_data);
+          <<<grid_value, block_value, 0, dev_ctx.stream()>>>(
+              in_data, num, out_data);
     }
   }
 };
@@ -514,12 +521,18 @@ struct IsnanFunctor<GPUContext, T> {
     int64_t block = 1024;
     int64_t grid = (block - 1 + num) / block;
     grid = (grid > block) ? block : grid;
+    PADDLE_ENFORCE_LE_UINT32_MAX(block, "isfinite launch block.x");
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid, "isfinite launch grid.x");
+    uint32_t block_value = static_cast<uint32_t>(block);
+    uint32_t grid_value = static_cast<uint32_t>(grid);
     if (num + block * grid + 1 > std::numeric_limits<unsigned int>::max()) {
       IsnanCUDAKernel<T, int64_t>
-          <<<grid, block, 0, dev_ctx.stream()>>>(in_data, num, out_data);
+          <<<grid_value, block_value, 0, dev_ctx.stream()>>>(
+              in_data, num, out_data);
     } else {
       IsnanCUDAKernel<T, unsigned int>
-          <<<grid, block, 0, dev_ctx.stream()>>>(in_data, num, out_data);
+          <<<grid_value, block_value, 0, dev_ctx.stream()>>>(
+              in_data, num, out_data);
     }
   }
 };
@@ -535,12 +548,18 @@ struct IsinfFunctor<GPUContext, T> {
     int64_t block = 1024;
     int64_t grid = (block - 1 + num) / block;
     grid = (grid > block) ? block : grid;
+    PADDLE_ENFORCE_LE_UINT32_MAX(block, "isfinite launch block.x");
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid, "isfinite launch grid.x");
+    uint32_t block_value = static_cast<uint32_t>(block);
+    uint32_t grid_value = static_cast<uint32_t>(grid);
     if (num + block * grid + 1 > std::numeric_limits<unsigned int>::max()) {
       IsinfCUDAKernel<T, int64_t>
-          <<<grid, block, 0, dev_ctx.stream()>>>(in_data, num, out_data);
+          <<<grid_value, block_value, 0, dev_ctx.stream()>>>(
+              in_data, num, out_data);
     } else {
       IsinfCUDAKernel<T, unsigned int>
-          <<<grid, block, 0, dev_ctx.stream()>>>(in_data, num, out_data);
+          <<<grid_value, block_value, 0, dev_ctx.stream()>>>(
+              in_data, num, out_data);
     }
   }
 };

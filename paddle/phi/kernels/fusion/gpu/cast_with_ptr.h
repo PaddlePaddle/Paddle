@@ -34,6 +34,16 @@ static void VecCastKernel(const GPUContext &dev_ctx,
   auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n, VecSize);
   auto block = config.GetGridSize();
   auto thread = config.GetBlockSize();
+  PADDLE_ENFORCE_LE(block,
+                    dev_ctx.GetCUDAMaxGridDimSize()[0],
+                    common::errors::InvalidArgument(
+                        "cast_with_ptr grid.x exceeds device limit."));
+  PADDLE_ENFORCE_LE(thread,
+                    dev_ctx.GetMaxThreadsPerBlock(),
+                    common::errors::InvalidArgument(
+                        "cast_with_ptr block.x exceeds device limit."));
+  PADDLE_ENFORCE_LE_UINT32_MAX(block, "cast_with_ptr grid.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(thread, "cast_with_ptr block.x");
   auto main_offset = n / (VecSize * thread) * VecSize * thread;
   auto stream = dev_ctx.stream();
   using FunctorT = CastFunctor<InT, OutT>;
@@ -42,8 +52,10 @@ static void VecCastKernel(const GPUContext &dev_ctx,
   Array<_ptr_ OutT *, 1> out_arr;
   out_arr[0] = y;
   funcs::VectorizedElementwiseKernel<OutT, FunctorT, 1, 1, VecSize>
-      <<<block, thread, 0, stream>>>(
-          in_arr, out_arr, n, main_offset, VecSize, FunctorT());
+      <<<static_cast<uint32_t>(block),
+         static_cast<uint32_t>(thread),
+         0,
+         stream>>>(in_arr, out_arr, n, main_offset, VecSize, FunctorT());
 }
 
 template <typename InT, typename OutT>
