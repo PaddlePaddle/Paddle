@@ -337,29 +337,72 @@ class TestBmmOutDtypeDynamicOnly(unittest.TestCase):
         )
 
     def test_out_dtype_rejects_unsupported_cases(self):
-        self._skip_if_no_bf16_cuda()
-        x = paddle.randn([2, 3, 4], dtype='float32')
-        y = paddle.randn([2, 4, 5], dtype='float32')
+        x = paddle.to_tensor(np.ones([2, 3, 4], dtype='float32'))
+        y = paddle.to_tensor(np.ones([2, 4, 5], dtype='float32'))
         with self.assertRaises(TypeError):
             paddle.bmm(x, y, out_dtype=paddle.float32)
 
-        x_bf16 = paddle.randn([2, 3, 4], dtype='bfloat16')
-        y_bf16 = paddle.randn([2, 4, 5], dtype='bfloat16')
+        x_fp16 = paddle.to_tensor(np.ones([2, 3, 4], dtype='float16'))
+        y_fp16 = paddle.to_tensor(np.ones([2, 4, 5], dtype='float16'))
         with self.assertRaises(TypeError):
-            paddle.bmm(x_bf16, y_bf16, out_dtype=paddle.bfloat16)
+            paddle.bmm(x_fp16, y_fp16, out_dtype=paddle.float16)
+        with self.assertRaises(TypeError):
+            paddle.bmm(x_fp16, y, out_dtype=paddle.float32)
         with self.assertRaises(ValueError):
             paddle.bmm(
-                x_bf16.reshape([6, 4]),
-                y_bf16.reshape([8, 5]),
+                x_fp16.reshape([6, 4]),
+                y_fp16.reshape([8, 5]),
                 out_dtype=paddle.float32,
             )
         with self.assertRaises(TypeError):
             paddle.bmm(
-                x_bf16,
-                y_bf16,
+                x_fp16,
+                y_fp16,
                 out_dtype=paddle.float32,
-                out=paddle.empty([2, 3, 5], dtype='bfloat16'),
+                out=paddle.empty([2, 3, 5], dtype='float16'),
             )
+
+    def test_static_shape_validation(self):
+        paddle.enable_static()
+        try:
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                x_2d = paddle.static.data('x_2d', [3, 4], dtype='float32')
+                y_2d = paddle.static.data('y_2d', [4, 5], dtype='float32')
+                with self.assertRaises(ValueError):
+                    paddle.bmm(x_2d, y_2d)
+
+                x = paddle.static.data('x', [2, 3, 4], dtype='float32')
+                y_bad_width = paddle.static.data(
+                    'y_bad_width', [2, 5, 6], dtype='float32'
+                )
+                with self.assertRaises(ValueError):
+                    paddle.bmm(x, y_bad_width)
+
+                y_bad_batch = paddle.static.data(
+                    'y_bad_batch', [3, 4, 5], dtype='float32'
+                )
+                with self.assertRaises(ValueError):
+                    paddle.bmm(x, y_bad_batch)
+        finally:
+            paddle.disable_static()
+
+    def test_legacy_static_graph(self):
+        paddle.enable_static()
+        try:
+            with paddle.pir_utils.OldIrGuard():
+                main = paddle.static.Program()
+                startup = paddle.static.Program()
+                with paddle.static.program_guard(main, startup):
+                    x = paddle.static.data('x', [2, 3, 4], dtype='float32')
+                    y = paddle.static.data('y', [2, 4, 5], dtype='float32')
+                    result = paddle.bmm(x, y)
+
+                self.assertEqual(list(result.shape), [2, 3, 5])
+                self.assertEqual(main.global_block().ops[-1].type, 'bmm')
+        finally:
+            paddle.disable_static()
 
     def test_static_out_dtype_fails_closed(self):
         paddle.enable_static()
