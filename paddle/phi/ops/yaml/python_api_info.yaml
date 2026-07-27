@@ -122,12 +122,6 @@
   pre_process :
     func : BaddbmmPreProcess(input, x, y)
 
-- op : bmm
-  name : [paddle.bmm, paddle.Tensor.bmm]
-  args_alias :
-    x : [input]
-    y : [mat2]
-
 - op : cross
   name : [paddle.cross, paddle.Tensor.cross]
   args_alias :
