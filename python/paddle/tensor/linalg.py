@@ -55,7 +55,10 @@ from ..framework import (
 )
 from .creation import full
 from .manipulation import cast
-from .math import _get_reduce_axis
+from .math import (
+    _get_reduce_axis,
+    bmm,  # noqa: F401
+)
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
