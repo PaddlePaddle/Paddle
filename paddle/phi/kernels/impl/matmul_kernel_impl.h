@@ -2093,17 +2093,23 @@ void MmOutDtypeKernel(const Context& dev_ctx,
       common::errors::InvalidArgument(
           "The out_dtype of paddle.mm currently only supports float32."));
   PADDLE_ENFORCE_EQ(
-      x.dtype(),
-      DataType::BFLOAT16,
+      x.dtype() == DataType::FLOAT16 || x.dtype() == DataType::BFLOAT16,
+      true,
       common::errors::InvalidArgument(
-          "The out_dtype of paddle.mm currently only supports bfloat16 "
-          "Input(X)."));
+          "The out_dtype of paddle.mm currently only supports float16 or "
+          "bfloat16 Input(X)."));
   PADDLE_ENFORCE_EQ(
-      y.dtype(),
-      DataType::BFLOAT16,
+      y.dtype() == DataType::FLOAT16 || y.dtype() == DataType::BFLOAT16,
+      true,
       common::errors::InvalidArgument(
-          "The out_dtype of paddle.mm currently only supports bfloat16 "
-          "Input(Y)."));
+          "The out_dtype of paddle.mm currently only supports float16 or "
+          "bfloat16 Input(Y)."));
+  PADDLE_ENFORCE_EQ(
+      x.dtype(),
+      y.dtype(),
+      common::errors::InvalidArgument(
+          "Input(X) and Input(Y) must have the same dtype when out_dtype is "
+          "specified for paddle.mm."));
   const std::vector<std::int64_t> x_dims = vectorize(x.dims());
   const std::vector<std::int64_t> y_dims = vectorize(y.dims());
   PADDLE_ENFORCE_EQ(
@@ -2118,7 +2124,8 @@ void MmOutDtypeKernel(const Context& dev_ctx,
           "The out_dtype of paddle.mm currently only supports 2-D Input(Y)."));
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
   if constexpr (std::is_same<Context, phi::GPUContext>::value &&
-                std::is_same<T, phi::bfloat16>::value) {
+                (std::is_same<T, phi::float16>::value ||
+                 std::is_same<T, phi::bfloat16>::value)) {
     const int64_t M = x_dims[0];
     const int64_t K = x_dims[1];
     const int64_t N = y_dims[1];
@@ -2154,14 +2161,14 @@ void MmOutDtypeKernel(const Context& dev_ctx,
               N,
               K,
               1.0f,
-              x_ptr->data<phi::bfloat16>(),
-              y_ptr->data<phi::bfloat16>(),
+              x_ptr->data<T>(),
+              y_ptr->data<T>(),
               0.0f,
               out->data<float>());
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
-        "The out_dtype of paddle.mm currently only supports CUDA bfloat16 "
-        "inputs."));
+        "The out_dtype of paddle.mm currently only supports CUDA float16 or "
+        "bfloat16 inputs."));
   }
 #else
   PADDLE_THROW(common::errors::Unimplemented(

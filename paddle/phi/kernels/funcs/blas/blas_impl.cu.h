@@ -1722,6 +1722,87 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
 }
 
 template <>
+inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
+                                        CBLAS_TRANSPOSE transB,
+                                        int64_t M,
+                                        int64_t N,
+                                        int64_t K,
+                                        float alpha,
+                                        const phi::float16 *A,
+                                        const phi::float16 *B,
+                                        float beta,
+                                        float *C) const {
+#if CUDA_VERSION >= 8000
+  // cuBLAS uses column-major order, so swap A/B and M/N for row-major input.
+  // The int casts below are safe in the non-64-bit branch.
+  int64_t lda = (transA == CblasNoTrans) ? K : M;
+  int64_t ldb = (transB == CblasNoTrans) ? N : K;
+  cublasOperation_t cuTransA =
+      (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  cublasOperation_t cuTransB =
+      (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+
+  PADDLE_ENFORCE_GE(
+      dev_ctx_.GetComputeCapability(),
+      53,
+      common::errors::InvalidArgument(
+          "cublas fp16 gemm with fp32 output requires GPU compute capability "
+          ">= 53, but received %d",
+          dev_ctx_.GetComputeCapability()));
+
+  auto &cuda_ctx = const_cast<phi::GPUContext &>(dev_ctx_);
+  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
+#if CUDA_VERSION >= 12030 && defined(__linux__)
+    CUBlas<phi::float16>::GEMM_EX_64(&cuda_ctx,
+                                     cuTransB,
+                                     cuTransA,
+                                     N,
+                                     M,
+                                     K,
+                                     &alpha,
+                                     B,
+                                     CUDA_R_16F,
+                                     ldb,
+                                     A,
+                                     CUDA_R_16F,
+                                     lda,
+                                     &beta,
+                                     C,
+                                     CUDA_R_32F,
+                                     N,
+                                     CUDA_R_32F);
+#else
+    PADDLE_THROW(common::errors::Unimplemented(
+        "GEMM_EX_64 is not supported on cuda < 12.3"));
+#endif  // CUDA_VERSION >= 12030
+  } else {
+    CheckGEMMNSize(N);
+    CUBlas<phi::float16>::GEMM_EX(&cuda_ctx,
+                                  cuTransB,
+                                  cuTransA,
+                                  static_cast<int>(N),
+                                  static_cast<int>(M),
+                                  static_cast<int>(K),
+                                  &alpha,
+                                  B,
+                                  CUDA_R_16F,
+                                  static_cast<int>(ldb),
+                                  A,
+                                  CUDA_R_16F,
+                                  static_cast<int>(lda),
+                                  &beta,
+                                  C,
+                                  CUDA_R_32F,
+                                  static_cast<int>(N),
+                                  CUDA_R_32F);
+  }
+#else
+  PADDLE_THROW(common::errors::Unimplemented(
+      "cublasGemmEx with float16 is not supported on cuda <= 7.5"));
+#endif  // CUDA_VERSION >= 8000
+}
+
+template <>
 template <>
 inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                         CBLAS_TRANSPOSE transB,

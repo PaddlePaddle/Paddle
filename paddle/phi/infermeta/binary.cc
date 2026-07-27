@@ -3192,17 +3192,23 @@ void MmOutDtypeInferMeta(const MetaTensor& x,
       common::errors::InvalidArgument(
           "The out_dtype of paddle.mm currently only supports float32."));
   PADDLE_ENFORCE_EQ(
-      x.dtype(),
-      DataType::BFLOAT16,
+      x.dtype() == DataType::FLOAT16 || x.dtype() == DataType::BFLOAT16,
+      true,
       common::errors::InvalidArgument(
-          "The out_dtype of paddle.mm currently only supports bfloat16 "
-          "Input(X)."));
+          "The out_dtype of paddle.mm currently only supports float16 or "
+          "bfloat16 Input(X)."));
   PADDLE_ENFORCE_EQ(
-      y.dtype(),
-      DataType::BFLOAT16,
+      y.dtype() == DataType::FLOAT16 || y.dtype() == DataType::BFLOAT16,
+      true,
       common::errors::InvalidArgument(
-          "The out_dtype of paddle.mm currently only supports bfloat16 "
-          "Input(Y)."));
+          "The out_dtype of paddle.mm currently only supports float16 or "
+          "bfloat16 Input(Y)."));
+  PADDLE_ENFORCE_EQ(
+      x.dtype(),
+      y.dtype(),
+      common::errors::InvalidArgument(
+          "Input(X) and Input(Y) must have the same dtype when out_dtype is "
+          "specified for paddle.mm."));
 
   auto dims_x = vectorize(x.dims());
   auto dims_y = vectorize(y.dims());
