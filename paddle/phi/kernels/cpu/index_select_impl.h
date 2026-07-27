@@ -18,7 +18,6 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -42,13 +41,14 @@ struct IndexSelectAdd<
     Context,
     T,
     typename std::enable_if<std::is_floating_point<T>::value>::type> {
-  void operator()(const Context& dev_ctx,
+  void operator()(const Context& dev_ctx UNUSED,
                   int slice_size,
                   const T* src_pointer,
                   const T* p_pointer,
                   T* dist_pointer) {
-    auto blas = funcs::GetBlas<Context, T>(dev_ctx);
-    blas.VADD(slice_size, src_pointer, p_pointer, dist_pointer);
+    for (int i = 0; i < slice_size; ++i) {
+      dist_pointer[i] = src_pointer[i] + p_pointer[i];
+    }
   }
 };
 
