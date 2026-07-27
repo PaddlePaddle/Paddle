@@ -56,15 +56,15 @@ void TriangularSolveKernel(const Context& dev_ctx,
   ExpandKernel<T, Context>(dev_ctx, y, y_bst_dims, out);
 
   // Calculate use blas library
-  int M = static_cast<int>(y_bst_dims_vec[y_bst_ndim - 2]);
-  int N = static_cast<int>(y_bst_dims_vec[y_bst_ndim - 1]);
-  int batch_size = 1;
+  const int64_t M = y_bst_dims_vec[y_bst_ndim - 2];
+  const int64_t N = y_bst_dims_vec[y_bst_ndim - 1];
+  int64_t batch_size = 1;
   for (int i = 0; i < x_bst_ndim - 2; i++) {
-    batch_size *= static_cast<int>(x_bst_dims_vec[i]);
+    batch_size *= x_bst_dims_vec[i];
   }
 
   auto blas = funcs::GetBlas<CPUContext, T>(dev_ctx);
-  for (int i = 0; i < batch_size; i++) {
+  for (int64_t i = 0; i < batch_size; i++) {
     blas.TRSM(CblasLeft,
               upper ? CblasUpper : CblasLower,
               transpose ? CblasTrans : CblasNoTrans,
@@ -73,9 +73,9 @@ void TriangularSolveKernel(const Context& dev_ctx,
               N,
               T(1),
               x_bst_data + i * M * M,
-              std::max(1, M),
+              std::max<int64_t>(1, M),
               out_data + i * N * M,
-              std::max(1, N));
+              std::max<int64_t>(1, N));
   }
 }
 

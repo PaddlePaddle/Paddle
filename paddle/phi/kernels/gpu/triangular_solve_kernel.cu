@@ -62,10 +62,10 @@ void TriangularSolveKernel(const Context& dev_ctx,
   CBLAS_TRANSPOSE transA = transpose ? CblasTrans : CblasNoTrans;
   CBLAS_DIAG diag = unitriangular ? CblasUnit : CblasNonUnit;
 
-  int M = static_cast<int>(y_bst_dims_vec[y_bst_ndim - 2]);
-  int N = static_cast<int>(y_bst_dims_vec[y_bst_ndim - 1]);
-  int lda = std::max(1, M);
-  int ldb = std::max(1, N);
+  const int64_t M = y_bst_dims_vec[y_bst_ndim - 2];
+  const int64_t N = y_bst_dims_vec[y_bst_ndim - 1];
+  const int64_t lda = std::max<int64_t>(1, M);
+  const int64_t ldb = std::max<int64_t>(1, N);
 
   int64_t batch_size = 1;
   for (int64_t i = 0; i < x_bst_ndim - 2; i++) {
