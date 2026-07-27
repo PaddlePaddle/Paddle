@@ -434,7 +434,6 @@ from .tensor.creation import (
 from .tensor.einsum import einsum
 from .tensor.linalg import (  # noqa: F401
     bincount,
-    bmm,
     cdist,
     cholesky,
     cross,
@@ -619,6 +618,7 @@ from .tensor.math import (  # noqa: F401
     atanh_,
     baddbmm,
     baddbmm_,
+    bmm,
     bitwise_left_shift,
     bitwise_left_shift_,
     bitwise_right_shift,

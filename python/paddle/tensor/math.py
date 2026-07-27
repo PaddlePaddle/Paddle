@@ -2324,6 +2324,94 @@ def mm(
         return out
 
 
+@param_two_alias(["input", "x"], ["mat2", "y"])
+def bmm(
+    input: Tensor,
+    mat2: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
+    """
+    Applies batched matrix multiplication to two tensors.
+
+    Both input tensors must be three-dimensional and have the same batch size.
+    If ``input`` has shape ``[b, m, k]`` and ``mat2`` has shape
+    ``[b, k, n]``, the output has shape ``[b, m, n]``.
+
+    Args:
+        input (Tensor): The first input Tensor.
+        mat2 (Tensor): The second input Tensor.
+        name (str|None, optional): Name for the operation. Default: None.
+
+    Keyword Args:
+        out (Tensor|None, optional): The output Tensor. Default: None.
+
+    Returns:
+        Tensor: The batched matrix multiplication result.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> input = paddle.to_tensor(
+            ...     [[[1.0, 1.0, 1.0], [2.0, 2.0, 2.0]],
+            ...      [[3.0, 3.0, 3.0], [4.0, 4.0, 4.0]]]
+            ... )
+            >>> mat2 = paddle.to_tensor(
+            ...     [[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]],
+            ...      [[4.0, 4.0], [5.0, 5.0], [6.0, 6.0]]]
+            ... )
+            >>> paddle.bmm(input, mat2)
+            Tensor(shape=[2, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[ 6.,  6.],
+              [12., 12.]],
+             [[45., 45.],
+              [60., 60.]]])
+    """
+    if in_dynamic_mode():
+        return _C_ops.bmm(input, mat2, out=out)
+
+    input_shape = input.shape
+    mat2_shape = mat2.shape
+    if not len(input_shape) == len(mat2_shape) == 3:
+        raise ValueError(
+            "input and mat2 must be 3-dimensional, but received "
+            f"input's shape {input_shape} and mat2's shape {mat2_shape}."
+        )
+    if (
+        input_shape[2] != -1
+        and mat2_shape[1] != -1
+        and input_shape[2] != mat2_shape[1]
+    ):
+        raise ValueError(
+            "input's width must be equal to mat2's height, but received "
+            f"input's shape {input_shape} and mat2's shape {mat2_shape}."
+        )
+    if (
+        input_shape[0] != -1
+        and mat2_shape[0] != -1
+        and input_shape[0] != mat2_shape[0]
+    ):
+        raise ValueError(
+            "input and mat2 must have the same batch size, but received "
+            f"input's shape {input_shape} and mat2's shape {mat2_shape}."
+        )
+
+    if in_pir_mode():
+        return _C_ops.bmm(input, mat2, out=out)
+
+    helper = LayerHelper('bmm', **locals())
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    helper.append_op(
+        type='bmm',
+        inputs={'X': input, 'Y': mat2},
+        outputs={'Out': out},
+    )
+    return out
+
+
 def addmv(
     input: Tensor,
     mat: Tensor,

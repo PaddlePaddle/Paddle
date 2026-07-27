@@ -23,7 +23,6 @@ import paddle
 from paddle import _C_ops
 from paddle._C_ops import (  # noqa: F401
     bincount,
-    bmm,
     cholesky,
     cross,
     det,
