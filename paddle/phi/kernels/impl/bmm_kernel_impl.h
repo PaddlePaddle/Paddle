@@ -53,17 +53,23 @@ void BmmOutDtypeKernel(const Context& dev_ctx,
       common::errors::InvalidArgument(
           "The out_dtype of paddle.bmm currently only supports float32."));
   PADDLE_ENFORCE_EQ(
-      x.dtype(),
-      DataType::BFLOAT16,
+      x.dtype() == DataType::FLOAT16 || x.dtype() == DataType::BFLOAT16,
+      true,
       common::errors::InvalidArgument(
-          "The out_dtype of paddle.bmm currently only supports bfloat16 "
-          "Input(X)."));
+          "The out_dtype of paddle.bmm currently only supports float16 or "
+          "bfloat16 Input(X)."));
   PADDLE_ENFORCE_EQ(
-      y.dtype(),
-      DataType::BFLOAT16,
+      y.dtype() == DataType::FLOAT16 || y.dtype() == DataType::BFLOAT16,
+      true,
       common::errors::InvalidArgument(
-          "The out_dtype of paddle.bmm currently only supports bfloat16 "
-          "Input(Y)."));
+          "The out_dtype of paddle.bmm currently only supports float16 or "
+          "bfloat16 Input(Y)."));
+  PADDLE_ENFORCE_EQ(
+      x.dtype(),
+      y.dtype(),
+      common::errors::InvalidArgument(
+          "Input(X) and Input(Y) must have the same dtype when out_dtype is "
+          "specified for paddle.bmm."));
 
   const auto x_dims = x.dims();
   const auto y_dims = y.dims();
@@ -125,8 +131,8 @@ void BmmOutDtypeKernel(const Context& dev_ctx,
                    n,
                    k,
                    1.0f,
-                   x_ptr->data<phi::bfloat16>(),
-                   y_ptr->data<phi::bfloat16>(),
+                   x_ptr->data<T>(),
+                   y_ptr->data<T>(),
                    0.0f,
                    out->data<float>(),
                    batch_count,
@@ -134,8 +140,8 @@ void BmmOutDtypeKernel(const Context& dev_ctx,
                    k * n);
 #else
   PADDLE_THROW(common::errors::Unimplemented(
-      "The out_dtype of paddle.bmm currently only supports CUDA bfloat16 "
-      "inputs."));
+      "The out_dtype of paddle.bmm currently only supports CUDA float16 or "
+      "bfloat16 inputs."));
 #endif
 }
 

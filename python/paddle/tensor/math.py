@@ -2347,8 +2347,9 @@ def bmm(
 
     Keyword Args:
         out_dtype (paddle.dtype|None, optional): The desired output data type.
-            Currently only supports ``paddle.float32`` for CUDA bfloat16
-            inputs in dynamic graph. Default: None.
+            Currently only supports ``paddle.float32`` for CUDA float16 or
+            bfloat16 inputs in dynamic graph. Both inputs must have the same
+            data type. Default: None.
         out (Tensor|None, optional): The output Tensor. Default: None.
 
     Returns:
@@ -2377,18 +2378,27 @@ def bmm(
     if out_dtype is not None:
         out_dtype = convert_nptype_to_datatype_or_vartype(out_dtype)
         float32_dtypes = (core.DataType.FLOAT32, core.VarDesc.VarType.FP32)
-        bf16_dtypes = (core.DataType.BFLOAT16, core.VarDesc.VarType.BF16)
+        supported_input_dtypes = (
+            core.DataType.FLOAT16,
+            core.VarDesc.VarType.FP16,
+            core.DataType.BFLOAT16,
+            core.VarDesc.VarType.BF16,
+        )
         if out_dtype not in float32_dtypes:
             raise TypeError(
                 "The out_dtype of paddle.bmm currently only supports paddle.float32."
             )
-        if input.dtype not in bf16_dtypes:
+        if input.dtype not in supported_input_dtypes:
             raise TypeError(
-                "The out_dtype of paddle.bmm currently only supports bfloat16 input."
+                "The out_dtype of paddle.bmm currently only supports float16 or bfloat16 input."
             )
-        if mat2.dtype not in bf16_dtypes:
+        if mat2.dtype not in supported_input_dtypes:
             raise TypeError(
-                "The out_dtype of paddle.bmm currently only supports bfloat16 mat2."
+                "The out_dtype of paddle.bmm currently only supports float16 or bfloat16 mat2."
+            )
+        if input.dtype != mat2.dtype:
+            raise TypeError(
+                "The input and mat2 of paddle.bmm must have the same dtype when out_dtype is specified."
             )
         if len(input.shape) != 3 or len(mat2.shape) != 3:
             raise ValueError(
