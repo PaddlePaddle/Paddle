@@ -60,10 +60,6 @@ class CompatNamespaceAliasBase(unittest.TestCase):
         (paddle, "allclose"),
         (paddle, "equal"),
         (paddle, "seed"),
-    ]
-    # Compat-only symbols must not be added to the paddle namespace.
-    COMPAT_ONLY = [
-        (paddle, "slogdet"),
         (paddle.nn, "AvgPool1d"),
         (paddle.nn, "AvgPool2d"),
         (paddle.nn, "AvgPool3d"),
@@ -71,6 +67,10 @@ class CompatNamespaceAliasBase(unittest.TestCase):
         (paddle.nn, "BatchNorm2d"),
         (paddle.nn, "BatchNorm3d"),
         (paddle.nn, "MultiheadAttention"),
+    ]
+    # Compat-only symbols must not be added to the paddle namespace.
+    COMPAT_ONLY = [
+        (paddle, "slogdet"),
     ]
 
     def setUp(self):
@@ -253,6 +253,33 @@ class TestTopLevelAlias(CompatNamespaceAliasBase):
         finally:
             paddle.disable_compat()
 
+    def test_torch_style_nn_class_aliases(self):
+        aliases = (
+            ("AvgPool1d", "AvgPool1D", (1,)),
+            ("AvgPool2d", "AvgPool2D", (1,)),
+            ("AvgPool3d", "AvgPool3D", (1,)),
+            ("BatchNorm1d", "BatchNorm1D", (2,)),
+            ("BatchNorm2d", "BatchNorm2D", (2,)),
+            ("BatchNorm3d", "BatchNorm3D", (2,)),
+            ("MultiheadAttention", "MultiHeadAttention", (4, 1)),
+        )
+
+        for alias, native, _ in aliases:
+            self.assertIn(alias, paddle.nn.__all__)
+            self.assertIs(getattr(paddle.nn, alias), getattr(paddle.nn, native))
+
+        with level2_guard():
+            for alias, _, args in aliases:
+                compat_cls = getattr(paddle.compat.nn, alias)
+                self.assertAliased(getattr(paddle.nn, alias), compat_cls)
+                self.assertIs(
+                    type(getattr(paddle.nn, alias)(*args)),
+                    compat_cls,
+                )
+
+        for alias, native, _ in aliases:
+            self.assertIs(getattr(paddle.nn, alias), getattr(paddle.nn, native))
+
     @with_level2
     def test_all_nn_functional_aliases(self):
         """Every public compat nn.functional symbol overrides its paddle target,
@@ -341,7 +368,7 @@ class TestAliasBehavior(CompatNamespaceAliasBase):
         """Direct execution of the aliased softmax/log_softmax/sdpa (these are
         genuinely aliased to torch-style compat APIs, not no-ops). After enable,
         paddle.nn.functional.softmax is the torch-style compat API, so it takes
-        `dim=` and REJECTS the paddle-native `axis=` via ForbidKeywords."""
+        `dim=` and rejects the paddle-native `axis=`."""
         x = paddle.randn([2, 4])
         self.assertEqual(paddle.nn.functional.softmax(x, dim=-1).shape, [2, 4])
         self.assertEqual(
@@ -511,16 +538,28 @@ class TestLevel2InternalCallersUseNative(CompatNamespaceAliasBase):
         level=2 ``x.max(dim=1)`` is torch-style for external callers and native
         for paddle-internal ``x.max(axis=1)``; restored on disable."""
         native_max = paddle.Tensor.max
+        native_split = paddle.Tensor.split
         t = paddle.to_tensor([[3.0, 1.0, 2.0], [6.0, 5.0, 4.0]])
         with level2_guard():
             r = t.max(dim=1)  # external -> compat namedtuple
             self.assertTrue(hasattr(r, "values"))
             self.assertEqual(r.values.tolist(), [3.0, 6.0])
             self.assertIsInstance(t.split(1, dim=0), tuple)
+            self.assertEqual(len(t.split(split_size=1, dim=0)), 2)
+            self.assertEqual(
+                len(t.split(split_size=[1, 1], dim=0)),
+                2,
+            )
+            self.assertEqual(len(paddle.split(t, split_size=1, dim=0)), 2)
             # paddle-internal native-style call (simulated) stays native
             ns = {"__name__": "paddle.fake_internal", "t": t}
-            exec("internal = t.max(axis=1)", ns)  # native accepts axis=
+            exec(
+                "internal_max = t.max(axis=1)\n"
+                "internal_split = t.split(num_or_sections=2, axis=0)",
+                ns,
+            )
         self.assertIs(paddle.Tensor.max, native_max)  # restored on disable
+        self.assertIs(paddle.Tensor.split, native_split)
 
     @with_level2
     def test_aliased_class_caller_aware(self):

@@ -155,7 +155,7 @@ if TYPE_CHECKING:
     from paddle import Tensor
     from paddle._typing import DTypeLike
 
-from paddle.utils.decorator_utils import ForbidKeywordsDecorator
+from paddle.utils.decorator_utils import forbid_keywords
 
 __all__ = []
 
@@ -2709,11 +2709,10 @@ def outer(
         return out
 
 
-@ForbidKeywordsDecorator(
+@forbid_keywords(
     illegal_keys={"input", "dim", "other"},
     func_name="paddle.max",
-    correct_name="paddle.compat.max",
-    url_suffix="torch.max",
+    compat_func="paddle.compat.max",
 )
 def max(
     x: Tensor,
@@ -2877,11 +2876,10 @@ def max(
             return out
 
 
-@ForbidKeywordsDecorator(
+@forbid_keywords(
     illegal_keys={"input", "dim", "other"},
     func_name="paddle.min",
-    correct_name="paddle.compat.min",
-    url_suffix="torch.min",
+    compat_func="paddle.compat.min",
 )
 def min(
     x: Tensor,

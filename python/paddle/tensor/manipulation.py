@@ -77,7 +77,7 @@ if TYPE_CHECKING:
         TensorOrTensors,
     )
 from paddle._C_ops import expand_as  # noqa: F401
-from paddle.utils.decorator_utils import ForbidKeywordsDecorator
+from paddle.utils.decorator_utils import forbid_keywords
 
 __all__ = []
 
@@ -2777,11 +2777,10 @@ def row_stack(
     return paddle.vstack(x, name=name)
 
 
-@ForbidKeywordsDecorator(
-    illegal_keys={"tensor", "split_size_or_sections", "dim"},
+@forbid_keywords(
+    illegal_keys={"tensor", "split_size", "split_size_or_sections", "dim"},
     func_name="paddle.split",
-    correct_name="paddle.compat.split",
-    url_suffix="torch.split",
+    compat_func="paddle.compat.split",
 )
 def split(
     x: Tensor,

@@ -206,6 +206,13 @@ SiLU = Silu
 AdaptiveAvgPool1d = AdaptiveAvgPool1D
 AdaptiveAvgPool2d = AdaptiveAvgPool2D
 AdaptiveAvgPool3d = AdaptiveAvgPool3D
+AvgPool1d = AvgPool1D
+AvgPool2d = AvgPool2D
+AvgPool3d = AvgPool3D
+BatchNorm1d = BatchNorm1D
+BatchNorm2d = BatchNorm2D
+BatchNorm3d = BatchNorm3D
+MultiheadAttention = MultiHeadAttention
 HuberLoss = SmoothL1Loss
 MultilabelMarginLoss = MultiLabelMarginLoss
 MultilabelSoftMarginLoss = MultiLabelSoftMarginLoss
@@ -436,4 +443,11 @@ __all__ = [
     'MaxPool3d',
     'FractionalMaxPool2d',
     'FractionalMaxPool3d',
+    'AvgPool1d',
+    'AvgPool2d',
+    'AvgPool3d',
+    'BatchNorm1d',
+    'BatchNorm2d',
+    'BatchNorm3d',
+    'MultiheadAttention',
 ]

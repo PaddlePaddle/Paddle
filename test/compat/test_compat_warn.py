@@ -17,14 +17,12 @@ import unittest
 import paddle
 
 
-class TestForbidKeywordsDecorator(unittest.TestCase):
+class TestForbidKeywords(unittest.TestCase):
     def test(self):
-        with self.assertRaises(TypeError) as cm:
-            self.assertWarnsRegex(
-                UserWarning,
-                "may behave differently from its PyTorch counterpart",
-                paddle.sort,
-            )
+        with self.assertRaisesRegex(
+            TypeError,
+            r"Please use paddle\.compat\.sort\(\) instead\.",
+        ):
             paddle.sort(input=paddle.to_tensor([2, 1, 3]), axis=0)
 
 
