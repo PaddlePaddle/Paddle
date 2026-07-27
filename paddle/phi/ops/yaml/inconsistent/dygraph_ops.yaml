@@ -296,6 +296,16 @@
     data_type : x
   traits : paddle::dialect::ForwardOnlyTrait
 
+- op : bmm_out_dtype
+  args : (Tensor x, Tensor y, DataType out_dtype)
+  output : Tensor(out)
+  infer_meta :
+    func : BmmOutDtypeInferMeta
+  kernel :
+    func : bmm_out_dtype
+    data_type : x
+  traits : paddle::dialect::ForwardOnlyTrait
+
 - op : multiply
   args : (Tensor x, Tensor y)
   output : Tensor

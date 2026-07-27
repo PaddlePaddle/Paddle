@@ -366,6 +366,32 @@ void BmmInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   out->set_layout(x.layout());
 }
 
+void BmmOutDtypeInferMeta(const MetaTensor& x,
+                          const MetaTensor& y,
+                          DataType out_dtype,
+                          MetaTensor* out) {
+  PADDLE_ENFORCE_EQ(
+      out_dtype,
+      DataType::FLOAT32,
+      common::errors::InvalidArgument(
+          "The out_dtype of paddle.bmm currently only supports float32."));
+  PADDLE_ENFORCE_EQ(
+      x.dtype(),
+      DataType::BFLOAT16,
+      common::errors::InvalidArgument(
+          "The out_dtype of paddle.bmm currently only supports bfloat16 "
+          "Input(X)."));
+  PADDLE_ENFORCE_EQ(
+      y.dtype(),
+      DataType::BFLOAT16,
+      common::errors::InvalidArgument(
+          "The out_dtype of paddle.bmm currently only supports bfloat16 "
+          "Input(Y)."));
+
+  BmmInferMeta(x, y, out);
+  out->set_dtype(DataType::FLOAT32);
+}
+
 void BoxClipInferMeta(const MetaTensor& input,
                       const MetaTensor& im_info,
                       MetaTensor* output,
