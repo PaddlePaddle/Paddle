@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 #ifdef PADDLE_WITH_MKLML
@@ -120,6 +121,17 @@ class Blas {
             float alpha,
             const phi::bfloat16* A,
             const phi::bfloat16* B,
+            float beta,
+            float* C) const;
+
+  void GEMM(CBLAS_TRANSPOSE transA,
+            CBLAS_TRANSPOSE transB,
+            int64_t M,
+            int64_t N,
+            int64_t K,
+            float alpha,
+            const phi::float16* A,
+            const phi::float16* B,
             float beta,
             float* C) const;
 
