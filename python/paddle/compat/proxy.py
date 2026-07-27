@@ -26,6 +26,7 @@ from functools import cache
 from typing import TYPE_CHECKING, Any, Literal
 
 from .api_dispatch import (
+    _PADDLE_NAMESPACE_SAVED,
     _apply_paddle_namespace_aliases,
     _iter_compat_modules,
     _restore_paddle_namespace_aliases,
@@ -604,6 +605,7 @@ def use_compat_guard(
     already_has_torch_proxy = TORCH_PROXY_FINDER in sys.meta_path
     original_local_enabled_scope = set(TORCH_PROXY_FINDER._local_enabled_scope)
     original_globally_enabled = TORCH_PROXY_FINDER._globally_enabled
+    original_level = 2 if _PADDLE_NAMESPACE_SAVED else 1
     if enable == already_has_torch_proxy and (
         (original_globally_enabled and scope is None)
         or (original_local_enabled_scope == (scope or set()))
@@ -625,7 +627,7 @@ def use_compat_guard(
         try:
             yield
         finally:
-            enable_compat(scope=None, silent=True)
+            enable_compat(scope=None, silent=True, level=original_level)
             TORCH_PROXY_FINDER._local_enabled_scope = (
                 original_local_enabled_scope
             )

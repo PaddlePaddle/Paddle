@@ -40,6 +40,7 @@ if TYPE_CHECKING:
 __all__ = [
     'Unfold',
     'Linear',
+    'PReLU',
     'Softmax',
     'AvgPool1D',
     'AvgPool2D',
@@ -660,6 +661,22 @@ class Linear(nn.Layer, metaclass=_CompatClassMeta):
             nn.init.uniform_(self.weight, -bound, bound)
         if self.bias is not None and self.out_features > 0:
             nn.init.uniform_(self.bias, -bound, bound)
+
+
+class PReLU(nn.PReLU, metaclass=_CompatClassMeta):
+    def __init__(
+        self,
+        num_parameters: int = 1,
+        init: float = 0.25,
+        device: PlaceLike | None = None,
+        dtype: DTypeLike | None = None,
+    ) -> None:
+        super().__init__(
+            num_parameters=num_parameters,
+            init=init,
+            device=device,
+            dtype=dtype,
+        )
 
 
 class Softmax(nn.Layer, metaclass=_CompatClassMeta):

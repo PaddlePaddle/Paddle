@@ -70,6 +70,7 @@ class CompatNamespaceAliasBase(unittest.TestCase):
         (paddle.nn, "BatchNorm2d"),
         (paddle.nn, "BatchNorm3d"),
         (paddle.nn, "MultiheadAttention"),
+        (paddle.nn, "PReLU"),
     ]
     # Compat-only symbols must not be added to the paddle namespace.
     COMPAT_ONLY = [
@@ -187,6 +188,7 @@ class TestTopLevelAlias(CompatNamespaceAliasBase):
             "BatchNorm3D": (2,),
             "SmoothL1Loss": (),
             "MultiheadAttention": (4, 1),
+            "PReLU": (),
             "Categorical": (paddle.to_tensor([0.5, 0.5]),),
         }
         native_classes = {
@@ -201,6 +203,7 @@ class TestTopLevelAlias(CompatNamespaceAliasBase):
             "BatchNorm3D": paddle.nn.BatchNorm3D,
             "SmoothL1Loss": paddle.nn.SmoothL1Loss,
             "MultiheadAttention": paddle.nn.MultiHeadAttention,
+            "PReLU": paddle.nn.PReLU,
             "Categorical": paddle.distributions.Categorical,
         }
         compat_modules = (paddle.compat.nn, paddle.compat.distributions)
@@ -228,6 +231,7 @@ class TestTopLevelAlias(CompatNamespaceAliasBase):
     @with_level2
     def test_submodule_symbols_aliased(self):
         self.assertAliased(paddle.nn.Linear, paddle.compat.nn.Linear)
+        self.assertAliased(paddle.nn.PReLU, paddle.compat.nn.PReLU)
         self.assertAliased(paddle.nn.Softmax, paddle.compat.nn.Softmax)
         self.assertAliased(paddle.nn.Unfold, paddle.compat.nn.Unfold)
         self.assertAliased(
@@ -246,6 +250,10 @@ class TestTopLevelAlias(CompatNamespaceAliasBase):
         self.assertEqual(
             inspect.signature(paddle.nn.Linear),
             inspect.signature(paddle.compat.nn.Linear),
+        )
+        self.assertEqual(
+            inspect.signature(paddle.nn.PReLU),
+            inspect.signature(paddle.compat.nn.PReLU),
         )
 
     def test_compat_only_symbols_are_not_added(self):
@@ -456,6 +464,21 @@ class TestScopeAndLifecycle(CompatNamespaceAliasBase):
             paddle.disable_compat()
         self.assertNativeRestored()
 
+    def test_disabled_guard_restores_level2_aliases(self):
+        t = paddle.to_tensor([[3.0, 1.0, 2.0]])
+        paddle.enable_compat(level=2)
+        try:
+            with paddle.use_compat_guard(enable=False):
+                self.assertNotIn(TORCH_PROXY_FINDER, sys.meta_path)
+                self.assertIs(paddle.sort, self._native[(paddle, "sort")])
+
+            self.assertIn(TORCH_PROXY_FINDER, sys.meta_path)
+            self.assertAliased(paddle.sort, paddle.compat.sort)
+            self.assertTrue(hasattr(paddle.sort(t, dim=-1), "values"))
+        finally:
+            paddle.disable_compat()
+        self.assertNativeRestored()
+
 
 class TestTorchSurfaceUnderCompat(CompatNamespaceAliasBase):
     """torch.* reaches the public compat implementations at both levels."""
@@ -632,6 +655,12 @@ class TestLevel2InternalCallersUseNative(CompatNamespaceAliasBase):
         # isinstance / issubclass accept both forms
         self.assertIsInstance(paddle.nn.Linear(2, 2), paddle.nn.Linear)
         self.assertTrue(issubclass(paddle.compat.nn.Linear, paddle.nn.Linear))
+
+    @with_level2
+    def test_prelu_positional_device_is_compat_only(self):
+        layer = paddle.nn.PReLU(2, 0.5, "cpu")
+        self.assertIs(type(layer), paddle.compat.nn.PReLU)
+        self.assertTrue(layer._weight.place.is_cpu_place())
 
     @with_level2
     def test_aliased_class_subclassing_is_torch_style(self):
