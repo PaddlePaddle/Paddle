@@ -2252,6 +2252,7 @@ def bmm(
     mat2: Tensor,
     name: str | None = None,
     *,
+    out_dtype: DTypeLike | None = None,
     out: Tensor | None = None,
 ) -> Tensor:
     """
@@ -2267,10 +2268,14 @@ def bmm(
         name (str|None, optional): Name for the operation. Default: None.
 
     Keyword Args:
+        out_dtype (paddle.dtype|None, optional): The desired output data type.
+            Currently only supports ``paddle.float32`` for CUDA bfloat16
+            inputs in dynamic graph. Default: None.
         out (Tensor|None, optional): The output Tensor. Default: None.
 
     Returns:
-        Tensor: The batched matrix multiplication result.
+        Tensor: The batched matrix multiplication result. Its data type is the
+        same as input unless ``out_dtype`` is specified.
 
     Examples:
         .. code-block:: pycon
@@ -2291,6 +2296,36 @@ def bmm(
              [[45., 45.],
               [60., 60.]]])
     """
+    if out_dtype is not None:
+        out_dtype = convert_nptype_to_datatype_or_vartype(out_dtype)
+        float32_dtypes = (core.DataType.FLOAT32, core.VarDesc.VarType.FP32)
+        bf16_dtypes = (core.DataType.BFLOAT16, core.VarDesc.VarType.BF16)
+        if out_dtype not in float32_dtypes:
+            raise TypeError(
+                "The out_dtype of paddle.bmm currently only supports paddle.float32."
+            )
+        if input.dtype not in bf16_dtypes:
+            raise TypeError(
+                "The out_dtype of paddle.bmm currently only supports bfloat16 input."
+            )
+        if mat2.dtype not in bf16_dtypes:
+            raise TypeError(
+                "The out_dtype of paddle.bmm currently only supports bfloat16 mat2."
+            )
+        if len(input.shape) != 3 or len(mat2.shape) != 3:
+            raise ValueError(
+                "The out_dtype of paddle.bmm currently only supports 3-D inputs."
+            )
+        if out is not None and out.dtype not in float32_dtypes:
+            raise TypeError(
+                "The out tensor dtype must be paddle.float32 when out_dtype is paddle.float32."
+            )
+        if not in_dynamic_mode():
+            raise NotImplementedError(
+                "The out_dtype of paddle.bmm currently only supports dynamic graph."
+            )
+        return _C_ops.bmm_out_dtype(input, mat2, out_dtype, out=out)
+
     if in_dynamic_mode():
         return _C_ops.bmm(input, mat2, out=out)
 
