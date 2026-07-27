@@ -3176,17 +3176,30 @@ class TestPReLUAPI(unittest.TestCase):
         )(input=x)
         # 4. Mixed arguments
         out4 = paddle.nn.PReLU(2, init=0.5, device="cpu", dtype="float32")(x)
+        # 5. PyTorch positional arguments
+        out5 = paddle.nn.PReLU(2, 0.5, "cpu", paddle.float32)(x)
+        # 6. PyTorch positional device without dtype
+        out6 = paddle.nn.PReLU(2, 0.5, "cpu")(x)
+        # 7. PyTorch positional dtype without device
+        out7 = paddle.nn.PReLU(2, 0.5, None, paddle.float32)(x)
 
         expected = self._expected(self.np_x)
-        for out in [out1, out2, out3, out4]:
+        for out in [out1, out2, out3, out4, out5, out6, out7]:
             np.testing.assert_allclose(out.numpy(), expected, rtol=1e-6)
 
         x64 = paddle.to_tensor(self.np_x64)
         layer64 = paddle.nn.PReLU(2, 0.5, device="cpu", dtype="float64")
-        out5 = layer64(input=x64)
+        out8 = layer64(input=x64)
         self.assertEqual(layer64._weight.dtype, paddle.float64)
         np.testing.assert_allclose(
-            out5.numpy(), self._expected(self.np_x64), rtol=1e-6
+            out8.numpy(), self._expected(self.np_x64), rtol=1e-6
+        )
+
+        layer64_positional = paddle.nn.PReLU(2, 0.5, None, paddle.float64)
+        out9 = layer64_positional(x64)
+        self.assertEqual(layer64_positional._weight.dtype, paddle.float64)
+        np.testing.assert_allclose(
+            out9.numpy(), self._expected(self.np_x64), rtol=1e-6
         )
 
         paddle.enable_static()
@@ -3212,13 +3225,15 @@ class TestPReLUAPI(unittest.TestCase):
             out4 = paddle.nn.PReLU(2, init=0.5, device="cpu", dtype="float32")(
                 x
             )
+            # 5. PyTorch positional arguments
+            out5 = paddle.nn.PReLU(2, 0.5, "cpu", paddle.float32)(x)
 
             exe = paddle.static.Executor()
             exe.run(startup)
             fetches = exe.run(
                 main,
                 feed={"x": self.np_x},
-                fetch_list=[out1, out2, out3, out4],
+                fetch_list=[out1, out2, out3, out4, out5],
             )
 
             expected = self._expected(self.np_x)

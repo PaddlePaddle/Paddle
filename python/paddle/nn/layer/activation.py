@@ -586,6 +586,17 @@ class PReLU(Layer):
         device: PlaceLike | None = None,
         dtype: DTypeLike | None = None,
     ) -> None:
+        is_torch_device = weight_attr is None or (
+            isinstance(weight_attr, str)
+            and weight_attr.split(':', 1)[0].lower()
+            in {'cpu', 'cuda', 'gpu', 'xpu', 'mps', 'meta'}
+        )
+        if is_torch_device:
+            if not isinstance(data_format, str):
+                device, dtype = weight_attr, data_format
+                weight_attr, data_format = None, "NCHW"
+            elif weight_attr is not None and data_format == "NCHW":
+                device, weight_attr = weight_attr, None
         super().__init__()
         self._num_parameters = num_parameters
         self._init = init

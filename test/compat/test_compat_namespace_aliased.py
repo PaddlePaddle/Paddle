@@ -60,6 +60,9 @@ class CompatNamespaceAliasBase(unittest.TestCase):
         (paddle, "allclose"),
         (paddle, "equal"),
         (paddle, "seed"),
+        (paddle.Tensor, "numel"),
+        (paddle.Tensor, "type"),
+        (paddle.Tensor, "is_sparse"),
         (paddle.nn, "AvgPool1d"),
         (paddle.nn, "AvgPool2d"),
         (paddle.nn, "AvgPool3d"),
@@ -152,6 +155,16 @@ class TestTopLevelAlias(CompatNamespaceAliasBase):
         paddle.enable_compat()  # default level=1
         try:
             self.assertIs(paddle.sort, self._native[(paddle, "sort")])
+            self.assertIs(
+                paddle.Tensor.numel, self._native[(paddle.Tensor, "numel")]
+            )
+            self.assertIs(
+                paddle.Tensor.type, self._native[(paddle.Tensor, "type")]
+            )
+            self.assertIs(
+                paddle.Tensor.is_sparse,
+                self._native[(paddle.Tensor, "is_sparse")],
+            )
             self.assertFalse(hasattr(paddle.sort, "__compat_fn__"))
             with self.assertRaises(TypeError):
                 paddle.sort(
@@ -539,6 +552,9 @@ class TestLevel2InternalCallersUseNative(CompatNamespaceAliasBase):
         for paddle-internal ``x.max(axis=1)``; restored on disable."""
         native_max = paddle.Tensor.max
         native_split = paddle.Tensor.split
+        native_numel = paddle.Tensor.numel
+        native_type = paddle.Tensor.type
+        native_is_sparse = paddle.Tensor.is_sparse
         t = paddle.to_tensor([[3.0, 1.0, 2.0], [6.0, 5.0, 4.0]])
         with level2_guard():
             r = t.max(dim=1)  # external -> compat namedtuple
@@ -551,15 +567,54 @@ class TestLevel2InternalCallersUseNative(CompatNamespaceAliasBase):
                 2,
             )
             self.assertEqual(len(paddle.split(t, split_size=1, dim=0)), 2)
+            self.assertEqual(t.numel(), 6)
+            self.assertIs(type(t.numel()), int)
+            self.assertIsInstance(paddle.numel(t), paddle.Tensor)
+            self.assertEqual(paddle.empty([0, 3]).numel(), 0)
+            self.assertEqual(t.type(), "torch.FloatTensor")
+            self.assertEqual(t.type(paddle.float64).dtype, paddle.float64)
+            self.assertEqual(t.type(paddle.DoubleTensor).dtype, paddle.float64)
+            self.assertEqual(t.type("torch.DoubleTensor").dtype, paddle.float64)
+            self.assertIs(t.type(paddle.float32), t)
+            self.assertIs(t.type("torch.FloatTensor"), t)
+            with self.assertRaises(ValueError):
+                t.type("float64")
+            self.assertEqual(
+                paddle.ones([1], dtype="int64").type(), "torch.LongTensor"
+            )
+            self.assertEqual(
+                paddle.ones([1], dtype="float8_e4m3fn").type(),
+                "torch.Float8_e4m3fnTensor",
+            )
+            self.assertEqual(
+                paddle.ones([1], dtype="float8_e5m2").type(),
+                "torch.Float8_e5m2Tensor",
+            )
+            self.assertIs(t.is_sparse, False)
+            coo = paddle.sparse.sparse_coo_tensor([[0], [1]], [1.0], [2, 2])
+            csr = paddle.sparse.sparse_csr_tensor([0, 1, 1], [0], [1.0], [2, 2])
+            self.assertIs(coo.is_sparse, True)
+            self.assertIs(csr.is_sparse, False)
             # paddle-internal native-style call (simulated) stays native
             ns = {"__name__": "paddle.fake_internal", "t": t}
             exec(
                 "internal_max = t.max(axis=1)\n"
-                "internal_split = t.split(num_or_sections=2, axis=0)",
+                "internal_split = t.split(num_or_sections=2, axis=0)\n"
+                "internal_numel = t.numel()\n"
+                "internal_type = t.type\n"
+                "internal_is_sparse = t.is_sparse()",
                 ns,
             )
+            self.assertIsInstance(ns["internal_numel"], paddle.Tensor)
+            self.assertEqual(
+                ns["internal_type"], native_type.__get__(t, paddle.Tensor)
+            )
+            self.assertIs(ns["internal_is_sparse"], False)
         self.assertIs(paddle.Tensor.max, native_max)  # restored on disable
         self.assertIs(paddle.Tensor.split, native_split)
+        self.assertIs(paddle.Tensor.numel, native_numel)
+        self.assertIs(paddle.Tensor.type, native_type)
+        self.assertIs(paddle.Tensor.is_sparse, native_is_sparse)
 
     @with_level2
     def test_aliased_class_caller_aware(self):

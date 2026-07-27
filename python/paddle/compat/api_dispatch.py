@@ -123,6 +123,37 @@ def dispatch_class(native_cls: type, compat_cls: type) -> type:
     return proxy
 
 
+class _TensorCompatDescriptor:
+    """Caller-aware adapter for Tensor method/property shape differences."""
+
+    def __init__(
+        self,
+        native_attr: Any,
+        compat_fn: Any,
+        as_property: bool,
+    ) -> None:
+        self.__native_fn__ = native_attr
+        self.__compat_fn__ = compat_fn
+        self._as_property = as_property
+        self.__doc__ = compat_fn.__doc__
+        self.__name__ = compat_fn.__name__
+        self.__signature__ = inspect.signature(compat_fn)
+
+    def __get__(self, instance: Any, owner: type | None = None) -> Any:
+        if instance is None:
+            if _caller_is_paddle_internal():
+                return self.__native_fn__
+            return self if self._as_property else self.__compat_fn__
+        if (
+            len(_PADDLE_NAMESPACE_SAVED) > 0
+            and not _caller_is_paddle_internal()
+        ):
+            if self._as_property:
+                return self.__compat_fn__(instance)
+            return self.__compat_fn__.__get__(instance, owner)
+        return self.__native_fn__.__get__(instance, owner)
+
+
 def _patch_tensor_methods() -> None:
     """Route ``paddle.Tensor.<m>`` to the compat function for the root compat APIs
     that torch also exposes as Tensor methods (max/min/sort/split/unique/...), so
@@ -144,6 +175,20 @@ def _patch_tensor_methods() -> None:
             paddle.Tensor,
             attr_name,
             dispatch_function(compat_fn)(native_method),
+        )
+
+    for attr_name, (
+        compat_fn,
+        as_property,
+    ) in compat_root._TENSOR_API_OVERRIDES.items():
+        native_attr = inspect.getattr_static(paddle.Tensor, attr_name, None)
+        if native_attr is None:
+            continue
+        _PADDLE_NAMESPACE_SAVED[(paddle.Tensor, attr_name)] = native_attr
+        setattr(
+            paddle.Tensor,
+            attr_name,
+            _TensorCompatDescriptor(native_attr, compat_fn, as_property),
         )
 
 

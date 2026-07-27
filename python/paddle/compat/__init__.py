@@ -40,6 +40,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from paddle import Tensor
+    from paddle._typing import DTypeLike
 
 __all__ = [
     'allclose',
@@ -55,6 +56,26 @@ __all__ = [
     'seed',
 ]
 
+_TENSOR_TYPE_NAMES = {
+    'float16': 'HalfTensor',
+    'float32': 'FloatTensor',
+    'float64': 'DoubleTensor',
+    'float8_e4m3fn': 'Float8_e4m3fnTensor',
+    'float8_e5m2': 'Float8_e5m2Tensor',
+    'bfloat16': 'BFloat16Tensor',
+    'uint8': 'ByteTensor',
+    'int8': 'CharTensor',
+    'int16': 'ShortTensor',
+    'int32': 'IntTensor',
+    'int64': 'LongTensor',
+    'bool': 'BoolTensor',
+    'complex64': 'ComplexFloatTensor',
+    'complex128': 'ComplexDoubleTensor',
+}
+_TENSOR_TYPE_DTYPES = {
+    tensor_type: dtype for dtype, tensor_type in _TENSOR_TYPE_NAMES.items()
+}
+
 
 def __getattr__(name):
     if name == "paddle_triton":
@@ -64,6 +85,76 @@ def __getattr__(name):
         globals()[name] = module
         return module
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def _tensor_numel(input: Tensor) -> int:
+    return int(input.size)
+
+
+def _tensor_type(
+    input: Tensor,
+    dtype: DTypeLike | str | type | None = None,
+    non_blocking: bool = False,
+    **kwargs: Any,
+) -> str | Tensor:
+    if "async" in kwargs:
+        non_blocking = kwargs.pop("async")
+    if kwargs:
+        key = next(iter(kwargs))
+        raise TypeError(f"type() got an unexpected keyword argument {key!r}")
+
+    if dtype is None:
+        dtype_name = str(input.dtype).removeprefix("paddle.")
+        tensor_type = _TENSOR_TYPE_NAMES[dtype_name]
+        prefix = "torch.cuda" if input.place.is_gpu_place() else "torch"
+        if input.is_sparse_coo():
+            prefix += ".sparse"
+        return f"{prefix}.{tensor_type}"
+
+    device = None
+    if isinstance(dtype, type):
+        tensor_type = dtype.__name__
+        if tensor_type not in _TENSOR_TYPE_DTYPES:
+            raise ValueError(f"invalid type: {tensor_type!r}")
+        dtype = _TENSOR_TYPE_DTYPES[tensor_type]
+        device = "cpu"
+    elif isinstance(dtype, str):
+        dtype_string = dtype
+        tensor_type = dtype_string.rsplit(".", 1)[-1]
+        if (
+            not dtype_string.startswith("torch.")
+            or tensor_type not in _TENSOR_TYPE_DTYPES
+        ):
+            raise ValueError(f"invalid type: {dtype_string!r}")
+        dtype = _TENSOR_TYPE_DTYPES[tensor_type]
+        device = "gpu" if dtype_string.startswith("torch.cuda.") else "cpu"
+
+    dtype_name = str(input.dtype).removeprefix("paddle.")
+    target_dtype_name = str(dtype).removeprefix("paddle.")
+    same_device = (
+        device is None
+        or (device == "cpu" and input.place.is_cpu_place())
+        or (device == "gpu" and input.place.is_gpu_place())
+    )
+    if dtype_name == target_dtype_name and same_device:
+        return input
+
+    return input.to(
+        device=device,
+        dtype=dtype,
+        blocking=not non_blocking,
+    )
+
+
+def _tensor_is_sparse(input: Tensor) -> bool:
+    return input.is_sparse_coo()
+
+
+_TENSOR_API_OVERRIDES = {
+    'numel': (_tensor_numel, False),
+    'type': (_tensor_type, False),
+    'is_sparse': (_tensor_is_sparse, True),
+}
 
 
 def allclose(
