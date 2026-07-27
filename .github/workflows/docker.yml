@@ -108,7 +108,7 @@ jobs:
           fi
           for name in "${!docker_files[@]}"
           do
-            if grep -q "tools/dockerfile/build_scripts" tools/dockerfile/${docker_files[$name]}; then
+            if grep -q "tools/dockerfile/build_scripts" tools/dockerfile/${docker_files[$name]} && [ -d tools/dockerfile/build_scripts ]; then
               md5_value=`(md5sum tools/dockerfile/${docker_files[$name]}; find tools/dockerfile/build_scripts -type f -print | sort | xargs md5sum) | md5sum | awk '{print $1}'`
             else
               md5_value=`md5sum tools/dockerfile/${docker_files[$name]} | awk '{print $1}'`
