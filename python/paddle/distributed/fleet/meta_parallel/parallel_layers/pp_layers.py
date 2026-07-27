@@ -730,12 +730,57 @@ class PipelineLayer(nn.Layer):
                             )
                             hcg = fleet.get_hybrid_communicate_group()
                             # shared_weight_name is set by the user, must be unique globally
-                            shared_param.color = {
-                                "color": f"{SHARED_WEIGHT_SYNC_PREFIX}_{comm_key}",
-                                "group": hcg.get_sharding_parallel_group(),
-                                "shared_weight_name": weight_attr,
-                                "broadcast_group": group,
-                            }
+                            if isinstance(shared_param, paddle.Tensor):
+                                # Single Tensor shared attr (e.g. embedding/lm_head weight):
+                                # keep the original behavior.
+                                shared_param.color = {
+                                    "color": f"{SHARED_WEIGHT_SYNC_PREFIX}_{comm_key}",
+                                    "group": hcg.get_sharding_parallel_group(),
+                                    "shared_weight_name": weight_attr,
+                                    "broadcast_group": group,
+                                }
+                            else:
+                                # named_parameters() generator: (name, param) pairs,
+                                # e.g. transformer_layer_weights for mtp_shared_last_layer,
+                                # which may mix dense params and MoE expert params.
+                                for _, param in list(shared_param):
+                                    if getattr(param, 'is_moe_param', False):
+                                        # MoE expert shared parameter: it must already carry a
+                                        # color dict whose 'group' (moe_grad_group) is assigned
+                                        # by the MoE expert-parallel setup and MUST be preserved.
+                                        # Nothing in the shared-weight-sync path can safely infer
+                                        # this group, so require it up front and raise a clear
+                                        # configuration error when it is missing instead of
+                                        # failing later with an opaque KeyError/AttributeError.
+                                        moe_color = getattr(
+                                            param, "color", None
+                                        )
+                                        if (
+                                            not isinstance(moe_color, dict)
+                                            or "group" not in moe_color
+                                        ):
+                                            raise ValueError(
+                                                f"MoE shared parameter {param.name} must provide a "
+                                                f"color dict containing its MoE communication 'group' "
+                                                f"(moe_grad_group) before shared-weight sync, but got "
+                                                f"{moe_color!r}. Ensure the MoE expert-parallel setup "
+                                                f"assigns param.color with a valid 'group' first."
+                                            )
+                                        moe_color["color"] = (
+                                            f"{SHARED_WEIGHT_SYNC_PREFIX}_share_moe_experts_{comm_key}"
+                                        )
+                                        moe_color["shared_weight_name"] = (
+                                            weight_attr
+                                        )
+                                        moe_color["broadcast_group"] = group
+                                    else:
+                                        # Dense param inside the shared layer: no pre-existing
+                                        param.color = {
+                                            "color": f"{SHARED_WEIGHT_SYNC_PREFIX}_share_dense_{comm_key}",
+                                            "group": hcg.get_sharding_parallel_group(),
+                                            "shared_weight_name": weight_attr,
+                                            "broadcast_group": group,
+                                        }
         return shared_comm
 
     def _synchronize_shared_weights(self):
