@@ -200,6 +200,7 @@ TEST(dense_tensor, zero_size_strides) {
   const auto zero_size_strides = DenseTensorMeta::calc_strides(zero_size_dims);
   const auto expected_zero_size_strides = common::make_ddim({2048, 1});
   EXPECT_EQ(zero_size_strides, expected_zero_size_strides);
+  EXPECT_EQ(common::stride(zero_size_dims), expected_zero_size_strides);
 
   DenseTensorMeta zero_size_meta(DataType::FLOAT32, zero_size_dims);
   EXPECT_EQ(zero_size_meta.strides, expected_zero_size_strides);
@@ -208,6 +209,29 @@ TEST(dense_tensor, zero_size_strides) {
   const auto reshaped_zero_size_dims = common::make_ddim({0, 512, 4});
   EXPECT_EQ(DenseTensorMeta::calc_strides(reshaped_zero_size_dims),
             common::make_ddim({2048, 4, 1}));
+  EXPECT_EQ(common::stride(reshaped_zero_size_dims),
+            common::make_ddim({2048, 4, 1}));
+
+  const auto zero_size_last_dim = common::make_ddim({1024, 0});
+  const auto expected_zero_size_last_dim_strides = common::make_ddim({1, 1});
+  EXPECT_EQ(DenseTensorMeta::calc_strides(zero_size_last_dim),
+            expected_zero_size_last_dim_strides);
+  EXPECT_EQ(common::stride(zero_size_last_dim),
+            expected_zero_size_last_dim_strides);
+
+  DenseTensorMeta zero_size_last_dim_meta(DataType::FLOAT32,
+                                          zero_size_last_dim);
+  EXPECT_EQ(zero_size_last_dim_meta.strides,
+            expected_zero_size_last_dim_strides);
+  EXPECT_TRUE(zero_size_last_dim_meta.is_contiguous());
+
+  const auto zero_size_middle_dim = common::make_ddim({2, 0, 4});
+  const auto expected_zero_size_middle_dim_strides =
+      common::make_ddim({4, 4, 1});
+  EXPECT_EQ(DenseTensorMeta::calc_strides(zero_size_middle_dim),
+            expected_zero_size_middle_dim_strides);
+  EXPECT_EQ(common::stride(zero_size_middle_dim),
+            expected_zero_size_middle_dim_strides);
 
   const auto unknown_dims = common::make_ddim({-1, 2048});
   EXPECT_EQ(DenseTensorMeta::calc_strides(unknown_dims), unknown_dims);
