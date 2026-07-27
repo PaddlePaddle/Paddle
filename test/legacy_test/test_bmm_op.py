@@ -148,6 +148,15 @@ class API_TestDygraphBmm(unittest.TestCase):
         expected_result = np.matmul(input1, input2)
         np.testing.assert_allclose(expected_result, out_np, rtol=1e-05)
 
+    def test_legacy_linalg_entry(self):
+        x = paddle.randn([2, 3, 4])
+        y = paddle.randn([2, 4, 5])
+        out = paddle.tensor.linalg.bmm(x, y)
+        expected = paddle.bmm(x, y)
+
+        self.assertIs(paddle.tensor.linalg.bmm, paddle.bmm)
+        np.testing.assert_allclose(out.numpy(), expected.numpy(), rtol=1e-05)
+
 
 class TestBmmAPIError(unittest.TestCase):
     def test_api_error(self):
