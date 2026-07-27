@@ -633,8 +633,43 @@ uint64_t StreamSafeCUDAAllocator::ReleaseImpl(const Place& place) {
   std::lock_guard<SpinLock> lock_guard(allocator_map_lock_);
   std::vector<StreamSafeCUDAAllocator*>& allocators = allocator_map_[place];
   uint64_t released_size = 0;
-  for (StreamSafeCUDAAllocator* allocator : allocators) {
-    released_size += allocator->ProcessUnfreedAllocationsAndRelease();
+  const bool log_release_stats = VLOG_IS_ON(3);
+  const auto release_start = std::chrono::steady_clock::now();
+  for (size_t i = 0; i < allocators.size(); ++i) {
+    StreamSafeCUDAAllocator* allocator = allocators[i];
+    PendingAllocationStats pending_before;
+    if (log_release_stats) {
+      pending_before = allocator->GetPendingAllocationStats();
+    }
+    const auto stream_start = std::chrono::steady_clock::now();
+    const uint64_t stream_released =
+        allocator->ProcessUnfreedAllocationsAndRelease();
+    released_size += stream_released;
+    if (log_release_stats) {
+      const auto pending_after = allocator->GetPendingAllocationStats();
+      const auto stream_us =
+          std::chrono::duration_cast<std::chrono::microseconds>(
+              std::chrono::steady_clock::now() - stream_start)
+              .count();
+      VLOG(3) << "Allocator stream cache release: device=" << place_.device
+              << " stream_index=" << i
+              << " stream=" << allocator->default_stream_
+              << " pending_before=" << pending_before.count
+              << " pending_bytes_before=" << pending_before.bytes
+              << " pending_after=" << pending_after.count
+              << " pending_bytes_after=" << pending_after.bytes
+              << " released_bytes=" << stream_released
+              << " elapsed_us=" << stream_us;
+    }
+  }
+  if (log_release_stats) {
+    const auto total_us = std::chrono::duration_cast<std::chrono::microseconds>(
+                              std::chrono::steady_clock::now() - release_start)
+                              .count();
+    VLOG(3) << "Allocator cache release complete: device=" << place_.device
+            << " streams=" << allocators.size()
+            << " released_bytes=" << released_size
+            << " elapsed_us=" << total_us;
   }
   VLOG(8) << "Release " << released_size << " bytes memory from all streams";
   return released_size;
@@ -679,6 +714,17 @@ void StreamSafeCUDAAllocator::ProcessUnfreedAllocations() {
 uint64_t StreamSafeCUDAAllocator::ProcessUnfreedAllocationsAndRelease() {
   ProcessUnfreedAllocations();
   return underlying_allocator_->Release(place_);
+}
+
+StreamSafeCUDAAllocator::PendingAllocationStats
+StreamSafeCUDAAllocator::GetPendingAllocationStats() {
+  std::lock_guard<SpinLock> lock_guard(unfreed_allocation_lock_);
+  PendingAllocationStats stats;
+  stats.count = unfreed_allocations_.size();
+  for (const auto* allocation : unfreed_allocations_) {
+    stats.bytes += allocation->size();
+  }
+  return stats;
 }
 
 thread_local std::once_flag StreamSafeCUDAAllocation::once_flag_;

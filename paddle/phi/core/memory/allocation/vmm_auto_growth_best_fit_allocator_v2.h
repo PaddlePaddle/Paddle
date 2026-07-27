@@ -118,6 +118,22 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
  private:
   struct CompactState;
   struct CompactContext;
+  struct ReleaseStats {
+    size_t backing_count{0};
+    size_t backing_bytes{0};
+    size_t releasable_backing_count{0};
+    size_t releasable_backing_bytes{0};
+    size_t release_blocked_backing_count{0};
+    size_t release_blocked_backing_bytes{0};
+    size_t mixed_backing_count{0};
+    size_t mixed_backing_bytes{0};
+    size_t active_bytes{0};
+    size_t mapped_free_bytes{0};
+    size_t stranded_mapped_free_bytes{0};
+    size_t unmapped_free_bytes{0};
+    size_t active_blocks_crossing_backings{0};
+    size_t active_bytes_crossing_backings{0};
+  };
 
   struct UnderlyingAllocationRegistry {
     using List = std::list<DecoratedAllocationPtr>;
@@ -179,6 +195,10 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
   void TryMerge(BlockListIt it);
   void TryMergeUnmappedFree(BlockListIt it);
   uint64_t FreeIdleChunks();
+  ReleaseStats CollectReleaseStats() const;
+  void LogReleaseStats(const ReleaseStats& before,
+                       const ReleaseStats& after,
+                       uint64_t released_bytes) const;
   void TrimTrailingUnmappedFreeBlocks();
   size_t ComputeTailOffset() const;
   bool IsRangeEntirelyFree(uint8_t* base, size_t size) const;

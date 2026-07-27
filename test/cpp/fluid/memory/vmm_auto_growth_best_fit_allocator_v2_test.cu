@@ -616,6 +616,40 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, ReleaseWithNoIdleChunkReturnsZero) {
   EXPECT_TRUE(allocator.all_blocks().front().IsActive());
 }
 
+TEST(VMMAutoGrowthBestFitAllocatorV2,
+     ReleaseStatsIdentifyCrossBackingActiveBlock) {
+  ScopedVLogLevel vlog_guard(3);
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+  const size_t half_handle = underlying->handle_size() / 2;
+
+  auto first = allocator.Allocate(half_handle);
+  auto crossing = allocator.Allocate(underlying->handle_size());
+  ASSERT_NE(first, nullptr);
+  ASSERT_NE(crossing, nullptr);
+
+  auto stats = allocator.CollectReleaseStats();
+  EXPECT_EQ(stats.backing_count, 2UL);
+  EXPECT_EQ(stats.backing_bytes, underlying->handle_size() * 2);
+  EXPECT_EQ(stats.releasable_backing_count, 0UL);
+  EXPECT_EQ(stats.mixed_backing_count, 1UL);
+  EXPECT_EQ(stats.active_bytes, half_handle + underlying->handle_size());
+  EXPECT_EQ(stats.mapped_free_bytes, half_handle);
+  EXPECT_EQ(stats.stranded_mapped_free_bytes, half_handle);
+  EXPECT_EQ(stats.active_blocks_crossing_backings, 1UL);
+  EXPECT_EQ(stats.active_bytes_crossing_backings, underlying->handle_size());
+  EXPECT_EQ(allocator.Release(phi::GPUPlace()), 0UL);
+
+  first.reset();
+  crossing.reset();
+  stats = allocator.CollectReleaseStats();
+  EXPECT_EQ(stats.releasable_backing_count, 2UL);
+  EXPECT_EQ(stats.releasable_backing_bytes, underlying->handle_size() * 2);
+  EXPECT_EQ(stats.stranded_mapped_free_bytes, 0UL);
+  EXPECT_EQ(allocator.Release(phi::GPUPlace()), underlying->handle_size() * 2);
+}
+
 TEST(VMMAutoGrowthBestFitAllocatorV2, ReuseUnmappedFreeBlock) {
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(

@@ -16,11 +16,13 @@
 
 #include <cstdlib>
 
+#include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/phi/core/memory/allocation/aligned_allocator.h"
 
 PD_DECLARE_bool(free_idle_chunk);
 PD_DECLARE_bool(free_when_no_cache_hit);
+COMMON_DECLARE_uint64(small_pool_size_in_mb);
 
 namespace paddle {
 namespace memory {
@@ -44,6 +46,41 @@ class RecordedAllocator : public Allocator {
 
  private:
   size_t allocated_size_{0};
+};
+
+class InspectableAutoGrowthBestFitAllocator
+    : public AutoGrowthBestFitAllocator {
+ public:
+  using AutoGrowthBestFitAllocator::AutoGrowthBestFitAllocator;
+  using AutoGrowthBestFitAllocator::CollectReleaseStats;
+  using AutoGrowthBestFitAllocator::ReleaseStats;
+};
+
+class ScopedReleaseStatsFlags {
+ public:
+  ScopedReleaseStatsFlags()
+      : free_idle_chunk_(FLAGS_free_idle_chunk),
+        free_when_no_cache_hit_(FLAGS_free_when_no_cache_hit),
+        small_pool_size_(FLAGS_small_pool_size_in_mb),
+        vlog_level_(FLAGS_v) {
+    FLAGS_free_idle_chunk = false;
+    FLAGS_free_when_no_cache_hit = false;
+    FLAGS_small_pool_size_in_mb = 0;
+    FLAGS_v = 3;
+  }
+
+  ~ScopedReleaseStatsFlags() {
+    FLAGS_v = vlog_level_;
+    FLAGS_small_pool_size_in_mb = small_pool_size_;
+    FLAGS_free_when_no_cache_hit = free_when_no_cache_hit_;
+    FLAGS_free_idle_chunk = free_idle_chunk_;
+  }
+
+ private:
+  bool free_idle_chunk_;
+  bool free_when_no_cache_hit_;
+  uint64_t small_pool_size_;
+  int vlog_level_;
 };
 
 static void TestFreeIdleChunk(bool free_idle_chunk,
@@ -169,6 +206,34 @@ TEST(test_auto_growth_allocator, test_free_idle_chunk) {
 TEST(test_auto_growth_allocator, test_free_when_no_cache_hit) {
   TestFreeWhenNoCacheHit(false);
   TestFreeWhenNoCacheHit(true);
+}
+
+TEST(test_auto_growth_allocator, release_stats_identify_mixed_chunk) {
+  ScopedReleaseStatsFlags flags;
+
+  auto recorded_allocator = std::make_shared<RecordedAllocator>();
+  InspectableAutoGrowthBestFitAllocator allocator(recorded_allocator,
+                                                  /*alignment=*/256,
+                                                  /*chunk_size=*/1024);
+  auto active = allocator.Allocate(512);
+
+  auto stats = allocator.CollectReleaseStats(/*is_small=*/false);
+  EXPECT_EQ(stats.backing_count, 1UL);
+  EXPECT_EQ(stats.backing_bytes, 1024UL);
+  EXPECT_EQ(stats.releasable_backing_count, 0UL);
+  EXPECT_EQ(stats.mixed_backing_count, 1UL);
+  EXPECT_EQ(stats.active_bytes, 512UL);
+  EXPECT_EQ(stats.free_bytes, 512UL);
+  EXPECT_EQ(stats.stranded_free_bytes, 512UL);
+  EXPECT_EQ(allocator.Release(phi::CPUPlace()), 0UL);
+
+  active.reset();
+  stats = allocator.CollectReleaseStats(/*is_small=*/false);
+  EXPECT_EQ(stats.releasable_backing_count, 1UL);
+  EXPECT_EQ(stats.releasable_backing_bytes, 1024UL);
+  EXPECT_EQ(stats.stranded_free_bytes, 0UL);
+  EXPECT_EQ(allocator.Release(phi::CPUPlace()), 1024UL);
+  EXPECT_EQ(recorded_allocator->AllocatedSize(), 0UL);
 }
 
 }  // namespace allocation
