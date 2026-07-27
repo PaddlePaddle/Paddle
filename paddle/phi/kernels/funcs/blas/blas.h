@@ -268,10 +268,7 @@ class Blas {
   }
 
   template <typename T>
-  void AXPY(int n, T alpha, const T* x, T* y) const;
-
-  template <typename T>
-  void VADD(int n, const T* x, const T* y, T* z) const;
+  void AXPY(int64_t n, T alpha, const T* x, T* y) const;
 
   template <typename T>
   void GEMV(bool trans_a,
@@ -284,11 +281,20 @@ class Blas {
             T* C) const;
 
   template <typename T>
-  T DOT(int n, const T* x, const T* y) const;
+  T DOT(int64_t n, const T* x, int64_t incx, const T* y, int64_t incy) const;
 
   template <typename T>
-  void CUDOT(
-      int n, const T* x, int incx, const T* y, int incy, T* result) const;
+  T DOT(int64_t n, const T* x, const T* y) const {
+    return this->template DOT<T>(n, x, 1, y, 1);
+  }
+
+  template <typename T>
+  void CUDOT(int64_t n,
+             const T* x,
+             int64_t incx,
+             const T* y,
+             int64_t incy,
+             T* result) const;
 
   template <typename T>
   void BatchedGEMM(CBLAS_TRANSPOSE transA,
@@ -398,42 +404,43 @@ class Blas {
             CBLAS_UPLO uplo,
             CBLAS_TRANSPOSE transA,
             CBLAS_DIAG diag,
-            int M,
-            int N,
+            int64_t M,
+            int64_t N,
             T alpha,
             const T* A,
-            int lda,
+            int64_t lda,
             T* B,
-            int ldb) const;
+            int64_t ldb) const;
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   template <typename T>
-  void BatchedGETRF(int n, T** a, int* ipiv, int* info, int batch_size) const;
+  void BatchedGETRF(
+      int64_t n, T** a, int* ipiv, int* info, int64_t batch_size) const;
 
   template <typename T>
-  void BatchedGETRI(int n,
+  void BatchedGETRI(int64_t n,
                     const T** a,
                     const int* ipiv,
                     T** a_inv,
                     int* info,
-                    int batch_size) const;
+                    int64_t batch_size) const;
 
   template <typename T>
   void BatchedMatInv(
-      int n, const T** a, T** a_inv, int* info, int batch_size) const;
+      int64_t n, const T** a, T** a_inv, int* info, int64_t batch_size) const;
 
   // cuBlas solve
   template <typename T>
   void BatchedGETRS(CBLAS_TRANSPOSE trans,
-                    int n,
-                    int nrhs,
+                    int64_t n,
+                    int64_t nrhs,
                     const T** a,
-                    int lda,
+                    int64_t lda,
                     int* ipiv,
                     T** b,
-                    int ldb,
+                    int64_t ldb,
                     int* info,
-                    int batch_size) const;
+                    int64_t batch_size) const;
 
   // cuBlas triangular_solve
   template <typename T>
@@ -441,14 +448,14 @@ class Blas {
                    CBLAS_UPLO uplo,
                    CBLAS_TRANSPOSE transA,
                    CBLAS_DIAG diag,
-                   int M,
-                   int N,
+                   int64_t M,
+                   int64_t N,
                    T alpha,
                    const T** a,
-                   int lda,
+                   int64_t lda,
                    T** b,
-                   int ldb,
-                   int batch_size) const;
+                   int64_t ldb,
+                   int64_t batch_size) const;
 #endif
 
  private:
@@ -510,11 +517,6 @@ class BlasT : private Blas<DeviceContext> {
   template <typename... ARGS>
   void AXPY(ARGS... args) const {
     Base()->template AXPY<T>(args...);
-  }
-
-  template <typename... ARGS>
-  void VADD(ARGS... args) const {
-    Base()->template VADD<T>(args...);
   }
 
   template <typename... ARGS>

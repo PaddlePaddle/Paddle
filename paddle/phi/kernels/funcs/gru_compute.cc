@@ -207,8 +207,9 @@ struct GRUUnitFunctorV2<CPUContext, T> {
     T *cell_state_value = value.gate_value + 2 * frame_size;
     T *reset_output_value = value.reset_output_value;
     for (int b = 0; b < batch_size; ++b) {
-      blas.VADD(
-          frame_size, cell_state_value, reset_output_value, cell_state_value);
+      for (int i = 0; i < frame_size; ++i) {
+        cell_state_value[i] += reset_output_value[i];
+      }
       cell_state_value += frame_size * 3;
       reset_output_value += frame_size;
     }
@@ -339,9 +340,12 @@ struct GRUUnitGradFunctorV2<CPUContext, T> {
     T *state_bias_grad = grad.bias_hh_grad + 2 * frame_size;
     T *reset_output_grad = grad.reset_output_grad;
     for (int b = 0; b < batch_size; ++b) {
-      blas.VADD(2 * frame_size, bias_hh_grad, gate_grad, bias_hh_grad);
-      blas.VADD(
-          frame_size, state_bias_grad, reset_output_grad, state_bias_grad);
+      for (int i = 0; i < 2 * frame_size; ++i) {
+        bias_hh_grad[i] += gate_grad[i];
+      }
+      for (int i = 0; i < frame_size; ++i) {
+        state_bias_grad[i] += reset_output_grad[i];
+      }
       gate_grad += 3 * frame_size;
       reset_output_grad += frame_size;
     }
