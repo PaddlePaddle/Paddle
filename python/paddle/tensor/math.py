@@ -2282,14 +2282,8 @@ def bmm(
         .. code-block:: pycon
 
             >>> import paddle
-            >>> input = paddle.to_tensor(
-            ...     [[[1.0, 1.0, 1.0], [2.0, 2.0, 2.0]],
-            ...      [[3.0, 3.0, 3.0], [4.0, 4.0, 4.0]]]
-            ... )
-            >>> mat2 = paddle.to_tensor(
-            ...     [[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]],
-            ...      [[4.0, 4.0], [5.0, 5.0], [6.0, 6.0]]]
-            ... )
+            >>> input = paddle.to_tensor([[[1.0, 1.0, 1.0], [2.0, 2.0, 2.0]], [[3.0, 3.0, 3.0], [4.0, 4.0, 4.0]]])
+            >>> mat2 = paddle.to_tensor([[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]], [[4.0, 4.0], [5.0, 5.0], [6.0, 6.0]]])
             >>> paddle.bmm(input, mat2)
             Tensor(shape=[2, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[ 6.,  6.],
