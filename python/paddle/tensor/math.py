@@ -2292,7 +2292,7 @@ def bmm(
               [60., 60.]]])
     """
     if out_dtype is not None:
-        out_dtype = convert_nptype_to_datatype_or_vartype(out_dtype)
+        out_dtype = convert_np_dtype_to_dtype_(out_dtype)
         float32_dtypes = (core.DataType.FLOAT32, core.VarDesc.VarType.FP32)
         supported_input_dtypes = (
             core.DataType.FLOAT16,
