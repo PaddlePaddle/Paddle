@@ -433,6 +433,22 @@ class TestBaddBmmOp4(OpTest):
 
 
 class TestBaddBmmAPI(unittest.TestCase):
+    def test_dtype_mismatch(self):
+        paddle.disable_static()
+        try:
+            input = paddle.ones([2, 2, 2], dtype=paddle.float32)
+            x = paddle.ones([2, 2, 2], dtype=paddle.float64)
+            y = paddle.ones([2, 2, 2], dtype=paddle.float32)
+            with self.assertRaises(ValueError):
+                paddle.baddbmm(input, x, y)
+
+            x = paddle.ones([2, 2, 2], dtype=paddle.float32)
+            y = paddle.ones([2, 2, 2], dtype=paddle.float64)
+            with self.assertRaises(ValueError):
+                paddle.baddbmm(input, x, y)
+        finally:
+            paddle.enable_static()
+
     def test_api_error(self):
         data_x = np.ones((2, 2, 2)).astype(np.float32)
         data_y = np.ones((2, 2, 2)).astype(np.float32)
