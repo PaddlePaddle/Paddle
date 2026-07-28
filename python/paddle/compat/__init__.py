@@ -112,7 +112,7 @@ def _tensor_type(
         return f"{prefix}.{tensor_type}"
 
     device = None
-    if isinstance(dtype, type) and dtype.__name__ in _TENSOR_TYPE_NAMES:
+    if isinstance(dtype, type) and dtype.__name__ in _TENSOR_TYPE_DTYPES:
         tensor_type = dtype.__name__
         dtype = _TENSOR_TYPE_DTYPES[tensor_type]
         device = "cpu"
