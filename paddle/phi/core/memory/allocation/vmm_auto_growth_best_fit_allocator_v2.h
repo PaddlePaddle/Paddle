@@ -166,6 +166,7 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
     iterator end() { return allocations_.end(); }
     List::const_iterator begin() const { return allocations_.begin(); }
     List::const_iterator end() const { return allocations_.end(); }
+    iterator FindByAddress(VMMDevicePtr ptr);
     iterator Erase(iterator it);
     UnderlyingRanges CollectRangesByAddress() const;
 
@@ -196,7 +197,8 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
   bool TryReleaseUnderlyingAllocation(
       UnderlyingAllocationRegistry::iterator* alloc_it,
       uint64_t* released,
-      bool range_verified_free = false);
+      bool range_verified_free = false,
+      BlockListIt* block_search_begin = nullptr);
   bool CanIndexFreeBlock(const BlockV2& block) const;
   void InsertFreeBlock(BlockListIt it);
   void EraseFreeBlock(BlockListIt it);
@@ -208,7 +210,7 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
                       const CompactContext& context,
                       const char* reason) const;
   void TryMerge(BlockListIt it);
-  void TryMergeUnmappedFree(BlockListIt it);
+  BlockListIt TryMergeUnmappedFree(BlockListIt it);
   uint64_t FreeIdleChunks(const UnderlyingRanges& entirely_free_ranges);
   UnderlyingRanges CollectEntirelyFreeUnderlyingRanges() const;
   ReleaseStats CollectReleaseStats() const;
@@ -222,6 +224,9 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
   size_t ComputeTailOffset() const;
   bool IsRangeEntirelyFree(uint8_t* base, size_t size) const;
   void ReplaceRangeWithUnmappedFree(uint8_t* base, size_t size);
+  BlockListIt ReplaceRangeWithUnmappedFree(uint8_t* base,
+                                           size_t size,
+                                           BlockListIt search_begin);
 
   // Best-fit V2 only grows from the fixed-handle CUDA VMM provider. The
   // bottom allocator returns mapped-free BlockV2 views, while best-fit owns

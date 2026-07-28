@@ -282,6 +282,14 @@ bool VMMAutoGrowthBestFitAllocatorV2::UnderlyingAllocationRegistry::
 }
 
 VMMAutoGrowthBestFitAllocatorV2::UnderlyingAllocationRegistry::iterator
+VMMAutoGrowthBestFitAllocatorV2::UnderlyingAllocationRegistry::FindByAddress(
+    VMMDevicePtr ptr) {
+  auto index_it = allocations_by_ptr_.find(reinterpret_cast<uint8_t*>(ptr));
+  return index_it == allocations_by_ptr_.end() ? allocations_.end()
+                                               : index_it->second;
+}
+
+VMMAutoGrowthBestFitAllocatorV2::UnderlyingAllocationRegistry::iterator
 VMMAutoGrowthBestFitAllocatorV2::UnderlyingAllocationRegistry::Erase(
     iterator it) {
   allocations_by_ptr_.erase(Begin(*it));
@@ -1069,7 +1077,8 @@ bool VMMAutoGrowthBestFitAllocatorV2::HasReleasableUnderlyingAllocation(
 bool VMMAutoGrowthBestFitAllocatorV2::TryReleaseUnderlyingAllocation(
     UnderlyingAllocationRegistry::iterator* alloc_it,
     uint64_t* released,
-    bool range_verified_free) {
+    bool range_verified_free,
+    BlockListIt* block_search_begin) {
   auto* allocation = (**alloc_it).get();
   auto* base = reinterpret_cast<uint8_t*>(allocation->ptr());
   const size_t alloc_size = allocation->size();
@@ -1086,7 +1095,12 @@ bool VMMAutoGrowthBestFitAllocatorV2::TryReleaseUnderlyingAllocation(
     underlying_allocator_->ClearRemapDestinationOwnershipInRange(
         reinterpret_cast<VMMDevicePtr>(base), alloc_size);
   }
-  ReplaceRangeWithUnmappedFree(base, alloc_size);
+  if (block_search_begin == nullptr) {
+    ReplaceRangeWithUnmappedFree(base, alloc_size);
+  } else {
+    *block_search_begin =
+        ReplaceRangeWithUnmappedFree(base, alloc_size, *block_search_begin);
+  }
   *released += alloc_size;
   *alloc_it = underlying_allocations_.Erase(*alloc_it);
   return true;
@@ -1163,9 +1177,10 @@ void VMMAutoGrowthBestFitAllocatorV2::TryMerge(BlockListIt it) {
   }
 }
 
-void VMMAutoGrowthBestFitAllocatorV2::TryMergeUnmappedFree(BlockListIt it) {
+BlockListIt VMMAutoGrowthBestFitAllocatorV2::TryMergeUnmappedFree(
+    BlockListIt it) {
   if (it == all_blocks_.end() || !it->IsUnmappedFree()) {
-    return;
+    return all_blocks_.end();
   }
 
   if (it != all_blocks_.begin()) {
@@ -1189,6 +1204,7 @@ void VMMAutoGrowthBestFitAllocatorV2::TryMergeUnmappedFree(BlockListIt it) {
     all_blocks_.erase(next);
     InsertUnmappedFreeBlock(it);
   }
+  return it;
 }
 
 // ---------------------------------------------------------------------------
@@ -1273,26 +1289,17 @@ uint64_t VMMAutoGrowthBestFitAllocatorV2::ReleaseImpl(
 uint64_t VMMAutoGrowthBestFitAllocatorV2::FreeIdleChunks(
     const UnderlyingRanges& entirely_free_ranges) {
   uint64_t released = 0;
-
-  for (auto alloc_it = underlying_allocations_.begin();
-       alloc_it != underlying_allocations_.end();) {
-    const auto allocation_va =
-        reinterpret_cast<VMMDevicePtr>((*alloc_it)->ptr());
-    const auto range_it =
-        std::lower_bound(entirely_free_ranges.begin(),
-                         entirely_free_ranges.end(),
-                         allocation_va,
-                         [](const UnderlyingRange& range, VMMDevicePtr va) {
-                           return range.first < va;
-                         });
-    const bool range_verified_free = range_it != entirely_free_ranges.end() &&
-                                     range_it->first == allocation_va &&
-                                     range_it->second == (*alloc_it)->size();
-    if (!range_verified_free ||
-        !TryReleaseUnderlyingAllocation(
-            &alloc_it, &released, /*range_verified_free=*/true)) {
-      ++alloc_it;
+  auto block_search_begin = all_blocks_.begin();
+  for (const auto& range : entirely_free_ranges) {
+    auto alloc_it = underlying_allocations_.FindByAddress(range.first);
+    if (alloc_it == underlying_allocations_.end() ||
+        (*alloc_it)->size() != range.second) {
+      continue;
     }
+    TryReleaseUnderlyingAllocation(&alloc_it,
+                                   &released,
+                                   /*range_verified_free=*/true,
+                                   &block_search_begin);
   }
 
   TrimTrailingUnmappedFreeBlocks();
@@ -1536,6 +1543,11 @@ bool VMMAutoGrowthBestFitAllocatorV2::IsRangeEntirelyFree(uint8_t* base,
 
 void VMMAutoGrowthBestFitAllocatorV2::ReplaceRangeWithUnmappedFree(
     uint8_t* base, size_t size) {
+  (void)ReplaceRangeWithUnmappedFree(base, size, all_blocks_.begin());
+}
+
+BlockListIt VMMAutoGrowthBestFitAllocatorV2::ReplaceRangeWithUnmappedFree(
+    uint8_t* base, size_t size, BlockListIt search_begin) {
   auto* end = base + size;
   auto erase_free_index = [this](BlockList::iterator it) {
     if (it->IsUnmappedFree()) {
@@ -1552,7 +1564,9 @@ void VMMAutoGrowthBestFitAllocatorV2::ReplaceRangeWithUnmappedFree(
     }
   };
 
-  for (auto it = all_blocks_.begin(); it != all_blocks_.end();) {
+  auto it = search_begin;
+  auto insert_pos = all_blocks_.end();
+  while (it != all_blocks_.end()) {
     auto* bptr = it->begin_ptr();
     auto* bend = it->end_ptr();
 
@@ -1560,7 +1574,10 @@ void VMMAutoGrowthBestFitAllocatorV2::ReplaceRangeWithUnmappedFree(
       ++it;
       continue;
     }
-    if (bptr >= end) break;
+    if (bptr >= end) {
+      insert_pos = it;
+      break;
+    }
 
     // Case 1: block entirely within [base, end): remove it.
     if (bptr >= base && bend <= end) {
@@ -1586,6 +1603,7 @@ void VMMAutoGrowthBestFitAllocatorV2::ReplaceRangeWithUnmappedFree(
       erase_free_index(it);
       it->TrimToSuffix(trim, keep);
       insert_free_index(it);
+      insert_pos = it;
       break;  // nothing more in range
     }
 
@@ -1604,20 +1622,20 @@ void VMMAutoGrowthBestFitAllocatorV2::ReplaceRangeWithUnmappedFree(
       insert_free_index(it);
       auto right_it = all_blocks_.insert(std::next(it), std::move(right));
       insert_free_index(right_it);
+      insert_pos = right_it;
       break;  // done
     }
 
     ++it;
   }
 
-  auto insert_pos = all_blocks_.begin();
-  while (insert_pos != all_blocks_.end() && insert_pos->begin_ptr() < base) {
-    ++insert_pos;
+  if (insert_pos == all_blocks_.end()) {
+    insert_pos = it;
   }
   auto unmapped_it = all_blocks_.insert(
       insert_pos, BlockV2::MakeUnmappedFreeBlock(base, size, pool_type_));
   InsertUnmappedFreeBlock(unmapped_it);
-  TryMergeUnmappedFree(unmapped_it);
+  return TryMergeUnmappedFree(unmapped_it);
 }
 
 }  // namespace allocation

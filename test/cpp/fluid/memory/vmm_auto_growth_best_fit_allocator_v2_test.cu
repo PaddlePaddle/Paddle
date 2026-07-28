@@ -582,6 +582,41 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, ReleaseMiddleChunk) {
   EXPECT_EQ(underlying->tail_offset(), tail_after_allocs);
 }
 
+TEST(VMMAutoGrowthBestFitAllocatorV2, ReleaseNonAdjacentChunks) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+  const size_t handle_size = underlying->handle_size();
+
+  auto first = allocator.Allocate(handle_size);
+  auto second = allocator.Allocate(handle_size);
+  auto third = allocator.Allocate(handle_size);
+  auto fourth = allocator.Allocate(handle_size);
+  auto fifth = allocator.Allocate(handle_size);
+  ASSERT_NE(first, nullptr);
+  ASSERT_NE(second, nullptr);
+  ASSERT_NE(third, nullptr);
+  ASSERT_NE(fourth, nullptr);
+  ASSERT_NE(fifth, nullptr);
+
+  auto* second_ptr = second->ptr();
+  auto* fourth_ptr = fourth->ptr();
+  second.reset();
+  fourth.reset();
+
+  const auto idle_ranges = allocator.CollectEntirelyFreeUnderlyingRanges();
+  ASSERT_EQ(idle_ranges.size(), 2UL);
+  EXPECT_EQ(idle_ranges[0].first, reinterpret_cast<VMMDevicePtr>(second_ptr));
+  EXPECT_EQ(idle_ranges[1].first, reinterpret_cast<VMMDevicePtr>(fourth_ptr));
+
+  EXPECT_EQ(allocator.Release(phi::GPUPlace()), handle_size * 2);
+  EXPECT_EQ(allocator.unmapped_free_blocks_.size(), 2UL);
+  ASSERT_NE(FindBlockByPtr(allocator, second_ptr), nullptr);
+  EXPECT_TRUE(FindBlockByPtr(allocator, second_ptr)->IsUnmappedFree());
+  ASSERT_NE(FindBlockByPtr(allocator, fourth_ptr), nullptr);
+  EXPECT_TRUE(FindBlockByPtr(allocator, fourth_ptr)->IsUnmappedFree());
+}
+
 TEST(VMMAutoGrowthBestFitAllocatorV2, ReleaseTailChunkRetreatsTailOffset) {
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
