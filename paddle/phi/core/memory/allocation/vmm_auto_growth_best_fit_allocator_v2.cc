@@ -288,6 +288,18 @@ VMMAutoGrowthBestFitAllocatorV2::UnderlyingAllocationRegistry::Erase(
   return allocations_.erase(it);
 }
 
+VMMAutoGrowthBestFitAllocatorV2::UnderlyingRanges
+VMMAutoGrowthBestFitAllocatorV2::UnderlyingAllocationRegistry::
+    CollectRangesByAddress() const {
+  UnderlyingRanges ranges;
+  ranges.reserve(allocations_by_ptr_.size());
+  for (const auto& [base, allocation_it] : allocations_by_ptr_) {
+    ranges.emplace_back(reinterpret_cast<VMMDevicePtr>(base),
+                        (*allocation_it)->size());
+  }
+  return ranges;
+}
+
 VMMAutoGrowthBestFitAllocatorV2::VMMAutoGrowthBestFitAllocatorV2(
     const std::shared_ptr<CUDAVirtualMemAllocatorV2>& underlying_allocator,
     size_t alignment,
@@ -1290,15 +1302,7 @@ uint64_t VMMAutoGrowthBestFitAllocatorV2::FreeIdleChunks(
 
 VMMAutoGrowthBestFitAllocatorV2::UnderlyingRanges
 VMMAutoGrowthBestFitAllocatorV2::CollectEntirelyFreeUnderlyingRanges() const {
-  UnderlyingRanges backing_ranges;
-  backing_ranges.reserve(static_cast<size_t>(std::distance(
-      underlying_allocations_.begin(), underlying_allocations_.end())));
-  for (const auto& allocation : underlying_allocations_) {
-    backing_ranges.emplace_back(
-        reinterpret_cast<VMMDevicePtr>(allocation->ptr()), allocation->size());
-  }
-  std::sort(backing_ranges.begin(), backing_ranges.end());
-
+  const auto backing_ranges = underlying_allocations_.CollectRangesByAddress();
   UnderlyingRanges entirely_free_ranges;
   entirely_free_ranges.reserve(backing_ranges.size());
   auto first_block = all_blocks_.begin();

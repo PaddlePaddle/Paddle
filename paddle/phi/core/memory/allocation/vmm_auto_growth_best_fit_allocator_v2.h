@@ -167,6 +167,7 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
     List::const_iterator begin() const { return allocations_.begin(); }
     List::const_iterator end() const { return allocations_.end(); }
     iterator Erase(iterator it);
+    UnderlyingRanges CollectRangesByAddress() const;
 
    private:
     using Index = std::map<uint8_t*, iterator>;
