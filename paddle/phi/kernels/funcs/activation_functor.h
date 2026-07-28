@@ -5585,7 +5585,7 @@ struct CudaLog2Functor<ComplexType<T>>
 
 template <typename T>
 struct CudaLog2GradFunctor : public BaseActivationFunctor<T> {
-  using MT = typename MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   MT ln_two = static_cast<MT>(log(static_cast<MT>(2.0f)));
 
   // dx = dout / (x * ln(2))
