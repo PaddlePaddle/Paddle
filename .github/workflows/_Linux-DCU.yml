@@ -175,7 +175,6 @@ jobs:
             mkdir -p ${{ env.home_path }}/bos
             tar xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
           fi
-          apt install zstd -y
           cd "${{ env.home_path }}"
           trap "rm -f build.tar.gz ${{ env.paddle_whl }}" EXIT
           tar --use-compress-program="pzstd -5" -cf build.tar.gz -C / paddle
