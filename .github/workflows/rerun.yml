@@ -3,10 +3,12 @@ name: Re-run
 on:
   issue_comment:
     types: [created]
+  pull_request_review:
+    types: [submitted]
 
 jobs:
   re-run:
-    if: ${{ github.event.issue.pull_request && contains(github.event.comment.body, '/re-run')  && github.event.comment.user.login == github.event.issue.user.login }}
+    if: ${{ github.event_name == 'issue_comment' && github.event.issue.pull_request && contains(github.event.comment.body, '/re-run')  && github.event.comment.user.login == github.event.issue.user.login }}
     runs-on:
       group: APPROVAL
     steps:
@@ -35,6 +37,16 @@ jobs:
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
           JOB_NAME: 'Check approval'
+
+      - name: Rerun Bot Approval Required
+        if: ${{ contains(github.event.comment.body, 'bot-approval-required') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'Require review-bot approval'
 
       - name: Rerun Codestyle-check
         if: ${{ contains(github.event.comment.body, 'codestyle') }}
@@ -345,3 +357,32 @@ jobs:
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
           JOB_NAME: 'Windows-OPENBLAS / Check bypass / Check bypass'
+
+  rerun-on-approval:
+    if: ${{ github.event_name == 'pull_request_review' && github.event.review.state == 'approved' }}
+    runs-on:
+      group: APPROVAL
+    steps:
+      - name: Cleanup
+        run: |
+          rm -rf * .[^.]*
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Rerun Approval
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.pull_request.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'Check approval'
+
+      - name: Rerun Bot Approval Required
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.pull_request.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'Require review-bot approval'
