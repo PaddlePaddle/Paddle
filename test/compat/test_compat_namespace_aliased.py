@@ -20,6 +20,8 @@ from contextlib import contextmanager
 from functools import wraps
 from unittest import mock
 
+import numpy as np
+
 import paddle
 from paddle.compat import api_dispatch
 from paddle.compat.api_dispatch import _PADDLE_NAMESPACE_SAVED
@@ -664,14 +666,7 @@ class TestLevel2InternalCallersUseNative(CompatNamespaceAliasBase):
 
         coo = paddle.sparse.sparse_coo_tensor([[0], [0]], [1.0], [1, 1])
         self.assertEqual(coo.type(), "torch.sparse.FloatTensor")
-
-        class InvalidTensor:
-            pass
-
-        with self.assertRaisesRegex(
-            ValueError, "invalid type: 'InvalidTensor'"
-        ):
-            t.type(InvalidTensor)
+        self.assertEqual(t.type(np.float64).dtype, paddle.float64)
 
     @with_level2
     def test_tensor_descriptor_class_access(self):
