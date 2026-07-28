@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
+#include <limits>
 
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
@@ -337,9 +338,32 @@ void AddReluKernel(gpuStream_t stream,
 
 template <typename DeviceContext, typename T>
 void FCFunctor<DeviceContext, T>::operator()(const DeviceContext& dev_ctx,
-                                             const int M,
-                                             const int N,
-                                             const int K,
+                                             int M,
+                                             int N,
+                                             int K,
+                                             const T* X,
+                                             const T* W,
+                                             T* Y,
+                                             const T* B,
+                                             bool relu,
+                                             bool padding_weights) {
+  (*this)(dev_ctx,
+          static_cast<int64_t>(M),
+          static_cast<int64_t>(N),
+          static_cast<int64_t>(K),
+          X,
+          W,
+          Y,
+          B,
+          relu,
+          padding_weights);
+}
+
+template <typename DeviceContext, typename T>
+void FCFunctor<DeviceContext, T>::operator()(const DeviceContext& dev_ctx,
+                                             int64_t M,
+                                             int64_t N,
+                                             int64_t K,
                                              const T* X,
                                              const T* W,
                                              T* Y,
@@ -350,6 +374,21 @@ void FCFunctor<DeviceContext, T>::operator()(const DeviceContext& dev_ctx,
                     false,
                     errors::PermissionDenied(
                         "Weight padding in fc can not be used in GPU scope."));
+  detail::check_blas_int64(M, "FC GPU row count");
+  detail::check_blas_int64(N, "FC GPU output width");
+  detail::check_blas_int64(K, "FC GPU input width");
+  if (B != nullptr) {
+    PADDLE_ENFORCE_LE_INT_MAX(M, "FC GPU bias row count");
+    PADDLE_ENFORCE_LE_INT_MAX(N, "FC GPU bias row width");
+    PADDLE_ENFORCE_EQ(
+        M == 0 || N <= std::numeric_limits<int>::max() / M,
+        true,
+        errors::InvalidArgument(
+            "FC GPU bias element count must not exceed INT_MAX, but received "
+            "M = %ld and N = %ld.",
+            M,
+            N));
+  }
   auto blas = funcs::GetBlas<DeviceContext, T>(dev_ctx);
   blas.GEMM(CblasNoTrans,
             CblasNoTrans,
@@ -364,9 +403,12 @@ void FCFunctor<DeviceContext, T>::operator()(const DeviceContext& dev_ctx,
   if (B == NULL) {
     return;
   }
+  if (M == 0 || N == 0) {
+    return;
+  }
 
-  // M * N
-  AddReluKernel(dev_ctx.stream(), M, N, Y, B, relu);
+  AddReluKernel(
+      dev_ctx.stream(), static_cast<int>(M), static_cast<int>(N), Y, B, relu);
 }
 
 template class FCFunctor<GPUContext, float16>;

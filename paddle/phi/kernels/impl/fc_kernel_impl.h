@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -45,7 +46,7 @@ void FCKernel(const Context& dev_ctx,
   auto out_dims = out->dims();
   auto w_dims0 = padding_weights ? w_dims[0] - 4 : w_dims[0];
   auto w_dims1 = padding_weights ? w_dims[1] - 4 : w_dims[1];
-  int M = common::product(out_dims) / w_dims1;
+  int64_t M = common::product(out_dims) / w_dims1;
 
   const T* input_data = input.data<T>();
   const T* w_data = w.data<T>();

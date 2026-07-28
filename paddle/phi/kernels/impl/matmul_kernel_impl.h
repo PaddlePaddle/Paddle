@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include <limits>
+
 #include "glog/logging.h"
 
 #include "paddle/phi/common/memory_utils.h"
@@ -110,6 +112,65 @@ static void IndexIncreaseFromDims(const int ndim,
     }
   }
 }
+
+static int64_t GetMatmulBatchSize(const std::vector<int64_t>& dims,
+                                  int batch_dim,
+                                  const char* name) {
+  int64_t batch_size = 1;
+  for (int i = 0; i < batch_dim; ++i) {
+    PADDLE_ENFORCE_GE(
+        dims[i],
+        0,
+        common::errors::InvalidArgument(
+            "%s dimensions must be non-negative, but received %ld at index "
+            "%d.",
+            name,
+            dims[i],
+            i));
+    if (dims[i] == 0) {
+      batch_size = 0;
+      continue;
+    }
+    if (batch_size != 0) {
+      PADDLE_ENFORCE_LE(
+          batch_size,
+          std::numeric_limits<int64_t>::max() / dims[i],
+          common::errors::InvalidArgument(
+              "%s batch size overflows int64_t when multiplying dimension %d "
+              "(%ld).",
+              name,
+              i,
+              dims[i]));
+      batch_size *= dims[i];
+    }
+  }
+  return batch_size;
+}
+
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+static bool MatmulBatchSizeFitsCublasLt(const std::vector<int64_t>& x_dims,
+                                        const std::vector<int64_t>& y_dims) {
+  if (x_dims.size() <= 2 && y_dims.size() <= 2) {
+    return true;
+  }
+
+  const int x_batch_dim = (std::max)(static_cast<int>(x_dims.size()) - 2, 0);
+  const int y_batch_dim = (std::max)(static_cast<int>(y_dims.size()) - 2, 0);
+  const int batch_dim = (std::max)(x_batch_dim, y_batch_dim);
+  std::vector<int64_t> x_broadcast_dims(batch_dim);
+  std::vector<int64_t> y_broadcast_dims(batch_dim);
+  std::vector<int64_t> out_broadcast_dims(batch_dim);
+  GetBroadcastFromDims(x_batch_dim,
+                       x_dims.data(),
+                       y_batch_dim,
+                       y_dims.data(),
+                       x_broadcast_dims.data(),
+                       y_broadcast_dims.data(),
+                       out_broadcast_dims.data());
+  return GetMatmulBatchSize(out_broadcast_dims, batch_dim, "MatMul output") <=
+         std::numeric_limits<int>::max();
+}
+#endif
 
 // The general implementation with blas.
 template <typename Context, typename T>
@@ -380,9 +441,6 @@ void MatMulFunctionImplWithBlas(
   out_broadcast_dims[ndim - 2] = M;
   out_broadcast_dims[ndim - 1] = N;
 
-  Out->ResizeAndAllocate(make_ddim(out_broadcast_dims));
-  dev_ctx.template Alloc<T>(Out);
-
   const int batch_dim = ndim - 2;
   // broadcast message
   const bool is_broadcast_dims =
@@ -391,20 +449,28 @@ void MatMulFunctionImplWithBlas(
                   y_broadcast_dims.cbegin());
 
   const std::int64_t x_batch_size =
-      std::accumulate(x_broadcast_dims.cbegin(),
-                      x_broadcast_dims.cbegin() + batch_dim,
-                      1LL,
-                      std::multiplies<std::int64_t>());
+      GetMatmulBatchSize(x_broadcast_dims, batch_dim, "Input(X)");
   const std::int64_t y_batch_size =
-      std::accumulate(y_broadcast_dims.cbegin(),
-                      y_broadcast_dims.cbegin() + batch_dim,
-                      1LL,
-                      std::multiplies<std::int64_t>());
+      GetMatmulBatchSize(y_broadcast_dims, batch_dim, "Input(Y)");
   const std::int64_t out_batch_size =
-      std::accumulate(out_broadcast_dims.cbegin(),
-                      out_broadcast_dims.cbegin() + batch_dim,
-                      1LL,
-                      std::multiplies<std::int64_t>());
+      GetMatmulBatchSize(out_broadcast_dims, batch_dim, "MatMul output");
+  const std::int64_t case_9_m =
+      x_batch_size == 1 && M == 1 && trans_y
+          ? funcs::detail::checked_blas_mul(
+                y_batch_size, N, "MatMul case 9 flattened dimension")
+          : 0;
+  const std::int64_t case_11_m =
+      y_batch_size == 1 && !trans_x
+          ? funcs::detail::checked_blas_mul(
+                x_batch_size, M, "MatMul case 11 flattened dimension")
+          : 0;
+
+  if (is_broadcast_dims && out_batch_size != 0) {
+    PADDLE_ENFORCE_LE_INT_MAX(out_batch_size, "broadcast MatMul batch size");
+  }
+
+  Out->ResizeAndAllocate(make_ddim(out_broadcast_dims));
+  dev_ctx.template Alloc<T>(Out);
   if (out_batch_size == 0) return;
   if (x_batch_size == 1 && y_batch_size == 1) {
     VLOG(3) << "MatMul's case 8";
@@ -421,9 +487,8 @@ void MatMulFunctionImplWithBlas(
   } else if (x_batch_size == 1) {
     if (M == 1 && trans_y) {
       VLOG(3) << "MatMul's case 9";
-      PADDLE_ENFORCE_LE_INT_MAX(y_batch_size * N, "GEMV M");
       blas.GEMV(false,
-                static_cast<int>(y_batch_size * N),
+                case_9_m,
                 K,
                 static_cast<T>(1),
                 y_data,
@@ -482,10 +547,9 @@ void MatMulFunctionImplWithBlas(
   } else if (y_batch_size == 1) {
     if (!trans_x) {
       VLOG(3) << "MatMul's case 11";
-      PADDLE_ENFORCE_LE_INT_MAX(x_batch_size * M, "GEMM M");
       blas.GEMM(CblasNoTrans,
                 trans_y ? CblasTrans : CblasNoTrans,
-                x_batch_size * M,
+                case_11_m,
                 N,
                 K,
                 static_cast<T>(1),
@@ -526,7 +590,6 @@ void MatMulFunctionImplWithBlas(
                      K * N);
   } else {
     // in the case, can't use stridedgemm
-    PADDLE_ENFORCE_LE_INT_MAX(out_batch_size, "out_batch_size");
     std::vector<const T*> x_ptr(out_batch_size);
     std::vector<const T*> y_ptr(out_batch_size);
     std::vector<T*> out_ptr(out_batch_size);
@@ -554,7 +617,7 @@ void MatMulFunctionImplWithBlas(
                      y_ptr.data(),
                      static_cast<T>(flag),
                      out_ptr.data(),
-                     static_cast<int>(out_batch_size));
+                     out_batch_size);
   }
 }
 
@@ -819,9 +882,6 @@ void MatMulFunctionImplWithCublasLt(
   out_broadcast_dims[ndim - 2] = M;
   out_broadcast_dims[ndim - 1] = N;
 
-  Out->ResizeAndAllocate(make_ddim(out_broadcast_dims));
-  dev_ctx.template Alloc<T>(Out);
-
   const int batch_dim = ndim - 2;
   // broadcast message
   const bool is_broadcast_dims =
@@ -830,22 +890,26 @@ void MatMulFunctionImplWithCublasLt(
                   y_broadcast_dims.cbegin());
 
   const std::int64_t x_batch_size =
-      std::accumulate(x_broadcast_dims.cbegin(),
-                      x_broadcast_dims.cbegin() + batch_dim,
-                      1LL,
-                      std::multiplies<std::int64_t>());
+      GetMatmulBatchSize(x_broadcast_dims, batch_dim, "Input(X)");
   const std::int64_t y_batch_size =
-      std::accumulate(y_broadcast_dims.cbegin(),
-                      y_broadcast_dims.cbegin() + batch_dim,
-                      1LL,
-                      std::multiplies<std::int64_t>());
+      GetMatmulBatchSize(y_broadcast_dims, batch_dim, "Input(Y)");
   const std::int64_t out_batch_size =
-      std::accumulate(out_broadcast_dims.cbegin(),
-                      out_broadcast_dims.cbegin() + batch_dim,
-                      1LL,
-                      std::multiplies<std::int64_t>());
+      GetMatmulBatchSize(out_broadcast_dims, batch_dim, "MatMul output");
+  const std::int64_t case_9_m =
+      x_batch_size == 1 && M == 1 && trans_y
+          ? funcs::detail::checked_blas_mul(
+                y_batch_size, N, "MatMul case 9 flattened dimension")
+          : 0;
+  const std::int64_t case_11_m =
+      y_batch_size == 1 && !trans_x
+          ? funcs::detail::checked_blas_mul(
+                x_batch_size, M, "MatMul case 11 flattened dimension")
+          : 0;
+
+  PADDLE_ENFORCE_LE_INT_MAX(out_batch_size, "cuBLASLt MatMul batch size");
+  Out->ResizeAndAllocate(make_ddim(out_broadcast_dims));
+  dev_ctx.template Alloc<T>(Out);
   if (out_batch_size == 0) return;
-  PADDLE_ENFORCE_LE_INT_MAX(out_batch_size, "out_batch_size");
   if (x_batch_size == 1 && y_batch_size == 1) {
     VLOG(3) << "MatMul with blaslt 8";
     blaslt::Run(dev_ctx,
@@ -861,12 +925,11 @@ void MatMulFunctionImplWithCublasLt(
   } else if (x_batch_size == 1) {
     if (M == 1 && trans_y) {
       VLOG(3) << "MatMul with blaslt 9";
-      PADDLE_ENFORCE_LE_INT_MAX(y_batch_size * N, "GEMV M");
       blaslt::Run(dev_ctx,
                   y_data,
                   x_data,
                   dev_ctx.template Alloc<T>(Out),
-                  y_batch_size * N,
+                  case_9_m,
                   1,
                   K,
                   false,
@@ -892,12 +955,11 @@ void MatMulFunctionImplWithCublasLt(
   } else if (y_batch_size == 1) {
     if (!trans_x) {
       VLOG(3) << "MatMul with blaslt 11";
-      PADDLE_ENFORCE_LE_INT_MAX(x_batch_size * M, "GEMM M");
       blaslt::Run(dev_ctx,
                   x_data,
                   y_data,
                   dev_ctx.template Alloc<T>(Out),
-                  x_batch_size * M,
+                  case_11_m,
                   N,
                   K,
                   false,
@@ -999,6 +1061,11 @@ struct MatMulDispatcher<GPUContext, T> {
                   bool trans_y,
                   bool flag = false) {
 #if CUDA_VERSION >= 11060
+    if (!MatmulBatchSizeFitsCublasLt(x_dims, y_dims)) {
+      MatMulFunctionImplWithBlas<GPUContext, T>(
+          dev_ctx, x, y, x_dims, y_dims, out, trans_x, trans_y, flag);
+      return;
+    }
     auto* tuner =
         autotune::MakeMatmulTuner<T>(MatMulFunctionImplWithBlas<GPUContext, T>);
     tuner->AddCallBack(MatMulFunctionImplWithCublasLt<GPUContext, T>);

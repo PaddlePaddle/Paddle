@@ -76,11 +76,9 @@ void GRUCPUKernel(const Context &dev_ctx,
     add_bias(dev_ctx, *batch_gate, bias.get(), batch_gate);
   }
 
-  int frame_size = static_cast<int>(hidden_dims[1]);
+  const int64_t frame_size = hidden_dims[1];
   funcs::GRUMetaValue<T> gru_value;
   gru_value.gate_weight = const_cast<T *>(weight_data);
-  gru_value.state_weight =
-      const_cast<T *>(weight_data + 2 * frame_size * frame_size);
   DenseTensor ordered_h0;
 
   Vector<size_t> order(batch_gate->lod()[2]);
@@ -121,6 +119,8 @@ void GRUCPUKernel(const Context &dev_ctx,
                    gru_value.gate_weight,
                    frame_size * 2,
                    packed_gate);
+    gru_value.state_weight =
+        const_cast<T *>(weight_data + 2 * frame_size * frame_size);
     T *packed_state = blas.GEMM_ALLOC(CblasBMatrix,
                                       1 /*height of C*/,
                                       frame_size /*width of weight*/,
@@ -204,6 +204,10 @@ void GRUCPUKernel(const Context &dev_ctx,
     blas.GEMM_FREE(packed_state);
   } else {
 #endif
+    PADDLE_ENFORCE_LE_INT_MAX(frame_size, "GRU elementwise frame size");
+    const int frame_size_int = static_cast<int>(frame_size);
+    gru_value.state_weight =
+        const_cast<T *>(weight_data + 2 * frame_size * frame_size);
     for (size_t n = 0; n < seq_len; n++) {
       int bstart = static_cast<int>(batch_starts[n]);
       int bend = static_cast<int>(batch_starts[n + 1]);
@@ -219,7 +223,7 @@ void GRUCPUKernel(const Context &dev_ctx,
 
       funcs::GRUUnitFunctor<Context, T>::compute(dev_ctx,  // NOLINT
                                                  gru_value,
-                                                 frame_size,
+                                                 frame_size_int,
                                                  cur_batch_size,
                                                  active_node,
                                                  active_gate,

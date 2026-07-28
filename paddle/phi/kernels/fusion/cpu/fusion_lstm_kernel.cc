@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstdint>
 #include <cstring>
 #include <string>
 
@@ -248,15 +249,22 @@ void BatchCompute(const Context &dev_ctx,
   auto blas = funcs::GetBlas<Context, T>(dev_ctx);
   funcs::FCFunctor<Context, T> fc;
   if (M > D4) {
-    fc(dev_ctx, x_dims[0], D4, M, x_data, wx_data, xx_data, bias->data<T>());
+    fc(dev_ctx,
+       x_dims[0],
+       static_cast<int64_t>(D4),
+       static_cast<int64_t>(M),
+       x_data,
+       wx_data,
+       xx_data,
+       bias->data<T>());
     to_batch(dev_ctx, *xx, batched_input, true, is_reverse);
   } else {
     to_batch(dev_ctx, *x, xx, true, is_reverse);
     batched_input->set_lod(xx->lod());
     fc(dev_ctx,
        x_dims[0],
-       D4,
-       M,
+       static_cast<int64_t>(D4),
+       static_cast<int64_t>(M),
        xx_data,
        wx_data,
        batched_input_data,

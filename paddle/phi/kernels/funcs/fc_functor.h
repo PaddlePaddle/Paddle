@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <cstdint>
 #include <string>
 
 #include "paddle/phi/backends/all_context.h"
@@ -26,9 +27,20 @@ template <typename DeviceContext, typename T>
 class FCFunctor {
  public:
   void operator()(const DeviceContext& dev_ctx,
-                  const int M,
-                  const int N,
-                  const int K,
+                  int M,
+                  int N,
+                  int K,
+                  const T* X,
+                  const T* W,
+                  T* Y,
+                  const T* B = nullptr,
+                  bool relu = false,
+                  bool weight_pass = false);
+
+  void operator()(const DeviceContext& dev_ctx,
+                  int64_t M,
+                  int64_t N,
+                  int64_t K,
                   const T* X,
                   const T* W,
                   T* Y,

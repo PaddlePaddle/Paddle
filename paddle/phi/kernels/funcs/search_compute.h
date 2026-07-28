@@ -20,6 +20,7 @@
 #endif
 #include <cfloat>
 #include <cmath>
+#include <cstdint>
 #include <cstring>
 
 #include "paddle/phi/kernels/funcs/blas/blas.h"
@@ -32,16 +33,16 @@ template <typename DeviceContext, typename T>
 void call_gemm(const funcs::BlasT<DeviceContext, T>& blas,
                const CBLAS_TRANSPOSE TransA,
                const CBLAS_TRANSPOSE TransB,
-               const int M,
-               const int N,
-               const int K,
+               const int64_t M,
+               const int64_t N,
+               const int64_t K,
                const T alpha,
                const T* A,
                const T* B,
                const T beta,
                T* C) {
-  int lda = (TransA == CblasNoTrans) ? K : M;
-  int ldb = (TransB == CblasNoTrans) ? N : K;
+  int64_t lda = (TransA == CblasNoTrans) ? K : M;
+  int64_t ldb = (TransB == CblasNoTrans) ? N : K;
   blas.GEMM(TransA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, N);
 }
 
@@ -49,16 +50,16 @@ template <typename T, typename Context>
 void call_gemm(const Context& dev_ctx,
                const CBLAS_TRANSPOSE TransA,
                const CBLAS_TRANSPOSE TransB,
-               const int M,
-               const int N,
-               const int K,
+               const int64_t M,
+               const int64_t N,
+               const int64_t K,
                const T alpha,
                const T* A,
                const T* B,
                const T beta,
                T* C) {
-  int lda = (TransA == CblasNoTrans) ? K : M;
-  int ldb = (TransB == CblasNoTrans) ? N : K;
+  int64_t lda = (TransA == CblasNoTrans) ? K : M;
+  int64_t ldb = (TransB == CblasNoTrans) ? N : K;
   // auto& dev_ctx = dev_ctx.template device_context<CPUContext>();
   auto blas = funcs::GetBlas<CPUContext, T>(dev_ctx);
   blas.GEMM(TransA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, N);
@@ -68,16 +69,16 @@ template <typename DeviceContext, typename T>
 void call_gemm_with_lda(const funcs::BlasT<DeviceContext, T>& blas,
                         const CBLAS_TRANSPOSE TransA,
                         const CBLAS_TRANSPOSE TransB,
-                        const int M,
-                        const int N,
-                        const int K,
+                        const int64_t M,
+                        const int64_t N,
+                        const int64_t K,
                         const T alpha,
                         const T* A,
                         const T* B,
                         const T beta,
                         T* C,
-                        int lda) {
-  int ldb = (TransB == CblasNoTrans) ? N : K;
+                        int64_t lda) {
+  int64_t ldb = (TransB == CblasNoTrans) ? N : K;
 
   blas.GEMM(TransA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, N);
 }
@@ -86,16 +87,16 @@ template <typename T, typename Context>
 void call_gemm_batched(const Context& dev_ctx,
                        const CBLAS_TRANSPOSE TransA,
                        const CBLAS_TRANSPOSE TransB,
-                       const int M,
-                       const int N,
-                       const int K,
+                       const int64_t M,
+                       const int64_t N,
+                       const int64_t K,
                        const T alpha,
                        const T** A,
                        const T** B,
                        const T beta,
                        T** C,
-                       const int batch) {
-  for (int i = 0; i < batch; ++i) {
+                       const int64_t batch) {
+  for (int64_t i = 0; i < batch; ++i) {
     call_gemm(dev_ctx, TransA, TransB, M, N, K, alpha, A[i], B[i], beta, C[i]);
   }
 }

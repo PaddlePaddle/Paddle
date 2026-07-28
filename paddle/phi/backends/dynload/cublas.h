@@ -145,9 +145,21 @@ CUBLAS_WORKSPACE_ROUTINE(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
 
 #if CUDA_VERSION >= 12030 && defined(__linux__)
 #define CUBLAS_BLAS_ROUTINE_EACH_R5(__macro) \
+  __macro(cublasSgemv_v2_64);                \
+  __macro(cublasDgemv_v2_64);                \
+  __macro(cublasCgemv_v2_64);                \
+  __macro(cublasZgemv_v2_64);                \
+  __macro(cublasSgemm_v2_64);                \
+  __macro(cublasDgemm_v2_64);                \
+  __macro(cublasCgemm_v2_64);                \
+  __macro(cublasZgemm_v2_64);                \
+  __macro(cublasHgemmStridedBatched_64);     \
+  __macro(cublasSgemmStridedBatched_64);     \
+  __macro(cublasDgemmStridedBatched_64);     \
+  __macro(cublasCgemmStridedBatched_64);     \
+  __macro(cublasZgemmStridedBatched_64);     \
   __macro(cublasGemmStridedBatchedEx_64);    \
-  __macro(cublasGemmEx_64);                  \
-  __macro(cublasSgemmEx_64);
+  __macro(cublasGemmEx_64);
 
 CUBLAS_BLAS_ROUTINE_EACH_R5(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
 #endif

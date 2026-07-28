@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstdint>
+
 #include "gtest/gtest.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -455,7 +457,7 @@ TEST(math_function, gemm_trans_cublas_fp16) {
 }
 
 template <typename T>
-void GemvTest(int m, int n, bool trans) {
+void GemvTest(int64_t m, int64_t n, bool trans) {
   phi::DenseTensor mat_a;
   phi::DenseTensor vec_b;
   phi::DenseTensor vec_c;
@@ -476,39 +478,32 @@ void GemvTest(int m, int n, bool trans) {
   T* g_data_b = g_vec_b.mutable_data<T>(vec_b.dims(), gpu_place);
   T* g_data_c = g_vec_c.mutable_data<T>(vec_c.dims(), gpu_place);
 
-  for (int i = 0; i < mat_a.numel(); ++i) {
+  for (int64_t i = 0; i < mat_a.numel(); ++i) {
     data_a[i] = static_cast<T>(i);
   }
-  for (int i = 0; i < vec_b.numel(); ++i) {
+  for (int64_t i = 0; i < vec_b.numel(); ++i) {
     data_b[i] = static_cast<T>(i);
   }
 
   phi::Copy(*context, mat_a, gpu_place, true, &g_mat_a);
   phi::Copy(*context, vec_b, gpu_place, true, &g_vec_b);
 
-  GetBlas<T>(*context).GEMV(trans,
-                            static_cast<int>(m),
-                            static_cast<int>(n),
-                            1.,
-                            g_data_a,
-                            g_data_b,
-                            0.,
-                            g_data_c);
+  GetBlas<T>(*context).GEMV(trans, m, n, 1., g_data_a, g_data_b, 0., g_data_c);
 
   phi::Copy(*context, g_vec_c, cpu_place, true, &vec_c);
 
   if (!trans) {
-    for (int i = 0; i < m; ++i) {
+    for (int64_t i = 0; i < m; ++i) {
       T sum = 0.0;
-      for (int j = 0; j < n; ++j) {
+      for (int64_t j = 0; j < n; ++j) {
         sum += data_a[i * n + j] * data_b[j];
       }
       ASSERT_FLOAT_EQ(data_c[i], sum);
     }
   } else {
-    for (int i = 0; i < n; ++i) {
+    for (int64_t i = 0; i < n; ++i) {
       T sum = 0.0;
-      for (int j = 0; j < m; ++j) {
+      for (int64_t j = 0; j < m; ++j) {
         sum += data_a[j * n + i] * data_b[j];
       }
       ASSERT_FLOAT_EQ(data_c[i], sum);

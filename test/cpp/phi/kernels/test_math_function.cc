@@ -13,12 +13,14 @@
 // limitations under the License.
 
 #include <array>
+#include <cstdint>
 #include <limits>
 #include <set>
 
 #include "gtest/gtest.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/fc_functor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -76,6 +78,254 @@ TEST(math_function, gemm_notrans_cblas) {
   EXPECT_EQ(input3_ptr[5], 73);
   EXPECT_EQ(input3_ptr[6], 86);
   EXPECT_EQ(input3_ptr[7], 99);
+}
+
+TEST(math_function, blas_int64_dimensions) {
+  auto* dev_ctx =
+      phi::DeviceContextPool::Instance().GetByPlace(phi::CPUPlace());
+  auto blas = GetBlas<float>(*dev_ctx);
+
+  const int64_t m = 2;
+  const int64_t n = 2;
+  const int64_t k = 3;
+  const std::array<float, 6> a = {1, 2, 3, 4, 5, 6};
+  const std::array<float, 6> b = {1, 2, 3, 4, 5, 6};
+  const std::array<float, 4> expected = {22, 28, 49, 64};
+
+  std::array<float, 4> matmul_out{};
+  blas.MatMul(m, n, k, a.data(), b.data(), matmul_out.data());
+  EXPECT_EQ(matmul_out, expected);
+
+  const std::array<float, 3> vector = {1, 1, 1};
+  const std::array<float, 2> expected_gemv = {6, 15};
+  std::array<float, 2> gemv_out{};
+  blas.GEMV(false, m, k, 1.0f, a.data(), vector.data(), 0.0f, gemv_out.data());
+  EXPECT_EQ(gemv_out, expected_gemv);
+
+  std::array<float, 4> bool_gemm_out{};
+  blas.GEMM(false,
+            false,
+            m,
+            n,
+            k,
+            1.0f,
+            a.data(),
+            k,
+            b.data(),
+            n,
+            0.0f,
+            bool_gemm_out.data(),
+            n);
+  EXPECT_EQ(bool_gemm_out, expected);
+
+  std::array<float, 4> enum_gemm_out{};
+  blas.GEMM(CblasNoTrans,
+            CblasNoTrans,
+            m,
+            n,
+            k,
+            1.0f,
+            a.data(),
+            k,
+            b.data(),
+            n,
+            0.0f,
+            enum_gemm_out.data(),
+            n);
+  EXPECT_EQ(enum_gemm_out, expected);
+
+  const std::array<float, 2> batch_a0 = {2, 3};
+  const std::array<float, 2> batch_a1 = {4, 5};
+  const std::array<float, 2> batch_b0 = {6, 7};
+  const std::array<float, 2> batch_b1 = {8, 9};
+  std::array<float, 1> batch_c0{};
+  std::array<float, 1> batch_c1{};
+  const float* batch_a[] = {batch_a0.data(), batch_a1.data()};
+  const float* batch_b[] = {batch_b0.data(), batch_b1.data()};
+  float* batch_c[] = {batch_c0.data(), batch_c1.data()};
+  const int64_t batch_count = 2;
+  blas.BatchedGEMM(CblasNoTrans,
+                   CblasNoTrans,
+                   1,
+                   1,
+                   2,
+                   1.0f,
+                   batch_a,
+                   batch_b,
+                   0.0f,
+                   batch_c,
+                   batch_count);
+  EXPECT_FLOAT_EQ(batch_c0[0], 33.0f);
+  EXPECT_FLOAT_EQ(batch_c1[0], 77.0f);
+}
+
+TEST(math_function, blas_rejects_unsupported_large_dimensions) {
+  auto* dev_ctx =
+      phi::DeviceContextPool::Instance().GetByPlace(phi::CPUPlace());
+  auto blas = GetBlas<float>(*dev_ctx);
+  float value = 1.0f;
+  const int64_t too_large =
+      static_cast<int64_t>(std::numeric_limits<int>::max()) + 1;
+
+  EXPECT_THROW(blas.MatMul(too_large, 1, 1, &value, &value, &value),
+               common::enforce::EnforceNotMet);
+  EXPECT_THROW(
+      blas.GEMV(false, too_large, 1, 1.0f, &value, &value, 0.0f, &value),
+      common::enforce::EnforceNotMet);
+  EXPECT_THROW(blas.GEMM(CblasNoTrans,
+                         CblasNoTrans,
+                         -1,
+                         1,
+                         1,
+                         1.0f,
+                         &value,
+                         &value,
+                         0.0f,
+                         &value),
+               common::enforce::EnforceNotMet);
+  EXPECT_THROW(blas.GEMM(false,
+                         false,
+                         1,
+                         1,
+                         1,
+                         1.0f,
+                         &value,
+                         too_large,
+                         &value,
+                         1,
+                         0.0f,
+                         &value,
+                         1),
+               common::enforce::EnforceNotMet);
+
+  const float** null_inputs = nullptr;
+  float** null_outputs = nullptr;
+  EXPECT_THROW(blas.BatchedGEMM(CblasNoTrans,
+                                CblasNoTrans,
+                                1,
+                                1,
+                                1,
+                                1.0f,
+                                null_inputs,
+                                null_inputs,
+                                0.0f,
+                                null_outputs,
+                                too_large),
+               common::enforce::EnforceNotMet);
+#ifdef PADDLE_WITH_MKLML
+  EXPECT_THROW(blas.GEMM_ALLOC(CblasBMatrix, too_large, 1, 1),
+               common::enforce::EnforceNotMet);
+  EXPECT_THROW(
+      blas.GEMM_PACK(
+          CblasBMatrix, CblasNoTrans, 1, 1, 1, 1.0f, &value, too_large, &value),
+      common::enforce::EnforceNotMet);
+  EXPECT_THROW(blas.GEMM_COMPUTE(CblasNoTrans,
+                                 CblasPacked,
+                                 1,
+                                 1,
+                                 1,
+                                 &value,
+                                 too_large,
+                                 &value,
+                                 1,
+                                 0.0f,
+                                 &value,
+                                 1),
+               common::enforce::EnforceNotMet);
+#endif
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)
+  phi::funcs::Blas<phi::CPUContext> base_blas(*dev_ctx);
+  EXPECT_THROW(base_blas.BatchedGEMMWithHead<float>(CblasNoTrans,
+                                                    CblasNoTrans,
+                                                    too_large,
+                                                    1,
+                                                    1,
+                                                    1,
+                                                    1.0f,
+                                                    &value,
+                                                    &value,
+                                                    0.0f,
+                                                    &value,
+                                                    1,
+                                                    1,
+                                                    1,
+                                                    1,
+                                                    false),
+               common::enforce::EnforceNotMet);
+
+  phi::DenseTensor empty;
+  const phi::funcs::MatDescriptor unit_matrix{1, 1, 0, 0, false};
+  const int64_t invalid_head_number = 0;
+  EXPECT_THROW(base_blas.MatMulWithHead<float>(empty,
+                                               unit_matrix,
+                                               empty,
+                                               unit_matrix,
+                                               1.0f,
+                                               invalid_head_number,
+                                               &empty,
+                                               0.0f,
+                                               false),
+               common::enforce::EnforceNotMet);
+#endif
+}
+
+TEST(math_function, blas_dimension_validation_is_overflow_safe) {
+  const int64_t int64_max = std::numeric_limits<int64_t>::max();
+
+  EXPECT_EQ(phi::funcs::detail::checked_blas_mul(int64_max, 1, "test"),
+            int64_max);
+  EXPECT_THROW(phi::funcs::detail::checked_blas_mul(int64_max, 2, "test"),
+               common::enforce::EnforceNotMet);
+  EXPECT_THROW(phi::funcs::detail::to_blas_int(-1, "test"),
+               common::enforce::EnforceNotMet);
+}
+
+TEST(math_function, fc_functor_keeps_legacy_and_int64_signatures) {
+  using Functor = phi::funcs::FCFunctor<phi::CPUContext, float>;
+  using LegacyOperator = void (Functor::*)(const phi::CPUContext&,
+                                           int,
+                                           int,
+                                           int,
+                                           const float*,
+                                           const float*,
+                                           float*,
+                                           const float*,
+                                           bool,
+                                           bool);
+  using Int64Operator = void (Functor::*)(const phi::CPUContext&,
+                                          int64_t,
+                                          int64_t,
+                                          int64_t,
+                                          const float*,
+                                          const float*,
+                                          float*,
+                                          const float*,
+                                          bool,
+                                          bool);
+
+  auto legacy_operator = static_cast<LegacyOperator>(&Functor::operator());
+  auto int64_operator = static_cast<Int64Operator>(&Functor::operator());
+  EXPECT_TRUE(legacy_operator != nullptr);
+  EXPECT_TRUE(int64_operator != nullptr);
+
+  auto* dev_ctx =
+      phi::DeviceContextPool::Instance().GetByPlace(phi::CPUPlace());
+  float value = 1.0f;
+  const int64_t invalid_padded_width =
+      static_cast<int64_t>(std::numeric_limits<int>::max()) - 3;
+  Functor fc;
+  EXPECT_THROW(fc(*dev_ctx,
+                  int64_t{1},
+                  invalid_padded_width,
+                  int64_t{1},
+                  &value,
+                  &value,
+                  &value,
+                  nullptr,
+                  false,
+                  true),
+               common::enforce::EnforceNotMet);
 }
 
 TEST(math_function, dot_with_blas_zero_length) {
@@ -299,12 +549,12 @@ TEST(math_function, zero) {
 }
 
 template <typename T>
-void GemvTest(int m, int n, bool trans) {
+void GemvTest(int64_t m, int64_t n, bool trans) {
   phi::DenseTensor mat_a;
   phi::DenseTensor vec_b;
   phi::DenseTensor vec_c;
-  int b_num = trans ? m : n;
-  int c_num = trans ? n : m;
+  int64_t b_num = trans ? m : n;
+  int64_t c_num = trans ? n : m;
 
   auto* dev_ctx =
       phi::DeviceContextPool::Instance().GetByPlace(phi::CPUPlace());
@@ -315,34 +565,27 @@ void GemvTest(int m, int n, bool trans) {
   T* data_b = dev_ctx->template Alloc<T>(&vec_b);
   vec_c.Resize({c_num});
   T* data_c = dev_ctx->template Alloc<T>(&vec_c);
-  for (int i = 0; i < mat_a.numel(); ++i) {
+  for (int64_t i = 0; i < mat_a.numel(); ++i) {
     data_a[i] = static_cast<T>(i);
   }
-  for (int i = 0; i < vec_b.numel(); ++i) {
+  for (int64_t i = 0; i < vec_b.numel(); ++i) {
     data_b[i] = static_cast<T>(i);
   }
 
-  GetBlas<T>(*dev_ctx).GEMV(trans,
-                            static_cast<int>(m),
-                            static_cast<int>(n),
-                            1.,
-                            data_a,
-                            data_b,
-                            0.,
-                            data_c);
+  GetBlas<T>(*dev_ctx).GEMV(trans, m, n, 1., data_a, data_b, 0., data_c);
 
   if (!trans) {
-    for (int i = 0; i < m; ++i) {
+    for (int64_t i = 0; i < m; ++i) {
       T sum = 0.0;
-      for (int j = 0; j < n; ++j) {
+      for (int64_t j = 0; j < n; ++j) {
         sum += data_a[i * n + j] * data_b[j];
       }
       ASSERT_FLOAT_EQ(data_c[i], sum);
     }
   } else {
-    for (int i = 0; i < n; ++i) {
+    for (int64_t i = 0; i < n; ++i) {
       T sum = 0.0;
-      for (int j = 0; j < m; ++j) {
+      for (int64_t j = 0; j < m; ++j) {
         sum += data_a[j * n + i] * data_b[j];
       }
       ASSERT_FLOAT_EQ(data_c[i], sum);

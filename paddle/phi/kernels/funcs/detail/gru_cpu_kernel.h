@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
+#include <cstdint>
 #include <type_traits>
 
 #include "paddle/phi/kernels/funcs/activation_functor.h"
@@ -33,7 +35,7 @@ void hl_naive_gru_forward_reset_output(OpResetOutput op_reset_output,
                                        T *gate_value,
                                        T *reset_output_value,
                                        const T *prev_output_value,
-                                       int frame_size,
+                                       int64_t frame_size,
                                        ActivationType active_gate,
                                        bool old_version = true,
                                        const T *reset_bias = nullptr) {
@@ -51,7 +53,7 @@ void hl_naive_gru_forward_reset_output(OpResetOutput op_reset_output,
     reset_gate = gate_value;
     update_gate = gate_value + frame_size;
   }
-  for (int i = 0; i < frame_size; i++) {
+  for (int64_t i = 0; i < frame_size; i++) {
     r_value_update_gate = update_gate[i];
     r_value_reset_gate = reset_gate[i];
     if (!old_version) {
@@ -81,7 +83,7 @@ void hl_naive_gru_forward_final_output(OpFinalOutput op_final_output,
                                        T *gate_value,
                                        const T *prev_output_value,
                                        T *output_value,
-                                       int frame_size,
+                                       int64_t frame_size,
                                        ActivationType active_node,
                                        bool origin_mode,
                                        bool old_version = true) {
@@ -97,7 +99,7 @@ void hl_naive_gru_forward_final_output(OpFinalOutput op_final_output,
   }
   T *frame_state = gate_value + frame_size * 2;
 
-  for (int i = 0; i < frame_size; i++) {
+  for (int64_t i = 0; i < frame_size; i++) {
     r_value_update_gate = update_gate[i];
     r_value_frame_state = frame_state[i];
     if (prev_output_value) {
@@ -121,7 +123,7 @@ void hl_avx_gru_forward_reset_output(OpResetOutput op_reset_output,
                                      T *gate_value,
                                      T *reset_output_value,
                                      const T *prev_output_value,
-                                     int frame_size,
+                                     int64_t frame_size,
                                      ActivationType active_gate,
                                      bool old_version = true,
                                      const T *reset_bias = nullptr) {
@@ -141,11 +143,11 @@ void hl_avx_gru_forward_reset_output(OpResetOutput op_reset_output,
     reset_gate = gate_value;
     update_gate = gate_value + frame_size;
   }
-  int block = 8;
-  const int n = frame_size;
-  const int rest = n % block;
-  const int end = n - rest;
-  int i = 0;
+  const int64_t block = 8;
+  const int64_t n = frame_size;
+  const int64_t rest = n % block;
+  const int64_t end = n - rest;
+  int64_t i = 0;
 
   if (rest > 0) {
     i = n - block;
@@ -211,7 +213,7 @@ void hl_avx_gru_forward_final_output(OpFinalOutput op_final_output,
                                      T *gate_value,
                                      const T *prev_output_value,
                                      T *output_value,
-                                     int frame_size,
+                                     int64_t frame_size,
                                      ActivationType active_node,
                                      bool origin_mode,
                                      bool old_version = true) {
@@ -229,11 +231,11 @@ void hl_avx_gru_forward_final_output(OpFinalOutput op_final_output,
   }
 
   T *frame_state = gate_value + frame_size * 2;
-  int block = 8;
-  const int n = frame_size;
-  const int rest = n % block;
-  const int end = n - rest;
-  int i = 0;
+  const int64_t block = 8;
+  const int64_t n = frame_size;
+  const int64_t rest = n % block;
+  const int64_t end = n - rest;
+  int64_t i = 0;
 
   if (rest > 0) {
     i = n - block;
@@ -285,7 +287,7 @@ void hl_avx_gru_forward_final_output(OpFinalOutput op_final_output,
 template <typename T, typename Context>
 inline void forward_reset_outputV2(const Context &dev_ctx,
                                    phi::funcs::GRUMetaValue<T> value,
-                                   int frame_size) {
+                                   int64_t frame_size) {
   auto &place = *dev_ctx.eigen_device();
   auto value_reset_gate =
       typename EigenVector<T>::Type(value.gate_value, Array1(frame_size));
@@ -304,7 +306,7 @@ inline void forward_reset_outputV2(const Context &dev_ctx,
 template <typename Context, class OpResetOutput, typename T>
 inline void forward_reset_output(OpResetOutput op_reset_output,
                                  phi::funcs::GRUMetaValue<T> value,
-                                 int frame_size,
+                                 int64_t frame_size,
                                  int batch_size,
                                  ActivationType active_gate,
                                  bool old_version = true,
@@ -314,8 +316,7 @@ inline void forward_reset_output(OpResetOutput op_reset_output,
       // use eigen
       forward_reset_outputV2(*dev_ctx, value, frame_size);
     } else {
-      if (OpResetOutput::avx && (frame_size > static_cast<int>(8 - 1)) &&
-          (sizeof(T) == 4)) {
+      if (OpResetOutput::avx && (frame_size > 7) && (sizeof(T) == 4)) {
         hl_avx_gru_forward_reset_output(op_reset_output,
                                         value.gate_value,
                                         value.reset_output_value,
@@ -346,7 +347,7 @@ inline void forward_reset_output(OpResetOutput op_reset_output,
 template <typename T, typename Context>
 inline void forward_final_outputV2(const Context &dev_ctx,
                                    phi::funcs::GRUMetaValue<T> value,
-                                   int frame_size) {
+                                   int64_t frame_size) {
   auto &place = *dev_ctx.eigen_device();
   auto value_update_gate = typename EigenVector<T>::Type(
       value.gate_value + frame_size, Array1(frame_size));
@@ -368,7 +369,7 @@ inline void forward_final_outputV2(const Context &dev_ctx,
 template <typename Context, class OpFinalOutput, typename T>
 inline void forward_final_output(OpFinalOutput op_final_output,
                                  phi::funcs::GRUMetaValue<T> value,
-                                 int frame_size,
+                                 int64_t frame_size,
                                  int batch_size,
                                  ActivationType active_node,
                                  bool origin_mode,
@@ -379,8 +380,7 @@ inline void forward_final_output(OpFinalOutput op_final_output,
       // eigen
       forward_final_outputV2(*dev_ctx, value, frame_size);
     } else {
-      if (OpFinalOutput::avx && (frame_size > static_cast<int>(8 - 1)) &&
-          (sizeof(T) == 4)) {
+      if (OpFinalOutput::avx && (frame_size > 7) && (sizeof(T) == 4)) {
         hl_avx_gru_forward_final_output(op_final_output,
                                         value.gate_value,
                                         value.prev_out_value,
