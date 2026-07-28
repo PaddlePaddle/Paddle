@@ -558,6 +558,12 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, ReleaseMiddleChunk) {
   const size_t tail_after_allocs = underlying->tail_offset();
   middle.reset();
 
+  const auto idle_ranges = allocator.CollectEntirelyFreeUnderlyingRanges();
+  ASSERT_EQ(idle_ranges.size(), 1UL);
+  EXPECT_EQ(idle_ranges.front().first,
+            reinterpret_cast<VMMDevicePtr>(middle_ptr));
+  EXPECT_EQ(idle_ranges.front().second, underlying->handle_size());
+
   const uint64_t released = allocator.Release(phi::GPUPlace());
   EXPECT_EQ(released, underlying->handle_size());
   ASSERT_EQ(allocator.all_blocks().size(), 3UL);
@@ -630,6 +636,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2,
   ASSERT_NE(crossing, nullptr);
 
   auto stats = allocator.CollectReleaseStats();
+  EXPECT_TRUE(allocator.CollectEntirelyFreeUnderlyingRanges().empty());
   EXPECT_EQ(stats.backing_count, 2UL);
   EXPECT_EQ(stats.backing_bytes, underlying->handle_size() * 2);
   EXPECT_EQ(stats.releasable_backing_count, 0UL);
@@ -643,6 +650,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2,
 
   first.reset();
   crossing.reset();
+  EXPECT_EQ(allocator.CollectEntirelyFreeUnderlyingRanges().size(), 2UL);
   stats = allocator.CollectReleaseStats();
   EXPECT_EQ(stats.releasable_backing_count, 2UL);
   EXPECT_EQ(stats.releasable_backing_bytes, underlying->handle_size() * 2);

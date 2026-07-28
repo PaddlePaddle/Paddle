@@ -116,6 +116,9 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
   uint64_t ReleaseImpl(const Place& place) override;
 
  private:
+  using UnderlyingRange = std::pair<VMMDevicePtr, size_t>;
+  using UnderlyingRanges = std::vector<UnderlyingRange>;
+
   struct CompactState;
   struct CompactContext;
   struct ReleaseStats {
@@ -187,9 +190,12 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
   bool CanPrepareDestinationRange(void* ptr, size_t size) const;
   bool PrepareDestinationRange(void* ptr, size_t size);
   bool CanReleaseUnderlyingAllocation(uint8_t* base, size_t size) const;
-  bool HasReleasableUnderlyingAllocation() const;
+  bool HasReleasableUnderlyingAllocation(
+      const UnderlyingRanges& entirely_free_ranges) const;
   bool TryReleaseUnderlyingAllocation(
-      UnderlyingAllocationRegistry::iterator* alloc_it, uint64_t* released);
+      UnderlyingAllocationRegistry::iterator* alloc_it,
+      uint64_t* released,
+      bool range_verified_free = false);
   bool CanIndexFreeBlock(const BlockV2& block) const;
   void InsertFreeBlock(BlockListIt it);
   void EraseFreeBlock(BlockListIt it);
@@ -202,7 +208,8 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
                       const char* reason) const;
   void TryMerge(BlockListIt it);
   void TryMergeUnmappedFree(BlockListIt it);
-  uint64_t FreeIdleChunks();
+  uint64_t FreeIdleChunks(const UnderlyingRanges& entirely_free_ranges);
+  UnderlyingRanges CollectEntirelyFreeUnderlyingRanges() const;
   ReleaseStats CollectReleaseStats() const;
   void LogReleaseStats(
       const ReleaseStats& before,
