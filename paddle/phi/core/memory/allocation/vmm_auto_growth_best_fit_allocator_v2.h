@@ -134,6 +134,14 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
     size_t active_blocks_crossing_backings{0};
     size_t active_bytes_crossing_backings{0};
   };
+  struct ReleaseTiming {
+    uint64_t lock_wait_us{0};
+    uint64_t precheck_us{0};
+    uint64_t device_sync_us{0};
+    uint64_t release_us{0};
+    uint64_t post_stats_us{0};
+    uint64_t total_us{0};
+  };
 
   struct UnderlyingAllocationRegistry {
     using List = std::list<DecoratedAllocationPtr>;
@@ -196,9 +204,12 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
   void TryMergeUnmappedFree(BlockListIt it);
   uint64_t FreeIdleChunks();
   ReleaseStats CollectReleaseStats() const;
-  void LogReleaseStats(const ReleaseStats& before,
-                       const ReleaseStats& after,
-                       uint64_t released_bytes) const;
+  void LogReleaseStats(
+      const ReleaseStats& before,
+      const ReleaseStats& after,
+      uint64_t released_bytes,
+      const ReleaseTiming& timing,
+      const CUDAVirtualMemAllocatorV2::ReleaseDriverStats& driver_stats) const;
   void TrimTrailingUnmappedFreeBlocks();
   size_t ComputeTailOffset() const;
   bool IsRangeEntirelyFree(uint8_t* base, size_t size) const;

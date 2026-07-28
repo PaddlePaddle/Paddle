@@ -81,6 +81,18 @@ class CUDAVirtualMemAllocatorV2 : public Allocator {
     BlockV2 block;
   };
 
+  struct ReleaseDriverStats {
+    uint64_t allocation_count{0};
+    uint64_t handle_count{0};
+    uint64_t released_bytes{0};
+    uint64_t skipped_owned_handles{0};
+    uint64_t unmap_calls{0};
+    uint64_t unmap_us{0};
+    uint64_t release_calls{0};
+    uint64_t release_us{0};
+    uint64_t metadata_us{0};
+  };
+
   struct AllocationLayoutRegistry {
     void Add(Allocation* allocation, void* ptr, const HandleLayout& layout);
     bool Lookup(void* ptr, HandleLayout* layout) const;
@@ -111,6 +123,9 @@ class CUDAVirtualMemAllocatorV2 : public Allocator {
   VMMDevicePtr virtual_mem_base() const { return virtual_mem_base_; }
   size_t virtual_mem_size() const { return virtual_mem_size_; }
   size_t tail_offset() const { return virtual_mem_alloced_offset_; }
+  ReleaseDriverStats GetReleaseDriverStats() const {
+    return release_driver_stats_;
+  }
   // Best-fit/remap layers may consume VA from the reserved range incrementally.
   // V2 keeps this as an explicit cursor instead of reusing V1's
   // virtual_2_physical_map_ bookkeeping.
@@ -279,6 +294,7 @@ class CUDAVirtualMemAllocatorV2 : public Allocator {
 
   AllocationLayoutRegistry allocation_layouts_;
   VMMBackingMap backing_map_;
+  ReleaseDriverStats release_driver_stats_;
   mutable SpinLock ipc_export_lock_;
   mutable std::unordered_map<VMMAllocHandle, int> ipc_export_fds_;
 };

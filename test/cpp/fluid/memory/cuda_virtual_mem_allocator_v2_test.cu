@@ -726,6 +726,24 @@ TEST(CUDAVirtualMemAllocatorV2, RollbackCreatedHandlesReleasesLayout) {
   allocator.RollbackCreatedHandles(layout);
 }
 
+TEST(CUDAVirtualMemAllocatorV2, ReleaseContiguousHandlesWithOneUnmap) {
+  CUDAVirtualMemAllocatorV2 allocator(
+      phi::GPUPlace(), 2UL << 20, PoolType::kLarge);
+  const size_t handle_size = allocator.handle_size();
+  auto allocation = allocator.Allocate(handle_size * 3);
+  ASSERT_NE(allocation, nullptr);
+
+  const auto before = allocator.GetReleaseDriverStats();
+  allocation.reset();
+  const auto after = allocator.GetReleaseDriverStats();
+
+  EXPECT_EQ(after.allocation_count - before.allocation_count, 1UL);
+  EXPECT_EQ(after.handle_count - before.handle_count, 3UL);
+  EXPECT_EQ(after.released_bytes - before.released_bytes, handle_size * 3);
+  EXPECT_EQ(after.unmap_calls - before.unmap_calls, 1UL);
+  EXPECT_EQ(after.release_calls - before.release_calls, 3UL);
+}
+
 TEST(CUDAVirtualMemAllocatorV2, RequireHandleLayoutRejectsUnknownAllocation) {
   CUDAVirtualMemAllocatorV2 allocator(
       phi::GPUPlace(), 2UL << 20, PoolType::kLarge);

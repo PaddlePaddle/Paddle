@@ -503,30 +503,72 @@ void CUDAVirtualMemAllocatorV2::FreeImpl(phi::Allocation* allocation) {
     }
   });
 
-  for (const auto& handle : layout) {
-    if (handle->IsOwnedByRemapDestination()) {
+  bool released_allocation = false;
+  size_t run_begin = 0;
+  while (run_begin < layout.size()) {
+    if (layout[run_begin]->IsOwnedByRemapDestination()) {
+      ++release_driver_stats_.skipped_owned_handles;
+      ++run_begin;
       continue;
     }
-    auto unmap_status =
-        phi::dynload::cuMemUnmap(handle->base(), handle->size());
+
+    size_t run_end = run_begin + 1;
+    VMMDevicePtr run_end_va =
+        layout[run_begin]->base() + layout[run_begin]->size();
+    while (run_end < layout.size() &&
+           !layout[run_end]->IsOwnedByRemapDestination() &&
+           layout[run_end]->base() == run_end_va) {
+      run_end_va += layout[run_end]->size();
+      ++run_end;
+    }
+
+    const VMMDevicePtr run_base = layout[run_begin]->base();
+    const size_t run_size = static_cast<size_t>(run_end_va - run_base);
+    auto op_start = Clock::now();
+    auto unmap_status = phi::dynload::cuMemUnmap(run_base, run_size);
+    release_driver_stats_.unmap_us += ElapsedMicros(op_start, Clock::now());
+    ++release_driver_stats_.unmap_calls;
     if (IsCudaDeinitialized(unmap_status)) {
       // Terminal cleanup after CUDA teardown. The remaining driver state is no
       // longer observable through CUDA APIs, so backing_map_ is intentionally
       // left untouched; normal runtime failures are still enforced below.
+      run_begin = run_end;
       continue;
     }
     PADDLE_ENFORCE_GPU_SUCCESS(unmap_status);
-    auto release_status = platform::RecordedGpuMemRelease(
-        handle->handle(), handle->size(), place_.device);
-    if (IsCudaDeinitialized(release_status)) {
-      // Same terminal-cleanup rule as the unmap path above. Only CUDA teardown
-      // errors are tolerated here; other release failures must be surfaced.
-      continue;
+
+    op_start = Clock::now();
+    backing_map_.MarkUnmapped(run_base, run_size);
+    release_driver_stats_.metadata_us += ElapsedMicros(op_start, Clock::now());
+
+    for (size_t i = run_begin; i < run_end; ++i) {
+      const auto& handle = layout[i];
+      op_start = Clock::now();
+      auto release_status = platform::RecordedGpuMemRelease(
+          handle->handle(), handle->size(), place_.device);
+      release_driver_stats_.release_us += ElapsedMicros(op_start, Clock::now());
+      ++release_driver_stats_.release_calls;
+      if (IsCudaDeinitialized(release_status)) {
+        // The VA is already unmapped. CUDA teardown can prevent releasing the
+        // physical handle, but no later allocator operation can observe it.
+        continue;
+      }
+      PADDLE_ENFORCE_GPU_SUCCESS(release_status);
+
+      op_start = Clock::now();
+      CloseIPCExportFD(handle->handle());
+      backing_map_.MarkReleased(
+          handle->base(), handle->handle(), handle->size());
+      release_driver_stats_.metadata_us +=
+          ElapsedMicros(op_start, Clock::now());
+      ++release_driver_stats_.handle_count;
+      release_driver_stats_.released_bytes += handle->size();
+      released_allocation = true;
     }
-    PADDLE_ENFORCE_GPU_SUCCESS(release_status);
-    CloseIPCExportFD(handle->handle());
-    backing_map_.MarkUnmapped(handle->base(), handle->size());
-    backing_map_.MarkReleased(handle->base(), handle->handle(), handle->size());
+    run_begin = run_end;
+  }
+  if (released_allocation) {
+    ++release_driver_stats_.allocation_count;
   }
 
   UnregisterHandleLayout(static_cast<Allocation*>(allocation), ptr);

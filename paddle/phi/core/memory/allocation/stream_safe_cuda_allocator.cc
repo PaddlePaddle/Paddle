@@ -651,8 +651,8 @@ uint64_t StreamSafeCUDAAllocator::ReleaseImpl(const Place& place) {
           std::chrono::duration_cast<std::chrono::microseconds>(
               std::chrono::steady_clock::now() - stream_start)
               .count();
-      VLOG(3) << "Allocator stream cache release: device=" << place_.device
-              << " stream_index=" << i
+      VLOG(3) << "Allocator stream cache release: device="
+              << static_cast<int>(place_.device) << " stream_index=" << i
               << " stream=" << allocator->default_stream_
               << " pending_before=" << pending_before.count
               << " pending_bytes_before=" << pending_before.bytes
@@ -666,7 +666,8 @@ uint64_t StreamSafeCUDAAllocator::ReleaseImpl(const Place& place) {
     const auto total_us = std::chrono::duration_cast<std::chrono::microseconds>(
                               std::chrono::steady_clock::now() - release_start)
                               .count();
-    VLOG(3) << "Allocator cache release complete: device=" << place_.device
+    VLOG(3) << "Allocator cache release complete: device="
+            << static_cast<int>(place_.device)
             << " streams=" << allocators.size()
             << " released_bytes=" << released_size
             << " elapsed_us=" << total_us;

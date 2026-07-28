@@ -1185,18 +1185,28 @@ void VMMAutoGrowthBestFitAllocatorV2::TryMergeUnmappedFree(BlockListIt it) {
 
 uint64_t VMMAutoGrowthBestFitAllocatorV2::ReleaseImpl(
     const Place& place UNUSED) {
+  const auto release_start = Clock::now();
   std::lock_guard<SpinLock> guard(spinlock_);
+  ReleaseTiming timing;
+  timing.lock_wait_us = ElapsedMicros(release_start, Clock::now());
   const bool log_release_stats = VLOG_IS_ON(3);
   ReleaseStats before;
+  auto op_start = Clock::now();
   if (log_release_stats) {
     before = CollectReleaseStats();
   }
+  timing.precheck_us = ElapsedMicros(op_start, Clock::now());
   const bool has_releasable = log_release_stats
                                   ? before.releasable_backing_count > 0
                                   : HasReleasableUnderlyingAllocation();
   if (!has_releasable) {
     if (log_release_stats) {
-      LogReleaseStats(before, before, /*released_bytes=*/0);
+      timing.total_us = ElapsedMicros(release_start, Clock::now());
+      LogReleaseStats(before,
+                      before,
+                      /*released_bytes=*/0,
+                      timing,
+                      CUDAVirtualMemAllocatorV2::ReleaseDriverStats{});
     }
     return 0;
   }
@@ -1204,10 +1214,38 @@ uint64_t VMMAutoGrowthBestFitAllocatorV2::ReleaseImpl(
   // driver calls are not ordered by the stream-safe wrapper, so wait before
   // making any previously returned VA range invalid.
   platform::CUDADeviceGuard device_guard(place_.device);
+  op_start = Clock::now();
   PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+  timing.device_sync_us = ElapsedMicros(op_start, Clock::now());
+  const auto driver_before = underlying_allocator_->GetReleaseDriverStats();
+  op_start = Clock::now();
   const uint64_t released = FreeIdleChunks();
+  timing.release_us = ElapsedMicros(op_start, Clock::now());
   if (log_release_stats) {
-    LogReleaseStats(before, CollectReleaseStats(), released);
+    op_start = Clock::now();
+    const auto after = CollectReleaseStats();
+    timing.post_stats_us = ElapsedMicros(op_start, Clock::now());
+    timing.total_us = ElapsedMicros(release_start, Clock::now());
+    const auto driver_after = underlying_allocator_->GetReleaseDriverStats();
+    CUDAVirtualMemAllocatorV2::ReleaseDriverStats driver_delta;
+    driver_delta.allocation_count =
+        driver_after.allocation_count - driver_before.allocation_count;
+    driver_delta.handle_count =
+        driver_after.handle_count - driver_before.handle_count;
+    driver_delta.released_bytes =
+        driver_after.released_bytes - driver_before.released_bytes;
+    driver_delta.skipped_owned_handles = driver_after.skipped_owned_handles -
+                                         driver_before.skipped_owned_handles;
+    driver_delta.unmap_calls =
+        driver_after.unmap_calls - driver_before.unmap_calls;
+    driver_delta.unmap_us = driver_after.unmap_us - driver_before.unmap_us;
+    driver_delta.release_calls =
+        driver_after.release_calls - driver_before.release_calls;
+    driver_delta.release_us =
+        driver_after.release_us - driver_before.release_us;
+    driver_delta.metadata_us =
+        driver_after.metadata_us - driver_before.metadata_us;
+    LogReleaseStats(before, after, released, timing, driver_delta);
   }
   return released;
 }
@@ -1229,23 +1267,32 @@ uint64_t VMMAutoGrowthBestFitAllocatorV2::FreeIdleChunks() {
 
 VMMAutoGrowthBestFitAllocatorV2::ReleaseStats
 VMMAutoGrowthBestFitAllocatorV2::CollectReleaseStats() const {
+  struct BackingView {
+    uint8_t* base{nullptr};
+    uint8_t* end{nullptr};
+    size_t size{0};
+    size_t active_bytes{0};
+    size_t mapped_free_bytes{0};
+  };
+
   ReleaseStats stats;
+  std::vector<BackingView> backings;
+  backings.reserve(static_cast<size_t>(std::distance(
+      underlying_allocations_.begin(), underlying_allocations_.end())));
+  for (const auto& allocation : underlying_allocations_) {
+    auto* base = reinterpret_cast<uint8_t*>(allocation->ptr());
+    backings.push_back(
+        {base, base + allocation->size(), allocation->size(), 0, 0});
+  }
+  std::sort(backings.begin(),
+            backings.end(),
+            [](const BackingView& lhs, const BackingView& rhs) {
+              return lhs.base < rhs.base;
+            });
+
   for (const auto& block : all_blocks_) {
     if (block.IsActive()) {
       stats.active_bytes += block.size_;
-      size_t overlap_count = 0;
-      for (const auto& allocation : underlying_allocations_) {
-        if (RangesOverlap(block.ptr_,
-                          block.size_,
-                          allocation->ptr(),
-                          allocation->size())) {
-          ++overlap_count;
-        }
-      }
-      if (overlap_count > 1) {
-        ++stats.active_blocks_crossing_backings;
-        stats.active_bytes_crossing_backings += block.size_;
-      }
     } else if (block.IsMappedFree()) {
       stats.mapped_free_bytes += block.size_;
     } else if (block.IsUnmappedFree()) {
@@ -1253,42 +1300,67 @@ VMMAutoGrowthBestFitAllocatorV2::CollectReleaseStats() const {
     }
   }
 
-  for (const auto& allocation : underlying_allocations_) {
-    auto* base = allocation->ptr();
-    const size_t size = allocation->size();
-    ++stats.backing_count;
-    stats.backing_bytes += size;
-
-    size_t active_bytes = 0;
-    size_t mapped_free_bytes = 0;
-    for (const auto& block : all_blocks_) {
-      const size_t overlap =
-          RangeOverlapBytes(base, size, block.ptr_, block.size_);
-      if (block.IsActive()) {
-        active_bytes += overlap;
-      } else if (block.IsMappedFree()) {
-        mapped_free_bytes += overlap;
+  auto first_block = all_blocks_.begin();
+  for (auto& backing : backings) {
+    while (first_block != all_blocks_.end() &&
+           first_block->end_ptr() <= backing.base) {
+      ++first_block;
+    }
+    for (auto block_it = first_block;
+         block_it != all_blocks_.end() && block_it->begin_ptr() < backing.end;
+         ++block_it) {
+      const size_t overlap = RangeOverlapBytes(
+          backing.base, backing.size, block_it->ptr_, block_it->size_);
+      if (block_it->IsActive()) {
+        backing.active_bytes += overlap;
+      } else if (block_it->IsMappedFree()) {
+        backing.mapped_free_bytes += overlap;
       }
     }
 
-    const bool entirely_free =
-        IsRangeEntirelyFree(reinterpret_cast<uint8_t*>(base), size);
+    ++stats.backing_count;
+    stats.backing_bytes += backing.size;
+    const bool entirely_free = backing.active_bytes == 0;
     const bool releasable =
-        entirely_free && underlying_allocator_->IsRangeReleasable(
-                             reinterpret_cast<VMMDevicePtr>(base), size);
+        entirely_free &&
+        underlying_allocator_->IsRangeReleasable(
+            reinterpret_cast<VMMDevicePtr>(backing.base), backing.size);
     if (releasable) {
       ++stats.releasable_backing_count;
-      stats.releasable_backing_bytes += size;
+      stats.releasable_backing_bytes += backing.size;
     } else {
-      stats.stranded_mapped_free_bytes += mapped_free_bytes;
+      stats.stranded_mapped_free_bytes += backing.mapped_free_bytes;
       if (entirely_free) {
         ++stats.release_blocked_backing_count;
-        stats.release_blocked_backing_bytes += size;
+        stats.release_blocked_backing_bytes += backing.size;
       }
     }
-    if (active_bytes > 0 && mapped_free_bytes > 0) {
+    if (backing.active_bytes > 0 && backing.mapped_free_bytes > 0) {
       ++stats.mixed_backing_count;
-      stats.mixed_backing_bytes += size;
+      stats.mixed_backing_bytes += backing.size;
+    }
+  }
+
+  size_t first_backing = 0;
+  for (const auto& block : all_blocks_) {
+    if (!block.IsActive()) {
+      continue;
+    }
+    while (first_backing < backings.size() &&
+           backings[first_backing].end <= block.begin_ptr()) {
+      ++first_backing;
+    }
+    size_t overlap_count = 0;
+    for (size_t i = first_backing;
+         i < backings.size() && backings[i].base < block.end_ptr();
+         ++i) {
+      if (backings[i].end > block.begin_ptr()) {
+        ++overlap_count;
+      }
+    }
+    if (overlap_count > 1) {
+      ++stats.active_blocks_crossing_backings;
+      stats.active_bytes_crossing_backings += block.size_;
     }
   }
   return stats;
@@ -1297,11 +1369,14 @@ VMMAutoGrowthBestFitAllocatorV2::CollectReleaseStats() const {
 void VMMAutoGrowthBestFitAllocatorV2::LogReleaseStats(
     const ReleaseStats& before,
     const ReleaseStats& after,
-    uint64_t released_bytes) const {
+    uint64_t released_bytes,
+    const ReleaseTiming& timing,
+    const CUDAVirtualMemAllocatorV2::ReleaseDriverStats& driver_stats) const {
   if (before.backing_count == 0 && after.backing_count == 0) {
     return;
   }
   VLOG(3) << "Allocator backing release: allocator=vmm_v2"
+          << " device=" << static_cast<int>(place_.device)
           << " pool=" << (pool_type_ == PoolType::kSmall ? "small" : "large")
           << " before_backings=" << before.backing_count
           << " before_backing_bytes=" << before.backing_bytes
@@ -1329,7 +1404,23 @@ void VMMAutoGrowthBestFitAllocatorV2::LogReleaseStats(
           << " after_mapped_free_bytes=" << after.mapped_free_bytes
           << " after_stranded_mapped_free_bytes="
           << after.stranded_mapped_free_bytes
-          << " after_unmapped_free_bytes=" << after.unmapped_free_bytes;
+          << " after_unmapped_free_bytes=" << after.unmapped_free_bytes
+          << " lock_wait_us=" << timing.lock_wait_us
+          << " precheck_us=" << timing.precheck_us
+          << " device_sync_us=" << timing.device_sync_us
+          << " release_us=" << timing.release_us
+          << " post_stats_us=" << timing.post_stats_us
+          << " total_us=" << timing.total_us
+          << " driver_allocations=" << driver_stats.allocation_count
+          << " driver_handles=" << driver_stats.handle_count
+          << " driver_released_bytes=" << driver_stats.released_bytes
+          << " driver_skipped_owned_handles="
+          << driver_stats.skipped_owned_handles
+          << " driver_unmap_calls=" << driver_stats.unmap_calls
+          << " driver_unmap_us=" << driver_stats.unmap_us
+          << " driver_release_calls=" << driver_stats.release_calls
+          << " driver_release_us=" << driver_stats.release_us
+          << " driver_metadata_us=" << driver_stats.metadata_us;
 }
 
 void VMMAutoGrowthBestFitAllocatorV2::TrimTrailingUnmappedFreeBlocks() {
