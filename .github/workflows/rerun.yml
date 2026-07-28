@@ -3,12 +3,18 @@ name: Re-run
 on:
   issue_comment:
     types: [created]
-  pull_request_review:
-    types: [submitted]
+  workflow_run:
+    workflows: ["Approval Review Signal"]
+    types: [completed]
+
+permissions:
+  actions: write
+  contents: read
+  pull-requests: read
 
 jobs:
   re-run:
-    if: ${{ github.event_name == 'issue_comment' && github.event.issue.pull_request && contains(github.event.comment.body, '/re-run')  && github.event.comment.user.login == github.event.issue.user.login }}
+    if: ${{ github.event_name == 'issue_comment' && github.event.issue.pull_request && contains(github.event.comment.body, '/re-run') && github.event.comment.user.login == github.event.issue.user.login }}
     runs-on:
       group: APPROVAL
     steps:
@@ -29,7 +35,7 @@ jobs:
           JOB_NAME: 'all-failed'
 
       - name: Rerun Approval
-        if: ${{ contains(github.event.comment.body, 'approval') }}
+        if: ${{ contains(github.event.comment.body, '/re-run approval') }}
         uses: ./.github/actions/rerun-workflow
         with:
           PR_ID: ${{ github.event.issue.number }}
@@ -39,7 +45,7 @@ jobs:
           JOB_NAME: 'Check approval'
 
       - name: Rerun Bot Approval Required
-        if: ${{ contains(github.event.comment.body, 'bot-approval-required') }}
+        if: ${{ contains(github.event.comment.body, '/re-run bot-approval-required') }}
         uses: ./.github/actions/rerun-workflow
         with:
           PR_ID: ${{ github.event.issue.number }}
@@ -359,7 +365,7 @@ jobs:
           JOB_NAME: 'Windows-OPENBLAS / Check bypass / Check bypass'
 
   rerun-on-approval:
-    if: ${{ github.event_name == 'pull_request_review' && github.event.review.state == 'approved' }}
+    if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.pull_requests[0].number != null && github.event.workflow_run.display_title == format('Approval Review Signal / approved / PR-{0}', github.event.workflow_run.pull_requests[0].number) }}
     runs-on:
       group: APPROVAL
     steps:
@@ -368,11 +374,13 @@ jobs:
           rm -rf * .[^.]*
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.repository.default_branch }}
 
       - name: Rerun Approval
         uses: ./.github/actions/rerun-workflow
         with:
-          PR_ID: ${{ github.event.pull_request.number }}
+          PR_ID: ${{ github.event.workflow_run.pull_requests[0].number }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
@@ -381,7 +389,7 @@ jobs:
       - name: Rerun Bot Approval Required
         uses: ./.github/actions/rerun-workflow
         with:
-          PR_ID: ${{ github.event.pull_request.number }}
+          PR_ID: ${{ github.event.workflow_run.pull_requests[0].number }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
