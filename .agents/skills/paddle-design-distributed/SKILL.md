@@ -27,6 +27,7 @@ description: "Use when working with Paddle's distributed training system: unders
 
 ```python
 import paddle.distributed as dist
+
 mesh = dist.ProcessMesh([0, 1, 2, 3], dim_names=["x"])
 x = dist.shard_tensor(x, mesh, [dist.Shard(0)])  # 沿 dim 0 切分
 ```

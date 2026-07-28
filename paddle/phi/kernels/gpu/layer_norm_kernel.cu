@@ -515,8 +515,13 @@ static inline LayerNormKernelVariant LayerNormKernelDispatch(
   }
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
   if (FLAGS_use_apex_layer_norm_kernel) {
-    if (funcs::fast_ln_v2::has_fast_ln_v2_fwd_kernel(
-            weight_type, input_type, output_type, compute_type, hidden_size)) {
+    if (hidden_size <= std::numeric_limits<uint32_t>::max() &&
+        funcs::fast_ln_v2::has_fast_ln_v2_fwd_kernel(
+            weight_type,
+            input_type,
+            output_type,
+            compute_type,
+            static_cast<uint32_t>(hidden_size))) {
       return LayerNormKernelVariant::FAST_LN_V2;
     }
     PADDLE_THROW(common::errors::InvalidArgument(
@@ -530,7 +535,8 @@ static inline LayerNormKernelVariant LayerNormKernelDispatch(
   }
 #endif
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
-  if (input_type != DataType::FLOAT32 && hidden_size != 4096 &&
+  if (hidden_size <= std::numeric_limits<uint32_t>::max() &&
+      input_type != DataType::FLOAT32 && hidden_size != 4096 &&
       hidden_size > 1024 && hidden_size <= 10240 &&
       x_numel <= std::numeric_limits<uint32_t>::max()) {
     // using fast_ln_v2 only sm > 70 and x_numel <= uint32_max
@@ -729,6 +735,7 @@ void LayerNormKernel(const Context& dev_ctx,
     default:
 #ifdef PADDLE_WITH_CUDA
       if ((x_dtype == scale_bias_dtype) &&
+          feature_size <= std::numeric_limits<int32_t>::max() &&
           (FLAGS_use_accuracy_compatible_kernel ||
            (!isPowerOfTwo(feature_size) && feature_size > 1024))) {
         LayerNormFwdCompatKernel<T, Context>(

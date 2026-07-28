@@ -148,16 +148,18 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, RejectsInvalidInternalOperations) {
 
   EXPECT_FALSE(allocator.SetBlockRemapEvent(
       allocator.all_blocks_.end(), cudaStreamPerThread, nullptr));
+  ASSERT_TRUE(allocator.SetBlockRemapEvent(
+      allocator.all_blocks_.begin(), cudaStreamPerThread, nullptr));
   ASSERT_NE(allocator.underlying_allocations_.begin(),
             allocator.underlying_allocations_.end());
   const auto& underlying_allocation =
       *allocator.underlying_allocations_.begin();
-  EXPECT_FALSE(allocator.AllocationOwnedByRemapDestination(
-      underlying_allocation, allocation->ptr(), allocation->size()));
+  EXPECT_FALSE(allocator.IsRemapDestinationAllocation(underlying_allocation));
 
   uint64_t released = 0;
   auto underlying_it = allocator.underlying_allocations_.begin();
-  EXPECT_FALSE(allocator.TryReleaseIdleUnderlying(&underlying_it, &released));
+  EXPECT_FALSE(
+      allocator.TryReleaseUnderlyingAllocation(&underlying_it, &released));
   EXPECT_EQ(released, 0UL);
 }
 
@@ -247,8 +249,10 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, MergeFreeBlocksWithDifferentStreams) {
 
   auto first = allocator.Allocate(underlying->handle_size());
   auto second = allocator.Allocate(underlying->handle_size());
+  auto tail_guard = allocator.Allocate(underlying->handle_size());
   ASSERT_NE(first, nullptr);
   ASSERT_NE(second, nullptr);
+  ASSERT_NE(tail_guard, nullptr);
 
   gpuStream_t first_stream;
   gpuStream_t second_stream;
@@ -268,7 +272,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, MergeFreeBlocksWithDifferentStreams) {
   first.reset();
   second.reset();
 
-  ASSERT_EQ(allocator.all_blocks().size(), 1UL);
+  ASSERT_EQ(allocator.all_blocks().size(), 2UL);
   const auto& merged = allocator.all_blocks().front();
   EXPECT_EQ(merged.type_, BlockType::kFree);
   EXPECT_EQ(merged.size_, 2UL * underlying->handle_size());
@@ -319,9 +323,6 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, RestoreUnmappedRangeToMappedFreeBlock) {
   auto underlying = CreateUnderlyingAllocator();
   const size_t handle_size = underlying->handle_size();
   RemapTransaction transaction(underlying.get(), handle_size);
-  auto meta = std::make_shared<VMMHandleMeta>(
-      underlying->virtual_mem_base(), handle_size, VMMAllocHandle{}, 0);
-
   RemapTransaction::BlockList blocks;
   auto base = underlying->virtual_mem_base();
   blocks.push_back(BlockV2::MakeMappedBlock(BlockType::kActive,
@@ -333,8 +334,8 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, RestoreUnmappedRangeToMappedFreeBlock) {
       3UL * handle_size,
       PoolType::kLarge));
 
-  EXPECT_TRUE(transaction.RestoreUnmappedFreeRangeToMappedFreeBlock(
-      &blocks, base + 2UL * handle_size, handle_size, meta));
+  EXPECT_TRUE(transaction.RestoreRangeAsMappedFree(
+      &blocks, base + 2UL * handle_size, handle_size));
   ASSERT_EQ(blocks.size(), 4UL);
   auto it = blocks.begin();
   EXPECT_TRUE(it->IsActive());
@@ -351,8 +352,8 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, RestoreUnmappedRangeToMappedFreeBlock) {
   RemapTransaction::BlockList exceeds_blocks;
   exceeds_blocks.push_back(BlockV2::MakeUnmappedFreeBlock(
       reinterpret_cast<void*>(base), handle_size, PoolType::kLarge));
-  EXPECT_FALSE(transaction.RestoreUnmappedFreeRangeToMappedFreeBlock(
-      &exceeds_blocks, base, 2UL * handle_size, meta));
+  EXPECT_FALSE(transaction.RestoreRangeAsMappedFree(
+      &exceeds_blocks, base, 2UL * handle_size));
 
   RemapTransaction::BlockList missing_blocks;
   missing_blocks.push_back(
@@ -360,8 +361,41 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, RestoreUnmappedRangeToMappedFreeBlock) {
                                reinterpret_cast<void*>(base),
                                handle_size,
                                PoolType::kLarge));
-  EXPECT_FALSE(transaction.RestoreUnmappedFreeRangeToMappedFreeBlock(
-      &missing_blocks, base + handle_size, handle_size, meta));
+  EXPECT_FALSE(transaction.RestoreRangeAsMappedFree(
+      &missing_blocks, base + handle_size, handle_size));
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2, ForceReleasedRemapSourceStaysUnmapped) {
+  auto underlying = CreateUnderlyingAllocator();
+  const size_t handle_size = underlying->handle_size();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+
+  auto allocation = allocator.Allocate(handle_size);
+  ASSERT_NE(allocation, nullptr);
+  const auto source_va = reinterpret_cast<VMMDevicePtr>(allocation->ptr());
+  allocation.reset();
+
+  auto source_pages =
+      underlying->CollectMappedPages({{source_va, handle_size}}, handle_size);
+  ASSERT_EQ(source_pages.size(), 1UL);
+  ASSERT_NE(source_pages[0].meta, nullptr);
+  ASSERT_TRUE(underlying->UnmapMappedRangeForRemap(source_va, 1));
+  source_pages[0].meta->MarkOwnedByRemapDestination();
+
+  // Make source restoration fail after cuMemMap. The rollback must keep the
+  // released source VA out of the mapped-free best-fit index.
+  underlying->access_desc_.clear();
+  RemapTransaction transaction(underlying.get(), handle_size);
+  transaction.RestoreRemappedSourcesToFreeBlocks(&allocator.all_blocks_,
+                                                 source_pages);
+  allocator.RebuildFreeBlockIndex();
+
+  ASSERT_EQ(allocator.all_blocks_.size(), 1UL);
+  EXPECT_TRUE(allocator.all_blocks_.front().IsUnmappedFree());
+  EXPECT_TRUE(underlying->IsRangeUnmapped(source_va, handle_size));
+  ExpectIndexedFreeStats(&allocator, 0UL, 0UL);
+  EXPECT_EQ(allocator.unmapped_free_blocks_.size(), 1UL);
 }
 
 TEST(VMMAutoGrowthBestFitAllocatorV2, FreeBlockTooSmallFallsBackToGrow) {
@@ -717,7 +751,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, ReleaseWaitsBeforeUnmappingBacking) {
   EXPECT_EQ(cudaDeviceSynchronize(), cudaSuccess);
 }
 
-TEST(VMMAutoGrowthBestFitAllocatorV2, IPCExportKeepsReuse) {
+TEST(VMMAutoGrowthBestFitAllocatorV2, IPCExportAllowsRelease) {
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
       underlying, 256, phi::GPUPlace(), PoolType::kLarge);
@@ -757,9 +791,10 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, IPCExportKeepsReuse) {
       &allocator, underlying->handle_size() * 2, underlying->handle_size() * 2);
 
   auto released = allocator.Release(phi::GPUPlace());
-  EXPECT_EQ(released, 0UL);
-  ASSERT_EQ(allocator.all_blocks().size(), 1UL);
-  EXPECT_TRUE(underlying->HasIPCExportedRange(
+  EXPECT_EQ(released, underlying->handle_size() * 2);
+  EXPECT_TRUE(allocator.all_blocks().empty());
+  EXPECT_EQ(underlying->tail_offset(), 0UL);
+  EXPECT_FALSE(underlying->HasIPCExportedRange(
       reinterpret_cast<VMMDevicePtr>(ptr), underlying->handle_size() * 2));
 
   auto remapped = allocator.RemapForAllocation(phi::GPUPlace(),
@@ -789,7 +824,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, CollectTensorPartsRejectsFreeRange) {
   EXPECT_TRUE(parts.empty());
 }
 
-TEST(VMMAutoGrowthBestFitAllocatorV2, IPCPinAllowsNeighborRelease) {
+TEST(VMMAutoGrowthBestFitAllocatorV2, IPCExportAllowsNeighborRelease) {
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
       underlying, 256, phi::GPUPlace(), PoolType::kLarge);
@@ -820,14 +855,10 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, IPCPinAllowsNeighborRelease) {
       &allocator, underlying->handle_size() * 2, underlying->handle_size() * 2);
 
   auto released = allocator.Release(phi::GPUPlace());
-  EXPECT_EQ(released, underlying->handle_size());
-  ASSERT_EQ(allocator.all_blocks().size(), 1UL);
-  auto block_it = allocator.all_blocks().begin();
-  ASSERT_TRUE(block_it->IsFree());
-  EXPECT_EQ(block_it->ptr_, exported_ptr);
-  EXPECT_EQ(block_it->size_, underlying->handle_size());
-  EXPECT_EQ(underlying->tail_offset(), underlying->handle_size());
-  EXPECT_TRUE(underlying->HasIPCExportedRange(
+  EXPECT_EQ(released, underlying->handle_size() * 2);
+  EXPECT_TRUE(allocator.all_blocks().empty());
+  EXPECT_EQ(underlying->tail_offset(), 0UL);
+  EXPECT_FALSE(underlying->HasIPCExportedRange(
       reinterpret_cast<VMMDevicePtr>(exported_ptr), underlying->handle_size()));
 
   auto next = allocator.Allocate(underlying->handle_size());
@@ -943,8 +974,11 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, CompactSkipsPartialFreeHandle) {
   ASSERT_NE(allocation, nullptr);
 
   ASSERT_EQ(allocator.all_blocks().size(), 2UL);
-  const size_t remapped = allocator.Compact(phi::GPUPlace());
+  VMMRemapAttemptResult attempt_result;
+  const size_t remapped = allocator.RemapForAllocation(
+      phi::GPUPlace(), 0, nullptr, &attempt_result);
   EXPECT_EQ(remapped, 0UL);
+  EXPECT_EQ(attempt_result.status, VMMRemapAttemptStatus::kNoMovableMemory);
 
   ASSERT_EQ(allocator.all_blocks().size(), 2UL);
   auto it = allocator.all_blocks().begin();
@@ -957,6 +991,21 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, CompactSkipsPartialFreeHandle) {
   ExpectBlockView(*it);
 }
 
+TEST(VMMAutoGrowthBestFitAllocatorV2, CompactSkipsMappedFreeTail) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+
+  auto allocation = allocator.Allocate(underlying->handle_size());
+  ASSERT_NE(allocation, nullptr);
+  MarkRemapSafeForTest(allocation.get());
+  allocation.reset();
+
+  const size_t tail_offset = underlying->tail_offset();
+  EXPECT_EQ(allocator.Compact(phi::GPUPlace()), 0UL);
+  EXPECT_EQ(underlying->tail_offset(), tail_offset);
+}
+
 TEST(VMMAutoGrowthBestFitAllocatorV2, CompactRollsBackCommitException) {
   ScopedVLogLevel vlog_guard(4);
   auto underlying = CreateUnderlyingAllocator();
@@ -966,22 +1015,109 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, CompactRollsBackCommitException) {
 
   auto first = allocator.Allocate(handle_size);
   auto middle = allocator.Allocate(handle_size);
+  auto separator = allocator.Allocate(handle_size);
   auto last = allocator.Allocate(handle_size);
   ASSERT_NE(first, nullptr);
   ASSERT_NE(middle, nullptr);
+  ASSERT_NE(separator, nullptr);
   ASSERT_NE(last, nullptr);
   MarkRemapSafeForTest(middle.get());
+  auto* middle_ptr = middle->ptr();
+  auto* last_ptr = last->ptr();
   middle.reset();
+  last.reset();
+
+  auto source_pages = underlying->CollectRemapSourcePages(
+      {{reinterpret_cast<VMMDevicePtr>(middle_ptr), handle_size}}, handle_size);
+  ASSERT_EQ(source_pages.size(), 1UL);
+  const VMMDevicePtr destination_va =
+      underlying->virtual_mem_base() + underlying->tail_offset();
+  const size_t tail_offset = underlying->tail_offset();
 
   FreeBlockRemapCompactor compactor(
-      underlying, PoolType::kLarge, [](DecoratedAllocationPtr) {
+      underlying, PoolType::kLarge, [](std::vector<DecoratedAllocationPtr>*) {
         throw std::runtime_error("injected compact commit failure");
       });
-  EXPECT_THROW(compactor.Compact(&allocator.all_blocks_, handle_size),
-               std::runtime_error);
+  EXPECT_THROW(
+      compactor.Compact(&allocator.all_blocks_, handle_size, source_pages),
+      std::runtime_error);
+
+  EXPECT_EQ(underlying->tail_offset(), tail_offset);
+  EXPECT_TRUE(underlying->IsRangeUnmapped(destination_va, handle_size));
+  for (const auto& block : allocator.all_blocks()) {
+    EXPECT_FALSE(block.ContainsVARange(destination_va, handle_size));
+  }
+  allocator.RebuildFreeBlockIndex();
+  ASSERT_EQ(allocator.free_blocks_.size(), 2UL);
+  EXPECT_TRUE(allocator.unmapped_free_blocks_.empty());
+  const auto* restored_source = FindBlockByPtr(allocator, middle_ptr);
+  ASSERT_NE(restored_source, nullptr);
+  EXPECT_TRUE(restored_source->IsMappedFree());
+  const auto* original_tail = FindBlockByPtr(allocator, last_ptr);
+  ASSERT_NE(original_tail, nullptr);
+  EXPECT_TRUE(original_tail->IsMappedFree());
+  EXPECT_EQ(original_tail->size_, handle_size);
 
   auto reused = allocator.Allocate(handle_size);
   ASSERT_NE(reused, nullptr);
+  EXPECT_EQ(reused->ptr(), middle_ptr);
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2,
+     CompactRestoresUnmappedGapAfterCommitException) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+  const size_t handle_size = underlying->handle_size();
+
+  auto source = allocator.Allocate(handle_size);
+  auto gap = allocator.Allocate(handle_size);
+  auto anchor = allocator.Allocate(handle_size);
+  ASSERT_NE(source, nullptr);
+  ASSERT_NE(gap, nullptr);
+  ASSERT_NE(anchor, nullptr);
+  auto* source_ptr = source->ptr();
+  auto* gap_ptr = gap->ptr();
+
+  gap.reset();
+  ASSERT_EQ(allocator.Release(phi::GPUPlace()), handle_size);
+  MarkRemapSafeForTest(source.get());
+  source.reset();
+
+  auto source_pages = underlying->CollectRemapSourcePages(
+      {{reinterpret_cast<VMMDevicePtr>(source_ptr), handle_size}}, handle_size);
+  ASSERT_EQ(source_pages.size(), 1UL);
+
+  const VMMDevicePtr terminal_va = underlying->virtual_mem_base() +
+                                   underlying->virtual_mem_size() - handle_size;
+  allocator.all_blocks_.push_back(
+      BlockV2::MakeMappedBlock(BlockType::kActive,
+                               reinterpret_cast<void*>(terminal_va),
+                               handle_size,
+                               PoolType::kLarge));
+
+  FreeBlockRemapCompactor compactor(
+      underlying, PoolType::kLarge, [](std::vector<DecoratedAllocationPtr>*) {
+        throw std::runtime_error("injected compact commit failure");
+      });
+  EXPECT_THROW(
+      compactor.Compact(&allocator.all_blocks_, handle_size, source_pages),
+      std::runtime_error);
+
+  EXPECT_TRUE(underlying->IsRangeUnmapped(
+      reinterpret_cast<VMMDevicePtr>(gap_ptr), handle_size));
+  const auto* restored_gap = FindBlockByPtr(allocator, gap_ptr);
+  ASSERT_NE(restored_gap, nullptr);
+  EXPECT_TRUE(restored_gap->IsUnmappedFree());
+  const auto* restored_source = FindBlockByPtr(allocator, source_ptr);
+  ASSERT_NE(restored_source, nullptr);
+  EXPECT_TRUE(restored_source->IsMappedFree());
+
+  allocator.RebuildFreeBlockIndex();
+  ASSERT_EQ(allocator.free_blocks_.size(), 1UL);
+  ASSERT_EQ(allocator.unmapped_free_blocks_.size(), 1UL);
+  EXPECT_EQ(allocator.free_blocks_.begin()->second->ptr_, source_ptr);
+  EXPECT_EQ(allocator.unmapped_free_blocks_.begin()->second->ptr_, gap_ptr);
 }
 
 TEST(VMMAutoGrowthBestFitAllocatorV2, BoundedCompactSkipsLargeFreeBlock) {
@@ -1091,6 +1227,103 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, BoundedCompactUsesDriverTopUp) {
   EXPECT_TRUE(found_tail_free);
 }
 
+TEST(VMMAutoGrowthBestFitAllocatorV2,
+     BoundedCompactReportsInsufficientDriverTopUp) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+
+  const size_t handle_size = underlying->handle_size();
+  auto movable = allocator.Allocate(handle_size);
+  auto tail_guard = allocator.Allocate(handle_size);
+  ASSERT_NE(movable, nullptr);
+  ASSERT_NE(tail_guard, nullptr);
+  MarkRemapSafeForTest(movable.get());
+  movable.reset();
+
+  VMMRemapAttemptResult attempt_result;
+  EXPECT_EQ(allocator.RemapForAllocation(phi::GPUPlace(),
+                                         underlying->virtual_mem_size(),
+                                         nullptr,
+                                         &attempt_result),
+            0UL);
+  EXPECT_EQ(attempt_result.status,
+            VMMRemapAttemptStatus::kInsufficientMovableMemory);
+  EXPECT_EQ(attempt_result.movable_bytes, handle_size);
+  EXPECT_GT(attempt_result.required_bytes, handle_size);
+  EXPECT_EQ(CountBlocksOfType(allocator, BlockType::kUnmappedFree), 0UL);
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2, BoundedCompactUsesFailedGrowProgress) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+
+  const size_t handle_size = underlying->handle_size();
+  auto movable = allocator.Allocate(handle_size);
+  auto tail_guard = allocator.Allocate(handle_size);
+  ASSERT_NE(movable, nullptr);
+  ASSERT_NE(tail_guard, nullptr);
+
+  MarkRemapSafeForTest(movable.get());
+  movable.reset();
+
+  const size_t requested_size = 3UL * handle_size;
+  VMMGrowOOMInfo grow_oom{/*requested_handles=*/3,
+                          /*created_handles=*/1,
+                          handle_size,
+                          /*device=*/0,
+                          PoolType::kLarge};
+
+  // Two handles are required, but only one source handle is ready. Partial
+  // remap cannot make this failed grow succeed, so it must not mutate blocks.
+  VMMRemapAttemptResult attempt_result;
+  EXPECT_EQ(allocator.RemapForAllocation(
+                phi::GPUPlace(), requested_size, &grow_oom, &attempt_result),
+            0UL);
+  EXPECT_EQ(attempt_result.status,
+            VMMRemapAttemptStatus::kInsufficientMovableMemory);
+  EXPECT_EQ(attempt_result.movable_bytes, handle_size);
+  EXPECT_EQ(attempt_result.required_bytes, 2UL * handle_size);
+  EXPECT_EQ(CountBlocksOfType(allocator, BlockType::kUnmappedFree), 0UL);
+
+  // The same grow had capacity for two handles, so moving exactly one existing
+  // handle is sufficient to reduce the retry grow from three handles to two.
+  grow_oom.created_handles = 2;
+  EXPECT_EQ(allocator.RemapForAllocation(
+                phi::GPUPlace(), requested_size, &grow_oom, &attempt_result),
+            handle_size);
+  EXPECT_EQ(attempt_result.status, VMMRemapAttemptStatus::kAttempted);
+  EXPECT_EQ(CountBlocksOfType(allocator, BlockType::kUnmappedFree), 1UL);
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2,
+     BoundedCompactIgnoresMismatchedGrowProgress) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+
+  const size_t handle_size = underlying->handle_size();
+  auto movable = allocator.Allocate(handle_size);
+  auto tail_guard = allocator.Allocate(handle_size);
+  ASSERT_NE(movable, nullptr);
+  ASSERT_NE(tail_guard, nullptr);
+
+  MarkRemapSafeForTest(movable.get());
+  movable.reset();
+
+  // This snapshot describes another pool. It must not affect this request;
+  // the normal driver-memory fallback still permits the one-handle remap.
+  const VMMGrowOOMInfo mismatched_grow_oom{/*requested_handles=*/3,
+                                           /*created_handles=*/1,
+                                           handle_size,
+                                           /*device=*/0,
+                                           PoolType::kSmall};
+  EXPECT_EQ(allocator.RemapForAllocation(
+                phi::GPUPlace(), 3UL * handle_size, &mismatched_grow_oom),
+            handle_size);
+}
+
 TEST(VMMAutoGrowthBestFitAllocatorV2, BoundedCompactCountsTailFree) {
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
@@ -1120,8 +1353,9 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, BoundedCompactCountsTailFree) {
   const size_t requested_size = 2UL * handle_size + 1UL;
   const size_t remapped =
       allocator.RemapForAllocation(phi::GPUPlace(), requested_size);
-  EXPECT_GE(remapped, handle_size);
-  EXPECT_EQ(remapped % handle_size, 0UL);
+  // The existing 2-handle tail free range already contributes to this
+  // 3-handle aligned request. Only the one-handle non-tail gap must move.
+  EXPECT_EQ(remapped, handle_size);
 
   bool found_unmapped_range = false;
   bool found_movable_source = false;
@@ -1138,6 +1372,9 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, BoundedCompactCountsTailFree) {
   }
   EXPECT_TRUE(found_unmapped_range);
   EXPECT_TRUE(found_movable_source);
+
+  auto recovered = allocator.Allocate(requested_size);
+  ASSERT_NE(recovered, nullptr);
 }
 
 TEST(VMMAutoGrowthBestFitAllocatorV2, ExplicitCompactAll) {
@@ -1177,14 +1414,16 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, ExplicitCompactAll) {
   EXPECT_TRUE(found_third_unmapped);
 }
 
-TEST(VMMAutoGrowthBestFitAllocatorV2, CompactWaitsForBackingMapPendingEvent) {
+TEST(VMMAutoGrowthBestFitAllocatorV2, CompactSkipsBackingMapPendingEvent) {
   ScopedVLogLevel vlog_guard(4);
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
       underlying, 256, phi::GPUPlace(), PoolType::kLarge);
 
   auto allocation = allocator.Allocate(underlying->handle_size());
+  auto tail_guard = allocator.Allocate(underlying->handle_size());
   ASSERT_NE(allocation, nullptr);
+  ASSERT_NE(tail_guard, nullptr);
 
   gpuStream_t stream;
   ASSERT_EQ(cudaStreamCreate(&stream), cudaSuccess);
@@ -1207,23 +1446,27 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, CompactWaitsForBackingMapPendingEvent) {
   ASSERT_EQ(cudaStreamSynchronize(stream), cudaSuccess);
   EXPECT_EQ(allocator.Compact(phi::GPUPlace()), underlying->handle_size());
 
-  ASSERT_EQ(allocator.all_blocks().size(), 2UL);
+  ASSERT_EQ(allocator.all_blocks().size(), 3UL);
   auto it = allocator.all_blocks().begin();
   ASSERT_EQ(it->type_, BlockType::kUnmappedFree);
+  ++it;
+  ASSERT_EQ(it->type_, BlockType::kActive);
   ++it;
   ASSERT_EQ(it->type_, BlockType::kFree);
   EXPECT_EQ(it->size_, underlying->handle_size());
   ASSERT_EQ(cudaStreamDestroy(stream), cudaSuccess);
 }
 
-TEST(VMMAutoGrowthBestFitAllocatorV2, CompactWaitsForBlockOwningStream) {
+TEST(VMMAutoGrowthBestFitAllocatorV2, CompactSkipsPendingOwningStream) {
   ScopedVLogLevel vlog_guard(4);
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
       underlying, 256, phi::GPUPlace(), PoolType::kLarge);
 
   auto allocation = allocator.Allocate(underlying->handle_size());
+  auto tail_guard = allocator.Allocate(underlying->handle_size());
   ASSERT_NE(allocation, nullptr);
+  ASSERT_NE(tail_guard, nullptr);
 
   gpuStream_t stream;
   ASSERT_EQ(cudaStreamCreate(&stream), cudaSuccess);
@@ -1241,6 +1484,83 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, CompactWaitsForBlockOwningStream) {
   ASSERT_EQ(cudaStreamSynchronize(stream), cudaSuccess);
   EXPECT_EQ(allocator.Compact(phi::GPUPlace()), underlying->handle_size());
 
+  ASSERT_EQ(cudaStreamDestroy(stream), cudaSuccess);
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2, OOMRemapSkipsPendingOwningStreamEvents) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+
+  auto first = allocator.Allocate(underlying->handle_size());
+  auto separator = allocator.Allocate(underlying->handle_size());
+  auto second = allocator.Allocate(underlying->handle_size());
+  auto tail_guard = allocator.Allocate(underlying->handle_size());
+  ASSERT_NE(first, nullptr);
+  ASSERT_NE(separator, nullptr);
+  ASSERT_NE(second, nullptr);
+  ASSERT_NE(tail_guard, nullptr);
+
+  gpuStream_t stream;
+  ASSERT_EQ(cudaStreamCreate(&stream), cudaSuccess);
+  BusyWaitKernel<<<1, 1, 0, stream>>>(500000000ULL);
+  ASSERT_EQ(cudaGetLastError(), cudaSuccess);
+
+  auto* first_remap = dynamic_cast<VMMRemapEventAllocation*>(first.get());
+  auto* second_remap = dynamic_cast<VMMRemapEventAllocation*>(second.get());
+  ASSERT_NE(first_remap, nullptr);
+  ASSERT_NE(second_remap, nullptr);
+  ASSERT_TRUE(first_remap->SetVMMRemapEvent(stream, nullptr));
+  ASSERT_TRUE(second_remap->SetVMMRemapEvent(stream, nullptr));
+  first.reset();
+  second.reset();
+
+  EXPECT_EQ(allocator.RemapForAllocation(phi::GPUPlace(),
+                                         2UL * underlying->handle_size()),
+            0UL);
+  ASSERT_EQ(cudaStreamSynchronize(stream), cudaSuccess);
+  EXPECT_EQ(allocator.RemapForAllocation(phi::GPUPlace(),
+                                         2UL * underlying->handle_size()),
+            2UL * underlying->handle_size());
+  ASSERT_EQ(cudaStreamDestroy(stream), cudaSuccess);
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2,
+     BoundedRemapSkipsPendingBlockAndUsesLaterReadyBlock) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+  const size_t handle_size = underlying->handle_size();
+
+  auto pending = allocator.Allocate(handle_size);
+  auto separator = allocator.Allocate(handle_size);
+  auto ready = allocator.Allocate(handle_size);
+  auto tail_active = allocator.Allocate(256UL);
+  ASSERT_NE(pending, nullptr);
+  ASSERT_NE(separator, nullptr);
+  ASSERT_NE(ready, nullptr);
+  ASSERT_NE(tail_active, nullptr);
+
+  gpuStream_t stream;
+  ASSERT_EQ(cudaStreamCreate(&stream), cudaSuccess);
+  BusyWaitKernel<<<1, 1, 0, stream>>>(500000000ULL);
+  ASSERT_EQ(cudaGetLastError(), cudaSuccess);
+
+  auto* pending_remap = dynamic_cast<VMMRemapEventAllocation*>(pending.get());
+  ASSERT_NE(pending_remap, nullptr);
+  ASSERT_TRUE(pending_remap->SetVMMRemapEvent(stream, nullptr));
+  MarkRemapSafeForTest(ready.get());
+  pending.reset();
+  ready.reset();
+
+  // The partial tail leaves a 256-byte deficit beyond one handle. Rounded to
+  // backing granularity, bounded remap needs one source page. The earlier
+  // pending block must not consume that page budget before the later ready
+  // block is considered.
+  EXPECT_EQ(allocator.RemapForAllocation(phi::GPUPlace(), handle_size + 256UL),
+            handle_size);
+
+  ASSERT_EQ(cudaStreamSynchronize(stream), cudaSuccess);
   ASSERT_EQ(cudaStreamDestroy(stream), cudaSuccess);
 }
 
@@ -1303,7 +1623,9 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, CompactKeepsMappedFreeBlocksAsViews) {
 
   const size_t handle_size = underlying->handle_size();
   auto large = allocator.Allocate(3UL * handle_size);
+  auto tail_guard = allocator.Allocate(handle_size);
   ASSERT_NE(large, nullptr);
+  ASSERT_NE(tail_guard, nullptr);
   MarkRemapSafeForTest(large.get());
   large.reset();
 
@@ -1320,6 +1642,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, CompactKeepsMappedFreeBlocksAsViews) {
   }
 
   prefix.reset();
+  tail_guard.reset();
   for (const auto& block : allocator.all_blocks()) {
     if (block.IsMappedFree()) {
       ExpectBlockView(block);
@@ -1333,7 +1656,152 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, CompactKeepsMappedFreeBlocksAsViews) {
   EXPECT_TRUE(underlying->CollectMappedPages(released_range, 0).empty());
 }
 
-TEST(VMMAutoGrowthBestFitAllocatorV2, CompactUsesUnmappedTargets) {
+TEST(VMMAutoGrowthBestFitAllocatorV2, BoundedCompactPrefersDirectGap) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+
+  const size_t handle_size = underlying->handle_size();
+  auto target = allocator.Allocate(2UL * handle_size);
+  auto source_a = allocator.Allocate(handle_size);
+  auto separator = allocator.Allocate(handle_size);
+  auto source_b = allocator.Allocate(handle_size);
+  auto tail_guard = allocator.Allocate(handle_size);
+  ASSERT_NE(target, nullptr);
+  ASSERT_NE(source_a, nullptr);
+  ASSERT_NE(separator, nullptr);
+  ASSERT_NE(source_b, nullptr);
+  ASSERT_NE(tail_guard, nullptr);
+  auto* target_ptr = target->ptr();
+
+  target.reset();
+  ASSERT_EQ(allocator.Release(phi::GPUPlace()), 2UL * handle_size);
+  const auto* target_gap = FindBlockByPtr(allocator, target_ptr);
+  ASSERT_NE(target_gap, nullptr);
+  ASSERT_TRUE(target_gap->IsUnmappedFree());
+
+  MarkRemapSafeForTest(source_a.get());
+  MarkRemapSafeForTest(source_b.get());
+  source_a.reset();
+  source_b.reset();
+  const size_t tail_offset = underlying->tail_offset();
+
+  EXPECT_EQ(allocator.RemapForAllocation(phi::GPUPlace(), 2UL * handle_size),
+            2UL * handle_size);
+  EXPECT_EQ(underlying->tail_offset(), tail_offset);
+
+  auto recovered = allocator.Allocate(2UL * handle_size);
+  ASSERT_NE(recovered, nullptr);
+  EXPECT_EQ(recovered->ptr(), target_ptr);
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2, BoundedCompactFallsBackToUsefulScatter) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+
+  const size_t handle_size = underlying->handle_size();
+  auto target_a = allocator.Allocate(handle_size);
+  auto mapped_bridge = allocator.Allocate(handle_size);
+  auto target_b = allocator.Allocate(2UL * handle_size);
+  auto separator_a = allocator.Allocate(handle_size);
+  auto source_a = allocator.Allocate(2UL * handle_size);
+  auto separator_b = allocator.Allocate(handle_size);
+  auto source_b = allocator.Allocate(handle_size);
+  auto tail_guard = allocator.Allocate(handle_size);
+  ASSERT_NE(target_a, nullptr);
+  ASSERT_NE(mapped_bridge, nullptr);
+  ASSERT_NE(target_b, nullptr);
+  ASSERT_NE(separator_a, nullptr);
+  ASSERT_NE(source_a, nullptr);
+  ASSERT_NE(separator_b, nullptr);
+  ASSERT_NE(source_b, nullptr);
+  ASSERT_NE(tail_guard, nullptr);
+  auto* target_ptr = target_a->ptr();
+
+  target_a.reset();
+  target_b.reset();
+  ASSERT_EQ(allocator.Release(phi::GPUPlace()), 3UL * handle_size);
+
+  // Keep the bridge mapped-free but ineligible as a remap source. Filling the
+  // one- and two-handle gaps around it will form one four-handle free range.
+  mapped_bridge.reset();
+  MarkRemapSafeForTest(source_a.get());
+  MarkRemapSafeForTest(source_b.get());
+  source_a.reset();
+  source_b.reset();
+
+  // Advance the underlying tail outside the block view so neither target gap
+  // nor the allocator tail can hold the complete three-handle destination.
+  auto hidden_tail_mapping = underlying->AppendWithBlock(handle_size);
+  ASSERT_TRUE(hidden_tail_mapping.HasAllocation());
+
+  const size_t requested_size = 3UL * handle_size;
+  EXPECT_EQ(allocator.RemapForAllocation(phi::GPUPlace(), requested_size),
+            requested_size);
+
+  auto recovered = allocator.Allocate(requested_size);
+  ASSERT_NE(recovered, nullptr);
+  EXPECT_EQ(recovered->ptr(), target_ptr);
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2, BoundedCompactPrefersContiguousSources) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+
+  const size_t handle_size = underlying->handle_size();
+  auto target = allocator.Allocate(3UL * handle_size);
+  auto scattered_a = allocator.Allocate(handle_size);
+  auto separator_a = allocator.Allocate(handle_size);
+  auto scattered_b = allocator.Allocate(handle_size);
+  auto separator_b = allocator.Allocate(handle_size);
+  auto contiguous = allocator.Allocate(2UL * handle_size);
+  auto tail_guard = allocator.Allocate(handle_size);
+  ASSERT_NE(target, nullptr);
+  ASSERT_NE(scattered_a, nullptr);
+  ASSERT_NE(separator_a, nullptr);
+  ASSERT_NE(scattered_b, nullptr);
+  ASSERT_NE(separator_b, nullptr);
+  ASSERT_NE(contiguous, nullptr);
+  ASSERT_NE(tail_guard, nullptr);
+
+  auto* target_ptr = target->ptr();
+  auto* scattered_a_ptr = scattered_a->ptr();
+  auto* scattered_b_ptr = scattered_b->ptr();
+  auto* contiguous_ptr = contiguous->ptr();
+
+  target.reset();
+  ASSERT_EQ(allocator.Release(phi::GPUPlace()), 3UL * handle_size);
+
+  MarkRemapSafeForTest(scattered_a.get());
+  MarkRemapSafeForTest(scattered_b.get());
+  MarkRemapSafeForTest(contiguous.get());
+  scattered_a.reset();
+  scattered_b.reset();
+  contiguous.reset();
+
+  EXPECT_EQ(allocator.RemapForAllocation(phi::GPUPlace(), 3UL * handle_size),
+            3UL * handle_size);
+
+  const auto* contiguous_gap = FindBlockByPtr(allocator, contiguous_ptr);
+  ASSERT_NE(contiguous_gap, nullptr);
+  EXPECT_TRUE(contiguous_gap->IsUnmappedFree());
+  EXPECT_EQ(contiguous_gap->size(), 2UL * handle_size);
+
+  const auto* scattered_a_block = FindBlockByPtr(allocator, scattered_a_ptr);
+  ASSERT_NE(scattered_a_block, nullptr);
+  EXPECT_TRUE(scattered_a_block->IsUnmappedFree());
+  const auto* scattered_b_block = FindBlockByPtr(allocator, scattered_b_ptr);
+  ASSERT_NE(scattered_b_block, nullptr);
+  EXPECT_TRUE(scattered_b_block->IsMappedFree());
+
+  auto recovered = allocator.Allocate(3UL * handle_size);
+  ASSERT_NE(recovered, nullptr);
+  EXPECT_EQ(recovered->ptr(), target_ptr);
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2, BoundedCompactRequiresTail) {
   ScopedVLogLevel vlog_guard(4);
   auto underlying = CreateUnderlyingAllocator();
   VMMAutoGrowthBestFitAllocatorV2 allocator(
@@ -1369,7 +1837,8 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, CompactUsesUnmappedTargets) {
   source_a.reset();
   source_b.reset();
   EXPECT_EQ(allocator.RemapForAllocation(phi::GPUPlace(), 2UL * handle_size),
-            2UL * handle_size);
+            0UL);
+  EXPECT_EQ(allocator.Compact(phi::GPUPlace()), 2UL * handle_size);
 
   const auto* target_a_block = FindBlockByPtr(allocator, target_a_ptr);
   ASSERT_NE(target_a_block, nullptr);
@@ -1428,7 +1897,8 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, RemapUsesStaleUnmappedRange) {
   MarkRemapSafeForTest(second_source.get());
   second_source.reset();
   ASSERT_EQ(allocator.RemapForAllocation(phi::GPUPlace(), handle_size + 1UL),
-            handle_size);
+            0UL);
+  ASSERT_EQ(allocator.Compact(phi::GPUPlace()), handle_size);
 
   const auto* first_source_block = FindBlockByPtr(allocator, first_source_ptr);
   ASSERT_NE(first_source_block, nullptr);

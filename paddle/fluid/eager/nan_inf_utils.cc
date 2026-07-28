@@ -93,6 +93,11 @@ void CheckTensorHasNanOrInf(const std::string& api_name, const Tensor& tensor) {
     return;
   }
 
+  if (tensor.initialized() && (tensor.dtype() == phi::DataType::FLOAT8_E4M3FN ||
+                               tensor.dtype() == phi::DataType::FLOAT8_E5M2)) {
+    return;
+  }
+
   if (!FLAGS_check_nan_inf_blacklist.empty()) {
     std::stringstream blacklist_ss(FLAGS_check_nan_inf_blacklist);
     std::string blacklisted_op;

@@ -13,7 +13,11 @@
 // limitations under the License.
 
 #include "paddle/phi/core/memory/allocation/stream_safe_cuda_allocator.h"
+
+#include <algorithm>
+#include <chrono>
 #include <thread>
+
 #include "glog/logging.h"
 
 #include "paddle/common/flags.h"
@@ -22,6 +26,9 @@
 #include "paddle/phi/core/memory/allocation/retry_allocator.h"
 #include "paddle/phi/core/memory/allocation/stat_allocator.h"
 #include "paddle/phi/core/memory/allocation/vmm_allocator_v2_types.h"
+#include "paddle/phi/core/memory/stats.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
+#include "paddle/utils/string/printf.h"
 
 COMMON_DECLARE_bool(vmm_v2_remap_on_oom);
 
@@ -53,6 +60,130 @@ VMMAutoGrowthBestFitMultiPoolAllocatorV2* GetVMMV2MultiPoolAllocator(
     return GetVMMV2MultiPoolAllocator(stat->GetUnderLyingAllocator());
   }
   return nullptr;
+}
+
+enum class VMMV2RemapOutcome {
+  kDisabled,
+  kNotAttempted,
+  kInsufficientMovableMemory,
+  kNoMovableMemory,
+  kAttemptedNoProgress,
+  kRetryWithoutRemapFailed,
+  kRetryFailed,
+};
+
+std::string ExtractAllocationFailureSummary(const BadAlloc& error) {
+  std::string message = error.what();
+  constexpr char kSummaryMarker[] = "Error Message Summary:";
+  const auto marker = message.rfind(kSummaryMarker);
+  if (marker != std::string::npos) {
+    auto summary_start = message.find('\n', marker);
+    if (summary_start != std::string::npos) {
+      summary_start = message.find('\n', summary_start + 1);
+    }
+    if (summary_start != std::string::npos) {
+      message.erase(0, summary_start + 1);
+    }
+  }
+
+  const auto first = message.find_first_not_of(" \t\r\n");
+  if (first == std::string::npos) {
+    return "unknown allocation failure";
+  }
+  const auto last = message.find_last_not_of(" \t\r\n");
+  return message.substr(first, last - first + 1);
+}
+
+std::string BuildVMMV2OOMSummary(
+    VMMAutoGrowthBestFitMultiPoolAllocatorV2* allocator,
+    const GPUPlace& place,
+    size_t requested_size,
+    VMMV2RemapOutcome remap_outcome,
+    size_t remapped_bytes = 0,
+    size_t movable_bytes = 0,
+    size_t required_bytes = 0) {
+  size_t total_free = 0;
+  size_t largest_free_block = 0;
+  allocator->GetFreeBlockStats(
+      &total_free, &largest_free_block, requested_size);
+
+  size_t available = 0;
+  size_t total = 0;
+  size_t driver_available = 0;
+  size_t driver_total = 0;
+  const bool memory_limited = platform::RecordedGpuMemGetInfo(
+      &available, &total, &driver_available, &driver_total, place.device);
+  const int64_t paddle_allocated =
+      paddle::memory::DeviceMemoryStatCurrentValue("Allocated", place.device);
+  const int64_t paddle_reserved =
+      paddle::memory::DeviceMemoryStatCurrentValue("Reserved", place.device);
+
+  std::string remap_result;
+  switch (remap_outcome) {
+    case VMMV2RemapOutcome::kDisabled:
+      remap_result =
+          "remap was not attempted because memory defragmentation is disabled";
+      break;
+    case VMMV2RemapOutcome::kNotAttempted:
+      remap_result =
+          "remap was not attempted because no useful remap work was identified";
+      break;
+    case VMMV2RemapOutcome::kInsufficientMovableMemory:
+      remap_result = string::Sprintf(
+          "remap was not attempted; %s could be safely moved, but %s was "
+          "required to recover this allocation",
+          string::HumanReadableSize(movable_bytes),
+          string::HumanReadableSize(required_bytes));
+      break;
+    case VMMV2RemapOutcome::kNoMovableMemory:
+      remap_result =
+          "remap was not attempted because no safely movable free memory was "
+          "available";
+      break;
+    case VMMV2RemapOutcome::kAttemptedNoProgress:
+      remap_result = "remap was attempted, but no memory was moved";
+      break;
+    case VMMV2RemapOutcome::kRetryWithoutRemapFailed:
+      remap_result =
+          "remap was skipped because a sufficiently large free block was "
+          "available, but the allocation retry still failed";
+      break;
+    case VMMV2RemapOutcome::kRetryFailed:
+      remap_result = string::Sprintf(
+          "remap moved %s, but the allocation retry still failed",
+          string::HumanReadableSize(remapped_bytes));
+      break;
+  }
+
+  std::string configured_limit;
+  if (memory_limited) {
+    configured_limit = string::Sprintf(
+        "\nConfigured Paddle memory limit: available=%s, limit=%s.",
+        string::HumanReadableSize(available),
+        string::HumanReadableSize(total));
+  }
+
+  return string::Sprintf(
+      "\n\nOut of memory error on GPU %d. Cannot allocate %s memory.\n"
+      "Paddle allocator memory:\n"
+      "  Allocated (in use): %s\n"
+      "  Reserved by Paddle: %s\n"
+      "  Free in Paddle memory pool: %s\n"
+      "  Largest contiguous free block: %s\n"
+      "CUDA driver memory:\n"
+      "  Free on device: %s\n"
+      "  Total device capacity: %s%s\n"
+      "Memory defragmentation: %s.\n",
+      place.device,
+      string::HumanReadableSize(requested_size),
+      string::HumanReadableSize(std::max<int64_t>(paddle_allocated, 0)),
+      string::HumanReadableSize(std::max<int64_t>(paddle_reserved, 0)),
+      string::HumanReadableSize(total_free),
+      string::HumanReadableSize(largest_free_block),
+      string::HumanReadableSize(driver_available),
+      string::HumanReadableSize(driver_total),
+      configured_limit,
+      remap_result);
 }
 
 void MarkVMMV2RemapPendingStream(StreamSafeCUDAAllocator* allocator,
@@ -324,46 +455,141 @@ phi::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
       try {
         underlying_allocation = underlying_allocator_->Allocate(size);
       } catch (const BadAlloc& second_bad_alloc) {
-        const std::string second_failure = second_bad_alloc.what();
         if (FLAGS_vmm_v2_remap_on_oom) {
-          const size_t remapped_bytes = vmm->RemapForAllocation(place_, size);
-          if (remapped_bytes > 0) {
+          const auto* grow_oom =
+              dynamic_cast<const VMMGrowOOM*>(&second_bad_alloc);
+          const auto remap_start = std::chrono::steady_clock::now();
+          VMMRemapAttemptResult remap_result;
+          const size_t remapped_bytes = vmm->RemapForAllocation(
+              place_,
+              size,
+              grow_oom == nullptr ? nullptr : &grow_oom->info(),
+              &remap_result);
+          const auto remap_us =
+              std::chrono::duration_cast<std::chrono::microseconds>(
+                  std::chrono::steady_clock::now() - remap_start)
+                  .count();
+          VMMV2RemapOutcome remap_status_outcome =
+              VMMV2RemapOutcome::kNotAttempted;
+          switch (remap_result.status) {
+            case VMMRemapAttemptStatus::kNotAttempted:
+              break;
+            case VMMRemapAttemptStatus::kRetryWithoutRemap:
+              remap_status_outcome =
+                  VMMV2RemapOutcome::kRetryWithoutRemapFailed;
+              break;
+            case VMMRemapAttemptStatus::kInsufficientMovableMemory:
+              remap_status_outcome =
+                  VMMV2RemapOutcome::kInsufficientMovableMemory;
+              break;
+            case VMMRemapAttemptStatus::kNoMovableMemory:
+              remap_status_outcome = VMMV2RemapOutcome::kNoMovableMemory;
+              break;
+            case VMMRemapAttemptStatus::kAttempted:
+              remap_status_outcome = VMMV2RemapOutcome::kAttemptedNoProgress;
+              break;
+          }
+          const bool retry_without_remap =
+              remap_result.status == VMMRemapAttemptStatus::kRetryWithoutRemap;
+          if (remapped_bytes > 0 || retry_without_remap) {
             try {
               underlying_allocation = underlying_allocator_->Allocate(size);
+              if (remapped_bytes > 0) {
+                LOG(INFO)
+                    << "Recovered the " << string::HumanReadableSize(size)
+                    << " allocation on GPU " << static_cast<int>(place_.device)
+                    << " after memory defragmentation; the remap phase moved "
+                    << string::HumanReadableSize(remapped_bytes) << " and took "
+                    << static_cast<double>(remap_us) / 1000.0 << " ms.";
+              } else {
+                VLOG(3) << "Recovered the " << string::HumanReadableSize(size)
+                        << " allocation on GPU "
+                        << static_cast<int>(place_.device)
+                        << " after a sufficiently large free block became "
+                           "available during OOM recovery.";
+              }
             } catch (const BadAlloc& final_bad_alloc) {
+              if (remapped_bytes > 0) {
+                VLOG(3) << "The remap phase moved "
+                        << string::HumanReadableSize(remapped_bytes) << " in "
+                        << static_cast<double>(remap_us) / 1000.0
+                        << " ms, but the " << string::HumanReadableSize(size)
+                        << " allocation retry still failed on GPU "
+                        << static_cast<int>(place_.device) << ".";
+              } else {
+                VLOG(3) << "A sufficiently large free block was detected "
+                           "during OOM recovery, but the "
+                        << string::HumanReadableSize(size)
+                        << " allocation retry still failed on GPU "
+                        << static_cast<int>(place_.device) << ".";
+              }
+              const auto remap_outcome = remapped_bytes > 0
+                                             ? VMMV2RemapOutcome::kRetryFailed
+                                             : remap_status_outcome;
+              const std::string oom_summary = BuildVMMV2OOMSummary(
+                  vmm, place_, size, remap_outcome, remapped_bytes);
+              const std::string initial_summary =
+                  ExtractAllocationFailureSummary(first_bad_alloc);
+              const std::string reclaim_retry_summary =
+                  ExtractAllocationFailureSummary(second_bad_alloc);
+              const std::string final_summary =
+                  ExtractAllocationFailureSummary(final_bad_alloc);
+              const char* final_retry_label =
+                  retry_without_remap
+                      ? "Retry after detecting an available free block"
+                      : "Retry after memory defragmentation";
               ClearGpuLastError();
               PADDLE_THROW_BAD_ALLOC(common::errors::ResourceExhausted(
-                  "Allocation of %zu bytes failed after compact "
-                  "(remap defrag, %zu bytes remapped).\n"
-                  "Initial allocation failure:\n%s\n"
-                  "Retry allocation failure before compact:\n%s\n"
-                  "Retry allocation failure after compact:\n%s",
-                  size,
-                  remapped_bytes,
-                  first_failure.c_str(),
-                  second_failure.c_str(),
-                  final_bad_alloc.what()));
+                  "%s"
+                  "Allocation failure summary:\n"
+                  "1. Initial attempt: %s\n"
+                  "2. Retry after reclaiming pending frees: %s\n"
+                  "3. %s: %s",
+                  oom_summary,
+                  initial_summary.c_str(),
+                  reclaim_retry_summary.c_str(),
+                  final_retry_label,
+                  final_summary.c_str()));
             }
           } else {
+            const std::string oom_summary =
+                BuildVMMV2OOMSummary(vmm,
+                                     place_,
+                                     size,
+                                     remap_status_outcome,
+                                     0,
+                                     remap_result.movable_bytes,
+                                     remap_result.required_bytes);
+            const std::string initial_summary =
+                ExtractAllocationFailureSummary(first_bad_alloc);
+            const std::string retry_summary =
+                ExtractAllocationFailureSummary(second_bad_alloc);
             ClearGpuLastError();
             PADDLE_THROW_BAD_ALLOC(common::errors::ResourceExhausted(
-                "Allocation of %zu bytes failed after VMM V2 compact "
-                "pre-check found no useful remap work.\n"
-                "Initial allocation failure:\n%s\n"
-                "Retry allocation failure before compact:\n%s",
-                size,
-                first_failure.c_str(),
-                second_failure.c_str()));
+                "%s"
+                "Allocation failure summary:\n"
+                "1. Initial attempt: %s\n"
+                "2. Retry after reclaiming pending frees: %s",
+                oom_summary,
+                initial_summary.c_str(),
+                retry_summary.c_str()));
           }
         } else {
+          const std::string oom_summary = BuildVMMV2OOMSummary(
+              vmm, place_, size, VMMV2RemapOutcome::kDisabled);
+          const std::string initial_summary =
+              ExtractAllocationFailureSummary(first_bad_alloc);
+          const std::string retry_summary =
+              ExtractAllocationFailureSummary(second_bad_alloc);
           ClearGpuLastError();
           PADDLE_THROW_BAD_ALLOC(common::errors::ResourceExhausted(
-              "Allocation of %zu bytes failed.\n"
-              "Initial allocation failure:\n%s\n"
-              "Retry allocation failure:\n%s",
-              size,
-              first_failure.c_str(),
-              second_failure.c_str()));
+              "%s"
+              "Allocation failure summary:\n"
+              "1. Initial attempt: %s\n"
+              "2. Retry after reclaiming pending frees: %s",
+              oom_summary,
+              initial_summary.c_str(),
+              retry_summary.c_str()));
         }
       }
     }

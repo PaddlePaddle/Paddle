@@ -76,12 +76,43 @@ class TestMuonParallel(TestMultipleAccelerators):
     def test_muon_sharding_multi_precision(self):
         """MuonSharding test with multi_precision=True.
 
-        Covers muon.py L575 (master_weight.scale_ with weight_decay),
-        L582-583 (master_weight.subtract_ + assign back to param).
+        Covers master_weight.scale_ with weight_decay and
+        master_weight.subtract_ + assign back to param in _muon_update_group.
         """
         self.run_mnist_2accelerators(
             'hybrid_parallel_sharding_muon_model.py',
             need_envs={"MULTI_PRECISION": "1"},
+        )
+
+    def test_muon_group_split_by_bytes(self):
+        """MuonSharding test with a small muon_max_group_bytes.
+
+        The two same-shape 3D batched_proj params (each 2*256*128*4 = 262144
+        bytes) fall into one Muon group summing to 524288 bytes. A 400000-byte
+        threshold forces that group to be split, covering the split branch of
+        Muon._split_group_by_bytes (yield sub_group + reset inside the loop).
+        """
+        self.run_mnist_2accelerators(
+            'hybrid_parallel_sharding_muon_model.py',
+            need_envs={
+                "MULTI_PRECISION": "1",
+                "MUON_MAX_GROUP_BYTES": "400000",
+            },
+        )
+
+    def test_muon_group_split_disabled(self):
+        """MuonSharding test with muon_max_group_bytes disabled (None).
+
+        Passing "0" makes the model pass muon_max_group_bytes=None, covering the
+        `if not max_bytes: yield ...; return` early-return path of
+        Muon._split_group_by_bytes.
+        """
+        self.run_mnist_2accelerators(
+            'hybrid_parallel_sharding_muon_model.py',
+            need_envs={
+                "MULTI_PRECISION": "1",
+                "MUON_MAX_GROUP_BYTES": "0",
+            },
         )
 
 

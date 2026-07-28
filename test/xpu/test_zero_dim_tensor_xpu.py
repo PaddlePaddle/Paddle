@@ -2741,23 +2741,25 @@ class TestNoBackwardAPI(unittest.TestCase):
             self.assertEqual(emb.numpy()[i], res[i])
 
     def test_embedding_grad_ids_3_weight_20_32(self):
-        ids = paddle.to_tensor([], dtype='int64').reshape([0, 1, 1])
-        w = paddle.randn([20, 32], dtype='float32')
-        ids.stop_gradient = False
-        w.stop_gradient = False
-        out = paddle.nn.functional.embedding(
-            input=ids,
-            weight=w,
-            padding_idx=None,
-            max_norm=None,
-            norm_type=2.0,
-            sparse=False,
-            scale_grad_by_freq=False,
-            name=None,
-        )
-        loss = out.sum()
-        loss.backward()
-        self.assertEqual(out.shape, [0, 1, 1, 32])
+        for dtype in ['int32', 'int64']:
+            with self.subTest(dtype=dtype):
+                ids = paddle.to_tensor([], dtype=dtype).reshape([0, 1, 1])
+                w = paddle.randn([20, 32], dtype='float32')
+                w.stop_gradient = False
+                out = paddle.nn.functional.embedding(
+                    input=ids,
+                    weight=w,
+                    padding_idx=None,
+                    max_norm=None,
+                    norm_type=2.0,
+                    sparse=False,
+                    scale_grad_by_freq=False,
+                    name=None,
+                )
+                loss = out.sum()
+                loss.backward()
+                self.assertEqual(out.shape, [0, 1, 1, 32])
+                self.assertEqual(np.count_nonzero(w.grad.numpy()), 0)
 
     def test_one_hot_label(self):
         label = paddle.full(shape=[], fill_value=2, dtype='int64')

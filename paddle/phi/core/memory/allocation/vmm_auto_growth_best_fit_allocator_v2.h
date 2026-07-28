@@ -14,10 +14,13 @@
 
 #pragma once
 
+#include <cstdint>
 #include <functional>
 #include <list>
 #include <map>
 #include <memory>
+#include <tuple>
+#include <vector>
 
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/core/memory/allocation/cuda_virtual_mem_allocator_v2.h"
@@ -73,8 +76,12 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
   bool IsAllocThreadSafe() const override { return true; }
   void Accept(AllocatorVisitor* visitor) override { visitor->Visit(this); }
 
+  using FreeBlockInfo = std::pair<size_t, uintptr_t>;
+  using BlockInfo = std::tuple<size_t, uintptr_t, bool>;
+
   const BlockList& all_blocks() const { return all_blocks_; }
-  BlockList SnapshotAllBlocks() const;
+  std::vector<FreeBlockInfo> SnapshotFreeBlockInfo() const;
+  std::vector<BlockInfo> SnapshotBlockInfo() const;
   PoolType pool_type() const { return pool_type_; }
   size_t alignment() const { return alignment_; }
 
@@ -94,9 +101,13 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
                           gpuStream_t stream,
                           std::shared_ptr<CUDAEventGuard> event);
 
-  // Compacts mapped-free VMM backing for a failed allocation request. A zero
-  // request performs explicit unbounded maintenance compaction.
-  size_t RemapForAllocation(const Place& place, size_t requested_size);
+  // Compacts mapped-free VMM backing for a failed allocation request and
+  // optionally reports whether remap was attempted. A zero request performs
+  // explicit unbounded maintenance compaction.
+  size_t RemapForAllocation(const Place& place,
+                            size_t requested_size,
+                            const VMMGrowOOMInfo* grow_oom = nullptr,
+                            VMMRemapAttemptResult* attempt_result = nullptr);
 
  protected:
   phi::Allocation* AllocateImpl(size_t size) override;
@@ -105,12 +116,18 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
   uint64_t ReleaseImpl(const Place& place) override;
 
  private:
+  struct CompactState;
+  struct CompactContext;
+
   struct UnderlyingAllocationRegistry {
     using List = std::list<DecoratedAllocationPtr>;
     using iterator = List::iterator;
     using OverlapPredicate = std::function<bool(const DecoratedAllocationPtr&)>;
 
-    void Add(DecoratedAllocationPtr allocation);
+    // On failure, restores ownership to allocation before propagating.
+    void Add(DecoratedAllocationPtr* allocation);
+    // Transfers the entire batch or restores every input on failure.
+    void AddAllOrRestore(std::vector<DecoratedAllocationPtr>* allocations);
     bool Overlaps(void* ptr, size_t size) const;
     bool AllOverlapsSatisfy(void* ptr,
                             size_t size,
@@ -138,16 +155,16 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
   phi::Allocation* AllocFromUnmappedFreeBlocks(size_t size);
   BlockV2 AdoptBackingBlock(
       CUDAVirtualMemAllocatorV2::AllocationWithBlock* allocation_with_block);
-  void TrackUnderlyingAllocation(DecoratedAllocationPtr allocation);
-  bool AllocationOwnedByRemapDestination(
-      const DecoratedAllocationPtr& allocation,
-      void* target_ptr,
-      size_t target_size) const;
-  bool CanPrepareRemapDestinationRange(void* ptr, size_t size) const;
-  bool PrepareRemapDestinationRange(void* ptr, size_t size);
-  bool CanReleaseIdleUnderlying(uint8_t* base, size_t size) const;
-  bool HasReleasableIdleUnderlying() const;
-  bool TryReleaseIdleUnderlying(
+  void TrackUnderlyingAllocation(DecoratedAllocationPtr* allocation);
+  void TrackUnderlyingAllocationsOrRestore(
+      std::vector<DecoratedAllocationPtr>* allocations);
+  bool IsRemapDestinationAllocation(
+      const DecoratedAllocationPtr& allocation) const;
+  bool CanPrepareDestinationRange(void* ptr, size_t size) const;
+  bool PrepareDestinationRange(void* ptr, size_t size);
+  bool CanReleaseUnderlyingAllocation(uint8_t* base, size_t size) const;
+  bool HasReleasableUnderlyingAllocation() const;
+  bool TryReleaseUnderlyingAllocation(
       UnderlyingAllocationRegistry::iterator* alloc_it, uint64_t* released);
   bool CanIndexFreeBlock(const BlockV2& block) const;
   void InsertFreeBlock(BlockListIt it);
@@ -155,6 +172,10 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
   void InsertUnmappedFreeBlock(BlockListIt it);
   void EraseUnmappedFreeBlock(BlockListIt it);
   void RebuildFreeBlockIndex();
+  CompactState CollectCompactState();
+  void LogCompactSkip(const CompactState& state,
+                      const CompactContext& context,
+                      const char* reason) const;
   void TryMerge(BlockListIt it);
   void TryMergeUnmappedFree(BlockListIt it);
   uint64_t FreeIdleChunks();

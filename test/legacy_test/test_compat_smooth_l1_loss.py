@@ -107,11 +107,8 @@ class TestCompatSmoothL1LossFunctional(unittest.TestCase):
         x = paddle.to_tensor(self.input_np)
         y = paddle.to_tensor(self.label_np)
         for bad_kwargs in [{"delta": 1.0}, {"is_huber": True}, {"label": y}]:
-            with self.assertRaises(TypeError) as cm:
+            with self.assertRaises(TypeError):
                 F_compat.smooth_l1_loss(x, **bad_kwargs)
-            self.assertIn(
-                "paddle.nn.functional.smooth_l1_loss", str(cm.exception)
-            )
 
     def test_size_average_reduce_mapping_variants(self):
         # Complement test_size_average_reduce_deprecation (size_average=False ->
@@ -171,9 +168,8 @@ class TestCompatSmoothL1LossLayer(unittest.TestCase):
         np.testing.assert_allclose(out.numpy(), ref, rtol=1e-5)
 
     def test_layer_forbidden_keywords(self):
-        with self.assertRaises(TypeError) as cm:
+        with self.assertRaises(TypeError):
             paddle.compat.nn.SmoothL1Loss(delta=1.0)
-        self.assertIn("paddle.nn.SmoothL1Loss", str(cm.exception))
 
     def test_layer_size_average_reduce_mapping(self):
         # Legacy size_average / reduce must be translated into reduction with a

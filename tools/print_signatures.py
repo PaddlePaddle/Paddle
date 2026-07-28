@@ -160,7 +160,7 @@ def get_all_api(root_path='paddle', attr="__all__"):
     )
 
     return [
-        (sorted(api_info['all_names'])[0], md5(api_info['docstring']))
+        (min(api_info['all_names']), md5(api_info['docstring']))
         for api_info in api_info_dict.values()
     ]
 
@@ -313,7 +313,7 @@ if __name__ == '__main__':
     for k, api_info in api_info_dict.items():
         # 1. the shortest suggested_name may be renamed;
         # 2. some api's fullname is not accessible, the module name of it is overridden by the function with the same name;
-        api_name = sorted(api_info['all_names'])[0]
+        api_name = min(api_info['all_names'])
         all_api_names_to_k[api_name] = k
     all_api_names_sorted = sorted(all_api_names_to_k.keys())
     for api_name in all_api_names_sorted:

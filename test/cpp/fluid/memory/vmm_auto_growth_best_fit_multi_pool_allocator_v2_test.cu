@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstdlib>
+#include <iostream>
+#include <string>
+
 #include "gtest/gtest.h"
 
 #include "paddle/common/flags.h"
@@ -57,24 +61,94 @@ std::unique_ptr<VMMAutoGrowthBestFitMultiPoolAllocatorV2> CreateAllocator() {
 class FailingMultiPoolAllocator
     : public VMMAutoGrowthBestFitMultiPoolAllocatorV2 {
  public:
-  FailingMultiPoolAllocator()
+  explicit FailingMultiPoolAllocator(size_t requested_handles = 2,
+                                     size_t created_handles = 1,
+                                     bool third_attempt_succeeds = false)
       : VMMAutoGrowthBestFitMultiPoolAllocatorV2(
             CreatePoolAllocator(2UL << 20, PoolType::kSmall),
             CreatePoolAllocator(2UL << 20, PoolType::kLarge),
             2UL << 20,
-            phi::GPUPlace()) {}
+            phi::GPUPlace()),
+        requested_handles_(requested_handles),
+        created_handles_(created_handles),
+        third_attempt_succeeds_(third_attempt_succeeds) {}
 
   size_t allocation_attempts() const { return allocation_attempts_; }
 
  protected:
-  phi::Allocation* AllocateImpl(size_t) override {
+  phi::Allocation* AllocateImpl(size_t size) override {
     ++allocation_attempts_;
-    PADDLE_THROW_BAD_ALLOC(common::errors::ResourceExhausted(
-        "deterministic VMM stream-safe allocation failure"));
+    if (third_attempt_succeeds_ && allocation_attempts_ == 3) {
+      return VMMAutoGrowthBestFitMultiPoolAllocatorV2::AllocateImpl(size);
+    }
+    throw VMMGrowOOM("deterministic VMM stream-safe allocation failure",
+                     __FILE__,
+                     __LINE__,
+                     VMMGrowOOMInfo{/*requested_handles=*/requested_handles_,
+                                    /*created_handles=*/created_handles_,
+                                    /*handle_size=*/2UL << 20,
+                                    /*device=*/0,
+                                    PoolType::kLarge});
   }
 
  private:
   size_t allocation_attempts_{0};
+  size_t requested_handles_;
+  size_t created_handles_;
+  bool third_attempt_succeeds_;
+};
+
+class RetryWithoutRemapMultiPoolAllocator
+    : public VMMAutoGrowthBestFitMultiPoolAllocatorV2 {
+ public:
+  explicit RetryWithoutRemapMultiPoolAllocator(bool third_attempt_succeeds)
+      : VMMAutoGrowthBestFitMultiPoolAllocatorV2(
+            CreatePoolAllocator(2UL << 20, PoolType::kSmall),
+            CreatePoolAllocator(2UL << 20, PoolType::kLarge),
+            2UL << 20,
+            phi::GPUPlace()),
+        third_attempt_succeeds_(third_attempt_succeeds) {}
+
+  void PrepareRetryBlock(size_t size) {
+    retry_block_ = large_allocator()->Allocate(size);
+  }
+
+  size_t allocation_attempts() const { return allocation_attempts_; }
+
+ protected:
+  phi::Allocation* AllocateImpl(size_t size) override {
+    ++allocation_attempts_;
+    if (allocation_attempts_ == 2) {
+      // Simulate another thread freeing a reusable block after the second
+      // allocation failure and before OOM remap precheck.
+      retry_block_.reset();
+    }
+    if (allocation_attempts_ <= 2 || !third_attempt_succeeds_) {
+      throw VMMGrowOOM("deterministic concurrent-free allocation failure",
+                       __FILE__,
+                       __LINE__,
+                       VMMGrowOOMInfo{/*requested_handles=*/2,
+                                      /*created_handles=*/0,
+                                      /*handle_size=*/2UL << 20,
+                                      /*device=*/0,
+                                      PoolType::kLarge});
+    }
+    return VMMAutoGrowthBestFitMultiPoolAllocatorV2::AllocateImpl(size);
+  }
+
+ private:
+  AllocationPtr retry_block_;
+  size_t allocation_attempts_{0};
+  bool third_attempt_succeeds_;
+};
+
+class ScopedVLogLevel {
+ public:
+  explicit ScopedVLogLevel(int level) : old_level_(FLAGS_v) { FLAGS_v = level; }
+  ~ScopedVLogLevel() { FLAGS_v = old_level_; }
+
+ private:
+  int old_level_;
 };
 
 void PrepareRemapSource(FailingMultiPoolAllocator* allocator,
@@ -352,6 +426,7 @@ TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2,
   ASSERT_TRUE(small_visitor.Found());
   ASSERT_EQ(small_visitor.Parts().size(), 1UL);
   EXPECT_EQ(small_visitor.Parts()[0].len, small->size());
+  EXPECT_EQ(small_visitor.Parts()[0].chunk->shared_fd, -1);
 
   paddle::memory::VmmTensorPartsVisitor large_visitor(
       large->ptr(), large->size(), false);
@@ -359,6 +434,7 @@ TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2,
   ASSERT_TRUE(large_visitor.Found());
   ASSERT_EQ(large_visitor.Parts().size(), 1UL);
   EXPECT_EQ(large_visitor.Parts()[0].len, large->size());
+  EXPECT_EQ(large_visitor.Parts()[0].chunk->shared_fd, -1);
 
   allocator->Accept(&large_visitor);
   ASSERT_TRUE(large_visitor.Found());
@@ -379,7 +455,9 @@ TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2,
   ScopedVMMRetryFlags flags(/*retry_times=*/0, /*remap_on_oom=*/true);
 
   auto allocation = stream_safe->Allocate(2UL << 20);
+  auto anchor = stream_safe->Allocate(2UL << 20);
   ASSERT_NE(allocation, nullptr);
+  ASSERT_NE(anchor, nullptr);
   allocation.reset();
   EXPECT_EQ(stream_safe->GetVMMV2Allocator(), multi.get());
   EXPECT_GT(stream_safe->Compact(place), 0UL);
@@ -413,7 +491,23 @@ TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2,
      StreamSafeOOMDispatchesByAllocatorType) {
   const phi::GPUPlace place(0);
   constexpr size_t kImpossibleSize = 1ULL << 50;
+  ScopedVLogLevel vlog_guard(3);
 
+  {
+    auto multi = std::make_shared<FailingMultiPoolAllocator>(
+        /*requested_handles=*/2,
+        /*created_handles=*/1,
+        /*third_attempt_succeeds=*/true);
+    AllocationPtr anchor;
+    PrepareRemapSource(multi.get(), &anchor);
+    auto stream_safe = std::make_shared<StreamSafeCUDAAllocator>(
+        multi, place, cudaStreamPerThread);
+    ScopedVMMRetryFlags flags(/*retry_times=*/0, /*remap_on_oom=*/true);
+
+    auto allocation = stream_safe->Allocate(4UL << 20);
+    ASSERT_NE(allocation, nullptr);
+    EXPECT_EQ(multi->allocation_attempts(), 3UL);
+  }
   {
     auto multi = std::make_shared<FailingMultiPoolAllocator>();
     AllocationPtr anchor;
@@ -421,7 +515,32 @@ TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2,
     auto stream_safe = std::make_shared<StreamSafeCUDAAllocator>(
         multi, place, cudaStreamPerThread);
     ScopedVMMRetryFlags flags(/*retry_times=*/0, /*remap_on_oom=*/true);
-    EXPECT_THROW(stream_safe->Allocate(4UL << 20), BadAlloc);
+    try {
+      stream_safe->Allocate(4UL << 20);
+      FAIL() << "Expected VMM V2 allocation to fail";
+    } catch (const BadAlloc& ex) {
+      const std::string message = ex.what();
+      if (std::getenv("PADDLE_TEST_PRINT_VMM_V2_OOM") != nullptr) {
+        std::cout << "OOM message sample:\n" << message << std::endl;
+      }
+      EXPECT_NE(message.find("Out of memory error on GPU"), std::string::npos);
+      EXPECT_NE(message.find("Paddle allocator memory:"), std::string::npos);
+      EXPECT_NE(message.find("Allocated (in use):"), std::string::npos);
+      EXPECT_NE(message.find("Free in Paddle memory pool:"), std::string::npos);
+      EXPECT_NE(message.find("Largest contiguous free block:"),
+                std::string::npos);
+      EXPECT_NE(message.find("CUDA driver memory:"), std::string::npos);
+      EXPECT_NE(message.find("Free on device:"), std::string::npos);
+      EXPECT_NE(message.find("Total device capacity:"), std::string::npos);
+      EXPECT_NE(message.find("Memory defragmentation: remap moved"),
+                std::string::npos);
+      EXPECT_NE(message.find("Allocation failure summary:"), std::string::npos);
+      EXPECT_EQ(message.find("Please stop other processes"), std::string::npos);
+      EXPECT_NE(message.find("2. Retry after reclaiming pending frees:"),
+                std::string::npos);
+      EXPECT_NE(message.find("3. Retry after memory defragmentation:"),
+                std::string::npos);
+    }
     EXPECT_EQ(multi->allocation_attempts(), 3UL);
   }
   {
@@ -429,7 +548,17 @@ TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2,
     auto stream_safe = std::make_shared<StreamSafeCUDAAllocator>(
         multi, place, cudaStreamPerThread);
     ScopedVMMRetryFlags flags(/*retry_times=*/0, /*remap_on_oom=*/false);
-    EXPECT_THROW(stream_safe->Allocate(4UL << 20), BadAlloc);
+    try {
+      stream_safe->Allocate(4UL << 20);
+      FAIL() << "Expected VMM V2 allocation to fail";
+    } catch (const BadAlloc& ex) {
+      const std::string message = ex.what();
+      EXPECT_NE(message.find("remap was not attempted because memory "
+                             "defragmentation is disabled"),
+                std::string::npos);
+      EXPECT_NE(message.find("2. Retry after reclaiming pending frees:"),
+                std::string::npos);
+    }
     EXPECT_EQ(multi->allocation_attempts(), 2UL);
   }
   {
@@ -437,7 +566,50 @@ TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2,
     auto stream_safe = std::make_shared<StreamSafeCUDAAllocator>(
         multi, place, cudaStreamPerThread);
     ScopedVMMRetryFlags flags(/*retry_times=*/0, /*remap_on_oom=*/true);
-    EXPECT_THROW(stream_safe->Allocate(4UL << 20), BadAlloc);
+    try {
+      stream_safe->Allocate(1UL << 20);
+      FAIL() << "Expected the small-pool allocation to fail";
+    } catch (const BadAlloc& ex) {
+      EXPECT_NE(std::string(ex.what()).find(
+                    "remap was not attempted because no useful remap work was "
+                    "identified"),
+                std::string::npos);
+    }
+    EXPECT_EQ(multi->allocation_attempts(), 2UL);
+  }
+  {
+    auto multi = std::make_shared<FailingMultiPoolAllocator>(
+        /*requested_handles=*/2, /*created_handles=*/0);
+    AllocationPtr anchor;
+    PrepareRemapSource(multi.get(), &anchor);
+    auto stream_safe = std::make_shared<StreamSafeCUDAAllocator>(
+        multi, place, cudaStreamPerThread);
+    ScopedVMMRetryFlags flags(/*retry_times=*/0, /*remap_on_oom=*/true);
+    try {
+      stream_safe->Allocate(4UL << 20);
+      FAIL() << "Expected VMM V2 allocation to fail";
+    } catch (const BadAlloc& ex) {
+      const std::string message = ex.what();
+      EXPECT_NE(message.find("remap was not attempted; 2.000000MB could be "
+                             "safely moved, but 4.000000MB was required"),
+                std::string::npos);
+    }
+    EXPECT_EQ(multi->allocation_attempts(), 2UL);
+  }
+  {
+    auto multi = std::make_shared<FailingMultiPoolAllocator>();
+    auto stream_safe = std::make_shared<StreamSafeCUDAAllocator>(
+        multi, place, cudaStreamPerThread);
+    ScopedVMMRetryFlags flags(/*retry_times=*/0, /*remap_on_oom=*/true);
+    try {
+      stream_safe->Allocate(4UL << 20);
+      FAIL() << "Expected VMM V2 allocation to fail";
+    } catch (const BadAlloc& ex) {
+      const std::string message = ex.what();
+      EXPECT_NE(message.find("remap was not attempted because no safely "
+                             "movable free memory was available"),
+                std::string::npos);
+    }
     EXPECT_EQ(multi->allocation_attempts(), 2UL);
   }
   {
@@ -445,6 +617,47 @@ TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2,
     auto stream_safe = std::make_shared<StreamSafeCUDAAllocator>(
         cuda_allocator, place, cudaStreamPerThread);
     EXPECT_THROW(stream_safe->Allocate(kImpossibleSize), BadAlloc);
+  }
+}
+
+TEST(VMMAutoGrowthBestFitMultiPoolAllocatorV2,
+     StreamSafeRetriesWhenFreeBlockAppearsBeforeRemap) {
+  const phi::GPUPlace place(0);
+  constexpr size_t kRequestSize = 4UL << 20;
+  ScopedVMMRetryFlags flags(/*retry_times=*/0, /*remap_on_oom=*/true);
+  ScopedVLogLevel vlog_guard(3);
+
+  {
+    auto multi = std::make_shared<RetryWithoutRemapMultiPoolAllocator>(true);
+    multi->PrepareRetryBlock(kRequestSize);
+    auto stream_safe = std::make_shared<StreamSafeCUDAAllocator>(
+        multi, place, cudaStreamPerThread);
+
+    auto allocation = stream_safe->Allocate(kRequestSize);
+    ASSERT_NE(allocation, nullptr);
+    EXPECT_EQ(multi->allocation_attempts(), 3UL);
+  }
+
+  {
+    auto multi = std::make_shared<RetryWithoutRemapMultiPoolAllocator>(false);
+    multi->PrepareRetryBlock(kRequestSize);
+    auto stream_safe = std::make_shared<StreamSafeCUDAAllocator>(
+        multi, place, cudaStreamPerThread);
+
+    try {
+      stream_safe->Allocate(kRequestSize);
+      FAIL() << "Expected the third allocation attempt to fail";
+    } catch (const BadAlloc& ex) {
+      const std::string message = ex.what();
+      EXPECT_NE(message.find("remap was skipped because a sufficiently large "
+                             "free block was available"),
+                std::string::npos);
+      EXPECT_NE(
+          message.find("3. Retry after detecting an available free block:"),
+          std::string::npos);
+      EXPECT_EQ(message.find("remap moved 0.000000B"), std::string::npos);
+    }
+    EXPECT_EQ(multi->allocation_attempts(), 3UL);
   }
 }
 

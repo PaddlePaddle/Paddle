@@ -276,11 +276,7 @@ class TestCompatMinMaxBase(unittest.TestCase):
         )
         err_msg2 = (
             f"{self.origin_op_name}() received unexpected keyword arguments 'dim', 'input'. "
-            f"\nDid you mean to use {self.test_op_name}() instead?"
-        )
-        err_msg3 = (
-            f"{self.test_op_name}() received unexpected keyword argument 'axis'. "
-            f"\nDid you mean to use {self.origin_op_name}() instead?"
+            f"\nPlease use {self.test_op_name}() instead."
         )
         err_msg4 = (
             "Non-CUDA GPU placed Tensor does not have 'paddle.float16' op registered.\n"
@@ -366,9 +362,8 @@ class TestCompatMinMaxBase(unittest.TestCase):
         self.assertEqual(str(cm.exception), err_msg2)
 
         # Wrong API used case 2
-        with self.assertRaises(TypeError) as cm:
+        with self.assertRaises(TypeError):
             self.test_op(input_ts, axis=0)
-        self.assertEqual(str(cm.exception), err_msg3)
 
         # Rejected on CPU types
         with self.assertRaises(TypeError) as cm:

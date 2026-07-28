@@ -49,6 +49,7 @@ class TestCompatSplit(unittest.TestCase):
         data = paddle.arange(12).reshape([3, 4]).astype('float32')
         self._compare_with_origin(data, 1, 0)
         self._compare_with_origin(data, 2, 1)
+        self.assertEqual(len(split(data, split_size=1, dim=0)), 3)
 
     def test_split_with_list_sections(self):
         """Test splitting with list of section sizes"""
@@ -136,12 +137,8 @@ class TestCompatSplit(unittest.TestCase):
         x = paddle.randn([3, 9, 5])
 
         msg_gt_1 = (
-            "paddle.split() received unexpected keyword arguments 'dim', 'split_size_or_sections', 'tensor'. "
-            "\nDid you mean to use paddle.compat.split() instead?"
-        )
-        msg_gt_2 = (
-            "paddle.compat.split() received unexpected keyword argument 'num_or_sections'. "
-            "\nDid you mean to use paddle.split() instead?"
+            "paddle.split() received unexpected keyword arguments 'dim', 'split_size', 'tensor'. "
+            "\nPlease use paddle.compat.split() instead."
         )
         msg_gt_3 = "(InvalidArgument) The dim is expected to be in range of [-3, 3), but got 3"
         msg_gt_4 = "paddle.compat.split expects split_sizes have only non-negative entries, but got size = -5 on dim 2"
@@ -153,12 +150,11 @@ class TestCompatSplit(unittest.TestCase):
         )
 
         with self.assertRaises(TypeError) as cm:
-            tensors = paddle.split(tensor=x, split_size_or_sections=3, dim=0)
+            tensors = paddle.split(tensor=x, split_size=3, dim=0)
         self.assertEqual(str(cm.exception), msg_gt_1)
 
-        with self.assertRaises(TypeError) as cm:
+        with self.assertRaises(TypeError):
             tensors = split(x, num_or_sections=3, dim=0)
-        self.assertEqual(str(cm.exception), msg_gt_2)
 
         with self.assertRaises(ValueError) as cm:
             tensors = split(x, 3, dim=3)

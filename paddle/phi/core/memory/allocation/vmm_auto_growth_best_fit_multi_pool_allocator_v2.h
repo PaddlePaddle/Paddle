@@ -14,6 +14,8 @@
 
 #pragma once
 
+#if defined(PADDLE_WITH_CUDA)
+
 #include <memory>
 
 #include "paddle/phi/core/memory/allocation/vmm_allocator_v2_types.h"
@@ -46,9 +48,13 @@ class VMMAutoGrowthBestFitMultiPoolAllocatorV2 : public Allocator {
                           gpuStream_t stream,
                           std::shared_ptr<CUDAEventGuard> event);
 
-  // Compacts the large VMM pool for a failed allocation request. A zero
-  // request performs explicit unbounded maintenance compaction.
-  size_t RemapForAllocation(const Place& place, size_t requested_size);
+  // Compacts the large VMM pool for a failed allocation request and optionally
+  // reports whether remap was attempted. A zero request performs explicit
+  // unbounded maintenance compaction.
+  size_t RemapForAllocation(const Place& place,
+                            size_t requested_size,
+                            const VMMGrowOOMInfo* grow_oom = nullptr,
+                            VMMRemapAttemptResult* attempt_result = nullptr);
 
   const std::shared_ptr<VMMAutoGrowthBestFitAllocatorV2>& small_allocator()
       const {
@@ -83,3 +89,5 @@ class VMMAutoGrowthBestFitMultiPoolAllocatorV2 : public Allocator {
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle
+
+#endif

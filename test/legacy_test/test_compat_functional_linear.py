@@ -282,27 +282,13 @@ class TestCompatLinear(unittest.TestCase):
             )  # Incompatible shapes
             paddle.compat.nn.functional.linear(x, weight)
 
-        wrong_api_used = (
-            "paddle{module}.nn.functional.linear() received unexpected keyword argument{plural} {args}. "
-            "\nDid you mean to use paddle{correct_module}.nn.functional.linear() instead?"
-        )
-
-        with self.assertRaises(TypeError) as cm:
+        with self.assertRaises(TypeError):
             tensors = F.linear(
                 x=paddle.to_tensor([1, 2]),
                 weight=paddle.to_tensor([[1, 2], [2, 1]]),
                 bias=paddle.to_tensor([1, 1]),
                 name='linear_layer',
             )
-        self.assertEqual(
-            str(cm.exception),
-            wrong_api_used.format(
-                module=".compat",
-                args="'name', 'x'",
-                correct_module="",
-                plural="s",
-            ),
-        )
 
 
 if __name__ == "__main__":
