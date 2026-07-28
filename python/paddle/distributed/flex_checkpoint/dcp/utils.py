@@ -331,11 +331,7 @@ def assign_sharded_slice(
             src_tensor_slice = src_tensor_slice.reshape(
                 (local_blocks, *canonical_shape[1:])
             )
-            source_block_offset = src_desc.global_offset[0] // block_width
-            target_starts = [
-                pre_pp_offset[0] - source_block_offset,
-                *pre_pp_offset[1:],
-            ]
+            target_starts = [0, *pre_pp_offset[1:]]
         else:
             if (
                 len(src_desc.local_shape) != len(canonical_shape)
@@ -349,17 +345,13 @@ def assign_sharded_slice(
                     f"global_offset={src_desc.global_offset}, "
                     f"canonical_shape={canonical_shape}."
                 )
-            source_block_offset = src_desc.global_offset[0]
             src_tensor_slice = src_tensor_slice.reshape(
                 (
                     src_desc.local_shape[0] * block_width,
                     int(np.prod(canonical_shape[2:])),
                 )
             )
-            target_starts = [
-                pre_pp_offset[0] - source_block_offset * block_width,
-                pre_pp_offset[1],
-            ]
+            target_starts = [0, pre_pp_offset[1]]
         src_tensor_slice = paddle.slice(
             src_tensor_slice,
             axes=list(range(len(pre_pp_shape))),
