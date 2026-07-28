@@ -12,9 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <sstream>
+
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/framework/dense_tensor_serialize.h"
 #include "test/cpp/phi/core/allocator.h"
 
 namespace phi {
@@ -370,6 +374,30 @@ TEST(dense_tensor, storage_properties) {
                         "Fail to get storage properties. Expected an exception "
                         "to be thrown for OneDNNStorageProperties"));
 #endif
+}
+
+TEST(dense_tensor, reject_invalid_lod_byte_size) {
+  // Regression test for the OOB write in DeserializeFromStream: when the LoD
+  // level byte size is not a multiple of sizeof(size_t), the destination
+  // buffer (size / sizeof(size_t) elements) is smaller than the number of
+  // bytes read, causing a heap-buffer-overflow write. The deserializer must
+  // reject such malformed streams instead of reading past the allocation.
+  phi::CPUPlace place;
+  phi::CPUContext ctx(place);
+  phi::DenseTensor tensor;
+  std::ostringstream oss(std::ios::binary);
+
+  uint32_t version = 0;
+  uint64_t lod_level = 1;
+  uint64_t invalid_lod_bytes = sizeof(size_t) + 1;
+  oss.write(reinterpret_cast<const char*>(&version), sizeof(version));
+  oss.write(reinterpret_cast<const char*>(&lod_level), sizeof(lod_level));
+  oss.write(reinterpret_cast<const char*>(&invalid_lod_bytes),
+            sizeof(invalid_lod_bytes));
+
+  std::istringstream iss(oss.str(), std::ios::binary);
+  EXPECT_THROW(phi::DeserializeFromStream(iss, &tensor, ctx),
+               common::enforce::EnforceNotMet);
 }
 
 }  // namespace tests
