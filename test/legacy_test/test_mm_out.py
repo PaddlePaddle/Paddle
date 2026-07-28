@@ -194,6 +194,15 @@ class TestMmOutDtypeDynamicOnly(unittest.TestCase):
                 "BF16 mm out_dtype requires CUDA compute capability >= 8"
             )
 
+    def test_out_dtype_rejects_unsupported_input_dtype(self):
+        x = paddle.empty([3, 4], dtype='float32')
+        y = paddle.empty([4, 5], dtype='float16')
+        with self.assertRaisesRegex(
+            TypeError,
+            "only supports float16 or bfloat16 input",
+        ):
+            paddle.mm(x, y, out_dtype=paddle.float32)
+
     def test_fp16_to_fp32(self):
         self._skip_if_no_fp16_cuda()
         x = paddle.randn([3, 4], dtype='float16')
