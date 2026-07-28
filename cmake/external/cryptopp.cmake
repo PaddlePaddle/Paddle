@@ -58,6 +58,19 @@ set(CRYPTOPP_CMAKE_ARGS
     -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
     -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER})
 
+# MSVC fails to compile ASIMD and ASM implementations from Cryptopp
+# and ARM ACLE implementations are yet not supported by MSVC
+if(WIN32 AND WITH_ARM)
+  list(
+    APPEND
+    CRYPTOPP_CMAKE_ARGS
+    -DDISABLE_ASM=ON
+    -DDISABLE_ARM_ASIMD=ON
+    -DDISABLE_ARM_AES=ON
+    -DDISABLE_ARM_PMULL=ON
+    -DDISABLE_ARM_SHA=ON)
+endif()
+
 # For CMake >= 4.0.0, set policy compatibility for cryptopp's CMake.
 if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.0.0")
   message(

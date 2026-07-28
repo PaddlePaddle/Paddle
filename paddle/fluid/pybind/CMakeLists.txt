@@ -42,6 +42,13 @@ set(PYBIND_DEPS
     type_info
     auto_parallel
     executor_cache)
+# On Windows ARM64, use a prebuilt OpenBLAS DLL (see:
+# cmake/external/openblas.cmake); extern_openblas is just an empty
+# placeholder target there with no build output.
+set(_OPENBLAS_BUILD_DEP extern_openblas)
+if(WIN32 AND WITH_ARM)
+  set(_OPENBLAS_BUILD_DEP ${OPENBLAS_SHARED_LIB})
+endif()
 
 if(WIN32)
   list(APPEND PYBIND_DEPS dynload_common)
@@ -357,7 +364,7 @@ if(WITH_PYTHON)
         OUTPUT ${eager_generator_path}/openblas.dll
         COMMAND ${CMAKE_COMMAND} -E copy ${OPENBLAS_SHARED_LIB}
                 ${eager_generator_path}
-        DEPENDS extern_openblas)
+        DEPENDS ${_OPENBLAS_BUILD_DEP})
       list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/openblas.dll)
     endif()
 
@@ -468,7 +475,7 @@ if(WITH_PYTHON)
       add_custom_command(
         OUTPUT ${op_impl_path}/openblas.dll
         COMMAND ${CMAKE_COMMAND} -E copy ${OPENBLAS_SHARED_LIB} ${op_impl_path}
-        DEPENDS extern_openblas)
+        DEPENDS ${_OPENBLAS_BUILD_DEP})
       list(APPEND OP_IMPL_DEPS ${op_impl_path}/openblas.dll)
       list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/openblas.dll)
     endif()

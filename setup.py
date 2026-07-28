@@ -1639,26 +1639,27 @@ def get_package_data_and_package_dir():
     shutil.copy(env_dict.get("COMMON_LIB"), libs_path)
     shutil.copy(env_dict.get("WARPCTC_LIBRARIES"), libs_path)
     shutil.copy(env_dict.get("WARPRNNT_LIBRARIES"), libs_path)
-    package_data['paddle.libs'] += [
-        os.path.basename(env_dict.get("LAPACK_LIB")),
-        os.path.basename(env_dict.get("BLAS_LIB")),
-        os.path.basename(env_dict.get("GFORTRAN_LIB")),
-    ]
-    shutil.copy(env_dict.get("BLAS_LIB"), libs_path)
-    shutil.copy(env_dict.get("LAPACK_LIB"), libs_path)
-    shutil.copy(env_dict.get("GFORTRAN_LIB"), libs_path)
-    if env_dict.get("GNU_RT_LIB_1"):
+    if not (os.name == "nt" and platform.machine().lower() in ("arm", "arm64")):
         package_data['paddle.libs'] += [
-            os.path.basename(env_dict.get("GNU_RT_LIB_1"))
+            os.path.basename(env_dict.get("LAPACK_LIB")),
+            os.path.basename(env_dict.get("BLAS_LIB")),
+            os.path.basename(env_dict.get("GFORTRAN_LIB")),
         ]
-        shutil.copy(env_dict.get("GNU_RT_LIB_1"), libs_path)
+        shutil.copy(env_dict.get("BLAS_LIB"), libs_path)
+        shutil.copy(env_dict.get("LAPACK_LIB"), libs_path)
+        shutil.copy(env_dict.get("GFORTRAN_LIB"), libs_path)
+        if env_dict.get("GNU_RT_LIB_1"):
+            package_data['paddle.libs'] += [
+                os.path.basename(env_dict.get("GNU_RT_LIB_1"))
+            ]
+            shutil.copy(env_dict.get("GNU_RT_LIB_1"), libs_path)
     if env_dict.get("WITH_MAGMA") == 'ON':
         package_data['paddle.libs'] += [
             os.path.basename('MAGMA_LIB'),
         ]
         shutil.copy(env_dict.get("MAGMA_LIB"), libs_path)
 
-    if not sys.platform.startswith("linux"):
+    if not sys.platform.startswith("linux") and not (os.name == "nt" and platform.machine().lower() in ("arm", "arm64")):
         package_data['paddle.libs'] += [
             os.path.basename(env_dict.get("GNU_RT_LIB_2"))
         ]

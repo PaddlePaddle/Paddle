@@ -44,9 +44,16 @@ jobs:
     with:
       skill-can-skip: ${{ needs.check-skill.outputs.can-skip }}
 
-  win-openblas:
-    name: Windows-OPENBLAS
+  win-openblas-x64:
+    name: Windows-OPENBLAS-x64
     uses: ./.github/workflows/_Windows-OPENBLAS.yml
+    needs: clone
+    with:
+      clone-can-skip: ${{ needs.clone.outputs.can-skip }}
+
+  win-openblas-ARM64:
+    name: Windows-OPENBLAS-ARM64
+    uses: ./.github/workflows/_Windows-ARM.yml
     needs: clone
     with:
       clone-can-skip: ${{ needs.clone.outputs.can-skip }}

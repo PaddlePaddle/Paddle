@@ -54,17 +54,31 @@ echo    ========================================
 mkdir %BUILD_DIR%
 rem set vs language to english to block showIncludes, this need vs has installed English language package.
 set VSLANG=1033
+rem Configure the toolchain - depending on architecture.
 rem Configure the environment for 64-bit builds. 'DISTUTILS_USE_SDK' indicates that the user has selected the compiler.
-if not defined vcvars64_dir set "vcvars64_dir=C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat" & echo vcvars64_dir=!vcvars64_dir!>> %GITHUB_ENV%
+set DISTUTILS_USE_SDK=1
+if not defined WITH_ARM set "WITH_ARM=OFF"
+set "CMAKE_EXTRA_ARGS=-DWITH_ARM=%WITH_ARM%"
+if "%WITH_ARM%"=="ON" (
+    if not defined vcvars64_dir set "vcvars64_dir=C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsarm64.bat" & echo vcvars64_dir=!vcvars64_dir!>> %GITHUB_ENV%
+    rem Windows 10 Kit bin dir
+    set "OPENBLAS_ROOT_CMAKE=%OPENBLAS_ROOT:\=/%"
+    set "PATH=C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\arm64;%PATH%"
+    set "CMAKE_EXTRA_ARGS=!CMAKE_EXTRA_ARGS! -DWITH_SHARED_IR=OFF -DPYTHON_INCLUDE_DIR=%PYTHON_ROOT%\include -DPYTHON_LIBRARY=%PYTHON_ROOT%\libs\python311.lib"
+    set "CMAKE_EXTRA_ARGS=!CMAKE_EXTRA_ARGS! -DOPENBLAS_ROOT=!OPENBLAS_ROOT_CMAKE! -DCBLAS_LIBRARIES=!OPENBLAS_ROOT_CMAKE!/lib/openblas.lib"
+    set "CMAKE_EXTRA_ARGS=!CMAKE_EXTRA_ARGS! -DCBLAS_INC_DIR=!OPENBLAS_ROOT_CMAKE!/include/openblas -DOPENBLAS_SHARED_LIB=!OPENBLAS_ROOT_CMAKE!/bin/openblas.dll"
+    set PreferredToolArchitecture=arm64
+    echo PreferredToolArchitecture=arm64>>%GITHUB_ENV%
+) else (
+    if not defined vcvars64_dir set "vcvars64_dir=C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat" & echo vcvars64_dir=!vcvars64_dir!>> %GITHUB_ENV%
+    rem Windows 10 Kit bin dir
+    set "PATH=C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x64;%PATH%"
+    rem Use x64-bit ToolSet to compile
+    set PreferredToolArchitecture=x64
+    echo PreferredToolArchitecture=x64>>%GITHUB_ENV%
+)
 echo %vcvars64_dir%
 call "%vcvars64_dir%"
-
-set DISTUTILS_USE_SDK=1
-rem Windows 10 Kit bin dir
-set "PATH=C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x64;%PATH%"
-rem Use 64-bit ToolSet to compile
-set PreferredToolArchitecture=x64
-echo PreferredToolArchitecture=x64>>%GITHUB_ENV%
 
 for /f "usebackq" %%i in (`powershell -NoProfile -Command "Get-Date -Format 'yyyyMMddHHmmss'"`) do set start=%%i
 set start=%start:~4,10%
@@ -221,7 +235,7 @@ echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -D
 -DCUDA_TOOLKIT_ROOT_DIR="%CUDA_TOOLKIT_ROOT_DIR%" -DNEW_RELEASE_ALL=%NEW_RELEASE_ALL% -DNEW_RELEASE_PYPI=%NEW_RELEASE_PYPI% ^
 -DNEW_RELEASE_JIT=%NEW_RELEASE_JIT% -DWITH_ONNXRUNTIME=%WITH_ONNXRUNTIME% -DWITH_CPP_TEST=%WITH_CPP_TEST% ^
 -DWIN_UNITTEST_LEVEL=%WIN_UNITTEST_LEVEL% -DWITH_NIGHTLY_BUILD=%WITH_NIGHTLY_BUILD% -DWITH_PIP_CUDA_LIBRARIES=%WITH_PIP_CUDA_LIBRARIES% ^
--DWITH_SCCACHE=%WITH_SCCACHE% -DWITH_SHARED_PHI=%WITH_SHARED_PHI% >> %work_dir%\win_cmake.sh
+-DWITH_SCCACHE=%WITH_SCCACHE% -DWITH_SHARED_PHI=%WITH_SHARED_PHI% %CMAKE_EXTRA_ARGS% >> %work_dir%\win_cmake.sh
 
 echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE% -DON_INFER=%ON_INFER% ^
@@ -232,7 +246,7 @@ echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -D
 -DCUDA_TOOLKIT_ROOT_DIR="%CUDA_TOOLKIT_ROOT_DIR%" -DNEW_RELEASE_ALL=%NEW_RELEASE_ALL% -DNEW_RELEASE_PYPI=%NEW_RELEASE_PYPI% ^
 -DNEW_RELEASE_JIT=%NEW_RELEASE_JIT% -DWITH_ONNXRUNTIME=%WITH_ONNXRUNTIME% -DWITH_CPP_TEST=%WITH_CPP_TEST% ^
 -DWIN_UNITTEST_LEVEL=%WIN_UNITTEST_LEVEL% -DWITH_NIGHTLY_BUILD=%WITH_NIGHTLY_BUILD% -DWITH_PIP_CUDA_LIBRARIES=%WITH_PIP_CUDA_LIBRARIES% ^
--DWITH_SCCACHE=%WITH_SCCACHE% -DWITH_SHARED_PHI=%WITH_SHARED_PHI%
+-DWITH_SCCACHE=%WITH_SCCACHE% -DWITH_SHARED_PHI=%WITH_SHARED_PHI% %CMAKE_EXTRA_ARGS%
 
 cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE% -DON_INFER=%ON_INFER% ^
@@ -243,7 +257,7 @@ cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_
 -DCUDA_TOOLKIT_ROOT_DIR="%CUDA_TOOLKIT_ROOT_DIR%" -DNEW_RELEASE_ALL=%NEW_RELEASE_ALL% -DNEW_RELEASE_PYPI=%NEW_RELEASE_PYPI% ^
 -DNEW_RELEASE_JIT=%NEW_RELEASE_JIT% -DWITH_ONNXRUNTIME=%WITH_ONNXRUNTIME% -DWITH_CPP_TEST=%WITH_CPP_TEST% ^
 -DWIN_UNITTEST_LEVEL=%WIN_UNITTEST_LEVEL% -DWITH_NIGHTLY_BUILD=%WITH_NIGHTLY_BUILD% -DWITH_PIP_CUDA_LIBRARIES=%WITH_PIP_CUDA_LIBRARIES% ^
--DWITH_SCCACHE=%WITH_SCCACHE% -DWITH_SHARED_PHI=%WITH_SHARED_PHI%
+-DWITH_SCCACHE=%WITH_SCCACHE% -DWITH_SHARED_PHI=%WITH_SHARED_PHI% %CMAKE_EXTRA_ARGS%
 goto:eof
 
 :cmake_error
@@ -278,7 +292,7 @@ echo Build third_party the %build_times% time:
 if "%GENERATOR%" == "Ninja" (
     ninja third_party
 ) else (
-    MSBuild /m /p:PreferredToolArchitecture=x64 /p:Configuration=Release /verbosity:%LOG_LEVEL% third_party.vcxproj
+    MSBuild /m /p:PreferredToolArchitecture=%PreferredToolArchitecture% /p:Configuration=Release /verbosity:%LOG_LEVEL% third_party.vcxproj
 )
 
 if %ERRORLEVEL% NEQ 0 (
@@ -331,7 +345,7 @@ if "%GENERATOR%" == "Ninja" (
     set > env_vars.txt
     ninja all
 ) else (
-    MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:TrackFileAccess=false /p:Configuration=Release /verbosity:%LOG_LEVEL% ALL_BUILD.vcxproj
+    MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=%PreferredToolArchitecture%  /p:TrackFileAccess=false /p:Configuration=Release /verbosity:%LOG_LEVEL% ALL_BUILD.vcxproj
 )
 
 if %ERRORLEVEL% NEQ 0 (
