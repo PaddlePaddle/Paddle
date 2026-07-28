@@ -912,8 +912,9 @@ class AOAEngine:
                             1,
                         )
                     else:
-                        row_start = pre_pp_intersection[0].start
-                        row_stop = pre_pp_intersection[0].stop
+                        row_base = pre_pp_sl_dst[0].start or 0
+                        row_start = pre_pp_intersection[0].start - row_base
+                        row_stop = pre_pp_intersection[0].stop - row_base
                         if (
                             row_start % block_width != 0
                             or row_stop % block_width != 0
@@ -922,10 +923,13 @@ class AOAEngine:
                                 "reshape (flatten) requires block-aligned "
                                 f"destination shards, but got slice={intersection}."
                             )
-                        block_start = row_start // block_width
-                        block_stop = row_stop // block_width
+                        source_block_start = sl_src[0].start or 0
                         src_slice = (
-                            slice(block_start, block_stop, 1),
+                            slice(
+                                source_block_start + row_start // block_width,
+                                source_block_start + row_stop // block_width,
+                                1,
+                            ),
                             *tuple(
                                 slice(0, dim, 1) for dim in canonical_shape[1:]
                             ),

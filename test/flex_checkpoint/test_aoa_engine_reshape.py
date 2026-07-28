@@ -78,139 +78,76 @@ def _fill_target(engine, source_tensors, tgt_desc, dtype="float32"):
 
 
 class TestAOAEngineReshape(unittest.TestCase):
-    def test_forward_full(self):
-        # flattened [6, 4] -> canonical [2, 3, 2, 2]
-        source = paddle.arange(np.prod(FLATTENED), dtype="float32").reshape(
-            list(FLATTENED)
+    def test_full_and_sharded_reshape(self):
+        cases = (
+            (
+                "forward_full",
+                FLATTENED,
+                CANONICAL,
+                ((CANONICAL, (0, 0, 0, 0)),),
+            ),
+            (
+                "forward_sharded",
+                FLATTENED,
+                CANONICAL,
+                (
+                    ((1, H, TWO, I), (0, 0, 0, 0)),
+                    ((1, H, TWO, I), (1, 0, 0, 0)),
+                ),
+            ),
+            ("reverse_full", CANONICAL, FLATTENED, ((FLATTENED, (0, 0)),)),
+            (
+                "reverse_sharded",
+                CANONICAL,
+                FLATTENED,
+                (((H, TWO * I), (0, 0)), ((H, TWO * I), (H, 0))),
+            ),
         )
-        expected = source.reshape(list(CANONICAL))
-
-        source_desc = {
-            "s0": [
-                ShardedWeightDesc("s0", FLATTENED, FLATTENED, (0, 0), "float32")
-            ]
-        }
-        dest_desc = {
-            "d": [
-                ShardedWeightDesc(
-                    "d", CANONICAL, CANONICAL, (0, 0, 0, 0), "float32"
+        for name, source_shape, destination_shape, shards in cases:
+            with self.subTest(name=name):
+                source = paddle.arange(
+                    np.prod(source_shape), dtype="float32"
+                ).reshape(list(source_shape))
+                source_offset = (0,) * len(source_shape)
+                source_desc = {
+                    "s0": [
+                        ShardedWeightDesc(
+                            "s0",
+                            source_shape,
+                            source_shape,
+                            source_offset,
+                            "float32",
+                        )
+                    ]
+                }
+                dest_desc = {
+                    "d": [
+                        ShardedWeightDesc(
+                            "d", shape, destination_shape, offset, "float32"
+                        )
+                        for shape, offset in shards
+                    ]
+                }
+                engine = _build_engine(
+                    source_desc,
+                    dest_desc,
+                    [f"s0 -> d, reshape = '{CANONICAL_STR}'"],
                 )
-            ]
-        }
-        engine = _build_engine(
-            source_desc, dest_desc, [f"s0 -> d, reshape = '{CANONICAL_STR}'"]
-        )
-
-        tgt = ShardedWeightDesc(
-            "d", CANONICAL, CANONICAL, (0, 0, 0, 0), "float32"
-        )
-        out = _fill_target(engine, {"s0": source}, tgt)
-        np.testing.assert_allclose(out.numpy(), expected.numpy())
-
-    def test_forward_sharded_along_experts(self):
-        # destination canonical split along the leading (expert) dim
-        source = paddle.arange(np.prod(FLATTENED), dtype="float32").reshape(
-            list(FLATTENED)
-        )
-        expected = source.reshape(list(CANONICAL))
-
-        source_desc = {
-            "s0": [
-                ShardedWeightDesc("s0", FLATTENED, FLATTENED, (0, 0), "float32")
-            ]
-        }
-        shard_shape = (1, H, TWO, I)
-        dest_desc = {
-            "d": [
-                ShardedWeightDesc(
-                    "d", shard_shape, CANONICAL, (0, 0, 0, 0), "float32"
-                ),
-                ShardedWeightDesc(
-                    "d", shard_shape, CANONICAL, (1, 0, 0, 0), "float32"
-                ),
-            ]
-        }
-        engine = _build_engine(
-            source_desc, dest_desc, [f"s0 -> d, reshape = '{CANONICAL_STR}'"]
-        )
-
-        for expert in range(E):
-            tgt = ShardedWeightDesc(
-                "d", shard_shape, CANONICAL, (expert, 0, 0, 0), "float32"
-            )
-            out = _fill_target(engine, {"s0": source}, tgt)
-            np.testing.assert_allclose(
-                out.numpy(), expected.numpy()[expert : expert + 1]
-            )
-
-    def test_reverse_full(self):
-        # canonical [2, 3, 2, 2] -> flattened [6, 4]
-        source = paddle.arange(np.prod(CANONICAL), dtype="float32").reshape(
-            list(CANONICAL)
-        )
-        expected = source.reshape(list(FLATTENED))
-
-        source_desc = {
-            "s0": [
-                ShardedWeightDesc(
-                    "s0", CANONICAL, CANONICAL, (0, 0, 0, 0), "float32"
-                )
-            ]
-        }
-        dest_desc = {
-            "d": [
-                ShardedWeightDesc("d", FLATTENED, FLATTENED, (0, 0), "float32")
-            ]
-        }
-        engine = _build_engine(
-            source_desc, dest_desc, [f"s0 -> d, reshape = '{CANONICAL_STR}'"]
-        )
-
-        tgt = ShardedWeightDesc("d", FLATTENED, FLATTENED, (0, 0), "float32")
-        out = _fill_target(engine, {"s0": source}, tgt)
-        np.testing.assert_allclose(out.numpy(), expected.numpy())
-
-    def test_reverse_sharded_block_aligned(self):
-        # destination flattened split into block-aligned row chunks
-        source = paddle.arange(np.prod(CANONICAL), dtype="float32").reshape(
-            list(CANONICAL)
-        )
-        expected = source.reshape(list(FLATTENED))
-
-        source_desc = {
-            "s0": [
-                ShardedWeightDesc(
-                    "s0", CANONICAL, CANONICAL, (0, 0, 0, 0), "float32"
-                )
-            ]
-        }
-        shard_shape = (H, TWO * I)
-        dest_desc = {
-            "d": [
-                ShardedWeightDesc(
-                    "d", shard_shape, FLATTENED, (0, 0), "float32"
-                ),
-                ShardedWeightDesc(
-                    "d", shard_shape, FLATTENED, (H, 0), "float32"
-                ),
-            ]
-        }
-        engine = _build_engine(
-            source_desc, dest_desc, [f"s0 -> d, reshape = '{CANONICAL_STR}'"]
-        )
-
-        for block in range(E):
-            offset = block * H
-            tgt = ShardedWeightDesc(
-                "d", shard_shape, FLATTENED, (offset, 0), "float32"
-            )
-            out = _fill_target(engine, {"s0": source}, tgt)
-            np.testing.assert_allclose(
-                out.numpy(), expected.numpy()[offset : offset + H]
-            )
+                expected = source.reshape(list(destination_shape))
+                for shape, offset in shards:
+                    target = ShardedWeightDesc(
+                        "d", shape, destination_shape, offset, "float32"
+                    )
+                    out = _fill_target(engine, {"s0": source}, target)
+                    index = tuple(
+                        slice(start, start + size)
+                        for start, size in zip(offset, shape)
+                    )
+                    np.testing.assert_allclose(
+                        out.numpy(), expected[index].numpy()
+                    )
 
     def test_identity_when_source_equals_destination(self):
-        # source already canonical and destination canonical -> no reshape marker
         source_desc = {
             "s0": [
                 ShardedWeightDesc(
@@ -279,8 +216,6 @@ class TestGetDestinationGlobalShape(unittest.TestCase):
         self.assertEqual(engine.get_destination_global_shape("d"), CANONICAL)
 
     def test_resolves_unique_shape_via_optimizer_state_keys(self):
-        # "d" is not a direct key, but both optimizer-state keys strip to "d"
-        # and share a single global shape.
         dest_desc = {
             "d.w_0": [
                 ShardedWeightDesc(
@@ -327,11 +262,7 @@ class TestGetDestinationGlobalShape(unittest.TestCase):
 
 class TestAOAEngineReshapeMultiSource(unittest.TestCase):
     def test_forward_query_skips_non_intersecting_slice(self):
-        # Two block-aligned flattened sources concat along rows, then reshape to
-        # canonical. The reshaped tensor carries two slices (one per expert), so
-        # a per-expert query intersects exactly one of them; the other slice is
-        # skipped, exercising the non-intersecting branch in find_shard_sources.
-        block = (H, TWO * I)  # (3, 4) == one expert block in flattened form
+        block = (H, TWO * I)
         source_desc = {
             "s0": [ShardedWeightDesc("s0", block, block, (0, 0), "float32")],
             "s1": [ShardedWeightDesc("s1", block, block, (0, 0), "float32")],
@@ -359,8 +290,6 @@ class TestAOAEngineReshapeMultiSource(unittest.TestCase):
                 "d", shard_shape, CANONICAL, (expert, 0, 0, 0), "float32"
             )
             mappings = engine.find_shard_sources(tgt)
-            # Only the intersecting slice for this expert is returned; the other
-            # reshaped slice is skipped via the non-intersecting branch.
             self.assertEqual(len(mappings), 1)
             self.assertEqual(
                 mappings[0].source_slice.key, expected_source_key[expert]
@@ -370,35 +299,44 @@ class TestAOAEngineReshapeMultiSource(unittest.TestCase):
                 (expert, 0, 0, 0),
             )
 
-
-class TestAssignShardedSliceReshapeMultiPostprocess(unittest.TestCase):
-    def test_reshape_then_transpose_then_cast(self):
-        # A reshape marker followed by two more operations exercises the
-        # postprocess loop across multiple iterations (transpose then cast).
-        source = paddle.arange(
-            int(np.prod(FLATTENED)), dtype="float32"
-        ).reshape(list(FLATTENED))
-        src_desc = ShardedWeightDesc(
-            "s", FLATTENED, FLATTENED, (0, 0), "float32"
+    def test_reverse_concat_reads_each_source(self):
+        block_shape = (1, H, TWO, I)
+        sources = {
+            f"s{expert}": paddle.arange(
+                expert * H * TWO * I,
+                (expert + 1) * H * TWO * I,
+                dtype="float32",
+            ).reshape(block_shape)
+            for expert in range(E)
+        }
+        source_desc = {
+            key: [
+                ShardedWeightDesc(
+                    key, block_shape, block_shape, (0, 0, 0, 0), "float32"
+                )
+            ]
+            for key in sources
+        }
+        shard_shape = (H, TWO * I)
+        dest_desc = {
+            "d": [
+                ShardedWeightDesc(
+                    "d", shard_shape, FLATTENED, (expert * H, 0), "float32"
+                )
+                for expert in range(E)
+            ]
+        }
+        engine = _build_engine(
+            source_desc,
+            dest_desc,
+            ["s0, s1 -> s, axis = 0", f"s -> d, reshape = '{CANONICAL_STR}'"],
         )
-        src_shard = ShardedWeight("s", source, FLATTENED, FLATTENED, (0, 0))
-        out = paddle.zeros(list(CANONICAL), dtype="float16")
-        dst_desc = ShardedWeightDesc(
-            "d", CANONICAL, CANONICAL, (0, 0, 0, 0), "float16"
-        )
-        dst_shard = ShardedWeight("d", out, CANONICAL, CANONICAL, (0, 0, 0, 0))
-
-        assign_sharded_slice(
-            src_desc,
-            src_shard,
-            dst_desc,
-            dst_shard,
-            [f"reshape:{CANONICAL_STR}", "[2, 1, 0, 3]", "float16"],
-        )
-        expected = paddle.transpose(
-            source.reshape(list(CANONICAL)), [2, 1, 0, 3]
-        ).astype("float16")
-        np.testing.assert_allclose(out.numpy(), expected.numpy())
+        for expert in range(E):
+            target = dest_desc["d"][expert]
+            out = _fill_target(engine, sources, target)
+            np.testing.assert_allclose(
+                out.numpy(), sources[f"s{expert}"].reshape(shard_shape).numpy()
+            )
 
 
 class TestAOAEngineReshapeErrors(unittest.TestCase):
@@ -597,18 +535,21 @@ class TestAssignShardedSliceReshapePostprocess(unittest.TestCase):
         dst_shard = ShardedWeight("d", out, CANONICAL, CANONICAL, (0, 0, 0, 0))
         return source, src_desc, src_shard, dst_desc, dst_shard, out
 
-    def test_reshape_then_cast(self):
+    def test_reshape_then_transpose_then_cast(self):
         source, src_desc, src_shard, dst_desc, dst_shard, out = (
             self._forward_src_dst("float16")
         )
+        permutation = [2, 1, 0, 3]
         assign_sharded_slice(
             src_desc,
             src_shard,
             dst_desc,
             dst_shard,
-            [f"reshape:{CANONICAL_STR}", "float16"],
+            [f"reshape:{CANONICAL_STR}", str(permutation), "float16"],
         )
-        expected = source.reshape(list(CANONICAL)).astype("float16")
+        expected = paddle.transpose(
+            source.reshape(list(CANONICAL)), permutation
+        ).astype("float16")
         np.testing.assert_allclose(out.numpy(), expected.numpy())
 
     def test_reshape_then_transpose(self):
