@@ -244,6 +244,10 @@ class TestTopLevelAlias(CompatNamespaceAliasBase):
         self.assertAliased(
             paddle.nn.functional.linear, paddle.compat.nn.functional.linear
         )
+        self.assertAliased(
+            paddle.distributions.categorical.Categorical,
+            paddle.compat.distributions.categorical.Categorical,
+        )
 
     @with_level2
     def test_aliased_signatures_are_torch_style(self):
