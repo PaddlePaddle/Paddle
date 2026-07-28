@@ -18,8 +18,10 @@ import sys
 import unittest
 from contextlib import contextmanager
 from functools import wraps
+from unittest import mock
 
 import paddle
+from paddle.compat import api_dispatch
 from paddle.compat.api_dispatch import _PADDLE_NAMESPACE_SAVED
 from paddle.compat.proxy import TORCH_PROXY_FINDER
 
@@ -638,6 +640,71 @@ class TestLevel2InternalCallersUseNative(CompatNamespaceAliasBase):
         self.assertIs(paddle.Tensor.numel, native_numel)
         self.assertIs(paddle.Tensor.type, native_type)
         self.assertIs(paddle.Tensor.is_sparse, native_is_sparse)
+
+    @with_level2
+    def test_tensor_type_edge_cases(self):
+        t = paddle.ones([1])
+        with mock.patch.object(
+            paddle.Tensor, "to", autospec=True, return_value=t
+        ) as tensor_to:
+            self.assertIs(
+                t.type(paddle.float64, **{"async": True}),
+                t,
+            )
+            tensor_to.assert_called_once_with(
+                t,
+                device=None,
+                dtype=paddle.float64,
+                blocking=False,
+            )
+        with self.assertRaisesRegex(
+            TypeError, "unexpected keyword argument 'invalid'"
+        ):
+            t.type(invalid=True)
+
+        coo = paddle.sparse.sparse_coo_tensor([[0], [0]], [1.0], [1, 1])
+        self.assertEqual(coo.type(), "torch.sparse.FloatTensor")
+
+        class InvalidTensor:
+            pass
+
+        with self.assertRaisesRegex(
+            ValueError, "invalid type: 'InvalidTensor'"
+        ):
+            t.type(InvalidTensor)
+
+    @with_level2
+    def test_tensor_descriptor_class_access(self):
+        type_descriptor = inspect.getattr_static(paddle.Tensor, "type")
+        sparse_descriptor = inspect.getattr_static(paddle.Tensor, "is_sparse")
+
+        self.assertIs(paddle.Tensor.type, type_descriptor.__compat_fn__)
+        self.assertIs(paddle.Tensor.is_sparse, sparse_descriptor)
+
+        ns = {"__name__": "paddle.fake_internal", "paddle": paddle}
+        exec(
+            "internal_type = paddle.Tensor.type\n"
+            "internal_is_sparse = paddle.Tensor.is_sparse",
+            ns,
+        )
+        self.assertIs(ns["internal_type"], type_descriptor.__native_fn__)
+        self.assertIs(ns["internal_is_sparse"], sparse_descriptor.__native_fn__)
+
+    def test_missing_tensor_override_is_skipped(self):
+        missing_attr = "__missing_tensor_compat_override__"
+        self.assertIsNone(
+            inspect.getattr_static(paddle.Tensor, missing_attr, None)
+        )
+        with (
+            mock.patch.object(paddle.compat, "__all__", ()),
+            mock.patch.dict(
+                paddle.compat._TENSOR_API_OVERRIDES,
+                {missing_attr: (mock.sentinel.compat_fn, False)},
+                clear=True,
+            ),
+        ):
+            api_dispatch._patch_tensor_methods()
+        self.assertNotIn((paddle.Tensor, missing_attr), _PADDLE_NAMESPACE_SAVED)
 
     @with_level2
     def test_aliased_class_caller_aware(self):
