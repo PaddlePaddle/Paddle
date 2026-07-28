@@ -71,6 +71,10 @@ void CastBoolExprToInt8Impl(common::HygonDCUArchSYCL, Expr* e) {
   // Do nothing.
 }
 
+void CastBoolExprToInt8Impl(common::XpuArch, Expr* e) {
+  // Do nothing.
+}
+
 void CastBoolExprToInt8(common::Arch arch, Expr* e) {
   return std::visit(
       [&](const auto& impl) { return CastBoolExprToInt8Impl(impl, e); },

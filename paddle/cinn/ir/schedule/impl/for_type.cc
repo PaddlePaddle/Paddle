@@ -207,6 +207,16 @@ void DyScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
         bindNvHygon(kMaxBlockDims, kMaxGridDims);
 #endif
       },
+      [&](common::XpuArch) {
+#ifdef CINN_WITH_CUDA
+        auto cur_dev_info =
+            common::DevInfoMgr<common::NVGPUArch>::GetDevInfo(0);
+        const std::array<int, 3> kMaxBlockDims =
+            cur_dev_info->GetMaxBlockDims();
+        const std::array<int, 3> kMaxGridDims = cur_dev_info->GetMaxGridDims();
+        bindNvHygon(kMaxBlockDims, kMaxGridDims);
+#endif
+      },
       [&](const common::CustomDeviceArch& arch) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
         auto place = phi::CustomPlace(arch.device_type, arch.device_id);

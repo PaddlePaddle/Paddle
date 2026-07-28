@@ -408,6 +408,16 @@ void CheckCompileOptionImpl(cinn::common::HygonDCUArchSYCL) {
 #endif
 }
 
+void CheckCompileOptionImpl(cinn::common::XpuArch) {
+#ifdef CINN_WITH_XPU
+  // Do nothing;
+#else
+  PADDLE_THROW(::common::errors::Fatal(
+      "Current CINN version does not support XPU, please try to "
+      "recompile with -DWITH_XPU."));
+#endif
+}
+
 void CheckCompileOption(cinn::common::Arch arch) {
   return std::visit([](const auto& impl) { CheckCompileOptionImpl(impl); },
                     arch.variant());

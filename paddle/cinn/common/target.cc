@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#ifdef CINN_WITH_CUDA
+#if defined(CINN_WITH_CUDA) || defined(CINN_WITH_XPU)
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 #include <driver_types.h>

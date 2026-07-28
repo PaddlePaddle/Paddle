@@ -67,21 +67,42 @@ if(NOT EXISTS "${XTDK_CLANG_INCLUDE}")
 endif()
 message(STATUS "XTDK Clang include: ${XTDK_CLANG_INCLUDE}")
 
-# xpurtc JIT compiler shared library (shlib/libxpujitc.so)
+# xpurtc JIT compiler shared library.
+#
+# NOTE: We deliberately link the SONAME-isolated copy shlib/libxpujitc_xtdk.so
+# instead of the stock shlib/libxpujitc.so. Rationale: the XPU third-party (XHPC)
+# package ships its OWN libxpujitc.so with an ABI-incompatible xpurtc API that
+# libxpu_blas.so depends on. Both files share SONAME "libxpujitc.so", so a linker
+# can only pick one and neither is a superset. To let CINN use the XTDK jitc while
+# libxpu_blas keeps using the XHPC jitc, the XTDK copy is given a distinct SONAME
+# (libxpujitc_xtdk.so) and its colliding xpurtc::CompileContext destructor symbol
+# is renamed so it no longer interposes the XHPC one at runtime. See build notes.
 find_library(
   XTDK_XPUJITC_LIB
-  NAMES xpujitc
+  NAMES xpujitc_xtdk
   PATHS "${XTDK_PATH}/shlib"
   NO_DEFAULT_PATH)
 if(NOT XTDK_XPUJITC_LIB)
-  message(FATAL_ERROR "Cannot find libxpujitc.so under ${XTDK_PATH}/shlib.\n"
-                      "Check that XTDK_PATH is set correctly.")
+  message(
+    FATAL_ERROR
+      "Cannot find libxpujitc_xtdk.so under ${XTDK_PATH}/shlib.\n"
+      "This is the SONAME-isolated copy of libxpujitc.so required to avoid a "
+      "clash with the XHPC third-party libxpujitc.so. Create it with:\n"
+      "  cp libxpujitc.so libxpujitc_xtdk.so && \\\n"
+      "  patchelf --set-soname libxpujitc_xtdk.so libxpujitc_xtdk.so\n"
+      "and rename its xpurtc::CompileContext destructor symbol as documented.")
 endif()
-message(STATUS "XTDK libxpujitc: ${XTDK_XPUJITC_LIB}")
+message(STATUS "XTDK libxpujitc (isolated): ${XTDK_XPUJITC_LIB}")
 
 # XTDK top-level include (xpurtc.h, xpu_compile_module.h)
+# NOTE: Added as a SYSTEM include so it is searched AFTER CINN's bundled
+# LLVM 13.0.1 headers (added via a normal -I in cmake/cinn.cmake). XTDK ships a
+# full LLVM 19 tree under include/llvm that would otherwise shadow CINN's
+# LLVM 13.0.1 and break the CINN host codegen build. XPU backend files only need
+# the <xpu/...> headers from XTDK, which are unique to this dir and still
+# resolve correctly as a system include.
 if(EXISTS "${XTDK_PATH}/include")
-  include_directories("${XTDK_PATH}/include")
+  include_directories(SYSTEM "${XTDK_PATH}/include")
 endif()
 
 # ---------------------------------------------------------------------------

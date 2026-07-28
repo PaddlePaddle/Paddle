@@ -249,6 +249,11 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
         shared_mem_bytes = CalculateSharedMemory(func);
 #endif
       },
+      [&](common::XpuArch) {
+#ifdef CINN_WITH_CUDA
+        shared_mem_bytes = CalculateSharedMemory(func);
+#endif
+      },
       [&](common::HygonDCUArchHIP) {
 #ifdef CINN_WITH_HIP
         shared_mem_bytes = CalculateSharedMemory(func);
@@ -279,6 +284,11 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
         CINN_NOT_IMPLEMENTED;
       },
       [&](common::NVGPUArch) {
+        call_kernel = RequiresCooperativeLaunch(func)
+                          ? runtime::intrinsic::call_cuda_cooperative_kernel
+                          : runtime::intrinsic::call_cuda_kernel;
+      },
+      [&](common::XpuArch) {
         call_kernel = RequiresCooperativeLaunch(func)
                           ? runtime::intrinsic::call_cuda_cooperative_kernel
                           : runtime::intrinsic::call_cuda_kernel;

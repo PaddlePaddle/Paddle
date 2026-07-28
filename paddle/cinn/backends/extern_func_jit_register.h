@@ -106,7 +106,8 @@ static const char* TargetToBackendRepr(Target target) {
       },
       [&](common::HygonDCUArchSYCL) -> const char* {
         return backend_hygondcu_sycl;
-      });
+      },
+      [&](common::XpuArch) -> const char* { return backend_xpu; });
 }
 
 /**
