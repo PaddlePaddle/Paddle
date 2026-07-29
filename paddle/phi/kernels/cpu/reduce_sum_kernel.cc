@@ -43,6 +43,38 @@ void CascadeSum(const Context& dev_ctx,
                                      out->numel());
 }
 
+// `self.to(dtype)` keeps the strides of a non-overlapping-and-dense view, so
+// the converted input must preserve the original layout instead of going
+// through the contiguous-only Cast kernel; otherwise a transposed view would be
+// reduced in a different dimension order than torch uses.
+template <typename Src, typename Dst, typename Context>
+void CascadeSumCasted(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const std::vector<int64_t>& axes,
+                      DenseTensor* out) {
+  const auto shape = common::vectorize(x.dims());
+  std::vector<Dst> buffer;
+  std::vector<int64_t> strides;
+  funcs::CastPreservingLayout<Src, Dst>(
+      x.data<Src>(), shape, common::vectorize(x.strides()), &buffer, &strides);
+  dev_ctx.template Alloc<Dst>(out);
+  funcs::TorchCompatibleReduceSum<Dst>(
+      buffer.data(), shape, strides, axes, out->data<Dst>(), out->numel());
+}
+
+template <typename Src, typename Dst, typename Context>
+void DispatchCascadeSum(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const std::vector<int64_t>& axes,
+                        bool need_cast,
+                        DenseTensor* out) {
+  if (need_cast) {
+    CascadeSumCasted<Src, Dst, Context>(dev_ctx, x, axes, out);
+  } else {
+    CascadeSum<Dst, Context>(dev_ctx, x, axes, out);
+  }
+}
+
 bool IsCascadeSumDtype(DataType dtype) {
   return dtype == DataType::FLOAT32 || dtype == DataType::FLOAT64 ||
          dtype == DataType::FLOAT16 || dtype == DataType::BFLOAT16 ||
@@ -66,61 +98,70 @@ bool TryCascadeSum(const Context& dev_ctx,
   // On CPU torch reduces in the output dtype, materializing `self.to(dtype)`
   // first, see make_reduction() in aten/src/ATen/native/ReduceOpsUtils.h.
   const bool need_cast = compute_dtype != x.dtype();
-  if (need_cast && !x.meta().is_contiguous()) return false;
-
+  const auto shape = common::vectorize(x.dims());
+  const auto x_strides = common::vectorize(x.strides());
   const auto axes =
       funcs::NormalizeReduceAxes(x.dims(), dims.GetData(), reduce_all);
 
   // should_use_acc_buffer() in aten/src/ATen/native/ReduceOps.cpp: for an
   // fp16/bf16 result whose 2d loop reduces both dimensions, torch sums a
   // float32 copy of the *original* input and rounds only the result, so the
-  // cast down to fp16/bf16 must not happen first. The same-dtype case is
-  // handled inside TorchCompatibleReduceSum.
+  // cast down to fp16/bf16 must not happen first. The predicate is evaluated on
+  // the iterator built from `self.to(compute_dtype)`, hence the cast layout
+  // rather than x's own strides. The same-dtype case is handled inside
+  // TorchCompatibleReduceSum.
   if (need_cast &&
       (compute_dtype == DataType::FLOAT16 ||
        compute_dtype == DataType::BFLOAT16) &&
       funcs::NeedsFloatAccBuffer(
-          common::vectorize(x.dims()), common::vectorize(x.strides()), axes)) {
-    DenseTensor x_fp32 = x.dtype() == DataType::FLOAT32
-                             ? x
-                             : Cast<T, Context>(dev_ctx, x, DataType::FLOAT32);
+          shape, funcs::CastTargetStrides(shape, x_strides), axes)) {
     DenseTensor acc_out;
     acc_out.Resize(out->dims());
     dev_ctx.template Alloc<float>(&acc_out);
-    funcs::TorchCompatibleReduceSum<float>(x_fp32.data<float>(),
-                                           common::vectorize(x_fp32.dims()),
-                                           common::vectorize(x_fp32.strides()),
-                                           axes,
-                                           acc_out.data<float>(),
-                                           acc_out.numel());
+    if (x.dtype() == DataType::FLOAT32) {
+      funcs::TorchCompatibleReduceSum<float>(x.data<float>(),
+                                             shape,
+                                             x_strides,
+                                             axes,
+                                             acc_out.data<float>(),
+                                             acc_out.numel());
+    } else {
+      std::vector<float> buffer;
+      std::vector<int64_t> strides;
+      funcs::CastPreservingLayout<T, float>(
+          x.data<T>(), shape, x_strides, &buffer, &strides);
+      funcs::TorchCompatibleReduceSum<float>(buffer.data(),
+                                             shape,
+                                             strides,
+                                             axes,
+                                             acc_out.data<float>(),
+                                             acc_out.numel());
+    }
     CastKernel<float, Context>(dev_ctx, acc_out, compute_dtype, out);
     return true;
   }
 
-  DenseTensor casted;
-  if (need_cast) {
-    casted = Cast<T, Context>(dev_ctx, x, compute_dtype);
-  }
-  const DenseTensor& src = need_cast ? casted : x;
-
   switch (compute_dtype) {
     case DataType::FLOAT32:
-      CascadeSum<float, Context>(dev_ctx, src, axes, out);
+      DispatchCascadeSum<T, float, Context>(dev_ctx, x, axes, need_cast, out);
       return true;
     case DataType::FLOAT64:
-      CascadeSum<double, Context>(dev_ctx, src, axes, out);
+      DispatchCascadeSum<T, double, Context>(dev_ctx, x, axes, need_cast, out);
       return true;
     case DataType::FLOAT16:
-      CascadeSum<float16, Context>(dev_ctx, src, axes, out);
+      DispatchCascadeSum<T, float16, Context>(dev_ctx, x, axes, need_cast, out);
       return true;
     case DataType::BFLOAT16:
-      CascadeSum<bfloat16, Context>(dev_ctx, src, axes, out);
+      DispatchCascadeSum<T, bfloat16, Context>(
+          dev_ctx, x, axes, need_cast, out);
       return true;
     case DataType::COMPLEX64:
-      CascadeSum<complex64, Context>(dev_ctx, src, axes, out);
+      DispatchCascadeSum<T, complex64, Context>(
+          dev_ctx, x, axes, need_cast, out);
       return true;
     case DataType::COMPLEX128:
-      CascadeSum<complex128, Context>(dev_ctx, src, axes, out);
+      DispatchCascadeSum<T, complex128, Context>(
+          dev_ctx, x, axes, need_cast, out);
       return true;
     default:
       return false;

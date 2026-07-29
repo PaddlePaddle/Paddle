@@ -594,6 +594,67 @@ inline bool NeedsFloatAccBuffer(const std::vector<int64_t>& x_shape,
       cascade_sum::MakeReduceDims(x_shape, x_strides, reduce_axes, 1));
 }
 
+// Strides that `Tensor::to(dtype)` produces for this layout: MemoryFormat
+// ::Preserve keeps them for a non-overlapping-and-dense view and compacts
+// everything else to row-major.
+inline std::vector<int64_t> CastTargetStrides(
+    const std::vector<int64_t>& x_shape,
+    const std::vector<int64_t>& x_strides) {
+  if (cascade_sum::IsNonOverlappingAndDense(x_shape, x_strides)) {
+    return x_strides;
+  }
+  const int rank = static_cast<int>(x_shape.size());
+  std::vector<int64_t> strides(rank, 1);
+  for (int i = rank - 2; i >= 0; --i) {
+    strides[i] = strides[i + 1] * x_shape[i + 1];
+  }
+  return strides;
+}
+
+// Reproduces `Tensor::to(dtype)` with MemoryFormat::Preserve (torch's
+// _to_copy): a non-overlapping-and-dense view keeps its exact strides, so a
+// transposed view stays transposed and the reduction still sees the original
+// dimension order; anything else is compacted to row-major, matching
+// `empty_like(self, suggest_memory_format())`.
+template <typename Src, typename Dst>
+void CastPreservingLayout(const Src* x_data,
+                          const std::vector<int64_t>& x_shape,
+                          const std::vector<int64_t>& x_strides,
+                          std::vector<Dst>* buffer,
+                          std::vector<int64_t>* buffer_strides) {
+  const int rank = static_cast<int>(x_shape.size());
+  *buffer_strides = CastTargetStrides(x_shape, x_strides);
+  if (*buffer_strides == x_strides) {
+    // A dense view covers [0, extent) exactly once, so the conversion is a flat
+    // copy that keeps every stride, including the contiguous case.
+    int64_t extent = 1;
+    for (int i = 0; i < rank; ++i) {
+      extent += (x_shape[i] - 1) * x_strides[i];
+    }
+    buffer->resize(extent);
+    for (int64_t k = 0; k < extent; ++k) {
+      (*buffer)[k] = static_cast<Dst>(x_data[k]);
+    }
+    return;
+  }
+
+  int64_t numel = 1;
+  for (int64_t size : x_shape) numel *= size;
+  buffer->resize(numel);
+  std::vector<int64_t> index(rank, 0);
+  for (int64_t k = 0; k < numel; ++k) {
+    int64_t src = 0;
+    for (int i = 0; i < rank; ++i) {
+      src += index[i] * x_strides[i];
+    }
+    (*buffer)[k] = static_cast<Dst>(x_data[src]);
+    for (int i = rank - 1; i >= 0; --i) {
+      if (++index[i] < x_shape[i]) break;
+      index[i] = 0;
+    }
+  }
+}
+
 // Torch-compatible reduce sum. `x_strides` are element strides of the (possibly
 // non-contiguous) input; `reduce_axes` must be non-negative and distinct. The
 // output is assumed contiguous over the kept axes.
@@ -604,7 +665,6 @@ void TorchCompatibleReduceSum(const T* x_data,
                               const std::vector<int64_t>& reduce_axes,
                               T* out_data,
                               int64_t out_numel) {
-  const int rank = static_cast<int>(x_shape.size());
   auto dims = cascade_sum::MakeReduceDims(
       x_shape, x_strides, reduce_axes, static_cast<int64_t>(sizeof(T)));
 
@@ -614,38 +674,10 @@ void TorchCompatibleReduceSum(const T* x_data,
       // `x_data` is already in T here, so this only reproduces torch for a
       // same-dtype reduction; the dtype promoting case is handled by the
       // caller.
-      const bool dense =
-          cascade_sum::IsNonOverlappingAndDense(x_shape, x_strides);
-      std::vector<int64_t> acc_strides(rank, 1);
-      int64_t extent = 1;
-      if (dense) {
-        acc_strides = x_strides;
-        for (int i = 0; i < rank; ++i) {
-          extent += (x_shape[i] - 1) * x_strides[i];
-        }
-      } else {
-        for (int i = rank - 2; i >= 0; --i) {
-          acc_strides[i] = acc_strides[i + 1] * x_shape[i + 1];
-        }
-        extent = rank == 0 ? 1 : acc_strides[0] * x_shape[0];
-      }
-
-      std::vector<Acc> acc_buffer(extent, Acc(0));
-      int64_t numel = 1;
-      for (int64_t s : x_shape) numel *= s;
-      std::vector<int64_t> index(rank, 0);
-      for (int64_t k = 0; k < numel; ++k) {
-        int64_t src = 0, dst = 0;
-        for (int i = 0; i < rank; ++i) {
-          src += index[i] * x_strides[i];
-          dst += index[i] * acc_strides[i];
-        }
-        acc_buffer[dst] = static_cast<Acc>(x_data[src]);
-        for (int i = rank - 1; i >= 0; --i) {
-          if (++index[i] < x_shape[i]) break;
-          index[i] = 0;
-        }
-      }
+      std::vector<Acc> acc_buffer;
+      std::vector<int64_t> acc_strides;
+      CastPreservingLayout<T, Acc>(
+          x_data, x_shape, x_strides, &acc_buffer, &acc_strides);
 
       std::vector<Acc> acc_out(out_numel);
       TorchCompatibleReduceSum<Acc>(acc_buffer.data(),
