@@ -76,11 +76,11 @@ void SumStrideKernel(const Context& dev_ctx,
                      bool keep_dim,
                      DenseTensor* out) {
   PrepareStridedOut(out);
-  // A dtype promoting sum casts the input first, and the cast itself needs
-  // contiguous memory.
+  // A dtype promoting sum is fine as well: the cascade path converts the input
+  // with CastPreservingLayout, which keeps the strides of a dense view exactly
+  // like torch's `self.to(dtype)` does.
   const bool strides_supported =
-      FLAGS_use_accuracy_compatible_kernel && IsCascadeDtype(x.dtype()) &&
-      (out_dtype == DataType::UNDEFINED || out_dtype == x.dtype());
+      FLAGS_use_accuracy_compatible_kernel && IsCascadeDtype(x.dtype());
   DenseTensor buffer;
   const DenseTensor& src =
       ResolveInput<T, Context>(dev_ctx, x, strides_supported, &buffer);
