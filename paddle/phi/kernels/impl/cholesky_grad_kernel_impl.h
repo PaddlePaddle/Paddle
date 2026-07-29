@@ -249,12 +249,14 @@ void CholeskyGradKernel(const Context& dev_ctx,
 
   auto* x_grad_data = dev_ctx.template Alloc<T>(x_grad);
   auto& dims = out.dims();
-  int batch_count = 1;
+  int64_t batch_count = 1;
   for (int i = 0; i < dims.size() - 2; i++) {
     batch_count *= dims[i];
   }
-  auto m = dims[dims.size() - 1];
-  int64_t tensor_size = static_cast<int64_t>(batch_count) * m * m;
+  const int64_t m_64 = dims[dims.size() - 1];
+  PADDLE_ENFORCE_LE_INT_MAX(m_64, "CholeskyGrad TRSM matrix dimension");
+  const int m = static_cast<int>(m_64);
+  int64_t tensor_size = batch_count * m * m;
 
   std::vector<int> axis(dims.size() - 2);
   std::iota(axis.begin(), axis.end(), 0);
@@ -303,7 +305,7 @@ void CholeskyGradKernel(const Context& dev_ctx,
   EyeFunctor<T> eye_functor(m, m, identity_data);
   for_range(eye_functor);
   // TODO(guosheng): use trsmBatched for GPU
-  for (int i = 0; i < batch_count; i++) {
+  for (int64_t i = 0; i < batch_count; i++) {
     int64_t offset = static_cast<int64_t>(i) * m * m;
     blas.TRSM(/*side*/ CblasLeft,
               /*uplo*/ CblasLower,

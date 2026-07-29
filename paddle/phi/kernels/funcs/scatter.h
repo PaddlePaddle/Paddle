@@ -19,9 +19,9 @@ limitations under the License. */
 #include <unordered_set>
 
 #include "paddle/common/ddim.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace phi {
@@ -33,17 +33,17 @@ namespace funcs {
  */
 template <typename T, typename IndexT = int>
 typename std::enable_if<std::is_floating_point<T>::value>::type
-elementwise_inner_add(const CPUContext& dev_ctx,
+elementwise_inner_add(const CPUContext& dev_ctx UNUSED,
                       const T* src_pointer,
                       T* dst_pointer,
                       size_t src_index,
                       IndexT dst_index,
                       size_t slice_size) {
-  auto blas = funcs::GetBlas<CPUContext, T>(dev_ctx);
-  blas.VADD(slice_size,
-            src_pointer + src_index * slice_size,
-            dst_pointer + dst_index * slice_size,
-            dst_pointer + dst_index * slice_size);
+  auto* z = dst_pointer + dst_index * slice_size;
+  const auto* x = src_pointer + src_index * slice_size;
+  for (size_t i = 0; i < slice_size; ++i) {
+    z[i] += x[i];
+  }
 }
 
 template <typename T, typename IndexT = int>
