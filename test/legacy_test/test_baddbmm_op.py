@@ -433,6 +433,23 @@ class TestBaddBmmOp4(OpTest):
 
 
 class TestBaddBmmAPI(unittest.TestCase):
+    def test_batch_size_mismatch(self):
+        paddle.disable_static()
+        try:
+            input = paddle.ones([2, 3, 4], dtype=paddle.float32)
+            x = paddle.ones([2, 3, 5], dtype=paddle.float32)
+            y = paddle.empty([0, 5, 4], dtype=paddle.float32)
+            with self.assertRaises(ValueError):
+                paddle.baddbmm(input, x, y)
+
+            input = paddle.empty([0, 3, 4], dtype=paddle.float32)
+            x = paddle.empty([0, 3, 5], dtype=paddle.float32)
+            y = paddle.ones([2, 5, 4], dtype=paddle.float32)
+            with self.assertRaises(ValueError):
+                paddle.baddbmm(input, x, y)
+        finally:
+            paddle.enable_static()
+
     def test_api_error(self):
         data_x = np.ones((2, 2, 2)).astype(np.float32)
         data_y = np.ones((2, 2, 2)).astype(np.float32)
