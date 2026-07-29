@@ -76,11 +76,20 @@ void SumStrideKernel(const Context& dev_ctx,
                      bool keep_dim,
                      DenseTensor* out) {
   PrepareStridedOut(out);
-  // A dtype promoting sum is fine as well: the cascade path converts the input
-  // with CastPreservingLayout, which keeps the strides of a dense view exactly
-  // like torch's `self.to(dtype)` does.
+  // Mirror how SumRawKernel derives the reduction dtype, because only its
+  // cascade path reads x.strides(); anything else ends up in the Eigen reduce
+  // or in CastKernel, both of which read the input as contiguous memory. A
+  // dtype promotion between cascade dtypes is fine: the cascade path converts
+  // the input with CastPreservingLayout, which keeps the strides of a dense
+  // view exactly like torch's `self.to(dtype)` does.
+  DataType effective_dtype = out_dtype;
+  if (effective_dtype == DataType::UNDEFINED && out->dtype() != x.dtype()) {
+    effective_dtype = out->dtype();
+  }
+  const DataType compute_dtype =
+      effective_dtype == DataType::UNDEFINED ? x.dtype() : effective_dtype;
   const bool strides_supported =
-      FLAGS_use_accuracy_compatible_kernel && IsCascadeDtype(x.dtype());
+      FLAGS_use_accuracy_compatible_kernel && IsCascadeDtype(compute_dtype);
   DenseTensor buffer;
   const DenseTensor& src =
       ResolveInput<T, Context>(dev_ctx, x, strides_supported, &buffer);

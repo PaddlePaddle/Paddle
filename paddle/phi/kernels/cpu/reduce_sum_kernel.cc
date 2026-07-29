@@ -19,6 +19,7 @@
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/contiguous_kernel.h"
 #include "paddle/phi/kernels/cpu/reduce.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/cascade_sum.h"
@@ -81,6 +82,12 @@ bool IsCascadeSumDtype(DataType dtype) {
          dtype == DataType::COMPLEX64 || dtype == DataType::COMPLEX128;
 }
 
+bool IsIntegralSumDtype(DataType dtype) {
+  return dtype == DataType::UINT8 || dtype == DataType::INT8 ||
+         dtype == DataType::INT16 || dtype == DataType::INT32 ||
+         dtype == DataType::INT64;
+}
+
 // Integral types are left to the generic path: torch reduces them with
 // binary_kernel_reduce_vec and integer addition is associative, so any
 // summation order already matches.
@@ -88,11 +95,34 @@ template <typename T, typename Context>
 bool TryCascadeSum(const Context& dev_ctx,
                    const DenseTensor& x,
                    const IntArray& dims,
+                   bool keep_dim,
                    bool reduce_all,
                    DataType out_dtype,
                    DenseTensor* out) {
   const DataType compute_dtype =
       out_dtype == DataType::UNDEFINED ? x.dtype() : out_dtype;
+
+  // Reducing into an integral dtype truncates every element *before* summing,
+  // because torch reduces in the output dtype. The fp16/bf16 branch of
+  // SumRawKernel instead sums in float32 and truncates only the total, which
+  // changes the value: four 0.5 give 0 in torch and numpy, but 2 there.
+  if (IsIntegralSumDtype(compute_dtype) && compute_dtype != x.dtype()) {
+    DenseTensor contiguous_x;
+    if (!x.meta().is_contiguous()) {
+      contiguous_x = Contiguous<T, Context>(dev_ctx, x);
+    }
+    DenseTensor casted = Cast<T, Context>(
+        dev_ctx, x.meta().is_contiguous() ? x : contiguous_x, compute_dtype);
+    Reduce<CPUContext, T, funcs::SumFunctor>(dev_ctx,
+                                             casted,
+                                             reduce_all,
+                                             dims.GetData(),
+                                             keep_dim,
+                                             DataType::UNDEFINED,
+                                             out);
+    return true;
+  }
+
   if (!IsCascadeSumDtype(compute_dtype)) return false;
 
   // On CPU torch reduces in the output dtype, materializing `self.to(dtype)`
@@ -194,7 +224,8 @@ void SumRawKernel(const Context& dev_ctx,
     return;
   }
   if (FLAGS_use_accuracy_compatible_kernel &&
-      TryCascadeSum<T, Context>(dev_ctx, x, dims, reduce_all, out_dtype, out)) {
+      TryCascadeSum<T, Context>(
+          dev_ctx, x, dims, keep_dim, reduce_all, out_dtype, out)) {
     return;
   }
   if constexpr (std::is_same_v<T, float16> || std::is_same_v<T, bfloat16>) {
