@@ -345,6 +345,7 @@ def assign_sharded_slice(
                     f"global_offset={src_desc.global_offset}, "
                     f"canonical_shape={canonical_shape}."
                 )
+            # See the forward branch above.
             src_tensor_slice = src_tensor_slice.reshape(
                 (
                     src_desc.local_shape[0] * block_width,
@@ -352,6 +353,11 @@ def assign_sharded_slice(
                 )
             )
             target_starts = [0, pre_pp_offset[1]]
+        # ``paddle.slice`` and ``reshape`` both return views that share storage
+        # with the source. On some backends (e.g. XPU) slicing such a
+        # reshape-view reads wrong (all-zero) data, so materialize a contiguous,
+        # owning copy of the reshaped layout before the slice below.
+        src_tensor_slice = src_tensor_slice.clone()
         src_tensor_slice = paddle.slice(
             src_tensor_slice,
             axes=list(range(len(pre_pp_shape))),
@@ -376,16 +382,11 @@ def assign_sharded_slice(
                 dst_desc.global_offset, dst_shard.global_offset
             )
         ]
-        dst_tensor_slice = paddle.slice(
-            dst_shard.local_tensor,
-            axes=list(range(len(dst_desc.local_shape))),
-            starts=dst_starts,
-            ends=[
-                start + size
-                for start, size in zip(dst_starts, dst_desc.local_shape)
-            ],
+        dst_index = tuple(
+            slice(start, start + size)
+            for start, size in zip(dst_starts, dst_desc.local_shape)
         )
-        paddle.assign(src_tensor_slice, dst_tensor_slice)
+        dst_shard.local_tensor[dst_index] = src_tensor_slice
         return
 
     src_has, _, overlap_shape, src_desc_starts, src_shard_starts = (
