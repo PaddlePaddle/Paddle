@@ -27,8 +27,10 @@ if(WITH_TESTING AND WITH_PYTHON)
   if(WIN32)
     target_link_libraries(scalar_type_compat_test PRIVATE ${PYTHON_LIBRARIES})
   elseif(APPLE)
-    target_link_libraries(scalar_type_compat_test
-                          PRIVATE "-Wl,-undefined,dynamic_lookup")
+    target_link_libraries(
+      scalar_type_compat_test
+      PRIVATE "-Wl,-undefined,dynamic_lookup"
+              "-Wl,-rpath,$<TARGET_FILE_DIR:${paddle_lib}>")
   endif()
   add_dependencies(scalar_type_compat_test ${paddle_lib} extern_pybind)
   set_target_properties(
