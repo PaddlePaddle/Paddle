@@ -147,7 +147,7 @@
   backward: add_position_encoding_grad
 
 - op : addcmul
-  args : (Tensor input, Tensor tensor1, Tensor tensor2, Scalar(float) value=1.0)
+  args : (Tensor input, Tensor tensor1, Tensor tensor2, Scalar(double) value=1.0)
   output : Tensor(out)
   infer_meta :
     func : AddcmulInferMeta

@@ -716,6 +716,71 @@ class TestAddcmulAPI(unittest.TestCase):
                 np.testing.assert_allclose(result[0], ref_out, rtol=1e-5)
         paddle.disable_static()
 
+    def test_static_dynamic_shape_broadcast(self):
+        """Test InferMeta broadcasting between dynamic and fixed dimensions."""
+        paddle.enable_static()
+        with paddle.pir_utils.IrGuard():
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                x = paddle.static.data(
+                    name="dynamic_x", shape=[None, 4], dtype="float64"
+                )
+                t1 = paddle.static.data(
+                    name="fixed_t1", shape=[5, 4], dtype="float64"
+                )
+                t2 = paddle.static.data(
+                    name="fixed_t2", shape=[1, 4], dtype="float64"
+                )
+                out = paddle.addcmul(x, t1, t2, value=0.5)
+
+                self.assertEqual(list(out.shape), [5, 4])
+                feed = {
+                    "dynamic_x": np.ones((5, 4), dtype="float64"),
+                    "fixed_t1": np.ones((5, 4), dtype="float64"),
+                    "fixed_t2": np.ones((1, 4), dtype="float64"),
+                }
+                result = base.Executor(paddle.CPUPlace()).run(
+                    main, feed=feed, fetch_list=[out]
+                )
+                np.testing.assert_array_equal(
+                    result[0], np.full((5, 4), 1.5, dtype="float64")
+                )
+        paddle.disable_static()
+
+    def test_static_float64_value_precision(self):
+        """Test that PIR does not materialize value as float32."""
+        paddle.enable_static()
+        value = float(2**24 + 1)
+        with paddle.pir_utils.IrGuard():
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                x = paddle.static.data(
+                    name="precision_x", shape=[1], dtype="float64"
+                )
+                t1 = paddle.static.data(
+                    name="precision_t1", shape=[1], dtype="float64"
+                )
+                t2 = paddle.static.data(
+                    name="precision_t2", shape=[1], dtype="float64"
+                )
+                out = paddle.addcmul(x, t1, t2, value=value)
+
+                result = base.Executor(paddle.CPUPlace()).run(
+                    main,
+                    feed={
+                        "precision_x": np.zeros((1,), dtype="float64"),
+                        "precision_t1": np.ones((1,), dtype="float64"),
+                        "precision_t2": np.ones((1,), dtype="float64"),
+                    },
+                    fetch_list=[out],
+                )
+                np.testing.assert_array_equal(
+                    result[0], np.array([value], dtype="float64")
+                )
+        paddle.disable_static()
+
     def test_out_parameter(self):
         """Test out parameter"""
         paddle.disable_static()
@@ -744,6 +809,32 @@ class TestAddcmulAPI(unittest.TestCase):
         out = paddle.addcmul(x, t1, t2, value=2)
         expected = np_input + 2 * np_t1 * np_t2
         np.testing.assert_array_equal(out.numpy(), expected)
+        with self.assertRaises((ValueError, RuntimeError)):
+            paddle.addcmul(x, t1, t2, value=0.5)
+        paddle.enable_static()
+
+    def test_float64_value_precision(self):
+        """Test that value keeps float64 precision in forward and backward."""
+        paddle.disable_static()
+        value = float(2**24 + 1)
+        x = paddle.to_tensor(
+            np.zeros((1,), dtype="float64"), stop_gradient=False
+        )
+        t1 = paddle.to_tensor(
+            np.ones((1,), dtype="float64"), stop_gradient=False
+        )
+        t2 = paddle.to_tensor(
+            np.ones((1,), dtype="float64"), stop_gradient=False
+        )
+
+        out = paddle.addcmul(x, t1, t2, value=value)
+        out.sum().backward()
+
+        expected = np.array([value], dtype="float64")
+        np.testing.assert_array_equal(out.numpy(), expected)
+        np.testing.assert_array_equal(x.grad.numpy(), np.ones((1,)))
+        np.testing.assert_array_equal(t1.grad.numpy(), expected)
+        np.testing.assert_array_equal(t2.grad.numpy(), expected)
         paddle.enable_static()
 
 
@@ -923,6 +1014,32 @@ class TestAddcmulGradEmptyTensor(unittest.TestCase):
         self.assertEqual(list(input_t.grad.shape), [0, 4])
         self.assertEqual(list(tensor1_t.grad.shape), [0, 4])
         self.assertEqual(list(tensor2_t.grad.shape), [0, 4])
+        paddle.enable_static()
+
+    def test_broadcast_empty_grad(self):
+        """Test broadcasting dimension 1 to an empty dimension."""
+        paddle.disable_static()
+        input_t = paddle.to_tensor(
+            np.ones((1, 4), dtype="float64"), stop_gradient=False
+        )
+        tensor1_t = paddle.to_tensor(
+            np.empty((0, 4), dtype="float64"), stop_gradient=False
+        )
+        tensor2_t = paddle.to_tensor(
+            np.ones((1, 4), dtype="float64"), stop_gradient=False
+        )
+
+        out = paddle.addcmul(input_t, tensor1_t, tensor2_t, value=0.5)
+        self.assertEqual(list(out.shape), [0, 4])
+        out.sum().backward()
+
+        np.testing.assert_array_equal(
+            input_t.grad.numpy(), np.zeros((1, 4), dtype="float64")
+        )
+        self.assertEqual(list(tensor1_t.grad.shape), [0, 4])
+        np.testing.assert_array_equal(
+            tensor2_t.grad.numpy(), np.zeros((1, 4), dtype="float64")
+        )
         paddle.enable_static()
 
 

@@ -14,19 +14,54 @@
 
 #pragma once
 
+#include <cmath>
+#include <limits>
+#include <type_traits>
+
+#include "paddle/common/errors.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace phi {
+
+template <typename T>
+inline typename dtype::MPTypeTrait<T>::Type GetAddcmulValue(
+    const Scalar& value) {
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
+  if constexpr (std::is_integral<T>::value) {
+    const double numeric_value = value.to<double>();
+    const double lowest = static_cast<double>(std::numeric_limits<T>::lowest());
+    const double highest = static_cast<double>(std::numeric_limits<T>::max());
+    const bool is_within_upper_bound =
+        std::numeric_limits<T>::digits >= std::numeric_limits<double>::digits
+            ? numeric_value < highest
+            : numeric_value <= highest;
+    const bool is_valid_integer = std::isfinite(numeric_value) &&
+                                  std::trunc(numeric_value) == numeric_value &&
+                                  numeric_value >= lowest &&
+                                  is_within_upper_bound;
+    PADDLE_ENFORCE_EQ(
+        is_valid_integer,
+        true,
+        common::errors::InvalidArgument(
+            "For integral input tensors, the argument value of addcmul must "
+            "be an integer within the range of the input data type, but got "
+            "%s.",
+            value.ToRawString()));
+  }
+  return value.to<MPType>();
+}
 
 template <typename T, typename Context, size_t D>
 static void AddcmulFunction(const Context& dev_ctx,
                             const DenseTensor& input,
                             const DenseTensor& tensor1,
                             const DenseTensor& tensor2,
-                            float value,
+                            typename dtype::MPTypeTrait<T>::Type value,
                             DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
   const auto& out_dims = out->dims();
@@ -64,7 +99,7 @@ static void AddcmulFunctionZero(const Context& dev_ctx,
                                 const DenseTensor& input,
                                 const DenseTensor& tensor1,
                                 const DenseTensor& tensor2,
-                                float value,
+                                typename dtype::MPTypeTrait<T>::Type value,
                                 DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
 
@@ -91,7 +126,7 @@ void AddcmulKernel(const Context& dev_ctx,
                    const DenseTensor& tensor2,
                    const Scalar& value_scalar,
                    DenseTensor* out) {
-  float value = value_scalar.to<float>();
+  auto value = GetAddcmulValue<T>(value_scalar);
   int rank = out->dims().size();
   PADDLE_ENFORCE_GE(
       rank,

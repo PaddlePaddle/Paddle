@@ -72,13 +72,12 @@ static void AddcmulGradImpl(const Context& dev_ctx,
                             const DenseTensor& tensor1,
                             const DenseTensor& tensor2,
                             const DenseTensor& out_grad,
-                            const Scalar& value,
+                            typename dtype::MPTypeTrait<T>::Type value,
                             DenseTensor* input_grad,
                             DenseTensor* tensor1_grad,
                             DenseTensor* tensor2_grad) {
   using MPType = typename dtype::MPTypeTrait<T>::Type;
   auto& place = *dev_ctx.eigen_device();
-  MPType val = static_cast<MPType>(value.to<float>());
   auto out_dims = common::vectorize<int64_t>(out_grad.dims());
 
   // Extend dims helper
@@ -126,7 +125,7 @@ static void AddcmulGradImpl(const Context& dev_ctx,
       dev_ctx.template Alloc<T>(tensor1_grad);
       auto eigen_tensor1_grad = EigenTensor<T, Dims>::From(*tensor1_grad);
       eigen_tensor1_grad.device(place) =
-          (eigen_dout.template cast<MPType>() * val *
+          (eigen_dout.template cast<MPType>() * value *
            eigen_t2.broadcast(t2_bcast).template cast<MPType>())
               .template cast<T>();
     } else {
@@ -137,7 +136,7 @@ static void AddcmulGradImpl(const Context& dev_ctx,
       auto eigen_tensor1_grad_broadcast =
           EigenTensor<T, Dims>::From(tensor1_grad_broadcast);
       eigen_tensor1_grad_broadcast.device(place) =
-          (eigen_dout.template cast<MPType>() * val *
+          (eigen_dout.template cast<MPType>() * value *
            eigen_t2.broadcast(t2_bcast).template cast<MPType>())
               .template cast<T>();
 
@@ -167,7 +166,7 @@ static void AddcmulGradImpl(const Context& dev_ctx,
       dev_ctx.template Alloc<T>(tensor2_grad);
       auto eigen_tensor2_grad = EigenTensor<T, Dims>::From(*tensor2_grad);
       eigen_tensor2_grad.device(place) =
-          (eigen_dout.template cast<MPType>() * val *
+          (eigen_dout.template cast<MPType>() * value *
            eigen_t1.broadcast(t1_bcast).template cast<MPType>())
               .template cast<T>();
     } else {
@@ -178,7 +177,7 @@ static void AddcmulGradImpl(const Context& dev_ctx,
       auto eigen_tensor2_grad_broadcast =
           EigenTensor<T, Dims>::From(tensor2_grad_broadcast);
       eigen_tensor2_grad_broadcast.device(place) =
-          (eigen_dout.template cast<MPType>() * val *
+          (eigen_dout.template cast<MPType>() * value *
            eigen_t1.broadcast(t1_bcast).template cast<MPType>())
               .template cast<T>();
 
@@ -201,14 +200,13 @@ static void AddcmulGradZero(const Context& dev_ctx,
                             const DenseTensor& tensor1,
                             const DenseTensor& tensor2,
                             const DenseTensor& out_grad,
-                            const Scalar& value,
+                            typename dtype::MPTypeTrait<T>::Type value,
                             DenseTensor* input_grad,
                             DenseTensor* t1_grad,
                             DenseTensor* t2_grad) {
   auto dim = ::common::make_ddim(std::vector<int64_t>(1, 1));
   using MPType = typename dtype::MPTypeTrait<T>::Type;
   auto& place = *dev_ctx.eigen_device();
-  MPType val = static_cast<MPType>(value.to<float>());
 
   auto eigen_t1 = phi::EigenTensor<T, 1>::From(tensor1, dim);
   auto eigen_t2 = phi::EigenTensor<T, 1>::From(tensor2, dim);
@@ -223,14 +221,14 @@ static void AddcmulGradZero(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(t1_grad);
     auto eigen_dt1 = phi::EigenTensor<T, 1>::From(*t1_grad, dim);
     eigen_dt1.device(place) = (eigen_dout.template cast<MPType>() *
-                               eigen_t2.template cast<MPType>() * val)
+                               eigen_t2.template cast<MPType>() * value)
                                   .template cast<T>();
   }
   if (t2_grad) {
     dev_ctx.template Alloc<T>(t2_grad);
     auto eigen_dt2 = phi::EigenTensor<T, 1>::From(*t2_grad, dim);
     eigen_dt2.device(place) = (eigen_dout.template cast<MPType>() *
-                               eigen_t1.template cast<MPType>() * val)
+                               eigen_t1.template cast<MPType>() * value)
                                   .template cast<T>();
   }
 }
@@ -245,6 +243,8 @@ void AddcmulGradKernel(const Context& dev_ctx,
                        DenseTensor* input_grad,
                        DenseTensor* tensor1_grad,
                        DenseTensor* tensor2_grad) {
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
+  auto compute_value = value.to<MPType>();
   if (out_grad.numel() == 0) {
     if (input_grad)
       phi::Full<T, Context>(
@@ -274,7 +274,7 @@ void AddcmulGradKernel(const Context& dev_ctx,
                                   tensor1,
                                   tensor2,
                                   out_grad,
-                                  value,
+                                  compute_value,
                                   input_grad,
                                   tensor1_grad,
                                   tensor2_grad);
@@ -284,7 +284,7 @@ void AddcmulGradKernel(const Context& dev_ctx,
                                      tensor1,
                                      tensor2,
                                      out_grad,
-                                     value,
+                                     compute_value,
                                      input_grad,
                                      tensor1_grad,
                                      tensor2_grad);
@@ -294,7 +294,7 @@ void AddcmulGradKernel(const Context& dev_ctx,
                                      tensor1,
                                      tensor2,
                                      out_grad,
-                                     value,
+                                     compute_value,
                                      input_grad,
                                      tensor1_grad,
                                      tensor2_grad);
@@ -304,7 +304,7 @@ void AddcmulGradKernel(const Context& dev_ctx,
                                      tensor1,
                                      tensor2,
                                      out_grad,
-                                     value,
+                                     compute_value,
                                      input_grad,
                                      tensor1_grad,
                                      tensor2_grad);
@@ -314,7 +314,7 @@ void AddcmulGradKernel(const Context& dev_ctx,
                                      tensor1,
                                      tensor2,
                                      out_grad,
-                                     value,
+                                     compute_value,
                                      input_grad,
                                      tensor1_grad,
                                      tensor2_grad);
@@ -324,7 +324,7 @@ void AddcmulGradKernel(const Context& dev_ctx,
                                      tensor1,
                                      tensor2,
                                      out_grad,
-                                     value,
+                                     compute_value,
                                      input_grad,
                                      tensor1_grad,
                                      tensor2_grad);
@@ -334,7 +334,7 @@ void AddcmulGradKernel(const Context& dev_ctx,
                                      tensor1,
                                      tensor2,
                                      out_grad,
-                                     value,
+                                     compute_value,
                                      input_grad,
                                      tensor1_grad,
                                      tensor2_grad);

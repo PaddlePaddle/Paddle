@@ -142,30 +142,6 @@ void AddmmInferMeta(const MetaTensor& input,
   out->set_dtype(input.dtype());
 }
 
-static DDim BroadcastTwoDims(const DDim& x_dims, const DDim& y_dims) {
-  int max_rank = std::max(x_dims.size(), y_dims.size());
-  std::vector<int64_t> out_dims_vector(max_rank);
-
-  int x_idx = x_dims.size() - 1;
-  int y_idx = y_dims.size() - 1;
-
-  for (int i = max_rank - 1; i >= 0; --i) {
-    int64_t x_val = x_idx >= 0 ? x_dims[x_idx--] : 1;
-    int64_t y_val = y_idx >= 0 ? y_dims[y_idx--] : 1;
-
-    // Check broadcast validity (dimensions must be equal, or one of them is 1)
-    if (x_val != y_val && x_val != 1 && y_val != 1) {
-      PADDLE_THROW(common::errors::InvalidArgument(
-          "Broadcast dimension mismatch. Operands could not be broadcast "
-          "together with shapes %s and %s",
-          x_dims,
-          y_dims));
-    }
-    out_dims_vector[i] = std::max(x_val, y_val);
-  }
-  return common::make_ddim(out_dims_vector);
-}
-
 void AddcmulInferMeta(const MetaTensor& input,
                       const MetaTensor& tensor1,
                       const MetaTensor& tensor2,
@@ -176,10 +152,10 @@ void AddcmulInferMeta(const MetaTensor& input,
 
   // 1. First broadcast tensor1 and tensor2 (corresponding to value * tensor1 *
   // tensor2)
-  DDim mul_dims = BroadcastTwoDims(t1_dims, t2_dims);
+  DDim mul_dims = funcs::GetOutputDimsForDynamicShape(t1_dims, t2_dims);
 
   // 2. Then broadcast the result with input (corresponding to input + ...)
-  DDim out_dims = BroadcastTwoDims(input_dims, mul_dims);
+  DDim out_dims = funcs::GetOutputDimsForDynamicShape(input_dims, mul_dims);
 
   // 3. Set output information
   out->set_dims(out_dims);
