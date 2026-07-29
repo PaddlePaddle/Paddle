@@ -450,6 +450,19 @@ class TestBaddBmmAPI(unittest.TestCase):
         finally:
             paddle.enable_static()
 
+    def test_static_unknown_contraction_dim(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            input = paddle.static.data(
+                name='input', shape=[2, 3, 4], dtype='float32'
+            )
+            x = paddle.static.data(name='x', shape=[2, 3, -1], dtype='float32')
+            y = paddle.static.data(name='y', shape=[2, 5, 4], dtype='float32')
+            out = paddle.baddbmm(input, x, y)
+            self.assertEqual(out.shape, [2, 3, 4])
+
     def test_api_error(self):
         data_x = np.ones((2, 2, 2)).astype(np.float32)
         data_y = np.ones((2, 2, 2)).astype(np.float32)
