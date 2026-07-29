@@ -17,3 +17,12 @@ jobs:
           echo "Review state: ${{ github.event.review.state }}"
           echo "Pull request: ${{ github.event.pull_request.number }}"
           echo "Head SHA: ${{ github.event.pull_request.head.sha }}"
+      - name: Save pull request number
+        run: |
+          mkdir -p "${RUNNER_TEMP}/approval-review-signal"
+          echo "${{ github.event.pull_request.number }}" > "${RUNNER_TEMP}/approval-review-signal/pr_number"
+      - name: Upload pull request number
+        uses: actions/upload-artifact@v4
+        with:
+          name: approval-review-signal
+          path: ${{ runner.temp }}/approval-review-signal/pr_number

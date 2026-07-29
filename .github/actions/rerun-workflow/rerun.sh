@@ -14,15 +14,8 @@
 
 set -e
 
-if [ -n "${HEAD_SHA:-}" ]; then
-  COMMIT_SHA="$HEAD_SHA"
-elif [ -n "${PR_ID:-}" ]; then
-  COMMIT_SHA=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-    "https://api.github.com/repos/$OWNER/$REPO/pulls/$PR_ID" | jq -r '.head.sha')
-else
-  echo "Either HEAD_SHA or PR_ID is required."
-  exit 1
-fi
+COMMIT_SHA=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+  "https://api.github.com/repos/$OWNER/$REPO/pulls/$PR_ID" | jq -r '.head.sha')
 
 echo "Commit SHA: $COMMIT_SHA"
 
