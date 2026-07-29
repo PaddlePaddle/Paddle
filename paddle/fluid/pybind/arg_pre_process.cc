@@ -513,14 +513,16 @@ void BaddbmmPreProcess(pir::Value* input, pir::Value* x, pir::Value* y) {
           y_shape.size()));
 
   // Validate x's width equals y's height
-  PADDLE_ENFORCE_EQ(x_shape[2],
-                    y_shape[1],
-                    phi::errors::InvalidArgument(
-                        "The input Variable x's width must be equal with "
-                        "Variable y's height. "
-                        "But received x's shape[2] = %d, y's shape[1] = %d.",
-                        x_shape[2],
-                        y_shape[1]));
+  if (x_shape[2] >= 0 && y_shape[1] >= 0) {
+    PADDLE_ENFORCE_EQ(x_shape[2],
+                      y_shape[1],
+                      phi::errors::InvalidArgument(
+                          "The input Variable x's width must be equal with "
+                          "Variable y's height. "
+                          "But received x's shape[2] = %d, y's shape[1] = %d.",
+                          x_shape[2],
+                          y_shape[1]));
+  }
 
   // Validate input shape broadcast compatibility
   if (input_shape.size() == 3) {
