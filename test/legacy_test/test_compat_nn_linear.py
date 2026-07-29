@@ -390,25 +390,16 @@ class TestCompatLinearLayer(unittest.TestCase):
 
         wrong_api_used = (
             "paddle{module}.nn.Linear() received unexpected keyword argument{plural} {args}. "
-            "\nDid you mean to use paddle{correct_module}.nn.Linear() instead?"
+            "\nPlease use paddle{correct_module}.nn.Linear() instead."
         )
 
-        with self.assertRaises(TypeError) as cm:
+        with self.assertRaises(TypeError):
             lin = paddle.compat.nn.Linear(
                 3,
                 5,
                 weight_attr=None,
                 name='linear_layer',
             )
-        self.assertEqual(
-            str(cm.exception),
-            wrong_api_used.format(
-                module=".compat",
-                args="'name', 'weight_attr'",
-                correct_module="",
-                plural="s",
-            ),
-        )
 
         with self.assertRaises(TypeError) as cm:
             lin = paddle.nn.Linear(

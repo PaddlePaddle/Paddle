@@ -23,14 +23,24 @@ set(LAPACK_LIB_DIR ${LAPACK_INSTALL_DIR}/lib)
 # Note(zhouwei): lapack need fortran compiler which many machines don't have, so use precompiled library.
 # use lapack tag v3.10.0 on 06/28/2021 https://github.com/Reference-LAPACK/lapack
 if(LINUX)
-  set(LAPACK_FILE
-      "lapack_lnx_v3.10.0.20210628.tar.gz"
-      CACHE STRING "" FORCE)
-  set(LAPACK_URL
-      "https://paddlepaddledeps.bj.bcebos.com/${LAPACK_FILE}"
-      CACHE STRING "" FORCE)
-  set(LAPACK_URL_MD5 71f8cc8237a8571692f3e07f9a4f25f6)
-  set(GNU_RT_LIB_1 "${LAPACK_LIB_DIR}/libquadmath.so.0")
+  if(WITH_ARM)
+    set(LAPACK_FILE
+        "lapack_lnx_arm64_v3.10.0.20260720.tar.gz"
+        CACHE STRING "" FORCE)
+    set(LAPACK_URL
+        "https://paddlepaddledeps.cdn.bcebos.com/${LAPACK_FILE}"
+        CACHE STRING "" FORCE)
+    set(LAPACK_URL_MD5 c23e6389dc5309bd29111bf6836f4d55)
+  else()
+    set(LAPACK_FILE
+        "lapack_lnx_v3.10.0.20210628.tar.gz"
+        CACHE STRING "" FORCE)
+    set(LAPACK_URL
+        "https://paddlepaddledeps.bj.bcebos.com/${LAPACK_FILE}"
+        CACHE STRING "" FORCE)
+    set(LAPACK_URL_MD5 71f8cc8237a8571692f3e07f9a4f25f6)
+    set(GNU_RT_LIB_1 "${LAPACK_LIB_DIR}/libquadmath.so.0")
+  endif()
   set(GFORTRAN_LIB "${LAPACK_LIB_DIR}/libgfortran.so.3")
   set(BLAS_LIB "${LAPACK_LIB_DIR}/libblas.so.3")
   set(LAPACK_LIB "${LAPACK_LIB_DIR}/liblapack.so.3")

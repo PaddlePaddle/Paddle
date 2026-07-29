@@ -39,15 +39,53 @@ using VMMDevicePtr = uintptr_t;
 using VMMAllocHandle = uint64_t;
 #endif
 
-// V2 keeps the bottom-layer shared types independent from the best-fit layer
-// so that CUDAVirtualMemAllocatorV2 can be reviewed and compiled separately.
+#if defined(PADDLE_WITH_CUDA)
+struct CUDAEventGuard {
+  gpuEvent_t event{nullptr};
+
+  explicit CUDAEventGuard(gpuEvent_t e) : event(e) {}
+  ~CUDAEventGuard() {
+    if (event != nullptr) {
+      cudaEventDestroy(event);
+    }
+  }
+
+  CUDAEventGuard(const CUDAEventGuard&) = delete;
+  CUDAEventGuard& operator=(const CUDAEventGuard&) = delete;
+};
+
+class VMMRemapEventAllocation {
+ public:
+  virtual ~VMMRemapEventAllocation() = default;
+  virtual bool SetVMMRemapEvent(gpuStream_t stream,
+                                std::shared_ptr<CUDAEventGuard> event) = 0;
+};
+
+struct VMMBlockRemapState {
+  gpuStream_t stream{nullptr};
+  std::shared_ptr<CUDAEventGuard> event;
+};
+#endif
+
 enum class PoolType : uint8_t {
   kSmall = 0,
   kLarge = 1,
 };
 
-// Fixed-size handle metadata returned by the bottom VMM provider. Upper layers
-// may later reference these handles from block-level views.
+enum class VMMRemapAttemptStatus : uint8_t {
+  kNotAttempted = 0,
+  kRetryWithoutRemap,
+  kInsufficientMovableMemory,
+  kNoMovableMemory,
+  kAttempted,
+};
+
+struct VMMRemapAttemptResult {
+  VMMRemapAttemptStatus status{VMMRemapAttemptStatus::kNotAttempted};
+  size_t movable_bytes{0};
+  size_t required_bytes{0};
+};
+
 struct VMMHandleMeta {
   VMMHandleMeta() = default;
 
@@ -62,21 +100,39 @@ struct VMMHandleMeta {
   VMMAllocHandle handle() const { return handle_; }
   int device() const { return device_; }
 
+  bool IsOwnedByRemapDestination() const { return owned_by_remap_destination_; }
+  void MarkOwnedByRemapDestination() { owned_by_remap_destination_ = true; }
+  void RestoreOriginalOwnership() { owned_by_remap_destination_ = false; }
+
  private:
   VMMDevicePtr base_{0};
   size_t size_{0};
   VMMAllocHandle handle_{0};
   int device_{0};
+  bool owned_by_remap_destination_{false};
 };
 
-// HandleLayout is a lightweight allocation-level handle list returned by the
-// bottom VMM provider. It is used to bootstrap upper-layer block state.
 using HandleLayout = std::vector<std::shared_ptr<VMMHandleMeta>>;
+
+struct IPCPartDescriptor {
+  VMMDevicePtr handle_base;
+  size_t handle_size;
+  VMMAllocHandle handle;
+  int device;
+  size_t handle_rel_off;
+  size_t len;
+};
 
 enum class BlockType : uint8_t {
   kActive = 0,
   kFree = 1,
   kUnmappedFree = 2,
+};
+
+enum class BlockRestoreMappedFreeResult : uint8_t {
+  kOutside = 0,
+  kRangeExceedsBlock = 1,
+  kBuilt = 2,
 };
 
 struct BlockV2 {
@@ -109,6 +165,13 @@ struct BlockV2 {
     return reinterpret_cast<VMMDevicePtr>(begin_ptr());
   }
   VMMDevicePtr end_va() const { return begin_va() + size_; }
+  std::pair<VMMDevicePtr, size_t> va_range() const {
+    return {begin_va(), size_};
+  }
+  bool ContainsVARange(VMMDevicePtr va, size_t size) const {
+    return size > 0 && va >= begin_va() && va < end_va() &&
+           size <= end_va() - va;
+  }
   bool IsAdjacentBefore(const BlockV2& next) const {
     return end_ptr() == next.begin_ptr();
   }
@@ -119,30 +182,74 @@ struct BlockV2 {
     return IsUnmappedFree() && next.IsUnmappedFree() && IsAdjacentBefore(next);
   }
   BlockV2 MakeMappedFreeSubBlock(size_t offset, size_t len) const {
-    return MakeMappedBlock(
+    auto block = MakeMappedBlock(
         BlockType::kFree, begin_ptr() + offset, len, pool_type_);
+#if defined(PADDLE_WITH_CUDA)
+    block.CopyRemapSafetyFrom(*this);
+#endif
+    return block;
   }
   BlockV2 MakeMappedActiveSubBlock(size_t offset, size_t len) const {
-    return MakeMappedBlock(
+    auto block = MakeMappedBlock(
         BlockType::kActive, begin_ptr() + offset, len, pool_type_);
+#if defined(PADDLE_WITH_CUDA)
+    block.ClearRemapSafety();
+#endif
+    return block;
   }
   BlockV2 MakeUnmappedFreeSubBlock(size_t offset, size_t len) const {
     return MakeUnmappedFreeBlock(begin_ptr() + offset, len, pool_type_);
   }
-  void MarkActive() { type_ = BlockType::kActive; }
+  BlockRestoreMappedFreeResult BuildRestoreMappedFreeSegments(
+      VMMDevicePtr va, size_t size, std::vector<BlockV2>* segments) const {
+    if (!IsUnmappedFree() || va < begin_va() || va >= end_va()) {
+      return BlockRestoreMappedFreeResult::kOutside;
+    }
+    if (size > end_va() - va) {
+      return BlockRestoreMappedFreeResult::kRangeExceedsBlock;
+    }
+
+    segments->clear();
+    const size_t prefix = va - begin_va();
+    const size_t suffix = end_va() - (va + size);
+    if (prefix > 0) {
+      segments->push_back(MakeUnmappedFreeSubBlock(0, prefix));
+    }
+    segments->push_back(MakeMappedBlock(
+        BlockType::kFree, reinterpret_cast<void*>(va), size, pool_type_));
+    if (suffix > 0) {
+      segments->push_back(MakeUnmappedFreeSubBlock(prefix + size, suffix));
+    }
+    return BlockRestoreMappedFreeResult::kBuilt;
+  }
+  void MarkActive() {
+    type_ = BlockType::kActive;
+#if defined(PADDLE_WITH_CUDA)
+    ClearRemapSafety();
+#endif
+  }
   void MarkFree() { type_ = BlockType::kFree; }
+  void MarkUnmappedFree() { type_ = BlockType::kUnmappedFree; }
   void Reset(void* ptr, size_t size, BlockType type, PoolType pool_type) {
     ptr_ = ptr;
     size_ = size;
     type_ = type;
     pool_type_ = pool_type;
+#if defined(PADDLE_WITH_CUDA)
+    ClearRemapSafety();
+#endif
   }
   void TrimToPrefix(size_t keep) { size_ = keep; }
   void TrimToSuffix(size_t trim, size_t keep) {
     ptr_ = reinterpret_cast<uint8_t*>(ptr_) + trim;
     size_ = keep;
   }
-  void MergeAdjacentBlock(const BlockV2& src) { size_ += src.size_; }
+  void MergeAdjacentBlock(const BlockV2& src) {
+    size_ += src.size_;
+#if defined(PADDLE_WITH_CUDA)
+    AppendRemapSafetyFrom(src);
+#endif
+  }
   void MergeAdjacentUnmappedFreeBlock(const BlockV2& src) {
     size_ += src.size_;
   }
@@ -150,8 +257,65 @@ struct BlockV2 {
   void* ptr_{nullptr};
   size_t size_{0};
   BlockType type_{BlockType::kUnmappedFree};
-
   PoolType pool_type_{PoolType::kLarge};
+
+#if defined(PADDLE_WITH_CUDA)
+  void ClearRemapSafety() {
+    owning_stream_ = nullptr;
+    remap_safe_event_.reset();
+    remap_pending_states_.clear();
+    remap_safety_unknown_ = false;
+  }
+  void SetRemapSafety(gpuStream_t stream,
+                      std::shared_ptr<CUDAEventGuard> event) {
+    ClearRemapSafety();
+    if (stream == nullptr && event == nullptr) {
+      remap_safety_unknown_ = true;
+      return;
+    }
+    owning_stream_ = stream;
+    remap_safe_event_ = std::move(event);
+  }
+  void CopyRemapSafetyFrom(const BlockV2& src) {
+    owning_stream_ = src.owning_stream_;
+    remap_safe_event_ = src.remap_safe_event_;
+    remap_pending_states_ = src.remap_pending_states_;
+    remap_safety_unknown_ = src.remap_safety_unknown_;
+  }
+  void AppendRemapSafety(gpuStream_t stream,
+                         std::shared_ptr<CUDAEventGuard> event) {
+    if (stream == nullptr && event == nullptr) {
+      return;
+    }
+    if (owning_stream_ == stream && remap_safe_event_.get() == event.get()) {
+      return;
+    }
+    for (const auto& state : remap_pending_states_) {
+      if (state.stream == stream && state.event.get() == event.get()) {
+        return;
+      }
+    }
+    if (owning_stream_ == nullptr && remap_safe_event_ == nullptr) {
+      owning_stream_ = stream;
+      remap_safe_event_ = std::move(event);
+      return;
+    }
+    remap_pending_states_.push_back({stream, std::move(event)});
+  }
+  void AppendRemapSafetyFrom(const BlockV2& src) {
+    remap_safety_unknown_ = remap_safety_unknown_ || src.remap_safety_unknown_;
+    AppendRemapSafety(src.owning_stream_, src.remap_safe_event_);
+    for (const auto& state : src.remap_pending_states_) {
+      AppendRemapSafety(state.stream, state.event);
+    }
+  }
+  bool HasUnknownRemapSafety() const { return remap_safety_unknown_; }
+
+  gpuStream_t owning_stream_{nullptr};
+  std::shared_ptr<CUDAEventGuard> remap_safe_event_;
+  std::vector<VMMBlockRemapState> remap_pending_states_;
+  bool remap_safety_unknown_{false};
+#endif
 };
 
 }  // namespace allocation

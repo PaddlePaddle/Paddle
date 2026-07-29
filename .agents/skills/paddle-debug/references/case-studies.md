@@ -117,6 +117,7 @@ float CudaEvent::ElapsedTime(CudaEvent *end_event) {
 ### 最小复现（不依赖 unittest）
 ```python
 import paddle
+
 paddle.device.set_device('gpu:0')
 event1 = paddle.device.Event()
 event2 = paddle.device.Event()

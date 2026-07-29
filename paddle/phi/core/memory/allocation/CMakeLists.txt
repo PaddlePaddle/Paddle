@@ -29,10 +29,17 @@ if(WITH_GPU OR WITH_ROCM)
     thread_local_allocator.cc)
 endif()
 
-if(CUDA_VERSION VERSION_GREATER_EQUAL 10.2)
-  list(APPEND ALLOCATOR_SRCS cuda_virtual_mem_allocator.cc
-       cuda_virtual_mem_allocator_v2.cc vmm_backing_map.cc
-       vmm_auto_growth_best_fit_allocator_v2.cc)
+if(WITH_GPU AND CUDA_VERSION VERSION_GREATER_EQUAL 10.2)
+  list(
+    APPEND
+    ALLOCATOR_SRCS
+    cuda_virtual_mem_allocator.cc
+    cuda_virtual_mem_allocator_v2.cc
+    vmm_backing_map.cc
+    remap_transaction.cc
+    free_block_remap_compactor.cc
+    vmm_auto_growth_best_fit_allocator_v2.cc
+    vmm_auto_growth_best_fit_multi_pool_allocator_v2.cc)
 endif()
 
 if(NOT WIN32)

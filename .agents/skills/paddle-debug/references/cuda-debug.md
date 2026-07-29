@@ -109,6 +109,7 @@ if (err != cudaSuccess) {
 3. **Python 层快速验证**：
    ```python
    import ctypes
+
    libcudart = ctypes.CDLL("libcudart.so")
    err = libcudart.cudaGetLastError()
    print(f"CUDA last error: {err}")  # 0 表示无错误

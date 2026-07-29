@@ -246,6 +246,56 @@ class TestIndexSelectComplex128(TestIndexSelectOp):
         self.index_size = 10
 
 
+class TestIndexSelectInvalidIndexCPU(unittest.TestCase):
+    def test_index_select_zero_dim_oob(self):
+        paddle.disable_static()
+        paddle.set_device('cpu')
+        try:
+            for index_dtype in ['int32', 'int64']:
+                for shape, axis in [([1, 0], -1), ([0, 0], 0)]:
+                    with self.subTest(
+                        index_dtype=index_dtype, shape=shape, axis=axis
+                    ):
+                        x = paddle.empty(shape, dtype='float32')
+                        index = paddle.to_tensor([0], dtype=index_dtype)
+                        with self.assertRaisesRegex(
+                            Exception,
+                            r'select axis in OP\(index_select\).*Input\(Index\) is not empty',
+                        ):
+                            paddle.index_select(x, index, axis=axis)
+
+            x = paddle.empty([0, 0], dtype='float32')
+            index = paddle.empty([0], dtype='int64')
+            out = paddle.index_select(x, index, axis=0)
+            self.assertEqual(out.shape, [0, 0])
+        finally:
+            paddle.enable_static()
+
+
+class TestIndexSelectInvalidIndex(unittest.TestCase):
+    def test_index_select_zero_dim_oob(self):
+        paddle.disable_static()
+        device = 'gpu' if paddle.is_compiled_with_cuda() else 'cpu'
+        paddle.set_device(device)
+        try:
+            for shape, axis in [([1, 2048, 0], -1), ([0, 0], 0)]:
+                with self.subTest(shape=shape, axis=axis):
+                    x = paddle.empty(shape, dtype='float32')
+                    index = paddle.to_tensor([0], dtype='int64')
+                    with self.assertRaisesRegex(
+                        Exception,
+                        r'select axis in OP\(index_select\).*Input\(Index\) is not empty',
+                    ):
+                        paddle.index_select(x, index, axis=axis)
+
+            x = paddle.empty([0, 0], dtype='float32')
+            index = paddle.empty([0], dtype='int64')
+            out = paddle.index_select(x, index, axis=0)
+            self.assertEqual(out.shape, [0, 0])
+        finally:
+            paddle.enable_static()
+
+
 class TestIndexSelectAPI(unittest.TestCase):
     def input_data(self):
         self.data_x = np.array(

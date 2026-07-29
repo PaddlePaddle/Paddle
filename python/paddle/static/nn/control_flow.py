@@ -1350,8 +1350,9 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
                 )
 
         if default is None:
-            default = sorted(branch_fns)[-1][1]
-            branch_fns = sorted(branch_fns)[:-1]
+            branch_fns = sorted(branch_fns)
+            default = branch_fns[-1][1]
+            branch_fns = branch_fns[:-1]
         elif not callable(default):
             raise TypeError("The default in Op(case) must be callable.")
 

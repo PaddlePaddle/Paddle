@@ -52,7 +52,7 @@ helper.append_op(
     type='op_name',
     inputs={'X': input},
     outputs={'Out': out},
-    attrs={'attr1': value1}
+    attrs={'attr1': value1},
 )
 return out
 ```

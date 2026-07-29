@@ -43,6 +43,11 @@ struct EmbeddingCPUFunctor {
 
     int64_t row_number = weight_.dims()[0];
     int64_t row_width = weight_.dims()[1];
+    if (ids_numel > 0 && row_number == 0) {
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "The first dimension of Input(Weight) in OP(embedding) must be "
+          "greater than 0 when Input(Ids) is not empty."));
+    }
 
     auto* table = weight_.data<T>();
 
@@ -50,7 +55,7 @@ struct EmbeddingCPUFunctor {
     auto* output = out_->data<T>();
 
     for (int64_t i = 0; i < ids_numel; ++i) {
-      if (padding_idx_ == kNoPadding && ids[i] != padding_idx_) {
+      if (padding_idx_ == kNoPadding || ids[i] != padding_idx_) {
         PADDLE_ENFORCE_LT(
             ids[i],
             row_number,

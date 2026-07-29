@@ -46,8 +46,8 @@ x.add_(1.0)  # RuntimeError! 不允许
 ```python
 x = paddle.randn([3, 4])
 x.stop_gradient = False
-y = x * 2        # y 是非叶 Tensor
-y.add_(1.0)      # 允许，但会触发版本检查
+y = x * 2  # y 是非叶 Tensor
+y.add_(1.0)  # 允许，但会触发版本检查
 ```
 
 ## 版本追踪机制
@@ -97,8 +97,8 @@ TensorWrapper（保存前向 Tensor 用于反向）
 ```python
 x = paddle.randn([3, 4])
 x.stop_gradient = False
-y = x * 2            # y 的 TensorWrapper 保存了 x，版本快照 = 0
-x.add_(1.0)          # x.inplace_version = 1（但 x 是叶 Tensor，实际会报错）
+y = x * 2  # y 的 TensorWrapper 保存了 x，版本快照 = 0
+x.add_(1.0)  # x.inplace_version = 1（但 x 是叶 Tensor，实际会报错）
 
 # 若绕过叶 Tensor 检查：
 # y.backward() 时 TensorWrapper.recover() 发现版本 1 != 快照 0，报错

@@ -1375,7 +1375,7 @@ void ReduceGpuKernel(const KPDevice& dev_ctx,
                      const phi::DenseTensor& x,
                      phi::DenseTensor* y,
                      const std::vector<int>& origin_reduce_dims,
-                     const float norm_p = 1.0f) {
+                     const double norm_p = 1.0) {
   if (x.numel() == 0) {
     dev_ctx.Alloc<Ty>(y);
     return;
@@ -1424,7 +1424,7 @@ void ReduceGpuKernel(const KPDevice& dev_ctx,
                       static_cast<MPType>(iter.numel());
       return ReduceOp<Tx, MPType, Ty>{factor};
     } else if constexpr (kIsPNormOp) {
-      return ReduceOp<Tx, MPType, Ty>{norm_p};
+      return ReduceOp<Tx, MPType, Ty>{static_cast<MPType>(norm_p)};
     } else {
       return ReduceOp<Tx, MPType, Ty>{};
     }

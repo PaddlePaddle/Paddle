@@ -15,12 +15,12 @@
 import abstract_drr
 import access_topo_drr  # noqa: F401
 import ap
+import epilogue_access_topo_simplify
 import index_program_translator_util
 import ir_tools
 import kernel_arg_id_util
 import kernel_arg_translator_util  # noqa: F401
 import low_level_ir_code_gen_ctx_util  # noqa: F401
-import matmul_epilogue_pass
 import matmul_variadic_tpl
 import op_compute_translator_util
 import op_conversion_drr_pass  # noqa: F401
@@ -28,6 +28,7 @@ import pir  # noqa: F401
 import program_translator_util
 import topo_drr_pass
 import umprime  # noqa: F401
+import variadic_mixin
 
 
 class MatmulEpilogueFusion(abstract_drr.DrrPass):
@@ -61,79 +62,12 @@ class MatmulEpilogueFusion(abstract_drr.DrrPass):
         program = ir_tools.copy_fused_ops_to_program(
             o.trivial_op, tensor_match_ctx=t
         )
-        print("before-umprime: ", program)
-        # umprime passes
-        pass_manager = ir_tools.create_pass_manager()
-        pass_manager.add_pass(ir_tools.create_access_topo_drr_pass("umprime"))
-        pass_manager.add_pass(ir_tools.create_dce_pass())
-        pass_manager.run(program)
-        print("before-access_topo_pass", program)
-        init_pass_manager = ir_tools.create_pass_manager()
-        init_down_spider = topo_drr_pass.InitDownSpiderAccessTopoPass("mm_out")
-        init_pass_manager.add_pass(
-            ir_tools.create_access_topo_drr_one_step_pass(init_down_spider)
+        program = epilogue_access_topo_simplify.simplify_epilogue_program(
+            program,
+            anchor_data_op_name="mm_out",
+            number_of_inputs=self.number_of_inputs(),
+            number_of_outputs=self.number_of_outputs(),
         )
-        outputs_name_list = ap.map(
-            lambda i: f"output{i}", range(self.number_of_outputs())
-        )
-        inputs_name_list = (
-            ap.map(
-                lambda i: f"input{i + 2}", range(self.number_of_inputs() - 2)
-            )
-            if self.number_of_inputs() > 2
-            else []
-        )
-        print('inputs_name_list: ', ', '.join(inputs_name_list))
-        init_fake_data_for_yield_input = (
-            topo_drr_pass.FakeDataForYieldAccessTopoPass(outputs_name_list)
-        )
-        init_pass_manager.add_pass(
-            ir_tools.create_access_topo_drr_one_step_pass(
-                init_fake_data_for_yield_input
-            )
-        )
-        init_pass_manager.run(program)
-        print("after-init-access_topo_pass", program)
-        pass_manager = ir_tools.create_pass_manager()
-        pass_manager.add_pass(ir_tools.create_access_topo_drr_pass("default"))
-        pass_manager.add_pass(ir_tools.create_dce_pass())
-        pass_manager.run(program)
-        print("after-apply-access_topo_pass", program)
-        pass_manager = ir_tools.create_pass_manager()
-        ap.map(
-            lambda dst_name: pass_manager.add_pass(
-                ir_tools.create_access_topo_drr_one_step_pass(
-                    matmul_epilogue_pass.RemoveDataOpPairPass(
-                        src_data_op_name="mm_out", dst_data_op_name=dst_name
-                    )
-                )
-            ),
-            inputs_name_list,
-        )
-        ap.map(
-            lambda dst_name: pass_manager.add_pass(
-                ir_tools.create_access_topo_drr_one_step_pass(
-                    matmul_epilogue_pass.RemoveDataOp2SumOp2DataOpPass(
-                        src_data_op_name="mm_out", dst_data_op_name=dst_name
-                    )
-                )
-            ),
-            inputs_name_list,
-        )
-
-        ap.map(
-            lambda dst_name: pass_manager.add_pass(
-                ir_tools.create_access_topo_drr_one_step_pass(
-                    matmul_epilogue_pass.RemoveDataOpPairPass(
-                        src_data_op_name="mm_out", dst_data_op_name=dst_name
-                    )
-                )
-            ),
-            outputs_name_list,
-        )
-        pass_manager.add_pass(ir_tools.create_dce_pass())
-        pass_manager.run(program)
-        print("after-remove-input-output-access_topo_pass", program)
         return program.empty()
 
     def _insert_load_from_global(self, program, input_names):
@@ -202,7 +136,7 @@ class MatmulEpilogueFusion(abstract_drr.DrrPass):
             pass_manager = ir_tools.create_pass_manager()
             removed_programs = ap.MutableList()
             rm_elementwise_drr_pass = (
-                matmul_epilogue_pass.RemoveElementInputIndexPass(
+                epilogue_access_topo_simplify.RemoveElementInputIndexPass(
                     src_data_op_name=anchor_data_op_name,
                     dst_load_from_global_op_name=dst_input_name,
                 )
@@ -215,7 +149,7 @@ class MatmulEpilogueFusion(abstract_drr.DrrPass):
             )
             pass_manager.add_pass(rm_elementwise_ir_pass)
             rm_broadcast_drr_pass = (
-                matmul_epilogue_pass.RemoveBroadcastInputIndexPass(
+                epilogue_access_topo_simplify.RemoveBroadcastInputIndexPass(
                     src_data_op_name=anchor_data_op_name,
                     dst_load_from_global_op_name=dst_input_name,
                 )
@@ -242,7 +176,7 @@ class MatmulEpilogueFusion(abstract_drr.DrrPass):
             print('full_index_program output: ', full_index_program)
             pass_manager = ir_tools.create_pass_manager()
             removed_programs = ap.MutableList()
-            drr_pass = matmul_epilogue_pass.RemoveOutputIndexPass(
+            drr_pass = epilogue_access_topo_simplify.RemoveOutputIndexPass(
                 src_data_op_name=anchor_data_op_name,
                 dst_store_to_global_op_name=dst_output_name,
             )
@@ -387,277 +321,18 @@ class MatmulEpilogueFusion(abstract_drr.DrrPass):
         )
 
 
-class NumberOfInputsTrait0:
-    def number_of_inputs(self):
-        return 0
-
-
-class NumberOfInputsTrait1:
-    def number_of_inputs(self):
-        return 1
-
-
-class NumberOfInputsTrait2:
-    def number_of_inputs(self):
-        return 2
-
-
-class NumberOfInputsTrait3:
-    def number_of_inputs(self):
-        return 3
-
-
-class NumberOfInputsTrait4:
-    def number_of_inputs(self):
-        return 4
-
-
-class NumberOfInputsTrait5:
-    def number_of_inputs(self):
-        return 5
-
-
-class NumberOfInputsTrait6:
-    def number_of_inputs(self):
-        return 6
-
-
-class NumberOfInputsTrait7:
-    def number_of_inputs(self):
-        return 7
-
-
-class NumberOfInputsTrait8:
-    def number_of_inputs(self):
-        return 8
-
-
-class NumberOfInputsTrait9:
-    def number_of_inputs(self):
-        return 9
-
-
-class NumberOfInputsTrait10:
-    def number_of_inputs(self):
-        return 10
-
-
-class NumberOfInputsTrait11:
-    def number_of_inputs(self):
-        return 11
-
-
-class NumberOfInputsTrait12:
-    def number_of_inputs(self):
-        return 12
-
-
-class NumberOfInputsTrait13:
-    def number_of_inputs(self):
-        return 13
-
-
-class NumberOfInputsTrait14:
-    def number_of_inputs(self):
-        return 14
-
-
-class NumberOfInputsTrait15:
-    def number_of_inputs(self):
-        return 15
-
-
-class NumberOfInputsTrait16:
-    def number_of_inputs(self):
-        return 16
-
-
-class NumberOfInputsTrait17:
-    def number_of_inputs(self):
-        return 17
-
-
-class NumberOfOutputsTrait0:
-    def number_of_outputs(self):
-        return 0
-
-
-class NumberOfOutputsTrait1:
-    def number_of_outputs(self):
-        return 1
-
-
-class NumberOfOutputsTrait2:
-    def number_of_outputs(self):
-        return 2
-
-
-class NumberOfOutputsTrait3:
-    def number_of_outputs(self):
-        return 3
-
-
-class NumberOfOutputsTrait4:
-    def number_of_outputs(self):
-        return 4
-
-
-class NumberOfOutputsTrait5:
-    def number_of_outputs(self):
-        return 5
-
-
-class NumberOfOutputsTrait6:
-    def number_of_outputs(self):
-        return 6
-
-
-class NumberOfOutputsTrait7:
-    def number_of_outputs(self):
-        return 7
-
-
-class NumberOfOutputsTrait8:
-    def number_of_outputs(self):
-        return 8
-
-
-class NumberOfOutputsTrait9:
-    def number_of_outputs(self):
-        return 9
-
-
-class NumberOfOutputsTrait10:
-    def number_of_outputs(self):
-        return 10
-
-
-class NumberOfOutputsTrait11:
-    def number_of_outputs(self):
-        return 11
-
-
-class NumberOfOutputsTrait12:
-    def number_of_outputs(self):
-        return 12
-
-
-class NumberOfOutputsTrait13:
-    def number_of_outputs(self):
-        return 13
-
-
-class NumberOfOutputsTrait14:
-    def number_of_outputs(self):
-        return 14
-
-
-class NumberOfOutputsTrait15:
-    def number_of_outputs(self):
-        return 15
-
-
-class NumberOfOutputsTrait16:
-    def number_of_outputs(self):
-        return 16
-
-
-class NumberOfOutputsTrait17:
-    def number_of_outputs(self):
-        return 17
-
-
-class NumberOfOutputsTrait18:
-    def number_of_outputs(self):
-        return 18
-
-
-class NumberOfOutputsTrait19:
-    def number_of_outputs(self):
-        return 19
-
-
-class NumberOfOutputsTrait20:
-    def number_of_outputs(self):
-        return 20
-
-
-class NumberOfOutputsTrait21:
-    def number_of_outputs(self):
-        return 21
-
-
-class NumberOfOutputsTrait22:
-    def number_of_outputs(self):
-        return 22
-
-
-def get_mixin_class(base_class, number_of_inputs, number_of_outputs):
-    num_inputs_to_input_trait_class = [
-        None,
-        NumberOfInputsTrait1,
-        NumberOfInputsTrait2,
-        NumberOfInputsTrait3,
-        NumberOfInputsTrait3,
-        NumberOfInputsTrait4,
-        NumberOfInputsTrait5,
-        NumberOfInputsTrait6,
-        NumberOfInputsTrait7,
-        NumberOfInputsTrait8,
-        NumberOfInputsTrait9,
-        NumberOfInputsTrait10,
-        NumberOfInputsTrait11,
-        NumberOfInputsTrait12,
-        NumberOfInputsTrait13,
-        NumberOfInputsTrait14,
-        NumberOfInputsTrait15,
-        NumberOfInputsTrait16,
-        NumberOfInputsTrait17,
-    ]
-    num_outputs_to_output_trait_class = [
-        None,
-        NumberOfOutputsTrait1,
-        NumberOfOutputsTrait2,
-        NumberOfOutputsTrait3,
-        NumberOfOutputsTrait4,
-        NumberOfOutputsTrait5,
-        NumberOfOutputsTrait6,
-        NumberOfOutputsTrait7,
-        NumberOfOutputsTrait8,
-        NumberOfOutputsTrait9,
-        NumberOfOutputsTrait10,
-        NumberOfOutputsTrait11,
-        NumberOfOutputsTrait12,
-        NumberOfOutputsTrait13,
-        NumberOfOutputsTrait14,
-        NumberOfOutputsTrait15,
-        NumberOfOutputsTrait16,
-        NumberOfOutputsTrait17,
-        NumberOfOutputsTrait18,
-        NumberOfOutputsTrait19,
-        NumberOfOutputsTrait20,
-        NumberOfOutputsTrait21,
-        NumberOfOutputsTrait22,
-    ]
-    return type(
-        f"MatmulEpilogueFusion{number_of_inputs}_{number_of_outputs}",
-        [
-            base_class,
-            num_inputs_to_input_trait_class[number_of_inputs],
-            num_outputs_to_output_trait_class[number_of_outputs],
-        ],
-        ap.SerializableAttrMap(),
-    )
-
-
-# abstract_drr.register_drr_pass("matmul_binary_outs_fusion", nice=0)(get_mixin_class(MatmulEpilogueFusion, 3, 2))
-
-
 def register_class(base_class, max_num_inputs, max_num_outputs):
     def register_drr_class(num_inputs, num_outputs):
         abstract_drr.register_drr_pass(
             f"matmul_binary_in{num_inputs}_out{num_outputs}_fusion", nice=0
-        )(get_mixin_class(base_class, num_inputs, num_outputs))
+        )(
+            variadic_mixin.get_mixin_class(
+                base_class,
+                "MatmulEpilogueFusion",
+                num_inputs,
+                num_outputs,
+            )
+        )
 
     def register_num_inputs_drr_classes(num_inputs):
         def register_num_outputs_drr_classes(num_outputs):

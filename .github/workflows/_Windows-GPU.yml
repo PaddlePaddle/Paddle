@@ -54,7 +54,6 @@ jobs:
       PYTHON_ROOT: C:\Python310
       vcvars64_dir: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat'
       CUDA_TOOLKIT_ROOT_DIR: 'C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.0'
-      TENSORRT_ROOT: D:\TensorRT
       CTEST_PARALLEL_LEVEL: 1
       GENERATOR: "Ninja"
       GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -63,7 +62,7 @@ jobs:
       WITH_GPU: "ON"
       WITH_AVX: "ON"
       ON_INFER: "ON"
-      WITH_TENSORRT: "ON"
+      WITH_TENSORRT: "OFF"
       WITH_INFERENCE_API_TEST: "OFF"
       WIN_UNITTEST_LEVEL: 0
       CUDA_ARCH_NAME: "Auto"

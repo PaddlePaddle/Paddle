@@ -24,7 +24,6 @@ from paddle.framework import (
     in_dynamic_mode,
 )
 from paddle.tensor import log_softmax, softmax
-from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
 from .sdpa import scaled_dot_product_attention
 
@@ -66,11 +65,6 @@ def _check_valid_pad_len(pad_len, x_dim, is_constant):
         )
 
 
-@ForbidKeywordsDecorator(
-    illegal_keys={"x", "name", "data_format", "pad_from_left_axis"},
-    func_name="paddle.compat.nn.functional.pad",
-    correct_name="paddle.nn.functional.pad",
-)
 def pad(
     input: Tensor,
     pad: ShapeLike,
@@ -208,11 +202,6 @@ def pad(
     return out
 
 
-@ForbidKeywordsDecorator(
-    illegal_keys={"x", "name"},
-    func_name="paddle.compat.nn.functional.linear",
-    correct_name="paddle.nn.functional.linear",
-)
 def linear(input: Tensor, weight: Tensor, bias: Tensor | None = None) -> Tensor:
     r"""
 
@@ -295,18 +284,6 @@ def linear(input: Tensor, weight: Tensor, bias: Tensor | None = None) -> Tensor:
             return _C_ops.matmul(input, weight.contiguous(), False, True)
 
 
-@ForbidKeywordsDecorator(
-    illegal_keys={
-        "x",
-        "kernel_sizes",
-        "dilations",
-        "paddings",
-        "strides",
-        "name",
-    },
-    func_name="paddle.compat.nn.functional.unfold",
-    correct_name="paddle.nn.functional.unfold",
-)
 def unfold(
     input: Tensor,
     kernel_size: Size2,
@@ -387,11 +364,6 @@ def unfold(
     )
 
 
-@ForbidKeywordsDecorator(
-    illegal_keys={"label", "delta", "is_huber", "name"},
-    func_name="paddle.compat.nn.functional.smooth_l1_loss",
-    correct_name="paddle.nn.functional.smooth_l1_loss",
-)
 def smooth_l1_loss(
     input: Tensor,
     target: Tensor,
@@ -474,11 +446,6 @@ def smooth_l1_loss(
     )
 
 
-@ForbidKeywordsDecorator(
-    illegal_keys={"x", "epsilon", "data_format", "use_global_stats", "name"},
-    func_name="paddle.compat.nn.functional.batch_norm",
-    correct_name="paddle.nn.functional.batch_norm",
-)
 def batch_norm(
     input: Tensor,
     running_mean: Tensor,
@@ -539,11 +506,6 @@ def batch_norm(
     )
 
 
-@ForbidKeywordsDecorator(
-    illegal_keys={"x", "data_format", "name"},
-    func_name="paddle.compat.nn.functional.instance_norm",
-    correct_name="paddle.nn.functional.instance_norm",
-)
 def instance_norm(
     input: Tensor,
     running_mean: Tensor | None = None,

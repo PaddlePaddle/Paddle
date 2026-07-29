@@ -21,12 +21,18 @@ import paddle.nn.functional as F
 from paddle import nn
 from paddle.nn.initializer import XavierNormal, XavierUniform
 
+from ..utils import _CompatClassMeta
+
 if TYPE_CHECKING:
     from paddle import Tensor
     from paddle._typing import DTypeLike, PlaceLike
 
 
-class MultiheadAttention(nn.Layer):
+class MultiheadAttention(
+    nn.Layer,
+    metaclass=_CompatClassMeta,
+    native_cls=nn.MultiHeadAttention,
+):
     r"""
     Allows the model to jointly attend to information from different representation subspaces.
 
@@ -100,9 +106,9 @@ class MultiheadAttention(nn.Layer):
         dtype: DTypeLike | None = None,
     ) -> None:
         if dtype:
-            super().__init__(dtype=dtype)
+            nn.Layer.__init__(self, dtype=dtype)
         else:
-            super().__init__()
+            nn.Layer.__init__(self)
         self.embed_dim = embed_dim
         self.kdim = kdim if kdim is not None else embed_dim
         self.vdim = vdim if vdim is not None else embed_dim
