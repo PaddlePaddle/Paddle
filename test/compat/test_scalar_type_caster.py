@@ -15,6 +15,8 @@
 # ruff: noqa: I001
 
 import os
+import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -34,9 +36,14 @@ extra_include_paths = [
     str(paddle_root / 'paddle/phi/api/include/compat'),
     str(paddle_root / 'paddle/phi/api/include/compat/torch/csrc/api/include'),
 ]
-build_root = Path(paddle.base.libpaddle.__file__).resolve().parents[3]
+paddle_binary_root = Path(
+    os.environ.get(
+        'PADDLE_BINARY_DIR',
+        Path(paddle.base.libpaddle.__file__).resolve().parents[3],
+    )
+)
 build_pybind_include = (
-    build_root / 'third_party/pybind/src/extern_pybind/include'
+    paddle_binary_root / 'third_party/pybind/src/extern_pybind/include'
 )
 if build_pybind_include.is_dir():
     extra_include_paths.insert(1, str(build_pybind_include))
@@ -44,7 +51,11 @@ if build_pybind_include.is_dir():
 scalar_type_extension = load(
     name='scalar_type_compat_test',
     sources=[str(Path(__file__).with_name('scalar_type_extension.cc'))],
+    extra_cxx_cflags=[
+        '/std:c++17' if sys.platform == 'win32' else '-std=c++17'
+    ],
     extra_include_paths=extra_include_paths,
+    build_directory=tempfile.mkdtemp(prefix='scalar_type_compat_test_'),
     verbose=True,
 )
 
