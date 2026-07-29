@@ -22,15 +22,35 @@ if(WITH_TESTING AND WITH_PYTHON)
                              PRIVATE -UPADDLE_ON_INFERENCE)
     endif()
   endif()
-  target_link_libraries(scalar_type_compat_test
-                        PRIVATE $<TARGET_LINKER_FILE:${paddle_lib}>)
   if(WIN32)
-    target_link_libraries(scalar_type_compat_test PRIVATE ${PYTHON_LIBRARIES})
-  elseif(APPLE)
+    # Link the import library generated from libpaddle.pyd. The paddle target's
+    # import library names libpaddle.dll, which is not present in the Python
+    # test layout.
     target_link_libraries(
       scalar_type_compat_test
-      PRIVATE "-Wl,-undefined,dynamic_lookup"
-              "-Wl,-rpath,$<TARGET_FILE_DIR:${paddle_lib}>")
+      PRIVATE "${PADDLE_BINARY_DIR}/python/paddle/base/libpaddle.lib"
+              ${PYTHON_LIBRARIES})
+    add_dependencies(scalar_type_compat_test copy_libpaddle)
+  else()
+    target_link_libraries(scalar_type_compat_test
+                          PRIVATE $<TARGET_LINKER_FILE:${paddle_lib}>)
+  endif()
+  if(APPLE)
+    add_dependencies(scalar_type_compat_test copy_libpaddle)
+    target_link_libraries(
+      scalar_type_compat_test PRIVATE "-Wl,-undefined,dynamic_lookup"
+                                      "-Wl,-rpath,@loader_path")
+    # Match Paddle's macOS custom-extension layout: resolve libpaddle.dylib to
+    # the libpaddle.so that Python has already loaded, rather than loading the
+    # build-tree dylib a second time and registering Paddle flags twice.
+    add_custom_command(
+      TARGET scalar_type_compat_test
+      POST_BUILD
+      COMMAND
+        ${CMAKE_COMMAND} -E create_symlink
+        "../../python/paddle/base/libpaddle.so"
+        "$<TARGET_FILE_DIR:scalar_type_compat_test>/libpaddle.dylib"
+      VERBATIM)
   endif()
   add_dependencies(scalar_type_compat_test ${paddle_lib} extern_pybind)
   set_target_properties(
