@@ -2102,6 +2102,7 @@ __global__ void SpatialSoftMaxForward(
   auto sdata = reinterpret_cast<AccT*>(shared_mem);
   const IndexType outer_stride = D * dim_size;
   const IndexType dim_stride = D;
+  const IndexType inner_stride = static_cast<IndexType>(blockDim.y) * gridDim.y;
 
   for (IndexType outer_index = blockIdx.x; outer_index < N;
        outer_index += gridDim.x) {
@@ -2110,7 +2111,7 @@ __global__ void SpatialSoftMaxForward(
                                      static_cast<IndexType>(blockDim.y) +
                                  static_cast<IndexType>(threadIdx.y);
          inner_index < D;
-         inner_index += blockDim.y * gridDim.y) {
+         inner_index += inner_stride) {
       const IndexType data_offset = outer_offset + inner_index;
       if (blockDim.x > 1) {
         AccT max_input = std::numeric_limits<AccT>::lowest();
@@ -2168,6 +2169,7 @@ __global__ void SpatialSoftMaxBackward(T* gradInput,
   auto sdata = reinterpret_cast<AccT*>(shared_mem);
   const IndexType outer_stride = D * dim_size;
   const IndexType dim_stride = D;
+  const IndexType inner_stride = static_cast<IndexType>(blockDim.y) * gridDim.y;
 
   for (IndexType outer_index = blockIdx.x; outer_index < N;
        outer_index += gridDim.x) {
@@ -2176,7 +2178,7 @@ __global__ void SpatialSoftMaxBackward(T* gradInput,
                                      static_cast<IndexType>(blockDim.y) +
                                  static_cast<IndexType>(threadIdx.y);
          inner_index < D;
-         inner_index += blockDim.y * gridDim.y) {
+         inner_index += inner_stride) {
       const IndexType data_offset = outer_offset + inner_index;
       if (blockDim.x > 1) {
         AccT sum = 0;
@@ -2762,7 +2764,7 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
         dim > std::numeric_limits<int32_t>::max() ||
         D > std::numeric_limits<int32_t>::max()) {
       int dim_log2 = static_cast<int>(Log2Ceil(dim));
-      IndexType dim_ceil = 1 << dim_log2;
+      IndexType dim_ceil = IndexType{1} << dim_log2;
       int warp_size =
           (dim_ceil < PADDLE_WARP_SIZE) ? dim_ceil : PADDLE_WARP_SIZE;
       int batches_per_warp = (dim_ceil <= PADDLE_WARP_SIZE) ? 2 : 1;
@@ -2832,7 +2834,7 @@ void SoftmaxForwardCUDAKernelDriver(const GPUContext& dev_ctx,
 #if defined(PADDLE_WITH_CUDA)
   if (FLAGS_use_accuracy_compatible_kernel) {
     if (LogMode) {
-      if (out->numel() >= std::numeric_limits<int32_t>::max()) {
+      if (out->numel() >= std::numeric_limits<int32_t>::max() / 2) {
         SoftmaxForwardCUDAKernelCompatible<T,
                                            int64_t,
                                            true,
@@ -2846,7 +2848,7 @@ void SoftmaxForwardCUDAKernelDriver(const GPUContext& dev_ctx,
             dev_ctx, x, input_axis, out);
       }
     } else {
-      if (out->numel() >= std::numeric_limits<int32_t>::max()) {
+      if (out->numel() >= std::numeric_limits<int32_t>::max() / 2) {
         SoftmaxForwardCUDAKernelCompatible<T,
                                            int64_t,
                                            false,
@@ -2861,7 +2863,7 @@ void SoftmaxForwardCUDAKernelDriver(const GPUContext& dev_ctx,
       }
     }
   } else {
-    if (x.numel() >= std::numeric_limits<int32_t>::max()) {
+    if (x.numel() >= std::numeric_limits<int32_t>::max() / 2) {
       SoftmaxForwardCUDAKernelDriverImpl<T, int64_t, LogMode>(
           dev_ctx, x, input_axis, out);
     } else {
@@ -2870,7 +2872,7 @@ void SoftmaxForwardCUDAKernelDriver(const GPUContext& dev_ctx,
     }
   }
 #else
-  if (x.numel() >= std::numeric_limits<int32_t>::max()) {
+  if (x.numel() >= std::numeric_limits<int32_t>::max() / 2) {
     SoftmaxForwardCUDAKernelDriverImpl<T, int64_t, LogMode>(
         dev_ctx, x, input_axis, out);
   } else {
@@ -2902,7 +2904,7 @@ void SoftmaxBackwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
         dim > std::numeric_limits<int32_t>::max() ||
         D > std::numeric_limits<int32_t>::max()) {
       int dim_log2 = Log2Ceil(dim);
-      IndexType dim_ceil = 1 << dim_log2;
+      IndexType dim_ceil = IndexType{1} << dim_log2;
       int warp_size =
           (dim_ceil < PADDLE_WARP_SIZE) ? dim_ceil : PADDLE_WARP_SIZE;
       int batches_per_warp = (dim_ceil <= PADDLE_WARP_SIZE * 4) ? 2 : 1;
@@ -2970,7 +2972,7 @@ void SoftmaxBackwardCUDAKernelDriver(const GPUContext& dev_ctx,
 #if defined(PADDLE_WITH_CUDA)
   if (FLAGS_use_accuracy_compatible_kernel) {
     if (LogMode) {
-      if (out.numel() >= std::numeric_limits<int32_t>::max()) {
+      if (out.numel() >= std::numeric_limits<int32_t>::max() / 2) {
         SoftmaxBackwardCUDAKernelCompatible<T,
                                             int64_t,
                                             true,
@@ -2988,7 +2990,7 @@ void SoftmaxBackwardCUDAKernelDriver(const GPUContext& dev_ctx,
       tmp.Resize(dout.dims());
       dev_ctx.Alloc<T>(&tmp);
       phi::MultiplyKernel<T>(dev_ctx, dout, out, &tmp);
-      if (out.numel() >= std::numeric_limits<int32_t>::max()) {
+      if (out.numel() >= std::numeric_limits<int32_t>::max() / 2) {
         SoftmaxBackwardCUDAKernelCompatible<T,
                                             int64_t,
                                             false,
@@ -3003,7 +3005,7 @@ void SoftmaxBackwardCUDAKernelDriver(const GPUContext& dev_ctx,
       }
     }
   } else {
-    if (out.numel() >= std::numeric_limits<int32_t>::max()) {
+    if (out.numel() >= std::numeric_limits<int32_t>::max() / 2) {
       SoftmaxBackwardCUDAKernelDriverImpl<T, int64_t, LogMode>(
           dev_ctx, out, dout, input_axis, dx);
     } else {
@@ -3012,7 +3014,7 @@ void SoftmaxBackwardCUDAKernelDriver(const GPUContext& dev_ctx,
     }
   }
 #else
-  if (out.numel() >= std::numeric_limits<int32_t>::max()) {
+  if (out.numel() >= std::numeric_limits<int32_t>::max() / 2) {
     SoftmaxBackwardCUDAKernelDriverImpl<T, int64_t, LogMode>(
         dev_ctx, out, dout, input_axis, dx);
   } else {
