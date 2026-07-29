@@ -153,6 +153,7 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source /opt/dtk-24.04.1/env.sh
+          export LD_LIBRARY_PATH=/usr/local/gcc-12.2/lib64:/usr/local/gcc-12.2/lib:${LD_LIBRARY_PATH}
           bash ${ci_scripts}/run_setup.sh bdist_wheel
           EXCODE=$?
           python -m pip install bce-python-sdk==0.8.74
@@ -297,6 +298,7 @@ jobs:
           wget -q --no-proxy https://paddle-device.bj.bcebos.com/dcu/hyhal-Z100.tar.gz
           tar -zxf hyhal-Z100.tar.gz -C /opt
           source /opt/dtk-24.04.1/env.sh
+          export LD_LIBRARY_PATH=/usr/local/gcc-12.2/lib64:/usr/local/gcc-12.2/lib:${LD_LIBRARY_PATH}
           bash -x ${ci_scripts}/dcu_test.sh
           '
 
