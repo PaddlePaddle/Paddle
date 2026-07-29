@@ -36,6 +36,39 @@ std::shared_ptr<CUDAVirtualMemAllocatorV2> CreateUnderlyingAllocator() {
       phi::GPUPlace(), 2UL << 20, PoolType::kLarge);
 }
 
+class FaultInjectingReleaseAllocator : public CUDAVirtualMemAllocatorV2 {
+ public:
+  FaultInjectingReleaseAllocator()
+      : CUDAVirtualMemAllocatorV2(
+            phi::GPUPlace(), 2UL << 20, PoolType::kLarge) {}
+
+  void FailUnmapCall(size_t call) { fail_unmap_call_ = call; }
+  void FailReleaseCalls(size_t count) { fail_release_calls_ = count; }
+
+ protected:
+  CUresult UnmapRangeForRelease(VMMDevicePtr ptr, size_t size) override {
+    ++unmap_calls_;
+    if (unmap_calls_ == fail_unmap_call_) {
+      return CUDA_ERROR_INVALID_VALUE;
+    }
+    return CUDAVirtualMemAllocatorV2::UnmapRangeForRelease(ptr, size);
+  }
+
+  CUresult ReleaseHandleForRelease(VMMAllocHandle handle,
+                                   size_t size) override {
+    if (fail_release_calls_ > 0) {
+      --fail_release_calls_;
+      return CUDA_ERROR_INVALID_VALUE;
+    }
+    return CUDAVirtualMemAllocatorV2::ReleaseHandleForRelease(handle, size);
+  }
+
+ private:
+  size_t fail_unmap_call_{0};
+  size_t unmap_calls_{0};
+  size_t fail_release_calls_{0};
+};
+
 __global__ void BusyWaitKernel(uint64_t cycles) {
   uint64_t start = clock64();
   while (clock64() - start < cycles) {
@@ -156,11 +189,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, RejectsInvalidInternalOperations) {
       *allocator.underlying_allocations_.begin();
   EXPECT_FALSE(allocator.IsRemapDestinationAllocation(underlying_allocation));
 
-  uint64_t released = 0;
-  auto underlying_it = allocator.underlying_allocations_.begin();
-  EXPECT_FALSE(
-      allocator.TryReleaseUnderlyingAllocation(&underlying_it, &released));
-  EXPECT_EQ(released, 0UL);
+  EXPECT_EQ(allocator.Release(phi::GPUPlace()), 0UL);
 }
 
 TEST(VMMAutoGrowthBestFitAllocatorV2, SplitGrowBlockAcrossTwoHandles) {
@@ -558,7 +587,9 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, ReleaseMiddleChunk) {
   const size_t tail_after_allocs = underlying->tail_offset();
   middle.reset();
 
-  const auto idle_ranges = allocator.CollectEntirelyFreeUnderlyingRanges();
+  const auto idle_ranges =
+      allocator.CollectReleasePlans(/*require_event_ready=*/false)
+          .whole_backings;
   ASSERT_EQ(idle_ranges.size(), 1UL);
   EXPECT_EQ(idle_ranges.front().first,
             reinterpret_cast<VMMDevicePtr>(middle_ptr));
@@ -604,7 +635,9 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, ReleaseNonAdjacentChunks) {
   second.reset();
   fourth.reset();
 
-  const auto idle_ranges = allocator.CollectEntirelyFreeUnderlyingRanges();
+  const auto idle_ranges =
+      allocator.CollectReleasePlans(/*require_event_ready=*/false)
+          .whole_backings;
   ASSERT_EQ(idle_ranges.size(), 2UL);
   EXPECT_EQ(idle_ranges[0].first, reinterpret_cast<VMMDevicePtr>(second_ptr));
   EXPECT_EQ(idle_ranges[1].first, reinterpret_cast<VMMDevicePtr>(fourth_ptr));
@@ -671,7 +704,8 @@ TEST(VMMAutoGrowthBestFitAllocatorV2,
   ASSERT_NE(crossing, nullptr);
 
   auto stats = allocator.CollectReleaseStats();
-  EXPECT_TRUE(allocator.CollectEntirelyFreeUnderlyingRanges().empty());
+  EXPECT_TRUE(allocator.CollectReleasePlans(/*require_event_ready=*/false)
+                  .whole_backings.empty());
   EXPECT_EQ(stats.backing_count, 2UL);
   EXPECT_EQ(stats.backing_bytes, underlying->handle_size() * 2);
   EXPECT_EQ(stats.releasable_backing_count, 0UL);
@@ -685,7 +719,9 @@ TEST(VMMAutoGrowthBestFitAllocatorV2,
 
   first.reset();
   crossing.reset();
-  EXPECT_EQ(allocator.CollectEntirelyFreeUnderlyingRanges().size(), 2UL);
+  EXPECT_EQ(allocator.CollectReleasePlans(/*require_event_ready=*/false)
+                .whole_backings.size(),
+            2UL);
   stats = allocator.CollectReleaseStats();
   EXPECT_EQ(stats.releasable_backing_count, 2UL);
   EXPECT_EQ(stats.releasable_backing_bytes, underlying->handle_size() * 2);
@@ -709,6 +745,12 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, ReleaseFreeHandlesFromMixedBacking) {
   auto live_prefix = allocator.Allocate(handle_size / 2);
   ASSERT_NE(live_prefix, nullptr);
   ASSERT_EQ(live_prefix->ptr(), base);
+
+  const auto release_plans =
+      allocator.CollectReleasePlans(/*require_event_ready=*/true);
+  const auto release_stats = allocator.CollectReleaseStats(&release_plans);
+  EXPECT_EQ(release_stats.partial_releasable_bytes, 2UL * handle_size);
+  EXPECT_EQ(release_stats.stranded_mapped_free_bytes, handle_size / 2);
 
   EXPECT_EQ(allocator.Release(phi::GPUPlace()), 2UL * handle_size);
   ASSERT_EQ(allocator.all_blocks().size(), 4UL);
@@ -811,8 +853,9 @@ TEST(VMMAutoGrowthBestFitAllocatorV2,
   ASSERT_NE(tail, nullptr);
   middle.reset();
 
-  const auto plans = allocator.CollectPartialReleasePlans();
-  ASSERT_EQ(plans.size(), 1UL);
+  const auto plans =
+      allocator.CollectReleasePlans(/*require_event_ready=*/true);
+  ASSERT_EQ(plans.partial_backings.size(), 1UL);
   auto owner_it = allocator.underlying_allocations_.FindByAddress(
       reinterpret_cast<VMMDevicePtr>(base));
   ASSERT_NE(owner_it, allocator.underlying_allocations_.end());
@@ -820,7 +863,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2,
   EXPECT_THROW(
       underlying->ReleaseFreeHandleRanges(
           &owner,
-          plans[0].ranges,
+          plans.partial_backings[0].ranges,
           [](std::vector<DecoratedAllocationPtr>*) {
             throw std::runtime_error("injected registry commit failure");
           }),
@@ -844,6 +887,150 @@ TEST(VMMAutoGrowthBestFitAllocatorV2,
   tail.reset();
   EXPECT_EQ(allocator.Release(phi::GPUPlace()), 3UL * handle_size);
   EXPECT_TRUE(allocator.all_blocks().empty());
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2,
+     PartialReleaseUnmapFailureRestoresEarlierRanges) {
+  auto underlying = std::make_shared<FaultInjectingReleaseAllocator>();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+  const size_t handle_size = underlying->handle_size();
+
+  auto backing = allocator.Allocate(5UL * handle_size);
+  ASSERT_NE(backing, nullptr);
+  auto* base = reinterpret_cast<uint8_t*>(backing->ptr());
+  backing.reset();
+
+  std::vector<AllocationPtr> handles;
+  for (size_t i = 0; i < 5; ++i) {
+    handles.push_back(allocator.Allocate(handle_size));
+    ASSERT_NE(handles.back(), nullptr);
+  }
+  handles[1].reset();
+  handles[3].reset();
+  underlying->FailUnmapCall(2);
+
+  EXPECT_THROW(allocator.Release(phi::GPUPlace()),
+               common::enforce::EnforceNotMet);
+
+  const std::vector<std::pair<VMMDevicePtr, size_t>> whole_range = {
+      {reinterpret_cast<VMMDevicePtr>(base), 5UL * handle_size}};
+  EXPECT_EQ(underlying->CollectMappedPages(whole_range, 0).size(), 5UL);
+  EXPECT_TRUE(FindBlockByPtr(allocator, base + handle_size)->IsMappedFree());
+  EXPECT_TRUE(
+      FindBlockByPtr(allocator, base + 3UL * handle_size)->IsMappedFree());
+
+  auto reused_second = allocator.Allocate(handle_size);
+  auto reused_fourth = allocator.Allocate(handle_size);
+  ASSERT_NE(reused_second, nullptr);
+  ASSERT_NE(reused_fourth, nullptr);
+  EXPECT_EQ(reused_second->ptr(), base + handle_size);
+  EXPECT_EQ(reused_fourth->ptr(), base + 3UL * handle_size);
+
+  for (auto& handle : handles) {
+    handle.reset();
+  }
+  reused_second.reset();
+  reused_fourth.reset();
+  EXPECT_EQ(allocator.Release(phi::GPUPlace()), 5UL * handle_size);
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2,
+     PartialReleaseDriverFailureNeverIndexesUnmappedVA) {
+  auto underlying = std::make_shared<FaultInjectingReleaseAllocator>();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+  const size_t handle_size = underlying->handle_size();
+
+  auto backing = allocator.Allocate(3UL * handle_size);
+  ASSERT_NE(backing, nullptr);
+  auto* base = reinterpret_cast<uint8_t*>(backing->ptr());
+  backing.reset();
+  auto head = allocator.Allocate(handle_size);
+  auto middle = allocator.Allocate(handle_size);
+  auto tail = allocator.Allocate(handle_size);
+  ASSERT_NE(head, nullptr);
+  ASSERT_NE(middle, nullptr);
+  ASSERT_NE(tail, nullptr);
+  middle.reset();
+
+  // The initial release and the finalize retry both fail.
+  underlying->FailReleaseCalls(2);
+  EXPECT_EQ(allocator.Release(phi::GPUPlace()), 0UL);
+  const auto* middle_block = FindBlockByPtr(allocator, base + handle_size);
+  ASSERT_NE(middle_block, nullptr);
+  EXPECT_TRUE(middle_block->IsUnmappedFree());
+  EXPECT_EQ(
+      allocator.free_blocks_.count({middle_block->size_, middle_block->ptr_}),
+      0UL);
+  EXPECT_TRUE(underlying->IsRangeUnmapped(
+      reinterpret_cast<VMMDevicePtr>(base + handle_size), handle_size));
+
+  auto reused = allocator.Allocate(handle_size);
+  ASSERT_NE(reused, nullptr);
+  EXPECT_EQ(reused->ptr(), base + handle_size);
+  EXPECT_EQ(underlying->RetryDeferredHandleReleases(), handle_size);
+  const std::vector<std::pair<VMMDevicePtr, size_t>> reused_range = {
+      {reinterpret_cast<VMMDevicePtr>(base + handle_size), handle_size}};
+  EXPECT_EQ(underlying->CollectMappedPages(reused_range, 0).size(), 1UL);
+
+  head.reset();
+  reused.reset();
+  tail.reset();
+  EXPECT_EQ(allocator.Release(phi::GPUPlace()), 3UL * handle_size);
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2,
+     WholeReleaseReportsOnlyDriverReleasedBytes) {
+  auto underlying = std::make_shared<FaultInjectingReleaseAllocator>();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+  const size_t handle_size = underlying->handle_size();
+
+  auto allocation = allocator.Allocate(handle_size);
+  ASSERT_NE(allocation, nullptr);
+  allocation.reset();
+
+  // The initial release and the finalize retry both fail. The VA state can be
+  // retired, but empty_cache must not report physical memory as released.
+  underlying->FailReleaseCalls(2);
+  EXPECT_EQ(allocator.Release(phi::GPUPlace()), 0UL);
+  EXPECT_TRUE(allocator.all_blocks().empty());
+  EXPECT_TRUE(underlying->HasDeferredHandleReleases());
+
+  EXPECT_EQ(allocator.Release(phi::GPUPlace()), handle_size);
+  EXPECT_FALSE(underlying->HasDeferredHandleReleases());
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2, ReleaseRecordsLazyEventBeforeDeviceSync) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+  const size_t handle_size = underlying->handle_size();
+
+  auto backing = allocator.Allocate(3UL * handle_size);
+  ASSERT_NE(backing, nullptr);
+  backing.reset();
+  auto head = allocator.Allocate(handle_size);
+  auto middle = allocator.Allocate(handle_size);
+  auto tail = allocator.Allocate(handle_size);
+  ASSERT_NE(head, nullptr);
+  ASSERT_NE(middle, nullptr);
+  ASSERT_NE(tail, nullptr);
+
+  cudaStream_t stream;
+  ASSERT_EQ(cudaStreamCreate(&stream), cudaSuccess);
+  BusyWaitKernel<<<1, 1, 0, stream>>>(500000000ULL);
+  auto* remap_allocation = dynamic_cast<VMMRemapEventAllocation*>(middle.get());
+  ASSERT_NE(remap_allocation, nullptr);
+  ASSERT_TRUE(remap_allocation->SetVMMRemapEvent(stream, nullptr));
+  middle.reset();
+
+  EXPECT_EQ(allocator.Release(phi::GPUPlace()), handle_size);
+  ASSERT_EQ(cudaStreamDestroy(stream), cudaSuccess);
+  head.reset();
+  tail.reset();
+  EXPECT_EQ(allocator.Release(phi::GPUPlace()), 2UL * handle_size);
 }
 
 TEST(VMMAutoGrowthBestFitAllocatorV2, ReuseUnmappedFreeBlock) {
@@ -897,7 +1084,8 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, ReplaceRangeSplitsFreeBlock) {
   allocation.reset();
   ASSERT_EQ(allocator.all_blocks().size(), 1UL);
 
-  allocator.ReplaceRangeWithUnmappedFree(base + handle_size, handle_size);
+  allocator.ReplaceRangeWithUnmappedFree(
+      base + handle_size, handle_size, allocator.all_blocks_.begin());
 
   ASSERT_EQ(allocator.all_blocks().size(), 3UL);
   auto it = allocator.all_blocks().begin();
@@ -927,7 +1115,8 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, ReplaceRangeTrimsBoundaryBlocks) {
     auto* base = reinterpret_cast<uint8_t*>(allocation->ptr());
     allocation.reset();
 
-    allocator.ReplaceRangeWithUnmappedFree(base + handle_size, handle_size * 2);
+    allocator.ReplaceRangeWithUnmappedFree(
+        base + handle_size, handle_size * 2, allocator.all_blocks_.begin());
 
     ASSERT_EQ(allocator.all_blocks().size(), 2UL);
     auto it = allocator.all_blocks().begin();
@@ -950,7 +1139,8 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, ReplaceRangeTrimsBoundaryBlocks) {
     auto* base = reinterpret_cast<uint8_t*>(allocation->ptr());
     allocation.reset();
 
-    allocator.ReplaceRangeWithUnmappedFree(base, handle_size * 2);
+    allocator.ReplaceRangeWithUnmappedFree(
+        base, handle_size * 2, allocator.all_blocks_.begin());
 
     ASSERT_EQ(allocator.all_blocks().size(), 2UL);
     auto it = allocator.all_blocks().begin();

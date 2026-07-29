@@ -108,7 +108,6 @@ class StreamSafeCUDAAllocator
   };
 
   void ProcessUnfreedAllocations();
-  uint64_t ProcessUnfreedAllocationsAndRelease();
   PendingAllocationStats GetPendingAllocationStats();
 
   static std::map<Place, std::vector<StreamSafeCUDAAllocator *>> allocator_map_;

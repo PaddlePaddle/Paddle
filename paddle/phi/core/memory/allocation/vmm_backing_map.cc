@@ -361,6 +361,19 @@ void VMMBackingMap::MarkIPCExported(VMMDevicePtr va, size_t size) {
   }
 }
 
+void VMMBackingMap::ClearIPCExported(VMMDevicePtr va, size_t size) {
+  std::lock_guard<SpinLock> guard(spinlock_);
+  size_t start = 0;
+  size_t count = 0;
+  if (!CheckRangeLocked(va, size, "ClearIPCExported", &start, &count)) {
+    return;
+  }
+  for (size_t i = 0; i < count; ++i) {
+    pages_[start + i].ipc_exported = false;
+    pages_[start + i].epoch++;
+  }
+}
+
 void VMMBackingMap::MarkPendingEvent(VMMDevicePtr va,
                                      size_t size,
                                      gpuStream_t stream,

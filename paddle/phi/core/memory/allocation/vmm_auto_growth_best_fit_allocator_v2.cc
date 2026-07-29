@@ -1064,39 +1064,15 @@ BlockV2 VMMAutoGrowthBestFitAllocatorV2::AdoptBackingBlock(
   return block;
 }
 
-bool VMMAutoGrowthBestFitAllocatorV2::CanReleaseUnderlyingAllocation(
-    uint8_t* base, size_t size) const {
-  if (!IsRangeEntirelyFree(base, size)) {
-    return false;
-  }
-  return underlying_allocator_->IsRangeReleasable(
-      reinterpret_cast<VMMDevicePtr>(base), size);
-}
-
-bool VMMAutoGrowthBestFitAllocatorV2::HasReleasableUnderlyingAllocation(
-    const UnderlyingRanges& entirely_free_ranges) const {
-  for (const auto& range : entirely_free_ranges) {
-    if (underlying_allocator_->IsRangeReleasable(range.first, range.second)) {
-      return true;
-    }
-  }
-  return false;
-}
-
 bool VMMAutoGrowthBestFitAllocatorV2::TryReleaseUnderlyingAllocation(
     UnderlyingAllocationRegistry::iterator* alloc_it,
     uint64_t* released,
-    bool range_verified_free,
     BlockListIt* block_search_begin) {
   auto* allocation = (**alloc_it).get();
   auto* base = reinterpret_cast<uint8_t*>(allocation->ptr());
   const size_t alloc_size = allocation->size();
-  const bool releasable =
-      range_verified_free
-          ? underlying_allocator_->IsRangeReleasable(
-                reinterpret_cast<VMMDevicePtr>(base), alloc_size)
-          : CanReleaseUnderlyingAllocation(base, alloc_size);
-  if (!releasable) {
+  if (!underlying_allocator_->IsRangeReleasable(
+          reinterpret_cast<VMMDevicePtr>(base), alloc_size)) {
     return false;
   }
 
@@ -1104,14 +1080,12 @@ bool VMMAutoGrowthBestFitAllocatorV2::TryReleaseUnderlyingAllocation(
     underlying_allocator_->ClearRemapDestinationOwnershipInRange(
         reinterpret_cast<VMMDevicePtr>(base), alloc_size);
   }
-  if (block_search_begin == nullptr) {
-    ReplaceRangeWithUnmappedFree(base, alloc_size);
-  } else {
-    *block_search_begin =
-        ReplaceRangeWithUnmappedFree(base, alloc_size, *block_search_begin);
-  }
-  *released += alloc_size;
+  const auto driver_before = underlying_allocator_->GetReleaseDriverStats();
   *alloc_it = underlying_allocations_.Erase(*alloc_it);
+  const auto driver_after = underlying_allocator_->GetReleaseDriverStats();
+  *block_search_begin =
+      ReplaceRangeWithUnmappedFree(base, alloc_size, *block_search_begin);
+  *released += driver_after.released_bytes - driver_before.released_bytes;
   return true;
 }
 
@@ -1226,48 +1200,56 @@ BlockListIt VMMAutoGrowthBestFitAllocatorV2::TryMergeUnmappedFree(
 // later reuse.
 // ---------------------------------------------------------------------------
 
-uint64_t VMMAutoGrowthBestFitAllocatorV2::ReleaseImpl(
+uint64_t VMMAutoGrowthBestFitAllocatorV2::ReleaseImpl(const Place& place) {
+  if (!PrepareBackingRelease()) {
+    return 0;
+  }
+  platform::CUDADeviceGuard device_guard(place_.device);
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+  return ReleaseAfterDeviceSynchronize(place);
+}
+
+bool VMMAutoGrowthBestFitAllocatorV2::PrepareBackingRelease() {
+  const auto release_start = Clock::now();
+  std::lock_guard<SpinLock> guard(spinlock_);
+  ReleaseTiming timing;
+  timing.lock_wait_us = ElapsedMicros(release_start, Clock::now());
+  const auto precheck_start = Clock::now();
+  const auto plans = CollectReleasePlans(/*require_event_ready=*/false);
+  timing.precheck_us = ElapsedMicros(precheck_start, Clock::now());
+  const bool has_release_candidate =
+      !plans.empty() || underlying_allocator_->HasDeferredHandleReleases();
+  if (!has_release_candidate && VLOG_IS_ON(3)) {
+    const auto stats = CollectReleaseStats(&plans);
+    timing.total_us = ElapsedMicros(release_start, Clock::now());
+    LogReleaseStats(stats,
+                    stats,
+                    /*released_bytes=*/0,
+                    timing,
+                    CUDAVirtualMemAllocatorV2::ReleaseDriverStats{});
+  }
+  return has_release_candidate;
+}
+
+uint64_t VMMAutoGrowthBestFitAllocatorV2::ReleaseAfterDeviceSynchronize(
     const Place& place UNUSED) {
   const auto release_start = Clock::now();
   std::lock_guard<SpinLock> guard(spinlock_);
   ReleaseTiming timing;
   timing.lock_wait_us = ElapsedMicros(release_start, Clock::now());
   const bool log_release_stats = VLOG_IS_ON(3);
-  ReleaseStats before;
   auto op_start = Clock::now();
-  if (log_release_stats) {
-    before = CollectReleaseStats();
-  }
-  const auto entirely_free_ranges = CollectEntirelyFreeUnderlyingRanges();
-  const auto partial_release_plans = CollectPartialReleasePlans();
+  const auto plans = CollectReleasePlans(/*require_event_ready=*/true);
   timing.precheck_us = ElapsedMicros(op_start, Clock::now());
-  const bool has_releasable =
-      (log_release_stats
-           ? before.releasable_backing_count > 0
-           : HasReleasableUnderlyingAllocation(entirely_free_ranges)) ||
-      !partial_release_plans.empty();
-  if (!has_releasable) {
-    if (log_release_stats) {
-      timing.total_us = ElapsedMicros(release_start, Clock::now());
-      LogReleaseStats(before,
-                      before,
-                      /*released_bytes=*/0,
-                      timing,
-                      CUDAVirtualMemAllocatorV2::ReleaseDriverStats{});
-    }
-    return 0;
+
+  ReleaseStats before;
+  if (log_release_stats) {
+    before = CollectReleaseStats(&plans);
   }
-  // FreeIdleChunks may release CUDA VMM mappings and physical handles. Those
-  // driver calls are not ordered by the stream-safe wrapper, so wait before
-  // making any previously returned VA range invalid.
-  platform::CUDADeviceGuard device_guard(place_.device);
-  op_start = Clock::now();
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
-  timing.device_sync_us = ElapsedMicros(op_start, Clock::now());
   const auto driver_before = underlying_allocator_->GetReleaseDriverStats();
   op_start = Clock::now();
-  const uint64_t released =
-      FreeIdleChunks(entirely_free_ranges, partial_release_plans);
+  uint64_t released = FreeIdleChunks(plans);
+  released += underlying_allocator_->RetryDeferredHandleReleases();
   timing.release_us = ElapsedMicros(op_start, Clock::now());
   if (log_release_stats) {
     op_start = Clock::now();
@@ -1299,60 +1281,30 @@ uint64_t VMMAutoGrowthBestFitAllocatorV2::ReleaseImpl(
 }
 
 uint64_t VMMAutoGrowthBestFitAllocatorV2::FreeIdleChunks(
-    const UnderlyingRanges& entirely_free_ranges,
-    const PartialReleasePlans& partial_release_plans) {
+    const ReleasePlans& plans) {
   uint64_t released = 0;
   auto block_search_begin = all_blocks_.begin();
-  for (const auto& range : entirely_free_ranges) {
+  for (const auto& range : plans.whole_backings) {
     auto alloc_it = underlying_allocations_.FindByAddress(range.first);
     if (alloc_it == underlying_allocations_.end() ||
         (*alloc_it)->size() != range.second) {
       continue;
     }
-    TryReleaseUnderlyingAllocation(&alloc_it,
-                                   &released,
-                                   /*range_verified_free=*/true,
-                                   &block_search_begin);
+    TryReleaseUnderlyingAllocation(&alloc_it, &released, &block_search_begin);
   }
   block_search_begin = all_blocks_.begin();
-  released += ReleasePartialBacking(partial_release_plans, &block_search_begin);
+  released +=
+      ReleasePartialBacking(plans.partial_backings, &block_search_begin);
 
   TrimTrailingUnmappedFreeBlocks();
   underlying_allocator_->SetTailOffset(ComputeTailOffset());
   return released;
 }
 
-VMMAutoGrowthBestFitAllocatorV2::UnderlyingRanges
-VMMAutoGrowthBestFitAllocatorV2::CollectEntirelyFreeUnderlyingRanges() const {
-  const auto backing_ranges = underlying_allocations_.CollectRangesByAddress();
-  UnderlyingRanges entirely_free_ranges;
-  entirely_free_ranges.reserve(backing_ranges.size());
-  auto first_block = all_blocks_.begin();
-  for (const auto& range : backing_ranges) {
-    const auto range_end = range.first + range.second;
-    while (first_block != all_blocks_.end() &&
-           first_block->end_va() <= range.first) {
-      ++first_block;
-    }
-    bool contains_active_block = false;
-    for (auto block_it = first_block;
-         block_it != all_blocks_.end() && block_it->begin_va() < range_end;
-         ++block_it) {
-      if (block_it->IsActive()) {
-        contains_active_block = true;
-        break;
-      }
-    }
-    if (!contains_active_block) {
-      entirely_free_ranges.push_back(range);
-    }
-  }
-  return entirely_free_ranges;
-}
-
-VMMAutoGrowthBestFitAllocatorV2::PartialReleasePlans
-VMMAutoGrowthBestFitAllocatorV2::CollectPartialReleasePlans() const {
-  PartialReleasePlans plans;
+VMMAutoGrowthBestFitAllocatorV2::ReleasePlans
+VMMAutoGrowthBestFitAllocatorV2::CollectReleasePlans(
+    bool require_event_ready) const {
+  ReleasePlans plans;
   const size_t handle_size = underlying_allocator_->handle_size();
   if (handle_size == 0) {
     return plans;
@@ -1368,20 +1320,15 @@ VMMAutoGrowthBestFitAllocatorV2::CollectPartialReleasePlans() const {
       ++first_block;
     }
 
-    PartialReleasePlan plan;
-    plan.allocation_base = backing.first;
-    auto append_range = [&plan](VMMDevicePtr va, size_t size) {
-      if (!plan.ranges.empty() &&
-          plan.ranges.back().first + plan.ranges.back().second == va) {
-        plan.ranges.back().second += size;
-      } else {
-        plan.ranges.emplace_back(va, size);
-      }
-    };
-
+    bool contains_active_block = false;
+    UnderlyingRanges candidates;
     for (auto block_it = first_block;
          block_it != all_blocks_.end() && block_it->begin_va() < backing_end;
          ++block_it) {
+      if (block_it->IsActive()) {
+        contains_active_block = true;
+        continue;
+      }
       if (!block_it->IsMappedFree()) {
         continue;
       }
@@ -1395,20 +1342,42 @@ VMMAutoGrowthBestFitAllocatorV2::CollectPartialReleasePlans() const {
           begin_offset / handle_size +
           static_cast<size_t>(begin_offset % handle_size != 0);
       const size_t end_handle = end_offset / handle_size;
-      if (first_handle >= end_handle) {
-        continue;
+      if (first_handle < end_handle) {
+        candidates.emplace_back(virtual_base + first_handle * handle_size,
+                                (end_handle - first_handle) * handle_size);
       }
+    }
 
-      const VMMDevicePtr candidate_begin =
-          virtual_base + first_handle * handle_size;
-      const size_t candidate_size = (end_handle - first_handle) * handle_size;
-      if (underlying_allocator_->IsRangeReleasable(candidate_begin,
-                                                   candidate_size)) {
-        append_range(candidate_begin, candidate_size);
+    if (!contains_active_block) {
+      const bool ready = underlying_allocator_->IsRangeReleasable(
+          backing.first, backing.second);
+      if (!require_event_ready || ready) {
+        plans.whole_backings.push_back(backing);
+      }
+      continue;
+    }
+
+    PartialReleasePlan plan;
+    plan.allocation_base = backing.first;
+    auto append_range = [&plan, &plans](VMMDevicePtr va, size_t size) {
+      if (!plan.ranges.empty() &&
+          plan.ranges.back().first + plan.ranges.back().second == va) {
+        plan.ranges.back().second += size;
+      } else {
+        plan.ranges.emplace_back(va, size);
+      }
+      plans.partial_bytes += size;
+    };
+
+    for (const auto& candidate : candidates) {
+      const bool ready = underlying_allocator_->IsRangeReleasable(
+          candidate.first, candidate.second);
+      if (!require_event_ready || ready) {
+        append_range(candidate.first, candidate.second);
         continue;
       }
-      for (VMMDevicePtr va = candidate_begin;
-           va < candidate_begin + candidate_size;
+      for (VMMDevicePtr va = candidate.first;
+           va < candidate.first + candidate.second;
            va += handle_size) {
         if (underlying_allocator_->IsRangeReleasable(va, handle_size)) {
           append_range(va, handle_size);
@@ -1416,7 +1385,7 @@ VMMAutoGrowthBestFitAllocatorV2::CollectPartialReleasePlans() const {
       }
     }
     if (!plan.ranges.empty()) {
-      plans.push_back(std::move(plan));
+      plans.partial_backings.push_back(std::move(plan));
     }
   }
   return plans;
@@ -1451,7 +1420,7 @@ uint64_t VMMAutoGrowthBestFitAllocatorV2::ReleasePartialBacking(
       continue;
     }
 
-    for (const auto& range : result.released_ranges) {
+    for (const auto& range : result.unmapped_ranges) {
       *block_search_begin =
           ReplaceRangeWithUnmappedFree(reinterpret_cast<uint8_t*>(range.first),
                                        range.second,
@@ -1463,7 +1432,8 @@ uint64_t VMMAutoGrowthBestFitAllocatorV2::ReleasePartialBacking(
 }
 
 VMMAutoGrowthBestFitAllocatorV2::ReleaseStats
-VMMAutoGrowthBestFitAllocatorV2::CollectReleaseStats() const {
+VMMAutoGrowthBestFitAllocatorV2::CollectReleaseStats(
+    const ReleasePlans* plans) const {
   struct BackingView {
     uint8_t* base{nullptr};
     uint8_t* end{nullptr};
@@ -1498,6 +1468,7 @@ VMMAutoGrowthBestFitAllocatorV2::CollectReleaseStats() const {
   }
 
   auto first_block = all_blocks_.begin();
+  size_t whole_plan_index = 0;
   for (auto& backing : backings) {
     while (first_block != all_blocks_.end() &&
            first_block->end_ptr() <= backing.base) {
@@ -1518,10 +1489,24 @@ VMMAutoGrowthBestFitAllocatorV2::CollectReleaseStats() const {
     ++stats.backing_count;
     stats.backing_bytes += backing.size;
     const bool entirely_free = backing.active_bytes == 0;
-    const bool releasable =
-        entirely_free &&
-        underlying_allocator_->IsRangeReleasable(
+    bool releasable = false;
+    if (entirely_free) {
+      if (plans == nullptr) {
+        releasable = underlying_allocator_->IsRangeReleasable(
             reinterpret_cast<VMMDevicePtr>(backing.base), backing.size);
+      } else {
+        while (whole_plan_index < plans->whole_backings.size() &&
+               plans->whole_backings[whole_plan_index].first <
+                   reinterpret_cast<VMMDevicePtr>(backing.base)) {
+          ++whole_plan_index;
+        }
+        releasable =
+            whole_plan_index < plans->whole_backings.size() &&
+            plans->whole_backings[whole_plan_index].first ==
+                reinterpret_cast<VMMDevicePtr>(backing.base) &&
+            plans->whole_backings[whole_plan_index].second == backing.size;
+      }
+    }
     if (releasable) {
       ++stats.releasable_backing_count;
       stats.releasable_backing_bytes += backing.size;
@@ -1560,6 +1545,14 @@ VMMAutoGrowthBestFitAllocatorV2::CollectReleaseStats() const {
       stats.active_bytes_crossing_backings += block.size_;
     }
   }
+
+  if (plans != nullptr) {
+    stats.partial_releasable_bytes = plans->partial_bytes;
+    stats.stranded_mapped_free_bytes =
+        stats.stranded_mapped_free_bytes > plans->partial_bytes
+            ? stats.stranded_mapped_free_bytes - plans->partial_bytes
+            : 0;
+  }
   return stats;
 }
 
@@ -1587,6 +1580,8 @@ void VMMAutoGrowthBestFitAllocatorV2::LogReleaseStats(
           << " before_mixed_backing_bytes=" << before.mixed_backing_bytes
           << " before_active_bytes=" << before.active_bytes
           << " before_mapped_free_bytes=" << before.mapped_free_bytes
+          << " before_partial_releasable_bytes="
+          << before.partial_releasable_bytes
           << " before_stranded_mapped_free_bytes="
           << before.stranded_mapped_free_bytes
           << " before_unmapped_free_bytes=" << before.unmapped_free_bytes
@@ -1642,35 +1637,6 @@ size_t VMMAutoGrowthBestFitAllocatorV2::ComputeTailOffset() const {
                                underlying_allocator_->virtual_mem_base());
   }
   return 0;
-}
-
-bool VMMAutoGrowthBestFitAllocatorV2::IsRangeEntirelyFree(uint8_t* base,
-                                                          size_t size) const {
-  auto* end = base + size;
-  for (const auto& block : all_blocks_) {
-    auto* bptr = block.begin_ptr();
-    auto* bend = block.end_ptr();
-    if (bend <= base) continue;
-    if (bptr >= end) break;
-    if (block.IsActive()) {
-      return false;
-    }
-  }
-  // Returns true when the range contains only FREE/unmapped-free blocks or
-  // when
-  // blocks have already been removed by a prior FreeIdleChunks pass
-  // (unmapped-free scatter / single-unmapped-free path case: the original
-  // allocation's cleanup removes
-  // blocks in the overlapping VA range before the destination allocation
-  // is processed).  FreeImpl handles this safely: original allocation
-  // skips remapped handles; the destination allocation unmaps and releases its
-  // own handles.
-  return true;
-}
-
-void VMMAutoGrowthBestFitAllocatorV2::ReplaceRangeWithUnmappedFree(
-    uint8_t* base, size_t size) {
-  (void)ReplaceRangeWithUnmappedFree(base, size, all_blocks_.begin());
 }
 
 BlockListIt VMMAutoGrowthBestFitAllocatorV2::ReplaceRangeWithUnmappedFree(

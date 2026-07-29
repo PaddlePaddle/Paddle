@@ -108,6 +108,13 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
                             size_t requested_size,
                             const VMMGrowOOMInfo* grow_oom = nullptr,
                             VMMRemapAttemptResult* attempt_result = nullptr);
+  // Discovers structurally releasable backing and records any lazy events.
+  // Call this before the device synchronization paired with the release below.
+  bool PrepareBackingRelease();
+  // Finalizes release after PrepareBackingRelease() and a successful device
+  // synchronization. The final plan is regenerated from current allocator
+  // state and event readiness.
+  uint64_t ReleaseAfterDeviceSynchronize(const Place& place);
 
  protected:
   phi::Allocation* AllocateImpl(size_t size) override;
@@ -126,6 +133,15 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
     UnderlyingRanges ranges;
   };
   using PartialReleasePlans = std::vector<PartialReleasePlan>;
+  struct ReleasePlans {
+    UnderlyingRanges whole_backings;
+    PartialReleasePlans partial_backings;
+    size_t partial_bytes{0};
+
+    bool empty() const {
+      return whole_backings.empty() && partial_backings.empty();
+    }
+  };
 
   struct ReleaseStats {
     size_t backing_count{0};
@@ -138,6 +154,7 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
     size_t mixed_backing_bytes{0};
     size_t active_bytes{0};
     size_t mapped_free_bytes{0};
+    size_t partial_releasable_bytes{0};
     size_t stranded_mapped_free_bytes{0};
     size_t unmapped_free_bytes{0};
     size_t active_blocks_crossing_backings{0};
@@ -198,14 +215,10 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
       const DecoratedAllocationPtr& allocation) const;
   bool CanPrepareDestinationRange(void* ptr, size_t size) const;
   bool PrepareDestinationRange(void* ptr, size_t size);
-  bool CanReleaseUnderlyingAllocation(uint8_t* base, size_t size) const;
-  bool HasReleasableUnderlyingAllocation(
-      const UnderlyingRanges& entirely_free_ranges) const;
   bool TryReleaseUnderlyingAllocation(
       UnderlyingAllocationRegistry::iterator* alloc_it,
       uint64_t* released,
-      bool range_verified_free = false,
-      BlockListIt* block_search_begin = nullptr);
+      BlockListIt* block_search_begin);
   uint64_t ReleasePartialBacking(const PartialReleasePlans& plans,
                                  BlockListIt* block_search_begin);
   bool CanIndexFreeBlock(const BlockV2& block) const;
@@ -220,11 +233,9 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
                       const char* reason) const;
   void TryMerge(BlockListIt it);
   BlockListIt TryMergeUnmappedFree(BlockListIt it);
-  uint64_t FreeIdleChunks(const UnderlyingRanges& entirely_free_ranges,
-                          const PartialReleasePlans& partial_release_plans);
-  UnderlyingRanges CollectEntirelyFreeUnderlyingRanges() const;
-  PartialReleasePlans CollectPartialReleasePlans() const;
-  ReleaseStats CollectReleaseStats() const;
+  uint64_t FreeIdleChunks(const ReleasePlans& plans);
+  ReleasePlans CollectReleasePlans(bool require_event_ready) const;
+  ReleaseStats CollectReleaseStats(const ReleasePlans* plans = nullptr) const;
   void LogReleaseStats(
       const ReleaseStats& before,
       const ReleaseStats& after,
@@ -233,8 +244,6 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
       const CUDAVirtualMemAllocatorV2::ReleaseDriverStats& driver_stats) const;
   void TrimTrailingUnmappedFreeBlocks();
   size_t ComputeTailOffset() const;
-  bool IsRangeEntirelyFree(uint8_t* base, size_t size) const;
-  void ReplaceRangeWithUnmappedFree(uint8_t* base, size_t size);
   BlockListIt ReplaceRangeWithUnmappedFree(uint8_t* base,
                                            size_t size,
                                            BlockListIt search_begin);

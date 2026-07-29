@@ -95,7 +95,7 @@ class CUDAVirtualMemAllocatorV2 : public Allocator {
   };
 
   struct PartialReleaseResult {
-    std::vector<std::pair<VMMDevicePtr, size_t>> released_ranges;
+    std::vector<std::pair<VMMDevicePtr, size_t>> unmapped_ranges;
     uint64_t released_bytes{0};
   };
   using CommitRemainingAllocationsFn =
@@ -216,6 +216,10 @@ class CUDAVirtualMemAllocatorV2 : public Allocator {
       const std::vector<std::pair<VMMDevicePtr, size_t>>& ranges) const;
   bool IsRangeUnmapped(VMMDevicePtr ptr, size_t size) const;
   bool IsRangeReleasable(VMMDevicePtr ptr, size_t size) const;
+  bool HasDeferredHandleReleases() const {
+    return !deferred_handle_releases_.empty();
+  }
+  uint64_t RetryDeferredHandleReleases();
   // Releases selected handle-aligned ranges from one tracked allocation and
   // transfers the remaining handle runs to new tracked allocations.
   PartialReleaseResult ReleaseFreeHandleRanges(
@@ -249,6 +253,8 @@ class CUDAVirtualMemAllocatorV2 : public Allocator {
       const char* context) const;
 
  protected:
+  virtual CUresult UnmapRangeForRelease(VMMDevicePtr ptr, size_t size);
+  virtual CUresult ReleaseHandleForRelease(VMMAllocHandle handle, size_t size);
   phi::Allocation* AllocateImpl(size_t size) override;
   void FreeImpl(phi::Allocation* allocation) override;
 
@@ -294,7 +300,11 @@ class CUDAVirtualMemAllocatorV2 : public Allocator {
   DecoratedAllocationPtr AdoptTrackedAllocation(Allocation* allocation);
   HandleLayout RequireHandleLayout(Allocation* allocation) const;
   void UnregisterHandleLayout(Allocation* allocation, void* ptr);
-  bool ReleaseMappedHandles(const HandleLayout& layout);
+  void ReleaseMappedHandles(const HandleLayout& layout);
+  HandleLayout UnmapMappedHandles(const HandleLayout& layout,
+                                  bool include_remap_owned = false);
+  void RestoreUnmappedHandles(const HandleLayout& layout);
+  uint64_t ReleaseUnmappedHandles(const HandleLayout& layout);
 
   GPUPlace place_;
   size_t handle_size_;
@@ -311,6 +321,7 @@ class CUDAVirtualMemAllocatorV2 : public Allocator {
   AllocationLayoutRegistry allocation_layouts_;
   VMMBackingMap backing_map_;
   ReleaseDriverStats release_driver_stats_;
+  HandleLayout deferred_handle_releases_;
   mutable SpinLock ipc_export_lock_;
   mutable std::unordered_map<VMMAllocHandle, int> ipc_export_fds_;
 };

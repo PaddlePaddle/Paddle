@@ -68,6 +68,7 @@ class VMMBackingMap {
   void MarkUnmapped(VMMDevicePtr va, size_t size);
   void MarkReleased(VMMDevicePtr va, VMMAllocHandle handle, size_t size);
   void MarkIPCExported(VMMDevicePtr va, size_t size);
+  void ClearIPCExported(VMMDevicePtr va, size_t size);
   void MarkPendingEvent(VMMDevicePtr va,
                         size_t size,
                         gpuStream_t stream,

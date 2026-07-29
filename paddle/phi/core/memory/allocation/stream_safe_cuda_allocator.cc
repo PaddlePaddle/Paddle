@@ -35,6 +35,7 @@ COMMON_DECLARE_bool(vmm_v2_remap_on_oom);
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
 #include "paddle/phi/core/memory/allocation/vmm_auto_growth_best_fit_multi_pool_allocator_v2.h"
+#include "paddle/phi/core/platform/cuda_device_guard.h"
 #elif defined(PADDLE_WITH_HIP)
 #include "paddle/phi/backends/gpu/rocm/hip_graph.h"
 #endif
@@ -633,8 +634,25 @@ uint64_t StreamSafeCUDAAllocator::ReleaseImpl(const Place& place) {
   std::lock_guard<SpinLock> lock_guard(allocator_map_lock_);
   std::vector<StreamSafeCUDAAllocator*>& allocators = allocator_map_[place];
   uint64_t released_size = 0;
+  uint64_t device_sync_us = 0;
   const bool log_release_stats = VLOG_IS_ON(3);
   const auto release_start = std::chrono::steady_clock::now();
+
+#if defined(PADDLE_WITH_CUDA)
+  std::vector<VMMAutoGrowthBestFitMultiPoolAllocatorV2*> vmm_allocators;
+  for (auto* allocator : allocators) {
+    auto* vmm = allocator->vmm_v2_allocator_;
+    if (vmm != nullptr &&
+        std::find(vmm_allocators.begin(), vmm_allocators.end(), vmm) ==
+            vmm_allocators.end()) {
+      vmm_allocators.push_back(vmm);
+    }
+  }
+  const bool use_coordinated_vmm_release = !vmm_allocators.empty();
+#else
+  constexpr bool use_coordinated_vmm_release = false;
+#endif
+
   for (size_t i = 0; i < allocators.size(); ++i) {
     StreamSafeCUDAAllocator* allocator = allocators[i];
     PendingAllocationStats pending_before;
@@ -642,8 +660,18 @@ uint64_t StreamSafeCUDAAllocator::ReleaseImpl(const Place& place) {
       pending_before = allocator->GetPendingAllocationStats();
     }
     const auto stream_start = std::chrono::steady_clock::now();
-    const uint64_t stream_released =
-        allocator->ProcessUnfreedAllocationsAndRelease();
+    uint64_t stream_released = 0;
+    if (use_coordinated_vmm_release) {
+      allocator->ProcessUnfreedAllocations();
+#if defined(PADDLE_WITH_CUDA)
+      if (allocator->vmm_v2_allocator_ == nullptr) {
+        stream_released = allocator->underlying_allocator_->Release(place_);
+      }
+#endif
+    } else {
+      allocator->ProcessUnfreedAllocations();
+      stream_released = allocator->underlying_allocator_->Release(place_);
+    }
     released_size += stream_released;
     if (log_release_stats) {
       const auto pending_after = allocator->GetPendingAllocationStats();
@@ -662,6 +690,27 @@ uint64_t StreamSafeCUDAAllocator::ReleaseImpl(const Place& place) {
               << " elapsed_us=" << stream_us;
     }
   }
+
+#if defined(PADDLE_WITH_CUDA)
+  if (use_coordinated_vmm_release) {
+    bool has_release_candidate = false;
+    for (auto* allocator : vmm_allocators) {
+      has_release_candidate =
+          allocator->PrepareBackingRelease() || has_release_candidate;
+    }
+    if (has_release_candidate) {
+      platform::CUDADeviceGuard device_guard(place_.device);
+      const auto sync_start = std::chrono::steady_clock::now();
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+      device_sync_us = std::chrono::duration_cast<std::chrono::microseconds>(
+                           std::chrono::steady_clock::now() - sync_start)
+                           .count();
+      for (auto* allocator : vmm_allocators) {
+        released_size += allocator->ReleaseAfterDeviceSynchronize(place_);
+      }
+    }
+  }
+#endif
   if (log_release_stats) {
     const auto total_us = std::chrono::duration_cast<std::chrono::microseconds>(
                               std::chrono::steady_clock::now() - release_start)
@@ -670,6 +719,7 @@ uint64_t StreamSafeCUDAAllocator::ReleaseImpl(const Place& place) {
             << static_cast<int>(place_.device)
             << " streams=" << allocators.size()
             << " released_bytes=" << released_size
+            << " device_sync_us=" << device_sync_us
             << " elapsed_us=" << total_us;
   }
   VLOG(8) << "Release " << released_size << " bytes memory from all streams";
@@ -710,11 +760,6 @@ void StreamSafeCUDAAllocator::ProcessUnfreedAllocations() {
       ++it;
     }
   }
-}
-
-uint64_t StreamSafeCUDAAllocator::ProcessUnfreedAllocationsAndRelease() {
-  ProcessUnfreedAllocations();
-  return underlying_allocator_->Release(place_);
 }
 
 StreamSafeCUDAAllocator::PendingAllocationStats

@@ -287,6 +287,10 @@ TEST(VMMBackingMap, MarkReleasedAllowsMismatchAndIPCDoesNotBlockRelease) {
   EXPECT_TRUE(map.IsRangeReleasable(base, page_size));
   map.MarkIPCExported(base, page_size);
   EXPECT_TRUE(map.IsRangeReleasable(base, page_size));
+  map.MarkUnmapped(base, page_size);
+  map.ClearIPCExported(base, page_size);
+  map.MarkMapped(base, static_cast<VMMAllocHandle>(0x240), page_size);
+  EXPECT_EQ(map.CountIPCExportedBytes({{base, page_size}}), 0UL);
 
   auto meta = std::make_shared<VMMHandleMeta>(
       base + page_size, page_size, static_cast<VMMAllocHandle>(0x241), 0);
