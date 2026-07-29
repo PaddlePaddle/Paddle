@@ -365,7 +365,7 @@ jobs:
           JOB_NAME: 'Windows-OPENBLAS / Check bypass / Check bypass'
 
   rerun-on-approval:
-    if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.pull_requests[0].number != null && github.event.workflow_run.display_title == format('Approval Review Signal / approved / risemeup1111 / PR-{0}', github.event.workflow_run.pull_requests[0].number) }}
+    if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_sha != '' }}
     runs-on:
       group: APPROVAL
     steps:
@@ -380,7 +380,7 @@ jobs:
       - name: Rerun Approval
         uses: ./.github/actions/rerun-workflow
         with:
-          PR_ID: ${{ github.event.workflow_run.pull_requests[0].number }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
@@ -389,7 +389,7 @@ jobs:
       - name: Rerun Bot Approval Required
         uses: ./.github/actions/rerun-workflow
         with:
-          PR_ID: ${{ github.event.workflow_run.pull_requests[0].number }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}

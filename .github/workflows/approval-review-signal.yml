@@ -1,14 +1,14 @@
 name: Approval Review Signal
-run-name: Approval Review Signal / ${{ github.event.review.state }} / ${{ github.event.review.user.login }} / PR-${{ github.event.pull_request.number }}
 
 on:
   pull_request_review:
-    types: [submitted]
+    types: [submitted, dismissed]
 
 permissions: {}
 
 jobs:
   signal:
+    if: ${{ github.event.action == 'dismissed' || github.event.review.state == 'approved' }}
     runs-on:
       group: APPROVAL
     steps:
