@@ -64,7 +64,7 @@ void BaddbmmGradKernel(const Context& dev_ctx,
                        DenseTensor* input_grad,
                        DenseTensor* x_grad,
                        DenseTensor* y_grad) {
-  using MPType = typename MPTypeTrait<T>::Type;
+  using MPType = typename dtype::MPTypeTrait<T>::Type;
   const auto compute_dtype = CppTypeToDataType<T>::Type();
   DenseTensor cast_out_grad;
   const DenseTensor* compute_out_grad = &out_grad;
