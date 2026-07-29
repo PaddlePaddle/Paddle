@@ -506,8 +506,10 @@ void SwapDim1And2InNarrow(const GPUContext& d,
   // Here finally get proper long X short tile size.
   Dim3<IndexType> input_dims_aligned = {
       input_dims[0],
-      (input_dims[1] + select_tile_size_i - 1) / select_tile_size_i,
-      (input_dims[2] + select_tile_size_j - 1) / select_tile_size_j,
+      input_dims[1] / select_tile_size_i +
+          static_cast<IndexType>(input_dims[1] % select_tile_size_i != 0),
+      input_dims[2] / select_tile_size_j +
+          static_cast<IndexType>(input_dims[2] % select_tile_size_j != 0),
   };
 
   IndexType total_tiles_count = input_dims_aligned[0];
@@ -723,7 +725,7 @@ struct TransposeSimple {
                   const std::vector<int32_t>& perm,
                   DenseTensor* out,
                   const int64_t numel) {
-    if (numel >= std::numeric_limits<int32_t>::max()) {
+    if (numel >= std::numeric_limits<int32_t>::max() / 2) {
       return RunImpl<int64_t>(dev_ctx, in, perm, out);
     } else {
       return RunImpl<int32_t>(dev_ctx, in, perm, out);
@@ -1103,7 +1105,9 @@ struct TransposeDataWriter {
         for (int i = 0; i < ReadSize; ++i) {
           int tile_tail = tile_y * ReadSize + i;
           int major_share_idx = share_tile + tile_tail;
-          IndexT row_in_mat = (blockIdx.x * kColTile + tile_tail) * col_stride;
+          IndexT row_in_mat =
+              (static_cast<IndexT>(blockIdx.x) * kColTile + tile_tail) *
+              col_stride;
 #pragma unroll
           for (int j = 0; j < WriteSize; ++j) {
             tmp_data[i].val[j] = s_data[j * kColStride + major_share_idx];
@@ -1129,7 +1133,8 @@ struct TransposeDataWriter<T, IndexT, ReadSize, 1> {
       const int cols_range = (blockIdx.x < round_tile_cols)
                                  ? kTileSize
                                  : (cols - round_tile_cols * kTileSize);
-      const IndexT row_tile = blockIdx.x * kTileSize * ReadSize;
+      const IndexT row_tile =
+          static_cast<IndexT>(blockIdx.x) * kTileSize * ReadSize;
       const IndexT write_offset = blockIdx.z * chs_stride + col_in_mat;
       const int shared_tile = threadIdx.x * kShareCol * ReadSize;
 #pragma unroll
@@ -1161,7 +1166,8 @@ struct TransposeDataReader {
         reinterpret_cast<const VecT* __restrict__>(src);
     VecT* v_shared = reinterpret_cast<VecT*>(s_shared);
 
-    const IndexT col_in_mat = blockIdx.x * kTileSize + threadIdx.x;
+    const IndexT col_in_mat =
+        static_cast<IndexT>(blockIdx.x) * kTileSize + threadIdx.x;
     if (col_in_mat < cols_thresh) {
       const int row_range = (blockIdx.y < round_tile_rows)
                                 ? RowTile

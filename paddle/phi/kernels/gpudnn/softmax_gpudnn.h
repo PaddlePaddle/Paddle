@@ -1640,7 +1640,7 @@ __device__ __forceinline__ void WriteResultsVectorized(
   using LoadT = AlignedVector<T, VecSize>;
   using StoreT = AlignedVector<T, VecSize>;
 
-  int offset = threadIdx.x;
+  IndexType offset = threadIdx.x;
 
   // If the data is unaligned, each thread processes a single value and
   // proceeds, ensuring that subsequent reads and writes become aligned.
@@ -1770,7 +1770,7 @@ template <int VecSize,
           template <typename, typename, typename>
           class Function,
           typename IndexType>
-__device__ __forceinline__ void WriteResults(int classes,
+__device__ __forceinline__ void WriteResults(IndexType classes,
                                              T* gradInput,
                                              const T* output,
                                              const T* gradOut,
@@ -2583,7 +2583,9 @@ void dispatch_host_softmax_forward(const GPUContext& dev_ctx,
       (!(reinterpret_cast<uintptr_t>(out_data) % SOFTMAX_ALIGN_BYTES));
   can_use_smem &= !(dim_size % VecSize);
 
-  int32_t potential_reg_cnt = (dim_size + block.x - 1) / block.x;
+  int64_t potential_reg_cnt =
+      static_cast<int64_t>(dim_size) / block.x +
+      static_cast<int64_t>(static_cast<int64_t>(dim_size) % block.x != 0);
   if (potential_reg_cnt < 10) {
     switch (potential_reg_cnt) {
 #define LAUNCH_SOFTMAX_FORWARD_REG(kRegCnt)                       \
