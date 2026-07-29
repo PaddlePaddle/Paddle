@@ -240,6 +240,51 @@ def lp_pool_layer_decorator(
     return wrapper
 
 
+def prelu_decorator(
+    func: Callable[_InputT, _RetT],
+) -> Callable[_InputT, _RetT]:
+    """Dispatch between the Paddle and PyTorch ``PReLU`` signatures.
+
+    Paddle: ``PReLU(num_parameters, init, weight_attr, data_format, name, device, dtype)``
+    PyTorch: ``PReLU(num_parameters, init, device, dtype)``
+    """
+
+    @functools.wraps(func)
+    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+        if 4 <= len(args) <= 5:
+            third_arg = args[3]
+            device_types = {
+                "cpu",
+                "cuda",
+                "gpu",
+                "dcu",
+                "xpu",
+                "ipu",
+                *(paddle.device.get_all_custom_device_type() or ()),
+            }
+            is_device_string = (
+                isinstance(third_arg, str)
+                and third_arg.lower().split(":", 1)[0] in device_types
+            )
+            is_torch_call = (
+                isinstance(third_arg, paddle.base.libpaddle.Place)
+                or is_device_string
+                or (len(args) == 5 and not isinstance(args[4], str))
+            )
+            if is_torch_call:
+                for name, value in zip(("device", "dtype"), args[3:]):
+                    if name in kwargs:
+                        raise TypeError(
+                            f"__init__() got multiple values for argument '{name}'"
+                        )
+                    kwargs[name] = value
+                args = args[:3]
+        return func(*args, **kwargs)
+
+    wrapper.__signature__ = inspect.signature(func)
+    return wrapper
+
+
 def lp_pool_function_decorator(
     func: Callable[_InputT, _RetT],
 ) -> Callable[_InputT, _RetT]:

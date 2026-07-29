@@ -17,8 +17,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
+from typing_extensions import overload
+
 from paddle.framework import get_default_dtype
-from paddle.utils.decorator_utils import param_one_alias
+from paddle.utils.decorator_utils import param_one_alias, prelu_decorator
 
 from .. import functional as F
 from ..initializer import Constant
@@ -516,6 +518,12 @@ class PReLU(Layer):
     """
     PReLU Activation. The calculation formula is follows:
 
+    This API has two signatures:
+
+    1. ``PReLU(num_parameters=1, init=0.25, weight_attr=None, data_format="NCHW", name=None, device=None, dtype=None)`` (Paddle-style).
+
+    2. ``PReLU(num_parameters=1, init=0.25, device=None, dtype=None)`` (PyTorch-style).
+
     If approximate calculation is used:
 
     .. math::
@@ -576,6 +584,28 @@ class PReLU(Layer):
                [ 6.        ,  7.        ,  8.        ,  9.        ]]]])
     """
 
+    @overload
+    def __init__(
+        self,
+        num_parameters: int = 1,
+        init: float = 0.25,
+        weight_attr: ParamAttrLike | None = None,
+        data_format: DataLayoutND = "NCHW",
+        name: str | None = None,
+        device: PlaceLike | None = None,
+        dtype: DTypeLike | None = None,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        num_parameters: int = 1,
+        init: float = 0.25,
+        device: PlaceLike | None = None,
+        dtype: DTypeLike | None = None,
+    ) -> None: ...
+
+    @prelu_decorator
     def __init__(
         self,
         num_parameters: int = 1,
@@ -586,9 +616,6 @@ class PReLU(Layer):
         device: PlaceLike | None = None,
         dtype: DTypeLike | None = None,
     ) -> None:
-        if not isinstance(data_format, str):
-            device, dtype = weight_attr, data_format
-            weight_attr, data_format = None, "NCHW"
         super().__init__()
         self._num_parameters = num_parameters
         self._init = init

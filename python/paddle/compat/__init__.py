@@ -88,6 +88,15 @@ def __getattr__(name):
 
 
 def _tensor_numel(input: Tensor) -> int:
+    """
+    Returns the total number of elements in the tensor.
+
+    Args:
+        input (Tensor): The input tensor.
+
+    Returns:
+        int: The number of elements in ``input``.
+    """
     return int(input.size)
 
 
@@ -97,6 +106,22 @@ def _tensor_type(
     non_blocking: bool = False,
     **kwargs: Any,
 ) -> str | Tensor:
+    """
+    Returns the tensor type when ``dtype`` is not specified, otherwise casts
+    the tensor to the requested type.
+
+    Args:
+        input (Tensor): The input tensor.
+        dtype (DTypeLike|str|type|None, optional): The target tensor type or
+            data type. When it is ``None``, returns a PyTorch-style tensor type
+            string. Default: ``None``.
+        non_blocking (bool, optional): Whether the conversion may occur
+            asynchronously. Default: ``False``.
+
+    Returns:
+        str|Tensor: A tensor type string when ``dtype`` is ``None``; otherwise,
+            a tensor with the requested type.
+    """
     if "async" in kwargs:
         non_blocking = kwargs.pop("async")
     if kwargs:
@@ -144,14 +169,24 @@ def _tensor_type(
     )
 
 
+@property
 def _tensor_is_sparse(input: Tensor) -> bool:
+    """
+    Whether the tensor uses the sparse COO layout.
+
+    Args:
+        input (Tensor): The input tensor.
+
+    Returns:
+        bool: ``True`` for a sparse COO tensor, otherwise ``False``.
+    """
     return input.is_sparse_coo()
 
 
 _TENSOR_API_OVERRIDES = {
-    'numel': (_tensor_numel, False),
-    'type': (_tensor_type, False),
-    'is_sparse': (_tensor_is_sparse, True),
+    'numel': _tensor_numel,
+    'type': _tensor_type,
+    'is_sparse': _tensor_is_sparse,
 }
 
 
