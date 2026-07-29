@@ -1009,8 +1009,9 @@ __global__ void VectorizedPermuteKernel(PermuteParams<IndexT, Rank> params,
       reinterpret_cast<const VecT* __restrict__>(src_data);
   VecT* vec_dst = reinterpret_cast<VecT*>(dst_data);
 
-  IndexT tid = blockIdx.x * blockDim.x + threadIdx.x;
-  for (IndexT i = tid; i < count; i += blockDim.x * gridDim.x) {
+  IndexT tid = static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
+  IndexT stride = static_cast<IndexT>(blockDim.x) * gridDim.x;
+  for (IndexT i = tid; i < count; i += stride) {
     params.dst_index_helper.OffsetToIndex(i, dst_index);
 
 #pragma unroll
@@ -1036,8 +1037,9 @@ __global__ void GeneralPermuteKernel(PermuteParams<IndexT, Rank> params,
   IndexT dst_index[VecSize][Rank];
 
   // Vectorized load data.
-  IndexT tid = blockIdx.x * blockDim.x + threadIdx.x;
-  for (IndexT idx = tid; idx < main_cnt; idx += blockDim.x * gridDim.x) {
+  IndexT tid = static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
+  IndexT stride = static_cast<IndexT>(blockDim.x) * gridDim.x;
+  for (IndexT idx = tid; idx < main_cnt; idx += stride) {
     VecT vec_data;
     IndexT vec_idx = idx * VecSize;
 
@@ -1436,7 +1438,7 @@ inline void PermuteAndTranspose(
                                        phi::gpuMemcpyDeviceToDevice,
                                        dev_ctx.stream());
   } else {
-    if (count < std::numeric_limits<uint32_t>::max()) {
+    if (count < std::numeric_limits<uint32_t>::max() / 2) {
       PermuteDispatch<T, uint32_t>(dev_ctx,
                                    static_cast<uint32_t>(count),
                                    &classifier,
