@@ -125,6 +125,8 @@ class TestDeviceAPIs(unittest.TestCase):
         # Test with default device
         props = paddle.device.get_device_properties()
         self.assertIsNotNone(props)
+        self.assertIsInstance(props.shared_memory_per_block_optin, int)
+        self.assertGreater(props.shared_memory_per_block_optin, 0)
 
         # Test with string input
         props_str = paddle.device.get_device_properties('gpu:0')
