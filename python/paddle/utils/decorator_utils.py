@@ -514,109 +514,58 @@ def view_decorator(
     return wrapper
 
 
-class ForbidKeywordsDecorator(DecoratorBase):
-    """A decorator that hints users to use the correct `compat` functions, when erroneous keyword arguments are detected"""
+def forbid_keywords(
+    illegal_keys: set[str],
+    func_name: str,
+    compat_func: str,
+) -> Callable[[Callable[_InputT, _RetT]], Callable[_InputT, _RetT]]:
+    """Reject incompatible keywords and point users to the compat API."""
 
-    def __init__(
-        self,
-        illegal_keys: set[str],
-        func_name: str,
-        correct_name: str,
-        url_suffix: str = "",
-    ) -> None:
-        """
-        Args:
-            illegal_keys (set[str]): the keywords to reject
-            func_name (str): the name of the function being decorated (should incorporate module name, like paddle.nn.Unfold)
-            correct_name (str): the user hint that points to the correct function
-            url_suffix (str, optional): Only specified in non paddle.compat functions. If specified, the function being decorated
-                will emit a warning upon the first call, warning the users about the API difference and points to Docs.
-                Please correctly specifying the `url_suffix`, this should be the suffix of the api-difference doc. For example:
-
-                (prefix omitted)/docs/zh/develop/guides/model_convert/convert_from_pytorch/api_difference/invok_only_diff/**torch.nn.Unfold**.html
-
-                In this example, the correct `url_suffix` should be 'torch/torch.nn.Unfold'. Defaults to an empty str.
-        """
-        super().__init__()
-        self.illegal_keys = illegal_keys
-        self.func_name = func_name
-        self.correct_name = correct_name
-        self.warn_msg = None
-        if url_suffix:
-            self.warn_msg = (
-                f"The API '{func_name}' may behave differently from its PyTorch counterpart. "
-                "Refer to the compatibility guide for details:\n"
-                "https://www.paddlepaddle.org.cn/documentation/docs/en/develop/guides/model_convert/"
-                f"convert_from_pytorch/api_difference/invok_only_diff/{url_suffix}.html"
-            )
-
-    def process(
-        self, args: tuple[Any, ...], kwargs: dict[str, Any]
-    ) -> tuple[tuple[Any, ...], dict[str, Any]]:
-        found_keys = [key for key in self.illegal_keys if key in kwargs]
-
-        if found_keys:
-            found_keys.sort()
-            keys_str = ", ".join(f"'{key}'" for key in found_keys)
-            plural = "s" if len(found_keys) > 1 else ""
-
-            if (
-                self.warn_msg is not None
-            ):  # warn the users only when the API is mis-used
-                warnings.warn(
-                    self.warn_msg,
-                    category=UserWarning,
-                    stacklevel=3,
+    def decorator(
+        func: Callable[_InputT, _RetT],
+    ) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            found_keys = sorted(illegal_keys & kwargs.keys())
+            if found_keys:
+                keys_str = ", ".join(f"'{key}'" for key in found_keys)
+                plural = "s" if len(found_keys) > 1 else ""
+                raise TypeError(
+                    f"{func_name}() received unexpected keyword argument{plural} {keys_str}. "
+                    f"\nPlease use {compat_func}() instead."
                 )
-                self.warn_msg = None
-            raise TypeError(
-                f"{self.func_name}() received unexpected keyword argument{plural} {keys_str}. "
-                f"\nDid you mean to use {self.correct_name}() instead?"
-            )
-        return args, kwargs
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
 
 
-class ForbidKeywordsIgnoreOneParamDecorator(ForbidKeywordsDecorator):
-    """A decorator that hints users to use the correct `compat` functions, when erroneous keyword arguments are detected and one argument is ignored"""
+def ignore_one_param(
+    param_name: str,
+    param_index: int,
+    param_type: type[Any],
+) -> Callable[[Callable[_InputT, _RetT]], Callable[_InputT, _RetT]]:
+    """Ignore one parameter by name or by its positional index and type."""
 
-    def __init__(
-        self,
-        illegal_keys: set[str],
-        ignore_param: tuple[str, int, type[Any]],
-        func_name: str,
-        correct_name: str,
-        url_suffix: str = "",
-    ) -> None:
-        """
-        Args:
-            illegal_keys (set[str]): the keywords to reject
-            ignore_param: (tuple[str, int, type[Any]]): A tuple of (parameter_name, index, type) to ignore by name, position and type
-            func_name (str): the name of the function being decorated (should incorporate module name, like paddle.nn.Unfold)
-            correct_name (str): the user hint that points to the correct function
-            url_suffix (str, optional): Only specified in non paddle.compat functions. If specified, the function being decorated
-                will emit a warning upon the first call, warning the users about the API difference and points to Docs.
-                Please correctly specifying the `url_suffix`, this should be the suffix of the api-difference doc. For example:
-
-                (prefix omitted)/docs/zh/develop/guides/model_convert/convert_from_pytorch/api_difference/invok_only_diff/**torch.nn.Unfold**.html
-
-                In this example, the correct `url_suffix` should be 'torch/torch.nn.Unfold'. Defaults to an empty str.
-        """
-        super().__init__(illegal_keys, func_name, correct_name, url_suffix)
-        self.ignore_param = ignore_param
-
-    def process(
-        self, args: tuple[Any, ...], kwargs: dict[str, Any]
-    ) -> tuple[tuple[Any, ...], dict[str, Any]]:
-        args, kwargs = super().process(args, kwargs)
-
-        if self.ignore_param:
-            name, index, typ = self.ignore_param
-            if index < len(args) and isinstance(args[index], typ):
-                args = args[:index] + args[index + 1 :]
+    def decorator(
+        func: Callable[_InputT, _RetT],
+    ) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if param_index < len(args) and isinstance(
+                args[param_index], param_type
+            ):
+                args = args[:param_index] + args[param_index + 1 :]
             else:
-                kwargs.pop(name, None)
+                kwargs.pop(param_name, None)
+            return func(*args, **kwargs)
 
-        return args, kwargs
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
 
 
 def reshape_decorator(

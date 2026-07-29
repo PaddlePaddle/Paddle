@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING
 
 from paddle import _C_ops
 from paddle.framework import core, in_dynamic_or_pir_mode
-from paddle.utils.decorator_utils import ForbidKeywordsIgnoreOneParamDecorator
+from paddle.utils.decorator_utils import ignore_one_param
 
 from ..base.framework import convert_nptype_to_datatype_or_vartype
 
@@ -27,13 +27,7 @@ if TYPE_CHECKING:
     from paddle._typing import DTypeLike
 
 
-@ForbidKeywordsIgnoreOneParamDecorator(
-    illegal_keys={"x", "axis", "name"},
-    ignore_param=('_stacklevel', 2, int),
-    func_name="paddle.compat.nn.functional.softmax",
-    correct_name="paddle.nn.functional.softmax",
-    url_suffix="torch.nn.functional.softmax",
-)
+@ignore_one_param("_stacklevel", 2, int)
 def softmax(
     input: Tensor,
     dim: int | None = None,
@@ -180,13 +174,7 @@ def softmax(
         return _C_ops.softmax(outs_cast, dim, out=out)
 
 
-@ForbidKeywordsIgnoreOneParamDecorator(
-    illegal_keys={"x", "axis", "name"},
-    ignore_param=('_stacklevel', 2, int),
-    func_name="paddle.compat.nn.functional.log_softmax",
-    correct_name="paddle.nn.functional.log_softmax",
-    url_suffix="torch.nn.functional.log_softmax",
-)
+@ignore_one_param("_stacklevel", 2, int)
 def log_softmax(
     input: Tensor,
     dim: int | None = None,

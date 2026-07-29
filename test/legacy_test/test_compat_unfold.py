@@ -75,16 +75,14 @@ class TestCompatUnfold(unittest.TestCase):
         """Test whether there will be correct exception when users pass paddle.split kwargs in paddle.compat.split, vice versa."""
         x = paddle.randn([3, 9, 5])
 
-        msg_gt_1 = "paddle.nn.Unfold() received unexpected keyword arguments 'dilation', 'stride'. \nDid you mean to use paddle.compat.nn.Unfold() instead?"
-        msg_gt_2 = "paddle.compat.nn.Unfold() received unexpected keyword argument 'paddings'. \nDid you mean to use paddle.nn.Unfold() instead?"
+        msg_gt_1 = "paddle.nn.Unfold() received unexpected keyword arguments 'dilation', 'stride'. \nPlease use paddle.compat.nn.Unfold() instead."
 
         with self.assertRaises(TypeError) as cm:
             unfold = paddle.nn.Unfold([3, 3], dilation=[2, 2], stride=[1, 1])
         self.assertEqual(str(cm.exception), msg_gt_1)
 
-        with self.assertRaises(TypeError) as cm:
+        with self.assertRaises(TypeError):
             unfold = paddle.compat.nn.Unfold([3, 3], paddings=[2, 1])
-        self.assertEqual(str(cm.exception), msg_gt_2)
 
 
 class TestCompatFunctionalUnfold(unittest.TestCase):
@@ -168,11 +166,8 @@ class TestCompatFunctionalUnfold(unittest.TestCase):
         """Test whether there will be correct exception when users pass incorrect kwargs."""
         x = paddle.randn([3, 9, 5, 5])
 
-        msg_gt_wrong_key = "paddle.compat.nn.functional.unfold() received unexpected keyword argument 'paddings'. \nDid you mean to use paddle.nn.functional.unfold() instead?"
-
-        with self.assertRaises(TypeError) as cm:
+        with self.assertRaises(TypeError):
             F_compat.unfold(x, [3, 3], paddings=[2, 1])
-        self.assertEqual(str(cm.exception), msg_gt_wrong_key)
 
         paddle.disable_static()
 

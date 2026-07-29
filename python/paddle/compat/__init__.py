@@ -27,7 +27,7 @@ from paddle.base.framework import Variable
 from paddle.framework import (
     in_dynamic_mode,
 )
-from paddle.utils.decorator_utils import ForbidKeywordsDecorator
+from paddle.utils.decorator_utils import param_one_alias
 
 from . import nn as nn
 from .proxy import (  # noqa: F401
@@ -66,11 +66,6 @@ def __getattr__(name):
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
-@ForbidKeywordsDecorator(
-    illegal_keys={"x", "y"},
-    func_name="paddle.compat.allclose",
-    correct_name="paddle.allclose",
-)
 def allclose(
     input: Tensor,
     other: Tensor,
@@ -119,11 +114,6 @@ def allclose(
     ).item()
 
 
-@ForbidKeywordsDecorator(
-    illegal_keys={"x", "y"},
-    func_name="paddle.compat.equal",
-    correct_name="paddle.equal",
-)
 def equal(
     input: Tensor,
     other: Tensor,
@@ -170,11 +160,6 @@ class MedianRetType(NamedTuple):
     indices: Tensor
 
 
-@ForbidKeywordsDecorator(
-    illegal_keys={"x", "axis"},
-    func_name="paddle.compat.median",
-    correct_name="paddle.median",
-)
 def median(
     input: Tensor,
     dim: int | None = None,
@@ -237,11 +222,6 @@ def median(
         return MedianRetType(values=values, indices=indices)
 
 
-@ForbidKeywordsDecorator(
-    illegal_keys={"x", "axis"},
-    func_name="paddle.compat.nanmedian",
-    correct_name="paddle.nanmedian",
-)
 def nanmedian(
     input: Tensor,
     dim: int | None = None,
@@ -429,11 +409,6 @@ def _min_max_allow_cpu_composite(input: Tensor):
         )
 
 
-@ForbidKeywordsDecorator(
-    illegal_keys={"x", "axis"},
-    func_name="paddle.compat.min",
-    correct_name="paddle.min",
-)
 def min(
     input: Tensor,
     *args: Any,
@@ -593,11 +568,6 @@ def min(
     return ret
 
 
-@ForbidKeywordsDecorator(
-    illegal_keys={"x", "axis"},
-    func_name="paddle.compat.max",
-    correct_name="paddle.max",
-)
 def max(
     input: Tensor,
     *args: Any,
@@ -812,11 +782,6 @@ class SortRetType(NamedTuple):
     indices: Tensor
 
 
-@ForbidKeywordsDecorator(
-    illegal_keys={'x', 'axis'},
-    func_name="paddle.compat.sort",
-    correct_name='paddle.sort',
-)
 def sort(
     input: Tensor,
     dim: int = -1,
@@ -928,11 +893,6 @@ def unique(
 ) -> Tensor: ...
 
 
-@ForbidKeywordsDecorator(
-    illegal_keys={"x", "axis"},
-    func_name="paddle.compat.unique",
-    correct_name="paddle.unique",
-)
 def unique(
     input,
     sorted=True,
@@ -997,11 +957,7 @@ def unique(
     )
 
 
-@ForbidKeywordsDecorator(
-    illegal_keys={"x", "num_or_sections", "axis", "name"},
-    func_name="paddle.compat.split",
-    correct_name="paddle.split",
-)
+@param_one_alias(["split_size_or_sections", "split_size"])
 def split(
     tensor: Tensor, split_size_or_sections: int | Sequence[int], dim: int = 0
 ) -> tuple[Tensor, ...]:
@@ -1016,6 +972,7 @@ def split(
             If split_size_or_sections is a list, then tensor will be split into len(split_size_or_sections) chunks with sizes
             in dim according to split_size_or_sections. Negative inputs are not allowed. For example: for a dim with 9 channels,
             [2, 3, -1] will not be interpreted as [2, 3, 4], but will be rejected and an exception will be thrown.
+            alias: split_size
         dim (int|Tensor, optional): The dim along which to split, it can be a integer or a ``0-D Tensor``
             with shape [] and data type  ``int32`` or ``int64``.
             If :math::`dim < 0`, the dim to split along is :math:`rank(x) + dim`. Default is 0.
