@@ -14,6 +14,7 @@
 
 # ruff: noqa: I001
 
+import os
 import unittest
 from pathlib import Path
 
@@ -25,7 +26,9 @@ import torch
 from paddle.utils.cpp_extension import load
 
 
-paddle_root = Path(__file__).resolve().parents[2]
+paddle_root = Path(
+    os.environ.get('PADDLE_SOURCE_DIR', Path(__file__).resolve().parents[2])
+)
 extra_include_paths = [
     str(paddle_root),
     str(paddle_root / 'paddle/phi/api/include/compat'),
@@ -61,6 +64,10 @@ class TestScalarTypeCaster(unittest.TestCase):
             torch.complex128: 10,
             torch.bool: 11,
             torch.bfloat16: 15,
+            torch.uint16: 27,
+            torch.uint32: 28,
+            torch.float8_e4m3fn: 24,
+            torch.float8_e5m2: 23,
         }
         for dtype, expected_value in expected_values.items():
             self.assertIs(
