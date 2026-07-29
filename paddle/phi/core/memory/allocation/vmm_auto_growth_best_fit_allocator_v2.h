@@ -121,6 +121,12 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
 
   struct CompactState;
   struct CompactContext;
+  struct PartialReleasePlan {
+    VMMDevicePtr allocation_base{0};
+    UnderlyingRanges ranges;
+  };
+  using PartialReleasePlans = std::vector<PartialReleasePlan>;
+
   struct ReleaseStats {
     size_t backing_count{0};
     size_t backing_bytes{0};
@@ -167,6 +173,7 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
     List::const_iterator begin() const { return allocations_.begin(); }
     List::const_iterator end() const { return allocations_.end(); }
     iterator FindByAddress(VMMDevicePtr ptr);
+    DecoratedAllocationPtr Take(iterator it);
     iterator Erase(iterator it);
     UnderlyingRanges CollectRangesByAddress() const;
 
@@ -199,6 +206,8 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
       uint64_t* released,
       bool range_verified_free = false,
       BlockListIt* block_search_begin = nullptr);
+  uint64_t ReleasePartialBacking(const PartialReleasePlans& plans,
+                                 BlockListIt* block_search_begin);
   bool CanIndexFreeBlock(const BlockV2& block) const;
   void InsertFreeBlock(BlockListIt it);
   void EraseFreeBlock(BlockListIt it);
@@ -211,8 +220,10 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
                       const char* reason) const;
   void TryMerge(BlockListIt it);
   BlockListIt TryMergeUnmappedFree(BlockListIt it);
-  uint64_t FreeIdleChunks(const UnderlyingRanges& entirely_free_ranges);
+  uint64_t FreeIdleChunks(const UnderlyingRanges& entirely_free_ranges,
+                          const PartialReleasePlans& partial_release_plans);
   UnderlyingRanges CollectEntirelyFreeUnderlyingRanges() const;
+  PartialReleasePlans CollectPartialReleasePlans() const;
   ReleaseStats CollectReleaseStats() const;
   void LogReleaseStats(
       const ReleaseStats& before,

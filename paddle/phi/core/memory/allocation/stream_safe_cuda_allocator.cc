@@ -495,7 +495,7 @@ phi::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
             try {
               underlying_allocation = underlying_allocator_->Allocate(size);
               if (remapped_bytes > 0) {
-                LOG(INFO)
+                VLOG(0)
                     << "Recovered the " << string::HumanReadableSize(size)
                     << " allocation on GPU " << static_cast<int>(place_.device)
                     << " after memory defragmentation; the remap phase moved "

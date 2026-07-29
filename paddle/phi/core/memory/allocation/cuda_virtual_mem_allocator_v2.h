@@ -16,6 +16,7 @@
 
 #if defined(PADDLE_WITH_CUDA)
 
+#include <functional>
 #include <unordered_map>
 #include <vector>
 
@@ -92,6 +93,13 @@ class CUDAVirtualMemAllocatorV2 : public Allocator {
     uint64_t release_us{0};
     uint64_t metadata_us{0};
   };
+
+  struct PartialReleaseResult {
+    std::vector<std::pair<VMMDevicePtr, size_t>> released_ranges;
+    uint64_t released_bytes{0};
+  };
+  using CommitRemainingAllocationsFn =
+      std::function<void(std::vector<DecoratedAllocationPtr>*)>;
 
   struct AllocationLayoutRegistry {
     void Add(Allocation* allocation, void* ptr, const HandleLayout& layout);
@@ -208,6 +216,12 @@ class CUDAVirtualMemAllocatorV2 : public Allocator {
       const std::vector<std::pair<VMMDevicePtr, size_t>>& ranges) const;
   bool IsRangeUnmapped(VMMDevicePtr ptr, size_t size) const;
   bool IsRangeReleasable(VMMDevicePtr ptr, size_t size) const;
+  // Releases selected handle-aligned ranges from one tracked allocation and
+  // transfers the remaining handle runs to new tracked allocations.
+  PartialReleaseResult ReleaseFreeHandleRanges(
+      DecoratedAllocationPtr* allocation,
+      const std::vector<std::pair<VMMDevicePtr, size_t>>& ranges,
+      const CommitRemainingAllocationsFn& commit_remaining_allocations);
   // Metadata-only lookup. This does not pin backing or create export FDs.
   bool CollectIPCParts(VMMDevicePtr ptr,
                        size_t size,
@@ -277,8 +291,10 @@ class CUDAVirtualMemAllocatorV2 : public Allocator {
   void RegisterHandleLayout(Allocation* allocation,
                             void* ptr,
                             const HandleLayout& layout);
+  DecoratedAllocationPtr AdoptTrackedAllocation(Allocation* allocation);
   HandleLayout RequireHandleLayout(Allocation* allocation) const;
   void UnregisterHandleLayout(Allocation* allocation, void* ptr);
+  bool ReleaseMappedHandles(const HandleLayout& layout);
 
   GPUPlace place_;
   size_t handle_size_;
