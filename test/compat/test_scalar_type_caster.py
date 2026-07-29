@@ -12,52 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# ruff: noqa: I001
-
-import os
-import sys
-import tempfile
 import unittest
-from pathlib import Path
 
 import paddle
 
 paddle.enable_compat()
 
+import scalar_type_compat_test
 import torch
-from paddle.utils.cpp_extension import load
-
-
-paddle_root = Path(
-    os.environ.get('PADDLE_SOURCE_DIR', Path(__file__).resolve().parents[2])
-)
-extra_include_paths = [
-    str(paddle_root),
-    str(paddle_root / 'paddle/phi/api/include/compat'),
-    str(paddle_root / 'paddle/phi/api/include/compat/torch/csrc/api/include'),
-]
-paddle_binary_root = Path(
-    os.environ.get(
-        'PADDLE_BINARY_DIR',
-        Path(paddle.base.libpaddle.__file__).resolve().parents[3],
-    )
-)
-build_pybind_include = (
-    paddle_binary_root / 'third_party/pybind/src/extern_pybind/include'
-)
-if build_pybind_include.is_dir():
-    extra_include_paths.insert(1, str(build_pybind_include))
-
-scalar_type_extension = load(
-    name='scalar_type_compat_test',
-    sources=[str(Path(__file__).with_name('scalar_type_extension.cc'))],
-    extra_cxx_cflags=[
-        '/std:c++17' if sys.platform == 'win32' else '-std=c++17'
-    ],
-    extra_include_paths=extra_include_paths,
-    build_directory=tempfile.mkdtemp(prefix='scalar_type_compat_test_'),
-    verbose=True,
-)
 
 
 class TestScalarTypeCaster(unittest.TestCase):
@@ -82,10 +44,10 @@ class TestScalarTypeCaster(unittest.TestCase):
         }
         for dtype, expected_value in expected_values.items():
             self.assertIs(
-                scalar_type_extension.scalar_type_round_trip(dtype), dtype
+                scalar_type_compat_test.scalar_type_round_trip(dtype), dtype
             )
             self.assertEqual(
-                scalar_type_extension.scalar_type_value(dtype),
+                scalar_type_compat_test.scalar_type_value(dtype),
                 expected_value,
             )
 
