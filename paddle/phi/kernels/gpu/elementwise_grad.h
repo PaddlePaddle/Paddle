@@ -211,6 +211,24 @@ void DefaultMixedPrecisionAddGrad(const GPUContext &dev_ctx,
   using T_dout = float;
   using T_dx = float;
 
+  if (dout.numel() == 0) {
+    if (dx) {
+      if (dx->numel() == 0) {
+        dev_ctx.template Alloc<T_dx>(dx);
+      } else {
+        Full<T_dx, GPUContext>(dev_ctx, dx->dims(), 0, dx);
+      }
+    }
+    if (dy) {
+      if (dy->numel() == 0) {
+        dev_ctx.template Alloc<T_dy>(dy);
+      } else {
+        Full<T_dy, GPUContext>(dev_ctx, dy->dims(), 0, dy);
+      }
+    }
+    return;
+  }
+
   auto *dout_data = dout.data<T_dout>();
 
   // dx
@@ -240,7 +258,7 @@ void DefaultMixedPrecisionAddGrad(const GPUContext &dev_ctx,
       CastKernel<T_dout>(dev_ctx, dout, dy->dtype(), dy);
     } else {
       DenseTensor dy_fp32;
-      dy_fp32.Resize(dout.dims());
+      dy_fp32.Resize(dy->dims());
       dev_ctx.template Alloc<float>(&dy_fp32);
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(y.dims(), dout.dims(), axis);
