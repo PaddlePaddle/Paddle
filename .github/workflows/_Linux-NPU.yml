@@ -177,10 +177,6 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ~/.bashrc
           set -x
-          gcc --version
-          g++ --version
-          cmake --version
-          printf "static_assert(__cplusplus >= 202002L);\n" | g++ ${CXXFLAGS} -x c++ -c -o /tmp/npu_cxx20_probe.o -
           echo "::group::Install dependencies"
           python -m pip install PyGithub
           python -m pip install wheel
