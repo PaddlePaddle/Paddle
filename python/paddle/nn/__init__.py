@@ -24,7 +24,7 @@ from . import (  # noqa: F401
 from .clip import ClipGradByGlobalNorm, ClipGradByNorm, ClipGradByValue
 from .decode import BeamSearchDecoder, dynamic_decode
 
-# TODO: remove loss, keep it for too many used in unittests
+# TODO: remove loss, keep it because it is still widely used in unittests
 from .layer import loss  # noqa: F401
 from .layer.activation import (
     CELU,
