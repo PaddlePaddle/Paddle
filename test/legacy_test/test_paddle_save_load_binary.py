@@ -232,6 +232,39 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             paddle.framework.io._load_dense_tensor(1)
 
+    def test_load_dense_tensor_malformed_lod_raises(self):
+        # Regression test: DeserializeFromStream parses attacker-controlled LoD
+        # headers. A malformed serialized tensor must raise cleanly instead of
+        # overflowing the destination buffer (CWE-787) or attempting a huge
+        # allocation (OOM). See DeserializeFromStream in
+        # paddle/phi/core/framework/dense_tensor_serialize.cc.
+        import struct
+
+        def make_blob(lod_level, levels):
+            # version(uint32)=0, lod_level(uint64), then per level:
+            # size(uint64) + `size` bytes of data.
+            blob = struct.pack('<I', 0)
+            blob += struct.pack('<Q', lod_level)
+            for size, payload in levels:
+                blob += struct.pack('<Q', size)
+                blob += payload
+            return blob
+
+        # (a) LoD level byte size not a multiple of sizeof(size_t): the read
+        #     would write past the (size // 8) * 8 byte allocation.
+        blob_unaligned = make_blob(1, [(9, b'\x41' * 9)])
+        # (b) Absurd lod_level with no payload: must not attempt a huge
+        #     allocation via lod.resize(lod_level).
+        blob_huge_level = make_blob(10**18, [])
+        # (c) Absurd (8-aligned) LoD byte size with no payload: must not attempt
+        #     a huge std::vector<size_t> allocation before reading.
+        blob_huge_size = make_blob(1, [(8 * 10**9, b'')])
+
+        for blob in (blob_unaligned, blob_huge_level, blob_huge_size):
+            tensor = base.core.DenseTensor()
+            with self.assertRaises((ValueError, RuntimeError)):
+                base.core.load_dense_tensor_from_memory(tensor, blob)
+
     def test_save_load_selected_rows(self):
         paddle.enable_static()
         place = get_device_place()
