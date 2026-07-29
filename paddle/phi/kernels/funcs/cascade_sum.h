@@ -655,9 +655,13 @@ void CastPreservingLayout(const Src* x_data,
   }
 }
 
-// Torch-compatible reduce sum. `x_strides` are element strides of the (possibly
-// non-contiguous) input; `reduce_axes` must be non-negative and distinct. The
-// output is assumed contiguous over the kept axes.
+// Torch-compatible reduce sum in T's own precision. `x_strides` are element
+// strides of the (possibly non-contiguous) input; `reduce_axes` must be
+// non-negative and distinct. The output is assumed contiguous over the kept
+// axes.
+//
+// For an fp16/bf16 result the caller must first consult NeedsFloatAccBuffer():
+// torch does not always reduce in the low precision type.
 template <typename T>
 void TorchCompatibleReduceSum(const T* x_data,
                               const std::vector<int64_t>& x_shape,
@@ -665,35 +669,12 @@ void TorchCompatibleReduceSum(const T* x_data,
                               const std::vector<int64_t>& reduce_axes,
                               T* out_data,
                               int64_t out_numel) {
-  auto dims = cascade_sum::MakeReduceDims(
-      x_shape, x_strides, reduce_axes, static_cast<int64_t>(sizeof(T)));
-
-  using Acc = typename cascade_sum::AccTypeOf<T>::type;
-  if constexpr (!std::is_same_v<T, Acc>) {
-    if (cascade_sum::NeedsAccBuffer(dims)) {
-      // `x_data` is already in T here, so this only reproduces torch for a
-      // same-dtype reduction; the dtype promoting case is handled by the
-      // caller.
-      std::vector<Acc> acc_buffer;
-      std::vector<int64_t> acc_strides;
-      CastPreservingLayout<T, Acc>(
-          x_data, x_shape, x_strides, &acc_buffer, &acc_strides);
-
-      std::vector<Acc> acc_out(out_numel);
-      TorchCompatibleReduceSum<Acc>(acc_buffer.data(),
-                                    x_shape,
-                                    acc_strides,
-                                    reduce_axes,
-                                    acc_out.data(),
-                                    out_numel);
-      for (int64_t i = 0; i < out_numel; ++i) {
-        out_data[i] = static_cast<T>(acc_out[i]);
-      }
-      return;
-    }
-  }
-
-  cascade_sum::Run<T>(x_data, out_data, out_numel, dims);
+  cascade_sum::Run<T>(
+      x_data,
+      out_data,
+      out_numel,
+      cascade_sum::MakeReduceDims(
+          x_shape, x_strides, reduce_axes, static_cast<int64_t>(sizeof(T))));
 }
 
 // An empty `dims` or `reduce_all` means every axis is reduced, matching
