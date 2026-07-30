@@ -47,7 +47,8 @@ if _use_four_directions:
 else:
     from .pp_utils import p2p_communication as p2p
 
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 from paddle.distributed import fleet
 from paddle.distributed.fleet.utils.tensor_fusion_helper import (
@@ -798,7 +799,6 @@ class PipelineParallel(MetaParallelBase):
         self._overlap_p2p_comm = self._strategy.hybrid_configs[
             "pp_configs"
         ].overlap_p2p_comm
-
 
         if os.environ.get("BLOCK_ATTEN_RES_COMM_OPT", "0") == "1":
             self._block_atten_res_opt = True
@@ -2276,7 +2276,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         pp_size = self._hcg.get_pipe_parallel_world_size()
         vpp_size = self.num_model_chunks
-        meta = self._block_cache_meta.setdefault(mb_idx, [0] * (pp_size * vpp_size))
+        meta = self._block_cache_meta.setdefault(
+            mb_idx, [0] * (pp_size * vpp_size)
+        )
 
         cached_blocks = self._block_cache.get(mb_idx, [])
         received_blocks = input_tensor_dict.get("blocks", [])
@@ -2294,7 +2296,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         input_tensor_dict["blocks"] = cached_blocks + received_blocks
 
-    def _update_block_cache(self, mb_idx, virtual_pp_rank, output_tensor, merged_len_pre):
+    def _update_block_cache(
+        self, mb_idx, virtual_pp_rank, output_tensor, merged_len_pre
+    ):
         """Update meta, cache blocks, and trim output blocks after forward. Returns meta_to_send."""
         if not (isinstance(output_tensor, dict) and "blocks" in output_tensor):
             return None
@@ -2303,7 +2307,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
         vpp_size = self.num_model_chunks
         my_stage = self._hcg.get_stage_id()
 
-        meta = self._block_cache_meta.setdefault(mb_idx, [0] * (pp_size * vpp_size))
+        meta = self._block_cache_meta.setdefault(
+            mb_idx, [0] * (pp_size * vpp_size)
+        )
 
         total_blocks = output_tensor["blocks"]
         new_blocks = len(total_blocks) - merged_len_pre
@@ -2313,7 +2319,6 @@ class PipelineParallelWithInterleave(PipelineParallel):
         cached_blocks = self._block_cache.setdefault(mb_idx, [])
         cache_len = len(cached_blocks)
         blocks_to_cache = total_blocks[cache_len:]
-
 
         if blocks_to_cache:
             num_produced = new_blocks
@@ -2338,7 +2343,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
             else:
                 output_tensor["blocks"] = []
 
-        return [mb_idx] + meta[:]
+        return [mb_idx, *meta]
 
     def _forward_step_helper(
         self,
@@ -2365,7 +2370,11 @@ class PipelineParallelWithInterleave(PipelineParallel):
         if self._block_atten_res_opt and use_dict:
             self._merge_block_cache(mb_idx, virtual_pp_rank, input_tensor_dict)
 
-        merged_len_pre = len(input_tensor_dict.get("blocks", [])) if (self._block_atten_res_opt and use_dict) else 0
+        merged_len_pre = (
+            len(input_tensor_dict.get("blocks", []))
+            if (self._block_atten_res_opt and use_dict)
+            else 0
+        )
 
         output_tensor, schedule_chunk, loss_fn_node = self._forward_step(
             input_tensor_dict if use_dict else input_tensor,
@@ -2376,8 +2385,11 @@ class PipelineParallelWithInterleave(PipelineParallel):
         )
 
         meta_to_send = (
-            self._update_block_cache(mb_idx, virtual_pp_rank, output_tensor, merged_len_pre)
-            if self._block_atten_res_opt else None
+            self._update_block_cache(
+                mb_idx, virtual_pp_rank, output_tensor, merged_len_pre
+            )
+            if self._block_atten_res_opt
+            else None
         )
 
         output_tensor_tuple = dict_to_tuple_helper(output_tensor)
@@ -2511,7 +2523,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
             self._record_stamp("F", forward_micro_step_id, '"E"', forward=True)
 
             if p2p_async_handle is not None:
-                p2p_async_handle.forward_async_comm(output_tensor, block_cache_meta=meta_to_send)
+                p2p_async_handle.forward_async_comm(
+                    output_tensor, block_cache_meta=meta_to_send
+                )
                 p2p_async_handle.backward_handle_wait()
 
             # backward
@@ -2976,8 +2990,12 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     )
                 # Save block_cache_meta for the VPP rank that will use this input
                 if self._block_atten_res_opt:
-                    self._recv_block_cache_meta_for_vpp[next_virtual_pp_rank] = (
-                        self._p2p_helper.get_recv_block_cache_meta() if recv_prev else None
+                    self._recv_block_cache_meta_for_vpp[
+                        next_virtual_pp_rank
+                    ] = (
+                        self._p2p_helper.get_recv_block_cache_meta()
+                        if recv_prev
+                        else None
                     )
                 # append input_tensor no matter none or not
                 self.input_tensors[next_virtual_pp_rank].append(input_tensor)
@@ -2995,8 +3013,12 @@ class PipelineParallelWithInterleave(PipelineParallel):
                 )
                 # Save block_cache_meta for the VPP rank that will use this input
                 if self._block_atten_res_opt:
-                    self._recv_block_cache_meta_for_vpp[next_virtual_pp_rank] = (
-                        self._p2p_helper.get_recv_block_cache_meta() if recv_prev else None
+                    self._recv_block_cache_meta_for_vpp[
+                        next_virtual_pp_rank
+                    ] = (
+                        self._p2p_helper.get_recv_block_cache_meta()
+                        if recv_prev
+                        else None
                     )
                 if (
                     micro_step == (startup_steps - 1)
@@ -3119,11 +3141,13 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     # Save block_cache_meta for the VPP rank that will use this input
                     if self._block_atten_res_opt:
                         if recv_prev:
-                            self._recv_block_cache_meta_for_vpp[next_forward_virtual_pp_rank] = (
-                                self._p2p_helper.get_recv_block_cache_meta()
-                            )
+                            self._recv_block_cache_meta_for_vpp[
+                                next_forward_virtual_pp_rank
+                            ] = self._p2p_helper.get_recv_block_cache_meta()
                         else:
-                            self._recv_block_cache_meta_for_vpp[next_forward_virtual_pp_rank] = None
+                            self._recv_block_cache_meta_for_vpp[
+                                next_forward_virtual_pp_rank
+                            ] = None
                     _release_output(output_tensor)
                     return (
                         next_forward_virtual_pp_rank,
@@ -3780,7 +3804,9 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
             )
 
         for micro_step in range(num_steps):
-            output_tensor, meta_to_send = self._forward_step_helper(micro_dataset, micro_step)
+            output_tensor, meta_to_send = self._forward_step_helper(
+                micro_dataset, micro_step
+            )
             # determine whether recv forward tensor or not
             next_virtual_pp_rank = self._get_virtual_pp_rank(
                 micro_step + 1, forward=True
@@ -4060,7 +4086,9 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
         # to simplify the code logic of stage 1F1B.
         for micro_step in range(startup_steps):
             self._record_stamp("F", micro_step, '"B"', forward=True)
-            output_tensor, meta_to_send = self._forward_step_helper(micro_dataset, micro_step)
+            output_tensor, meta_to_send = self._forward_step_helper(
+                micro_dataset, micro_step
+            )
             self._record_stamp("F", micro_step, '"E"', forward=True)
             next_forward_virtual_pp_rank = self._get_virtual_pp_rank(
                 micro_step + 1, forward=True

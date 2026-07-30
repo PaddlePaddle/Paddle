@@ -155,7 +155,12 @@ class SendRecvMeta:
             self.recv_key_message = tuple(keys)
 
     def send_meta(
-        self, tensor, group, reverse=False, broadcast=False, block_cache_meta=None
+        self,
+        tensor,
+        group,
+        reverse=False,
+        broadcast=False,
+        block_cache_meta=None,
     ):
         if reverse:
             dst_rank = _hcg._get_p2p_prev_rank()
@@ -178,7 +183,9 @@ class SendRecvMeta:
 
         # prepare data to send
         data = [tensor_type]
-        data.append(1 if block_cache_meta is not None else 0)  # has_block_cache_meta flag
+        data.append(
+            1 if block_cache_meta is not None else 0
+        )  # has_block_cache_meta flag
 
         if tensor_type == 1:
             data.append(len(tensors_to_send))
@@ -762,7 +769,11 @@ class P2pHelper:
         return self._send_recv_meta.recv_block_cache_meta
 
     def _send_meta(
-        self, output_tensor, skip_check_meta=False, reverse=False, block_cache_meta=None
+        self,
+        output_tensor,
+        skip_check_meta=False,
+        reverse=False,
+        block_cache_meta=None,
     ):
         if not self._dynamic_shape:
             if not self._send_recv_meta.has_send_meta:
