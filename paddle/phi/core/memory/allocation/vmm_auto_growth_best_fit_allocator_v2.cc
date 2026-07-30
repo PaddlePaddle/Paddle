@@ -1068,24 +1068,40 @@ bool VMMAutoGrowthBestFitAllocatorV2::TryReleaseUnderlyingAllocation(
     UnderlyingAllocationRegistry::iterator* alloc_it,
     uint64_t* released,
     BlockListIt* block_search_begin) {
-  auto* allocation = (**alloc_it).get();
-  auto* base = reinterpret_cast<uint8_t*>(allocation->ptr());
-  const size_t alloc_size = allocation->size();
+  auto* base = reinterpret_cast<uint8_t*>((**alloc_it)->ptr());
+  const size_t alloc_size = (**alloc_it)->size();
   if (!underlying_allocator_->IsRangeReleasable(
           reinterpret_cast<VMMDevicePtr>(base), alloc_size)) {
     return false;
   }
 
-  if (underlying_allocator_->IsRemapDestinationAllocation(base)) {
-    underlying_allocator_->ClearRemapDestinationOwnershipInRange(
-        reinterpret_cast<VMMDevicePtr>(base), alloc_size);
+  auto allocation = underlying_allocations_.Take(*alloc_it);
+  CUDAVirtualMemAllocatorV2::PartialReleaseResult result;
+  try {
+    result = underlying_allocator_->ReleaseFreeHandleRanges(
+        &allocation,
+        {{reinterpret_cast<VMMDevicePtr>(base), alloc_size}},
+        [this](std::vector<DecoratedAllocationPtr>* remaining_allocations) {
+          TrackUnderlyingAllocationsOrRestore(remaining_allocations);
+        });
+  } catch (...) {
+    if (allocation != nullptr) {
+      underlying_allocations_.Add(&allocation);
+    }
+    throw;
   }
-  const auto driver_before = underlying_allocator_->GetReleaseDriverStats();
-  *alloc_it = underlying_allocations_.Erase(*alloc_it);
-  const auto driver_after = underlying_allocator_->GetReleaseDriverStats();
-  *block_search_begin =
-      ReplaceRangeWithUnmappedFree(base, alloc_size, *block_search_begin);
-  *released += driver_after.released_bytes - driver_before.released_bytes;
+  if (allocation != nullptr) {
+    underlying_allocations_.Add(&allocation);
+    return false;
+  }
+
+  for (const auto& range : result.unmapped_ranges) {
+    *block_search_begin =
+        ReplaceRangeWithUnmappedFree(reinterpret_cast<uint8_t*>(range.first),
+                                     range.second,
+                                     *block_search_begin);
+  }
+  *released += result.released_bytes;
   return true;
 }
 
@@ -1248,8 +1264,11 @@ uint64_t VMMAutoGrowthBestFitAllocatorV2::ReleaseAfterDeviceSynchronize(
   }
   const auto driver_before = underlying_allocator_->GetReleaseDriverStats();
   op_start = Clock::now();
-  uint64_t released = FreeIdleChunks(plans);
-  released += underlying_allocator_->RetryDeferredHandleReleases();
+  // Retry only handles deferred by earlier release calls. Handles newly
+  // deferred by FreeIdleChunks remain owned until the next maintenance call
+  // or allocator destruction, avoiding an immediate duplicate driver call.
+  uint64_t released = underlying_allocator_->RetryDeferredHandleReleases();
+  released += FreeIdleChunks(plans);
   timing.release_us = ElapsedMicros(op_start, Clock::now());
   if (log_release_stats) {
     op_start = Clock::now();

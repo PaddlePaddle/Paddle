@@ -954,8 +954,8 @@ TEST(VMMAutoGrowthBestFitAllocatorV2,
   ASSERT_NE(tail, nullptr);
   middle.reset();
 
-  // The initial release and the finalize retry both fail.
-  underlying->FailReleaseCalls(2);
+  // The failed handle remains owned until the next release call.
+  underlying->FailReleaseCalls(1);
   EXPECT_EQ(allocator.Release(phi::GPUPlace()), 0UL);
   const auto* middle_block = FindBlockByPtr(allocator, base + handle_size);
   ASSERT_NE(middle_block, nullptr);
@@ -969,7 +969,7 @@ TEST(VMMAutoGrowthBestFitAllocatorV2,
   auto reused = allocator.Allocate(handle_size);
   ASSERT_NE(reused, nullptr);
   EXPECT_EQ(reused->ptr(), base + handle_size);
-  EXPECT_EQ(underlying->RetryDeferredHandleReleases(), handle_size);
+  EXPECT_EQ(allocator.Release(phi::GPUPlace()), handle_size);
   const std::vector<std::pair<VMMDevicePtr, size_t>> reused_range = {
       {reinterpret_cast<VMMDevicePtr>(base + handle_size), handle_size}};
   EXPECT_EQ(underlying->CollectMappedPages(reused_range, 0).size(), 1UL);
@@ -978,6 +978,38 @@ TEST(VMMAutoGrowthBestFitAllocatorV2,
   reused.reset();
   tail.reset();
   EXPECT_EQ(allocator.Release(phi::GPUPlace()), 3UL * handle_size);
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2,
+     WholeReleaseUnmapFailureRestoresBackingOwner) {
+  auto underlying = std::make_shared<FaultInjectingReleaseAllocator>();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+  const size_t handle_size = underlying->handle_size();
+
+  auto allocation = allocator.Allocate(2UL * handle_size);
+  ASSERT_NE(allocation, nullptr);
+  auto* base = reinterpret_cast<uint8_t*>(allocation->ptr());
+  allocation.reset();
+  underlying->FailUnmapCall(1);
+
+  EXPECT_THROW(allocator.Release(phi::GPUPlace()),
+               common::enforce::EnforceNotMet);
+  EXPECT_NE(allocator.underlying_allocations_.FindByAddress(
+                reinterpret_cast<VMMDevicePtr>(base)),
+            allocator.underlying_allocations_.end());
+  const std::vector<std::pair<VMMDevicePtr, size_t>> whole_range = {
+      {reinterpret_cast<VMMDevicePtr>(base), 2UL * handle_size}};
+  EXPECT_EQ(underlying->CollectMappedPages(whole_range, 0).size(), 2UL);
+  const auto* free_block = FindBlockByPtr(allocator, base);
+  ASSERT_NE(free_block, nullptr);
+  EXPECT_TRUE(free_block->IsMappedFree());
+
+  auto reused = allocator.Allocate(2UL * handle_size);
+  ASSERT_NE(reused, nullptr);
+  EXPECT_EQ(reused->ptr(), base);
+  reused.reset();
+  EXPECT_EQ(allocator.Release(phi::GPUPlace()), 2UL * handle_size);
 }
 
 TEST(VMMAutoGrowthBestFitAllocatorV2,
@@ -991,9 +1023,9 @@ TEST(VMMAutoGrowthBestFitAllocatorV2,
   ASSERT_NE(allocation, nullptr);
   allocation.reset();
 
-  // The initial release and the finalize retry both fail. The VA state can be
-  // retired, but empty_cache must not report physical memory as released.
-  underlying->FailReleaseCalls(2);
+  // The VA can be retired, but empty_cache must not report physical memory as
+  // released until the next maintenance call drains the retained handle.
+  underlying->FailReleaseCalls(1);
   EXPECT_EQ(allocator.Release(phi::GPUPlace()), 0UL);
   EXPECT_TRUE(allocator.all_blocks().empty());
   EXPECT_TRUE(underlying->HasDeferredHandleReleases());

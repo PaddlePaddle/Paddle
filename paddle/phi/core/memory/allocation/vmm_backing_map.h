@@ -90,6 +90,10 @@ class VMMBackingMap {
                         VMMAllocHandle handle,
                         const std::shared_ptr<VMMHandleMeta>& meta,
                         size_t size) const;
+  bool IsHandleMappedAt(VMMDevicePtr va,
+                        VMMAllocHandle handle,
+                        const std::shared_ptr<VMMHandleMeta>& meta,
+                        size_t size) const;
   bool HasIPCExportedPages(VMMDevicePtr va, size_t size) const;
   size_t CountIPCExportedBytes(
       const std::vector<std::pair<VMMDevicePtr, size_t>>& ranges) const;

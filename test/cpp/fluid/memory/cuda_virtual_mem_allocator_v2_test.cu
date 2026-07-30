@@ -314,12 +314,19 @@ TEST(VMMBackingMap, CanReleaseHandleChecksPageState) {
 
   map.MarkMapped(base, meta, page_size);
   EXPECT_TRUE(map.CanReleaseHandle(base, meta->handle(), meta, page_size));
+  EXPECT_TRUE(map.IsHandleMappedAt(base, meta->handle(), meta, page_size));
   EXPECT_FALSE(
       map.CanReleaseHandle(base - page_size, meta->handle(), meta, page_size));
+  EXPECT_FALSE(
+      map.IsHandleMappedAt(base - page_size, meta->handle(), meta, page_size));
   EXPECT_FALSE(map.CanReleaseHandle(
+      base, static_cast<VMMAllocHandle>(0x9999), meta, page_size));
+  EXPECT_FALSE(map.IsHandleMappedAt(
       base, static_cast<VMMAllocHandle>(0x9999), meta, page_size));
   EXPECT_FALSE(
       map.CanReleaseHandle(base, meta->handle(), other_meta, page_size));
+  EXPECT_FALSE(
+      map.IsHandleMappedAt(base, meta->handle(), other_meta, page_size));
 
   map.MarkIPCExported(base, page_size);
   EXPECT_TRUE(map.CanReleaseHandle(base, meta->handle(), meta, page_size));
@@ -334,6 +341,7 @@ TEST(VMMBackingMap, CanReleaseHandleChecksPageState) {
   ASSERT_TRUE(
       map.MarkPendingEventForRange(base, page_size, busy_stream, nullptr));
   EXPECT_FALSE(map.CanReleaseHandle(base, meta->handle(), meta, page_size));
+  EXPECT_TRUE(map.IsHandleMappedAt(base, meta->handle(), meta, page_size));
 
   ASSERT_EQ(cudaStreamSynchronize(busy_stream), cudaSuccess);
   EXPECT_TRUE(map.CanReleaseHandle(base, meta->handle(), meta, page_size));
@@ -342,6 +350,7 @@ TEST(VMMBackingMap, CanReleaseHandleChecksPageState) {
   map.MarkUnmapped(base, page_size);
   map.MarkUnmapped(base, page_size);
   EXPECT_FALSE(map.CanReleaseHandle(base, meta->handle(), meta, page_size));
+  EXPECT_FALSE(map.IsHandleMappedAt(base, meta->handle(), meta, page_size));
 
   map.MarkMapped(base + page_size, meta, page_size);
   map.MarkReleased(

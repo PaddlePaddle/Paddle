@@ -178,6 +178,20 @@ CUDAVirtualMemAllocatorV2::CUDAVirtualMemAllocatorV2(const GPUPlace& place,
     : place_(place), handle_size_(handle_size), pool_type_(pool) {}
 
 CUDAVirtualMemAllocatorV2::~CUDAVirtualMemAllocatorV2() {
+  if (!deferred_handle_releases_.empty()) {
+    try {
+      platform::CUDADeviceGuard guard(place_.device);
+      RetryDeferredHandleReleases();
+    } catch (...) {
+      // Destruction must not propagate CUDA/context errors. This final
+      // best-effort drain handles normal teardown while CUDA is still usable;
+      // process teardown may leave no valid context in which to retry.
+      VLOG(1) << "Failed to drain " << deferred_handle_releases_.size()
+              << " deferred CUDA VMM handles while destroying allocator for "
+                 "device "
+              << static_cast<int>(place_.device);
+    }
+  }
 #if defined(__linux__)
   for (const auto& item : ipc_export_fds_) {
     if (item.second >= 0) {
@@ -1182,7 +1196,7 @@ CUDAVirtualMemAllocatorV2::ReleaseFreeHandleRanges(
   const VMMDevicePtr allocation_begin =
       reinterpret_cast<VMMDevicePtr>(original->ptr());
   HandleLayout layout = RequireHandleLayout(original);
-  std::vector<bool> release_mask(layout.size(), false);
+  std::vector<bool> retain_mask(layout.size(), true);
   HandleLayout release_layout;
   release_layout.reserve(layout.size());
 
@@ -1251,20 +1265,30 @@ CUDAVirtualMemAllocatorV2::ReleaseFreeHandleRanges(
             ranges[range_index].first + ranges[range_index].second) {
       continue;
     }
-    if (!backing_map_.CanReleaseHandle(
+    if (backing_map_.CanReleaseHandle(
             meta->base(), meta->handle(), meta, meta->size())) {
+      retain_mask[i] = false;
+      release_layout.push_back(meta);
       continue;
     }
-    release_mask[i] = true;
-    release_layout.push_back(meta);
+    // A remapped source leaves its original meta in the old allocation layout
+    // while the destination allocation owns a new meta for the live mapping.
+    // Do not recreate an owner for that stale source entry.
+    if (!backing_map_.IsHandleMappedAt(
+            meta->base(), meta->handle(), meta, meta->size())) {
+      retain_mask[i] = false;
+    }
   }
-  if (release_layout.empty()) {
+  if (release_layout.empty() &&
+      std::all_of(retain_mask.begin(), retain_mask.end(), [](bool retain) {
+        return retain;
+      })) {
     return result;
   }
 
   std::vector<HandleLayout> remaining_layouts;
   for (size_t i = 0; i < layout.size();) {
-    if (release_mask[i]) {
+    if (!retain_mask[i]) {
       ++i;
       continue;
     }
@@ -1272,7 +1296,7 @@ CUDAVirtualMemAllocatorV2::ReleaseFreeHandleRanges(
     remaining.push_back(layout[i]);
     VMMDevicePtr next_va = layout[i]->base() + layout[i]->size();
     ++i;
-    while (i < layout.size() && !release_mask[i] &&
+    while (i < layout.size() && retain_mask[i] &&
            layout[i]->base() == next_va) {
       remaining.push_back(layout[i]);
       next_va += layout[i]->size();
@@ -1313,7 +1337,7 @@ CUDAVirtualMemAllocatorV2::ReleaseFreeHandleRanges(
     }
     throw;
   }
-  if (unmapped_layout.empty()) {
+  if (!release_layout.empty() && unmapped_layout.empty()) {
     for (auto* staged : remaining_allocations) {
       delete staged;
     }
