@@ -465,6 +465,25 @@ def _parse_scope(scope: str | Iterable[str] | None) -> set[str] | None:
     return set(scope)
 
 
+def _get_compat_level() -> int | None:
+    level = 0
+    if TORCH_PROXY_FINDER in sys.meta_path:
+        level |= 1
+    if _PADDLE_NAMESPACE_SAVED:
+        level |= 2
+    return level or None
+
+
+def _clear_compat_state() -> None:
+    had_torch_proxy = TORCH_PROXY_FINDER in sys.meta_path
+    while TORCH_PROXY_FINDER in sys.meta_path:
+        sys.meta_path.remove(TORCH_PROXY_FINDER)
+    _restore_paddle_namespace_aliases()
+    if had_torch_proxy:
+        _clear_torch_proxy_modules()
+        _copy_torch_modules_from_cache()
+
+
 def enable_compat(
     *,
     scope: _ScopeType = None,
@@ -474,21 +493,22 @@ def enable_compat(
     level: int = 1,
 ) -> None:
     """
-    Enable the PyTorch compat by adding the TorchProxyMetaFinder to sys.meta_path.
-    This allows importing 'torch' modules that are actually proxies to PaddlePaddle.
+    Enable the requested PyTorch compatibility mechanisms.
 
     Args:
         scope (str or Iterable[str], optional): Specific module or modules to enable
-            PyTorch compat for. If None, enables PyTorch compat globally. Defaults to None.
+            the torch proxy for at level 1 or 3. If None, enables the torch proxy
+            globally. Defaults to None.
         blocked_modules (str or Iterable[str], optional): Specific module or modules to
-            exclude from PyTorch compat. Defaults to None.
+            exclude from the torch proxy at level 1 or 3. Defaults to None.
         backend (str, optional): The backend to enable compat for. Currently only
             "torch" is supported. Defaults to "torch".
         silent (bool, optional): If True, suppresses warnings about scope changes.
             Defaults to False.
-        level (int, optional): The compatibility level. ``1`` (default) preserves the
-            original ``torch -> paddle`` proxy behavior. ``2`` aliases the torch-aligned
-            ``paddle.compat.*`` APIs onto ``paddle.*`` and ``paddle.Tensor```. Defaults to 1.
+        level (int, optional): The compatibility level. ``1`` (default) enables
+            the ``torch -> paddle`` proxy, ``2`` aliases the torch-aligned
+            ``paddle.compat.*`` APIs onto ``paddle.*`` and ``paddle.Tensor``,
+            and ``3`` enables both. Defaults to 1.
 
     Example:
         .. code-block:: pycon
@@ -514,26 +534,28 @@ def enable_compat(
     """
     assert backend == "torch", f"Unsupported backend: {backend}"
 
-    if level not in {1, 2}:
-        raise ValueError(f"Unsupported level: {level}. It should be 1 or 2.")
+    if level not in {1, 2, 3}:
+        raise ValueError(
+            f"Unsupported level: {level}. It should be 1, 2, or 3."
+        )
 
-    blocked_modules = _parse_scope(blocked_modules)
-    if blocked_modules is not None:
-        extend_torch_proxy_blocked_modules(blocked_modules)
-    scope = _parse_scope(scope)
-    _register_compat_override()
-    _swap_torch_modules_to_cache()
-    _modify_scope_of_torch_proxy(scope, silent=silent)
-    sys.meta_path.insert(0, TORCH_PROXY_FINDER)
+    if level in {1, 3}:
+        blocked_modules = _parse_scope(blocked_modules)
+        if blocked_modules is not None:
+            extend_torch_proxy_blocked_modules(blocked_modules)
+        scope = _parse_scope(scope)
+        _register_compat_override()
+        _swap_torch_modules_to_cache()
+        _modify_scope_of_torch_proxy(scope, silent=silent)
+        sys.meta_path.insert(0, TORCH_PROXY_FINDER)
 
-    if level == 2:
+    if level in {2, 3}:
         _apply_paddle_namespace_aliases()
 
 
 def disable_compat() -> None:
     """
-    Disable the PyTorch proxy by removing the TorchProxyMetaFinder from sys.meta_path.
-    This prevents 'torch' imports from being proxied to PaddlePaddle.
+    Disable the active compatibility mechanisms.
 
     Example:
         .. code-block:: pycon
@@ -548,13 +570,15 @@ def disable_compat() -> None:
             ... except ModuleNotFoundError:
             ...     print("PyTorch compat is disabled.")
     """
+    if TORCH_PROXY_FINDER not in sys.meta_path and not _PADDLE_NAMESPACE_SAVED:
+        warnings.warn("torch compat is not installed.")
+        return
+
     if TORCH_PROXY_FINDER in sys.meta_path:
         sys.meta_path.remove(TORCH_PROXY_FINDER)
-        _restore_paddle_namespace_aliases()
         _clear_torch_proxy_modules()
         _copy_torch_modules_from_cache()
-        return
-    warnings.warn("torch compat is not installed.")
+    _restore_paddle_namespace_aliases()
 
 
 @contextmanager
@@ -563,22 +587,28 @@ def use_compat_guard(
     enable: bool = True,
     scope: _ScopeType = None,
     silent: bool = False,
+    level: int | None = None,
 ) -> Generator[None, None, None]:
     """
-    Context manager to temporarily enable or disable the PyTorch compat.
+    Context manager to temporarily enable or disable PyTorch compatibility.
 
-    When `enable` is True (default), the PyTorch compat is enabled for the duration
-    of the context and restored to its previous state afterwards. When `enable`
-    is False, the PyTorch compat is disabled for the duration of the context and
-    restored afterwards.
+    When `enable` is True (default), compat is enabled for the duration of the
+    context and restored to its previous state afterwards. When `enable` is
+    False, compat is disabled for the duration of the context and restored
+    afterwards.
 
     Args:
-        enable (bool, optional): Whether to enable or disable the PyTorch compat
+        enable (bool, optional): Whether to enable or disable compatibility
             within the context. Defaults to True.
         scope (str or Iterable[str], optional): Specific module or modules to enable
-            PyTorch compat for. If None, uses the global scope. Defaults to None.
+            the torch proxy for at level 1 or 3. If None, uses the global scope.
+            Defaults to None.
         silent (bool, optional): If True, suppresses warnings about scope changes.
             Defaults to False.
+        level (int|None, optional): The compatibility level to use in the context.
+            ``1`` enables the torch proxy, ``2`` enables Paddle namespace aliases,
+            and ``3`` enables both. If None, preserves the active level or uses
+            level 1 when compat is disabled. Defaults to None.
 
     Example:
         .. code-block:: pycon
@@ -601,33 +631,71 @@ def use_compat_guard(
             ...
             ...     assert torch.sin is paddle.sin
     """
+    if level is not None and level not in {1, 2, 3}:
+        raise ValueError(
+            f"Unsupported level: {level}. It should be 1, 2, or 3."
+        )
+
     scope = _parse_scope(scope)
-    already_has_torch_proxy = TORCH_PROXY_FINDER in sys.meta_path
+    original_level = _get_compat_level()
+    original_torch_proxy_count = sys.meta_path.count(TORCH_PROXY_FINDER)
     original_local_enabled_scope = set(TORCH_PROXY_FINDER._local_enabled_scope)
     original_globally_enabled = TORCH_PROXY_FINDER._globally_enabled
-    original_level = 2 if _PADDLE_NAMESPACE_SAVED else 1
-    if enable == already_has_torch_proxy and (
-        (original_globally_enabled and scope is None)
-        or (original_local_enabled_scope == (scope or set()))
+    target_level = (level or original_level or 1) if enable else None
+    target_scope = scope
+    if (
+        original_level in {1, 3}
+        and target_level in {1, 3}
+        and not original_globally_enabled
+        and scope is not None
     ):
+        target_scope = original_local_enabled_scope | scope
+    scope_matches = target_level not in {1, 3} or (
+        (original_globally_enabled and target_scope is None)
+        or (
+            not original_globally_enabled
+            and original_local_enabled_scope == (target_scope or set())
+        )
+    )
+
+    try:
+        if original_level != target_level or not scope_matches:
+            _clear_compat_state()
+            if target_level is not None:
+                enable_compat(
+                    scope=target_scope,
+                    silent=silent,
+                    level=target_level,
+                )
         yield
-        return
-    if enable:
-        enable_compat(scope=scope, silent=silent)
-        try:
-            yield
-        finally:
-            TORCH_PROXY_FINDER._local_enabled_scope = (
-                original_local_enabled_scope
-            )
-            TORCH_PROXY_FINDER._globally_enabled = original_globally_enabled
-            disable_compat()
-    else:
-        disable_compat()
-        try:
-            yield
-        finally:
-            enable_compat(scope=None, silent=True, level=original_level)
+    finally:
+        state_changed = (
+            _get_compat_level() != original_level
+            or sys.meta_path.count(TORCH_PROXY_FINDER)
+            != original_torch_proxy_count
+            or TORCH_PROXY_FINDER._local_enabled_scope
+            != original_local_enabled_scope
+            or TORCH_PROXY_FINDER._globally_enabled != original_globally_enabled
+        )
+        if state_changed:
+            _clear_compat_state()
+            if original_level is not None:
+                original_scope = (
+                    None
+                    if original_globally_enabled
+                    else original_local_enabled_scope
+                )
+                enable_compat(
+                    scope=original_scope,
+                    silent=True,
+                    level=original_level,
+                )
+                for _ in range(1, original_torch_proxy_count):
+                    enable_compat(
+                        scope=original_scope,
+                        silent=True,
+                        level=1,
+                    )
             TORCH_PROXY_FINDER._local_enabled_scope = (
                 original_local_enabled_scope
             )
