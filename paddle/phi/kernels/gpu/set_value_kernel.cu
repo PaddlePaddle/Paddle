@@ -24,6 +24,7 @@
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/expand_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 #include "paddle/phi/kernels/strided_copy_kernel.h"
@@ -88,10 +89,16 @@ void SetTensorValueKernel(const Context& dev_ctx,
     return;
   }
 
-  funcs::CheckIsDimsMatch(make_ddim(new_out_shape), value.dims());
+  bool value_is_empty = value.numel() == 0;
+  if (!value_is_empty) {
+    funcs::CheckIsDimsMatch(make_ddim(new_out_shape), value.dims());
+  }
   if (new_out_shape.empty()) new_out_shape.push_back(1);
   DenseTensor expand_tensor;
-  if (value.numel() == 1) {
+  if (value_is_empty) {
+    expand_tensor =
+        Full<T, Context>(dev_ctx, IntArray{new_out_shape}, static_cast<T>(0));
+  } else if (value.numel() == 1) {
     expand_tensor = value;
     expand_tensor.Resize({1});
   } else if (product(value.dims()) == product(make_ddim(new_out_shape))) {

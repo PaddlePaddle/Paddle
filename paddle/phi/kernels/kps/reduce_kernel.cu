@@ -92,6 +92,12 @@ void AMaxRawKernel(const Context& dev_ctx,
                    bool keep_dim,
                    bool reduce_all,
                    DenseTensor* out) {
+  if (x.numel() == 0) {
+    Full<T, Context>(
+        dev_ctx, out->dims(), std::numeric_limits<T>::lowest(), out);
+    return;
+  }
+
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto out_dtype = x.dtype();
 #ifdef PADDLE_WITH_XPU_KP
@@ -109,6 +115,11 @@ void AMinRawKernel(const Context& dev_ctx,
                    bool keep_dim,
                    bool reduce_all,
                    DenseTensor* out) {
+  if (x.numel() == 0) {
+    Full<T, Context>(dev_ctx, out->dims(), std::numeric_limits<T>::max(), out);
+    return;
+  }
+
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto out_dtype = x.dtype();
 #ifdef PADDLE_WITH_XPU_KP
@@ -143,7 +154,8 @@ void MaxKernel(const Context& dev_ctx,
                bool keep_dim,
                DenseTensor* out) {
   if (x.numel() == 0) {
-    dev_ctx.template Alloc<T>(out);
+    Full<T, Context>(
+        dev_ctx, out->dims(), std::numeric_limits<T>::lowest(), out);
     return;
   }
   bool reduce_all = recompute_reduce_all(x, dims);
@@ -180,6 +192,11 @@ void MinRawKernel(const Context& dev_ctx,
                   bool keep_dim,
                   bool reduce_all,
                   DenseTensor* out) {
+  if (x.numel() == 0) {
+    Full<T, Context>(dev_ctx, out->dims(), std::numeric_limits<T>::max(), out);
+    return;
+  }
+
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto out_dtype = x.dtype();
 #ifdef PADDLE_WITH_XPU_KP

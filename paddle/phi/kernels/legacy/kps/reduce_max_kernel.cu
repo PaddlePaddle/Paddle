@@ -13,7 +13,11 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/reduce_max_kernel.h"
+
+#include <limits>
+
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
 
 namespace phi {
@@ -25,6 +29,12 @@ PADDLE_API void MaxRawKernel(const Context& dev_ctx,
                              bool keep_dim,
                              bool reduce_all,
                              DenseTensor* out) {
+  if (x.numel() == 0) {
+    Full<T, Context>(
+        dev_ctx, out->dims(), std::numeric_limits<T>::lowest(), out);
+    return;
+  }
+
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto out_dtype = x.dtype();
 #ifdef PADDLE_WITH_XPU_KP

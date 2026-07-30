@@ -139,6 +139,23 @@ class TestL2LossDeterministic(unittest.TestCase):
         self.check_place(paddle.CPUPlace())
         if paddle.is_compiled_with_cuda() or is_custom_device():
             self.check_place(get_device_place())
+        if paddle.device.is_compiled_with_xpu():
+            self.check_place(paddle.XPUPlace(0))
+
+
+class TestL2LossEmptyInput(unittest.TestCase):
+    def check_place(self, place):
+        with paddle.base.dygraph.guard(place):
+            x = paddle.to_tensor(np.zeros((0, 1024), dtype='float32'))
+            y = _C_ops.squared_l2_norm(x)
+            np.testing.assert_array_equal(
+                y.numpy(), np.array([0.0], dtype='float32')
+            )
+
+    def test_main(self):
+        self.check_place(paddle.CPUPlace())
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            self.check_place(get_device_place())
 
 
 if __name__ == "__main__":
