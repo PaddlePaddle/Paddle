@@ -148,6 +148,15 @@ class API_TestDygraphBmm(unittest.TestCase):
         expected_result = np.matmul(input1, input2)
         np.testing.assert_allclose(expected_result, out_np, rtol=1e-05)
 
+    def test_tensor_method(self):
+        x = paddle.randn([2, 3, 4])
+        y = paddle.randn([2, 4, 5])
+        result = x.bmm(y)
+        expected = paddle.bmm(x, y)
+
+        self.assertIs(paddle.Tensor.bmm, paddle.bmm)
+        np.testing.assert_allclose(result.numpy(), expected.numpy(), rtol=1e-05)
+
     def test_legacy_linalg_entry(self):
         x = paddle.randn([2, 3, 4])
         y = paddle.randn([2, 4, 5])
@@ -385,6 +394,22 @@ class TestBmmOutDtypeDynamicOnly(unittest.TestCase):
                 )
                 with self.assertRaises(ValueError):
                     paddle.bmm(x, y_bad_batch)
+        finally:
+            paddle.disable_static()
+
+    def test_legacy_static_graph(self):
+        paddle.enable_static()
+        try:
+            with paddle.pir_utils.OldIrGuard():
+                main = paddle.static.Program()
+                startup = paddle.static.Program()
+                with paddle.static.program_guard(main, startup):
+                    x = paddle.static.data('x', [2, 3, 4], dtype='float32')
+                    y = paddle.static.data('y', [2, 4, 5], dtype='float32')
+                    result = paddle.bmm(x, y)
+
+                self.assertEqual(list(result.shape), [2, 3, 5])
+                self.assertEqual(main.global_block().ops[-1].type, 'bmm')
         finally:
             paddle.disable_static()
 

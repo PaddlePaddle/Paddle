@@ -2409,6 +2409,16 @@ def bmm(
     if in_pir_mode():
         return _C_ops.bmm(input, mat2, out=out)
 
+    helper = LayerHelper('bmm', **locals())
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    helper.append_op(
+        type='bmm',
+        inputs={'X': input, 'Y': mat2},
+        outputs={'Out': out},
+    )
+    return out
+
 
 def addmv(
     input: Tensor,
