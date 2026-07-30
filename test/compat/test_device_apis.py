@@ -125,8 +125,6 @@ class TestDeviceAPIs(unittest.TestCase):
         # Test with default device
         props = paddle.device.get_device_properties()
         self.assertIsNotNone(props)
-        self.assertIsInstance(props.shared_memory_per_block_optin, int)
-        self.assertGreater(props.shared_memory_per_block_optin, 0)
 
         # Test with string input
         props_str = paddle.device.get_device_properties('gpu:0')
@@ -142,6 +140,17 @@ class TestDeviceAPIs(unittest.TestCase):
         # Test with CUDAPlace input
         props_int = paddle.device.get_device_properties(paddle.CUDAPlace(0))
         self.assertIsNotNone(props_int)
+
+    @unittest.skipIf(
+        core.is_compiled_with_rocm(),
+        "ROCm does not support CUDA opt-in shared memory",
+    )
+    def test_get_device_properties_cuda_optin_shared_memory(self):
+        if not core.is_compiled_with_cuda():
+            self.skipTest("CUDA not available")
+        props = paddle.device.get_device_properties()
+        self.assertIsInstance(props.shared_memory_per_block_optin, int)
+        self.assertGreater(props.shared_memory_per_block_optin, 0)
 
     def test_get_device_properties_customdevice(self):
         """Test get_device_properties with custom device."""
