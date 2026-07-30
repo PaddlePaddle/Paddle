@@ -7731,55 +7731,18 @@ def put_along_axis(
         )
     axis = non_negative_axis(arr, axis)
     if 0 in indices.shape:
-        if in_dynamic_or_pir_mode():
-            values = (
-                paddle.to_tensor(values).astype(arr.dtype)
-                if not isinstance(
-                    values, (paddle.Tensor, paddle.pir.Value, Variable)
-                )
-                else values
+        # When indices is empty (numel == 0) there are no scatter operations to
+        # perform. Return a copy of arr immediately to avoid passing a 0-size
+        # index tensor through the broadcast path, which would attempt an
+        # invalid expand (e.g. values dim 4 -> 0) and raise an error.
+        # Use `0 in indices.shape` instead of `indices.numel() == 0` because
+        # numel() returns a GPU tensor whose __bool__ triggers D2H sync, which
+        # is forbidden during CUDA Graph capture (error 906).
+        if convert_dtype(indices.dtype) not in ['int32', 'int64']:
+            raise TypeError(
+                f"The data type of indices should be one of ['int32', 'int64'], but got {convert_dtype(indices.dtype)}"
             )
-            if convert_dtype(indices.dtype) not in ['int32', 'int64']:
-                raise TypeError(
-                    f"The data type of indices should be one of ['int32', 'int64'], but got {convert_dtype(indices.dtype)}"
-                )
-            return _C_ops.put_along_axis(
-                arr, indices, values, axis, reduce, include_self
-            )
-        if not isinstance(values, (paddle.Tensor, paddle.pir.Value, Variable)):
-            values = paddle.to_tensor(values).astype(arr.dtype)
-        check_variable_and_dtype(
-            arr,
-            'x',
-            [
-                'float16',
-                'float32',
-                'float64',
-                'int32',
-                'int64',
-                'uint8',
-                'uint16',
-            ],
-            'put_along_axis',
-        )
-        check_variable_and_dtype(
-            indices, 'index', ['int32', 'int64'], 'put_along_axis'
-        )
-        check_type(include_self, 'include_self', bool, 'put_along_axis')
-        helper = LayerHelper('put_along_axis', **locals())
-        dtype = helper.input_dtype()
-        result = helper.create_variable_for_type_inference(dtype)
-        helper.append_op(
-            type="put_along_axis",
-            inputs={"Input": arr, "Index": indices, "Value": values},
-            attrs={
-                "Axis": axis,
-                "Reduce": reduce,
-                "Include_self": include_self,
-            },
-            outputs={"Result": result},
-        )
-        return result
+        return paddle.assign(arr)
     if broadcast:
         if has_dynamic_shape(arr.shape) or has_dynamic_shape(indices.shape):
             arr_shape = paddle.shape(arr)
@@ -7900,21 +7863,19 @@ def put_along_axis_(
         )
     axis = non_negative_axis(arr, axis)
     if 0 in indices.shape:
+        # When indices is empty (numel == 0) there are no scatter operations to
+        # perform. Return arr immediately to avoid passing a 0-size index tensor
+        # through the broadcast path, which would attempt an invalid expand
+        # (e.g. values dim 4 -> 0) and raise an error.
+        # Use `0 in indices.shape` instead of `indices.numel() == 0` because
+        # numel() returns a GPU tensor whose __bool__ triggers D2H sync, which
+        # is forbidden during CUDA Graph capture (error 906).
+        if convert_dtype(indices.dtype) not in ['int32', 'int64']:
+            raise TypeError(
+                f"The data type of indices should be one of ['int32', 'int64'], but got {convert_dtype(indices.dtype)}"
+            )
         if in_dynamic_or_pir_mode():
-            values = (
-                paddle.to_tensor(values).astype(arr.dtype)
-                if not isinstance(
-                    values, (paddle.Tensor, paddle.pir.Value, Variable)
-                )
-                else values
-            )
-            if convert_dtype(indices.dtype) not in ['int32', 'int64']:
-                raise TypeError(
-                    f"The data type of indices should be one of ['int32', 'int64'], but got {convert_dtype(indices.dtype)}"
-                )
-            return _C_ops.put_along_axis_(
-                arr, indices, values, axis, reduce, include_self
-            )
+            return arr
         return arr
     if broadcast:
         broadcast_shape = infer_broadcast_shape(arr, indices, axis)

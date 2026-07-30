@@ -1663,6 +1663,37 @@ class TestPutAlongAxisZeroSizeIndex(unittest.TestCase):
         )
 
 
+class TestPutAlongAxisZeroIndexGrad(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def _check(self, place):
+        arr = paddle.to_tensor(
+            np.random.rand(128, 256).astype('float32'), place=place
+        )
+        arr.stop_gradient = False
+        index = paddle.to_tensor(np.zeros((0, 8), dtype='int64'), place=place)
+        values = paddle.to_tensor(
+            np.random.rand(128, 8).astype('float32'), place=place
+        )
+        values.stop_gradient = False
+        out = paddle.put_along_axis(
+            arr, index, values, axis=1, reduce='assign', include_self=True
+        )
+        out.sum().backward()
+        np.testing.assert_allclose(
+            arr.grad.numpy(), np.ones((128, 256), dtype='float32')
+        )
+        self.assertIsNone(values.grad)
+
+    def test_cpu(self):
+        self._check(paddle.CPUPlace())
+
+    def test_gpu(self):
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self._check(get_device_place())
+
+
 class TestPutAlongAxisMulIntegerDivByZero(unittest.TestCase):
     """
     Bug A: reduce='mul' backward with integer dtypes crashes (SIGFPE) when
@@ -1739,10 +1770,7 @@ class TestPutAlongAxisZeroSizeInputGrad(unittest.TestCase):
         self.assertEqual(list(out.shape), x_shape)
         loss = out.sum()
         loss.backward()
-        self.assertFalse(np.isnan(value.grad.numpy()).any())
-        np.testing.assert_array_equal(
-            value.grad.numpy(), np.zeros(idx_shape, dtype='float32')
-        )
+        self.assertIsNone(value.grad)
 
     def test_input_first_dim_zero_assign(self):
         self._run_zero_size_input(
