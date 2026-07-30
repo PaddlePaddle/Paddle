@@ -94,8 +94,8 @@ void AccuracyInferMeta(const MetaTensor& out,
 void AddmmInferMeta(const MetaTensor& input,
                     const MetaTensor& x,
                     const MetaTensor& y,
-                    float beta,
-                    float alpha,
+                    double beta,
+                    double alpha,
                     MetaTensor* out) {
   auto input_dims = input.dims();
   auto x_dims = x.dims();
@@ -142,8 +142,8 @@ void AddmmInferMeta(const MetaTensor& input,
 void BaddbmmInferMeta(const MetaTensor& input,
                       const MetaTensor& x,
                       const MetaTensor& y,
-                      float beta,
-                      float alpha,
+                      double beta,
+                      double alpha,
                       phi::DataType out_dtype,
                       MetaTensor* out) {
   auto input_dims = input.dims();
@@ -153,6 +153,23 @@ void BaddbmmInferMeta(const MetaTensor& input,
   auto ndim_input = input_dims.size();
   auto ndim_x = x_dims.size();
   auto ndim_y = y_dims.size();
+
+  PADDLE_ENFORCE_EQ(
+      input.dtype(),
+      x.dtype(),
+      errors::InvalidArgument(
+          "The dtypes of input, x, and y must be the same, but received "
+          "input dtype = %s and x dtype = %s.",
+          input.dtype(),
+          x.dtype()));
+  PADDLE_ENFORCE_EQ(
+      input.dtype(),
+      y.dtype(),
+      errors::InvalidArgument(
+          "The dtypes of input, x, and y must be the same, but received "
+          "input dtype = %s and y dtype = %s.",
+          input.dtype(),
+          y.dtype()));
 
   VLOG(3) << "baddbmm operator input.shape=" << input_dims
           << " x.shape=" << x_dims << " y.shape=" << y_dims << " beta=" << beta

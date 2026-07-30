@@ -389,6 +389,35 @@ class TestAddMMOp5(unittest.TestCase):
 
 
 class TestAddMMAPI(unittest.TestCase):
+    def test_float64_scale_precision(self):
+        paddle.disable_static()
+
+        input = paddle.ones([1, 1], dtype=paddle.float64)
+        x = paddle.ones([1, 1], dtype=paddle.float64)
+        y = paddle.ones([1, 1], dtype=paddle.float64)
+        input.stop_gradient = False
+        x.stop_gradient = False
+        y.stop_gradient = False
+        beta = 1.0000000000000002
+        alpha = 1.0000000000000004
+
+        out = paddle.addmm(input, x, y, beta=beta, alpha=alpha)
+        expected = np.array([[beta + alpha]], dtype=np.float64)
+        np.testing.assert_array_equal(out.numpy(), expected)
+
+        out.backward()
+        np.testing.assert_array_equal(
+            input.grad.numpy(), np.array([[beta]], dtype=np.float64)
+        )
+        np.testing.assert_array_equal(
+            x.grad.numpy(), np.array([[alpha]], dtype=np.float64)
+        )
+        np.testing.assert_array_equal(
+            y.grad.numpy(), np.array([[alpha]], dtype=np.float64)
+        )
+
+        paddle.enable_static()
+
     def test_api_error(self):
         data_x = np.ones((2, 2)).astype(np.float32)
         data_y = np.ones((2, 2)).astype(np.float32)
@@ -514,6 +543,24 @@ class TestAddMMAPI(unittest.TestCase):
         np.testing.assert_allclose(
             numpy_output, paddle_output.numpy(), rtol=1e-05
         )
+
+        paddle.enable_static()
+
+    def test_1d_input_without_input_grad(self):
+        paddle.disable_static()
+        paddle.set_device('cpu')
+
+        input = paddle.ones([4], dtype=paddle.float32)
+        x = paddle.ones([2, 3], dtype=paddle.float32)
+        y = paddle.ones([3, 4], dtype=paddle.float32)
+        x.stop_gradient = False
+        y.stop_gradient = False
+
+        paddle.addmm(input, x, y).sum().backward()
+
+        self.assertIsNone(input.grad)
+        np.testing.assert_array_equal(x.grad.numpy(), np.full([2, 3], 4.0))
+        np.testing.assert_array_equal(y.grad.numpy(), np.full([3, 4], 2.0))
 
         paddle.enable_static()
 
