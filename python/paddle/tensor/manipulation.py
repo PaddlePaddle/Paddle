@@ -7639,6 +7639,54 @@ def scatter_reduce_(
     )
 
 
+def _check_put_along_axis_early_return_params(
+    arr: Tensor, indices: Tensor, reduce: str, include_self: bool
+) -> None:
+    arr_dtype = convert_dtype(arr.dtype)
+    supported_arr_dtypes = [
+        'float16',
+        'float32',
+        'float64',
+        'int32',
+        'int64',
+        'uint8',
+        'uint16',
+    ]
+    if arr_dtype not in supported_arr_dtypes:
+        raise TypeError(
+            f"The data type of arr should be one of {supported_arr_dtypes}, but got {arr_dtype}"
+        )
+
+    indices_dtype = convert_dtype(indices.dtype)
+    if indices_dtype not in ['int32', 'int64']:
+        raise TypeError(
+            f"The data type of indices should be one of ['int32', 'int64'], but got {indices_dtype}"
+        )
+
+    if not isinstance(reduce, str):
+        raise TypeError(
+            f"The type of reduce should be str, but got {type(reduce).__name__}"
+        )
+    supported_reductions = [
+        'assign',
+        'add',
+        'mul',
+        'multiply',
+        'mean',
+        'amin',
+        'amax',
+    ]
+    if reduce not in supported_reductions:
+        raise ValueError(
+            f"The reduce operation should be one of {supported_reductions}, but got {reduce}"
+        )
+
+    if not isinstance(include_self, bool):
+        raise TypeError(
+            f"The type of include_self should be bool, but got {type(include_self).__name__}"
+        )
+
+
 def put_along_axis(
     arr: Tensor,
     indices: Tensor,
@@ -7730,18 +7778,17 @@ def put_along_axis(
             "`indices` and `arr` must have the same number of dimensions!"
         )
     axis = non_negative_axis(arr, axis)
+    # When indices is empty (numel == 0) there are no scatter operations to
+    # perform.  Return a copy of arr immediately to avoid passing a 0-size
+    # index tensor through the broadcast path, which would attempt an invalid
+    # expand (e.g. values dim 4 -> 0) and raise an error.
+    # Use `0 in indices.shape` instead of `indices.numel() == 0` because
+    # numel() returns a GPU tensor whose __bool__ triggers D2H sync,
+    # which is forbidden during CUDA Graph capture (error 906).
     if 0 in indices.shape:
-        # When indices is empty (numel == 0) there are no scatter operations to
-        # perform. Return a copy of arr immediately to avoid passing a 0-size
-        # index tensor through the broadcast path, which would attempt an
-        # invalid expand (e.g. values dim 4 -> 0) and raise an error.
-        # Use `0 in indices.shape` instead of `indices.numel() == 0` because
-        # numel() returns a GPU tensor whose __bool__ triggers D2H sync, which
-        # is forbidden during CUDA Graph capture (error 906).
-        if convert_dtype(indices.dtype) not in ['int32', 'int64']:
-            raise TypeError(
-                f"The data type of indices should be one of ['int32', 'int64'], but got {convert_dtype(indices.dtype)}"
-            )
+        _check_put_along_axis_early_return_params(
+            arr, indices, reduce, include_self
+        )
         return paddle.assign(arr)
     if broadcast:
         if has_dynamic_shape(arr.shape) or has_dynamic_shape(indices.shape):
@@ -7863,19 +7910,9 @@ def put_along_axis_(
         )
     axis = non_negative_axis(arr, axis)
     if 0 in indices.shape:
-        # When indices is empty (numel == 0) there are no scatter operations to
-        # perform. Return arr immediately to avoid passing a 0-size index tensor
-        # through the broadcast path, which would attempt an invalid expand
-        # (e.g. values dim 4 -> 0) and raise an error.
-        # Use `0 in indices.shape` instead of `indices.numel() == 0` because
-        # numel() returns a GPU tensor whose __bool__ triggers D2H sync, which
-        # is forbidden during CUDA Graph capture (error 906).
-        if convert_dtype(indices.dtype) not in ['int32', 'int64']:
-            raise TypeError(
-                f"The data type of indices should be one of ['int32', 'int64'], but got {convert_dtype(indices.dtype)}"
-            )
-        if in_dynamic_or_pir_mode():
-            return arr
+        _check_put_along_axis_early_return_params(
+            arr, indices, reduce, include_self
+        )
         return arr
     if broadcast:
         broadcast_shape = infer_broadcast_shape(arr, indices, axis)

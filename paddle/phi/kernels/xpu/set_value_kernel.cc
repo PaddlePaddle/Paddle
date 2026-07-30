@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/set_value_kernel.h"
 
-#include <algorithm>
 #include <vector>
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
@@ -83,10 +82,6 @@ void SetValueImpl(const Context& dev_ctx,
   auto in_dims = in.dims();
 
   auto new_value_dims = value_dims;
-  auto value_dims_vec = vectorize<int64_t>(value_dims);
-  bool value_is_empty = std::any_of(value_dims_vec.begin(),
-                                    value_dims_vec.end(),
-                                    [](int64_t dim) { return dim == 0; });
 
   // support for 0-d tensor
   if (value_dims.size() == 0) {
@@ -127,6 +122,7 @@ void SetValueImpl(const Context& dev_ctx,
 
     slice_dims_for_assign = make_ddim(slice_dims_with_none);
   }
+  funcs::CheckIsDimsMatch(slice_dims_for_assign, new_value_dims);
 
   // Here copy data from input to avoid data loss at PE and Graph level.
   // TODO(liym27): Speed up in the future version.
@@ -194,10 +190,6 @@ void SetValueImpl(const Context& dev_ctx,
   // If do broadcasting on Tensor with shape [3] and [3], the result's shape
   // is [3], which is right.
 
-  if (!value_is_empty) {
-    funcs::CheckIsDimsMatch(slice_dims_for_assign, new_value_dims);
-  }
-
   // do broadcasting
   auto f = [](xpu::Context* xpu_ctx,
               const XPUType* x,
@@ -208,20 +200,14 @@ void SetValueImpl(const Context& dev_ctx,
     return xpu::broadcast<XPUType>(xpu_ctx, x, z, xshape, zshape);
   };
 
-  if (value_is_empty) {
-    int r = xpu::constant<XPUType>(
-        dev_ctx.x_context(), slice_data, slice_numels, static_cast<XPUType>(0));
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
-  } else {
-    XPUElementwise<T, XPUType>(dev_ctx,
-                               value_data,
-                               new_value_dims,
-                               nullptr,
-                               slice_dims_for_assign,
-                               -1,
-                               reinterpret_cast<T*>(slice_data),
-                               f);
-  }
+  XPUElementwise<T, XPUType>(dev_ctx,
+                             value_data,
+                             new_value_dims,
+                             nullptr,
+                             slice_dims_for_assign,
+                             -1,
+                             reinterpret_cast<T*>(slice_data),
+                             f);
 
   // - Step 2.2 If stride < 0, flip the slice_tensor.
   // Because strided_slice_view_update does not support the case of stride < 0
@@ -378,10 +364,6 @@ void SetTensorValueKernel(const Context& dev_ctx,
                           const std::vector<int64_t>& decrease_axes,
                           const std::vector<int64_t>& none_axes,
                           DenseTensor* out) {
-  if (x.numel() == 0) {
-    dev_ctx.template Alloc<T>(out);
-    return;
-  }
   SetValueKernelImpl<T, Context>(dev_ctx,
                                  x,
                                  value.data<T>(),

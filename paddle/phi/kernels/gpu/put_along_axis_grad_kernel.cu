@@ -42,7 +42,6 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
       dev_ctx.template Alloc<T>(x_grad);
     }
     if (value_grad) {
-      value_grad->Resize(index.dims());
       Full<T, Context>(
           dev_ctx, value_grad->dims(), static_cast<T>(0), value_grad);
     }
@@ -53,7 +52,6 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
       Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     }
     if (value_grad) {
-      value_grad->Resize(index.dims());
       Full<T, Context>(
           dev_ctx, value_grad->dims(), static_cast<T>(0), value_grad);
     }

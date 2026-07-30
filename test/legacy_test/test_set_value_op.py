@@ -1802,10 +1802,8 @@ class TestSetValueEmptyTensorInDygraph(unittest.TestCase):
     def _check_place(self, place):
         x = paddle.to_tensor(np.arange(8, dtype='float32'), place=place)
         value = paddle.to_tensor(np.zeros((0,), dtype='float32'), place=place)
-        x[2:5] = value
-        np.testing.assert_array_equal(
-            x.numpy(), np.array([0, 1, 0, 0, 0, 5, 6, 7], dtype='float32')
-        )
+        with self.assertRaises(ValueError):
+            x[2:5] = value
 
     def test_empty_tensor_value(self):
         self._check_place(paddle.CPUPlace())
@@ -1826,14 +1824,32 @@ class TestSetValueEmptyInputGradInDygraph(unittest.TestCase):
             np.random.rand(1024, 6).astype('float32'), place=place
         )
         value.stop_gradient = False
-        x[:, :6] = value
-        x.sum().backward()
-        self.assertFalse(np.isnan(value.grad.numpy()).any())
-        np.testing.assert_array_equal(
-            value.grad.numpy(), np.zeros((1024, 6), dtype='float32')
-        )
+        with self.assertRaises(ValueError):
+            x[:, :6] = value
 
     def test_empty_input_grad(self):
+        self._check_place(paddle.CPUPlace())
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self._check_place(get_device_place())
+        if paddle.device.is_compiled_with_xpu():
+            self._check_place(paddle.XPUPlace(0))
+
+
+class TestSetValueCompatibleEmptyTensorGradInDygraph(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def _check_place(self, place):
+        x = paddle.to_tensor(np.zeros((0, 20), dtype='float32'), place=place)
+        x.stop_gradient = False
+        value = paddle.to_tensor(np.zeros((0, 6), dtype='float32'), place=place)
+        value.stop_gradient = False
+        x[:, :6] = value
+        x.sum().backward()
+        self.assertIsNotNone(value.grad)
+        np.testing.assert_equal(list(value.grad.shape), [0, 6])
+
+    def test_compatible_empty_tensor_grad(self):
         self._check_place(paddle.CPUPlace())
         if core.is_compiled_with_cuda() or is_custom_device():
             self._check_place(get_device_place())
