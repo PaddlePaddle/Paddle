@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/reduce_max_kernel.h"
 
 #include <limits>
+#include <type_traits>
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
@@ -30,8 +31,20 @@ PADDLE_API void MaxRawKernel(const Context& dev_ctx,
                              bool reduce_all,
                              DenseTensor* out) {
   if (x.numel() == 0) {
-    Full<T, Context>(
-        dev_ctx, out->dims(), std::numeric_limits<T>::lowest(), out);
+    if (out->numel() == 0) {
+      dev_ctx.template Alloc<T>(out);
+      return;
+    }
+    if constexpr (std::is_same_v<T, phi::float8_e4m3fn> ||
+                  std::is_same_v<T, phi::float8_e5m2>) {
+      Full<T, Context>(dev_ctx,
+                       out->dims(),
+                       static_cast<float>(std::numeric_limits<T>::lowest()),
+                       out);
+    } else {
+      Full<T, Context>(
+          dev_ctx, out->dims(), std::numeric_limits<T>::lowest(), out);
+    }
     return;
   }
 

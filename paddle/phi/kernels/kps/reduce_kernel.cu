@@ -14,6 +14,7 @@
 
 #include <limits>
 #include <set>
+#include <type_traits>
 
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -93,8 +94,20 @@ void AMaxRawKernel(const Context& dev_ctx,
                    bool reduce_all,
                    DenseTensor* out) {
   if (x.numel() == 0) {
-    Full<T, Context>(
-        dev_ctx, out->dims(), std::numeric_limits<T>::lowest(), out);
+    if (out->numel() == 0) {
+      dev_ctx.template Alloc<T>(out);
+      return;
+    }
+    if constexpr (std::is_same_v<T, phi::float8_e4m3fn> ||
+                  std::is_same_v<T, phi::float8_e5m2>) {
+      Full<T, Context>(dev_ctx,
+                       out->dims(),
+                       static_cast<float>(std::numeric_limits<T>::lowest()),
+                       out);
+    } else {
+      Full<T, Context>(
+          dev_ctx, out->dims(), std::numeric_limits<T>::lowest(), out);
+    }
     return;
   }
 
@@ -154,8 +167,20 @@ void MaxKernel(const Context& dev_ctx,
                bool keep_dim,
                DenseTensor* out) {
   if (x.numel() == 0) {
-    Full<T, Context>(
-        dev_ctx, out->dims(), std::numeric_limits<T>::lowest(), out);
+    if (out->numel() == 0) {
+      dev_ctx.template Alloc<T>(out);
+      return;
+    }
+    if constexpr (std::is_same_v<T, phi::float8_e4m3fn> ||
+                  std::is_same_v<T, phi::float8_e5m2>) {
+      Full<T, Context>(dev_ctx,
+                       out->dims(),
+                       static_cast<float>(std::numeric_limits<T>::lowest()),
+                       out);
+    } else {
+      Full<T, Context>(
+          dev_ctx, out->dims(), std::numeric_limits<T>::lowest(), out);
+    }
     return;
   }
   bool reduce_all = recompute_reduce_all(x, dims);

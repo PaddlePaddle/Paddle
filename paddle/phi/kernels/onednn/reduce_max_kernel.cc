@@ -30,6 +30,10 @@ void MaxKernel(const Context& dev_ctx,
                bool keep_dim,
                DenseTensor* out) {
   if (x.numel() == 0) {
+    if (out->numel() == 0) {
+      dev_ctx.template Alloc<T>(out);
+      return;
+    }
     Full<T, Context>(
         dev_ctx, out->dims(), std::numeric_limits<T>::lowest(), out);
     return;
