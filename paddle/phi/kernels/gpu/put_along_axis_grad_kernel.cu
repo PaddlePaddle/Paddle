@@ -48,6 +48,17 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
     }
     return;
   }
+  if (index.numel() == 0) {
+    if (x_grad) {
+      Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    }
+    if (value_grad) {
+      value_grad->Resize(index.dims());
+      Full<T, Context>(
+          dev_ctx, value_grad->dims(), static_cast<T>(0), value_grad);
+    }
+    return;
+  }
   const auto& index_type = index.dtype();
   if (x_grad) {
     Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
