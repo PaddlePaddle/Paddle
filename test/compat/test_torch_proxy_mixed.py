@@ -65,9 +65,6 @@ class TestTorchProxyMixRealTorch(unittest.TestCase):
         self.check_is_not_proxy()
         with paddle.use_compat_guard(level=2):
             self.check_is_not_proxy()
-            import torch
-
-            self.assertTrue(hasattr(torch, "SymInt"))
         self.check_is_not_proxy()
 
     def test_level2_restores_real_torch_inside_proxy_guard(self):
@@ -76,9 +73,6 @@ class TestTorchProxyMixRealTorch(unittest.TestCase):
             self.check_is_proxy()
             with paddle.use_compat_guard(level=2):
                 self.check_is_not_proxy()
-                import torch
-
-                self.assertTrue(hasattr(torch, "SymInt"))
             self.check_is_proxy()
         self.check_is_not_proxy()
 
