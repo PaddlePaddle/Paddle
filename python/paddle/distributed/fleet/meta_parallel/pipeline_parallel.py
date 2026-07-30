@@ -800,7 +800,7 @@ class PipelineParallel(MetaParallelBase):
         ].overlap_p2p_comm
 
 
-        if os.environ.get("BLOCK_ATTEN_RES_COMM_OPT", "1") == "1":
+        if os.environ.get("BLOCK_ATTEN_RES_COMM_OPT", "0") == "1":
             self._block_atten_res_opt = True
         else:
             self._block_atten_res_opt = False
@@ -2034,6 +2034,12 @@ class PipelineParallelWithInterleave(PipelineParallel):
         if self.overlap_schedule_mode:
             assert not self._profiling, (
                 "Profiling is not compatible with overlap_schedule_mode."
+            )
+            assert not self._block_atten_res_opt, (
+                "BlockAttnRes communication optimization does not support "
+                "forward_backward_overlap_scheduler yet: the overlapped "
+                "forward/backward path bypasses _merge_block_cache, so "
+                "locally cached blocks would be silently dropped."
             )
         logger.info(f"Using {self._get_scheduler_name()}")
 
