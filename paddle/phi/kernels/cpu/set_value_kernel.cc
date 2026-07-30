@@ -24,6 +24,7 @@
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/expand_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
@@ -81,18 +82,10 @@ void SetValueImpl(const Context& dev_ctx,
 
     slice_dims_for_assign = make_ddim(slice_dims_with_none);
   }
-  funcs::CheckIsDimsMatch(slice_dims_for_assign, value.dims());
-
-  auto value_shape = vectorize<int64_t>(value.dims());
-
-  DenseTensor value_tensor = Empty<T>(dev_ctx, IntArray{value_shape});
-  value_tensor = value;
-  auto it = value_shape.begin();
-  while (it != value_shape.end() && *it == 1) {
-    it = value_shape.erase(it);
+  bool value_is_empty = value.numel() == 0;
+  if (!value_is_empty) {
+    funcs::CheckIsDimsMatch(slice_dims_for_assign, value.dims());
   }
-  if (value_shape.empty()) value_shape.push_back(1);
-  value_tensor.Resize(value_shape);
 
   auto expand_shape = vectorize<int64_t>(slice_dims_for_assign);
   for (size_t i = 0; i < expand_shape.size(); i++) {
@@ -105,8 +98,22 @@ void SetValueImpl(const Context& dev_ctx,
   auto& eigen_place = *dev_ctx.eigen_device();
 
   Copy(dev_ctx, in, place, false, out);
-  ExpandKernel<T, Context>(
-      dev_ctx, value_tensor, IntArray{expand_shape}, &expand_tensor);
+  if (value_is_empty) {
+    Full<T, Context>(
+        dev_ctx, IntArray{expand_shape}, static_cast<T>(0), &expand_tensor);
+  } else {
+    auto value_shape = vectorize<int64_t>(value.dims());
+    DenseTensor value_tensor = Empty<T>(dev_ctx, IntArray{value_shape});
+    value_tensor = value;
+    auto it = value_shape.begin();
+    while (it != value_shape.end() && *it == 1) {
+      it = value_shape.erase(it);
+    }
+    if (value_shape.empty()) value_shape.push_back(1);
+    value_tensor.Resize(value_shape);
+    ExpandKernel<T, Context>(
+        dev_ctx, value_tensor, IntArray{expand_shape}, &expand_tensor);
+  }
   expand_tensor.Resize(slice_dims);
 
   auto out_e = EigenTensor<T, RANK>::From(*out);

@@ -19,6 +19,7 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/gather_scatter_functor.h"
 
 namespace phi {
@@ -40,7 +41,9 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
       dev_ctx.template Alloc<T>(x_grad);
     }
     if (value_grad) {
-      dev_ctx.template Alloc<T>(value_grad);
+      value_grad->Resize(index.dims());
+      Full<T, Context>(
+          dev_ctx, value_grad->dims(), static_cast<T>(0), value_grad);
     }
     return;
   }

@@ -14,9 +14,12 @@
 
 #include "paddle/phi/kernels/reduce_max_kernel.h"
 
+#include <limits>
+
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/xpu/reduce.h"
 
 namespace phi {
@@ -28,7 +31,8 @@ void MaxKernel(const Context& dev_ctx,
                bool keep_dim,
                DenseTensor* out) {
   if (x.numel() == 0) {
-    dev_ctx.template Alloc<T>(out);
+    Full<T, Context>(
+        dev_ctx, out->dims(), std::numeric_limits<T>::lowest(), out);
     return;
   }
   bool reduce_all = recompute_reduce_all(x, dims);

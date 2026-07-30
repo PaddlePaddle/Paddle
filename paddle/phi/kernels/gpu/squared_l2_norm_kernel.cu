@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
 
@@ -26,6 +27,11 @@ template <typename T, typename Context>
 void SquaredL2NormKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          DenseTensor* out) {
+  if (x.numel() == 0) {
+    Full<T, Context>(dev_ctx, out->dims(), static_cast<T>(0), out);
+    return;
+  }
+
   dev_ctx.template Alloc<T>(out);
   std::vector<int> origin_reduce_dims;
   for (size_t i = 0; i < x.dims().size(); i++) {
