@@ -24,6 +24,16 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
+// The concat/split kernels iterate rows with an int32 grid-stride loop:
+//     for (; tid_y < out_row; tid_y += blockDim.y * gridDim.y) { ... }
+// After the last valid row, `tid_y` becomes `out_row - 1 + stride`; to avoid
+// int32 overflow (which would wrap negative, re-enter the loop, and access
+// out of bounds), the int32 path needs out_row <= INT32_MAX - stride.
+// We reserve the hardware upper bound of stride,
+// kMaxYStride = maxThreadsDim[1] * maxGridSize[1] = 1024 * 65535,
+// which is config-independent and safely conservative.
+constexpr int64_t kMaxYStride = 1024LL * 65535;
+
 static inline void GetBlockDims(const GPUContext& dev_ctx,
                                 int64_t num_rows,
                                 int64_t num_cols,
@@ -608,7 +618,23 @@ struct ConcatFunctor<GPUContext, T> {
                   const std::vector<DenseTensor>& input,
                   int axis,
                   DenseTensor* output) {
-    if (output->numel() < std::numeric_limits<int32_t>::max()) {
+    constexpr int64_t kMaxInt32 = std::numeric_limits<int32_t>::max();
+    // Reproduce the exact `out_row` that ConcatFunctorWithIndexType derives
+    // from ins[0] (product of dims before `axis`), so the guard matches the
+    // value the kernel actually loops over. Computed in int64 to avoid any
+    // overflow while forming it here.
+    int64_t out_row = 1;
+    const auto& dim_0 = input[0].dims();
+    for (int i = 0; i < axis; ++i) out_row *= dim_0[i];
+
+    // Two independent conditions must both hold to use the int32 index path:
+    //   1) numel < INT32_MAX  -> every linear offset `tid_y*cols + tid_x`
+    //      fits in int32.
+    //   2) out_row <= INT32_MAX - kMaxYStride  -> the y grid-stride loop
+    //      cannot wrap (see the derivation next to kMaxYStride).
+    //      numel alone is not enough: a tall/narrow output (e.g. [~INT32_MAX,
+    //      1]) keep numel < INT32_MAX yet still overflows the y-loop increment.
+    if (output->numel() < kMaxInt32 && out_row <= kMaxInt32 - kMaxYStride) {
       ConcatFunctorWithIndexType<T, int32_t>(dev_ctx, input, axis, output);
     } else {
       ConcatFunctorWithIndexType<T, int64_t>(dev_ctx, input, axis, output);
@@ -813,7 +839,22 @@ class SplitFunctor<GPUContext, T> {
       return;
     }
 
-    if (numel < std::numeric_limits<int32_t>::max()) {
+    constexpr int64_t kMaxInt32 = std::numeric_limits<int32_t>::max();
+    // Reproduce the exact `out_row` that SplitFunctorDispatchWithIndexType
+    // derives from ref_inputs[0] (product of dims before `axis`), so the
+    // guard matches the value the split kernels actually loop over. Computed
+    // in int64 to avoid any overflow while forming it here.
+    int64_t out_row = 1;
+    const auto& ref_dim = ref_inputs[0]->dims();
+    for (int i = 0; i < axis; ++i) out_row *= ref_dim[i];
+
+    // Same two-part guard as ConcatFunctor:
+    //   1) numel < INT32_MAX      -> linear offsets fit in int32.
+    //   2) out_row <= INT32_MAX - kMaxYStride  -> the y grid-stride loop in
+    //      SplitTensorWith{Same,Different}Shape cannot wrap (see kMaxYStride).
+    //      Needed because a tall/narrow input keeps numel small yet still
+    //      overflows the int32 y-loop increment.
+    if (numel < kMaxInt32 && out_row <= kMaxInt32 - kMaxYStride) {
       SplitFunctorDispatchWithIndexType<T, int32_t>(
           dev_ctx, axis, input, ref_inputs, outputs);
     } else {
