@@ -154,28 +154,25 @@ class TestCppExtensionSetupInstall(unittest.TestCase):
         )
 
     def _test_scalar_type_caster(self):
-        paddle.enable_compat()
-
         import custom_cpp_extension
-        import torch
 
         expected_values = {
-            torch.uint8: 0,
-            torch.int8: 1,
-            torch.int16: 2,
-            torch.int32: 3,
-            torch.int64: 4,
-            torch.float16: 5,
-            torch.float32: 6,
-            torch.float64: 7,
-            torch.complex64: 9,
-            torch.complex128: 10,
-            torch.bool: 11,
-            torch.bfloat16: 15,
-            torch.float8_e5m2: 23,
-            torch.float8_e4m3fn: 24,
-            torch.uint16: 27,
-            torch.uint32: 28,
+            paddle.uint8: 0,
+            paddle.int8: 1,
+            paddle.int16: 2,
+            paddle.int32: 3,
+            paddle.int64: 4,
+            paddle.float16: 5,
+            paddle.float32: 6,
+            paddle.float64: 7,
+            paddle.complex64: 9,
+            paddle.complex128: 10,
+            paddle.bool: 11,
+            paddle.bfloat16: 15,
+            paddle.float8_e5m2: 23,
+            paddle.float8_e4m3fn: 24,
+            paddle.uint16: 27,
+            paddle.uint32: 28,
         }
         for dtype, expected_value in expected_values.items():
             self.assertIs(
