@@ -17,12 +17,14 @@
 // https://github.com/pytorch/pytorch/blob/main/LICENSE
 
 #pragma once
+
 #include <ATen/Device.h>
 #include <ATen/ops/arange.h>
 #include <ATen/ops/empty_strided.h>
 #include <c10/util/Exception.h>
 #include <torch/types.h>
 #include <utils/scalar_type_conversion.h>
+#include <utility>
 
 #if !defined(PADDLE_ON_INFERENCE) && !defined(PADDLE_NO_PYTHON)
 // Python bindings for the C++ frontend (includes Python.h)
@@ -48,3 +50,39 @@ inline PyObject* getTHPDtype(c10::ScalarType dtype) {
 namespace torch {
 using torch::python::detail::getTHPDtype;
 }  // namespace torch
+
+namespace pybind11::detail {
+
+template <>
+struct type_caster<c10::ScalarType> {
+ public:
+  PYBIND11_TYPE_CASTER(c10::ScalarType, _("torch.dtype"));
+
+  type_caster() : value(c10::ScalarType::Float) {}
+
+  bool load(handle src, bool convert) {
+    make_caster<phi::DataType> dtype_caster;
+    if (!dtype_caster.load(src, convert)) {
+      return false;
+    }
+
+    const auto dtype = cast_op<phi::DataType&&>(std::move(dtype_caster));
+    switch (dtype) {
+#define PD_DTYPE_TO_SCALAR_TYPE_CASE_(_cpp_type, _pd_dtype, _scalar_type) \
+  case phi::DataType::_pd_dtype:                                          \
+    value = c10::ScalarType::_scalar_type;                                \
+    return true;
+      FOREACH_PADDLE_AND_TORCH_DTYPES(PD_DTYPE_TO_SCALAR_TYPE_CASE_)
+#undef PD_DTYPE_TO_SCALAR_TYPE_CASE_
+      default:
+        return false;
+    }
+  }
+
+  static handle cast(const c10::ScalarType& src, return_value_policy, handle) {
+    return handle(paddle::pybind::ToPyObject(
+        compat::_PD_AtenScalarTypeToPhiDataType(src)));
+  }
+};
+
+}  // namespace pybind11::detail

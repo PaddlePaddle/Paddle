@@ -75,7 +75,7 @@ jobs:
           docker_cpu_file: Dockerfile.cuda9_cudnn7_gcc48_py35_centos6
           docker_sot_file: Dockerfile.gcc133_ubuntu24_cpu_sot
           docker_coverage_file: Dockerfile.cuda117_cudnn8_gcc82_ubuntu18_coverage
-          docker_build_file: Dockerfile.cuda11.2_cudnn8_gcc82_trt8
+          docker_build_file: Dockerfile.cuda12.8_cudnn9_gcc11
           docker_distribute_file: Dockerfile.cuda123_cudnn9_gcc122_ubuntu20
           docker_xpu_file: Dockerfile.develop.xre.ubuntu22
           docker_npu_file: Dockerfile.develop.npu
@@ -108,7 +108,11 @@ jobs:
           fi
           for name in "${!docker_files[@]}"
           do
-            md5_value=`md5sum tools/dockerfile/${docker_files[$name]} | awk '{print $1}'`
+            if grep -q "tools/dockerfile/build_scripts" tools/dockerfile/${docker_files[$name]} && [ -d tools/dockerfile/build_scripts ]; then
+              md5_value=`(md5sum tools/dockerfile/${docker_files[$name]}; find tools/dockerfile/build_scripts -type f -print | sort | xargs md5sum) | md5sum | awk '{print $1}'`
+            else
+              md5_value=`md5sum tools/dockerfile/${docker_files[$name]} | awk '{print $1}'`
+            fi
             if [ $name == "docker_dcu" ]; then
                 md5_value="76937a563116f6008c8ca4cb4f592759"
             fi
