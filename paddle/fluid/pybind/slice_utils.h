@@ -1057,10 +1057,14 @@ static void DispatchSetitemKernel(const int pos_of_new_dim,
                                   Tensor* transed_sub_tensor,
                                   Tensor* value_tensor,
                                   std::vector<phi::Scalar>* values) {
+  if (!value_tensor->defined() && values->empty()) {
+    return;
+  }
+  const bool use_tensor_value = value_tensor->defined();
   Tensor mask_tensor;
   if (MaskedFillDispatching(
           *transed_sub_tensor, *transed_index, &mask_tensor, value_tensor)) {
-    if (value_tensor->initialized()) {
+    if (use_tensor_value) {
       if (!*out_is_view) {
         *transed_sub_tensor = masked_fill__ad_func(
             *transed_sub_tensor, mask_tensor, *value_tensor);
@@ -1093,7 +1097,7 @@ static void DispatchSetitemKernel(const int pos_of_new_dim,
     }
   }
   if (FLAGS_use_stride_kernel) {
-    if (value_tensor->initialized()) {
+    if (use_tensor_value) {
       *transed_index = expandTensors(*transed_index);
       *transed_index = expand_outplace(*transed_index);
 
@@ -1162,7 +1166,7 @@ static void DispatchSetitemKernel(const int pos_of_new_dim,
     }
   } else {
     // TODO(czy): remove in the future
-    if (value_tensor->initialized()) {
+    if (use_tensor_value) {
       *transed_sub_tensor = index_put__ad_func(
           *transed_sub_tensor, *transed_index, *value_tensor);
     } else {
@@ -1184,8 +1188,11 @@ static void ApplySetitem(const std::vector<int> trans_dim,
                          Tensor* transed_sub_tensor,
                          Tensor* value_tensor,
                          std::vector<phi::Scalar>* values) {
-  if (!value_tensor->initialized() && (*values).size() == 0) return;
-  if (value_tensor->initialized()) {
+  if (!value_tensor->defined() && values->empty()) {
+    return;
+  }
+  const bool use_tensor_value = value_tensor->defined();
+  if (use_tensor_value) {
     if (self_tensor->dtype() != value_tensor->dtype()) {
       if (egr::Controller::Instance().GetAMPLevel() !=
           paddle::imperative::AmpLevel::O0) {
