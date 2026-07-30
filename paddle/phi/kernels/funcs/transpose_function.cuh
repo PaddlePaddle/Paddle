@@ -111,8 +111,10 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input,
   // Align dim to Tiles
   Dim3<IndexType> tile_aligned_input_dim = {
       input_dims[0],
-      (input_dims[1] + TileX - 1) / TileX,
-      (input_dims[2] + TileY - 1) / TileY,
+      input_dims[1] / TileX +
+          static_cast<IndexType>(input_dims[1] % TileX != 0),
+      input_dims[2] / TileY +
+          static_cast<IndexType>(input_dims[2] % TileY != 0),
   };
 
   // Converts block idx to tile index, each block process a tile
@@ -725,7 +727,7 @@ struct TransposeSimple {
                   const std::vector<int32_t>& perm,
                   DenseTensor* out,
                   const int64_t numel) {
-    if (numel >= std::numeric_limits<int32_t>::max() / 2) {
+    if (numel >= std::numeric_limits<int32_t>::max()) {
       return RunImpl<int64_t>(dev_ctx, in, perm, out);
     } else {
       return RunImpl<int32_t>(dev_ctx, in, perm, out);
