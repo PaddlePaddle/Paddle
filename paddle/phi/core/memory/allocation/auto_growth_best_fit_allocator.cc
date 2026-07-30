@@ -329,22 +329,10 @@ uint64_t AutoGrowthBestFitAllocator::FreeIdleChunks() {
     std::cout << "FreeIdleChunks called" << std::endl;
   }
   if (!allow_free_idle_chunk_) {
-    VLOG(3) << "Allocator backing release skipped: allocator=auto_growth "
-               "reason=idle_chunk_release_disabled";
     return 0;
   }
 
-  const bool log_release_stats = VLOG_IS_ON(3);
-  ReleaseStats small_before;
-  ReleaseStats large_before;
-  if (log_release_stats) {
-    small_before = CollectReleaseStats(/*is_small=*/true);
-    large_before = CollectReleaseStats(/*is_small=*/false);
-  }
-
   uint64_t bytes = 0;
-  uint64_t small_released_bytes = 0;
-  uint64_t large_released_bytes = 0;
   for (auto chunk_it = chunks_.begin(); chunk_it != chunks_.end();) {
     auto &blocks = chunk_it->blocks_;
     if (blocks.size() == 1 && blocks.begin()->is_free_) {
@@ -357,11 +345,6 @@ uint64_t AutoGrowthBestFitAllocator::FreeIdleChunks() {
                   << block.ptr_ << std::endl;
       }
       bytes += block.size_;
-      if (is_small) {
-        small_released_bytes += block.size_;
-      } else {
-        large_released_bytes += block.size_;
-      }
       free_blocks.erase(std::make_pair(block.size_, block.ptr_));
       chunk_it = chunks_.erase(chunk_it);
     } else {
@@ -369,88 +352,10 @@ uint64_t AutoGrowthBestFitAllocator::FreeIdleChunks() {
     }
   }
 
-  if (log_release_stats) {
-    LogReleaseStats("small",
-                    small_before,
-                    CollectReleaseStats(/*is_small=*/true),
-                    small_released_bytes);
-    LogReleaseStats("large",
-                    large_before,
-                    CollectReleaseStats(/*is_small=*/false),
-                    large_released_bytes);
-  }
-
   if (FLAGS_print_allocator_trace_info) {
     Trace();
   }
   return bytes;
-}
-
-AutoGrowthBestFitAllocator::ReleaseStats
-AutoGrowthBestFitAllocator::CollectReleaseStats(bool is_small) const {
-  ReleaseStats stats;
-  for (const auto &chunk : chunks_) {
-    if (chunk.blocks_.empty() || chunk.blocks_.front().is_small_ != is_small) {
-      continue;
-    }
-
-    ++stats.backing_count;
-    stats.backing_bytes += chunk.allocation_->size();
-    bool has_active = false;
-    bool has_free = false;
-    size_t chunk_free_bytes = 0;
-    for (const auto &block : chunk.blocks_) {
-      if (block.is_free_) {
-        has_free = true;
-        chunk_free_bytes += block.size_;
-        stats.free_bytes += block.size_;
-      } else {
-        has_active = true;
-        stats.active_bytes += block.size_;
-      }
-    }
-
-    const bool releasable =
-        chunk.blocks_.size() == 1 && chunk.blocks_.front().is_free_;
-    if (releasable) {
-      ++stats.releasable_backing_count;
-      stats.releasable_backing_bytes += chunk.allocation_->size();
-    } else {
-      stats.stranded_free_bytes += chunk_free_bytes;
-    }
-    if (has_active && has_free) {
-      ++stats.mixed_backing_count;
-      stats.mixed_backing_bytes += chunk.allocation_->size();
-    }
-  }
-  return stats;
-}
-
-void AutoGrowthBestFitAllocator::LogReleaseStats(
-    const char *pool_name,
-    const ReleaseStats &before,
-    const ReleaseStats &after,
-    uint64_t released_bytes) const {
-  if (before.backing_count == 0 && after.backing_count == 0) {
-    return;
-  }
-  VLOG(3) << "Allocator backing release: allocator=auto_growth"
-          << " pool=" << pool_name
-          << " before_backings=" << before.backing_count
-          << " before_backing_bytes=" << before.backing_bytes
-          << " before_releasable_backings=" << before.releasable_backing_count
-          << " before_releasable_bytes=" << before.releasable_backing_bytes
-          << " before_mixed_backings=" << before.mixed_backing_count
-          << " before_mixed_backing_bytes=" << before.mixed_backing_bytes
-          << " before_active_bytes=" << before.active_bytes
-          << " before_free_bytes=" << before.free_bytes
-          << " before_stranded_free_bytes=" << before.stranded_free_bytes
-          << " released_backings=" << before.backing_count - after.backing_count
-          << " released_bytes=" << released_bytes
-          << " after_backings=" << after.backing_count
-          << " after_backing_bytes=" << after.backing_bytes
-          << " after_free_bytes=" << after.free_bytes
-          << " after_stranded_free_bytes=" << after.stranded_free_bytes;
 }
 
 void AutoGrowthBestFitAllocator::Trace() const {

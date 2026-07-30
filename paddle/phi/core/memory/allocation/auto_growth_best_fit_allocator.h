@@ -66,24 +66,7 @@ class PADDLE_API AutoGrowthBestFitAllocator : public Allocator {
   }
 
  protected:
-  struct ReleaseStats {
-    size_t backing_count{0};
-    size_t backing_bytes{0};
-    size_t releasable_backing_count{0};
-    size_t releasable_backing_bytes{0};
-    size_t mixed_backing_count{0};
-    size_t mixed_backing_bytes{0};
-    size_t active_bytes{0};
-    size_t free_bytes{0};
-    size_t stranded_free_bytes{0};
-  };
-
   uint64_t FreeIdleChunks();
-  ReleaseStats CollectReleaseStats(bool is_small) const;
-  void LogReleaseStats(const char *pool_name,
-                       const ReleaseStats &before,
-                       const ReleaseStats &after,
-                       uint64_t released_bytes) const;
   void Trace() const;
 
   template <typename T>
