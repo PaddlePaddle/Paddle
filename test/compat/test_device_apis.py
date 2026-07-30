@@ -141,6 +141,15 @@ class TestDeviceAPIs(unittest.TestCase):
         props_int = paddle.device.get_device_properties(paddle.CUDAPlace(0))
         self.assertIsNotNone(props_int)
 
+    def test_get_device_properties_cuda_optin_shared_memory(self):
+        if not core.is_compiled_with_cuda():
+            self.skipTest("CUDA not available")
+        if core.is_compiled_with_rocm():
+            self.skipTest("ROCm does not support CUDA opt-in shared memory")
+        props = paddle.device.get_device_properties()
+        self.assertIsInstance(props.shared_memory_per_block_optin, int)
+        self.assertGreater(props.shared_memory_per_block_optin, 0)
+
     def test_get_device_properties_customdevice(self):
         """Test get_device_properties with custom device."""
         if not is_custom_device():

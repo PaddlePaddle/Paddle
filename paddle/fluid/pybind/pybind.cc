@@ -3722,6 +3722,11 @@ All parameter, weight, gradient are variables in Paddle.
       .def_property_readonly(
           "multi_processor_count",
           [](const gpuDeviceProp &prop) { return prop.multiProcessorCount; })
+#if defined(PADDLE_WITH_CUDA)
+      .def_property_readonly(
+          "shared_memory_per_block_optin",
+          [](const gpuDeviceProp &prop) { return prop.sharedMemPerBlockOptin; })
+#endif
       .def_property_readonly(
           "is_multi_gpu_board",
           [](const gpuDeviceProp &prop) { return prop.isMultiGpuBoard; })
