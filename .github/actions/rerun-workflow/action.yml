@@ -12,7 +12,10 @@ inputs:
     required: true
   PR_ID:
     description: 'Pull Request ID'
-    required: true
+    required: false
+  HEAD_SHA:
+    description: 'Commit SHA to rerun workflow jobs for'
+    required: false
   JOB_NAME:
     description: 'Job name to rerun'
     required: true
@@ -27,4 +30,5 @@ runs:
         OWNER: ${{ inputs.OWNER }}
         REPO: ${{ inputs.REPO }}
         PR_ID: ${{ inputs.PR_ID }}
+        HEAD_SHA: ${{ inputs.HEAD_SHA }}
         JOB_NAME: ${{ inputs.JOB_NAME }}

@@ -178,6 +178,14 @@ class TestMmOutDtypeDynamicOnly(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
 
+    def _skip_if_no_fp16_cuda(self):
+        if not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm():
+            self.skipTest("CUDA is required for mm out_dtype")
+        if paddle.device.cuda.get_device_capability() < (5, 3):
+            self.skipTest(
+                "FP16 mm out_dtype requires CUDA compute capability >= 5.3"
+            )
+
     def _skip_if_no_bf16_cuda(self):
         if not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm():
             self.skipTest("CUDA is required for mm out_dtype")
@@ -185,6 +193,59 @@ class TestMmOutDtypeDynamicOnly(unittest.TestCase):
             self.skipTest(
                 "BF16 mm out_dtype requires CUDA compute capability >= 8"
             )
+
+    def test_out_dtype_rejects_unsupported_input_dtype(self):
+        x = paddle.empty([3, 4], dtype='float32')
+        y = paddle.empty([4, 5], dtype='float16')
+        with self.assertRaisesRegex(
+            TypeError,
+            "only supports float16 or bfloat16 input",
+        ):
+            paddle.mm(x, y, out_dtype=paddle.float32)
+
+    def test_fp16_to_fp32(self):
+        self._skip_if_no_fp16_cuda()
+        x = paddle.randn([3, 4], dtype='float16')
+        y = paddle.randn([4, 5], dtype='float16')
+        out = paddle.mm(x, y, out_dtype=paddle.float32)
+        ref = paddle.mm(x.astype('float32'), y.astype('float32'))
+        self.assertEqual(out.dtype, paddle.float32)
+        np.testing.assert_allclose(
+            out.numpy(), ref.numpy(), rtol=1e-3, atol=1e-3
+        )
+
+    def test_fp16_to_fp32_transposed_rhs(self):
+        self._skip_if_no_fp16_cuda()
+        x = paddle.randn([3, 4], dtype='float16')
+        weight = paddle.randn([5, 4], dtype='float16')
+        out = paddle.mm(x, weight.t(), out_dtype=paddle.float32)
+        ref = paddle.mm(x.astype('float32'), weight.t().astype('float32'))
+        self.assertEqual(out.dtype, paddle.float32)
+        np.testing.assert_allclose(
+            out.numpy(), ref.numpy(), rtol=1e-3, atol=1e-3
+        )
+
+    def test_fp16_to_fp32_out(self):
+        self._skip_if_no_fp16_cuda()
+        x = paddle.randn([3, 4], dtype='float16')
+        y = paddle.randn([4, 5], dtype='float16')
+        out = paddle.empty([3, 5], dtype='float32')
+        ret = paddle.mm(x, y, out_dtype=paddle.float32, out=out)
+        ref = paddle.mm(x.astype('float32'), y.astype('float32'))
+        self.assertEqual(ret.dtype, paddle.float32)
+        np.testing.assert_allclose(
+            ret.numpy(), ref.numpy(), rtol=1e-3, atol=1e-3
+        )
+        np.testing.assert_allclose(
+            out.numpy(), ref.numpy(), rtol=1e-3, atol=1e-3
+        )
+
+    def test_out_dtype_rejects_mixed_input_dtypes(self):
+        self._skip_if_no_fp16_cuda()
+        x = paddle.randn([3, 4], dtype='float16')
+        y = paddle.randn([4, 5], dtype='bfloat16')
+        with self.assertRaises(TypeError):
+            paddle.mm(x, y, out_dtype=paddle.float32)
 
     def test_bf16_to_fp32(self):
         self._skip_if_no_bf16_cuda()
