@@ -122,7 +122,7 @@ class CUDAVirtualMemAllocatorV2 : public Allocator {
   CUDAVirtualMemAllocatorV2(const GPUPlace& place,
                             size_t handle_size,
                             PoolType pool = PoolType::kLarge);
-  ~CUDAVirtualMemAllocatorV2() override;
+  ~CUDAVirtualMemAllocatorV2() noexcept override;
 
   bool IsAllocThreadSafe() const override;
 

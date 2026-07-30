@@ -24,6 +24,8 @@
 #include "paddle/phi/core/memory/allocation/cuda_virtual_mem_allocator_v2.h"
 #include "paddle/phi/core/memory/allocation/free_block_remap_compactor.h"
 #include "paddle/phi/core/memory/allocation/remap_transaction.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/scope_guard.h"
 
 namespace paddle {
 namespace memory {
@@ -1030,8 +1032,66 @@ TEST(VMMAutoGrowthBestFitAllocatorV2,
   EXPECT_TRUE(allocator.all_blocks().empty());
   EXPECT_TRUE(underlying->HasDeferredHandleReleases());
 
+  const auto before_retry = underlying->GetReleaseDriverStats();
   EXPECT_EQ(allocator.Release(phi::GPUPlace()), handle_size);
   EXPECT_FALSE(underlying->HasDeferredHandleReleases());
+  const auto after_retry = underlying->GetReleaseDriverStats();
+  EXPECT_EQ(after_retry.allocation_count - before_retry.allocation_count, 1UL);
+  EXPECT_EQ(after_retry.handle_count - before_retry.handle_count, 1UL);
+  EXPECT_EQ(after_retry.released_bytes - before_retry.released_bytes,
+            handle_size);
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2,
+     DestructorDrainsDeferredHandleWithoutThrowing) {
+  auto underlying = std::make_shared<FaultInjectingReleaseAllocator>();
+  const size_t handle_size = underlying->handle_size();
+  auto allocation = underlying->Allocate(handle_size);
+  ASSERT_NE(allocation, nullptr);
+
+  underlying->FailReleaseCalls(1);
+  allocation.reset();
+  ASSERT_TRUE(underlying->HasDeferredHandleReleases());
+
+  EXPECT_NO_THROW(underlying.reset());
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2,
+     DestructorSkipsDeferredDrainWhenDeviceSwitchFails) {
+  int original_device = -1;
+  int device_count = 0;
+  ASSERT_EQ(cudaGetDevice(&original_device), cudaSuccess);
+  ASSERT_EQ(cudaGetDeviceCount(&device_count), cudaSuccess);
+  ASSERT_GT(device_count, 0);
+  const int allocator_device = phi::GPUPlace().device;
+  const int caller_device = device_count > 1
+                                ? (allocator_device + 1) % device_count
+                                : allocator_device;
+  ASSERT_EQ(cudaSetDevice(caller_device), cudaSuccess);
+  DEFINE_PADDLE_SCOPE_GUARD([&] { (void)cudaSetDevice(original_device); });
+
+  auto underlying = std::make_shared<FaultInjectingReleaseAllocator>();
+  const size_t handle_size = underlying->handle_size();
+  auto allocation = underlying->Allocate(handle_size);
+  ASSERT_NE(allocation, nullptr);
+
+  underlying->FailReleaseCalls(1);
+  allocation.reset();
+  ASSERT_EQ(underlying->deferred_handle_releases_.size(), 1UL);
+  auto deferred_handle = underlying->deferred_handle_releases_.front();
+  const int handle_device = deferred_handle->device();
+  ASSERT_EQ(handle_device, underlying->place_.device);
+
+  underlying->place_ = phi::GPUPlace(device_count);
+  EXPECT_NO_THROW(underlying.reset());
+  cudaGetLastError();
+
+  ASSERT_EQ(cudaSetDevice(handle_device), cudaSuccess);
+  const auto release_status = platform::RecordedGpuMemRelease(
+      deferred_handle->handle(), deferred_handle->size(), handle_device);
+  const auto restore_status = cudaSetDevice(caller_device);
+  EXPECT_EQ(release_status, CUDA_SUCCESS);
+  EXPECT_EQ(restore_status, cudaSuccess);
 }
 
 TEST(VMMAutoGrowthBestFitAllocatorV2, ReleaseRecordsLazyEventBeforeDeviceSync) {

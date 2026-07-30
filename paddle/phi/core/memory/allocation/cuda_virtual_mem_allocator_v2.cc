@@ -54,6 +54,15 @@ bool IsCudaRuntimeDeinitialized(cudaError_t result) {
   return result == cudaErrorCudartUnloading;
 }
 
+void LogAllocatorTeardownFailure(const char* operation,
+                                 size_t deferred_handles,
+                                 int device,
+                                 int status) noexcept {
+  VLOG(1) << "CUDA VMM allocator teardown could not " << operation
+          << ": device=" << device << " deferred_handles=" << deferred_handles
+          << " status=" << status;
+}
+
 size_t GetPoolVAMultiplier(PoolType pool_type) {
   switch (pool_type) {
     case PoolType::kSmall:
@@ -177,19 +186,47 @@ CUDAVirtualMemAllocatorV2::CUDAVirtualMemAllocatorV2(const GPUPlace& place,
                                                      PoolType pool)
     : place_(place), handle_size_(handle_size), pool_type_(pool) {}
 
-CUDAVirtualMemAllocatorV2::~CUDAVirtualMemAllocatorV2() {
+CUDAVirtualMemAllocatorV2::~CUDAVirtualMemAllocatorV2() noexcept {
   if (!deferred_handle_releases_.empty()) {
-    try {
-      platform::CUDADeviceGuard guard(place_.device);
-      RetryDeferredHandleReleases();
-    } catch (...) {
-      // Destruction must not propagate CUDA/context errors. This final
-      // best-effort drain handles normal teardown while CUDA is still usable;
-      // process teardown may leave no valid context in which to retry.
-      VLOG(1) << "Failed to drain " << deferred_handle_releases_.size()
-              << " deferred CUDA VMM handles while destroying allocator for "
-                 "device "
-              << static_cast<int>(place_.device);
+    // CUDADeviceGuard may throw while restoring the previous device. Teardown
+    // uses return-code checks so this noexcept destructor stays best-effort.
+    int previous_device = -1;
+    const auto get_device_status = cudaGetDevice(&previous_device);
+    if (get_device_status != cudaSuccess) {
+      LogAllocatorTeardownFailure("query the current CUDA device",
+                                  deferred_handle_releases_.size(),
+                                  place_.device,
+                                  get_device_status);
+    } else {
+      const bool restore_device = previous_device != place_.device;
+      const auto set_device_status =
+          restore_device ? cudaSetDevice(place_.device) : cudaSuccess;
+      if (set_device_status != cudaSuccess) {
+        LogAllocatorTeardownFailure("switch to its CUDA device",
+                                    deferred_handle_releases_.size(),
+                                    place_.device,
+                                    set_device_status);
+      } else {
+        try {
+          RetryDeferredHandleReleases();
+        } catch (...) {
+          // Destruction must not propagate CUDA/context errors. This final
+          // best-effort drain handles normal teardown while CUDA is usable.
+          LogAllocatorTeardownFailure("release deferred handles",
+                                      deferred_handle_releases_.size(),
+                                      place_.device,
+                                      -1);
+        }
+        if (restore_device) {
+          const auto restore_status = cudaSetDevice(previous_device);
+          if (restore_status != cudaSuccess) {
+            LogAllocatorTeardownFailure("restore the previous CUDA device",
+                                        deferred_handle_releases_.size(),
+                                        place_.device,
+                                        restore_status);
+          }
+        }
+      }
     }
   }
 #if defined(__linux__)
@@ -635,6 +672,9 @@ uint64_t CUDAVirtualMemAllocatorV2::RetryDeferredHandleReleases() {
     release_driver_stats_.released_bytes += handle->size();
     released_bytes += handle->size();
     it = deferred_handle_releases_.erase(it);
+  }
+  if (released_bytes > 0) {
+    ++release_driver_stats_.allocation_count;
   }
   return released_bytes;
 }
