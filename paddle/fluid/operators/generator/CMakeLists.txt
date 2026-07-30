@@ -249,7 +249,9 @@ execute_process(
   COMMAND
     ${PYTHON_EXECUTABLE} generate_sparse_op.py --ops_yaml_path
     ${parsed_op_dir}/sparse_ops.parsed.yaml --backward_ops_yaml_path
-    ${parsed_op_dir}/sparse_backward.parsed.yaml --output_op_path
+    ${parsed_op_dir}/sparse_backward.parsed.yaml --op_version_yaml_path
+    ${ops_yaml_dir}/op_version.yaml --fluid_ops_exclude addmm
+    --fluid_backward_ops_exclude addmm_grad --output_op_path
     "${generated_sparse_ops_path}.tmp" --output_arg_map_path
     "${generated_sparse_argument_mapping_path}.tmp"
   RESULT_VARIABLE _result)
