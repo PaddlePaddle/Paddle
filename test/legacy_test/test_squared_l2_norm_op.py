@@ -156,6 +156,8 @@ class TestL2LossEmptyInput(unittest.TestCase):
         self.check_place(paddle.CPUPlace())
         if paddle.is_compiled_with_cuda() or is_custom_device():
             self.check_place(get_device_place())
+        if paddle.device.is_compiled_with_xpu():
+            self.check_place(paddle.XPUPlace(0))
 
 
 if __name__ == "__main__":

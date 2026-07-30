@@ -14,11 +14,8 @@
 
 #include "paddle/phi/kernels/reduce_min_kernel.h"
 
-#include <limits>
-
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/reduce_kernel_impl.h"
 
 namespace phi {
@@ -30,7 +27,7 @@ void MinKernel(const Context& dev_ctx,
                bool keep_dim,
                DenseTensor* out) {
   if (x.numel() == 0) {
-    Full<T, Context>(dev_ctx, out->dims(), std::numeric_limits<T>::max(), out);
+    dev_ctx.template Alloc<T>(out);
     return;
   }
   bool reduce_all = recompute_reduce_all(x, dims);

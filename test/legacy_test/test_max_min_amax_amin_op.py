@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_device_place
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -518,24 +518,37 @@ class TestAmaxAminOutAPI(unittest.TestCase):
 
 
 class TestMaxMinAmaxAminZeroSizeAPI(unittest.TestCase):
-    def test_zero_size_output_reduce_outputs_are_initialized(self):
-        paddle.disable_static()
-        x = paddle.empty([0, 1, 2], dtype='float32')
+    def _check_place(self, place):
+        x = paddle.to_tensor(np.zeros([0, 2], dtype='float32'), place=place)
         max_identity = np.finfo(np.float32).min
         min_identity = np.finfo(np.float32).max
 
         for api, expected in [
-            (lambda t: paddle.max(t, axis=1), max_identity),
-            (lambda t: paddle.amax(t, axis=1), max_identity),
-            (lambda t: paddle.min(t, axis=1), min_identity),
-            (lambda t: paddle.amin(t, axis=1), min_identity),
+            (lambda t: paddle.amax(t, axis=0), max_identity),
+            (lambda t: paddle.amin(t, axis=0), min_identity),
         ]:
             out = api(x)
-            np.testing.assert_equal(list(out.shape), [0, 2])
+            np.testing.assert_equal(list(out.shape), [2])
             np.testing.assert_allclose(
-                out.numpy(), np.full([0, 2], expected, dtype='float32')
+                out.numpy(), np.full([2], expected, dtype='float32')
             )
 
+        for api in (paddle.max, paddle.min):
+            with self.assertRaises(ValueError):
+                api(x, axis=0)
+
+        empty_output_input = paddle.to_tensor(
+            np.zeros([0, 1, 2], dtype='float32'), place=place
+        )
+        for api in (paddle.max, paddle.amax, paddle.min, paddle.amin):
+            out = api(empty_output_input, axis=1)
+            np.testing.assert_equal(list(out.shape), [0, 2])
+
+    def test_zero_size_reduce_outputs_are_initialized(self):
+        paddle.disable_static()
+        self._check_place(paddle.CPUPlace())
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            self._check_place(get_device_place())
         paddle.enable_static()
 
 

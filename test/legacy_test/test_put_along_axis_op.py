@@ -1645,6 +1645,21 @@ class TestPutAlongAxisZeroSizeIndex(unittest.TestCase):
             out.numpy(), arr.numpy(), rtol=1e-6, atol=1e-6
         )
 
+    def test_invalid_parameters_are_checked_before_early_return(self):
+        arr = paddle.ones([2, 3], dtype='float32')
+        idx = paddle.zeros([2, 0], dtype='int64')
+        val = paddle.ones([2, 0], dtype='float32')
+
+        for api in (paddle.put_along_axis, paddle.put_along_axis_):
+            with self.assertRaises(ValueError):
+                api(arr, idx, val, axis=1, reduce='invalid')
+            with self.assertRaises(TypeError):
+                api(arr, idx, val, axis=1, include_self='invalid')
+
+        bool_arr = paddle.ones([2, 3], dtype='bool')
+        with self.assertRaises(TypeError):
+            paddle.put_along_axis(bool_arr, idx, val, axis=1)
+
     def test_zero_index_xpu(self):
         if not paddle.device.is_compiled_with_xpu():
             return
@@ -1656,7 +1671,7 @@ class TestPutAlongAxisZeroSizeIndex(unittest.TestCase):
         val = paddle.to_tensor(
             np.random.random([2, 4]).astype('float32'), place=place
         )
-        out = paddle.put_along_axis(arr, idx, val, axis=1)
+        out = paddle._C_ops.put_along_axis(arr, idx, val, 1, 'assign', True)
         np.testing.assert_equal(list(out.shape), [2, 60])
         np.testing.assert_allclose(
             out.numpy(), arr.numpy(), rtol=1e-6, atol=1e-6
@@ -1770,7 +1785,13 @@ class TestPutAlongAxisZeroSizeInputGrad(unittest.TestCase):
         self.assertEqual(list(out.shape), x_shape)
         loss = out.sum()
         loss.backward()
-        self.assertIsNone(value.grad)
+        if np.prod(idx_shape) == 0:
+            self.assertIsNone(value.grad)
+        else:
+            self.assertIsNotNone(value.grad)
+            np.testing.assert_array_equal(
+                value.grad.numpy(), np.zeros(idx_shape, dtype='float32')
+            )
 
     def test_input_first_dim_zero_assign(self):
         self._run_zero_size_input(

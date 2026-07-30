@@ -55,9 +55,11 @@ void PutAlongAxisKernel(const Context& dev_ctx,
                         bool include_self,
                         DenseTensor* out) {
   out->Resize(x.dims());
-  Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
-
-  if (x.numel() == 0 || index.numel() == 0) return;
+  if (x.numel() == 0 || index.numel() == 0) {
+    Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    return;
+  }
+  dev_ctx.template Alloc<T>(out);
 
   const auto& index_dtype = index.dtype();
   bool index_dtype_match =

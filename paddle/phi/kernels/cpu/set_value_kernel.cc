@@ -24,7 +24,6 @@
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/expand_kernel.h"
-#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
@@ -82,10 +81,23 @@ void SetValueImpl(const Context& dev_ctx,
 
     slice_dims_for_assign = make_ddim(slice_dims_with_none);
   }
-  bool value_is_empty = value.numel() == 0;
-  if (!value_is_empty) {
-    funcs::CheckIsDimsMatch(slice_dims_for_assign, value.dims());
+  funcs::CheckIsDimsMatch(slice_dims_for_assign, value.dims());
+
+  auto place = dev_ctx.GetPlace();
+  Copy(dev_ctx, in, place, false, out);
+  if (product(slice_dims) == 0) {
+    return;
   }
+
+  auto value_shape = vectorize<int64_t>(value.dims());
+  DenseTensor value_tensor = Empty<T>(dev_ctx, IntArray{value_shape});
+  value_tensor = value;
+  auto it = value_shape.begin();
+  while (it != value_shape.end() && *it == 1) {
+    it = value_shape.erase(it);
+  }
+  if (value_shape.empty()) value_shape.push_back(1);
+  value_tensor.Resize(value_shape);
 
   auto expand_shape = vectorize<int64_t>(slice_dims_for_assign);
   for (size_t i = 0; i < expand_shape.size(); i++) {
@@ -94,26 +106,10 @@ void SetValueImpl(const Context& dev_ctx,
   if (expand_shape.empty()) expand_shape.push_back(1);
   DenseTensor expand_tensor = Empty<T>(dev_ctx, IntArray{expand_shape});
 
-  auto place = dev_ctx.GetPlace();
   auto& eigen_place = *dev_ctx.eigen_device();
 
-  Copy(dev_ctx, in, place, false, out);
-  if (value_is_empty) {
-    Full<T, Context>(
-        dev_ctx, IntArray{expand_shape}, static_cast<T>(0), &expand_tensor);
-  } else {
-    auto value_shape = vectorize<int64_t>(value.dims());
-    DenseTensor value_tensor = Empty<T>(dev_ctx, IntArray{value_shape});
-    value_tensor = value;
-    auto it = value_shape.begin();
-    while (it != value_shape.end() && *it == 1) {
-      it = value_shape.erase(it);
-    }
-    if (value_shape.empty()) value_shape.push_back(1);
-    value_tensor.Resize(value_shape);
-    ExpandKernel<T, Context>(
-        dev_ctx, value_tensor, IntArray{expand_shape}, &expand_tensor);
-  }
+  ExpandKernel<T, Context>(
+      dev_ctx, value_tensor, IntArray{expand_shape}, &expand_tensor);
   expand_tensor.Resize(slice_dims);
 
   auto out_e = EigenTensor<T, RANK>::From(*out);
@@ -154,11 +150,6 @@ void SetTensorValueKernel(const Context& dev_ctx,
                           const std::vector<int64_t>& decrease_axes,
                           const std::vector<int64_t>& none_axes,
                           DenseTensor* out) {
-  if (x.numel() == 0) {
-    dev_ctx.template Alloc<T>(out);
-    return;
-  }
-
   const int rank = x.dims().size();
 
   switch (rank) {
