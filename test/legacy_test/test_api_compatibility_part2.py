@@ -3178,10 +3178,9 @@ class TestPReLUAPI(unittest.TestCase):
         out4 = paddle.nn.PReLU(2, init=0.5, device="cpu", dtype="float32")(x)
         # 5. PyTorch positional arguments
         out5 = paddle.nn.PReLU(2, 0.5, "cpu", paddle.float32)(x)
-        # 6. PyTorch positional string device without dtype
+        # 6. Paddle string weight_attr keeps its original meaning
         layer6 = paddle.nn.PReLU(2, 0.5, "cpu")
-        paddle.nn.PReLU(2, 0.5, "cpu")
-        self.assertTrue(layer6._weight.place.is_cpu_place())
+        self.assertEqual(layer6._weight.name, "cpu")
         out6 = layer6(x)
         # 7. Paddle string weight_attr keeps its original meaning
         layer7 = paddle.nn.PReLU(2, 0.5, "prelu_weight")
@@ -3213,6 +3212,14 @@ class TestPReLUAPI(unittest.TestCase):
         out11 = layer_place(x)
         self.assertTrue(layer_place._weight.place.is_cpu_place())
         np.testing.assert_allclose(out11.numpy(), expected, rtol=1e-6)
+
+        paddle.enable_compat(level=2)
+        try:
+            layer_compat = paddle.nn.PReLU(2, 0.5, "cpu")
+            paddle.nn.PReLU(2, 0.5, "cpu")
+            self.assertTrue(layer_compat._weight.place.is_cpu_place())
+        finally:
+            paddle.disable_compat()
 
         paddle.enable_static()
 

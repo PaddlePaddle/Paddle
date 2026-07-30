@@ -262,8 +262,11 @@ def prelu_decorator(
                 "ipu",
                 *(paddle.device.get_all_custom_device_type() or ()),
             }
+            from paddle.compat.api_dispatch import _PADDLE_NAMESPACE_SAVED
+
             is_device_string = (
                 isinstance(third_arg, str)
+                and bool(_PADDLE_NAMESPACE_SAVED)
                 and third_arg.lower().split(":", 1)[0] in device_types
             )
             is_torch_call = (
