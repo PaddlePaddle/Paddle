@@ -109,7 +109,7 @@ def parse_input_command(input_parameters):
     )
     try:
         dist.parse_command_line()
-    except:
+    except Exception:
         print(
             f"An error occurred while parsing the parameters, {dist.script_args}"
         )
