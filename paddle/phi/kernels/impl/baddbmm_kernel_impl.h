@@ -21,26 +21,34 @@ limitations under the License. */
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/baddbmm_kernel.h"
 #include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 
 namespace phi {
 
-template <typename T, size_t D, int MajorType = Eigen::RowMajor>
-using PhiEigenTensor = EigenTensor<T, D, MajorType>;
+template <typename T>
+struct BaddbmmScaleFunctor {
+  BaddbmmScaleFunctor(double scale, T* output)
+      : scale_(scale), output_(output) {}
 
-using Array1 = Eigen::DSizes<int64_t, 1>;
-using Array2 = Eigen::DSizes<int64_t, 2>;
-using Array3 = Eigen::DSizes<int64_t, 3>;
+  HOSTDEVICE void operator()(int64_t idx) const {
+    output_[idx] = scale_ == 0.0f ? static_cast<T>(0)
+                                  : output_[idx] * static_cast<T>(scale_);
+  }
+
+ private:
+  double scale_;
+  T* output_;
+};
 
 template <typename T, typename Context>
 void BaddbmmKernel(const Context& dev_ctx,
                    const DenseTensor& input,
                    const DenseTensor& x,
                    const DenseTensor& y,
-                   float beta,
-                   float alpha,
+                   double beta,
+                   double alpha,
                    DataType out_dtype,
                    DenseTensor* out) {
   auto input_dims = input.dims();
@@ -49,7 +57,7 @@ void BaddbmmKernel(const Context& dev_ctx,
 
   DenseTensor input_3d(input);
   if (input.dims().size() == 2) {
-    input_dims = {input.dims()[0], 1, input.dims()[1]};
+    input_dims = {1, input.dims()[0], input.dims()[1]};
     input_3d.Resize(input_dims);
   }
 
@@ -132,23 +140,35 @@ void BaddbmmKernel(const Context& dev_ctx,
           y_dims[1]));
 
   dev_ctx.template Alloc<T>(out);
+  // Degenerate shape (B/M/N == 0): out is empty, nothing to compute. Must
+  // return before the bcast_dims integer division below, which would divide by
+  // zero (SIGFPE) when a broadcast input dim is 0.
+  if (out->numel() == 0) {
+    if (out_dtype != DataType::UNDEFINED && out_dtype != out->dtype()) {
+      CastKernel<T>(dev_ctx, *out, out_dtype, out);
+    }
+    return;
+  }
   auto blas = funcs::GetBlas<Context, T>(dev_ctx);
 
-  // calc broadcast dim
-  Array3 bcast_dims;
-  bcast_dims[0] = x_dims[0] / input_dims[0];
-  bcast_dims[1] = x_dims[1] / input_dims[1];
-  bcast_dims[2] = y_dims[2] / input_dims[2];
-  VLOG(3) << "bcast_dims=[" << bcast_dims[0] << "," << bcast_dims[1] << ","
-          << bcast_dims[2] << "]";
+  VLOG(3) << "broadcast input to [" << x_dims[0] << "," << x_dims[1] << ","
+          << y_dims[2] << "]";
+  ExpandKernel<T, Context>(
+      dev_ctx, input_3d, IntArray({x_dims[0], x_dims[1], y_dims[2]}), out);
 
-  // broadcast using eigen
-  const DenseTensor& const_ref_input = input_3d;
-  auto eigen_input = PhiEigenTensor<T, 3>::From(const_ref_input);
-  auto eigen_out = PhiEigenTensor<T, 3>::From(*out);
-  auto& place = *dev_ctx.eigen_device();
-  funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, 3>::Eval(
-      place, eigen_out, eigen_input, bcast_dims);
+  // When K == 0 (x or y empty), the x@y term contributes nothing, so
+  // out = beta * input. Feeding K == 0 into (Batched)GEMM otherwise triggers a
+  // cuBLAS INVALID_VALUE error. Align with PyTorch: beta == 0 zeros the result
+  // so that nan/inf in input does not propagate (nan * 0 = nan otherwise).
+  if (x.numel() == 0 || y.numel() == 0) {
+    funcs::ForRange<Context> for_range(dev_ctx, out->numel());
+    BaddbmmScaleFunctor<T> functor(beta, out->data<T>());
+    for_range(functor);
+    if (out_dtype != DataType::UNDEFINED && out_dtype != out->dtype()) {
+      CastKernel<T>(dev_ctx, *out, out_dtype, out);
+    }
+    return;
+  }
 
   using MPType = typename dtype::MPTypeTrait<T>::Type;
 
@@ -156,8 +176,8 @@ void BaddbmmKernel(const Context& dev_ctx,
   if constexpr (std::is_same_v<MPType, float>) {
     VLOG(4) << "Function: baddbmm, Type of T: " << typeid(T).name();
     VLOG(4) << "Function: baddbmm, Type of MPType: " << typeid(MPType).name();
-    float t_alpha = alpha;
-    float t_beta = beta;
+    float t_alpha = static_cast<float>(alpha);
+    float t_beta = static_cast<float>(beta);
     if (x_dims[0] == 1) {
       blas.GEMM(CblasNoTrans,
                 CblasNoTrans,

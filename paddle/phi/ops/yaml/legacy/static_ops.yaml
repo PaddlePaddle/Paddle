@@ -1,3 +1,15 @@
+- op : addmm
+  args : (Tensor input, Tensor x, Tensor y, float beta=1.0, float alpha=1.0)
+  output : Tensor(out)
+  infer_meta :
+    func : AddmmInferMeta
+  kernel :
+    func : addmm
+    data_type : x
+  inplace: (input -> out)
+  backward : addmm_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : all
   args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
   output : Tensor(out)
@@ -73,6 +85,18 @@
     param : [shape, dtype, values]
     data_type : dtype
   traits : paddle::dialect::ForwardOnlyTrait
+
+- op : baddbmm
+  args : (Tensor input, Tensor x, Tensor y, float beta=1.0, float alpha=1.0, DataType out_dtype=DataType::UNDEFINED)
+  output : Tensor(out)
+  infer_meta :
+    func : BaddbmmInferMeta
+  kernel :
+    func : baddbmm
+    data_type : x
+  inplace: (input -> out)
+  backward : baddbmm_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : beam_search_decode
   args: (Tensor ids, Tensor scores, int beam_size, int end_id)
@@ -1216,3 +1240,17 @@
     func: multiclass_nms
     data_type: scores
   traits : paddle::dialect::ForwardOnlyTrait
+
+- op: sparse_addmm
+  args : (Tensor input, Tensor x, Tensor y, float beta=1.0, float alpha=1.0)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [input]
+  kernel :
+    func : addmm_csr_dense {dense, sparse_csr, dense -> dense},
+           addmm_csr_csr {sparse_csr, sparse_csr, sparse_csr -> sparse_csr},
+           addmm_coo_dense {dense, sparse_coo, dense -> dense},
+           addmm_coo_coo {sparse_coo, sparse_coo, sparse_coo -> sparse_coo}
+    layout : x
+  backward: sparse_addmm_grad

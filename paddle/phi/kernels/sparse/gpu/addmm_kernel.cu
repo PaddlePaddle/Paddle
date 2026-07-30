@@ -28,8 +28,8 @@ void AddmmKernelImpl(const Context& dev_ctx,
                      const DenseTensor& input,
                      const TensorType& x,
                      const DenseTensor& y,
-                     float beta,
-                     float alpha,
+                     double beta,
+                     double alpha,
                      DenseTensor* out) {
 #if defined(PADDLE_WITH_CUDA)
   std::vector<int64_t> input_dim = vectorize(input.dims());
@@ -100,8 +100,8 @@ void AddmmCooDenseKernel(const Context& dev_ctx,
                          const DenseTensor& input,
                          const SparseCooTensor& x,
                          const DenseTensor& y,
-                         float beta,
-                         float alpha,
+                         double beta,
+                         double alpha,
                          DenseTensor* out) {
   AddmmKernelImpl<T>(dev_ctx, input, x, y, beta, alpha, out);
 }
@@ -111,8 +111,8 @@ void AddmmCsrDenseKernel(const Context& dev_ctx,
                          const DenseTensor& input,
                          const SparseCsrTensor& x,
                          const DenseTensor& y,
-                         float beta,
-                         float alpha,
+                         double beta,
+                         double alpha,
                          DenseTensor* out) {
   AddmmKernelImpl<T>(dev_ctx, input, x, y, beta, alpha, out);
 }
