@@ -253,6 +253,8 @@ class CUDAVirtualMemAllocatorV2 : public Allocator {
       const char* context) const;
 
  protected:
+  virtual cudaError_t GetCurrentDeviceForRelease(int* device);
+  virtual cudaError_t SetCurrentDeviceForRelease(int device);
   virtual CUresult UnmapRangeForRelease(VMMDevicePtr ptr, size_t size);
   virtual CUresult ReleaseHandleForRelease(VMMAllocHandle handle, size_t size);
   phi::Allocation* AllocateImpl(size_t size) override;

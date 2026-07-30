@@ -46,8 +46,18 @@ class FaultInjectingReleaseAllocator : public CUDAVirtualMemAllocatorV2 {
 
   void FailUnmapCall(size_t call) { fail_unmap_call_ = call; }
   void FailReleaseCalls(size_t count) { fail_release_calls_ = count; }
+  void FailGetCurrentDevice(cudaError_t status) {
+    get_current_device_status_ = status;
+  }
 
  protected:
+  cudaError_t GetCurrentDeviceForRelease(int* device) override {
+    if (get_current_device_status_ != cudaSuccess) {
+      return get_current_device_status_;
+    }
+    return CUDAVirtualMemAllocatorV2::GetCurrentDeviceForRelease(device);
+  }
+
   CUresult UnmapRangeForRelease(VMMDevicePtr ptr, size_t size) override {
     ++unmap_calls_;
     if (unmap_calls_ == fail_unmap_call_) {
@@ -69,6 +79,7 @@ class FaultInjectingReleaseAllocator : public CUDAVirtualMemAllocatorV2 {
   size_t fail_unmap_call_{0};
   size_t unmap_calls_{0};
   size_t fail_release_calls_{0};
+  cudaError_t get_current_device_status_{cudaSuccess};
 };
 
 __global__ void BusyWaitKernel(uint64_t cycles) {
@@ -1092,6 +1103,35 @@ TEST(VMMAutoGrowthBestFitAllocatorV2,
   const auto restore_status = cudaSetDevice(caller_device);
   EXPECT_EQ(release_status, CUDA_SUCCESS);
   EXPECT_EQ(restore_status, cudaSuccess);
+}
+
+TEST(VMMAutoGrowthBestFitAllocatorV2,
+     DestructorSkipsTrackedReleaseWhenCudaContextIsUnavailable) {
+  auto underlying = std::make_shared<FaultInjectingReleaseAllocator>();
+  const size_t handle_size = underlying->handle_size();
+  auto allocator = std::make_unique<VMMAutoGrowthBestFitAllocatorV2>(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+  auto allocation = allocator->Allocate(handle_size);
+  ASSERT_NE(allocation, nullptr);
+  allocation.reset();
+
+  ASSERT_NE(allocator->underlying_allocations_.begin(),
+            allocator->underlying_allocations_.end());
+  auto* tracked = static_cast<Allocation*>(
+      allocator->underlying_allocations_.begin()->get());
+  void* tracked_ptr = tracked->ptr();
+  const auto layout = underlying->RequireHandleLayout(tracked);
+  ASSERT_EQ(layout.size(), 1UL);
+
+  underlying->FailGetCurrentDevice(cudaErrorInitializationError);
+  EXPECT_NO_THROW(allocator.reset());
+
+  HandleLayout ignored;
+  EXPECT_FALSE(
+      underlying->CollectAllocationHandleLayout(tracked_ptr, &ignored));
+
+  underlying->FailGetCurrentDevice(cudaSuccess);
+  EXPECT_NO_THROW(underlying->ReleaseMappedHandles(layout));
 }
 
 TEST(VMMAutoGrowthBestFitAllocatorV2, ReleaseRecordsLazyEventBeforeDeviceSync) {

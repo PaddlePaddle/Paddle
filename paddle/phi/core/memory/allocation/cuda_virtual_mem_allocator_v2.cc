@@ -50,8 +50,10 @@ bool IsCudaDeinitialized(CUresult result) {
   return result == CUDA_ERROR_DEINITIALIZED;
 }
 
-bool IsCudaRuntimeDeinitialized(cudaError_t result) {
-  return result == cudaErrorCudartUnloading;
+bool IsCudaRuntimeUnavailableForTeardown(cudaError_t result) {
+  return result == cudaErrorCudartUnloading ||
+         result == cudaErrorInitializationError ||
+         result == cudaErrorInsufficientDriver || result == cudaErrorNoDevice;
 }
 
 void LogAllocatorTeardownFailure(const char* operation,
@@ -529,6 +531,14 @@ CUresult CUDAVirtualMemAllocatorV2::UnmapRangeForRelease(VMMDevicePtr ptr,
   return phi::dynload::cuMemUnmap(ptr, size);
 }
 
+cudaError_t CUDAVirtualMemAllocatorV2::GetCurrentDeviceForRelease(int* device) {
+  return cudaGetDevice(device);
+}
+
+cudaError_t CUDAVirtualMemAllocatorV2::SetCurrentDeviceForRelease(int device) {
+  return cudaSetDevice(device);
+}
+
 CUresult CUDAVirtualMemAllocatorV2::ReleaseHandleForRelease(
     VMMAllocHandle handle, size_t size) {
   return platform::RecordedGpuMemRelease(handle, size, place_.device);
@@ -694,28 +704,37 @@ void CUDAVirtualMemAllocatorV2::FreeImpl(phi::Allocation* allocation) {
   auto* ptr = allocation->ptr();
   HandleLayout layout =
       RequireHandleLayout(static_cast<Allocation*>(allocation));
+  auto discard_host_state = [&] {
+    UnregisterHandleLayout(static_cast<Allocation*>(allocation), ptr);
+    delete allocation;
+  };
 
   int prev_id = -1;
-  auto runtime_status = cudaGetDevice(&prev_id);
-  if (IsCudaRuntimeDeinitialized(runtime_status)) {
+  auto runtime_status = GetCurrentDeviceForRelease(&prev_id);
+  if (IsCudaRuntimeUnavailableForTeardown(runtime_status)) {
     // CUDA teardown path only. At this point the runtime/context may no longer
     // accept cuMemUnmap/cuMemRelease, and this allocator will not serve further
     // allocations/remap/IPC queries. Drop host-side ownership records to avoid
     // throwing from process-exit cleanup; do not treat this as a normal release
     // path or as evidence that backing_map_ still reflects driver state.
-    UnregisterHandleLayout(static_cast<Allocation*>(allocation), ptr);
-    delete allocation;
+    discard_host_state();
     return;
   }
   PADDLE_ENFORCE_GPU_SUCCESS(runtime_status);
   const bool restore_device = prev_id != place_.device;
   if (restore_device) {
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaSetDevice(place_.device));
+    runtime_status = SetCurrentDeviceForRelease(place_.device);
+    if (IsCudaRuntimeUnavailableForTeardown(runtime_status)) {
+      discard_host_state();
+      return;
+    }
+    PADDLE_ENFORCE_GPU_SUCCESS(runtime_status);
   }
   DEFINE_PADDLE_SCOPE_GUARD([&] {
     if (restore_device) {
-      auto status = cudaSetDevice(prev_id);
-      if (status != cudaSuccess && !IsCudaRuntimeDeinitialized(status)) {
+      auto status = SetCurrentDeviceForRelease(prev_id);
+      if (status != cudaSuccess &&
+          !IsCudaRuntimeUnavailableForTeardown(status)) {
         VLOG(3) << "Failed to restore CUDA device from " << place_.device
                 << " to " << prev_id << ": " << cudaGetErrorString(status);
       }
@@ -724,8 +743,7 @@ void CUDAVirtualMemAllocatorV2::FreeImpl(phi::Allocation* allocation) {
 
   ReleaseMappedHandles(layout);
 
-  UnregisterHandleLayout(static_cast<Allocation*>(allocation), ptr);
-  delete allocation;
+  discard_host_state();
 }
 
 void CUDAVirtualMemAllocatorV2::RollbackMappedHandleRange(VMMDevicePtr ptr,
