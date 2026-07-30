@@ -4007,6 +4007,10 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
         forward_send_recv_buffer_queue = OffloadQueue(
             offload=self._enable_offload_queue
         )
+        # Parallel FIFO holding the block_cache_meta of each queued input
+        # tensor. Plain Queue: meta is a list of ints, offloading is pointless
+        # and would change OffloadQueue's tuple semantics.
+        forward_send_recv_meta_queue = queue.Queue()
 
         skip_steps = self.accumulate_steps - self.num_stages
         micro_dataset = self._wrap_data(data)
@@ -4038,6 +4042,13 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
                 batch_p2p_comm=self._use_batch_p2p_comm,
             )
         )
+        # Save block_cache_meta from the initial recv for VPP rank 0
+        if self._block_atten_res_opt:
+            self._recv_block_cache_meta_for_vpp[0] = (
+                None
+                if self.is_pipeline_first_stage()
+                else self._p2p_helper.get_recv_block_cache_meta()
+            )
 
         # In startup_steps, we send every output_tensor of last stage,
         # to simplify the code logic of stage 1F1B.
@@ -4061,16 +4072,30 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
                 skip_check_meta=not self.training,
                 block_cache_meta=meta_to_send,
             )
+            recv_meta = (
+                self._p2p_helper.get_recv_block_cache_meta()
+                if (self._block_atten_res_opt and recv_prev)
+                else None
+            )
             if self.is_pipeline_first_stage(ignore_virtual=True):
                 if input_tensor is not None:
                     # stash the input_tensor and it will be used in the next chunk later
                     forward_send_recv_buffer_queue.put(input_tensor)
+                    if self._block_atten_res_opt:
+                        forward_send_recv_meta_queue.put(recv_meta)
                 if next_forward_virtual_pp_rank == 0:
                     input_tensor = None
+                    recv_meta = None
                 else:
                     # when a input_tensor is needed, get one from the queue
                     input_tensor = forward_send_recv_buffer_queue.get()
+                    if self._block_atten_res_opt:
+                        recv_meta = forward_send_recv_meta_queue.get()
 
+            if self._block_atten_res_opt:
+                self._recv_block_cache_meta_for_vpp[
+                    next_forward_virtual_pp_rank
+                ] = recv_meta
             self.input_tensors[next_forward_virtual_pp_rank].append(
                 input_tensor
             )
@@ -4148,6 +4173,16 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
                             overlap_p2p_comm=True,
                         )
                     )
+                    recv_meta = (
+                        self._p2p_helper.get_recv_block_cache_meta()
+                        if (
+                            self._block_atten_res_opt
+                            and not self.is_pipeline_first_stage(
+                                ignore_virtual=True
+                            )
+                        )
+                        else None
+                    )
                     bw_wait_handles = self._p2p_helper.send_backward(
                         input_tensor_grad,
                         self.is_pipeline_first_stage(ignore_virtual=True),
@@ -4170,6 +4205,12 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
                     )
                     if self.is_pipeline_first_stage(ignore_virtual=True):
                         input_tensor = forward_send_recv_buffer_queue.get()
+                        if self._block_atten_res_opt:
+                            recv_meta = forward_send_recv_meta_queue.get()
+                    if self._block_atten_res_opt:
+                        self._recv_block_cache_meta_for_vpp[
+                            next_forward_virtual_pp_rank
+                        ] = recv_meta
                     self.input_tensors[next_forward_virtual_pp_rank].append(
                         input_tensor
                     )
@@ -4181,6 +4222,16 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
                         self.is_pipeline_first_stage(ignore_virtual=True),
                         batch_p2p_comm=self._use_batch_p2p_comm,
                     )
+                    recv_meta = (
+                        self._p2p_helper.get_recv_block_cache_meta()
+                        if (
+                            self._block_atten_res_opt
+                            and not self.is_pipeline_first_stage(
+                                ignore_virtual=True
+                            )
+                        )
+                        else None
+                    )
                     self._p2p_helper.send_backward(
                         input_tensor_grad,
                         self.is_pipeline_first_stage(ignore_virtual=True),
@@ -4191,6 +4242,12 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
                     )
                     if self.is_pipeline_first_stage(ignore_virtual=True):
                         input_tensor = forward_send_recv_buffer_queue.get()
+                        if self._block_atten_res_opt:
+                            recv_meta = forward_send_recv_meta_queue.get()
+                    if self._block_atten_res_opt:
+                        self._recv_block_cache_meta_for_vpp[
+                            next_forward_virtual_pp_rank
+                        ] = recv_meta
                     self.input_tensors[next_forward_virtual_pp_rank].append(
                         input_tensor
                     )
