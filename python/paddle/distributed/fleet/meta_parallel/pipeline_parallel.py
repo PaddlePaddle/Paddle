@@ -800,7 +800,6 @@ class PipelineParallel(MetaParallelBase):
         ].overlap_p2p_comm
 
 
-        #暂时使用环境变量debug
         if os.environ.get("BLOCK_ATTEN_RES_COMM_OPT", "1") == "1":
             self._block_atten_res_opt = True
         else:
@@ -1785,11 +1784,6 @@ class PipelineParallel(MetaParallelBase):
                     outputs = [output_tensor]
                     grad_tensors = [output_tensor_grad]
 
-                # BlockAttnRes: 注入同 stage 后续 chunk 累加在 cc 上的梯度。
-                # produced block 的 cc 是 detach 出来给同 stage 后续 chunk 消费的，
-                # 其梯度堆在 cc.grad（脱离本 chunk 前向图）。这里在 backward 前把
-                # cc.grad 加进 produced block 对应的 grad_tensors slot，汇入本地图。
-                # outputs[oi] ↔ grad_tensors[oi] 顺序对齐，t.pp_cc_ref 给出对应 cc。
                 if self._block_atten_res_opt and isinstance(
                     output_tensor, tuple
                 ):
@@ -2316,22 +2310,13 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
 
         if blocks_to_cache:
-            # blocks_to_cache = [received 尚未缓存] + [produced 本 chunk 新产]
-            # produced 是末尾 new_blocks 个（前向 append 在尾部）
             num_produced = new_blocks
             num_received_new = len(blocks_to_cache) - num_produced
             for i, block in enumerate(blocks_to_cache):
                 if i < num_received_new:
-                    # received：缓存原对象（与 input_tensor 共享同一叶子），
-                    # pp_block_cached=True 防 _release_output 清空数据指针。
-                    # 同 stage 后续 chunk 复用同一个对象，其 .grad 自动累加，
-                    # 经现有 input_tensor_grad 提取上行。
                     block.pp_block_cached = True
                     cached_blocks.append(block)
                 else:
-                    # produced：detach 成 cc 供同 stage 后续 chunk 消费（避免 double-backward）。
-                    # 原 produced block 仍在 output_tensor 参与本 chunk 反向，
-                    # 通过 pp_cc_ref 关联 cc，反向时把 cc.grad 注入其 grad slot。
                     cc = block.detach()
                     cc.stop_gradient = False
                     cached_blocks.append(cc)
@@ -2487,8 +2472,6 @@ class PipelineParallelWithInterleave(PipelineParallel):
             loss_fn_node=loss_fn_node,
         )
 
-        # BlockAttnRes: 最后一个逻辑 chunk（virtual_pp_rank==0）反向完成后，
-        # 释放该 microbatch 的 block cache 与 meta，避免跨 step 泄漏。
         if (
             self._block_atten_res_opt
             and virtual_pp_rank == 0
