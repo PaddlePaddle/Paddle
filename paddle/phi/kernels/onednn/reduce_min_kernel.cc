@@ -29,6 +29,10 @@ void MinRawKernel(const Context& dev_ctx,
                   bool reduce_all,
                   DenseTensor* out) {
   if (x.numel() == 0) {
+    if (out->numel() == 0) {
+      dev_ctx.template Alloc<T>(out);
+      return;
+    }
     Full<T, Context>(dev_ctx, out->dims(), std::numeric_limits<T>::max(), out);
     return;
   }
