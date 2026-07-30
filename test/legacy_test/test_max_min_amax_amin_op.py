@@ -518,20 +518,23 @@ class TestAmaxAminOutAPI(unittest.TestCase):
 
 
 class TestMaxMinAmaxAminZeroSizeAPI(unittest.TestCase):
-    def test_zero_size_reduce_outputs_are_initialized(self):
+    def test_zero_size_output_reduce_outputs_are_initialized(self):
         paddle.disable_static()
-        x = paddle.empty([0], dtype='float32')
+        x = paddle.empty([0, 1, 2], dtype='float32')
         max_identity = np.finfo(np.float32).min
         min_identity = np.finfo(np.float32).max
 
         for api, expected in [
-            (paddle.max, max_identity),
-            (paddle.amax, max_identity),
-            (paddle.min, min_identity),
-            (paddle.amin, min_identity),
+            (lambda t: paddle.max(t, axis=1), max_identity),
+            (lambda t: paddle.amax(t, axis=1), max_identity),
+            (lambda t: paddle.min(t, axis=1), min_identity),
+            (lambda t: paddle.amin(t, axis=1), min_identity),
         ]:
             out = api(x)
-            np.testing.assert_allclose(out.numpy(), expected)
+            np.testing.assert_equal(list(out.shape), [0, 2])
+            np.testing.assert_allclose(
+                out.numpy(), np.full([0, 2], expected, dtype='float32')
+            )
 
         paddle.enable_static()
 
