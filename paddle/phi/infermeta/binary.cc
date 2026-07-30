@@ -373,26 +373,31 @@ void BmmOutDtypeInferMeta(const MetaTensor& x,
   PADDLE_ENFORCE_EQ(
       out_dtype,
       DataType::FLOAT32,
-      common::errors::InvalidArgument(
+      common::errors::InvalidType(
           "The out_dtype of paddle.bmm currently only supports float32."));
   PADDLE_ENFORCE_EQ(
       x.dtype() == DataType::FLOAT16 || x.dtype() == DataType::BFLOAT16,
       true,
-      common::errors::InvalidArgument(
+      common::errors::InvalidType(
           "The out_dtype of paddle.bmm currently only supports float16 or "
           "bfloat16 Input(X)."));
   PADDLE_ENFORCE_EQ(
       y.dtype() == DataType::FLOAT16 || y.dtype() == DataType::BFLOAT16,
       true,
-      common::errors::InvalidArgument(
+      common::errors::InvalidType(
           "The out_dtype of paddle.bmm currently only supports float16 or "
           "bfloat16 Input(Y)."));
   PADDLE_ENFORCE_EQ(
       x.dtype(),
       y.dtype(),
-      common::errors::InvalidArgument(
+      common::errors::InvalidType(
           "Input(X) and Input(Y) must have the same dtype when out_dtype is "
           "specified for paddle.bmm."));
+  PADDLE_ENFORCE_EQ(
+      out->dtype() == DataType::UNDEFINED || out->dtype() == DataType::FLOAT32,
+      true,
+      common::errors::InvalidType(
+          "The out tensor dtype must be float32 when out_dtype is float32."));
 
   BmmInferMeta(x, y, out);
   out->set_dtype(DataType::FLOAT32);

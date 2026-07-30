@@ -388,22 +388,6 @@ class TestBmmOutDtypeDynamicOnly(unittest.TestCase):
         finally:
             paddle.disable_static()
 
-    def test_legacy_static_graph(self):
-        paddle.enable_static()
-        try:
-            with paddle.pir_utils.OldIrGuard():
-                main = paddle.static.Program()
-                startup = paddle.static.Program()
-                with paddle.static.program_guard(main, startup):
-                    x = paddle.static.data('x', [2, 3, 4], dtype='float32')
-                    y = paddle.static.data('y', [2, 4, 5], dtype='float32')
-                    result = paddle.bmm(x, y)
-
-                self.assertEqual(list(result.shape), [2, 3, 5])
-                self.assertEqual(main.global_block().ops[-1].type, 'bmm')
-        finally:
-            paddle.disable_static()
-
     def test_static_out_dtype_fails_closed(self):
         paddle.enable_static()
         try:

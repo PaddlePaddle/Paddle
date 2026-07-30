@@ -2371,37 +2371,6 @@ def bmm(
     """
     if out_dtype is not None:
         out_dtype = convert_nptype_to_datatype_or_vartype(out_dtype)
-        float32_dtypes = (core.DataType.FLOAT32, core.VarDesc.VarType.FP32)
-        supported_input_dtypes = (
-            core.DataType.FLOAT16,
-            core.VarDesc.VarType.FP16,
-            core.DataType.BFLOAT16,
-            core.VarDesc.VarType.BF16,
-        )
-        if out_dtype not in float32_dtypes:
-            raise TypeError(
-                "The out_dtype of paddle.bmm currently only supports paddle.float32."
-            )
-        if input.dtype not in supported_input_dtypes:
-            raise TypeError(
-                "The out_dtype of paddle.bmm currently only supports float16 or bfloat16 input."
-            )
-        if mat2.dtype not in supported_input_dtypes:
-            raise TypeError(
-                "The out_dtype of paddle.bmm currently only supports float16 or bfloat16 mat2."
-            )
-        if input.dtype != mat2.dtype:
-            raise TypeError(
-                "The input and mat2 of paddle.bmm must have the same dtype when out_dtype is specified."
-            )
-        if len(input.shape) != 3 or len(mat2.shape) != 3:
-            raise ValueError(
-                "The out_dtype of paddle.bmm currently only supports 3-D inputs."
-            )
-        if out is not None and out.dtype not in float32_dtypes:
-            raise TypeError(
-                "The out tensor dtype must be paddle.float32 when out_dtype is paddle.float32."
-            )
         if not in_dynamic_mode():
             raise NotImplementedError(
                 "The out_dtype of paddle.bmm currently only supports dynamic graph."
@@ -2439,16 +2408,6 @@ def bmm(
 
     if in_pir_mode():
         return _C_ops.bmm(input, mat2, out=out)
-
-    helper = LayerHelper('bmm', **locals())
-    if out is None:
-        out = helper.create_variable_for_type_inference(dtype=input.dtype)
-    helper.append_op(
-        type='bmm',
-        inputs={'X': input, 'Y': mat2},
-        outputs={'Out': out},
-    )
-    return out
 
 
 def addmv(
