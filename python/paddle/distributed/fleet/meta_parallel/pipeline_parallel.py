@@ -2873,7 +2873,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
             # Save block_cache_meta from the initial recv for VPP rank 0
             if self._block_atten_res_opt:
                 self._recv_block_cache_meta_for_vpp[0] = (
-                    self._p2p_helper.get_recv_block_cache_meta()
+                    None
+                    if self.is_pipeline_first_stage()
+                    else self._p2p_helper.get_recv_block_cache_meta()
                 )
 
         fwd_wait_handles = None
@@ -3763,6 +3765,13 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
                 batch_p2p_comm=self._use_batch_p2p_comm,
             )
         )
+        # Save block_cache_meta from the initial recv for VPP rank 0
+        if self._block_atten_res_opt:
+            self._recv_block_cache_meta_for_vpp[0] = (
+                None
+                if self.is_pipeline_first_stage()
+                else self._p2p_helper.get_recv_block_cache_meta()
+            )
 
         for micro_step in range(num_steps):
             output_tensor, meta_to_send = self._forward_step_helper(micro_dataset, micro_step)
@@ -3801,6 +3810,13 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
                 skip_check_meta=not self.training,
                 block_cache_meta=meta_to_send,
             )
+            # Save block_cache_meta for the VPP rank that will use this input
+            if self._block_atten_res_opt:
+                self._recv_block_cache_meta_for_vpp[next_virtual_pp_rank] = (
+                    self._p2p_helper.get_recv_block_cache_meta()
+                    if recv_prev
+                    else None
+                )
             self.input_tensors[next_virtual_pp_rank].append(input_tensor)
 
             _release_output(output_tensor)
