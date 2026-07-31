@@ -331,6 +331,7 @@ uint64_t AutoGrowthBestFitAllocator::FreeIdleChunks() {
   if (!allow_free_idle_chunk_) {
     return 0;
   }
+
   uint64_t bytes = 0;
   for (auto chunk_it = chunks_.begin(); chunk_it != chunks_.end();) {
     auto &blocks = chunk_it->blocks_;
