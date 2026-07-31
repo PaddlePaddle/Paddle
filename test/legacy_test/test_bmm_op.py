@@ -382,6 +382,17 @@ class TestBmmOutDtypeDynamicOnly(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             paddle.bmm(x, y, out_dtype=paddle.float32)
 
+    @unittest.skipUnless(
+        paddle.is_compiled_with_rocm(),
+        "ROCm is required for the bmm out_dtype backend check",
+    )
+    def test_out_dtype_rejects_rocm(self):
+        place = paddle.CUDAPlace(0)
+        x = paddle.to_tensor(np.ones([2, 3, 4], dtype='float16'), place=place)
+        y = paddle.to_tensor(np.ones([2, 4, 5], dtype='float16'), place=place)
+        with self.assertRaises(NotImplementedError):
+            paddle.bmm(x, y, out_dtype=paddle.float32)
+
     def test_static_shape_validation(self):
         paddle.enable_static()
         try:

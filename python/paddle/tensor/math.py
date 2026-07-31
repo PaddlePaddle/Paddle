@@ -2392,7 +2392,12 @@ def bmm(
             raise NotImplementedError(
                 "The out_dtype of paddle.bmm currently only supports dynamic graph."
             )
-        if not input.place.is_gpu_place() or not mat2.place.is_gpu_place():
+        if (
+            not paddle.is_compiled_with_cuda()
+            or paddle.is_compiled_with_rocm()
+            or not input.place.is_gpu_place()
+            or not mat2.place.is_gpu_place()
+        ):
             raise NotImplementedError(
                 "The out_dtype of paddle.bmm currently only supports CUDA tensors."
             )
