@@ -19,6 +19,7 @@ import tempfile
 import unittest
 from unittest import mock
 
+import paddle.dataset.cifar as dataset_cifar
 import paddle.vision.datasets.cifar as vision_cifar
 from paddle.dataset.cifar import CIFAR10_MD5, CIFAR100_MD5, reader_creator
 from paddle.utils.download import _safe_extract_tar
@@ -68,12 +69,12 @@ class TestCifarSecurity(unittest.TestCase):
             ):
                 list(reader())
 
-    def _count_local_cifar_md5_calls(
+    def _count_vision_cifar_md5_calls(
         self,
         data_file,
         dataset_cls=Cifar10,
         md5sum=CIFAR10_MD5,
-        mutate=None,
+        iterations=2,
     ):
         md5_calls = []
 
@@ -81,58 +82,96 @@ class TestCifarSecurity(unittest.TestCase):
             md5_calls.append(path)
             return md5sum
 
-        vision_cifar._cached_md5file.cache_clear()
-        try:
-            with (
-                mock.patch.object(vision_cifar, 'md5file', fake_md5file),
-                mock.patch.object(
-                    dataset_cls,
-                    '_load_data',
-                    lambda dataset: setattr(dataset, 'data', []),
-                ),
-            ):
+        with (
+            mock.patch.object(vision_cifar, 'md5file', fake_md5file),
+            mock.patch.object(
+                dataset_cls,
+                '_load_data',
+                lambda dataset: setattr(dataset, 'data', []),
+            ),
+        ):
+            for _ in range(iterations):
                 dataset_cls(data_file=data_file, download=False)
-                if mutate is not None:
-                    mutate()
-                dataset_cls(data_file=data_file, download=False)
-        finally:
-            vision_cifar._cached_md5file.cache_clear()
 
         return len(md5_calls)
 
-    def test_local_archive_md5_cache_reuses_unchanged_file(self):
+    def test_local_archive_md5_rechecks_each_load(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             data_file = os.path.join(tmpdir, 'cifar-10-python.tar.gz')
             self._write_tar(data_file)
 
-            self.assertEqual(self._count_local_cifar_md5_calls(data_file), 1)
+            self.assertEqual(self._count_vision_cifar_md5_calls(data_file), 2)
 
-    def test_cifar100_local_archive_md5_cache_reuses_unchanged_file(self):
+    def test_cifar100_local_archive_md5_rechecks_each_load(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             data_file = os.path.join(tmpdir, 'cifar-100-python.tar.gz')
             self._write_tar(data_file)
 
             self.assertEqual(
-                self._count_local_cifar_md5_calls(
+                self._count_vision_cifar_md5_calls(
                     data_file,
                     dataset_cls=Cifar100,
                     md5sum=CIFAR100_MD5,
                 ),
-                1,
+                2,
             )
 
-    def test_local_archive_md5_cache_refreshes_changed_file(self):
+    def test_vision_cifar_rejects_second_load_after_content_changes(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             data_file = os.path.join(tmpdir, 'cifar-10-python.tar.gz')
             self._write_tar(data_file)
+            md5_results = [CIFAR10_MD5, 'bad-md5']
 
-            def mutate():
-                with open(data_file, 'ab') as f:
-                    f.write(b'changed')
+            def fake_md5file(path):
+                return md5_results.pop(0)
 
-            self.assertEqual(
-                self._count_local_cifar_md5_calls(data_file, mutate=mutate), 2
+            with (
+                mock.patch.object(vision_cifar, 'md5file', fake_md5file),
+                mock.patch.object(
+                    Cifar10,
+                    '_load_data',
+                    lambda dataset: setattr(dataset, 'data', []),
+                ),
+            ):
+                Cifar10(data_file=data_file, download=False)
+                with self.assertRaisesRegex(
+                    ValueError,
+                    'unverified local CIFAR pickle archive|official archive|MD5',
+                ):
+                    Cifar10(data_file=data_file, download=False)
+
+    def test_legacy_reader_rechecks_md5_on_each_invocation(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            data_file = os.path.join(tmpdir, 'cifar-10-python.tar.gz')
+            self._write_tar(data_file)
+            md5_results = [CIFAR10_MD5, 'bad-md5']
+            md5_calls = []
+
+            def fake_md5file(path):
+                md5_calls.append(path)
+                return md5_results.pop(0)
+
+            reader = reader_creator(
+                data_file,
+                'data_batch',
+                md5sum=CIFAR10_MD5,
             )
+
+            with (
+                mock.patch.object(
+                    dataset_cifar.pickle,
+                    'load',
+                    lambda *args, **kwargs: {b'data': [], b'labels': []},
+                ),
+                mock.patch('paddle.dataset.common.md5file', fake_md5file),
+            ):
+                list(reader())
+                with self.assertRaisesRegex(
+                    ValueError, 'unverified CIFAR pickle archive|official MD5'
+                ):
+                    list(reader())
+
+            self.assertEqual(len(md5_calls), 2)
 
 
 class TestFlowersSafeExtractTar(unittest.TestCase):

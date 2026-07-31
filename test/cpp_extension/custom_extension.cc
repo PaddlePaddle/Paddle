@@ -17,6 +17,7 @@
 
 #include "custom_power.h"  // NOLINT
 #include "paddle/extension.h"
+#include "torch/extension.h"
 
 paddle::Tensor custom_sub(paddle::Tensor x, paddle::Tensor y);
 
@@ -60,6 +61,12 @@ paddle::optional<paddle::Tensor> optional_tensor(bool return_option = false) {
   return t;
 }
 
+int64_t scalar_type_value(c10::ScalarType dtype) {
+  return static_cast<int64_t>(dtype);
+}
+
+c10::ScalarType scalar_type_round_trip(c10::ScalarType dtype) { return dtype; }
+
 PYBIND11_MODULE(PADDLE_EXTENSION_NAME, m) {
   m.def("custom_add", &custom_add, "exp(x) + exp(y)");
   m.def("custom_optional_add", &custom_optional_add, "exp(x) + optional(y)");
@@ -69,6 +76,8 @@ PYBIND11_MODULE(PADDLE_EXTENSION_NAME, m) {
   m.def(
       "optional_tensor", &optional_tensor, "returned Tensor might be optional");
   m.def("relu_cuda_forward", &relu_cuda_forward, "relu(x)");
+  m.def("scalar_type_value", &scalar_type_value);
+  m.def("scalar_type_round_trip", &scalar_type_round_trip);
 
   py::class_<Power>(m, "Power")
       .def(py::init<int, int>())

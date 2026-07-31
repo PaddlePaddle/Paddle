@@ -650,8 +650,9 @@ static __global__ void FastCommonGradBroadcastCUDAKernelHeight(const T *x,
   __shared__ T sdata[BLOCK_Y][BLOCK_X + 1];
 
   T val(0);
-  IndexType width_stride = GRID_NUM_X * BLOCK_NUM_X;
-  IndexType idx = THREAD_ID_X + BLOCK_NUM_X * BLOCK_ID_X;
+  IndexType width_stride = static_cast<IndexType>(GRID_NUM_X) * BLOCK_NUM_X;
+  IndexType idx =
+      THREAD_ID_X + static_cast<IndexType>(BLOCK_NUM_X) * BLOCK_ID_X;
   IndexType full_width =
       (w & (~((uint64_t)(BLOCK_X - 1)))) + ((w & (BLOCK_X - 1)) ? BLOCK_X : 0);
   IndexType full_height =
@@ -862,8 +863,9 @@ static __global__ void FastElemwiseGradBroadcast1CUDAKernel(
   __shared__ T sdata[BLOCK_Y][BLOCK_X + 1];
 
   T val(0);
-  IndexType width_stride = GRID_NUM_X * BLOCK_NUM_X;
-  IndexType idx = THREAD_ID_X + BLOCK_NUM_X * BLOCK_ID_X;
+  IndexType width_stride = static_cast<IndexType>(GRID_NUM_X) * BLOCK_NUM_X;
+  IndexType idx =
+      THREAD_ID_X + static_cast<IndexType>(BLOCK_NUM_X) * BLOCK_ID_X;
   IndexType full_width =
       (w & (~((uint64_t)(BLOCK_X - 1)))) + ((w & (BLOCK_X - 1)) ? BLOCK_X : 0);
   IndexType full_height =
@@ -1544,8 +1546,10 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
                                    int max_dim,
                                    bool is_x_large) {
     int axis = broadcast_pos[0];
-    size_t pre = std::accumulate(
-        out_dims_array, out_dims_array + axis, 1, std::multiplies<int64_t>());
+    size_t pre = std::accumulate(out_dims_array,
+                                 out_dims_array + axis,
+                                 static_cast<int64_t>(1),
+                                 std::multiplies<int64_t>());
     size_t mid = 1;
     size_t post = 1;
 
@@ -1987,7 +1991,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
                                                             y_threads,
                                                             dy_op);
     } else {
-      CommonGradBroadcastCUDAKernel<int32_t, T, DY_OP, Tout>
+      CommonGradBroadcastCUDAKernel<uint32_t, T, DY_OP, Tout>
           <<<y_blocks, y_block_size, 0, dev_ctx.stream()>>>(x_strides_array_gpu,
                                                             y_strides_array_gpu,
                                                             out_dims_array_gpu,
