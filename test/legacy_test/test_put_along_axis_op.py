@@ -1650,7 +1650,12 @@ class TestPutAlongAxisZeroSizeIndex(unittest.TestCase):
         idx = paddle.zeros([2, 0], dtype='int64')
         val = paddle.ones([2, 0], dtype='float32')
 
-        for api in (paddle.put_along_axis, paddle.put_along_axis_):
+        for api in (paddle.put_along_axis, paddle.tensor.put_along_axis_):
+            invalid_idx = paddle.zeros([2, 0], dtype='float32')
+            with self.assertRaises(TypeError):
+                api(arr, invalid_idx, val, axis=1)
+            with self.assertRaises(TypeError):
+                api(arr, idx, val, axis=1, reduce=1)
             with self.assertRaises(ValueError):
                 api(arr, idx, val, axis=1, reduce='invalid')
             with self.assertRaises(TypeError):
@@ -1684,22 +1689,23 @@ class TestPutAlongAxisZeroIndexGrad(unittest.TestCase):
 
     def _check(self, place):
         arr = paddle.to_tensor(
-            np.random.rand(128, 256).astype('float32'), place=place
+            np.random.rand(2, 3).astype('float32'), place=place
         )
         arr.stop_gradient = False
-        index = paddle.to_tensor(np.zeros((0, 8), dtype='int64'), place=place)
+        index = paddle.to_tensor(np.zeros((2, 0), dtype='int64'), place=place)
         values = paddle.to_tensor(
-            np.random.rand(128, 8).astype('float32'), place=place
+            np.zeros((2, 0), dtype='float32'), place=place
         )
         values.stop_gradient = False
-        out = paddle.put_along_axis(
-            arr, index, values, axis=1, reduce='assign', include_self=True
+        out = paddle._C_ops.put_along_axis(
+            arr, index, values, 1, 'assign', True
         )
         out.sum().backward()
         np.testing.assert_allclose(
-            arr.grad.numpy(), np.ones((128, 256), dtype='float32')
+            arr.grad.numpy(), np.ones((2, 3), dtype='float32')
         )
-        self.assertIsNone(values.grad)
+        self.assertIsNotNone(values.grad)
+        self.assertEqual(list(values.grad.shape), [2, 0])
 
     def test_cpu(self):
         self._check(paddle.CPUPlace())
