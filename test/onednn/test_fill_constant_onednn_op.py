@@ -84,13 +84,19 @@ class TestFillZerosLike4DShapeTensorListPriorityOneDNNOp(
         self.inputs = {'ShapeTensorList': self.shape_tensor_list}
 
 
-class TestFillConstantEmptyOneDNNOp(TestFillConstant2DOneDNNOp):
-    def set_attrs(self):
+class TestFillConstantEmptyOneDNNOp(OpTest):
+    def setUp(self):
+        self.op_type = "fill_constant"
+        self.inputs = {}
         self.attrs = {
             'shape': (2, 0, 3),
             'use_onednn': True,
-            'value': self.value,
+            'value': 0.1,
         }
+        self.outputs = {'Out': np.full((2, 0, 3), 0.1, dtype=np.float32)}
+
+    def test_check_output(self):
+        self.check_output(check_dygraph=False, check_pir_onednn=True)
 
 
 class TestFillZerosLike2DStringValueInfOneDNNOp(TestFillConstant2DOneDNNOp):
