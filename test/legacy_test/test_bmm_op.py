@@ -346,6 +346,7 @@ class TestBmmOutDtypeDynamicOnly(unittest.TestCase):
         )
 
     def test_out_dtype_rejects_unsupported_cases(self):
+        self._skip_if_no_fp16_cuda()
         x = paddle.to_tensor(np.ones([2, 3, 4], dtype='float32'))
         y = paddle.to_tensor(np.ones([2, 4, 5], dtype='float32'))
         with self.assertRaises(TypeError):
@@ -370,6 +371,16 @@ class TestBmmOutDtypeDynamicOnly(unittest.TestCase):
                 out_dtype=paddle.float32,
                 out=paddle.empty([2, 3, 5], dtype='float16'),
             )
+
+    def test_out_dtype_rejects_unsupported_device(self):
+        x = paddle.to_tensor(
+            np.ones([2, 3, 4], dtype='float16'), place=paddle.CPUPlace()
+        )
+        y = paddle.to_tensor(
+            np.ones([2, 4, 5], dtype='float16'), place=paddle.CPUPlace()
+        )
+        with self.assertRaises(NotImplementedError):
+            paddle.bmm(x, y, out_dtype=paddle.float32)
 
     def test_static_shape_validation(self):
         paddle.enable_static()

@@ -2371,9 +2371,30 @@ def bmm(
     """
     if out_dtype is not None:
         out_dtype = convert_nptype_to_datatype_or_vartype(out_dtype)
+
+        float32_dtypes = (core.DataType.FLOAT32, core.VarDesc.VarType.FP32)
+        supported_input_dtypes = (
+            core.DataType.FLOAT16,
+            core.VarDesc.VarType.FP16,
+            core.DataType.BFLOAT16,
+            core.VarDesc.VarType.BF16,
+        )
+        if out_dtype not in float32_dtypes:
+            raise TypeError(
+                "The out_dtype of paddle.bmm currently only supports paddle.float32."
+            )
+        if input.dtype not in supported_input_dtypes:
+            raise TypeError(
+                "The out_dtype of paddle.bmm currently only supports "
+                "float16 or bfloat16 input."
+            )
         if not in_dynamic_mode():
             raise NotImplementedError(
                 "The out_dtype of paddle.bmm currently only supports dynamic graph."
+            )
+        if not input.place.is_gpu_place() or not mat2.place.is_gpu_place():
+            raise NotImplementedError(
+                "The out_dtype of paddle.bmm currently only supports CUDA tensors."
             )
         return _C_ops.bmm_out_dtype(input, mat2, out_dtype, out=out)
 
