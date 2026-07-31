@@ -129,19 +129,7 @@ static void GetBroadcastDims(const DDim &in_dims,
     if (in_dims[i] == out_dims[i]) {
       (*bcast_dims)[i] = 1;
     } else {
-      // Calculate broadcast factor: out_dims[i] / in_dims[i]
-      // in_dims[i] should be 1 for valid broadcasting
-      PADDLE_ENFORCE_EQ(
-          in_dims[i],
-          1,
-          common::errors::InvalidArgument(
-              "Tensor dimension mismatch for broadcasting. "
-              "Input dimension %d is %d, output dimension is %d. "
-              "For broadcasting, input dimension must be 1 or equal to output.",
-              i,
-              in_dims[i],
-              out_dims[i]));
-      (*bcast_dims)[i] = out_dims[i];
+      (*bcast_dims)[i] = std::max(in_dims[i], out_dims[i]);
     }
   }
 }

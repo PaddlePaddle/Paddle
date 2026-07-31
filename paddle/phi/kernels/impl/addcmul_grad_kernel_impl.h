@@ -26,21 +26,28 @@
 
 namespace phi {
 
-// Helper: compute reshape_dims and reduce_dims for broadcast gradient
+// Helper: compute reshape_dims and reduce_dims for broadcast gradient.
+// All extents and axis indices stay 64-bit end-to-end so that dimensions and
+// broadcast factors larger than INT_MAX are not silently truncated; the
+// consumer funcs::EigenBroadcastGrad is already int64_t based. The layout is
+// the interleaved [broadcast factor, dim] pairs, with reduce_dims collecting
+// the even positions, i.e. the broadcast-factor axes.
 inline void ComputeBroadcastGradDims(const std::vector<int64_t>& grad_dims,
                                      const std::vector<int64_t>& out_dims,
-                                     std::vector<int>* reshape_dims_vec,
-                                     std::vector<int>* reduce_dims_vec) {
+                                     std::vector<int64_t>* reshape_dims_vec,
+                                     std::vector<int64_t>* reduce_dims_vec) {
   std::vector<int64_t> extended = grad_dims;
   size_t diff = out_dims.size() - grad_dims.size();
   extended.insert(extended.begin(), diff, 1);
 
   reshape_dims_vec->clear();
   reduce_dims_vec->clear();
+  reshape_dims_vec->reserve(extended.size() * 2);
+  reduce_dims_vec->reserve(extended.size());
   for (size_t i = 0; i < extended.size(); ++i) {
-    reduce_dims_vec->push_back(static_cast<int>(reshape_dims_vec->size()));
-    reshape_dims_vec->push_back(static_cast<int>(out_dims[i] / extended[i]));
-    reshape_dims_vec->push_back(static_cast<int>(extended[i]));
+    reduce_dims_vec->push_back(static_cast<int64_t>(reshape_dims_vec->size()));
+    reshape_dims_vec->push_back(out_dims[i] / extended[i]);
+    reshape_dims_vec->push_back(extended[i]);
   }
 }
 
@@ -48,12 +55,12 @@ inline void ComputeBroadcastGradDims(const std::vector<int64_t>& grad_dims,
 template <typename Context, typename T, int Dims>
 static void ReduceGrad(const Context& dev_ctx,
                        const DenseTensor& src,
-                       const std::vector<int>& reshape_dims_vec,
-                       const std::vector<int>& reduce_dims_vec,
+                       const std::vector<int64_t>& reshape_dims_vec,
+                       const std::vector<int64_t>& reduce_dims_vec,
                        DenseTensor* dst) {
   dev_ctx.template Alloc<T>(dst);
-  Eigen::DSizes<Eigen::DenseIndex, Dims * 2> reshape_dims;
-  Eigen::DSizes<Eigen::DenseIndex, Dims> reduce_dims;
+  Eigen::DSizes<int64_t, Dims * 2> reshape_dims;
+  Eigen::DSizes<int64_t, Dims> reduce_dims;
   for (size_t i = 0; i < reshape_dims_vec.size(); ++i) {
     reshape_dims[i] = reshape_dims_vec[i];
   }
@@ -89,7 +96,7 @@ static void AddcmulGradImpl(const Context& dev_ctx,
   };
 
   auto compute_bcast = [&](const std::vector<int64_t>& ext) {
-    Eigen::DSizes<Eigen::DenseIndex, Dims> bcast;
+    Eigen::DSizes<int64_t, Dims> bcast;
     for (size_t i = 0; i < out_dims.size(); ++i) {
       bcast[i] = out_dims[i] / ext[i];
     }
@@ -102,7 +109,7 @@ static void AddcmulGradImpl(const Context& dev_ctx,
       dev_ctx.template Alloc<T>(input_grad);
       phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, input_grad);
     } else {
-      std::vector<int> reshape_vec, reduce_vec;
+      std::vector<int64_t> reshape_vec, reduce_vec;
       ComputeBroadcastGradDims(common::vectorize<int64_t>(input_grad->dims()),
                                out_dims,
                                &reshape_vec,
@@ -140,7 +147,7 @@ static void AddcmulGradImpl(const Context& dev_ctx,
            eigen_t2.broadcast(t2_bcast).template cast<MPType>())
               .template cast<T>();
 
-      std::vector<int> reshape_vec, reduce_vec;
+      std::vector<int64_t> reshape_vec, reduce_vec;
       ComputeBroadcastGradDims(common::vectorize<int64_t>(tensor1_grad->dims()),
                                out_dims,
                                &reshape_vec,
@@ -181,7 +188,7 @@ static void AddcmulGradImpl(const Context& dev_ctx,
            eigen_t1.broadcast(t1_bcast).template cast<MPType>())
               .template cast<T>();
 
-      std::vector<int> reshape_vec, reduce_vec;
+      std::vector<int64_t> reshape_vec, reduce_vec;
       ComputeBroadcastGradDims(common::vectorize<int64_t>(tensor2_grad->dims()),
                                out_dims,
                                &reshape_vec,
@@ -339,9 +346,41 @@ void AddcmulGradKernel(const Context& dev_ctx,
                                      tensor1_grad,
                                      tensor2_grad);
       break;
+    case 7:
+      AddcmulGradImpl<T, Context, 7>(dev_ctx,
+                                     tensor1,
+                                     tensor2,
+                                     out_grad,
+                                     compute_value,
+                                     input_grad,
+                                     tensor1_grad,
+                                     tensor2_grad);
+      break;
+    case 8:
+      AddcmulGradImpl<T, Context, 8>(dev_ctx,
+                                     tensor1,
+                                     tensor2,
+                                     out_grad,
+                                     compute_value,
+                                     input_grad,
+                                     tensor1_grad,
+                                     tensor2_grad);
+      break;
+    case 9:
+      AddcmulGradImpl<T, Context, 9>(dev_ctx,
+                                     tensor1,
+                                     tensor2,
+                                     out_grad,
+                                     compute_value,
+                                     input_grad,
+                                     tensor1_grad,
+                                     tensor2_grad);
+      break;
     default:
       PADDLE_THROW(::common::errors::InvalidArgument(
-          "AddcmulGrad only supports rank <= 6, got %d", rank));
+          "AddcmulGrad only supports rank <= %d, got %d",
+          ::common::DDim::kMaxRank,
+          rank));
   }
 }
 

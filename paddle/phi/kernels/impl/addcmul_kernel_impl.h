@@ -18,6 +18,7 @@
 #include <limits>
 #include <type_traits>
 
+#include "paddle/common/ddim.h"
 #include "paddle/common/errors.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
@@ -33,26 +34,61 @@ inline typename dtype::MPTypeTrait<T>::Type GetAddcmulValue(
     const Scalar& value) {
   using MPType = typename dtype::MPTypeTrait<T>::Type;
   if constexpr (std::is_integral<T>::value) {
-    const double numeric_value = value.to<double>();
-    const double lowest = static_cast<double>(std::numeric_limits<T>::lowest());
-    const double highest = static_cast<double>(std::numeric_limits<T>::max());
-    const bool is_within_upper_bound =
-        std::numeric_limits<T>::digits >= std::numeric_limits<double>::digits
-            ? numeric_value < highest
-            : numeric_value <= highest;
-    const bool is_valid_integer = std::isfinite(numeric_value) &&
-                                  std::trunc(numeric_value) == numeric_value &&
-                                  numeric_value >= lowest &&
-                                  is_within_upper_bound;
+    // The range check is performed in the scalar's ORIGINAL data type.
+    // Flattening an integral scalar to double first is lossy for 64-bit
+    // values: both static_cast<double>(INT64_MAX) and
+    // Scalar(INT64_MAX).to<double>() round up to 2^63, so the legal endpoint
+    // INT64_MAX would be misreported as an overflow.
+    //
+    // NOTE: this exactness applies to dygraph. `value` is declared as
+    // Scalar(double) in ops.yaml, so in static/PIR mode the binding layer
+    // flattens it to a double before the Scalar is built and magnitudes above
+    // 2^53 are not preserved. That behaviour is unchanged from the previous
+    // all-double implementation; only the dygraph path improves here.
+    bool is_in_range = false;
+    if (value.dtype() == DataType::UINT64) {
+      // UINT64 is the only integral scalar type that does not fit in int64_t.
+      const uint64_t raw = value.to<uint64_t>();
+      is_in_range = raw <= static_cast<uint64_t>(std::numeric_limits<T>::max());
+    } else if (IsIntegerType(value.dtype())) {
+      // BOOL / INT8 / INT16 / INT32 / INT64 / UINT8 / UINT16 / UINT32 all fit
+      // in int64_t, so this comparison is exact at both endpoints.
+      const int64_t raw = value.to<int64_t>();
+      if constexpr (std::is_same<T, int64_t>::value) {
+        is_in_range = true;
+      } else {
+        is_in_range =
+            raw >= static_cast<int64_t>(std::numeric_limits<T>::lowest()) &&
+            raw <= static_cast<int64_t>(std::numeric_limits<T>::max());
+      }
+    } else {
+      const double raw = value.to<double>();
+      // lowest() is -2^(N-1) for every signed integer type (and 0 for the
+      // unsigned ones), hence always exactly representable as a double.
+      const double lowest =
+          static_cast<double>(std::numeric_limits<T>::lowest());
+      // max() is exactly representable only when T has at most as many value
+      // bits as double's mantissa; otherwise static_cast rounds it up to 2^N,
+      // and since no double lies in (max(), 2^N) the strict comparison is then
+      // the exact test.
+      const double highest = static_cast<double>(std::numeric_limits<T>::max());
+      const bool is_within_upper_bound =
+          std::numeric_limits<T>::digits > std::numeric_limits<double>::digits
+              ? raw < highest
+              : raw <= highest;
+      is_in_range =
+          std::isfinite(raw) && raw >= lowest && is_within_upper_bound;
+    }
     PADDLE_ENFORCE_EQ(
-        is_valid_integer,
+        is_in_range,
         true,
         common::errors::InvalidArgument(
             "For integral input tensors, the argument value of addcmul must "
-            "be an integer within the range of the input data type, but got "
-            "%s.",
+            "be within the range of the input data type, but got %s.",
             value.ToRawString()));
   }
+  // For integral T this is a static_cast, i.e. truncation toward zero, which
+  // matches torch.addcmul: `value` never changes the output data type.
   return value.to<MPType>();
 }
 
@@ -126,7 +162,13 @@ void AddcmulKernel(const Context& dev_ctx,
                    const DenseTensor& tensor2,
                    const Scalar& value_scalar,
                    DenseTensor* out) {
+  // `value` is validated first so that an out-of-range scalar still raises
+  // even when the output is empty, matching torch.
   auto value = GetAddcmulValue<T>(value_scalar);
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   int rank = out->dims().size();
   PADDLE_ENFORCE_GE(
       rank,
@@ -137,10 +179,11 @@ void AddcmulKernel(const Context& dev_ctx,
           rank));
   PADDLE_ENFORCE_LE(
       rank,
-      6,
+      ::common::DDim::kMaxRank,
       common::errors::InvalidArgument(
           "The number of dimensions for AddcmulOp must be "
-          "less than or equal to 6, but the value received is %d.",
+          "less than or equal to %d, but the value received is %d.",
+          ::common::DDim::kMaxRank,
           rank));
 
   switch (rank) {
@@ -172,6 +215,24 @@ void AddcmulKernel(const Context& dev_ctx,
       AddcmulFunction<T, Context, 6>(
           dev_ctx, input, tensor1, tensor2, value, out);
       break;
+    case 7:
+      AddcmulFunction<T, Context, 7>(
+          dev_ctx, input, tensor1, tensor2, value, out);
+      break;
+    case 8:
+      AddcmulFunction<T, Context, 8>(
+          dev_ctx, input, tensor1, tensor2, value, out);
+      break;
+    case 9:
+      AddcmulFunction<T, Context, 9>(
+          dev_ctx, input, tensor1, tensor2, value, out);
+      break;
+    default:
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "AddcmulOp only supports tensors with rank between 0 and %d, but "
+          "received rank = %d.",
+          ::common::DDim::kMaxRank,
+          rank));
   }
 }
 

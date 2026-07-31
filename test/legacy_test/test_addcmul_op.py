@@ -809,8 +809,49 @@ class TestAddcmulAPI(unittest.TestCase):
         out = paddle.addcmul(x, t1, t2, value=2)
         expected = np_input + 2 * np_t1 * np_t2
         np.testing.assert_array_equal(out.numpy(), expected)
-        with self.assertRaises((ValueError, RuntimeError)):
-            paddle.addcmul(x, t1, t2, value=0.5)
+
+        # Aligned with PyTorch: for integral tensors a fractional value is
+        # truncated toward zero, it never changes the output data type.
+        for value, truncated in ((0.5, 0), (2.7, 2), (-2.7, -2)):
+            out = paddle.addcmul(x, t1, t2, value=value)
+            np.testing.assert_array_equal(
+                out.numpy(), np_input + truncated * np_t1 * np_t2
+            )
+        paddle.enable_static()
+
+    def test_int_value_endpoints(self):
+        """The value range check must be exact at the integer endpoints."""
+        paddle.disable_static()
+        int32_max, int32_min = 2**31 - 1, -(2**31)
+        int64_max, int64_min = 2**63 - 1, -(2**63)
+
+        zero32 = paddle.to_tensor(np.zeros((1,), dtype='int32'))
+        one32 = paddle.to_tensor(np.ones((1,), dtype='int32'))
+        for value in (int32_max, int32_min):
+            out = paddle.addcmul(zero32, one32, one32, value=value)
+            np.testing.assert_array_equal(
+                out.numpy(), np.array([value], dtype='int32')
+            )
+        for value in (int32_max + 1, int32_min - 1, 2147483647.9):
+            with self.assertRaises((ValueError, RuntimeError, OverflowError)):
+                paddle.addcmul(zero32, one32, one32, value=value)
+
+        zero64 = paddle.to_tensor(np.zeros((1,), dtype='int64'))
+        one64 = paddle.to_tensor(np.ones((1,), dtype='int64'))
+        for value in (int64_max, int64_min):
+            out = paddle.addcmul(zero64, one64, one64, value=value)
+            np.testing.assert_array_equal(
+                out.numpy(), np.array([value], dtype='int64')
+            )
+        # NOTE: a Python int outside the int64 range cannot be diagnosed by the
+        # kernel, because CastPyArg2Long -> PyObject_ToInt64 calls
+        # PyLong_AsLongLong without checking the error indicator, so the value
+        # is already truncated before a Scalar is built. The int64 bounds are
+        # therefore covered through the float path, which does reach the range
+        # check in GetAddcmulValue.
+        for value in (float(2**63), -float(2**64), float('nan'), float('inf')):
+            with self.assertRaises((ValueError, RuntimeError, OverflowError)):
+                paddle.addcmul(zero64, one64, one64, value=value)
         paddle.enable_static()
 
     def test_float64_value_precision(self):
@@ -1053,6 +1094,132 @@ class TestAddcmulOp_6D(TestAddcmulOp):
             'tensor2': np.random.random((2, 2, 2, 3, 4, 5)).astype(self.dtype),
         }
         self.attrs = {'value': 0.2}
+
+
+class TestAddcmulBroadcast7D(TestAddcmulOp):
+    """Rank 7 - beyond the old rank limit, aligned with torch which has none.
+
+    Every operand is broadcast so the backward goes through ReduceGrad, which
+    is what exercises funcs::EigenBroadcastGrad at this rank.
+    """
+
+    def init_shapes_and_data(self):
+        # 128 elements each: OpTest requires >= 100 elements per grad input.
+        self.inputs = {
+            'input': np.random.random((1, 2, 2, 1, 2, 2, 8)).astype(self.dtype),
+            'tensor1': np.random.random((2, 1, 2, 2, 1, 2, 8)).astype(
+                self.dtype
+            ),
+            'tensor2': np.random.random((2, 2, 1, 2, 2, 1, 8)).astype(
+                self.dtype
+            ),
+        }
+        self.attrs = {'value': 0.3}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['input', 'tensor1', 'tensor2'],
+            'out',
+            numeric_grad_delta=0.005,
+            max_relative_error=0.005,
+            check_pir=True,
+        )
+
+
+class TestAddcmulBroadcast9D(TestAddcmulOp):
+    """Rank 9 - the DDim::kMaxRank boundary, with broadcasting on all inputs."""
+
+    def init_shapes_and_data(self):
+        # 128 / 128 / 256 elements: OpTest requires >= 100 per grad input.
+        self.inputs = {
+            'input': np.random.random((1, 2, 2, 4, 1, 2, 2, 1, 2)).astype(
+                self.dtype
+            ),
+            'tensor1': np.random.random((2, 1, 2, 4, 2, 1, 2, 2, 1)).astype(
+                self.dtype
+            ),
+            'tensor2': np.random.random((2, 2, 1, 4, 2, 2, 1, 2, 2)).astype(
+                self.dtype
+            ),
+        }
+        self.attrs = {'value': 0.4}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['input', 'tensor1', 'tensor2'],
+            'out',
+            numeric_grad_delta=0.005,
+            max_relative_error=0.005,
+            check_pir=True,
+        )
+
+
+class TestAddcmulHighRankAPI(unittest.TestCase):
+    """Rank 7 dynamic-graph parity, including the integral forward path."""
+
+    def test_rank7_forward_and_grad(self):
+        paddle.disable_static()
+        np.random.seed(2026)
+        np_input = np.random.random((1, 2, 2, 1, 2, 2, 2)).astype('float64')
+        np_t1 = np.random.random((2, 1, 2, 2, 1, 2, 2)).astype('float64')
+        np_t2 = np.random.random((2, 2, 1, 2, 2, 1, 2)).astype('float64')
+        value = 0.5
+
+        x = paddle.to_tensor(np_input, stop_gradient=False)
+        t1 = paddle.to_tensor(np_t1, stop_gradient=False)
+        t2 = paddle.to_tensor(np_t2, stop_gradient=False)
+        out = paddle.addcmul(x, t1, t2, value=value)
+        np.testing.assert_allclose(
+            out.numpy(), np_input + value * np_t1 * np_t2, rtol=1e-12
+        )
+
+        out.sum().backward()
+        dout = np.ones(out.shape, dtype='float64')
+
+        def reduce_to(grad, shape):
+            while grad.ndim > len(shape):
+                grad = grad.sum(axis=0)
+            for i, s in enumerate(shape):
+                if s == 1 and grad.shape[i] != 1:
+                    grad = grad.sum(axis=i, keepdims=True)
+            return grad
+
+        np.testing.assert_allclose(
+            x.grad.numpy(), reduce_to(dout, np_input.shape), rtol=1e-12
+        )
+        np.testing.assert_allclose(
+            t1.grad.numpy(),
+            reduce_to(dout * value * np_t2, np_t1.shape),
+            rtol=1e-12,
+        )
+        np.testing.assert_allclose(
+            t2.grad.numpy(),
+            reduce_to(dout * value * np_t1, np_t2.shape),
+            rtol=1e-12,
+        )
+        paddle.enable_static()
+
+    def test_rank7_int_forward(self):
+        """Integral dtypes have no grad kernel, so check the forward only."""
+        paddle.disable_static()
+        shape = (1, 2, 2, 1, 2, 2, 2)
+        np_input = np.random.randint(1, 5, shape).astype('int64')
+        np_t1 = np.random.randint(1, 5, shape).astype('int64')
+        np_t2 = np.random.randint(1, 5, shape).astype('int64')
+        out = paddle.addcmul(
+            paddle.to_tensor(np_input),
+            paddle.to_tensor(np_t1),
+            paddle.to_tensor(np_t2),
+            value=2.7,
+        )
+        np.testing.assert_array_equal(out.numpy(), np_input + 2 * np_t1 * np_t2)
+        paddle.enable_static()
 
 
 if __name__ == '__main__':
