@@ -667,6 +667,21 @@ def use_compat_guard(
                     silent=silent,
                     level=target_level,
                 )
+            for _ in range(1, target_level or 1):
+                enable_compat(
+                    scope=target_scope,
+                    silent=silent,
+                    level=1,
+                )
+                if (
+                    original_level in {1, 3}
+                    and target_level in {1, 3}
+                    and target_scope is None
+                    and not original_globally_enabled
+                ):
+                    TORCH_PROXY_FINDER._local_enabled_scope = (
+                        original_local_enabled_scope
+                    )
         yield
     finally:
         state_changed = (
