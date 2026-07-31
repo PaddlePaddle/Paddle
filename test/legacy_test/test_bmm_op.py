@@ -275,6 +275,17 @@ class TestBmmOutDtypeDynamicOnly(unittest.TestCase):
             result.numpy(), expected.numpy(), rtol=1e-3, atol=1e-3
         )
 
+    def test_fp16_to_fp32_positional_args(self):
+        self._skip_if_no_fp16_cuda()
+        x = paddle.randn([2, 3, 4], dtype='float16')
+        y = paddle.randn([2, 4, 5], dtype='float16')
+        result = paddle.bmm(x, y, paddle.float32, 'bmm_positional')
+        expected = paddle.bmm(x.astype('float32'), y.astype('float32'))
+        self.assertEqual(result.dtype, paddle.float32)
+        np.testing.assert_allclose(
+            result.numpy(), expected.numpy(), rtol=1e-3, atol=1e-3
+        )
+
     def test_fp16_to_fp32_non_contiguous(self):
         self._skip_if_no_fp16_cuda()
         x = paddle.randn([2, 4, 3], dtype='float16').transpose([0, 2, 1])

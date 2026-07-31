@@ -2324,32 +2324,34 @@ def mm(
         return out
 
 
-@param_two_alias(["input", "x"], ["mat2", "y"])
+@param_two_alias(["x", "input"], ["y", "mat2"])
 def bmm(
-    input: Tensor,
-    mat2: Tensor,
+    x: Tensor,
+    y: Tensor,
+    out_dtype: DTypeLike | None = None,
     name: str | None = None,
     *,
-    out_dtype: DTypeLike | None = None,
     out: Tensor | None = None,
 ) -> Tensor:
     """
     Applies batched matrix multiplication to two tensors.
 
     Both input tensors must be three-dimensional and have the same batch size.
-    If ``input`` has shape ``[b, m, k]`` and ``mat2`` has shape
+    If ``x`` has shape ``[b, m, k]`` and ``y`` has shape
     ``[b, k, n]``, the output has shape ``[b, m, n]``.
 
     Args:
-        input (Tensor): The first input Tensor.
-        mat2 (Tensor): The second input Tensor.
-        name (str|None, optional): Name for the operation. Default: None.
-
-    Keyword Args:
+        x (Tensor): The first input Tensor.
+            alias: ``input``.
+        y (Tensor): The second input Tensor.
+            alias: ``mat2``.
         out_dtype (paddle.dtype|None, optional): The desired output data type.
             Currently only supports ``paddle.float32`` for CUDA float16 or
             bfloat16 inputs in dynamic graph. Both inputs must have the same
             data type. Default: None.
+        name (str|None, optional): Name for the operation. Default: None.
+
+    Keyword Args:
         out (Tensor|None, optional): The output Tensor. Default: None.
 
     Returns:
@@ -2360,9 +2362,9 @@ def bmm(
         .. code-block:: pycon
 
             >>> import paddle
-            >>> input = paddle.to_tensor([[[1.0, 1.0, 1.0], [2.0, 2.0, 2.0]], [[3.0, 3.0, 3.0], [4.0, 4.0, 4.0]]])
-            >>> mat2 = paddle.to_tensor([[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]], [[4.0, 4.0], [5.0, 5.0], [6.0, 6.0]]])
-            >>> paddle.bmm(input, mat2)
+            >>> x = paddle.to_tensor([[[1.0, 1.0, 1.0], [2.0, 2.0, 2.0]], [[3.0, 3.0, 3.0], [4.0, 4.0, 4.0]]])
+            >>> y = paddle.to_tensor([[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]], [[4.0, 4.0], [5.0, 5.0], [6.0, 6.0]]])
+            >>> paddle.bmm(x, y)
             Tensor(shape=[2, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[ 6.,  6.],
               [12., 12.]],
@@ -2383,7 +2385,7 @@ def bmm(
             raise TypeError(
                 "The out_dtype of paddle.bmm currently only supports paddle.float32."
             )
-        if input.dtype not in supported_input_dtypes:
+        if x.dtype not in supported_input_dtypes:
             raise TypeError(
                 "The out_dtype of paddle.bmm currently only supports "
                 "float16 or bfloat16 input."
@@ -2395,52 +2397,44 @@ def bmm(
         if (
             not paddle.is_compiled_with_cuda()
             or paddle.is_compiled_with_rocm()
-            or not input.place.is_gpu_place()
-            or not mat2.place.is_gpu_place()
+            or not x.place.is_gpu_place()
+            or not y.place.is_gpu_place()
         ):
             raise NotImplementedError(
                 "The out_dtype of paddle.bmm currently only supports CUDA tensors."
             )
-        return _C_ops.bmm_out_dtype(input, mat2, out_dtype, out=out)
+        return _C_ops.bmm_out_dtype(x, y, out_dtype, out=out)
 
     if in_dynamic_mode():
-        return _C_ops.bmm(input, mat2, out=out)
+        return _C_ops.bmm(x, y, out=out)
 
-    input_shape = input.shape
-    mat2_shape = mat2.shape
-    if not len(input_shape) == len(mat2_shape) == 3:
+    x_shape = x.shape
+    y_shape = y.shape
+    if not len(x_shape) == len(y_shape) == 3:
         raise ValueError(
             "input and mat2 must be 3-dimensional, but received "
-            f"input's shape {input_shape} and mat2's shape {mat2_shape}."
+            f"input's shape {x_shape} and mat2's shape {y_shape}."
         )
-    if (
-        input_shape[2] != -1
-        and mat2_shape[1] != -1
-        and input_shape[2] != mat2_shape[1]
-    ):
+    if x_shape[2] != -1 and y_shape[1] != -1 and x_shape[2] != y_shape[1]:
         raise ValueError(
             "input's width must be equal to mat2's height, but received "
-            f"input's shape {input_shape} and mat2's shape {mat2_shape}."
+            f"input's shape {x_shape} and mat2's shape {y_shape}."
         )
-    if (
-        input_shape[0] != -1
-        and mat2_shape[0] != -1
-        and input_shape[0] != mat2_shape[0]
-    ):
+    if x_shape[0] != -1 and y_shape[0] != -1 and x_shape[0] != y_shape[0]:
         raise ValueError(
             "input and mat2 must have the same batch size, but received "
-            f"input's shape {input_shape} and mat2's shape {mat2_shape}."
+            f"input's shape {x_shape} and mat2's shape {y_shape}."
         )
 
     if in_pir_mode():
-        return _C_ops.bmm(input, mat2, out=out)
+        return _C_ops.bmm(x, y, out=out)
 
     helper = LayerHelper('bmm', **locals())
     if out is None:
-        out = helper.create_variable_for_type_inference(dtype=input.dtype)
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='bmm',
-        inputs={'X': input, 'Y': mat2},
+        inputs={'X': x, 'Y': y},
         outputs={'Out': out},
     )
     return out
