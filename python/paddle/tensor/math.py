@@ -122,6 +122,7 @@ from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc, dygraph_utils
 from paddle.pir import Value
 from paddle.utils.decorator_utils import (
+    bmm_compat_decorator,
     nansum_decorator,
     param_one_alias,
     param_two_alias,
@@ -2324,6 +2325,7 @@ def mm(
         return out
 
 
+@bmm_compat_decorator
 @param_two_alias(["x", "input"], ["y", "mat2"])
 def bmm(
     x: Tensor,
@@ -2348,7 +2350,13 @@ def bmm(
         out_dtype (paddle.dtype|None, optional): The desired output data type.
             Currently only supports ``paddle.float32`` for CUDA float16 or
             bfloat16 inputs in dynamic graph. Both inputs must have the same
-            data type. Default: None.
+            data type. For backward compatibility, in a call with exactly
+            three positional arguments, a string in the third position is
+            interpreted as ``name``. Use a dtype object such as
+            ``paddle.float32`` for an unambiguous positional ``out_dtype``, or
+            pass a string dtype using ``out_dtype="float32"``. A string dtype
+            is also accepted positionally when ``name`` is supplied as the
+            fourth positional argument. Default: None.
         name (str|None, optional): Name for the operation. Default: None.
 
     Keyword Args:

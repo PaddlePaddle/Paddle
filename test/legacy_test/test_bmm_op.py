@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 import unittest
 
 import numpy as np
@@ -144,18 +145,54 @@ class API_TestDygraphBmm(unittest.TestCase):
             x = paddle.to_tensor(input1)
             y = paddle.to_tensor(input2)
             out = paddle.bmm(x, y)
+            legacy_name_out = paddle.bmm(x, y, "my_bmm")
+            legacy_dtype_like_name_out = paddle.bmm(x, y, "float32")
             out_np = out.numpy()
+            legacy_name_out_np = legacy_name_out.numpy()
+            legacy_dtype_like_name_out_np = legacy_dtype_like_name_out.numpy()
         expected_result = np.matmul(input1, input2)
         np.testing.assert_allclose(expected_result, out_np, rtol=1e-05)
+        np.testing.assert_allclose(
+            expected_result, legacy_name_out_np, rtol=1e-05
+        )
+        np.testing.assert_allclose(
+            expected_result, legacy_dtype_like_name_out_np, rtol=1e-05
+        )
+
+    def test_signature(self):
+        parameters = inspect.signature(paddle.bmm).parameters
+
+        self.assertEqual(
+            list(parameters),
+            ['x', 'y', 'out_dtype', 'name', 'out'],
+        )
+        self.assertEqual(
+            parameters['out_dtype'].kind,
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+        )
+        self.assertEqual(
+            parameters['name'].kind,
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+        )
+        self.assertEqual(
+            parameters['out'].kind,
+            inspect.Parameter.KEYWORD_ONLY,
+        )
 
     def test_tensor_method(self):
         x = paddle.randn([2, 3, 4])
         y = paddle.randn([2, 4, 5])
         result = x.bmm(y)
+        legacy_name_result = x.bmm(y, 'tensor_bmm')
         expected = paddle.bmm(x, y)
 
         self.assertIs(paddle.Tensor.bmm, paddle.bmm)
         np.testing.assert_allclose(result.numpy(), expected.numpy(), rtol=1e-05)
+        np.testing.assert_allclose(
+            legacy_name_result.numpy(),
+            expected.numpy(),
+            rtol=1e-05,
+        )
 
     def test_legacy_linalg_entry(self):
         x = paddle.randn([2, 3, 4])
@@ -269,17 +306,47 @@ class TestBmmOutDtypeDynamicOnly(unittest.TestCase):
         x = paddle.randn([2, 3, 4], dtype='float16')
         y = paddle.randn([2, 4, 5], dtype='float16')
         result = paddle.bmm(x, y, out_dtype=paddle.float32)
+        string_dtype_result = paddle.bmm(x, y, out_dtype='float32')
         expected = paddle.bmm(x.astype('float32'), y.astype('float32'))
         self.assertEqual(result.dtype, paddle.float32)
+        self.assertEqual(string_dtype_result.dtype, paddle.float32)
         np.testing.assert_allclose(
             result.numpy(), expected.numpy(), rtol=1e-3, atol=1e-3
+        )
+        np.testing.assert_allclose(
+            string_dtype_result.numpy(),
+            expected.numpy(),
+            rtol=1e-3,
+            atol=1e-3,
         )
 
     def test_fp16_to_fp32_positional_args(self):
         self._skip_if_no_fp16_cuda()
         x = paddle.randn([2, 3, 4], dtype='float16')
         y = paddle.randn([2, 4, 5], dtype='float16')
-        result = paddle.bmm(x, y, paddle.float32, 'bmm_positional')
+        result = paddle.bmm(x, y, 'float32', 'bmm_positional')
+        expected = paddle.bmm(x.astype('float32'), y.astype('float32'))
+        self.assertEqual(result.dtype, paddle.float32)
+        np.testing.assert_allclose(
+            result.numpy(), expected.numpy(), rtol=1e-3, atol=1e-3
+        )
+
+    def test_fp16_to_fp32_positional_dtype(self):
+        self._skip_if_no_fp16_cuda()
+        x = paddle.randn([2, 3, 4], dtype='float16')
+        y = paddle.randn([2, 4, 5], dtype='float16')
+        result = paddle.bmm(x, y, paddle.float32)
+        expected = paddle.bmm(x.astype('float32'), y.astype('float32'))
+        self.assertEqual(result.dtype, paddle.float32)
+        np.testing.assert_allclose(
+            result.numpy(), expected.numpy(), rtol=1e-3, atol=1e-3
+        )
+
+    def test_legacy_name_with_out_dtype_keyword(self):
+        self._skip_if_no_fp16_cuda()
+        x = paddle.randn([2, 3, 4], dtype='float16')
+        y = paddle.randn([2, 4, 5], dtype='float16')
+        result = paddle.bmm(x, y, 'bmm_name', out_dtype=paddle.float32)
         expected = paddle.bmm(x.astype('float32'), y.astype('float32'))
         self.assertEqual(result.dtype, paddle.float32)
         np.testing.assert_allclose(
