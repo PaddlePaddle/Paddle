@@ -433,6 +433,23 @@ class TestBaddBmmOp4(OpTest):
 
 
 class TestBaddBmmAPI(unittest.TestCase):
+    def test_batch_size_mismatch(self):
+        paddle.disable_static()
+        try:
+            input = paddle.ones([2, 3, 4], dtype=paddle.float32)
+            x = paddle.ones([2, 3, 5], dtype=paddle.float32)
+            y = paddle.empty([0, 5, 4], dtype=paddle.float32)
+            with self.assertRaises(ValueError):
+                paddle.baddbmm(input, x, y)
+
+            input = paddle.empty([0, 3, 4], dtype=paddle.float32)
+            x = paddle.empty([0, 3, 5], dtype=paddle.float32)
+            y = paddle.ones([2, 5, 4], dtype=paddle.float32)
+            with self.assertRaises(ValueError):
+                paddle.baddbmm(input, x, y)
+        finally:
+            paddle.enable_static()
+
     def test_dtype_mismatch(self):
         paddle.disable_static()
         try:
@@ -448,6 +465,19 @@ class TestBaddBmmAPI(unittest.TestCase):
                 paddle.baddbmm(input, x, y)
         finally:
             paddle.enable_static()
+
+    def test_static_unknown_contraction_dim(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            input = paddle.static.data(
+                name='input', shape=[2, 3, 4], dtype='float32'
+            )
+            x = paddle.static.data(name='x', shape=[2, 3, -1], dtype='float32')
+            y = paddle.static.data(name='y', shape=[2, 5, 4], dtype='float32')
+            out = paddle.baddbmm(input, x, y)
+            self.assertEqual(out.shape, [2, 3, 4])
 
     def test_api_error(self):
         data_x = np.ones((2, 2, 2)).astype(np.float32)
