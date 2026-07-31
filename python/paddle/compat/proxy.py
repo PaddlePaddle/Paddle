@@ -576,8 +576,11 @@ def disable_compat() -> None:
 
     if TORCH_PROXY_FINDER in sys.meta_path:
         sys.meta_path.remove(TORCH_PROXY_FINDER)
+        _restore_paddle_namespace_aliases()
         _clear_torch_proxy_modules()
         _copy_torch_modules_from_cache()
+        return
+
     _restore_paddle_namespace_aliases()
 
 
@@ -666,12 +669,6 @@ def use_compat_guard(
                     scope=target_scope,
                     silent=silent,
                     level=target_level,
-                )
-            for _ in range(1, target_level or 1):
-                enable_compat(
-                    scope=target_scope,
-                    silent=silent,
-                    level=1,
                 )
                 if (
                     original_level in {1, 3}

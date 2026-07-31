@@ -262,17 +262,17 @@ def prelu_decorator(
                 "ipu",
                 *(paddle.device.get_all_custom_device_type() or ()),
             }
-            from paddle.compat.api_dispatch import _PADDLE_NAMESPACE_SAVED
-
-            is_device_string = (
-                isinstance(third_arg, str)
-                and bool(_PADDLE_NAMESPACE_SAVED)
-                and third_arg.lower().split(":", 1)[0] in device_types
-            )
             is_torch_call = (
                 isinstance(third_arg, paddle.base.libpaddle.Place)
-                or is_device_string
-                or (len(args) == 5 and not isinstance(args[4], str))
+                or (
+                    isinstance(third_arg, str)
+                    and third_arg.lower().split(":", 1)[0] in device_types
+                )
+                or (
+                    third_arg is None
+                    and len(args) == 5
+                    and not isinstance(args[4], str)
+                )
             )
             if is_torch_call:
                 for name, value in zip(("device", "dtype"), args[3:]):
