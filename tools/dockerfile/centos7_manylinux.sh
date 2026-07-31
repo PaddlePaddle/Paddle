@@ -20,42 +20,42 @@ REPO="${REPO:-paddledocker}"
 
 function make_cuda112cudnn821trt8034() {
   sed 's/<baseimg>/11.2.2-cudnn8-devel-centos7/g' Dockerfile.centos >Dockerfile.tmp
-  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc82 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-8.2/bin:\$PATH \nRUN yum remove -y libcudnn8-devel.x86_64 libcudnn8.x86_64 \nRUN bash build_scripts/install_cudnn.sh cudnn821 \nENV CUDNN_VERSION=8.2.1 \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
+  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc82 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-8.2/bin:\$PATH \nENV LD_LIBRARY_PATH=/usr/local/gcc-8.2/lib64:/usr/local/gcc-8.2/lib:\$LD_LIBRARY_PATH \nRUN yum remove -y libcudnn8-devel.x86_64 libcudnn8.x86_64 \nRUN bash build_scripts/install_cudnn.sh cudnn821 \nENV CUDNN_VERSION=8.2.1 \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
   sed -i "s#build_scripts/install_trt.sh#build_scripts/install_trt.sh trt8034#g" Dockerfile.tmp
   sed -i '/CMD/iRUN ldconfig' Dockerfile.tmp
 }
 
 function make_cuda116cudnn840trt8406() {
   sed 's/<baseimg>/11.6.2-cudnn8-devel-centos7/g' Dockerfile.centos >Dockerfile.tmp
-  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc82 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-8.2/bin:\$PATH \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
+  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc82 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-8.2/bin:\$PATH \nENV LD_LIBRARY_PATH=/usr/local/gcc-8.2/lib64:/usr/local/gcc-8.2/lib:\$LD_LIBRARY_PATH \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
   sed -i "s#build_scripts/install_trt.sh#build_scripts/install_trt.sh trt8406#g" Dockerfile.tmp
   sed -i '/CMD/iRUN ldconfig' Dockerfile.tmp
 }
 
 function make_cuda117cudnn841trt8424() {
   sed 's/<baseimg>/11.7.1-devel-centos7/g' Dockerfile.centos >Dockerfile.tmp
-  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc82 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-8.2/bin:\$PATH \nRUN bash build_scripts/install_cudnn.sh cudnn841 \nENV CUDNN_VERSION=8.4.1 \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
+  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc82 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-8.2/bin:\$PATH \nENV LD_LIBRARY_PATH=/usr/local/gcc-8.2/lib64:/usr/local/gcc-8.2/lib:\$LD_LIBRARY_PATH \nRUN bash build_scripts/install_cudnn.sh cudnn841 \nENV CUDNN_VERSION=8.4.1 \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
   sed -i "s#build_scripts/install_trt.sh#build_scripts/install_trt.sh trt8424#g" Dockerfile.tmp
   sed -i '/CMD/iRUN ldconfig' Dockerfile.tmp
 }
 
 function make_cuda118cudnn860trt8531() {
   sed 's/<baseimg>/11.8.0-devel-centos7/g' Dockerfile.centos >Dockerfile.tmp
-  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc82 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-8.2/bin:\$PATH \nRUN bash build_scripts/install_cudnn.sh cudnn860 \nENV CUDNN_VERSION=8.6.0 \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
+  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc82 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-8.2/bin:\$PATH \nENV LD_LIBRARY_PATH=/usr/local/gcc-8.2/lib64:/usr/local/gcc-8.2/lib:\$LD_LIBRARY_PATH \nRUN bash build_scripts/install_cudnn.sh cudnn860 \nENV CUDNN_VERSION=8.6.0 \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
   sed -i "s#build_scripts/install_trt.sh#build_scripts/install_trt.sh trt8531#g" Dockerfile.tmp
   sed -i '/CMD/iRUN ldconfig' Dockerfile.tmp
 }
 
 function make_cuda120cudnn891trt8616() {
   sed 's/<baseimg>/12.0.1-devel-centos7/g' Dockerfile.centos >Dockerfile.tmp
-  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc122 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-12.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-12.2/bin:\$PATH \nRUN bash build_scripts/install_cudnn.sh cudnn891 \nENV CUDNN_VERSION=8.9.1 \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
+  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc122 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-12.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-12.2/bin:\$PATH \nENV LD_LIBRARY_PATH=/usr/local/gcc-12.2/lib64:/usr/local/gcc-12.2/lib:\$LD_LIBRARY_PATH \nRUN bash build_scripts/install_cudnn.sh cudnn891 \nENV CUDNN_VERSION=8.9.1 \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
   sed -i "s#build_scripts/install_trt.sh#build_scripts/install_trt.sh trt8616#g" Dockerfile.tmp
   sed -i '/CMD/iRUN ldconfig' Dockerfile.tmp
 }
 
 function make_cuda123cudnn900trt8616() {
   sed 's/<baseimg>/12.3.1-devel-centos7/g' Dockerfile.centos >Dockerfile.tmp
-  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc122 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-12.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-12.2/bin:\$PATH \nRUN bash build_scripts/install_cudnn.sh cudnn900 \nENV CUDNN_VERSION=9.0.0 \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
+  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc122 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-12.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-12.2/bin:\$PATH \nENV LD_LIBRARY_PATH=/usr/local/gcc-12.2/lib64:/usr/local/gcc-12.2/lib:\$LD_LIBRARY_PATH \nRUN bash build_scripts/install_cudnn.sh cudnn900 \nENV CUDNN_VERSION=9.0.0 \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
   sed -i "s#build_scripts/install_trt.sh#build_scripts/install_trt.sh trt8616#g" Dockerfile.tmp
   sed -i '/CMD/iRUN ldconfig' Dockerfile.tmp
 }
@@ -70,7 +70,7 @@ function make_cuda124cudnn911trt8616() {
 
 function make_cuda125cudnn911trt8616() {
   sed 's/<baseimg>/12.5.1-cudnn-devel-rockylinux8/g' Dockerfile.rockylinux8 >Dockerfile.tmp
-  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc122 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-12.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-12.2/bin:\$PATH \nRUN bash build_scripts/install_cudnn.sh cudnn911 \nENV CUDNN_VERSION=9.1.1 \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
+  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc122 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-12.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-12.2/bin:\$PATH \nENV LD_LIBRARY_PATH=/usr/local/gcc-12.2/lib64:/usr/local/gcc-12.2/lib:\$LD_LIBRARY_PATH \nRUN bash build_scripts/install_cudnn.sh cudnn911 \nENV CUDNN_VERSION=9.1.1 \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
   sed -i "s#build_scripts/install_trt.sh#build_scripts/install_trt.sh trt8616#g" Dockerfile.tmp
   sed -i '/CMD/iRUN ldconfig' Dockerfile.tmp
 }

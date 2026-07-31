@@ -47,6 +47,7 @@ RUN ln -s /usr/local/gcc-12.1/bin/g++ /usr/local/bin/g++
 RUN ln -s /usr/local/gcc-12.1/bin/gcc /usr/bin/gcc
 RUN ln -s /usr/local/gcc-12.1/bin/g++ /usr/bin/g++
 ENV PATH=/usr/local/gcc-12.1/bin:$PATH
+ENV LD_LIBRARY_PATH=/usr/local/gcc-12.1/lib64:/usr/local/gcc-12.1/lib:${LD_LIBRARY_PATH}
 
 RUN bash /build_scripts/install_cudnn.sh cudnn841
 ENV CUDNN_VERSION=8.4.1

@@ -19,15 +19,7 @@
 # Stop at any error, show all commands
 set -ex
 
-if [ -f "/etc/redhat-release" ];then
-  lib_so_5=/usr/lib64/libgfortran.so.5
-  lib_so_6=/usr/lib64/libstdc++.so.6
-  lib_path=/usr/lib64
-else
-  lib_so_5=/usr/lib/x86_64-linux-gnu/libstdc++.so.5
-  lib_so_6=/usr/lib/x86_64-linux-gnu/libstdc++.so.6
-  lib_path=/usr/lib/x86_64-linux-gnu
-fi
+# GCC is installed side-by-side. Callers select its runtime via LD_LIBRARY_PATH.
 
 if [ "$1" == "gcc82" ]; then
   wget -q --no-proxy https://paddle-ci.gz.bcebos.com/gcc-8.2.0.tar.xz
@@ -43,12 +35,6 @@ if [ "$1" == "gcc82" ]; then
   ../gcc-8.2.0/configure --prefix=/usr/local/gcc-8.2 --enable-threads=posix --disable-checking --disable-multilib && \
   make -j8 && make install
   cd .. && rm -rf temp_gcc82 gcc-8.2.0 gcc-8.2.0.tar.xz
-  if [ -f "/etc/redhat-release" ];then
-    cp ${lib_so_6} ${lib_so_6}.bak  && rm -f ${lib_so_6} &&
-    ln -s /usr/local/gcc-8.2/lib64/libgfortran.so.5 ${lib_so_5} && \
-    ln -s /usr/local/gcc-8.2/lib64/libstdc++.so.6 ${lib_so_6} && \
-    cp /usr/local/gcc-8.2/lib64/libstdc++.so.6.0.25 ${lib_path}
-  fi
 elif [ "$1" == "gcc122" ]; then
   wget -q --no-proxy https://paddle-ci.gz.bcebos.com/gcc-12.2.0.tar.gz
   tar -xzf gcc-12.2.0.tar.gz && \
@@ -59,9 +45,6 @@ elif [ "$1" == "gcc122" ]; then
   ../gcc-12.2.0/configure --prefix=/usr/local/gcc-12.2 --enable-checking=release --enable-languages=c,c++ --disable-multilib && \
   make -j8 && make install
   cd .. && rm -rf temp_gcc122 gcc-12.2.0 gcc-12.2.0.tar.gz
-  cp ${lib_so_6} ${lib_so_6}.bak  && rm -f ${lib_so_6} &&
-  ln -s /usr/local/gcc-12.2/lib64/libstdc++.so.6 ${lib_so_6} && \
-  cp /usr/local/gcc-12.2/lib64/libstdc++.so.6.0.30 ${lib_path}
 elif [ "$1" == "gcc121" ]; then
   wget -q --no-proxy https://paddle-ci.gz.bcebos.com/gcc-12.1.0.tar.gz
   tar -xzf gcc-12.1.0.tar.gz && \
@@ -72,9 +55,6 @@ elif [ "$1" == "gcc121" ]; then
   ../gcc-12.1.0/configure --prefix=/usr/local/gcc-12.1 --enable-checking=release --enable-languages=c,c++ --disable-multilib && \
   make -j8 && make install
   cd .. && rm -rf temp_gcc121 gcc-12.1.0 gcc-12.1.0.tar.gz
-  cp ${lib_so_6} ${lib_so_6}.bak  && rm -f ${lib_so_6} &&
-  ln -s /usr/local/gcc-12.1/lib64/libstdc++.so.6 ${lib_so_6} && \
-  cp /usr/local/gcc-12.1/lib64/libstdc++.so.6.0.30 ${lib_path}
 elif [ "$1" == "gcc11" ]; then
   GCC_VERSION=${GCC_VERSION:-11.5.0}
   GCC_MAJOR_MINOR=$(echo ${GCC_VERSION} | cut -d. -f1,2)
@@ -103,8 +83,5 @@ elif [ "$1" == "gcc152" ]; then
   ../gcc-${GCC_VERSION}/configure --prefix=${GCC_PREFIX} --enable-checking=release --enable-languages=c,c++ --disable-multilib && \
   make -j$(nproc) && make install
   cd .. && rm -rf temp_gcc152 gcc-${GCC_VERSION} ${GCC_ARCHIVE}
-  cp ${lib_so_6} ${lib_so_6}.bak  && rm -f ${lib_so_6} &&
-  ln -s ${GCC_PREFIX}/lib64/libstdc++.so.6 ${lib_so_6} && \
-  cp ${GCC_PREFIX}/lib64/libstdc++.so.6.* ${lib_path}
 
 fi

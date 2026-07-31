@@ -22,6 +22,7 @@ function base_image(){
     sed -i 's#<install_cpu_package>##g' ${dockerfile_name}
     sed -i "s#<install_gcc>#WORKDIR /usr/bin ENV PATH=/usr/local/gcc-8.2/bin:\$PATH #g" ${dockerfile_name}
     sed -i "s#gcc121#gcc82#g" ${dockerfile_name}
+    sed -i '/ENV LD_LIBRARY_PATH=\/usr\/local\/gcc-12.1\/lib64:\/usr\/local\/gcc-12.1\/lib:${LD_LIBRARY_PATH}/d' ${dockerfile_name}
     sed -i "s#gcc-12.1#gcc-8.2#g" ${dockerfile_name}
     sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh trt8034#g' ${dockerfile_name}
     sed -i 's#cudnn841#cudnn821#g' ${dockerfile_name}
@@ -33,6 +34,7 @@ function base_image(){
     sed -i 's#<install_cpu_package>##g' ${dockerfile_name}
     sed -i "s#<install_gcc>#WORKDIR /usr/bin ENV PATH=/usr/local/gcc-8.2/bin:\$PATH #g" ${dockerfile_name}
     sed -i "s#gcc121#gcc82#g" ${dockerfile_name}
+    sed -i '/ENV LD_LIBRARY_PATH=\/usr\/local\/gcc-12.1\/lib64:\/usr\/local\/gcc-12.1\/lib:${LD_LIBRARY_PATH}/d' ${dockerfile_name}
     sed -i "s#gcc-12.1#gcc-8.2#g" ${dockerfile_name}
     sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh trt8531#g' ${dockerfile_name}
     sed -i 's#cudnn841#cudnn860#g' ${dockerfile_name}
@@ -71,6 +73,7 @@ function base_image(){
     sed -i 's#<install_cpu_package>#RUN apt-get install -y gcc g++ make#g' ${dockerfile_name}
     sed -i "s#<install_gcc>#WORKDIR /usr/bin ENV PATH=/usr/local/gcc-8.2/bin:\$PATH #g" ${dockerfile_name}
     sed -i "s#gcc121#gcc82#g" ${dockerfile_name}
+    sed -i '/ENV LD_LIBRARY_PATH=\/usr\/local\/gcc-12.1\/lib64:\/usr\/local\/gcc-12.1\/lib:${LD_LIBRARY_PATH}/d' ${dockerfile_name}
     sed -i "s#gcc-12.1#gcc-8.2#g" ${dockerfile_name}
     sed -i 's#RUN bash /build_scripts/install_trt.sh##g' ${dockerfile_name}
     sed -i 's#RUN bash /build_scripts/install_cudnn.sh cudnn841##g' ${dockerfile_name}
