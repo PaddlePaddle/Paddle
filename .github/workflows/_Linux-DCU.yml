@@ -56,6 +56,7 @@ jobs:
           WITH_XPU: "OFF"
           WITH_TENSORRT: "OFF"
           WITH_COVERAGE: "OFF"
+          WITH_CINN: "ON"
           COVERALLS_UPLOAD: "OFF"
           CMAKE_BUILD_TYPE: "Release"
           WITH_AVX: "ON"
@@ -96,6 +97,7 @@ jobs:
             -e WITH_XPU \
             -e WITH_TENSORRT \
             -e WITH_COVERAGE \
+            -e WITH_CINN \
             -e COVERALLS_UPLOAD \
             -e CMAKE_BUILD_TYPE \
             -e WITH_MKL \
@@ -215,7 +217,7 @@ jobs:
           WITH_RCCL: "ON"
           WITH_AVX: "ON"
           WITH_MKL: "ON"
-          IF_DCU: "OFF"
+          IF_DCU: "ON"
           WITH_TENSORRT: "OFF"
           WITH_XPU: "OFF"
           WITH_CINN: "ON"
