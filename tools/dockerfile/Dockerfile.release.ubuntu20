@@ -19,10 +19,6 @@ COPY paddle/scripts/docker/root/ /root/
 
 RUN chmod 777 /tmp
 
-RUN apt-key del 7fa2af80
-RUN rm /etc/apt/sources.list.d/*
-RUN apt-key adv --fetch-keys https://developer.download.nvidia.cn/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub
-
 RUN apt-get update --allow-unauthenticated && \
   apt-get install -y software-properties-common && \
   add-apt-repository ppa:deadsnakes/ppa && \
@@ -32,10 +28,9 @@ RUN apt-get update --allow-unauthenticated && \
     bison graphviz libjpeg-dev zlib1g-dev automake locales swig net-tools libtool kmod
 <install_cpu_package>
 
-# Downgrade gcc&&g++
+# Install GCC 12.1
 WORKDIR /usr/bin
 COPY tools/dockerfile/build_scripts /build_scripts
-RUN bash /build_scripts/install_trt.sh
 # Older versions of patchelf limited the size of the files being processed and were fixed in this pr.
 # # https://github.com/NixOS/patchelf/commit/ba2695a8110abbc8cc6baf0eea819922ee5007fa
 # # So install a newer version here.
@@ -47,11 +42,10 @@ RUN ln -s /usr/local/gcc-12.1/bin/g++ /usr/local/bin/g++
 RUN ln -s /usr/local/gcc-12.1/bin/gcc /usr/bin/gcc
 RUN ln -s /usr/local/gcc-12.1/bin/g++ /usr/bin/g++
 ENV PATH=/usr/local/gcc-12.1/bin:$PATH
+ENV LD_LIBRARY_PATH=/usr/local/gcc-12.1/lib64:/usr/local/gcc-12.1/lib:${LD_LIBRARY_PATH}
 
-RUN bash /build_scripts/install_cudnn.sh cudnn841
-ENV CUDNN_VERSION=8.4.1
 #RUN bash /build_scripts/install_nccl2.sh
-RUN rm -rf /build_script
+RUN rm -rf /build_scripts
 
 # install cmake
 WORKDIR /home
