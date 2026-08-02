@@ -182,10 +182,11 @@ class PADDLE_API MemoryMapFdSet {
 
 #ifdef _WIN32
 // Tracks HANDLEs and mapped views from CreateFileMappingA that must stay
-// open (refcount == 1 at writer close time) to keep the named section alive
-// for readers. SweepClosedMappings is called on each Insert() and reclaims
-// entries whose refcount has reached 0. Remaining entries at process exit
-// are cleaned up by the OS (handle closure on process termination).
+// open (their refcount is still > 0 when their owner releases them) to keep
+// the named section alive for the processes that have not opened it yet.
+// SweepClosedMappings is called on each Insert() and reclaims entries whose
+// refcount has reached 0. Remaining entries at process exit are cleaned up by
+// the OS (handle closure on process termination).
 // NOTE: this is only needed because a Windows section object is destroyed as
 // soon as its last handle/view is closed, unlike a POSIX shm file which lives
 // on until shm_unlink. An alternative would be to DuplicateHandle the section

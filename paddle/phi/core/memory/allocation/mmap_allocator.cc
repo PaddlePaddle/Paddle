@@ -382,26 +382,16 @@ void RefcountedMemoryMapAllocation::close() {
 #endif
       } else {
 #ifdef _WIN32
-        if (info->refcount > 1) {
-          // Refcount > 1 means the reader has already opened this section
-          // (initializeRefercount was called after MapViewOfFile). The
-          // reader's mapping keeps the section alive, so we can safely
-          // CloseHandle immediately — no accumulation needed.
-          VLOG(6) << "close handle (reader already opened): " << ipc_name_;
-          CloseHandle(reinterpret_cast<HANDLE>(fd_));
-          fd_ = -1;
-          closed_fd_ = true;
-          VLOG(6) << "UnmapViewOfFile: " << ipc_name_;
-          UnmapViewOfFile(map_ptr_);
-        } else {
-          // Refcount == 1: reader hasn't opened yet. Transfer both HANDLE
-          // and map_ptr_ to WindowsHandleKeeper so the named section stays
-          // alive until the reader opens it. The keeper will UnmapViewOfFile
-          // + CloseHandle when refcount reaches 0 (via SweepClosedMappings).
-          WindowsHandleKeeper::Instance().Insert(ipc_name_, fd_, map_ptr_);
-          fd_ = -1;
-          closed_fd_ = true;
-        }
+        // The refcount is still > 0, but it does not tell us whether a reader
+        // has already mapped the section: every not yet deserialized pickle
+        // holds a reference too (_reduce_lodtensor increfs before sending the
+        // metadata). Closing the last handle and unmapping the last view here
+        // would destroy the named section before those readers get a chance to
+        // OpenFileMappingA it. So hand both over to WindowsHandleKeeper, which
+        // releases them once the refcount really reaches 0.
+        WindowsHandleKeeper::Instance().Insert(ipc_name_, fd_, map_ptr_);
+        fd_ = -1;
+        closed_fd_ = true;
 #endif
       }
 #ifndef _WIN32
@@ -707,11 +697,11 @@ void WindowsHandleKeeper::Insert(const std::string &ipc_name,
     if (it->second.fd == fd && it->second.map_ptr == map_ptr) {
       return;
     }
-    // The same name was kept twice, i.e. the previous section survived the
-    // sweep (its refcount is still > 0) and a new section reused the name.
-    // Release our reference to the old one instead of dropping the HANDLE and
-    // the view on the floor; any reader that already mapped it keeps it alive
-    // through its own view.
+    // Another mapping of the same section is already kept (e.g. the writer
+    // handed over its handle and now a reader hands over its own one, or a
+    // new section reused a recycled name). Keep the newest one and release
+    // our reference to the previous mapping: the new handle is still open, so
+    // the section cannot die in between.
     VLOG(4) << "WindowsHandleKeeper: replace pending mapping " << ipc_name;
     UnmapViewOfFile(it->second.map_ptr);
     CloseHandle(reinterpret_cast<HANDLE>(it->second.fd));

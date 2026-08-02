@@ -211,6 +211,59 @@ class TestDenseTensorReduction(unittest.TestCase):
             rebuilt = pickle.loads(bytes(ForkingPickler.dumps(tensor)))
             np.testing.assert_array_equal(np.array(rebuilt), arr)
 
+    def test_share_filename_pickled_twice(self):
+        # Every ForkingPickler.dumps increments the refcount of the shared
+        # memory block, so a tensor that has been serialized twice but not
+        # deserialized yet has a refcount > 1 while no reader has opened it.
+        # The shared memory must stay alive until both pickles are loaded
+        # (on Windows the named section dies with its last handle + view).
+        import gc
+        import pickle
+        from multiprocessing.reduction import ForkingPickler
+
+        from paddle.incubate.multiprocessing import init_reductions
+
+        init_reductions()
+        arr = np.arange(32, dtype='float32')
+        tensor = paddle.base.core.DenseTensor()
+        tensor.set(arr, paddle.base.core.CPUPlace())
+
+        first = bytes(ForkingPickler.dumps(tensor))
+        second = bytes(ForkingPickler.dumps(tensor))
+        # drop the writer side before anything is deserialized
+        del tensor
+        gc.collect()
+
+        np.testing.assert_array_equal(np.array(pickle.loads(first)), arr)
+        np.testing.assert_array_equal(np.array(pickle.loads(second)), arr)
+
+    def test_share_filename_pickled_twice_loaded_serially(self):
+        # Same as above, but the first pickle is loaded and released before
+        # the second one is loaded: the shared memory must survive as long as
+        # any reference (writer, pending pickle or reader) is alive.
+        import gc
+        import pickle
+        from multiprocessing.reduction import ForkingPickler
+
+        from paddle.incubate.multiprocessing import init_reductions
+
+        init_reductions()
+        arr = np.arange(32, dtype='float32')
+        tensor = paddle.base.core.DenseTensor()
+        tensor.set(arr, paddle.base.core.CPUPlace())
+
+        first = bytes(ForkingPickler.dumps(tensor))
+        second = bytes(ForkingPickler.dumps(tensor))
+        del tensor
+        gc.collect()
+
+        loaded = pickle.loads(first)
+        np.testing.assert_array_equal(np.array(loaded), arr)
+        del loaded
+        gc.collect()
+
+        np.testing.assert_array_equal(np.array(pickle.loads(second)), arr)
+
     def test_sweep_mmap_handles_smoke(self):
         # No-op on Linux; on Windows reclaims refcount==0 keeper entries.
         # Must be callable at any time without pending mappings.
