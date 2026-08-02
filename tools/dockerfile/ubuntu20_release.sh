@@ -28,7 +28,7 @@ function base_image(){
   elif [[ ${ref_CUDA_MAJOR} == "0" ]];then
     dockerfile_name="Dockerfile-cpu"
     sed "s#<baseimg>#ubuntu:20.04#g" ./Dockerfile.release.ubuntu20 >${dockerfile_name}
-    sed -i "s#<setcuda>##g" ${dockerfile_name}
+    sed -i "s#<setcuda>#ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64#g" ${dockerfile_name}
     sed -i 's#<install_cpu_package>#RUN apt-get install -y gcc g++ make#g' ${dockerfile_name}
     sed -i 's#ENV WITH_GPU=${WITH_GPU:-ON}#ENV WITH_GPU=${WITH_GPU:-OFF}#g' ${dockerfile_name}
   else
