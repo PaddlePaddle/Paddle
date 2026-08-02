@@ -489,10 +489,10 @@ pybind11::capsule TensorToDLPack(
   return capsule;
 }
 
-// Shared implementations for DenseTensor._share_filename /
-// _new_shared_filename / _shared_incref / _shared_decref. They are bound both
-// as DenseTensor methods and as module-level functions (the module-level
-// bindings work around a pybind11 class-method registration issue on Windows).
+// Implementations of DenseTensor._share_filename / _new_shared_filename /
+// _shared_incref / _shared_decref. They are defined out of line (instead of as
+// lambdas in BindTensor) to keep the binding block below readable, since they
+// are now registered on all platforms, Windows included.
 static py::tuple ShareDenseTensorFilename(DenseTensor &self,  // NOLINT
                                           bool use_file_descriptor) {
   if (!self.IsInitialized() || self.numel() == 0)
@@ -543,16 +543,15 @@ static py::tuple ShareDenseTensorFilename(DenseTensor &self,  // NOLINT
 
     // copy data & reset holder
     if (phi::is_cuda_pinned_place(holder->place())) {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       memory::Copy(CPUPlace(),
                    shared_holder->ptr(),
                    phi::GPUPinnedPlace(),
                    data_ptr,
                    data_size);
 #else
-      // The GPUPinnedPlace Copy specialization is not built on Windows
-      // (see memcpy.cc); pinned memory is host memory, so a plain CPU
-      // copy is equivalent.
+      // Pinned memory is host memory, so a plain host copy is equivalent when
+      // the GPU backend is not compiled in.
       memory::Copy(
           CPUPlace(), shared_holder->ptr(), CPUPlace(), data_ptr, data_size);
 #endif
@@ -1075,59 +1074,60 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              }
              return dst;
            })
-      .def("_copy", [](const DenseTensor &self, const Place &place) {
-        // follow fetch_op's implementation
-        DenseTensor dst;
-        if (self.IsInitialized() && self.numel() > 0) {
-          TensorCopySync(self, place, &dst);
-        } else {
-          // Not copy, if the src tensor is empty.
-          dst.clear();
-          dst.Resize({0});
-        }
-        return dst;
-#ifdef _WIN32
-      });
-#else
+      .def("_copy",
+           [](const DenseTensor &self, const Place &place) {
+             // follow fetch_op's implementation
+             DenseTensor dst;
+             if (self.IsInitialized() && self.numel() > 0) {
+               TensorCopySync(self, place, &dst);
+             } else {
+               // Not copy, if the src tensor is empty.
+               dst.clear();
+               dst.Resize({0});
+             }
+             return dst;
            })
+// NOTE: CUDA/XPU IPC relies on cudaIpcGetMemHandle, which is not supported on
+// Windows. The file-mapping based sharing below is available on all platforms.
+#ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
-      .def("_share_buffer_with",
-           [](DenseTensor &self, const DenseTensor src,
-              py::tuple t) {
-              if (!src.meta().is_contiguous()) {
-                PADDLE_THROW(common::errors::InvalidArgument(
-                    "Tensor is not contiguous, cannot call "
-                    "share_buffer_with on it."));
-              }
-             auto *cuda_ipc_allocation =
-                 dynamic_cast<memory::allocation::CudaIpcAllocation *>(
-                     src.Holder().get());
+      .def(
+          "_share_buffer_with",
+          [](DenseTensor &self, const DenseTensor src, py::tuple t) {
+            if (!src.meta().is_contiguous()) {
+              PADDLE_THROW(common::errors::InvalidArgument(
+                  "Tensor is not contiguous, cannot call "
+                  "share_buffer_with on it."));
+            }
+            auto *cuda_ipc_allocation =
+                dynamic_cast<memory::allocation::CudaIpcAllocation *>(
+                    src.Holder().get());
 
-             PADDLE_ENFORCE_NOT_NULL(
-                 cuda_ipc_allocation,
-                 common::errors::PreconditionNotMet(
-                     "Tensor is not Cuda IPC shared tensor. "
-                     "Now only Tensor shared by cuda ipc could use this "
-                     "api."));
+            PADDLE_ENFORCE_NOT_NULL(
+                cuda_ipc_allocation,
+                common::errors::PreconditionNotMet(
+                    "Tensor is not Cuda IPC shared tensor. "
+                    "Now only Tensor shared by cuda ipc could use this "
+                    "api."));
 
-             size_t size = t[0].cast<size_t>();
-             auto dtype =
-                 static_cast<DataType>(t[1].cast<int>());
-             auto dims = common::make_ddim(t[2].cast<std::vector<int>>());
-             auto device_id = t[4].cast<int>();
+            size_t size = t[0].cast<size_t>();
+            auto dtype = static_cast<DataType>(t[1].cast<int>());
+            auto dims = common::make_ddim(t[2].cast<std::vector<int>>());
+            auto device_id = t[4].cast<int>();
 
-             auto shared_reader_holder =
-                 std::make_shared<memory::allocation::Allocation>(
-                     cuda_ipc_allocation->ptr(),
-                     cuda_ipc_allocation->base_ptr(), size,
-                     GPUPlace(device_id));
+            auto shared_reader_holder =
+                std::make_shared<memory::allocation::Allocation>(
+                    cuda_ipc_allocation->ptr(),
+                    cuda_ipc_allocation->base_ptr(),
+                    size,
+                    GPUPlace(device_id));
 
-             self.ResetHolderWithType(shared_reader_holder, dtype);
-             self.Resize(dims);
+            self.ResetHolderWithType(shared_reader_holder, dtype);
+            self.Resize(dims);
 
-             VLOG(6) << "Reconstructed tensor with buffer shared!";
-           },
-           R"DOC(
+            VLOG(6) << "Reconstructed tensor with buffer shared!";
+          },
+          R"DOC(
            Deserialize GPU Tensor for existed shared Cuda IPC tensor.
 
            Params:
@@ -1136,58 +1136,58 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                       tensor dims, lod information, device index.
 
        )DOC")
-      .def("_share_cuda",
-           [](DenseTensor self) -> py::tuple {
-             if (!self.IsInitialized() || self.numel() == 0)
-               throw std::runtime_error(
-                   "Tensor not initialized or numel is 0.  could not pass "
-                   "to shared memory. ");
+      .def(
+          "_share_cuda",
+          [](DenseTensor self) -> py::tuple {
+            if (!self.IsInitialized() || self.numel() == 0)
+              throw std::runtime_error(
+                  "Tensor not initialized or numel is 0.  could not pass "
+                  "to shared memory. ");
 
-             auto *holder = dynamic_cast<memory::allocation::Allocation *>(
-                 self.Holder().get());
-             PADDLE_ENFORCE_EQ(
-                 phi::is_gpu_place(holder->place()), true,
-                 common::errors::InvalidArgument(
-                     "Tensor is not on GPU. share_cuda only support GPU "
-                     "Tensor, share_filename is for CPU tensor."));
+            auto *holder = dynamic_cast<memory::allocation::Allocation *>(
+                self.Holder().get());
+            PADDLE_ENFORCE_EQ(
+                phi::is_gpu_place(holder->place()),
+                true,
+                common::errors::InvalidArgument(
+                    "Tensor is not on GPU. share_cuda only support GPU "
+                    "Tensor, share_filename is for CPU tensor."));
 
-             // VMM IPC
-             if (FLAGS_use_virtual_memory_auto_growth) {
-               py::tuple meta;
-               ShareTensorViaVmm(self, &meta);
-               return meta;
-             }
-             void *base_ptr = holder->base_ptr();
-             ptrdiff_t offset_bytes = reinterpret_cast<char *>(holder->ptr()) -
-                                      reinterpret_cast<char *>(base_ptr);
+            // VMM IPC
+            if (FLAGS_use_virtual_memory_auto_growth) {
+              py::tuple meta;
+              ShareTensorViaVmm(self, &meta);
+              return meta;
+            }
+            void *base_ptr = holder->base_ptr();
+            ptrdiff_t offset_bytes = reinterpret_cast<char *>(holder->ptr()) -
+                                     reinterpret_cast<char *>(base_ptr);
 
-             cudaIpcMemHandle_t handle;
-             PADDLE_ENFORCE_GPU_SUCCESS(cudaIpcGetMemHandle(&handle, base_ptr));
+            cudaIpcMemHandle_t handle;
+            PADDLE_ENFORCE_GPU_SUCCESS(cudaIpcGetMemHandle(&handle, base_ptr));
 
-             auto _handle = py::bytes(reinterpret_cast<char *>(&handle),
-                                      (py::ssize_t)CUDA_IPC_HANDLE_SIZE);
+            auto _handle = py::bytes(reinterpret_cast<char *>(&handle),
+                                     (py::ssize_t)CUDA_IPC_HANDLE_SIZE);
 
-             // TODO(ZHUI): use cuda event, to avoid sync.
-             const auto &device_id = paddle::platform::GetCurrentDeviceId();
-             auto stream =
-                 paddle::platform::get_current_stream(device_id);
-             stream->Synchronize();
+            // TODO(ZHUI): use cuda event, to avoid sync.
+            const auto &device_id = paddle::platform::GetCurrentDeviceId();
+            auto stream = paddle::platform::get_current_stream(device_id);
+            stream->Synchronize();
 
-             int type_idx = static_cast<int>(self.type());
-             size_t data_size =
-                 self.numel() *
-                 framework::SizeOfType(
-                     framework::TransToProtoVarType(self.type()));
+            int type_idx = static_cast<int>(self.type());
+            size_t data_size =
+                self.numel() * framework::SizeOfType(
+                                   framework::TransToProtoVarType(self.type()));
 
-             return py::make_tuple(_handle,
-                                   (py::size_t)offset_bytes,
-                                   data_size,
-                                   type_idx,
-                                   common::vectorize(self.dims()),
-                                   self.lod(),
-                                   device_id);
-           },
-           R"DOC(
+            return py::make_tuple(_handle,
+                                  (py::size_t)offset_bytes,
+                                  data_size,
+                                  type_idx,
+                                  common::vectorize(self.dims()),
+                                  self.lod(),
+                                  device_id);
+          },
+          R"DOC(
            Serialize GPU Tensor by cudaIpcMemHandle.
 
            Returns:
@@ -1202,41 +1202,40 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                     >>> tensor = paddle.ones([3,3])
                     >>> metainfo = tensor.value().get_tensor()._share_cuda()
       )DOC")
-      .def("_new_shared_cuda",
-           [](py::tuple t) {
-              if (FLAGS_use_virtual_memory_auto_growth && t.size() == 5) {
-                return RebuildTensorFromVmmMeta(t);
-              }
-             if (t.size() != 7)
-               throw std::runtime_error(
-                   "Invalid Tensor meta info for shared cuda tensor!");
+      .def(
+          "_new_shared_cuda",
+          [](py::tuple t) {
+            if (FLAGS_use_virtual_memory_auto_growth && t.size() == 5) {
+              return RebuildTensorFromVmmMeta(t);
+            }
+            if (t.size() != 7)
+              throw std::runtime_error(
+                  "Invalid Tensor meta info for shared cuda tensor!");
 
-             // 1. Create a new C++ instance
-             DenseTensor tensor;
+            // 1. Create a new C++ instance
+            DenseTensor tensor;
 
-             // 2. Rebuild Allocation from handle
-             const std::string &handle = t[0].cast<std::string>();
-             ptrdiff_t offset_bytes = (ptrdiff_t)t[1].cast<int64_t>();
-             auto device_id = t[6].cast<int>();
-             auto base_ptr = memory::allocation::GetIpcBasePtr(handle);
-             size_t size = t[2].cast<size_t>();
-             void *dev = base_ptr.get();
-             dev = reinterpret_cast<char *>(dev) + offset_bytes;
+            // 2. Rebuild Allocation from handle
+            const std::string &handle = t[0].cast<std::string>();
+            ptrdiff_t offset_bytes = (ptrdiff_t)t[1].cast<int64_t>();
+            auto device_id = t[6].cast<int>();
+            auto base_ptr = memory::allocation::GetIpcBasePtr(handle);
+            size_t size = t[2].cast<size_t>();
+            void *dev = base_ptr.get();
+            dev = reinterpret_cast<char *>(dev) + offset_bytes;
 
-             auto shared_reader_holder =
-                 std::make_shared<memory::allocation::CudaIpcAllocation>(
-                     dev, size, device_id, std::move(base_ptr));
+            auto shared_reader_holder =
+                std::make_shared<memory::allocation::CudaIpcAllocation>(
+                    dev, size, device_id, std::move(base_ptr));
 
-             // 3. Rebuild Tensor
-             tensor.ResetHolderWithType(
-                 shared_reader_holder,
-                 static_cast<DataType>(t[3].cast<int>()));
-             tensor.Resize(common::make_ddim(
-                 t[4].cast<std::vector<int64_t>>()));
+            // 3. Rebuild Tensor
+            tensor.ResetHolderWithType(shared_reader_holder,
+                                       static_cast<DataType>(t[3].cast<int>()));
+            tensor.Resize(common::make_ddim(t[4].cast<std::vector<int64_t>>()));
 
-             return tensor;
-           },
-           R"DOC(
+            return tensor;
+          },
+          R"DOC(
            Deserialize GPU lod tensor from cudaIpcMemHandle.
 
            Params:
@@ -1254,49 +1253,49 @@ void BindTensor(pybind11::module &m) {  // NOLINT
         )DOC")
 #endif
 #ifdef PADDLE_WITH_XPU
-      .def("_share_buffer_with",
-           [](DenseTensor &self, const DenseTensor src,
-              py::tuple t) {
-             if (!src.meta().is_contiguous()) {
-               PADDLE_THROW(common::errors::InvalidArgument(
-                   "Tensor is not contiguous, cannot call "
-                   "share_buffer_with on it."));
-             }
+      .def(
+          "_share_buffer_with",
+          [](DenseTensor &self, const DenseTensor src, py::tuple t) {
+            if (!src.meta().is_contiguous()) {
+              PADDLE_THROW(common::errors::InvalidArgument(
+                  "Tensor is not contiguous, cannot call "
+                  "share_buffer_with on it."));
+            }
 
-             // Get the current device ID.
-             int dev_id = platform::GetXPUCurrentDeviceId();
-             paddle::platform::SetXPUDeviceId(dev_id);
-             VLOG(6) << "[DEBUG XPU] _share_buffer_with: current XPU device = "
-                     << dev_id;
+            // Get the current device ID.
+            int dev_id = platform::GetXPUCurrentDeviceId();
+            paddle::platform::SetXPUDeviceId(dev_id);
+            VLOG(6) << "[DEBUG XPU] _share_buffer_with: current XPU device = "
+                    << dev_id;
 
-             auto *xpu_ipc_allocation =
-                 dynamic_cast<memory::allocation::XpuIpcAllocation *>(
-                     src.Holder().get());
+            auto *xpu_ipc_allocation =
+                dynamic_cast<memory::allocation::XpuIpcAllocation *>(
+                    src.Holder().get());
 
-             PADDLE_ENFORCE_NOT_NULL(
-                 xpu_ipc_allocation,
-                 common::errors::PreconditionNotMet(
-                     "Tensor is not Xpu IPC shared tensor. Now only Tensor "
-                     "shared by xpu ipc could use this api."));
+            PADDLE_ENFORCE_NOT_NULL(
+                xpu_ipc_allocation,
+                common::errors::PreconditionNotMet(
+                    "Tensor is not Xpu IPC shared tensor. Now only Tensor "
+                    "shared by xpu ipc could use this api."));
 
-             size_t size = t[0].cast<size_t>();
-             auto dtype = static_cast<DataType>(t[1].cast<int>());
-             auto dims = common::make_ddim(
-                 t[2].cast<std::vector<int>>());
-             auto device_id = t[4].cast<int>();
+            size_t size = t[0].cast<size_t>();
+            auto dtype = static_cast<DataType>(t[1].cast<int>());
+            auto dims = common::make_ddim(t[2].cast<std::vector<int>>());
+            auto device_id = t[4].cast<int>();
 
-             auto shared_reader_holder =
-                 std::make_shared<memory::allocation::Allocation>(
-                     xpu_ipc_allocation->ptr(),
-                     xpu_ipc_allocation->base_ptr(), size,
-                     phi::XPUPlace(device_id));
+            auto shared_reader_holder =
+                std::make_shared<memory::allocation::Allocation>(
+                    xpu_ipc_allocation->ptr(),
+                    xpu_ipc_allocation->base_ptr(),
+                    size,
+                    phi::XPUPlace(device_id));
 
-             self.ResetHolderWithType(shared_reader_holder, dtype);
-             self.Resize(dims);
+            self.ResetHolderWithType(shared_reader_holder, dtype);
+            self.Resize(dims);
 
-             VLOG(6) << "[DEBUG XPU] Reconstructed tensor with buffer shared!";
-           },
-           R"DOC(
+            VLOG(6) << "[DEBUG XPU] Reconstructed tensor with buffer shared!";
+          },
+          R"DOC(
            Deserialize XPU Tensor for existed shared Xpu IPC tensor.
 
            Params:
@@ -1304,101 +1303,100 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                tuple: contains data size, data type, tensor dims, lod
                       information, device index.
            )DOC")
-      .def("_share_xpu",
-           [](DenseTensor &self) {
-             if (!self.IsInitialized() || self.numel() == 0)
-               throw std::runtime_error(
-                   "Tensor not initialized or numel is 0. could not pass to "
-                   "shared memory.");
+      .def(
+          "_share_xpu",
+          [](DenseTensor &self) {
+            if (!self.IsInitialized() || self.numel() == 0)
+              throw std::runtime_error(
+                  "Tensor not initialized or numel is 0. could not pass to "
+                  "shared memory.");
 
-             // Get the current device ID.
-             int dev_id = platform::GetXPUCurrentDeviceId();
-             paddle::platform::SetXPUDeviceId(dev_id);
-             VLOG(6) << "[DEBUG XPU] _share_xpu: current XPU device = "
-                     << dev_id;
+            // Get the current device ID.
+            int dev_id = platform::GetXPUCurrentDeviceId();
+            paddle::platform::SetXPUDeviceId(dev_id);
+            VLOG(6) << "[DEBUG XPU] _share_xpu: current XPU device = "
+                    << dev_id;
 
-             auto *holder = dynamic_cast<memory::allocation::Allocation *>(
-                 self.Holder().get());
-             PADDLE_ENFORCE_EQ(
-                 phi::is_xpu_place(holder->place()), true,
-                 common::errors::InvalidArgument(
-                     "Tensor is not on XPU. share_xpu only supports XPU "
-                     "tensors."));
-             void *base_ptr = holder->base_ptr();
-             ptrdiff_t offset_bytes = reinterpret_cast<char *>(holder->ptr()) -
-                                      reinterpret_cast<char *>(base_ptr);
-             VLOG(6) << "[DEBUG XPU] _share_xpu: base_ptr = " << base_ptr
-                     << ", offset_bytes = " << offset_bytes;
-             cudaIpcMemHandle_t handle;
-             int ret = cudaIpcGetMemHandle(&handle, base_ptr);
-             VLOG(6) << "[DEBUG XPU] _share_xpu: cudaIpcGetMemHandle returned: "
-                     << ret;
-             PADDLE_ENFORCE_XPU_SUCCESS(ret);
-             // Use the correct size for the IPC handle.
-             auto _handle = py::bytes(
-                 reinterpret_cast<char *>(&handle),
-                 (py::ssize_t)sizeof(cudaIpcMemHandle_t));
-             VLOG(6) << "[DEBUG XPU] _share_xpu: IPC handle (bytes) = "
-                     << _handle;
-             const auto &device_id =
-                 paddle::platform::GetXPUCurrentDeviceId();
-             auto stream = paddle::platform::get_current_stream(device_id);
-             xpu_wait(stream->raw_stream());
-             int type_idx = static_cast<int>(self.type());
-             size_t data_size = self.numel() *
-                 framework::SizeOfType(
-                     framework::TransToProtoVarType(self.type()));
-             VLOG(6) << "[DEBUG XPU] _share_xpu: data_size = " << data_size;
-             return py::make_tuple(_handle,
-                                   (py::size_t)offset_bytes,
-                                   data_size,
-                                   type_idx,
-                                   common::vectorize(self.dims()),
-                                   self.lod(),
-                                   device_id);
-           },
-           R"DOC(
+            auto *holder = dynamic_cast<memory::allocation::Allocation *>(
+                self.Holder().get());
+            PADDLE_ENFORCE_EQ(
+                phi::is_xpu_place(holder->place()),
+                true,
+                common::errors::InvalidArgument(
+                    "Tensor is not on XPU. share_xpu only supports XPU "
+                    "tensors."));
+            void *base_ptr = holder->base_ptr();
+            ptrdiff_t offset_bytes = reinterpret_cast<char *>(holder->ptr()) -
+                                     reinterpret_cast<char *>(base_ptr);
+            VLOG(6) << "[DEBUG XPU] _share_xpu: base_ptr = " << base_ptr
+                    << ", offset_bytes = " << offset_bytes;
+            cudaIpcMemHandle_t handle;
+            int ret = cudaIpcGetMemHandle(&handle, base_ptr);
+            VLOG(6) << "[DEBUG XPU] _share_xpu: cudaIpcGetMemHandle returned: "
+                    << ret;
+            PADDLE_ENFORCE_XPU_SUCCESS(ret);
+            // Use the correct size for the IPC handle.
+            auto _handle = py::bytes(reinterpret_cast<char *>(&handle),
+                                     (py::ssize_t)sizeof(cudaIpcMemHandle_t));
+            VLOG(6) << "[DEBUG XPU] _share_xpu: IPC handle (bytes) = "
+                    << _handle;
+            const auto &device_id = paddle::platform::GetXPUCurrentDeviceId();
+            auto stream = paddle::platform::get_current_stream(device_id);
+            xpu_wait(stream->raw_stream());
+            int type_idx = static_cast<int>(self.type());
+            size_t data_size =
+                self.numel() * framework::SizeOfType(
+                                   framework::TransToProtoVarType(self.type()));
+            VLOG(6) << "[DEBUG XPU] _share_xpu: data_size = " << data_size;
+            return py::make_tuple(_handle,
+                                  (py::size_t)offset_bytes,
+                                  data_size,
+                                  type_idx,
+                                  common::vectorize(self.dims()),
+                                  self.lod(),
+                                  device_id);
+          },
+          R"DOC(
            Serialize XPU Tensor by IPC.
 
            Returns:
                tuple: contains handle, offset, data size, data type,
                       tensor dims, lod information, and device id.
            )DOC")
-      .def("_new_shared_xpu",
-           [](py::tuple t) {
-             if (t.size() != 7)
-               throw std::runtime_error(
-                   "Invalid Tensor meta info for shared xpu tensor!");
+      .def(
+          "_new_shared_xpu",
+          [](py::tuple t) {
+            if (t.size() != 7)
+              throw std::runtime_error(
+                  "Invalid Tensor meta info for shared xpu tensor!");
 
-             // Get the current device ID.
-             int dev_id = platform::GetXPUCurrentDeviceId();
-             paddle::platform::SetXPUDeviceId(dev_id);
-             VLOG(6) << "[DEBUG XPU] _new_shared_xpu: current XPU device = "
-                     << dev_id;
+            // Get the current device ID.
+            int dev_id = platform::GetXPUCurrentDeviceId();
+            paddle::platform::SetXPUDeviceId(dev_id);
+            VLOG(6) << "[DEBUG XPU] _new_shared_xpu: current XPU device = "
+                    << dev_id;
 
-             DenseTensor tensor;
-             const std::string &handle = t[0].cast<std::string>();
-             ptrdiff_t offset_bytes = (ptrdiff_t)t[1].cast<int64_t>();
-             auto device_id = t[6].cast<int>();
-             VLOG(6) << "[DEBUG XPU] _new_shared_xpu: handle = " << handle
-                     << ", offset_bytes = " << offset_bytes;
-             auto base_ptr = memory::allocation::GetIpcBasePtr(handle);
-             size_t size = t[2].cast<size_t>();
-             void *dev = base_ptr.get();
-             dev = reinterpret_cast<char *>(dev) + offset_bytes;
-             auto shared_holder =
-                 std::make_shared<memory::allocation::XpuIpcAllocation>(
-                     dev, size, device_id, std::move(base_ptr));
-             tensor.ResetHolderWithType(
-                 shared_holder,
-                 static_cast<DataType>(t[3].cast<int>()));
-             tensor.Resize(common::make_ddim(
-                 t[4].cast<std::vector<int>>()));
-             VLOG(6) << "[DEBUG XPU] _new_shared_xpu: Reshape tensor dims: "
-                     << tensor.dims();
-             return tensor;
-           },
-           R"DOC(
+            DenseTensor tensor;
+            const std::string &handle = t[0].cast<std::string>();
+            ptrdiff_t offset_bytes = (ptrdiff_t)t[1].cast<int64_t>();
+            auto device_id = t[6].cast<int>();
+            VLOG(6) << "[DEBUG XPU] _new_shared_xpu: handle = " << handle
+                    << ", offset_bytes = " << offset_bytes;
+            auto base_ptr = memory::allocation::GetIpcBasePtr(handle);
+            size_t size = t[2].cast<size_t>();
+            void *dev = base_ptr.get();
+            dev = reinterpret_cast<char *>(dev) + offset_bytes;
+            auto shared_holder =
+                std::make_shared<memory::allocation::XpuIpcAllocation>(
+                    dev, size, device_id, std::move(base_ptr));
+            tensor.ResetHolderWithType(shared_holder,
+                                       static_cast<DataType>(t[3].cast<int>()));
+            tensor.Resize(common::make_ddim(t[4].cast<std::vector<int>>()));
+            VLOG(6) << "[DEBUG XPU] _new_shared_xpu: Reshape tensor dims: "
+                    << tensor.dims();
+            return tensor;
+          },
+          R"DOC(
            Deserialize XPU Tensor from IPC.
 
            Params:
@@ -1409,6 +1407,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                A new DenseTensor that shares memory via IPC.
            )DOC")
 #endif  // PADDLE_WITH_XPU
+#endif  // !_WIN32
       .def("_share_filename",
            &ShareDenseTensorFilename,
            R"DOC(
@@ -1458,7 +1457,8 @@ void BindTensor(pybind11::module &m) {  // NOLINT
       .def(py::pickle(
           [](const DenseTensor &t) {  // __getstate__
             auto holder = t.Holder();
-            PADDLE_ENFORCE_EQ(phi::is_cpu_place(holder->place()), true,
+            PADDLE_ENFORCE_EQ(phi::is_cpu_place(holder->place()),
+                              true,
                               common::errors::PreconditionNotMet(
                                   "Tensor is not on CPU."
                                   "Now only Tensor on CPU can be serialized."));
@@ -1473,8 +1473,10 @@ void BindTensor(pybind11::module &m) {  // NOLINT
             int type_idx = static_cast<int>(t.type());
 
             return py::make_tuple(mmap_writer_allocation->ipc_name(),
-                                  mmap_writer_allocation->size(), type_idx,
-                                  common::vectorize(t.dims()), t.lod());
+                                  mmap_writer_allocation->size(),
+                                  type_idx,
+                                  common::vectorize(t.dims()),
+                                  t.lod());
           },
           [](py::tuple t) {  // __setstate__
             if (t.size() != 5)
@@ -1495,14 +1497,12 @@ void BindTensor(pybind11::module &m) {  // NOLINT
             memory::allocation::MemoryMapFdSet::Instance().Insert(ipc_name);
 
             // 4. Rebuild Tensor
-            tensor.ResetHolderWithType(
-                shared_reader_holder,
-                static_cast<DataType>(t[2].cast<int>()));
+            tensor.ResetHolderWithType(shared_reader_holder,
+                                       static_cast<DataType>(t[2].cast<int>()));
             tensor.Resize(common::make_ddim(t[3].cast<std::vector<int>>()));
 
             return tensor;
           }));
-#endif
 
 #ifdef PADDLE_WITH_DISTRIBUTE
   using phi::distributed::DistTensor;
@@ -1587,13 +1587,6 @@ void BindTensor(pybind11::module &m) {  // NOLINT
       .def("indices", [](const phi::SparseCooTensor &self) -> DenseTensor {
         return self.indices();
       });
-
-  // Module-level wrappers for _share_filename etc.
-  // These bypass a pybind11 class method registration issue on Windows.
-  m.def("_share_filename", &ShareDenseTensorFilename);
-  m.def("_new_shared_filename", &NewSharedDenseTensorFromFilename);
-  m.def("_shared_incref", &SharedDenseTensorIncref);
-  m.def("_shared_decref", &SharedDenseTensorDecref);
 }
 
 }  // namespace paddle::pybind

@@ -488,9 +488,9 @@ void BindImperative(py::module *m_ptr) {
             "Expected data type is tuple or list, but received %s",
             obj.get_type()));
     py::list pids = py::cast<py::list>(obj);
-    std::set<pid_t> pids_set = {};
+    std::set<imperative::pid_t> pids_set = {};
     for (auto &&pid : pids) {
-      pids_set.insert(pid.cast<pid_t>());
+      pids_set.insert(pid.cast<imperative::pid_t>());
     }
     imperative::SetLoadProcessPIDs(key, pids_set);
   });

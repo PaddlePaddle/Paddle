@@ -407,7 +407,13 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         # see _try_put_indices
         self._thread_lock = threading.Lock()
 
-        self._base_seed = np.random.randint(low=0, high=np.iinfo(np.int32).max)
+        # NOTE: dtype=np.int64 is required because the default integer dtype
+        # of numpy is int32 on Windows, where np.random.randint would raise
+        # "high is out of bounds for int32". int() keeps the seed a plain
+        # Python int (as on Linux), which random.seed requires.
+        self._base_seed = int(
+            np.random.randint(low=0, high=sys.maxsize, dtype=np.int64)
+        )
 
         # Note(zhangbo): shm_buffer_size is used for MemoryMapAllocationPool.
         # MemoryMapAllocationPool is used to cache and reuse shm, thus reducing munmap in dataloader.
@@ -487,8 +493,6 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             )
             worker.daemon = True
             worker.start()
-            if sys.platform == 'win32' and self._num_workers > 4:
-                time.sleep(0.05)
             self._workers.append(worker)
             self._worker_status.append(True)
 

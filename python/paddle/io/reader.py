@@ -286,6 +286,21 @@ class DataLoader:
         be performed in subprocess, such as dataset transforms, collate_fn,
         etc. Numpy array and CPU tensor operation is supported.
 
+    Notes:
+        On Windows the worker processes are created with the ``spawn`` start
+        method instead of ``fork``, which means that:
+
+        1. The :attr:`dataset`, :attr:`collate_fn`, :attr:`worker_init_fn` and
+           everything they reference must be picklable, so they have to be
+           defined at the top level of a module (a lambda or a class nested in
+           a function cannot be pickled).
+        2. The main module is re-imported in every worker, so the code that
+           creates the DataLoader and starts the training must be guarded with
+           ``if __name__ == '__main__':``, otherwise the workers would
+           recursively spawn new workers.
+        3. Starting a worker is more expensive than on Linux, consider using
+           :attr:`persistent_workers` to reuse the workers across epochs.
+
     **Disable automatic batching**
 
     In certain cases such as some NLP tasks, instead of automatic batching,
@@ -340,7 +355,9 @@ class DataLoader:
             the sample list, None for only stack each fields of sample in axis
             0(same as :attr::`np.stack(..., axis=0)`). Default None
         num_workers(int, optional): the number of subprocess to load data, 0 for no
-            subprocess used and loading data in main process. Default 0
+            subprocess used and loading data in main process. On Windows the
+            subprocesses are started with ``spawn``, see the notes above.
+            Default 0
         use_buffer_reader (bool, optional): whether to use buffered reader.
             If use_buffer_reader=True, the DataLoader would prefetch
             batch data asynchronously, so it would speed up data feeding

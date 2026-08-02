@@ -530,10 +530,16 @@ if(APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exit_func)
   list(REMOVE_ITEM TEST_OPS test_imperative_signal_handler)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_dynamic)
-  list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_exception)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_iterable_dataset)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_dataset)
   list(REMOVE_ITEM TEST_OPS test_paddle_multiprocessing)
+endif()
+
+if(APPLE)
+  # DataLoader multi-process mode is still disabled on MacOS (num_workers is
+  # forced to 0), it is supported on Windows since the worker processes are
+  # started with spawn.
+  list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_exception)
 endif()
 
 if(NOT WITH_GLOO)

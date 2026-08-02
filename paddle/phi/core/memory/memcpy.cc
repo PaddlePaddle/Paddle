@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/core/memory/memcpy.h"
 #include "glog/logging.h"
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/platform/device/device_wrapper.h"
@@ -701,11 +702,11 @@ PADDLE_API void Copy<GPUPlace, GPUPlace>(GPUPlace dst_place,
 }
 
 template <>
-void Copy<CPUPlace, GPUPinnedPlace>(CPUPlace dst_place,
-                                    void* dst,
-                                    GPUPinnedPlace src_place,
-                                    const void* src,
-                                    size_t num) {
+PADDLE_API void Copy<CPUPlace, GPUPinnedPlace>(CPUPlace dst_place,
+                                               void* dst,
+                                               GPUPinnedPlace src_place,
+                                               const void* src,
+                                               size_t num) {
   VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
           << dst_place;
   if (UNLIKELY(num == 0)) return;

@@ -367,10 +367,9 @@ def _worker_loop(
     parent_pid=None,
 ):
     try:
-        import faulthandler
-
-        faulthandler.enable()
-        # Register ForkingPickler handlers so DenseTensor can be serialized
+        # NOTE: with the spawn start method (Windows / macOS) the reductions
+        # registered in the parent process are not inherited, so register the
+        # ForkingPickler handlers here to make DenseTensor serializable.
         from paddle.incubate.multiprocessing import init_reductions
 
         init_reductions()
@@ -436,36 +435,36 @@ def _worker_loop(
                     core._sweep_mmap_handles()
                 continue
 
+            if isinstance(data, _ResumeIteration):
+                out_queue.put((data, None, None))
+                iterator_drained = False
+                fetcher = _DatasetKind.create_fetcher(
+                    dataset_kind, dataset, auto_collate_batch, collate_fn, True
+                )
+                continue
+
+            # None as poison piil, so worker event should be set
+            if data is None:
+                assert done_event.is_set() or iterator_drained, (
+                    "get None when worker done_event set"
+                )
+                break
+            # If worker done event is set but get still get data in
+            # indices_queue, remaining data should be get and skipped.
+            if done_event.is_set() or iterator_drained:
+                continue
+
+            idx, indices = data
             try:
-                idx = None
-                if isinstance(data, _ResumeIteration):
-                    out_queue.put((data, None, None))
-                    iterator_drained = False
-                    fetcher = _DatasetKind.create_fetcher(
-                        dataset_kind,
-                        dataset,
-                        auto_collate_batch,
-                        collate_fn,
-                        True,
-                    )
-                    continue
-
-                # None as poison piil, so worker event should be set
-                if data is None:
-                    assert done_event.is_set() or iterator_drained, (
-                        "get None when worker done_event set"
-                    )
-                    break
-                # If worker done event is set but get still get data in
-                # indices_queue, remaining data should be get and skipped.
-                if done_event.is_set() or iterator_drained:
-                    continue
-
-                idx, indices = data
                 if init_exception is not None:
                     batch = init_exception
                     init_exception = None
                 else:
+                    # NOTE: GPU tensor operation is not supported in sub-process
+                    #       but default device is GPU in paddle-gpu version, which
+                    #       may copy CPU tensor to GPU even if users want to use
+                    #       CPU tensor operation, so we add CPUPlace guard here
+                    #       to make sure tensor will be operated only on CPU
                     with paddle.base.dygraph.guard(place=paddle.CPUPlace()):
                         batch = fetcher.fetch(indices)
             except Exception as e:
@@ -499,8 +498,6 @@ def _worker_loop(
     finally:
         if use_shared_memory:
             _cleanup_mmap()
-    # On Windows (spawn), skip queue cleanup that may fail during shutdown
-    if not sys.platform.startswith('win'):
-        if done_event.is_set():
-            out_queue.cancel_join_thread()
-            out_queue.close()
+    if done_event.is_set():
+        out_queue.cancel_join_thread()
+        out_queue.close()

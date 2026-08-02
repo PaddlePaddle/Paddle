@@ -14,17 +14,18 @@
 
 #include "paddle/phi/core/memory/allocation/mmap_allocator.h"
 
-#include <stdint.h>
-
 #ifdef _WIN32
+#include <io.h>
 #include <windows.h>
 #else
+#include <fcntl.h>
+#include <sys/mman.h>
 #include <unistd.h>
 #endif
 
-#include <cstdlib>
-
 #include <atomic>
+#include <cstdint>
+#include <cstdlib>
 #include <random>
 #include <string>
 
@@ -32,18 +33,15 @@
 #include "paddle/common/flags.h"
 #include "paddle/phi/core/enforce.h"
 
+namespace {
+inline int GetPid() {
 #ifdef _WIN32
-static inline int GetPid() { return static_cast<int>(GetCurrentProcessId()); }
+  return static_cast<int>(GetCurrentProcessId());
 #else
-static inline int GetPid() { return getpid(); }
+  return getpid();
 #endif
-
-#ifdef _WIN32
-#include <io.h>
-#else
-#include <fcntl.h>
-#include <sys/mman.h>
-#endif
+}
+}  // namespace
 
 COMMON_DECLARE_bool(use_shm_cache);
 
@@ -53,11 +51,7 @@ std::string GetIPCName() {
   static std::random_device rd;
   static std::atomic<uint64_t> counter{0};
   std::string handle = "/paddle_";
-#ifdef _WIN32
-  handle += std::to_string(GetCurrentProcessId());
-#else
   handle += std::to_string(GetPid());
-#endif
   handle += "_";
   handle += std::to_string(counter.fetch_add(1));
   handle += "_";
@@ -157,7 +151,6 @@ void AllocateMemoryMap(std::string *fname_ptr,
       VLOG(6) << "CreateFileMapping (unlink mode): " << fname;
     }
 
-    // Caller (AllocateRefcountedMemoryMapAllocation) handles Insert
     return;
   }
 
@@ -239,12 +232,16 @@ AllocateRefcountedMemoryMapAllocation(std::string fname,
     VLOG(4) << "Create and mmap a new shm: " << fname;
   } else {
     base_ptr = MemoryMapAllocationPool::Instance().GetById(buffer_id).mmap_ptr_;
-    fd = shared_fd;
+#ifdef _WIN32
+    // The cached mapping and its section HANDLE are owned by the pool. Do not
+    // keep `shared_fd` here: on the reader side it is a HANDLE value coming
+    // from the writer process, which is meaningless in this process.
+    fd = -1;
+#endif
     VLOG(4) << "Get a cached shm " << fname;
   }
   void *aligned_base_ptr =
       static_cast<void *>(static_cast<char *>(base_ptr) + mmap_alignment);
-  MemoryMapFdSet::Instance().Insert(fname);
   return std::make_shared<RefcountedMemoryMapAllocation>(
       aligned_base_ptr, size, fname, fd, flags, buffer_id);
 }
@@ -615,6 +612,15 @@ void MemoryMapFdSet::Clear() {
 
 MemoryMapFdSet::~MemoryMapFdSet() { Clear(); }
 
+MemoryMapAllocationPool &MemoryMapAllocationPool::Instance() {  // NOLINT
+  // Leaky singleton: heap-allocated and never destructed. The cached mappings
+  // may still be referenced by other processes (and by other threads of this
+  // process) at static destruction time, so unmapping them there would be both
+  // racy and useless: the OS reclaims everything on process exit anyway.
+  static auto *pool = new MemoryMapAllocationPool();
+  return *pool;
+}
+
 void MemoryMapAllocationPool::Insert(const MemoryMapInfo &memory_map) {
   std::lock_guard<std::mutex> guard(mtx_);
   memory_map_allocations_.push_back(memory_map);
@@ -696,6 +702,20 @@ void WindowsHandleKeeper::Insert(const std::string &ipc_name,
                                  void *map_ptr) {
   std::lock_guard<std::mutex> lock(mtx_);
   SweepClosedMappingsLocked();
+  auto it = handles_.find(ipc_name);
+  if (it != handles_.end()) {
+    if (it->second.fd == fd && it->second.map_ptr == map_ptr) {
+      return;
+    }
+    // The same name was kept twice, i.e. the previous section survived the
+    // sweep (its refcount is still > 0) and a new section reused the name.
+    // Release our reference to the old one instead of dropping the HANDLE and
+    // the view on the floor; any reader that already mapped it keeps it alive
+    // through its own view.
+    VLOG(4) << "WindowsHandleKeeper: replace pending mapping " << ipc_name;
+    UnmapViewOfFile(it->second.map_ptr);
+    CloseHandle(reinterpret_cast<HANDLE>(it->second.fd));
+  }
   handles_[ipc_name] = {fd, map_ptr};
 }
 

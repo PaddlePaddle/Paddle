@@ -14,18 +14,17 @@
 
 import copy
 import multiprocessing
-import sys
 
 # TODO: check the hooks of tensor
 # TODO: check serializing named tensor
 # TODO: check influence on autograd
+import sys
 import threading
 from collections import OrderedDict
 from multiprocessing.reduction import ForkingPickler
 from multiprocessing.util import register_after_fork
 
 import paddle
-from paddle.base import core
 
 
 def _supported_check():
@@ -136,7 +135,7 @@ def _rebuild_lodtensor_filename(
     lod,
     dataloader_use_file_descriptor,
 ):
-    lodtensor = core._new_shared_filename(
+    lodtensor = cls._new_shared_filename(
         (
             ipc_name,
             shared_fd,
@@ -147,7 +146,7 @@ def _rebuild_lodtensor_filename(
             dataloader_use_file_descriptor,
         )
     )
-    core._shared_decref(lodtensor)
+    lodtensor._shared_decref()
     return lodtensor
 
 
@@ -162,7 +161,7 @@ def _rebuild_lodtensor_filedescriptor(
     dataloader_use_file_descriptor,
 ):
     shared_fd = shared_fd.detach()
-    lodtensor = core._new_shared_filename(
+    lodtensor = cls._new_shared_filename(
         (
             ipc_name,
             shared_fd,
@@ -173,7 +172,7 @@ def _rebuild_lodtensor_filedescriptor(
             dataloader_use_file_descriptor,
         )
     )
-    core._shared_decref(lodtensor)
+    lodtensor._shared_decref()
     return lodtensor
 
 
@@ -241,9 +240,18 @@ def _reduce_lodtensor(lodtensor):
         dataloader_use_file_descriptor = paddle.base.core.globals()[
             "FLAGS_dataloader_use_file_descriptor"
         ]
+        if dataloader_use_file_descriptor and sys.platform == "win32":
+            # The Windows implementation shares a named section object, whose
+            # HANDLE cannot be transferred with multiprocessing.reduction.DupFd
+            # (that relies on POSIX fd passing / DupHandle for sockets only).
+            raise RuntimeError(
+                "FLAGS_dataloader_use_file_descriptor is not supported on "
+                "Windows, please set it to False to use the file name based "
+                "sharing strategy."
+            )
         # Default use share filename strategy
-        metadata = core._share_filename(
-            lodtensor, dataloader_use_file_descriptor
+        metadata = lodtensor._share_filename(
+            dataloader_use_file_descriptor
         )  # ipc_name, fd, size, type_idx, dims, lod
 
         if dataloader_use_file_descriptor:
@@ -253,8 +261,15 @@ def _reduce_lodtensor(lodtensor):
             rebuild = _rebuild_lodtensor_filedescriptor
         else:
             rebuild = _rebuild_lodtensor_filename
-        core._shared_incref(lodtensor)
+        lodtensor._shared_incref()
+        # TODO, maintain reference for lodtensor
     elif lodtensor._place().is_gpu_place():
+        if sys.platform == "win32":
+            raise RuntimeError(
+                "Sharing GPU tensors between processes is not supported on "
+                "Windows, because CUDA IPC is unavailable there. Please move "
+                "the tensor to CPU before sending it to another process."
+            )
         prev_id = paddle.base.core.get_cuda_current_device_id()
         cur_id = lodtensor._place().gpu_device_id()
         if prev_id != cur_id:

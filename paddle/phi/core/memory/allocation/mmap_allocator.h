@@ -22,8 +22,9 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 
-#include "paddle/phi/api/include/dll_decl.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/core/memory/allocation/allocator.h"
 
 namespace paddle {
@@ -185,6 +186,11 @@ class PADDLE_API MemoryMapFdSet {
 // for readers. SweepClosedMappings is called on each Insert() and reclaims
 // entries whose refcount has reached 0. Remaining entries at process exit
 // are cleaned up by the OS (handle closure on process termination).
+// NOTE: this is only needed because a Windows section object is destroyed as
+// soon as its last handle/view is closed, unlike a POSIX shm file which lives
+// on until shm_unlink. An alternative would be to DuplicateHandle the section
+// into the reader process, which is left as a follow-up since it requires
+// plumbing the target process handle down to this layer.
 class PADDLE_API WindowsHandleKeeper {
  public:
   static WindowsHandleKeeper &Instance();  // NOLINT
@@ -213,30 +219,21 @@ class MemoryMapInfo {
   explicit MemoryMapInfo(int flags,
                          size_t data_size,
                          std::string file_name,
-                         void *mmap_ptr
-#ifdef _WIN32
-                         ,
-                         intptr_t fd = -1
-#endif
-                         )
+                         void *mmap_ptr,
+                         intptr_t fd = -1)
       : flags_(flags),
         data_size_(data_size),
-        file_name_(file_name),
-        mmap_ptr_(mmap_ptr)
-#ifdef _WIN32
-        ,
-        fd_(fd)
-#endif
-  {
-  }
+        file_name_(std::move(file_name)),
+        mmap_ptr_(mmap_ptr),
+        fd_(fd) {}
 
   int flags_ = 0;
   size_t data_size_ = 0;
   std::string file_name_;
   void *mmap_ptr_ = nullptr;
-#ifdef _WIN32
+  // Only used on Windows, where the section object must be kept alive by an
+  // open HANDLE; -1 (unused) on other platforms.
   intptr_t fd_ = -1;
-#endif
 };
 
 /* Note(zhangbo):
@@ -250,10 +247,12 @@ threads
 */
 class PADDLE_API MemoryMapAllocationPool {
  public:
-  static MemoryMapAllocationPool &Instance() {
-    static MemoryMapAllocationPool pool;
-    return pool;
-  }
+  // NOTE: defined in the .cc (not as an inline function-local static) so that
+  // there is exactly one instance when phi is built as a shared library: an
+  // inline function-local static would be duplicated in every module that
+  // includes this header on Windows, which would silently split the pool
+  // between phi.dll and libpaddle.pyd.
+  static MemoryMapAllocationPool &Instance();  // NOLINT
 
   void Insert(const MemoryMapInfo &memory_map);
 

@@ -17,13 +17,16 @@
 #include <cstdlib>
 
 #include <csignal>
+#include <mutex>
 
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/memory/allocation/mmap_allocator.h"
 
 #ifdef _WIN32
-#include <processthreadsapi.h>
+// NOTE: keep this after the paddle/glog headers, windows.h defines a lot of
+// macros (ERROR, min/max, ...) that clash with them.
+#include <windows.h>
 #else
 #include <sys/wait.h>
 #include <unistd.h>
@@ -32,14 +35,20 @@
 namespace paddle::imperative {
 
 static std::map<int64_t, std::set<pid_t>> load_process_pids;
+// `load_process_pids` is written by the main thread (when workers are
+// created / destroyed) and read by the DataLoader reader thread through
+// ThrowErrorIfLoadProcessFailed, so all accesses must be serialized.
+static std::mutex load_process_pids_mutex;
 
 void SetLoadProcessPIDs(int64_t key, std::set<pid_t> pids) {
   VLOG(3) << "DataLoader: set loader child process PID (" << key
           << ", pid number: " << pids.size() << ")";
+  std::lock_guard<std::mutex> guard(load_process_pids_mutex);
   load_process_pids[key] = pids;
 }
 
 void EraseLoadProcessPIDs(int64_t key) {
+  std::lock_guard<std::mutex> guard(load_process_pids_mutex);
   auto it = load_process_pids.find(key);
   // Note: Can not find key also possible
   if (it != load_process_pids.end()) {
@@ -153,6 +162,7 @@ void SetLoadProcessSignalHandler() {
 }
 
 void ThrowErrorIfLoadProcessFailed() {
+  std::lock_guard<std::mutex> guard(load_process_pids_mutex);
 #ifdef _WIN32
   // On Windows, use WaitForSingleObject + GetExitCodeProcess
   // to check for crashed workers. This is called periodically from Python.

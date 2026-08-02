@@ -44,19 +44,13 @@ def _cleanup():
     # NOTE: inter-process Queue shared memory objects clear function
     _clear_multiprocess_queue_set()
     # NOTE: main process memory map files clear function
-    try:
-        core._cleanup_mmap_fds()
-    except Exception:
-        pass
+    core._cleanup_mmap_fds()
 
 
 # NOTE: for child process clear function at exit
 def _cleanup_mmap():
     # clear memory map files in child process
-    try:
-        core._cleanup_mmap_fds()
-    except Exception:
-        pass
+    core._cleanup_mmap_fds()
 
 
 # NOTE used for register a function to be executed at interpreter exit.
