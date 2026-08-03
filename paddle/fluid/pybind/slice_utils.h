@@ -1058,10 +1058,10 @@ static void DispatchSetitemKernel(const int pos_of_new_dim,
                                   Tensor* transed_sub_tensor,
                                   Tensor* value_tensor,
                                   std::vector<phi::Scalar>* values) {
-  if (!value_tensor->defined() && values->empty()) {
+  if (!value_tensor->has_allocation() && values->empty()) {
     return;
   }
-  const bool use_tensor_value = value_tensor->defined();
+  const bool use_tensor_value = value_tensor->has_allocation();
   Tensor mask_tensor;
   if (MaskedFillDispatching(
           *transed_sub_tensor, *transed_index, &mask_tensor, value_tensor)) {
@@ -1189,10 +1189,10 @@ static void ApplySetitem(const std::vector<int> trans_dim,
                          Tensor* transed_sub_tensor,
                          Tensor* value_tensor,
                          std::vector<phi::Scalar>* values) {
-  if (!value_tensor->defined() && values->empty()) {
+  if (!value_tensor->has_allocation() && values->empty()) {
     return;
   }
-  const bool use_tensor_value = value_tensor->defined();
+  const bool use_tensor_value = value_tensor->has_allocation();
   if (use_tensor_value) {
     if (self_tensor->dtype() != value_tensor->dtype()) {
       if (egr::Controller::Instance().GetAMPLevel() !=
