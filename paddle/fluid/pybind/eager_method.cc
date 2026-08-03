@@ -2010,7 +2010,7 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
   std::vector<phi::Scalar> values;
   Tensor value_tensor =
       dealWithValues(tensor, value_obj, &values, has_advanced_index);
-  const bool use_tensor_value = value_tensor.defined();
+  const bool use_tensor_value = value_tensor.has_allocation();
   if (!use_tensor_value && values.empty()) {
     RETURN_PY_NONE;
   }
