@@ -107,20 +107,21 @@ def _tensor_type(
     **kwargs: Any,
 ) -> str | Tensor:
     """
-    Returns the tensor type when ``dtype`` is not specified, otherwise casts
+    Returns the tensor dtype when ``dtype`` is not specified, otherwise casts
     the tensor to the requested type.
 
     Args:
         input (Tensor): The input tensor.
         dtype (DTypeLike|str|type|None, optional): The target tensor type or
-            data type. When it is ``None``, returns a PyTorch-style tensor type
-            string. Default: ``None``.
+            data type. Qualified ``torch.*`` and ``paddle.*`` dtype or tensor
+            type strings are supported. When it is ``None``, returns a Paddle
+            dtype string. Default: ``None``.
         non_blocking (bool, optional): Whether the conversion may occur
             asynchronously. Default: ``False``.
 
     Returns:
-        str|Tensor: A tensor type string when ``dtype`` is ``None``; otherwise,
-            a tensor with the requested type.
+        str|Tensor: A Paddle dtype string when ``dtype`` is ``None``;
+            otherwise, a tensor with the requested type.
     """
     if "async" in kwargs:
         non_blocking = kwargs.pop("async")
@@ -129,12 +130,7 @@ def _tensor_type(
         raise TypeError(f"type() got an unexpected keyword argument {key!r}")
 
     if dtype is None:
-        dtype_name = str(input.dtype).removeprefix("paddle.")
-        tensor_type = _TENSOR_TYPE_NAMES[dtype_name]
-        prefix = "torch.cuda" if input.place.is_gpu_place() else "torch"
-        if input.is_sparse_coo():
-            prefix += ".sparse"
-        return f"{prefix}.{tensor_type}"
+        return str(input.dtype)
 
     device = None
     if isinstance(dtype, type) and dtype.__name__ in _TENSOR_TYPE_DTYPES:
@@ -144,13 +140,21 @@ def _tensor_type(
     elif isinstance(dtype, str):
         dtype_string = dtype
         tensor_type = dtype_string.rsplit(".", 1)[-1]
-        if (
-            not dtype_string.startswith("torch.")
-            or tensor_type not in _TENSOR_TYPE_DTYPES
-        ):
+        if not dtype_string.startswith(("torch.", "paddle.")):
             raise ValueError(f"invalid type: {dtype_string!r}")
-        dtype = _TENSOR_TYPE_DTYPES[tensor_type]
-        device = "gpu" if dtype_string.startswith("torch.cuda.") else "cpu"
+        if tensor_type in _TENSOR_TYPE_DTYPES:
+            dtype = _TENSOR_TYPE_DTYPES[tensor_type]
+            device = (
+                "gpu"
+                if dtype_string.startswith(("torch.cuda.", "paddle.cuda."))
+                else "cpu"
+            )
+        elif tensor_type in _TENSOR_TYPE_NAMES:
+            dtype = tensor_type
+            if dtype_string.startswith(("torch.cuda.", "paddle.cuda.")):
+                device = "gpu"
+        else:
+            raise ValueError(f"invalid type: {dtype_string!r}")
 
     dtype_name = str(input.dtype).removeprefix("paddle.")
     target_dtype_name = str(dtype).removeprefix("paddle.")
