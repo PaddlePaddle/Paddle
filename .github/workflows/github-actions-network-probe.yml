@@ -78,6 +78,52 @@ jobs:
         if: always()
         run: timeout 8 bash -c 'exec 3<>/dev/tcp/productionresultssa12.blob.core.windows.net/443'
 
+      - name: Packet capture - prerequisites
+        id: pcap_prereq
+        if: always()
+        run: |
+          set -euo pipefail
+          command -v tcpdump
+          if (( EUID != 0 )); then
+            sudo -n true
+          fi
+
+      - name: Packet capture - outbound SYN leaves host
+        if: always() && steps.pcap_prereq.outcome == 'success'
+        run: |
+          set -euo pipefail
+          host=productionresultssa2.blob.core.windows.net
+          ip="$(getent ahostsv4 "${host}" | awk 'NR == 1 { print $1 }')"
+          pcap=(tcpdump)
+          if (( EUID != 0 )); then
+            pcap=(sudo -n tcpdump)
+          fi
+          timeout 8 "${pcap[@]}" -i any -nn -c 1 \
+            "dst host ${ip} and tcp dst port 443" \
+            > "${RUNNER_TEMP}/blob-outbound-syn.log" 2>&1 &
+          pcap_pid=$!
+          sleep 1
+          timeout 3 bash -c 'exec 3<>/dev/tcp/productionresultssa2.blob.core.windows.net/443' || true
+          wait "${pcap_pid}"
+
+      - name: Packet capture - inbound reply reaches host
+        if: always() && steps.pcap_prereq.outcome == 'success'
+        run: |
+          set -euo pipefail
+          host=productionresultssa2.blob.core.windows.net
+          ip="$(getent ahostsv4 "${host}" | awk 'NR == 1 { print $1 }')"
+          pcap=(tcpdump)
+          if (( EUID != 0 )); then
+            pcap=(sudo -n tcpdump)
+          fi
+          timeout 8 "${pcap[@]}" -i any -nn -c 1 \
+            "src host ${ip} and tcp src port 443" \
+            > "${RUNNER_TEMP}/blob-inbound-reply.log" 2>&1 &
+          pcap_pid=$!
+          sleep 1
+          timeout 3 bash -c 'exec 3<>/dev/tcp/productionresultssa2.blob.core.windows.net/443' || true
+          wait "${pcap_pid}"
+
       - name: Blob sa2 - TLS handshake
         if: always()
         run: |
