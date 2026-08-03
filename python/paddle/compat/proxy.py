@@ -465,25 +465,6 @@ def _parse_scope(scope: str | Iterable[str] | None) -> set[str] | None:
     return set(scope)
 
 
-def _get_compat_level() -> int | None:
-    level = 0
-    if TORCH_PROXY_FINDER in sys.meta_path:
-        level |= 1
-    if _PADDLE_NAMESPACE_SAVED:
-        level |= 2
-    return level or None
-
-
-def _clear_compat_state() -> None:
-    had_torch_proxy = TORCH_PROXY_FINDER in sys.meta_path
-    while TORCH_PROXY_FINDER in sys.meta_path:
-        sys.meta_path.remove(TORCH_PROXY_FINDER)
-    _restore_paddle_namespace_aliases()
-    if had_torch_proxy:
-        _clear_torch_proxy_modules()
-        _copy_torch_modules_from_cache()
-
-
 def enable_compat(
     *,
     scope: _ScopeType = None,
