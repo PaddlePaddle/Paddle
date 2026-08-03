@@ -7,7 +7,7 @@ opencv-python>= 4.13.0.90
 visualdl==2.5.3
 paddle2onnx>=0.9.6; python_version < "3.12"
 triton ; platform_system == 'Linux' and platform_machine == 'x86_64'
-scipy > 1.13
+scipy > 1.13, < 1.18
 prettytable
 distro
 autograd==1.4

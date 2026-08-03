@@ -124,6 +124,17 @@ class Blas {
             float beta,
             float* C) const;
 
+  void GEMM(CBLAS_TRANSPOSE transA,
+            CBLAS_TRANSPOSE transB,
+            int64_t M,
+            int64_t N,
+            int64_t K,
+            float alpha,
+            const phi::float16* A,
+            const phi::float16* B,
+            float beta,
+            float* C) const;
+
   template <typename T>
   void GEMM(bool transA,
             bool transB,

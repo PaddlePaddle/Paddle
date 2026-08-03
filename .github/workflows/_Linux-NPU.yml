@@ -103,6 +103,7 @@ jobs:
           FLAGS_allocator_strategy: naive_best_fit
           FLAGS_npu_storage_format: 0
           TEST_IMPORTANT: "ON"
+          CXXFLAGS: "-std=c++20"
           PADDLE_BRANCH: ${{ github.event.pull_request.base.ref }}
           home_dir: ${{ github.workspace }}/../../../..
         run: |
@@ -145,6 +146,7 @@ jobs:
             -e FLAGS_allocator_strategy \
             -e FLAGS_npu_storage_format \
             -e TEST_IMPORTANT \
+            -e CXXFLAGS \
             -e PADDLE_BRANCH \
             -e CI_name \
             -w /paddle --network host ${docker_image} /bin/bash

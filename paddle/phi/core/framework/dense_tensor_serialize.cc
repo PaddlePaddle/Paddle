@@ -117,6 +117,14 @@ void DeserializeFromStream(std::istream &is,
     for (uint64_t i = 0; i < lod_level; ++i) {
       uint64_t size = 0;
       is.read(reinterpret_cast<char *>(&size), sizeof(size));
+      PADDLE_ENFORCE_EQ(
+          size % sizeof(size_t),
+          0U,
+          common::errors::InvalidArgument(
+              "Deserialize to tensor failed, the LoD level size in bytes "
+              "(%llu) must be a multiple of %zu.",
+              size,
+              sizeof(size_t)));
       std::vector<size_t> tmp(size / sizeof(size_t));
       is.read(reinterpret_cast<char *>(tmp.data()),
               static_cast<std::streamsize>(size));

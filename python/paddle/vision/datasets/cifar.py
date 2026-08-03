@@ -16,7 +16,6 @@ from __future__ import annotations
 import os
 import pickle
 import tarfile
-from functools import lru_cache
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
@@ -53,15 +52,9 @@ MODE_FLAG_MAP = {
 }
 
 
-@lru_cache(maxsize=8)
-def _cached_md5file(path, _mtime_ns, _size):
-    return md5file(path)
-
-
 def _check_local_cifar_md5(path, expected_md5):
     path = os.path.abspath(path)
-    stat = os.stat(path)
-    file_md5 = _cached_md5file(path, stat.st_mtime_ns, stat.st_size)
+    file_md5 = md5file(path)
     if file_md5 != expected_md5:
         raise ValueError(
             "Loading unverified local CIFAR pickle archive is disabled. "

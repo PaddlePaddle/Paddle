@@ -446,7 +446,8 @@ void LaunchLayerNormKernel(const Context& dev_ctx,
   IMPL_LAYER_NORM_WELFORD_CASE(index_t, scale_t, is_same_, 2); \
   IMPL_LAYER_NORM_WELFORD_CASE(index_t, scale_t, is_same_, 1);
 
-  if (rows < std::numeric_limits<int32_t>::max()) {
+  const int64_t max_int32 = std::numeric_limits<int32_t>::max();
+  if (rows <= max_int32 / cols) {
     if (is_same_type) {
       switch (vec_size) { IMPL_LAYER_NORM_WELFORD(int32_t, T, true); }
     } else {
@@ -516,6 +517,7 @@ static inline LayerNormKernelVariant LayerNormKernelDispatch(
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
   if (FLAGS_use_apex_layer_norm_kernel) {
     if (hidden_size <= std::numeric_limits<uint32_t>::max() &&
+        x_numel <= std::numeric_limits<uint32_t>::max() &&
         funcs::fast_ln_v2::has_fast_ln_v2_fwd_kernel(
             weight_type,
             input_type,

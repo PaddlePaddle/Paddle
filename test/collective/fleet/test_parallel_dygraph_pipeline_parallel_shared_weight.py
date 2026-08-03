@@ -29,6 +29,14 @@ class TestHybridPipeParallelSharedWeight(TestMultipleAccelerators):
             )
         )
 
+    def test_hybrid_parallel_shared_submodule_weight_only_diff_rank(self):
+        self.run_mnist_2accelerators(
+            os.path.join(
+                os.path.dirname(__file__),
+                'hybrid_parallel_shared_submodule_weight_only_diff_rank.py',
+            )
+        )
+
     def test_hybrid_parallel_shared_weight_with_multi_attrs_and_subset_all_on_one_stage(
         self,
     ):

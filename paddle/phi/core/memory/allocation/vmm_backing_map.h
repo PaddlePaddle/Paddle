@@ -68,6 +68,7 @@ class VMMBackingMap {
   void MarkUnmapped(VMMDevicePtr va, size_t size);
   void MarkReleased(VMMDevicePtr va, VMMAllocHandle handle, size_t size);
   void MarkIPCExported(VMMDevicePtr va, size_t size);
+  void ClearIPCExported(VMMDevicePtr va, size_t size);
   void MarkPendingEvent(VMMDevicePtr va,
                         size_t size,
                         gpuStream_t stream,
@@ -86,6 +87,10 @@ class VMMBackingMap {
   bool IsRangeUnmapped(VMMDevicePtr va, size_t size) const;
   bool IsRangeReleasable(VMMDevicePtr va, size_t size) const;
   bool CanReleaseHandle(VMMDevicePtr va,
+                        VMMAllocHandle handle,
+                        const std::shared_ptr<VMMHandleMeta>& meta,
+                        size_t size) const;
+  bool IsHandleMappedAt(VMMDevicePtr va,
                         VMMAllocHandle handle,
                         const std::shared_ptr<VMMHandleMeta>& meta,
                         size_t size) const;
