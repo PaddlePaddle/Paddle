@@ -94,10 +94,10 @@ PHI_DEFINE_EXPORTED_bool(use_virtual_memory_auto_growth,
                          false,
                          "Use VirtualMemoryAutoGrowthBestFitAllocator.");
 PHI_DEFINE_EXPORTED_bool(use_vmm_auto_growth_best_fit_allocator_v2,
-                         false,
-                         "Use VMMAutoGrowthBestFitAllocatorV2. Explicit "
-                         "allocator selection flags take precedence for "
-                         "compatibility.");
+                         true,
+                         "Use VMMAutoGrowthBestFitAllocatorV2 by default for "
+                         "CUDA auto_growth. Explicit allocator selections take "
+                         "precedence.");
 PHI_DEFINE_EXPORTED_bool(
     vmm_v2_remap_on_oom,
     true,
@@ -139,12 +139,22 @@ COMMON_DECLARE_bool(auto_free_cudagraph_allocations_on_launch);
 
 namespace {
 
+bool UseVMMV1AutoGrowthAllocator() {
+#if defined(PADDLE_WITH_CUDA)
+  return FLAGS_use_virtual_memory_auto_growth &&
+         !FLAGS_use_cuda_managed_memory &&
+         !FLAGS_use_cuda_malloc_async_allocator && !FLAGS_use_auto_growth_v2;
+#else
+  return false;
+#endif
+}
+
 bool UseVMMV2AutoGrowthAllocator() {
 #if defined(PADDLE_WITH_CUDA)
   return FLAGS_use_vmm_auto_growth_best_fit_allocator_v2 &&
          !FLAGS_use_cuda_managed_memory &&
          !FLAGS_use_cuda_malloc_async_allocator && !FLAGS_use_auto_growth_v2 &&
-         !FLAGS_use_virtual_memory_auto_growth;
+         !UseVMMV1AutoGrowthAllocator();
 #else
   return false;
 #endif
@@ -1106,7 +1116,7 @@ class AllocatorFacadePrivate {
 
     if (val > 0 && UseVMMV2AutoGrowthAllocator()) {
       cuda_allocators_[p][stream] = CreateVMMAutoGrowthBestFitAllocatorV2(p);
-    } else if (val > 0 && FLAGS_use_virtual_memory_auto_growth) {
+    } else if (val > 0 && UseVMMV1AutoGrowthAllocator()) {
       auto cuda_allocator_small =
           FLAGS_vmm_small_pool_size_in_mb
               ? std::make_shared<CUDAVirtualMemAllocator>(p)
@@ -1190,7 +1200,7 @@ class AllocatorFacadePrivate {
 
     if (val > 0 && UseVMMV2AutoGrowthAllocator()) {
       allocators_[p] = CreateVMMAutoGrowthBestFitAllocatorV2(p);
-    } else if (val > 0 && FLAGS_use_virtual_memory_auto_growth) {
+    } else if (val > 0 && UseVMMV1AutoGrowthAllocator()) {
       auto cuda_allocator_small =
           FLAGS_vmm_small_pool_size_in_mb
               ? std::make_shared<CUDAVirtualMemAllocator>(p)
