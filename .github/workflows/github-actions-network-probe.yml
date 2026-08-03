@@ -28,21 +28,47 @@ jobs:
 
     steps:
       - name: Checkout probe script
+        id: checkout
+        continue-on-error: true
         uses: actions/checkout@v6
 
+      - name: Fetch probe script when checkout failed
+        if: steps.checkout.outcome == 'failure'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PROBE_SOURCE_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          PROBE_SOURCE_REF: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          probe_script="${RUNNER_TEMP}/github-actions-endpoint-probe.sh"
+          api_url="https://api.github.com/repos/${PROBE_SOURCE_REPOSITORY}/contents/.github/scripts/github-actions-endpoint-probe.sh?ref=${PROBE_SOURCE_REF}"
+          curl --fail --silent --show-error --location \
+            --connect-timeout 10 --max-time 30 \
+            -H 'Accept: application/vnd.github.raw+json' \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "${api_url}" --output "${probe_script}"
+          chmod +x "${probe_script}"
+          echo "PROBE_SCRIPT=${probe_script}" >> "${GITHUB_ENV}"
+
       - name: Probe GitHub Actions endpoints and an existing log Blob
+        if: always()
         env:
           GITHUB_TOKEN: ${{ github.token }}
           BLOB_PROBE_JOB_ID: ${{ inputs.blob_probe_job_id || '91620902034' }}
           PROBE_CONNECT_TIMEOUT: "10"
           PROBE_MAX_TIME: "30"
           PROBE_IPV6: "0"
-        run: bash .github/scripts/github-actions-endpoint-probe.sh
+        run: bash "${PROBE_SCRIPT:-.github/scripts/github-actions-endpoint-probe.sh}"
 
       - name: Create Blob upload payload
         if: always()
         run: |
+          set -euo pipefail
           dd if=/dev/urandom of="${RUNNER_TEMP}/blob-probe.bin" bs=1M count=8 status=none
+          if [[ ! -f actions-network-probe.log ]]; then
+            echo "Endpoint probe report was unavailable." > actions-network-probe.log
+          fi
           ls -lh "${RUNNER_TEMP}/blob-probe.bin" actions-network-probe.log
 
       # This performs a real upload through GitHub Results Service and its
