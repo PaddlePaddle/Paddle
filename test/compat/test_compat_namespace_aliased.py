@@ -609,24 +609,31 @@ class TestLevel2InternalCallersUseNative(CompatNamespaceAliasBase):
             self.assertIs(type(t.numel()), int)
             self.assertIsInstance(paddle.numel(t), paddle.Tensor)
             self.assertEqual(paddle.empty([0, 3]).numel(), 0)
-            self.assertEqual(t.type(), "torch.FloatTensor")
+            self.assertEqual(t.type(), "paddle.float32")
             self.assertEqual(t.type(paddle.float64).dtype, paddle.float64)
             self.assertEqual(t.type(paddle.DoubleTensor).dtype, paddle.float64)
             self.assertEqual(t.type("torch.DoubleTensor").dtype, paddle.float64)
+            self.assertEqual(
+                t.type("paddle.DoubleTensor").dtype, paddle.float64
+            )
+            self.assertEqual(t.type("torch.float64").dtype, paddle.float64)
+            self.assertEqual(t.type("paddle.float64").dtype, paddle.float64)
             self.assertIs(t.type(paddle.float32), t)
             self.assertIs(t.type("torch.FloatTensor"), t)
+            self.assertIs(t.type("paddle.FloatTensor"), t)
+            self.assertIs(t.type(t.type()), t)
             with self.assertRaises(ValueError):
                 t.type("float64")
             self.assertEqual(
-                paddle.ones([1], dtype="int64").type(), "torch.LongTensor"
+                paddle.ones([1], dtype="int64").type(), "paddle.int64"
             )
             self.assertEqual(
                 paddle.ones([1], dtype="float8_e4m3fn").type(),
-                "torch.Float8_e4m3fnTensor",
+                "paddle.float8_e4m3fn",
             )
             self.assertEqual(
                 paddle.ones([1], dtype="float8_e5m2").type(),
-                "torch.Float8_e5m2Tensor",
+                "paddle.float8_e5m2",
             )
             self.assertIs(t.is_sparse, False)
             coo = paddle.sparse.sparse_coo_tensor([[0], [1]], [1.0], [2, 2])
@@ -648,11 +655,18 @@ class TestLevel2InternalCallersUseNative(CompatNamespaceAliasBase):
                 ns["internal_type"], native_type.__get__(t, paddle.Tensor)
             )
             self.assertIs(ns["internal_is_sparse"], False)
+            cached_numel = t.numel
+            cached_max = t.max
+            ns["cached_max"] = cached_max
+            exec("internal_cached_max = cached_max(axis=1)", ns)
+            self.assertIsInstance(ns["internal_cached_max"], paddle.Tensor)
         self.assertIs(paddle.Tensor.max, native_max)  # restored on disable
         self.assertIs(paddle.Tensor.split, native_split)
         self.assertIs(paddle.Tensor.numel, native_numel)
         self.assertIs(paddle.Tensor.type, native_type)
         self.assertIs(paddle.Tensor.is_sparse, native_is_sparse)
+        self.assertIsInstance(cached_numel(), paddle.Tensor)
+        self.assertIsInstance(cached_max(axis=1), paddle.Tensor)
 
     @with_level2
     def test_tensor_type_edge_cases(self):
@@ -674,9 +688,22 @@ class TestLevel2InternalCallersUseNative(CompatNamespaceAliasBase):
             TypeError, "unexpected keyword argument 'invalid'"
         ):
             t.type(invalid=True)
+        with self.assertRaisesRegex(ValueError, "invalid type"):
+            t.type("paddle.UnknownTensor")
+
+        with mock.patch.object(
+            paddle.Tensor, "to", autospec=True, return_value=t
+        ) as tensor_to:
+            self.assertIs(t.type("paddle.cuda.DoubleTensor"), t)
+            tensor_to.assert_called_once_with(
+                t,
+                device="gpu",
+                dtype="float64",
+                blocking=True,
+            )
 
         coo = paddle.sparse.sparse_coo_tensor([[0], [0]], [1.0], [1, 1])
-        self.assertEqual(coo.type(), "torch.sparse.FloatTensor")
+        self.assertEqual(coo.type(), "paddle.float32")
         self.assertEqual(t.type(np.float64).dtype, paddle.float64)
 
     @with_level2
