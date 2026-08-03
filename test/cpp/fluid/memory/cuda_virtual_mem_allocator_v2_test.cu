@@ -287,6 +287,10 @@ TEST(VMMBackingMap, MarkReleasedAllowsMismatchAndIPCDoesNotBlockRelease) {
   EXPECT_TRUE(map.IsRangeReleasable(base, page_size));
   map.MarkIPCExported(base, page_size);
   EXPECT_TRUE(map.IsRangeReleasable(base, page_size));
+  map.MarkUnmapped(base, page_size);
+  map.ClearIPCExported(base, page_size);
+  map.MarkMapped(base, static_cast<VMMAllocHandle>(0x240), page_size);
+  EXPECT_EQ(map.CountIPCExportedBytes({{base, page_size}}), 0UL);
 
   auto meta = std::make_shared<VMMHandleMeta>(
       base + page_size, page_size, static_cast<VMMAllocHandle>(0x241), 0);
@@ -310,12 +314,19 @@ TEST(VMMBackingMap, CanReleaseHandleChecksPageState) {
 
   map.MarkMapped(base, meta, page_size);
   EXPECT_TRUE(map.CanReleaseHandle(base, meta->handle(), meta, page_size));
+  EXPECT_TRUE(map.IsHandleMappedAt(base, meta->handle(), meta, page_size));
   EXPECT_FALSE(
       map.CanReleaseHandle(base - page_size, meta->handle(), meta, page_size));
+  EXPECT_FALSE(
+      map.IsHandleMappedAt(base - page_size, meta->handle(), meta, page_size));
   EXPECT_FALSE(map.CanReleaseHandle(
+      base, static_cast<VMMAllocHandle>(0x9999), meta, page_size));
+  EXPECT_FALSE(map.IsHandleMappedAt(
       base, static_cast<VMMAllocHandle>(0x9999), meta, page_size));
   EXPECT_FALSE(
       map.CanReleaseHandle(base, meta->handle(), other_meta, page_size));
+  EXPECT_FALSE(
+      map.IsHandleMappedAt(base, meta->handle(), other_meta, page_size));
 
   map.MarkIPCExported(base, page_size);
   EXPECT_TRUE(map.CanReleaseHandle(base, meta->handle(), meta, page_size));
@@ -330,6 +341,7 @@ TEST(VMMBackingMap, CanReleaseHandleChecksPageState) {
   ASSERT_TRUE(
       map.MarkPendingEventForRange(base, page_size, busy_stream, nullptr));
   EXPECT_FALSE(map.CanReleaseHandle(base, meta->handle(), meta, page_size));
+  EXPECT_TRUE(map.IsHandleMappedAt(base, meta->handle(), meta, page_size));
 
   ASSERT_EQ(cudaStreamSynchronize(busy_stream), cudaSuccess);
   EXPECT_TRUE(map.CanReleaseHandle(base, meta->handle(), meta, page_size));
@@ -338,6 +350,7 @@ TEST(VMMBackingMap, CanReleaseHandleChecksPageState) {
   map.MarkUnmapped(base, page_size);
   map.MarkUnmapped(base, page_size);
   EXPECT_FALSE(map.CanReleaseHandle(base, meta->handle(), meta, page_size));
+  EXPECT_FALSE(map.IsHandleMappedAt(base, meta->handle(), meta, page_size));
 
   map.MarkMapped(base + page_size, meta, page_size);
   map.MarkReleased(
@@ -724,6 +737,24 @@ TEST(CUDAVirtualMemAllocatorV2, RollbackCreatedHandlesReleasesLayout) {
       allocator.virtual_mem_base(), allocator.handle_size(), "test rollback");
   ASSERT_EQ(layout.size(), 1UL);
   allocator.RollbackCreatedHandles(layout);
+}
+
+TEST(CUDAVirtualMemAllocatorV2, ReleaseContiguousHandlesWithOneUnmap) {
+  CUDAVirtualMemAllocatorV2 allocator(
+      phi::GPUPlace(), 2UL << 20, PoolType::kLarge);
+  const size_t handle_size = allocator.handle_size();
+  auto allocation = allocator.Allocate(handle_size * 3);
+  ASSERT_NE(allocation, nullptr);
+
+  const auto before = allocator.GetReleaseDriverStats();
+  allocation.reset();
+  const auto after = allocator.GetReleaseDriverStats();
+
+  EXPECT_EQ(after.allocation_count - before.allocation_count, 1UL);
+  EXPECT_EQ(after.handle_count - before.handle_count, 3UL);
+  EXPECT_EQ(after.released_bytes - before.released_bytes, handle_size * 3);
+  EXPECT_EQ(after.unmap_calls - before.unmap_calls, 1UL);
+  EXPECT_EQ(after.release_calls - before.release_calls, 3UL);
 }
 
 TEST(CUDAVirtualMemAllocatorV2, RequireHandleLayoutRejectsUnknownAllocation) {
