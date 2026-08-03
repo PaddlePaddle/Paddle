@@ -17,6 +17,7 @@
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/cpu/reduce.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/cascade_sum.h"
@@ -50,20 +51,39 @@ struct MeanDivisor<dtype::complex<R>> {
 
 // torch computes the CPU mean as `sum_out(...).div_(dim_prod)`, there is no
 // dedicated CPU mean kernel (mean_stub is registered as nullptr, see
-// TORCH_IMPL_FUNC(mean_out) in aten/src/ATen/native/ReduceOps.cpp).
-template <typename T, typename Context>
+// TORCH_IMPL_FUNC(mean_out) in aten/src/ATen/native/ReduceOps.cpp). For an
+// fp16/bf16 result it reduces and divides in float32 and rounds only the final
+// result, which is what Acc != T expresses here.
+template <typename T, typename Acc, typename Context>
 void CascadeMean(const Context& dev_ctx,
                  const DenseTensor& x,
                  const std::vector<int64_t>& axes,
                  DenseTensor* out) {
-  dev_ctx.template Alloc<T>(out);
-  funcs::TorchCompatibleReduceSum<T>(x.data<T>(),
-                                     common::vectorize(x.dims()),
-                                     common::vectorize(x.strides()),
-                                     axes,
-                                     out->data<T>(),
-                                     out->numel());
-  MeanDivisor<T>::Apply(out->data<T>(), out->numel(), x.numel() / out->numel());
+  const auto shape = common::vectorize(x.dims());
+  const auto x_strides = common::vectorize(x.strides());
+  const int64_t divisor = x.numel() / out->numel();
+  if constexpr (std::is_same_v<T, Acc>) {
+    dev_ctx.template Alloc<T>(out);
+    funcs::TorchCompatibleReduceSum<T>(
+        x.data<T>(), shape, x_strides, axes, out->data<T>(), out->numel());
+    MeanDivisor<T>::Apply(out->data<T>(), out->numel(), divisor);
+  } else {
+    DenseTensor acc_out;
+    acc_out.Resize(out->dims());
+    dev_ctx.template Alloc<Acc>(&acc_out);
+    std::vector<Acc> buffer;
+    std::vector<int64_t> strides;
+    funcs::CastPreservingLayout<T, Acc>(
+        x.data<T>(), shape, x_strides, &buffer, &strides);
+    funcs::TorchCompatibleReduceSum<Acc>(buffer.data(),
+                                         shape,
+                                         strides,
+                                         axes,
+                                         acc_out.data<Acc>(),
+                                         acc_out.numel());
+    MeanDivisor<Acc>::Apply(acc_out.data<Acc>(), acc_out.numel(), divisor);
+    CastKernel<Acc, Context>(dev_ctx, acc_out, x.dtype(), out);
+  }
 }
 
 }  // namespace
@@ -80,10 +100,14 @@ void MeanRawKernel(const Context& dev_ctx,
     return;
   }
 
-  if constexpr (std::is_same_v<T, float> || std::is_same_v<T, double> ||
-                std::is_same_v<T, complex64> || std::is_same_v<T, complex128>) {
+  constexpr bool kIsReducedFp =
+      std::is_same_v<T, float16> || std::is_same_v<T, bfloat16>;
+  if constexpr (kIsReducedFp || std::is_same_v<T, float> ||
+                std::is_same_v<T, double> || std::is_same_v<T, complex64> ||
+                std::is_same_v<T, complex128>) {
     if (FLAGS_use_accuracy_compatible_kernel) {
-      CascadeMean<T, Context>(
+      using Acc = std::conditional_t<kIsReducedFp, float, T>;
+      CascadeMean<T, Acc, Context>(
           dev_ctx,
           x,
           funcs::NormalizeReduceAxes(x.dims(), dims.GetData(), reduce_all),
@@ -93,9 +117,24 @@ void MeanRawKernel(const Context& dev_ctx,
   }
 
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
-  auto out_dtype = x.dtype();
-  Reduce<CPUContext, T, funcs::MeanFunctor>(
-      dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
+  if constexpr (kIsReducedFp) {
+    // Averaging in the low precision type loses too much, so keep the mean in
+    // float32 and round once, mirroring what SumRawKernel does for fp16/bf16.
+    DenseTensor x_fp32 = Cast<T, Context>(dev_ctx, x, DataType::FLOAT32);
+    DenseTensor out_fp32;
+    out_fp32.Resize(out->dims());
+    Reduce<CPUContext, float, funcs::MeanFunctor>(dev_ctx,
+                                                  x_fp32,
+                                                  reduce_all,
+                                                  dims.GetData(),
+                                                  keep_dim,
+                                                  DataType::FLOAT32,
+                                                  &out_fp32);
+    CastKernel<float, Context>(dev_ctx, out_fp32, x.dtype(), out);
+  } else {
+    Reduce<CPUContext, T, funcs::MeanFunctor>(
+        dev_ctx, x, reduce_all, dims.GetData(), keep_dim, x.dtype(), out);
+  }
 }
 
 }  // namespace phi
@@ -109,5 +148,7 @@ PD_REGISTER_KERNEL(mean_raw,
                    bool,
                    int,
                    int64_t,
+                   phi::float16,
+                   phi::bfloat16,
                    phi::complex64,
                    phi::complex128) {}

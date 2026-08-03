@@ -103,10 +103,11 @@ void MeanStrideKernel(const Context& dev_ctx,
                       bool keep_dim,
                       DenseTensor* out) {
   PrepareStridedOut(out);
+  // MeanRawKernel's cascade path covers exactly the IsCascadeDtype set. fp16
+  // and bf16 are included: it reduces them through a float32 accumulator built
+  // with CastPreservingLayout, so the strides survive.
   const bool strides_supported =
-      FLAGS_use_accuracy_compatible_kernel &&
-      (x.dtype() == DataType::FLOAT32 || x.dtype() == DataType::FLOAT64 ||
-       x.dtype() == DataType::COMPLEX64 || x.dtype() == DataType::COMPLEX128);
+      FLAGS_use_accuracy_compatible_kernel && IsCascadeDtype(x.dtype());
   DenseTensor buffer;
   const DenseTensor& src =
       ResolveInput<T, Context>(dev_ctx, x, strides_supported, &buffer);
@@ -134,5 +135,7 @@ PD_REGISTER_KERNEL(mean,
                    phi::MeanStrideKernel,
                    float,
                    double,
+                   phi::float16,
+                   phi::bfloat16,
                    phi::complex64,
                    phi::complex128) {}
