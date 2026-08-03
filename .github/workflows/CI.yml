@@ -76,9 +76,8 @@ jobs:
   dcu:
     name: Linux-DCU
     uses: ./.github/workflows/_Linux-DCU.yml
-    needs: [clone, build-docker]
     with:
-      docker_dcu_image: ${{ needs.build-docker.outputs.docker_dcu_image }}
+      docker_dcu_image: ccr-2vdh3abv-pub.cnc.bj.baidubce.com/ci/paddle:72adba73076aaefadfc3a879930c9484
       clone-can-skip: ${{ needs.clone.outputs.can-skip }}
 
   cpu:

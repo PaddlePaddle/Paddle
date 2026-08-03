@@ -1,0 +1,68 @@
+name: GitHub Actions network probe
+
+on:
+  workflow_dispatch:
+    inputs:
+      blob_probe_job_id:
+        description: "Completed job ID whose persisted log is known to exist"
+        required: false
+        default: "91620902034"
+        type: string
+  pull_request:
+    paths:
+      - .github/scripts/github-actions-endpoint-probe.sh
+      - .github/workflows/github-actions-network-probe.yml
+      - .github/workflows/CI.yml
+      - .github/workflows/_Linux-DCU.yml
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  probe:
+    name: DCU runner Results/Blob probe
+    runs-on:
+      group: dcu-test
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout probe script
+        uses: actions/checkout@v6
+
+      - name: Probe GitHub Actions endpoints and an existing log Blob
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          BLOB_PROBE_JOB_ID: ${{ inputs.blob_probe_job_id || '91620902034' }}
+          PROBE_CONNECT_TIMEOUT: "10"
+          PROBE_MAX_TIME: "30"
+          PROBE_IPV6: "0"
+        run: bash .github/scripts/github-actions-endpoint-probe.sh
+
+      - name: Create Blob upload payload
+        if: always()
+        run: |
+          dd if=/dev/urandom of="${RUNNER_TEMP}/blob-probe.bin" bs=1M count=8 status=none
+          ls -lh "${RUNNER_TEMP}/blob-probe.bin" actions-network-probe.log
+
+      # This performs a real upload through GitHub Results Service and its
+      # dynamically assigned Azure Blob endpoint. It is the closest workflow-
+      # level probe for the runner's end-of-job log upload path.
+      - name: Upload through GitHub Results and Azure Blob
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: actions-network-probe-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            actions-network-probe.log
+            ${{ runner.temp }}/blob-probe.bin
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+      - name: End marker
+        if: always()
+        run: |
+          echo "Last visible workflow step finished at: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+          echo "Compare this timestamp with the job completed_at timestamp."
+          echo "A large gap after this line indicates runner finalization/log-upload delay."
