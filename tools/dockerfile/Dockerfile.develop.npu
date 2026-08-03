@@ -17,7 +17,12 @@ WORKDIR /usr/local/Ascend
 # install CANN requirement
 # https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/700alpha003/softwareinstall/instg/instg_0026.html
 RUN apt-get update -y && apt-get install -y zlib1g zlib1g-dev libsqlite3-dev openssl libssl-dev libffi-dev libbz2-dev \
-    libxslt1-dev unzip pciutils net-tools libblas-dev gfortran libblas3 liblapack-dev liblapack3 libopenblas-dev zstd
+    libxslt1-dev unzip pciutils net-tools libblas-dev gcc-12 g++-12 gfortran-12 libblas3 liblapack-dev liblapack3 \
+    libopenblas-dev zstd
+
+RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 120 && \
+    update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-12 120 && \
+    update-alternatives --install /usr/bin/gfortran gfortran /usr/bin/gfortran-12 120
 
 RUN pip3.10 install --upgrade pip setuptools wheel
 

@@ -24,7 +24,6 @@ from paddle.framework import (
     in_dynamic_mode,
 )
 from paddle.tensor import log_softmax, softmax
-from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
 from .sdpa import scaled_dot_product_attention
 
@@ -51,6 +50,8 @@ __all__ = [
     'scaled_dot_product_attention',
     'unfold',
     'smooth_l1_loss',
+    'batch_norm',
+    'instance_norm',
 ]
 
 
@@ -64,11 +65,6 @@ def _check_valid_pad_len(pad_len, x_dim, is_constant):
         )
 
 
-@ForbidKeywordsDecorator(
-    illegal_keys={"x", "name", "data_format", "pad_from_left_axis"},
-    func_name="paddle.compat.nn.functional.pad",
-    correct_name="paddle.nn.functional.pad",
-)
 def pad(
     input: Tensor,
     pad: ShapeLike,
@@ -206,11 +202,6 @@ def pad(
     return out
 
 
-@ForbidKeywordsDecorator(
-    illegal_keys={"x", "name"},
-    func_name="paddle.compat.nn.functional.linear",
-    correct_name="paddle.nn.functional.linear",
-)
 def linear(input: Tensor, weight: Tensor, bias: Tensor | None = None) -> Tensor:
     r"""
 
@@ -293,18 +284,6 @@ def linear(input: Tensor, weight: Tensor, bias: Tensor | None = None) -> Tensor:
             return _C_ops.matmul(input, weight.contiguous(), False, True)
 
 
-@ForbidKeywordsDecorator(
-    illegal_keys={
-        "x",
-        "kernel_sizes",
-        "dilations",
-        "paddings",
-        "strides",
-        "name",
-    },
-    func_name="paddle.compat.nn.functional.unfold",
-    correct_name="paddle.nn.functional.unfold",
-)
 def unfold(
     input: Tensor,
     kernel_size: Size2,
@@ -385,11 +364,6 @@ def unfold(
     )
 
 
-@ForbidKeywordsDecorator(
-    illegal_keys={"label", "delta", "is_huber", "name"},
-    func_name="paddle.compat.nn.functional.smooth_l1_loss",
-    correct_name="paddle.nn.functional.smooth_l1_loss",
-)
 def smooth_l1_loss(
     input: Tensor,
     target: Tensor,
@@ -469,4 +443,115 @@ def smooth_l1_loss(
 
     return paddle.nn.functional.smooth_l1_loss(
         input, target, reduction=reduction, delta=beta, is_huber=False
+    )
+
+
+def batch_norm(
+    input: Tensor,
+    running_mean: Tensor,
+    running_var: Tensor,
+    weight: Tensor | None = None,
+    bias: Tensor | None = None,
+    training: bool = False,
+    momentum: float = 0.1,
+    eps: float = 1e-05,
+) -> Tensor:
+    r"""
+
+    PyTorch compatible version of :ref:`api_paddle_nn_functional_batch_norm`.
+    Aligned with ``torch.nn.functional.batch_norm``.
+
+    See :ref:`api_paddle_nn_functional_batch_norm` for more details.
+
+    Args:
+        input (Tensor): Input tensor, the data type is float32 or float64.
+        running_mean (Tensor|None): Running mean.
+        running_var (Tensor|None): Running variance.
+        weight (Tensor|None, optional): The weight tensor. Default: None.
+        bias (Tensor|None, optional): The bias tensor. Default: None.
+        training (bool, optional): True means train mode. Default: False.
+        momentum (float, optional): The value used for the moving_mean and moving_var computation. Default: 0.1.
+        eps (float, optional): The small value added to variance to prevent division by zero. Default: 1e-05.
+
+    Returns:
+        Tensor, the output of batch normalization.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.arange(12, dtype="float32").reshape([2, 1, 2, 3])
+            >>> running_mean = paddle.to_tensor([0], dtype="float32")
+            >>> running_var = paddle.to_tensor([1], dtype="float32")
+            >>> weight = paddle.to_tensor([2], dtype="float32")
+            >>> bias = paddle.to_tensor([1], dtype="float32")
+            >>> out = paddle.compat.nn.functional.batch_norm(x, running_mean, running_var, weight, bias)
+            >>> print(out)
+            Tensor(shape=[2, 1, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[1.         , 2.99998999 , 4.99997997 ],
+               [6.99996996 , 8.99995995 , 10.99995041]]],
+             [[[12.99993992, 14.99992943, 16.99991989],
+               [18.99991035, 20.99990082, 22.99988937]]]])
+    """
+    return paddle.nn.functional.batch_norm(
+        x=input,
+        running_mean=running_mean,
+        running_var=running_var,
+        weight=weight,
+        bias=bias,
+        training=training,
+        momentum=1.0 - momentum,
+        epsilon=eps,
+    )
+
+
+def instance_norm(
+    input: Tensor,
+    running_mean: Tensor | None = None,
+    running_var: Tensor | None = None,
+    weight: Tensor | None = None,
+    bias: Tensor | None = None,
+    use_input_stats: bool = True,
+    momentum: float = 0.1,
+    eps: float = 1e-05,
+) -> Tensor:
+    r"""
+
+    PyTorch compatible version of :ref:`api_paddle_nn_functional_instance_norm`.
+    Aligned with ``torch.nn.functional.instance_norm``.
+
+    See :ref:`api_paddle_nn_functional_instance_norm` for more details.
+
+    Args:
+        input (Tensor): Input tensor, the data type is float32 or float64.
+        running_mean (Tensor|None, optional): Running mean. Default: None.
+        running_var (Tensor|None, optional): Running variance. Default: None.
+        weight (Tensor|None, optional): The weight tensor. Default: None.
+        bias (Tensor|None, optional): The bias tensor. Default: None.
+        use_input_stats (bool, optional): Whether to use input statistics. Default: True.
+        momentum (float, optional): The value used for the moving_mean and moving_var computation. Default: 0.1.
+        eps (float, optional): The small value added to variance to prevent division by zero. Default: 1e-05.
+
+    Returns:
+        Tensor, the output of instance normalization.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.rand((2, 2, 2, 3))
+            >>> out = paddle.compat.nn.functional.instance_norm(x)
+            >>> print(out)
+    """
+    return paddle.nn.functional.instance_norm(
+        x=input,
+        running_mean=running_mean,
+        running_var=running_var,
+        weight=weight,
+        bias=bias,
+        use_input_stats=use_input_stats,
+        momentum=1.0 - momentum,
+        eps=eps,
     )

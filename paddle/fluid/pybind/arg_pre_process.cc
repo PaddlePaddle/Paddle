@@ -513,14 +513,16 @@ void BaddbmmPreProcess(pir::Value* input, pir::Value* x, pir::Value* y) {
           y_shape.size()));
 
   // Validate x's width equals y's height
-  PADDLE_ENFORCE_EQ(x_shape[2],
-                    y_shape[1],
-                    phi::errors::InvalidArgument(
-                        "The input Variable x's width must be equal with "
-                        "Variable y's height. "
-                        "But received x's shape[2] = %d, y's shape[1] = %d.",
-                        x_shape[2],
-                        y_shape[1]));
+  if (x_shape[2] >= 0 && y_shape[1] >= 0) {
+    PADDLE_ENFORCE_EQ(x_shape[2],
+                      y_shape[1],
+                      phi::errors::InvalidArgument(
+                          "The input Variable x's width must be equal with "
+                          "Variable y's height. "
+                          "But received x's shape[2] = %d, y's shape[1] = %d.",
+                          x_shape[2],
+                          y_shape[1]));
+  }
 
   // Validate input shape broadcast compatibility
   if (input_shape.size() == 3) {
@@ -560,6 +562,91 @@ void PixelShufflePreProcess(std::string* data_format) {
         "Attr(data_format) should be 'NCHW' or 'NHWC'."
         "But receive Attr(data_format): %s",
         *data_format));
+  }
+}
+
+// Eigh input validation for dygraph
+void EighPreProcess(Tensor* x, std::string* UPLO) {
+  auto x_shape = x->dims();
+  int64_t rank = x_shape.size();
+  PADDLE_ENFORCE_GE(rank,
+                    2,
+                    phi::errors::InvalidArgument(
+                        "Input(input) only support >=2 tensor, but received "
+                        "length of Input(input) is %ld.",
+                        rank));
+  PADDLE_ENFORCE_EQ(x_shape[rank - 1],
+                    x_shape[rank - 2],
+                    phi::errors::InvalidArgument(
+                        "The input matrix must be batches of square matrices. "
+                        "But received x's dimension: [%s]",
+                        x_shape));
+  PADDLE_ENFORCE_EQ(
+      *UPLO == "L" || *UPLO == "U",
+      true,
+      phi::errors::InvalidArgument(
+          "UPLO must be L or U. But received UPLO is: %s", UPLO->c_str()));
+}
+
+// Eigh input validation for static graph
+void EighPreProcess(Value* x, std::string* UPLO) {
+  auto x_shape = pir::GetShapeFromValue(*x);
+  int64_t rank = x_shape.size();
+  PADDLE_ENFORCE_GE(rank,
+                    2,
+                    phi::errors::InvalidArgument(
+                        "Input(input) only support >=2 tensor, but received "
+                        "length of Input(input) is %ld.",
+                        rank));
+  if (x_shape[rank - 1] > 0 && x_shape[rank - 2] > 0) {
+    PADDLE_ENFORCE_EQ(
+        x_shape[rank - 1],
+        x_shape[rank - 2],
+        phi::errors::InvalidArgument(
+            "The input matrix must be batches of square matrices. "
+            "But received x's dimension."));
+  }
+  PADDLE_ENFORCE_EQ(
+      *UPLO == "L" || *UPLO == "U",
+      true,
+      phi::errors::InvalidArgument(
+          "UPLO must be L or U. But received UPLO is: %s", UPLO->c_str()));
+}
+
+// Cholesky input validation for dygraph
+void CholeskyPreProcess(Tensor* x, bool* upper) {
+  auto x_shape = x->dims();
+  int64_t rank = x_shape.size();
+  PADDLE_ENFORCE_GE(
+      rank,
+      2,
+      phi::errors::InvalidArgument("Shape must have at least 2 dimensions. "
+                                   "But received x's dimension: %ld.",
+                                   rank));
+  PADDLE_ENFORCE_EQ(
+      x_shape[rank - 1],
+      x_shape[rank - 2],
+      phi::errors::InvalidArgument("The last two dimensions must be equal. "
+                                   "But received x's dimension: [%s]",
+                                   x_shape));
+}
+
+// Cholesky input validation for static graph
+void CholeskyPreProcess(Value* x, bool* upper) {
+  auto x_shape = pir::GetShapeFromValue(*x);
+  int64_t rank = x_shape.size();
+  PADDLE_ENFORCE_GE(
+      rank,
+      2,
+      phi::errors::InvalidArgument("Shape must have at least 2 dimensions. "
+                                   "But received x's dimension: %ld.",
+                                   rank));
+  if (x_shape[rank - 1] > 0 && x_shape[rank - 2] > 0) {
+    PADDLE_ENFORCE_EQ(
+        x_shape[rank - 1],
+        x_shape[rank - 2],
+        phi::errors::InvalidArgument("The last two dimensions must be equal. "
+                                     "But received x's dimension."));
   }
 }
 

@@ -153,6 +153,25 @@ class TestIndexSelectAPI(unittest.TestCase):
         np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
 
+class TestIndexSelectInvalidInput(unittest.TestCase):
+    def test_zero_select_dim(self):
+        with base.dygraph.guard(paddle.XPUPlace(0)):
+            for shape, axis in [([1, 0], -1), ([0, 0], 0)]:
+                with self.subTest(shape=shape, axis=axis):
+                    x = paddle.empty(shape, dtype='float32')
+                    index = paddle.to_tensor([0], dtype='int64')
+                    with self.assertRaisesRegex(
+                        Exception,
+                        r'select axis in OP\(index_select\).*Input\(Index\) is not empty',
+                    ):
+                        paddle.index_select(x, index, axis=axis)
+
+            x = paddle.empty([0, 0], dtype='float32')
+            index = paddle.empty([0], dtype='int64')
+            out = paddle.index_select(x, index, axis=0)
+            self.assertEqual(out.shape, [0, 0])
+
+
 support_types = get_xpu_op_support_types('index_select')
 for stype in support_types:
     create_test_class(globals(), XPUTestIndexSelect, stype)

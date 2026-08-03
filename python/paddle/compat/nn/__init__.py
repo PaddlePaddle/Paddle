@@ -14,16 +14,15 @@
 
 from __future__ import annotations
 
-import collections
 import warnings
-from itertools import repeat
 from math import sqrt
 from typing import TYPE_CHECKING
 
 import paddle
 from paddle import nn
-from paddle.utils.decorator_utils import ForbidKeywordsDecorator
+from paddle.nn.modules.utils import _single
 
+from ..utils import _CompatClassMeta
 from . import functional
 from .transformer import MultiheadAttention
 
@@ -59,20 +58,7 @@ __all__ = [
 ]
 
 
-def _ntuple(n, name="parse"):
-    def parse(x):
-        if isinstance(x, collections.abc.Iterable):
-            return tuple(x)
-        return tuple(repeat(x, n))
-
-    parse.__name__ = name
-    return parse
-
-
-_single = _ntuple(1, "_single")
-
-
-class BatchNorm1D(nn.BatchNorm1D):
+class BatchNorm1D(nn.BatchNorm1D, metaclass=_CompatClassMeta):
     def __init__(
         self,
         num_features: int,
@@ -99,7 +85,7 @@ class BatchNorm1D(nn.BatchNorm1D):
         self.momentum = momentum
 
 
-class BatchNorm2D(nn.BatchNorm2D):
+class BatchNorm2D(nn.BatchNorm2D, metaclass=_CompatClassMeta):
     def __init__(
         self,
         num_features: int,
@@ -126,7 +112,7 @@ class BatchNorm2D(nn.BatchNorm2D):
         self.momentum = momentum
 
 
-class BatchNorm3D(nn.BatchNorm3D):
+class BatchNorm3D(nn.BatchNorm3D, metaclass=_CompatClassMeta):
     def __init__(
         self,
         num_features: int,
@@ -158,7 +144,7 @@ BatchNorm2d = BatchNorm2D
 BatchNorm3d = BatchNorm3D
 
 
-class AvgPool1D(nn.Layer):
+class AvgPool1D(nn.Layer, metaclass=_CompatClassMeta):
     r"""
     This operation applies a 1D average pooling over an input signal composed
     of several input planes, based on the input, output_size, return_mask parameters.
@@ -228,11 +214,6 @@ class AvgPool1D(nn.Layer):
     ceil_mode: bool
     count_include_pad: bool
 
-    @ForbidKeywordsDecorator(
-        illegal_keys={"exclusive", "name"},
-        func_name="paddle.compat.nn.AvgPool1D",
-        correct_name="paddle.nn.AvgPool1D",
-    )
     def __init__(
         self,
         kernel_size: Size1,
@@ -241,7 +222,7 @@ class AvgPool1D(nn.Layer):
         ceil_mode: bool = False,
         count_include_pad: bool = True,
     ) -> None:
-        super().__init__()
+        nn.Layer.__init__(self)
         self.kernel_size = _single(kernel_size)
         self.stride = _single(stride if stride is not None else kernel_size)
         self.padding = _single(padding)
@@ -262,7 +243,7 @@ class AvgPool1D(nn.Layer):
         return f"kernel_size={self.kernel_size}, stride={self.stride}, padding={self.padding}"
 
 
-class AvgPool2D(nn.Layer):
+class AvgPool2D(nn.Layer, metaclass=_CompatClassMeta):
     r"""
     This operation applies 2D average pooling over input features based on the input,
     and kernel_size, stride, padding parameters. Input(X) and Output(Out) are
@@ -345,11 +326,6 @@ class AvgPool2D(nn.Layer):
     count_include_pad: bool
     divisor_override: int | None
 
-    @ForbidKeywordsDecorator(
-        illegal_keys={"exclusive", "data_format", "name"},
-        func_name="paddle.compat.nn.AvgPool2D",
-        correct_name="paddle.nn.AvgPool2D",
-    )
     def __init__(
         self,
         kernel_size: Size2,
@@ -359,7 +335,7 @@ class AvgPool2D(nn.Layer):
         count_include_pad: bool = True,
         divisor_override: int | None = None,
     ):
-        super().__init__()
+        nn.Layer.__init__(self)
         self.kernel_size = kernel_size
         self.stride = stride if (stride is not None) else kernel_size
         self.padding = padding
@@ -382,7 +358,7 @@ class AvgPool2D(nn.Layer):
         return f"kernel_size={self.kernel_size}, stride={self.stride}, padding={self.padding}"
 
 
-class AvgPool3D(nn.Layer):
+class AvgPool3D(nn.Layer, metaclass=_CompatClassMeta):
     """
 
     This operation applies 3D max pooling over input features based on the input,
@@ -452,11 +428,6 @@ class AvgPool3D(nn.Layer):
     count_include_pad: bool
     divisor_override: int | None
 
-    @ForbidKeywordsDecorator(
-        illegal_keys={"exclusive", "data_format", "name"},
-        func_name="paddle.compat.nn.AvgPool3D",
-        correct_name="paddle.nn.AvgPool3D",
-    )
     def __init__(
         self,
         kernel_size: Size3,
@@ -466,7 +437,7 @@ class AvgPool3D(nn.Layer):
         count_include_pad: bool = True,
         divisor_override: int | None = None,
     ) -> None:
-        super().__init__()
+        nn.Layer.__init__(self)
         self.kernel_size = kernel_size
         self.stride = stride if (stride is not None) else kernel_size
         self.padding = padding
@@ -495,7 +466,7 @@ class AvgPool3D(nn.Layer):
         self.__dict__.setdefault("count_include_pad", True)
 
 
-class Unfold(nn.Unfold):
+class Unfold(nn.Unfold, metaclass=_CompatClassMeta):
     """
     A compatible version of paddle.nn.Unfold:
 
@@ -532,11 +503,6 @@ class Unfold(nn.Unfold):
     paddings: Size2
     strides: Size2
 
-    @ForbidKeywordsDecorator(
-        illegal_keys={"kernel_sizes", "dilations", "paddings", "strides"},
-        func_name="paddle.compat.nn.Unfold",
-        correct_name="paddle.nn.Unfold",
-    )
     def __init__(
         self,
         kernel_size: Size2,
@@ -561,7 +527,7 @@ class Unfold(nn.Unfold):
         )
 
 
-class Linear(nn.Layer):
+class Linear(nn.Layer, metaclass=_CompatClassMeta):
     r"""
 
     Python compatible fully-connected linear transformation layer. For each input :math:`X` ,
@@ -640,11 +606,6 @@ class Linear(nn.Layer):
     out_features: int
     weight: Tensor
 
-    @ForbidKeywordsDecorator(
-        illegal_keys={"weight_attr", "bias_attr", "name"},
-        func_name="paddle.compat.nn.Linear",
-        correct_name="paddle.nn.Linear",
-    )
     def __init__(
         self,
         in_features: int,
@@ -653,7 +614,7 @@ class Linear(nn.Layer):
         device: PlaceLike | None = None,
         dtype: DTypeLike | None = None,
     ) -> None:
-        super().__init__()
+        nn.Layer.__init__(self)
         self._dtype = (
             self._helper.get_default_dtype() if dtype is None else dtype
         )
@@ -679,7 +640,7 @@ class Linear(nn.Layer):
         self.reset_parameters()
 
     def forward(self, input: Tensor) -> Tensor:
-        return functional.linear.__wrapped__(  # bypass ForbidKeywordsDecorator
+        return functional.linear(
             input=input, weight=self.weight, bias=self.bias
         )
 
@@ -701,7 +662,7 @@ class Linear(nn.Layer):
             nn.init.uniform_(self.bias, -bound, bound)
 
 
-class Softmax(nn.Layer):
+class Softmax(nn.Layer, metaclass=_CompatClassMeta):
     r"""
     Softmax Activation.
 
@@ -822,13 +783,8 @@ class Softmax(nn.Layer):
 
     """
 
-    @ForbidKeywordsDecorator(
-        illegal_keys={"axis"},
-        func_name="paddle.compat.nn.Softmax",
-        correct_name="paddle.nn.Softmax",
-    )
     def __init__(self, dim: int | None = None) -> None:
-        super().__init__()
+        nn.Layer.__init__(self)
         self._dim = dim
         self._dtype = None
 
@@ -839,7 +795,7 @@ class Softmax(nn.Layer):
         return f"dim={self._dim}"
 
 
-class SmoothL1Loss(nn.Layer):
+class SmoothL1Loss(nn.Layer, metaclass=_CompatClassMeta):
     r"""
 
     PyTorch compatible version of :ref:`api_paddle_nn_SmoothL1Loss`, aligned with
@@ -892,11 +848,6 @@ class SmoothL1Loss(nn.Layer):
     reduction: str
     beta: float
 
-    @ForbidKeywordsDecorator(
-        illegal_keys={"delta", "is_huber", "name", "label"},
-        func_name="paddle.compat.nn.SmoothL1Loss",
-        correct_name="paddle.nn.SmoothL1Loss",
-    )
     def __init__(
         self,
         size_average: bool | None = None,
@@ -904,7 +855,7 @@ class SmoothL1Loss(nn.Layer):
         reduction: str = 'mean',
         beta: float = 1.0,
     ) -> None:
-        super().__init__()
+        nn.Layer.__init__(self)
         if size_average is not None or reduce is not None:
             reduction = (
                 'none'
@@ -921,7 +872,7 @@ class SmoothL1Loss(nn.Layer):
         self.beta = beta
 
     def forward(self, input: Tensor, target: Tensor) -> Tensor:
-        return functional.smooth_l1_loss.__wrapped__(
+        return functional.smooth_l1_loss(
             input, target, reduction=self.reduction, beta=self.beta
         )
 

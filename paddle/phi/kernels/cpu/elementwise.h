@@ -59,29 +59,12 @@ struct SameDimsSubtractFunctor {
 };
 
 template <typename DevCtx, typename T>
-struct SameDimsSubtractFunctor<
-    DevCtx,
-    T,
-    typename std::enable_if<std::is_floating_point<T>::value>::type> {
+struct SameDimsSubtractFunctor<DevCtx, T> {
   void operator()(const DevCtx& dev_ctx,
                   const DenseTensor& x,
                   const DenseTensor& y,
                   DenseTensor* z) {
-    auto blas = funcs::GetBlas<DevCtx, T>(dev_ctx);
-    blas.VSUB(
-        x.numel(), x.data<T>(), y.data<T>(), dev_ctx.template Alloc<T>(z));
-  }
-};
-
-template <typename DevCtx, typename T>
-struct SameDimsSubtractFunctor<
-    DevCtx,
-    T,
-    typename std::enable_if<!std::is_floating_point<T>::value>::type> {
-  void operator()(const DevCtx& dev_ctx,
-                  const DenseTensor& x,
-                  const DenseTensor& y,
-                  DenseTensor* z) {
+    dev_ctx.template Alloc<T>(z);
     auto eigen_x = EigenVector<T>::Flatten(x);
     auto eigen_y = EigenVector<T>::Flatten(y);
     auto eigen_z = EigenVector<T>::Flatten(*z);
@@ -123,9 +106,12 @@ struct SameDimsDivideFunctor<
                   const DenseTensor& x,
                   const DenseTensor& y,
                   DenseTensor* z) {
-    auto blas = funcs::GetBlas<DevCtx, T>(dev_ctx);
-    blas.VDIV(
-        x.numel(), x.data<T>(), y.data<T>(), dev_ctx.template Alloc<T>(z));
+    dev_ctx.template Alloc<T>(z);
+    auto eigen_x = EigenVector<T>::Flatten(x);
+    auto eigen_y = EigenVector<T>::Flatten(y);
+    auto eigen_z = EigenVector<T>::Flatten(*z);
+    auto& place = *dev_ctx.eigen_device();
+    eigen_z.device(place) = eigen_x / eigen_y;
   }
 };
 
@@ -147,9 +133,12 @@ struct SameDimsMultiplyFunctor<
                   const DenseTensor& x,
                   const DenseTensor& y,
                   DenseTensor* z) {
-    auto blas = funcs::GetBlas<DevCtx, T>(dev_ctx);
-    blas.VMUL(
-        x.numel(), x.data<T>(), y.data<T>(), dev_ctx.template Alloc<T>(z));
+    dev_ctx.template Alloc<T>(z);
+    auto eigen_x = EigenVector<T>::Flatten(x);
+    auto eigen_y = EigenVector<T>::Flatten(y);
+    auto eigen_z = EigenVector<T>::Flatten(*z);
+    auto& place = *dev_ctx.eigen_device();
+    eigen_z.device(place) = eigen_x * eigen_y;
   }
 };
 

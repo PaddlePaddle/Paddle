@@ -22,6 +22,7 @@ from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.layer_helper import LayerHelper
 from paddle.distribution import exponential_family
 from paddle.framework import in_dynamic_or_pir_mode
+from paddle.utils.decorator_utils import param_one_alias
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -111,6 +112,7 @@ class Dirichlet(exponential_family.ExponentialFamily):
             concentration0.pow(2) * (concentration0 + 1)
         )
 
+    @param_one_alias(["shape", "sample_shape"])
     def sample(self, shape: Sequence[int] = []) -> Tensor:
         """Sample from dirichlet distribution.
 

@@ -3,6 +3,13 @@ file(
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
+
+if(NOT WITH_GPU
+   OR WITH_ROCM
+   OR WIN32)
+  list(REMOVE_ITEM TEST_OPS test_cuda_vmm_v2_allocator)
+endif()
+
 set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0 FLAGS_fast_eager_deletion_mode=1
             FLAGS_memory_fraction_of_eager_deletion=1.0)
 set(deterministic_ENVS FLAGS_cudnn_deterministic=1)
@@ -1097,6 +1104,16 @@ set_tests_properties(test_eigvals_op PROPERTIES TIMEOUT 400)
 set_tests_properties(
   test_cuda_memory_reserved PROPERTIES ENVIRONMENT
                                        "FLAGS_allocator_strategy=auto_growth")
+if(WITH_GPU
+   AND NOT WITH_ROCM
+   AND NOT WIN32)
+  set_tests_properties(
+    test_cuda_vmm_v2_allocator
+    PROPERTIES
+      ENVIRONMENT
+      "FLAGS_allocator_strategy=auto_growth;FLAGS_use_virtual_memory_auto_growth=false;FLAGS_use_vmm_auto_growth_best_fit_allocator_v2=true;FLAGS_vmm_v2_large_pool_handle_size_in_mb=2"
+  )
+endif()
 if(WITH_GLOO)
   set_tests_properties(test_parallel_dygraph_dataparallel_cpuonly
                        PROPERTIES TIMEOUT 30)

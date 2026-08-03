@@ -43,7 +43,7 @@ from .creation import assign
 if TYPE_CHECKING:
     from paddle import Tensor
 
-from paddle.utils.decorator_utils import ForbidKeywordsDecorator
+from paddle.utils.decorator_utils import forbid_keywords
 
 # from ..base.layers import has_inf  #DEFINE_ALIAS
 # from ..base.layers import has_nan  #DEFINE_ALIAS
@@ -215,7 +215,7 @@ def index_select(
 ) -> Tensor: ...
 
 
-@index_select_decorator()
+@index_select_decorator
 def index_select(
     x: Tensor,
     index: Tensor,
@@ -501,11 +501,10 @@ def _restrict_nonzero(condition: Tensor, total_true_num: int) -> Tensor:
     return _C_ops.restrict_nonzero(condition, total_true_num)
 
 
-@ForbidKeywordsDecorator(
+@forbid_keywords(
     illegal_keys={'input', 'dim'},
     func_name='paddle.sort',
-    correct_name='paddle.compat.sort',
-    url_suffix="torch.sort",
+    compat_func='paddle.compat.sort',
 )
 def sort(
     x: Tensor,

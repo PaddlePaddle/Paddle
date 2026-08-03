@@ -574,7 +574,7 @@ def avg_pool3d(
         )
 
 
-@maxpool_decorator()
+@maxpool_decorator
 def max_pool1d(
     x: Tensor,
     kernel_size: Size1,
@@ -1168,7 +1168,7 @@ def max_unpool3d(
     return unpool_out
 
 
-@maxpool_decorator()
+@maxpool_decorator
 def max_pool2d(
     x: Tensor,
     kernel_size: Size2,
@@ -1365,7 +1365,7 @@ def max_pool2d(
             return pool_out
 
 
-@maxpool_decorator()
+@maxpool_decorator
 def max_pool3d(
     x: Tensor,
     kernel_size: Size3,

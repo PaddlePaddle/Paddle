@@ -271,6 +271,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
             >>> fake_cpu_place = paddle.CustomPlace("FakeCPU", 0)
                                                 )DOC");
   g_customplace_pytype = reinterpret_cast<PyTypeObject *>(customplace.ptr());
+  auto customplace_obj = py::reinterpret_borrow<py::object>(customplace.ptr());
   customplace
       .def("__init__",
            [](phi::CustomPlace &self,
@@ -356,6 +357,21 @@ void BindPlace(pybind11::module &m) {  // NOLINT
            [](const phi::CustomPlace &self) { return self.GetDeviceId(); })
       .def("get_device_type",
            [](const phi::CustomPlace &self) { return self.GetDeviceType(); })
+      .def("__copy__",
+           [](const phi::CustomPlace &self) { return phi::CustomPlace(self); })
+      .def(
+          "__deepcopy__",
+          [](const phi::CustomPlace &self, py::dict) {
+            return phi::CustomPlace(self);
+          },
+          py::arg("memo"))
+      .def("__reduce__",
+           [customplace_obj](const phi::CustomPlace &self) {
+             return py::make_tuple(
+                 customplace_obj,
+                 py::make_tuple(self.GetDeviceType(),
+                                static_cast<int>(self.GetDeviceId())));
+           })
       .def("__repr__", string::to_string<const phi::CustomPlace &>)
       .def("__str__", string::to_string<const phi::CustomPlace &>);
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
@@ -391,6 +407,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
 
         )DOC");
   g_cudaplace_pytype = reinterpret_cast<PyTypeObject *>(cudaplace.ptr());
+  auto cudaplace_obj = py::reinterpret_borrow<py::object>(cudaplace.ptr());
   cudaplace
       .def("__init__",
            [](GPUPlace &self, int dev_id) {
@@ -450,6 +467,17 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       .def("_get_device_id",
            [](GPUPlace &self) -> int { return self.GetDeviceId(); })
 #endif
+      .def("__copy__", [](const GPUPlace &self) { return GPUPlace(self); })
+      .def(
+          "__deepcopy__",
+          [](const GPUPlace &self, py::dict) { return GPUPlace(self); },
+          py::arg("memo"))
+      .def("__reduce__",
+           [cudaplace_obj](const GPUPlace &self) {
+             return py::make_tuple(
+                 cudaplace_obj,
+                 py::make_tuple(static_cast<int>(self.GetDeviceId())));
+           })
       .def("__repr__", string::to_string<const GPUPlace &>)
       .def("__str__", string::to_string<const GPUPlace &>);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -481,6 +509,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
             >>> xpu_place = base.XPUPlace(0)
         )DOC");
   g_xpuplace_pytype = reinterpret_cast<PyTypeObject *>(xpuplace.ptr());
+  auto xpuplace_obj = py::reinterpret_borrow<py::object>(xpuplace.ptr());
   xpuplace
       .def("__init__",
            [](phi::XPUPlace &self, int dev_id) {
@@ -537,6 +566,20 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       .def("get_device_id",
            [](const phi::XPUPlace &self) { return self.GetDeviceId(); })
 #endif
+      .def("__copy__",
+           [](const phi::XPUPlace &self) { return phi::XPUPlace(self); })
+      .def(
+          "__deepcopy__",
+          [](const phi::XPUPlace &self, py::dict) {
+            return phi::XPUPlace(self);
+          },
+          py::arg("memo"))
+      .def("__reduce__",
+           [xpuplace_obj](const phi::XPUPlace &self) {
+             return py::make_tuple(
+                 xpuplace_obj,
+                 py::make_tuple(static_cast<int>(self.GetDeviceId())));
+           })
       .def("__repr__", string::to_string<const phi::XPUPlace &>)
       .def("__str__", string::to_string<const phi::XPUPlace &>);
 #ifdef PADDLE_WITH_XPU
@@ -588,6 +631,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
 
         )DOC");
   g_cpuplace_pytype = reinterpret_cast<PyTypeObject *>(cpuplace.ptr());
+  auto cpuplace_obj = py::reinterpret_borrow<py::object>(cpuplace.ptr());
   cpuplace.def(py::init<>())
       .def("_type", &PlaceIndex<CPUPlace>)
       .def("_equals", &IsSamePlace<CPUPlace, Place>)
@@ -596,6 +640,15 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       .def("_equals", &IsSamePlace<CPUPlace, CPUPlace>)
       .def("_equals", &IsSamePlace<CPUPlace, phi::GPUPinnedPlace>)
       .def("_equals", &IsSamePlace<CPUPlace, phi::XPUPinnedPlace>)
+      .def("__copy__", [](const CPUPlace &self) { return CPUPlace(self); })
+      .def(
+          "__deepcopy__",
+          [](const CPUPlace &self, py::dict) { return CPUPlace(self); },
+          py::arg("memo"))
+      .def("__reduce__",
+           [cpuplace_obj](const CPUPlace &) {
+             return py::make_tuple(cpuplace_obj, py::make_tuple());
+           })
       .def("__repr__", string::to_string<const CPUPlace &>)
       .def("__str__", string::to_string<const CPUPlace &>);
   m.def("is_float16_supported",
@@ -629,6 +682,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
         )DOC");
   g_cudapinnedplace_pytype =
       reinterpret_cast<PyTypeObject *>(cudapinnedplace.ptr());
+  auto cudapinnedplace_obj =
+      py::reinterpret_borrow<py::object>(cudapinnedplace.ptr());
   cudapinnedplace
       .def(py::init([]() {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
@@ -645,6 +700,20 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       .def("_equals", &IsSamePlace<phi::GPUPinnedPlace, CPUPlace>)
       .def("_equals", &IsSamePlace<phi::GPUPinnedPlace, phi::GPUPinnedPlace>)
       .def("_equals", &IsSamePlace<phi::GPUPinnedPlace, phi::XPUPinnedPlace>)
+      .def("__copy__",
+           [](const phi::GPUPinnedPlace &self) {
+             return phi::GPUPinnedPlace(self);
+           })
+      .def(
+          "__deepcopy__",
+          [](const phi::GPUPinnedPlace &self, py::dict) {
+            return phi::GPUPinnedPlace(self);
+          },
+          py::arg("memo"))
+      .def("__reduce__",
+           [cudapinnedplace_obj](const phi::GPUPinnedPlace &) {
+             return py::make_tuple(cudapinnedplace_obj, py::make_tuple());
+           })
       .def("__repr__", string::to_string<const phi::GPUPinnedPlace &>)
       .def("__str__", string::to_string<const phi::GPUPinnedPlace &>);
 
@@ -668,6 +737,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
         )DOC");
   g_xpupinnedplace_pytype =
       reinterpret_cast<PyTypeObject *>(xpupinnedplace.ptr());
+  auto xpupinnedplace_obj =
+      py::reinterpret_borrow<py::object>(xpupinnedplace.ptr());
   xpupinnedplace
       .def(py::init([]() {
 #if !defined(PADDLE_WITH_XPU)
@@ -684,6 +755,20 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       .def("_equals", &IsSamePlace<phi::XPUPinnedPlace, CPUPlace>)
       .def("_equals", &IsSamePlace<phi::XPUPinnedPlace, phi::GPUPinnedPlace>)
       .def("_equals", &IsSamePlace<phi::XPUPinnedPlace, phi::XPUPinnedPlace>)
+      .def("__copy__",
+           [](const phi::XPUPinnedPlace &self) {
+             return phi::XPUPinnedPlace(self);
+           })
+      .def(
+          "__deepcopy__",
+          [](const phi::XPUPinnedPlace &self, py::dict) {
+            return phi::XPUPinnedPlace(self);
+          },
+          py::arg("memo"))
+      .def("__reduce__",
+           [xpupinnedplace_obj](const phi::XPUPinnedPlace &) {
+             return py::make_tuple(xpupinnedplace_obj, py::make_tuple());
+           })
       .def("__repr__", string::to_string<const phi::XPUPinnedPlace &>)
       .def("__str__", string::to_string<const phi::XPUPinnedPlace &>);
 
@@ -701,6 +786,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
 
         )DOC");
   g_ipuplace_pytype = reinterpret_cast<PyTypeObject *>(ipuplace.ptr());
+  auto ipuplace_obj = py::reinterpret_borrow<py::object>(ipuplace.ptr());
   ipuplace
       .def("__init__",
            [](phi::IPUPlace &self) {
@@ -735,6 +821,18 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       .def("_equals", &IsSamePlace<phi::IPUPlace, phi::IPUPlace>)
       .def("_equals", &IsSamePlace<phi::IPUPlace, phi::GPUPinnedPlace>)
       .def("_equals", &IsSamePlace<phi::IPUPlace, phi::XPUPinnedPlace>)
+      .def("__copy__",
+           [](const phi::IPUPlace &self) { return phi::IPUPlace(self); })
+      .def(
+          "__deepcopy__",
+          [](const phi::IPUPlace &self, py::dict) {
+            return phi::IPUPlace(self);
+          },
+          py::arg("memo"))
+      .def("__reduce__",
+           [ipuplace_obj](const phi::IPUPlace &) {
+             return py::make_tuple(ipuplace_obj, py::make_tuple());
+           })
       .def("__str__", string::to_string<const phi::IPUPlace &>);
 }
 

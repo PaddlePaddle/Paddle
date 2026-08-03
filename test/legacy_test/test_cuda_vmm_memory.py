@@ -116,7 +116,7 @@ class TestMemoryreserved(unittest.TestCase):
             buffer_size,
             param_storage,
             grad_storage,
-            _,
+            param_buffer_ipc_meta,
         ) = build_reduce_scatter_buffer(
             params,
             sharding_degree=1,
@@ -127,6 +127,7 @@ class TestMemoryreserved(unittest.TestCase):
 
         self.assertIsNotNone(param_storage)
         self.assertIsNone(grad_storage)
+        self.assertIsNone(param_buffer_ipc_meta)
         self.assertGreater(buffer_size, 0)
         fused_comm_buffer = object.__new__(FusedCommBuffer)
         fused_comm_buffer._param_buffer_meta_tensor = param_storage

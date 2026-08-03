@@ -196,24 +196,19 @@ class TestCompatPad(unittest.TestCase):
     def test_error_handling(self):
         dummy_x = paddle.arange(3)
 
-        wrong_api_used = (
-            "paddle.compat.nn.functional.pad() received unexpected keyword arguments 'name', 'x'. "
-            "\nDid you mean to use paddle.nn.functional.pad() instead?"
-        )
         ndim_no_impl = "Input tensor dimension must be in [1-5] but got {x_dim}"
         non_const_ndim_no_impl = "Only 2D, 3D, 4D, 5D padding with non-constant padding are supported for now, got ndim: {x_dim}"
         mode_no_impl = "mode should be one of constant, reflect, replicate, circular, but got mirror."
         pad_len_invalid1 = "Expect len(pad) <= 6 and not -1, got: {pad_len}"
         pad_len_invalid2 = "len(pad) is bounded by input.ndim: expect len(pad) <= {max_dim}, got: {pad_len}"
 
-        with self.assertRaises(TypeError) as cm:
+        with self.assertRaises(TypeError):
             tensors = F.pad(
                 x=dummy_x,
                 mode='constant',
                 pad=paddle.to_tensor(2),
                 name='pad_layer',
             )
-        self.assertEqual(str(cm.exception), wrong_api_used)
 
         with self.assertRaises(AssertionError) as cm:
             tensors = F.pad(

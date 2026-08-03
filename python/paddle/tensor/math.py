@@ -155,7 +155,7 @@ if TYPE_CHECKING:
     from paddle import Tensor
     from paddle._typing import DTypeLike
 
-from paddle.utils.decorator_utils import ForbidKeywordsDecorator
+from paddle.utils.decorator_utils import forbid_keywords
 
 __all__ = []
 
@@ -1687,7 +1687,7 @@ def nansum(
 ) -> Tensor: ...
 
 
-@nansum_decorator()
+@nansum_decorator
 def nansum(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
@@ -2189,7 +2189,7 @@ def mm(
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Keywords Argument:
-        out_dtype (paddle.dtype|None, optional): The desired output data type. Currently only supports ``paddle.float32`` for CUDA bfloat16 2-D inputs in dynamic graph. Default: None.
+        out_dtype (paddle.dtype|None, optional): The desired output data type. Currently only supports ``paddle.float32`` for CUDA float16 or bfloat16 2-D inputs in dynamic graph. Both inputs must have the same data type. Default: None.
         out (Tensor, optional): The output Tensor. It must have the same data type and shape as the expected output. Default is None, and a new Tensor will be created to store the result.
 
     Returns:
@@ -2245,18 +2245,27 @@ def mm(
     if out_dtype is not None:
         out_dtype = convert_nptype_to_datatype_or_vartype(out_dtype)
         float32_dtypes = (core.DataType.FLOAT32, core.VarDesc.VarType.FP32)
-        bf16_dtypes = (core.DataType.BFLOAT16, core.VarDesc.VarType.BF16)
+        supported_input_dtypes = (
+            core.DataType.FLOAT16,
+            core.VarDesc.VarType.FP16,
+            core.DataType.BFLOAT16,
+            core.VarDesc.VarType.BF16,
+        )
         if out_dtype not in float32_dtypes:
             raise TypeError(
                 "The out_dtype of paddle.mm currently only supports paddle.float32."
             )
-        if input.dtype not in bf16_dtypes:
+        if input.dtype not in supported_input_dtypes:
             raise TypeError(
-                "The out_dtype of paddle.mm currently only supports bfloat16 input."
+                "The out_dtype of paddle.mm currently only supports float16 or bfloat16 input."
             )
-        if mat2.dtype not in bf16_dtypes:
+        if mat2.dtype not in supported_input_dtypes:
             raise TypeError(
-                "The out_dtype of paddle.mm currently only supports bfloat16 mat2."
+                "The out_dtype of paddle.mm currently only supports float16 or bfloat16 mat2."
+            )
+        if input.dtype != mat2.dtype:
+            raise TypeError(
+                "The input and mat2 of paddle.mm must have the same dtype when out_dtype is specified."
             )
         if len(input.shape) != 2 or len(mat2.shape) != 2:
             raise ValueError(
@@ -2709,11 +2718,10 @@ def outer(
         return out
 
 
-@ForbidKeywordsDecorator(
+@forbid_keywords(
     illegal_keys={"input", "dim", "other"},
     func_name="paddle.max",
-    correct_name="paddle.compat.max",
-    url_suffix="torch.max",
+    compat_func="paddle.compat.max",
 )
 def max(
     x: Tensor,
@@ -2877,11 +2885,10 @@ def max(
             return out
 
 
-@ForbidKeywordsDecorator(
+@forbid_keywords(
     illegal_keys={"input", "dim", "other"},
     func_name="paddle.min",
-    correct_name="paddle.compat.min",
-    url_suffix="torch.min",
+    compat_func="paddle.compat.min",
 )
 def min(
     x: Tensor,
@@ -3223,7 +3230,46 @@ def clip(
         return output
 
 
+def clamp_max(
+    input: Tensor, max: float, *, out: Tensor | None = None
+) -> Tensor:
+    """
+    Clamps all elements in input into the range [min=None, max].
+
+    This is a wrapper around ``paddle.clip`` that only sets the upper bound.
+
+    Args:
+        input (Tensor): The input Tensor.
+        max (float): The upper bound.
+        out (Tensor|None, optional): The output Tensor. Default: None.
+
+    Returns:
+        Tensor: The clamped Tensor.
+    """
+    return clip(input, min=None, max=max, out=out)
+
+
+def clamp_min(
+    input: Tensor, min: float, *, out: Tensor | None = None
+) -> Tensor:
+    """
+    Clamps all elements in input into the range [min, max=None].
+
+    This is a wrapper around ``paddle.clip`` that only sets the lower bound.
+
+    Args:
+        input (Tensor): The input Tensor.
+        min (float): The lower bound.
+        out (Tensor|None, optional): The output Tensor. Default: None.
+
+    Returns:
+        Tensor: The clamped Tensor.
+    """
+    return clip(input, min=min, max=None, out=out)
+
+
 @inplace_apis_in_dygraph_only
+@param_one_alias(["x", "input"])
 def clip_(
     x: Tensor,
     min: float | None = None,

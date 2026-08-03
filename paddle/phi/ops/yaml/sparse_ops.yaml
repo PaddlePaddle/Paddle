@@ -446,7 +446,7 @@
   backward : values_grad
 
 - op: addmm
-  args : (Tensor input, Tensor x, Tensor y, float beta=1.0, float alpha=1.0)
+  args : (Tensor input, Tensor x, Tensor y, double beta=1.0, double alpha=1.0)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta

@@ -365,8 +365,9 @@ __global__ void vectorized_rms_norm_kernel(const int N,
   extern __shared__ char s_data_raw[];
   T_ACC* s_data = reinterpret_cast<T_ACC*>(s_data_raw);
 
-  auto i1 = blockIdx.x;
-  const T* block_row = X + i1 * N;
+  const auto i1 = blockIdx.x;
+  const int64_t row_offset = static_cast<int64_t>(i1) * static_cast<int64_t>(N);
+  const T* block_row = X + row_offset;
 
   // Compute stats
   T_ACC sigma2 = compute_stats<T, T_ACC, kVecSize>(block_row, N, s_data);
@@ -375,7 +376,7 @@ __global__ void vectorized_rms_norm_kernel(const int N,
   const vec_t* X_vec = reinterpret_cast<const vec_t*>(block_row);
   const vec_t* scale_vec =
       (scale != nullptr) ? reinterpret_cast<const vec_t*>(scale) : nullptr;
-  vec_t* Y_vec = reinterpret_cast<vec_t*>(Y + i1 * N);
+  vec_t* Y_vec = reinterpret_cast<vec_t*>(Y + row_offset);
 
   const int numx = blockDim.x * blockDim.y;
   const int thrx = threadIdx.x + threadIdx.y * blockDim.x;
@@ -551,8 +552,9 @@ __global__ void vectorized_layer_norm_kernel(const int N,
   extern __shared__ char s_data_raw[];
   T_ACC* s_data = reinterpret_cast<T_ACC*>(s_data_raw);
 
-  auto i1 = blockIdx.x;
-  const T* block_row = X + i1 * N;
+  const auto i1 = blockIdx.x;
+  const int64_t row_offset = static_cast<int64_t>(i1) * static_cast<int64_t>(N);
+  const T* block_row = X + row_offset;
 
   // Compute stats using Welford algorithm
   WelfordDataLN wd =
@@ -564,7 +566,7 @@ __global__ void vectorized_layer_norm_kernel(const int N,
       (gamma != nullptr) ? reinterpret_cast<const vec_t*>(gamma) : nullptr;
   const vec_t* beta_vec =
       (beta != nullptr) ? reinterpret_cast<const vec_t*>(beta) : nullptr;
-  vec_t* Y_vec = reinterpret_cast<vec_t*>(Y + i1 * N);
+  vec_t* Y_vec = reinterpret_cast<vec_t*>(Y + row_offset);
 
   const int numx = blockDim.x * blockDim.y;
   const int thrx = threadIdx.x + threadIdx.y * blockDim.x;
@@ -822,13 +824,14 @@ __device__ __inline__ void compute_gI(const T* __restrict__ dY,
                                       const int N,
                                       T_ACC* buf) {
   const auto i1 = blockIdx.x;
+  const int64_t row_offset = static_cast<int64_t>(i1) * static_cast<int64_t>(N);
   const T_ACC rstd_val = rstd[i1];
   T_ACC stats_x2{0};
   constexpr int unroll = 4;
   auto l = unroll * threadIdx.x;
-  const T* X_i = X + i1 * N;
-  const T* dY_i = dY + i1 * N;
-  T* dX_i = dX + i1 * N;
+  const T* X_i = X + row_offset;
+  const T* dY_i = dY + row_offset;
+  T* dX_i = dX + row_offset;
 
   for (; l + unroll - 1 < N; l += blockDim.x * unroll) {
 #pragma unroll
@@ -896,10 +899,12 @@ __global__ void rms_norm_grad_input_kernel_vectorized(
   T_ACC* reduce_buf = reinterpret_cast<T_ACC*>(&shared_data);
 
   const auto bIdx = blockIdx.x;
+  const int64_t row_offset =
+      static_cast<int64_t>(bIdx) * static_cast<int64_t>(N);
   const T_ACC rstd_val = rstd[bIdx];
-  const T* X_i = X + bIdx * N;
-  const T* dY_i = dY + bIdx * N;
-  T* dX_i = dX + bIdx * N;
+  const T* X_i = X + row_offset;
+  const T* dY_i = dY + row_offset;
+  T* dX_i = dX + row_offset;
 
   using vec_t = aligned_vector<T, kVecSize>;
   const vec_t* const X_i_vec_ptr = reinterpret_cast<const vec_t*>(X_i);
@@ -1625,14 +1630,15 @@ __device__ __inline__ void layer_norm_compute_gI(const T* __restrict__ dY,
                                                  const int N,
                                                  T_ACC* buf) {
   const auto i1 = blockIdx.x;
+  const int64_t row_offset = static_cast<int64_t>(i1) * static_cast<int64_t>(N);
   T_ACC mean_val = mean[i1];
   const T_ACC rstd_val = rstd[i1];
   T_ACC stats_x1{0}, stats_x2{0};
   constexpr int unroll = 4;
   auto l = unroll * threadIdx.x;
-  const T* X_i = X + i1 * N;
-  const T* dY_i = dY + i1 * N;
-  T* dX_i = dX + i1 * N;
+  const T* X_i = X + row_offset;
+  const T* dY_i = dY + row_offset;
+  T* dX_i = dX + row_offset;
 
   for (; l + unroll - 1 < N; l += blockDim.x * unroll) {
 #pragma unroll
@@ -1711,11 +1717,13 @@ __global__ void layer_norm_grad_input_kernel_vectorized(
   T_ACC* reduce_buf = reinterpret_cast<T_ACC*>(&shared_data);
 
   const auto bIdx = blockIdx.x;
+  const int64_t row_offset =
+      static_cast<int64_t>(bIdx) * static_cast<int64_t>(N);
   T_ACC mean_val = mean[bIdx];
   const T_ACC rstd_val = rstd[bIdx];
-  const T* X_i = X + bIdx * N;
-  const T* dY_i = dY + bIdx * N;
-  T* dX_i = dX + bIdx * N;
+  const T* X_i = X + row_offset;
+  const T* dY_i = dY + row_offset;
+  T* dX_i = dX + row_offset;
 
   using vec_t = aligned_vector<T, kVecSize>;
   const vec_t* const X_i_vec_ptr = reinterpret_cast<const vec_t*>(X_i);

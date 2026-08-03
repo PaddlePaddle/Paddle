@@ -274,5 +274,70 @@ class TestZeropowerNewtonschulz5(unittest.TestCase):
         self.assertEqual(result.shape, [4, 4])
 
 
+class TestMuonLrRatio(unittest.TestCase):
+    """Test lr_ratio in Muon optimizer."""
+
+    def test_freeze_parameter(self):
+        """Test that lr_ratio=0 freezes the selected Muon parameter."""
+        paddle.seed(2026)
+        frozen = paddle.create_parameter(shape=[4, 4], dtype='float32')
+        trainable = paddle.create_parameter(shape=[4, 4], dtype='float32')
+
+        optimizer = Muon(
+            learning_rate=0.02,
+            parameters=[frozen, trainable],
+            lr_ratio=lambda param: 0.0 if param.name == frozen.name else 1.0,
+            weight_decay=0.01,
+            muon_param_info_map={
+                frozen.name: MuonParamInfo(use_muon=True),
+                trainable.name: MuonParamInfo(use_muon=True),
+            },
+            ns_matmul_dtype=paddle.float32,
+        )
+
+        frozen_before = frozen.numpy().copy()
+        trainable_before = trainable.numpy().copy()
+        loss = frozen.sum() + trainable.sum()
+        loss.backward()
+        optimizer.step()
+
+        np.testing.assert_array_equal(frozen.numpy(), frozen_before)
+        self.assertFalse(np.array_equal(trainable.numpy(), trainable_before))
+
+    def test_muon_lr_ratio_scales_muon_update(self):
+        """lr_ratio=0.0 freezes the param; lr_ratio=0.5 update is half of lr_ratio=1.0."""
+        paddle.disable_static()
+        weight_np = np.array([[0.2, -0.4], [0.6, 0.8]], dtype="float32")
+        grad_np = np.array([[0.1, 0.3], [-0.2, 0.4]], dtype="float32")
+
+        def run(ratio):
+            p = paddle.create_parameter(shape=[2, 2], dtype="float32")
+            p.set_value(weight_np)
+            p.grad = paddle.to_tensor(grad_np)
+            opt = Muon(
+                parameters=[p],
+                learning_rate=0.01,
+                weight_decay=0.01,
+                ns_steps=1,
+                ns_matmul_dtype=paddle.float32,
+                muon_param_info_map={p.name: MuonParamInfo(use_muon=True)},
+                lr_ratio=lambda _: ratio,
+            )
+            opt.step()
+            return p.numpy()
+
+        full = run(1.0)
+        half = run(0.5)
+        zero = run(0.0)
+
+        np.testing.assert_allclose(zero, weight_np, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(
+            weight_np - half,
+            0.5 * (weight_np - full),
+            rtol=1e-5,
+            atol=1e-6,
+        )
+
+
 if __name__ == '__main__':
     unittest.main()

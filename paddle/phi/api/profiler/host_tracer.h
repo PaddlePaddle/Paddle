@@ -14,7 +14,16 @@
 
 #pragma once
 
+#include <cstdint>
+
+#include "paddle/common/macros.h"
+
 namespace phi {
+
+struct CommonEvent;
+struct CommonMemEvent;
+template <typename EventType>
+struct HostEventSection;
 
 class HostTraceLevel {
  public:
@@ -41,3 +50,12 @@ struct HostTracerOptions {
 };
 
 }  // namespace phi
+
+namespace paddle::platform {
+
+PADDLE_API phi::HostEventSection<phi::CommonEvent> GatherCommonHostEvents();
+PADDLE_API phi::HostEventSection<phi::CommonMemEvent>
+GatherCommonHostMemEvents();
+PADDLE_API void SetHostTraceLevel(int64_t trace_level);
+
+}  // namespace paddle::platform

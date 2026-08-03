@@ -15,13 +15,28 @@ limitations under the License. */
 #include "paddle/phi/kernels/sparse/addmm_grad_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/sparse/matmul_grad_kernel.h"
 
 namespace phi {
 namespace sparse {
+
+template <typename T>
+struct ScaleFunctor {
+  ScaleFunctor(const T scale, T* data) : scale_(scale), data_(data) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    data_[idx] = data_[idx] * scale_;
+  }
+
+ private:
+  const T scale_;
+  T* data_;
+};
 
 template <typename T, typename Context>
 void AddmmCooDenseGradKernel(const Context& dev_ctx,
@@ -29,22 +44,35 @@ void AddmmCooDenseGradKernel(const Context& dev_ctx,
                              const SparseCooTensor& x,
                              const DenseTensor& y,
                              const DenseTensor& dout,
-                             float alpha,
-                             float beta,
+                             double alpha,
+                             double beta,
                              DenseTensor* dinput,
                              SparseCooTensor* dx,
                              DenseTensor* dy) {
-  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
   if (dinput) {
     dinput->Resize(input.dims());
     dev_ctx.template Alloc<T>(dinput);
 
-    blas.VCOPY(input.numel(), dout.data<T>(), dinput->data<T>());
-    blas.SCAL(input.numel(), beta, dinput->data<T>());
+    memory_utils::Copy(dev_ctx.GetPlace(),
+                       dinput->data<T>(),
+                       dev_ctx.GetPlace(),
+                       dout.data<T>(),
+                       static_cast<size_t>(input.numel()) * sizeof(T),
+                       dev_ctx.stream());
+    funcs::ForRange<Context> for_range(dev_ctx, input.numel());
+    ScaleFunctor<T> functor(static_cast<T>(beta), dinput->data<T>());
+    for_range(functor);
   }
   DenseTensor dout_scale = EmptyLike<T, Context>(dev_ctx, dout);
-  blas.VCOPY(dout.numel(), dout.data<T>(), dout_scale.data<T>());
-  blas.SCAL(dout.numel(), alpha, dout_scale.data<T>());
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     dout_scale.data<T>(),
+                     dev_ctx.GetPlace(),
+                     dout.data<T>(),
+                     static_cast<size_t>(dout.numel()) * sizeof(T),
+                     dev_ctx.stream());
+  funcs::ForRange<Context> for_range(dev_ctx, dout.numel());
+  ScaleFunctor<T> functor(static_cast<T>(alpha), dout_scale.data<T>());
+  for_range(functor);
   MatmulCooDenseGradKernel<T, Context>(dev_ctx, x, y, dout_scale, dx, dy);
 }
 
@@ -55,22 +83,35 @@ void AddmmCsrDenseGradKernel(const Context& dev_ctx,
                              const SparseCsrTensor& x,
                              const DenseTensor& y,
                              const DenseTensor& dout,
-                             float alpha,
-                             float beta,
+                             double alpha,
+                             double beta,
                              DenseTensor* dinput,
                              SparseCsrTensor* dx,
                              DenseTensor* dy) {
-  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
   if (dinput) {
     dinput->Resize(input.dims());
     dev_ctx.template Alloc<T>(dinput);
 
-    blas.VCOPY(input.numel(), dout.data<T>(), dinput->data<T>());
-    blas.SCAL(input.numel(), beta, dinput->data<T>());
+    memory_utils::Copy(dev_ctx.GetPlace(),
+                       dinput->data<T>(),
+                       dev_ctx.GetPlace(),
+                       dout.data<T>(),
+                       static_cast<size_t>(input.numel()) * sizeof(T),
+                       dev_ctx.stream());
+    funcs::ForRange<Context> for_range(dev_ctx, input.numel());
+    ScaleFunctor<T> functor(static_cast<T>(beta), dinput->data<T>());
+    for_range(functor);
   }
   DenseTensor dout_scale = EmptyLike<T, Context>(dev_ctx, dout);
-  blas.VCOPY(dout.numel(), dout.data<T>(), dout_scale.data<T>());
-  blas.SCAL(dout.numel(), alpha, dout_scale.data<T>());
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     dout_scale.data<T>(),
+                     dev_ctx.GetPlace(),
+                     dout.data<T>(),
+                     static_cast<size_t>(dout.numel()) * sizeof(T),
+                     dev_ctx.stream());
+  funcs::ForRange<Context> for_range(dev_ctx, dout.numel());
+  ScaleFunctor<T> functor(static_cast<T>(alpha), dout_scale.data<T>());
+  for_range(functor);
   MatmulCsrDenseGradKernel<T, Context>(dev_ctx, x, y, dout_scale, dx, dy);
 }
 

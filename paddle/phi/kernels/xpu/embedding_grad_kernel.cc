@@ -42,6 +42,23 @@ void EmbeddingGradKernel(const Context& dev_ctx,
 
   int64_t ids_numel = ids_t->numel();
 
+  T* d_table_data = dev_ctx.template Alloc<T>(d_table_t);
+  int64_t xm = d_table_t->dims()[0];
+  int64_t ym = ids_numel;
+  int64_t n = d_table_t->dims()[1];
+
+  if (xm == 0 || n == 0) {
+    return;
+  }
+  if (ids_numel == 0) {
+    int r = xpu::constant(dev_ctx.x_context(),
+                          reinterpret_cast<XPUType*>(d_table_data),
+                          d_table_t->numel(),
+                          (XPUType)0);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+    return;
+  }
+
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   const int64_t* ids_data;
   if (ids_t->dtype() == DataType::INT64) {
@@ -55,14 +72,6 @@ void EmbeddingGradKernel(const Context& dev_ctx,
   }
 
   const T* d_output_data = d_output_t->data<T>();
-  T* d_table_data = dev_ctx.template Alloc<T>(d_table_t);
-  int64_t xm = d_table_t->dims()[0];
-  int64_t ym = ids_numel;
-  int64_t n = d_table_t->dims()[1];
-
-  if (xm == 0 || ym == 0 || n == 0) {
-    return;
-  }
   int r = xpu::embedding_grad<XPUType, int64_t>(
       dev_ctx.x_context(),
       reinterpret_cast<const XPUType*>(d_output_data),

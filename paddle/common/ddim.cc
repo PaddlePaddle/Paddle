@@ -219,7 +219,7 @@ DDim stride(const DDim& ddim) {
   strides.rank_ = ddim.size();
   if (ddim.size() > 0) strides[ddim.size() - 1] = 1;
   for (int i = ddim.size() - 2; i >= 0; --i) {
-    strides[i] = strides[i + 1] * ddim[i + 1];
+    strides[i] = strides[i + 1] * (ddim[i + 1] == 0 ? 1 : ddim[i + 1]);
   }
   return strides;
 }

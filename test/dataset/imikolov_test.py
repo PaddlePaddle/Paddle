@@ -67,7 +67,7 @@ class TestMikolov(unittest.TestCase):
 
     def test_total(self):
         _, idx = list(zip(*list(WORD_DICT.items())))
-        self.assertEqual(sorted(idx)[-1], len(WORD_DICT) - 1)
+        self.assertEqual(max(idx), len(WORD_DICT) - 1)
 
 
 if __name__ == '__main__':
