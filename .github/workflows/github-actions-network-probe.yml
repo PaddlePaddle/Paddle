@@ -71,6 +71,27 @@ jobs:
           fi
           ls -lh "${RUNNER_TEMP}/blob-probe.bin" actions-network-probe.log
 
+      - name: Start HTTPS socket monitor
+        if: always()
+        run: |
+          set -euo pipefail
+          monitor_log="${RUNNER_TEMP}/blob-socket-monitor.log"
+          nohup bash -c '
+            while true; do
+              date -u "+timestamp=%Y-%m-%dT%H:%M:%SZ"
+              if command -v ss >/dev/null 2>&1; then
+                ss -Htnpo
+              elif command -v netstat >/dev/null 2>&1; then
+                netstat -ant
+              else
+                echo "Neither ss nor netstat is installed."
+                exit 1
+              fi
+              sleep 2
+            done
+          ' > "${monitor_log}" 2>&1 < /dev/null &
+          echo "$!" > "${RUNNER_TEMP}/blob-socket-monitor.pid"
+
       # This performs a real upload through GitHub Results Service and its
       # dynamically assigned Azure Blob endpoint. It is the closest workflow-
       # level probe for the runner's end-of-job log upload path.
@@ -82,9 +103,36 @@ jobs:
           path: |
             actions-network-probe.log
             ${{ runner.temp }}/blob-probe.bin
+            ${{ runner.temp }}/blob-socket-monitor.log
           if-no-files-found: error
           retention-days: 1
           compression-level: 0
+
+      - name: Summarize HTTPS sockets during upload
+        if: always()
+        run: |
+          set -euo pipefail
+          monitor_log="${RUNNER_TEMP}/blob-socket-monitor.log"
+          monitor_pid_file="${RUNNER_TEMP}/blob-socket-monitor.pid"
+          if [[ -s "${monitor_pid_file}" ]]; then
+            monitor_pid="$(< "${monitor_pid_file}")"
+            kill "${monitor_pid}" 2>/dev/null || true
+            wait "${monitor_pid}" 2>/dev/null || true
+          fi
+
+          if [[ ! -s "${monitor_log}" ]]; then
+            echo "::error title=HTTPS socket monitor unavailable::No socket samples were recorded"
+            exit 1
+          fi
+
+          syn_sent="$(awk '$1 == "SYN-SENT" && $5 ~ /:443$/ { count++ } END { print count + 0 }' "${monitor_log}")"
+          established="$(awk '$1 == "ESTAB" && $5 ~ /:443$/ { count++ } END { print count + 0 }' "${monitor_log}")"
+          max_send_q="$(awk '$1 == "ESTAB" && $5 ~ /:443$/ && $3 > max { max=$3 } END { print max + 0 }' "${monitor_log}")"
+          peers="$(awk '$5 ~ /:443$/ { print $5 }' "${monitor_log}" | sort -u | paste -sd, -)"
+          summary="syn_sent_samples=${syn_sent} established_samples=${established} max_send_queue=${max_send_q} peers=${peers:-none}"
+          echo "${summary}"
+          echo "::notice title=HTTPS socket states during Blob upload::${summary}"
+          tail -n 100 "${monitor_log}"
 
       - name: End marker
         if: always()
