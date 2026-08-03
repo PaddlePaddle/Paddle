@@ -51,6 +51,100 @@ jobs:
           chmod +x "${probe_script}"
           echo "PROBE_SCRIPT=${probe_script}" >> "${GITHUB_ENV}"
 
+      # These storage accounts were assigned to failed DCU jobs during this
+      # investigation. Separate steps preserve the failed network layer in the
+      # job timeline even when the job-log Blob itself cannot be uploaded.
+      - name: Blob accounts - DNS
+        if: always()
+        run: |
+          set -euo pipefail
+          for host in \
+            productionresultssa2.blob.core.windows.net \
+            productionresultssa4.blob.core.windows.net \
+            productionresultssa12.blob.core.windows.net; do
+            echo "DNS records for ${host}:"
+            getent ahostsv4 "${host}"
+          done
+
+      - name: Blob sa2 - TCP 443
+        if: always()
+        run: timeout 8 bash -c 'exec 3<>/dev/tcp/productionresultssa2.blob.core.windows.net/443'
+
+      - name: Blob sa4 - TCP 443
+        if: always()
+        run: timeout 8 bash -c 'exec 3<>/dev/tcp/productionresultssa4.blob.core.windows.net/443'
+
+      - name: Blob sa12 - TCP 443
+        if: always()
+        run: timeout 8 bash -c 'exec 3<>/dev/tcp/productionresultssa12.blob.core.windows.net/443'
+
+      - name: Blob sa2 - TLS handshake
+        if: always()
+        run: |
+          timeout 12 openssl s_client \
+            -connect productionresultssa2.blob.core.windows.net:443 \
+            -servername productionresultssa2.blob.core.windows.net \
+            -brief < /dev/null
+
+      - name: Blob sa4 - TLS handshake
+        if: always()
+        run: |
+          timeout 12 openssl s_client \
+            -connect productionresultssa4.blob.core.windows.net:443 \
+            -servername productionresultssa4.blob.core.windows.net \
+            -brief < /dev/null
+
+      - name: Blob sa12 - TLS handshake
+        if: always()
+        run: |
+          timeout 12 openssl s_client \
+            -connect productionresultssa12.blob.core.windows.net:443 \
+            -servername productionresultssa12.blob.core.windows.net \
+            -brief < /dev/null
+
+      - name: Blob sa2 - HTTP response
+        if: always()
+        run: |
+          curl -4 --silent --show-error --output /dev/null \
+            --connect-timeout 5 --max-time 10 \
+            --write-out 'http=%{http_code} remote_ip=%{remote_ip} dns=%{time_namelookup}s connect=%{time_connect}s tls=%{time_appconnect}s total=%{time_total}s\n' \
+            https://productionresultssa2.blob.core.windows.net/
+
+      - name: Blob sa4 - HTTP response
+        if: always()
+        run: |
+          curl -4 --silent --show-error --output /dev/null \
+            --connect-timeout 5 --max-time 10 \
+            --write-out 'http=%{http_code} remote_ip=%{remote_ip} dns=%{time_namelookup}s connect=%{time_connect}s tls=%{time_appconnect}s total=%{time_total}s\n' \
+            https://productionresultssa4.blob.core.windows.net/
+
+      - name: Blob sa12 - HTTP response
+        if: always()
+        run: |
+          curl -4 --silent --show-error --output /dev/null \
+            --connect-timeout 5 --max-time 10 \
+            --write-out 'http=%{http_code} remote_ip=%{remote_ip} dns=%{time_namelookup}s connect=%{time_connect}s tls=%{time_appconnect}s total=%{time_total}s\n' \
+            https://productionresultssa12.blob.core.windows.net/
+
+      - name: Signed job-log Blob - HTTP GET
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          headers="$(mktemp)"
+          api_url="https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/jobs/91620902034/logs"
+          curl --silent --show-error --output /dev/null --dump-header "${headers}" \
+            --connect-timeout 5 --max-time 15 \
+            -H 'Accept: application/vnd.github+json' \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "${api_url}"
+          location="$(awk 'BEGIN { IGNORECASE=1 } /^location:/ { sub(/^[^:]*:[[:space:]]*/, ""); sub(/\r$/, ""); print }' "${headers}" | tail -n 1)"
+          [[ -n "${location}" ]]
+          curl -4 --fail --head --silent --show-error --output /dev/null \
+            --connect-timeout 5 --max-time 15 "${location}"
+
       - name: Probe GitHub Actions endpoints and an existing log Blob
         if: always()
         env:
