@@ -17,10 +17,7 @@ import sys
 import unittest
 
 import paddle
-from paddle.compat.proxy import (
-    ProxyModule,
-    _get_compat_level,
-)
+from paddle.compat.proxy import ProxyModule
 
 sys.path.append(str(pathlib.Path(__file__).parent / "fake_modules"))
 sys.path.append(str(pathlib.Path(__file__).parent / "fake_torch_modules"))
@@ -63,21 +60,37 @@ class TestTorchProxyMixRealTorch(unittest.TestCase):
         self.check_is_not_proxy()
 
     def test_level2_does_not_proxy_torch(self):
+        import torch
+        from torch.nn.functional import relu
+
+        original_torch = torch
+        original_relu = relu
         self.check_is_not_proxy()
-        with paddle.use_compat_guard(level=2):
-            self.assertEqual(_get_compat_level(), 2)
+        paddle.enable_compat(level=2)
+        try:
             self.check_is_not_proxy()
+            import torch
+            from torch.nn.functional import relu
+
+            self.assertIs(torch, original_torch)
+            self.assertIs(relu, original_relu)
+        finally:
+            paddle.disable_compat()
         self.check_is_not_proxy()
 
-    def test_level2_restores_real_torch_inside_proxy_guard(self):
-        self.check_is_not_proxy()
-        with paddle.use_compat_guard(level=1):
-            self.check_is_proxy()
-            with paddle.use_compat_guard(level=2):
-                self.assertEqual(_get_compat_level(), 2)
-                self.check_is_not_proxy()
-            self.check_is_proxy()
-        self.check_is_not_proxy()
+    def test_disabled_guard_keeps_compat_disabled(self):
+        with paddle.use_compat_guard(
+            enable=False,
+            scope={"torch_proxy_local_enabled_module"},
+        ):
+            self.assertNotIn(
+                paddle.compat.proxy.TORCH_PROXY_FINDER,
+                sys.meta_path,
+            )
+        self.assertNotIn(
+            paddle.compat.proxy.TORCH_PROXY_FINDER,
+            sys.meta_path,
+        )
 
     def test_local_enabled_module_import(self):
         self.check_is_not_proxy()

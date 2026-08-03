@@ -32,8 +32,11 @@ sys.path.append(str(pathlib.Path(__file__).parent / "fake_modules"))
 
 @contextmanager
 def level2_guard():
-    with paddle.use_compat_guard(level=2):
+    paddle.enable_compat(level=2)
+    try:
         yield
+    finally:
+        paddle.disable_compat()
 
 
 def with_level2(func):
@@ -114,16 +117,6 @@ class CompatNamespaceAliasBase(unittest.TestCase):
         )
         self.assertIs(target, compat_attr)
 
-    def assertCompatLevel(self, level):
-        self.assertEqual(
-            TORCH_PROXY_FINDER in sys.meta_path,
-            level in {1, 3},
-        )
-        self.assertEqual(
-            bool(_PADDLE_NAMESPACE_SAVED),
-            level in {2, 3},
-        )
-
 
 class TestTopLevelAlias(CompatNamespaceAliasBase):
     def test_public_level_parameter_is_minimal(self):
@@ -135,20 +128,13 @@ class TestTopLevelAlias(CompatNamespaceAliasBase):
             inspect.signature(paddle.enable_compat).parameters["level"].default,
             1,
         )
-        self.assertIsNone(
-            inspect.signature(paddle.use_compat_guard)
-            .parameters["level"]
-            .default
+        self.assertNotIn(
+            "level", inspect.signature(paddle.use_compat_guard).parameters
         )
 
     def test_invalid_level_has_no_side_effect(self):
         with self.assertRaisesRegex(ValueError, "Unsupported level: 4"):
             paddle.enable_compat(level=4)
-        with (
-            self.assertRaisesRegex(ValueError, "Unsupported level: 4"),
-            paddle.use_compat_guard(level=4),
-        ):
-            pass
         self.assertNotIn(TORCH_PROXY_FINDER, sys.meta_path)
         self.assertNativeRestored()
 
@@ -495,120 +481,17 @@ class TestScopeAndLifecycle(CompatNamespaceAliasBase):
             paddle.disable_compat()
         self.assertNativeRestored()
 
-    def test_disabled_guard_contains_body_level2_enable(self):
-        native_softmax = paddle.nn.Softmax
-        x = paddle.to_tensor([[1.0, 2.0, 3.0]])
-
-        with paddle.use_compat_guard(enable=False):
-
-            class NativeSoftmaxSubclass(paddle.nn.Softmax):
-                pass
-
-            self.assertIs(NativeSoftmaxSubclass.__mro__[1], native_softmax)
-            paddle.enable_compat(level=2)
-            self.assertCompatLevel(2)
-            self.assertEqual(
-                NativeSoftmaxSubclass(axis=-1)(x).shape,
-                x.shape,
-            )
-            with self.assertRaises(TypeError):
-                paddle.nn.Softmax(axis=-1)
-            self.assertEqual(paddle.nn.Softmax(dim=-1)(x).shape, x.shape)
-
-        self.assertCompatLevel(None)
-        self.assertIs(paddle.nn.Softmax, native_softmax)
-        self.assertNativeRestored()
-
-    def test_guard_levels_restore_disabled_state(self):
-        for level in (1, 2, 3):
-            with self.subTest(level=level):
-                with paddle.use_compat_guard(level=level):
-                    self.assertCompatLevel(level)
-                self.assertCompatLevel(None)
-                self.assertNativeRestored()
-
-    def test_nested_guard_restores_each_outer_level(self):
-        for outer_level, inner_level in ((1, 2), (2, 3), (3, 1)):
-            with self.subTest(
-                outer_level=outer_level,
-                inner_level=inner_level,
-            ):
-                with paddle.use_compat_guard(level=outer_level):
-                    self.assertCompatLevel(outer_level)
-                    with paddle.use_compat_guard(level=inner_level):
-                        self.assertCompatLevel(inner_level)
-                    self.assertCompatLevel(outer_level)
-                    with paddle.use_compat_guard(enable=False):
-                        self.assertCompatLevel(None)
-                    self.assertCompatLevel(outer_level)
-                self.assertCompatLevel(None)
-                self.assertNativeRestored()
-
-    def test_same_level_guard_restores_body_changes(self):
-        paddle.enable_compat(level=2)
+    def test_disabled_guard_restores_level3_aliases(self):
+        paddle.enable_compat(level=3)
         try:
-            with paddle.use_compat_guard(level=2):
-                paddle.disable_compat()
-                self.assertCompatLevel(None)
-            self.assertCompatLevel(2)
+            with paddle.use_compat_guard(enable=False):
+                self.assertNotIn(TORCH_PROXY_FINDER, sys.meta_path)
+                self.assertIs(paddle.sort, self._native[(paddle, "sort")])
+
+            self.assertIn(TORCH_PROXY_FINDER, sys.meta_path)
+            self.assertAliased(paddle.sort, paddle.compat.sort)
         finally:
             paddle.disable_compat()
-        self.assertNativeRestored()
-
-    def test_guard_restores_after_exception(self):
-        with (
-            self.assertRaisesRegex(RuntimeError, "expected"),
-            paddle.use_compat_guard(level=2),
-        ):
-            self.assertCompatLevel(2)
-            raise RuntimeError("expected")
-        self.assertCompatLevel(None)
-        self.assertNativeRestored()
-
-    def test_guard_restores_repeated_proxy_and_scope(self):
-        scope = {"torch_proxy_local_enabled_module"}
-        paddle.enable_compat(scope=scope)
-        paddle.enable_compat(scope=scope, silent=True)
-        self.assertEqual(sys.meta_path.count(TORCH_PROXY_FINDER), 2)
-        try:
-            with paddle.use_compat_guard(level=2):
-                self.assertCompatLevel(2)
-            self.assertCompatLevel(1)
-            self.assertEqual(sys.meta_path.count(TORCH_PROXY_FINDER), 2)
-            self.assertFalse(TORCH_PROXY_FINDER._globally_enabled)
-            self.assertEqual(TORCH_PROXY_FINDER._local_enabled_scope, scope)
-        finally:
-            paddle.disable_compat()
-            paddle.disable_compat()
-        self.assertNativeRestored()
-
-    def test_nested_guard_extends_local_scope(self):
-        outer_scope = {"outer_local_module"}
-        inner_scope = {"inner_local_module"}
-        with paddle.use_compat_guard(level=1, scope=outer_scope):
-            self.assertFalse(TORCH_PROXY_FINDER._globally_enabled)
-            self.assertEqual(
-                TORCH_PROXY_FINDER._local_enabled_scope,
-                outer_scope,
-            )
-            with paddle.use_compat_guard(scope=inner_scope):
-                self.assertFalse(TORCH_PROXY_FINDER._globally_enabled)
-                self.assertEqual(
-                    TORCH_PROXY_FINDER._local_enabled_scope,
-                    outer_scope | inner_scope,
-                )
-            self.assertEqual(
-                TORCH_PROXY_FINDER._local_enabled_scope,
-                outer_scope,
-            )
-        self.assertCompatLevel(None)
-        self.assertNativeRestored()
-
-    def test_guard_contains_repeated_level2_enable(self):
-        with paddle.use_compat_guard(level=2):
-            paddle.enable_compat(level=2)
-            self.assertCompatLevel(2)
-        self.assertCompatLevel(None)
         self.assertNativeRestored()
 
 
