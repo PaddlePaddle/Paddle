@@ -23,6 +23,7 @@
 #include "paddle/common/flags.h"
 #include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/core/memory/allocation/memory_history_recorder.h"
 #include "paddle/phi/core/memory/allocation/retry_allocator.h"
 #include "paddle/phi/core/memory/allocation/stat_allocator.h"
 #include "paddle/phi/core/memory/allocation/vmm_allocator_v2_types.h"
@@ -612,6 +613,17 @@ void StreamSafeCUDAAllocator::FreeImpl(phi::Allocation* allocation) {
                           9 /*level*/);
   StreamSafeCUDAAllocation* stream_safe_cuda_allocation =
       static_cast<StreamSafeCUDAAllocation*>(allocation);
+
+  if (memory::MemHistoryEnabled()) {
+    memory::RecordMemHistory(
+        memory::MemHistoryAction::kFreeRequested,
+        allocation->place().GetDeviceId(),
+        reinterpret_cast<uintptr_t>(allocation->ptr()),
+        allocation->size(),
+        0,
+        reinterpret_cast<uint64_t>(
+            stream_safe_cuda_allocation->GetOwningStream()));
+  }
 
   VLOG(8) << "Try free allocation " << stream_safe_cuda_allocation->ptr();
   if (stream_safe_cuda_allocation->CanBeFreed()) {

@@ -228,6 +228,7 @@ limitations under the License. */
 #include "paddle/fluid/prim/utils/static/static_tensor_operants.h"
 #include "paddle/fluid/primitive/base/decomp_trans.h"
 #include "paddle/fluid/pybind/eager_utils.h"
+#include "paddle/fluid/pybind/mem_py_stack.h"
 #include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/api/include/operants_manager.h"
@@ -3846,6 +3847,135 @@ All parameter, weight, gradient are variables in Paddle.
   });
   m.def("get_compact_size", [](int device_id) {
     return paddle::memory::GetCompactSize(GPUPlace(device_id));
+  });
+  m.def(
+      "gpu_record_memory_history",
+      [](bool enabled,
+         size_t max_entries,
+         bool capture_stacks,
+         size_t stacks_min_size) {
+        // Reconfigure the pybind-layer Python-stack capture. Clearing the
+        // interned store on both enable and disable keeps code-object refcounts
+        // balanced and avoids stale stacks leaking across sessions. Must run
+        // with the GIL held (Py_DECREF inside ClearMemPyStacks); pybind holds
+        // it here.
+        paddle::pybind::ClearMemPyStacks();
+        paddle::memory::SetMemStackMinSize(stacks_min_size);
+        paddle::pybind::SetMemPyStackCaptureEnabled(enabled && capture_stacks);
+        paddle::memory::MemoryHistoryRecorder::Instance().SetEnabled(
+            enabled, max_entries);
+      },
+      py::arg("enabled"),
+      py::arg("max_entries"),
+      py::arg("capture_stacks") = false,
+      py::arg("stacks_min_size") = 0);
+  m.def("gpu_annotate_memory_history", [](const std::string &msg) {
+    paddle::memory::MemoryHistoryRecorder::Instance().Annotate(msg);
+  });
+  m.def("gpu_memory_snapshot", []() -> py::dict {
+    auto action_to_str =
+        [](paddle::memory::MemHistoryAction a) -> const char * {
+      switch (a) {
+        case paddle::memory::MemHistoryAction::kAlloc:
+          return "alloc";
+        case paddle::memory::MemHistoryAction::kFreeRequested:
+          return "free_requested";
+        case paddle::memory::MemHistoryAction::kFreeCompleted:
+          return "free_completed";
+        case paddle::memory::MemHistoryAction::kSegmentAlloc:
+          return "segment_alloc";
+        case paddle::memory::MemHistoryAction::kSegmentFree:
+          return "segment_free";
+        case paddle::memory::MemHistoryAction::kSegmentMap:
+          return "segment_map";
+        case paddle::memory::MemHistoryAction::kSegmentUnmap:
+          return "segment_unmap";
+        case paddle::memory::MemHistoryAction::kOom:
+          return "oom";
+        case paddle::memory::MemHistoryAction::kSnapshot:
+          return "snapshot";
+        case paddle::memory::MemHistoryAction::kAnnotation:
+          return "annotation";
+      }
+      return "unknown";
+    };
+    int device_count = phi::backends::gpu::GetGPUDeviceCount();
+    py::list segments;
+    py::list device_traces;
+    for (int dev = 0; dev < device_count; ++dev) {
+      // Segments: reuse existing block layout. One inner block group is
+      // treated as one memory_viz segment.
+      auto groups = paddle::memory::AllBlockInfoOfAllocator(GPUPlace(dev));
+      for (auto &group : groups) {
+        if (group.empty()) continue;
+        size_t total_size = 0;
+        size_t allocated_size = 0;
+        py::list blocks;
+        uintptr_t seg_addr = std::get<1>(group.front());
+        for (auto &blk : group) {
+          size_t bsize = std::get<0>(blk);
+          uintptr_t baddr = std::get<1>(blk);
+          bool is_free = std::get<2>(blk);
+          total_size += bsize;
+          if (!is_free) allocated_size += bsize;
+          py::dict block;
+          block["address"] = baddr;
+          block["size"] = bsize;
+          block["requested_size"] = bsize;
+          block["state"] = is_free ? "inactive" : "active_allocated";
+          block["frames"] = py::list();
+          blocks.append(block);
+        }
+        py::dict seg;
+        seg["device"] = dev;
+        seg["address"] = seg_addr;
+        seg["total_size"] = total_size;
+        seg["allocated_size"] = allocated_size;
+        seg["active_size"] = allocated_size;
+        seg["requested_size"] = total_size;
+        seg["stream"] = 0;
+        seg["segment_type"] = "large";
+        seg["is_expandable"] = true;
+        seg["blocks"] = blocks;
+        seg["frames"] = py::list();
+        segments.append(seg);
+      }
+      // Device traces: unified event timeline for this device.
+      py::list traces;
+      auto entries = paddle::memory::GpuMemoryHistoryTrace(GPUPlace(dev));
+      for (auto &e : entries) {
+        py::dict te;
+        te["action"] = action_to_str(e.action);
+        te["addr"] = e.addr;
+        te["size"] = e.size;
+        te["stream"] = e.stream;
+        te["time_us"] = e.time_us;
+        // Keep op_name as an independent field so viz can still group by op
+        // even when a full Python stack is present.
+        te["op_name"] = e.op_name;
+        if (e.stack_id != 0) {
+          // Full Python dispatch stack (innermost first). Runs under the GIL in
+          // this pybind call, so touching Python objects is safe.
+          te["frames"] = paddle::pybind::ResolveStack(e.stack_id);
+        } else if (e.op_name.empty()) {
+          te["frames"] = py::list();
+        } else {
+          py::list frames;
+          py::dict fr;
+          fr["filename"] = "";
+          fr["name"] = e.op_name;
+          fr["line"] = 0;
+          frames.append(fr);
+          te["frames"] = frames;
+        }
+        traces.append(te);
+      }
+      device_traces.append(traces);
+    }
+    py::dict result;
+    result["segments"] = segments;
+    result["device_traces"] = device_traces;
+    return result;
   });
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE

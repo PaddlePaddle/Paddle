@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from typing import TYPE_CHECKING, NoReturn, TypeAlias
 
 import paddle
@@ -522,6 +523,94 @@ def memory_reserved(device: _CudaPlaceLike | None = None) -> int:
         )
     device_id = extract_cuda_device_id(device, op_name=name)
     return core.device_memory_stat_current_value("Reserved", device_id)
+
+
+def _record_memory_history(
+    enabled="all",
+    context="all",
+    stacks="all",
+    max_entries=sys.maxsize,
+    device=None,
+    stacks_min_size=0,
+):
+    '''
+    Enable/disable recording of the GPU memory allocation history, producing a
+    timeline of ALLOC / FREE_REQUESTED / FREE_COMPLETED events that can be
+    captured with :func:`_snapshot` and rendered by the PyTorch memory_viz tool
+    (https://pytorch.org/memory_viz).
+
+    The signature mirrors ``torch.cuda.memory._record_memory_history`` for
+    compatibility.
+
+    Args:
+        enabled: Truthy to start recording, falsy (``None``/``False``) to stop.
+        context: Ignored (reserved for stack-capture granularity).
+        stacks: ``"python"`` or ``"all"`` captures the Python call stack of the
+            op that triggered each allocation (innermost frame first); any other
+            value disables stack capture. Requires the VMM allocator
+            (``FLAGS_use_virtual_memory_auto_growth=1``) for events to be
+            recorded at all. Captured only on the forward/op-dispatch path;
+            backward allocations fall back to the op label (``op_name``).
+        max_entries: Maximum number of events retained per device (ring buffer).
+        device: Ignored (recording is global across devices).
+        stacks_min_size: Only capture a Python stack for allocations of at least
+            this many bytes (default ``0`` == capture for all sizes). Smaller
+            allocations get an empty ``frames`` list / ``stack_id == 0``.
+    '''
+    if core.is_compiled_with_cuda():
+        capture_stacks = bool(enabled) and str(stacks) in ("python", "all")
+        core.gpu_record_memory_history(
+            bool(enabled),
+            int(min(max_entries, 2**31)),
+            capture_stacks,
+            int(stacks_min_size),
+        )
+
+
+def _annotate_memory_history(message):
+    '''
+    Insert a named time-marker into the GPU memory history (a zero-size event
+    recorded on every active device ring at the current time). Use it to mark
+    phase boundaries such as ``"step 3 backward begin"`` or ``"recompute replay
+    layer12"``; the marker shows up as a labeled vertical line on the memory
+    timeline rendered by ``tools/paddle_mem_viz.py``. No-op if recording is not
+    currently enabled (see :func:`_record_memory_history`).
+
+    Args:
+        message: A short string describing the marker.
+    '''
+    if core.is_compiled_with_cuda():
+        core.gpu_annotate_memory_history(str(message))
+
+
+def _snapshot(device=None):
+    '''
+    Return a snapshot of the current GPU memory state as a dict compatible with
+    the PyTorch memory_viz schema:
+    ``{"segments": [...], "device_traces": [[...], ...]}``.
+
+    Args:
+        device: Ignored (the snapshot covers all devices).
+    '''
+    if core.is_compiled_with_cuda():
+        return core.gpu_memory_snapshot()
+    return {"segments": [], "device_traces": []}
+
+
+def _dump_snapshot(filename="paddle_memory_snapshot.pickle", device=None):
+    '''
+    Pickle the result of :func:`_snapshot` to ``filename``. The resulting file
+    can be opened directly with the PyTorch memory_viz tool
+    (https://pytorch.org/memory_viz).
+
+    Args:
+        filename: Output path for the pickle file.
+        device: Ignored (the snapshot covers all devices).
+    '''
+    import pickle
+
+    with open(filename, "wb") as f:
+        pickle.dump(_snapshot(device), f)
 
 
 def _set_current_stream(stream: Stream) -> core.CUDAStream:
