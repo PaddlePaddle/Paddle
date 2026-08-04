@@ -59,17 +59,16 @@ class Conv2dEpilogueFusion(abstract_drr.DrrPass):
         )
 
     def constraint(self, o, t):
-        return True
-        # program = ir_tools.copy_fused_ops_to_program(
-        #     o.trivial_op, tensor_match_ctx=t
-        # )
-        # program = epilogue_access_topo_simplify.simplify_epilogue_program(
-        #     program,
-        #     anchor_data_op_name="conv2d_out",
-        #     number_of_inputs=self.number_of_inputs(),
-        #     number_of_outputs=self.number_of_outputs(),
-        # )
-        # return program.empty()
+        program = ir_tools.copy_fused_ops_to_program(
+            o.trivial_op, tensor_match_ctx=t
+        )
+        program = epilogue_access_topo_simplify.simplify_epilogue_program(
+            program,
+            anchor_data_op_name="conv2d_out",
+            number_of_inputs=self.number_of_inputs(),
+            number_of_outputs=self.number_of_outputs(),
+        )
+        return program.empty()
 
     def _insert_load_from_global(self, program, input_names):
         init_pass_manager = ir_tools.create_pass_manager()

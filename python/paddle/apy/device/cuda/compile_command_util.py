@@ -20,21 +20,19 @@ class CompileCommandGenerator:
         self.file_ext = "cu"
         self.op_type2generate_func = ap.OrderedDict(
             [
-                ['matmul', self.generate_matmul_compile_command],
-                ['conv2d', self.generate_matmul_compile_command],
+                ['matmul', self.generate_compile_command_with_cutlass],
+                ['conv2d', self.generate_compile_command_with_cutlass],
             ]
         )
 
-    def __call__(self, op_type, tpl_dirname, library_name):
-        return self.op_type2generate_func[op_type](tpl_dirname, library_name)
+    def __call__(self, op_type, source_dir, library_name):
+        return self.op_type2generate_func[op_type](source_dir, library_name)
 
-    def generate_matmul_compile_command(self, tpl_dirname, library_name):
-        matmul_source_dir = f"{tpl_dirname}/matmul"
-
+    def generate_compile_command_with_cutlass(self, source_dir, library_name):
         compile_cmd = "nvcc -std=c++20 -O3 -Xcompiler=-fPIC -arch=sm_80 --expt-relaxed-constexpr"
         compile_cmd = compile_cmd + " -I ${AP_CUTLASS_DIR}/include"
         compile_cmd = compile_cmd + " -I ${AP_CUTLASS_DIR}/tools/util/include"
-        compile_cmd = compile_cmd + " -I " + matmul_source_dir
+        compile_cmd = compile_cmd + " -I " + source_dir
         compile_cmd = (
             compile_cmd
             + " -DCUTLASS_ENABLE_TENSOR_CORE_MMA=1 -DCUTLASS_DEBUG_TRACE_LEVEL=0"
