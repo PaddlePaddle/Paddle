@@ -58,11 +58,13 @@ inline int64_t CeilLog2(int64_t x) {
   return bits;
 }
 
-// Byte width of Vectorized<T>. sum_stub is registered with REGISTER_DISPATCH,
-// which maps the AVX512 slot to nullptr (pytorch aten/src/ATen/native/
-// DispatchStub.h), so the sum kernel always runs its AVX2 / default build and
-// both use 32 byte vectors.
+// Byte width of Torch's Vectorized<T> for the CPU sum kernel. Keep 32 bytes
+// by default; use 16 bytes only for the confirmed AArch64 NEON target.
+#if defined(__aarch64__) && !defined(CPU_CAPABILITY_SVE256)
+constexpr int64_t kVecBytes = 16;
+#else
 constexpr int64_t kVecBytes = 32;
+#endif
 
 // at::acc_type<T, /*is_cuda=*/true>: reduced floating point accumulates in
 // float, everything else accumulates in its own type.
