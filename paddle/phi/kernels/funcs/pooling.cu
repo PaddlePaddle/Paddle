@@ -2565,7 +2565,10 @@ __global__ void KernelMaxPool3DWithIdx(
   const T1* input_data_cur;
 
   w_offset = static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
-  for (IndexT by = blockIdx.y; by < output_height; by += gridDim.y) {
+  // `by` is block index covering blockDim.y rows
+  const IndexT threads_y = static_cast<IndexT>(blockDim.y);
+  const IndexT h_blocks = (output_height + threads_y - 1) / threads_y;
+  for (IndexT by = blockIdx.y; by < h_blocks; by += gridDim.y) {
     h_offset = by * blockDim.y + threadIdx.y;
 
     IndexT start_index =
@@ -2676,7 +2679,10 @@ __global__ void KernelMaxPool3DWithIdxGrad(
   IndexT w_offset, h_offset, d_offset, nc_offset;
 
   w_offset = static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
-  for (IndexT by = blockIdx.y; by < output_height; by += gridDim.y) {
+  // Same as in KernelMaxPool3DWithIdx: `by` is block index
+  const IndexT threads_y = static_cast<IndexT>(blockDim.y);
+  const IndexT h_blocks = (output_height + threads_y - 1) / threads_y;
+  for (IndexT by = blockIdx.y; by < h_blocks; by += gridDim.y) {
     h_offset = by * blockDim.y + threadIdx.y;
 
     IndexT start_index =
