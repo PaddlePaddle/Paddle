@@ -525,8 +525,8 @@ __global__ void KernelMaxPool2DGradCompatible(
       for (IndexT c = blockIdx.z; c < channels; c += gridDim.z) {
         MT gradient = static_cast<MT>(0.0f);
         IndexT offset = (n * channels + c) * output_height * output_width;
-        for (int ph = phstart; ph < phend; ++ph) {
-          for (int pw = pwstart; pw < pwend; ++pw) {
+        for (IndexT ph = phstart; ph < phend; ++ph) {
+          for (IndexT pw = pwstart; pw < pwend; ++pw) {
             T output_data_value = output_data[ph * output_width + pw + offset];
             if (output_data_value == input_data_value) {
               gradient +=
@@ -698,7 +698,12 @@ class Pool2dFunctor<GPUContext, PoolProcess, T> {
                          static_cast<int64_t>(1)),
                 std::min(batch_size, static_cast<int64_t>(max_grid_dim[1])),
                 1);
-      if (input.numel() <= std::numeric_limits<int>::max()) {
+      if (input.numel() <= std::numeric_limits<int>::max() &&
+          output->numel() <= std::numeric_limits<int>::max() &&
+          static_cast<int64_t>(input_height) * output_height <=
+              std::numeric_limits<int>::max() &&
+          static_cast<int64_t>(input_width) * output_width <=
+              std::numeric_limits<int>::max()) {
         auto pool_divmods = FastDivModForPooling<int>(
             input_channels, output_width, output_height);
         AdaptiveKernelPool2D<PoolProcess, T, int>
@@ -753,7 +758,8 @@ class Pool2dFunctor<GPUContext, PoolProcess, T> {
       int64_t blocks = (nthreads + thread_num - 1) / thread_num;
       dim3 threads(thread_num, 1);
       dim3 grid(blocks, 1);
-      if (input.numel() <= std::numeric_limits<int>::max()) {
+      if (input.numel() <= std::numeric_limits<int>::max() &&
+          nthreads <= std::numeric_limits<int>::max() / 2) {
         auto pool_divmods = FastDivModForPooling<int>(
             input_channels, output_width, output_height);
         KernelPool2D<PoolProcess, T, int>
@@ -857,7 +863,12 @@ class Pool2dGradFunctor<GPUContext, PoolProcess, T> {
     int64_t nthreads = batch_size * input_channels * input_height * input_width;
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, nthreads);
     if (input.numel() <= std::numeric_limits<int>::max() &&
-        output.numel() <= std::numeric_limits<int>::max()) {
+        output.numel() <= std::numeric_limits<int>::max() &&
+        nthreads <= std::numeric_limits<int>::max() / 2 &&
+        (!adaptive || (static_cast<int64_t>(input_height) * output_height <=
+                           std::numeric_limits<int>::max() &&
+                       static_cast<int64_t>(input_width) * output_width <=
+                           std::numeric_limits<int>::max()))) {
       auto pool_divmods = FastDivModForPoolingWithMoreStaff<int>(input_channels,
                                                                  input_width,
                                                                  input_height,
@@ -984,6 +995,8 @@ class MaxPool2dGradFunctor<GPUContext, T> {
     dim3 threads(kBlockThreads, 1);
 
     if (input.numel() <= std::numeric_limits<int>::max() &&
+        (FLAGS_use_accuracy_compatible_kernel ||
+         nthreads <= std::numeric_limits<int>::max() / 2) &&
         output.numel() <= std::numeric_limits<int>::max()) {
       auto pool_divmods = FastDivModForPooling<int>(
           input_channels, output_width, output_height);
@@ -2291,7 +2304,12 @@ class MaxPool2dWithIndexFunctor<GPUContext, T1, T2> {
                          static_cast<int64_t>(1)),
                 std::min(batch_size, static_cast<int64_t>(max_grid_dim[1])),
                 1);
-      if (input.numel() <= std::numeric_limits<int>::max()) {
+      if (input.numel() <= std::numeric_limits<int>::max() &&
+          output->numel() <= std::numeric_limits<int>::max() &&
+          static_cast<int64_t>(input_height) * output_height <=
+              std::numeric_limits<int>::max() &&
+          static_cast<int64_t>(input_width) * output_width <=
+              std::numeric_limits<int>::max()) {
         auto pool_divmods = FastDivModForPooling<int>(
             input_channels, output_width, output_height);
         AdaptiveKernelMaxPool2dWithIdx<T1, T2, int>
@@ -2342,7 +2360,13 @@ class MaxPool2dWithIndexFunctor<GPUContext, T1, T2> {
       int64_t blocks = (nthreads + thread_num - 1) / thread_num;
       dim3 threads(thread_num, 1);
       dim3 grid(blocks, 1);
-      if (input.numel() <= std::numeric_limits<int>::max()) {
+      if (nthreads <= std::numeric_limits<int>::max() / 2 &&
+          input.numel() <= std::numeric_limits<int>::max() &&
+          output->numel() <= std::numeric_limits<int>::max() &&
+          (!adaptive || (static_cast<int64_t>(input_height) * output_height <=
+                             std::numeric_limits<int>::max() &&
+                         static_cast<int64_t>(input_width) * output_width <=
+                             std::numeric_limits<int>::max()))) {
         auto pool_divmods = FastDivModForPooling<int>(
             input_channels, output_width, output_height);
         KernelMaxPool2dWithIdx<T1, T2, int>
@@ -2445,8 +2469,12 @@ class MaxPool2dWithIndexGradFunctor<GPUContext, T1, T2> {
     int64_t blocks = (nthreads + 1024 - 1) / 1024;
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
-
-    if (nthreads <= std::numeric_limits<int>::max()) {
+    if (nthreads <= std::numeric_limits<int>::max() / 2 &&
+        output_grad.numel() <= std::numeric_limits<int>::max() &&
+        (!adaptive || (static_cast<int64_t>(input_height) * output_height <=
+                           std::numeric_limits<int>::max() &&
+                       static_cast<int64_t>(input_width) * output_width <=
+                           std::numeric_limits<int>::max()))) {
       auto pool_divmods =
           FastDivModForPooling<int>(input_channels, input_width, input_height);
       KernelMaxPool2DWithIdxGrad<T1, T2, int>
