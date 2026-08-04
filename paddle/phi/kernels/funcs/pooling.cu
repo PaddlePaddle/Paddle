@@ -1612,7 +1612,15 @@ class Pool3dFunctor<GPUContext, PoolProcess, T> {
     int64_t nthreads = batch_size * output_channels * output_depth *
                        output_height * output_width;
 
-    if (input.numel() <= std::numeric_limits<int>::max()) {
+    if (input.numel() <= std::numeric_limits<int>::max() &&
+        output->numel() <= std::numeric_limits<int>::max() &&
+        nthreads <= std::numeric_limits<int>::max() / 2 &&
+        (!adaptive || (static_cast<int64_t>(input_depth) * output_depth <=
+                           std::numeric_limits<int>::max() &&
+                       static_cast<int64_t>(input_height) * output_height <=
+                           std::numeric_limits<int>::max() &&
+                       static_cast<int64_t>(input_width) * output_width <=
+                           std::numeric_limits<int>::max()))) {
       int thread_num = 1024;
 #ifdef WITH_NV_JETSON
       backends::gpu::ChangeThreadNum(dev_ctx, &thread_num);
@@ -1745,7 +1753,14 @@ class Pool3dGradFunctor<GPUContext, PoolProcess, T> {
         batch_size * input_channels * input_depth * input_height * input_width;
 
     if (input.numel() <= std::numeric_limits<int>::max() &&
-        output.numel() <= std::numeric_limits<int>::max()) {
+        output.numel() <= std::numeric_limits<int>::max() &&
+        nthreads <= std::numeric_limits<int>::max() / 2 &&
+        (!adaptive || (static_cast<int64_t>(input_depth) * output_depth <=
+                           std::numeric_limits<int>::max() &&
+                       static_cast<int64_t>(input_height) * output_height <=
+                           std::numeric_limits<int>::max() &&
+                       static_cast<int64_t>(input_width) * output_width <=
+                           std::numeric_limits<int>::max()))) {
       int thread_num = 1024;
       int64_t blocks = (nthreads + thread_num - 1) / thread_num;
       dim3 threads(thread_num, 1);
@@ -1877,6 +1892,7 @@ class MaxPool3dGradFunctor<GPUContext, T> {
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
     if (input.numel() <= std::numeric_limits<int>::max() &&
+        nthreads <= std::numeric_limits<int>::max() / 2 &&
         output.numel() <= std::numeric_limits<int>::max()) {
       KernelMaxPool3DGrad<T, int><<<grid, threads, 0, dev_ctx.stream()>>>(
           nthreads,
@@ -2735,7 +2751,15 @@ class MaxPool3dWithIndexFunctor<GPUContext, T1, T2> {
                           : (ncd + threads.z - 1) / threads.z;
     dim3 grid(block_x, block_y, block_z);
 
-    if (input.numel() <= std::numeric_limits<int>::max()) {
+    if (input.numel() <= std::numeric_limits<int>::max() &&
+        output->numel() <= std::numeric_limits<int>::max() &&
+        ncd + block_z * thread_z <= std::numeric_limits<int>::max() &&
+        (!adaptive || (static_cast<int64_t>(input_depth) * output_depth <=
+                           std::numeric_limits<int>::max() &&
+                       static_cast<int64_t>(input_height) * output_height <=
+                           std::numeric_limits<int>::max() &&
+                       static_cast<int64_t>(input_width) * output_width <=
+                           std::numeric_limits<int>::max()))) {
       auto pool_divmods_output = FastDivModForPooling3D<int>(
           input_channels, output_width, output_height, output_depth);
       KernelMaxPool3DWithIdx<T1, T2, int>
@@ -2836,7 +2860,8 @@ class MaxPool3dWithIndexGradFunctor<GPUContext, T1, T2> {
     const T2* mask_data = mask.data<T2>();
     T1* input_grad_data = dev_ctx.template Alloc<T1>(input_grad);
 
-    int64_t ncd = batch_size * input_channels * output_depth;
+    int64_t ncd =
+        static_cast<int64_t>(batch_size) * input_channels * output_depth;
 
     int64_t thread_x = 32;
     int64_t thread_y = 8;
@@ -2852,7 +2877,9 @@ class MaxPool3dWithIndexGradFunctor<GPUContext, T1, T2> {
                           : (ncd + threads.z - 1) / threads.z;
     dim3 grid(block_x, block_y, block_z);
 
-    if (input_grad->numel() <= std::numeric_limits<int>::max()) {
+    if (input_grad->numel() <= std::numeric_limits<int>::max() &&
+        ncd + block_z * thread_z <= std::numeric_limits<int>::max() &&
+        output_grad.numel() <= std::numeric_limits<int>::max()) {
       auto pool_divmods_output = FastDivModForPooling3D<int>(
           input_channels, output_width, output_height, output_depth);
       KernelMaxPool3DWithIdxGrad<T1, T2, int>
