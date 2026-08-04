@@ -14,6 +14,8 @@
 
 #include "paddle/phi/core/memory/allocation/memory_history_recorder.h"
 
+#include <mutex>
+
 #include "paddle/phi/core/os_info.h"
 
 namespace paddle {
@@ -46,7 +48,7 @@ MemoryHistoryRecorder::DeviceRing& MemoryHistoryRecorder::EnsureDevice(
 void MemoryHistoryRecorder::SetEnabled(bool enabled, size_t max_entries) {
   {
     std::lock_guard<SpinLock> lock(rings_lock_);
-    capacity_ = max_entries;
+    capacity_.store(max_entries, std::memory_order_relaxed);
     for (auto& ring : rings_) {
       if (ring == nullptr) continue;
       std::lock_guard<SpinLock> ring_lock(ring->lock);
@@ -60,8 +62,8 @@ void MemoryHistoryRecorder::SetEnabled(bool enabled, size_t max_entries) {
 
 void MemoryHistoryRecorder::Record(const MemHistoryTraceEntry& entry) {
   if (entry.device < 0) return;
-  size_t cap = capacity_;
-  if (cap == 0) return;
+  // Fast reject before touching any lock.
+  if (capacity_.load(std::memory_order_relaxed) == 0) return;
 
   DeviceRing* ring = nullptr;
   {
@@ -70,6 +72,14 @@ void MemoryHistoryRecorder::Record(const MemHistoryTraceEntry& entry) {
   }
 
   std::lock_guard<SpinLock> ring_lock(ring->lock);
+  // Re-read inside the per-ring critical section so that the size check and
+  // the modulo below use one consistent value, and so that a capacity change
+  // that happened while we were acquiring locks is honoured (otherwise a stale
+  // larger capacity could grow this ring past the newly requested bound). The
+  // zero check must be repeated: SetEnabled(_, 0) between the fast reject and
+  // here would otherwise reach `% cap` with cap == 0.
+  const size_t cap = capacity_.load(std::memory_order_relaxed);
+  if (cap == 0) return;
   if (ring->buf.size() < cap) {
     // Not yet at capacity: append.
     ring->buf.push_back(entry);

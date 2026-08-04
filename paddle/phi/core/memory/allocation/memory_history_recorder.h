@@ -21,6 +21,7 @@
 #include <string>
 #include <vector>
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/core/memory/allocation/spin_lock.h"
 
 namespace paddle {
@@ -58,8 +59,10 @@ struct MemHistoryTraceEntry {
 };
 
 // Global on/off switch checked inline at every hook site so that recording is
-// zero-overhead when disabled.
-extern std::atomic<bool> g_mem_history_enabled;
+// zero-overhead when disabled. Exported: the inline accessors below are
+// instantiated in the pybind / generated-eager targets, so the definition must
+// be visible across the phi DLL boundary on Windows.
+PADDLE_API extern std::atomic<bool> g_mem_history_enabled;
 
 inline bool MemHistoryEnabled() {
   return g_mem_history_enabled.load(std::memory_order_relaxed);
@@ -68,19 +71,21 @@ inline bool MemHistoryEnabled() {
 // Record a memory history event into the recorder for `device`. Cheap no-op
 // when recording is disabled (guarded internally as well). Out-of-line so that
 // the allocator hot path only inlines the enabled check.
-void RecordMemHistory(MemHistoryAction action,
-                      int device,
-                      uintptr_t addr,
-                      size_t size,
-                      uint64_t id,
-                      uint64_t stream);
+void PADDLE_API RecordMemHistory(MemHistoryAction action,
+                                 int device,
+                                 uintptr_t addr,
+                                 size_t size,
+                                 uint64_t id,
+                                 uint64_t stream);
 
 // Per-thread stack of the op name currently executing on this thread. In eager
 // mode the op dispatch -> kernel -> Alloc chain is synchronous on one thread,
 // so the innermost (back) label is the op that triggered an allocation.
 // Entries are static string literals (or member strings alive for the guard's
 // lifetime); we store raw `const char*` to avoid per-op heap traffic.
-extern thread_local std::vector<const char*> g_mem_op_label_stack;
+// Exported because MemLabelGuard is inlined into the generated eager code,
+// which lives outside the phi DLL.
+PADDLE_API extern thread_local std::vector<const char*> g_mem_op_label_stack;
 
 // Returns the innermost op label active on this thread, or nullptr if none.
 inline const char* CurrentMemOpLabel() {
@@ -98,7 +103,9 @@ inline const char* CurrentMemOpLabel() {
 // on exit. So an allocation made directly by an outer wrapper (a comm buffer,
 // a raw C++ alloc between nested ops) still inherits the wrapper's stack
 // instead of falling back to 0. 0 == no stack captured.
-extern thread_local std::vector<uint64_t> g_mem_stack_id_stack;
+// Exported because MemStackGuard is inlined into the pybind / generated eager
+// targets, which live outside the phi DLL.
+PADDLE_API extern thread_local std::vector<uint64_t> g_mem_stack_id_stack;
 
 // Returns the innermost captured stack id active on this thread, or 0 if none.
 inline uint64_t CurrentMemStackId() {
@@ -128,8 +135,9 @@ class MemStackGuard {
 
 // Minimum allocation size (bytes) for which a Python stack is attributed. Kept
 // as an atomic so it can be tuned per recording session without touching the
-// hot path's cost when recording is disabled.
-extern std::atomic<size_t> g_mem_stack_min_size;
+// hot path's cost when recording is disabled. Exported: SetMemStackMinSize is
+// inlined into pybind.cc, outside the phi DLL.
+PADDLE_API extern std::atomic<size_t> g_mem_stack_min_size;
 
 inline void SetMemStackMinSize(size_t min_size) {
   g_mem_stack_min_size.store(min_size, std::memory_order_relaxed);
@@ -159,7 +167,9 @@ class MemLabelGuard {
 // Per-device fixed-capacity ring buffer of memory history events. Modeled on
 // torch's RingBuffer: once full, new entries overwrite the oldest in a circular
 // fashion. GetTrace() returns entries in chronological (oldest-first) order.
-class MemoryHistoryRecorder {
+// Exported: Instance/SetEnabled/Annotate/GetTrace are called from pybind.cc,
+// outside the phi DLL.
+class PADDLE_API MemoryHistoryRecorder {
  public:
   static MemoryHistoryRecorder& Instance();
 
@@ -198,7 +208,12 @@ class MemoryHistoryRecorder {
 
   std::vector<std::unique_ptr<DeviceRing>> rings_;
   SpinLock rings_lock_;
-  size_t capacity_ = 0;
+  // Ring capacity. Written by SetEnabled() under rings_lock_ but read by
+  // Record() on allocating threads without it, so it must be atomic: a
+  // reconfigure/disable from Python can run concurrently with allocations.
+  // Relaxed is sufficient -- buf/next are always mutated under the per-ring
+  // lock, so this value only needs to be untorn, not ordered against them.
+  std::atomic<size_t> capacity_{0};
 };
 
 }  // namespace memory

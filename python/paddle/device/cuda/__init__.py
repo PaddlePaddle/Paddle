@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import os
 import sys
+import warnings
 from typing import TYPE_CHECKING, NoReturn, TypeAlias
 
 import paddle
@@ -542,29 +543,63 @@ def _record_memory_history(
     The signature mirrors ``torch.cuda.memory._record_memory_history`` for
     compatibility.
 
+    .. note::
+        Recording is currently implemented **only for the VMM V1 allocator
+        stack** (``FLAGS_use_virtual_memory_auto_growth=1``): the alloc and
+        free-completed hooks live in ``MultiScalePoolAllocator``, which only
+        the V1 pool allocator derives from. Under VMM V2
+        (``VMMAutoGrowthBestFitMultiPoolAllocatorV2``) or the default
+        ``AutoGrowthBestFit`` allocator no allocation events are produced, so
+        a snapshot taken there yields no usable intervals. A warning is
+        emitted when recording is enabled without V1 active.
+
     Args:
         enabled: Truthy to start recording, falsy (``None``/``False``) to stop.
         context: Ignored (reserved for stack-capture granularity).
         stacks: ``"python"`` or ``"all"`` captures the Python call stack of the
             op that triggered each allocation (innermost frame first); any other
-            value disables stack capture. Requires the VMM allocator
-            (``FLAGS_use_virtual_memory_auto_growth=1``) for events to be
-            recorded at all. Captured only on the forward/op-dispatch path;
-            backward allocations fall back to the op label (``op_name``).
-        max_entries: Maximum number of events retained per device (ring buffer).
+            value disables stack capture. Captured only on the
+            forward/op-dispatch path; backward allocations fall back to the op
+            label (``op_name``).
+        max_entries: Maximum number of events retained per device (ring
+            buffer). The default is effectively unbounded, which lets the ring
+            grow until host memory is exhausted -- pass an explicit bound for
+            long runs (each entry costs ~88 bytes).
         device: Ignored (recording is global across devices).
         stacks_min_size: Only capture a Python stack for allocations of at least
             this many bytes (default ``0`` == capture for all sizes). Smaller
             allocations get an empty ``frames`` list / ``stack_id == 0``.
     '''
-    if core.is_compiled_with_cuda():
-        capture_stacks = bool(enabled) and str(stacks) in ("python", "all")
-        core.gpu_record_memory_history(
-            bool(enabled),
-            int(min(max_entries, 2**31)),
-            capture_stacks,
-            int(stacks_min_size),
+    if not core.is_compiled_with_cuda():
+        return
+    if enabled:
+        flags = paddle.get_flags(
+            [
+                'FLAGS_use_virtual_memory_auto_growth',
+                'FLAGS_use_vmm_auto_growth_best_fit_allocator_v2',
+            ]
         )
+        if not flags.get('FLAGS_use_virtual_memory_auto_growth'):
+            active = (
+                'the VMM V2 allocator'
+                if flags.get('FLAGS_use_vmm_auto_growth_best_fit_allocator_v2')
+                else 'the default AutoGrowthBestFit allocator'
+            )
+            warnings.warn(
+                'GPU memory history recording is only implemented for the VMM '
+                f'V1 allocator stack, but {active} is active. No allocation '
+                'events will be recorded and the snapshot will contain no '
+                'usable intervals. Set '
+                'FLAGS_use_virtual_memory_auto_growth=1 to use it.',
+                stacklevel=2,
+            )
+    capture_stacks = bool(enabled) and str(stacks) in ("python", "all")
+    core.gpu_record_memory_history(
+        bool(enabled),
+        int(min(max_entries, 2**31)),
+        capture_stacks,
+        int(stacks_min_size),
+    )
 
 
 def _annotate_memory_history(message):
@@ -572,9 +607,7 @@ def _annotate_memory_history(message):
     Insert a named time-marker into the GPU memory history (a zero-size event
     recorded on every active device ring at the current time). Use it to mark
     phase boundaries such as ``"step 3 backward begin"`` or ``"recompute replay
-    layer12"``; the marker shows up as a labeled vertical line on the memory
-    timeline rendered by ``tools/paddle_mem_viz.py``. No-op if recording is not
-    currently enabled (see :func:`_record_memory_history`).
+    layer12"``;
 
     Args:
         message: A short string describing the marker.

@@ -277,10 +277,17 @@ class PADDLE_API MultiScalePoolAllocator : public Allocator {
       allocation->set_id(id);
     }
     if (MemHistoryEnabled()) {
+      // Record the actual block size, not the caller's requested `size`: the
+      // underlying allocator rounds up to `alignment_` (256B on GPU) and may
+      // hand back a slightly larger un-split block. kFreeRequested /
+      // kFreeCompleted both report allocation->size(), so using the requested
+      // size here would make an alloc/free pair disagree (e.g. alloc=1,
+      // free=256) and would under-state occupancy in the address-space /
+      // fragmentation view.
       RecordMemHistory(MemHistoryAction::kAlloc,
                        place_.GetDeviceId(),
                        reinterpret_cast<uintptr_t>(allocation->ptr()),
-                       size,
+                       allocation->size(),
                        allocation->id(),
                        0);
     }
