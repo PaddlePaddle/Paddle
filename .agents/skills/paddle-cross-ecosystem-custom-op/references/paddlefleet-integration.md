@@ -21,7 +21,7 @@ else:
     blocked_import_messages["paddlefleet_ops.sonicmoe"] = error
 ```
 
-`use_compat_guard` 是 context manager（也可以当装饰器用，注意它目前不是公开接口，行为以 `python/paddle/compat/proxy.py` 实现为准），只在 `with` 块内启用 proxy、退出即恢复原状态；配合 eager import 约束（库在 import 阶段加载完全部子模块），guard 结束后不需要残留任何全局 compat 状态。scope 要把库自身及其会在加载期 `import torch` 的依赖都列上（如上例的 `quack`、`triton`）。
+`use_compat_guard` 是 context manager（也可以当装饰器用，行为以 `python/paddle/compat/proxy.py` 实现为准），只在 `with` 块内启用 proxy、退出即恢复原状态；配合 eager import 约束（库在 import 阶段加载完全部子模块），guard 结束后不需要残留任何全局 compat 状态。scope 要把库自身及其会在加载期 `import torch` 的依赖都列上（如上例的 `quack`、`triton`）。
 
 构建注册的代码形状（CUDA extension 型库，用 `extra_env` 控制目标架构）：
 
