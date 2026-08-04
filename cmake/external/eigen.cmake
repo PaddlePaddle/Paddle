@@ -14,22 +14,20 @@
 
 include(ExternalProject)
 
-# Eigen 3.4.1
+# Eigen 3.4.1 is pinned by the third_party/eigen3 gitlink.
 set(EIGEN_PREFIX_DIR ${THIRD_PARTY_PATH}/eigen3)
-set(EIGEN_SOURCE_DIR ${THIRD_PARTY_PATH}/eigen3/src/extern_eigen3)
-set(EIGEN_TAG d71c30c47858effcbd39967097a2d99ee48db464)
-set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/eigen3)
+set(EIGEN_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/eigen3)
 
 if(WIN32)
   add_definitions(-DEIGEN_STRONG_INLINE=inline)
 endif()
 
-set(EIGEN_INCLUDE_DIR ${SOURCE_DIR})
+set(EIGEN_INCLUDE_DIR ${EIGEN_SOURCE_DIR})
 include_directories(${EIGEN_INCLUDE_DIR})
 ExternalProject_Add(
   extern_eigen3
   ${EXTERNAL_PROJECT_LOG_ARGS}
-  SOURCE_DIR ${SOURCE_DIR}
+  SOURCE_DIR ${EIGEN_SOURCE_DIR}
   PREFIX ${EIGEN_PREFIX_DIR}
   CMAKE_ARGS -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
              -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}

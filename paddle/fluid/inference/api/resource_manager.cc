@@ -51,6 +51,7 @@ class EigenGpuStreamDevice : public Eigen::StreamInterface {
       : stream_(nullptr),
         allocator_(nullptr),
         device_prop_(nullptr),
+        scratch_(nullptr),
         semaphore_(nullptr),
         allocations_() {}
   ~EigenGpuStreamDevice() override = default;
