@@ -3183,7 +3183,8 @@ class FractionalMaxPool2dFunctor<GPUContext, T1, T2> {
     seed = seed_offset.first;
     offset = seed_offset.second;
 
-    if (input.numel() <= std::numeric_limits<int>::max()) {
+    if (input.numel() <= std::numeric_limits<int>::max() &&
+        ncd + block_y * thread_y <= std::numeric_limits<int>::max()) {
       auto pool_divmods = FastDivModForPooling<int>(
           input_channels, output_width, output_height);
       FractionalKernelMaxPool2d<T1, T2, int>
@@ -3275,7 +3276,8 @@ class FractionalMaxPool2dGradFunctor<GPUContext, T1, T2> {
     seed = seed_offset.first;
     offset = seed_offset.second;
 
-    if (input_grad->numel() <= std::numeric_limits<int>::max()) {
+    if (input_grad->numel() <= std::numeric_limits<int>::max() &&
+        ncd + block_y * thread_y <= std::numeric_limits<int>::max()) {
       auto pool_divmods = FastDivModForPooling<int>(
           input_channels, output_width, output_height);
       FractionalKernelMaxPool2dGrad<T1, T2, int>
@@ -3385,7 +3387,10 @@ __global__ void FractionalKernelMaxPool3d(
   const T1* input_data_cur;
 
   w_offset = static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
-  for (IndexT by = blockIdx.y; by < output_height; by += gridDim.y) {
+  // Bound `by` by the block count to avoid `h_offset` overflows int32
+  const IndexT threads_y = static_cast<IndexT>(blockDim.y);
+  const IndexT h_blocks = (output_height + threads_y - 1) / threads_y;
+  for (IndexT by = blockIdx.y; by < h_blocks; by += gridDim.y) {
     h_offset = by * blockDim.y + threadIdx.y;
 
     IndexT start_index =
@@ -3464,7 +3469,10 @@ __global__ void FractionalKernelMaxPool3dGrad(
   IndexT w_offset, h_offset, d_offset, nc_offset;
 
   w_offset = static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
-  for (IndexT by = blockIdx.y; by < output_height; by += gridDim.y) {
+  // Bound `by` by the block count to avoid `h_offset` overflows int32
+  const IndexT threads_y = static_cast<IndexT>(blockDim.y);
+  const IndexT h_blocks = (output_height + threads_y - 1) / threads_y;
+  for (IndexT by = blockIdx.y; by < h_blocks; by += gridDim.y) {
     h_offset = by * blockDim.y + threadIdx.y;
 
     IndexT start_index =
@@ -3569,7 +3577,8 @@ class FractionalMaxPool3dFunctor<GPUContext, T1, T2> {
     seed = seed_offset.first;
     offset = seed_offset.second;
 
-    if (input.numel() <= std::numeric_limits<int>::max()) {
+    if (input.numel() <= std::numeric_limits<int>::max() &&
+        ncd + block_z * thread_z <= std::numeric_limits<int>::max()) {
       auto pool_divmods_output = FastDivModForPooling3D<int>(
           input_channels, output_width, output_height, output_depth);
       FractionalKernelMaxPool3d<T1, T2, int>
@@ -3663,7 +3672,8 @@ class FractionalMaxPool3dGradFunctor<GPUContext, T1, T2> {
                           : (ncd + threads.z - 1) / threads.z;
     dim3 grid(block_x, block_y, block_z);
 
-    if (input_grad->numel() <= std::numeric_limits<int>::max()) {
+    if (input_grad->numel() <= std::numeric_limits<int>::max() &&
+        ncd + block_z * thread_z <= std::numeric_limits<int>::max()) {
       auto pool_divmods_output = FastDivModForPooling3D<int>(
           input_channels, output_width, output_height, output_depth);
 
