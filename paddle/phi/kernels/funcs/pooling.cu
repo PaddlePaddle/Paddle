@@ -36,6 +36,16 @@ COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 namespace phi {
 namespace funcs {
 
+inline bool AdaptFwdIndexFitsInt32(int64_t input_size, int64_t output_size) {
+  return (input_size + 1) * output_size <=
+         static_cast<int64_t>(std::numeric_limits<int>::max());
+}
+
+inline bool AdaptBwdIndexFitsInt32(int64_t input_size, int64_t output_size) {
+  return (output_size + 1) * input_size <=
+         static_cast<int64_t>(std::numeric_limits<int>::max());
+}
+
 template <typename IndexT>
 struct FastDivModForPooling {
  public:
@@ -513,7 +523,7 @@ __global__ void KernelMaxPool2DGradCompatible(
     bool channel_last = false) {
   using MT = typename MPTypeTrait<T>::Type;
 
-  CUDA_KERNEL_LOOP(index, input_height * input_width) {
+  CUDA_KERNEL_LOOP_TYPE(index, input_height * input_width, IndexT) {
     IndexT h = index / input_width;
     IndexT w = index - h * input_width;
     IndexT phstart = p_start(h, padding_height, ksize_height, stride_height);
@@ -700,10 +710,10 @@ class Pool2dFunctor<GPUContext, PoolProcess, T> {
                 1);
       if (input.numel() <= std::numeric_limits<int>::max() &&
           output->numel() <= std::numeric_limits<int>::max() &&
-          static_cast<int64_t>(input_height) * output_height <=
+          output_height * output_width + thread_num <=
               std::numeric_limits<int>::max() &&
-          static_cast<int64_t>(input_width) * output_width <=
-              std::numeric_limits<int>::max()) {
+          AdaptFwdIndexFitsInt32(input_height, output_height) &&
+          AdaptFwdIndexFitsInt32(input_width, output_width)) {
         auto pool_divmods = FastDivModForPooling<int>(
             input_channels, output_width, output_height);
         AdaptiveKernelPool2D<PoolProcess, T, int>
@@ -865,10 +875,8 @@ class Pool2dGradFunctor<GPUContext, PoolProcess, T> {
     if (input.numel() <= std::numeric_limits<int>::max() &&
         output.numel() <= std::numeric_limits<int>::max() &&
         nthreads <= std::numeric_limits<int>::max() / 2 &&
-        (!adaptive || (static_cast<int64_t>(input_height) * output_height <=
-                           std::numeric_limits<int>::max() &&
-                       static_cast<int64_t>(input_width) * output_width <=
-                           std::numeric_limits<int>::max()))) {
+        (!adaptive || (AdaptBwdIndexFitsInt32(input_height, output_height) &&
+                       AdaptBwdIndexFitsInt32(input_width, output_width)))) {
       auto pool_divmods = FastDivModForPoolingWithMoreStaff<int>(input_channels,
                                                                  input_width,
                                                                  input_height,
@@ -1628,12 +1636,9 @@ class Pool3dFunctor<GPUContext, PoolProcess, T> {
     if (input.numel() <= std::numeric_limits<int>::max() &&
         output->numel() <= std::numeric_limits<int>::max() &&
         nthreads <= std::numeric_limits<int>::max() / 2 &&
-        (!adaptive || (static_cast<int64_t>(input_depth) * output_depth <=
-                           std::numeric_limits<int>::max() &&
-                       static_cast<int64_t>(input_height) * output_height <=
-                           std::numeric_limits<int>::max() &&
-                       static_cast<int64_t>(input_width) * output_width <=
-                           std::numeric_limits<int>::max()))) {
+        (!adaptive || (AdaptFwdIndexFitsInt32(input_depth, output_depth) &&
+                       AdaptFwdIndexFitsInt32(input_height, output_height) &&
+                       AdaptFwdIndexFitsInt32(input_width, output_width)))) {
       int thread_num = 1024;
 #ifdef WITH_NV_JETSON
       backends::gpu::ChangeThreadNum(dev_ctx, &thread_num);
@@ -1768,12 +1773,9 @@ class Pool3dGradFunctor<GPUContext, PoolProcess, T> {
     if (input.numel() <= std::numeric_limits<int>::max() &&
         output.numel() <= std::numeric_limits<int>::max() &&
         nthreads <= std::numeric_limits<int>::max() / 2 &&
-        (!adaptive || (static_cast<int64_t>(input_depth) * output_depth <=
-                           std::numeric_limits<int>::max() &&
-                       static_cast<int64_t>(input_height) * output_height <=
-                           std::numeric_limits<int>::max() &&
-                       static_cast<int64_t>(input_width) * output_width <=
-                           std::numeric_limits<int>::max()))) {
+        (!adaptive || (AdaptBwdIndexFitsInt32(input_depth, output_depth) &&
+                       AdaptBwdIndexFitsInt32(input_height, output_height) &&
+                       AdaptBwdIndexFitsInt32(input_width, output_width)))) {
       int thread_num = 1024;
       int64_t blocks = (nthreads + thread_num - 1) / thread_num;
       dim3 threads(thread_num, 1);
@@ -2306,10 +2308,10 @@ class MaxPool2dWithIndexFunctor<GPUContext, T1, T2> {
                 1);
       if (input.numel() <= std::numeric_limits<int>::max() &&
           output->numel() <= std::numeric_limits<int>::max() &&
-          static_cast<int64_t>(input_height) * output_height <=
+          output_height * output_width + thread_num <=
               std::numeric_limits<int>::max() &&
-          static_cast<int64_t>(input_width) * output_width <=
-              std::numeric_limits<int>::max()) {
+          AdaptFwdIndexFitsInt32(input_height, output_height) &&
+          AdaptFwdIndexFitsInt32(input_width, output_width)) {
         auto pool_divmods = FastDivModForPooling<int>(
             input_channels, output_width, output_height);
         AdaptiveKernelMaxPool2dWithIdx<T1, T2, int>
@@ -2363,10 +2365,8 @@ class MaxPool2dWithIndexFunctor<GPUContext, T1, T2> {
       if (nthreads <= std::numeric_limits<int>::max() / 2 &&
           input.numel() <= std::numeric_limits<int>::max() &&
           output->numel() <= std::numeric_limits<int>::max() &&
-          (!adaptive || (static_cast<int64_t>(input_height) * output_height <=
-                             std::numeric_limits<int>::max() &&
-                         static_cast<int64_t>(input_width) * output_width <=
-                             std::numeric_limits<int>::max()))) {
+          (!adaptive || (AdaptFwdIndexFitsInt32(input_height, output_height) &&
+                         AdaptFwdIndexFitsInt32(input_width, output_width)))) {
         auto pool_divmods = FastDivModForPooling<int>(
             input_channels, output_width, output_height);
         KernelMaxPool2dWithIdx<T1, T2, int>
@@ -2471,10 +2471,8 @@ class MaxPool2dWithIndexGradFunctor<GPUContext, T1, T2> {
     dim3 grid(blocks, 1);
     if (nthreads <= std::numeric_limits<int>::max() / 2 &&
         output_grad.numel() <= std::numeric_limits<int>::max() &&
-        (!adaptive || (static_cast<int64_t>(input_height) * output_height <=
-                           std::numeric_limits<int>::max() &&
-                       static_cast<int64_t>(input_width) * output_width <=
-                           std::numeric_limits<int>::max()))) {
+        (!adaptive || (AdaptBwdIndexFitsInt32(input_height, output_height) &&
+                       AdaptBwdIndexFitsInt32(input_width, output_width)))) {
       auto pool_divmods =
           FastDivModForPooling<int>(input_channels, input_width, input_height);
       KernelMaxPool2DWithIdxGrad<T1, T2, int>
@@ -2567,7 +2565,8 @@ __global__ void KernelMaxPool3DWithIdx(
   w_offset = static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
   // `by` is block index covering blockDim.y rows
   const IndexT threads_y = static_cast<IndexT>(blockDim.y);
-  const IndexT h_blocks = (output_height + threads_y - 1) / threads_y;
+  const IndexT h_blocks =
+      output_height > 0 ? (output_height - 1) / threads_y + 1 : 0;
   for (IndexT by = blockIdx.y; by < h_blocks; by += gridDim.y) {
     h_offset = by * blockDim.y + threadIdx.y;
 
@@ -2681,7 +2680,8 @@ __global__ void KernelMaxPool3DWithIdxGrad(
   w_offset = static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
   // Same as in KernelMaxPool3DWithIdx: `by` is block index
   const IndexT threads_y = static_cast<IndexT>(blockDim.y);
-  const IndexT h_blocks = (output_height + threads_y - 1) / threads_y;
+  const IndexT h_blocks =
+      output_height > 0 ? (output_height - 1) / threads_y + 1 : 0;
   for (IndexT by = blockIdx.y; by < h_blocks; by += gridDim.y) {
     h_offset = by * blockDim.y + threadIdx.y;
 
@@ -2788,12 +2788,9 @@ class MaxPool3dWithIndexFunctor<GPUContext, T1, T2> {
     if (input.numel() <= std::numeric_limits<int>::max() &&
         output->numel() <= std::numeric_limits<int>::max() &&
         ncd + block_z * thread_z <= std::numeric_limits<int>::max() &&
-        (!adaptive || (static_cast<int64_t>(input_depth) * output_depth <=
-                           std::numeric_limits<int>::max() &&
-                       static_cast<int64_t>(input_height) * output_height <=
-                           std::numeric_limits<int>::max() &&
-                       static_cast<int64_t>(input_width) * output_width <=
-                           std::numeric_limits<int>::max()))) {
+        (!adaptive || (AdaptFwdIndexFitsInt32(input_depth, output_depth) &&
+                       AdaptFwdIndexFitsInt32(input_height, output_height) &&
+                       AdaptFwdIndexFitsInt32(input_width, output_width)))) {
       auto pool_divmods_output = FastDivModForPooling3D<int>(
           input_channels, output_width, output_height, output_depth);
       KernelMaxPool3DWithIdx<T1, T2, int>
@@ -3389,7 +3386,8 @@ __global__ void FractionalKernelMaxPool3d(
   w_offset = static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
   // Bound `by` by the block count to avoid `h_offset` overflows int32
   const IndexT threads_y = static_cast<IndexT>(blockDim.y);
-  const IndexT h_blocks = (output_height + threads_y - 1) / threads_y;
+  const IndexT h_blocks =
+      output_height > 0 ? (output_height - 1) / threads_y + 1 : 0;
   for (IndexT by = blockIdx.y; by < h_blocks; by += gridDim.y) {
     h_offset = by * blockDim.y + threadIdx.y;
 
@@ -3471,7 +3469,8 @@ __global__ void FractionalKernelMaxPool3dGrad(
   w_offset = static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
   // Bound `by` by the block count to avoid `h_offset` overflows int32
   const IndexT threads_y = static_cast<IndexT>(blockDim.y);
-  const IndexT h_blocks = (output_height + threads_y - 1) / threads_y;
+  const IndexT h_blocks =
+      output_height > 0 ? (output_height - 1) / threads_y + 1 : 0;
   for (IndexT by = blockIdx.y; by < h_blocks; by += gridDim.y) {
     h_offset = by * blockDim.y + threadIdx.y;
 
