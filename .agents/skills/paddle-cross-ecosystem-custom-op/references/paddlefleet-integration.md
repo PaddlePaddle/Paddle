@@ -59,13 +59,13 @@ EcosystemLibrary(
 9. （可选）在 `src/paddlefleet/` 加上层包装，import 用 `try/except (ImportError, RuntimeError)` 兜底。
 10. 本地验证：`git submodule update --init --recursive` → 构建 `paddlefleet-ops` wheel → 用 wheel 跑 import 测试。
 
-## eager import 硬约束
+## compat guard 内的 eager import 约束
 
-集成必须保证：**首次 `import paddlefleet_ops` 时加载全量生态库，并且每个生态库在首次 import 时把它内部所有子模块全部加载完，不允许 lazy import。**
+首次 `import paddlefleet_ops` 时，要在加载生态库的 `use_compat_guard` 块内完成所有**依赖 compat proxy 的模块初始化**。这里要求 eager 的是会执行 `import torch`、解析 proxy 类型或依赖其他 compat 状态的模块，不是无条件加载包内每个可选依赖。
 
-原因：compat proxy 只在加载该库的 `use_compat_guard` 块内生效，只有库内所有 `import torch` 都发生在这个阶段（模块顶层），才能保证它们全部被 proxy 为 `import paddle`；guard 退出后再触发的 lazy import 会直接拿不到 torch。
+原因：compat proxy 只在对应的 `use_compat_guard` 块内生效。依赖 proxy 的模块如果在 guard 退出后才首次加载，它们的 `import torch` 和相关类型解析就不再处于集成时验证过的 compat 上下文中。
 
-### 需要修掉的两类 lazy import
+### 需要修掉的两类 proxy-sensitive lazy import
 
 第一类：`__init__.py` 没有 eager import 子模块。
 
@@ -84,7 +84,7 @@ import torch
 from . import submodule
 ```
 
-第二类：`import torch`（或对子模块的 import）写在函数体内。
+第二类：`import torch`，或对依赖 compat proxy 的子模块的 import，写在函数体内。
 
 ```python
 # custom_op/submodule.py
@@ -106,6 +106,17 @@ def fn(): ...
 
 一个真实例子：flash-linear-attention fork 的提交 [`683b34f3`](https://github.com/PFCCLab/flash-linear-attention/commit/683b34f3) 把上游原注释为 "Import here to avoid circular dependency" 的函数体内延迟 import 全部提升到模块顶层，并把以 lazy import 著称的 `fla/__init__.py` 改成顶层 `from fla import modules, ops`。
 
+### 可以保留 lazy import 的边界
+
+如果某个依赖在模块初始化阶段会因为 AST 预处理、类型反射等原因与 compat proxy 冲突，可以保留局部 lazy import。比如 [quack](ecosystem-cases/quack.md) 的 `cutlass.torch` 在模块顶层加载时会反射 compat 下的 `torch.device`，因此需要把 import 隔离到实际使用它的函数路径。
+
+这类例外要同时满足以下条件：
+
+- import 收敛在实际使用该依赖的最小函数或分支中，普通包初始化路径不会触发它。
+- 明确该调用路径是否仍依赖 compat proxy；如果依赖，就在调用点建立对应的 compat 上下文或在生态库 fork 中做显式桥接，不能假定首次 import 时的 guard 仍然有效。
+- 临时 proxy、module swap 或 guard 状态不能泄漏到调用 scope 之外；如果缓存导入结果，要确认它在后续调用中的语义仍然成立。
+- 在代码注释中写明模块顶层 import 失败的原因、触发路径和删除条件，并分别验证包初始化路径与实际调用路径。
+
 ### circular import 的取舍
 
 把 lazy import 改成 eager import 可能引入 circular import。这时需要根据情况对部分模块做取舍调整——例如手动控制顶层导入顺序：
@@ -122,15 +133,16 @@ from fla.modules.conv.triton.ops import causal_conv1d_bwd, causal_conv1d_fwd
 # isort: on
 ```
 
-无论如何调整，不能退回 lazy import。
+优先通过导入顺序或模块边界消除循环依赖，不要用 proxy-sensitive lazy import 掩盖循环。满足上一节兼容性例外时，可以保留局部 lazy import，但要按其作用域和生命周期要求验证。
 
-## 千万不要做的事
+## 集成问题的处理边界
 
-不要因为出现无法 `import torch` 就修改集成方式。集成方式尽可能不要修改——这大概率是生态库本身不满足 eager import 前置要求导致的，应该回到生态库 fork 把 lazy import 修掉，而不是在 PaddleFleet 侧绕过去。
+普通的 proxy-sensitive lazy import 应回到生态库 fork 修正；因 AST 或类型反射必须延迟的依赖，也应在 fork 内完成局部隔离或显式桥接。不要仅为绕过生态库的导入问题修改 PaddleFleet 的统一加载方式。
 
 ## 集成前自查清单
 
 - 生态库的迁移分支能独立 build / import / 跑通最小测试。
-- 生态库 `__init__.py` 递归地 eager import 了所有含 `import torch` 的子模块。
-- 库内没有函数体内的 `import torch`（或已全部提到模块顶层）。
-- 改动引入的 circular import 已经解决，且没有退回 lazy import。
+- 除已按上述边界记录的兼容性例外外，生态库 `__init__.py` 递归地 eager import 了所有依赖 compat proxy 的子模块。
+- 库内没有未经说明的函数体内 `import torch` 或 proxy-sensitive 子模块 import。
+- 因 AST / 类型反射保留的 lazy import 已注明触发 scope、compat 上下文、状态生命周期和删除条件，并覆盖包初始化与实际调用测试。
+- 改动引入的 circular import 已经解决，没有重新引入不符合上述边界的 proxy-sensitive lazy import。
