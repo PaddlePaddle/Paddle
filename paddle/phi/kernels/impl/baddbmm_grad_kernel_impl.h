@@ -19,11 +19,12 @@ limitations under the License. */
 
 #include "paddle/common/flags.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/baddbmm_grad_kernel.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
@@ -31,10 +32,14 @@ namespace phi {
 
 template <typename T>
 struct BCopyOrScaleFunctor {
-  BCopyOrScaleFunctor(const float scale, const T* x, T* output, int64_t numel)
+  BCopyOrScaleFunctor(const double scale, const T* x, T* output, int64_t numel)
       : scale_(scale), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
+    if (x_ == nullptr) {
+      output_[idx] = static_cast<T>(0);
+      return;
+    }
     using MPType = typename MPTypeTrait<T>::Type;
     const MPType mp_scale = static_cast<MPType>(scale_);
     const MPType mp_x = static_cast<MPType>(x_[idx]);
@@ -42,15 +47,11 @@ struct BCopyOrScaleFunctor {
   }
 
  private:
-  const float scale_;
+  const double scale_;
   const T* x_;
   T* output_;
   int64_t numel_;
 };
-
-using Array1 = Eigen::DSizes<int64_t, 1>;
-using Array2 = Eigen::DSizes<int64_t, 2>;
-using Array3 = Eigen::DSizes<int64_t, 3>;
 
 template <typename T, typename Context>
 void BaddbmmGradKernel(const Context& dev_ctx,
@@ -58,28 +59,39 @@ void BaddbmmGradKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& y,
                        const DenseTensor& out_grad,
-                       float alpha,
-                       float beta,
+                       double alpha,
+                       double beta,
                        DenseTensor* input_grad,
                        DenseTensor* x_grad,
                        DenseTensor* y_grad) {
   using MPType = typename MPTypeTrait<T>::Type;
-  bool is_float16_or_bfloat16 = false;
-  if (std::is_same<T, float16>::value || std::is_same<T, bfloat16>::value) {
-    is_float16_or_bfloat16 = true;
+  const auto compute_dtype = CppTypeToDataType<T>::Type();
+  DenseTensor cast_out_grad;
+  const DenseTensor* compute_out_grad = &out_grad;
+  if (out_grad.dtype() != compute_dtype) {
+    PD_VISIT_FLOATING_AND_HALF_TYPES(
+        out_grad.dtype(), "BaddbmmGradCastOutGrad", ([&] {
+          cast_out_grad =
+              Cast<data_t, Context>(dev_ctx, out_grad, compute_dtype);
+        }));
+    compute_out_grad = &cast_out_grad;
   }
+  const DenseTensor& grad = *compute_out_grad;
 
-  auto in_dims = input.dims();
+  auto input_dims = input.dims();
+  auto in_dims = input_dims;
   if (input.dims().size() == 2) {
-    in_dims = {input.dims()[0], 1, input.dims()[1]};
-    input_grad->Resize(in_dims);
+    in_dims = {1, input.dims()[0], input.dims()[1]};
+    if (input_grad) {
+      input_grad->Resize(in_dims);
+    }
   }
   int64_t total_elems = 0;
 
   VLOG(3) << "alpha: " << alpha << " beta: " << beta;
 
   if (input_grad != nullptr) {
-    input_grad->set_lod(out_grad.lod());
+    input_grad->set_lod(grad.lod());
   }
   if (x_grad != nullptr) {
     x_grad->set_lod(x.lod());
@@ -92,97 +104,32 @@ void BaddbmmGradKernel(const Context& dev_ctx,
   if (input_grad) {
     dev_ctx.template Alloc<T>(input_grad);
     total_elems = in_dims[0] * in_dims[1] * in_dims[2];
-    auto& place = *dev_ctx.eigen_device();
-    auto eigen_dout = EigenTensor<T, 3>::From(out_grad);
-    auto eigen_dinput = EigenTensor<T, 3>::From(*input_grad);
+    bool batch_compress = in_dims[0] != grad.dims()[0];
+    bool row_compress = in_dims[1] != grad.dims()[1];
+    bool col_compress = in_dims[2] != grad.dims()[2];
+    std::vector<int64_t> reduce_dims;
+    if (batch_compress) {
+      reduce_dims.push_back(0);
+    }
+    if (row_compress) {
+      reduce_dims.push_back(1);
+    }
+    if (col_compress) {
+      reduce_dims.push_back(2);
+    }
 
-    bool batch_compress = in_dims[0] != out_grad.dims()[0];
-    bool row_compress = in_dims[1] != out_grad.dims()[1];
-    bool col_compress = in_dims[2] != out_grad.dims()[2];
-    auto eigen_dinput_shape = Array3(
-        input_grad->dims()[0], input_grad->dims()[1], input_grad->dims()[2]);
-
-    if (batch_compress && row_compress && col_compress) {
-      if (!is_float16_or_bfloat16) {
-        eigen_dinput.device(place) =
-            eigen_dout.sum().eval().reshape(eigen_dinput_shape);
-      } else {
-        eigen_dinput.device(place) = eigen_dout.template cast<MPType>()
-                                         .sum()
-                                         .eval()
-                                         .reshape(eigen_dinput_shape)
-                                         .template cast<T>();
-      }
-    } else if (batch_compress && row_compress) {
-      if (!is_float16_or_bfloat16) {
-        eigen_dinput.device(place) =
-            eigen_dout.sum(Array2(0, 1)).eval().reshape(eigen_dinput_shape);
-      } else {
-        eigen_dinput.device(place) = eigen_dout.template cast<MPType>()
-                                         .sum(Array2(0, 1))
-                                         .eval()
-                                         .reshape(eigen_dinput_shape)
-                                         .template cast<T>();
-      }
-    } else if (batch_compress && col_compress) {
-      if (!is_float16_or_bfloat16) {
-        eigen_dinput.device(place) =
-            eigen_dout.sum(Array2(0, 2)).eval().reshape(eigen_dinput_shape);
-      } else {
-        eigen_dinput.device(place) = eigen_dout.template cast<MPType>()
-                                         .sum(Array2(0, 2))
-                                         .eval()
-                                         .reshape(eigen_dinput_shape)
-                                         .template cast<T>();
-      }
-    } else if (row_compress && col_compress) {
-      if (!is_float16_or_bfloat16) {
-        eigen_dinput.device(place) =
-            eigen_dout.sum(Array2(1, 2)).eval().reshape(eigen_dinput_shape);
-      } else {
-        eigen_dinput.device(place) = eigen_dout.template cast<MPType>()
-                                         .sum(Array2(1, 2))
-                                         .eval()
-                                         .reshape(eigen_dinput_shape)
-                                         .template cast<T>();
-      }
-    } else if (batch_compress) {
-      if (!is_float16_or_bfloat16) {
-        eigen_dinput.device(place) =
-            eigen_dout.sum(Array1(0)).eval().reshape(eigen_dinput_shape);
-      } else {
-        eigen_dinput.device(place) = eigen_dout.template cast<MPType>()
-                                         .sum(Array1(0))
-                                         .eval()
-                                         .reshape(eigen_dinput_shape)
-                                         .template cast<T>();
-      }
-    } else if (row_compress) {
-      if (!is_float16_or_bfloat16) {
-        eigen_dinput.device(place) =
-            eigen_dout.sum(Array1(1)).eval().reshape(eigen_dinput_shape);
-      } else {
-        eigen_dinput.device(place) = eigen_dout.template cast<MPType>()
-                                         .sum(Array1(1))
-                                         .eval()
-                                         .reshape(eigen_dinput_shape)
-                                         .template cast<T>();
-      }
-    } else if (col_compress) {
-      if (!is_float16_or_bfloat16) {
-        eigen_dinput.device(place) =
-            eigen_dout.sum(Array1(2)).eval().reshape(eigen_dinput_shape);
-      } else {
-        eigen_dinput.device(place) = eigen_dout.template cast<MPType>()
-                                         .sum(Array1(2))
-                                         .eval()
-                                         .reshape(eigen_dinput_shape)
-                                         .template cast<T>();
-      }
+    if (grad.numel() == 0) {
+      funcs::ForRange<Context> for_range(dev_ctx, total_elems);
+      BCopyOrScaleFunctor<T> functor(
+          0, nullptr, input_grad->data<T>(), total_elems);
+      for_range(functor);
+    } else if (!reduce_dims.empty()) {
+      SumKernel<T, Context>(
+          dev_ctx, grad, IntArray(reduce_dims), grad.dtype(), true, input_grad);
     } else {
       funcs::ForRange<Context> for_range(dev_ctx, total_elems);
       BCopyOrScaleFunctor<T> functor(
-          1, out_grad.data<T>(), input_grad->data<T>(), total_elems);
+          1, grad.data<T>(), input_grad->data<T>(), total_elems);
       for_range(functor);
     }
 
@@ -190,6 +137,9 @@ void BaddbmmGradKernel(const Context& dev_ctx,
     BCopyOrScaleFunctor<T> functor(
         beta, input_grad->data<T>(), input_grad->data<T>(), total_elems);
     for_range(functor);
+    if (input.dims().size() == 2) {
+      input_grad->Resize(input_dims);
+    }
   }
   if (x_grad) {
     dev_ctx.template Alloc<T>(x_grad);
@@ -200,8 +150,15 @@ void BaddbmmGradKernel(const Context& dev_ctx,
     int64_t M_dim = x.dims()[1];
     int64_t K_dim = x.dims()[2];
     int64_t N_dim = y.dims()[2];
-    if constexpr (std::is_same_v<MPType, float>) {
-      float gemm_alpha = FLAGS_use_accuracy_compatible_kernel ? 1.0f : alpha;
+    if (x_grad->numel() == 0 || N_dim == 0) {
+      funcs::ForRange<Context> for_range(dev_ctx, total_elems);
+      BCopyOrScaleFunctor<T> functor(
+          0, nullptr, x_grad->data<T>(), total_elems);
+      for_range(functor);
+    } else if constexpr (std::is_same_v<MPType, float>) {
+      float gemm_alpha = FLAGS_use_accuracy_compatible_kernel
+                             ? 1.0f
+                             : static_cast<float>(alpha);
       float zero = 0.0f;
       blas.BatchedGEMM(CblasNoTrans,
                        CblasTrans,
@@ -209,7 +166,7 @@ void BaddbmmGradKernel(const Context& dev_ctx,
                        K_dim,
                        N_dim,
                        gemm_alpha,
-                       out_grad.data<T>(),
+                       grad.data<T>(),
                        y.data<T>(),
                        zero,
                        x_grad->data<T>(),
@@ -227,7 +184,7 @@ void BaddbmmGradKernel(const Context& dev_ctx,
                        K_dim,
                        N_dim,
                        gemm_alpha,
-                       out_grad.data<T>(),
+                       grad.data<T>(),
                        y.data<T>(),
                        zero,
                        x_grad->data<T>(),
@@ -251,8 +208,15 @@ void BaddbmmGradKernel(const Context& dev_ctx,
     int64_t M_dim = x.dims()[1];
     int64_t K_dim = x.dims()[2];
     int64_t N_dim = y.dims()[2];
-    if constexpr (std::is_same_v<MPType, float>) {
-      float gemm_alpha = FLAGS_use_accuracy_compatible_kernel ? 1.0f : alpha;
+    if (y_grad->numel() == 0 || M_dim == 0) {
+      funcs::ForRange<Context> for_range(dev_ctx, total_elems);
+      BCopyOrScaleFunctor<T> functor(
+          0, nullptr, y_grad->data<T>(), total_elems);
+      for_range(functor);
+    } else if constexpr (std::is_same_v<MPType, float>) {
+      float gemm_alpha = FLAGS_use_accuracy_compatible_kernel
+                             ? 1.0f
+                             : static_cast<float>(alpha);
       float zero = 0.0f;
       blas.BatchedGEMM(CblasTrans,
                        CblasNoTrans,
@@ -261,7 +225,7 @@ void BaddbmmGradKernel(const Context& dev_ctx,
                        M_dim,
                        gemm_alpha,
                        x.data<T>(),
-                       out_grad.data<T>(),
+                       grad.data<T>(),
                        zero,
                        y_grad->data<T>(),
                        B_dim,
@@ -279,7 +243,7 @@ void BaddbmmGradKernel(const Context& dev_ctx,
                        M_dim,
                        gemm_alpha,
                        x.data<T>(),
-                       out_grad.data<T>(),
+                       grad.data<T>(),
                        zero,
                        y_grad->data<T>(),
                        B_dim,

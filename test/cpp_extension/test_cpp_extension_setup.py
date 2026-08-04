@@ -66,6 +66,7 @@ class TestCppExtensionSetupInstall(unittest.TestCase):
         self._test_extension_class()
         self._test_nullable_tensor()
         self._test_optional_tensor()
+        self._test_scalar_type_caster()
 
     def _test_extension_function_plain(self):
         import custom_cpp_extension
@@ -151,6 +152,36 @@ class TestCppExtensionSetupInstall(unittest.TestCase):
             x_np,
             err_msg=f'extension out: {x},\n numpy out: {x_np}',
         )
+
+    def _test_scalar_type_caster(self):
+        import custom_cpp_extension
+
+        expected_values = {
+            paddle.uint8: 0,
+            paddle.int8: 1,
+            paddle.int16: 2,
+            paddle.int32: 3,
+            paddle.int64: 4,
+            paddle.float16: 5,
+            paddle.float32: 6,
+            paddle.float64: 7,
+            paddle.complex64: 9,
+            paddle.complex128: 10,
+            paddle.bool: 11,
+            paddle.bfloat16: 15,
+            paddle.float8_e5m2: 23,
+            paddle.float8_e4m3fn: 24,
+            paddle.uint16: 27,
+            paddle.uint32: 28,
+        }
+        for dtype, expected_value in expected_values.items():
+            self.assertIs(
+                custom_cpp_extension.scalar_type_round_trip(dtype), dtype
+            )
+            self.assertEqual(
+                custom_cpp_extension.scalar_type_value(dtype),
+                expected_value,
+            )
 
     def _test_cuda_relu(self):
         import custom_cpp_extension

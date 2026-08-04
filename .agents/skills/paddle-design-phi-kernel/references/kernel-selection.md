@@ -140,6 +140,7 @@ GLOG_vmodule=phi_kernel_adaptor=4 python test.py
 
 ```python
 import paddle
+
 paddle.framework._phi_kernel_factory().get_all_kernel_names()
 ```
 

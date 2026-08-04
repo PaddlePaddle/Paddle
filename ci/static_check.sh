@@ -31,7 +31,7 @@ function exec_samplecode_test() {
     if [ "$1" = "cpu" ] ; then
         python sampcd_processor.py --mode cpu; example_error=$?
     elif [ "$1" = "gpu" ] ; then
-        export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
+        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/x86_64-linux-gnu
         SAMPLE_CODE_EXEC_THREADS=${SAMPLE_CODE_EXEC_THREADS:-2}
         python sampcd_processor.py --threads=${SAMPLE_CODE_EXEC_THREADS} --mode gpu; example_error=$?
     fi

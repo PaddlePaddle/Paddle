@@ -332,7 +332,9 @@ class TestCompatLogSoftmaxStacklevel(unittest.TestCase):
         x = paddle.randn([3, 4], dtype=paddle.float32)
         out1 = paddle.compat.nn.functional.log_softmax(x, dim=-1)
         out2 = paddle.compat.nn.functional.log_softmax(x, dim=-1, _stacklevel=5)
+        out3 = paddle.compat.nn.functional.log_softmax(x, -1, 5)
         np.testing.assert_allclose(out1.numpy(), out2.numpy())
+        np.testing.assert_allclose(out1.numpy(), out3.numpy())
 
 
 class TestCompatLogSoftmaxErrorHandling(unittest.TestCase):
@@ -343,33 +345,18 @@ class TestCompatLogSoftmaxErrorHandling(unittest.TestCase):
 
     def test_rejects_x_keyword(self):
         x = paddle.randn([3, 4])
-        msg = (
-            "paddle.compat.nn.functional.log_softmax() received unexpected keyword argument 'x'. "
-            "\nDid you mean to use paddle.nn.functional.log_softmax() instead?"
-        )
-        with self.assertRaises(TypeError) as cm:
+        with self.assertRaises(TypeError):
             paddle.compat.nn.functional.log_softmax(x=x, dim=-1)
-        self.assertEqual(str(cm.exception), msg)
 
     def test_rejects_axis_keyword(self):
         x = paddle.randn([3, 4])
-        msg = (
-            "paddle.compat.nn.functional.log_softmax() received unexpected keyword argument 'axis'. "
-            "\nDid you mean to use paddle.nn.functional.log_softmax() instead?"
-        )
-        with self.assertRaises(TypeError) as cm:
+        with self.assertRaises(TypeError):
             paddle.compat.nn.functional.log_softmax(x, axis=-1)
-        self.assertEqual(str(cm.exception), msg)
 
     def test_rejects_name_keyword(self):
         x = paddle.randn([3, 4])
-        msg = (
-            "paddle.compat.nn.functional.log_softmax() received unexpected keyword argument 'name'. "
-            "\nDid you mean to use paddle.nn.functional.log_softmax() instead?"
-        )
-        with self.assertRaises(TypeError) as cm:
+        with self.assertRaises(TypeError):
             paddle.compat.nn.functional.log_softmax(x, dim=-1, name='test')
-        self.assertEqual(str(cm.exception), msg)
 
 
 if __name__ == "__main__":

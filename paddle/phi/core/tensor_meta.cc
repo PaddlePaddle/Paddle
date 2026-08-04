@@ -13,12 +13,19 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/core/tensor_meta.h"
+
 #include "paddle/common/flags.h"
 #include "paddle/phi/core/enforce.h"
 
 COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace phi {
+
+namespace {
+
+inline int64_t SizeForStride(int64_t dim) { return dim == 0 ? 1 : dim; }
+
+}  // namespace
 
 DDim DenseTensorMeta::calc_strides(const DDim& dims) {
   if (dims.size() == -1 || contain_unknown_dim(dims)) {
@@ -43,7 +50,7 @@ DDim DenseTensorMeta::calc_strides(const DDim& dims) {
   // } else {
   //   strides[dims.size() - 1] = 1;
   //   for (int i = dims.size() - 2; i >= 0; --i) {
-  //     strides[i] = strides[i + 1] * dims[i + 1];
+  //     strides[i] = strides[i + 1] * (dims[i + 1] == 0 ? 1 : dims[i + 1]);
   //   }
   // }
   auto p_dims = dims.Get();
@@ -56,63 +63,63 @@ DDim DenseTensorMeta::calc_strides(const DDim& dims) {
       return strides;
     case 2:
       p_strides[1] = 1;
-      p_strides[0] = p_dims[1];
+      p_strides[0] = SizeForStride(p_dims[1]);
       return strides;
     case 3:
       p_strides[2] = 1;
-      p_strides[1] = p_dims[2];
-      p_strides[0] = p_strides[1] * p_dims[1];
+      p_strides[1] = SizeForStride(p_dims[2]);
+      p_strides[0] = p_strides[1] * SizeForStride(p_dims[1]);
       return strides;
     case 4:
       p_strides[3] = 1;
-      p_strides[2] = p_dims[3];
-      p_strides[1] = p_strides[2] * p_dims[2];
-      p_strides[0] = p_strides[1] * p_dims[1];
+      p_strides[2] = SizeForStride(p_dims[3]);
+      p_strides[1] = p_strides[2] * SizeForStride(p_dims[2]);
+      p_strides[0] = p_strides[1] * SizeForStride(p_dims[1]);
       return strides;
     case 5:
       p_strides[4] = 1;
-      p_strides[3] = p_dims[4];
-      p_strides[2] = p_strides[3] * p_dims[3];
-      p_strides[1] = p_strides[2] * p_dims[2];
-      p_strides[0] = p_strides[1] * p_dims[1];
+      p_strides[3] = SizeForStride(p_dims[4]);
+      p_strides[2] = p_strides[3] * SizeForStride(p_dims[3]);
+      p_strides[1] = p_strides[2] * SizeForStride(p_dims[2]);
+      p_strides[0] = p_strides[1] * SizeForStride(p_dims[1]);
       return strides;
     case 6:
       p_strides[5] = 1;
-      p_strides[4] = p_dims[5];
-      p_strides[3] = p_strides[4] * p_dims[4];
-      p_strides[2] = p_strides[3] * p_dims[3];
-      p_strides[1] = p_strides[2] * p_dims[2];
-      p_strides[0] = p_strides[1] * p_dims[1];
+      p_strides[4] = SizeForStride(p_dims[5]);
+      p_strides[3] = p_strides[4] * SizeForStride(p_dims[4]);
+      p_strides[2] = p_strides[3] * SizeForStride(p_dims[3]);
+      p_strides[1] = p_strides[2] * SizeForStride(p_dims[2]);
+      p_strides[0] = p_strides[1] * SizeForStride(p_dims[1]);
       return strides;
     case 7:
       p_strides[6] = 1;
-      p_strides[5] = p_dims[6];
-      p_strides[4] = p_strides[5] * p_dims[5];
-      p_strides[3] = p_strides[4] * p_dims[4];
-      p_strides[2] = p_strides[3] * p_dims[3];
-      p_strides[1] = p_strides[2] * p_dims[2];
-      p_strides[0] = p_strides[1] * p_dims[1];
+      p_strides[5] = SizeForStride(p_dims[6]);
+      p_strides[4] = p_strides[5] * SizeForStride(p_dims[5]);
+      p_strides[3] = p_strides[4] * SizeForStride(p_dims[4]);
+      p_strides[2] = p_strides[3] * SizeForStride(p_dims[3]);
+      p_strides[1] = p_strides[2] * SizeForStride(p_dims[2]);
+      p_strides[0] = p_strides[1] * SizeForStride(p_dims[1]);
       return strides;
     case 8:
       p_strides[7] = 1;
-      p_strides[6] = p_dims[7];
-      p_strides[5] = p_strides[6] * p_dims[6];
-      p_strides[4] = p_strides[5] * p_dims[5];
-      p_strides[3] = p_strides[4] * p_dims[4];
-      p_strides[2] = p_strides[3] * p_dims[3];
-      p_strides[1] = p_strides[2] * p_dims[2];
-      p_strides[0] = p_strides[1] * p_dims[1];
+      p_strides[6] = SizeForStride(p_dims[7]);
+      p_strides[5] = p_strides[6] * SizeForStride(p_dims[6]);
+      p_strides[4] = p_strides[5] * SizeForStride(p_dims[5]);
+      p_strides[3] = p_strides[4] * SizeForStride(p_dims[4]);
+      p_strides[2] = p_strides[3] * SizeForStride(p_dims[3]);
+      p_strides[1] = p_strides[2] * SizeForStride(p_dims[2]);
+      p_strides[0] = p_strides[1] * SizeForStride(p_dims[1]);
       return strides;
     case 9:
       p_strides[8] = 1;
-      p_strides[7] = p_dims[8];
-      p_strides[6] = p_strides[7] * p_dims[7];
-      p_strides[5] = p_strides[6] * p_dims[6];
-      p_strides[4] = p_strides[5] * p_dims[5];
-      p_strides[3] = p_strides[4] * p_dims[4];
-      p_strides[2] = p_strides[3] * p_dims[3];
-      p_strides[1] = p_strides[2] * p_dims[2];
-      p_strides[0] = p_strides[1] * p_dims[1];
+      p_strides[7] = SizeForStride(p_dims[8]);
+      p_strides[6] = p_strides[7] * SizeForStride(p_dims[7]);
+      p_strides[5] = p_strides[6] * SizeForStride(p_dims[6]);
+      p_strides[4] = p_strides[5] * SizeForStride(p_dims[5]);
+      p_strides[3] = p_strides[4] * SizeForStride(p_dims[4]);
+      p_strides[2] = p_strides[3] * SizeForStride(p_dims[3]);
+      p_strides[1] = p_strides[2] * SizeForStride(p_dims[2]);
+      p_strides[0] = p_strides[1] * SizeForStride(p_dims[1]);
       return strides;
     default:
       PADDLE_THROW(common::errors::InvalidArgument(

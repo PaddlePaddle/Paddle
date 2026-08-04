@@ -29,7 +29,6 @@ https://docs.graphcore.ai/projects/popart-user-guide/en/latest/custom_ops.html
 分别在 Paddle 和 PopART 中实现 custom op 的定义后, 使用 `paddle.utils.cpp_extension.load` 编译源文件并把对应的动态库加载到当前进程中.
 
 ```python
-
 cur_dir = os.path.dirname(os.path.realpath(__file__))
 custom_ops = load(
     name="custom_jit_ops",
@@ -38,14 +37,13 @@ custom_ops = load(
         f"{cur_dir}/leaky_relu_ipu.cc",
     ],
     # 编译 leaky_relu_ipu.cc 时需要添加此参数
-    extra_cxx_cflags=['-DONNX_NAMESPACE=onnx'])
-
+    extra_cxx_cflags=['-DONNX_NAMESPACE=onnx'],
+)
 ```
 
 由于 Paddle 中 op 的定义和 PopART 中存在一些差异, 需要手动映射 custom op
 
 ```python
-
 # paddle_op is custom op type in Paddle
 # popart_op, domain and version is custom op identifier in PopART
 ipu_strategy = paddle.static.IpuStrategy()
@@ -53,19 +51,16 @@ ipu_strategy.add_custom_op(
     paddle_op="custom_leaky_relu",
     popart_op="LeakyRelu",
     domain='custom.ops',
-    version=1)
-
+    version=1,
+)
 ```
 
 ### 使用 custom op
 
 ```python
-
 x = paddle.static.data(
-    name=self.feed_list[0],
-    shape=self.feed_shape[0],
-    dtype=self.feed_dtype[0])
+    name=self.feed_list[0], shape=self.feed_shape[0], dtype=self.feed_dtype[0]
+)
 # custom op
 out = custom_ops.custom_leaky_relu(x, **self.attrs)
-
 ```

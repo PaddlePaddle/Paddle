@@ -21,7 +21,6 @@ from typing import TYPE_CHECKING
 import paddle
 from paddle import nn
 from paddle.nn.modules.utils import _single
-from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
 from ..utils import _CompatClassMeta
 from . import functional
@@ -215,11 +214,6 @@ class AvgPool1D(nn.Layer, metaclass=_CompatClassMeta):
     ceil_mode: bool
     count_include_pad: bool
 
-    @ForbidKeywordsDecorator(
-        illegal_keys={"exclusive", "name"},
-        func_name="paddle.compat.nn.AvgPool1D",
-        correct_name="paddle.nn.AvgPool1D",
-    )
     def __init__(
         self,
         kernel_size: Size1,
@@ -332,11 +326,6 @@ class AvgPool2D(nn.Layer, metaclass=_CompatClassMeta):
     count_include_pad: bool
     divisor_override: int | None
 
-    @ForbidKeywordsDecorator(
-        illegal_keys={"exclusive", "data_format", "name"},
-        func_name="paddle.compat.nn.AvgPool2D",
-        correct_name="paddle.nn.AvgPool2D",
-    )
     def __init__(
         self,
         kernel_size: Size2,
@@ -439,11 +428,6 @@ class AvgPool3D(nn.Layer, metaclass=_CompatClassMeta):
     count_include_pad: bool
     divisor_override: int | None
 
-    @ForbidKeywordsDecorator(
-        illegal_keys={"exclusive", "data_format", "name"},
-        func_name="paddle.compat.nn.AvgPool3D",
-        correct_name="paddle.nn.AvgPool3D",
-    )
     def __init__(
         self,
         kernel_size: Size3,
@@ -519,11 +503,6 @@ class Unfold(nn.Unfold, metaclass=_CompatClassMeta):
     paddings: Size2
     strides: Size2
 
-    @ForbidKeywordsDecorator(
-        illegal_keys={"kernel_sizes", "dilations", "paddings", "strides"},
-        func_name="paddle.compat.nn.Unfold",
-        correct_name="paddle.nn.Unfold",
-    )
     def __init__(
         self,
         kernel_size: Size2,
@@ -627,11 +606,6 @@ class Linear(nn.Layer, metaclass=_CompatClassMeta):
     out_features: int
     weight: Tensor
 
-    @ForbidKeywordsDecorator(
-        illegal_keys={"weight_attr", "bias_attr", "name"},
-        func_name="paddle.compat.nn.Linear",
-        correct_name="paddle.nn.Linear",
-    )
     def __init__(
         self,
         in_features: int,
@@ -666,7 +640,7 @@ class Linear(nn.Layer, metaclass=_CompatClassMeta):
         self.reset_parameters()
 
     def forward(self, input: Tensor) -> Tensor:
-        return functional.linear.__wrapped__(  # bypass ForbidKeywordsDecorator
+        return functional.linear(
             input=input, weight=self.weight, bias=self.bias
         )
 
@@ -809,11 +783,6 @@ class Softmax(nn.Layer, metaclass=_CompatClassMeta):
 
     """
 
-    @ForbidKeywordsDecorator(
-        illegal_keys={"axis"},
-        func_name="paddle.compat.nn.Softmax",
-        correct_name="paddle.nn.Softmax",
-    )
     def __init__(self, dim: int | None = None) -> None:
         nn.Layer.__init__(self)
         self._dim = dim
@@ -879,11 +848,6 @@ class SmoothL1Loss(nn.Layer, metaclass=_CompatClassMeta):
     reduction: str
     beta: float
 
-    @ForbidKeywordsDecorator(
-        illegal_keys={"delta", "is_huber", "name", "label"},
-        func_name="paddle.compat.nn.SmoothL1Loss",
-        correct_name="paddle.nn.SmoothL1Loss",
-    )
     def __init__(
         self,
         size_average: bool | None = None,
@@ -908,7 +872,7 @@ class SmoothL1Loss(nn.Layer, metaclass=_CompatClassMeta):
         self.beta = beta
 
     def forward(self, input: Tensor, target: Tensor) -> Tensor:
-        return functional.smooth_l1_loss.__wrapped__(
+        return functional.smooth_l1_loss(
             input, target, reduction=self.reduction, beta=self.beta
         )
 
