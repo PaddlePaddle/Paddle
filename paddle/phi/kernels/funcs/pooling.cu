@@ -105,17 +105,20 @@ struct FastDivModForPoolingWithMoreStaff {
         stride_h(stride_height) {}
 };
 
-static __device__ inline int p_start(int size,
-                                     int pad,
-                                     int kernel,
-                                     int stride) {
-  return (size + pad < kernel) ? 0 : (size + pad - kernel) / stride + 1;
+template <typename IndexT>
+static __device__ inline IndexT p_start(IndexT size,
+                                        IndexT pad,
+                                        IndexT kernel,
+                                        IndexT stride) {
+  return (size + pad < kernel) ? static_cast<IndexT>(0)
+                               : (size + pad - kernel) / stride + 1;
 }
 
-static __device__ inline int p_end(int size,
-                                   int pad,
-                                   int pooled_size,
-                                   int stride) {
+template <typename IndexT>
+static __device__ inline IndexT p_end(IndexT size,
+                                      IndexT pad,
+                                      IndexT pooled_size,
+                                      IndexT stride) {
   return std::min((size + pad) / stride + 1, pooled_size);
 }
 
