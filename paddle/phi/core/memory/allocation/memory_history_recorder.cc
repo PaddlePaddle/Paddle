@@ -21,13 +21,27 @@
 namespace paddle {
 namespace memory {
 
+namespace {
+// All state stays internal to this TU: exported data does not work here (see
+// MemHistoryEnabled in the header), and thread_local data cannot carry a dll
+// interface on MSVC (C2492). Consumers go through the exported functions.
 std::atomic<bool> g_mem_history_enabled{false};
-
-thread_local std::vector<const char*> g_mem_op_label_stack;
-
-thread_local std::vector<uint64_t> g_mem_stack_id_stack;
-
 std::atomic<size_t> g_mem_stack_min_size{0};
+thread_local std::vector<const char*> g_mem_op_label_stack;
+thread_local std::vector<uint64_t> g_mem_stack_id_stack;
+}  // namespace
+
+bool MemHistoryEnabled() {
+  return g_mem_history_enabled.load(std::memory_order_relaxed);
+}
+
+void SetMemStackMinSize(size_t min_size) {
+  g_mem_stack_min_size.store(min_size, std::memory_order_relaxed);
+}
+
+std::vector<const char*>& MemOpLabelStack() { return g_mem_op_label_stack; }
+
+std::vector<uint64_t>& MemStackIdStack() { return g_mem_stack_id_stack; }
 
 MemoryHistoryRecorder& MemoryHistoryRecorder::Instance() {
   static MemoryHistoryRecorder instance;
@@ -46,9 +60,18 @@ MemoryHistoryRecorder::DeviceRing& MemoryHistoryRecorder::EnsureDevice(
 }
 
 void MemoryHistoryRecorder::SetEnabled(bool enabled, size_t max_entries) {
+  if (!enabled) {
+    // Publish the disable BEFORE clearing. The ring lock's release/acquire then
+    // guarantees that a writer reaching its critical section after the clear
+    // observes it and drops its event instead of resurrecting a cleared ring.
+    g_mem_history_enabled.store(false, std::memory_order_relaxed);
+  }
   {
     std::lock_guard<SpinLock> lock(rings_lock_);
-    capacity_.store(max_entries, std::memory_order_relaxed);
+    // Disabling forces the capacity to 0 whatever the caller passed (Python
+    // sends its default max_entries even when disabling), so both the fast
+    // reject and the in-lock check in Record() bail out afterwards.
+    capacity_.store(enabled ? max_entries : 0, std::memory_order_relaxed);
     for (auto& ring : rings_) {
       if (ring == nullptr) continue;
       std::lock_guard<SpinLock> ring_lock(ring->lock);
@@ -57,7 +80,10 @@ void MemoryHistoryRecorder::SetEnabled(bool enabled, size_t max_entries) {
       ring->full = false;
     }
   }
-  g_mem_history_enabled.store(enabled, std::memory_order_relaxed);
+  if (enabled) {
+    // Publish the enable last, so no writer enters with a stale capacity.
+    g_mem_history_enabled.store(true, std::memory_order_relaxed);
+  }
 }
 
 void MemoryHistoryRecorder::Record(const MemHistoryTraceEntry& entry) {
@@ -72,12 +98,14 @@ void MemoryHistoryRecorder::Record(const MemHistoryTraceEntry& entry) {
   }
 
   std::lock_guard<SpinLock> ring_lock(ring->lock);
-  // Re-read inside the per-ring critical section so that the size check and
-  // the modulo below use one consistent value, and so that a capacity change
-  // that happened while we were acquiring locks is honoured (otherwise a stale
-  // larger capacity could grow this ring past the newly requested bound). The
-  // zero check must be repeated: SetEnabled(_, 0) between the fast reject and
-  // here would otherwise reach `% cap` with cap == 0.
+  // Re-check the enabled state here: SetEnabled() publishes a disable before
+  // clearing the rings under this same lock, so anything arriving after the
+  // clear must drop its event -- otherwise a straggler that passed the check in
+  // RecordMemHistory() could make events reappear after recording was stopped.
+  if (!MemHistoryEnabled()) return;
+  // Re-read the capacity too: keeps the size check and the modulo consistent,
+  // honours a capacity lowered while we took locks, and the zero check must be
+  // repeated or `% cap` could divide by zero.
   const size_t cap = capacity_.load(std::memory_order_relaxed);
   if (cap == 0) return;
   if (ring->buf.size() < cap) {

@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import os
 import sys
-import warnings
 from typing import TYPE_CHECKING, NoReturn, TypeAlias
 
 import paddle
@@ -544,14 +543,12 @@ def _record_memory_history(
     compatibility.
 
     .. note::
-        Recording is currently implemented **only for the VMM V1 allocator
-        stack** (``FLAGS_use_virtual_memory_auto_growth=1``): the alloc and
-        free-completed hooks live in ``MultiScalePoolAllocator``, which only
-        the V1 pool allocator derives from. Under VMM V2
-        (``VMMAutoGrowthBestFitMultiPoolAllocatorV2``) or the default
-        ``AutoGrowthBestFit`` allocator no allocation events are produced, so
-        a snapshot taken there yields no usable intervals. A warning is
-        emitted when recording is enabled without V1 active.
+        Only the VMM V1 allocator stack is supported
+        (``FLAGS_use_virtual_memory_auto_growth=1``); enabling recording
+        without it raises :class:`RuntimeError`. The ``kFreeRequested`` hook
+        additionally checks the real allocator type, since the facade silently
+        falls back to the default allocator when the device reports no
+        virtual-address-management support.
 
     Args:
         enabled: Truthy to start recording, falsy (``None``/``False``) to stop.
@@ -572,27 +569,12 @@ def _record_memory_history(
     '''
     if not core.is_compiled_with_cuda():
         return
-    if enabled:
-        flags = paddle.get_flags(
-            [
-                'FLAGS_use_virtual_memory_auto_growth',
-                'FLAGS_use_vmm_auto_growth_best_fit_allocator_v2',
-            ]
+    flag = 'FLAGS_use_virtual_memory_auto_growth'
+    if enabled and not paddle.get_flags(flag)[flag]:
+        raise RuntimeError(
+            'GPU memory history recording is only implemented for the VMM V1 '
+            f'allocator stack. Set {flag}=1 before the first allocation.'
         )
-        if not flags.get('FLAGS_use_virtual_memory_auto_growth'):
-            active = (
-                'the VMM V2 allocator'
-                if flags.get('FLAGS_use_vmm_auto_growth_best_fit_allocator_v2')
-                else 'the default AutoGrowthBestFit allocator'
-            )
-            warnings.warn(
-                'GPU memory history recording is only implemented for the VMM '
-                f'V1 allocator stack, but {active} is active. No allocation '
-                'events will be recorded and the snapshot will contain no '
-                'usable intervals. Set '
-                'FLAGS_use_virtual_memory_auto_growth=1 to use it.',
-                stacklevel=2,
-            )
     capture_stacks = bool(enabled) and str(stacks) in ("python", "all")
     core.gpu_record_memory_history(
         bool(enabled),

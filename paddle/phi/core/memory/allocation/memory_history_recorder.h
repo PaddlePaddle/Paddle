@@ -50,7 +50,7 @@ struct MemHistoryTraceEntry {
   uint64_t id;
   uint64_t stream;
   uint64_t time_us;
-  std::string op_name;  // Innermost op label (see g_mem_op_label_stack).
+  std::string op_name;  // Innermost op label (see MemOpLabelStack()).
   // Opaque id of the captured Python dispatch stack (interned in the pybind
   // layer, resolved to frames at snapshot time). 0 == no stack captured
   // (recording disabled, size below threshold, or a non-dispatch/backward
@@ -58,15 +58,11 @@ struct MemHistoryTraceEntry {
   uint64_t stack_id = 0;
 };
 
-// Global on/off switch checked inline at every hook site so that recording is
-// zero-overhead when disabled. Exported: the inline accessors below are
-// instantiated in the pybind / generated-eager targets, so the definition must
-// be visible across the phi DLL boundary on Windows.
-PADDLE_API extern std::atomic<bool> g_mem_history_enabled;
-
-inline bool MemHistoryEnabled() {
-  return g_mem_history_enabled.load(std::memory_order_relaxed);
-}
+// Whether recording is on. Checked at every hook site. Exported as a function,
+// not as the underlying atomic: PADDLE_API expands to dllexport in every target
+// (PADDLE_DLL_EXPORT is set project-wide), so exported *data* is emitted as a
+// plain extern in consumers and never resolves against phi.dll's __imp_ symbol.
+PADDLE_API bool MemHistoryEnabled();
 
 // Record a memory history event into the recorder for `device`. Cheap no-op
 // when recording is disabled (guarded internally as well). Out-of-line so that
@@ -83,13 +79,14 @@ void PADDLE_API RecordMemHistory(MemHistoryAction action,
 // so the innermost (back) label is the op that triggered an allocation.
 // Entries are static string literals (or member strings alive for the guard's
 // lifetime); we store raw `const char*` to avoid per-op heap traffic.
-// Exported because MemLabelGuard is inlined into the generated eager code,
-// which lives outside the phi DLL.
-PADDLE_API extern thread_local std::vector<const char*> g_mem_op_label_stack;
+// Reached through an exported accessor because thread_local data cannot carry
+// a dll interface on MSVC (C2492); only called when recording is enabled.
+PADDLE_API std::vector<const char*>& MemOpLabelStack();
 
 // Returns the innermost op label active on this thread, or nullptr if none.
 inline const char* CurrentMemOpLabel() {
-  return g_mem_op_label_stack.empty() ? nullptr : g_mem_op_label_stack.back();
+  auto& stack = MemOpLabelStack();
+  return stack.empty() ? nullptr : stack.back();
 }
 
 // Per-thread stack of the opaque Python-dispatch-stack id captured at op /
@@ -97,19 +94,18 @@ inline const char* CurrentMemOpLabel() {
 // PyEval_SaveThread). The allocator hot path only reads the innermost id --
 // it never touches Python, so recording stays lock/GIL-free and deadlock-free.
 //
-// This is a STACK (not a flat slot) mirroring g_mem_op_label_stack: an outer
+// This is a STACK (not a flat slot) mirroring MemOpLabelStack(): an outer
 // entry point (e.g. PyLayer.apply, a legacy collective op) pushes the call-site
 // stack, and nested eager ops push their own finer stacks on top and pop back
 // on exit. So an allocation made directly by an outer wrapper (a comm buffer,
 // a raw C++ alloc between nested ops) still inherits the wrapper's stack
 // instead of falling back to 0. 0 == no stack captured.
-// Exported because MemStackGuard is inlined into the pybind / generated eager
-// targets, which live outside the phi DLL.
-PADDLE_API extern thread_local std::vector<uint64_t> g_mem_stack_id_stack;
+PADDLE_API std::vector<uint64_t>& MemStackIdStack();
 
 // Returns the innermost captured stack id active on this thread, or 0 if none.
 inline uint64_t CurrentMemStackId() {
-  return g_mem_stack_id_stack.empty() ? 0 : g_mem_stack_id_stack.back();
+  auto& stack = MemStackIdStack();
+  return stack.empty() ? 0 : stack.back();
 }
 
 // RAII guard pushed at op-dispatch / PyLayer entry (while the GIL is held).
@@ -119,11 +115,12 @@ inline uint64_t CurrentMemStackId() {
 class MemStackGuard {
  public:
   explicit MemStackGuard(uint64_t stack_id) : active_(MemHistoryEnabled()) {
-    if (active_) g_mem_stack_id_stack.push_back(stack_id);
+    if (active_) MemStackIdStack().push_back(stack_id);
   }
   ~MemStackGuard() {
-    if (active_ && !g_mem_stack_id_stack.empty()) {
-      g_mem_stack_id_stack.pop_back();
+    if (active_) {
+      auto& stack = MemStackIdStack();
+      if (!stack.empty()) stack.pop_back();
     }
   }
   MemStackGuard(const MemStackGuard&) = delete;
@@ -133,15 +130,10 @@ class MemStackGuard {
   bool active_;
 };
 
-// Minimum allocation size (bytes) for which a Python stack is attributed. Kept
-// as an atomic so it can be tuned per recording session without touching the
-// hot path's cost when recording is disabled. Exported: SetMemStackMinSize is
-// inlined into pybind.cc, outside the phi DLL.
-PADDLE_API extern std::atomic<size_t> g_mem_stack_min_size;
-
-inline void SetMemStackMinSize(size_t min_size) {
-  g_mem_stack_min_size.store(min_size, std::memory_order_relaxed);
-}
+// Minimum allocation size (bytes) for which a Python stack is attributed. Set
+// once per recording session, so a plain exported setter (see MemHistoryEnabled
+// above for why data itself is not exported).
+PADDLE_API void SetMemStackMinSize(size_t min_size);
 
 // RAII guard pushed at op-dispatch entry (forward and backward). Pushes only
 // when recording is enabled (captured at construction so push/pop stay
@@ -150,11 +142,12 @@ inline void SetMemStackMinSize(size_t min_size) {
 class MemLabelGuard {
  public:
   explicit MemLabelGuard(const char* name) : active_(MemHistoryEnabled()) {
-    if (active_) g_mem_op_label_stack.push_back(name);
+    if (active_) MemOpLabelStack().push_back(name);
   }
   ~MemLabelGuard() {
-    if (active_ && !g_mem_op_label_stack.empty()) {
-      g_mem_op_label_stack.pop_back();
+    if (active_) {
+      auto& stack = MemOpLabelStack();
+      if (!stack.empty()) stack.pop_back();
     }
   }
   MemLabelGuard(const MemLabelGuard&) = delete;
@@ -167,8 +160,7 @@ class MemLabelGuard {
 // Per-device fixed-capacity ring buffer of memory history events. Modeled on
 // torch's RingBuffer: once full, new entries overwrite the oldest in a circular
 // fashion. GetTrace() returns entries in chronological (oldest-first) order.
-// Exported: Instance/SetEnabled/Annotate/GetTrace are called from pybind.cc,
-// outside the phi DLL.
+// Exported: called from pybind.cc, outside the phi DLL.
 class PADDLE_API MemoryHistoryRecorder {
  public:
   static MemoryHistoryRecorder& Instance();
@@ -208,11 +200,9 @@ class PADDLE_API MemoryHistoryRecorder {
 
   std::vector<std::unique_ptr<DeviceRing>> rings_;
   SpinLock rings_lock_;
-  // Ring capacity. Written by SetEnabled() under rings_lock_ but read by
-  // Record() on allocating threads without it, so it must be atomic: a
-  // reconfigure/disable from Python can run concurrently with allocations.
-  // Relaxed is sufficient -- buf/next are always mutated under the per-ring
-  // lock, so this value only needs to be untorn, not ordered against them.
+  // Written by SetEnabled() under rings_lock_ but read by Record() without it
+  // (a reconfigure from Python races with allocations), so it must be atomic.
+  // Relaxed suffices: buf/next are only touched under the per-ring lock.
   std::atomic<size_t> capacity_{0};
 };
 
