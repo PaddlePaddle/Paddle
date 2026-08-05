@@ -465,16 +465,6 @@ def _parse_scope(scope: str | Iterable[str] | None) -> set[str] | None:
     return set(scope)
 
 
-def _clear_compat_state() -> None:
-    had_torch_proxy = TORCH_PROXY_FINDER in sys.meta_path
-    while TORCH_PROXY_FINDER in sys.meta_path:
-        sys.meta_path.remove(TORCH_PROXY_FINDER)
-    _restore_paddle_namespace_aliases()
-    if had_torch_proxy:
-        _clear_torch_proxy_modules()
-        _copy_torch_modules_from_cache()
-
-
 def enable_compat(
     *,
     scope: _ScopeType = None,
@@ -538,7 +528,8 @@ def enable_compat(
         _register_compat_override()
         _swap_torch_modules_to_cache()
         _modify_scope_of_torch_proxy(scope, silent=silent)
-        sys.meta_path.insert(0, TORCH_PROXY_FINDER)
+        if TORCH_PROXY_FINDER not in sys.meta_path:
+            sys.meta_path.insert(0, TORCH_PROXY_FINDER)
         if level == 3:
             _apply_paddle_namespace_aliases()
     else:
@@ -648,19 +639,18 @@ def use_compat_guard(
             level=3 if has_paddle_aliases else 1,
         )
     else:
-        _clear_compat_state()
+        disable_compat()
     try:
         yield
     finally:
-        _clear_compat_state()
+        if TORCH_PROXY_FINDER in sys.meta_path or _PADDLE_NAMESPACE_SAVED:
+            disable_compat()
         if original_proxy_count or has_paddle_aliases:
             if original_proxy_count and has_paddle_aliases:
                 level = 3
             else:
                 level = 2 if has_paddle_aliases else 1
             enable_compat(scope=None, silent=True, level=level)
-            for _ in range(1, original_proxy_count):
-                enable_compat(scope=None, silent=True, level=1)
         TORCH_PROXY_FINDER._local_enabled_scope = original_local_enabled_scope
         TORCH_PROXY_FINDER._globally_enabled = original_globally_enabled
 
