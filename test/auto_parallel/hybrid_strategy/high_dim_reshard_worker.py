@@ -6,11 +6,11 @@
 import os
 
 import numpy as np
+
 import paddle
 import paddle.distributed as dist
 from paddle.distributed import load_state_dict, save_state_dict
 from paddle.distributed.flex_checkpoint.dcp.sharded_weight import ShardedWeight
-
 
 # Keep 240 elements while reducing the logical tensor to three dimensions.
 GLOBAL_SHAPE = (2, 10, 12)
@@ -49,9 +49,7 @@ def save_case(ckpt_path):
     for case_index, (name, rank0_start, rank1_start, _, _) in enumerate(CASES):
         start, end = rank0_start if rank == 0 else rank1_start
         flat = paddle.flatten(global_tensor(case_index))
-        state_dict[name] = make_weight(
-            name, flat[start:end], (start, end)
-        )
+        state_dict[name] = make_weight(name, flat[start:end], (start, end))
     save_state_dict(state_dict, ckpt_path)
     dist.barrier()
 

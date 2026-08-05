@@ -9,7 +9,6 @@ import unittest
 
 import collective.test_communication_api_base as test_base
 
-
 os.environ["FLAGS_enable_pir_api"] = "0"
 
 
