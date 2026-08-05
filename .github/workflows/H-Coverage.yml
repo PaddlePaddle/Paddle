@@ -473,7 +473,7 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -ce '
           set -x
-          OPS_DST=paddlefleet_ops-0.0.0-cp312-cp312-linux_x86_64.whl
+          OPS_DST=paddlefleet_ops-0.0.0+develop-cp312-cp312-linux_x86_64.whl
           wget -q --no-proxy "https://paddle-whl.bj.bcebos.com/nightly/cu129/paddlefleet-ops/${OPS_DST}" -O dist/${OPS_DST}
           '
 
