@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import functools
 import inspect
+import numbers
 import warnings
 from collections.abc import Callable, Iterable
 from typing import Any, TypeVar, cast
@@ -219,6 +220,40 @@ def param_two_alias(
         return wrapper
 
     return decorator
+
+
+def addmm_compat_decorator(
+    func: Callable[_InputT, _RetT],
+) -> Callable[_InputT, _RetT]:
+    """Preserve the legacy positional ``beta``, ``alpha``, and ``name``.
+
+    The public signature follows PyTorch by putting ``out_dtype`` in the
+    fourth position and making ``beta`` and ``alpha`` keyword-only. Numeric
+    fourth positional arguments still use Paddle's legacy argument order.
+    """
+
+    @functools.wraps(func)
+    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+        if len(args) >= 4 and isinstance(args[3], numbers.Number):
+            legacy_args = args[3:]
+            if len(legacy_args) > 3:
+                raise TypeError(
+                    "addmm() received too many positional arguments"
+                )
+            for name, value in zip(
+                ("beta", "alpha", "name")[: len(legacy_args)],
+                legacy_args,
+            ):
+                if name in kwargs:
+                    raise TypeError(
+                        f"addmm() got multiple values for argument '{name}'"
+                    )
+                kwargs[name] = value
+            args = args[:3]
+        return func(*args, **kwargs)
+
+    wrapper.__signature__ = inspect.signature(func)
+    return cast("Callable[_InputT, _RetT]", wrapper)
 
 
 def lp_pool_layer_decorator(

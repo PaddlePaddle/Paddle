@@ -4702,59 +4702,6 @@ def i1e(
 
 
 @add_doc_and_signature
-def addmm(
-    input: Tensor,
-    x: Tensor,
-    y: Tensor,
-    beta: float = 1.0,
-    alpha: float = 1.0,
-    name: str | None = None,
-    *,
-    out: Tensor | None = None,
-) -> Tensor:
-    r"""
-    Perform matrix multiplication for input $x$ and $y$.
-    $input$ is added to the final result.
-    The equation is:
-
-    ..  math::
-        Out = alpha * x * y + beta * input
-
-    $Input$, $x$ and $y$ can carry the LoD (Level of Details) information, or not. But the output only shares the LoD information with input $input$.
-
-    Args:
-        input (Tensor): The input Tensor to be added to the final result.
-        x (Tensor): The first input Tensor for matrix multiplication. Alias: ``mat1``.
-        y (Tensor): The second input Tensor for matrix multiplication. Alias: ``mat2``.
-        beta (float, optional): Coefficient of $input$, default is 1.
-        alpha (float, optional): Coefficient of $x*y$, default is 1.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    Keyword args:
-        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
-
-    Returns:
-        Tensor: The output Tensor of addmm.
-
-    Examples:
-        .. code-block:: pycon
-
-            >>> import paddle
-
-            >>> x = paddle.ones([2, 2])
-            >>> y = paddle.ones([2, 2])
-            >>> input = paddle.ones([2, 2])
-
-            >>> out = paddle.addmm(input=input, x=x, y=y, beta=0.5, alpha=5.0)
-
-            >>> print(out)
-            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[10.50000000, 10.50000000],
-             [10.50000000, 10.50000000]])
-    """
-    ...
-
-
-@add_doc_and_signature
 def addmm_(
     input: Tensor,
     x: Tensor,

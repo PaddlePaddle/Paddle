@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 import unittest
 
 import numpy as np
@@ -27,13 +28,17 @@ from paddle import base
 from paddle.base import Program, core, program_guard
 
 
+def addmm_api_for_op_test(input, x, y, beta=1.0, alpha=1.0):
+    return paddle.addmm(input, x, y, beta=beta, alpha=alpha)
+
+
 class TestAddMMOp(OpTest):
     # test basic
     def setUp(self):
         self.op_type = "addmm"
         self.prim_op_type = "comp"
-        self.python_api = paddle.addmm
-        self.public_python_api = paddle.addmm
+        self.python_api = addmm_api_for_op_test
+        self.public_python_api = addmm_api_for_op_test
         self.init_dtype_type()
         self.inputs = {
             'Input': np.random.random((100, 1)).astype(self.dtype),
@@ -103,7 +108,7 @@ class TestAddMMFP16Op(TestAddMMOp):
 class TestAddMMBF16Op(OpTest):
     def setUp(self):
         self.op_type = "addmm"
-        self.python_api = paddle.addmm
+        self.python_api = addmm_api_for_op_test
         self.init_dtype_type()
         self.inputs = {
             'Input': np.random.random((100, 1)).astype(self.np_dtype),
@@ -250,8 +255,8 @@ class TestAddMMOp2(TestAddMMOp):
     def setUp(self):
         self.op_type = "addmm"
         self.prim_op_type = "comp"
-        self.python_api = paddle.addmm
-        self.public_python_api = paddle.addmm
+        self.python_api = addmm_api_for_op_test
+        self.public_python_api = addmm_api_for_op_test
         self.dtype = np.float64
         self.init_dtype_type()
         self.inputs = {
@@ -274,8 +279,8 @@ class TestAddMMOp3(OpTest):
     def setUp(self):
         self.op_type = "addmm"
         self.prim_op_type = "comp"
-        self.python_api = paddle.addmm
-        self.public_python_api = paddle.addmm
+        self.python_api = addmm_api_for_op_test
+        self.public_python_api = addmm_api_for_op_test
         self.dtype = np.float64
         self.init_dtype_type()
         self.inputs = {
@@ -328,8 +333,8 @@ class TestAddMMOp4(OpTest):
     def setUp(self):
         self.op_type = "addmm"
         self.prim_op_type = "comp"
-        self.python_api = paddle.addmm
-        self.public_python_api = paddle.addmm
+        self.python_api = addmm_api_for_op_test
+        self.public_python_api = addmm_api_for_op_test
         self.dtype = np.float64
         self.init_dtype_type()
         self.inputs = {
@@ -565,11 +570,278 @@ class TestAddMMAPI(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestAddmmOutDtypeDynamicOnly(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def tearDown(self):
+        paddle.enable_static()
+
+    def _skip_if_no_fp16_cuda(self):
+        if not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm():
+            self.skipTest("CUDA is required for addmm out_dtype")
+        if paddle.device.cuda.get_device_capability() < (5, 3):
+            self.skipTest(
+                "FP16 addmm out_dtype requires CUDA compute capability >= 5.3"
+            )
+
+    def _skip_if_no_bf16_cuda(self):
+        if not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm():
+            self.skipTest("CUDA is required for addmm out_dtype")
+        if paddle.device.cuda.get_device_capability()[0] < 8:
+            self.skipTest(
+                "BF16 addmm out_dtype requires CUDA compute capability >= 8"
+            )
+
+    def test_signature_and_legacy_positional_args(self):
+        parameters = inspect.signature(paddle.addmm).parameters
+        self.assertEqual(
+            list(parameters),
+            [
+                'input',
+                'x',
+                'y',
+                'out_dtype',
+                'name',
+                'beta',
+                'alpha',
+                'out',
+            ],
+        )
+        for parameter in ('out_dtype', 'name'):
+            self.assertEqual(
+                parameters[parameter].kind,
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            )
+        for parameter in ('beta', 'alpha', 'out'):
+            self.assertEqual(
+                parameters[parameter].kind,
+                inspect.Parameter.KEYWORD_ONLY,
+            )
+
+        input = paddle.randn([3, 5], dtype='float32')
+        x = paddle.randn([3, 4], dtype='float32')
+        y = paddle.randn([4, 5], dtype='float32')
+        result = paddle.addmm(input, x, y, 0.5, 1.5, 'legacy_addmm')
+        expected = paddle.addmm(input, x, y, beta=0.5, alpha=1.5)
+        np.testing.assert_allclose(
+            result.numpy(), expected.numpy(), rtol=1e-5, atol=1e-5
+        )
+
+    def test_normal_and_out_without_out_dtype(self):
+        input = paddle.randn([3, 5], dtype='float32')
+        x = paddle.randn([3, 4], dtype='float32')
+        y = paddle.randn([4, 5], dtype='float32')
+        expected = input + paddle.mm(x, y)
+
+        result = paddle.addmm(input, x, y)
+        np.testing.assert_allclose(result.numpy(), expected.numpy(), rtol=1e-5)
+
+        out = paddle.empty([3, 5], dtype='float32')
+        result = paddle.addmm(input, x, y, out=out)
+        np.testing.assert_allclose(result.numpy(), expected.numpy(), rtol=1e-5)
+        np.testing.assert_allclose(out.numpy(), expected.numpy(), rtol=1e-5)
+
+    def test_fp16_to_fp32(self):
+        self._skip_if_no_fp16_cuda()
+        input = paddle.randn([5], dtype='float16')
+        x = paddle.randn([3, 4], dtype='float16')
+        y = paddle.randn([4, 5], dtype='float16')
+        result = paddle.addmm(
+            input, x, y, beta=0.5, alpha=1.5, out_dtype=paddle.float32
+        )
+        expected = paddle.addmm(
+            input.astype('float32'),
+            x.astype('float32'),
+            y.astype('float32'),
+            beta=0.5,
+            alpha=1.5,
+        )
+        self.assertEqual(result.dtype, paddle.float32)
+        np.testing.assert_allclose(
+            result.numpy(), expected.numpy(), rtol=1e-3, atol=1e-3
+        )
+
+    def test_fp16_to_fp32_positional_args(self):
+        self._skip_if_no_fp16_cuda()
+        input = paddle.randn([5], dtype='float16')
+        x = paddle.randn([3, 4], dtype='float16')
+        y = paddle.randn([4, 5], dtype='float16')
+        result = paddle.addmm(
+            input,
+            x,
+            y,
+            paddle.float32,
+            'addmm_positional',
+            beta=0.5,
+            alpha=1.5,
+        )
+        expected = paddle.addmm(
+            input.astype('float32'),
+            x.astype('float32'),
+            y.astype('float32'),
+            beta=0.5,
+            alpha=1.5,
+        )
+        self.assertEqual(result.dtype, paddle.float32)
+        np.testing.assert_allclose(
+            result.numpy(), expected.numpy(), rtol=1e-3, atol=1e-3
+        )
+
+    def test_fp16_to_fp32_with_float32_input_and_out(self):
+        self._skip_if_no_fp16_cuda()
+        input = paddle.randn([1, 5], dtype='float32')
+        x = paddle.randn([3, 4], dtype='float16')
+        y = paddle.randn([4, 5], dtype='float16')
+        out = paddle.empty([3, 5], dtype='float32')
+        result = paddle.addmm(
+            input,
+            x,
+            y,
+            beta=0.25,
+            alpha=2.0,
+            out_dtype=paddle.float32,
+            out=out,
+        )
+        expected = paddle.addmm(
+            input,
+            x.astype('float32'),
+            y.astype('float32'),
+            beta=0.25,
+            alpha=2.0,
+        )
+        np.testing.assert_allclose(
+            result.numpy(), expected.numpy(), rtol=1e-3, atol=1e-3
+        )
+        np.testing.assert_allclose(
+            out.numpy(), expected.numpy(), rtol=1e-3, atol=1e-3
+        )
+
+    def test_bf16_to_fp32(self):
+        self._skip_if_no_bf16_cuda()
+        input = paddle.randn([3, 5], dtype='bfloat16')
+        x = paddle.randn([3, 4], dtype='bfloat16')
+        y = paddle.randn([4, 5], dtype='bfloat16')
+        result = paddle.addmm(input, x, y, out_dtype=paddle.float32)
+        expected = paddle.addmm(
+            input.astype('float32'),
+            x.astype('float32'),
+            y.astype('float32'),
+        )
+        self.assertEqual(result.dtype, paddle.float32)
+        np.testing.assert_allclose(
+            result.numpy(), expected.numpy(), rtol=1e-2, atol=1e-2
+        )
+
+    def test_out_dtype_is_forward_only(self):
+        self._skip_if_no_fp16_cuda()
+        input = paddle.randn([3, 5], dtype='float16')
+        x = paddle.randn([3, 4], dtype='float16')
+        y = paddle.randn([4, 5], dtype='float16')
+        input.stop_gradient = False
+        x.stop_gradient = False
+        y.stop_gradient = False
+        result = paddle.addmm(input, x, y, out_dtype=paddle.float32)
+        self.assertTrue(result.stop_gradient)
+
+    def test_out_rejects_autograd(self):
+        input = paddle.randn([3, 5], dtype='float32')
+        x = paddle.randn([3, 4], dtype='float32')
+        y = paddle.randn([4, 5], dtype='float32')
+        out = paddle.empty([3, 5], dtype='float32')
+        x.stop_gradient = False
+        with self.assertRaises(RuntimeError):
+            paddle.addmm(input, x, y, out=out)
+
+        with paddle.no_grad():
+            paddle.addmm(input, x, y, out=out)
+
+    def test_out_dtype_rejects_unsupported_cases(self):
+        input = paddle.randn([3, 5], dtype='float16')
+        x = paddle.randn([3, 4], dtype='float16')
+        y = paddle.randn([4, 5], dtype='float16')
+        with self.assertRaises(TypeError):
+            paddle.addmm(input, x, y, out_dtype=paddle.float16)
+        with self.assertRaises(TypeError):
+            paddle.addmm(
+                input,
+                x,
+                y,
+                out_dtype=paddle.float32,
+                out=paddle.empty([3, 5], dtype='float16'),
+            )
+        with self.assertRaises(TypeError):
+            paddle.addmm(
+                input,
+                x,
+                y.astype('bfloat16'),
+                out_dtype=paddle.float32,
+            )
+
+    def test_out_dtype_rejects_cpu(self):
+        place = paddle.CPUPlace()
+        input = paddle.to_tensor(np.ones([3, 5], dtype=np.float16), place=place)
+        x = paddle.to_tensor(np.ones([3, 4], dtype=np.float16), place=place)
+        y = paddle.to_tensor(np.ones([4, 5], dtype=np.float16), place=place)
+
+        with self.assertRaisesRegex(
+            NotImplementedError, "only supports CUDA tensors"
+        ):
+            paddle.addmm(input, x, y, out_dtype=paddle.float32)
+
+    def test_invalid_dtype_is_checked_before_device(self):
+        place = paddle.CPUPlace()
+        input = paddle.to_tensor(np.ones([3, 5], dtype=np.float32), place=place)
+        x = paddle.to_tensor(np.ones([3, 4], dtype=np.float32), place=place)
+        y = paddle.to_tensor(np.ones([4, 5], dtype=np.float32), place=place)
+
+        with self.assertRaisesRegex(TypeError, "float16 or bfloat16 x"):
+            paddle.addmm(input, x, y, out_dtype=paddle.float32)
+
+    @unittest.skipUnless(
+        paddle.is_compiled_with_rocm(),
+        "ROCm is required for the addmm out_dtype backend check",
+    )
+    def test_out_dtype_rejects_rocm(self):
+        place = paddle.CUDAPlace(0)
+        input = paddle.to_tensor(np.ones([3, 5], dtype=np.float16), place=place)
+        x = paddle.to_tensor(np.ones([3, 4], dtype=np.float16), place=place)
+        y = paddle.to_tensor(np.ones([4, 5], dtype=np.float16), place=place)
+
+        with self.assertRaisesRegex(
+            NotImplementedError, "only supports CUDA tensors"
+        ):
+            paddle.addmm(input, x, y, out_dtype=paddle.float32)
+
+    def test_inplace_requires_exact_output_shape(self):
+        input = paddle.ones([3, 5], dtype='float32')
+        x = paddle.ones([3, 4], dtype='float32')
+        y = paddle.ones([4, 5], dtype='float32')
+        result = paddle.addmm_(input, x, y)
+        np.testing.assert_array_equal(result.numpy(), np.full([3, 5], 5.0))
+
+        with self.assertRaises(ValueError):
+            paddle.addmm_(paddle.ones([5]), x, y)
+        with self.assertRaises(ValueError):
+            paddle.addmm_(input, x, y, out_dtype=paddle.float32)
+
+    def test_static_out_dtype_fails_closed(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            input = paddle.static.data('input', [3, 5], dtype='float16')
+            x = paddle.static.data('x', [3, 4], dtype='float16')
+            y = paddle.static.data('y', [4, 5], dtype='float16')
+            with self.assertRaises(NotImplementedError):
+                paddle.addmm(input, x, y, out_dtype=paddle.float32)
+
+
 class TestAddmmOp_ZeroSize(OpTest):
     def setUp(self):
         self.op_type = "addmm"
-        self.python_api = paddle.addmm
-        self.public_python_api = paddle.addmm
+        self.python_api = addmm_api_for_op_test
+        self.public_python_api = addmm_api_for_op_test
         self.init_dtype_type()
         self.init_input()
         self.attrs = {
