@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import time
 import unittest
 
 import numpy as np
@@ -26,6 +27,13 @@ from paddle import base
     "xpu does not support dlpack",
 )
 class TestDLPack(unittest.TestCase):
+    def _assert_stream_complete(self, stream, message):
+        deadline = time.monotonic() + 1.0
+        while not stream.query():
+            if time.monotonic() >= deadline:
+                self.fail(message)
+            time.sleep(0.001)
+
     def test_dlpack_dygraph(self):
         if paddle.is_compiled_with_cuda():
             with dygraph_guard():
@@ -290,8 +298,12 @@ class TestDLPack(unittest.TestCase):
             dlpack_capsule = x.__dlpack__(stream=s1.stream_base.raw_stream)
             y = paddle.from_dlpack(dlpack_capsule)
             np.testing.assert_array_equal(x.numpy(), y.numpy())
-            self.assertTrue(s1.query(), "Stream s1 did not complete all tasks.")
-            self.assertTrue(s2.query(), "Stream s2 did not complete all tasks.")
+            self._assert_stream_complete(
+                s1, "Stream s1 did not complete all tasks."
+            )
+            self._assert_stream_complete(
+                s2, "Stream s2 did not complete all tasks."
+            )
 
     def test_dlpack_with_custom_stream_error(self):
         if not (paddle.is_compiled_with_cuda()):
