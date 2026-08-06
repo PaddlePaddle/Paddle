@@ -2374,47 +2374,6 @@ def addmm(
             added. Its dtype is ``out_dtype`` when specified, otherwise it is
             the input dtype.
     """
-    input_shape = input.shape
-    x_shape = x.shape
-    y_shape = y.shape
-
-    if not len(x_shape) == len(y_shape) == 2:
-        raise ValueError(
-            f"The dimension of x, y should be 2 but receive x's shape: {x_shape}, "
-            f"y's shape: {y_shape}"
-        )
-
-    if x_shape[1] >= 0 and y_shape[0] >= 0 and x_shape[1] != y_shape[0]:
-        raise ValueError(
-            "The input Variable x's width must be equal with Variable y's "
-            f"height. But received x's shape = {x_shape}, y's shape = {y_shape}."
-        )
-
-    def _broadcastable(actual, expected):
-        return actual < 0 or expected < 0 or actual in (1, expected)
-
-    if len(input_shape) == 2:
-        if not _broadcastable(input_shape[0], x_shape[0]):
-            raise ValueError(
-                "The dimension 0 of input must be equal to x's dimension 0, "
-                "or must be 1."
-            )
-        if not _broadcastable(input_shape[1], y_shape[1]):
-            raise ValueError(
-                "The dimension 1 of input must be equal to y's dimension 1, "
-                "or must be 1."
-            )
-    elif len(input_shape) == 1:
-        if not _broadcastable(input_shape[0], y_shape[1]):
-            raise ValueError(
-                "The dimension 0 of input must be equal to y's dimension 1, "
-                "or must be 1."
-            )
-    else:
-        raise ValueError(
-            f"The dimension of input should be 2 or 1 but receive input's shape: {input_shape}"
-        )
-
     if out_dtype is not None:
         out_dtype = convert_nptype_to_datatype_or_vartype(out_dtype)
         float32_dtypes = (core.DataType.FLOAT32, core.VarDesc.VarType.FP32)
@@ -2469,21 +2428,6 @@ def addmm(
                 "The out_dtype of paddle.addmm currently only supports CUDA tensors."
             )
 
-        if (
-            out is not None
-            and paddle.is_grad_enabled()
-            and builtins.any(
-                not tensor.stop_gradient for tensor in (input, x, y, out)
-            )
-        ):
-            raise RuntimeError(
-                "addmm(): functions with out=... arguments don't support "
-                "automatic differentiation, but one of the arguments requires grad."
-            )
-        return _C_ops.addmm_out_dtype(
-            input, x, y, out_dtype, beta, alpha, out=out
-        )
-
     if (
         out is not None
         and paddle.is_grad_enabled()
@@ -2494,6 +2438,11 @@ def addmm(
         raise RuntimeError(
             "addmm(): functions with out=... arguments don't support automatic "
             "differentiation, but one of the arguments requires grad."
+        )
+
+    if out_dtype is not None:
+        return _C_ops.addmm_out_dtype(
+            input, x, y, out_dtype, beta, alpha, out=out
         )
 
     if in_dynamic_mode():

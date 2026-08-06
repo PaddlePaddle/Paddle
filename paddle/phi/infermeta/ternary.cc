@@ -130,6 +130,42 @@ void AddmmInferMeta(const MetaTensor& input,
                               "But received y's dimension = [%d].",
                               ndim_y));
 
+  if (x_dims[1] >= 0 && y_dims[0] >= 0) {
+    PADDLE_ENFORCE_EQ(
+        x_dims[1],
+        y_dims[0],
+        errors::InvalidArgument(
+            "Input(X)'s width must equal Input(Y)'s height, but received %d "
+            "and %d.",
+            x_dims[1],
+            y_dims[0]));
+  }
+
+  auto check_broadcast_dim =
+      [](int64_t actual, int64_t expected, const char* message) {
+        if (actual >= 0 && expected >= 0) {
+          PADDLE_ENFORCE_EQ(actual == 1 || actual == expected,
+                            true,
+                            errors::InvalidArgument(message, actual, expected));
+        }
+      };
+  if (ndim_input == 2) {
+    check_broadcast_dim(input_dims[0],
+                        x_dims[0],
+                        "Input(input)'s first dimension must be 1 or match "
+                        "Input(X)'s first dimension, but received %d and %d.");
+    check_broadcast_dim(input_dims[1],
+                        y_dims[1],
+                        "Input(input)'s second dimension must be 1 or match "
+                        "Input(Y)'s second dimension, but received %d and %d.");
+  } else {
+    check_broadcast_dim(input_dims[0],
+                        y_dims[1],
+                        "The dimension of one-dimensional Input(input) must be "
+                        "1 or match Input(Y)'s second dimension, but received "
+                        "%d and %d.");
+  }
+
   std::vector<int64_t> output_dims;
   output_dims.push_back(x_dims[0]);
   output_dims.push_back(y_dims[1]);
@@ -178,45 +214,6 @@ void AddmmOutDtypeInferMeta(const MetaTensor& input,
           out_dtype));
 
   AddmmInferMeta(input, x, y, beta, alpha, out);
-
-  const auto input_dims = input.dims();
-  const auto x_dims = x.dims();
-  const auto y_dims = y.dims();
-  if (x_dims[1] >= 0 && y_dims[0] >= 0) {
-    PADDLE_ENFORCE_EQ(
-        x_dims[1],
-        y_dims[0],
-        errors::InvalidArgument(
-            "Input(X)'s width must equal Input(Y)'s height, but received %d "
-            "and %d.",
-            x_dims[1],
-            y_dims[0]));
-  }
-
-  auto check_broadcast_dim =
-      [](int64_t actual, int64_t expected, const char* message) {
-        if (actual >= 0 && expected >= 0) {
-          PADDLE_ENFORCE_EQ(actual == 1 || actual == expected,
-                            true,
-                            errors::InvalidArgument(message, actual, expected));
-        }
-      };
-  if (input_dims.size() == 2) {
-    check_broadcast_dim(input_dims[0],
-                        x_dims[0],
-                        "Input(input)'s first dimension must be 1 or match "
-                        "Input(X)'s first dimension, but received %d and %d.");
-    check_broadcast_dim(input_dims[1],
-                        y_dims[1],
-                        "Input(input)'s second dimension must be 1 or match "
-                        "Input(Y)'s second dimension, but received %d and %d.");
-  } else {
-    check_broadcast_dim(input_dims[0],
-                        y_dims[1],
-                        "The dimension of one-dimensional Input(input) must be "
-                        "1 or match Input(Y)'s second dimension, but received "
-                        "%d and %d.");
-  }
 
   out->set_dtype(DataType::FLOAT32);
 }
