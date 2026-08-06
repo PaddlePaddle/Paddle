@@ -5,11 +5,13 @@ RUN apt-get update \
  && apt-get install -yq --no-install-recommends \
         git \
         jq \
-        software-properties-common \
         wget \
         pigz \
         zstd \
- && /usr/bin/python3.8 /usr/bin/add-apt-repository -y ppa:ubuntu-toolchain-r/test \
+ && wget -qO /usr/share/keyrings/ubuntu-toolchain-r-test.asc \
+        'https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xC8EC952E2A0E1FBDC5090F6A2C277A0A352154E5' \
+ && echo 'deb [signed-by=/usr/share/keyrings/ubuntu-toolchain-r-test.asc] https://ppa.launchpadcontent.net/ubuntu-toolchain-r/test/ubuntu focal main' \
+        > /etc/apt/sources.list.d/ubuntu-toolchain-r-test.list \
  && apt-get update \
  && apt-get install -yq --no-install-recommends libstdc++6 \
  && apt-get clean \
