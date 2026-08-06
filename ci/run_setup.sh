@@ -350,36 +350,23 @@ if [[ "$CI_name" == "build" && "$is_pr" == "true" ]]; then
     rm -f ${PADDLE_ROOT}/build/python/dist/*.whl && rm -f ${PADDLE_ROOT}/build/python/build/.timestamp
 
     git checkout $BRANCH
-    dev_commit=`git log -2|grep -w 'commit'|awk '{print $2}'`
-    for commit_id in $dev_commit
-    do
-    dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${commit_id}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl"
-    url_return=`curl -s -m 5 -IL ${dev_url} |awk 'NR==1{print $2}'`
-      if [ "$url_return" == '200' ];then
-        break
-      fi
-    done
-    if [ "$url_return" == '200' ];then
-        mkdir ${PADDLE_ROOT}/build/dev_whl && wget -q -P ${PADDLE_ROOT}/build/dev_whl ${dev_url}
-        cp ${PADDLE_ROOT}/build/dev_whl/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl ${PADDLE_ROOT}/build/python/dist
-    else
-        cp -r ${PADDLE_ROOT}/build /tmp/
-        if [[ ${cmake_change} ]];then
-            rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt ${PADDLE_ROOT}/build/build.ninja
-            rm -rf ${PADDLE_ROOT}/build/third_party
-        fi
-        git checkout $BRANCH
-        git submodule update --init
-        run_setup "rerun-cmake bdist_wheel"
-        rm -rf ${PADDLE_ROOT}/build
-        mv /tmp/build ${PADDLE_ROOT}
-        if [ ! -d "${PADDLE_ROOT}/build/python/dist/" ]; then
-            mkdir ${PADDLE_ROOT}/build/python/dist/
-        fi
-        mv ${PADDLE_ROOT}/dist/*.whl ${PADDLE_ROOT}/build/python/dist/
-        mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
-        git checkout test
+    git submodule update
+    cp -r ${PADDLE_ROOT}/build /tmp/
+    if [[ ${cmake_change} ]];then
+        rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt ${PADDLE_ROOT}/build/build.ninja
+        rm -rf ${PADDLE_ROOT}/build/third_party
     fi
+    git checkout $BRANCH
+    git submodule update --init
+    run_setup "rerun-cmake bdist_wheel"
+    rm -rf ${PADDLE_ROOT}/build
+    mv /tmp/build ${PADDLE_ROOT}
+    if [ ! -d "${PADDLE_ROOT}/build/python/dist/" ]; then
+        mkdir ${PADDLE_ROOT}/build/python/dist/
+    fi
+    mv ${PADDLE_ROOT}/dist/*.whl ${PADDLE_ROOT}/build/python/dist/
+    mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
+    git checkout test
 
     generate_api_spec "" "DEV"
 fi
