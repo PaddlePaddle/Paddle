@@ -162,10 +162,16 @@ TEST(ATenFactoryDefaultDtypeTest,
 
   at::Tensor tensor =
       at::scalar_tensor(1.25, std::nullopt, std::nullopt, at::kCPU, false);
+  at::Tensor strided_tensor =
+      at::scalar_tensor(2.5, std::nullopt, at::kStrided, at::kCPU, false);
 
   ASSERT_EQ(tensor.dim(), 0);
   ASSERT_EQ(tensor.scalar_type(), at::kDouble);
   ASSERT_DOUBLE_EQ(tensor.item<double>(), 1.25);
+  ASSERT_EQ(strided_tensor.dim(), 0);
+  ASSERT_EQ(strided_tensor.scalar_type(), at::kDouble);
+  ASSERT_EQ(strided_tensor.layout(), at::kStrided);
+  ASSERT_DOUBLE_EQ(strided_tensor.item<double>(), 2.5);
 }
 
 TEST(ATenFactoryDefaultDtypeTest, OnesNulloptDtypeUsesCurrentDefault) {

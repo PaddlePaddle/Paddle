@@ -32,7 +32,13 @@ inline at::Tensor scalar_tensor(const at::Scalar& scalar,
                                 ::std::optional<at::Layout> layout,
                                 ::std::optional<at::Device> device,
                                 ::std::optional<bool> pin_memory) {
-  return at::full({}, scalar, dtype, layout, device, pin_memory);
+  auto options =
+      at::TensorOptions()
+          .dtype(dtype.value_or(c10::get_default_dtype_as_scalartype()))
+          .layout(layout)
+          .device(device.value_or(at::kCPU))
+          .pinned_memory(pin_memory);
+  return scalar_tensor(scalar, options);
 }
 
 }  // namespace at
