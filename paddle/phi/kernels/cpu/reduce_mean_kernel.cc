@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/reduce_mean_kernel.h"
 
-#include "paddle/common/flags.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cast_kernel.h"
@@ -22,8 +21,6 @@
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/cascade_sum.h"
 #include "paddle/phi/kernels/funcs/reduce_functor.h"
-
-COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 namespace phi {
 namespace {
@@ -105,33 +102,16 @@ void MeanRawKernel(const Context& dev_ctx,
   if constexpr (kIsReducedFp || std::is_same_v<T, float> ||
                 std::is_same_v<T, double> || std::is_same_v<T, complex64> ||
                 std::is_same_v<T, complex128>) {
-    if (FLAGS_use_accuracy_compatible_kernel) {
-      using Acc = std::conditional_t<kIsReducedFp, float, T>;
-      CascadeMean<T, Acc, Context>(
-          dev_ctx,
-          x,
-          funcs::NormalizeReduceAxes(x.dims(), dims.GetData(), reduce_all),
-          out);
-      return;
-    }
-  }
-
-  reduce_all = recompute_reduce_all(x, dims, reduce_all);
-  if constexpr (kIsReducedFp) {
-    // Averaging in the low precision type loses too much, so keep the mean in
-    // float32 and round once, mirroring what SumRawKernel does for fp16/bf16.
-    DenseTensor x_fp32 = Cast<T, Context>(dev_ctx, x, DataType::FLOAT32);
-    DenseTensor out_fp32;
-    out_fp32.Resize(out->dims());
-    Reduce<CPUContext, float, funcs::MeanFunctor>(dev_ctx,
-                                                  x_fp32,
-                                                  reduce_all,
-                                                  dims.GetData(),
-                                                  keep_dim,
-                                                  DataType::FLOAT32,
-                                                  &out_fp32);
-    CastKernel<float, Context>(dev_ctx, out_fp32, x.dtype(), out);
+    using Acc = std::conditional_t<kIsReducedFp, float, T>;
+    CascadeMean<T, Acc, Context>(
+        dev_ctx,
+        x,
+        funcs::NormalizeReduceAxes(x.dims(), dims.GetData(), reduce_all),
+        out);
   } else {
+    // bool and the integral types keep the Eigen reduction: torch has no mean
+    // for them at all, so there is no accumulation order to match.
+    reduce_all = recompute_reduce_all(x, dims, reduce_all);
     Reduce<CPUContext, T, funcs::MeanFunctor>(
         dev_ctx, x, reduce_all, dims.GetData(), keep_dim, x.dtype(), out);
   }

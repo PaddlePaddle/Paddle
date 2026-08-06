@@ -21,7 +21,6 @@
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 COMMON_DECLARE_bool(use_stride_kernel);
-COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 // Without a STRIDED kernel the dispatcher materializes a contiguous copy of any
 // non-contiguous input before calling the reduce (NeedTransform2Contiguous() in
@@ -31,9 +30,9 @@ COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 // kernel sees the real strides.
 //
 // The Eigen based CPU reduce path cannot handle strides, so the view is only
-// forwarded when the FLAGS_use_accuracy_compatible_kernel cascade path will
-// consume it; otherwise this kernel does the materialization itself and behaves
-// exactly like the previous dispatch.
+// forwarded when the cascade path in SumRawKernel/MeanRawKernel will consume
+// it; otherwise this kernel does the materialization itself and behaves exactly
+// like the previous dispatch.
 namespace phi {
 namespace {
 
@@ -88,11 +87,9 @@ void SumStrideKernel(const Context& dev_ctx,
   }
   const DataType compute_dtype =
       effective_dtype == DataType::UNDEFINED ? x.dtype() : effective_dtype;
-  const bool strides_supported =
-      FLAGS_use_accuracy_compatible_kernel && IsCascadeDtype(compute_dtype);
   DenseTensor buffer;
-  const DenseTensor& src =
-      ResolveInput<T, Context>(dev_ctx, x, strides_supported, &buffer);
+  const DenseTensor& src = ResolveInput<T, Context>(
+      dev_ctx, x, IsCascadeDtype(compute_dtype), &buffer);
   SumKernel<T, Context>(dev_ctx, src, dims, out_dtype, keep_dim, out);
 }
 
@@ -103,15 +100,11 @@ void MeanStrideKernel(const Context& dev_ctx,
                       bool keep_dim,
                       DenseTensor* out) {
   PrepareStridedOut(out);
-  // MeanRawKernel's cascade path covers exactly the IsCascadeDtype set. fp16
-  // and bf16 are included: it reduces them through a float32 accumulator built
-  // with CastPreservingLayout, so the strides survive.
-  const bool strides_supported =
-      FLAGS_use_accuracy_compatible_kernel && IsCascadeDtype(x.dtype());
-  DenseTensor buffer;
-  const DenseTensor& src =
-      ResolveInput<T, Context>(dev_ctx, x, strides_supported, &buffer);
-  MeanKernel<T, Context>(dev_ctx, src, dims, keep_dim, out);
+  // Every dtype this kernel is registered for is in the IsCascadeDtype set that
+  // MeanRawKernel's cascade path covers, so the strided view always survives.
+  // fp16 and bf16 included: they are reduced through a float32 accumulator
+  // built with CastPreservingLayout, which keeps the strides.
+  MeanKernel<T, Context>(dev_ctx, x, dims, keep_dim, out);
 }
 
 }  // namespace phi
