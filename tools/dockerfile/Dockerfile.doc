@@ -1,6 +1,9 @@
 ARG BASEIMAGE=registry.baidubce.com/paddleopen/fluiddoc-sphinx:20230828-py310-cuda11.8.0-cudnn8-runtime-ubuntu20.04-v3
 FROM ${BASEIMAGE}
 
+COPY tools/dockerfile/ubuntu-toolchain-r-test-C8EC952E2A0E1FBDC5090F6A2C277A0A352154E5.asc \
+     /usr/share/keyrings/ubuntu-toolchain-r-test.asc
+
 RUN apt-get update \
  && apt-get install -yq --no-install-recommends \
         git \
@@ -8,9 +11,7 @@ RUN apt-get update \
         wget \
         pigz \
         zstd \
- && wget -qO /usr/share/keyrings/ubuntu-toolchain-r-test.asc \
-        'https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xC8EC952E2A0E1FBDC5090F6A2C277A0A352154E5' \
- && echo 'deb [signed-by=/usr/share/keyrings/ubuntu-toolchain-r-test.asc] https://ppa.launchpadcontent.net/ubuntu-toolchain-r/test/ubuntu focal main' \
+ && echo 'deb [signed-by=/usr/share/keyrings/ubuntu-toolchain-r-test.asc] http://ppa.launchpad.net/ubuntu-toolchain-r/test/ubuntu focal main' \
         > /etc/apt/sources.list.d/ubuntu-toolchain-r-test.list \
  && apt-get update \
  && apt-get install -yq --no-install-recommends libstdc++6 \
