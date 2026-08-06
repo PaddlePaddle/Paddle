@@ -9,7 +9,7 @@ RUN apt-get update \
         wget \
         pigz \
         zstd \
- && add-apt-repository -y ppa:ubuntu-toolchain-r/test \
+ && /usr/bin/python3.8 /usr/bin/add-apt-repository -y ppa:ubuntu-toolchain-r/test \
  && apt-get update \
  && apt-get install -yq --no-install-recommends libstdc++6 \
  && apt-get clean \
