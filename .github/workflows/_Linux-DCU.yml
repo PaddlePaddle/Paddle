@@ -74,6 +74,7 @@ jobs:
           CCACHE_DIR: /root/.ccache
           CCACHE_MAXSIZE: 150G
           CCACHE_LIMIT_MULTIPLE: 0.8
+          CCACHE_NAMESPACE: ${{ inputs.docker_dcu_image }}
           GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           home_dir: ${{ github.workspace }}/../../../..
         run: |
@@ -110,6 +111,7 @@ jobs:
             -e CCACHE_DIR \
             -e CCACHE_MAXSIZE \
             -e CCACHE_LIMIT_MULTIPLE \
+            -e CCACHE_NAMESPACE \
             -e ci_scripts \
             -e BRANCH \
             -e PADDLE_BRANCH \
@@ -156,6 +158,13 @@ jobs:
           export LD_LIBRARY_PATH=/usr/local/gcc-12.2/lib64:/usr/local/gcc-12.2/lib:${LD_LIBRARY_PATH}
           bash ${ci_scripts}/run_setup.sh bdist_wheel
           EXCODE=$?
+          if [[ ${EXCODE} -eq 0 ]]; then
+            echo "Build runner CPU:"
+            lscpu
+            echo "Build runner analyzer C API test:"
+            ctest --test-dir build --output-on-failure \
+              -R "^test_analyzer_capi_exp_pd_config$" || true
+          fi
           python -m pip install bce-python-sdk==0.8.74
           find . -type f \( -name "*.a" -o -name "*.o" \) -delete
           exit $EXCODE
@@ -299,6 +308,8 @@ jobs:
           tar -zxf hyhal-Z100.tar.gz -C /opt
           source /opt/dtk-24.04.1/env.sh
           export LD_LIBRARY_PATH=/usr/local/gcc-12.2/lib64:/usr/local/gcc-12.2/lib:${LD_LIBRARY_PATH}
+          echo "Test runner CPU:"
+          lscpu
           bash -x ${ci_scripts}/dcu_test.sh
           '
 

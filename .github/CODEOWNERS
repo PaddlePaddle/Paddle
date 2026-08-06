@@ -46,7 +46,6 @@ paddle/phi/core/tensor_meta.h @zhangbo9674
 paddle/phi/infermeta/spmd_rules @LiYuRio @ForFishes @From00
 paddle/scripts/paddle_build.bat @zhwesky2010 @wanghuancoder
 paddle/scripts/paddle_build.sh @risemeup1 @zhangbo9674 @XieYunshen
-pyproject.toml @SigureMo @gouzil
 python/paddle/autograd/backward_utils.py @xiaoguoguo626807 @changeyoung98
 python/paddle/autograd/ir_backward.py @xiaoguoguo626807 @changeyoung98
 python/paddle/base/backward.py @XiaoguangHu01 @xiaoguoguo626807 @Xreki @qili93
@@ -67,13 +66,6 @@ python/paddle/distributed/fleet/launch.py @sneaxiy @raindrops2sea
 python/paddle/distributed/__init__.py @sneaxiy @raindrops2sea
 python/paddle/incubate/autograd/composite_rules.py @xiaoguoguo626807 @JiabinYang
 python/paddle/incubate/autograd/primitives.py @xiaoguoguo626807 @JiabinYang
-python/paddle/_typing @SigureMo @zrr1999 @gouzil
 python/requirements.txt @zhangbo9674 @jzhang533 @kolinwei
-test/dygraph_to_static @SigureMo @DrRyanHuang @zrr1999 @gouzil
-test/sot @SigureMo @DrRyanHuang @zrr1999 @gouzil
 tools/parallel_UT_rule.py @zhwesky2010 @wanghuancoder
 tools/windows/run_unittests.sh @zhwesky2010 @wanghuancoder
-.pre-commit-config.yaml @SigureMo @gouzil
-_typos.toml @SigureMo
-ci/rules @SigureMo @zrr1999
-ci/rule-tests @SigureMo @zrr1999
