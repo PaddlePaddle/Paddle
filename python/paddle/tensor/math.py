@@ -2383,30 +2383,9 @@ def addmm(
             core.DataType.BFLOAT16,
             core.VarDesc.VarType.BF16,
         )
-        if out_dtype not in float32_dtypes:
-            raise TypeError(
-                "The out_dtype of paddle.addmm currently only supports paddle.float32."
-            )
         if x.dtype not in supported_input_dtypes:
             raise TypeError(
                 "The out_dtype of paddle.addmm currently only supports float16 or bfloat16 x."
-            )
-        if y.dtype not in supported_input_dtypes:
-            raise TypeError(
-                "The out_dtype of paddle.addmm currently only supports float16 or bfloat16 y."
-            )
-        if x.dtype != y.dtype:
-            raise TypeError(
-                "The x and y of paddle.addmm must have the same dtype when out_dtype is specified."
-            )
-        input_is_float32 = input.dtype in float32_dtypes
-        if input.dtype not in supported_input_dtypes and not input_is_float32:
-            raise TypeError(
-                "The input of paddle.addmm must have the same dtype as x or float32 when out_dtype is specified."
-            )
-        if input.dtype != x.dtype and not input_is_float32:
-            raise TypeError(
-                "The input of paddle.addmm must have the same dtype as x or float32 when out_dtype is specified."
             )
         if out is not None and out.dtype not in float32_dtypes:
             raise TypeError(

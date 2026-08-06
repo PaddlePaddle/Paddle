@@ -756,12 +756,10 @@ class TestAddmmOutDtypeDynamicOnly(unittest.TestCase):
         with paddle.no_grad():
             paddle.addmm(input, x, y, out=out)
 
-    def test_out_dtype_rejects_unsupported_cases(self):
+    def test_out_dtype_rejects_invalid_out(self):
         input = paddle.randn([3, 5], dtype='float16')
         x = paddle.randn([3, 4], dtype='float16')
         y = paddle.randn([4, 5], dtype='float16')
-        with self.assertRaises(TypeError):
-            paddle.addmm(input, x, y, out_dtype=paddle.float16)
         with self.assertRaises(TypeError):
             paddle.addmm(
                 input,
@@ -770,11 +768,26 @@ class TestAddmmOutDtypeDynamicOnly(unittest.TestCase):
                 out_dtype=paddle.float32,
                 out=paddle.empty([3, 5], dtype='float16'),
             )
-        with self.assertRaises(TypeError):
+
+    def test_out_dtype_infermeta_rejects_unsupported_dtypes(self):
+        self._skip_if_no_fp16_cuda()
+        input = paddle.randn([3, 5], dtype='float16')
+        x = paddle.randn([3, 4], dtype='float16')
+        y = paddle.randn([4, 5], dtype='float16')
+        with self.assertRaisesRegex(ValueError, "only supports float32"):
+            paddle.addmm(input, x, y, out_dtype=paddle.float16)
+        with self.assertRaisesRegex(ValueError, "must have the same dtype"):
             paddle.addmm(
                 input,
                 x,
-                y.astype('bfloat16'),
+                y.astype('float32'),
+                out_dtype=paddle.float32,
+            )
+        with self.assertRaisesRegex(ValueError, r"same dtype as Input\(X\)"):
+            paddle.addmm(
+                input.astype('float64'),
+                x,
+                y,
                 out_dtype=paddle.float32,
             )
 
