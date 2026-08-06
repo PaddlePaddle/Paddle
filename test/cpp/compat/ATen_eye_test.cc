@@ -48,6 +48,22 @@ static void CheckEye(const at::Tensor& t, int64_t rows, int64_t cols) {
   }
 }
 
+static void CheckContiguousFloatEye(const at::Tensor& t,
+                                    int64_t rows,
+                                    int64_t cols) {
+  ASSERT_TRUE(t.is_cpu());
+  ASSERT_TRUE(t.is_contiguous());
+  ASSERT_EQ(t.scalar_type(), at::kFloat);
+  const float* data = t.data_ptr<float>();
+  for (int64_t i = 0; i < rows; ++i) {
+    for (int64_t j = 0; j < cols; ++j) {
+      float expected = (i == j) ? 1.0f : 0.0f;
+      ASSERT_FLOAT_EQ(data[i * cols + j], expected)
+          << "Raw buffer mismatch at (" << i << ", " << j << ")";
+    }
+  }
+}
+
 // ---- eye(n) -------------------------------------------------------
 
 TEST(ATenEyeTest, SquareDefaultDtype) {
@@ -165,6 +181,7 @@ TEST(ATenEyeTest, SquareOnGPU) {
   at::Tensor t =
       at::eye(4, at::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
   at::Tensor t_cpu = t.to(at::kCPU);
+  CheckContiguousFloatEye(t_cpu, 4, 4);
   CheckEye(t_cpu, 4, 4);
 }
 
@@ -175,6 +192,7 @@ TEST(ATenEyeTest, RectangularOnGPU) {
   at::Tensor t =
       at::eye(3, 5, at::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
   at::Tensor t_cpu = t.to(at::kCPU);
+  CheckContiguousFloatEye(t_cpu, 3, 5);
   CheckEye(t_cpu, 3, 5);
 }
 #endif
