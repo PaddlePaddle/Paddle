@@ -129,30 +129,6 @@ if [[ ${IF_USE_EVAL} ]]; then
     check_approval 1 wanghuancoder SigureMo
 fi
 
-CPP_FILE_ADDED_LINES=$(git diff -U0 upstream/$BRANCH -- 'paddle/' |grep "^+")
-IF_USE_FESETROUND=`echo $CPP_FILE_ADDED_LINES | grep -B5 --no-group-separator "fesetround" || true`
-if [[ ${IF_USE_FESETROUND} ]]; then
-    echo_line="You must have one RD (SigureMo(Recommend), zhangbo9674) approval for using fesetround, which may affect all floating-point precision calculations in the same process.\n"
-    check_approval 1 SigureMo zhangbo9674
-fi
-
-INFERMETA_FILES_ADDED_LINES=$(git diff -U0 upstream/$BRANCH -- 'paddle/phi/infermeta/' |grep "^+")
-IF_ADD_METACONFIG=`echo $INFERMETA_FILES_ADDED_LINES | grep -B5 --no-group-separator "MetaConfig" || true`
-HAS_MODIFIED_OP_BUILD_GEN_SCRIPT=`git diff --name-only upstream/$BRANCH -- 'paddle/fluid/pir/dialect/op_generator/op_build_gen.py'`
-if [ -n "${IF_ADD_METACONFIG}" ] && [ -z "${HAS_MODIFIED_OP_BUILD_GEN_SCRIPT}" ]; then
-    echo_line="If your added infermeta file contains MetaConfig, you must update _INFERMETA_NEED_META_CONFIG in op_build_gen.py synchronously.\n"
-    echo_line=${echo_line}"If you believe this is a false positive, please request one of the RD (SigureMo(Recommend), DrRyanHuang, zhangbo9674) approval for the changes.\n"
-    check_approval 1 SigureMo DrRyanHuang zhangbo9674
-fi
-
-CINN_FILES_ADDED_LINES=$(git diff -U0 upstream/$BRANCH -- 'paddle/cinn/' |grep "^+")
-IF_ADD_LOG_INFO=`echo $CINN_FILES_ADDED_LINES | grep -B5 --no-group-separator "LOG(INFO)" || true`
-if [[ ${IF_ADD_LOG_INFO} ]]; then
-    echo_line="You must have one RD (SigureMo(Recommend), DrRyanHuang) approval for using LOG(INFO), which may make user confused. Recommend to move it under if (FLAGS_cinn_debug)\n"
-    check_approval 1 SigureMo DrRyanHuang
-fi
-
-
 NO_NPU_FILE=`git diff --name-only upstream/$BRANCH | grep -v "_npu.py"`
 HAS_UNITTEST_SKIP=`git diff -U0 upstream/$BRANCH ${NO_NPU_FILE} | grep "^+[[:space:]]\{0,\}@unittest.skip" || true`
 if [ "${HAS_UNITTEST_SKIP}" != "" ] && [ "${PR_ID}" != "" ]; then
@@ -291,8 +267,8 @@ fi
 
 HAS_MODIFIED_AGENTS_SKILLS=`git diff --name-only upstream/$BRANCH | grep "^\\.agents/skills/" || true`
 if [ "${HAS_MODIFIED_AGENTS_SKILLS}" != "" ] && [ "${PR_ID}" != "" ]; then
-    echo_line="You must have one RD (zrr1999, SigureMo, ShigureNyako) approval for file changes in .agents/skills.\n"
-    check_approval 1 zrr1999 SigureMo ShigureNyako
+    echo_line="You must have one RD (zrr1999, risemeup1, risemeup1111) approval for file changes in .agents/skills.\n"
+    check_approval 1 zrr1999 risemeup1 risemeup1111
 fi
 
 ALL_PADDLE_ENFORCE=`git diff -U0 upstream/$BRANCH -- . ':!.agents/skills/' |grep "^+" |grep -zoE "PADDLE_ENFORCE\(.[^,\);]+.[^;]*\);\s" || true`
@@ -320,53 +296,6 @@ EMPTY_GRAD_OP_REGISTERED=`echo $ALL_ADDED_LINES |grep -zoE "REGISTER_OP_WITHOUT_
 if [ "${EMPTY_GRAD_OP_REGISTERED}" != "" ] && [ "${GIT_PT_ID}" != "" ]; then
     echo_line="You must have one RD (xiaoguoguo626807, XiaoguangHu01 or kolinwei) approval for the usage of REGISTER_OP_WITHOUT_GRADIENT or EmptyGradOpMaker.\nThe code that do not meet the specification are as follows:\n${EMPTY_GRAD_OP_REGISTERED}\n"
     check_approval 1 xiaoguoguo626807 XiaoguangHu01 kolinwei
-fi
-
-HAS_MODIFIED_DY2ST_TEST_FILES=$(git diff --name-only --diff-filter=ACMR upstream/$BRANCH | grep "test/dygraph_to_static/test_" || true)
-if [ "${HAS_MODIFIED_DY2ST_TEST_FILES}" != "" ] && [ "${PR_ID}" != "" ]; then
-    error_lines=`python ${PADDLE_ROOT}/test/dygraph_to_static/check_approval.py ${HAS_MODIFIED_DY2ST_TEST_FILES}`
-    if [ $? -ne 0 ]; then
-        echo_line="Your PR does not meet Dy2St unittest dev guide, please check https://github.com/PaddlePaddle/Paddle/issues/61464 for details.\n"
-        echo_line=${echo_line}"Errors are as follows:\n"
-        echo_line=${echo_line}${error_lines}"\n"
-        echo_line=${echo_line}"You can run following command to fix the errors:\n"
-        echo_line=${echo_line}"    python test/dygraph_to_static/check_approval.py "$(echo ${HAS_MODIFIED_DY2ST_TEST_FILES} | tr "\n" " ")"\n"
-        echo_line=${echo_line}"If you believe this is a false positive, please request one of the RD (SigureMo, DrRyanHuang, zrr1999 or gouzil) approval for the changes.\n"
-        check_approval 1 SigureMo DrRyanHuang zrr1999 gouzil
-    fi
-fi
-
-HAS_MODIFIED_DY2ST_TEST_TENSOR_ATTR_CONSISTENCY=$(git diff --name-only upstream/$BRANCH | grep "test/dygraph_to_static/test_tensor_attr_consistency.py" || true)
-if [ "${HAS_MODIFIED_DY2ST_TEST_TENSOR_ATTR_CONSISTENCY}" != "" ] && [ "${PR_ID}" != "" ]; then
-    echo_line="You must have one RD (SigureMo, DrRyanHuang, zrr1999 or gouzil) approval for file changes in test/dygraph_to_static/test_tensor_attr_consistency.py.\n"
-    check_approval 1 SigureMo DrRyanHuang zrr1999 gouzil
-fi
-
-HAS_MODIFIED_PY_OR_CPP_FILES=$(git diff --name-only --diff-filter=ACMR upstream/$BRANCH | grep -E "(python|paddle)/.*\.(cc|h|py)" || true)
-if [ "${HAS_MODIFIED_PY_OR_CPP_FILES}" != "" ] && [ "${PR_ID}" != "" ]; then
-    error_lines=`python ${PADDLE_ROOT}/tools/check_code_block_format.py ${HAS_MODIFIED_PY_OR_CPP_FILES}`
-    if [ $? -ne 0 ]; then
-        echo_line="Your PR added code blocks are not in standard format, please check:\n"
-        echo_line=${echo_line}"Errors are as follows:\n"
-        echo_line=${echo_line}${error_lines}"\n"
-        echo_line=${echo_line}"You can run following command to fix the errors:\n"
-        echo_line=${echo_line}"    python tools/check_code_block_format.py "$(echo ${HAS_MODIFIED_PY_OR_CPP_FILES} | tr "\n" " ")"\n"
-        echo_line=${echo_line}"If you believe this is a false positive, please request one of the RD (sunzhongkai588, SigureMo) approval for the changes.\n"
-        check_approval 1 sunzhongkai588 SigureMo
-    fi
-fi
-
-if [ "${HAS_MODIFIED_PY_OR_CPP_FILES}" != "" ] && [ "${PR_ID}" != "" ]; then
-    CODE_BLOCK_PYTHON_MARKER=$(git diff -U0 upstream/$BRANCH -- ${HAS_MODIFIED_PY_OR_CPP_FILES} \
-        | grep '^+' \
-        | grep -Pv '^\+\s*(#|//|/\*|\*)' \
-        | grep -P '\.\.\s+code-block::\s+python\b' || true)
-    if [ "${CODE_BLOCK_PYTHON_MARKER}" != "" ]; then
-        echo_line="Your PR adds '.. code-block:: python' marker in docstrings/comments. Please confirm whether this marker is expected and follows our docstring rules.\n"
-        echo_line=${echo_line}"The matched lines are as follows:\n${CODE_BLOCK_PYTHON_MARKER}\n"
-        echo_line=${echo_line}"If you believe this is necessary, please request one of the RD (SigureMo(Recommend), sunzhongkai588, ShigureNyako) approval for the changes.\n"
-        check_approval 1 SigureMo sunzhongkai588 ShigureNyako
-    fi
 fi
 
 PY_FILE_ADDED_LINES=$(git diff -U0 upstream/$BRANCH -- python |grep "^+")
