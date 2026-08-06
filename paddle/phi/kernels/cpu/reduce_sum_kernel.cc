@@ -16,7 +16,6 @@
 
 #include <set>
 
-#include "paddle/common/flags.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
@@ -25,8 +24,6 @@
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/cascade_sum.h"
 #include "paddle/phi/kernels/funcs/reduce_functor.h"
-
-COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 namespace phi {
 namespace {
@@ -164,8 +161,7 @@ void SumRawKernel(const Context& dev_ctx,
     }
     return;
   }
-  if (FLAGS_use_accuracy_compatible_kernel &&
-      TryCascadeSum<T, Context>(
+  if (TryCascadeSum<T, Context>(
           dev_ctx, x, dims, keep_dim, reduce_all, out_dtype, out)) {
     return;
   }
