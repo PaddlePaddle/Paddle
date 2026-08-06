@@ -252,7 +252,6 @@ def prelu_decorator(
     @functools.wraps(func)
     def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         if 4 <= len(args) <= 5:
-            third_arg = args[3]
             device_types = {
                 "cpu",
                 "cuda",
@@ -262,19 +261,26 @@ def prelu_decorator(
                 "ipu",
                 *(paddle.device.get_all_custom_device_type() or ()),
             }
-            is_torch_call = (
-                isinstance(third_arg, paddle.base.libpaddle.Place)
-                or (
-                    isinstance(third_arg, str)
-                    and third_arg.lower().split(":", 1)[0] in device_types
-                )
-                or (
-                    third_arg is None
-                    and len(args) == 5
-                    and not isinstance(args[4], str)
-                )
+            data_formats = {
+                "NC",
+                "NCL",
+                "NCHW",
+                "NCDHW",
+                "NLC",
+                "NHWC",
+                "NDHWC",
+            }
+            is_paddle_place = isinstance(args[3], paddle.base.libpaddle.Place)
+            is_device = (
+                isinstance(args[3], str)
+                and args[3].lower().split(":", 1)[0] in device_types
             )
-            if is_torch_call:
+            is_dtype = (
+                args[3] is None
+                and len(args) == 5
+                and args[4] not in data_formats
+            )
+            if is_paddle_place or is_device or is_dtype:
                 for name, value in zip(("device", "dtype"), args[3:]):
                     if name in kwargs:
                         raise TypeError(

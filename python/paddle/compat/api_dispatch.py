@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""``enable_compat(level=2)`` and ``enable_compat(level=3)`` API dispatch:
-route ``paddle.*`` (and ``paddle.Tensor`` methods) to the torch-aligned
-``paddle.compat.*`` for external callers while paddle-internal callers keep
-native semantics.
+"""``enable_compat(level=2)`` API dispatch: route ``paddle.*`` (and
+``paddle.Tensor`` methods) to the torch-aligned ``paddle.compat.*`` for
+external callers while paddle-internal callers keep native semantics.
 
 The enable/disable/level lifecycle lives in ``paddle.compat.proxy``; this
 module only installs/removes the dispatchers and holds the dispatch state.
@@ -52,39 +51,27 @@ def _caller_is_paddle_internal() -> bool:
     return name == "paddle" or name.startswith("paddle.")
 
 
-def dispatch_function(compat_fn: Any) -> Any:
-    """Wrap a native ``paddle`` callable to route external callers to
-    ``compat_fn`` while compat is enabled; paddle-internal callers and the
-    disabled state get the native callable. Installed under
-    ``enable_compat(level=2)`` or ``enable_compat(level=3)``;
-    ``disable_compat`` restores the originals, so the default hot path is
-    untouched."""
+def dispatch_function(native_fn: Any, compat_fn: Any) -> Any:
+    """Wrap a native ``paddle`` callable for caller-aware dispatch."""
 
-    def decorator(native_fn: Any) -> Any:
-        @wraps(native_fn)
-        def dispatcher(*args: Any, **kwargs: Any) -> Any:
-            if (
-                len(_PADDLE_NAMESPACE_SAVED) > 0
-                and not _caller_is_paddle_internal()
-            ):
-                return compat_fn(*args, **kwargs)
+    @wraps(native_fn)
+    def dispatcher(*args: Any, **kwargs: Any) -> Any:
+        if _caller_is_paddle_internal():
             return native_fn(*args, **kwargs)
+        return compat_fn(*args, **kwargs)
 
-        dispatcher.__compat_fn__ = compat_fn
-        dispatcher.__native_fn__ = native_fn
-        dispatcher.__signature__ = inspect.signature(compat_fn)
-        return dispatcher
-
-    return decorator
+    dispatcher.__compat_fn__ = compat_fn
+    dispatcher.__native_fn__ = native_fn
+    dispatcher.__signature__ = inspect.signature(compat_fn)
+    return dispatcher
 
 
 def _iter_compat_modules() -> Generator[types.ModuleType, None, None]:
-    """Wrap a native ``paddle`` callable to route external callers to
-    ``compat_fn`` while compat is enabled; paddle-internal callers and the
-    disabled state get the native callable. Installed under
-    ``enable_compat(level=2)`` or ``enable_compat(level=3)``;
-    ``disable_compat`` restores the originals, so the default hot path is
-    untouched."""
+    """Yield ``paddle.compat`` modules that declare ``__all__``.
+
+    ``pkgutil.walk_packages`` skips the starting package, so the root
+    ``paddle.compat`` (holding the top-level functions) is yielded explicitly.
+    """
     import paddle.compat
 
     if hasattr(paddle.compat, "__all__"):
@@ -126,37 +113,30 @@ def dispatch_class(native_cls: type, compat_cls: type) -> type:
     return proxy
 
 
-def dispatch_property(compat_attr: Any) -> Any:
+def dispatch_property(
+    native_attr: Any,
+    compat_attr: Any,
+) -> Any:
     """Route a Tensor API when either side uses the property protocol."""
+    compat_fn = (
+        compat_attr.fget if isinstance(compat_attr, property) else compat_attr
+    )
 
-    def decorator(native_attr: Any) -> Any:
-        compat_is_property = isinstance(compat_attr, property)
-        compat_fn = compat_attr.fget if compat_is_property else compat_attr
+    class _PropertyDispatcher:
+        def __get__(self, instance: Any, owner: type | None = None) -> Any:
+            if _caller_is_paddle_internal():
+                attr = native_attr
+            else:
+                attr = compat_attr
+            return attr.__get__(instance, owner)
 
-        class _PropertyDispatcher:
-            def __get__(self, instance: Any, owner: type | None = None) -> Any:
-                if instance is None:
-                    if _caller_is_paddle_internal():
-                        return native_attr
-                    return self if compat_is_property else compat_fn
-                if (
-                    len(_PADDLE_NAMESPACE_SAVED) > 0
-                    and not _caller_is_paddle_internal()
-                ):
-                    if compat_is_property:
-                        return compat_fn(instance)
-                    return compat_fn.__get__(instance, owner)
-                return native_attr.__get__(instance, owner)
-
-        dispatcher = _PropertyDispatcher()
-        dispatcher.__native_fn__ = native_attr
-        dispatcher.__compat_fn__ = compat_fn
-        dispatcher.__doc__ = compat_fn.__doc__
-        dispatcher.__name__ = compat_fn.__name__
-        dispatcher.__signature__ = inspect.signature(compat_fn)
-        return dispatcher
-
-    return decorator
+    dispatcher = _PropertyDispatcher()
+    dispatcher.__native_fn__ = native_attr
+    dispatcher.__compat_fn__ = compat_fn
+    dispatcher.__doc__ = compat_fn.__doc__
+    dispatcher.__name__ = compat_fn.__name__
+    dispatcher.__signature__ = inspect.signature(compat_fn)
+    return dispatcher
 
 
 def _patch_tensor_methods() -> None:
@@ -174,17 +154,24 @@ def _patch_tensor_methods() -> None:
         if native_attr is None:
             continue
         _PADDLE_NAMESPACE_SAVED[(paddle.Tensor, attr_name)] = native_attr
-        if isinstance(compat_attr, property) or inspect.isdatadescriptor(
-            native_attr
-        ):
-            dispatcher = dispatch_property
+        native_is_property = inspect.isdatadescriptor(native_attr)
+        compat_is_property = isinstance(compat_attr, property)
+        # Select once for all four descriptor combinations. The installed
+        # dispatcher only needs to distinguish the caller at runtime.
+        if compat_is_property:
+            if native_is_property:
+                # native property -> compat property
+                dispatcher = dispatch_property(native_attr, compat_attr)
+            else:
+                # native function -> compat property
+                dispatcher = dispatch_property(native_attr, compat_attr)
+        elif native_is_property:
+            # native property -> compat function
+            dispatcher = dispatch_property(native_attr, compat_attr)
         else:
-            dispatcher = dispatch_function
-        setattr(
-            paddle.Tensor,
-            attr_name,
-            dispatcher(compat_attr)(native_attr),
-        )
+            # native function -> compat function
+            dispatcher = dispatch_function(native_attr, compat_attr)
+        setattr(paddle.Tensor, attr_name, dispatcher)
 
 
 def _apply_paddle_namespace_aliases() -> None:
@@ -217,7 +204,7 @@ def _apply_paddle_namespace_aliases() -> None:
                 setattr(
                     target_module,
                     attr_name,
-                    dispatch_function(compat_attr)(current),
+                    dispatch_function(current, compat_attr),
                 )
     _patch_tensor_methods()
 

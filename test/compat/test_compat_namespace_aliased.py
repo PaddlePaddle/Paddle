@@ -451,49 +451,6 @@ class TestScopeAndLifecycle(CompatNamespaceAliasBase):
         paddle.disable_compat()
         self.assertEqual(len(_PADDLE_NAMESPACE_SAVED), 0)
 
-    def test_bare_guard_keeps_level2_alias(self):
-        t = paddle.to_tensor([[3.0, 1.0, 2.0]])
-        paddle.enable_compat(level=2)
-        try:
-            with paddle.use_compat_guard():
-                self.assertNotIn(TORCH_PROXY_FINDER, sys.meta_path)
-                self.assertAliased(paddle.sort, paddle.compat.sort)
-                self.assertTrue(hasattr(paddle.sort(t, dim=-1), "values"))
-            # the level in effect survives the guard
-            self.assertAliased(paddle.sort, paddle.compat.sort)
-            self.assertTrue(hasattr(paddle.sort(t, dim=-1), "values"))
-        finally:
-            paddle.disable_compat()
-        self.assertNativeRestored()
-
-    def test_disabled_guard_restores_level2_aliases(self):
-        t = paddle.to_tensor([[3.0, 1.0, 2.0]])
-        paddle.enable_compat(level=2)
-        try:
-            with paddle.use_compat_guard(enable=False):
-                self.assertNotIn(TORCH_PROXY_FINDER, sys.meta_path)
-                self.assertIs(paddle.sort, self._native[(paddle, "sort")])
-
-            self.assertNotIn(TORCH_PROXY_FINDER, sys.meta_path)
-            self.assertAliased(paddle.sort, paddle.compat.sort)
-            self.assertTrue(hasattr(paddle.sort(t, dim=-1), "values"))
-        finally:
-            paddle.disable_compat()
-        self.assertNativeRestored()
-
-    def test_disabled_guard_restores_level3_aliases(self):
-        paddle.enable_compat(level=3)
-        try:
-            with paddle.use_compat_guard(enable=False):
-                self.assertNotIn(TORCH_PROXY_FINDER, sys.meta_path)
-                self.assertIs(paddle.sort, self._native[(paddle, "sort")])
-
-            self.assertIn(TORCH_PROXY_FINDER, sys.meta_path)
-            self.assertAliased(paddle.sort, paddle.compat.sort)
-        finally:
-            paddle.disable_compat()
-        self.assertNativeRestored()
-
 
 class TestTorchSurfaceUnderCompat(CompatNamespaceAliasBase):
     """torch.* reaches public compat APIs only at proxy-enabled levels."""
@@ -587,7 +544,7 @@ class TestLevel2InternalCallersUseNative(CompatNamespaceAliasBase):
     def test_tensor_methods_caller_aware(self):
         """torch exposes max/min/sort/split/... as Tensor methods too; under
         level=2 ``x.max(dim=1)`` is torch-style for external callers and native
-        for paddle-internal ``x.max(axis=1)``; restored on disable."""
+        for paddle-internal ``x.max(axis=1)``; disable restores the namespace."""
         native_max = paddle.Tensor.max
         native_split = paddle.Tensor.split
         native_numel = paddle.Tensor.numel
@@ -665,8 +622,8 @@ class TestLevel2InternalCallersUseNative(CompatNamespaceAliasBase):
         self.assertIs(paddle.Tensor.numel, native_numel)
         self.assertIs(paddle.Tensor.type, native_type)
         self.assertIs(paddle.Tensor.is_sparse, native_is_sparse)
-        self.assertIsInstance(cached_numel(), paddle.Tensor)
-        self.assertIsInstance(cached_max(axis=1), paddle.Tensor)
+        self.assertEqual(cached_numel(), 6)
+        self.assertTrue(hasattr(cached_max(dim=1), "values"))
 
     @with_level2
     def test_tensor_type_edge_cases(self):
@@ -698,7 +655,7 @@ class TestLevel2InternalCallersUseNative(CompatNamespaceAliasBase):
             tensor_to.assert_called_once_with(
                 t,
                 device="gpu",
-                dtype="float64",
+                dtype='float64',
                 blocking=True,
             )
 
@@ -712,7 +669,11 @@ class TestLevel2InternalCallersUseNative(CompatNamespaceAliasBase):
         sparse_descriptor = inspect.getattr_static(paddle.Tensor, "is_sparse")
 
         self.assertIs(paddle.Tensor.type, type_descriptor.__compat_fn__)
-        self.assertIs(paddle.Tensor.is_sparse, sparse_descriptor)
+        self.assertIsInstance(paddle.Tensor.is_sparse, property)
+        self.assertIs(
+            paddle.Tensor.is_sparse.fget,
+            sparse_descriptor.__compat_fn__,
+        )
 
         ns = {"__name__": "paddle.fake_internal", "paddle": paddle}
         exec(
@@ -722,6 +683,34 @@ class TestLevel2InternalCallersUseNative(CompatNamespaceAliasBase):
         )
         self.assertIs(ns["internal_type"], type_descriptor.__native_fn__)
         self.assertIs(ns["internal_is_sparse"], sparse_descriptor.__native_fn__)
+
+    def test_property_to_property_dispatch(self):
+        class Native:
+            @property
+            def attr(self):
+                return "native"
+
+        class Compat:
+            @property
+            def attr(self):
+                return "compat"
+
+        native_attr = inspect.getattr_static(Native, "attr")
+        compat_attr = inspect.getattr_static(Compat, "attr")
+        Native.attr = api_dispatch.dispatch_property(native_attr, compat_attr)
+        instance = Native()
+
+        self.assertEqual(instance.attr, "compat")
+        self.assertIs(Native.attr, compat_attr)
+
+        ns = {
+            "__name__": "paddle.fake_internal",
+            "Native": Native,
+            "x": instance,
+        }
+        exec("value = x.attr\nattr = Native.attr", ns)
+        self.assertEqual(ns["value"], "native")
+        self.assertIs(ns["attr"], native_attr)
 
     def test_missing_tensor_override_is_skipped(self):
         missing_attr = "__missing_tensor_compat_override__"

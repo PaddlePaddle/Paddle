@@ -56,24 +56,22 @@ __all__ = [
     'seed',
 ]
 
-_TENSOR_TYPE_NAMES = {
-    'float16': 'HalfTensor',
-    'float32': 'FloatTensor',
-    'float64': 'DoubleTensor',
-    'float8_e4m3fn': 'Float8_e4m3fnTensor',
-    'float8_e5m2': 'Float8_e5m2Tensor',
-    'bfloat16': 'BFloat16Tensor',
-    'uint8': 'ByteTensor',
-    'int8': 'CharTensor',
-    'int16': 'ShortTensor',
-    'int32': 'IntTensor',
-    'int64': 'LongTensor',
-    'bool': 'BoolTensor',
-    'complex64': 'ComplexFloatTensor',
-    'complex128': 'ComplexDoubleTensor',
-}
+
 _TENSOR_TYPE_DTYPES = {
-    tensor_type: dtype for dtype, tensor_type in _TENSOR_TYPE_NAMES.items()
+    'HalfTensor': 'float16',
+    'FloatTensor': 'float32',
+    'DoubleTensor': 'float64',
+    'Float8_e4m3fnTensor': 'float8_e4m3fn',
+    'Float8_e5m2Tensor': 'float8_e5m2',
+    'BFloat16Tensor': 'bfloat16',
+    'ByteTensor': 'uint8',
+    'CharTensor': 'int8',
+    'ShortTensor': 'int16',
+    'IntTensor': 'int32',
+    'LongTensor': 'int64',
+    'BoolTensor': 'bool',
+    'ComplexFloatTensor': 'complex64',
+    'ComplexDoubleTensor': 'complex128',
 }
 
 
@@ -149,7 +147,7 @@ def _tensor_type(
                 if dtype_string.startswith(("torch.cuda.", "paddle.cuda."))
                 else "cpu"
             )
-        elif tensor_type in _TENSOR_TYPE_NAMES:
+        elif tensor_type in _TENSOR_TYPE_DTYPES.values():
             dtype = tensor_type
             if dtype_string.startswith(("torch.cuda.", "paddle.cuda.")):
                 device = "gpu"

@@ -465,14 +465,14 @@ def _parse_scope(scope: str | Iterable[str] | None) -> set[str] | None:
     return set(scope)
 
 
-def _clear_compat_state() -> None:
-    had_torch_proxy = TORCH_PROXY_FINDER in sys.meta_path
-    while TORCH_PROXY_FINDER in sys.meta_path:
-        sys.meta_path.remove(TORCH_PROXY_FINDER)
-    _restore_paddle_namespace_aliases()
-    if had_torch_proxy:
-        _clear_torch_proxy_modules()
-        _copy_torch_modules_from_cache()
+def _current_compat_level() -> int:
+    """0 = disabled, 1 = torch proxy only, 2 = paddle aliases only, 3 = both."""
+    level = 0
+    if TORCH_PROXY_FINDER in sys.meta_path:
+        level |= 1
+    if _PADDLE_NAMESPACE_SAVED:
+        level |= 2
+    return level
 
 
 def enable_compat(
@@ -619,50 +619,40 @@ def use_compat_guard(
             ...     assert torch.sin is paddle.sin
     """
     scope = _parse_scope(scope)
-    original_proxy_count = sys.meta_path.count(TORCH_PROXY_FINDER)
-    has_paddle_aliases = bool(_PADDLE_NAMESPACE_SAVED)
     original_local_enabled_scope = set(TORCH_PROXY_FINDER._local_enabled_scope)
     original_globally_enabled = TORCH_PROXY_FINDER._globally_enabled
-    already_has_compat = original_proxy_count > 0 or has_paddle_aliases
+    original_level = _current_compat_level()
 
-    if not enable and not already_has_compat:
-        yield
-        return
-    if enable and (
-        (has_paddle_aliases and original_proxy_count == 0 and scope is None)
-        or (
-            original_proxy_count > 0
-            and (
-                (original_globally_enabled and scope is None)
-                or original_local_enabled_scope == (scope or set())
-            )
-        )
+    if enable == bool(original_level) and (
+        (original_globally_enabled and scope is None)
+        or (original_local_enabled_scope == (scope or set()))
     ):
         yield
         return
-
     if enable:
-        enable_compat(
-            scope=scope,
-            silent=silent,
-            level=3 if has_paddle_aliases else 1,
-        )
+        enable_compat(scope=scope, silent=silent)
+        try:
+            yield
+        finally:
+            disable_compat()
+            if original_level:
+                enable_compat(scope=None, silent=True, level=original_level)
+            TORCH_PROXY_FINDER._local_enabled_scope = (
+                original_local_enabled_scope
+            )
+            TORCH_PROXY_FINDER._globally_enabled = original_globally_enabled
     else:
-        _clear_compat_state()
-    try:
-        yield
-    finally:
-        _clear_compat_state()
-        if original_proxy_count or has_paddle_aliases:
-            if original_proxy_count and has_paddle_aliases:
-                level = 3
-            else:
-                level = 2 if has_paddle_aliases else 1
-            enable_compat(scope=None, silent=True, level=level)
-            for _ in range(1, original_proxy_count):
-                enable_compat(scope=None, silent=True, level=1)
-        TORCH_PROXY_FINDER._local_enabled_scope = original_local_enabled_scope
-        TORCH_PROXY_FINDER._globally_enabled = original_globally_enabled
+        if original_level:
+            disable_compat()
+        try:
+            yield
+        finally:
+            if original_level:
+                enable_compat(scope=None, silent=True, level=original_level)
+            TORCH_PROXY_FINDER._local_enabled_scope = (
+                original_local_enabled_scope
+            )
+            TORCH_PROXY_FINDER._globally_enabled = original_globally_enabled
 
 
 def extend_torch_proxy_blocked_modules(modules: Iterable[str]) -> None:

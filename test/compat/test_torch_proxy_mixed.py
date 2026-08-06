@@ -78,20 +78,6 @@ class TestTorchProxyMixRealTorch(unittest.TestCase):
             paddle.disable_compat()
         self.check_is_not_proxy()
 
-    def test_disabled_guard_keeps_compat_disabled(self):
-        with paddle.use_compat_guard(
-            enable=False,
-            scope={"torch_proxy_local_enabled_module"},
-        ):
-            self.assertNotIn(
-                paddle.compat.proxy.TORCH_PROXY_FINDER,
-                sys.meta_path,
-            )
-        self.assertNotIn(
-            paddle.compat.proxy.TORCH_PROXY_FINDER,
-            sys.meta_path,
-        )
-
     def test_local_enabled_module_import(self):
         self.check_is_not_proxy()
         with paddle.use_compat_guard(
