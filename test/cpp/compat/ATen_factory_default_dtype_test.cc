@@ -17,6 +17,7 @@
 #include <ATen/ops/empty.h>
 #include <ATen/ops/full.h>
 #include <ATen/ops/ones.h>
+#include <ATen/ops/scalar_tensor.h>
 #include <ATen/ops/zeros.h>
 #include <c10/core/DefaultDtype.h>
 #include <c10/core/ScalarTypeToTypeMeta.h>
@@ -143,6 +144,28 @@ TEST(ATenFactoryDefaultDtypeTest, FullNulloptDtypeUsesCurrentDefault) {
   ASSERT_EQ(symint_tensor.scalar_type(), at::kDouble);
   ASSERT_DOUBLE_EQ(tensor.data_ptr<double>()[0], 1.25);
   ASSERT_DOUBLE_EQ(symint_tensor.data_ptr<double>()[0], 2.5);
+}
+
+TEST(ATenFactoryDefaultDtypeTest, ScalarTensorCreatesZeroDimTensor) {
+  at::Tensor tensor = at::scalar_tensor(
+      42, at::TensorOptions().dtype(at::kLong).device(at::kCPU));
+
+  ASSERT_EQ(tensor.dim(), 0);
+  ASSERT_EQ(tensor.scalar_type(), at::kLong);
+  ASSERT_EQ(tensor.device().type(), at::kCPU);
+  ASSERT_EQ(tensor.item<int64_t>(), 42);
+}
+
+TEST(ATenFactoryDefaultDtypeTest,
+     ScalarTensorOptionalArgumentsUseCurrentDefaultDtype) {
+  DefaultDtypeGuard guard(at::kDouble);
+
+  at::Tensor tensor =
+      at::scalar_tensor(1.25, std::nullopt, std::nullopt, at::kCPU, false);
+
+  ASSERT_EQ(tensor.dim(), 0);
+  ASSERT_EQ(tensor.scalar_type(), at::kDouble);
+  ASSERT_DOUBLE_EQ(tensor.item<double>(), 1.25);
 }
 
 TEST(ATenFactoryDefaultDtypeTest, OnesNulloptDtypeUsesCurrentDefault) {
