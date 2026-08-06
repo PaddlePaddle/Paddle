@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import enum
 import importlib
 import importlib.abc
 import importlib.util
@@ -465,13 +466,21 @@ def _parse_scope(scope: str | Iterable[str] | None) -> set[str] | None:
     return set(scope)
 
 
-def _current_compat_level() -> int:
-    """0 = disabled, 1 = torch proxy only, 2 = paddle aliases only, 3 = both."""
-    level = 0
+class _CompatLevel(enum.Flag):
+    """The mechanisms behind the numeric ``level`` of ``enable_compat``:
+    ``1`` = module proxy, ``2`` = API alias, ``3`` = both."""
+
+    MODULE_PROXY = 1
+    API_ALIAS = 2
+
+
+def _current_compat_level() -> _CompatLevel:
+    """The mechanisms that are currently installed."""
+    level = _CompatLevel(0)
     if TORCH_PROXY_FINDER in sys.meta_path:
-        level |= 1
+        level |= _CompatLevel.MODULE_PROXY
     if _PADDLE_NAMESPACE_SAVED:
-        level |= 2
+        level |= _CompatLevel.API_ALIAS
     return level
 
 
@@ -530,7 +539,8 @@ def enable_compat(
             f"Unsupported level: {level}. It should be 1, 2, or 3."
         )
 
-    if level in {1, 3}:
+    compat_level = _CompatLevel(level)
+    if _CompatLevel.MODULE_PROXY in compat_level:
         blocked_modules = _parse_scope(blocked_modules)
         if blocked_modules is not None:
             extend_torch_proxy_blocked_modules(blocked_modules)
@@ -539,7 +549,7 @@ def enable_compat(
         _swap_torch_modules_to_cache()
         _modify_scope_of_torch_proxy(scope, silent=silent)
         sys.meta_path.insert(0, TORCH_PROXY_FINDER)
-        if level == 3:
+        if _CompatLevel.API_ALIAS in compat_level:
             _apply_paddle_namespace_aliases()
     else:
         _apply_paddle_namespace_aliases()
@@ -636,7 +646,9 @@ def use_compat_guard(
         finally:
             disable_compat()
             if original_level:
-                enable_compat(scope=None, silent=True, level=original_level)
+                enable_compat(
+                    scope=None, silent=True, level=original_level.value
+                )
             TORCH_PROXY_FINDER._local_enabled_scope = (
                 original_local_enabled_scope
             )
@@ -648,7 +660,9 @@ def use_compat_guard(
             yield
         finally:
             if original_level:
-                enable_compat(scope=None, silent=True, level=original_level)
+                enable_compat(
+                    scope=None, silent=True, level=original_level.value
+                )
             TORCH_PROXY_FINDER._local_enabled_scope = (
                 original_local_enabled_scope
             )

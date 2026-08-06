@@ -57,6 +57,21 @@ __all__ = [
 ]
 
 
+# root compat APIs that torch also exposes as Tensor methods
+_TENSOR_API_NAMES = (
+    'allclose',
+    'equal',
+    'slogdet',
+    'sort',
+    'split',
+    'min',
+    'max',
+    'unique',
+    'median',
+    'nanmedian',
+)
+
+
 _TENSOR_TYPE_DTYPES = {
     'HalfTensor': 'float16',
     'FloatTensor': 'float32',

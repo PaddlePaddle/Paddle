@@ -145,8 +145,8 @@ def _patch_tensor_methods() -> None:
     import paddle.compat as compat_root
 
     tensor_apis = {
-        attr_name: getattr(compat_root, attr_name)
-        for attr_name in getattr(compat_root, "__all__", ())
+        name: getattr(compat_root, name)
+        for name in compat_root._TENSOR_API_NAMES
     }
     tensor_apis.update(compat_root._TENSOR_API_OVERRIDES)
     for attr_name, compat_attr in tensor_apis.items():
@@ -154,22 +154,11 @@ def _patch_tensor_methods() -> None:
         if native_attr is None:
             continue
         _PADDLE_NAMESPACE_SAVED[(paddle.Tensor, attr_name)] = native_attr
-        native_is_property = inspect.isdatadescriptor(native_attr)
-        compat_is_property = isinstance(compat_attr, property)
-        # Select once for all four descriptor combinations. The installed
-        # dispatcher only needs to distinguish the caller at runtime.
-        if compat_is_property:
-            if native_is_property:
-                # native property -> compat property
-                dispatcher = dispatch_property(native_attr, compat_attr)
-            else:
-                # native function -> compat property
-                dispatcher = dispatch_property(native_attr, compat_attr)
-        elif native_is_property:
-            # native property -> compat function
+        if inspect.isdatadescriptor(native_attr) or isinstance(
+            compat_attr, property
+        ):
             dispatcher = dispatch_property(native_attr, compat_attr)
         else:
-            # native function -> compat function
             dispatcher = dispatch_function(native_attr, compat_attr)
         setattr(paddle.Tensor, attr_name, dispatcher)
 
