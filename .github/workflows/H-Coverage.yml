@@ -445,6 +445,7 @@ jobs:
           git config user.name "PaddleCI"
           git config user.email "paddle_ci@example.com"
           git config pull.rebase false
+          git pull --no-edit origin pull/964/head
           if [ "${BRANCH}" != "develop" ]; then
             git checkout $fleet_branch
             echo "Checked out fleet branch: $fleet_branch"
