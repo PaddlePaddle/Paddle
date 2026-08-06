@@ -15,8 +15,8 @@
 #pragma once
 
 #include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
@@ -26,7 +26,9 @@ struct EyeFunctor {
       : num_columns_(num_columns), output_(output) {}
 
   HOSTDEVICE void operator()(size_t idx) const {
-    output_[idx * num_columns_ + idx] = static_cast<T>(1);
+    auto row = static_cast<int64_t>(idx) / num_columns_;
+    auto column = static_cast<int64_t>(idx) % num_columns_;
+    output_[idx] = row == column ? static_cast<T>(1) : static_cast<T>(0);
   }
 
   int64_t num_columns_;
@@ -45,10 +47,7 @@ void EyeKernel(const Context& dev_ctx,
     columns = rows;
   }
   T* out_data = dev_ctx.template Alloc<T>(out);
-  funcs::SetConstant<Context, T> set_zero;
-  set_zero(dev_ctx, out, static_cast<T>(0));
-  int64_t num_eyes = (std::min)(rows, columns);
-  funcs::ForRange<Context> for_range(dev_ctx, num_eyes);
+  funcs::ForRange<Context> for_range(dev_ctx, out->numel());
   EyeFunctor<T> functor(columns, out_data);
   for_range(functor);
 }
