@@ -394,6 +394,54 @@ class TestAddMMOp5(unittest.TestCase):
 
 
 class TestAddMMAPI(unittest.TestCase):
+    def test_legacy_static_api(self):
+        paddle.enable_static()
+        input_data = np.ones([2, 2], dtype=np.float32)
+        x_data = np.ones([2, 3], dtype=np.float32)
+        y_data = np.ones([3, 2], dtype=np.float32)
+
+        with paddle.pir_utils.OldIrGuard():
+            main = Program()
+            startup = Program()
+            with program_guard(main, startup):
+                input = paddle.static.data(
+                    name='legacy_input', shape=[2, 2], dtype='float32'
+                )
+                x = paddle.static.data(
+                    name='legacy_x', shape=[2, 3], dtype='float32'
+                )
+                y = paddle.static.data(
+                    name='legacy_y', shape=[3, 2], dtype='float32'
+                )
+
+                result = paddle.addmm(input, x, y, beta=0.5, alpha=2.0)
+
+                out = main.global_block().create_var(
+                    name='legacy_out',
+                    shape=[2, 2],
+                    dtype='float32',
+                )
+                out.stop_gradient = True
+                result_with_out = paddle.addmm(
+                    input, x, y, beta=0.5, alpha=2.0, out=out
+                )
+                self.assertIs(result_with_out, out)
+
+            executor = base.Executor(base.CPUPlace())
+            result_value, out_value = executor.run(
+                main,
+                feed={
+                    'legacy_input': input_data,
+                    'legacy_x': x_data,
+                    'legacy_y': y_data,
+                },
+                fetch_list=[result, out],
+            )
+
+        expected = 0.5 * input_data + 2.0 * np.matmul(x_data, y_data)
+        np.testing.assert_allclose(result_value, expected)
+        np.testing.assert_allclose(out_value, expected)
+
     def test_float64_scale_precision(self):
         paddle.disable_static()
 
@@ -627,6 +675,45 @@ class TestAddmmOutDtypeDynamicOnly(unittest.TestCase):
         np.testing.assert_allclose(
             result.numpy(), expected.numpy(), rtol=1e-5, atol=1e-5
         )
+
+    def test_legacy_positional_arg_errors(self):
+        input = paddle.randn([3, 5], dtype='float32')
+        x = paddle.randn([3, 4], dtype='float32')
+        y = paddle.randn([4, 5], dtype='float32')
+
+        with self.assertRaisesRegex(
+            TypeError, "received too many positional arguments"
+        ):
+            paddle.addmm(
+                input,
+                x,
+                y,
+                0.5,
+                1.5,
+                'legacy_addmm',
+                'extra',
+            )
+
+        conflict_cases = (
+            ('beta', (0.5,), 1.0),
+            ('alpha', (0.5, 1.5), 1.0),
+            ('name', (0.5, 1.5, 'legacy_addmm'), 'duplicate_name'),
+        )
+        for name, legacy_args, keyword_value in conflict_cases:
+            with (
+                self.subTest(name=name),
+                self.assertRaisesRegex(
+                    TypeError,
+                    rf"multiple values for argument '{name}'",
+                ),
+            ):
+                paddle.addmm(
+                    input,
+                    x,
+                    y,
+                    *legacy_args,
+                    **{name: keyword_value},
+                )
 
     def test_normal_and_out_without_out_dtype(self):
         input = paddle.randn([3, 5], dtype='float32')
