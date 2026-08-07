@@ -401,9 +401,9 @@ class TestAddMMAPI(unittest.TestCase):
         y_data = np.ones([3, 2], dtype=np.float32)
 
         with paddle.pir_utils.OldIrGuard():
-            main = Program()
-            startup = Program()
-            with program_guard(main, startup):
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
                 input = paddle.static.data(
                     name='legacy_input', shape=[2, 2], dtype='float32'
                 )
