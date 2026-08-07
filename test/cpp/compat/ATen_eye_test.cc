@@ -20,9 +20,13 @@
 #include <ATen/ops/tensor.h>
 #include <c10/core/ScalarType.h>
 #include <c10/core/TensorOptions.h>
+#include <vector>
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <c10/cuda/CUDAFunctions.h>
 #include <c10/cuda/CUDAGuard.h>
+#endif
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
 #endif
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
@@ -63,6 +67,27 @@ static void CheckContiguousFloatEye(const at::Tensor& t,
     }
   }
 }
+
+#ifdef PADDLE_WITH_HIP
+static void CheckDeviceFloatEye(const at::Tensor& t,
+                                int64_t rows,
+                                int64_t cols) {
+  std::vector<float> data(rows * cols);
+  ASSERT_EQ(hipDeviceSynchronize(), hipSuccess);
+  ASSERT_EQ(hipMemcpy(data.data(),
+                      t.data_ptr<float>(),
+                      data.size() * sizeof(float),
+                      hipMemcpyDeviceToHost),
+            hipSuccess);
+  for (int64_t i = 0; i < rows; ++i) {
+    for (int64_t j = 0; j < cols; ++j) {
+      float expected = (i == j) ? 1.0f : 0.0f;
+      EXPECT_FLOAT_EQ(data[i * cols + j], expected)
+          << "Device buffer mismatch at (" << i << ", " << j << ")";
+    }
+  }
+}
+#endif
 
 // ---- eye(n) -------------------------------------------------------
 
@@ -180,6 +205,9 @@ TEST(ATenEyeTest, SquareOnGPU) {
   }
   at::Tensor t =
       at::eye(4, at::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
+#ifdef PADDLE_WITH_HIP
+  CheckDeviceFloatEye(t, 4, 4);
+#endif
   at::Tensor t_cpu = t.to(at::kCPU);
   CheckContiguousFloatEye(t_cpu, 4, 4);
   CheckEye(t_cpu, 4, 4);
@@ -191,6 +219,9 @@ TEST(ATenEyeTest, RectangularOnGPU) {
   }
   at::Tensor t =
       at::eye(3, 5, at::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
+#ifdef PADDLE_WITH_HIP
+  CheckDeviceFloatEye(t, 3, 5);
+#endif
   at::Tensor t_cpu = t.to(at::kCPU);
   CheckContiguousFloatEye(t_cpu, 3, 5);
   CheckEye(t_cpu, 3, 5);
