@@ -23,8 +23,8 @@ void BaddbmmKernel(const Context& dev_ctx,
                    const DenseTensor& input,
                    const DenseTensor& x,
                    const DenseTensor& y,
-                   float beta,
-                   float alpha,
+                   double beta,
+                   double alpha,
                    DataType out_dtype,
                    DenseTensor* out);
 

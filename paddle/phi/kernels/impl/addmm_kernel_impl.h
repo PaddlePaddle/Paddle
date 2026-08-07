@@ -20,25 +20,33 @@ limitations under the License. */
 
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/addmm_kernel.h"
+#include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 
 namespace phi {
 
-template <typename T, size_t D, int MajorType = Eigen::RowMajor>
-using PhiEigenTensor = EigenTensor<T, D, MajorType>;
+template <typename T>
+struct AddmmScaleFunctor {
+  AddmmScaleFunctor(double scale, T* output) : scale_(scale), output_(output) {}
 
-using Array1 = Eigen::DSizes<int64_t, 1>;
-using Array2 = Eigen::DSizes<int64_t, 2>;
+  HOSTDEVICE void operator()(int64_t idx) const {
+    output_[idx] = scale_ == 0.0f ? static_cast<T>(0)
+                                  : output_[idx] * static_cast<T>(scale_);
+  }
+
+ private:
+  double scale_;
+  T* output_;
+};
 
 template <typename T, typename Context>
 void AddmmKernel(const Context& dev_ctx,
                  const DenseTensor& input,
                  const DenseTensor& x,
                  const DenseTensor& y,
-                 float beta,
-                 float alpha,
+                 double beta,
+                 double alpha,
                  DenseTensor* out) {
   auto input_dims = input.dims();
   auto x_dims = x.dims();
@@ -99,30 +107,25 @@ void AddmmKernel(const Context& dev_ctx,
 
   auto blas = funcs::GetBlas<Context, T>(dev_ctx);
 
-  // calc broadcast dim
-  Array2 bcast_dims;
-  bcast_dims[0] = x_dims[0] / input_dims[0];
-  bcast_dims[1] = y_dims[1] / input_dims[1];
-  VLOG(3) << "bcast_dims=[" << bcast_dims[0] << "," << bcast_dims[1] << "]";
-  // broadcast using eigen
-  const DenseTensor& const_ref_input = input_2d;
-  auto eigen_input = PhiEigenTensor<T, 2>::From(const_ref_input);
-  auto eigen_out = PhiEigenTensor<T, 2>::From(*out);
-  auto& place = *dev_ctx.eigen_device();
-  funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, 2>::Eval(
-      place, eigen_out, eigen_input, bcast_dims);
+  VLOG(3) << "broadcast input to [" << x_dims[0] << "," << y_dims[1] << "]";
+  ExpandKernel<T, Context>(
+      dev_ctx, input_2d, IntArray({x_dims[0], y_dims[1]}), out);
 
-  // Just return input X beta
+  // When K == 0 (x or y empty), the x@y term contributes nothing, so
+  // out = beta * input. Align with PyTorch: when beta == 0 the input term is
+  // dropped entirely and out is zeroed, otherwise nan/inf in input would
+  // propagate through nan * 0 = nan.
   if (x.numel() == 0 || y.numel() == 0) {
-    auto eigen_out2 = EigenVector<T>::Flatten(*out);
-    eigen_out2.device(place) = eigen_out2 * static_cast<T>(beta);
+    funcs::ForRange<Context> for_range(dev_ctx, out->numel());
+    AddmmScaleFunctor<T> functor(beta, out->data<T>());
+    for_range(functor);
     return;
   }
 
   using MPType = typename dtype::MPTypeTrait<T>::Type;
   if constexpr (std::is_same_v<MPType, float>) {
-    float t_alpha = alpha;
-    float t_beta = beta;
+    float t_alpha = static_cast<float>(alpha);
+    float t_beta = static_cast<float>(beta);
     blas.GEMM(CblasNoTrans,
               CblasNoTrans,
               x_dims[0],

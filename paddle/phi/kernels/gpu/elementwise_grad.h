@@ -189,7 +189,15 @@ void ElementwiseMixedPrecisionAddGrad(const GPUContext &dev_ctx,
   dim3 grid_dim(grid_size, 1, 1);
   dim3 block_dim(block_size, 1, 1);
 
-  if (size < std::numeric_limits<int>::max()) {
+  // The largest intermediate is the tail start of the highest-numbered
+  // thread, `loop * vec_size + tid`, whose upper bound is
+  // `main_size + (grid_size * block_size - 1)`; the strided increments
+  // `i += stride` are bounded by `(size - 1) + grid_size * block_size`. Both
+  // are covered by `size + grid_size * block_size <= INT_MAX`.
+  //
+  // Avoid `loop * vec_size + tid` overflow when `size % vec_size` != 0.
+  const int64_t index_span = static_cast<int64_t>(grid_size) * block_size;
+  if (size + index_span <= std::numeric_limits<int>::max()) {
     MixedPrecisionElemwiseAddGradCUDAKernel<T_dy, int>
         <<<grid_dim, block_dim, 0, dev_ctx.stream()>>>(
             dout_data, static_cast<int>(size), dx_data, dy_data);
@@ -210,6 +218,24 @@ void DefaultMixedPrecisionAddGrad(const GPUContext &dev_ctx,
                                   int axis = -1) {
   using T_dout = float;
   using T_dx = float;
+
+  if (dout.numel() == 0) {
+    if (dx) {
+      if (dx->numel() == 0) {
+        dev_ctx.template Alloc<T_dx>(dx);
+      } else {
+        Full<T_dx, GPUContext>(dev_ctx, dx->dims(), 0, dx);
+      }
+    }
+    if (dy) {
+      if (dy->numel() == 0) {
+        dev_ctx.template Alloc<T_dy>(dy);
+      } else {
+        Full<T_dy, GPUContext>(dev_ctx, dy->dims(), 0, dy);
+      }
+    }
+    return;
+  }
 
   auto *dout_data = dout.data<T_dout>();
 
@@ -240,7 +266,7 @@ void DefaultMixedPrecisionAddGrad(const GPUContext &dev_ctx,
       CastKernel<T_dout>(dev_ctx, dout, dy->dtype(), dy);
     } else {
       DenseTensor dy_fp32;
-      dy_fp32.Resize(dout.dims());
+      dy_fp32.Resize(dy->dims());
       dev_ctx.template Alloc<float>(&dy_fp32);
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(y.dims(), dout.dims(), axis);

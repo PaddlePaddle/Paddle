@@ -175,5 +175,25 @@ class TestFakeInterface(unittest.TestCase):
         self.assertTrue(hasattr(fake_gen, "manual_seed"))
 
 
+class TestDeviceAsTypeHints(unittest.TestCase):
+    @paddle.compat.use_torch_proxy_guard()
+    def test_device_as_type_hints(self):
+        from typing import Optional
+
+        import torch
+
+        def fn(x: Optional[torch.device]):  # noqa: FA100
+            return x
+
+        self.assertTrue(callable(torch.device))
+        self.assertEqual(fn.__annotations__["x"], Optional[torch.device])
+        cpu_device = torch.device("cpu")
+        self.assertEqual(str(cpu_device), "cpu")
+        self.assertEqual(
+            torch.device.is_compiled_with_xpu(),
+            paddle.device.is_compiled_with_xpu(),
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
