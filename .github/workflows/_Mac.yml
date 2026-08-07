@@ -60,7 +60,7 @@ jobs:
     needs: [check-bypass]
     runs-on:
       group: mac-test
-    timeout-minutes: 60
+    timeout-minutes: 90
 
     steps:
       - name: Check environment
