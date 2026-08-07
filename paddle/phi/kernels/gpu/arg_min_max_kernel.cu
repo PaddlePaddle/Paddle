@@ -202,7 +202,24 @@ struct VisitDataCudaArgMinMaxFunctor {
       post *= x_dims[i];
     }
 
-    if (numel > std::numeric_limits<int32_t>::max()) {
+    // Both loops in ArgCUDAKernel overshoot once before exiting: `idx` reaches
+    // `height + gridDim.x - 1` and `k` reaches `width + blockDim.x - 1`, so add
+    // check here to avoid overflow. But height,max_grid_dimx,grid_size are
+    // recomputed again in ComputeFullArg. Keeping the guard local avoids
+    // reshuffling the existing call chain.
+    // todo: move the IndexType dispatch down into ComputeFullArg so the guard
+    // and the launch config share a single source of truth.
+    int64_t height = pre * post;
+    int64_t max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
+    int64_t grid_size = height < max_grid_dimx ? height : max_grid_dimx;
+    int max_block_size = 1024;  // upper bound of ComputeBlockSize
+    if (numel > std::numeric_limits<int32_t>::max() ||
+        height + grid_size - 1 >
+            std::numeric_limits<int32_t>::max() ||  // avoid last loop increment
+                                                    // overflow in line66
+        n - 1 + max_block_size >
+            std::numeric_limits<int32_t>::max()) {  // avoid last loop increment
+                                                    // overflow in line70
       ComputeFullArg<T, IndType, Reducer, int64_t>(
           dev_ctx, x, out, pre, post, n);
     } else {
