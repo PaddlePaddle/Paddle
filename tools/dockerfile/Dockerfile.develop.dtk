@@ -15,10 +15,8 @@ RUN ln -sf /usr/local/gcc-12.2/bin/gcc /usr/local/bin/gcc
 RUN ln -sf /usr/local/gcc-12.2/bin/g++ /usr/local/bin/g++
 RUN ln -sf /usr/local/gcc-12.2/bin/gcc /usr/bin/gcc
 RUN ln -sf /usr/local/gcc-12.2/bin/g++ /usr/bin/g++
-RUN mkdir -p /usr/local/gcc-12.2/runtime && \
-    ln -s ../lib64/libstdc++.so.6 /usr/local/gcc-12.2/runtime/libstdc++.so.6
 ENV PATH=/usr/local/gcc-12.2/bin:$PATH
-ENV LD_LIBRARY_PATH=/usr/local/gcc-12.2/runtime:/opt/mpi/lib:/opt/hwloc/lib
+ENV LD_LIBRARY_PATH=/usr/local/gcc-12.2/lib64:/usr/local/gcc-12.2/lib:${LD_LIBRARY_PATH}
 
 # workdir
 WORKDIR /opt
