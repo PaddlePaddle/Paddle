@@ -3186,6 +3186,10 @@ class TestPReLUAPI(unittest.TestCase):
         layer7 = paddle.nn.PReLU(2, 0.5, "prelu_weight")
         self.assertEqual(layer7._weight.name, "prelu_weight")
         out7 = layer7(x)
+        # 7.1 a positional data_format rules out the PyTorch signature
+        layer7_1 = paddle.nn.PReLU(2, 0.5, "prelu_weight_1", "NCHW")
+        self.assertEqual(layer7_1._weight.name, "prelu_weight_1")
+        self.assertEqual(layer7_1._data_format, "NCHW")
         # 8. PyTorch positional dtype without device
         out8 = paddle.nn.PReLU(2, 0.5, None, paddle.float32)(x)
 

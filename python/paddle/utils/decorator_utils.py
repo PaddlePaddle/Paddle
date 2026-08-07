@@ -270,17 +270,17 @@ def prelu_decorator(
                 "NHWC",
                 "NDHWC",
             }
+            is_paddle_form = (
+                len(args) == 5
+                and isinstance(args[4], str)
+                and args[4] in data_formats
+            )
             is_paddle_place = isinstance(args[3], paddle.base.libpaddle.Place)
-            is_device = (
+            is_device = args[3] is None or (
                 isinstance(args[3], str)
                 and args[3].lower().split(":", 1)[0] in device_types
             )
-            is_dtype = (
-                args[3] is None
-                and len(args) == 5
-                and args[4] not in data_formats
-            )
-            if is_paddle_place or is_device or is_dtype:
+            if not is_paddle_form and (is_paddle_place or is_device):
                 for name, value in zip(("device", "dtype"), args[3:]):
                     if name in kwargs:
                         raise TypeError(
