@@ -506,6 +506,129 @@ class AOAEngine:
             slices, tensor.shape, in_degree=1, out_degree=0, dtype=tensor.dtype
         )
 
+    def get_destination_global_shape(self, key: str) -> tuple[int] | None:
+        """Return the destination shape, or None when metadata is unavailable."""
+        if self.destination_state_shard_info is None:
+            return None
+        if key in self.destination_state_shard_info:
+            return tuple(self.destination_state_shard_info[key][0].global_shape)
+        shapes = {
+            tuple(shards[0].global_shape)
+            for destination_key, shards in self.destination_state_shard_info.items()
+            if split_optimizer_state_key(destination_key)[0] == key
+        }
+        if len(shapes) == 0:
+            # An intermediate variable (e.g. the ``tmp`` produced by a reshape
+            # that is later permuted) has no destination metadata; let the
+            # caller fall back to the canonical shape.
+            return None
+        if len(shapes) != 1:
+            raise ValueError(
+                f"Cannot determine a unique destination shape for {key}: "
+                f"candidate_shapes={shapes}."
+            )
+        return shapes.pop()
+
+    def reshape(
+        self,
+        tensor: TensorDesc,
+        canonical_shape: str,
+        destination_shape: tuple[int] | None,
+    ) -> TensorDesc:
+        """Reshape shards between a canonical N-D layout and its flattened 2-D form.
+
+        The supported transformation merges/splits the leading two dimensions:
+        canonical ``[d0, d1, *rest]`` <-> flattened ``[d0 * d1, prod(rest)]``.
+        Element order is preserved (a pure ``reshape``); shards must therefore be
+        aligned on the ``d1`` block boundary and keep the trailing dimensions
+        whole. ``reshape:`` markers map flattened -> canonical, ``flatten:`` the
+        reverse.
+        """
+        canonical = tuple(ast.literal_eval(canonical_shape))
+        source = tuple(tensor.shape)
+        destination = (
+            canonical if destination_shape is None else tuple(destination_shape)
+        )
+        if len(canonical) < 3:
+            raise ValueError(
+                "reshape expects a canonical shape with at least 3 dimensions "
+                f"(leading block + trailing dims), but got {canonical}."
+            )
+        block_width = canonical[1]
+        flattened = (
+            canonical[0] * block_width,
+            int(np.prod(canonical[2:])),
+        )
+        if source == destination:
+            return self.identity(tensor)
+        if {source, destination} != {flattened, canonical}:
+            raise ValueError(
+                "reshape only supports conversion between "
+                f"flattened={flattened} and canonical={canonical}, but got "
+                f"source={source}, destination={destination}."
+            )
+
+        forward = source == flattened
+        marker_name = "reshape" if forward else "flatten"
+        marker = f"{marker_name}:{list(canonical)}"
+        slices = []
+        for src_key, src_sl, dst_sl, pp_list in tensor.slices:
+            new_pp_list = [] if pp_list is None else pp_list.copy()
+            new_pp_list.append(marker)
+            if forward:
+                row_start = dst_sl[0].start or 0
+                row_stop = dst_sl[0].stop or source[0]
+                col_start = dst_sl[1].start or 0
+                col_stop = dst_sl[1].stop or source[1]
+                if (
+                    row_start % block_width != 0
+                    or row_stop % block_width != 0
+                    or col_start != 0
+                    or col_stop != source[1]
+                ):
+                    raise ValueError(
+                        "reshape requires block-aligned full-row source "
+                        f"slices, but got destination slice={dst_sl}."
+                    )
+                converted_dst = (
+                    slice(
+                        row_start // block_width,
+                        row_stop // block_width,
+                        1,
+                    ),
+                    *tuple(slice(0, dim, 1) for dim in canonical[1:]),
+                )
+            else:
+                block_start = dst_sl[0].start or 0
+                block_stop = dst_sl[0].stop or canonical[0]
+                if any(
+                    (sl.start or 0) != 0
+                    or (sl.stop or canonical[i]) != canonical[i]
+                    for i, sl in enumerate(dst_sl[1:], start=1)
+                ):
+                    raise ValueError(
+                        "reshape (flatten) requires complete trailing-dim "
+                        f"slices, but got source slice={dst_sl}."
+                    )
+                converted_dst = (
+                    slice(
+                        block_start * block_width,
+                        block_stop * block_width,
+                        1,
+                    ),
+                    slice(0, flattened[1], 1),
+                )
+            slices.append((src_key, src_sl, converted_dst, new_pp_list))
+
+        tensor.out_degree += 1
+        return TensorDesc(
+            slices,
+            destination,
+            in_degree=1,
+            out_degree=0,
+            dtype=tensor.dtype,
+        )
+
     def identity(self, tensor: TensorDesc) -> TensorDesc:
         tensor.out_degree += 1
         return TensorDesc(
@@ -636,6 +759,14 @@ class AOAEngine:
                                 if self.aoa_config_reverse:
                                     src_dtype, dst_dtype = dst_dtype, src_dtype
                                 result = self.cast(in_ref, dst_dtype)
+                            elif attr.key == "reshape":
+                                result = self.reshape(
+                                    in_ref,
+                                    attr.value,
+                                    self.get_destination_global_shape(
+                                        rvar.name
+                                    ),
+                                )
                             elif attr.key == "axis":
                                 result = in_ref
                             else:
@@ -733,6 +864,87 @@ class AOAEngine:
             return slice(start, stop, 1)
 
         for src_key, sl_src, sl_dst, pp_list in tensor.slices:
+            reshape_marker = next(
+                (
+                    item
+                    for item in (pp_list or [])
+                    if isinstance(item, str)
+                    and (
+                        item.startswith("reshape:")
+                        or item.startswith("flatten:")
+                    )
+                ),
+                None,
+            )
+            if reshape_marker is not None:
+                intersection = []
+                for i in range(ndim):
+                    inter = slice_intersect(local_slice[i], sl_dst[i])
+                    if inter is None:
+                        break
+                    intersection.append(inter)
+                else:
+                    canonical_shape = tuple(
+                        ast.literal_eval(reshape_marker.split(":", 1)[1])
+                    )
+                    block_width = canonical_shape[1]
+                    # Transposes that follow the reshape/flatten marker express
+                    # the destination in a permuted layout, so ``intersection``
+                    # (and ``sl_dst``) are no longer in the reshape-output axis
+                    # order. Undo those transposes first, then map the leading
+                    # block axis back onto the flattened source rows.
+                    marker_index = pp_list.index(reshape_marker)
+                    remaining_pp = pp_list[marker_index + 1 :]
+                    pre_pp_intersection = postprocess_transpose(
+                        list(intersection), remaining_pp, reverse=True
+                    )
+                    pre_pp_sl_dst = postprocess_transpose(
+                        list(sl_dst), remaining_pp, reverse=True
+                    )
+                    if reshape_marker.startswith("reshape:"):
+                        block_base = pre_pp_sl_dst[0].start or 0
+                        block_start = pre_pp_intersection[0].start - block_base
+                        block_stop = pre_pp_intersection[0].stop - block_base
+                        source_row_start = sl_src[0].start or 0
+                        src_slice = list(sl_src)
+                        src_slice[0] = slice(
+                            source_row_start + block_start * block_width,
+                            source_row_start + block_stop * block_width,
+                            1,
+                        )
+                    else:
+                        row_base = pre_pp_sl_dst[0].start or 0
+                        row_start = pre_pp_intersection[0].start - row_base
+                        row_stop = pre_pp_intersection[0].stop - row_base
+                        if (
+                            row_start % block_width != 0
+                            or row_stop % block_width != 0
+                        ):
+                            raise ValueError(
+                                "reshape (flatten) requires block-aligned "
+                                f"destination shards, but got slice={intersection}."
+                            )
+                        source_block_start = sl_src[0].start or 0
+                        src_slice = (
+                            slice(
+                                source_block_start + row_start // block_width,
+                                source_block_start + row_stop // block_width,
+                                1,
+                            ),
+                            *tuple(
+                                slice(0, dim, 1) for dim in canonical_shape[1:]
+                            ),
+                        )
+                    results.append(
+                        (
+                            src_key,
+                            tuple(src_slice),
+                            tuple(intersection),
+                            pp_list.copy(),
+                        )
+                    )
+                continue
+
             intersection = []
             for i in range(ndim):
                 inter = slice_intersect(local_slice[i], sl_dst[i])
