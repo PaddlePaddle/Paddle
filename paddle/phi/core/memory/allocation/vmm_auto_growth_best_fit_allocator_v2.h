@@ -108,6 +108,13 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
                             size_t requested_size,
                             const VMMGrowOOMInfo* grow_oom = nullptr,
                             VMMRemapAttemptResult* attempt_result = nullptr);
+  // Discovers structurally releasable backing and records any lazy events.
+  // Call this before the device synchronization paired with the release below.
+  bool PrepareBackingRelease();
+  // Finalizes release after PrepareBackingRelease() and a successful device
+  // synchronization. The final plan is regenerated from current allocator
+  // state and event readiness.
+  uint64_t ReleaseAfterDeviceSynchronize(const Place& place);
 
  protected:
   phi::Allocation* AllocateImpl(size_t size) override;
@@ -116,8 +123,51 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
   uint64_t ReleaseImpl(const Place& place) override;
 
  private:
+  using UnderlyingRange = std::pair<VMMDevicePtr, size_t>;
+  using UnderlyingRanges = std::vector<UnderlyingRange>;
+
   struct CompactState;
   struct CompactContext;
+  struct PartialReleasePlan {
+    VMMDevicePtr allocation_base{0};
+    UnderlyingRanges ranges;
+  };
+  using PartialReleasePlans = std::vector<PartialReleasePlan>;
+  struct ReleasePlans {
+    UnderlyingRanges whole_backings;
+    PartialReleasePlans partial_backings;
+    size_t partial_bytes{0};
+
+    bool empty() const {
+      return whole_backings.empty() && partial_backings.empty();
+    }
+  };
+
+  struct ReleaseStats {
+    size_t backing_count{0};
+    size_t backing_bytes{0};
+    size_t releasable_backing_count{0};
+    size_t releasable_backing_bytes{0};
+    size_t release_blocked_backing_count{0};
+    size_t release_blocked_backing_bytes{0};
+    size_t mixed_backing_count{0};
+    size_t mixed_backing_bytes{0};
+    size_t active_bytes{0};
+    size_t mapped_free_bytes{0};
+    size_t partial_releasable_bytes{0};
+    size_t stranded_mapped_free_bytes{0};
+    size_t unmapped_free_bytes{0};
+    size_t active_blocks_crossing_backings{0};
+    size_t active_bytes_crossing_backings{0};
+  };
+  struct ReleaseTiming {
+    uint64_t lock_wait_us{0};
+    uint64_t precheck_us{0};
+    uint64_t device_sync_us{0};
+    uint64_t release_us{0};
+    uint64_t post_stats_us{0};
+    uint64_t total_us{0};
+  };
 
   struct UnderlyingAllocationRegistry {
     using List = std::list<DecoratedAllocationPtr>;
@@ -139,7 +189,10 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
     iterator end() { return allocations_.end(); }
     List::const_iterator begin() const { return allocations_.begin(); }
     List::const_iterator end() const { return allocations_.end(); }
+    iterator FindByAddress(VMMDevicePtr ptr);
+    DecoratedAllocationPtr Take(iterator it);
     iterator Erase(iterator it);
+    UnderlyingRanges CollectRangesByAddress() const;
 
    private:
     using Index = std::map<uint8_t*, iterator>;
@@ -162,10 +215,12 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
       const DecoratedAllocationPtr& allocation) const;
   bool CanPrepareDestinationRange(void* ptr, size_t size) const;
   bool PrepareDestinationRange(void* ptr, size_t size);
-  bool CanReleaseUnderlyingAllocation(uint8_t* base, size_t size) const;
-  bool HasReleasableUnderlyingAllocation() const;
   bool TryReleaseUnderlyingAllocation(
-      UnderlyingAllocationRegistry::iterator* alloc_it, uint64_t* released);
+      UnderlyingAllocationRegistry::iterator* alloc_it,
+      uint64_t* released,
+      BlockListIt* block_search_begin);
+  uint64_t ReleasePartialBacking(const PartialReleasePlans& plans,
+                                 BlockListIt* block_search_begin);
   bool CanIndexFreeBlock(const BlockV2& block) const;
   void InsertFreeBlock(BlockListIt it);
   void EraseFreeBlock(BlockListIt it);
@@ -177,12 +232,21 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
                       const CompactContext& context,
                       const char* reason) const;
   void TryMerge(BlockListIt it);
-  void TryMergeUnmappedFree(BlockListIt it);
-  uint64_t FreeIdleChunks();
+  BlockListIt TryMergeUnmappedFree(BlockListIt it);
+  uint64_t FreeIdleChunks(const ReleasePlans& plans);
+  ReleasePlans CollectReleasePlans(bool require_event_ready) const;
+  ReleaseStats CollectReleaseStats(const ReleasePlans* plans = nullptr) const;
+  void LogReleaseStats(
+      const ReleaseStats& before,
+      const ReleaseStats& after,
+      uint64_t released_bytes,
+      const ReleaseTiming& timing,
+      const CUDAVirtualMemAllocatorV2::ReleaseDriverStats& driver_stats) const;
   void TrimTrailingUnmappedFreeBlocks();
   size_t ComputeTailOffset() const;
-  bool IsRangeEntirelyFree(uint8_t* base, size_t size) const;
-  void ReplaceRangeWithUnmappedFree(uint8_t* base, size_t size);
+  BlockListIt ReplaceRangeWithUnmappedFree(uint8_t* base,
+                                           size_t size,
+                                           BlockListIt search_begin);
 
   // Best-fit V2 only grows from the fixed-handle CUDA VMM provider. The
   // bottom allocator returns mapped-free BlockV2 views, while best-fit owns

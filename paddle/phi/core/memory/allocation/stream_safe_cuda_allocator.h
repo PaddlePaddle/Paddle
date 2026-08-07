@@ -102,8 +102,13 @@ class StreamSafeCUDAAllocator
   size_t CompactImpl(const Place &place) override;
 
  private:
+  struct PendingAllocationStats {
+    size_t count{0};
+    size_t bytes{0};
+  };
+
   void ProcessUnfreedAllocations();
-  uint64_t ProcessUnfreedAllocationsAndRelease();
+  PendingAllocationStats GetPendingAllocationStats();
 
   static std::map<Place, std::vector<StreamSafeCUDAAllocator *>> allocator_map_;
   static SpinLock allocator_map_lock_;

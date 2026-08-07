@@ -94,8 +94,8 @@ void AccuracyInferMeta(const MetaTensor& out,
 void AddmmInferMeta(const MetaTensor& input,
                     const MetaTensor& x,
                     const MetaTensor& y,
-                    float beta,
-                    float alpha,
+                    double beta,
+                    double alpha,
                     MetaTensor* out) {
   auto input_dims = input.dims();
   auto x_dims = x.dims();
@@ -142,8 +142,8 @@ void AddmmInferMeta(const MetaTensor& input,
 void BaddbmmInferMeta(const MetaTensor& input,
                       const MetaTensor& x,
                       const MetaTensor& y,
-                      float beta,
-                      float alpha,
+                      double beta,
+                      double alpha,
                       phi::DataType out_dtype,
                       MetaTensor* out) {
   auto input_dims = input.dims();
@@ -154,15 +154,61 @@ void BaddbmmInferMeta(const MetaTensor& input,
   auto ndim_x = x_dims.size();
   auto ndim_y = y_dims.size();
 
+  PADDLE_ENFORCE_EQ(
+      input.dtype(),
+      x.dtype(),
+      errors::InvalidArgument(
+          "The dtypes of input, x, and y must be the same, but received "
+          "input dtype = %s and x dtype = %s.",
+          input.dtype(),
+          x.dtype()));
+  PADDLE_ENFORCE_EQ(
+      input.dtype(),
+      y.dtype(),
+      errors::InvalidArgument(
+          "The dtypes of input, x, and y must be the same, but received "
+          "input dtype = %s and y dtype = %s.",
+          input.dtype(),
+          y.dtype()));
+
   VLOG(3) << "baddbmm operator input.shape=" << input_dims
           << " x.shape=" << x_dims << " y.shape=" << y_dims << " beta=" << beta
           << " alpha=" << alpha << " ndim_input=" << ndim_input
           << " ndim_x=" << ndim_x << " ndim_y=" << ndim_y;
 
-  std::vector<int64_t> output_dims;
-  output_dims.push_back(x_dims[0]);
-  output_dims.push_back(x_dims[1]);
-  output_dims.push_back(y_dims[2]);
+  PADDLE_ENFORCE_EQ(
+      ndim_input == 2 || ndim_input == 3,
+      true,
+      errors::InvalidArgument(
+          "The input tensor must be 2-D or 3-D, but received shape %s.",
+          input_dims));
+  PADDLE_ENFORCE_EQ(
+      ndim_x,
+      3,
+      errors::InvalidArgument(
+          "The tensor x must be 3-D, but received shape %s.", x_dims));
+  PADDLE_ENFORCE_EQ(
+      ndim_y,
+      3,
+      errors::InvalidArgument(
+          "The tensor y must be 3-D, but received shape %s.", y_dims));
+
+  const auto same_or_unknown = [](int64_t lhs, int64_t rhs) {
+    return lhs < 0 || rhs < 0 || lhs == rhs;
+  };
+  PADDLE_ENFORCE_EQ(
+      same_or_unknown(x_dims[0], y_dims[0]) &&
+          same_or_unknown(x_dims[2], y_dims[1]),
+      true,
+      errors::InvalidArgument(
+          "The first two dimensions of y must be [%d, %d], but received "
+          "x's shape %s and y's shape %s.",
+          x_dims[0],
+          x_dims[2],
+          x_dims,
+          y_dims));
+
+  std::vector<int64_t> output_dims{x_dims[0], x_dims[1], y_dims[2]};
 
   out->set_dims(make_ddim(output_dims));
   out->share_lod(input);
