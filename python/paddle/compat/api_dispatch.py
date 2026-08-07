@@ -144,12 +144,7 @@ def _patch_tensor_methods() -> None:
     import paddle
     import paddle.compat as compat_root
 
-    tensor_apis = {
-        name: getattr(compat_root, name)
-        for name in compat_root._TENSOR_API_NAMES
-    }
-    tensor_apis.update(compat_root._TENSOR_API_OVERRIDES)
-    for attr_name, compat_attr in tensor_apis.items():
+    for attr_name, compat_attr in compat_root._TENSOR_API_OVERRIDES.items():
         native_attr = inspect.getattr_static(paddle.Tensor, attr_name, None)
         if native_attr is None:
             continue

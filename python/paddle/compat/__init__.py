@@ -57,21 +57,6 @@ __all__ = [
 ]
 
 
-# root compat APIs that torch also exposes as Tensor methods
-_TENSOR_API_NAMES = (
-    'allclose',
-    'equal',
-    'slogdet',
-    'sort',
-    'split',
-    'min',
-    'max',
-    'unique',
-    'median',
-    'nanmedian',
-)
-
-
 _TENSOR_TYPE_DTYPES = {
     'HalfTensor': 'float16',
     'FloatTensor': 'float32',
@@ -146,9 +131,9 @@ def _tensor_type(
         return str(input.dtype)
 
     device = None
-    if isinstance(dtype, type) and dtype.__name__ in _TENSOR_TYPE_DTYPES:
-        tensor_type = dtype.__name__
-        dtype = _TENSOR_TYPE_DTYPES[tensor_type]
+    if getattr(dtype, "__name__", None) in _TENSOR_TYPE_DTYPES:
+        # tensor factory classes, e.g. paddle.DoubleTensor
+        dtype = _TENSOR_TYPE_DTYPES[dtype.__name__]
         device = "cpu"
     elif isinstance(dtype, str):
         dtype_string = dtype
@@ -164,8 +149,6 @@ def _tensor_type(
             )
         elif tensor_type in _TENSOR_TYPE_DTYPES.values():
             dtype = tensor_type
-            if dtype_string.startswith(("torch.cuda.", "paddle.cuda.")):
-                device = "gpu"
         else:
             raise ValueError(f"invalid type: {dtype_string!r}")
 
@@ -198,13 +181,6 @@ def _tensor_is_sparse(input: Tensor) -> bool:
         bool: ``True`` for a sparse COO tensor, otherwise ``False``.
     """
     return input.is_sparse_coo()
-
-
-_TENSOR_API_OVERRIDES = {
-    'numel': _tensor_numel,
-    'type': _tensor_type,
-    'is_sparse': _tensor_is_sparse,
-}
 
 
 def allclose(
@@ -1273,3 +1249,21 @@ def split(
                     split_size_or_sections
                 )
             return tuple(_C_ops.split(tensor, split_size_or_sections, dim))
+
+
+# ``paddle.Tensor`` APIs routed to their ``paddle.compat`` implementations
+_TENSOR_API_OVERRIDES = {
+    'allclose': allclose,
+    'equal': equal,
+    'slogdet': slogdet,
+    'sort': sort,
+    'split': split,
+    'min': min,
+    'max': max,
+    'unique': unique,
+    'median': median,
+    'nanmedian': nanmedian,
+    'numel': _tensor_numel,
+    'type': _tensor_type,
+    'is_sparse': _tensor_is_sparse,
+}
