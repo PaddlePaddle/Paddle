@@ -53,9 +53,9 @@ template <typename T,
           class Reducer,
           size_t BlockDim,
           typename IndexType>
-__global__ void ArgCUDAKernel(const int64_t height,     // n * h
-                              const int64_t width,      // c
-                              const int64_t post_size,  // h
+__global__ void ArgCUDAKernel(const IndexType height,     // n * h
+                              const IndexType width,      // c
+                              const IndexType post_size,  // h
                               const Reducer reducer,
                               const T init,
                               const T* in,
