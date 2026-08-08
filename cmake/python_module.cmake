@@ -13,7 +13,7 @@ function(find_python_module module)
     # it's a .so file.
     execute_process(
       COMMAND
-        "${PYTHON_EXECUTABLE}" "-c"
+        "${Python_EXECUTABLE}" "-c"
         "import re, ${module}; print(re.compile('/__init__.py.*').sub('',${module}.__file__))"
       RESULT_VARIABLE _${module}_status
       OUTPUT_VARIABLE _${module}_location
@@ -30,7 +30,7 @@ function(find_python_module module)
   endif()
 
   execute_process(
-    COMMAND "${PYTHON_EXECUTABLE}" "-c"
+    COMMAND "${Python_EXECUTABLE}" "-c"
             "import sys, ${module}; sys.stdout.write(${module}.__version__)"
     OUTPUT_VARIABLE _${module}_version
     RESULT_VARIABLE _${module}_status

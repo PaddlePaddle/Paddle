@@ -319,7 +319,6 @@ option(WITH_XBYAK "Compile with xbyak support" ON)
 option(WITH_INFERENCE_API_TEST
        "Test fluid inference C++ high-level api interface" OFF)
 option(WITH_NVTX "Paddle with nvtx for profiler" OFF)
-option(PY_VERSION "Compile PaddlePaddle with python3 support" ${PY_VERSION})
 option(WITH_DGC "Use DGC(Deep Gradient Compression) or not" ${WITH_DISTRIBUTE})
 option(
   SANITIZER_TYPE
@@ -410,9 +409,15 @@ endif()
 unset(WITH_RECORD_BUILDTIME CACHE)
 
 # PY_VERSION
+set(PY_VERSION
+    "${PY_VERSION}"
+    CACHE STRING "Minimum Python version used to build Paddle")
+set_property(CACHE PY_VERSION PROPERTY TYPE STRING)
 if(NOT PY_VERSION)
-  set(PY_VERSION 3.10)
-elseif(${PY_VERSION} VERSION_LESS 3.10)
+  set(PY_VERSION
+      3.10
+      CACHE STRING "Minimum Python version used to build Paddle" FORCE)
+elseif(PY_VERSION VERSION_LESS 3.10)
   message(FATAL_ERROR "Paddle only supports Python version >= 3.10 now")
 endif()
 set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
