@@ -59,7 +59,8 @@ WORKDIR /home
 RUN wget -q https://cmake.org/files/v3.18/cmake-3.18.0-Linux-x86_64.tar.gz && tar -zxvf cmake-3.18.0-Linux-x86_64.tar.gz && rm cmake-3.18.0-Linux-x86_64.tar.gz
 ENV PATH=/home/cmake-3.18.0-Linux-x86_64/bin:$PATH
 
-RUN wget -q https://www.bytereef.org/software/mpdecimal/releases/mpdecimal-2.5.1.tar.gz && \
+RUN wget -q -O mpdecimal-2.5.1.tar.gz \
+    "https://xly-devops.bj.bcebos.com/gouzil/mpdecimal%202.5.1.tar.gz" && \
     tar -xzf mpdecimal-2.5.1.tar.gz && \
     cd mpdecimal-2.5.1 && \
     ./configure --prefix=/usr/local > /dev/null && \
