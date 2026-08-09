@@ -2772,6 +2772,21 @@ class TestCrossEntropyFAPIError(unittest.TestCase):
 
             self.assertRaises(ValueError, static_test_WeightLength_NotEqual)
 
+    def test_hard_label_zero_classes(self):
+        paddle.disable_static()
+        input_data = paddle.randn([1, 8192, 0], dtype="float32")
+        label_data = paddle.zeros([1, 8192], dtype="int64")
+        with self.assertRaisesRegex(ValueError, "number of classes"):
+            paddle.nn.functional.cross_entropy(
+                input=input_data,
+                label=label_data,
+                ignore_index=-100,
+                reduction="none",
+                soft_label=False,
+                axis=-1,
+                use_softmax=True,
+            )
+
 
 class CrossEntropyLossCompatible(unittest.TestCase):
     """

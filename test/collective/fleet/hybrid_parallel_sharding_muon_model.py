@@ -18,6 +18,11 @@
 # Topology: sharding_degree=2, mp_degree=1 (2 ranks total)
 
 import os
+
+# Enable MUON_DEBUG to cover the debug logging branch in _muon_update_group.
+# Must be set BEFORE `import paddle`: muon.py reads it at import time.
+os.environ["MUON_DEBUG"] = "1"
+
 import random
 import unittest
 from dataclasses import dataclass
@@ -39,15 +44,24 @@ from paddle.optimizer.muon import (
     _default_should_use_muon,
 )
 
-# Enable MUON_DEBUG to cover the debug logging branch (muon.py L532-539)
-os.environ["MUON_DEBUG"] = "1"
-
 # Test-controlled flags (set via need_envs from test_parallel_dygraph_muon.py)
 g_enable_fuse_optimizer_states = int(
     os.environ.get("ENABLE_FUSE_OPTIMIZER_STATES", "0")
 )
 g_release_gradients = int(os.environ.get("RELEASE_GRADIENTS", "0"))
 g_multi_precision = int(os.environ.get("MULTI_PRECISION", "0"))
+
+# Test-controlled Muon group-splitting threshold (bytes), consumed in
+# _build_muon_optimizer. Controls Muon._split_group_by_bytes coverage:
+#   unset -> use optimizer default (no override)
+#   "0"   -> pass None, exercising the split-disabled early-return path
+#   >0    -> pass value; a small value forces a group to be split
+_muon_mgb_env = os.environ.get("MUON_MAX_GROUP_BYTES", "")
+if _muon_mgb_env == "":
+    g_muon_max_group_bytes = "unset"
+else:
+    _v = int(_muon_mgb_env)
+    g_muon_max_group_bytes = None if _v == 0 else _v
 
 # Parameter combinations
 NS_COEFF_TYPES = ["simple", "quintic", "polar_express", "aol", "deepseekv4"]
@@ -96,6 +110,15 @@ def _ffn_split(matrix_2d, ortho_fn, intermediate_size=None):
         matrix_2d, [intermediate_size, intermediate_size], axis=1
     )
     return paddle.concat([ortho_fn(gate), ortho_fn(up)], axis=1)
+
+
+def _whole_matrix(matrix_2d, ortho_fn):
+    """Plain-function slice strategy: orthogonalise the whole matrix.
+
+    Registered as a plain function (NOT functools.partial) to cover the
+    non-partial func_key branch in Muon._apply_optimize grouping.
+    """
+    return ortho_fn(matrix_2d)
 
 
 @dataclass
@@ -192,6 +215,17 @@ class QKVFFNNet(paddle.nn.Layer):
             default_initializer=paddle.nn.initializer.Assign(np_batched_proj),
         )
 
+        # Second 3D param with the SAME shape: the two 3D params fall into
+        # one group, covering the multi-param 3D concat/split path in
+        # _muon_update_group.
+        self.batched_proj2 = paddle.create_parameter(
+            shape=list(batched_proj_shape),
+            dtype='float32',
+            default_initializer=paddle.nn.initializer.Assign(
+                np_batched_proj * 0.5
+            ),
+        )
+
     def forward(self, x):
         # Embedding
         h = self.embed_tokens(x)  # [batch, seq, hidden]
@@ -216,7 +250,8 @@ class QKVFFNNet(paddle.nn.Layer):
 
         # Batched projection (3D param: triggers batched NS + transpose path)
         bp_scale = paddle.einsum('bsh,kmn->', out, self.batched_proj)
-        out = out + bp_scale * 1e-4
+        bp_scale2 = paddle.einsum('bsh,kmn->', out, self.batched_proj2)
+        out = out + (bp_scale + bp_scale2) * 1e-4
 
         # LM head
         logits = self.lm_head(out)  # [batch, seq, vocab]
@@ -297,6 +332,10 @@ class TestDistShardingMuonTraining(unittest.TestCase):
                     _ffn_split,
                     intermediate_size=intermediate_size,
                 )
+            elif "down_proj" in name:
+                # Plain function (no partial): covers the `func_key = func`
+                # branch in Muon._apply_optimize group-key construction.
+                slice_map[param.name] = _whole_matrix
         return slice_map
 
     def build_optimizer(
@@ -315,13 +354,14 @@ class TestDistShardingMuonTraining(unittest.TestCase):
             model: The model to optimize.
             ns_coeff: Newton-Schulz coefficient type.
             split_concat_func_map: Optional dict {param.name: split_concat_func}.
-                Covers muon.py L529 (split_concat_func call) and L535 (debug log).
+                Covers the split_concat_func call and MUON_DEBUG log in
+                _muon_update_group.
             ns_matmul_dtype: Optional explicit dtype for NS matmul.
-                Covers muon.py L283 (explicit ns_matmul_dtype branch).
+                Covers the explicit ns_matmul_dtype branch in Muon.__init__.
             multi_precision: If True, enable FP32 master weights.
-                Covers muon.py L560-564, L574-575, L582-583.
+                Covers the find_master branches in _muon_update_group.
             apply_decay_param_fun: Optional callable(param_name) -> bool.
-                Covers muon.py L443-446, L568-572.
+                Covers with_decay=False in _adamw_update / _muon_update_group.
             ns_coeffs: Optional custom NS coefficient list.
         """
         muon_param_info_map = {}
@@ -342,6 +382,8 @@ class TestDistShardingMuonTraining(unittest.TestCase):
             kwargs['ns_matmul_dtype'] = ns_matmul_dtype
         if ns_coeffs is not None:
             kwargs['ns_coeffs'] = ns_coeffs
+        if g_muon_max_group_bytes != "unset":
+            kwargs['muon_max_group_bytes'] = g_muon_max_group_bytes
 
         return paddle.optimizer.Muon(
             parameters=model.parameters(),
@@ -397,14 +439,16 @@ class TestDistShardingMuonTraining(unittest.TestCase):
             ns_coeff: Newton-Schulz coefficient type.
             color_params: Optional list of param name substrings to assign
                 custom color group (covers muon_sharding_optimizer L388-394).
-            use_slice: If True, build split_concat_func_map for QKV/FFN params
-                (covers muon.py L529, L535).
-            explicit_dtype: If True, pass ns_matmul_dtype=paddle.float32 explicitly
-                (covers muon.py L283).
+            use_slice: If True, build split_concat_func_map for QKV/FFN/down
+                params (covers split_concat_func + MUON_DEBUG log in
+                _muon_update_group, and both partial / plain-function
+                func_key branches in _apply_optimize).
+            explicit_dtype: If True, pass ns_matmul_dtype=paddle.float32
+                explicitly (covers the explicit dtype branch in Muon.__init__).
             multi_precision: If True, enable FP32 master weights
-                (covers muon.py L560-564, L574-575, L582-583).
+                (covers the find_master branches in _muon_update_group).
             apply_decay_param_fun: Optional callable(param_name) -> bool
-                (covers muon.py L443-446, L568-572).
+                (covers with_decay=False in _adamw_update / _muon_update_group).
             ns_coeffs: Optional custom NS coefficient list.
         """
         # Allow env var to force multi_precision on
@@ -502,11 +546,11 @@ class TestDistShardingMuonTraining(unittest.TestCase):
           Covers:
           - muon_sharding_optimizer.py L388-394: custom color from param.color dict
           - muon_sharding_optimizer.py L627-635, L665-667: fused gradient comm buffers
-          - muon.py L283: explicit ns_matmul_dtype=paddle.float32
-          - muon.py L443-446: apply_decay_param_fun with_decay=False (AdamW path)
-          - muon.py L529: split_concat_func call
-          - muon.py L535: MUON_DEBUG logging (via MUON_DEBUG=1 env)
-          - muon.py L560-564, L574-575, L582-583: find_master=True (Muon path)
+          - muon.py: explicit ns_matmul_dtype=paddle.float32
+          - muon.py: apply_decay_param_fun with_decay=False (AdamW + Muon paths)
+          - muon.py: split_concat_func call in _muon_update_group
+          - muon.py: MUON_DEBUG logging (via MUON_DEBUG=1 env)
+          - muon.py: find_master=True branches in _muon_update_group
         """
         total = (
             len(NS_COEFF_TYPES) + 4

@@ -177,7 +177,7 @@
 
 ``` python
 def something():
-    """ Function summary ...
+    """Function summary ...
     Some description ...
 
     .. code-block:: pycon
@@ -186,7 +186,7 @@ def something():
         this is some blabla...
 
         >>> # doctest: +SKIP
-        >>> print(1+1)
+        >>> print(1 + 1)
         2
 
     Examples:
@@ -208,11 +208,11 @@ def something():
 
 ```python
 def something():
-    """ Function summary ...
+    """Function summary ...
     Some description ...
 
     >>> # doctest: +SKIP
-    >>> print(1+1)
+    >>> print(1 + 1)
     2
 
     Examples:
@@ -234,7 +234,7 @@ def something():
 
 ``` python
 def something():
-    """ Function summary ...
+    """Function summary ...
     Some description ...
 
     .. code-block:: pycon
@@ -243,7 +243,7 @@ def something():
         this is some blabla...
 
         >>> # doctest: +SKIP
-        >>> print(1+1)
+        >>> print(1 + 1)
        2
 
     Examples:
@@ -266,7 +266,7 @@ def something():
 
 ``` python
 def something():
-    """ Function summary ...
+    """Function summary ...
     Some description ...
 
     .. code-block:: pycon
@@ -275,7 +275,7 @@ def something():
         this is some blabla...
 
         >>> # xdoctest: +SKIP
-        >>> print(1+1)
+        >>> print(1 + 1)
         2
 
     Examples:

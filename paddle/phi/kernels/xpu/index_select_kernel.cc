@@ -27,12 +27,18 @@ void IndexSelectKernel(const Context& dev_ctx,
                        const DenseTensor& index,
                        int dim,
                        DenseTensor* output) {
+  auto input_dim = x.dims();
+  dim = dim >= 0 ? dim : dim + input_dim.size();
+  if (input_dim[dim] == 0 && index.numel() > 0) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "The dimension of Input(X) on the select axis in OP(index_select) "
+        "must be greater than 0 when Input(Index) is not empty."));
+  }
+
   if (output && output->numel() == 0) {
     dev_ctx.template Alloc<T>(output);
     return;
   }
-  auto input_dim = x.dims();
-  dim = dim >= 0 ? dim : dim + input_dim.size();
   const auto& index_type = index.dtype();
 
   bool index_type_match =

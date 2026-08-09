@@ -3618,6 +3618,10 @@
   outputs :
     out : Out
 
+- op : sparse_addmm
+  backward : sparse_addmm_grad
+  manual_signature : [sparse_addmm, sparse_addmm_grad]
+
 - op : sparse_batch_norm
   attrs:
     data_format: data_layout

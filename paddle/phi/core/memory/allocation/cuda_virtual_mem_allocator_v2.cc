@@ -21,6 +21,10 @@
 #include <limits>
 #include <utility>
 
+#if defined(__linux__)
+#include <unistd.h>
+#endif
+
 #include "glog/logging.h"
 #include "paddle/phi/core/platform/cuda_device_guard.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
@@ -46,8 +50,19 @@ bool IsCudaDeinitialized(CUresult result) {
   return result == CUDA_ERROR_DEINITIALIZED;
 }
 
-bool IsCudaRuntimeDeinitialized(cudaError_t result) {
-  return result == cudaErrorCudartUnloading;
+bool IsCudaRuntimeUnavailableForTeardown(cudaError_t result) {
+  return result == cudaErrorCudartUnloading ||
+         result == cudaErrorInitializationError ||
+         result == cudaErrorInsufficientDriver || result == cudaErrorNoDevice;
+}
+
+void LogAllocatorTeardownFailure(const char* operation,
+                                 size_t deferred_handles,
+                                 int device,
+                                 int status) noexcept {
+  VLOG(1) << "CUDA VMM allocator teardown could not " << operation
+          << ": device=" << device << " deferred_handles=" << deferred_handles
+          << " status=" << status;
 }
 
 size_t GetPoolVAMultiplier(PoolType pool_type) {
@@ -173,6 +188,58 @@ CUDAVirtualMemAllocatorV2::CUDAVirtualMemAllocatorV2(const GPUPlace& place,
                                                      PoolType pool)
     : place_(place), handle_size_(handle_size), pool_type_(pool) {}
 
+CUDAVirtualMemAllocatorV2::~CUDAVirtualMemAllocatorV2() noexcept {
+  if (!deferred_handle_releases_.empty()) {
+    // CUDADeviceGuard may throw while restoring the previous device. Teardown
+    // uses return-code checks so this noexcept destructor stays best-effort.
+    int previous_device = -1;
+    const auto get_device_status = cudaGetDevice(&previous_device);
+    if (get_device_status != cudaSuccess) {
+      LogAllocatorTeardownFailure("query the current CUDA device",
+                                  deferred_handle_releases_.size(),
+                                  place_.device,
+                                  get_device_status);
+    } else {
+      const bool restore_device = previous_device != place_.device;
+      const auto set_device_status =
+          restore_device ? cudaSetDevice(place_.device) : cudaSuccess;
+      if (set_device_status != cudaSuccess) {
+        LogAllocatorTeardownFailure("switch to its CUDA device",
+                                    deferred_handle_releases_.size(),
+                                    place_.device,
+                                    set_device_status);
+      } else {
+        try {
+          RetryDeferredHandleReleases();
+        } catch (...) {
+          // Destruction must not propagate CUDA/context errors. This final
+          // best-effort drain handles normal teardown while CUDA is usable.
+          LogAllocatorTeardownFailure("release deferred handles",
+                                      deferred_handle_releases_.size(),
+                                      place_.device,
+                                      -1);
+        }
+        if (restore_device) {
+          const auto restore_status = cudaSetDevice(previous_device);
+          if (restore_status != cudaSuccess) {
+            LogAllocatorTeardownFailure("restore the previous CUDA device",
+                                        deferred_handle_releases_.size(),
+                                        place_.device,
+                                        restore_status);
+          }
+        }
+      }
+    }
+  }
+#if defined(__linux__)
+  for (const auto& item : ipc_export_fds_) {
+    if (item.second >= 0) {
+      ::close(item.second);
+    }
+  }
+#endif
+}
+
 bool CUDAVirtualMemAllocatorV2::IsAllocThreadSafe() const { return false; }
 
 void CUDAVirtualMemAllocatorV2::RollbackCreatedHandles(
@@ -189,6 +256,7 @@ void CUDAVirtualMemAllocatorV2::RollbackCreatedHandles(
 
 void CUDAVirtualMemAllocatorV2::MarkLayoutMapped(const HandleLayout& layout) {
   for (const auto& meta : layout) {
+    backing_map_.ClearIPCExported(meta->base(), meta->size());
     backing_map_.MarkMapped(meta->base(), meta, meta->size());
   }
 }
@@ -200,6 +268,7 @@ void CUDAVirtualMemAllocatorV2::MarkRemapDestinationLayoutMapped(
     // ownership sink throws. Commit clears only this temporary meta marker;
     // the BackingMap destination marker remains until stale-range cleanup.
     meta->MarkOwnedByRemapDestination();
+    backing_map_.ClearIPCExported(meta->base(), meta->size());
     backing_map_.MarkRemapDestinationMapped(meta->base(), meta, meta->size());
   }
 }
@@ -232,9 +301,8 @@ void CUDAVirtualMemAllocatorV2::InitOnce() {
                           "VA multiplier %d for pool %d overflows size_t.",
                           va_multiplier,
                           static_cast<int>(pool_type_)));
-    // Reserves VA by pool to leave room for later split/remap growth.  The
-    // backing map is indexed by handle-sized pages, so the reserved VA range
-    // must be aligned to handle_size_ rather than only the CUDA granularity.
+    // Reserve VA by pool to leave room for later split/remap growth. The
+    // backing map anchors its handle-sized page grid at the returned base.
     virtual_mem_size_ = AlignedSize(actual_total * va_multiplier, handle_size_);
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cuMemAddressReserve(
         &virtual_mem_base_, virtual_mem_size_, 0, 0, 0));
@@ -269,7 +337,8 @@ CUDAVirtualMemAllocatorV2::AppendWithLayout(size_t size) {
                                         place_));
   VMMDevicePtr ptr = virtual_mem_base_ + virtual_mem_alloced_offset_;
 
-  auto layout = CreateMappedHandleLayout(ptr, aligned, "AppendWithLayout");
+  auto layout =
+      CreateMappedHandleLayout(ptr, aligned, "AppendWithLayout", true);
 
   MarkLayoutMapped(layout);
   return WrapTrackedAllocation(ptr, aligned, std::move(layout), true);
@@ -284,7 +353,6 @@ CUDAVirtualMemAllocatorV2::AllocationWithLayout
 CUDAVirtualMemAllocatorV2::PlaceAtVAWithLayout(VMMDevicePtr ptr, size_t size) {
   InitOnce();
   const size_t aligned = AlignedSize(size, handle_size_);
-  const size_t num_handles = aligned / handle_size_;
   PADDLE_ENFORCE_EQ(virtual_mem_base_ + virtual_mem_size_ < virtual_mem_base_,
                     false,
                     common::errors::InvalidArgument(
@@ -311,11 +379,8 @@ CUDAVirtualMemAllocatorV2::PlaceAtVAWithLayout(VMMDevicePtr ptr, size_t size) {
       common::errors::ResourceExhausted(
           "VMMAllocatorV2 PlaceAtVA range exceeds reserved VA space."));
 
-  VLOG(6) << "VMM V2 PlaceAtVA(AllocateAtVA) ptr="
-          << reinterpret_cast<void*>(ptr) << " requested=" << size
-          << " aligned=" << aligned << " handle_count=" << num_handles
-          << " tail_offset=" << virtual_mem_alloced_offset_;
-  auto layout = CreateMappedHandleLayout(ptr, aligned, "PlaceAtVAWithLayout");
+  auto layout =
+      CreateMappedHandleLayout(ptr, aligned, "PlaceAtVAWithLayout", false);
 
   MarkLayoutMapped(layout);
   return WrapTrackedAllocation(ptr, aligned, std::move(layout), false);
@@ -327,7 +392,7 @@ CUDAVirtualMemAllocatorV2::PlaceAtVAWithBlock(VMMDevicePtr ptr, size_t size) {
 }
 
 HandleLayout CUDAVirtualMemAllocatorV2::CreateMappedHandleLayout(
-    VMMDevicePtr ptr, size_t aligned_size, const char* context) {
+    VMMDevicePtr ptr, size_t aligned_size, const char* context, bool is_grow) {
   platform::CUDADeviceGuard guard(place_.device);
   const size_t num_handles = aligned_size / handle_size_;
   HandleLayout layout;
@@ -342,13 +407,22 @@ HandleLayout CUDAVirtualMemAllocatorV2::CreateMappedHandleLayout(
         // BadAlloc may be caught by a retry loop, so do not leave a stale CUDA
         // OOM in the runtime error slot.
         (void)platform::GpuGetLastError();
-        PADDLE_THROW_BAD_ALLOC(common::errors::ResourceExhausted(
+        auto error = common::errors::ResourceExhausted(
             "%s cuMemCreate failed: out of GPU memory at handle %zu/%zu "
             "(handle_size=%zu).",
             context,
             i,
             num_handles,
-            handle_size_));
+            handle_size_);
+        if (is_grow) {
+          throw VMMGrowOOM(
+              error.to_string(),
+              __FILE__,
+              __LINE__,
+              VMMGrowOOMInfo{
+                  num_handles, i, handle_size_, place_.device, pool_type_});
+        }
+        PADDLE_THROW_BAD_ALLOC(error);
       }
       PADDLE_ENFORCE_GPU_SUCCESS(ce);
     }
@@ -428,8 +502,7 @@ bool CUDAVirtualMemAllocatorV2::IsRemapDestinationOwnedLayout(
   });
 }
 
-bool CUDAVirtualMemAllocatorV2::IsAllocationOwnedByRemapDestination(
-    void* ptr) const {
+bool CUDAVirtualMemAllocatorV2::IsRemapDestinationAllocation(void* ptr) const {
   HandleLayout layout;
   if (!CollectAllocationHandleLayout(ptr, &layout)) {
     return false;
@@ -440,10 +513,6 @@ bool CUDAVirtualMemAllocatorV2::IsAllocationOwnedByRemapDestination(
 bool CUDAVirtualMemAllocatorV2::ClearRemapDestinationOwnership(VMMDevicePtr ptr,
                                                                size_t size) {
   if (!IsReservedVARange(ptr, size)) {
-    VLOG(3) << "ClearRemapDestinationOwnership: range outside reserved VA, ptr="
-            << reinterpret_cast<void*>(ptr) << " size=" << size
-            << " base=" << reinterpret_cast<void*>(virtual_mem_base_)
-            << " reserved_size=" << virtual_mem_size_;
     return false;
   }
   return backing_map_.ClearRemapDestinationOwnership(ptr, size);
@@ -452,78 +521,229 @@ bool CUDAVirtualMemAllocatorV2::ClearRemapDestinationOwnership(VMMDevicePtr ptr,
 size_t CUDAVirtualMemAllocatorV2::ClearRemapDestinationOwnershipInRange(
     VMMDevicePtr ptr, size_t size) {
   if (!IsReservedVARange(ptr, size)) {
-    VLOG(3) << "ClearRemapDestinationOwnershipInRange: range outside "
-            << "reserved VA, ptr=" << reinterpret_cast<void*>(ptr)
-            << " size=" << size
-            << " base=" << reinterpret_cast<void*>(virtual_mem_base_)
-            << " reserved_size=" << virtual_mem_size_;
     return 0;
   }
   return backing_map_.ClearRemapDestinationOwnershipInRange(ptr, size);
+}
+
+CUresult CUDAVirtualMemAllocatorV2::UnmapRangeForRelease(VMMDevicePtr ptr,
+                                                         size_t size) {
+  return phi::dynload::cuMemUnmap(ptr, size);
+}
+
+cudaError_t CUDAVirtualMemAllocatorV2::GetCurrentDeviceForRelease(int* device) {
+  return cudaGetDevice(device);
+}
+
+cudaError_t CUDAVirtualMemAllocatorV2::SetCurrentDeviceForRelease(int device) {
+  return cudaSetDevice(device);
+}
+
+CUresult CUDAVirtualMemAllocatorV2::ReleaseHandleForRelease(
+    VMMAllocHandle handle, size_t size) {
+  return platform::RecordedGpuMemRelease(handle, size, place_.device);
+}
+
+HandleLayout CUDAVirtualMemAllocatorV2::UnmapMappedHandles(
+    const HandleLayout& layout, bool include_remap_owned) {
+  HandleLayout selected;
+  selected.reserve(layout.size());
+  for (const auto& handle : layout) {
+    if (handle != nullptr &&
+        (include_remap_owned || !handle->IsOwnedByRemapDestination())) {
+      selected.push_back(handle);
+    } else if (handle != nullptr) {
+      ++release_driver_stats_.skipped_owned_handles;
+    }
+  }
+
+  HandleLayout unmapped;
+  unmapped.reserve(selected.size());
+  size_t run_begin = 0;
+  while (run_begin < selected.size()) {
+    size_t run_end = run_begin + 1;
+    VMMDevicePtr run_end_va =
+        selected[run_begin]->base() + selected[run_begin]->size();
+    while (run_end < selected.size() &&
+           selected[run_end]->base() == run_end_va) {
+      run_end_va += selected[run_end]->size();
+      ++run_end;
+    }
+
+    const VMMDevicePtr run_base = selected[run_begin]->base();
+    const size_t run_size = static_cast<size_t>(run_end_va - run_base);
+    auto op_start = Clock::now();
+    auto unmap_status = UnmapRangeForRelease(run_base, run_size);
+    release_driver_stats_.unmap_us += ElapsedMicros(op_start, Clock::now());
+    ++release_driver_stats_.unmap_calls;
+    if (IsCudaDeinitialized(unmap_status)) {
+      run_begin = run_end;
+      continue;
+    }
+    if (unmap_status != CUDA_SUCCESS) {
+      RestoreUnmappedHandles(unmapped);
+      PADDLE_ENFORCE_GPU_SUCCESS(unmap_status);
+    }
+
+    op_start = Clock::now();
+    backing_map_.MarkUnmapped(run_base, run_size);
+    release_driver_stats_.metadata_us += ElapsedMicros(op_start, Clock::now());
+    unmapped.insert(unmapped.end(),
+                    selected.begin() + run_begin,
+                    selected.begin() + run_end);
+    run_begin = run_end;
+  }
+  return unmapped;
+}
+
+void CUDAVirtualMemAllocatorV2::RestoreUnmappedHandles(
+    const HandleLayout& layout) {
+  for (const auto& handle : layout) {
+    auto status = phi::dynload::cuMemMap(
+        handle->base(), handle->size(), 0, handle->handle(), 0);
+    PADDLE_ENFORCE_GPU_SUCCESS(status);
+    auto access_result = SetAccessInChunks(
+        handle->base(), handle->size(), handle_size_, access_desc_);
+    PADDLE_ENFORCE_GPU_SUCCESS(access_result.status);
+    if (handle->IsOwnedByRemapDestination()) {
+      backing_map_.MarkRemapDestinationMapped(
+          handle->base(), handle, handle->size());
+    } else {
+      backing_map_.MarkMapped(handle->base(), handle, handle->size());
+    }
+  }
+}
+
+uint64_t CUDAVirtualMemAllocatorV2::ReleaseUnmappedHandles(
+    const HandleLayout& layout) {
+  uint64_t released_bytes = 0;
+  deferred_handle_releases_.reserve(deferred_handle_releases_.size() +
+                                    layout.size());
+  for (const auto& handle : layout) {
+    auto op_start = Clock::now();
+    auto release_status =
+        ReleaseHandleForRelease(handle->handle(), handle->size());
+    release_driver_stats_.release_us += ElapsedMicros(op_start, Clock::now());
+    ++release_driver_stats_.release_calls;
+    if (IsCudaDeinitialized(release_status)) {
+      // Process teardown can invalidate the CUDA context before allocator
+      // owners are destroyed. No later allocator operation can observe the
+      // retained driver state in this terminal path.
+      continue;
+    }
+    if (release_status != CUDA_SUCCESS) {
+      deferred_handle_releases_.push_back(handle);
+      VLOG(1) << "Deferred CUDA VMM handle release after driver error: device="
+              << static_cast<int>(place_.device)
+              << " va=" << reinterpret_cast<void*>(handle->base())
+              << " bytes=" << handle->size() << " status=" << release_status;
+      continue;
+    }
+
+    op_start = Clock::now();
+    CloseIPCExportFD(handle->handle());
+    backing_map_.MarkReleased(handle->base(), handle->handle(), handle->size());
+    release_driver_stats_.metadata_us += ElapsedMicros(op_start, Clock::now());
+    ++release_driver_stats_.handle_count;
+    release_driver_stats_.released_bytes += handle->size();
+    released_bytes += handle->size();
+  }
+  return released_bytes;
+}
+
+uint64_t CUDAVirtualMemAllocatorV2::RetryDeferredHandleReleases() {
+  uint64_t released_bytes = 0;
+  for (auto it = deferred_handle_releases_.begin();
+       it != deferred_handle_releases_.end();) {
+    const auto& handle = *it;
+    auto op_start = Clock::now();
+    auto status = ReleaseHandleForRelease(handle->handle(), handle->size());
+    release_driver_stats_.release_us += ElapsedMicros(op_start, Clock::now());
+    ++release_driver_stats_.release_calls;
+    if (status != CUDA_SUCCESS) {
+      if (IsCudaDeinitialized(status)) {
+        it = deferred_handle_releases_.erase(it);
+      } else {
+        ++it;
+      }
+      continue;
+    }
+    op_start = Clock::now();
+    CloseIPCExportFD(handle->handle());
+    // The old VA can be reused while its unmapped physical handle awaits a
+    // retry. Releasing that handle must not clear a newer mapping at the same
+    // address.
+    if (backing_map_.IsRangeUnmapped(handle->base(), handle->size())) {
+      backing_map_.MarkReleased(
+          handle->base(), handle->handle(), handle->size());
+    }
+    release_driver_stats_.metadata_us += ElapsedMicros(op_start, Clock::now());
+    ++release_driver_stats_.handle_count;
+    release_driver_stats_.released_bytes += handle->size();
+    released_bytes += handle->size();
+    it = deferred_handle_releases_.erase(it);
+  }
+  if (released_bytes > 0) {
+    ++release_driver_stats_.allocation_count;
+  }
+  return released_bytes;
+}
+
+void CUDAVirtualMemAllocatorV2::ReleaseMappedHandles(
+    const HandleLayout& layout) {
+  deferred_handle_releases_.reserve(deferred_handle_releases_.size() +
+                                    layout.size());
+  const auto unmapped = UnmapMappedHandles(layout);
+  const uint64_t released_bytes = ReleaseUnmappedHandles(unmapped);
+  if (released_bytes > 0) {
+    ++release_driver_stats_.allocation_count;
+  }
 }
 
 void CUDAVirtualMemAllocatorV2::FreeImpl(phi::Allocation* allocation) {
   auto* ptr = allocation->ptr();
   HandleLayout layout =
       RequireHandleLayout(static_cast<Allocation*>(allocation));
+  auto discard_host_state = [&] {
+    UnregisterHandleLayout(static_cast<Allocation*>(allocation), ptr);
+    delete allocation;
+  };
 
   int prev_id = -1;
-  auto runtime_status = cudaGetDevice(&prev_id);
-  if (IsCudaRuntimeDeinitialized(runtime_status)) {
+  auto runtime_status = GetCurrentDeviceForRelease(&prev_id);
+  if (IsCudaRuntimeUnavailableForTeardown(runtime_status)) {
     // CUDA teardown path only. At this point the runtime/context may no longer
     // accept cuMemUnmap/cuMemRelease, and this allocator will not serve further
     // allocations/remap/IPC queries. Drop host-side ownership records to avoid
     // throwing from process-exit cleanup; do not treat this as a normal release
     // path or as evidence that backing_map_ still reflects driver state.
-    UnregisterHandleLayout(static_cast<Allocation*>(allocation), ptr);
-    delete allocation;
+    discard_host_state();
     return;
   }
   PADDLE_ENFORCE_GPU_SUCCESS(runtime_status);
   const bool restore_device = prev_id != place_.device;
   if (restore_device) {
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaSetDevice(place_.device));
+    runtime_status = SetCurrentDeviceForRelease(place_.device);
+    if (IsCudaRuntimeUnavailableForTeardown(runtime_status)) {
+      discard_host_state();
+      return;
+    }
+    PADDLE_ENFORCE_GPU_SUCCESS(runtime_status);
   }
   DEFINE_PADDLE_SCOPE_GUARD([&] {
     if (restore_device) {
-      auto status = cudaSetDevice(prev_id);
-      if (status != cudaSuccess && !IsCudaRuntimeDeinitialized(status)) {
+      auto status = SetCurrentDeviceForRelease(prev_id);
+      if (status != cudaSuccess &&
+          !IsCudaRuntimeUnavailableForTeardown(status)) {
         VLOG(3) << "Failed to restore CUDA device from " << place_.device
                 << " to " << prev_id << ": " << cudaGetErrorString(status);
       }
     }
   });
 
-  for (const auto& handle : layout) {
-    if (handle->IsOwnedByRemapDestination()) {
-      VLOG(6) << "FreeImpl: skipping remap-destination-owned handle base="
-              << reinterpret_cast<void*>(handle->base())
-              << " size=" << handle->size();
-      continue;
-    }
-    auto unmap_status =
-        phi::dynload::cuMemUnmap(handle->base(), handle->size());
-    if (IsCudaDeinitialized(unmap_status)) {
-      // Terminal cleanup after CUDA teardown. The remaining driver state is no
-      // longer observable through CUDA APIs, so backing_map_ is intentionally
-      // left untouched; normal runtime failures are still enforced below.
-      continue;
-    }
-    PADDLE_ENFORCE_GPU_SUCCESS(unmap_status);
-    auto release_status = platform::RecordedGpuMemRelease(
-        handle->handle(), handle->size(), place_.device);
-    if (IsCudaDeinitialized(release_status)) {
-      // Same terminal-cleanup rule as the unmap path above. Only CUDA teardown
-      // errors are tolerated here; other release failures must be surfaced.
-      continue;
-    }
-    PADDLE_ENFORCE_GPU_SUCCESS(release_status);
-    backing_map_.MarkUnmapped(handle->base(), handle->size());
-    backing_map_.MarkReleased(handle->base(), handle->handle(), handle->size());
-  }
+  ReleaseMappedHandles(layout);
 
-  UnregisterHandleLayout(static_cast<Allocation*>(allocation), ptr);
-  delete allocation;
+  discard_host_state();
 }
 
 void CUDAVirtualMemAllocatorV2::RollbackMappedHandleRange(VMMDevicePtr ptr,
@@ -700,6 +920,7 @@ bool CUDAVirtualMemAllocatorV2::MoveBackingPage(
   }
 
   op_start = Clock::now();
+  backing_map_.ClearIPCExported(target.va, handle_size_);
   if (source.meta != nullptr) {
     backing_map_.MarkMapped(target.va, source.meta, handle_size_);
   } else {
@@ -794,8 +1015,7 @@ CUDAVirtualMemAllocatorV2::RestoreRemapSourceMapping(
     VLOG(3) << "RestoreRemapSourceMapping: cuMemMap("
             << reinterpret_cast<void*>(original_va)
             << ") failed status=" << map_status << ", force-releasing handle";
-    return ForceReleaseRestoredRemapSourceMapping(
-        handle, meta, size, "cuMemMap", false);
+    return ForceReleaseRemapSource(handle, meta, size, "cuMemMap", false);
   }
 
   auto access_result =
@@ -807,8 +1027,7 @@ CUDAVirtualMemAllocatorV2::RestoreRemapSourceMapping(
             << " failed_size=" << access_result.failed_size
             << " status=" << access_result.status;
     phi::dynload::cuMemUnmap(original_va, size);
-    return ForceReleaseRestoredRemapSourceMapping(
-        handle, meta, size, "cuMemSetAccess", false);
+    return ForceReleaseRemapSource(handle, meta, size, "cuMemSetAccess", false);
   }
 
   backing_map_.MarkMapped(original_va, meta, size);
@@ -816,7 +1035,7 @@ CUDAVirtualMemAllocatorV2::RestoreRemapSourceMapping(
 }
 
 CUDAVirtualMemAllocatorV2::RestoreRemapSourceResult
-CUDAVirtualMemAllocatorV2::ForceReleaseRestoredRemapSourceMapping(
+CUDAVirtualMemAllocatorV2::ForceReleaseRemapSource(
     VMMAllocHandle handle,
     const std::shared_ptr<VMMHandleMeta>& meta,
     size_t size,
@@ -839,6 +1058,7 @@ CUDAVirtualMemAllocatorV2::ForceReleaseRestoredRemapSourceMapping(
   auto release_status =
       platform::RecordedGpuMemRelease(handle, size, place_.device);
   if (release_status == CUDA_SUCCESS) {
+    CloseIPCExportFD(handle);
     backing_map_.MarkReleased(original_va, handle, size);
   } else {
     VLOG(3) << "RestoreRemapSourceMapping: force-release after "
@@ -916,45 +1136,46 @@ void CUDAVirtualMemAllocatorV2::UnregisterHandleLayout(Allocation* allocation,
   allocation_layouts_.Remove(allocation, ptr);
 }
 
-Allocation* CUDAVirtualMemAllocatorV2::CreateStagedSyntheticAllocation(
-    VMMDevicePtr ptr, size_t size, const HandleLayout& layout) {
-  return CreateTrackedAllocation(ptr, size, layout);
-}
-
 CUDAVirtualMemAllocatorV2::StagedRemapDestination
 CUDAVirtualMemAllocatorV2::CreateStagedRemapDestination(
     VMMDevicePtr ptr,
-    const std::vector<VMMAllocHandle>& handles,
+    const std::vector<VMMBackingMap::MappedPage>& source_pages,
     size_t start,
     size_t count,
     PoolType pool_type) {
+  PADDLE_ENFORCE_LE(start,
+                    source_pages.size(),
+                    common::errors::InvalidArgument(
+                        "Remap source start %zu exceeds page count %zu.",
+                        start,
+                        source_pages.size()));
+  PADDLE_ENFORCE_LE(count,
+                    source_pages.size() - start,
+                    common::errors::InvalidArgument(
+                        "Remap source range [%zu, %zu) exceeds page count %zu.",
+                        start,
+                        start + count,
+                        source_pages.size()));
   HandleLayout layout;
   layout.reserve(count);
   for (size_t i = 0; i < count; ++i) {
-    auto meta =
-        std::make_shared<VMMHandleMeta>(VMMHandleMeta{ptr + i * handle_size_,
-                                                      handle_size_,
-                                                      handles[start + i],
-                                                      place_.device});
+    auto meta = std::make_shared<VMMHandleMeta>(
+        VMMHandleMeta{ptr + i * handle_size_,
+                      handle_size_,
+                      source_pages[start + i].handle,
+                      place_.device});
     layout.push_back(std::move(meta));
   }
 
   StagedRemapDestination result;
-  result.bytes = count * handle_size_;
+  const size_t bytes = count * handle_size_;
   try {
-    result.allocation =
-        CreateStagedSyntheticAllocation(ptr, result.bytes, layout);
-    result.block = BlockV2::MakeMappedBlock(BlockType::kFree,
-                                            reinterpret_cast<void*>(ptr),
-                                            result.bytes,
-                                            pool_type);
+    result.allocation = CreateTrackedAllocation(ptr, bytes, layout);
+    result.block = BlockV2::MakeMappedBlock(
+        BlockType::kFree, reinterpret_cast<void*>(ptr), bytes, pool_type);
     MarkRemapDestinationLayoutMapped(layout);
   } catch (...) {
-    VLOG(3) << "CreateStagedRemapDestination: failed to materialize "
-               "destination, destroying staged allocation. dst="
-            << reinterpret_cast<void*>(ptr) << " bytes=" << result.bytes
-            << " start=" << start << " count=" << count;
-    DestroyStagedSyntheticAllocation(result.allocation);
+    DestroyStagedDestinationAllocation(result.allocation);
     result.allocation = nullptr;
     throw;
   }
@@ -962,10 +1183,15 @@ CUDAVirtualMemAllocatorV2::CreateStagedRemapDestination(
 }
 
 DecoratedAllocationPtr
-CUDAVirtualMemAllocatorV2::AdoptCommittedSyntheticAllocation(
+CUDAVirtualMemAllocatorV2::AdoptRemapDestinationAllocation(
+    Allocation* allocation) {
+  return AdoptTrackedAllocation(allocation);
+}
+
+DecoratedAllocationPtr CUDAVirtualMemAllocatorV2::AdoptTrackedAllocation(
     Allocation* allocation) {
   // Use a custom deleter that calls FreeImpl directly, since the
-  // synthetic allocation bypasses the normal Allocate() path and
+  // tracked allocation bypasses the normal Allocate() path and
   // cannot use RegisterDecoratedAllocator (which is private).
   CUDAVirtualMemAllocatorV2* self = this;
   return DecoratedAllocationPtr(allocation, [self](phi::Allocation* a) {
@@ -973,18 +1199,13 @@ CUDAVirtualMemAllocatorV2::AdoptCommittedSyntheticAllocation(
   });
 }
 
-void CUDAVirtualMemAllocatorV2::DestroyStagedSyntheticAllocation(
+void CUDAVirtualMemAllocatorV2::DestroyStagedDestinationAllocation(
     Allocation* allocation) {
   if (allocation == nullptr) {
     return;
   }
   UnregisterHandleLayout(allocation, allocation->ptr());
   delete allocation;
-}
-
-void CUDAVirtualMemAllocatorV2::MarkBackingIPCExported(VMMDevicePtr ptr,
-                                                       size_t size) {
-  backing_map_.MarkIPCExported(ptr, size);
 }
 
 bool CUDAVirtualMemAllocatorV2::HasIPCExportedRange(VMMDevicePtr ptr,
@@ -1010,6 +1231,230 @@ bool CUDAVirtualMemAllocatorV2::IsRangeReleasable(VMMDevicePtr ptr,
   return backing_map_.IsRangeReleasable(ptr, size);
 }
 
+CUDAVirtualMemAllocatorV2::PartialReleaseResult
+CUDAVirtualMemAllocatorV2::ReleaseFreeHandleRanges(
+    DecoratedAllocationPtr* allocation,
+    const std::vector<std::pair<VMMDevicePtr, size_t>>& ranges,
+    const CommitRemainingAllocationsFn& commit_remaining_allocations) {
+  PADDLE_ENFORCE_NOT_NULL(
+      allocation,
+      common::errors::InvalidArgument(
+          "Partial VMM backing release requires a non-null ownership slot."));
+  PADDLE_ENFORCE_NOT_NULL(
+      allocation->get(),
+      common::errors::InvalidArgument(
+          "Partial VMM backing release requires a live allocation."));
+
+  PartialReleaseResult result;
+  if (ranges.empty()) {
+    return result;
+  }
+
+  auto* original = allocation->get();
+  const VMMDevicePtr allocation_begin =
+      reinterpret_cast<VMMDevicePtr>(original->ptr());
+  HandleLayout layout = RequireHandleLayout(original);
+  std::vector<bool> retain_mask(layout.size(), true);
+  HandleLayout release_layout;
+  release_layout.reserve(layout.size());
+
+  VMMDevicePtr previous_end = 0;
+  for (const auto& range : ranges) {
+    PADDLE_ENFORCE_GT(
+        range.second,
+        0UL,
+        common::errors::InvalidArgument(
+            "Partial VMM backing release range must be non-empty."));
+    PADDLE_ENFORCE_GE(
+        range.first,
+        allocation_begin,
+        common::errors::InvalidArgument(
+            "Partial VMM backing release range starts before allocation %p.",
+            original->ptr()));
+    PADDLE_ENFORCE_EQ(
+        (range.first - virtual_mem_base_) % handle_size_,
+        0UL,
+        common::errors::InvalidArgument(
+            "Partial VMM backing release range %p is not handle-aligned.",
+            reinterpret_cast<void*>(range.first)));
+    PADDLE_ENFORCE_EQ(
+        range.second % handle_size_,
+        0UL,
+        common::errors::InvalidArgument(
+            "Partial VMM backing release size %zu is not handle-aligned.",
+            range.second));
+    const size_t range_offset = range.first - allocation_begin;
+    PADDLE_ENFORCE_LE(
+        range_offset,
+        original->size(),
+        common::errors::InvalidArgument(
+            "Partial VMM backing release range starts after allocation %p.",
+            original->ptr()));
+    PADDLE_ENFORCE_LE(
+        range.second,
+        original->size() - range_offset,
+        common::errors::InvalidArgument(
+            "Partial VMM backing release range exceeds allocation %p.",
+            original->ptr()));
+    PADDLE_ENFORCE_GE(
+        range.first,
+        previous_end,
+        common::errors::InvalidArgument(
+            "Partial VMM backing release ranges must be sorted and disjoint."));
+    previous_end = range.first + range.second;
+  }
+
+  size_t range_index = 0;
+  for (size_t i = 0; i < layout.size(); ++i) {
+    const auto& meta = layout[i];
+    PADDLE_ENFORCE_NOT_NULL(
+        meta.get(),
+        common::errors::PreconditionNotMet(
+            "VMM allocation %p contains empty handle metadata.",
+            original->ptr()));
+    while (range_index < ranges.size() &&
+           ranges[range_index].first + ranges[range_index].second <=
+               meta->base()) {
+      ++range_index;
+    }
+    if (range_index == ranges.size() ||
+        meta->base() < ranges[range_index].first ||
+        meta->base() >=
+            ranges[range_index].first + ranges[range_index].second) {
+      continue;
+    }
+    if (backing_map_.CanReleaseHandle(
+            meta->base(), meta->handle(), meta, meta->size())) {
+      retain_mask[i] = false;
+      release_layout.push_back(meta);
+      continue;
+    }
+    // A remapped source leaves its original meta in the old allocation layout
+    // while the destination allocation owns a new meta for the live mapping.
+    // Do not recreate an owner for that stale source entry.
+    if (!backing_map_.IsHandleMappedAt(
+            meta->base(), meta->handle(), meta, meta->size())) {
+      retain_mask[i] = false;
+    }
+  }
+  if (release_layout.empty() &&
+      std::all_of(retain_mask.begin(), retain_mask.end(), [](bool retain) {
+        return retain;
+      })) {
+    return result;
+  }
+
+  std::vector<HandleLayout> remaining_layouts;
+  for (size_t i = 0; i < layout.size();) {
+    if (!retain_mask[i]) {
+      ++i;
+      continue;
+    }
+    HandleLayout remaining;
+    remaining.push_back(layout[i]);
+    VMMDevicePtr next_va = layout[i]->base() + layout[i]->size();
+    ++i;
+    while (i < layout.size() && retain_mask[i] &&
+           layout[i]->base() == next_va) {
+      remaining.push_back(layout[i]);
+      next_va += layout[i]->size();
+      ++i;
+    }
+    remaining_layouts.push_back(std::move(remaining));
+  }
+
+  platform::CUDADeviceGuard guard(place_.device);
+  deferred_handle_releases_.reserve(deferred_handle_releases_.size() +
+                                    release_layout.size());
+  std::vector<Allocation*> remaining_allocations;
+  std::vector<DecoratedAllocationPtr> remaining_owners;
+  remaining_allocations.reserve(remaining_layouts.size());
+  remaining_owners.reserve(remaining_layouts.size());
+  try {
+    for (const auto& remaining : remaining_layouts) {
+      remaining_allocations.push_back(new Allocation(  // NOLINT
+          reinterpret_cast<void*>(remaining.front()->base()),
+          remaining.size() * handle_size_,
+          place_));
+    }
+  } catch (...) {
+    for (auto* staged : remaining_allocations) {
+      delete staged;
+    }
+    throw;
+  }
+
+  HandleLayout unmapped_layout;
+  result.unmapped_ranges.reserve(release_layout.size());
+  try {
+    unmapped_layout =
+        UnmapMappedHandles(release_layout, /*include_remap_owned=*/true);
+  } catch (...) {
+    for (auto* staged : remaining_allocations) {
+      delete staged;
+    }
+    throw;
+  }
+  if (!release_layout.empty() && unmapped_layout.empty()) {
+    for (auto* staged : remaining_allocations) {
+      delete staged;
+    }
+    result.unmapped_ranges.clear();
+    return result;
+  }
+  for (const auto& meta : unmapped_layout) {
+    if (result.unmapped_ranges.empty() ||
+        result.unmapped_ranges.back().first +
+                result.unmapped_ranges.back().second !=
+            meta->base()) {
+      result.unmapped_ranges.emplace_back(meta->base(), meta->size());
+    } else {
+      result.unmapped_ranges.back().second += meta->size();
+    }
+  }
+
+  size_t registered = 0;
+  try {
+    UnregisterHandleLayout(original, original->ptr());
+    for (; registered < remaining_allocations.size(); ++registered) {
+      RegisterHandleLayout(remaining_allocations[registered],
+                           remaining_allocations[registered]->ptr(),
+                           remaining_layouts[registered]);
+    }
+    for (auto* remaining : remaining_allocations) {
+      remaining_owners.push_back(AdoptTrackedAllocation(remaining));
+    }
+    commit_remaining_allocations(&remaining_owners);
+    for (const auto& owner : remaining_owners) {
+      PADDLE_ENFORCE_EQ(
+          owner.get(),
+          nullptr,
+          common::errors::PreconditionNotMet(
+              "Partial VMM backing release ownership transfer did not consume "
+              "all remaining allocations."));
+    }
+  } catch (...) {
+    for (auto& remaining : remaining_owners) {
+      remaining.release();
+    }
+    for (auto* staged : remaining_allocations) {
+      UnregisterHandleLayout(staged, staged->ptr());
+      delete staged;
+    }
+    RegisterHandleLayout(original, original->ptr(), layout);
+    RestoreUnmappedHandles(unmapped_layout);
+    throw;
+  }
+  auto* consumed = allocation->release();
+  delete consumed;
+
+  result.released_bytes = ReleaseUnmappedHandles(unmapped_layout);
+  if (result.released_bytes > 0) {
+    ++release_driver_stats_.allocation_count;
+  }
+  return result;
+}
+
 bool CUDAVirtualMemAllocatorV2::IsReservedVARange(VMMDevicePtr ptr,
                                                   size_t size) const {
   if (size == 0 || ptr < virtual_mem_base_) {
@@ -1021,35 +1466,97 @@ bool CUDAVirtualMemAllocatorV2::IsReservedVARange(VMMDevicePtr ptr,
 
 bool CUDAVirtualMemAllocatorV2::CollectIPCParts(
     VMMDevicePtr ptr, size_t size, std::vector<BlockPart>* ipc_parts) const {
-  std::vector<IPCBlockPartDescriptor> descriptors;
+  std::vector<IPCPartDescriptor> descriptors;
   if (!backing_map_.CollectIPCPartDescriptors(
           ptr, size, ipc_parts != nullptr ? &descriptors : nullptr)) {
     return false;
   }
   if (ipc_parts != nullptr) {
-    std::vector<BlockPart> collected;
-    collected.reserve(descriptors.size());
-    for (const auto& descriptor : descriptors) {
-      auto chunk = std::make_shared<VmmChunkMeta>(VmmChunkMeta{
-          descriptor.handle_base,
-          descriptor.handle_size,
-          descriptor.handle,
-          descriptor.device,
-      });
-      collected.push_back(BlockPart{
-          std::move(chunk), descriptor.handle_rel_off, descriptor.len});
-    }
-    *ipc_parts = std::move(collected);
+    BuildIPCParts(descriptors, false, ipc_parts);
   }
   return true;
 }
 
-bool CUDAVirtualMemAllocatorV2::MarkIPCExported(VMMDevicePtr ptr, size_t size) {
-  if (!IsReservedVARange(ptr, size)) {
+bool CUDAVirtualMemAllocatorV2::ExportIPCParts(
+    VMMDevicePtr ptr, size_t size, std::vector<BlockPart>* ipc_parts) {
+  std::vector<IPCPartDescriptor> descriptors;
+  if (!backing_map_.CollectIPCPartDescriptors(
+          ptr, size, ipc_parts != nullptr ? &descriptors : nullptr)) {
     return false;
   }
-  MarkBackingIPCExported(ptr, size);
+  if (ipc_parts != nullptr) {
+    BuildIPCParts(descriptors, true, ipc_parts);
+  }
+  // Pin the backing only after all fallible FD and metadata construction has
+  // completed. A failed export must not make the range permanently
+  // unreleasable when no IPC metadata was returned to the caller.
+  backing_map_.MarkIPCExported(ptr, size);
   return true;
+}
+
+void CUDAVirtualMemAllocatorV2::BuildIPCParts(
+    const std::vector<IPCPartDescriptor>& descriptors,
+    bool include_shared_fd,
+    std::vector<BlockPart>* ipc_parts) const {
+  std::vector<BlockPart> collected;
+  collected.reserve(descriptors.size());
+  for (const auto& descriptor : descriptors) {
+    const int shared_fd =
+        include_shared_fd ? GetOrCreateIPCExportFD(descriptor.handle) : -1;
+    auto chunk = std::make_shared<VmmChunkMeta>(VmmChunkMeta{
+        descriptor.handle_base,
+        descriptor.handle_size,
+        descriptor.handle,
+        descriptor.device,
+        shared_fd,
+    });
+    collected.push_back(
+        BlockPart{std::move(chunk), descriptor.handle_rel_off, descriptor.len});
+  }
+  *ipc_parts = std::move(collected);
+}
+
+int CUDAVirtualMemAllocatorV2::GetOrCreateIPCExportFD(
+    VMMAllocHandle handle) const {
+#if defined(__linux__)
+  std::lock_guard<SpinLock> guard(ipc_export_lock_);
+  auto found = ipc_export_fds_.find(handle);
+  if (found != ipc_export_fds_.end()) {
+    return found->second;
+  }
+  int fd = -1;
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cuMemExportToShareableHandle(
+      &fd, handle, CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR, 0));
+  try {
+    ipc_export_fds_.emplace(handle, fd);
+  } catch (...) {
+    ::close(fd);
+    throw;
+  }
+  return fd;
+#else
+  return -1;
+#endif
+}
+
+void CUDAVirtualMemAllocatorV2::CloseIPCExportFD(VMMAllocHandle handle) const {
+#if defined(__linux__)
+  int fd = -1;
+  {
+    std::lock_guard<SpinLock> guard(ipc_export_lock_);
+    auto found = ipc_export_fds_.find(handle);
+    if (found == ipc_export_fds_.end()) {
+      return;
+    }
+    fd = found->second;
+    ipc_export_fds_.erase(found);
+  }
+  if (fd >= 0) {
+    ::close(fd);
+  }
+#else
+  (void)handle;
+#endif
 }
 
 bool CUDAVirtualMemAllocatorV2::SetBlockRemapEvent(
@@ -1096,15 +1603,6 @@ CUDAVirtualMemAllocatorV2::CollectUnmappedPages(
     return backing_map_.CollectUnmappedPagesFullyInRange(ranges);
   }
   return backing_map_.CollectUnmappedPagesFullyInRange(ranges, target_bytes);
-}
-
-VMMBackingMap::CompactCandidates
-CUDAVirtualMemAllocatorV2::CollectCompactCandidates(
-    const std::vector<std::pair<VMMDevicePtr, size_t>>& source_ranges,
-    const std::vector<std::pair<VMMDevicePtr, size_t>>& target_ranges,
-    size_t target_bytes) const {
-  return backing_map_.CollectCompactCandidates(
-      source_ranges, target_ranges, target_bytes);
 }
 
 bool CUDAVirtualMemAllocatorV2::ValidateMappedPages(

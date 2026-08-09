@@ -13,12 +13,14 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/embedding_kernel.h"
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/embedding_util.h"
+
 namespace phi {
 
 template <typename T, typename IdT, bool PaddingFlag>
@@ -80,6 +82,12 @@ struct EmbeddingCUDAFunctor {
     size_t N = weight_.dims()[0];
     size_t D = weight_.dims()[1];
     size_t K = input_.numel();
+
+    if (K > 0 && N == 0) {
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "The first dimension of Input(Weight) in OP(embedding) must be "
+          "greater than 0 when Input(Ids) is not empty."));
+    }
 
     const int gridx = 2 * dev_ctx_.GetSMCount();
     dim3 threads(256, 4);

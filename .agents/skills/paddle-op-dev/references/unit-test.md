@@ -36,8 +36,8 @@ import numpy as np
 ```python
 class TestXxxOp(OpTest):
     def setUp(self):
-        self.op_type = "xxx"           # 算子名
-        self.python_api = paddle.xxx   # 对应的 Python API
+        self.op_type = "xxx"  # 算子名
+        self.python_api = paddle.xxx  # 对应的 Python API
         self.init_config()
         # 设置输入
         self.inputs = {
@@ -77,9 +77,9 @@ def test_check_output(self):
 ```python
 def test_check_grad(self):
     self.check_grad(
-        ['X'],           # 需要检查梯度的输入列表
-        'Out',           # 对应的输出名
-        check_pir=True
+        ['X'],  # 需要检查梯度的输入列表
+        'Out',  # 对应的输出名
+        check_pir=True,
     )
 ```
 
@@ -89,9 +89,10 @@ def test_check_grad(self):
 ```python
 def test_check_grad_no_x(self):
     self.check_grad(
-        ['Y'], 'Out',
+        ['Y'],
+        'Out',
         no_grad_set=set("X"),
-        check_pir=True
+        check_pir=True,
     )
 ```
 
@@ -118,10 +119,12 @@ class TestTraceOp(OpTest):
         self.inputs = {'Input': self.case}
         self.attrs = {'offset': 0, 'axis1': 0, 'axis2': 1}
         self.outputs = {
-            'Out': np.trace(self.inputs['Input'],
-                           offset=self.attrs['offset'],
-                           axis1=self.attrs['axis1'],
-                           axis2=self.attrs['axis2'])
+            'Out': np.trace(
+                self.inputs['Input'],
+                offset=self.attrs['offset'],
+                axis1=self.attrs['axis1'],
+                axis2=self.attrs['axis2'],
+            )
         }
 
     def test_check_output(self):
@@ -133,34 +136,41 @@ class TestTraceOp(OpTest):
 
 class TestTraceOpCase1(TestTraceOp):
     """测试不同参数配置"""
+
     def init_config(self):
         self.case = np.random.randn(20, 6).astype('float64')
         self.inputs = {'Input': self.case}
         self.attrs = {'offset': 1, 'axis1': 0, 'axis2': 1}
         self.outputs = {
-            'Out': np.trace(self.inputs['Input'],
-                           offset=self.attrs['offset'],
-                           axis1=self.attrs['axis1'],
-                           axis2=self.attrs['axis2'])
+            'Out': np.trace(
+                self.inputs['Input'],
+                offset=self.attrs['offset'],
+                axis1=self.attrs['axis1'],
+                axis2=self.attrs['axis2'],
+            )
         }
 
 
 class TestTraceOpCase2(TestTraceOp):
     """测试高维输入"""
+
     def init_config(self):
         self.case = np.random.randn(2, 20, 2, 3).astype('float64')
         self.inputs = {'Input': self.case}
         self.attrs = {'offset': 1, 'axis1': 1, 'axis2': 2}
         self.outputs = {
-            'Out': np.trace(self.inputs['Input'],
-                           offset=self.attrs['offset'],
-                           axis1=self.attrs['axis1'],
-                           axis2=self.attrs['axis2'])
+            'Out': np.trace(
+                self.inputs['Input'],
+                offset=self.attrs['offset'],
+                axis1=self.attrs['axis1'],
+                axis2=self.attrs['axis2'],
+            )
         }
 
 
 class TestTraceAPICase(unittest.TestCase):
     """测试 Python API 调用"""
+
     def test_case1(self):
         x = paddle.to_tensor(np.random.randn(20, 6).astype('float64'))
         result = paddle.trace(x)

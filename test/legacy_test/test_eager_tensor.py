@@ -2339,6 +2339,16 @@ class TestEagerTensorStride(unittest.TestCase):
         self.assertEqual(contiguous.stride(), [1024, 1])
         self.assertTrue(contiguous.is_contiguous())
 
+        zero_size_last_dim = paddle.empty([1024, 0], dtype='float32')
+        self.assertEqual(zero_size_last_dim.stride(), [1, 1])
+        self.assertEqual(zero_size_last_dim.get_strides(), [1, 1])
+        self.assertTrue(zero_size_last_dim.is_contiguous())
+
+        zero_size_middle_dim = paddle.empty([2, 0, 4], dtype='float32')
+        self.assertEqual(zero_size_middle_dim.stride(), [4, 4, 1])
+        self.assertEqual(zero_size_middle_dim.get_strides(), [4, 4, 1])
+        self.assertTrue(zero_size_middle_dim.is_contiguous())
+
     def test_stride_different_dtypes(self):
         paddle.disable_static()
 

@@ -6,7 +6,7 @@ if(WIN32)
   cc_test(
     test_dense_tensor
     SRCS test_dense_tensor.cc
-    DEPS type_info common)
+    DEPS phi common)
 else()
   cc_test(
     test_dense_tensor

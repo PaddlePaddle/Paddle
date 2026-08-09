@@ -833,6 +833,12 @@ void* GetNVRTCDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, RTC_LIB_NAME);
 #elif defined(PADDLE_WITH_HIP)
   return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libamdhip64.so", false);
+#elif defined(__linux__) && defined(PADDLE_WITH_CUDA) && \
+    defined(PADDLE_WITH_PIP_CUDA_LIBRARIES)
+  if (CUDA_VERSION >= 13000 && CUDA_VERSION < 14000) {
+    return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.so.13", false);
+  }
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.so", false);
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.so", false);
 #endif
@@ -1126,6 +1132,12 @@ void* GetCusparseLtDsoHandle() {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
   return GetDsoHandleFromSearchPath(FLAGS_cusparselt_dir, SPARSELT_LIB_NAME);
 #elif defined(PADDLE_WITH_CUDA)
+#ifdef PADDLE_WITH_PIP_CUDA_LIBRARIES
+  if (CUDA_VERSION >= 13000 && CUDA_VERSION < 14000) {
+    return GetDsoHandleFromSearchPath(FLAGS_cusparselt_dir,
+                                      "libcusparseLt.so.0;libcusparseLt.so");
+  }
+#endif
   return GetDsoHandleFromSearchPath(FLAGS_cusparselt_dir, "libcusparseLt.so");
 #else
   std::string warning_msg(

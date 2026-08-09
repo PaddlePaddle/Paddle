@@ -46,6 +46,36 @@ class TestPaddleAddZeroSize(unittest.TestCase):
                 self.assertEqual(x.grad.dtype, x_dtype)
                 self.assertEqual(y.grad.dtype, y_dtype)
 
+    def test_0size_broadcast_mixed_precision_backward(self):
+        mixed_precision_dtypes = [
+            y_dtype
+            for x_dtype, y_dtype in self.dtype_pairs
+            if x_dtype != y_dtype
+        ]
+        shape_pairs = [([0, 3], [3]), ([3], [1, 0, 3])]
+
+        for y_dtype in mixed_precision_dtypes:
+            for x_shape, y_shape in shape_pairs:
+                with self.subTest(msg=f"float32{x_shape} + {y_dtype}{y_shape}"):
+                    x = paddle.randn(x_shape, dtype=paddle.float32)
+                    y = paddle.randn(y_shape, dtype=y_dtype)
+                    x.stop_gradient = False
+                    y.stop_gradient = False
+
+                    out = paddle.add(x, y)
+                    out.backward()
+
+                    self.assertEqual(x.grad.shape, x_shape)
+                    self.assertEqual(y.grad.shape, y_shape)
+                    self.assertEqual(x.grad.dtype, paddle.float32)
+                    self.assertEqual(y.grad.dtype, y_dtype)
+                    for grad in (x.grad, y.grad):
+                        if grad.numel() > 0:
+                            np.testing.assert_array_equal(
+                                paddle.cast(grad, paddle.float32).numpy(),
+                                np.zeros(grad.shape, dtype=np.float32),
+                            )
+
 
 class TestPaddleAddBackward(unittest.TestCase):
     def setUp(self):

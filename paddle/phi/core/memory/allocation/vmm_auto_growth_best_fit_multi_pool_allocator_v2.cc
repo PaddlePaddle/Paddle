@@ -14,7 +14,10 @@
 
 #include "paddle/phi/core/memory/allocation/vmm_auto_growth_best_fit_multi_pool_allocator_v2.h"
 
+#if defined(PADDLE_WITH_CUDA)
+
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/platform/cuda_device_guard.h"
 
 namespace paddle {
 namespace memory {
@@ -95,17 +98,25 @@ size_t VMMAutoGrowthBestFitMultiPoolAllocatorV2::CompactImpl(
 }
 
 size_t VMMAutoGrowthBestFitMultiPoolAllocatorV2::RemapForAllocation(
-    const Place& place, size_t requested_size) {
+    const Place& place,
+    size_t requested_size,
+    const VMMGrowOOMInfo* grow_oom,
+    VMMRemapAttemptResult* attempt_result) {
+  if (attempt_result != nullptr) {
+    *attempt_result = VMMRemapAttemptResult{};
+  }
   if (requested_size > 0) {
     const auto route = RouteAllocation(requested_size);
     if (route.pool_type == PoolType::kSmall) {
       return 0;
     }
-    return route.allocator->RemapForAllocation(place, requested_size);
+    return route.allocator->RemapForAllocation(
+        place, requested_size, grow_oom, attempt_result);
   }
   // Compact/remap targets the large pool only. Small-pool requests are cheap
   // to satisfy through normal reuse/grow and do not justify remap overhead.
-  return large_allocator_->RemapForAllocation(place, requested_size);
+  return large_allocator_->RemapForAllocation(
+      place, requested_size, grow_oom, attempt_result);
 }
 
 void VMMAutoGrowthBestFitMultiPoolAllocatorV2::FreeImpl(
@@ -147,9 +158,27 @@ bool VMMAutoGrowthBestFitMultiPoolAllocatorV2::SetBlockRemapEvent(
   return large_allocator_->SetBlockRemapEvent(ptr, stream, event);
 }
 
+bool VMMAutoGrowthBestFitMultiPoolAllocatorV2::PrepareBackingRelease() {
+  const bool small_ready = small_allocator_->PrepareBackingRelease();
+  const bool large_ready = large_allocator_->PrepareBackingRelease();
+  return small_ready || large_ready;
+}
+
+uint64_t
+VMMAutoGrowthBestFitMultiPoolAllocatorV2::ReleaseAfterDeviceSynchronize(
+    const Place& place) {
+  return small_allocator_->ReleaseAfterDeviceSynchronize(place) +
+         large_allocator_->ReleaseAfterDeviceSynchronize(place);
+}
+
 uint64_t VMMAutoGrowthBestFitMultiPoolAllocatorV2::ReleaseImpl(
     const Place& place) {
-  return small_allocator_->Release(place) + large_allocator_->Release(place);
+  if (!PrepareBackingRelease()) {
+    return 0;
+  }
+  platform::CUDADeviceGuard device_guard(place_.device);
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+  return ReleaseAfterDeviceSynchronize(place);
 }
 
 VMMAutoGrowthBestFitMultiPoolAllocatorV2::AllocationRoute
@@ -164,3 +193,5 @@ VMMAutoGrowthBestFitMultiPoolAllocatorV2::RouteAllocation(size_t size) const {
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle
+
+#endif
