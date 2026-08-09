@@ -63,8 +63,9 @@ elif [ "$1" == "gcc11" ]; then
   wget -q -O "${GCC_ARCHIVE}" "https://xly-devops.bj.bcebos.com/gouzil/GCC%20${GCC_VERSION}.tar.xz"
   tar -xf ${GCC_ARCHIVE} && \
   cd gcc-${GCC_VERSION} && \
+  sed -i "s#http://gcc.gnu.org/pub/gcc/infrastructure/#https://xly-devops.bj.bcebos.com/gouzil/#" contrib/download_prerequisites && \
   unset LIBRARY_PATH CPATH C_INCLUDE_PATH PKG_CONFIG_PATH CPLUS_INCLUDE_PATH INCLUDE && \
-  ./contrib/download_prerequisites && \
+  ./contrib/download_prerequisites || exit 1
   cd .. && mkdir temp_gcc11 && cd temp_gcc11 && \
   ../gcc-${GCC_VERSION}/configure --prefix=${GCC_PREFIX} --enable-checking=release --enable-languages=c,c++ --disable-multilib && \
   make -j$(nproc) && make install
