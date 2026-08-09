@@ -49,8 +49,9 @@ elif [ "$1" == "gcc121" ]; then
   wget -q --no-proxy https://paddle-ci.gz.bcebos.com/gcc-12.1.0.tar.gz
   tar -xzf gcc-12.1.0.tar.gz && \
   cd gcc-12.1.0 && \
+  sed -i "s#http://gcc.gnu.org/pub/gcc/infrastructure/#https://xly-devops.bj.bcebos.com/gouzil/#" contrib/download_prerequisites && \
   unset LIBRARY_PATH CPATH C_INCLUDE_PATH PKG_CONFIG_PATH CPLUS_INCLUDE_PATH INCLUDE && \
-  ./contrib/download_prerequisites && \
+  ./contrib/download_prerequisites || exit 1
   cd .. && mkdir temp_gcc121 && cd temp_gcc121 && \
   ../gcc-12.1.0/configure --prefix=/usr/local/gcc-12.1 --enable-checking=release --enable-languages=c,c++ --disable-multilib && \
   make -j8 && make install
