@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import functools
 import inspect
+import numbers
 import warnings
 from collections.abc import Callable, Iterable
 from typing import Any, TypeVar, cast
@@ -239,6 +240,40 @@ def bmm_compat_decorator(
         if len(args) == 3 and isinstance(args[2], str) and "name" not in kwargs:
             kwargs["name"] = args[2]
             args = args[:2]
+        return func(*args, **kwargs)
+
+    wrapper.__signature__ = inspect.signature(func)
+    return cast("Callable[_InputT, _RetT]", wrapper)
+
+
+def baddbmm_compat_decorator(
+    func: Callable[_InputT, _RetT],
+) -> Callable[_InputT, _RetT]:
+    """Preserve legacy positional ``beta``, ``alpha``, ``out_dtype``, and
+    ``name``.
+
+    The public signature follows PyTorch by putting ``out_dtype`` in the
+    fourth position and making ``beta`` and ``alpha`` keyword-only. A numeric
+    fourth positional argument continues to use Paddle's legacy argument
+    order.
+    """
+
+    @functools.wraps(func)
+    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+        if len(args) >= 4 and isinstance(args[3], numbers.Number):
+            legacy_args = args[3:]
+            legacy_names = ("beta", "alpha", "out_dtype", "name")
+            if len(legacy_args) > len(legacy_names):
+                raise TypeError(
+                    "baddbmm() received too many positional arguments"
+                )
+            for name, value in zip(legacy_names, legacy_args):
+                if name in kwargs:
+                    raise TypeError(
+                        f"baddbmm() got multiple values for argument '{name}'"
+                    )
+                kwargs[name] = value
+            args = args[:3]
         return func(*args, **kwargs)
 
     wrapper.__signature__ = inspect.signature(func)

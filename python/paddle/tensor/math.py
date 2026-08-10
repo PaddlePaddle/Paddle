@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import builtins
 import math
 import numbers
 import warnings
@@ -47,7 +48,6 @@ from paddle._C_ops import (  # noqa: F401
     atan_,
     atanh,
     atanh_,
-    baddbmm,
     baddbmm_,
     bitwise_left_shift,
     bitwise_left_shift_,
@@ -122,6 +122,7 @@ from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc, dygraph_utils
 from paddle.pir import Value
 from paddle.utils.decorator_utils import (
+    baddbmm_compat_decorator,
     bmm_compat_decorator,
     nansum_decorator,
     param_one_alias,
@@ -2453,6 +2454,153 @@ def bmm(
         type='bmm',
         inputs={'X': x, 'Y': y},
         outputs={'Out': out},
+    )
+    return out
+
+
+@baddbmm_compat_decorator
+@param_two_alias(["x", "batch1"], ["y", "batch2"])
+def baddbmm(
+    input: Tensor,
+    x: Tensor,
+    y: Tensor,
+    out_dtype: DTypeLike | None = None,
+    name: str | None = None,
+    *,
+    beta: float = 1.0,
+    alpha: float = 1.0,
+    out: Tensor | None = None,
+) -> Tensor:
+    r"""
+    Perform batch matrix multiplication for input :math:`x` and :math:`y`.
+    :math:`input` is added to the final result. The equation is:
+
+    .. math::
+
+        out = \beta \times input + \alpha \times x \times y
+
+    where :math:`\beta` and :math:`\alpha` are scaling factors.
+
+    Args:
+        input (Tensor): The input tensor to be added to the final result. It
+            must be broadcastable to the result and may have zero to three
+            dimensions. Its data type should be float16, float32, float64, or
+            bfloat16.
+        x (Tensor): The first batch of matrices to be multiplied. It should be
+            a 3-D tensor with shape ``[b, n, p]``. Alias: ``batch1``.
+        y (Tensor): The second batch of matrices to be multiplied. It should be
+            a 3-D tensor with shape ``[b, p, m]``. Alias: ``batch2``.
+        out_dtype (paddle.dtype|None, optional): The desired data type of the
+            returned tensor. Currently only ``paddle.float32`` is supported
+            for CUDA float16/bfloat16 matrix inputs. This path is forward-only.
+            A numeric fourth positional argument is interpreted as the legacy
+            ``beta`` argument.
+            Default: None.
+        name (str|None, optional): Name for the operation. Default: None.
+
+    Keyword Args:
+        beta (float, optional): The scaling factor for input. Default: 1.0.
+        alpha (float, optional): The scaling factor for x @ y. Default: 1.0.
+        out (Tensor|None, optional): The output Tensor. Default: None.
+
+    Returns:
+        Tensor: A 3-D tensor with shape ``[b, n, m]``.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.ones([2, 2, 2])
+            >>> y = paddle.ones([2, 2, 2])
+            >>> input = paddle.ones([2, 2, 2])
+            >>> paddle.baddbmm(input=input, x=x, y=y, beta=0.5, alpha=5.0)
+            Tensor(shape=[2, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[10.50000000, 10.50000000],
+              [10.50000000, 10.50000000]],
+             [[10.50000000, 10.50000000],
+              [10.50000000, 10.50000000]]])
+    """
+    if out_dtype is not None:
+        out_dtype = convert_nptype_to_datatype_or_vartype(out_dtype)
+        float32_dtypes = (core.DataType.FLOAT32, core.VarDesc.VarType.FP32)
+        supported_input_dtypes = (
+            core.DataType.FLOAT16,
+            core.VarDesc.VarType.FP16,
+            core.DataType.BFLOAT16,
+            core.VarDesc.VarType.BF16,
+        )
+        if x.dtype not in supported_input_dtypes:
+            raise TypeError(
+                "The out_dtype of paddle.baddbmm currently only supports "
+                "float16 or bfloat16 x."
+            )
+        if out is not None and out.dtype not in float32_dtypes:
+            raise TypeError(
+                "The out tensor dtype must be paddle.float32 when out_dtype "
+                "is paddle.float32."
+            )
+        if not in_dynamic_mode():
+            raise NotImplementedError(
+                "The out_dtype of paddle.baddbmm currently only supports "
+                "dynamic graph."
+            )
+        if (
+            not paddle.is_compiled_with_cuda()
+            or paddle.is_compiled_with_rocm()
+            or not input.place.is_gpu_place()
+            or not x.place.is_gpu_place()
+            or not y.place.is_gpu_place()
+            or (out is not None and not out.place.is_gpu_place())
+        ):
+            raise NotImplementedError(
+                "The out_dtype of paddle.baddbmm currently only supports "
+                "CUDA tensors."
+            )
+
+    if (
+        out is not None
+        and paddle.is_grad_enabled()
+        and builtins.any(
+            not tensor.stop_gradient for tensor in (input, x, y, out)
+        )
+    ):
+        raise RuntimeError(
+            "baddbmm(): functions with out=... arguments don't support "
+            "automatic differentiation, but one of the arguments requires "
+            "grad."
+        )
+
+    if out_dtype is not None:
+        return _C_ops.baddbmm_out_dtype(
+            input, x, y, out_dtype, beta, alpha, out=out
+        )
+
+    if in_dynamic_or_pir_mode():
+        return _C_ops.baddbmm(input, x, y, beta, alpha, out=out)
+
+    check_variable_and_dtype(
+        input,
+        'Input',
+        ['float16', 'float32', 'float64', 'uint16'],
+        'baddbmm',
+    )
+    check_variable_and_dtype(
+        x, 'X', ['float16', 'float32', 'float64', 'uint16'], 'baddbmm'
+    )
+    check_variable_and_dtype(
+        y, 'Y', ['float16', 'float32', 'float64', 'uint16'], 'baddbmm'
+    )
+
+    helper = LayerHelper('baddbmm', **locals())
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    attrs = {'Alpha': alpha, 'Beta': beta}
+    helper.append_op(
+        type='baddbmm',
+        inputs={'Input': input, 'X': x, 'Y': y},
+        outputs={'Out': out},
+        attrs=attrs,
     )
     return out
 

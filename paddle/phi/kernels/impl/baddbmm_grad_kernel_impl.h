@@ -19,9 +19,7 @@ limitations under the License. */
 
 #include "paddle/common/flags.h"
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/baddbmm_grad_kernel.h"
-#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
@@ -65,23 +63,16 @@ void BaddbmmGradKernel(const Context& dev_ctx,
                        DenseTensor* x_grad,
                        DenseTensor* y_grad) {
   using MPType = typename MPTypeTrait<T>::Type;
-  const auto compute_dtype = CppTypeToDataType<T>::Type();
-  DenseTensor cast_out_grad;
-  const DenseTensor* compute_out_grad = &out_grad;
-  if (out_grad.dtype() != compute_dtype) {
-    PD_VISIT_FLOATING_AND_HALF_TYPES(
-        out_grad.dtype(), "BaddbmmGradCastOutGrad", ([&] {
-          cast_out_grad =
-              Cast<data_t, Context>(dev_ctx, out_grad, compute_dtype);
-        }));
-    compute_out_grad = &cast_out_grad;
-  }
-  const DenseTensor& grad = *compute_out_grad;
+  const DenseTensor& grad = out_grad;
 
   auto input_dims = input.dims();
   auto in_dims = input_dims;
-  if (input.dims().size() == 2) {
-    in_dims = {1, input.dims()[0], input.dims()[1]};
+  if (input_dims.size() < 3) {
+    std::vector<int64_t> padded_dims(3 - input_dims.size(), 1);
+    const auto input_dims_vec = common::vectorize(input_dims);
+    padded_dims.insert(
+        padded_dims.end(), input_dims_vec.begin(), input_dims_vec.end());
+    in_dims = common::make_ddim(padded_dims);
     if (input_grad) {
       input_grad->Resize(in_dims);
     }
@@ -137,7 +128,7 @@ void BaddbmmGradKernel(const Context& dev_ctx,
     BCopyOrScaleFunctor<T> functor(
         beta, input_grad->data<T>(), input_grad->data<T>(), total_elems);
     for_range(functor);
-    if (input.dims().size() == 2) {
+    if (input_dims.size() < 3) {
       input_grad->Resize(input_dims);
     }
   }

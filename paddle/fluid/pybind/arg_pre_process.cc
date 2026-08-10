@@ -428,132 +428,71 @@ void AddmmPreProcess(pir::Value* input, pir::Value* x, pir::Value* y) {
   }
 }
 
-// Baddbmm broadcast validation for dygraph
-void BaddbmmPreProcess(Tensor* input, Tensor* x, Tensor* y) {
+// Baddbmm inplace shape validation for dygraph
+void BaddbmmInplacePreProcess(Tensor* input, Tensor* x, Tensor* y) {
   auto input_shape = input->dims();
   auto x_shape = x->dims();
   auto y_shape = y->dims();
 
-  // Validate x and y are 3D
   PADDLE_ENFORCE_EQ(
-      x_shape.size(),
+      input_shape.size(),
       3,
       phi::errors::InvalidArgument(
-          "The dimension of x should be 3 but received x's shape size: %d.",
-          x_shape.size()));
+          "The dimension of input must be 3 for baddbmm_, but received "
+          "input's shape: [%s].",
+          input_shape));
 
-  PADDLE_ENFORCE_EQ(
-      y_shape.size(),
-      3,
-      phi::errors::InvalidArgument(
-          "The dimension of y should be 3 but received y's shape size: %d.",
-          y_shape.size()));
-
-  // Validate x's width equals y's height
-  PADDLE_ENFORCE_EQ(x_shape[2],
-                    y_shape[1],
-                    phi::errors::InvalidArgument(
-                        "The input Variable x's width must be equal with "
-                        "Variable y's height. "
-                        "But received x's shape[2] = %d, y's shape[1] = %d.",
-                        x_shape[2],
-                        y_shape[1]));
-
-  // Validate input shape broadcast compatibility
-  if (input_shape.size() == 3) {
-    ValidateBroadcastDim(input_shape[0],
-                         x_shape[0],
-                         "The dimension 0 of input must be equal to x's "
-                         "dimension 0, or must be 1.");
-    ValidateBroadcastDim(input_shape[1],
-                         x_shape[1],
-                         "The dimension 1 of input must be equal to x's "
-                         "dimension 1, or must be 1.");
-    ValidateBroadcastDim(input_shape[2],
-                         y_shape[2],
-                         "The dimension 2 of input must be equal to y's "
-                         "dimension 2, or must be 1.");
-  } else if (input_shape.size() == 2) {
-    ValidateBroadcastDim(input_shape[0],
-                         x_shape[1],
-                         "The dimension 0 of input must be equal to x's "
-                         "dimension 1, or must be 1.");
-    ValidateBroadcastDim(input_shape[1],
-                         y_shape[2],
-                         "The dimension 1 of input must be equal to y's "
-                         "dimension 2, or must be 1.");
-  } else {
-    PADDLE_THROW(
-        phi::errors::InvalidArgument("The dimension of input should be "
-                                     "3 or 2 but received input's "
-                                     "dimension: %ld.",
-                                     input_shape.size()));
+  // InferMeta reports malformed matrix inputs without indexing invalid dims.
+  if (x_shape.size() != 3 || y_shape.size() != 3) {
+    return;
   }
+  PADDLE_ENFORCE_EQ(
+      input_shape[0],
+      x_shape[0],
+      phi::errors::InvalidArgument(
+          "The batch dimension of input must match the baddbmm_ output."));
+  PADDLE_ENFORCE_EQ(
+      input_shape[1],
+      x_shape[1],
+      phi::errors::InvalidArgument(
+          "The row dimension of input must match the baddbmm_ output."));
+  PADDLE_ENFORCE_EQ(
+      input_shape[2],
+      y_shape[2],
+      phi::errors::InvalidArgument(
+          "The column dimension of input must match the baddbmm_ output."));
 }
 
-// Baddbmm broadcast validation for static graph
-void BaddbmmPreProcess(pir::Value* input, pir::Value* x, pir::Value* y) {
+// Baddbmm inplace shape validation for static graph
+void BaddbmmInplacePreProcess(pir::Value* input, pir::Value* x, pir::Value* y) {
   auto input_shape = pir::GetShapeFromValue(*input);
   auto x_shape = pir::GetShapeFromValue(*x);
   auto y_shape = pir::GetShapeFromValue(*y);
 
-  // Validate x and y are 3D
   PADDLE_ENFORCE_EQ(
-      x_shape.size(),
+      input_shape.size(),
       3,
       phi::errors::InvalidArgument(
-          "The dimension of x should be 3 but received x's shape size: %d",
-          x_shape.size()));
+          "The dimension of input must be 3 for baddbmm_, but received %d.",
+          input_shape.size()));
 
-  PADDLE_ENFORCE_EQ(
-      y_shape.size(),
-      3,
-      phi::errors::InvalidArgument(
-          "The dimension of y should be 3 but received y's shape size: %d",
-          y_shape.size()));
-
-  // Validate x's width equals y's height
-  if (x_shape[2] >= 0 && y_shape[1] >= 0) {
-    PADDLE_ENFORCE_EQ(x_shape[2],
-                      y_shape[1],
-                      phi::errors::InvalidArgument(
-                          "The input Variable x's width must be equal with "
-                          "Variable y's height. "
-                          "But received x's shape[2] = %d, y's shape[1] = %d.",
-                          x_shape[2],
-                          y_shape[1]));
+  // InferMeta reports malformed matrix inputs without indexing invalid dims.
+  if (x_shape.size() != 3 || y_shape.size() != 3) {
+    return;
   }
-
-  // Validate input shape broadcast compatibility
-  if (input_shape.size() == 3) {
-    ValidateBroadcastDim(input_shape[0],
-                         x_shape[0],
-                         "The dimension 0 of input must be equal to x's "
-                         "dimension 0, or must be 1.");
-    ValidateBroadcastDim(input_shape[1],
-                         x_shape[1],
-                         "The dimension 1 of input must be equal to x's "
-                         "dimension 1, or must be 1.");
-    ValidateBroadcastDim(input_shape[2],
-                         y_shape[2],
-                         "The dimension 2 of input must be equal to y's "
-                         "dimension 2, or must be 1.");
-  } else if (input_shape.size() == 2) {
-    ValidateBroadcastDim(input_shape[0],
-                         x_shape[1],
-                         "The dimension 0 of input must be equal to x's "
-                         "dimension 1, or must be 1.");
-    ValidateBroadcastDim(input_shape[1],
-                         y_shape[2],
-                         "The dimension 1 of input must be equal to y's "
-                         "dimension 2, or must be 1.");
-  } else {
-    PADDLE_THROW(
-        phi::errors::InvalidArgument("The dimension of input should be "
-                                     "3 or 2 but received input's "
-                                     "dimension: %ld.",
-                                     input_shape.size()));
-  }
+  const auto enforce_equal_if_known = [](int64_t actual, int64_t expected) {
+    if (actual < 0 || expected < 0) {
+      return;
+    }
+    PADDLE_ENFORCE_EQ(
+        actual,
+        expected,
+        phi::errors::InvalidArgument(
+            "The input shape must exactly match the baddbmm_ output shape."));
+  };
+  enforce_equal_if_known(input_shape[0], x_shape[0]);
+  enforce_equal_if_known(input_shape[1], x_shape[1]);
+  enforce_equal_if_known(input_shape[2], y_shape[2]);
 }
 
 void PixelShufflePreProcess(std::string* data_format) {

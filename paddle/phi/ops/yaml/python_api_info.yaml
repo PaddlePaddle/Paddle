@@ -141,21 +141,13 @@
   pre_process :
     func : AddmmPreProcess(input, x, y)
 
-- op : baddbmm
-  name : [paddle.baddbmm, paddle.Tensor.baddbmm]
-  args_alias :
-    x : [batch1]
-    y : [batch2]
-  pre_process :
-    func : BaddbmmPreProcess(input, x, y)
-
 - op : baddbmm_
   name : [paddle.baddbmm_, paddle.Tensor.baddbmm_]
   args_alias :
     x : [batch1]
     y : [batch2]
   pre_process :
-    func : BaddbmmPreProcess(input, x, y)
+    func : BaddbmmInplacePreProcess(input, x, y)
 
 - op : cross
   name : [paddle.cross, paddle.Tensor.cross]
