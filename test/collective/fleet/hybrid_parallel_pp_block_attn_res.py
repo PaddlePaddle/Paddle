@@ -51,9 +51,13 @@ hidden_size = 16
 # Minimal model reproducing the BlockAttnRes "blocks" dict contract used by
 # pipeline_parallel.py. Each stage/chunk passes a dict:
 #     {"hidden": Tensor[B, S, H], "blocks": [Tensor[B, S, H], ...]}
-# appending one new block per BlockLayerPipe. The pipeline engine's
-# _merge_block_cache / _update_block_cache handle caching, meta and trimming;
-# the model just keeps the "blocks" list flowing.
+# Each BlockLayerPipe appends one new block AND, like the real BlockAttnRes,
+# computes the next hidden as a softmax attention over all block
+# representations. This makes hidden (and therefore the loss/gradients)
+# actually depend on the cached blocks, so a bug in the engine's block meta /
+# trimming / backward gradient closure would corrupt the loss instead of
+# silently passing. The engine's _merge_block_cache / _update_block_cache
+# handle caching, meta and trimming; the model consumes the merged blocks.
 # ---------------------------------------------------------------------------
 class EmbeddingPipe(Layer):
     def __init__(self):
@@ -70,6 +74,12 @@ class BlockLayerPipe(Layer):
         super().__init__()
         self.linear = nn.Linear(hidden_size, hidden_size)
         self.norm = nn.LayerNorm(hidden_size, epsilon=1e-5)
+        # attention projection weight over the block dimension, mirroring
+        # BlockAttnRes.proj_weight in the real model.
+        self.proj_weight = self.create_parameter(
+            shape=[hidden_size],
+            default_initializer=nn.initializer.Constant(0.0),
+        )
 
     def forward(self, state):
         if isinstance(state, dict):
@@ -79,8 +89,14 @@ class BlockLayerPipe(Layer):
             hidden = state
             blocks = []
         partial = self.norm(self.linear(hidden)) + hidden
-        blocks = [*blocks, partial]
-        return {"hidden": partial, "blocks": blocks}
+        # Softmax attention over all block representations (block dim = axis 0),
+        # identical in shape/semantics to BlockAttnRes.forward. hidden now
+        # depends on every cached block.
+        V = paddle.stack([*blocks, partial], axis=0)  # [N+1, B, S, H]
+        logits = (V * self.proj_weight).sum(axis=-1)  # [N+1, B, S]
+        weights = paddle.nn.functional.softmax(logits, axis=0)
+        hidden = (weights.unsqueeze(-1) * V).sum(axis=0)  # [B, S, H]
+        return {"hidden": hidden, "blocks": [*blocks, partial]}
 
 
 class FinalPipe(Layer):
@@ -165,6 +181,14 @@ class TestDistPPBlockAttnRes(unittest.TestCase):
                 assert paddle.isfinite(loss).item(), (
                     f"loss is not finite: {loss.item()}"
                 )
+            # gradients must be finite too: since hidden (and thus the loss)
+            # attends over the cached blocks, a corrupted block cache / meta /
+            # backward closure would surface here as non-finite grads.
+            for name, param in model.named_parameters():
+                if param.grad is not None:
+                    assert paddle.isfinite(param.grad).all().item(), (
+                        f"non-finite gradient for param {name}"
+                    )
 
 
 if __name__ == "__main__":
