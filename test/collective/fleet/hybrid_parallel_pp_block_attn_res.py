@@ -197,8 +197,10 @@ class TestDistPPBlockAttnRes(unittest.TestCase):
                         f"non-finite gradient for param {name}"
                     )
 
-            optimizer.step()
-            optimizer.clear_grad()
+            # Mirror the production train_batch optimizer path: _optimizer_step
+            # scales grads by 1/accumulate_steps and steps the lr scheduler.
+            with paddle.amp.auto_cast(enable=False):
+                model._optimizer_step()
 
 
 if __name__ == "__main__":
