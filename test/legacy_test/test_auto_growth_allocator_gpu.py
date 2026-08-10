@@ -32,6 +32,8 @@ def _run_test_case(plan, flags, cuda_visible_devices="0"):
         os.path.dirname(__file__), "auto_growth_allocator_gpu.py"
     )
     env = os.environ.copy()
+    flags = dict(flags)
+    flags.setdefault("FLAGS_use_vmm_auto_growth_best_fit_allocator_v2", False)
     env["CUDA_VISIBLE_DEVICES"] = cuda_visible_devices
     env["FLAGS_JSON"] = json.dumps(flags)
     env.setdefault("PYTHONUNBUFFERED", "1")
@@ -224,6 +226,7 @@ class TestAllocatorFlagsWithSubprocess(unittest.TestCase):
             return
         flags = {
             "FLAGS_gpu_memory_limit_mb": 10,
+            "FLAGS_use_vmm_auto_growth_best_fit_allocator_v2": False,
         }
         plan = [
             {"op": "try_alloc", "mb": 5},
@@ -238,6 +241,7 @@ class TestAllocatorFlagsWithSubprocess(unittest.TestCase):
             return
         flags = {
             "FLAGS_use_auto_growth_v2": True,
+            "FLAGS_use_vmm_auto_growth_best_fit_allocator_v2": True,
             "FLAGS_large_pool_pre_alloc_in_mb": 6,
         }
         plan = [
