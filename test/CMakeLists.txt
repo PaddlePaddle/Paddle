@@ -306,11 +306,6 @@ if(${len} GREATER_EQUAL 1)
   endforeach()
 endif()
 
-# TODO: Re-enable after the DCU eye kernel failure is resolved.
-if(WITH_ROCM AND TEST ATen_eye_test)
-  set_tests_properties(ATen_eye_test PROPERTIES DISABLED TRUE)
-endif()
-
 # set properties for some tests, it should be set after the tests defined.
 if(TARGET standalone_executor_test)
   set_tests_properties(standalone_executor_test PROPERTIES TIMEOUT 100)
