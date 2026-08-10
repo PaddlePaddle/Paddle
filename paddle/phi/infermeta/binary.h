@@ -87,6 +87,11 @@ PADDLE_API void BmmInferMeta(const MetaTensor& x,
                              const MetaTensor& y,
                              MetaTensor* out);
 
+PADDLE_API void BmmOutDtypeInferMeta(const MetaTensor& x,
+                                     const MetaTensor& y,
+                                     DataType out_dtype,
+                                     MetaTensor* out);
+
 PADDLE_API void BoxClipInferMeta(const MetaTensor& input,
                                  const MetaTensor& im_info,
                                  MetaTensor* output,

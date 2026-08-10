@@ -222,6 +222,30 @@ def param_two_alias(
     return decorator
 
 
+def bmm_compat_decorator(
+    func: Callable[_InputT, _RetT],
+) -> Callable[_InputT, _RetT]:
+    """Preserve the legacy third positional ``name`` argument of ``bmm``.
+
+    The current signature puts ``out_dtype`` in the third position to support
+    the positional form used by compatible APIs. In an otherwise
+    three-positional-argument call, a string in that position is treated as
+    the legacy operation name. Dtype objects remain available as positional
+    ``out_dtype`` values, while string dtypes can be passed by keyword or
+    together with the fourth positional ``name`` argument.
+    """
+
+    @functools.wraps(func)
+    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+        if len(args) == 3 and isinstance(args[2], str) and "name" not in kwargs:
+            kwargs["name"] = args[2]
+            args = args[:2]
+        return func(*args, **kwargs)
+
+    wrapper.__signature__ = inspect.signature(func)
+    return cast("Callable[_InputT, _RetT]", wrapper)
+
+
 def addmm_compat_decorator(
     func: Callable[_InputT, _RetT],
 ) -> Callable[_InputT, _RetT]:

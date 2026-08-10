@@ -123,6 +123,7 @@ from paddle.common_ops_import import VarDesc, dygraph_utils
 from paddle.pir import Value
 from paddle.utils.decorator_utils import (
     addmm_compat_decorator,
+    bmm_compat_decorator,
     nansum_decorator,
     param_one_alias,
     param_two_alias,
@@ -2332,6 +2333,129 @@ def mm(
             outputs={'Out': out},
         )
         return out
+
+
+@bmm_compat_decorator
+@param_two_alias(["x", "input"], ["y", "mat2"])
+def bmm(
+    x: Tensor,
+    y: Tensor,
+    out_dtype: DTypeLike | None = None,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
+    """
+    Applies batched matrix multiplication to two tensors.
+
+    Both input tensors must be three-dimensional and have the same batch size.
+    If ``x`` has shape ``[b, m, k]`` and ``y`` has shape
+    ``[b, k, n]``, the output has shape ``[b, m, n]``.
+
+    Args:
+        x (Tensor): The first input Tensor.
+            alias: ``input``.
+        y (Tensor): The second input Tensor.
+            alias: ``mat2``.
+        out_dtype (paddle.dtype|None, optional): The desired output data type.
+            Currently only supports ``paddle.float32`` for CUDA float16 or
+            bfloat16 inputs in dynamic graph. Both inputs must have the same
+            data type. For backward compatibility, in a call with exactly
+            three positional arguments, a string in the third position is
+            interpreted as ``name``. Use a dtype object such as
+            ``paddle.float32`` for an unambiguous positional ``out_dtype``, or
+            pass a string dtype using ``out_dtype="float32"``. A string dtype
+            is also accepted positionally when ``name`` is supplied as the
+            fourth positional argument. Default: None.
+        name (str|None, optional): Name for the operation. Default: None.
+
+    Keyword Args:
+        out (Tensor|None, optional): The output Tensor. Default: None.
+
+    Returns:
+        Tensor: The batched matrix multiplication result. Its data type is the
+        same as input unless ``out_dtype`` is specified.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([[[1.0, 1.0, 1.0], [2.0, 2.0, 2.0]], [[3.0, 3.0, 3.0], [4.0, 4.0, 4.0]]])
+            >>> y = paddle.to_tensor([[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]], [[4.0, 4.0], [5.0, 5.0], [6.0, 6.0]]])
+            >>> paddle.bmm(x, y)
+            Tensor(shape=[2, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[ 6.,  6.],
+              [12., 12.]],
+             [[45., 45.],
+              [60., 60.]]])
+    """
+    if out_dtype is not None:
+        out_dtype = convert_nptype_to_datatype_or_vartype(out_dtype)
+
+        float32_dtypes = (core.DataType.FLOAT32, core.VarDesc.VarType.FP32)
+        supported_input_dtypes = (
+            core.DataType.FLOAT16,
+            core.VarDesc.VarType.FP16,
+            core.DataType.BFLOAT16,
+            core.VarDesc.VarType.BF16,
+        )
+        if out_dtype not in float32_dtypes:
+            raise TypeError(
+                "The out_dtype of paddle.bmm currently only supports paddle.float32."
+            )
+        if x.dtype not in supported_input_dtypes:
+            raise TypeError(
+                "The out_dtype of paddle.bmm currently only supports "
+                "float16 or bfloat16 input."
+            )
+        if not in_dynamic_mode():
+            raise NotImplementedError(
+                "The out_dtype of paddle.bmm currently only supports dynamic graph."
+            )
+        if (
+            not paddle.is_compiled_with_cuda()
+            or paddle.is_compiled_with_rocm()
+            or not x.place.is_gpu_place()
+            or not y.place.is_gpu_place()
+        ):
+            raise NotImplementedError(
+                "The out_dtype of paddle.bmm currently only supports CUDA tensors."
+            )
+        return _C_ops.bmm_out_dtype(x, y, out_dtype, out=out)
+
+    if in_dynamic_mode():
+        return _C_ops.bmm(x, y, out=out)
+
+    x_shape = x.shape
+    y_shape = y.shape
+    if not len(x_shape) == len(y_shape) == 3:
+        raise ValueError(
+            "input and mat2 must be 3-dimensional, but received "
+            f"input's shape {x_shape} and mat2's shape {y_shape}."
+        )
+    if x_shape[2] != -1 and y_shape[1] != -1 and x_shape[2] != y_shape[1]:
+        raise ValueError(
+            "input's width must be equal to mat2's height, but received "
+            f"input's shape {x_shape} and mat2's shape {y_shape}."
+        )
+    if x_shape[0] != -1 and y_shape[0] != -1 and x_shape[0] != y_shape[0]:
+        raise ValueError(
+            "input and mat2 must have the same batch size, but received "
+            f"input's shape {x_shape} and mat2's shape {y_shape}."
+        )
+
+    if in_pir_mode():
+        return _C_ops.bmm(x, y, out=out)
+
+    helper = LayerHelper('bmm', **locals())
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='bmm',
+        inputs={'X': x, 'Y': y},
+        outputs={'Out': out},
+    )
+    return out
 
 
 @addmm_compat_decorator

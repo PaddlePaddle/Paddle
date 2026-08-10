@@ -1093,8 +1093,11 @@ if(WITH_GPU AND NOT WIN32)
 endif()
 set_tests_properties(test_eigvals_op PROPERTIES TIMEOUT 400)
 set_tests_properties(
-  test_cuda_memory_reserved PROPERTIES ENVIRONMENT
-                                       "FLAGS_allocator_strategy=auto_growth")
+  test_cuda_memory_reserved
+  PROPERTIES
+    ENVIRONMENT
+    "FLAGS_allocator_strategy=auto_growth;FLAGS_use_vmm_auto_growth_best_fit_allocator_v2=false"
+)
 if(WITH_GPU
    AND NOT WITH_ROCM
    AND NOT WIN32)
@@ -1102,7 +1105,7 @@ if(WITH_GPU
     test_cuda_vmm_v2_allocator
     PROPERTIES
       ENVIRONMENT
-      "FLAGS_allocator_strategy=auto_growth;FLAGS_use_virtual_memory_auto_growth=false;FLAGS_use_vmm_auto_growth_best_fit_allocator_v2=true;FLAGS_vmm_v2_large_pool_handle_size_in_mb=2"
+      "FLAGS_allocator_strategy=auto_growth;FLAGS_vmm_v2_large_pool_handle_size_in_mb=2"
   )
 endif()
 if(WITH_GLOO)

@@ -267,8 +267,8 @@ fi
 
 HAS_MODIFIED_AGENTS_SKILLS=`git diff --name-only upstream/$BRANCH | grep "^\\.agents/skills/" || true`
 if [ "${HAS_MODIFIED_AGENTS_SKILLS}" != "" ] && [ "${PR_ID}" != "" ]; then
-    echo_line="You must have one RD (zrr1999, SigureMo, ShigureNyako) approval for file changes in .agents/skills.\n"
-    check_approval 1 zrr1999 SigureMo ShigureNyako
+    echo_line="You must have one RD (zrr1999, risemeup1, risemeup1111) approval for file changes in .agents/skills.\n"
+    check_approval 1 zrr1999 risemeup1 risemeup1111
 fi
 
 ALL_PADDLE_ENFORCE=`git diff -U0 upstream/$BRANCH -- . ':!.agents/skills/' |grep "^+" |grep -zoE "PADDLE_ENFORCE\(.[^,\);]+.[^;]*\);\s" || true`
