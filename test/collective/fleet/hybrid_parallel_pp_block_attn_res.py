@@ -79,7 +79,7 @@ class BlockLayerPipe(Layer):
             hidden = state
             blocks = []
         partial = self.norm(self.linear(hidden)) + hidden
-        blocks = blocks + [partial]
+        blocks = [*blocks, partial]
         return {"hidden": partial, "blocks": blocks}
 
 
