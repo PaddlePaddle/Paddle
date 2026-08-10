@@ -179,7 +179,7 @@ class TestDistPPBlockAttnRes(unittest.TestCase):
             # _optimizer_step() -> optimizer.clear_grad() internally, leaving the
             # gradients cleared by the time we inspect them.
             data = model._prepare_training([x, x], optimizer, scheduler)
-            loss = model.forward_backward_pipeline(data)
+            loss = model.forward_backward_pipeline(data, None)
 
             # loss is only meaningful on the last pipeline stage; on other
             # stages forward_backward_pipeline may return None.
