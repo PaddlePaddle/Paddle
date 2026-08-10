@@ -548,7 +548,8 @@ def enable_compat(
         _register_compat_override()
         _swap_torch_modules_to_cache()
         _modify_scope_of_torch_proxy(scope, silent=silent)
-        sys.meta_path.insert(0, TORCH_PROXY_FINDER)
+        if TORCH_PROXY_FINDER not in sys.meta_path:
+            sys.meta_path.insert(0, TORCH_PROXY_FINDER)
         if _CompatLevel.API_ALIAS in compat_level:
             _apply_paddle_namespace_aliases()
     else:
