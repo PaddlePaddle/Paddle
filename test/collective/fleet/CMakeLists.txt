@@ -198,6 +198,21 @@ if((WITH_GPU) AND LOCAL_ALL_PLAT)
 endif()
 if((WITH_GPU) AND LOCAL_ALL_PLAT)
   bash_test_modules(
+    test_parallel_dygraph_pp_block_attn_res
+    START_BASH
+    ../../legacy_test/dist_test.sh
+    TIMEOUT
+    "500"
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=22350;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(test_parallel_dygraph_pp_block_attn_res
+                       PROPERTIES TIMEOUT "500")
+endif()
+if((WITH_GPU) AND LOCAL_ALL_PLAT)
+  bash_test_modules(
     test_parallel_dygraph_pp_adaptor
     START_BASH
     ../../legacy_test/dist_test.sh
