@@ -761,9 +761,9 @@ class TestBaddBmmAPI(unittest.TestCase):
     def test_normal_backward_without_out_dtype(self):
         paddle.disable_static()
         try:
-            input = paddle.ones([2, 2, 2], stop_gradient=False)
-            x = paddle.ones([2, 2, 2], stop_gradient=False)
-            y = paddle.ones([2, 2, 2], stop_gradient=False)
+            input = paddle.ones([2, 2, 2], requires_grad=True)
+            x = paddle.ones([2, 2, 2], requires_grad=True)
+            y = paddle.ones([2, 2, 2], requires_grad=True)
 
             result = paddle.baddbmm(input, x, y, beta=0.5, alpha=2.0)
             self.assertEqual(result.dtype, paddle.float32)
@@ -805,7 +805,7 @@ class TestBaddBmmAPI(unittest.TestCase):
     def test_out_rejects_autograd(self):
         paddle.disable_static()
         try:
-            input = paddle.ones([2, 2, 2], stop_gradient=False)
+            input = paddle.ones([2, 2, 2], requires_grad=True)
             x = paddle.ones([2, 2, 2])
             y = paddle.ones([2, 2, 2])
             out = paddle.empty([2, 2, 2])
@@ -824,7 +824,7 @@ class TestBaddBmmAPI(unittest.TestCase):
             x = paddle.ones([2, 3, 4])
             y = paddle.ones([2, 4, 5])
             for shape, expected_grad in [((), 60.0), ((5,), 12.0)]:
-                input = paddle.ones(shape, stop_gradient=False)
+                input = paddle.ones(shape, requires_grad=True)
                 result = paddle.baddbmm(input, x, y, beta=2.0)
                 self.assertEqual(result.shape, [2, 3, 5])
                 result.sum().backward()
@@ -955,8 +955,6 @@ class TestBaddBmmAPI(unittest.TestCase):
             y = paddle.ones([batch_size, 5, 4], dtype=dtype).transpose(
                 [0, 2, 1]
             )
-            x.stop_gradient = False
-            y.stop_gradient = False
 
             for input_dtype in (dtype, paddle.float32):
                 input = paddle.ones([5], dtype=input_dtype)
@@ -969,7 +967,6 @@ class TestBaddBmmAPI(unittest.TestCase):
                     out_dtype=paddle.float32,
                 )
                 self.assertEqual(result.dtype, paddle.float32)
-                self.assertTrue(result.stop_gradient)
                 np.testing.assert_allclose(
                     result.numpy(), 8.5, rtol=1e-5, atol=1e-5
                 )
@@ -1025,6 +1022,47 @@ class TestBaddBmmAPI(unittest.TestCase):
         try:
             paddle.set_device('gpu')
             self._check_mixed_out_dtype(paddle.float16)
+        finally:
+            paddle.enable_static()
+
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+        "CUDA is required for baddbmm out_dtype",
+    )
+    def test_out_dtype_rejects_autograd(self):
+        if not core.is_float16_supported(paddle.CUDAPlace(0)):
+            self.skipTest("Float16 is not supported")
+        paddle.disable_static()
+        try:
+            paddle.set_device('gpu')
+            for grad_input in ('input', 'x', 'y'):
+                tensors = {
+                    'input': paddle.ones([5], dtype=paddle.float16),
+                    'x': paddle.ones([2, 3, 4], dtype=paddle.float16),
+                    'y': paddle.ones([2, 4, 5], dtype=paddle.float16),
+                }
+                tensors[grad_input].stop_gradient = False
+                with (
+                    self.subTest(grad_input=grad_input),
+                    self.assertRaisesRegex(
+                        RuntimeError,
+                        "out_dtype does not support automatic differentiation",
+                    ),
+                ):
+                    paddle.baddbmm(
+                        tensors['input'],
+                        tensors['x'],
+                        tensors['y'],
+                        out_dtype=paddle.float32,
+                    )
+
+            input = paddle.ones([5], dtype=paddle.float16, requires_grad=True)
+            x = paddle.ones([2, 3, 4], dtype=paddle.float16, requires_grad=True)
+            y = paddle.ones([2, 4, 5], dtype=paddle.float16, requires_grad=True)
+            with paddle.no_grad():
+                result = paddle.baddbmm(input, x, y, out_dtype=paddle.float32)
+            self.assertTrue(result.stop_gradient)
+            np.testing.assert_array_equal(result.numpy(), 5.0)
         finally:
             paddle.enable_static()
 

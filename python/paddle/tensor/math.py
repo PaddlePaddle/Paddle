@@ -2558,6 +2558,15 @@ def baddbmm(
                 "CUDA tensors."
             )
 
+        if paddle.is_grad_enabled() and builtins.any(
+            not tensor.stop_gradient for tensor in (input, x, y)
+        ):
+            raise RuntimeError(
+                "baddbmm(): out_dtype does not support automatic "
+                "differentiation, but one of the input tensors requires "
+                "grad."
+            )
+
     if (
         out is not None
         and paddle.is_grad_enabled()
