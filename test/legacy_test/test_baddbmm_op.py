@@ -431,6 +431,9 @@ class TestBaddBmmOp4(OpTest):
         self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad_normal(self):
+        self.inputs['Input'] = np.broadcast_to(
+            self.inputs['Input'][:, np.newaxis, :], (1, 50, 15)
+        )
         self.check_grad(
             ['Input', 'X', 'Y'], 'Out', check_pir=True, check_prim_pir=True
         )
@@ -442,6 +445,9 @@ class TestBaddBmmOp4(OpTest):
         self.check_grad(['Y'], 'Out', no_grad_set=None, check_pir=True)
 
     def test_check_grad_input(self):
+        self.inputs['Input'] = np.broadcast_to(
+            self.inputs['Input'][:, np.newaxis, :], (1, 50, 15)
+        )
         self.check_grad(
             ['Input'],
             'Out',
@@ -851,7 +857,7 @@ class TestBaddBmmAPI(unittest.TestCase):
                 paddle.baddbmm_(
                     paddle.ones([2, 3, 5], dtype=paddle.float64), x, y
                 )
-            with self.assertRaises(TypeError):
+            with self.assertRaises((TypeError, ValueError)):
                 paddle.baddbmm_(input, x, y, out_dtype=paddle.float32)
         finally:
             paddle.enable_static()

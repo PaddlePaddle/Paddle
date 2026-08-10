@@ -2581,12 +2581,14 @@ def baddbmm(
         )
 
     if out_dtype is not None:
-        return _C_ops.baddbmm_out_dtype(
+        result = _C_ops.baddbmm_out_dtype(
             input, x, y, out_dtype, beta, alpha, out=out
         )
+        return out if out is not None else result
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.baddbmm(input, x, y, beta, alpha, out=out)
+        result = _C_ops.baddbmm(input, x, y, beta, alpha, out=out)
+        return out if out is not None else result
 
     check_variable_and_dtype(
         input,
