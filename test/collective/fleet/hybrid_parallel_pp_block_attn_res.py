@@ -174,21 +174,31 @@ class TestDistPPBlockAttnRes(unittest.TestCase):
             x = paddle.to_tensor(x_data)
             x.stop_gradient = True
 
-            loss = model.train_batch([x, x], optimizer, scheduler)
+            # Use forward_backward_pipeline (not train_batch) so the assertions
+            # run BEFORE the optimizer step / clear_grad. train_batch would call
+            # _optimizer_step() -> optimizer.clear_grad() internally, leaving the
+            # gradients cleared by the time we inspect them.
+            data = model._prepare_training([x, x], optimizer, scheduler)
+            loss = model.forward_backward_pipeline(data)
+
             # loss is only meaningful on the last pipeline stage; on other
-            # stages train_batch may return None.
+            # stages forward_backward_pipeline may return None.
             if loss is not None:
                 assert paddle.isfinite(loss).item(), (
                     f"loss is not finite: {loss.item()}"
                 )
-            # gradients must be finite too: since hidden (and thus the loss)
-            # attends over the cached blocks, a corrupted block cache / meta /
-            # backward closure would surface here as non-finite grads.
+            # Gradients are still populated here (before clear_grad). Since hidden
+            # (and thus loss) attends over the cached blocks, a corrupted block
+            # cache / meta / backward gradient closure would surface as a
+            # non-finite gradient.
             for name, param in model.named_parameters():
                 if param.grad is not None:
                     assert paddle.isfinite(param.grad).all().item(), (
                         f"non-finite gradient for param {name}"
                     )
+
+            optimizer.step()
+            optimizer.clear_grad()
 
 
 if __name__ == "__main__":
