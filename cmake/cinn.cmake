@@ -240,6 +240,28 @@ set(hlir_src CACHE INTERNAL "" FORCE)
 # but better to move to paddle/CMakeLists.txt
 add_subdirectory(paddle/cinn)
 
+# On XPU, isolate the XTDK xpurtc::CompileContext destructor reference inside a
+# CINN target's compiled objects so it binds to the SONAME-isolated
+# libxpujitc_xtdk.so instead of the XHPC libxpujitc.so. Runs as PRE_LINK so the
+# rename is applied after (re)compilation but before link/archive; it is a no-op
+# when the symbol is already renamed, so incremental builds stay correct.
+# See cmake/xpu/isolate_xpujitc.py and cmake/xpu/redefine_cinn_jitc_syms.cmake.
+function(cinn_isolate_xpu_jitc TARGET_NAME)
+  if(WITH_XPU)
+    add_custom_command(
+      TARGET ${TARGET_NAME}
+      PRE_LINK
+      COMMAND
+        ${CMAKE_COMMAND}
+        -DOBJDIR=${CMAKE_BINARY_DIR}/CMakeFiles/${TARGET_NAME}.dir
+        -DOBJCOPY=${CMAKE_OBJCOPY} -P
+        ${CMAKE_SOURCE_DIR}/cmake/xpu/redefine_cinn_jitc_syms.cmake
+      COMMENT
+        "Isolating XTDK xpurtc::CompileContext dtor in ${TARGET_NAME} objects"
+      VERBATIM)
+  endif()
+endfunction()
+
 cinn_cc_library(
   cinnapi
   SHARED
@@ -290,6 +312,8 @@ if(WITH_CUTLASS)
   target_link_libraries(cinnapi cutlass)
   add_dependencies(cinnapi cutlass)
 endif()
+
+cinn_isolate_xpu_jitc(cinnapi)
 
 set(core_src "${cinnapi_src}")
 
@@ -348,6 +372,8 @@ function(gen_cinncore LINKTYPE)
     target_link_libraries(${CINNCORE_TARGET} cutlass)
     add_dependencies(${CINNCORE_TARGET} cutlass)
   endif()
+
+  cinn_isolate_xpu_jitc(${CINNCORE_TARGET})
 endfunction()
 
 gen_cinncore(STATIC)
