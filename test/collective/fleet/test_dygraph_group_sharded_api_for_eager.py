@@ -32,6 +32,10 @@ class TestDygraphGroupSharded(TestMultipleAccelerators):
     def test_dygraph_group_fsdp(self):
         self.run_mnist_2accelerators('dygraph_group_fsdp.py')
 
+    # check dygraph fsdp + ep for some functions.
+    def test_dygraph_group_fsdp_moe(self):
+        self.run_mnist_2accelerators('dygraph_group_fsdp_moe.py')
+
 
 if __name__ == "__main__":
     unittest.main()
