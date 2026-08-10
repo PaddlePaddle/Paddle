@@ -119,6 +119,22 @@ TEST(NanInfUtils, BlacklistSkipCheck) {
   FLAGS_check_nan_inf_blacklist = "";
 }
 
+TEST(NanInfUtils, SkipFloat8Tensor) {
+  FLAGS_check_nan_inf_blacklist = "";
+
+  auto fp8_e4m3 =
+      paddle::experimental::full({3, 4},
+                                 std::numeric_limits<double>::quiet_NaN(),
+                                 phi::DataType::FLOAT8_E4M3FN);
+  CHECK_NO_NAN_INF(fp8_e4m3);
+
+  auto fp8_e5m2 =
+      paddle::experimental::full({3, 4},
+                                 std::numeric_limits<double>::infinity(),
+                                 phi::DataType::FLOAT8_E5M2);
+  CHECK_NO_NAN_INF(fp8_e5m2);
+}
+
 TEST(NanInfUtils, Functions) {
   // test all methods
   auto tensor = paddle::experimental::full(

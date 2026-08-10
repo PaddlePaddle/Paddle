@@ -92,7 +92,9 @@ struct GeluGradFunctor {
       second_map *= static_cast<T>(0.5 * M_2_SQRTPI * M_SQRT1_2);
 
       // dx = dout * (first + second);
-      funcs::CBlas<T>::VADD(n, first, second, first);
+      for (int i = 0; i < n; ++i) {
+        first[i] += second[i];
+      }
       Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, 1>> dx_map(dx_data, n);
       Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, 1>> dout_map(dout_data,
                                                                      n);

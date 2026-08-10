@@ -366,6 +366,43 @@ void BmmInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   out->set_layout(x.layout());
 }
 
+void BmmOutDtypeInferMeta(const MetaTensor& x,
+                          const MetaTensor& y,
+                          DataType out_dtype,
+                          MetaTensor* out) {
+  PADDLE_ENFORCE_EQ(
+      out_dtype,
+      DataType::FLOAT32,
+      common::errors::InvalidType(
+          "The out_dtype of paddle.bmm currently only supports float32."));
+  PADDLE_ENFORCE_EQ(
+      x.dtype() == DataType::FLOAT16 || x.dtype() == DataType::BFLOAT16,
+      true,
+      common::errors::InvalidType(
+          "The out_dtype of paddle.bmm currently only supports float16 or "
+          "bfloat16 Input(X)."));
+  PADDLE_ENFORCE_EQ(
+      y.dtype() == DataType::FLOAT16 || y.dtype() == DataType::BFLOAT16,
+      true,
+      common::errors::InvalidType(
+          "The out_dtype of paddle.bmm currently only supports float16 or "
+          "bfloat16 Input(Y)."));
+  PADDLE_ENFORCE_EQ(
+      x.dtype(),
+      y.dtype(),
+      common::errors::InvalidType(
+          "Input(X) and Input(Y) must have the same dtype when out_dtype is "
+          "specified for paddle.bmm."));
+  PADDLE_ENFORCE_EQ(
+      out->dtype() == DataType::UNDEFINED || out->dtype() == DataType::FLOAT32,
+      true,
+      common::errors::InvalidType(
+          "The out tensor dtype must be float32 when out_dtype is float32."));
+
+  BmmInferMeta(x, y, out);
+  out->set_dtype(DataType::FLOAT32);
+}
+
 void BoxClipInferMeta(const MetaTensor& input,
                       const MetaTensor& im_info,
                       MetaTensor* output,
@@ -3192,17 +3229,25 @@ void MmOutDtypeInferMeta(const MetaTensor& x,
       common::errors::InvalidArgument(
           "The out_dtype of paddle.mm currently only supports float32."));
   PADDLE_ENFORCE_EQ(
-      x.dtype(),
-      DataType::BFLOAT16,
+      x.dtype() == DataType::FLOAT16 || x.dtype() == DataType::BFLOAT16,
+      true,
       common::errors::InvalidArgument(
-          "The out_dtype of paddle.mm currently only supports bfloat16 "
-          "Input(X)."));
+          "The dtype of Input(X) must be FLOAT16 or BFLOAT16, but received "
+          "%s.",
+          x.dtype()));
   PADDLE_ENFORCE_EQ(
-      y.dtype(),
-      DataType::BFLOAT16,
+      y.dtype() == DataType::FLOAT16 || y.dtype() == DataType::BFLOAT16,
+      true,
       common::errors::InvalidArgument(
-          "The out_dtype of paddle.mm currently only supports bfloat16 "
-          "Input(Y)."));
+          "The dtype of Input(Y) must be FLOAT16 or BFLOAT16, but received "
+          "%s.",
+          y.dtype()));
+  PADDLE_ENFORCE_EQ(
+      x.dtype(),
+      y.dtype(),
+      common::errors::InvalidArgument(
+          "Input(X) and Input(Y) must have the same dtype when out_dtype is "
+          "specified for paddle.mm."));
 
   auto dims_x = vectorize(x.dims());
   auto dims_y = vectorize(y.dims());

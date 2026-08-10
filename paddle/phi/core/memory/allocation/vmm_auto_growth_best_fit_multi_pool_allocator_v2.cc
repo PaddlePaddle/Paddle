@@ -17,6 +17,7 @@
 #if defined(PADDLE_WITH_CUDA)
 
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/platform/cuda_device_guard.h"
 
 namespace paddle {
 namespace memory {
@@ -157,9 +158,27 @@ bool VMMAutoGrowthBestFitMultiPoolAllocatorV2::SetBlockRemapEvent(
   return large_allocator_->SetBlockRemapEvent(ptr, stream, event);
 }
 
+bool VMMAutoGrowthBestFitMultiPoolAllocatorV2::PrepareBackingRelease() {
+  const bool small_ready = small_allocator_->PrepareBackingRelease();
+  const bool large_ready = large_allocator_->PrepareBackingRelease();
+  return small_ready || large_ready;
+}
+
+uint64_t
+VMMAutoGrowthBestFitMultiPoolAllocatorV2::ReleaseAfterDeviceSynchronize(
+    const Place& place) {
+  return small_allocator_->ReleaseAfterDeviceSynchronize(place) +
+         large_allocator_->ReleaseAfterDeviceSynchronize(place);
+}
+
 uint64_t VMMAutoGrowthBestFitMultiPoolAllocatorV2::ReleaseImpl(
     const Place& place) {
-  return small_allocator_->Release(place) + large_allocator_->Release(place);
+  if (!PrepareBackingRelease()) {
+    return 0;
+  }
+  platform::CUDADeviceGuard device_guard(place_.device);
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+  return ReleaseAfterDeviceSynchronize(place);
 }
 
 VMMAutoGrowthBestFitMultiPoolAllocatorV2::AllocationRoute

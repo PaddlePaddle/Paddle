@@ -94,7 +94,7 @@ EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE Dim3<IndexType> ConvertTensorIndex(
 #pragma unroll
   for (int i = 2; i >= 0; --i) {
     IndexType new_index = index / dims[i];
-    tensor_index[i] = static_cast<int>(index - dims[i] * new_index);
+    tensor_index[i] = index - dims[i] * new_index;
     index = new_index;
   }
   return tensor_index;
