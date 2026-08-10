@@ -2351,9 +2351,6 @@ def bmm(
     If ``x`` has shape ``[b, m, k]`` and ``y`` has shape
     ``[b, k, n]``, the output has shape ``[b, m, n]``.
 
-    Note:
-        Unlike ``paddle.matmul``, this API does not support broadcasting.
-
     Args:
         x (Tensor): The first input Tensor.
             alias: ``input``.
