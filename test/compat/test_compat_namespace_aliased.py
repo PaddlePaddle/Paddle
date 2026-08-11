@@ -685,6 +685,52 @@ class TestLevel2InternalCallersUseNative(CompatNamespaceAliasBase):
         self.assertEqual(coo.type(), "torch.sparse.FloatTensor")
         self.assertEqual(t.type(np.float64).dtype, paddle.float64)
 
+        # Round-trip: XPU device string → correct device parameter
+        with mock.patch.object(
+            paddle.Tensor, "to", autospec=True, return_value=t
+        ) as tensor_to:
+            self.assertIs(t.type("torch.xpu.FloatTensor"), t)
+            tensor_to.assert_called_once_with(
+                t,
+                device="xpu",
+                dtype=paddle.float32,
+                blocking=True,
+            )
+
+        # Round-trip: custom device string → correct device parameter
+        with mock.patch.object(
+            paddle.Tensor, "to", autospec=True, return_value=t
+        ) as tensor_to:
+            self.assertIs(t.type("torch.npu.FloatTensor"), t)
+            tensor_to.assert_called_once_with(
+                t,
+                device="npu",
+                dtype=paddle.float32,
+                blocking=True,
+            )
+
+        # Round-trip: xpu + sparse device string
+        with mock.patch.object(
+            paddle.Tensor, "to", autospec=True, return_value=t
+        ) as tensor_to:
+            self.assertIs(t.type("torch.xpu.sparse.FloatTensor"), t)
+            tensor_to.assert_called_once_with(
+                t,
+                device="xpu",
+                dtype=paddle.float32,
+                blocking=True,
+            )
+
+        # Round-trip: same-device no-op for XPU string via mock
+        with mock.patch.object(
+            paddle.Tensor, "to", autospec=True, return_value=t
+        ) as tensor_to:
+            with mock.patch.object(
+                type(t.place), "is_xpu_place", return_value=True
+            ):
+                t.type("torch.xpu.FloatTensor")
+                tensor_to.assert_not_called()
+
     @with_level2
     def test_tensor_type_name_devices(self):
         class _FakePlace:

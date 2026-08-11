@@ -171,21 +171,32 @@ def _tensor_type(
             raise ValueError(f"invalid type: {dtype_string!r}")
         if tensor_type in _TENSOR_TYPE_DTYPES:
             dtype = getattr(paddle, _TENSOR_TYPE_DTYPES[tensor_type])
-            device = (
-                "gpu"
-                if dtype_string.startswith(("torch.cuda.", "paddle.cuda."))
-                else "cpu"
-            )
+            middle = dtype_string.split(".")[1:-1]
+            device_parts = [s for s in middle if s != "sparse"]
+            if not device_parts:
+                device = "cpu"
+            elif device_parts[0] == "cuda":
+                device = "gpu"
+            else:
+                device = device_parts[0]
         elif tensor_type in _TENSOR_TYPE_DTYPES.values():
             dtype = getattr(paddle, tensor_type)
         else:
             raise ValueError(f"invalid type: {dtype_string!r}")
 
-    same_device = (
-        device is None
-        or (device == "cpu" and input.place.is_cpu_place())
-        or (device == "gpu" and input.place.is_gpu_place())
-    )
+    if device is None:
+        same_device = True
+    elif device == "cpu":
+        same_device = input.place.is_cpu_place()
+    elif device == "gpu":
+        same_device = input.place.is_gpu_place()
+    elif device == "xpu":
+        same_device = input.place.is_xpu_place()
+    else:
+        same_device = (
+            input.place.is_custom_place()
+            and input.place.custom_device_type().lower() == device
+        )
     if input.dtype == dtype and same_device:
         return input
 
