@@ -406,9 +406,9 @@ class TestBaddBmmOp4(OpTest):
         self.dtype = np.float64
         self.init_dtype_type()
         self.inputs = {
-            'Input': np.random.random((1, 15)).astype(self.dtype),
-            'X': np.random.random((1, 50, 10)).astype(self.dtype),
-            'Y': np.random.random((1, 10, 15)).astype(self.dtype),
+            'Input': np.random.random((1, 100)).astype(self.dtype),
+            'X': np.random.random((1, 10, 10)).astype(self.dtype),
+            'Y': np.random.random((1, 10, 100)).astype(self.dtype),
         }
         self.attrs = {
             'Alpha': 0.5,
@@ -418,7 +418,7 @@ class TestBaddBmmOp4(OpTest):
         self.outputs = {
             'Out': self.attrs['Beta']
             * np.broadcast_to(
-                self.inputs['Input'][:, np.newaxis, :], (1, 50, 15)
+                self.inputs['Input'][:, np.newaxis, :], (1, 10, 100)
             )
             + self.attrs['Alpha']
             * np.matmul(self.inputs['X'], self.inputs['Y'])
@@ -431,9 +431,6 @@ class TestBaddBmmOp4(OpTest):
         self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad_normal(self):
-        self.inputs['Input'] = np.broadcast_to(
-            self.inputs['Input'][:, np.newaxis, :], (1, 50, 15)
-        )
         self.check_grad(
             ['Input', 'X', 'Y'], 'Out', check_pir=True, check_prim_pir=True
         )
@@ -445,9 +442,6 @@ class TestBaddBmmOp4(OpTest):
         self.check_grad(['Y'], 'Out', no_grad_set=None, check_pir=True)
 
     def test_check_grad_input(self):
-        self.inputs['Input'] = np.broadcast_to(
-            self.inputs['Input'][:, np.newaxis, :], (1, 50, 15)
-        )
         self.check_grad(
             ['Input'],
             'Out',
