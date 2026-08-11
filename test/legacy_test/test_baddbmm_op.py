@@ -862,6 +862,50 @@ class TestBaddBmmAPI(unittest.TestCase):
         finally:
             paddle.enable_static()
 
+    def test_inplace_infer_symbolic_shape(self):
+        from paddle.base.libpaddle import pir
+
+        input_data = np.ones([2, 3, 5], dtype=np.float32)
+        x_data = np.ones([2, 3, 4], dtype=np.float32)
+        y_data = np.ones([2, 4, 5], dtype=np.float32)
+
+        paddle.enable_static()
+        with paddle.pir_utils.IrGuard():
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                input = paddle.static.data(
+                    'symbolic_input', [None, None, None], dtype='float32'
+                )
+                x = paddle.static.data(
+                    'symbolic_x', [None, None, 4], dtype='float32'
+                )
+                y = paddle.static.data(
+                    'symbolic_y', [None, 4, None], dtype='float32'
+                )
+                out = paddle.baddbmm_(input, x, y, beta=0.5, alpha=2.0)
+
+            op_names = [op.name() for op in main.global_block().ops]
+            self.assertIn('pd_op.baddbmm_', op_names)
+
+            pm = pir.PassManager()
+            pir.infer_symbolic_shape_pass(pm, main)
+            pm.run(main)
+
+            executor = paddle.static.Executor(paddle.CPUPlace())
+            (actual,) = executor.run(
+                main,
+                feed={
+                    'symbolic_input': input_data,
+                    'symbolic_x': x_data,
+                    'symbolic_y': y_data,
+                },
+                fetch_list=[out],
+            )
+
+        expected = 0.5 * input_data + 2.0 * np.matmul(x_data, y_data)
+        np.testing.assert_allclose(actual, expected, rtol=1e-6)
+
     def test_signature_and_tensor_method(self):
         parameters = inspect.signature(paddle.baddbmm).parameters
         self.assertEqual(
