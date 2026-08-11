@@ -1999,13 +1999,25 @@ class P2PAsyncHandle:
         self.forward_handle_wait_fn()
 
     def forward_async_comm(self, output_tensor, block_cache_meta=None):
-        (
-            self.next_forward_virtual_pp_rank,
-            self.input_tensor,
-            self.out_fwd_wait_handles,
-        ) = self.forward_async_comm_fn(
-            output_tensor=output_tensor, block_cache_meta=block_cache_meta
-        )
+        # Only pass block_cache_meta to the callback when it is actually set
+        # (i.e. the BlockAttnRes comm optimization is enabled). Passing it
+        # unconditionally would change the call signature for the default path
+        # and break existing callers that expect forward_async_comm_fn to be
+        # invoked with output_tensor only.
+        if block_cache_meta is not None:
+            (
+                self.next_forward_virtual_pp_rank,
+                self.input_tensor,
+                self.out_fwd_wait_handles,
+            ) = self.forward_async_comm_fn(
+                output_tensor=output_tensor, block_cache_meta=block_cache_meta
+            )
+        else:
+            (
+                self.next_forward_virtual_pp_rank,
+                self.input_tensor,
+                self.out_fwd_wait_handles,
+            ) = self.forward_async_comm_fn(output_tensor=output_tensor)
 
     def backward_handle_wait(self):
         self.backward_handle_wait_fn()
