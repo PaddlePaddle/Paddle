@@ -25,11 +25,14 @@ import os
 import sys
 import types
 from functools import cached_property
-from typing import Any, Callable, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from typing_extensions import ParamSpec
 
 import paddle
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 _InputT = ParamSpec("_InputT")
 _RetT = TypeVar("_RetT")

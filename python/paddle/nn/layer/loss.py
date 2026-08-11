@@ -14,7 +14,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+import warnings
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle import base, in_dynamic_mode
@@ -28,7 +29,7 @@ from .. import functional as F
 from .layers import Layer
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
 
     from paddle import Tensor
     from paddle._typing import ParamAttrLike
@@ -37,6 +38,46 @@ if TYPE_CHECKING:
 
 
 __all__ = []
+
+
+class _Loss(Layer):
+    r"""
+    Base class for all loss functions.
+
+    Parameters:
+        size_average (bool|None, optional): Deprecated (see ``reduction``). Default is ``None``.
+        reduce (bool|None, optional): Deprecated (see ``reduction``). Default is ``None``.
+        reduction (str, optional): Indicate how to calculate the loss, the candidates
+            are ``'none'`` | ``'mean'`` | ``'sum'``. Default is ``'mean'``.
+    """
+
+    reduction: _ReduceMode
+
+    def __init__(
+        self,
+        size_average: bool | None = None,
+        reduce: bool | None = None,
+        reduction: str = 'mean',
+    ) -> None:
+        super().__init__()
+        if size_average is not None or reduce is not None:
+            reduction = (
+                'none'
+                if reduce is False
+                else ('sum' if size_average is False else 'mean')
+            )
+            warnings.warn(
+                "'size_average' and 'reduce' args will be deprecated, "
+                f"please use reduction='{reduction}' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        if reduction not in ['sum', 'mean', 'none']:
+            raise ValueError(
+                "'reduction' should be 'sum', 'mean' or 'none', "
+                f"but received {reduction}."
+            )
+        self.reduction = reduction
 
 
 class BCEWithLogitsLoss(Layer):
@@ -405,7 +446,7 @@ class CrossEntropyLoss(Layer):
             >>> shape = [N, C]
             >>> label_smoothing = 0.4
             >>> reduction = 'mean'
-            >>> weight: Optional[paddle.Tensor] = None
+            >>> weight = None
             >>> logits = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
             >>> integer_labels = paddle.randint(low=0, high=C, size=[N], dtype='int64')
             >>> one_hot_labels = paddle.nn.functional.one_hot(integer_labels, C).astype('float32')

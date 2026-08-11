@@ -18,7 +18,7 @@ import copy
 import hashlib
 import inspect
 import warnings
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
@@ -26,14 +26,11 @@ from typing_extensions import overload
 
 import paddle
 from paddle import _C_ops, profiler
-from paddle.base.data_feeder import (
-    _PADDLE_DTYPE_2_NUMPY_DTYPE,
-    convert_uint16_to_float,
-)
+from paddle.base.data_feeder import convert_uint16_to_float, vartype_to_str
 from paddle.base.libpaddle import Place
 from paddle.profiler.utils import in_profiler_mode
 from paddle.utils import deprecated
-from paddle.utils.decorator_utils import tensor_cuda_decorator
+from paddle.utils.decorator_utils import param_one_alias, tensor_cuda_decorator
 from paddle.utils.dlpack import DLDeviceType
 from paddle.utils.download import check_and_create_dir
 
@@ -42,12 +39,13 @@ from ..framework import (
     EagerParamBase,
     Parameter,
     Variable,
-    convert_np_dtype_to_dtype_,
+    convert_nptype_to_datatype_or_vartype,
 )
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_tensor
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from enum import IntEnum
 
     from typing_extensions import CapsuleType
@@ -128,7 +126,9 @@ def monkey_patch_tensor():
         attr_not_need_keys = [
             'grad',
             'T',
+            'H',
             'mT',
+            'mH',
             'place',
             '_place_str',
             'data',
@@ -241,9 +241,9 @@ def monkey_patch_tensor():
             if isinstance(value, paddle.Tensor):
                 dtype = value.dtype
             elif paddle.framework.use_pir_api():
-                dtype = paddle.pir.core.convert_np_dtype_to_dtype_(value.dtype)
+                dtype = paddle.pir.core.convert_nptype_to_datatype(value.dtype)
             else:
-                dtype = convert_np_dtype_to_dtype_(value.dtype)
+                dtype = convert_nptype_to_datatype_or_vartype(value.dtype)
 
             assert self.dtype == dtype, (
                 f"Variable dtype not match, Variable [ {self.name} ] need tensor with dtype {self.dtype}  but load tensor with dtype {dtype}"
@@ -287,10 +287,12 @@ def monkey_patch_tensor():
                 )
 
     @framework.dygraph_only
+    @param_one_alias(["grad_tensor", "gradient"])
     def backward(
         self: Tensor,
         grad_tensor: Tensor | None = None,
         retain_graph: bool = False,
+        create_graph: bool = False,
         *,
         dump_backward_graph_path: str | None = None,
     ) -> None:
@@ -371,7 +373,11 @@ def monkey_patch_tensor():
                 self = _grad_scalar.scale(self)
             check_and_create_dir(dump_backward_graph_path)
             core.eager.run_backward(
-                [self], grad_tensor, retain_graph, dump_backward_graph_path
+                [self],
+                grad_tensor,
+                retain_graph,
+                create_graph,
+                dump_backward_graph_path,
             )
 
             if in_profiler_mode():
@@ -671,8 +677,8 @@ def monkey_patch_tensor():
                 not is_cuda_place(device)
                 or t.place.gpu_device_id() != get_device_id(device)
             ):
-                proto_dtype = framework.convert_to_proto_type(dtype)
-                size_dtype = core.size_of_dtype(proto_dtype)
+                var_dtype = framework.convert_to_vartype(dtype)
+                size_dtype = core.size_of_dtype(var_dtype)
                 # Note(weilong wu): Paddle GPU minimum memory allocation unit is 256 bytes,
                 # waiting_alloc_memory will compute the memory space occupied by 't'.
                 # Coefficient 1.2 is used to avoid OOM that may occur in this critical state when the memory is just enough.
@@ -1126,7 +1132,7 @@ def monkey_patch_tensor():
     ) -> Tensor: ...
 
     @framework.dygraph_only
-    @tensor_cuda_decorator()
+    @tensor_cuda_decorator
     def cuda(
         self: Tensor,
         device_id: DeviceLike = None,
@@ -1213,6 +1219,24 @@ def monkey_patch_tensor():
             bool: ``True`` if the Tensor is stored on the CPU.
         """
         return self.place.is_cpu_place()
+
+    @framework.dygraph_only
+    def col_indices(self: Tensor) -> Tensor:
+        """
+        Returns the column indices of a SparseCsrTensor.
+
+        Alias for cols() method.
+        """
+        return self.cols()
+
+    @framework.dygraph_only
+    def crow_indices(self: Tensor) -> Tensor:
+        """
+        Returns the compressed row indices of a SparseCsrTensor.
+
+        Alias for crows() method.
+        """
+        return self.crows()
 
     @framework.dygraph_only
     def pin_memory(self: Tensor, blocking: bool = True) -> Tensor:
@@ -1318,6 +1342,20 @@ def monkey_patch_tensor():
             return self
 
         return _C_ops.sparse_to_sparse_coo(self, sparse_dim)
+
+    @framework.dygraph_only
+    def to_sparse(self: Tensor, sparse_dim: int | None = None) -> Tensor:
+        """
+        Convert the tensor to sparse COO format.
+
+        Args:
+            sparse_dim: Number of sparse dimensions. If None, uses the tensor's rank.
+
+        See to_sparse_coo for details.
+        """
+        if sparse_dim is None:
+            sparse_dim = len(self.shape)
+        return self.to_sparse_coo(sparse_dim)
 
     @framework.dygraph_only
     def _md5sum(self: Tensor) -> str:
@@ -1729,6 +1767,7 @@ def monkey_patch_tensor():
         ("values", values),
         ("to_dense", to_dense),
         ("to_sparse_coo", to_sparse_coo),
+        ("to_sparse", to_sparse),
         ("coalesce", coalesce),
         ("sparse_mask", sparse_mask),
         ("_set_grad_ivar", _set_grad_ivar),
@@ -1753,6 +1792,8 @@ def monkey_patch_tensor():
         # For TVM FFI 0.1.5+
         ("__dlpack_c_exchange_api__", core.dlpack_exchange_api_pycapsule()),
         ("device", device),
+        ("col_indices", col_indices),
+        ("crow_indices", crow_indices),
     ):
         setattr(core.eager.Tensor, method_name, method)
 
@@ -1764,9 +1805,9 @@ def monkey_patch_tensor():
         origin = core.VarDesc.VarType.__str__
 
         def dtype_str(dtype):
-            if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
-                numpy_dtype = _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
-                if numpy_dtype == 'uint16':
+            if dtype in vartype_to_str:
+                numpy_dtype = vartype_to_str[dtype]
+                if dtype == core.VarDesc.VarType.BF16:
                     numpy_dtype = 'bfloat16'
                 prefix = 'paddle.'
                 return prefix + numpy_dtype

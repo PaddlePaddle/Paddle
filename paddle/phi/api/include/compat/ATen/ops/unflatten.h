@@ -38,7 +38,7 @@ inline at::Tensor unflatten(const at::Tensor& self,
 }
 
 inline at::Tensor unflatten_symint(const at::Tensor& self,
-                                   const int64_t dim,
+                                   int64_t dim,
                                    c10::SymIntArrayRef sizes) {
   return unflatten(
       self,

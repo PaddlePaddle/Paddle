@@ -17,7 +17,12 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/kernels/xpu/conv_utils_xpu.h"
 #include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
+#ifdef PADDLE_WITH_XPU_XRE5
+#include "xpudnn/xpudnn.h"
+namespace xpudnn = baidu::xpu::xpudnn;
+#endif
 
 namespace phi {
 namespace fusion {
@@ -115,6 +120,34 @@ void Conv2dXPUKernelImpl(const Context& dev_ctx,
     act.hard_sigmoid_slope = act_param;
   }
 
+#ifdef PADDLE_WITH_XPU_XRE5
+  int r = xpudnn::
+      conv2d_fusion<XPUTypeX, XPUTypeW, XPUTypeOut, T_GEMM>(  // TX/TW/TY/TGEMM
+          /* baidu::xpu::api::Context* ctx */ dev_ctx.x_context(),
+          /* const TX* input */ input_data,
+          /* const TW* filter */ filter_data,
+          /* TY* output */ out_data,
+          /* int64_t n */ batch,
+          /* int64_t ic */ in_c,
+          /* int64_t h */ in_h,
+          /* int64_t w */ in_w,
+          /* int64_t oc */ out_c,
+          /* const std::vector<int64_t>& ksize */
+          std::vector<int64_t>{win_h, win_w},
+          /* const std::vector<int64_t>& strides */ strides,
+          /* const std::vector<int64_t>& paddings */ paddings,
+          /* const std::vector<int64_t>& dilations */ dilations,
+          /* int64_t groups */ groups,
+          /* const float* in_maxptr */ input_max_data,
+          /* const float* filter_maxptr */ filter_max_data,
+          /* float* out_maxptr */ out_max_data,
+          /* bool is_nchw */ true,
+          /* const float* bias */ bias_data,
+          /* const TY* branch */ branch_data,
+          /* const baidu::xpu::api::Activation_t& act */ act,
+          /* const float* branch_maxptr */ branch_max_data,
+          /* const float* scale */ scale_max_data);
+#else
   int r = xpu::
       conv2d_fusion<XPUTypeX, XPUTypeW, XPUTypeOut, T_GEMM>(  // TX/TW/TY/TGEMM
           /* baidu::xpu::api::Context* ctx */ dev_ctx.x_context(),
@@ -141,6 +174,7 @@ void Conv2dXPUKernelImpl(const Context& dev_ctx,
           /* const baidu::xpu::api::Activation_t& act */ act,
           /* const float* branch_maxptr */ branch_max_data,
           /* const float* scale */ scale_max_data);
+#endif
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_xpu");
 }
 
@@ -219,7 +253,16 @@ void Conv2dXPUKernel(const Context& dev_ctx,
             DataTypeToString(out_dtype)));
       }
     } else if (filter.dtype() == DataType::FLOAT32) {
+#ifdef PADDLE_WITH_XPU_XRE5
+      // XRE5: dynamic T_GEMM via env (XPU_PADDLE_CONV_*), default FC_FLOAT.
+      int fc_calc_type = GetConvCalcType<float>();
+      PD_VISIT_XPU_CONV_TYPES(float, fc_calc_type, "conv2d_xpu", [&] {
+        CONV2D_XPU_KERNEL_IMPL(float, float, float, TGEMM);
+      });
+#else
+      // Non-XRE5: keep the historical int32_t accumulation unchanged.
       CONV2D_XPU_KERNEL_IMPL(float, float, float, int32_t);
+#endif
     } else {
       PADDLE_THROW(common::errors::Unimplemented(
           "Not support x_dtype is %s, filter_dtype is %s and out_dtype is %s.",

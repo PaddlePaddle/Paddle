@@ -17,11 +17,13 @@
 #include <cuda_runtime.h>
 
 #include "paddle/common/ddim.h"
+#include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
@@ -363,8 +365,9 @@ __global__ void vectorized_rms_norm_kernel(const int N,
   extern __shared__ char s_data_raw[];
   T_ACC* s_data = reinterpret_cast<T_ACC*>(s_data_raw);
 
-  auto i1 = blockIdx.x;
-  const T* block_row = X + i1 * N;
+  const auto i1 = blockIdx.x;
+  const int64_t row_offset = static_cast<int64_t>(i1) * static_cast<int64_t>(N);
+  const T* block_row = X + row_offset;
 
   // Compute stats
   T_ACC sigma2 = compute_stats<T, T_ACC, kVecSize>(block_row, N, s_data);
@@ -373,7 +376,7 @@ __global__ void vectorized_rms_norm_kernel(const int N,
   const vec_t* X_vec = reinterpret_cast<const vec_t*>(block_row);
   const vec_t* scale_vec =
       (scale != nullptr) ? reinterpret_cast<const vec_t*>(scale) : nullptr;
-  vec_t* Y_vec = reinterpret_cast<vec_t*>(Y + i1 * N);
+  vec_t* Y_vec = reinterpret_cast<vec_t*>(Y + row_offset);
 
   const int numx = blockDim.x * blockDim.y;
   const int thrx = threadIdx.x + threadIdx.y * blockDim.x;
@@ -422,7 +425,8 @@ void launch_vectorized_rms_norm_kernel_driver(int N,
                                               cudaStream_t stream) {
   const int num_threads = 128;
   const dim3 threads(kWarpSize, num_threads / kWarpSize, 1);
-  dim3 blocks(M);
+  PADDLE_ENFORCE_LE_UINT32_MAX(M, "Kernel launch requires uint32 for grid dim");
+  dim3 blocks(static_cast<uint32_t>(M));
 
   // Shared memory for reduction: need size proportional to threads.y and T_ACC
   int nshared = threads.y > 1 ? threads.y * 3 / 2 * sizeof(T_ACC) : 0;
@@ -548,8 +552,9 @@ __global__ void vectorized_layer_norm_kernel(const int N,
   extern __shared__ char s_data_raw[];
   T_ACC* s_data = reinterpret_cast<T_ACC*>(s_data_raw);
 
-  auto i1 = blockIdx.x;
-  const T* block_row = X + i1 * N;
+  const auto i1 = blockIdx.x;
+  const int64_t row_offset = static_cast<int64_t>(i1) * static_cast<int64_t>(N);
+  const T* block_row = X + row_offset;
 
   // Compute stats using Welford algorithm
   WelfordDataLN wd =
@@ -561,7 +566,7 @@ __global__ void vectorized_layer_norm_kernel(const int N,
       (gamma != nullptr) ? reinterpret_cast<const vec_t*>(gamma) : nullptr;
   const vec_t* beta_vec =
       (beta != nullptr) ? reinterpret_cast<const vec_t*>(beta) : nullptr;
-  vec_t* Y_vec = reinterpret_cast<vec_t*>(Y + i1 * N);
+  vec_t* Y_vec = reinterpret_cast<vec_t*>(Y + row_offset);
 
   const int numx = blockDim.x * blockDim.y;
   const int thrx = threadIdx.x + threadIdx.y * blockDim.x;
@@ -707,7 +712,8 @@ void launch_vectorized_layer_norm_kernel_driver(int N,
                                                 cudaStream_t stream) {
   const int num_threads = 128;
   const dim3 threads(kWarpSize, num_threads / kWarpSize, 1);
-  dim3 blocks(M);
+  PADDLE_ENFORCE_LE_UINT32_MAX(M, "Kernel launch requires uint32 for grid dim");
+  dim3 blocks(static_cast<uint32_t>(M));
 
   int nshared = threads.y > 1 ? threads.y * 3 / 2 * sizeof(T_ACC) : 0;
 
@@ -763,7 +769,7 @@ void LayerNormFwdCompatKernel(
       cols % num_vec_elems == 0 && can_vec_X && can_vec_Y && can_vec_gamma &&
       can_vec_beta) {
     launch_vectorized_layer_norm_kernel_driver<T, T_ACC, 4>(
-        cols,
+        static_cast<int>(cols),
         rows,
         static_cast<T_ACC>(epsilon),
         x_data,
@@ -775,23 +781,28 @@ void LayerNormFwdCompatKernel(
         stream);
   } else {
     // Non-vectorized fallback: two-pass approach
-    LayerNormRowwiseMomentsCUDAKernel<T, T_ACC>
-        <<<rows, kCUDABlockReduceNumThreads, 0, stream>>>(
-            cols, static_cast<T_ACC>(epsilon), x_data, mean_data, var_data);
+    PADDLE_ENFORCE_LE_UINT32_MAX(rows,
+                                 "Kernel launch requires uint32 for grid dim");
+    LayerNormRowwiseMomentsCUDAKernel<T, T_ACC><<<static_cast<uint32_t>(rows),
+                                                  kCUDABlockReduceNumThreads,
+                                                  0,
+                                                  stream>>>(
+        cols, static_cast<T_ACC>(epsilon), x_data, mean_data, var_data);
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
 #endif
     LayerNormForwardCUDAKernel<T, T_ACC>
-        <<<rows, kCUDANumThreads, 0, stream>>>(cols,
-                                               x_data,
-                                               mean_data,
-                                               var_data,
-                                               static_cast<T_ACC>(epsilon),
-                                               gamma_data,
-                                               beta_data,
-                                               y_data);
+        <<<static_cast<uint32_t>(rows), kCUDANumThreads, 0, stream>>>(
+            cols,
+            x_data,
+            mean_data,
+            var_data,
+            static_cast<T_ACC>(epsilon),
+            gamma_data,
+            beta_data,
+            y_data);
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
 #else
@@ -813,13 +824,14 @@ __device__ __inline__ void compute_gI(const T* __restrict__ dY,
                                       const int N,
                                       T_ACC* buf) {
   const auto i1 = blockIdx.x;
+  const int64_t row_offset = static_cast<int64_t>(i1) * static_cast<int64_t>(N);
   const T_ACC rstd_val = rstd[i1];
   T_ACC stats_x2{0};
   constexpr int unroll = 4;
   auto l = unroll * threadIdx.x;
-  const T* X_i = X + i1 * N;
-  const T* dY_i = dY + i1 * N;
-  T* dX_i = dX + i1 * N;
+  const T* X_i = X + row_offset;
+  const T* dY_i = dY + row_offset;
+  T* dX_i = dX + row_offset;
 
   for (; l + unroll - 1 < N; l += blockDim.x * unroll) {
 #pragma unroll
@@ -887,10 +899,12 @@ __global__ void rms_norm_grad_input_kernel_vectorized(
   T_ACC* reduce_buf = reinterpret_cast<T_ACC*>(&shared_data);
 
   const auto bIdx = blockIdx.x;
+  const int64_t row_offset =
+      static_cast<int64_t>(bIdx) * static_cast<int64_t>(N);
   const T_ACC rstd_val = rstd[bIdx];
-  const T* X_i = X + bIdx * N;
-  const T* dY_i = dY + bIdx * N;
-  T* dX_i = dX + bIdx * N;
+  const T* X_i = X + row_offset;
+  const T* dY_i = dY + row_offset;
+  T* dX_i = dX + row_offset;
 
   using vec_t = aligned_vector<T, kVecSize>;
   const vec_t* const X_i_vec_ptr = reinterpret_cast<const vec_t*>(X_i);
@@ -1193,7 +1207,10 @@ void ConfigureAndLaunchScaleBackwardKernel(const T* dY_data,
   bool aligned_grid = (M % rows_per_block_y == 0) && (N % block_dim_x == 0);
   dim3 threads{block_dim_x, block_dim_y};
   dim3 blocks;
-  blocks.x = (N + block_dim_x - 1) / block_dim_x;
+  int64_t grid_x = (N + block_dim_x - 1) / block_dim_x;
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_x,
+                               "Kernel launch requires uint32 for grid dim");
+  blocks.x = static_cast<uint32_t>(grid_x);
   blocks.y = 1;
   size_t shmem_sz = (block_dim_x + 1) * block_dim_y * sizeof(T_ACC) * 2;
 
@@ -1322,7 +1339,7 @@ void RMSNormFwdKernel(const Context& dev_ctx,
         cols % num_vec_elems2 == 0 && can_vec_X2 && can_vec_Y2 &&
         can_vec_scale2) {
       launch_vectorized_rms_norm_kernel_driver<T, T_ACC, 8>(
-          cols,
+          static_cast<int>(cols),
           rows,
           static_cast<T_ACC>(epsilon),
           x_data,
@@ -1349,7 +1366,7 @@ void RMSNormFwdKernel(const Context& dev_ctx,
           static_cast<int64_t>(1ULL << std::numeric_limits<float>::digits) &&
       cols % num_vec_elems == 0 && can_vec_X && can_vec_Y && can_vec_scale) {
     launch_vectorized_rms_norm_kernel_driver<T, T_ACC, 4>(
-        cols,
+        static_cast<int>(cols),
         rows,
         static_cast<T_ACC>(epsilon),
         x_data,
@@ -1359,17 +1376,22 @@ void RMSNormFwdKernel(const Context& dev_ctx,
         stream);
 
   } else {
+    PADDLE_ENFORCE_LE_UINT32_MAX(rows,
+                                 "Kernel launch requires uint32 for grid dim");
     RowwiseMomentsCUDAKernel<T, T_ACC>
-        <<<rows, kCUDABlockReduceNumThreads, 0, stream>>>(
-            cols, static_cast<T_ACC>(epsilon), x_data, rstd_data);
+        <<<static_cast<uint32_t>(rows),
+           kCUDABlockReduceNumThreads,
+           0,
+           stream>>>(cols, static_cast<T_ACC>(epsilon), x_data, rstd_data);
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
 #endif
 
-    RMSNormForwardCUDAKernel<T, T_ACC><<<rows, kCUDANumThreads, 0, stream>>>(
-        cols, x_data, rstd_data, scale_data, y_data);
+    RMSNormForwardCUDAKernel<T, T_ACC>
+        <<<static_cast<uint32_t>(rows), kCUDANumThreads, 0, stream>>>(
+            cols, x_data, rstd_data, scale_data, y_data);
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
 #else
@@ -1400,7 +1422,11 @@ void RMSNormBwdKernel(const Context& dev_ctx,
       dev_ctx.template Alloc<T>(dX);
     }
     if (dscale) {
-      dev_ctx.template Alloc<T_ACC>(dscale);
+      // When X is empty, no element contributes to dscale, so the gradient is
+      // exactly zero. We must fill it with 0 instead of leaving the allocated
+      // buffer uninitialized (which would otherwise inject random values into
+      // the gradient computation).
+      Full<T, Context>(dev_ctx, dscale->dims(), 0, dscale);
     }
     return;
   }
@@ -1449,7 +1475,9 @@ void RMSNormBwdKernel(const Context& dev_ctx,
     bool is_supported_type2 = (std::is_same<T, dtype::float16>::value ||
                                std::is_same<T, dtype::bfloat16>::value);
 
-    dim3 blocks(M);
+    PADDLE_ENFORCE_LE_UINT32_MAX(M,
+                                 "Kernel launch requires uint32 for grid dim");
+    dim3 blocks(static_cast<uint32_t>(M));
     constexpr int num_threads = 128;
     constexpr int nshared = (num_threads / kWarpSize) * sizeof(T_ACC);
 
@@ -1457,27 +1485,42 @@ void RMSNormBwdKernel(const Context& dev_ctx,
     // misalignment of accuracy and torch alignment.
     if (!FLAGS_use_accuracy_compatible_kernel && is_supported_type2 &&
         bAlignedBuffers2 && (N % 8 == 0 && M <= 1024 && (N / M >= 32))) {
+      PADDLE_ENFORCE_LE_INT_MAX(N, "rms_norm grad input kernel requires int N");
       rms_norm_grad_input_kernel_vectorized<T, T_ACC, 8>
-          <<<blocks, num_threads, nshared, stream>>>(
-              dY_data, X_data, invvar_data, scale_data, dX_data, N);
+          <<<blocks, num_threads, nshared, stream>>>(dY_data,
+                                                     X_data,
+                                                     invvar_data,
+                                                     scale_data,
+                                                     dX_data,
+                                                     static_cast<int>(N));
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
 #endif
     } else if (is_supported_type && bAlignedBuffers && bVectorSizeMultiple) {
+      PADDLE_ENFORCE_LE_INT_MAX(N, "rms_norm grad input kernel requires int N");
       rms_norm_grad_input_kernel_vectorized<T, T_ACC, kVecSize>
-          <<<blocks, num_threads, nshared, stream>>>(
-              dY_data, X_data, invvar_data, scale_data, dX_data, N);
+          <<<blocks, num_threads, nshared, stream>>>(dY_data,
+                                                     X_data,
+                                                     invvar_data,
+                                                     scale_data,
+                                                     dX_data,
+                                                     static_cast<int>(N));
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
 #endif
     } else {
+      PADDLE_ENFORCE_LE_INT_MAX(N, "rms_norm grad input kernel requires int N");
       rms_norm_grad_input_kernel<T, T_ACC>
-          <<<blocks, num_threads, nshared, stream>>>(
-              dY_data, X_data, invvar_data, scale_data, dX_data, N);
+          <<<blocks, num_threads, nshared, stream>>>(dY_data,
+                                                     X_data,
+                                                     invvar_data,
+                                                     scale_data,
+                                                     dX_data,
+                                                     static_cast<int>(N));
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
 #else
@@ -1498,10 +1541,14 @@ void RMSNormBwdKernel(const Context& dev_ctx,
       bool aligned_grid = (M % rows_per_block_y == 0) && (N % block_dim_x == 0);
       dim3 threads{block_dim_x, block_dim_y};
       dim3 blocks;
-      blocks.x = (N + block_dim_x - 1) / block_dim_x;
-      blocks.y = (M + rows_per_block_y - 1) / rows_per_block_y;
+      int64_t grid_x = (N + block_dim_x - 1) / block_dim_x;
+      PADDLE_ENFORCE_LE_UINT32_MAX(
+          grid_x, "Kernel launch requires uint32 for grid dim");
+      blocks.x = static_cast<uint32_t>(grid_x);
+      int64_t grid_y = (M + rows_per_block_y - 1) / rows_per_block_y;
       constexpr int max_grid_size = 64 * 1024 / 2;
-      blocks.y = std::min<unsigned int>(max_grid_size / blocks.x, blocks.y);
+      grid_y = std::min<int64_t>(max_grid_size / blocks.x, grid_y);
+      blocks.y = static_cast<uint32_t>(grid_y);
 
       DenseTensor dscale_blocks;
       dscale_blocks.Resize({static_cast<int64_t>(blocks.y * threads.y), N});
@@ -1583,14 +1630,15 @@ __device__ __inline__ void layer_norm_compute_gI(const T* __restrict__ dY,
                                                  const int N,
                                                  T_ACC* buf) {
   const auto i1 = blockIdx.x;
+  const int64_t row_offset = static_cast<int64_t>(i1) * static_cast<int64_t>(N);
   T_ACC mean_val = mean[i1];
   const T_ACC rstd_val = rstd[i1];
   T_ACC stats_x1{0}, stats_x2{0};
   constexpr int unroll = 4;
   auto l = unroll * threadIdx.x;
-  const T* X_i = X + i1 * N;
-  const T* dY_i = dY + i1 * N;
-  T* dX_i = dX + i1 * N;
+  const T* X_i = X + row_offset;
+  const T* dY_i = dY + row_offset;
+  T* dX_i = dX + row_offset;
 
   for (; l + unroll - 1 < N; l += blockDim.x * unroll) {
 #pragma unroll
@@ -1669,11 +1717,13 @@ __global__ void layer_norm_grad_input_kernel_vectorized(
   T_ACC* reduce_buf = reinterpret_cast<T_ACC*>(&shared_data);
 
   const auto bIdx = blockIdx.x;
+  const int64_t row_offset =
+      static_cast<int64_t>(bIdx) * static_cast<int64_t>(N);
   T_ACC mean_val = mean[bIdx];
   const T_ACC rstd_val = rstd[bIdx];
-  const T* X_i = X + bIdx * N;
-  const T* dY_i = dY + bIdx * N;
-  T* dX_i = dX + bIdx * N;
+  const T* X_i = X + row_offset;
+  const T* dY_i = dY + row_offset;
+  T* dX_i = dX + row_offset;
 
   using vec_t = aligned_vector<T, kVecSize>;
   const vec_t* const X_i_vec_ptr = reinterpret_cast<const vec_t*>(X_i);
@@ -2010,7 +2060,10 @@ void ConfigureAndLaunchGammaBetaBackwardKernel(const T* dY_data,
   bool aligned_grid = (M % rows_per_block_y == 0) && (N % block_dim_x == 0);
   dim3 threads{block_dim_x, block_dim_y};
   dim3 blocks;
-  blocks.x = (N + block_dim_x - 1) / block_dim_x;
+  int64_t grid_x = (N + block_dim_x - 1) / block_dim_x;
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_x,
+                               "Kernel launch requires uint32 for grid dim");
+  blocks.x = static_cast<uint32_t>(grid_x);
   blocks.y = 1;
   // Shared memory: 2 arrays of [block_dim_y][block_dim_x+1] of T_ACC
   size_t shmem_sz = (block_dim_x + 1) * block_dim_y * sizeof(T_ACC) * 2;
@@ -2140,8 +2193,11 @@ void LayerNormBwdCompatKernel(
   {
     constexpr int kBlockSize = 256;
     int64_t num_blocks = (M + kBlockSize - 1) / kBlockSize;
-    VarToRstdKernel<T_ACC><<<num_blocks, kBlockSize, 0, stream>>>(
-        var_data, static_cast<T_ACC>(epsilon), rstd_data, M);
+    PADDLE_ENFORCE_LE_UINT32_MAX(num_blocks,
+                                 "Kernel launch requires uint32 for grid dim");
+    VarToRstdKernel<T_ACC>
+        <<<static_cast<uint32_t>(num_blocks), kBlockSize, 0, stream>>>(
+            var_data, static_cast<T_ACC>(epsilon), rstd_data, M);
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
 #else
@@ -2170,23 +2226,39 @@ void LayerNormBwdCompatKernel(
     bool is_supported_type2 = (std::is_same<T, phi::dtype::float16>::value ||
                                std::is_same<T, phi::dtype::bfloat16>::value);
 
-    dim3 blocks(M);
+    PADDLE_ENFORCE_LE_UINT32_MAX(M,
+                                 "Kernel launch requires uint32 for grid dim");
+    dim3 blocks(static_cast<uint32_t>(M));
     constexpr int num_threads = 128;
     constexpr int nshared = (num_threads / kWarpSize) * sizeof(T_ACC);
 
     if (is_supported_type && bAlignedBuffers && bVectorSizeMultiple) {
+      PADDLE_ENFORCE_LE_INT_MAX(N,
+                                "layer_norm grad input kernel requires int N");
       layer_norm_grad_input_kernel_vectorized<T, T_ACC, kVecSize>
-          <<<blocks, num_threads, nshared, stream>>>(
-              dY_data, X_data, mean_data, rstd_data, gamma_data, dX_data, N);
+          <<<blocks, num_threads, nshared, stream>>>(dY_data,
+                                                     X_data,
+                                                     mean_data,
+                                                     rstd_data,
+                                                     gamma_data,
+                                                     dX_data,
+                                                     static_cast<int>(N));
 #ifdef PADDLE_WITH_HIP
       PADDLE_ENFORCE_GPU_SUCCESS(hipGetLastError());
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
 #endif
     } else {
+      PADDLE_ENFORCE_LE_INT_MAX(N,
+                                "layer_norm grad input kernel requires int N");
       layer_norm_grad_input_kernel<T, T_ACC>
-          <<<blocks, num_threads, nshared, stream>>>(
-              dY_data, X_data, mean_data, rstd_data, gamma_data, dX_data, N);
+          <<<blocks, num_threads, nshared, stream>>>(dY_data,
+                                                     X_data,
+                                                     mean_data,
+                                                     rstd_data,
+                                                     gamma_data,
+                                                     dX_data,
+                                                     static_cast<int>(N));
     }
   }
 
@@ -2202,10 +2274,14 @@ void LayerNormBwdCompatKernel(
       bool aligned_grid = (M % rows_per_block_y == 0) && (N % block_dim_x == 0);
       dim3 threads{block_dim_x, block_dim_y};
       dim3 blocks;
-      blocks.x = (N + block_dim_x - 1) / block_dim_x;
-      blocks.y = (M + rows_per_block_y - 1) / rows_per_block_y;
+      int64_t grid_x = (N + block_dim_x - 1) / block_dim_x;
+      PADDLE_ENFORCE_LE_UINT32_MAX(
+          grid_x, "Kernel launch requires uint32 for grid dim");
+      blocks.x = static_cast<uint32_t>(grid_x);
+      int64_t grid_y = (M + rows_per_block_y - 1) / rows_per_block_y;
       constexpr int max_grid_size = 64 * 1024 / 2;
-      blocks.y = std::min<unsigned int>(max_grid_size / blocks.x, blocks.y);
+      grid_y = std::min<int64_t>(max_grid_size / blocks.x, grid_y);
+      blocks.y = static_cast<uint32_t>(grid_y);
 
       // Allocate temporary buffers for partial reduction
       DenseTensor dgamma_blocks, dbeta_blocks;

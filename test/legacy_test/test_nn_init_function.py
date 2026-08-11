@@ -170,9 +170,10 @@ class Test_kaiming_uniform_(unittest.TestCase):
                             a = _random_float(0.1, 2)
                         else:
                             a = 0
-                        paddle.nn.init.kaiming_uniform_(
+                        output = paddle.nn.init.kaiming_uniform_(
                             input_tensor, a=a, mode=mode
                         )
+                        self.assertIs(output, input_tensor)
                         self.check_kaiming_uniform(input_tensor, a=a, mode=mode)
 
     def test_linear_dygraph(self):
@@ -310,9 +311,10 @@ class Test_kaiming_normal_(unittest.TestCase):
                             a = _random_float(0.1, 2)
                         else:
                             a = 0
-                        paddle.nn.init.kaiming_normal_(
+                        output = paddle.nn.init.kaiming_normal_(
                             input_tensor, a=a, mode=mode
                         )
+                        self.assertIs(output, input_tensor)
                         self.check_kaiming_normal(input_tensor, a=a, mode=mode)
 
     def test_linear_dygraph(self):
@@ -427,7 +429,10 @@ class Test_xavier_uniform_(unittest.TestCase):
                         gain = _random_float(0.1, 3.0)
                     else:
                         gain = 1.0
-                    paddle.nn.init.xavier_uniform_(input_tensor, gain=gain)
+                    output = paddle.nn.init.xavier_uniform_(
+                        input_tensor, gain=gain
+                    )
+                    self.assertIs(output, input_tensor)
                     self.check(input_tensor, gain=gain)
 
     def test_linear_dygraph(self):
@@ -527,7 +532,10 @@ class Test_xavier_normal_(unittest.TestCase):
                         gain = _random_float(0.1, 3.0)
                     else:
                         gain = 1.0
-                    paddle.nn.init.xavier_normal_(input_tensor, gain=gain)
+                    output = paddle.nn.init.xavier_normal_(
+                        input_tensor, gain=gain
+                    )
+                    self.assertIs(output, input_tensor)
                     self.check(input_tensor, gain=gain)
 
     def test_linear_dygraph(self):
@@ -616,7 +624,8 @@ class Test_uniform_(unittest.TestCase):
                 input_tensor = _create_random_nd_tensor(
                     dims, size_min=20, size_max=108
                 )
-                paddle.nn.init.uniform_(input_tensor, a=-3.0, b=2.0)
+                output = paddle.nn.init.uniform_(input_tensor, a=-3.0, b=2.0)
+                self.assertIs(output, input_tensor)
                 self.check(input_tensor, -3.0, 2.0)
 
     @unittest.skipIf(
@@ -697,7 +706,8 @@ class Test_normal_(unittest.TestCase):
                 )
                 mean = _random_float(-3.0, 3.0)
                 std = _random_float(0.5, 3.0)
-                paddle.nn.init.normal_(input_tensor, mean, std)
+                output = paddle.nn.init.normal_(input_tensor, mean, std)
+                self.assertIs(output, input_tensor)
                 self.check(input_tensor, mean, std)
 
     @unittest.skipIf(
@@ -783,7 +793,10 @@ class Test_trunc_normal_(unittest.TestCase):
                 bound = _random_float(0.5, 10)
                 a = mean - bound
                 b = mean + bound
-                paddle.nn.init.trunc_normal_(input_tensor, mean, std, a, b)
+                output = paddle.nn.init.trunc_normal_(
+                    input_tensor, mean, std, a, b
+                )
+                self.assertIs(output, input_tensor)
                 self.check(input_tensor, mean, std, a, b)
 
     def test_static_graph_case1(self):
@@ -856,7 +869,8 @@ class Test_constant_(unittest.TestCase):
                     dims, size_min=20, size_max=108
                 )
                 val = _random_float(-1024.0, 1024.0)
-                paddle.nn.init.constant_(input_tensor, val)
+                output = paddle.nn.init.constant_(input_tensor, val)
+                self.assertIs(output, input_tensor)
                 self.check(input_tensor, val)
 
     def test_static_graph_case1(self):
@@ -926,7 +940,8 @@ class Test_ones_(unittest.TestCase):
                 input_tensor = _create_random_nd_tensor(
                     dims, size_min=20, size_max=108
                 )
-                paddle.nn.init.ones_(input_tensor)
+                output = paddle.nn.init.ones_(input_tensor)
+                self.assertIs(output, input_tensor)
                 self.check(input_tensor)
 
     def test_static_graph_case1(self):
@@ -1007,7 +1022,8 @@ class Test_zeros_(unittest.TestCase):
                 input_tensor = _create_random_nd_tensor(
                     dims, size_min=20, size_max=108
                 )
-                paddle.nn.init.zeros_(input_tensor)
+                output = paddle.nn.init.zeros_(input_tensor)
+                self.assertIs(output, input_tensor)
                 self.check(input_tensor)
 
     def test_static_graph_case1(self):
@@ -1086,7 +1102,8 @@ class Test_eye_(unittest.TestCase):
             input_tensor = _create_random_nd_tensor(
                 2, size_min=20, size_max=108
             )
-            paddle.nn.init.eye_(input_tensor)
+            output = paddle.nn.init.eye_(input_tensor)
+            self.assertIs(output, input_tensor)
             self.check(input_tensor)
 
     @unittest.skipIf(
@@ -1144,8 +1161,9 @@ class Test_dirac_(unittest.TestCase):
                     b = random.randint(1, 5 * groups)
                     input_tensor = paddle.randn((a * groups, b, c, d, e)[:dims])
 
-                    paddle.nn.init.dirac_(input_tensor, groups)
+                    output = paddle.nn.init.dirac_(input_tensor, groups)
 
+                    self.assertIs(output, input_tensor)
                     c_out, c_in = (
                         input_tensor.shape[0] // groups,
                         input_tensor.shape[1],
@@ -1199,6 +1217,77 @@ class Test_dirac_(unittest.TestCase):
             assert input_tensor.dtype == paddle.float16
 
 
+class Test_sparse_(unittest.TestCase):
+    def check(self, tensor, sparsity, std):
+        if isinstance(tensor, paddle.Tensor):
+            tensor_np = tensor.numpy()
+        else:
+            tensor_np = tensor
+
+        total_elements = tensor_np.size
+        zero_count = np.count_nonzero(tensor_np == 0)
+        actual_sparsity = zero_count / total_elements
+
+        self.assertGreaterEqual(actual_sparsity, sparsity - 0.01)
+        self.assertLessEqual(actual_sparsity, sparsity + 0.01)
+
+        # Check non-zero elements follow normal distribution
+        non_zero_elements = tensor_np[tensor_np != 0]
+        if len(non_zero_elements) > 0:
+            p_value = stats.kstest(non_zero_elements, "norm", args=(0.0, std))[
+                1
+            ]
+            self.assertGreater(p_value, 0.0001)
+
+    def test_error(self):
+        input_tensor = paddle.randn([100, 50, 3])
+        with self.assertRaises(ValueError):
+            paddle.nn.init.sparse_(input_tensor, sparsity=0.2, std=0.01)
+
+    def test_dygraph(self):
+        if paddle.is_compiled_with_xpu():
+            self.skipTest("sparsity is not supported on XPU")
+        with dygraph_guard():
+            for sparsity in [0.1, 0.5, 0.9]:
+                input_tensor = paddle.randn([100, 50])
+                output = paddle.nn.init.sparse_(
+                    input_tensor, sparsity=sparsity, std=0.01
+                )
+                self.assertIs(output, input_tensor)
+                self.check(input_tensor, sparsity, std=0.01)
+
+    def test_alias(self):
+        if paddle.is_compiled_with_xpu():
+            self.skipTest("sparsity is not supported on XPU")
+        with dygraph_guard():
+            for sparsity in [0.1, 0.5, 0.9]:
+                input_tensor = paddle.randn([100, 50])
+                output = paddle.nn.init.sparse(
+                    input_tensor, sparsity=sparsity, std=0.01
+                )
+                self.assertIs(output, input_tensor)
+                self.check(input_tensor, sparsity, std=0.01)
+
+    def test_static_graph_case(self):
+        self.place = get_devices()
+        with static_guard():
+            for place in self.place:
+                x_np = np.random.randn(100, 50).astype('float32')
+                with paddle.static.program_guard(Program()):
+                    x = paddle.static.data(
+                        name="x", shape=[100, 50], dtype='float32'
+                    )
+                    out = paddle.nn.init.sparse_(x, sparsity=0.5, std=0.01)
+                    exe = paddle.static.Executor(place=place)
+                    feed_list = {"x": x_np}
+                    pd_res = exe.run(
+                        paddle.static.default_main_program(),
+                        feed=feed_list,
+                        fetch_list=[out],
+                    )[0]
+                    self.check(pd_res, sparsity=0.5, std=0.01)
+
+
 class Test_orthogonal_(unittest.TestCase):
     def check(self, tensor, gain):
         if isinstance(tensor, paddle.Tensor):
@@ -1237,8 +1326,9 @@ class Test_orthogonal_(unittest.TestCase):
                     if use_gain:
                         gain = _random_float(0.1, 2)
 
-                    paddle.nn.init.orthogonal_(input_tensor, gain=gain)
+                    output = paddle.nn.init.orthogonal_(input_tensor, gain=gain)
 
+                    self.assertIs(output, input_tensor)
                     self.check(input_tensor, gain=gain)
 
     def test_dims_error(self):

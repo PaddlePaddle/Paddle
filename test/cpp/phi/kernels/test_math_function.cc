@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <array>
+#include <limits>
 #include <set>
 
 #include "gtest/gtest.h"
@@ -76,6 +77,73 @@ TEST(math_function, gemm_notrans_cblas) {
   EXPECT_EQ(input3_ptr[6], 86);
   EXPECT_EQ(input3_ptr[7], 99);
 }
+
+TEST(math_function, dot_with_blas_zero_length) {
+  bool called = false;
+  auto result = phi::funcs::detail::dot_with_blas<float>(
+      0,
+      nullptr,
+      1,
+      nullptr,
+      1,
+      [&](int, const float*, int, const float*, int) {
+        called = true;
+        return 1.0f;
+      });
+
+  EXPECT_FALSE(called);
+  EXPECT_FLOAT_EQ(result, 0.0f);
+}
+
+TEST(math_function, dot_with_blas_single_element) {
+  const std::array<float, 1> x = {3.0f};
+  const std::array<float, 1> y = {4.0f};
+  bool called = false;
+
+  auto result = phi::funcs::detail::dot_with_blas<float>(
+      1,
+      x.data(),
+      8,
+      y.data(),
+      9,
+      [&](int n, const float* px, int incx, const float* py, int incy) {
+        called = true;
+        EXPECT_EQ(n, 1);
+        EXPECT_EQ(incx, 1);
+        EXPECT_EQ(incy, 1);
+        return px[0] * py[0];
+      });
+
+  EXPECT_TRUE(called);
+  EXPECT_FLOAT_EQ(result, 12.0f);
+}
+
+TEST(math_function, dot_fallback_strided) {
+  const std::array<float, 5> x = {1.0f, 0.0f, 2.0f, 0.0f, 3.0f};
+  const std::array<float, 7> y = {4.0f, 0.0f, 0.0f, 5.0f, 0.0f, 0.0f, 6.0f};
+
+  auto result =
+      phi::funcs::detail::dot_fallback<float>(3, x.data(), 2, y.data(), 3);
+
+  EXPECT_FLOAT_EQ(result, 32.0f);
+}
+
+TEST(math_function, level1_blas_compatible_true) {
+  EXPECT_TRUE(phi::funcs::detail::level1_blas_compatible(0, 1, 1));
+  EXPECT_TRUE(phi::funcs::detail::level1_blas_compatible(
+      std::numeric_limits<int>::max(), std::numeric_limits<int>::min(), 0));
+}
+
+TEST(math_function, level1_blas_compatible_false) {
+  EXPECT_FALSE(phi::funcs::detail::level1_blas_compatible(-1, 1, 1));
+  EXPECT_FALSE(phi::funcs::detail::level1_blas_compatible(
+      static_cast<int64_t>(std::numeric_limits<int>::max()) + 1, 1, 1));
+  EXPECT_FALSE(phi::funcs::detail::level1_blas_compatible(
+      1, static_cast<int64_t>(std::numeric_limits<int>::min()) - 1, 1));
+  EXPECT_FALSE(phi::funcs::detail::level1_blas_compatible(
+      1, 1, static_cast<int64_t>(std::numeric_limits<int>::max()) + 1));
+}
+
 #ifdef PADDLE_WITH_LIBXSMM
 template <typename T>
 void MklSmmCompare(int m, int n, int k) {

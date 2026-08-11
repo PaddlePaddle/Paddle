@@ -38,6 +38,12 @@ void EmbeddingKernel(const Context &dev_ctx,
 
   int64_t ids_numel = ids_t->numel();
 
+  if (ids_numel > 0 && weight.dims()[0] == 0) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "The first dimension of Input(Weight) in OP(embedding) must be "
+        "greater than 0 when Input(Ids) is not empty."));
+  }
+
   auto *table_t = &weight;
 
   auto *table = table_t->data<T>();

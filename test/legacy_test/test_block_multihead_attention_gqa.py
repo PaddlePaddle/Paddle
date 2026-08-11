@@ -1624,7 +1624,7 @@ class TestBlockGroupQueryAttnEncDecPTQDequant(unittest.TestCase):
     or get_cuda_version() < 11040
     or not is_sm_supported,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
-    "and device's compute capability must be 8.x or 90",
+    " and device's compute capability must be 7.x, 8.x or 9.x",
 )
 class TestBlockGroupQueryAttnEncDecPTQDequantQuantShiftSmooth(
     unittest.TestCase
@@ -2027,7 +2027,7 @@ class TestBlockGroupQueryAttnEncDecPTQDequantQuantShiftSmooth(
     or get_cuda_version() < 11040
     or not is_sm_supported,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
-    "and device's compute capability must be 8.x or 90",
+    " and device's compute capability must be 7.x, 8.x or 9.x",
 )
 class TestBlockGroupQueryAttnEncDecQuant(unittest.TestCase):
     def setUp(self):

@@ -147,6 +147,19 @@ else()
   endif()
 
   set(FLASHATTN_CMAKE_CUDA_FLAGS "-Xfatbin -compress-all")
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION
+                                              VERSION_GREATER_EQUAL 15.0)
+    # GCC 15 diagnoses template-body lookup failures in the vendored CUTLASS
+    # v2.9.0 matrix.h before the affected helpers are instantiated. Keep this
+    # warning local to FlashAttention until CUTLASS is upgraded or patched.
+    if(CMAKE_CUDA_COMPILER_ID STREQUAL "NVIDIA")
+      set(FLASHATTN_CMAKE_CUDA_FLAGS
+          "${FLASHATTN_CMAKE_CUDA_FLAGS} -Xcompiler=-Wno-template-body")
+    else()
+      set(FLASHATTN_CMAKE_CUDA_FLAGS
+          "${FLASHATTN_CMAKE_CUDA_FLAGS} -Wno-template-body")
+    endif()
+  endif()
   set(FA_NVCC_ARCH_BIN "")
   foreach(arch ${NVCC_ARCH_BIN})
     string(STRIP ${arch} arch)
@@ -171,6 +184,9 @@ else()
   set(CACHE_TAR_DIR "${FA_BUILD_DIR}/flashattn_libs_${FLASHATTN_TAG}")
 
   set(SKIP_BUILD_FA OFF)
+  if(WITH_ARM)
+    set(WITH_FA_BUILD_WITH_CACHE OFF)
+  endif()
   if(WITH_FA_BUILD_WITH_CACHE)
 
     message(STATUS "Downloading ${TAR_FILE_URL} to ${CACHE_TAR_PATH}")

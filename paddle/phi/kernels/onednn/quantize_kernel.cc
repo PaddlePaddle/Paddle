@@ -38,11 +38,12 @@ void QuantOpKernel(const Context& dev_ctx,
                     0.0f,
                     common::errors::InvalidArgument(
                         "Quantization scale must be different than 0.0f"));
-  PADDLE_ENFORCE(quantization_shift <= 255 && quantization_shift >= 0,
-                 common::errors::InvalidArgument(
-                     "Quantization shift must be lower or equal to ",
-                     "255 and greater or equal to 0, but got %f",
-                     quantization_shift));
+  PADDLE_ENFORCE(
+      quantization_shift <= 255 && quantization_shift >= 0,
+      common::errors::InvalidArgument(
+          "Quantization shift must be lower or equal to 255 and greater or "
+          "equal to 0, but got %d",
+          quantization_shift));
 
   auto x_tz = vectorize<int64_t>(input.dims());
   dnnl::primitive_attr attrs;

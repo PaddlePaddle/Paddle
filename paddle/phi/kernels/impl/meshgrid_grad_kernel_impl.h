@@ -47,7 +47,7 @@ void MeshgridBackward(const Context& dev_ctx,
     auto in_grad = EigenVector<T>::Flatten(*outs[i]);
 
     std::vector<int> reduce_dims_vec;
-    std::vector<int> reshape_dims_vec;
+    std::vector<int64_t> reshape_dims_vec;
     for (int j = 0; j < n; j++) {
       reduce_dims_vec.push_back(reshape_dims_vec.size());
       if (j == i) {
@@ -108,8 +108,7 @@ void MeshgridGradKernel(const Context& dev_ctx,
       break;
     default:
       PADDLE_THROW(common::errors::InvalidArgument(
-          "Excepted Tensor numbers between 1 and 6, but only received d% .",
-          n));
+          "Excepted Tensor numbers between 1 and 6, but only received %d.", n));
   }
 }
 

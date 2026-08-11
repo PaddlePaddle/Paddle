@@ -46,7 +46,7 @@ __global__ void gather_with_mask_permute_kernel(
                       static_cast<int64_t>(threadIdx.x)) *
                      vec_size;
        idx < N;
-       idx += blockDim.x * gridDim.x * vec_size) {
+       idx += static_cast<int64_t>(blockDim.x) * gridDim.x * vec_size) {
     int64_t si = idx / dim;
     int64_t di_begin = idx % dim;
     int64_t si_shared_begin = shared_idx_begin / dim;
@@ -90,7 +90,7 @@ __global__ void gather_with_mask_permute_kernel(
       }
     }
     Store<T, vec_size>(out_vec, dx + idx);
-    shared_idx_begin += blockDim.x * gridDim.x * vec_size;
+    shared_idx_begin += static_cast<int64_t>(blockDim.x) * gridDim.x * vec_size;
   }
 }
 
@@ -118,7 +118,7 @@ __global__ void gather_with_mask_kernel(
                       static_cast<int64_t>(threadIdx.x)) *
                      vec_size;
        idx < N;
-       idx += blockDim.x * gridDim.x * vec_size) {
+       idx += static_cast<int64_t>(blockDim.x) * gridDim.x * vec_size) {
     int64_t si = idx / dim;
     int64_t di_begin = idx % dim;
     int64_t si_shared_begin = shared_idx_begin / dim;
@@ -155,7 +155,7 @@ __global__ void gather_with_mask_kernel(
       }
     }
     Store<T, vec_size>(out_vec, dx + idx);
-    shared_idx_begin += blockDim.x * gridDim.x * vec_size;
+    shared_idx_begin += static_cast<int64_t>(blockDim.x) * gridDim.x * vec_size;
   }
 }
 
@@ -195,7 +195,7 @@ void gather_with_mask_launcher(const T* dy,                   // [s*k, d]
                                int64_t world_size = -1,
                                int64_t num_local_experts = -1,
                                int64_t capacity = -1) {
-  int numel = num_rows * dim;
+  int64_t numel = num_rows * dim;
 
   int64_t threads = 512;
   if (dim % 4 == 0) {
@@ -285,12 +285,12 @@ __global__ void topk_grad_with_mask(const T* dy,               // [s, k]
 ) {
   // init dx to zero
   for (int i = blockIdx.x; i < num_rows; i += gridDim.x) {
-    int base_grad = i * num_experts;
+    int64_t base_grad = static_cast<int64_t>(i) * num_experts;
     for (int j = threadIdx.x; j < num_experts; j += blockDim.x) {
       dx[base_grad + j] = static_cast<T>(0);
     }
     __syncthreads();
-    int base_index = i * k;
+    int64_t base_index = static_cast<int64_t>(i) * k;
     for (int j = threadIdx.x; j < k; j += blockDim.x) {
       int64_t idx = topk_idx[base_index + j];
       if (combine_weights[base_index + j] > static_cast<T>(0)) {

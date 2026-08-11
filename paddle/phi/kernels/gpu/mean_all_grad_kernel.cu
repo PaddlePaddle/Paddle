@@ -50,7 +50,9 @@ void MeanAllGradKernel(const Context& dev_ctx,
   auto size_prob = x_grad->numel();
   auto out_data = x_grad->data<T>();
   int threads = 512;
-  int grid = (size_prob + threads - 1) / threads;
+  int64_t grid_64 = (size_prob + threads - 1) / threads;
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "grid");
+  uint32_t grid = static_cast<uint32_t>(grid_64);
   auto stream = dev_ctx.stream();
   MeanRunKernel<T><<<grid, threads, 0, stream>>>(in_data, out_data, size_prob);
 }

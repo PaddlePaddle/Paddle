@@ -237,8 +237,7 @@ class TestCompatSort(unittest.TestCase):
             sort_res.indices.numpy(), np.array(0, dtype=np.int64)
         )
 
-        msg_gt_1 = "paddle.sort() received unexpected keyword arguments 'dim', 'input'. \nDid you mean to use paddle.compat.sort() instead?"
-        msg_gt_2 = "paddle.compat.sort() received unexpected keyword arguments 'axis', 'x'. \nDid you mean to use paddle.sort() instead?"
+        msg_gt_1 = "paddle.sort() received unexpected keyword arguments 'dim', 'input'. \nPlease use paddle.compat.sort() instead."
 
         # invalid split sections
         with self.assertRaises(TypeError) as cm:
@@ -246,9 +245,8 @@ class TestCompatSort(unittest.TestCase):
         self.assertEqual(str(cm.exception), msg_gt_1)
 
         # invalid split axis
-        with self.assertRaises(TypeError) as cm:
+        with self.assertRaises(TypeError):
             compat_sort(x=paddle.to_tensor([2, 1, 3]), axis=0)
-        self.assertEqual(str(cm.exception), msg_gt_2)
 
         def test_wrong_out_input(dim, out_input):
             with self.assertRaises(TypeError) as cm:

@@ -23,6 +23,7 @@ import numpy as np
 import paddle
 from paddle.base import framework
 from paddle.distribution.transformed_distribution import TransformedDistribution
+from paddle.utils.decorator_utils import param_one_alias
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -250,6 +251,7 @@ class Gumbel(TransformedDistribution):
         """
         return paddle.log(self.scale) + 1 + np.euler_gamma
 
+    @param_one_alias(["shape", "sample_shape"])
     def sample(self, shape: Sequence[int] = []) -> Tensor:
         """Sample from ``Gumbel``.
 
@@ -263,6 +265,7 @@ class Gumbel(TransformedDistribution):
         with paddle.no_grad():
             return self.rsample(shape)
 
+    @param_one_alias(["shape", "sample_shape"])
     def rsample(self, shape: Sequence[int] = []) -> Tensor:
         """reparameterized sample
         Args:

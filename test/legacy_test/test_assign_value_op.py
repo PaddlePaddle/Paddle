@@ -43,7 +43,7 @@ class TestAssignValueOp(op_test.OpTest):
         self.attrs = {}
         self.init_data()
         self.attrs["shape"] = self.value.shape
-        self.attrs["dtype"] = framework.convert_np_dtype_to_dtype_(
+        self.attrs["dtype"] = framework.convert_nptype_to_datatype_or_vartype(
             self.value.dtype
         )
         self.python_api = wrap_assign_value_wrapper(self.attrs["dtype"])

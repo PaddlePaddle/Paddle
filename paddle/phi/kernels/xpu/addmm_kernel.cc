@@ -31,10 +31,12 @@ void AddmmKernel(const Context& dev_ctx,
                  const DenseTensor& input,
                  const DenseTensor& x,
                  const DenseTensor& y,
-                 float beta,
-                 float alpha,
+                 double beta,
+                 double alpha,
                  DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+  const float xpu_beta = static_cast<float>(beta);
+  const float xpu_alpha = static_cast<float>(alpha);
 
   auto input_dims = input.dims();
   auto x_dims = x.dims();
@@ -195,8 +197,8 @@ void AddmmKernel(const Context& dev_ctx,
         false,
     };
     xblas::FcFusionDesc<float, float, XPUType> desc{
-        alpha,
-        beta,
+        xpu_alpha,
+        xpu_beta,
     };
     xblas::FcFusionEpilogue<float, float> epilogue{
         xdnn::Activation_t::LINEAR,
@@ -223,8 +225,13 @@ void AddmmKernel(const Context& dev_ctx,
     Copy(dev_ctx, input, dev_ctx.GetPlace(), false, out);
     XpuFcInfo fc_info;
     GetFCInfo(x_dims, y_dims, false, false, &fc_info);
-    MatMulXPUFunction<XPUType>(
-        dev_ctx.x_context(), x_ptr, y_ptr, out_ptr, fc_info, alpha, beta);
+    MatMulXPUFunction<XPUType>(dev_ctx.x_context(),
+                               x_ptr,
+                               y_ptr,
+                               out_ptr,
+                               fc_info,
+                               xpu_alpha,
+                               xpu_beta);
 #endif
   }
 }

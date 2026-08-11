@@ -26,7 +26,7 @@ from .layers import Layer
 
 if TYPE_CHECKING:
     from paddle import Tensor
-    from paddle._typing import DataLayoutND, ParamAttrLike
+    from paddle._typing import DataLayoutND, DTypeLike, ParamAttrLike, PlaceLike
 __all__ = []
 
 
@@ -104,6 +104,7 @@ class ELU(Layer):
 
     Parameters:
         alpha (float, optional): The 'alpha' value of the ELU formulation. Default is 1.0.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -123,19 +124,35 @@ class ELU(Layer):
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-0.12642412,  6.        ],
              [ 1.        , 15.60000038]])
+            >>> m = paddle.nn.ELU(0.2, True)
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.12642412,  6.        ],
+             [ 1.        , 15.60000038]])
+            >>> print(x)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.12642412,  6.        ],
+             [ 1.        , 15.60000038]])
     """
 
-    def __init__(self, alpha: float = 1.0, name: str | None = None) -> None:
+    def __init__(
+        self, alpha: float = 1.0, inplace: bool = False, name: str | None = None
+    ) -> None:
         super().__init__()
         self._alpha = alpha
+        self._inplace = inplace
         self._name = name
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
-        return F.elu(x, self._alpha, self._name)
+        return F.elu(x, self._alpha, self._inplace, self._name)
 
     def extra_repr(self) -> str:
-        name_str = f', name={self._name}' if self._name else ''
-        return f'alpha={self._alpha}{name_str}'
+        parts = [f'alpha={self._alpha}']
+        parts.append(f'inplace={self._inplace}') if self._inplace else None
+        parts.append(f'name={self._name}') if self._name else None
+        return ', '.join(parts)
 
 
 class GLU(Layer):
@@ -361,6 +378,7 @@ class Hardswish(Layer):
 
 
     Parameters:
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -382,16 +400,20 @@ class Hardswish(Layer):
             [-0.       , 5.        , 0.66666669])
     """
 
-    def __init__(self, name: str | None = None) -> None:
+    def __init__(self, inplace: bool = False, name: str | None = None) -> None:
         super().__init__()
         self._name = name
+        self._inplace = inplace
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
-        return F.hardswish(x, self._name)
+        return F.hardswish(x, self._inplace, self._name)
 
     def extra_repr(self) -> str:
-        name_str = f'name={self._name}' if self._name else ''
-        return name_str
+        parts = []
+        parts.append(f'inplace={self._inplace}') if self._inplace else None
+        parts.append(f'name={self._name}') if self._name else None
+        return ', '.join(parts)
 
 
 class Tanh(Layer):
@@ -514,6 +536,8 @@ class PReLU(Layer):
             It may be "NC", "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Default: "NCHW".
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
+        device(PlaceLike, optional): The device place for the parameter. Default: None.
+        dtype(str|paddle.dtype|np.dtype, optional): The data type of the parameter. Default: None.
 
     Shape:
         - input: Tensor with any shape. Default dtype is float32.
@@ -559,6 +583,8 @@ class PReLU(Layer):
         weight_attr: ParamAttrLike | None = None,
         data_format: DataLayoutND = "NCHW",
         name: str | None = None,
+        device: PlaceLike | None = None,
+        dtype: DTypeLike | None = None,
     ) -> None:
         super().__init__()
         self._num_parameters = num_parameters
@@ -566,15 +592,18 @@ class PReLU(Layer):
         self._weight_attr = weight_attr
         self._name = name
         self._data_format = data_format
+        self._dtype = dtype if dtype is not None else get_default_dtype()
 
         self._weight = self.create_parameter(
             attr=self._weight_attr,
             shape=[self._num_parameters],
-            dtype=get_default_dtype(),
+            dtype=self._dtype,
             is_bias=False,
             default_initializer=Constant(self._init),
+            device=device,
         )
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.prelu(x, self._weight, data_format=self._data_format)
 
@@ -752,6 +781,7 @@ class ReLU6(Layer):
     x is input Tensor.
 
     Parameters:
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -772,15 +802,20 @@ class ReLU6(Layer):
             [0.        , 0.30000000, 6.        ])
     """
 
-    def __init__(self, name: str | None = None) -> None:
+    def __init__(self, inplace: bool = False, name: str | None = None) -> None:
         super().__init__()
         self._name = name
+        self._inplace = inplace
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
-        return F.relu6(x, self._name)
+        return F.relu6(x, self._inplace, self._name)
 
     def extra_repr(self) -> str:
-        return f'name={self._name}' if self._name else ''
+        parts = []
+        parts.append(f'inplace={self._inplace}') if self._inplace else None
+        parts.append(f'name={self._name}') if self._name else None
+        return ', '.join(parts)
 
 
 class SELU(Layer):
@@ -1546,10 +1581,10 @@ class Softmax(Layer):
                          [0.72747516, 0.72747516, 0.72747516, 0.72747516]]]
 
     Parameters:
-        axis (int, optional): The axis along which to perform log_softmax
+        axis (int, optional): The axis along which to perform softmax
             calculations. It should be in range [-D, D), where D is the
             dimensions of ``x`` . If ``axis`` < 0, it works the same way as
-            :math:`axis + D` . Default is -1.
+            :math:`axis + D` . Default is -1. Alias: ``dim``.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 

@@ -16,6 +16,7 @@
 
 #include <ATen/core/Tensor.h>
 #include <c10/core/Device.h>
+#include <c10/core/Storage.h>
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <c10/cuda/CUDAStream.h>
 #endif
@@ -29,17 +30,36 @@ inline void Tensor::record_stream(at::Stream s) const {
            "tensor implementation.");
   PD_CHECK(dense_tensor->place().GetType() != phi::AllocationType::CPU,
            "record_stream is not supported for CPU tensors.");
+  PD_CHECK(dense_tensor->place() == s.device()._PD_GetInner(),
+           "record_stream requires the tensor and stream to use the same "
+           "device, but got tensor on ",
+           dense_tensor->place(),
+           " and stream on ",
+           s.device(),
+           ".");
+
+  auto holder = dense_tensor->Holder();
+  if (auto storage_holder =
+          std::dynamic_pointer_cast<c10::StorageHolderView>(holder)) {
+    auto storage_impl = storage_holder->get_impl();
+    PD_CHECK(storage_impl != nullptr,
+             "record_stream cannot resolve a StorageHolderView without a "
+             "StorageImpl.");
+    holder = storage_impl->data_allocation_;
+  }
+  PD_CHECK(holder != nullptr,
+           "record_stream requires tensor storage backed by a "
+           "phi::Allocation.");
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     !defined(PADDLE_WITH_CUSTOM_DEVICE)
   paddle::memory::RecordStream(
-      dense_tensor->Holder(), reinterpret_cast<gpuStream_t>(s.native_handle()));
+      holder, reinterpret_cast<gpuStream_t>(s.native_handle()));
 #elif defined(PADDLE_WITH_XPU)
-  paddle::memory::RecordStream(dense_tensor->Holder(),
+  paddle::memory::RecordStream(holder,
                                reinterpret_cast<XPUStream>(s.native_handle()));
 #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
   paddle::memory::RecordStream(
-      dense_tensor->Holder(),
-      reinterpret_cast<phi::stream::stream_t>(s.native_handle()));
+      holder, reinterpret_cast<phi::stream::stream_t>(s.native_handle()));
 #else
   (void)s;
   (void)dense_tensor;
@@ -49,9 +69,4 @@ inline void Tensor::record_stream(at::Stream s) const {
 #endif
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-inline void Tensor::record_stream(at::cuda::CUDAStream s) const {
-  record_stream(static_cast<at::Stream>(s));
-}
-#endif
 }  // namespace at

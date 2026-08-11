@@ -42,7 +42,7 @@ repos:
         files: \.sh$
         args: [--whitespaces-count, '4']
   - repo: https://github.com/PFCCLab/ast-grep-pre-commit-mirror
-    rev: v0.42.1
+    rev: v0.45.0
     hooks:
       - id: ast-grep
   - repo: local
@@ -59,17 +59,18 @@ repos:
             paddle/cinn/utils/registry.h
           )$
   - repo: https://github.com/PFCCLab/typos-pre-commit-mirror.git
-    rev: v1.46.2
+    rev: v1.48.0
     hooks:
       - id: typos
         args: [--force-exclude]
   # For Python files
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.0
+    rev: v0.16.0
     hooks:
       - id: ruff-check
         args: [--fix, --exit-non-zero-on-fix, --no-cache]
       - id: ruff-format
+        types_or: [python, pyi, jupyter, markdown]
   # For C++ files
   - repo: local
     hooks:

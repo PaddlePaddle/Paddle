@@ -806,7 +806,7 @@ nvinfer1::DimsExprs Conv2dTransposeInferMeta(
     PADDLE_ENFORCE_EQ(strides[i] > 0,
                       true,
                       common::errors::InvalidArgument(
-                          "Required strides[i] should be greater than 0",
+                          "Required strides[i] should be greater than 0, "
                           "but received strides[i] = %d",
                           strides[i]));
   }

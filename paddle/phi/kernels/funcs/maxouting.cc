@@ -31,18 +31,18 @@ void MaxOutFunctor<DeviceContext, T>::operator()(const DeviceContext& dev_ctx,
   const int input_width =
       static_cast<int>(axis == 1 ? input.dims()[3] : input.dims()[2]);
   const int output_channels = static_cast<int>(output->dims()[axis]);
-  int fea_size = input_height * input_width;
+  int64_t fea_size = static_cast<int64_t>(input_height) * input_width;
   // c_size means the output size of each sample
-  int c_size = fea_size * output_channels;
+  int64_t c_size = static_cast<int64_t>(fea_size) * output_channels;
   const T* input_data = input.data<T>();
   T* output_data = dev_ctx.template Alloc<T>(output);
   for (int i = 0; i < batch_size; ++i) {
-    int new_bindex = c_size * i;
+    int64_t new_bindex = static_cast<int64_t>(c_size) * i;
     for (int c = 0; c < output_channels; ++c) {
-      int new_cindex = fea_size * c;
-      for (int f = 0; f < fea_size; ++f) {
+      int64_t new_cindex = static_cast<int64_t>(fea_size) * c;
+      for (int64_t f = 0; f < fea_size; ++f) {
         T ele = static_cast<T>(-FLT_MAX);
-        int input_idx = 0, output_idx = 0;
+        int64_t input_idx = 0, output_idx = 0;
         for (int ph = 0; ph < groups; ++ph) {
           if (axis == 1) {
             input_idx = (new_bindex + new_cindex) * groups + ph * fea_size + f;
@@ -78,17 +78,17 @@ void MaxOutGradFunctor<DeviceContext, T>::operator()(
   const int input_width =
       static_cast<int>(axis == 1 ? input.dims()[3] : input.dims()[2]);
   const int output_channels = static_cast<int>(output.dims()[axis]);
-  int fea_size = input_height * input_width;
+  int64_t fea_size = static_cast<int64_t>(input_height) * input_width;
   const T* input_data = input.data<T>();
   const T* output_data = output.data<T>();
   const T* output_grad_data = output_grad.data<T>();
   T* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
   for (int i = 0; i < batch_size; ++i) {
-    int blen = fea_size * output_channels * i;
+    int64_t blen = static_cast<int64_t>(fea_size) * output_channels * i;
     for (int c = 0; c < output_channels; ++c) {
-      int clen = fea_size * c;
-      for (int f = 0; f < fea_size; ++f) {
-        int input_idx0 = 0, output_idx = 0;
+      int64_t clen = static_cast<int64_t>(fea_size) * c;
+      for (int64_t f = 0; f < fea_size; ++f) {
+        int64_t input_idx0 = 0, output_idx = 0;
         bool continue_match = true;
         if (axis == 1) {
           input_idx0 = (blen + clen) * groups + f;
@@ -98,8 +98,8 @@ void MaxOutGradFunctor<DeviceContext, T>::operator()(
           output_idx = blen + f * output_channels + c;
         }
         for (int g = 0; g < groups && continue_match; ++g) {
-          int idx_offset = (axis == 1 ? fea_size * g : g);
-          int input_idx = input_idx0 + idx_offset;
+          int64_t idx_offset = (axis == 1 ? fea_size * g : g);
+          int64_t input_idx = input_idx0 + idx_offset;
           if (input_data[input_idx] == output_data[output_idx]) {
             input_grad_data[input_idx] += output_grad_data[output_idx];
             continue_match = false;

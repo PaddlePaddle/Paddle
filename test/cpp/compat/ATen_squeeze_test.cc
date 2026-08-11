@@ -101,13 +101,11 @@ TEST(TestSqueeze, SqueezeInplaceMultipleDims) {
   ASSERT_EQ(tensor.data_ptr(), original_ptr);
 }
 
-TEST(TestUnsqueeze, UnsqueezeNoArg) {
-  // Test unsqueeze() without arguments
+TEST(TestUnsqueeze, UnsqueezeLeadingDim) {
   at::Tensor tensor = at::ones({3, 4}, at::kFloat);
-  at::Tensor unsqueezed = tensor.unsqueeze();
+  at::Tensor unsqueezed = tensor.unsqueeze(0);
 
-  // The behavior depends on the implementation
-  ASSERT_EQ(unsqueezed.numel(), tensor.numel());
+  ASSERT_EQ(unsqueezed.sizes(), c10::IntArrayRef({1, 3, 4}));
 }
 
 TEST(TestUnsqueeze, UnsqueezeSingleDim) {
@@ -131,23 +129,21 @@ TEST(TestUnsqueeze, UnsqueezeSingleDim) {
   ASSERT_EQ(unsqueezed_neg.sizes(), c10::IntArrayRef({3, 4, 1}));
 }
 
-TEST(TestUnsqueeze, UnsqueezeMultipleDims) {
-  // Test unsqueeze(IntArrayRef dim) - adds dimensions at specified positions
+TEST(TestUnsqueeze, UnsqueezeChainedDims) {
   at::Tensor tensor = at::ones({3, 4}, at::kFloat);
 
-  // Unsqueeze at dimensions 0 and 2
-  at::Tensor unsqueezed = tensor.unsqueeze(c10::IntArrayRef({0, 2}));
+  at::Tensor unsqueezed = tensor.unsqueeze(0).unsqueeze(2);
+  ASSERT_EQ(unsqueezed.sizes(), c10::IntArrayRef({1, 3, 1, 4}));
   ASSERT_EQ(unsqueezed.numel(), tensor.numel());
 }
 
-TEST(TestUnsqueeze, UnsqueezeInplaceNoArg) {
-  // Test unsqueeze_() without arguments - in-place operation
+TEST(TestUnsqueeze, UnsqueezeInplaceLeadingDim) {
   at::Tensor tensor = at::ones({3, 4}, at::kFloat);
   void* original_ptr = tensor.data_ptr();
 
-  tensor.unsqueeze_();
+  tensor.unsqueeze_(0);
 
-  ASSERT_EQ(tensor.numel(), 12);  // 3 * 4
+  ASSERT_EQ(tensor.sizes(), c10::IntArrayRef({1, 3, 4}));
   ASSERT_EQ(tensor.data_ptr(), original_ptr);
 }
 
@@ -162,14 +158,14 @@ TEST(TestUnsqueeze, UnsqueezeInplaceSingleDim) {
   ASSERT_EQ(tensor.data_ptr(), original_ptr);
 }
 
-TEST(TestUnsqueeze, UnsqueezeInplaceMultipleDims) {
-  // Test unsqueeze_(IntArrayRef dim) - in-place operation on multiple
-  // dimensions
+TEST(TestUnsqueeze, UnsqueezeInplaceChainedDims) {
   at::Tensor tensor = at::ones({3, 4}, at::kFloat);
   void* original_ptr = tensor.data_ptr();
 
-  tensor.unsqueeze_(c10::IntArrayRef({0, 2}));
+  tensor.unsqueeze_(0);
+  tensor.unsqueeze_(2);
 
+  ASSERT_EQ(tensor.sizes(), c10::IntArrayRef({1, 3, 1, 4}));
   ASSERT_EQ(tensor.numel(), 12);
   ASSERT_EQ(tensor.data_ptr(), original_ptr);
 }

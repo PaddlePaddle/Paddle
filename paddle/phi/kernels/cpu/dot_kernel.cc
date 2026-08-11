@@ -18,6 +18,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 #include "paddle/phi/kernels/full_kernel.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace phi {
 
@@ -34,8 +35,8 @@ void DotKernel(const Context& dev_ctx,
   if (out->numel() <= 0) {
     return;
   }
-  auto const *x_ptr = x.data<T>(), *x_ptr_ = &x_ptr[0];
-  auto const *y_ptr = y.data<T>(), *y_ptr_ = &y_ptr[0];
+  const T* x_ptr = x.data<T>();
+  const T* y_ptr = y.data<T>();
   T* z = dev_ctx.template Alloc<T>(out);
 
   // Loop over the total N elements of both operands while sum-reducing every
@@ -50,10 +51,10 @@ void DotKernel(const Context& dev_ctx,
   // initialize for N / B <= 0
   z[0] = 0;
 
-  for (int j = 0; j < N / B; j++) {
-    T ss = 0;
-    for (int i = 0; i < B; i++) ss += (*x_ptr_++) * (*y_ptr_++);
-    z[j] = ss;
+  auto blas = funcs::GetBlas<CPUContext, T>(dev_ctx);
+  for (int64_t j = 0; j < N / B; ++j) {
+    const int64_t offset = j * B;
+    z[j] = blas.DOT(B, x_ptr + offset, y_ptr + offset);
   }
 }
 

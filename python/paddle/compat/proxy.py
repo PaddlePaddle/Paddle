@@ -18,7 +18,6 @@ import importlib
 import importlib.abc
 import importlib.util
 import inspect
-import pkgutil
 import sys
 import types
 import warnings
@@ -26,10 +25,15 @@ from contextlib import contextmanager
 from functools import cache
 from typing import TYPE_CHECKING, Any, Literal
 
+from .api_dispatch import (
+    _apply_paddle_namespace_aliases,
+    _iter_compat_modules,
+    _restore_paddle_namespace_aliases,
+)
+
 if TYPE_CHECKING:
     from collections.abc import Generator, Iterable
-
-    from typing_extensions import TypeAlias
+    from typing import TypeAlias
 
     _ScopeType: TypeAlias = str | Iterable[str] | None
 
@@ -148,31 +152,17 @@ def _extend_torch_proxy_overrides(
 
 @cache
 def _register_compat_override():
-    import paddle.compat
-
-    PADDLE_PREFIX = "paddle.compat"
-    TORCH_PREFIX = "torch"
-    PUBLIC_ATTR_DECLARATION = "__all__"
-
     compat_overrides = {}
-    for module_info in pkgutil.walk_packages(
-        paddle.compat.__path__,
-        paddle.compat.__name__ + ".",
-    ):
-        module = importlib.import_module(module_info.name)
-        if hasattr(module, PUBLIC_ATTR_DECLARATION):
-            public_attrs = getattr(module, PUBLIC_ATTR_DECLARATION)
-            torch_module_name = module_info.name.replace(
-                PADDLE_PREFIX, TORCH_PREFIX, 1
+    for module in _iter_compat_modules():
+        torch_module_name = module.__name__.replace("paddle.compat", "torch", 1)
+        for attr_name in module.__all__:
+            if attr_name.startswith("_"):
+                continue
+            paddle_attr = getattr(module, attr_name)
+            torch_attr_name = f"{torch_module_name}.{attr_name}"
+            compat_overrides[torch_attr_name] = RawOverriddenAttribute(
+                paddle_attr
             )
-            for attr_name in public_attrs:
-                if attr_name.startswith("_"):
-                    continue
-                paddle_attr = getattr(module, attr_name)
-                torch_attr_name = f"{torch_module_name}.{attr_name}"
-                compat_overrides[torch_attr_name] = RawOverriddenAttribute(
-                    paddle_attr
-                )
     _extend_torch_proxy_overrides(compat_overrides)
 
 
@@ -480,6 +470,7 @@ def enable_compat(
     blocked_modules: _ScopeType = None,
     backend: Literal["torch"] = "torch",
     silent: bool = False,
+    level: int = 1,
 ) -> None:
     """
     Enable the PyTorch compat by adding the TorchProxyMetaFinder to sys.meta_path.
@@ -494,6 +485,9 @@ def enable_compat(
             "torch" is supported. Defaults to "torch".
         silent (bool, optional): If True, suppresses warnings about scope changes.
             Defaults to False.
+        level (int, optional): The compatibility level. ``1`` (default) preserves the
+            original ``torch -> paddle`` proxy behavior. ``2`` aliases the torch-aligned
+            ``paddle.compat.*`` APIs onto ``paddle.*`` and ``paddle.Tensor```. Defaults to 1.
 
     Example:
         .. code-block:: pycon
@@ -518,6 +512,10 @@ def enable_compat(
             >>> paddle.disable_compat()  # Disable torch compat
     """
     assert backend == "torch", f"Unsupported backend: {backend}"
+
+    if level not in {1, 2}:
+        raise ValueError(f"Unsupported level: {level}. It should be 1 or 2.")
+
     blocked_modules = _parse_scope(blocked_modules)
     if blocked_modules is not None:
         extend_torch_proxy_blocked_modules(blocked_modules)
@@ -526,6 +524,9 @@ def enable_compat(
     _swap_torch_modules_to_cache()
     _modify_scope_of_torch_proxy(scope, silent=silent)
     sys.meta_path.insert(0, TORCH_PROXY_FINDER)
+
+    if level == 2:
+        _apply_paddle_namespace_aliases()
 
 
 def disable_compat() -> None:
@@ -548,6 +549,7 @@ def disable_compat() -> None:
     """
     if TORCH_PROXY_FINDER in sys.meta_path:
         sys.meta_path.remove(TORCH_PROXY_FINDER)
+        _restore_paddle_namespace_aliases()
         _clear_torch_proxy_modules()
         _copy_torch_modules_from_cache()
         return

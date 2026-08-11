@@ -194,9 +194,10 @@ pir::Attribute deserializeAttrFromJson_scalarAttr(Json* attr_json,
         phi::dtype::complex(scalar_real, scalar_imag);
     scalar = phi::Scalar(data);
   } else {
-    PADDLE_ENFORCE(false,
-                   common::errors::InvalidArgument(
-                       "Invalid tensor data type `", dtype_, "`."));
+    PADDLE_ENFORCE(
+        false,
+        common::errors::InvalidArgument("Invalid tensor data type `%s`.",
+                                        phi::DataTypeToString(dtype_)));
   }
 
   return paddle::dialect::ScalarAttribute::get(ctx, scalar);

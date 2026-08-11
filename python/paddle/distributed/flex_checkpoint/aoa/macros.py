@@ -60,6 +60,7 @@ GLOBAL_ATTRIBUTE_KEYWORDS = [
     'fused_qkv',
     'src_dtype',
     'dst_dtype',
+    'reshape',
 ]
 
 EXTRA_SUFFIX = [

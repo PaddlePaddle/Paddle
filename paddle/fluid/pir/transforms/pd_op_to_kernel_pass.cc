@@ -2626,8 +2626,45 @@ void HandleForPythonOp(IrContext* ctx,
   (*map_op_pair)[op_item] = op;
 
   if (op_item->num_results() > 0) {
+    std::unordered_map<Value, Value> inplace_output_to_input;
+    if (op_item->HasTrait<InplaceTrait>() &&
+        op_item->HasInterface<paddle::dialect::OpYamlInfoInterface>()) {
+      auto op_info =
+          op_item->dyn_cast<paddle::dialect::OpYamlInfoInterface>().GetOpInfo();
+      const auto& input_info_list = std::get<0>(op_info);
+      const auto& output_info_list = std::get<2>(op_info);
+      const auto& inplace_info_map = std::get<3>(op_info).inplace;
+      std::unordered_map<std::string, size_t> input_name_index;
+      std::unordered_map<std::string, size_t> output_name_index;
+      for (size_t i = 0; i < input_info_list.size(); ++i) {
+        input_name_index[input_info_list[i].name] = i;
+      }
+      for (size_t i = 0; i < output_info_list.size(); ++i) {
+        output_name_index[output_info_list[i].name] = i;
+      }
+      for (const auto& [name1, name2] : inplace_info_map) {
+        size_t out_idx = output_info_list.size();
+        size_t in_idx = input_info_list.size();
+        if (output_name_index.count(name1) && input_name_index.count(name2)) {
+          out_idx = output_name_index.at(name1);
+          in_idx = input_name_index.at(name2);
+        } else if (input_name_index.count(name1) &&
+                   output_name_index.count(name2)) {
+          out_idx = output_name_index.at(name2);
+          in_idx = input_name_index.at(name1);
+        }
+        if (out_idx < op_item->num_results() && in_idx < vec_inputs.size()) {
+          inplace_output_to_input[op_item->result(out_idx)] =
+              vec_inputs[in_idx];
+        }
+      }
+    }
+
     for (size_t i = 0; i < op_item->num_results(); ++i) {
-      (*map_value_pair)[op_item->result(i)] = op->result(i);
+      auto result = op_item->result(i);
+      (*map_value_pair)[result] = inplace_output_to_input.count(result)
+                                      ? inplace_output_to_input.at(result)
+                                      : op->result(i);
     }
   }
   block->push_back(op);

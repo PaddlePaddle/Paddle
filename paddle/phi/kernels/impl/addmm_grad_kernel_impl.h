@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include <type_traits>
+#include <vector>
 
 #include "glog/logging.h"
 
@@ -22,15 +22,14 @@ limitations under the License. */
 #include "paddle/phi/kernels/addmm_grad_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 namespace phi {
 
 template <typename T>
 struct CopyOrScaleFunctor {
-  CopyOrScaleFunctor(const float scale, const T* x, T* output, int64_t numel)
+  CopyOrScaleFunctor(const double scale, const T* x, T* output, int64_t numel)
       : scale_(scale), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
@@ -41,14 +40,11 @@ struct CopyOrScaleFunctor {
   }
 
  private:
-  const float scale_;
+  const double scale_;
   const T* x_;
   T* output_;
   int64_t numel_;
 };
-
-using Array1 = Eigen::DSizes<int64_t, 1>;
-using Array2 = Eigen::DSizes<int64_t, 2>;
 
 template <typename T, typename Context>
 void AddmmGradKernel(const Context& dev_ctx,
@@ -56,8 +52,8 @@ void AddmmGradKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y,
                      const DenseTensor& out_grad,
-                     float alpha,
-                     float beta,
+                     double alpha,
+                     double beta,
                      DenseTensor* input_grad,
                      DenseTensor* x_grad,
                      DenseTensor* y_grad) {
@@ -73,22 +69,12 @@ void AddmmGradKernel(const Context& dev_ctx,
     }
     return;
   }
-  using MPType = typename MPTypeTrait<T>::Type;
-  bool is_float16_or_bfloat16 = false;
-  bool is_big_tensor = false;
-  if (input.numel() * input.dims()[1] > std::numeric_limits<int>::max() ||
-      x.numel() > std::numeric_limits<int>::max() ||
-      y.numel() * y.dims()[1] > std::numeric_limits<int>::max()) {
-    is_big_tensor = true;
-  }
-  if (std::is_same<T, float16>::value || std::is_same<T, bfloat16>::value) {
-    is_float16_or_bfloat16 = true;
-  }
-
   auto in_dims = input.dims();
   if (input.dims().size() == 1) {
     in_dims = {1, input.dims()[0]};
-    input_grad->Resize(in_dims);
+    if (input_grad) {
+      input_grad->Resize(in_dims);
+    }
   }
   int64_t total_elems = 0;
 
@@ -105,87 +91,56 @@ void AddmmGradKernel(const Context& dev_ctx,
   }
 
   auto blas = funcs::GetBlas<Context, T>(dev_ctx);
-  auto mt_blas = funcs::GetBlas<Context, MPType>(dev_ctx);
   if (input_grad) {
     dev_ctx.template Alloc<T>(input_grad);
     total_elems = in_dims[0] * in_dims[1];
-    auto& place = *dev_ctx.eigen_device();
-    auto eigen_dout = EigenTensor<T, 2>::From(out_grad);
-    auto eigen_dinput = EigenTensor<T, 2>::From(*input_grad);
-
     bool row_compress = in_dims[0] != out_grad.dims()[0];
     bool col_compress = in_dims[1] != out_grad.dims()[1];
-    auto eigen_dinput_shape =
-        Array2(input_grad->dims()[0], input_grad->dims()[1]);
-
-    if (row_compress && col_compress) {
-      if (!is_float16_or_bfloat16 && !is_big_tensor) {
-        eigen_dinput.device(place) =
-            eigen_dout.sum().eval().reshape(eigen_dinput_shape);
-      } else {
-        eigen_dinput.device(place) = eigen_dout.template cast<MPType>()
-                                         .sum()
-                                         .eval()
-                                         .reshape(eigen_dinput_shape)
-                                         .template cast<T>();
-      }
-    } else if (row_compress) {
-      if (!is_float16_or_bfloat16 && !is_big_tensor) {
-        eigen_dinput.device(place) =
-            eigen_dout.sum(Array1(0)).eval().reshape(eigen_dinput_shape);
-      } else {
-        eigen_dinput.device(place) = eigen_dout.template cast<MPType>()
-                                         .sum(Array1(0))
-                                         .eval()
-                                         .reshape(eigen_dinput_shape)
-                                         .template cast<T>();
-      }
-    } else if (col_compress) {
-      if (!is_float16_or_bfloat16 && !is_big_tensor) {
-        eigen_dinput.device(place) =
-            eigen_dout.sum(Array1(1)).eval().reshape(eigen_dinput_shape);
-      } else {
-        eigen_dinput.device(place) = eigen_dout.template cast<MPType>()
-                                         .sum(Array1(1))
-                                         .eval()
-                                         .reshape(eigen_dinput_shape)
-                                         .template cast<T>();
-      }
-    } else {
-      // The VCOPY does not support the float16, bfloat16
-      if (!is_float16_or_bfloat16 && !is_big_tensor) {
-        mt_blas.VCOPY(
-            total_elems, out_grad.data<MPType>(), input_grad->data<MPType>());
-      } else {
-        funcs::ForRange<Context> for_range(dev_ctx, total_elems);
-        CopyOrScaleFunctor<T> functor(
-            1, out_grad.data<T>(), input_grad->data<T>(), total_elems);
-        for_range(functor);
-      }
+    std::vector<int64_t> reduce_dims;
+    if (row_compress) {
+      reduce_dims.push_back(0);
+    }
+    if (col_compress) {
+      reduce_dims.push_back(1);
     }
 
-    // The SCAL does not support the float16, bfloat16
-    if (!is_float16_or_bfloat16 && !is_big_tensor) {
-      mt_blas.SCAL(total_elems, beta, input_grad->data<MPType>());
+    if (!reduce_dims.empty()) {
+      SumKernel<T, Context>(dev_ctx,
+                            out_grad,
+                            IntArray(reduce_dims),
+                            out_grad.dtype(),
+                            true,
+                            input_grad);
     } else {
       funcs::ForRange<Context> for_range(dev_ctx, total_elems);
       CopyOrScaleFunctor<T> functor(
-          beta, input_grad->data<T>(), input_grad->data<T>(), total_elems);
+          1, out_grad.data<T>(), input_grad->data<T>(), total_elems);
       for_range(functor);
     }
+
+    funcs::ForRange<Context> for_range(dev_ctx, total_elems);
+    CopyOrScaleFunctor<T> functor(
+        beta, input_grad->data<T>(), input_grad->data<T>(), total_elems);
+    for_range(functor);
 
     if (input.dims().size() == 1) {
       input_grad->Resize(input.dims());
     }
   }
-  if (x_grad && x_grad->numel() == 0) {
-    dev_ctx.template Alloc<T>(x_grad);
-    Full<T, Context>(dev_ctx, y_grad->dims(), 0, y_grad);
-    return;
-  }
-  if (y_grad && y_grad->numel() == 0) {
-    dev_ctx.template Alloc<T>(y_grad);
-    Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
+  if ((x_grad && x_grad->numel() == 0) || (y_grad && y_grad->numel() == 0)) {
+    // K == 0: both x_grad ([M,0]) and y_grad ([0,N]) are empty tensors, so
+    // there is nothing to compute via GEMM (which would also choke on K == 0).
+    // Only allocate the grads that are actually requested; do NOT dereference
+    // the opposite grad pointer, which may be null when a single-side gradient
+    // is requested.
+    if (x_grad) {
+      dev_ctx.template Alloc<T>(x_grad);
+      if (y_grad) Full<T, Context>(dev_ctx, y_grad->dims(), 0, y_grad);
+    }
+    if (y_grad) {
+      dev_ctx.template Alloc<T>(y_grad);
+      if (x_grad) Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
+    }
     return;
   }
   if (x_grad) {
@@ -193,28 +148,20 @@ void AddmmGradKernel(const Context& dev_ctx,
     total_elems = x.dims()[0] * x.dims()[1];
     // x_grad = out_grad * y'. x_grad: M x K, out_grad : M x N, y : K x N
     blas.MatMul(out_grad, false, y, true, x_grad);
-    if (!is_float16_or_bfloat16 && !is_big_tensor) {
-      mt_blas.SCAL(total_elems, alpha, x_grad->data<MPType>());
-    } else {
-      funcs::ForRange<Context> for_range(dev_ctx, total_elems);
-      CopyOrScaleFunctor<T> functor(
-          alpha, x_grad->data<T>(), x_grad->data<T>(), total_elems);
-      for_range(functor);
-    }
+    funcs::ForRange<Context> for_range(dev_ctx, total_elems);
+    CopyOrScaleFunctor<T> functor(
+        alpha, x_grad->data<T>(), x_grad->data<T>(), total_elems);
+    for_range(functor);
   }
   if (y_grad) {
     dev_ctx.template Alloc<T>(y_grad);
     total_elems = x.dims()[1] * y.dims()[1];
     // y_grad = x' * out_grad. y_grad K x N, out_grad : M x N, x : M x K
     blas.MatMul(x, true, out_grad, false, y_grad);
-    if (!is_float16_or_bfloat16 && !is_big_tensor) {
-      mt_blas.SCAL(total_elems, alpha, y_grad->data<MPType>());
-    } else {
-      funcs::ForRange<Context> for_range(dev_ctx, total_elems);
-      CopyOrScaleFunctor<T> functor(
-          alpha, y_grad->data<T>(), y_grad->data<T>(), total_elems);
-      for_range(functor);
-    }
+    funcs::ForRange<Context> for_range(dev_ctx, total_elems);
+    CopyOrScaleFunctor<T> functor(
+        alpha, y_grad->data<T>(), y_grad->data<T>(), total_elems);
+    for_range(functor);
   }
 }
 

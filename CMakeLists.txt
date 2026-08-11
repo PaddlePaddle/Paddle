@@ -111,8 +111,7 @@ if(WITH_GPU AND NOT APPLE)
     add_definitions(-DPADDLE_WITH_PIP_CUDA_LIBRARIES)
   endif()
   #(Note risemeup1): The cudart dynamic library libcudart.so is used by set CUDA_USE_STATIC_CUDA_RUNTIME and CMAKE_CUDA_FLAGS
-  if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SYSTEM_PROCESSOR STREQUAL
-                                            "x86_64")
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(CUDA_USE_STATIC_CUDA_RUNTIME
         OFF
         CACHE BOOL "" FORCE)
@@ -412,9 +411,9 @@ unset(WITH_RECORD_BUILDTIME CACHE)
 
 # PY_VERSION
 if(NOT PY_VERSION)
-  set(PY_VERSION 3.9)
-elseif(${PY_VERSION} VERSION_LESS 3.9)
-  message(FATAL_ERROR "Paddle only support Python version>=3.9 now")
+  set(PY_VERSION 3.10)
+elseif(${PY_VERSION} VERSION_LESS 3.10)
+  message(FATAL_ERROR "Paddle only supports Python version >= 3.10 now")
 endif()
 set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
 

@@ -17,6 +17,7 @@
 #ifdef __GNUC__
 #include <cxxabi.h>  // for __cxa_demangle
 #endif               // __GNUC__
+#include <cinttypes>
 #include <exception>
 #include <iostream>
 #if !defined(_WIN32)
@@ -344,6 +345,47 @@ using CommonType2 = typename std::add_lvalue_reference<
                         var_name,                                            \
                         var,                                                 \
                         std::numeric_limits<int>::max()))
+
+namespace details {
+template <typename T,
+          typename std::enable_if<std::is_signed<T>::value, int>::type = 0>
+inline bool IsNegativeForUInt32Max(T var) {
+  return var < 0;
+}
+
+template <typename T,
+          typename std::enable_if<!std::is_signed<T>::value, int>::type = 0>
+inline bool IsNegativeForUInt32Max(T var UNUSED) {
+  return false;
+}
+}  // namespace details
+
+#define PADDLE_ENFORCE_LE_UINT32_MAX(var, var_name)                     \
+  do {                                                                  \
+    auto __var = (var);                                                 \
+    using __VAR_TYPE__ = typename std::decay<decltype(__var)>::type;    \
+    static_assert(std::is_integral<__VAR_TYPE__>::value,                \
+                  "PADDLE_ENFORCE_LE_UINT32_MAX only accepts integral " \
+                  "types.");                                            \
+    if (::common::enforce::details::IsNegativeForUInt32Max(__var)) {    \
+      PADDLE_THROW(common::errors::InvalidArgument(                     \
+          "The value must be non-negative. Expected %s >= 0, but "      \
+          "received %s = %" PRId64 ".",                                 \
+          var_name,                                                     \
+          var_name,                                                     \
+          static_cast<int64_t>(__var)));                                \
+    }                                                                   \
+    PADDLE_ENFORCE_LE(                                                  \
+        static_cast<uint64_t>(__var),                                   \
+        static_cast<uint64_t>(std::numeric_limits<uint32_t>::max()),    \
+        common::errors::InvalidArgument(                                \
+            "The value must fit in uint32_t. Expected %s <= %u, but "   \
+            "received %s = %" PRIu64 ".",                               \
+            var_name,                                                   \
+            std::numeric_limits<uint32_t>::max(),                       \
+            var_name,                                                   \
+            static_cast<uint64_t>(__var)));                             \
+  } while (0)
 
 TEST_API bool RegisterLogSimplyStr(const std::string& type,
                                    const std::string& simply);

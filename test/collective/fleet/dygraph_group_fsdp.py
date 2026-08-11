@@ -31,15 +31,6 @@ class Model(nn.Layer):
         self.center_stage.weight.stop_gradient = True
         self.center_stage.bias.stop_gradient = True
         self.final_stage = nn.Linear(4096, 2, bias_attr=False)
-        paddle.distributed.init_parallel_env()
-        dist_strategy = fleet.DistributedStrategy()
-        dist_strategy.hybrid_configs = {
-            "sharding_degree": 2,
-            "dp_degree": 1,
-            "mp_degree": 1,
-            "pp_degree": 1,
-        }
-        fleet.init(is_collective=True, strategy=dist_strategy)
 
     def forward(self, x):
         x = self.first_stage(x)
@@ -53,24 +44,26 @@ def train_mlp(
     use_fsdp=True,
     data=None,
     use_pure_bf16=True,
+    enable_tensor_fusion_and_overlap=True,
 ):
+    if use_fsdp:
+        model = fully_shard(
+            model,
+            enable_tensor_fusion_and_overlap=enable_tensor_fusion_and_overlap,
+        )
     model = mix_precision_utils.MixPrecisionLayer(model, dtype="bfloat16")
-    clip = paddle.nn.ClipGradByGlobalNorm(0.5)
-    optimizer = optimizer = paddle.optimizer.AdamW(
+    optimizer = paddle.optimizer.AdamW(
         learning_rate=0.001,
         parameters=model.parameters(),
-        grad_clip=clip,
         multi_precision=use_pure_bf16,
     )
     optimizer = mix_precision_utils.MixPrecisionOptimizer(optimizer)
 
-    if use_fsdp:
-        model = fully_shard(model)
-    else:
+    if not use_fsdp:
         model, optimizer, _ = group_sharded_parallel(
             model=model,
             optimizer=optimizer,
-            level="p_g_os",
+            level="os",
             sync_buffers=False,
         )
 
@@ -89,28 +82,80 @@ def train_mlp(
     return losses
 
 
+class TransformerLayer(nn.Layer):
+    def __init__(self, hidden_size):
+        super().__init__()
+        self.linear = nn.Linear(hidden_size, hidden_size, bias_attr=False)
+
+    def forward(self, x):
+        return self.linear(x)
+
+
+class SharedLinear(nn.Layer):
+    def __init__(self, weight):
+        super().__init__()
+        self.weight = weight
+
+    def forward(self, x):
+        return paddle.matmul(x, self.weight)
+
+
+class TestModel(nn.Layer):
+    def __init__(self, hidden_size=16, num_layers=4):
+        super().__init__()
+        self.input_embeddings = nn.Linear(
+            hidden_size, hidden_size, bias_attr=False
+        )
+        self.layers = nn.LayerList(
+            [TransformerLayer(hidden_size) for _ in range(num_layers)]
+        )
+        self.shared_linear = SharedLinear(self.input_embeddings.weight)
+        self.final_stage = nn.Linear(hidden_size, 2, bias_attr=False)
+
+    def get_input_embeddings(self):
+        return self.input_embeddings
+
+    def forward(self, x):
+        x = self.input_embeddings(x)
+        for layer in self.layers:
+            x = layer(x)
+        x = self.shared_linear(x)
+        x = self.final_stage(x)
+        return x
+
+
 def test_fsdp_api():
     # test sharding with fsdp api
     paddle.seed(2025)
     np.random.seed(2025)
-    data = [paddle.randn([8, 4096]) for i in range(20)]
-    model = Model()
-    loss_fsdp = train_mlp(model, use_fsdp=True, data=data)
+    paddle.distributed.init_parallel_env()
+    strategy = fleet.DistributedStrategy()
+    strategy.hybrid_configs = {
+        "sharding_degree": 2,
+        "dp_degree": 1,
+        "mp_degree": 1,
+        "pp_degree": 1,
+    }
+    fleet.init(is_collective=True, strategy=strategy)
 
-    # test sharding with group_sharded_parallel
-    paddle.seed(2025)
-    np.random.seed(2025)
     data = [paddle.randn([8, 4096]) for i in range(20)]
-    model = Model()
-    loss = train_mlp(model, use_fsdp=False, data=data)
-    assert loss == loss_fsdp
+    sharding_model = Model()
+    fsdp_model = Model()
+    sharding_model.set_state_dict(fsdp_model.state_dict())
 
-    # test sharding with fsdp api with fp32
-    paddle.seed(2025)
-    np.random.seed(2025)
-    data = [paddle.randn([8, 4096]) for i in range(20)]
-    model = Model()
-    loss = train_mlp(model, use_fsdp=True, data=data, use_pure_bf16=False)
+    sharding_loss = train_mlp(sharding_model, use_fsdp=False, data=data)
+    fsdp_loss = train_mlp(fsdp_model, use_fsdp=True, data=data)
+    assert fsdp_loss == sharding_loss
+    # test sharding with fsdp api with fp32 and without overlap and tie_weight
+    data = [paddle.randn([8, 16]) for i in range(20)]
+    model = TestModel()
+    loss = train_mlp(
+        model,
+        use_fsdp=True,
+        data=data,
+        use_pure_bf16=False,
+        enable_tensor_fusion_and_overlap=False,
+    )
 
 
 if __name__ == '__main__':

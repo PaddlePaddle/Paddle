@@ -24,7 +24,7 @@ import traceback
 import types
 from dataclasses import dataclass
 from itertools import chain
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 import paddle
 from paddle.jit.sot.opcode_translator.executor.variables.basic import (
@@ -119,6 +119,8 @@ from .variables import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from .function_graph import CompileGraphResult, FunctionGraph
     from .variable_stack import VariableStack
     from .virtual_frame import VirtualFrame

@@ -18,6 +18,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/utils/test_macros.h"
 
 namespace pir {
 /**
@@ -102,7 +103,7 @@ std::vector<std::string> GetOpQuantAttr();
 void GetCompressOpName(std::string* op_name);
 
 void GetDecompressOpName(std::string* op_name);
-class DialectIdMap {
+class TEST_API DialectIdMap {
  public:
   static DialectIdMap* Instance();
   DialectIdMap();

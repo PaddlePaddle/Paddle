@@ -52,7 +52,9 @@ __global__ __launch_bounds__(256) void tokens_zip_kernel(
   // Strided load: blockDim.x may be < num_experts, so each thread
   // handles multiple slots to cover the full [0, num_experts) range.
   for (int i = threadIdx.x; i < num_experts; i += blockDim.x) {
-    const int fetch_row = zipped_expertwise_rowmap[this_row * num_experts + i];
+    const int fetch_row =
+        zipped_expertwise_rowmap[static_cast<int64_t>(this_row) * num_experts +
+                                 i];
     local_row_fetchlist[i] = fetch_row;
     if constexpr (WEIGHTED_TOKEN) {
       local_row_weight[i] =
@@ -64,11 +66,12 @@ __global__ __launch_bounds__(256) void tokens_zip_kernel(
 
 #pragma unroll
   for (int k = 0; k < topk; ++k) {
-    const int expert_idx = expert_routemap_topk[this_row * topk + k];
+    const int expert_idx =
+        expert_routemap_topk[static_cast<int64_t>(this_row) * topk + k];
     if (expert_idx < 0) [[likely]]
       continue;
     const int expert_fetch_row = local_row_fetchlist[expert_idx];
-    zipped_probs_topk[this_row * topk + k] =
+    zipped_probs_topk[static_cast<int64_t>(this_row) * topk + k] =
         unzipped_token_probs[expert_fetch_row];
   }
 
@@ -303,13 +306,20 @@ void MoeUnpermuteKernel(const Context &dev_ctx,
           "total_zipped_tokens_num, but got %ld and %d.",
           expert_routemap_topk.dims()[0],
           total_zipped_tokens_num));
+  PADDLE_ENFORCE_EQ(
+      unzipped_token_probs.numel(),
+      unzipped_tokens.dims()[0],
+      common::errors::InvalidArgument(
+          "Input unzipped_token_probs's number of elements should be equal to "
+          "unzipped_tokens.dims()[0], but got %ld and %ld.",
+          unzipped_token_probs.numel(),
+          unzipped_tokens.dims()[0]));
   const int64_t cols = unzipped_tokens.dims()[1];
-  PADDLE_ENFORCE_GE(
+  PADDLE_ENFORCE_GT(
       cols,
       0,
       common::errors::InvalidArgument(
-          "unzipped_tokens.dims()[1] should be non-negative, but got %ld.",
-          cols));
+          "unzipped_tokens.dims()[1] should be positive, but got %ld.", cols));
   PADDLE_ENFORCE_LE(cols,
                     std::numeric_limits<int32_t>::max(),
                     common::errors::InvalidArgument(
@@ -334,7 +344,23 @@ void MoeUnpermuteKernel(const Context &dev_ctx,
           total_zipped_tokens_num));
   dev_ctx.template Alloc<T>(zipped_tokens);
   dev_ctx.template Alloc<float>(zipped_probs_topk);
-  if (unzipped_tokens.numel() == 0 || total_zipped_tokens_num == 0) return;
+  if (unzipped_tokens.numel() == 0 || total_zipped_tokens_num == 0) {
+    if (zipped_tokens->numel() > 0) {
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          cudaMemsetAsync(zipped_tokens->data<T>(),
+                          0,
+                          zipped_tokens->numel() * sizeof(T),
+                          dev_ctx.stream()));
+    }
+    if (zipped_probs_topk->numel() > 0) {
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          cudaMemsetAsync(zipped_probs_topk->data<float>(),
+                          0,
+                          zipped_probs_topk->numel() * sizeof(float),
+                          dev_ctx.stream()));
+    }
+    return;
+  }
   void *zipped_probs_topk_ptr =
       reinterpret_cast<void *>(zipped_probs_topk->data<float>());
   const int64_t probs_numel =

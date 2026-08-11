@@ -2046,12 +2046,13 @@ PHI_DEFINE_EXPORTED_string(
     nvidia_package_dir,  // NOLINT
     "",
     "Specify root dir path for nvidia site-package, such as "
-    "python3.9/site-packages/nvidia");
+    "python3.10/site-packages/nvidia");
 
-PHI_DEFINE_EXPORTED_string(cuda_cccl_dir,  // NOLINT
-                           "",
-                           "Specify root dir path for nv/target, such as "
-                           "python3.9/site-packages/nvidia/cuda_cccl/include/");
+PHI_DEFINE_EXPORTED_string(
+    cuda_cccl_dir,  // NOLINT
+    "",
+    "Specify root dir path for nv/target, such as "
+    "python3.10/site-packages/nvidia/cuda_cccl/include/");
 
 PHI_DEFINE_EXPORTED_string(
     cudnn_dir,  // NOLINT
@@ -2458,6 +2459,20 @@ PHI_DEFINE_EXPORTED_bool(
 PHI_DEFINE_EXPORTED_bool(use_accuracy_compatible_kernel,
                          false,
                          "Whether use torch compatible version kernel.");
+
+/**
+ * LayerNorm Apex Compatible related FLAG
+ * Name: FLAGS_use_apex_layer_norm_kernel
+ * Since Version: 3.5.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Whether use apex compatible version LayerNorm kernel.
+ */
+PHI_DEFINE_EXPORTED_bool(
+    use_apex_layer_norm_kernel,
+    false,
+    "Whether use apex compatible version LayerNorm kernel.");
+
 /**
  * Legacy gemm related FLAG
  * Name: FLAGS_use_legacy_gemm

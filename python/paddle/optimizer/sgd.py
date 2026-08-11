@@ -67,6 +67,9 @@ class SGD(Optimizer):
                 to set this property. For more information, please refer to
                 :ref:`api_guide_Name` .
 
+    Keyword Args:
+        maximize (bool, optional): Maximize the objective with respect to the params, instead of minimizing. The default value is False.
+
     Examples:
         .. code-block:: pycon
 
@@ -98,6 +101,8 @@ class SGD(Optimizer):
         grad_clip: GradientClipBase | None = None,
         multi_precision: bool = False,
         name: str | None = None,
+        *,
+        maximize: bool = False,
     ) -> None:
         if learning_rate is None:
             raise ValueError("learning_rate is not set")
@@ -107,6 +112,7 @@ class SGD(Optimizer):
             weight_decay=weight_decay,
             grad_clip=grad_clip,
             name=name,
+            maximize=maximize,
         )
         self.type = "sgd"
         self._multi_precision = multi_precision

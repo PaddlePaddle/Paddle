@@ -116,3 +116,12 @@ PD_REGISTER_KERNEL(legacy_matmul,
     kernel->OutputAt(0).SetDataType(phi::DataType::INT32);
   }
 }
+
+PD_REGISTER_KERNEL(mm_out_dtype,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MmOutDtypeKernel,
+                   phi::float16,
+                   phi::bfloat16) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT32);
+}

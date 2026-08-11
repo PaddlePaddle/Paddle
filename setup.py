@@ -43,9 +43,9 @@ version_detail = sys.version_info
 version = str(version_detail[0]) + '.' + str(version_detail[1])
 env_version = os.getenv("PY_VERSION", None)
 
-if version_detail < (3, 9):
+if version_detail < (3, 10):
     raise RuntimeError(
-        f"Paddle only supports Python version >= 3.9 now,"
+        f"Paddle only supports Python version >= 3.10 now,"
         f"you are using Python {python_version}"
     )
 elif env_version is None:
@@ -1132,7 +1132,7 @@ def get_setup_requires():
         setup_requires = (
             f.read().splitlines()
         )  # Specify the dependencies to install
-    if sys.version_info >= (3, 9):
+    if sys.version_info >= (3, 10):
         setup_requires_tmp = []
         for setup_requires_i in setup_requires:
             if (
@@ -1145,6 +1145,8 @@ def get_setup_requires():
                 or '<"3.8"' in setup_requires_i
                 or '<="3.8"' in setup_requires_i
                 or '<"3.9"' in setup_requires_i
+                or '<="3.9"' in setup_requires_i
+                or '<"3.10"' in setup_requires_i
                 or setup_requires_i.strip().endswith('[build]')
             ):
                 continue
@@ -1154,7 +1156,7 @@ def get_setup_requires():
         return setup_requires
     else:
         raise RuntimeError(
-            "please check your python version, Paddle only support Python version>=3.9 now"
+            "please check your python version, Paddle only supports Python version >= 3.10 now"
         )
 
 
@@ -1257,37 +1259,18 @@ def get_paddle_extra_install_requirements():
                     "cuda-python==12.9.4; platform_system == 'Linux' and platform_machine == 'x86_64'"
                 ),
                 "13.0": (
-                    "nvidia-cuda-nvrtc==13.0.88; platform_system == 'Linux' | "
-                    "nvidia-cuda-runtime==13.0.88; platform_system == 'Linux' | "
-                    "nvidia-cuda-cupti==13.0.85; platform_system == 'Linux' | "
-                    "nvidia-cudnn-cu13==9.15.1.9; platform_system == 'Linux' | "
-                    "nvidia-cublas==13.1.0.3; platform_system == 'Linux' | "
-                    "nvidia-cufft==12.0.0.61; platform_system == 'Linux' | "
-                    "nvidia-curand==10.4.0.35; platform_system == 'Linux' | "
-                    "nvidia-cusolver==12.0.4.66; platform_system == 'Linux' | "
-                    "nvidia-cusparse==12.6.3.3; platform_system == 'Linux' | "
+                    "cuda-toolkit[cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink,nvrtc,nvtx]==13.0.2; platform_system == 'Linux' | "
+                    "nvidia-cublas<=13.1.1.3,>=13.1.0.3; platform_system == 'Linux' | "
+                    "nvidia-cudnn-cu13==9.20.0.48; platform_system == 'Linux' | "
                     "nvidia-cusparselt-cu13==0.8.1; platform_system == 'Linux' | "
-                    "nvidia-nccl-cu13==2.28.3; platform_system == 'Linux' | "
-                    "nvidia-nvtx==13.0.85; platform_system == 'Linux' | "
-                    "nvidia-nvjitlink==13.0.88; platform_system == 'Linux' | "
-                    "nvidia-cufile==1.15.1.6; platform_system == 'Linux' | "
+                    "nvidia-nccl-cu13==2.29.7; platform_system == 'Linux' | "
                     "cuda-python==13.0.3; platform_system == 'Linux'"
                 ),
                 "13.2": (
-                    "nvidia-cuda-nvrtc==13.2.78; platform_system == 'Linux' | "
-                    "nvidia-cuda-runtime==13.2.75; platform_system == 'Linux' | "
-                    "nvidia-cuda-cupti==13.2.75; platform_system == 'Linux' | "
-                    "nvidia-cudnn-cu13==9.21.0.82; platform_system == 'Linux' | "
-                    "nvidia-cublas==13.4.0.1; platform_system == 'Linux' | "
-                    "nvidia-cufft==12.2.0.46; platform_system == 'Linux' | "
-                    "nvidia-curand==10.4.2.55; platform_system == 'Linux' | "
-                    "nvidia-cusolver==12.2.0.1; platform_system == 'Linux' | "
-                    "nvidia-cusparse==12.7.10.1; platform_system == 'Linux' | "
-                    "nvidia-cusparselt-cu13==0.9.0; platform_system == 'Linux' | "
+                    "cuda-toolkit[cublas,cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink,nvrtc,nvtx]==13.2.1; platform_system == 'Linux' | "
+                    "nvidia-cudnn-cu13==9.20.0.48; platform_system == 'Linux' | "
+                    "nvidia-cusparselt-cu13==0.8.1; platform_system == 'Linux' | "
                     "nvidia-nccl-cu13==2.29.7; platform_system == 'Linux' | "
-                    "nvidia-nvtx==13.2.75; platform_system == 'Linux' | "
-                    "nvidia-nvjitlink==13.2.78; platform_system == 'Linux' | "
-                    "nvidia-cufile==1.17.1.22; platform_system == 'Linux' | "
                     "cuda-python==13.2.0; platform_system == 'Linux'"
                 ),
             }
@@ -1308,10 +1291,10 @@ def get_paddle_extra_install_requirements():
                     " | nvidia-cuda-cccl-cu12==12.9.27;platform_system == 'Linux' and platform_machine == 'x86_64' "
                 )
                 PADDLE_CUDA_INSTALL_REQUIREMENTS["13.0"] += (
-                    " | nvidia-cuda-cccl==13.0.85;platform_system == 'Linux' "
+                    " | cuda-toolkit[cccl]==13.0.2;platform_system == 'Linux' "
                 )
                 PADDLE_CUDA_INSTALL_REQUIREMENTS["13.2"] += (
-                    " | nvidia-cuda-cccl==13.2.75;platform_system == 'Linux' "
+                    " | cuda-toolkit[cccl]==13.2.1;platform_system == 'Linux' "
                 )
 
         elif platform.system() == 'Windows':
@@ -1660,12 +1643,15 @@ def get_package_data_and_package_dir():
         os.path.basename(env_dict.get("LAPACK_LIB")),
         os.path.basename(env_dict.get("BLAS_LIB")),
         os.path.basename(env_dict.get("GFORTRAN_LIB")),
-        os.path.basename(env_dict.get("GNU_RT_LIB_1")),
     ]
     shutil.copy(env_dict.get("BLAS_LIB"), libs_path)
     shutil.copy(env_dict.get("LAPACK_LIB"), libs_path)
     shutil.copy(env_dict.get("GFORTRAN_LIB"), libs_path)
-    shutil.copy(env_dict.get("GNU_RT_LIB_1"), libs_path)
+    if env_dict.get("GNU_RT_LIB_1"):
+        package_data['paddle.libs'] += [
+            os.path.basename(env_dict.get("GNU_RT_LIB_1"))
+        ]
+        shutil.copy(env_dict.get("GNU_RT_LIB_1"), libs_path)
     if env_dict.get("WITH_MAGMA") == 'ON':
         package_data['paddle.libs'] += [
             os.path.basename('MAGMA_LIB'),
@@ -2060,7 +2046,7 @@ def get_package_data_and_package_dir():
                     < (14, 0)
                 ):
                     commands = [
-                        "patchelf --force-rpath --set-rpath '$ORIGIN/../../nvidia/cu13/lib:$ORIGIN/../../nvidia/cudnn/lib:$ORIGIN/../../nvidia/nccl/lib:$ORIGIN/../../cusparselt/lib:$ORIGIN/../libs/' "
+                        "patchelf --force-rpath --set-rpath '$ORIGIN/../../nvidia/cu13/lib:$ORIGIN/../../nvidia/cudnn/lib:$ORIGIN/../../nvidia/nccl/lib:$ORIGIN/../../nvidia/cusparselt/lib:$ORIGIN/../libs/' "
                         + env_dict.get("PADDLE_BINARY_DIR")
                         + '/python/paddle/base/'
                         + env_dict.get("FLUID_CORE_NAME")
@@ -2824,6 +2810,7 @@ def get_setup_parameters():
         'paddle.quantization.imperative',
         'paddle.tensor',
         'paddle.compat',
+        'paddle.compat.distributions',
         'paddle.compat.nn',
         'paddle.compat.nn.functional',
         'paddle.onnx',
@@ -3260,7 +3247,6 @@ def main():
             'Intended Audience :: Science/Research',
             'License :: OSI Approved :: Apache Software License',
             'Programming Language :: C++',
-            'Programming Language :: Python :: 3.9',
             'Programming Language :: Python :: 3.10',
             'Programming Language :: Python :: 3.11',
             'Programming Language :: Python :: 3.12',

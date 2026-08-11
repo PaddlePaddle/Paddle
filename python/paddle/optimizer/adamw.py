@@ -114,6 +114,10 @@ class AdamW(Optimizer):
         name (str|None, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
+
+    Keyword Args:
+        maximize (bool, optional): Maximize the objective with respect to the params, instead of minimizing. The default value is False.
+
     Notes:
         **Currently, AdamW doesn't support sparse parameter optimization.**
 
@@ -194,6 +198,8 @@ class AdamW(Optimizer):
         multi_precision: bool = False,
         amsgrad: bool = False,
         name: str | None = None,
+        *,
+        maximize: bool = False,
     ) -> None:
         assert learning_rate is not None
         assert beta1 is not None
@@ -295,6 +301,7 @@ class AdamW(Optimizer):
         self._lazy_mode = lazy_mode
         self._multi_precision = multi_precision
         self._master_weights = {}
+        self._maximize = maximize
         # whether to use AMSGrad
         self._amsgrad = amsgrad
 
@@ -719,7 +726,10 @@ class AdamW(Optimizer):
                             raise RuntimeError(
                                 "AdamW don't support weight_decay with sparse parameters, please set it to None."
                             )
-                    params_grads.append((param, grad_var))
+                    if self._maximize is True:
+                        params_grads.append((param, -grad_var))
+                    else:
+                        params_grads.append((param, grad_var))
 
             optimize_ops = self._apply_optimize(
                 loss=None, startup_program=None, params_grads=params_grads
@@ -751,7 +761,10 @@ class AdamW(Optimizer):
                                 raise RuntimeError(
                                     "AdamW don't support weight_decay with sparse parameters, please set it to None."
                                 )
-                        params_grads['params'].append((param, grad_var))
+                        if self._maximize is True:
+                            params_grads['params'].append((param, -grad_var))
+                        else:
+                            params_grads['params'].append((param, grad_var))
                 params_grads.update(
                     {k: v for k, v in param_group.items() if k != 'params'}
                 )

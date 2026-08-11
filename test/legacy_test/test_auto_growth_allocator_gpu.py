@@ -32,6 +32,8 @@ def _run_test_case(plan, flags, cuda_visible_devices="0"):
         os.path.dirname(__file__), "auto_growth_allocator_gpu.py"
     )
     env = os.environ.copy()
+    flags = dict(flags)
+    flags.setdefault("FLAGS_use_vmm_auto_growth_best_fit_allocator_v2", False)
     env["CUDA_VISIBLE_DEVICES"] = cuda_visible_devices
     env["FLAGS_JSON"] = json.dumps(flags)
     env.setdefault("PYTHONUNBUFFERED", "1")
@@ -184,11 +186,47 @@ class TestAllocatorFlagsWithSubprocess(unittest.TestCase):
         self.assertEqual(r1, int(10 * MiB), msg=f"r1={r1}")
         self.assertEqual(r2, int(20 * MiB), msg=f"r2={r2}")
 
+    def test_all_block_info_without_vmm(self):
+        if not base.is_compiled_with_cuda():
+            return
+        flags = {
+            "FLAGS_allocator_strategy": "auto_growth",
+            "FLAGS_use_cuda_malloc_async_allocator": 0,
+            "FLAGS_use_auto_growth_v2": False,
+            "FLAGS_use_virtual_memory_auto_growth": False,
+            "FLAGS_small_pool_size_in_mb": 0,
+            "FLAGS_auto_growth_chunk_size_in_mb": 4,
+        }
+        plan = [
+            {"op": "init"},
+            {"op": "alloc_large", "mb": 1},
+            {"op": "all_block_info"},
+        ]
+        out = _run_test_case(plan, flags)
+
+        all_block_info = out["all_block_info"][0]
+        if all_block_info is None:
+            self.skipTest("all_block_info is not supported in this build")
+        self.assertGreater(len(all_block_info), 0)
+        self.assertTrue(
+            any(len(chunk) > 0 for chunk in all_block_info),
+            msg=f"all_block_info={all_block_info}",
+        )
+        self.assertTrue(
+            any(
+                len(block) == 3 and block[0] > 0
+                for chunk in all_block_info
+                for block in chunk
+            ),
+            msg=f"all_block_info={all_block_info}",
+        )
+
     def test_memory_limit(self):
         if not (base.is_compiled_with_cuda() or is_custom_device()):
             return
         flags = {
             "FLAGS_gpu_memory_limit_mb": 10,
+            "FLAGS_use_vmm_auto_growth_best_fit_allocator_v2": False,
         }
         plan = [
             {"op": "try_alloc", "mb": 5},
@@ -203,6 +241,7 @@ class TestAllocatorFlagsWithSubprocess(unittest.TestCase):
             return
         flags = {
             "FLAGS_use_auto_growth_v2": True,
+            "FLAGS_use_vmm_auto_growth_best_fit_allocator_v2": True,
             "FLAGS_large_pool_pre_alloc_in_mb": 6,
         }
         plan = [

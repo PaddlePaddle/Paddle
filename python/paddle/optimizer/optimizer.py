@@ -161,6 +161,9 @@ class Optimizer:
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
 
+    Keyword Args:
+        maximize (bool, optional): Maximize the objective with respect to the params, instead of minimizing. The default value is False.
+
     Returns:
        Base class for optimizer.
 
@@ -218,6 +221,8 @@ class Optimizer:
         weight_decay: float | WeightDecayRegularizer | None = None,
         grad_clip: GradientClipBase | None = None,
         name: str | None = None,
+        *,
+        maximize: bool = False,
     ) -> None:
         if parameters is not None:
             # paddle.Tensor is also iterable, so here we don't check whether
@@ -274,6 +279,7 @@ class Optimizer:
             self.regularization = weight_decay
         self._grad_clip = grad_clip
         self._learning_rate = learning_rate
+        self._maximize = maximize
 
         self._dtype = None
         # Infer the dtype form parameter
@@ -626,7 +632,7 @@ class Optimizer:
                                 ]
                             else:
                                 _lr_dtype = (
-                                    paddle.pir.core.convert_np_dtype_to_dtype_(
+                                    paddle.pir.core.convert_nptype_to_datatype(
                                         _lr_dtype
                                     )
                                 )
@@ -1699,12 +1705,18 @@ class Optimizer:
                 paddle.static.default_startup_program(),
             ):
                 auto_dp = paddle.distributed.auto_parallel.auto_dp_utils.in_auto_dp_mode()
-                from paddle.distributed.auto_parallel.fully_shard_fusion import (
+                from paddle.distributed.fsdp._fsdp_context import (
                     get_fsdp_context,
                 )
 
                 fsdp_context = get_fsdp_context()
                 if fsdp_context is not None:
+                    if self._param_groups and isinstance(
+                        self._param_groups[0], dict
+                    ):
+                        raise NotImplementedError(
+                            "FSDP does not support optimizer parameter groups."
+                        )
                     fsdp_context.comm_sync_and_reset_status()
                     new_params_grads = []
                     for group in fsdp_context.buffer_manager.buffer_groups:
@@ -2037,7 +2049,10 @@ class Optimizer:
                 parameters,
             )
         )
-        params_grads = [(param, param.grad) for param in parameters]
+        if self._maximize is True:
+            params_grads = [(param, -param.grad) for param in parameters]
+        else:
+            params_grads = [(param, param.grad) for param in parameters]
         optimize_ops = self.apply_gradients(params_grads)
 
     @imperative_base.no_grad()
@@ -2110,15 +2125,24 @@ class Optimizer:
                         hasattr(param, "main_grad")
                         and param.main_grad is not None
                     ):
-                        params_grads.append((param, param.main_grad))
+                        if self._maximize is True:
+                            params_grads.append((param, -param.main_grad))
+                        else:
+                            params_grads.append((param, param.main_grad))
                 elif (
                     hasattr(param, "main_grad") and param.main_grad is not None
                 ):
-                    params_grads.append((param, param.main_grad))
+                    if self._maximize is True:
+                        params_grads.append((param, -param.main_grad))
+                    else:
+                        params_grads.append((param, param.main_grad))
                 else:
                     if param._grad_ivar() is not None:
                         grad_var = param._grad_ivar()
-                        params_grads.append((param, grad_var))
+                        if self._maximize is True:
+                            params_grads.append((param, -grad_var))
+                        else:
+                            params_grads.append((param, grad_var))
 
             self._apply_optimize(
                 loss=None,
@@ -2136,7 +2160,10 @@ class Optimizer:
                         continue
                     if param._grad_ivar() is not None:
                         grad_var = param._grad_ivar()
-                        params_grads['params'].append((param, grad_var))
+                        if self._maximize is True:
+                            params_grads['params'].append((param, -grad_var))
+                        else:
+                            params_grads['params'].append((param, grad_var))
                 params_grads.update(
                     {k: v for k, v in param_group.items() if k != 'params'}
                 )

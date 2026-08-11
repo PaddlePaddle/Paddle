@@ -818,6 +818,7 @@ class P2pHelper:
             _timers("recv_forward").start()
         if pp_first_stage:
             input_tensor = None
+            wait_handles = None
         else:
             self._recv_meta()
 
@@ -933,6 +934,8 @@ class P2pHelper:
             )
             if self._dynamic_shape:
                 self._dynamic_cnt += 1
+        else:
+            wait_handles = None
         if _timers is not None:
             _timers("send_backward").stop()
 

@@ -77,23 +77,29 @@ struct GeluGradFunctor {
 
       // first = (0.5 * (1 + erf(x / sqrt(2))))
       funcs::CBlas<T>::AXPY(n, static_cast<T>(M_SQRT1_2), x_data, 1, first, 1);
-      funcs::CBlas<T>::VMERF(n, first, first, VML_LA);
+      Eigen::Map<Eigen::Array<T, Eigen::Dynamic, 1>> first_erf_map(first, n);
+      Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, 1>> x_erf_map(x_data, n);
+      first_erf_map = (x_erf_map * static_cast<T>(M_SQRT1_2)).erf();
       for (int i = 0; i < n; i++) {
-        first[i] += static_cast<T>(1);
+        first[i] = (first[i] + static_cast<T>(1)) * static_cast<T>(0.5);
       }
-      funcs::CBlas<T>::SCAL(n, static_cast<T>(0.5), first, 1);
 
       // second = (0.5 * 2/sqrt(pi) * 1/sqrt(2) * x * exp(-0.5 * x^2))
-      funcs::CBlas<T>::VSQUARE(n, x_data, second);
-      funcs::CBlas<T>::SCAL(n, -static_cast<T>(0.5), second, 1);
-      funcs::CBlas<T>::VEXP(n, second, second);
-      funcs::CBlas<T>::VMUL(n, x_data, second, second);
-      funcs::CBlas<T>::SCAL(
-          n, static_cast<T>(0.5 * M_2_SQRTPI * M_SQRT1_2), second, 1);
+      Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, 1>> second_map(second, n);
+      Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, 1>> x_map(x_data, n);
+      second_map = (x_map.cwiseAbs2() * static_cast<T>(-0.5)).array().exp() *
+                   x_map.array();
+      second_map *= static_cast<T>(0.5 * M_2_SQRTPI * M_SQRT1_2);
 
       // dx = dout * (first + second);
-      funcs::CBlas<T>::VADD(n, first, second, first);
-      funcs::CBlas<T>::VMUL(n, dout_data, first, dx_data);
+      for (int i = 0; i < n; ++i) {
+        first[i] += second[i];
+      }
+      Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, 1>> dx_map(dx_data, n);
+      Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, 1>> dout_map(dout_data,
+                                                                     n);
+      Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, 1>> first_map(first, n);
+      dx_map = dout_map.array() * first_map.array();
 
       std::free(first);
       std::free(second);

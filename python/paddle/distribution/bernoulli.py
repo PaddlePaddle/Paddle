@@ -27,6 +27,7 @@ from paddle.nn.functional import (
     sigmoid,
     softplus,
 )
+from paddle.utils.decorator_utils import param_one_alias
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -146,6 +147,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
         """
         return paddle.multiply(self.probs, (1 - self.probs))
 
+    @param_one_alias(["shape", "sample_shape"])
     def sample(self, shape: Sequence[int] = []) -> Tensor:
         """Sample from Bernoulli distribution.
 
@@ -193,6 +195,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
         with paddle.no_grad():
             return paddle.bernoulli(self.probs.expand(shape), name=name)
 
+    @param_one_alias(["shape", "sample_shape"])
     def rsample(
         self, shape: Sequence[int] = [], temperature: float = 1.0
     ) -> Tensor:

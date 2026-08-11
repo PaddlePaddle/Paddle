@@ -12,21 +12,47 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys as _sys
+
+from paddle.optimizer import (
+    ASGD as ASGD,
+    LBFGS as LBFGS,
+    Adadelta as Adadelta,
+    Adam as Adam,
+    Adamax as Adamax,
+    Muon as Muon,
+    NAdam as NAdam,
+    RAdam as RAdam,
+    RMSProp as RMSProp,
+    Rprop as Rprop,
+    adadelta,
+    adam,
+    adamax,
+    asgd,
+    lbfgs,
+    muon,
+    nadam,
+    radam,
+    rmsprop,
+    rprop,
+)
+
 from . import lr_scheduler  # noqa: F401
-from .adadelta import Adadelta
-from .adagrad import Adagrad
-from .adam import Adam
-from .adamax import Adamax
-from .adamw import AdamW
-from .asgd import ASGD
-from .lbfgs import LBFGS
-from .muon import Muon
-from .nadam import NAdam
-from .optimizer import Optimizer
-from .radam import RAdam
-from .rmsprop import RMSProp
-from .rprop import Rprop
-from .sgd import SGD
+from .adagrad import Adagrad as Adagrad
+from .adamw import AdamW as AdamW
+from .optimizer import Optimizer as Optimizer
+from .sgd import SGD as SGD
+
+_sys.modules['paddle.optim.adadelta'] = adadelta
+_sys.modules['paddle.optim.adam'] = adam
+_sys.modules['paddle.optim.adamax'] = adamax
+_sys.modules['paddle.optim.asgd'] = asgd
+_sys.modules['paddle.optim.lbfgs'] = lbfgs
+_sys.modules['paddle.optim.muon'] = muon
+_sys.modules['paddle.optim.nadam'] = nadam
+_sys.modules['paddle.optim.radam'] = radam
+_sys.modules['paddle.optim.rmsprop'] = rmsprop
+_sys.modules['paddle.optim.rprop'] = rprop
 
 __all__ = [
     "Adadelta",

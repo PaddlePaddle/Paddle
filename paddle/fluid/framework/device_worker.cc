@@ -107,7 +107,7 @@ void PrintDenseTensorType<float>(DenseTensor* tensor,
       out_val += "0";
     } else {
       std::string format = "%." + std::to_string(num_decimals) + "f";
-      sprintf(buf, &format[0], tensor->data<float>()[i]);  // NOLINT
+      snprintf(buf, sizeof(buf), format.c_str(), tensor->data<float>()[i]);
       out_val += buf;
     }
   }

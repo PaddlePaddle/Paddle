@@ -81,7 +81,7 @@ jobs:
           WITH_FLAGCX: "ON"
           LITE_GIT_TAG: develop
           WITH_UNITY_BUILD: "ON"
-          PY_VERSION: 3.9
+          PY_VERSION: "3.12"
           WITH_SHARED_PHI: "ON"
           WITH_CINN: "ON"
           INFERENCE_DEMO_INSTALL_DIR: /root/.cache/coverage
@@ -175,17 +175,17 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ~/.bashrc
-          source ${ci_scripts}/utils.sh; clean_build_files
           Build_Size=$(du -h --max-depth=0 ${work_dir}/build |awk '"'"'{print $1}'"'"')
+          source ${ci_scripts}/utils.sh; clean_build_files
           echo "Build_Size=${Build_Size}" > ${work_dir}/dist/coverage_build_size
           find ./ -type f -size +200M | xargs du -lh
           rm -rf $(find . -name "*.a")
           rm -rf $(find . -name "*.o")
           rm -rf paddle_inference_install_dir
           rm -rf paddle_inference_c_install_dir
-          rm -rf lib.linux-x86_64-3.9
+          rm -rf lib.linux-x86_64-${PY_VERSION}
           find ./ -name "eager_generator" -or -name  "kernel_signature_generator" -or -name "eager_legacy_op_function_generator" | xargs rm -rf
-          rm -rf ./python/build/lib.linux-x86_64-3.9/
+          rm -rf ./python/build/lib.linux-x86_64-${PY_VERSION}/
           cd "${work_dir}/build/third_party" && find $(ls | grep -v "dlpack" | grep -v "install" | grep -v "eigen3" | grep -v "gflags") -type f ! -name "*.so" -a ! -name "libdnnl.so*" -delete
           cd /
           tar --use-compress-program="pzstd -1" -cf Paddle.tar.gz paddle
@@ -195,7 +195,7 @@ jobs:
         env:
           home_path: ${{ github.workspace }}/..
           bos_file: ${{ github.workspace }}/../bos_retry/BosClient.py
-          paddle_whl: paddlepaddle_gpu-0.0.0-cp39-cp39-linux_x86_64.whl
+          paddle_whl: paddlepaddle_gpu-0.0.0-cp312-cp312-linux_x86_64.whl
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           echo "::group::Install bce-python-sdk"
@@ -214,6 +214,7 @@ jobs:
           mkdir -p ${CFS_DIR}/coverage_night/${coverage_tag}
           echo "Uploading coverage build size"
           python ${{ env.bos_file }} coverage_build_size paddle-github-action/night/coverage/${coverage_tag}
+          python ${{ env.bos_file }} coverage_build_size paddle-github-action/night/coverage
           echo "Uploading coverage wheel"
           python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/night/coverage/${coverage_tag}
           cd /
@@ -251,7 +252,7 @@ jobs:
           PADDLE_VERSION: 0.0.0
           WITH_DISTRIBUTE: "ON"
           WITH_UNITY_BUILD: "ON"
-          PY_VERSION: 3.9
+          PY_VERSION: "3.12"
           WITH_SHARED_PHI: "ON"
           WITH_CINN: "ON"
           INFERENCE_DEMO_INSTALL_DIR: /root/.cache/coverage
@@ -356,7 +357,7 @@ jobs:
         env:
           home_path: ${{ github.workspace }}/..
           bos_file: ${{ github.workspace }}/../bos_retry/BosClient.py
-          paddle_whl: paddlepaddle_gpu-0.0.0-cp39-cp39-linux_x86_64.whl
+          paddle_whl: paddlepaddle_gpu-0.0.0-cp312-cp312-linux_x86_64.whl
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           echo "::group::Install bce-python-sdk"

@@ -406,6 +406,7 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
   }
   bool is_all_0d_tensor = true;
   DDim in_dim({0});
+  bool has_in_dim = false;
   for (size_t i = 0; i < x.size(); ++i) {
     auto x_dim = x[i]->dims();
     // x_dim.size() == 1 means the real dim of selected rows is [0]
@@ -418,8 +419,9 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
     }
     is_all_0d_tensor = false;
     // use the first dimension
-    if (common::product(in_dim) == 0) {
+    if (!has_in_dim) {
       in_dim = x_dim;
+      has_in_dim = true;
     } else {
       if (config.is_runtime) {
         PADDLE_ENFORCE_EQ(in_dim,
@@ -4161,12 +4163,12 @@ void LogspaceInferMeta(const MetaTensor& start,
                                       "but received input size is %s.",
                                       common::product(num_dims)));
   auto b_dims = base.dims();
-  PADDLE_ENFORCE_EQ(common::product(b_dims),
-                    true,
-                    common::errors::InvalidArgument(
-                        "The size of Input(Base) must be 1,"
-                        "but received input size is common::product(b_dims).",
-                        common::product(b_dims)));
+  PADDLE_ENFORCE_EQ(
+      common::product(b_dims),
+      1,
+      common::errors::InvalidArgument("The size of Input(Base) must be 1,"
+                                      "but received input size is %s.",
+                                      common::product(b_dims)));
   out->set_dims(make_ddim({-1}));
   out->set_dtype(dtype);
 }
@@ -5784,6 +5786,7 @@ void WarpctcInferMeta(const MetaTensor& logits,
       errors::InvalidArgument(
           "The value of Attr(blank) should be in interval [0, %d), "
           "but received %d",
+          sequence_width,
           blank));
   PADDLE_ENFORCE_LT(
       blank,
@@ -5791,6 +5794,7 @@ void WarpctcInferMeta(const MetaTensor& logits,
       errors::InvalidArgument(
           "The value of Attr(blank) should be in interval [0, %d), "
           "but received %d",
+          sequence_width,
           blank));
 
   loss->set_dims({num_sequences, 1});
@@ -5816,6 +5820,7 @@ void WarprnntInferMeta(const MetaTensor& input,
       errors::InvalidArgument(
           "The value of Attr(blank) should be in interval [0, %d), "
           "but received %d",
+          D,
           blank));
   PADDLE_ENFORCE_LT(
       blank,
@@ -5823,6 +5828,7 @@ void WarprnntInferMeta(const MetaTensor& input,
       errors::InvalidArgument(
           "The value of Attr(blank) should be in interval [0, %d), "
           "but received %d",
+          D,
           blank));
 
   loss->set_dims({input_dims[0]});
@@ -5887,7 +5893,8 @@ void WeightOnlyLinearInferMeta(const MetaTensor& x,
         bias_dims.size(),
         1UL,
         errors::InvalidArgument(
-            "The size of Input(Bias)'s dimension should equal to 1UL.",
+            "The size of Input(Bias)'s dimension should equal to 1UL, but "
+            "received %d.",
             bias_dims.size()));
   }
 
@@ -6057,9 +6064,9 @@ void YoloLossInferMeta(const MetaTensor& x,
   PADDLE_ENFORCE_EQ(
       dim_gtbox[2],
       4,
-      common::errors::InvalidArgument("Input(GTBox) dim[2] should be 4",
-                                      "But receive dim[2](%s) != 5. ",
-                                      dim_gtbox[2]));
+      common::errors::InvalidArgument(
+          "Input(GTBox) dim[2] should be 4, but receive dim[2](%s) != 4.",
+          dim_gtbox[2]));
   PADDLE_ENFORCE_EQ(dim_gtlabel.size(),
                     2,
                     common::errors::InvalidArgument(
@@ -6291,6 +6298,18 @@ void MoePermuteInferMeta(const MetaTensor& X,
                           expert_prob_topk.dims(),
                           expert_routemap_topk.dims()));
   }
+  if (cols != -1) {
+    PADDLE_ENFORCE_GT(
+        cols,
+        0,
+        common::errors::InvalidArgument(
+            "X.dims()[1] should be positive, but got %ld.", cols));
+    PADDLE_ENFORCE_LE(
+        cols,
+        static_cast<int64_t>(std::numeric_limits<int32_t>::max()),
+        common::errors::InvalidArgument(
+            "X.dims()[1] should be <= INT_MAX, but got %ld.", cols));
+  }
   const bool check_input_shape =
       !common::contain_unknown_dim(X.dims()) &&
       !common::contain_unknown_dim(expert_routemap_topk.dims());
@@ -6313,16 +6332,6 @@ void MoePermuteInferMeta(const MetaTensor& X,
         static_cast<int64_t>(std::numeric_limits<int32_t>::max()) - 32,
         common::errors::InvalidArgument(
             "X.dims()[0] should be <= INT_MAX - 32, but got %ld.", rows));
-    PADDLE_ENFORCE_GE(
-        cols,
-        0,
-        common::errors::InvalidArgument(
-            "X.dims()[1] should be non-negative, but got %ld.", cols));
-    PADDLE_ENFORCE_LE(
-        cols,
-        static_cast<int64_t>(std::numeric_limits<int32_t>::max()),
-        common::errors::InvalidArgument(
-            "X.dims()[1] should be <= INT_MAX, but got %ld.", cols));
     PADDLE_ENFORCE_GE(topk,
                       1,
                       common::errors::InvalidArgument(
@@ -6570,13 +6579,24 @@ void MoeUnpermuteInferMeta(const MetaTensor& unzipped_tokens,
   }
   const int64_t cols = unzipped_tokens.dims()[1];
   const int64_t topk = expert_routemap_topk.dims()[1];
-  if (!common::contain_unknown_dim(unzipped_tokens.dims())) {
-    PADDLE_ENFORCE_GE(cols,
-                      0,
-                      common::errors::InvalidArgument(
-                          "unzipped_tokens.dims()[1] should be non-negative, "
-                          "but got %ld.",
-                          cols));
+  if (cols != -1) {
+    PADDLE_ENFORCE_GT(
+        cols,
+        0,
+        common::errors::InvalidArgument(
+            "unzipped_tokens.dims()[1] should be positive, but got %ld.",
+            cols));
+  }
+  if (!common::contain_unknown_dim(unzipped_tokens.dims()) &&
+      !common::contain_unknown_dim(unzipped_token_probs.dims())) {
+    PADDLE_ENFORCE_EQ(
+        unzipped_token_probs.numel(),
+        unzipped_tokens.dims()[0],
+        common::errors::InvalidArgument(
+            "Input unzipped_token_probs's number of elements should be equal "
+            "to unzipped_tokens.dims()[0], but got %ld and %ld.",
+            unzipped_token_probs.numel(),
+            unzipped_tokens.dims()[0]));
   }
   if (!common::contain_unknown_dim(expert_routemap_topk.dims())) {
     PADDLE_ENFORCE_GE(topk,

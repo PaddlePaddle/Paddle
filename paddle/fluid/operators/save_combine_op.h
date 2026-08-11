@@ -77,8 +77,7 @@ void SaveCombineTensorKernel(const Context& dev_ctx,
     PADDLE_THROW(common::errors::PreconditionNotMet(
         "%s exists! Cannot save_combine to it when overwrite is set to "
         "false.",
-        file_path,
-        overwrite));
+        file_path));
   }
 
   std::ostringstream ss;
@@ -144,8 +143,7 @@ void SaveCombineVocabKernel(
     PADDLE_THROW(common::errors::PreconditionNotMet(
         "%s exists! Cannot save_combine to it when overwrite is set to "
         "false.",
-        file_path,
-        overwrite));
+        file_path));
   }
 
   std::ostringstream ss;

@@ -366,6 +366,43 @@ void BmmInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   out->set_layout(x.layout());
 }
 
+void BmmOutDtypeInferMeta(const MetaTensor& x,
+                          const MetaTensor& y,
+                          DataType out_dtype,
+                          MetaTensor* out) {
+  PADDLE_ENFORCE_EQ(
+      out_dtype,
+      DataType::FLOAT32,
+      common::errors::InvalidType(
+          "The out_dtype of paddle.bmm currently only supports float32."));
+  PADDLE_ENFORCE_EQ(
+      x.dtype() == DataType::FLOAT16 || x.dtype() == DataType::BFLOAT16,
+      true,
+      common::errors::InvalidType(
+          "The out_dtype of paddle.bmm currently only supports float16 or "
+          "bfloat16 Input(X)."));
+  PADDLE_ENFORCE_EQ(
+      y.dtype() == DataType::FLOAT16 || y.dtype() == DataType::BFLOAT16,
+      true,
+      common::errors::InvalidType(
+          "The out_dtype of paddle.bmm currently only supports float16 or "
+          "bfloat16 Input(Y)."));
+  PADDLE_ENFORCE_EQ(
+      x.dtype(),
+      y.dtype(),
+      common::errors::InvalidType(
+          "Input(X) and Input(Y) must have the same dtype when out_dtype is "
+          "specified for paddle.bmm."));
+  PADDLE_ENFORCE_EQ(
+      out->dtype() == DataType::UNDEFINED || out->dtype() == DataType::FLOAT32,
+      true,
+      common::errors::InvalidType(
+          "The out tensor dtype must be float32 when out_dtype is float32."));
+
+  BmmInferMeta(x, y, out);
+  out->set_dtype(DataType::FLOAT32);
+}
+
 void BoxClipInferMeta(const MetaTensor& input,
                       const MetaTensor& im_info,
                       MetaTensor* output,
@@ -1230,6 +1267,16 @@ void CrossEntropyWithSoftmaxInferMeta(const MetaTensor& logits,
                                           "the axis dimension of "
                                           "Input(Label) should be 1."));
     }
+    if (config.is_runtime || logits_dims[axis] >= 0) {
+      PADDLE_ENFORCE_GT(
+          logits_dims[axis],
+          0,
+          common::errors::InvalidArgument(
+              "If Attr(soft_label) == false, the axis dimension of "
+              "Input(Logits), which represents the number of classes, "
+              "should be greater than 0, but received %ld.",
+              logits_dims[axis]));
+    }
   }
 
   softmax->set_dims(logits_dims);
@@ -1972,12 +2019,13 @@ void FusedDropoutAddInferMeta(const MetaTensor& x,
 static std::vector<int64_t> GetInputShape(DDim dim,
                                           std::vector<int> shape,
                                           std::vector<int> axis) {
-  PADDLE_ENFORCE_GT(dim.size(),
-                    0,
-                    common::errors::InvalidArgument(
-                        "The Input(%s) has not been initialized properly. The "
-                        "shape of Input(%s) = [%s].",
-                        dim));
+  PADDLE_ENFORCE_GT(
+      dim.size(),
+      0,
+      common::errors::InvalidArgument(
+          "The input has not been initialized properly. The shape of input = "
+          "[%s].",
+          dim));
 
   auto is_input_fused = (!shape.empty() && !axis.empty());
   if (is_input_fused) {
@@ -3170,6 +3218,68 @@ void MatmulInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void MmOutDtypeInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         DataType out_dtype,
+                         MetaTensor* out,
+                         MetaConfig config) {
+  PADDLE_ENFORCE_EQ(
+      out_dtype,
+      DataType::FLOAT32,
+      common::errors::InvalidArgument(
+          "The out_dtype of paddle.mm currently only supports float32."));
+  PADDLE_ENFORCE_EQ(
+      x.dtype() == DataType::FLOAT16 || x.dtype() == DataType::BFLOAT16,
+      true,
+      common::errors::InvalidArgument(
+          "The dtype of Input(X) must be FLOAT16 or BFLOAT16, but received "
+          "%s.",
+          x.dtype()));
+  PADDLE_ENFORCE_EQ(
+      y.dtype() == DataType::FLOAT16 || y.dtype() == DataType::BFLOAT16,
+      true,
+      common::errors::InvalidArgument(
+          "The dtype of Input(Y) must be FLOAT16 or BFLOAT16, but received "
+          "%s.",
+          y.dtype()));
+  PADDLE_ENFORCE_EQ(
+      x.dtype(),
+      y.dtype(),
+      common::errors::InvalidArgument(
+          "Input(X) and Input(Y) must have the same dtype when out_dtype is "
+          "specified for paddle.mm."));
+
+  auto dims_x = vectorize(x.dims());
+  auto dims_y = vectorize(y.dims());
+  PADDLE_ENFORCE_EQ(
+      dims_x.size(),
+      2UL,
+      common::errors::InvalidArgument(
+          "The out_dtype of paddle.mm currently only supports 2-D Input(X)."));
+  PADDLE_ENFORCE_EQ(
+      dims_y.size(),
+      2UL,
+      common::errors::InvalidArgument(
+          "The out_dtype of paddle.mm currently only supports 2-D Input(Y)."));
+  const int64_t K_lhs = dims_x[1];
+  const int64_t K_rhs = dims_y[0];
+  if (config.is_runtime || (K_lhs >= 0 && K_rhs >= 0)) {
+    PADDLE_ENFORCE_EQ(
+        K_lhs,
+        K_rhs,
+        common::errors::InvalidArgument(
+            "Input(X)'s width must equal Input(Y)'s height, but received %d "
+            "and %d.",
+            K_lhs,
+            K_rhs));
+  }
+
+  out->set_dims(make_ddim({dims_x[0], dims_y[1]}));
+  out->set_dtype(DataType::FLOAT32);
+  out->set_layout(x.layout());
+  out->share_lod(x);
+}
+
 void MatmulWithFlattenInferMeta(const MetaTensor& x,
                                 const MetaTensor& y,
                                 int x_num_col_dims,
@@ -3537,9 +3647,8 @@ void PReluInferMeta(const MetaTensor& x,
         alpha_rank,
         x_rank,
         common::errors::InvalidArgument(
-            "For mode 'element', rank of weight Alpha must be ",
-            "equal to the rank of input(x). But received alpha's rank: %d, "
-            "x's rank: %d.",
+            "For mode 'element', rank of weight Alpha must be equal to the "
+            "rank of input(x). But received alpha's rank: %d, x's rank: %d.",
             alpha_rank,
             x_rank));
     size_t x_product = 1;
@@ -4044,7 +4153,7 @@ void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
         sequences_dims[sequences_dims.size() - 1],
         std::numeric_limits<int>::max(),
         common::errors::Unavailable(
-            "The size of sorted_sequence %d exceed the maximum limit d%. "
+            "The size of sorted_sequence %d exceed the maximum limit %d. "
             "Because the size of sorted_sequence should be less than the "
             "output maximum value for int32 bit. Please set appropriate "
             "sorted_sequence to meet this requirement! ",
@@ -4335,19 +4444,21 @@ void TakeAlongAxisInferMeta(const MetaTensor& x,
   auto input_dim = x.dims();
   auto index_dim = index.dims();
 
-  PADDLE_ENFORCE_GT(input_dim.size(),
-                    0,
-                    common::errors::InvalidArgument(
-                        "Dimension of the input(Input) of TakeAlongAxisOp "
-                        "should be greater than 0.",
-                        input_dim));
+  PADDLE_ENFORCE_GT(
+      input_dim.size(),
+      0,
+      common::errors::InvalidArgument(
+          "Dimension of the input(Input) of TakeAlongAxisOp should be greater "
+          "than 0, but received %d.",
+          input_dim.size()));
 
-  PADDLE_ENFORCE_GT(index_dim.size(),
-                    0,
-                    common::errors::InvalidArgument(
-                        "Dimension of the input(Index) of TakeAlongAxisOp "
-                        "should be greater than 0.",
-                        index_dim));
+  PADDLE_ENFORCE_GT(
+      index_dim.size(),
+      0,
+      common::errors::InvalidArgument(
+          "Dimension of the input(Index) of TakeAlongAxisOp should be greater "
+          "than 0, but received %d.",
+          index_dim.size()));
 
   out->set_dims(index_dim);
   out->set_dtype(x.dtype());

@@ -17,6 +17,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from paddle.distribution import distribution
+from paddle.utils.decorator_utils import param_one_alias
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -89,6 +90,7 @@ class Independent(distribution.Distribution):
     def variance(self) -> Tensor:
         return self._base.variance
 
+    @param_one_alias(["shape", "sample_shape"])
     def sample(self, shape: Sequence[int] = []) -> Tensor:
         return self._base.sample(shape)
 

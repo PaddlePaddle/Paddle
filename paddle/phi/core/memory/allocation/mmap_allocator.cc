@@ -113,7 +113,7 @@ void AllocateMemoryMap(std::string filename,
     PADDLE_ENFORCE_NE(::close(fd),
                       -1,
                       common::errors::Unavailable(
-                          "Error closing memory mapped file <", filename, ">"));
+                          "Error closing memory mapped file %s", filename));
 
     *shared_fd = -1;
   }
@@ -163,7 +163,7 @@ void MemoryMapAllocation::close() {
       PADDLE_ENFORCE_NE(::close(fd_),
                         -1,
                         common::errors::Unavailable(
-                            "Error closing file descriptor <", fd_, ">"));
+                            "Error closing file descriptor <%d>", fd_));
     }
   }
   if (closed_) {
@@ -211,10 +211,10 @@ void RefcountedMemoryMapAllocation::close() {
   --info->refcount;
   if (flags_ & MAPPED_KEEPFD) {
     closed_fd_ = true;
-    PADDLE_ENFORCE_NE(::close(fd_),
-                      -1,
-                      common::errors::Unavailable(
-                          "Error closing file descriptor <", fd_, ">"));
+    PADDLE_ENFORCE_NE(
+        ::close(fd_),
+        -1,
+        common::errors::Unavailable("Error closing file descriptor <%d>", fd_));
     VLOG(6) << "close fd: " << fd_;
   }
 
@@ -236,11 +236,9 @@ void RefcountedMemoryMapAllocation::close() {
       PADDLE_ENFORCE_NE(munmap(map_ptr_, map_size_),
                         -1,
                         common::errors::Unavailable(
-                            "could not unmap the shared memory file: ",
+                            "could not unmap the shared memory file: %s (%d)",
                             strerror(errno),
-                            " (",
-                            errno,
-                            ")"));
+                            errno));
     }
   }
 }
@@ -405,14 +403,12 @@ void MemoryMapAllocationPool::Clear() {
     if (rlt == 0) {
       VLOG(4) << "MemoryMapAllocationPool: clear " << mmap.file_name_;
     }
-    PADDLE_ENFORCE_NE(
-        munmap(mmap.mmap_ptr_, mmap.data_size_ + mmap_alignment),
-        -1,
-        common::errors::Unavailable("could not unmap the shared memory file: ",
-                                    strerror(errno),
-                                    " (",
-                                    errno,
-                                    ")"));
+    PADDLE_ENFORCE_NE(munmap(mmap.mmap_ptr_, mmap.data_size_ + mmap_alignment),
+                      -1,
+                      common::errors::Unavailable(
+                          "could not unmap the shared memory file: %s (%d)",
+                          strerror(errno),
+                          errno));
   }
   memory_map_allocations_.clear();
 }

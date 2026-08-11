@@ -23,7 +23,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     AnyStr,
-    Callable,
     Protocol,
     TypeVar,
     overload,
@@ -50,7 +49,7 @@ from .dataloader.dataloader_iter import (
 
 if TYPE_CHECKING:
     import numbers
-    from collections.abc import Mapping, Sequence
+    from collections.abc import Callable, Mapping, Sequence
 
     import numpy.typing as npt
 

@@ -24,13 +24,13 @@
 namespace phi {
 
 static void GetRowsCols(const std::vector<int64_t> &shape,
-                        int *p_rows,
-                        int *p_cols) {
-  int rows = 1;
+                        int64_t *p_rows,
+                        int64_t *p_cols) {
+  int64_t rows = 1;
   for (int i = 0; i + 1 < shape.size(); ++i) {
     rows *= shape[i];
   }
-  int cols = shape[shape.size() - 1];
+  int64_t cols = shape[shape.size() - 1];
   *p_rows = rows;
   *p_cols = cols;
 }
@@ -43,7 +43,8 @@ void RMSLnFwd(const Context &dev_ctx,
               DenseTensor *y,
               DenseTensor *invvar) {
   const auto &scale_shape = scale.dims();
-  int rows, cols;
+  int64_t rows;
+  int64_t cols;
   GetRowsCols(vectorize(x.dims()), &rows, &cols);
   if (scale.dtype() == DataType::BFLOAT16) {
     dev_ctx.template Alloc<bfloat16>(y);
@@ -68,7 +69,8 @@ void RMSLnBwd(const Context &dev_ctx,
               float epsilon,
               DenseTensor *x_grad,
               DenseTensor *scale_grad) {
-  int rows, cols;
+  int64_t rows;
+  int64_t cols;
   GetRowsCols(vectorize(x.dims()), &rows, &cols);
   dev_ctx.template Alloc<T>(x_grad);
   if (scale_grad) {

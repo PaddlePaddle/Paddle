@@ -16,13 +16,24 @@ if [ ${BRANCH} != 'develop' ];then
     exit 0
 fi
 
-rm -f build_size
-curl --noproxy '*' -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/build_size
-dev_coverage_build_size=`cat build_size|sed 's#G##g'`
+rm -f coverage_build_size
+coverage_build_size_url="https://paddle-github-action.bj.bcebos.com/night/coverage/coverage_build_size"
+if ! curl --noproxy '*' -fsSL -o coverage_build_size "${coverage_build_size_url}"; then
+    echo "develop coverage build size not found: ${coverage_build_size_url}"
+    exit 1
+fi
+
+dev_coverage_build_size=`grep -Eo '[0-9]+G' coverage_build_size | head -n1 | sed 's#G##g'`
+if [ -z "${dev_coverage_build_size}" ]; then
+    echo "invalid develop coverage build size: $(cat coverage_build_size | tr -d '\n')"
+    exit 1
+fi
+
 pr_coverage_build_size=`echo $buildSize |sed 's#G##g'`
 
 echo "========================================================"
-echo "The develop coverage build size is $(cat build_size | tr -d '\n')"
+echo "The develop coverage build size is ${dev_coverage_build_size}G"
+echo "The develop coverage build size source is ${coverage_build_size_url}"
 echo "The pr coverage build size is $buildSize"
 echo "========================================================"
 

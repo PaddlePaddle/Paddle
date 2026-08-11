@@ -47,7 +47,10 @@ from ..base.framework import (  # noqa: F401
     _set_expected_place,
     _stride_in_no_check_dy2st_diff as _no_check_dy2st_diff,
     _to_pinned_place,
-    convert_np_dtype_to_dtype_,
+    convert_nptype_to_datatype_or_vartype,
+    convert_nptype_to_vartype,
+    convert_to_datatype,
+    convert_to_vartype,
     deprecate_stat_dict,
     disable_signal_handler,
     dygraph_not_support,
@@ -77,7 +80,11 @@ from ..base.layers.math_op_patch import monkey_patch_variable  # noqa: F401
 # isort: on
 from ..base.param_attr import ParamAttr  # noqa: F401
 from . import random  # noqa: F401
-from .framework import get_default_dtype, set_default_dtype  # noqa: F401
+from .framework import (  # noqa: F401
+    get_default_dtype,
+    set_default_dtype,
+    set_default_tensor_type,
+)
 from .io import load, save  # noqa: F401
 from .io_utils import (  # noqa: F401
     _clone_var_in_block_,

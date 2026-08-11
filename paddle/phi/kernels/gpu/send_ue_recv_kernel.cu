@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -99,8 +100,11 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& dev_ctx,
   int64_t out_len = bcast_info.out_len;
   const int ntx = FindNumThreads(out_len, dev_ctx.GetMaxThreadsPerBlock());
   const int nty = dev_ctx.GetMaxThreadsPerBlock() / ntx;
-  const int nbx = (out_len + ntx - 1) / ntx;
-  const int nby = FindNumBlocks('y', (index_size + nty - 1) / nty);
+  const int64_t nbx_64 = (out_len + ntx - 1) / ntx;
+  PADDLE_ENFORCE_LE_INT_MAX(nbx_64, "grid.x");
+  const int nbx = static_cast<int>(nbx_64);
+  const int64_t nby_64 = (index_size + nty - 1) / nty;
+  const int nby = FindNumBlocks('y', nby_64);
   const dim3 grid(nbx, nby);
   const dim3 block(ntx, nty);
   int64_t input_size = x.dims()[0];
@@ -162,8 +166,9 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& dev_ctx,
           dst_count_data, 0, input_size * sizeof(int), dev_ctx.stream());
 #endif
       int64_t grid_count = (index_size + block_ - 1) / block_;
+      PADDLE_ENFORCE_LE_UINT32_MAX(grid_count, "grid_count");
       ComputeCountCUDAKernel<T, IndexT>
-          <<<grid_count, block_, 0, dev_ctx.stream()>>>(
+          <<<static_cast<uint32_t>(grid_count), block_, 0, dev_ctx.stream()>>>(
               dst_count_data, d_index, index_size);
 
       int64_t grid_mean = (input_size * out_len + block_ - 1) / block_;

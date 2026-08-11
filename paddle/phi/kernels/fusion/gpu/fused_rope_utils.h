@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 
 namespace phi {
@@ -279,8 +280,10 @@ void FusedRopeKernelLauncher(const T* src,
                              const int64_t numel,
                              gpuStream_t stream) {
   if (numel <= 0) return;
-  const int64_t warps_per_block = h < 16 ? 4 : 8;
-  dim3 grid(seq_len, batch_size);
+  const int warps_per_block = h < 16 ? 4 : 8;
+  PADDLE_ENFORCE_LE_UINT32_MAX(seq_len, "fused_rope CUDA launch grid.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(batch_size, "fused_rope CUDA launch grid.y");
+  dim3 grid(static_cast<uint32_t>(seq_len), static_cast<uint32_t>(batch_size));
   dim3 block(32, warps_per_block);  // 32 threads per warp
   size_t shared_mem_size = 2 * d2 * sizeof(float);
 

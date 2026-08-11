@@ -614,6 +614,178 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
                 num_experts,
             )
 
+    def test_unpermute_invalid_token_probs(self):
+        (
+            unzipped_tokens,
+            zipped_expertwise_rowmap,
+            expert_routemap_topk,
+            token_prob_unzipped,
+            seq_len,
+            num_experts,
+        ) = self._build_small_unpermute_inputs()
+        # unzipped_token_probs must hold one probability per unzipped token row.
+        with self.assertRaisesRegex(Exception, "unzipped_token_probs"):
+            moe_unpermute(
+                unzipped_tokens,
+                zipped_expertwise_rowmap,
+                expert_routemap_topk,
+                paddle.zeros([0], dtype="float32"),
+                seq_len,
+                num_experts,
+            )
+        with self.assertRaisesRegex(Exception, "unzipped_token_probs"):
+            moe_unpermute(
+                unzipped_tokens,
+                zipped_expertwise_rowmap,
+                expert_routemap_topk,
+                token_prob_unzipped[:-1],
+                seq_len,
+                num_experts,
+            )
+
+    def test_permute_invalid_scale_rows(self):
+        (
+            hidden_states,
+            expert_routemap_topk,
+            expert_prob_topk,
+            num_experts,
+            tokens_per_expert,
+        ) = self._build_small_permute_inputs()
+        # XScale's first dimension must match X.dims()[0].
+        mismatched_scale = paddle.zeros(
+            [hidden_states.shape[0] + 1, 1], dtype="float32"
+        )
+        with self.assertRaisesRegex(Exception, "XScale"):
+            moe_permute(
+                hidden_states,
+                mismatched_scale,
+                expert_routemap_topk,
+                expert_prob_topk,
+                num_experts,
+                tokens_per_expert,
+                16,
+            )
+
+    def test_unpermute_all_tokens_unassigned(self):
+        """Test moe_unpermute when all tokens are unassigned (routemap all -1).
+
+        This covers the case where moe_permute outputs 0-row
+        hidden_states_unzipped but total_zipped_tokens > 0. The unpermute
+        kernel must zero-initialize outputs instead of leaving them
+        uninitialized.
+        """
+        seq_len = 4
+        token_dim = 1024
+        topk = 8
+        num_experts = 32
+
+        hidden_states = paddle.randn([seq_len, token_dim], dtype="bfloat16")
+        expert_routemap_topk = paddle.full([seq_len, topk], -1, dtype="int32")
+        expert_prob_topk = paddle.zeros([seq_len, topk], dtype="float32")
+        tokens_per_expert = [0] * num_experts
+
+        # Permute: should produce 0-row output
+        (
+            hidden_unzipped,
+            compact_routemap,
+            prob_unzipped,
+            _,
+        ) = moe_permute(
+            hidden_states,
+            None,
+            expert_routemap_topk,
+            expert_prob_topk,
+            num_experts,
+            tokens_per_expert,
+            padding_alignment=128,
+            do_gather=True,
+        )
+        self.assertEqual(
+            hidden_unzipped.shape[0],
+            0,
+            "Expected 0 rows when all tokens are unassigned",
+        )
+
+        # Unpermute: should not produce NaN / uninitialized values
+        zipped_tokens, zipped_probs = moe_unpermute(
+            hidden_unzipped,
+            compact_routemap,
+            expert_routemap_topk,
+            prob_unzipped,
+            total_zipped_tokens=seq_len,
+            num_experts=num_experts,
+        )
+
+        self.assertEqual(zipped_tokens.shape, [seq_len, token_dim])
+        self.assertEqual(zipped_probs.shape, [seq_len, topk])
+
+        # All outputs should be zero (no token was routed)
+        tokens_f32 = zipped_tokens.astype("float32").numpy()
+        probs_f32 = zipped_probs.numpy()
+        self.assertFalse(
+            np.isnan(tokens_f32).any(),
+            "zipped_tokens contains NaN (uninitialized memory)",
+        )
+        self.assertFalse(
+            np.isnan(probs_f32).any(),
+            "zipped_probs contains NaN (uninitialized memory)",
+        )
+        np.testing.assert_array_equal(
+            tokens_f32,
+            np.zeros_like(tokens_f32),
+            err_msg="zipped_tokens should be all zeros when no token is routed",
+        )
+        np.testing.assert_array_equal(
+            probs_f32,
+            np.zeros_like(probs_f32),
+            err_msg="zipped_probs should be all zeros when no token is routed",
+        )
+
+    def test_permute_reject_zero_token_dim(self):
+        """Test that moe_permute rejects token_dim == 0 input."""
+        seq_len = 4
+        topk = 8
+        num_experts = 3
+
+        hidden_states = paddle.empty([seq_len, 0], dtype="bfloat16")
+        expert_routemap_topk = paddle.full([seq_len, topk], -1, dtype="int32")
+        expert_prob_topk = paddle.zeros([seq_len, topk], dtype="float32")
+        tokens_per_expert = [0] * num_experts
+
+        with self.assertRaisesRegex(ValueError, "positive"):
+            moe_permute(
+                hidden_states,
+                None,
+                expert_routemap_topk,
+                expert_prob_topk,
+                num_experts,
+                tokens_per_expert,
+                padding_alignment=128,
+            )
+
+    def test_unpermute_reject_zero_token_dim(self):
+        """Test that moe_unpermute rejects token_dim == 0 input."""
+        seq_len = 3
+        num_experts = 3
+        topk = 8
+
+        unzipped_tokens = paddle.empty([4, 0], dtype="bfloat16")
+        zipped_expertwise_rowmap = paddle.full(
+            [seq_len, num_experts], -1, dtype="int32"
+        )
+        expert_routemap_topk = paddle.full([seq_len, topk], -1, dtype="int32")
+        token_prob_unzipped = paddle.ones([4], dtype="float32")
+
+        with self.assertRaisesRegex(ValueError, "positive"):
+            moe_unpermute(
+                unzipped_tokens,
+                zipped_expertwise_rowmap,
+                expert_routemap_topk,
+                token_prob_unzipped,
+                seq_len,
+                num_experts,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -104,6 +104,8 @@ class FusionStorage:
         self.merged_model_params_meta = {}
         self.dtype = dtype
         self.buffer = None
+        self._buffer_ipc_meta = None
+        self._buffer_ipc_meta_ptr = None
         self.offset = 0
         self.build_buffer()
         self.mapping_tensor()
@@ -150,6 +152,8 @@ class FusionStorage:
                 self.offset += src_len
 
         self.buffer = paddle.zeros((self.offset,), dtype=self.dtype)
+        self._buffer_ipc_meta = None
+        self._buffer_ipc_meta_ptr = None
 
     @imperative_base.no_grad()
     def mapping_tensor(self):
@@ -188,7 +192,14 @@ class FusionStorage:
         self.buffer._slice(start, end)._share_buffer_to(src)
 
     def _refresh_buffer_ipc_meta(self):
-        return _share_tensor_ipc_meta(self.buffer)
+        buffer_ptr = self.buffer.data_ptr()
+        if (
+            self._buffer_ipc_meta is None
+            or self._buffer_ipc_meta_ptr != buffer_ptr
+        ):
+            self._buffer_ipc_meta = _share_tensor_ipc_meta(self.buffer)
+            self._buffer_ipc_meta_ptr = buffer_ptr
+        return self._buffer_ipc_meta
 
     @property
     def buffer_ipc_meta(self):
@@ -244,7 +255,8 @@ class FusionStorageHelper:
             "buffer_ipc_meta must be a tuple"
         )
         assert len(buffer_ipc_meta) in (5, 7), (
-            "buffer_ipc_meta must be a tuple with length 5 when FLAGS_use_virtual_memory_auto_growth is True or 7 when FLAGS_use_virtual_memory_auto_growth is False."
+            "buffer_ipc_meta must contain 7 elements, or 5 elements when "
+            "reading legacy VMM IPC metadata."
         )
 
         if paddle.is_compiled_with_xpu():

@@ -18,15 +18,18 @@
 #include <c10/core/TensorOptions.h>
 #include <utils/pinned_place.h>
 #include <algorithm>
+#include <memory>
 #include <optional>
 
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
 
-namespace at {
+namespace at::detail {
 
-inline std::vector<int64_t> infer_sparse_coo_size(const at::Tensor& indices) {
+inline std::vector<int64_t> _PD_infer_sparse_coo_size(
+    const at::Tensor& indices) {
   auto host_indices = indices.cpu().to(at::kLong);
   int64_t sparse_dim = host_indices.dim() > 0 ? host_indices.size(0) : 0;
   int64_t nnz = host_indices.dim() > 1 ? host_indices.size(1) : 0;
@@ -42,10 +45,28 @@ inline std::vector<int64_t> infer_sparse_coo_size(const at::Tensor& indices) {
   return inferred_size;
 }
 
-inline at::Tensor sparse_coo_tensor(const at::Tensor& indices,
-                                    const at::Tensor& values,
-                                    at::IntArrayRef size,
-                                    at::TensorOptions options = {}) {
+inline void _PD_set_sparse_coo_coalesced(at::Tensor* tensor,
+                                         ::std::optional<bool> is_coalesced) {
+  if (!is_coalesced.has_value()) {
+    return;
+  }
+  auto sparse_tensor = std::dynamic_pointer_cast<phi::SparseCooTensor>(
+      tensor->_PD_GetInner().impl());
+  PD_CHECK(sparse_tensor,
+           "Expected SparseCooTensor result from sparse_coo_tensor.");
+  sparse_tensor->SetCoalesced(is_coalesced.value());
+}
+
+}  // namespace at::detail
+
+namespace at {
+
+inline at::Tensor sparse_coo_tensor(
+    const at::Tensor& indices,
+    const at::Tensor& values,
+    at::IntArrayRef size,
+    at::TensorOptions options = {},
+    ::std::optional<bool> is_coalesced = ::std::nullopt) {
   paddle::Tensor idx = indices._PD_GetInner();
   paddle::Tensor vals = values._PD_GetInner();
 
@@ -62,8 +83,10 @@ inline at::Tensor sparse_coo_tensor(const at::Tensor& indices,
 
   // PyTorch: sparse_coo_tensor(indices, values, size)
   // Paddle:  sparse_coo_tensor(values, indices, shape)
-  return paddle::experimental::sparse::sparse_coo_tensor(
+  at::Tensor result = paddle::experimental::sparse::sparse_coo_tensor(
       vals, idx, std::vector<int64_t>(size.begin(), size.end()));
+  detail::_PD_set_sparse_coo_coalesced(&result, is_coalesced);
+  return result;
 }
 
 inline at::Tensor sparse_coo_tensor(const at::Tensor& indices,
@@ -72,19 +95,25 @@ inline at::Tensor sparse_coo_tensor(const at::Tensor& indices,
                                     ::std::optional<at::ScalarType> dtype,
                                     ::std::optional<at::Layout> layout,
                                     ::std::optional<at::Device> device,
-                                    ::std::optional<bool> pin_memory) {
+                                    ::std::optional<bool> pin_memory,
+                                    ::std::optional<bool> is_coalesced) {
   PD_CHECK(!layout.has_value() || layout.value() == c10::kSparse,
            "`layout` must be Sparse for sparse_coo_tensor.");
   auto options =
       at::TensorOptions().dtype(dtype).device(device).pinned_memory(pin_memory);
-  return sparse_coo_tensor(indices, values, size, options);
+  return sparse_coo_tensor(indices, values, size, options, is_coalesced);
 }
 
-inline at::Tensor sparse_coo_tensor(const at::Tensor& indices,
-                                    const at::Tensor& values,
-                                    at::TensorOptions options = {}) {
-  return sparse_coo_tensor(
-      indices, values, infer_sparse_coo_size(indices), options);
+inline at::Tensor sparse_coo_tensor(
+    const at::Tensor& indices,
+    const at::Tensor& values,
+    at::TensorOptions options = {},
+    ::std::optional<bool> is_coalesced = ::std::nullopt) {
+  return sparse_coo_tensor(indices,
+                           values,
+                           detail::_PD_infer_sparse_coo_size(indices),
+                           options,
+                           is_coalesced);
 }
 
 }  // namespace at

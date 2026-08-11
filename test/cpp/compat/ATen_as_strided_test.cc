@@ -109,7 +109,7 @@ TEST_F(TensorAsStridedTest, AsStridedScatterBasic) {
   at::Tensor src = at::full({2, 3}, 99.0f, at::kFloat);
   at::Tensor result = t.as_strided_scatter(src, {2, 3}, {3, 1});
 
-  ASSERT_EQ(result.sizes(), c10::IntArrayRef({2, 3}));
+  ASSERT_EQ(result.sizes(), c10::IntArrayRef({12}));
   float* data = result.data_ptr<float>();
   for (int i = 0; i < 6; ++i) {
     ASSERT_FLOAT_EQ(data[i], 99.0f);
@@ -131,10 +131,10 @@ TEST_F(TensorAsStridedTest, AsStridedScatterWithOffset) {
   at::Tensor src = at::full({2, 2}, 88.0f, at::kFloat);
   at::Tensor result = t.as_strided_scatter(src, {2, 2}, {2, 1}, 2);
 
-  ASSERT_EQ(result.sizes(), c10::IntArrayRef({2, 2}));
+  ASSERT_EQ(result.sizes(), c10::IntArrayRef({12}));
   float* data = result.data_ptr<float>();
-  ASSERT_FLOAT_EQ(data[0], 88.0f);
-  ASSERT_FLOAT_EQ(data[3], 88.0f);
+  ASSERT_FLOAT_EQ(data[2], 88.0f);
+  ASSERT_FLOAT_EQ(data[5], 88.0f);
 }
 
 TEST_F(TensorAsStridedTest, AsStridedTranspose) {

@@ -31,7 +31,7 @@ function exec_samplecode_test() {
     if [ "$1" = "cpu" ] ; then
         python sampcd_processor.py --mode cpu; example_error=$?
     elif [ "$1" = "gpu" ] ; then
-        export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
+        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/x86_64-linux-gnu
         SAMPLE_CODE_EXEC_THREADS=${SAMPLE_CODE_EXEC_THREADS:-2}
         python sampcd_processor.py --threads=${SAMPLE_CODE_EXEC_THREADS} --mode gpu; example_error=$?
     fi
@@ -179,5 +179,46 @@ pip config set global.cache-dir "/home/data/cfs/.cache/pip"
 pip install --upgrade pip 1>nul
 pip install -r "${work_dir}/python/requirements.txt" 1>nul
 pip install -r "${work_dir}/python/unittest_py/requirements.txt" 1>nul
+
+aten_ops_signature_base_branch="${BRANCH:-develop}"
+aten_ops_signature_base_ref=""
+for ref in "upstream/${aten_ops_signature_base_branch}" "origin/${aten_ops_signature_base_branch}" "${aten_ops_signature_base_branch}"; do
+    if git -C "${PADDLE_ROOT}" rev-parse --verify --quiet "${ref}" >/dev/null; then
+        aten_ops_signature_base_ref="${ref}"
+        break
+    fi
+done
+if [ -z "${aten_ops_signature_base_ref}" ]; then
+    echo "Cannot find a base ref for ATen ops signature check." >&2
+    exit 1
+fi
+
+aten_ops_signature_inputs=$(
+    git -C "${PADDLE_ROOT}" diff --name-only --diff-filter=AM "${aten_ops_signature_base_ref}" -- \
+        paddle/phi/api/include/compat/ATen/ops \
+        paddle/phi/api/include/compat/ATen/core/TensorBody.h \
+        paddle/phi/api/include/compat/ATen/core/TensorBase.h |
+        grep -E '(^paddle/phi/api/include/compat/ATen/ops/.*\.h$|^paddle/phi/api/include/compat/ATen/core/TensorBody\.h$|^paddle/phi/api/include/compat/ATen/core/TensorBase\.h$)' || true
+)
+if [ -n "${aten_ops_signature_inputs}" ]; then
+    aten_ops_signature_torch_target=$(mktemp -d)
+    pip install --target "${aten_ops_signature_torch_target}" \
+        torch==2.12.1 --index-url https://download.pytorch.org/whl/cpu 1>nul
+
+    PYTHONPATH="${aten_ops_signature_torch_target}${PYTHONPATH:+:${PYTHONPATH}}" \
+        python ${PADDLE_ROOT}/tools/check_aten_ops_signature.py \
+        --paddle-root ${PADDLE_ROOT}
+    aten_ops_signature_error=$?
+    rm -rf "${aten_ops_signature_torch_target}"
+    torch_cleanup_error=$?
+    if [ "$aten_ops_signature_error" != "0" ]; then
+        exit $aten_ops_signature_error
+    fi
+    if [ "$torch_cleanup_error" != "0" ]; then
+        exit $torch_cleanup_error
+    fi
+else
+    echo "No changed compat ATen ops headers, TensorBody.h, or TensorBase.h found; skip ATen ops signature check."
+fi
 
 exec_samplecode_checking

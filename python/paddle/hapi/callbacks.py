@@ -27,10 +27,9 @@ from paddle.utils import try_import
 from .progressbar import ProgressBar
 
 if TYPE_CHECKING:
-    from typing import Any, Literal, TypedDict
+    from typing import Any, Literal, TypeAlias, TypedDict
 
     from collection.abc import Iterator, Sequence
-    from typing_extensions import TypeAlias
 
     from .model import Model
 

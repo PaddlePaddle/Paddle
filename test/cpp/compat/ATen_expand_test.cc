@@ -164,12 +164,11 @@ TEST_F(TensorExpandTest, ExpandFunction) {
   ASSERT_FLOAT_EQ(result.data_ptr<float>()[0], 7.0f);
 }
 
-// Test expand_as function (not member function)
-TEST_F(TensorExpandTest, ExpandAsFunction) {
+TEST_F(TensorExpandTest, ExpandAsMemberFunction) {
   at::Tensor t = at::full({1, 2}, 4.0f, at::kFloat);
   at::Tensor other = at::zeros({3, 2}, at::kFloat);
 
-  at::Tensor result = at::expand_as(t, other);
+  at::Tensor result = t.expand_as(other);
 
   ASSERT_EQ(result.sizes()[0], 3);
   ASSERT_EQ(result.sizes()[1], 2);

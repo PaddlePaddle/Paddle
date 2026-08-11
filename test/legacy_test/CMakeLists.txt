@@ -3,6 +3,13 @@ file(
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
+
+if(NOT WITH_GPU
+   OR WITH_ROCM
+   OR WIN32)
+  list(REMOVE_ITEM TEST_OPS test_cuda_vmm_v2_allocator)
+endif()
+
 set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0 FLAGS_fast_eager_deletion_mode=1
             FLAGS_memory_fraction_of_eager_deletion=1.0)
 set(deterministic_ENVS FLAGS_cudnn_deterministic=1)
@@ -93,6 +100,14 @@ endif()
 
 if(WITH_XPU)
   list(REMOVE_ITEM TEST_OPS test_max_pool_dilation)
+endif()
+
+if(WITH_XPU OR WITH_ROCM)
+  list(REMOVE_ITEM TEST_OPS test_api_compatibility_part1)
+  list(REMOVE_ITEM TEST_OPS test_api_compatibility_part2)
+  list(REMOVE_ITEM TEST_OPS test_api_compatibility_part3)
+  list(REMOVE_ITEM TEST_OPS test_api_compatibility_part4)
+  list(REMOVE_ITEM TEST_OPS test_api_compatibility_part5)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_fused_attention_pass)
@@ -669,6 +684,11 @@ endif()
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach()
+if(WITH_COVERAGE)
+  if(TEST test_randperm_op)
+    set_tests_properties(test_randperm_op PROPERTIES TIMEOUT 500)
+  endif()
+endif()
 py_test_modules(
   test_imperative_ocr_attention_model MODULES
   test_imperative_ocr_attention_model ENVS FLAGS_cudnn_deterministic=1)
@@ -1073,8 +1093,21 @@ if(WITH_GPU AND NOT WIN32)
 endif()
 set_tests_properties(test_eigvals_op PROPERTIES TIMEOUT 400)
 set_tests_properties(
-  test_cuda_memory_reserved PROPERTIES ENVIRONMENT
-                                       "FLAGS_allocator_strategy=auto_growth")
+  test_cuda_memory_reserved
+  PROPERTIES
+    ENVIRONMENT
+    "FLAGS_allocator_strategy=auto_growth;FLAGS_use_vmm_auto_growth_best_fit_allocator_v2=false"
+)
+if(WITH_GPU
+   AND NOT WITH_ROCM
+   AND NOT WIN32)
+  set_tests_properties(
+    test_cuda_vmm_v2_allocator
+    PROPERTIES
+      ENVIRONMENT
+      "FLAGS_allocator_strategy=auto_growth;FLAGS_vmm_v2_large_pool_handle_size_in_mb=2"
+  )
+endif()
 if(WITH_GLOO)
   set_tests_properties(test_parallel_dygraph_dataparallel_cpuonly
                        PROPERTIES TIMEOUT 30)

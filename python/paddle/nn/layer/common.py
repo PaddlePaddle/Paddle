@@ -18,7 +18,11 @@ from typing import TYPE_CHECKING, Any, TypeVar, overload
 
 import paddle
 from paddle import in_dynamic_mode
-from paddle.utils.decorator_utils import ParamAliasDecorator, param_one_alias
+from paddle.utils.decorator_utils import (
+    ParamAliasDecorator,
+    param_one_alias,
+    param_two_alias,
+)
 
 from .. import functional as F
 from .layers import Layer
@@ -48,7 +52,7 @@ if TYPE_CHECKING:
 
     _T_Padding = TypeVar("_T_Padding", Tensor, Sequence[int])
 
-from paddle.utils.decorator_utils import ForbidKeywordsDecorator
+from paddle.utils.decorator_utils import forbid_keywords
 
 __all__ = []
 
@@ -200,11 +204,10 @@ class Linear(Layer):
     bias: Tensor
     name: str | None
 
-    @ForbidKeywordsDecorator(
+    @forbid_keywords(
         illegal_keys={"bias", "device", "dtype"},
         func_name="paddle.nn.Linear",
-        correct_name="paddle.compat.nn.Linear",
-        url_suffix="torch.nn.Linear",
+        compat_func="paddle.compat.nn.Linear",
     )
     def __init__(
         self,
@@ -2571,11 +2574,10 @@ class Unfold(Layer):
     strides: Size2
     name: str | None
 
-    @ForbidKeywordsDecorator(
+    @forbid_keywords(
         illegal_keys={"kernel_size", "dilation", "padding", "stride"},
         func_name="paddle.nn.Unfold",
-        correct_name="paddle.compat.nn.Unfold",
-        url_suffix="torch.nn.Unfold",
+        compat_func="paddle.compat.nn.Unfold",
     )
     def __init__(
         self,
@@ -2764,7 +2766,9 @@ class Flatten(Layer):
 
     Parameters:
         start_axis(int): first dim to flatten (default = 1)
+            Alias: ``start_dim``.
         stop_axis(int): last dim to flatten (default = -1).
+            Alias: ``end_dim``.
 
     Returns:
         None
@@ -2786,6 +2790,7 @@ class Flatten(Layer):
     start_axis: int
     stop_axis: int
 
+    @param_two_alias(["start_axis", "start_dim"], ["stop_axis", "end_dim"])
     def __init__(self, start_axis: int = 1, stop_axis: int = -1) -> None:
         super().__init__()
         self.start_axis = start_axis

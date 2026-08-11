@@ -102,9 +102,9 @@ void GesvdjBatched<float>(const GPUContext& dev_ctx,
       lwork * sizeof(float),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   float* workspace_ptr = reinterpret_cast<float*>(workspace->ptr());
-  int stride_A = lda * n;
-  int stride_U = ldu * (thin_UV ? k : m);
-  int stride_V = ldt * (thin_UV ? k : n);
+  int64_t stride_A = static_cast<int64_t>(lda) * n;
+  int64_t stride_U = static_cast<int64_t>(ldu) * (thin_UV ? k : m);
+  int64_t stride_V = static_cast<int64_t>(ldt) * (thin_UV ? k : n);
   for (int i = 0; i < batchSize; i++) {
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnSgesvdj(handle,
                                                           jobz,
@@ -181,9 +181,9 @@ void GesvdjBatched<double>(const GPUContext& dev_ctx,
       lwork * sizeof(double),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   double* workspace_ptr = reinterpret_cast<double*>(workspace->ptr());
-  int stride_A = lda * n;
-  int stride_U = ldu * (thin_UV ? k : m);
-  int stride_V = ldt * (thin_UV ? k : n);
+  int64_t stride_A = static_cast<int64_t>(lda) * n;
+  int64_t stride_U = static_cast<int64_t>(ldu) * (thin_UV ? k : m);
+  int64_t stride_V = static_cast<int64_t>(ldt) * (thin_UV ? k : n);
   for (int i = 0; i < batchSize; ++i) {
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnDgesvdj(handle,
                                                           jobz,
@@ -261,9 +261,9 @@ void GesvdjBatched<phi::complex64>(const GPUContext& dev_ctx,
       lwork * sizeof(cuComplex),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   cuComplex* workspace_ptr = reinterpret_cast<cuComplex*>(workspace->ptr());
-  int stride_A = lda * n;
-  int stride_U = ldu * (thin_UV ? k : m);
-  int stride_V = ldt * (thin_UV ? k : n);
+  int64_t stride_A = static_cast<int64_t>(lda) * n;
+  int64_t stride_U = static_cast<int64_t>(ldu) * (thin_UV ? k : m);
+  int64_t stride_V = static_cast<int64_t>(ldt) * (thin_UV ? k : n);
   for (int i = 0; i < batchSize; ++i) {
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnCgesvdj(
         handle,
@@ -342,9 +342,9 @@ void GesvdjBatched<phi::complex128>(const GPUContext& dev_ctx,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   cuDoubleComplex* workspace_ptr =
       reinterpret_cast<cuDoubleComplex*>(workspace->ptr());
-  int stride_A = lda * n;
-  int stride_U = ldu * (thin_UV ? k : m);
-  int stride_V = ldt * (thin_UV ? k : n);
+  int64_t stride_A = static_cast<int64_t>(lda) * n;
+  int64_t stride_U = static_cast<int64_t>(ldu) * (thin_UV ? k : m);
+  int64_t stride_V = static_cast<int64_t>(ldt) * (thin_UV ? k : n);
   for (int i = 0; i < batchSize; ++i) {
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnZgesvdj(
         handle,
@@ -395,7 +395,7 @@ void SyevjBatched<float>(const GPUContext& dev_ctx,
   // upper triangle
   cublasFillMode_t uplo = CUBLAS_FILL_MODE_UPPER;
   int lda = n;
-  int stride_A = lda * n;
+  int64_t stride_A = static_cast<int64_t>(lda) * n;
   int lwork = 0;
   syevjInfo_t params = NULL;
   PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnCreateSyevjInfo(&params));
@@ -450,7 +450,7 @@ void SyevjBatched<double>(const GPUContext& dev_ctx,
   //  upper triangle of A is stored
   cublasFillMode_t uplo = CUBLAS_FILL_MODE_UPPER;
   int lda = n;
-  int stride_A = lda * n;
+  int64_t stride_A = static_cast<int64_t>(lda) * n;
   int lwork = 0;
   syevjInfo_t params = NULL;
   PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnCreateSyevjInfo(&params));
@@ -505,7 +505,7 @@ void SyevjBatched<phi::complex64>(const GPUContext& dev_ctx,
   //  upper triangle of A is stored
   cublasFillMode_t uplo = CUBLAS_FILL_MODE_UPPER;
   int lda = n;
-  int stride_A = lda * n;
+  int64_t stride_A = static_cast<int64_t>(lda) * n;
   int lwork = 0;
   syevjInfo_t params = NULL;
   PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnCreateSyevjInfo(&params));
@@ -569,7 +569,7 @@ void SyevjBatched<phi::complex128>(const GPUContext& dev_ctx,
   //  upper triangle of A is stored
   cublasFillMode_t uplo = CUBLAS_FILL_MODE_UPPER;
   int lda = n;
-  int stride_A = lda * n;
+  int64_t stride_A = static_cast<int64_t>(lda) * n;
   int lwork = 0;
   syevjInfo_t params = NULL;
   PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnCreateSyevjInfo(&params));

@@ -376,7 +376,7 @@ class GemmUniversalWithVariadic<ElementA_,
   /// Initializes GEMM state from arguments.
   cutlass::Status initialize(Arguments const &args,
                              void *workspace = nullptr,
-                             cudaStream_t stream = nullptr) {
+                             GPUStream_t stream = nullptr) {
     return underlying_operator_.initialize(
         to_underlying_arguments(args), workspace, stream);
   }
@@ -388,19 +388,19 @@ class GemmUniversalWithVariadic<ElementA_,
   }
 
   /// Runs the kernel using initialized state.
-  cutlass::Status run(cudaStream_t stream = nullptr) {
+  cutlass::Status run(GPUStream_t stream = nullptr) {
     return underlying_operator_.run(stream);
   }
 
   /// Runs the kernel using initialized state.
-  cutlass::Status operator()(cudaStream_t stream = nullptr) {
+  cutlass::Status operator()(GPUStream_t stream = nullptr) {
     return run(stream);
   }
 
   /// Runs the kernel using initialized state.
   cutlass::Status operator()(Arguments const &args,
                              void *workspace = nullptr,
-                             cudaStream_t stream = nullptr) {
+                             GPUStream_t stream = nullptr) {
     cutlass::Status status = initialize(args, workspace, stream);
 
     if (status == cutlass::Status::kSuccess) {

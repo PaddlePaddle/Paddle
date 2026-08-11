@@ -20,6 +20,11 @@ cc_test(
   DEPS graph graph_helper op_registry)
 
 cc_test(
+  reference_count_pass_helper_test
+  SRCS reference_count_pass_helper_test.cc
+  DEPS reference_count_pass_helper node)
+
+cc_test(
   graph_to_program_pass_test
   SRCS graph_to_program_pass_test.cc
   DEPS graph_to_program_pass)

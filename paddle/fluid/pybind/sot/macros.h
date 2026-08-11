@@ -20,16 +20,12 @@ extern "C" {
 
 #include <Python.h>
 
-#define PY_3_9_0_HEX 0x03090000
-#define PY_3_10_0_HEX 0x030A0000
 #define PY_3_11_0_HEX 0x030B0000
 #define PY_3_12_0_HEX 0x030C0000
 #define PY_3_13_0_HEX 0x030D0000
 #define PY_3_14_0_HEX 0x030E0000
 #define PY_3_15_0_HEX 0x030F0000
 
-#define PY_3_9_PLUS (PY_VERSION_HEX >= PY_3_9_0_HEX)
-#define PY_3_10_PLUS (PY_VERSION_HEX >= PY_3_10_0_HEX)
 #define PY_3_11_PLUS (PY_VERSION_HEX >= PY_3_11_0_HEX)
 #define PY_3_12_PLUS (PY_VERSION_HEX >= PY_3_12_0_HEX)
 #define PY_3_13_PLUS (PY_VERSION_HEX >= PY_3_13_0_HEX)

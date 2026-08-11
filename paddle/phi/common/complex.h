@@ -230,8 +230,17 @@ template <typename T>
 HOSTDEVICE inline complex<T> operator*(const complex<T>& a,
                                        const complex<T>& b) {
 #if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
-    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
-  return complex<T>(thrust::complex<T>(a) * thrust::complex<T>(b));
+    (defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__))
+  if constexpr (std::is_same<T, double>::value) {
+    // Match PyTorch's GPU rounding (verified bit-exact):
+    //   real: fuse a.real*b.real, round a.imag*b.imag
+    //   imag: fuse a.imag*b.real, round a.real*b.imag
+    return complex<T>(__fma_rn(a.real, b.real, -__dmul_rn(a.imag, b.imag)),
+                      __fma_rn(a.imag, b.real, __dmul_rn(a.real, b.imag)));
+  } else {
+    return complex<T>(__fmaf_rn(a.real, b.real, -__fmul_rn(a.imag, b.imag)),
+                      __fmaf_rn(a.imag, b.real, __fmul_rn(a.real, b.imag)));
+  }
 #else
   return complex<T>(a.real * b.real - a.imag * b.imag,
                     a.imag * b.real + b.imag * a.real);
@@ -343,18 +352,8 @@ HOSTDEVICE inline complex<T>& operator-=(complex<T>& a,  // NOLINT
 template <typename T>
 HOSTDEVICE inline complex<T>& operator*=(complex<T>& a,  // NOLINT
                                          const complex<T>& b) {
-#if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
-    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
-  a = complex<T>(thrust::complex<T>(a.real, a.imag) *=
-                 thrust::complex<T>(b.real, b.imag));
+  a = a * b;
   return a;
-#else
-  T r = a.real * b.real - a.imag * b.imag;
-  T i = a.imag * b.real + b.imag * a.real;
-  a.real = r;
-  a.imag = i;
-  return a;
-#endif
 }
 
 template <typename T>

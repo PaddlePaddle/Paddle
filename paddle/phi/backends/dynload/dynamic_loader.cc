@@ -169,27 +169,28 @@ static constexpr char cuda_lib_path[] = "/usr/local/cuda/lib64";  // NOLINT
 static PathNode s_py_site_pkg_path;
 
 #if defined(_WIN32) && defined(PADDLE_WITH_CUDA)
-static constexpr char* win_cudnn_lib = "cudnn64_" CUDNN_MAJOR_VERSION ".dll";
-static constexpr char* win_cublas_lib =
+static constexpr const char* win_cudnn_lib =
+    "cudnn64_" CUDNN_MAJOR_VERSION ".dll";
+static constexpr const char* win_cublas_lib =
     "cublas64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;cublas64_" CUDA_VERSION_MAJOR ".dll";
-static constexpr char* win_cublaslt_lib =
+static constexpr const char* win_cublaslt_lib =
     "cublasLt64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;cublasLt64_" CUDA_VERSION_MAJOR ".dll";
-static constexpr char* win_curand_lib =
+static constexpr const char* win_curand_lib =
     "curand64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;curand64_" CUDA_VERSION_MAJOR ".dll;curand64_10.dll";
-static constexpr char* win_nvjpeg_lib =
+static constexpr const char* win_nvjpeg_lib =
     "nvjpeg64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;nvjpeg64_" CUDA_VERSION_MAJOR ".dll;nvjpeg64_10.dll";
-static constexpr char* win_cusolver_lib =
+static constexpr const char* win_cusolver_lib =
     "cusolver64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;cusolver64_" CUDA_VERSION_MAJOR
     ".dll;cusolver64_11.dll;cusolver64_10.dll";
-static constexpr char* win_cusparse_lib =
+static constexpr const char* win_cusparse_lib =
     "cusparse64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;cusparse64_" CUDA_VERSION_MAJOR ".dll;cusparse64_10.dll";
-static constexpr char* win_cufft_lib =
+static constexpr const char* win_cufft_lib =
     "cufft64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;cufft64_" CUDA_VERSION_MAJOR ".dll;cufft64_11.dll;cufft64_10.dll";
 #endif
@@ -825,6 +826,12 @@ void* GetNVRTCDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, RTC_LIB_NAME);
 #elif defined(PADDLE_WITH_HIP)
   return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libamdhip64.so", false);
+#elif defined(__linux__) && defined(PADDLE_WITH_CUDA) && \
+    defined(PADDLE_WITH_PIP_CUDA_LIBRARIES)
+  if (CUDA_VERSION >= 13000 && CUDA_VERSION < 14000) {
+    return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.so.13", false);
+  }
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.so", false);
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.so", false);
 #endif
@@ -1118,6 +1125,12 @@ void* GetCusparseLtDsoHandle() {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
   return GetDsoHandleFromSearchPath(FLAGS_cusparselt_dir, SPARSELT_LIB_NAME);
 #elif defined(PADDLE_WITH_CUDA)
+#ifdef PADDLE_WITH_PIP_CUDA_LIBRARIES
+  if (CUDA_VERSION >= 13000 && CUDA_VERSION < 14000) {
+    return GetDsoHandleFromSearchPath(FLAGS_cusparselt_dir,
+                                      "libcusparseLt.so.0;libcusparseLt.so");
+  }
+#endif
   return GetDsoHandleFromSearchPath(FLAGS_cusparselt_dir, "libcusparseLt.so");
 #else
   std::string warning_msg(

@@ -13,18 +13,17 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Callable, Iterable
 
     import paddle
     import paddle.distributed as dist
 import paddle
 from paddle.distributed.auto_parallel.fully_shard import FullyShardAuto
-from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_fully_shard import (
-    FullyShard,
-)
+
+from .fully_shard_fusion import FullyShardFusion
 
 
 def in_auto_parallel_mode() -> bool:
@@ -56,7 +55,11 @@ def _fully_shard_manual_parallel(
     ignored_params,
     enable_tensor_fusion_and_overlap,
 ):
-    return FullyShard(module)
+    FullyShardFusion(
+        module,
+        enable_tensor_fusion_and_overlap=enable_tensor_fusion_and_overlap,
+    )
+    return module
 
 
 def _fully_shard_auto_parallel(

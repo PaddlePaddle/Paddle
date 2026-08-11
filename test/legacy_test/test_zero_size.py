@@ -24,7 +24,7 @@ def contiguous_strides(shape):
     running = 1
     for i in range(len(shape) - 1, -1, -1):
         strides[i] = running
-        running *= shape[i]
+        running *= shape[i] if shape[i] != 0 else 1
     return strides
 
 

@@ -13,9 +13,8 @@
 # limitations under the License.
 from __future__ import annotations
 
-from ._comparison import _assert, assert_close
+from ._comparison import _assert, assert_allclose, assert_close  # noqa: F401
 
 __all__ = [
-    '_assert',
     'assert_close',
 ]

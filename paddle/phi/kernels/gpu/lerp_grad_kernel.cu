@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/lerp_grad_kernel.h"
 
+#include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
@@ -179,58 +180,53 @@ void SwitchKernel(const Context& dev_ctx,
     const int64_t weight_size = weight.numel();
 
     auto gpu_config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_size);
+    const size_t grid_size = gpu_config.GetGridSize();
+    const size_t block_size = gpu_config.GetBlockSize();
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_size, "grid");
+    const uint32_t grid = static_cast<uint32_t>(grid_size);
+    const uint32_t block = static_cast<uint32_t>(block_size);
 
     if (weight.dtype() == DataType::FLOAT64) {
       const double* weight_data = weight.data<double>();
       if (FLAGS_use_accuracy_compatible_kernel) {
         LerpGradScalarKernelCompatibleImpl<T, double>
-            <<<gpu_config.GetGridSize(),
-               gpu_config.GetBlockSize(),
-               0,
-               dev_ctx.stream()>>>(weight_data,
-                                   out_grad_data,
-                                   x_grad_data,
-                                   y_grad_data,
-                                   out_size,
-                                   x_grad_size,
-                                   y_grad_size);
+            <<<grid, block, 0, dev_ctx.stream()>>>(weight_data,
+                                                   out_grad_data,
+                                                   x_grad_data,
+                                                   y_grad_data,
+                                                   out_size,
+                                                   x_grad_size,
+                                                   y_grad_size);
       } else {
-        LerpGradScalarKernelImpl<T, double><<<gpu_config.GetGridSize(),
-                                              gpu_config.GetBlockSize(),
-                                              0,
-                                              dev_ctx.stream()>>>(weight_data,
-                                                                  out_grad_data,
-                                                                  x_grad_data,
-                                                                  y_grad_data,
-                                                                  out_size,
-                                                                  x_grad_size,
-                                                                  y_grad_size);
+        LerpGradScalarKernelImpl<T, double>
+            <<<grid, block, 0, dev_ctx.stream()>>>(weight_data,
+                                                   out_grad_data,
+                                                   x_grad_data,
+                                                   y_grad_data,
+                                                   out_size,
+                                                   x_grad_size,
+                                                   y_grad_size);
       }
     } else {
       const T* weight_data = weight.data<T>();
       if (FLAGS_use_accuracy_compatible_kernel) {
         LerpGradScalarKernelCompatibleImpl<T>
-            <<<gpu_config.GetGridSize(),
-               gpu_config.GetBlockSize(),
-               0,
-               dev_ctx.stream()>>>(weight_data,
-                                   out_grad_data,
-                                   x_grad_data,
-                                   y_grad_data,
-                                   out_size,
-                                   x_grad_size,
-                                   y_grad_size);
+            <<<grid, block, 0, dev_ctx.stream()>>>(weight_data,
+                                                   out_grad_data,
+                                                   x_grad_data,
+                                                   y_grad_data,
+                                                   out_size,
+                                                   x_grad_size,
+                                                   y_grad_size);
       } else {
-        LerpGradScalarKernelImpl<T><<<gpu_config.GetGridSize(),
-                                      gpu_config.GetBlockSize(),
-                                      0,
-                                      dev_ctx.stream()>>>(weight_data,
-                                                          out_grad_data,
-                                                          x_grad_data,
-                                                          y_grad_data,
-                                                          out_size,
-                                                          x_grad_size,
-                                                          y_grad_size);
+        LerpGradScalarKernelImpl<T>
+            <<<grid, block, 0, dev_ctx.stream()>>>(weight_data,
+                                                   out_grad_data,
+                                                   x_grad_data,
+                                                   y_grad_data,
+                                                   out_size,
+                                                   x_grad_size,
+                                                   y_grad_size);
       }
     }
   } else {
@@ -247,28 +243,29 @@ void SwitchKernel(const Context& dev_ctx,
     const int64_t out_size = out_grad.numel();
     const int64_t weight_size = weight.numel();
     auto gpu_config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_size);
+    const int64_t grid_size = gpu_config.GetGridSize();
+    const int64_t block_size = gpu_config.GetBlockSize();
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_size, "grid");
+    PADDLE_ENFORCE_LE_UINT32_MAX(block_size, "block");
+    const uint32_t grid = static_cast<uint32_t>(grid_size);
+    const uint32_t block = static_cast<uint32_t>(block_size);
     if (FLAGS_use_accuracy_compatible_kernel) {
-      LerpGradKernelCompatibleImpl<T><<<gpu_config.GetGridSize(),
-                                        gpu_config.GetBlockSize(),
-                                        0,
-                                        dev_ctx.stream()>>>(weight_data,
-                                                            out_grad_data,
-                                                            x_grad_data,
-                                                            y_grad_data,
-                                                            out_size,
-                                                            x_grad_size,
-                                                            y_grad_size);
+      LerpGradKernelCompatibleImpl<T>
+          <<<grid, block, 0, dev_ctx.stream()>>>(weight_data,
+                                                 out_grad_data,
+                                                 x_grad_data,
+                                                 y_grad_data,
+                                                 out_size,
+                                                 x_grad_size,
+                                                 y_grad_size);
     } else {
-      LerpGradKernelImpl<T><<<gpu_config.GetGridSize(),
-                              gpu_config.GetBlockSize(),
-                              0,
-                              dev_ctx.stream()>>>(weight_data,
-                                                  out_grad_data,
-                                                  x_grad_data,
-                                                  y_grad_data,
-                                                  out_size,
-                                                  x_grad_size,
-                                                  y_grad_size);
+      LerpGradKernelImpl<T><<<grid, block, 0, dev_ctx.stream()>>>(weight_data,
+                                                                  out_grad_data,
+                                                                  x_grad_data,
+                                                                  y_grad_data,
+                                                                  out_size,
+                                                                  x_grad_size,
+                                                                  y_grad_size);
     }
   }
 }

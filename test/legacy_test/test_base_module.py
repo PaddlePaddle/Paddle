@@ -266,6 +266,13 @@ class TestGetSubmodule(unittest.TestCase):
             self.module.get_parameter("fake_attr")
         self.assertIn("`fake_attr` is not an nn.Parameter", str(cm.exception))
 
+        self.module.register_buffer(
+            "fake_param", paddle.to_tensor([1.0, 2.0, 3.0])
+        )
+        with self.assertRaises(AttributeError) as cm:
+            self.module.get_parameter("fake_param")
+        self.assertIn("`fake_param` is not an nn.Parameter", str(cm.exception))
+
     def test_get_extra_state_raises(self):
         with self.assertRaises(RuntimeError) as cm:
             self.module.get_extra_state()
@@ -369,6 +376,34 @@ class TestLoadStateDict(unittest.TestCase):
         self.assertIn('extra_param', result.unexpected_keys)
 
         self.assertTrue(paddle.allclose(self.module.param1, paddle.ones([3])))
+
+    def test_load_state_dict_assign(self):
+        self.module.register_parameter('weight', nn.Parameter(paddle.ones([1])))
+        self.module.register_buffer('buffer', paddle.ones([1]))
+        old_weight = self.module.weight
+        old_buffer = self.module.buffer
+        self.module.weight.trainable = False
+        state_weight = nn.Parameter(paddle.full([1], 3.0))
+        state_dict = {
+            'weight': state_weight,
+            'buffer': paddle.full([1], 5.0),
+        }
+
+        result = self.module.load_state_dict(state_dict, assign=True)
+
+        self.assertIs(self.module.weight, state_weight)
+        self.assertIs(self.module.buffer, state_dict['buffer'])
+        self.assertTrue(
+            paddle.allclose(self.module.weight, state_dict['weight'])
+        )
+        self.assertTrue(
+            paddle.allclose(self.module.buffer, state_dict['buffer'])
+        )
+        self.assertFalse(self.module.weight.trainable)
+        self.assertIsNot(self.module.weight, old_weight)
+        self.assertIsNot(self.module.buffer, old_buffer)
+        self.assertEqual(len(result.missing_keys), 0)
+        self.assertEqual(len(result.unexpected_keys), 0)
 
 
 class TestNamedParameters(unittest.TestCase):
@@ -898,6 +933,8 @@ class TestGrad(unittest.TestCase):
             self.assertTrue(paddle.allclose(p.grad, paddle.zeros_like(p.grad)))
 
         self.model.zero_grad()
+        for p in self.model.parameters():
+            self.assertIsNone(p.grad)
 
 
 # test ModuleList

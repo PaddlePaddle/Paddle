@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import math
+import os
+import tempfile
 import unittest
 
 import numpy as np
@@ -368,6 +370,209 @@ class TestAdagradMultiPrecision2_0(unittest.TestCase):
                     rtol=1e-05,
                     atol=0.1,
                 )
+
+
+class TestAdagradLrDecay(unittest.TestCase):
+    """Test Adagrad with lr_decay parameter"""
+
+    def test_lr_decay_dygraph(self):
+        """Test that learning rate decays correctly over multiple steps"""
+        paddle.disable_static()
+        paddle.seed(42)
+        paddle.set_device(get_device())
+
+        input_data = paddle.randn((5, 5))
+        model = paddle.nn.Linear(5, 5)
+        lr_decay = 0.1
+        base_lr = 0.1
+        eps = 1e-6
+        optimizer = paddle.optim.Adagrad(
+            model.parameters(), base_lr, lr_decay=lr_decay, eps=eps
+        )
+
+        losses = []
+        lrs = []
+        moment = [np.zeros(shape=(5, 5)), np.zeros(shape=(5))]
+        for step in range(5):
+            output = model(input_data)
+            loss = paddle.mean(output)
+            losses.append(loss.numpy())
+            loss.backward()
+            param_value = [param.numpy() for param in model.parameters()]
+            param_grad = [param.grad.numpy() for param in model.parameters()]
+            optimizer.step()
+            new_param_value = [param.numpy() for param in model.parameters()]
+
+            actual_lr = np.array([])
+            for i in range(2):
+                moment[i] += param_grad[i] ** 2
+                actual_lr = np.append(
+                    actual_lr,
+                    (
+                        (param_value[i] - new_param_value[i])
+                        * (np.sqrt(moment[i]) + eps)
+                        / param_grad[i]
+                    ).flatten(),
+                )
+            np.testing.assert_allclose(actual_lr, actual_lr[0], atol=1e-4)
+            lrs.append(np.mean(actual_lr))
+            optimizer.clear_grad()
+
+        lrs_ref = []
+        for step in range(5):
+            lrs_ref.append(base_lr / (1 + step * lr_decay))
+
+        self.assertEqual(len(losses), 5)
+        np.testing.assert_allclose(lrs, lrs_ref, atol=1e-4)
+        paddle.enable_static()
+
+    def test_lr_decay_with_scheduler(self):
+        """Test that learning rate decays correctly over multiple steps"""
+        paddle.disable_static()
+        paddle.seed(42)
+        paddle.set_device(get_device())
+
+        input_data = paddle.randn((5, 5))
+        model = paddle.nn.Linear(5, 5)
+        lr_decay = 0.1
+        base_lr = 0.1
+        step_size = 2
+        eps = 1e-6
+        gamma = 0.1
+        scheduler = paddle.optim.lr_scheduler.StepLR(
+            learning_rate=base_lr, step_size=step_size, gamma=gamma
+        )
+        optimizer = paddle.optim.Adagrad(
+            model.parameters(), scheduler, lr_decay=lr_decay, eps=eps
+        )
+
+        losses = []
+        lrs = []
+        moment = [np.zeros(shape=(5, 5)), np.zeros(shape=(5))]
+        for step in range(5):
+            output = model(input_data)
+            loss = paddle.mean(output)
+            losses.append(loss.numpy())
+            loss.backward()
+            param_value = [param.numpy() for param in model.parameters()]
+            param_grad = [param.grad.numpy() for param in model.parameters()]
+            optimizer.step()
+            scheduler.step()
+            new_param_value = [param.numpy() for param in model.parameters()]
+
+            actual_lr = np.array([])
+            for i in range(2):
+                moment[i] += param_grad[i] ** 2
+                actual_lr = np.append(
+                    actual_lr,
+                    (
+                        (param_value[i] - new_param_value[i])
+                        * (np.sqrt(moment[i]) + eps)
+                        / param_grad[i]
+                    ).flatten(),
+                )
+            np.testing.assert_allclose(actual_lr, actual_lr[0], atol=1e-4)
+            lrs.append(np.mean(actual_lr))
+            optimizer.clear_grad()
+
+        lrs_ref = []
+        for step in range(5):
+            lrs_ref.append(
+                gamma ** (step // step_size) * base_lr / (1 + step * lr_decay)
+            )
+
+        self.assertEqual(len(losses), 5)
+        np.testing.assert_allclose(lrs, lrs_ref, atol=1e-4)
+        paddle.enable_static()
+
+    def test_lr_decay_zero(self):
+        """Test that lr_decay=0 doesn't affect optimization"""
+        paddle.disable_static()
+        paddle.seed(42)
+        paddle.set_device(get_device())
+
+        input_data = paddle.randn((5, 5))
+        model1 = paddle.nn.Linear(5, 5)
+        model2 = paddle.nn.Linear(5, 5)
+
+        # Copy model weights
+        for p1, p2 in zip(model1.parameters(), model2.parameters()):
+            p2.set_value(p1)
+
+        optimizer1 = paddle.optim.Adagrad(
+            lr=0.1, params=model1.parameters(), lr_decay=0.0
+        )
+        optimizer2 = paddle.optim.Adagrad(
+            lr=0.1, params=model2.parameters(), lr_decay=0.0
+        )
+
+        lrs1 = []
+        lrs2 = []
+        for _ in range(2):
+            out1 = model1(input_data)
+            loss1 = paddle.mean(out1)
+            loss1.backward()
+            lrs1.append(optimizer1.get_lr())
+            optimizer1.step()
+            optimizer1.clear_grad()
+
+            out2 = model2(input_data)
+            loss2 = paddle.mean(out2)
+            loss2.backward()
+            lrs2.append(optimizer2.get_lr())
+            optimizer2.step()
+            optimizer2.clear_grad()
+
+        # Both should produce identical results
+        for p1, p2 in zip(model1.parameters(), model2.parameters()):
+            np.testing.assert_allclose(p1.numpy(), p2.numpy(), rtol=1e-5)
+        for lr1, lr2 in zip(lrs1, lrs2):
+            np.testing.assert_allclose(lr1, 0.1, rtol=1e-5)
+            np.testing.assert_allclose(lr2, 0.1, rtol=1e-5)
+
+        paddle.enable_static()
+
+
+class TestAdagradSaveLoad(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def _run_epoch(self, input_data, model, optimizer):
+        for step in range(5):
+            output = model(input_data)
+            loss = paddle.mean(output)
+            loss.backward()
+            optimizer.step()
+            optimizer.clear_grad()
+
+    def test_save_load_with_step(self):
+        paddle.disable_static()
+        paddle.seed(42)
+        paddle.set_device(get_device())
+
+        input_data = paddle.randn((5, 5))
+        model = paddle.nn.Linear(5, 5)
+        lr_decay = 0.1
+        base_lr = 0.1
+        eps = 1e-6
+        optimizer = paddle.optim.Adagrad(
+            model.parameters(), base_lr, lr_decay=lr_decay, eps=eps
+        )
+
+        self._run_epoch(input_data, model, optimizer)
+        self.assertTrue("step" in optimizer.state_dict())
+        self.assertEqual(optimizer.state_dict()['step'], 4)
+        optimizer_path = os.path.join(self.temp_dir.name, "opt.pdopt")
+        paddle.save(optimizer.state_dict(), optimizer_path)
+
+        optimizer.set_state_dict(paddle.load(optimizer_path))
+        self.assertEqual(optimizer._step, 4)
+        self._run_epoch(input_data, model, optimizer)
+        self.assertEqual(optimizer._step, 9)
+        paddle.enable_static()
 
 
 if __name__ == "__main__":

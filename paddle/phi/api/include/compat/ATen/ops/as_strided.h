@@ -107,7 +107,7 @@ inline at::Tensor Tensor::as_strided_scatter(
   at::Tensor strided_view =
       copy_tensor.as_strided(size, stride, storage_offset);
   strided_view.copy_(src);
-  return strided_view;
+  return copy_tensor;
 }
 
 }  // namespace at

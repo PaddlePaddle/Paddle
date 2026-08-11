@@ -29,7 +29,7 @@ from ...base.data_feeder import (
 from ...base.layer_helper import LayerHelper
 from ...common_ops_import import Variable
 from ...framework import (
-    convert_np_dtype_to_dtype_,
+    convert_nptype_to_datatype_or_vartype,
     core,
     in_dynamic_or_pir_mode,
 )
@@ -120,7 +120,7 @@ def sequence_mask(
 
     if in_dynamic_or_pir_mode():
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-            dtype = convert_np_dtype_to_dtype_(dtype)
+            dtype = convert_nptype_to_datatype_or_vartype(dtype)
         if maxlen is None:
             maxlen = -1
         out = _C_ops.sequence_mask(x, maxlen, dtype)

@@ -31,8 +31,7 @@ struct BuiltinClassInstance;
 
 template <typename ValueT>
 struct TypeImpl<BuiltinClassInstance<ValueT>> {
-  TypeImpl<BuiltinClassInstance<ValueT>>(
-      const ClassOps<ValueT>* class_ops)  // NOLINT
+  TypeImpl(const ClassOps<ValueT>* class_ops)  // NOLINT
       : class_ops_(class_ops) {}
 
   const ClassOps<ValueT>* class_ops_;

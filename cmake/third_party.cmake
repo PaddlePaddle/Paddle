@@ -349,7 +349,6 @@ include(external/glog) # download, build, install glog
 
 ########################### include third_party according to flags ###############################
 if(WITH_GPU
-   AND NOT WITH_ARM
    AND NOT WIN32
    AND NOT APPLE)
   if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.0)
@@ -601,13 +600,12 @@ if(WITH_ROCM)
 endif()
 
 if(WITH_GPU
-   AND NOT WITH_ARM
    AND NOT WIN32
    AND NOT APPLE)
   if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 12.3
-     AND ${CMAKE_CUDA_COMPILER_VERSION} LESS_EQUAL 12.9)
+     AND ${CMAKE_CUDA_COMPILER_VERSION} LESS_EQUAL 13.0)
     foreach(arch ${NVCC_ARCH_BIN})
-      if(${arch} GREATER_EQUAL 90)
+      if(${arch} EQUAL 90)
         set(WITH_FLASHATTN_V3 ON)
         break()
       endif()

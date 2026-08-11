@@ -45,7 +45,7 @@ from ..base.data_feeder import (
 from ..framework import (
     LayerHelper,
     _get_paddle_place,
-    convert_np_dtype_to_dtype_,
+    convert_nptype_to_datatype_or_vartype,
     core,
     dygraph_only,
 )
@@ -250,7 +250,7 @@ def binomial(count: Tensor, prob: Tensor, name: str | None = None) -> Tensor:
         )
         helper = LayerHelper("binomial", **locals())
         out = helper.create_variable_for_type_inference(
-            dtype=convert_np_dtype_to_dtype_('int64')
+            dtype=convert_nptype_to_datatype_or_vartype('int64')
         )
         helper.append_op(
             type='binomial',
@@ -492,7 +492,7 @@ def multinomial(
 
         helper = LayerHelper("multinomial", **locals())
         out = helper.create_variable_for_type_inference(
-            dtype=convert_np_dtype_to_dtype_('int64')
+            dtype=convert_nptype_to_datatype_or_vartype('int64')
         )
         helper.append_op(
             type='multinomial',
@@ -575,7 +575,7 @@ def uniform_random_batch_size_like(
             paddle.Size([2, 3])
     """
     if in_dynamic_or_pir_mode():
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
         return _C_ops.uniform_random_batch_size_like(
             input,
             shape,
@@ -606,7 +606,7 @@ def uniform_random_batch_size_like(
 
     helper = LayerHelper('uniform_random_batch_size_like', **locals())
     out = helper.create_variable_for_type_inference(dtype)
-    c_dtype = convert_np_dtype_to_dtype_(dtype)
+    c_dtype = convert_nptype_to_datatype_or_vartype(dtype)
     helper.append_op(
         type='uniform_random_batch_size_like',
         inputs={'Input': input},
@@ -682,7 +682,7 @@ def gaussian(
                 f"{op_type_for_check} only supports {supported_dtypes}, but the default dtype is {dtype}"
             )
     if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
 
     if isinstance(mean, complex):
         if dtype not in [
@@ -895,7 +895,7 @@ def standard_normal(
     if dtype is not None and not isinstance(
         dtype, (core.VarDesc.VarType, core.DataType)
     ):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
         if dtype in [
             core.VarDesc.VarType.COMPLEX64,
             core.VarDesc.VarType.COMPLEX64,
@@ -1587,7 +1587,7 @@ def uniform(
             )
 
     if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
 
     if in_dynamic_mode():
         shape = paddle.utils.convert_shape_to_list(shape)
@@ -1876,7 +1876,7 @@ def randint(
         if use_pir_api():
             dtype = DataType.INT64
     elif not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
 
     place = (
         _get_paddle_place(device)
@@ -1984,12 +1984,17 @@ def random_(
     return _C_ops.random_(x, from_, to)
 
 
+@param_one_alias(["x", "input"])
 def randint_like(
     x: Tensor,
     low: int = 0,
     high: int | None = None,
     dtype: DTypeLike | None = None,
     name: str | None = None,
+    *,
+    device: PlaceLike | None = None,
+    pin_memory: bool = False,
+    requires_grad: bool = False,
 ) -> Tensor:
     """
     Returns a Tensor filled with random integers from a discrete uniform
@@ -2013,6 +2018,14 @@ def randint_like(
         name (str|None, optional): The default value is None.  Normally there is no
             need for user to set this property.  For more information, please
             refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
+        device (PlaceLike|None, optional): The desired device of returned tensor.
+            Default: if ``None``, defaults to the device of ``x``.
+        pin_memory (bool, optional): If set, return tensor would be allocated in the pinned memory.
+            Works only for CPU tensors. Default: False.
+        requires_grad (bool, optional): If autograd should record operations on the
+            returned tensor. Default: False.
 
     Returns:
         Tensor, A Tensor filled with random integers from a discrete uniform
@@ -2143,7 +2156,7 @@ def randint_like(
         dtype = x.dtype
     else:
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-            dtype = convert_np_dtype_to_dtype_(dtype)
+            dtype = convert_nptype_to_datatype_or_vartype(dtype)
     shape = paddle.shape(x)
 
     if low >= high:
@@ -2152,12 +2165,18 @@ def randint_like(
             f"high = {high}"
         )
 
+    place = (
+        _get_paddle_place(device)
+        if device is not None
+        else _current_expected_place()
+    )
+    if pin_memory and in_dynamic_mode() and device is not None:
+        place = _to_pinned_place(place)
+
     if in_dynamic_or_pir_mode():
         if in_dynamic_mode():
             shape = paddle.utils.convert_shape_to_list(shape)
-            out = _C_ops.randint(
-                low, high, shape, DataType.INT64, _current_expected_place()
-            )
+            out = _C_ops.randint(low, high, shape, DataType.INT64, place)
         else:
             check_type(
                 shape,
@@ -2173,10 +2192,12 @@ def randint_like(
             )
             if paddle.utils._contain_var(shape):
                 shape = paddle.utils.get_int_tensor_list(shape)
-            out = _C_ops.randint(
-                low, high, shape, DataType.INT64, _current_expected_place()
-            )
+            out = _C_ops.randint(low, high, shape, DataType.INT64, place)
         out = paddle.cast(out, dtype)
+        if pin_memory and in_dynamic_mode():
+            out = out.pin_memory()
+        if requires_grad is True:
+            out.stop_gradient = False
         return out
     else:
         check_shape(shape, 'randint_like')
@@ -2267,7 +2288,7 @@ def randperm(
         device = _to_pinned_place(device)
 
     if not isinstance(dtype, (core.VarDesc.VarType, paddle.pir.core.DataType)):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        dtype = convert_nptype_to_datatype_or_vartype(dtype)
 
     if in_dynamic_or_pir_mode():
         tensor = _C_ops.randperm(n, dtype, device, out=out)

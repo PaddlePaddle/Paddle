@@ -130,7 +130,7 @@ void Pool2dGradKernel(const Context& dev_ctx,
           true);
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
-          "Unsupported pooling type for kunlun ", pooling_type));
+          "Unsupported pooling type for kunlun %s", pooling_type));
     }
 
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "adaptive_pool2d_grad");
@@ -176,7 +176,7 @@ void Pool2dGradKernel(const Context& dev_ctx,
           true);
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
-          "Unsupported pooling type for kunlun ", pooling_type));
+          "Unsupported pooling type for kunlun %s", pooling_type));
     }
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "pool2dgrad");
   }
@@ -321,7 +321,7 @@ void Pool3dGradKernel(const Context& dev_ctx,
           !channel_last);
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
-          "Unsupported pooling type for kunlun ", pooling_type));
+          "Unsupported pooling type for kunlun %s", pooling_type));
     }
 
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "adaptive_pool3d_grad");
@@ -379,7 +379,7 @@ void Pool3dGradKernel(const Context& dev_ctx,
           !channel_last);
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
-          "Unsupported pooling type for kunlun ", pooling_type));
+          "Unsupported pooling type for kunlun %s", pooling_type));
     }
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "pool3dgrad");
   }

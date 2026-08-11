@@ -20,12 +20,19 @@ set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/threadpool)
 set(THREADPOOL_INCLUDE_DIR ${SOURCE_DIR})
 include_directories(${THREADPOOL_INCLUDE_DIR})
 
+file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/threadpool/ThreadPool.h.patch
+     threadpool_cxx20_patch)
+
 ExternalProject_Add(
   extern_threadpool
   ${EXTERNAL_PROJECT_LOG_ARGS}
   SOURCE_DIR ${SOURCE_DIR}
   PREFIX ${THREADPOOL_PREFIX_DIR}
   UPDATE_COMMAND ""
+  PATCH_COMMAND git checkout -- .
+  COMMAND git checkout ${THREADPOOL_TAG}
+  COMMAND git apply --check ${threadpool_cxx20_patch}
+  COMMAND git apply ${threadpool_cxx20_patch}
   CONFIGURE_COMMAND ""
   BUILD_COMMAND ""
   INSTALL_COMMAND ""

@@ -37,8 +37,7 @@ void WriteModule(const pir::Program& program,
       false,
       common::errors::PreconditionNotMet(
           "%s exists!, cannot save to it when overwrite is set to false.",
-          file_path,
-          overwrite));
+          file_path));
 
   // write base code
   Json total;

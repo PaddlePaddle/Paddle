@@ -24,8 +24,7 @@ from ..base.framework import Variable
 from .optimizer import Optimizer
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-    from typing import Callable
+    from collections.abc import Callable, Sequence
 
     from typing_extensions import NotRequired
 

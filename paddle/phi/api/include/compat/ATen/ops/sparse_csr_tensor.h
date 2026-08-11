@@ -31,7 +31,7 @@ inline at::Tensor sparse_csr_tensor(const at::Tensor& crow_indices,
                                     const at::Tensor& col_indices,
                                     const at::Tensor& values,
                                     at::IntArrayRef size,
-                                    at::TensorOptions options = {}) {
+                                    at::TensorOptions options) {
   paddle::Tensor crows = crow_indices._PD_GetInner();
   paddle::Tensor cols = col_indices._PD_GetInner();
   paddle::Tensor vals = values._PD_GetInner();
@@ -92,7 +92,7 @@ inline at::Tensor sparse_csr_tensor(const at::Tensor& crow_indices,
 inline at::Tensor sparse_csr_tensor(const at::Tensor& crow_indices,
                                     const at::Tensor& col_indices,
                                     const at::Tensor& values,
-                                    at::TensorOptions options = {}) {
+                                    at::TensorOptions options) {
   // Infer size from crow_indices and col_indices:
   //   nrows = crow_indices.size(0) - 1
   //   ncols = max(col_indices) + 1

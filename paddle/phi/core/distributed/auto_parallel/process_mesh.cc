@@ -36,10 +36,11 @@ ProcessMesh::ProcessMesh(const std::vector<int64_t> &shape,
   PADDLE_ENFORCE_EQ(
       size,
       process_ids.size(),
-      errors::InvalidArgument("The size of this process mesh must be "
-                              "equal to the size of its process ids.",
-                              size,
-                              process_ids.size()));
+      errors::InvalidArgument(
+          "The size of this process mesh must be equal to the size of its "
+          "process ids, but got mesh size %d and process id size %d.",
+          size,
+          process_ids.size()));
   PADDLE_ENFORCE_EQ(
       has_duplicates(process_ids),
       false,
@@ -47,13 +48,14 @@ ProcessMesh::ProcessMesh(const std::vector<int64_t> &shape,
                               str_join(process_ids_)));
   process_ids_ = process_ids;
 
-  PADDLE_ENFORCE_EQ(shape_.size(),
-                    dim_names.size(),
-                    errors::InvalidArgument(
-                        "The size of mesh shape must be equal to the size "
-                        "of the dimension names.",
-                        shape_.size(),
-                        dim_names_.size()));
+  PADDLE_ENFORCE_EQ(
+      shape_.size(),
+      dim_names.size(),
+      errors::InvalidArgument(
+          "The size of mesh shape must be equal to the size of the dimension "
+          "names, but got shape size %d and dimension name size %d.",
+          shape_.size(),
+          dim_names.size()));
   PADDLE_ENFORCE_EQ(has_duplicates(dim_names),
                     false,
                     errors::InvalidArgument(

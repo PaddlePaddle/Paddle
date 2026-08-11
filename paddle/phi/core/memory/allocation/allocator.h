@@ -17,10 +17,12 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
@@ -160,12 +162,20 @@ static T&& FillValue(T&& allocation) {
         PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
       }
       if (FLAGS_alloc_fill_value >= 0) {
+        PADDLE_ENFORCE_LE(FLAGS_alloc_fill_value,
+                          255,
+                          common::errors::InvalidArgument(
+                              "The value of FLAGS_alloc_fill_value must be in "
+                              "range [0, 255]. Expected 0 <= "
+                              "FLAGS_alloc_fill_value <= 255, but received "
+                              "FLAGS_alloc_fill_value = %ld.",
+                              FLAGS_alloc_fill_value));
+        const int fill_value = static_cast<int>(FLAGS_alloc_fill_value);
         if (phi::is_gpu_place(allocation->place())) {
-          PADDLE_ENFORCE_GPU_SUCCESS(cudaMemset(
-              allocation->ptr(), FLAGS_alloc_fill_value, allocation->size()));
+          PADDLE_ENFORCE_GPU_SUCCESS(
+              cudaMemset(allocation->ptr(), fill_value, allocation->size()));
         } else {
-          std::memset(
-              allocation->ptr(), FLAGS_alloc_fill_value, allocation->size());
+          std::memset(allocation->ptr(), fill_value, allocation->size());
         }
         if (need_sync) {
           PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
@@ -274,9 +284,19 @@ class PADDLE_API MultiScalePoolAllocator : public Allocator {
       uintptr_t allocator_instance = reinterpret_cast<uintptr_t>(this);
       RecordFree(allocator_instance, id, allocation->size());
     }
-    static_cast<Allocation*>(allocation)->PopDecoratedAllocator();
-    IsSmallRequest(allocation->size()) ? small_allocator_->Free(allocation)
-                                       : large_allocator_->Free(allocation);
+    auto* decorated_allocation = static_cast<Allocation*>(allocation);
+    decorated_allocation->PopDecoratedAllocator();
+    Allocator* underlying_allocator =
+        decorated_allocation->TopDecoratedAllocator();
+    PADDLE_ENFORCE_EQ(
+        underlying_allocator == small_allocator_.get() ||
+            underlying_allocator == large_allocator_.get(),
+        true,
+        common::errors::InvalidArgument(
+            "MultiScalePoolAllocator found an unexpected underlying "
+            "allocator when freeing allocation %p.",
+            allocation->ptr()));
+    underlying_allocator->Free(allocation);
   };
   // Get allocate event when start FLAGS_record_alloc_event.
   std::vector<std::tuple<uintptr_t, bool, uint64_t, size_t, int64_t, int64_t>>
@@ -290,7 +310,7 @@ class PADDLE_API MultiScalePoolAllocator : public Allocator {
   virtual bool IsSmallRequest(size_t size) = 0;
 
  private:
-  phi::Allocation* AllocateImpl(size_t UNUSED) { return nullptr; }
+  phi::Allocation* AllocateImpl(size_t UNUSED) override { return nullptr; }
   std::shared_ptr<Allocator> small_allocator_;
   std::shared_ptr<Allocator> large_allocator_;
   size_t alignment_;
