@@ -162,7 +162,7 @@ def _tensor_type(
     device = None
     if getattr(dtype, "__name__", None) in _TENSOR_TYPE_DTYPES:
         # tensor factory classes, e.g. paddle.DoubleTensor
-        device = getattr(dtype, "_device", "cpu")
+        device = getattr(dtype, "_device", None) or "cpu"
         dtype = getattr(paddle, _TENSOR_TYPE_DTYPES[dtype.__name__])
     elif isinstance(dtype, str):
         dtype_string = dtype

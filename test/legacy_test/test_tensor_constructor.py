@@ -199,8 +199,7 @@ class TestBoolTensor(TestFloatTensor):
 
 
 class TestTensorFactoryPlace(unittest.TestCase):
-    def test_cpu_factory(self):
-        self.assertTrue(paddle.FloatTensor(2).place.is_cpu_place())
+    def test_distinct_factories(self):
         self.assertIsNot(paddle.cuda.FloatTensor, paddle.FloatTensor)
 
     @unittest.skipIf(not paddle.is_compiled_with_cuda(), "requires CUDA")

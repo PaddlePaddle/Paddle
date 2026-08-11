@@ -4311,7 +4311,7 @@ def resize_(
         return x.set_(x, shape)
 
 
-def dtype_tensor_factory(dtype, _name='_DtypeTensorFactory', device='cpu'):
+def dtype_tensor_factory(dtype, _name='_DtypeTensorFactory', device=None):
     class _DtypeTensorFactory:
         _device = device
 
@@ -4326,7 +4326,8 @@ def dtype_tensor_factory(dtype, _name='_DtypeTensorFactory', device='cpu'):
                 )
             else:
                 kwargs.setdefault('dtype', dtype)
-                kwargs.setdefault('device', device)
+                if device is not None:
+                    kwargs.setdefault('device', device)
                 return paddle.Tensor(*args, **kwargs)
 
     _DtypeTensorFactory.__name__ = _name
