@@ -102,15 +102,22 @@ def _tensor_numel(input: Tensor) -> int:
 
 def _tensor_type_name(input: Tensor) -> str:
     """The tensor type name of ``input``, e.g. ``'torch.cuda.sparse.FloatTensor'``,
-    following ``torch.Tensor.type``. Dtypes without a tensor type name fall back
-    to the dtype string."""
+    following ``torch.Tensor.type``. The device segment is ``'cuda'`` for GPU,
+    ``'xpu'`` for XPU and the device type itself for custom devices, e.g.
+    ``'torch.npu.FloatTensor'``. Dtypes without a tensor type name fall back to
+    the dtype string."""
     dtype_name = str(input.dtype).removeprefix("paddle.")
     tensor_type = _DTYPE_TENSOR_TYPES.get(dtype_name)
     if tensor_type is None:
         return str(input.dtype)
     segments = ["torch"]
-    if input.place.is_gpu_place():
+    place = input.place
+    if place.is_gpu_place():
         segments.append("cuda")
+    elif place.is_xpu_place():
+        segments.append("xpu")
+    elif place.is_custom_place():
+        segments.append(place.custom_device_type().lower())
     if input.is_sparse_coo():
         segments.append("sparse")
     segments.append(tensor_type)
@@ -155,8 +162,8 @@ def _tensor_type(
     device = None
     if getattr(dtype, "__name__", None) in _TENSOR_TYPE_DTYPES:
         # tensor factory classes, e.g. paddle.DoubleTensor
+        device = getattr(dtype, "_device", "cpu")
         dtype = getattr(paddle, _TENSOR_TYPE_DTYPES[dtype.__name__])
-        device = "cpu"
     elif isinstance(dtype, str):
         dtype_string = dtype
         tensor_type = dtype_string.rsplit(".", 1)[-1]

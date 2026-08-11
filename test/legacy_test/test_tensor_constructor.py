@@ -198,6 +198,16 @@ class TestBoolTensor(TestFloatTensor):
         self.api = paddle.BoolTensor
 
 
+class TestTensorFactoryPlace(unittest.TestCase):
+    def test_cpu_factory(self):
+        self.assertTrue(paddle.FloatTensor(2).place.is_cpu_place())
+        self.assertIsNot(paddle.cuda.FloatTensor, paddle.FloatTensor)
+
+    @unittest.skipIf(not paddle.is_compiled_with_cuda(), "requires CUDA")
+    def test_cuda_factory(self):
+        self.assertTrue(paddle.cuda.FloatTensor(2).place.is_gpu_place())
+
+
 dtype_map = {
     "Bool": ("bool", paddle.bool),
     "Byte": ("uint8", paddle.uint8),
@@ -241,6 +251,11 @@ for prefix in prefixes:
             (TestFloatTensor,),
             {"set_api_and_type": make_set_api_and_type(api_path)},
         )
+        if prefix == "paddle.cuda":
+            test_cls = unittest.skipIf(
+                not paddle.is_compiled_with_cuda(),
+                "paddle.cuda tensor factories construct tensors on GPU",
+            )(test_cls)
 
         globals()[class_name] = test_cls
 

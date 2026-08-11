@@ -40,23 +40,27 @@ from paddle.device import (
     set_stream,
     stream,
 )
-from paddle.tensor.creation import (
-    BFloat16Tensor,
-    BoolTensor,
-    ByteTensor,
-    CharTensor,
-    DoubleTensor,
-    FloatTensor,
-    HalfTensor,
-    IntTensor,
-    LongTensor,
-    ShortTensor,
-)
+from paddle.tensor.creation import dtype_tensor_factory
 
 if TYPE_CHECKING:
     from collections.abc import Generator
 
     DeviceLike = paddle.core.Place | int | str | None
+
+
+# CUDA counterparts of paddle.FloatTensor and friends, mirroring
+# torch.cuda.FloatTensor: they build tensors on GPU and are distinct class
+# objects, so paddle.compat.Tensor.type can tell the two apart.
+BFloat16Tensor = dtype_tensor_factory('bfloat16', 'BFloat16Tensor', 'gpu')
+BoolTensor = dtype_tensor_factory('bool', 'BoolTensor', 'gpu')
+ByteTensor = dtype_tensor_factory('uint8', 'ByteTensor', 'gpu')
+CharTensor = dtype_tensor_factory('int8', 'CharTensor', 'gpu')
+DoubleTensor = dtype_tensor_factory('float64', 'DoubleTensor', 'gpu')
+FloatTensor = dtype_tensor_factory('float32', 'FloatTensor', 'gpu')
+HalfTensor = dtype_tensor_factory('float16', 'HalfTensor', 'gpu')
+IntTensor = dtype_tensor_factory('int32', 'IntTensor', 'gpu')
+LongTensor = dtype_tensor_factory('int64', 'LongTensor', 'gpu')
+ShortTensor = dtype_tensor_factory('int16', 'ShortTensor', 'gpu')
 
 
 def is_available() -> bool:

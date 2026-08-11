@@ -664,11 +664,64 @@ class TestLevel2InternalCallersUseNative(CompatNamespaceAliasBase):
                 blocking=True,
             )
 
+        for factory, expected_device in (
+            (paddle.DoubleTensor, "cpu"),
+            (paddle.cuda.DoubleTensor, "gpu"),
+        ):
+            with mock.patch.object(
+                paddle.Tensor, "to", autospec=True, return_value=t
+            ) as tensor_to:
+                self.assertIs(t.type(factory), t)
+                tensor_to.assert_called_once_with(
+                    t,
+                    device=expected_device,
+                    dtype=paddle.float64,
+                    blocking=True,
+                )
+
         coo = paddle.sparse.sparse_coo_tensor(
             [[0], [0]], [1.0], [1, 1], place='cpu'
         )
         self.assertEqual(coo.type(), "torch.sparse.FloatTensor")
         self.assertEqual(t.type(np.float64).dtype, paddle.float64)
+
+    @with_level2
+    def test_tensor_type_name_devices(self):
+        class _FakePlace:
+            def __init__(self, kind, custom_device_type=None):
+                self.kind = kind
+                self._custom_device_type = custom_device_type
+
+            def is_gpu_place(self):
+                return self.kind == "gpu"
+
+            def is_xpu_place(self):
+                return self.kind == "xpu"
+
+            def is_custom_place(self):
+                return self.kind == "custom"
+
+            def custom_device_type(self):
+                return self._custom_device_type
+
+        class _FakeTensor:
+            def __init__(self, place):
+                self.dtype = paddle.float32
+                self.place = place
+
+            def is_sparse_coo(self):
+                return False
+
+        cases = [
+            (_FakePlace("cpu"), "torch.FloatTensor"),
+            (_FakePlace("gpu"), "torch.cuda.FloatTensor"),
+            (_FakePlace("xpu"), "torch.xpu.FloatTensor"),
+            (_FakePlace("custom", "NPU"), "torch.npu.FloatTensor"),
+        ]
+        for place, expected in cases:
+            self.assertEqual(
+                paddle.compat._tensor_type_name(_FakeTensor(place)), expected
+            )
 
     @with_level2
     def test_tensor_descriptor_class_access(self):

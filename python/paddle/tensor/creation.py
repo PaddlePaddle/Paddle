@@ -4311,17 +4311,22 @@ def resize_(
         return x.set_(x, shape)
 
 
-def dtype_tensor_factory(dtype, _name='_DtypeTensorFactory'):
+def dtype_tensor_factory(dtype, _name='_DtypeTensorFactory', device='cpu'):
     class _DtypeTensorFactory:
+        _device = device
+
         def __new__(cls, *args, **kwargs):
             if len(args) == 0:
-                return paddle.empty(shape=[0], dtype=dtype)
+                return paddle.empty(shape=[0], dtype=dtype, device=device)
             elif len(args) == 1 and isinstance(args[0], (list, tuple)):
-                return paddle.tensor(args[0], dtype=dtype)
+                return paddle.tensor(args[0], dtype=dtype, device=device)
             elif all(isinstance(arg, int) for arg in args):
-                return paddle.empty(shape=list(args), dtype=dtype)
+                return paddle.empty(
+                    shape=list(args), dtype=dtype, device=device
+                )
             else:
                 kwargs.setdefault('dtype', dtype)
+                kwargs.setdefault('device', device)
                 return paddle.Tensor(*args, **kwargs)
 
     _DtypeTensorFactory.__name__ = _name
