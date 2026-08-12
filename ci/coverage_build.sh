@@ -27,8 +27,8 @@ function check_diff_file_for_coverage() {
     echo "export PADDLE_GIT_DIFF_PY_FILE=${diff_py_file%*,}" >> ~/.bashrc
 }
 
-echo "export LD_LIBRARY_PATH=/usr/local/cuda/compat:/usr/local/cuda/lib:/usr/local/cuda/lib64:\\" >> ~/.bashrc
-echo "/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/lib/x86_64-linux-gnu:\${LD_LIBRARY_PATH}" >> ~/.bashrc
+echo "export LD_LIBRARY_PATH=/usr/local/cuda/lib:/usr/local/cuda/lib64:\\" >> ~/.bashrc
+echo "/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/lib/x86_64-linux-gnu:/usr/local/cuda/compat:\${LD_LIBRARY_PATH}" >> ~/.bashrc
 echo "export PATH=/usr/local/bin:\\" >> ~/.bashrc
 echo "\${PATH}" >> ~/.bashrc
 source ~/.bashrc
