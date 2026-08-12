@@ -140,8 +140,13 @@ void TemporalShiftGradKernel(const Context& dev_ctx,
   const uint32_t grid_32 = static_cast<uint32_t>(grid);
   const uint32_t threads_32 = static_cast<uint32_t>(threads);
 
+  // Equals `blockDim.x * gridDim.x`, the per-thread step of the grid-stride
+  // loop in the kernels below.
+  const int64_t total_stride = grid * threads;
   if (data_layout == DataLayout::NCHW) {
-    if (output_grad->numel() < std::numeric_limits<int32_t>::max()) {
+    // `tid` peaks at `numel - 1 + total_stride`
+    if (output_grad->numel() + total_stride <
+        std::numeric_limits<int32_t>::max()) {
       PADDLE_ENFORCE_LE_INT_MAX(ntchw, "ntchw");
       PADDLE_ENFORCE_LE_INT_MAX(tchw, "tchw");
       PADDLE_ENFORCE_LE_INT_MAX(chw, "chw");
@@ -172,7 +177,9 @@ void TemporalShiftGradKernel(const Context& dev_ctx,
                                                          c2);
     }
   } else {
-    if (output_grad->numel() < std::numeric_limits<int32_t>::max()) {
+    // Same reason as the NCHW branch: the guard covers the loop increment.
+    if (output_grad->numel() + total_stride <
+        std::numeric_limits<int32_t>::max()) {
       PADDLE_ENFORCE_LE_INT_MAX(ntchw, "ntchw");
       PADDLE_ENFORCE_LE_INT_MAX(tchw, "tchw");
       PADDLE_ENFORCE_LE_INT_MAX(chw, "chw");
