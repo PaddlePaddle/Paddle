@@ -321,8 +321,8 @@ void GridSamplePreProcess(pir::Value* x,
   return;
 }
 
-// Addmm broadcast validation for dygraph
-void AddmmPreProcess(Tensor* input, Tensor* x, Tensor* y) {
+// Addmm inplace shape validation for dygraph
+void AddmmInplacePreProcess(Tensor* input, Tensor* x, Tensor* y) {
   auto input_shape = input->dims();
   auto x_shape = x->dims();
   auto y_shape = y->dims();
@@ -342,6 +342,23 @@ void AddmmPreProcess(Tensor* input, Tensor* x, Tensor* y) {
           "The dimension of y should be 2 but received y's shape: [%s]",
           y_shape));
 
+  PADDLE_ENFORCE_EQ(
+      input->dtype(),
+      x->dtype(),
+      phi::errors::InvalidArgument(
+          "The dtypes of input and x must be the same for addmm_, but "
+          "received input dtype = %s and x dtype = %s.",
+          input->dtype(),
+          x->dtype()));
+  PADDLE_ENFORCE_EQ(
+      input->dtype(),
+      y->dtype(),
+      phi::errors::InvalidArgument(
+          "The dtypes of input and y must be the same for addmm_, but "
+          "received input dtype = %s and y dtype = %s.",
+          input->dtype(),
+          y->dtype()));
+
   // Validate x's width equals y's height
   PADDLE_ENFORCE_EQ(x_shape[1],
                     y_shape[0],
@@ -352,34 +369,56 @@ void AddmmPreProcess(Tensor* input, Tensor* x, Tensor* y) {
                         x_shape,
                         y_shape));
 
-  // Validate input shape broadcast compatibility
-  if (input_shape.size() == 2) {
-    ValidateBroadcastDim(input_shape[0],
-                         x_shape[0],
-                         "The dimension 0 of input must be equal to x's "
-                         "dimension 0, or must be 1.");
-    ValidateBroadcastDim(input_shape[1],
-                         y_shape[1],
-                         "The dimension 1 of input must be equal to y's "
-                         "dimension 1, or must be 1.");
-  } else if (input_shape.size() == 1) {
-    ValidateBroadcastDim(input_shape[0],
-                         y_shape[1],
-                         "The dimension 0 of input must be equal to y's "
-                         "dimension 1, or must be 1.");
-  } else {
-    PADDLE_THROW(
-        phi::errors::InvalidArgument("The dimension of input should be 2 or 1 "
-                                     "but received input's shape: [%ld].",
-                                     input_shape.size()));
-  }
+  PADDLE_ENFORCE_EQ(
+      input_shape.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The dimension of input must be 2 for addmm_, but received input's "
+          "shape: [%s].",
+          input_shape));
+  PADDLE_ENFORCE_EQ(
+      input_shape[0],
+      x_shape[0],
+      phi::errors::InvalidArgument(
+          "The first dimension of input must equal the addmm output's first "
+          "dimension, but received input's shape = [%s], x's shape = [%s].",
+          input_shape,
+          x_shape));
+  PADDLE_ENFORCE_EQ(
+      input_shape[1],
+      y_shape[1],
+      phi::errors::InvalidArgument(
+          "The second dimension of input must equal the addmm output's second "
+          "dimension, but received input's shape = [%s], y's shape = [%s].",
+          input_shape,
+          y_shape));
 }
 
-// Addmm broadcast validation for static graph
-void AddmmPreProcess(pir::Value* input, pir::Value* x, pir::Value* y) {
+// Addmm inplace shape validation for static graph
+void AddmmInplacePreProcess(pir::Value* input, pir::Value* x, pir::Value* y) {
   auto input_shape = pir::GetShapeFromValue(*input);
   auto x_shape = pir::GetShapeFromValue(*x);
   auto y_shape = pir::GetShapeFromValue(*y);
+
+  auto input_dtype = pir::GetValueDtype(*input);
+  auto x_dtype = pir::GetValueDtype(*x);
+  auto y_dtype = pir::GetValueDtype(*y);
+  PADDLE_ENFORCE_EQ(
+      input_dtype,
+      x_dtype,
+      phi::errors::InvalidArgument(
+          "The dtypes of input and x must be the same for addmm_, but "
+          "received input dtype = %s and x dtype = %s.",
+          input_dtype,
+          x_dtype));
+  PADDLE_ENFORCE_EQ(
+      input_dtype,
+      y_dtype,
+      phi::errors::InvalidArgument(
+          "The dtypes of input and y must be the same for addmm_, but "
+          "received input dtype = %s and y dtype = %s.",
+          input_dtype,
+          y_dtype));
 
   // Validate x and y are 2D
   PADDLE_ENFORCE_EQ(
@@ -397,34 +436,44 @@ void AddmmPreProcess(pir::Value* input, pir::Value* x, pir::Value* y) {
           y_shape.size()));
 
   // Validate x's width equals y's height
-  PADDLE_ENFORCE_EQ(x_shape[1],
-                    y_shape[0],
-                    phi::errors::InvalidArgument(
-                        "The input Variable x's width must be equal with "
-                        "Variable y's height. "
-                        "But received x's shape[1] = %d, y's shape[0] = %d.",
-                        x_shape[1],
-                        y_shape[0]));
-  // Validate input shape broadcast compatibility
-  if (input_shape.size() == 2) {
-    ValidateBroadcastDim(input_shape[0],
-                         x_shape[0],
-                         "The dimension 0 of input must be equal to x's "
-                         "dimension 0, or must be 1.");
-    ValidateBroadcastDim(input_shape[1],
-                         y_shape[1],
-                         "The dimension 1 of input must be equal to y's "
-                         "dimension 1, or must be 1.");
-  } else if (input_shape.size() == 1) {
-    ValidateBroadcastDim(input_shape[0],
-                         y_shape[1],
-                         "The dimension 0 of input must be equal to y's "
-                         "dimension 1, or must be 1.");
-  } else {
-    PADDLE_THROW(
-        phi::errors::InvalidArgument("The dimension of input should be 2 or 1 "
-                                     "but received input's dimension: %ld.",
-                                     input_shape.size()));
+  if (x_shape[1] >= 0 && y_shape[0] >= 0) {
+    PADDLE_ENFORCE_EQ(
+        x_shape[1],
+        y_shape[0],
+        phi::errors::InvalidArgument(
+            "The input Variable x's width must be equal with Variable y's "
+            "height. But received x's shape[1] = %d, y's shape[0] = %d.",
+            x_shape[1],
+            y_shape[0]));
+  }
+  PADDLE_ENFORCE_EQ(
+      input_shape.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The dimension of input must be 2 for addmm_, but received input's "
+          "dimension: %ld.",
+          input_shape.size()));
+  if (input_shape[0] >= 0 && x_shape[0] >= 0) {
+    PADDLE_ENFORCE_EQ(
+        input_shape[0],
+        x_shape[0],
+        phi::errors::InvalidArgument(
+            "The first dimension of input must equal the addmm output's first "
+            "dimension, but received input's shape[0] = %d and x's shape[0] "
+            "= %d.",
+            input_shape[0],
+            x_shape[0]));
+  }
+  if (input_shape[1] >= 0 && y_shape[1] >= 0) {
+    PADDLE_ENFORCE_EQ(
+        input_shape[1],
+        y_shape[1],
+        phi::errors::InvalidArgument(
+            "The second dimension of input must equal the addmm output's "
+            "second dimension, but received input's shape[1] = %d and y's "
+            "shape[1] = %d.",
+            input_shape[1],
+            y_shape[1]));
   }
 }
 

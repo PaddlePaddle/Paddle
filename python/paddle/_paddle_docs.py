@@ -2893,51 +2893,6 @@ def triu(
     ...
 
 
-@add_doc_and_signature
-def bmm(
-    x: Tensor,
-    y: Tensor,
-    name: str | None = None,
-    *,
-    out: Tensor | None = None,
-) -> Tensor:
-    r"""
-    Applies batched matrix multiplication to two tensors.
-
-    Both of the two input tensors must be three-dimensional and share the same batch size.
-
-    If x is a (b, m, k) tensor, y is a (b, k, n) tensor, the output will be a (b, m, n) tensor.
-
-    Args:
-        x (Tensor): The input Tensor.
-        y (Tensor): The input Tensor.
-        name (str|None): A name for this layer(optional). If set None, the layer
-            will be named automatically. Default: None.
-        out(Tensor, optional): The output tensor.
-
-    Returns:
-        Tensor: The product Tensor.
-
-    Examples:
-        .. code-block:: pycon
-
-            >>> import paddle
-
-            >>> # In imperative mode:
-            >>> # size x: (2, 2, 3) and y: (2, 3, 2)
-            >>> x = paddle.to_tensor([[[1.0, 1.0, 1.0], [2.0, 2.0, 2.0]], [[3.0, 3.0, 3.0], [4.0, 4.0, 4.0]]])
-            >>> y = paddle.to_tensor([[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]], [[4.0, 4.0], [5.0, 5.0], [6.0, 6.0]]])
-            >>> out = paddle.bmm(x, y)
-            >>> print(out)
-            Tensor(shape=[2, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[[6. , 6. ],
-              [12., 12.]],
-             [[45., 45.],
-              [60., 60.]]])
-    """
-    ...
-
-
 # lihaoyang
 @add_doc_and_signature
 def logical_and(
@@ -4697,59 +4652,6 @@ def i1e(
             >>> print(paddle.i1e(x))
             Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.        , 0.20791042, 0.21526928, 0.19682673, 0.17875087])
-    """
-    ...
-
-
-@add_doc_and_signature
-def addmm(
-    input: Tensor,
-    x: Tensor,
-    y: Tensor,
-    beta: float = 1.0,
-    alpha: float = 1.0,
-    name: str | None = None,
-    *,
-    out: Tensor | None = None,
-) -> Tensor:
-    r"""
-    Perform matrix multiplication for input $x$ and $y$.
-    $input$ is added to the final result.
-    The equation is:
-
-    ..  math::
-        Out = alpha * x * y + beta * input
-
-    $Input$, $x$ and $y$ can carry the LoD (Level of Details) information, or not. But the output only shares the LoD information with input $input$.
-
-    Args:
-        input (Tensor): The input Tensor to be added to the final result.
-        x (Tensor): The first input Tensor for matrix multiplication. Alias: ``mat1``.
-        y (Tensor): The second input Tensor for matrix multiplication. Alias: ``mat2``.
-        beta (float, optional): Coefficient of $input$, default is 1.
-        alpha (float, optional): Coefficient of $x*y$, default is 1.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    Keyword args:
-        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor. Default: None.
-
-    Returns:
-        Tensor: The output Tensor of addmm.
-
-    Examples:
-        .. code-block:: pycon
-
-            >>> import paddle
-
-            >>> x = paddle.ones([2, 2])
-            >>> y = paddle.ones([2, 2])
-            >>> input = paddle.ones([2, 2])
-
-            >>> out = paddle.addmm(input=input, x=x, y=y, beta=0.5, alpha=5.0)
-
-            >>> print(out)
-            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[10.50000000, 10.50000000],
-             [10.50000000, 10.50000000]])
     """
     ...
 
