@@ -722,14 +722,64 @@ class TestLevel2InternalCallersUseNative(CompatNamespaceAliasBase):
             )
 
         # Round-trip: same-device no-op for XPU string via mock
-        with mock.patch.object(
-            paddle.Tensor, "to", autospec=True, return_value=t
-        ) as tensor_to:
-            with mock.patch.object(
-                type(t.place), "is_xpu_place", return_value=True
+        with (
+            mock.patch.object(
+                paddle.Tensor, "to", autospec=True, return_value=t
+            ) as tensor_to,
+            mock.patch.object(type(t.place), "is_xpu_place", return_value=True),
+        ):
+            t.type("torch.xpu.FloatTensor")
+            tensor_to.assert_not_called()
+
+        # Device-less tensor type name means CPU: a non-CPU tensor must move
+        with (
+            mock.patch.object(
+                paddle.Tensor, "to", autospec=True, return_value=t
+            ) as tensor_to,
+            mock.patch.object(
+                type(t.place), "is_cpu_place", return_value=False
+            ),
+        ):
+            for type_string in (
+                "torch.FloatTensor",
+                "paddle.FloatTensor",
+                "torch.sparse.FloatTensor",
             ):
-                t.type("torch.xpu.FloatTensor")
-                tensor_to.assert_not_called()
+                tensor_to.reset_mock()
+                self.assertIs(t.type(type_string), t)
+                tensor_to.assert_called_once_with(
+                    t,
+                    device="cpu",
+                    dtype=paddle.float32,
+                    blocking=True,
+                )
+
+        if paddle.device.is_compiled_with_cuda():
+            gpu_tensor = paddle.ones([1]).cuda()
+            self.assertTrue(
+                gpu_tensor.type("torch.FloatTensor").place.is_cpu_place()
+            )
+            # dtype-only strings stay on GPU
+            self.assertTrue(
+                gpu_tensor.type("torch.float64").place.is_gpu_place()
+            )
+
+        # dtype-only strings keep the tensor on its current device
+        with (
+            mock.patch.object(
+                paddle.Tensor, "to", autospec=True, return_value=t
+            ) as tensor_to,
+            mock.patch.object(
+                type(t.place), "is_cpu_place", return_value=False
+            ),
+        ):
+            self.assertIs(t.type("torch.float64"), t)
+            tensor_to.assert_called_once_with(
+                t,
+                device=None,
+                dtype=paddle.float64,
+                blocking=True,
+            )
 
     @with_level2
     def test_tensor_type_name_devices(self):
