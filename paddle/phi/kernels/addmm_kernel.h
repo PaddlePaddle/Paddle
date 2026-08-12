@@ -27,4 +27,14 @@ void AddmmKernel(const Context& dev_ctx,
                  double alpha,
                  DenseTensor* out);
 
+template <typename T, typename Context>
+void AddmmOutDtypeKernel(const Context& dev_ctx,
+                         const DenseTensor& input,
+                         const DenseTensor& x,
+                         const DenseTensor& y,
+                         DataType out_dtype,
+                         double beta,
+                         double alpha,
+                         DenseTensor* out);
+
 }  // namespace phi
