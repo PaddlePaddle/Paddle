@@ -58,7 +58,6 @@ class BufferGroup:
     grads_buffer: 'TensorFusionBuffer' = None
     grads_use_sum: int = 0
     grads_use_cnt: int = 0
-    grads_reduced: bool = False
 
 
 class TensorFusionBuffer:
@@ -74,6 +73,7 @@ class TensorFusionBuffer:
         # Calculate total buffer size needed (with padding)
         self.unique_key = unique_key
         self.fsdp_degree = fsdp_group.nranks
+        self.is_sharded = fsdp_group.nranks > 1
         self.dtype = dtype
         self.main_grad_dtype = (
             main_grad_dtype if main_grad_dtype is not None else dtype
@@ -168,6 +168,8 @@ class TensorFusionBuffer:
         return ((size + align_size - 1) // align_size) * align_size
 
     def get_tmp_buffer(self):
+        if not self.is_sharded:
+            return self.data_buffer
         # Reuse tmp_buffer if exists, else create
         if self.tmp_data_buffer is None:
             self.tmp_data_buffer = paddle.zeros(
@@ -348,10 +350,12 @@ class FSDPCommManager:
             return
         groups = self.buffer_manager.buffer_groups
         for group in reversed(groups):
+            grads_buffer = group.grads_buffer
             if (
                 not group.is_expert_param
-                or group.grads_reduced
                 or group.fsdp_unit_id is None
+                or grads_buffer is None
+                or grads_buffer.tmp_data_buffer is None
             ):
                 continue
             if group.fsdp_unit_id > unit_id:
@@ -362,9 +366,11 @@ class FSDPCommManager:
         while self.buffer_cnt_in_using >= self.double_buffer_limit:
             found = False
             for gid_idx, group in enumerate(self.buffer_manager.buffer_groups):
+                if not group.params_buffer.is_sharded:
+                    continue
                 if group.params_buffer.status == BufferState.READY:
-                    group.params_buffer.status = BufferState.FREED
                     group.params_buffer.clear_tmp_buffer()
+                    group.params_buffer.status = BufferState.FREED
                     self.buffer_cnt_in_using -= 1
                     found = True
                     break
@@ -447,12 +453,12 @@ class FSDPCommManager:
             tmp_buffer = params_buffer.get_tmp_buffer()
             # Do all_gather in sync: FREED -> USING
             if params_buffer.status == BufferState.FREED:
-                if fsdp_group.nranks > 1:
+                if params_buffer.is_sharded:
                     fsdp_group.process_group.all_gather(
                         params_buffer.data_buffer, tmp_buffer
                     ).wait()
+                    self.buffer_cnt_in_using += 1
                 params_buffer.status = BufferState.USING
-                self.buffer_cnt_in_using += 1
 
             # Bind the unsharded param to the real param
             offset = params_buffer.param_offsets[param.name]
@@ -501,9 +507,10 @@ class FSDPCommManager:
     def _reduce_group_grads(self, group):
         # Reduce-scatter one group's fused grad buffer over its own group.
         group.grads_use_cnt = 0
-        group.grads_reduced = True
         grads_buffer = group.grads_buffer
         if grads_buffer is None:
+            return
+        if not grads_buffer.is_sharded:
             return
         fsdp_group = group.fsdp_group
 
@@ -513,12 +520,6 @@ class FSDPCommManager:
         tmp_buffer = grads_buffer.get_tmp_buffer()
         shard_size = grads_buffer.data_buffer.shape[0]
         grad_buffer_shard = tmp_buffer._slice(0, shard_size)
-        if fsdp_group.nranks == 1:
-            # Not sharded: gradients are already complete on this rank.
-            grads_buffer.data_buffer.add_(grad_buffer_shard)
-            grads_buffer.clear_tmp_buffer()
-            return
-
         tmp_buffer.scale_(1.0 / fsdp_group.nranks)
         if self.enable_overlap:
             # Comm grads async and check all comm_task before optimizer update
@@ -561,7 +562,12 @@ class FSDPCommManager:
         # Wait for all async reduce_scatter tasks, call before optimizer.step()
         groups = self.buffer_manager.buffer_groups
         for group in reversed(groups):
-            if group.is_expert_param and not group.grads_reduced:
+            grads_buffer = group.grads_buffer
+            if (
+                group.is_expert_param
+                and grads_buffer is not None
+                and grads_buffer.tmp_data_buffer is not None
+            ):
                 self._reduce_group_grads(group)
         for group in groups:
             if not group.is_expert_param and group.grads_use_cnt > 0:
@@ -572,12 +578,13 @@ class FSDPCommManager:
         self._last_backward_unit_id = None
         for group in self.buffer_manager.buffer_groups:
             group.grads_use_cnt = 0
-            group.grads_reduced = False
             params_buffer = group.params_buffer
             if params_buffer.status in (BufferState.READY, BufferState.USING):
                 # Clear stale tmp_buffer to force re-all_gather with updated data_buffer
                 params_buffer.clear_tmp_buffer()
                 params_buffer.status = BufferState.FREED
+                if not params_buffer.is_sharded:
+                    continue
                 if self.buffer_cnt_in_using > 0:
                     self.buffer_cnt_in_using -= 1
 
@@ -680,7 +687,7 @@ class FullyShardFusion:
                     _main_grad = param.get_main_grad()
                     _main_grad.get_tensor()._set_dims(grad.shape)
                     param.main_grad = _main_grad
-                    param.main_grad.copy_(grad)
+                    param.main_grad.add_(grad)
                     grad._clear_data()
                 comm_manager.shard_params([param], is_backward=True)
                 comm_manager.reduce_scatter_grads(param)
