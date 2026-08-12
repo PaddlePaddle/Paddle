@@ -26,6 +26,9 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/impl/box_coder.h"
 
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/core/meta_tensor.h"
+
 namespace phi {
 namespace detail {
 // Used in MatrixRankAtolRtolInferMeta
@@ -135,6 +138,27 @@ void AddmmInferMeta(const MetaTensor& input,
   output_dims.push_back(y_dims[1]);
 
   out->set_dims(make_ddim(output_dims));
+  out->share_lod(input);
+  out->set_dtype(input.dtype());
+}
+
+void AddcmulInferMeta(const MetaTensor& input,
+                      const MetaTensor& tensor1,
+                      const MetaTensor& tensor2,
+                      MetaTensor* out) {
+  auto input_dims = input.dims();
+  auto t1_dims = tensor1.dims();
+  auto t2_dims = tensor2.dims();
+
+  // 1. First broadcast tensor1 and tensor2 (corresponding to value * tensor1 *
+  // tensor2)
+  DDim mul_dims = funcs::GetOutputDimsForDynamicShape(t1_dims, t2_dims);
+
+  // 2. Then broadcast the result with input (corresponding to input + ...)
+  DDim out_dims = funcs::GetOutputDimsForDynamicShape(input_dims, mul_dims);
+
+  // 3. Set output information
+  out->set_dims(out_dims);
   out->share_lod(input);
   out->set_dtype(input.dtype());
 }

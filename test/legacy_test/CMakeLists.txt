@@ -100,6 +100,7 @@ endif()
 
 if(WITH_XPU)
   list(REMOVE_ITEM TEST_OPS test_max_pool_dilation)
+  list(REMOVE_ITEM TEST_OPS test_addcmul_op)
 endif()
 
 if(WITH_XPU OR WITH_ROCM)
@@ -1172,7 +1173,8 @@ set(TEST_CINN_OPS
     test_slice_op
     test_softmax_op
     test_cumsum_op
-    test_where_op)
+    test_where_op
+    test_addcmul_op)
 
 foreach(TEST_CINN_OP ${TEST_CINN_OPS})
   if(WITH_CINN)

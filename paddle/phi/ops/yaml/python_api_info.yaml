@@ -125,6 +125,11 @@
   args_alias :
     use_default_mapping : True
 
+- op : addcmul
+  name : [paddle.addcmul, paddle.Tensor.addcmul]
+  args_alias :
+    use_default_mapping : True
+
 - op : addmm
   name : [paddle.addmm, paddle.Tensor.addmm]
   args_alias :

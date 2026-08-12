@@ -4657,6 +4657,58 @@ def i1e(
 
 
 @add_doc_and_signature
+def addcmul(
+    input: Tensor,
+    tensor1: Tensor,
+    tensor2: Tensor,
+    value: float = 1,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
+    r"""
+    Computes the element-wise multiplication of ``tensor1`` and ``tensor2``,
+    multiplies the result by the scalar ``value``, and adds it to ``input``.
+
+    .. math::
+        out = input + value * tensor1 * tensor2
+
+    Args:
+        input (Tensor): The input tensor to be added to the final result.
+            Its data type should be int32, int64, float16, float32, float64.
+        tensor1 (Tensor): The first tensor for element-wise multiplication.
+            Its data type should be int32, int64, float16, float32, float64.
+        tensor2 (Tensor): The second tensor for element-wise multiplication.
+            Its data type should be int32, int64, float16, float32, float64.
+        value (float, optional): The scalar multiplier for tensor1 * tensor2. Default: 1.
+            ``value`` never changes the output data type. For integral input tensors a
+            fractional ``value`` is truncated toward zero, so ``value=0.5`` leaves
+            ``input`` unchanged, and a ``value`` outside the range of the input data
+            type is rejected.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
+        out (Tensor|None, optional): The output tensor. Default: None.
+
+    Returns:
+        Tensor: The result tensor, it's data type is the same as ``input``.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> input = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
+            >>> tensor1 = paddle.to_tensor([0.1, 0.2, 0.3, 0.4])
+            >>> tensor2 = paddle.to_tensor([10.0, 20.0, 30.0, 40.0])
+            >>> result = paddle.addcmul(input, tensor1, tensor2, value=0.1)
+            >>> print(result)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1.10000002, 2.40000010, 3.90000010, 5.60000038])
+    """
+    ...
+
+
+@add_doc_and_signature
 def addmm(
     input: Tensor,
     x: Tensor,
