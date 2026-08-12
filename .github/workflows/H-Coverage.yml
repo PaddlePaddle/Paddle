@@ -582,8 +582,11 @@ jobs:
           python -c "import paddlefleet; print(paddlefleet.version.commit)"
           '
 
+      # TEMP DEBUG: only runs the hanging test file to capture its stack. REVERT BEFORE MERGE.
+      # PYTHONFAULTHANDLER + `timeout -s ABRT` makes the wedged process dump the
+      # traceback of every thread instead of being killed silently at 120 min.
       - name: Single card test
-        timeout-minutes: 120
+        timeout-minutes: 30
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -xce '
           pwd
@@ -594,7 +597,9 @@ jobs:
           export UV_NO_SYNC=1 # This environment variable prevents uv sync from being executed when running un run.
           export UV_HTTP_TIMEOUT=300
           python -c "import paddle; print(paddle.version.commit)"
-          bash ci/single_card_test.sh
+          export PYTHONFAULTHANDLER=1
+          export PYTHONUNBUFFERED=1
+          timeout -s ABRT 600 python -m pytest -s -v -p no:logging tests/single_card_tests/custom_ops/test_ops_import.py
           single_card_exit_code=$?
           if [[ "$single_card_exit_code" != "0" ]]; then
             echo -e "::error:: \033[31mSingle card test failed.\033[0m"
