@@ -207,6 +207,24 @@ class TestDistributionsCategoricalAPI(unittest.TestCase):
             )
         with self.assertRaises(ValueError):
             batched_dist.log_prob(paddle.to_tensor([0, 1, 2], place=self.place))
+        with self.assertRaises(ValueError):
+            categorical.Categorical(
+                probs=paddle.to_tensor([-0.1, 1.1], place=self.place),
+                validate_args=True,
+            )
+        with self.assertRaises(ValueError):
+            categorical.Categorical(
+                logits=paddle.to_tensor([float("nan"), 0.0], place=self.place),
+                validate_args=True,
+            )
+        with self.assertRaises(ValueError):
+            categorical.Categorical(
+                paddle.to_tensor([], dtype="float32", place=self.place)
+            )
+        categorical.Categorical(
+            probs=paddle.to_tensor([], dtype="float32", place=self.place),
+            validate_args=False,
+        )
 
     def test_dygraph_enumerate_support(self):
         import importlib
