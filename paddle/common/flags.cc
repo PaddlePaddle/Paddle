@@ -135,25 +135,6 @@ PHI_DEFINE_EXPORTED_bool(
 
 /**
  * CUDA related related FLAG
- * Name: FLAGS_enable_cublas_tensor_op_math
- * Since Version: 1.2.0
- * Value Range: bool, default=false
- * Example:
- * Note: whether to use Tensor Core, faster but it may loss precision.
- */
-PHI_DEFINE_EXPORTED_bool(
-    enable_cublas_tensor_op_math,
-    false,
-    "The enable_cublas_tensor_op_math indicate whether to use Tensor Core, "
-    "but it may loss precision. Currently, There are two CUDA libraries that"
-    " use Tensor Cores, cuBLAS and cuDNN. cuBLAS uses Tensor Cores to speed up"
-    " GEMM computations(the matrices must be either half precision or single "
-    "precision); cuDNN uses Tensor Cores to speed up both convolutions(the "
-    "input and output must be half precision) and recurrent neural networks "
-    "(RNNs).");
-
-/**
- * CUDA related related FLAG
  * Name: FLAGS_gemm_use_half_precision_compute_type
  * Since Version: 2.4
  * Value Range: bool, default=false

@@ -22,7 +22,6 @@
 
 #define INT_MAX_VALUE 2147483647
 
-COMMON_DECLARE_bool(enable_cublas_tensor_op_math);
 COMMON_DECLARE_bool(gemm_use_half_precision_compute_type);
 
 namespace phi {
