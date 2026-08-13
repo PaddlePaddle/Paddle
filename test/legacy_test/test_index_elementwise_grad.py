@@ -214,6 +214,39 @@ class TestIndexElementwiseGradAllIndex(unittest.TestCase):
         paddle.enable_static()
 
 
+@unittest.skipUnless(
+    paddle.device.is_compiled_with_cuda(), 'CUDA is required for this test.'
+)
+class TestIndexElementwiseGetGradStride1(unittest.TestCase):
+    def test_duplicate_index_warp_boundaries(self):
+        paddle.disable_static(place=paddle.CUDAPlace(0))
+
+        try:
+            for num_duplicates in (1, 32, 33):
+                with self.subTest(num_duplicates=num_duplicates):
+                    index_np = np.array(
+                        [11, *([7] * num_duplicates), 3], dtype=np.int64
+                    )
+                    out_grad_np = np.linspace(
+                        0.25, 1.25, index_np.size, dtype=np.float32
+                    )
+                    expected_grad = np.zeros([16], dtype=np.float32)
+                    np.add.at(expected_grad, index_np, out_grad_np)
+
+                    x = paddle.zeros([16], dtype='float32')
+                    x.stop_gradient = False
+                    index = paddle.to_tensor(index_np)
+                    out_grad = paddle.to_tensor(out_grad_np)
+
+                    x[index].backward(out_grad)
+
+                    np.testing.assert_allclose(
+                        x.grad.numpy(), expected_grad, rtol=1e-6, atol=1e-6
+                    )
+        finally:
+            paddle.enable_static()
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
