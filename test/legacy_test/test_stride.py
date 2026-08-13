@@ -1120,6 +1120,15 @@ class TestViewGrad(unittest.TestCase):
         x_grad_expected = paddle.full_like(x, 1.0)
         self.assertEqual((x.grad == x_grad_expected).all(), True)
 
+    def test_view_dtype_is_forward_only(self):
+        paddle.disable_static()
+        paddle.base.set_flags({"FLAGS_use_stride_kernel": True})
+        x = paddle.randn([2, 4], dtype="float32", requires_grad=True)
+
+        out = x.view(paddle.uint8)
+
+        self.assertTrue(out.stop_gradient)
+
 
 if __name__ == '__main__':
     unittest.main()
