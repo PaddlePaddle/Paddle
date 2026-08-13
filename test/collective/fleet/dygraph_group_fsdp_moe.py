@@ -220,10 +220,10 @@ def train_stage1(model, data):
     return train(model, optimizer, data)
 
 
-def train_fsdp(model, data):
+def train_fsdp(model, data, enable_overlap):
     model = fully_shard(
         model,
-        enable_tensor_fusion_and_overlap=False,
+        enable_tensor_fusion_and_overlap=enable_overlap,
     )
     model = mix_precision_utils.MixPrecisionLayer(model, dtype="bfloat16")
     optimizer = build_optimizer(model)
@@ -250,7 +250,8 @@ def run_loss_comparison(hcg):
     data = [paddle.randn([TOKENS, HIDDEN]) for _ in range(STEPS)]
 
     stage1_loss_md5s = train_stage1(stage1_model, data)
-    fsdp_loss_md5s = train_fsdp(fsdp_model, data)
+    enable_overlap = hcg.get_moe_sharding_parallel_world_size() == 1
+    fsdp_loss_md5s = train_fsdp(fsdp_model, data, enable_overlap)
 
     assert fsdp_loss_md5s == stage1_loss_md5s, (
         "10-step loss MD5 sequence diverged: "

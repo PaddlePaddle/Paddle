@@ -37,10 +37,14 @@ class TestDygraphFSDP(TestMultipleAccelerators):
 
     # check dygraph fsdp + ep with expert params sharded inside the ep group.
     def test_dygraph_group_fsdp_moe_sharding(self):
-        assert (
-            base.core.is_compiled_with_cuda()
-            and base.core.get_cuda_device_count() >= 4
-        ), "moe_sharding_degree=2 comparison requires 4 GPUs"
+        if (
+            not base.core.is_compiled_with_cuda()
+            or base.core.get_cuda_device_count() < 4
+        ):
+            self.skipTest(
+                "moe_sharding_degree=2 comparison requires 4 GPUs, got "
+                f"{base.core.get_cuda_device_count()}"
+            )
 
         cluster, pod = get_cluster_from_args(get_devices('0,1,2,3'))
         procs = start_local_trainers(
