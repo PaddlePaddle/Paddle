@@ -456,7 +456,7 @@ if(WITH_NCCL)
       TIMEOUT
       "200"
       LABELS
-      "RUN_TYPE=DIST"
+      "RUN_TYPE=EXCLUSIVE"
       ENVS
       "PADDLE_DIST_UT_PORT=22352;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
     )

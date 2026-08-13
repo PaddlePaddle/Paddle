@@ -27,22 +27,15 @@ from paddle import base
 
 
 class TestDygraphFSDP(TestMultipleAccelerators):
-    # check dygraph fsdp for some functions.
-    def test_dygraph_group_fsdp(self):
-        self.run_mnist_2accelerators('dygraph_group_fsdp.py')
-
-    # check dygraph fsdp + ep for some functions.
-    def test_dygraph_group_fsdp_moe(self):
-        self.run_mnist_2accelerators('dygraph_group_fsdp_moe.py')
-
-    # check dygraph fsdp + ep with expert params sharded inside the ep group.
-    def test_dygraph_group_fsdp_moe_sharding(self):
+    # All the cases below run on 4 cards, so this target is registered as
+    # RUN_TYPE=EXCLUSIVE to get all the cards of the machine.
+    def run_4accelerators(self, target_file_name, training_script_args=[]):
         if (
             not base.core.is_compiled_with_cuda()
             or base.core.get_cuda_device_count() < 4
         ):
             self.skipTest(
-                "moe_sharding_degree=2 comparison requires 4 GPUs, got "
+                "bitwise loss comparison requires 4 GPUs, got "
                 f"{base.core.get_cuda_device_count()}"
             )
 
@@ -50,11 +43,22 @@ class TestDygraphFSDP(TestMultipleAccelerators):
         procs = start_local_trainers(
             cluster,
             pod,
-            training_script='dygraph_group_fsdp_moe.py',
-            training_script_args=[],
+            training_script=target_file_name,
+            training_script_args=training_script_args,
         )
         while watch_local_trainers(procs, cluster.trainers_endpoints()):
             time.sleep(3)
+
+    # check dygraph fsdp for some functions.
+    def test_dygraph_group_fsdp(self):
+        self.run_4accelerators('dygraph_group_fsdp.py')
+
+    # ep_degree=4 => moe_sharding_degree=1, expert params sharded on all cards;
+    # ep_degree=2 => moe_sharding_degree=2, expert params sharded inside the
+    # moe_sharding group, so their grads really go through reduce_scatter.
+    def test_dygraph_group_fsdp_moe(self):
+        for ep_degree in ['4', '2']:
+            self.run_4accelerators('dygraph_group_fsdp.py', [ep_degree])
 
 
 if __name__ == "__main__":
