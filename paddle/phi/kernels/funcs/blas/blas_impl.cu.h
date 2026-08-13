@@ -39,7 +39,7 @@ namespace funcs {
 namespace detail {
 
 template <typename Callback>
-inline void CublasCallWithTF32MathMode(phi::GPUContext *dev_ctx,
+inline void CublasCallWithTF32MathMode(const phi::GPUContext *dev_ctx,
                                        Callback &&callback) {
   dev_ctx->CublasCall([&](cublasHandle_t handle) {
 #if CUDA_VERSION >= 11000
@@ -66,7 +66,8 @@ inline void CublasCallWithTF32MathMode(phi::GPUContext *dev_ctx,
 }
 
 template <typename T, typename Callback>
-inline void CublasCallForGemmEx(phi::GPUContext *dev_ctx, Callback &&callback) {
+inline void CublasCallForGemmEx(const phi::GPUContext *dev_ctx,
+                                Callback &&callback) {
   if constexpr (std::is_same<T, float>::value) {
     CublasCallWithTF32MathMode(dev_ctx, std::forward<Callback>(callback));
   } else {
