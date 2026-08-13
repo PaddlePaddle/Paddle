@@ -82,6 +82,7 @@ class TensorFusionBuffer:
         self.param_offsets = {}
         self.tmp_data_buffer = None
         self.comm_task = None
+        self.reduce_pending = False
         self.trainable = params[0].trainable
 
         for param in params:
@@ -512,6 +513,8 @@ class FSDPCommManager:
             return
         if not grads_buffer.is_sharded:
             return
+        if grads_buffer.reduce_pending:
+            return
         fsdp_group = group.fsdp_group
 
         # Grad queue mechanism: wait and release completed reduce_scatter async tasks
@@ -530,6 +533,7 @@ class FSDPCommManager:
                 group=fsdp_group,
                 sync_op=False,
             )
+            grads_buffer.reduce_pending = True
 
             # Add async task to queue
             self.grad_reduce_queue.append(grads_buffer)
@@ -544,19 +548,31 @@ class FSDPCommManager:
             grads_buffer.data_buffer.add_(grad_buffer_shard)
             grads_buffer.clear_tmp_buffer()
 
+    def _finish_grads_buffer_reduce(self, grads_buffer):
+        if grads_buffer.comm_task is not None:
+            grads_buffer.comm_task.wait()
+            grads_buffer.comm_task = None
+            shard_size = grads_buffer.data_buffer.shape[0]
+            grad_buffer_shard = grads_buffer.tmp_data_buffer._slice(
+                0, shard_size
+            )
+            grads_buffer.data_buffer.add_(grad_buffer_shard)
+        grads_buffer.clear_tmp_buffer()
+        grads_buffer.reduce_pending = False
+        if grads_buffer in self.grad_reduce_queue:
+            self.grad_reduce_queue.remove(grads_buffer)
+
+    def wait_grads_buffer_ready(self, param):
+        gid = self.buffer_manager.param_to_buffer_id.get(param.name)
+        grads_buffer = self.buffer_manager.buffer_groups[gid].grads_buffer
+        if grads_buffer is not None and grads_buffer.reduce_pending:
+            self._finish_grads_buffer_reduce(grads_buffer)
+
     def _wait_for_grad_comm(self, queue_limit=2):
         # Wait for async reduce_scatter tasks to complete and release resources
         # queue_limit: max queue size, default use 2, 0 means wait for all
         while len(self.grad_reduce_queue) > queue_limit:
-            grads_buffer = self.grad_reduce_queue.pop(0)
-            if grads_buffer.comm_task is not None:
-                grads_buffer.comm_task.wait()
-                grads_buffer.comm_task = None
-                tmp_buffer = grads_buffer.get_tmp_buffer()
-                shard_size = grads_buffer.data_buffer.shape[0]
-                grad_buffer_shard = tmp_buffer._slice(0, shard_size)
-                grads_buffer.data_buffer.add_(grad_buffer_shard)
-            grads_buffer.clear_tmp_buffer()
+            self._finish_grads_buffer_reduce(self.grad_reduce_queue[0])
 
     def finish_grads_sync(self):
         # Wait for all async reduce_scatter tasks, call before optimizer.step()
@@ -684,6 +700,7 @@ class FullyShardFusion:
             def comm_hook(grad):
                 if grad is not None and grad._is_initialized():
                     # Share mem with grads_tmp_buffer
+                    comm_manager.wait_grads_buffer_ready(param)
                     _main_grad = param.get_main_grad()
                     _main_grad.get_tensor()._set_dims(grad.shape)
                     param.main_grad = _main_grad

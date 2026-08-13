@@ -144,7 +144,12 @@ class MoEModel(nn.Layer):
 
 def init_dist():
     world_size = paddle.distributed.get_world_size()
-    assert world_size == 2, "bitwise loss comparison is a 2-card test"
+    assert world_size in (2, 4), (
+        "bitwise loss comparison runs on 2 cards (moe_sharding_degree=1) "
+        "or 4 cards (moe_sharding_degree=2)"
+    )
+    ep_degree = 2
+    moe_sharding_degree = world_size // ep_degree
 
     strategy = fleet.DistributedStrategy()
     strategy.hybrid_configs = {
@@ -159,8 +164,8 @@ def init_dist():
             "mp",
         ],
         "sharding_degree": world_size,
-        "ep_degree": 2,
-        "moe_sharding_degree": 1,
+        "ep_degree": ep_degree,
+        "moe_sharding_degree": moe_sharding_degree,
         "dp_degree": 1,
         "mp_degree": 1,
         "pp_degree": 1,
@@ -238,11 +243,7 @@ def train(model, optimizer, data):
     return loss_md5s
 
 
-def run():
-    paddle.distributed.init_parallel_env()
-    init_dist()
-    hcg = fleet.get_hybrid_communicate_group()
-
+def run_loss_comparison(hcg):
     stage1_model, fsdp_model = build_models(hcg)
 
     paddle.seed(2026)
@@ -255,6 +256,18 @@ def run():
         "10-step loss MD5 sequence diverged: "
         f"stage1={stage1_loss_md5s}, fsdp={fsdp_loss_md5s}"
     )
+
+
+def run():
+    paddle.distributed.init_parallel_env()
+    init_dist()
+    hcg = fleet.get_hybrid_communicate_group()
+    # 4 cards => moe_sharding_degree=2, expert grads really go through reduce_scatter
+    assert (
+        hcg.get_moe_sharding_parallel_world_size()
+        == paddle.distributed.get_world_size() // 2
+    )
+    run_loss_comparison(hcg)
 
 
 if __name__ == "__main__":
