@@ -74,6 +74,8 @@ _TENSOR_TYPE_DTYPES = {
     'ComplexDoubleTensor': 'complex128',
 }
 
+_DTYPE_TENSOR_TYPES = {v: k for k, v in _TENSOR_TYPE_DTYPES.items()}
+
 
 def __getattr__(name):
     if name == "paddle_triton":
@@ -98,6 +100,23 @@ def _tensor_numel(input: Tensor) -> int:
     return int(input.size)
 
 
+def _tensor_type_name(input: Tensor) -> str:
+    """``torch.Tensor.type``-style name with a paddle prefix, e.g.
+    ``'paddle.cuda.sparse.FloatTensor'``. Dtypes without a tensor type name
+    fall back to the dtype string."""
+    dtype_name = str(input.dtype).removeprefix("paddle.")
+    tensor_type = _DTYPE_TENSOR_TYPES.get(dtype_name)
+    if tensor_type is None:
+        return str(input.dtype)
+    segments = ["paddle"]
+    if input.place.is_gpu_place():
+        segments.append("cuda")
+    if input.is_sparse_coo():
+        segments.append("sparse")
+    segments.append(tensor_type)
+    return ".".join(segments)
+
+
 def _tensor_type(
     input: Tensor,
     dtype: DTypeLike | str | type | None = None,
@@ -105,21 +124,24 @@ def _tensor_type(
     **kwargs: Any,
 ) -> str | Tensor:
     """
-    Returns the tensor dtype when ``dtype`` is not specified, otherwise casts
+    Returns the tensor type when ``dtype`` is not specified, otherwise casts
     the tensor to the requested type.
 
     Args:
         input (Tensor): The input tensor.
         dtype (DTypeLike|str|type|None, optional): The target tensor type or
             data type. Qualified ``torch.*`` and ``paddle.*`` dtype or tensor
-            type strings are supported. When it is ``None``, returns a Paddle
-            dtype string. Default: ``None``.
+            type strings are supported. When it is ``None``, returns the tensor
+            type name. Default: ``None``.
         non_blocking (bool, optional): Whether the conversion may occur
             asynchronously. Default: ``False``.
 
     Returns:
-        str|Tensor: A Paddle dtype string when ``dtype`` is ``None``;
-            otherwise, a tensor with the requested type.
+        str|Tensor: The tensor type name when ``dtype`` is ``None``, e.g.
+            ``'paddle.FloatTensor'``, ``'paddle.cuda.FloatTensor'`` or
+            ``'paddle.cuda.sparse.FloatTensor'``, encoding the dtype, the place
+            and the sparse COO layout as ``torch.Tensor.type`` does; otherwise,
+            a tensor with the requested type.
     """
     if "async" in kwargs:
         non_blocking = kwargs.pop("async")
@@ -128,7 +150,7 @@ def _tensor_type(
         raise TypeError(f"type() got an unexpected keyword argument {key!r}")
 
     if dtype is None:
-        return str(input.dtype)
+        return _tensor_type_name(input)
 
     device = None
     if getattr(dtype, "__name__", None) in _TENSOR_TYPE_DTYPES:

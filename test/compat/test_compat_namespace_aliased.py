@@ -566,7 +566,7 @@ class TestLevel2InternalCallersUseNative(CompatNamespaceAliasBase):
             self.assertIs(type(t.numel()), int)
             self.assertIsInstance(paddle.numel(t), paddle.Tensor)
             self.assertEqual(paddle.empty([0, 3]).numel(), 0)
-            self.assertEqual(t.type(), "paddle.float32")
+            self.assertEqual(t.cpu().type(), "paddle.FloatTensor")
             self.assertEqual(t.type(paddle.float64).dtype, paddle.float64)
             self.assertEqual(t.type(paddle.DoubleTensor).dtype, paddle.float64)
             self.assertEqual(t.type("torch.DoubleTensor").dtype, paddle.float64)
@@ -582,15 +582,16 @@ class TestLevel2InternalCallersUseNative(CompatNamespaceAliasBase):
             with self.assertRaises(ValueError):
                 t.type("float64")
             self.assertEqual(
-                paddle.ones([1], dtype="int64").type(), "paddle.int64"
+                paddle.ones([1], dtype="int64").cpu().type(),
+                "paddle.LongTensor",
             )
             self.assertEqual(
-                paddle.ones([1], dtype="float8_e4m3fn").type(),
-                "paddle.float8_e4m3fn",
+                paddle.ones([1], dtype="float8_e4m3fn").cpu().type(),
+                "paddle.Float8_e4m3fnTensor",
             )
             self.assertEqual(
-                paddle.ones([1], dtype="float8_e5m2").type(),
-                "paddle.float8_e5m2",
+                paddle.ones([1], dtype="float8_e5m2").cpu().type(),
+                "paddle.Float8_e5m2Tensor",
             )
             self.assertIs(t.is_sparse, False)
             coo = paddle.sparse.sparse_coo_tensor([[0], [1]], [1.0], [2, 2])
@@ -659,9 +660,21 @@ class TestLevel2InternalCallersUseNative(CompatNamespaceAliasBase):
                 blocking=True,
             )
 
-        coo = paddle.sparse.sparse_coo_tensor([[0], [0]], [1.0], [1, 1])
-        self.assertEqual(coo.type(), "paddle.float32")
+        coo = paddle.sparse.sparse_coo_tensor(
+            [[0], [0]], [1.0], [1, 1], place='cpu'
+        )
+        self.assertEqual(coo.type(), "paddle.sparse.FloatTensor")
         self.assertEqual(t.type(np.float64).dtype, paddle.float64)
+
+        # paddle spells bfloat16 as uint16, which still has a tensor type name
+        self.assertEqual(
+            paddle.ones([1], dtype="uint16").cpu().type(),
+            "paddle.BFloat16Tensor",
+        )
+        if paddle.device.is_compiled_with_cuda():
+            self.assertEqual(
+                paddle.ones([1]).cuda().type(), "paddle.cuda.FloatTensor"
+            )
 
     @with_level2
     def test_tensor_descriptor_class_access(self):

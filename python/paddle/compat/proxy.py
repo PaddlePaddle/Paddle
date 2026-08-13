@@ -629,11 +629,10 @@ def use_compat_guard(
             ...     assert torch.sin is paddle.sin
     """
     scope = _parse_scope(scope)
+    already_has_torch_proxy = TORCH_PROXY_FINDER in sys.meta_path
     original_local_enabled_scope = set(TORCH_PROXY_FINDER._local_enabled_scope)
     original_globally_enabled = TORCH_PROXY_FINDER._globally_enabled
-    original_level = _current_compat_level()
-
-    if enable == bool(original_level) and (
+    if enable == already_has_torch_proxy and (
         (original_globally_enabled and scope is None)
         or (original_local_enabled_scope == (scope or set()))
     ):
@@ -644,25 +643,17 @@ def use_compat_guard(
         try:
             yield
         finally:
-            disable_compat()
-            if original_level:
-                enable_compat(
-                    scope=None, silent=True, level=original_level.value
-                )
             TORCH_PROXY_FINDER._local_enabled_scope = (
                 original_local_enabled_scope
             )
             TORCH_PROXY_FINDER._globally_enabled = original_globally_enabled
-    else:
-        if original_level:
             disable_compat()
+    else:
+        disable_compat()
         try:
             yield
         finally:
-            if original_level:
-                enable_compat(
-                    scope=None, silent=True, level=original_level.value
-                )
+            enable_compat(scope=None, silent=True)
             TORCH_PROXY_FINDER._local_enabled_scope = (
                 original_local_enabled_scope
             )
