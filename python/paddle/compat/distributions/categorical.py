@@ -22,6 +22,8 @@ from paddle.tensor import multinomial
 
 from ..utils import _CompatClassMeta
 
+__all__ = ["Categorical"]
+
 
 class Categorical(distribution.Distribution, metaclass=_CompatClassMeta):
     arg_constraints = {
@@ -66,6 +68,20 @@ class Categorical(distribution.Distribution, metaclass=_CompatClassMeta):
         distribution.Distribution.__init__(
             self, batch_shape, validate_args=validate_args
         )
+        if self._validate_args_enabled and paddle.in_dynamic_mode():
+            if probs is not None:
+                param_name = "probs"
+                valid = paddle.all(self.probs >= 0, axis=-1) & (
+                    (self.probs.sum(-1) - 1).abs() < 1e-6
+                )
+            else:
+                param_name = "logits"
+                valid = constraint.real_vector.check(self.logits)
+            if not bool(valid.all()):
+                raise ValueError(
+                    f'Expected parameter {param_name} of distribution '
+                    'Categorical to satisfy its constraint'
+                )
 
     def expand(self, batch_shape, _instance=None):
         new = (
