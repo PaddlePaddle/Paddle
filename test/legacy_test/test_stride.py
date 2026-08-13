@@ -1125,9 +1125,11 @@ class TestViewGrad(unittest.TestCase):
         paddle.base.set_flags({"FLAGS_use_stride_kernel": True})
         x = paddle.randn([2, 4], dtype="float32", requires_grad=True)
 
-        out = x.view(paddle.uint8)
+        out_uint8 = x.view(paddle.uint8)
+        out_float32 = x.view(paddle.float32)
 
-        self.assertTrue(out.stop_gradient)
+        self.assertTrue(out_uint8.stop_gradient)
+        self.assertTrue(out_float32.stop_gradient)
 
 
 if __name__ == '__main__':
