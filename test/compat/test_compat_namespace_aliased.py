@@ -676,6 +676,49 @@ class TestLevel2InternalCallersUseNative(CompatNamespaceAliasBase):
                 paddle.ones([1]).cuda().type(), "paddle.cuda.FloatTensor"
             )
 
+        # XPU and custom devices keep their own device segment, and the name a
+        # tensor reports must round-trip back to that very tensor
+        for device, expected in (
+            ("gpu", "paddle.cuda.FloatTensor"),
+            ("xpu", "paddle.xpu.FloatTensor"),
+            ("npu", "paddle.npu.FloatTensor"),
+        ):
+            with (
+                mock.patch.object(
+                    paddle.compat, "_place_device", return_value=device
+                ),
+                mock.patch.object(
+                    paddle.compat,
+                    "_tensor_type_devices",
+                    return_value={"cpu", "gpu", "xpu", "npu"},
+                ),
+                mock.patch.object(
+                    paddle.Tensor, "to", autospec=True, return_value=t
+                ) as tensor_to,
+            ):
+                self.assertEqual(t.type(), expected)
+                self.assertIs(t.type(expected), t)
+                tensor_to.assert_not_called()
+
+        # a device segment naming another device does move the tensor
+        with mock.patch.object(
+            paddle.Tensor, "to", autospec=True, return_value=t
+        ) as tensor_to:
+            self.assertIs(t.type("paddle.xpu.FloatTensor"), t)
+            tensor_to.assert_called_once_with(
+                t,
+                device="xpu",
+                dtype='float32',
+                blocking=True,
+            )
+
+        for invalid in (
+            "paddle.tpu.FloatTensor",  # unknown device
+            "paddle.cuda.xpu.FloatTensor",  # two device segments
+        ):
+            with self.assertRaisesRegex(ValueError, "invalid type"):
+                t.type(invalid)
+
     @with_level2
     def test_tensor_descriptor_class_access(self):
         type_descriptor = inspect.getattr_static(paddle.Tensor, "type")

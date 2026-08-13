@@ -100,6 +100,23 @@ def _tensor_numel(input: Tensor) -> int:
     return int(input.size)
 
 
+def _place_device(place) -> str:
+    """The paddle device name of ``place``"""
+    if place.is_gpu_place():
+        return "gpu"
+    if place.is_xpu_place():
+        return "xpu"
+    if place.is_custom_place():
+        return place.custom_device_type().lower()
+    return "cpu"
+
+
+def _tensor_type_devices() -> set[str]:
+    """Paddle device names that may appear in a tensor type string."""
+    customs = paddle.device.get_all_custom_device_type() or []
+    return {"cpu", "gpu", "xpu", *(custom.lower() for custom in customs)}
+
+
 def _tensor_type_name(input: Tensor) -> str:
     """``torch.Tensor.type``-style name with a paddle prefix, e.g.
     ``'paddle.cuda.sparse.FloatTensor'``. Dtypes without a tensor type name
@@ -109,8 +126,9 @@ def _tensor_type_name(input: Tensor) -> str:
     if tensor_type is None:
         return str(input.dtype)
     segments = ["paddle"]
-    if input.place.is_gpu_place():
-        segments.append("cuda")
+    device = _place_device(input.place)
+    if device != "cpu":
+        segments.append("cuda" if device == "gpu" else device)
     if input.is_sparse_coo():
         segments.append("sparse")
     segments.append(tensor_type)
@@ -164,11 +182,14 @@ def _tensor_type(
             raise ValueError(f"invalid type: {dtype_string!r}")
         if tensor_type in _TENSOR_TYPE_DTYPES:
             dtype = _TENSOR_TYPE_DTYPES[tensor_type]
-            device = (
-                "gpu"
-                if dtype_string.startswith(("torch.cuda.", "paddle.cuda."))
-                else "cpu"
-            )
+            # the segments between the prefix and the tensor type name are the
+            # device, optionally followed by 'sparse'; no segment means cpu
+            middle = [s for s in dtype_string.split(".")[1:-1] if s != "sparse"]
+            device = middle[0] if middle else "cpu"
+            if device == "cuda":
+                device = "gpu"
+            if len(middle) > 1 or device not in _tensor_type_devices():
+                raise ValueError(f"invalid type: {dtype_string!r}")
         elif tensor_type in _TENSOR_TYPE_DTYPES.values():
             dtype = tensor_type
         else:
@@ -176,11 +197,7 @@ def _tensor_type(
 
     dtype_name = str(input.dtype).removeprefix("paddle.")
     target_dtype_name = str(dtype).removeprefix("paddle.")
-    same_device = (
-        device is None
-        or (device == "cpu" and input.place.is_cpu_place())
-        or (device == "gpu" and input.place.is_gpu_place())
-    )
+    same_device = device is None or device == _place_device(input.place)
     if dtype_name == target_dtype_name and same_device:
         return input
 
