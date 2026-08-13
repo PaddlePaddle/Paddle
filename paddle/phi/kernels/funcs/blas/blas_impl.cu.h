@@ -17,16 +17,19 @@
 #if defined(__NVCC__)
 #include <thrust/device_vector.h>
 #endif
+#include <utility>
+
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
 
 #include "paddle/phi/backends/dynload/cublas.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/scope_guard.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 #define INT_MAX_VALUE 2147483647
 
-COMMON_DECLARE_bool(enable_cublas_tensor_op_math);
+COMMON_DECLARE_bool(cublas_allow_tf32);
 COMMON_DECLARE_bool(gemm_use_half_precision_compute_type);
 COMMON_DECLARE_bool(use_legacy_gemm);
 
@@ -34,6 +37,42 @@ namespace phi {
 namespace funcs {
 
 namespace detail {
+
+template <typename Callback>
+inline void CublasCallWithTF32MathMode(phi::GPUContext *dev_ctx,
+                                       Callback &&callback) {
+  dev_ctx->CublasCall([&](cublasHandle_t handle) {
+#if CUDA_VERSION >= 11000
+    cublasMath_t previous_mode = CUBLAS_DEFAULT_MATH;
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cublasGetMathMode(handle, &previous_mode));
+    const cublasMath_t math_mode = FLAGS_cublas_allow_tf32
+                                       ? CUBLAS_TF32_TENSOR_OP_MATH
+                                       : CUBLAS_DEFAULT_MATH;
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cublasSetMathMode(handle, math_mode));
+    DEFINE_PADDLE_SCOPE_GUARD([&] {
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::cublasSetMathMode(handle, previous_mode));
+    });
+#else
+    PADDLE_ENFORCE_EQ(!FLAGS_cublas_allow_tf32,
+                      true,
+                      common::errors::Unimplemented(
+                          "TF32 math mode requires CUDA 11.0 or later."));
+#endif
+    callback(handle);
+  });
+}
+
+template <typename T, typename Callback>
+inline void CublasCallForGemmEx(phi::GPUContext *dev_ctx, Callback &&callback) {
+  if constexpr (std::is_same<T, float>::value) {
+    CublasCallWithTF32MathMode(dev_ctx, std::forward<Callback>(callback));
+  } else {
+    dev_ctx->TensorCoreCublasCallIfAvailable(std::forward<Callback>(callback));
+  }
+}
 
 inline void GemmEx(phi::GPUContext *dev_ctx,
                    cublasOperation_t transa,
@@ -1335,10 +1374,8 @@ void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                          C,
                          N);
     };
-    // Preserve the legacy Tensor Core math mode for large float GEMMs.
-    if (FLAGS_enable_cublas_tensor_op_math && std::is_same<T, float>::value) {
-      auto &cuda_ctx = const_cast<phi::GPUContext &>(dev_ctx_);
-      cuda_ctx.TensorCoreCublasCallIfAvailable(gemm_64);
+    if constexpr (std::is_same<T, float>::value) {
+      detail::CublasCallWithTF32MathMode(&dev_ctx_, gemm_64);
     } else {
       dev_ctx_.CublasCall(gemm_64);
     }
@@ -1350,26 +1387,23 @@ void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   }
 #if CUDA_VERSION >= 8000
   if constexpr (std::is_same<T, float>::value) {
-    if (FLAGS_enable_cublas_tensor_op_math) {
-      auto &cuda_ctx = const_cast<phi::GPUContext &>(dev_ctx_);
-      cuda_ctx.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
-        CUBlas<float>::GEMM(handle,
-                            cuTransB,
-                            cuTransA,
-                            static_cast<int>(N),
-                            static_cast<int>(M),
-                            static_cast<int>(K),
-                            &alpha,
-                            B,
-                            static_cast<int>(ldb),
-                            A,
-                            static_cast<int>(lda),
-                            &beta,
-                            C,
-                            static_cast<int>(N));
-      });
-      return;
-    }
+    detail::CublasCallWithTF32MathMode(&dev_ctx_, [&](cublasHandle_t handle) {
+      CUBlas<float>::GEMM(handle,
+                          cuTransB,
+                          cuTransA,
+                          static_cast<int>(N),
+                          static_cast<int>(M),
+                          static_cast<int>(K),
+                          &alpha,
+                          B,
+                          static_cast<int>(ldb),
+                          A,
+                          static_cast<int>(lda),
+                          &beta,
+                          C,
+                          static_cast<int>(N));
+    });
+    return;
   }
 #endif  // CUDA_VERSION >= 8000
   dev_ctx_.CublasCall([&](cublasHandle_t handle) {
@@ -1526,9 +1560,8 @@ void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                          C,
                          N);
     };
-    if (FLAGS_enable_cublas_tensor_op_math && std::is_same<T, float>::value) {
-      auto &cuda_ctx = const_cast<phi::GPUContext &>(dev_ctx_);
-      cuda_ctx.TensorCoreCublasCallIfAvailable(gemm_64);
+    if constexpr (std::is_same<T, float>::value) {
+      detail::CublasCallWithTF32MathMode(&dev_ctx_, gemm_64);
     } else {
       dev_ctx_.CublasCall(gemm_64);
     }
@@ -1541,26 +1574,23 @@ void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
 
 #if CUDA_VERSION >= 8000
   if constexpr (std::is_same<T, float>::value) {
-    if (FLAGS_enable_cublas_tensor_op_math) {
-      auto &cuda_ctx = const_cast<phi::GPUContext &>(dev_ctx_);
-      cuda_ctx.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
-        CUBlas<float>::GEMM(handle,
-                            cuTransB,
-                            cuTransA,
-                            static_cast<int>(N),
-                            static_cast<int>(M),
-                            static_cast<int>(K),
-                            &t_alpha,
-                            B,
-                            static_cast<int>(ldb),
-                            A,
-                            static_cast<int>(lda),
-                            &t_beta,
-                            C,
-                            static_cast<int>(N));
-      });
-      return;
-    }
+    detail::CublasCallWithTF32MathMode(&dev_ctx_, [&](cublasHandle_t handle) {
+      CUBlas<float>::GEMM(handle,
+                          cuTransB,
+                          cuTransA,
+                          static_cast<int>(N),
+                          static_cast<int>(M),
+                          static_cast<int>(K),
+                          &t_alpha,
+                          B,
+                          static_cast<int>(ldb),
+                          A,
+                          static_cast<int>(lda),
+                          &t_beta,
+                          C,
+                          static_cast<int>(N));
+    });
+    return;
   }
 #endif  // CUDA_VERSION >= 8000
   dev_ctx_.CublasCall([&](cublasHandle_t handle) {
@@ -2215,9 +2245,8 @@ void Blas<phi::GPUContext>::GEMM(bool transA,
                          C,
                          ldc);
     };
-    if (FLAGS_enable_cublas_tensor_op_math && std::is_same<T, float>::value) {
-      auto &cuda_ctx = const_cast<phi::GPUContext &>(dev_ctx_);
-      cuda_ctx.TensorCoreCublasCallIfAvailable(gemm_64);
+    if constexpr (std::is_same<T, float>::value) {
+      detail::CublasCallWithTF32MathMode(&dev_ctx_, gemm_64);
     } else {
       dev_ctx_.CublasCall(gemm_64);
     }
@@ -2236,26 +2265,23 @@ void Blas<phi::GPUContext>::GEMM(bool transA,
 
 #if CUDA_VERSION >= 8000
   if constexpr (std::is_same<T, float>::value) {
-    if (FLAGS_enable_cublas_tensor_op_math) {
-      auto &cuda_ctx = const_cast<phi::GPUContext &>(dev_ctx_);
-      cuda_ctx.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
-        CUBlas<float>::GEMM(handle,
-                            cuTransB,
-                            cuTransA,
-                            n,
-                            m,
-                            k,
-                            &alpha,
-                            B,
-                            ldb_int,
-                            A,
-                            lda_int,
-                            &beta,
-                            C,
-                            ldc_int);
-      });
-      return;
-    }
+    detail::CublasCallWithTF32MathMode(&dev_ctx_, [&](cublasHandle_t handle) {
+      CUBlas<float>::GEMM(handle,
+                          cuTransB,
+                          cuTransA,
+                          n,
+                          m,
+                          k,
+                          &alpha,
+                          B,
+                          ldb_int,
+                          A,
+                          lda_int,
+                          &beta,
+                          C,
+                          ldc_int);
+    });
+    return;
   }
 #endif  // CUDA_VERSION >= 8000
 
@@ -2640,10 +2666,11 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
       (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
   const int64_t strideC = M * N;
 #if CUDA_VERSION >= 9010
-  if ((FLAGS_enable_cublas_tensor_op_math && (std::is_same<T, float>::value)) ||
-      std::is_same<T, phi::float16>::value) {
+  if ((std::is_same<T, float>::value) || std::is_same<T, phi::float16>::value) {
     cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
-    bool use_tensor_op_math = dev_ctx_.tensor_core_available();
+    bool use_tensor_op_math = std::is_same<T, float>::value
+                                  ? FLAGS_cublas_allow_tf32
+                                  : dev_ctx_.tensor_core_available();
     if (use_tensor_op_math) {
       algo = CUBLAS_GEMM_DFALT_TENSOR_OP;
     }
@@ -2676,7 +2703,7 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
     }
     if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
 #if CUDA_VERSION >= 12030 && defined(__linux__)
-      dev_ctx_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
+      detail::CublasCallForGemmEx<T>(&dev_ctx_, [&](cublasHandle_t handle) {
         PADDLE_ENFORCE_GPU_SUCCESS(
             phi::dynload::cublasGemmStridedBatchedEx_64(handle,
                                                         cuTransB,
@@ -2707,7 +2734,7 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
           "cublasGemmStridedBatchedEx_64 is not supported on cuda < 12.3"));
 #endif  // CUDA_VERSION >= 12030
     } else {
-      dev_ctx_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
+      detail::CublasCallForGemmEx<T>(&dev_ctx_, [&](cublasHandle_t handle) {
         PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasGemmStridedBatchedEx(
             handle,
             cuTransB,
@@ -2816,10 +2843,11 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
       (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
   const int64_t strideC = M * N;
 #if CUDA_VERSION >= 9010
-  if ((FLAGS_enable_cublas_tensor_op_math && (std::is_same<T, float>::value)) ||
-      std::is_same<T, phi::float16>::value) {
+  if ((std::is_same<T, float>::value) || std::is_same<T, phi::float16>::value) {
     cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
-    bool use_tensor_op_math = dev_ctx_.tensor_core_available();
+    bool use_tensor_op_math = std::is_same<T, float>::value
+                                  ? FLAGS_cublas_allow_tf32
+                                  : dev_ctx_.tensor_core_available();
     if (use_tensor_op_math) {
       algo = CUBLAS_GEMM_DFALT_TENSOR_OP;
     }
@@ -2854,7 +2882,7 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
     if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE ||
         batchCount > INT_MAX_VALUE) {
 #if CUDA_VERSION >= 12030 && defined(__linux__)
-      dev_ctx_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
+      detail::CublasCallForGemmEx<T>(&dev_ctx_, [&](cublasHandle_t handle) {
         PADDLE_ENFORCE_GPU_SUCCESS(
             phi::dynload::cublasGemmStridedBatchedEx_64(handle,
                                                         cuTransB,
@@ -2885,7 +2913,7 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
           "cublasGemmStridedBatchedEx_64 is not supported on cuda < 12.3"));
 #endif  // CUDA_VERSION >= 12030
     } else {
-      dev_ctx_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
+      detail::CublasCallForGemmEx<T>(&dev_ctx_, [&](cublasHandle_t handle) {
         PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasGemmStridedBatchedEx(
             handle,
             cuTransB,
