@@ -377,6 +377,37 @@ struct CUBlas<double> {
 
 template <>
 struct CUBlas<phi::float16> {
+  static void GEMM(cublasHandle_t handle,
+                   cublasOperation_t transa,
+                   cublasOperation_t transb,
+                   int m,
+                   int n,
+                   int k,
+                   const phi::float16 *alpha,
+                   const phi::float16 *A,
+                   int lda,
+                   const phi::float16 *B,
+                   int ldb,
+                   const phi::float16 *beta,
+                   phi::float16 *C,
+                   int ldc) {
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cublasHgemm(handle,
+                                  transa,
+                                  transb,
+                                  m,
+                                  n,
+                                  k,
+                                  reinterpret_cast<const __half *>(alpha),
+                                  reinterpret_cast<const __half *>(A),
+                                  lda,
+                                  reinterpret_cast<const __half *>(B),
+                                  ldb,
+                                  reinterpret_cast<const __half *>(beta),
+                                  reinterpret_cast<__half *>(C),
+                                  ldc));
+  }
+
 #if defined(__NVCC__)
   static void GEMM_BATCH(phi::GPUContext *dev_ctx,
                          cublasOperation_t transa,
@@ -1510,8 +1541,33 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                   CUDA_R_32F);
   }
 #else
-  PADDLE_THROW(common::errors::Unimplemented(
-      "FP16 GEMM_EX requires CUDA 8.0 or later."));
+  const int m = detail::to_blas_int(M, "GEMM M");
+  const int n = detail::to_blas_int(N, "GEMM N");
+  const int k = detail::to_blas_int(K, "GEMM K");
+  const int lda =
+      detail::to_blas_int((transA == CblasNoTrans) ? K : M, "GEMM lda");
+  const int ldb =
+      detail::to_blas_int((transB == CblasNoTrans) ? N : K, "GEMM ldb");
+  const cublasOperation_t cuTransA =
+      (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  const cublasOperation_t cuTransB =
+      (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  dev_ctx_.CublasCall([&](cublasHandle_t handle) {
+    CUBlas<phi::float16>::GEMM(handle,
+                               cuTransB,
+                               cuTransA,
+                               n,
+                               m,
+                               k,
+                               &alpha,
+                               B,
+                               ldb,
+                               A,
+                               lda,
+                               &beta,
+                               C,
+                               n);
+  });
 #endif  // CUDA_VERSION >= 8000
 }
 
@@ -1697,8 +1753,35 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                   CUDA_R_32F);
   }
 #else
-  PADDLE_THROW(common::errors::Unimplemented(
-      "FP16 GEMM_EX requires CUDA 8.0 or later."));
+  const int m = detail::to_blas_int(M, "GEMM M");
+  const int n = detail::to_blas_int(N, "GEMM N");
+  const int k = detail::to_blas_int(K, "GEMM K");
+  const int lda =
+      detail::to_blas_int((transA == CblasNoTrans) ? K : M, "GEMM lda");
+  const int ldb =
+      detail::to_blas_int((transB == CblasNoTrans) ? N : K, "GEMM ldb");
+  const cublasOperation_t cuTransA =
+      (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  const cublasOperation_t cuTransB =
+      (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  const phi::float16 h_alpha = static_cast<phi::float16>(alpha);
+  const phi::float16 h_beta = static_cast<phi::float16>(beta);
+  dev_ctx_.CublasCall([&](cublasHandle_t handle) {
+    CUBlas<phi::float16>::GEMM(handle,
+                               cuTransB,
+                               cuTransA,
+                               n,
+                               m,
+                               k,
+                               &h_alpha,
+                               B,
+                               ldb,
+                               A,
+                               lda,
+                               &h_beta,
+                               C,
+                               n);
+  });
 #endif  // CUDA_VERSION >= 8000
 }
 
@@ -1778,8 +1861,30 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                   CUDA_R_32F);
   }
 #else
-  PADDLE_THROW(common::errors::Unimplemented(
-      "FP16 GEMM_EX requires CUDA 8.0 or later."));
+  const int m = detail::to_blas_int(M, "GEMM M");
+  const int n = detail::to_blas_int(N, "GEMM N");
+  const int k = detail::to_blas_int(K, "GEMM K");
+  const int lda_int = detail::to_blas_int(lda, "GEMM lda");
+  const int ldb_int = detail::to_blas_int(ldb, "GEMM ldb");
+  const int ldc_int = detail::to_blas_int(ldc, "GEMM ldc");
+  const cublasOperation_t cuTransA = transA ? CUBLAS_OP_T : CUBLAS_OP_N;
+  const cublasOperation_t cuTransB = transB ? CUBLAS_OP_T : CUBLAS_OP_N;
+  dev_ctx_.CublasCall([&](cublasHandle_t handle) {
+    CUBlas<phi::float16>::GEMM(handle,
+                               cuTransB,
+                               cuTransA,
+                               n,
+                               m,
+                               k,
+                               &alpha,
+                               B,
+                               ldb_int,
+                               A,
+                               lda_int,
+                               &beta,
+                               C,
+                               ldc_int);
+  });
 #endif  // CUDA_VERSION >= 8000
 }
 

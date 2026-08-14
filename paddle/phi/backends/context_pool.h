@@ -30,8 +30,17 @@ namespace phi {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_CUSTOM_DEVICE)
+/**
+ * @deprecated This legacy switch selects a preconfigured cuBLAS handle.
+ * FP32 GEMM paths should use FLAGS_cublas_allow_tf32 instead.
+ * Kept for backward compatibility while remaining direct CublasCall paths
+ * are migrated.
+ */
 PADDLE_API void SetAllowTF32Cublas(bool active);
-/*Get the global variable allow_tf32_cublas value*/
+
+/**
+ * @deprecated See SetAllowTF32Cublas.
+ */
 PADDLE_API bool AllowTF32Cublas();
 extern bool allow_tf32_cudnn;
 /*Set the value of the global variable allow_tf32_cudnn*/
