@@ -1965,7 +1965,7 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
   });
 
   auto tensor = self->tensor;
-  if (egr::Controller::Instance().HasGrad()) {
+  if (egr::Controller::Instance().HasGrad() && tensor.numel() != 0) {
     PADDLE_ENFORCE_EQ(
         egr::EagerUtils::IsLeafTensor(tensor) &&
             !egr::EagerUtils::autograd_meta(&tensor)->StopGradient(),
@@ -2010,6 +2010,10 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
   std::vector<phi::Scalar> values;
   Tensor value_tensor =
       dealWithValues(tensor, value_obj, &values, has_advanced_index);
+  const bool use_tensor_value = value_tensor.has_allocation();
+  if (!use_tensor_value && values.empty()) {
+    RETURN_PY_NONE;
+  }
 
   if (!has_advanced_index) {
     // use set_value OP if there is no advanced index
@@ -2017,7 +2021,7 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
     // Release gil and do tracing
     py::gil_scoped_release release;
     // use inplace set_value_ operator
-    if (value_tensor.initialized()) {
+    if (use_tensor_value) {
       if (self->tensor.dtype() != value_tensor.dtype()) {
         if (egr::Controller::Instance().GetAMPLevel() !=
             paddle::imperative::AmpLevel::O0) {
@@ -2042,14 +2046,25 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
       }
       if (size != 1 || PyTuple_GetItem(index_ptr, 0) != Py_False) {
         // if index is single false, do nothing.
-        self->tensor = set_value_with_tensor__ad_func(self->tensor,
-                                                      value_tensor,
-                                                      slice_starts,
-                                                      slice_ends,
-                                                      slice_strides,
-                                                      slice_axes,
-                                                      decrease_axis,
-                                                      none_axes);
+        if (tensor.numel() == 0) {
+          self->tensor = set_value_with_tensor_ad_func(self->tensor,
+                                                       value_tensor,
+                                                       slice_starts,
+                                                       slice_ends,
+                                                       slice_strides,
+                                                       slice_axes,
+                                                       decrease_axis,
+                                                       none_axes);
+        } else {
+          self->tensor = set_value_with_tensor__ad_func(self->tensor,
+                                                        value_tensor,
+                                                        slice_starts,
+                                                        slice_ends,
+                                                        slice_strides,
+                                                        slice_axes,
+                                                        decrease_axis,
+                                                        none_axes);
+        }
       }
       if (PyCheckTensor(value_obj)) {
         // pass the stop_gradient from value to tensor.
@@ -2197,7 +2212,7 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
       self->tensor.set_autograd_meta(
           transed_sub_tensor.mutable_autograd_meta());
     }
-    if (value_tensor.initialized() && PyCheckTensor(value_obj)) {
+    if (use_tensor_value && PyCheckTensor(value_obj)) {
       // pass the stop_gradient from value to tensor.
       // pass stop gradient should be done after CheckInplace in
       // set_value__dygraph_function.

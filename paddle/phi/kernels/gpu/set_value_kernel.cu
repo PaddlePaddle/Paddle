@@ -40,11 +40,6 @@ void SetTensorValueKernel(const Context& dev_ctx,
                           const std::vector<int64_t>& decrease_axes,
                           const std::vector<int64_t>& none_axes,
                           DenseTensor* out) {
-  if (in.numel() == 0) {
-    dev_ctx.template Alloc<T>(out);
-    return;
-  }
-
   auto in_dims = in.dims();
   auto meta = in.meta();
   std::vector<int64_t> starts_local = starts.GetData();
@@ -81,14 +76,15 @@ void SetTensorValueKernel(const Context& dev_ctx,
                                     &new_out_shape,
                                     &new_out_stride);
 
-  if (product(phi::make_ddim(new_out_shape)) <= 0) {
+  funcs::CheckIsDimsMatch(phi::make_ddim(new_out_shape), value.dims());
+
+  if (product(phi::make_ddim(new_out_shape)) == 0) {
     // 0-size tensor, no need to copy
     out->ResetHolder(in.Holder());
     out->ShareInplaceVersionCounterWith(in);
     return;
   }
 
-  funcs::CheckIsDimsMatch(phi::make_ddim(new_out_shape), value.dims());
   if (new_out_shape.empty()) new_out_shape.push_back(1);
   DenseTensor expand_tensor;
   if (value.numel() == 1) {

@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/set_value_kernel.h"
 
-#include <algorithm>
 #include <vector>
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
@@ -123,6 +122,7 @@ void SetValueImpl(const Context& dev_ctx,
 
     slice_dims_for_assign = make_ddim(slice_dims_with_none);
   }
+  funcs::CheckIsDimsMatch(slice_dims_for_assign, new_value_dims);
 
   // Here copy data from input to avoid data loss at PE and Graph level.
   // TODO(liym27): Speed up in the future version.
@@ -189,8 +189,6 @@ void SetValueImpl(const Context& dev_ctx,
   // shape is [3, 3], which cross the border;
   // If do broadcasting on Tensor with shape [3] and [3], the result's shape
   // is [3], which is right.
-
-  funcs::CheckIsDimsMatch(slice_dims_for_assign, new_value_dims);
 
   // do broadcasting
   auto f = [](xpu::Context* xpu_ctx,
@@ -366,10 +364,6 @@ void SetTensorValueKernel(const Context& dev_ctx,
                           const std::vector<int64_t>& decrease_axes,
                           const std::vector<int64_t>& none_axes,
                           DenseTensor* out) {
-  if (x.numel() == 0) {
-    dev_ctx.template Alloc<T>(out);
-    return;
-  }
   SetValueKernelImpl<T, Context>(dev_ctx,
                                  x,
                                  value.data<T>(),

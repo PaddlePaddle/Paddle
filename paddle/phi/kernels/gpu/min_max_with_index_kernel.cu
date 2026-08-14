@@ -190,6 +190,11 @@ struct VisitDataCudaMinMaxWithIndexFunctor {
     if (x.numel() == 0) {
       dev_ctx.template Alloc<T>(val_out);
       dev_ctx.template Alloc<IndType>(ind_out);
+      T init = typeid(Reducer) == typeid(cub::ArgMax)
+                   ? std::numeric_limits<T>::lowest()
+                   : std::numeric_limits<T>::max();
+      funcs::set_constant(dev_ctx, val_out, init);
+      funcs::set_constant(dev_ctx, ind_out, static_cast<IndType>(0));
       return;
     }
     // For 0D Tensor
