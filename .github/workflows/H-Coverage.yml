@@ -197,9 +197,16 @@ jobs:
           pip install -r python/requirements.txt
           mkdir -p build && cd build
           ccache -z
-          cmake .. -DPY_VERSION=3.12 -DWITH_GPU=ON -DWITH_DISTRIBUTE=ON -DWITH_TESTING=ON -DCUDA_ARCH_NAME=Manual -DCUDA_ARCH_BIN="90" -DFA_JOB_POOLS_COMPILE=1 -DWITH_CUDNN_FRONTEND=ON -DON_INFER=OFF -DWITH_NVSHMEM=ON
+          cmake .. -DPY_VERSION=3.12 -DWITH_GPU=ON -DWITH_DISTRIBUTE=ON -DWITH_TESTING=ON -DCUDA_ARCH_NAME=Manual -DCUDA_ARCH_BIN="90" -DFA_JOB_POOLS_COMPILE=1 -DWITH_CUDNN_FRONTEND=ON -DON_INFER=OFF -DWITH_NVSHMEM=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
           make -j20
           EXIT_CODE=$?
+          if [ "${EXIT_CODE}" -ne 0 ]; then
+            python3 ../tools/diagnostics/nvcc_destroy_at_type.py \
+              compile_commands.json \
+              paddle/phi/kernels/funcs/math/beam_search.cu \
+              paddle/phi/kernels/funcs/math/bert_encoder_functor.cu \
+              paddle/fluid/distributed/collective/deep_ep/kernels/internode_ll.cu || true
+          fi
           ccache -s
           exit $EXIT_CODE
           '
