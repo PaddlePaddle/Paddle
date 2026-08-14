@@ -53,7 +53,7 @@ class ConcatOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::concat> {
 
     // Create memory descriptors for each of inputs
     for (auto input : inputs) {
-      srcs_md.push_back(input->mem_desc());
+      srcs_md.push_back(phi::funcs::GetOneDNNMemDesc(*input));
     }
 
     auto dst_dims = vectorize<int64_t>(output->dims());
@@ -152,7 +152,7 @@ void ConcatKernel(const Context& dev_ctx,
   concat_p->execute(astream, args);
   astream.wait();
 
-  out->set_mem_desc(dst_mem->get_desc());
+  phi::funcs::SetOneDNNMemDesc(out, dst_mem->get_desc());
 }
 
 }  // namespace phi

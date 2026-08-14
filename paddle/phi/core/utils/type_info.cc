@@ -14,6 +14,9 @@ limitations under the License. */
 
 #include <string>
 
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/phi/backends/onednn/onednn_storage_properties.h"
+#endif
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/custom/custom_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"

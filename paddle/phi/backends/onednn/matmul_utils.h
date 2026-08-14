@@ -148,7 +148,8 @@ inline void ExecuteMul(const OneDNNContext& dev_ctx,
   // MatmulV2ONEDNNHandler enforces one so it should work
   auto reshape_dims = out->dims().size() != 0 ? common::vectorize(out->dims())
                                               : std::vector<int64_t>{1};
-  out->set_mem_desc(dst_memory_p->get_desc().reshape(reshape_dims));
+  phi::funcs::SetOneDNNMemDesc(out,
+                               dst_memory_p->get_desc().reshape(reshape_dims));
 }
 
 template <typename T, typename T_out>
@@ -180,7 +181,8 @@ inline void ExecuteMatmul(const OneDNNContext& dev_ctx,
 
   auto reshape_dims = out->dims().size() != 0 ? common::vectorize(out->dims())
                                               : std::vector<int64_t>{1};
-  out->set_mem_desc(dst_memory_p->get_desc().reshape(reshape_dims));
+  phi::funcs::SetOneDNNMemDesc(out,
+                               dst_memory_p->get_desc().reshape(reshape_dims));
 }
 
 }  // namespace funcs
