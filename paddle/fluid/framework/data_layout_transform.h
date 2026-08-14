@@ -16,12 +16,11 @@
 
 #include <vector>
 
-#include "paddle/phi/backends/onednn/onednn_helper.h"
+#include "paddle/common/layout.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/platform/device_context.h"
-#include "paddle/phi/kernels/funcs/data_layout_transform.h"
 
 namespace paddle {
 namespace framework {
