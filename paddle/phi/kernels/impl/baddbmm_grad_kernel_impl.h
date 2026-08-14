@@ -19,9 +19,7 @@ limitations under the License. */
 
 #include "paddle/common/flags.h"
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/baddbmm_grad_kernel.h"
-#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
@@ -65,23 +63,15 @@ void BaddbmmGradKernel(const Context& dev_ctx,
                        DenseTensor* x_grad,
                        DenseTensor* y_grad) {
   using MPType = typename MPTypeTrait<T>::Type;
-  const auto compute_dtype = CppTypeToDataType<T>::Type();
-  DenseTensor cast_out_grad;
-  const DenseTensor* compute_out_grad = &out_grad;
-  if (out_grad.dtype() != compute_dtype) {
-    PD_VISIT_FLOATING_AND_HALF_TYPES(
-        out_grad.dtype(), "BaddbmmGradCastOutGrad", ([&] {
-          cast_out_grad =
-              Cast<data_t, Context>(dev_ctx, out_grad, compute_dtype);
-        }));
-    compute_out_grad = &cast_out_grad;
-  }
-  const DenseTensor& grad = *compute_out_grad;
 
   auto input_dims = input.dims();
   auto in_dims = input_dims;
-  if (input.dims().size() == 2) {
-    in_dims = {1, input.dims()[0], input.dims()[1]};
+  if (input_dims.size() < 3) {
+    std::vector<int64_t> padded_dims(3 - input_dims.size(), 1);
+    const auto input_dims_vec = common::vectorize(input_dims);
+    padded_dims.insert(
+        padded_dims.end(), input_dims_vec.begin(), input_dims_vec.end());
+    in_dims = common::make_ddim(padded_dims);
     if (input_grad) {
       input_grad->Resize(in_dims);
     }
@@ -91,7 +81,7 @@ void BaddbmmGradKernel(const Context& dev_ctx,
   VLOG(3) << "alpha: " << alpha << " beta: " << beta;
 
   if (input_grad != nullptr) {
-    input_grad->set_lod(grad.lod());
+    input_grad->set_lod(out_grad.lod());
   }
   if (x_grad != nullptr) {
     x_grad->set_lod(x.lod());
@@ -104,9 +94,9 @@ void BaddbmmGradKernel(const Context& dev_ctx,
   if (input_grad) {
     dev_ctx.template Alloc<T>(input_grad);
     total_elems = in_dims[0] * in_dims[1] * in_dims[2];
-    bool batch_compress = in_dims[0] != grad.dims()[0];
-    bool row_compress = in_dims[1] != grad.dims()[1];
-    bool col_compress = in_dims[2] != grad.dims()[2];
+    bool batch_compress = in_dims[0] != out_grad.dims()[0];
+    bool row_compress = in_dims[1] != out_grad.dims()[1];
+    bool col_compress = in_dims[2] != out_grad.dims()[2];
     std::vector<int64_t> reduce_dims;
     if (batch_compress) {
       reduce_dims.push_back(0);
@@ -118,18 +108,22 @@ void BaddbmmGradKernel(const Context& dev_ctx,
       reduce_dims.push_back(2);
     }
 
-    if (grad.numel() == 0) {
+    if (out_grad.numel() == 0) {
       funcs::ForRange<Context> for_range(dev_ctx, total_elems);
       BCopyOrScaleFunctor<T> functor(
           0, nullptr, input_grad->data<T>(), total_elems);
       for_range(functor);
     } else if (!reduce_dims.empty()) {
-      SumKernel<T, Context>(
-          dev_ctx, grad, IntArray(reduce_dims), grad.dtype(), true, input_grad);
+      SumKernel<T, Context>(dev_ctx,
+                            out_grad,
+                            IntArray(reduce_dims),
+                            out_grad.dtype(),
+                            true,
+                            input_grad);
     } else {
       funcs::ForRange<Context> for_range(dev_ctx, total_elems);
       BCopyOrScaleFunctor<T> functor(
-          1, grad.data<T>(), input_grad->data<T>(), total_elems);
+          1, out_grad.data<T>(), input_grad->data<T>(), total_elems);
       for_range(functor);
     }
 
@@ -137,7 +131,7 @@ void BaddbmmGradKernel(const Context& dev_ctx,
     BCopyOrScaleFunctor<T> functor(
         beta, input_grad->data<T>(), input_grad->data<T>(), total_elems);
     for_range(functor);
-    if (input.dims().size() == 2) {
+    if (input_dims.size() < 3) {
       input_grad->Resize(input_dims);
     }
   }
@@ -166,7 +160,7 @@ void BaddbmmGradKernel(const Context& dev_ctx,
                        K_dim,
                        N_dim,
                        gemm_alpha,
-                       grad.data<T>(),
+                       out_grad.data<T>(),
                        y.data<T>(),
                        zero,
                        x_grad->data<T>(),
@@ -184,7 +178,7 @@ void BaddbmmGradKernel(const Context& dev_ctx,
                        K_dim,
                        N_dim,
                        gemm_alpha,
-                       grad.data<T>(),
+                       out_grad.data<T>(),
                        y.data<T>(),
                        zero,
                        x_grad->data<T>(),
@@ -225,7 +219,7 @@ void BaddbmmGradKernel(const Context& dev_ctx,
                        M_dim,
                        gemm_alpha,
                        x.data<T>(),
-                       grad.data<T>(),
+                       out_grad.data<T>(),
                        zero,
                        y_grad->data<T>(),
                        B_dim,
@@ -243,7 +237,7 @@ void BaddbmmGradKernel(const Context& dev_ctx,
                        M_dim,
                        gemm_alpha,
                        x.data<T>(),
-                       grad.data<T>(),
+                       out_grad.data<T>(),
                        zero,
                        y_grad->data<T>(),
                        B_dim,
