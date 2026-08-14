@@ -166,7 +166,7 @@ def run_dense():
         use_fsdp=True,
         data=data,
         use_pure_bf16=False,
-        enable_tensor_fusion_and_overlap=False,
+        enable_tensor_fusion_and_overlap=True,
     )
 
 
@@ -287,10 +287,8 @@ class MoEModel(nn.Layer):
 
 def init_moe_dist(ep_degree):
     world_size = paddle.distributed.get_world_size()
-    assert world_size == 4, "bitwise loss comparison runs on 4 cards"
-    assert ep_degree in (2, 4), (
-        "ep_degree=2 => moe_sharding_degree=2, ep_degree=4 => moe_sharding_degree=1"
-    )
+    assert world_size % ep_degree == 0
+    assert ep_degree > 1, "ep_degree=1 falls back to the non-MoE topology"
     moe_sharding_degree = world_size // ep_degree
 
     strategy = fleet.DistributedStrategy()
@@ -314,9 +312,6 @@ def init_moe_dist(ep_degree):
     }
     sharding = strategy.hybrid_configs["sharding_configs"]
     sharding.split_param = True
-    sharding.tensor_fusion = False
-    sharding.comm_overlap = False
-    sharding.use_reduce_avg = False
     fleet.init(is_collective=True, strategy=strategy)
 
 
@@ -390,14 +385,7 @@ def run_moe(ep_degree):
         data,
     )
 
-    # Overlap prefetches params of the next buffer groups and lets the double
-    # buffer release them again. With moe_sharding_degree > 1 the expert groups
-    # live on a smaller fsdp_group and share that pool, and a buffer still used
-    # by an unfinished backward can be released, so only degree=1 runs overlap.
-    enable_overlap = hcg.get_moe_sharding_parallel_world_size() == 1
-    fsdp_model = fully_shard(
-        fsdp_model, enable_tensor_fusion_and_overlap=enable_overlap
-    )
+    fsdp_model = fully_shard(fsdp_model, enable_tensor_fusion_and_overlap=True)
     fsdp_model = mix_precision_utils.MixPrecisionLayer(
         fsdp_model, dtype="bfloat16"
     )

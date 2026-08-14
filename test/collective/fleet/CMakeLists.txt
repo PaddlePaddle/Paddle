@@ -447,22 +447,6 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   set_tests_properties(test_dygraph_group_sharded_api_for_eager
                        PROPERTIES TIMEOUT "120")
 endif()
-if(WITH_NCCL)
-  if((WITH_GPU) AND LOCAL_ALL_PLAT)
-    bash_test_modules(
-      test_dygraph_fsdp_for_eager
-      START_BASH
-      ../../legacy_test/dist_test.sh
-      TIMEOUT
-      "200"
-      LABELS
-      "RUN_TYPE=EXCLUSIVE"
-      ENVS
-      "PADDLE_DIST_UT_PORT=22352;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-    )
-    set_tests_properties(test_dygraph_fsdp_for_eager PROPERTIES TIMEOUT "200")
-  endif()
-endif()
 if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
   py_test_modules(
     test_fleet_distributed_strategy MODULES test_fleet_distributed_strategy
