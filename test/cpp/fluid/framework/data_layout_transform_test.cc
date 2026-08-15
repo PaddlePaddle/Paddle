@@ -17,6 +17,11 @@
 #include "gtest/gtest.h"
 #include "paddle/phi/common/bfloat16.h"
 
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/phi/backends/onednn/onednn_helper.h"
+#include "paddle/phi/kernels/funcs/data_layout_transform.h"
+#endif
+
 TEST(DataTransform, DataLayoutFunction) {
   auto place = phi::CPUPlace();
   phi::DenseTensor in = phi::DenseTensor();
