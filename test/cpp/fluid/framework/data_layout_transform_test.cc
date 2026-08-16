@@ -46,6 +46,11 @@ TEST(DataTransform, DataLayoutFunction) {
 }
 
 #ifdef PADDLE_WITH_DNNL
+TEST(DataTransformOneDNN, ReturnsUndefinedMemDescWhenAbsent) {
+  phi::DenseTensor tensor;
+  EXPECT_EQ(phi::funcs::GetOneDNNMemDesc(tensor), dnnl::memory::desc());
+}
+
 TEST(DataTransformOneDNN, MemDescWithoutAllocation) {
   phi::DenseTensor tensor;
   const dnnl::memory::desc mem_desc(
@@ -54,7 +59,35 @@ TEST(DataTransformOneDNN, MemDescWithoutAllocation) {
   phi::funcs::SetOneDNNMemDesc(&tensor, mem_desc);
 
   EXPECT_FALSE(tensor.initialized());
+  EXPECT_EQ(tensor.layout(), phi::DataLayout::ONEDNN);
   EXPECT_EQ(phi::funcs::GetOneDNNMemDesc(tensor), mem_desc);
+}
+
+TEST(DataTransformOneDNN, PreservesFormatWhenUpdatingMemDesc) {
+  phi::DenseTensor tensor;
+  auto properties = std::make_unique<phi::OneDNNStorageProperties>();
+  properties->format = dnnl::memory::format_tag::nchw;
+  tensor.set_storage_properties(std::move(properties));
+  const dnnl::memory::desc mem_desc(
+      {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
+
+  phi::funcs::SetOneDNNMemDesc(&tensor, mem_desc);
+
+  EXPECT_EQ(tensor.storage_properties<phi::OneDNNStorageProperties>().format,
+            dnnl::memory::format_tag::nchw);
+  EXPECT_EQ(phi::funcs::GetOneDNNMemDesc(tensor), mem_desc);
+}
+
+TEST(DataTransformOneDNN, RejectsOtherStorageProperties) {
+  phi::DenseTensor tensor;
+  tensor.set_storage_properties(std::make_unique<phi::NPUStorageProperties>());
+  const dnnl::memory::desc mem_desc(
+      {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
+
+  EXPECT_THROW(phi::funcs::SetOneDNNMemDesc(&tensor, mem_desc),
+               common::enforce::EnforceNotMet);
+  EXPECT_THROW(phi::funcs::GetOneDNNMemDesc(tensor),
+               common::enforce::EnforceNotMet);
 }
 
 TEST(DataTransformBf16, GetDataFromTensorDNNL) {
