@@ -46,6 +46,17 @@ TEST(DataTransform, DataLayoutFunction) {
 }
 
 #ifdef PADDLE_WITH_DNNL
+TEST(DataTransformOneDNN, MemDescWithoutAllocation) {
+  phi::DenseTensor tensor;
+  const dnnl::memory::desc mem_desc(
+      {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
+
+  phi::funcs::SetOneDNNMemDesc(&tensor, mem_desc);
+
+  EXPECT_FALSE(tensor.initialized());
+  EXPECT_EQ(phi::funcs::GetOneDNNMemDesc(tensor), mem_desc);
+}
+
 TEST(DataTransformBf16, GetDataFromTensorDNNL) {
   auto place = phi::CPUPlace();
   phi::DenseTensor in = phi::DenseTensor();

@@ -33,7 +33,7 @@ using OneDNNMemoryFormat = dnnl::memory::format_tag;
 using OneDNNDataType = dnnl::memory::data_type;
 
 inline const dnnl::memory::desc& GetOneDNNMemDesc(const DenseTensor& tensor) {
-  if (!tensor.storage_properties_initialized()) {
+  if (!tensor.has_storage_properties()) {
     static const dnnl::memory::desc undef_desc;
     return undef_desc;
   }
@@ -43,7 +43,7 @@ inline const dnnl::memory::desc& GetOneDNNMemDesc(const DenseTensor& tensor) {
 inline void SetOneDNNMemDesc(DenseTensor* tensor,
                              const dnnl::memory::desc& mem_desc) {
   auto properties = std::make_unique<OneDNNStorageProperties>();
-  if (tensor->storage_properties_initialized()) {
+  if (tensor->has_storage_properties()) {
     properties->format =
         tensor->storage_properties<OneDNNStorageProperties>().format;
   }
