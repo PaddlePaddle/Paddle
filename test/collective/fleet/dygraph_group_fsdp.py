@@ -122,7 +122,9 @@ class TestModel(nn.Layer):
             [TransformerLayer(hidden_size) for _ in range(num_layers)]
         )
         self.shared_linear = SharedLinear(self.input_embeddings.weight)
+        self.mlp = StandardMLPExpert(hidden_size, hidden_size * 2)
         self.final_stage = nn.Linear(hidden_size, 2, bias_attr=False)
+        self.unused = nn.Linear(hidden_size, hidden_size, bias_attr=False)
 
     def get_input_embeddings(self):
         return self.input_embeddings
@@ -132,6 +134,7 @@ class TestModel(nn.Layer):
         for layer in self.layers:
             x = layer(x)
         x = self.shared_linear(x)
+        x = self.mlp(x)
         x = self.final_stage(x)
         return x
 
@@ -160,14 +163,25 @@ def run_dense():
     assert fsdp_loss == sharding_loss
     # test sharding with fsdp api with fp32 and without overlap and tie_weight
     data = [paddle.randn([8, 16]) for i in range(20)]
-    model = TestModel()
-    loss = train_mlp(
-        model,
+    overlap_model = TestModel()
+    sync_model = TestModel()
+    sync_model.set_state_dict(overlap_model.state_dict())
+
+    overlap_loss = train_mlp(
+        overlap_model,
         use_fsdp=True,
         data=data,
         use_pure_bf16=False,
         enable_tensor_fusion_and_overlap=True,
     )
+    sync_loss = train_mlp(
+        sync_model,
+        use_fsdp=True,
+        data=data,
+        use_pure_bf16=False,
+        enable_tensor_fusion_and_overlap=False,
+    )
+    assert sync_loss == overlap_loss
 
 
 class EPAllGather(PyLayer):
