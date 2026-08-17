@@ -16,33 +16,9 @@ env:
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
 
 jobs:
-  check-skill:
-    name: Check file paths
-    if: ${{ github.repository_owner == 'PaddlePaddle' }}
-    runs-on:
-      group: APPROVAL
-    permissions:
-      contents: read
-    outputs:
-      can-skip: ${{ steps.skip-skill.outputs.should-skip }}
-    steps:
-      - name: Cleanup
-        run: |
-          rm -rf * .[^.]*
-      - name: Checkout
-        uses: actions/checkout@v6
-      - name: Run skip check
-        id: skip-skill
-        uses: ./.github/actions/skip-skill
-        with:
-          ignore-paths: '.agents/skills/**'
-
   clone:
     name: Clone-windows
-    needs: check-skill
     uses: ./.github/workflows/_Clone-windows.yml
-    with:
-      skill-can-skip: ${{ needs.check-skill.outputs.can-skip }}
 
   win-openblas:
     name: Windows-OPENBLAS
