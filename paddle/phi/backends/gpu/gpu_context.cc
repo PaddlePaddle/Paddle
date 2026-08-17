@@ -25,7 +25,6 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/common/exception.h"
-#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_resources.h"
@@ -725,7 +724,7 @@ struct GPUContext::Impl {
       }
 #endif
     });
-    if (blas_tf32_tensor_core_handle_ && phi::AllowTF32Cublas()) {
+    if (blas_tf32_tensor_core_handle_ && FLAGS_cublas_allow_tf32) {
       std::lock_guard<std::mutex> guard(blas_tf32_mtx_);
       callback(blas_tf32_tensor_core_handle_);
     } else {

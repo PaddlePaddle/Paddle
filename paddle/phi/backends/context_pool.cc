@@ -26,18 +26,6 @@ namespace phi {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_CUSTOM_DEVICE)
-#if defined(PADDLE_WITH_CUSTOM_DEVICE)
-bool allow_tf32_cublas = true;
-#else
-bool allow_tf32_cublas = false;
-#endif
-
-// Deprecated compatibility switch. New FP32 GEMM paths configure the
-// cuBLAS math mode per call using FLAGS_cublas_allow_tf32.
-void SetAllowTF32Cublas(bool active) { allow_tf32_cublas = active; }
-
-// Deprecated compatibility getter. See SetAllowTF32Cublas.
-bool AllowTF32Cublas() { return allow_tf32_cublas; }
 bool allow_tf32_cudnn = true;
 void SetAllowTF32Cudnn(bool active) { allow_tf32_cudnn = active; }
 bool AllowTF32Cudnn() { return allow_tf32_cudnn; }

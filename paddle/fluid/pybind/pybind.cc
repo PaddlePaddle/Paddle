@@ -4196,10 +4196,6 @@ All parameter, weight, gradient are variables in Paddle.
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_CUSTOM_DEVICE)
-  // Deprecated: FP32 GEMM should use FLAGS_cublas_allow_tf32.
-  m.def("set_cublas_switch", phi::SetAllowTF32Cublas);
-  // Deprecated: retained for compatibility with set_cublas_switch.
-  m.def("get_cublas_switch", phi::AllowTF32Cublas);
   m.def("set_cudnn_switch", phi::SetAllowTF32Cudnn);
   m.def("get_cudnn_switch", phi::AllowTF32Cudnn);
 #endif  // PADDLE_WITH_CUDA
