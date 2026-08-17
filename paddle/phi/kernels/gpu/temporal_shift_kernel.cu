@@ -132,8 +132,11 @@ void TemporalShiftKernel(const Context& dev_ctx,
   int64_t blocks_per_sm = dev_ctx.GetMaxPhysicalThreadCount() / threads;
   grid = std::min(dev_ctx.GetSMCount() * blocks_per_sm, grid);
 
+  // the calculation of `stride` must in sync with kernel
+  const int64_t total_stride = grid * threads;
   if (data_layout == DataLayout::NCHW) {
-    if (x.numel() < std::numeric_limits<int32_t>::max()) {
+    // `tid` peaks at `numel - 1 + total_stride`
+    if (x.numel() + total_stride < std::numeric_limits<int32_t>::max()) {
       KeTemporalShiftFwNCHW<T, int32_t><<<grid, threads, 0, dev_ctx.stream()>>>(
           input_data, output_data, ntchw, tchw, chw, hw, t, c1, c2);
     } else {
@@ -141,7 +144,8 @@ void TemporalShiftKernel(const Context& dev_ctx,
           input_data, output_data, ntchw, tchw, chw, hw, t, c1, c2);
     }
   } else {
-    if (x.numel() < std::numeric_limits<int32_t>::max()) {
+    // Same reason as the NCHW branch: the guard covers the loop increment.
+    if (x.numel() + total_stride < std::numeric_limits<int32_t>::max()) {
       KeTemporalShiftFwNHWC<T, int32_t><<<grid, threads, 0, dev_ctx.stream()>>>(
           input_data, output_data, ntchw, tchw, chw, t, c, c1, c2);
     } else {

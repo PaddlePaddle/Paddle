@@ -53,9 +53,9 @@ template <typename T,
           class Reducer,
           size_t BlockDim,
           typename IndexType>
-__global__ void ArgCUDAKernel(const int64_t height,     // n * h
-                              const int64_t width,      // c
-                              const int64_t post_size,  // h
+__global__ void ArgCUDAKernel(const IndexType height,     // n * h
+                              const IndexType width,      // c
+                              const IndexType post_size,  // h
                               const Reducer reducer,
                               const T init,
                               const T* in,
@@ -202,7 +202,21 @@ struct VisitDataCudaArgMinMaxFunctor {
       post *= x_dims[i];
     }
 
-    if (numel > std::numeric_limits<int32_t>::max()) {
+    // All variable declaration of height,max_grid_dimx,grid_size
+    // must in sync with that of ComputeFullArg.
+    int64_t height = pre * post;
+    int64_t max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
+    int64_t grid_size = height < max_grid_dimx ? height : max_grid_dimx;
+    int max_block_size = 1024;  // upper bound of ComputeBlockSize
+    // outer grid-stride loop: `idx` peaks at `height - 1 + gridDim.x`
+    // inner block-stride loop: `k` peaks at `width - 1 + blockDim.x`
+    if (numel > std::numeric_limits<int32_t>::max() ||
+        height + grid_size - 1 >
+            std::numeric_limits<int32_t>::max() ||  // avoid last loop increment
+                                                    // overflow in line66
+        n - 1 + max_block_size >
+            std::numeric_limits<int32_t>::max()) {  // avoid last loop increment
+                                                    // overflow in line70
       ComputeFullArg<T, IndType, Reducer, int64_t>(
           dev_ctx, x, out, pre, post, n);
     } else {
