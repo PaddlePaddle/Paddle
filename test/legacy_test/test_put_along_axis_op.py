@@ -1710,6 +1710,25 @@ class TestPutAlongAxisZeroIndexGrad(unittest.TestCase):
     def test_cpu(self):
         self._check(paddle.CPUPlace())
 
+    def test_empty_input_cpu(self):
+        place = paddle.CPUPlace()
+        arr = paddle.to_tensor(np.zeros([0, 3], dtype='float32'), place=place)
+        arr.stop_gradient = False
+        index = paddle.to_tensor(np.zeros([0, 3], dtype='int64'), place=place)
+        values = paddle.to_tensor(
+            np.zeros([0, 3], dtype='float32'), place=place
+        )
+        values.stop_gradient = False
+
+        out = paddle._C_ops.put_along_axis(
+            arr, index, values, 1, 'assign', True
+        )
+        out.sum().backward()
+
+        self.assertEqual(list(arr.grad.shape), [0, 3])
+        self.assertIsNotNone(values.grad)
+        self.assertEqual(list(values.grad.shape), [0, 3])
+
     def test_gpu(self):
         if core.is_compiled_with_cuda() or is_custom_device():
             self._check(get_device_place())

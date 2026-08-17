@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/expand_kernel.h"
+#include "paddle/phi/kernels/funcs/index_elementwise_utils.h"
 #include "paddle/phi/kernels/funcs/index_put_utils.h"
 #include "paddle/phi/kernels/xpu/index_put_xpu_utils.h"
 
@@ -60,24 +61,17 @@ void IndexPutKernel(const Context& dev_ctx,
   }
 
   using XPUType = typename XPUTypeTrait<T>::Type;
-  auto out_data = dev_ctx.template Alloc<T>(out);
   auto bd_dims = funcs::BroadCastTensorsDims(int_indices_v);
-  DenseTensor res_indices(DataType::INT64);
-  // Broadcast and merge indices
-  XPUDealWithIndices<Context>(dev_ctx, int_indices_v, bd_dims, &res_indices);
-  auto index_shape = vectorize<int64_t>(res_indices.dims());
   auto x_shape = vectorize<int64_t>(x.dims());
 
-  const T* value_data = value.data<T>();
+  const T* value_data = value.numel() == 0 ? nullptr : value.data<T>();
 
   // Broadcast value
   auto value_shape = vectorize<int64_t>(value.dims());
-  int64_t value_rank = bd_dims.size() + (x_shape.size() - int_indices_v.size());
-  std::vector<int64_t> value_shape_bd(value_rank);
-  std::copy(index_shape.begin(), index_shape.end() - 1, value_shape_bd.begin());
-  std::copy(x_shape.begin() + int_indices_v.size(),
-            x_shape.end(),
-            value_shape_bd.begin() + index_shape.size() - 1);
+  auto value_shape_bd = vectorize<int64_t>(bd_dims);
+  value_shape_bd.insert(value_shape_bd.end(),
+                        x_shape.begin() + int_indices_v.size(),
+                        x_shape.end());
 
   DenseTensor value_bd(value.dtype());
 
@@ -88,6 +82,18 @@ void IndexPutKernel(const Context& dev_ctx,
     value_data = value_bd.data<T>();
   }
 
+  if (funcs::HasEmptyIndex(int_indices_v)) {
+    if (!out->initialized()) {
+      Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    }
+    return;
+  }
+
+  auto out_data = dev_ctx.template Alloc<T>(out);
+  DenseTensor res_indices(DataType::INT64);
+  // Broadcast and merge indices
+  XPUDealWithIndices<Context>(dev_ctx, int_indices_v, bd_dims, &res_indices);
+  auto index_shape = vectorize<int64_t>(res_indices.dims());
   int r = xpu::index_put<XPUType, int64_t>(
       dev_ctx.x_context(),
       reinterpret_cast<const XPUType*>(x.data<T>()),

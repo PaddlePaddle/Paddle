@@ -364,9 +364,13 @@ void SetTensorValueKernel(const Context& dev_ctx,
                           const std::vector<int64_t>& decrease_axes,
                           const std::vector<int64_t>& none_axes,
                           DenseTensor* out) {
+  // Empty values are valid for an empty target slice and may not have a
+  // storage holder. Shape validation in SetValueImpl must run before any
+  // value data is consumed, so do not dereference value.data() here.
+  const T* value_data = value.numel() == 0 ? nullptr : value.data<T>();
   SetValueKernelImpl<T, Context>(dev_ctx,
                                  x,
-                                 value.data<T>(),
+                                 value_data,
                                  value.dims(),
                                  starts,
                                  ends,

@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
+#include "paddle/phi/kernels/funcs/index_elementwise_utils.h"
 #include "paddle/phi/kernels/funcs/index_put_utils.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 #include "paddle/phi/kernels/xpu/index_put_xpu_utils.h"
@@ -50,7 +51,7 @@ void IndexPutGradKernel(const Context& dev_ctx,
   std::vector<const DenseTensor*> int_indices_v =
       funcs::DealWithBoolIndices<T, Context>(dev_ctx, indices_v, &tmp_args);
 
-  if (int_indices_v.empty()) {
+  if (int_indices_v.empty() || funcs::HasEmptyIndex(int_indices_v)) {
     if (x_grad) {
       Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     }

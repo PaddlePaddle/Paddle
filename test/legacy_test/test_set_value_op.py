@@ -1805,12 +1805,90 @@ class TestSetValueEmptyTensorInDygraph(unittest.TestCase):
         with self.assertRaises(ValueError):
             x[2:5] = value
 
+        x = paddle.to_tensor(np.zeros([1, 2]), dtype='int32', place=place)
+        mask = paddle.to_tensor([[False, False]], place=place)
+        x[mask] = paddle.to_tensor([], dtype='int64', place=place)
+        np.testing.assert_array_equal(x.numpy(), np.zeros([1, 2]))
+
+        mask = paddle.to_tensor([[True, False]], place=place)
+        with self.assertRaises(ValueError):
+            x[mask] = paddle.to_tensor([], dtype='int64', place=place)
+
+        x = paddle.to_tensor(np.zeros([2, 3, 4], dtype='float32'), place=place)
+        mask = paddle.to_tensor([False, False], place=place)
+        x[mask] = paddle.to_tensor(
+            np.zeros([0, 3, 4], dtype='float32'), place=place
+        )
+        np.testing.assert_array_equal(x.numpy(), np.zeros([2, 3, 4]))
+
+        with self.assertRaises(ValueError):
+            x[mask] = paddle.to_tensor([], place=place)
+
+        x = paddle.to_tensor(np.zeros([2, 3], dtype='float32'), place=place)
+        mask = paddle.to_tensor([False, False, False], place=place)
+        x[:, mask] = paddle.to_tensor(
+            np.zeros([2, 0], dtype='float32'), place=place
+        )
+        np.testing.assert_array_equal(x.numpy(), np.zeros([2, 3]))
+
+        base = paddle.to_tensor(np.ones([2, 3], dtype='float32'), place=place)
+        base.stop_gradient = False
+        x = base * 1
+        value = paddle.to_tensor(np.zeros([2, 0], dtype='float32'), place=place)
+        value.stop_gradient = False
+        x[:, mask] = value
+        x.sum().backward()
+        np.testing.assert_array_equal(base.grad.numpy(), np.ones([2, 3]))
+        self.assertIsNotNone(value.grad)
+        np.testing.assert_equal(list(value.grad.shape), [2, 0])
+
+    def _check_place_empty_index(self, place):
+        empty_index = paddle.to_tensor([], dtype='int64', place=place)
+
+        x = paddle.to_tensor(np.zeros([2, 3], dtype='float32'), place=place)
+        x[empty_index] = paddle.to_tensor(
+            np.zeros([0, 3], dtype='float32'), place=place
+        )
+        np.testing.assert_array_equal(x.numpy(), np.zeros([2, 3]))
+
+        x[empty_index] = 1.0
+        np.testing.assert_array_equal(x.numpy(), np.zeros([2, 3]))
+
+        base = paddle.to_tensor(np.ones([2, 3], dtype='float32'), place=place)
+        base.stop_gradient = False
+        x = base * 1
+        value = paddle.to_tensor(np.zeros([0, 3], dtype='float32'), place=place)
+        value.stop_gradient = False
+        x[empty_index] = value
+        x.sum().backward()
+        np.testing.assert_array_equal(base.grad.numpy(), np.ones([2, 3]))
+        self.assertIsNotNone(value.grad)
+        np.testing.assert_equal(list(value.grad.shape), [0, 3])
+
+        # a broadcastable value keeps a zero gradient, nothing is written
+        base = paddle.to_tensor(np.ones([2, 3], dtype='float32'), place=place)
+        base.stop_gradient = False
+        x = base * 1
+        value = paddle.to_tensor(np.array([5.0], dtype='float32'), place=place)
+        value.stop_gradient = False
+        x[empty_index] = value
+        x.sum().backward()
+        np.testing.assert_array_equal(base.grad.numpy(), np.ones([2, 3]))
+        np.testing.assert_array_equal(value.grad.numpy(), np.zeros([1]))
+
     def test_empty_tensor_value(self):
         self._check_place(paddle.CPUPlace())
         if core.is_compiled_with_cuda() or is_custom_device():
             self._check_place(get_device_place())
         if paddle.device.is_compiled_with_xpu():
             self._check_place(paddle.XPUPlace(0))
+
+    def test_empty_index_tensor(self):
+        self._check_place_empty_index(paddle.CPUPlace())
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self._check_place_empty_index(get_device_place())
+        if paddle.device.is_compiled_with_xpu():
+            self._check_place_empty_index(paddle.XPUPlace(0))
 
 
 class TestSetValueEmptyInputGradInDygraph(unittest.TestCase):
