@@ -11,6 +11,10 @@ inputs:
     description: 'Base branch (defaults to PR target branch)'
     required: false
     default: ${{ github.event.pull_request.base.ref }}
+  base-sha:
+    description: 'Base commit SHA (defaults to the PR base commit)'
+    required: false
+    default: ${{ github.event.pull_request.base.sha }}
 
 outputs:
   should-skip:
@@ -35,7 +39,7 @@ runs:
     - name: Checkout repository
       uses: actions/checkout@v6
       with:
-        fetch-depth: 0
+        fetch-depth: 1
 
     - name: Run PR skip check script
       id: check
@@ -44,4 +48,5 @@ runs:
       env:
         IGNORE_PATHS: ${{ inputs.ignore-paths }}
         BASE_REF: ${{ inputs.base-ref }}
+        BASE_SHA: ${{ inputs.base-sha }}
         GITHUB_EVENT_NAME: ${{ github.event_name }}

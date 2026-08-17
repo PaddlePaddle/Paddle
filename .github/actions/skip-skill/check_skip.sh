@@ -21,6 +21,7 @@ echo "🔍 [PR Skip Check] Starting..."
 # Parse input parameters
 IFS=',' read -ra IGNORE_PATHS <<< "${IGNORE_PATHS:-skill/**}"
 BASE_REF="${BASE_REF:-$GITHUB_BASE_REF}"
+BASE_SHA="${BASE_SHA:-}"
 
 echo "📋 Event type: $GITHUB_EVENT_NAME"
 echo "📋 Ignore path patterns:"
@@ -42,9 +43,14 @@ if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
     get_pr_changed_files() {
         local files=""
 
-        if [ -n "$BASE_REF" ]; then
+        if [ -n "$BASE_SHA" ]; then
+            echo "📌 Base commit: $BASE_SHA" >&2
+            git fetch --no-tags --depth=1 origin "$BASE_SHA"
+            files=$(git diff --name-only FETCH_HEAD HEAD)
+        elif [ -n "$BASE_REF" ]; then
             echo "📌 Base branch: $BASE_REF" >&2
-            files=$(git diff --name-only "origin/$BASE_REF...HEAD" 2>/dev/null)
+            git fetch --no-tags --depth=1 origin "$BASE_REF"
+            files=$(git diff --name-only FETCH_HEAD HEAD)
         else
             echo "⚠️ No base branch specified, using HEAD^..HEAD" >&2
             files=$(git diff --name-only HEAD^ HEAD 2>/dev/null || echo "")
