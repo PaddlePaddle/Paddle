@@ -1,4 +1,0 @@
-interface:
-  display_name: "AI Review"
-  short_description: "Review Paddle changes for correctness and risk"
-  default_prompt: "Use $ai-review to review this Paddle change against repository rules."
