@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/generator.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
@@ -392,6 +393,16 @@ void distribution_and_transform(const GPUContext &dev_ctx,
   // noticing 32-bit indexing is impossible, so that increment is consumed
   // but never used by any kernel.
   gen_cuda->IncrementOffset(calc_increment(size));
+
+  // This helper (and DistributionKernel) has always written the output
+  // linearly; make the long-standing contiguity precondition explicit now
+  // that the big-tensor path derives chunk offsets from tensor strides.
+  PADDLE_ENFORCE_EQ(out->meta().is_contiguous(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "distribution_and_transform requires a contiguous "
+                        "output tensor when numel exceeds the 32-bit "
+                        "indexing range."));
 
   // with_32bit_indexing() (the DenseTensorIterator port of torch's
   // TensorIterator::with_32bit_indexing) halves the largest-extent dim until
