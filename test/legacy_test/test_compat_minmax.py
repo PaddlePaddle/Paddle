@@ -122,6 +122,51 @@ class TestCompatMinMaxBase(unittest.TestCase):
         result[0].backward()
         np.testing.assert_allclose(data.grad.numpy(), expected_grad2, atol=1e-6)
 
+    def test_case2_grad_distinct_grad_outputs(self):
+        """Backward with keepdim=False and a non-trailing dim.
+
+        A uniform (all-ones) upstream gradient cannot distinguish a wrong
+        grad_outputs indexing, because every element read is 1. The GPU
+        min/max_with_index_grad kernel walks the unsqueezed indices with the
+        input rank and reads values_grad through its strides, so values_grad
+        must be unsqueezed as well; otherwise every stride shifts by one dim
+        (only dim == rank - 1 happens to be unaffected). Feed grad_outputs
+        with pairwise distinct elements to lock that down.
+        """
+        shape = [2, 3, 4]
+        numel = int(np.prod(shape))
+        # gcd(7, 24) == 1, so this is a permutation of range(numel): all
+        # elements differ and argmin/argmax is unambiguous (no ties).
+        x_np = ((np.arange(numel) * 7) % numel).astype('float64').reshape(shape)
+        reduce_index = (
+            np.argmin if self.test_op_name.endswith("min") else np.argmax
+        )
+
+        for dim in (0, 1, -2):
+            axis = dim % len(shape)
+            out_shape = [s for i, s in enumerate(shape) if i != axis]
+            dy_np = (np.arange(1, int(np.prod(out_shape)) + 1) * 0.5).reshape(
+                out_shape
+            )
+            expected_grad = np.zeros(shape)
+            np.put_along_axis(
+                expected_grad,
+                np.expand_dims(reduce_index(x_np, axis=axis), axis=axis),
+                np.expand_dims(dy_np, axis=axis),
+                axis=axis,
+            )
+
+            data = paddle.to_tensor(x_np, stop_gradient=False)
+            result = self.test_op(data, dim=dim)
+            self.assertEqual(result.values.shape, out_shape)
+            result.values.backward(paddle.to_tensor(dy_np))
+            np.testing.assert_allclose(
+                data.grad.numpy(),
+                expected_grad,
+                atol=1e-6,
+                err_msg=f"{self.test_op_name} backward mismatch at dim={dim}",
+            )
+
     def test_case3_elementwise(self):
         x = paddle.to_tensor([[1, 5], [4, 2]], dtype='float32')
         y = paddle.to_tensor([[3, 2], [1, 6]], dtype='float32')
