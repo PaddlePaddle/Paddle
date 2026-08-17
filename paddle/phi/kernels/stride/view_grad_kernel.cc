@@ -36,25 +36,8 @@ void ViewShapeGradKernel(const Context& dev_ctx,
   ReshapeStridedKernel(dev_ctx, out_grad, vectorize(input.dims()), input_grad);
 }
 
-template <typename Context>
-void ViewDtypeGradKernel(const Context& dev_ctx,
-                         const DenseTensor& input,
-                         const DenseTensor& out_grad,
-                         DataType dtype,
-                         DenseTensor* input_grad) {
-  if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(common::errors::Fatal(
-        "FLAGS_use_stride_kernel is closed. Strided kernel "
-        "be called, something wrong has happened!"));
-  }
-  ViewDtypeKernel<Context>(dev_ctx, out_grad, input.dtype(), input_grad);
-}
 }  // namespace phi
 
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(view_shape_grad,
                                          STRIDED,
                                          phi::ViewShapeGradKernel) {}
-
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(view_dtype_grad,
-                                         STRIDED,
-                                         phi::ViewDtypeGradKernel) {}
